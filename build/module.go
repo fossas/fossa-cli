@@ -48,7 +48,8 @@ func (m *Module) NewBuild(name string) Build {
 		jsCtx := CommonJSContext{}
 		ctx = BuildContext(&jsCtx)
 	case "bowerpackage":
-		// build.Context = BowerBuildCtx{}
+		bowerCtx := BowerContext{}
+		ctx = BuildContext(&bowerCtx)
 	case "rubygem":
 		gemCtx := GemContext{}
 		ctx = BuildContext(&gemCtx)
