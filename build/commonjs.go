@@ -152,7 +152,14 @@ func (ctx *CommonJSContext) populateNodeModules() error {
 			// TODO(xizhao): Verify compatible yarn versions
 			// yarn install
 			exec.Command("yarn", "install", "--production").Output()
-			return nil
+
+			// verify yarn build
+			ctx.verifyNodeModules()
+			if ctx.isNodeModulesPopulated == false {
+				Log.Warning("failed to run Yarn build... falling back to npm")
+			} else {
+				return nil
+			}
 		} else {
 			Log.Warning("Yarn lockfile detected but no Yarn installation found. Try setting $YARN_BINARY environment variable; falling back to npm for analysis.")
 		}
@@ -162,13 +169,12 @@ func (ctx *CommonJSContext) populateNodeModules() error {
 		return errors.New("No npm installation detected. Try setting the $NPM_BINARY environment variable.")
 	}
 
-	ctx.verifyNodeModules()
-
-	if ctx.isNodeModulesPopulated == false {
-		return errors.New("Failed to build project.")
-	}
 	// npm install
 	exec.Command("npm", "install", "--production").Output()
+	ctx.verifyNodeModules()
+	if ctx.isNodeModulesPopulated == false {
+		return errors.New("Failed to run npm build.")
+	}
 	return nil
 }
 
