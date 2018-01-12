@@ -69,15 +69,21 @@ func (ctx *GemContext) Initialize(p *Module, opts map[string]interface{}) {
 		ctx.BundlerVersion = ""
 	}
 
+	ctx.isBundlerSatisfied = ctx.Verify(p, opts)
+}
+
+// Verify checks if the bundler is satisfied and if an install is necessary
+func (ctx *GemContext) Verify(p *Module, opts map[string]interface{}) bool {
 	if _, err := exec.Command(ctx.BundlerCmd, "check").Output(); err == nil {
-		ctx.isBundlerSatisfied = true
+		return true
 	}
+	return false
 }
 
 // Build runs Bundler and collect dep data
 func (ctx *GemContext) Build(p *Module, opts map[string]interface{}) error {
 	if ctx.BundlerCmd == "" || ctx.BundlerVersion == "" {
-		return errors.New("No Bundler installation detected -- falling back to Gem. Try setting the $BUNDLER_BINARY environment variable.")
+		return errors.New("no bundler installation detected -- falling back to gem. try setting the $BUNDLER_BINARY environment variable.")
 	} else {
 		if ctx.isBundlerSatisfied == false {
 			Log.Debug("bundler not satisfied, running full install")

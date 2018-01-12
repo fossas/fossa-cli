@@ -19,9 +19,9 @@ type CommonJSContext struct {
 	NodeCmd     string
 	NodeVersion string
 
-	nodeModulesLocalDir    string
-	nodeModulesGlobalDir   string
-	isNodeModulesPopulated bool
+	nodeModulesLocalDir       string
+	nodeModulesGlobalDir      string
+	isNodeModulesPrePopulated bool
 
 	NpmCmd     string
 	NpmVersion string
@@ -106,12 +106,17 @@ func (ctx *CommonJSContext) Initialize(p *Module, opts map[string]interface{}) {
 		ctx.NpmVersion = ""
 	}
 
-	ctx.verifyNodeModules()
+	ctx.isNodeModulesPrePopulated = ctx.verifyNodeModules()
+}
+
+// Verify checks if an install needs to be run
+func (ctx *CommonJSContext) Verify(m *Module, opts map[string]interface{}) bool {
+	return ctx.verifyNodeModules()
 }
 
 // Build determines and executes a CommonJS build based off available tooling in the environment
 func (ctx *CommonJSContext) Build(m *Module, opts map[string]interface{}) error {
-	if ctx.isNodeModulesPopulated == false || opts["no-cache"].(bool) == true {
+	if ctx.verifyNodeModules() == false || opts["no-cache"].(bool) == true {
 		Log.Debug("No prebuilt node_modules directory, building...")
 		if err := ctx.populateNodeModules(); err != nil {
 			return err
@@ -132,13 +137,13 @@ func (ctx *CommonJSContext) Build(m *Module, opts map[string]interface{}) error 
 	return nil
 }
 
-func (ctx *CommonJSContext) verifyNodeModules() {
+func (ctx *CommonJSContext) verifyNodeModules() bool {
 	if _, err := os.Stat("node_modules"); err == nil {
 		// check if node_modules directory looks kinda right
 		// NOTE: we don't have great ways of doing this because there could be no deps
-		ctx.isNodeModulesPopulated = true
+		return true
 	} else {
-		ctx.isNodeModulesPopulated = false
+		return false
 	}
 }
 
@@ -154,8 +159,7 @@ func (ctx *CommonJSContext) populateNodeModules() error {
 			exec.Command("yarn", "install", "--production").Output()
 
 			// verify yarn build
-			ctx.verifyNodeModules()
-			if ctx.isNodeModulesPopulated == false {
+			if ctx.verifyNodeModules() == false {
 				Log.Warning("failed to run Yarn build... falling back to npm")
 			} else {
 				return nil
@@ -171,8 +175,7 @@ func (ctx *CommonJSContext) populateNodeModules() error {
 
 	// npm install
 	exec.Command("npm", "install", "--production").Output()
-	ctx.verifyNodeModules()
-	if ctx.isNodeModulesPopulated == false {
+	if ctx.verifyNodeModules() == false {
 		return errors.New("Failed to run npm build.")
 	}
 	return nil

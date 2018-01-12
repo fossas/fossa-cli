@@ -25,6 +25,7 @@ func main() {
 			Action:  BuildCmd,
 			Flags: []cli.Flag{
 				cli.StringFlag{Name: "type, t"},
+				cli.BoolFlag{Name: "install, i"},
 				cli.BoolFlag{Name: "no-cache"},
 			},
 		},
@@ -49,9 +50,10 @@ func BuildCmd(c *cli.Context) error {
 	}
 
 	buildOpts := make(map[string]interface{})
+	buildOpts["install"] = c.Bool("install")
 	buildOpts["no-cache"] = c.Bool("no-cache")
 	if err := mod.Analyze(buildOpts); err != nil {
-		Log.Fatalf("analysis failed (%v); try pre-building and then running `fossa`", err)
+		Log.Fatalf("analysis failed (%v);\ntry pre-building and then running `fossa`", err)
 	}
 
 	Log.Debugf("found (%s) deduped dependencies", len(mod.Build.Dependencies))

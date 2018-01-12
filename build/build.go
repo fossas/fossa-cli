@@ -19,6 +19,7 @@ type Build struct {
 // BuildContext describes instances that contain metadata and logic to run a build
 type BuildContext interface {
 	Initialize(m *Module, opts map[string]interface{})
+	Verify(m *Module, opts map[string]interface{}) bool
 	Build(m *Module, opts map[string]interface{}) error
 }
 
@@ -30,6 +31,10 @@ func (b *Build) Run(m *Module, opts map[string]interface{}) error {
 	}
 
 	ctx.Initialize(m, opts)
+
+	if ctx.Verify(m, opts) == false && opts["install"].(bool) == false {
+		return errors.New("build required; refusing to run unless --install flag is explicitly specified")
+	}
 
 	Log.Debugf("running analysis with build context:\n%v", *b.Context)
 	if err := ctx.Build(m, opts); err != nil {
