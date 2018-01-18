@@ -52,7 +52,13 @@ OR
 
 ## License
 
-`fossa-cli` is licensed under the [AGPLv3](https://tldrlegal.com/license/gnu-affero-general-public-license-v3-(agpl-3.0)).
+`fossa-cli` is Open Source and licensed under the [AGPLv3](https://tldrlegal.com/license/gnu-affero-general-public-license-v3-(agpl-3.0)).
+
+You are free to use `fossa-cli` and its binaries under all common use conditions (i.e. integrating personal projects, securely scanning corporate code, adding steps to build plugins) without contributing or releasing any integrated / proprietary code... Enjoy!
+
+You are free to contribute or develop applications on top of `fossa-cli`, but any modifications / derivative works must be released back to the community under this license.
+
+Please contact [support@fossa.io](mailto:support@fossa.io) for additional licensing guidance.
 
 ```
     Copyright (C) 2018 FOSSA, Inc.
