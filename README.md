@@ -1,20 +1,26 @@
+<p align="center">
+	<img src="https://fossa.io/images/logo.svg"/>
+</p>
+
 # FOSSA CLI
 
-`fossa-cli` is a tool that interrogates your environment and build to discover the dependencies getting included in your software.  It can be used alone or within build systems to 
+`fossa-cli` is a tool that interrogates your environment and build to discover the dependencies getting included in your software.  It can be used alone or within build systems to dig out dependency data from complex monolithic builds.
 
-`fossa-cli` integrates directly with the [FOSSA](https://fossa.io) web service to provide open source reports, search intelligence, vulnerability/license scanning and triage workflows to help your organization to manage its open source use.  This CLI provides an alternative path to integrating your code repositories and builds in a way that doesn't require code access or FOSSA environment setup.
+This tool integrates directly with the [FOSSA](https://fossa.io) web service to provide open source reports, search intelligence, vulnerability/license scanning and triage workflows to help your organization to manage its open source use.
+
+The CLI provides an alternative path to integrating your code repositories and builds in a way that doesn't require code access or FOSSA environment setup, or enrich dependency reports with dynamically confirmed dependency artifacts.
 
 ## Installation
 
-`fossa-cli` targets Windows, Darwin (MacOS) and *nix-based operating systems.
+`fossa-cli` is compatible with Windows, Darwin (MacOS) and *nix-based operating systems.
 
-### Install with Bash
+### Install with Curl (Linux / MacOS)
 
 ```bash
   curl -L
 ```
 
-### Install with npm/yarn
+### Install with npm/yarn (All Platforms)
 
 If you have npm/yarn on your machine, you can get `fossa-cli` with:
 
@@ -28,7 +34,17 @@ OR
   yarn add --global fossa
 ```
 
+### Install with Homebrew (MacOS)
+
+```bash
+  brew install fossa
+```
+
 ## Running
+
+```bash
+  fossa
+```
 
 ## Developing
 
