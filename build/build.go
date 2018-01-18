@@ -3,7 +3,7 @@ package build
 import (
 	"errors"
 
-	. "github.com/fossas/fossa-cli/log"
+	"github.com/fossas/fossa-cli/log"
 )
 
 // Build represents a task that builds a single artifact and generates dependency lists
@@ -36,7 +36,7 @@ func (b *Build) Run(m *Module, opts map[string]interface{}) error {
 		return errors.New("build required; refusing to run unless --install flag is explicitly specified")
 	}
 
-	Log.Debugf("running analysis with build context:\n%v", *b.Context)
+	log.Log.Debugf("running analysis with build context:\n%v", *b.Context)
 	if err := ctx.Build(m, opts); err != nil {
 		b.Error = err
 		b.Succeeded = false

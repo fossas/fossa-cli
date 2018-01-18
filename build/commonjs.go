@@ -9,9 +9,9 @@ import (
 	"strings"
 	"sync"
 
-	zglob "github.com/mattn/go-zglob"
+	"github.com/mattn/go-zglob"
 
-	. "github.com/fossas/fossa-cli/log"
+	"github.com/fossas/fossa-cli/log"
 )
 
 // CommonJSContext implements build context for node_module & package.json builds
@@ -117,12 +117,12 @@ func (ctx *CommonJSContext) Verify(m *Module, opts map[string]interface{}) bool 
 // Build determines and executes a CommonJS build based off available tooling in the environment
 func (ctx *CommonJSContext) Build(m *Module, opts map[string]interface{}) error {
 	if ctx.verifyNodeModules() == false || opts["no-cache"].(bool) == true {
-		Log.Debug("No prebuilt node_modules directory, building...")
+		log.Log.Debug("No prebuilt node_modules directory, building...")
 		if err := ctx.populateNodeModules(); err != nil {
 			return err
 		}
 	} else {
-		Log.Debug("Found pre-populated node_modules, skipping build...")
+		log.Log.Debug("Found pre-populated node_modules, skipping build...")
 	}
 
 	// Traverse node_modules directory and find all Modules
@@ -142,14 +142,13 @@ func (ctx *CommonJSContext) verifyNodeModules() bool {
 		// check if node_modules directory looks kinda right
 		// NOTE: we don't have great ways of doing this because there could be no deps
 		return true
-	} else {
-		return false
 	}
+	return false
 }
 
 func (ctx *CommonJSContext) populateNodeModules() error {
 	if ctx.NodeCmd == "" || ctx.NodeVersion == "" {
-		return errors.New("No NodeJS installation detected. Try setting the $NODE_BINARY environment variable.")
+		return errors.New("no NodeJS installation detected; try setting the $NODE_BINARY environment variable")
 	}
 
 	if ctx.HasYarnLockFile {
@@ -160,23 +159,23 @@ func (ctx *CommonJSContext) populateNodeModules() error {
 
 			// verify yarn build
 			if ctx.verifyNodeModules() == false {
-				Log.Warning("failed to run Yarn build... falling back to npm")
+				log.Log.Warning("failed to run Yarn build... falling back to npm")
 			} else {
 				return nil
 			}
 		} else {
-			Log.Warning("Yarn lockfile detected but no Yarn installation found. Try setting $YARN_BINARY environment variable; falling back to npm for analysis.")
+			log.Log.Warning("Yarn lockfile detected but no Yarn installation found. Try setting $YARN_BINARY environment variable; falling back to npm for analysis.")
 		}
 	}
 
 	if ctx.NpmCmd == "" || ctx.NpmVersion == "" {
-		return errors.New("No npm installation detected. Try setting the $NPM_BINARY environment variable.")
+		return errors.New("no npm installation detected; try setting the $NPM_BINARY environment variable")
 	}
 
 	// npm install
 	exec.Command("npm", "install", "--production").Output()
 	if ctx.verifyNodeModules() == false {
-		return errors.New("Failed to run npm build.")
+		return errors.New("failed to run npm build")
 	}
 	return nil
 }
@@ -201,7 +200,7 @@ func (ctx *CommonJSContext) traverseNodeModules() ([]Dependency, error) {
 			defer wg.Done()
 			rawPkg, err := ioutil.ReadFile(path)
 			if err != nil {
-				Log.Warningf("Error parsing Module: %s", path)
+				log.Log.Warningf("Error parsing Module: %s", path)
 				return
 			}
 			// write directly to a reserved index for thread safety

@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	. "github.com/fossas/fossa-cli/log"
+	"github.com/fossas/fossa-cli/log"
 )
 
 type BowerContext struct {
@@ -44,16 +44,16 @@ func (ctx *BowerContext) Verify(m *Module, opts map[string]interface{}) bool {
 
 // Build determines and executes a CommonJS build based off available tooling in the environment
 func (ctx *BowerContext) Build(m *Module, opts map[string]interface{}) error {
-	if ctx.BowerCmd == "" || ctx.BowerCmd == "" {
-		return errors.New("no bower installation detected. try setting the $BOWER_BINARY environment variable.")
+	if ctx.BowerCmd == "" {
+		return errors.New("no bower installation detected; try setting the $BOWER_BINARY environment variable")
 	}
 
 	// bower install
 	if ctx.verifyBowerComponents() == false || opts["no-cache"].(bool) == true {
-		Log.Debug("No prebuilt bower_components directory, building...")
+		log.Log.Debug("No prebuilt bower_components directory, building...")
 		exec.Command("bower", "install").Output()
 	} else {
-		Log.Debug("Found pre-populated bower_components, skipping build...")
+		log.Log.Debug("Found pre-populated bower_components, skipping build...")
 	}
 
 	// verify again
@@ -90,7 +90,7 @@ func (ctx *BowerContext) verifyBowerComponents() bool {
 	outBundleListCmd, err := exec.Command("bower", "list").Output()
 
 	if err != nil {
-		Log.Warning("unable to verify Bower requirements... falling back to bower_components inspection")
+		log.Log.Warning("unable to verify Bower requirements... falling back to bower_components inspection")
 		_, err := os.Stat("bower_components")
 		return err == nil
 	}
