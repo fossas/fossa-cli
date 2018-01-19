@@ -40,13 +40,13 @@ OR
   brew install fossa
 ```
 
-## Running
+## Usage
 
 ```bash
   fossa
 ```
 
-## Developing
+## Development
 
 
 

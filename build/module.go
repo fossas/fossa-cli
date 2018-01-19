@@ -52,17 +52,14 @@ func (m *Module) NewBuild(name string) Build {
 		ctx = &bowerCtx
 	case "rubygem":
 		gemCtx := GemContext{}
-<<<<<<< HEAD
 		ctx = BuildContext(&gemCtx)
 	case "mavenartifact":
 		mvnCtx := MavenContext{}
 		ctx = BuildContext(&mvnCtx)
-=======
 		ctx = &gemCtx
-	case "golang":
+	case "gopackage":
 		goCtx := GolangContext{}
 		ctx = &goCtx
->>>>>>> 5773c865c958c40f8e265f9fe0be61e699715423
 	}
 
 	build.Context = &ctx
