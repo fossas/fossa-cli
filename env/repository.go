@@ -1,7 +1,7 @@
 package env
 
 import (
-	. "github.com/fossas/fossa-cli/module"
+	"github.com/fossas/fossa-cli/build"
 )
 
 // Repository represents metadata about the VCS state of the CWD that fossa-cli is running in
@@ -11,5 +11,5 @@ type Repository struct {
 	Type     string // VCS type (git, mecurial, etc...)
 	URL      string
 	Revision string
-	Modules  []Module
+	Modules  []build.Module
 }

@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  name = "github.com/BurntSushi/toml"
+  packages = ["."]
+  revision = "b26d9c308763d68093482582cea63d69be07a0f0"
+  version = "v0.3.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/mattn/go-zglob"
   packages = [
@@ -25,6 +31,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "3c55eb64b8ba285f78e7007e476cf8cc35f8f22b9719a48516902736aad41c69"
+  inputs-digest = "03a485b90d7d2408066f4ad3c94f284c821a3f0c82f52b6f3c6900bb741c5c8f"
   solver-name = "gps-cdcl"
   solver-version = 1

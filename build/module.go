@@ -53,6 +53,9 @@ func (m *Module) NewBuild(name string) Build {
 	case "rubygem":
 		gemCtx := GemContext{}
 		ctx = &gemCtx
+	case "golang":
+		goCtx := GolangContext{}
+		ctx = &goCtx
 	}
 
 	build.Context = &ctx
