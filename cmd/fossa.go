@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	. "github.com/fossas/fossa-cli/build"
-	. "github.com/fossas/fossa-cli/log"
+	"github.com/fossas/fossa-cli/build"
+	"github.com/fossas/fossa-cli/log"
 	"github.com/urfave/cli"
 )
 
@@ -45,7 +45,7 @@ func MakeCmd(c *cli.Context) error {
 // A successful build will set Module.Resolved to true
 // An unsuccessful build will set Module.Error to a value
 func BuildCmd(c *cli.Context) error {
-	mod := Module{
+	mod := build.Module{
 		Type: c.String("type"),
 	}
 
@@ -53,10 +53,10 @@ func BuildCmd(c *cli.Context) error {
 	buildOpts["install"] = c.Bool("install")
 	buildOpts["no-cache"] = c.Bool("no-cache")
 	if err := mod.Analyze(buildOpts); err != nil {
-		Log.Fatalf("analysis failed (%v);\ntry pre-building and then running `fossa`", err)
+		log.Log.Fatalf("analysis failed (%v);\ntry pre-building and then running `fossa`", err)
 	}
 
-	Log.Debugf("found (%s) deduped dependencies", len(mod.Build.Dependencies))
+	log.Log.Debugf("found (%s) deduped dependencies", len(mod.Build.Dependencies))
 
 	dat, _ := json.Marshal(mod)
 	fmt.Print(string(dat))

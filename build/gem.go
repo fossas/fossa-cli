@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	. "github.com/fossas/fossa-cli/log"
+	"github.com/fossas/fossa-cli/log"
 )
 
 // GemContext implements build context for Bundler (Gemfile and *.gemspec) builds
@@ -21,7 +21,7 @@ type GemContext struct {
 	isBundlerSatisfied bool
 }
 
-// CommonJSModule represents metadata from package.json files
+// RubyGem represents metadata from Gemfiles
 type RubyGem struct {
 	Name     string `json:"name"`
 	Version  string `json:"version"`
@@ -83,42 +83,36 @@ func (ctx *GemContext) Verify(p *Module, opts map[string]interface{}) bool {
 // Build runs Bundler and collect dep data
 func (ctx *GemContext) Build(p *Module, opts map[string]interface{}) error {
 	if ctx.BundlerCmd == "" || ctx.BundlerVersion == "" {
-		return errors.New("no bundler installation detected -- falling back to gem. try setting the $BUNDLER_BINARY environment variable.")
-	} else {
-		if ctx.isBundlerSatisfied == false {
-			Log.Debug("bundler not satisfied, running full install")
-			// bundle install, no flags as we need to satisfy all reqs
-			exec.Command("bundle", "install").Output()
-		}
+		return errors.New("no bundler installation detected -- falling back to gem; try setting the $BUNDLER_BINARY environment variable")
+	}
 
-		outBundleListCmd, err := exec.Command("bundle", "list").Output()
-		if err != nil {
-			return errors.New("Unable to list rubygems")
-		}
+	if ctx.isBundlerSatisfied == false {
+		log.Log.Debug("bundler not satisfied, running full install")
+		// bundle install, no flags as we need to satisfy all reqs
+		exec.Command("bundle", "install").Output()
+	}
 
-		// process bundle list output
-		dependencies := []Dependency{}
-		outputMatchRe := regexp.MustCompile("\\* ([a-z0-9_-]+) \\(([a-z0-9\\.]+)\\)")
-		for _, bundleListLn := range strings.Split(string(outBundleListCmd), "\n") {
-			bundleListLn = strings.TrimSpace(bundleListLn)
-			if len(bundleListLn) > 0 && bundleListLn[0] == '*' {
-				match := outputMatchRe.FindStringSubmatch(bundleListLn)
-				if len(match) == 3 {
-					dependencies = append(dependencies, Dependency(RubyGem{
-						Name:    match[1],
-						Version: match[2],
-					}))
-				}
+	outBundleListCmd, err := exec.Command("bundle", "list").Output()
+	if err != nil {
+		return errors.New("Unable to list rubygems")
+	}
+
+	// process bundle list output
+	dependencies := []Dependency{}
+	outputMatchRe := regexp.MustCompile("\\* ([a-z0-9_-]+) \\(([a-z0-9\\.]+)\\)")
+	for _, bundleListLn := range strings.Split(string(outBundleListCmd), "\n") {
+		bundleListLn = strings.TrimSpace(bundleListLn)
+		if len(bundleListLn) > 0 && bundleListLn[0] == '*' {
+			match := outputMatchRe.FindStringSubmatch(bundleListLn)
+			if len(match) == 3 {
+				dependencies = append(dependencies, Dependency(RubyGem{
+					Name:    match[1],
+					Version: match[2],
+				}))
 			}
 		}
-
-		p.Build.Dependencies = Dedupe(dependencies)
-		return nil
 	}
 
-	if ctx.GemCmd == "" || ctx.GemVersion == "" {
-		return errors.New("No Gem installation detected -- try setting the $GEM_BINARY environment variable.")
-	}
-
+	p.Build.Dependencies = Dedupe(dependencies)
 	return nil
 }
