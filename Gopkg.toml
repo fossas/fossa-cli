@@ -35,3 +35,7 @@
 [[constraint]]
   name = "github.com/BurntSushi/toml"
   version = "0.3.0"
+
+[[constraint]]
+  branch = "v2"
+  name = "gopkg.in/yaml.v2"

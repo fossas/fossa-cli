@@ -1,12 +1,15 @@
 package build
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/BurntSushi/toml"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // GolangContext implements BuildContext for Golang projects
@@ -79,9 +82,28 @@ func (ctx *GolangContext) Verify(m *Module, opts map[string]interface{}) bool {
 type depLockfile struct {
 	Projects []struct {
 		Name     string
-		Packages []string
 		Revision string
-		Version  string
+	}
+}
+
+type glideLockfile struct {
+	Imports []struct {
+		Name    string
+		Version string
+	}
+}
+
+type godepLockfile struct {
+	Deps []struct {
+		ImportPath string
+		Rev        string
+	}
+}
+
+type govendorLockfile struct {
+	Package []struct {
+		Path     string
+		Revision string
 	}
 }
 
@@ -93,21 +115,81 @@ func (ctx *GolangContext) Build(m *Module, opts map[string]interface{}) error {
 		if _, err := os.Stat("Gopkg.lock"); err != nil {
 			return errors.New("project contains Gopkg.toml, but Gopkg.lock was not found")
 		}
-		depLockContents, err := ioutil.ReadFile("Gopkg.lock")
+		lockfileContents, err := ioutil.ReadFile("Gopkg.lock")
 		if err != nil {
 			return errors.New("could not read Gopkg.lock")
 		}
-		var depLock depLockfile
-		if _, err := toml.Decode(string(depLockContents), &depLock); err != nil {
+		var lockfile depLockfile
+		if _, err := toml.Decode(string(lockfileContents), &lockfile); err != nil {
 			return errors.New("could not parse Gopkg.lock")
 		}
-		for _, project := range depLock.Projects {
-			deps = append(deps, Gopkg{ImportPath: project.Name, Version: project.Revision})
+		for _, dependency := range lockfile.Projects {
+			deps = append(deps, Gopkg{ImportPath: dependency.Name, Version: dependency.Revision})
+		}
+	}
+
+	if ctx.UsingGlide {
+		if _, err := os.Stat("glide.lock"); err != nil {
+			return errors.New("project contains glide.yaml, but glide.lock was not found")
+		}
+		lockfileContents, err := ioutil.ReadFile("glide.lock")
+		if err != nil {
+			return errors.New("could not read glide.lock")
+		}
+		var lockfile glideLockfile
+		if err := yaml.Unmarshal(lockfileContents, &lockfile); err != nil {
+			return errors.New("could not parse glide.lock")
+		}
+		for _, dependency := range lockfile.Imports {
+			deps = append(deps, Gopkg{ImportPath: dependency.Name, Version: dependency.Version})
+		}
+	}
+
+	if ctx.UsingGodep {
+		lockfileContents, err := ioutil.ReadFile("Godeps/Godeps.json")
+		if err != nil {
+			return errors.New("could not read Godeps/Godeps.json")
+		}
+		var lockfile godepLockfile
+		if err := json.Unmarshal(lockfileContents, &lockfile); err != nil {
+			return errors.New("could not parse Godeps/Godeps.json")
+		}
+		for _, dependency := range lockfile.Deps {
+			deps = append(deps, Gopkg{ImportPath: dependency.ImportPath, Version: dependency.Rev})
+		}
+	}
+
+	if ctx.UsingGovendor {
+		lockfileContents, err := ioutil.ReadFile("vendor/vendor.json")
+		if err != nil {
+			return errors.New("could not read vendor/vendor.json")
+		}
+		var lockfile govendorLockfile
+		if err := json.Unmarshal(lockfileContents, &lockfile); err != nil {
+			return errors.New("could not parse vendor/vendor.json")
+		}
+		for _, dependency := range lockfile.Package {
+			deps = append(deps, Gopkg{ImportPath: dependency.Path, Version: dependency.Revision})
+		}
+	}
+
+	if ctx.UsingVndr {
+		lockfileContents, err := ioutil.ReadFile("vendor.conf")
+		if err != nil {
+			return errors.New("could not read vendor.conf")
+		}
+		lines := strings.Split(string(lockfileContents), "\n")
+		for _, line := range lines {
+			trimmedLine := strings.TrimSpace(line)
+			if len(trimmedLine) > 0 && trimmedLine[0] != '#' {
+				sections := strings.Split(trimmedLine, " ")
+				deps = append(deps, Gopkg{ImportPath: sections[0], Version: sections[1]})
+			}
 		}
 	}
 
 	fmt.Printf("%+v\n", deps)
-	return errors.New("not implemented")
+	return nil
 }
 
 // Gopkg implements Dependency for Golang projects.
