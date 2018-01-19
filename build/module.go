@@ -59,6 +59,9 @@ func (m *Module) NewBuild(name string) Build {
 	case "gopackage":
 		goCtx := GolangContext{}
 		ctx = BuildContext(&goCtx)
+	case "composerpackage":
+		compCtx := ComposerContext{}
+		ctx = BuildContext(&compCtx)
 	}
 
 	build.Context = &ctx
