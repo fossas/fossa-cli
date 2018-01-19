@@ -53,6 +53,9 @@ func (m *Module) NewBuild(name string) Build {
 	case "rubygem":
 		gemCtx := GemContext{}
 		ctx = BuildContext(&gemCtx)
+	case "mavenartifact":
+		mvnCtx := MavenContext{}
+		ctx = BuildContext(&mvnCtx)
 	}
 
 	build.Context = &ctx

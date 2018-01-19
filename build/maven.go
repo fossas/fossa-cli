@@ -1,0 +1,118 @@
+package build
+
+import (
+	"errors"
+	"os"
+	"os/exec"
+	"regexp"
+	"strings"
+
+	. "github.com/fossas/fossa-cli/log"
+)
+
+// MavenContext implements build context for Apache Maven (*pom.xml) builds
+type MavenContext struct {
+	MvnCmd     string
+	MvnVersion string
+
+	JavaCmd     string
+	JavaVersion string
+
+	cachedMvnDepListOutput string
+}
+
+// MavenArtifact represents metadata from pom.xml files
+type MavenArtifact struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+
+// Fetcher always returns npm for MavenArtifact
+func (m MavenArtifact) Fetcher() string {
+	return "mvn"
+}
+
+// Package returns the package spec for MavenArtifact
+func (m MavenArtifact) Package() string {
+	return m.Name
+}
+
+// Revision returns the version spec for MavenArtifact
+func (m MavenArtifact) Revision() string {
+	return m.Version
+}
+
+// Initialize collects environment data for Bundler builds
+func (ctx *MavenContext) Initialize(p *Module, opts map[string]interface{}) {
+	ctx.MvnCmd = string(os.Getenv("MVN_BINARY"))
+	if ctx.MvnCmd == "" {
+		ctx.MvnCmd = "mvn"
+	}
+	outMvnVersion, err := exec.Command(ctx.MvnCmd, "-v").Output()
+	if err == nil && len(outMvnVersion) >= 10 { // x.x.x
+		outputMatchRe := regexp.MustCompile(`Apache Maven ([0-9]+\.[0-9]+\.[0-9]+)`)
+		match := outputMatchRe.FindStringSubmatch(strings.TrimSpace(string(outMvnVersion)))
+		if len(match) == 2 {
+			ctx.MvnVersion = match[1]
+		}
+	}
+
+	if ctx.MvnVersion == "" {
+		ctx.MvnCmd = ""
+		ctx.MvnVersion = ""
+	}
+}
+
+// Sets ctx.cachedMvnDepListOutput
+func (ctx *MavenContext) getDepList(p *Module, opts map[string]interface{}) error {
+	if ctx.cachedMvnDepListOutput != "" {
+		return nil
+	}
+	srcUnitPath := "pom.xml" // TODO: replace with Module.manifest or Module.entry
+	cmdOut, err := exec.Command("mvn", "dependency:list", "-f", srcUnitPath).Output()
+	ctx.cachedMvnDepListOutput = string(cmdOut)
+	return err
+}
+
+// Verify checks if the bundler is satisfied and if an install is necessary
+func (ctx *MavenContext) Verify(p *Module, opts map[string]interface{}) bool {
+	// TODO: test by running mvn dependency:list and seeing if it fails
+	return ctx.getDepList(p, opts) == nil
+}
+
+// Build runs Bundler and collect dep data
+func (ctx *MavenContext) Build(p *Module, opts map[string]interface{}) error {
+	if ctx.MvnCmd == "" || ctx.MvnVersion == "" {
+		return errors.New("no maven or jdk installation detected -- try setting the $MVN_BINARY environment variable.")
+	}
+
+	if false { //ctx.isBundlerSatisfied == false
+		Log.Debug("maven project not built, running full install...")
+		// bundle install, no flags as we need to satisfy all reqs
+		exec.Command("bundle", "install").Output()
+	}
+
+	err := ctx.getDepList(p, opts)
+	if err != nil || ctx.cachedMvnDepListOutput == "" {
+		return errors.New("unable to extract maven dependency list; have you built the artifact with `mvn install` yet?")
+	}
+
+	// process bundle list output
+	dependencies := []Dependency{}
+	outputMatchRe := regexp.MustCompile(`\[INFO\]    ([^:]+):([^:]+):(jar|war|java-source|):([^:]+)`)
+	for _, bundleListLn := range strings.Split(string(ctx.cachedMvnDepListOutput), "\n") {
+		bundleListLn = strings.TrimSpace(bundleListLn)
+		if len(bundleListLn) > 0 {
+			match := outputMatchRe.FindStringSubmatch(bundleListLn)
+			if len(match) == 5 {
+				dependencies = append(dependencies, Dependency(MavenArtifact{
+					Name:    match[1] + ":" + match[2],
+					Version: match[4],
+				}))
+			}
+		}
+	}
+
+	p.Build.Dependencies = Dedupe(dependencies)
+	return nil
+}
