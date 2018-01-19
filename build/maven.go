@@ -18,6 +18,8 @@ type MavenContext struct {
 	JavaCmd     string
 	JavaVersion string
 
+	// since we rely on dependency:list to verify the build, we will its initialization for now to also determine if the build is satisfied
+	// TODO: change this behavior
 	cachedMvnDepListOutput string
 }
 
@@ -69,7 +71,7 @@ func (ctx *MavenContext) getDepList(p *Module, opts map[string]interface{}) erro
 		return nil
 	}
 	srcUnitPath := "pom.xml" // TODO: replace with Module.manifest or Module.entry
-	cmdOut, err := exec.Command("mvn", "dependency:list", "-f", srcUnitPath).Output()
+	cmdOut, err := exec.Command(ctx.MvnCmd, "dependency:list", "-f", srcUnitPath).Output()
 	ctx.cachedMvnDepListOutput = string(cmdOut)
 	return err
 }
@@ -77,7 +79,7 @@ func (ctx *MavenContext) getDepList(p *Module, opts map[string]interface{}) erro
 // Verify checks if the bundler is satisfied and if an install is necessary
 func (ctx *MavenContext) Verify(p *Module, opts map[string]interface{}) bool {
 	// TODO: test by running mvn dependency:list and seeing if it fails
-	return ctx.getDepList(p, opts) == nil
+	return ctx.getDepList(p, opts) == nil && ctx.cachedMvnDepListOutput != ""
 }
 
 // Build runs Bundler and collect dep data
@@ -86,10 +88,11 @@ func (ctx *MavenContext) Build(p *Module, opts map[string]interface{}) error {
 		return errors.New("no maven or jdk installation detected -- try setting the $MVN_BINARY environment variable.")
 	}
 
-	if false { //ctx.isBundlerSatisfied == false
+	// TODO: do not rely on the Verify step state to trigger build status
+	if ctx.cachedMvnDepListOutput == "" {
 		Log.Debug("maven project not built, running full install...")
 		// bundle install, no flags as we need to satisfy all reqs
-		exec.Command("bundle", "install").Output()
+		exec.Command(ctx.MvnCmd, "clean", "install", "-DskipTests", "-Drat.skip=true").Output()
 	}
 
 	err := ctx.getDepList(p, opts)

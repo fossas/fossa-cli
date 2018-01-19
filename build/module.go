@@ -46,20 +46,19 @@ func (m *Module) NewBuild(name string) Build {
 	switch strings.ToLower(m.Type) {
 	case "commonjspackage":
 		jsCtx := CommonJSContext{}
-		ctx = &jsCtx
+		ctx = BuildContext(&jsCtx)
 	case "bowerpackage":
 		bowerCtx := BowerContext{}
-		ctx = &bowerCtx
+		ctx = BuildContext(&bowerCtx)
 	case "rubygem":
 		gemCtx := GemContext{}
 		ctx = BuildContext(&gemCtx)
 	case "mavenartifact":
 		mvnCtx := MavenContext{}
 		ctx = BuildContext(&mvnCtx)
-		ctx = &gemCtx
 	case "gopackage":
 		goCtx := GolangContext{}
-		ctx = &goCtx
+		ctx = BuildContext(&goCtx)
 	}
 
 	build.Context = &ctx

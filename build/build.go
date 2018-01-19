@@ -3,6 +3,8 @@ package build
 import (
 	"encoding/json"
 	"errors"
+
+	. "github.com/fossas/fossa-cli/log"
 )
 
 // Build represents a task that builds a single artifact and generates dependency lists
