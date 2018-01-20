@@ -39,3 +39,7 @@
 [[constraint]]
   branch = "v2"
   name = "gopkg.in/yaml.v2"
+
+[[constraint]]
+  name = "github.com/KyleBanks/depth"
+  version = "1.2.0"

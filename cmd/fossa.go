@@ -25,6 +25,7 @@ func main() {
 			Action:  BuildCmd,
 			Flags: []cli.Flag{
 				cli.StringFlag{Name: "type, t"},
+				cli.StringFlag{Name: "entry-point, e"},
 				cli.BoolFlag{Name: "install, i"},
 				cli.BoolFlag{Name: "no-cache"},
 			},
@@ -52,6 +53,7 @@ func BuildCmd(c *cli.Context) error {
 	buildOpts := make(map[string]interface{})
 	buildOpts["install"] = c.Bool("install")
 	buildOpts["no-cache"] = c.Bool("no-cache")
+	buildOpts["entry-point"] = c.String("entry-point")
 	if err := mod.Analyze(buildOpts); err != nil {
 		log.Log.Fatalf("analysis failed (%v);\ntry pre-building and then running `fossa`", err)
 	}
