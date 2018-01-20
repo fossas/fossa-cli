@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"github.com/fossas/fossa-cli/build"
 	"github.com/fossas/fossa-cli/log"
+	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 )
 
@@ -15,7 +17,9 @@ func main() {
 	app.Name = "fossa-cli"
 	app.Usage = "get dependencies from your code"
 	app.Action = MakeCmd
-	app.Flags = []cli.Flag{}
+	app.Flags = []cli.Flag{
+		cli.StringFlag{Name: "loglevel, l"},
+	}
 
 	app.Commands = []cli.Command{
 		{
@@ -32,7 +36,26 @@ func main() {
 		},
 	}
 
+	app.Before = BootstrapCmd
+
 	app.Run(os.Args)
+}
+
+// BootstrapCmd initializes and loads config for the CLI
+func BootstrapCmd(c *cli.Context) error {
+	devNullBackend := logging.NewLogBackend(ioutil.Discard, "", 0)
+
+	// log errors to stderr
+	stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), log.Format))
+	stderrBackend.SetLevel(logging.ERROR, "")
+
+	if c.String("loglevel") == "debug" {
+		stderrBackend.SetLevel(logging.DEBUG, "")
+	}
+
+	logging.SetBackend(devNullBackend, stderrBackend)
+
+	return nil
 }
 
 // MakeCmd runs the scan and build commands
