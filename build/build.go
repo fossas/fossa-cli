@@ -15,7 +15,7 @@ type Build struct {
 	Succeeded bool
 	Error     error `json:",omitempty"`
 
-	RawDependencies []Dependency
+	RawDependencies []Dependency `json:"-"`
 	Dependencies    []NormalizedDependency
 }
 
