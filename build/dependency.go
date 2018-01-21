@@ -1,7 +1,10 @@
 package build
 
+import "encoding/json"
+
 // Dependency represents a code library brought in by running a Build
 type Dependency interface {
+
 	// locator fields
 	Fetcher() string
 	Package() string
@@ -11,6 +14,19 @@ type Dependency interface {
 	// isResolved() bool
 	// doResolve() error
 	// getMetadata() error
+}
+
+type NormalizedDependency struct {
+	// Location
+	Locator string
+
+	// Metadata
+	Data *json.RawMessage
+
+	// Context
+	Depth              int
+	Parent             string
+	UnresolvedLocators []string
 }
 
 // Locator transforms Dependencies into locator strings

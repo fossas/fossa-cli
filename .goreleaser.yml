@@ -1,0 +1,9 @@
+builds:
+  - main: cmd/fossa.go
+    binary: fossa
+    goos:
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64

@@ -44,6 +44,12 @@ func (b *Build) Run(m *Module, opts map[string]interface{}) error {
 		b.Succeeded = false
 		return err
 	}
+
+	// transform dependencies into locators
+	for _, dep := range b.Dependencies {
+		dep.Locator := Locator(dep)
+	}
+
 	b.Succeeded = true
 	b.Error = nil
 	return nil

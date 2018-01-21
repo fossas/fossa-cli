@@ -12,10 +12,14 @@ import (
 	"github.com/urfave/cli"
 )
 
+// main.version is picked up by goreleaser
+var version = "0.0.0"
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "fossa-cli"
 	app.Usage = "get dependencies from your code"
+	app.Version = version
 	app.Action = MakeCmd
 	app.Flags = []cli.Flag{
 		cli.StringFlag{Name: "loglevel, l"},
