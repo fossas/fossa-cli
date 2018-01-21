@@ -8,6 +8,12 @@
   version = "v0.3.0"
 
 [[projects]]
+  name = "github.com/KyleBanks/depth"
+  packages = ["."]
+  revision = "17c858729c13fc4dae7ebb4f40212e1995fc59ac"
+  version = "v1.2.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/mattn/go-zglob"
   packages = [
@@ -37,6 +43,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "250e44535907b4778f04f6e2dd6c337c568ea4057ad5aff58f1206973714ce94"
+  inputs-digest = "de2bf51a6a8d95b97ddcae2262bbb94f550cfdbab94751120e4e5792d27aeb46"
   solver-name = "gps-cdcl"
   solver-version = 1
