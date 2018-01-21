@@ -81,11 +81,17 @@ func BuildCmd(c *cli.Context) error {
 	buildOpts["install"] = c.Bool("install")
 	buildOpts["no-cache"] = c.Bool("no-cache")
 	buildOpts["entry-point"] = c.String("entry-point")
-	if err := mod.Analyze(buildOpts); err != nil {
-		log.Log.Fatalf("analysis failed (%v);\ntry pre-building and then running `fossa`", err)
+
+	if buildOpts["entry-point"].(string) != "" {
+		// override module manifest
+		mod.Manifest = buildOpts["entry-point"].(string)
 	}
 
-	log.Log.Debugf("found (%s) deduped dependencies", len(mod.Build.Dependencies))
+	if err := mod.Analyze(buildOpts); err != nil {
+		log.Logger.Fatalf("analysis failed (%v);\ntry pre-building and then running `fossa`", err)
+	}
+
+	log.Logger.Debugf("found (%s) deduped dependencies", len(mod.Build.RawDependencies))
 
 	dat, _ := json.Marshal(mod)
 	fmt.Print(string(dat))

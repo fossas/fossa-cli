@@ -50,10 +50,10 @@ func (ctx *BowerContext) Build(m *Module, opts map[string]interface{}) error {
 
 	// bower install
 	if ctx.verifyBowerComponents() == false || opts["no-cache"].(bool) == true {
-		log.Log.Debug("No prebuilt bower_components directory, building...")
+		log.Logger.Debug("No prebuilt bower_components directory, building...")
 		exec.Command("bower", "install").Output()
 	} else {
-		log.Log.Debug("Found pre-populated bower_components, skipping build...")
+		log.Logger.Debug("Found pre-populated bower_components, skipping build...")
 	}
 
 	// verify again
@@ -82,7 +82,7 @@ func (ctx *BowerContext) Build(m *Module, opts map[string]interface{}) error {
 		}
 	}
 
-	m.Build.Dependencies = Dedupe(dependencies)
+	m.Build.RawDependencies = Dedupe(dependencies)
 	return nil
 }
 
@@ -90,7 +90,7 @@ func (ctx *BowerContext) verifyBowerComponents() bool {
 	outBundleListCmd, err := exec.Command("bower", "list").Output()
 
 	if err != nil {
-		log.Log.Warning("unable to verify Bower requirements... falling back to bower_components inspection")
+		log.Logger.Warning("unable to verify Bower requirements... falling back to bower_components inspection")
 		_, err := os.Stat("bower_components")
 		return err == nil
 	}

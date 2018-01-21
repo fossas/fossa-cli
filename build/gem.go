@@ -87,7 +87,7 @@ func (ctx *GemContext) Build(p *Module, opts map[string]interface{}) error {
 	}
 
 	if ctx.isBundlerSatisfied == false {
-		log.Log.Debug("bundler not satisfied, running full install")
+		log.Logger.Debug("bundler not satisfied, running full install")
 		// bundle install, no flags as we need to satisfy all reqs
 		exec.Command(ctx.BundlerCmd, "install").Output()
 	}
@@ -113,6 +113,6 @@ func (ctx *GemContext) Build(p *Module, opts map[string]interface{}) error {
 		}
 	}
 
-	p.Build.Dependencies = Dedupe(dependencies)
+	p.Build.RawDependencies = Dedupe(dependencies)
 	return nil
 }

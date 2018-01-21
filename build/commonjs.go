@@ -117,12 +117,12 @@ func (ctx *CommonJSContext) Verify(m *Module, opts map[string]interface{}) bool 
 // Build determines and executes a CommonJS build based off available tooling in the environment
 func (ctx *CommonJSContext) Build(m *Module, opts map[string]interface{}) error {
 	if ctx.verifyNodeModules() == false || opts["no-cache"].(bool) == true {
-		log.Log.Debug("No prebuilt node_modules directory, building...")
+		log.Logger.Debug("No prebuilt node_modules directory, building...")
 		if err := ctx.populateNodeModules(); err != nil {
 			return err
 		}
 	} else {
-		log.Log.Debug("Found pre-populated node_modules, skipping build...")
+		log.Logger.Debug("Found pre-populated node_modules, skipping build...")
 	}
 
 	// Traverse node_modules directory and find all Modules
@@ -133,7 +133,7 @@ func (ctx *CommonJSContext) Build(m *Module, opts map[string]interface{}) error 
 		return err
 	}
 
-	m.Build.Dependencies = deps
+	m.Build.RawDependencies = deps
 	return nil
 }
 
@@ -159,12 +159,12 @@ func (ctx *CommonJSContext) populateNodeModules() error {
 
 			// verify yarn build
 			if ctx.verifyNodeModules() == false {
-				log.Log.Warning("failed to run Yarn build... falling back to npm")
+				log.Logger.Warning("failed to run Yarn build... falling back to npm")
 			} else {
 				return nil
 			}
 		} else {
-			log.Log.Warning("Yarn lockfile detected but no Yarn installation found. Try setting $YARN_BINARY environment variable; falling back to npm for analysis.")
+			log.Logger.Warning("Yarn lockfile detected but no Yarn installation found. Try setting $YARN_BINARY environment variable; falling back to npm for analysis.")
 		}
 	}
 
@@ -200,7 +200,7 @@ func (ctx *CommonJSContext) traverseNodeModules() ([]Dependency, error) {
 			defer wg.Done()
 			rawPkg, err := ioutil.ReadFile(path)
 			if err != nil {
-				log.Log.Warningf("Error parsing Module: %s", path)
+				log.Logger.Warningf("Error parsing Module: %s", path)
 				return
 			}
 			// write directly to a reserved index for thread safety

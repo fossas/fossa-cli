@@ -12,9 +12,11 @@ type Build struct {
 	Artifact string        // i.e. dev_server
 	Context  *BuildContext `json:",omitempty"` // build context
 
-	Succeeded    bool
-	Error        error `json:",omitempty"`
-	Dependencies []Dependency
+	Succeeded bool
+	Error     error `json:",omitempty"`
+
+	RawDependencies []Dependency
+	Dependencies    []NormalizedDependency
 }
 
 // BuildContext describes instances that contain metadata and logic to run a build
@@ -38,16 +40,17 @@ func (b *Build) Run(m *Module, opts map[string]interface{}) error {
 	}
 
 	dat, _ := json.Marshal(*b.Context)
-	Log.Debugf("running analysis with build context:\n%v", string(dat))
+	Logger.Debugf("running analysis with build context:\n%v", string(dat))
 	if err := ctx.Build(m, opts); err != nil {
 		b.Error = err
 		b.Succeeded = false
 		return err
 	}
 
-	// transform dependencies into locators
-	for _, dep := range b.Dependencies {
-		dep.Locator := Locator(dep)
+	// normalize dependencies
+	b.Dependencies = []NormalizedDependency{}
+	for _, dep := range b.RawDependencies {
+		b.Dependencies = append(b.Dependencies, Normalize(dep))
 	}
 
 	b.Succeeded = true

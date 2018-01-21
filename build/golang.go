@@ -3,12 +3,12 @@ package build
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 
 	"github.com/KyleBanks/depth"
+	"github.com/fossas/fossa-cli/log"
 
 	"github.com/BurntSushi/toml"
 	yaml "gopkg.in/yaml.v2"
@@ -115,17 +115,17 @@ func (ctx *GolangContext) Verify(m *Module, opts map[string]interface{}) bool {
 
 	// If no lockfiles are available, do import path tracing.
 	var tree depth.Tree
-	err := tree.Resolve(opts["entry-point"].(string))
+	err := tree.Resolve(m.Manifest)
 	if err != nil {
-		fmt.Printf("tree resolve error: %+v\n", err)
-		fmt.Printf("tree: %+v\n", tree)
+		log.Logger.Debugf("tree resolve error: %+v\n", err)
+		log.Logger.Debugf("tree: %+v\n", tree)
 		return false
 	}
 	ctx.tree = &tree
 	deps, err := getDeps(tree.Root)
 	if err != nil {
-		fmt.Printf("getDeps error: %+v\n", err)
-		fmt.Printf("deps: %+v\n", deps)
+		log.Logger.Debugf("getDeps error: %+v\n", err)
+		log.Logger.Debugf("deps: %+v\n", deps)
 		return false
 	}
 	ctx.deps = deps
@@ -238,7 +238,7 @@ func (ctx *GolangContext) Build(m *Module, opts map[string]interface{}) error {
 		// Avoid recomputing context if `Verify` has already been called.
 		tree := ctx.tree
 		if ctx.tree == nil {
-			err := tree.Resolve(opts["entry-point"].(string))
+			err := tree.Resolve(m.Manifest)
 			if err != nil {
 				return err
 			}
@@ -263,7 +263,7 @@ func (ctx *GolangContext) Build(m *Module, opts map[string]interface{}) error {
 		}
 	}
 
-	m.Build.Dependencies = deps
+	m.Build.RawDependencies = deps
 	return nil
 }
 

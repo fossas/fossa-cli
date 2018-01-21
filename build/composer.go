@@ -104,7 +104,7 @@ func (ctx *ComposerContext) Build(p *Module, opts map[string]interface{}) error 
 	}
 
 	if ctx.isBuildSatisfied == false {
-		log.Log.Debug("composer build not satisfied, running full install")
+		log.Logger.Debug("composer build not satisfied, running full install")
 		exec.Command(ctx.ComposerCmd, "install", "--prefer-dist", "--no-dev", "--no-autoloader", "--no-scripts", "--no-progress", "--no-suggest", "--ignore-platform-reqs").Output()
 	}
 
@@ -126,6 +126,6 @@ func (ctx *ComposerContext) Build(p *Module, opts map[string]interface{}) error 
 		dedupedDependencies = append(dedupedDependencies, Dependency(d))
 	}
 
-	p.Build.Dependencies = Dedupe(dedupedDependencies)
+	p.Build.RawDependencies = Dedupe(dedupedDependencies)
 	return nil
 }

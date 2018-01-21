@@ -21,17 +21,26 @@ type NormalizedDependency struct {
 	Locator string
 
 	// Metadata
-	Data *json.RawMessage
+	Data *json.RawMessage `json:",omitempty"`
 
 	// Context
-	Depth              int
-	Parent             string
-	UnresolvedLocators []string
+	Depth              int      `json:",omitempty"`
+	Parent             string   `json:",omitempty"`
+	UnresolvedLocators []string `json:",omitempty"`
 }
 
 // Locator transforms Dependencies into locator strings
 func Locator(d Dependency) string {
 	return d.Fetcher() + "+" + d.Package() + "$" + d.Revision()
+}
+
+// Normalize transforms a Dependency into a serializable struct
+func Normalize(d Dependency) NormalizedDependency {
+	data, _ := json.Marshal(d)
+	return NormalizedDependency{
+		Locator: Locator(d),
+		Data:    (*json.RawMessage)(&data),
+	}
 }
 
 // Dedupe removes duplicates from a []Dependency

@@ -90,7 +90,7 @@ func (ctx *MavenContext) Build(p *Module, opts map[string]interface{}) error {
 
 	// TODO: do not rely on the Verify step state to trigger build status
 	if ctx.cachedMvnDepListOutput == "" {
-		Log.Debug("maven project not built, running full install...")
+		Logger.Debug("maven project not built, running full install...")
 		// bundle install, no flags as we need to satisfy all reqs
 		exec.Command(ctx.MvnCmd, "clean", "install", "-DskipTests", "-Drat.skip=true").Output()
 	}
@@ -116,6 +116,6 @@ func (ctx *MavenContext) Build(p *Module, opts map[string]interface{}) error {
 		}
 	}
 
-	p.Build.Dependencies = Dedupe(dependencies)
+	p.Build.RawDependencies = Dedupe(dependencies)
 	return nil
 }
