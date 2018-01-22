@@ -18,15 +18,15 @@ type Dependency interface {
 
 type NormalizedDependency struct {
 	// Location
-	Locator string
+	Locator string `json:"locator"`
 
 	// Metadata
 	Data *json.RawMessage `json:",omitempty"`
 
 	// Context
-	Depth              int      `json:",omitempty"`
-	Parent             string   `json:",omitempty"`
-	UnresolvedLocators []string `json:",omitempty"`
+	Depth              int      `json:"depth,omitempty"`
+	Parent             string   `json:"parent,omitempty"`
+	UnresolvedLocators []string `json:"unresolved_locators,omitempty"`
 }
 
 // Locator transforms Dependencies into locator strings
