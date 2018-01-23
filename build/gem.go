@@ -89,7 +89,7 @@ func (ctx *GemContext) Build(p *Module, opts map[string]interface{}) error {
 	if ctx.isBundlerSatisfied == false {
 		log.Logger.Debug("bundler not satisfied, running full install")
 		// bundle install, no flags as we need to satisfy all reqs
-		exec.Command(ctx.BundlerCmd, "install").Output()
+		exec.Command(ctx.BundlerCmd, "install", "--deployment").Output()
 	}
 
 	outBundleListCmd, err := exec.Command(ctx.BundlerCmd, "list").Output()
