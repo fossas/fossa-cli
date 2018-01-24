@@ -40,7 +40,7 @@ func main() {
 		},
 	}
 
-	// app.Before = BootstrapCmd
+	app.Before = BootstrapCmd
 
 	app.Run(os.Args)
 }
