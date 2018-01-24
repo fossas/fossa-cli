@@ -40,7 +40,7 @@ func main() {
 		},
 	}
 
-	app.Before = BootstrapCmd
+	// app.Before = BootstrapCmd
 
 	app.Run(os.Args)
 }
@@ -73,6 +73,12 @@ func MakeCmd(c *cli.Context) error {
 // A successful build will set Module.Resolved to true
 // An unsuccessful build will set Module.Error to a value
 func BuildCmd(c *cli.Context) error {
+	config, err := ReadConfig()
+	if err != nil {
+		return err
+	}
+	log.Logger.Errorf("read config: %+v\n", config)
+
 	mod := build.Module{
 		Type: c.String("type"),
 	}
