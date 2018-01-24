@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/KyleBanks/depth"
@@ -45,7 +46,6 @@ type GolangContext struct {
 	VndrVersion string
 
 	// context, to avoid doing extra work
-	tree *depth.Tree
 	deps []Dependency
 }
 
@@ -80,6 +80,21 @@ func (ctx *GolangContext) Initialize(m *Module, opts map[string]interface{}) {
 	}
 }
 
+// Build a dependency list given an entry point.
+func resolveManifest(m *Module) ([]Dependency, error) {
+	// If no lockfiles are available, do import path tracing.
+	var tree depth.Tree
+	err := tree.Resolve(m.Manifest)
+	if err != nil {
+		return nil, errors.New("could not resolve dependencies: " + err.Error())
+	}
+	deps, err := getDeps(tree.Root)
+	if err != nil {
+		return nil, errors.New("could not resolve dependencies: " + err.Error())
+	}
+	return deps, nil
+}
+
 // Recursively flatten the dependency tree.
 func getDeps(pkg *depth.Pkg) ([]Dependency, error) {
 	var deps []Dependency
@@ -98,34 +113,18 @@ func getDeps(pkg *depth.Pkg) ([]Dependency, error) {
 		}
 		return nil, errors.New("dependency of stdlib detected (this should never happen)")
 	}
-	// // Ignore "unresolved" packages (i.e. ones that are not in the filesystem).
-	// // This is commented out because there are weird unresolved packages in import paths (e.g. URL redirectors)
-	// if !pkg.Resolved {
-	// 	return nil, errors.New("could not resolve package: " + pkg.Name)
-	// }
+	// Fail on "unresolved" packages (i.e. ones that are not in the filesystem) as they indicate an incomplete build.
+	if !pkg.Resolved {
+		return nil, errors.New("could not resolve package: " + pkg.Name)
+	}
 	return append(deps, Gopkg{ImportPath: pkg.Name}), nil
 }
 
 // Verify checks whether dependencies are ready for scanning.
 func (ctx *GolangContext) Verify(m *Module, opts map[string]interface{}) bool {
-	// Prefer lockfiles where available.
-	if ctx.UsingDep || ctx.UsingGlide || ctx.UsingGodep || ctx.UsingGovendor || ctx.UsingVndr {
-		return true
-	}
-
-	// If no lockfiles are available, do import path tracing.
-	var tree depth.Tree
-	err := tree.Resolve(m.Manifest)
+	deps, err := resolveManifest(m)
 	if err != nil {
-		log.Logger.Debugf("tree resolve error: %+v\n", err)
-		log.Logger.Debugf("tree: %+v\n", tree)
-		return false
-	}
-	ctx.tree = &tree
-	deps, err := getDeps(tree.Root)
-	if err != nil {
-		log.Logger.Debugf("getDeps error: %+v\n", err)
-		log.Logger.Debugf("deps: %+v\n", deps)
+		log.Logger.Debugf("Could not resolve dependencies: %+v. Maybe you need to do a `go get`?\n", err)
 		return false
 	}
 	ctx.deps = deps
@@ -162,9 +161,37 @@ type govendorLockfile struct {
 
 // Build scans for dependencies, building if necessary.
 func (ctx *GolangContext) Build(m *Module, opts map[string]interface{}) error {
+	// Trace imports
+	// Avoid recomputing context if `Verify` has already been called.
 	var deps []Dependency
+	var err error
+	if ctx.deps == nil {
+		// Don't use `:=`, otherwise you'll create a new binding that shadows the top-level binding
+		deps, err = resolveManifest(m)
 
-	// If possible, read lockfiles
+		// Attempt `go get` install on failure.
+		if err != nil {
+			if opts["install"].(bool) {
+				log.Logger.Debug("Could not resolve some dependencies. Attempting to run build...")
+				_, err = exec.Command("go", "get", m.Manifest).Output()
+				if err != nil {
+					return err
+				}
+				deps, err = resolveManifest(m)
+				if err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+	} else {
+		deps = ctx.deps
+	}
+
+	// If possible, read lockfiles for versions
+	lockfileVersions := make(map[string]string)
+
 	if ctx.UsingDep {
 		if _, err := os.Stat("Gopkg.lock"); err != nil {
 			return errors.New("project contains Gopkg.toml, but Gopkg.lock was not found")
@@ -178,9 +205,10 @@ func (ctx *GolangContext) Build(m *Module, opts map[string]interface{}) error {
 			return errors.New("could not parse Gopkg.lock")
 		}
 		for _, dependency := range lockfile.Projects {
-			deps = append(deps, Gopkg{ImportPath: dependency.Name, Version: dependency.Revision})
+			lockfileVersions[dependency.Name] = dependency.Revision
 		}
-	} else if ctx.UsingGlide {
+	}
+	if ctx.UsingGlide {
 		if _, err := os.Stat("glide.lock"); err != nil {
 			return errors.New("project contains glide.yaml, but glide.lock was not found")
 		}
@@ -193,9 +221,10 @@ func (ctx *GolangContext) Build(m *Module, opts map[string]interface{}) error {
 			return errors.New("could not parse glide.lock")
 		}
 		for _, dependency := range lockfile.Imports {
-			deps = append(deps, Gopkg{ImportPath: dependency.Name, Version: dependency.Version})
+			lockfileVersions[dependency.Name] = dependency.Version
 		}
-	} else if ctx.UsingGodep {
+	}
+	if ctx.UsingGodep {
 		lockfileContents, err := ioutil.ReadFile("Godeps/Godeps.json")
 		if err != nil {
 			return errors.New("could not read Godeps/Godeps.json")
@@ -205,9 +234,10 @@ func (ctx *GolangContext) Build(m *Module, opts map[string]interface{}) error {
 			return errors.New("could not parse Godeps/Godeps.json")
 		}
 		for _, dependency := range lockfile.Deps {
-			deps = append(deps, Gopkg{ImportPath: dependency.ImportPath, Version: dependency.Rev})
+			lockfileVersions[dependency.ImportPath] = dependency.Rev
 		}
-	} else if ctx.UsingGovendor {
+	}
+	if ctx.UsingGovendor {
 		lockfileContents, err := ioutil.ReadFile("vendor/vendor.json")
 		if err != nil {
 			return errors.New("could not read vendor/vendor.json")
@@ -217,9 +247,10 @@ func (ctx *GolangContext) Build(m *Module, opts map[string]interface{}) error {
 			return errors.New("could not parse vendor/vendor.json")
 		}
 		for _, dependency := range lockfile.Package {
-			deps = append(deps, Gopkg{ImportPath: dependency.Path, Version: dependency.Revision})
+			lockfileVersions[dependency.Path] = dependency.Revision
 		}
-	} else if ctx.UsingVndr {
+	}
+	if ctx.UsingVndr {
 		lockfileContents, err := ioutil.ReadFile("vendor.conf")
 		if err != nil {
 			return errors.New("could not read vendor.conf")
@@ -229,41 +260,23 @@ func (ctx *GolangContext) Build(m *Module, opts map[string]interface{}) error {
 			trimmedLine := strings.TrimSpace(line)
 			if len(trimmedLine) > 0 && trimmedLine[0] != '#' {
 				sections := strings.Split(trimmedLine, " ")
-				deps = append(deps, Gopkg{ImportPath: sections[0], Version: sections[1]})
-			}
-		}
-	} else {
-		// If no lockfiles are available, fall back to import path tracing.
+				lockfileVersions[sections[0]] = sections[1]
 
-		// Avoid recomputing context if `Verify` has already been called.
-		tree := ctx.tree
-		if ctx.tree == nil {
-			err := tree.Resolve(m.Manifest)
-			if err != nil {
-				return err
 			}
-		}
-
-		vendoredDeps := ctx.deps
-		if ctx.deps == nil {
-			var err error
-			// Don't use `:=`, otherwise you'll create a new binding that shadows the top-level binding
-			vendoredDeps, err = getDeps(tree.Root)
-			if err != nil {
-				return err
-			}
-		}
-
-		// Strip out `/vendor/` weirdness in import paths.
-		for _, dep := range vendoredDeps {
-			const vendorPrefix = "/vendor/"
-			vendoredPathSections := strings.Split(dep.Package(), vendorPrefix)
-			// Note that `Version` is unset for import path tracing.
-			deps = append(deps, Gopkg{ImportPath: vendoredPathSections[len(vendoredPathSections)-1]})
 		}
 	}
 
-	m.Build.RawDependencies = deps
+	var resolvedDeps []Dependency
+	// Strip out `/vendor/` weirdness in import paths.
+	for _, dep := range deps {
+		const vendorPrefix = "/vendor/"
+		vendoredPathSections := strings.Split(dep.Package(), vendorPrefix)
+		importPath := vendoredPathSections[len(vendoredPathSections)-1]
+		// Note that `Version` is unset for import path tracing.
+		resolvedDeps = append(resolvedDeps, Gopkg{ImportPath: importPath, Version: lockfileVersions[importPath]})
+	}
+
+	m.Build.RawDependencies = Dedupe(resolvedDeps)
 	return nil
 }
 
