@@ -75,19 +75,20 @@ func MakeCmd(c *cli.Context) error {
 func BuildCmd(c *cli.Context) error {
 	// Read configuration file
 	config, err := ReadConfig()
+	fmt.Printf("Configuration: %+v\n", config)
 	if err != nil {
 		return err
 	}
 
 	// Set build options
 	buildType := c.String("type")
-	if len(buildType) == 0 && config != nil && len(config.Analyze) > 0 {
-		buildType = config.Analyze[0].Type
+	if len(buildType) == 0 && config != nil && len(config.Analyze.Modules) > 0 {
+		buildType = config.Analyze.Modules[0].Type
 	}
 
 	entryPoint := c.String("entry-point")
-	if len(entryPoint) == 0 && config != nil && len(config.Analyze) > 0 {
-		entryPoint = config.Analyze[0].Path
+	if len(entryPoint) == 0 && config != nil && len(config.Analyze.Modules) > 0 {
+		entryPoint = config.Analyze.Modules[0].Path
 	}
 
 	module := build.Module{
