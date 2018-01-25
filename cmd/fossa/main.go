@@ -75,7 +75,7 @@ func MakeCmd(c *cli.Context) error {
 func BuildCmd(c *cli.Context) error {
 	// Read configuration file
 	config, err := ReadConfig()
-	fmt.Printf("Configuration: %+v\n", config)
+	log.Logger.Debugf("Configuration: %+v\n", config)
 	if err != nil {
 		return err
 	}
