@@ -21,7 +21,7 @@ type NormalizedDependency struct {
 	Locator string `json:"locator"`
 
 	// Metadata
-	Data *json.RawMessage `json:",omitempty"`
+	Data *json.RawMessage `json:"data,omitempty"`
 
 	// Context
 	Depth              int      `json:"depth,omitempty"`
