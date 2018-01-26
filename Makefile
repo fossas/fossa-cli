@@ -16,4 +16,4 @@ endif
 .PHONY: default
 
 default: 
-	GOBIN=${GOBIN} go install ./cmd/fossa.go 
+	GOBIN=${GOBIN} go install github.com/fossas/fossa-cli/cmd/fossa

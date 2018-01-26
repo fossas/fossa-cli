@@ -1,0 +1,35 @@
+cli:
+  # # Defaults to https://app.fossa.io
+  # server: https://fossa.on-prem
+  api_key: some-key-here
+  # # If `project` or `locator` are unset, infer locator from VCS.
+  # project: git+github.com/fossas/fossa-cli
+  # locator: git+github.com/fossas/fossa-cli$revision
+
+analyze:
+  # ignores:
+  #   - path: github.com/kubernetes/kubernetes
+  #     type: dependency
+  #   - path: ./vendor/gopkg.in/yaml.v2
+  #     type: folder
+  modules:
+    - name: fossa-cli
+      path: github.com/fossas/fossa-cli/cmd/fossa
+      type: gopackage
+    # - name: vendored-jquery
+    #   path: vendor/jquery-stuff/bower.json
+    #   type: bowerpackage
+
+# These take a lot of inspiration from CircleCI
+# build:
+#   working_directory: /fossa
+#   docker:
+#     - image: some-image-host/image-name
+#       auth:
+#         username: foo
+#         password: $BAR
+#   environment:
+#     key: value
+#   steps: |
+#     echo "test"
+#     ls

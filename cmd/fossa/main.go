@@ -73,27 +73,45 @@ func MakeCmd(c *cli.Context) error {
 // A successful build will set Module.Resolved to true
 // An unsuccessful build will set Module.Error to a value
 func BuildCmd(c *cli.Context) error {
-	mod := build.Module{
-		Type: c.String("type"),
+	// Read configuration file
+	config, err := ReadConfig()
+	log.Logger.Debugf("Configuration: %+v\n", config)
+	if err != nil {
+		return err
+	}
+
+	// Set build options
+	buildType := c.String("type")
+	if len(buildType) == 0 && config != nil && len(config.Analyze.Modules) > 0 {
+		buildType = config.Analyze.Modules[0].Type
+	}
+
+	entryPoint := c.String("entry-point")
+	if len(entryPoint) == 0 && config != nil && len(config.Analyze.Modules) > 0 {
+		entryPoint = config.Analyze.Modules[0].Path
+	}
+
+	module := build.Module{
+		Type: buildType,
 	}
 
 	buildOpts := make(map[string]interface{})
 	buildOpts["install"] = c.Bool("install")
 	buildOpts["no-cache"] = c.Bool("no-cache")
-	buildOpts["entry-point"] = c.String("entry-point")
+	buildOpts["entry-point"] = entryPoint
 
-	if buildOpts["entry-point"].(string) != "" {
+	if len(buildOpts["entry-point"].(string)) > 0 {
 		// override module manifest
-		mod.Manifest = buildOpts["entry-point"].(string)
+		module.Manifest = buildOpts["entry-point"].(string)
 	}
 
-	if err := mod.Analyze(buildOpts); err != nil {
+	if err := module.Analyze(buildOpts); err != nil {
 		log.Logger.Fatalf("analysis failed (%v);\ntry pre-building and then running `fossa`", err)
 	}
 
-	log.Logger.Debugf("found (%s) deduped dependencies", len(mod.Build.RawDependencies))
+	log.Logger.Debugf("found (%s) deduped dependencies", len(module.Build.RawDependencies))
 
-	dat, _ := json.Marshal(mod)
+	dat, _ := json.Marshal(module)
 	fmt.Print(string(dat))
 	return nil
 }
