@@ -86,7 +86,7 @@ func setDefaultValues(c Config) (Config, error) {
 
 	// Load API key from environment variable.
 	if len(c.CLI.APIKey) == 0 {
-		c.CLI.APIKey = os.Getenv("FOSSA_CLI_API_KEY")
+		c.CLI.APIKey = os.Getenv("FOSSA_API_KEY")
 	}
 
 	// Infer default locator and project from `git`.
@@ -113,7 +113,7 @@ func setDefaultValues(c Config) (Config, error) {
 		if err != nil {
 			return c, err
 		}
-		c.CLI.Locator = project + "$" + revision.Hash().String()
+		c.CLI.Locator = "git+" + project + "$" + revision.Hash().String()
 	}
 
 	return c, nil

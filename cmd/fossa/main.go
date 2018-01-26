@@ -186,11 +186,12 @@ func BuildCmd(_ *cli.Context) {
 		if err != nil {
 			log.Logger.Fatalf("Could not upload build results: %s\n", err.Error())
 		}
+		fmt.Print("build & upload succeeded")
 	} else {
 		fmt.Print(string(build))
 	}
 
-	fmt.Println("BUILD OK")
+	log.Logger.Debug("BUILD OK")
 }
 
 func doBuild(config Config) ([]byte, error) {
