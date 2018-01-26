@@ -34,6 +34,7 @@ func main() {
 	app.Action = DefaultCmd
 	app.Flags = []cli.Flag{
 		cli.StringFlag{Name: "log_level, l"},
+		cli.BoolFlag{Name: "install, i"},
 	}
 
 	app.Commands = []cli.Command{
@@ -167,8 +168,6 @@ func DefaultCmd(_ *cli.Context) {
 	if err != nil {
 		log.Logger.Fatalf("Upload failed: %s\n", err.Error())
 	}
-
-	fmt.Println("OK")
 }
 
 // BuildCmd runs a build given a configuration.
@@ -265,13 +264,25 @@ func doUpload(config Config, data []byte) error {
 		return fmt.Errorf("could not begin upload: %s", err)
 	}
 	defer resp.Body.Close()
+	responseBytes, _ := ioutil.ReadAll(resp.Body)
+	responseStr := string(responseBytes)
 
 	if resp.StatusCode == http.StatusForbidden {
 		return errors.New("invalid API key")
 	} else if resp.StatusCode != http.StatusOK {
-		responseBytes, _ := ioutil.ReadAll(resp.Body)
-		responseStr := string(responseBytes)
 		return fmt.Errorf("bad server response (%s)", responseStr)
+	} else {
+		log.Logger.Info("upload succeeded")
+		var jsonResponse map[string]interface{}
+		if err := json.Unmarshal(responseBytes, &jsonResponse); err != nil {
+			return errors.New("invalid response, but build was uploaded")
+		}
+		locParts := strings.Split(jsonResponse["locator"].(string), "$")
+		getRef, _ := url.Parse("/projects/" + url.QueryEscape(locParts[0]) + "/refs/branch/master/" + url.QueryEscape(locParts[1]))
+		fmt.Println("==============================\n")
+		fmt.Println("   View FOSSA Report:")
+		fmt.Println("   " + fossaBaseURL.ResolveReference(getRef).String())
+		fmt.Println("\n==============================")
 	}
 
 	return nil
