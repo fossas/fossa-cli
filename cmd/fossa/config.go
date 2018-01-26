@@ -89,5 +89,9 @@ func parseConfig(filename string) (*Config, error) {
 		config.Cli.Locator = project + "$" + revision.Hash().String()
 	}
 
+	if len(config.Cli.APIKey) == 0 {
+		config.Cli.APIKey = os.Getenv("FOSSA_CLI_API_KEY")
+	}
+
 	return &config, nil
 }
