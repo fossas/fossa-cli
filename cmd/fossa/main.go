@@ -3,21 +3,23 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
+
+	logging "github.com/op/go-logging"
+	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/build"
 	"github.com/fossas/fossa-cli/log"
-	logging "github.com/op/go-logging"
-	"github.com/urfave/cli"
 )
 
 type cliContext struct {
-	buildData []byte
-	config    *Config
+	config Config
 }
 
 // main.version is picked up by goreleaser
@@ -29,9 +31,9 @@ func main() {
 	app.Name = "fossa-cli"
 	app.Usage = "get dependencies from your code"
 	app.Version = version
-	app.Action = MakeCmd
+	app.Action = DefaultCmd
 	app.Flags = []cli.Flag{
-		cli.StringFlag{Name: "loglevel, l"},
+		cli.StringFlag{Name: "log_level, l"},
 	}
 
 	app.Commands = []cli.Command{
@@ -41,11 +43,11 @@ func main() {
 			Usage:   "discover dependencies for an inline module",
 			Action:  BuildCmd,
 			Flags: []cli.Flag{
-				cli.StringFlag{Name: "type, t"},
-				cli.StringFlag{Name: "entry-point, e"},
+				// Format: `type:path` e.g. `gopackage:github.com/fossas/fossa-cli/cmd/fossa`
+				cli.StringFlag{Name: "entry_point, e"},
 				cli.BoolFlag{Name: "install, i"},
 				cli.BoolFlag{Name: "upload, u"},
-				cli.BoolFlag{Name: "no-cache"},
+				cli.BoolFlag{Name: "no_cache"},
 			},
 		},
 		{
@@ -62,7 +64,8 @@ func main() {
 					Name: "locator",
 				},
 				cli.StringFlag{
-					Name: "api-key, k",
+					Name:   "api_key, k",
+					EnvVar: "FOSSA_CLI_API_KEY",
 				},
 			},
 		},
@@ -73,142 +76,198 @@ func main() {
 	app.Run(os.Args)
 }
 
-// BootstrapCmd initializes and loads config for the CLI
+// BootstrapCmd initializes and loads config for the CLI.
 func BootstrapCmd(c *cli.Context) error {
-	// Read configuration file
-	config, err := ReadConfig()
-	log.Logger.Debugf("Configuration: %+v\n", config)
-	if err != nil {
-		return err
-	}
-	context.config = config
-
+	// Configure logging.
 	devNullBackend := logging.NewLogBackend(ioutil.Discard, "", 0)
 
-	// log errors to stderr
 	stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), log.Format))
 	stderrBackend.SetLevel(logging.ERROR, "")
 
-	if c.String("loglevel") == "debug" {
+	if c.String("log_level") == "debug" {
 		stderrBackend.SetLevel(logging.DEBUG, "")
 	}
 
 	logging.SetBackend(devNullBackend, stderrBackend)
 
-	return nil
-}
-
-// MakeCmd runs the scan and build commands
-func MakeCmd(c *cli.Context) error {
-	// run scan and set context
-	// run build and set context
-	return nil
-}
-
-// BuildCmd takes in a Module and builds it / populates dependency data
-// A successful build will set Module.Resolved to true
-// An unsuccessful build will set Module.Error to a value
-func BuildCmd(c *cli.Context) error {
-	// Set build options
-	buildType := c.String("type")
-	if len(buildType) == 0 && context.config != nil && len(context.config.Analyze.Modules) > 0 {
-		buildType = context.config.Analyze.Modules[0].Type
-	}
-
-	entryPoint := c.String("entry-point")
-	if len(entryPoint) == 0 && context.config != nil && len(context.config.Analyze.Modules) > 0 {
-		entryPoint = context.config.Analyze.Modules[0].Path
-	}
-
-	module := build.Module{
-		Type: buildType,
-	}
-
-	buildOpts := make(map[string]interface{})
-	buildOpts["install"] = c.Bool("install")
-	buildOpts["no-cache"] = c.Bool("no-cache")
-	buildOpts["entry-point"] = entryPoint
-	buildOpts["upload"] = c.Bool("upload")
-
-	if len(buildOpts["entry-point"].(string)) > 0 {
-		// override module manifest
-		module.Manifest = buildOpts["entry-point"].(string)
-	}
-
-	if err := module.Analyze(buildOpts); err != nil {
-		log.Logger.Fatalf("analysis failed (%v);\ntry pre-building and then running `fossa`", err)
-	}
-
-	log.Logger.Debugf("found (%s) deduped dependencies", len(module.Build.RawDependencies))
-
-	buildOutput, _ := json.Marshal(module)
-
-	if buildOpts["upload"] == true {
-		log.Logger.Debugf("uploading build results...")
-		context.buildData = buildOutput
-		UploadCmd(c)
-	} else {
-		fmt.Print(string(buildOutput))
-	}
-	return nil
-}
-
-// UploadCmd sends data to the fossa-core server about a specific revision
-func UploadCmd(c *cli.Context) error {
-	fossaBaseURL, err := url.Parse(c.String("endpoint"))
+	// Read configuration file.
+	config, err := ReadConfig()
+	log.Logger.Debugf("Configuration: %+v\n", config)
 	if err != nil {
-		log.Logger.Fatal("invalid FOSSA endpoint")
+		return err
 	}
 
-	var buildInput []byte
-	if context.buildData == nil {
-		buildInput = []byte(c.Args().First())
+	// Set configuration via flags.
+	// // Global configuration flags.
+	logLevelFlag := c.String("log_level")
+	if logLevelFlag != "" {
+		config.CLI.LogLevel = logLevelFlag
+	}
+
+	// // Analysis flags.
+	entryPointFlag := c.String("entry_point")
+	if entryPointFlag != "" {
+		entryPointSections := strings.Split(entryPointFlag, "")
+		config.Analyze.Modules = []ModuleConfig{
+			ModuleConfig{
+				Name: "",
+				Path: entryPointSections[1],
+				Type: entryPointSections[0],
+			},
+		}
+	}
+
+	// // CLI flags.
+	installFlag := c.Bool("install")
+	if installFlag {
+		config.CLI.Install = true
+	}
+
+	uploadFlag := c.Bool("upload")
+	if uploadFlag {
+		config.CLI.Upload = true
+	}
+
+	noCacheFlag := c.Bool("no_cache")
+	if noCacheFlag {
+		config.CLI.NoCache = true
+	}
+
+	// // Upload flags.
+	endpointFlag := c.String("endpoint")
+	if endpointFlag != "" {
+		config.CLI.Server = endpointFlag
+	}
+
+	locatorFlag := c.String("locator")
+	if locatorFlag != "" {
+		config.CLI.Locator = locatorFlag
+	}
+
+	apiKeyFlag := c.String("api_key")
+	if apiKeyFlag != "" {
+		config.CLI.APIKey = apiKeyFlag
+	}
+
+	context.config = config
+	return nil
+}
+
+// DefaultCmd resolves dependencies and uploads the results.
+func DefaultCmd(_ *cli.Context) {
+	config := context.config
+	config.CLI.Upload = true
+
+	build, err := doBuild(config)
+	if err != nil {
+		log.Logger.Fatalf("Build failed: %s\n", err.Error())
+	}
+
+	err = doUpload(config, build)
+	if err != nil {
+		log.Logger.Fatalf("Upload failed: %s\n", err.Error())
+	}
+
+	fmt.Println("OK")
+}
+
+// BuildCmd runs a build given a configuration.
+func BuildCmd(_ *cli.Context) {
+	config := context.config
+	build, err := doBuild(config)
+
+	if err != nil {
+		log.Logger.Fatalf("Analysis failed: (%v).\nTry pre-building and then running `fossa`", err)
+	}
+
+	if config.CLI.Upload {
+		log.Logger.Debug("Uploading build results...")
+		err = doUpload(config, build)
+		if err != nil {
+			log.Logger.Fatalf("Could not upload build results: %s\n", err.Error())
+		}
 	} else {
-		buildInput = context.buildData
+		fmt.Print(string(build))
 	}
 
-	log.Logger.Debugf("parsing build data: %s", buildInput)
+	fmt.Println("BUILD OK")
+}
+
+func doBuild(config Config) ([]byte, error) {
+	// TODO: make this work for multiple entry points.
+	// var modules []build.Module
+	// for _, module := range config.Analyze.Modules {
+	module := build.Module{
+		Name:     config.Analyze.Modules[0].Name,
+		Manifest: config.Analyze.Modules[0].Path,
+		Type:     config.Analyze.Modules[0].Type,
+	}
+
+	// TODO(leo): refactor this into a struct.
+	buildOpts := make(map[string]interface{})
+	buildOpts["install"] = config.CLI.Install
+	buildOpts["no_cache"] = config.CLI.NoCache
+
+	log.Logger.Debugf("Building module: %+v\n", module)
+	if err := module.Analyze(buildOpts); err != nil {
+		return nil, err
+	}
+
+	log.Logger.Debugf("Found %d deduped dependencies", len(module.Build.RawDependencies))
+
+	buildOutput, err := json.Marshal(module)
+	if err != nil {
+		return nil, err
+	}
+
+	return buildOutput, nil
+}
+
+// UploadCmd sends data to the fossa-core server about a specific revision.
+func UploadCmd(c *cli.Context) {
+	err := doUpload(context.config, []byte(c.Args().First()))
+	if err != nil {
+		log.Logger.Fatalf("Upload failed: %s\n", err.Error())
+	}
+
+	log.Logger.Info("Upload succeeded")
+}
+
+func doUpload(config Config, data []byte) error {
+	fossaBaseURL, err := url.Parse(config.CLI.Server)
+	if err != nil {
+		return errors.New("invalid FOSSA endpoint")
+	}
+
+	log.Logger.Debugf("Uploading build data: %s\n", data)
 
 	var js interface{}
-	if err := json.Unmarshal(buildInput, &js); err != nil {
-		log.Logger.Fatal("invalid build data")
+	if err := json.Unmarshal(data, &js); err != nil {
+		return errors.New("invalid build data")
 	}
 
-	locator := c.String("locator")
-	if locator == "" {
-		// TODO: get locator from environment
-		log.Logger.Fatalf("no locator specified")
-	}
-
-	postRef, _ := url.Parse("/api/builds/custom?locator=" + url.QueryEscape(locator) + "&v=" + version)
+	postRef, _ := url.Parse("/api/builds/custom?locator=" + url.QueryEscape(config.CLI.Locator) + "&v=" + version)
 	postURL := fossaBaseURL.ResolveReference(postRef).String()
 
-	log.Logger.Debugf("sending build data to <%s>", postURL)
+	log.Logger.Debugf("Sending build data to <%s>", postURL)
 
-	apiKey := c.String("api-key")
-	if len(apiKey) == 0 && context.config != nil && len(context.config.Cli.APIKey) > 0 {
-		apiKey = context.config.Cli.APIKey
-	}
-
-	req, _ := http.NewRequest("POST", postURL, bytes.NewReader(buildInput))
-	req.Header.Set("Authorization", "token "+apiKey)
+	req, _ := http.NewRequest("POST", postURL, bytes.NewReader(data))
+	req.Header.Set("Authorization", "token "+config.CLI.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Logger.Fatalf("upload failed: %s", err)
+		return fmt.Errorf("could not begin upload: %s", err)
 	}
-
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusForbidden {
-		log.Logger.Fatal("upload failed: invalid API key")
+		return errors.New("invalid API key")
 	} else if resp.StatusCode != http.StatusOK {
 		responseBytes, _ := ioutil.ReadAll(resp.Body)
 		responseStr := string(responseBytes)
-		log.Logger.Fatalf("upload failed: invalid response from FOSSA (%s)", responseStr)
+		return fmt.Errorf("bad server response (%s)", responseStr)
 	}
 
-	log.Logger.Info("upload succeeded")
 	return nil
 }

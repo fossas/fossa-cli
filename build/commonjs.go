@@ -116,7 +116,7 @@ func (ctx *CommonJSContext) Verify(m *Module, opts map[string]interface{}) bool 
 
 // Build determines and executes a CommonJS build based off available tooling in the environment
 func (ctx *CommonJSContext) Build(m *Module, opts map[string]interface{}) error {
-	if ctx.verifyNodeModules() == false || opts["no-cache"].(bool) == true {
+	if ctx.verifyNodeModules() == false || opts["no_cache"].(bool) == true {
 		log.Logger.Debug("No prebuilt node_modules directory, building...")
 		if err := ctx.populateNodeModules(); err != nil {
 			return err

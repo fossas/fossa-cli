@@ -11,28 +11,38 @@ import (
 
 // Config is a parsed configuration for the CLI and Worker.
 type Config struct {
-	Cli struct {
+	CLI struct {
+		// Upload configuration.
 		APIKey  string `yaml:"api_key"`
 		Server  string
 		Project string
 		Locator string
+
+		// CLI flags.
+		Install  bool
+		Upload   bool
+		NoCache  bool
+		LogLevel string
 	}
 	Analyze struct {
 		Ignores []struct {
 			Path string
 			Type string
 		}
-		Modules []struct {
-			Name string
-			Path string
-			Type string
-		}
+		Modules []ModuleConfig
 	}
+}
+
+// ModuleConfig is the configuration for a single module to be analysed.
+type ModuleConfig struct {
+	Name string
+	Path string
+	Type string
 }
 
 // ReadConfig parses the configuration file in the current directory and sets
 // default values if necessary.
-func ReadConfig() (*Config, error) {
+func ReadConfig() (Config, error) {
 	_, err := os.Stat(".fossa.yml")
 	if err == nil {
 		return parseConfig(".fossa.yml")
@@ -43,55 +53,68 @@ func ReadConfig() (*Config, error) {
 		return parseConfig(".fossa.yaml")
 	}
 
-	return nil, nil
+	return setDefaultValues(Config{})
 }
 
-func parseConfig(filename string) (*Config, error) {
+func parseConfig(filename string) (Config, error) {
+	// Read configuration file.
 	var config Config
 
 	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return nil, err
+		return config, err
 	}
 
 	err = yaml.Unmarshal(bytes, &config)
 	if err != nil {
-		return nil, err
+		return config, err
 	}
 
-	if len(config.Cli.Server) == 0 {
-		config.Cli.Server = "https://app.fossa.io"
+	config, err = setDefaultValues(config)
+	if err != nil {
+		return config, err
 	}
 
-	if len(config.Cli.Locator) == 0 {
+	return config, nil
+}
+
+func setDefaultValues(c Config) (Config, error) {
+	// Set default endpoint.
+	if len(c.CLI.Server) == 0 {
+		c.CLI.Server = "https://app.fossa.io"
+	}
+
+	// Load API key from environment variable.
+	if len(c.CLI.APIKey) == 0 {
+		c.CLI.APIKey = os.Getenv("FOSSA_CLI_API_KEY")
+	}
+
+	// Infer default locator and project from `git`.
+	if len(c.CLI.Locator) == 0 {
 		repo, err := git.PlainOpen(".")
 		if err != nil {
-			return nil, err
+			return c, err
 		}
 
-		project := config.Cli.Project
+		project := c.CLI.Project
 		if len(project) == 0 {
 			origin, err := repo.Remote("origin")
 			if err != nil {
-				return nil, err
+				return c, err
 			}
 			if origin == nil {
-				return nil, errors.New("could not infer project name from either `.fossa.yaml` or `git` remote named `origin`")
+				return c, errors.New("could not infer project name from either `.fossa.yaml` or `git` remote named `origin`")
 			}
 			project = origin.Config().URLs[0]
-			config.Cli.Project = project
+			c.CLI.Project = project
 		}
 
 		revision, err := repo.Head()
 		if err != nil {
-			return nil, err
+			return c, err
 		}
-		config.Cli.Locator = project + "$" + revision.Hash().String()
+		c.CLI.Locator = project + "$" + revision.Hash().String()
 	}
 
-	if len(config.Cli.APIKey) == 0 {
-		config.Cli.APIKey = os.Getenv("FOSSA_CLI_API_KEY")
-	}
-
-	return &config, nil
+	return c, nil
 }

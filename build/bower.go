@@ -49,7 +49,7 @@ func (ctx *BowerContext) Build(m *Module, opts map[string]interface{}) error {
 	}
 
 	// bower install
-	if ctx.verifyBowerComponents() == false || opts["no-cache"].(bool) == true {
+	if ctx.verifyBowerComponents() == false || opts["no_cache"].(bool) == true {
 		log.Logger.Debug("No prebuilt bower_components directory, building...")
 		exec.Command("bower", "install").Output()
 	} else {
