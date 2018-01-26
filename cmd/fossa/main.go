@@ -194,6 +194,10 @@ func BuildCmd(_ *cli.Context) {
 }
 
 func doBuild(config Config) ([]byte, error) {
+	if len(config.Analyze.Modules) == 0 {
+		return nil, errors.New("no entry points specified")
+	}
+
 	// TODO: make this work for multiple entry points.
 	// var modules []build.Module
 	// for _, module := range config.Analyze.Modules {
