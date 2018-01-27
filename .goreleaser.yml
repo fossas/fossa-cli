@@ -1,5 +1,5 @@
 builds:
-  - main: cmd/fossa/main.go
+  - main: ./cmd/fossa/
     binary: fossa
     goos:
       - windows
