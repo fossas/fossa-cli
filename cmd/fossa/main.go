@@ -38,7 +38,8 @@ func main() {
 	app.Action = DefaultCmd
 	app.Flags = []cli.Flag{
 		cli.StringFlag{Name: "log_level, l"},
-		cli.BoolFlag{Name: "install, i"},
+		cli.BoolFlag{Name: "install, i", Usage: "run a default build in module directories if they have not been pre-built"},
+		cli.BoolFlag{Name: "output, o", Usage: "output build data to JSON and exit; do not upload results to FOSSA"},
 	}
 
 	app.Commands = []cli.Command{
@@ -50,7 +51,7 @@ func main() {
 			Flags: []cli.Flag{
 				// Format: `type:path` e.g. `gopackage:github.com/fossas/fossa-cli/cmd/fossa`
 				cli.StringFlag{Name: "entry_point, e"},
-				cli.BoolFlag{Name: "install, i"},
+				cli.BoolFlag{Name: "install, i", Usage: "run a default build in module directories if they have not been pre-built"},
 				cli.BoolFlag{Name: "upload, u"},
 				cli.BoolFlag{Name: "no_cache"},
 			},
@@ -159,24 +160,28 @@ func BootstrapCmd(c *cli.Context) error {
 }
 
 // DefaultCmd resolves dependencies and uploads the results.
-func DefaultCmd(_ *cli.Context) {
+func DefaultCmd(c *cli.Context) {
 	config := context.config
-	config.CLI.Upload = true
 
-	// Run the spinner only in DefaultCmd as we don't rely on stdout
+	// Run the spinner only when we don't rely on stdout
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-	s.Suffix = " Initializing..."
-	s.Start()
+
+	if !c.Bool("output") {
+		s.Suffix = " Initializing..."
+		s.Start()
+	}
 
 	builds := []*build.Module{}
 	numModules := strconv.Itoa(len(config.Analyze.Modules))
 
 	for i, mod := range config.Analyze.Modules {
-		s.Suffix = " Running build analysis (" +
-			strconv.Itoa(i+1) + "/" +
-			numModules + "): " +
-			mod.Name
-		s.Restart()
+		if !c.Bool("output") {
+			s.Suffix = " Running build analysis (" +
+				strconv.Itoa(i+1) + "/" +
+				numModules + "): " +
+				mod.Name
+			s.Restart()
+		}
 
 		build, err := doBuild(config, i)
 		if err != nil {
@@ -187,16 +192,19 @@ func DefaultCmd(_ *cli.Context) {
 		builds = append(builds, build)
 	}
 
-	s.Suffix = " Uploading build results (" + numModules + "/" + numModules + ")..."
-	s.Restart()
-
-	err := doUpload(config, builds)
-	if err != nil {
+	if !c.Bool("output") {
+		s.Suffix = " Uploading build results (" + numModules + "/" + numModules + ")..."
+		s.Restart()
+		err := doUpload(config, builds)
+		if err != nil {
+			s.Stop()
+			log.Logger.Fatalf("Upload failed: %s\n", err.Error())
+		}
 		s.Stop()
-		log.Logger.Fatalf("Upload failed: %s\n", err.Error())
+	} else {
+		output, _ := createBuildData(builds)
+		fmt.Print(string(output))
 	}
-
-	s.Stop()
 }
 
 // BuildCmd runs the first build of a given configuration.
@@ -271,6 +279,11 @@ func UploadCmd(c *cli.Context) {
 	log.Logger.Info("Upload succeeded")
 }
 
+func createBuildData(modules []*build.Module) ([]byte, error) {
+	// TODO: make this return a build data struct over []byte later
+	return json.Marshal(modules)
+}
+
 func doUpload(config Config, modules []*build.Module) error {
 	fossaBaseURL, err := url.Parse(config.CLI.Server)
 	if err != nil {
@@ -280,7 +293,7 @@ func doUpload(config Config, modules []*build.Module) error {
 	log.Logger.Debugf("Uploading build data from (%s) modules:", len(modules))
 
 	// re-marshall into build data
-	buildData, err := json.Marshal(modules)
+	buildData, err := createBuildData(modules)
 	if err != nil {
 		return errors.New("invalid build data")
 	}
@@ -306,6 +319,9 @@ func doUpload(config Config, modules []*build.Module) error {
 
 	if resp.StatusCode == http.StatusForbidden {
 		return errors.New("invalid API key")
+	} else if resp.StatusCode == http.StatusPreconditionRequired {
+		// TODO: handle "Managed Project" workflow
+		return fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo.")
 	} else if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("bad server response (%s)", responseStr)
 	} else {
