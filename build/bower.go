@@ -20,7 +20,7 @@ type BowerContext struct {
 // bower list . | tail +3 | grep -E "\w.+#\S+" -o | sed 's/^/bower\+/' | sed 's/#/$/' | sort | uniq
 
 // Initialize collects environment data for CommonJS builds
-func (ctx *BowerContext) Initialize(p *Module, opts map[string]interface{}) {
+func (ctx *BowerContext) Initialize(m *Module, opts map[string]interface{}) {
 	// Set NodeJS context variables
 	ctx.BowerCmd = string(os.Getenv("BOWER_BINARY"))
 	if ctx.BowerCmd == "" {
@@ -34,12 +34,12 @@ func (ctx *BowerContext) Initialize(p *Module, opts map[string]interface{}) {
 		ctx.BowerVersion = ""
 	}
 
-	ctx.isBowerComponentsPrePopulated = ctx.verifyBowerComponents()
+	ctx.isBowerComponentsPrePopulated = ctx.verifyBowerComponents(m)
 }
 
 // Verify checks if an install needs to be run
 func (ctx *BowerContext) Verify(m *Module, opts map[string]interface{}) bool {
-	return ctx.verifyBowerComponents()
+	return ctx.verifyBowerComponents(m)
 }
 
 // Build determines and executes a CommonJS build based off available tooling in the environment
@@ -49,19 +49,23 @@ func (ctx *BowerContext) Build(m *Module, opts map[string]interface{}) error {
 	}
 
 	// bower install
-	if ctx.verifyBowerComponents() == false || opts["no_cache"].(bool) == true {
+	if ctx.verifyBowerComponents(m) == false || opts["no_cache"].(bool) == true {
 		log.Logger.Debug("No prebuilt bower_components directory, building...")
-		exec.Command("bower", "install").Output()
+		cmd := exec.Command("bower", "install")
+		cmd.Dir = m.Dir
+		cmd.Output()
 	} else {
 		log.Logger.Debug("Found pre-populated bower_components, skipping build...")
 	}
 
 	// verify again
-	if ctx.verifyBowerComponents() == false {
+	if ctx.verifyBowerComponents(m) == false {
 		return errors.New("bower install did not satisfy build requirements")
 	}
 
-	outBundleListCmd, err := exec.Command("bower", "list").Output()
+	cmd := exec.Command("bower", "list")
+	cmd.Dir = m.Dir
+	outBundleListCmd, err := cmd.Output()
 	if err != nil {
 		return errors.New("unable to inspect bower components")
 	}
@@ -86,8 +90,10 @@ func (ctx *BowerContext) Build(m *Module, opts map[string]interface{}) error {
 	return nil
 }
 
-func (ctx *BowerContext) verifyBowerComponents() bool {
-	outBundleListCmd, err := exec.Command("bower", "list").Output()
+func (ctx *BowerContext) verifyBowerComponents(m *Module) bool {
+	cmd := exec.Command("bower", "list")
+	cmd.Dir = m.Dir
+	outBundleListCmd, err := cmd.Output()
 
 	if err != nil {
 		log.Logger.Warning("unable to verify Bower requirements... falling back to bower_components inspection")
