@@ -45,7 +45,14 @@ type ModuleConfig struct {
 
 // ReadConfig parses the configuration file in the current directory and sets
 // default values if necessary.
-func ReadConfig() (Config, error) {
+func ReadConfig(configFile string) (Config, error) {
+	if configFile != "" {
+		if _, err := os.Stat(configFile); err != nil {
+			return Config{}, errors.New("invalid config file specified")
+		}
+		return parseConfig(configFile)
+	}
+
 	_, err := os.Stat(".fossa.yml")
 	if err == nil {
 		return parseConfig(".fossa.yml")

@@ -37,9 +37,10 @@ func main() {
 	app.Version = version
 	app.Action = DefaultCmd
 	app.Flags = []cli.Flag{
-		cli.StringFlag{Name: "log_level, l"},
+		cli.StringFlag{Name: "config, c", Usage: "path to config file; defaults to .fossa.yml or .fossa.yaml"},
 		cli.BoolFlag{Name: "install, i", Usage: "run a default build in module directories if they have not been pre-built"},
 		cli.BoolFlag{Name: "output, o", Usage: "output build data to JSON and exit; do not upload results to FOSSA"},
+		cli.StringFlag{Name: "log_level, l"},
 	}
 
 	app.Commands = []cli.Command{
@@ -97,7 +98,7 @@ func BootstrapCmd(c *cli.Context) error {
 	logging.SetBackend(devNullBackend, stderrBackend)
 
 	// Read configuration file.
-	config, err := ReadConfig()
+	config, err := ReadConfig(c.String("config"))
 	log.Logger.Debugf("Configuration: %+v\n", config)
 	if err != nil {
 		return err
