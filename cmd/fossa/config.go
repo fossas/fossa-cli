@@ -11,6 +11,9 @@ import (
 
 // Config is a parsed configuration for the CLI and Worker.
 type Config struct {
+	// config version
+	Version string
+
 	CLI struct {
 		// Upload configuration.
 		APIKey  string `yaml:"api_key"`
@@ -79,6 +82,11 @@ func parseConfig(filename string) (Config, error) {
 }
 
 func setDefaultValues(c Config) (Config, error) {
+	// Set config version
+	if c.Version == "" {
+		c.Version = "1"
+	}
+
 	// Set default endpoint.
 	if len(c.CLI.Server) == 0 {
 		c.CLI.Server = "https://app.fossa.io"

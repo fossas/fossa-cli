@@ -9,8 +9,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
+	"github.com/briandowns/spinner"
 	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 
@@ -159,21 +163,46 @@ func DefaultCmd(_ *cli.Context) {
 	config := context.config
 	config.CLI.Upload = true
 
-	build, err := doBuild(config)
-	if err != nil {
-		log.Logger.Fatalf("Build failed: %s\n", err.Error())
+	// Run the spinner only in DefaultCmd as we don't rely on stdout
+	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+	s.Suffix = " Initializing..."
+	s.Start()
+
+	builds := []*build.Module{}
+	numModules := strconv.Itoa(len(config.Analyze.Modules))
+
+	for i, mod := range config.Analyze.Modules {
+		s.Suffix = " Running build analysis (" +
+			strconv.Itoa(i+1) + "/" +
+			numModules + "): " +
+			mod.Name
+		s.Restart()
+
+		build, err := doBuild(config, i)
+		if err != nil {
+			s.Stop()
+			log.Logger.Fatalf("Build failed (%s): %s\n", mod.Name, err.Error())
+		}
+
+		builds = append(builds, build)
 	}
 
-	err = doUpload(config, build)
+	s.Suffix = " Uploading build results (" + numModules + "/" + numModules + ")..."
+	s.Restart()
+
+	err := doUpload(config, builds)
 	if err != nil {
+		s.Stop()
 		log.Logger.Fatalf("Upload failed: %s\n", err.Error())
 	}
+
+	s.Stop()
 }
 
-// BuildCmd runs a build given a configuration.
+// BuildCmd runs the first build of a given configuration.
 func BuildCmd(_ *cli.Context) {
 	config := context.config
-	build, err := doBuild(config)
+	mod, err := doBuild(config, 0)
 
 	if err != nil {
 		log.Logger.Fatalf("Analysis failed: (%v).\nTry pre-building and then running `fossa`", err)
@@ -181,30 +210,29 @@ func BuildCmd(_ *cli.Context) {
 
 	if config.CLI.Upload {
 		log.Logger.Debug("Uploading build results...")
-		err = doUpload(config, build)
+		err = doUpload(config, []*build.Module{mod})
 		if err != nil {
 			log.Logger.Fatalf("Could not upload build results: %s\n", err.Error())
 		}
 		fmt.Print("build & upload succeeded")
 	} else {
-		fmt.Print(string(build))
+		data, _ := json.Marshal(mod)
+		fmt.Print(string(data))
 	}
 
 	log.Logger.Debug("BUILD OK")
 }
 
-func doBuild(config Config) ([]byte, error) {
+func doBuild(config Config, mIndex int) (*build.Module, error) {
 	if len(config.Analyze.Modules) == 0 {
 		return nil, errors.New("no entry points specified")
 	}
 
-	// TODO: make this work for multiple entry points.
-	// var modules []build.Module
-	// for _, module := range config.Analyze.Modules {
 	module := build.Module{
-		Name:     config.Analyze.Modules[0].Name,
-		Manifest: config.Analyze.Modules[0].Path,
-		Type:     config.Analyze.Modules[0].Type,
+		Name:     config.Analyze.Modules[mIndex].Name,
+		Manifest: config.Analyze.Modules[mIndex].Path,
+		Dir:      filepath.Dir(config.Analyze.Modules[mIndex].Path),
+		Type:     config.Analyze.Modules[mIndex].Type,
 	}
 
 	// TODO(leo): refactor this into a struct.
@@ -219,17 +247,23 @@ func doBuild(config Config) ([]byte, error) {
 
 	log.Logger.Debugf("Found %d deduped dependencies", len(module.Build.RawDependencies))
 
-	buildOutput, err := json.Marshal(module)
-	if err != nil {
-		return nil, err
-	}
-
-	return buildOutput, nil
+	return &module, nil
 }
 
 // UploadCmd sends data to the fossa-core server about a specific revision.
 func UploadCmd(c *cli.Context) {
-	err := doUpload(context.config, []byte(c.Args().First()))
+	builds := []*build.Module{}
+	argIndex := 0
+	for c.Args().Get(argIndex) != "" {
+		var data build.Module
+		if err := json.Unmarshal([]byte(c.Args().Get(argIndex)), &data); err != nil {
+			log.Logger.Fatalf("Invalid build data for module #" + strconv.Itoa(argIndex))
+		}
+		builds = append(builds, &data)
+		argIndex++
+	}
+
+	err := doUpload(context.config, builds)
 	if err != nil {
 		log.Logger.Fatalf("Upload failed: %s\n", err.Error())
 	}
@@ -237,25 +271,28 @@ func UploadCmd(c *cli.Context) {
 	log.Logger.Info("Upload succeeded")
 }
 
-func doUpload(config Config, data []byte) error {
+func doUpload(config Config, modules []*build.Module) error {
 	fossaBaseURL, err := url.Parse(config.CLI.Server)
 	if err != nil {
 		return errors.New("invalid FOSSA endpoint")
 	}
 
-	log.Logger.Debugf("Uploading build data: %s\n", data)
+	log.Logger.Debugf("Uploading build data from (%s) modules:", len(modules))
 
-	var js interface{}
-	if err := json.Unmarshal(data, &js); err != nil {
+	// re-marshall into build data
+	buildData, err := json.Marshal(modules)
+	if err != nil {
 		return errors.New("invalid build data")
 	}
+
+	log.Logger.Debugf(string(buildData))
 
 	postRef, _ := url.Parse("/api/builds/custom?locator=" + url.QueryEscape(config.CLI.Locator) + "&v=" + version)
 	postURL := fossaBaseURL.ResolveReference(postRef).String()
 
 	log.Logger.Debugf("Sending build data to <%s>", postURL)
 
-	req, _ := http.NewRequest("POST", postURL, bytes.NewReader(data))
+	req, _ := http.NewRequest("POST", postURL, bytes.NewReader(buildData))
 	req.Header.Set("Authorization", "token "+config.CLI.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -279,10 +316,10 @@ func doUpload(config Config, data []byte) error {
 		}
 		locParts := strings.Split(jsonResponse["locator"].(string), "$")
 		getRef, _ := url.Parse("/projects/" + url.QueryEscape(locParts[0]) + "/refs/branch/master/" + url.QueryEscape(locParts[1]))
-		fmt.Println("==============================\n")
+		fmt.Println("\n============================================================\n")
 		fmt.Println("   View FOSSA Report:")
 		fmt.Println("   " + fossaBaseURL.ResolveReference(getRef).String())
-		fmt.Println("\n==============================")
+		fmt.Println("\n============================================================")
 	}
 
 	return nil

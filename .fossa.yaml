@@ -1,3 +1,5 @@
+version: 1
+
 cli:
   # # Defaults to https://app.fossa.io
   # server: https://fossa.on-prem

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -61,7 +62,7 @@ type commonJSBuildOpts struct {
 }
 
 // Initialize collects environment data for CommonJS builds
-func (ctx *CommonJSContext) Initialize(p *Module, opts map[string]interface{}) {
+func (ctx *CommonJSContext) Initialize(m *Module, opts map[string]interface{}) {
 	// Set NodeJS context variables
 	nodeCmds := [3]string{os.Getenv("NODE_BINARY"), "node", "nodejs"}
 
@@ -106,19 +107,19 @@ func (ctx *CommonJSContext) Initialize(p *Module, opts map[string]interface{}) {
 		ctx.NpmVersion = ""
 	}
 
-	ctx.isNodeModulesPrePopulated = ctx.verifyNodeModules()
+	ctx.isNodeModulesPrePopulated = ctx.verifyNodeModules(m)
 }
 
 // Verify checks if an install needs to be run
 func (ctx *CommonJSContext) Verify(m *Module, opts map[string]interface{}) bool {
-	return ctx.verifyNodeModules()
+	return ctx.verifyNodeModules(m)
 }
 
 // Build determines and executes a CommonJS build based off available tooling in the environment
 func (ctx *CommonJSContext) Build(m *Module, opts map[string]interface{}) error {
-	if ctx.verifyNodeModules() == false || opts["no_cache"].(bool) == true {
+	if ctx.verifyNodeModules(m) == false || opts["no_cache"].(bool) == true {
 		log.Logger.Debug("No prebuilt node_modules directory, building...")
-		if err := ctx.populateNodeModules(); err != nil {
+		if err := ctx.populateNodeModules(m); err != nil {
 			return err
 		}
 	} else {
@@ -137,8 +138,8 @@ func (ctx *CommonJSContext) Build(m *Module, opts map[string]interface{}) error 
 	return nil
 }
 
-func (ctx *CommonJSContext) verifyNodeModules() bool {
-	if _, err := os.Stat("node_modules"); err == nil {
+func (ctx *CommonJSContext) verifyNodeModules(m *Module) bool {
+	if _, err := os.Stat(filepath.Join(m.Dir, "node_modules")); err == nil {
 		// check if node_modules directory looks kinda right
 		// NOTE: we don't have great ways of doing this because there could be no deps
 		return true
@@ -146,7 +147,7 @@ func (ctx *CommonJSContext) verifyNodeModules() bool {
 	return false
 }
 
-func (ctx *CommonJSContext) populateNodeModules() error {
+func (ctx *CommonJSContext) populateNodeModules(m *Module) error {
 	if ctx.NodeCmd == "" || ctx.NodeVersion == "" {
 		return errors.New("no NodeJS installation detected; try setting the $NODE_BINARY environment variable")
 	}
@@ -155,10 +156,12 @@ func (ctx *CommonJSContext) populateNodeModules() error {
 		if ctx.YarnCmd != "" && ctx.YarnVersion != "" {
 			// TODO(xizhao): Verify compatible yarn versions
 			// yarn install
-			exec.Command("yarn", "install", "--production").Output()
+			cmd := exec.Command("yarn", "install", "--production")
+			cmd.Dir = m.Dir
+			cmd.Output()
 
 			// verify yarn build
-			if ctx.verifyNodeModules() == false {
+			if ctx.verifyNodeModules(m) == false {
 				log.Logger.Warning("failed to run Yarn build... falling back to npm")
 			} else {
 				return nil
@@ -173,8 +176,10 @@ func (ctx *CommonJSContext) populateNodeModules() error {
 	}
 
 	// npm install
-	exec.Command("npm", "install", "--production").Output()
-	if ctx.verifyNodeModules() == false {
+	cmd := exec.Command("npm", "install", "--production")
+	cmd.Dir = m.Dir
+	cmd.Output()
+	if ctx.verifyNodeModules(m) == false {
 		return errors.New("failed to run npm build")
 	}
 	return nil
