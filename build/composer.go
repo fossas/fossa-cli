@@ -83,18 +83,20 @@ func (ctx *ComposerContext) Initialize(p *Module, opts map[string]interface{}) {
 }
 
 // Verify checks if the bundler is satisfied and if an install is necessary
-func (ctx *ComposerContext) Verify(p *Module, opts map[string]interface{}) bool {
+func (ctx *ComposerContext) Verify(m *Module, opts map[string]interface{}) bool {
 	// checks if composer.lock is satisfied by composer.json requirements
 	// when fully installed, composer.lock will always be updated and satisfied
 	// NOTE: we can't check the `vendor` dir as composer also relies on a global package dir that can satisfy reqs
-	if _, err := exec.Command(ctx.ComposerCmd, "validate").Output(); err == nil {
+	cmd := exec.Command(ctx.ComposerCmd, "validate")
+	cmd.Dir = m.Dir
+	if _, err := cmd.Output(); err == nil {
 		return true
 	}
 	return false
 }
 
 // Build runs Bundler and collect dep data
-func (ctx *ComposerContext) Build(p *Module, opts map[string]interface{}) error {
+func (ctx *ComposerContext) Build(m *Module, opts map[string]interface{}) error {
 	if ctx.PhpVersion == "" || ctx.PhpCmd == "" {
 		return errors.New("no PHP installation detected; try setting the $PHP_BINARY environment variable")
 	}
@@ -105,10 +107,15 @@ func (ctx *ComposerContext) Build(p *Module, opts map[string]interface{}) error 
 
 	if ctx.isBuildSatisfied == false {
 		log.Logger.Debug("composer build not satisfied, running full install")
-		exec.Command(ctx.ComposerCmd, "install", "--prefer-dist", "--no-dev", "--no-autoloader", "--no-scripts", "--no-progress", "--no-suggest", "--ignore-platform-reqs").Output()
+		cmd := exec.Command(ctx.ComposerCmd, "install", "--prefer-dist", "--no-dev", "--no-autoloader", "--no-scripts", "--no-progress", "--no-suggest", "--ignore-platform-reqs")
+		cmd.Dir = m.Dir
+		cmd.Output()
 	}
 
-	outBundleListCmd, err := exec.Command(ctx.ComposerCmd, "show", "-f", "json").Output()
+	cmd := exec.Command(ctx.ComposerCmd, "show", "-f", "json")
+	cmd.Dir = m.Dir
+	cmd.Output()
+	outBundleListCmd, err := cmd.Output()
 	if err != nil {
 		return errors.New("Unable to list composer dependencies")
 	}
@@ -126,6 +133,6 @@ func (ctx *ComposerContext) Build(p *Module, opts map[string]interface{}) error 
 		dedupedDependencies = append(dedupedDependencies, Dependency(d))
 	}
 
-	p.Build.RawDependencies = Dedupe(dedupedDependencies)
+	m.Build.RawDependencies = Dedupe(dedupedDependencies)
 	return nil
 }
