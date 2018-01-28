@@ -66,12 +66,11 @@ func (ctx *MavenContext) Initialize(p *Module, opts map[string]interface{}) {
 }
 
 // Sets ctx.cachedMvnDepListOutput
-func (ctx *MavenContext) getDepList(p *Module, opts map[string]interface{}) error {
+func (ctx *MavenContext) getDepList(m *Module, opts map[string]interface{}) error {
 	if ctx.cachedMvnDepListOutput != "" {
 		return nil
 	}
-	srcUnitPath := "pom.xml" // TODO: replace with Module.manifest or Module.entry
-	cmdOut, err := exec.Command(ctx.MvnCmd, "dependency:list", "-f", srcUnitPath).Output()
+	cmdOut, err := exec.Command(ctx.MvnCmd, "dependency:list", "-f", m.Manifest).Output()
 	ctx.cachedMvnDepListOutput = string(cmdOut)
 	return err
 }
@@ -83,7 +82,7 @@ func (ctx *MavenContext) Verify(p *Module, opts map[string]interface{}) bool {
 }
 
 // Build runs Bundler and collect dep data
-func (ctx *MavenContext) Build(p *Module, opts map[string]interface{}) error {
+func (ctx *MavenContext) Build(m *Module, opts map[string]interface{}) error {
 	if ctx.MvnCmd == "" || ctx.MvnVersion == "" {
 		return errors.New("no maven or jdk installation detected -- try setting the $MVN_BINARY environment variable.")
 	}
@@ -92,10 +91,10 @@ func (ctx *MavenContext) Build(p *Module, opts map[string]interface{}) error {
 	if ctx.cachedMvnDepListOutput == "" {
 		Logger.Debug("maven project not built, running full install...")
 		// bundle install, no flags as we need to satisfy all reqs
-		exec.Command(ctx.MvnCmd, "clean", "install", "-DskipTests", "-Drat.skip=true").Output()
+		exec.Command(ctx.MvnCmd, "clean", "install", "-DskipTests", "-Drat.skip=true", "-f", m.Manifest).Output
 	}
 
-	err := ctx.getDepList(p, opts)
+	err := ctx.getDepList(m, opts)
 	if err != nil || ctx.cachedMvnDepListOutput == "" {
 		return errors.New("unable to extract maven dependency list; have you built the artifact with `mvn install` yet?")
 	}
@@ -116,6 +115,6 @@ func (ctx *MavenContext) Build(p *Module, opts map[string]interface{}) error {
 		}
 	}
 
-	p.Build.RawDependencies = Dedupe(dependencies)
+	m.Build.RawDependencies = Dedupe(dependencies)
 	return nil
 }
