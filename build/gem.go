@@ -73,15 +73,17 @@ func (ctx *GemContext) Initialize(p *Module, opts map[string]interface{}) {
 }
 
 // Verify checks if the bundler is satisfied and if an install is necessary
-func (ctx *GemContext) Verify(p *Module, opts map[string]interface{}) bool {
-	if _, err := exec.Command(ctx.BundlerCmd, "check").Output(); err == nil {
+func (ctx *GemContext) Verify(m *Module, opts map[string]interface{}) bool {
+	cmd := exec.Command(ctx.BundlerCmd, "check")
+	cmd.Dir = m.Dir
+	if _, err := cmd.Output(); err == nil {
 		return true
 	}
 	return false
 }
 
 // Build runs Bundler and collect dep data
-func (ctx *GemContext) Build(p *Module, opts map[string]interface{}) error {
+func (ctx *GemContext) Build(m *Module, opts map[string]interface{}) error {
 	if ctx.BundlerCmd == "" || ctx.BundlerVersion == "" {
 		return errors.New("no bundler installation detected -- falling back to gem; try setting the $BUNDLER_BINARY environment variable")
 	}
@@ -89,10 +91,14 @@ func (ctx *GemContext) Build(p *Module, opts map[string]interface{}) error {
 	if ctx.isBundlerSatisfied == false {
 		log.Logger.Debug("bundler not satisfied, running full install")
 		// bundle install, no flags as we need to satisfy all reqs
-		exec.Command(ctx.BundlerCmd, "install", "--deployment").Output()
+		cmd := exec.Command(ctx.BundlerCmd, "install", "--deployment")
+		cmd.Dir = m.Dir
+		cmd.Output()
 	}
 
-	outBundleListCmd, err := exec.Command(ctx.BundlerCmd, "list").Output()
+	cmd := exec.Command(ctx.BundlerCmd, "list")
+	cmd.Dir = m.Dir
+	outBundleListCmd, err := cmd.Output()
 	if err != nil {
 		return errors.New("Unable to list rubygems")
 	}
@@ -113,6 +119,6 @@ func (ctx *GemContext) Build(p *Module, opts map[string]interface{}) error {
 		}
 	}
 
-	p.Build.RawDependencies = Dedupe(dependencies)
+	m.Build.RawDependencies = Dedupe(dependencies)
 	return nil
 }
