@@ -129,7 +129,7 @@ func (ctx *CommonJSContext) Build(m *Module, opts map[string]interface{}) error 
 	// Traverse node_modules directory and find all Modules
 	// walk and parse all **/**/node_modules/Module.json
 	// If node_modules is checked in directly, we don't need any env deps
-	deps, err := ctx.traverseNodeModules()
+	deps, err := ctx.traverseNodeModules(m)
 	if err != nil {
 		return err
 	}
@@ -185,13 +185,13 @@ func (ctx *CommonJSContext) populateNodeModules(m *Module) error {
 	return nil
 }
 
-func (ctx *CommonJSContext) traverseNodeModules() ([]Dependency, error) {
+func (ctx *CommonJSContext) traverseNodeModules(m *Module) ([]Dependency, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
 
-	commonjsPkgs, err := zglob.Glob(cwd + "/**/node_modules/*/package.json")
+	commonjsPkgs, err := zglob.Glob(filepath.Join(cwd, m.Dir) + "/**/node_modules/*/package.json")
 	if err != nil {
 		return nil, err
 	}
