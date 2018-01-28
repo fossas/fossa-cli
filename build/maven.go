@@ -91,7 +91,7 @@ func (ctx *MavenContext) Build(m *Module, opts map[string]interface{}) error {
 	if ctx.cachedMvnDepListOutput == "" {
 		Logger.Debug("maven project not built, running full install...")
 		// bundle install, no flags as we need to satisfy all reqs
-		exec.Command(ctx.MvnCmd, "clean", "install", "-DskipTests", "-Drat.skip=true", "-f", m.Manifest).Output
+		exec.Command(ctx.MvnCmd, "clean", "install", "-DskipTests", "-Drat.skip=true", "-f", m.Manifest).Output()
 	}
 
 	err := ctx.getDepList(m, opts)
