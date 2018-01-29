@@ -41,6 +41,7 @@ func main() {
 		cli.BoolFlag{Name: "install, i", Usage: "run a default build in module directories if they have not been pre-built"},
 		cli.BoolFlag{Name: "output, o", Usage: "output build data to JSON and exit; do not upload results to FOSSA"},
 		cli.StringFlag{Name: "log_level, l"},
+		cli.StringFlag{Name: "locator"},
 	}
 
 	app.Commands = []cli.Command{
@@ -51,10 +52,8 @@ func main() {
 			Action:  BuildCmd,
 			Flags: []cli.Flag{
 				// Format: `type:path` e.g. `gopackage:github.com/fossas/fossa-cli/cmd/fossa`
-				cli.StringFlag{Name: "locator"},
 				cli.StringFlag{Name: "entry_point, e"},
 				cli.StringFlag{Name: "type, t"},
-				cli.BoolFlag{Name: "install, i", Usage: "run a default build in module directories if they have not been pre-built"},
 				cli.BoolFlag{Name: "upload, u"},
 				cli.BoolFlag{Name: "no_cache"},
 			},
@@ -101,7 +100,6 @@ func BootstrapCmd(c *cli.Context) error {
 
 	// Read configuration file.
 	config, err := ReadConfig(c.String("config"))
-	log.Logger.Debugf("Configuration: %+v\n", config)
 	if err != nil {
 		log.Logger.Fatalf("error initializing: %s", err)
 	}
@@ -113,7 +111,7 @@ func BootstrapCmd(c *cli.Context) error {
 		config.CLI.LogLevel = logLevelFlag
 	}
 
-	// // Analysis flags.
+	// Analysis flags.
 	entryPointFlag := c.String("entry_point")
 	if entryPointFlag != "" {
 		entryPointSections := strings.Split(entryPointFlag, "")
@@ -142,7 +140,7 @@ func BootstrapCmd(c *cli.Context) error {
 		config.CLI.NoCache = true
 	}
 
-	// // Upload flags.
+	// Upload flags.
 	endpointFlag := c.String("endpoint")
 	if endpointFlag != "" {
 		config.CLI.Server = endpointFlag
@@ -165,6 +163,8 @@ func BootstrapCmd(c *cli.Context) error {
 	if config.CLI.Project == "" {
 		log.Logger.Fatal("could not infer project name from either `.fossa.yaml` or `git` remote named `origin`")
 	}
+
+	log.Logger.Debugf("Configuration: %+v\n", config)
 
 	context.config = config
 	return nil
