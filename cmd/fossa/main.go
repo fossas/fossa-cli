@@ -52,6 +52,7 @@ func main() {
 			Flags: []cli.Flag{
 				// Format: `type:path` e.g. `gopackage:github.com/fossas/fossa-cli/cmd/fossa`
 				cli.StringFlag{Name: "entry_point, e"},
+				cli.StringFlag{Name: "type, t"},
 				cli.BoolFlag{Name: "install, i", Usage: "run a default build in module directories if they have not been pre-built"},
 				cli.BoolFlag{Name: "upload, u"},
 				cli.BoolFlag{Name: "no_cache"},
@@ -213,8 +214,20 @@ func DefaultCmd(c *cli.Context) {
 }
 
 // BuildCmd runs the first build of a given configuration.
-func BuildCmd(_ *cli.Context) {
+func BuildCmd(c *cli.Context) {
 	config := context.config
+
+	if len(config.Analyze.Modules) == 0 && c.String("entry_point") != "" {
+		if c.String("type") == "" {
+			log.Logger.Fatal("module type required\n")
+		}
+		config.Analyze.Modules = append(config.Analyze.Modules, ModuleConfig{
+			Name: ".",
+			Path: c.String("entry_point"),
+			Type: c.String("type"),
+		})
+	}
+
 	mod, err := doBuild(config, 0)
 
 	if err != nil {
@@ -330,6 +343,7 @@ func doUpload(config Config, modules []*build.Module) error {
 	} else if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("bad server response (%s)", responseStr)
 	} else {
+		log.Logger.Debugf("response: %s", responseStr)
 		log.Logger.Info("upload succeeded")
 		var jsonResponse map[string]interface{}
 		if err := json.Unmarshal(responseBytes, &jsonResponse); err != nil {
