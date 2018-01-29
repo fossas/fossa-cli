@@ -203,7 +203,7 @@ func DefaultCmd(c *cli.Context) {
 		err := doUpload(config, builds)
 		if err != nil {
 			s.Stop()
-			log.Logger.Fatalf("Upload failed: %s\n", err.Error())
+			log.Logger.Fatalf("Upload failed: %s. Run with -o to skip upload.\n", err.Error())
 		}
 		s.Stop()
 	} else {
@@ -326,7 +326,7 @@ func doUpload(config Config, modules []*build.Module) error {
 		return errors.New("invalid API key")
 	} else if resp.StatusCode == http.StatusPreconditionRequired {
 		// TODO: handle "Managed Project" workflow
-		return fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo.")
+		return fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo")
 	} else if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("bad server response (%s)", responseStr)
 	} else {
