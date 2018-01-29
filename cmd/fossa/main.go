@@ -101,7 +101,7 @@ func BootstrapCmd(c *cli.Context) error {
 	config, err := ReadConfig(c.String("config"))
 	log.Logger.Debugf("Configuration: %+v\n", config)
 	if err != nil {
-		return err
+		log.Logger.Fatalf("error initializing: %s", err)
 	}
 
 	// Set configuration via flags.
@@ -163,6 +163,10 @@ func BootstrapCmd(c *cli.Context) error {
 // DefaultCmd resolves dependencies and uploads the results.
 func DefaultCmd(c *cli.Context) {
 	config := context.config
+
+	if len(config.Analyze.Modules) == 0 {
+		log.Logger.Fatalf("no modules specified for analysis")
+	}
 
 	// Run the spinner only when we don't rely on stdout
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)

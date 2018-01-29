@@ -108,7 +108,7 @@ func setDefaultValues(c Config) (Config, error) {
 	if len(c.CLI.Locator) == 0 {
 		repo, err := git.PlainOpen(".")
 		if err != nil {
-			return c, err
+			return c, errors.New("no revision found in working directory; try running in a git repo or passing a locator")
 		}
 
 		project := c.CLI.Project
