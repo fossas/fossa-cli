@@ -27,7 +27,7 @@ type cliContext struct {
 }
 
 // main.version is picked up by goreleaser
-var version = "0.2.1"
+var version = "0.2.2"
 var context = cliContext{}
 
 func main() {
