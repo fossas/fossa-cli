@@ -51,6 +51,7 @@ func main() {
 			Action:  BuildCmd,
 			Flags: []cli.Flag{
 				// Format: `type:path` e.g. `gopackage:github.com/fossas/fossa-cli/cmd/fossa`
+				cli.StringFlag{Name: "locator"},
 				cli.StringFlag{Name: "entry_point, e"},
 				cli.StringFlag{Name: "type, t"},
 				cli.BoolFlag{Name: "install, i", Usage: "run a default build in module directories if they have not been pre-built"},
@@ -125,7 +126,7 @@ func BootstrapCmd(c *cli.Context) error {
 		}
 	}
 
-	// // CLI flags.
+	// CLI flags.
 	installFlag := c.Bool("install")
 	if installFlag {
 		config.CLI.Install = true
@@ -155,6 +156,14 @@ func BootstrapCmd(c *cli.Context) error {
 	apiKeyFlag := c.String("api_key")
 	if apiKeyFlag != "" {
 		config.CLI.APIKey = apiKeyFlag
+	}
+
+	if config.CLI.Locator == "" {
+		log.Logger.Fatal("no revision found in working directory; try running in a git repo or passing a locator")
+	}
+
+	if config.CLI.Project == "" {
+		log.Logger.Fatal("could not infer project name from either `.fossa.yaml` or `git` remote named `origin`")
 	}
 
 	context.config = config

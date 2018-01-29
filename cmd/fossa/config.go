@@ -107,28 +107,21 @@ func setDefaultValues(c Config) (Config, error) {
 	// Infer default locator and project from `git`.
 	if len(c.CLI.Locator) == 0 {
 		repo, err := git.PlainOpen(".")
-		if err != nil {
-			return c, errors.New("no revision found in working directory; try running in a git repo or passing a locator")
-		}
-
-		project := c.CLI.Project
-		if len(project) == 0 {
-			origin, err := repo.Remote("origin")
-			if err != nil {
-				return c, err
+		if err == nil {
+			project := c.CLI.Project
+			if len(project) == 0 {
+				origin, err := repo.Remote("origin")
+				if err == nil && origin != nil {
+					project = origin.Config().URLs[0]
+					c.CLI.Project = project
+				}
 			}
-			if origin == nil {
-				return c, errors.New("could not infer project name from either `.fossa.yaml` or `git` remote named `origin`")
-			}
-			project = origin.Config().URLs[0]
-			c.CLI.Project = project
-		}
 
-		revision, err := repo.Head()
-		if err != nil {
-			return c, err
+			revision, err := repo.Head()
+			if err == nil {
+				c.CLI.Locator = "git+" + project + "$" + revision.Hash().String()
+			}
 		}
-		c.CLI.Locator = "git+" + project + "$" + revision.Hash().String()
 	}
 
 	return c, nil
