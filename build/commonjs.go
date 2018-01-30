@@ -198,9 +198,9 @@ func (ctx *CommonJSContext) traverseNodeModules(m *Module) ([]Dependency, error)
 
 	var wg sync.WaitGroup
 	dependencies := make([]CommonJSModule, len(commonjsPkgs))
+	wg.Add(len(commonjsPkgs))
 
 	for i := 0; i < len(commonjsPkgs); i++ {
-		wg.Add(1)
 		go func(path string, index int, wg *sync.WaitGroup) {
 			defer wg.Done()
 			rawPkg, err := ioutil.ReadFile(path)
