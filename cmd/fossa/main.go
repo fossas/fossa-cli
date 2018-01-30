@@ -156,14 +156,6 @@ func BootstrapCmd(c *cli.Context) error {
 		config.CLI.APIKey = apiKeyFlag
 	}
 
-	if config.CLI.Locator == "" {
-		log.Logger.Fatal("no revision found in working directory; try running in a git repo or passing a locator")
-	}
-
-	if config.CLI.Project == "" {
-		log.Logger.Fatal("could not infer project name from either `.fossa.yaml` or `git` remote named `origin`")
-	}
-
 	log.Logger.Debugf("Configuration: %+v\n", config)
 
 	context.config = config
@@ -315,6 +307,14 @@ func doUpload(config Config, modules []*build.Module) error {
 	fossaBaseURL, err := url.Parse(config.CLI.Server)
 	if err != nil {
 		return errors.New("invalid FOSSA endpoint")
+	}
+
+	if config.CLI.Locator == "" {
+		log.Logger.Fatal("no revision found in working directory; try running in a git repo or passing a locator")
+	}
+
+	if config.CLI.Project == "" {
+		log.Logger.Fatal("could not infer project name from either `.fossa.yaml` or `git` remote named `origin`")
 	}
 
 	log.Logger.Debugf("Uploading build data from (%s) modules:", len(modules))
