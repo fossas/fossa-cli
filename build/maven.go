@@ -71,8 +71,13 @@ func (ctx *MavenContext) getDepList(m *Module, opts map[string]interface{}) erro
 		return nil
 	}
 	cmdOut, err := exec.Command(ctx.MvnCmd, "dependency:list", "-f", m.Manifest).Output()
+	if err != nil {
+		ctx.cachedMvnDepListOutput = ""
+		return err
+	}
+
 	ctx.cachedMvnDepListOutput = string(cmdOut)
-	return err
+	return nil
 }
 
 // Verify checks if the bundler is satisfied and if an install is necessary
