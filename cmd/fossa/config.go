@@ -95,21 +95,24 @@ func setDefaultValues(c Config) (Config, error) {
 	}
 
 	// Set default endpoint.
-	if len(c.CLI.Server) == 0 {
-		c.CLI.Server = "https://app.fossa.io"
+	if c.CLI.Server == "" {
+		c.CLI.Server = os.Getenv("FOSSA_ENDPOINT")
+		if c.CLI.Server == "" {
+			c.CLI.Server = "https://app.fossa.io"
+		}
 	}
 
 	// Load API key from environment variable.
-	if len(c.CLI.APIKey) == 0 {
+	if c.CLI.APIKey == "" {
 		c.CLI.APIKey = os.Getenv("FOSSA_API_KEY")
 	}
 
 	// Infer default locator and project from `git`.
-	if len(c.CLI.Locator) == 0 {
+	if c.CLI.Locator == "" {
 		repo, err := git.PlainOpen(".")
 		if err == nil {
 			project := c.CLI.Project
-			if len(project) == 0 {
+			if project == "" {
 				origin, err := repo.Remote("origin")
 				if err == nil && origin != nil {
 					project = origin.Config().URLs[0]
