@@ -40,8 +40,8 @@
 [[projects]]
   name = "github.com/kevinburke/ssh_config"
   packages = ["."]
-  revision = "fa48d7ff1cfb9f26c514b80d520880394293bf08"
-  version = "0.2"
+  revision = "0ff8514904a8ebfcfb3c32ad73e1f8498a7f81b4"
+  version = "0.3"
 
 [[projects]]
   name = "github.com/mattn/go-colorable"
@@ -122,7 +122,7 @@
     "ssh/agent",
     "ssh/knownhosts"
   ]
-  revision = "3d37316aaa6bd9929127ac9a527abf408178ea7b"
+  revision = "1875d0a70c90e57f11972aefd42276df65e895b9"
 
 [[projects]]
   branch = "master"
@@ -137,7 +137,7 @@
     "unix",
     "windows"
   ]
-  revision = "03467258950d845cd1877eab69461b98e8c09219"
+  revision = "3dbebcf8efb6a5011a60c2b4591c1022a759af8a"
 
 [[projects]]
   branch = "master"
