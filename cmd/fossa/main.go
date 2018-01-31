@@ -26,16 +26,17 @@ type cliContext struct {
 	config Config
 }
 
-// main.version is picked up by goreleaser
-var version = "0.2.4"
-var revision string
+// main.{version,revision} are set by linker flags in Makefile and goreleaser
+var version string
+var commit string
+
 var context = cliContext{}
 
 func main() {
 	app := cli.NewApp()
 	app.Name = "fossa-cli"
 	app.Usage = "get dependencies from your code"
-	app.Version = version + " (rev " + revision + ")"
+	app.Version = version + " (revision " + commit + ")"
 	app.Action = DefaultCmd
 	app.Flags = []cli.Flag{
 		cli.StringFlag{Name: "config, c", Usage: "path to config file; defaults to .fossa.yml or .fossa.yaml"},
