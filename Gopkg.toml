@@ -47,3 +47,11 @@
 [[constraint]]
   branch = "v2"
   name = "gopkg.in/yaml.v2"
+
+[[constraint]]
+  name = "github.com/gobwas/glob"
+  version = "0.2.2"
+
+[[constraint]]
+  name = "github.com/bmatcuk/doublestar"
+  version = "1.0.9"

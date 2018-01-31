@@ -14,6 +14,12 @@
   version = "v1.2.0"
 
 [[projects]]
+  name = "github.com/bmatcuk/doublestar"
+  packages = ["."]
+  revision = "b3608229437ba4dc33dae64d56a79a2a73f1f6b2"
+  version = "v1.0.9"
+
+[[projects]]
   name = "github.com/briandowns/spinner"
   packages = ["."]
   revision = "48dbb65d7bd5c74ab50d53d04c949f20e3d14944"
@@ -48,15 +54,6 @@
   packages = ["."]
   revision = "0360b2af4f38e8d38c7fce2a9f4e702702d73a39"
   version = "v0.0.3"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/mattn/go-zglob"
-  packages = [
-    ".",
-    "fastwalk"
-  ]
-  revision = "4959821b481786922ac53e7ef25c61ae19fb7c36"
 
 [[projects]]
   branch = "master"
@@ -229,6 +226,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "385c35c78db3ea614977306c85503c32aba82868f5a3bd368a6c0e53385d8561"
+  inputs-digest = "1f48a131076a0899c4c0ac612a14959cfaf8c1ebdd5b9ef9a938959089d11f63"
   solver-name = "gps-cdcl"
   solver-version = 1

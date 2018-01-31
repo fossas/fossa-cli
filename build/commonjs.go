@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/mattn/go-zglob"
+	"github.com/bmatcuk/doublestar"
 
 	"github.com/fossas/fossa-cli/log"
 )
@@ -191,7 +191,7 @@ func (ctx *CommonJSContext) traverseNodeModules(m *Module) ([]Dependency, error)
 		return nil, err
 	}
 
-	commonjsPkgs, err := zglob.Glob(filepath.Join(cwd, m.Dir) + "/**/node_modules/*/package.json")
+	commonjsPkgs, err := doublestar.Glob(filepath.Join(cwd, m.Dir) + "/**/node_modules/*/package.json")
 	if err != nil {
 		return nil, err
 	}

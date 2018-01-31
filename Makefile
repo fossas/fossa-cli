@@ -16,7 +16,7 @@ endif
 .PHONY: default
 
 default: 
-	GOBIN=${GOBIN} go install -ldflags '-race -X main.revision=$(shell git rev-parse HEAD)' github.com/fossas/fossa-cli/cmd/fossa
+	GOBIN=${GOBIN} go install -ldflags '-X main.revision=$(shell git rev-parse HEAD)' github.com/fossas/fossa-cli/cmd/fossa
 
 clean:
 	rm -f $(GOPATH)/bin/fossa
