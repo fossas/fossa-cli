@@ -1,0 +1,65 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.9
+
+    working_directory: /go/src/github.com/fossas/fossa-cli
+
+    environment:
+      TEST_RESULTS: /tmp/test-results
+
+    steps:
+      - checkout
+      - run: mkdir -p $TEST_RESULTS
+
+      - restore_cache:
+          keys:
+            - gopkg-cache-{{ checksum "Gopkg.lock" }}
+      
+      - run:
+          name: Install `dep`
+          command: |
+            sudo curl -L -o /usr/bin/dep https://github.com/golang/dep/releases/download/v0.4.1/dep-linux-amd64
+            sudo chmod +x /usr/bin/dep
+
+      - run:
+          name: Compile CLI
+          command: |
+            # Invalidate pkg cache for FOSSA CLI binary
+            rm -rf pkg/linux_amd64/github.com/fossas/fossa-cli
+            dep ensure
+            make
+      
+      - run:
+          name: Install `node`
+          command: |
+            curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
+            sudo apt-get install -y nodejs build-essential
+
+      - run:
+          name: Install `yarn`
+          command: |
+            curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+            echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+            sudo apt-get update && sudo apt-get install yarn
+
+      - run:
+          name: Run integration test
+          command: |
+            mkdir -p /tmp/integration-test
+            cd /tmp/integration-test
+            git clone https://github.com/fossas/cli-acceptance-monolith.git
+            cd cli-acceptance-monolith
+            git submodule init
+            git submodule update --recursive
+            yarn
+            yarn run mocha --reporter=mocha-junit-reporter --reporter-options mochaFile=$TEST_RESULTS/mocha/test-results.xml --timeout=30000
+
+      - save_cache:
+          key: gopkg-cache-{{ checksum "Gopkg.lock" }}
+          paths:
+            - "/go/pkg"
+
+      - store_test_results:
+          path: /tmp/test-results
