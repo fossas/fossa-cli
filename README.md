@@ -1,5 +1,7 @@
 <p align="center">
-	<img src="https://fossa.io/images/logo.svg"/>
+	<img src="https://fossa.io/images/logo.svg"/><br/><br/>
+	<a href="https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli?ref=badge_shield" alt="FOSSA Status"><img src="https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli.svg?type=shield"/></a>
+	<a href="https://circleci.com/gh/fossas/fossa-cli" alt="CircleCI Tests"><img src="https://circleci.com/gh/fossas/fossa-cli.svg?style=svg&circle-token=f55f707e21ac39a80127d3372a1a1452ec94f4f7"/></a>
 </p>
 
 # FOSSA CLI
@@ -76,3 +78,5 @@ Please contact [support@fossa.io](mailto:support@fossa.io) for additional licens
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ```
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli?ref=badge_large)
