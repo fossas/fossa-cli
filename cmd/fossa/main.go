@@ -75,7 +75,7 @@ func main() {
 				},
 				cli.StringFlag{
 					Name:   "api_key, k",
-					EnvVar: "FOSSA_CLI_API_KEY",
+					EnvVar: "FOSSA_API_KEY",
 				},
 			},
 		},
@@ -347,7 +347,7 @@ func doUpload(config Config, modules []*build.Module) error {
 	responseStr := string(responseBytes)
 
 	if resp.StatusCode == http.StatusForbidden {
-		return errors.New("invalid API key")
+		return errors.New("invalid API key, check the $FOSSA_API_KEY environment variable")
 	} else if resp.StatusCode == http.StatusPreconditionRequired {
 		// TODO: handle "Managed Project" workflow
 		return fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo")
