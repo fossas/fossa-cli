@@ -12,6 +12,8 @@ This tool integrates directly with the [FOSSA](https://fossa.io) web service to 
 
 The CLI provides an alternative path to integrating your code repositories and builds in a way that doesn't require code access or FOSSA environment setup, or enrich dependency reports with dynamically confirmed dependency artifacts.
 
+**FOSSA CLI is currently in alpha and will have a changing API; join our contributor group to get development updates**
+
 ## Installation
 
 `fossa-cli` is compatible with Windows, Darwin (MacOS) and *nix-based operating systems.
