@@ -6,6 +6,8 @@
 
 # FOSSA CLI
 
+## WARNING: This tool is being actively developed. There may be breaking changes.
+
 `fossa-cli` is a tool that interrogates your environment and build to discover the dependencies getting included in your software.  It can be used alone or within build systems to dig out dependency data from complex monolithic builds.
 
 This tool integrates directly with the [FOSSA](https://fossa.io) web service to provide open source reports, search intelligence, vulnerability/license scanning and triage workflows to help your organization to manage its open source use.
@@ -18,6 +20,8 @@ The CLI provides an alternative path to integrating your code repositories and b
 
 `fossa-cli` is compatible with Windows, Darwin (MacOS) and *nix-based operating systems.
 
+<!--
+TODO: real installation instructions
 ### Install with Curl (Linux / MacOS)
 
 ```bash
@@ -49,6 +53,7 @@ OR
 ```bash
   fossa
 ```
+-->
 
 ## Development
 
