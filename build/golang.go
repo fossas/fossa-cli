@@ -113,10 +113,11 @@ func getDeps(pkg *depth.Pkg) ([]Dependency, error) {
 		}
 		return nil, errors.New("dependency of stdlib detected (this should never happen)")
 	}
-	// Fail on "unresolved" packages (i.e. ones that are not in the filesystem) as they indicate an incomplete build.
-	if !pkg.Resolved {
-		return nil, errors.New("could not resolve package: " + pkg.Name)
-	}
+	// // Fail on "unresolved" packages (i.e. ones that are not in the filesystem) as they indicate an incomplete build.
+	// // This is commented out because apparently some people have crazy builds.
+	// if !pkg.Resolved {
+	// 	return nil, errors.New("could not resolve package: " + pkg.Name)
+	// }
 	return append(deps, Gopkg{ImportPath: pkg.Name}), nil
 }
 
