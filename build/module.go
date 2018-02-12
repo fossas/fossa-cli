@@ -62,6 +62,9 @@ func (m *Module) NewBuild(name string) Build {
 	case "composerpackage":
 		compCtx := ComposerContext{}
 		ctx = &compCtx
+	case "sbtpackage":
+		sbtCtx := SBTContext{}
+		ctx = &sbtCtx
 	}
 
 	build.Context = &ctx
