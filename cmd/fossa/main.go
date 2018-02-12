@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -106,7 +107,6 @@ type defaultConfig struct {
 }
 
 func initialize(c *cli.Context) (cliConfig, error) {
-
 	var config = cliConfig{
 		apiKey:   c.String("api_key"),
 		project:  c.String("project"),
@@ -158,6 +158,8 @@ func initialize(c *cli.Context) (cliConfig, error) {
 	if len(config.modules) == 0 {
 		config.modules = configFile.Analyze.Modules
 	}
+
+	mainLogger.Debugf("Configuration initialized: %+v\n", config)
 
 	// Configure logging.
 	formatter := logging.MustStringFormatter(
@@ -246,7 +248,7 @@ func defaultCmd(c *cli.Context) {
 	s.Suffix = " Initializing..."
 	s.Start()
 
-	dependencies := []module.Dependency{}
+	dependencies := make(analysis)
 
 	for i, m := range config.modules {
 		s.Suffix = fmt.Sprintf(" Running build analysis (%d/%d): %s", i+1, len(config.modules), m.Name)
@@ -286,19 +288,33 @@ func defaultCmd(c *cli.Context) {
 		s.Restart()
 		deps, err := builder.Analyze(module)
 
-		dependencies = append(dependencies, deps...)
+		dependencies[analysisKey{
+			builder: builder,
+			module:  module,
+		}] = deps
+	}
+
+	if config.analyzeConfig.output {
+		normalModules, err := normalizeAnalysis(dependencies)
+		if err != nil {
+			mainLogger.Fatalf("Could not normalize build data: %s\n", err.Error())
+		}
+		buildData, err := json.Marshal(normalModules)
+		if err != nil {
+			mainLogger.Fatalf("Could marshal analysis results: %s\n", err.Error())
+		}
+		fmt.Println(string(buildData))
+	}
+
+	if config.analyzeConfig.noUpload {
+		return
 	}
 
 	s.Suffix = fmt.Sprintf(" Uploading build results (%d/%d)...", len(config.modules), len(config.modules))
 	s.Restart()
-	// err = doUpload(config, builds)
-	// if err != nil {
-	// 	s.Stop()
-	// 	mainLogger.Fatalf("Upload failed: %s. Run with -o to skip upload.\n", err.Error())
-	// }
-	// s.Stop()
-	// if config.analyzeConfig.output {
-	// 	output, _ := createBuildData(builds)
-	// 	fmt.Print(string(output))
-	// }
+	err = doUpload(config, dependencies)
+	if err != nil {
+		s.Stop()
+		mainLogger.Fatalf("Upload failed: %s\n", err.Error())
+	}
 }

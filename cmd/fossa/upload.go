@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/fossas/fossa-cli/module"
@@ -75,6 +76,18 @@ func normalize(builder module.Builder, m module.Module, deps []module.Dependency
 	}, nil
 }
 
+func normalizeAnalysis(results analysis) ([]normalizedModule, error) {
+	var normalized []normalizedModule
+	for key, deps := range results {
+		n, err := normalize(key.builder, key.module, deps)
+		if err != nil {
+			return nil, err
+		}
+		normalized = append(normalized, n)
+	}
+	return normalized, nil
+}
+
 func doUpload(config cliConfig, results analysis) error {
 	fossaBaseURL, err := url.Parse(config.endpoint)
 	if err != nil {
@@ -90,20 +103,16 @@ func doUpload(config cliConfig, results analysis) error {
 	}
 
 	// Re-marshal into build data
-	var normalized []normalizedModule
-	for key, deps := range results {
-		n, err := normalize(key.builder, key.module, deps)
-		if err != nil {
-			return err
-		}
-		normalized = append(normalized, n)
-	}
-	buildData, err := json.Marshal(normalized)
+	normalModules, err := normalizeAnalysis(results)
 	if err != nil {
-		return errors.New("invalid build data")
+		return errors.New("could not normalize build data")
+	}
+	buildData, err := json.Marshal(normalModules)
+	if err != nil {
+		return err
 	}
 
-	analysisLogger.Debugf("Uploading build data from (%s) modules: %s", len(normalized), string(buildData))
+	analysisLogger.Debugf("Uploading build data from (%s) modules: %s", len(normalModules), string(buildData))
 
 	postRef, _ := url.Parse("/api/builds/custom?locator=" + url.QueryEscape(config.project+"$"+config.revision) + "&v=" + version)
 	postURL := fossaBaseURL.ResolveReference(postRef).String()
@@ -140,10 +149,10 @@ func doUpload(config cliConfig, results analysis) error {
 	}
 	locParts := strings.Split(jsonResponse["locator"].(string), "$")
 	getRef, _ := url.Parse("/projects/" + url.QueryEscape(locParts[0]) + "/refs/branch/master/" + url.QueryEscape(locParts[1]))
-	fmt.Println("\n============================================================")
-	fmt.Println("   View FOSSA Report:")
-	fmt.Println("   " + fossaBaseURL.ResolveReference(getRef).String())
-	fmt.Println("\n============================================================")
+	fmt.Fprintln(os.Stderr, "\n============================================================\n")
+	fmt.Fprintln(os.Stderr, "   View FOSSA Report:")
+	fmt.Fprintln(os.Stderr, "   "+fossaBaseURL.ResolveReference(getRef).String())
+	fmt.Fprintln(os.Stderr, "\n============================================================")
 
 	return nil
 }

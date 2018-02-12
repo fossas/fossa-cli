@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
@@ -47,5 +48,5 @@ func buildCmd(c *cli.Context) {
 		}
 	}
 
-	fmt.Println("Build succeeded, ready to analyze!")
+	fmt.Fprintln(os.Stderr, "Build succeeded, ready to analyze!")
 }

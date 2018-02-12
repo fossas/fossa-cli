@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/fossas/fossa-cli/module"
 	logging "github.com/op/go-logging"
@@ -33,17 +34,26 @@ func analyzeCmd(c *cli.Context) {
 	}
 	analysisLogger.Debugf("Analysis complete: %+v\n", analysis)
 
-	if config.analyzeConfig.noUpload {
-		if config.analyzeConfig.output {
-			fmt.Println(json.Marshal(analysis))
-		} else {
-			fmt.Println("Analysis succeeded!")
-		}
-	} else {
-		err = doUpload(config, analysis)
+	if config.analyzeConfig.output {
+		normalModules, err := normalizeAnalysis(analysis)
 		if err != nil {
-			analysisLogger.Fatalf("Upload failed: %s\n", err.Error())
+			mainLogger.Fatalf("Could not normalize build data: %s\n", err.Error())
 		}
+		buildData, err := json.Marshal(normalModules)
+		if err != nil {
+			mainLogger.Fatalf("Could marshal analysis results: %s\n", err.Error())
+		}
+		fmt.Println(string(buildData))
+	}
+
+	if config.analyzeConfig.noUpload {
+		fmt.Fprintln(os.Stderr, "Analysis succeeded!")
+		return
+	}
+
+	err = doUpload(config, analysis)
+	if err != nil {
+		analysisLogger.Fatalf("Upload failed: %s\n", err.Error())
 	}
 }
 
