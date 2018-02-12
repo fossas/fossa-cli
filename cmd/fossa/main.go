@@ -136,9 +136,15 @@ func initialize(c *cli.Context) (cliConfig, error) {
 		return cliConfig{}, err
 	}
 
-	locatorSections := strings.Split(configFile.CLI.Locator, "$")
-	locatorProject := locatorSections[0]
-	locatorRevision := locatorSections[1]
+	var locatorSections []string
+	var locatorProject string
+	var locatorRevision string
+
+	if configFile.CLI.Locator != "" {
+		locatorSections = strings.Split(configFile.CLI.Locator, "$")
+		locatorProject = locatorSections[0]
+		locatorRevision = locatorSections[1]
+	}
 
 	if config.apiKey == "" {
 		config.apiKey = configFile.CLI.APIKey
@@ -202,6 +208,7 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 
 	switch moduleConfig.Type {
 	case "nodejs":
+		fallthrough
 	case "commonjspackage":
 		mainLogger.Debug("Got NodeJS module.")
 		builder = &build.NodeJSBuilder{}
@@ -223,7 +230,27 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 			Target: filepath.Join(modulePath, "package.json"),
 			Dir:    modulePath,
 		}
-		break
+	case "bower":
+		mainLogger.Debug("Got Bower module.")
+		builder = &build.BowerBuilder{}
+
+		modulePath, err := filepath.Abs(moduleConfig.Path)
+		if filepath.Base(modulePath) == "bower.json" {
+			modulePath = filepath.Dir(modulePath)
+		}
+		if err != nil {
+			return nil, m, err
+		}
+		moduleName := moduleConfig.Name
+		if moduleName == "" {
+			moduleName = moduleConfig.Path
+		}
+		m = module.Module{
+			Name:   moduleName,
+			Type:   module.Type("bower"),
+			Target: filepath.Join(modulePath, "bower.json"),
+			Dir:    modulePath,
+		}
 	default:
 		mainLogger.Debug("Got unknown module.")
 		return builder, m, errors.New("unknown module type: " + string(moduleConfig.Type))
