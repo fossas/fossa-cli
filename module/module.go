@@ -45,10 +45,10 @@ type Builder interface {
 	// Build runs a best-effort attempt at building the module.
 	Build(m Module, force bool) error
 	// Analyze returns the dependencies of a module.
-	Analyze(m Module) ([]Dependency, error)
+	Analyze(m Module, allowUnresolved bool) ([]Dependency, error)
 
 	// IsBuilt checks whether a module has been built.
-	IsBuilt(m Module) (bool, error)
+	IsBuilt(m Module, allowUnresolved bool) (bool, error)
 	// IsModule checks whether a build target is a valid module. This is used for
 	// inferring default configurations.
 	IsModule(target string) (bool, error)

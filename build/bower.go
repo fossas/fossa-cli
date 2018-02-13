@@ -18,25 +18,25 @@ import (
 
 var bowerLogger = logging.MustGetLogger("bower")
 
-// BowerDependency implements Dependency for BowerBuilder.
-type BowerDependency struct {
+// BowerComponent implements Dependency for BowerBuilder.
+type BowerComponent struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
 }
 
-// Fetcher always returns bower for BowerDependency. TODO: Support git and other
+// Fetcher always returns bower for BowerComponent. TODO: Support git and other
 // dependency sources.
-func (m BowerDependency) Fetcher() string {
+func (m BowerComponent) Fetcher() string {
 	return "bower" // TODO: support git and etc...
 }
 
-// Package returns the package name for BowerDependency
-func (m BowerDependency) Package() string {
+// Package returns the package name for BowerComponent
+func (m BowerComponent) Package() string {
 	return m.Name
 }
 
-// Revision returns the version for BowerDependency
-func (m BowerDependency) Revision() string {
+// Revision returns the version for BowerComponent
+func (m BowerComponent) Revision() string {
 	return m.Version
 }
 
@@ -109,7 +109,7 @@ func (builder *BowerBuilder) Build(m module.Module, force bool) error {
 	return err
 }
 
-func (builder *BowerBuilder) Analyze(m module.Module) ([]module.Dependency, error) {
+func (builder *BowerBuilder) Analyze(m module.Module, _ bool) ([]module.Dependency, error) {
 	bowerLogger.Debugf("Running analysis on Bower module...\n")
 	bowerComponents, err := doublestar.Glob(filepath.Join(m.Dir, "**", "bower_components", "*", ".bower.json"))
 	if err != nil {
@@ -118,7 +118,7 @@ func (builder *BowerBuilder) Analyze(m module.Module) ([]module.Dependency, erro
 	bowerLogger.Debugf("Found %d modules from globstar.\n", len(bowerComponents))
 
 	var wg sync.WaitGroup
-	dependencies := make([]BowerDependency, len(bowerComponents))
+	dependencies := make([]BowerComponent, len(bowerComponents))
 	wg.Add(len(bowerComponents))
 
 	for i := 0; i < len(bowerComponents); i++ {
@@ -146,7 +146,7 @@ func (builder *BowerBuilder) Analyze(m module.Module) ([]module.Dependency, erro
 	return deps, nil
 }
 
-func (builder *BowerBuilder) IsBuilt(m module.Module) (bool, error) {
+func (builder *BowerBuilder) IsBuilt(m module.Module, _ bool) (bool, error) {
 	bowerComponentsPath := filepath.Join(m.Dir, "bower_components")
 	bowerLogger.Debugf("Checking bower_components at %s\n", bowerComponentsPath)
 	// TODO: Check if the installed modules are consistent with what's in the

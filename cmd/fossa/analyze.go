@@ -28,7 +28,7 @@ func analyzeCmd(c *cli.Context) {
 		buildLogger.Fatal("No modules specified.\n")
 	}
 
-	analysis, err := doAnalyze(config.modules)
+	analysis, err := doAnalyze(config.modules, config.analyzeConfig.allowUnresolved)
 	if err != nil {
 		analysisLogger.Fatalf("Analysis failed: %s\n", err.Error())
 	}
@@ -64,7 +64,7 @@ type analysisKey struct {
 
 type analysis map[analysisKey][]module.Dependency
 
-func doAnalyze(modules []moduleConfig) (analysis, error) {
+func doAnalyze(modules []moduleConfig, allowUnresolved bool) (analysis, error) {
 	analysisLogger.Debugf("Running analysis on modules: %+v\n", modules)
 	dependencies := make(analysis)
 
@@ -79,15 +79,15 @@ func doAnalyze(modules []moduleConfig) (analysis, error) {
 			return nil, errors.New("failed to initialize build: " + err.Error())
 		}
 
-		isBuilt, err := builder.IsBuilt(m)
+		isBuilt, err := builder.IsBuilt(m, allowUnresolved)
 		if err != nil {
-			return nil, errors.New("could not determine whether module " + m.Name + " is built")
+			return nil, fmt.Errorf("could not determine whether module %s is built: %s", m.Name, err.Error())
 		}
 		if !isBuilt {
 			return nil, errors.New("module " + m.Name + " does not appear to be built (try first running your build or `fossa build`, and then running `fossa`)")
 		}
 
-		deps, err := builder.Analyze(m)
+		deps, err := builder.Analyze(m, allowUnresolved)
 		if err != nil {
 			return nil, errors.New("analysis failed on module " + m.Name + ": " + err.Error())
 		}

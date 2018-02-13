@@ -34,7 +34,7 @@ func buildCmd(c *cli.Context) {
 			buildLogger.Fatalf("Failed to initialize build: %s\n", err.Error())
 		}
 
-		isBuilt, err := builder.IsBuilt(module)
+		isBuilt, err := builder.IsBuilt(module, config.analyzeConfig.allowUnresolved)
 		if err != nil {
 			buildLogger.Fatalf("Could not determine whether module %s is built.\n", module.Name)
 		}

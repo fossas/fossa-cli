@@ -18,25 +18,25 @@ import (
 
 var nodejsLogger = logging.MustGetLogger("nodejs")
 
-// NodeJSDependency implements Dependency for NodeJSBuilder.
-type NodeJSDependency struct {
+// NodeModule implements Dependency for NodeJSBuilder.
+type NodeModule struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
 }
 
-// Fetcher always returns npm for NodeJSDependency. TODO: Support git and other
+// Fetcher always returns npm for NodeModule. TODO: Support git and other
 // dependency sources.
-func (m NodeJSDependency) Fetcher() string {
+func (m NodeModule) Fetcher() string {
 	return "npm" // TODO: support git and etc...
 }
 
-// Package returns the package name for NodeJSDependency
-func (m NodeJSDependency) Package() string {
+// Package returns the package name for NodeModule
+func (m NodeModule) Package() string {
 	return m.Name
 }
 
-// Revision returns the version for NodeJSDependency
-func (m NodeJSDependency) Revision() string {
+// Revision returns the version for NodeModule
+func (m NodeModule) Revision() string {
 	return m.Version
 }
 
@@ -137,7 +137,7 @@ func (builder *NodeJSBuilder) Build(m module.Module, force bool) error {
 	return err
 }
 
-func (builder *NodeJSBuilder) Analyze(m module.Module) ([]module.Dependency, error) {
+func (builder *NodeJSBuilder) Analyze(m module.Module, _ bool) ([]module.Dependency, error) {
 	nodejsLogger.Debugf("Running analysis on Nodejs module...\n")
 	nodeModules, err := doublestar.Glob(filepath.Join(m.Dir, "**", "node_modules", "*", "package.json"))
 	if err != nil {
@@ -146,7 +146,7 @@ func (builder *NodeJSBuilder) Analyze(m module.Module) ([]module.Dependency, err
 	nodejsLogger.Debugf("Found %d modules from globstar.\n", len(nodeModules))
 
 	var wg sync.WaitGroup
-	dependencies := make([]NodeJSDependency, len(nodeModules))
+	dependencies := make([]NodeModule, len(nodeModules))
 	wg.Add(len(nodeModules))
 
 	for i := 0; i < len(nodeModules); i++ {
@@ -174,7 +174,7 @@ func (builder *NodeJSBuilder) Analyze(m module.Module) ([]module.Dependency, err
 	return deps, nil
 }
 
-func (builder *NodeJSBuilder) IsBuilt(m module.Module) (bool, error) {
+func (builder *NodeJSBuilder) IsBuilt(m module.Module, _ bool) (bool, error) {
 	nodeModulesPath := filepath.Join(m.Dir, "node_modules")
 	nodejsLogger.Debugf("Checking node_modules at %s\n", nodeModulesPath)
 	// TODO: Check if the installed modules are consistent with what's in the

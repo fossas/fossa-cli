@@ -17,7 +17,7 @@ import (
 
 var composerLogger = logging.MustGetLogger("composer")
 
-// ComposerPackage represents metadata from Composer files
+// ComposerPackage implements Dependency for Composer
 type ComposerPackage struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
@@ -111,7 +111,7 @@ func (builder *ComposerBuilder) Build(m module.Module, force bool) error {
 	return nil
 }
 
-func (builder *ComposerBuilder) Analyze(m module.Module) ([]module.Dependency, error) {
+func (builder *ComposerBuilder) Analyze(m module.Module, _ bool) ([]module.Dependency, error) {
 	cmd := exec.Command(builder.ComposerCmd, "show", "-f", "json", "--no-ansi")
 	cmd.Dir = m.Dir
 	composerShowOutput, err := cmd.Output()
@@ -135,7 +135,7 @@ func (builder *ComposerBuilder) Analyze(m module.Module) ([]module.Dependency, e
 	return deps, nil
 }
 
-func (builder *ComposerBuilder) IsBuilt(m module.Module) (bool, error) {
+func (builder *ComposerBuilder) IsBuilt(m module.Module, _ bool) (bool, error) {
 	composerLogger.Debugf("Checking whether %s is built...\n", m.Name)
 	cmd := exec.Command(builder.ComposerCmd, "show", "--no-ansi")
 	cmd.Dir = m.Dir

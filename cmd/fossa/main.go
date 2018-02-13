@@ -200,11 +200,42 @@ func parseModuleFlag(moduleFlag string) []moduleConfig {
 	return config
 }
 
+func setupModule(config moduleConfig, manifestName string, moduleType module.Type) (module.Module, error) {
+	var m module.Module
+
+	modulePath, err := filepath.Abs(config.Path)
+	if filepath.Base(modulePath) == manifestName {
+		modulePath = filepath.Dir(modulePath)
+	}
+	if err != nil {
+		return m, err
+	}
+
+	moduleName := config.Name
+	if moduleName == "" {
+		moduleName = config.Path
+	}
+
+	m = module.Module{
+		Name:   moduleName,
+		Type:   moduleType,
+		Target: filepath.Join(modulePath, manifestName),
+		Dir:    modulePath,
+	}
+
+	mainLogger.Debugf("Module setup complete: %#v\n", m)
+
+	return m, nil
+}
+
 func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Module, error) {
 	mainLogger.Debugf("Resolving moduleConfig: %+v\n", moduleConfig)
 
+	// Don't use `:=` within each switch case, or you'll create a new binding that
+	// shadows these bindings (apparently switches create a new scope...).
 	var builder module.Builder
 	var m module.Module
+	var err error
 
 	switch moduleConfig.Type {
 	case "nodejs":
@@ -212,72 +243,39 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 	case "commonjspackage":
 		mainLogger.Debug("Got NodeJS module.")
 		builder = &build.NodeJSBuilder{}
-
-		modulePath, err := filepath.Abs(moduleConfig.Path)
-		if filepath.Base(modulePath) == "package.json" {
-			modulePath = filepath.Dir(modulePath)
-		}
+		m, err = setupModule(moduleConfig, "package.json", module.Nodejs)
 		if err != nil {
 			return nil, m, err
-		}
-		moduleName := moduleConfig.Name
-		if moduleName == "" {
-			moduleName = moduleConfig.Path
-		}
-		m = module.Module{
-			Name:   moduleName,
-			Type:   module.Type("nodejs"),
-			Target: filepath.Join(modulePath, "package.json"),
-			Dir:    modulePath,
 		}
 	case "bower":
 		mainLogger.Debug("Got Bower module.")
 		builder = &build.BowerBuilder{}
-
-		modulePath, err := filepath.Abs(moduleConfig.Path)
-		if filepath.Base(modulePath) == "bower.json" {
-			modulePath = filepath.Dir(modulePath)
-		}
+		m, err = setupModule(moduleConfig, "bower.json", module.Bower)
 		if err != nil {
 			return nil, m, err
-		}
-		moduleName := moduleConfig.Name
-		if moduleName == "" {
-			moduleName = moduleConfig.Path
-		}
-		m = module.Module{
-			Name:   moduleName,
-			Type:   module.Type("bower"),
-			Target: filepath.Join(modulePath, "bower.json"),
-			Dir:    modulePath,
 		}
 	case "composer":
 		mainLogger.Debug("Got Composer module.")
 		builder = &build.ComposerBuilder{}
-
-		modulePath, err := filepath.Abs(moduleConfig.Path)
-		if filepath.Base(modulePath) == "composer.json" {
-			modulePath = filepath.Dir(modulePath)
-		}
+		m, err = setupModule(moduleConfig, "composer.json", module.Composer)
 		if err != nil {
 			return nil, m, err
 		}
-		moduleName := moduleConfig.Name
-		if moduleName == "" {
-			moduleName = moduleConfig.Path
-		}
-		m = module.Module{
-			Name:   moduleName,
-			Type:   module.Type("composer"),
-			Target: filepath.Join(modulePath, "composer.json"),
-			Dir:    modulePath,
+	case "go":
+		mainLogger.Debug("Got Go module.")
+		builder = &build.GoBuilder{}
+		m, err = setupModule(moduleConfig, "", module.Golang)
+		// Target should be relative to $GOPATH
+		m.Target = strings.TrimPrefix(m.Target, filepath.Join(os.Getenv("GOPATH"), "src")+"/")
+		if err != nil {
+			return nil, m, err
 		}
 	default:
 		mainLogger.Debug("Got unknown module.")
 		return builder, m, errors.New("unknown module type: " + string(moduleConfig.Type))
 	}
 
-	mainLogger.Debugf("Resolved moduleConfig to: %+v, %+v\n", builder, m)
+	mainLogger.Debugf("Resolved moduleConfig to: %#v, %#v\n", builder, m)
 	return builder, m, nil
 }
 
@@ -312,7 +310,7 @@ func defaultCmd(c *cli.Context) {
 			buildLogger.Fatalf("Failed to initialize build: %s\n", err.Error())
 		}
 
-		isBuilt, err := builder.IsBuilt(module)
+		isBuilt, err := builder.IsBuilt(module, config.analyzeConfig.allowUnresolved)
 		if err != nil {
 			mainLogger.Fatalf("Could not determine whether module %s is built.\n", module.Name)
 		}
@@ -334,7 +332,7 @@ func defaultCmd(c *cli.Context) {
 
 		s.Suffix = fmt.Sprintf(" Running module analysis (%d/%d): %s", i+1, len(config.modules), m.Path)
 		s.Restart()
-		deps, err := builder.Analyze(module)
+		deps, err := builder.Analyze(module, config.analyzeConfig.allowUnresolved)
 
 		dependencies[analysisKey{
 			builder: builder,
