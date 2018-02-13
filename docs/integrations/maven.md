@@ -1,6 +1,6 @@
 # Maven Support
 
-Maven support in Fossa CLI depends on the following tools existing in your environment:
+Maven support in FOSSA CLI depends on the following tools existing in your environment:
 
 - Java
 - Maven
@@ -8,22 +8,22 @@ Maven support in Fossa CLI depends on the following tools existing in your envir
 
 ## Configuration
 
-Add a `MavenArtifact` module with the **relative** path to the `pom.xml` in your root directory.
+Add a `maven` module with the **relative** path to the `pom.xml` in your root directory.
 
 ```yaml
 analyze:
   modules:
-    - name: yourmavenpackage
+    - name: your-maven-project
       path: pom.xml
-      type: MavenArtifact
+      type: maven
 ```
 
-If you have an existing passing production build, you can run `fossa` in your existing environment and it should succeed.
+If you have an existing passing production build, you can run `fossa` from within the build environment and it should succeed.
 
-Otherwise, you can run `fossa build` to execute with a default build command `mvn clean install -DskipTests -Drat.skip=true -f $PATH_TO_POM`.
+Otherwise, you can run `fossa build` to execute the default build command `mvn clean install -DskipTests -Drat.skip=true -f $PATH_TO_POM`.
 
 ## Troubleshooting
 
-Fossa CLI runs and parses the output of the `mvn:dependencyList` plugin to generate dependency IDs.  If FOSSA fails, chances are your build or the `mvn:dependencyList` plugin is failing.
+FOSSA CLI runs and parses the output of the `mvn:dependencyList` plugin to generate dependency IDs.  If FOSSA fails, your build or the `mvn:dependencyList` plugin might be failing.
 
 Run `mvn:dependencyList -f $PATH_TO_POM` and check the output to diagnose what went wrong.
