@@ -60,7 +60,7 @@ func (builder *NodeJSBuilder) Initialize() error {
 	nodeCmds := [3]string{os.Getenv("NODE_BINARY"), "node", "nodejs"}
 	for i := 0; true; i++ {
 		if i >= len(nodeCmds) {
-			return errors.New("could not find Nodejs binary (try setting the $NODE_BINARY environment variable)")
+			return errors.New("could not find Nodejs binary (try setting $NODE_BINARY)")
 		}
 		if nodeCmds[i] == "" {
 			continue
@@ -95,6 +95,10 @@ func (builder *NodeJSBuilder) Initialize() error {
 		builder.YarnVersion = strings.TrimSpace(string(yarnVersionOutput))
 	}
 
+	if (builder.NpmCmd == "" || builder.NpmVersion == "") && (builder.YarnCmd == "" || builder.YarnVersion == "") {
+		return errors.New("could not find NPM binary or Yarn binary (try setting $NPM_BINARY or $YARN_BINARY)")
+	}
+
 	nodejsLogger.Debugf("Initialized Nodejs builder: %+v\n", builder)
 
 	return nil
@@ -116,7 +120,7 @@ func (builder *NodeJSBuilder) Build(m module.Module, force bool) error {
 	if _, err := os.Stat(filepath.Join(m.Dir, "yarn.lock")); err == nil {
 		nodejsLogger.Debugf("Yarn lockfile detected.\n")
 		if builder.YarnCmd == "" {
-			return errors.New("Yarn lockfile found but no Yarn binary found (try setting $YARN_BINARY environment variable)")
+			return errors.New("Yarn lockfile found but could not find Yarn binary (try setting $YARN_BINARY)")
 		}
 
 		// TODO(xizhao): Verify compatible yarn versions
@@ -183,4 +187,8 @@ func (builder *NodeJSBuilder) IsBuilt(m module.Module) (bool, error) {
 
 func (builder *NodeJSBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for NodeJSBuilder")
+}
+
+func (builder *NodeJSBuilder) InferModule(target string) (module.Module, error) {
+	return module.Module{}, errors.New("InferModule is not implemented for NodeJSBuilder")
 }

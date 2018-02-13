@@ -165,8 +165,6 @@ func initialize(c *cli.Context) (cliConfig, error) {
 		config.modules = configFile.Analyze.Modules
 	}
 
-	mainLogger.Debugf("Configuration initialized: %+v\n", config)
-
 	// Configure logging.
 	formatter := logging.MustStringFormatter(
 		`%{color}%{time} %{level} %{module}:%{shortpkg}/%{shortfile}/%{shortfunc}%{color:reset} %{message}`,
@@ -177,6 +175,8 @@ func initialize(c *cli.Context) (cliConfig, error) {
 		stderrBackend.SetLevel(logging.DEBUG, "")
 	}
 	logging.SetBackend(stderrBackend)
+
+	mainLogger.Debugf("Configuration initialized: %+v\n", config)
 
 	return config, nil
 }
@@ -249,6 +249,27 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 			Name:   moduleName,
 			Type:   module.Type("bower"),
 			Target: filepath.Join(modulePath, "bower.json"),
+			Dir:    modulePath,
+		}
+	case "composer":
+		mainLogger.Debug("Got Composer module.")
+		builder = &build.ComposerBuilder{}
+
+		modulePath, err := filepath.Abs(moduleConfig.Path)
+		if filepath.Base(modulePath) == "composer.json" {
+			modulePath = filepath.Dir(modulePath)
+		}
+		if err != nil {
+			return nil, m, err
+		}
+		moduleName := moduleConfig.Name
+		if moduleName == "" {
+			moduleName = moduleConfig.Path
+		}
+		m = module.Module{
+			Name:   moduleName,
+			Type:   module.Type("composer"),
+			Target: filepath.Join(modulePath, "composer.json"),
 			Dir:    modulePath,
 		}
 	default:

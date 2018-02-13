@@ -57,7 +57,7 @@ func (builder *BowerBuilder) Initialize() error {
 	nodeCmds := [3]string{os.Getenv("NODE_BINARY"), "node", "nodejs"}
 	for i := 0; true; i++ {
 		if i >= len(nodeCmds) {
-			return errors.New("could not find Nodejs binary (try setting the $NODE_BINARY environment variable)")
+			return errors.New("could not find Nodejs binary (try setting $NODE_BINARY)")
 		}
 		if nodeCmds[i] == "" {
 			continue
@@ -80,6 +80,10 @@ func (builder *BowerBuilder) Initialize() error {
 	bowerVersionOutput, err := exec.Command(builder.BowerCmd, "-v").Output()
 	if err == nil && len(bowerVersionOutput) >= 5 {
 		builder.BowerVersion = strings.TrimSpace(string(bowerVersionOutput))
+	}
+
+	if builder.BowerCmd == "" || builder.BowerVersion == "" {
+		return errors.New("could not find Bower binary (try setting $BOWER_BINARY)")
 	}
 
 	bowerLogger.Debugf("Initialized Bower builder: %+v\n", builder)
@@ -155,4 +159,8 @@ func (builder *BowerBuilder) IsBuilt(m module.Module) (bool, error) {
 
 func (builder *BowerBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for BowerBuilder")
+}
+
+func (builder *BowerBuilder) InferModule(target string) (module.Module, error) {
+	return module.Module{}, errors.New("InferModule is not implemented for BowerBuilder")
 }

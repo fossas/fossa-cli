@@ -84,7 +84,7 @@ func doAnalyze(modules []moduleConfig) (analysis, error) {
 			return nil, errors.New("could not determine whether module " + m.Name + " is built")
 		}
 		if !isBuilt {
-			return nil, errors.New("module " + m.Name + "does not appear to be built (try first running your build or `fossa build`, and then running `fossa`)")
+			return nil, errors.New("module " + m.Name + " does not appear to be built (try first running your build or `fossa build`, and then running `fossa`)")
 		}
 
 		deps, err := builder.Analyze(m)

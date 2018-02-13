@@ -52,4 +52,5 @@ type Builder interface {
 	// IsModule checks whether a build target is a valid module. This is used for
 	// inferring default configurations.
 	IsModule(target string) (bool, error)
+	InferModule(target string) (Module, error)
 }
