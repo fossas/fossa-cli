@@ -1,14 +1,18 @@
 <p align="center">
 	<img src="https://fossa.io/images/logo.svg"/><br/><br/>
-	<a href="https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli?ref=badge_shield" alt="FOSSA Status"><img src="https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli.svg?type=shield"/></a>
-	<a href="https://circleci.com/gh/fossas/fossa-cli" alt="CircleCI Tests"><img src="https://circleci.com/gh/fossas/fossa-cli.svg?style=svg&circle-token=f55f707e21ac39a80127d3372a1a1452ec94f4f7"/></a>
+	<a href="https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli?ref=badge_shield" alt="FOSSA Status">
+    <img src="https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli.svg?type=shield"/>
+  </a>
+	<a href="https://circleci.com/gh/fossas/fossa-cli" alt="CircleCI Tests">
+    <img src="https://circleci.com/gh/fossas/fossa-cli.svg?style=svg&circle-token=f55f707e21ac39a80127d3372a1a1452ec94f4f7"/>
+  </a>
 </p>
 
 # FOSSA CLI
 
 ## WARNING: This tool is being actively developed. There may be breaking changes.
 
-`fossa-cli` is a tool that interrogates your environment and build to discover the dependencies getting included in your software.  It can be used alone or within build systems to dig out dependency data from complex monolithic builds.
+`fossa` is a tool that interrogates your environment and build to discover the dependencies getting included in your software.  It can be used alone or within build systems to dig out dependency data from complex monolithic builds.
 
 This tool integrates directly with the [FOSSA](https://fossa.io) web service to provide open source reports, search intelligence, vulnerability/license scanning and triage workflows to help your organization to manage its open source use.
 
@@ -18,7 +22,7 @@ The CLI provides an alternative path to integrating your code repositories and b
 
 ## Installation
 
-`fossa-cli` is compatible with Windows, Darwin (MacOS) and *nix-based operating systems.
+`fossa` is compatible with Windows, Darwin (MacOS) and *nix-based operating systems.
 
 <!--
 TODO: real installation instructions
@@ -30,7 +34,7 @@ TODO: real installation instructions
 
 ### Install with npm/yarn (All Platforms)
 
-If you have npm/yarn on your machine, you can get `fossa-cli` with:
+If you have npm/yarn on your machine, you can get `fossa` with:
 
 ```bash
   npm install -g fossa
@@ -47,25 +51,31 @@ OR
 ```bash
   brew install fossa
 ```
+-->
 
 ## Usage
 
 ```bash
   fossa
 ```
--->
 
 ## Development
 
+### Adding language integrations
 
+See [Adding New Languages](docs/integrations/adding-new-languages.md).
+
+### Running tests
+
+Since `fossa` relies on having the correct build tools in your local environment, running `fossa` tests requires being able to successfully build all projects in `test/fixtures/`. To provide these tools and prevent you from clobbering your local machine, we have run tests in a Docker container defined at `test/Dockerfile`.
 
 ## License
 
-`fossa-cli` is Open Source and licensed under the [AGPLv3](https://tldrlegal.com/license/gnu-affero-general-public-license-v3-(agpl-3.0)).
+`fossa` is Open Source and licensed under the [AGPLv3](https://tldrlegal.com/license/gnu-affero-general-public-license-v3-(agpl-3.0)).
 
-You are free to use `fossa-cli` and its binaries under all common use conditions (i.e. integrating personal projects, securely scanning corporate code, adding steps to build plugins) without contributing or releasing any integrated / proprietary code... Enjoy!
+You are free to use `fossa` and its binaries under all common use conditions (i.e. integrating personal projects, securely scanning corporate code, adding steps to build plugins) without contributing or releasing any integrated / proprietary code... Enjoy!
 
-You are free to contribute or develop applications on top of `fossa-cli`, but any modifications / derivative works must be released back to the community under this license.
+You are free to contribute or develop applications on top of `fossa`, but any modifications / derivative works must be released back to the community under this license.
 
 Please contact [support@fossa.io](mailto:support@fossa.io) for additional licensing guidance.
 

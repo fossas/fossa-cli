@@ -296,6 +296,8 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 		}
 	case "scala":
 		fallthrough
+	case "sbtpackage":
+		fallthrough
 	case "sbt":
 		mainLogger.Debug("Got SBT module.")
 		builder = &build.SBTBuilder{}
@@ -366,6 +368,7 @@ func defaultCmd(c *cli.Context) {
 		s.Suffix = fmt.Sprintf(" Running module analysis (%d/%d): %s", i+1, len(config.modules), m.Path)
 		s.Restart()
 		deps, err := builder.Analyze(module, config.analyzeConfig.allowUnresolved)
+		mainLogger.Debugf("Analysis complete: %#v", deps)
 
 		dependencies[analysisKey{
 			builder: builder,

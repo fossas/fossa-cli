@@ -41,7 +41,7 @@ func analyzeCmd(c *cli.Context) {
 		}
 		buildData, err := json.Marshal(normalModules)
 		if err != nil {
-			mainLogger.Fatalf("Could marshal analysis results: %s", err.Error())
+			mainLogger.Fatalf("Could not marshal analysis results: %s", err.Error())
 		}
 		fmt.Println(string(buildData))
 	}
