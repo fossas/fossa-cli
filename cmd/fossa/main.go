@@ -277,6 +277,13 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 		if err != nil {
 			return nil, m, err
 		}
+	case "ruby":
+		mainLogger.Debug("Got Ruby module.")
+		builder = &build.RubyBuilder{}
+		m, err = setupModule(moduleConfig, "Gemfile", module.Ruby)
+		if err != nil {
+			return nil, m, err
+		}
 	default:
 		mainLogger.Debug("Got unknown module.")
 		return builder, m, errors.New("unknown module type: " + string(moduleConfig.Type))
