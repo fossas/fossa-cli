@@ -261,6 +261,8 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 		if err != nil {
 			return nil, m, err
 		}
+	case "golang":
+		fallthrough
 	case "go":
 		mainLogger.Debug("Got Go module.")
 		builder = &build.GoBuilder{}
@@ -270,6 +272,8 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 		if err != nil {
 			return nil, m, err
 		}
+	case "maven":
+		fallthrough
 	case "mvn":
 		mainLogger.Debug("Got Maven module.")
 		builder = &build.MavenBuilder{}
@@ -277,6 +281,12 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 		if err != nil {
 			return nil, m, err
 		}
+	case "bundler":
+		fallthrough
+	case "gem":
+		fallthrough
+	case "rubygems":
+		fallthrough
 	case "ruby":
 		mainLogger.Debug("Got Ruby module.")
 		builder = &build.RubyBuilder{}
@@ -284,6 +294,8 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 		if err != nil {
 			return nil, m, err
 		}
+	case "scala":
+		fallthrough
 	case "sbt":
 		mainLogger.Debug("Got SBT module.")
 		builder = &build.SBTBuilder{}

@@ -1,11 +1,13 @@
-# Bower Support
+# Bower
+
+## Installation
 
 Bower support in FOSSA CLI depends on the following tools existing in your environment:
 
-- Node.js
-- Bower
+- Node.js (defaults to `node`, configure with `$NODE_BINARY`)
+- Bower (defaults to `bower`, configure with `$BOWER_BINARY`)
 
-## Configuration
+## Usage
 
 Add a `bower` module with the path to the `bower.json` in your project.
 
@@ -17,10 +19,16 @@ analyze:
       type: bower
 ```
 
-If you have an existing passing production build, you can run `fossa` from within the build environment and it should succeed.
+## Design
+### Building
 
-Otherwise, you can run `fossa build` to execute the default build command `bower install --production`.
+Builds are run using `bower install --production`. If `--force` is set, the build command also runs `rm -rf bower_components` before running the build.
 
-## Troubleshooting
+### Analysis
 
-FOSSA CLI parses the package manifests in `bower_components` to generate dependency IDs.  If FOSSA fails, your build might be failing.
+Analysis checks for Bower lockfiles at `glob(**/bower_components/*/.bower.json)`. It reads the `version` key (which is a required key) in these lockfiles to determine the resolved version of your Bower dependencies.
+
+#### Known limitations
+
+- We assume that your Bower packages are installed at `bower_components`. Ideally, we would read this location from your `bower.json`, but this has not yet been implemented.
+- We assume that you have installed exactly one version of each of your transitive Bower dependencies. If you have manually edited your local Bower build process, this may not be true. That said, having multiple versions of a Bower dependency is generally indicative of a broken build.

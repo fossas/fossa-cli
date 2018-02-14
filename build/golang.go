@@ -180,7 +180,7 @@ func (builder *GoBuilder) Build(m module.Module, force bool) error {
 				return fmt.Errorf("could not clear `govendor` cache: %#v", err.Error())
 			}
 		}
-		cmd := exec.Command("govendor", "sync", "+local")
+		cmd := exec.Command("govendor", "sync")
 		cmd.Dir = projectFolder
 		_, err := cmd.Output()
 		if err != nil {

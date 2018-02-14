@@ -1,11 +1,15 @@
-# Node.js Support
+# Node.js
+
+## Installation
 
 Node.js support in FOSSA CLI depends on the following tools existing in your environment:
 
-- Node.js
-- Either Yarn or NPM
+- Node.js (defaults to `node`, configure with `$NODE_BINARY`)
+- At least one of:
+  1. NPM (defaults to `npm`, configure with `$NPM_BINARY`)
+  2. Yarn (defaults to `yarn`, configure with `$YARN_BINARY`)
 
-## Configuration
+## Usage
 
 Add a `nodejs` module with the path to the `package.json` in your project.
 
@@ -17,10 +21,17 @@ analyze:
       type: nodejs
 ```
 
-If you have an existing passing production build, you can run `fossa` from within the build environment and it should succeed.
+## Design
+### Building
 
-Otherwise, you can run `fossa build` to execute the default build command. If a Yarn lockfile is detected, FOSSA will run `yarn install --production --frozen-lockfile`. Otherwise, it will run `npm install --production`.
+If a `yarn.lock` is found, then builds are run using `yarn install --frozen-lockfile`. Otherwise, builds are run using `npm install --production`.
 
-## Troubleshooting
+If `--force` is set, the build command also runs `rm -rf node_modules` before running the build.
 
-FOSSA CLI parses the package manifests in `node_modules` to generate dependency IDs.  If FOSSA fails, your build might be failing.
+### Analysis
+
+Analysis checks for Node.js package manifests at `glob(**/node_modules/*/package.json)`. It reads the `version` key (which is a required key) in these manifests to determine the resolved version of your Node dependencies.
+
+#### Known limitations
+
+- We assume that your Node packages are installed at `node_modules`. Ideally, we would read this location from your `$NODE_PATH`, but this has not yet been implemented.
