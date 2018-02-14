@@ -36,7 +36,7 @@ func buildCmd(c *cli.Context) {
 
 		isBuilt, err := builder.IsBuilt(module, config.analyzeConfig.allowUnresolved)
 		if err != nil {
-			buildLogger.Fatalf("Could not determine whether module %s is built.\n", module.Name)
+			buildLogger.Fatalf("Could not determine whether module %s is built: %s\n", module.Name, err.Error())
 		}
 		if isBuilt && !config.buildConfig.force {
 			buildLogger.Fatalf("Module %s appears to already be built. Refusing to continue. Use `--force` to force a rebuild.\n", module.Name)
