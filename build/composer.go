@@ -54,7 +54,7 @@ func (builder *ComposerBuilder) Initialize() error {
 	}
 	outComposerVersion, err := exec.Command(builder.ComposerCmd, "-V").Output()
 	if err != nil {
-		return fmt.Errorf("unable to get composer version: %s", err)
+		return fmt.Errorf("unable to get composer version: %#v", err)
 	}
 	outputMatchRe := regexp.MustCompile(`Composer version ([0-9]+\.[0-9]+\.[0-9]+)`)
 	match := outputMatchRe.FindStringSubmatch(strings.TrimSpace(string(outComposerVersion)))
@@ -68,7 +68,7 @@ func (builder *ComposerBuilder) Initialize() error {
 	}
 	outPhpVersion, err := exec.Command(builder.PhpCmd, "-v").Output()
 	if err != nil {
-		return fmt.Errorf("unable to get PHP version: %s", err)
+		return fmt.Errorf("unable to get PHP version: %#v", err)
 	}
 	outputPhpMatchRe := regexp.MustCompile(`PHP ([0-9]+\.[0-9]+\.[0-9]+)`)
 	match = outputPhpMatchRe.FindStringSubmatch(strings.TrimSpace(string(outPhpVersion)))
@@ -84,19 +84,19 @@ func (builder *ComposerBuilder) Initialize() error {
 		return errors.New("could not find Composer binary (try setting $COMPOSER_BINARY)")
 	}
 
-	composerLogger.Debugf("Initialized Composer builder: %#v\n", builder)
+	composerLogger.Debugf("Initialized Composer builder: %#v", builder)
 
 	return nil
 }
 
 func (builder *ComposerBuilder) Build(m module.Module, force bool) error {
 	if force {
-		composerLogger.Debug("`force` flag is set; clearing `vendor`...\n")
+		composerLogger.Debug("`force` flag is set; clearing `vendor`...")
 		cmd := exec.Command("rm", "-rf", "vendor")
 		cmd.Dir = m.Dir
 		_, err := cmd.Output()
 		if err != nil {
-			return fmt.Errorf("unable to clear `vendor` folder: %s", err.Error())
+			return fmt.Errorf("unable to clear `vendor` folder: %#v", err.Error())
 		}
 	}
 
@@ -106,7 +106,7 @@ func (builder *ComposerBuilder) Build(m module.Module, force bool) error {
 	cmd.Stderr = &stderrBuffer
 	_, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("unable to run composer build: %s (message: %s)", err.Error(), stderrBuffer.String())
+		return fmt.Errorf("unable to run composer build: %#v (message: %#v)", err.Error(), stderrBuffer.String())
 	}
 	return nil
 }
@@ -116,13 +116,13 @@ func (builder *ComposerBuilder) Analyze(m module.Module, _ bool) ([]module.Depen
 	cmd.Dir = m.Dir
 	composerShowOutput, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("unable to list composer dependencies: %s", err.Error())
+		return nil, fmt.Errorf("unable to list composer dependencies: %#v", err.Error())
 	}
 
 	composerOutData := map[string][]ComposerPackage{}
 	err = json.Unmarshal(composerShowOutput, &composerOutData)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse composer dependency list output: %s", err.Error())
+		return nil, fmt.Errorf("unable to parse composer dependency list output: %#v", err.Error())
 	}
 
 	var deps []module.Dependency
@@ -130,23 +130,23 @@ func (builder *ComposerBuilder) Analyze(m module.Module, _ bool) ([]module.Depen
 		deps = append(deps, d)
 	}
 
-	composerLogger.Debugf("Composer dependencies: %#v\n", deps)
+	composerLogger.Debugf("Composer dependencies: %#v", deps)
 
 	return deps, nil
 }
 
 func (builder *ComposerBuilder) IsBuilt(m module.Module, _ bool) (bool, error) {
-	composerLogger.Debugf("Checking whether %s is built...\n", m.Name)
+	composerLogger.Debugf("Checking whether %#v is built...", m.Name)
 	cmd := exec.Command(builder.ComposerCmd, "show", "--no-ansi")
 	cmd.Dir = m.Dir
 
 	output, err := cmd.Output()
 	if err != nil {
-		return false, fmt.Errorf("unable to list installed composer dependencies: %s", err.Error())
+		return false, fmt.Errorf("unable to list installed composer dependencies: %#v", err.Error())
 	}
 
 	isBuilt := len(strings.TrimSpace(string(output))) > 0
-	composerLogger.Debugf("Module IsBuilt?: %t\n", isBuilt)
+	composerLogger.Debugf("Module IsBuilt?: %#v", isBuilt)
 	return isBuilt, nil
 }
 

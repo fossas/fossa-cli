@@ -52,7 +52,7 @@ type BowerBuilder struct {
 
 // Initialize collects environment data for Bower builds
 func (builder *BowerBuilder) Initialize() error {
-	bowerLogger.Debugf("Initializing Bower builder...\n")
+	bowerLogger.Debugf("Initializing Bower builder...")
 	// Set Node context variables
 	nodeCmds := [3]string{os.Getenv("NODE_BINARY"), "node", "nodejs"}
 	for i := 0; true; i++ {
@@ -86,15 +86,15 @@ func (builder *BowerBuilder) Initialize() error {
 		return errors.New("could not find Bower binary (try setting $BOWER_BINARY)")
 	}
 
-	bowerLogger.Debugf("Initialized Bower builder: %+v\n", builder)
+	bowerLogger.Debugf("Initialized Bower builder: %#v", builder)
 
 	return nil
 }
 
 func (builder *BowerBuilder) Build(m module.Module, force bool) error {
-	bowerLogger.Debugf("Running Bower build...\n")
+	bowerLogger.Debugf("Running Bower build...")
 	if force {
-		bowerLogger.Debug("`force` flag is set; clearing `bower_components`...\n")
+		bowerLogger.Debug("`force` flag is set; clearing `bower_components`...")
 		cmd := exec.Command("rm", "-rf", "bower_components")
 		cmd.Dir = m.Dir
 		_, err := cmd.Output()
@@ -110,12 +110,12 @@ func (builder *BowerBuilder) Build(m module.Module, force bool) error {
 }
 
 func (builder *BowerBuilder) Analyze(m module.Module, _ bool) ([]module.Dependency, error) {
-	bowerLogger.Debugf("Running analysis on Bower module...\n")
+	bowerLogger.Debugf("Running analysis on Bower module...")
 	bowerComponents, err := doublestar.Glob(filepath.Join(m.Dir, "**", "bower_components", "*", ".bower.json"))
 	if err != nil {
 		return nil, err
 	}
-	bowerLogger.Debugf("Found %d modules from globstar.\n", len(bowerComponents))
+	bowerLogger.Debugf("Found %#v modules from globstar.", len(bowerComponents))
 
 	var wg sync.WaitGroup
 	dependencies := make([]BowerComponent, len(bowerComponents))
@@ -127,7 +127,7 @@ func (builder *BowerBuilder) Analyze(m module.Module, _ bool) ([]module.Dependen
 
 			dependencyManifest, err := ioutil.ReadFile(modulePath)
 			if err != nil {
-				bowerLogger.Warningf("Error parsing Module: %s\n", modulePath)
+				bowerLogger.Warningf("Error parsing Module: %#v", modulePath)
 				return
 			}
 
@@ -148,7 +148,7 @@ func (builder *BowerBuilder) Analyze(m module.Module, _ bool) ([]module.Dependen
 
 func (builder *BowerBuilder) IsBuilt(m module.Module, _ bool) (bool, error) {
 	bowerComponentsPath := filepath.Join(m.Dir, "bower_components")
-	bowerLogger.Debugf("Checking bower_components at %s\n", bowerComponentsPath)
+	bowerLogger.Debugf("Checking bower_components at %#v", bowerComponentsPath)
 	// TODO: Check if the installed modules are consistent with what's in the
 	// actual manifest.
 	if _, err := os.Stat(bowerComponentsPath); err == nil {

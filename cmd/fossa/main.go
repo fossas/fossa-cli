@@ -176,7 +176,7 @@ func initialize(c *cli.Context) (cliConfig, error) {
 	}
 	logging.SetBackend(stderrBackend)
 
-	mainLogger.Debugf("Configuration initialized: %+v\n", config)
+	mainLogger.Debugf("Configuration initialized: %#v", config)
 
 	return config, nil
 }
@@ -223,13 +223,13 @@ func setupModule(config moduleConfig, manifestName string, moduleType module.Typ
 		Dir:    modulePath,
 	}
 
-	mainLogger.Debugf("Module setup complete: %#v\n", m)
+	mainLogger.Debugf("Module setup complete: %#v", m)
 
 	return m, nil
 }
 
 func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Module, error) {
-	mainLogger.Debugf("Resolving moduleConfig: %+v\n", moduleConfig)
+	mainLogger.Debugf("Resolving moduleConfig: %#v", moduleConfig)
 
 	// Don't use `:=` within each switch case, or you'll create a new binding that
 	// shadows these bindings (apparently switches create a new scope...).
@@ -238,9 +238,9 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 	var err error
 
 	switch moduleConfig.Type {
-	case "nodejs":
+	case "commonjspackage": // Alias for backwards compatibility
 		fallthrough
-	case "commonjspackage":
+	case "nodejs":
 		mainLogger.Debug("Got NodeJS module.")
 		builder = &build.NodeJSBuilder{}
 		m, err = setupModule(moduleConfig, "package.json", module.Nodejs)
@@ -270,23 +270,30 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 		if err != nil {
 			return nil, m, err
 		}
+	case "mvn":
+		mainLogger.Debug("Got Maven module.")
+		builder = &build.MavenBuilder{}
+		m, err = setupModule(moduleConfig, "pom.xml", module.Maven)
+		if err != nil {
+			return nil, m, err
+		}
 	default:
 		mainLogger.Debug("Got unknown module.")
 		return builder, m, errors.New("unknown module type: " + string(moduleConfig.Type))
 	}
 
-	mainLogger.Debugf("Resolved moduleConfig to: %#v, %#v\n", builder, m)
+	mainLogger.Debugf("Resolved moduleConfig to: %#v, %#v", builder, m)
 	return builder, m, nil
 }
 
 func defaultCmd(c *cli.Context) {
 	config, err := initialize(c)
 	if err != nil {
-		mainLogger.Fatalf("Could not load configuration: %s\n", err.Error())
+		mainLogger.Fatalf("Could not load configuration: %s", err.Error())
 	}
 
 	if len(config.modules) == 0 {
-		mainLogger.Fatal("No modules specified for analysis.\n")
+		mainLogger.Fatal("No modules specified for analysis.")
 	}
 
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
@@ -302,17 +309,17 @@ func defaultCmd(c *cli.Context) {
 
 		builder, module, err := resolveModuleConfig(m)
 		if err != nil {
-			buildLogger.Fatalf("Could not parse module configuration: %s\n", err.Error())
+			buildLogger.Fatalf("Could not parse module configuration: %s", err.Error())
 		}
 
 		err = builder.Initialize()
 		if err != nil {
-			buildLogger.Fatalf("Failed to initialize build: %s\n", err.Error())
+			buildLogger.Fatalf("Failed to initialize build: %s", err.Error())
 		}
 
 		isBuilt, err := builder.IsBuilt(module, config.analyzeConfig.allowUnresolved)
 		if err != nil {
-			mainLogger.Fatalf("Could not determine whether module %s is built.\n", module.Name)
+			mainLogger.Fatalf("Could not determine whether module %s is built.", module.Name)
 		}
 
 		if !isBuilt {
@@ -323,7 +330,7 @@ func defaultCmd(c *cli.Context) {
 				err := builder.Build(module, config.buildConfig.force)
 				if err != nil {
 					s.Stop()
-					mainLogger.Fatalf("Build failed (%s): %s\n", m.Path, err.Error())
+					mainLogger.Fatalf("Build failed (%s): %s", m.Path, err.Error())
 				}
 			} else {
 				mainLogger.Fatalf("Module %s does not appear to be built. Try first running your build or `fossa build`, and then running `fossa`.", module.Name)
@@ -343,11 +350,11 @@ func defaultCmd(c *cli.Context) {
 	if config.analyzeConfig.output {
 		normalModules, err := normalizeAnalysis(dependencies)
 		if err != nil {
-			mainLogger.Fatalf("Could not normalize build data: %s\n", err.Error())
+			mainLogger.Fatalf("Could not normalize build data: %s", err.Error())
 		}
 		buildData, err := json.Marshal(normalModules)
 		if err != nil {
-			mainLogger.Fatalf("Could marshal analysis results: %s\n", err.Error())
+			mainLogger.Fatalf("Could marshal analysis results: %s", err.Error())
 		}
 		fmt.Println(string(buildData))
 	}
@@ -361,6 +368,6 @@ func defaultCmd(c *cli.Context) {
 	err = doUpload(config, dependencies)
 	if err != nil {
 		s.Stop()
-		mainLogger.Fatalf("Upload failed: %s\n", err.Error())
+		mainLogger.Fatalf("Upload failed: %s", err.Error())
 	}
 }

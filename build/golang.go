@@ -68,6 +68,9 @@ type GoBuilder struct {
 	// vndr
 	VndrCmd     string
 	VndrVersion string
+
+	// TODO: We can probably reduce the amount of `exec` and `os.Stat` calls we
+	// make by caching results within private fields of `GoBuilder`.
 }
 
 // Initialize gathers environment context.
@@ -86,120 +89,120 @@ func (builder *GoBuilder) Build(m module.Module, force bool) error {
 	if !ok {
 		return errors.New("did not find buildable project (maybe your go build tool is not supported?)")
 	}
-	goLogger.Debugf("Found project folder for Build: %s\n", projectFolder)
+	goLogger.Debugf("Found project folder for Build: %#v", projectFolder)
 
 	// TODO: check and use builder.*Cmd
 	if _, err := os.Stat(filepath.Join(projectFolder, "Gopkg.toml")); err == nil {
-		goLogger.Debugf("Running `dep` build\n")
+		goLogger.Debugf("Running `dep` build")
 		if force {
-			goLogger.Debugf("Clearing `dep` cache: `rm -rf vendor Gopkg.lock`...\n")
+			goLogger.Debugf("Clearing `dep` cache: `rm -rf vendor Gopkg.lock`...")
 			cmd := exec.Command("rm", "-rf", "vendor", "Gopkg.lock")
 			cmd.Dir = projectFolder
 			output, err := cmd.Output()
 			if err != nil {
-				return fmt.Errorf("could not clear `dep` cache: %s", err.Error())
+				return fmt.Errorf("could not clear `dep` cache: %#v", err.Error())
 			}
-			goLogger.Debugf("...clearing `dep` cache done: %s\n", output)
+			goLogger.Debugf("...clearing `dep` cache done: %#v", output)
 		}
-		goLogger.Debugf("Running `dep ensure`...\n")
+		goLogger.Debugf("Running `dep ensure`...")
 		cmd := exec.Command("dep", "ensure")
 		cmd.Dir = projectFolder
 		output, err := cmd.Output()
 		if err != nil {
-			return fmt.Errorf("could not run `dep ensure`: %s", err.Error())
+			return fmt.Errorf("could not run `dep ensure`: %#v", err.Error())
 		}
-		goLogger.Debugf("...running `dep ensure` done: %s\n", output)
+		goLogger.Debugf("...running `dep ensure` done: %#v", output)
 	}
 
 	if _, err := os.Stat(filepath.Join(projectFolder, "glide.yaml")); err == nil {
-		goLogger.Debugf("Running `glide` build\n")
+		goLogger.Debugf("Running `glide` build")
 		if force {
 			cmd := exec.Command("rm", "-rf", "vendor", "glide.lock")
 			cmd.Dir = projectFolder
 			_, err := cmd.Output()
 			if err != nil {
-				return fmt.Errorf("could not clear `glide` cache: %s", err.Error())
+				return fmt.Errorf("could not clear `glide` cache: %#v", err.Error())
 			}
 		}
 		cmd := exec.Command("glide", "install")
 		cmd.Dir = projectFolder
 		_, err := cmd.Output()
 		if err != nil {
-			return fmt.Errorf("could not run `glide install`: %s", err.Error())
+			return fmt.Errorf("could not run `glide install`: %#v", err.Error())
 		}
 	}
 
 	if _, err := os.Stat(filepath.Join(projectFolder, "Godeps/Godeps.json")); err == nil {
-		goLogger.Debugf("Running `godep` build\n")
+		goLogger.Debugf("Running `godep` build")
 		if force {
 			cmd := exec.Command("rm", "-rf", "vendor", "Godeps")
 			cmd.Dir = projectFolder
 			_, err := cmd.Output()
 			if err != nil {
-				return fmt.Errorf("could not clear `godep` cache: %s", err.Error())
+				return fmt.Errorf("could not clear `godep` cache: %#v", err.Error())
 			}
 		}
-		goLogger.Debugf("Running `godep save`...\n")
+		goLogger.Debugf("Running `godep save`...")
 		cmd := exec.Command("godep", "save")
 		cmd.Dir = projectFolder
 		output, err := cmd.Output()
 		if err != nil {
-			return fmt.Errorf("could not run `godep save`: %s", err.Error())
+			return fmt.Errorf("could not run `godep save`: %#v", err.Error())
 		}
-		goLogger.Debugf("...running `godep save` done: %s\n", output)
+		goLogger.Debugf("...running `godep save` done: %#v", output)
 	}
 
 	if _, err := os.Stat(filepath.Join(projectFolder, "vendor/vendor.json")); err == nil {
-		goLogger.Debugf("Running `govendor` build\n")
+		goLogger.Debugf("Running `govendor` build")
 		if force {
 			backupCmd := exec.Command("mv", "vendor/vendor.json", "vendor.json.bak")
 			backupCmd.Dir = projectFolder
 			_, err := backupCmd.Output()
 			if err != nil {
-				return fmt.Errorf("could not clear `govendor` cache: %s", err.Error())
+				return fmt.Errorf("could not clear `govendor` cache: %#v", err.Error())
 			}
 			cleanCmd := exec.Command("rm", "-rf", "vendor")
 			cleanCmd.Dir = projectFolder
 			_, err = cleanCmd.Output()
 			if err != nil {
-				return fmt.Errorf("could not clear `govendor` cache: %s", err.Error())
+				return fmt.Errorf("could not clear `govendor` cache: %#v", err.Error())
 			}
 			makeFolderCmd := exec.Command("mkdir", "-p", "vendor")
 			makeFolderCmd.Dir = projectFolder
 			_, err = makeFolderCmd.Output()
 			if err != nil {
-				return fmt.Errorf("could not clear `govendor` cache: %s", err.Error())
+				return fmt.Errorf("could not clear `govendor` cache: %#v", err.Error())
 			}
 			restoreCmd := exec.Command("mv", "vendor.json.bak", "vendor/vendor.json")
 			restoreCmd.Dir = projectFolder
 			_, err = restoreCmd.Output()
 			if err != nil {
-				return fmt.Errorf("could not clear `govendor` cache: %s", err.Error())
+				return fmt.Errorf("could not clear `govendor` cache: %#v", err.Error())
 			}
 		}
 		cmd := exec.Command("govendor", "sync", "+local")
 		cmd.Dir = projectFolder
 		_, err := cmd.Output()
 		if err != nil {
-			return fmt.Errorf("could not run `govendor sync`: %s", err.Error())
+			return fmt.Errorf("could not run `govendor sync`: %#v", err.Error())
 		}
 	}
 
 	if _, err := os.Stat(filepath.Join(projectFolder, "vendor.conf")); err == nil {
-		goLogger.Debugf("Running `vndr` build\n")
+		goLogger.Debugf("Running `vndr` build")
 		if force {
 			cmd := exec.Command("rm", "-rf", "vendor")
 			cmd.Dir = projectFolder
 			_, err := cmd.Output()
 			if err != nil {
-				return fmt.Errorf("could not clear `vndr` cache: %s", err.Error())
+				return fmt.Errorf("could not clear `vndr` cache: %#v", err.Error())
 			}
 		}
 		cmd := exec.Command("vndr")
 		cmd.Dir = projectFolder
 		_, err := cmd.Output()
 		if err != nil {
-			return fmt.Errorf("could not run `vndr`: %s", err.Error())
+			return fmt.Errorf("could not run `vndr`: %#v", err.Error())
 		}
 	}
 
@@ -350,16 +353,16 @@ func findGoProjectFolder(fromPath string) (string, bool, error) {
 func findProject(projects map[string]string, importPath string) (string, error) {
 	project, err := findProjectRecurse(projects, importPath)
 	if err != nil {
-		goLogger.Debugf("Could not find project for import path %s\n", importPath)
+		goLogger.Debugf("Could not find project for import path %#v", importPath)
 	} else {
-		goLogger.Debugf("Found project %s for import path %s\n", project, importPath)
+		goLogger.Debugf("Found project %#v for import path %#v", project, importPath)
 	}
 	return project, err
 }
 
 func findProjectRecurse(projects map[string]string, importPath string) (string, error) {
 	if importPath == "." {
-		return "", fmt.Errorf("could not find project of import %s", importPath)
+		return "", fmt.Errorf("could not find project of import %#v", importPath)
 	}
 	_, ok := projects[importPath]
 	if ok {
@@ -372,9 +375,9 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 	// Trace imports
 	deps, err := traceImports(m, allowUnresolved)
 	if err != nil {
-		return nil, fmt.Errorf("could not trace imports during analysis: %s", err.Error())
+		return nil, fmt.Errorf("could not trace imports during analysis: %#v", err.Error())
 	}
-	goLogger.Debugf("Analyze tracing succeeded\n")
+	goLogger.Debugf("Analyze tracing succeeded")
 
 	// Find project folder (this is an ancestor of the module folder)
 	projectFolder, ok, err := findGoProjectFolder(m.Dir)
@@ -382,19 +385,19 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 		return nil, err
 	}
 	if !ok {
-		goLogger.Debugf("Could not find project folder\n")
+		goLogger.Debugf("Could not find project folder")
 		if allowUnresolved {
 			return nil, err
 		}
 		return nil, errors.New("could not find project folder")
 	}
-	goLogger.Debugf("Found project folder: %s\n", projectFolder)
+	goLogger.Debugf("Found project folder: %#v", projectFolder)
 
 	// If possible, read lockfiles for versions
 	lockfileVersions := make(map[string]string)
 
 	if ok, err := hasDepManifest(projectFolder); err == nil && ok {
-		goLogger.Debugf("Found `dep` manifest\n")
+		goLogger.Debugf("Found `dep` manifest")
 		if ok, err := hasFile(projectFolder, "Gopkg.lock"); err != nil && ok {
 			return nil, errors.New("project contains Gopkg.toml, but Gopkg.lock was not found")
 		}
@@ -411,7 +414,7 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 		}
 	}
 	if ok, err := hasGlideManifest(projectFolder); err == nil && ok {
-		goLogger.Debugf("Found `glide` manifest\n")
+		goLogger.Debugf("Found `glide` manifest")
 		if ok, err := hasFile(projectFolder, "glide.lock"); err != nil && ok {
 			return nil, errors.New("project contains glide.yaml, but glide.lock was not found")
 		}
@@ -428,7 +431,7 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 		}
 	}
 	if ok, err := hasGodepManifest(projectFolder); err == nil && ok {
-		goLogger.Debugf("Found `Godeps` manifest\n")
+		goLogger.Debugf("Found `Godeps` manifest")
 		lockfileContents, err := ioutil.ReadFile(filepath.Join(projectFolder, "Godeps", "Godeps.json"))
 		if err != nil {
 			return nil, errors.New("could not read Godeps/Godeps.json")
@@ -442,7 +445,7 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 		}
 	}
 	if ok, err := hasGovendorManifest(projectFolder); err == nil && ok {
-		goLogger.Debugf("Found `govendor` manifest\n")
+		goLogger.Debugf("Found `govendor` manifest")
 		lockfileContents, err := ioutil.ReadFile(filepath.Join(projectFolder, "vendor", "vendor.json"))
 		if err != nil {
 			return nil, errors.New("could not read vendor/vendor.json")
@@ -456,12 +459,12 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 		}
 	}
 	if ok, err := hasVndrManifest(projectFolder); err == nil && ok {
-		goLogger.Debugf("Found `vndr` manifest\n")
+		goLogger.Debugf("Found `vndr` manifest")
 		lockfileContents, err := ioutil.ReadFile(filepath.Join(projectFolder, "vendor.conf"))
 		if err != nil {
 			return nil, errors.New("could not read vendor.conf")
 		}
-		lines := strings.Split(string(lockfileContents), "\n")
+		lines := strings.Split(string(lockfileContents), "")
 		for _, line := range lines {
 			trimmedLine := strings.TrimSpace(line)
 			if len(trimmedLine) > 0 && trimmedLine[0] != '#' {
@@ -470,7 +473,7 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 			}
 		}
 	}
-	goLogger.Debugf("Read lockfile: %#v\n", lockfileVersions)
+	goLogger.Debugf("Read lockfile: %#v", lockfileVersions)
 
 	depSet := make(map[GoPkg]bool)
 	projectImports := strings.TrimPrefix(projectFolder, filepath.Join(os.Getenv("GOPATH"), "src")+string(filepath.Separator))
@@ -486,13 +489,14 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 				dep.isInternal ||
 				strings.Index(dep.ImportPath, projectImports) == 0 ||
 				dep.ImportPath == "C" {
+				goLogger.Warningf("Could not resolve import: %#v", dep)
 				depSet[GoPkg{ImportPath: importPath, Version: ""}] = true
 			} else {
-				goLogger.Debugf("Could not resolve import: %#v\n", dep)
-				goLogger.Debugf("Project folder: %s\n", projectFolder)
-				goLogger.Debugf("$GOPATH: %s\n", os.Getenv("GOPATH"))
-				goLogger.Debugf("Project folder relative to $GOPATH: %s\n", projectImports)
-				return nil, fmt.Errorf("could not resolve import: %s", dep.ImportPath)
+				goLogger.Debugf("Could not resolve import: %#v", dep)
+				goLogger.Debugf("Project folder: %#v", projectFolder)
+				goLogger.Debugf("$GOPATH: %#v", os.Getenv("GOPATH"))
+				goLogger.Debugf("Project folder relative to $GOPATH: %#v", projectImports)
+				return nil, fmt.Errorf("could not resolve import: %#v", dep.ImportPath)
 			}
 		} else {
 			depSet[GoPkg{ImportPath: project, Version: lockfileVersions[project]}] = true
@@ -514,9 +518,9 @@ func (builder *GoBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, 
 	// Attempt to trace imports
 	_, err := traceImports(m, allowUnresolved)
 	if err != nil {
-		return false, fmt.Errorf("could not trace gopkg imports: %s", err.Error())
+		return false, fmt.Errorf("could not trace gopkg imports: %#v", err.Error())
 	}
-	goLogger.Debugf("IsBuilt tracing succeeded\n")
+	goLogger.Debugf("IsBuilt tracing succeeded")
 
 	// Find project folder
 	projectFolder, hasProject, err := findGoProjectFolder(m.Dir)
@@ -524,27 +528,27 @@ func (builder *GoBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, 
 		return false, err
 	}
 	if !hasProject {
-		goLogger.Debugf("IsBuilt failed: no project found\n")
+		goLogger.Debugf("IsBuilt failed: no project found")
 		return false, nil
 	}
 
 	// Check for lockfiles
 	if ok, err := hasDepManifest(projectFolder); err == nil && ok {
 		if ok, err := hasFile(projectFolder, "Gopkg.lock"); err != nil || !ok {
-			goLogger.Debugf("IsBuilt failed: `dep` manifest found, but no lockfile\n")
+			goLogger.Debugf("IsBuilt failed: `dep` manifest found, but no lockfile")
 			return false, err
 		}
 	}
 	if ok, err := hasGlideManifest(projectFolder); err == nil && ok {
 		if ok, err := hasFile(projectFolder, "glide.lock"); err != nil || !ok {
-			goLogger.Debugf("IsBuilt failed: `glide` manifest found, but no lockfile\n")
+			goLogger.Debugf("IsBuilt failed: `glide` manifest found, but no lockfile")
 			return false, err
 		}
 	}
 
 	// Check for vendored dependencies
 	if ok, err := hasFile(projectFolder, "vendor"); err != nil || !ok {
-		goLogger.Debugf("IsBuilt failed: no `vendor` folder found\n")
+		goLogger.Debugf("IsBuilt failed: no `vendor` folder found")
 		return false, err
 	}
 

@@ -112,12 +112,12 @@ func doUpload(config cliConfig, results analysis) error {
 		return err
 	}
 
-	analysisLogger.Debugf("Uploading build data from (%s) modules: %s", len(normalModules), string(buildData))
+	analysisLogger.Debugf("Uploading build data from (%#v) modules: %#v", len(normalModules), string(buildData))
 
 	postRef, _ := url.Parse("/api/builds/custom?locator=" + url.QueryEscape(config.project+"$"+config.revision) + "&v=" + version)
 	postURL := fossaBaseURL.ResolveReference(postRef).String()
 
-	analysisLogger.Debugf("Sending build data to <%s>", postURL)
+	analysisLogger.Debugf("Sending build data to <%#v>", postURL)
 
 	req, _ := http.NewRequest("POST", postURL, bytes.NewReader(buildData))
 	req.Header.Set("Authorization", "token "+config.apiKey)
@@ -125,7 +125,7 @@ func doUpload(config cliConfig, results analysis) error {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("could not begin upload: %s", err)
+		return fmt.Errorf("could not begin upload: %#v", err)
 	}
 	defer resp.Body.Close()
 	responseBytes, _ := ioutil.ReadAll(resp.Body)
@@ -137,11 +137,11 @@ func doUpload(config cliConfig, results analysis) error {
 		// TODO: handle "Managed Project" workflow
 		return fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo")
 	} else if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad server response (%s)", responseStr)
+		return fmt.Errorf("bad server response (%#v)", responseStr)
 	}
 
 	analysisLogger.Debugf("Upload succeeded")
-	analysisLogger.Debugf("Response: %s", responseStr)
+	analysisLogger.Debugf("Response: %#v", responseStr)
 
 	var jsonResponse map[string]interface{}
 	if err := json.Unmarshal(responseBytes, &jsonResponse); err != nil {
@@ -149,10 +149,13 @@ func doUpload(config cliConfig, results analysis) error {
 	}
 	locParts := strings.Split(jsonResponse["locator"].(string), "$")
 	getRef, _ := url.Parse("/projects/" + url.QueryEscape(locParts[0]) + "/refs/branch/master/" + url.QueryEscape(locParts[1]))
-	fmt.Fprintln(os.Stderr, "\n============================================================\n")
-	fmt.Fprintln(os.Stderr, "   View FOSSA Report:")
-	fmt.Fprintln(os.Stderr, "   "+fossaBaseURL.ResolveReference(getRef).String())
-	fmt.Fprintln(os.Stderr, "\n============================================================")
+	fmt.Fprintln(os.Stderr, `
+============================================================
 
+		View FOSSA Report:
+		`+fossaBaseURL.ResolveReference(getRef).String()+`
+
+============================================================
+`)
 	return nil
 }

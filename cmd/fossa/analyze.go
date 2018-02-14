@@ -22,26 +22,26 @@ type analyzeConfig struct {
 func analyzeCmd(c *cli.Context) {
 	config, err := initialize(c)
 	if err != nil {
-		buildLogger.Fatalf("Could not load configuration: %s\n", err.Error())
+		buildLogger.Fatalf("Could not load configuration: %s", err.Error())
 	}
 	if len(config.modules) == 0 {
-		buildLogger.Fatal("No modules specified.\n")
+		buildLogger.Fatal("No modules specified.")
 	}
 
 	analysis, err := doAnalyze(config.modules, config.analyzeConfig.allowUnresolved)
 	if err != nil {
-		analysisLogger.Fatalf("Analysis failed: %s\n", err.Error())
+		analysisLogger.Fatalf("Analysis failed: %s", err.Error())
 	}
-	analysisLogger.Debugf("Analysis complete: %+v\n", analysis)
+	analysisLogger.Debugf("Analysis complete: %#v", analysis)
 
 	if config.analyzeConfig.output {
 		normalModules, err := normalizeAnalysis(analysis)
 		if err != nil {
-			mainLogger.Fatalf("Could not normalize build data: %s\n", err.Error())
+			mainLogger.Fatalf("Could not normalize build data: %s", err.Error())
 		}
 		buildData, err := json.Marshal(normalModules)
 		if err != nil {
-			mainLogger.Fatalf("Could marshal analysis results: %s\n", err.Error())
+			mainLogger.Fatalf("Could marshal analysis results: %s", err.Error())
 		}
 		fmt.Println(string(buildData))
 	}
@@ -53,7 +53,7 @@ func analyzeCmd(c *cli.Context) {
 
 	err = doUpload(config, analysis)
 	if err != nil {
-		analysisLogger.Fatalf("Upload failed: %s\n", err.Error())
+		analysisLogger.Fatalf("Upload failed: %s", err.Error())
 	}
 }
 
@@ -65,7 +65,7 @@ type analysisKey struct {
 type analysis map[analysisKey][]module.Dependency
 
 func doAnalyze(modules []moduleConfig, allowUnresolved bool) (analysis, error) {
-	analysisLogger.Debugf("Running analysis on modules: %+v\n", modules)
+	analysisLogger.Debugf("Running analysis on modules: %#v", modules)
 	dependencies := make(analysis)
 
 	for _, moduleConfig := range modules {
@@ -81,7 +81,7 @@ func doAnalyze(modules []moduleConfig, allowUnresolved bool) (analysis, error) {
 
 		isBuilt, err := builder.IsBuilt(m, allowUnresolved)
 		if err != nil {
-			return nil, fmt.Errorf("could not determine whether module %s is built: %s", m.Name, err.Error())
+			return nil, fmt.Errorf("could not determine whether module %#v is built: %#v", m.Name, err.Error())
 		}
 		if !isBuilt {
 			return nil, errors.New("module " + m.Name + " does not appear to be built (try first running your build or `fossa build`, and then running `fossa`)")
