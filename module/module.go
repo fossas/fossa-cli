@@ -12,8 +12,8 @@ const (
 	Composer = Type("composer")
 	// Maven is the module type for maven.apache.org
 	Maven = Type("maven")
-	// Sbt is the module type for scala-sbt.org
-	Sbt = Type("sbt")
+	// SBT is the module type for scala-sbt.org
+	SBT = Type("sbt")
 
 	// Ecosystems where many tools behave similarly
 

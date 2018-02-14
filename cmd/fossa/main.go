@@ -284,6 +284,13 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 		if err != nil {
 			return nil, m, err
 		}
+	case "sbt":
+		mainLogger.Debug("Got SBT module.")
+		builder = &build.SBTBuilder{}
+		m, err = setupModule(moduleConfig, "build.sbt", module.SBT)
+		if err != nil {
+			return nil, m, err
+		}
 	default:
 		mainLogger.Debug("Got unknown module.")
 		return builder, m, errors.New("unknown module type: " + string(moduleConfig.Type))

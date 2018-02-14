@@ -176,4 +176,7 @@ Checks whether the project has licensing issues, as configured by its policy wit
 
 ### Flags
 #### `-j, --json`
-Print issues in JSON format. -->
+Print issues in JSON format.
+
+#### `-w, --wait-until-ready`
+When the issue report for this revision is not ready, wait and retry instead of immediately failing. -->
