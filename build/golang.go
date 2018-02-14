@@ -555,12 +555,10 @@ func (builder *GoBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, 
 	return true, nil
 }
 
-// IsBuilt checks whether dependencies are ready for scanning.
 func (builder *GoBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for GoBuilder")
 }
 
-// IsBuilt checks whether dependencies are ready for scanning.
 func (builder *GoBuilder) InferModule(target string) (module.Module, error) {
 	return module.Module{}, errors.New("InferModule is not implemented for GoBuilder")
 }
