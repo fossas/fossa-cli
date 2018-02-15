@@ -1,36 +1,29 @@
 package build
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
 
-	"github.com/fossas/fossa-cli/log"
+	logging "github.com/op/go-logging"
+
+	"github.com/fossas/fossa-cli/module"
 )
 
-// ComposerContext implements build context for Composer (composer.json) builds
-type ComposerContext struct {
-	ComposerCmd     string
-	ComposerVersion string
+var composerLogger = logging.MustGetLogger("composer")
 
-	PhpCmd     string
-	PhpVersion string
-
-	isBuildSatisfied bool
-}
-
-// ComposerPackage represents metadata from Composer files
+// ComposerPackage implements Dependency for Composer
 type ComposerPackage struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
-
-	description string
 }
 
-// Fetcher always returns npm for ComposerPackage
+// Fetcher always returns comp for ComposerPackage
 func (m ComposerPackage) Fetcher() string {
 	return "comp"
 }
@@ -45,94 +38,122 @@ func (m ComposerPackage) Revision() string {
 	return m.Version
 }
 
-// Initialize collects environment data for Bundler builds
-func (ctx *ComposerContext) Initialize(p *Module, opts map[string]interface{}) {
-	ctx.ComposerCmd = string(os.Getenv("COMPOSER_BINARY"))
-	if ctx.ComposerCmd == "" {
-		ctx.ComposerCmd = "composer"
-	}
-	outComposerVersion, err := exec.Command(ctx.ComposerCmd, "-V").Output()
-	if err == nil {
-		outputMatchRe := regexp.MustCompile(`Composer version ([0-9]+\.[0-9]+\.[0-9]+)`)
-		match := outputMatchRe.FindStringSubmatch(strings.TrimSpace(string(outComposerVersion)))
-		if len(match) == 2 {
-			ctx.ComposerVersion = match[1]
-		}
-	} else {
-		ctx.ComposerCmd = ""
-		ctx.ComposerVersion = ""
-	}
+// ComposerBuilder implements Builder for Composer (composer.json) builds
+type ComposerBuilder struct {
+	ComposerCmd     string
+	ComposerVersion string
 
-	ctx.PhpCmd = string(os.Getenv("PHP_BINARY"))
-	if ctx.PhpCmd == "" {
-		ctx.PhpCmd = "php"
-	}
-	outPhpVersion, err := exec.Command(ctx.PhpCmd, "-v").Output()
-	if err == nil {
-		outputPhpMatchRe := regexp.MustCompile(`PHP ([0-9]+\.[0-9]+\.[0-9]+)`)
-		match := outputPhpMatchRe.FindStringSubmatch(strings.TrimSpace(string(outPhpVersion)))
-		if len(match) == 2 {
-			ctx.PhpVersion = match[1]
-		}
-	} else {
-		ctx.PhpCmd = ""
-		ctx.PhpVersion = ""
-	}
-
-	ctx.isBuildSatisfied = ctx.Verify(p, opts)
+	PhpCmd     string
+	PhpVersion string
 }
 
-// Verify checks if the bundler is satisfied and if an install is necessary
-func (ctx *ComposerContext) Verify(m *Module, opts map[string]interface{}) bool {
-	// checks if composer.lock is satisfied by composer.json requirements
-	// when fully installed, composer.lock will always be updated and satisfied
-	// NOTE: we can't check the `vendor` dir as composer also relies on a global package dir that can satisfy reqs
-	cmd := exec.Command(ctx.ComposerCmd, "validate")
-	cmd.Dir = m.Dir
-	if _, err := cmd.Output(); err == nil {
-		return true
+func (builder *ComposerBuilder) Initialize() error {
+	builder.ComposerCmd = string(os.Getenv("COMPOSER_BINARY"))
+	if builder.ComposerCmd == "" {
+		builder.ComposerCmd = "composer"
 	}
-	return false
-}
-
-// Build runs Bundler and collect dep data
-func (ctx *ComposerContext) Build(m *Module, opts map[string]interface{}) error {
-	if ctx.PhpVersion == "" || ctx.PhpCmd == "" {
-		return errors.New("no PHP installation detected; try setting the $PHP_BINARY environment variable")
-	}
-
-	if ctx.ComposerCmd == "" || ctx.ComposerVersion == "" {
-		return errors.New("no Composer installation detected; try setting the $COMPOSER_BINARY environment variable")
-	}
-
-	if ctx.isBuildSatisfied == false {
-		log.Logger.Debug("composer build not satisfied, running full install")
-		cmd := exec.Command(ctx.ComposerCmd, "install", "--prefer-dist", "--no-dev", "--no-autoloader", "--no-scripts", "--no-progress", "--no-suggest", "--ignore-platform-reqs")
-		cmd.Dir = m.Dir
-		cmd.Output()
-	}
-
-	cmd := exec.Command(ctx.ComposerCmd, "show", "-f", "json")
-	cmd.Dir = m.Dir
-	cmd.Output()
-	outBundleListCmd, err := cmd.Output()
+	outComposerVersion, err := exec.Command(builder.ComposerCmd, "-V").Output()
 	if err != nil {
-		return errors.New("Unable to list composer dependencies")
+		return fmt.Errorf("unable to get composer version: %#v", err)
+	}
+	outputMatchRe := regexp.MustCompile(`Composer version ([0-9]+\.[0-9]+\.[0-9]+)`)
+	match := outputMatchRe.FindStringSubmatch(strings.TrimSpace(string(outComposerVersion)))
+	if len(match) == 2 {
+		builder.ComposerVersion = match[1]
 	}
 
-	// process composer json output
-	composerOutData := map[string][]ComposerPackage{}
-	dec := json.NewDecoder(strings.NewReader(string(outBundleListCmd)))
-
-	if dec.Decode(&composerOutData) != nil {
-		return errors.New("Unable to list parse composer dependency output: " + err.Error())
+	builder.PhpCmd = string(os.Getenv("PHP_BINARY"))
+	if builder.PhpCmd == "" {
+		builder.PhpCmd = "php"
+	}
+	outPhpVersion, err := exec.Command(builder.PhpCmd, "-v").Output()
+	if err != nil {
+		return fmt.Errorf("unable to get PHP version: %#v", err)
+	}
+	outputPhpMatchRe := regexp.MustCompile(`PHP ([0-9]+\.[0-9]+\.[0-9]+)`)
+	match = outputPhpMatchRe.FindStringSubmatch(strings.TrimSpace(string(outPhpVersion)))
+	if len(match) == 2 {
+		builder.PhpVersion = match[1]
 	}
 
-	dedupedDependencies := []Dependency{}
-	for _, d := range composerOutData["installed"] {
-		dedupedDependencies = append(dedupedDependencies, Dependency(d))
+	if builder.PhpCmd == "" || builder.PhpVersion == "" {
+		return errors.New("could not find PHP binary (try setting $PHP_BINARY)")
 	}
 
-	m.Build.RawDependencies = Dedupe(dedupedDependencies)
+	if builder.ComposerCmd == "" || builder.ComposerVersion == "" {
+		return errors.New("could not find Composer binary (try setting $COMPOSER_BINARY)")
+	}
+
+	composerLogger.Debugf("Initialized Composer builder: %#v", builder)
+
 	return nil
+}
+
+func (builder *ComposerBuilder) Build(m module.Module, force bool) error {
+	if force {
+		composerLogger.Debug("`force` flag is set; clearing `vendor`...")
+		cmd := exec.Command("rm", "-rf", "vendor")
+		cmd.Dir = m.Dir
+		_, err := cmd.Output()
+		if err != nil {
+			return fmt.Errorf("unable to clear `vendor` folder: %#v", err.Error())
+		}
+	}
+
+	cmd := exec.Command(builder.ComposerCmd, "install", "--prefer-dist", "--no-dev")
+	var stderrBuffer bytes.Buffer
+	cmd.Dir = m.Dir
+	cmd.Stderr = &stderrBuffer
+	_, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("unable to run composer build: %#v (message: %#v)", err.Error(), stderrBuffer.String())
+	}
+	return nil
+}
+
+func (builder *ComposerBuilder) Analyze(m module.Module, _ bool) ([]module.Dependency, error) {
+	cmd := exec.Command(builder.ComposerCmd, "show", "-f", "json", "--no-ansi")
+	cmd.Dir = m.Dir
+	composerShowOutput, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("unable to list composer dependencies: %#v", err.Error())
+	}
+
+	composerOutData := map[string][]ComposerPackage{}
+	err = json.Unmarshal(composerShowOutput, &composerOutData)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse composer dependency list output: %#v", err.Error())
+	}
+
+	var deps []module.Dependency
+	for _, d := range composerOutData["installed"] {
+		deps = append(deps, d)
+	}
+
+	composerLogger.Debugf("Composer dependencies: %#v", deps)
+
+	return deps, nil
+}
+
+func (builder *ComposerBuilder) IsBuilt(m module.Module, _ bool) (bool, error) {
+	composerLogger.Debugf("Checking whether %#v is built...", m.Name)
+	cmd := exec.Command(builder.ComposerCmd, "show", "--no-ansi")
+	cmd.Dir = m.Dir
+
+	output, err := cmd.Output()
+	if err != nil {
+		return false, fmt.Errorf("unable to list installed composer dependencies: %#v", err.Error())
+	}
+
+	isBuilt := len(strings.TrimSpace(string(output))) > 0
+	composerLogger.Debugf("Module IsBuilt?: %#v", isBuilt)
+	return isBuilt, nil
+}
+
+func (builder *ComposerBuilder) IsModule(target string) (bool, error) {
+	return false, errors.New("IsModule is not implemented for ComposerBuilder")
+}
+
+func (builder *ComposerBuilder) InferModule(target string) (module.Module, error) {
+	return module.Module{}, errors.New("InferModule is not implemented for ComposerBuilder")
 }

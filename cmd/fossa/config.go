@@ -5,12 +5,12 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/fossas/fossa-cli/module"
 	git "gopkg.in/src-d/go-git.v4"
 	yaml "gopkg.in/yaml.v2"
 )
 
-// Config is a parsed configuration for the CLI and Worker.
-type Config struct {
+type configFileV1 struct {
 	// config version
 	Version string
 
@@ -20,55 +20,42 @@ type Config struct {
 		Server  string
 		Project string
 		Locator string
-
-		// CLI flags.
-		Install  bool
-		Upload   bool
-		NoCache  bool
-		LogLevel string
 	}
 	Analyze struct {
-		Ignores []struct {
-			Path string
-			Type string
-		}
-		Modules []ModuleConfig
+		Modules []moduleConfig
 	}
 }
 
-// ModuleConfig is the configuration for a single module to be analysed.
-type ModuleConfig struct {
+type moduleConfig struct {
 	Name string
 	Path string
-	Type string
+	Type module.Type
 }
 
-// ReadConfig parses the configuration file in the current directory and sets
-// default values if necessary.
-func ReadConfig(configFile string) (Config, error) {
-	if configFile != "" {
-		if _, err := os.Stat(configFile); err != nil {
-			return Config{}, errors.New("invalid config file specified")
+func readConfigFile(path string) (configFileV1, error) {
+	if path != "" {
+		if _, err := os.Stat(path); err != nil {
+			return configFileV1{}, errors.New("invalid config file specified")
 		}
-		return parseConfig(configFile)
+		return parseConfigFile(path)
 	}
 
 	_, err := os.Stat(".fossa.yml")
 	if err == nil {
-		return parseConfig(".fossa.yml")
+		return parseConfigFile(".fossa.yml")
 	}
 
 	_, err = os.Stat(".fossa.yaml")
 	if err == nil {
-		return parseConfig(".fossa.yaml")
+		return parseConfigFile(".fossa.yaml")
 	}
 
-	return setDefaultValues(Config{})
+	return setDefaultValues(configFileV1{})
 }
 
-func parseConfig(filename string) (Config, error) {
+func parseConfigFile(filename string) (configFileV1, error) {
 	// Read configuration file.
-	var config Config
+	var config configFileV1
 
 	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -88,7 +75,7 @@ func parseConfig(filename string) (Config, error) {
 	return config, nil
 }
 
-func setDefaultValues(c Config) (Config, error) {
+func setDefaultValues(c configFileV1) (configFileV1, error) {
 	// Set config version
 	if c.Version == "" {
 		c.Version = "1"

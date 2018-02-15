@@ -1,16 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -19,354 +14,389 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/build"
-	"github.com/fossas/fossa-cli/log"
+	"github.com/fossas/fossa-cli/module"
 )
-
-type cliContext struct {
-	config Config
-}
 
 // main.{version,revision} are set by linker flags in Makefile and goreleaser
 var version string
 var commit string
 
-var context = cliContext{}
+var mainLogger = logging.MustGetLogger("main")
+
+const (
+	configUsage               = "path to config file; defaults to .fossa.yml or .fossa.yaml"
+	projectUsage              = "the FOSSA project name; defaults to VCS remote 'origin'"
+	revisionUsage             = "the FOSSA project's revision hash; defaults VCS hash at HEAD"
+	endpointUsage             = "the FOSSA server endpoint; defaults to https://app.fossa.io"
+	buildForceUsage           = "ignore cached build artifacts"
+	analyzeOutputUsage        = "print analysis results to stdout"
+	analyzeAllowResolvedUsage = "allow unresolved dependencies"
+	analyzeNoUploadUsage      = "do not upload results to FOSSA"
+	debugUsage                = "print debug information to stderr"
+)
 
 func main() {
 	app := cli.NewApp()
 	app.Name = "fossa-cli"
 	app.Usage = "get dependencies from your code"
 	app.Version = version + " (revision " + commit + ")"
-	app.Action = DefaultCmd
+
+	app.Action = defaultCmd
 	app.Flags = []cli.Flag{
-		cli.StringFlag{Name: "config, c", Usage: "path to config file; defaults to .fossa.yml or .fossa.yaml"},
-		cli.BoolFlag{Name: "install, i", Usage: "run a default build in module directories if they have not been pre-built"},
-		cli.BoolFlag{Name: "output, o", Usage: "output build data to JSON and exit; do not upload results to FOSSA"},
-		cli.StringFlag{Name: "log_level, l"},
-		cli.StringFlag{Name: "locator"},
+		cli.StringFlag{Name: "c, config", Usage: configUsage},
+		cli.StringFlag{Name: "p, project", Usage: projectUsage},
+		cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
+		cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
+		cli.StringFlag{Name: "m, modules", Usage: "the modules to build and analyze"},
+		cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
+		cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
+		cli.BoolFlag{Name: "no-upload", Usage: analyzeNoUploadUsage},
+		cli.BoolFlag{Name: "b, build", Usage: "run a default build in module directories if they have not been pre-built"},
+		cli.BoolFlag{Name: "f, force", Usage: buildForceUsage},
+		cli.BoolFlag{Name: "debug", Usage: debugUsage},
 	}
 
 	app.Commands = []cli.Command{
 		{
-			Name:    "build",
-			Aliases: []string{},
-			Usage:   "discover dependencies for an inline module",
-			Action:  BuildCmd,
+			Name:   "build",
+			Usage:  "Run a default project build",
+			Action: buildCmd,
 			Flags: []cli.Flag{
-				// Format: `type:path` e.g. `gopackage:github.com/fossas/fossa-cli/cmd/fossa`
-				cli.StringFlag{Name: "entry_point, e"},
-				cli.StringFlag{Name: "type, t"},
-				cli.BoolFlag{Name: "upload, u"},
-				cli.BoolFlag{Name: "no_cache"},
+				cli.StringFlag{Name: "c, config", Usage: configUsage},
+				cli.StringFlag{Name: "m, modules", Usage: "the modules to build"},
+				cli.BoolFlag{Name: "f, force", Usage: buildForceUsage},
+				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
 		},
 		{
-			Name:    "upload",
-			Aliases: []string{},
-			Usage:   "upload build data to a FOSSA endpoint",
-			Action:  UploadCmd,
+			Name:   "analyze",
+			Usage:  "Analyze built dependencies",
+			Action: analyzeCmd,
 			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "endpoint",
-					Value: "https://app.fossa.io/",
-				},
-				cli.StringFlag{
-					Name: "locator",
-				},
-				cli.StringFlag{
-					Name:   "api_key, k",
-					EnvVar: "FOSSA_API_KEY",
-				},
+				cli.StringFlag{Name: "c, config", Usage: configUsage},
+				cli.StringFlag{Name: "p, project", Usage: projectUsage},
+				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
+				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
+				cli.StringFlag{Name: "m, modules", Usage: "the modules to analyze"},
+				cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
+				cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
+				cli.BoolFlag{Name: "no-upload", Usage: analyzeNoUploadUsage},
+				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
 		},
 	}
-
-	app.Before = BootstrapCmd
 
 	app.Run(os.Args)
 }
 
-// BootstrapCmd initializes and loads config for the CLI.
-func BootstrapCmd(c *cli.Context) error {
+type cliConfig struct {
+	apiKey   string
+	project  string
+	revision string
+	endpoint string
+	modules  []moduleConfig
+	debug    bool
+
+	defaultConfig defaultConfig
+	analyzeConfig analyzeConfig
+	buildConfig   buildConfig
+}
+
+type defaultConfig struct {
+	build bool
+}
+
+func initialize(c *cli.Context) (cliConfig, error) {
+	var config = cliConfig{
+		apiKey:   c.String("api_key"),
+		project:  c.String("project"),
+		revision: c.String("revision"),
+		endpoint: c.String("endpoint"),
+		modules:  parseModuleFlag(c.String("modules")),
+		debug:    c.Bool("debug"),
+
+		defaultConfig: defaultConfig{
+			build: c.Bool("build"),
+		},
+
+		analyzeConfig: analyzeConfig{
+			output:          c.Bool("output"),
+			allowUnresolved: c.Bool("allow-unresolved"),
+			noUpload:        c.Bool("no-upload"),
+		},
+
+		buildConfig: buildConfig{
+			force: c.Bool("force"),
+		},
+	}
+
+	// Load configuration file and set overrides.
+	configFile, err := readConfigFile(c.String("config"))
+	if err != nil {
+		return cliConfig{}, err
+	}
+
+	var locatorSections []string
+	var locatorProject string
+	var locatorRevision string
+
+	if configFile.CLI.Locator != "" {
+		locatorSections = strings.Split(configFile.CLI.Locator, "$")
+		locatorProject = locatorSections[0]
+		locatorRevision = locatorSections[1]
+	}
+
+	if config.apiKey == "" {
+		config.apiKey = configFile.CLI.APIKey
+	}
+	if config.endpoint == "" {
+		config.endpoint = configFile.CLI.Server
+	}
+	if config.project == "" {
+		config.project = configFile.CLI.Project
+		if config.project == "" {
+			config.project = locatorProject
+		}
+	}
+	if config.revision == "" {
+		config.revision = locatorRevision
+	}
+	if len(config.modules) == 0 {
+		config.modules = configFile.Analyze.Modules
+	}
+
 	// Configure logging.
-	devNullBackend := logging.NewLogBackend(ioutil.Discard, "", 0)
-
-	stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), log.Format))
-	stderrBackend.SetLevel(logging.ERROR, "")
-
-	if c.String("log_level") == "debug" {
+	formatter := logging.MustStringFormatter(
+		`%{color}%{time} %{level} %{module}:%{shortpkg}/%{shortfile}/%{shortfunc}%{color:reset} %{message}`,
+	)
+	stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), formatter))
+	stderrBackend.SetLevel(logging.WARNING, "")
+	if config.debug {
 		stderrBackend.SetLevel(logging.DEBUG, "")
 	}
+	logging.SetBackend(stderrBackend)
 
-	logging.SetBackend(devNullBackend, stderrBackend)
+	mainLogger.Debugf("Configuration initialized: %#v", config)
 
-	// Read configuration file.
-	config, err := ReadConfig(c.String("config"))
-	if err != nil {
-		log.Logger.Fatalf("error initializing: %s", err)
-	}
-
-	// Set configuration via flags.
-	// // Global configuration flags.
-	logLevelFlag := c.String("log_level")
-	if logLevelFlag != "" {
-		config.CLI.LogLevel = logLevelFlag
-	}
-
-	// Analysis flags.
-	entryPointFlag := c.String("entry_point")
-	if entryPointFlag != "" {
-		entryPointSections := strings.Split(entryPointFlag, "")
-		config.Analyze.Modules = []ModuleConfig{
-			ModuleConfig{
-				Name: "",
-				Path: entryPointSections[1],
-				Type: entryPointSections[0],
-			},
-		}
-	}
-
-	// CLI flags.
-	installFlag := c.Bool("install")
-	if installFlag {
-		config.CLI.Install = true
-	}
-
-	uploadFlag := c.Bool("upload")
-	if uploadFlag {
-		config.CLI.Upload = true
-	}
-
-	noCacheFlag := c.Bool("no_cache")
-	if noCacheFlag {
-		config.CLI.NoCache = true
-	}
-
-	// Upload flags.
-	endpointFlag := c.String("endpoint")
-	if endpointFlag != "" {
-		config.CLI.Server = endpointFlag
-	}
-
-	locatorFlag := c.String("locator")
-	if locatorFlag != "" {
-		config.CLI.Locator = locatorFlag
-	}
-
-	apiKeyFlag := c.String("api_key")
-	if apiKeyFlag != "" {
-		config.CLI.APIKey = apiKeyFlag
-	}
-
-	log.Logger.Debugf("Configuration: %+v\n", config)
-
-	context.config = config
-	return nil
+	return config, nil
 }
 
-// DefaultCmd resolves dependencies and uploads the results.
-func DefaultCmd(c *cli.Context) {
-	config := context.config
-
-	if len(config.Analyze.Modules) == 0 {
-		log.Logger.Fatalf("no modules specified for analysis")
+func parseModuleFlag(moduleFlag string) []moduleConfig {
+	if moduleFlag == "" {
+		return []moduleConfig{}
 	}
+	var config []moduleConfig
 
-	// Run the spinner only when we don't rely on stdout
-	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-
-	if !c.Bool("output") {
-		s.Suffix = " Initializing..."
-		s.Start()
-	}
-
-	builds := []*build.Module{}
-	numModules := strconv.Itoa(len(config.Analyze.Modules))
-
-	for i, mod := range config.Analyze.Modules {
-		if !c.Bool("output") {
-			s.Suffix = " Running build analysis (" +
-				strconv.Itoa(i+1) + "/" +
-				numModules + "): " +
-				mod.Name
-			s.Restart()
-		}
-
-		build, err := doBuild(config, i)
-		if err != nil {
-			s.Stop()
-			log.Logger.Fatalf("Build failed (%s): %s\n", mod.Name, err.Error())
-		}
-
-		builds = append(builds, build)
-	}
-
-	if !c.Bool("output") {
-		s.Suffix = " Uploading build results (" + numModules + "/" + numModules + ")..."
-		s.Restart()
-		err := doUpload(config, builds)
-		if err != nil {
-			s.Stop()
-			log.Logger.Fatalf("Upload failed: %s. Run with -o to skip upload.\n", err.Error())
-		}
-		s.Stop()
-	} else {
-		output, _ := createBuildData(builds)
-		fmt.Print(string(output))
-	}
-}
-
-// BuildCmd runs the first build of a given configuration.
-func BuildCmd(c *cli.Context) {
-	config := context.config
-
-	if len(config.Analyze.Modules) == 0 && c.String("entry_point") != "" {
-		if c.String("type") == "" {
-			log.Logger.Fatal("module type required\n")
-		}
-		config.Analyze.Modules = append(config.Analyze.Modules, ModuleConfig{
-			Name: ".",
-			Path: c.String("entry_point"),
-			Type: c.String("type"),
+	modules := strings.Split(moduleFlag, ",")
+	for _, m := range modules {
+		sections := strings.Split(m, ":")
+		config = append(config, moduleConfig{
+			Name: sections[1],
+			Path: sections[1],
+			Type: module.Type(sections[0]),
 		})
 	}
 
-	mod, err := doBuild(config, 0)
+	return config
+}
 
+func setupModule(config moduleConfig, manifestName string, moduleType module.Type) (module.Module, error) {
+	var m module.Module
+
+	modulePath, err := filepath.Abs(config.Path)
+	if filepath.Base(modulePath) == manifestName {
+		modulePath = filepath.Dir(modulePath)
+	}
 	if err != nil {
-		log.Logger.Fatalf("Analysis failed: (%v).\nTry pre-building and then running `fossa`", err)
+		return m, err
 	}
 
-	if config.CLI.Upload {
-		log.Logger.Debug("Uploading build results...")
-		err = doUpload(config, []*build.Module{mod})
+	moduleName := config.Name
+	if moduleName == "" {
+		moduleName = config.Path
+	}
+
+	m = module.Module{
+		Name:   moduleName,
+		Type:   moduleType,
+		Target: filepath.Join(modulePath, manifestName),
+		Dir:    modulePath,
+	}
+
+	mainLogger.Debugf("Module setup complete: %#v", m)
+
+	return m, nil
+}
+
+func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Module, error) {
+	mainLogger.Debugf("Resolving moduleConfig: %#v", moduleConfig)
+
+	// Don't use `:=` within each switch case, or you'll create a new binding that
+	// shadows these bindings (apparently switches create a new scope...).
+	var builder module.Builder
+	var m module.Module
+	var err error
+
+	switch moduleConfig.Type {
+	case "commonjspackage": // Alias for backwards compatibility
+		fallthrough
+	case "nodejs":
+		mainLogger.Debug("Got NodeJS module.")
+		builder = &build.NodeJSBuilder{}
+		m, err = setupModule(moduleConfig, "package.json", module.Nodejs)
 		if err != nil {
-			log.Logger.Fatalf("Could not upload build results: %s\n", err.Error())
+			return nil, m, err
 		}
-		fmt.Print("build & upload succeeded")
-	} else {
-		data, _ := json.Marshal(mod)
-		fmt.Print(string(data))
-	}
-
-	log.Logger.Debug("BUILD OK")
-}
-
-func doBuild(config Config, mIndex int) (*build.Module, error) {
-	if len(config.Analyze.Modules) == 0 {
-		return nil, errors.New("no entry points specified")
-	}
-
-	module := build.Module{
-		Name:     config.Analyze.Modules[mIndex].Name,
-		Manifest: config.Analyze.Modules[mIndex].Path,
-		Dir:      filepath.Dir(config.Analyze.Modules[mIndex].Path),
-		Type:     config.Analyze.Modules[mIndex].Type,
-	}
-
-	// TODO(leo): refactor this into a struct.
-	buildOpts := make(map[string]interface{})
-	buildOpts["install"] = config.CLI.Install
-	buildOpts["no_cache"] = config.CLI.NoCache
-
-	log.Logger.Debugf("Building module: %+v\n", module)
-	if err := module.Analyze(buildOpts); err != nil {
-		return nil, err
-	}
-
-	log.Logger.Debugf("Found %d deduped dependencies", len(module.Build.RawDependencies))
-
-	return &module, nil
-}
-
-// UploadCmd sends data to the fossa-core server about a specific revision.
-func UploadCmd(c *cli.Context) {
-	builds := []*build.Module{}
-	argIndex := 0
-	for c.Args().Get(argIndex) != "" {
-		var data build.Module
-		if err := json.Unmarshal([]byte(c.Args().Get(argIndex)), &data); err != nil {
-			log.Logger.Fatalf("Invalid build data for module #" + strconv.Itoa(argIndex))
+	case "bower":
+		mainLogger.Debug("Got Bower module.")
+		builder = &build.BowerBuilder{}
+		m, err = setupModule(moduleConfig, "bower.json", module.Bower)
+		if err != nil {
+			return nil, m, err
 		}
-		builds = append(builds, &data)
-		argIndex++
-	}
-
-	err := doUpload(context.config, builds)
-	if err != nil {
-		log.Logger.Fatalf("Upload failed: %s\n", err.Error())
-	}
-
-	log.Logger.Info("Upload succeeded")
-}
-
-func createBuildData(modules []*build.Module) ([]byte, error) {
-	// TODO: make this return a build data struct over []byte later
-	return json.Marshal(modules)
-}
-
-func doUpload(config Config, modules []*build.Module) error {
-	fossaBaseURL, err := url.Parse(config.CLI.Server)
-	if err != nil {
-		return errors.New("invalid FOSSA endpoint")
-	}
-
-	if config.CLI.Locator == "" {
-		log.Logger.Fatal("no revision found in working directory; try running in a git repo or passing a locator")
-	}
-
-	if config.CLI.Project == "" {
-		log.Logger.Fatal("could not infer project name from either `.fossa.yaml` or `git` remote named `origin`")
-	}
-
-	log.Logger.Debugf("Uploading build data from (%s) modules:", len(modules))
-
-	// re-marshall into build data
-	buildData, err := createBuildData(modules)
-	if err != nil {
-		return errors.New("invalid build data")
-	}
-
-	log.Logger.Debugf(string(buildData))
-
-	postRef, _ := url.Parse("/api/builds/custom?locator=" + url.QueryEscape(config.CLI.Locator) + "&v=" + version)
-	postURL := fossaBaseURL.ResolveReference(postRef).String()
-
-	log.Logger.Debugf("Sending build data to <%s>", postURL)
-
-	req, _ := http.NewRequest("POST", postURL, bytes.NewReader(buildData))
-	req.Header.Set("Authorization", "token "+config.CLI.APIKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("could not begin upload: %s", err)
-	}
-	defer resp.Body.Close()
-	responseBytes, _ := ioutil.ReadAll(resp.Body)
-	responseStr := string(responseBytes)
-
-	if resp.StatusCode == http.StatusForbidden {
-		return errors.New("invalid API key, check the $FOSSA_API_KEY environment variable")
-	} else if resp.StatusCode == http.StatusPreconditionRequired {
-		// TODO: handle "Managed Project" workflow
-		return fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo")
-	} else if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad server response (%s)", responseStr)
-	} else {
-		log.Logger.Debugf("response: %s", responseStr)
-		log.Logger.Info("upload succeeded")
-		var jsonResponse map[string]interface{}
-		if err := json.Unmarshal(responseBytes, &jsonResponse); err != nil {
-			return errors.New("invalid response, but build was uploaded")
+	case "composer":
+		mainLogger.Debug("Got Composer module.")
+		builder = &build.ComposerBuilder{}
+		m, err = setupModule(moduleConfig, "composer.json", module.Composer)
+		if err != nil {
+			return nil, m, err
 		}
-		locParts := strings.Split(jsonResponse["locator"].(string), "$")
-		getRef, _ := url.Parse("/projects/" + url.QueryEscape(locParts[0]) + "/refs/branch/master/" + url.QueryEscape(locParts[1]))
-		fmt.Println("\n============================================================\n")
-		fmt.Println("   View FOSSA Report:")
-		fmt.Println("   " + fossaBaseURL.ResolveReference(getRef).String())
-		fmt.Println("\n============================================================")
+	case "golang":
+		fallthrough
+	case "go":
+		mainLogger.Debug("Got Go module.")
+		builder = &build.GoBuilder{}
+		m, err = setupModule(moduleConfig, "", module.Golang)
+		// Target should be relative to $GOPATH
+		m.Target = strings.TrimPrefix(m.Target, filepath.Join(os.Getenv("GOPATH"), "src")+"/")
+		if err != nil {
+			return nil, m, err
+		}
+	case "maven":
+		fallthrough
+	case "mvn":
+		mainLogger.Debug("Got Maven module.")
+		builder = &build.MavenBuilder{}
+		m, err = setupModule(moduleConfig, "pom.xml", module.Maven)
+		if err != nil {
+			return nil, m, err
+		}
+	case "bundler":
+		fallthrough
+	case "gem":
+		fallthrough
+	case "rubygems":
+		fallthrough
+	case "ruby":
+		mainLogger.Debug("Got Ruby module.")
+		builder = &build.RubyBuilder{}
+		m, err = setupModule(moduleConfig, "Gemfile", module.Ruby)
+		if err != nil {
+			return nil, m, err
+		}
+	case "scala":
+		fallthrough
+	case "sbtpackage":
+		fallthrough
+	case "sbt":
+		mainLogger.Debug("Got SBT module.")
+		builder = &build.SBTBuilder{}
+		m, err = setupModule(moduleConfig, "build.sbt", module.SBT)
+		if err != nil {
+			return nil, m, err
+		}
+	default:
+		mainLogger.Debug("Got unknown module.")
+		return builder, m, errors.New("unknown module type: " + string(moduleConfig.Type))
 	}
 
-	return nil
+	mainLogger.Debugf("Resolved moduleConfig to: %#v, %#v", builder, m)
+	return builder, m, nil
+}
+
+func defaultCmd(c *cli.Context) {
+	config, err := initialize(c)
+	if err != nil {
+		mainLogger.Fatalf("Could not load configuration: %s", err.Error())
+	}
+
+	if len(config.modules) == 0 {
+		mainLogger.Fatal("No modules specified for analysis.")
+	}
+
+	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+	s.Writer = os.Stderr
+	s.Suffix = " Initializing..."
+	s.Start()
+
+	dependencies := make(analysis)
+
+	for i, m := range config.modules {
+		s.Suffix = fmt.Sprintf(" Running build analysis (%d/%d): %s", i+1, len(config.modules), m.Name)
+		s.Restart()
+
+		builder, module, err := resolveModuleConfig(m)
+		if err != nil {
+			buildLogger.Fatalf("Could not parse module configuration: %s", err.Error())
+		}
+
+		err = builder.Initialize()
+		if err != nil {
+			buildLogger.Fatalf("Failed to initialize build: %s", err.Error())
+		}
+
+		isBuilt, err := builder.IsBuilt(module, config.analyzeConfig.allowUnresolved)
+		if err != nil {
+			mainLogger.Fatalf("Could not determine whether module %s is built.", module.Name)
+		}
+
+		if !isBuilt {
+			if config.defaultConfig.build {
+				s.Suffix = fmt.Sprintf(" Running module build (%d/%d): %s", i+1, len(config.modules), m.Path)
+				s.Restart()
+
+				err := builder.Build(module, config.buildConfig.force)
+				if err != nil {
+					s.Stop()
+					mainLogger.Fatalf("Build failed (%s): %s", m.Path, err.Error())
+				}
+			} else {
+				mainLogger.Fatalf("Module %s does not appear to be built. Try first running your build or `fossa build`, and then running `fossa`.", module.Name)
+			}
+		}
+
+		s.Suffix = fmt.Sprintf(" Running module analysis (%d/%d): %s", i+1, len(config.modules), m.Path)
+		s.Restart()
+		deps, err := builder.Analyze(module, config.analyzeConfig.allowUnresolved)
+		mainLogger.Debugf("Analysis complete: %#v", deps)
+
+		dependencies[analysisKey{
+			builder: builder,
+			module:  module,
+		}] = deps
+	}
+
+	if config.analyzeConfig.output {
+		normalModules, err := normalizeAnalysis(dependencies)
+		if err != nil {
+			mainLogger.Fatalf("Could not normalize build data: %s", err.Error())
+		}
+		buildData, err := json.Marshal(normalModules)
+		if err != nil {
+			mainLogger.Fatalf("Could marshal analysis results: %s", err.Error())
+		}
+		fmt.Println(string(buildData))
+	}
+
+	if config.analyzeConfig.noUpload {
+		return
+	}
+
+	s.Suffix = fmt.Sprintf(" Uploading build results (%d/%d)...", len(config.modules), len(config.modules))
+	s.Restart()
+	err = doUpload(config, dependencies)
+	if err != nil {
+		s.Stop()
+		mainLogger.Fatalf("Upload failed: %s", err.Error())
+	}
 }

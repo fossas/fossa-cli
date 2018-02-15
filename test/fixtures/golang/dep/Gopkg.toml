@@ -1,0 +1,29 @@
+# This is from `fossa-cli`
+
+[[constraint]]
+  name = "github.com/BurntSushi/toml"
+  version = "0.3.0"
+
+[[constraint]]
+  name = "github.com/KyleBanks/depth"
+  version = "1.2.0"
+
+[[constraint]]
+  name = "github.com/op/go-logging"
+  version = "1.0.0"
+
+[[constraint]]
+  name = "github.com/urfave/cli"
+  version = "1.20.0"
+
+[[constraint]]
+  name = "gopkg.in/src-d/go-git.v4"
+  version = "4.1.0"
+
+[[constraint]]
+  branch = "v2"
+  name = "gopkg.in/yaml.v2"
+
+[[constraint]]
+  name = "github.com/bmatcuk/doublestar"
+  version = "1.0.9"

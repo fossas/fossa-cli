@@ -1,132 +1,193 @@
 package build
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 
-	. "github.com/fossas/fossa-cli/log"
+	"github.com/fossas/fossa-cli/module"
+	logging "github.com/op/go-logging"
 )
 
-// SBTContext implements build context for SBT builds
-type SBTContext struct {
-	SbtCmd     string
-	SbtVersion string
+var sbtLogger = logging.MustGetLogger("sbt")
 
-	cachedSbtDepListOutput string
-}
-
-// SbtPackage represents metadata from pom.xml files
-type SbtPackage struct {
+// SBTLibrary implements Dependency for SBT library dependencies
+type SBTLibrary struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
 }
 
-// Fetcher always returns npm for SbtPackage
-func (m SbtPackage) Fetcher() string {
+// Fetcher always returns mvn for SBTLibrary
+func (m SBTLibrary) Fetcher() string {
 	// SBT uses the Maven repositories by default, but it looks like there's also
-	// support for Ivy formats + "unmanaged dependencies" (vendored JARs?). TODO:
-	// add support for these other formats.
+	// support for Ivy formats + "unmanaged dependencies" (vendored JARs?).
+	// TODO: add support for these other formats.
 	return "mvn"
 }
 
-// Package returns the package spec for SbtPackage
-func (m SbtPackage) Package() string {
+// Package returns the package spec for SBTLibrary
+func (m SBTLibrary) Package() string {
 	return m.Name
 }
 
-// Revision returns the version spec for SbtPackage
-func (m SbtPackage) Revision() string {
+// Revision returns the version spec for SBTLibrary
+func (m SBTLibrary) Revision() string {
 	return m.Version
 }
 
-// Initialize collects environment data for Bundler builds
-func (ctx *SBTContext) Initialize(p *Module, opts map[string]interface{}) {
-	ctx.SbtCmd = string(os.Getenv("SBT_BINARY"))
-	if ctx.SbtCmd == "" {
-		ctx.SbtCmd = "sbt"
-	}
-	outSbtVersion, err := exec.Command(ctx.SbtCmd, "-no-colors", "sbtVersion").Output()
-	if err == nil {
-		// TODO: support for multiple SBT versions
-		sbtVersionLines := strings.Split(string(outSbtVersion), "\n")
-		for i, versionLine := range sbtVersionLines {
-			versionLine = strings.TrimSpace(versionLine)
-			if strings.Index(versionLine, "sbtVersion") != -1 {
-				ctx.SbtVersion = strings.TrimSpace(strings.TrimPrefix(sbtVersionLines[i+1], "[info] 	"))
-			}
-		}
-	}
+// SBTBuilder implements build context for SBT builds
+type SBTBuilder struct {
+	SBTCmd     string
+	SBTVersion string
 
-	if ctx.SbtVersion == "" {
-		ctx.SbtCmd = ""
-		ctx.SbtVersion = ""
-	}
+	JavaCmd     string
+	JavaVersion string
 }
 
-// Sets ctx.cachedSbtDepListOutput
-func (ctx *SBTContext) getDepList(m *Module, opts map[string]interface{}) error {
-	if ctx.cachedSbtDepListOutput != "" {
-		return nil
+// Initialize collects environment data for SBT builds
+func (builder *SBTBuilder) Initialize() error {
+	sbtLogger.Debugf("Initializing SBT builder...")
+
+	builder.SBTCmd = string(os.Getenv("SBT_BINARY"))
+	if builder.SBTCmd == "" {
+		builder.SBTCmd = "sbt"
 	}
-	cmdOut, err := exec.Command(ctx.SbtCmd, "-no-colors", "dependencyList").Output()
+	sbtAboutOutput, err := exec.Command(builder.SBTCmd, "-no-colors", "about").Output()
 	if err != nil {
-		ctx.cachedSbtDepListOutput = ""
 		return err
 	}
 
-	ctx.cachedSbtDepListOutput = string(cmdOut)
+	lines := strings.Split(string(sbtAboutOutput), "\n")
+	matcher := regexp.MustCompile(`^\[info\] This is sbt (.*?)$`)
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		matches := matcher.FindStringSubmatch(line)
+		if len(matches) == 2 {
+			builder.SBTVersion = matches[1]
+		}
+	}
+
+	builder.JavaCmd = string(os.Getenv("JAVA_BINARY"))
+	if builder.JavaCmd == "" {
+		builder.JavaCmd = "java"
+	}
+	var javaVersionOutput bytes.Buffer
+	cmd := exec.Command(builder.JavaCmd, "-version")
+	cmd.Stderr = &javaVersionOutput
+	_, err = cmd.Output()
+	if err != nil {
+		return err
+	}
+	builder.JavaVersion = javaVersionOutput.String()
+
+	if builder.SBTCmd == "" || builder.SBTVersion == "" {
+		return errors.New("could not find sbt (try setting $SBT_BINARY)")
+	}
+
+	sbtLogger.Debugf("Initialized SBT builder: %#v", builder)
 	return nil
 }
 
-// Verify checks if the bundler is satisfied and if an install is necessary
-func (ctx *SBTContext) Verify(p *Module, opts map[string]interface{}) bool {
-	// TODO: test by running sbt dependencyTree and seeing if it fails
-	return ctx.getDepList(p, opts) == nil && ctx.cachedSbtDepListOutput != ""
+func (builder *SBTBuilder) Build(m module.Module, force bool) error {
+	sbtLogger.Debugf("Running SBT build on %#v", m)
+	if force {
+		sbtLogger.Debugf("`force` flag is set; running `%s clean`...", builder.SBTCmd)
+		cmd := exec.Command(builder.SBTCmd, "clean")
+		cmd.Dir = m.Dir
+		output, err := cmd.Output()
+		if err != nil {
+			sbtLogger.Debugf("`%s clean` failed; output: %#v", builder.SBTCmd, string(output))
+			return err
+		}
+		sbtLogger.Debugf("Done running `%s clean`.", builder.SBTCmd)
+	}
+
+	sbtLogger.Debugf("Running `%s compile`...", builder.SBTCmd)
+	cmd := exec.Command(builder.SBTCmd, "compile")
+	cmd.Dir = m.Dir
+	output, err := cmd.Output()
+	if err != nil {
+		sbtLogger.Debugf("`%s compile` failed; output: %#v", builder.SBTCmd, string(output))
+		return err
+	}
+	sbtLogger.Debugf("Done running `%s compile`.", builder.SBTCmd)
+
+	sbtLogger.Debugf("Done running SBT build.")
+	return nil
 }
 
-// Build runs Bundler and collect dep data
-func (ctx *SBTContext) Build(m *Module, opts map[string]interface{}) error {
-	if ctx.SbtCmd == "" || ctx.SbtVersion == "" {
-		return errors.New("no SBT or jdk installation detected (try setting the $SBT_BINARY environment variable)")
+func (builder *SBTBuilder) Analyze(m module.Module, _ bool) ([]module.Dependency, error) {
+	sbtLogger.Debugf("Running SBT analysis on %#v", m)
+	sbtLogger.Debugf("Running `%s -no-colors dependencyList`...", builder.SBTCmd)
+	cmd := exec.Command(builder.SBTCmd, "-no-colors", "dependencyList")
+	cmd.Dir = m.Dir
+	output, err := cmd.Output()
+	outStr := string(output)
+	if err != nil {
+		sbtLogger.Debugf("`%s -no-colors dependencyList` failed; output: %#v", builder.SBTCmd, outStr)
+		return nil, err
 	}
+	sbtLogger.Debugf("Done running `%s -no-colors dependencyList`.", builder.SBTCmd)
 
-	// TODO: do not rely on the Verify step state to trigger build status
-	if ctx.cachedSbtDepListOutput == "" {
-		Logger.Debug("SBT project not built, running full install...")
-		// bundle install, no flags as we need to satisfy all reqs
-		exec.Command(ctx.SbtCmd, "clean", "compile").Output()
-	}
-
-	err := ctx.getDepList(m, opts)
-	if err != nil || ctx.cachedSbtDepListOutput == "" {
-		return errors.New("unable to extract SBT dependency list; have you built the artifact with `sbt compile` and installed `net.virtual-void` % `sbt-dependency-graph`?")
-	}
-
-	// process bundle list output
-	dependencies := []Dependency{}
-	for _, depLine := range strings.Split(string(ctx.cachedSbtDepListOutput), "\n") {
-		if strings.Index(depLine, "[info] Loading ") != -1 ||
-			strings.Index(depLine, "[info] Resolving ") != -1 ||
-			strings.Index(depLine, "[info] Set ") != -1 ||
-			strings.Index(depLine, "[info] Updating ") != -1 ||
-			strings.Index(depLine, "[info] Done ") != -1 ||
-			strings.Index(depLine, "[info] ") != 0 {
+	sbtLogger.Debugf("Parsing SBT output...")
+	deps := []module.Dependency{}
+	for _, line := range strings.Split(outStr, "\n") {
+		if strings.Index(line, "[info] Loading ") != -1 ||
+			strings.Index(line, "[info] Resolving ") != -1 ||
+			strings.Index(line, "[info] Set ") != -1 ||
+			strings.Index(line, "[info] Updating ") != -1 ||
+			strings.Index(line, "[info] Done ") != -1 ||
+			strings.Index(line, "[info] ") != 0 {
+			sbtLogger.Debugf("Ignoring line: %#v", line)
 			continue
 		}
-		Logger.Debugf("filtered depLine: '%s'\n", depLine)
+		sbtLogger.Debugf("Matched line: %#v", line)
 
-		if len(depLine) > 0 {
-			depLocator := strings.TrimSpace(strings.TrimPrefix(depLine, "[info] "))
+		if len(line) > 0 {
+			depLocator := strings.TrimSpace(strings.TrimPrefix(line, "[info] "))
 			depSections := strings.Split(depLocator, ":")
-			dependencies = append(dependencies, Dependency(SbtPackage{
+			dep := module.Dependency(SBTLibrary{
 				Name:    depSections[0] + ":" + depSections[1],
 				Version: depSections[2],
-			}))
+			})
+			sbtLogger.Debugf("Adding dep: %#v", dep)
+			deps = append(deps, dep)
 		}
 	}
+	sbtLogger.Debugf("Done parsing SBT output.")
 
-	m.Build.RawDependencies = Dedupe(dependencies)
-	return nil
+	sbtLogger.Debugf("Done running SBT analysis: %#v", deps)
+	return deps, nil
+}
+
+// IsBuilt checks whether dependencies are ready for scanning.
+func (builder *SBTBuilder) IsBuilt(m module.Module, _ bool) (bool, error) {
+	sbtLogger.Debugf("Checking SBT IsBuilt on %#v", m)
+
+	sbtLogger.Debugf("Running `%s -no-colors dependencyList`...", builder.SBTCmd)
+	cmd := exec.Command(builder.SBTCmd, "-no-colors", "dependencyList")
+	cmd.Dir = m.Dir
+	output, err := cmd.Output()
+	outStr := string(output)
+	if err != nil {
+		sbtLogger.Debugf("`%s -no-colors dependencyList` failed; output: %#v", builder.SBTCmd, outStr)
+		return false, err
+	}
+	sbtLogger.Debugf("Done running `%s -no-colors dependencyList`.", builder.SBTCmd)
+
+	isBuilt := outStr != ""
+	sbtLogger.Debugf("Done checking SBT IsBuilt: %#v", isBuilt)
+
+	return isBuilt, nil
+}
+
+func (builder *SBTBuilder) IsModule(target string) (bool, error) {
+	return false, errors.New("IsModule is not implemented for SBTBuilder")
+}
+
+func (builder *SBTBuilder) InferModule(target string) (module.Module, error) {
+	return module.Module{}, errors.New("InferModule is not implemented for SBTBuilder")
 }

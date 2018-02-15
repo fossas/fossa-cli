@@ -7,29 +7,19 @@ import (
 	"regexp"
 	"strings"
 
-	. "github.com/fossas/fossa-cli/log"
+	"github.com/fossas/fossa-cli/module"
+	logging "github.com/op/go-logging"
 )
 
-// MavenContext implements build context for Apache Maven (*pom.xml) builds
-type MavenContext struct {
-	MvnCmd     string
-	MvnVersion string
+var mavenLogger = logging.MustGetLogger("maven")
 
-	JavaCmd     string
-	JavaVersion string
-
-	// since we rely on dependency:list to verify the build, we will its initialization for now to also determine if the build is satisfied
-	// TODO: change this behavior
-	cachedMvnDepListOutput string
-}
-
-// MavenArtifact represents metadata from pom.xml files
+// MavenArtifact implements Dependency for Maven builds
 type MavenArtifact struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
 }
 
-// Fetcher always returns npm for MavenArtifact
+// Fetcher always returns mvn for MavenArtifact
 func (m MavenArtifact) Fetcher() string {
 	return "mvn"
 }
@@ -44,75 +34,85 @@ func (m MavenArtifact) Revision() string {
 	return m.Version
 }
 
-// Initialize collects environment data for Bundler builds
-func (ctx *MavenContext) Initialize(p *Module, opts map[string]interface{}) {
-	ctx.MvnCmd = string(os.Getenv("MVN_BINARY"))
-	if ctx.MvnCmd == "" {
-		ctx.MvnCmd = "mvn"
+// MavenBuilder implements Builder for Apache Maven (*.pom.xml) builds
+type MavenBuilder struct {
+	MvnCmd     string
+	MvnVersion string
+
+	JavaCmd     string
+	JavaVersion string
+}
+
+func (builder *MavenBuilder) Initialize() error {
+	builder.MvnCmd = string(os.Getenv("MVN_BINARY"))
+	if builder.MvnCmd == "" {
+		builder.MvnCmd = "mvn"
 	}
-	outMvnVersion, err := exec.Command(ctx.MvnCmd, "-v").Output()
-	if err == nil && len(outMvnVersion) >= 10 { // x.x.x
+
+	mavenVersionOutput, err := exec.Command(builder.MvnCmd, "-v").Output()
+	if err != nil {
+		return err
+	}
+	if len(mavenVersionOutput) >= 10 { // x.x.x
 		outputMatchRe := regexp.MustCompile(`Apache Maven ([0-9]+\.[0-9]+\.[0-9]+)`)
-		match := outputMatchRe.FindStringSubmatch(strings.TrimSpace(string(outMvnVersion)))
+		match := outputMatchRe.FindStringSubmatch(strings.TrimSpace(string(mavenVersionOutput)))
 		if len(match) == 2 {
-			ctx.MvnVersion = match[1]
+			builder.MvnVersion = match[1]
 		}
 	}
 
-	if ctx.MvnVersion == "" {
-		ctx.MvnCmd = ""
-		ctx.MvnVersion = ""
-	}
-}
-
-// Sets ctx.cachedMvnDepListOutput
-func (ctx *MavenContext) getDepList(m *Module, opts map[string]interface{}) error {
-	if ctx.cachedMvnDepListOutput != "" {
-		return nil
-	}
-	cmdOut, err := exec.Command(ctx.MvnCmd, "dependency:list", "-f", m.Manifest).Output()
-	if err != nil {
-		ctx.cachedMvnDepListOutput = ""
-		return err
+	if builder.MvnCmd == "" || builder.MvnVersion == "" {
+		return errors.New("could not find mvn (try setting $MVN_BINARY)")
 	}
 
-	ctx.cachedMvnDepListOutput = string(cmdOut)
+	// TODO: collect Java information
+
 	return nil
 }
 
-// Verify checks if the bundler is satisfied and if an install is necessary
-func (ctx *MavenContext) Verify(p *Module, opts map[string]interface{}) bool {
-	// TODO: test by running mvn dependency:list and seeing if it fails
-	return ctx.getDepList(p, opts) == nil && ctx.cachedMvnDepListOutput != ""
+func (builder *MavenBuilder) Build(m module.Module, force bool) error {
+	mavenLogger.Debugf("Running Maven build")
+	if force {
+		mavenLogger.Debugf("`force` flag is set: clearing install cache.")
+		mavenLogger.Debugf("Running `mvn clean`...")
+		cmd := exec.Command(builder.MvnCmd, "clean")
+		cmd.Dir = m.Dir
+		output, err := cmd.Output()
+		mavenLogger.Debugf("...running `mvn clean` done: %#v", string(output))
+		if err != nil {
+			return err
+		}
+	}
+
+	mavenLogger.Debugf("Running `mvn install -DskipTests -Drat.skip=true`...")
+	cmd := exec.Command(builder.MvnCmd, "install", "-DskipTests", "-Drat.skip=true")
+	cmd.Dir = m.Dir
+	output, err := cmd.Output()
+	mavenLogger.Debugf("...running `mvn install -DskipTests -Drat.skip=true` done: %#v", string(output))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-// Build runs Bundler and collect dep data
-func (ctx *MavenContext) Build(m *Module, opts map[string]interface{}) error {
-	if ctx.MvnCmd == "" || ctx.MvnVersion == "" {
-		return errors.New("no maven or jdk installation detected -- try setting the $MVN_BINARY environment variable.")
+func (builder *MavenBuilder) Analyze(m module.Module, _ bool) ([]module.Dependency, error) {
+	mavenLogger.Debugf("Running Maven analysis")
+	cmd := exec.Command(builder.MvnCmd, "dependency:list")
+	cmd.Dir = m.Dir
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
 	}
 
-	// TODO: do not rely on the Verify step state to trigger build status
-	if ctx.cachedMvnDepListOutput == "" {
-		Logger.Debug("maven project not built, running full install...")
-		// bundle install, no flags as we need to satisfy all reqs
-		exec.Command(ctx.MvnCmd, "clean", "install", "-DskipTests", "-Drat.skip=true", "-f", m.Manifest).Output()
-	}
-
-	err := ctx.getDepList(m, opts)
-	if err != nil || ctx.cachedMvnDepListOutput == "" {
-		return errors.New("unable to extract maven dependency list; have you built the artifact with `mvn install` yet?")
-	}
-
-	// process bundle list output
-	dependencies := []Dependency{}
+	deps := []module.Dependency{}
 	outputMatchRe := regexp.MustCompile(`\[INFO\]    ([^:]+):([^:]+):(jar|war|java-source|):([^:]+)`)
-	for _, bundleListLn := range strings.Split(string(ctx.cachedMvnDepListOutput), "\n") {
+	for _, bundleListLn := range strings.Split(string(output), "\n") {
 		bundleListLn = strings.TrimSpace(bundleListLn)
 		if len(bundleListLn) > 0 {
 			match := outputMatchRe.FindStringSubmatch(bundleListLn)
 			if len(match) == 5 {
-				dependencies = append(dependencies, Dependency(MavenArtifact{
+				deps = append(deps, module.Dependency(MavenArtifact{
 					Name:    match[1] + ":" + match[2],
 					Version: match[4],
 				}))
@@ -120,6 +120,30 @@ func (ctx *MavenContext) Build(m *Module, opts map[string]interface{}) error {
 		}
 	}
 
-	m.Build.RawDependencies = Dedupe(dependencies)
-	return nil
+	return deps, nil
+}
+
+// IsBuilt checks whether dependencies are ready for scanning.
+func (builder *MavenBuilder) IsBuilt(m module.Module, _ bool) (bool, error) {
+	mavenLogger.Debugf("Running `mvn dependency:list` for IsBuilt...")
+	cmd := exec.Command(builder.MvnCmd, "dependency:list")
+	cmd.Dir = m.Dir
+	output, err := cmd.Output()
+	outStr := string(output)
+	mavenLogger.Debugf("...running `mvn dependency:list` done: %#v", outStr)
+	if err != nil {
+		if strings.Index(outStr, "Could not find artifact") != -1 {
+			return false, nil
+		}
+		return false, err
+	}
+	return outStr != "", nil
+}
+
+func (builder *MavenBuilder) IsModule(target string) (bool, error) {
+	return false, errors.New("IsModule is not implemented for MavenBuilder")
+}
+
+func (builder *MavenBuilder) InferModule(target string) (module.Module, error) {
+	return module.Module{}, errors.New("InferModule is not implemented for MavenBuilder")
 }

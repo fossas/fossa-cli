@@ -1,117 +1,166 @@
 package build
 
 import (
+	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"os"
 	"os/exec"
-	"regexp"
+	"path/filepath"
 	"strings"
+	"sync"
 
-	"github.com/fossas/fossa-cli/log"
+	"github.com/bmatcuk/doublestar"
+	logging "github.com/op/go-logging"
+
+	"github.com/fossas/fossa-cli/module"
 )
 
-type BowerContext struct {
+var bowerLogger = logging.MustGetLogger("bower")
+
+// BowerComponent implements Dependency for BowerBuilder.
+type BowerComponent struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+
+// Fetcher always returns bower for BowerComponent. TODO: Support git and other
+// dependency sources.
+func (m BowerComponent) Fetcher() string {
+	return "bower" // TODO: support git and etc...
+}
+
+// Package returns the package name for BowerComponent
+func (m BowerComponent) Package() string {
+	return m.Name
+}
+
+// Revision returns the version for BowerComponent
+func (m BowerComponent) Revision() string {
+	return m.Version
+}
+
+// BowerBuilder implements Builder for Bower.
+// These properties are public for the sake of serialization.
+type BowerBuilder struct {
+	NodeCmd     string
+	NodeVersion string
+
 	BowerCmd     string
 	BowerVersion string
-
-	isBowerComponentsPrePopulated bool
 }
 
-// bower list . | tail +3 | grep -E "\w.+#\S+" -o | sed 's/^/bower\+/' | sed 's/#/$/' | sort | uniq
+// Initialize collects environment data for Bower builds
+func (builder *BowerBuilder) Initialize() error {
+	bowerLogger.Debugf("Initializing Bower builder...")
+	// Set Node context variables
+	nodeCmds := [3]string{os.Getenv("NODE_BINARY"), "node", "nodejs"}
+	for i := 0; true; i++ {
+		if i >= len(nodeCmds) {
+			return errors.New("could not find Nodejs binary (try setting $NODE_BINARY)")
+		}
+		if nodeCmds[i] == "" {
+			continue
+		}
 
-// Initialize collects environment data for CommonJS builds
-func (ctx *BowerContext) Initialize(m *Module, opts map[string]interface{}) {
-	// Set NodeJS context variables
-	ctx.BowerCmd = string(os.Getenv("BOWER_BINARY"))
-	if ctx.BowerCmd == "" {
-		ctx.BowerCmd = "bower"
-	}
-	outBowerVersion, err := exec.Command(ctx.BowerCmd, "-v").Output()
-	if err == nil && len(outBowerVersion) >= 5 {
-		ctx.BowerVersion = strings.TrimSpace(string(outBowerVersion))
-	} else {
-		ctx.BowerCmd = ""
-		ctx.BowerVersion = ""
-	}
-
-	ctx.isBowerComponentsPrePopulated = ctx.verifyBowerComponents(m)
-}
-
-// Verify checks if an install needs to be run
-func (ctx *BowerContext) Verify(m *Module, opts map[string]interface{}) bool {
-	return ctx.verifyBowerComponents(m)
-}
-
-// Build determines and executes a CommonJS build based off available tooling in the environment
-func (ctx *BowerContext) Build(m *Module, opts map[string]interface{}) error {
-	if ctx.BowerCmd == "" {
-		return errors.New("no bower installation detected; try setting the $BOWER_BINARY environment variable")
-	}
-
-	// bower install
-	if ctx.verifyBowerComponents(m) == false || opts["no_cache"].(bool) == true {
-		log.Logger.Debug("No prebuilt bower_components directory, building...")
-		cmd := exec.Command("bower", "install")
-		cmd.Dir = m.Dir
-		cmd.Output()
-	} else {
-		log.Logger.Debug("Found pre-populated bower_components, skipping build...")
-	}
-
-	// verify again
-	if ctx.verifyBowerComponents(m) == false {
-		return errors.New("bower install did not satisfy build requirements")
-	}
-
-	cmd := exec.Command("bower", "list")
-	cmd.Dir = m.Dir
-	outBundleListCmd, err := cmd.Output()
-	if err != nil {
-		return errors.New("unable to inspect bower components")
-	}
-
-	// process `bower list` output
-	dependencies := []Dependency{}
-	outputMatchRe := regexp.MustCompile("([a-z0-9_-]+)#([a-z0-9\\.]+)")
-	for _, bundleListLn := range strings.Split(string(outBundleListCmd), "\n") {
-		bundleListLn = strings.TrimSpace(bundleListLn)
-		if len(bundleListLn) > 0 {
-			match := outputMatchRe.FindStringSubmatch(bundleListLn)
-			if len(match) == 3 {
-				dependencies = append(dependencies, Dependency(RubyGem{
-					Name:    match[1],
-					Version: match[2],
-				}))
-			}
+		nodeVersionOutput, err := exec.Command(nodeCmds[i], "-v").Output()
+		if err == nil && nodeVersionOutput[0] == 'v' {
+			builder.NodeVersion = strings.TrimSpace(string(nodeVersionOutput))[1:]
+			builder.NodeCmd = nodeCmds[i]
+			break
 		}
 	}
 
-	m.Build.RawDependencies = Dedupe(dependencies)
+	// Set Bower context variables
+	builder.BowerCmd = os.Getenv("Bower_BINARY")
+	if builder.BowerCmd == "" {
+		builder.BowerCmd = "bower"
+	}
+
+	bowerVersionOutput, err := exec.Command(builder.BowerCmd, "-v").Output()
+	if err == nil && len(bowerVersionOutput) >= 5 {
+		builder.BowerVersion = strings.TrimSpace(string(bowerVersionOutput))
+	}
+
+	if builder.BowerCmd == "" || builder.BowerVersion == "" {
+		return errors.New("could not find Bower binary (try setting $BOWER_BINARY)")
+	}
+
+	bowerLogger.Debugf("Initialized Bower builder: %#v", builder)
+
 	return nil
 }
 
-func (ctx *BowerContext) verifyBowerComponents(m *Module) bool {
-	cmd := exec.Command("bower", "list")
-	cmd.Dir = m.Dir
-	outBundleListCmd, err := cmd.Output()
-
-	if err != nil {
-		log.Logger.Warning("unable to verify Bower requirements... falling back to bower_components inspection")
-		_, err := os.Stat("bower_components")
-		return err == nil
-	}
-
-	// interrogate `bower list` to see if there's unsatisfied reqs
-	// TODO: verify only production requirements
-	outputMatchRe := regexp.MustCompile("not installed")
-	for _, bundleListLn := range strings.Split(string(outBundleListCmd), "\n") {
-		bundleListLn = strings.TrimSpace(bundleListLn)
-		if len(bundleListLn) > 0 {
-			match := outputMatchRe.MatchString(bundleListLn)
-			if match {
-				return false
-			}
+func (builder *BowerBuilder) Build(m module.Module, force bool) error {
+	bowerLogger.Debugf("Running Bower build...")
+	if force {
+		bowerLogger.Debug("`force` flag is set; clearing `bower_components`...")
+		cmd := exec.Command("rm", "-rf", "bower_components")
+		cmd.Dir = m.Dir
+		_, err := cmd.Output()
+		if err != nil {
+			return err
 		}
 	}
-	return true
+
+	cmd := exec.Command(builder.BowerCmd, "install", "--production")
+	cmd.Dir = m.Dir
+	_, err := cmd.Output()
+	return err
+}
+
+func (builder *BowerBuilder) Analyze(m module.Module, _ bool) ([]module.Dependency, error) {
+	bowerLogger.Debugf("Running analysis on Bower module...")
+	bowerComponents, err := doublestar.Glob(filepath.Join(m.Dir, "**", "bower_components", "*", ".bower.json"))
+	if err != nil {
+		return nil, err
+	}
+	bowerLogger.Debugf("Found %#v modules from globstar.", len(bowerComponents))
+
+	var wg sync.WaitGroup
+	dependencies := make([]BowerComponent, len(bowerComponents))
+	wg.Add(len(bowerComponents))
+
+	for i := 0; i < len(bowerComponents); i++ {
+		go func(modulePath string, index int, wg *sync.WaitGroup) {
+			defer wg.Done()
+
+			dependencyManifest, err := ioutil.ReadFile(modulePath)
+			if err != nil {
+				bowerLogger.Warningf("Error parsing Module: %#v", modulePath)
+				return
+			}
+
+			// Write directly to a reserved index for thread safety
+			json.Unmarshal(dependencyManifest, &dependencies[index])
+		}(bowerComponents[i], i, &wg)
+	}
+
+	wg.Wait()
+
+	var deps []module.Dependency
+	for i := 0; i < len(dependencies); i++ {
+		deps = append(deps, dependencies[i])
+	}
+
+	return deps, nil
+}
+
+func (builder *BowerBuilder) IsBuilt(m module.Module, _ bool) (bool, error) {
+	bowerComponentsPath := filepath.Join(m.Dir, "bower_components")
+	bowerLogger.Debugf("Checking bower_components at %#v", bowerComponentsPath)
+	// TODO: Check if the installed modules are consistent with what's in the
+	// actual manifest.
+	if _, err := os.Stat(bowerComponentsPath); err == nil {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (builder *BowerBuilder) IsModule(target string) (bool, error) {
+	return false, errors.New("IsModule is not implemented for BowerBuilder")
+}
+
+func (builder *BowerBuilder) InferModule(target string) (module.Module, error) {
+	return module.Module{}, errors.New("InferModule is not implemented for BowerBuilder")
 }
