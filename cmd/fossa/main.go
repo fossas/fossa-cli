@@ -305,6 +305,13 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 		if err != nil {
 			return nil, m, err
 		}
+	case "vendoredarchives":
+		mainLogger.Debug("Got vendored archives module.")
+		builder = &build.VendoredArchiveBuilder{}
+		m, err = setupModule(moduleConfig, "", module.VendoredArchives)
+		if err != nil {
+			return nil, m, err
+		}
 	default:
 		mainLogger.Debug("Got unknown module.")
 		return builder, m, errors.New("unknown module type: " + string(moduleConfig.Type))
