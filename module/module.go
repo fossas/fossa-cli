@@ -24,6 +24,8 @@ const (
 	// Golang is the module type for dep, glide, godep, govendor, vndr, and manual
 	// gopath vendoring
 	Golang = Type("golang")
+
+	VendoredArchives = Type("vendoredarchives")
 )
 
 // A Module is a unit of buildable code within a project.
