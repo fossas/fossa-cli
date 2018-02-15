@@ -12,17 +12,19 @@
 
 ## WARNING: This tool is being actively developed. There may be breaking changes.
 
-`fossa` is a tool that interrogates your environment and build to discover the dependencies getting included in your software.  It can be used alone or within build systems to dig out dependency data from complex monolithic builds.
+`fossa` is a tool that interrogates your environment and build to discover the dependencies getting included in your code.  With one command, you can generate dependency reports and license notices across over 20+ build systems.
+
+`fossa` supports high-performance dependency reports within complex monoliths, builds and CI environments.  Scroll down to **usage** to see extended documentation about language support.
 
 This tool integrates directly with the [FOSSA](https://fossa.io) web service to provide open source reports, search intelligence, vulnerability/license scanning and triage workflows to help your organization to manage its open source use.
 
-The CLI provides an alternative path to integrating your code repositories and builds in a way that doesn't require code access or FOSSA environment setup, or enrich dependency reports with dynamically confirmed dependency artifacts.
-
-**FOSSA CLI is currently in alpha and will have a changing API; join our contributor group to get development updates**
+**FOSSA CLI is currently in alpha and will have a changing API; star/watch this repo for updates.**
 
 ## Installation
 
 `fossa` is compatible with Windows, Darwin (MacOS) and *nix-based operating systems.
+
+Grab our latest release on our [Github Releases](releases/) page.
 
 <!--
 TODO: real installation instructions
@@ -58,6 +60,25 @@ OR
 ```bash
   fossa
 ```
+
+### Language / Package Manager Support
+
+`fossa` supports a wide variety of ways dependencies can be included into a codebase.
+
+ - npm
+ - Maven
+ - TODO
+ - RPMs
+
+### Generating License Reports
+
+### Integrating into CI
+
+### Integrating with FOSSA
+
+The CLI provides an alternative path to integrating your code repositories and builds in a way that doesn't require code access or FOSSA environment setup, or enrich dependency reports with dynamically confirmed dependency artifacts.
+
+Read more about [Provided Builds](https://fossa.io/docs/getting-started/provided-builds) here.
 
 ## Development
 
