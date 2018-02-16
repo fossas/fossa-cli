@@ -81,7 +81,7 @@ func (builder *ComposerBuilder) Build(m module.Module, force bool) error {
 
 	_, _, err := runLogged(composerLogger, m.Dir, builder.ComposerCmd, "install", "--prefer-dist", "--no-dev")
 	if err != nil {
-		return fmt.Errorf("could not remove Composer build: %s", err.Error())
+		return fmt.Errorf("could not run Composer build: %s", err.Error())
 	}
 
 	composerLogger.Debug("Done running Composer build.")
