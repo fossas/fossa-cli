@@ -51,7 +51,7 @@ func (builder *ComposerBuilder) Initialize() error {
 	// Set PHP context variables
 	phpCmd, phpVersion, err := which("-v", os.Getenv("PHP_BINARY"), "php")
 	if err != nil {
-		return errors.New("could not find PHP binary (try setting $PHP_BINARY)")
+		return fmt.Errorf("could not find PHP binary (try setting $PHP_BINARY): %s", err.Error())
 	}
 	builder.PHPCmd = phpCmd
 	builder.PHPVersion = phpVersion
@@ -59,7 +59,7 @@ func (builder *ComposerBuilder) Initialize() error {
 	// Set Composer context variables
 	composerCmd, composerVersion, err := which("-V", os.Getenv("COMPOSER_BINARY"), "composer")
 	if err != nil {
-		return errors.New("could not find Composer binary (try setting $COMPOSER_BINARY)")
+		return fmt.Errorf("could not find Composer binary (try setting $COMPOSER_BINARY): %s", err.Error())
 	}
 	builder.ComposerCmd = composerCmd
 	builder.ComposerVersion = composerVersion
@@ -73,7 +73,6 @@ func (builder *ComposerBuilder) Build(m module.Module, force bool) error {
 	composerLogger.Debug("Running Composer build: %#v %#v", m, force)
 
 	if force {
-		composerLogger.Debug("`force` flag is set: running `rm -rf vendor`...")
 		_, _, err := runLogged(composerLogger, m.Dir, "rm", "-rf", "vendor")
 		if err != nil {
 			return fmt.Errorf("could not remove Composer cache: %s", err.Error())

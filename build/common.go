@@ -2,8 +2,10 @@ package build
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +13,8 @@ import (
 
 	logging "github.com/op/go-logging"
 )
+
+var commonLogger = logging.MustGetLogger("common")
 
 // Utilities for finding files and manifests
 func hasFile(elem ...string) (bool, error) {
@@ -21,7 +25,7 @@ func hasFile(elem ...string) (bool, error) {
 	return !os.IsNotExist(err), err
 }
 
-func orPredicates(predicates ...stopPredicate) stopPredicate {
+func orPredicates(predicates ...fileChecker) fileChecker {
 	return func(path string) (bool, error) {
 		for _, predicate := range predicates {
 			ok, err := predicate(path)
@@ -36,9 +40,9 @@ func orPredicates(predicates ...stopPredicate) stopPredicate {
 	}
 }
 
-type stopPredicate func(path string) (bool, error)
+type fileChecker func(path string) (bool, error)
 
-func findAncestor(stopWhen stopPredicate, path string) (string, bool, error) {
+func findAncestor(stopWhen fileChecker, path string) (string, bool, error) {
 	absPath, err := filepath.Abs(path)
 	if absPath == string(filepath.Separator) {
 		return "", false, nil
@@ -74,14 +78,41 @@ func runInDir(dir string, name string, arg ...string) (string, string, error) {
 	return string(stdout), stderr.String(), err
 }
 
+// Utilities for debug logging
 func runLogged(logger *logging.Logger, dir string, name string, arg ...string) (string, string, error) {
+	cmd := strings.Join(append([]string{name}, arg...), " ")
+	logger.Debugf("Running `%s`...", cmd)
 	stdout, stderr, err := runInDir(dir, name, arg...)
 	if err != nil {
-		cmd := strings.Join(append([]string{name}, arg...), " ")
 		logger.Debugf("Running `%s` failed: %#v %#v", cmd, err, stderr)
 		return "", "", fmt.Errorf("running `%s` failed: %#v %#v", cmd, err, stderr)
 	}
+	logger.Debugf("Done running `%s`: %#v %#v", stdout, stderr)
 	return stdout, stderr, nil
+}
+
+func parseLogged(logger *logging.Logger, file string, v interface{}) error {
+	return parseLoggedWithUnmarshaller(logger, file, v, json.Unmarshal)
+}
+
+type unmarshaller func(data []byte, v interface{}) error
+
+func parseLoggedWithUnmarshaller(logger *logging.Logger, file string, v interface{}, unmarshal unmarshaller) error {
+	logger.Debugf("Parsing %s...", file)
+
+	contents, err := ioutil.ReadFile(file)
+	if err != nil {
+		logger.Debugf("Error reading %s: %s", file, err.Error())
+		return err
+	}
+	err = unmarshal(contents, v)
+	if err != nil {
+		logger.Debugf("Error parsing %s: %#v %#v", file, err, contents)
+		return err
+	}
+
+	logger.Debugf("Done parsing %s.", file)
+	return nil
 }
 
 // Utilities for detecting which binary to use
@@ -93,16 +124,20 @@ func whichWithResolver(cmds []string, getVersion versionResolver) (string, strin
 		if err == nil {
 			return cmd, version, nil
 		}
+		commonLogger.Debugf("Tried resolving `%s` but did not work: %#v %#v", cmd, err, version)
 	}
 	return "", "", errors.New("could not resolve version")
 }
 
 func which(versionFlags string, cmds ...string) (string, string, error) {
 	return whichWithResolver(cmds, func(cmd string) (string, error) {
-		version, _, err := run(cmd, strings.Split(versionFlags, " ")...)
+		stdout, stderr, err := run(cmd, strings.Split(versionFlags, " ")...)
 		if err != nil {
 			return "", err
 		}
-		return version, nil
+		if stdout == "" {
+			return stderr, nil
+		}
+		return stdout, nil
 	})
 }

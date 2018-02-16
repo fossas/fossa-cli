@@ -1,10 +1,8 @@
 package build
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
@@ -54,7 +52,7 @@ func (builder *BowerBuilder) Initialize() error {
 	// Set Node context variables
 	nodeCmd, nodeVersion, err := which("-v", os.Getenv("NODE_BINARY"), "node", "nodejs")
 	if err != nil {
-		return errors.New("could not find Node binary (try setting $NODE_BINARY)")
+		return fmt.Errorf("could not find Node binary (try setting $NODE_BINARY): %s", err.Error())
 	}
 	builder.NodeCmd = nodeCmd
 	builder.NodeVersion = nodeVersion
@@ -62,7 +60,7 @@ func (builder *BowerBuilder) Initialize() error {
 	// Set Bower context variables
 	bowerCmd, bowerVersion, err := which("-v", os.Getenv("BOWER_BINARY"), "bower")
 	if err != nil {
-		return errors.New("could not find Bower binary (try setting $BOWER_BINARY)")
+		return fmt.Errorf("could not find Bower binary (try setting $BOWER_BINARY): %s", err.Error())
 	}
 	builder.BowerCmd = bowerCmd
 	builder.BowerVersion = bowerVersion
@@ -76,7 +74,6 @@ func (builder *BowerBuilder) Build(m module.Module, force bool) error {
 	bowerLogger.Debugf("Running Bower build: %#v", m, force)
 
 	if force {
-		bowerLogger.Debug("`force` flag is set: running `rm -rf bower_components`...")
 		_, _, err := runLogged(bowerLogger, m.Dir, "rm", "-rf", "bower_components")
 		if err != nil {
 			return fmt.Errorf("could not remove Bower cache: %s", err.Error())
@@ -111,15 +108,10 @@ func (builder *BowerBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 		go func(modulePath string, index int, wg *sync.WaitGroup) {
 			defer wg.Done()
 
-			dependencyManifest, err := ioutil.ReadFile(modulePath)
-			if err != nil {
-				bowerLogger.Warningf("Error parsing .bower.json: %#v", modulePath)
-				return
-			}
+			var bowerComponent BowerComponent
+			parseLogged(bowerLogger, modulePath, &bowerComponent)
 
 			// Write directly to a reserved index for thread safety
-			var bowerComponent BowerComponent
-			json.Unmarshal(dependencyManifest, &bowerComponent)
 			deps[index] = bowerComponent
 		}(bowerComponents[i], i, &wg)
 	}
