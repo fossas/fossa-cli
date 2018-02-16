@@ -3,6 +3,7 @@ package build
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -78,7 +79,7 @@ func runLogged(logger *logging.Logger, dir string, name string, arg ...string) (
 	if err != nil {
 		cmd := strings.Join(append([]string{name}, arg...), " ")
 		logger.Debugf("Running `%s` failed: %#v %#v", cmd, err, stderr)
-		return "", "", err
+		return "", "", fmt.Errorf("running `%s` failed: %#v %#v", cmd, err, stderr)
 	}
 	return stdout, stderr, nil
 }

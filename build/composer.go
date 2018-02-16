@@ -1,13 +1,10 @@
 package build
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
-	"regexp"
 	"strings"
 
 	logging "github.com/op/go-logging"
@@ -43,117 +40,105 @@ type ComposerBuilder struct {
 	ComposerCmd     string
 	ComposerVersion string
 
-	PhpCmd     string
-	PhpVersion string
+	PHPCmd     string
+	PHPVersion string
 }
 
+// Initialize collects PHP and Composer binaries
 func (builder *ComposerBuilder) Initialize() error {
-	builder.ComposerCmd = string(os.Getenv("COMPOSER_BINARY"))
-	if builder.ComposerCmd == "" {
-		builder.ComposerCmd = "composer"
-	}
-	outComposerVersion, err := exec.Command(builder.ComposerCmd, "-V").Output()
-	if err != nil {
-		return fmt.Errorf("unable to get composer version: %#v", err)
-	}
-	outputMatchRe := regexp.MustCompile(`Composer version ([0-9]+\.[0-9]+\.[0-9]+)`)
-	match := outputMatchRe.FindStringSubmatch(strings.TrimSpace(string(outComposerVersion)))
-	if len(match) == 2 {
-		builder.ComposerVersion = match[1]
-	}
+	composerLogger.Debug("Initializing Composer builder...")
 
-	builder.PhpCmd = string(os.Getenv("PHP_BINARY"))
-	if builder.PhpCmd == "" {
-		builder.PhpCmd = "php"
-	}
-	outPhpVersion, err := exec.Command(builder.PhpCmd, "-v").Output()
+	// Set PHP context variables
+	phpCmd, phpVersion, err := which("-v", os.Getenv("PHP_BINARY"), "php")
 	if err != nil {
-		return fmt.Errorf("unable to get PHP version: %#v", err)
-	}
-	outputPhpMatchRe := regexp.MustCompile(`PHP ([0-9]+\.[0-9]+\.[0-9]+)`)
-	match = outputPhpMatchRe.FindStringSubmatch(strings.TrimSpace(string(outPhpVersion)))
-	if len(match) == 2 {
-		builder.PhpVersion = match[1]
-	}
-
-	if builder.PhpCmd == "" || builder.PhpVersion == "" {
 		return errors.New("could not find PHP binary (try setting $PHP_BINARY)")
 	}
+	builder.PHPCmd = phpCmd
+	builder.PHPVersion = phpVersion
 
-	if builder.ComposerCmd == "" || builder.ComposerVersion == "" {
+	// Set Composer context variables
+	composerCmd, composerVersion, err := which("-V", os.Getenv("COMPOSER_BINARY"), "composer")
+	if err != nil {
 		return errors.New("could not find Composer binary (try setting $COMPOSER_BINARY)")
 	}
+	builder.ComposerCmd = composerCmd
+	builder.ComposerVersion = composerVersion
 
-	composerLogger.Debugf("Initialized Composer builder: %#v", builder)
-
+	composerLogger.Debugf("Done initializing Composer builder: %#v", builder)
 	return nil
 }
 
+// Build runs `composer install --prefer-dist --no-dev` and cleans with `rm -rf vendor`
 func (builder *ComposerBuilder) Build(m module.Module, force bool) error {
+	composerLogger.Debug("Running Composer build: %#v %#v", m, force)
+
 	if force {
-		composerLogger.Debug("`force` flag is set; clearing `vendor`...")
-		cmd := exec.Command("rm", "-rf", "vendor")
-		cmd.Dir = m.Dir
-		_, err := cmd.Output()
+		composerLogger.Debug("`force` flag is set: running `rm -rf vendor`...")
+		_, _, err := runLogged(composerLogger, m.Dir, "rm", "-rf", "vendor")
 		if err != nil {
-			return fmt.Errorf("unable to clear `vendor` folder: %#v", err.Error())
+			return fmt.Errorf("could not remove Composer cache: %s", err.Error())
 		}
 	}
 
-	cmd := exec.Command(builder.ComposerCmd, "install", "--prefer-dist", "--no-dev")
-	var stderrBuffer bytes.Buffer
-	cmd.Dir = m.Dir
-	cmd.Stderr = &stderrBuffer
-	_, err := cmd.Output()
+	_, _, err := runLogged(composerLogger, m.Dir, builder.ComposerCmd, "install", "--prefer-dist", "--no-dev")
 	if err != nil {
-		return fmt.Errorf("unable to run composer build: %#v (message: %#v)", err.Error(), stderrBuffer.String())
+		return fmt.Errorf("could not remove Composer build: %s", err.Error())
 	}
+
+	composerLogger.Debug("Done running Composer build.")
 	return nil
 }
 
-func (builder *ComposerBuilder) Analyze(m module.Module, _ bool) ([]module.Dependency, error) {
-	cmd := exec.Command(builder.ComposerCmd, "show", "-f", "json", "--no-ansi")
-	cmd.Dir = m.Dir
-	composerShowOutput, err := cmd.Output()
+// Analyze parses the output of `composer show -f json --no-ansi`
+func (builder *ComposerBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
+	composerLogger.Debug("Running Composer analysis: %#v %#v", m, allowUnresolved)
+
+	// Run `composer show -f json --no-ansi`
+	output, _, err := runLogged(composerLogger, m.Dir, builder.ComposerCmd, "show", "-f", "json", "--no-ansi")
 	if err != nil {
-		return nil, fmt.Errorf("unable to list composer dependencies: %#v", err.Error())
+		return nil, fmt.Errorf("could not get dependency list from Composer: %s", err.Error())
 	}
 
-	composerOutData := map[string][]ComposerPackage{}
-	err = json.Unmarshal(composerShowOutput, &composerOutData)
+	// Parse output as JSON
+	composerJSON := map[string][]ComposerPackage{}
+	err = json.Unmarshal([]byte(output), &composerJSON)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse composer dependency list output: %#v", err.Error())
+		return nil, fmt.Errorf("could not parse dependency list as JSON: %#v %#v", err.Error(), output)
 	}
 
+	// Get dependencies from "installed" key of Composer output
 	var deps []module.Dependency
-	for _, d := range composerOutData["installed"] {
+	for _, d := range composerJSON["installed"] {
 		deps = append(deps, d)
 	}
 
-	composerLogger.Debugf("Composer dependencies: %#v", deps)
-
+	composerLogger.Debugf("Done running Composer analysis: %#v", deps)
 	return deps, nil
 }
 
-func (builder *ComposerBuilder) IsBuilt(m module.Module, _ bool) (bool, error) {
-	composerLogger.Debugf("Checking whether %#v is built...", m.Name)
-	cmd := exec.Command(builder.ComposerCmd, "show", "--no-ansi")
-	cmd.Dir = m.Dir
+// IsBuilt checks whether `composer show --no-ansi` produces output
+func (builder *ComposerBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
+	composerLogger.Debugf("Checking Composer build: %#v %#v", m, allowUnresolved)
 
-	output, err := cmd.Output()
+	// Run `composer show --no-ansi`
+	output, _, err := runLogged(composerLogger, m.Dir, builder.ComposerCmd, "show", "--no-ansi")
 	if err != nil {
-		return false, fmt.Errorf("unable to list installed composer dependencies: %#v", err.Error())
+		return false, fmt.Errorf("could not get dependency list from Composer: %s", err.Error())
 	}
 
+	// Check that the output is non-empty
 	isBuilt := len(strings.TrimSpace(string(output))) > 0
-	composerLogger.Debugf("Module IsBuilt?: %#v", isBuilt)
+
+	composerLogger.Debugf("Done checking Composer build: %#v", isBuilt)
 	return isBuilt, nil
 }
 
+// IsModule is not implemented
 func (builder *ComposerBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for ComposerBuilder")
 }
 
+// InferModule is not implemented
 func (builder *ComposerBuilder) InferModule(target string) (module.Module, error) {
 	return module.Module{}, errors.New("InferModule is not implemented for ComposerBuilder")
 }

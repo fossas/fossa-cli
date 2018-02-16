@@ -3,6 +3,7 @@ package build
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -72,33 +73,33 @@ func (builder *BowerBuilder) Initialize() error {
 
 // Build runs `bower install --production` and cleans with `rm -rf bower_components`
 func (builder *BowerBuilder) Build(m module.Module, force bool) error {
-	bowerLogger.Debug("Running Bower build...")
+	bowerLogger.Debugf("Running Bower build: %#v", m, force)
 
 	if force {
 		bowerLogger.Debug("`force` flag is set: running `rm -rf bower_components`...")
 		_, _, err := runLogged(bowerLogger, m.Dir, "rm", "-rf", "bower_components")
 		if err != nil {
-			return err
+			return fmt.Errorf("could not remove Bower cache: %s", err.Error())
 		}
 	}
 
 	_, _, err := runLogged(bowerLogger, m.Dir, builder.BowerCmd, "install", "--production")
 	if err != nil {
-		return err
+		return fmt.Errorf("could not run Bower build: %s", err.Error())
 	}
 
 	bowerLogger.Debug("Done running Bower build.")
 	return nil
 }
 
-// Analyze reads package manifests at `$PROJECT/**/bower_components/*/.bower.json`
-func (builder *BowerBuilder) Analyze(m module.Module, _ bool) ([]module.Dependency, error) {
-	bowerLogger.Debug("Running Bower analysis...")
+// Analyze reads dependency manifests at `$PROJECT/**/bower_components/*/.bower.json`
+func (builder *BowerBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
+	bowerLogger.Debugf("Running Bower analysis: %#v %#v", m, allowUnresolved)
 
 	// Find modules.
 	bowerComponents, err := doublestar.Glob(filepath.Join(m.Dir, "**", "bower_components", "*", ".bower.json"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not find Bower dependency manifests: %s", err.Error())
 	}
 	bowerLogger.Debugf("Found %#v modules from globstar: %#v", len(bowerComponents), bowerComponents)
 
@@ -129,16 +130,18 @@ func (builder *BowerBuilder) Analyze(m module.Module, _ bool) ([]module.Dependen
 }
 
 // IsBuilt checks for the existence of `$PROJECT/bower_components`
-func (builder *BowerBuilder) IsBuilt(m module.Module, _ bool) (bool, error) {
-	bowerLogger.Debug("Checking Bower build...")
+func (builder *BowerBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
+	bowerLogger.Debug("Checking Bower build: %#v %#v", m, allowUnresolved)
 
 	// TODO: Check if the installed modules are consistent with what's in the
 	// actual manifest.
-	ok, err := hasFile(m.Dir, "bower_components")
+	isBuilt, err := hasFile(m.Dir, "bower_components")
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("could not find Bower dependencies folder: %s", err.Error())
 	}
-	return ok, nil
+
+	bowerLogger.Debugf("Done checking Bower build: %#v", isBuilt)
+	return isBuilt, nil
 }
 
 // IsModule is not implemented
