@@ -296,49 +296,6 @@ func hasVndrManifest(path string) (bool, error) {
 	return hasFile(path, "vendor.conf")
 }
 
-func hasFile(elem ...string) (bool, error) {
-	_, err := os.Stat(filepath.Join(elem...))
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return !os.IsNotExist(err), err
-}
-
-func orPredicates(predicates ...stopPredicate) stopPredicate {
-	return func(path string) (bool, error) {
-		for _, predicate := range predicates {
-			ok, err := predicate(path)
-			if err != nil {
-				return false, err
-			}
-			if ok {
-				return ok, nil
-			}
-		}
-		return false, nil
-	}
-}
-
-type stopPredicate func(path string) (bool, error)
-
-func findAncestor(stopWhen stopPredicate, path string) (string, bool, error) {
-	absPath, err := filepath.Abs(path)
-	if absPath == string(filepath.Separator) {
-		return "", false, nil
-	}
-	if err != nil {
-		return "", false, err
-	}
-	stop, err := stopWhen(absPath)
-	if err != nil {
-		return "", false, err
-	}
-	if stop {
-		return absPath, true, nil
-	}
-	return findAncestor(stopWhen, filepath.Dir(path))
-}
-
 func findGoProjectFolder(fromPath string) (string, bool, error) {
 	return findAncestor(
 		orPredicates(
@@ -515,6 +472,7 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 
 // IsBuilt checks whether dependencies are ready for scanning.
 func (builder *GoBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
+	goLogger.Debugf("IsBuilt tracing start")
 	// Attempt to trace imports
 	_, err := traceImports(m, allowUnresolved)
 	if err != nil {

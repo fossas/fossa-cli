@@ -38,6 +38,9 @@ type Module struct {
 	// Dir is the absolute path to the module's working directory (the directory
 	// you would normally run the build command from).
 	Dir string
+
+	// TODO: add project and revision, because different modules might belong to
+	// different projects
 }
 
 // A Builder is an implementation of functionality for different build systems.
