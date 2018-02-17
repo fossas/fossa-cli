@@ -115,13 +115,13 @@ type cliConfig struct {
 	buildConfig   buildConfig
 }
 
-func (conf *cliConfig) getVcsLocator() string {
-	normalizedPackageSpec := strings.TrimSuffix(conf.project, ".git")
-	normalizedPackageSpec = strings.TrimPrefix(conf.project, "git+")
-	normalizedPackageSpec = strings.Replace(normalizedPackageSpec, "git@github.com:", "github.com/", 1)
-	normalizedPackageSpec = strings.TrimPrefix(conf.project, "http://")
-	normalizedPackageSpec = strings.TrimPrefix(conf.project, "https://")
-	return "git+" + normalizedPackageSpec + "$" + conf.revision
+func (conf *cliConfig) getVCSLocator() string {
+	noGitExt := strings.TrimSuffix(conf.project, ".git")
+	noGitPrefix := strings.TrimPrefix(noGitExt, "git+")
+	noGitUser := strings.Replace(noGitPrefix, "git@github.com:", "github.com/", 1)
+	noHTTPPrefix := strings.TrimPrefix(noGitUser, "http://")
+	noHTTPSPrefix := strings.TrimPrefix(noHTTPPrefix, "https://")
+	return "git+" + noHTTPSPrefix + "$" + conf.revision
 }
 
 type defaultConfig struct {
