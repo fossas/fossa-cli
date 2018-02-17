@@ -14,7 +14,7 @@
 
 `fossa` is a tool that interrogates your environment and build to discover the dependencies getting included in your code.  With one command, you can generate dependency reports and license notices across over 20+ build systems.
 
-## Features
+### Features
 
  1. Supports monoliths; can auto-detect and analyze over 20+ build systems mixed into a single repo with high performance
  2. Generates license notices and dependency reports in Markdown, JSON, CSV and more
@@ -28,7 +28,11 @@
 
 `fossa` is compatible with Windows, Darwin (MacOS) and *nix-based operating systems.
 
-Grab our latest release on our [Github Releases](releases/) page.
+Grab our latest release on our [Github Releases](releases/) page, or install with this one-liner bash script:
+
+```bash
+curl https://i.jpillora.com/fossas/fossa-cli! | bash && mv /usr/local/bin/fossa-cli /usr/local/bin/fossa
+```
 
 <!--
 TODO: real installation instructions
