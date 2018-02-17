@@ -14,9 +14,13 @@
 
 `fossa` is a tool that interrogates your environment and build to discover the dependencies getting included in your code.  With one command, you can generate dependency reports and license notices across over 20+ build systems.
 
-`fossa` supports high-performance dependency reports within complex monoliths, builds and CI environments.  Scroll down to **usage** to see extended documentation about language support.
+## Features
 
-This tool integrates directly with the [FOSSA](https://fossa.io) web service to provide open source reports, search intelligence, vulnerability/license scanning and triage workflows to help your organization to manage its open source use.
+ 1. Supports monoliths; can auto-detect and analyze over 20+ build systems mixed into a single repo with high performance
+ 2. Generates license notices and dependency reports in Markdown, JSON, CSV and more
+ 3. Hooks directly into CI to auto-generate documentation or block builds with license violations
+ 4. A single, portable and cross-platform binary; ideal to plug into build environments
+ 5. Integrates directly with the [FOSSA](https://fossa.io) web service to provide open source reports, search intelligence, vulnerability/license audit data and triage workflows.
 
 **FOSSA CLI is currently in alpha and will have a changing API; star/watch this repo for updates.**
 
