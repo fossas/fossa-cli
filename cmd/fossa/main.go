@@ -84,6 +84,19 @@ func main() {
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
 		},
+		{
+			Name:   "test",
+			Usage:  "Test current revision against FOSSA scan status and exit with errors if issues are found",
+			Action: testCmd,
+			Flags: []cli.Flag{
+				cli.StringFlag{Name: "c, config", Usage: configUsage},
+				cli.StringFlag{Name: "p, project", Usage: projectUsage},
+				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
+				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
+				cli.IntFlag{Name: "t, timeout", Usage: "timeout for waiting for build status; defaults to 30m", Value: 1000 * 60 * 30},
+				cli.BoolFlag{Name: "debug", Usage: debugUsage},
+			},
+		},
 	}
 
 	app.Run(os.Args)
@@ -96,10 +109,20 @@ type cliConfig struct {
 	endpoint string
 	modules  []moduleConfig
 	debug    bool
+	timeout  int
 
 	defaultConfig defaultConfig
 	analyzeConfig analyzeConfig
 	buildConfig   buildConfig
+}
+
+func (conf *cliConfig) getVcsLocator() string {
+	normalizedPackageSpec := strings.TrimSuffix(conf.project, ".git")
+	normalizedPackageSpec = strings.TrimPrefix(conf.project, "git+")
+	normalizedPackageSpec = strings.Replace(normalizedPackageSpec, "git@github.com:", "github.com/", 1)
+	normalizedPackageSpec = strings.TrimPrefix(conf.project, "http://")
+	normalizedPackageSpec = strings.TrimPrefix(conf.project, "https://")
+	return "git+" + normalizedPackageSpec + "$" + conf.revision
 }
 
 type defaultConfig struct {
@@ -112,6 +135,7 @@ func initialize(c *cli.Context) (cliConfig, error) {
 		project:  c.String("project"),
 		revision: c.String("revision"),
 		endpoint: c.String("endpoint"),
+		timeout:  c.Int("timeout"),
 		modules:  parseModuleFlag(c.String("modules")),
 		debug:    c.Bool("debug"),
 
