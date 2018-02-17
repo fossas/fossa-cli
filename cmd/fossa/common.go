@@ -2,14 +2,17 @@ package main
 
 import (
 	"bytes"
-	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 )
 
 // Common utilities among commands
 func makeAPIRequest(requestType string, url string, payload []byte, apiKey string) ([]byte, error) {
-	req, _ := http.NewRequest(requestType, url, bytes.NewReader(payload))
+	req, err := http.NewRequest(requestType, url, bytes.NewReader(payload))
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Set("Authorization", "token "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -21,10 +24,9 @@ func makeAPIRequest(requestType string, url string, payload []byte, apiKey strin
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusForbidden {
-		return nil, errors.New("invalid API key, check the $FOSSA_API_KEY environment variable")
+		return nil, fmt.Errorf("invalid API key (check the $FOSSA_API_KEY environment variable)")
 	} else if resp.StatusCode != http.StatusOK {
-		return nil, errors.New("bad server response (" + string(resp.StatusCode) + ")")
+		return nil, fmt.Errorf("bad server response (" + string(resp.StatusCode) + ")")
 	}
-	responseBytes, _ := ioutil.ReadAll(resp.Body)
-	return responseBytes, nil
+	return ioutil.ReadAll(resp.Body)
 }
