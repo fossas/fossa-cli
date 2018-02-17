@@ -72,7 +72,7 @@ type GoBuilder struct {
 	// make by caching results within private fields of `GoBuilder`.
 }
 
-// Initialize gathers environment context.
+// Initialize collects metadata on Go, Dep, Glide, Godep, Govendor, and Vndr binaries.
 func (builder *GoBuilder) Initialize() error {
 	goLogger.Debug("Initializing Go builder...")
 
@@ -204,6 +204,7 @@ func (builder *GoBuilder) Build(m module.Module, force bool) error {
 	}
 	goLogger.Debugf("Found project folder for Go build: %#v", projectFolder)
 
+	// Run build tools
 	err = runGoTool(projectFolder, hasDepManifest, "dep ensure", "rm -rf vendor Gopkg.lock", force)
 	if err != nil {
 		return err

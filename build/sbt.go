@@ -8,8 +8,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/fossas/fossa-cli/module"
 	logging "github.com/op/go-logging"
+
+	"github.com/fossas/fossa-cli/module"
 )
 
 var sbtLogger = logging.MustGetLogger("sbt")

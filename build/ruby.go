@@ -2,13 +2,14 @@ package build
 
 import (
 	"errors"
+	"fmt"
 	"os"
-	"os/exec"
 	"regexp"
 	"strings"
 
-	"github.com/fossas/fossa-cli/module"
 	logging "github.com/op/go-logging"
+
+	"github.com/fossas/fossa-cli/module"
 )
 
 var rubyLogger = logging.MustGetLogger("ruby")
@@ -46,77 +47,73 @@ type RubyBuilder struct {
 	RubyVersion string
 }
 
-// Initialize collects environment data for Bundler builds
+// Initialize collects metadata on Ruby, Gem, and Bundler binaries
 func (builder *RubyBuilder) Initialize() error {
-	builder.BundlerCmd = string(os.Getenv("BUNDLER_BINARY"))
-	if builder.BundlerCmd == "" {
-		builder.BundlerCmd = "bundle"
-	}
-	outBundlerVersion, err := exec.Command(builder.BundlerCmd, "-v").Output()
+	rubyLogger.Debug("Initializing Ruby builder...")
+
+	// Set Ruby context variables
+	rubyCmd, rubyVersion, err := which("-v", os.Getenv("RUBY_BINARY"), "ruby")
 	if err != nil {
-		return err
+		return fmt.Errorf("could not find Ruby binary (try setting $RUBY_BINARY): %s", err.Error())
 	}
-	if strings.HasPrefix(string(outBundlerVersion), "Bundler version ") {
-		builder.BundlerVersion = strings.TrimSpace(string(outBundlerVersion))
-	}
+	builder.RubyCmd = rubyCmd
+	builder.RubyVersion = rubyVersion
 
-	builder.GemCmd = string(os.Getenv("GEM_BINARY"))
-	if builder.GemCmd == "" {
-		builder.GemCmd = "gem"
-	}
-	outGemVersion, err := exec.Command(builder.GemCmd, "-v").Output()
+	// Set Gem context variables
+	gemCmd, gemVersion, err := which("-v", os.Getenv("GEM_BINARY"), "gem")
 	if err != nil {
-		return err
+		return fmt.Errorf("could not find Gem binary (try setting $GEM_BINARY): %s", err.Error())
 	}
-	if len(outGemVersion) >= 5 { // x.x.x
-		builder.GemVersion = strings.TrimSpace(string(outGemVersion))
-	}
+	builder.GemCmd = gemCmd
+	builder.GemVersion = gemVersion
 
-	// TODO: collect Ruby command information
-
-	if builder.BundlerCmd == "" || builder.BundlerVersion == "" {
-		return errors.New("could not find bundler (try setting $BUNDLER_BINARY)")
+	// Set Bundler context variables
+	bundlerCmd, bundlerVersion, err := which("-v", os.Getenv("BUNDLER_BINARY"), "bundler", "bundle")
+	if err != nil {
+		return fmt.Errorf("could not find Bundler binary (try setting $BUNDLER_BINARY): %s", err.Error())
 	}
+	builder.BundlerCmd = bundlerCmd
+	builder.BundlerVersion = bundlerVersion
 
 	rubyLogger.Debugf("Initialized Ruby builder: %#v", builder)
 	return nil
 }
 
-// Build runs Bundler and collect dep data
+// Build runs `bundler install --deployment --frozen` and cleans with `rm Gemfile.lock`
 func (builder *RubyBuilder) Build(m module.Module, force bool) error {
-	rubyLogger.Debugf("Running Ruby build...")
+	rubyLogger.Debugf("Running Ruby build: %#v %#v", m, force)
+
 	if force {
-		cmd := exec.Command("rm", "Gemfile.lock")
-		cmd.Dir = m.Dir
-		if _, err := cmd.Output(); err != nil {
-			return err
+		_, _, err := runLogged(rubyLogger, m.Dir, "rm", "Gemfile.lock")
+		if err != nil {
+			return fmt.Errorf("could not remove Ruby cache: %s", err.Error())
 		}
 	}
-	cmd := exec.Command(builder.BundlerCmd, "install", "--deployment", "--frozen")
-	cmd.Dir = m.Dir
-	output, err := cmd.Output()
+
+	_, _, err := runLogged(rubyLogger, m.Dir, builder.BundlerCmd, "install", "--deployment", "--frozen")
 	if err != nil {
-		rubyLogger.Debugf("Ruby build failed: %#v", string(output))
-		return err
+		return fmt.Errorf("could not run Ruby build: %s", err.Error())
 	}
+
+	bowerLogger.Debug("Done running Ruby build.")
 	return nil
 }
 
-func (builder *RubyBuilder) Analyze(m module.Module, _ bool) ([]module.Dependency, error) {
-	cmd := exec.Command(builder.BundlerCmd, "list")
-	cmd.Dir = m.Dir
-	outBundleListCmd, err := cmd.Output()
+// Analyze parses the output of `bundler list`
+func (builder *RubyBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
+	rubyLogger.Debugf("Running Ruby analysis: %#v %#v", m, allowUnresolved)
+
+	output, _, err := runLogged(rubyLogger, m.Dir, builder.BundlerCmd, "list")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not get dependency list from Bundler: %s", err.Error())
 	}
 
-	// process bundle list output
 	deps := []module.Dependency{}
 	outputMatchRe := regexp.MustCompile("\\* ([a-z0-9_-]+) \\(([a-z0-9\\.]+)\\)")
-	for _, bundleListLn := range strings.Split(string(outBundleListCmd), "\n") {
-		bundleListLn = strings.TrimSpace(bundleListLn)
-		if len(bundleListLn) > 0 && bundleListLn[0] == '*' {
-			match := outputMatchRe.FindStringSubmatch(bundleListLn)
+	for _, line := range strings.Split(output, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if len(trimmed) > 0 && trimmed[0] == '*' {
+			match := outputMatchRe.FindStringSubmatch(trimmed)
 			if len(match) == 3 {
 				deps = append(deps, module.Dependency(RubyGem{
 					Name:    match[1],
@@ -126,28 +123,32 @@ func (builder *RubyBuilder) Analyze(m module.Module, _ bool) ([]module.Dependenc
 		}
 	}
 
+	rubyLogger.Debugf("Done running Ruby analysis: %#v", deps)
 	return deps, nil
 }
 
-// Verify checks if the bundler is satisfied and if an install is necessary
-func (builder *RubyBuilder) IsBuilt(m module.Module, _ bool) (bool, error) {
-	cmd := exec.Command(builder.BundlerCmd, "check")
-	cmd.Dir = m.Dir
-	output, err := cmd.Output()
-	outStr := string(output)
+// IsBuilt checks whether `bundler check` exits with an error
+func (builder *RubyBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
+	rubyLogger.Debugf("Checking Ruby build: %#v %#v", m, allowUnresolved)
+
+	output, _, err := runLogged(rubyLogger, m.Dir, builder.BundlerCmd, "check")
 	if err != nil {
-		if strings.Index(outStr, "Please run `bundle install`") != -1 {
+		if strings.Index(output, "Please run `bundle install`") != -1 {
 			return false, nil
 		}
 		return false, err
 	}
+
+	rubyLogger.Debugf("Done checking Ruby build: %#v", true)
 	return true, nil
 }
 
+// IsModule is not implemented
 func (builder *RubyBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for RubyBuilder")
 }
 
+// InferModule is not implemented
 func (builder *RubyBuilder) InferModule(target string) (module.Module, error) {
 	return module.Module{}, errors.New("InferModule is not implemented for RubyBuilder")
 }

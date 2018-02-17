@@ -50,9 +50,9 @@ type NodeJSBuilder struct {
 	YarnVersion string
 }
 
-// Initialize collects environment data for Nodejs builds
+// Initialize collects metadata on Node, NPM, and Yarn binaries
 func (builder *NodeJSBuilder) Initialize() error {
-	nodejsLogger.Debugf("Initializing Nodejs builder...")
+	nodejsLogger.Debug("Initializing Nodejs builder...")
 
 	// Set NodeJS context variables
 	nodeCmd, nodeVersion, err := which("-v", os.Getenv("NODE_BINARY"), "node", "nodejs")

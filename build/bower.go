@@ -45,7 +45,7 @@ type BowerBuilder struct {
 	BowerVersion string
 }
 
-// Initialize collects Node and Bower binaries
+// Initialize collects metadata on Node and Bower binaries
 func (builder *BowerBuilder) Initialize() error {
 	bowerLogger.Debug("Initializing Bower builder...")
 

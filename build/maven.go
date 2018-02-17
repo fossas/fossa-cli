@@ -7,8 +7,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/fossas/fossa-cli/module"
 	logging "github.com/op/go-logging"
+
+	"github.com/fossas/fossa-cli/module"
 )
 
 var mavenLogger = logging.MustGetLogger("maven")
@@ -43,7 +44,7 @@ type MavenBuilder struct {
 	MvnVersion string
 }
 
-// Initialize collects Java and Maven binaries
+// Initialize collects metadata on Java and Maven binaries
 func (builder *MavenBuilder) Initialize() error {
 	mavenLogger.Debug("Initializing Maven builder...")
 

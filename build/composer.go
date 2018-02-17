@@ -44,7 +44,7 @@ type ComposerBuilder struct {
 	ComposerVersion string
 }
 
-// Initialize collects PHP and Composer binaries
+// Initialize collects metadata on PHP and Composer binaries
 func (builder *ComposerBuilder) Initialize() error {
 	composerLogger.Debug("Initializing Composer builder...")
 
