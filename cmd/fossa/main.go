@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -93,7 +92,7 @@ func main() {
 				cli.StringFlag{Name: "p, project", Usage: projectUsage},
 				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
-				cli.IntFlag{Name: "t, timeout", Usage: "timeout for waiting for build status; defaults to 30m", Value: 1000 * 60 * 30},
+				cli.IntFlag{Name: "t, timeout", Usage: "timeout for waiting for build status in seconds; defaults to 10m", Value: 60 * 10},
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
 		},
@@ -340,7 +339,7 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 		}
 	default:
 		mainLogger.Debug("Got unknown module.")
-		return builder, m, errors.New("unknown module type: " + string(moduleConfig.Type))
+		return builder, m, fmt.Errorf("unknown module type: %s", moduleConfig.Type)
 	}
 
 	mainLogger.Debugf("Resolved moduleConfig to: %#v, %#v", builder, m)

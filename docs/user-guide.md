@@ -116,6 +116,9 @@ Print the version, then exit.
 #### `-h, --help`
 Print a help message, then exit.
 
+#### `-t, --timeout`
+Passed to `fossa test` to specify a test timeout (seconds).
+
 <!-- ## `fossa init`
 
 Makes a best-effort attempt at inferring the correct configuration, then outputs the configuration to `stdout`.
