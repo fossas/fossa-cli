@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -35,7 +35,7 @@ type moduleConfig struct {
 func readConfigFile(path string) (configFileV1, error) {
 	if path != "" {
 		if _, err := os.Stat(path); err != nil {
-			return configFileV1{}, errors.New("invalid config file specified")
+			return configFileV1{}, fmt.Errorf("invalid config file specified")
 		}
 		return parseConfigFile(path)
 	}

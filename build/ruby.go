@@ -1,7 +1,6 @@
 package build
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -145,10 +144,10 @@ func (builder *RubyBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool
 
 // IsModule is not implemented
 func (builder *RubyBuilder) IsModule(target string) (bool, error) {
-	return false, errors.New("IsModule is not implemented for RubyBuilder")
+	return false, fmt.Errorf("IsModule is not implemented for RubyBuilder")
 }
 
 // InferModule is not implemented
 func (builder *RubyBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, errors.New("InferModule is not implemented for RubyBuilder")
+	return module.Module{}, fmt.Errorf("InferModule is not implemented for RubyBuilder")
 }

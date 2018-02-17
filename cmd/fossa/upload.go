@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -91,7 +90,7 @@ func normalizeAnalysis(results analysis) ([]normalizedModule, error) {
 func doUpload(config cliConfig, results analysis) error {
 	fossaBaseURL, err := url.Parse(config.endpoint)
 	if err != nil {
-		return errors.New("invalid FOSSA endpoint")
+		return fmt.Errorf("invalid FOSSA endpoint")
 	}
 
 	if config.revision == "" {
@@ -105,7 +104,7 @@ func doUpload(config cliConfig, results analysis) error {
 	// Re-marshal into build data
 	normalModules, err := normalizeAnalysis(results)
 	if err != nil {
-		return errors.New("could not normalize build data")
+		return fmt.Errorf("could not normalize build data")
 	}
 	buildData, err := json.Marshal(normalModules)
 	if err != nil {
@@ -114,7 +113,7 @@ func doUpload(config cliConfig, results analysis) error {
 
 	analysisLogger.Debugf("Uploading build data from (%#v) modules: %#v", len(normalModules), string(buildData))
 
-	postRef, _ := url.Parse("/api/builds/custom?locator=" + url.QueryEscape(config.getVcsLocator()) + "&v=" + version)
+	postRef, _ := url.Parse("/api/builds/custom?locator=" + url.QueryEscape(config.getVCSLocator()) + "&v=" + version)
 	postURL := fossaBaseURL.ResolveReference(postRef).String()
 
 	analysisLogger.Debugf("Sending build data to <%#v>", postURL)
@@ -132,7 +131,7 @@ func doUpload(config cliConfig, results analysis) error {
 	responseStr := string(responseBytes)
 
 	if resp.StatusCode == http.StatusForbidden {
-		return errors.New("invalid API key, check the $FOSSA_API_KEY environment variable")
+		return fmt.Errorf("invalid API key (check the $FOSSA_API_KEY environment variable)")
 	} else if resp.StatusCode == http.StatusPreconditionRequired {
 		// TODO: handle "Managed Project" workflow
 		return fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo")
@@ -145,7 +144,7 @@ func doUpload(config cliConfig, results analysis) error {
 
 	var jsonResponse map[string]interface{}
 	if err := json.Unmarshal(responseBytes, &jsonResponse); err != nil {
-		return errors.New("invalid response, but build was uploaded")
+		return fmt.Errorf("invalid response, but build was uploaded")
 	}
 	locParts := strings.Split(jsonResponse["locator"].(string), "$")
 	getRef, _ := url.Parse("/projects/" + url.QueryEscape(locParts[0]) + "/refs/branch/master/" + url.QueryEscape(locParts[1]))

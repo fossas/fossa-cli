@@ -1,7 +1,6 @@
 package build
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -138,10 +137,10 @@ func (builder *BowerBuilder) IsBuilt(m module.Module, allowUnresolved bool) (boo
 
 // IsModule is not implemented
 func (builder *BowerBuilder) IsModule(target string) (bool, error) {
-	return false, errors.New("IsModule is not implemented for BowerBuilder")
+	return false, fmt.Errorf("IsModule is not implemented for BowerBuilder")
 }
 
 // InferModule is not implemented
 func (builder *BowerBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, errors.New("InferModule is not implemented for BowerBuilder")
+	return module.Module{}, fmt.Errorf("InferModule is not implemented for BowerBuilder")
 }
