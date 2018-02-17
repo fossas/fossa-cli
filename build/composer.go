@@ -37,11 +37,11 @@ func (m ComposerPackage) Revision() string {
 
 // ComposerBuilder implements Builder for Composer (composer.json) builds
 type ComposerBuilder struct {
-	ComposerCmd     string
-	ComposerVersion string
-
 	PHPCmd     string
 	PHPVersion string
+
+	ComposerCmd     string
+	ComposerVersion string
 }
 
 // Initialize collects PHP and Composer binaries

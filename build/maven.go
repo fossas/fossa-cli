@@ -36,11 +36,11 @@ func (m MavenArtifact) Revision() string {
 
 // MavenBuilder implements Builder for Apache Maven (*.pom.xml) builds
 type MavenBuilder struct {
-	MvnCmd     string
-	MvnVersion string
-
 	JavaCmd     string
 	JavaVersion string
+
+	MvnCmd     string
+	MvnVersion string
 }
 
 // Initialize collects Java and Maven binaries

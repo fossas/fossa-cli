@@ -93,7 +93,7 @@ func (builder *BowerBuilder) Build(m module.Module, force bool) error {
 func (builder *BowerBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	bowerLogger.Debugf("Running Bower analysis: %#v %#v", m, allowUnresolved)
 
-	// Find modules.
+	// Find manifests.
 	bowerComponents, err := doublestar.Glob(filepath.Join(m.Dir, "**", "bower_components", "*", ".bower.json"))
 	if err != nil {
 		return nil, fmt.Errorf("could not find Bower dependency manifests: %s", err.Error())

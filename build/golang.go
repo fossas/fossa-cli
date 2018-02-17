@@ -85,40 +85,28 @@ func (builder *GoBuilder) Initialize() error {
 	builder.GoVersion = goVersion
 
 	// Set Dep context variables
-	depCmd, depVersion, err := which("version", os.Getenv("DEP_BINARY"), "dep")
-	if err != nil {
-		return fmt.Errorf("could not find Dep binary (try setting $DEP_BINARY): %s", err.Error())
-	}
+	depCmd, depVersion, depErr := which("version", os.Getenv("DEP_BINARY"), "dep")
 	builder.DepCmd = depCmd
 	builder.DepVersion = depVersion
 
 	// Set Glide context variables
-	glideCmd, glideVersion, err := which("-v", os.Getenv("GLIDE_BINARY"), "glide")
-	if err != nil {
-		return fmt.Errorf("could not find Glide binary (try setting $GLIDE_BINARY): %s", err.Error())
-	}
+	glideCmd, glideVersion, glideErr := which("-v", os.Getenv("GLIDE_BINARY"), "glide")
 	builder.GlideCmd = glideCmd
 	builder.GlideVersion = glideVersion
 
 	// Set Godep context variables
-	godepCmd, godepVersion, err := which("version", os.Getenv("GODEP_BINARY"), "godep")
-	if err != nil {
-		return fmt.Errorf("could not find Godep binary (try setting $GODEP_BINARY): %s", err.Error())
-	}
+	godepCmd, godepVersion, godepErr := which("version", os.Getenv("GODEP_BINARY"), "godep")
 	builder.GodepCmd = godepCmd
 	builder.GodepVersion = godepVersion
 
 	// Set Govendor context variables
-	govendorCmd, govendorVersion, err := which("--version", os.Getenv("GOVENDOR_BINARY"), "govendor")
-	if err != nil {
-		return fmt.Errorf("could not find Govendor binary (try setting $GOVENDOR_BINARY): %s", err.Error())
-	}
+	govendorCmd, govendorVersion, govendorErr := which("--version", os.Getenv("GOVENDOR_BINARY"), "govendor")
 	builder.GovendorCmd = govendorCmd
 	builder.GovendorVersion = govendorVersion
 
 	// Set vndr context variables
 	// NOTE: vndr doesn't have a version flag and exits with code 1 on `--help`
-	vndrCmd, _, err := whichWithResolver([]string{os.Getenv("VNDR_BINARY"), "vndr"}, func(cmd string) (string, error) {
+	vndrCmd, _, vndrErr := whichWithResolver([]string{os.Getenv("VNDR_BINARY"), "vndr"}, func(cmd string) (string, error) {
 		_, _, err := run(cmd, "--help")
 		_, isExitError := err.(*exec.ExitError)
 		if err != nil && !isExitError {
@@ -126,13 +114,14 @@ func (builder *GoBuilder) Initialize() error {
 		}
 		return "", nil
 	})
-	if err != nil {
-		return fmt.Errorf("could not find Vndr binary (try setting $VNDR_BINARY): %s", err.Error())
-	}
 	builder.VndrCmd = vndrCmd
 	builder.VndrVersion = ""
 
-	goLogger.Debugf("Done initializing Vndr builder: %#v", builder)
+	if depErr != nil && glideErr != nil && godepErr != nil && govendorErr != nil && vndrErr != nil {
+		return fmt.Errorf("no supported Go build tools detected (try setting $DEP_BINARY or $GLIDE_BINARY or $GODEP_BINARY or $GOVENDOR_BINARY or $VNDR_BINARY): %#v %#v %#v %#v %#v", depErr, glideErr, godepErr, govendorErr, vndrErr)
+	}
+
+	goLogger.Debugf("Done initializing Go builder: %#v", builder)
 	return nil
 }
 
