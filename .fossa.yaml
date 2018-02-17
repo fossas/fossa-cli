@@ -16,7 +16,7 @@ analyze:
   #     type: folder
   modules:
     - name: fossa-cli
-      path: github.com/fossas/fossa-cli/cmd/fossa
+      path: ./cmd/fossa
       type: gopackage
     # - name: vendored-jquery
     #   path: vendor/jquery-stuff/bower.json

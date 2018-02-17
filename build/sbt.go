@@ -1,15 +1,14 @@
 package build
 
 import (
-	"bytes"
 	"errors"
+	"fmt"
 	"os"
-	"os/exec"
-	"regexp"
 	"strings"
 
-	"github.com/fossas/fossa-cli/module"
 	logging "github.com/op/go-logging"
+
+	"github.com/fossas/fossa-cli/module"
 )
 
 var sbtLogger = logging.MustGetLogger("sbt")
@@ -47,94 +46,61 @@ type SBTBuilder struct {
 	JavaVersion string
 }
 
-// Initialize collects environment data for SBT builds
+// Initialize collects metadata on Java and SBT binaries
 func (builder *SBTBuilder) Initialize() error {
 	sbtLogger.Debugf("Initializing SBT builder...")
 
-	builder.SBTCmd = string(os.Getenv("SBT_BINARY"))
-	if builder.SBTCmd == "" {
-		builder.SBTCmd = "sbt"
-	}
-	sbtAboutOutput, err := exec.Command(builder.SBTCmd, "-no-colors", "about").Output()
+	// Set Java context variables
+	javaCmd, javaVersion, err := which("-version", os.Getenv("JAVA_BINARY"), "java")
 	if err != nil {
-		return err
+		return fmt.Errorf("could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
 	}
+	builder.JavaCmd = javaCmd
+	builder.JavaVersion = javaVersion
 
-	lines := strings.Split(string(sbtAboutOutput), "\n")
-	matcher := regexp.MustCompile(`^\[info\] This is sbt (.*?)$`)
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		matches := matcher.FindStringSubmatch(line)
-		if len(matches) == 2 {
-			builder.SBTVersion = matches[1]
-		}
-	}
-
-	builder.JavaCmd = string(os.Getenv("JAVA_BINARY"))
-	if builder.JavaCmd == "" {
-		builder.JavaCmd = "java"
-	}
-	var javaVersionOutput bytes.Buffer
-	cmd := exec.Command(builder.JavaCmd, "-version")
-	cmd.Stderr = &javaVersionOutput
-	_, err = cmd.Output()
+	// Set SBT context variables
+	sbtCmd, sbtVersion, err := which("-no-colors about", os.Getenv("SBT_BINARY"), "sbt")
 	if err != nil {
-		return err
+		return fmt.Errorf("could not find SBT binary (try setting $SBT_BINARY): %s", err.Error())
 	}
-	builder.JavaVersion = javaVersionOutput.String()
-
-	if builder.SBTCmd == "" || builder.SBTVersion == "" {
-		return errors.New("could not find sbt (try setting $SBT_BINARY)")
-	}
+	builder.SBTCmd = sbtCmd
+	builder.SBTVersion = sbtVersion
 
 	sbtLogger.Debugf("Initialized SBT builder: %#v", builder)
 	return nil
 }
 
+// Build runs `sbt compile` and cleans with `sbt clean`
 func (builder *SBTBuilder) Build(m module.Module, force bool) error {
-	sbtLogger.Debugf("Running SBT build on %#v", m)
+	sbtLogger.Debugf("Running SBT build: %#v %#v", m, force)
+
 	if force {
-		sbtLogger.Debugf("`force` flag is set; running `%s clean`...", builder.SBTCmd)
-		cmd := exec.Command(builder.SBTCmd, "clean")
-		cmd.Dir = m.Dir
-		output, err := cmd.Output()
+		_, _, err := runLogged(sbtLogger, m.Dir, builder.SBTCmd, "clean")
 		if err != nil {
-			sbtLogger.Debugf("`%s clean` failed; output: %#v", builder.SBTCmd, string(output))
-			return err
+			return fmt.Errorf("could not remove SBT cache: %s", err.Error())
 		}
-		sbtLogger.Debugf("Done running `%s clean`.", builder.SBTCmd)
 	}
 
-	sbtLogger.Debugf("Running `%s compile`...", builder.SBTCmd)
-	cmd := exec.Command(builder.SBTCmd, "compile")
-	cmd.Dir = m.Dir
-	output, err := cmd.Output()
+	_, _, err := runLogged(sbtLogger, m.Dir, builder.SBTCmd, "compile")
 	if err != nil {
-		sbtLogger.Debugf("`%s compile` failed; output: %#v", builder.SBTCmd, string(output))
-		return err
+		return fmt.Errorf("could not run SBT build: %s", err.Error())
 	}
-	sbtLogger.Debugf("Done running `%s compile`.", builder.SBTCmd)
 
-	sbtLogger.Debugf("Done running SBT build.")
+	sbtLogger.Debug("Done running SBT build.")
 	return nil
 }
 
-func (builder *SBTBuilder) Analyze(m module.Module, _ bool) ([]module.Dependency, error) {
-	sbtLogger.Debugf("Running SBT analysis on %#v", m)
-	sbtLogger.Debugf("Running `%s -no-colors dependencyList`...", builder.SBTCmd)
-	cmd := exec.Command(builder.SBTCmd, "-no-colors", "dependencyList")
-	cmd.Dir = m.Dir
-	output, err := cmd.Output()
-	outStr := string(output)
-	if err != nil {
-		sbtLogger.Debugf("`%s -no-colors dependencyList` failed; output: %#v", builder.SBTCmd, outStr)
-		return nil, err
-	}
-	sbtLogger.Debugf("Done running `%s -no-colors dependencyList`.", builder.SBTCmd)
+// Analyze parses the output of `sbt -no-colors dependencyList`
+func (builder *SBTBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
+	sbtLogger.Debugf("Running SBT analysis: %#v %#v", m, allowUnresolved)
 
-	sbtLogger.Debugf("Parsing SBT output...")
+	output, _, err := runLogged(sbtLogger, m.Dir, builder.SBTCmd, "-no-colors", "dependencyList")
+	if err != nil {
+		return nil, fmt.Errorf("could not get dependency list from SBT: %s", err.Error())
+	}
+
 	deps := []module.Dependency{}
-	for _, line := range strings.Split(outStr, "\n") {
+	for _, line := range strings.Split(output, "\n") {
 		if strings.Index(line, "[info] Loading ") != -1 ||
 			strings.Index(line, "[info] Resolving ") != -1 ||
 			strings.Index(line, "[info] Set ") != -1 ||
@@ -157,37 +123,31 @@ func (builder *SBTBuilder) Analyze(m module.Module, _ bool) ([]module.Dependency
 			deps = append(deps, dep)
 		}
 	}
-	sbtLogger.Debugf("Done parsing SBT output.")
 
 	sbtLogger.Debugf("Done running SBT analysis: %#v", deps)
 	return deps, nil
 }
 
 // IsBuilt checks whether dependencies are ready for scanning.
-func (builder *SBTBuilder) IsBuilt(m module.Module, _ bool) (bool, error) {
-	sbtLogger.Debugf("Checking SBT IsBuilt on %#v", m)
+func (builder *SBTBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
+	sbtLogger.Debugf("Checking SBT build: %#v %#v", m, allowUnresolved)
 
-	sbtLogger.Debugf("Running `%s -no-colors dependencyList`...", builder.SBTCmd)
-	cmd := exec.Command(builder.SBTCmd, "-no-colors", "dependencyList")
-	cmd.Dir = m.Dir
-	output, err := cmd.Output()
-	outStr := string(output)
+	output, _, err := runLogged(sbtLogger, m.Dir, builder.SBTCmd, "-no-colors", "dependencyList")
 	if err != nil {
-		sbtLogger.Debugf("`%s -no-colors dependencyList` failed; output: %#v", builder.SBTCmd, outStr)
-		return false, err
+		return false, fmt.Errorf("could not get dependency list from SBT: %s", err.Error())
 	}
-	sbtLogger.Debugf("Done running `%s -no-colors dependencyList`.", builder.SBTCmd)
+	isBuilt := output != ""
 
-	isBuilt := outStr != ""
-	sbtLogger.Debugf("Done checking SBT IsBuilt: %#v", isBuilt)
-
+	sbtLogger.Debugf("Done checking SBT build: %#v", isBuilt)
 	return isBuilt, nil
 }
 
+// IsModule is not implemented
 func (builder *SBTBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for SBTBuilder")
 }
 
+// InferModule is not implemented
 func (builder *SBTBuilder) InferModule(target string) (module.Module, error) {
 	return module.Module{}, errors.New("InferModule is not implemented for SBTBuilder")
 }

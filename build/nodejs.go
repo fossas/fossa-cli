@@ -1,13 +1,10 @@
 package build
 
 import (
-	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/bmatcuk/doublestar"
@@ -46,149 +43,124 @@ type NodeJSBuilder struct {
 	NodeCmd     string
 	NodeVersion string
 
-	NpmCmd     string
-	NpmVersion string
+	NPMCmd     string
+	NPMVersion string
 
 	YarnCmd     string
 	YarnVersion string
 }
 
-// Initialize collects environment data for Nodejs builds
+// Initialize collects metadata on Node, NPM, and Yarn binaries
 func (builder *NodeJSBuilder) Initialize() error {
-	nodejsLogger.Debugf("Initializing Nodejs builder...")
-	// Set NodeJS context variables
-	nodeCmds := [3]string{os.Getenv("NODE_BINARY"), "node", "nodejs"}
-	for i := 0; true; i++ {
-		if i >= len(nodeCmds) {
-			return errors.New("could not find Nodejs binary (try setting $NODE_BINARY)")
-		}
-		if nodeCmds[i] == "" {
-			continue
-		}
+	nodejsLogger.Debug("Initializing Nodejs builder...")
 
-		nodeVersionOutput, err := exec.Command(nodeCmds[i], "-v").Output()
-		if err == nil && nodeVersionOutput[0] == 'v' {
-			builder.NodeVersion = strings.TrimSpace(string(nodeVersionOutput))[1:]
-			builder.NodeCmd = nodeCmds[i]
-			break
-		}
+	// Set NodeJS context variables
+	nodeCmd, nodeVersion, err := which("-v", os.Getenv("NODE_BINARY"), "node", "nodejs")
+	if err != nil {
+		return fmt.Errorf("could not find Node binary (try setting $NODE_BINARY): %s", err.Error())
 	}
+	builder.NodeCmd = nodeCmd
+	builder.NodeVersion = nodeVersion
 
 	// Set NPM context variables
-	builder.NpmCmd = os.Getenv("NPM_BINARY")
-	if builder.NpmCmd == "" {
-		builder.NpmCmd = "npm"
-	}
-
-	npmVersionOutput, err := exec.Command(builder.NpmCmd, "-v").Output()
-	if err == nil && len(npmVersionOutput) >= 5 {
-		builder.NpmVersion = strings.TrimSpace(string(npmVersionOutput))
-	}
+	npmCmd, npmVersion, npmErr := which("-v", os.Getenv("NPM_BINARY"), "npm")
+	builder.NPMCmd = npmCmd
+	builder.NPMVersion = npmVersion
 
 	// Set Yarn context variables
-	builder.YarnCmd = string(os.Getenv("YARN_BINARY"))
-	if builder.YarnCmd == "" {
-		builder.YarnCmd = "yarn"
-	}
-	yarnVersionOutput, err := exec.Command(builder.YarnCmd, "-v").Output()
-	if err == nil && len(yarnVersionOutput) >= 5 {
-		builder.YarnVersion = strings.TrimSpace(string(yarnVersionOutput))
-	}
+	yarnCmd, yarnVersion, yarnErr := which("-v", os.Getenv("YARN_BINARY"), "yarn")
+	builder.YarnCmd = yarnCmd
+	builder.YarnVersion = yarnVersion
 
-	if (builder.NpmCmd == "" || builder.NpmVersion == "") && (builder.YarnCmd == "" || builder.YarnVersion == "") {
-		return errors.New("could not find NPM binary or Yarn binary (try setting $NPM_BINARY or $YARN_BINARY)")
+	if npmErr != nil && yarnErr != nil {
+		return fmt.Errorf("no supported Nodejs build tools detected (try setting $NPM_BINARY or $YARN_BINARY): %#v %#v", npmErr, yarnErr)
 	}
 
 	nodejsLogger.Debugf("Initialized Nodejs builder: %#v", builder)
-
 	return nil
 }
 
+// Build runs either `yarn install --production --frozen-lockfile` or `npm install --production` and cleans with `rm -rf node_modules`
 func (builder *NodeJSBuilder) Build(m module.Module, force bool) error {
-	nodejsLogger.Debugf("Running Nodejs build...")
+	nodejsLogger.Debugf("Running Nodejs build: %#v %#v", m, force)
+
 	if force {
-		nodejsLogger.Debug("`force` flag is set; clearing `node_modules`...")
-		cmd := exec.Command("rm", "-rf", "node_modules")
-		cmd.Dir = m.Dir
-		_, err := cmd.Output()
+		_, _, err := runLogged(nodejsLogger, m.Dir, "rm", "-rf", "node_modules")
 		if err != nil {
-			return err
+			return fmt.Errorf("could not remove Nodejs cache: %s", err.Error())
 		}
 	}
 
 	// Prefer Yarn where possible
-	if _, err := os.Stat(filepath.Join(m.Dir, "yarn.lock")); err == nil {
-		nodejsLogger.Debugf("Yarn lockfile detected.")
-		if builder.YarnCmd == "" {
-			return errors.New("Yarn lockfile found but could not find Yarn binary (try setting $YARN_BINARY)")
+	if ok, err := hasFile(m.Dir, "yarn.lock"); err == nil && ok {
+		_, _, err := runLogged(nodejsLogger, m.Dir, builder.YarnCmd, "install", "--production", "--frozen-lockfile")
+		if err != nil {
+			return fmt.Errorf("could not run Yarn build: %s", err.Error())
 		}
-
-		// TODO(xizhao): Verify compatible yarn versions
-		nodejsLogger.Debugf("Running `yarn install --production --frozen-lockfile`.")
-		cmd := exec.Command(builder.YarnCmd, "install", "--production", "--frozen-lockfile")
-		cmd.Dir = m.Dir
-		_, err := cmd.Output()
-		return err
+	} else {
+		_, _, err := runLogged(nodejsLogger, m.Dir, builder.NPMCmd, "install", "--production")
+		if err != nil {
+			return fmt.Errorf("could not run NPM build: %s", err.Error())
+		}
 	}
 
-	cmd := exec.Command(builder.NpmCmd, "install", "--production")
-	cmd.Dir = m.Dir
-	_, err := cmd.Output()
-	return err
+	nodejsLogger.Debug("Done running Nodejs build.")
+	return nil
 }
 
-func (builder *NodeJSBuilder) Analyze(m module.Module, _ bool) ([]module.Dependency, error) {
-	nodejsLogger.Debugf("Running analysis on Nodejs module...")
+// Analyze reads dependency manifests at `$PROJECT/**/node_modules/*/package.json`
+func (builder *NodeJSBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
+	nodejsLogger.Debugf("Running Nodejs analysis: %#v %#v", m, allowUnresolved)
+
+	// Find manifests.
 	nodeModules, err := doublestar.Glob(filepath.Join(m.Dir, "**", "node_modules", "*", "package.json"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not find Nodejs dependency manifests: %s", err.Error())
 	}
-	nodejsLogger.Debugf("Found %#v modules from globstar.", len(nodeModules))
+	nodejsLogger.Debugf("Found %#v modules from globstar: %#v", len(nodeModules), nodeModules)
 
+	// Read manifests.
 	var wg sync.WaitGroup
-	dependencies := make([]NodeModule, len(nodeModules))
+	deps := make([]module.Dependency, len(nodeModules))
 	wg.Add(len(nodeModules))
-
 	for i := 0; i < len(nodeModules); i++ {
 		go func(modulePath string, index int, wg *sync.WaitGroup) {
 			defer wg.Done()
 
-			dependencyManifest, err := ioutil.ReadFile(modulePath)
-			if err != nil {
-				nodejsLogger.Warningf("Error parsing Module: %#v", modulePath)
-				return
-			}
+			var nodeModule NodeModule
+			parseLogged(nodejsLogger, modulePath, &nodeModule)
 
 			// Write directly to a reserved index for thread safety
-			json.Unmarshal(dependencyManifest, &dependencies[index])
+			deps[index] = nodeModule
 		}(nodeModules[i], i, &wg)
 	}
-
 	wg.Wait()
 
-	var deps []module.Dependency
-	for i := 0; i < len(dependencies); i++ {
-		deps = append(deps, dependencies[i])
-	}
-
+	nodejsLogger.Debugf("Done running Nodejs analysis: %#v", deps)
 	return deps, nil
 }
 
-func (builder *NodeJSBuilder) IsBuilt(m module.Module, _ bool) (bool, error) {
-	nodeModulesPath := filepath.Join(m.Dir, "node_modules")
-	nodejsLogger.Debugf("Checking node_modules at %#v", nodeModulesPath)
+// IsBuilt checks for the existence of `$PROJECT/node_modules`
+func (builder *NodeJSBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
+	nodejsLogger.Debugf("Checking Nodejs build: %#v %#v", m, allowUnresolved)
+
 	// TODO: Check if the installed modules are consistent with what's in the
 	// actual manifest.
-	if _, err := os.Stat(nodeModulesPath); err == nil {
-		return true, nil
+	isBuilt, err := hasFile(m.Dir, "node_modules")
+	if err != nil {
+		return false, fmt.Errorf("could not find Nodejs dependencies folder: %s", err.Error())
 	}
-	return false, nil
+
+	nodejsLogger.Debugf("Done checking Nodejs build: %#v", isBuilt)
+	return isBuilt, nil
 }
 
+// IsModule is not implemented
 func (builder *NodeJSBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for NodeJSBuilder")
 }
 
+// InferModule is not implemented
 func (builder *NodeJSBuilder) InferModule(target string) (module.Module, error) {
 	return module.Module{}, errors.New("InferModule is not implemented for NodeJSBuilder")
 }

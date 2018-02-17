@@ -96,6 +96,8 @@ func setDefaultValues(c configFileV1) (configFileV1, error) {
 
 	// Infer default locator and project from `git`.
 	if c.CLI.Locator == "" {
+		// TODO: this needs to happen in the module directory, not the working
+		// directory
 		repo, err := git.PlainOpen(".")
 		if err == nil {
 			project := c.CLI.Project

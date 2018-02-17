@@ -261,6 +261,8 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 		if err != nil {
 			return nil, m, err
 		}
+	case "gopackage":
+		fallthrough
 	case "golang":
 		fallthrough
 	case "go":
@@ -354,7 +356,7 @@ func defaultCmd(c *cli.Context) {
 
 		isBuilt, err := builder.IsBuilt(module, config.analyzeConfig.allowUnresolved)
 		if err != nil {
-			mainLogger.Fatalf("Could not determine whether module %s is built.", module.Name)
+			mainLogger.Fatalf("Could not determine whether module %s is built: %s", module.Name, err.Error())
 		}
 
 		if !isBuilt {

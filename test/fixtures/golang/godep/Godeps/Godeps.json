@@ -42,10 +42,6 @@
 			"Rev": "1643683e1b54a9e88ad26d98f81400c8c9d9f4f9"
 		},
 		{
-			"ImportPath": "github.com/google/btree",
-			"Rev": "7d79101e329e5a3adf994758c578dab82b90c017"
-		},
-		{
 			"ImportPath": "github.com/google/gofuzz",
 			"Rev": "44d81051d367757e1c7c6a5a86423ece9afcf63c"
 		},
@@ -62,31 +58,18 @@
 			"Rev": "0c5108395e2debce0d731cf0287ddf7242066aba"
 		},
 		{
-			"ImportPath": "github.com/gregjones/httpcache",
-			"Rev": "787624de3eb7bd915c329cba748687a3b22666a6"
-		},
-		{
-			"ImportPath": "github.com/gregjones/httpcache/diskcache",
-			"Rev": "787624de3eb7bd915c329cba748687a3b22666a6"
-		},
-		{
 			"ImportPath": "github.com/json-iterator/go",
 			"Comment": "1.0.4-7-g13f8643",
 			"Rev": "13f86432b882000a51c6e610c620974462691a97"
 		},
 		{
-			"ImportPath": "github.com/juju/ratelimit",
-			"Rev": "5b9ff866471762aa2ab2dced63c9fb6f53921342"
-		},
-		{
-			"ImportPath": "github.com/peterbourgon/diskv",
-			"Comment": "v2.0.1",
-			"Rev": "5f041e8faa004a95c88a202771f4cc3e991971e6"
-		},
-		{
 			"ImportPath": "github.com/spf13/pflag",
 			"Comment": "v1.0.0-10-g4c012f6",
 			"Rev": "4c012f6dcd9546820e378d0bdda4d8fc772cdfea"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "1c05540f6879653db88113bc4a2b70aec4bd491f"
 		},
 		{
 			"ImportPath": "golang.org/x/net/http2",
@@ -119,6 +102,10 @@
 		{
 			"ImportPath": "golang.org/x/text/unicode/norm",
 			"Rev": "b19bf474d317b857955b12035d2c5acb57ce8b01"
+		},
+		{
+			"ImportPath": "golang.org/x/time/rate",
+			"Rev": "f51c12702a4d776e4c1fa9b0fabab841babae631"
 		},
 		{
 			"ImportPath": "gopkg.in/inf.v0",
