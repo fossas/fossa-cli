@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	"fmt"
 	"net/url"
 	"os"
 	"strconv"
@@ -9,23 +9,22 @@ import (
 
 	"github.com/briandowns/spinner"
 	logging "github.com/op/go-logging"
+	"github.com/tidwall/gjson"
 	"github.com/urfave/cli"
 	emoji "gopkg.in/kyokomi/emoji.v1"
-
-	"github.com/tidwall/gjson"
 )
 
 var testLogger = logging.MustGetLogger("test")
 
-const PollRequestDelay = 8000
+const PollRequestDelay = 8
 
 func confirmBuild(config cliConfig, timing int) error {
 	fossaBaseURL, err := url.Parse(config.endpoint)
 	if err != nil {
-		return errors.New("invalid FOSSA endpoint")
+		return fmt.Errorf("invalid FOSSA endpoint")
 	}
 
-	reqRef, _ := url.Parse("/api/revisions/" + url.PathEscape(config.getVcsLocator()) + "/build")
+	reqRef, _ := url.Parse("/api/revisions/" + url.PathEscape(config.getVCSLocator()) + "/build")
 	reqURL := fossaBaseURL.ResolveReference(reqRef).String()
 
 	testLogger.Debugf("Querying <%#v>", reqURL)
@@ -41,19 +40,19 @@ func confirmBuild(config cliConfig, timing int) error {
 
 	switch buildStatus {
 	case "":
-		return errors.New("unable to parse build results")
+		return fmt.Errorf("unable to parse build results")
 	case "FAILED":
-		return errors.New("failed to analyze build #" + gjson.Get(buildData, "id").String() + " <" + gjson.Get(buildData, "error").String() + ">; visit FOSSA or contact support@fossa.io")
+		return fmt.Errorf("failed to analyze build #" + gjson.Get(buildData, "id").String() + " <" + gjson.Get(buildData, "error").String() + ">; visit FOSSA or contact support@fossa.io")
 	case "SUCCEEDED":
 		return nil
 	default:
 	}
 
-	if timing >= config.timeout {
-		return errors.New("request series timed out")
+	if (time.Duration(timing) * time.Second).Nanoseconds() >= (time.Duration(config.timeout) * time.Second).Nanoseconds() {
+		return fmt.Errorf("request series timed out")
 	}
 
-	time.Sleep(time.Duration(PollRequestDelay) * time.Millisecond)
+	time.Sleep(time.Duration(PollRequestDelay) * time.Second)
 
 	return confirmBuild(config, timing+PollRequestDelay)
 }
@@ -61,10 +60,10 @@ func confirmBuild(config cliConfig, timing int) error {
 func confirmScan(config cliConfig, timing int) error {
 	fossaBaseURL, err := url.Parse(config.endpoint)
 	if err != nil {
-		return errors.New("invalid FOSSA endpoint")
+		return fmt.Errorf("invalid FOSSA endpoint")
 	}
 
-	reqRef, _ := url.Parse("/api/revisions/" + url.PathEscape(config.getVcsLocator()))
+	reqRef, _ := url.Parse("/api/revisions/" + url.PathEscape(config.getVCSLocator()))
 	reqURL := fossaBaseURL.ResolveReference(reqRef).String()
 
 	testLogger.Debugf("Querying <%#v>", reqURL)
@@ -76,10 +75,10 @@ func confirmScan(config cliConfig, timing int) error {
 	revisionData := string(resp)
 	if gjson.Get(revisionData, "meta.0.last_scan").String() == "" {
 		// not scanned yet
-		if timing >= config.timeout {
-			return errors.New("request series timed out")
+		if (time.Duration(timing) * time.Second).Nanoseconds() >= (time.Duration(config.timeout) * time.Second).Nanoseconds() {
+			return fmt.Errorf("request series timed out")
 		}
-		time.Sleep(time.Duration(PollRequestDelay) * time.Millisecond)
+		time.Sleep(time.Duration(PollRequestDelay) * time.Second)
 
 		return confirmScan(config, timing+PollRequestDelay)
 	}
@@ -92,7 +91,7 @@ func confirmScan(config cliConfig, timing int) error {
 		return true // keep iterating
 	})
 	if issueCount > 0 {
-		return errors.New(strconv.Itoa(issueCount) + " issues found")
+		return fmt.Errorf(strconv.Itoa(issueCount) + " issues found")
 	}
 
 	return nil
@@ -111,7 +110,7 @@ func testCmd(c *cli.Context) {
 
 	if err := confirmBuild(config, 0); err != nil {
 		s.Stop()
-		testLogger.Fatalf("Error executing test: %#v", err)
+		testLogger.Fatalf("Error executing test: %s", err)
 	}
 
 	s.Suffix = " Waiting for FOSSA scan results..."
