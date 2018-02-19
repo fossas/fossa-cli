@@ -70,12 +70,12 @@ func doAnalyze(modules []moduleConfig, allowUnresolved bool) (analysis, error) {
 	for _, moduleConfig := range modules {
 		builder, m, err := resolveModuleConfig(moduleConfig)
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve modules: " + err.Error())
+			return nil, fmt.Errorf("failed to resolve modules: %s", err.Error())
 		}
 
 		err = builder.Initialize()
 		if err != nil {
-			return nil, fmt.Errorf("failed to initialize build: " + err.Error())
+			return nil, fmt.Errorf("failed to initialize build: %s", err.Error())
 		}
 
 		isBuilt, err := builder.IsBuilt(m, allowUnresolved)
@@ -83,12 +83,12 @@ func doAnalyze(modules []moduleConfig, allowUnresolved bool) (analysis, error) {
 			return nil, fmt.Errorf("could not determine whether module %#v is built: %#v", m.Name, err.Error())
 		}
 		if !isBuilt {
-			return nil, fmt.Errorf("module " + m.Name + " does not appear to be built (try first running your build or `fossa build`, and then running `fossa`)")
+			return nil, fmt.Errorf("module %s does not appear to be built (try first running your build or `fossa build`, and then running `fossa`)", m.Name)
 		}
 
 		deps, err := builder.Analyze(m, allowUnresolved)
 		if err != nil {
-			return nil, fmt.Errorf("analysis failed on module " + m.Name + ": " + err.Error())
+			return nil, fmt.Errorf("analysis failed on module %s: %s", m.Name, err.Error())
 		}
 		dependencies[analysisKey{
 			builder: builder,

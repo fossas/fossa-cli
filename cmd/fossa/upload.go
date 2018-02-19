@@ -113,7 +113,7 @@ func doUpload(config cliConfig, results analysis) error {
 
 	analysisLogger.Debugf("Uploading build data from (%#v) modules: %#v", len(normalModules), string(buildData))
 
-	postRef, _ := url.Parse("/api/builds/custom?locator=" + url.QueryEscape(config.getVCSLocator()) + "&v=" + version)
+	postRef, _ := url.Parse("/api/builds/custom?locator=" + url.QueryEscape(makeLocator(config.project, config.revision)) + "&v=" + version)
 	postURL := fossaBaseURL.ResolveReference(postRef).String()
 
 	analysisLogger.Debugf("Sending build data to <%#v>", postURL)

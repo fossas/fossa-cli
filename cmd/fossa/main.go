@@ -108,20 +108,26 @@ type cliConfig struct {
 	endpoint string
 	modules  []moduleConfig
 	debug    bool
-	timeout  int
+	timeout  time.Duration
 
 	defaultConfig defaultConfig
 	analyzeConfig analyzeConfig
 	buildConfig   buildConfig
 }
 
-func (conf *cliConfig) getVCSLocator() string {
-	noGitExt := strings.TrimSuffix(conf.project, ".git")
-	noGitPrefix := strings.TrimPrefix(noGitExt, "git+")
-	noGitUser := strings.Replace(noGitPrefix, "git@github.com:", "github.com/", 1)
-	noHTTPPrefix := strings.TrimPrefix(noGitUser, "http://")
+func makeLocator(project string, revision string) string {
+	// Remove fetcher prefix (in case project is derived from splitting a locator on '$')
+	noFetcherPrefix := strings.TrimPrefix(project, "git+")
+
+	// Normalise Git URL format
+	noGitExtension := strings.TrimSuffix(noFetcherPrefix, ".git")
+	handleGitHubSSH := strings.Replace(noGitExtension, "git@github.com:", "github.com/", 1)
+
+	// Remove protocols
+	noHTTPPrefix := strings.TrimPrefix(handleGitHubSSH, "http://")
 	noHTTPSPrefix := strings.TrimPrefix(noHTTPPrefix, "https://")
-	return "git+" + noHTTPSPrefix + "$" + conf.revision
+
+	return "git+" + noHTTPSPrefix + "$" + revision
 }
 
 type defaultConfig struct {
@@ -134,7 +140,7 @@ func initialize(c *cli.Context) (cliConfig, error) {
 		project:  c.String("project"),
 		revision: c.String("revision"),
 		endpoint: c.String("endpoint"),
-		timeout:  c.Int("timeout"),
+		timeout:  time.Duration(c.Int("timeout")) * time.Second,
 		modules:  parseModuleFlag(c.String("modules")),
 		debug:    c.Bool("debug"),
 
@@ -165,15 +171,8 @@ func initialize(c *cli.Context) (cliConfig, error) {
 
 	if configFile.CLI.Locator != "" {
 		locatorSections = strings.Split(configFile.CLI.Locator, "$")
-		locatorProject = locatorSections[0]
+		locatorProject = strings.TrimPrefix(locatorSections[0], "git+")
 		locatorRevision = locatorSections[1]
-	}
-
-	if config.apiKey == "" {
-		config.apiKey = configFile.CLI.APIKey
-	}
-	if config.endpoint == "" {
-		config.endpoint = configFile.CLI.Server
 	}
 	if config.project == "" {
 		config.project = configFile.CLI.Project
@@ -183,6 +182,13 @@ func initialize(c *cli.Context) (cliConfig, error) {
 	}
 	if config.revision == "" {
 		config.revision = locatorRevision
+	}
+
+	if config.apiKey == "" {
+		config.apiKey = configFile.CLI.APIKey
+	}
+	if config.endpoint == "" {
+		config.endpoint = configFile.CLI.Server
 	}
 	if len(config.modules) == 0 {
 		config.modules = configFile.Analyze.Modules

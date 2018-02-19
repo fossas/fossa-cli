@@ -1,100 +1,141 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/briandowns/spinner"
 	logging "github.com/op/go-logging"
-	"github.com/tidwall/gjson"
 	"github.com/urfave/cli"
-	emoji "gopkg.in/kyokomi/emoji.v1"
 )
 
 var testLogger = logging.MustGetLogger("test")
 
-const PollRequestDelay = 8
+const pollRequestDelay = time.Duration(8) * time.Second
+const buildsEndpoint = "/api/revisions/%s/build"
+const revisionsEndpoint = "/api/revisions/%s"
 
-func confirmBuild(config cliConfig, timing int) error {
-	fossaBaseURL, err := url.Parse(config.endpoint)
-	if err != nil {
-		return fmt.Errorf("invalid FOSSA endpoint")
+type buildResponse struct {
+	ID    string
+	Error string
+	Task  struct {
+		Status string
 	}
-
-	reqRef, _ := url.Parse("/api/revisions/" + url.PathEscape(config.getVCSLocator()) + "/build")
-	reqURL := fossaBaseURL.ResolveReference(reqRef).String()
-
-	testLogger.Debugf("Querying <%#v>", reqURL)
-	resp, err := makeAPIRequest("PUT", reqURL, nil, config.apiKey)
-	if err != nil {
-		return err
-	}
-
-	buildData := string(resp)
-	buildStatus := gjson.Get(buildData, "task.status").String()
-
-	testLogger.Debugf("Build status returned: %s", buildStatus)
-
-	switch buildStatus {
-	case "":
-		return fmt.Errorf("unable to parse build results")
-	case "FAILED":
-		return fmt.Errorf("failed to analyze build #" + gjson.Get(buildData, "id").String() + " <" + gjson.Get(buildData, "error").String() + ">; visit FOSSA or contact support@fossa.io")
-	case "SUCCEEDED":
-		return nil
-	default:
-	}
-
-	if (time.Duration(timing) * time.Second).Nanoseconds() >= (time.Duration(config.timeout) * time.Second).Nanoseconds() {
-		return fmt.Errorf("request series timed out")
-	}
-
-	time.Sleep(time.Duration(PollRequestDelay) * time.Second)
-
-	return confirmBuild(config, timing+PollRequestDelay)
 }
 
-func confirmScan(config cliConfig, timing int) error {
-	fossaBaseURL, err := url.Parse(config.endpoint)
+func getBuild(endpoint, apiKey, project, revision string) (buildResponse, error) {
+	server, err := url.Parse(endpoint)
 	if err != nil {
-		return fmt.Errorf("invalid FOSSA endpoint")
+		return buildResponse{}, fmt.Errorf("invalid FOSSA endpoint: %s", err.Error())
 	}
 
-	reqRef, _ := url.Parse("/api/revisions/" + url.PathEscape(config.getVCSLocator()))
-	reqURL := fossaBaseURL.ResolveReference(reqRef).String()
-
-	testLogger.Debugf("Querying <%#v>", reqURL)
-	resp, err := makeAPIRequest("GET", reqURL, nil, config.apiKey)
+	buildsURL, err := url.Parse(fmt.Sprintf(buildsEndpoint, url.PathEscape(makeLocator(project, revision))))
 	if err != nil {
-		return err
+		return buildResponse{}, fmt.Errorf("invalid FOSSA builds endpoint: %s", err.Error())
+	}
+	url := server.ResolveReference(buildsURL).String()
+
+	testLogger.Debugf("Making Builds API request to: %#v", url)
+	res, err := makeAPIRequest(http.MethodPut, url, apiKey, nil)
+	if err != nil {
+		return buildResponse{}, fmt.Errorf("could not make FOSSA build request: %s", err)
 	}
 
-	revisionData := string(resp)
-	if gjson.Get(revisionData, "meta.0.last_scan").String() == "" {
-		// not scanned yet
-		if (time.Duration(timing) * time.Second).Nanoseconds() >= (time.Duration(config.timeout) * time.Second).Nanoseconds() {
-			return fmt.Errorf("request series timed out")
+	var build buildResponse
+	err = json.Unmarshal(res, &build)
+	if err != nil {
+		return buildResponse{}, fmt.Errorf("could not parse FOSSA build: %#v %#v", err.Error(), res)
+	}
+
+	return build, nil
+}
+
+type revisionResponse struct {
+	Meta []struct {
+		LastScan string `json:"last_scan"`
+	}
+	Issues []issueResponse
+}
+
+type issueResponse struct {
+	Resolved bool
+}
+
+func getRevision(endpoint, apiKey, project, revision string) (revisionResponse, error) {
+	server, err := url.Parse(endpoint)
+	if err != nil {
+		return revisionResponse{}, fmt.Errorf("invalid FOSSA endpoint: %s", err.Error())
+	}
+
+	revisionsURL, err := url.Parse(fmt.Sprintf(revisionsEndpoint, url.PathEscape(makeLocator(project, revision))))
+	if err != nil {
+		return revisionResponse{}, fmt.Errorf("invalid FOSSA issues endpoint: %s", err.Error())
+	}
+	url := server.ResolveReference(revisionsURL).String()
+
+	testLogger.Debugf("Making Revisions API request to: %#v", url)
+	res, err := makeAPIRequest(http.MethodGet, url, apiKey, nil)
+	if err != nil {
+		return revisionResponse{}, err
+	}
+
+	var revisionJSON revisionResponse
+	err = json.Unmarshal(res, &revisionJSON)
+	if err != nil {
+		return revisionResponse{}, fmt.Errorf("could not parse FOSSA revision: %#v %#v", err.Error(), res)
+	}
+	return revisionJSON, nil
+}
+
+func doTest(race chan testResult, endpoint, apiKey, project, revision string) {
+	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+	s.Writer = os.Stderr
+	s.Suffix = " Waiting for analysis to complete..."
+	s.Start()
+
+	for {
+		build, err := getBuild(endpoint, apiKey, project, revision)
+		if err != nil {
+			race <- testResult{err: err, issues: nil}
+			return
 		}
-		time.Sleep(time.Duration(PollRequestDelay) * time.Second)
-
-		return confirmScan(config, timing+PollRequestDelay)
-	}
-
-	issueCount := 0
-	gjson.Get(revisionData, "issues.#.resolved").ForEach(func(key, value gjson.Result) bool {
-		if value.Bool() == false {
-			issueCount++
+		switch build.Task.Status {
+		case "SUCCEEDED":
+			s.Stop()
+			break
+		case "FAILED":
+			race <- testResult{err: fmt.Errorf("failed to analyze build #%s: %s (visit FOSSA or contact support@fossa.io)", build.ID, build.Error), issues: nil}
+			return
+		default:
 		}
-		return true // keep iterating
-	})
-	if issueCount > 0 {
-		return fmt.Errorf(strconv.Itoa(issueCount) + " issues found")
+		time.Sleep(pollRequestDelay)
 	}
 
-	return nil
+	s.Suffix = " Waiting for FOSSA scan results..."
+	s.Restart()
+
+	for {
+		revision, err := getRevision(endpoint, apiKey, project, revision)
+		if err != nil {
+			race <- testResult{err: err, issues: nil}
+			return
+		}
+		if len(revision.Meta) == 0 || revision.Meta[0].LastScan == "" {
+			s.Stop()
+			race <- testResult{err: nil, issues: revision.Issues}
+			return
+		}
+		time.Sleep(pollRequestDelay)
+	}
+}
+
+type testResult struct {
+	err    error
+	issues []issueResponse
 }
 
 func testCmd(c *cli.Context) {
@@ -103,24 +144,15 @@ func testCmd(c *cli.Context) {
 		testLogger.Fatalf("Could not load configuration: %s", err.Error())
 	}
 
-	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-	s.Writer = os.Stderr
-	s.Suffix = " Waiting for analysis job to succeed..."
-	s.Start()
-
-	if err := confirmBuild(config, 0); err != nil {
-		s.Stop()
-		testLogger.Fatalf("Error executing test: %s", err)
+	race := make(chan testResult, 1)
+	go doTest(race, config.endpoint, config.apiKey, config.project, config.revision)
+	select {
+	case result := <-race:
+		if result.err != nil {
+			testLogger.Fatalf("Could not execute test: %s", result.err.Error())
+		}
+		testLogger.Debugf("Test succeeded: %#v", result.issues)
+	case <-time.After(config.timeout):
+		testLogger.Fatalf("API requests timed out")
 	}
-
-	s.Suffix = " Waiting for FOSSA scan results..."
-	s.Restart()
-
-	if err := confirmScan(config, 0); err != nil {
-		s.Stop()
-		testLogger.Fatalf(err.Error())
-	}
-	// TODO: pipe issue data into a report function
-	s.Stop()
-	emoji.Println("Success; No issues found! :tada:")
 }
