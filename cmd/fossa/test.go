@@ -20,7 +20,7 @@ const buildsEndpoint = "/api/revisions/%s/build"
 const revisionsEndpoint = "/api/revisions/%s"
 
 type buildResponse struct {
-	ID    string
+	ID    int
 	Error string
 	Task  struct {
 		Status string
@@ -97,18 +97,22 @@ func doTest(race chan testResult, endpoint, apiKey, project, revision string) {
 	s.Suffix = " Waiting for analysis to complete..."
 	s.Start()
 
+buildLoop:
 	for {
 		build, err := getBuild(endpoint, apiKey, project, revision)
 		if err != nil {
+			s.Stop()
 			race <- testResult{err: err, issues: nil}
 			return
 		}
+		testLogger.Debugf("Got build: %#v", build)
 		switch build.Task.Status {
 		case "SUCCEEDED":
 			s.Stop()
-			break
+			break buildLoop
 		case "FAILED":
-			race <- testResult{err: fmt.Errorf("failed to analyze build #%s: %s (visit FOSSA or contact support@fossa.io)", build.ID, build.Error), issues: nil}
+			s.Stop()
+			race <- testResult{err: fmt.Errorf("failed to analyze build #%d: %s (visit FOSSA or contact support@fossa.io)", build.ID, build.Error), issues: nil}
 			return
 		default:
 		}
@@ -121,10 +125,12 @@ func doTest(race chan testResult, endpoint, apiKey, project, revision string) {
 	for {
 		revision, err := getRevision(endpoint, apiKey, project, revision)
 		if err != nil {
+			s.Stop()
 			race <- testResult{err: err, issues: nil}
 			return
 		}
-		if len(revision.Meta) == 0 || revision.Meta[0].LastScan == "" {
+		testLogger.Debugf("Got revision: %#v", revision)
+		if len(revision.Meta) > 0 && revision.Meta[0].LastScan != "" {
 			s.Stop()
 			race <- testResult{err: nil, issues: revision.Issues}
 			return

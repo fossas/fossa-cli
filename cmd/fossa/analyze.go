@@ -50,10 +50,11 @@ func analyzeCmd(c *cli.Context) {
 		return
 	}
 
-	err = doUpload(config, analysis)
+	msg, err := doUpload(config, analysis)
 	if err != nil {
 		analysisLogger.Fatalf("Upload failed: %s", err.Error())
 	}
+	fmt.Print(msg)
 }
 
 type analysisKey struct {

@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/fossas/fossa-cli/module"
@@ -87,10 +86,10 @@ func normalizeAnalysis(results analysis) ([]normalizedModule, error) {
 	return normalized, nil
 }
 
-func doUpload(config cliConfig, results analysis) error {
+func doUpload(config cliConfig, results analysis) (string, error) {
 	fossaBaseURL, err := url.Parse(config.endpoint)
 	if err != nil {
-		return fmt.Errorf("invalid FOSSA endpoint")
+		return "", fmt.Errorf("invalid FOSSA endpoint")
 	}
 
 	if config.revision == "" {
@@ -104,11 +103,11 @@ func doUpload(config cliConfig, results analysis) error {
 	// Re-marshal into build data
 	normalModules, err := normalizeAnalysis(results)
 	if err != nil {
-		return fmt.Errorf("could not normalize build data")
+		return "", fmt.Errorf("could not normalize build data")
 	}
 	buildData, err := json.Marshal(normalModules)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	analysisLogger.Debugf("Uploading build data from (%#v) modules: %#v", len(normalModules), string(buildData))
@@ -124,19 +123,19 @@ func doUpload(config cliConfig, results analysis) error {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("could not begin upload: %#v", err)
+		return "", fmt.Errorf("could not begin upload: %#v", err)
 	}
 	defer resp.Body.Close()
 	responseBytes, _ := ioutil.ReadAll(resp.Body)
 	responseStr := string(responseBytes)
 
 	if resp.StatusCode == http.StatusForbidden {
-		return fmt.Errorf("invalid API key (check the $FOSSA_API_KEY environment variable)")
+		return "", fmt.Errorf("invalid API key (check the $FOSSA_API_KEY environment variable)")
 	} else if resp.StatusCode == http.StatusPreconditionRequired {
 		// TODO: handle "Managed Project" workflow
-		return fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo")
+		return "", fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo")
 	} else if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad server response (%#v)", responseStr)
+		return "", fmt.Errorf("bad server response (%#v)", responseStr)
 	}
 
 	analysisLogger.Debugf("Upload succeeded")
@@ -144,17 +143,16 @@ func doUpload(config cliConfig, results analysis) error {
 
 	var jsonResponse map[string]interface{}
 	if err := json.Unmarshal(responseBytes, &jsonResponse); err != nil {
-		return fmt.Errorf("invalid response, but build was uploaded")
+		return "", fmt.Errorf("invalid response, but build was uploaded")
 	}
 	locParts := strings.Split(jsonResponse["locator"].(string), "$")
 	getRef, _ := url.Parse("/projects/" + url.QueryEscape(locParts[0]) + "/refs/branch/master/" + url.QueryEscape(locParts[1]))
-	fmt.Fprintln(os.Stderr, `
+	return fmt.Sprint(`
 ============================================================
 
-		View FOSSA Report:
-		`+fossaBaseURL.ResolveReference(getRef).String()+`
+    View FOSSA Report:
+    ` + fossaBaseURL.ResolveReference(getRef).String() + `
 
 ============================================================
-`)
-	return nil
+`), nil
 }

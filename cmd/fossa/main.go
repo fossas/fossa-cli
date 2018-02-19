@@ -195,15 +195,17 @@ func initialize(c *cli.Context) (cliConfig, error) {
 	}
 
 	// Configure logging.
-	formatter := logging.MustStringFormatter(
-		`%{color}%{time} %{level} %{module}:%{shortpkg}/%{shortfile}/%{shortfunc}%{color:reset} %{message}`,
-	)
-	stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), formatter))
-	stderrBackend.SetLevel(logging.WARNING, "")
 	if config.debug {
+		formatter := logging.MustStringFormatter(`%{color}%{time} %{level} %{module}:%{shortpkg}/%{shortfile}/%{shortfunc}%{color:reset} %{message}`)
+		stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), formatter))
 		stderrBackend.SetLevel(logging.DEBUG, "")
+		logging.SetBackend(stderrBackend)
+	} else {
+		formatter := logging.MustStringFormatter(`%{color}%{level}%{color:reset} %{message}`)
+		stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), formatter))
+		stderrBackend.SetLevel(logging.WARNING, "")
+		logging.SetBackend(stderrBackend)
 	}
-	logging.SetBackend(stderrBackend)
 
 	mainLogger.Debugf("Configuration initialized: %#v", config)
 
@@ -375,16 +377,19 @@ func defaultCmd(c *cli.Context) {
 
 		builder, module, err := resolveModuleConfig(m)
 		if err != nil {
+			s.Stop()
 			buildLogger.Fatalf("Could not parse module configuration: %s", err.Error())
 		}
 
 		err = builder.Initialize()
 		if err != nil {
+			s.Stop()
 			buildLogger.Fatalf("Failed to initialize build: %s", err.Error())
 		}
 
 		isBuilt, err := builder.IsBuilt(module, config.analyzeConfig.allowUnresolved)
 		if err != nil {
+			s.Stop()
 			mainLogger.Fatalf("Could not determine whether module %s is built: %s", module.Name, err.Error())
 		}
 
@@ -399,14 +404,17 @@ func defaultCmd(c *cli.Context) {
 					mainLogger.Fatalf("Build failed (%s): %s", m.Path, err.Error())
 				}
 			} else {
+				s.Stop()
 				mainLogger.Fatalf("Module %s does not appear to be built. Try first running your build or `fossa build`, and then running `fossa`.", module.Name)
 			}
 		}
 
+		s.Stop()
 		s.Suffix = fmt.Sprintf(" Running module analysis (%d/%d): %s", i+1, len(config.modules), m.Path)
 		s.Restart()
 		deps, err := builder.Analyze(module, config.analyzeConfig.allowUnresolved)
 		mainLogger.Debugf("Analysis complete: %#v", deps)
+		s.Stop()
 
 		dependencies[analysisKey{
 			builder: builder,
@@ -430,11 +438,13 @@ func defaultCmd(c *cli.Context) {
 		return
 	}
 
+	s.Stop()
 	s.Suffix = fmt.Sprintf(" Uploading build results (%d/%d)...", len(config.modules), len(config.modules))
 	s.Restart()
-	err = doUpload(config, dependencies)
+	msg, err := doUpload(config, dependencies)
+	s.Stop()
 	if err != nil {
-		s.Stop()
 		mainLogger.Fatalf("Upload failed: %s", err.Error())
 	}
+	fmt.Print(msg)
 }
