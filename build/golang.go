@@ -256,13 +256,13 @@ func traceImports(m module.Module, allowUnresolved bool) ([]GoPkg, error) {
 	var tree depth.Tree
 	err := tree.Resolve(m.Target)
 	if err != nil {
-		return nil, errors.New("could not resolve dependencies: " + err.Error())
+		return nil, fmt.Errorf("could not resolve dependencies: %s", err.Error())
 	}
 
 	// Flatten tree (technically a DAG?) into a list.
 	deps, err := flattenGoDeps(*tree.Root, allowUnresolved)
 	if err != nil {
-		return nil, errors.New("could not resolve dependencies: " + err.Error())
+		return nil, fmt.Errorf("could not resolve dependencies: %s", err.Error())
 	}
 
 	return deps, nil
@@ -294,7 +294,7 @@ func flattenGoDeps(pkg depth.Pkg, allowUnresolved bool) ([]GoPkg, error) {
 	}
 
 	// Otherwise, fail.
-	return nil, errors.New("could not resolve package: " + pkg.Name)
+	return nil, fmt.Errorf("could not resolve package: %s", pkg.Name)
 }
 
 // Lockfile structs for JSON unmarshalling
@@ -436,9 +436,11 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 	if ok, err := hasVndrManifest(projectFolder); err == nil && ok {
 		goLogger.Debugf("Found Vndr manifest")
 
-		lockfileContents, err := ioutil.ReadFile(filepath.Join(projectFolder, "vendor.conf"))
+		lockfile := filepath.Join(projectFolder, "vendor.conf")
+		lockfileContents, err := ioutil.ReadFile(lockfile)
 		if err != nil {
-			return nil, errors.New("could not read vendor.conf")
+			goLogger.Debugf("Error reading %s: %s", lockfile, err.Error())
+			return nil, fmt.Errorf("could not read %s: %s", lockfile, err.Error())
 		}
 
 		lines := strings.Split(string(lockfileContents), "\n")
@@ -469,10 +471,10 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 				strings.Index(importPath, projectImports) == 0 ||
 				dep.ImportPath == "C" {
 				goLogger.Debugf("Did not resolve import: %#v", dep)
-				depSet[GoPkg{ImportPath: importPath, Version: ""}] = true
+				depSet[GoPkg{ImportPath: importPath, Version: "", isInternal: dep.isInternal}] = true
 			} else if allowUnresolved {
 				goLogger.Warningf("Could not resolve import: %#v", dep)
-				depSet[GoPkg{ImportPath: importPath, Version: ""}] = true
+				depSet[GoPkg{ImportPath: importPath, Version: "", isInternal: dep.isInternal}] = true
 			} else {
 				goLogger.Errorf("Could not resolve import: %#v", dep)
 				goLogger.Debugf("Project folder: %#v", projectFolder)
@@ -482,7 +484,7 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 				return nil, fmt.Errorf("could not resolve import: %#v", dep.ImportPath)
 			}
 		} else {
-			depSet[GoPkg{ImportPath: project, Version: lockfileVersions[project]}] = true
+			depSet[GoPkg{ImportPath: project, Version: lockfileVersions[project], isInternal: dep.isInternal}] = true
 		}
 	}
 

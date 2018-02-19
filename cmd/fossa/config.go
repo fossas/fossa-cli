@@ -1,13 +1,18 @@
 package main
 
 import (
-	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
+	"time"
 
-	"github.com/fossas/fossa-cli/module"
+	logging "github.com/op/go-logging"
+	"github.com/urfave/cli"
 	git "gopkg.in/src-d/go-git.v4"
 	yaml "gopkg.in/yaml.v2"
+
+	"github.com/fossas/fossa-cli/module"
 )
 
 type configFileV1 struct {
@@ -35,7 +40,7 @@ type moduleConfig struct {
 func readConfigFile(path string) (configFileV1, error) {
 	if path != "" {
 		if _, err := os.Stat(path); err != nil {
-			return configFileV1{}, errors.New("invalid config file specified")
+			return configFileV1{}, fmt.Errorf("invalid config file specified")
 		}
 		return parseConfigFile(path)
 	}
@@ -117,4 +122,137 @@ func setDefaultValues(c configFileV1) (configFileV1, error) {
 	}
 
 	return c, nil
+}
+
+type cliConfig struct {
+	apiKey   string
+	project  string
+	revision string
+	endpoint string
+	modules  []moduleConfig
+	debug    bool
+
+	defaultConfig defaultConfig
+	analyzeConfig analyzeConfig
+	buildConfig   buildConfig
+	testConfig    testConfig
+}
+
+func makeLocator(project string, revision string) string {
+	// Remove fetcher prefix (in case project is derived from splitting a locator on '$')
+	noFetcherPrefix := strings.TrimPrefix(project, "git+")
+
+	// Normalise Git URL format
+	noGitExtension := strings.TrimSuffix(noFetcherPrefix, ".git")
+	handleGitHubSSH := strings.Replace(noGitExtension, "git@github.com:", "github.com/", 1)
+
+	// Remove protocols
+	noHTTPPrefix := strings.TrimPrefix(handleGitHubSSH, "http://")
+	noHTTPSPrefix := strings.TrimPrefix(noHTTPPrefix, "https://")
+
+	return "git+" + noHTTPSPrefix + "$" + revision
+}
+
+type defaultConfig struct {
+	build bool
+}
+
+func parseModuleFlag(moduleFlag string) []moduleConfig {
+	if moduleFlag == "" {
+		return []moduleConfig{}
+	}
+	var config []moduleConfig
+
+	modules := strings.Split(moduleFlag, ",")
+	for _, m := range modules {
+		sections := strings.Split(m, ":")
+		config = append(config, moduleConfig{
+			Name: sections[1],
+			Path: sections[1],
+			Type: module.Type(sections[0]),
+		})
+	}
+
+	return config
+}
+
+func initialize(c *cli.Context) (cliConfig, error) {
+	var config = cliConfig{
+		apiKey:   c.String("api_key"),
+		project:  c.String("project"),
+		revision: c.String("revision"),
+		endpoint: c.String("endpoint"),
+		modules:  parseModuleFlag(c.String("modules")),
+		debug:    c.Bool("debug"),
+
+		defaultConfig: defaultConfig{
+			build: c.Bool("build"),
+		},
+
+		analyzeConfig: analyzeConfig{
+			output:          c.Bool("output"),
+			allowUnresolved: c.Bool("allow-unresolved"),
+			noUpload:        c.Bool("no-upload"),
+		},
+
+		buildConfig: buildConfig{
+			force: c.Bool("force"),
+		},
+
+		testConfig: testConfig{
+			timeout: time.Duration(c.Int("timeout")) * time.Second,
+		},
+	}
+
+	// Load configuration file and set overrides.
+	configFile, err := readConfigFile(c.String("config"))
+	if err != nil {
+		return cliConfig{}, err
+	}
+
+	var locatorSections []string
+	var locatorProject string
+	var locatorRevision string
+
+	if configFile.CLI.Locator != "" {
+		locatorSections = strings.Split(configFile.CLI.Locator, "$")
+		locatorProject = strings.TrimPrefix(locatorSections[0], "git+")
+		locatorRevision = locatorSections[1]
+	}
+	if config.project == "" {
+		config.project = configFile.CLI.Project
+		if config.project == "" {
+			config.project = locatorProject
+		}
+	}
+	if config.revision == "" {
+		config.revision = locatorRevision
+	}
+
+	if config.apiKey == "" {
+		config.apiKey = configFile.CLI.APIKey
+	}
+	if config.endpoint == "" {
+		config.endpoint = configFile.CLI.Server
+	}
+	if len(config.modules) == 0 {
+		config.modules = configFile.Analyze.Modules
+	}
+
+	// Configure logging.
+	if config.debug {
+		formatter := logging.MustStringFormatter(`%{color}%{time} %{level} %{module}:%{shortpkg}/%{shortfile}/%{shortfunc}%{color:reset} %{message}`)
+		stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), formatter))
+		stderrBackend.SetLevel(logging.DEBUG, "")
+		logging.SetBackend(stderrBackend)
+	} else {
+		formatter := logging.MustStringFormatter(`%{color}%{level}%{color:reset} %{message}`)
+		stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), formatter))
+		stderrBackend.SetLevel(logging.WARNING, "")
+		logging.SetBackend(stderrBackend)
+	}
+
+	mainLogger.Debugf("Configuration initialized: %#v", config)
+
+	return config, nil
 }

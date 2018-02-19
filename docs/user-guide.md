@@ -116,6 +116,9 @@ Print the version, then exit.
 #### `-h, --help`
 Print a help message, then exit.
 
+#### `-t, --timeout`
+Passed to `fossa test` to specify a test timeout (seconds).
+
 <!-- ## `fossa init`
 
 Makes a best-effort attempt at inferring the correct configuration, then outputs the configuration to `stdout`.
@@ -168,15 +171,15 @@ Print a specific type of license report for automatically creating attribution f
 - `ATTRIBUTION`: generate an `ATTRIBUTION` file for your dependencies
 
 #### `-j, --json`
-Print the report in JSON format.
-
+Print the report data in JSON format.
+-->
 ## `fossa test`
 
 Checks whether the project has licensing issues, as configured by its policy within FOSSA. If there are issues, it prints them on `stdout` and exits with code 1. If there are not issues, it exits with code 0.
 
 ### Flags
-#### `-j, --json`
-Print issues in JSON format.
+<!-- #### `-j, --json`
+Print issues in JSON format. -->
 
-#### `-w, --wait-until-ready`
-When the issue report for this revision is not ready, wait and retry instead of immediately failing. -->
+#### `-t, --timeout`
+The amount of time to wait for an issue report (in seconds). Defaults to 10 minutes.
