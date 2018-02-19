@@ -1,6 +1,7 @@
 package build
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -156,10 +157,10 @@ func (builder *NodeJSBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bo
 
 // IsModule is not implemented
 func (builder *NodeJSBuilder) IsModule(target string) (bool, error) {
-	return false, fmt.Errorf("IsModule is not implemented for NodeJSBuilder")
+	return false, errors.New("IsModule is not implemented for NodeJSBuilder")
 }
 
 // InferModule is not implemented
 func (builder *NodeJSBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, fmt.Errorf("InferModule is not implemented for NodeJSBuilder")
+	return module.Module{}, errors.New("InferModule is not implemented for NodeJSBuilder")
 }

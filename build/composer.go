@@ -2,6 +2,7 @@ package build
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -133,10 +134,10 @@ func (builder *ComposerBuilder) IsBuilt(m module.Module, allowUnresolved bool) (
 
 // IsModule is not implemented
 func (builder *ComposerBuilder) IsModule(target string) (bool, error) {
-	return false, fmt.Errorf("IsModule is not implemented for ComposerBuilder")
+	return false, errors.New("IsModule is not implemented for ComposerBuilder")
 }
 
 // InferModule is not implemented
 func (builder *ComposerBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, fmt.Errorf("InferModule is not implemented for ComposerBuilder")
+	return module.Module{}, errors.New("InferModule is not implemented for ComposerBuilder")
 }

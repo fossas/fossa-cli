@@ -3,6 +3,7 @@ package build
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -125,7 +126,7 @@ func whichWithResolver(cmds []string, getVersion versionResolver) (string, strin
 		}
 		commonLogger.Debugf("Tried resolving `%s` but did not work: %#v %#v", cmd, err, version)
 	}
-	return "", "", fmt.Errorf("could not resolve version")
+	return "", "", errors.New("could not resolve version")
 }
 
 func which(versionFlags string, cmds ...string) (string, string, error) {

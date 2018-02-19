@@ -1,6 +1,7 @@
 package build
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -134,10 +135,10 @@ func (builder *MavenBuilder) IsBuilt(m module.Module, allowUnresolved bool) (boo
 
 // IsModule is not implemented
 func (builder *MavenBuilder) IsModule(target string) (bool, error) {
-	return false, fmt.Errorf("IsModule is not implemented for MavenBuilder")
+	return false, errors.New("IsModule is not implemented for MavenBuilder")
 }
 
 // InferModule is not implemented
 func (builder *MavenBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, fmt.Errorf("InferModule is not implemented for MavenBuilder")
+	return module.Module{}, errors.New("InferModule is not implemented for MavenBuilder")
 }

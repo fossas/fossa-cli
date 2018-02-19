@@ -1,6 +1,7 @@
 package build
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -199,7 +200,7 @@ func (builder *GoBuilder) Build(m module.Module, force bool) error {
 		return fmt.Errorf("could not find Go project folder: %s", err.Error())
 	}
 	if !ok {
-		return fmt.Errorf("could not find Go project folder (maybe your Go build tool is not supported?)")
+		return errors.New("could not find Go project folder (maybe your Go build tool is not supported?)")
 	}
 	goLogger.Debugf("Found project folder for Go build: %#v", projectFolder)
 
@@ -255,13 +256,13 @@ func traceImports(m module.Module, allowUnresolved bool) ([]GoPkg, error) {
 	var tree depth.Tree
 	err := tree.Resolve(m.Target)
 	if err != nil {
-		return nil, fmt.Errorf("could not resolve dependencies: " + err.Error())
+		return nil, fmt.Errorf("could not resolve dependencies: %s", err.Error())
 	}
 
 	// Flatten tree (technically a DAG?) into a list.
 	deps, err := flattenGoDeps(*tree.Root, allowUnresolved)
 	if err != nil {
-		return nil, fmt.Errorf("could not resolve dependencies: " + err.Error())
+		return nil, fmt.Errorf("could not resolve dependencies: %s", err.Error())
 	}
 
 	return deps, nil
@@ -274,7 +275,7 @@ func flattenGoDeps(pkg depth.Pkg, allowUnresolved bool) ([]GoPkg, error) {
 		if len(pkg.Deps) == 0 {
 			return []GoPkg{GoPkg{ImportPath: pkg.Name, isInternal: pkg.Internal}}, nil
 		}
-		return nil, fmt.Errorf("dependency of stdlib detected (this should never happen)")
+		return nil, errors.New("dependency of stdlib detected (this should never happen)")
 	}
 
 	// Get recursively flattened trees of child dependencies.
@@ -293,7 +294,7 @@ func flattenGoDeps(pkg depth.Pkg, allowUnresolved bool) ([]GoPkg, error) {
 	}
 
 	// Otherwise, fail.
-	return nil, fmt.Errorf("could not resolve package: " + pkg.Name)
+	return nil, fmt.Errorf("could not resolve package: %s", pkg.Name)
 }
 
 // Lockfile structs for JSON unmarshalling
@@ -373,7 +374,7 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 			}
 			return deps, err
 		}
-		return nil, fmt.Errorf("could not find project folder")
+		return nil, errors.New("could not find project folder")
 	}
 	goLogger.Debugf("Found project folder: %#v", projectFolder)
 
@@ -435,9 +436,11 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 	if ok, err := hasVndrManifest(projectFolder); err == nil && ok {
 		goLogger.Debugf("Found Vndr manifest")
 
-		lockfileContents, err := ioutil.ReadFile(filepath.Join(projectFolder, "vendor.conf"))
+		lockfile := filepath.Join(projectFolder, "vendor.conf")
+		lockfileContents, err := ioutil.ReadFile(lockfile)
 		if err != nil {
-			return nil, fmt.Errorf("could not read vendor.conf")
+			goLogger.Debugf("Error reading %s: %s", lockfile, err.Error())
+			return nil, fmt.Errorf("could not read %s: %s", lockfile, err.Error())
 		}
 
 		lines := strings.Split(string(lockfileContents), "\n")
@@ -544,10 +547,10 @@ func (builder *GoBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, 
 
 // IsModule is not implemented
 func (builder *GoBuilder) IsModule(target string) (bool, error) {
-	return false, fmt.Errorf("IsModule is not implemented for GoBuilder")
+	return false, errors.New("IsModule is not implemented for GoBuilder")
 }
 
 // InferModule is not implemented
 func (builder *GoBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, fmt.Errorf("InferModule is not implemented for GoBuilder")
+	return module.Module{}, errors.New("InferModule is not implemented for GoBuilder")
 }

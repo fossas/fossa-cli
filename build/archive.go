@@ -4,7 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -38,7 +38,7 @@ func findNodePkgs(path string) []string {
 
 // Build does nothing for VendoredArchives
 func (builder *VendoredArchiveBuilder) Build(m module.Module, force bool) error {
-	return fmt.Errorf("VendoredArchive packages are expected to be pre-built")
+	return errors.New("VendoredArchive packages are expected to be pre-built")
 }
 
 // Analyze scans for archives and inspects them
@@ -119,10 +119,12 @@ func (builder *VendoredArchiveBuilder) IsBuilt(m module.Module, allowUnresolved 
 	return true, nil
 }
 
+// IsModule is not implemented
 func (builder *VendoredArchiveBuilder) IsModule(target string) (bool, error) {
-	return false, fmt.Errorf("IsModule is not implemented for VendoredArchiveBuilder")
+	return false, errors.New("IsModule is not implemented for VendoredArchiveBuilder")
 }
 
+// InferModule is not implemented
 func (builder *VendoredArchiveBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, fmt.Errorf("InferModule is not implemented for VendoredArchiveBuilder")
+	return module.Module{}, errors.New("InferModule is not implemented for VendoredArchiveBuilder")
 }
