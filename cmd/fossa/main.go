@@ -23,10 +23,10 @@ var commit string
 var mainLogger = logging.MustGetLogger("main")
 
 const (
-	configUsage               = "path to config file; defaults to .fossa.yml or .fossa.yaml"
-	projectUsage              = "the FOSSA project name; defaults to VCS remote 'origin'"
-	revisionUsage             = "the FOSSA project's revision hash; defaults VCS hash at HEAD"
-	endpointUsage             = "the FOSSA server endpoint; defaults to https://app.fossa.io"
+	configUsage               = "path to config file (default: .fossa.{yml,yaml})"
+	projectUsage              = "the FOSSA project name (default: VCS remote 'origin')"
+	revisionUsage             = "the FOSSA project's revision hash (default: VCS hash HEAD)"
+	endpointUsage             = "the FOSSA server endpoint (default: https://app.fossa.io)"
 	buildForceUsage           = "ignore cached build artifacts"
 	analyzeOutputUsage        = "print analysis results to stdout"
 	analyzeAllowResolvedUsage = "allow unresolved dependencies"
@@ -92,143 +92,13 @@ func main() {
 				cli.StringFlag{Name: "p, project", Usage: projectUsage},
 				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
-				cli.IntFlag{Name: "t, timeout", Usage: "timeout for waiting for build status in seconds; defaults to 10m", Value: 60 * 10},
+				cli.IntFlag{Name: "t, timeout", Usage: "timeout for waiting for build status in seconds", Value: 60 * 10},
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
 		},
 	}
 
 	app.Run(os.Args)
-}
-
-type cliConfig struct {
-	apiKey   string
-	project  string
-	revision string
-	endpoint string
-	modules  []moduleConfig
-	debug    bool
-	timeout  time.Duration
-
-	defaultConfig defaultConfig
-	analyzeConfig analyzeConfig
-	buildConfig   buildConfig
-}
-
-func makeLocator(project string, revision string) string {
-	// Remove fetcher prefix (in case project is derived from splitting a locator on '$')
-	noFetcherPrefix := strings.TrimPrefix(project, "git+")
-
-	// Normalise Git URL format
-	noGitExtension := strings.TrimSuffix(noFetcherPrefix, ".git")
-	handleGitHubSSH := strings.Replace(noGitExtension, "git@github.com:", "github.com/", 1)
-
-	// Remove protocols
-	noHTTPPrefix := strings.TrimPrefix(handleGitHubSSH, "http://")
-	noHTTPSPrefix := strings.TrimPrefix(noHTTPPrefix, "https://")
-
-	return "git+" + noHTTPSPrefix + "$" + revision
-}
-
-type defaultConfig struct {
-	build bool
-}
-
-func initialize(c *cli.Context) (cliConfig, error) {
-	var config = cliConfig{
-		apiKey:   c.String("api_key"),
-		project:  c.String("project"),
-		revision: c.String("revision"),
-		endpoint: c.String("endpoint"),
-		timeout:  time.Duration(c.Int("timeout")) * time.Second,
-		modules:  parseModuleFlag(c.String("modules")),
-		debug:    c.Bool("debug"),
-
-		defaultConfig: defaultConfig{
-			build: c.Bool("build"),
-		},
-
-		analyzeConfig: analyzeConfig{
-			output:          c.Bool("output"),
-			allowUnresolved: c.Bool("allow-unresolved"),
-			noUpload:        c.Bool("no-upload"),
-		},
-
-		buildConfig: buildConfig{
-			force: c.Bool("force"),
-		},
-	}
-
-	// Load configuration file and set overrides.
-	configFile, err := readConfigFile(c.String("config"))
-	if err != nil {
-		return cliConfig{}, err
-	}
-
-	var locatorSections []string
-	var locatorProject string
-	var locatorRevision string
-
-	if configFile.CLI.Locator != "" {
-		locatorSections = strings.Split(configFile.CLI.Locator, "$")
-		locatorProject = strings.TrimPrefix(locatorSections[0], "git+")
-		locatorRevision = locatorSections[1]
-	}
-	if config.project == "" {
-		config.project = configFile.CLI.Project
-		if config.project == "" {
-			config.project = locatorProject
-		}
-	}
-	if config.revision == "" {
-		config.revision = locatorRevision
-	}
-
-	if config.apiKey == "" {
-		config.apiKey = configFile.CLI.APIKey
-	}
-	if config.endpoint == "" {
-		config.endpoint = configFile.CLI.Server
-	}
-	if len(config.modules) == 0 {
-		config.modules = configFile.Analyze.Modules
-	}
-
-	// Configure logging.
-	if config.debug {
-		formatter := logging.MustStringFormatter(`%{color}%{time} %{level} %{module}:%{shortpkg}/%{shortfile}/%{shortfunc}%{color:reset} %{message}`)
-		stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), formatter))
-		stderrBackend.SetLevel(logging.DEBUG, "")
-		logging.SetBackend(stderrBackend)
-	} else {
-		formatter := logging.MustStringFormatter(`%{color}%{level}%{color:reset} %{message}`)
-		stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), formatter))
-		stderrBackend.SetLevel(logging.WARNING, "")
-		logging.SetBackend(stderrBackend)
-	}
-
-	mainLogger.Debugf("Configuration initialized: %#v", config)
-
-	return config, nil
-}
-
-func parseModuleFlag(moduleFlag string) []moduleConfig {
-	if moduleFlag == "" {
-		return []moduleConfig{}
-	}
-	var config []moduleConfig
-
-	modules := strings.Split(moduleFlag, ",")
-	for _, m := range modules {
-		sections := strings.Split(m, ":")
-		config = append(config, moduleConfig{
-			Name: sections[1],
-			Path: sections[1],
-			Type: module.Type(sections[0]),
-		})
-	}
-
-	return config
 }
 
 func setupModule(config moduleConfig, manifestName string, moduleType module.Type) (module.Module, error) {
