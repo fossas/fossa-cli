@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/blang/semver"
@@ -41,7 +42,7 @@ func doSelfUpdate() error {
 	parsedVersion := getSemver()
 	v, err := semver.Parse(parsedVersion)
 	if err != nil {
-		return fmt.Errorf("invalid version; you may be using a development binary")
+		return errors.New("invalid version; you may be using a development binary")
 	}
 	latest, err := selfupdate.UpdateSelf(v, updateEndpoint)
 	if err != nil {
@@ -49,7 +50,7 @@ func doSelfUpdate() error {
 	}
 	if latest.Version.Equals(v) {
 		// latest version is the same as current version. It means current binary is up to date.
-		return fmt.Errorf("no update required; currently on latest")
+		return errors.New("no update required; currently on latest")
 	}
 	updateLogger.Debugf("updating binary versions (%s -> %s)", version, latest.Version)
 	return nil
@@ -57,11 +58,11 @@ func doSelfUpdate() error {
 
 func updateCmd(c *cli.Context) {
 	if err := checkUpdate(); err != nil {
-		updateLogger.Fatalf("unable to update (%s)", err)
+		updateLogger.Fatalf("Unable to update: %s", err.Error())
 	}
 
 	if err := doSelfUpdate(); err != nil {
-		updateLogger.Fatalf("unable failed (%s)", err)
+		updateLogger.Fatalf("Update failed: %s", err.Error())
 	}
 
 	updateLogger.Info("fossa has been updated; run `fossa -v` to view the current version")
