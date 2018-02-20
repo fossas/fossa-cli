@@ -52,7 +52,7 @@ func getBuild(endpoint, apiKey, project, revision string) (buildResponse, error)
 	var build buildResponse
 	err = json.Unmarshal(res, &build)
 	if err != nil {
-		return buildResponse{}, fmt.Errorf("could not parse FOSSA build: %#v %#v", err.Error(), res)
+		return buildResponse{}, fmt.Errorf("could not parse FOSSA build: %#v %#v", err.Error(), string(res))
 	}
 
 	return build, nil
