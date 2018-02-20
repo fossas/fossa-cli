@@ -1,4 +1,4 @@
-<p align="center">
+<p style="text-align: center">
 	<img src="https://fossa.io/images/logo.svg"/><br/><br/>
 	<a href="https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli?ref=badge_shield" alt="FOSSA Status">
     <img src="https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli.svg?type=shield"/>
@@ -10,86 +10,146 @@
 
 # FOSSA CLI
 
-## WARNING: This tool is being actively developed. There may be breaking changes.
+**WARNING:** This tool is in alpha and is being actively developed. There may be breaking changes.
 
-`fossa` is a tool that interrogates your environment and build to discover the dependencies getting included in your code.  With one command, you can generate dependency reports and license notices across over 20+ build systems.
-
-### Features
-
- 1. Supports monoliths; can auto-detect and analyze over 20+ build systems mixed into a single repo with high performance
- 2. Generates license notices and dependency reports in Markdown, JSON, CSV and more
- 3. Hooks directly into CI to auto-generate documentation or block builds with license violations
- 4. A single, portable and cross-platform binary; ideal to plug into build environments
- 5. Integrates directly with the [FOSSA](https://fossa.io) web service to provide open source reports, search intelligence, vulnerability/license audit data and triage workflows.
-
-**FOSSA CLI is currently in alpha and will have a changing API; star/watch this repo for updates.**
+`fossa` is a tool that interrogates your environment and build to discover the dependencies getting included in your code. With one command, you can generate dependency reports and license notices across over many build systems.
 
 ## Installation
 
-`fossa` is compatible with Windows, Darwin (MacOS) and *nix-based operating systems.
+Grab the latest release from the [Github Releases](releases/) page!
 
-Grab our latest release on our [Github Releases](releases/) page, or install with this one-liner bash script:
+We support Windows, MacOS (Darwin), and Linux amd64 machines.
 
-```bash
-curl https://i.jpillora.com/fossas/fossa-cli! | bash && mv /usr/local/bin/fossa-cli /usr/local/bin/fossa
-```
-
-<!--
-TODO: real installation instructions
-### Install with Curl (Linux / MacOS)
+## Quickstart
 
 ```bash
-  curl -L
+# Analyze and upload your build analysis to FOSSA
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa --modules module_type:module_location
+
+# This is how we run `fossa` on `fossa`
+FOSSA_API_KEY=REDACTED fossa --modules go:./cmd/fossa
+
+# See what FOSSA is uploading
+fossa analyze --no-upload --output
+
+# Want to provide your own dependency list? We support that too.
+# Check out `fossa analyze --output` for the data format. (It's JSON.)
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --project PROJECT_NAME --revision REVISION_HASH --data YOUR_DATA_HERE
+
+# Block the build if your project fails its license scan
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa test
 ```
 
-### Install with npm/yarn (All Platforms)
+## How it works
+`fossa` works by analyzing your project for dependencies after your build system has built your project. This provides much more precise dependency information than just reading package manifest files:
 
-If you have npm/yarn on your machine, you can get `fossa` with:
+- Some build tools are non-deterministic, so two builds with the same configuration may result in different dependencies being used.
+- Many ecosystems use semantic versioning to specify dependency ranges, so running the same build at different points in time may result in different dependencies if a new version was published.
+- Some build tools will execute external commands or arbitrary code which is impossible to statically analyze.
+
+Instead of trying to guess at your build system's behavior, `fossa` runs locally using your build tools to determine a list of exact dependencies used by your binary.
+
+`fossa` supports a wide variety of languages, package managers, and build tools out of the box:
+
+ - JavaScript: `bower`, `npm`, `yarn`
+ - Java: `mvn`
+ - Ruby: `bundler`
+ - Scala: `sbt`
+ - PHP: `composer`
+ - Go: `dep`, `glide`, `godep`, `govendor`, `vndr`
+ - Archives: `*.rpm`
+
+## Walkthrough
+
+In this walkthrough, we'll demonstrate running `fossa` on `fossa`. By the end, you should be set up to just invoke the default command on every run:
 
 ```bash
-  npm install -g fossa
+# This will just Do The Right Thing
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa
 ```
 
-OR
+### Step 1. Building
+
+Run a production build of your project. For most conventional builds, FOSSA can handle this for you:
 
 ```bash
-  yarn add --global fossa
+# Check out the [user guide](docs/user-guide.md) for details on the module spec.
+fossa build --modules go:./cmd/fossa
 ```
 
-### Install with Homebrew (MacOS)
+This will attempt a best-effort build by invoking your local build tools.
+
+**NOTE:** Since many build systems are non-deterministic, we don't necessarily recommend building using `fossa`. Instead, you should build using your usual production method and then use `fossa` to analyze your build.
+
+### Step 2. Analyzing
+Once your project is built, `fossa` can analyze it for dependencies:
 
 ```bash
-  brew install fossa
-```
--->
+# For most supported languages, this should work out of the box
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa analyze --modules go:./cmd/fossa
 
-## Usage
+# I can also output the results
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa analyze --output --modules go:./cmd/fossa
+```
+
+By default, this uploads your build results to fossa.io where you can use them to check for licensing and other issues. You can optionally disable this feature:
 
 ```bash
-  fossa
+# Just output the analysis results
+fossa analyze --no-upload --output --modules go:./cmd/fossa
 ```
 
-### Language / Package Manager Support
+If FOSSA can't analyze your build correctly, you can also manually provide a set of results to upload:
 
-`fossa` supports a wide variety of ways dependencies can be included into a codebase.
+```bash
+# Check out the output of `fossa analyze --output` for the data format.
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --data=YOUR_DATA_HERE
+```
 
- - npm
- - Maven
- - TODO
- - RPMs
+### Step 3. Testing your builds
 
-### Generating License Reports
+You can use `fossa` with projects on fossa.io to test your build for licensing and compliance issues. You can specify the project's licensing policy at app.fossa.io, and the CLI will automatically pull it from there.
 
-### Integrating into CI
+(You can read more about [Provided Builds](https://fossa.io/docs/getting-started/provided-builds) here).
 
-### Integrating with FOSSA
+With policies, you can test your build for issues after you upload an analysis:
 
-The CLI provides an alternative path to integrating your code repositories and builds in a way that doesn't require code access or FOSSA environment setup, or enrich dependency reports with dynamically confirmed dependency artifacts.
+```bash
+# This fails with exit code 1 if your project has issues
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa test
+```
 
-Read more about [Provided Builds](https://fossa.io/docs/getting-started/provided-builds) here.
+You can add this as part of your CI's build and testing process to prevent builds with licensing issues from being pushed to production.
+
+### Step 4. Committing your configurations
+
+These configurations can be saved to a `.fossa.yaml` configuration file that `fossa` will read on every invocation. Use these to share your configuration among your teammates. Here's `fossa`'s configuration:
+
+```yaml
+version: 1
+
+# For more details, check out the [user guide](docs/user-guide.md)
+analyze:
+  modules:
+    - name: fossa-cli
+      path: ./cmd/fossa
+      type: go
+```
+
+With a configuration in place, you can just run `fossa` to analyze your project's build:
+
+```bash
+# Build, analyze, and upload -- pluggable into your development workflow
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa
+
+# The one-liner for testing after upload is pretty simple too
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa && fossa test
+```
+
+## Reference
+Check out the [User Guide](docs/user-guide.md) for more details.
 
 ## Development
-
 ### Adding language integrations
 
 See [Adding New Languages](docs/integrations/adding-new-languages.md).
@@ -102,27 +162,27 @@ Since `fossa` relies on having the correct build tools in your local environment
 
 `fossa` is Open Source and licensed under the [AGPLv3](https://tldrlegal.com/license/gnu-affero-general-public-license-v3-(agpl-3.0)).
 
-You are free to use `fossa` and its binaries under all common use conditions (i.e. integrating personal projects, securely scanning corporate code, adding steps to build plugins) without contributing or releasing any integrated / proprietary code... Enjoy!
+You are free to use `fossa` and its binaries under all common use conditions (i.e. integrating personal projects, securely scanning proprietary code, adding steps to build plugins) without contributing or releasing any integrated / proprietary code. Enjoy!
 
 You are free to contribute or develop applications on top of `fossa`, but any modifications / derivative works must be released back to the community under this license.
 
 Please contact [support@fossa.io](mailto:support@fossa.io) for additional licensing guidance.
 
 ```
-    Copyright (C) 2018 FOSSA, Inc.
+Copyright (C) 2018 FOSSA, Inc.
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
 
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ```
 
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli?ref=badge_large)

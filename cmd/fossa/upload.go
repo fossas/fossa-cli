@@ -9,8 +9,17 @@ import (
 	"net/url"
 	"strings"
 
+	logging "github.com/op/go-logging"
+	"github.com/urfave/cli"
+
 	"github.com/fossas/fossa-cli/module"
 )
+
+var uploadLogger = logging.MustGetLogger("upload")
+
+type uploadConfig struct {
+	data string
+}
 
 type normalizedModule struct {
 	Name     string
@@ -86,7 +95,26 @@ func normalizeAnalysis(results analysis) ([]normalizedModule, error) {
 	return normalized, nil
 }
 
-func doUpload(config cliConfig, results analysis) (string, error) {
+func uploadCmd(c *cli.Context) {
+	config, err := initialize(c)
+	if err != nil {
+		uploadLogger.Fatalf("Could not load configuration: %s", err.Error())
+	}
+
+	var data []normalizedModule
+	err = json.Unmarshal([]byte(config.uploadConfig.data), &data)
+	if err != nil {
+		uploadLogger.Fatalf("Could not parse user-provided build data: %s", err.Error())
+	}
+
+	msg, err := doUpload(config, data)
+	if err != nil {
+		analysisLogger.Fatalf("Upload failed: %s", err.Error())
+	}
+	fmt.Print(msg)
+}
+
+func doUpload(config cliConfig, results []normalizedModule) (string, error) {
 	fossaBaseURL, err := url.Parse(config.endpoint)
 	if err != nil {
 		return "", fmt.Errorf("invalid FOSSA endpoint")
@@ -101,16 +129,12 @@ func doUpload(config cliConfig, results analysis) (string, error) {
 	}
 
 	// Re-marshal into build data
-	normalModules, err := normalizeAnalysis(results)
-	if err != nil {
-		return "", fmt.Errorf("could not normalize build data")
-	}
-	buildData, err := json.Marshal(normalModules)
+	buildData, err := json.Marshal(results)
 	if err != nil {
 		return "", err
 	}
 
-	analysisLogger.Debugf("Uploading build data from (%#v) modules: %#v", len(normalModules), string(buildData))
+	analysisLogger.Debugf("Uploading build data from (%#v) modules: %#v", len(results), string(buildData))
 
 	postRef, _ := url.Parse("/api/builds/custom?locator=" + url.QueryEscape(makeLocator(config.project, config.revision)) + "&v=" + version)
 	postURL := fossaBaseURL.ResolveReference(postRef).String()

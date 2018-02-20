@@ -1,12 +1,10 @@
-# User Guide
-
-## Configuring `fossa-cli`
+# Configuring `fossa-cli`
 
 The CLI has 3 methods of configuration:
 
 1. `$FOSSA_API_KEY` and `$FOSSA_ENDPOINT` can be set by environment variable.
 2. `.fossa.yaml` contains most of the configurable settings, and override environment variables.
-3. Flags can be passed directly to commands, and will override both envrionment variables and the configuration file.
+3. Flags can be passed directly to commands, and will override both environment variables and the configuration file.
 
 ## Modules and the module spec
 
@@ -26,14 +24,14 @@ where a module is defined as:
 module_type:module_path
 ```
 
-The characters `:` and `,` are regarded as special characters. They may be escaped by a preceding backslash (`\`).
+The characters `:` and `,` are regarded as special characters. They may be escaped by a preceding backslash (`\`). <!-- TODO: this escaping is not actually implemented. -->
 
 Some examples:
 
 - `commonjs:.,rubygem:./docs`
 - `golang:github.com/fossas/fossa-cli/cmd/fossa`
 
-## `.fossa.yaml` reference
+# `.fossa.yaml` reference
 
 The CLI searches for a `.fossa.yaml` in the working directory.
 
@@ -75,9 +73,19 @@ modules:
     type: gopackage
 ```
 
-## `fossa` reference
+# `fossa` reference
 
+All flags should be passed to the invoked subcommand. Global flags are currently NOT supported.
+
+## `fossa`
 Runs an analysis, uploading the results to FOSSA. Can optionally build if required.
+
+### Example
+```bash
+# Runs an analysis and uploads the results. Builds if required.
+# This is probably the command you want.
+FOSSA_API_KEY=YOUR_API_KEY fossa -m go:./cmd/fossa
+```
 
 ### Flags
 #### `-c, --config file_name`
@@ -116,9 +124,6 @@ Print the version, then exit.
 #### `-h, --help`
 Print a help message, then exit.
 
-#### `-t, --timeout`
-Passed to `fossa test` to specify a test timeout (seconds).
-
 <!-- ## `fossa init`
 
 Makes a best-effort attempt at inferring the correct configuration, then outputs the configuration to `stdout`.
@@ -127,20 +132,54 @@ Configuration inference is done on a language-by-language basis. For example, `c
 
 ## `fossa build`
 
-Makes a best-effort attempt at building the project.
+Makes a best-effort attempt at building the project using default build conventions.
+
+### Example
+```bash
+# No API key is required for builds
+fossa build -m go:./cmd/fossa
+```
 
 ### Flags
+#### `-c, --config file_name`
+Path to a configuration file. Defaults to `.fossa.yaml`.
+
 #### `-m, --modules module_spec`
 Sets the modules to use as entry points for building the project.
 
 #### `-f, --force`
-Ignore cached build artifacts (such as a `node_modules` folder), and run the build from scratch.
+Clear cached build artifacts (such as a `node_modules` folder), and run the build from scratch.
+
+**WARNING:** This command will delete cached build artifacts! This is generally not what you want, unless you intend to use FOSSA to build your production binary. If you build your production binary ahead of time, you should NOT delete your build artifacts. Deleting build artifacts and re-running the build may cause some build systems to non-deterministically resolve a different set of dependencies, which will make your FOSSA analysis less accurate.
+
+#### `--debug`
+Print debugging information to `stderr`.
+
+#### `-h, --help`
+Print a help message, then exit.
 
 ## `fossa analyze`
 
-Analyzes the project, uploading the results to FOSSA.
+Analyzes the project for a list of its dependencies, optionally uploading the results to FOSSA.
+
+### Example
+```bash
+# Show analysis results
+FOSSA_API_KEY=YOUR_API_KEY fossa analyze --output
+```
 
 ### Flags
+#### `-c, --config file_name`
+Path to a configuration file. Defaults to `.fossa.yaml`.
+
+#### `-p, --project project_name`
+Sets the configuration value for the FOSSA project.
+
+#### `-r, --revision revision_hash`
+Sets the configuration value for the FOSSA project's revision.
+
+#### `-e, --endpoint url`
+Sets the endpoint of the FOSSA server. Useful for on-premises deployments.
 #### `-m, --modules module_spec`
 Sets the modules to use as entry points when analyzing dependencies.
 
@@ -159,6 +198,45 @@ Unresolved dependencies generally indicate an incomplete build or some other kin
 
 #### `--no-upload`
 Do not upload analysis results.
+
+#### `--debug`
+Print debugging information to `stderr`.
+
+#### `-h, --help`
+Print a help message, then exit.
+
+## `fossa upload`
+
+Uploads user-provided build data to FOSSA. This allows users to manually provide a dependency list if their build system is too complex for FOSSA's default analyzer.
+
+### Example
+```bash
+# You can manually override the project and revision name.
+# This is useful when `fossa` can't manually infer them from `git`.
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --project=PROJECT_NAME --revision=SOME_HASH --data=$(fossa analyze --no-upload --output)
+```
+
+### Flags
+#### `-c, --config file_name`
+Path to a configuration file. Defaults to `.fossa.yaml`.
+
+#### `-p, --project project_name`
+Sets the configuration value for the FOSSA project.
+
+#### `-r, --revision revision_hash`
+Sets the configuration value for the FOSSA project's revision.
+
+#### `-e, --endpoint url`
+Sets the endpoint of the FOSSA server. Useful for on-premises deployments.
+
+#### `--data`
+The user-provided build data. See `fossa analyze --output` for an example of the correct build data format.
+
+#### `--debug`
+Print debugging information to `stderr`.
+
+#### `-h, --help`
+Print a help message, then exit.
 
 <!-- ## `fossa report`
 
@@ -180,6 +258,18 @@ Checks whether the project has licensing issues, as configured by its policy wit
 ### Flags
 <!-- #### `-j, --json`
 Print issues in JSON format. -->
+
+#### `-c, --config file_name`
+Path to a configuration file. Defaults to `.fossa.yaml`.
+
+#### `-p, --project project_name`
+Sets the configuration value for the FOSSA project.
+
+#### `-r, --revision revision_hash`
+Sets the configuration value for the FOSSA project's revision.
+
+#### `-e, --endpoint url`
+Sets the endpoint of the FOSSA server. Useful for on-premises deployments.
 
 #### `-t, --timeout`
 The amount of time to wait for an issue report (in seconds). Defaults to 10 minutes.
