@@ -1,7 +1,6 @@
 package build
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -144,10 +143,10 @@ func (builder *SBTBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool,
 
 // IsModule is not implemented
 func (builder *SBTBuilder) IsModule(target string) (bool, error) {
-	return false, errors.New("IsModule is not implemented for SBTBuilder")
+	return false, fmt.Errorf("IsModule is not implemented for SBTBuilder")
 }
 
 // InferModule is not implemented
 func (builder *SBTBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, errors.New("InferModule is not implemented for SBTBuilder")
+	return module.Module{}, fmt.Errorf("InferModule is not implemented for SBTBuilder")
 }
