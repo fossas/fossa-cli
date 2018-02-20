@@ -114,7 +114,9 @@ func main() {
 			Name:   "update",
 			Usage:  "Updates `fossa` to the latest version",
 			Action: updateCmd,
-			Flags:  []cli.Flag{},
+			Flags: []cli.Flag{
+				cli.BoolFlag{Name: "debug", Usage: debugUsage},
+			},
 		},
 	}
 
