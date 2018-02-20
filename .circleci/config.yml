@@ -27,6 +27,10 @@ jobs:
           name: Run FOSSA build
           command: |
             fossa
+      - run:
+          name: Run FOSSA license check
+          command: |
+            fossa test
       - save_cache:
           key: gopkg-cache-{{ checksum "Gopkg.lock" }}
           paths:
