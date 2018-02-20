@@ -61,6 +61,7 @@ func main() {
 			Usage:  "Run a default project build",
 			Action: buildCmd,
 			Flags: []cli.Flag{
+				// TODO: specify these using c.GlobalString?
 				cli.StringFlag{Name: "c, config", Usage: configUsage},
 				cli.StringFlag{Name: "m, modules", Usage: "the modules to build"},
 				cli.BoolFlag{Name: "f, force", Usage: buildForceUsage},
