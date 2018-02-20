@@ -160,6 +160,14 @@ Unresolved dependencies generally indicate an incomplete build or some other kin
 #### `--no-upload`
 Do not upload analysis results.
 
+## `fossa upload`
+
+Uploads user-provided build data to FOSSA. This allows users to manually provide a dependency list if their build system is too complex for FOSSA's default analyzer.
+
+### Flags
+#### `--data`
+The user-provided build data. See `fossa analyze --output` for an example of the correct build data format.
+
 <!-- ## `fossa report`
 
 Print the project's license report.

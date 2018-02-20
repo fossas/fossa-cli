@@ -96,6 +96,19 @@ func main() {
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
 		},
+		{
+			Name:   "upload",
+			Usage:  "Uploads user-provided test results to FOSSA",
+			Action: uploadCmd,
+			Flags: []cli.Flag{
+				cli.StringFlag{Name: "c, config", Usage: configUsage},
+				cli.StringFlag{Name: "p, project", Usage: projectUsage},
+				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
+				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
+				cli.StringFlag{Name: "d, data", Usage: "the user-provided build data to upload"},
+				cli.BoolFlag{Name: "debug", Usage: debugUsage},
+			},
+		},
 	}
 
 	app.Run(os.Args)
@@ -311,7 +324,12 @@ func defaultCmd(c *cli.Context) {
 	s.Stop()
 	s.Suffix = fmt.Sprintf(" Uploading build results (%d/%d)...", len(config.modules), len(config.modules))
 	s.Restart()
-	msg, err := doUpload(config, dependencies)
+
+	normalModules, err := normalizeAnalysis(dependencies)
+	if err != nil {
+		mainLogger.Fatalf("Could not normalize build data: %s", err.Error())
+	}
+	msg, err := doUpload(config, normalModules)
 	s.Stop()
 	if err != nil {
 		mainLogger.Fatalf("Upload failed: %s", err.Error())

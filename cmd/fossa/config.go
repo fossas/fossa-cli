@@ -136,6 +136,7 @@ type cliConfig struct {
 	analyzeConfig analyzeConfig
 	buildConfig   buildConfig
 	testConfig    testConfig
+	uploadConfig  uploadConfig
 }
 
 func makeLocator(project string, revision string) string {
@@ -201,6 +202,10 @@ func initialize(c *cli.Context) (cliConfig, error) {
 
 		testConfig: testConfig{
 			timeout: time.Duration(c.Int("timeout")) * time.Second,
+		},
+
+		uploadConfig: uploadConfig{
+			data: c.String("data"),
 		},
 	}
 

@@ -33,14 +33,15 @@ func analyzeCmd(c *cli.Context) {
 	}
 	analysisLogger.Debugf("Analysis complete: %#v", analysis)
 
+	normalModules, err := normalizeAnalysis(analysis)
+	if err != nil {
+		analysisLogger.Fatalf("Could not normalize build data: %s", err.Error())
+	}
+
 	if config.analyzeConfig.output {
-		normalModules, err := normalizeAnalysis(analysis)
-		if err != nil {
-			mainLogger.Fatalf("Could not normalize build data: %s", err.Error())
-		}
 		buildData, err := json.Marshal(normalModules)
 		if err != nil {
-			mainLogger.Fatalf("Could not marshal analysis results: %s", err.Error())
+			analysisLogger.Fatalf("Could not marshal analysis results: %s", err.Error())
 		}
 		fmt.Println(string(buildData))
 	}
@@ -50,7 +51,7 @@ func analyzeCmd(c *cli.Context) {
 		return
 	}
 
-	msg, err := doUpload(config, analysis)
+	msg, err := doUpload(config, normalModules)
 	if err != nil {
 		analysisLogger.Fatalf("Upload failed: %s", err.Error())
 	}
