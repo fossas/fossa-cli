@@ -51,6 +51,7 @@ func doSelfUpdate() error {
 		// latest version is the same as current version. It means current binary is up to date.
 		return fmt.Errorf("no update required; currently on latest")
 	}
+	updateLogger.Debugf("updating binary versions (%s -> %s)", version, latest.Version)
 	return nil
 }
 
