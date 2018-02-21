@@ -24,13 +24,25 @@ where a module is defined as:
 ```
 module_type:module_path
 ```
+`module_path` can be specified as either a relative path from the working directory of the `fossa` invocation, or as an absolute path.
+
+`module_type` is one of the following:
+
+- `nodejs`: Node.js support (including NPM and Yarn)
+- `bower`: JavaScript support using Bower
+- `composer`: Composer support
+- `go`: Go support for `dep`, `glide`, `godep`, `govendor`, and `vndr`
+- `maven`: Java support using Maven
+- `bundler`: Ruby support using Bundler
+- `sbt`: Scala support using SBT
+- `vendoredarchives`: Support for Node modules inside RPMs. This is highly experimental.
 
 The characters `:` and `,` are regarded as special characters. They may be escaped by a preceding backslash (`\`). <!-- TODO: this escaping is not actually implemented. -->
 
-Some examples:
+#### Examples
 
-- `commonjs:.,rubygem:./docs`
-- `golang:github.com/fossas/fossa-cli/cmd/fossa`
+- `nodejs:.,rubygem:./docs`
+- `go:./cmd/fossa`
 
 ### `.fossa.yaml`
 
@@ -52,7 +64,7 @@ cli:
 analyze:
   modules:
     - name: fossa-cli
-      path: github.com/fossas/fossa-cli/cmd/fossa
+      path: ./cmd/fossa
       type: gopackage
 ```
 
@@ -70,8 +82,85 @@ project:
   revision: 9ad32d41ed38b5952b40af5c67185ed97c86f31a
 
 modules:
-  - path: github.com/fossas/fossa-cli/cmd/fossa
-    type: gopackage
+  - path: ./cmd/fossa
+    type: go
+```
+
+## Uploading Custom Builds
+
+If your build is too complex or your build system is heavily customized, `fossa` may be unable to correctly analyze your build. In that case, you can still upload build information to using `fossa upload` to fossa.io for build analysis and issue triage.
+
+### Data Format
+
+Custom builds are uploaded in the following format:
+
+```typescript
+// You can upload builds for many modules at a time.
+type UploadData = Module[];
+
+type Module = {
+  Name: string, // The name of the module/entry-point. This is currently ignored.
+  Type: string, // The type of the entry point.
+  Manifest: string, // The path of the project manifest. This is currently ignored.
+  Build: {
+    Artifact: string, // The build artifact name. This is currently ignored.
+    Context: any, // Metadata for the build. This is currently ignored.
+    Succeeded: boolean, // Generally, this is `true`.
+    Error?: string, // An optional error string for failed builds.
+    Dependencies: Dependency[]
+  }
+};
+
+type Dependency = {
+  locator: string, // See below.
+  data?: any // Optional metadata for the dependency. This is currently ignored.
+}
+```
+
+### Locator spec
+
+Projects and packages in FOSSA are identified by their _locator_, which is a combination of ecosystem, package name, and package revision.
+
+An _ecosystem_ is one of:
+
+<!-- - `bower`
+- `cargo`
+- `cart`
+- `comp`
+- `cpan`
+- `gem`
+- `git`
+- `go`
+- `mvn`
+- `npm`
+- `nuget`
+- `pod`
+- `pip` -->
+
+- `bower`: Bower dependencies
+- `comp`: Composer dependencies
+- `gem`: RubyGems dependencies
+- `git`: `git` submodules
+- `go`: `go get` dependencies
+- `mvn`: Maven dependencies
+- `npm`: NPM dependencies
+
+The _package name_ is the name of the package within the ecosystem (e.g. `express`).
+
+The _revision_ is the revision identifier of the package within the ecosystem (e.g. `3.0.0`).
+
+These are combined as:
+
+```
+ecosystem+package$revision
+```
+
+#### Example
+
+```
+npm+express$3.0.0
+go+github.com/golang/dep$06d527172446499363c465968a132d7aa528e550
+mvn+org.apache.hadoop:hadoop-core$2.6.0-mr1-cdh5.5.0
 ```
 
 ## CLI Reference
@@ -254,6 +343,12 @@ Print a specific type of license report for automatically creating attribution f
 Print the report data in JSON format.
 -->
 ### `fossa test`
+
+#### Example
+```bash
+# Test your revision for issues and exit with a non-zero code if issues are found.
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa test --timeout 600
+```
 
 Checks whether the project has licensing issues, as configured by its policy within FOSSA. If there are issues, it prints them on `stdout` and exits with code 1. If there are not issues, it exits with code 0.
 

@@ -33,7 +33,7 @@ FOSSA_API_KEY=REDACTED fossa --modules go:./cmd/fossa
 fossa analyze --no-upload --output
 
 # Want to provide your own dependency list? We support that too.
-# Check out `fossa analyze --output` for the data format. (It's JSON.)
+# Check out the [user guide](docs/user-guide.md) for the upload format.
 FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --project PROJECT_NAME --revision REVISION_HASH --data YOUR_DATA_HERE
 
 # Block the build if your project fails its license scan
