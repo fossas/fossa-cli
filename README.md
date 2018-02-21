@@ -56,7 +56,7 @@ Instead of trying to guess at your build system's behavior, `fossa` runs locally
  - Ruby: `bundler`
  - Scala: `sbt`
  - PHP: `composer`
- - Go: `dep`, `glide`, `godep`, `govendor`, `vndr`
+ - Go: `dep`, `glide`, `godep`, `govendor`, `vndr`, `gdm`
  - Archives: `*.rpm`
 
 ## Walkthrough
