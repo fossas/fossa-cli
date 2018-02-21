@@ -102,7 +102,7 @@ fossa analyze --no-upload --output --modules go:./cmd/fossa
 If FOSSA can't analyze your build correctly, you can also manually provide a set of results to upload:
 
 ```bash
-# Check out the output of `fossa analyze --output` for the data format.
+# Check out the [user guide](docs/user-guide.md) for the upload format.
 FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --data=YOUR_DATA_HERE
 ```
 
