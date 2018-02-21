@@ -20,22 +20,22 @@ func getSemver() string {
 	return version[1:]
 }
 
-func checkUpdate() error {
+func checkUpdate() (bool, error) {
 	latest, found, err := selfupdate.DetectLatest(updateEndpoint)
 	if err != nil {
-		return err // unable to update due to GH error
+		return false, err // unable to update due to GH error
 	}
 
 	parsedVersion := getSemver()
 	updateLogger.Debugf("checking version for updates (%s -> %s)", version, parsedVersion)
 	v, err := semver.Parse(parsedVersion)
 	if err != nil {
-		return fmt.Errorf("invalid version; you may be using a development binary")
+		return false, fmt.Errorf("invalid version; you may be using a development binary")
 	}
 	if !found || latest.Version.Equals(v) {
-		return fmt.Errorf("current binary is latest version")
+		return false, nil
 	}
-	return nil
+	return true, nil
 }
 
 func doSelfUpdate() error {
@@ -57,8 +57,12 @@ func doSelfUpdate() error {
 }
 
 func updateCmd(c *cli.Context) {
-	if err := checkUpdate(); err != nil {
+	ok, err := checkUpdate()
+	if err != nil {
 		updateLogger.Fatalf("Unable to update: %s", err.Error())
+	}
+	if !ok {
+		updateLogger.Fatalf("No updates available")
 	}
 
 	if err := doSelfUpdate(); err != nil {
