@@ -54,6 +54,12 @@
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
+  name = "github.com/RoaringBitmap/roaring"
+  packages = ["."]
+  revision = "579959187317130bda443ec40f81c914e24b1396"
+  version = "v0.4.2"
+
+[[projects]]
   name = "github.com/appc/spec"
   packages = [
     "aci",
@@ -195,6 +201,12 @@
   version = "v3.1.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/dgryski/go-bits"
+  packages = ["."]
+  revision = "bd8a69a71dc203aa976f9d918b428db9ac605f57"
+
+[[projects]]
   name = "github.com/docker/distribution"
   packages = [
     "digest",
@@ -292,6 +304,12 @@
   packages = ["."]
   revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
   version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/glycerine/go-unsnap-stream"
+  packages = ["."]
+  revision = "62a9a9eb44fd8932157b1a8ace2149eff5971af6"
 
 [[projects]]
   name = "github.com/go-ini/ini"
@@ -497,6 +515,49 @@
   revision = "dceda08e705b2acee36aab47d765ed801f64cfc7"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/influxdata/influxdb"
+  packages = [
+    ".",
+    "coordinator",
+    "models",
+    "monitor",
+    "monitor/diagnostics",
+    "pkg/binaryutil",
+    "pkg/bits",
+    "pkg/bytesutil",
+    "pkg/escape",
+    "pkg/estimator",
+    "pkg/estimator/hll",
+    "pkg/file",
+    "pkg/limiter",
+    "pkg/mmap",
+    "pkg/rhh",
+    "pkg/tracing",
+    "pkg/tracing/fields",
+    "pkg/tracing/labels",
+    "pkg/tracing/wire",
+    "query",
+    "query/internal",
+    "query/neldermead",
+    "services/meta",
+    "services/meta/internal",
+    "toml",
+    "tsdb",
+    "tsdb/internal"
+  ]
+  revision = "b228fc5f0d0aa523be7c39f0ee28187084a1e271"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/influxdata/influxql"
+  packages = [
+    ".",
+    "internal"
+  ]
+  revision = "7c0f432656229c2084ee825680ef39a2228ccdb3"
+
+[[projects]]
   name = "github.com/jackpal/go-nat-pmp"
   packages = ["."]
   revision = "c9cfead9f2a36ddf3daa40ba269aa7f4bbba6b62"
@@ -597,6 +658,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/mschoch/smat"
+  packages = ["."]
+  revision = "90eadee771aeab36e8bf796039b8c261bebebe4f"
+
+[[projects]]
+  branch = "master"
   name = "github.com/mwitkow/go-conntrack"
   packages = ["."]
   revision = "cc309e4a22231782e8893f3c35ced0967807a33e"
@@ -652,6 +719,12 @@
   name = "github.com/petermattis/goid"
   packages = ["."]
   revision = "b0b1615b78e5ee59739545bb38426383b2cda4c9"
+
+[[projects]]
+  name = "github.com/philhofer/fwd"
+  packages = ["."]
+  revision = "bb6d471dc95d4fe11e432687f8b70ff496cf3136"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -852,6 +925,18 @@
   revision = "211f780988068502fe874c44dae530528ebd840f"
 
 [[projects]]
+  name = "github.com/tinylib/msgp"
+  packages = ["msgp"]
+  revision = "b2b6a672cf1e5b90748f79b8b81fc8c5cf0571a1"
+  version = "1.0.2"
+
+[[projects]]
+  name = "github.com/uber-go/atomic"
+  packages = ["."]
+  revision = "54f72d32435d760d5604f17a82e2435b28dc4ba5"
+  version = "v1.3.0"
+
+[[projects]]
   name = "github.com/ugorji/go"
   packages = ["codec"]
   revision = "9831f2c3ac1068a78f50999a30db84270f647af6"
@@ -879,10 +964,28 @@
   revision = "be1fbeda19366dea804f00efff2dd73a1642fdcc"
 
 [[projects]]
+  name = "github.com/willf/bitset"
+  packages = ["."]
+  revision = "d860f346b89450988a379d7d705e83c58d1ea227"
+  version = "v1.1.3"
+
+[[projects]]
   branch = "master"
   name = "github.com/xanzy/ssh-agent"
   packages = ["."]
   revision = "ba9c9e33906f58169366275e3450db66139a31a9"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/xlab/treeprint"
+  packages = ["."]
+  revision = "06dfc6fa17cdde904617990a0c2d89e3e332dbb3"
+
+[[projects]]
+  name = "go.uber.org/zap"
+  packages = ["."]
+  revision = "c064b5c44b285a7e2fd5c9b26e8c38228ce2bccb"
+  version = "v0.1.0-beta.1"
 
 [[projects]]
   branch = "master"
@@ -894,6 +997,8 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = [
+    "bcrypt",
+    "blowfish",
     "cast5",
     "curve25519",
     "ed25519",
@@ -1323,6 +1428,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "21cee19b8ac12115617d860449efaba1fe603eb3ae09dcfced4cab29d9dd9da6"
+  inputs-digest = "3d58ddd235e8713b5e920c8f1ae87e4083d1efc8cba607e5f5cc4694d99c92f4"
   solver-name = "gps-cdcl"
   solver-version = 1

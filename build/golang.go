@@ -68,6 +68,12 @@ type GoBuilder struct {
 	VndrCmd     string
 	VndrVersion string
 
+	// gdm
+	GdmCmd     string
+	GdmVersion string
+
+	// TODO: `gpm` support?
+
 	// TODO: We can probably reduce the amount of `exec` and `os.Stat` calls we
 	// make by caching results within private fields of `GoBuilder`.
 }
@@ -135,6 +141,13 @@ func hasGlideManifest(path string) (bool, error) {
 }
 
 func hasGodepManifest(path string) (bool, error) {
+	ok, err := isFolder(path, "Godeps")
+	if err != nil {
+		return false, err
+	}
+	if !ok {
+		return false, nil
+	}
 	return hasFile(path, "Godeps", "Godeps.json")
 }
 
@@ -144,6 +157,10 @@ func hasGovendorManifest(path string) (bool, error) {
 
 func hasVndrManifest(path string) (bool, error) {
 	return hasFile(path, "vendor.conf")
+}
+
+func hasGdmManifest(path string) (bool, error) {
+	return isFile(path, "Godeps")
 }
 
 func findGoProjectFolder(fromPath string) (string, bool, error) {
@@ -246,6 +263,11 @@ func (builder *GoBuilder) Build(m module.Module, force bool) error {
 		return err
 	}
 
+	err = runGoTool(projectFolder, hasGdmManifest, "gdm vendor", "rm -rf vendor", force)
+	if err != nil {
+		return err
+	}
+
 	goLogger.Debugf("Done running Go build.")
 	return nil
 }
@@ -324,6 +346,27 @@ type govendorLockfile struct {
 		Path     string
 		Revision string
 	}
+}
+
+// Lockfile parsers for common "simple" formats
+func parseGPMLockfile(lockfileVersions *map[string]string, path ...string) error {
+	lockfile := filepath.Join(path...)
+	lockfileContents, err := ioutil.ReadFile(lockfile)
+	if err != nil {
+		goLogger.Debugf("Error reading %s: %s", lockfile, err.Error())
+		return fmt.Errorf("could not read %s: %s", lockfile, err.Error())
+	}
+
+	lines := strings.Split(string(lockfileContents), "\n")
+	for _, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+		if len(trimmedLine) > 0 && trimmedLine[0] != '#' {
+			sections := strings.Split(trimmedLine, " ")
+			(*lockfileVersions)[sections[0]] = sections[1]
+		}
+	}
+
+	return nil
 }
 
 // Helpers for resolving the project revision of an import
@@ -432,30 +475,24 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 		goLogger.Debugf("Parsed Godeps manifest: %#v", lockfile.Package)
 	}
 
-	// vndr is the odd one out because it rolls its own format
 	if ok, err := hasVndrManifest(projectFolder); err == nil && ok {
 		goLogger.Debugf("Found Vndr manifest")
 
-		lockfile := filepath.Join(projectFolder, "vendor.conf")
-		lockfileContents, err := ioutil.ReadFile(lockfile)
-		if err != nil {
-			goLogger.Debugf("Error reading %s: %s", lockfile, err.Error())
-			return nil, fmt.Errorf("could not read %s: %s", lockfile, err.Error())
-		}
+		parseGPMLockfile(&lockfileVersions, projectFolder, "vendor.conf")
 
-		lines := strings.Split(string(lockfileContents), "\n")
-		for _, line := range lines {
-			trimmedLine := strings.TrimSpace(line)
-			if len(trimmedLine) > 0 && trimmedLine[0] != '#' {
-				sections := strings.Split(trimmedLine, " ")
-				lockfileVersions[sections[0]] = sections[1]
-			}
-		}
-
-		goLogger.Debugf("Parsed vndr manifest: %#v", lockfileVersions)
+		goLogger.Debugf("Parsed Vndr manifest: %#v", lockfileVersions)
 	}
-	goLogger.Debugf("Parsed lockfiles: %#v", lockfileVersions)
 
+	// gdm rolls its own format as well
+	if ok, err := hasGdmManifest(projectFolder); err == nil && ok {
+		goLogger.Debugf("Found Gdm manifest")
+
+		parseGPMLockfile(&lockfileVersions, projectFolder, "Godeps")
+
+		goLogger.Debugf("Parsed Gndr manifest: %#v", lockfileVersions)
+	}
+
+	goLogger.Debugf("Parsed lockfiles: %#v", lockfileVersions)
 	depSet := make(map[GoPkg]bool)
 	projectImports := strings.TrimPrefix(projectFolder, filepath.Join(os.Getenv("GOPATH"), "src")+string(filepath.Separator))
 	for _, dep := range traced {

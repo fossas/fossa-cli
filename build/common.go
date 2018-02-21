@@ -25,6 +25,33 @@ func hasFile(elem ...string) (bool, error) {
 	return !os.IsNotExist(err), err
 }
 
+func isFile(elem ...string) (bool, error) {
+	mode, err := fileMode(elem...)
+	if err != nil {
+		return false, nil
+	}
+
+	return mode.IsRegular(), nil
+}
+
+func isFolder(elem ...string) (bool, error) {
+	mode, err := fileMode(elem...)
+	if err != nil {
+		return false, nil
+	}
+
+	return mode.IsDir(), nil
+}
+
+func fileMode(elem ...string) (os.FileMode, error) {
+	file, err := os.Stat(filepath.Join(elem...))
+	if err != nil {
+		return 0, err
+	}
+
+	return file.Mode(), nil
+}
+
 func orPredicates(predicates ...fileChecker) fileChecker {
 	return func(path string) (bool, error) {
 		for _, predicate := range predicates {
