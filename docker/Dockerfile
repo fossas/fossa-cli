@@ -51,7 +51,9 @@ RUN mkdir -p $HOME/go/bin && \
     # Install govendor
     go get -u github.com/kardianos/govendor && \
     # Install vndr
-    go get github.com/LK4D4/vndr
+    go get github.com/LK4D4/vndr && \
+    # Install gdm
+    go get github.com/sparrc/gdm
 
 # Install PHP runtime
 RUN sudo apt-get install -y php5
