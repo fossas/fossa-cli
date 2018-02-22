@@ -23,7 +23,7 @@ type configFileV1 struct {
 		// Upload configuration.
 		APIKey   string `yaml:"api_key"`
 		Server   string
-		Fetcher  string // for now we don't allow use to set this
+		Fetcher  string // for now we don't allow users to set this
 		Project  string
 		Revision string
 	}
