@@ -29,13 +29,13 @@ type buildResponse struct {
 	}
 }
 
-func getBuild(endpoint, apiKey, project, revision string) (buildResponse, error) {
+func getBuild(endpoint, apiKey, fetcher, project, revision string) (buildResponse, error) {
 	server, err := url.Parse(endpoint)
 	if err != nil {
 		return buildResponse{}, fmt.Errorf("invalid FOSSA endpoint: %s", err.Error())
 	}
 
-	buildsURL, err := url.Parse(fmt.Sprintf(buildsEndpoint, url.PathEscape(config.MakeLocator(project, revision))))
+	buildsURL, err := url.Parse(fmt.Sprintf(buildsEndpoint, url.PathEscape(config.MakeLocator(fetcher, project, revision))))
 	if err != nil {
 		return buildResponse{}, fmt.Errorf("invalid FOSSA builds endpoint: %s", err.Error())
 	}
@@ -72,13 +72,13 @@ type issueResponse struct {
 	// RevisionID string // TODO: We need to get this information from /api/issues?fromRevision=
 }
 
-func getRevision(endpoint, apiKey, project, revision string) (revisionResponse, error) {
+func getRevision(endpoint, apiKey, fetcher, project, revision string) (revisionResponse, error) {
 	server, err := url.Parse(endpoint)
 	if err != nil {
 		return revisionResponse{}, fmt.Errorf("invalid FOSSA endpoint: %s", err.Error())
 	}
 
-	revisionsURL, err := url.Parse(fmt.Sprintf(revisionsEndpoint, url.PathEscape(config.MakeLocator(project, revision))))
+	revisionsURL, err := url.Parse(fmt.Sprintf(revisionsEndpoint, url.PathEscape(config.MakeLocator(fetcher, project, revision))))
 	if err != nil {
 		return revisionResponse{}, fmt.Errorf("invalid FOSSA issues endpoint: %s", err.Error())
 	}
@@ -98,13 +98,13 @@ func getRevision(endpoint, apiKey, project, revision string) (revisionResponse, 
 	return revisionJSON, nil
 }
 
-func doTest(s *spinner.Spinner, race chan testResult, endpoint, apiKey, project, revision string) {
+func doTest(s *spinner.Spinner, race chan testResult, endpoint, apiKey, fetcher, project, revision string) {
 	s.Suffix = " Waiting for analysis to complete..."
 	s.Start()
 
 buildLoop:
 	for {
-		build, err := getBuild(endpoint, apiKey, project, revision)
+		build, err := getBuild(endpoint, apiKey, fetcher, project, revision)
 		if isTimeout(err) {
 			time.Sleep(pollRequestDelay)
 			continue
@@ -129,7 +129,7 @@ buildLoop:
 	s.Restart()
 
 	for {
-		revision, err := getRevision(endpoint, apiKey, project, revision)
+		revision, err := getRevision(endpoint, apiKey, fetcher, project, revision)
 		if err != nil {
 			race <- testResult{err: err, issues: nil}
 			return
@@ -157,7 +157,7 @@ func testCmd(c *cli.Context) {
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
 	s.Writer = os.Stderr
 	race := make(chan testResult, 1)
-	go doTest(s, race, conf.Endpoint, conf.APIKey, conf.Project, conf.Revision)
+	go doTest(s, race, conf.Endpoint, conf.APIKey, conf.Fetcher, conf.Project, conf.Revision)
 	select {
 	case result := <-race:
 		s.Stop()
