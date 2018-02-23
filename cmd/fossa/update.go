@@ -10,27 +10,28 @@ import (
 	"github.com/urfave/cli"
 )
 
-var updateLogger = logging.MustGetLogger("update")
-var updateEndpoint = "fossas/fossa-cli"
+const updateEndpoint = "fossas/fossa-cli"
 
-func getSemver() string {
-	if version[0] != 'v' {
+var updateLogger = logging.MustGetLogger("update")
+
+func getSemver(v string) string {
+	if v[0] != 'v' {
 		return ""
 	}
-	return version[1:]
+	return v[1:]
 }
 
 func checkUpdate() (bool, error) {
 	latest, found, err := selfupdate.DetectLatest(updateEndpoint)
 	if err != nil {
-		return false, err // unable to update due to GH error
+		return false, fmt.Errorf("could not check for updates: %s", err.Error())
 	}
 
-	parsedVersion := getSemver()
+	parsedVersion := getSemver(version)
 	updateLogger.Debugf("checking version for updates (%s -> %s)", version, parsedVersion)
 	v, err := semver.Parse(parsedVersion)
 	if err != nil {
-		return false, fmt.Errorf("invalid version; you may be using a development binary")
+		return false, errors.New("invalid version (are you using a development binary?)")
 	}
 	if !found || latest.Version.Equals(v) {
 		return false, nil
@@ -39,18 +40,17 @@ func checkUpdate() (bool, error) {
 }
 
 func doSelfUpdate() error {
-	parsedVersion := getSemver()
+	parsedVersion := getSemver(version)
 	v, err := semver.Parse(parsedVersion)
 	if err != nil {
-		return errors.New("invalid version; you may be using a development binary")
+		return errors.New("invalid version (are you using a development binary?)")
 	}
 	latest, err := selfupdate.UpdateSelf(v, updateEndpoint)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not update: %s", err.Error())
 	}
 	if latest.Version.Equals(v) {
-		// latest version is the same as current version. It means current binary is up to date.
-		return errors.New("no update required; currently on latest")
+		return errors.New("no update required")
 	}
 	updateLogger.Debugf("updating binary versions (%s -> %s)", version, latest.Version)
 	return nil

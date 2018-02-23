@@ -252,8 +252,8 @@ func defaultCmd(c *cli.Context) {
 		mainLogger.Fatalf("Could not load configuration: %s", err.Error())
 	}
 
-	if ok, err := checkUpdate(); ok && err == nil {
-		mainLogger.Infof("An update is available for this CLI; run `fossa update` to get the latest version.")
+	if ok, err := checkUpdate(); err == nil && ok {
+		mainLogger.Noticef("An update is available for this CLI; run `fossa update` to get the latest version.")
 	}
 
 	if len(config.modules) == 0 {
