@@ -147,7 +147,7 @@ func doUpload(config cliConfig, results []normalizedModule) (string, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("could not begin upload: %#v", err)
+		return "", fmt.Errorf("could not begin upload: %s", err.Error())
 	}
 	defer resp.Body.Close()
 	responseBytes, _ := ioutil.ReadAll(resp.Body)
