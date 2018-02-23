@@ -73,23 +73,29 @@ func readConfigFile(path string) (configFileV1, error) {
 		if _, err := os.Stat(path); err != nil {
 			return configFileV1{}, fmt.Errorf("invalid config file specified")
 		}
-		return parseConfigFile(path)
+		return ParseConfigFile(path)
 	}
 
 	_, err := os.Stat(".fossa.yml")
 	if err == nil {
-		return parseConfigFile(".fossa.yml")
+		return ParseConfigFile(".fossa.yml")
 	}
 
 	_, err = os.Stat(".fossa.yaml")
 	if err == nil {
-		return parseConfigFile(".fossa.yaml")
+		return ParseConfigFile(".fossa.yaml")
 	}
 
 	return setDefaultValues(configFileV1{})
 }
 
-func parseConfigFile(filename string) (configFileV1, error) {
+// WriteConfigFile writes a config state to yaml
+func WriteConfigFile(filename string, conf configFileV1) error {
+	return errors.New("Not Implemented")
+}
+
+// ParseConfigFile parses a file and returns a config state
+func ParseConfigFile(filename string) (configFileV1, error) {
 	// Read configuration file.
 	var config configFileV1
 
@@ -111,8 +117,9 @@ func parseConfigFile(filename string) (configFileV1, error) {
 	return config, nil
 }
 
-func writeConfigFile(filename string, config configFileV1) error {
-	return errors.New("Not Implemented")
+// SerializeConfigFile turns a config state to yaml
+func SerializeConfigFile(configFileV1) (string, error) {
+	return "", errors.New("Not Implemented")
 }
 
 func setDefaultValues(c configFileV1) (configFileV1, error) {

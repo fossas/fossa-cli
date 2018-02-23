@@ -58,6 +58,14 @@ func main() {
 
 	app.Commands = []cli.Command{
 		{
+			Name:   "init",
+			Usage:  "Scans your environment for code module entry points and writes to config",
+			Action: initCmd,
+			Flags: []cli.Flag{
+				cli.BoolFlag{Name: "debug", Usage: debugUsage},
+			},
+		},
+		{
 			Name:   "build",
 			Usage:  "Run a default project build",
 			Action: buildCmd,
@@ -144,12 +152,12 @@ func setupModule(conf config.ModuleConfig, manifestName string, moduleType confi
 	return m, nil
 }
 
-func resolveModuleConfig(moduleConfig config.ModuleConfig) (module.Builder, module.Module, error) {
+func resolveModuleConfig(moduleConfig config.ModuleConfig) (build.Builder, module.Module, error) {
 	mainLogger.Debugf("Resolving ModuleConfig: %#v", moduleConfig)
 
 	// Don't use `:=` within each switch case, or you'll create a new binding that
 	// shadows these bindings (apparently switches create a new scope...).
-	var builder module.Builder
+	var builder build.Builder
 	var m module.Module
 	var err error
 

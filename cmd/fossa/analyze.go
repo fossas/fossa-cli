@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/fossas/fossa-cli/build"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 	logging "github.com/op/go-logging"
@@ -54,7 +55,7 @@ func analyzeCmd(c *cli.Context) {
 }
 
 type analysisKey struct {
-	builder module.Builder
+	builder build.Builder
 	module  module.Module
 }
 
