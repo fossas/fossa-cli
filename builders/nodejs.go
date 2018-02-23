@@ -113,7 +113,7 @@ func (builder *NodeJSBuilder) Build(m module.Module, force bool) error {
 func (builder *NodeJSBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	nodejsLogger.Debugf("Running Nodejs analysis: %#v %#v", m, allowUnresolved)
 
-	// Find manifests.
+	// Find dependency manifests within a node_modules folder
 	nodeModules, err := doublestar.Glob(filepath.Join(m.Dir, "**", "node_modules", "*", "package.json"))
 	if err != nil {
 		return nil, fmt.Errorf("could not find Nodejs dependency manifests: %s", err.Error())
@@ -161,7 +161,29 @@ func (builder *NodeJSBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for NodeJSBuilder")
 }
 
-// DiscoverModules is not implemented
+// DiscoverModules builds ModuleConfigs for any package.jsons that are not contained in a node_modules dir
 func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			nodejsLogger.Debugf("failed to access path %s: %s\n", path, err.Error())
+			return err
+		}
+		// skip **/node_modules
+		if info.IsDir() && info.Name() == "node_modules" {
+			nodejsLogger.Debugf("skipping node_modules directory: %s", info.Name())
+			return filepath.SkipDir
+		}
+
+		if !info.IsDir() && info.Name() == "package.json" {
+			nodejsLogger.Debugf("found NodeJS package: %s/%s", path, info.Name())
+			// TODO: parse JSON and create module config
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("could not find NodeJS package manifests: %s", err.Error())
+	}
+
 	return []config.ModuleConfig{}, errors.New("DiscoverModules is not implemented for NodeJSBuilder")
 }

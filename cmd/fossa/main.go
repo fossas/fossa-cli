@@ -56,6 +56,14 @@ func main() {
 
 	app.Commands = []cli.Command{
 		{
+			Name:   "init",
+			Usage:  "Scans your environment for code module entry points and writes to config",
+			Action: initCmd,
+			Flags: []cli.Flag{
+				cli.BoolFlag{Name: "debug", Usage: debugUsage},
+			},
+		},
+		{
 			Name:   "build",
 			Usage:  "Run a default project build",
 			Action: buildCmd,

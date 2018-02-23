@@ -29,6 +29,9 @@ const (
 	VendoredArchives = ModuleType("vendoredarchives")
 )
 
+// ModuleTypes holds the list of all available module types for analysis
+var ModuleTypes = []ModuleType{Bower, Composer, Maven, SBT, Ruby, Nodejs, Golang, VendoredArchives}
+
 // GetModuleType returns a ModuleType for a variety of config keys
 func GetModuleType(configKey string) ModuleType {
 	switch configKey {
