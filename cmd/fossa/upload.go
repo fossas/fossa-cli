@@ -12,7 +12,7 @@ import (
 	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 
-	"github.com/fossas/fossa-cli/build"
+	"github.com/fossas/fossa-cli/builders"
 	config "github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -49,7 +49,7 @@ type normalizedDependency struct {
 	UnresolvedLocators []string `json:"unresolved_locators,omitempty"`
 }
 
-func normalize(builder build.Builder, m module.Module, deps []module.Dependency) (normalizedModule, error) {
+func normalize(builder builders.Builder, m module.Module, deps []module.Dependency) (normalizedModule, error) {
 	var normalDeps []normalizedDependency
 	for i := 0; i < len(deps); i++ {
 		data, err := json.Marshal(deps[i])

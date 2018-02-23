@@ -22,7 +22,7 @@ jobs:
       - run:
           name: Run integration test
           command: |
-            go test ./build
+            go test ./builders
       - run:
           name: Run FOSSA build
           command: |

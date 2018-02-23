@@ -4,15 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
 	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 
-	"github.com/fossas/fossa-cli/build"
+	"github.com/fossas/fossa-cli/builders"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -57,14 +55,6 @@ func main() {
 	}
 
 	app.Commands = []cli.Command{
-		{
-			Name:   "init",
-			Usage:  "Scans your environment for code module entry points and writes to config",
-			Action: initCmd,
-			Flags: []cli.Flag{
-				cli.BoolFlag{Name: "debug", Usage: debugUsage},
-			},
-		},
 		{
 			Name:   "build",
 			Usage:  "Run a default project build",
@@ -124,123 +114,31 @@ func main() {
 	app.Run(os.Args)
 }
 
-func setupModule(conf config.ModuleConfig, manifestName string, moduleType config.ModuleType) (module.Module, error) {
-	var m module.Module
-
-	modulePath, err := filepath.Abs(conf.Path)
-	if filepath.Base(modulePath) == manifestName {
-		modulePath = filepath.Dir(modulePath)
-	}
-	if err != nil {
-		return m, err
-	}
-
-	moduleName := conf.Name
-	if moduleName == "" {
-		moduleName = conf.Path
-	}
-
-	m = module.Module{
-		Name:   moduleName,
-		Type:   moduleType,
-		Target: filepath.Join(modulePath, manifestName),
-		Dir:    modulePath,
-	}
-
-	mainLogger.Debugf("Module setup complete: %#v", m)
-
-	return m, nil
-}
-
-func resolveModuleConfig(moduleConfig config.ModuleConfig) (build.Builder, module.Module, error) {
+func resolveModuleConfig(moduleConfig config.ModuleConfig) (builders.Builder, module.Module, error) {
 	mainLogger.Debugf("Resolving ModuleConfig: %#v", moduleConfig)
 
-	// Don't use `:=` within each switch case, or you'll create a new binding that
-	// shadows these bindings (apparently switches create a new scope...).
-	var builder build.Builder
+	var builder builders.Builder
 	var m module.Module
 	var err error
 
-	switch moduleConfig.Type {
-	case "commonjspackage": // Alias for backwards compatibility
-		fallthrough
-	case "nodejs":
-		mainLogger.Debug("Got NodeJS module.")
-		builder = &build.NodeJSBuilder{}
-		m, err = setupModule(moduleConfig, "package.json", config.Nodejs)
-		if err != nil {
-			return nil, m, err
-		}
-	case "bower":
-		mainLogger.Debug("Got Bower module.")
-		builder = &build.BowerBuilder{}
-		m, err = setupModule(moduleConfig, "bower.json", config.Bower)
-		if err != nil {
-			return nil, m, err
-		}
-	case "composer":
-		mainLogger.Debug("Got Composer module.")
-		builder = &build.ComposerBuilder{}
-		m, err = setupModule(moduleConfig, "composer.json", config.Composer)
-		if err != nil {
-			return nil, m, err
-		}
-	case "gopackage":
-		fallthrough
-	case "golang":
-		fallthrough
-	case "go":
-		mainLogger.Debug("Got Go module.")
-		builder = &build.GoBuilder{}
-		m, err = setupModule(moduleConfig, "", config.Golang)
-		// Target should be relative to $GOPATH
-		m.Target = strings.TrimPrefix(m.Target, filepath.Join(os.Getenv("GOPATH"), "src")+"/")
-		if err != nil {
-			return nil, m, err
-		}
-	case "maven":
-		fallthrough
-	case "mvn":
-		mainLogger.Debug("Got Maven module.")
-		builder = &build.MavenBuilder{}
-		m, err = setupModule(moduleConfig, "pom.xml", config.Maven)
-		if err != nil {
-			return nil, m, err
-		}
-	case "bundler":
-		fallthrough
-	case "gem":
-		fallthrough
-	case "rubygems":
-		fallthrough
-	case "ruby":
-		mainLogger.Debug("Got Ruby module.")
-		builder = &build.RubyBuilder{}
-		m, err = setupModule(moduleConfig, "Gemfile", config.Ruby)
-		if err != nil {
-			return nil, m, err
-		}
-	case "scala":
-		fallthrough
-	case "sbtpackage":
-		fallthrough
-	case "sbt":
-		mainLogger.Debug("Got SBT module.")
-		builder = &build.SBTBuilder{}
-		m, err = setupModule(moduleConfig, "build.sbt", config.SBT)
-		if err != nil {
-			return nil, m, err
-		}
-	case "vendoredarchives":
-		mainLogger.Debug("Got vendored archives module.")
-		builder = &build.VendoredArchiveBuilder{}
-		m, err = setupModule(moduleConfig, "", config.VendoredArchives)
-		if err != nil {
-			return nil, m, err
-		}
-	default:
+	moduleType := config.GetModuleType(moduleConfig.Type)
+	if moduleType == "" {
 		mainLogger.Debug("Got unknown module.")
 		return builder, m, fmt.Errorf("unknown module type: %s", moduleConfig.Type)
+	}
+
+	mainLogger.Debugf("Got <%s> module.", moduleType)
+	builder = builders.New(moduleType)
+
+	if builder == nil {
+		mainLogger.Debug("Got unknown builder.")
+		return nil, m, fmt.Errorf("no builder available for type: %s", moduleConfig.Type)
+	}
+
+	m, err = module.New(moduleType, moduleConfig)
+	if err != nil {
+		mainLogger.Debug("Unable to resolve module config")
+		return builder, m, fmt.Errorf("unable to setup module type: %s", moduleConfig.Type)
 	}
 
 	mainLogger.Debugf("Resolved ModuleConfig to: %#v, %#v", builder, m)

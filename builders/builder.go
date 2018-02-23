@@ -1,4 +1,4 @@
-package build
+package builders
 
 import (
 	"github.com/fossas/fossa-cli/config"
@@ -21,4 +21,27 @@ type Builder interface {
 	IsModule(configKey string) (bool, error)
 	// DiscoverModules finds what modules are available for analysis in a given directory.
 	DiscoverModules(dir string) ([]config.ModuleConfig, error)
+}
+
+// New instantiates a Builder given a ModuleType
+func New(moduleType config.ModuleType) Builder {
+	switch moduleType {
+	case config.Bower:
+		return &BowerBuilder{}
+	case config.Composer:
+		return &ComposerBuilder{}
+	case config.Golang:
+		return &GoBuilder{}
+	case config.Maven:
+		return &MavenBuilder{}
+	case config.Nodejs:
+		return &NodeJSBuilder{}
+	case config.Ruby:
+		return &RubyBuilder{}
+	case config.SBT:
+		return &SBTBuilder{}
+	case config.VendoredArchives:
+		return &VendoredArchiveBuilder{}
+	}
+	return nil
 }

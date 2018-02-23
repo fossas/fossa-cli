@@ -32,40 +32,11 @@ type configFileV1 struct {
 	}
 }
 
-// ModuleType is an enumeration of supported build system types
-type ModuleType string
-
-const (
-	// Individual tools
-
-	// Bower is the module type for bower.io
-	Bower = ModuleType("bower")
-	// Composer is the module type for getcomposer.org
-	Composer = ModuleType("composer")
-	// Maven is the module type for maven.apache.org
-	Maven = ModuleType("maven")
-	// SBT is the module type for scala-sbt.org
-	SBT = ModuleType("sbt")
-
-	// Ecosystems where many tools behave similarly
-
-	// Ruby is the module type for Bundler (bundler.io)
-	Ruby = ModuleType("ruby")
-	// Nodejs is the module type for NPM (npmjs.org) and Yarn (yarnpkg.com)
-	Nodejs = ModuleType("nodejs")
-	// Golang is the module type for dep, glide, godep, govendor, vndr, and manual
-	// gopath vendoring
-	Golang = ModuleType("golang")
-
-	// VendoredArchives is a module type for archive formats (.tar, .rpm, .zip, etc...)
-	VendoredArchives = ModuleType("vendoredarchives")
-)
-
 // ModuleConfig defines a config for a builder's entry point
 type ModuleConfig struct {
 	Name string
 	Path string
-	Type ModuleType
+	Type string // this is later transformed to a ModuleType
 }
 
 func readConfigFile(path string) (configFileV1, error) {
@@ -237,7 +208,7 @@ func parseModuleFlag(moduleFlag string) []ModuleConfig {
 		config = append(config, ModuleConfig{
 			Name: sections[1],
 			Path: sections[1],
-			Type: ModuleType(sections[0]),
+			Type: sections[0],
 		})
 	}
 
