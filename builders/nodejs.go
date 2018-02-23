@@ -163,6 +163,7 @@ func (builder *NodeJSBuilder) IsModule(target string) (bool, error) {
 
 // DiscoverModules builds ModuleConfigs for any package.jsons that are not contained in a node_modules dir
 func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
+	moduleConfigs := []config.ModuleConfig{}
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			nodejsLogger.Debugf("failed to access path %s: %s\n", path, err.Error())
@@ -175,8 +176,21 @@ func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]config.ModuleConfig
 		}
 
 		if !info.IsDir() && info.Name() == "package.json" {
-			nodejsLogger.Debugf("found NodeJS package: %s/%s", path, info.Name())
-			// TODO: parse JSON and create module config
+			moduleName := filepath.Base(filepath.Dir(path))
+
+			// parse from package.json and set moduleName if successful
+			var nodeModule NodeModule
+			err := parseLogged(nodejsLogger, path, &nodeModule)
+			if err != nil {
+				moduleName = nodeModule.Name
+			}
+
+			nodejsLogger.Debugf("found NodeJS package: %s (%s)", path, moduleName)
+			moduleConfigs = append(moduleConfigs, config.ModuleConfig{
+				Name: moduleName,
+				Path: path,
+				Type: string(config.Nodejs),
+			})
 		}
 		return nil
 	})
@@ -185,5 +199,5 @@ func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]config.ModuleConfig
 		return nil, fmt.Errorf("could not find NodeJS package manifests: %s", err.Error())
 	}
 
-	return []config.ModuleConfig{}, errors.New("DiscoverModules is not implemented for NodeJSBuilder")
+	return moduleConfigs, nil
 }

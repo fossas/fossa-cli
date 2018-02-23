@@ -20,10 +20,10 @@ func initCmd(c *cli.Context) {
 
 	conf.Modules, err = findModules(".")
 	if err != nil {
-		initLogger.Warningf("An non-fatal error occured during module discovery: %s", err.Error())
+		initLogger.Warningf("A non-fatal error occured during module discovery: %s", err.Error())
 	}
 
-	initLogger.Debugf("%v", c)
+	initLogger.Warningf("%v", conf)
 }
 
 // findModules calls DiscoverModules() on all available integrations and returns a new config state
