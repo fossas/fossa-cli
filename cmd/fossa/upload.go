@@ -142,12 +142,14 @@ func doUpload(config cliConfig, results []normalizedModule) (string, error) {
 	analysisLogger.Debugf("Sending build data to <%#v>", postURL)
 
 	req, _ := http.NewRequest("POST", postURL, bytes.NewReader(buildData))
+	req.Close = true
+
 	req.Header.Set("Authorization", "token "+config.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("could not begin upload: %#v", err)
+		return "", fmt.Errorf("could not begin upload: %s", err.Error())
 	}
 	defer resp.Body.Close()
 	responseBytes, _ := ioutil.ReadAll(resp.Body)

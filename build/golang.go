@@ -496,10 +496,12 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 	depSet := make(map[GoPkg]bool)
 	projectImports := strings.TrimPrefix(projectFolder, filepath.Join(os.Getenv("GOPATH"), "src")+string(filepath.Separator))
 	for _, dep := range traced {
+		goLogger.Debugf("Resolving raw import: %s", dep.ImportPath)
 		// Strip out `/vendor/` weirdness in import paths.
 		const vendorPrefix = "/vendor/"
 		vendoredPathSections := strings.Split(dep.ImportPath, vendorPrefix)
 		importPath := vendoredPathSections[len(vendoredPathSections)-1]
+		goLogger.Debugf("Resolving import: %s", importPath)
 
 		// Get revisions (often these are scoped to repository, not package)
 		project, err := findRevision(lockfileVersions, importPath)
@@ -518,7 +520,7 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 				goLogger.Debugf("$GOPATH: %#v", os.Getenv("GOPATH"))
 				goLogger.Debugf("Project folder relative to $GOPATH: %#v", projectImports)
 				goLogger.Debugf("Lockfile versions: %#v", lockfileVersions)
-				return nil, fmt.Errorf("could not resolve import: %#v", dep.ImportPath)
+				return nil, fmt.Errorf("could not resolve import: %#v", importPath)
 			}
 		} else {
 			depSet[GoPkg{ImportPath: project, Version: lockfileVersions[project], isInternal: dep.isInternal}] = true

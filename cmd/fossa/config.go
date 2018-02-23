@@ -253,7 +253,7 @@ func initialize(c *cli.Context) (cliConfig, error) {
 	} else {
 		formatter := logging.MustStringFormatter(`%{color}%{level}%{color:reset} %{message}`)
 		stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), formatter))
-		stderrBackend.SetLevel(logging.WARNING, "")
+		stderrBackend.SetLevel(logging.INFO, "")
 		logging.SetBackend(stderrBackend)
 	}
 
