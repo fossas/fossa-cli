@@ -16,7 +16,7 @@ jobs:
             mkdir -p $ARTIFACTS
       - restore_cache:
           keys:
-            - gopkg-cache-{{ checksum "Gopkg.lock" }}
+            - v1-gopkg-cache-{{ checksum "Gopkg.lock" }}
       - run:
           name: Compile CLI
           command: |
@@ -25,9 +25,10 @@ jobs:
             dep ensure
             make
       - save_cache:
-          key: gopkg-cache-{{ checksum "Gopkg.lock" }}
+          key: v1-gopkg-cache-{{ checksum "Gopkg.lock" }}
           paths:
             - "/home/fossa/go/pkg"
+            - "/home/fossa/go/src/github.com/fossas/fossa-cli/vendor"
       - run:
           name: Run integration test
           command: |
