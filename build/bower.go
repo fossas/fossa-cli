@@ -10,6 +10,7 @@ import (
 	"github.com/bmatcuk/doublestar"
 	logging "github.com/op/go-logging"
 
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -141,7 +142,7 @@ func (builder *BowerBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for BowerBuilder")
 }
 
-// InferModule is not implemented
-func (builder *BowerBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, errors.New("InferModule is not implemented for BowerBuilder")
+// DiscoverModules is not implemented
+func (builder *BowerBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
+	return []config.ModuleConfig{}, errors.New("DiscoverModules is not implemented for BowerBuilder")
 }

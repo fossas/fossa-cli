@@ -15,6 +15,7 @@ import (
 	logging "github.com/op/go-logging"
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -587,7 +588,7 @@ func (builder *GoBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for GoBuilder")
 }
 
-// InferModule is not implemented
-func (builder *GoBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, errors.New("InferModule is not implemented for GoBuilder")
+// DiscoverModules is not implemented
+func (builder *GoBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
+	return []config.ModuleConfig{}, errors.New("DiscoverModules is not implemented for GoBuilder")
 }

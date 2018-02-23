@@ -8,6 +8,7 @@ import (
 
 	logging "github.com/op/go-logging"
 
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -147,7 +148,7 @@ func (builder *SBTBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for SBTBuilder")
 }
 
-// InferModule is not implemented
-func (builder *SBTBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, errors.New("InferModule is not implemented for SBTBuilder")
+// DiscoverModules is not implemented
+func (builder *SBTBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
+	return []config.ModuleConfig{}, errors.New("DiscoverModules is not implemented for SBTBuilder")
 }

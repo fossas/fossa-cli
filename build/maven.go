@@ -9,6 +9,7 @@ import (
 
 	logging "github.com/op/go-logging"
 
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -138,7 +139,7 @@ func (builder *MavenBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for MavenBuilder")
 }
 
-// InferModule is not implemented
-func (builder *MavenBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, errors.New("InferModule is not implemented for MavenBuilder")
+// DiscoverModules is not implemented
+func (builder *MavenBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
+	return []config.ModuleConfig{}, errors.New("DiscoverModules is not implemented for MavenBuilder")
 }

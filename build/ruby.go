@@ -9,6 +9,7 @@ import (
 
 	logging "github.com/op/go-logging"
 
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -148,7 +149,7 @@ func (builder *RubyBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for RubyBuilder")
 }
 
-// InferModule is not implemented
-func (builder *RubyBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, errors.New("InferModule is not implemented for RubyBuilder")
+// DiscoverModules is not implemented
+func (builder *RubyBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
+	return []config.ModuleConfig{}, errors.New("DiscoverModules is not implemented for RubyBuilder")
 }
