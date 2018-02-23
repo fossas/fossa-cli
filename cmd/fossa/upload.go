@@ -143,6 +143,7 @@ func doUpload(config cliConfig, results []normalizedModule) (string, error) {
 
 	req, _ := http.NewRequest("POST", postURL, bytes.NewReader(buildData))
 	req.Close = true
+
 	req.Header.Set("Authorization", "token "+config.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 

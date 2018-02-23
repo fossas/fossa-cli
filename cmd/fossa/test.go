@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -45,6 +46,9 @@ func getBuild(endpoint, apiKey, project, revision string) (buildResponse, error)
 
 	testLogger.Debugf("Making Builds API request to: %#v", url)
 	res, err := makeAPIRequest(http.MethodPut, url, apiKey, nil)
+	if err == io.EOF {
+		return buildResponse{}, err
+	}
 	if err != nil {
 		return buildResponse{}, fmt.Errorf("could not make FOSSA build request: %s", err)
 	}
@@ -104,6 +108,10 @@ func doTest(s *spinner.Spinner, race chan testResult, endpoint, apiKey, project,
 buildLoop:
 	for {
 		build, err := getBuild(endpoint, apiKey, project, revision)
+		if err == io.EOF {
+			time.Sleep(pollRequestDelay)
+			continue
+		}
 		if err != nil {
 			race <- testResult{err: err, issues: nil}
 			return
