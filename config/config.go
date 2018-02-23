@@ -1,6 +1,7 @@
-package main
+package config
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -11,9 +12,9 @@ import (
 	"github.com/urfave/cli"
 	git "gopkg.in/src-d/go-git.v4"
 	yaml "gopkg.in/yaml.v2"
-
-	"github.com/fossas/fossa-cli/module"
 )
+
+var configLogger = logging.MustGetLogger("config")
 
 type configFileV1 struct {
 	// config version
@@ -27,14 +28,44 @@ type configFileV1 struct {
 		Locator string
 	}
 	Analyze struct {
-		Modules []moduleConfig
+		Modules []ModuleConfig
 	}
 }
 
-type moduleConfig struct {
+// ModuleType is an enumeration of supported build system types
+type ModuleType string
+
+const (
+	// Individual tools
+
+	// Bower is the module type for bower.io
+	Bower = ModuleType("bower")
+	// Composer is the module type for getcomposer.org
+	Composer = ModuleType("composer")
+	// Maven is the module type for maven.apache.org
+	Maven = ModuleType("maven")
+	// SBT is the module type for scala-sbt.org
+	SBT = ModuleType("sbt")
+
+	// Ecosystems where many tools behave similarly
+
+	// Ruby is the module type for Bundler (bundler.io)
+	Ruby = ModuleType("ruby")
+	// Nodejs is the module type for NPM (npmjs.org) and Yarn (yarnpkg.com)
+	Nodejs = ModuleType("nodejs")
+	// Golang is the module type for dep, glide, godep, govendor, vndr, and manual
+	// gopath vendoring
+	Golang = ModuleType("golang")
+
+	// VendoredArchives is a module type for archive formats (.tar, .rpm, .zip, etc...)
+	VendoredArchives = ModuleType("vendoredarchives")
+)
+
+// ModuleConfig defines a config for a builder's entry point
+type ModuleConfig struct {
 	Name string
 	Path string
-	Type module.Type
+	Type ModuleType
 }
 
 func readConfigFile(path string) (configFileV1, error) {
@@ -78,6 +109,10 @@ func parseConfigFile(filename string) (configFileV1, error) {
 	}
 
 	return config, nil
+}
+
+func writeConfigFile(filename string, config configFileV1) error {
+	return errors.New("Not Implemented")
 }
 
 func setDefaultValues(c configFileV1) (configFileV1, error) {
@@ -124,22 +159,46 @@ func setDefaultValues(c configFileV1) (configFileV1, error) {
 	return c, nil
 }
 
-type cliConfig struct {
-	apiKey   string
-	project  string
-	revision string
-	endpoint string
-	modules  []moduleConfig
-	debug    bool
-
-	defaultConfig defaultConfig
-	analyzeConfig analyzeConfig
-	buildConfig   buildConfig
-	testConfig    testConfig
-	uploadConfig  uploadConfig
+// AnalyzeConfig specifies the config for the analyze cmd
+type AnalyzeConfig struct {
+	Output          bool
+	AllowUnresolved bool
+	NoUpload        bool
 }
 
-func makeLocator(project string, revision string) string {
+// BuildConfig specifies the config for the build cmd
+type BuildConfig struct {
+	Force bool
+}
+
+// TestConfig specifies the config for the test cmd
+type TestConfig struct {
+	Timeout time.Duration
+}
+
+// UploadConfig specifies the config for the upload cmd
+type UploadConfig struct {
+	Data string
+}
+
+// CliConfig specifies the config available to the cli
+type CliConfig struct {
+	APIKey   string
+	Project  string
+	Revision string
+	Endpoint string
+	Modules  []ModuleConfig
+	Debug    bool
+
+	DefaultCmd DefaultConfig
+	AnalyzeCmd AnalyzeConfig
+	BuildCmd   BuildConfig
+	TestCmd    TestConfig
+	UploadCmd  UploadConfig
+}
+
+// MakeLocator creates a locator string given a package and revision
+func MakeLocator(project string, revision string) string {
 	// Remove fetcher prefix (in case project is derived from splitting a locator on '$')
 	noFetcherPrefix := strings.TrimPrefix(project, "git+")
 
@@ -154,65 +213,67 @@ func makeLocator(project string, revision string) string {
 	return "git+" + noHTTPSPrefix + "$" + revision
 }
 
-type defaultConfig struct {
-	build bool
+// DefaultConfig specifies the config for the default cmd
+type DefaultConfig struct {
+	Build bool
 }
 
-func parseModuleFlag(moduleFlag string) []moduleConfig {
+func parseModuleFlag(moduleFlag string) []ModuleConfig {
 	if moduleFlag == "" {
-		return []moduleConfig{}
+		return []ModuleConfig{}
 	}
-	var config []moduleConfig
+	var config []ModuleConfig
 
 	modules := strings.Split(moduleFlag, ",")
 	for _, m := range modules {
 		sections := strings.Split(m, ":")
-		config = append(config, moduleConfig{
+		config = append(config, ModuleConfig{
 			Name: sections[1],
 			Path: sections[1],
-			Type: module.Type(sections[0]),
+			Type: ModuleType(sections[0]),
 		})
 	}
 
 	return config
 }
 
-func initialize(c *cli.Context) (cliConfig, error) {
-	var config = cliConfig{
-		apiKey:   c.String("api_key"),
-		project:  c.String("project"),
-		revision: c.String("revision"),
-		endpoint: c.String("endpoint"),
-		modules:  parseModuleFlag(c.String("modules")),
-		debug:    c.Bool("debug"),
+// Initialize creates a CliConfig from cli context
+func Initialize(c *cli.Context) (CliConfig, error) {
+	var config = CliConfig{
+		APIKey:   c.String("api_key"),
+		Project:  c.String("project"),
+		Revision: c.String("revision"),
+		Endpoint: c.String("endpoint"),
+		Modules:  parseModuleFlag(c.String("modules")),
+		Debug:    c.Bool("debug"),
 
-		defaultConfig: defaultConfig{
-			build: c.Bool("build"),
+		DefaultCmd: DefaultConfig{
+			Build: c.Bool("build"),
 		},
 
-		analyzeConfig: analyzeConfig{
-			output:          c.Bool("output"),
-			allowUnresolved: c.Bool("allow-unresolved"),
-			noUpload:        c.Bool("no-upload"),
+		AnalyzeCmd: AnalyzeConfig{
+			Output:          c.Bool("output"),
+			AllowUnresolved: c.Bool("allow-unresolved"),
+			NoUpload:        c.Bool("no-upload"),
 		},
 
-		buildConfig: buildConfig{
-			force: c.Bool("force"),
+		BuildCmd: BuildConfig{
+			Force: c.Bool("force"),
 		},
 
-		testConfig: testConfig{
-			timeout: time.Duration(c.Int("timeout")) * time.Second,
+		TestCmd: TestConfig{
+			Timeout: time.Duration(c.Int("timeout")) * time.Second,
 		},
 
-		uploadConfig: uploadConfig{
-			data: c.String("data"),
+		UploadCmd: UploadConfig{
+			Data: c.String("data"),
 		},
 	}
 
 	// Load configuration file and set overrides.
 	configFile, err := readConfigFile(c.String("config"))
 	if err != nil {
-		return cliConfig{}, err
+		return CliConfig{}, err
 	}
 
 	var locatorSections []string
@@ -224,28 +285,28 @@ func initialize(c *cli.Context) (cliConfig, error) {
 		locatorProject = strings.TrimPrefix(locatorSections[0], "git+")
 		locatorRevision = locatorSections[1]
 	}
-	if config.project == "" {
-		config.project = configFile.CLI.Project
-		if config.project == "" {
-			config.project = locatorProject
+	if config.Project == "" {
+		config.Project = configFile.CLI.Project
+		if config.Project == "" {
+			config.Project = locatorProject
 		}
 	}
-	if config.revision == "" {
-		config.revision = locatorRevision
+	if config.Revision == "" {
+		config.Revision = locatorRevision
 	}
 
-	if config.apiKey == "" {
-		config.apiKey = configFile.CLI.APIKey
+	if config.APIKey == "" {
+		config.APIKey = configFile.CLI.APIKey
 	}
-	if config.endpoint == "" {
-		config.endpoint = configFile.CLI.Server
+	if config.Endpoint == "" {
+		config.Endpoint = configFile.CLI.Server
 	}
-	if len(config.modules) == 0 {
-		config.modules = configFile.Analyze.Modules
+	if len(config.Modules) == 0 {
+		config.Modules = configFile.Analyze.Modules
 	}
 
 	// Configure logging.
-	if config.debug {
+	if config.Debug {
 		formatter := logging.MustStringFormatter(`%{color}%{time} %{level} %{module}:%{shortpkg}/%{shortfile}/%{shortfunc}%{color:reset} %{message}`)
 		stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), formatter))
 		stderrBackend.SetLevel(logging.DEBUG, "")
@@ -257,7 +318,7 @@ func initialize(c *cli.Context) (cliConfig, error) {
 		logging.SetBackend(stderrBackend)
 	}
 
-	mainLogger.Debugf("Configuration initialized: %#v", config)
+	configLogger.Debugf("Configuration initialized: %#v", config)
 
 	return config, nil
 }

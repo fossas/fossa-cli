@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	config "github.com/fossas/fossa-cli/config"
 	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 )
@@ -18,10 +19,6 @@ var testLogger = logging.MustGetLogger("test")
 const pollRequestDelay = time.Duration(8) * time.Second
 const buildsEndpoint = "/api/revisions/%s/build"
 const revisionsEndpoint = "/api/revisions/%s"
-
-type testConfig struct {
-	timeout time.Duration
-}
 
 type buildResponse struct {
 	ID    int
@@ -37,7 +34,7 @@ func getBuild(endpoint, apiKey, project, revision string) (buildResponse, error)
 		return buildResponse{}, fmt.Errorf("invalid FOSSA endpoint: %s", err.Error())
 	}
 
-	buildsURL, err := url.Parse(fmt.Sprintf(buildsEndpoint, url.PathEscape(makeLocator(project, revision))))
+	buildsURL, err := url.Parse(fmt.Sprintf(buildsEndpoint, url.PathEscape(config.MakeLocator(project, revision))))
 	if err != nil {
 		return buildResponse{}, fmt.Errorf("invalid FOSSA builds endpoint: %s", err.Error())
 	}
@@ -77,7 +74,7 @@ func getRevision(endpoint, apiKey, project, revision string) (revisionResponse, 
 		return revisionResponse{}, fmt.Errorf("invalid FOSSA endpoint: %s", err.Error())
 	}
 
-	revisionsURL, err := url.Parse(fmt.Sprintf(revisionsEndpoint, url.PathEscape(makeLocator(project, revision))))
+	revisionsURL, err := url.Parse(fmt.Sprintf(revisionsEndpoint, url.PathEscape(config.MakeLocator(project, revision))))
 	if err != nil {
 		return revisionResponse{}, fmt.Errorf("invalid FOSSA issues endpoint: %s", err.Error())
 	}
@@ -144,7 +141,7 @@ type testResult struct {
 }
 
 func testCmd(c *cli.Context) {
-	config, err := initialize(c)
+	conf, err := config.Initialize(c)
 	if err != nil {
 		testLogger.Fatalf("Could not load configuration: %s", err.Error())
 	}
@@ -152,7 +149,7 @@ func testCmd(c *cli.Context) {
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
 	s.Writer = os.Stderr
 	race := make(chan testResult, 1)
-	go doTest(s, race, config.endpoint, config.apiKey, config.project, config.revision)
+	go doTest(s, race, conf.Endpoint, conf.APIKey, conf.Project, conf.Revision)
 	select {
 	case result := <-race:
 		s.Stop()
@@ -184,7 +181,7 @@ func testCmd(c *cli.Context) {
 
 			os.Exit(1)
 		}
-	case <-time.After(config.testConfig.timeout):
+	case <-time.After(conf.TestCmd.Timeout):
 		s.Stop()
 		testLogger.Fatalf("Timed out while waiting for issue report")
 	}
