@@ -36,11 +36,11 @@ jobs:
       - run:
           name: Run FOSSA build
           command: |
-            fossa --debug 2>$ARTIFACTS/fossa-stderr
+            fossa --debug 2>$ARTIFACTS/fossa-build-stderr
       - run:
           name: Run FOSSA license check
           command: |
-            fossa test --debug 2>$ARTIFACTS/fossa-stderr
+            fossa test --debug 2>$ARTIFACTS/fossa-test-stderr
       - store_test_results:
           path: /tmp/test-results
       - store_artifacts:

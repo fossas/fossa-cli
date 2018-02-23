@@ -15,6 +15,7 @@ var commonLogger = logging.MustGetLogger("common")
 func makeAPIRequest(method, url, apiKey string, payload []byte) ([]byte, error) {
 	commonLogger.Debugf("Making API request %#v %#v %#v %#v", method, url, apiKey, string(payload))
 	req, err := http.NewRequest(method, url, bytes.NewReader(payload))
+	req.Close = true
 	if err != nil {
 		return nil, fmt.Errorf("could not construct API HTTP request: %s", err.Error())
 	}
