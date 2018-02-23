@@ -5,13 +5,28 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
+	"time"
 
 	logging "github.com/op/go-logging"
 )
 
 var commonLogger = logging.MustGetLogger("common")
+var client = http.Client{
+	Timeout: 10 * time.Second,
+}
+
+func isTimeout(err error) bool {
+	if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+		return true
+	}
+	if urlErr, ok := err.(*url.Error); ok && urlErr.Err == io.EOF {
+		return true
+	}
+	return false
+}
 
 // Common utilities among commands
 func makeAPIRequest(method, endpoint, apiKey string, payload []byte) ([]byte, error) {
@@ -24,11 +39,11 @@ func makeAPIRequest(method, endpoint, apiKey string, payload []byte) ([]byte, er
 	req.Header.Set("Authorization", "token "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-		if err.(*url.Error).Err == io.EOF {
+		if isTimeout(err) {
 			commonLogger.Debugf("API request timed out")
-			return nil, err.(*url.Error).Err
+			return nil, err
 		}
 		return nil, fmt.Errorf("failed to send API HTTP request: %s", err.Error())
 	}

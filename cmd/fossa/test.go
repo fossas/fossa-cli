@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -46,7 +45,7 @@ func getBuild(endpoint, apiKey, project, revision string) (buildResponse, error)
 
 	testLogger.Debugf("Making Builds API request to: %#v", url)
 	res, err := makeAPIRequest(http.MethodPut, url, apiKey, nil)
-	if err == io.EOF {
+	if isTimeout(err) {
 		return buildResponse{}, err
 	}
 	if err != nil {
@@ -108,7 +107,7 @@ func doTest(s *spinner.Spinner, race chan testResult, endpoint, apiKey, project,
 buildLoop:
 	for {
 		build, err := getBuild(endpoint, apiKey, project, revision)
-		if err == io.EOF {
+		if isTimeout(err) {
 			time.Sleep(pollRequestDelay)
 			continue
 		}
