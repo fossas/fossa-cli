@@ -214,11 +214,27 @@ Print the version, then exit.
 ##### `-h, --help`
 Print a help message, then exit.
 
-<!-- ### `fossa init`
+### `fossa init`
 
-Makes a best-effort attempt at inferring the correct configuration, then outputs the configuration to `stdout`.
+Makes a best-effort attempt at inferring the correct configuration from current system state. If successful, it will write the configuration to a new or existing config file (defaults to `.fossa.yml`).
 
-Configuration inference is done on a language-by-language basis. For example, `commonjs` packages are inferred by checking for `package.json`s that are not within `node_modules`. -->
+If there are no modules defined in the configuration, it will scan the working directory for code modules to analyze.  You can pass the `--force` to 
+
+By default, this command will filter out any modules that have `docs`, `test` or `example` in the path.  You can disable this by passing the `--include-all` flag.
+
+#### Flags
+##### `-f, --force`
+Force scanning for new modules and overwrite any existing config.
+
+##### `--include-all`
+Include any suspicious modules that would have been filtered out (`docs`, `test`, `example`).
+
+##### `--debug`
+Print debugging information to `stderr`.
+
+##### `-h, --help`
+Print a help message, then exit.
+
 
 ### `fossa build`
 

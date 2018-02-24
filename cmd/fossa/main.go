@@ -59,7 +59,7 @@ func main() {
 			Action: initCmd,
 			Flags: []cli.Flag{
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
-				cli.BoolFlag{Name: "force", Usage: "rescan and overwrite modules in config even if they exist"},
+				cli.BoolFlag{Name: "f, force", Usage: "rescan and overwrite modules in config even if they exist"},
 				cli.BoolFlag{Name: "include-all", Usage: "include suspicious modules (`docs`, `test` or `example` in name)"},
 			},
 		},

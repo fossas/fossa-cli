@@ -20,22 +20,55 @@ Grab the latest release from the [Github Releases](releases/) page!
 
 We support Windows, MacOS (Darwin), and Linux amd64 machines.
 
-## Quickstart
+### QuickStart
+
+#### One-Liners
 
 ```bash
-# Analyze and upload your build analysis to FOSSA
-FOSSA_API_KEY=YOUR_API_KEY_HERE fossa --modules module_type:module_location
+# Out of the box, run this to initialize config,
+# analyze and output results
+fossa -o
+```
 
+```bash
+# To upload results to FOSSA (https://fossa.io), 
+# provide an API key (https://fossa.io/docs/projects/api-endpoints/)
+# and remove the `-o` flag
+FOSSA_API_KEY={ YOUR_API_KEY } fossa
+```
+
+#### Start with Configuration
+
+```bash
+# Initialize FOSSA configuration and scan for supported modules
+fossa init
+
+# Edit your .fossa.yml configuration to make sure we're analyzing the right modules
+vi .fossa.yml
+
+# Run FOSSA analysis and preview the results we're going to upload
+fossa -o
+
+# Run FOSSA and upload results
+# Going forward, you only need to run this one-liner
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa
+```
+
+#### Alternative Configurations
+
+```bash
+# You can also bootstrap config from the command line
 # This is how we run `fossa` on `fossa`
-FOSSA_API_KEY=REDACTED fossa --modules go:./cmd/fossa
-
-# See what FOSSA is uploading
-fossa analyze --output
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa --modules go:./cmd/fossa
 
 # Want to provide your own dependency list? We support that too.
 # Check out the [user guide](docs/user-guide.md) for the upload format.
 FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --project PROJECT_NAME --revision REVISION_HASH --data YOUR_DATA_HERE
+```
 
+#### Integrating with FOSSA
+
+```bash
 # Block the build if your project fails its license scan
 FOSSA_API_KEY=YOUR_API_KEY_HERE fossa test
 ```
