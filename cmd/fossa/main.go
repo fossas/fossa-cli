@@ -170,7 +170,7 @@ func defaultCmd(c *cli.Context) {
 		mainLogger.Noticef("An update is available for this CLI; run `fossa update` to get the latest version.")
 	}
 
-	if len(config.Modules) == 0 {
+	if len(conf.Modules) == 0 {
 		mainLogger.Fatal("No modules specified for analysis.")
 	}
 
