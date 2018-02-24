@@ -17,7 +17,7 @@ var configLogger = logging.MustGetLogger("config")
 
 type configFileV1 struct {
 	// config version
-	Version string `yaml:"version"`
+	Version int `yaml:"version"`
 
 	CLI     configFileCLIV1
 	Analyze configFileAnalyzeV1
@@ -77,7 +77,7 @@ func WriteConfigFile(conf *CliConfig) error {
 	}
 
 	writeConfig := configFileV1{
-		Version: "1",
+		Version: 1,
 		CLI: configFileCLIV1{
 			APIKey:  conf.APIKey,
 			Server:  conf.Endpoint,
@@ -126,9 +126,7 @@ func ParseConfigFile(filename string) (configFileV1, error) {
 
 func setDefaultValues(c configFileV1) (configFileV1, error) {
 	// Set config version
-	if c.Version == "" {
-		c.Version = "1"
-	}
+	c.Version = 1
 
 	// Set default endpoint.
 	if c.CLI.Server == "" {
