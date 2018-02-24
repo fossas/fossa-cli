@@ -11,6 +11,7 @@ Go support in FOSSA CLI depends on the following tools existing in your environm
   3. Godep (defaults to `godep`, configure with `$GODEP_BINARY`)
   4. Govendor (defaults to `govendor`, configure with `$GOVENDOR_BINARY`)
   5. Vndr (defaults to `vndr`, configure with `$VNDR_BINARY`)
+  6. Gdm (defaults to `gdm`, configure with `$GDM_BINARY`)
 
 ## Usage
 

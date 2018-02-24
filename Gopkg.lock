@@ -124,6 +124,12 @@
   revision = "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9"
 
 [[projects]]
+  name = "github.com/blang/semver"
+  packages = ["."]
+  revision = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
+  version = "v3.5.1"
+
+[[projects]]
   name = "github.com/bmatcuk/doublestar"
   packages = ["."]
   revision = "b3608229437ba4dc33dae64d56a79a2a73f1f6b2"
@@ -427,6 +433,18 @@
   revision = "553a641470496b2327abcac10b36396bd98e45c9"
 
 [[projects]]
+  name = "github.com/google/go-github"
+  packages = ["github"]
+  revision = "e48060a28fac52d0f1cb758bc8b87c07bac4a87d"
+  version = "v15.0.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/google/go-querystring"
+  packages = ["query"]
+  revision = "53e6ce116135b80d037921a7fdd5138cf32d7a8a"
+
+[[projects]]
   branch = "master"
   name = "github.com/google/gofuzz"
   packages = ["."]
@@ -513,6 +531,15 @@
     "ssdp"
   ]
   revision = "dceda08e705b2acee36aab47d765ed801f64cfc7"
+
+[[projects]]
+  name = "github.com/inconshreveable/go-update"
+  packages = [
+    ".",
+    "internal/binarydist",
+    "internal/osext"
+  ]
+  revision = "8152e7eb6ccf8679a64582a66b78519688d156ad"
 
 [[projects]]
   branch = "master"
@@ -841,6 +868,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/rhysd/go-github-selfupdate"
+  packages = ["selfupdate"]
+  revision = "d5c53b8d0552a7bf6b36457cd458d27c80e0210b"
+
+[[projects]]
+  branch = "master"
   name = "github.com/rjeczalik/notify"
   packages = ["."]
   revision = "c31e5f2cb22b3e4ef3f882f413847669bf2652b9"
@@ -925,6 +958,12 @@
   revision = "211f780988068502fe874c44dae530528ebd840f"
 
 [[projects]]
+  name = "github.com/tcnksm/go-gitconfig"
+  packages = ["."]
+  revision = "d154598bacbf4501c095a309753c5d4af66caa81"
+  version = "v0.1.2"
+
+[[projects]]
   name = "github.com/tinylib/msgp"
   packages = ["msgp"]
   revision = "b2b6a672cf1e5b90748f79b8b81fc8c5cf0571a1"
@@ -941,6 +980,17 @@
   packages = ["codec"]
   revision = "9831f2c3ac1068a78f50999a30db84270f647af6"
   version = "v1.1"
+
+[[projects]]
+  name = "github.com/ulikunitz/xz"
+  packages = [
+    ".",
+    "internal/hash",
+    "internal/xlog",
+    "lzma"
+  ]
+  revision = "0c6b41e72360850ca4f98dc341fd999726ea007f"
+  version = "v0.5.4"
 
 [[projects]]
   name = "github.com/urfave/cli"
@@ -1428,6 +1478,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "3d58ddd235e8713b5e920c8f1ae87e4083d1efc8cba607e5f5cc4694d99c92f4"
+  inputs-digest = "553d9d014c4337a0ea48d67bcc6065fe13ee5c1c7a099318a99b9b5411fbd3a5"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -116,6 +116,14 @@ func main() {
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
 		},
+		{
+			Name:   "update",
+			Usage:  "Updates `fossa` to the latest version",
+			Action: updateCmd,
+			Flags: []cli.Flag{
+				cli.BoolFlag{Name: "debug", Usage: debugUsage},
+			},
+		},
 	}
 
 	app.Run(os.Args)
@@ -158,7 +166,11 @@ func defaultCmd(c *cli.Context) {
 		mainLogger.Fatalf("Could not load configuration: %s", err.Error())
 	}
 
-	if len(conf.Modules) == 0 {
+	if ok, err := checkUpdate(); err == nil && ok {
+		mainLogger.Noticef("An update is available for this CLI; run `fossa update` to get the latest version.")
+	}
+
+	if len(config.Modules) == 0 {
 		mainLogger.Fatal("No modules specified for analysis.")
 	}
 

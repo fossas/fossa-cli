@@ -6,19 +6,29 @@ jobs:
     working_directory: /home/fossa/go/src/github.com/fossas/fossa-cli
     environment:
       TEST_RESULTS: /tmp/test-results
+      ARTIFACTS: /tmp/artifacts
     steps:
       - checkout
-      - run: mkdir -p $TEST_RESULTS
+      - run:
+          name: Make folders
+          command: |
+            mkdir -p $TEST_RESULTS
+            mkdir -p $ARTIFACTS
       - restore_cache:
           keys:
-            - gopkg-cache-{{ checksum "Gopkg.lock" }}
+            - v1-gopkg-cache-{{ checksum "Gopkg.lock" }}
       - run:
           name: Compile CLI
           command: |
             # Invalidate pkg cache for FOSSA CLI binary
-            rm -rf pkg/linux_amd64/github.com/fossas/fossa-cli
+            rm -rf /home/fossa/go/pkg/linux_amd64/github.com/fossas/fossa-cli
             dep ensure
             make
+      - save_cache:
+          key: v1-gopkg-cache-{{ checksum "Gopkg.lock" }}
+          paths:
+            - "/home/fossa/go/pkg"
+            - "/home/fossa/go/src/github.com/fossas/fossa-cli/vendor"
       - run:
           name: Run integration test
           command: |
@@ -26,14 +36,12 @@ jobs:
       - run:
           name: Run FOSSA build
           command: |
-            fossa
+            fossa --debug 2>$ARTIFACTS/fossa-build-stderr
       - run:
           name: Run FOSSA license check
           command: |
-            fossa test
-      - save_cache:
-          key: gopkg-cache-{{ checksum "Gopkg.lock" }}
-          paths:
-            - "/home/fossa/go/pkg"
+            fossa test --debug 2>$ARTIFACTS/fossa-test-stderr
       - store_test_results:
           path: /tmp/test-results
+      - store_artifacts:
+          path: /tmp/artifacts
