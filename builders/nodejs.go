@@ -180,8 +180,7 @@ func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]config.ModuleConfig
 
 			// parse from package.json and set moduleName if successful
 			var nodeModule NodeModule
-			err := parseLogged(nodejsLogger, path, &nodeModule)
-			if err != nil {
+			if err := parseLogged(nodejsLogger, path, &nodeModule); err == nil {
 				moduleName = nodeModule.Name
 			}
 
