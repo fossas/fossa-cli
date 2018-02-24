@@ -170,16 +170,17 @@ func defaultCmd(c *cli.Context) {
 		mainLogger.Noticef("An update is available for this CLI; run `fossa update` to get the latest version.")
 	}
 
-	if len(conf.Modules) == 0 {
-		mainLogger.Fatal("No modules specified for analysis.")
-	}
-
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
 	s.Writer = os.Stderr
 	s.Suffix = " Initializing..."
 	s.Start()
 
 	doInit(&conf, false, false)
+
+	if len(conf.Modules) == 0 {
+		s.Stop()
+		mainLogger.Fatal("No modules specified for analysis.")
+	}
 
 	dependencies := make(analysis)
 
