@@ -144,5 +144,46 @@ func (builder *BowerBuilder) IsModule(target string) (bool, error) {
 
 // DiscoverModules is not implemented
 func (builder *BowerBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
-	return []config.ModuleConfig{}, errors.New("DiscoverModules is not implemented for BowerBuilder")
+	moduleConfigs := []config.ModuleConfig{}
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			bowerLogger.Debugf("failed to access path %s: %s\n", path, err.Error())
+			return err
+		}
+		// skip **/node_modules
+		if info.IsDir() && info.Name() == "node_modules" {
+			bowerLogger.Debugf("skipping node_modules directory: %s", info.Name())
+			return filepath.SkipDir
+		}
+
+		// skip **/bower_components
+		if info.IsDir() && info.Name() == "bower_components" {
+			bowerLogger.Debugf("skipping bower_components directory: %s", info.Name())
+			return filepath.SkipDir
+		}
+
+		if !info.IsDir() && info.Name() == "bower.json" {
+			moduleName := filepath.Base(filepath.Dir(path))
+
+			// parse from package.json and set moduleName if successful
+			var bowerComponent BowerComponent
+			if err := parseLogged(bowerLogger, path, &bowerComponent); err == nil {
+				moduleName = bowerComponent.Name
+			}
+
+			bowerLogger.Debugf("found Bower package: %s (%s)", path, moduleName)
+			moduleConfigs = append(moduleConfigs, config.ModuleConfig{
+				Name: moduleName,
+				Path: path,
+				Type: string(config.Bower),
+			})
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("could not find bower package manifests: %s", err.Error())
+	}
+
+	return moduleConfigs, nil
 }

@@ -22,11 +22,13 @@ func initCmd(c *cli.Context) {
 		initLogger.Fatalf("Error initializing: %s", err.Error())
 	}
 
-	if err := config.WriteConfigFile(&conf); err != nil {
-		initLogger.Fatalf("Error writing config: %s", err.Error())
-	}
+	if !c.Bool("skip-write") {
+		if err := config.WriteConfigFile(&conf); err != nil {
+			initLogger.Fatalf("Error writing config: %s", err.Error())
+		}
 
-	initLogger.Warningf("Config written to `%s`.", conf.ConfigFilePath)
+		initLogger.Warningf("Config for %d modules written to `%s`.", len(conf.Modules), conf.ConfigFilePath)
+	}
 
 	fmt.Println("`fossa` is initialized")
 }

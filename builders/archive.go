@@ -125,7 +125,7 @@ func (builder *VendoredArchiveBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for VendoredArchiveBuilder")
 }
 
-// DiscoverModules is not implemented
+// DiscoverModules is not implemented for VendoredArchiveBuilder, instead it must be explicitly configured
 func (builder *VendoredArchiveBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
-	return []config.ModuleConfig{}, errors.New("DiscoverModules is not implemented for VendoredArchiveBuilder")
+	return []config.ModuleConfig{}, nil
 }

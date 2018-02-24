@@ -175,6 +175,12 @@ func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]config.ModuleConfig
 			return filepath.SkipDir
 		}
 
+		// skip **/bower_components
+		if info.IsDir() && info.Name() == "bower_components" {
+			nodejsLogger.Debugf("skipping bower_components directory: %s", info.Name())
+			return filepath.SkipDir
+		}
+
 		if !info.IsDir() && info.Name() == "package.json" {
 			moduleName := filepath.Base(filepath.Dir(path))
 
