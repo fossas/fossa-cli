@@ -142,7 +142,7 @@ func resolveModuleConfig(moduleConfig config.ModuleConfig) (builders.Builder, mo
 		return builder, m, fmt.Errorf("unknown module type: %s", moduleConfig.Type)
 	}
 
-	mainLogger.Debugf("Got <%s> module.", moduleType)
+	mainLogger.Debugf("Got %s module.", moduleType)
 	builder = builders.New(moduleType)
 
 	if builder == nil {

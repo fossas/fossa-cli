@@ -17,7 +17,7 @@ type Builder interface {
 	// IsBuilt checks whether a module has been built.
 	IsBuilt(m module.Module, allowUnresolved bool) (bool, error)
 
-	// IsModule takes a configKey and returns whether it is valid to elect this Builder.
+	// IsModule takes a string like and returns whether it matches to elect this Builder.
 	IsModule(configKey string) (bool, error)
 	// DiscoverModules finds what modules are available for analysis in a given directory.
 	DiscoverModules(dir string) ([]config.ModuleConfig, error)
