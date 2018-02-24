@@ -27,9 +27,8 @@ const (
 	revisionUsage             = "the FOSSA project's revision hash (default: VCS hash HEAD)"
 	endpointUsage             = "the FOSSA server endpoint (default: https://app.fossa.io)"
 	buildForceUsage           = "ignore cached build artifacts"
-	analyzeOutputUsage        = "print analysis results to stdout"
+	analyzeOutputUsage        = "print results to stdout instead of uploading to FOSSA"
 	analyzeAllowResolvedUsage = "allow unresolved dependencies"
-	analyzeNoUploadUsage      = "do not upload results to FOSSA"
 	debugUsage                = "print debug information to stderr"
 )
 
@@ -48,7 +47,6 @@ func main() {
 		cli.StringFlag{Name: "m, modules", Usage: "the modules to build and analyze"},
 		cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
 		cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
-		cli.BoolFlag{Name: "no-upload", Usage: analyzeNoUploadUsage},
 		cli.BoolFlag{Name: "b, build", Usage: "run a default build in module directories if they have not been pre-built"},
 		cli.BoolFlag{Name: "f, force", Usage: buildForceUsage},
 		cli.BoolFlag{Name: "debug", Usage: debugUsage},
@@ -61,6 +59,8 @@ func main() {
 			Action: initCmd,
 			Flags: []cli.Flag{
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
+				cli.BoolFlag{Name: "force", Usage: "rescan and overwrite modules in config even if they exist"},
+				cli.BoolFlag{Name: "include-all", Usage: "include suspicious modules (`docs`, `test` or `example` in name)"},
 			},
 		},
 		{
@@ -87,7 +87,6 @@ func main() {
 				cli.StringFlag{Name: "m, modules", Usage: "the modules to analyze"},
 				cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
 				cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
-				cli.BoolFlag{Name: "no-upload", Usage: analyzeNoUploadUsage},
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
 		},
@@ -168,6 +167,8 @@ func defaultCmd(c *cli.Context) {
 	s.Suffix = " Initializing..."
 	s.Start()
 
+	doInit(&conf, false, false)
+
 	dependencies := make(analysis)
 
 	for i, m := range conf.Modules {
@@ -231,11 +232,17 @@ func defaultCmd(c *cli.Context) {
 			mainLogger.Fatalf("Could marshal analysis results: %s", err.Error())
 		}
 		fmt.Println(string(buildData))
-	}
-
-	if conf.AnalyzeCmd.NoUpload {
 		return
 	}
+
+	s.Stop()
+	s.Suffix = fmt.Sprintf(" Writing configuration...")
+	s.Restart()
+
+	if err := config.WriteConfigFile(&conf); err != nil {
+		mainLogger.Fatalf("Error writing config: %s", err.Error())
+	}
+	mainLogger.Warningf("Config written to `%s`.", conf.ConfigFilePath)
 
 	s.Stop()
 	s.Suffix = fmt.Sprintf(" Uploading build results (%d/%d)...", len(conf.Modules), len(conf.Modules))

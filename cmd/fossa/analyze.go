@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/fossas/fossa-cli/builders"
 	"github.com/fossas/fossa-cli/config"
@@ -40,11 +39,6 @@ func analyzeCmd(c *cli.Context) {
 			analysisLogger.Fatalf("Could not marshal analysis results: %s", err.Error())
 		}
 		fmt.Println(string(buildData))
-	}
-
-	if conf.AnalyzeCmd.NoUpload {
-		fmt.Fprintln(os.Stderr, "Analysis succeeded!")
-		return
 	}
 
 	msg, err := doUpload(conf, normalModules)

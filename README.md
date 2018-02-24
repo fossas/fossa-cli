@@ -30,7 +30,7 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa --modules module_type:module_location
 FOSSA_API_KEY=REDACTED fossa --modules go:./cmd/fossa
 
 # See what FOSSA is uploading
-fossa analyze --no-upload --output
+fossa analyze --output
 
 # Want to provide your own dependency list? We support that too.
 # Check out the [user guide](docs/user-guide.md) for the upload format.
@@ -96,7 +96,7 @@ By default, this uploads your build results to fossa.io where you can use them t
 
 ```bash
 # Just output the analysis results
-fossa analyze --no-upload --output --modules go:./cmd/fossa
+fossa analyze --output --modules go:./cmd/fossa
 ```
 
 If FOSSA can't analyze your build correctly, you can also manually provide a set of results to upload:

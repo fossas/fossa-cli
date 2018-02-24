@@ -278,7 +278,7 @@ Sets the modules to use as entry points when analyzing dependencies.
 Sets the modules and paths to ignore when analyzing dependencies. -->
 
 ##### `-o, --output`
-Prints analysis results to `stdout`. When this flag is set, `fossa analyze` provides interactive output on `stderr`.
+Prints analysis results to `stdout` instead of uploading results to a FOSSA server. When this flag is set, `fossa analyze` provides interactive output on `stderr`.
 
 ##### `--allow-unresolved`
 Do not fail on unresolved dependencies.
@@ -286,9 +286,6 @@ Do not fail on unresolved dependencies.
 For some languages, `fossa analyze` does import path tracing to determine dependencies. If these the dependencies at the import paths cannot be found, the dependency is _unresolved_.
 
 Unresolved dependencies generally indicate an incomplete build or some other kind of build error. For highly custom build systems, this may not be the case.
-
-##### `--no-upload`
-Do not upload analysis results.
 
 ##### `--debug`
 Print debugging information to `stderr`.
@@ -304,7 +301,7 @@ Uploads user-provided build data to FOSSA. This allows users to manually provide
 ```bash
 # You can manually override the project and revision name.
 # This is useful when `fossa` can't manually infer them from `git`.
-FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --project=PROJECT_NAME --revision=SOME_HASH --data=$(fossa analyze --no-upload --output)
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --project=PROJECT_NAME --revision=SOME_HASH --data=$(fossa analyze --output)
 ```
 
 #### Flags
