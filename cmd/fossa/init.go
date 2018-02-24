@@ -45,7 +45,7 @@ func doInit(conf *config.CliConfig, force bool, includeAll bool) error {
 			// fitler suspicious modules
 			filteredModuleConfigs := []config.ModuleConfig{}
 			for _, c := range conf.Modules {
-				if matched, err := regexp.MatchString("(docs?/|test|example)", c.Path); err != nil || matched != true {
+				if matched, err := regexp.MatchString("(docs?/|test|example|vendor/)", c.Path); err != nil || matched != true {
 					filteredModuleConfigs = append(filteredModuleConfigs, c)
 				} else {
 					initLogger.Warningf("Filtering out suspcious module: %s (%s)", c.Name, c.Path)
