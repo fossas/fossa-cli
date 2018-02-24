@@ -215,8 +215,8 @@ func parseModuleFlag(moduleFlag string) []ModuleConfig {
 	return config
 }
 
-// Initialize creates a CliConfig from cli context
-func Initialize(c *cli.Context) (CliConfig, error) {
+// New creates a CliConfig from cli context
+func New(c *cli.Context) (CliConfig, error) {
 	var config = CliConfig{
 		APIKey:   c.String("api_key"),
 		Project:  c.String("project"),

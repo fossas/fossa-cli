@@ -13,7 +13,7 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/builders"
-	config "github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -94,7 +94,7 @@ func normalizeAnalysis(results analysis) ([]normalizedModule, error) {
 }
 
 func uploadCmd(c *cli.Context) {
-	conf, err := config.Initialize(c)
+	conf, err := config.New(c)
 	if err != nil {
 		uploadLogger.Fatalf("Could not load configuration: %s", err.Error())
 	}

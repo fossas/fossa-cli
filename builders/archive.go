@@ -11,9 +11,10 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar"
+	logging "github.com/op/go-logging"
+
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
-	logging "github.com/op/go-logging"
 )
 
 var archiveLogger = logging.MustGetLogger("archive")

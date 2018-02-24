@@ -154,7 +154,7 @@ func resolveModuleConfig(moduleConfig config.ModuleConfig) (builders.Builder, mo
 }
 
 func defaultCmd(c *cli.Context) {
-	conf, err := config.Initialize(c)
+	conf, err := config.New(c)
 	if err != nil {
 		mainLogger.Fatalf("Could not load configuration: %s", err.Error())
 	}

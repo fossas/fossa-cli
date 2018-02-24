@@ -15,7 +15,7 @@ import (
 var analysisLogger = logging.MustGetLogger("analyze")
 
 func analyzeCmd(c *cli.Context) {
-	conf, err := config.Initialize(c)
+	conf, err := config.New(c)
 	if err != nil {
 		buildLogger.Fatalf("Could not load configuration: %s", err.Error())
 	}
@@ -65,8 +65,8 @@ func doAnalyze(modules []config.ModuleConfig, allowUnresolved bool) (analysis, e
 	analysisLogger.Debugf("Running analysis on modules: %#v", modules)
 	dependencies := make(analysis)
 
-	for _, ModuleConfig := range modules {
-		builder, m, err := resolveModuleConfig(ModuleConfig)
+	for _, moduleConfig := range modules {
+		builder, m, err := resolveModuleConfig(moduleConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve modules: %s", err.Error())
 		}

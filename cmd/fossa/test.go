@@ -9,9 +9,10 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	config "github.com/fossas/fossa-cli/config"
 	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
+
+	"github.com/fossas/fossa-cli/config"
 )
 
 var testLogger = logging.MustGetLogger("test")
@@ -141,7 +142,7 @@ type testResult struct {
 }
 
 func testCmd(c *cli.Context) {
-	conf, err := config.Initialize(c)
+	conf, err := config.New(c)
 	if err != nil {
 		testLogger.Fatalf("Could not load configuration: %s", err.Error())
 	}

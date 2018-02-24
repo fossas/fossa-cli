@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/urfave/cli"
+
 	config "github.com/fossas/fossa-cli/config"
 	logging "github.com/op/go-logging"
-	"github.com/urfave/cli"
 )
 
 var buildLogger = logging.MustGetLogger("build")
 
 func buildCmd(c *cli.Context) {
-	conf, err := config.Initialize(c)
+	conf, err := config.New(c)
 	if err != nil {
 		buildLogger.Fatalf("Could not load configuration: %s", err.Error())
 	}
@@ -20,8 +21,8 @@ func buildCmd(c *cli.Context) {
 		buildLogger.Fatal("No modules specified.")
 	}
 
-	for _, ModuleConfig := range conf.Modules {
-		builder, module, err := resolveModuleConfig(ModuleConfig)
+	for _, moduleConfig := range conf.Modules {
+		builder, module, err := resolveModuleConfig(moduleConfig)
 		if err != nil {
 			buildLogger.Fatalf("Failed to resolve modules: %s", err.Error())
 		}

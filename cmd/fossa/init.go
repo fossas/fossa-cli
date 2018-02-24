@@ -13,7 +13,7 @@ func initCmd(c *cli.Context) {
 	var err error
 	var conf config.CliConfig
 
-	conf, err = config.Initialize(c)
+	conf, err = config.New(c)
 	if err != nil {
 		initLogger.Fatalf("Could not load configuration: %s", err.Error())
 	}
