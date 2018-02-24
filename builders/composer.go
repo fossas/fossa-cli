@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	logging "github.com/op/go-logging"
@@ -140,5 +141,41 @@ func (builder *ComposerBuilder) IsModule(target string) (bool, error) {
 
 // DiscoverModules is not implemented
 func (builder *ComposerBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
-	return []config.ModuleConfig{}, errors.New("DiscoverModules is not implemented for ComposerBuilder")
+	moduleConfigs := []config.ModuleConfig{}
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			composerLogger.Debugf("failed to access path %s: %s\n", path, err.Error())
+			return err
+		}
+
+		// skip the /vendor/ folder
+		if info.IsDir() && info.Name() == "vendor" {
+			composerLogger.Debugf("skipping `vendor` directory: %s", info.Name())
+			return filepath.SkipDir
+		}
+
+		if !info.IsDir() && info.Name() == "composer.json" {
+			moduleName := filepath.Base(filepath.Dir(path))
+
+			// parse from composer.json and set moduleName if successful
+			var composerPackage ComposerPackage
+			if err := parseLogged(composerLogger, path, &composerPackage); err == nil {
+				moduleName = composerPackage.Name
+			}
+
+			nodejsLogger.Debugf("found Compower package: %s (%s)", path, moduleName)
+			moduleConfigs = append(moduleConfigs, config.ModuleConfig{
+				Name: moduleName,
+				Path: path,
+				Type: string(config.Composer),
+			})
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("could not find Composer package manifests: %s", err.Error())
+	}
+
+	return moduleConfigs, nil
 }
