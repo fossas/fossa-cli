@@ -178,7 +178,10 @@ func (builder *MavenBuilder) DiscoverModules(dir string) ([]config.ModuleConfig,
 	}
 
 	// no pom in root directory; find and parse all of them
-	pomFilePaths, _ := doublestar.Glob(filepath.Join(dir, "**", "pom.xml"))
+	pomFilePaths, err := doublestar.Glob(filepath.Join(dir, "**", "pom.xml"))
+	if err != nil {
+		return nil, err
+	}
 	moduleConfigs := make([]config.ModuleConfig, len(pomFilePaths))
 	for i, path := range pomFilePaths {
 		artifactName := filepath.Dir(path)
