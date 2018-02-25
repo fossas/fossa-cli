@@ -181,7 +181,7 @@ func (builder *MavenBuilder) DiscoverModules(dir string) ([]config.ModuleConfig,
 	pomFilePaths, _ := doublestar.Glob(filepath.Join(dir, "**", "pom.xml"))
 	moduleConfigs := make([]config.ModuleConfig, len(pomFilePaths))
 	for i, path := range pomFilePaths {
-		artifactName := filepath.Dir(dir)
+		artifactName := filepath.Dir(path)
 		var artifactPom PomFile
 		if err := parseLoggedWithUnmarshaller(mavenLogger, path, &artifactPom, xml.Unmarshal); err == nil {
 			if artifactPom.Name != "" {
