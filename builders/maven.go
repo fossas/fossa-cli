@@ -1,12 +1,15 @@
 package builders
 
 import (
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/bmatcuk/doublestar"
 	logging "github.com/op/go-logging"
 
 	"github.com/fossas/fossa-cli/config"
@@ -34,6 +37,17 @@ func (m MavenArtifact) Package() string {
 // Revision returns the version spec for MavenArtifact
 func (m MavenArtifact) Revision() string {
 	return m.Version
+}
+
+// PomFile represents the schema of a common pom.xml file
+type PomFile struct {
+	XMLName     xml.Name `xml:"project"`
+	ArtifactID  string   `xml:"artifactId"`
+	GroupID     string   `xml:"groupId"`
+	Version     string   `xml:"version"`
+	Description string   `xml:"description"`
+	Name        string   `xml:"name"`
+	URL         string   `xml:"url"`
 }
 
 // MavenBuilder implements Builder for Apache Maven (*.pom.xml) builds
@@ -139,7 +153,49 @@ func (builder *MavenBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for MavenBuilder")
 }
 
-// DiscoverModules is not implemented
+// DiscoverModules finds either a root pom.xml file or all pom.xmls in the specified dir
 func (builder *MavenBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
-	return []config.ModuleConfig{}, errors.New("DiscoverModules is not implemented for MavenBuilder")
+	_, err := os.Stat(filepath.Join(dir, "pom.xml"))
+	if err == nil {
+		// root pom found; parse and return
+		artifactName := filepath.Dir(dir)
+		var rootPom PomFile
+		if err := parseLoggedWithUnmarshaller(mavenLogger, filepath.Join(dir, "pom.xml"), &rootPom, xml.Unmarshal); err == nil {
+			if rootPom.Name != "" {
+				artifactName = rootPom.Name
+			} else if rootPom.ArtifactID != "" {
+				artifactName = rootPom.ArtifactID
+			}
+
+		}
+		return []config.ModuleConfig{
+			config.ModuleConfig{
+				Name: artifactName,
+				Path: "pom.xml",
+				Type: "mvn",
+			},
+		}, nil
+	}
+
+	// no pom in root directory; find and parse all of them
+	pomFilePaths, _ := doublestar.Glob(filepath.Join(dir, "**", "pom.xml"))
+	moduleConfigs := make([]config.ModuleConfig, len(pomFilePaths))
+	for i, path := range pomFilePaths {
+		artifactName := filepath.Dir(dir)
+		var artifactPom PomFile
+		if err := parseLoggedWithUnmarshaller(mavenLogger, path, &artifactPom, xml.Unmarshal); err == nil {
+			if artifactPom.Name != "" {
+				artifactName = artifactPom.Name
+			} else if artifactPom.ArtifactID != "" {
+				artifactName = artifactPom.ArtifactID
+			}
+		}
+		moduleConfigs[i] = config.ModuleConfig{
+			Name: artifactName,
+			Path: path,
+			Type: "mvn",
+		}
+	}
+
+	return moduleConfigs, nil
 }
