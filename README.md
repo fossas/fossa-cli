@@ -12,7 +12,14 @@
 
 **WARNING:** This tool is in alpha and is being actively developed. There may be breaking changes.
 
-`fossa` is a tool that interrogates your environment and build to discover the dependencies getting included in your code. With one command, you can generate dependency reports and license notices across over many build systems.
+`fossa` is a tool that interrogates your environment and build to discover the dependencies getting included in your code. With one command, you can generate dependency reports and license notices across many build systems.
+
+**Features:**
+
+- Supports over 20+ build systems (npm, golang, maven, etc...)
+- Supports monoliths; auto-detects and configures for multiple builds and modules in one codebase
+- Fast and portable; a single cross-platform binary you can drop into CI builds and test your dependencies live
+- Integrates with https://fossa.io for metadata and license auditing across open source packages
 
 ## Installation
 
