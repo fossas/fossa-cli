@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/fossas/fossa-cli/builders"
-	config "github.com/fossas/fossa-cli/config"
 	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
+
+	"github.com/fossas/fossa-cli/builders"
+	config "github.com/fossas/fossa-cli/config"
 )
 
 var initLogger = logging.MustGetLogger("init")
