@@ -16,7 +16,7 @@
 
 **Features:**
 
-- Supports over 20+ build systems (npm, golang, maven, etc...)
+- Supports over 15+ build systems (npm, golang, maven, etc...)
 - Supports monoliths; auto-detects and configures for multiple builds and modules in one codebase
 - Fast and portable; a single cross-platform binary you can drop into CI builds and test your dependencies live
 - Integrates with https://fossa.io for metadata and license auditing across open source packages
@@ -41,7 +41,7 @@ fossa -o
 # To upload results to FOSSA (https://fossa.io), 
 # provide an API key (https://fossa.io/docs/projects/api-endpoints/)
 # and remove the `-o` flag
-FOSSA_API_KEY={ YOUR_API_KEY } fossa
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa
 ```
 
 #### Start with Configuration
@@ -64,7 +64,7 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa
 #### Alternative Configurations
 
 ```bash
-# You can also bootstrap config from the command line
+# You can also configure modules using command line flags
 # This is how we run `fossa` on `fossa`
 FOSSA_API_KEY=YOUR_API_KEY_HERE fossa --modules go:./cmd/fossa
 
