@@ -39,8 +39,8 @@ func (m MavenArtifact) Revision() string {
 	return m.Version
 }
 
-// PomFile represents the schema of a common pom.xml file
-type PomFile struct {
+// POMFile represents the schema of a common pom.xml file
+type POMFile struct {
 	XMLName     xml.Name `xml:"project"`
 	ArtifactID  string   `xml:"artifactId"`
 	GroupID     string   `xml:"groupId"`
@@ -159,7 +159,7 @@ func (builder *MavenBuilder) DiscoverModules(dir string) ([]config.ModuleConfig,
 	if err == nil {
 		// Root pom found; parse and return
 		artifactName := filepath.Dir(dir)
-		var rootPom PomFile
+		var rootPom POMFile
 		if err := parseLoggedWithUnmarshaller(mavenLogger, filepath.Join(dir, "pom.xml"), &rootPom, xml.Unmarshal); err == nil {
 			if rootPom.Name != "" {
 				artifactName = rootPom.Name
@@ -185,7 +185,7 @@ func (builder *MavenBuilder) DiscoverModules(dir string) ([]config.ModuleConfig,
 	moduleConfigs := make([]config.ModuleConfig, len(pomFilePaths))
 	for i, path := range pomFilePaths {
 		artifactName := filepath.Dir(path)
-		var artifactPom PomFile
+		var artifactPom POMFile
 		if err := parseLoggedWithUnmarshaller(mavenLogger, path, &artifactPom, xml.Unmarshal); err == nil {
 			if artifactPom.Name != "" {
 				artifactName = artifactPom.Name

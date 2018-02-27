@@ -60,7 +60,6 @@ func main() {
 			Flags: []cli.Flag{
 				cli.BoolFlag{Name: "f, force", Usage: "rescan and overwrite modules in config even if they exist"},
 				cli.BoolFlag{Name: "include-all", Usage: "include suspicious modules (`docs`, `test` or `example` in name)"},
-				cli.BoolFlag{Name: "skip-write", Usage: "do not write config if successful"},
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
 		},

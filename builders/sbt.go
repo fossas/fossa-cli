@@ -176,7 +176,7 @@ func (builder *SBTBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, e
 	}
 	moduleConfigs := make([]config.ModuleConfig, len(sbtFilePaths))
 	for i, path := range sbtFilePaths {
-		artifactName := filepath.Dir(path) // use the dirname as it's too hard to parse from build.sbt
+		artifactName := filepath.Dir(path) // Use the dirname as it's impossible to reliably parse from build.sbt
 		moduleConfigs[i] = config.ModuleConfig{
 			Name: artifactName,
 			Path: path,
