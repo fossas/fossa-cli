@@ -163,34 +163,28 @@ func (builder *NodeJSBuilder) IsModule(target string) (bool, error) {
 
 // DiscoverModules builds ModuleConfigs for any package.jsons that are not contained in a node_modules dir
 func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
-	moduleConfigs := []config.ModuleConfig{}
+	var moduleConfigs []config.ModuleConfig
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			nodejsLogger.Debugf("failed to access path %s: %s\n", path, err.Error())
+			nodejsLogger.Debugf("Failed to access path %s: %s\n", path, err.Error())
 			return err
 		}
-		// skip **/node_modules
-		if info.IsDir() && info.Name() == "node_modules" {
-			nodejsLogger.Debugf("skipping node_modules directory: %s", info.Name())
-			return filepath.SkipDir
-		}
-
-		// skip **/bower_components
-		if info.IsDir() && info.Name() == "bower_components" {
-			nodejsLogger.Debugf("skipping bower_components directory: %s", info.Name())
+		// Skip **/node_modules and **/bower_components
+		if info.IsDir() && (info.Name() == "node_modules" || info.Name() == "bower_components") {
+			nodejsLogger.Debugf("Skipping directory: %s", info.Name())
 			return filepath.SkipDir
 		}
 
 		if !info.IsDir() && info.Name() == "package.json" {
 			moduleName := filepath.Base(filepath.Dir(path))
 
-			// parse from package.json and set moduleName if successful
+			// Parse from package.json and set moduleName if successful
 			var nodeModule NodeModule
 			if err := parseLogged(nodejsLogger, path, &nodeModule); err == nil {
 				moduleName = nodeModule.Name
 			}
 
-			nodejsLogger.Debugf("found NodeJS package: %s (%s)", path, moduleName)
+			nodejsLogger.Debugf("Found NodeJS package: %s (%s)", path, moduleName)
 			moduleConfigs = append(moduleConfigs, config.ModuleConfig{
 				Name: moduleName,
 				Path: path,
@@ -201,7 +195,7 @@ func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]config.ModuleConfig
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("could not find NodeJS package manifests: %s", err.Error())
+		return nil, fmt.Errorf("Could not find NodeJS package manifests: %s", err.Error())
 	}
 
 	return moduleConfigs, nil

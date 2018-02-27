@@ -218,7 +218,7 @@ Print a help message, then exit.
 
 Makes a best-effort attempt at inferring the correct configuration from current system state. If successful, it will write the configuration to a new or existing config file (defaults to `.fossa.yml`).
 
-If there are no modules defined in the configuration, it will scan the working directory for code modules to analyze.  You can pass the `--force` to 
+If there are no modules defined in the configuration, it will scan the working directory for code modules to analyze.  You can pass the `--force` to overwrite any existing modules in configuration.
 
 By default, this command will filter out any modules that have `docs`, `test` or `example` in the path.  You can disable this by passing the `--include-all` flag.
 

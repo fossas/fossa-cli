@@ -6,8 +6,8 @@ import (
 
 	"github.com/urfave/cli"
 
-	config "github.com/fossas/fossa-cli/config"
-	logging "github.com/op/go-logging"
+	"github.com/fossas/fossa-cli/config"
+	"github.com/op/go-logging"
 )
 
 var buildLogger = logging.MustGetLogger("build")

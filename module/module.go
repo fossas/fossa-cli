@@ -5,8 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/fossas/fossa-cli/config"
 	logging "github.com/op/go-logging"
+
+	"github.com/fossas/fossa-cli/config"
 )
 
 var moduleLogger = logging.MustGetLogger("module")
@@ -31,7 +32,7 @@ func New(moduleType config.ModuleType, conf config.ModuleConfig) (Module, error)
 	var manifestName string
 	var moduleTarget string
 
-	// derive root dir of module
+	// Find root dir of module
 	modulePath, err := filepath.Abs(conf.Path)
 	if err != nil {
 		return Module{}, err
@@ -47,7 +48,7 @@ func New(moduleType config.ModuleType, conf config.ModuleConfig) (Module, error)
 		break
 	case config.Golang:
 		manifestName = ""
-		moduleTarget = strings.TrimPrefix(filepath.Dir(modulePath), filepath.Join(os.Getenv("GOPATH"), "src")+"/")
+		moduleTarget = strings.TrimPrefix(modulePath, filepath.Join(os.Getenv("GOPATH"), "src")+"/")
 		break
 	case config.Maven:
 		manifestName = "pom.xml"

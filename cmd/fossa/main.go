@@ -131,7 +131,7 @@ func main() {
 }
 
 func resolveModuleConfig(moduleConfig config.ModuleConfig) (builders.Builder, module.Module, error) {
-	mainLogger.Debugf("Resolving ModuleConfig: %#v", moduleConfig)
+	mainLogger.Debugf("Resolving moduleConfig: %#v", moduleConfig)
 
 	var builder builders.Builder
 	var m module.Module
@@ -157,7 +157,7 @@ func resolveModuleConfig(moduleConfig config.ModuleConfig) (builders.Builder, mo
 		return builder, m, fmt.Errorf("unable to setup module type: %s", moduleConfig.Type)
 	}
 
-	mainLogger.Debugf("Resolved ModuleConfig to: %#v, %#v", builder, m)
+	mainLogger.Debugf("Resolved moduleConfig to: %#v, %#v", builder, m)
 	return builder, m, nil
 }
 

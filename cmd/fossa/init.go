@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 
 	logging "github.com/op/go-logging"
@@ -35,21 +36,25 @@ func initCmd(c *cli.Context) {
 }
 
 func doInit(conf *config.CliConfig, force bool, includeAll bool) error {
-	var err error
+	findDir := "."
 	if len(conf.Modules) == 0 || force {
-		conf.Modules, err = findModules(".")
+		if cwd, err := os.Getwd(); err == nil {
+			findDir = cwd
+		}
+		var err error
+		conf.Modules, err = findModules(findDir)
 		if err != nil {
-			initLogger.Warningf("A non-fatal error occured during module discovery: %s", err.Error())
+			initLogger.Warningf("Warning during autoconfiguration: %s", err.Error())
 		}
 
 		if !includeAll {
-			// fitler suspicious modules
-			filteredModuleConfigs := []config.ModuleConfig{}
+			// Filter suspicious modules
+			var filteredModuleConfigs []config.ModuleConfig
 			for _, c := range conf.Modules {
 				if matched, err := regexp.MatchString("(docs?/|test|example|vendor/)", c.Path); err != nil || matched != true {
 					filteredModuleConfigs = append(filteredModuleConfigs, c)
 				} else {
-					initLogger.Warningf("Filtering out suspcious module: %s (%s)", c.Name, c.Path)
+					initLogger.Warningf("Filtering out suspicious module: %s (%s)", c.Name, c.Path)
 				}
 			}
 			conf.Modules = filteredModuleConfigs
@@ -60,11 +65,11 @@ func doInit(conf *config.CliConfig, force bool, includeAll bool) error {
 	return nil
 }
 
-// findModules calls DiscoverModules() on all available integrations and returns a new config state
-// to implement fail-open behavior, do not handle the err returned by this function
+// `findModules` calls DiscoverModules() on all available integrations and returns a new config state
+// If this function errors, this is not necessarily fatal; it just means one of the scanners failed
 func findModules(dir string) ([]config.ModuleConfig, error) {
 	var lastError error
-	moduleConfigs := []config.ModuleConfig{}
+	var moduleConfigs []config.ModuleConfig
 	for _, t := range config.ModuleTypes {
 		builder := builders.New(t)
 		foundModules, err := builder.DiscoverModules(dir)

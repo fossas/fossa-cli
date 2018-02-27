@@ -157,7 +157,7 @@ func (builder *MavenBuilder) IsModule(target string) (bool, error) {
 func (builder *MavenBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
 	_, err := os.Stat(filepath.Join(dir, "pom.xml"))
 	if err == nil {
-		// root pom found; parse and return
+		// Root pom found; parse and return
 		artifactName := filepath.Dir(dir)
 		var rootPom PomFile
 		if err := parseLoggedWithUnmarshaller(mavenLogger, filepath.Join(dir, "pom.xml"), &rootPom, xml.Unmarshal); err == nil {
@@ -177,7 +177,7 @@ func (builder *MavenBuilder) DiscoverModules(dir string) ([]config.ModuleConfig,
 		}, nil
 	}
 
-	// no pom in root directory; find and parse all of them
+	// No pom in root directory; find and parse all of them
 	pomFilePaths, err := doublestar.Glob(filepath.Join(dir, "**", "pom.xml"))
 	if err != nil {
 		return nil, err
