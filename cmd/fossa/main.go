@@ -16,9 +16,10 @@ import (
 	"github.com/fossas/fossa-cli/module"
 )
 
-// main.{version,revision} are set by linker flags in Makefile and goreleaser
+// main.{version,commit,goversion} are set by linker flags in Makefile and goreleaser
 var version string
 var commit string
+var goversion string
 
 var mainLogger = logging.MustGetLogger("main")
 
@@ -38,7 +39,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "fossa-cli"
 	app.Usage = "get dependencies from your code"
-	app.Version = version + " (revision " + commit + ")"
+	app.Version = fmt.Sprintf("%s (revision %s compiled with %s)", version, commit, goversion)
 
 	app.Action = defaultCmd
 	app.Flags = []cli.Flag{
