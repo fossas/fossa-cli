@@ -4,7 +4,7 @@ cli:
   # # Defaults to https://app.fossa.io
   # server: https://fossa.on-prem
   # api_key: some-key-here
-  # # If `project` and/or `revision` are unset, infer from VCS.
+  # # If `project` is unset infer from VCS.
   # project: fossa-proj
 
 analyze:
