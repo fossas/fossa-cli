@@ -21,11 +21,10 @@ type configFileV1 struct {
 
 	CLI struct {
 		// Upload configuration.
-		APIKey   string `yaml:"api_key"`
-		Server   string
-		Fetcher  string // for now we don't allow users to set this
-		Project  string
-		Revision string
+		APIKey  string `yaml:"api_key"`
+		Server  string
+		Fetcher string // for now we don't allow users to set this
+		Project string
 	}
 	Analyze struct {
 		Modules []moduleConfig
@@ -102,7 +101,7 @@ func setDefaultValues(c configFileV1) (configFileV1, error) {
 
 	// default to `Custom` fetcher type
 	// if they run CLI inside a git repo and haven't given a project name in the config, we change fetcher to git
-	var fetcher = "cust"
+	var fetcher = "custom"
 
 	// Infer project and revision from `git`.
 	if c.CLI.Project == "" || c.CLI.Revision == "" {
@@ -190,7 +189,6 @@ func parseModuleFlag(moduleFlag string) []moduleConfig {
 func initialize(c *cli.Context) (cliConfig, error) {
 	var config = cliConfig{
 		apiKey:   c.String("api_key"),
-		fetcher:  c.String("fetcher"),
 		project:  c.String("project"),
 		revision: c.String("revision"),
 		endpoint: c.String("endpoint"),

@@ -123,7 +123,7 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 	}
 
 	if config.revision == "" {
-		analysisLogger.Fatal("Could not infer revision name from either `.fossa.yml` or `git` remote named `origin`")
+		analysisLogger.Fatal("Could not infer revision name from `git` remote named `origin`")
 	}
 
 	// Re-marshal into build data

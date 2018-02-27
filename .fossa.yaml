@@ -6,7 +6,6 @@ cli:
   # api_key: some-key-here
   # # If `project` and/or `revision` are unset, infer from VCS.
   # project: fossa-proj
-  # revision: 4.5
 
 analyze:
   # ignores:
