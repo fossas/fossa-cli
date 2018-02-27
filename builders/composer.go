@@ -1,14 +1,16 @@
-package build
+package builders
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	logging "github.com/op/go-logging"
 
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -137,7 +139,43 @@ func (builder *ComposerBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for ComposerBuilder")
 }
 
-// InferModule is not implemented
-func (builder *ComposerBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, errors.New("InferModule is not implemented for ComposerBuilder")
+// DiscoverModules finds composer.json modules not a /vendor/ folder
+func (builder *ComposerBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
+	var moduleConfigs []config.ModuleConfig
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			composerLogger.Debugf("failed to access path %s: %s\n", path, err.Error())
+			return err
+		}
+
+		// Skip the /vendor/ folder
+		if info.IsDir() && info.Name() == "vendor" {
+			composerLogger.Debugf("skipping `vendor` directory: %s", info.Name())
+			return filepath.SkipDir
+		}
+
+		if !info.IsDir() && info.Name() == "composer.json" {
+			moduleName := filepath.Base(filepath.Dir(path))
+
+			// Parse from composer.json and set moduleName if successful
+			var composerPackage ComposerPackage
+			if err := parseLogged(composerLogger, path, &composerPackage); err == nil {
+				moduleName = composerPackage.Name
+			}
+
+			nodejsLogger.Debugf("found Compower package: %s (%s)", path, moduleName)
+			moduleConfigs = append(moduleConfigs, config.ModuleConfig{
+				Name: moduleName,
+				Path: path,
+				Type: string(config.Composer),
+			})
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("could not find Composer package manifests: %s", err.Error())
+	}
+
+	return moduleConfigs, nil
 }

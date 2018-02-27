@@ -1,4 +1,4 @@
-package build
+package builders
 
 import (
 	"errors"
@@ -10,6 +10,7 @@ import (
 	"github.com/bmatcuk/doublestar"
 	logging "github.com/op/go-logging"
 
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -141,7 +142,42 @@ func (builder *BowerBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for BowerBuilder")
 }
 
-// InferModule is not implemented
-func (builder *BowerBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, errors.New("InferModule is not implemented for BowerBuilder")
+// DiscoverModules finds any bower.json modules not in node_modules or bower_components folders
+func (builder *BowerBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
+	var moduleConfigs []config.ModuleConfig
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			bowerLogger.Debugf("Failed to access path %s: %s", path, err.Error())
+			return err
+		}
+		// Skip **/node_modules and **/bower_components directories
+		if info.IsDir() && (info.Name() == "node_modules" || info.Name() == "bower_components") {
+			bowerLogger.Debugf("Skipping directory: %s", info.Name())
+			return filepath.SkipDir
+		}
+
+		if !info.IsDir() && info.Name() == "bower.json" {
+			moduleName := filepath.Base(filepath.Dir(path))
+
+			// Parse from bower.json and set moduleName if successful
+			var bowerComponent BowerComponent
+			if err := parseLogged(bowerLogger, path, &bowerComponent); err == nil {
+				moduleName = bowerComponent.Name
+			}
+
+			bowerLogger.Debugf("Found Bower package: %s (%s)", path, moduleName)
+			moduleConfigs = append(moduleConfigs, config.ModuleConfig{
+				Name: moduleName,
+				Path: path,
+				Type: string(config.Bower),
+			})
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("could not find bower package manifests: %s", err.Error())
+	}
+
+	return moduleConfigs, nil
 }

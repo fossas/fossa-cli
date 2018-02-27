@@ -12,14 +12,12 @@ import (
 	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 
+	"github.com/fossas/fossa-cli/builders"
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
 var uploadLogger = logging.MustGetLogger("upload")
-
-type uploadConfig struct {
-	data string
-}
 
 type normalizedModule struct {
 	Name     string
@@ -51,7 +49,7 @@ type normalizedDependency struct {
 	UnresolvedLocators []string `json:"unresolved_locators,omitempty"`
 }
 
-func normalize(builder module.Builder, m module.Module, deps []module.Dependency) (normalizedModule, error) {
+func normalize(builder builders.Builder, m module.Module, deps []module.Dependency) (normalizedModule, error) {
 	var normalDeps []normalizedDependency
 	for i := 0; i < len(deps); i++ {
 		data, err := json.Marshal(deps[i])
@@ -96,35 +94,35 @@ func normalizeAnalysis(results analysis) ([]normalizedModule, error) {
 }
 
 func uploadCmd(c *cli.Context) {
-	config, err := initialize(c)
+	conf, err := config.New(c)
 	if err != nil {
 		uploadLogger.Fatalf("Could not load configuration: %s", err.Error())
 	}
 
 	var data []normalizedModule
-	err = json.Unmarshal([]byte(config.uploadConfig.data), &data)
+	err = json.Unmarshal([]byte(conf.UploadCmd.Data), &data)
 	if err != nil {
 		uploadLogger.Fatalf("Could not parse user-provided build data: %s", err.Error())
 	}
 
-	msg, err := doUpload(config, data)
+	msg, err := doUpload(conf, data)
 	if err != nil {
 		analysisLogger.Fatalf("Upload failed: %s", err.Error())
 	}
 	fmt.Print(msg)
 }
 
-func doUpload(config cliConfig, results []normalizedModule) (string, error) {
-	fossaBaseURL, err := url.Parse(config.endpoint)
+func doUpload(conf config.CliConfig, results []normalizedModule) (string, error) {
+	fossaBaseURL, err := url.Parse(conf.Endpoint)
 	if err != nil {
 		return "", fmt.Errorf("invalid FOSSA endpoint")
 	}
 
-	if config.revision == "" {
+	if conf.Revision == "" {
 		analysisLogger.Fatal("no revision found in working directory; try running in a git repo or passing a locator")
 	}
 
-	if config.project == "" {
+	if conf.Project == "" {
 		analysisLogger.Fatal("could not infer project name from either `.fossa.yaml` or `git` remote named `origin`")
 	}
 
@@ -136,15 +134,14 @@ func doUpload(config cliConfig, results []normalizedModule) (string, error) {
 
 	analysisLogger.Debugf("Uploading build data from (%#v) modules: %#v", len(results), string(buildData))
 
-	postRef, _ := url.Parse("/api/builds/custom?locator=" + url.QueryEscape(makeLocator(config.project, config.revision)) + "&v=" + version)
+	postRef, _ := url.Parse("/api/builds/custom?locator=" + url.QueryEscape(config.MakeLocator(conf.Project, conf.Revision)) + "&v=" + version)
 	postURL := fossaBaseURL.ResolveReference(postRef).String()
 
 	analysisLogger.Debugf("Sending build data to <%#v>", postURL)
 
 	req, _ := http.NewRequest("POST", postURL, bytes.NewReader(buildData))
 	req.Close = true
-
-	req.Header.Set("Authorization", "token "+config.apiKey)
+	req.Header.Set("Authorization", "token "+conf.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)

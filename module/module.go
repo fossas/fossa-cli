@@ -1,37 +1,21 @@
 package module
 
-// Type is an enumeration of supported build system types
-type Type string
+import (
+	"os"
+	"path/filepath"
+	"strings"
 
-const (
-	// Individual tools
+	logging "github.com/op/go-logging"
 
-	// Bower is the module type for bower.io
-	Bower = Type("bower")
-	// Composer is the module type for getcomposer.org
-	Composer = Type("composer")
-	// Maven is the module type for maven.apache.org
-	Maven = Type("maven")
-	// SBT is the module type for scala-sbt.org
-	SBT = Type("sbt")
-
-	// Ecosystems where many tools behave similarly
-
-	// Ruby is the module type for Bundler (bundler.io)
-	Ruby = Type("ruby")
-	// Nodejs is the module type for NPM (npmjs.org) and Yarn (yarnpkg.com)
-	Nodejs = Type("nodejs")
-	// Golang is the module type for dep, glide, godep, govendor, vndr, and manual
-	// gopath vendoring
-	Golang = Type("golang")
-
-	VendoredArchives = Type("vendoredarchives")
+	"github.com/fossas/fossa-cli/config"
 )
+
+var moduleLogger = logging.MustGetLogger("module")
 
 // A Module is a unit of buildable code within a project.
 type Module struct {
 	Name string
-	Type Type
+	Type config.ModuleType
 	// Target is the entry point or manifest path for the build system. The exact
 	// meaning is Type-dependent.
 	Target string
@@ -43,19 +27,64 @@ type Module struct {
 	// different projects
 }
 
-// A Builder is an implementation of functionality for different build systems.
-type Builder interface {
-	// Initialize gathers build environment information and does build setup.
-	Initialize() error
-	// Build runs a best-effort attempt at building the module.
-	Build(m Module, force bool) error
-	// Analyze returns the dependencies of a module.
-	Analyze(m Module, allowUnresolved bool) ([]Dependency, error)
+// New instantiates and sets up a Module for a given ModuleType
+func New(moduleType config.ModuleType, conf config.ModuleConfig) (Module, error) {
+	var manifestName string
+	var moduleTarget string
 
-	// IsBuilt checks whether a module has been built.
-	IsBuilt(m Module, allowUnresolved bool) (bool, error)
-	// IsModule checks whether a build target is a valid module. This is used for
-	// inferring default configurations.
-	IsModule(target string) (bool, error)
-	InferModule(target string) (Module, error)
+	// Find root dir of module
+	modulePath, err := filepath.Abs(conf.Path)
+	if err != nil {
+		return Module{}, err
+	}
+
+	// infer default module settings from type
+	switch moduleType {
+	case config.Bower:
+		manifestName = "bower.json"
+		break
+	case config.Composer:
+		manifestName = "composer.json"
+		break
+	case config.Golang:
+		manifestName = ""
+		moduleTarget = strings.TrimPrefix(modulePath, filepath.Join(os.Getenv("GOPATH"), "src")+"/")
+		break
+	case config.Maven:
+		manifestName = "pom.xml"
+		break
+	case config.Nodejs:
+		manifestName = "package.json"
+		break
+	case config.Ruby:
+		manifestName = "Gemfile"
+		break
+	case config.SBT:
+		manifestName = "build.sbt"
+		break
+	case config.VendoredArchives:
+		manifestName = ""
+		break
+	}
+
+	// trim manifest from path
+	if filepath.Base(modulePath) == manifestName {
+		modulePath = filepath.Dir(modulePath)
+	}
+
+	moduleName := conf.Name
+	if moduleName == "" {
+		moduleName = conf.Path
+	}
+
+	if moduleTarget == "" {
+		moduleTarget = filepath.Join(modulePath, manifestName)
+	}
+
+	return Module{
+		Name:   moduleName,
+		Type:   moduleType,
+		Target: moduleTarget,
+		Dir:    modulePath,
+	}, nil
 }

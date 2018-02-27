@@ -1,4 +1,4 @@
-package build
+package builders
 
 import (
 	"archive/tar"
@@ -13,7 +13,8 @@ import (
 	"github.com/bmatcuk/doublestar"
 	logging "github.com/op/go-logging"
 
-	module "github.com/fossas/fossa-cli/module"
+	"github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/module"
 )
 
 var archiveLogger = logging.MustGetLogger("archive")
@@ -124,7 +125,7 @@ func (builder *VendoredArchiveBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for VendoredArchiveBuilder")
 }
 
-// InferModule is not implemented
-func (builder *VendoredArchiveBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, errors.New("InferModule is not implemented for VendoredArchiveBuilder")
+// DiscoverModules is not implemented for VendoredArchiveBuilder, instead it must be explicitly configured
+func (builder *VendoredArchiveBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
+	return []config.ModuleConfig{}, nil
 }

@@ -4,15 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
 	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 
-	"github.com/fossas/fossa-cli/build"
+	"github.com/fossas/fossa-cli/builders"
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -29,9 +28,8 @@ const (
 	revisionUsage             = "the FOSSA project's revision hash (default: VCS hash HEAD)"
 	endpointUsage             = "the FOSSA server endpoint (default: https://app.fossa.io)"
 	buildForceUsage           = "ignore cached build artifacts"
-	analyzeOutputUsage        = "print analysis results to stdout"
+	analyzeOutputUsage        = "print results to stdout instead of uploading to FOSSA"
 	analyzeAllowResolvedUsage = "allow unresolved dependencies"
-	analyzeNoUploadUsage      = "do not upload results to FOSSA"
 	debugUsage                = "print debug information to stderr"
 )
 
@@ -50,13 +48,22 @@ func main() {
 		cli.StringFlag{Name: "m, modules", Usage: "the modules to build and analyze"},
 		cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
 		cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
-		cli.BoolFlag{Name: "no-upload", Usage: analyzeNoUploadUsage},
 		cli.BoolFlag{Name: "b, build", Usage: "run a default build in module directories if they have not been pre-built"},
 		cli.BoolFlag{Name: "f, force", Usage: buildForceUsage},
 		cli.BoolFlag{Name: "debug", Usage: debugUsage},
 	}
 
 	app.Commands = []cli.Command{
+		{
+			Name:   "init",
+			Usage:  "Scans your environment for code module entry points and writes to config",
+			Action: initCmd,
+			Flags: []cli.Flag{
+				cli.BoolFlag{Name: "O, overwrite", Usage: "rescan and overwrite modules in config even if they exist"},
+				cli.BoolFlag{Name: "include-all", Usage: "include suspicious modules (`docs`, `test` or `example` in name)"},
+				cli.BoolFlag{Name: "debug", Usage: debugUsage},
+			},
+		},
 		{
 			Name:   "build",
 			Usage:  "Run a default project build",
@@ -81,7 +88,6 @@ func main() {
 				cli.StringFlag{Name: "m, modules", Usage: "the modules to analyze"},
 				cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
 				cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
-				cli.BoolFlag{Name: "no-upload", Usage: analyzeNoUploadUsage},
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
 		},
@@ -124,123 +130,31 @@ func main() {
 	app.Run(os.Args)
 }
 
-func setupModule(config moduleConfig, manifestName string, moduleType module.Type) (module.Module, error) {
-	var m module.Module
-
-	modulePath, err := filepath.Abs(config.Path)
-	if filepath.Base(modulePath) == manifestName {
-		modulePath = filepath.Dir(modulePath)
-	}
-	if err != nil {
-		return m, err
-	}
-
-	moduleName := config.Name
-	if moduleName == "" {
-		moduleName = config.Path
-	}
-
-	m = module.Module{
-		Name:   moduleName,
-		Type:   moduleType,
-		Target: filepath.Join(modulePath, manifestName),
-		Dir:    modulePath,
-	}
-
-	mainLogger.Debugf("Module setup complete: %#v", m)
-
-	return m, nil
-}
-
-func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Module, error) {
+func resolveModuleConfig(moduleConfig config.ModuleConfig) (builders.Builder, module.Module, error) {
 	mainLogger.Debugf("Resolving moduleConfig: %#v", moduleConfig)
 
-	// Don't use `:=` within each switch case, or you'll create a new binding that
-	// shadows these bindings (apparently switches create a new scope...).
-	var builder module.Builder
+	var builder builders.Builder
 	var m module.Module
 	var err error
 
-	switch moduleConfig.Type {
-	case "commonjspackage": // Alias for backwards compatibility
-		fallthrough
-	case "nodejs":
-		mainLogger.Debug("Got NodeJS module.")
-		builder = &build.NodeJSBuilder{}
-		m, err = setupModule(moduleConfig, "package.json", module.Nodejs)
-		if err != nil {
-			return nil, m, err
-		}
-	case "bower":
-		mainLogger.Debug("Got Bower module.")
-		builder = &build.BowerBuilder{}
-		m, err = setupModule(moduleConfig, "bower.json", module.Bower)
-		if err != nil {
-			return nil, m, err
-		}
-	case "composer":
-		mainLogger.Debug("Got Composer module.")
-		builder = &build.ComposerBuilder{}
-		m, err = setupModule(moduleConfig, "composer.json", module.Composer)
-		if err != nil {
-			return nil, m, err
-		}
-	case "gopackage":
-		fallthrough
-	case "golang":
-		fallthrough
-	case "go":
-		mainLogger.Debug("Got Go module.")
-		builder = &build.GoBuilder{}
-		m, err = setupModule(moduleConfig, "", module.Golang)
-		// Target should be relative to $GOPATH
-		m.Target = strings.TrimPrefix(m.Target, filepath.Join(os.Getenv("GOPATH"), "src")+"/")
-		if err != nil {
-			return nil, m, err
-		}
-	case "maven":
-		fallthrough
-	case "mvn":
-		mainLogger.Debug("Got Maven module.")
-		builder = &build.MavenBuilder{}
-		m, err = setupModule(moduleConfig, "pom.xml", module.Maven)
-		if err != nil {
-			return nil, m, err
-		}
-	case "bundler":
-		fallthrough
-	case "gem":
-		fallthrough
-	case "rubygems":
-		fallthrough
-	case "ruby":
-		mainLogger.Debug("Got Ruby module.")
-		builder = &build.RubyBuilder{}
-		m, err = setupModule(moduleConfig, "Gemfile", module.Ruby)
-		if err != nil {
-			return nil, m, err
-		}
-	case "scala":
-		fallthrough
-	case "sbtpackage":
-		fallthrough
-	case "sbt":
-		mainLogger.Debug("Got SBT module.")
-		builder = &build.SBTBuilder{}
-		m, err = setupModule(moduleConfig, "build.sbt", module.SBT)
-		if err != nil {
-			return nil, m, err
-		}
-	case "vendoredarchives":
-		mainLogger.Debug("Got vendored archives module.")
-		builder = &build.VendoredArchiveBuilder{}
-		m, err = setupModule(moduleConfig, "", module.VendoredArchives)
-		if err != nil {
-			return nil, m, err
-		}
-	default:
+	moduleType := config.GetModuleType(moduleConfig.Type)
+	if moduleType == "" {
 		mainLogger.Debug("Got unknown module.")
 		return builder, m, fmt.Errorf("unknown module type: %s", moduleConfig.Type)
+	}
+
+	mainLogger.Debugf("Got %s module.", moduleType)
+	builder = builders.New(moduleType)
+
+	if builder == nil {
+		mainLogger.Debug("Got unknown builder.")
+		return nil, m, fmt.Errorf("no builder available for type: %s", moduleConfig.Type)
+	}
+
+	m, err = module.New(moduleType, moduleConfig)
+	if err != nil {
+		mainLogger.Debug("Unable to resolve module config")
+		return builder, m, fmt.Errorf("unable to setup module type: %s", moduleConfig.Type)
 	}
 
 	mainLogger.Debugf("Resolved moduleConfig to: %#v, %#v", builder, m)
@@ -248,7 +162,7 @@ func resolveModuleConfig(moduleConfig moduleConfig) (module.Builder, module.Modu
 }
 
 func defaultCmd(c *cli.Context) {
-	config, err := initialize(c)
+	conf, err := config.New(c)
 	if err != nil {
 		mainLogger.Fatalf("Could not load configuration: %s", err.Error())
 	}
@@ -257,19 +171,22 @@ func defaultCmd(c *cli.Context) {
 		mainLogger.Noticef("An update is available for this CLI; run `fossa update` to get the latest version.")
 	}
 
-	if len(config.modules) == 0 {
-		mainLogger.Fatal("No modules specified for analysis.")
-	}
-
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
 	s.Writer = os.Stderr
 	s.Suffix = " Initializing..."
 	s.Start()
 
+	doInit(&conf, false, false)
+
+	if len(conf.Modules) == 0 {
+		s.Stop()
+		mainLogger.Fatal("No modules specified for analysis.")
+	}
+
 	dependencies := make(analysis)
 
-	for i, m := range config.modules {
-		s.Suffix = fmt.Sprintf(" Running build analysis (%d/%d): %s", i+1, len(config.modules), m.Name)
+	for i, m := range conf.Modules {
+		s.Suffix = fmt.Sprintf(" Running build analysis (%d/%d): %s", i+1, len(conf.Modules), m.Name)
 		s.Restart()
 
 		builder, module, err := resolveModuleConfig(m)
@@ -284,18 +201,18 @@ func defaultCmd(c *cli.Context) {
 			buildLogger.Fatalf("Failed to initialize build: %s", err.Error())
 		}
 
-		isBuilt, err := builder.IsBuilt(module, config.analyzeConfig.allowUnresolved)
+		isBuilt, err := builder.IsBuilt(module, conf.AnalyzeCmd.AllowUnresolved)
 		if err != nil {
 			s.Stop()
 			mainLogger.Fatalf("Could not determine whether module %s is built: %s", module.Name, err.Error())
 		}
 
 		if !isBuilt {
-			if config.defaultConfig.build {
-				s.Suffix = fmt.Sprintf(" Running module build (%d/%d): %s", i+1, len(config.modules), m.Path)
+			if conf.DefaultCmd.Build {
+				s.Suffix = fmt.Sprintf(" Running module build (%d/%d): %s", i+1, len(conf.Modules), m.Path)
 				s.Restart()
 
-				err := builder.Build(module, config.buildConfig.force)
+				err := builder.Build(module, conf.BuildCmd.Force)
 				if err != nil {
 					s.Stop()
 					mainLogger.Fatalf("Build failed (%s): %s", m.Path, err.Error())
@@ -307,9 +224,9 @@ func defaultCmd(c *cli.Context) {
 		}
 
 		s.Stop()
-		s.Suffix = fmt.Sprintf(" Running module analysis (%d/%d): %s", i+1, len(config.modules), m.Path)
+		s.Suffix = fmt.Sprintf(" Running module analysis (%d/%d): %s", i+1, len(conf.Modules), m.Path)
 		s.Restart()
-		deps, err := builder.Analyze(module, config.analyzeConfig.allowUnresolved)
+		deps, err := builder.Analyze(module, conf.AnalyzeCmd.AllowUnresolved)
 		mainLogger.Debugf("Analysis complete: %#v", deps)
 		s.Stop()
 
@@ -319,7 +236,7 @@ func defaultCmd(c *cli.Context) {
 		}] = deps
 	}
 
-	if config.analyzeConfig.output {
+	if conf.AnalyzeCmd.Output {
 		normalModules, err := normalizeAnalysis(dependencies)
 		if err != nil {
 			mainLogger.Fatalf("Could not normalize build data: %s", err.Error())
@@ -329,21 +246,28 @@ func defaultCmd(c *cli.Context) {
 			mainLogger.Fatalf("Could marshal analysis results: %s", err.Error())
 		}
 		fmt.Println(string(buildData))
-	}
-
-	if config.analyzeConfig.noUpload {
+		os.Exit(0)
 		return
 	}
 
 	s.Stop()
-	s.Suffix = fmt.Sprintf(" Uploading build results (%d/%d)...", len(config.modules), len(config.modules))
+	s.Suffix = fmt.Sprintf(" Writing configuration...")
+	s.Restart()
+
+	if err := config.WriteConfigFile(&conf); err != nil {
+		mainLogger.Fatalf("Error writing config: %s", err.Error())
+	}
+	mainLogger.Warningf("Config written to `%s`.", conf.ConfigFilePath)
+
+	s.Stop()
+	s.Suffix = fmt.Sprintf(" Uploading build results (%d/%d)...", len(conf.Modules), len(conf.Modules))
 	s.Restart()
 
 	normalModules, err := normalizeAnalysis(dependencies)
 	if err != nil {
 		mainLogger.Fatalf("Could not normalize build data: %s", err.Error())
 	}
-	msg, err := doUpload(config, normalModules)
+	msg, err := doUpload(conf, normalModules)
 	s.Stop()
 	if err != nil {
 		mainLogger.Fatalf("Upload failed: %s", err.Error())

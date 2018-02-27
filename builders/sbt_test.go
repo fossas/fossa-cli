@@ -1,9 +1,9 @@
-package build_test
+package builders_test
 
 import (
 	"testing"
 
-	"github.com/fossas/fossa-cli/build"
+	"github.com/fossas/fossa-cli/builders"
 )
 
 func assert(t *testing.T, property, actual, expected string) {
@@ -13,7 +13,7 @@ func assert(t *testing.T, property, actual, expected string) {
 }
 
 func TestInitialize(t *testing.T) {
-	builder := build.SBTBuilder{}
+	builder := builders.SBTBuilder{}
 	err := builder.Initialize()
 	if err != nil {
 		t.Fatalf("Could not initialize: %#v", err)

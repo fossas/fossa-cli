@@ -1,14 +1,18 @@
-package build
+package builders
 
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/bmatcuk/doublestar"
 	logging "github.com/op/go-logging"
 
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -148,7 +152,34 @@ func (builder *RubyBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for RubyBuilder")
 }
 
-// InferModule is not implemented
-func (builder *RubyBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, errors.New("InferModule is not implemented for RubyBuilder")
+// DiscoverModules returns ModuleConfigs that match Gemfiles in the directory
+func (builder *RubyBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
+	gemFilePaths, err := doublestar.Glob(filepath.Join(dir, "**", "Gemfile"))
+	if err != nil {
+		return nil, err
+	}
+	moduleConfigs := make([]config.ModuleConfig, len(gemFilePaths))
+	for i, path := range gemFilePaths {
+		gemName := filepath.Dir(path)
+		// infer title from *.gemspec in directory if exists
+		gemSpecs, err := doublestar.Glob(filepath.Join(filepath.Dir(path), "*.gemspec"))
+		if err == nil && len(gemSpecs) > 0 {
+			matchGemName := regexp.MustCompile(`\s+s\.name\s+=\s?"(\w+)"`)
+			gemSpecContents, err := ioutil.ReadFile(gemSpecs[0])
+			if err == nil {
+				matches := matchGemName.FindStringSubmatch(string(gemSpecContents))
+				// matches: [0] = full match, [1] capture group
+				if len(matches) == 2 {
+					rubyLogger.Debugf("%v", matches[1])
+					gemName = matches[1]
+				}
+			}
+		}
+		moduleConfigs[i] = config.ModuleConfig{
+			Name: gemName,
+			Path: path,
+			Type: "ruby",
+		}
+	}
+	return moduleConfigs, nil
 }

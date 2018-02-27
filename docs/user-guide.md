@@ -214,11 +214,27 @@ Print the version, then exit.
 ##### `-h, --help`
 Print a help message, then exit.
 
-<!-- ### `fossa init`
+### `fossa init`
 
-Makes a best-effort attempt at inferring the correct configuration, then outputs the configuration to `stdout`.
+Makes a best-effort attempt at inferring the correct configuration from current system state. If successful, it will write the configuration to a new or existing config file (defaults to `.fossa.yml`).
 
-Configuration inference is done on a language-by-language basis. For example, `commonjs` packages are inferred by checking for `package.json`s that are not within `node_modules`. -->
+If there are no modules defined in the configuration, it will scan the working directory for code modules to analyze.  You can pass the `--overwrite` to overwrite any existing modules in configuration.
+
+By default, this command will filter out any modules that have `docs`, `test` or `example` in the path.  You can disable this by passing the `--include-all` flag.
+
+#### Flags
+##### `-O, --overwrite`
+Force scanning for new modules and overwrite any existing config.
+
+##### `--include-all`
+Include any suspicious modules that would have been filtered out (`docs`, `test`, `example`).
+
+##### `--debug`
+Print debugging information to `stderr`.
+
+##### `-h, --help`
+Print a help message, then exit.
+
 
 ### `fossa build`
 
@@ -278,7 +294,7 @@ Sets the modules to use as entry points when analyzing dependencies.
 Sets the modules and paths to ignore when analyzing dependencies. -->
 
 ##### `-o, --output`
-Prints analysis results to `stdout`. When this flag is set, `fossa analyze` provides interactive output on `stderr`.
+Prints analysis results to `stdout` instead of uploading results to a FOSSA server. When this flag is set, `fossa analyze` provides interactive output on `stderr`.
 
 ##### `--allow-unresolved`
 Do not fail on unresolved dependencies.
@@ -286,9 +302,6 @@ Do not fail on unresolved dependencies.
 For some languages, `fossa analyze` does import path tracing to determine dependencies. If these the dependencies at the import paths cannot be found, the dependency is _unresolved_.
 
 Unresolved dependencies generally indicate an incomplete build or some other kind of build error. For highly custom build systems, this may not be the case.
-
-##### `--no-upload`
-Do not upload analysis results.
 
 ##### `--debug`
 Print debugging information to `stderr`.
@@ -304,7 +317,7 @@ Uploads user-provided build data to FOSSA. This allows users to manually provide
 ```bash
 # You can manually override the project and revision name.
 # This is useful when `fossa` can't manually infer them from `git`.
-FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --project=PROJECT_NAME --revision=SOME_HASH --data=$(fossa analyze --no-upload --output)
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --project=PROJECT_NAME --revision=SOME_HASH --data=$(fossa analyze --output)
 ```
 
 #### Flags

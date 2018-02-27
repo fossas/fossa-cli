@@ -1,13 +1,16 @@
-package build
+package builders
 
 import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/bmatcuk/doublestar"
 	logging "github.com/op/go-logging"
 
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -147,7 +150,38 @@ func (builder *SBTBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for SBTBuilder")
 }
 
-// InferModule is not implemented
-func (builder *SBTBuilder) InferModule(target string) (module.Module, error) {
-	return module.Module{}, errors.New("InferModule is not implemented for SBTBuilder")
+// DiscoverModules returns a root build.sbt if found, and build configs for all sub-projects otherwise
+func (builder *SBTBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
+	_, err := os.Stat(filepath.Join(dir, "build.sbt"))
+	if err == nil {
+		// in a multi-project build (https://www.scala-sbt.org/1.x-beta/docs/Multi-Project.html) we return the root build.sbt only
+		absDir, err := filepath.Abs(dir)
+		if err != nil {
+			absDir = dir
+		}
+		artifactName := filepath.Base(absDir)
+		return []config.ModuleConfig{
+			config.ModuleConfig{
+				Name: artifactName,
+				Path: "build.sbt",
+				Type: "sbt",
+			},
+		}, nil
+	}
+
+	// no pom in root directory; find and parse all of them
+	sbtFilePaths, err := doublestar.Glob(filepath.Join(dir, "**", "build.sbt"))
+	if err != nil {
+		return nil, err
+	}
+	moduleConfigs := make([]config.ModuleConfig, len(sbtFilePaths))
+	for i, path := range sbtFilePaths {
+		artifactName := filepath.Dir(path) // Use the dirname as it's impossible to reliably parse from build.sbt
+		moduleConfigs[i] = config.ModuleConfig{
+			Name: artifactName,
+			Path: path,
+			Type: "sbt",
+		}
+	}
+	return moduleConfigs, nil
 }

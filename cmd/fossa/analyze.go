@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/fossas/fossa-cli/builders"
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
@@ -12,22 +14,16 @@ import (
 
 var analysisLogger = logging.MustGetLogger("analyze")
 
-type analyzeConfig struct {
-	output          bool
-	allowUnresolved bool
-	noUpload        bool
-}
-
 func analyzeCmd(c *cli.Context) {
-	config, err := initialize(c)
+	conf, err := config.New(c)
 	if err != nil {
 		buildLogger.Fatalf("Could not load configuration: %s", err.Error())
 	}
-	if len(config.modules) == 0 {
+	if len(conf.Modules) == 0 {
 		buildLogger.Fatal("No modules specified.")
 	}
 
-	analysis, err := doAnalyze(config.modules, config.analyzeConfig.allowUnresolved)
+	analysis, err := doAnalyze(conf.Modules, conf.AnalyzeCmd.AllowUnresolved)
 	if err != nil {
 		analysisLogger.Fatalf("Analysis failed: %s", err.Error())
 	}
@@ -38,20 +34,17 @@ func analyzeCmd(c *cli.Context) {
 		analysisLogger.Fatalf("Could not normalize build data: %s", err.Error())
 	}
 
-	if config.analyzeConfig.output {
+	if conf.AnalyzeCmd.Output {
 		buildData, err := json.Marshal(normalModules)
 		if err != nil {
 			analysisLogger.Fatalf("Could not marshal analysis results: %s", err.Error())
 		}
 		fmt.Println(string(buildData))
-	}
-
-	if config.analyzeConfig.noUpload {
-		fmt.Fprintln(os.Stderr, "Analysis succeeded!")
+		os.Exit(0)
 		return
 	}
 
-	msg, err := doUpload(config, normalModules)
+	msg, err := doUpload(conf, normalModules)
 	if err != nil {
 		analysisLogger.Fatalf("Upload failed: %s", err.Error())
 	}
@@ -59,13 +52,13 @@ func analyzeCmd(c *cli.Context) {
 }
 
 type analysisKey struct {
-	builder module.Builder
+	builder builders.Builder
 	module  module.Module
 }
 
 type analysis map[analysisKey][]module.Dependency
 
-func doAnalyze(modules []moduleConfig, allowUnresolved bool) (analysis, error) {
+func doAnalyze(modules []config.ModuleConfig, allowUnresolved bool) (analysis, error) {
 	analysisLogger.Debugf("Running analysis on modules: %#v", modules)
 	dependencies := make(analysis)
 
