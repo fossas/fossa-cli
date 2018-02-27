@@ -245,6 +245,7 @@ func defaultCmd(c *cli.Context) {
 			mainLogger.Fatalf("Could marshal analysis results: %s", err.Error())
 		}
 		fmt.Println(string(buildData))
+		os.Exit(0)
 		return
 	}
 
