@@ -20,7 +20,7 @@ func initCmd(c *cli.Context) {
 		initLogger.Fatalf("Could not load configuration: %s", err.Error())
 	}
 
-	if err := doInit(&conf, c.Bool("force"), c.Bool("include-all")); err != nil {
+	if err := doInit(&conf, c.Bool("overwrite"), c.Bool("include-all")); err != nil {
 		initLogger.Fatalf("Error initializing: %s", err.Error())
 	}
 
@@ -33,9 +33,9 @@ func initCmd(c *cli.Context) {
 	fmt.Println("`fossa` is initialized")
 }
 
-func doInit(conf *config.CliConfig, force bool, includeAll bool) error {
+func doInit(conf *config.CliConfig, overwrite bool, includeAll bool) error {
 	findDir := "."
-	if len(conf.Modules) == 0 || force {
+	if len(conf.Modules) == 0 || overwrite {
 		if cwd, err := os.Getwd(); err == nil {
 			findDir = cwd
 		}
