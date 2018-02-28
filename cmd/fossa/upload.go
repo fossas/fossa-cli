@@ -134,7 +134,12 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 
 	analysisLogger.Debugf("Uploading build data from (%#v) modules: %#v", len(results), string(buildData))
 
-	postRef, _ := url.Parse("/api/builds/custom?locator=" + url.QueryEscape(config.MakeLocator(conf.fetcher, conf.project, conf.revision)) + "&v=" + version)
+	fossaEndpoint := "/api/builds/custom?locator=" + url.QueryEscape(config.MakeLocator(conf.fetcher, conf.project, conf.revision)) + "&v=" + version
+	if config.customProject {
+		fossaEndpoint += "&managedBuild=true"
+	}
+
+	postRef, _ := url.Parse(fossaEndpoint)
 	postURL := fossaBaseURL.ResolveReference(postRef).String()
 
 	analysisLogger.Debugf("Sending build data to <%#v>", postURL)
@@ -156,7 +161,7 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 		return "", fmt.Errorf("invalid API key (check the $FOSSA_API_KEY environment variable)")
 	} else if resp.StatusCode == http.StatusPreconditionRequired {
 		// TODO: handle "Managed Project" workflow
-		return "", fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo")
+		return "", fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo. To submit a custom project, add the --custom-project flag")
 	} else if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("bad server response (%#v)", responseStr)
 	}

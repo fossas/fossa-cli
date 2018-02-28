@@ -31,6 +31,7 @@ const (
 	analyzeOutputUsage        = "print results to stdout instead of uploading to FOSSA"
 	analyzeAllowResolvedUsage = "allow unresolved dependencies"
 	debugUsage                = "print debug information to stderr"
+	managedBuildUsage         = "upload results as a custom project to FOSSA"
 )
 
 func main() {
@@ -51,6 +52,7 @@ func main() {
 		cli.BoolFlag{Name: "b, build", Usage: "run a default build in module directories if they have not been pre-built"},
 		cli.BoolFlag{Name: "f, force", Usage: buildForceUsage},
 		cli.BoolFlag{Name: "debug", Usage: debugUsage},
+		cli.BoolFlag{Name: "custom-project", Usage: managedBuildUsage},
 	}
 
 	app.Commands = []cli.Command{
@@ -89,6 +91,7 @@ func main() {
 				cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
 				cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
+				cli.BoolFlag{Name: "custom-project", Usage: managedBuildUsage},
 			},
 		},
 		{

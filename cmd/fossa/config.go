@@ -21,10 +21,10 @@ type configFileV1 struct {
 
 	CLI struct {
 		// Upload configuration.
-		APIKey  string `yaml:"api_key"`
-		Server  string
-		Fetcher string // for now we don't allow users to set this
-		Project string
+		APIKey   string `yaml:"api_key"`
+		Server   string
+		Project  string
+		Revision string
 	}
 	Analyze struct {
 		Modules []moduleConfig
@@ -99,12 +99,8 @@ func setDefaultValues(c configFileV1) (configFileV1, error) {
 		c.CLI.APIKey = os.Getenv("FOSSA_API_KEY")
 	}
 
-	// default to `Custom` fetcher type
-	// if they run CLI inside a git repo and haven't given a project name in the config, we change fetcher to git
-	var fetcher = "custom"
-
 	// Infer project and revision from `git`.
-	if c.CLI.Project == "" || c.CLI.Revision == "" {
+	if c.CLI.Project == "" {
 		// TODO: this needs to happen in the module directory, not the working directory
 		repo, err := git.PlainOpen(".")
 		if err == nil {
@@ -114,7 +110,6 @@ func setDefaultValues(c configFileV1) (configFileV1, error) {
 				if err == nil && origin != nil {
 					project = origin.Config().URLs[0]
 					c.CLI.Project = project
-					fetcher = "git" // project is a git remote, so fetcher must be as well
 				}
 			}
 			revision := c.CLI.Revision
@@ -127,19 +122,18 @@ func setDefaultValues(c configFileV1) (configFileV1, error) {
 		}
 	}
 
-	c.CLI.Fetcher = fetcher // set fetcher in config
-
 	return c, nil
 }
 
 type cliConfig struct {
-	apiKey   string
-	fetcher  string
-	project  string
-	revision string
-	endpoint string
-	modules  []moduleConfig
-	debug    bool
+	apiKey        string
+	fetcher       string
+	project       string
+	revision      string
+	endpoint      string
+	modules       []moduleConfig
+	debug         bool
+	customProject bool
 
 	defaultConfig defaultConfig
 	analyzeConfig analyzeConfig
@@ -188,12 +182,13 @@ func parseModuleFlag(moduleFlag string) []moduleConfig {
 
 func initialize(c *cli.Context) (cliConfig, error) {
 	var config = cliConfig{
-		apiKey:   c.String("api_key"),
-		project:  c.String("project"),
-		revision: c.String("revision"),
-		endpoint: c.String("endpoint"),
-		modules:  parseModuleFlag(c.String("modules")),
-		debug:    c.Bool("debug"),
+		apiKey:        c.String("api_key"),
+		project:       c.String("project"),
+		revision:      c.String("revision"),
+		endpoint:      c.String("endpoint"),
+		modules:       parseModuleFlag(c.String("modules")),
+		debug:         c.Bool("debug"),
+		customProject: c.Bool("custom-project"),
 
 		defaultConfig: defaultConfig{
 			build: c.Bool("build"),
@@ -224,9 +219,6 @@ func initialize(c *cli.Context) (cliConfig, error) {
 		return cliConfig{}, err
 	}
 
-	if config.fetcher == "" {
-		config.fetcher = configFile.CLI.Fetcher
-	}
 	if config.project == "" {
 		config.project = configFile.CLI.Project
 	}
@@ -241,6 +233,11 @@ func initialize(c *cli.Context) (cliConfig, error) {
 	}
 	if len(config.modules) == 0 {
 		config.modules = configFile.Analyze.Modules
+	}
+
+	config.fetcher = "git"
+	if config.customProject {
+		config.fetcher = "custom"
 	}
 
 	// Configure logging.
