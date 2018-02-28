@@ -342,19 +342,21 @@ Print debugging information to `stderr`.
 ##### `-h, --help`
 Print a help message, then exit.
 
-<!-- ### `fossa report`
+### `fossa report`
 
 Print the project's license report.
 
 #### Flags
-##### `-t, --type report_type`
-Print a specific type of license report for automatically creating attribution files. Possible report types include:
-- `NOTICE`: generate a `NOTICE` file for your dependencies
-- `ATTRIBUTION`: generate an `ATTRIBUTION` file for your dependencies
-
-##### `-j, --json`
+<!-- ##### `-j, --json`
 Print the report data in JSON format.
 -->
+
+##### `--debug`
+Print debugging information to `stderr`.
+
+##### `-h, --help`
+Print a help message, then exit.
+
 ### `fossa test`
 
 #### Example

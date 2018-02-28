@@ -131,6 +131,18 @@ func main() {
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
 		},
+		{
+			Name:   "report",
+			Usage:  "Generates a license report",
+			Action: reportCmd,
+			Flags: []cli.Flag{
+				cli.StringFlag{Name: "c, config", Usage: configUsage},
+				cli.StringFlag{Name: "p, project", Usage: projectUsage},
+				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
+				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
+				cli.BoolFlag{Name: "debug", Usage: debugUsage},
+			},
+		},
 	}
 
 	app.Run(os.Args)
