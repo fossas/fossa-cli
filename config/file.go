@@ -72,16 +72,18 @@ func setDefaultValues(c configFileV1) (configFileV1, error) {
 	c.Version = 1
 
 	// Set default endpoint.
+	endpoint := os.Getenv("FOSSA_ENDPOINT")
+	if endpoint != "" {
+		c.CLI.Server = endpoint
+	}
 	if c.CLI.Server == "" {
-		c.CLI.Server = os.Getenv("FOSSA_ENDPOINT")
-		if c.CLI.Server == "" {
-			c.CLI.Server = "https://app.fossa.io"
-		}
+		c.CLI.Server = "https://app.fossa.io"
 	}
 
 	// Load API key from environment variable.
-	if c.CLI.APIKey == "" {
-		c.CLI.APIKey = os.Getenv("FOSSA_API_KEY")
+	apiKey := os.Getenv("FOSSA_API_KEY")
+	if apiKey != "" {
+		c.CLI.APIKey = apiKey
 	}
 
 	// Infer default locator and project from `git`.
@@ -115,10 +117,15 @@ func WriteConfigFile(conf *CLIConfig) error {
 		conf.ConfigFilePath = ".fossa.yml"
 	}
 
+	keyToWrite := ""
+	if os.Getenv("FOSSA_API_KEY") == "" {
+		keyToWrite = conf.APIKey
+	}
+
 	writeConfig := configFileV1{
 		Version: 1,
 		CLI: configFileCLIV1{
-			APIKey:  conf.APIKey,
+			APIKey:  keyToWrite,
 			Server:  conf.Endpoint,
 			Project: conf.Project,
 		},
