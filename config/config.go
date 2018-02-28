@@ -225,15 +225,18 @@ type DefaultConfig struct {
 	Build bool
 }
 
-func parseModuleFlag(moduleFlag string) []ModuleConfig {
+func parseModulesFlag(moduleFlag string) ([]ModuleConfig, error) {
 	if moduleFlag == "" {
-		return []ModuleConfig{}
+		return []ModuleConfig{}, nil
 	}
 	var config []ModuleConfig
 
 	modules := strings.Split(moduleFlag, ",")
 	for _, m := range modules {
 		sections := strings.Split(m, ":")
+		if len(sections) != 2 {
+			return nil, fmt.Errorf("invalid modules flag: %s", moduleFlag)
+		}
 		config = append(config, ModuleConfig{
 			Name: sections[1],
 			Path: sections[1],
@@ -241,17 +244,22 @@ func parseModuleFlag(moduleFlag string) []ModuleConfig {
 		})
 	}
 
-	return config
+	return config, nil
 }
 
 // New creates a CliConfig from cli context
 func New(c *cli.Context) (CliConfig, error) {
+	modules, err := parseModulesFlag(c.String("modules"))
+	if err != nil {
+		return CliConfig{}, err
+	}
+
 	var config = CliConfig{
 		APIKey:         c.String("api_key"),
 		Project:        c.String("project"),
 		Revision:       c.String("revision"),
 		Endpoint:       c.String("endpoint"),
-		Modules:        parseModuleFlag(c.String("modules")),
+		Modules:        modules,
 		Debug:          c.Bool("debug"),
 		ConfigFilePath: c.String("config"),
 
