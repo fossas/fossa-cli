@@ -112,7 +112,7 @@ func uploadCmd(c *cli.Context) {
 	fmt.Print(msg)
 }
 
-func doUpload(conf config.CliConfig, results []normalizedModule) (string, error) {
+func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error) {
 	fossaBaseURL, err := url.Parse(conf.Endpoint)
 	if err != nil {
 		return "", fmt.Errorf("invalid FOSSA endpoint")
