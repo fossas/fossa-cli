@@ -118,11 +118,11 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 		return "", fmt.Errorf("invalid FOSSA endpoint")
 	}
 
-	if config.project == "" {
+	if conf.Project == "" {
 		analysisLogger.Fatal("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
 	}
 
-	if config.revision == "" {
+	if conf.Revision == "" {
 		analysisLogger.Fatal("Could not infer revision name from `git` remote named `origin`")
 	}
 
@@ -134,8 +134,8 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 
 	analysisLogger.Debugf("Uploading build data from (%#v) modules: %#v", len(results), string(buildData))
 
-	fossaEndpoint := "/api/builds/custom?locator=" + url.QueryEscape(config.MakeLocator(conf.fetcher, conf.project, conf.revision)) + "&v=" + version
-	if config.customProject {
+	fossaEndpoint := "/api/builds/custom?locator=" + url.QueryEscape(config.MakeLocator(conf.Fetcher, conf.Project, conf.Revision)) + "&v=" + version
+	if conf.CustomProject {
 		fossaEndpoint += "&managedBuild=true"
 	}
 

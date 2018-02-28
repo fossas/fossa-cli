@@ -40,12 +40,14 @@ type UploadConfig struct {
 
 // CLIConfig specifies the config available to the cli
 type CLIConfig struct {
-	APIKey   string
-	Project  string
-	Revision string
-	Endpoint string
-	Modules  []ModuleConfig
-	Debug    bool
+	APIKey        string
+	Fetcher       string
+	Project       string
+	Revision      string
+	Endpoint      string
+	Modules       []ModuleConfig
+	Debug         bool
+	CustomProject bool
 
 	DefaultCmd DefaultConfig
 	AnalyzeCmd AnalyzeConfig
@@ -57,7 +59,10 @@ type CLIConfig struct {
 }
 
 // MakeLocator creates a locator string given a package and revision
-func MakeLocator(project string, revision string) string {
+func MakeLocator(fetcher string, project string, revision string) string {
+	if fetcher != "git" {
+		return fetcher + "+" + project + "$" + revision
+	}
 	// Remove fetcher prefix (in case project is derived from splitting a locator on '$')
 	noFetcherPrefix := strings.TrimPrefix(project, "git+")
 
@@ -109,6 +114,7 @@ func New(c *cli.Context) (CLIConfig, error) {
 		Modules:        modules,
 		Debug:          c.Bool("debug"),
 		ConfigFilePath: c.String("config"),
+		CustomProject:  c.Bool("custom-project"),
 
 		DefaultCmd: DefaultConfig{
 			Build: c.Bool("build"),
@@ -139,23 +145,16 @@ func New(c *cli.Context) (CLIConfig, error) {
 		return CLIConfig{}, err
 	}
 
-	var locatorSections []string
-	var locatorProject string
-	var locatorRevision string
-
-	if configFile.CLI.Locator != "" {
-		locatorSections = strings.Split(configFile.CLI.Locator, "$")
-		locatorProject = strings.TrimPrefix(locatorSections[0], "git+")
-		locatorRevision = locatorSections[1]
+	config.Fetcher = "git"
+	if config.CustomProject {
+		config.Fetcher = "custom"
 	}
+
 	if config.Project == "" {
 		config.Project = configFile.CLI.Project
-		if config.Project == "" {
-			config.Project = locatorProject
-		}
 	}
 	if config.Revision == "" {
-		config.Revision = locatorRevision
+		config.Revision = configFile.CLI.Revision
 	}
 
 	if config.APIKey == "" {
