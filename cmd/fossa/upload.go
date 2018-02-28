@@ -122,8 +122,8 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 		analysisLogger.Fatal("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
 	}
 
-	if conf.Revision == "" {
-		analysisLogger.Fatal("Could not infer revision name from `git` remote named `origin`")
+	if !conf.CustomProject && conf.Revision == "" {
+		analysisLogger.Fatal("Could not infer revision name from `git` remote named `origin`. To submit a custom project, add the --custom-project flag")
 	}
 
 	// Re-marshal into build data

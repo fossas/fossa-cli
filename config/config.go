@@ -145,16 +145,16 @@ func New(c *cli.Context) (CLIConfig, error) {
 		return CLIConfig{}, err
 	}
 
-	config.Fetcher = "git"
-	if config.CustomProject {
-		config.Fetcher = "custom"
-	}
-
 	if config.Project == "" {
 		config.Project = configFile.CLI.Project
 	}
 	if config.Revision == "" {
 		config.Revision = configFile.CLI.Revision
+	}
+
+	config.Fetcher = "git"
+	if config.CustomProject {
+		config.Fetcher = "custom"
 	}
 
 	if config.APIKey == "" {
