@@ -1,5 +1,12 @@
 package config
 
+// ModuleConfig defines a config for a builder's entry point
+type ModuleConfig struct {
+	Name string `yaml:"name"`
+	Path string `yaml:"path"`
+	Type string `yaml:"type"` // this is later transformed to a ModuleType
+}
+
 // ModuleType is an enumeration of supported build system types
 type ModuleType string
 

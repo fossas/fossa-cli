@@ -33,7 +33,7 @@ func initCmd(c *cli.Context) {
 	fmt.Println("`fossa` is initialized")
 }
 
-func doInit(conf *config.CliConfig, overwrite bool, includeAll bool) error {
+func doInit(conf *config.CLIConfig, overwrite bool, includeAll bool) error {
 	findDir := "."
 	if len(conf.Modules) == 0 || overwrite {
 		if cwd, err := os.Getwd(); err == nil {
