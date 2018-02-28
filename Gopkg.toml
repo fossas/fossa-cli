@@ -18,7 +18,7 @@
 # [[override]]
 #  name = "github.com/x/y"
 #  version = "2.4.0"
-
+ignored = ["github.com/fossas/fossa-cli/test/fixtures/golang/*"]
 
 [[constraint]]
   name = "github.com/BurntSushi/toml"
