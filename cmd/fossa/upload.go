@@ -122,8 +122,8 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 		analysisLogger.Fatal("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
 	}
 
-	if !conf.CustomProject && conf.Revision == "" {
-		analysisLogger.Fatal("Could not infer revision name from `git` remote named `origin`. To submit a custom project, add the --custom-project flag")
+	if conf.ExistingProject && conf.Revision == "" {
+		analysisLogger.Fatal("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set existing_project to false in `.fossa.yml`")
 	}
 
 	// Re-marshal into build data
@@ -135,7 +135,7 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 	analysisLogger.Debugf("Uploading build data from (%#v) modules: %#v", len(results), string(buildData))
 
 	fossaEndpoint := "/api/builds/custom?locator=" + url.QueryEscape(config.MakeLocator(conf.Fetcher, conf.Project, conf.Revision)) + "&v=" + version
-	if conf.CustomProject {
+	if !conf.ExistingProject {
 		fossaEndpoint += "&managedBuild=true"
 	}
 

@@ -18,10 +18,11 @@ type configFileV1 struct {
 
 type configFileCLIV1 struct {
 	// Upload configuration.
-	APIKey   string `yaml:"api_key,omitempty"`
-	Server   string `yaml:"server,omitempty"`
-	Project  string `yaml:"project,omitempty"`
-	Revision string `yaml:"revision,omitempty"`
+	APIKey          string `yaml:"api_key,omitempty"`
+	Server          string `yaml:"server,omitempty"`
+	Project         string `yaml:"project,omitempty"`
+	Revision        string `yaml:"revision,omitempty"`
+	ExistingProject bool   `yaml:"existing_project"` // project exists in FOSSA (defaults to false as managed build is default)
 }
 
 type configFileAnalyzeV1 struct {
@@ -127,15 +128,15 @@ func WriteConfigFile(conf *CLIConfig) error {
 	writeConfig := configFileV1{
 		Version: 1,
 		CLI: configFileCLIV1{
-			APIKey:  keyToWrite,
-			Server:  conf.Endpoint,
-			Project: conf.Project,
+			APIKey:          keyToWrite,
+			Server:          conf.Endpoint,
+			Project:         conf.Project,
+			ExistingProject: conf.ExistingProject,
 		},
 		Analyze: configFileAnalyzeV1{
 			Modules: conf.Modules,
 		},
 	}
-
 	yamlConfig, err := yaml.Marshal(writeConfig)
 	if err != nil {
 		return err
