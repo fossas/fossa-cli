@@ -28,7 +28,7 @@ type dependencyResponse struct {
 }
 
 type licenseResponse struct {
-	ID       string
+	ID       string `json:"spdx_id"`
 	Title    string
 	FullText string
 }
