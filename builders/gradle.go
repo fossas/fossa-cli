@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -18,32 +19,29 @@ var gradleLogger = logging.MustGetLogger("gradle")
 
 // GradleBuilder implements Builder for build.gradle builds
 type GradleBuilder struct {
-	JavaCmd     string
-	JavaVersion string
-
 	GradleCmd     string
 	GradleVersion string
 }
 
 // Initialize collects metadata on Java and Maven binaries
 func (builder *GradleBuilder) Initialize() error {
-	gradleLogger.Debug("Initializing Maven builder...")
+	gradleLogger.Debug("Initializing Gradle builder...")
 
-	// Set Java context variables
-	javaCmd, javaVersion, err := which("-version", os.Getenv("JAVA_BINARY"), "java")
-	if err != nil {
-		return fmt.Errorf("could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
-	}
-	builder.JavaCmd = javaCmd
-	builder.JavaVersion = javaVersion
+	// Set Gradle context variables
+	gradleCmd, gradleVersionOut, err := which("--version --offline", os.Getenv("GRADLE_BINARY"), "./gradlew", "gradle")
+	if err == nil {
+		builder.GradleCmd = gradleCmd
 
-	// Set Maven context variables
-	gradleCmd, gradleVersion, err := which("--version", "gradlew", os.Getenv("GRADLE_BINARY"), "gradle")
-	if err != nil {
-		return fmt.Errorf("could not find Gradle binary or wrapper (try setting $GRADLE_BINARY): %s", err.Error())
+		gradleVersionMatchRe := regexp.MustCompile(`Gradle ([0-9]+\.[0-9]+.\w+)`)
+		match := gradleVersionMatchRe.FindStringSubmatch(gradleVersionOut)
+		if len(match) == 2 {
+			builder.GradleVersion = match[1]
+		}
 	}
-	builder.GradleCmd = gradleCmd
-	builder.GradleVersion = gradleVersion
+
+	if builder.GradleCmd == "" {
+		return fmt.Errorf("could not find Gradle binary or wrapper (try setting $GRADLE_BINARY)")
+	}
 
 	gradleLogger.Debugf("Done initializing Gradle builder: %#v", builder)
 	return nil
@@ -56,25 +54,33 @@ func (builder *GradleBuilder) Build(m module.Module, force bool) error {
 
 // Analyze parses the output of `gradle -q app:dependencies`
 func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	// TODO: allow configuration of root
-	gradleLogger.Debugf("Running Maven analysis: %#v %#v", m, allowUnresolved)
+	gradleLogger.Debugf("Running Gradle analysis: %#v %#v in %s", m, allowUnresolved, m.Dir)
 
-	output, _, err := runLogged(gradleLogger, m.Dir, builder.GradleCmd, "-q", "app:dependencies")
-	if err != nil {
-		return nil, fmt.Errorf("could not get dependency list from Maven: %s", err.Error())
+	// TODO: We need to let the user configure the right configurations
+	dependenciesOutput, err := exec.Command(builder.GradleCmd, m.Name+":dependencies", "-q", "--configuration=compile", "--offline", "-a").Output()
+	// Do not handle error, as gradle will exit with status 1 regardless
+	if len(dependenciesOutput) == 0 || err != nil {
+		return nil, fmt.Errorf("could not run Gradle task %s:dependencies", m.Name)
 	}
 
-	deps := []module.Dependency{}
-	outputMatchRe := regexp.MustCompile(`\[INFO\]    ([^:]+):([^:]+):(jar|war|java-source|):([^:]+)`)
-	for _, line := range strings.Split(output, "\n") {
+	var deps []module.Dependency
+	dependenciesRe := regexp.MustCompile(`- ([\w\.-]+):([\w\.-]+):([\w\.-]+)( -> ([\w\.-]+))?`)
+	for _, line := range strings.Split(string(dependenciesOutput), "\n") {
 		trimmed := strings.TrimSpace(line)
 		if len(trimmed) > 0 {
-			match := outputMatchRe.FindStringSubmatch(trimmed)
-			if len(match) == 5 {
-				deps = append(deps, module.Dependency(MavenArtifact{
-					Name:    match[1] + ":" + match[2],
-					Version: match[4],
-				}))
+			parsedDependencyLine := dependenciesRe.FindStringSubmatch(trimmed)
+			if len(parsedDependencyLine) >= 4 {
+				groupID := parsedDependencyLine[1]
+				artifactID := parsedDependencyLine[2]
+				revisionID := parsedDependencyLine[3]
+				if len(parsedDependencyLine) == 6 && parsedDependencyLine[5] != "" {
+					revisionID = parsedDependencyLine[5]
+				}
+				gradleLogger.Debugf("Discovered maven artifact (%s, %s, %s)", trimmed, groupID, artifactID, revisionID)
+				deps = append(deps, MavenArtifact{
+					Name:    fmt.Sprintf("%s:%s", groupID, artifactID),
+					Version: revisionID,
+				})
 			}
 		}
 	}
@@ -93,20 +99,45 @@ func (builder *GradleBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for GradleBuilder")
 }
 
-// DiscoverModules finds either a root pom.xml file or all pom.xmls in the specified dir
+// DiscoverModules finds either a root build.gradle file in the specified dir
 func (builder *GradleBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
-	gradleLogger.Debug("asd")
-	_, err := os.Stat(filepath.Join(dir, "build.gradle")) // TODO: support custom *.gradle files
-	if err == nil {
-		// Root gradle build found; parse and return for a better UX with multi-project builds
-		absDir, err := filepath.Abs(dir)
-		if err != nil {
-			absDir = dir
+
+	if err := builder.Initialize(); err != nil {
+		return nil, err
+	}
+	// Look for the root Gradle build
+	// TODO: support custom *.gradle files
+	if _, err := os.Stat(filepath.Join(dir, "build.gradle")); err == nil {
+		// Use bare exec.Command as runLogged errors when resolving outside of dir
+		taskListOutput, gradleTaskErr := exec.Command(builder.GradleCmd, "tasks", "--all", "-q", "-a", "--offline").Output()
+		if len(taskListOutput) > 0 && gradleTaskErr == nil {
+			// Search for subprojects using Gradle task list instead of grepping for build.gradle
+			var moduleConfigurations []config.ModuleConfig
+			// NOTE: this leaves out the root ("") dependencies task. To include, replace with `(\w+:)?dependencies -`
+			taskListRe := regexp.MustCompile(`\w+:dependencies -`)
+			for _, line := range strings.Split(string(taskListOutput), "\n") {
+				trimmed := strings.TrimSpace(line)
+				if len(trimmed) > 0 {
+					depMatchIndicies := taskListRe.FindStringIndex(trimmed)
+					if len(depMatchIndicies) > 0 && depMatchIndicies[0] == 0 {
+						gradleTask := strings.Split(trimmed, " - ")[0]
+						gradleLogger.Debugf("found gradle dependencies task: %s", gradleTask)
+						moduleConfigurations = append(moduleConfigurations, config.ModuleConfig{
+							Name: strings.Split(gradleTask, ":")[0], // Name is the gradle task name
+							Path: "build.gradle",
+							Type: "gradle",
+						})
+					}
+				}
+			}
+
+			return moduleConfigurations, nil
 		}
-		artifactName := filepath.Base(absDir)
+
+		// Fall back to "app" as default task, even though technically it would be "" (root)
 		return []config.ModuleConfig{
 			config.ModuleConfig{
-				Name: artifactName,
+				Name: "app",
 				Path: "build.gradle",
 				Type: "gradle",
 			},
@@ -114,5 +145,5 @@ func (builder *GradleBuilder) DiscoverModules(dir string) ([]config.ModuleConfig
 	}
 
 	// TODO: support multiple build.gradle files
-	return []config.ModuleConfig{}, nil
+	return nil, nil
 }
