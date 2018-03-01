@@ -113,6 +113,7 @@ func main() {
 				cli.StringFlag{Name: "p, project", Usage: projectUsage},
 				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
+				cli.BoolFlag{Name: "l, locators", Usage: "upload data in locator format instead of JSON"},
 				cli.StringFlag{Name: "d, data", Usage: "the user-provided build data to upload"},
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
