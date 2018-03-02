@@ -21,6 +21,8 @@ const (
 	Maven = ModuleType("maven")
 	// SBT is the module type for scala-sbt.org
 	SBT = ModuleType("sbt")
+	// Gradle is the module type for gradle.org
+	Gradle = ModuleType("gradle")
 
 	// Ecosystems where many tools behave similarly
 
@@ -37,7 +39,7 @@ const (
 )
 
 // ModuleTypes holds the list of all available module types for analysis
-var ModuleTypes = []ModuleType{Bower, Composer, Maven, SBT, Ruby, Nodejs, Golang, VendoredArchives}
+var ModuleTypes = []ModuleType{Bower, Composer, Maven, SBT, Gradle, Ruby, Nodejs, Golang, VendoredArchives}
 
 // GetModuleType returns a ModuleType for a variety of config keys
 func GetModuleType(configKey string) ModuleType {
@@ -87,6 +89,9 @@ func GetModuleType(configKey string) ModuleType {
 		fallthrough
 	case "sbt":
 		return SBT
+
+	case "gradle":
+		return Gradle
 
 	// Archive aliases
 	case "vendoredarchives":

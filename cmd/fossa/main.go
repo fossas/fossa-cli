@@ -228,7 +228,11 @@ func defaultCmd(c *cli.Context) {
 		s.Suffix = fmt.Sprintf(" Running module analysis (%d/%d): %s", i+1, len(conf.Modules), m.Path)
 		s.Restart()
 		deps, err := builder.Analyze(module, conf.AnalyzeCmd.AllowUnresolved)
-		mainLogger.Debugf("Analysis complete: %#v", deps)
+		if err != nil {
+			mainLogger.Warningf("Analysis failed for module %s: %s", module.Name, err.Error())
+		} else {
+			mainLogger.Debugf("Analysis complete: %#v", deps)
+		}
 		s.Stop()
 
 		dependencies[analysisKey{

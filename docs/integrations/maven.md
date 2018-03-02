@@ -10,7 +10,7 @@ Maven support in FOSSA CLI depends on the following tools existing in your envir
 
 ## Usage
 
-Add a `mvn` module with the path to the `pom.xml` in your project.
+Add a `mvn` module with the path to the `.fossa.yml` in your project.
 
 ```yaml
 analyze:
