@@ -23,7 +23,12 @@
 
 ## Installation
 
-Grab the latest release from the [Github Releases](releases/) page!
+```bash
+# one-liner to install the latest release with curl
+curl https://i.jpillora.com/fossas/fossa-cli! | bash && mv /usr/local/bin/fossa-cli /usr/local/bin/fossa
+```
+
+View all relases on our [Github Releases](releases/) page!
 
 We support Windows, MacOS (Darwin), and Linux amd64 machines.
 
