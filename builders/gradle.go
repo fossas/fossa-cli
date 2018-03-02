@@ -56,11 +56,18 @@ func (builder *GradleBuilder) Build(m module.Module, force bool) error {
 func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	gradleLogger.Debugf("Running Gradle analysis: %#v %#v in %s", m, allowUnresolved, m.Dir)
 
+	moduleConfigurationKey := strings.Split(m.Name, ":")
+	taskConfiguration := "compile"
+	taskName := moduleConfigurationKey[0]
+	if len(moduleConfigurationKey) == 2 {
+		taskConfiguration = moduleConfigurationKey[1]
+	}
+
 	// TODO: We need to let the user configure the right configurations
 	// NOTE: we are intentionally using exec.Command over runLogged here, due to path issues with defining cmd.Dir
-	dependenciesOutput, err := exec.Command(builder.GradleCmd, m.Name+":dependencies", "-q", "--configuration=compile", "--offline", "-a").Output()
+	dependenciesOutput, err := exec.Command(builder.GradleCmd, taskName+":dependencies", "-q", "--configuration="+taskConfiguration, "--offline", "-a").Output()
 	if len(dependenciesOutput) == 0 || err != nil {
-		return nil, fmt.Errorf("could not run Gradle task %s:dependencies", m.Name)
+		return nil, fmt.Errorf("could not run Gradle task %s:dependencies", taskName)
 	}
 
 	var deps []module.Dependency
