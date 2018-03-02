@@ -160,7 +160,7 @@ func (builder *RubyBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, 
 	}
 	moduleConfigs := make([]config.ModuleConfig, len(gemFilePaths))
 	for i, path := range gemFilePaths {
-		gemName := filepath.Dir(path)
+		gemName := filepath.Base(filepath.Dir(path))
 		// infer title from *.gemspec in directory if exists
 		gemSpecs, err := doublestar.Glob(filepath.Join(filepath.Dir(path), "*.gemspec"))
 		if err == nil && len(gemSpecs) > 0 {
