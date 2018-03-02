@@ -40,14 +40,13 @@ type UploadConfig struct {
 
 // CLIConfig specifies the config available to the cli
 type CLIConfig struct {
-	APIKey          string
-	Fetcher         string
-	Project         string
-	Revision        string
-	Endpoint        string
-	Modules         []ModuleConfig
-	Debug           bool
-	ExistingProject bool
+	APIKey   string
+	Fetcher  string
+	Project  string
+	Revision string
+	Endpoint string
+	Modules  []ModuleConfig
+	Debug    bool
 
 	DefaultCmd DefaultConfig
 	AnalyzeCmd AnalyzeConfig
@@ -107,14 +106,14 @@ func New(c *cli.Context) (CLIConfig, error) {
 	}
 
 	var config = CLIConfig{
-		APIKey:          c.String("api_key"),
-		Project:         c.String("project"),
-		Revision:        c.String("revision"),
-		Endpoint:        c.String("endpoint"),
-		Modules:         modules,
-		Debug:           c.Bool("debug"),
-		ConfigFilePath:  c.String("config"),
-		ExistingProject: c.Bool("existing_project"),
+		APIKey:         c.String("api_key"),
+		Fetcher:        c.String("fetcher"),
+		Project:        c.String("project"),
+		Revision:       c.String("revision"),
+		Endpoint:       c.String("endpoint"),
+		Modules:        modules,
+		Debug:          c.Bool("debug"),
+		ConfigFilePath: c.String("config"),
 
 		DefaultCmd: DefaultConfig{
 			Build: c.Bool("build"),
@@ -152,9 +151,8 @@ func New(c *cli.Context) (CLIConfig, error) {
 		config.Revision = configFile.CLI.Revision
 	}
 
-	config.Fetcher = "custom"
-	if config.ExistingProject {
-		config.Fetcher = "git"
+	if config.Fetcher == "" {
+		config.Fetcher = configFile.CLI.Fetcher
 	}
 
 	if config.APIKey == "" {

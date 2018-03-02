@@ -18,11 +18,11 @@ type configFileV1 struct {
 
 type configFileCLIV1 struct {
 	// Upload configuration.
-	APIKey          string `yaml:"api_key,omitempty"`
-	Server          string `yaml:"server,omitempty"`
-	Project         string `yaml:"project,omitempty"`
-	Revision        string `yaml:"revision,omitempty"`
-	ExistingProject bool   `yaml:"existing_project"` // project exists in FOSSA (defaults to false as managed build is default)
+	APIKey   string `yaml:"api_key,omitempty"`
+	Server   string `yaml:"server,omitempty"`
+	Project  string `yaml:"project,omitempty"`
+	Revision string `yaml:"revision,omitempty"`
+	Fetcher  string `yaml:"fetcher,omitempty"` // fetcher defaults to custom
 }
 
 type configFileAnalyzeV1 struct {
@@ -87,6 +87,11 @@ func setDefaultValues(c configFileV1) (configFileV1, error) {
 		c.CLI.APIKey = apiKey
 	}
 
+	// Default to custom.
+	if c.CLI.Fetcher == "" {
+		c.CLI.Fetcher = "custom"
+	}
+
 	// Infer default locator and project from `git`.
 	if c.CLI.Project == "" || c.CLI.Revision == "" {
 		// TODO: this needs to happen in the module directory, not the working
@@ -128,10 +133,10 @@ func WriteConfigFile(conf *CLIConfig) error {
 	writeConfig := configFileV1{
 		Version: 1,
 		CLI: configFileCLIV1{
-			APIKey:          keyToWrite,
-			Server:          conf.Endpoint,
-			Project:         conf.Project,
-			ExistingProject: conf.ExistingProject,
+			APIKey:  keyToWrite,
+			Server:  conf.Endpoint,
+			Project: conf.Project,
+			Fetcher: conf.Fetcher,
 		},
 		Analyze: configFileAnalyzeV1{
 			Modules: conf.Modules,

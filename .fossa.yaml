@@ -4,6 +4,8 @@ cli:
   # # Defaults to https://app.fossa.io
   # server: https://fossa.on-prem
   # api_key: some-key-here
+  # # If you're uploading to an existing git project, or a custom project in FOSSA
+  # fetcher: custom
   # # If `project` is unset infer from VCS.
   # project: fossa-proj
 
