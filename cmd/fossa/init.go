@@ -49,7 +49,7 @@ func doInit(conf *config.CLIConfig, overwrite bool, includeAll bool) error {
 			// Filter suspicious modules
 			var filteredModuleConfigs []config.ModuleConfig
 			for _, c := range conf.Modules {
-				if matched, err := regexp.MatchString("(docs?/|test|example|vendor/)", c.Path); err != nil || matched != true {
+				if matched, err := regexp.MatchString("(docs?/|test|example|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/)", c.Path); err != nil || matched != true {
 					filteredModuleConfigs = append(filteredModuleConfigs, c)
 				} else {
 					initLogger.Warningf("Filtering out suspicious module: %s (%s)", c.Name, c.Path)
