@@ -57,13 +57,14 @@ func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 	gradleLogger.Debugf("Running Gradle analysis: %#v %#v in %s", m, allowUnresolved, m.Dir)
 
 	// TODO: We need to let the user configure the right configurations
+	// NOTE: we are intentionally using exec.Command over runLogged here, due to path issues with defining cmd.Dir
 	dependenciesOutput, err := exec.Command(builder.GradleCmd, m.Name+":dependencies", "-q", "--configuration=compile", "--offline", "-a").Output()
-	// Do not handle error, as gradle will exit with status 1 regardless
 	if len(dependenciesOutput) == 0 || err != nil {
 		return nil, fmt.Errorf("could not run Gradle task %s:dependencies", m.Name)
 	}
 
 	var deps []module.Dependency
+	// Parse out any line that matches - (groupId):(artifactId):(version) -> (mediatedVersion) where `-> (mediatedVersion)`` is optional
 	dependenciesRe := regexp.MustCompile(`- ([\w\.-]+):([\w\.-]+):([\w\.-]+)( -> ([\w\.-]+))?`)
 	for _, line := range strings.Split(string(dependenciesOutput), "\n") {
 		trimmed := strings.TrimSpace(line)
@@ -101,7 +102,6 @@ func (builder *GradleBuilder) IsModule(target string) (bool, error) {
 
 // DiscoverModules finds either a root build.gradle file in the specified dir
 func (builder *GradleBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
-
 	if err := builder.Initialize(); err != nil {
 		return nil, err
 	}
@@ -118,8 +118,8 @@ func (builder *GradleBuilder) DiscoverModules(dir string) ([]config.ModuleConfig
 			for _, line := range strings.Split(string(taskListOutput), "\n") {
 				trimmed := strings.TrimSpace(line)
 				if len(trimmed) > 0 {
-					depMatchIndicies := taskListRe.FindStringIndex(trimmed)
-					if len(depMatchIndicies) > 0 && depMatchIndicies[0] == 0 {
+					depMatchIndices := taskListRe.FindStringIndex(trimmed)
+					if len(depMatchIndices) > 0 && depMatchIndices[0] == 0 {
 						gradleTask := strings.Split(trimmed, " - ")[0]
 						gradleLogger.Debugf("found gradle dependencies task: %s", gradleTask)
 						moduleConfigurations = append(moduleConfigurations, config.ModuleConfig{
