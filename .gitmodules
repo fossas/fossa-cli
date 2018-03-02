@@ -4,3 +4,6 @@
 [submodule "test/fixtures/sbt"]
 	path = test/fixtures/sbt
 	url = https://github.com/apache/spark
+[submodule "test/fixtures/gradle"]
+	path = test/fixtures/gradle
+	url = https://github.com/google/iosched

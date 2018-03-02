@@ -19,7 +19,7 @@ RUN sudo apt-get update && \
 
 # Install Node.js runtime
 RUN wget https://nodejs.org/dist/v8.9.4/node-v8.9.4-linux-x64.tar.xz -O /tmp/node.tar.xz && \
-    sudo tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 --no-same-owner && \
+    sudo tar -xf /tmp/node.tar.xz -C /usr/local --strip-components=1 --no-same-owner && \
     sudo ln -s /usr/local/bin/node /usr/local/bin/nodejs && \
     mkdir $HOME/.npm && \
     npm config set prefix $HOME/.npm
@@ -36,7 +36,7 @@ RUN sudo gem install bundler
 
 # Install Go compiler
 RUN wget https://dl.google.com/go/go1.9.4.linux-amd64.tar.gz -O /tmp/go.tar.gz && \
-    sudo tar -C /usr/local -xzf /tmp/go.tar.gz
+    sudo tar -xf /tmp/go.tar.gz -C /usr/local 
 ENV GOPATH=/home/fossa/go PATH=$PATH:/usr/local/go/bin:/home/fossa/go/bin
 
 # Install Go build tools
@@ -59,23 +59,28 @@ RUN mkdir -p $HOME/go/bin && \
 RUN sudo apt-get install -y php5
 
 # Install PHP build tools
-RUN curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
+RUN curl https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
 
-# Install Java runtime
-RUN sudo add-apt-repository -y ppa:openjdk-r/ppa && \
-    sudo apt-get update && \
-    sudo apt-get install -y openjdk-8-jdk && \
-    sudo update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
+# Install JVM version manager
+RUN sudo apt-get install -y zip unzip && \
+    curl https://get.sdkman.io | bash
 
-# Install Java build tools
-RUN sudo apt-get install -y maven
+# Install JVM runtimes and build tools
+RUN ["/bin/bash", "-c", "\
+    source $HOME/.sdkman/bin/sdkman-init.sh && \
+    # Install Java runtime and build tools
+    sdk install java && \
+    sdk install maven && \
+    sdk install gradle && \
+    # Install Scala runtime and build tools
+    sdk install scala && \
+    sdk install sbt \
+    "]
 
-# Install Scala build tools
-RUN echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee -a /etc/apt/sources.list.d/sbt.list && \
-    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 && \
-    sudo apt-get update && \
-    sudo apt-get install -y sbt && \
-    sudo /var/lib/dpkg/info/ca-certificates-java.postinst configure && \
-    sbt about
+# Install Android SDK
+RUN wget https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip -O /tmp/sdk-tools-linux.zip && \
+    sudo unzip /tmp/sdk-tools-linux.zip -d /opt/android-sdk && \
+    sudo chmod -R 775 /opt/android-sdk
+ENV PATH=$PATH:/opt/android-sdk/tools/bin ANDROID_HOME=/opt/android-sdk
 
 CMD [ "/bin/bash" ]
