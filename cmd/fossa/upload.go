@@ -134,12 +134,12 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 		return "", fmt.Errorf("invalid FOSSA endpoint")
 	}
 
-	if conf.Revision == "" {
-		analysisLogger.Fatal("no revision found in working directory; try running in a git repo or passing a locator")
+	if conf.Project == "" {
+		analysisLogger.Fatal("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
 	}
 
-	if conf.Project == "" {
-		analysisLogger.Fatal("could not infer project name from either `.fossa.yaml` or `git` remote named `origin`")
+	if conf.Fetcher != "custom" && conf.Revision == "" {
+		analysisLogger.Fatal("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
 	}
 
 	// Re-marshal into build data
@@ -150,7 +150,12 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 
 	analysisLogger.Debugf("Uploading build data from (%#v) modules: %#v", len(results), string(buildData))
 
-	postRef, _ := url.Parse("/api/builds/custom?locator=" + url.QueryEscape(config.MakeLocator(conf.Project, conf.Revision)) + "&v=" + version)
+	fossaEndpoint := "/api/builds/custom?locator=" + url.QueryEscape(config.MakeLocator(conf.Fetcher, conf.Project, conf.Revision)) + "&v=" + version
+	if conf.Fetcher == "custom" {
+		fossaEndpoint += "&managedBuild=true"
+	}
+
+	postRef, _ := url.Parse(fossaEndpoint)
 	postURL := fossaBaseURL.ResolveReference(postRef).String()
 
 	analysisLogger.Debugf("Sending build data to <%#v>", postURL)
@@ -172,7 +177,7 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 		return "", fmt.Errorf("invalid API key (check the $FOSSA_API_KEY environment variable)")
 	} else if resp.StatusCode == http.StatusPreconditionRequired {
 		// TODO: handle "Managed Project" workflow
-		return "", fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo")
+		return "", fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
 	} else if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("bad server response (%#v)", responseStr)
 	}

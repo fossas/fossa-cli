@@ -24,6 +24,7 @@ var mainLogger = logging.MustGetLogger("main")
 
 const (
 	configUsage               = "path to config file (default: .fossa.{yml,yaml})"
+	fetcherUsage              = "type of fetcher to use for fossa. Default's to custom"
 	projectUsage              = "the FOSSA project name (default: VCS remote 'origin')"
 	revisionUsage             = "the FOSSA project's revision hash (default: VCS hash HEAD)"
 	endpointUsage             = "the FOSSA server endpoint (default: https://app.fossa.io)"
@@ -46,6 +47,7 @@ func main() {
 		cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 		cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
 		cli.StringFlag{Name: "m, modules", Usage: "the modules to build and analyze"},
+		cli.StringFlag{Name: "fetcher", Usage: fetcherUsage},
 		cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
 		cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
 		cli.BoolFlag{Name: "b, build", Usage: "run a default build in module directories if they have not been pre-built"},
@@ -82,6 +84,7 @@ func main() {
 			Action: analyzeCmd,
 			Flags: []cli.Flag{
 				cli.StringFlag{Name: "c, config", Usage: configUsage},
+				cli.StringFlag{Name: "fetcher", Usage: fetcherUsage},
 				cli.StringFlag{Name: "p, project", Usage: projectUsage},
 				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
@@ -97,6 +100,7 @@ func main() {
 			Action: testCmd,
 			Flags: []cli.Flag{
 				cli.StringFlag{Name: "c, config", Usage: configUsage},
+				cli.StringFlag{Name: "fetcher", Usage: fetcherUsage},
 				cli.StringFlag{Name: "p, project", Usage: projectUsage},
 				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
@@ -110,6 +114,7 @@ func main() {
 			Action: uploadCmd,
 			Flags: []cli.Flag{
 				cli.StringFlag{Name: "c, config", Usage: configUsage},
+				cli.StringFlag{Name: "fetcher", Usage: fetcherUsage},
 				cli.StringFlag{Name: "p, project", Usage: projectUsage},
 				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},

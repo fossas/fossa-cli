@@ -4,9 +4,10 @@ cli:
   # # Defaults to https://app.fossa.io
   # server: https://fossa.on-prem
   # api_key: some-key-here
-  # # If `project` or `locator` are unset, infer locator from VCS.
-  # project: git+github.com/fossas/fossa-cli
-  # locator: git+github.com/fossas/fossa-cli$revision
+  # # If you're uploading to an existing git project, or a custom project in FOSSA
+  # fetcher: custom
+  # # If `project` is unset infer from VCS.
+  # project: fossa-proj
 
 analyze:
   # ignores:

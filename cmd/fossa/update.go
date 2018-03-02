@@ -15,6 +15,9 @@ const updateEndpoint = "fossas/fossa-cli"
 var updateLogger = logging.MustGetLogger("update")
 
 func getSemver(v string) string {
+	if v == "" {
+		return ""
+	}
 	if v[0] != 'v' {
 		return ""
 	}
