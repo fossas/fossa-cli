@@ -16,7 +16,7 @@
 
 **Features:**
 
-- Supports over 15+ build systems (npm, golang, maven, etc...)
+- Supports over 15+ build systems (npm, golang, maven, gradle, etc...)
 - Supports monoliths; auto-detects and configures for multiple builds and modules in one codebase
 - Fast and portable; a single cross-platform binary you can drop into CI builds and test your dependencies live
 - Integrates with https://fossa.io for metadata and license auditing across open source packages
@@ -92,9 +92,8 @@ Instead of trying to guess at your build system's behavior, `fossa` runs locally
 `fossa` supports a wide variety of languages, package managers, and build tools out of the box:
 
  - JavaScript: `bower`, `npm`, `yarn`
- - Java: `mvn`
+ - Java/Scala: `mvn`, `gradle`, `sbt`
  - Ruby: `bundler`
- - Scala: `sbt`
  - PHP: `composer`
  - Go: `dep`, `glide`, `godep`, `govendor`, `vndr`, `gdm`
  - Archives: `*.rpm`
