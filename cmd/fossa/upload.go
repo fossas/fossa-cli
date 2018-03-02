@@ -100,9 +100,25 @@ func uploadCmd(c *cli.Context) {
 	}
 
 	var data []normalizedModule
-	err = json.Unmarshal([]byte(conf.UploadCmd.Data), &data)
-	if err != nil {
-		uploadLogger.Fatalf("Could not parse user-provided build data: %s", err.Error())
+	if conf.UploadCmd.Locators {
+		var deps []normalizedDependency
+		lines := strings.Split(conf.UploadCmd.Data, "\n")
+		for _, line := range lines {
+			deps = append(deps, normalizedDependency{
+				Locator: line,
+			})
+		}
+		data = append(data, normalizedModule{
+			Build: normalizedBuild{
+				Succeeded:    true,
+				Dependencies: deps,
+			},
+		})
+	} else {
+		err = json.Unmarshal([]byte(conf.UploadCmd.Data), &data)
+		if err != nil {
+			uploadLogger.Fatalf("Could not parse user-provided build data: %s", err.Error())
+		}
 	}
 
 	msg, err := doUpload(conf, data)

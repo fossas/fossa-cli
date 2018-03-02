@@ -35,7 +35,8 @@ type TestConfig struct {
 
 // UploadConfig specifies the config for the upload cmd
 type UploadConfig struct {
-	Data string
+	Locators bool
+	Data     string
 }
 
 // CLIConfig specifies the config available to the cli
@@ -133,7 +134,8 @@ func New(c *cli.Context) (CLIConfig, error) {
 		},
 
 		UploadCmd: UploadConfig{
-			Data: c.String("data"),
+			Locators: c.Bool("locators"),
+			Data:     c.String("data"),
 		},
 	}
 

@@ -49,7 +49,7 @@ func doInit(conf *config.CLIConfig, overwrite bool, includeAll bool) error {
 			// Filter suspicious modules
 			var filteredModuleConfigs []config.ModuleConfig
 			for _, c := range conf.Modules {
-				if matched, err := regexp.MatchString("(docs?/|test|example|vendor/)", c.Path); err != nil || matched != true {
+				if matched, err := regexp.MatchString("(docs?/|test|example|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/)", c.Path); err != nil || matched != true {
 					filteredModuleConfigs = append(filteredModuleConfigs, c)
 				} else {
 					initLogger.Warningf("Filtering out suspicious module: %s (%s)", c.Name, c.Path)
@@ -70,6 +70,9 @@ func findModules(dir string) ([]config.ModuleConfig, error) {
 	var moduleConfigs []config.ModuleConfig
 	for _, t := range config.ModuleTypes {
 		builder := builders.New(t)
+		if builder == nil {
+			initLogger.Warningf("No builder available for module type: %s", t)
+		}
 		foundModules, err := builder.DiscoverModules(dir)
 		if err != nil {
 			lastError = err

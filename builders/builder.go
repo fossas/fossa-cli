@@ -32,6 +32,8 @@ func New(moduleType config.ModuleType) Builder {
 		return &ComposerBuilder{}
 	case config.Golang:
 		return &GoBuilder{}
+	case config.Gradle:
+		return &GradleBuilder{}
 	case config.Maven:
 		return &MavenBuilder{}
 	case config.Nodejs:

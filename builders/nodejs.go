@@ -185,6 +185,7 @@ func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]config.ModuleConfig
 			}
 
 			nodejsLogger.Debugf("Found NodeJS package: %s (%s)", path, moduleName)
+			path, _ = filepath.Rel(dir, path)
 			moduleConfigs = append(moduleConfigs, config.ModuleConfig{
 				Name: moduleName,
 				Path: path,
