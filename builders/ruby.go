@@ -175,6 +175,7 @@ func (builder *RubyBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, 
 				}
 			}
 		}
+		path, _ = filepath.Rel(dir, path)
 		moduleConfigs[i] = config.ModuleConfig{
 			Name: gemName,
 			Path: path,
