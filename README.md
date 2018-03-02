@@ -24,8 +24,8 @@
 ## Installation
 
 ```bash
-# one-liner to install the latest release with curl
-curl https://i.jpillora.com/fossas/fossa-cli! | bash && mv /usr/local/bin/fossa-cli /usr/local/bin/fossa
+# one-liner to install the latest release with curl or wget
+curl https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
 ```
 
 View all relases on our [Github Releases](releases/) page!
