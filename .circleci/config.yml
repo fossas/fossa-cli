@@ -32,6 +32,9 @@ jobs:
       - run:
           name: Run integration test
           command: |
+            # Load shell helpers (e.g. sdkman)
+            source /home/fossa/.bashrc
+            # Run tests
             go test ./builders
       - run:
           name: Run FOSSA build

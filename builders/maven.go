@@ -135,7 +135,7 @@ func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 func (builder *MavenBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
 	mavenLogger.Debugf("Checking Maven build: %#v %#v", m, allowUnresolved)
 
-	output, _, err := runLogged(mavenLogger, m.Dir, builder.MvnCmd, "dependency:list")
+	output, _, err := runLogged(mavenLogger, m.Dir, builder.MvnCmd, "dependency:list", "-B")
 	if err != nil {
 		if strings.Index(output, "Could not find artifact") != -1 {
 			return false, nil

@@ -1,6 +1,6 @@
 [submodule "test/fixtures/maven"]
 	path = test/fixtures/maven
-	url = https://github.com/neo4j/neo4j
+	url = https://github.com/apache/hadoop
 [submodule "test/fixtures/sbt"]
 	path = test/fixtures/sbt
 	url = https://github.com/apache/spark
