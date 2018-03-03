@@ -137,7 +137,7 @@ func (builder *RubyBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool
 
 	output, _, err := runLogged(rubyLogger, m.Dir, builder.BundlerCmd, "check")
 	if err != nil {
-		if strings.Index(output, "Please run `bundle install`") != -1 {
+		if strings.Index(output, "`bundle install`") != -1 {
 			return false, nil
 		}
 		return false, err
