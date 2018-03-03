@@ -108,7 +108,7 @@ func runInDir(dir string, name string, arg ...string) (string, string, error) {
 // Utilities for debug logging
 func runLogged(logger *logging.Logger, dir string, name string, arg ...string) (string, string, error) {
 	cmd := strings.Join(append([]string{name}, arg...), " ")
-	logger.Debugf("Running `%s`...", cmd)
+	logger.Debugf("Running `%s` in dir `%s`...", cmd, dir)
 	stdout, stderr, err := runInDir(dir, name, arg...)
 	if err != nil {
 		logger.Debugf("Running `%s` failed: %#v %#v", cmd, err, stderr)

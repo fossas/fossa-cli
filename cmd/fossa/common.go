@@ -50,7 +50,7 @@ func makeAPIRequest(method, endpoint, apiKey string, payload []byte) ([]byte, er
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusForbidden {
-		return nil, fmt.Errorf("invalid API key %#v (try setting $FOSSA_API_KEY)", apiKey)
+		return nil, fmt.Errorf("invalid API key %#v (try setting $FOSSA_API_KEY); get one at https://fossa.io", apiKey)
 	} else if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("bad server response: %d", resp.StatusCode)
 	}
