@@ -174,7 +174,7 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 	responseStr := string(responseBytes)
 
 	if resp.StatusCode == http.StatusForbidden {
-		return "", fmt.Errorf("invalid API key (check the $FOSSA_API_KEY environment variable)")
+		return "", fmt.Errorf("invalid API key (check the $FOSSA_API_KEY environment variable); get one at https://fossa.io")
 	} else if resp.StatusCode == http.StatusPreconditionRequired {
 		// TODO: handle "Managed Project" workflow
 		return "", fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")

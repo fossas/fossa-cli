@@ -130,7 +130,7 @@ func (builder *GradleBuilder) DiscoverModules(dir string) ([]config.ModuleConfig
 						gradleTask := strings.Split(trimmed, " - ")[0]
 						gradleLogger.Debugf("found gradle dependencies task: %s", gradleTask)
 						moduleConfigurations = append(moduleConfigurations, config.ModuleConfig{
-							Name: strings.Split(gradleTask, ":")[0], // Name is the gradle task name
+							Name: strings.Split(gradleTask, ":")[0] + ":compile", // Name is the gradle `task:configuration` (default to compile)
 							Path: "build.gradle",
 							Type: "gradle",
 						})
@@ -144,7 +144,7 @@ func (builder *GradleBuilder) DiscoverModules(dir string) ([]config.ModuleConfig
 		// Fall back to "app" as default task, even though technically it would be "" (root)
 		return []config.ModuleConfig{
 			config.ModuleConfig{
-				Name: "app",
+				Name: "app:compile",
 				Path: "build.gradle",
 				Type: "gradle",
 			},
