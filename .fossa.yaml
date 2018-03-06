@@ -3,7 +3,7 @@
 version: 1
 cli:
   server: https://app.fossa.io
-  project: git@github.com:fossas/fossa-cli.git
+  project: github.com/fossas/fossa-cli
   fetcher: git
 analyze:
   modules:
