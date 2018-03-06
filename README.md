@@ -1,7 +1,7 @@
 ![FOSSA](https://raw.githubusercontent.com/fossas/fossa-cli/master/header.png)
 
 <p align="center">
-  Fast, portable and reliable dependency analysis for any codebase.
+  <b>fossa-cli</b> - Fast, portable and reliable dependency analysis for any codebase.
 </p>
 
 <p align="center">
@@ -111,9 +111,9 @@ View our [Contribution Guidelines](contributing.md) to get started.
 
 `fossa` is Open Source and licensed under the [AGPLv3](https://tldrlegal.com/license/gnu-affero-general-public-license-v3-(agpl-3.0)).
 
-You are free to use `fossa` and its binaries under all common use conditions (i.e. integrating personal projects, securely scanning proprietary code, adding steps to build plugins) without contributing or releasing any integrated / proprietary code. Enjoy!
+You are free to use `fossa` for normal commercial or personal purposes.  The code you integrate does NOT fall under the scope of this license. Enjoy!
 
-You are free to contribute or develop applications on top of `fossa`, but any modifications / derivative works must be released back to the community under this license.
+You are free to modify or develop applications on top of `fossa`, but any modifications / derivative works must be contributed back to the community under the AGPL.
 
 Please contact [support@fossa.io](mailto:support@fossa.io) for additional licensing guidance.
 
