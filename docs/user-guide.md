@@ -33,6 +33,7 @@ module_type:module_path
 - `composer`: Composer support
 - `go`: Go support for `dep`, `glide`, `godep`, `govendor`, and `vndr`
 - `maven`: Java support using Maven
+- `gradle`: Java support using Gradle
 - `bundler`: Ruby support using Bundler
 - `sbt`: Scala support using SBT
 - `vendoredarchives`: Support for Node modules inside RPMs. This is highly experimental.

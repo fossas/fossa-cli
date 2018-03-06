@@ -10,16 +10,14 @@
 
 # FOSSA CLI
 
-**WARNING:** This tool is in alpha and is being actively developed. There may be breaking changes.
-
-`fossa` is a tool that interrogates your environment and build to discover the dependencies getting included in your code. With one command, you can generate dependency reports and license notices across many build systems.
+`fossa` analyzes complex codebases to generate dependency reports and license notices.  By interrogating build environments, it generates fast and highly accurate results.
 
 **Features:**
 
 - Supports over 15+ build systems (npm, golang, maven, gradle, etc...)
-- Supports monoliths; auto-detects and configures for multiple builds and modules in one codebase
-- Fast and portable; a single cross-platform binary you can drop into CI builds and test your dependencies live
-- Integrates with https://fossa.io for metadata and license auditing across open source packages
+- Auto-configures for monoliths; just run `fossa` and it will detect multiple builds in one codebase
+- Fast and portable; a single cross-platform binary you can drop into CI or dev machines
+- Generates dependency reports locally or hosted at https://fossa.io (for audit-grade license scans, policy enforcement and more...)
 
 ## Installation
 
@@ -32,9 +30,7 @@ View all relases on our [Github Releases](releases/) page!
 
 We support Windows, MacOS (Darwin), and Linux amd64 machines.
 
-### QuickStart
-
-#### One-Liners
+## QuickStart
 
 ```bash
 # Out of the box, run this to initialize config,
@@ -49,7 +45,7 @@ fossa -o
 FOSSA_API_KEY=YOUR_API_KEY_HERE fossa
 ```
 
-#### Start with Configuration
+## Configuration
 
 ```bash
 # Initialize FOSSA configuration and scan for supported modules
