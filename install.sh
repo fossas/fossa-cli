@@ -28,7 +28,7 @@ function install {
   REPO="fossa-cli"
   BIN="fossa"
   # TODO: automatically get latest version from GitHub Releases API
-  VERSION="0.4.1"
+  VERSION="0.4.3"
   RELEASE="v$VERSION"
   MOVE="true"
   INSECURE="false"

@@ -33,7 +33,7 @@
 
 Install the latest [Github Release](releases/) using `curl`:
 ```bash
-curl https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
+curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
 ```
 
 We support Windows, MacOS (Darwin), and Linux amd64 machines.
