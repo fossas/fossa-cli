@@ -9,7 +9,10 @@
     <img src="https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli.svg?type=shield"/>
   </a>
   <a href="https://circleci.com/gh/fossas/fossa-cli" alt="CircleCI Tests">
-    <img src="https://circleci.com/gh/fossas/fossa-cli.svg?style=svg&circle-token=f55f707e21ac39a80127d3372a1a1452ec94f4f7"/>
+    <img src="https://circleci.com/gh/fossas/fossa-cli.svg?style=shield&circle-token=f55f707e21ac39a80127d3372a1a1452ec94f4f7"/>
+  </a>
+  <a href="https://goreportcard.com/report/github.com/fossas/fossa-cli">
+    <img src="https://goreportcard.com/badge/github.com/fossas/fossa-cli">
   </a>
 </p>
 
