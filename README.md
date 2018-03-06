@@ -14,12 +14,12 @@
 </p>
 
 ## Background 
-`fossa` analyzes complex codebases to generate dependency reports and license notices.  By interrogating build environments, it generates fast and highly accurate results.
+`fossa` analyzes complex codebases to generate dependency reports and license notices.  By leveraging existing build environments, it can generate fast and highly-accurate results.
 
 **Features:**
 
 - Supports [over 15+ build systems](docs/how-it-works.md) (npm, golang, maven, gradle, etc...)
-- Auto-configures for monoliths; just run `fossa` and it will detect multiple builds in one codebase
+- Auto-configures for monoliths; instantly handles multiple builds in large codebases
 - Fast and portable; a single cross-platform binary you can drop into CI or dev machines
 - Generates dependency reports locally or hosted at https://fossa.io (for audit-grade license scans, policy enforcement and more...)
 
@@ -34,7 +34,7 @@ curl https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
 
 We support Windows, MacOS (Darwin), and Linux amd64 machines.
 
-## QuickStart
+## Quick Start
 
 Run and output report in JSON:
 ```bash
@@ -45,7 +45,10 @@ fossa -o
 Remove `-o` and provide a [FOSSA API Key (docs)](https://fossa.io/docs/projects/api-endpoints/) to get a rich, hosted report:
 
 ```bash
-FOSSA_API_KEY=YOUR_API_KEY_HERE fossa
+export FOSSA_API_KEY="YOUR_API_KEY_HERE"
+
+# Now, you can just run `fossa`!
+fossa
 ```
 
 ## Configuration
