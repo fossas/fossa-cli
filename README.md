@@ -134,10 +134,10 @@ To generate a license notice with each CI build, you can use the `fossa report` 
 
 ```bash
 # write a license notice to NOTICE.md
-fossa report --type licenses > NOTICE.md
+fossa report --type licenses > NOTICE.txt
 ```
 
-[See this repo's NOTICE file](NOTICE.md) for an example.
+[See this repo's NOTICE file](NOTICE) for an example.
 
 ## Reference
 Check out the [User Guide](docs/user-guide.md) for more details.
