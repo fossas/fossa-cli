@@ -20,8 +20,9 @@
 
 - Supports [over 15+ languages & environments](docs/how-it-works.md) (JavaScript, Java, Ruby, Golang, PHP, etc...)
 - Auto-configures for monoliths; instantly handles multiple builds in large codebases
-- Fast and portable; a single cross-platform binary you can drop into CI or dev machines
-- Generates dependency reports locally or hosted at https://fossa.io (for audit-grade license scans, policy enforcement and more...)
+- Fast & portable; a cross-platform binary you can drop into CI or dev machines
+- Generates offline documentation for license notices & third-party attributions
+- Tests dependencies against license violations, audits and vulnerabilities (coming soon!) by integrating with https://fossa.io
 
 [Click here to learn more](docs/how-it-works.md) about the reasons and technical details behind this project.
 
