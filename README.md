@@ -13,8 +13,6 @@
   </a>
 </p>
 
-----
-
 ## Background 
 `fossa` analyzes complex codebases to generate dependency reports and license notices.  By interrogating build environments, it generates fast and highly accurate results.
 
@@ -29,12 +27,10 @@ Check out [How it Works](docs/how-it-works.md) for reasons and technical details
 
 ## Installation
 
+Install the latest [Github Release](releases/) using `curl`:
 ```bash
-# one-liner to install the latest release with curl or wget
 curl https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
 ```
-
-View all relases on our [Github Releases](releases/) page!
 
 We support Windows, MacOS (Darwin), and Linux amd64 machines.
 
