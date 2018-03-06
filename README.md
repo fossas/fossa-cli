@@ -36,13 +36,32 @@ We support Windows, MacOS (Darwin), and Linux amd64 machines.
 
 ## Quick Start
 
-Run and output report in JSON:
-```bash
-
-fossa -o
+Run `fossa -o` in your repo directory to output a dependency report in JSON:
+```json
+[
+  {
+    "Name": "fossa-cli",
+    "Type": "golang",
+    "Manifest": "github.com/fossas/fossa-cli/cmd/fossa",
+    "Build": {
+      "Dependencies": [
+        {
+          "locator": "go+github.com/rhysd/go-github-selfupdate$d5c53b8d0552a7bf6b36457cd458d27c80e0210b",
+          "data": {
+            "name": "github.com/rhysd/go-github-selfupdate",
+            "version": "d5c53b8d0552a7bf6b36457cd458d27c80e0210b"
+          }
+        },
+        ...
+      ],
+      ...
+    }
+  },
+  ...
+]
 ```
 
-Remove `-o` and provide a [FOSSA API Key (docs)](https://fossa.io/docs/projects/api-endpoints/) to get a rich, hosted report:
+Run `fossa` and provide a [FOSSA API Key](https://fossa.io/docs/projects/api-endpoints/) to get a rich, hosted report:
 
 ```bash
 export FOSSA_API_KEY="YOUR_API_KEY_HERE"
