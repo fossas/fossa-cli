@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -170,33 +168,21 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 
 	analysisLogger.Debugf("Sending build data to <%#v>", postURL)
 
-	req, _ := http.NewRequest("POST", postURL, bytes.NewReader(buildData))
-	req.Close = true
-	req.Header.Set("Authorization", "token "+conf.APIKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
+	res, err := makeAPIRequest(http.MethodPost, postURL, conf.APIKey, buildData)
 	if err != nil {
-		return "", fmt.Errorf("could not begin upload: %s", err.Error())
-	}
-	defer resp.Body.Close()
-	responseBytes, _ := ioutil.ReadAll(resp.Body)
-	responseStr := string(responseBytes)
-
-	if resp.StatusCode == http.StatusForbidden {
-		return "", fmt.Errorf("invalid API key (check the $FOSSA_API_KEY environment variable); get one at https://fossa.io")
-	} else if resp.StatusCode == http.StatusPreconditionRequired {
-		// TODO: handle "Managed Project" workflow
-		return "", fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
-	} else if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("bad server response (%#v)", responseStr)
+		// HACK: really, we should be exporting this error and comparing against it
+		if err.Error() == "bad server response: 428" {
+			// TODO: handle "Managed Project" workflow
+			return "", fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo (to submit a custom project, set Fetcher to `custom` in `.fossa.yml`)")
+		}
+		return "", fmt.Errorf("could not upload: %s", err.Error())
 	}
 
 	analysisLogger.Debugf("Upload succeeded")
-	analysisLogger.Debugf("Response: %#v", responseStr)
+	analysisLogger.Debugf("Response: %#v", string(res))
 
 	var jsonResponse map[string]interface{}
-	if err := json.Unmarshal(responseBytes, &jsonResponse); err != nil {
+	if err := json.Unmarshal(res, &jsonResponse); err != nil {
 		return "", fmt.Errorf("invalid response, but build was uploaded")
 	}
 	locParts := strings.Split(jsonResponse["locator"].(string), "$")

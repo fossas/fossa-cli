@@ -131,6 +131,20 @@ func main() {
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
 		},
+		{
+			Name:   "report",
+			Usage:  "Generates a license report",
+			Action: reportCmd,
+			Flags: []cli.Flag{
+				cli.StringFlag{Name: "c, config", Usage: configUsage},
+				cli.StringFlag{Name: "fetcher", Usage: fetcherUsage},
+				cli.StringFlag{Name: "p, project", Usage: projectUsage},
+				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
+				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
+				cli.BoolFlag{Name: "debug", Usage: debugUsage},
+				cli.StringFlag{Name: "t, type", Usage: "the type of report to generate (either \"dependencies\" or \"licenses\""},
+			},
+		},
 	}
 
 	app.Run(os.Args)

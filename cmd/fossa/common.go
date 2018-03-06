@@ -49,17 +49,19 @@ func makeAPIRequest(method, endpoint, apiKey string, payload []byte) ([]byte, er
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusForbidden {
-		return nil, fmt.Errorf("invalid API key %#v (try setting $FOSSA_API_KEY); get one at https://fossa.io", apiKey)
-	} else if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("bad server response: %d", resp.StatusCode)
-	}
-
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("could not read API HTTP response: %s", err.Error())
 	}
-	commonLogger.Debugf("Got API response: %#v", string(body))
 
+	if resp.StatusCode == http.StatusForbidden {
+		commonLogger.Debugf("Response body: %s", string(body))
+		return nil, fmt.Errorf("invalid API key %#v (try setting $FOSSA_API_KEY); get one at https://fossa.io", apiKey)
+	} else if resp.StatusCode != http.StatusOK {
+		commonLogger.Debugf("Response body: %s", string(body))
+		return nil, fmt.Errorf("bad server response: %d", resp.StatusCode)
+	}
+
+	commonLogger.Debugf("Got API response: %#v", string(body))
 	return body, nil
 }
