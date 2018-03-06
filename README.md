@@ -15,16 +15,17 @@
 
 ----
 
+## Background 
 `fossa` analyzes complex codebases to generate dependency reports and license notices.  By interrogating build environments, it generates fast and highly accurate results.
-
-Check out [How it Works](docs/how-it-works.md) for reasons and technical details behind this project.
 
 **Features:**
 
-- Supports over 15+ build systems (npm, golang, maven, gradle, etc...)
+- Supports [over 15+ build systems](docs/how-it-works.md) (npm, golang, maven, gradle, etc...)
 - Auto-configures for monoliths; just run `fossa` and it will detect multiple builds in one codebase
 - Fast and portable; a single cross-platform binary you can drop into CI or dev machines
 - Generates dependency reports locally or hosted at https://fossa.io (for audit-grade license scans, policy enforcement and more...)
+
+Check out [How it Works](docs/how-it-works.md) for reasons and technical details behind this project.
 
 ## Installation
 
