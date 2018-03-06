@@ -52,7 +52,6 @@ function install {
   else
     fail "neither wget nor curl are installed"
   fi
-  which sha256sum > /dev/null || fail "sha256sum is not installed"
   which tar > /dev/null || fail "tar is not installed"
   which gzip > /dev/null || fail "gzip is not installed"
 
@@ -92,7 +91,6 @@ function install {
   RELEASE_URL="$GH/$USER/$REPO/releases/download/$RELEASE"
   bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_${OS}_${ARCH}.tar.gz" > release.tar.gz || fail "downloading release failed"
   bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_checksums.txt" > checksums.txt || fail "downloading checksums failed"
-  [ "$(grep "${OS}_${ARCH}" checksums.txt | cut -f 1 -d " ")" == "$(sha256sum release.tar.gz | cut -f 1 -d " ")" ] || fail "invalid checksum"
 
   # Extract release
   tar zxf release.tar.gz || fail "tar failed"
