@@ -18,12 +18,12 @@
 
 **Features:**
 
-- Supports [over 15+ build systems](docs/how-it-works.md) (npm, golang, maven, gradle, etc...)
+- Supports [over 15+ languages & environments](docs/how-it-works.md) (JavaScript, Java, Ruby, Golang, PHP, etc...)
 - Auto-configures for monoliths; instantly handles multiple builds in large codebases
 - Fast and portable; a single cross-platform binary you can drop into CI or dev machines
 - Generates dependency reports locally or hosted at https://fossa.io (for audit-grade license scans, policy enforcement and more...)
 
-Check out [How it Works](docs/how-it-works.md) for reasons and technical details behind this project.
+[Click here to learn more](docs/how-it-works.md) about the reasons and technical details behind this project.
 
 ## Installation
 
@@ -49,6 +49,13 @@ export FOSSA_API_KEY="YOUR_API_KEY_HERE"
 
 # Now, you can just run `fossa`!
 fossa
+
+# Output:
+# ==========================================================
+#   
+#    View FOSSA Report: https://app.fossa.io/{YOUR_LINK}
+#
+# ==========================================================
 ```
 
 ## Configuration
