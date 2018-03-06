@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strings"
 
 	logging "github.com/op/go-logging"
@@ -142,6 +143,10 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 		analysisLogger.Fatal("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
 	}
 
+	if len(results) == 0 {
+		analysisLogger.Fatal("No results to upload")
+	}
+
 	// Re-marshal into build data
 	buildData, err := json.Marshal(results)
 	if err != nil {
@@ -152,7 +157,12 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 
 	fossaEndpoint := "/api/builds/custom?locator=" + url.QueryEscape(config.MakeLocator(conf.Fetcher, conf.Project, conf.Revision)) + "&v=" + version
 	if conf.Fetcher == "custom" {
-		fossaEndpoint += "&managedBuild=true"
+		defaultProjectTitle := results[0].Name
+		cwd, _ := filepath.Abs(".")
+		if cwd != "" {
+			defaultProjectTitle = filepath.Base(cwd)
+		}
+		fossaEndpoint += fmt.Sprintf("&managedBuild=true&title=%s", url.PathEscape(defaultProjectTitle))
 	}
 
 	postRef, _ := url.Parse(fossaEndpoint)
