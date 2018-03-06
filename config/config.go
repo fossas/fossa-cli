@@ -12,31 +12,36 @@ import (
 
 var configLogger = logging.MustGetLogger("config")
 
-// DefaultConfig specifies the config for the default cmd
+// DefaultConfig specifies the config for the default command
 type DefaultConfig struct {
 	Build bool
 }
 
-// AnalyzeConfig specifies the config for the analyze cmd
+// AnalyzeConfig specifies the config for the analyze command
 type AnalyzeConfig struct {
 	Output          bool
 	AllowUnresolved bool
 }
 
-// BuildConfig specifies the config for the build cmd
+// BuildConfig specifies the config for the build command
 type BuildConfig struct {
 	Force bool
 }
 
-// TestConfig specifies the config for the test cmd
+// TestConfig specifies the config for the test command
 type TestConfig struct {
 	Timeout time.Duration
 }
 
-// UploadConfig specifies the config for the upload cmd
+// UploadConfig specifies the config for the upload command
 type UploadConfig struct {
 	Locators bool
 	Data     string
+}
+
+// ReportConfig specifies the config for the report command
+type ReportConfig struct {
+	Type string // Either "dependencies" or "licenses"
 }
 
 // CLIConfig specifies the config available to the cli
@@ -54,6 +59,7 @@ type CLIConfig struct {
 	BuildCmd   BuildConfig
 	TestCmd    TestConfig
 	UploadCmd  UploadConfig
+	ReportCmd  ReportConfig
 
 	ConfigFilePath string
 }
@@ -141,6 +147,10 @@ func New(c *cli.Context) (CLIConfig, error) {
 		UploadCmd: UploadConfig{
 			Locators: c.Bool("locators"),
 			Data:     c.String("data"),
+		},
+
+		ReportCmd: ReportConfig{
+			Type: c.String("type"),
 		},
 	}
 
