@@ -137,6 +137,7 @@ func main() {
 			Action: reportCmd,
 			Flags: []cli.Flag{
 				cli.StringFlag{Name: "c, config", Usage: configUsage},
+				cli.StringFlag{Name: "fetcher", Usage: fetcherUsage},
 				cli.StringFlag{Name: "p, project", Usage: projectUsage},
 				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
