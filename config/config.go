@@ -63,6 +63,11 @@ func MakeLocator(fetcher string, project string, revision string) string {
 	if fetcher != "git" {
 		return fetcher + "+" + project + "$" + revision
 	}
+
+	return "git+" + normalizePackageSpec(project) + "$" + revision
+}
+
+func normalizePackageSpec(project string) string {
 	// Remove fetcher prefix (in case project is derived from splitting a locator on '$')
 	noFetcherPrefix := strings.TrimPrefix(project, "git+")
 
@@ -74,7 +79,7 @@ func MakeLocator(fetcher string, project string, revision string) string {
 	noHTTPPrefix := strings.TrimPrefix(handleGitHubSSH, "http://")
 	noHTTPSPrefix := strings.TrimPrefix(noHTTPPrefix, "https://")
 
-	return "git+" + noHTTPSPrefix + "$" + revision
+	return noHTTPSPrefix
 }
 
 func parseModulesFlag(moduleFlag string) ([]ModuleConfig, error) {
