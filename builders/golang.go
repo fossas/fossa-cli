@@ -575,12 +575,6 @@ func (builder *GoBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, 
 		}
 	}
 
-	// Check for vendored dependencies
-	if ok, err := hasFile(projectFolder, "vendor"); err != nil || !ok {
-		goLogger.Debugf("Checking Go build failed: no `vendor` folder found")
-		return false, err
-	}
-
 	goLogger.Debugf("Done checking Go build: %#v", true)
 	return true, nil
 }
