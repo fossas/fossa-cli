@@ -25,8 +25,8 @@ var mainLogger = logging.MustGetLogger("main")
 const (
 	configUsage               = "path to config file (default: .fossa.{yml,yaml})"
 	fetcherUsage              = "type of fetcher to use for fossa. Default's to custom"
-	projectUsage              = "the FOSSA project name (default: VCS remote 'origin')"
-	revisionUsage             = "the FOSSA project's revision hash (default: VCS hash HEAD)"
+	projectUsage              = "this repository's URL or VCS endpoint (default: VCS remote 'origin')"
+	revisionUsage             = "this repository's current revision hash (default: VCS hash HEAD)"
 	endpointUsage             = "the FOSSA server endpoint (default: https://app.fossa.io)"
 	buildForceUsage           = "ignore cached build artifacts"
 	analyzeOutputUsage        = "print results to stdout instead of uploading to FOSSA"
