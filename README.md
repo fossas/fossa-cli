@@ -129,6 +129,25 @@ If you've integrated with https://fossa.io, you can use `fossa test` to fail bui
 # Exit with a failing status and dump an issue report to stderr
 # if your project fails its license scan
 FOSSA_API_KEY=YOUR_API_KEY_HERE fossa test
+
+# Output:
+# --------------------------
+# - exit status (1)
+#
+# * FOSSA discovered 7 license issue(s) in your dependencies:
+#
+# UNLICENSED_DEPENDENCY (3)
+# * pod+FBSnapshotTestCase$1.8.1
+# * pod+FBSnapshotTestCase$2.1.4
+# * pod+Then$2.1.0
+#
+# POLICY_FLAG (4)
+# * mvn+com.fasterxml.jackson.core:jackson-core$2.2.3
+# * npm+xmldom$0.1.27
+# * pod+UICKeyChainStore$1.0.5
+# * gem+json$1.7.7
+#
+# ✖ FOSSA license scan failed: 7 issue(s) found.
 ```
 
 ### Generating License Notices
@@ -136,11 +155,13 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa test
 To generate a license notice with each CI build, you can use the `fossa report` command:
 
 ```bash
-# write a license notice to NOTICE.md
+# write a license notice to NOTICE.txt
 fossa report --type licenses > NOTICE.txt
 ```
 
 [See this repo's NOTICE file](NOTICE) for an example.
+
+License data is provided by https://fossa.io's 500GB open source registry.
 
 ## Reference
 Check out the [User Guide](docs/user-guide.md) for more details.
