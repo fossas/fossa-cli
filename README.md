@@ -119,6 +119,7 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa
 
 ## Integrating with CI
 
+### Testing for License Violations
 If you've integrated with https://fossa.io, you can use `fossa test` to fail builds against your FOSSA scan status.
 
 ```bash
@@ -126,6 +127,17 @@ If you've integrated with https://fossa.io, you can use `fossa test` to fail bui
 # if your project fails its license scan
 FOSSA_API_KEY=YOUR_API_KEY_HERE fossa test
 ```
+
+### Generating License Notices
+
+To generate a license notice with each CI build, you can use the `fossa report` command:
+
+```bash
+# write a license notice to NOTICE.md
+fossa report --type licenses > NOTICE.md
+```
+
+[See this repo's NOTICE file](NOTICE.md) for an example.
 
 ## Reference
 Check out the [User Guide](docs/user-guide.md) for more details.
