@@ -48,6 +48,7 @@ func main() {
 		cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
 		cli.StringFlag{Name: "m, modules", Usage: "the modules to build and analyze"},
 		cli.StringFlag{Name: "fetcher", Usage: fetcherUsage},
+		cli.StringFlag{Name: "l, log-level", Usage: "set logging level (defaults to warning). Avaliable options: \"debug\", \"info\", \"notice\", \"warning\", \"error\","},
 		cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
 		cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
 		cli.BoolFlag{Name: "b, build", Usage: "run a default build in module directories if they have not been pre-built"},
