@@ -37,7 +37,7 @@ const (
 func main() {
 	app := cli.NewApp()
 	app.Name = "fossa-cli"
-	app.Usage = "get dependencies from your code"
+	app.Usage = "Fast, portable and reliable dependency analysis (https://github.com/fossas/fossa-cli/)"
 	app.Version = fmt.Sprintf("%s (revision %s compiled with %s)", version, commit, goversion)
 
 	app.Action = defaultCmd
