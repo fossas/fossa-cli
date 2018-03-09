@@ -8,12 +8,6 @@
   version = "v0.3.0"
 
 [[projects]]
-  name = "github.com/KyleBanks/depth"
-  packages = ["."]
-  revision = "fec4dc38699e903ea7b44b2887549d2e7cd0a9f1"
-  version = "v1.2.1"
-
-[[projects]]
   name = "github.com/blang/semver"
   packages = ["."]
   revision = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
@@ -309,6 +303,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "700601ce2337da1493a9a6f58cea4bae089da650fb1098b4ce0fc6b73c15bff8"
+  inputs-digest = "2d1b823b6fda9cfe80f3bab396c3acb4d993e33aea3afe1a1e9187eab53a7d3b"
   solver-name = "gps-cdcl"
   solver-version = 1

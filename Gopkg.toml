@@ -25,10 +25,6 @@ ignored = ["github.com/fossas/fossa-cli/test/fixtures/golang/*"]
   version = "0.3.0"
 
 [[constraint]]
-  name = "github.com/KyleBanks/depth"
-  version = "1.2.0"
-
-[[constraint]]
   name = "github.com/op/go-logging"
   version = "1.0.0"
 
