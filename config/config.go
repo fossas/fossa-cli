@@ -46,13 +46,14 @@ type ReportConfig struct {
 
 // CLIConfig specifies the config available to the cli
 type CLIConfig struct {
-	APIKey   string
-	Fetcher  string
-	Project  string
-	Revision string
-	Endpoint string
-	Modules  []ModuleConfig
-	Debug    bool
+	APIKey       string
+	Fetcher      string
+	Project      string
+	Revision     string
+	Endpoint     string
+	Modules      []ModuleConfig
+	Debug        bool
+	LoggingLevel logging.Level
 
 	DefaultCmd DefaultConfig
 	AnalyzeCmd AnalyzeConfig
@@ -110,9 +111,38 @@ func parseModulesFlag(moduleFlag string) ([]ModuleConfig, error) {
 	return config, nil
 }
 
+func configureLoggingLevel(logFlag string) (logging.Level, error) {
+	// We default to a log level of WARNING
+	if logFlag == "" {
+		return logging.WARNING, nil
+	}
+
+	// NOTE: we currently only use these flags in the code base (3/7/18)
+	switch logFlag {
+	case "error":
+		return logging.ERROR, nil
+	case "warning":
+		return logging.WARNING, nil
+	case "notice":
+		return logging.NOTICE, nil
+	case "info":
+		return logging.INFO, nil
+	case "debug":
+		return logging.DEBUG, nil
+	}
+
+	return -1, fmt.Errorf("unknown logging level: %s", logFlag)
+}
+
 // New creates a CLIConfig from cli context
 func New(c *cli.Context) (CLIConfig, error) {
 	modules, err := parseModulesFlag(c.String("modules"))
+	if err != nil {
+		return CLIConfig{}, err
+	}
+
+	// defaults to a log level of WARNING
+	logLevel, err := configureLoggingLevel(c.String("log-level"))
 	if err != nil {
 		return CLIConfig{}, err
 	}
@@ -126,6 +156,7 @@ func New(c *cli.Context) (CLIConfig, error) {
 		Modules:        modules,
 		Debug:          c.Bool("debug"),
 		ConfigFilePath: c.String("config"),
+		LoggingLevel:   logLevel,
 
 		DefaultCmd: DefaultConfig{
 			Build: c.Bool("build"),
@@ -191,7 +222,7 @@ func New(c *cli.Context) (CLIConfig, error) {
 	} else {
 		formatter := logging.MustStringFormatter(`%{color}%{level}%{color:reset} %{message}`)
 		stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), formatter))
-		stderrBackend.SetLevel(logging.WARNING, "")
+		stderrBackend.SetLevel(config.LoggingLevel, "") // configured above
 		logging.SetBackend(stderrBackend)
 	}
 
