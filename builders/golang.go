@@ -3,6 +3,8 @@ package builders
 import (
 	"errors"
 	"fmt"
+	"go/parser"
+	"go/token"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -732,7 +734,46 @@ func (builder *GoBuilder) IsModule(target string) (bool, error) {
 	return false, errors.New("IsModule is not implemented for GoBuilder")
 }
 
-// DiscoverModules is not implemented
+// DiscoverModules walks subdirectories for a Go file with `package main`.
 func (builder *GoBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
-	return nil, errors.New("DiscoverModules is not implemented for GoBuilder")
+	var modules []config.ModuleConfig
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			goLogger.Debugf("Failed to access path %s: %s", path, err.Error())
+			return fmt.Errorf("could not read path %s during go module discovery: %s", path, err.Error())
+		}
+		// Skip files (we parse a directory at a time)
+		if !info.IsDir() {
+			return nil
+		}
+		// Skip vendor directories
+		if info.Name() == "vendor" {
+			goLogger.Debugf("Skipping directory: %s", info.Name())
+			return filepath.SkipDir
+		}
+		// Parse directory, check for `main` package declaration.
+		files := token.NewFileSet()
+		pkgs, err := parser.ParseDir(files, path, nil, parser.PackageClauseOnly)
+		if err != nil {
+			return fmt.Errorf("could not parse directory %s during go module discovery: %s", path, err.Error())
+		}
+		for pkg := range pkgs {
+			if pkg == "main" {
+				modulePath, err := filepath.Rel(dir, path)
+				if err != nil {
+					return fmt.Errorf("could not compute module path: %s", err.Error())
+				}
+				modules = append(modules, config.ModuleConfig{
+					Name: info.Name(),
+					Path: modulePath,
+					Type: "go",
+				})
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not discover go modules: %s", err.Error())
+	}
+	return modules, nil
 }
