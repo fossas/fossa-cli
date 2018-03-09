@@ -1,0 +1,5 @@
+/selfupdate-example
+/release
+/env.sh
+/detect-latest-release
+/go-get-release
