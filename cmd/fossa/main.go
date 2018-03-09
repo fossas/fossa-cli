@@ -141,8 +141,9 @@ func main() {
 				cli.StringFlag{Name: "p, project", Usage: projectUsage},
 				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
-				cli.BoolFlag{Name: "debug", Usage: debugUsage},
+				cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
 				cli.StringFlag{Name: "t, type", Usage: "the type of report to generate (either \"dependencies\" or \"licenses\"", Value: "licenses"},
+				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
 		},
 	}

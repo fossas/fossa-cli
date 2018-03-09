@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/KyleBanks/depth"
 	logging "github.com/op/go-logging"
 	yaml "gopkg.in/yaml.v2"
 
@@ -273,51 +272,190 @@ func (builder *GoBuilder) Build(m module.Module, force bool) error {
 	return nil
 }
 
+var internalPackages = map[string]bool{
+	"archive":              true,
+	"archive/tar":          true,
+	"archive/zip":          true,
+	"bufio":                true,
+	"builtin":              true,
+	"bytes":                true,
+	"compress":             true,
+	"compress/bzip2":       true,
+	"compress/flate":       true,
+	"compress/gzip":        true,
+	"compress/lzw":         true,
+	"compress/zlib":        true,
+	"container":            true,
+	"container/heap":       true,
+	"container/list":       true,
+	"container/ring":       true,
+	"context":              true,
+	"crypto":               true,
+	"crypto/aes":           true,
+	"crypto/cipher":        true,
+	"crypto/des":           true,
+	"crypto/dsa":           true,
+	"crypto/ecdsa":         true,
+	"crypto/elliptic":      true,
+	"crypto/hmac":          true,
+	"crypto/md5":           true,
+	"crypto/rand":          true,
+	"crypto/rc4":           true,
+	"crypto/rsa":           true,
+	"crypto/sha1":          true,
+	"crypto/sha256":        true,
+	"crypto/sha512":        true,
+	"crypto/subtle":        true,
+	"crypto/tls":           true,
+	"crypto/x509":          true,
+	"crypto/x509/pkix":     true,
+	"database":             true,
+	"database/sql":         true,
+	"database/sql/driver":  true,
+	"debug":                true,
+	"debug/dwarf":          true,
+	"debug/elf":            true,
+	"debug/gosym":          true,
+	"debug/macho":          true,
+	"debug/pe":             true,
+	"debug/plan9obj":       true,
+	"encoding":             true,
+	"encoding/ascii85":     true,
+	"encoding/asn1":        true,
+	"encoding/base32":      true,
+	"encoding/base64":      true,
+	"encoding/binary":      true,
+	"encoding/csv":         true,
+	"encoding/gob":         true,
+	"encoding/hex":         true,
+	"encoding/json":        true,
+	"encoding/pem":         true,
+	"encoding/xml":         true,
+	"errors":               true,
+	"expvar":               true,
+	"flag":                 true,
+	"fmt":                  true,
+	"go":                   true,
+	"go/ast":               true,
+	"go/build":             true,
+	"go/constant":          true,
+	"go/doc":               true,
+	"go/format":            true,
+	"go/importer":          true,
+	"go/parser":            true,
+	"go/printer":           true,
+	"go/scanner":           true,
+	"go/token":             true,
+	"go/types":             true,
+	"hash":                 true,
+	"hash/adler32":         true,
+	"hash/crc32":           true,
+	"hash/crc64":           true,
+	"hash/fnv":             true,
+	"html":                 true,
+	"html/template":        true,
+	"image":                true,
+	"image/color":          true,
+	"image/color/palette":  true,
+	"image/draw":           true,
+	"image/gif":            true,
+	"image/jpeg":           true,
+	"image/png":            true,
+	"index":                true,
+	"index/suffixarray":    true,
+	"io":                   true,
+	"io/ioutil":            true,
+	"log":                  true,
+	"log/syslog":           true,
+	"math":                 true,
+	"math/big":             true,
+	"math/bits":            true,
+	"math/cmplx":           true,
+	"math/rand":            true,
+	"mime":                 true,
+	"mime/multipart":       true,
+	"mime/quotedprintable": true,
+	"net":                 true,
+	"net/http":            true,
+	"net/http/cgi":        true,
+	"net/http/cookiejar":  true,
+	"net/http/fcgi":       true,
+	"net/http/httptest":   true,
+	"net/http/httptrace":  true,
+	"net/http/httputil":   true,
+	"net/http/pprof":      true,
+	"net/mail":            true,
+	"net/rpc":             true,
+	"net/rpc/jsonrpc":     true,
+	"net/smtp":            true,
+	"net/textproto":       true,
+	"net/url":             true,
+	"os":                  true,
+	"os/exec":             true,
+	"os/signal":           true,
+	"os/user":             true,
+	"path":                true,
+	"path/filepath":       true,
+	"plugin":              true,
+	"reflect":             true,
+	"regexp":              true,
+	"regexp/syntax":       true,
+	"runtime":             true,
+	"runtime/cgo":         true,
+	"runtime/debug":       true,
+	"runtime/msan":        true,
+	"runtime/pprof":       true,
+	"runtime/race":        true,
+	"runtime/trace":       true,
+	"sort":                true,
+	"strconv":             true,
+	"strings":             true,
+	"sync":                true,
+	"sync/atomic":         true,
+	"syscall":             true,
+	"testing":             true,
+	"testing/iotest":      true,
+	"testing/quick":       true,
+	"text":                true,
+	"text/scanner":        true,
+	"text/tabwriter":      true,
+	"text/template":       true,
+	"text/template/parse": true,
+	"time":                true,
+	"unicode":             true,
+	"unicode/utf16":       true,
+	"unicode/utf8":        true,
+	"unsafe":              true,
+}
+
+func goImportIsInternal(pkg string) bool {
+	if pkg == "." {
+		return false
+	}
+	if internalPackages[pkg] || strings.Index(pkg, "internal") != -1 {
+		return true
+	}
+	return goImportIsInternal(path.Dir(pkg))
+}
+
 // Build a dependency list given an entry point.
-func traceImports(m module.Module, allowUnresolved bool) ([]GoPkg, error) {
-	// Do import tracing.
-	var tree depth.Tree
-	err := tree.Resolve(m.Target)
+func getGoImports(builder *GoBuilder, m module.Module) ([]GoPkg, error) {
+	stdout, _, err := runLogged(goLogger, m.Dir, builder.GoCmd, "list", "-f", "{{ join .Deps \"\\n\" }}")
 	if err != nil {
-		return nil, fmt.Errorf("could not resolve dependencies: %s", err.Error())
+		return nil, fmt.Errorf("could not trace imports: %s", err.Error())
 	}
 
-	// Flatten tree (technically a DAG?) into a list.
-	deps, err := flattenGoDeps(*tree.Root, allowUnresolved)
-	if err != nil {
-		return nil, fmt.Errorf("could not resolve dependencies: %s", err.Error())
+	var deps []GoPkg
+	for _, line := range strings.Split(stdout, "\n") {
+		if line != "" {
+			deps = append(deps, GoPkg{
+				ImportPath: line,
+				isInternal: goImportIsInternal(line),
+			})
+		}
 	}
 
 	return deps, nil
-}
-
-// Recursively flatten the dependency tree.
-func flattenGoDeps(pkg depth.Pkg, allowUnresolved bool) ([]GoPkg, error) {
-	// Ignore "internal" (i.e. standard library) packages.
-	if pkg.Internal {
-		if len(pkg.Deps) == 0 {
-			return []GoPkg{GoPkg{ImportPath: pkg.Name, isInternal: pkg.Internal}}, nil
-		}
-		return nil, errors.New("dependency of stdlib detected (this should never happen)")
-	}
-
-	// Get recursively flattened trees of child dependencies.
-	var deps []GoPkg
-	for _, dep := range pkg.Deps {
-		flattened, err := flattenGoDeps(dep, allowUnresolved)
-		if err != nil {
-			return nil, err
-		}
-		deps = append(deps, flattened...)
-	}
-
-	// Add this package if it's resolved.
-	if allowUnresolved || pkg.Resolved {
-		return append(deps, GoPkg{ImportPath: pkg.Name, isInternal: pkg.Internal}), nil
-	}
-
-	// Otherwise, fail.
-	return nil, fmt.Errorf("could not resolve package: %s", pkg.Name)
 }
 
 // Lockfile structs for JSON unmarshalling
@@ -397,7 +535,7 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 	goLogger.Debugf("Running Go analysis: %#v %#v", m, allowUnresolved)
 
 	// Trace imports
-	traced, err := traceImports(m, allowUnresolved)
+	traced, err := getGoImports(builder, m)
 	if err != nil {
 		return nil, fmt.Errorf("could not trace go imports: %#v", err.Error())
 	}
@@ -498,10 +636,20 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 	projectImports := strings.TrimPrefix(projectFolder, filepath.Join(os.Getenv("GOPATH"), "src")+string(filepath.Separator))
 	for _, dep := range traced {
 		goLogger.Debugf("Resolving raw import: %s", dep.ImportPath)
+
 		// Strip out `/vendor/` weirdness in import paths.
 		const vendorPrefix = "/vendor/"
 		vendoredPathSections := strings.Split(dep.ImportPath, vendorPrefix)
 		importPath := vendoredPathSections[len(vendoredPathSections)-1]
+
+		// Work around awful Go compiler hack: see https://github.com/golang/go/issues/16333
+		if strings.HasPrefix(dep.ImportPath, "vendor/golang_org") {
+			if strings.Index(dep.ImportPath, "internal") != -1 {
+				continue
+			}
+			importPath = "golang.org" + strings.TrimPrefix(dep.ImportPath, "vendor/golang_org")
+		}
+
 		goLogger.Debugf("Resolving import: %s", importPath)
 
 		// Get revisions (often these are scoped to repository, not package)
@@ -544,7 +692,7 @@ func (builder *GoBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, 
 	goLogger.Debugf("Checking Go build: %#v %#v", m, allowUnresolved)
 
 	// Attempt to trace imports
-	_, err := traceImports(m, allowUnresolved)
+	_, err := getGoImports(builder, m)
 	if err != nil {
 		return false, fmt.Errorf("could not trace go imports: %s", err.Error())
 	}
