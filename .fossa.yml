@@ -3,10 +3,10 @@
 version: 1
 cli:
   server: https://app.fossa.io
-  project: github.com/fossas/fossa-cli
+  project: git@github.com:fossas/fossa-cli.git
   fetcher: git
 analyze:
   modules:
-  - name: fossa-cli
-    path: ./cmd/fossa
-    type: gopackage
+  - name: fossa
+    path: cmd/fossa
+    type: go
