@@ -161,7 +161,7 @@ fossa report --type licenses > NOTICE.txt
 
 [See this repo's NOTICE file](NOTICE) for an example.
 
-License data is provided by https://fossa.io's 500GB open source registry.
+License data is provided by [https://fossa.io](https://fossa.io)'s 500GB open source registry.
 
 ## Reference
 Check out the [User Guide](docs/user-guide.md) for more details.
