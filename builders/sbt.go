@@ -10,7 +10,6 @@ import (
 	"github.com/bmatcuk/doublestar"
 	logging "github.com/op/go-logging"
 
-	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -151,7 +150,7 @@ func (builder *SBTBuilder) IsModule(target string) (bool, error) {
 }
 
 // DiscoverModules returns a root build.sbt if found, and build configs for all sub-projects otherwise
-func (builder *SBTBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
+func (builder *SBTBuilder) DiscoverModules(dir string) ([]module.Config, error) {
 	_, err := os.Stat(filepath.Join(dir, "build.sbt"))
 	if err == nil {
 		// in a multi-project build (https://www.scala-sbt.org/1.x-beta/docs/Multi-Project.html) we return the root build.sbt only
@@ -160,8 +159,8 @@ func (builder *SBTBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, e
 			absDir = dir
 		}
 		artifactName := filepath.Base(absDir)
-		return []config.ModuleConfig{
-			config.ModuleConfig{
+		return []module.Config{
+			module.Config{
 				Name: artifactName,
 				Path: "build.sbt",
 				Type: "sbt",
@@ -174,10 +173,10 @@ func (builder *SBTBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, e
 	if err != nil {
 		return nil, err
 	}
-	moduleConfigs := make([]config.ModuleConfig, len(sbtFilePaths))
+	moduleConfigs := make([]module.Config, len(sbtFilePaths))
 	for i, path := range sbtFilePaths {
 		artifactName := filepath.Dir(path) // Use the dirname as it's impossible to reliably parse from build.sbt
-		moduleConfigs[i] = config.ModuleConfig{
+		moduleConfigs[i] = module.Config{
 			Name: artifactName,
 			Path: path,
 			Type: "sbt",

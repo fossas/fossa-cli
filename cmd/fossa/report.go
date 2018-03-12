@@ -12,6 +12,7 @@ import (
 	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 
+	"github.com/fossas/fossa-cli/builders"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -74,12 +75,13 @@ func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, a analysis) {
 	var responses []dependencyResponse
 	for _, deps := range a {
 		for _, dep := range deps {
-			if dep.Revision() != "" {
-				locator := string(module.MakeLocator(dep))
-				if dep.Fetcher() == "go" {
-					locator = config.MakeLocator("git", dep.Package(), dep.Revision())
+			if module.IsResolved(dep) {
+				locator := module.DepLocator(dep)
+				goPkg, ok := dep.(builders.GoPkg)
+				if ok {
+					locator = module.MakeLocator("git", goPkg.ImportPath, goPkg.Version)
 				}
-				locators = append(locators, fmt.Sprintf("locator[%d]=%s", len(locators), url.QueryEscape(locator)))
+				locators = append(locators, fmt.Sprintf("locator[%d]=%s", len(locators), url.QueryEscape(string(locator))))
 
 				// We batch these in groups of 20 for pagination/performance purposes.
 				// TODO: do this in parallel.

@@ -10,7 +10,6 @@ import (
 
 	logging "github.com/op/go-logging"
 
-	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -140,8 +139,8 @@ func (builder *ComposerBuilder) IsModule(target string) (bool, error) {
 }
 
 // DiscoverModules finds composer.json modules not a /vendor/ folder
-func (builder *ComposerBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
-	var moduleConfigs []config.ModuleConfig
+func (builder *ComposerBuilder) DiscoverModules(dir string) ([]module.Config, error) {
+	var moduleConfigs []module.Config
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			composerLogger.Debugf("failed to access path %s: %s\n", path, err.Error())
@@ -164,10 +163,10 @@ func (builder *ComposerBuilder) DiscoverModules(dir string) ([]config.ModuleConf
 			}
 
 			nodejsLogger.Debugf("found Compower package: %s (%s)", path, moduleName)
-			moduleConfigs = append(moduleConfigs, config.ModuleConfig{
+			moduleConfigs = append(moduleConfigs, module.Config{
 				Name: moduleName,
 				Path: path,
-				Type: string(config.Composer),
+				Type: string(module.Composer),
 			})
 		}
 		return nil

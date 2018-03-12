@@ -10,7 +10,6 @@ import (
 	"github.com/bmatcuk/doublestar"
 	logging "github.com/op/go-logging"
 
-	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -162,8 +161,8 @@ func (builder *NodeJSBuilder) IsModule(target string) (bool, error) {
 }
 
 // DiscoverModules builds ModuleConfigs for any package.jsons that are not contained in a node_modules dir
-func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
-	var moduleConfigs []config.ModuleConfig
+func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]module.Config, error) {
+	var moduleConfigs []module.Config
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			nodejsLogger.Debugf("Failed to access path %s: %s\n", path, err.Error())
@@ -186,10 +185,10 @@ func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]config.ModuleConfig
 
 			nodejsLogger.Debugf("Found NodeJS package: %s (%s)", path, moduleName)
 			path, _ = filepath.Rel(dir, path)
-			moduleConfigs = append(moduleConfigs, config.ModuleConfig{
+			moduleConfigs = append(moduleConfigs, module.Config{
 				Name: moduleName,
 				Path: path,
-				Type: string(config.Nodejs),
+				Type: string(module.Nodejs),
 			})
 		}
 		return nil

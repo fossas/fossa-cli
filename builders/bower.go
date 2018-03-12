@@ -10,7 +10,6 @@ import (
 	"github.com/bmatcuk/doublestar"
 	logging "github.com/op/go-logging"
 
-	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -143,8 +142,8 @@ func (builder *BowerBuilder) IsModule(target string) (bool, error) {
 }
 
 // DiscoverModules finds any bower.json modules not in node_modules or bower_components folders
-func (builder *BowerBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
-	var moduleConfigs []config.ModuleConfig
+func (builder *BowerBuilder) DiscoverModules(dir string) ([]module.Config, error) {
+	var moduleConfigs []module.Config
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			bowerLogger.Debugf("Failed to access path %s: %s", path, err.Error())
@@ -166,10 +165,10 @@ func (builder *BowerBuilder) DiscoverModules(dir string) ([]config.ModuleConfig,
 			}
 
 			bowerLogger.Debugf("Found Bower package: %s (%s)", path, moduleName)
-			moduleConfigs = append(moduleConfigs, config.ModuleConfig{
+			moduleConfigs = append(moduleConfigs, module.Config{
 				Name: moduleName,
 				Path: path,
-				Type: string(config.Bower),
+				Type: string(module.Bower),
 			})
 		}
 		return nil

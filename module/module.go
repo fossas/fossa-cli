@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	logging "github.com/op/go-logging"
-
-	"github.com/fossas/fossa-cli/config"
 )
 
 var moduleLogger = logging.MustGetLogger("module")
@@ -15,7 +13,8 @@ var moduleLogger = logging.MustGetLogger("module")
 // A Module is a unit of buildable code within a project.
 type Module struct {
 	Name string
-	Type config.ModuleType
+	Type Type
+
 	// Target is the entry point or manifest path for the build system. The exact
 	// meaning is Type-dependent.
 	Target string
@@ -23,12 +22,18 @@ type Module struct {
 	// you would normally run the build command from).
 	Dir string
 
-	// TODO: add project and revision, because different modules might belong to
-	// different projects
+	// Different modules in a monolith may correspond to different FOSSA projects
+	// or revisions.
+	// TODO: use these values.
+	Project  string
+	Revision string
+
+	// A catch-all for builders to add metadata (a la Context.Value).
+	Value interface{}
 }
 
 // New instantiates and sets up a Module for a given ModuleType
-func New(moduleType config.ModuleType, conf config.ModuleConfig) (Module, error) {
+func New(moduleType Type, conf Config) (Module, error) {
 	var manifestName string
 	var moduleTarget string
 
@@ -40,29 +45,29 @@ func New(moduleType config.ModuleType, conf config.ModuleConfig) (Module, error)
 
 	// infer default module settings from type
 	switch moduleType {
-	case config.Bower:
+	case Bower:
 		manifestName = "bower.json"
 		break
-	case config.Composer:
+	case Composer:
 		manifestName = "composer.json"
 		break
-	case config.Golang:
+	case Golang:
 		manifestName = ""
 		moduleTarget = strings.TrimPrefix(modulePath, filepath.Join(os.Getenv("GOPATH"), "src")+"/")
 		break
-	case config.Maven:
+	case Maven:
 		manifestName = "pom.xml"
 		break
-	case config.Nodejs:
+	case Nodejs:
 		manifestName = "package.json"
 		break
-	case config.Ruby:
+	case Ruby:
 		manifestName = "Gemfile"
 		break
-	case config.SBT:
+	case SBT:
 		manifestName = "build.sbt"
 		break
-	case config.VendoredArchives:
+	case VendoredArchives:
 		manifestName = ""
 		break
 	}

@@ -151,15 +151,14 @@ func main() {
 	app.Run(os.Args)
 }
 
-func resolveModuleConfig(moduleConfig config.ModuleConfig) (builders.Builder, module.Module, error) {
+func resolveModuleConfig(moduleConfig module.Config) (module.Builder, module.Module, error) {
 	mainLogger.Debugf("Resolving moduleConfig: %#v", moduleConfig)
 
-	var builder builders.Builder
+	var builder module.Builder
 	var m module.Module
-	var err error
 
-	moduleType := config.GetModuleType(moduleConfig.Type)
-	if moduleType == "" {
+	moduleType, err := module.Parse(moduleConfig.Type)
+	if err != nil {
 		mainLogger.Debug("Got unknown module.")
 		return builder, m, fmt.Errorf("unknown module type: %s", moduleConfig.Type)
 	}

@@ -12,7 +12,6 @@ import (
 	"github.com/bmatcuk/doublestar"
 	logging "github.com/op/go-logging"
 
-	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -154,7 +153,7 @@ func (builder *MavenBuilder) IsModule(target string) (bool, error) {
 }
 
 // DiscoverModules finds either a root pom.xml file or all pom.xmls in the specified dir
-func (builder *MavenBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
+func (builder *MavenBuilder) DiscoverModules(dir string) ([]module.Config, error) {
 	_, err := os.Stat(filepath.Join(dir, "pom.xml"))
 	if err == nil {
 		// Root pom found; parse and return
@@ -168,8 +167,8 @@ func (builder *MavenBuilder) DiscoverModules(dir string) ([]config.ModuleConfig,
 			}
 
 		}
-		return []config.ModuleConfig{
-			config.ModuleConfig{
+		return []module.Config{
+			module.Config{
 				Name: artifactName,
 				Path: "pom.xml",
 				Type: "mvn",
@@ -182,7 +181,7 @@ func (builder *MavenBuilder) DiscoverModules(dir string) ([]config.ModuleConfig,
 	if err != nil {
 		return nil, err
 	}
-	moduleConfigs := make([]config.ModuleConfig, len(pomFilePaths))
+	moduleConfigs := make([]module.Config, len(pomFilePaths))
 	for i, path := range pomFilePaths {
 		artifactName := filepath.Base(filepath.Dir(dir))
 		var artifactPom POMFile
@@ -194,7 +193,7 @@ func (builder *MavenBuilder) DiscoverModules(dir string) ([]config.ModuleConfig,
 			}
 		}
 		path, _ := filepath.Rel(dir, path)
-		moduleConfigs[i] = config.ModuleConfig{
+		moduleConfigs[i] = module.Config{
 			Name: artifactName,
 			Path: path,
 			Type: "mvn",

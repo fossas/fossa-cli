@@ -11,7 +11,6 @@ import (
 
 	logging "github.com/op/go-logging"
 
-	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -108,7 +107,7 @@ func (builder *GradleBuilder) IsModule(target string) (bool, error) {
 }
 
 // DiscoverModules finds either a root build.gradle file in the specified dir
-func (builder *GradleBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
+func (builder *GradleBuilder) DiscoverModules(dir string) ([]module.Config, error) {
 	if err := builder.Initialize(); err != nil {
 		return nil, err
 	}
@@ -119,7 +118,7 @@ func (builder *GradleBuilder) DiscoverModules(dir string) ([]config.ModuleConfig
 		taskListOutput, gradleTaskErr := exec.Command(builder.GradleCmd, "tasks", "--all", "-q", "-a", "--offline").Output()
 		if len(taskListOutput) > 0 && gradleTaskErr == nil {
 			// Search for subprojects using Gradle task list instead of grepping for build.gradle
-			var moduleConfigurations []config.ModuleConfig
+			var moduleConfigurations []module.Config
 			// NOTE: this leaves out the root ("") dependencies task. To include, replace with `(\w+:)?dependencies -`
 			taskListRe := regexp.MustCompile(`\w+:dependencies -`)
 			for _, line := range strings.Split(string(taskListOutput), "\n") {
@@ -129,7 +128,7 @@ func (builder *GradleBuilder) DiscoverModules(dir string) ([]config.ModuleConfig
 					if len(depMatchIndices) > 0 && depMatchIndices[0] == 0 {
 						gradleTask := strings.Split(trimmed, " - ")[0]
 						gradleLogger.Debugf("found gradle dependencies task: %s", gradleTask)
-						moduleConfigurations = append(moduleConfigurations, config.ModuleConfig{
+						moduleConfigurations = append(moduleConfigurations, module.Config{
 							Name: strings.Split(gradleTask, ":")[0] + ":compile", // Name is the gradle `task:configuration` (default to compile)
 							Path: "build.gradle",
 							Type: "gradle",
@@ -142,8 +141,8 @@ func (builder *GradleBuilder) DiscoverModules(dir string) ([]config.ModuleConfig
 		}
 
 		// Fall back to "app" as default task, even though technically it would be "" (root)
-		return []config.ModuleConfig{
-			config.ModuleConfig{
+		return []module.Config{
+			module.Config{
 				Name: "app:compile",
 				Path: "build.gradle",
 				Type: "gradle",

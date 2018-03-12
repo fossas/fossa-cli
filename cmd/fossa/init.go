@@ -10,6 +10,7 @@ import (
 
 	"github.com/fossas/fossa-cli/builders"
 	config "github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/module"
 )
 
 var initLogger = logging.MustGetLogger("init")
@@ -47,7 +48,7 @@ func doInit(conf *config.CLIConfig, overwrite bool, includeAll bool) error {
 
 		if !includeAll {
 			// Filter suspicious modules
-			var filteredModuleConfigs []config.ModuleConfig
+			var filteredModuleConfigs []module.Config
 			for _, c := range conf.Modules {
 				if matched, err := regexp.MatchString("(docs?/|test|example|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/)", c.Path); err != nil || matched != true {
 					filteredModuleConfigs = append(filteredModuleConfigs, c)
@@ -65,10 +66,10 @@ func doInit(conf *config.CLIConfig, overwrite bool, includeAll bool) error {
 
 // `findModules` calls DiscoverModules() on all available integrations and returns a new config state
 // If this function errors, this is not necessarily fatal; it just means one of the scanners failed
-func findModules(dir string) ([]config.ModuleConfig, error) {
+func findModules(dir string) ([]module.Config, error) {
 	var lastError error
-	var moduleConfigs []config.ModuleConfig
-	for _, t := range config.ModuleTypes {
+	var moduleConfigs []module.Config
+	for _, t := range module.Types {
 		builder := builders.New(t)
 		if builder == nil {
 			initLogger.Warningf("No builder available for module type: %s", t)
