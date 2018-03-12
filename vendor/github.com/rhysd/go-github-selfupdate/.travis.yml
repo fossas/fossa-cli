@@ -1,0 +1,16 @@
+language: go
+os:
+  - linux
+  - osx
+install:
+  - go get -t -d -v ./...
+  - go version
+  - go env
+script:
+  - go build ./selfupdate/
+  - go build ./cmd/selfupdate-example/
+  - go build ./cmd/detect-latest-release/
+  - go build ./cmd/go-get-release/
+  - go test -v -race -coverprofile=coverage.txt ./selfupdate
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
