@@ -67,7 +67,7 @@ func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, a analysis) {
 	s.Start()
 	total := 0
 	for _, deps := range a {
-		for _ = range deps {
+		for range deps {
 			total++
 		}
 	}

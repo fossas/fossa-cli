@@ -142,7 +142,7 @@ func (builder *GradleBuilder) DiscoverModules(dir string) ([]module.Config, erro
 
 		// Fall back to "app" as default task, even though technically it would be "" (root)
 		return []module.Config{
-			module.Config{
+			{
 				Name: "app:compile",
 				Path: "build.gradle",
 				Type: "gradle",

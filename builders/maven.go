@@ -168,7 +168,7 @@ func (builder *MavenBuilder) DiscoverModules(dir string) ([]module.Config, error
 
 		}
 		return []module.Config{
-			module.Config{
+			{
 				Name: artifactName,
 				Path: "pom.xml",
 				Type: "mvn",

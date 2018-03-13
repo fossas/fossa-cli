@@ -160,7 +160,7 @@ func (builder *SBTBuilder) DiscoverModules(dir string) ([]module.Config, error) 
 		}
 		artifactName := filepath.Base(absDir)
 		return []module.Config{
-			module.Config{
+			{
 				Name: artifactName,
 				Path: "build.sbt",
 				Type: "sbt",
