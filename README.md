@@ -172,12 +172,9 @@ View our [Contribution Guidelines](CONTRIBUTING.md) to get started.
 
 ## License
 
-`fossa` is Open Source and licensed under the [AGPLv3](https://tldrlegal.com/license/gnu-affero-general-public-license-v3-(agpl-3.0)).
+`fossa` is Open Source and licensed under the [MPL-2.0](https://tldrlegal.com/license/mozilla-public-license-2.0-(mpl-2)).
 
-You are free to use `fossa` for normal commercial or personal purposes.  The code you integrate does NOT fall under the scope of this license. Enjoy!
+You are free to use `fossa` for commercial or personal purposes.  Enjoy!
 
-You are free to modify or develop applications on top of `fossa`, but any modifications / derivative works must be contributed back to the community under the AGPL.
-
-Please contact [support@fossa.io](mailto:support@fossa.io) for additional licensing guidance.
 
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli?ref=badge_large)
