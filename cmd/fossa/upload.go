@@ -11,7 +11,6 @@ import (
 	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 
-	"github.com/fossas/fossa-cli/builders"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -48,7 +47,7 @@ type normalizedDependency struct {
 	UnresolvedLocators []string `json:"unresolved_locators,omitempty"`
 }
 
-func normalize(builder builders.Builder, m module.Module, deps []module.Dependency) (normalizedModule, error) {
+func normalize(builder module.Builder, m module.Module, deps []module.Dependency) (normalizedModule, error) {
 	var normalDeps []normalizedDependency
 	for i := 0; i < len(deps); i++ {
 		data, err := json.Marshal(deps[i])
@@ -57,7 +56,7 @@ func normalize(builder builders.Builder, m module.Module, deps []module.Dependen
 		}
 
 		normalDeps = append(normalDeps, normalizedDependency{
-			Locator: string(module.MakeLocator(deps[i])),
+			Locator: string(module.DepLocator(deps[i])),
 			Data:    (*json.RawMessage)(&data),
 		})
 	}
@@ -153,7 +152,7 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 
 	analysisLogger.Debugf("Uploading build data from (%#v) modules: %#v", len(results), string(buildData))
 
-	fossaEndpoint := "/api/builds/custom?locator=" + url.QueryEscape(config.MakeLocator(conf.Fetcher, conf.Project, conf.Revision)) + "&v=" + version
+	fossaEndpoint := "/api/builds/custom?locator=" + url.QueryEscape(string(module.MakeLocator(conf.Fetcher, conf.Project, conf.Revision))) + "&v=" + version
 	if conf.Fetcher == "custom" {
 		defaultProjectTitle := results[0].Name
 		cwd, _ := filepath.Abs(".")

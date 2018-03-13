@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/fossas/fossa-cli/builders"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 	logging "github.com/op/go-logging"
@@ -52,13 +51,13 @@ func analyzeCmd(c *cli.Context) {
 }
 
 type analysisKey struct {
-	builder builders.Builder
+	builder module.Builder
 	module  module.Module
 }
 
 type analysis map[analysisKey][]module.Dependency
 
-func doAnalyze(modules []config.ModuleConfig, allowUnresolved bool) (analysis, error) {
+func doAnalyze(modules []module.Config, allowUnresolved bool) (analysis, error) {
 	analysisLogger.Debugf("Running analysis on modules: %#v", modules)
 	dependencies := make(analysis)
 

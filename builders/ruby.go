@@ -12,7 +12,6 @@ import (
 	"github.com/bmatcuk/doublestar"
 	logging "github.com/op/go-logging"
 
-	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -153,12 +152,12 @@ func (builder *RubyBuilder) IsModule(target string) (bool, error) {
 }
 
 // DiscoverModules returns ModuleConfigs that match Gemfiles in the directory
-func (builder *RubyBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
+func (builder *RubyBuilder) DiscoverModules(dir string) ([]module.Config, error) {
 	gemFilePaths, err := doublestar.Glob(filepath.Join(dir, "**", "Gemfile"))
 	if err != nil {
 		return nil, err
 	}
-	moduleConfigs := make([]config.ModuleConfig, len(gemFilePaths))
+	moduleConfigs := make([]module.Config, len(gemFilePaths))
 	for i, path := range gemFilePaths {
 		gemName := filepath.Base(filepath.Dir(path))
 		// infer title from *.gemspec in directory if exists
@@ -176,7 +175,7 @@ func (builder *RubyBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, 
 			}
 		}
 		path, _ = filepath.Rel(dir, path)
-		moduleConfigs[i] = config.ModuleConfig{
+		moduleConfigs[i] = module.Config{
 			Name: gemName,
 			Path: path,
 			Type: "ruby",

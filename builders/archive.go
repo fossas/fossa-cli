@@ -13,7 +13,6 @@ import (
 	"github.com/bmatcuk/doublestar"
 	logging "github.com/op/go-logging"
 
-	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -126,6 +125,6 @@ func (builder *VendoredArchiveBuilder) IsModule(target string) (bool, error) {
 }
 
 // DiscoverModules is not implemented for VendoredArchiveBuilder, instead it must be explicitly configured
-func (builder *VendoredArchiveBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
-	return []config.ModuleConfig{}, nil
+func (builder *VendoredArchiveBuilder) DiscoverModules(dir string) ([]module.Config, error) {
+	return []module.Config{}, nil
 }

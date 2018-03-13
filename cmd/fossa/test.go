@@ -13,6 +13,7 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/module"
 )
 
 var testLogger = logging.MustGetLogger("test")
@@ -35,7 +36,7 @@ func getBuild(endpoint, apiKey, fetcher, project, revision string) (buildRespons
 		return buildResponse{}, fmt.Errorf("invalid FOSSA endpoint: %s", err.Error())
 	}
 
-	buildsURL, err := url.Parse(fmt.Sprintf(buildsEndpoint, url.PathEscape(config.MakeLocator(fetcher, project, revision))))
+	buildsURL, err := url.Parse(fmt.Sprintf(buildsEndpoint, url.PathEscape(string(module.MakeLocator(fetcher, project, revision)))))
 	if err != nil {
 		return buildResponse{}, fmt.Errorf("invalid FOSSA builds endpoint: %s", err.Error())
 	}
@@ -78,7 +79,7 @@ func getRevision(endpoint, apiKey, fetcher, project, revision string) (revisionR
 		return revisionResponse{}, fmt.Errorf("invalid FOSSA endpoint: %s", err.Error())
 	}
 
-	revisionsURL, err := url.Parse(fmt.Sprintf(revisionsEndpoint, url.PathEscape(config.MakeLocator(fetcher, project, revision))))
+	revisionsURL, err := url.Parse(fmt.Sprintf(revisionsEndpoint, url.PathEscape(string(module.MakeLocator(fetcher, project, revision)))))
 	if err != nil {
 		return revisionResponse{}, fmt.Errorf("invalid FOSSA issues endpoint: %s", err.Error())
 	}

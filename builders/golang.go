@@ -16,7 +16,6 @@ import (
 	logging "github.com/op/go-logging"
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -735,8 +734,8 @@ func (builder *GoBuilder) IsModule(target string) (bool, error) {
 }
 
 // DiscoverModules walks subdirectories for a Go file with `package main`.
-func (builder *GoBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, error) {
-	var modules []config.ModuleConfig
+func (builder *GoBuilder) DiscoverModules(dir string) ([]module.Config, error) {
+	var modules []module.Config
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			goLogger.Debugf("Failed to access path %s: %s", path, err.Error())
@@ -763,7 +762,7 @@ func (builder *GoBuilder) DiscoverModules(dir string) ([]config.ModuleConfig, er
 				if err != nil {
 					return fmt.Errorf("could not compute module path: %s", err.Error())
 				}
-				modules = append(modules, config.ModuleConfig{
+				modules = append(modules, module.Config{
 					Name: info.Name(),
 					Path: modulePath,
 					Type: "go",

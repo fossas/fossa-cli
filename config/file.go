@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/fossas/fossa-cli/module"
 	git "gopkg.in/src-d/go-git.v4"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -26,7 +27,7 @@ type configFileCLIV1 struct {
 }
 
 type configFileAnalyzeV1 struct {
-	Modules []ModuleConfig `yaml:"modules,omitempty"`
+	Modules []module.Config `yaml:"modules,omitempty"`
 }
 
 func readConfigFile(path string) (string, configFileV1, error) {
