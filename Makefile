@@ -1,4 +1,5 @@
-DEP="$(shell go env GOPATH)/bin/dep"
+BIN="$(shell go env GOPATH)/bin"
+DEP="$(BIN)/dep"
 PREFIX?=/usr/local/bin
 LDFLAGS:=-ldflags '-X main.version=$(shell git rev-parse --abbrev-ref HEAD) -X main.commit=$(shell git rev-parse HEAD) -X "main.goversion=$(shell go version)"'
 
@@ -8,13 +9,13 @@ $(DEP): ## Grab golang/dep utility
 	go get github.com/golang/dep/cmd/dep
 
 .PHONY: build
-build: bin/fossa
+build: $(BIN)/fossa
 
-bin/fossa:
+$(BIN)/fossa:
 	mkdir -p $$(dirname $@)
 	go build -o $@ $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
 
-$(PREFIX)/fossa: bin/fossa
+$(PREFIX)/fossa: $(BIN)/fossa
 	mv $< $@
 
 vendor: $(DEP)
@@ -29,4 +30,4 @@ uninstall:
 
 .PHONY: clean
 clean:
-	rm -f bin/fossa
+	rm -f $(BIN)/fossa
