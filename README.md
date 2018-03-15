@@ -170,6 +170,8 @@ Check out the [User Guide](docs/user-guide.md) for more details.
 
 View our [Contribution Guidelines](CONTRIBUTING.md) to get started.
 
+If you're in San Francisco, come to our monthly [Open Source Happy Hour](http://meetup.fossa.io) to meet us F2F!
+
 ## License
 
 `fossa` is Open Source and licensed under the [MPL-2.0](https://tldrlegal.com/license/mozilla-public-license-2.0-(mpl-2)).
