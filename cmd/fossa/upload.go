@@ -185,7 +185,7 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 		return "", fmt.Errorf("invalid response, but build was uploaded")
 	}
 	locParts := strings.Split(jsonResponse["locator"].(string), "$")
-	getRef, _ := url.Parse("/projects/" + url.QueryEscape(locParts[0]) + "/refs/branch/master/" + url.QueryEscape(locParts[1]))
+	getRef, _ := url.Parse("/projects/" + url.QueryEscape(locParts[0]) + "/refs/branch/master/" + url.QueryEscape(locParts[1]) + "/browse/dependencies")
 	return fmt.Sprint(`
 ============================================================
 
