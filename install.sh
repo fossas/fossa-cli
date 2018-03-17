@@ -22,6 +22,18 @@ function fail {
   exit 1
 }
 
+# This function will ask for root privileges before executing a command
+# The goal is to allow the used to run this script as a normal user and
+# to ash authorizations as needed
+function askRoot {
+  echo "The following command needs administrator privileges:"
+  echo
+  echo -e "\t$*"
+  echo
+  # The -k flag forces sudo to re-ask the user for their authorization
+  sudo -k "$@"
+}
+
 function install {
   # Settings
   USER="fossas"
@@ -97,7 +109,9 @@ function install {
 
   # Move binary into output directory
   chmod +x $BIN || fail "chmod +x failed"
-  mv $BIN $OUT_DIR/$BIN || fail "mv failed"
+
+  # Admin privileges are required to run this command
+  askRoot mv $BIN $OUT_DIR/$BIN || fail "mv failed"
   echo "Installed at $OUT_DIR/$BIN"
 
   cleanup
