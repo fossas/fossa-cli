@@ -28,7 +28,7 @@ function fail {
 function askRoot {
   echo "The following command needs administrator privileges:"
   echo
-  echo -e "\t$*"
+  echo -e "\\t$*"
   echo
   # The -k flag forces sudo to re-ask the user for their authorization
   sudo -k "$@"
@@ -52,19 +52,19 @@ function install {
 
   # Check for non-POSIX dependencies
   GET=""
-  if which curl > /dev/null; then
+  if command -v curl > /dev/null; then
     GET="curl"
     if [[ $INSECURE = "true" ]]; then GET="$GET --insecure"; fi
     GET="$GET --fail -# -L"
-  elif which wget > /dev/null; then
+  elif command -v wget > /dev/null; then
     GET="wget"
     if [[ $INSECURE = "true" ]]; then GET="$GET --no-check-certificate"; fi
     GET="$GET -qO-"
   else
     fail "neither wget nor curl are installed"
   fi
-  which tar > /dev/null || fail "tar is not installed"
-  which gzip > /dev/null || fail "gzip is not installed"
+  command -v tar > /dev/null || fail "tar is not installed"
+  command -v gzip > /dev/null || fail "gzip is not installed"
 
   # Detect OS
   case $(uname -s) in
@@ -96,7 +96,7 @@ function install {
   # Enter temporary directory
   echo "Installing $USER/$REPO $RELEASE..."
   mkdir -p $TMP_DIR
-  cd $TMP_DIR
+  cd $TMP_DIR || fail "changing directory to $TMP_DIR failed"
 
   # Download and validate release
   RELEASE_URL="$GH/$USER/$REPO/releases/download/$RELEASE"
