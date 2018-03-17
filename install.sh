@@ -11,11 +11,11 @@
 TMP_DIR="/tmp/install-fossa-cli"
 
 function cleanup {
-  echo rm -rf $TMP_DIR > /dev/null
+  rm -rf $TMP_DIR > /dev/null
 }
+trap cleanup EXIT
 
 function fail {
-  cleanup
   msg=$1
   echo "============"
   echo "Error: $msg" 1>&2
@@ -113,8 +113,6 @@ function install {
   # Admin privileges are required to run this command
   askRoot mv $BIN $OUT_DIR/$BIN || fail "mv failed"
   echo "Installed at $OUT_DIR/$BIN"
-
-  cleanup
 }
 
 install
