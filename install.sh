@@ -30,7 +30,6 @@ function install {
   # TODO: automatically get latest version from GitHub Releases API
   VERSION="0.4.4"
   RELEASE="v$VERSION"
-  MOVE="true"
   INSECURE="false"
   OUT_DIR="/usr/local/bin"
   GH="https://github.com"
@@ -56,7 +55,7 @@ function install {
   which gzip > /dev/null || fail "gzip is not installed"
 
   # Detect OS
-  case `uname -s` in
+  case $(uname -s) in
     Darwin) OS="darwin";;
     Linux) OS="linux";;
     *) fail "unknown os: $(uname -s)";;
