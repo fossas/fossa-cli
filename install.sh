@@ -39,12 +39,10 @@ function install {
   USER="fossas"
   REPO="fossa-cli"
   BIN="fossa"
-  # TODO: automatically get latest version from GitHub Releases API
-  VERSION="0.4.4"
-  RELEASE="v$VERSION"
   INSECURE="false"
   OUT_DIR="/usr/local/bin"
   GH="https://github.com"
+  GH_API="https://api.github.com"
 
   # `bash` check
   [ ! "$BASH_VERSION" ] && fail "Please use bash instead"
@@ -92,13 +90,16 @@ function install {
   *) fail "No asset for platform ${OS}-${ARCH}";;
   esac
 
-
   # Enter temporary directory
-  echo "Installing $USER/$REPO $RELEASE..."
   mkdir -p $TMP_DIR
   cd $TMP_DIR || fail "changing directory to $TMP_DIR failed"
 
   # Download and validate release
+  bash -c "$GET $GH_API/repos/$USER/$REPO/releases/latest" > latest || fail "downloading latest release metadata failed"
+  RELEASE=$(grep tag_name latest | cut -d'"' -f4)
+  VERSION=${RELEASE#v} # remove prefix "v"
+
+  echo "Installing $USER/$REPO $RELEASE..."
   RELEASE_URL="$GH/$USER/$REPO/releases/download/$RELEASE"
   bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_${OS}_${ARCH}.tar.gz" > release.tar.gz || fail "downloading release failed"
   bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_checksums.txt" > checksums.txt || fail "downloading checksums failed"
