@@ -699,6 +699,10 @@ func (builder *GoBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, 
 	}
 	goLogger.Debugf("Tracing imports OK")
 
+	if allowUnresolved {
+		return true, nil
+	}
+
 	// Find project folder
 	projectFolder, hasProject, err := findGoProjectFolder(m.Dir)
 	if err != nil {
