@@ -23,8 +23,8 @@ function fail {
 }
 
 # This function will ask for root privileges before executing a command
-# The goal is to allow the used to run this script as a normal user and
-# to ash authorizations as needed
+# The goal is to allow the user to run this script as a normal user and
+# to be asked for authorizations as needed
 function askRoot {
   echo "The following command needs administrator privileges:"
   echo
