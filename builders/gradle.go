@@ -64,6 +64,7 @@ func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 
 	// TODO: We need to let the user configure the right configurations
 	// NOTE: we are intentionally using exec.Command over runLogged here, due to path issues with defining cmd.Dir
+	// TODO: set TERM=dumb
 	dependenciesOutput, err := exec.Command(builder.GradleCmd, taskName+":dependencies", "-q", "--configuration="+taskConfiguration, "--offline", "-a").Output()
 	if len(dependenciesOutput) == 0 || err != nil {
 		return nil, fmt.Errorf("could not run Gradle task %s:dependencies", taskName)
@@ -120,6 +121,7 @@ func (builder *GradleBuilder) DiscoverModules(dir string) ([]module.Config, erro
 			// Search for subprojects using Gradle task list instead of grepping for build.gradle
 			var moduleConfigurations []module.Config
 			// NOTE: this leaves out the root ("") dependencies task. To include, replace with `(\w+:)?dependencies -`
+			// TODO: check for root dependencies task if not found otherwise
 			taskListRe := regexp.MustCompile(`\w+:dependencies -`)
 			for _, line := range strings.Split(string(taskListOutput), "\n") {
 				trimmed := strings.TrimSpace(line)

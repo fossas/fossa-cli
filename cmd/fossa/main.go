@@ -16,6 +16,7 @@ import (
 )
 
 // main.{version,commit,goversion} are set by linker flags in Makefile and goreleaser
+// TODO: These may empty if built using `go get`
 var version string
 var commit string
 var goversion string
