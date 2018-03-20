@@ -74,6 +74,8 @@ analyze:
       type: gradle
 ```
 
+NOTE: While `app` and `compile` are two very common tasks/configurations, your Gradle build may be different.  For instance, many Gradle builds may use the configuration `release` instead of `compile`.  See the `Troubleshooting` section below for steps in figuring out the right configuration for you.
+
 ## Troubleshooting
 Since `fossa` operates directly on Gradle, it requires your build environment to be satisfied and Gradle tasks to reliably succeed before `fossa` can run.
 
@@ -92,7 +94,9 @@ If you're having trouble getting correct dependency data, try verifying the foll
 1. Your configuration and task name is valid (i.e. `app:compile` vs `customTask:customConfiguration`) in `fossa.yml`
 2. You get the desired output from your configured dependencies task `gradle {subtask}:dependencies --configuration={configuration}` (i.e. `gradle app:dependencies --configuration=compile`)
 
-If running the gradle command in your terminal does not succeed that means your gradle build is not properly configured.  If it does succeed but produces unexpected output, it means you have likely selected the wrong task or configuration for `fossa` to analyze.
+If running the gradle command in your terminal does not succeed that means your gradle build is not properly configured.
+
+If it does succeed but produces unexpected or empty output, it means you have likely selected the wrong task or configuration for `fossa` to analyze.  Running without the `--configuration` will give you the full output and help you find the right configuration to select.
 
 ### Reporting issues
 
