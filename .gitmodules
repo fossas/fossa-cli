@@ -1,13 +1,13 @@
-[submodule "test/fixtures/maven"]
-	path = test/fixtures/maven
-	url = https://github.com/neo4j/neo4j
-	shallow = true
-	branch = 3.4
-[submodule "test/fixtures/sbt"]
-	path = test/fixtures/sbt
-	url = https://github.com/apache/spark
-	shallow = true
 [submodule "test/fixtures/gradle"]
 	path = test/fixtures/gradle
 	url = https://github.com/google/iosched
 	shallow = true
+[submodule "test/fixtures/maven"]
+	path = test/fixtures/maven
+	shallow = true
+	url = https://github.com/neo4j/neo4j
+	branch = 3.4
+[submodule "test/fixtures/sbt"]
+	path = test/fixtures/sbt
+	shallow = true
+	url = https://github.com/apache/spark
