@@ -218,7 +218,7 @@ func (builder *GoBuilder) Build(m module.Module, force bool) error {
 		return fmt.Errorf("could not find Go project folder: %s", err.Error())
 	}
 	if !ok {
-		return errors.New("could not find Go project folder (maybe your Go build tool is not supported?)")
+		goLogger.Warningf("Could not find Go project folder (maybe your Go build tool is not supported?)")
 	}
 	goLogger.Debugf("Found project folder for Go build: %#v", projectFolder)
 
@@ -265,6 +265,12 @@ func (builder *GoBuilder) Build(m module.Module, force bool) error {
 	}
 
 	err = runGoTool(projectFolder, hasGdmManifest, "gdm vendor", "rm -rf vendor", force)
+	if err != nil {
+		return err
+	}
+
+	// Run an actual Go build
+	_, _, err = runLogged(goLogger, m.Dir, "go", "build", "./...")
 	if err != nil {
 		return err
 	}
