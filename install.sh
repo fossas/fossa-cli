@@ -26,12 +26,22 @@ function fail {
 # The goal is to allow the user to run this script as a normal user and
 # to be asked for authorizations as needed
 function askRoot {
-  echo "The following command needs administrator privileges:"
-  echo
-  echo -e "\\t$*"
-  echo
-  # The -k flag forces sudo to re-ask the user for their authorization
-  sudo -k "$@"
+  if [ $(id -u) -eq 0 ]; then
+    "$@"
+  else
+    echo "The following command needs administrator privileges:"
+    echo
+    echo -e "\\t$*"
+    echo
+    # The -k flag forces sudo to re-ask the user for their authorization
+    if command -v sudo > /dev/null; then
+      sudo -k "$@"
+    elif command -v su > /dev/null; then
+      su root -c "/bin/bash $@"
+    else
+      fail "neither sudo nor su are installed"
+    fi
+  fi
 }
 
 function install {
