@@ -127,6 +127,7 @@ func (builder *GradleBuilder) DiscoverModules(dir string) ([]module.Config, erro
 			// Search for subprojects using Gradle task list instead of grepping for build.gradle
 			var moduleConfigurations []module.Config
 			// NOTE: this leaves out the root ("") dependencies task. To include, replace with `(\w+:)?dependencies -`
+			// TODO: check for root dependencies task if not found otherwise
 			taskListRe := regexp.MustCompile(`\w+:dependencies -`)
 			for _, line := range strings.Split(string(taskListOutput), "\n") {
 				trimmed := strings.TrimSpace(line)

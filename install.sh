@@ -11,15 +11,27 @@
 TMP_DIR="/tmp/install-fossa-cli"
 
 function cleanup {
-  echo rm -rf $TMP_DIR > /dev/null
+  rm -rf $TMP_DIR > /dev/null
 }
+trap cleanup EXIT
 
 function fail {
-  cleanup
   msg=$1
   echo "============"
   echo "Error: $msg" 1>&2
   exit 1
+}
+
+# This function will ask for root privileges before executing a command
+# The goal is to allow the user to run this script as a normal user and
+# to be asked for authorizations as needed
+function askRoot {
+  echo "The following command needs administrator privileges:"
+  echo
+  echo -e "\\t$*"
+  echo
+  # The -k flag forces sudo to re-ask the user for their authorization
+  sudo -k "$@"
 }
 
 function install {
@@ -27,13 +39,10 @@ function install {
   USER="fossas"
   REPO="fossa-cli"
   BIN="fossa"
-  # TODO: automatically get latest version from GitHub Releases API
-  VERSION="0.4.4"
-  RELEASE="v$VERSION"
-  MOVE="true"
   INSECURE="false"
   OUT_DIR="/usr/local/bin"
   GH="https://github.com"
+  GH_API="https://api.github.com"
 
   # `bash` check
   [ ! "$BASH_VERSION" ] && fail "Please use bash instead"
@@ -41,22 +50,22 @@ function install {
 
   # Check for non-POSIX dependencies
   GET=""
-  if which curl > /dev/null; then
+  if command -v curl > /dev/null; then
     GET="curl"
     if [[ $INSECURE = "true" ]]; then GET="$GET --insecure"; fi
     GET="$GET --fail -# -L"
-  elif which wget > /dev/null; then
+  elif command -v wget > /dev/null; then
     GET="wget"
     if [[ $INSECURE = "true" ]]; then GET="$GET --no-check-certificate"; fi
     GET="$GET -qO-"
   else
     fail "neither wget nor curl are installed"
   fi
-  which tar > /dev/null || fail "tar is not installed"
-  which gzip > /dev/null || fail "gzip is not installed"
+  command -v tar > /dev/null || fail "tar is not installed"
+  command -v gzip > /dev/null || fail "gzip is not installed"
 
   # Detect OS
-  case `uname -s` in
+  case $(uname -s) in
     Darwin) OS="darwin";;
     Linux) OS="linux";;
     *) fail "unknown os: $(uname -s)";;
@@ -81,13 +90,16 @@ function install {
   *) fail "No asset for platform ${OS}-${ARCH}";;
   esac
 
-
   # Enter temporary directory
-  echo "Installing $USER/$REPO $RELEASE..."
   mkdir -p $TMP_DIR
-  cd $TMP_DIR
+  cd $TMP_DIR || fail "changing directory to $TMP_DIR failed"
 
   # Download and validate release
+  bash -c "$GET $GH_API/repos/$USER/$REPO/releases/latest" > latest || fail "downloading latest release metadata failed"
+  RELEASE=$(grep tag_name latest | cut -d'"' -f4)
+  VERSION=${RELEASE#v} # remove prefix "v"
+
+  echo "Installing $USER/$REPO $RELEASE..."
   RELEASE_URL="$GH/$USER/$REPO/releases/download/$RELEASE"
   bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_${OS}_${ARCH}.tar.gz" > release.tar.gz || fail "downloading release failed"
   bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_checksums.txt" > checksums.txt || fail "downloading checksums failed"
@@ -98,10 +110,10 @@ function install {
 
   # Move binary into output directory
   chmod +x $BIN || fail "chmod +x failed"
-  mv $BIN $OUT_DIR/$BIN || fail "mv failed"
-  echo "Installed at $OUT_DIR/$BIN"
 
-  cleanup
+  # Admin privileges are required to run this command
+  askRoot mv $BIN $OUT_DIR/$BIN || fail "mv failed"
+  echo "Installed at $OUT_DIR/$BIN"
 }
 
 install
