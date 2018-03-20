@@ -69,7 +69,7 @@ func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 	// NOTE: we are intentionally using exec.Command over runLogged here, due to path issues with defining cmd.Dir
 	dependenciesCmd := exec.Command(builder.GradleCmd, taskName+"dependencies", "-q", "--configuration="+taskConfiguration, "--offline", "-a")
 	dependenciesCmd.Env = os.Environ()
-	dependenciesCmd.Env = append(cmd.Env, "TERM=dumb")
+	dependenciesCmd.Env = append(dependenciesCmd.Env, "TERM=dumb")
 
 	dependenciesOutput, err := dependenciesCmd.Output()
 	if len(dependenciesOutput) == 0 || err != nil {
