@@ -31,7 +31,7 @@ func checkUpdate() (bool, error) {
 	}
 
 	parsedVersion := getSemver(version)
-	updateLogger.Debugf("checking version for updates (%s -> %s)", version, parsedVersion)
+	updateLogger.Debugf("checking version for updates (%s -> %s)", version, latest)
 	v, err := semver.Parse(parsedVersion)
 	if err != nil {
 		return false, errors.New("invalid version (are you using a development binary?)")
