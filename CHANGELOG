@@ -14,9 +14,11 @@ We generally follow semantic versioning, but semantic versioning does not specif
 
 Major breaking changes and new features will be recorded here. For a much more detailed automated changelog, see the changelogs accompanying each GitHub Release.
 
-### 0.4.1
+### 0.4.5
+- `fossa` is now licensed under MPL-2.0 instead of AGPLv3
+- Non-fatal missing binaries no longer cause builds to fail (this should help a lot for Go)
 
-#### New features
+### 0.4.1
 - Managed Builds are now supported: you no longer need to have a corresponding Git project within FOSSA to upload build results.
 
 #### Breaking changes
