@@ -125,7 +125,7 @@ func (builder *GoBuilder) Initialize() error {
 	builder.VndrVersion = ""
 
 	if depErr != nil && glideErr != nil && godepErr != nil && govendorErr != nil && vndrErr != nil {
-		return fmt.Errorf("no supported Go build tools detected (try setting $DEP_BINARY or $GLIDE_BINARY or $GODEP_BINARY or $GOVENDOR_BINARY or $VNDR_BINARY): %#v %#v %#v %#v %#v", depErr, glideErr, godepErr, govendorErr, vndrErr)
+		goLogger.Warningf("No supported Go build tools detected (try setting $DEP_BINARY or $GLIDE_BINARY or $GODEP_BINARY or $GOVENDOR_BINARY or $VNDR_BINARY): %#v %#v %#v %#v %#v", depErr, glideErr, godepErr, govendorErr, vndrErr)
 	}
 
 	goLogger.Debugf("Done initializing Go builder: %#v", builder)

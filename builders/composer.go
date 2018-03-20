@@ -52,7 +52,7 @@ func (builder *ComposerBuilder) Initialize() error {
 	// Set PHP context variables
 	phpCmd, phpVersion, err := which("-v", os.Getenv("PHP_BINARY"), "php")
 	if err != nil {
-		return fmt.Errorf("could not find PHP binary (try setting $PHP_BINARY): %s", err.Error())
+		composerLogger.Warningf("Could not find PHP binary (try setting $PHP_BINARY): %s", err.Error())
 	}
 	builder.PHPCmd = phpCmd
 	builder.PHPVersion = phpVersion

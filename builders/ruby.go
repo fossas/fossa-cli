@@ -57,7 +57,7 @@ func (builder *RubyBuilder) Initialize() error {
 	// Set Ruby context variables
 	rubyCmd, rubyVersion, err := which("-v", os.Getenv("RUBY_BINARY"), "ruby")
 	if err != nil {
-		return fmt.Errorf("could not find Ruby binary (try setting $RUBY_BINARY): %s", err.Error())
+		rubyLogger.Warningf("Could not find Ruby binary (try setting $RUBY_BINARY): %s", err.Error())
 	}
 	builder.RubyCmd = rubyCmd
 	builder.RubyVersion = rubyVersion
@@ -65,7 +65,7 @@ func (builder *RubyBuilder) Initialize() error {
 	// Set Gem context variables
 	gemCmd, gemVersion, err := which("-v", os.Getenv("GEM_BINARY"), "gem")
 	if err != nil {
-		return fmt.Errorf("could not find Gem binary (try setting $GEM_BINARY): %s", err.Error())
+		rubyLogger.Warningf("Could not find Gem binary (try setting $GEM_BINARY): %s", err.Error())
 	}
 	builder.GemCmd = gemCmd
 	builder.GemVersion = gemVersion

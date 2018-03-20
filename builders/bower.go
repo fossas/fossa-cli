@@ -52,7 +52,7 @@ func (builder *BowerBuilder) Initialize() error {
 	// Set Node context variables
 	nodeCmd, nodeVersion, err := which("-v", os.Getenv("NODE_BINARY"), "node", "nodejs")
 	if err != nil {
-		return fmt.Errorf("could not find Node binary (try setting $NODE_BINARY): %s", err.Error())
+		bowerLogger.Warningf("Could not find Node binary (try setting $NODE_BINARY): %s", err.Error())
 	}
 	builder.NodeCmd = nodeCmd
 	builder.NodeVersion = nodeVersion
@@ -60,7 +60,7 @@ func (builder *BowerBuilder) Initialize() error {
 	// Set Bower context variables
 	bowerCmd, bowerVersion, err := which("-v", os.Getenv("BOWER_BINARY"), "bower")
 	if err != nil {
-		return fmt.Errorf("could not find Bower binary (try setting $BOWER_BINARY): %s", err.Error())
+		bowerLogger.Warningf("Could not find Bower binary (try setting $BOWER_BINARY): %s", err.Error())
 	}
 	builder.BowerCmd = bowerCmd
 	builder.BowerVersion = bowerVersion

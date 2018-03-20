@@ -55,7 +55,7 @@ func (builder *SBTBuilder) Initialize() error {
 	// Set Java context variables
 	javaCmd, javaVersion, err := which("-version", os.Getenv("JAVA_BINARY"), "java")
 	if err != nil {
-		return fmt.Errorf("could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
+		sbtLogger.Warningf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
 	}
 	builder.JavaCmd = javaCmd
 	builder.JavaVersion = javaVersion

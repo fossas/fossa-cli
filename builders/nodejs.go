@@ -57,7 +57,7 @@ func (builder *NodeJSBuilder) Initialize() error {
 	// Set NodeJS context variables
 	nodeCmd, nodeVersion, err := which("-v", os.Getenv("NODE_BINARY"), "node", "nodejs")
 	if err != nil {
-		return fmt.Errorf("could not find Node binary (try setting $NODE_BINARY): %s", err.Error())
+		nodejsLogger.Warningf("Could not find Node binary (try setting $NODE_BINARY): %s", err.Error())
 	}
 	builder.NodeCmd = nodeCmd
 	builder.NodeVersion = nodeVersion
@@ -73,7 +73,7 @@ func (builder *NodeJSBuilder) Initialize() error {
 	builder.YarnVersion = yarnVersion
 
 	if npmErr != nil && yarnErr != nil {
-		return fmt.Errorf("no supported Nodejs build tools detected (try setting $NPM_BINARY or $YARN_BINARY): %#v %#v", npmErr, yarnErr)
+		nodejsLogger.Warningf("No supported Nodejs build tools detected (try setting $NPM_BINARY or $YARN_BINARY): %#v %#v", npmErr, yarnErr)
 	}
 
 	nodejsLogger.Debugf("Initialized Nodejs builder: %#v", builder)
