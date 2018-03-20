@@ -58,13 +58,16 @@ func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 	moduleConfigurationKey := strings.Split(m.Name, ":")
 	taskConfiguration := "compile"
 	taskName := moduleConfigurationKey[0]
+	if taskName != "" {
+		// this is not the root gradle project
+		taskName = taskName + ":"
+	}
 	if len(moduleConfigurationKey) == 2 {
 		taskConfiguration = moduleConfigurationKey[1]
 	}
 
-	// TODO: We need to let the user configure the right configurations
 	// NOTE: we are intentionally using exec.Command over runLogged here, due to path issues with defining cmd.Dir
-	dependenciesOutput, err := exec.Command(builder.GradleCmd, taskName+":dependencies", "-q", "--configuration="+taskConfiguration, "--offline", "-a").Output()
+	dependenciesOutput, err := exec.Command(builder.GradleCmd, taskName+"dependencies", "-q", "--configuration="+taskConfiguration, "--offline", "-a").Output()
 	if len(dependenciesOutput) == 0 || err != nil {
 		return nil, fmt.Errorf("could not run Gradle task %s:dependencies", taskName)
 	}
@@ -137,10 +140,21 @@ func (builder *GradleBuilder) DiscoverModules(dir string) ([]module.Config, erro
 				}
 			}
 
-			return moduleConfigurations, nil
+			if len(moduleConfigurations) > 0 {
+				return moduleConfigurations, nil
+			}
+
+			// If task list succeeds but returns no subproject dependencies tasks, fall back to the root `dependencies` task
+			return []module.Config{
+				{
+					Name: ":compile",
+					Path: "build.gradle",
+					Type: "gradle",
+				},
+			}, nil
 		}
 
-		// Fall back to "app" as default task, even though technically it would be "" (root)
+		// If task list fails, fall back to "app" as default task, even though technically it would be "" (root)
 		return []module.Config{
 			{
 				Name: "app:compile",
