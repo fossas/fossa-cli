@@ -62,7 +62,7 @@ func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 		// this is not the root gradle project
 		taskName = taskName + ":"
 	}
-	if len(moduleConfigurationKey) == 2 {
+	if len(moduleConfigurationKey) == 2 && moduleConfigurationKey[1] != "" {
 		taskConfiguration = moduleConfigurationKey[1]
 	}
 
