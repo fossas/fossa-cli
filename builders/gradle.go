@@ -56,18 +56,21 @@ func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 	gradleLogger.Debugf("Running Gradle analysis: %#v %#v in %s", m, allowUnresolved, m.Dir)
 
 	moduleConfigurationKey := strings.Split(m.Name, ":")
-	taskConfiguration := "compile"
-	taskName := moduleConfigurationKey[0]
-	if taskName != "" {
-		// this is not the root gradle project
-		taskName = taskName + ":"
+
+	taskName := "dependencies" // defaults to root gradle dependencies task
+
+	if moduleConfigurationKey[0] != "" {
+		// a subtask was configured
+		taskName = moduleConfigurationKey[0] + ":dependencies"
 	}
+
+	taskConfiguration := "compile"
 	if len(moduleConfigurationKey) == 2 && moduleConfigurationKey[1] != "" {
 		taskConfiguration = moduleConfigurationKey[1]
 	}
 
 	// NOTE: we are intentionally using exec.Command over runLogged here, due to path issues with defining cmd.Dir
-	dependenciesCmd := exec.Command(builder.GradleCmd, taskName+"dependencies", "-q", "--configuration="+taskConfiguration, "--offline", "-a")
+	dependenciesCmd := exec.Command(builder.GradleCmd, taskName, "-q", "--configuration="+taskConfiguration, "--offline", "-a")
 	dependenciesCmd.Env = os.Environ()
 	dependenciesCmd.Env = append(dependenciesCmd.Env, "TERM=dumb")
 

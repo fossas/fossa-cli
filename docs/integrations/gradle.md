@@ -11,12 +11,10 @@ Gradle support in FOSSA CLI depends on the following tools existing in your envi
 
 ### Automatic Configuration
 
-An average Gradle build, there are often hundreds of configuration paths that can influence what dependencies are included.  In order to determine what tasks and configurations you care about, `fossa` will attempt a "best-effort" strategy during `fossa init` to discover the most likely configuration for a production-build scenario.
-
-When running `fossa init`, FOSSA executes the following steps:
+`fossa init` will attempt a "best-effort" strategy to look through all available Gradle tasks/configurations and elect the most likely ones used for a production build.
 
  1. Look for a root Gradle build (`build.gradle`)
- 2. Run and parse the output of `gradle tasks --all -q -a --offline` to seek all available sub-tasks that support a `:dependencies` command
+ 2. Run and parse the output of `gradle tasks --all -q -a --offline` to find all available sub-tasks that support a `:dependencies` command
  3. If task list succeeds but no sub-tasks are available, fallback to the root `dependencies` task in `build.gradle`
  4. Filter out any suspicious-looking tasks (i.e. labeled `test` or `testCompile`)
  5. Write tasks to configuration (`fossa.yml`)
@@ -37,9 +35,9 @@ analyze:
 
 For Gradle modules, `fossa` requires a few peices of information to run dependency analysis:
 
-- `task` - the name of the task/subtask used to generate your build (most often this is `app` or empty `` for root)
+- `task` - the name of the task/subtask used to generate your build (most often this is `app` or empty string `''` for root)
 - `configuration` - the configuration your task runs during a production build (if undefined, defaults to `compile`)
-- `path` - path to your `*.gradle` build file (usually this is just `build.gradle`)
+- `path` - path to your `*.gradle` build file relative to your repo root directory (usually this is just `build.gradle`)
 
 If you don't specify a task, `fossa` will run the default `dependencies` located in your root `*.gradle` file:
 
@@ -106,7 +104,7 @@ Optionally, provide your `build.gradle` for more context.
 
 ## Roadmap
 
-If you'd like to help us improve our Gradle integration, we have 
+If you'd like to help us improve our Gradle integration, please feel free to file and assign yourself to an issue on this repo.
 
  1. Support multiple independent "root" Gradle builds that may be segregated in a codebase
  2. Implement a cheap build validation method to tell the user whether a Gradle build is satisfied without invoking a Gradle runtime
