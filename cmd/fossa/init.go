@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"time"
 
+	"github.com/briandowns/spinner"
 	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 
@@ -35,6 +37,10 @@ func initCmd(c *cli.Context) {
 }
 
 func doInit(conf *config.CLIConfig, overwrite bool, includeAll bool) error {
+	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+	s.Writer = os.Stderr
+	s.Suffix = " Initializing..."
+	s.Start()
 	findDir := "."
 	if len(conf.Modules) == 0 || overwrite {
 		if cwd, err := os.Getwd(); err == nil {
@@ -61,6 +67,7 @@ func doInit(conf *config.CLIConfig, overwrite bool, includeAll bool) error {
 	} else {
 		initLogger.Warningf("%d module(s) found in config file (`%s`); skipping initialization.", len(conf.Modules), conf.ConfigFilePath)
 	}
+	s.Stop()
 	return nil
 }
 
