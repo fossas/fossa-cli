@@ -651,10 +651,7 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 
 		// Work around awful Go compiler hack: see https://github.com/golang/go/issues/16333
 		if strings.HasPrefix(dep.ImportPath, "vendor/golang_org") {
-			if strings.Index(dep.ImportPath, "internal") != -1 {
-				continue
-			}
-			importPath = "golang.org" + strings.TrimPrefix(dep.ImportPath, "vendor/golang_org")
+			continue
 		}
 
 		goLogger.Debugf("Resolving import: %s", importPath)
