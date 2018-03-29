@@ -61,6 +61,9 @@ func New(moduleType Type, conf Config) (Module, error) {
 	case Nodejs:
 		manifestName = "package.json"
 		break
+	case Pip:
+		manifestName = "requirements.txt"
+		break
 	case Ruby:
 		manifestName = "Gemfile"
 		break

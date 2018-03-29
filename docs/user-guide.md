@@ -79,12 +79,18 @@ api_key: some-key-here
 
 project:
   # If `project` or `revision` are unset, infer locator from VCS.
+  type: git
   name: github.com/fossas/fossa-cli
   revision: 9ad32d41ed38b5952b40af5c67185ed97c86f31a
 
 modules:
   - path: ./cmd/fossa
     type: go
+    options:
+      allowUnresolved: false
+    project:
+      type: custom
+      name: github.com/fossas/example-managed-build
 ```
 
 ## Uploading Custom Builds

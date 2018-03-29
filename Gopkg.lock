@@ -26,6 +26,19 @@
   version = "1.0"
 
 [[projects]]
+  name = "github.com/emirpasic/gods"
+  packages = [
+    "containers",
+    "lists",
+    "lists/arraylist",
+    "trees",
+    "trees/binaryheap",
+    "utils"
+  ]
+  revision = "f6c17b524822278a87e3b3bd809fec33b51f5b46"
+  version = "v1.9.0"
+
+[[projects]]
   name = "github.com/fatih/color"
   packages = ["."]
   revision = "507f6050b8568533fb3f5504de8e5205fa62a114"
@@ -68,8 +81,8 @@
 [[projects]]
   name = "github.com/kevinburke/ssh_config"
   packages = ["."]
-  revision = "0ff8514904a8ebfcfb3c32ad73e1f8498a7f81b4"
-  version = "0.3"
+  revision = "9fc7bb800b555d63157c65a904c86a2cc7b4e795"
+  version = "0.4"
 
 [[projects]]
   name = "github.com/mattn/go-colorable"
@@ -105,7 +118,7 @@
   branch = "master"
   name = "github.com/rhysd/go-github-selfupdate"
   packages = ["selfupdate"]
-  revision = "d5c53b8d0552a7bf6b36457cd458d27c80e0210b"
+  revision = "4f7f22f940a29065ed4e2f485c4bb0354e2ff396"
 
 [[projects]]
   name = "github.com/sergi/go-diff"
@@ -173,7 +186,7 @@
     "ssh/agent",
     "ssh/knownhosts"
   ]
-  revision = "91a49db82a88618983a78a06c1cbd4e00ab749ab"
+  revision = "88942b9c40a4c9d203b82b3731787b672d6e809b"
 
 [[projects]]
   branch = "master"
@@ -182,7 +195,7 @@
     "context",
     "context/ctxhttp"
   ]
-  revision = "cbe0f9307d0156177f9dd5dc85da1a31abc5f2fb"
+  revision = "6078986fec03a1dcc236c34816c71b0e05018fda"
 
 [[projects]]
   branch = "master"
@@ -191,7 +204,7 @@
     ".",
     "internal"
   ]
-  revision = "2f32c3ac0fa4fb807a0fcefb0b6f2468a0d99bd0"
+  revision = "fdc9e635145ae97e6c2cb777c48305600cf515cb"
 
 [[projects]]
   branch = "master"
@@ -200,7 +213,7 @@
     "unix",
     "windows"
   ]
-  revision = "f6cff0780e542efa0c8e864dc8fa522808f6a598"
+  revision = "13d03a9a82fba647c21a0ef8fba44a795d0f0835"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -285,8 +298,8 @@
     "utils/merkletrie/internal/frame",
     "utils/merkletrie/noder"
   ]
-  revision = "886dc83f3ed518a78772055497bcc7d7621b468e"
-  version = "v4.1.1"
+  revision = "1d28459504251497e0ce6132a0fadd5eb44ffd22"
+  version = "v4.2.0"
 
 [[projects]]
   name = "gopkg.in/warnings.v0"
@@ -297,8 +310,8 @@
 [[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
-  version = "v2.1.1"
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"

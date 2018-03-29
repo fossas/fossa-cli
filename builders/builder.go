@@ -39,6 +39,8 @@ func New(moduleType module.Type) Builder {
 		return &NodeJSBuilder{}
 	case module.NuGet:
 		return &NuGetBuilder{}
+	case module.Pip:
+		return &PipBuilder{}
 	case module.Ruby:
 		return &RubyBuilder{}
 	case module.SBT:
