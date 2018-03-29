@@ -98,7 +98,7 @@ func (builder *RubyBuilder) Build(m module.Module, force bool) error {
 		return fmt.Errorf("could not run Ruby build: %s", err.Error())
 	}
 
-	bowerLogger.Debug("Done running Ruby build.")
+	rubyLogger.Debug("Done running Ruby build.")
 	return nil
 }
 

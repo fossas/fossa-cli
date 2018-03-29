@@ -27,6 +27,8 @@ const (
 	SBT = Type("sbt")
 	// Gradle is the module type for gradle.org
 	Gradle = Type("gradle")
+	// NuGet is the module type for nuget.org
+	NuGet = Type("NuGet")
 	// Pip is the module type for https://pip.pypa.io/en/stable/
 	Pip = Type("pip")
 
@@ -45,7 +47,7 @@ const (
 )
 
 // Types holds the list of all available module types for analysis
-var Types = []Type{Bower, Composer, Maven, SBT, Gradle, Ruby, Nodejs, Golang, VendoredArchives, Pip}
+var Types = []Type{Bower, Composer, Maven, SBT, Gradle, NuGet, Pip, Ruby, Nodejs, Golang, VendoredArchives}
 
 // Parse returns a module Type given a string
 func Parse(key string) (Type, error) {
@@ -106,6 +108,9 @@ func Parse(key string) (Type, error) {
 
 	case "gradle":
 		return Gradle, nil
+
+	case "nuget":
+		return NuGet, nil
 
 	// Archive aliases
 	case "vendoredarchives":
