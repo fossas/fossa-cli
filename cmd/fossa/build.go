@@ -58,12 +58,12 @@ func doBuild(moduleConfig module.Config, allowUnresolved, force bool) error {
 		return fmt.Errorf("could not determine whether module %s is built: %s", module.Name, err.Error())
 	}
 	if isBuilt && !force {
-		return fmt.Errorf("module %s appears to already be built (use `--force` to force a rebuild)", module.Name)
-	}
-
-	err = builder.Build(module, force)
-	if err != nil {
-		return fmt.Errorf("build failed on module %s: %s", module.Name, err.Error())
+		buildLogger.Warningf("module %s appears to already be built (use `--force` to force a rebuild)", module.Name)
+	} else {
+		err = builder.Build(module, force)
+		if err != nil {
+			return fmt.Errorf("build failed on module %s: %s", module.Name, err.Error())
+		}
 	}
 
 	return nil
