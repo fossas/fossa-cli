@@ -11,9 +11,11 @@ Instead of trying to guess at your build system's behavior, `fossa` runs locally
 
  - JavaScript: `bower`, `npm`, `yarn`
  - Java/Scala: `mvn`, `gradle`, `sbt`
+ - Python: `pip`, `setuptools`
  - Ruby: `bundler`
  - PHP: `composer`
  - Go: `dep`, `glide`, `godep`, `govendor`, `vndr`, `gdm`
+ - .NET (C#, VB): `nuget`
  - Archives: `*.rpm`
 
 ## Walkthrough
