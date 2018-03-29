@@ -38,7 +38,7 @@ func (m NuGetPackage) Revision() string {
 	return m.Version
 }
 
-type nuGetLockfileV3 struct {
+type nuGetLockfileV2or3 struct {
 	Libraries map[string]struct{} `json:"libraries"`
 }
 
@@ -118,7 +118,7 @@ func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 	// Find and parse a lockfile
 	lockFilePath, err := resolveNuGetProjectLockfile(m.Dir)
 	if err == nil {
-		var lockFile nuGetLockfileV3
+		var lockFile nuGetLockfileV2or3
 		if err := parseLogged(nugetLogger, lockFilePath, &lockFile); err == nil {
 			for depKey := range lockFile.Libraries {
 				depKeyParts := strings.Split(depKey, "/")
@@ -163,7 +163,7 @@ func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 	return deps, nil
 }
 
-// IsBuilt checks the existance of a project.lock.json or a packages directory
+// IsBuilt checks the existance of a lockfile or a packages directory
 func (builder *NuGetBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
 	if allowUnresolved {
 		return true, nil

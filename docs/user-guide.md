@@ -300,9 +300,15 @@ Prints analysis results to `stdout` instead of uploading results to a FOSSA serv
 ##### `--allow-unresolved`
 Do not fail on unresolved dependencies.
 
-For some languages, `fossa analyze` does import path tracing to determine dependencies. If these the dependencies at the import paths cannot be found, the dependency is _unresolved_.
+For some languages, running `fossa analyze` will result in the following error even if you've built your code:
 
-Unresolved dependencies generally indicate an incomplete build or some other kind of build error. For highly custom build systems, this may not be the case.
+```bash
+CRITICAL Module {MODULE_NAME} does not appear to be built. Try first running your build or `fossa build`, and then running `fossa`.
+```
+
+This happens when `fossa` fails to verify whether your environment has completed a build due to some kind of error. This could be due to a highly custom build process, non-conventional environment state or a misconfiguration of your build.
+
+Passing `--allow-unresolved` will soften the verification standards that `fossa` runs for each language integration.
 
 ##### `--debug`
 Print debugging information to `stderr`.
