@@ -27,6 +27,8 @@ const (
 	SBT = Type("sbt")
 	// Gradle is the module type for gradle.org
 	Gradle = Type("gradle")
+	// NuGet is the module type for nuget.org
+	NuGet = Type("NuGet")
 
 	// Ecosystems where many tools behave similarly
 
@@ -43,7 +45,7 @@ const (
 )
 
 // Types holds the list of all available module types for analysis
-var Types = []Type{Bower, Composer, Maven, SBT, Gradle, Ruby, Nodejs, Golang, VendoredArchives}
+var Types = []Type{Bower, Composer, Maven, SBT, Gradle, NuGet, Ruby, Nodejs, Golang, VendoredArchives}
 
 // Parse returns a module Type given a string
 func Parse(key string) (Type, error) {
@@ -96,6 +98,9 @@ func Parse(key string) (Type, error) {
 
 	case "gradle":
 		return Gradle, nil
+
+	case "nuget":
+		return NuGet, nil
 
 	// Archive aliases
 	case "vendoredarchives":
