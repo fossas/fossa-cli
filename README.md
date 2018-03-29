@@ -1,4 +1,4 @@
-![FOSSA](https://raw.githubusercontent.com/fossas/fossa-cli/master/header.png)
+![FOSSA](https://raw.githubusercontent.com/fossas/fossa-cli/master/docs/assets/header.png)
 
 <p align="center">
   <b>fossa-cli</b> - Fast, portable and reliable dependency analysis for any codebase.

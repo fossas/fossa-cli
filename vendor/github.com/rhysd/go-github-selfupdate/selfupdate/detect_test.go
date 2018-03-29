@@ -2,10 +2,11 @@ package selfupdate
 
 import (
 	"fmt"
-	"github.com/blang/semver"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/blang/semver"
 )
 
 func TestDetectReleaseWithVersionPrefix(t *testing.T) {
@@ -48,6 +49,33 @@ func TestDetectReleaseWithVersionPrefix(t *testing.T) {
 	}
 	if r.RepoName != "github-clone-all" {
 		t.Error("Repo name was not properly detectd:", r.RepoName)
+	}
+}
+
+func TestDetectVersionExisting(t *testing.T) {
+	testVersion := "v2.2.0"
+	r, ok, err := DetectVersion("rhysd/github-clone-all", testVersion)
+	if err != nil {
+		t.Fatal("Fetch failed:", err)
+	}
+	if !ok {
+		t.Fatalf("Failed to detect %s", testVersion)
+	}
+	if r == nil {
+		t.Fatal("Release detected but nil returned for it")
+	}
+}
+
+func TestDetectVersionNotExisting(t *testing.T) {
+	r, ok, err := DetectVersion("rhysd/github-clone-all", "foobar")
+	if err != nil {
+		t.Fatal("Fetch failed:", err)
+	}
+	if ok {
+		t.Fatal("Failed to correctly detect foobar")
+	}
+	if r != nil {
+		t.Fatal("Release not detected but got a returned value for it")
 	}
 }
 

@@ -11,18 +11,16 @@ Self-Update Mechanism for Go Commands using GitHub
 Go does not provide the way to install/update the stable version of tools. By default, Go command line
 tools are updated:
 
-- using `go get -u` (updating to HEAD)
-- using system's package manager (depending on the platform)
-- downloading executables from GitHub release page manually
+1. using `go get -u`, but it is not stable because HEAD of the repository is built
+2. using system's package manager, but it is harder to release because of dpeneding on the platform
+3. downloading executables from GitHub release page, but it requires users to download and put it manually
 
-By using this library, you will get 4th choice:
-
-- from your command line tool directly (and automatically)
+[go-github-selfupdate][] resolves the problem of 3. by detecting the latest release, downloading it and
+putting it to `$GOPATH/bin` automatically.
 
 [go-github-selfupdate][] detects the information of the latest release via [GitHub Releases API][] and
-check the current version.
-If newer version than itself is detected, it downloads released binary from GitHub and replaces
-itself.
+checks the current version. If newer version than itself is detected, it downloads released binary from
+GitHub and replaces itself.
 
 - Automatically detects the latest version of released binary on GitHub
 - Retrieve the proper binary for the OS and arch where the binary is running
@@ -35,7 +33,7 @@ itself.
 And small wrapper CLIs are provided:
 
 - [detect-latest-release](./cmd/detect-latest-release): Detect the latest release of given GitHub repository from command line
-- [go-get-release](./cmd/go-get-release): Like `go get`, but install release binary from GitHub instead
+- [go-get-release](./cmd/go-get-release): Like `go get`, but install a release binary from GitHub instead
 
 [go-github-selfupdate]: https://github.com/rhysd/go-github-selfupdate
 [GitHub Releases API]: https://developer.github.com/v3/repos/releases/
@@ -89,6 +87,7 @@ It provides `selfupdate` package.
 - `selfupdate.UpdateSelf()`: Detect the latest version of itself and run self update.
 - `selfupdate.UpdateCommand()`: Detect the latest version of given repository and update given command.
 - `selfupdate.DetectLatest()`: Detect the latest version of given repository.
+- `selfupdate.DetectVersion()`: Detect the user defined version of given repository.
 - `selfupdate.UpdateTo()`: Update given command to the binary hosted on given URL.
 - `selfupdate.Updater`: Context manager of self-upadte process. If you want to customize some behavior
   of self-update (e.g. specify API token, use GitHub Enterprise, ...), please make an instance of
@@ -231,7 +230,7 @@ You need to put the binaries with the following format.
 `{.ext}` is a file extension. go-github-selfupdate supports `.zip`, `.gzip`, `.tar.gz` and `.tar.xz`.
 You can also use blank and it means binary is not compressed.
 
-If you compress binary, uncompressed directory or file must contain the executable named `{cmd}`. 
+If you compress binary, uncompressed directory or file must contain the executable named `{cmd}`.
 
 And you can also use `-` for separator instead of `_` if you like.
 
@@ -329,8 +328,11 @@ API rate limit is often exceeding. So please ignore the test failures on creatin
 
 ## Dependencies
 
-This library utilizes [go-github][] to retrieve the information of releases and [go-update][] to replace
-current binary and [semver][] to compare versions.
+This library utilizes
+- [go-github][] to retrieve the information of releases
+- [go-update][] to replace current binary
+- [semver][] to compare versions
+- [xz][] to support XZ compress format
 
 > Copyright (c) 2013 The go-github AUTHORS. All rights reserved.
 
@@ -338,9 +340,12 @@ current binary and [semver][] to compare versions.
 
 > Copyright (c) 2014 Benedikt Lang <github at benediktlang.de>
 
+> Copyright (c) 2014-2016  Ulrich Kunitz
+
 [go-github]: https://github.com/google/go-github
 [go-update]: https://github.com/inconshreveable/go-update
 [semver]: https://github.com/blang/semver
+[xz]: https://github.com/ulikunitz/xz
 
 ## What is different from [tj/go-update][]?
 
