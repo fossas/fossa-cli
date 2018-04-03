@@ -178,5 +178,4 @@ If you're in San Francisco, come to our monthly [Open Source Happy Hour](http://
 
 You are free to use `fossa` for commercial or personal purposes.  Enjoy!
 
-
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli?ref=badge_large)
+[![FOSSA Status](https://app.fossa.io/api/projects/custom%2B1%2Fgithub.com%2Ffossas%2Ffossa-cli.svg?type=large)](https://app.fossa.io/projects/custom%2B1%2Fgithub.com%2Ffossas%2Ffossa-cli?ref=badge_large)
