@@ -82,7 +82,7 @@ func (builder *MavenBuilder) Initialize() error {
 	return nil
 }
 
-// Build runs `mvn install -DskipTests -Drat.skip=trucould not removee` and cleans with `mvn clean`
+// Build runs `mvn install -DskipTests -Drat.skip=true` and cleans with `mvn clean`
 func (builder *MavenBuilder) Build(m module.Module, force bool) error {
 	mavenLogger.Debugf("Running Maven build: %#v %#v", m, force)
 
