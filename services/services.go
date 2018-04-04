@@ -1,4 +1,4 @@
-package common
+package services
 
 import (
 	"net/url"
@@ -12,20 +12,20 @@ func New(interactive, debug bool) Services {
 	fileService := newFileService(logService)
 
 	return Services{
-		LogService:  logService,
-		APIService:  apiService,
-		ExecService: execService,
-		FileService: fileService,
+		Logger:     logService,
+		API:        apiService,
+		Exec:       execService,
+		FileSystem: fileService,
 	}
 }
 
 // Services is a container for all services. Each service implements
 // side-effecting functions.
 type Services struct {
-	LogService  LogService
-	APIService  APIService
-	ExecService ExecService
-	FileService FileService
+	Logger     LogService
+	API        APIService
+	Exec       ExecService
+	FileSystem FileService
 }
 
 // A Spinner provides user-interactive progress messages through ANSI codes.

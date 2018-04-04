@@ -6,9 +6,22 @@ import (
 
 // Config defines a config for a builder's entry point
 type Config struct {
-	Name string `yaml:"name"`
-	Path string `yaml:"path"`
-	Type string `yaml:"type"` // this is later transformed to a module Type
+	Name    string  `yaml:"name"`
+	Path    string  `yaml:"path"`
+	Type    string  `yaml:"type"`
+	Options Options `yaml:"options"`
+}
+
+type Options struct {
+	Strategy            string `yaml:"strategy"`
+	GradleTask          string `yaml:"gradleTask"`
+	GradleConfiguration string `yaml:"gradleConfiguration"`
+}
+
+type Analyzed struct {
+	Module       Module
+	Builder      Builder
+	Dependencies []Dependency
 }
 
 // Type is an enumeration of supported build system types
@@ -28,7 +41,7 @@ const (
 	// Gradle is the module type for gradle.org
 	Gradle = Type("gradle")
 	// NuGet is the module type for nuget.org
-	NuGet = Type("NuGet")
+	NuGet = Type("nuget")
 	// Pip is the module type for https://pip.pypa.io/en/stable/
 	Pip = Type("pip")
 

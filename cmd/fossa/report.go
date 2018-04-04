@@ -76,7 +76,7 @@ func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, a analysis) {
 	for _, deps := range a {
 		for _, dep := range deps {
 			if module.IsResolved(dep) {
-				locator := module.DepLocator(dep)
+				locator := module.LocatorOf(dep)
 				goPkg, ok := dep.(builders.GoPkg)
 				if ok {
 					locator = module.MakeLocator("git", goPkg.ImportPath, goPkg.Version)

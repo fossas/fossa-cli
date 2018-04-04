@@ -2,17 +2,20 @@ package module
 
 import "strings"
 
-// Locator is a string specifying a particular dependency and revision
+// Locator is an opaque string identifier specifying a particular dependency and revision
 type Locator string
 
 // Dependency represents a code library brought in by running a Build
 type Dependency interface {
 	Fetcher() string
 	Package() string
-	Revision() string
+	Revision() string // we'll have multiple deps with same package but diff revision
+
+	// IncludedFrom() []string // a revision can be included from multiple paths
+	// ResolvedFrom() string
 }
 
-func DepLocator(dep Dependency) Locator {
+func LocatorOf(dep Dependency) Locator {
 	return MakeLocator(dep.Fetcher(), dep.Package(), dep.Revision())
 }
 

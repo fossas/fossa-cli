@@ -2,10 +2,12 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/mattn/go-isatty"
 	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 
@@ -34,7 +36,11 @@ func parseModulesFlag(moduleFlag string) ([]module.Config, error) {
 	return config, nil
 }
 
-// New creates a CLIConfig from cli context
+func TryBool(c *cli.Context, flag string) bool {
+	return c.Bool(flag) || c.GlobalBool(flag)
+}
+
+// New creates a CLIConfig from a *cli.Context
 func New(c *cli.Context) (CLIConfig, error) {
 	modules, err := parseModulesFlag(c.String("modules"))
 	if err != nil {
@@ -42,14 +48,15 @@ func New(c *cli.Context) (CLIConfig, error) {
 	}
 
 	var config = CLIConfig{
-		APIKey:         c.String("api_key"),
-		Fetcher:        c.String("fetcher"),
-		Project:        c.String("project"),
-		Revision:       c.String("revision"),
-		Endpoint:       c.String("endpoint"),
-		Modules:        modules,
-		Debug:          c.Bool("debug"),
-		ConfigFilePath: c.String("config"),
+		APIKey:   c.String("api_key"),
+		Fetcher:  c.String("fetcher"),
+		Project:  c.String("project"),
+		Revision: c.String("revision"),
+		Endpoint: c.String("endpoint"),
+		Modules:  modules,
+
+		Debug:       TryBool(c, "debug"),
+		Interactive: isatty.IsTerminal(os.Stdout.Fd()) && !TryBool(c, "no-ansi"),
 
 		DefaultCmd: DefaultConfig{
 			Build: c.Bool("build"),
@@ -69,13 +76,16 @@ func New(c *cli.Context) (CLIConfig, error) {
 		},
 
 		UploadCmd: UploadConfig{
-			Locators: c.Bool("locators"),
-			Data:     c.String("data"),
+			UseLocators: c.Bool("locators"),
+			Data:        c.String("data"),
 		},
 
 		ReportCmd: ReportConfig{
 			Type: c.String("type"),
 		},
+
+		ConfigFilePath: c.String("config"),
+		Version:        c.App.Metadata["version"].(string),
 	}
 
 	// Load configuration file and set overrides.
@@ -122,4 +132,13 @@ func New(c *cli.Context) (CLIConfig, error) {
 	configLogger.Debugf("Configuration initialized: %#v", config)
 
 	return config, nil
+}
+
+// MustNew calls New but fails on an error instead of returning the error
+func MustNew(c *cli.Context) CLIConfig {
+	config, err := New(c)
+	if err != nil {
+		log.Fatalf("Could not initialize configuration: %s", err.Error())
+	}
+	return config
 }

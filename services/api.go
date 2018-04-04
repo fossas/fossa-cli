@@ -1,4 +1,4 @@
-package common
+package services
 
 import (
 	"bytes"
@@ -116,7 +116,7 @@ func isTimeout(err error) bool {
 
 // MakeAPIRequest runs and logs a request backed by an `http.Client`.
 func (api *apiImpl) MakeAPIRequest(endpoint *url.URL, method, APIKey string, body []byte) (res []byte, statusCode int, err error) {
-	api.logger.Debugf("Making API request: %#v %#v %#v %#v %#v", *api, *endpoint, method, APIKey, body)
+	api.logger.Debugf("Making API request: %#v %#v %#v %#v %#v", *api, *endpoint, method, APIKey, string(body))
 
 	// Check preconditions.
 	if !api.initialized {
@@ -148,6 +148,6 @@ func (api *apiImpl) MakeAPIRequest(endpoint *url.URL, method, APIKey string, bod
 		return nil, 0, fmt.Errorf("could not read API HTTP response: %s", err.Error())
 	}
 
-	api.logger.Debugf("Got API response: %#v", string(body))
+	api.logger.Debugf("Got API response: %#v", string(res))
 	return res, response.StatusCode, nil
 }

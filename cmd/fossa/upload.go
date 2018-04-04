@@ -56,7 +56,7 @@ func normalize(builder module.Builder, m module.Module, deps []module.Dependency
 		}
 
 		normalDeps = append(normalDeps, normalizedDependency{
-			Locator: string(module.DepLocator(deps[i])),
+			Locator: string(module.LocatorOf(deps[i])),
 			Data:    (*json.RawMessage)(&data),
 		})
 	}
@@ -98,7 +98,7 @@ func uploadCmd(c *cli.Context) {
 	}
 
 	var data []normalizedModule
-	if conf.UploadCmd.Locators {
+	if conf.UploadCmd.UseLocators {
 		var deps []normalizedDependency
 		lines := strings.Split(conf.UploadCmd.Data, "\n")
 		for _, line := range lines {

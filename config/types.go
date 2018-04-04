@@ -15,15 +15,15 @@ type DefaultConfig struct {
 	Build bool
 }
 
+// BuildConfig specifies the config for the build command
+type BuildConfig struct {
+	Force bool
+}
+
 // AnalyzeConfig specifies the config for the analyze command
 type AnalyzeConfig struct {
 	Output          bool
 	AllowUnresolved bool
-}
-
-// BuildConfig specifies the config for the build command
-type BuildConfig struct {
-	Force bool
 }
 
 // TestConfig specifies the config for the test command
@@ -33,8 +33,8 @@ type TestConfig struct {
 
 // UploadConfig specifies the config for the upload command
 type UploadConfig struct {
-	Locators bool
-	Data     string
+	UseLocators bool
+	Data        string
 }
 
 // ReportConfig specifies the config for the report command
@@ -50,7 +50,9 @@ type CLIConfig struct {
 	Revision string
 	Endpoint string
 	Modules  []module.Config
-	Debug    bool
+
+	Debug       bool
+	Interactive bool
 
 	DefaultCmd DefaultConfig
 	AnalyzeCmd AnalyzeConfig
@@ -60,4 +62,5 @@ type CLIConfig struct {
 	ReportCmd  ReportConfig
 
 	ConfigFilePath string
+	Version        string
 }
