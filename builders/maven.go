@@ -38,6 +38,11 @@ func (m MavenArtifact) Revision() string {
 	return m.Version
 }
 
+// Dependencies is not implemented for MavenArtifact
+func (m MavenArtifact) Dependencies() []module.Dependency {
+	return nil
+}
+
 // POMFile represents the schema of a common pom.xml file
 type POMFile struct {
 	XMLName     xml.Name `xml:"project"`

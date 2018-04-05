@@ -37,6 +37,11 @@ func (m NodeModule) Revision() string {
 	return m.Version
 }
 
+// Dependencies is not implemented for NodeModule
+func (m NodeModule) Dependencies() []module.Dependency {
+	return nil
+}
+
 // NodeJSBuilder implements Builder for Nodejs.
 // These properties are public for the sake of serialization.
 type NodeJSBuilder struct {

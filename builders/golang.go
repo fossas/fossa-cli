@@ -44,6 +44,11 @@ func (g GoPkg) Revision() string {
 	return g.Version
 }
 
+// Dependencies is not implemented for GoPkg
+func (g GoPkg) Dependencies() []module.Dependency {
+	return nil
+}
+
 // GoBuilder implements Builder for Golang projects
 type GoBuilder struct {
 	GoCmd     string

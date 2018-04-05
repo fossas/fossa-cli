@@ -6,21 +6,32 @@ import "strings"
 type Locator string
 
 // Dependency represents a code library brought in by running a Build
+// TODO: this should probably just be a struct.
 type Dependency interface {
 	Fetcher() string
 	Package() string
-	Revision() string // we'll have multiple deps with same package but diff revision
+	Revision() string
 
-	// IncludedFrom() []string // a revision can be included from multiple paths
-	// ResolvedFrom() string
+	// Dependencies() can possibly return nil, which indicates no dependencies.
+	Dependencies() []Dependency
 }
 
+// LocatorOf returns the locator of a Dependency.
 func LocatorOf(dep Dependency) Locator {
 	return MakeLocator(dep.Fetcher(), dep.Package(), dep.Revision())
 }
 
+// IsResolved returns true if a dependency's revision is resolved.
 func IsResolved(dep Dependency) bool {
 	return dep.Revision() != ""
+}
+
+// MakeLocator creates a locator string given a package and revision
+func MakeLocator(fetcher string, project string, revision string) Locator {
+	if fetcher != "git" {
+		return Locator(fetcher + "+" + project + "$" + revision)
+	}
+	return Locator("git+" + normalizeGitURL(project) + "$" + revision)
 }
 
 func normalizeGitURL(project string) string {
@@ -36,12 +47,4 @@ func normalizeGitURL(project string) string {
 	noHTTPSPrefix := strings.TrimPrefix(noHTTPPrefix, "https://")
 
 	return noHTTPSPrefix
-}
-
-// MakeLocator creates a locator string given a package and revision
-func MakeLocator(fetcher string, project string, revision string) Locator {
-	if fetcher != "git" {
-		return Locator(fetcher + "+" + project + "$" + revision)
-	}
-	return Locator("git+" + normalizeGitURL(project) + "$" + revision)
 }

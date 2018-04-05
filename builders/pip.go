@@ -36,6 +36,11 @@ func (m PythonPackage) Revision() string {
 	return m.Version
 }
 
+// Dependencies is not implemented for PythonPackage
+func (m PythonPackage) Dependencies() []module.Dependency {
+	return nil
+}
+
 // PipBuilder implements Builder for Pip.
 // These properties are public for the sake of serialization.
 type PipBuilder struct {

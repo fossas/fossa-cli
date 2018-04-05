@@ -39,6 +39,11 @@ func (m SBTLibrary) Revision() string {
 	return m.Version
 }
 
+// Dependencies is not implemented for SBTLibrary
+func (m SBTLibrary) Dependencies() []module.Dependency {
+	return nil
+}
+
 // SBTBuilder implements build context for SBT builds
 type SBTBuilder struct {
 	SBTCmd     string

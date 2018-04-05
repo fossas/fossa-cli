@@ -38,6 +38,11 @@ func (m NuGetPackage) Revision() string {
 	return m.Version
 }
 
+// Dependencies is not implemented for NuGetPackage
+func (m NuGetPackage) Dependencies() []module.Dependency {
+	return nil
+}
+
 type nuGetLockfileV2or3 struct {
 	Libraries map[string]struct{} `json:"libraries"`
 }

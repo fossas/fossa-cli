@@ -36,6 +36,11 @@ func (m ComposerPackage) Revision() string {
 	return m.Version
 }
 
+// Dependencies is not implemented for ComposerPackage
+func (m ComposerPackage) Dependencies() []module.Dependency {
+	return nil
+}
+
 // ComposerBuilder implements Builder for Composer (composer.json) builds
 type ComposerBuilder struct {
 	PHPCmd     string

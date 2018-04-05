@@ -38,6 +38,11 @@ func (m RubyGem) Revision() string {
 	return m.Version
 }
 
+// Dependencies is not implemented for RubyGem
+func (m RubyGem) Dependencies() []module.Dependency {
+	return nil
+}
+
 // RubyBuilder implements Builder for Bundler (Gemfile) builds
 type RubyBuilder struct {
 	BundlerCmd     string
