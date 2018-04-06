@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fossas/fossa-cli/module"
 	logging "github.com/op/go-logging"
 )
 
@@ -167,4 +168,34 @@ func which(versionFlags string, cmds ...string) (string, string, error) {
 		}
 		return stdout, nil
 	})
+}
+
+// Utilities for computing import paths
+func computeImportPaths(deps []module.Dependency) []module.Dependency {
+	pathsSet := make(map[module.Locator]map[module.ImportPathString]bool)
+	for _, dep := range deps {
+		_, ok := pathsSet[dep.Locator]
+		if !ok {
+			pathsSet[dep.Locator] = make(map[module.ImportPathString]bool)
+		}
+		pathsSet[dep.Locator][dep.Via[0].String()] = true
+	}
+
+	var out []module.Dependency
+	for locator, paths := range pathsSet {
+		// This way an empty modulePaths marshals to JSON as `[]` instead of `null`
+		modulePaths := make([]module.ImportPath, 0)
+		for path := range paths {
+			if path == "" {
+				continue
+			}
+			modulePaths = append(modulePaths, module.ReadImportPath(path))
+		}
+		out = append(out, module.Dependency{
+			Locator: locator,
+			Via:     modulePaths,
+		})
+	}
+
+	return out
 }

@@ -123,10 +123,14 @@ func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 		if len(trimmed) > 0 {
 			match := outputMatchRe.FindStringSubmatch(trimmed)
 			if len(match) == 5 {
-				deps = append(deps, module.Dependency(MavenArtifact{
-					Name:    match[1] + ":" + match[2],
-					Version: match[4],
-				}))
+				deps = append(deps, module.Dependency{
+					Locator: module.Locator{
+						Fetcher:  "mvn",
+						Project:  match[1] + ":" + match[2],
+						Revision: match[4],
+					},
+					Via: nil,
+				})
 			}
 		}
 	}

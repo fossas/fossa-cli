@@ -94,9 +94,13 @@ func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 					revisionID = parsedDependencyLine[5]
 				}
 				gradleLogger.Debugf("Discovered maven artifact (%s, %s, %s)", trimmed, groupID, artifactID, revisionID)
-				deps = append(deps, MavenArtifact{
-					Name:    fmt.Sprintf("%s:%s", groupID, artifactID),
-					Version: revisionID,
+				deps = append(deps, module.Dependency{
+					Locator: module.Locator{
+						Fetcher:  "mvn",
+						Project:  fmt.Sprintf("%s:%s", groupID, artifactID),
+						Revision: revisionID,
+					},
+					Via: nil,
 				})
 			}
 		}

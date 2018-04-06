@@ -15,33 +15,6 @@ import (
 
 var nodejsLogger = logging.MustGetLogger("nodejs")
 
-// NodeModule implements Dependency for NodeJSBuilder.
-type NodeModule struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-}
-
-// Fetcher always returns npm for NodeModule. TODO: Support git and other
-// dependency sources.
-func (m NodeModule) Fetcher() string {
-	return "npm" // TODO: support git and etc...
-}
-
-// Package returns the package name for NodeModule
-func (m NodeModule) Package() string {
-	return m.Name
-}
-
-// Revision returns the version for NodeModule
-func (m NodeModule) Revision() string {
-	return m.Version
-}
-
-// Dependencies is not implemented for NodeModule
-func (m NodeModule) Dependencies() []module.Dependency {
-	return nil
-}
-
 // NodeJSBuilder implements Builder for Nodejs.
 // These properties are public for the sake of serialization.
 type NodeJSBuilder struct {
@@ -113,6 +86,11 @@ func (builder *NodeJSBuilder) Build(m module.Module, force bool) error {
 	return nil
 }
 
+type nodeManifest struct {
+	Name    string
+	Version string
+}
+
 // Analyze reads dependency manifests at `$PROJECT/**/node_modules/*/package.json`
 func (builder *NodeJSBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	nodejsLogger.Debugf("Running Nodejs analysis: %#v %#v", m, allowUnresolved)
@@ -132,11 +110,18 @@ func (builder *NodeJSBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 		go func(modulePath string, index int, wg *sync.WaitGroup) {
 			defer wg.Done()
 
-			var nodeModule NodeModule
-			parseLogged(nodejsLogger, modulePath, &nodeModule)
+			var dep nodeManifest
+			parseLogged(nodejsLogger, modulePath, &dep)
 
 			// Write directly to a reserved index for thread safety
-			deps[index] = nodeModule
+			deps[index] = module.Dependency{
+				Locator: module.Locator{
+					Fetcher:  "npm",
+					Project:  dep.Name,
+					Revision: dep.Version,
+				},
+				Via: nil,
+			}
 		}(nodeModules[i], i, &wg)
 	}
 	wg.Wait()
@@ -183,7 +168,7 @@ func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]module.Config, erro
 			moduleName := filepath.Base(filepath.Dir(path))
 
 			// Parse from package.json and set moduleName if successful
-			var nodeModule NodeModule
+			var nodeModule nodeManifest
 			if err := parseLogged(nodejsLogger, path, &nodeModule); err == nil {
 				moduleName = nodeModule.Name
 			}

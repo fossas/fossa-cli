@@ -15,35 +15,6 @@ import (
 
 var sbtLogger = logging.MustGetLogger("sbt")
 
-// SBTLibrary implements Dependency for SBT library dependencies
-type SBTLibrary struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-}
-
-// Fetcher always returns mvn for SBTLibrary
-func (m SBTLibrary) Fetcher() string {
-	// SBT uses the Maven repositories by default, but it looks like there's also
-	// support for Ivy formats + "unmanaged dependencies" (vendored JARs?).
-	// TODO: add support for these other formats.
-	return "mvn"
-}
-
-// Package returns the package spec for SBTLibrary
-func (m SBTLibrary) Package() string {
-	return m.Name
-}
-
-// Revision returns the version spec for SBTLibrary
-func (m SBTLibrary) Revision() string {
-	return m.Version
-}
-
-// Dependencies is not implemented for SBTLibrary
-func (m SBTLibrary) Dependencies() []module.Dependency {
-	return nil
-}
-
 // SBTBuilder implements build context for SBT builds
 type SBTBuilder struct {
 	SBTCmd     string
@@ -122,10 +93,14 @@ func (builder *SBTBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 		if len(line) > 0 {
 			depLocator := strings.TrimSpace(strings.TrimPrefix(line, "[info] "))
 			depSections := strings.Split(depLocator, ":")
-			dep := module.Dependency(SBTLibrary{
-				Name:    depSections[0] + ":" + depSections[1],
-				Version: depSections[2],
-			})
+			dep := module.Dependency{
+				Locator: module.Locator{
+					Fetcher:  "mvn",
+					Project:  depSections[0] + ":" + depSections[1],
+					Revision: depSections[2],
+				},
+				Via: nil,
+			}
 			sbtLogger.Debugf("Adding dep: %#v", dep)
 			deps = append(deps, dep)
 		}

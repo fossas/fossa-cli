@@ -17,32 +17,6 @@ import (
 
 var nugetLogger = logging.MustGetLogger("nuget")
 
-// NuGetPackage implements Dependency for NuGet
-type NuGetPackage struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-}
-
-// Fetcher always returns gem for NuGetPackage
-func (m NuGetPackage) Fetcher() string {
-	return "nuget"
-}
-
-// Package returns the package spec for NuGetPackage
-func (m NuGetPackage) Package() string {
-	return m.Name
-}
-
-// Revision returns the version spec for NuGetPackage
-func (m NuGetPackage) Revision() string {
-	return m.Version
-}
-
-// Dependencies is not implemented for NuGetPackage
-func (m NuGetPackage) Dependencies() []module.Dependency {
-	return nil
-}
-
 type nuGetLockfileV2or3 struct {
 	Libraries map[string]struct{} `json:"libraries"`
 }
@@ -128,10 +102,14 @@ func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 			for depKey := range lockFile.Libraries {
 				depKeyParts := strings.Split(depKey, "/")
 				if len(depKeyParts) == 2 {
-					deps = append(deps, module.Dependency(NuGetPackage{
-						Name:    depKeyParts[0],
-						Version: depKeyParts[1],
-					}))
+					deps = append(deps, module.Dependency{
+						Locator: module.Locator{
+							Fetcher:  "nuget",
+							Project:  depKeyParts[0],
+							Revision: depKeyParts[1],
+						},
+						Via: nil,
+					})
 				}
 			}
 		}
@@ -154,10 +132,14 @@ func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 			match := packageNameRe.FindStringSubmatch(f.Name())
 			nugetLogger.Debugf("%s, %V", len(match), match)
 			if len(match) == 5 {
-				deps = append(deps, module.Dependency(NuGetPackage{
-					Name:    match[1],
-					Version: match[3],
-				}))
+				deps = append(deps, module.Dependency{
+					Locator: module.Locator{
+						Fetcher:  "nuget",
+						Project:  match[1],
+						Revision: match[3],
+					},
+					Via: nil,
+				})
 			}
 		}
 	}

@@ -21,34 +21,6 @@ import (
 
 var goLogger = logging.MustGetLogger("golang")
 
-// GoPkg implements Dependency for Golang projects.
-type GoPkg struct {
-	ImportPath string `json:"name"`
-	Version    string `json:"version"` // This is actually the Git revision, but `.Revision()` is already taken by Dependency.
-
-	isInternal bool
-}
-
-// Fetcher returns "go".
-func (g GoPkg) Fetcher() string {
-	return "go"
-}
-
-// Package returns the package's import path.
-func (g GoPkg) Package() string {
-	return g.ImportPath
-}
-
-// Revision returns the package's resolved Git revision.
-func (g GoPkg) Revision() string {
-	return g.Version
-}
-
-// Dependencies is not implemented for GoPkg
-func (g GoPkg) Dependencies() []module.Dependency {
-	return nil
-}
-
 // GoBuilder implements Builder for Golang projects
 type GoBuilder struct {
 	GoCmd     string
@@ -284,7 +256,7 @@ func (builder *GoBuilder) Build(m module.Module, force bool) error {
 	return nil
 }
 
-var internalPackages = map[string]bool{
+var goInternalPackages = map[string]bool{
 	"archive":              true,
 	"archive/tar":          true,
 	"archive/zip":          true,
@@ -440,27 +412,34 @@ var internalPackages = map[string]bool{
 	"unsafe":              true,
 }
 
+type goPkg struct {
+	ImportPath string
+	Revision   string
+
+	isInternal bool
+}
+
 func goImportIsInternal(pkg string) bool {
 	if pkg == "." {
 		return false
 	}
-	if internalPackages[pkg] || strings.Index(pkg, "internal") != -1 {
+	if goInternalPackages[pkg] || strings.Index(pkg, "internal") != -1 {
 		return true
 	}
 	return goImportIsInternal(path.Dir(pkg))
 }
 
 // Build a dependency list given an entry point.
-func getGoImports(builder *GoBuilder, m module.Module) ([]GoPkg, error) {
+func getGoImports(builder *GoBuilder, m module.Module) ([]goPkg, error) {
 	stdout, _, err := runLogged(goLogger, m.Dir, builder.GoCmd, "list", "-f", "{{ join .Deps \"\\n\" }}")
 	if err != nil {
 		return nil, fmt.Errorf("could not trace imports: %s", err.Error())
 	}
 
-	var deps []GoPkg
+	var deps []goPkg
 	for _, line := range strings.Split(stdout, "\n") {
 		if line != "" {
-			deps = append(deps, GoPkg{
+			deps = append(deps, goPkg{
 				ImportPath: line,
 				isInternal: goImportIsInternal(line),
 			})
@@ -564,7 +543,14 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 		if allowUnresolved {
 			var deps []module.Dependency
 			for _, dep := range traced {
-				deps = append(deps, dep)
+				deps = append(deps, module.Dependency{
+					Locator: module.Locator{
+						Fetcher:  "go",
+						Project:  dep.ImportPath,
+						Revision: dep.Revision,
+					},
+					Via: nil,
+				})
 			}
 			return deps, err
 		}
@@ -644,7 +630,7 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 	}
 
 	goLogger.Debugf("Parsed lockfiles: %#v", lockfileVersions)
-	depSet := make(map[GoPkg]bool)
+	depSet := make(map[goPkg]bool)
 	projectImports := strings.TrimPrefix(projectFolder, filepath.Join(os.Getenv("GOPATH"), "src")+string(filepath.Separator))
 	for _, dep := range traced {
 		goLogger.Debugf("Resolving raw import: %s", dep.ImportPath)
@@ -668,10 +654,10 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 				strings.Index(importPath, projectImports) == 0 ||
 				dep.ImportPath == "C" {
 				goLogger.Debugf("Did not resolve import: %#v", dep)
-				depSet[GoPkg{ImportPath: importPath, Version: "", isInternal: dep.isInternal}] = true
+				depSet[goPkg{ImportPath: importPath, Revision: "", isInternal: dep.isInternal}] = true
 			} else if allowUnresolved {
 				goLogger.Warningf("Could not resolve import: %#v", dep)
-				depSet[GoPkg{ImportPath: importPath, Version: "", isInternal: dep.isInternal}] = true
+				depSet[goPkg{ImportPath: importPath, Revision: "", isInternal: dep.isInternal}] = true
 			} else {
 				goLogger.Errorf("Could not resolve import: %#v", dep)
 				goLogger.Debugf("Project folder: %#v", projectFolder)
@@ -681,14 +667,21 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 				return nil, fmt.Errorf("could not resolve import: %#v", importPath)
 			}
 		} else {
-			depSet[GoPkg{ImportPath: project, Version: lockfileVersions[project], isInternal: dep.isInternal}] = true
+			depSet[goPkg{ImportPath: project, Revision: lockfileVersions[project], isInternal: dep.isInternal}] = true
 		}
 	}
 
 	var deps []module.Dependency
-	for goPkg, ok := range depSet {
+	for dep, ok := range depSet {
 		if ok {
-			deps = append(deps, goPkg)
+			deps = append(deps, module.Dependency{
+				Locator: module.Locator{
+					Fetcher:  "go",
+					Project:  dep.ImportPath,
+					Revision: dep.Revision,
+				},
+				Via: nil,
+			})
 		}
 	}
 

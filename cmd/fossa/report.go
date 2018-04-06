@@ -12,7 +12,6 @@ import (
 	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 
-	"github.com/fossas/fossa-cli/builders"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -75,11 +74,12 @@ func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, a analysis) {
 	var responses []dependencyResponse
 	for _, deps := range a {
 		for _, dep := range deps {
-			if module.IsResolved(dep) {
-				locator := module.LocatorOf(dep)
-				goPkg, ok := dep.(builders.GoPkg)
-				if ok {
-					locator = module.MakeLocator("git", goPkg.ImportPath, goPkg.Version)
+			if dep.IsResolved() {
+				locator := dep.Locator.String()
+				// We do this because the reports API treats go fetchers as git fetchers
+				if dep.Locator.Fetcher == "go" {
+					dep.Locator.Fetcher = "git"
+					locator = dep.Locator.String()
 				}
 				locators = append(locators, fmt.Sprintf("locator[%d]=%s", len(locators), url.QueryEscape(string(locator))))
 

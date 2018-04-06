@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	logging "github.com/op/go-logging"
@@ -14,32 +15,6 @@ import (
 )
 
 var composerLogger = logging.MustGetLogger("composer")
-
-// ComposerPackage implements Dependency for Composer
-type ComposerPackage struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-}
-
-// Fetcher always returns comp for ComposerPackage
-func (m ComposerPackage) Fetcher() string {
-	return "comp"
-}
-
-// Package returns the package spec for ComposerPackage
-func (m ComposerPackage) Package() string {
-	return m.Name
-}
-
-// Revision returns the version spec for ComposerPackage
-func (m ComposerPackage) Revision() string {
-	return m.Version
-}
-
-// Dependencies is not implemented for ComposerPackage
-func (m ComposerPackage) Dependencies() []module.Dependency {
-	return nil
-}
 
 // ComposerBuilder implements Builder for Composer (composer.json) builds
 type ComposerBuilder struct {
@@ -94,27 +69,98 @@ func (builder *ComposerBuilder) Build(m module.Module, force bool) error {
 	return nil
 }
 
+type composerManifest struct {
+	Name    string
+	Version string
+}
+
 // Analyze parses the output of `composer show -f json --no-ansi`
 func (builder *ComposerBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	composerLogger.Debug("Running Composer analysis: %#v %#v", m, allowUnresolved)
 
-	// Run `composer show -f json --no-ansi`
-	output, _, err := runLogged(composerLogger, m.Dir, builder.ComposerCmd, "show", "-f", "json", "--no-ansi")
+	// Run `composer show --format=json --no-ansi` to get resolved versions
+	showOutput, _, err := runLogged(composerLogger, m.Dir, builder.ComposerCmd, "show", "--format=json", "--no-ansi")
 	if err != nil {
 		return nil, fmt.Errorf("could not get dependency list from Composer: %s", err.Error())
 	}
-
-	// Parse output as JSON
-	composerJSON := map[string][]ComposerPackage{}
-	err = json.Unmarshal([]byte(output), &composerJSON)
+	composerJSON := map[string][]composerManifest{}
+	err = json.Unmarshal([]byte(showOutput), &composerJSON)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse dependency list as JSON: %#v %#v", err.Error(), output)
+		return nil, fmt.Errorf("could not parse dependency list as JSON: %#v %#v", err.Error(), showOutput)
+	}
+	revisionMap := make(map[string]string)
+	for _, dep := range composerJSON["installed"] {
+		revisionMap[dep.Name] = dep.Version
 	}
 
-	// Get dependencies from "installed" key of Composer output
-	var deps []module.Dependency
-	for _, d := range composerJSON["installed"] {
-		deps = append(deps, d)
+	// Run `composer show --tree --no-ansi` to get paths
+	treeOutput, _, err := runLogged(composerLogger, m.Dir, builder.ComposerCmd, "show", "--tree", "--no-ansi")
+	if err != nil {
+		return nil, fmt.Errorf("could not get dependency list from Composer: %s", err.Error())
+	}
+	var depList []module.Dependency
+	depContext := module.ImportPath{module.Locator{
+		Fetcher:  "root",
+		Project:  "root",
+		Revision: "root",
+	}}
+	lastDepth := 0
+	lines := strings.Split(treeOutput, "\n")
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		var locator module.Locator
+		var depth int
+		if line[0] != '`' && line[0] != '|' && line[0] != ' ' {
+			// We're at a top-level package.
+			parts := strings.Split(line, " ")
+			locator = module.Locator{
+				Fetcher:  "comp",
+				Project:  parts[0],
+				Revision: "revision-placeholder",
+			}
+			depContext = []module.Locator{locator}
+			depth = 0
+		} else {
+			// We're somewhere in the tree.
+			r := regexp.MustCompile("^([ \\|`-]+)([^ \\|`-][^ ]+) (.*)$")
+			matches := r.FindStringSubmatch(line)
+			locator = module.Locator{
+				Fetcher:  "comp",
+				Project:  matches[2],
+				Revision: "revision-placeholder",
+			}
+			if matches[2] == "php" {
+				continue
+			}
+			depth = len(matches[1])
+			if depth%3 != 0 {
+				// Sanity check
+				composerLogger.Panicf("Bad depth: %#v %s %#v", depth, line, matches)
+			}
+		}
+		if depth > lastDepth {
+			depContext = append(depContext, locator)
+		} else {
+			depContext = depContext[:depth/3+1]
+		}
+		depList = append(depList, module.Dependency{
+			Locator: locator,
+			Via:     []module.ImportPath{depContext},
+		})
+		lastDepth = depth
+	}
+	deps := computeImportPaths(depList)
+
+	// Resolve revisions
+	for i, dep := range deps {
+		deps[i].Revision = revisionMap[dep.Project]
+		for j, path := range dep.Via {
+			for k, component := range path {
+				deps[i].Via[j][k].Revision = revisionMap[component.Project]
+			}
+		}
 	}
 
 	composerLogger.Debugf("Done running Composer analysis: %#v", deps)
@@ -162,7 +208,7 @@ func (builder *ComposerBuilder) DiscoverModules(dir string) ([]module.Config, er
 			moduleName := filepath.Base(filepath.Dir(path))
 
 			// Parse from composer.json and set moduleName if successful
-			var composerPackage ComposerPackage
+			var composerPackage composerManifest
 			if err := parseLogged(composerLogger, path, &composerPackage); err == nil {
 				moduleName = composerPackage.Name
 			}

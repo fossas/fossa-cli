@@ -58,7 +58,7 @@ func Normalize(analysis []module.Analyzed) ([]SourceUnit, error) {
 			}
 
 			deps = append(deps, Dependency{
-				Locator: string(module.LocatorOf(dep)),
+				Locator: dep.Locator.String(),
 				Data:    (*json.RawMessage)(&data),
 			})
 		}

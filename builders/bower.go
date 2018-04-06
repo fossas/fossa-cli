@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
@@ -14,38 +13,6 @@ import (
 )
 
 var bowerLogger = logging.MustGetLogger("bower")
-
-// BowerComponent implements Dependency for BowerBuilder
-type BowerComponent struct {
-	Name    string
-	Version string
-	Deps    []BowerComponent
-	Via     [][]string
-}
-
-// Fetcher always returns bower for BowerComponent
-func (m BowerComponent) Fetcher() string {
-	return "bower" // TODO: support `git` and etc...
-}
-
-// Package returns the package name for BowerComponent
-func (m BowerComponent) Package() string {
-	return m.Name
-}
-
-// Revision returns the version for BowerComponent
-func (m BowerComponent) Revision() string {
-	return m.Version
-}
-
-// Dependencies returns the deeper dependencies of any dependency.
-func (m BowerComponent) Dependencies() []module.Dependency {
-	var deps []module.Dependency
-	for _, d := range m.Deps {
-		deps = append(deps, d)
-	}
-	return deps
-}
 
 // BowerBuilder implements Builder for Bower
 type BowerBuilder struct {
@@ -71,7 +38,7 @@ func (builder *BowerBuilder) Initialize() error {
 	// Set Bower context variables
 	bowerCmd, bowerVersion, err := which("-v", os.Getenv("BOWER_BINARY"), "bower")
 	if err != nil {
-		bowerLogger.Fatalf("Could not find Bower binary (try setting $BOWER_BINARY): %s", err.Error())
+		return errors.Wrap(err, "could not find Bower binary (try setting $BOWER_BINARY)")
 	}
 	builder.BowerCmd = bowerCmd
 	builder.BowerVersion = bowerVersion
@@ -100,29 +67,46 @@ func (builder *BowerBuilder) Build(m module.Module, force bool) error {
 	return nil
 }
 
-type bowerListOutput struct {
+type bowerListManifest struct {
 	PkgMeta struct {
 		Name    string
 		Version string
 	}
-	Dependencies map[string]bowerListOutput
+	Dependencies map[string]bowerListManifest
 }
 
-func normalizeBowerComponents(parent []string, component bowerListOutput) []BowerComponent {
-	// Initializing this way makes `deps` marshal as `[]` when empty instead of `null`
-	deps := make([]BowerComponent, 0)
-	for _, dep := range component.Dependencies {
-		deps = append(deps, normalizeBowerComponents(append(parent, component.PkgMeta.Name+"@"+component.PkgMeta.Version), dep)...)
+type bowerJSONManifest struct {
+	Name    string
+	Version string
+}
+
+func normalizeBowerComponents(parent module.ImportPath, c bowerListManifest) []module.Dependency {
+	var deps []module.Dependency
+	for _, dep := range c.Dependencies {
+		deps = append(
+			deps,
+			normalizeBowerComponents(
+				append(parent, module.Locator{
+					Fetcher:  "bower",
+					Project:  c.PkgMeta.Name,
+					Revision: c.PkgMeta.Version,
+				}),
+				dep,
+			)...)
 	}
-	return append(deps, BowerComponent{
-		Name:    component.PkgMeta.Name,
-		Version: component.PkgMeta.Version,
-		Deps:    deps,
-		Via:     [][]string{parent},
+
+	return append(deps, module.Dependency{
+		Locator: module.Locator{
+			Fetcher:  "bower",
+			Project:  c.PkgMeta.Name,
+			Revision: c.PkgMeta.Version,
+		},
+		Via: []module.ImportPath{parent},
 	})
 }
 
 // Analyze reads the output of `bower ls --json`
+// TODO: fall back to old method of reading `bower_components/*/.bower.json`s?
 func (builder *BowerBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	bowerLogger.Debugf("Running Bower analysis: %#v %#v", m, allowUnresolved)
 
@@ -131,42 +115,32 @@ func (builder *BowerBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 		return nil, errors.Wrap(err, "could not run `bower ls --json`")
 	}
 
-	var output bowerListOutput
+	var output bowerListManifest
 	err = json.Unmarshal([]byte(stdout), &output)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not parse `bower ls --json` output")
 	}
 
-	// Compute origin paths
-	var deps []BowerComponent
+	var depList []module.Dependency
 	for _, dep := range output.Dependencies {
-		deps = append(deps, normalizeBowerComponents([]string{"."}, dep)...)
+		depList = append(
+			depList,
+			normalizeBowerComponents(
+				[]module.Locator{
+					module.Locator{
+						Fetcher:  "root",
+						Project:  "root", // TODO: This should be the project name, we'll need to pass that in via the module
+						Revision: "root",
+					},
+				},
+				dep,
+			)...,
+		)
 	}
-	paths := make(map[[2]string]map[string]bool)
-	for _, d := range deps {
-		i := [2]string{d.Name, d.Version}
-		_, ok := paths[i]
-		if !ok {
-			paths[i] = make(map[string]bool)
-		}
-		paths[i][strings.Join(d.Via[0], " ")] = true
-	}
-
-	var moduleDeps []module.Dependency
-	for d, ps := range paths {
-		var modulePaths [][]string
-		for p := range ps {
-			modulePaths = append(modulePaths, strings.Split(p, " "))
-		}
-		moduleDeps = append(moduleDeps, BowerComponent{
-			Name:    d[0],
-			Version: d[1],
-			Via:     modulePaths,
-		})
-	}
+	deps := computeImportPaths(depList)
 
 	bowerLogger.Debugf("Done running Bower analysis: %#v", deps)
-	return moduleDeps, nil
+	return deps, nil
 }
 
 // IsBuilt checks for the existence of `$PROJECT/bower_components`
@@ -207,9 +181,9 @@ func (builder *BowerBuilder) DiscoverModules(dir string) ([]module.Config, error
 			moduleName := filepath.Base(filepath.Dir(path))
 
 			// Parse from bower.json and set moduleName if successful
-			var bowerComponent BowerComponent
-			if err := parseLogged(bowerLogger, path, &bowerComponent); err == nil {
-				moduleName = bowerComponent.Name
+			var manifest bowerJSONManifest
+			if err := parseLogged(bowerLogger, path, &manifest); err == nil {
+				moduleName = manifest.Name
 			}
 
 			bowerLogger.Debugf("Found Bower package: %s (%s)", path, moduleName)
