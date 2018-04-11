@@ -432,14 +432,19 @@ func goImportIsInternal(pkg string) bool {
 }
 
 // NOTE: we don't really need the module.Module argument, that's just a hack so I can use runLogged easily.
-func getGoImportsRecurse(builder *GoBuilder, m module.Module, memo map[module.Locator][]Imported, context module.ImportPath, pkg string) ([]Imported, error) {
-	if pkg == "" || goImportIsInternal(pkg) {
+func getGoImportsRecurse(builder *GoBuilder, m module.Module, memo map[string]string, from module.ImportPath, pkg string) ([]Imported, error) {
+	if goImportIsInternal(pkg) {
 		return []Imported{}, nil
 	}
 
-	stdout, _, err := runLogged(goLogger, m.Dir, builder.GoCmd, "list", "-f", "{{ join .Imports \"\\n\" }}", pkg)
-	if err != nil {
-		return nil, fmt.Errorf("could not trace imports: %s", err.Error())
+	stdout, ok := memo[pkg]
+	if !ok {
+		var err error
+		stdout, _, err = runLogged(goLogger, m.Dir, builder.GoCmd, "list", "-f", "{{ join .Imports \"\\n\" }}", pkg)
+		if err != nil {
+			return nil, fmt.Errorf("could not trace imports: %s", err.Error())
+		}
+		memo[pkg] = stdout
 	}
 
 	locator := module.Locator{
@@ -449,7 +454,10 @@ func getGoImportsRecurse(builder *GoBuilder, m module.Module, memo map[module.Lo
 	}
 	var imports []Imported
 	for _, dep := range strings.Split(stdout, "\n") {
-		transitive, err := getGoImportsRecurse(builder, m, memo, append(context, locator), dep)
+		if dep == "" {
+			continue
+		}
+		transitive, err := getGoImportsRecurse(builder, m, memo, append(from, locator), dep)
 		if err != nil {
 			return nil, err
 		}
@@ -457,7 +465,7 @@ func getGoImportsRecurse(builder *GoBuilder, m module.Module, memo map[module.Lo
 	}
 	imports = append(imports, Imported{
 		Locator: locator,
-		From:    context,
+		From:    from,
 	})
 
 	return imports, nil
@@ -468,8 +476,8 @@ func getGoImports(builder *GoBuilder, m module.Module) ([]Imported, error) {
 	return getGoImportsRecurse(
 		builder,
 		m,
-		make(map[module.Locator][]Imported),
-		module.ImportPath{},
+		make(map[string]string),
+		nil,
 		m.Target,
 	)
 }
