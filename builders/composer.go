@@ -98,12 +98,13 @@ func (builder *ComposerBuilder) Analyze(m module.Module, allowUnresolved bool) (
 	if err != nil {
 		return nil, fmt.Errorf("could not get dependency list from Composer: %s", err.Error())
 	}
-	var depList []module.Dependency
-	depContext := module.ImportPath{module.Locator{
+	var depList []Imported
+	root := module.Locator{
 		Fetcher:  "root",
 		Project:  "root",
 		Revision: "root",
-	}}
+	}
+	depContext := module.ImportPath{root}
 	lastDepth := 0
 	lines := strings.Split(treeOutput, "\n")
 	for _, line := range lines {
@@ -120,7 +121,7 @@ func (builder *ComposerBuilder) Analyze(m module.Module, allowUnresolved bool) (
 				Project:  parts[0],
 				Revision: "revision-placeholder",
 			}
-			depContext = []module.Locator{locator}
+			depContext = module.ImportPath{root, locator}
 			depth = 0
 		} else {
 			// We're somewhere in the tree.
@@ -145,9 +146,9 @@ func (builder *ComposerBuilder) Analyze(m module.Module, allowUnresolved bool) (
 		} else {
 			depContext = depContext[:depth/3+1]
 		}
-		depList = append(depList, module.Dependency{
+		depList = append(depList, Imported{
 			Locator: locator,
-			Via:     []module.ImportPath{depContext},
+			From:    depContext,
 		})
 		lastDepth = depth
 	}

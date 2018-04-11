@@ -170,15 +170,20 @@ func which(versionFlags string, cmds ...string) (string, string, error) {
 	})
 }
 
+type Imported struct {
+	module.Locator
+	From module.ImportPath
+}
+
 // Utilities for computing import paths
-func computeImportPaths(deps []module.Dependency) []module.Dependency {
+func computeImportPaths(deps []Imported) []module.Dependency {
 	pathsSet := make(map[module.Locator]map[module.ImportPathString]bool)
 	for _, dep := range deps {
 		_, ok := pathsSet[dep.Locator]
 		if !ok {
 			pathsSet[dep.Locator] = make(map[module.ImportPathString]bool)
 		}
-		pathsSet[dep.Locator][dep.Via[0].String()] = true
+		pathsSet[dep.Locator][dep.From.String()] = true
 	}
 
 	var out []module.Dependency

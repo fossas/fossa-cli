@@ -80,8 +80,8 @@ type bowerJSONManifest struct {
 	Version string
 }
 
-func normalizeBowerComponents(parent module.ImportPath, c bowerListManifest) []module.Dependency {
-	var deps []module.Dependency
+func normalizeBowerComponents(parent module.ImportPath, c bowerListManifest) []Imported {
+	var deps []Imported
 	for _, dep := range c.Dependencies {
 		deps = append(
 			deps,
@@ -95,13 +95,13 @@ func normalizeBowerComponents(parent module.ImportPath, c bowerListManifest) []m
 			)...)
 	}
 
-	return append(deps, module.Dependency{
+	return append(deps, Imported{
 		Locator: module.Locator{
 			Fetcher:  "bower",
 			Project:  c.PkgMeta.Name,
 			Revision: c.PkgMeta.Version,
 		},
-		Via: []module.ImportPath{parent},
+		From: parent,
 	})
 }
 
@@ -121,7 +121,7 @@ func (builder *BowerBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 		return nil, errors.Wrap(err, "could not parse `bower ls --json` output")
 	}
 
-	var depList []module.Dependency
+	var depList []Imported
 	for _, dep := range output.Dependencies {
 		depList = append(
 			depList,
