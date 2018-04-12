@@ -465,7 +465,7 @@ func getGoImportsRecurse(builder *GoBuilder, m module.Module, memo map[string]st
 	}
 	imports = append(imports, Imported{
 		Locator: locator,
-		From:    from,
+		From:    append(module.ImportPath{}, from...),
 	})
 
 	return imports, nil

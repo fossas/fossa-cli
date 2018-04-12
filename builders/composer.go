@@ -148,7 +148,7 @@ func (builder *ComposerBuilder) Analyze(m module.Module, allowUnresolved bool) (
 		}
 		depList = append(depList, Imported{
 			Locator: locator,
-			From:    depContext,
+			From:    append(module.ImportPath{}, depContext...),
 		})
 		lastDepth = depth
 	}

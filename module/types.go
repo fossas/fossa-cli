@@ -13,9 +13,27 @@ type Config struct {
 }
 
 type Options struct {
-	Strategy            string `yaml:"strategy"`
-	GradleTask          string `yaml:"gradleTask"`
-	GradleConfiguration string `yaml:"gradleConfiguration"`
+	Go     GoOptions
+	Python PythonOptions
+	Gradle GradleOptions
+	Maven  MavenOptions
+}
+
+type GoOptions struct {
+	AllowUnresolved bool
+}
+
+type PythonOptions struct {
+	Strategy string
+}
+
+type GradleOptions struct {
+	Task          string
+	Configuration string
+}
+
+type MavenOptions struct {
+	Settings string
 }
 
 type Analyzed struct {
