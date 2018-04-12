@@ -424,7 +424,9 @@ func goImportIsInternal(pkg string) bool {
 	if pkg == "." {
 		return false
 	}
-	if goInternalPackages[pkg] {
+	// TEST: Standard library packages + packages labelled "internal" won't have
+	// resolved versions in the lockfile.
+	if goInternalPackages[pkg] || strings.Index(pkg, "internal") != -1 {
 		return true
 	}
 	// TEST: This is for packages like `crypto/internal/cipherhw`
@@ -473,13 +475,15 @@ func getGoImportsRecurse(builder *GoBuilder, m module.Module, memo map[string]st
 
 // Build a dependency list given an entry point.
 func getGoImports(builder *GoBuilder, m module.Module) ([]Imported, error) {
-	return getGoImportsRecurse(
+	imports, err := getGoImportsRecurse(
 		builder,
 		m,
 		make(map[string]string),
 		nil,
 		m.Target,
 	)
+	// TEST: imports should not include the root importing package
+	return imports[:len(imports)-1], err
 }
 
 // Lockfile structs for JSON unmarshalling
@@ -654,7 +658,11 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 	for i, pkg := range traced {
 		// Get the project folder
 		packageDir := goImportToDir(pkg.Project)
-		projectFolder, ok, err := findGoProjectFolder(packageDir)
+		// TEST: project revisions are only ever locked by _parents_ of the project,
+		// not the project itself.
+		// TODO: should we search through all possible ancestor lockfiles instead of
+		// just the nearest one?
+		projectFolder, ok, err := findGoProjectFolder(filepath.Dir(packageDir))
 		if err != nil {
 			return nil, err
 		}
