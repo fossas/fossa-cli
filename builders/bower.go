@@ -101,7 +101,7 @@ func normalizeBowerComponents(parent module.ImportPath, c bowerListManifest) []I
 			Project:  c.PkgMeta.Name,
 			Revision: c.PkgMeta.Version,
 		},
-		From: parent,
+		From: append(module.ImportPath{}, parent...),
 	})
 }
 

@@ -1,14 +1,13 @@
 package builders
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 
-	"github.com/bmatcuk/doublestar"
 	logging "github.com/op/go-logging"
+	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/module"
 )
@@ -91,40 +90,53 @@ type nodeManifest struct {
 	Version string
 }
 
-// Analyze reads dependency manifests at `$PROJECT/**/node_modules/*/package.json`
+type nodeListOutput struct {
+	Version      string
+	Dependencies map[string]nodeListOutput
+}
+
+func flattenNodeJSModulesRecurse(locator module.Locator, pkg nodeListOutput, from module.ImportPath) []Imported {
+	var imports []Imported
+	for dep, manifest := range pkg.Dependencies {
+		transitive := flattenNodeJSModulesRecurse(module.Locator{
+			Fetcher:  "npm",
+			Project:  dep,
+			Revision: manifest.Version,
+		}, manifest, append(from, locator))
+		imports = append(imports, transitive...)
+	}
+	imports = append(imports, Imported{
+		Locator: locator,
+		From:    append(module.ImportPath{}, from...),
+	})
+	return imports
+}
+
+func flattenNodeJSModules(pkg nodeListOutput) []Imported {
+	root := module.Locator{
+		Fetcher:  "root",
+		Project:  "root",
+		Revision: "",
+	}
+	return flattenNodeJSModulesRecurse(root, pkg, module.ImportPath{})
+}
+
+// Analyze runs and parses `npm ls --json`.
 func (builder *NodeJSBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	nodejsLogger.Debugf("Running Nodejs analysis: %#v %#v", m, allowUnresolved)
 
-	// Find dependency manifests within a node_modules folder
-	nodeModules, err := doublestar.Glob(filepath.Join(m.Dir, "**", "node_modules", "*", "package.json"))
+	out, _, err := runLogged(nodejsLogger, m.Dir, "npm", "ls", "--json")
 	if err != nil {
-		return nil, fmt.Errorf("could not find Nodejs dependency manifests: %s", err.Error())
+		return nil, errors.Wrap(err, "could not analyze Node.js module")
 	}
-	nodejsLogger.Debugf("Found %#v modules from globstar: %#v", len(nodeModules), nodeModules)
 
-	// Read manifests.
-	var wg sync.WaitGroup
-	deps := make([]module.Dependency, len(nodeModules))
-	wg.Add(len(nodeModules))
-	for i := 0; i < len(nodeModules); i++ {
-		go func(modulePath string, index int, wg *sync.WaitGroup) {
-			defer wg.Done()
-
-			var dep nodeManifest
-			parseLogged(nodejsLogger, modulePath, &dep)
-
-			// Write directly to a reserved index for thread safety
-			deps[index] = module.Dependency{
-				Locator: module.Locator{
-					Fetcher:  "npm",
-					Project:  dep.Name,
-					Revision: dep.Version,
-				},
-				Via: nil,
-			}
-		}(nodeModules[i], i, &wg)
+	var parsed nodeListOutput
+	err = json.Unmarshal([]byte(out), &parsed)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not parse `npm ls --json` output")
 	}
-	wg.Wait()
+	imports := flattenNodeJSModules(parsed)
+	deps := computeImportPaths(imports)
 
 	nodejsLogger.Debugf("Done running Nodejs analysis: %#v", deps)
 	return deps, nil
