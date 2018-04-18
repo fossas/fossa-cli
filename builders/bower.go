@@ -21,6 +21,12 @@ type BowerComponent struct {
 	Version string `json:"version"`
 }
 
+type BowerConfiguration struct {
+	Cwd       string `json:"cwd"`
+	Directory string `json:"directory"`
+	Registry  string `json:"registry"`
+}
+
 // Fetcher always returns bower for BowerComponent
 func (m BowerComponent) Fetcher() string {
 	return "bower" // TODO: support `git` and etc...
@@ -121,13 +127,30 @@ func (builder *BowerBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 	return deps, nil
 }
 
+// resolveBowerComponentsDirectory resolves a component dir from a `.bowerrc` file, falling back to `bower_components`
+func resolveBowerComponentsDirectory(dir string) string {
+	bowerConfigPath := filepath.Join(dir, ".bowerrc")
+	bowerComponentsPath := filepath.Join(dir, "bower_components")
+
+	if bowerConfigExists, _ := hasFile(bowerConfigPath); bowerConfigExists {
+		var bowerConfiguration BowerConfiguration
+		parseLogged(bowerLogger, bowerConfigPath, &bowerConfiguration)
+
+		if bowerConfiguration.Directory != "" {
+			bowerComponentsPath = bowerConfiguration.Directory
+		}
+	}
+
+	return bowerComponentsPath
+}
+
 // IsBuilt checks for the existence of `$PROJECT/bower_components`
 func (builder *BowerBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
 	bowerLogger.Debug("Checking Bower build: %#v %#v", m, allowUnresolved)
 
 	// TODO: Check if the installed modules are consistent with what's in the
 	// actual manifest.
-	isBuilt, err := hasFile(m.Dir, "bower_components")
+	isBuilt, err := hasFile(resolveBowerComponentsDirectory(m.Dir))
 	if err != nil {
 		return false, fmt.Errorf("could not find Bower dependencies folder: %s", err.Error())
 	}
