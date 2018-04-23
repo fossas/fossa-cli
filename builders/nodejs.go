@@ -125,9 +125,11 @@ func flattenNodeJSModules(pkg nodeListOutput) []Imported {
 func (builder *NodeJSBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	nodejsLogger.Debugf("Running Nodejs analysis: %#v %#v", m, allowUnresolved)
 
-	out, _, err := runLogged(nodejsLogger, m.Dir, "npm", "ls", "--json")
+	// TODO: we must allow this to exit with error if a flag is passed (maybe --allow-npm-err)
+	// because sometimes npm will throw errors even after a complete install
+	out, stderr, err := runLogged(nodejsLogger, m.Dir, "npm", "ls", "--json")
 	if err != nil {
-		return nil, errors.Wrap(err, "could not analyze Node.js module")
+		nodejsLogger.Warningf("NPM had non-zero exit code: %s", stderr)
 	}
 
 	var parsed nodeListOutput

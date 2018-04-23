@@ -113,7 +113,7 @@ func runLogged(logger *logging.Logger, dir string, name string, arg ...string) (
 	stdout, stderr, err := runInDir(dir, name, arg...)
 	if err != nil {
 		logger.Debugf("Running `%s` failed: %#v %#v", cmd, err, stderr)
-		return "", "", fmt.Errorf("running `%s` failed: %#v %#v", cmd, err, stderr)
+		return stdout, stderr, fmt.Errorf("running `%s` failed: %#v %#v", cmd, err, stderr)
 	}
 	logger.Debugf("Done running `%s`: %#v %#v", stdout, stderr)
 	return stdout, stderr, nil
