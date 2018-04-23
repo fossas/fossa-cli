@@ -42,7 +42,8 @@ func TryBool(c *cli.Context, flag string) bool {
 
 // New creates a CLIConfig from a *cli.Context
 func New(c *cli.Context) (CLIConfig, error) {
-	modules, err := parseModulesFlag(c.String("modules"))
+	// TODO: the `strings.Join` is a compatibility hack for now
+	modules, err := parseModulesFlag(strings.Join(c.StringSlice("modules"), ","))
 	if err != nil {
 		return CLIConfig{}, err
 	}

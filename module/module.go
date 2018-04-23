@@ -29,7 +29,7 @@ type Module struct {
 	Revision string
 
 	// A catch-all for builders to add metadata (a la Context.Value).
-	Value interface{}
+	Context interface{}
 }
 
 // New instantiates and sets up a Module for a given ModuleType

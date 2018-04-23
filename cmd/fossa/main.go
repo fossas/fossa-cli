@@ -83,7 +83,7 @@ func main() {
 			Flags: []cli.Flag{
 				// TODO: specify these using c.GlobalString?
 				cli.StringFlag{Name: "c, config", Usage: configUsage},
-				cli.StringFlag{Name: "m, modules", Usage: "the modules to build"},
+				cli.StringSliceFlag{Name: "m, modules", Usage: "the modules to build"},
 				cli.BoolFlag{Name: "f, force", Usage: buildForceUsage},
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
@@ -98,7 +98,7 @@ func main() {
 				cli.StringFlag{Name: "p, project", Usage: projectUsage},
 				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
-				cli.StringFlag{Name: "m, modules", Usage: "the modules to analyze"},
+				cli.StringSliceFlag{Name: "m, modules", Usage: "the modules to analyze"},
 				cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
 				cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},

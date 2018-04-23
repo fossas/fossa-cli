@@ -1,0 +1,90 @@
+﻿@inject SignInManager<IdentityUser> SignInManager
+@inject Bit.Core.GlobalSettings GlobalSettings
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Bitwarden Admin Portal</title>
+
+    <link rel="stylesheet" href="~/css/webfonts.css" />
+    <environment include="Development">
+        <link rel="stylesheet" href="~/lib/font-awesome/css/font-awesome.css" />
+        <link rel="stylesheet" href="~/css/site.css" />
+    </environment>
+    <environment exclude="Development">
+        <link rel="stylesheet" href="~/lib/font-awesome/css/font-awesome.min.css" asp-append-version="true" />
+        <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    </environment>
+</head>
+<body>
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" asp-controller="Home" asp-action="Index">
+                <i class="fa fa-lg fa-fw fa-shield"></i> Admin
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse"
+                    aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarCollapse">
+                <ul class="navbar-nav mr-auto">
+                    @if(SignInManager.IsSignedIn(User))
+                    {
+                        <li class="nav-item" active-controller="Users">
+                            <a class="nav-link" asp-controller="Users" asp-action="Index">Users</a>
+                        </li>
+                        <li class="nav-item" active-controller="Organizations">
+                            <a class="nav-link" asp-controller="Organizations" asp-action="Index">Organizations</a>
+                        </li>
+                        @if(!GlobalSettings.SelfHosted)
+                        {
+                            <li class="nav-item" active-controller="Logs">
+                                <a class="nav-link" asp-controller="Logs" asp-action="Index">Logs</a>
+                            </li>
+                        }
+                    }
+                    @if(GlobalSettings.SelfHosted)
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link" href="https://help.bitwarden.com/hosting/" target="_blank">Docs</a>
+                        </li>
+                    }
+                </ul>
+                @if(SignInManager.IsSignedIn(User))
+                {
+                    <form asp-controller="Login" asp-action="Logout" method="post">
+                        <button type="submit" class="btn btn-secondary">Log Out</button>
+                    </form>
+                }
+                else
+                {
+                    <a class="btn btn-secondary" asp-controller="Login" asp-action="Index">Log In</a>
+                }
+            </div>
+        </div>
+    </nav>
+
+    <main role="main" class="container">
+        @RenderBody()
+    </main>
+
+    <footer class="container mb-4">
+        <hr />
+        &copy; 2015 - @DateTime.Now.Year 8bit Solutions LLC
+    </footer>
+
+    <environment include="Development">
+        <script src="~/lib/jquery/jquery.slim.js"></script>
+        <script src="~/lib/popper/popper.js"></script>
+        <script src="~/lib/bootstrap/js/bootstrap.js"></script>
+    </environment>
+    <environment exclude="Development">
+        <script src="~/lib/jquery/jquery.slim.min.js" asp-append-version="true"></script>
+        <script src="~/lib/popper/popper.min.js" asp-append-version="true"></script>
+        <script src="~/lib/bootstrap/js/bootstrap.min.js" asp-append-version="true"></script>
+    </environment>
+
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

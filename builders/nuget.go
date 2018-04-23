@@ -1,16 +1,18 @@
 package builders
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/bmatcuk/doublestar"
 	logging "github.com/op/go-logging"
+	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/module"
 )
@@ -18,6 +20,9 @@ import (
 var nugetLogger = logging.MustGetLogger("nuget")
 
 type nuGetLockfileV2or3 struct {
+	Targets map[string]struct {
+		Dependencies map[string]string
+	}
 	Libraries map[string]struct{} `json:"libraries"`
 }
 
@@ -42,7 +47,10 @@ func (builder *NuGetBuilder) Initialize() error {
 	builder.DotNETVersion = strings.TrimRight(dotNetVersion, "\n")
 
 	// Set NuGet context variables
-	nuGetCmd, nuGetVersonOut, err := which("help", os.Getenv("NUGET_BINARY"), "nuget")
+	// `nuget` hangs on Linux. Not sure why.
+	// TODO: TEST: we should really add a timeout to all of these.
+	// nuGetCmd, nuGetVersonOut, err := which("help", os.Getenv("NUGET_BINARY"), "nuget")
+	nuGetCmd, nuGetVersonOut, err := which("help", os.Getenv("NUGET_BINARY"))
 	if err == nil {
 		builder.NuGetCmd = nuGetCmd
 
@@ -88,15 +96,111 @@ func (builder *NuGetBuilder) Build(m module.Module, force bool) error {
 	return nil
 }
 
+func (builder *NuGetBuilder) getNugetProjectFiles(file string) ([]string, error) {
+	nugetLogger.Debugf("Getting transitive project files from: %s", file)
+	files := []string{file}
+
+	// Get transitive files
+	refCmd := exec.Command(builder.DotNETCmd, "list", file, "reference")
+	refCmd.Env = os.Environ()
+	refCmd.Env = append(refCmd.Env, "TERM=dumb")
+	refOutBytes, err := refCmd.Output()
+	refOut := string(refOutBytes)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not run `%s list reference`", builder.DotNETCmd)
+	}
+	header := "Project reference(s)\n--------------------\n"
+	headerIndex := strings.Index(refOut, header)
+	if headerIndex == -1 {
+		return files, nil
+	}
+	projects := refOut[headerIndex+len(header):]
+	for _, line := range strings.Split(projects, "\n") {
+		log.Printf("line: %s", line)
+		if line == "" {
+			break
+		}
+		parentFile := filepath.Join(filepath.Dir(file), filepath.Join(strings.Split(line, "\\")...))
+		log.Printf("file: %s", parentFile)
+		transitive, err := builder.getNugetProjectFiles(parentFile)
+		if err != nil {
+			errors.Wrap(err, "could not get transitive project files")
+		}
+		files = append(files, transitive...)
+	}
+
+	return files, nil
+}
+
+type dotNETProjectNode struct {
+	name       string
+	version    string
+	references map[string]dotNETProjectNode
+}
+
+type dotNETPackageNode struct {
+	name         string
+	version      string
+	nodeType     string // project or package
+	dependencies map[string]dotNETPackageNode
+}
+
 // Analyze parses the output of NuGet lockfiles and falls back to parsing the packages folder
 func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	nugetLogger.Debugf("Running NuGet analysis: %#v %#v", m, allowUnresolved)
-
-	deps := []module.Dependency{}
+	var deps []module.Dependency
 
 	// Find and parse a lockfile
 	lockFilePath, err := resolveNuGetProjectLockfile(m.Dir)
+
 	if err == nil {
+		// // Get starting project file
+		// rootProject := m.Target
+
+		// // Compute project graph
+		// projectGraph, err := computeDotNETProjectGraph(builder.DotNETCmd, rootProject)
+		// if err != nil {
+		// 	return nil, errors.Wrap(err, "could not compute .NET project graph")
+		// }
+
+		// // Compute package graph
+		// packageGraph, err := computeDotNETPackageGraph(projectGraph)
+		// if err != nil {
+		// 	return nil, errors.Wrap(err, "could not compute .NET package graph")
+		// }
+
+		// // Flatten package graph
+		// imports := flattenDotNETPackageGraph(packageGraph)
+
+		// // Compute import paths
+		// deps := computeImportPaths(imports)
+
+		// Get all project files
+		// TODO: we should probably have the module target specify a _project file_ instead of a directory
+		// Get project files in current directory
+		dirProjectFiles, err := filepath.Glob("*.*proj")
+		if err != nil {
+			return nil, errors.Wrap(err, "could not get project files in directory")
+		}
+		for i, file := range dirProjectFiles {
+			dirProjectFiles[i], err = filepath.Abs(file)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not resolve absolute path for project file")
+			}
+		}
+		// Get transitive included project files
+		var projectFiles []string
+		for _, file := range dirProjectFiles {
+			transitive, err := builder.getNugetProjectFiles(file)
+			if err != nil {
+				return nil, errors.Wrapf(err, "could not get project files")
+			}
+			projectFiles = append(projectFiles, transitive...)
+		}
+		log.Println(projectFiles)
+
+		// Parse project files for direct dependencies
+		// Parse cache lockfile for dependency graph edges
 		var lockFile nuGetLockfileV2or3
 		if err := parseLogged(nugetLogger, lockFilePath, &lockFile); err == nil {
 			for depKey := range lockFile.Libraries {
@@ -114,6 +218,7 @@ func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 			}
 		}
 	} else {
+		// TODO: test this code path with a fixture
 		// Fallback to parsing the packages directory
 		packagesDir, err := resolveNugetPackagesDir(m.Dir)
 

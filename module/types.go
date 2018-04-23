@@ -7,7 +7,7 @@ import (
 // Config defines a config for a builder's entry point
 type Config struct {
 	Name    string  `yaml:"name"`
-	Path    string  `yaml:"path"`
+	Path    string  `yaml:"path"` // this should really be renamed to Target (for e.g. Golang with gopaths or .NET or Maven with manifest files)
 	Type    string  `yaml:"type"`
 	Options Options `yaml:"options"`
 }

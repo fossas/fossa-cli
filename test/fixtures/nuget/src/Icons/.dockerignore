@@ -1,0 +1,5 @@
+*
+!obj/Docker/publish/*
+!obj/Docker/empty/
+!entrypoint.sh
+!iconserver.sha256
