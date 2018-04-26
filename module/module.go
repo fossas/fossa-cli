@@ -61,6 +61,10 @@ func New(moduleType Type, conf Config) (Module, error) {
 	case Nodejs:
 		manifestName = "package.json"
 		break
+	case NuGet:
+		moduleTarget = modulePath
+		modulePath = filepath.Dir(modulePath)
+		break
 	case Pip:
 		manifestName = "requirements.txt"
 		break

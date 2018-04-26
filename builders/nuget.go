@@ -1,9 +1,9 @@
 package builders
 
 import (
+	"encoding/xml"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,10 +20,10 @@ import (
 var nugetLogger = logging.MustGetLogger("nuget")
 
 type nuGetLockfileV2or3 struct {
-	Targets map[string]struct {
+	// TODO: let the user configure a target to use.
+	Targets map[string]map[string]struct {
 		Dependencies map[string]string
 	}
-	Libraries map[string]struct{} `json:"libraries"`
 }
 
 // NuGetBuilder implements Builder for Bundler (Gemfile) builds
@@ -34,7 +34,7 @@ type NuGetBuilder struct {
 	NuGetVersion  string
 }
 
-// Initialize collects metadata on NuGet and .NET environments
+// Initialize collects metadata on NuGet and NuGet environments
 func (builder *NuGetBuilder) Initialize() error {
 	nugetLogger.Debug("Initializing NuGet builder...")
 
@@ -96,53 +96,196 @@ func (builder *NuGetBuilder) Build(m module.Module, force bool) error {
 	return nil
 }
 
-func (builder *NuGetBuilder) getNugetProjectFiles(file string) ([]string, error) {
-	nugetLogger.Debugf("Getting transitive project files from: %s", file)
-	files := []string{file}
+type dotNETProjectNode struct {
+	name       string
+	version    string
+	file       string
+	references []dotNETProjectNode
+}
 
-	// Get transitive files
-	refCmd := exec.Command(builder.DotNETCmd, "list", file, "reference")
+type dotNETProject struct {
+	PropertyGroup []dotNETPropertyGroup
+	ItemGroup     []dotNETItemGroup
+}
+
+type dotNETPropertyGroup struct {
+	RootNamespace string
+	Version       string
+}
+
+type dotNETItemGroup struct {
+	PackageReference []dotNETPackageReference
+}
+
+type dotNETPackageReference struct {
+	Include string `xml:",attr"`
+	Version string `xml:",attr"`
+}
+
+// Given a starting `*.*proj` file, construct a graph of project references
+func computeDotNETProjectGraph(cmd string, rootProjectFile string) (dotNETProjectNode, error) {
+	nugetLogger.Debugf("Computing project graph from: %s", rootProjectFile)
+
+	// Read file to get project reference name
+	projectFileContents, err := ioutil.ReadFile(rootProjectFile)
+	if err != nil {
+		return dotNETProjectNode{}, errors.Wrap(err, "could not read NuGet project file")
+	}
+	var projectFileXML dotNETProject
+	err = xml.Unmarshal(projectFileContents, &projectFileXML)
+	if err != nil {
+		return dotNETProjectNode{}, errors.Wrap(err, "could not parse NuGet project file")
+	}
+	name := rootProjectFile
+	if len(projectFileXML.PropertyGroup) > 0 && projectFileXML.PropertyGroup[0].RootNamespace != "" {
+		name = projectFileXML.PropertyGroup[0].RootNamespace
+	}
+	version := ""
+	if len(projectFileXML.PropertyGroup) > 0 && projectFileXML.PropertyGroup[0].Version != "" {
+		version = projectFileXML.PropertyGroup[0].Version
+	}
+	root := dotNETProjectNode{
+		name:       name,
+		version:    version,
+		file:       rootProjectFile,
+		references: nil,
+	}
+
+	// Get transitive project references
+	refCmd := exec.Command(cmd, "list", rootProjectFile, "reference")
 	refCmd.Env = os.Environ()
 	refCmd.Env = append(refCmd.Env, "TERM=dumb")
 	refOutBytes, err := refCmd.Output()
 	refOut := string(refOutBytes)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not run `%s list reference`", builder.DotNETCmd)
+		return dotNETProjectNode{}, errors.Wrapf(err, "could not run `%s list reference`", cmd)
 	}
 	header := "Project reference(s)\n--------------------\n"
 	headerIndex := strings.Index(refOut, header)
 	if headerIndex == -1 {
-		return files, nil
+		return root, nil
 	}
 	projects := refOut[headerIndex+len(header):]
 	for _, line := range strings.Split(projects, "\n") {
-		log.Printf("line: %s", line)
 		if line == "" {
 			break
 		}
-		parentFile := filepath.Join(filepath.Dir(file), filepath.Join(strings.Split(line, "\\")...))
-		log.Printf("file: %s", parentFile)
-		transitive, err := builder.getNugetProjectFiles(parentFile)
+		projectReference := filepath.Join(filepath.Dir(rootProjectFile), filepath.Join(strings.Split(line, "\\")...))
+		transitive, err := computeDotNETProjectGraph(cmd, projectReference)
 		if err != nil {
 			errors.Wrap(err, "could not get transitive project files")
 		}
-		files = append(files, transitive...)
+		root.references = append(root.references, transitive)
 	}
 
-	return files, nil
-}
-
-type dotNETProjectNode struct {
-	name       string
-	version    string
-	references map[string]dotNETProjectNode
+	return root, nil
 }
 
 type dotNETPackageNode struct {
-	name         string
-	version      string
-	nodeType     string // project or package
-	dependencies map[string]dotNETPackageNode
+	Name         string
+	Version      string
+	NodeType     string // project or package
+	Dependencies map[string]dotNETPackageNode
+}
+
+// Given a project references graph, construct a package graph with direct dependencies.
+func createDotNETPackageGraph(rootProjectNode dotNETProjectNode) (dotNETPackageNode, error) {
+	nugetLogger.Debugf("Creating package graph from: %#v", rootProjectNode)
+
+	// Read file to get direct dependencies
+	projectFileContents, err := ioutil.ReadFile(rootProjectNode.file)
+	if err != nil {
+		return dotNETPackageNode{}, errors.Wrap(err, "could not read NuGet project file")
+	}
+	var projectFileXML dotNETProject
+	err = xml.Unmarshal(projectFileContents, &projectFileXML)
+	if err != nil {
+		return dotNETPackageNode{}, errors.Wrap(err, "could not parse NuGet project file")
+	}
+	root := dotNETPackageNode{
+		Name:         rootProjectNode.name,
+		Version:      rootProjectNode.version,
+		NodeType:     "project",
+		Dependencies: make(map[string]dotNETPackageNode),
+	}
+
+	// Get direct package references
+	for _, group := range projectFileXML.ItemGroup {
+		for _, packageRef := range group.PackageReference {
+			root.Dependencies[packageRef.Include] = dotNETPackageNode{
+				Name:         packageRef.Include,
+				Version:      packageRef.Version,
+				NodeType:     "package",
+				Dependencies: make(map[string]dotNETPackageNode),
+			}
+		}
+	}
+
+	// Resolve transitive project references
+	for _, ref := range rootProjectNode.references {
+		pkgGraph, err := createDotNETPackageGraph(ref)
+		if err != nil {
+			return dotNETPackageNode{}, err
+		}
+		root.Dependencies[ref.name] = pkgGraph
+	}
+
+	return root, nil
+}
+
+// Given a package graph with direct dependencies, recursively add transitive dependencies and resolve versions from the lockfile.
+func hydrateDotNETPackageGraph(rootPackageNode dotNETPackageNode, edges map[string]map[string]bool, versions map[string]string) dotNETPackageNode {
+	// Hydrate version.
+	resolvedVersion, ok := versions[rootPackageNode.Name]
+	if !ok || rootPackageNode.Version != "" {
+		resolvedVersion = rootPackageNode.Version
+	}
+
+	// Hydrate dependencies.
+	// WARNING: this will infinitely loop if the dependency graph has cycles.
+	hydratedEdges := make(map[string]dotNETPackageNode)
+	for name, dep := range rootPackageNode.Dependencies {
+		hydratedEdges[name] = hydrateDotNETPackageGraph(dep, edges, versions)
+	}
+	for edge := range edges[rootPackageNode.Name] {
+		if _, ok := hydratedEdges[edge]; !ok {
+			hydratedEdges[edge] = hydrateDotNETPackageGraph(dotNETPackageNode{
+				Name:         edge,
+				Version:      versions[edge],
+				NodeType:     "package",
+				Dependencies: make(map[string]dotNETPackageNode),
+			}, edges, versions)
+		}
+	}
+
+	return dotNETPackageNode{
+		Name:         rootPackageNode.Name,
+		Version:      resolvedVersion,
+		NodeType:     rootPackageNode.NodeType,
+		Dependencies: hydratedEdges,
+	}
+}
+
+func flattenDotNETPackageGraphRecurse(pkg dotNETPackageNode, from module.ImportPath) []Imported {
+	var imports []Imported
+	locator := module.Locator{
+		Fetcher:  "nuget",
+		Project:  pkg.Name,
+		Revision: pkg.Version,
+	}
+	for _, dep := range pkg.Dependencies {
+		transitive := flattenDotNETPackageGraphRecurse(dep, append(from, locator))
+		imports = append(imports, transitive...)
+	}
+	imports = append(imports, Imported{
+		Locator: locator,
+		From:    append(module.ImportPath{}, from...),
+	})
+	return imports
+}
+
+func flattenDotNETPackageGraph(pkg dotNETPackageNode) []Imported {
+	return flattenDotNETPackageGraphRecurse(pkg, module.ImportPath{})
 }
 
 // Analyze parses the output of NuGet lockfiles and falls back to parsing the packages folder
@@ -154,69 +297,53 @@ func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 	lockFilePath, err := resolveNuGetProjectLockfile(m.Dir)
 
 	if err == nil {
-		// // Get starting project file
-		// rootProject := m.Target
+		// Get starting project file
+		rootProject := m.Target
 
-		// // Compute project graph
-		// projectGraph, err := computeDotNETProjectGraph(builder.DotNETCmd, rootProject)
-		// if err != nil {
-		// 	return nil, errors.Wrap(err, "could not compute .NET project graph")
-		// }
-
-		// // Compute package graph
-		// packageGraph, err := computeDotNETPackageGraph(projectGraph)
-		// if err != nil {
-		// 	return nil, errors.Wrap(err, "could not compute .NET package graph")
-		// }
-
-		// // Flatten package graph
-		// imports := flattenDotNETPackageGraph(packageGraph)
-
-		// // Compute import paths
-		// deps := computeImportPaths(imports)
-
-		// Get all project files
-		// TODO: we should probably have the module target specify a _project file_ instead of a directory
-		// Get project files in current directory
-		dirProjectFiles, err := filepath.Glob("*.*proj")
+		// Compute project graph
+		projectGraph, err := computeDotNETProjectGraph(builder.DotNETCmd, rootProject)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not get project files in directory")
+			return nil, errors.Wrap(err, "could not compute NuGet project graph")
 		}
-		for i, file := range dirProjectFiles {
-			dirProjectFiles[i], err = filepath.Abs(file)
-			if err != nil {
-				return nil, errors.Wrap(err, "could not resolve absolute path for project file")
-			}
-		}
-		// Get transitive included project files
-		var projectFiles []string
-		for _, file := range dirProjectFiles {
-			transitive, err := builder.getNugetProjectFiles(file)
-			if err != nil {
-				return nil, errors.Wrapf(err, "could not get project files")
-			}
-			projectFiles = append(projectFiles, transitive...)
-		}
-		log.Println(projectFiles)
 
-		// Parse project files for direct dependencies
-		// Parse cache lockfile for dependency graph edges
+		// Construct direct package graph
+		directPackageGraph, err := createDotNETPackageGraph(projectGraph)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not compute NuGet package graph")
+		}
+
+		// Parse lockfile: get dependency graph edges and resolved versions.
 		var lockFile nuGetLockfileV2or3
-		if err := parseLogged(nugetLogger, lockFilePath, &lockFile); err == nil {
-			for depKey := range lockFile.Libraries {
-				depKeyParts := strings.Split(depKey, "/")
-				if len(depKeyParts) == 2 {
-					deps = append(deps, module.Dependency{
-						Locator: module.Locator{
-							Fetcher:  "nuget",
-							Project:  depKeyParts[0],
-							Revision: depKeyParts[1],
-						},
-						Via: nil,
-					})
+		err = parseLogged(nugetLogger, lockFilePath, &lockFile)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not parse NuGet lockfile")
+		}
+		edges := make(map[string]map[string]bool)
+		versions := make(map[string]string)
+		for _, deps := range lockFile.Targets {
+			for pkgKey, pkg := range deps {
+				pkgKeyParts := strings.Split(pkgKey, "/")
+				pkgName := pkgKeyParts[0]
+				pkgVersion := pkgKeyParts[1]
+				versions[pkgName] = pkgVersion
+				for depName := range pkg.Dependencies {
+					_, ok := edges[pkgName]
+					if !ok {
+						edges[pkgName] = make(map[string]bool)
+					}
+					edges[pkgName][depName] = true
 				}
 			}
 		}
+
+		// Hydrate package graph with edges and versions.
+		packageGraph := hydrateDotNETPackageGraph(directPackageGraph, edges, versions)
+
+		// Flatten package graph
+		imports := flattenDotNETPackageGraph(packageGraph)
+
+		// Compute import paths
+		deps = computeImportPaths(imports)
 	} else {
 		// TODO: test this code path with a fixture
 		// Fallback to parsing the packages directory

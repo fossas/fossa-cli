@@ -94,6 +94,8 @@ type ExecService interface {
 
 	Which(args []string, candidates ...string) (cmd string, version string, err error)
 	WhichWithResolver(resolver WhichResolver, candidates ...string) (cmd string, version string, err error)
+
+	// GetEnv(name string) string
 }
 
 // An UnmarshalFunc unmarshals a particular data format. `json.Unmarshal` is an

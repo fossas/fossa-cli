@@ -17,6 +17,7 @@ type Options struct {
 	Python PythonOptions
 	Gradle GradleOptions
 	Maven  MavenOptions
+	NuGet  NuGetOptions
 }
 
 type GoOptions struct {
@@ -34,6 +35,10 @@ type GradleOptions struct {
 
 type MavenOptions struct {
 	Settings string
+}
+
+type NuGetOptions struct {
+	TargetFramework string
 }
 
 type Analyzed struct {

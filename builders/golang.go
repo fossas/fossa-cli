@@ -51,6 +51,7 @@ type GoBuilder struct {
 	GdmVersion string
 
 	// TODO: `gpm` support?
+	// TODO: `gvt` support?
 
 	// TODO: We can probably reduce the amount of `exec` and `os.Stat` calls we
 	// make by caching results within private fields of `GoBuilder`.
