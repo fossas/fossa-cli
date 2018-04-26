@@ -11,6 +11,7 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/builders"
+	"github.com/fossas/fossa-cli/cmd/fossa/upload"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -40,6 +41,8 @@ func main() {
 	app.Name = "fossa-cli"
 	app.Usage = "Fast, portable and reliable dependency analysis (https://github.com/fossas/fossa-cli/)"
 	app.Version = fmt.Sprintf("%s (revision %s compiled with %s)", version, commit, goversion)
+	app.Metadata = make(map[string]interface{})
+	app.Metadata["version"] = version
 
 	app.Action = defaultCmd
 	app.Flags = []cli.Flag{
@@ -47,8 +50,14 @@ func main() {
 		cli.StringFlag{Name: "p, project", Usage: projectUsage},
 		cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 		cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
-		cli.StringFlag{Name: "m, modules", Usage: "the modules to build and analyze"},
+		cli.StringSliceFlag{Name: "m, modules", Usage: "the modules to build and analyze"},
 		cli.StringFlag{Name: "fetcher", Usage: fetcherUsage},
+		// --strategy=pipreqs
+		// --strategy=foo:bar
+		// --gradle-task=foo
+		// --gradle-configuration=bar
+		// --allow-unbuilt
+		// --no-ansi
 		cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
 		cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
 		cli.BoolFlag{Name: "b, build", Usage: "run a default build in module directories if they have not been pre-built"},
@@ -74,7 +83,7 @@ func main() {
 			Flags: []cli.Flag{
 				// TODO: specify these using c.GlobalString?
 				cli.StringFlag{Name: "c, config", Usage: configUsage},
-				cli.StringFlag{Name: "m, modules", Usage: "the modules to build"},
+				cli.StringSliceFlag{Name: "m, modules", Usage: "the modules to build"},
 				cli.BoolFlag{Name: "f, force", Usage: buildForceUsage},
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
@@ -89,7 +98,7 @@ func main() {
 				cli.StringFlag{Name: "p, project", Usage: projectUsage},
 				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
-				cli.StringFlag{Name: "m, modules", Usage: "the modules to analyze"},
+				cli.StringSliceFlag{Name: "m, modules", Usage: "the modules to analyze"},
 				cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
 				cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
@@ -109,21 +118,7 @@ func main() {
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
 		},
-		{
-			Name:   "upload",
-			Usage:  "Uploads user-provided test results to FOSSA",
-			Action: uploadCmd,
-			Flags: []cli.Flag{
-				cli.StringFlag{Name: "c, config", Usage: configUsage},
-				cli.StringFlag{Name: "fetcher", Usage: fetcherUsage},
-				cli.StringFlag{Name: "p, project", Usage: projectUsage},
-				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
-				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
-				cli.BoolFlag{Name: "l, locators", Usage: "upload data in locator format instead of JSON"},
-				cli.StringFlag{Name: "d, data", Usage: "the user-provided build data to upload"},
-				cli.BoolFlag{Name: "debug", Usage: debugUsage},
-			},
-		},
+		upload.Cmd,
 		{
 			Name:   "update",
 			Usage:  "Updates `fossa` to the latest version",

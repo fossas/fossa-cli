@@ -1,0 +1,5 @@
+*
+!entrypoint.sh
+!nginx.conf
+!proxy.conf
+!mime.types

@@ -1,41 +1,18 @@
 package builders
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 
-	"github.com/bmatcuk/doublestar"
 	logging "github.com/op/go-logging"
+	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/module"
 )
 
 var nodejsLogger = logging.MustGetLogger("nodejs")
-
-// NodeModule implements Dependency for NodeJSBuilder.
-type NodeModule struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-}
-
-// Fetcher always returns npm for NodeModule. TODO: Support git and other
-// dependency sources.
-func (m NodeModule) Fetcher() string {
-	return "npm" // TODO: support git and etc...
-}
-
-// Package returns the package name for NodeModule
-func (m NodeModule) Package() string {
-	return m.Name
-}
-
-// Revision returns the version for NodeModule
-func (m NodeModule) Revision() string {
-	return m.Version
-}
 
 // NodeJSBuilder implements Builder for Nodejs.
 // These properties are public for the sake of serialization.
@@ -108,33 +85,60 @@ func (builder *NodeJSBuilder) Build(m module.Module, force bool) error {
 	return nil
 }
 
-// Analyze reads dependency manifests at `$PROJECT/**/node_modules/*/package.json`
+type nodeManifest struct {
+	Name    string
+	Version string
+}
+
+type nodeListOutput struct {
+	Version      string
+	Dependencies map[string]nodeListOutput
+}
+
+func flattenNodeJSModulesRecurse(locator module.Locator, pkg nodeListOutput, from module.ImportPath) []Imported {
+	var imports []Imported
+	for dep, manifest := range pkg.Dependencies {
+		transitive := flattenNodeJSModulesRecurse(module.Locator{
+			Fetcher:  "npm",
+			Project:  dep,
+			Revision: manifest.Version,
+		}, manifest, append(from, locator))
+		imports = append(imports, transitive...)
+	}
+	imports = append(imports, Imported{
+		Locator: locator,
+		From:    append(module.ImportPath{}, from...),
+	})
+	return imports
+}
+
+func flattenNodeJSModules(pkg nodeListOutput) []Imported {
+	root := module.Locator{
+		Fetcher:  "root",
+		Project:  "root",
+		Revision: "",
+	}
+	return flattenNodeJSModulesRecurse(root, pkg, module.ImportPath{})
+}
+
+// Analyze runs and parses `npm ls --json`.
 func (builder *NodeJSBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	nodejsLogger.Debugf("Running Nodejs analysis: %#v %#v", m, allowUnresolved)
 
-	// Find dependency manifests within a node_modules folder
-	nodeModules, err := doublestar.Glob(filepath.Join(m.Dir, "**", "node_modules", "*", "package.json"))
+	// TODO: we must allow this to exit with error if a flag is passed (maybe --allow-npm-err)
+	// because sometimes npm will throw errors even after a complete install
+	out, stderr, err := runLogged(nodejsLogger, m.Dir, "npm", "ls", "--json")
 	if err != nil {
-		return nil, fmt.Errorf("could not find Nodejs dependency manifests: %s", err.Error())
+		nodejsLogger.Warningf("NPM had non-zero exit code: %s", stderr)
 	}
-	nodejsLogger.Debugf("Found %#v modules from globstar: %#v", len(nodeModules), nodeModules)
 
-	// Read manifests.
-	var wg sync.WaitGroup
-	deps := make([]module.Dependency, len(nodeModules))
-	wg.Add(len(nodeModules))
-	for i := 0; i < len(nodeModules); i++ {
-		go func(modulePath string, index int, wg *sync.WaitGroup) {
-			defer wg.Done()
-
-			var nodeModule NodeModule
-			parseLogged(nodejsLogger, modulePath, &nodeModule)
-
-			// Write directly to a reserved index for thread safety
-			deps[index] = nodeModule
-		}(nodeModules[i], i, &wg)
+	var parsed nodeListOutput
+	err = json.Unmarshal([]byte(out), &parsed)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not parse `npm ls --json` output")
 	}
-	wg.Wait()
+	imports := flattenNodeJSModules(parsed)
+	deps := computeImportPaths(imports)
 
 	nodejsLogger.Debugf("Done running Nodejs analysis: %#v", deps)
 	return deps, nil
@@ -178,7 +182,7 @@ func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]module.Config, erro
 			moduleName := filepath.Base(filepath.Dir(path))
 
 			// Parse from package.json and set moduleName if successful
-			var nodeModule NodeModule
+			var nodeModule nodeManifest
 			if err := parseLogged(nodejsLogger, path, &nodeModule); err == nil {
 				moduleName = nodeModule.Name
 			}

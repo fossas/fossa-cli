@@ -17,27 +17,6 @@ import (
 
 var rubyLogger = logging.MustGetLogger("ruby")
 
-// RubyGem implements Dependency for Bundler and RubyGems.
-type RubyGem struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-}
-
-// Fetcher always returns gem for RubyGem
-func (m RubyGem) Fetcher() string {
-	return "gem"
-}
-
-// Package returns the package spec for RubyGem
-func (m RubyGem) Package() string {
-	return m.Name
-}
-
-// Revision returns the version spec for RubyGem
-func (m RubyGem) Revision() string {
-	return m.Version
-}
-
 // RubyBuilder implements Builder for Bundler (Gemfile) builds
 type RubyBuilder struct {
 	BundlerCmd     string
@@ -118,10 +97,14 @@ func (builder *RubyBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mo
 		if len(trimmed) > 0 && trimmed[0] == '*' {
 			match := outputMatchRe.FindStringSubmatch(trimmed)
 			if len(match) == 3 {
-				deps = append(deps, module.Dependency(RubyGem{
-					Name:    match[1],
-					Version: match[2],
-				}))
+				deps = append(deps, module.Dependency{
+					Locator: module.Locator{
+						Fetcher:  "gem",
+						Project:  match[1],
+						Revision: match[2],
+					},
+					Via: nil,
+				})
 			}
 		}
 	}

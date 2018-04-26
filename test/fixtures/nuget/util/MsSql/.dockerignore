@@ -1,0 +1,5 @@
+*
+!entrypoint.sh
+!backup-db.sh
+!backup-db.sql
+!crontab

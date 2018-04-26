@@ -21,29 +21,6 @@ import (
 
 var goLogger = logging.MustGetLogger("golang")
 
-// GoPkg implements Dependency for Golang projects.
-type GoPkg struct {
-	ImportPath string `json:"name"`
-	Version    string `json:"version"` // This is actually the Git revision, but `.Revision()` is already taken by Dependency.
-
-	isInternal bool
-}
-
-// Fetcher returns "go".
-func (g GoPkg) Fetcher() string {
-	return "go"
-}
-
-// Package returns the package's import path.
-func (g GoPkg) Package() string {
-	return g.ImportPath
-}
-
-// Revision returns the package's resolved Git revision.
-func (g GoPkg) Revision() string {
-	return g.Version
-}
-
 // GoBuilder implements Builder for Golang projects
 type GoBuilder struct {
 	GoCmd     string
@@ -74,6 +51,7 @@ type GoBuilder struct {
 	GdmVersion string
 
 	// TODO: `gpm` support?
+	// TODO: `gvt` support?
 
 	// TODO: We can probably reduce the amount of `exec` and `os.Stat` calls we
 	// make by caching results within private fields of `GoBuilder`.
@@ -279,7 +257,8 @@ func (builder *GoBuilder) Build(m module.Module, force bool) error {
 	return nil
 }
 
-var internalPackages = map[string]bool{
+var goInternalPackages = map[string]bool{
+	"C":                    true,
 	"archive":              true,
 	"archive/tar":          true,
 	"archive/zip":          true,
@@ -435,34 +414,77 @@ var internalPackages = map[string]bool{
 	"unsafe":              true,
 }
 
+type goPkg struct {
+	ImportPath string
+	Revision   string
+
+	isInternal bool
+}
+
 func goImportIsInternal(pkg string) bool {
 	if pkg == "." {
 		return false
 	}
-	if internalPackages[pkg] || strings.Index(pkg, "internal") != -1 {
+	// TEST: Standard library packages + packages labelled "internal" won't have
+	// resolved versions in the lockfile.
+	if goInternalPackages[pkg] || strings.Index(pkg, "internal") != -1 {
 		return true
 	}
+	// TEST: This is for packages like `crypto/internal/cipherhw`
 	return goImportIsInternal(path.Dir(pkg))
 }
 
-// Build a dependency list given an entry point.
-func getGoImports(builder *GoBuilder, m module.Module) ([]GoPkg, error) {
-	stdout, _, err := runLogged(goLogger, m.Dir, builder.GoCmd, "list", "-f", "{{ join .Deps \"\\n\" }}")
-	if err != nil {
-		return nil, fmt.Errorf("could not trace imports: %s", err.Error())
+// NOTE: we don't really need the module.Module argument, that's just a hack so I can use runLogged easily.
+func getGoImportsRecurse(builder *GoBuilder, m module.Module, memo map[string]string, from module.ImportPath, pkg string) ([]Imported, error) {
+	if goImportIsInternal(pkg) {
+		return []Imported{}, nil
 	}
 
-	var deps []GoPkg
-	for _, line := range strings.Split(stdout, "\n") {
-		if line != "" {
-			deps = append(deps, GoPkg{
-				ImportPath: line,
-				isInternal: goImportIsInternal(line),
-			})
+	stdout, ok := memo[pkg]
+	if !ok {
+		var err error
+		stdout, _, err = runLogged(goLogger, m.Dir, builder.GoCmd, "list", "-f", "{{ join .Imports \"\\n\" }}", pkg)
+		if err != nil {
+			return nil, fmt.Errorf("could not trace imports: %s", err.Error())
 		}
+		memo[pkg] = stdout
 	}
 
-	return deps, nil
+	locator := module.Locator{
+		Fetcher:  "go",
+		Project:  pkg,
+		Revision: "",
+	}
+	var imports []Imported
+	for _, dep := range strings.Split(stdout, "\n") {
+		if dep == "" {
+			continue
+		}
+		transitive, err := getGoImportsRecurse(builder, m, memo, append(from, locator), dep)
+		if err != nil {
+			return nil, err
+		}
+		imports = append(imports, transitive...)
+	}
+	imports = append(imports, Imported{
+		Locator: locator,
+		From:    append(module.ImportPath{}, from...),
+	})
+
+	return imports, nil
+}
+
+// Build a dependency list given an entry point.
+func getGoImports(builder *GoBuilder, m module.Module) ([]Imported, error) {
+	imports, err := getGoImportsRecurse(
+		builder,
+		m,
+		make(map[string]string),
+		nil,
+		m.Target,
+	)
+	// TEST: imports should not include the root importing package
+	return imports[:len(imports)-1], err
 }
 
 // Lockfile structs for JSON unmarshalling
@@ -537,6 +559,91 @@ func findRevisionRecurse(projects map[string]string, importPath string) (string,
 	return findRevisionRecurse(projects, path.Dir(importPath))
 }
 
+var errNoLockfile = errors.New("could not find lockfile")
+
+// TODO: there might actually be a more sane way of doing this: search upwards
+// in the import path for every /vendor/ folder, which should accompany every
+// package manifest (unless, of course, you're using legacy Godeps or another
+// import path rewriting tool...)
+func readLockfile(dir string) (map[string]string, error) {
+	// If possible, read lockfiles for versions
+	lockfileVersions := make(map[string]string)
+
+	if ok, err := hasDepManifest(dir); err == nil && ok {
+		goLogger.Debugf("Found Dep manifest")
+
+		var lockfile depLockfile
+		parseLoggedWithUnmarshaller(goLogger, filepath.Join(dir, "Gopkg.lock"), &lockfile, func(data []byte, v interface{}) error {
+			_, err := toml.Decode(string(data), v)
+			return err
+		})
+		for _, dependency := range lockfile.Projects {
+			lockfileVersions[dependency.Name] = dependency.Revision
+		}
+
+		goLogger.Debugf("Parsed Dep manifest: %#v", lockfile.Projects)
+	}
+
+	if ok, err := hasGlideManifest(dir); err == nil && ok {
+		goLogger.Debugf("Found Glide manifest")
+
+		var lockfile glideLockfile
+		parseLoggedWithUnmarshaller(goLogger, filepath.Join(dir, "glide.lock"), &lockfile, yaml.Unmarshal)
+		for _, dependency := range lockfile.Imports {
+			lockfileVersions[dependency.Name] = dependency.Version
+		}
+
+		goLogger.Debugf("Parsed Glide manifest: %#v", lockfile.Imports)
+	}
+
+	if ok, err := hasGodepManifest(dir); err == nil && ok {
+		goLogger.Debugf("Found Godeps manifest")
+
+		var lockfile godepLockfile
+		parseLogged(goLogger, filepath.Join(dir, "Godeps", "Godeps.json"), &lockfile)
+		for _, dependency := range lockfile.Deps {
+			lockfileVersions[dependency.ImportPath] = dependency.Rev
+		}
+
+		goLogger.Debugf("Parsed Godeps manifest: %#v", lockfile.Deps)
+	}
+
+	if ok, err := hasGovendorManifest(dir); err == nil && ok {
+		goLogger.Debugf("Found Govendor manifest")
+
+		var lockfile govendorLockfile
+		parseLogged(goLogger, filepath.Join(dir, "vendor", "vendor.json"), &lockfile)
+		for _, dependency := range lockfile.Package {
+			lockfileVersions[dependency.Path] = dependency.Revision
+		}
+
+		goLogger.Debugf("Parsed Godeps manifest: %#v", lockfile.Package)
+	}
+
+	if ok, err := hasVndrManifest(dir); err == nil && ok {
+		goLogger.Debugf("Found Vndr manifest")
+
+		parseGPMLockfile(&lockfileVersions, dir, "vendor.conf")
+
+		goLogger.Debugf("Parsed Vndr manifest: %#v", lockfileVersions)
+	}
+
+	// gdm rolls its own format as well
+	if ok, err := hasGdmManifest(dir); err == nil && ok {
+		goLogger.Debugf("Found Gdm manifest")
+
+		parseGPMLockfile(&lockfileVersions, dir, "Godeps")
+
+		goLogger.Debugf("Parsed Gndr manifest: %#v", lockfileVersions)
+	}
+
+	return lockfileVersions, nil
+}
+
+func goImportToDir(pkg string) string {
+	return filepath.Join(os.Getenv("GOPATH"), "src", pkg)
+}
+
 // Analyze traces imports and then looks up revisions in lockfiles
 func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	goLogger.Debugf("Running Go analysis: %#v %#v", m, allowUnresolved)
@@ -548,144 +655,72 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 	}
 	goLogger.Debugf("Traced imports: %#v", traced)
 
-	// Find project folder (this is an ancestor of the module folder)
-	projectFolder, ok, err := findGoProjectFolder(m.Dir)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		goLogger.Debugf("Could not find project folder")
-
-		if allowUnresolved {
-			var deps []module.Dependency
-			for _, dep := range traced {
-				deps = append(deps, dep)
+	// Resolve the version of each import by finding its appropriate lockfile and reading it.
+	for i, pkg := range traced {
+		// Get the project folder
+		packageDir := goImportToDir(pkg.Project)
+		// TEST: project revisions are only ever locked by _parents_ of the project,
+		// not the project itself.
+		// TODO: should we search through all possible ancestor lockfiles instead of
+		// just the nearest one?
+		projectFolder, ok, err := findGoProjectFolder(filepath.Dir(packageDir))
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			if allowUnresolved {
+				goLogger.Warningf("Could not find lockfile for package %s", pkg.Project)
+				continue
+			} else {
+				return nil, err
 			}
-			return deps, err
 		}
-		return nil, errors.New("could not find project folder")
-	}
-	goLogger.Debugf("Found project folder: %#v", projectFolder)
+		goLogger.Debugf("Found project folder: %#v", projectFolder)
 
-	// If possible, read lockfiles for versions
-	lockfileVersions := make(map[string]string)
-
-	if ok, err := hasDepManifest(projectFolder); err == nil && ok {
-		goLogger.Debugf("Found Dep manifest")
-
-		var lockfile depLockfile
-		parseLoggedWithUnmarshaller(goLogger, filepath.Join(projectFolder, "Gopkg.lock"), &lockfile, func(data []byte, v interface{}) error {
-			_, err := toml.Decode(string(data), v)
-			return err
-		})
-		for _, dependency := range lockfile.Projects {
-			lockfileVersions[dependency.Name] = dependency.Revision
+		// Get the lockfile
+		lockfile, err := readLockfile(projectFolder)
+		if err != nil {
+			if allowUnresolved {
+				goLogger.Warningf("Could not find lockfile for package %s", pkg.Project)
+				continue
+			} else {
+				return nil, err
+			}
 		}
 
-		goLogger.Debugf("Parsed Dep manifest: %#v", lockfile.Projects)
-	}
-
-	if ok, err := hasGlideManifest(projectFolder); err == nil && ok {
-		goLogger.Debugf("Found Glide manifest")
-
-		var lockfile glideLockfile
-		parseLoggedWithUnmarshaller(goLogger, filepath.Join(projectFolder, "glide.lock"), &lockfile, yaml.Unmarshal)
-		for _, dependency := range lockfile.Imports {
-			lockfileVersions[dependency.Name] = dependency.Version
-		}
-
-		goLogger.Debugf("Parsed Glide manifest: %#v", lockfile.Imports)
-	}
-
-	if ok, err := hasGodepManifest(projectFolder); err == nil && ok {
-		goLogger.Debugf("Found Godeps manifest")
-
-		var lockfile godepLockfile
-		parseLogged(goLogger, filepath.Join(projectFolder, "Godeps", "Godeps.json"), &lockfile)
-		for _, dependency := range lockfile.Deps {
-			lockfileVersions[dependency.ImportPath] = dependency.Rev
-		}
-
-		goLogger.Debugf("Parsed Godeps manifest: %#v", lockfile.Deps)
-	}
-
-	if ok, err := hasGovendorManifest(projectFolder); err == nil && ok {
-		goLogger.Debugf("Found Govendor manifest")
-
-		var lockfile govendorLockfile
-		parseLogged(goLogger, filepath.Join(projectFolder, "vendor", "vendor.json"), &lockfile)
-		for _, dependency := range lockfile.Package {
-			lockfileVersions[dependency.Path] = dependency.Revision
-		}
-
-		goLogger.Debugf("Parsed Godeps manifest: %#v", lockfile.Package)
-	}
-
-	if ok, err := hasVndrManifest(projectFolder); err == nil && ok {
-		goLogger.Debugf("Found Vndr manifest")
-
-		parseGPMLockfile(&lockfileVersions, projectFolder, "vendor.conf")
-
-		goLogger.Debugf("Parsed Vndr manifest: %#v", lockfileVersions)
-	}
-
-	// gdm rolls its own format as well
-	if ok, err := hasGdmManifest(projectFolder); err == nil && ok {
-		goLogger.Debugf("Found Gdm manifest")
-
-		parseGPMLockfile(&lockfileVersions, projectFolder, "Godeps")
-
-		goLogger.Debugf("Parsed Gndr manifest: %#v", lockfileVersions)
-	}
-
-	goLogger.Debugf("Parsed lockfiles: %#v", lockfileVersions)
-	depSet := make(map[GoPkg]bool)
-	projectImports := strings.TrimPrefix(projectFolder, filepath.Join(os.Getenv("GOPATH"), "src")+string(filepath.Separator))
-	for _, dep := range traced {
-		goLogger.Debugf("Resolving raw import: %s", dep.ImportPath)
-
-		// Strip out `/vendor/` weirdness in import paths.
-		const vendorPrefix = "/vendor/"
-		vendoredPathSections := strings.Split(dep.ImportPath, vendorPrefix)
-		importPath := vendoredPathSections[len(vendoredPathSections)-1]
-
+		// Process the import path
+		projectGopath := strings.TrimPrefix(projectFolder, filepath.Join(os.Getenv("GOPATH"), "src")+string(filepath.Separator))
 		// Work around awful Go compiler hack: see https://github.com/golang/go/issues/16333
-		if strings.HasPrefix(dep.ImportPath, "vendor/golang_org") {
+		if strings.HasPrefix(pkg.Project, "vendor/golang_org") {
 			continue
 		}
-
+		// Strip `/vendor/` folders.
+		const vendorPrefix = "/vendor/"
+		vendoredPathSections := strings.Split(pkg.Project, vendorPrefix)
+		importPath := vendoredPathSections[len(vendoredPathSections)-1]
 		goLogger.Debugf("Resolving import: %s", importPath)
 
-		// Get revisions (often these are scoped to repository, not package)
-		project, err := findRevision(lockfileVersions, importPath)
+		importedProject, err := findRevision(lockfile, importPath)
 		if err != nil {
-			if dep.isInternal ||
-				strings.Index(importPath, projectImports) == 0 ||
-				dep.ImportPath == "C" {
-				goLogger.Debugf("Did not resolve import: %#v", dep)
-				depSet[GoPkg{ImportPath: importPath, Version: "", isInternal: dep.isInternal}] = true
+			if strings.Index(importPath, projectGopath) == 0 {
+				goLogger.Debugf("Did not resolve import: %#v", pkg.Project)
+				traced[i].Revision = lockfile[importedProject]
 			} else if allowUnresolved {
-				goLogger.Warningf("Could not resolve import: %#v", dep)
-				depSet[GoPkg{ImportPath: importPath, Version: "", isInternal: dep.isInternal}] = true
+				goLogger.Warningf("Could not resolve import: %#v", pkg.Project)
+				traced[i].Revision = lockfile[importedProject]
 			} else {
-				goLogger.Errorf("Could not resolve import: %#v", dep)
+				goLogger.Errorf("Could not resolve import: %#v", pkg.Project)
 				goLogger.Debugf("Project folder: %#v", projectFolder)
 				goLogger.Debugf("$GOPATH: %#v", os.Getenv("GOPATH"))
-				goLogger.Debugf("Project folder relative to $GOPATH: %#v", projectImports)
-				goLogger.Debugf("Lockfile versions: %#v", lockfileVersions)
+				goLogger.Debugf("Project folder relative to $GOPATH: %#v", projectGopath)
+				goLogger.Debugf("Lockfile versions: %#v", lockfile)
 				return nil, fmt.Errorf("could not resolve import: %#v", importPath)
 			}
 		} else {
-			depSet[GoPkg{ImportPath: project, Version: lockfileVersions[project], isInternal: dep.isInternal}] = true
+			traced[i].Revision = lockfile[importedProject]
 		}
 	}
-
-	var deps []module.Dependency
-	for goPkg, ok := range depSet {
-		if ok {
-			deps = append(deps, goPkg)
-		}
-	}
+	deps := computeImportPaths(traced)
 
 	goLogger.Debugf("Done running Go analysis: %#v", deps)
 	return deps, nil

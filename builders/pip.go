@@ -14,28 +14,6 @@ import (
 
 var pipLogger = logging.MustGetLogger("pip")
 
-// PythonPackage implements Dependency for PipBuilder.
-type PythonPackage struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-}
-
-// Fetcher always returns pip for PythonPackage. TODO: Support git and other
-// dependency sources.
-func (m PythonPackage) Fetcher() string {
-	return "pip" // TODO: support git and etc...
-}
-
-// Package returns the package name for PythonPackage
-func (m PythonPackage) Package() string {
-	return m.Name
-}
-
-// Revision returns the version for PythonPackage
-func (m PythonPackage) Revision() string {
-	return m.Version
-}
-
 // PipBuilder implements Builder for Pip.
 // These properties are public for the sake of serialization.
 type PipBuilder struct {
@@ -107,7 +85,14 @@ func (builder *PipBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 
 	var deps []module.Dependency
 	for pkg, version := range lockfileVersions {
-		deps = append(deps, PythonPackage{Name: pkg, Version: version})
+		deps = append(deps, module.Dependency{
+			Locator: module.Locator{
+				Fetcher:  "pip",
+				Project:  pkg,
+				Revision: version,
+			},
+			Via: nil,
+		})
 	}
 
 	pipLogger.Debugf("Done running Pip analysis: %#v", deps)

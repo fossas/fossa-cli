@@ -56,7 +56,7 @@ func normalize(builder module.Builder, m module.Module, deps []module.Dependency
 		}
 
 		normalDeps = append(normalDeps, normalizedDependency{
-			Locator: string(module.DepLocator(deps[i])),
+			Locator: deps[i].Locator.String(),
 			Data:    (*json.RawMessage)(&data),
 		})
 	}
@@ -98,7 +98,7 @@ func uploadCmd(c *cli.Context) {
 	}
 
 	var data []normalizedModule
-	if conf.UploadCmd.Locators {
+	if conf.UploadCmd.UseLocators {
 		var deps []normalizedDependency
 		lines := strings.Split(conf.UploadCmd.Data, "\n")
 		for _, line := range lines {
@@ -152,7 +152,7 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 
 	analysisLogger.Debugf("Uploading build data from (%#v) modules: %#v", len(results), string(buildData))
 
-	fossaEndpoint := "/api/builds/custom?locator=" + url.QueryEscape(string(module.MakeLocator(conf.Fetcher, conf.Project, conf.Revision))) + "&v=" + version
+	fossaEndpoint := "/api/builds/custom?locator=" + url.QueryEscape(module.Locator{Fetcher: conf.Fetcher, Project: conf.Project, Revision: conf.Revision}.String()) + "&v=" + version
 	if conf.Fetcher == "custom" {
 		defaultProjectTitle := results[0].Name
 		cwd, _ := filepath.Abs(".")

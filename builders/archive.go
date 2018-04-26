@@ -49,7 +49,7 @@ func (builder *VendoredArchiveBuilder) Analyze(m module.Module, allowUnresolved 
 	// glob for deps and return them as packages
 
 	// extractedArchivePaths := []string{}
-	var rawDependencies []interface{}
+	var rawDependencies []nodeManifest
 
 	archiveLogger.Debugf("Looking for tar files...")
 	tarFiles, err := doublestar.Glob(filepath.Join(m.Dir, "**", "*.{tar.gz,tgz}"))
@@ -95,7 +95,7 @@ func (builder *VendoredArchiveBuilder) Analyze(m module.Module, allowUnresolved 
 					archiveLogger.Warningf("Error reading node module: %#v", hdr.Name)
 					break
 				}
-				var nodeModule NodeModule
+				var nodeModule nodeManifest
 				if err := json.Unmarshal(nodeManifestBuffer, &nodeModule); err != nil {
 					archiveLogger.Warningf("Error parsing node module: %#v", hdr.Name)
 					break
@@ -107,9 +107,16 @@ func (builder *VendoredArchiveBuilder) Analyze(m module.Module, allowUnresolved 
 		}
 	}
 
-	castedDependencies := make([]module.Dependency, len(rawDependencies))
+	var castedDependencies []module.Dependency
 	for i, d := range rawDependencies {
-		castedDependencies[i] = d.(module.Dependency)
+		castedDependencies[i] = module.Dependency{
+			Locator: module.Locator{
+				Fetcher:  "npm",
+				Project:  d.Name,
+				Revision: d.Version,
+			},
+			Via: nil,
+		}
 	}
 	return castedDependencies, nil
 }

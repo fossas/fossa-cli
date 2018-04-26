@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fossas/fossa-cli/module"
 	logging "github.com/op/go-logging"
 )
 
@@ -112,7 +113,7 @@ func runLogged(logger *logging.Logger, dir string, name string, arg ...string) (
 	stdout, stderr, err := runInDir(dir, name, arg...)
 	if err != nil {
 		logger.Debugf("Running `%s` failed: %#v %#v", cmd, err, stderr)
-		return "", "", fmt.Errorf("running `%s` failed: %#v %#v", cmd, err, stderr)
+		return stdout, stderr, fmt.Errorf("running `%s` failed: %#v %#v", cmd, err, stderr)
 	}
 	logger.Debugf("Done running `%s`: %#v %#v", stdout, stderr)
 	return stdout, stderr, nil
@@ -167,4 +168,39 @@ func which(versionFlags string, cmds ...string) (string, string, error) {
 		}
 		return stdout, nil
 	})
+}
+
+type Imported struct {
+	module.Locator
+	From module.ImportPath
+}
+
+// Utilities for computing import paths
+func computeImportPaths(deps []Imported) []module.Dependency {
+	pathsSet := make(map[module.Locator]map[module.ImportPathString]bool)
+	for _, dep := range deps {
+		_, ok := pathsSet[dep.Locator]
+		if !ok {
+			pathsSet[dep.Locator] = make(map[module.ImportPathString]bool)
+		}
+		pathsSet[dep.Locator][dep.From.String()] = true
+	}
+
+	var out []module.Dependency
+	for locator, paths := range pathsSet {
+		// This way an empty modulePaths marshals to JSON as `[]` instead of `null`
+		modulePaths := make([]module.ImportPath, 0)
+		for path := range paths {
+			if path == "" {
+				continue
+			}
+			modulePaths = append(modulePaths, module.ReadImportPath(path))
+		}
+		out = append(out, module.Dependency{
+			Locator: locator,
+			Via:     modulePaths,
+		})
+	}
+
+	return out
 }

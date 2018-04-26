@@ -33,6 +33,9 @@ If this fails, `fossa` will then attempt to resolve your local `Packages` direct
 
 #### Known limitations
 
+- doesn't support conditional direct dependencies (e.g. conditioned on target framework) -- will get all references regardless of target framework
+- only supports top-level itemgroup/packagereferences (not e.g. those under choose element)
+
 - Currently, `fossa` supports NuGet lockfiles of `v2` and `v3` schemas
 - `fossa` assumes your package directory is located at `{module.path}/packages`.  If you use a global package folder or another path, we reccomend you generate a lockfile for your build.
 - Due to the assumptions about package installation locations, verifying whether a module is built is unreliable sans-lockfile.  If you receive an inaccurate error that your build is unsatisfied, run `fossa` with the `--allow-unresolved` flag.

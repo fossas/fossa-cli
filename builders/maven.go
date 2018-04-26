@@ -38,6 +38,11 @@ func (m MavenArtifact) Revision() string {
 	return m.Version
 }
 
+// Dependencies is not implemented for MavenArtifact
+func (m MavenArtifact) Dependencies() []module.Dependency {
+	return nil
+}
+
 // POMFile represents the schema of a common pom.xml file
 type POMFile struct {
 	XMLName     xml.Name `xml:"project"`
@@ -106,25 +111,68 @@ func (builder *MavenBuilder) Build(m module.Module, force bool) error {
 func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	mavenLogger.Debugf("Running Maven analysis: %#v %#v", m, allowUnresolved)
 
-	output, _, err := runLogged(mavenLogger, m.Dir, builder.MvnCmd, "dependency:list")
+	output, _, err := runLogged(mavenLogger, m.Dir, builder.MvnCmd, "dependency:tree")
 	if err != nil {
 		return nil, fmt.Errorf("could not get dependency list from Maven: %s", err.Error())
 	}
 
-	deps := []module.Dependency{}
-	outputMatchRe := regexp.MustCompile(`\[INFO\]    ([^:]+):([^:]+):(jar|war|java-source|):([^:]+)`)
-	for _, line := range strings.Split(output, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if len(trimmed) > 0 {
-			match := outputMatchRe.FindStringSubmatch(trimmed)
-			if len(match) == 5 {
-				deps = append(deps, module.Dependency(MavenArtifact{
-					Name:    match[1] + ":" + match[2],
-					Version: match[4],
-				}))
+	// Get dependency tree (rooted at each direct dependency).
+	lines := strings.Split(string(output), "\n")
+	startRegex := regexp.MustCompile("^\\[INFO\\] --- .*? ---$")
+	var depLines []string
+	inGraph := false
+	for _, line := range lines {
+		if startRegex.MatchString(line) {
+			if inGraph {
+				// Sanity check
+				mavenLogger.Panicf("Bad graph separation: %s", line)
 			}
+			inGraph = true
+			continue
+		}
+		if line == "[INFO] " || line == "[INFO] ------------------------------------------------------------------------" {
+			inGraph = false
+			continue
+		}
+		if inGraph {
+			depLines = append(depLines, line)
 		}
 	}
+
+	// Parse dependency tree
+	var imports []Imported
+	root := module.Locator{
+		Fetcher:  "root",
+		Project:  "root",
+		Revision: "root",
+	}
+	from := module.ImportPath{root}
+	depRegex := regexp.MustCompile("^\\[INFO\\] ([ `+\\\\|-]*)([^ `+\\\\|-].+)$")
+	locatorRegex := regexp.MustCompile("([^:]+):([^:]+):([^:]*):([^:]+)")
+	for _, line := range depLines {
+		// Match for context
+		depMatches := depRegex.FindStringSubmatch(line)
+		depth := len(depMatches[1])
+		if depth%3 != 0 {
+			// Sanity check
+			gradleLogger.Panicf("Bad depth: %#v %s %#v", depth, line, depMatches)
+		}
+		// Parse locator
+		locatorMatches := locatorRegex.FindStringSubmatch(depMatches[2])
+		locator := module.Locator{
+			Fetcher:  "mvn",
+			Project:  locatorMatches[1] + ":" + locatorMatches[2],
+			Revision: locatorMatches[4],
+		}
+		// Add to imports
+		from = from[:depth/3]
+		imports = append(imports, Imported{
+			Locator: locator,
+			From:    append(module.ImportPath{}, from...),
+		})
+		from = append(from, locator)
+	}
+	deps := computeImportPaths(imports)
 
 	mavenLogger.Debugf("Done running Maven analysis: %#v", deps)
 	return deps, nil

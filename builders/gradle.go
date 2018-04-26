@@ -76,31 +76,59 @@ func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 
 	dependenciesOutput, err := dependenciesCmd.Output()
 	if len(dependenciesOutput) == 0 || err != nil {
-		return nil, fmt.Errorf("could not run Gradle task %s:dependencies", taskName)
+		return nil, fmt.Errorf("could not run `gradle task %s:dependencies`", taskName)
 	}
 
-	var deps []module.Dependency
-	// Parse out any line that matches - (groupId):(artifactId):(version) -> (mediatedVersion) where `-> (mediatedVersion)`` is optional
-	dependenciesRe := regexp.MustCompile(`- ([\w\.-]+):([\w\.-]+):([\w\.-]+)( -> ([\w\.-]+))?`)
-	for _, line := range strings.Split(string(dependenciesOutput), "\n") {
-		trimmed := strings.TrimSpace(line)
-		if len(trimmed) > 0 {
-			parsedDependencyLine := dependenciesRe.FindStringSubmatch(trimmed)
-			if len(parsedDependencyLine) >= 4 {
-				groupID := parsedDependencyLine[1]
-				artifactID := parsedDependencyLine[2]
-				revisionID := parsedDependencyLine[3]
-				if len(parsedDependencyLine) == 6 && parsedDependencyLine[5] != "" {
-					revisionID = parsedDependencyLine[5]
-				}
-				gradleLogger.Debugf("Discovered maven artifact (%s, %s, %s)", trimmed, groupID, artifactID, revisionID)
-				deps = append(deps, MavenArtifact{
-					Name:    fmt.Sprintf("%s:%s", groupID, artifactID),
-					Version: revisionID,
-				})
-			}
-		}
+	var imports []Imported
+	root := module.Locator{
+		Fetcher:  "root",
+		Project:  "root",
+		Revision: "root",
 	}
+	from := module.ImportPath{root}
+	r := regexp.MustCompile("^([ `+\\\\|-]+)([^ `+\\\\|-].+)$")
+	for _, line := range strings.Split(string(dependenciesOutput), "\n") {
+		// Skip non-dependency lines
+		if !r.MatchString(line) {
+			continue
+		}
+		// Match for context
+		matches := r.FindStringSubmatch(line)
+		depth := len(matches[1])
+		if depth%5 != 0 {
+			// Sanity check
+			gradleLogger.Panicf("Bad depth: %#v %s %#v", depth, line, matches)
+		}
+		// Parse locator
+		dep := matches[2]
+		withoutOmit := strings.TrimSuffix(dep, " (*)")
+		resolvedParts := strings.Split(withoutOmit, " -> ")
+		var project string
+		var revision string
+		if len(resolvedParts) == 2 {
+			project = resolvedParts[0][:strings.LastIndex(resolvedParts[0], ":")]
+			revision = resolvedParts[1]
+		} else {
+			splitVersionIndex := strings.LastIndex(resolvedParts[0], ":")
+			project = resolvedParts[0][:splitVersionIndex]
+			revision = resolvedParts[0][splitVersionIndex+1:]
+		}
+		locator := module.Locator{
+			Fetcher:  "mvn",
+			Project:  project,
+			Revision: revision,
+		}
+		// Add to imports
+		from = from[:depth/5]
+		imports = append(imports, Imported{
+			Locator: locator,
+			// This seems like a no-op, but this causes a memory copy that prevents
+			// the most bullshit bug you have ever seen.
+			From: append(module.ImportPath{}, from...),
+		})
+		from = append(from, locator)
+	}
+	deps := computeImportPaths(imports)
 
 	gradleLogger.Debugf("Done running Gradle analysis: %#v", deps)
 	return deps, nil

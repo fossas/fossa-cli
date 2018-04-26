@@ -29,7 +29,7 @@ type Module struct {
 	Revision string
 
 	// A catch-all for builders to add metadata (a la Context.Value).
-	Value interface{}
+	Context interface{}
 }
 
 // New instantiates and sets up a Module for a given ModuleType
@@ -60,6 +60,10 @@ func New(moduleType Type, conf Config) (Module, error) {
 		break
 	case Nodejs:
 		manifestName = "package.json"
+		break
+	case NuGet:
+		moduleTarget = modulePath
+		modulePath = filepath.Dir(modulePath)
 		break
 	case Pip:
 		manifestName = "requirements.txt"
