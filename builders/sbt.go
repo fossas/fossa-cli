@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/bmatcuk/doublestar"
@@ -68,16 +69,17 @@ func (builder *SBTBuilder) Build(m module.Module, force bool) error {
 	return nil
 }
 
-// Analyze parses the output of `sbt -no-colors dependencyList`
+// Analyze parses the output of `sbt -no-colors dependencyTree`
 func (builder *SBTBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	sbtLogger.Debugf("Running SBT analysis: %#v %#v", m, allowUnresolved)
 
-	output, _, err := runLogged(sbtLogger, m.Dir, builder.SBTCmd, "-no-colors", "dependencyList")
+	output, _, err := runLogged(sbtLogger, m.Dir, builder.SBTCmd, "-no-colors", "dependencyTree")
 	if err != nil {
-		return nil, fmt.Errorf("could not get dependency list from SBT: %s", err.Error())
+		return nil, fmt.Errorf("could not get dependency tree from SBT: %s", err.Error())
 	}
 
-	deps := []module.Dependency{}
+	// Filter lines to only include dependency tree
+	var depLines []string
 	for _, line := range strings.Split(output, "\n") {
 		if strings.Index(line, "[info] Loading ") != -1 ||
 			strings.Index(line, "[info] Resolving ") != -1 ||
@@ -89,22 +91,54 @@ func (builder *SBTBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 			continue
 		}
 		sbtLogger.Debugf("Matched line: %#v", line)
-
-		if len(line) > 0 {
-			depLocator := strings.TrimSpace(strings.TrimPrefix(line, "[info] "))
-			depSections := strings.Split(depLocator, ":")
-			dep := module.Dependency{
-				Locator: module.Locator{
-					Fetcher:  "mvn",
-					Project:  depSections[0] + ":" + depSections[1],
-					Revision: depSections[2],
-				},
-				Via: nil,
-			}
-			sbtLogger.Debugf("Adding dep: %#v", dep)
-			deps = append(deps, dep)
-		}
+		depLines = append(depLines, line)
 	}
+
+	// Parse dependency tree
+	var imports []Imported
+	root := module.Locator{
+		Fetcher:  "root",
+		Project:  "root",
+		Revision: "root",
+	}
+	from := module.ImportPath{root}
+	depRegex := regexp.MustCompile("^\\[info\\] ([ `+\\\\|-]*)([^ `+\\\\|-].+)$")
+	spacerRegex := regexp.MustCompile("^\\[info\\] ([ `+\\\\|-]*)(\\s*?)$")
+	locatorRegex := regexp.MustCompile("([^:\\s]+):([^:\\s]+):([^:\\s]+).*")
+	for _, line := range depLines {
+		sbtLogger.Debugf("Parsing line: %#v\n", line)
+		if spacerRegex.MatchString(line) {
+			continue
+		}
+		// Match for context
+		depMatches := depRegex.FindStringSubmatch(line)
+		sbtLogger.Debugf("Dep matches: %#v\n", depMatches)
+		depth := len(depMatches[1])
+		// SBT quirk: the indentation from level 1 to level 2 is 4 spaces, but all others are 2 spaces
+		if depth >= 4 {
+			depth -= 2
+		}
+		if depth%2 != 0 {
+			// Sanity check
+			sbtLogger.Panicf("Bad depth: %#v %s %#v", depth, line, depMatches)
+		}
+		// Parse locator
+		locatorMatches := locatorRegex.FindStringSubmatch(depMatches[2])
+		sbtLogger.Debugf("Locator matches: %#v\n", locatorMatches)
+		locator := module.Locator{
+			Fetcher:  "sbt",
+			Project:  locatorMatches[1] + ":" + locatorMatches[2],
+			Revision: locatorMatches[3],
+		}
+		// Add to imports
+		from = from[:depth/2]
+		imports = append(imports, Imported{
+			Locator: locator,
+			From:    append(module.ImportPath{}, from...),
+		})
+		from = append(from, locator)
+	}
+	deps := computeImportPaths(imports)
 
 	sbtLogger.Debugf("Done running SBT analysis: %#v", deps)
 	return deps, nil

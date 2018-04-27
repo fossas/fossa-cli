@@ -23,7 +23,7 @@ git clone --depth=1 https://github.com/apache/hadoop maven
 # linkerd/linkerd
 # graphcool/prisma
 # twitter/finagle
-git clone --depth=1 https://github.com/twitter/finagle sbt
+git clone --depth=1 https://github.com/graphcool/prisma sbt
 
 # Node projects
 ## NPM
