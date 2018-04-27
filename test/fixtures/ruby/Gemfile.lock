@@ -25,20 +25,20 @@ GIT
 PATH
   remote: vendor/ruby_lib.1
   specs:
-    devise2 (4.4.0)
+    vendoredlib2 (1.0)
       bcrypt (~> 3.0)
       orm_adapter (~> 0.1)
-      railties (>= 4.1.0, < 5.2)
+      railties (>= 4.1.0, < 6.0)
       responders
       warden (~> 1.2.3)
 
 PATH
   remote: vendor/ruby_lib
   specs:
-    devise (4.4.0)
+    vendoredlib (1.0)
       bcrypt (~> 3.0)
       orm_adapter (~> 0.1)
-      railties (>= 4.1.0, < 5.2)
+      railties (>= 4.1.0, < 6.0)
       responders
       warden (~> 1.2.3)
 
@@ -178,14 +178,14 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  devise!
-  devise2!
   kaminari!
   metamagic!
   rails
   rspec
   sqlite3
   thin (~> 1.1)
+  vendoredlib!
+  vendoredlib2!
   wirble
 
 BUNDLED WITH

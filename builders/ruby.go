@@ -1,16 +1,17 @@
 package builders
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/bmatcuk/doublestar"
 	logging "github.com/op/go-logging"
+	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/module"
 )
@@ -81,52 +82,162 @@ func (builder *RubyBuilder) Build(m module.Module, force bool) error {
 	return nil
 }
 
-// Analyze parses the output of `bundler list`
+type rubyGem struct {
+	module.Locator
+	imports map[string]rubyGem
+}
+
+func hydrateRubyGems(root rubyGem, edges map[string]map[string]bool, versions map[string]string) rubyGem {
+	// Resolve version
+	if root.Revision == "" {
+		root.Revision = versions[root.Project]
+	}
+
+	// Hydrate edges
+	hydrated := make(map[string]rubyGem)
+	for edge, dep := range root.imports {
+		hydrated[edge] = hydrateRubyGems(dep, edges, versions)
+	}
+
+	for edge := range edges[root.Project] {
+		if _, ok := hydrated[edge]; ok {
+			continue
+		}
+		hydrated[edge] = hydrateRubyGems(rubyGem{
+			Locator: module.Locator{
+				Fetcher:  "gem",
+				Project:  edge,
+				Revision: versions[edge],
+			},
+			imports: make(map[string]rubyGem),
+		}, edges, versions)
+	}
+	root.imports = hydrated
+
+	return root
+}
+
+func flattenRubyGems(root rubyGem, from module.ImportPath) []Imported {
+	var imports []Imported
+	for _, dep := range root.imports {
+		imports = append(imports, flattenRubyGems(dep, append(from, root.Locator))...)
+	}
+	imports = append(imports, Imported{
+		Locator: root.Locator,
+		From:    append(module.ImportPath{}, from...),
+	})
+	return imports
+}
+
+// Analyze parses a `Gemfile.lock`
 func (builder *RubyBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	rubyLogger.Debugf("Running Ruby analysis: %#v %#v", m, allowUnresolved)
 
-	output, _, err := runLogged(rubyLogger, m.Dir, builder.BundlerCmd, "list")
+	lockfileBytes, err := ioutil.ReadFile(path.Join(m.Dir, "Gemfile.lock"))
 	if err != nil {
-		return nil, fmt.Errorf("could not get dependency list from Bundler: %s", err.Error())
+		return nil, errors.Wrap(err, "could not read Gemfile.lock")
 	}
 
-	deps := []module.Dependency{}
-	outputMatchRe := regexp.MustCompile("\\* ([a-z0-9_-]+) \\(([a-z0-9\\.]+)\\)")
-	for _, line := range strings.Split(output, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if len(trimmed) > 0 && trimmed[0] == '*' {
-			match := outputMatchRe.FindStringSubmatch(trimmed)
-			if len(match) == 3 {
-				deps = append(deps, module.Dependency{
-					Locator: module.Locator{
-						Fetcher:  "gem",
-						Project:  match[1],
-						Revision: match[2],
-					},
-					Via: nil,
-				})
+	edges := make(map[string]map[string]bool)
+	versions := make(map[string]string)
+	gitDeps := make(map[string]string)
+	var directDeps []string
+
+	sections := strings.Split(string(lockfileBytes), "\n\n")
+	for _, section := range sections {
+		lines := strings.Split(strings.TrimSpace(section), "\n")
+		depRegex := regexp.MustCompile("^( *?)(\\S+?)( \\((.*?)\\))?$")
+		header := lines[0]
+		if header == "GIT" {
+			// Git dependency
+			remoteRegex := regexp.MustCompile("^ *remote: (.*?)$")
+			project := remoteRegex.FindStringSubmatch(lines[1])[1]
+			revisionRegex := regexp.MustCompile("^ *revision: (.*?)$")
+			revision := revisionRegex.FindStringSubmatch(lines[2])[1]
+			gitDeps[project] = revision
+		} else if header == "PATH" {
+			// Vendored dependency: not currently supported
+			continue
+		} else if header == "GEM" {
+			// Gem dependencies
+			var parent string
+			for _, line := range lines[3:] {
+				matches := depRegex.FindStringSubmatch(line)
+				if len(matches[1]) == 4 {
+					parent = matches[2]
+					versions[matches[2]] = matches[4]
+				} else if len(matches[1]) == 6 {
+					if _, ok := edges[parent]; !ok {
+						edges[parent] = make(map[string]bool)
+					}
+					edges[parent][matches[2]] = true
+				} else {
+					rubyLogger.Panicf("bad depth: %#v %#v\n", line, matches)
+				}
 			}
+		} else if header == "DEPENDENCIES" {
+			// List of direct dependencies
+			for _, line := range lines[1:] {
+				if strings.HasSuffix(line, "!") {
+					// Ignore "!" (i.e. non-gem) dependencies: we don't support vendored ones and git ones are already added
+					continue
+				}
+				dep := depRegex.FindStringSubmatch(line)[2]
+				directDeps = append(directDeps, dep)
+			}
+		} else {
+			continue
 		}
 	}
+
+	directImports := make(map[string]rubyGem)
+	for _, dep := range directDeps {
+		directImports[dep] = rubyGem{
+			Locator: module.Locator{
+				Fetcher:  "gem",
+				Project:  dep,
+				Revision: versions[dep],
+			},
+			imports: make(map[string]rubyGem),
+		}
+	}
+
+	root := module.Locator{
+		Fetcher: "root",
+		Project: "root",
+	}
+	graph := hydrateRubyGems(rubyGem{
+		Locator: root,
+		imports: directImports,
+	}, edges, versions)
+
+	imports := flattenRubyGems(graph, module.ImportPath{})
+	// Add to direct dependencies -- this assumes all git dependencies are top-level (which I think is generally correct)
+	for project, revision := range gitDeps {
+		imports = append(imports, Imported{
+			Locator: module.Locator{
+				Fetcher:  "git",
+				Project:  project,
+				Revision: revision,
+			},
+			From: module.ImportPath{root},
+		})
+	}
+	// Remove "root" module at the end of `imports`
+	deps := computeImportPaths(imports[:len(imports)-1])
 
 	rubyLogger.Debugf("Done running Ruby analysis: %#v", deps)
 	return deps, nil
 }
 
-// IsBuilt checks whether `bundler check` exits with an error
+// IsBuilt checks whether `Gemfile.lock` exists
 func (builder *RubyBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
 	rubyLogger.Debugf("Checking Ruby build: %#v %#v", m, allowUnresolved)
 
-	output, _, err := runLogged(rubyLogger, m.Dir, builder.BundlerCmd, "check")
-	if err != nil {
-		if strings.Index(output, "`bundle install`") != -1 {
-			return false, nil
-		}
-		return false, err
-	}
+	ok, err := hasFile(m.Dir, "Gemfile.lock")
 
-	rubyLogger.Debugf("Done checking Ruby build: %#v", true)
-	return true, nil
+	rubyLogger.Debugf("Done checking Ruby build: %#v", ok)
+	return ok, err
 }
 
 // IsModule is not implemented
