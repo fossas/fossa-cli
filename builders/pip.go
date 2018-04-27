@@ -1,15 +1,17 @@
 package builders
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/fossas/fossa-cli/module"
 	logging "github.com/op/go-logging"
+	"github.com/pkg/errors"
+
+	"github.com/fossas/fossa-cli/builders/bindata"
+	"github.com/fossas/fossa-cli/module"
 )
 
 var pipLogger = logging.MustGetLogger("pip")
@@ -22,6 +24,8 @@ type PipBuilder struct {
 
 	PipCmd     string
 	PipVersion string
+
+	Virtualenv string
 }
 
 // Initialize collects metadata on Python and Pip binaries
@@ -44,6 +48,9 @@ func (builder *PipBuilder) Initialize() error {
 		pipLogger.Warningf("No supported Python build tools detected (try setting $PIP_BINARY): %#v", pipErr)
 	}
 
+	// Check virtualenv
+	builder.Virtualenv = os.Getenv("VIRTUAL_ENV")
+
 	pipLogger.Debugf("Initialized Pip builder: %#v", builder)
 	return nil
 }
@@ -61,39 +68,80 @@ func (builder *PipBuilder) Build(m module.Module, force bool) error {
 	return nil
 }
 
-// Analyze reads `requirements.txt`
+type pipDepTreeDep struct {
+	PackageName      string `json:"package_name"`
+	InstalledVersion string `json:"installed_version"`
+	Dependencies     []pipDepTreeDep
+}
+
+func flattenPipDepTree(pkg pipDepTreeDep, from module.ImportPath) []Imported {
+	var imports []Imported
+	locator := module.Locator{
+		Fetcher:  "pip",
+		Project:  pkg.PackageName,
+		Revision: pkg.InstalledVersion,
+	}
+	for _, dep := range pkg.Dependencies {
+		imports = append(imports, flattenPipDepTree(dep, append(from, locator))...)
+	}
+	imports = append(imports, Imported{
+		Locator: locator,
+		From:    append(module.ImportPath{}, from...),
+	})
+	return imports
+}
+
+// Analyze runs `pipdeptree.py` in the current environment
 func (builder *PipBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	pipLogger.Debugf("Running Pip analysis: %#v %#v", m, allowUnresolved)
 
-	lockfile := filepath.Join(m.Dir, "requirements.txt")
-	lockfileContents, err := ioutil.ReadFile(lockfile)
+	// Write helper to disk.
+	pipdeptreeSrc, err := bindata.Asset("builders/bindata/pipdeptree.py")
 	if err != nil {
-		goLogger.Debugf("Error reading %s: %s", lockfile, err.Error())
-		return nil, fmt.Errorf("could not read %s: %s", lockfile, err.Error())
+		return nil, errors.Wrap(err, "could not read `pipdeptree` helper")
 	}
 
-	lines := strings.Split(string(lockfileContents), "\n")
-	lockfileVersions := make(map[string]string)
-	for _, line := range lines {
-		trimmedLine := strings.TrimSpace(line)
-		if len(trimmedLine) > 0 && trimmedLine[0] != '#' {
-			// TODO: support other kinds of constraints
-			sections := strings.Split(trimmedLine, "==")
-			lockfileVersions[sections[0]] = sections[1]
-		}
+	pipdeptreeFile, err := ioutil.TempFile("", "fossa-cli-pipdeptree")
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create temp file to write `pipdeptree` helper")
+	}
+	defer pipdeptreeFile.Close()
+	defer os.Remove(pipdeptreeFile.Name())
+
+	n, err := pipdeptreeFile.Write(pipdeptreeSrc)
+	if len(pipdeptreeSrc) != n || err != nil {
+		return nil, errors.Wrap(err, "could not write `pipdeptree` helper")
+	}
+	err = pipdeptreeFile.Sync()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not flush `pipdeptree` helper to storage")
 	}
 
-	var deps []module.Dependency
-	for pkg, version := range lockfileVersions {
-		deps = append(deps, module.Dependency{
-			Locator: module.Locator{
-				Fetcher:  "pip",
-				Project:  pkg,
-				Revision: version,
+	// Run helper.
+	out, _, err := runLogged(pipLogger, m.Dir, "python", pipdeptreeFile.Name(), "--local-only", "--json-tree")
+	if err != nil {
+		return nil, errors.Wrap(err, "could not run `pipdeptree`")
+	}
+
+	// Parse output.
+	var pipdeptreeOutput []pipDepTreeDep
+	err = json.Unmarshal([]byte(out), &pipdeptreeOutput)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not parse `pipdeptree` output")
+	}
+
+	// Flatten tree.
+	var imports []Imported
+	for _, dep := range pipdeptreeOutput {
+		imports = append(imports, flattenPipDepTree(dep, module.ImportPath{
+			module.Locator{
+				Fetcher:  "root",
+				Project:  "root",
+				Revision: "",
 			},
-			Via: nil,
-		})
+		})...)
 	}
+	deps := computeImportPaths(imports)
 
 	pipLogger.Debugf("Done running Pip analysis: %#v", deps)
 	return deps, nil

@@ -13,6 +13,8 @@ build: $(BIN)/fossa
 
 $(BIN)/fossa:
 	mkdir -p $$(dirname $@)
+	# TODO: detect and install go-bindata if missing
+	go-bindata -pkg bindata -o builders/bindata/bindata.go builders/bindata/pipdeptree.py
 	go build -o $@ $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
 
 $(PREFIX)/fossa: $(BIN)/fossa

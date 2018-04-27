@@ -285,7 +285,13 @@ func flattenDotNETPackageGraphRecurse(pkg dotNETPackageNode, from module.ImportP
 }
 
 func flattenDotNETPackageGraph(pkg dotNETPackageNode) []Imported {
-	return flattenDotNETPackageGraphRecurse(pkg, module.ImportPath{})
+	return flattenDotNETPackageGraphRecurse(pkg, module.ImportPath{
+		module.Locator{
+			Fetcher:  "root",
+			Project:  "root",
+			Revision: "",
+		},
+	})
 }
 
 // Analyze parses the output of NuGet lockfiles and falls back to parsing the packages folder
