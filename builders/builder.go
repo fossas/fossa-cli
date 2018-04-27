@@ -9,6 +9,8 @@ func New(moduleType module.Type) module.Builder {
 	switch moduleType {
 	case module.Bower:
 		return &BowerBuilder{}
+	case module.Cocoapods:
+		return &CocoapodsBuilder{}
 	case module.Composer:
 		return &ComposerBuilder{}
 	case module.Golang:
