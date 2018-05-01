@@ -18,6 +18,8 @@ import (
 
 var cocoapodsLogger = logging.MustGetLogger("cocoapods")
 
+const podNameRegex = `[\w/\.\-\\+]+`
+
 // CocoapodsBuilder implements Builder for Cocoapods (podfile & podfile.lock) builds
 type CocoapodsBuilder struct {
 	CocoapodsCmd     string
@@ -72,7 +74,7 @@ func (p *PodFileLock) initLockFile(filePath string) error {
 }
 
 func extractModule(fullDepStr string) CocoapodsModule {
-	outputMatchRe := regexp.MustCompile(`([\w/\.-\\+]+)\s+\(([\w/\.-\\+]+)\)`)
+	outputMatchRe := regexp.MustCompile(`(` + podNameRegex + `)\s+\(([\w/\.\-\\+=\s]+)\)`)
 	match := outputMatchRe.FindStringSubmatch(fullDepStr)
 
 	return CocoapodsModule{
@@ -83,8 +85,9 @@ func extractModule(fullDepStr string) CocoapodsModule {
 
 // used to grab the pod name from the line
 func extractPodName(fullDepStr string) string {
-	outputMatchRe := regexp.MustCompile(`[\w/\.-\\+]+`)
+	outputMatchRe := regexp.MustCompile(podNameRegex)
 	match := outputMatchRe.FindStringSubmatch(fullDepStr)
+
 	return strings.Split(match[0], "/")[0]
 }
 
