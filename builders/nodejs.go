@@ -118,7 +118,9 @@ func flattenNodeJSModules(pkg nodeListOutput) []Imported {
 		Project:  "root",
 		Revision: "",
 	}
-	return flattenNodeJSModulesRecurse(root, pkg, module.ImportPath{})
+	imports := flattenNodeJSModulesRecurse(root, pkg, module.ImportPath{})
+	// Don't include extraneous "root" dependency
+	return imports[:len(imports)-1]
 }
 
 // Analyze runs and parses `npm ls --json`.
