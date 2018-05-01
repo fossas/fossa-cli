@@ -101,6 +101,8 @@ func Parse(key string) (Type, error) {
 		return Bower, nil
 
 	// Cocoapods aliases
+	case "ios":
+		fallthrough
 	case "pod":
 		fallthrough
 	case "cocoapods":

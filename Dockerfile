@@ -49,7 +49,7 @@ RUN wget https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip -O
 ENV PATH=$PATH:/opt/android-sdk/tools/bin ANDROID_HOME=/opt/android-sdk
 
 # Install Cocoapods
-RUN sudo gem install cocoapods
+RUN sudo gem install cocoapods -v 0.39.0
 
 # Install Go compiler
 RUN wget https://dl.google.com/go/go1.9.4.linux-amd64.tar.gz -O /tmp/go.tar.gz && \
