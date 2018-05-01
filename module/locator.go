@@ -6,9 +6,9 @@ import (
 )
 
 type Locator struct {
-	Fetcher  string
-	Project  string
-	Revision string
+	Fetcher  string `json:"fetcher"`
+	Project  string `json:"package"`
+	Revision string `json:"revision"`
 }
 
 func (l Locator) String() string {
