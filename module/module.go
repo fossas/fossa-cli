@@ -48,6 +48,9 @@ func New(moduleType Type, conf Config) (Module, error) {
 	case Bower:
 		manifestName = "bower.json"
 		break
+	case Cocoapods:
+		manifestName = "Podfile"
+		break
 	case Composer:
 		manifestName = "composer.json"
 		break

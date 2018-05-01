@@ -55,6 +55,8 @@ const (
 
 	// Bower is the module type for bower.io
 	Bower = Type("bower")
+	// Cocoapods is the module type for cocoapods
+	Cocoapods = Type("cocoapods")
 	// Composer is the module type for getcomposer.org
 	Composer = Type("composer")
 	// Maven is the module type for maven.apache.org
@@ -83,7 +85,7 @@ const (
 )
 
 // Types holds the list of all available module types for analysis
-var Types = []Type{Bower, Composer, Maven, SBT, Gradle, NuGet, Pip, Ruby, Nodejs, Golang, VendoredArchives}
+var Types = []Type{Bower, Cocoapods, Composer, Maven, SBT, Gradle, NuGet, Pip, Ruby, Nodejs, Golang, VendoredArchives}
 
 // Parse returns a module Type given a string
 func Parse(key string) (Type, error) {
@@ -97,6 +99,14 @@ func Parse(key string) (Type, error) {
 	// Bower aliases
 	case "bower":
 		return Bower, nil
+
+	// Cocoapods aliases
+	case "ios":
+		fallthrough
+	case "pod":
+		fallthrough
+	case "cocoapods":
+		return Cocoapods, nil
 
 	// Compower aliases
 	case "composer":
