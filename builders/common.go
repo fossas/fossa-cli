@@ -179,6 +179,10 @@ type Imported struct {
 func computeImportPaths(deps []Imported) []module.Dependency {
 	pathsSet := make(map[module.Locator]map[module.ImportPathString]bool)
 	for _, dep := range deps {
+		// Ignore "root" deps
+		if dep.Locator.Fetcher == "root" {
+			continue
+		}
 		_, ok := pathsSet[dep.Locator]
 		if !ok {
 			pathsSet[dep.Locator] = make(map[module.ImportPathString]bool)
