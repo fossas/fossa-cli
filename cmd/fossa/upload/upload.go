@@ -75,7 +75,7 @@ func Run(ctx *cli.Context) {
 ============================================================
 
     View FOSSA Report:
-    ` + baseURL.ResolveReference(reportURL).String() + `
+    ` + strings.Replace(baseURL.ResolveReference(reportURL).String(), "%", "%%", -1) + `
 
 ============================================================
 `)
