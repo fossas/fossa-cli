@@ -99,7 +99,7 @@ func Do(io services.Services, c config.CLIConfig, data []api.SourceUnit) (APIRes
 	io.Logger.Debugf("Uploading data from %#v modules: %#v", len(data), string(payload))
 
 	endpoint := "/api/builds/custom?locator=" + url.QueryEscape(module.Locator{Fetcher: c.Fetcher, Project: c.Project, Revision: c.Revision}.String()) + "&v=" + c.Version
-	if c.Fetcher == "custom" && c.Project == "" {
+	if c.Fetcher == "custom" {
 		defaultProjectTitle := data[0].Name
 		cwd, err := filepath.Abs(".")
 		if err != nil {
