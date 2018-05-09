@@ -6,18 +6,10 @@ import (
 
 // Config defines a config for a builder's entry point
 type Config struct {
-	Name    string  `yaml:"name"`
-	Path    string  `yaml:"path"` // this should really be renamed to Target (for e.g. Golang with gopaths or .NET or Maven with manifest files)
-	Type    string  `yaml:"type"`
-	Options Options `yaml:"options"`
-}
-
-type Options struct {
-	Go     GoOptions
-	Python PythonOptions
-	Gradle GradleOptions
-	Maven  MavenOptions
-	NuGet  NuGetOptions
+	Name    string                 `yaml:"name"`
+	Path    string                 `yaml:"path"` // this should really be renamed to Target (for e.g. Golang with gopaths or .NET or Maven with manifest files)
+	Type    string                 `yaml:"type"`
+	Options map[string]interface{} `yaml:"options,omitempty"`
 }
 
 type GoOptions struct {
@@ -37,6 +29,11 @@ type MavenOptions struct {
 	Settings string
 }
 
+type AntOptions struct {
+	Target string
+	Libdir string
+}
+
 type NuGetOptions struct {
 	TargetFramework string
 }
@@ -53,6 +50,8 @@ type Type string
 const (
 	// Individual tools
 
+	// Ant is the module type for Apache Ant
+	Ant = Type("ant")
 	// Bower is the module type for bower.io
 	Bower = Type("bower")
 	// Cocoapods is the module type for cocoapods
@@ -85,7 +84,7 @@ const (
 )
 
 // Types holds the list of all available module types for analysis
-var Types = []Type{Bower, Cocoapods, Composer, Maven, SBT, Gradle, NuGet, Pip, Ruby, Nodejs, Golang, VendoredArchives}
+var Types = []Type{Ant, Bower, Cocoapods, Composer, Maven, SBT, Gradle, NuGet, Pip, Ruby, Nodejs, Golang, VendoredArchives}
 
 // Parse returns a module Type given a string
 func Parse(key string) (Type, error) {
@@ -151,6 +150,9 @@ func Parse(key string) (Type, error) {
 		fallthrough
 	case "sbt":
 		return SBT, nil
+
+	case "ant":
+		return Ant, nil
 
 	case "gradle":
 		return Gradle, nil

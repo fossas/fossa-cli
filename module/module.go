@@ -45,6 +45,9 @@ func New(moduleType Type, conf Config) (Module, error) {
 
 	// infer default module settings from type
 	switch moduleType {
+	case Ant:
+		manifestName = "build.xml"
+		break
 	case Bower:
 		manifestName = "bower.json"
 		break
@@ -97,9 +100,10 @@ func New(moduleType Type, conf Config) (Module, error) {
 	}
 
 	return Module{
-		Name:   moduleName,
-		Type:   moduleType,
-		Target: moduleTarget,
-		Dir:    modulePath,
+		Name:    moduleName,
+		Type:    moduleType,
+		Target:  moduleTarget,
+		Dir:     modulePath,
+		Context: conf.Options,
 	}, nil
 }

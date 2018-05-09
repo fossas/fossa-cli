@@ -7,6 +7,8 @@ import (
 // New instantiates a Builder given a ModuleType
 func New(moduleType module.Type) module.Builder {
 	switch moduleType {
+	case module.Ant:
+		return &AntBuilder{}
 	case module.Bower:
 		return &BowerBuilder{}
 	case module.Cocoapods:
