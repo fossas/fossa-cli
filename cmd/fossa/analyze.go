@@ -22,13 +22,13 @@ func analyzeCmd(c *cli.Context) {
 		buildLogger.Fatal("No modules specified.")
 	}
 
-	analysis, err := doAnalyze(conf.Modules, conf.AnalyzeCmd.AllowUnresolved)
+	analyses, err := doAnalyze(conf.Modules, conf.AnalyzeCmd.AllowUnresolved)
 	if err != nil {
 		analysisLogger.Fatalf("Analysis failed: %s", err.Error())
 	}
-	analysisLogger.Debugf("Analysis complete: %#v", analysis)
+	analysisLogger.Debugf("Analysis complete: %#v", analyses)
 
-	normalModules, err := normalizeAnalysis(analysis)
+	normalModules, err := normalizeAnalysis(analyses)
 	if err != nil {
 		analysisLogger.Fatalf("Could not normalize build data: %s", err.Error())
 	}
@@ -50,16 +50,15 @@ func analyzeCmd(c *cli.Context) {
 	fmt.Print(msg)
 }
 
-type analysisKey struct {
-	builder module.Builder
-	module  module.Module
+type analysis struct {
+	builder      module.Builder
+	module       module.Module
+	dependencies []module.Dependency
 }
 
-type analysis map[analysisKey][]module.Dependency
-
-func doAnalyze(modules []module.Config, allowUnresolved bool) (analysis, error) {
+func doAnalyze(modules []module.Config, allowUnresolved bool) ([]analysis, error) {
 	analysisLogger.Debugf("Running analysis on modules: %#v", modules)
-	dependencies := make(analysis)
+	analyses := []analysis{}
 
 	for _, moduleConfig := range modules {
 		builder, m, err := resolveModuleConfig(moduleConfig)
@@ -84,11 +83,12 @@ func doAnalyze(modules []module.Config, allowUnresolved bool) (analysis, error) 
 		if err != nil {
 			return nil, fmt.Errorf("analysis failed on module %s: %s", m.Name, err.Error())
 		}
-		dependencies[analysisKey{
-			builder: builder,
-			module:  m,
-		}] = deps
+		analyses = append(analyses, analysis{
+			builder:      builder,
+			module:       m,
+			dependencies: deps,
+		})
 	}
 
-	return dependencies, nil
+	return analyses, nil
 }

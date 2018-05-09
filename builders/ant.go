@@ -67,9 +67,9 @@ func (builder *AntBuilder) Build(m module.Module, force bool) error {
 func (builder *AntBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	antLogger.Debugf("Running Ant analysis: %#v %#v in %s", m, allowUnresolved, m.Dir)
 
-	options := m.Context.(map[string]string)
+	options := m.Context.(map[string]interface{})
 
-	libdir := options["libdir"]
+	libdir := options["libdir"].(string)
 	if libdir == "" {
 		libdir = "lib"
 	}
