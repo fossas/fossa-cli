@@ -31,7 +31,7 @@ type AntBuilder struct {
 
 // Initialize collects metadata on Java and SBT binaries
 func (builder *AntBuilder) Initialize() error {
-	antLogger.Debugf("Initializing SBT builder...")
+	antLogger.Debugf("Initializing Ant builder...")
 
 	// Set Java context variables
 	javaCmd, javaVersion, err := which("-version", os.Getenv("JAVA_BINARY"), "java")
@@ -48,8 +48,9 @@ func (builder *AntBuilder) Initialize() error {
 	}
 
 	builder.AntCmd = antCmd
-	antVersionMatchRe := regexp.MustCompile(`Apache Ant(TM) version ([0-9]+\.[0-9]+.\w+)`)
+	antVersionMatchRe := regexp.MustCompile(`version ([0-9]+\.[0-9]+.\w+)`)
 	match := antVersionMatchRe.FindStringSubmatch(antVersionOut)
+
 	if len(match) == 2 {
 		builder.AntVersion = match[1]
 	}
@@ -164,7 +165,14 @@ func locatorFromJar(path string) (module.Locator, error) {
 	}
 
 	// fall back to parsing file name
-	return module.Locator{}, nil
+	re := regexp.MustCompile("(-sources|-javadoc)?.jar$")
+	rawname := strings.Split(re.ReplaceAllString(filepath.Base(path), ""), "-")
+
+	return module.Locator{
+		Fetcher:  "mvn",
+		Project:  rawname[0],
+		Revision: rawname[1],
+	}, nil
 }
 
 // IsBuilt always returns true for Ant builds
