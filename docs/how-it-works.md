@@ -10,7 +10,7 @@ Instead of trying to guess at your build system's behavior, `fossa` runs locally
 `fossa` supports a wide variety of languages, package managers, and build tools out of the box:
 
  - JavaScript: `bower`, `npm`, `yarn`
- - Java/Scala: `mvn`, `gradle`, `sbt`
+ - Java/Scala: `mvn`, `gradle`, `sbt`, `ant`, `ivy`
  - Python: `pip`, `setuptools`
  - Ruby: `bundler`
  - PHP: `composer`
