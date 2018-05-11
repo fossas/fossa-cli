@@ -9,19 +9,17 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
-	"github.com/op/go-logging"
 )
-
-var buildLogger = logging.MustGetLogger("build")
 
 func buildCmd(c *cli.Context) {
 	conf, err := config.New(c)
 	if err != nil {
-		buildLogger.Fatalf("Could not load configuration: %s", err.Error())
+		log.Fatalf("Could not load configuration: %s", err.Error())
 	}
 	if len(conf.Modules) == 0 {
-		buildLogger.Fatal("No modules specified.")
+		log.Fatal("No modules specified.")
 	}
 
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
@@ -35,7 +33,7 @@ func buildCmd(c *cli.Context) {
 		err := doBuild(moduleConfig, conf.AnalyzeCmd.AllowUnresolved, conf.BuildCmd.Force)
 		if err != nil {
 			s.Stop()
-			buildLogger.Fatalf("Could not run build: %s", err.Error())
+			log.Fatalf("Could not run build: %s", err.Error())
 		}
 	}
 	s.Stop()
@@ -58,7 +56,7 @@ func doBuild(moduleConfig module.Config, allowUnresolved, force bool) error {
 		return fmt.Errorf("could not determine whether module %s is built: %s", module.Name, err.Error())
 	}
 	if isBuilt && !force {
-		buildLogger.Warningf("module %s appears to already be built (use `--force` to force a rebuild)", module.Name)
+		log.Warningf("module %s appears to already be built (use `--force` to force a rebuild)", module.Name)
 	} else {
 		err = builder.Build(module, force)
 		if err != nil {

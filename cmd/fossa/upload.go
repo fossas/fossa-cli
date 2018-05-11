@@ -8,14 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
-
-var uploadLogger = logging.MustGetLogger("upload")
 
 type normalizedModule struct {
 	Name     string
@@ -94,7 +92,7 @@ func normalizeAnalysis(results analysis) ([]normalizedModule, error) {
 func uploadCmd(c *cli.Context) {
 	conf, err := config.New(c)
 	if err != nil {
-		uploadLogger.Fatalf("Could not load configuration: %s", err.Error())
+		log.Fatalf("Could not load configuration: %s", err.Error())
 	}
 
 	var data []normalizedModule
@@ -115,13 +113,13 @@ func uploadCmd(c *cli.Context) {
 	} else {
 		err = json.Unmarshal([]byte(conf.UploadCmd.Data), &data)
 		if err != nil {
-			uploadLogger.Fatalf("Could not parse user-provided build data: %s", err.Error())
+			log.Fatalf("Could not parse user-provided build data: %s", err.Error())
 		}
 	}
 
 	msg, err := doUpload(conf, data)
 	if err != nil {
-		analysisLogger.Fatalf("Upload failed: %s", err.Error())
+		log.Fatalf("Upload failed: %s", err.Error())
 	}
 	fmt.Print(msg)
 }
@@ -133,15 +131,15 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 	}
 
 	if conf.Project == "" {
-		analysisLogger.Fatal("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
+		log.Fatal("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
 	}
 
 	if conf.Fetcher != "custom" && conf.Revision == "" {
-		analysisLogger.Fatal("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
+		log.Fatal("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
 	}
 
 	if len(results) == 0 {
-		analysisLogger.Fatal("No results to upload")
+		log.Fatal("No results to upload")
 	}
 
 	// Re-marshal into build data
@@ -150,7 +148,7 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 		return "", err
 	}
 
-	analysisLogger.Debugf("Uploading build data from (%#v) modules: %#v", len(results), string(buildData))
+	log.Debugf("Uploading build data from (%#v) modules: %#v", len(results), string(buildData))
 
 	fossaEndpoint := "/api/builds/custom?locator=" + url.QueryEscape(module.Locator{Fetcher: conf.Fetcher, Project: conf.Project, Revision: conf.Revision}.String()) + "&v=" + version
 	if conf.Fetcher == "custom" {
@@ -165,7 +163,7 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 	postRef, _ := url.Parse(fossaEndpoint)
 	postURL := fossaBaseURL.ResolveReference(postRef).String()
 
-	analysisLogger.Debugf("Sending build data to <%#v>", postURL)
+	log.Debugf("Sending build data to <%#v>", postURL)
 
 	res, err := makeAPIRequest(http.MethodPost, postURL, conf.APIKey, buildData)
 	if err != nil {
@@ -177,8 +175,8 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 		return "", fmt.Errorf("could not upload: %s", err.Error())
 	}
 
-	analysisLogger.Debugf("Upload succeeded")
-	analysisLogger.Debugf("Response: %#v", string(res))
+	log.Debugf("Upload succeeded")
+	log.Debugf("Response: %#v", string(res))
 
 	var jsonResponse map[string]interface{}
 	if err := json.Unmarshal(res, &jsonResponse); err != nil {

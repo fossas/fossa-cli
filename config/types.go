@@ -3,12 +3,8 @@ package config
 import (
 	"time"
 
-	logging "github.com/op/go-logging"
-
 	"github.com/fossas/fossa-cli/module"
 )
-
-var configLogger = logging.MustGetLogger("config")
 
 // DefaultConfig specifies the config for the default command
 type DefaultConfig struct {

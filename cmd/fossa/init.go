@@ -7,31 +7,29 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/builders"
 	config "github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
-
-var initLogger = logging.MustGetLogger("init")
 
 func initCmd(c *cli.Context) {
 	conf, err := config.New(c)
 	if err != nil {
-		initLogger.Fatalf("Could not load configuration: %s", err.Error())
+		log.Fatalf("Could not load configuration: %s", err.Error())
 	}
 
 	if err := doInit(&conf, c.Bool("overwrite"), c.Bool("include-all")); err != nil {
-		initLogger.Fatalf("Error initializing: %s", err.Error())
+		log.Fatalf("Error initializing: %s", err.Error())
 	}
 
 	if err := config.WriteConfigFile(&conf); err != nil {
-		initLogger.Fatalf("Error writing config: %s", err.Error())
+		log.Fatalf("Error writing config: %s", err.Error())
 	}
 
-	initLogger.Warningf("Config for %d modules written to `%s`.", len(conf.Modules), conf.ConfigFilePath)
+	log.Warningf("Config for %d modules written to `%s`.", len(conf.Modules), conf.ConfigFilePath)
 
 	fmt.Println("`fossa` is initialized")
 }
@@ -49,7 +47,7 @@ func doInit(conf *config.CLIConfig, overwrite bool, includeAll bool) error {
 		var err error
 		conf.Modules, err = findModules(findDir)
 		if err != nil {
-			initLogger.Warningf("Warning during autoconfiguration: %s", err.Error())
+			log.Warningf("Warning during autoconfiguration: %s", err.Error())
 		}
 
 		if !includeAll {
@@ -59,13 +57,13 @@ func doInit(conf *config.CLIConfig, overwrite bool, includeAll bool) error {
 				if matched, err := regexp.MatchString("(docs?/|test|example|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/|third_party/)", c.Path); err != nil || matched != true {
 					filteredModuleConfigs = append(filteredModuleConfigs, c)
 				} else {
-					initLogger.Warningf("Filtering out suspicious module: %s (%s)", c.Name, c.Path)
+					log.Warningf("Filtering out suspicious module: %s (%s)", c.Name, c.Path)
 				}
 			}
 			conf.Modules = filteredModuleConfigs
 		}
 	} else {
-		initLogger.Warningf("%d module(s) found in config file (`%s`); skipping initialization.", len(conf.Modules), conf.ConfigFilePath)
+		log.Warningf("%d module(s) found in config file (`%s`); skipping initialization.", len(conf.Modules), conf.ConfigFilePath)
 	}
 	s.Stop()
 	return nil
@@ -79,7 +77,7 @@ func findModules(dir string) ([]module.Config, error) {
 	for _, t := range module.Types {
 		builder := builders.New(t)
 		if builder == nil {
-			initLogger.Warningf("No builder available for module type: %s", t)
+			log.Warningf("No builder available for module type: %s", t)
 		}
 		foundModules, err := builder.DiscoverModules(dir)
 		if err != nil {

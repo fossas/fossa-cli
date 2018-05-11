@@ -5,14 +5,12 @@ import (
 	"fmt"
 
 	"github.com/blang/semver"
-	logging "github.com/op/go-logging"
+	"github.com/fossas/fossa-cli/log"
 	"github.com/rhysd/go-github-selfupdate/selfupdate"
 	"github.com/urfave/cli"
 )
 
 const updateEndpoint = "fossas/fossa-cli"
-
-var updateLogger = logging.MustGetLogger("update")
 
 func getSemver(v string) string {
 	if v == "" {
@@ -31,7 +29,7 @@ func checkUpdate() (bool, error) {
 	}
 
 	parsedVersion := getSemver(version)
-	updateLogger.Debugf("checking version for updates (%s -> %s)", version, latest)
+	log.Debugf("checking version for updates (%s -> %s)", version, latest)
 	v, err := semver.Parse(parsedVersion)
 	if err != nil {
 		return false, errors.New("invalid version (are you using a development binary?)")
@@ -55,22 +53,22 @@ func doSelfUpdate() error {
 	if latest.Version.Equals(v) {
 		return errors.New("no update required")
 	}
-	updateLogger.Debugf("updating binary versions (%s -> %s)", version, latest.Version)
+	log.Debugf("updating binary versions (%s -> %s)", version, latest.Version)
 	return nil
 }
 
 func updateCmd(c *cli.Context) {
 	ok, err := checkUpdate()
 	if err != nil {
-		updateLogger.Fatalf("Unable to update: %s", err.Error())
+		log.Fatalf("Unable to update: %s", err.Error())
 	}
 	if !ok {
-		updateLogger.Fatalf("No updates available")
+		log.Fatalf("No updates available")
 	}
 
 	if err := doSelfUpdate(); err != nil {
-		updateLogger.Fatalf("Update failed: %s", err.Error())
+		log.Fatalf("Update failed: %s", err.Error())
 	}
 
-	updateLogger.Info("fossa has been updated; run `fossa -v` to view the current version")
+	log.Notice("fossa has been updated; run `fossa -v` to view the current version")
 }

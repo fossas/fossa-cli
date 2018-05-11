@@ -81,7 +81,7 @@ func buildersBindataPipdeptreePy() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "builders/bindata/pipdeptree.py", size: 20922, mode: os.FileMode(420), modTime: time.Unix(1524800466, 0)}
+	info := bindataFileInfo{name: "builders/bindata/pipdeptree.py", size: 20922, mode: os.FileMode(420), modTime: time.Unix(1525410168, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }

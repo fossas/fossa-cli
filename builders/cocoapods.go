@@ -10,13 +10,11 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar"
-	logging "github.com/op/go-logging"
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
-
-var cocoapodsLogger = logging.MustGetLogger("cocoapods")
 
 const podNameRegex = `[\w/\.\-\\+]+`
 
@@ -93,36 +91,36 @@ func extractPodName(fullDepStr string) string {
 
 // Initialize collects metadata on Cocoapods
 func (builder *CocoapodsBuilder) Initialize() error {
-	cocoapodsLogger.Debug("Initializing Cocoapods builder...")
+	log.Debug("Initializing Cocoapods builder...")
 
 	// Set Ruby context variables
 	cocoapodsCmd, cocoapodsVersion, err := which("--version", os.Getenv("COCOAPODS_BINARY"), "pod")
 	if err != nil {
-		cocoapodsLogger.Warningf("Could not find Pod binary (try setting $COCOAPODS_BINARY): %s", err.Error())
+		log.Warningf("Could not find Pod binary (try setting $COCOAPODS_BINARY): %s", err.Error())
 	}
 	builder.CocoapodsCmd = cocoapodsCmd
 	builder.CocoapodsVersion = strings.TrimRight(cocoapodsVersion, "\n")
 
-	cocoapodsLogger.Debugf("Initialized Cocoapods builder: %#v", builder)
+	log.Debugf("Initialized Cocoapods builder: %#v", builder)
 	return nil
 }
 
 // Build runs `pod install`
 func (builder *CocoapodsBuilder) Build(m module.Module, force bool) error {
-	cocoapodsLogger.Debugf("Running Cocoapods build: %#v %#v", m, force)
+	log.Debugf("Running Cocoapods build: %#v %#v", m, force)
 
-	_, _, err := runLogged(cocoapodsLogger, m.Dir, builder.CocoapodsCmd, "install")
+	_, _, err := runLogged(m.Dir, builder.CocoapodsCmd, "install")
 	if err != nil {
 		return fmt.Errorf("could not run Cocoapods build: %s", err.Error())
 	}
 
-	cocoapodsLogger.Debug("Done running Cocoapods build.")
+	log.Debug("Done running Cocoapods build.")
 	return nil
 }
 
 // Analyze parses the `podfile.lock` YAML file and analyzes
 func (builder *CocoapodsBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	cocoapodsLogger.Debugf("Running Cocoapods analysis: %#v %#v", m, allowUnresolved)
+	log.Debugf("Running Cocoapods analysis: %#v %#v", m, allowUnresolved)
 	var podLockfile PodFileLock
 
 	currentLockfile := filepath.Join(m.Dir, "Podfile.lock")
@@ -239,20 +237,20 @@ func (builder *CocoapodsBuilder) Analyze(m module.Module, allowUnresolved bool) 
 
 	deps := computeImportPaths(imports)
 
-	cocoapodsLogger.Debugf("Done running Pod analysis: %#v", deps)
+	log.Debugf("Done running Pod analysis: %#v", deps)
 	return deps, nil
 }
 
 // IsBuilt checks whether `Podfile.lock` exists
 func (builder *CocoapodsBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
-	cocoapodsLogger.Debugf("Checking Cocoapods build: %#v %#v", m, allowUnresolved)
+	log.Debugf("Checking Cocoapods build: %#v %#v", m, allowUnresolved)
 
 	isBuilt, err := hasFile(m.Dir, "Podfile.lock")
 	if err != nil {
 		return false, fmt.Errorf("could not find Podfile.lock file: %s", err.Error())
 	}
 
-	cocoapodsLogger.Debugf("Done checking Cocoapods build: %#v", isBuilt)
+	log.Debugf("Done checking Cocoapods build: %#v", isBuilt)
 	return isBuilt, nil
 }
 
@@ -271,7 +269,7 @@ func (builder *CocoapodsBuilder) DiscoverModules(dir string) ([]module.Config, e
 	for _, path := range cococapodsFilePaths {
 		podName := filepath.Base(filepath.Dir(path))
 
-		cocoapodsLogger.Debugf("Found Cocoapods package: %s (%s)", path, podName)
+		log.Debugf("Found Cocoapods package: %s (%s)", path, podName)
 		path, _ = filepath.Rel(dir, path)
 		moduleConfigs = append(moduleConfigs, module.Config{
 			Name: podName,

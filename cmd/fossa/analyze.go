@@ -6,37 +6,35 @@ import (
 	"os"
 
 	"github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
-	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 )
-
-var analysisLogger = logging.MustGetLogger("analyze")
 
 func analyzeCmd(c *cli.Context) {
 	conf, err := config.New(c)
 	if err != nil {
-		buildLogger.Fatalf("Could not load configuration: %s", err.Error())
+		log.Fatalf("Could not load configuration: %s", err.Error())
 	}
 	if len(conf.Modules) == 0 {
-		buildLogger.Fatal("No modules specified.")
+		log.Fatal("No modules specified.")
 	}
 
 	analysis, err := doAnalyze(conf.Modules, conf.AnalyzeCmd.AllowUnresolved)
 	if err != nil {
-		analysisLogger.Fatalf("Analysis failed: %s", err.Error())
+		log.Fatalf("Analysis failed: %s", err.Error())
 	}
-	analysisLogger.Debugf("Analysis complete: %#v", analysis)
+	log.Debugf("Analysis complete: %#v", analysis)
 
 	normalModules, err := normalizeAnalysis(analysis)
 	if err != nil {
-		analysisLogger.Fatalf("Could not normalize build data: %s", err.Error())
+		log.Fatalf("Could not normalize build data: %s", err.Error())
 	}
 
 	if conf.AnalyzeCmd.Output {
 		buildData, err := json.Marshal(normalModules)
 		if err != nil {
-			analysisLogger.Fatalf("Could not marshal analysis results: %s", err.Error())
+			log.Fatalf("Could not marshal analysis results: %s", err.Error())
 		}
 		fmt.Println(string(buildData))
 		os.Exit(0)
@@ -45,7 +43,7 @@ func analyzeCmd(c *cli.Context) {
 
 	msg, err := doUpload(conf, normalModules)
 	if err != nil {
-		analysisLogger.Fatalf("Upload failed: %s", err.Error())
+		log.Fatalf("Upload failed: %s", err.Error())
 	}
 	fmt.Print(msg)
 }
@@ -58,7 +56,7 @@ type analysisKey struct {
 type analysis map[analysisKey][]module.Dependency
 
 func doAnalyze(modules []module.Config, allowUnresolved bool) (analysis, error) {
-	analysisLogger.Debugf("Running analysis on modules: %#v", modules)
+	log.Debugf("Running analysis on modules: %#v", modules)
 	dependencies := make(analysis)
 
 	for _, moduleConfig := range modules {

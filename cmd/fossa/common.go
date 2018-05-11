@@ -10,10 +10,9 @@ import (
 	"net/url"
 	"time"
 
-	logging "github.com/op/go-logging"
+	"github.com/fossas/fossa-cli/log"
 )
 
-var commonLogger = logging.MustGetLogger("common")
 var client = http.Client{
 	Timeout: 10 * time.Second,
 }
@@ -30,7 +29,7 @@ func isTimeout(err error) bool {
 
 // Common utilities among commands
 func makeAPIRequest(method, endpoint, apiKey string, payload []byte) ([]byte, error) {
-	commonLogger.Debugf("Making API request %#v %#v %#v %#v", method, endpoint, apiKey, string(payload))
+	log.Debugf("Making API request %#v %#v %#v %#v", method, endpoint, apiKey, string(payload))
 	req, err := http.NewRequest(method, endpoint, bytes.NewReader(payload))
 	if err != nil {
 		return nil, fmt.Errorf("could not construct API HTTP request: %s", err.Error())
@@ -42,7 +41,7 @@ func makeAPIRequest(method, endpoint, apiKey string, payload []byte) ([]byte, er
 	resp, err := client.Do(req)
 	if err != nil {
 		if isTimeout(err) {
-			commonLogger.Debugf("API request timed out")
+			log.Debugf("API request timed out")
 			return nil, err
 		}
 		return nil, fmt.Errorf("failed to send API HTTP request: %s", err.Error())
@@ -57,10 +56,10 @@ func makeAPIRequest(method, endpoint, apiKey string, payload []byte) ([]byte, er
 	responseStr := string(body)
 
 	if resp.StatusCode == http.StatusForbidden {
-		commonLogger.Debugf("Response body: %s", responseStr)
+		log.Debugf("Response body: %s", responseStr)
 		return nil, fmt.Errorf("invalid API key %#v (try setting $FOSSA_API_KEY); get one at https://fossa.io", apiKey)
 	} else if resp.StatusCode != http.StatusOK {
-		commonLogger.Debugf("Response body: %s", responseStr)
+		log.Debugf("Response body: %s", responseStr)
 		maxResLength := 250
 		if len(responseStr) < maxResLength {
 			maxResLength = len(responseStr)
@@ -68,6 +67,6 @@ func makeAPIRequest(method, endpoint, apiKey string, payload []byte) ([]byte, er
 		return nil, fmt.Errorf("bad server response (%d): %s", resp.StatusCode, responseStr[0:maxResLength])
 	}
 
-	commonLogger.Debugf("Got API response: %#v", string(body))
+	log.Debugf("Got API response: %#v", string(body))
 	return body, nil
 }

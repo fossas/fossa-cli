@@ -4,11 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	logging "github.com/op/go-logging"
 )
-
-var moduleLogger = logging.MustGetLogger("module")
 
 // A Module is a unit of buildable code within a project.
 type Module struct {

@@ -51,3 +51,10 @@ func Fatal(args ...interface{}) {
 func Fatalf(format string, args ...interface{}) {
 	logger.Fatalf(format, args...)
 }
+
+// Panicf outputs a panic. Panics are errors that should never happen and
+// indicate that something has gone terribly wrong. They are akin to assertion
+// failures.
+func Panicf(format string, args ...interface{}) {
+	logger.Panicf(format, args...)
+}

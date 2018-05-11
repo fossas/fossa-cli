@@ -9,14 +9,12 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
-
-var testLogger = logging.MustGetLogger("test")
 
 const pollRequestDelay = time.Duration(8) * time.Second
 const buildsEndpoint = "/api/revisions/%s/build"
@@ -42,7 +40,7 @@ func getBuild(endpoint, apiKey, fetcher, project, revision string) (buildRespons
 	}
 	url := server.ResolveReference(buildsURL).String()
 
-	testLogger.Debugf("Making Builds API request to: %#v", url)
+	log.Debugf("Making Builds API request to: %#v", url)
 	res, err := makeAPIRequest(http.MethodPut, url, apiKey, nil)
 	if isTimeout(err) {
 		return buildResponse{}, err
@@ -85,7 +83,7 @@ func getRevision(endpoint, apiKey, fetcher, project, revision string) (revisionR
 	}
 	url := server.ResolveReference(revisionsURL).String()
 
-	testLogger.Debugf("Making Revisions API request to: %#v", url)
+	log.Debugf("Making Revisions API request to: %#v", url)
 	res, err := makeAPIRequest(http.MethodGet, url, apiKey, nil)
 	if err != nil {
 		return revisionResponse{}, err
@@ -114,7 +112,7 @@ buildLoop:
 			race <- testResult{err: err, issues: nil}
 			return
 		}
-		testLogger.Debugf("Got build: %#v", build)
+		log.Debugf("Got build: %#v", build)
 		switch build.Task.Status {
 		case "SUCCEEDED":
 			break buildLoop
@@ -135,7 +133,7 @@ buildLoop:
 			race <- testResult{err: err, issues: nil}
 			return
 		}
-		testLogger.Debugf("Got revision: %#v", revision)
+		log.Debugf("Got revision: %#v", revision)
 		if len(revision.Meta) > 0 && revision.Meta[0].LastScan != "" {
 			race <- testResult{err: nil, issues: revision.Issues}
 			return
@@ -152,7 +150,7 @@ type testResult struct {
 func testCmd(c *cli.Context) {
 	conf, err := config.New(c)
 	if err != nil {
-		testLogger.Fatalf("Could not load configuration: %s", err.Error())
+		log.Fatalf("Could not load configuration: %s", err.Error())
 	}
 
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
@@ -163,9 +161,9 @@ func testCmd(c *cli.Context) {
 	case result := <-race:
 		s.Stop()
 		if result.err != nil {
-			testLogger.Fatalf("Could not execute test: %s", result.err.Error())
+			log.Fatalf("Could not execute test: %s", result.err.Error())
 		}
-		testLogger.Debugf("Test succeeded: %#v", result.issues)
+		log.Debugf("Test succeeded: %#v", result.issues)
 		if len(result.issues) == 0 {
 			fmt.Fprintln(os.Stderr, "Test passed! 0 issues found")
 		} else {
@@ -184,7 +182,7 @@ func testCmd(c *cli.Context) {
 
 			issues, err := json.Marshal(unresolvedIssues)
 			if err != nil {
-				testLogger.Fatalf("Could not marshal unresolved issues: %s", err)
+				log.Fatalf("Could not marshal unresolved issues: %s", err)
 			}
 			fmt.Println(string(issues))
 
@@ -192,6 +190,6 @@ func testCmd(c *cli.Context) {
 		}
 	case <-time.After(conf.TestCmd.Timeout):
 		s.Stop()
-		testLogger.Fatalf("Timed out while waiting for issue report")
+		log.Fatalf("Timed out while waiting for issue report")
 	}
 }
