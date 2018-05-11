@@ -65,7 +65,7 @@ Run `fossa -o` in your repo directory to output a dependency report in JSON:
 ]
 ```
 
-Run `fossa` and provide a [FOSSA API Key](https://fossa.io/docs/projects/api-endpoints/) to get a rich, hosted report:
+Run `fossa` and provide a [FOSSA API Key](https://docs.fossa.io/docs/api-reference) to get a rich, hosted report:
 
 ```bash
 export FOSSA_API_KEY="YOUR_API_KEY_HERE"
