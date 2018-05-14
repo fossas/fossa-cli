@@ -16,7 +16,7 @@
   </a>
 </p>
 
-## Background 
+## Background
 `fossa` analyzes complex codebases to generate dependency reports and license notices.  By leveraging existing build environments, it can generate fast and highly-accurate results.
 
 **Features:**
@@ -65,7 +65,7 @@ Run `fossa -o` in your repo directory to output a dependency report in JSON:
 ]
 ```
 
-Run `fossa` and provide a [FOSSA API Key](https://fossa.io/docs/projects/api-endpoints/) to get a rich, hosted report:
+Run `fossa` and provide a [FOSSA API Key](https://docs.fossa.io/docs/api-reference) to get a rich, hosted report:
 
 ```bash
 export FOSSA_API_KEY="YOUR_API_KEY_HERE"
@@ -75,7 +75,7 @@ fossa
 
 # Output:
 # ==========================================================
-#   
+#
 #    View FOSSA Report: https://app.fossa.io/{YOUR_LINK}
 #
 # ==========================================================
@@ -178,4 +178,4 @@ If you're in San Francisco, come to our monthly [Open Source Happy Hour](http://
 
 You are free to use `fossa` for commercial or personal purposes.  Enjoy!
 
-[![FOSSA Status](https://app.fossa.io/api/projects/custom%2B1%2Fgithub.com%2Ffossas%2Ffossa-cli.svg?type=large)](https://app.fossa.io/projects/custom%2B1%2Fgithub.com%2Ffossas%2Ffossa-cli?ref=badge_large)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli?ref=badge_large)

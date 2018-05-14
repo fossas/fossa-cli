@@ -92,10 +92,14 @@ func Parse(key string) (Type, error) {
 	// Node aliases
 	case "commonjspackage":
 		fallthrough
+	case "npmpackage":
+		fallthrough
 	case "nodejs":
 		return Nodejs, nil
 
 	// Bower aliases
+	case "bowerpackage":
+		fallthrough
 	case "bower":
 		return Bower, nil
 
@@ -104,10 +108,14 @@ func Parse(key string) (Type, error) {
 		fallthrough
 	case "pod":
 		fallthrough
+	case "cocoapodspackage":
+		fallthrough
 	case "cocoapods":
 		return Cocoapods, nil
 
-	// Compower aliases
+	// Composer aliases
+	case "composerpackage":
+		fallthrough
 	case "composer":
 		return Composer, nil
 
@@ -120,6 +128,8 @@ func Parse(key string) (Type, error) {
 		return Golang, nil
 
 	// Maven aliases
+	case "javaartifact":
+		fallthrough
 	case "maven":
 		fallthrough
 	case "mvn":
@@ -129,6 +139,12 @@ func Parse(key string) (Type, error) {
 	case "python":
 		fallthrough
 	case "py":
+		fallthrough
+	case "pippackage":
+		fallthrough
+	case "pythonrequirementspackage":
+		fallthrough
+	case "pythonprogram":
 		fallthrough
 	case "pip":
 		return Pip, nil
@@ -157,6 +173,8 @@ func Parse(key string) (Type, error) {
 	case "gradle":
 		return Gradle, nil
 
+	case "nugetpackage":
+		fallthrough
 	case "nuget":
 		return NuGet, nil
 

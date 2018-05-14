@@ -11,12 +11,10 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar"
-	logging "github.com/op/go-logging"
 
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
-
-var archiveLogger = logging.MustGetLogger("archive")
 
 // VendoredArchiveBuilder implements Builder for projects that have archive-formatted
 // rawDependencies encapsulating another supported build system
@@ -51,24 +49,24 @@ func (builder *VendoredArchiveBuilder) Analyze(m module.Module, allowUnresolved 
 	// extractedArchivePaths := []string{}
 	var rawDependencies []nodeManifest
 
-	archiveLogger.Debugf("Looking for tar files...")
+	log.Debugf("Looking for tar files...")
 	tarFiles, err := doublestar.Glob(filepath.Join(m.Dir, "**", "*.{tar.gz,tgz}"))
 	if err != nil {
 		return nil, err
 	}
-	archiveLogger.Debugf("Found %#v tar files.", len(tarFiles))
+	log.Debugf("Found %#v tar files.", len(tarFiles))
 
 	for i := 0; i < len(tarFiles); i++ {
 		// Open the tar archive for reading.
 		f, err := os.Open(tarFiles[i])
 		if err != nil {
-			archiveLogger.Warningf("Unable to open tarfile: %#v", tarFiles[i])
+			log.Warningf("Unable to open tarfile: %#v", tarFiles[i])
 		}
 		defer f.Close()
 
 		gzf, err := gzip.NewReader(f)
 		if err != nil {
-			archiveLogger.Warningf("Gzip error: %#v", err)
+			log.Warningf("Gzip error: %#v", err)
 			break
 		}
 
@@ -82,25 +80,25 @@ func (builder *VendoredArchiveBuilder) Analyze(m module.Module, allowUnresolved 
 			}
 
 			if err != nil {
-				archiveLogger.Warningf("Tar error: %#v", err)
+				log.Warningf("Tar error: %#v", err)
 				return nil, err
 			}
 
 			if strings.HasSuffix(hdr.Name, "package.json") {
-				archiveLogger.Debugf("Found node module: %#v", hdr.Name)
+				log.Debugf("Found node module: %#v", hdr.Name)
 				nodeManifestBuffer := make([]byte, hdr.Size)
 
 				_, err := io.ReadFull(tr, nodeManifestBuffer)
 				if err != nil {
-					archiveLogger.Warningf("Error reading node module: %#v", hdr.Name)
+					log.Warningf("Error reading node module: %#v", hdr.Name)
 					break
 				}
 				var nodeModule nodeManifest
 				if err := json.Unmarshal(nodeManifestBuffer, &nodeModule); err != nil {
-					archiveLogger.Warningf("Error parsing node module: %#v", hdr.Name)
+					log.Warningf("Error parsing node module: %#v", hdr.Name)
 					break
 				}
-				archiveLogger.Debugf("Found node module: %#v", nodeModule)
+				log.Debugf("Found node module: %#v", nodeModule)
 				rawDependencies = append(rawDependencies, nodeModule)
 				break
 			}

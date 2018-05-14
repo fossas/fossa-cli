@@ -13,13 +13,11 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	logging "github.com/op/go-logging"
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
-
-var goLogger = logging.MustGetLogger("golang")
 
 // GoBuilder implements Builder for Golang projects
 type GoBuilder struct {
@@ -59,7 +57,7 @@ type GoBuilder struct {
 
 // Initialize collects metadata on Go, Dep, Glide, Godep, Govendor, and Vndr binaries.
 func (builder *GoBuilder) Initialize() error {
-	goLogger.Debug("Initializing Go builder...")
+	log.Debug("Initializing Go builder...")
 
 	// Set Go context variables
 	goCmd, goVersion, err := which("version", os.Getenv("GO_BINARY"), "go")
@@ -103,10 +101,10 @@ func (builder *GoBuilder) Initialize() error {
 	builder.VndrVersion = ""
 
 	if depErr != nil && glideErr != nil && godepErr != nil && govendorErr != nil && vndrErr != nil {
-		goLogger.Warningf("No supported Go build tools detected (try setting $DEP_BINARY or $GLIDE_BINARY or $GODEP_BINARY or $GOVENDOR_BINARY or $VNDR_BINARY): %#v %#v %#v %#v %#v", depErr, glideErr, godepErr, govendorErr, vndrErr)
+		log.Warningf("No supported Go build tools detected (try setting $DEP_BINARY or $GLIDE_BINARY or $GODEP_BINARY or $GOVENDOR_BINARY or $VNDR_BINARY): %#v %#v %#v %#v %#v", depErr, glideErr, godepErr, govendorErr, vndrErr)
 	}
 
-	goLogger.Debugf("Done initializing Go builder: %#v", builder)
+	log.Debugf("Done initializing Go builder: %#v", builder)
 	return nil
 }
 
@@ -157,7 +155,7 @@ func findGoProjectFolder(fromPath string) (string, bool, error) {
 func runGoTool(projectFolder string, hasManifest fileChecker, buildCmd string, cleanCmd string, force bool) error {
 	cleanCmds := strings.Split(cleanCmd, " ")
 	return runGoToolWithCleaner(projectFolder, hasManifest, buildCmd, force, func() error {
-		_, _, err := runLogged(goLogger, projectFolder, cleanCmds[0], cleanCmds[1:]...)
+		_, _, err := runLogged(projectFolder, cleanCmds[0], cleanCmds[1:]...)
 		return err
 	})
 }
@@ -169,7 +167,7 @@ func runGoToolWithCleaner(projectFolder string, hasManifest fileChecker, buildCm
 	toolName := strings.Title(buildCmds[0])
 
 	if ok, err := hasManifest(projectFolder); err == nil && ok {
-		goLogger.Debugf("Found %s manifest: running %s build", toolName, toolName)
+		log.Debugf("Found %s manifest: running %s build", toolName, toolName)
 
 		if force {
 			err := cleaner()
@@ -177,7 +175,7 @@ func runGoToolWithCleaner(projectFolder string, hasManifest fileChecker, buildCm
 				return fmt.Errorf("could not remove %s cache: %s", toolName, err.Error())
 			}
 		}
-		_, _, err := runLogged(goLogger, projectFolder, buildCmds[0], buildCmds[1:]...)
+		_, _, err := runLogged(projectFolder, buildCmds[0], buildCmds[1:]...)
 		if err != nil {
 			return fmt.Errorf("could not run %s build: %s", toolName, err.Error())
 		}
@@ -188,7 +186,7 @@ func runGoToolWithCleaner(projectFolder string, hasManifest fileChecker, buildCm
 
 // Build contextually runs a build tool
 func (builder *GoBuilder) Build(m module.Module, force bool) error {
-	goLogger.Debugf("Running Go build: %#v %#v", m, force)
+	log.Debugf("Running Go build: %#v %#v", m, force)
 
 	// Find project folder (this is an ancestor of the module folder)
 	projectFolder, ok, err := findGoProjectFolder(m.Dir)
@@ -196,9 +194,9 @@ func (builder *GoBuilder) Build(m module.Module, force bool) error {
 		return fmt.Errorf("could not find Go project folder: %s", err.Error())
 	}
 	if !ok {
-		goLogger.Warningf("Could not find Go project folder (maybe your Go build tool is not supported?)")
+		log.Warningf("Could not find Go project folder (maybe your Go build tool is not supported?)")
 	}
-	goLogger.Debugf("Found project folder for Go build: %#v", projectFolder)
+	log.Debugf("Found project folder for Go build: %#v", projectFolder)
 
 	// Run build tools
 	err = runGoTool(projectFolder, hasDepManifest, "dep ensure", "rm -rf vendor Gopkg.lock", force)
@@ -218,19 +216,19 @@ func (builder *GoBuilder) Build(m module.Module, force bool) error {
 
 	// Govendor is handled differently because it stores its manifest _within_ the vendor folder
 	err = runGoToolWithCleaner(projectFolder, hasGovendorManifest, "govendor sync", force, func() error {
-		_, _, err := runLogged(goLogger, projectFolder, "mv", "vendor/vendor.json", "vendor.json.bak")
+		_, _, err := runLogged(projectFolder, "mv", "vendor/vendor.json", "vendor.json.bak")
 		if err != nil {
 			return err
 		}
-		_, _, err = runLogged(goLogger, projectFolder, "rm", "-rf", "vendor")
+		_, _, err = runLogged(projectFolder, "rm", "-rf", "vendor")
 		if err != nil {
 			return err
 		}
-		_, _, err = runLogged(goLogger, projectFolder, "mkdir", "-p", "vendor")
+		_, _, err = runLogged(projectFolder, "mkdir", "-p", "vendor")
 		if err != nil {
 			return err
 		}
-		_, _, err = runLogged(goLogger, projectFolder, "mv", "vendor.json.bak", "vendor/vendor.json")
+		_, _, err = runLogged(projectFolder, "mv", "vendor.json.bak", "vendor/vendor.json")
 		if err != nil {
 			return err
 		}
@@ -248,12 +246,12 @@ func (builder *GoBuilder) Build(m module.Module, force bool) error {
 	}
 
 	// Run an actual Go build
-	_, _, err = runLogged(goLogger, m.Dir, "go", "build", "./...")
+	_, _, err = runLogged(m.Dir, "go", "build", "./...")
 	if err != nil {
 		return err
 	}
 
-	goLogger.Debugf("Done running Go build.")
+	log.Debugf("Done running Go build.")
 	return nil
 }
 
@@ -443,7 +441,7 @@ func getGoImportsRecurse(builder *GoBuilder, m module.Module, memo map[string]st
 	stdout, ok := memo[pkg]
 	if !ok {
 		var err error
-		stdout, _, err = runLogged(goLogger, m.Dir, builder.GoCmd, "list", "-f", "{{ join .Imports \"\\n\" }}", pkg)
+		stdout, _, err = runLogged(m.Dir, builder.GoCmd, "list", "-f", "{{ join .Imports \"\\n\" }}", pkg)
 		if err != nil {
 			return nil, fmt.Errorf("could not trace imports: %s", err.Error())
 		}
@@ -521,7 +519,7 @@ func parseGPMLockfile(lockfileVersions *map[string]string, path ...string) error
 	lockfile := filepath.Join(path...)
 	lockfileContents, err := ioutil.ReadFile(lockfile)
 	if err != nil {
-		goLogger.Debugf("Error reading %s: %s", lockfile, err.Error())
+		log.Debugf("Error reading %s: %s", lockfile, err.Error())
 		return fmt.Errorf("could not read %s: %s", lockfile, err.Error())
 	}
 
@@ -541,9 +539,9 @@ func parseGPMLockfile(lockfileVersions *map[string]string, path ...string) error
 func findRevision(projects map[string]string, importPath string) (string, error) {
 	project, err := findRevisionRecurse(projects, importPath)
 	if err != nil {
-		goLogger.Debugf("Could not find project for import path %#v", importPath)
+		log.Debugf("Could not find project for import path %#v", importPath)
 	} else {
-		goLogger.Debugf("Found project %#v for import path %#v", project, importPath)
+		log.Debugf("Found project %#v for import path %#v", project, importPath)
 	}
 	return project, err
 }
@@ -570,10 +568,10 @@ func readLockfile(dir string) (map[string]string, error) {
 	lockfileVersions := make(map[string]string)
 
 	if ok, err := hasDepManifest(dir); err == nil && ok {
-		goLogger.Debugf("Found Dep manifest")
+		log.Debugf("Found Dep manifest")
 
 		var lockfile depLockfile
-		parseLoggedWithUnmarshaller(goLogger, filepath.Join(dir, "Gopkg.lock"), &lockfile, func(data []byte, v interface{}) error {
+		parseLoggedWithUnmarshaller(filepath.Join(dir, "Gopkg.lock"), &lockfile, func(data []byte, v interface{}) error {
 			_, err := toml.Decode(string(data), v)
 			return err
 		})
@@ -581,60 +579,60 @@ func readLockfile(dir string) (map[string]string, error) {
 			lockfileVersions[dependency.Name] = dependency.Revision
 		}
 
-		goLogger.Debugf("Parsed Dep manifest: %#v", lockfile.Projects)
+		log.Debugf("Parsed Dep manifest: %#v", lockfile.Projects)
 	}
 
 	if ok, err := hasGlideManifest(dir); err == nil && ok {
-		goLogger.Debugf("Found Glide manifest")
+		log.Debugf("Found Glide manifest")
 
 		var lockfile glideLockfile
-		parseLoggedWithUnmarshaller(goLogger, filepath.Join(dir, "glide.lock"), &lockfile, yaml.Unmarshal)
+		parseLoggedWithUnmarshaller(filepath.Join(dir, "glide.lock"), &lockfile, yaml.Unmarshal)
 		for _, dependency := range lockfile.Imports {
 			lockfileVersions[dependency.Name] = dependency.Version
 		}
 
-		goLogger.Debugf("Parsed Glide manifest: %#v", lockfile.Imports)
+		log.Debugf("Parsed Glide manifest: %#v", lockfile.Imports)
 	}
 
 	if ok, err := hasGodepManifest(dir); err == nil && ok {
-		goLogger.Debugf("Found Godeps manifest")
+		log.Debugf("Found Godeps manifest")
 
 		var lockfile godepLockfile
-		parseLogged(goLogger, filepath.Join(dir, "Godeps", "Godeps.json"), &lockfile)
+		parseLogged(filepath.Join(dir, "Godeps", "Godeps.json"), &lockfile)
 		for _, dependency := range lockfile.Deps {
 			lockfileVersions[dependency.ImportPath] = dependency.Rev
 		}
 
-		goLogger.Debugf("Parsed Godeps manifest: %#v", lockfile.Deps)
+		log.Debugf("Parsed Godeps manifest: %#v", lockfile.Deps)
 	}
 
 	if ok, err := hasGovendorManifest(dir); err == nil && ok {
-		goLogger.Debugf("Found Govendor manifest")
+		log.Debugf("Found Govendor manifest")
 
 		var lockfile govendorLockfile
-		parseLogged(goLogger, filepath.Join(dir, "vendor", "vendor.json"), &lockfile)
+		parseLogged(filepath.Join(dir, "vendor", "vendor.json"), &lockfile)
 		for _, dependency := range lockfile.Package {
 			lockfileVersions[dependency.Path] = dependency.Revision
 		}
 
-		goLogger.Debugf("Parsed Godeps manifest: %#v", lockfile.Package)
+		log.Debugf("Parsed Godeps manifest: %#v", lockfile.Package)
 	}
 
 	if ok, err := hasVndrManifest(dir); err == nil && ok {
-		goLogger.Debugf("Found Vndr manifest")
+		log.Debugf("Found Vndr manifest")
 
 		parseGPMLockfile(&lockfileVersions, dir, "vendor.conf")
 
-		goLogger.Debugf("Parsed Vndr manifest: %#v", lockfileVersions)
+		log.Debugf("Parsed Vndr manifest: %#v", lockfileVersions)
 	}
 
 	// gdm rolls its own format as well
 	if ok, err := hasGdmManifest(dir); err == nil && ok {
-		goLogger.Debugf("Found Gdm manifest")
+		log.Debugf("Found Gdm manifest")
 
 		parseGPMLockfile(&lockfileVersions, dir, "Godeps")
 
-		goLogger.Debugf("Parsed Gndr manifest: %#v", lockfileVersions)
+		log.Debugf("Parsed Gndr manifest: %#v", lockfileVersions)
 	}
 
 	return lockfileVersions, nil
@@ -646,14 +644,14 @@ func goImportToDir(pkg string) string {
 
 // Analyze traces imports and then looks up revisions in lockfiles
 func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	goLogger.Debugf("Running Go analysis: %#v %#v", m, allowUnresolved)
+	log.Debugf("Running Go analysis: %#v %#v", m, allowUnresolved)
 
 	// Trace imports
 	traced, err := getGoImports(builder, m)
 	if err != nil {
 		return nil, fmt.Errorf("could not trace go imports: %#v", err.Error())
 	}
-	goLogger.Debugf("Traced imports: %#v", traced)
+	log.Debugf("Traced imports: %#v", traced)
 
 	// Resolve the version of each import by finding its appropriate lockfile and reading it.
 	for i, pkg := range traced {
@@ -669,19 +667,19 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 		}
 		if !ok {
 			if allowUnresolved {
-				goLogger.Warningf("Could not find lockfile for package %s", pkg.Project)
+				log.Warningf("Could not find lockfile for package %s", pkg.Project)
 				continue
 			} else {
 				return nil, err
 			}
 		}
-		goLogger.Debugf("Found project folder: %#v", projectFolder)
+		log.Debugf("Found project folder: %#v", projectFolder)
 
 		// Get the lockfile
 		lockfile, err := readLockfile(projectFolder)
 		if err != nil {
 			if allowUnresolved {
-				goLogger.Warningf("Could not find lockfile for package %s", pkg.Project)
+				log.Warningf("Could not find lockfile for package %s", pkg.Project)
 				continue
 			} else {
 				return nil, err
@@ -698,22 +696,22 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 		const vendorPrefix = "/vendor/"
 		vendoredPathSections := strings.Split(pkg.Project, vendorPrefix)
 		importPath := vendoredPathSections[len(vendoredPathSections)-1]
-		goLogger.Debugf("Resolving import: %s", importPath)
+		log.Debugf("Resolving import: %s", importPath)
 
 		importedProject, err := findRevision(lockfile, importPath)
 		if err != nil {
 			if strings.Index(importPath, projectGopath) == 0 {
-				goLogger.Debugf("Did not resolve import: %#v", pkg.Project)
+				log.Debugf("Did not resolve import: %#v", pkg.Project)
 				traced[i].Revision = lockfile[importedProject]
 			} else if allowUnresolved {
-				goLogger.Warningf("Could not resolve import: %#v", pkg.Project)
+				log.Warningf("Could not resolve import: %#v", pkg.Project)
 				traced[i].Revision = lockfile[importedProject]
 			} else {
-				goLogger.Errorf("Could not resolve import: %#v", pkg.Project)
-				goLogger.Debugf("Project folder: %#v", projectFolder)
-				goLogger.Debugf("$GOPATH: %#v", os.Getenv("GOPATH"))
-				goLogger.Debugf("Project folder relative to $GOPATH: %#v", projectGopath)
-				goLogger.Debugf("Lockfile versions: %#v", lockfile)
+				log.Warningf("Could not resolve import: %#v", pkg.Project)
+				log.Debugf("Project folder: %#v", projectFolder)
+				log.Debugf("$GOPATH: %#v", os.Getenv("GOPATH"))
+				log.Debugf("Project folder relative to $GOPATH: %#v", projectGopath)
+				log.Debugf("Lockfile versions: %#v", lockfile)
 				return nil, fmt.Errorf("could not resolve import: %#v", importPath)
 			}
 		} else {
@@ -722,20 +720,20 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 	}
 	deps := computeImportPaths(traced)
 
-	goLogger.Debugf("Done running Go analysis: %#v", deps)
+	log.Debugf("Done running Go analysis: %#v", deps)
 	return deps, nil
 }
 
 // IsBuilt checks whether imports are traceable and lockfiles are available
 func (builder *GoBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
-	goLogger.Debugf("Checking Go build: %#v %#v", m, allowUnresolved)
+	log.Debugf("Checking Go build: %#v %#v", m, allowUnresolved)
 
 	// Attempt to trace imports
 	_, err := getGoImports(builder, m)
 	if err != nil {
 		return false, fmt.Errorf("could not trace go imports: %s", err.Error())
 	}
-	goLogger.Debugf("Tracing imports OK")
+	log.Debugf("Tracing imports OK")
 
 	if allowUnresolved {
 		return true, nil
@@ -747,26 +745,26 @@ func (builder *GoBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, 
 		return false, fmt.Errorf("could not find project folder: %s", err.Error())
 	}
 	if !hasProject {
-		goLogger.Debugf("Checking Go build failed: no project found")
+		log.Debugf("Checking Go build failed: no project found")
 		return false, nil
 	}
-	goLogger.Debugf("Project folder OK")
+	log.Debugf("Project folder OK")
 
 	// Check for lockfiles
 	if ok, err := hasDepManifest(projectFolder); err == nil && ok {
 		if ok, err := hasFile(projectFolder, "Gopkg.lock"); err != nil || !ok {
-			goLogger.Debugf("Checking Go build failed: Dep manifest found, but no lockfile")
+			log.Debugf("Checking Go build failed: Dep manifest found, but no lockfile")
 			return false, err
 		}
 	}
 	if ok, err := hasGlideManifest(projectFolder); err == nil && ok {
 		if ok, err := hasFile(projectFolder, "glide.lock"); err != nil || !ok {
-			goLogger.Debugf("Checking Go build failed: Glide manifest found, but no lockfile")
+			log.Debugf("Checking Go build failed: Glide manifest found, but no lockfile")
 			return false, err
 		}
 	}
 
-	goLogger.Debugf("Done checking Go build: %#v", true)
+	log.Debugf("Done checking Go build: %#v", true)
 	return true, nil
 }
 
@@ -780,7 +778,7 @@ func (builder *GoBuilder) DiscoverModules(dir string) ([]module.Config, error) {
 	var modules []module.Config
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			goLogger.Debugf("Failed to access path %s: %s", path, err.Error())
+			log.Debugf("Failed to access path %s: %s", path, err.Error())
 			return fmt.Errorf("could not read path %s during go module discovery: %s", path, err.Error())
 		}
 		// Skip files (we parse a directory at a time)
@@ -789,7 +787,7 @@ func (builder *GoBuilder) DiscoverModules(dir string) ([]module.Config, error) {
 		}
 		// Skip vendor directories
 		if info.Name() == "vendor" {
-			goLogger.Debugf("Skipping directory: %s", info.Name())
+			log.Debugf("Skipping directory: %s", info.Name())
 			return filepath.SkipDir
 		}
 		// Parse directory, check for `main` package declaration.

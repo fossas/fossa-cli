@@ -10,12 +10,10 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar"
-	logging "github.com/op/go-logging"
 
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
-
-var mavenLogger = logging.MustGetLogger("maven")
 
 // MavenArtifact implements Dependency for Maven builds
 type MavenArtifact struct {
@@ -65,12 +63,12 @@ type MavenBuilder struct {
 
 // Initialize collects metadata on Java and Maven binaries
 func (builder *MavenBuilder) Initialize() error {
-	mavenLogger.Debug("Initializing Maven builder...")
+	log.Debug("Initializing Maven builder...")
 
 	// Set Java context variables
 	javaCmd, javaVersion, err := which("-version", os.Getenv("JAVA_BINARY"), "java")
 	if err != nil {
-		mavenLogger.Warningf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
+		log.Warningf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
 	}
 	builder.JavaCmd = javaCmd
 	builder.JavaVersion = javaVersion
@@ -83,35 +81,35 @@ func (builder *MavenBuilder) Initialize() error {
 	builder.MvnCmd = mavenCmd
 	builder.MvnVersion = mavenVersion
 
-	mavenLogger.Debugf("Done initializing Maven builder: %#v", builder)
+	log.Debugf("Done initializing Maven builder: %#v", builder)
 	return nil
 }
 
 // Build runs `mvn install -DskipTests -Drat.skip=true` and cleans with `mvn clean`
 func (builder *MavenBuilder) Build(m module.Module, force bool) error {
-	mavenLogger.Debugf("Running Maven build: %#v %#v", m, force)
+	log.Debugf("Running Maven build: %#v %#v", m, force)
 
 	if force {
-		_, _, err := runLogged(mavenLogger, m.Dir, builder.MvnCmd, "clean")
+		_, _, err := runLogged(m.Dir, builder.MvnCmd, "clean")
 		if err != nil {
 			return fmt.Errorf("could not remove Maven cache: %s", err.Error())
 		}
 	}
 
-	_, _, err := runLogged(mavenLogger, m.Dir, builder.MvnCmd, "install", "-DskipTests", "-Drat.skip=true")
+	_, _, err := runLogged(m.Dir, builder.MvnCmd, "install", "-DskipTests", "-Drat.skip=true")
 	if err != nil {
 		return fmt.Errorf("could not run Maven build: %s", err.Error())
 	}
 
-	mavenLogger.Debug("Done running Maven build.")
+	log.Debug("Done running Maven build.")
 	return nil
 }
 
 // Analyze parses the output of `mvn dependency:list`
 func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	mavenLogger.Debugf("Running Maven analysis: %#v %#v", m, allowUnresolved)
+	log.Debugf("Running Maven analysis: %#v %#v", m, allowUnresolved)
 
-	output, _, err := runLogged(mavenLogger, m.Dir, builder.MvnCmd, "dependency:tree")
+	output, _, err := runLogged(m.Dir, builder.MvnCmd, "dependency:tree")
 	if err != nil {
 		return nil, fmt.Errorf("could not get dependency list from Maven: %s", err.Error())
 	}
@@ -125,7 +123,7 @@ func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 		if startRegex.MatchString(line) {
 			if inGraph {
 				// Sanity check
-				mavenLogger.Panicf("Bad graph separation: %s", line)
+				log.Panicf("Bad graph separation: %s", line)
 			}
 			inGraph = true
 			continue
@@ -155,7 +153,7 @@ func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 		depth := len(depMatches[1])
 		if depth%3 != 0 {
 			// Sanity check
-			gradleLogger.Panicf("Bad depth: %#v %s %#v", depth, line, depMatches)
+			log.Panicf("Bad depth: %#v %s %#v", depth, line, depMatches)
 		}
 		// Parse locator
 		locatorMatches := locatorRegex.FindStringSubmatch(depMatches[2])
@@ -174,15 +172,15 @@ func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 	}
 	deps := computeImportPaths(imports)
 
-	mavenLogger.Debugf("Done running Maven analysis: %#v", deps)
+	log.Debugf("Done running Maven analysis: %#v", deps)
 	return deps, nil
 }
 
 // IsBuilt checks whether `mvn dependency:list` produces output.
 func (builder *MavenBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
-	mavenLogger.Debugf("Checking Maven build: %#v %#v", m, allowUnresolved)
+	log.Debugf("Checking Maven build: %#v %#v", m, allowUnresolved)
 
-	output, _, err := runLogged(mavenLogger, m.Dir, builder.MvnCmd, "dependency:list", "-B")
+	output, _, err := runLogged(m.Dir, builder.MvnCmd, "dependency:list", "-B")
 	if err != nil {
 		if strings.Index(output, "Could not find artifact") != -1 {
 			return false, nil
@@ -191,7 +189,7 @@ func (builder *MavenBuilder) IsBuilt(m module.Module, allowUnresolved bool) (boo
 	}
 	isBuilt := output != ""
 
-	mavenLogger.Debugf("Done checking Maven build: %#v", isBuilt)
+	log.Debugf("Done checking Maven build: %#v", isBuilt)
 	return isBuilt, nil
 }
 
@@ -207,7 +205,7 @@ func (builder *MavenBuilder) DiscoverModules(dir string) ([]module.Config, error
 		// Root pom found; parse and return
 		artifactName := filepath.Base(filepath.Dir(dir))
 		var rootPom POMFile
-		if err := parseLoggedWithUnmarshaller(mavenLogger, filepath.Join(dir, "pom.xml"), &rootPom, xml.Unmarshal); err == nil {
+		if err := parseLoggedWithUnmarshaller(filepath.Join(dir, "pom.xml"), &rootPom, xml.Unmarshal); err == nil {
 			if rootPom.Name != "" {
 				artifactName = rootPom.Name
 			} else if rootPom.ArtifactID != "" {
@@ -233,7 +231,7 @@ func (builder *MavenBuilder) DiscoverModules(dir string) ([]module.Config, error
 	for i, path := range pomFilePaths {
 		artifactName := filepath.Base(filepath.Dir(dir))
 		var artifactPom POMFile
-		if err := parseLoggedWithUnmarshaller(mavenLogger, path, &artifactPom, xml.Unmarshal); err == nil {
+		if err := parseLoggedWithUnmarshaller(path, &artifactPom, xml.Unmarshal); err == nil {
 			if artifactPom.Name != "" {
 				artifactName = artifactPom.Name
 			} else if artifactPom.ArtifactID != "" {

@@ -9,14 +9,12 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
-
-var reportLogger = logging.MustGetLogger("report")
 
 type dependencyResponse struct {
 	Loc struct {
@@ -55,11 +53,11 @@ func getRevisions(apiURL string, apiKey string, locators []string) ([]dependency
 func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, analyses []analysis) {
 	server, err := url.Parse(endpoint)
 	if err != nil {
-		reportLogger.Fatalf("Invalid FOSSA endpoint: %s", err.Error())
+		log.Fatalf("Invalid FOSSA endpoint: %s", err.Error())
 	}
 	api, err := server.Parse(fmt.Sprintf("/api/revisions"))
 	if err != nil {
-		reportLogger.Fatalf("Invalid API endpoint: %s", err.Error())
+		log.Fatalf("Invalid API endpoint: %s", err.Error())
 	}
 
 	s.Suffix = " Loading licenses..."
@@ -89,7 +87,7 @@ func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, analyses []anal
 					responsePage, err := getRevisions(api.String(), apiKey, locators)
 					if err != nil {
 						s.Stop()
-						reportLogger.Fatalf("Could load licenses: %s", err.Error())
+						log.Fatalf("Could load licenses: %s", err.Error())
 					}
 					responses = append(responses, responsePage...)
 					locators = []string{}
@@ -104,7 +102,7 @@ func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, analyses []anal
 		responsePage, err := getRevisions(api.String(), apiKey, locators)
 		if err != nil {
 			s.Stop()
-			reportLogger.Fatalf("Could load licenses: %s", err.Error())
+			log.Fatalf("Could load licenses: %s", err.Error())
 		}
 		responses = append(responses, responsePage...)
 	}
@@ -143,7 +141,7 @@ The following software have components provided under the terms of this license:
 func reportCmd(c *cli.Context) {
 	conf, err := config.New(c)
 	if err != nil {
-		reportLogger.Fatalf("Could not load configuration: %s", err.Error())
+		log.Fatalf("Could not load configuration: %s", err.Error())
 	}
 
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
@@ -153,7 +151,7 @@ func reportCmd(c *cli.Context) {
 	analyses, err := doAnalyze(conf.Modules, conf.AnalyzeCmd.AllowUnresolved)
 	s.Stop()
 	if err != nil {
-		reportLogger.Fatalf("Could not complete analysis (is the project built?): %s", err.Error())
+		log.Fatalf("Could not complete analysis (is the project built?): %s", err.Error())
 	}
 
 	switch conf.ReportCmd.Type {
@@ -166,10 +164,10 @@ func reportCmd(c *cli.Context) {
 		}
 		out, err := json.Marshal(outMap)
 		if err != nil {
-			reportLogger.Fatalf("Could not marshal analysis: %s", err.Error())
+			log.Fatalf("Could not marshal analysis: %s", err.Error())
 		}
 		fmt.Println(string(out))
 	default:
-		reportLogger.Fatalf("Report type is not recognized (supported types are \"dependencies\" or \"licenses\": %s", conf.ReportCmd.Type)
+		log.Fatalf("Report type is not recognized (supported types are \"dependencies\" or \"licenses\": %s", conf.ReportCmd.Type)
 	}
 }

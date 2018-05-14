@@ -11,11 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
-	logging "github.com/op/go-logging"
 )
-
-var commonLogger = logging.MustGetLogger("common")
 
 // Utilities for finding files and manifests
 func hasFile(elem ...string) (bool, error) {
@@ -107,39 +105,39 @@ func runInDir(dir string, name string, arg ...string) (string, string, error) {
 }
 
 // Utilities for debug logging
-func runLogged(logger *logging.Logger, dir string, name string, arg ...string) (string, string, error) {
+func runLogged(dir string, name string, arg ...string) (string, string, error) {
 	cmd := strings.Join(append([]string{name}, arg...), " ")
-	logger.Debugf("Running `%s` in dir `%s`...", cmd, dir)
+	log.Debugf("Running `%s` in dir `%s`...", cmd, dir)
 	stdout, stderr, err := runInDir(dir, name, arg...)
 	if err != nil {
-		logger.Debugf("Running `%s` failed: %#v %#v", cmd, err, stderr)
+		log.Debugf("Running `%s` failed: %#v %#v", cmd, err, stderr)
 		return stdout, stderr, fmt.Errorf("running `%s` failed: %#v %#v", cmd, err, stderr)
 	}
-	logger.Debugf("Done running `%s`: %#v %#v", stdout, stderr)
+	log.Debugf("Done running `%s`: %#v %#v", stdout, stderr)
 	return stdout, stderr, nil
 }
 
-func parseLogged(logger *logging.Logger, file string, v interface{}) error {
-	return parseLoggedWithUnmarshaller(logger, file, v, json.Unmarshal)
+func parseLogged(file string, v interface{}) error {
+	return parseLoggedWithUnmarshaller(file, v, json.Unmarshal)
 }
 
 type unmarshaller func(data []byte, v interface{}) error
 
-func parseLoggedWithUnmarshaller(logger *logging.Logger, file string, v interface{}, unmarshal unmarshaller) error {
-	logger.Debugf("Parsing %s...", file)
+func parseLoggedWithUnmarshaller(file string, v interface{}, unmarshal unmarshaller) error {
+	log.Debugf("Parsing %s...", file)
 
 	contents, err := ioutil.ReadFile(file)
 	if err != nil {
-		logger.Debugf("Error reading %s: %s", file, err.Error())
+		log.Debugf("Error reading %s: %s", file, err.Error())
 		return err
 	}
 	err = unmarshal(contents, v)
 	if err != nil {
-		logger.Debugf("Error parsing %s: %#v %#v", file, err, contents)
+		log.Debugf("Error parsing %s: %#v %#v", file, err, contents)
 		return err
 	}
 
-	logger.Debugf("Done parsing %s.", file)
+	log.Debugf("Done parsing %s.", file)
 	return nil
 }
 
@@ -152,7 +150,7 @@ func whichWithResolver(cmds []string, getVersion versionResolver) (string, strin
 		if err == nil {
 			return cmd, version, nil
 		}
-		commonLogger.Debugf("Tried resolving `%s` but did not work: %#v %#v", cmd, err, version)
+		log.Debugf("Tried resolving `%s` but did not work: %#v %#v", cmd, err, version)
 	}
 	return "", "", errors.New("could not resolve version")
 }

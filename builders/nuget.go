@@ -11,13 +11,11 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar"
-	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
 
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
-
-var nugetLogger = logging.MustGetLogger("nuget")
 
 type nuGetLockfileV2or3 struct {
 	// TODO: let the user configure a target to use.
@@ -36,12 +34,12 @@ type NuGetBuilder struct {
 
 // Initialize collects metadata on NuGet and NuGet environments
 func (builder *NuGetBuilder) Initialize() error {
-	nugetLogger.Debug("Initializing NuGet builder...")
+	log.Debug("Initializing NuGet builder...")
 
 	// Set DotNET context variables
 	dotNetCmd, dotNetVersion, err := which("--version", os.Getenv("DOTNET_BINARY"), "dotnet")
 	if err != nil {
-		nugetLogger.Warningf("Could not find `dotnet` binary (try setting $DOTNET_BINARY): %s", err.Error())
+		log.Warningf("Could not find `dotnet` binary (try setting $DOTNET_BINARY): %s", err.Error())
 	}
 	builder.DotNETCmd = dotNetCmd
 	builder.DotNETVersion = strings.TrimRight(dotNetVersion, "\n")
@@ -60,31 +58,31 @@ func (builder *NuGetBuilder) Initialize() error {
 			builder.NuGetVersion = match[1]
 		}
 	} else {
-		nugetLogger.Warningf("Could not find NuGet binary (try setting $NUGET_BINARY): %s", err.Error())
+		log.Warningf("Could not find NuGet binary (try setting $NUGET_BINARY): %s", err.Error())
 	}
 
-	nugetLogger.Debugf("Initialized NuGet builder: %#v", builder)
+	log.Debugf("Initialized NuGet builder: %#v", builder)
 	return nil
 }
 
 // Build runs `dotnet restore` and falls back to `nuget restore`
 func (builder *NuGetBuilder) Build(m module.Module, force bool) error {
-	nugetLogger.Debugf("Running NuGet build: %#v %#v", m, force)
+	log.Debugf("Running NuGet build: %#v %#v", m, force)
 
 	if builder.DotNETCmd != "" {
 		dotNetSuccessKey := "Restore completed"
-		dotNetStdout, dotNetStderr, err := runLogged(nugetLogger, m.Dir, builder.DotNETCmd, "restore")
+		dotNetStdout, dotNetStderr, err := runLogged(m.Dir, builder.DotNETCmd, "restore")
 		if err == nil && (strings.Contains(dotNetStdout, dotNetSuccessKey) || strings.Contains(dotNetStderr, dotNetSuccessKey)) {
-			nugetLogger.Debug("NuGet build succeeded with `dotnet restore`.")
+			log.Debug("NuGet build succeeded with `dotnet restore`.")
 			return nil
 		}
 	}
 
-	nugetLogger.Debug("`dotnet restore` did not succeed, falling back to `nuget restore`")
+	log.Debug("`dotnet restore` did not succeed, falling back to `nuget restore`")
 
 	if builder.NuGetCmd != "" {
 		pkgDir, _ := resolveNugetPackagesDir(m.Dir)
-		_, _, err := runLogged(nugetLogger, m.Dir, builder.NuGetCmd, "restore", "-PackagesDirectory", pkgDir)
+		_, _, err := runLogged(m.Dir, builder.NuGetCmd, "restore", "-PackagesDirectory", pkgDir)
 		if err != nil {
 			return fmt.Errorf("could not run `nuget install`: %s", err.Error())
 		}
@@ -92,7 +90,7 @@ func (builder *NuGetBuilder) Build(m module.Module, force bool) error {
 		return errors.New("No tools installed in local environment for NuGet build")
 	}
 
-	nugetLogger.Debug("Done running NuGet build.")
+	log.Debug("Done running NuGet build.")
 	return nil
 }
 
@@ -124,7 +122,7 @@ type dotNETPackageReference struct {
 
 // Given a starting `*.*proj` file, construct a graph of project references
 func computeDotNETProjectGraph(cmd string, rootProjectFile string) (dotNETProjectNode, error) {
-	nugetLogger.Debugf("Computing project graph from: %s", rootProjectFile)
+	log.Debugf("Computing project graph from: %s", rootProjectFile)
 
 	// Read file to get project reference name
 	projectFileContents, err := ioutil.ReadFile(rootProjectFile)
@@ -190,7 +188,7 @@ type dotNETPackageNode struct {
 
 // Given a project references graph, construct a package graph with direct dependencies.
 func createDotNETPackageGraph(rootProjectNode dotNETProjectNode) (dotNETPackageNode, error) {
-	nugetLogger.Debugf("Creating package graph from: %#v", rootProjectNode)
+	log.Debugf("Creating package graph from: %#v", rootProjectNode)
 
 	// Read file to get direct dependencies
 	projectFileContents, err := ioutil.ReadFile(rootProjectNode.file)
@@ -296,7 +294,7 @@ func flattenDotNETPackageGraph(pkg dotNETPackageNode) []Imported {
 
 // Analyze parses the output of NuGet lockfiles and falls back to parsing the packages folder
 func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	nugetLogger.Debugf("Running NuGet analysis: %#v %#v", m, allowUnresolved)
+	log.Debugf("Running NuGet analysis: %#v %#v", m, allowUnresolved)
 	var deps []module.Dependency
 
 	// Find and parse a lockfile
@@ -320,7 +318,7 @@ func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 
 		// Parse lockfile: get dependency graph edges and resolved versions.
 		var lockFile nuGetLockfileV2or3
-		err = parseLogged(nugetLogger, lockFilePath, &lockFile)
+		err = parseLogged(lockFilePath, &lockFile)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not parse NuGet lockfile")
 		}
@@ -355,7 +353,7 @@ func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 		// Fallback to parsing the packages directory
 		packagesDir, err := resolveNugetPackagesDir(m.Dir)
 
-		nugetLogger.Debugf("No lockfile found; parsing packages directory: %s", packagesDir)
+		log.Debugf("No lockfile found; parsing packages directory: %s", packagesDir)
 		if exists, err := hasFile(packagesDir); err != nil || !exists {
 			return nil, fmt.Errorf("Unable to verify packages directory: %s", packagesDir)
 		}
@@ -368,7 +366,7 @@ func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 		for _, f := range packagePaths {
 			packageNameRe := regexp.MustCompile(`(([A-z]+\.?)+)\.(([0-9]+\.)+[\w-]+)`)
 			match := packageNameRe.FindStringSubmatch(f.Name())
-			nugetLogger.Debugf("%s, %V", len(match), match)
+			log.Debugf("%s, %V", len(match), match)
 			if len(match) == 5 {
 				deps = append(deps, module.Dependency{
 					Locator: module.Locator{
@@ -384,7 +382,7 @@ func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 
 	// TODO: filter out system deps
 
-	nugetLogger.Debugf("Done running NuGet analysis: %#v", deps)
+	log.Debugf("Done running NuGet analysis: %#v", deps)
 	return deps, nil
 }
 
@@ -394,9 +392,9 @@ func (builder *NuGetBuilder) IsBuilt(m module.Module, allowUnresolved bool) (boo
 		return true, nil
 	}
 
-	nugetLogger.Debug("Checking NuGet module directory for a project lockfile")
+	log.Debug("Checking NuGet module directory for a project lockfile")
 	if _, err := resolveNuGetProjectLockfile(m.Dir); err != nil {
-		nugetLogger.Debug("Checking NuGet packages directory for existence")
+		log.Debug("Checking NuGet packages directory for existence")
 
 		packagesDir, _ := resolveNugetPackagesDir(m.Dir)
 		return hasFile(packagesDir)
@@ -419,7 +417,7 @@ func resolveNugetPackagesDir(dir string) (string, error) {
 func resolveNuGetProjectLockfile(dir string) (string, error) {
 	lockfilePathCandidates := []string{"project.lock.json", "obj/project.assets.json"}
 	for _, path := range lockfilePathCandidates {
-		nugetLogger.Debugf("Checking for lockfile: %s/%s", dir, path)
+		log.Debugf("Checking for lockfile: %s/%s", dir, path)
 		if hasLockfile, err := hasFile(dir, path); hasLockfile && err == nil {
 			return filepath.Join(dir, path), nil
 		}

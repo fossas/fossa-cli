@@ -10,13 +10,11 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar"
-	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
 
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
-
-var rubyLogger = logging.MustGetLogger("ruby")
 
 // RubyBuilder implements Builder for Bundler (Gemfile) builds
 type RubyBuilder struct {
@@ -32,12 +30,12 @@ type RubyBuilder struct {
 
 // Initialize collects metadata on Ruby, Gem, and Bundler binaries
 func (builder *RubyBuilder) Initialize() error {
-	rubyLogger.Debug("Initializing Ruby builder...")
+	log.Debug("Initializing Ruby builder...")
 
 	// Set Ruby context variables
 	rubyCmd, rubyVersion, err := which("-v", os.Getenv("RUBY_BINARY"), "ruby")
 	if err != nil {
-		rubyLogger.Warningf("Could not find Ruby binary (try setting $RUBY_BINARY): %s", err.Error())
+		log.Warningf("Could not find Ruby binary (try setting $RUBY_BINARY): %s", err.Error())
 	}
 	builder.RubyCmd = rubyCmd
 	builder.RubyVersion = rubyVersion
@@ -45,7 +43,7 @@ func (builder *RubyBuilder) Initialize() error {
 	// Set Gem context variables
 	gemCmd, gemVersion, err := which("-v", os.Getenv("GEM_BINARY"), "gem")
 	if err != nil {
-		rubyLogger.Warningf("Could not find Gem binary (try setting $GEM_BINARY): %s", err.Error())
+		log.Warningf("Could not find Gem binary (try setting $GEM_BINARY): %s", err.Error())
 	}
 	builder.GemCmd = gemCmd
 	builder.GemVersion = gemVersion
@@ -58,27 +56,27 @@ func (builder *RubyBuilder) Initialize() error {
 	builder.BundlerCmd = bundlerCmd
 	builder.BundlerVersion = bundlerVersion
 
-	rubyLogger.Debugf("Initialized Ruby builder: %#v", builder)
+	log.Debugf("Initialized Ruby builder: %#v", builder)
 	return nil
 }
 
 // Build runs `bundler install --deployment --frozen` and cleans with `rm Gemfile.lock`
 func (builder *RubyBuilder) Build(m module.Module, force bool) error {
-	rubyLogger.Debugf("Running Ruby build: %#v %#v", m, force)
+	log.Debugf("Running Ruby build: %#v %#v", m, force)
 
 	if force {
-		_, _, err := runLogged(rubyLogger, m.Dir, "rm", "Gemfile.lock")
+		_, _, err := runLogged(m.Dir, "rm", "Gemfile.lock")
 		if err != nil {
 			return fmt.Errorf("could not remove Ruby cache: %s", err.Error())
 		}
 	}
 
-	_, _, err := runLogged(rubyLogger, m.Dir, builder.BundlerCmd, "install", "--deployment", "--frozen")
+	_, _, err := runLogged(m.Dir, builder.BundlerCmd, "install", "--deployment", "--frozen")
 	if err != nil {
 		return fmt.Errorf("could not run Ruby build: %s", err.Error())
 	}
 
-	rubyLogger.Debug("Done running Ruby build.")
+	log.Debug("Done running Ruby build.")
 	return nil
 }
 
@@ -131,7 +129,7 @@ func flattenRubyGems(root rubyGem, from module.ImportPath) []Imported {
 
 // Analyze parses a `Gemfile.lock`
 func (builder *RubyBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	rubyLogger.Debugf("Running Ruby analysis: %#v %#v", m, allowUnresolved)
+	log.Debugf("Running Ruby analysis: %#v %#v", m, allowUnresolved)
 
 	lockfileBytes, err := ioutil.ReadFile(path.Join(m.Dir, "Gemfile.lock"))
 	if err != nil {
@@ -172,7 +170,7 @@ func (builder *RubyBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mo
 					}
 					edges[parent][matches[2]] = true
 				} else {
-					rubyLogger.Panicf("bad depth: %#v %#v\n", line, matches)
+					log.Panicf("bad depth: %#v %#v\n", line, matches)
 				}
 			}
 		} else if header == "DEPENDENCIES" {
@@ -226,17 +224,17 @@ func (builder *RubyBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mo
 	// Remove "root" module at the end of `imports`
 	deps := computeImportPaths(imports[:len(imports)-1])
 
-	rubyLogger.Debugf("Done running Ruby analysis: %#v", deps)
+	log.Debugf("Done running Ruby analysis: %#v", deps)
 	return deps, nil
 }
 
 // IsBuilt checks whether `Gemfile.lock` exists
 func (builder *RubyBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
-	rubyLogger.Debugf("Checking Ruby build: %#v %#v", m, allowUnresolved)
+	log.Debugf("Checking Ruby build: %#v %#v", m, allowUnresolved)
 
 	ok, err := hasFile(m.Dir, "Gemfile.lock")
 
-	rubyLogger.Debugf("Done checking Ruby build: %#v", ok)
+	log.Debugf("Done checking Ruby build: %#v", ok)
 	return ok, err
 }
 
@@ -263,7 +261,7 @@ func (builder *RubyBuilder) DiscoverModules(dir string) ([]module.Config, error)
 				matches := matchGemName.FindStringSubmatch(string(gemSpecContents))
 				// matches: [0] = full match, [1] capture group
 				if len(matches) == 2 {
-					rubyLogger.Debugf("%v", matches[1])
+					log.Debugf("%v", matches[1])
 					gemName = matches[1]
 				}
 			}

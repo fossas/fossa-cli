@@ -2,15 +2,14 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/mattn/go-isatty"
-	logging "github.com/op/go-logging"
 	"github.com/urfave/cli"
 
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -118,20 +117,9 @@ func New(c *cli.Context) (CLIConfig, error) {
 	}
 
 	// Configure logging.
-	if config.Debug {
-		formatter := logging.MustStringFormatter(`%{color}%{time} %{level} %{module}:%{shortpkg}/%{shortfile}/%{shortfunc}%{color:reset} %{message}`)
-		stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), formatter))
-		stderrBackend.SetLevel(logging.DEBUG, "")
-		logging.SetBackend(stderrBackend)
-	} else {
-		formatter := logging.MustStringFormatter(`%{color}%{level}%{color:reset} %{message}`)
-		stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), formatter))
-		stderrBackend.SetLevel(logging.WARNING, "")
-		logging.SetBackend(stderrBackend)
-	}
+	log.Initialize(config.Interactive, config.Debug)
 
-	configLogger.Debugf("Configuration initialized: %#v", config)
-
+	log.Debugf("Configuration initialized: %#v", config)
 	return config, nil
 }
 
