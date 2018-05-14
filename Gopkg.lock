@@ -45,6 +45,12 @@
   version = "v1.6.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/gnewton/jargo"
+  packages = ["."]
+  revision = "41f5f186a80591040a864150c28f5b1105a34e12"
+
+[[projects]]
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   revision = "925541529c1fa6821df4e44ce2723319eb2be768"
@@ -322,6 +328,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "babe397392a464ae4b652d7d1f50e4ca67ebd13a361cc16468933ad9a3b467c1"
+  inputs-digest = "208830846f7b4a6d73ebb7d7938dd50ab391128b087d97747ea288f55081cc96"
   solver-name = "gps-cdcl"
   solver-version = 1
