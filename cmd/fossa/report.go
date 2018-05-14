@@ -50,7 +50,7 @@ func getRevisions(apiURL string, apiKey string, locators []string) ([]dependency
 	return deps, nil
 }
 
-func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, a analysis) {
+func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, analyses []analysis) {
 	server, err := url.Parse(endpoint)
 	if err != nil {
 		log.Fatalf("Invalid FOSSA endpoint: %s", err.Error())
@@ -63,15 +63,15 @@ func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, a analysis) {
 	s.Suffix = " Loading licenses..."
 	s.Start()
 	total := 0
-	for _, deps := range a {
-		for range deps {
+	for _, a := range analyses {
+		for range a.dependencies {
 			total++
 		}
 	}
 	var locators []string
 	var responses []dependencyResponse
-	for _, deps := range a {
-		for _, dep := range deps {
+	for _, a := range analyses {
+		for _, dep := range a.dependencies {
 			if dep.IsResolved() {
 				locator := dep.Locator.String()
 				// We do this because the reports API treats go fetchers as git fetchers
@@ -148,7 +148,7 @@ func reportCmd(c *cli.Context) {
 
 	s.Suffix = " Analyzing modules..."
 	s.Start()
-	analysis, err := doAnalyze(conf.Modules, conf.AnalyzeCmd.AllowUnresolved)
+	analyses, err := doAnalyze(conf.Modules, conf.AnalyzeCmd.AllowUnresolved)
 	s.Stop()
 	if err != nil {
 		log.Fatalf("Could not complete analysis (is the project built?): %s", err.Error())
@@ -156,11 +156,11 @@ func reportCmd(c *cli.Context) {
 
 	switch conf.ReportCmd.Type {
 	case "licenses":
-		reportLicenses(s, conf.Endpoint, conf.APIKey, analysis)
+		reportLicenses(s, conf.Endpoint, conf.APIKey, analyses)
 	case "dependencies":
 		outMap := make(map[string][]module.Dependency)
-		for key, deps := range analysis {
-			outMap[key.module.Name] = deps
+		for _, a := range analyses {
+			outMap[a.module.Name] = a.dependencies
 		}
 		out, err := json.Marshal(outMap)
 		if err != nil {

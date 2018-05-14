@@ -77,10 +77,10 @@ func normalize(builder module.Builder, m module.Module, deps []module.Dependency
 	}, nil
 }
 
-func normalizeAnalysis(results analysis) ([]normalizedModule, error) {
+func normalizeAnalysis(results []analysis) ([]normalizedModule, error) {
 	var normalized []normalizedModule
-	for key, deps := range results {
-		n, err := normalize(key.builder, key.module, deps)
+	for _, res := range results {
+		n, err := normalize(res.builder, res.module, res.dependencies)
 		if err != nil {
 			return nil, err
 		}

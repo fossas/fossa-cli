@@ -21,7 +21,7 @@
 
 **Features:**
 
-- Supports [over 18+ languages & environments](docs/how-it-works.md) (JavaScript, Java, Ruby, Python, Golang, PHP, .NET, etc...)
+- Supports [over 20+ languages & environments](docs/how-it-works.md) (JavaScript, Java, Ruby, Python, Golang, PHP, .NET, etc...)
 - Auto-configures for monoliths; instantly handles multiple builds in large codebases
 - Fast & portable; a cross-platform binary you can drop into CI or dev machines
 - Generates offline documentation for license notices & third-party attributions

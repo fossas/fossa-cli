@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="Simple ActiveJDBC Example" default="clean" basedir=".">
+
+
+
+    <property name="dist" value="dist"/>
+    <property name="classes" value="build/classes"/>
+    <property name="test_classes" value="build/test_classes"/>
+
+    <path id="compile_classpath">
+        <pathelement location="${classes}"/>
+        <fileset dir="lib">
+            <include name="*.jar"/>
+        </fileset>
+    </path>
+
+    <path id="build_classpath">
+        <path refid="compile_classpath"/>
+        <fileset dir="build_time_libs">
+            <include name="*.jar"/>
+        </fileset>
+    </path>
+
+    <path id="test_classpath">
+        <path refid="compile_classpath"/>
+        <fileset dir="build_time_libs">
+            <include name="*.jar"/>
+        </fileset>
+        <pathelement  location="${test_classes}"/>
+    </path>
+
+    <path id="run_classpath">
+        <fileset dir="lib">
+            <include name="*.jar"/>
+        </fileset>
+        <fileset dir="dist">
+            <include name="*.jar"/>
+        </fileset>
+    </path>
+
+    <target name="clean">
+        <delete dir="${classes}" failonerror="true"/>
+        <mkdir dir="${classes}"/>
+        <delete dir="${test_classes}" failonerror="true"/>
+        <mkdir dir="${test_classes}"/>
+        <delete dir="${dist}" failonerror="true"/>
+        <mkdir dir="${dist}"/>
+    </target>
+
+    <target name="compile" depends="clean">
+        <javac srcdir="src" destdir="${classes}" debug="on" optimize="off" deprecation="off" includeantruntime="false">
+            <classpath refid="compile_classpath"/>
+        </javac>
+    </target>
+
+
+    <target name="compile_tests" depends="compile">
+        <javac srcdir="src_test" destdir="${test_classes}" debug="on" optimize="off" deprecation="off" includeantruntime="false">
+            <classpath refid="build_classpath"/>
+        </javac>
+    </target>
+
+    <target name="instrument" depends="compile_tests">
+        <java classname="org.javalite.instrumentation.Main">
+            <sysproperty key="outputDirectory" value="${classes}"/>
+            <classpath refid="build_classpath"/>
+        </java>
+    </target>
+
+    <target name="test" depends="instrument">
+        <junit  printsummary="yes"  haltonfailure="true" showoutput="true">
+            <classpath>
+                <path refid="test_classpath"/>
+            </classpath>
+            <formatter type="plain"/>            
+            <test name="activejdbc.ant.example.EmployeeSpec"/>
+        </junit>
+    </target>
+
+    <target name="package" depends="test">
+        <jar destfile="${dist}/ant-example.jar" basedir="${classes}"/>
+    </target>
+    
+    <target name="run" depends="package">
+        <java classname="activejdbc.ant.example.Main" failonerror="true" fork="true">
+            <jvmarg value="-Dactivejdbc.log"/>
+            <classpath refid="run_classpath"/>
+        </java>
+    </target>
+
+</project>

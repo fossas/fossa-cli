@@ -197,7 +197,7 @@ func defaultCmd(c *cli.Context) {
 		log.Fatal("No modules specified for analysis.")
 	}
 
-	dependencies := make(analysis)
+	analyses := []analysis{}
 
 	for i, m := range conf.Modules {
 		s.Suffix = fmt.Sprintf(" Running build analysis (%d/%d): %s", i+1, len(conf.Modules), m.Name)
@@ -248,14 +248,15 @@ func defaultCmd(c *cli.Context) {
 		}
 		s.Stop()
 
-		dependencies[analysisKey{
-			builder: builder,
-			module:  module,
-		}] = deps
+		analyses = append(analyses, analysis{
+			builder:      builder,
+			module:       module,
+			dependencies: deps,
+		})
 	}
 
 	if conf.AnalyzeCmd.Output {
-		normalModules, err := normalizeAnalysis(dependencies)
+		normalModules, err := normalizeAnalysis(analyses)
 		if err != nil {
 			log.Fatalf("Could not normalize build data: %s", err.Error())
 		}
@@ -281,7 +282,7 @@ func defaultCmd(c *cli.Context) {
 	s.Suffix = fmt.Sprintf(" Uploading build results (%d/%d)...", len(conf.Modules), len(conf.Modules))
 	s.Restart()
 
-	normalModules, err := normalizeAnalysis(dependencies)
+	normalModules, err := normalizeAnalysis(analyses)
 	if err != nil {
 		log.Fatalf("Could not normalize build data: %s", err.Error())
 	}
