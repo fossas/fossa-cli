@@ -104,7 +104,7 @@ func (builder *AntBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 	return dependencies, nil
 }
 
-// locatorFromJar resolves a locator from
+// locatorFromJar resolves a locator from a .jar file by inspecting its contents
 func locatorFromJar(path string) (module.Locator, error) {
 	antLogger.Debugf("processing locator from Jar: %s", path)
 
