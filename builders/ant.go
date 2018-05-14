@@ -70,11 +70,12 @@ func (builder *AntBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 
 	options := m.Context.(map[string]interface{})
 
-	libdir := options["libdir"].(string)
-	if libdir == "" {
-		libdir = "lib"
+	libdir := "lib"
+	if options["libdir"] != nil {
+		libdir = options["libdir"].(string)
 	}
 
+	antLogger.Debugf("resolving ant libs in: %s", libdir)
 	libDirExists, err := hasFile(m.Dir, libdir)
 	if !libDirExists || err != nil {
 		return nil, errors.New("unable to resolve library directory, try specifying it using the `modules.options.libdir` property in `fossa.yml`")
@@ -104,6 +105,54 @@ func (builder *AntBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 	return dependencies, nil
 }
 
+func getPOMFromJar(path string) (POMFile, error) {
+	var pomFile POMFile
+
+	antLogger.Debugf(path)
+	if path == "" {
+		return pomFile, errors.New("invalid POM path specified")
+	}
+
+	jarFile, err := os.Open(path)
+	if err != nil {
+		return pomFile, err
+	}
+
+	defer jarFile.Close()
+
+	zfi, err := jarFile.Stat()
+	if err != nil {
+		return pomFile, err
+	}
+
+	zr, err := zip.NewReader(jarFile, zfi.Size())
+	if err != nil {
+		return pomFile, err
+	}
+
+	for _, f := range zr.File {
+		// decode a single pom.xml directly from jar
+		if f.Name == path {
+			rc, err := f.Open()
+			if err != nil {
+				return pomFile, err
+			}
+			defer rc.Close()
+
+			reader := bufio.NewReader(rc)
+			decoder := xml.NewDecoder(reader)
+
+			if err := decoder.Decode(&pomFile); err != nil {
+				return pomFile, err
+			}
+
+			return pomFile, nil
+		}
+	}
+
+	return pomFile, errors.New("unable to parse POM from Jar")
+}
+
 // locatorFromJar resolves a locator from a .jar file by inspecting its contents
 func locatorFromJar(path string) (module.Locator, error) {
 	antLogger.Debugf("processing locator from Jar: %s", path)
@@ -118,38 +167,16 @@ func locatorFromJar(path string) (module.Locator, error) {
 			}
 		}
 
-		if pomFilePath != "" {
-			// open the jar
-			if jarFile, err := os.Open(path); err == nil {
-				defer jarFile.Close()
-
-				if zfi, err := jarFile.Stat(); err == nil {
-					if zr, err := zip.NewReader(jarFile, zfi.Size()); err == nil {
-						for _, f := range zr.File {
-							// devode a single pom.xml directly from jar
-							if f.Name == pomFilePath {
-								rc, err := f.Open()
-								if err == nil {
-									defer rc.Close()
-									var pomFile POMFile
-
-									reader := bufio.NewReader(rc)
-									decoder := xml.NewDecoder(reader)
-
-									if err := decoder.Decode(&pomFile); err == nil {
-										antLogger.Debugf("resolving locator from pom: %s", pomFilePath)
-										return module.Locator{
-											Fetcher:  "mvn",
-											Project:  pomFile.GroupID + ":" + pomFile.ArtifactID,
-											Revision: pomFile.Version,
-										}, nil
-									}
-								}
-							}
-						}
-					}
-				}
-			}
+		pomFile, err := getPOMFromJar(pomFilePath)
+		if err == nil {
+			antLogger.Debugf("resolving locator from pom: %s", pomFilePath)
+			return module.Locator{
+				Fetcher:  "mvn",
+				Project:  pomFile.GroupID + ":" + pomFile.ArtifactID,
+				Revision: pomFile.Version,
+			}, nil
+		} else {
+			antLogger.Debugf("%s", err)
 		}
 
 		// failed to decode pom file, fall back to META-INF
