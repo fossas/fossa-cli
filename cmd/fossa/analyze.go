@@ -25,7 +25,7 @@ func analyzeCmd(c *cli.Context) {
 		log.Fatalf("Analysis failed: %s", err.Error())
 	}
 
-	log.Debugf("Analysis complete: %#v", analysis)
+	log.Debugf("Analysis complete: %#v", analyses)
 
 	normalModules, err := normalizeAnalysis(analyses)
 	if err != nil {
