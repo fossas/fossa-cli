@@ -1,4 +1,0 @@
-*
-!obj/Docker/publish/*
-!obj/Docker/empty/
-!entrypoint.sh
