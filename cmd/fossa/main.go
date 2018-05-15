@@ -10,15 +10,17 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/builders"
+	"github.com/fossas/fossa-cli/cmd/fossa/update"
 	"github.com/fossas/fossa-cli/cmd/fossa/upload"
+	"github.com/fossas/fossa-cli/cmd/fossa/version"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
 
-// main.{version,commit,goversion} are set by linker flags in Makefile and goreleaser
+// main.{semver,commit,goversion} are set by linker flags in Makefile and goreleaser
 // TODO: These may empty if built using `go get`
-var version string
+var semver string
 var commit string
 var goversion string
 
@@ -38,9 +40,9 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "fossa-cli"
 	app.Usage = "Fast, portable and reliable dependency analysis (https://github.com/fossas/fossa-cli/)"
-	app.Version = fmt.Sprintf("%s (revision %s compiled with %s)", version, commit, goversion)
+	app.Version = version.String()
 	app.Metadata = make(map[string]interface{})
-	app.Metadata["version"] = version
+	app.Metadata["version"] = semver
 
 	app.Action = defaultCmd
 	app.Flags = []cli.Flag{
@@ -117,14 +119,7 @@ func main() {
 			},
 		},
 		upload.Cmd,
-		{
-			Name:   "update",
-			Usage:  "Updates `fossa` to the latest version",
-			Action: updateCmd,
-			Flags: []cli.Flag{
-				cli.BoolFlag{Name: "debug", Usage: debugUsage},
-			},
-		},
+		update.Cmd,
 		{
 			Name:   "report",
 			Usage:  "Generates a license report",
@@ -181,7 +176,7 @@ func defaultCmd(c *cli.Context) {
 		log.Logger.Fatalf("Could not load configuration: %s", err.Error())
 	}
 
-	if ok, err := checkUpdate(); err == nil && ok {
+	if ok, err := update.AvailableUpdate(); err == nil && ok {
 		log.Logger.Noticef("An update is available for this CLI; run `fossa update` to get the latest version.")
 	}
 

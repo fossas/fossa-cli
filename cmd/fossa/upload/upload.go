@@ -11,7 +11,8 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/api"
-	"github.com/fossas/fossa-cli/cmd/fossa/common"
+	"github.com/fossas/fossa-cli/cmd/fossa/cliutil"
+	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/services"
@@ -22,8 +23,9 @@ var Cmd = cli.Command{
 	Usage:     "Uploads user-provided test results to FOSSA",
 	Action:    Run,
 	ArgsUsage: "<data>",
-	Flags: common.WithGlobalFlags([]cli.Flag{
-		cli.BoolFlag{Name: "l, locators", Usage: "upload data in locator format instead of JSON"},
+	Flags: flags.WithGlobalFlags([]cli.Flag{
+		cli.BoolFlag{Name: "l, locators", Usage: "upload data in locator format"},
+		cli.BoolFlag{Name: "j, json", Usage: "upload data in JSON format"},
 	}),
 }
 
@@ -46,7 +48,7 @@ func ParseLocators(locators string) api.SourceUnit {
 }
 
 func Run(ctx *cli.Context) {
-	io, c := common.MustInit(ctx)
+	io, c := cliutil.MustInit(ctx)
 
 	args := ctx.Args()
 	if !args.Present() {

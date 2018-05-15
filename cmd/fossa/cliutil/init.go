@@ -1,4 +1,4 @@
-package common
+package cliutil
 
 import (
 	"github.com/urfave/cli"

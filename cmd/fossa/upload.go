@@ -10,6 +10,7 @@ import (
 
 	"github.com/urfave/cli"
 
+	"github.com/fossas/fossa-cli/cmd/fossa/version"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
@@ -150,7 +151,7 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 
 	log.Logger.Debugf("Uploading build data from (%#v) modules: %#v", len(results), string(buildData))
 
-	fossaEndpoint := "/api/builds/custom?locator=" + url.QueryEscape(module.Locator{Fetcher: conf.Fetcher, Project: conf.Project, Revision: conf.Revision}.String()) + "&v=" + version
+	fossaEndpoint := "/api/builds/custom?locator=" + url.QueryEscape(module.Locator{Fetcher: conf.Fetcher, Project: conf.Project, Revision: conf.Revision}.String()) + "&v=" + version.ShortString()
 	if conf.Fetcher == "custom" {
 		defaultProjectTitle := results[0].Name
 		cwd, _ := filepath.Abs(".")
