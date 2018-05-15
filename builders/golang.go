@@ -420,7 +420,6 @@ type goPkg struct {
 }
 
 func goImportIsInternal(pkg string) bool {
-	log.Logger.Debugf("Checking whether Go package is internal: %s", pkg)
 	if pkg == "." || pkg == "/" {
 		return false
 	}
