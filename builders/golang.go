@@ -692,15 +692,19 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 		if strings.HasPrefix(pkg.Project, "vendor/golang_org") {
 			continue
 		}
+
 		// Strip `/vendor/` folders.
 		const vendorPrefix = "/vendor/"
 		vendoredPathSections := strings.Split(pkg.Project, vendorPrefix)
 		importPath := vendoredPathSections[len(vendoredPathSections)-1]
 		log.Debugf("Resolving import: %s", importPath)
 
+		vendoredProjectSections := strings.Split(projectGopath, vendorPrefix)
+		projectVendored := vendoredProjectSections[len(vendoredProjectSections)-1]
+
 		importedProject, err := findRevision(lockfile, importPath)
 		if err != nil {
-			if strings.Index(importPath, projectGopath) == 0 {
+			if strings.Index(importPath, projectGopath) == 0 || strings.Index(importPath, projectVendored) == 0 {
 				log.Debugf("Did not resolve import: %#v", pkg.Project)
 				traced[i].Revision = lockfile[importedProject]
 			} else if allowUnresolved {
@@ -711,6 +715,7 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 				log.Debugf("Project folder: %#v", projectFolder)
 				log.Debugf("$GOPATH: %#v", os.Getenv("GOPATH"))
 				log.Debugf("Project folder relative to $GOPATH: %#v", projectGopath)
+				log.Debugf("Project folder relative to vendoring: %#v", projectVendored)
 				log.Debugf("Lockfile versions: %#v", lockfile)
 				return nil, fmt.Errorf("could not resolve import: %#v", importPath)
 			}
