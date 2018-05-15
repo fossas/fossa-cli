@@ -127,6 +127,12 @@
   version = "v0.8.0"
 
 [[projects]]
+  name = "github.com/pkg/profile"
+  packages = ["."]
+  revision = "5b67d428864e92711fcbd2f8629456121a56d91f"
+  version = "v1.2.1"
+
+[[projects]]
   branch = "master"
   name = "github.com/rhysd/go-github-selfupdate"
   packages = ["selfupdate"]
@@ -328,6 +334,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "208830846f7b4a6d73ebb7d7938dd50ab391128b087d97747ea288f55081cc96"
+  inputs-digest = "87ccf168b38124fdca2d2cd225fa82a5c5b1c0c736f07a8437c4d746fd5b043c"
   solver-name = "gps-cdcl"
   solver-version = 1

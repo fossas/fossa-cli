@@ -458,7 +458,7 @@ func getGoImportsRecurse(builder *GoBuilder, m module.Module, memo map[string]st
 		if dep == "" {
 			continue
 		}
-		transitive, err := getGoImportsRecurse(builder, m, memo, append(from, locator), dep)
+		transitive, err := getGoImportsRecurse(builder, m, memo, nil /*append(from, locator)*/, dep)
 		if err != nil {
 			return nil, err
 		}
@@ -466,7 +466,7 @@ func getGoImportsRecurse(builder *GoBuilder, m module.Module, memo map[string]st
 	}
 	imports = append(imports, Imported{
 		Locator: locator,
-		From:    append(module.ImportPath{}, from...),
+		// From:    append(module.ImportPath{}, from...),
 	})
 
 	return imports, nil
@@ -526,8 +526,9 @@ func parseGPMLockfile(lockfileVersions *map[string]string, path ...string) error
 	lines := strings.Split(string(lockfileContents), "\n")
 	for _, line := range lines {
 		trimmedLine := strings.TrimSpace(line)
+		// Ignore comments and empty lines
 		if len(trimmedLine) > 0 && trimmedLine[0] != '#' {
-			sections := strings.Split(trimmedLine, " ")
+			sections := strings.Fields(trimmedLine)
 			(*lockfileVersions)[sections[0]] = sections[1]
 		}
 	}
