@@ -24,12 +24,12 @@ type ComposerBuilder struct {
 
 // Initialize collects metadata on PHP and Composer binaries
 func (builder *ComposerBuilder) Initialize() error {
-	log.Debug("Initializing Composer builder...")
+	log.Logger.Debug("Initializing Composer builder...")
 
 	// Set PHP context variables
 	phpCmd, phpVersion, err := which("-v", os.Getenv("PHP_BINARY"), "php")
 	if err != nil {
-		log.Warningf("Could not find PHP binary (try setting $PHP_BINARY): %s", err.Error())
+		log.Logger.Warningf("Could not find PHP binary (try setting $PHP_BINARY): %s", err.Error())
 	}
 	builder.PHPCmd = phpCmd
 	builder.PHPVersion = phpVersion
@@ -42,13 +42,13 @@ func (builder *ComposerBuilder) Initialize() error {
 	builder.ComposerCmd = composerCmd
 	builder.ComposerVersion = composerVersion
 
-	log.Debugf("Done initializing Composer builder: %#v", builder)
+	log.Logger.Debugf("Done initializing Composer builder: %#v", builder)
 	return nil
 }
 
 // Build runs `composer install --prefer-dist --no-dev` and cleans with `rm -rf vendor`
 func (builder *ComposerBuilder) Build(m module.Module, force bool) error {
-	log.Debug("Running Composer build: %#v %#v", m, force)
+	log.Logger.Debug("Running Composer build: %#v %#v", m, force)
 
 	if force {
 		_, _, err := runLogged(m.Dir, "rm", "-rf", "vendor")
@@ -62,7 +62,7 @@ func (builder *ComposerBuilder) Build(m module.Module, force bool) error {
 		return fmt.Errorf("could not run Composer build: %s", err.Error())
 	}
 
-	log.Debug("Done running Composer build.")
+	log.Logger.Debug("Done running Composer build.")
 	return nil
 }
 
@@ -73,7 +73,7 @@ type composerManifest struct {
 
 // Analyze parses the output of `composer show -f json --no-ansi`
 func (builder *ComposerBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	log.Debug("Running Composer analysis: %#v %#v", m, allowUnresolved)
+	log.Logger.Debug("Running Composer analysis: %#v %#v", m, allowUnresolved)
 
 	// Run `composer show --format=json --no-ansi` to get resolved versions
 	showOutput, _, err := runLogged(m.Dir, builder.ComposerCmd, "show", "--format=json", "--no-ansi")
@@ -135,7 +135,7 @@ func (builder *ComposerBuilder) Analyze(m module.Module, allowUnresolved bool) (
 			depth = len(matches[1])
 			if depth%3 != 0 {
 				// Sanity check
-				log.Panicf("Bad depth: %#v %s %#v", depth, line, matches)
+				log.Logger.Panicf("Bad depth: %#v %s %#v", depth, line, matches)
 			}
 		}
 		if depth > lastDepth {
@@ -161,13 +161,13 @@ func (builder *ComposerBuilder) Analyze(m module.Module, allowUnresolved bool) (
 		}
 	}
 
-	log.Debugf("Done running Composer analysis: %#v", deps)
+	log.Logger.Debugf("Done running Composer analysis: %#v", deps)
 	return deps, nil
 }
 
 // IsBuilt checks whether `composer show --no-ansi` produces output
 func (builder *ComposerBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
-	log.Debugf("Checking Composer build: %#v %#v", m, allowUnresolved)
+	log.Logger.Debugf("Checking Composer build: %#v %#v", m, allowUnresolved)
 
 	// Run `composer show --no-ansi`
 	output, _, err := runLogged(m.Dir, builder.ComposerCmd, "show", "--no-ansi")
@@ -178,7 +178,7 @@ func (builder *ComposerBuilder) IsBuilt(m module.Module, allowUnresolved bool) (
 	// Check that the output is non-empty
 	isBuilt := len(strings.TrimSpace(string(output))) > 0
 
-	log.Debugf("Done checking Composer build: %#v", isBuilt)
+	log.Logger.Debugf("Done checking Composer build: %#v", isBuilt)
 	return isBuilt, nil
 }
 
@@ -192,13 +192,13 @@ func (builder *ComposerBuilder) DiscoverModules(dir string) ([]module.Config, er
 	var moduleConfigs []module.Config
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Debugf("failed to access path %s: %s\n", path, err.Error())
+			log.Logger.Debugf("failed to access path %s: %s\n", path, err.Error())
 			return err
 		}
 
 		// Skip the /vendor/ folder
 		if info.IsDir() && info.Name() == "vendor" {
-			log.Debugf("skipping `vendor` directory: %s", info.Name())
+			log.Logger.Debugf("skipping `vendor` directory: %s", info.Name())
 			return filepath.SkipDir
 		}
 
@@ -211,7 +211,7 @@ func (builder *ComposerBuilder) DiscoverModules(dir string) ([]module.Config, er
 				moduleName = composerPackage.Name
 			}
 
-			log.Debugf("found Composer package: %s (%s)", path, moduleName)
+			log.Logger.Debugf("found Composer package: %s (%s)", path, moduleName)
 			moduleConfigs = append(moduleConfigs, module.Config{
 				Name: moduleName,
 				Path: path,

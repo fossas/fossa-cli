@@ -30,12 +30,12 @@ type RubyBuilder struct {
 
 // Initialize collects metadata on Ruby, Gem, and Bundler binaries
 func (builder *RubyBuilder) Initialize() error {
-	log.Debug("Initializing Ruby builder...")
+	log.Logger.Debug("Initializing Ruby builder...")
 
 	// Set Ruby context variables
 	rubyCmd, rubyVersion, err := which("-v", os.Getenv("RUBY_BINARY"), "ruby")
 	if err != nil {
-		log.Warningf("Could not find Ruby binary (try setting $RUBY_BINARY): %s", err.Error())
+		log.Logger.Warningf("Could not find Ruby binary (try setting $RUBY_BINARY): %s", err.Error())
 	}
 	builder.RubyCmd = rubyCmd
 	builder.RubyVersion = rubyVersion
@@ -43,7 +43,7 @@ func (builder *RubyBuilder) Initialize() error {
 	// Set Gem context variables
 	gemCmd, gemVersion, err := which("-v", os.Getenv("GEM_BINARY"), "gem")
 	if err != nil {
-		log.Warningf("Could not find Gem binary (try setting $GEM_BINARY): %s", err.Error())
+		log.Logger.Warningf("Could not find Gem binary (try setting $GEM_BINARY): %s", err.Error())
 	}
 	builder.GemCmd = gemCmd
 	builder.GemVersion = gemVersion
@@ -56,13 +56,13 @@ func (builder *RubyBuilder) Initialize() error {
 	builder.BundlerCmd = bundlerCmd
 	builder.BundlerVersion = bundlerVersion
 
-	log.Debugf("Initialized Ruby builder: %#v", builder)
+	log.Logger.Debugf("Initialized Ruby builder: %#v", builder)
 	return nil
 }
 
 // Build runs `bundler install --deployment --frozen` and cleans with `rm Gemfile.lock`
 func (builder *RubyBuilder) Build(m module.Module, force bool) error {
-	log.Debugf("Running Ruby build: %#v %#v", m, force)
+	log.Logger.Debugf("Running Ruby build: %#v %#v", m, force)
 
 	if force {
 		_, _, err := runLogged(m.Dir, "rm", "Gemfile.lock")
@@ -76,7 +76,7 @@ func (builder *RubyBuilder) Build(m module.Module, force bool) error {
 		return fmt.Errorf("could not run Ruby build: %s", err.Error())
 	}
 
-	log.Debug("Done running Ruby build.")
+	log.Logger.Debug("Done running Ruby build.")
 	return nil
 }
 
@@ -129,7 +129,7 @@ func flattenRubyGems(root rubyGem, from module.ImportPath) []Imported {
 
 // Analyze parses a `Gemfile.lock`
 func (builder *RubyBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	log.Debugf("Running Ruby analysis: %#v %#v", m, allowUnresolved)
+	log.Logger.Debugf("Running Ruby analysis: %#v %#v", m, allowUnresolved)
 
 	lockfileBytes, err := ioutil.ReadFile(path.Join(m.Dir, "Gemfile.lock"))
 	if err != nil {
@@ -170,7 +170,7 @@ func (builder *RubyBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mo
 					}
 					edges[parent][matches[2]] = true
 				} else {
-					log.Panicf("bad depth: %#v %#v\n", line, matches)
+					log.Logger.Panicf("bad depth: %#v %#v\n", line, matches)
 				}
 			}
 		} else if header == "DEPENDENCIES" {
@@ -224,17 +224,17 @@ func (builder *RubyBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mo
 	// Remove "root" module at the end of `imports`
 	deps := computeImportPaths(imports[:len(imports)-1])
 
-	log.Debugf("Done running Ruby analysis: %#v", deps)
+	log.Logger.Debugf("Done running Ruby analysis: %#v", deps)
 	return deps, nil
 }
 
 // IsBuilt checks whether `Gemfile.lock` exists
 func (builder *RubyBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
-	log.Debugf("Checking Ruby build: %#v %#v", m, allowUnresolved)
+	log.Logger.Debugf("Checking Ruby build: %#v %#v", m, allowUnresolved)
 
 	ok, err := hasFile(m.Dir, "Gemfile.lock")
 
-	log.Debugf("Done checking Ruby build: %#v", ok)
+	log.Logger.Debugf("Done checking Ruby build: %#v", ok)
 	return ok, err
 }
 
@@ -261,7 +261,7 @@ func (builder *RubyBuilder) DiscoverModules(dir string) ([]module.Config, error)
 				matches := matchGemName.FindStringSubmatch(string(gemSpecContents))
 				// matches: [0] = full match, [1] capture group
 				if len(matches) == 2 {
-					log.Debugf("%v", matches[1])
+					log.Logger.Debugf("%v", matches[1])
 					gemName = matches[1]
 				}
 			}

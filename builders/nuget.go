@@ -34,12 +34,12 @@ type NuGetBuilder struct {
 
 // Initialize collects metadata on NuGet and NuGet environments
 func (builder *NuGetBuilder) Initialize() error {
-	log.Debug("Initializing NuGet builder...")
+	log.Logger.Debug("Initializing NuGet builder...")
 
 	// Set DotNET context variables
 	dotNetCmd, dotNetVersion, err := which("--version", os.Getenv("DOTNET_BINARY"), "dotnet")
 	if err != nil {
-		log.Warningf("Could not find `dotnet` binary (try setting $DOTNET_BINARY): %s", err.Error())
+		log.Logger.Warningf("Could not find `dotnet` binary (try setting $DOTNET_BINARY): %s", err.Error())
 	}
 	builder.DotNETCmd = dotNetCmd
 	builder.DotNETVersion = strings.TrimRight(dotNetVersion, "\n")
@@ -58,27 +58,27 @@ func (builder *NuGetBuilder) Initialize() error {
 			builder.NuGetVersion = match[1]
 		}
 	} else {
-		log.Warningf("Could not find NuGet binary (try setting $NUGET_BINARY): %s", err.Error())
+		log.Logger.Warningf("Could not find NuGet binary (try setting $NUGET_BINARY): %s", err.Error())
 	}
 
-	log.Debugf("Initialized NuGet builder: %#v", builder)
+	log.Logger.Debugf("Initialized NuGet builder: %#v", builder)
 	return nil
 }
 
 // Build runs `dotnet restore` and falls back to `nuget restore`
 func (builder *NuGetBuilder) Build(m module.Module, force bool) error {
-	log.Debugf("Running NuGet build: %#v %#v", m, force)
+	log.Logger.Debugf("Running NuGet build: %#v %#v", m, force)
 
 	if builder.DotNETCmd != "" {
 		dotNetSuccessKey := "Restore completed"
 		dotNetStdout, dotNetStderr, err := runLogged(m.Dir, builder.DotNETCmd, "restore")
 		if err == nil && (strings.Contains(dotNetStdout, dotNetSuccessKey) || strings.Contains(dotNetStderr, dotNetSuccessKey)) {
-			log.Debug("NuGet build succeeded with `dotnet restore`.")
+			log.Logger.Debug("NuGet build succeeded with `dotnet restore`.")
 			return nil
 		}
 	}
 
-	log.Debug("`dotnet restore` did not succeed, falling back to `nuget restore`")
+	log.Logger.Debug("`dotnet restore` did not succeed, falling back to `nuget restore`")
 
 	if builder.NuGetCmd != "" {
 		pkgDir, _ := resolveNugetPackagesDir(m.Dir)
@@ -90,7 +90,7 @@ func (builder *NuGetBuilder) Build(m module.Module, force bool) error {
 		return errors.New("No tools installed in local environment for NuGet build")
 	}
 
-	log.Debug("Done running NuGet build.")
+	log.Logger.Debug("Done running NuGet build.")
 	return nil
 }
 
@@ -122,7 +122,7 @@ type dotNETPackageReference struct {
 
 // Given a starting `*.*proj` file, construct a graph of project references
 func computeDotNETProjectGraph(cmd string, rootProjectFile string) (dotNETProjectNode, error) {
-	log.Debugf("Computing project graph from: %s", rootProjectFile)
+	log.Logger.Debugf("Computing project graph from: %s", rootProjectFile)
 
 	// Read file to get project reference name
 	projectFileContents, err := ioutil.ReadFile(rootProjectFile)
@@ -188,7 +188,7 @@ type dotNETPackageNode struct {
 
 // Given a project references graph, construct a package graph with direct dependencies.
 func createDotNETPackageGraph(rootProjectNode dotNETProjectNode) (dotNETPackageNode, error) {
-	log.Debugf("Creating package graph from: %#v", rootProjectNode)
+	log.Logger.Debugf("Creating package graph from: %#v", rootProjectNode)
 
 	// Read file to get direct dependencies
 	projectFileContents, err := ioutil.ReadFile(rootProjectNode.file)
@@ -294,7 +294,7 @@ func flattenDotNETPackageGraph(pkg dotNETPackageNode) []Imported {
 
 // Analyze parses the output of NuGet lockfiles and falls back to parsing the packages folder
 func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	log.Debugf("Running NuGet analysis: %#v %#v", m, allowUnresolved)
+	log.Logger.Debugf("Running NuGet analysis: %#v %#v", m, allowUnresolved)
 	var deps []module.Dependency
 
 	// Find and parse a lockfile
@@ -353,7 +353,7 @@ func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 		// Fallback to parsing the packages directory
 		packagesDir, err := resolveNugetPackagesDir(m.Dir)
 
-		log.Debugf("No lockfile found; parsing packages directory: %s", packagesDir)
+		log.Logger.Debugf("No lockfile found; parsing packages directory: %s", packagesDir)
 		if exists, err := hasFile(packagesDir); err != nil || !exists {
 			return nil, fmt.Errorf("Unable to verify packages directory: %s", packagesDir)
 		}
@@ -366,7 +366,7 @@ func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 		for _, f := range packagePaths {
 			packageNameRe := regexp.MustCompile(`(([A-z]+\.?)+)\.(([0-9]+\.)+[\w-]+)`)
 			match := packageNameRe.FindStringSubmatch(f.Name())
-			log.Debugf("%s, %V", len(match), match)
+			log.Logger.Debugf("%s, %V", len(match), match)
 			if len(match) == 5 {
 				deps = append(deps, module.Dependency{
 					Locator: module.Locator{
@@ -382,7 +382,7 @@ func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 
 	// TODO: filter out system deps
 
-	log.Debugf("Done running NuGet analysis: %#v", deps)
+	log.Logger.Debugf("Done running NuGet analysis: %#v", deps)
 	return deps, nil
 }
 
@@ -392,9 +392,9 @@ func (builder *NuGetBuilder) IsBuilt(m module.Module, allowUnresolved bool) (boo
 		return true, nil
 	}
 
-	log.Debug("Checking NuGet module directory for a project lockfile")
+	log.Logger.Debug("Checking NuGet module directory for a project lockfile")
 	if _, err := resolveNuGetProjectLockfile(m.Dir); err != nil {
-		log.Debug("Checking NuGet packages directory for existence")
+		log.Logger.Debug("Checking NuGet packages directory for existence")
 
 		packagesDir, _ := resolveNugetPackagesDir(m.Dir)
 		return hasFile(packagesDir)
@@ -417,7 +417,7 @@ func resolveNugetPackagesDir(dir string) (string, error) {
 func resolveNuGetProjectLockfile(dir string) (string, error) {
 	lockfilePathCandidates := []string{"project.lock.json", "obj/project.assets.json"}
 	for _, path := range lockfilePathCandidates {
-		log.Debugf("Checking for lockfile: %s/%s", dir, path)
+		log.Logger.Debugf("Checking for lockfile: %s/%s", dir, path)
 		if hasLockfile, err := hasFile(dir, path); hasLockfile && err == nil {
 			return filepath.Join(dir, path), nil
 		}

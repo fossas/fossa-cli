@@ -29,7 +29,7 @@ func checkUpdate() (bool, error) {
 	}
 
 	parsedVersion := getSemver(version)
-	log.Debugf("checking version for updates (%s -> %s)", version, latest)
+	log.Logger.Debugf("checking version for updates (%s -> %s)", version, latest)
 	v, err := semver.Parse(parsedVersion)
 	if err != nil {
 		return false, errors.New("invalid version (are you using a development binary?)")
@@ -53,22 +53,22 @@ func doSelfUpdate() error {
 	if latest.Version.Equals(v) {
 		return errors.New("no update required")
 	}
-	log.Debugf("updating binary versions (%s -> %s)", version, latest.Version)
+	log.Logger.Debugf("updating binary versions (%s -> %s)", version, latest.Version)
 	return nil
 }
 
 func updateCmd(c *cli.Context) {
 	ok, err := checkUpdate()
 	if err != nil {
-		log.Fatalf("Unable to update: %s", err.Error())
+		log.Logger.Fatalf("Unable to update: %s", err.Error())
 	}
 	if !ok {
-		log.Fatalf("No updates available")
+		log.Logger.Fatalf("No updates available")
 	}
 
 	if err := doSelfUpdate(); err != nil {
-		log.Fatalf("Update failed: %s", err.Error())
+		log.Logger.Fatalf("Update failed: %s", err.Error())
 	}
 
-	log.Notice("fossa has been updated; run `fossa -v` to view the current version")
+	log.Logger.Notice("fossa has been updated; run `fossa -v` to view the current version")
 }

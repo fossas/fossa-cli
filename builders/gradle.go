@@ -21,7 +21,7 @@ type GradleBuilder struct {
 
 // Initialize collects metadata on Java and Maven binaries
 func (builder *GradleBuilder) Initialize() error {
-	log.Debug("Initializing Gradle builder...")
+	log.Logger.Debug("Initializing Gradle builder...")
 
 	// Set Gradle context variables
 	gradleCmd, gradleVersionOut, err := which("--version --offline", os.Getenv("GRADLE_BINARY"), "./gradlew", "gradle")
@@ -39,7 +39,7 @@ func (builder *GradleBuilder) Initialize() error {
 		return fmt.Errorf("could not find Gradle binary or wrapper (try setting $GRADLE_BINARY)")
 	}
 
-	log.Debugf("Done initializing Gradle builder: %#v", builder)
+	log.Logger.Debugf("Done initializing Gradle builder: %#v", builder)
 	return nil
 }
 
@@ -50,7 +50,7 @@ func (builder *GradleBuilder) Build(m module.Module, force bool) error {
 
 // Analyze parses the output of `gradle -q app:dependencies`
 func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	log.Debugf("Running Gradle analysis: %#v %#v in %s", m, allowUnresolved, m.Dir)
+	log.Logger.Debugf("Running Gradle analysis: %#v %#v in %s", m, allowUnresolved, m.Dir)
 
 	moduleConfigurationKey := strings.Split(m.Name, ":")
 
@@ -94,7 +94,7 @@ func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 		depth := len(matches[1])
 		if depth%5 != 0 {
 			// Sanity check
-			log.Panicf("Bad depth: %#v %s %#v", depth, line, matches)
+			log.Logger.Panicf("Bad depth: %#v %s %#v", depth, line, matches)
 		}
 		// Parse locator
 		dep := matches[2]
@@ -127,7 +127,7 @@ func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 	}
 	deps := computeImportPaths(imports)
 
-	log.Debugf("Done running Gradle analysis: %#v", deps)
+	log.Logger.Debugf("Done running Gradle analysis: %#v", deps)
 	return deps, nil
 }
 
@@ -163,7 +163,7 @@ func (builder *GradleBuilder) DiscoverModules(dir string) ([]module.Config, erro
 					depMatchIndices := taskListRe.FindStringIndex(trimmed)
 					if len(depMatchIndices) > 0 && depMatchIndices[0] == 0 {
 						gradleTask := strings.Split(trimmed, " - ")[0]
-						log.Debugf("found gradle dependencies task: %s", gradleTask)
+						log.Logger.Debugf("found gradle dependencies task: %s", gradleTask)
 						moduleConfigurations = append(moduleConfigurations, module.Config{
 							Name: strings.Split(gradleTask, ":")[0] + ":compile", // Name is the gradle `task:configuration` (default to compile)
 							Path: "build.gradle",

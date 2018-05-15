@@ -7,6 +7,8 @@ import (
 	logging "github.com/op/go-logging"
 )
 
+var Logger = logging.MustGetLogger("fossa-cli")
+
 var useSpinner bool
 
 // Initialize sets up logging modes.

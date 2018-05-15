@@ -29,12 +29,12 @@ type BowerBuilder struct {
 
 // Initialize collects metadata on Node and Bower binaries
 func (builder *BowerBuilder) Initialize() error {
-	log.Debug("Initializing Bower builder...")
+	log.Logger.Debug("Initializing Bower builder...")
 
 	// Set Node context variables
 	nodeCmd, nodeVersion, err := which("-v", os.Getenv("NODE_BINARY"), "node", "nodejs")
 	if err != nil {
-		log.Warningf("Could not find Node binary (try setting $NODE_BINARY): %s", err.Error())
+		log.Logger.Warningf("Could not find Node binary (try setting $NODE_BINARY): %s", err.Error())
 	}
 	builder.NodeCmd = nodeCmd
 	builder.NodeVersion = nodeVersion
@@ -47,13 +47,13 @@ func (builder *BowerBuilder) Initialize() error {
 	builder.BowerCmd = bowerCmd
 	builder.BowerVersion = bowerVersion
 
-	log.Debugf("Done initializing Bower builder: %#v", builder)
+	log.Logger.Debugf("Done initializing Bower builder: %#v", builder)
 	return nil
 }
 
 // Build runs `bower install --production` and cleans with `rm -rf bower_components`
 func (builder *BowerBuilder) Build(m module.Module, force bool) error {
-	log.Debugf("Running Bower build: %#v", m, force)
+	log.Logger.Debugf("Running Bower build: %#v", m, force)
 
 	if force {
 		_, _, err := runLogged(m.Dir, "rm", "-rf", "bower_components")
@@ -67,7 +67,7 @@ func (builder *BowerBuilder) Build(m module.Module, force bool) error {
 		return fmt.Errorf("could not run Bower build: %s", err.Error())
 	}
 
-	log.Debug("Done running Bower build.")
+	log.Logger.Debug("Done running Bower build.")
 	return nil
 }
 
@@ -112,7 +112,7 @@ func normalizeBowerComponents(parent module.ImportPath, c bowerListManifest) []I
 // Analyze reads the output of `bower ls --json`
 // TODO: fall back to old method of reading `bower_components/*/.bower.json`s?
 func (builder *BowerBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	log.Debugf("Running Bower analysis: %#v %#v", m, allowUnresolved)
+	log.Logger.Debugf("Running Bower analysis: %#v %#v", m, allowUnresolved)
 
 	stdout, _, err := runLogged(m.Dir, "bower", "ls", "--json")
 	if err != nil {
@@ -143,7 +143,7 @@ func (builder *BowerBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 	}
 	deps := computeImportPaths(depList)
 
-	log.Debugf("Done running Bower analysis: %#v", deps)
+	log.Logger.Debugf("Done running Bower analysis: %#v", deps)
 	return deps, nil
 }
 
@@ -166,7 +166,7 @@ func resolveBowerComponentsDirectory(dir string) string {
 
 // IsBuilt checks for the existence of `$PROJECT/bower_components`
 func (builder *BowerBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
-	log.Debug("Checking Bower build: %#v %#v", m, allowUnresolved)
+	log.Logger.Debug("Checking Bower build: %#v %#v", m, allowUnresolved)
 
 	// TODO: Check if the installed modules are consistent with what's in the
 	// actual manifest.
@@ -175,7 +175,7 @@ func (builder *BowerBuilder) IsBuilt(m module.Module, allowUnresolved bool) (boo
 		return false, fmt.Errorf("could not find Bower dependencies folder: %s", err.Error())
 	}
 
-	log.Debugf("Done checking Bower build: %#v", isBuilt)
+	log.Logger.Debugf("Done checking Bower build: %#v", isBuilt)
 	return isBuilt, nil
 }
 
@@ -189,12 +189,12 @@ func (builder *BowerBuilder) DiscoverModules(dir string) ([]module.Config, error
 	var moduleConfigs []module.Config
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Debugf("Failed to access path %s: %s", path, err.Error())
+			log.Logger.Debugf("Failed to access path %s: %s", path, err.Error())
 			return err
 		}
 		// Skip **/node_modules and **/bower_components directories
 		if info.IsDir() && (info.Name() == "node_modules" || info.Name() == "bower_components") {
-			log.Debugf("Skipping directory: %s", info.Name())
+			log.Logger.Debugf("Skipping directory: %s", info.Name())
 			return filepath.SkipDir
 		}
 
@@ -207,7 +207,7 @@ func (builder *BowerBuilder) DiscoverModules(dir string) ([]module.Config, error
 				moduleName = manifest.Name
 			}
 
-			log.Debugf("Found Bower package: %s (%s)", path, moduleName)
+			log.Logger.Debugf("Found Bower package: %s (%s)", path, moduleName)
 			moduleConfigs = append(moduleConfigs, module.Config{
 				Name: moduleName,
 				Path: path,

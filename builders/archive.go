@@ -49,24 +49,24 @@ func (builder *VendoredArchiveBuilder) Analyze(m module.Module, allowUnresolved 
 	// extractedArchivePaths := []string{}
 	var rawDependencies []nodeManifest
 
-	log.Debugf("Looking for tar files...")
+	log.Logger.Debugf("Looking for tar files...")
 	tarFiles, err := doublestar.Glob(filepath.Join(m.Dir, "**", "*.{tar.gz,tgz}"))
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("Found %#v tar files.", len(tarFiles))
+	log.Logger.Debugf("Found %#v tar files.", len(tarFiles))
 
 	for i := 0; i < len(tarFiles); i++ {
 		// Open the tar archive for reading.
 		f, err := os.Open(tarFiles[i])
 		if err != nil {
-			log.Warningf("Unable to open tarfile: %#v", tarFiles[i])
+			log.Logger.Warningf("Unable to open tarfile: %#v", tarFiles[i])
 		}
 		defer f.Close()
 
 		gzf, err := gzip.NewReader(f)
 		if err != nil {
-			log.Warningf("Gzip error: %#v", err)
+			log.Logger.Warningf("Gzip error: %#v", err)
 			break
 		}
 
@@ -80,25 +80,25 @@ func (builder *VendoredArchiveBuilder) Analyze(m module.Module, allowUnresolved 
 			}
 
 			if err != nil {
-				log.Warningf("Tar error: %#v", err)
+				log.Logger.Warningf("Tar error: %#v", err)
 				return nil, err
 			}
 
 			if strings.HasSuffix(hdr.Name, "package.json") {
-				log.Debugf("Found node module: %#v", hdr.Name)
+				log.Logger.Debugf("Found node module: %#v", hdr.Name)
 				nodeManifestBuffer := make([]byte, hdr.Size)
 
 				_, err := io.ReadFull(tr, nodeManifestBuffer)
 				if err != nil {
-					log.Warningf("Error reading node module: %#v", hdr.Name)
+					log.Logger.Warningf("Error reading node module: %#v", hdr.Name)
 					break
 				}
 				var nodeModule nodeManifest
 				if err := json.Unmarshal(nodeManifestBuffer, &nodeModule); err != nil {
-					log.Warningf("Error parsing node module: %#v", hdr.Name)
+					log.Logger.Warningf("Error parsing node module: %#v", hdr.Name)
 					break
 				}
-				log.Debugf("Found node module: %#v", nodeModule)
+				log.Logger.Debugf("Found node module: %#v", nodeModule)
 				rawDependencies = append(rawDependencies, nodeModule)
 				break
 			}

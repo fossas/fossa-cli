@@ -28,12 +28,12 @@ type PipBuilder struct {
 
 // Initialize collects metadata on Python and Pip binaries
 func (builder *PipBuilder) Initialize() error {
-	log.Debug("Initializing Pip builder...")
+	log.Logger.Debug("Initializing Pip builder...")
 
 	// Set Python context variables
 	pythonCmd, pythonVersion, err := which("--version", os.Getenv("PYTHON_BINARY"), "python", "python3", "python27", "python2")
 	if err != nil {
-		log.Warningf("Could not find Python binary (try setting $PYTHON_BINARY): %s", err.Error())
+		log.Logger.Warningf("Could not find Python binary (try setting $PYTHON_BINARY): %s", err.Error())
 	}
 	builder.PythonCmd = pythonCmd
 	builder.PythonVersion = pythonVersion
@@ -43,26 +43,26 @@ func (builder *PipBuilder) Initialize() error {
 	builder.PipCmd = pipCmd
 	builder.PipVersion = pipVersion
 	if pipErr != nil {
-		log.Warningf("No supported Python build tools detected (try setting $PIP_BINARY): %#v", pipErr)
+		log.Logger.Warningf("No supported Python build tools detected (try setting $PIP_BINARY): %#v", pipErr)
 	}
 
 	// Check virtualenv
 	builder.Virtualenv = os.Getenv("VIRTUAL_ENV")
 
-	log.Debugf("Initialized Pip builder: %#v", builder)
+	log.Logger.Debugf("Initialized Pip builder: %#v", builder)
 	return nil
 }
 
 // Build runs `pip install -r requirements.txt`
 func (builder *PipBuilder) Build(m module.Module, force bool) error {
-	log.Debugf("Running Pip build: %#v %#v", m, force)
+	log.Logger.Debugf("Running Pip build: %#v %#v", m, force)
 
 	_, _, err := runLogged(m.Dir, builder.PipCmd, "install", "-r", "requirements.txt")
 	if err != nil {
 		return fmt.Errorf("could not run Pip build: %s", err.Error())
 	}
 
-	log.Debug("Done running Pip build.")
+	log.Logger.Debug("Done running Pip build.")
 	return nil
 }
 
@@ -91,7 +91,7 @@ func flattenPipDepTree(pkg pipDepTreeDep, from module.ImportPath) []Imported {
 
 // Analyze runs `pipdeptree.py` in the current environment
 func (builder *PipBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	log.Debugf("Running Pip analysis: %#v %#v", m, allowUnresolved)
+	log.Logger.Debugf("Running Pip analysis: %#v %#v", m, allowUnresolved)
 
 	// Write helper to disk.
 	pipdeptreeSrc, err := bindata.Asset("builders/bindata/pipdeptree.py")
@@ -141,13 +141,13 @@ func (builder *PipBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 	}
 	deps := computeImportPaths(imports)
 
-	log.Debugf("Done running Pip analysis: %#v", deps)
+	log.Logger.Debugf("Done running Pip analysis: %#v", deps)
 	return deps, nil
 }
 
 // IsBuilt checks for the existence of `requirements.txt`
 func (builder *PipBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
-	log.Debugf("Checking Pip build: %#v %#v", m, allowUnresolved)
+	log.Logger.Debugf("Checking Pip build: %#v %#v", m, allowUnresolved)
 
 	// TODO: support `pip freeze` output and other alternative methods?
 	isBuilt, err := hasFile(m.Dir, "requirements.txt")
@@ -155,7 +155,7 @@ func (builder *PipBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool,
 		return false, fmt.Errorf("could not find `requirements.txt`: %s", err.Error())
 	}
 
-	log.Debugf("Done checking Pip build: %#v", isBuilt)
+	log.Logger.Debugf("Done checking Pip build: %#v", isBuilt)
 	return isBuilt, nil
 }
 
@@ -169,14 +169,14 @@ func (builder *PipBuilder) DiscoverModules(dir string) ([]module.Config, error) 
 	var moduleConfigs []module.Config
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Debugf("Failed to access path %s: %s\n", path, err.Error())
+			log.Logger.Debugf("Failed to access path %s: %s\n", path, err.Error())
 			return err
 		}
 
 		if !info.IsDir() && info.Name() == "requirements.txt" {
 			moduleName := filepath.Base(filepath.Dir(path))
 
-			log.Debugf("Found Python package: %s (%s)", path, moduleName)
+			log.Logger.Debugf("Found Python package: %s (%s)", path, moduleName)
 			path, _ = filepath.Rel(dir, path)
 			moduleConfigs = append(moduleConfigs, module.Config{
 				Name: moduleName,

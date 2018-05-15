@@ -146,43 +146,43 @@ func main() {
 }
 
 func resolveModuleConfig(moduleConfig module.Config) (module.Builder, module.Module, error) {
-	log.Debugf("Resolving moduleConfig: %#v", moduleConfig)
+	log.Logger.Debugf("Resolving moduleConfig: %#v", moduleConfig)
 
 	var builder module.Builder
 	var m module.Module
 
 	moduleType, err := module.Parse(moduleConfig.Type)
 	if err != nil {
-		log.Debug("Got unknown module.")
+		log.Logger.Debug("Got unknown module.")
 		return builder, m, fmt.Errorf("unknown module type: %s", moduleConfig.Type)
 	}
 
-	log.Debugf("Got %s module.", moduleType)
+	log.Logger.Debugf("Got %s module.", moduleType)
 	builder = builders.New(moduleType)
 
 	if builder == nil {
-		log.Debug("Got unknown builder.")
+		log.Logger.Debug("Got unknown builder.")
 		return nil, m, fmt.Errorf("no builder available for type: %s", moduleConfig.Type)
 	}
 
 	m, err = module.New(moduleType, moduleConfig)
 	if err != nil {
-		log.Debug("Unable to resolve module config")
+		log.Logger.Debug("Unable to resolve module config")
 		return builder, m, fmt.Errorf("unable to setup module type: %s", moduleConfig.Type)
 	}
 
-	log.Debugf("Resolved moduleConfig to: %#v, %#v", builder, m)
+	log.Logger.Debugf("Resolved moduleConfig to: %#v, %#v", builder, m)
 	return builder, m, nil
 }
 
 func defaultCmd(c *cli.Context) {
 	conf, err := config.New(c)
 	if err != nil {
-		log.Fatalf("Could not load configuration: %s", err.Error())
+		log.Logger.Fatalf("Could not load configuration: %s", err.Error())
 	}
 
 	if ok, err := checkUpdate(); err == nil && ok {
-		log.Noticef("An update is available for this CLI; run `fossa update` to get the latest version.")
+		log.Logger.Noticef("An update is available for this CLI; run `fossa update` to get the latest version.")
 	}
 
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
@@ -194,7 +194,7 @@ func defaultCmd(c *cli.Context) {
 
 	if len(conf.Modules) == 0 {
 		s.Stop()
-		log.Fatal("No modules specified for analysis.")
+		log.Logger.Fatal("No modules specified for analysis.")
 	}
 
 	analyses := []analysis{}
@@ -206,19 +206,19 @@ func defaultCmd(c *cli.Context) {
 		builder, module, err := resolveModuleConfig(m)
 		if err != nil {
 			s.Stop()
-			log.Fatalf("Could not parse module configuration: %s", err.Error())
+			log.Logger.Fatalf("Could not parse module configuration: %s", err.Error())
 		}
 
 		err = builder.Initialize()
 		if err != nil {
 			s.Stop()
-			log.Fatalf("Failed to initialize build: %s", err.Error())
+			log.Logger.Fatalf("Failed to initialize build: %s", err.Error())
 		}
 
 		isBuilt, err := builder.IsBuilt(module, conf.AnalyzeCmd.AllowUnresolved)
 		if err != nil {
 			s.Stop()
-			log.Fatalf("Could not determine whether module %s is built: %s", module.Name, err.Error())
+			log.Logger.Fatalf("Could not determine whether module %s is built: %s", module.Name, err.Error())
 		}
 
 		if !isBuilt {
@@ -229,11 +229,11 @@ func defaultCmd(c *cli.Context) {
 				err := builder.Build(module, conf.BuildCmd.Force)
 				if err != nil {
 					s.Stop()
-					log.Fatalf("Build failed (%s): %s", m.Path, err.Error())
+					log.Logger.Fatalf("Build failed (%s): %s", m.Path, err.Error())
 				}
 			} else {
 				s.Stop()
-				log.Fatalf("Module %s does not appear to be built. Try first running your build or `fossa build`, and then running `fossa`.", module.Name)
+				log.Logger.Fatalf("Module %s does not appear to be built. Try first running your build or `fossa build`, and then running `fossa`.", module.Name)
 			}
 		}
 
@@ -242,9 +242,9 @@ func defaultCmd(c *cli.Context) {
 		s.Restart()
 		deps, err := builder.Analyze(module, conf.AnalyzeCmd.AllowUnresolved)
 		if err != nil {
-			log.Warningf("Analysis failed for module %s: %s", module.Name, err.Error())
+			log.Logger.Warningf("Analysis failed for module %s: %s", module.Name, err.Error())
 		} else {
-			log.Debugf("Analysis complete: %#v", deps)
+			log.Logger.Debugf("Analysis complete: %#v", deps)
 		}
 		s.Stop()
 
@@ -258,11 +258,11 @@ func defaultCmd(c *cli.Context) {
 	if conf.AnalyzeCmd.Output {
 		normalModules, err := normalizeAnalysis(analyses)
 		if err != nil {
-			log.Fatalf("Could not normalize build data: %s", err.Error())
+			log.Logger.Fatalf("Could not normalize build data: %s", err.Error())
 		}
 		buildData, err := json.Marshal(normalModules)
 		if err != nil {
-			log.Fatalf("Could marshal analysis results: %s", err.Error())
+			log.Logger.Fatalf("Could marshal analysis results: %s", err.Error())
 		}
 		fmt.Println(string(buildData))
 		os.Exit(0)
@@ -274,9 +274,9 @@ func defaultCmd(c *cli.Context) {
 	s.Restart()
 
 	if err := config.WriteConfigFile(&conf); err != nil {
-		log.Fatalf("Error writing config: %s", err.Error())
+		log.Logger.Fatalf("Error writing config: %s", err.Error())
 	}
-	log.Warningf("Config written to `%s`.", conf.ConfigFilePath)
+	log.Logger.Warningf("Config written to `%s`.", conf.ConfigFilePath)
 
 	s.Stop()
 	s.Suffix = fmt.Sprintf(" Uploading build results (%d/%d)...", len(conf.Modules), len(conf.Modules))
@@ -284,12 +284,12 @@ func defaultCmd(c *cli.Context) {
 
 	normalModules, err := normalizeAnalysis(analyses)
 	if err != nil {
-		log.Fatalf("Could not normalize build data: %s", err.Error())
+		log.Logger.Fatalf("Could not normalize build data: %s", err.Error())
 	}
 	msg, err := doUpload(conf, normalModules)
 	s.Stop()
 	if err != nil {
-		log.Fatalf("Upload failed: %s", err.Error())
+		log.Logger.Fatalf("Upload failed: %s", err.Error())
 	}
 	fmt.Print(msg)
 }

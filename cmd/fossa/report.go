@@ -53,11 +53,11 @@ func getRevisions(apiURL string, apiKey string, locators []string) ([]dependency
 func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, analyses []analysis) {
 	server, err := url.Parse(endpoint)
 	if err != nil {
-		log.Fatalf("Invalid FOSSA endpoint: %s", err.Error())
+		log.Logger.Fatalf("Invalid FOSSA endpoint: %s", err.Error())
 	}
 	api, err := server.Parse(fmt.Sprintf("/api/revisions"))
 	if err != nil {
-		log.Fatalf("Invalid API endpoint: %s", err.Error())
+		log.Logger.Fatalf("Invalid API endpoint: %s", err.Error())
 	}
 
 	s.Suffix = " Loading licenses..."
@@ -87,7 +87,7 @@ func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, analyses []anal
 					responsePage, err := getRevisions(api.String(), apiKey, locators)
 					if err != nil {
 						s.Stop()
-						log.Fatalf("Could load licenses: %s", err.Error())
+						log.Logger.Fatalf("Could load licenses: %s", err.Error())
 					}
 					responses = append(responses, responsePage...)
 					locators = []string{}
@@ -102,7 +102,7 @@ func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, analyses []anal
 		responsePage, err := getRevisions(api.String(), apiKey, locators)
 		if err != nil {
 			s.Stop()
-			log.Fatalf("Could load licenses: %s", err.Error())
+			log.Logger.Fatalf("Could load licenses: %s", err.Error())
 		}
 		responses = append(responses, responsePage...)
 	}
@@ -141,7 +141,7 @@ The following software have components provided under the terms of this license:
 func reportCmd(c *cli.Context) {
 	conf, err := config.New(c)
 	if err != nil {
-		log.Fatalf("Could not load configuration: %s", err.Error())
+		log.Logger.Fatalf("Could not load configuration: %s", err.Error())
 	}
 
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
@@ -151,7 +151,7 @@ func reportCmd(c *cli.Context) {
 	analyses, err := doAnalyze(conf.Modules, conf.AnalyzeCmd.AllowUnresolved)
 	s.Stop()
 	if err != nil {
-		log.Fatalf("Could not complete analysis (is the project built?): %s", err.Error())
+		log.Logger.Fatalf("Could not complete analysis (is the project built?): %s", err.Error())
 	}
 
 	switch conf.ReportCmd.Type {
@@ -164,10 +164,10 @@ func reportCmd(c *cli.Context) {
 		}
 		out, err := json.Marshal(outMap)
 		if err != nil {
-			log.Fatalf("Could not marshal analysis: %s", err.Error())
+			log.Logger.Fatalf("Could not marshal analysis: %s", err.Error())
 		}
 		fmt.Println(string(out))
 	default:
-		log.Fatalf("Report type is not recognized (supported types are \"dependencies\" or \"licenses\": %s", conf.ReportCmd.Type)
+		log.Logger.Fatalf("Report type is not recognized (supported types are \"dependencies\" or \"licenses\": %s", conf.ReportCmd.Type)
 	}
 }

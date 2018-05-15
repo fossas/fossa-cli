@@ -119,7 +119,7 @@ func New(c *cli.Context) (CLIConfig, error) {
 	// Configure logging.
 	log.Initialize(config.Interactive, config.Debug)
 
-	log.Debugf("Configuration initialized: %#v", config)
+	log.Logger.Debugf("Configuration initialized: %#v", config)
 	return config, nil
 }
 
@@ -127,7 +127,7 @@ func New(c *cli.Context) (CLIConfig, error) {
 func MustNew(c *cli.Context) CLIConfig {
 	config, err := New(c)
 	if err != nil {
-		log.Fatalf("Could not initialize configuration: %s", err.Error())
+		log.Logger.Fatalf("Could not initialize configuration: %s", err.Error())
 	}
 	return config
 }

@@ -18,18 +18,18 @@ import (
 func initCmd(c *cli.Context) {
 	conf, err := config.New(c)
 	if err != nil {
-		log.Fatalf("Could not load configuration: %s", err.Error())
+		log.Logger.Fatalf("Could not load configuration: %s", err.Error())
 	}
 
 	if err := doInit(&conf, c.Bool("overwrite"), c.Bool("include-all")); err != nil {
-		log.Fatalf("Error initializing: %s", err.Error())
+		log.Logger.Fatalf("Error initializing: %s", err.Error())
 	}
 
 	if err := config.WriteConfigFile(&conf); err != nil {
-		log.Fatalf("Error writing config: %s", err.Error())
+		log.Logger.Fatalf("Error writing config: %s", err.Error())
 	}
 
-	log.Warningf("Config for %d modules written to `%s`.", len(conf.Modules), conf.ConfigFilePath)
+	log.Logger.Warningf("Config for %d modules written to `%s`.", len(conf.Modules), conf.ConfigFilePath)
 
 	fmt.Println("`fossa` is initialized")
 }
@@ -47,7 +47,7 @@ func doInit(conf *config.CLIConfig, overwrite bool, includeAll bool) error {
 		var err error
 		conf.Modules, err = findModules(findDir)
 		if err != nil {
-			log.Warningf("Warning during autoconfiguration: %s", err.Error())
+			log.Logger.Warningf("Warning during autoconfiguration: %s", err.Error())
 		}
 
 		if !includeAll {
@@ -57,13 +57,13 @@ func doInit(conf *config.CLIConfig, overwrite bool, includeAll bool) error {
 				if matched, err := regexp.MatchString("(docs?/|test|example|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/|third_party/)", c.Path); err != nil || matched != true {
 					filteredModuleConfigs = append(filteredModuleConfigs, c)
 				} else {
-					log.Warningf("Filtering out suspicious module: %s (%s)", c.Name, c.Path)
+					log.Logger.Warningf("Filtering out suspicious module: %s (%s)", c.Name, c.Path)
 				}
 			}
 			conf.Modules = filteredModuleConfigs
 		}
 	} else {
-		log.Warningf("%d module(s) found in config file (`%s`); skipping initialization.", len(conf.Modules), conf.ConfigFilePath)
+		log.Logger.Warningf("%d module(s) found in config file (`%s`); skipping initialization.", len(conf.Modules), conf.ConfigFilePath)
 	}
 	s.Stop()
 	return nil
@@ -77,7 +77,7 @@ func findModules(dir string) ([]module.Config, error) {
 	for _, t := range module.Types {
 		builder := builders.New(t)
 		if builder == nil {
-			log.Warningf("No builder available for module type: %s", t)
+			log.Logger.Warningf("No builder available for module type: %s", t)
 		}
 		foundModules, err := builder.DiscoverModules(dir)
 		if err != nil {

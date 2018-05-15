@@ -27,12 +27,12 @@ type NodeJSBuilder struct {
 
 // Initialize collects metadata on Node, NPM, and Yarn binaries
 func (builder *NodeJSBuilder) Initialize() error {
-	log.Debug("Initializing Nodejs builder...")
+	log.Logger.Debug("Initializing Nodejs builder...")
 
 	// Set NodeJS context variables
 	nodeCmd, nodeVersion, err := which("-v", os.Getenv("NODE_BINARY"), "node", "nodejs")
 	if err != nil {
-		log.Warningf("Could not find Node binary (try setting $NODE_BINARY): %s", err.Error())
+		log.Logger.Warningf("Could not find Node binary (try setting $NODE_BINARY): %s", err.Error())
 	}
 	builder.NodeCmd = nodeCmd
 	builder.NodeVersion = nodeVersion
@@ -48,16 +48,16 @@ func (builder *NodeJSBuilder) Initialize() error {
 	builder.YarnVersion = yarnVersion
 
 	if npmErr != nil && yarnErr != nil {
-		log.Warningf("No supported Nodejs build tools detected (try setting $NPM_BINARY or $YARN_BINARY): %#v %#v", npmErr, yarnErr)
+		log.Logger.Warningf("No supported Nodejs build tools detected (try setting $NPM_BINARY or $YARN_BINARY): %#v %#v", npmErr, yarnErr)
 	}
 
-	log.Debugf("Initialized Nodejs builder: %#v", builder)
+	log.Logger.Debugf("Initialized Nodejs builder: %#v", builder)
 	return nil
 }
 
 // Build runs either `yarn install --production --frozen-lockfile` or `npm install --production` and cleans with `rm -rf node_modules`
 func (builder *NodeJSBuilder) Build(m module.Module, force bool) error {
-	log.Debugf("Running Nodejs build: %#v %#v", m, force)
+	log.Logger.Debugf("Running Nodejs build: %#v %#v", m, force)
 
 	if force {
 		_, _, err := runLogged(m.Dir, "rm", "-rf", "node_modules")
@@ -79,7 +79,7 @@ func (builder *NodeJSBuilder) Build(m module.Module, force bool) error {
 		}
 	}
 
-	log.Debug("Done running Nodejs build.")
+	log.Logger.Debug("Done running Nodejs build.")
 	return nil
 }
 
@@ -123,13 +123,13 @@ func flattenNodeJSModules(pkg nodeListOutput) []Imported {
 
 // Analyze runs and parses `npm ls --json`.
 func (builder *NodeJSBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	log.Debugf("Running Nodejs analysis: %#v %#v", m, allowUnresolved)
+	log.Logger.Debugf("Running Nodejs analysis: %#v %#v", m, allowUnresolved)
 
 	// TODO: we must allow this to exit with error if a flag is passed (maybe --allow-npm-err)
 	// because sometimes npm will throw errors even after a complete install
 	out, stderr, err := runLogged(m.Dir, "npm", "ls", "--json")
 	if err != nil {
-		log.Warningf("NPM had non-zero exit code: %s", stderr)
+		log.Logger.Warningf("NPM had non-zero exit code: %s", stderr)
 	}
 
 	var parsed nodeListOutput
@@ -140,13 +140,13 @@ func (builder *NodeJSBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 	imports := flattenNodeJSModules(parsed)
 	deps := computeImportPaths(imports)
 
-	log.Debugf("Done running Nodejs analysis: %#v", deps)
+	log.Logger.Debugf("Done running Nodejs analysis: %#v", deps)
 	return deps, nil
 }
 
 // IsBuilt checks for the existence of `$PROJECT/node_modules`
 func (builder *NodeJSBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
-	log.Debugf("Checking Nodejs build: %#v %#v", m, allowUnresolved)
+	log.Logger.Debugf("Checking Nodejs build: %#v %#v", m, allowUnresolved)
 
 	// TODO: Check if the installed modules are consistent with what's in the
 	// actual manifest.
@@ -155,7 +155,7 @@ func (builder *NodeJSBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bo
 		return false, fmt.Errorf("could not find Nodejs dependencies folder: %s", err.Error())
 	}
 
-	log.Debugf("Done checking Nodejs build: %#v", isBuilt)
+	log.Logger.Debugf("Done checking Nodejs build: %#v", isBuilt)
 	return isBuilt, nil
 }
 
@@ -169,12 +169,12 @@ func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]module.Config, erro
 	var moduleConfigs []module.Config
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Debugf("Failed to access path %s: %s\n", path, err.Error())
+			log.Logger.Debugf("Failed to access path %s: %s\n", path, err.Error())
 			return err
 		}
 		// Skip **/node_modules and **/bower_components
 		if info.IsDir() && (info.Name() == "node_modules" || info.Name() == "bower_components") {
-			log.Debugf("Skipping directory: %s", info.Name())
+			log.Logger.Debugf("Skipping directory: %s", info.Name())
 			return filepath.SkipDir
 		}
 
@@ -187,7 +187,7 @@ func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]module.Config, erro
 				moduleName = nodeModule.Name
 			}
 
-			log.Debugf("Found NodeJS package: %s (%s)", path, moduleName)
+			log.Logger.Debugf("Found NodeJS package: %s (%s)", path, moduleName)
 			path, _ = filepath.Rel(dir, path)
 			moduleConfigs = append(moduleConfigs, module.Config{
 				Name: moduleName,

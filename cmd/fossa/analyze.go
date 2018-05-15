@@ -14,28 +14,28 @@ import (
 func analyzeCmd(c *cli.Context) {
 	conf, err := config.New(c)
 	if err != nil {
-		log.Fatalf("Could not load configuration: %s", err.Error())
+		log.Logger.Fatalf("Could not load configuration: %s", err.Error())
 	}
 	if len(conf.Modules) == 0 {
-		log.Fatal("No modules specified.")
+		log.Logger.Fatal("No modules specified.")
 	}
 
 	analyses, err := doAnalyze(conf.Modules, conf.AnalyzeCmd.AllowUnresolved)
 	if err != nil {
-		log.Fatalf("Analysis failed: %s", err.Error())
+		log.Logger.Fatalf("Analysis failed: %s", err.Error())
 	}
 
-	log.Debugf("Analysis complete: %#v", analyses)
+	log.Logger.Debugf("Analysis complete: %#v", analyses)
 
 	normalModules, err := normalizeAnalysis(analyses)
 	if err != nil {
-		log.Fatalf("Could not normalize build data: %s", err.Error())
+		log.Logger.Fatalf("Could not normalize build data: %s", err.Error())
 	}
 
 	if conf.AnalyzeCmd.Output {
 		buildData, err := json.Marshal(normalModules)
 		if err != nil {
-			log.Fatalf("Could not marshal analysis results: %s", err.Error())
+			log.Logger.Fatalf("Could not marshal analysis results: %s", err.Error())
 		}
 		fmt.Println(string(buildData))
 		os.Exit(0)
@@ -44,7 +44,7 @@ func analyzeCmd(c *cli.Context) {
 
 	msg, err := doUpload(conf, normalModules)
 	if err != nil {
-		log.Fatalf("Upload failed: %s", err.Error())
+		log.Logger.Fatalf("Upload failed: %s", err.Error())
 	}
 	fmt.Print(msg)
 }
@@ -56,7 +56,7 @@ type analysis struct {
 }
 
 func doAnalyze(modules []module.Config, allowUnresolved bool) ([]analysis, error) {
-	log.Debugf("Running analysis on modules: %#v", modules)
+	log.Logger.Debugf("Running analysis on modules: %#v", modules)
 	analyses := []analysis{}
 
 	for _, moduleConfig := range modules {

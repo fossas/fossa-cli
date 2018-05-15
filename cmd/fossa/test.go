@@ -40,7 +40,7 @@ func getBuild(endpoint, apiKey, fetcher, project, revision string) (buildRespons
 	}
 	url := server.ResolveReference(buildsURL).String()
 
-	log.Debugf("Making Builds API request to: %#v", url)
+	log.Logger.Debugf("Making Builds API request to: %#v", url)
 	res, err := makeAPIRequest(http.MethodPut, url, apiKey, nil)
 	if isTimeout(err) {
 		return buildResponse{}, err
@@ -83,7 +83,7 @@ func getRevision(endpoint, apiKey, fetcher, project, revision string) (revisionR
 	}
 	url := server.ResolveReference(revisionsURL).String()
 
-	log.Debugf("Making Revisions API request to: %#v", url)
+	log.Logger.Debugf("Making Revisions API request to: %#v", url)
 	res, err := makeAPIRequest(http.MethodGet, url, apiKey, nil)
 	if err != nil {
 		return revisionResponse{}, err
@@ -112,7 +112,7 @@ buildLoop:
 			race <- testResult{err: err, issues: nil}
 			return
 		}
-		log.Debugf("Got build: %#v", build)
+		log.Logger.Debugf("Got build: %#v", build)
 		switch build.Task.Status {
 		case "SUCCEEDED":
 			break buildLoop
@@ -133,7 +133,7 @@ buildLoop:
 			race <- testResult{err: err, issues: nil}
 			return
 		}
-		log.Debugf("Got revision: %#v", revision)
+		log.Logger.Debugf("Got revision: %#v", revision)
 		if len(revision.Meta) > 0 && revision.Meta[0].LastScan != "" {
 			race <- testResult{err: nil, issues: revision.Issues}
 			return
@@ -150,7 +150,7 @@ type testResult struct {
 func testCmd(c *cli.Context) {
 	conf, err := config.New(c)
 	if err != nil {
-		log.Fatalf("Could not load configuration: %s", err.Error())
+		log.Logger.Fatalf("Could not load configuration: %s", err.Error())
 	}
 
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
@@ -161,9 +161,9 @@ func testCmd(c *cli.Context) {
 	case result := <-race:
 		s.Stop()
 		if result.err != nil {
-			log.Fatalf("Could not execute test: %s", result.err.Error())
+			log.Logger.Fatalf("Could not execute test: %s", result.err.Error())
 		}
-		log.Debugf("Test succeeded: %#v", result.issues)
+		log.Logger.Debugf("Test succeeded: %#v", result.issues)
 		if len(result.issues) == 0 {
 			fmt.Fprintln(os.Stderr, "Test passed! 0 issues found")
 		} else {
@@ -182,7 +182,7 @@ func testCmd(c *cli.Context) {
 
 			issues, err := json.Marshal(unresolvedIssues)
 			if err != nil {
-				log.Fatalf("Could not marshal unresolved issues: %s", err)
+				log.Logger.Fatalf("Could not marshal unresolved issues: %s", err)
 			}
 			fmt.Println(string(issues))
 
@@ -190,6 +190,6 @@ func testCmd(c *cli.Context) {
 		}
 	case <-time.After(conf.TestCmd.Timeout):
 		s.Stop()
-		log.Fatalf("Timed out while waiting for issue report")
+		log.Logger.Fatalf("Timed out while waiting for issue report")
 	}
 }

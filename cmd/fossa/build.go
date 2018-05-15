@@ -16,10 +16,10 @@ import (
 func buildCmd(c *cli.Context) {
 	conf, err := config.New(c)
 	if err != nil {
-		log.Fatalf("Could not load configuration: %s", err.Error())
+		log.Logger.Fatalf("Could not load configuration: %s", err.Error())
 	}
 	if len(conf.Modules) == 0 {
-		log.Fatal("No modules specified.")
+		log.Logger.Fatal("No modules specified.")
 	}
 
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
@@ -33,7 +33,7 @@ func buildCmd(c *cli.Context) {
 		err := doBuild(moduleConfig, conf.AnalyzeCmd.AllowUnresolved, conf.BuildCmd.Force)
 		if err != nil {
 			s.Stop()
-			log.Fatalf("Could not run build: %s", err.Error())
+			log.Logger.Fatalf("Could not run build: %s", err.Error())
 		}
 	}
 	s.Stop()
@@ -56,7 +56,7 @@ func doBuild(moduleConfig module.Config, allowUnresolved, force bool) error {
 		return fmt.Errorf("could not determine whether module %s is built: %s", module.Name, err.Error())
 	}
 	if isBuilt && !force {
-		log.Warningf("module %s appears to already be built (use `--force` to force a rebuild)", module.Name)
+		log.Logger.Warningf("module %s appears to already be built (use `--force` to force a rebuild)", module.Name)
 	} else {
 		err = builder.Build(module, force)
 		if err != nil {

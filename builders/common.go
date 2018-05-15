@@ -107,13 +107,13 @@ func runInDir(dir string, name string, arg ...string) (string, string, error) {
 // Utilities for debug logging
 func runLogged(dir string, name string, arg ...string) (string, string, error) {
 	cmd := strings.Join(append([]string{name}, arg...), " ")
-	log.Debugf("Running `%s` in dir `%s`...", cmd, dir)
+	log.Logger.Debugf("Running `%s` in dir `%s`...", cmd, dir)
 	stdout, stderr, err := runInDir(dir, name, arg...)
 	if err != nil {
-		log.Debugf("Running `%s` failed: %#v %#v", cmd, err, stderr)
+		log.Logger.Debugf("Running `%s` failed: %#v %#v", cmd, err, stderr)
 		return stdout, stderr, fmt.Errorf("running `%s` failed: %#v %#v", cmd, err, stderr)
 	}
-	log.Debugf("Done running `%s`: %#v %#v", stdout, stderr)
+	log.Logger.Debugf("Done running `%s`: %#v %#v", stdout, stderr)
 	return stdout, stderr, nil
 }
 
@@ -124,20 +124,20 @@ func parseLogged(file string, v interface{}) error {
 type unmarshaller func(data []byte, v interface{}) error
 
 func parseLoggedWithUnmarshaller(file string, v interface{}, unmarshal unmarshaller) error {
-	log.Debugf("Parsing %s...", file)
+	log.Logger.Debugf("Parsing %s...", file)
 
 	contents, err := ioutil.ReadFile(file)
 	if err != nil {
-		log.Debugf("Error reading %s: %s", file, err.Error())
+		log.Logger.Debugf("Error reading %s: %s", file, err.Error())
 		return err
 	}
 	err = unmarshal(contents, v)
 	if err != nil {
-		log.Debugf("Error parsing %s: %#v %#v", file, err, contents)
+		log.Logger.Debugf("Error parsing %s: %#v %#v", file, err, contents)
 		return err
 	}
 
-	log.Debugf("Done parsing %s.", file)
+	log.Logger.Debugf("Done parsing %s.", file)
 	return nil
 }
 
@@ -150,7 +150,7 @@ func whichWithResolver(cmds []string, getVersion versionResolver) (string, strin
 		if err == nil {
 			return cmd, version, nil
 		}
-		log.Debugf("Tried resolving `%s` but did not work: %#v %#v", cmd, err, version)
+		log.Logger.Debugf("Tried resolving `%s` but did not work: %#v %#v", cmd, err, version)
 	}
 	return "", "", errors.New("could not resolve version")
 }

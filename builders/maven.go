@@ -63,12 +63,12 @@ type MavenBuilder struct {
 
 // Initialize collects metadata on Java and Maven binaries
 func (builder *MavenBuilder) Initialize() error {
-	log.Debug("Initializing Maven builder...")
+	log.Logger.Debug("Initializing Maven builder...")
 
 	// Set Java context variables
 	javaCmd, javaVersion, err := which("-version", os.Getenv("JAVA_BINARY"), "java")
 	if err != nil {
-		log.Warningf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
+		log.Logger.Warningf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
 	}
 	builder.JavaCmd = javaCmd
 	builder.JavaVersion = javaVersion
@@ -81,13 +81,13 @@ func (builder *MavenBuilder) Initialize() error {
 	builder.MvnCmd = mavenCmd
 	builder.MvnVersion = mavenVersion
 
-	log.Debugf("Done initializing Maven builder: %#v", builder)
+	log.Logger.Debugf("Done initializing Maven builder: %#v", builder)
 	return nil
 }
 
 // Build runs `mvn install -DskipTests -Drat.skip=true` and cleans with `mvn clean`
 func (builder *MavenBuilder) Build(m module.Module, force bool) error {
-	log.Debugf("Running Maven build: %#v %#v", m, force)
+	log.Logger.Debugf("Running Maven build: %#v %#v", m, force)
 
 	if force {
 		_, _, err := runLogged(m.Dir, builder.MvnCmd, "clean")
@@ -101,13 +101,13 @@ func (builder *MavenBuilder) Build(m module.Module, force bool) error {
 		return fmt.Errorf("could not run Maven build: %s", err.Error())
 	}
 
-	log.Debug("Done running Maven build.")
+	log.Logger.Debug("Done running Maven build.")
 	return nil
 }
 
 // Analyze parses the output of `mvn dependency:list`
 func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	log.Debugf("Running Maven analysis: %#v %#v", m, allowUnresolved)
+	log.Logger.Debugf("Running Maven analysis: %#v %#v", m, allowUnresolved)
 
 	output, _, err := runLogged(m.Dir, builder.MvnCmd, "dependency:tree")
 	if err != nil {
@@ -123,7 +123,7 @@ func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 		if startRegex.MatchString(line) {
 			if inGraph {
 				// Sanity check
-				log.Panicf("Bad graph separation: %s", line)
+				log.Logger.Panicf("Bad graph separation: %s", line)
 			}
 			inGraph = true
 			continue
@@ -153,7 +153,7 @@ func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 		depth := len(depMatches[1])
 		if depth%3 != 0 {
 			// Sanity check
-			log.Panicf("Bad depth: %#v %s %#v", depth, line, depMatches)
+			log.Logger.Panicf("Bad depth: %#v %s %#v", depth, line, depMatches)
 		}
 		// Parse locator
 		locatorMatches := locatorRegex.FindStringSubmatch(depMatches[2])
@@ -172,13 +172,13 @@ func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 	}
 	deps := computeImportPaths(imports)
 
-	log.Debugf("Done running Maven analysis: %#v", deps)
+	log.Logger.Debugf("Done running Maven analysis: %#v", deps)
 	return deps, nil
 }
 
 // IsBuilt checks whether `mvn dependency:list` produces output.
 func (builder *MavenBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
-	log.Debugf("Checking Maven build: %#v %#v", m, allowUnresolved)
+	log.Logger.Debugf("Checking Maven build: %#v %#v", m, allowUnresolved)
 
 	output, _, err := runLogged(m.Dir, builder.MvnCmd, "dependency:list", "-B")
 	if err != nil {
@@ -189,7 +189,7 @@ func (builder *MavenBuilder) IsBuilt(m module.Module, allowUnresolved bool) (boo
 	}
 	isBuilt := output != ""
 
-	log.Debugf("Done checking Maven build: %#v", isBuilt)
+	log.Logger.Debugf("Done checking Maven build: %#v", isBuilt)
 	return isBuilt, nil
 }
 

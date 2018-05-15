@@ -25,12 +25,12 @@ type SBTBuilder struct {
 
 // Initialize collects metadata on Java and SBT binaries
 func (builder *SBTBuilder) Initialize() error {
-	log.Debugf("Initializing SBT builder...")
+	log.Logger.Debugf("Initializing SBT builder...")
 
 	// Set Java context variables
 	javaCmd, javaVersion, err := which("-version", os.Getenv("JAVA_BINARY"), "java")
 	if err != nil {
-		log.Warningf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
+		log.Logger.Warningf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
 	}
 	builder.JavaCmd = javaCmd
 	builder.JavaVersion = javaVersion
@@ -43,13 +43,13 @@ func (builder *SBTBuilder) Initialize() error {
 	builder.SBTCmd = sbtCmd
 	builder.SBTVersion = sbtVersion
 
-	log.Debugf("Initialized SBT builder: %#v", builder)
+	log.Logger.Debugf("Initialized SBT builder: %#v", builder)
 	return nil
 }
 
 // Build runs `sbt compile` and cleans with `sbt clean`
 func (builder *SBTBuilder) Build(m module.Module, force bool) error {
-	log.Debugf("Running SBT build: %#v %#v", m, force)
+	log.Logger.Debugf("Running SBT build: %#v %#v", m, force)
 
 	if force {
 		_, _, err := runLogged(m.Dir, builder.SBTCmd, "clean")
@@ -63,13 +63,13 @@ func (builder *SBTBuilder) Build(m module.Module, force bool) error {
 		return fmt.Errorf("could not run SBT build: %s", err.Error())
 	}
 
-	log.Debug("Done running SBT build.")
+	log.Logger.Debug("Done running SBT build.")
 	return nil
 }
 
 // Analyze parses the output of `sbt -no-colors dependencyTree`
 func (builder *SBTBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	log.Debugf("Running SBT analysis: %#v %#v", m, allowUnresolved)
+	log.Logger.Debugf("Running SBT analysis: %#v %#v", m, allowUnresolved)
 
 	output, _, err := runLogged(m.Dir, builder.SBTCmd, "-no-colors", "dependencyTree")
 	if err != nil {
@@ -85,10 +85,10 @@ func (builder *SBTBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 			strings.Index(line, "[info] Updating ") != -1 ||
 			strings.Index(line, "[info] Done ") != -1 ||
 			strings.Index(line, "[info] ") != 0 {
-			log.Debugf("Ignoring line: %#v", line)
+			log.Logger.Debugf("Ignoring line: %#v", line)
 			continue
 		}
-		log.Debugf("Matched line: %#v", line)
+		log.Logger.Debugf("Matched line: %#v", line)
 		depLines = append(depLines, line)
 	}
 
@@ -104,13 +104,13 @@ func (builder *SBTBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 	spacerRegex := regexp.MustCompile("^\\[info\\] ([ `+\\\\|-]*)(\\s*?)$")
 	locatorRegex := regexp.MustCompile("([^:\\s]+):([^:\\s]+):([^:\\s]+).*")
 	for _, line := range depLines {
-		log.Debugf("Parsing line: %#v\n", line)
+		log.Logger.Debugf("Parsing line: %#v\n", line)
 		if spacerRegex.MatchString(line) {
 			continue
 		}
 		// Match for context
 		depMatches := depRegex.FindStringSubmatch(line)
-		log.Debugf("Dep matches: %#v\n", depMatches)
+		log.Logger.Debugf("Dep matches: %#v\n", depMatches)
 		depth := len(depMatches[1])
 		// SBT quirk: the indentation from level 1 to level 2 is 4 spaces, but all others are 2 spaces
 		if depth >= 4 {
@@ -118,11 +118,11 @@ func (builder *SBTBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 		}
 		if depth%2 != 0 {
 			// Sanity check
-			log.Panicf("Bad depth: %#v %s %#v", depth, line, depMatches)
+			log.Logger.Panicf("Bad depth: %#v %s %#v", depth, line, depMatches)
 		}
 		// Parse locator
 		locatorMatches := locatorRegex.FindStringSubmatch(depMatches[2])
-		log.Debugf("Locator matches: %#v\n", locatorMatches)
+		log.Logger.Debugf("Locator matches: %#v\n", locatorMatches)
 		locator := module.Locator{
 			Fetcher:  "sbt",
 			Project:  locatorMatches[1] + ":" + locatorMatches[2],
@@ -138,13 +138,13 @@ func (builder *SBTBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 	}
 	deps := computeImportPaths(imports)
 
-	log.Debugf("Done running SBT analysis: %#v", deps)
+	log.Logger.Debugf("Done running SBT analysis: %#v", deps)
 	return deps, nil
 }
 
 // IsBuilt checks whether dependencies are ready for scanning.
 func (builder *SBTBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
-	log.Debugf("Checking SBT build: %#v %#v", m, allowUnresolved)
+	log.Logger.Debugf("Checking SBT build: %#v %#v", m, allowUnresolved)
 
 	output, _, err := runLogged(m.Dir, builder.SBTCmd, "-no-colors", "dependencyList")
 	if err != nil {
@@ -152,7 +152,7 @@ func (builder *SBTBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool,
 	}
 	isBuilt := output != ""
 
-	log.Debugf("Done checking SBT build: %#v", isBuilt)
+	log.Logger.Debugf("Done checking SBT build: %#v", isBuilt)
 	return isBuilt, nil
 }
 
