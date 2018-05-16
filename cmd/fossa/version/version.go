@@ -9,32 +9,32 @@ import (
 )
 
 var (
-	BuildType string
-	Version   string
-	Commit    string
-	GoVersion string
+	buildType string
+	version   string
+	commit    string
+	goversion string
 )
 
 var ErrIsDevelopment = errors.New("this development binary has no semantic version")
 
 func IsDevelopment() bool {
-	return BuildType == "development"
+	return buildType == "development"
 }
 
 func String() string {
-	return fmt.Sprintf("%s (revision %s compiled with %s)", Version, Commit, GoVersion)
+	return fmt.Sprintf("%s (revision %s compiled with %s)", version, commit, goversion)
 }
 
 func ShortString() string {
 	if IsDevelopment() {
-		return Commit
+		return commit
 	}
-	return Version
+	return version
 }
 
 func Semver() (semver.Version, error) {
 	if IsDevelopment() {
 		return semver.Version{}, ErrIsDevelopment
 	}
-	return semver.Parse(strings.TrimPrefix(Version, "v"))
+	return semver.Parse(strings.TrimPrefix(version, "v"))
 }
