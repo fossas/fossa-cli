@@ -6,7 +6,10 @@ import (
 	"github.com/briandowns/spinner"
 )
 
-var s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+var (
+	useSpinner bool
+	s          = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+)
 
 // ShowSpinner shows a progress spinner with a message.
 func ShowSpinner(message string) {
