@@ -124,7 +124,7 @@ func (builder *SBTBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 		locatorMatches := locatorRegex.FindStringSubmatch(depMatches[2])
 		log.Logger.Debugf("Locator matches: %#v\n", locatorMatches)
 		locator := module.Locator{
-			Fetcher:  "sbt",
+			Fetcher:  "mvn", // SBT deps are resolved from Maven Repository
 			Project:  locatorMatches[1] + ":" + locatorMatches[2],
 			Revision: locatorMatches[3],
 		}
