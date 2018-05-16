@@ -2,8 +2,9 @@ package upload
 
 import (
 	"encoding/json"
-	"fmt"
+	"io/ioutil"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -14,8 +15,7 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/cliutil"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/config"
-	"github.com/fossas/fossa-cli/module"
-	"github.com/fossas/fossa-cli/services"
+	"github.com/fossas/fossa-cli/log"
 )
 
 var Cmd = cli.Command{
@@ -24,8 +24,7 @@ var Cmd = cli.Command{
 	Action:    Run,
 	ArgsUsage: "<data>",
 	Flags: flags.WithGlobalFlags([]cli.Flag{
-		cli.BoolFlag{Name: "l, locators", Usage: "upload data in locator format"},
-		cli.BoolFlag{Name: "j, json", Usage: "upload data in JSON format"},
+		cli.BoolFlag{Name: "l, locators", Usage: "upload data in locator format (instead of JSON)"},
 	}),
 }
 
@@ -33,7 +32,7 @@ type APIResponse struct {
 	Locator string
 }
 
-func ParseLocators(locators string) fossa.SourceUnit {
+func ParseLocators(locators string) (fossa.SourceUnit, error) {
 	var deps []fossa.Dependency
 	lines := strings.Split(locators, "\n")
 	for _, line := range lines {
@@ -44,36 +43,67 @@ func ParseLocators(locators string) fossa.SourceUnit {
 			Succeeded:    true,
 			Dependencies: deps,
 		},
+	}, nil // TODO: validate the locators
+}
+
+func hasPipeInput() bool {
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		log.Logger.Warningf("Could not read stdin")
+		return false
+	}
+	return (stat.Mode() & os.ModeCharDevice) == 0
+}
+
+func getInput(ctx *cli.Context, usingLocators bool) ([]fossa.SourceUnit, error) {
+	// Read input
+	var raw string
+	if hasPipeInput() {
+		stdin, err := ioutil.ReadAll(os.Stdin)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not read stdin")
+		}
+		raw = string(stdin)
+	} else {
+		args := ctx.Args()
+		if !args.Present() {
+			return nil, errors.New("no input provided")
+		}
+		raw = args.First()
+	}
+
+	// Parse input
+	if usingLocators {
+		sourceUnit, err := ParseLocators(raw)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not parse build data")
+		}
+		return []fossa.SourceUnit{sourceUnit}, nil
+	} else {
+		var out []fossa.SourceUnit
+		err := json.Unmarshal([]byte(raw), &out)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not parse build data")
+		}
+		return out, nil
 	}
 }
 
 func Run(ctx *cli.Context) {
-	io, c := cliutil.MustInit(ctx)
+	c := cliutil.Init(ctx)
 
-	args := ctx.Args()
-	if !args.Present() {
-		io.Logger.Fatalf("No input provided.")
-	}
-
-	input := args.First()
-	var data []fossa.SourceUnit
-	if c.UploadCmd.UseLocators {
-		data = []fossa.SourceUnit{ParseLocators(input)}
-	} else {
-		err := json.Unmarshal([]byte(input), &data)
-		if err != nil {
-			io.Logger.Fatalf("Could not parse user-provided build data: %s", err.Error())
-		}
-	}
-
-	res, err := Do(io, c, data)
+	data, err := getInput(ctx, c.UploadCmd.UseLocators)
 	if err != nil {
-		io.Logger.Fatalf("Upload failed: %s", err.Error())
+		log.Logger.Fatalf("Bad input: %s", err.Error())
 	}
-	locatorParts := strings.Split(res.Locator, "$")
+
+	locator, err := Do(c, data)
+	if err != nil {
+		log.Logger.Fatalf("Upload failed: %s", err.Error())
+	}
 	baseURL, err := url.Parse(c.Endpoint)
-	reportURL, err := url.Parse("/projects/" + url.QueryEscape(locatorParts[0]) + "/refs/branch/master/" + url.QueryEscape(locatorParts[1]) + "/browse/dependencies")
-	io.Logger.Printf(`
+	reportURL, err := url.Parse("/projects/" + url.QueryEscape(locator.Fetcher+"+"+locator.Project) + "/refs/branch/master/" + url.QueryEscape(locator.Revision) + "/browse/dependencies")
+	log.Printf(`
 ============================================================
 
     View FOSSA Report:
@@ -83,55 +113,27 @@ func Run(ctx *cli.Context) {
 `)
 }
 
-func Do(io services.Services, c config.CLIConfig, data []fossa.SourceUnit) (APIResponse, error) {
+func Do(c config.CLIConfig, data []fossa.SourceUnit) (fossa.Locator, error) {
 	if c.Project == "" {
-		io.Logger.Fatalf("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
+		log.Logger.Fatalf("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
 	}
 	if c.Fetcher != "custom" && c.Revision == "" {
-		io.Logger.Fatalf("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
+		log.Logger.Fatalf("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
 	}
 	if len(data) == 0 {
-		io.Logger.Fatalf("No data to upload")
+		log.Logger.Fatalf("No data to upload")
 	}
 
-	payload, err := json.Marshal(data)
-	if err != nil {
-		return APIResponse{}, errors.Wrap(err, "could not marshal upload data")
-	}
-	io.Logger.Debugf("Uploading data from %#v modules: %#v", len(data), string(payload))
-
-	endpoint := "/api/builds/custom?locator=" + url.QueryEscape(module.Locator{Fetcher: c.Fetcher, Project: c.Project, Revision: c.Revision}.String()) + "&v=" + c.Version
+	title := data[0].Name
 	if c.Fetcher == "custom" {
-		defaultProjectTitle := data[0].Name
 		cwd, err := filepath.Abs(".")
 		if err != nil {
-			io.Logger.Fatalf("Could not get working directory: %s", err.Error())
+			log.Logger.Fatalf("Could not get working directory: %s", err.Error())
 		}
 		if cwd != "" {
-			defaultProjectTitle = filepath.Base(cwd)
+			title = filepath.Base(cwd)
 		}
-		endpoint += fmt.Sprintf("&managedBuild=true&title=%s", url.PathEscape(defaultProjectTitle))
-	}
-	io.Logger.Debugf("Sending build data to %#v", endpoint)
-
-	res, statusCode, err := io.API.Post(endpoint, payload)
-	io.Logger.Debugf("Response: %#v", res)
-
-	if statusCode == 428 {
-		// TODO: handle "Managed Project" workflow
-		return APIResponse{}, errors.New("invalid project or revision; make sure this version is published and FOSSA has access to your repo (to submit a custom project, set Fetcher to `custom` in `.fossa.yml`)")
-	} else if statusCode == 403 {
-		return APIResponse{}, errors.New("you do not have permission to upload builds for this project")
-	} else if err != nil {
-		return APIResponse{}, errors.Wrap(err, "could not upload")
-	}
-	io.Logger.Debugf("Upload finished")
-
-	var unmarshalled APIResponse
-	err = json.Unmarshal([]byte(res), &unmarshalled)
-	if err != nil {
-		return APIResponse{}, errors.Errorf("bad response: %s", res)
 	}
 
-	return unmarshalled, nil
+	return fossa.Upload(c.Fetcher, c.Project, c.Revision, title, data)
 }

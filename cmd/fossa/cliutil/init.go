@@ -1,19 +1,16 @@
 package cliutil
 
 import (
+	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/config"
-	"github.com/fossas/fossa-cli/services"
+	"github.com/fossas/fossa-cli/log"
 )
 
-func MustInit(ctx *cli.Context) (services.Services, config.CLIConfig) {
+func Init(ctx *cli.Context) config.CLIConfig {
 	c := config.MustNew(ctx)
-	io := services.New(c.Interactive, c.Debug)
-	err := io.API.Initialize(c.Endpoint, c.APIKey)
-	if err != nil {
-		io.Logger.Fatalf("Could not initialize API: %s", err.Error())
-	}
-
-	return io, c
+	log.Initialize(c.Interactive, c.Debug)
+	fossa.Initialize(c.Endpoint, c.APIKey)
+	return c
 }

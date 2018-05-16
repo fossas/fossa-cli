@@ -1,7 +1,7 @@
 BIN="$(shell go env GOPATH)/bin"
 DEP="$(BIN)/dep"
 PREFIX?=/usr/local/bin
-LDFLAGS:=-ldflags '-X github.com/fossas/fossa-cli/cmd/fossa/version.Version=$(shell git rev-parse --abbrev-ref HEAD) -X github.com/fossas/fossa-cli/cmd/fossa/version.Commit=$(shell git rev-parse HEAD) -X "github.com/fossas/fossa-cli/cmd/fossa/version.GoVersion=$(shell go version)" -X github.com/fossas/fossa-cli/cmd/fossa/version.BuildType=development'
+LDFLAGS:=-ldflags '-X github.com/fossas/fossa-cli/cmd/fossa/version.version=$(shell git rev-parse --abbrev-ref HEAD) -X github.com/fossas/fossa-cli/cmd/fossa/version.commit=$(shell git rev-parse HEAD) -X "github.com/fossas/fossa-cli/cmd/fossa/version.goversion=$(shell go version)" -X github.com/fossas/fossa-cli/cmd/fossa/version.buildType=development'
 
 all: build
 

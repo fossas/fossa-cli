@@ -7,4 +7,4 @@ builds:
       - linux
     goarch:
       - amd64
-    ldflags: -s -w -X github.com/fossas/fossa-cli/cmd/fossa/version.Version={{.Version}} -X github.com/fossas/fossa-cli/cmd/fossa/version.Commit={{.Commit}} -X "github.com/fossas/fossa-cli/cmd/fossa/version.GoVersion={{.Env.GOVERSION}}" -X github.com/fossas/fossa-cli/cmd/fossa/version.BuildType=production
+    ldflags: -s -w -X github.com/fossas/fossa-cli/cmd/fossa/version.version={{.Version}} -X github.com/fossas/fossa-cli/cmd/fossa/version.commit={{.Commit}} -X "github.com/fossas/fossa-cli/cmd/fossa/version.goversion={{.Env.GOVERSION}}" -X github.com/fossas/fossa-cli/cmd/fossa/version.buildType=production
