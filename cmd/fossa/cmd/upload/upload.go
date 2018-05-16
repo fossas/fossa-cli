@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 
-	"github.com/fossas/fossa-cli/api"
+	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/cliutil"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/config"
@@ -33,14 +33,14 @@ type APIResponse struct {
 	Locator string
 }
 
-func ParseLocators(locators string) api.SourceUnit {
-	var deps []api.Dependency
+func ParseLocators(locators string) fossa.SourceUnit {
+	var deps []fossa.Dependency
 	lines := strings.Split(locators, "\n")
 	for _, line := range lines {
-		deps = append(deps, api.Dependency{Locator: line})
+		deps = append(deps, fossa.Dependency{Locator: line})
 	}
-	return api.SourceUnit{
-		Build: api.Build{
+	return fossa.SourceUnit{
+		Build: fossa.Build{
 			Succeeded:    true,
 			Dependencies: deps,
 		},
@@ -56,9 +56,9 @@ func Run(ctx *cli.Context) {
 	}
 
 	input := args.First()
-	var data []api.SourceUnit
+	var data []fossa.SourceUnit
 	if c.UploadCmd.UseLocators {
-		data = []api.SourceUnit{ParseLocators(input)}
+		data = []fossa.SourceUnit{ParseLocators(input)}
 	} else {
 		err := json.Unmarshal([]byte(input), &data)
 		if err != nil {
@@ -83,7 +83,7 @@ func Run(ctx *cli.Context) {
 `)
 }
 
-func Do(io services.Services, c config.CLIConfig, data []api.SourceUnit) (APIResponse, error) {
+func Do(io services.Services, c config.CLIConfig, data []fossa.SourceUnit) (APIResponse, error) {
 	if c.Project == "" {
 		io.Logger.Fatalf("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
 	}

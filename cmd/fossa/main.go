@@ -10,8 +10,8 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/builders"
-	"github.com/fossas/fossa-cli/cmd/fossa/update"
-	"github.com/fossas/fossa-cli/cmd/fossa/upload"
+	"github.com/fossas/fossa-cli/cmd/fossa/cmd/update"
+	"github.com/fossas/fossa-cli/cmd/fossa/cmd/upload"
 	"github.com/fossas/fossa-cli/cmd/fossa/version"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/log"

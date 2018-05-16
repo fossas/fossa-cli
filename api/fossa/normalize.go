@@ -1,4 +1,4 @@
-package api
+package fossa
 
 import (
 	"encoding/json"
