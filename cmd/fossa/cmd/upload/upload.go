@@ -90,7 +90,7 @@ func getInput(ctx *cli.Context, usingLocators bool) ([]fossa.SourceUnit, error) 
 }
 
 func Run(ctx *cli.Context) {
-	c := cliutil.Init(ctx)
+	c := cliutil.Initialize(ctx, true)
 
 	data, err := getInput(ctx, c.UploadCmd.UseLocators)
 	if err != nil {

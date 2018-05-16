@@ -8,9 +8,11 @@ import (
 	"github.com/fossas/fossa-cli/log"
 )
 
-func Init(ctx *cli.Context) config.CLIConfig {
+func Initialize(ctx *cli.Context, useAPI bool) config.CLIConfig {
 	c := config.MustNew(ctx)
 	log.Initialize(c.Interactive, c.Debug)
-	fossa.Initialize(c.Endpoint, c.APIKey)
+	if useAPI {
+		fossa.MustInitialize(c.Endpoint, c.APIKey)
+	}
 	return c
 }

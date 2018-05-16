@@ -148,10 +148,12 @@ func (builder *NodeJSBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 func (builder *NodeJSBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
 	log.Logger.Debugf("Checking Nodejs build: %#v %#v", m, allowUnresolved)
 
+	// bug: there are some package.json with no deps (no node_modules)
 	// TODO: Check if the installed modules are consistent with what's in the
 	// actual manifest.
 	isBuilt, err := hasFile(m.Dir, "node_modules")
 	if err != nil {
+		// TODO: make this optional -- IsBuilt failures should just be warnings
 		return false, fmt.Errorf("could not find Nodejs dependencies folder: %s", err.Error())
 	}
 
