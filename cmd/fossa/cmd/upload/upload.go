@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -125,14 +124,8 @@ func Do(c config.CLIConfig, data []fossa.SourceUnit) (fossa.Locator, error) {
 	}
 
 	title := data[0].Name
-	if c.Fetcher == "custom" {
-		cwd, err := filepath.Abs(".")
-		if err != nil {
-			log.Logger.Fatalf("Could not get working directory: %s", err.Error())
-		}
-		if cwd != "" {
-			title = filepath.Base(cwd)
-		}
+	if c.Fetcher == "custom" && title == "" {
+		title = c.Project
 	}
 
 	return fossa.Upload(c.Fetcher, c.Project, c.Revision, title, data)
