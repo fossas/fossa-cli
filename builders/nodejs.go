@@ -127,7 +127,7 @@ func (builder *NodeJSBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 
 	// TODO: we must allow this to exit with error if a flag is passed (maybe --allow-npm-err)
 	// because sometimes npm will throw errors even after a complete install
-	out, stderr, err := runLogged(m.Dir, "npm", "ls", "--json")
+	out, stderr, err := runLogged(m.Dir, builder.NPMCmd, "ls", "--json")
 	if err != nil {
 		log.Logger.Warningf("NPM had non-zero exit code: %s", stderr)
 	}
