@@ -116,7 +116,7 @@ func (up *Updater) UpdateSelf(current semver.Version, slug string) (*Release, er
 	if err != nil {
 		return nil, err
 	}
-	return UpdateCommand(cmdPath, current, slug)
+	return up.UpdateCommand(cmdPath, current, slug)
 }
 
 // UpdateTo downloads an executable from assetURL and replace the current binary with the downloaded one.

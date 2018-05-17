@@ -1,12 +1,38 @@
-ignored = ["github.com/fossas/fossa-cli/test/fixtures/golang/*"]
-
 [[constraint]]
   name = "github.com/BurntSushi/toml"
   version = "0.3.0"
 
 [[constraint]]
+  name = "github.com/blang/semver"
+  version = "3.5.1"
+
+[[constraint]]
+  name = "github.com/bmatcuk/doublestar"
+  version = "1.0.9"
+
+[[constraint]]
+  name = "github.com/briandowns/spinner"
+  version = "1.0.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/gnewton/jargo"
+
+[[constraint]]
+  name = "github.com/mattn/go-isatty"
+  version = "0.0.3"
+
+[[constraint]]
   name = "github.com/op/go-logging"
   version = "1.0.0"
+
+[[constraint]]
+  name = "github.com/pkg/errors"
+  version = "0.8.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rhysd/go-github-selfupdate"
 
 [[constraint]]
   name = "github.com/urfave/cli"
@@ -14,12 +40,12 @@ ignored = ["github.com/fossas/fossa-cli/test/fixtures/golang/*"]
 
 [[constraint]]
   name = "gopkg.in/src-d/go-git.v4"
-  version = "4.1.0"
+  version = "4.4.0"
 
 [[constraint]]
-  branch = "v2"
   name = "gopkg.in/yaml.v2"
+  version = "2.2.1"
 
-[[constraint]]
-  name = "github.com/bmatcuk/doublestar"
-  version = "1.0.9"
+[prune]
+  go-tests = true
+  unused-packages = true
