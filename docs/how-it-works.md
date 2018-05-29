@@ -13,6 +13,7 @@ Instead of trying to guess at your build system's behavior, `fossa` runs locally
  - Java/Scala: `mvn`, `gradle`, `sbt`, `ant`, `ivy`
  - Python: `pip`, `setuptools`
  - Ruby: `bundler`
+ - iOS: `cocoapods`
  - PHP: `composer`
  - Go: `dep`, `glide`, `godep`, `govendor`, `vndr`, `gdm`
  - .NET (C#, VB): `nuget`
