@@ -193,12 +193,19 @@ func locatorFromJar(path string) (module.Locator, error) {
 
 	// fall back to parsing file name
 	re := regexp.MustCompile("(-sources|-javadoc)?.jar$")
-	rawname := strings.Split(re.ReplaceAllString(filepath.Base(path), ""), "-")
+	nameParts := strings.Split(re.ReplaceAllString(filepath.Base(path), ""), "-")
+
+	parsedProjectName := nameParts[0]
+	parsedRevisionName := ""
+
+	if len(nameParts) > 1 {
+		parsedRevisionName = nameParts[1]
+	}
 
 	return module.Locator{
 		Fetcher:  "mvn",
-		Project:  rawname[0],
-		Revision: rawname[1],
+		Project:  parsedProjectName,
+		Revision: parsedRevisionName,
 	}, nil
 }
 
