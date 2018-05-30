@@ -194,12 +194,20 @@ func locatorFromJar(path string) (module.Locator, error) {
 	// fall back to parsing file name
 	re := regexp.MustCompile("(-sources|-javadoc)?.jar$")
 	nameParts := strings.Split(re.ReplaceAllString(filepath.Base(path), ""), "-")
+	lenNameParts := len(nameParts)
 
-	parsedProjectName := nameParts[0]
-	parsedRevisionName := ""
+	var parsedProjectName string
+	var parsedRevisionName string
 
-	if len(nameParts) > 1 {
-		parsedRevisionName = nameParts[1]
+	if lenNameParts == 1 {
+		parsedProjectName = nameParts[0]
+	} else if lenNameParts > 1 {
+		parsedProjectName = strings.Join(nameParts[0:lenNameParts-1], "-")
+		parsedRevisionName = nameParts[lenNameParts-1]
+	}
+
+	if parsedProjectName == "" {
+		return module.Locator{}, errors.New("unable to parse jar file")
 	}
 
 	return module.Locator{
