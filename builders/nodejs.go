@@ -144,14 +144,27 @@ func (builder *NodeJSBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 	return deps, nil
 }
 
+type npmManifest struct {
+	Dependencies map[string]string
+}
+
 // IsBuilt checks for the existence of `$PROJECT/node_modules`
 func (builder *NodeJSBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
 	log.Logger.Debugf("Checking Nodejs build: %#v %#v", m, allowUnresolved)
 
-	// bug: there are some package.json with no deps (no node_modules)
+	// test: there are some package.json with no deps (no node_modules)
 	// TODO: Check if the installed modules are consistent with what's in the
 	// actual manifest.
+	var manifest npmManifest
+	err := parseLogged(filepath.Join(m.Dir, "package.json"), &manifest)
+	if err != nil {
+		return false, err
+	}
+	if len(manifest.Dependencies) == 0 {
+		return true, nil
+	}
 	isBuilt, err := hasFile(m.Dir, "node_modules")
+
 	if err != nil {
 		// TODO: make this optional -- IsBuilt failures should just be warnings
 		return false, fmt.Errorf("could not find Nodejs dependencies folder: %s", err.Error())
