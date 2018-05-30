@@ -23,6 +23,7 @@ type configFileCLIV1 struct {
 	Server   string `yaml:"server,omitempty"`
 	Project  string `yaml:"project,omitempty"`
 	Revision string `yaml:"revision,omitempty"`
+	Branch   string `yaml:"branch,omitempty"`
 	Fetcher  string `yaml:"fetcher,omitempty"` // fetcher defaults to custom
 }
 
@@ -94,25 +95,29 @@ func setDefaultValues(c configFileV1) (configFileV1, error) {
 	}
 
 	// Infer default locator and project from `git`.
-	if c.CLI.Project == "" || c.CLI.Revision == "" {
+	if c.CLI.Project == "" || c.CLI.Revision == "" || c.CLI.Branch == "" {
 		// TODO: this needs to happen in the module directory, not the working
 		// directory
 		repo, err := git.PlainOpen(".")
 		if err == nil {
-			project := c.CLI.Project
-			if project == "" {
+			if c.CLI.Project == "" {
 				origin, err := repo.Remote("origin")
 				if err == nil && origin != nil {
-					project = origin.Config().URLs[0]
-					c.CLI.Project = project
+					c.CLI.Project = origin.Config().URLs[0]
 				}
 			}
-			revision := c.CLI.Revision
-			if revision == "" {
+			if c.CLI.Revision == "" {
 				revision, err := repo.Head()
 				if err == nil {
 					c.CLI.Revision = revision.Hash().String()
 				}
+			}
+			if c.CLI.Branch == "" {
+				revision, err := repo.Head()
+				if err == nil {
+					c.CLI.Revision = revision.Hash().String()
+				}
+				c.CLI.Branch = revision.Name().String()
 			}
 		}
 	}

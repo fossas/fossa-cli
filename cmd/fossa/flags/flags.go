@@ -9,11 +9,12 @@ func WithAPIFlags(f []cli.Flag) []cli.Flag {
 }
 
 var (
-	API      = []cli.Flag{Endpoint, Fetcher, Project, Revision}
+	API      = []cli.Flag{Endpoint, Fetcher, Project, Revision, Branch}
 	Endpoint = cli.StringFlag{Name: "e, endpoint", Usage: "the FOSSA server endpoint (default: 'https://app.fossa.io')"}
 	Fetcher  = cli.StringFlag{Name: "f, fetcher", Usage: "type of fetcher to use for fossa. (default: 'custom')"}
 	Project  = cli.StringFlag{Name: "p, project", Usage: "this repository's URL or VCS endpoint (default: VCS remote 'origin')"}
 	Revision = cli.StringFlag{Name: "r, revision", Usage: "this repository's current revision hash (default: VCS hash HEAD)"}
+	Branch   = cli.StringFlag{Name: "b, branch", Usage: "this repository's current branch (default: current VCS branch)"}
 )
 
 func WithGlobalFlags(f []cli.Flag) []cli.Flag {

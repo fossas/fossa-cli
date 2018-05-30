@@ -12,6 +12,7 @@ import (
 	"github.com/fossas/fossa-cli/builders"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/update"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/upload"
+	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/version"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/log"
@@ -50,6 +51,7 @@ func main() {
 		cli.StringFlag{Name: "p, project", Usage: projectUsage},
 		cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 		cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
+		flags.Branch,
 		cli.StringSliceFlag{Name: "m, modules", Usage: "the modules to build and analyze"},
 		cli.StringFlag{Name: "fetcher", Usage: fetcherUsage},
 		// --strategy=pipreqs
@@ -60,7 +62,7 @@ func main() {
 		// --no-ansi
 		cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
 		cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
-		cli.BoolFlag{Name: "b, build", Usage: "run a default build in module directories if they have not been pre-built"},
+		cli.BoolFlag{Name: "build", Usage: "run a default build in module directories if they have not been pre-built"},
 		cli.BoolFlag{Name: "f, force", Usage: buildForceUsage},
 		cli.BoolFlag{Name: "debug", Usage: debugUsage},
 	}
@@ -98,6 +100,7 @@ func main() {
 				cli.StringFlag{Name: "p, project", Usage: projectUsage},
 				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
+				flags.Branch,
 				cli.StringSliceFlag{Name: "m, modules", Usage: "the modules to analyze"},
 				cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
 				cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},

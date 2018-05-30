@@ -101,7 +101,7 @@ func Run(ctx *cli.Context) {
 		log.Logger.Fatalf("Upload failed: %s", err.Error())
 	}
 	baseURL, err := url.Parse(c.Endpoint)
-	reportURL, err := url.Parse("/projects/" + url.QueryEscape(locator.Fetcher+"+"+locator.Project) + "/refs/branch/master/" + url.QueryEscape(locator.Revision) + "/browse/dependencies")
+	reportURL, err := url.Parse("/projects/" + url.QueryEscape(locator.Fetcher+"+"+locator.Project) + "/refs/branch/" + c.Branch + "/" + url.QueryEscape(locator.Revision) + "/browse/dependencies")
 	log.Printf(`
 ============================================================
 

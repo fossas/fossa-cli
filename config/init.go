@@ -52,6 +52,7 @@ func New(c *cli.Context) (CLIConfig, error) {
 		Fetcher:  c.String("fetcher"),
 		Project:  c.String("project"),
 		Revision: c.String("revision"),
+		Branch:   c.String("branch"),
 		Endpoint: c.String("endpoint"),
 		Modules:  modules,
 
