@@ -28,7 +28,7 @@ var (
 
 // func UploadCustomProject(project, revision, title string, data []SourceUnit) {}
 
-func Upload(fetcher, project, revision, title string, data []SourceUnit) (Locator, error) {
+func Upload(fetcher, project, revision, title, branch string, data []SourceUnit) (Locator, error) {
 	// Check preconditions
 	if fetcher != "custom" && revision == "" {
 		log.Logger.Fatalf("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
@@ -49,6 +49,9 @@ func Upload(fetcher, project, revision, title string, data []SourceUnit) (Locato
 	endpoint := "/api/builds/custom?locator=" + url.QueryEscape(Locator{Fetcher: fetcher, Project: project, Revision: revision}.String()) + "&v=" + version.ShortString()
 	if fetcher == "custom" {
 		endpoint += fmt.Sprintf("&managedBuild=true&title=%s", url.PathEscape(title))
+	}
+	if branch != "" {
+		endpoint += fmt.Sprintf("&branch=%s", url.PathEscape(branch))
 	}
 	log.Logger.Debugf("Sending build data to %#v", endpoint)
 

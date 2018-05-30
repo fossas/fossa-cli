@@ -101,7 +101,11 @@ func Run(ctx *cli.Context) {
 		log.Logger.Fatalf("Upload failed: %s", err.Error())
 	}
 	baseURL, err := url.Parse(c.Endpoint)
-	reportURL, err := url.Parse("/projects/" + url.QueryEscape(locator.Fetcher+"+"+locator.Project) + "/refs/branch/" + c.Branch + "/" + url.QueryEscape(locator.Revision) + "/browse/dependencies")
+	reportBranch := c.Branch
+	if reportBranch == "" {
+		reportBranch = "master"
+	}
+	reportURL, err := url.Parse("/projects/" + url.QueryEscape(locator.Fetcher+"+"+locator.Project) + "/refs/branch/" + reportBranch + "/" + url.QueryEscape(locator.Revision) + "/browse/dependencies")
 	log.Printf(`
 ============================================================
 
@@ -128,5 +132,5 @@ func Do(c config.CLIConfig, data []fossa.SourceUnit) (fossa.Locator, error) {
 		title = c.Project
 	}
 
-	return fossa.Upload(c.Fetcher, c.Project, c.Revision, title, data)
+	return fossa.Upload(c.Fetcher, c.Project, c.Revision, title, c.Branch, data)
 }

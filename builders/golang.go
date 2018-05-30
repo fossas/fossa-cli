@@ -441,6 +441,7 @@ func getGoImportsRecurse(builder *GoBuilder, m module.Module, memo map[string]st
 	stdout, ok := memo[pkg]
 	if !ok {
 		var err error
+		// TODO: error case for build tag exclusions -- we need to pass architecture flag
 		stdout, _, err = runLogged(m.Dir, builder.GoCmd, "list", "-f", "{{ join .Imports \"\\n\" }}", pkg)
 		if err != nil {
 			return nil, fmt.Errorf("could not trace imports: %s", err.Error())

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"strings"
 
 	"github.com/urfave/cli"
@@ -152,13 +151,14 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 	log.Logger.Debugf("Uploading build data from (%#v) modules: %#v", len(results), string(buildData))
 
 	fossaEndpoint := "/api/builds/custom?locator=" + url.QueryEscape(module.Locator{Fetcher: conf.Fetcher, Project: conf.Project, Revision: conf.Revision}.String()) + "&v=" + version.ShortString()
+	// TODO: warn when using not-custom fetcher + specified branch
 	if conf.Fetcher == "custom" {
-		defaultProjectTitle := results[0].Name
-		cwd, _ := filepath.Abs(".")
-		if cwd != "" {
-			defaultProjectTitle = filepath.Base(cwd)
+		// TODO: make title configurable
+		title := results[0].Name
+		if title == "" {
+			title = conf.Project
 		}
-		fossaEndpoint += fmt.Sprintf("&managedBuild=true&title=%s", url.PathEscape(defaultProjectTitle))
+		fossaEndpoint += fmt.Sprintf("&managedBuild=true&title=%s&branch=%s", url.PathEscape(title), url.PathEscape(conf.Branch))
 	}
 
 	postRef, _ := url.Parse(fossaEndpoint)
@@ -184,7 +184,11 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 		return "", fmt.Errorf("invalid response, but build was uploaded")
 	}
 	locParts := strings.Split(jsonResponse["locator"].(string), "$")
-	getRef, _ := url.Parse("/projects/" + url.QueryEscape(locParts[0]) + "/refs/branch/" + conf.Branch + "/" + url.QueryEscape(locParts[1]) + "/browse/dependencies")
+	reportBranch := conf.Branch
+	if reportBranch == "" {
+		reportBranch = "master"
+	}
+	getRef, _ := url.Parse("/projects/" + url.QueryEscape(locParts[0]) + "/refs/branch/" + reportBranch + "/" + url.QueryEscape(locParts[1]) + "/browse/dependencies")
 	return fmt.Sprint(`
 ============================================================
 
