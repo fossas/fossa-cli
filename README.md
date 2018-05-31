@@ -14,6 +14,9 @@
   <a href="https://goreportcard.com/report/github.com/fossas/fossa-cli">
     <img src="https://goreportcard.com/badge/github.com/fossas/fossa-cli">
   </a>
+  <a href="http://slack.fossa.io/">
+    <img src="https://slack.fossa.io/badge.svg">
+  </a>
 </p>
 
 ## Background
@@ -169,6 +172,8 @@ Check out the [User Guide](docs/user-guide.md) for more details.
 ## Development
 
 View our [Contribution Guidelines](CONTRIBUTING.md) to get started.
+
+Join our public [Slack Channel](https://slack.fossa.io).
 
 If you're in San Francisco, come to our monthly [Open Source Happy Hour](http://meetup.fossa.io) to meet us F2F!
 
