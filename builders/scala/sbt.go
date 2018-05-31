@@ -1,4 +1,4 @@
-package builders
+package scala
 
 import (
 	"errors"
@@ -10,6 +10,8 @@ import (
 
 	"github.com/bmatcuk/doublestar"
 
+	"github.com/fossas/fossa-cli/builders/builderutil"
+	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -28,7 +30,7 @@ func (builder *SBTBuilder) Initialize() error {
 	log.Logger.Debugf("Initializing SBT builder...")
 
 	// Set Java context variables
-	javaCmd, javaVersion, err := which("-version", os.Getenv("JAVA_BINARY"), "java")
+	javaCmd, javaVersion, err := exec.Which("-version", os.Getenv("JAVA_BINARY"), "java")
 	if err != nil {
 		log.Logger.Warningf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
 	}
@@ -36,7 +38,7 @@ func (builder *SBTBuilder) Initialize() error {
 	builder.JavaVersion = javaVersion
 
 	// Set SBT context variables
-	sbtCmd, sbtVersion, err := which("-no-colors about", os.Getenv("SBT_BINARY"), "sbt")
+	sbtCmd, sbtVersion, err := exec.Which("-no-colors about", os.Getenv("SBT_BINARY"), "sbt")
 	if err != nil {
 		return fmt.Errorf("could not find SBT binary (try setting $SBT_BINARY): %s", err.Error())
 	}
@@ -52,13 +54,21 @@ func (builder *SBTBuilder) Build(m module.Module, force bool) error {
 	log.Logger.Debugf("Running SBT build: %#v %#v", m, force)
 
 	if force {
-		_, _, err := runLogged(m.Dir, builder.SBTCmd, "clean")
+		_, _, err := exec.Run(exec.Cmd{
+			Dir:  m.Dir,
+			Name: builder.SBTCmd,
+			Argv: []string{"clean"},
+		})
 		if err != nil {
 			return fmt.Errorf("could not remove SBT cache: %s", err.Error())
 		}
 	}
 
-	_, _, err := runLogged(m.Dir, builder.SBTCmd, "compile")
+	_, _, err := exec.Run(exec.Cmd{
+		Dir:  m.Dir,
+		Name: builder.SBTCmd,
+		Argv: []string{"compile"},
+	})
 	if err != nil {
 		return fmt.Errorf("could not run SBT build: %s", err.Error())
 	}
@@ -71,7 +81,11 @@ func (builder *SBTBuilder) Build(m module.Module, force bool) error {
 func (builder *SBTBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	log.Logger.Debugf("Running SBT analysis: %#v %#v", m, allowUnresolved)
 
-	output, _, err := runLogged(m.Dir, builder.SBTCmd, "-no-colors", "dependencyTree")
+	output, _, err := exec.Run(exec.Cmd{
+		Dir:  m.Dir,
+		Name: builder.SBTCmd,
+		Argv: []string{"-no-colors", "dependencyTree"},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("could not get dependency tree from SBT: %s", err.Error())
 	}
@@ -93,7 +107,7 @@ func (builder *SBTBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 	}
 
 	// Parse dependency tree
-	var imports []Imported
+	var imports []builderutil.Imported
 	root := module.Locator{
 		Fetcher:  "root",
 		Project:  "root",
@@ -130,13 +144,13 @@ func (builder *SBTBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 		}
 		// Add to imports
 		from = from[:depth/2]
-		imports = append(imports, Imported{
+		imports = append(imports, builderutil.Imported{
 			Locator: locator,
 			From:    append(module.ImportPath{}, from...),
 		})
 		from = append(from, locator)
 	}
-	deps := computeImportPaths(imports)
+	deps := builderutil.ComputeImportPaths(imports)
 
 	log.Logger.Debugf("Done running SBT analysis: %#v", deps)
 	return deps, nil
@@ -146,7 +160,11 @@ func (builder *SBTBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 func (builder *SBTBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
 	log.Logger.Debugf("Checking SBT build: %#v %#v", m, allowUnresolved)
 
-	output, _, err := runLogged(m.Dir, builder.SBTCmd, "-no-colors", "dependencyList")
+	output, _, err := exec.Run(exec.Cmd{
+		Dir:  m.Dir,
+		Name: builder.SBTCmd,
+		Argv: []string{"-no-colors", "dependencyList"},
+	})
 	if err != nil {
 		return false, fmt.Errorf("could not get dependency list from SBT: %s", err.Error())
 	}

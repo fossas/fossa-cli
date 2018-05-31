@@ -1,11 +1,10 @@
-package builders
+package nuget
 
 import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -13,6 +12,9 @@ import (
 	"github.com/bmatcuk/doublestar"
 	"github.com/pkg/errors"
 
+	"github.com/fossas/fossa-cli/builders/builderutil"
+	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -37,7 +39,7 @@ func (builder *NuGetBuilder) Initialize() error {
 	log.Logger.Debug("Initializing NuGet builder...")
 
 	// Set DotNET context variables
-	dotNetCmd, dotNetVersion, err := which("--version", os.Getenv("DOTNET_BINARY"), "dotnet")
+	dotNetCmd, dotNetVersion, err := exec.Which("--version", os.Getenv("DOTNET_BINARY"), "dotnet")
 	if err != nil {
 		log.Logger.Warningf("Could not find `dotnet` binary (try setting $DOTNET_BINARY): %s", err.Error())
 	}
@@ -48,7 +50,7 @@ func (builder *NuGetBuilder) Initialize() error {
 	// `nuget` hangs on Linux. Not sure why.
 	// TODO: TEST: we should really add a timeout to all of these.
 	// nuGetCmd, nuGetVersonOut, err := which("help", os.Getenv("NUGET_BINARY"), "nuget")
-	nuGetCmd, nuGetVersonOut, err := which("help", os.Getenv("NUGET_BINARY"))
+	nuGetCmd, nuGetVersonOut, err := exec.Which("help", os.Getenv("NUGET_BINARY"))
 	if err == nil {
 		builder.NuGetCmd = nuGetCmd
 
@@ -71,7 +73,11 @@ func (builder *NuGetBuilder) Build(m module.Module, force bool) error {
 
 	if builder.DotNETCmd != "" {
 		dotNetSuccessKey := "Restore completed"
-		dotNetStdout, dotNetStderr, err := runLogged(m.Dir, builder.DotNETCmd, "restore")
+		dotNetStdout, dotNetStderr, err := exec.Run(exec.Cmd{
+			Dir:  m.Dir,
+			Name: builder.DotNETCmd,
+			Argv: []string{"restore"},
+		})
 		if err == nil && (strings.Contains(dotNetStdout, dotNetSuccessKey) || strings.Contains(dotNetStderr, dotNetSuccessKey)) {
 			log.Logger.Debug("NuGet build succeeded with `dotnet restore`.")
 			return nil
@@ -82,7 +88,11 @@ func (builder *NuGetBuilder) Build(m module.Module, force bool) error {
 
 	if builder.NuGetCmd != "" {
 		pkgDir, _ := resolveNugetPackagesDir(m.Dir)
-		_, _, err := runLogged(m.Dir, builder.NuGetCmd, "restore", "-PackagesDirectory", pkgDir)
+		_, _, err := exec.Run(exec.Cmd{
+			Dir:  m.Dir,
+			Name: builder.NuGetCmd,
+			Argv: []string{"restore", "-PackagesDirectory", pkgDir},
+		})
 		if err != nil {
 			return fmt.Errorf("could not run `nuget install`: %s", err.Error())
 		}
@@ -150,11 +160,13 @@ func computeDotNETProjectGraph(cmd string, rootProjectFile string) (dotNETProjec
 	}
 
 	// Get transitive project references
-	refCmd := exec.Command(cmd, "list", rootProjectFile, "reference")
-	refCmd.Env = os.Environ()
-	refCmd.Env = append(refCmd.Env, "TERM=dumb")
-	refOutBytes, err := refCmd.Output()
-	refOut := string(refOutBytes)
+	refOut, _, err := exec.Run(exec.Cmd{
+		Name: cmd,
+		Argv: []string{"list", rootProjectFile, "reference"},
+		WithEnv: map[string]string{
+			"TERM": "dumb",
+		},
+	})
 	if err != nil {
 		return dotNETProjectNode{}, errors.Wrapf(err, "could not run `%s list reference`", cmd)
 	}
@@ -264,8 +276,8 @@ func hydrateDotNETPackageGraph(rootPackageNode dotNETPackageNode, edges map[stri
 	}
 }
 
-func flattenDotNETPackageGraphRecurse(pkg dotNETPackageNode, from module.ImportPath) []Imported {
-	var imports []Imported
+func flattenDotNETPackageGraphRecurse(pkg dotNETPackageNode, from module.ImportPath) []builderutil.Imported {
+	var imports []builderutil.Imported
 	locator := module.Locator{
 		Fetcher:  "nuget",
 		Project:  pkg.Name,
@@ -275,14 +287,14 @@ func flattenDotNETPackageGraphRecurse(pkg dotNETPackageNode, from module.ImportP
 		transitive := flattenDotNETPackageGraphRecurse(dep, append(from, locator))
 		imports = append(imports, transitive...)
 	}
-	imports = append(imports, Imported{
+	imports = append(imports, builderutil.Imported{
 		Locator: locator,
 		From:    append(module.ImportPath{}, from...),
 	})
 	return imports
 }
 
-func flattenDotNETPackageGraph(pkg dotNETPackageNode) []Imported {
+func flattenDotNETPackageGraph(pkg dotNETPackageNode) []builderutil.Imported {
 	return flattenDotNETPackageGraphRecurse(pkg, module.ImportPath{
 		module.Locator{
 			Fetcher:  "root",
@@ -318,7 +330,7 @@ func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 
 		// Parse lockfile: get dependency graph edges and resolved versions.
 		var lockFile nuGetLockfileV2or3
-		err = parseLogged(lockFilePath, &lockFile)
+		err = files.ReadJSON(&lockFile, lockFilePath)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not parse NuGet lockfile")
 		}
@@ -347,14 +359,14 @@ func (builder *NuGetBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 		imports := flattenDotNETPackageGraph(packageGraph)
 
 		// Compute import paths
-		deps = computeImportPaths(imports)
+		deps = builderutil.ComputeImportPaths(imports)
 	} else {
 		// TODO: test this code path with a fixture
 		// Fallback to parsing the packages directory
 		packagesDir, err := resolveNugetPackagesDir(m.Dir)
 
 		log.Logger.Debugf("No lockfile found; parsing packages directory: %s", packagesDir)
-		if exists, err := hasFile(packagesDir); err != nil || !exists {
+		if exists, err := files.ExistsFolder(packagesDir); err != nil || !exists {
 			return nil, fmt.Errorf("Unable to verify packages directory: %s", packagesDir)
 		}
 
@@ -397,7 +409,7 @@ func (builder *NuGetBuilder) IsBuilt(m module.Module, allowUnresolved bool) (boo
 		log.Logger.Debug("Checking NuGet packages directory for existence")
 
 		packagesDir, _ := resolveNugetPackagesDir(m.Dir)
-		return hasFile(packagesDir)
+		return files.ExistsFolder(packagesDir)
 	}
 
 	return true, nil
@@ -418,7 +430,7 @@ func resolveNuGetProjectLockfile(dir string) (string, error) {
 	lockfilePathCandidates := []string{"project.lock.json", "obj/project.assets.json"}
 	for _, path := range lockfilePathCandidates {
 		log.Logger.Debugf("Checking for lockfile: %s/%s", dir, path)
-		if hasLockfile, err := hasFile(dir, path); hasLockfile && err == nil {
+		if hasLockfile, err := files.Exists(dir, path); hasLockfile && err == nil {
 			return filepath.Join(dir, path), nil
 		}
 	}

@@ -1,4 +1,4 @@
-package builders
+package php
 
 import (
 	"encoding/json"
@@ -9,6 +9,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/fossas/fossa-cli/builders/builderutil"
+	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -27,7 +30,7 @@ func (builder *ComposerBuilder) Initialize() error {
 	log.Logger.Debug("Initializing Composer builder...")
 
 	// Set PHP context variables
-	phpCmd, phpVersion, err := which("-v", os.Getenv("PHP_BINARY"), "php")
+	phpCmd, phpVersion, err := exec.Which("-v", os.Getenv("PHP_BINARY"), "php")
 	if err != nil {
 		log.Logger.Warningf("Could not find PHP binary (try setting $PHP_BINARY): %s", err.Error())
 	}
@@ -35,7 +38,7 @@ func (builder *ComposerBuilder) Initialize() error {
 	builder.PHPVersion = phpVersion
 
 	// Set Composer context variables
-	composerCmd, composerVersion, err := which("-V", os.Getenv("COMPOSER_BINARY"), "composer")
+	composerCmd, composerVersion, err := exec.Which("-V", os.Getenv("COMPOSER_BINARY"), "composer")
 	if err != nil {
 		return fmt.Errorf("could not find Composer binary (try setting $COMPOSER_BINARY): %s", err.Error())
 	}
@@ -51,13 +54,21 @@ func (builder *ComposerBuilder) Build(m module.Module, force bool) error {
 	log.Logger.Debug("Running Composer build: %#v %#v", m, force)
 
 	if force {
-		_, _, err := runLogged(m.Dir, "rm", "-rf", "vendor")
+		_, _, err := exec.Run(exec.Cmd{
+			Dir:  m.Dir,
+			Name: "rm",
+			Argv: []string{"-rf", "vendor"},
+		})
 		if err != nil {
 			return fmt.Errorf("could not remove Composer cache: %s", err.Error())
 		}
 	}
 
-	_, _, err := runLogged(m.Dir, builder.ComposerCmd, "install", "--prefer-dist", "--no-dev")
+	_, _, err := exec.Run(exec.Cmd{
+		Dir:  m.Dir,
+		Name: builder.ComposerCmd,
+		Argv: []string{"install", "--prefer-dist", "--no-dev"},
+	})
 	if err != nil {
 		return fmt.Errorf("could not run Composer build: %s", err.Error())
 	}
@@ -76,7 +87,11 @@ func (builder *ComposerBuilder) Analyze(m module.Module, allowUnresolved bool) (
 	log.Logger.Debug("Running Composer analysis: %#v %#v", m, allowUnresolved)
 
 	// Run `composer show --format=json --no-ansi` to get resolved versions
-	showOutput, _, err := runLogged(m.Dir, builder.ComposerCmd, "show", "--format=json", "--no-ansi")
+	showOutput, _, err := exec.Run(exec.Cmd{
+		Dir:  m.Dir,
+		Name: builder.ComposerCmd,
+		Argv: []string{"show", "--format=json", "--no-ansi"},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("could not get dependency list from Composer: %s", err.Error())
 	}
@@ -91,11 +106,15 @@ func (builder *ComposerBuilder) Analyze(m module.Module, allowUnresolved bool) (
 	}
 
 	// Run `composer show --tree --no-ansi` to get paths
-	treeOutput, _, err := runLogged(m.Dir, builder.ComposerCmd, "show", "--tree", "--no-ansi")
+	treeOutput, _, err := exec.Run(exec.Cmd{
+		Dir:  m.Dir,
+		Name: builder.ComposerCmd,
+		Argv: []string{"show", "--tree", "--no-ansi"},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("could not get dependency list from Composer: %s", err.Error())
 	}
-	var depList []Imported
+	var depList []builderutil.Imported
 	root := module.Locator{
 		Fetcher:  "root",
 		Project:  "root",
@@ -143,13 +162,13 @@ func (builder *ComposerBuilder) Analyze(m module.Module, allowUnresolved bool) (
 		} else {
 			depContext = depContext[:depth/3+1]
 		}
-		depList = append(depList, Imported{
+		depList = append(depList, builderutil.Imported{
 			Locator: locator,
 			From:    append(module.ImportPath{}, depContext...),
 		})
 		lastDepth = depth
 	}
-	deps := computeImportPaths(depList)
+	deps := builderutil.ComputeImportPaths(depList)
 
 	// Resolve revisions
 	for i, dep := range deps {
@@ -170,7 +189,11 @@ func (builder *ComposerBuilder) IsBuilt(m module.Module, allowUnresolved bool) (
 	log.Logger.Debugf("Checking Composer build: %#v %#v", m, allowUnresolved)
 
 	// Run `composer show --no-ansi`
-	output, _, err := runLogged(m.Dir, builder.ComposerCmd, "show", "--no-ansi")
+	output, _, err := exec.Run(exec.Cmd{
+		Dir:  m.Dir,
+		Name: builder.ComposerCmd,
+		Argv: []string{"show", "--no-ansi"},
+	})
 	if err != nil {
 		return false, fmt.Errorf("could not get dependency list from Composer: %s", err.Error())
 	}
@@ -207,7 +230,7 @@ func (builder *ComposerBuilder) DiscoverModules(dir string) ([]module.Config, er
 
 			// Parse from composer.json and set moduleName if successful
 			var composerPackage composerManifest
-			if err := parseLogged(path, &composerPackage); err == nil {
+			if err := files.ReadJSON(&composerPackage, path); err == nil {
 				moduleName = composerPackage.Name
 			}
 

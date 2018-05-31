@@ -1,4 +1,4 @@
-package builders
+package archive
 
 import (
 	"archive/tar"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/bmatcuk/doublestar"
 
+	"github.com/fossas/fossa-cli/builders/nodejs"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -47,7 +48,7 @@ func (builder *VendoredArchiveBuilder) Analyze(m module.Module, allowUnresolved 
 	// glob for deps and return them as packages
 
 	// extractedArchivePaths := []string{}
-	var rawDependencies []nodeManifest
+	var rawDependencies []nodejs.NodeManifest
 
 	log.Logger.Debugf("Looking for tar files...")
 	tarFiles, err := doublestar.Glob(filepath.Join(m.Dir, "**", "*.{tar.gz,tgz}"))
@@ -93,7 +94,7 @@ func (builder *VendoredArchiveBuilder) Analyze(m module.Module, allowUnresolved 
 					log.Logger.Warningf("Error reading node module: %#v", hdr.Name)
 					break
 				}
-				var nodeModule nodeManifest
+				var nodeModule nodejs.NodeManifest
 				if err := json.Unmarshal(nodeManifestBuffer, &nodeModule); err != nil {
 					log.Logger.Warningf("Error parsing node module: %#v", hdr.Name)
 					break

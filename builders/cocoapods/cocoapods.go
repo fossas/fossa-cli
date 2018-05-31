@@ -1,4 +1,4 @@
-package builders
+package cocoapods
 
 import (
 	"errors"
@@ -12,6 +12,9 @@ import (
 	"github.com/bmatcuk/doublestar"
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/fossas/fossa-cli/builders/builderutil"
+	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -94,7 +97,7 @@ func (builder *CocoapodsBuilder) Initialize() error {
 	log.Logger.Debug("Initializing Cocoapods builder...")
 
 	// Set Ruby context variables
-	cocoapodsCmd, cocoapodsVersion, err := which("--version", os.Getenv("COCOAPODS_BINARY"), "pod")
+	cocoapodsCmd, cocoapodsVersion, err := exec.Which("--version", os.Getenv("COCOAPODS_BINARY"), "pod")
 	if err != nil {
 		log.Logger.Warningf("Could not find Pod binary (try setting $COCOAPODS_BINARY): %s", err.Error())
 	}
@@ -109,7 +112,7 @@ func (builder *CocoapodsBuilder) Initialize() error {
 func (builder *CocoapodsBuilder) Build(m module.Module, force bool) error {
 	log.Logger.Debugf("Running Cocoapods build: %#v %#v", m, force)
 
-	_, _, err := runLogged(m.Dir, builder.CocoapodsCmd, "install")
+	_, _, err := exec.Run(exec.Cmd{Dir: m.Dir, Name: builder.CocoapodsCmd, Argv: []string{"install"}})
 	if err != nil {
 		return fmt.Errorf("could not run Cocoapods build: %s", err.Error())
 	}
@@ -152,7 +155,7 @@ func (builder *CocoapodsBuilder) Analyze(m module.Module, allowUnresolved bool) 
 	}
 
 	importMap := make(map[string][]string) // maps parent deps to all transitive deps
-	var imports []Imported
+	var imports []builderutil.Imported
 	root := module.Locator{
 		Fetcher:  "root",
 		Project:  "root",
@@ -200,7 +203,7 @@ func (builder *CocoapodsBuilder) Analyze(m module.Module, allowUnresolved bool) 
 
 		// add root as direct parent to import path if a top level dep (deduping occurs later on)
 		if _, ok := topLevelDeps[parentDep.Name]; ok {
-			imports = append(imports, Imported{
+			imports = append(imports, builderutil.Imported{
 				Locator: currentLocator,
 				From:    append(module.ImportPath{}, root),
 			})
@@ -227,7 +230,7 @@ func (builder *CocoapodsBuilder) Analyze(m module.Module, allowUnresolved bool) 
 		for _, dep := range transitiveDeps {
 			if duplicateDepMap[dep] != true {
 				duplicateDepMap[dep] = true
-				imports = append(imports, Imported{
+				imports = append(imports, builderutil.Imported{
 					Locator: allDepsMap[dep],
 					From:    module.ImportPath{root, allDepsMap[parentDep]},
 				})
@@ -235,7 +238,7 @@ func (builder *CocoapodsBuilder) Analyze(m module.Module, allowUnresolved bool) 
 		}
 	}
 
-	deps := computeImportPaths(imports)
+	deps := builderutil.ComputeImportPaths(imports)
 
 	log.Logger.Debugf("Done running Pod analysis: %#v", deps)
 	return deps, nil
@@ -245,9 +248,9 @@ func (builder *CocoapodsBuilder) Analyze(m module.Module, allowUnresolved bool) 
 func (builder *CocoapodsBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
 	log.Logger.Debugf("Checking Cocoapods build: %#v %#v", m, allowUnresolved)
 
-	isBuilt, err := hasFile(m.Dir, "Podfile.lock")
+	isBuilt, err := files.Exists(m.Dir, "Podfile.lock")
 	if err != nil {
-		return false, fmt.Errorf("could not find Podfile.lock file: %s", err.Error())
+		return false, err
 	}
 
 	log.Logger.Debugf("Done checking Cocoapods build: %#v", isBuilt)

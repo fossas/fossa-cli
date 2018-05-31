@@ -1,4 +1,4 @@
-package builders
+package ant
 
 import (
 	"archive/zip"
@@ -13,12 +13,13 @@ import (
 
 	"github.com/bmatcuk/doublestar"
 	"github.com/gnewton/jargo"
-	logging "github.com/op/go-logging"
 
+	"github.com/fossas/fossa-cli/builders/maven"
+	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
-
-var antLogger = logging.MustGetLogger("ant")
 
 // AntBuilder implements build context for SBT builds
 type AntBuilder struct {
@@ -31,18 +32,18 @@ type AntBuilder struct {
 
 // Initialize collects metadata on Java and SBT binaries
 func (builder *AntBuilder) Initialize() error {
-	antLogger.Debugf("Initializing Ant builder...")
+	log.Logger.Debugf("Initializing Ant builder...")
 
 	// Set Java context variables
-	javaCmd, javaVersion, err := which("-version", os.Getenv("JAVA_BINARY"), "java")
+	javaCmd, javaVersion, err := exec.Which("-version", os.Getenv("JAVA_BINARY"), "java")
 	if err != nil {
-		antLogger.Warningf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
+		log.Logger.Warningf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
 	}
 	builder.JavaCmd = javaCmd
 	builder.JavaVersion = javaVersion
 
 	// Set Ant context variables
-	antCmd, antVersionOut, err := which("-version", os.Getenv("ANT_BINARY"), "ant")
+	antCmd, antVersionOut, err := exec.Which("-version", os.Getenv("ANT_BINARY"), "ant")
 	if err != nil {
 		return fmt.Errorf("could not find Ant binary (try setting $ANT_BINARY): %s", err.Error())
 	}
@@ -55,7 +56,7 @@ func (builder *AntBuilder) Initialize() error {
 		builder.AntVersion = match[1]
 	}
 
-	antLogger.Debugf("Initialized Ant builder: %#v", builder)
+	log.Logger.Debugf("Initialized Ant builder: %#v", builder)
 	return nil
 }
 
@@ -66,7 +67,7 @@ func (builder *AntBuilder) Build(m module.Module, force bool) error {
 
 // Analyze resolves a lib directory and parses the jars inside
 func (builder *AntBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	antLogger.Debugf("Running Ant analysis: %#v %#v in %s", m, allowUnresolved, m.Dir)
+	log.Logger.Debugf("Running Ant analysis: %#v %#v in %s", m, allowUnresolved, m.Dir)
 
 	options := m.Context.(map[string]interface{})
 
@@ -75,9 +76,8 @@ func (builder *AntBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 		libdir = options["libdir"].(string)
 	}
 
-	antLogger.Debugf("resolving ant libs in: %s", libdir)
-	libDirExists, err := hasFile(m.Dir, libdir)
-	if !libDirExists || err != nil {
+	log.Logger.Debugf("resolving ant libs in: %s", libdir)
+	if ok, err := files.ExistsFolder(m.Dir, libdir); !ok || err != nil {
 		return nil, errors.New("unable to resolve library directory, try specifying it using the `modules.options.libdir` property in `fossa.yml`")
 	}
 
@@ -86,7 +86,7 @@ func (builder *AntBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 		return nil, err
 	}
 
-	antLogger.Debugf("Running Ant analysis: %#v", jarFilePaths)
+	log.Logger.Debugf("Running Ant analysis: %#v", jarFilePaths)
 
 	var dependencies []module.Dependency
 
@@ -98,17 +98,17 @@ func (builder *AntBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 				Locator: locator,
 			})
 		} else {
-			antLogger.Warningf("unable to resolve Jar: %s", jarFilePath)
+			log.Logger.Warningf("unable to resolve Jar: %s", jarFilePath)
 		}
 	}
 
 	return dependencies, nil
 }
 
-func getPOMFromJar(path string) (POMFile, error) {
-	var pomFile POMFile
+func getPOMFromJar(path string) (maven.POMFile, error) {
+	var pomFile maven.POMFile
 
-	antLogger.Debugf(path)
+	log.Logger.Debugf(path)
 	if path == "" {
 		return pomFile, errors.New("invalid POM path specified")
 	}
@@ -155,7 +155,7 @@ func getPOMFromJar(path string) (POMFile, error) {
 
 // locatorFromJar resolves a locator from a .jar file by inspecting its contents
 func locatorFromJar(path string) (module.Locator, error) {
-	antLogger.Debugf("processing locator from Jar: %s", path)
+	log.Logger.Debugf("processing locator from Jar: %s", path)
 
 	info, err := jargo.GetJarInfo(path)
 	if err == nil {
@@ -169,20 +169,20 @@ func locatorFromJar(path string) (module.Locator, error) {
 
 		pomFile, err := getPOMFromJar(pomFilePath)
 		if err == nil {
-			antLogger.Debugf("resolving locator from pom: %s", pomFilePath)
+			log.Logger.Debugf("resolving locator from pom: %s", pomFilePath)
 			return module.Locator{
 				Fetcher:  "mvn",
 				Project:  pomFile.GroupID + ":" + pomFile.ArtifactID,
 				Revision: pomFile.Version,
 			}, nil
 		} else {
-			antLogger.Debugf("%s", err)
+			log.Logger.Debugf("%s", err)
 		}
 
 		// failed to decode pom file, fall back to META-INF
 		manifest := *info.Manifest
 		if manifest["Bundle-SymbolicName"] != "" && manifest["Implementation-Version"] != "" {
-			antLogger.Debugf("resolving locator from META-INF: %s", info.Manifest)
+			log.Logger.Debugf("resolving locator from META-INF: %s", info.Manifest)
 			return module.Locator{
 				Fetcher:  "mvn",
 				Project:  manifest["Bundle-SymbolicName"], // TODO: identify GroupId

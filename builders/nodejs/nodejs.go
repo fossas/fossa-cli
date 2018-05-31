@@ -1,4 +1,4 @@
-package builders
+package nodejs
 
 import (
 	"encoding/json"
@@ -8,6 +8,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/fossas/fossa-cli/builders/builderutil"
+	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -30,7 +33,7 @@ func (builder *NodeJSBuilder) Initialize() error {
 	log.Logger.Debug("Initializing Nodejs builder...")
 
 	// Set NodeJS context variables
-	nodeCmd, nodeVersion, err := which("-v", os.Getenv("NODE_BINARY"), "node", "nodejs")
+	nodeCmd, nodeVersion, err := exec.Which("-v", os.Getenv("NODE_BINARY"), "node", "nodejs")
 	if err != nil {
 		log.Logger.Warningf("Could not find Node binary (try setting $NODE_BINARY): %s", err.Error())
 	}
@@ -38,12 +41,12 @@ func (builder *NodeJSBuilder) Initialize() error {
 	builder.NodeVersion = nodeVersion
 
 	// Set NPM context variables
-	npmCmd, npmVersion, npmErr := which("-v", os.Getenv("NPM_BINARY"), "npm")
+	npmCmd, npmVersion, npmErr := exec.Which("-v", os.Getenv("NPM_BINARY"), "npm")
 	builder.NPMCmd = npmCmd
 	builder.NPMVersion = npmVersion
 
 	// Set Yarn context variables
-	yarnCmd, yarnVersion, yarnErr := which("-v", os.Getenv("YARN_BINARY"), "yarn")
+	yarnCmd, yarnVersion, yarnErr := exec.Which("-v", os.Getenv("YARN_BINARY"), "yarn")
 	builder.YarnCmd = yarnCmd
 	builder.YarnVersion = yarnVersion
 
@@ -60,20 +63,32 @@ func (builder *NodeJSBuilder) Build(m module.Module, force bool) error {
 	log.Logger.Debugf("Running Nodejs build: %#v %#v", m, force)
 
 	if force {
-		_, _, err := runLogged(m.Dir, "rm", "-rf", "node_modules")
+		_, _, err := exec.Run(exec.Cmd{
+			Name: "rm",
+			Argv: []string{"-rf", "node_modules"},
+			Dir:  m.Dir,
+		})
 		if err != nil {
 			return fmt.Errorf("could not remove Nodejs cache: %s", err.Error())
 		}
 	}
 
 	// Prefer Yarn where possible
-	if ok, err := hasFile(m.Dir, "yarn.lock"); err == nil && ok {
-		_, _, err := runLogged(m.Dir, builder.YarnCmd, "install", "--production", "--frozen-lockfile")
+	if ok, err := files.Exists(m.Dir, "yarn.lock"); err != nil && ok {
+		_, _, err := exec.Run(exec.Cmd{
+			Name: builder.YarnCmd,
+			Argv: []string{"install", "--production", "--frozen-lockfile"},
+			Dir:  m.Dir,
+		})
 		if err != nil {
 			return fmt.Errorf("could not run Yarn build: %s", err.Error())
 		}
 	} else {
-		_, _, err := runLogged(m.Dir, builder.NPMCmd, "install", "--production")
+		_, _, err := exec.Run(exec.Cmd{
+			Name: builder.NPMCmd,
+			Argv: []string{"install", "--production"},
+			Dir:  m.Dir,
+		})
 		if err != nil {
 			return fmt.Errorf("could not run NPM build: %s", err.Error())
 		}
@@ -83,9 +98,10 @@ func (builder *NodeJSBuilder) Build(m module.Module, force bool) error {
 	return nil
 }
 
-type nodeManifest struct {
-	Name    string
-	Version string
+type NodeManifest struct {
+	Name         string
+	Version      string
+	Dependencies map[string]string
 }
 
 type nodeListOutput struct {
@@ -93,8 +109,8 @@ type nodeListOutput struct {
 	Dependencies map[string]nodeListOutput
 }
 
-func flattenNodeJSModulesRecurse(locator module.Locator, pkg nodeListOutput, from module.ImportPath) []Imported {
-	var imports []Imported
+func flattenNodeJSModulesRecurse(locator module.Locator, pkg nodeListOutput, from module.ImportPath) []builderutil.Imported {
+	var imports []builderutil.Imported
 	for dep, manifest := range pkg.Dependencies {
 		transitive := flattenNodeJSModulesRecurse(module.Locator{
 			Fetcher:  "npm",
@@ -103,14 +119,14 @@ func flattenNodeJSModulesRecurse(locator module.Locator, pkg nodeListOutput, fro
 		}, manifest, append(from, locator))
 		imports = append(imports, transitive...)
 	}
-	imports = append(imports, Imported{
+	imports = append(imports, builderutil.Imported{
 		Locator: locator,
 		From:    append(module.ImportPath{}, from...),
 	})
 	return imports
 }
 
-func flattenNodeJSModules(pkg nodeListOutput) []Imported {
+func flattenNodeJSModules(pkg nodeListOutput) []builderutil.Imported {
 	root := module.Locator{
 		Fetcher:  "root",
 		Project:  "root",
@@ -127,7 +143,11 @@ func (builder *NodeJSBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 
 	// TODO: we must allow this to exit with error if a flag is passed (maybe --allow-npm-err)
 	// because sometimes npm will throw errors even after a complete install
-	out, stderr, err := runLogged(m.Dir, builder.NPMCmd, "ls", "--json")
+	out, stderr, err := exec.Run(exec.Cmd{
+		Name: builder.NPMCmd,
+		Argv: []string{"ls", "--json"},
+		Dir:  m.Dir,
+	})
 	if err != nil {
 		log.Logger.Warningf("NPM had non-zero exit code: %s", stderr)
 	}
@@ -138,14 +158,10 @@ func (builder *NodeJSBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 		return nil, errors.Wrap(err, "could not parse `npm ls --json` output")
 	}
 	imports := flattenNodeJSModules(parsed)
-	deps := computeImportPaths(imports)
+	deps := builderutil.ComputeImportPaths(imports)
 
 	log.Logger.Debugf("Done running Nodejs analysis: %#v", deps)
 	return deps, nil
-}
-
-type npmManifest struct {
-	Dependencies map[string]string
 }
 
 // IsBuilt checks for the existence of `$PROJECT/node_modules`
@@ -155,19 +171,17 @@ func (builder *NodeJSBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bo
 	// test: there are some package.json with no deps (no node_modules)
 	// TODO: Check if the installed modules are consistent with what's in the
 	// actual manifest.
-	var manifest npmManifest
-	err := parseLogged(filepath.Join(m.Dir, "package.json"), &manifest)
+	var manifest NodeManifest
+	err := files.ReadJSON(&manifest, filepath.Join(m.Dir, "package.json"))
 	if err != nil {
 		return false, err
 	}
 	if len(manifest.Dependencies) == 0 {
 		return true, nil
 	}
-	isBuilt, err := hasFile(m.Dir, "node_modules")
-
+	isBuilt, err := files.ExistsFolder(m.Dir, "node_modules")
 	if err != nil {
-		// TODO: make this optional -- IsBuilt failures should just be warnings
-		return false, fmt.Errorf("could not find Nodejs dependencies folder: %s", err.Error())
+		return false, err
 	}
 
 	log.Logger.Debugf("Done checking Nodejs build: %#v", isBuilt)
@@ -197,8 +211,8 @@ func (builder *NodeJSBuilder) DiscoverModules(dir string) ([]module.Config, erro
 			moduleName := filepath.Base(filepath.Dir(path))
 
 			// Parse from package.json and set moduleName if successful
-			var nodeModule nodeManifest
-			if err := parseLogged(path, &nodeModule); err == nil {
+			var nodeModule NodeManifest
+			if err := files.ReadJSON(&nodeModule, path); err == nil {
 				moduleName = nodeModule.Name
 			}
 

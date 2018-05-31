@@ -96,8 +96,9 @@ RUN sudo apt-get install -y php7.2 php7.2-gd php7.2-curl php7.2-intl
 RUN curl https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer && \
     sudo chown -R fossa:fossa $HOME/.composer
 
-# Install `go-bindata`
-RUN go get -u github.com/go-bindata/go-bindata/...
+# Install `go-bindata` and `goreleaser`
+RUN go get -u github.com/go-bindata/go-bindata/... && \
+    go get -u github.com/goreleaser/goreleaser/...
 
 # Add FOSSA CLI
 ADD . $GOPATH/src/github.com/fossas/fossa-cli

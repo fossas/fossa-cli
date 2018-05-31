@@ -1,4 +1,4 @@
-package builders
+package bower
 
 import (
 	"encoding/json"
@@ -8,6 +8,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/fossas/fossa-cli/builders/builderutil"
+	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -32,7 +35,7 @@ func (builder *BowerBuilder) Initialize() error {
 	log.Logger.Debug("Initializing Bower builder...")
 
 	// Set Node context variables
-	nodeCmd, nodeVersion, err := which("-v", os.Getenv("NODE_BINARY"), "node", "nodejs")
+	nodeCmd, nodeVersion, err := exec.Which("-v", os.Getenv("NODE_BINARY"), "node", "nodejs")
 	if err != nil {
 		log.Logger.Warningf("Could not find Node binary (try setting $NODE_BINARY): %s", err.Error())
 	}
@@ -40,7 +43,7 @@ func (builder *BowerBuilder) Initialize() error {
 	builder.NodeVersion = nodeVersion
 
 	// Set Bower context variables
-	bowerCmd, bowerVersion, err := which("-v", os.Getenv("BOWER_BINARY"), "bower")
+	bowerCmd, bowerVersion, err := exec.Which("-v", os.Getenv("BOWER_BINARY"), "bower")
 	if err != nil {
 		return errors.Wrap(err, "could not find Bower binary (try setting $BOWER_BINARY)")
 	}
@@ -56,13 +59,13 @@ func (builder *BowerBuilder) Build(m module.Module, force bool) error {
 	log.Logger.Debugf("Running Bower build: %#v", m, force)
 
 	if force {
-		_, _, err := runLogged(m.Dir, "rm", "-rf", "bower_components")
+		_, _, err := exec.Run(exec.Cmd{Dir: m.Dir, Name: "rm", Argv: []string{"-rf", "bower_components"}})
 		if err != nil {
 			return fmt.Errorf("could not remove Bower cache: %s", err.Error())
 		}
 	}
 
-	_, _, err := runLogged(m.Dir, builder.BowerCmd, "install", "--production")
+	_, _, err := exec.Run(exec.Cmd{Dir: m.Dir, Name: builder.BowerCmd, Argv: []string{"install", "--production"}})
 	if err != nil {
 		return fmt.Errorf("could not run Bower build: %s", err.Error())
 	}
@@ -84,8 +87,8 @@ type bowerJSONManifest struct {
 	Version string
 }
 
-func normalizeBowerComponents(parent module.ImportPath, c bowerListManifest) []Imported {
-	var deps []Imported
+func normalizeBowerComponents(parent module.ImportPath, c bowerListManifest) []builderutil.Imported {
+	var deps []builderutil.Imported
 	for _, dep := range c.Dependencies {
 		deps = append(
 			deps,
@@ -99,7 +102,7 @@ func normalizeBowerComponents(parent module.ImportPath, c bowerListManifest) []I
 			)...)
 	}
 
-	return append(deps, Imported{
+	return append(deps, builderutil.Imported{
 		Locator: module.Locator{
 			Fetcher:  "bower",
 			Project:  c.PkgMeta.Name,
@@ -114,7 +117,7 @@ func normalizeBowerComponents(parent module.ImportPath, c bowerListManifest) []I
 func (builder *BowerBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	log.Logger.Debugf("Running Bower analysis: %#v %#v", m, allowUnresolved)
 
-	stdout, _, err := runLogged(m.Dir, "bower", "ls", "--json")
+	stdout, _, err := exec.Run(exec.Cmd{Dir: m.Dir, Name: "bower", Argv: []string{"ls", "--json"}})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not run `bower ls --json`")
 	}
@@ -125,7 +128,7 @@ func (builder *BowerBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 		return nil, errors.Wrap(err, "could not parse `bower ls --json` output")
 	}
 
-	var depList []Imported
+	var depList []builderutil.Imported
 	for _, dep := range output.Dependencies {
 		depList = append(
 			depList,
@@ -141,7 +144,7 @@ func (builder *BowerBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 			)...,
 		)
 	}
-	deps := computeImportPaths(depList)
+	deps := builderutil.ComputeImportPaths(depList)
 
 	log.Logger.Debugf("Done running Bower analysis: %#v", deps)
 	return deps, nil
@@ -152,9 +155,9 @@ func resolveBowerComponentsDirectory(dir string) string {
 	bowerConfigPath := filepath.Join(dir, ".bowerrc")
 	bowerComponentsPath := filepath.Join(dir, "bower_components")
 
-	if bowerConfigExists, _ := hasFile(bowerConfigPath); bowerConfigExists {
+	if bowerConfigExists, err := files.Exists(bowerConfigPath); err == nil && bowerConfigExists {
 		var bowerConfiguration BowerConfiguration
-		parseLogged(bowerConfigPath, &bowerConfiguration)
+		files.ReadJSON(&bowerConfiguration, bowerConfigPath)
 
 		if bowerConfiguration.Directory != "" {
 			bowerComponentsPath = bowerConfiguration.Directory
@@ -170,9 +173,9 @@ func (builder *BowerBuilder) IsBuilt(m module.Module, allowUnresolved bool) (boo
 
 	// TODO: Check if the installed modules are consistent with what's in the
 	// actual manifest.
-	isBuilt, err := hasFile(resolveBowerComponentsDirectory(m.Dir))
+	isBuilt, err := files.Exists(resolveBowerComponentsDirectory(m.Dir))
 	if err != nil {
-		return false, fmt.Errorf("could not find Bower dependencies folder: %s", err.Error())
+		return false, err
 	}
 
 	log.Logger.Debugf("Done checking Bower build: %#v", isBuilt)
@@ -203,7 +206,7 @@ func (builder *BowerBuilder) DiscoverModules(dir string) ([]module.Config, error
 
 			// Parse from bower.json and set moduleName if successful
 			var manifest bowerJSONManifest
-			if err := parseLogged(path, &manifest); err == nil {
+			if err := files.ReadJSON(&manifest, path); err == nil {
 				moduleName = manifest.Name
 			}
 

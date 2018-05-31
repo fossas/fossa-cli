@@ -2,37 +2,51 @@ package builders
 
 import (
 	"github.com/fossas/fossa-cli/module"
+
+	"github.com/fossas/fossa-cli/builders/ant"
+	"github.com/fossas/fossa-cli/builders/archive"
+	"github.com/fossas/fossa-cli/builders/bower"
+	"github.com/fossas/fossa-cli/builders/cocoapods"
+	"github.com/fossas/fossa-cli/builders/golang"
+	"github.com/fossas/fossa-cli/builders/gradle"
+	"github.com/fossas/fossa-cli/builders/maven"
+	"github.com/fossas/fossa-cli/builders/nodejs"
+	"github.com/fossas/fossa-cli/builders/nuget"
+	"github.com/fossas/fossa-cli/builders/php"
+	"github.com/fossas/fossa-cli/builders/python"
+	"github.com/fossas/fossa-cli/builders/ruby"
+	"github.com/fossas/fossa-cli/builders/scala"
 )
 
 // New instantiates a Builder given a ModuleType
 func New(moduleType module.Type) module.Builder {
 	switch moduleType {
 	case module.Ant:
-		return &AntBuilder{}
+		return &ant.AntBuilder{}
 	case module.Bower:
-		return &BowerBuilder{}
+		return &bower.BowerBuilder{}
 	case module.Cocoapods:
-		return &CocoapodsBuilder{}
+		return &cocoapods.CocoapodsBuilder{}
 	case module.Composer:
-		return &ComposerBuilder{}
+		return &php.ComposerBuilder{}
 	case module.Golang:
-		return &GoBuilder{}
+		return &golang.GoBuilder{}
 	case module.Gradle:
-		return &GradleBuilder{}
+		return &gradle.GradleBuilder{}
 	case module.Maven:
-		return &MavenBuilder{}
+		return &maven.MavenBuilder{}
 	case module.Nodejs:
-		return &NodeJSBuilder{}
+		return &nodejs.NodeJSBuilder{}
 	case module.NuGet:
-		return &NuGetBuilder{}
+		return &nuget.NuGetBuilder{}
 	case module.Pip:
-		return &PipBuilder{}
+		return &python.PipBuilder{}
 	case module.Ruby:
-		return &RubyBuilder{}
+		return &ruby.RubyBuilder{}
 	case module.SBT:
-		return &SBTBuilder{}
+		return &scala.SBTBuilder{}
 	case module.VendoredArchives:
-		return &VendoredArchiveBuilder{}
+		return &archive.VendoredArchiveBuilder{}
 	}
 	return nil
 }

@@ -1,4 +1,4 @@
-package builders
+package maven
 
 import (
 	"encoding/xml"
@@ -11,6 +11,9 @@ import (
 
 	"github.com/bmatcuk/doublestar"
 
+	"github.com/fossas/fossa-cli/builders/builderutil"
+	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -66,7 +69,7 @@ func (builder *MavenBuilder) Initialize() error {
 	log.Logger.Debug("Initializing Maven builder...")
 
 	// Set Java context variables
-	javaCmd, javaVersion, err := which("-version", os.Getenv("JAVA_BINARY"), "java")
+	javaCmd, javaVersion, err := exec.Which("-version", os.Getenv("JAVA_BINARY"), "java")
 	if err != nil {
 		log.Logger.Warningf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
 	}
@@ -74,7 +77,7 @@ func (builder *MavenBuilder) Initialize() error {
 	builder.JavaVersion = javaVersion
 
 	// Set Maven context variables
-	mavenCmd, mavenVersion, err := which("--version", os.Getenv("MAVEN_BINARY"), "mvn")
+	mavenCmd, mavenVersion, err := exec.Which("--version", os.Getenv("MAVEN_BINARY"), "mvn")
 	if err != nil {
 		return fmt.Errorf("could not find Maven binary (try setting $MAVEN_BINARY): %s", err.Error())
 	}
@@ -90,13 +93,21 @@ func (builder *MavenBuilder) Build(m module.Module, force bool) error {
 	log.Logger.Debugf("Running Maven build: %#v %#v", m, force)
 
 	if force {
-		_, _, err := runLogged(m.Dir, builder.MvnCmd, "clean")
+		_, _, err := exec.Run(exec.Cmd{
+			Dir:  m.Dir,
+			Name: builder.MvnCmd,
+			Argv: []string{"clean"},
+		})
 		if err != nil {
 			return fmt.Errorf("could not remove Maven cache: %s", err.Error())
 		}
 	}
 
-	_, _, err := runLogged(m.Dir, builder.MvnCmd, "install", "-DskipTests", "-Drat.skip=true")
+	_, _, err := exec.Run(exec.Cmd{
+		Dir:  m.Dir,
+		Name: builder.MvnCmd,
+		Argv: []string{"install", "-DskipTests", "-Drat.skip=true"},
+	})
 	if err != nil {
 		return fmt.Errorf("could not run Maven build: %s", err.Error())
 	}
@@ -109,7 +120,11 @@ func (builder *MavenBuilder) Build(m module.Module, force bool) error {
 func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	log.Logger.Debugf("Running Maven analysis: %#v %#v", m, allowUnresolved)
 
-	output, _, err := runLogged(m.Dir, builder.MvnCmd, "dependency:tree")
+	output, _, err := exec.Run(exec.Cmd{
+		Dir:  m.Dir,
+		Name: builder.MvnCmd,
+		Argv: []string{"dependency:tree"},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("could not get dependency list from Maven: %s", err.Error())
 	}
@@ -138,7 +153,7 @@ func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 	}
 
 	// Parse dependency tree
-	var imports []Imported
+	var imports []builderutil.Imported
 	root := module.Locator{
 		Fetcher:  "root",
 		Project:  "root",
@@ -164,13 +179,13 @@ func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 		}
 		// Add to imports
 		from = from[:depth/3]
-		imports = append(imports, Imported{
+		imports = append(imports, builderutil.Imported{
 			Locator: locator,
 			From:    append(module.ImportPath{}, from...),
 		})
 		from = append(from, locator)
 	}
-	deps := computeImportPaths(imports)
+	deps := builderutil.ComputeImportPaths(imports)
 
 	log.Logger.Debugf("Done running Maven analysis: %#v", deps)
 	return deps, nil
@@ -180,7 +195,11 @@ func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 func (builder *MavenBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
 	log.Logger.Debugf("Checking Maven build: %#v %#v", m, allowUnresolved)
 
-	output, _, err := runLogged(m.Dir, builder.MvnCmd, "dependency:list", "-B")
+	output, _, err := exec.Run(exec.Cmd{
+		Dir:  m.Dir,
+		Name: builder.MvnCmd,
+		Argv: []string{"dependency:list", "-B"},
+	})
 	if err != nil {
 		if strings.Index(output, "Could not find artifact") != -1 {
 			return false, nil
@@ -205,7 +224,7 @@ func (builder *MavenBuilder) DiscoverModules(dir string) ([]module.Config, error
 		// Root pom found; parse and return
 		artifactName := filepath.Base(filepath.Dir(dir))
 		var rootPom POMFile
-		if err := parseLoggedWithUnmarshaller(filepath.Join(dir, "pom.xml"), &rootPom, xml.Unmarshal); err == nil {
+		if err := files.ReadUnmarshal(&rootPom, filepath.Join(dir, "pom.xml"), xml.Unmarshal); err == nil {
 			if rootPom.Name != "" {
 				artifactName = rootPom.Name
 			} else if rootPom.ArtifactID != "" {
@@ -231,7 +250,7 @@ func (builder *MavenBuilder) DiscoverModules(dir string) ([]module.Config, error
 	for i, path := range pomFilePaths {
 		artifactName := filepath.Base(filepath.Dir(dir))
 		var artifactPom POMFile
-		if err := parseLoggedWithUnmarshaller(path, &artifactPom, xml.Unmarshal); err == nil {
+		if err := files.ReadUnmarshal(&artifactPom, path, xml.Unmarshal); err == nil {
 			if artifactPom.Name != "" {
 				artifactName = artifactPom.Name
 			} else if artifactPom.ArtifactID != "" {

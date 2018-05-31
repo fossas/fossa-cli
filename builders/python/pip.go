@@ -1,4 +1,4 @@
-package builders
+package python
 
 import (
 	"encoding/json"
@@ -9,7 +9,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/fossas/fossa-cli/builders/bindata"
+	"github.com/fossas/fossa-cli/builders/builderutil"
+	"github.com/fossas/fossa-cli/builders/python/bindata"
+	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -31,7 +34,7 @@ func (builder *PipBuilder) Initialize() error {
 	log.Logger.Debug("Initializing Pip builder...")
 
 	// Set Python context variables
-	pythonCmd, pythonVersion, err := which("--version", os.Getenv("PYTHON_BINARY"), "python", "python3", "python27", "python2")
+	pythonCmd, pythonVersion, err := exec.Which("--version", os.Getenv("PYTHON_BINARY"), "python", "python3", "python27", "python2")
 	if err != nil {
 		log.Logger.Warningf("Could not find Python binary (try setting $PYTHON_BINARY): %s", err.Error())
 	}
@@ -39,7 +42,7 @@ func (builder *PipBuilder) Initialize() error {
 	builder.PythonVersion = pythonVersion
 
 	// Set Pip context variables
-	pipCmd, pipVersion, pipErr := which("--version", os.Getenv("PIP_BINARY"), "pip")
+	pipCmd, pipVersion, pipErr := exec.Which("--version", os.Getenv("PIP_BINARY"), "pip")
 	builder.PipCmd = pipCmd
 	builder.PipVersion = pipVersion
 	if pipErr != nil {
@@ -57,7 +60,11 @@ func (builder *PipBuilder) Initialize() error {
 func (builder *PipBuilder) Build(m module.Module, force bool) error {
 	log.Logger.Debugf("Running Pip build: %#v %#v", m, force)
 
-	_, _, err := runLogged(m.Dir, builder.PipCmd, "install", "-r", "requirements.txt")
+	_, _, err := exec.Run(exec.Cmd{
+		Name: builder.PipCmd,
+		Argv: []string{"install", "-r", "requirements"},
+		Dir:  m.Dir,
+	})
 	if err != nil {
 		return fmt.Errorf("could not run Pip build: %s", err.Error())
 	}
@@ -72,8 +79,8 @@ type pipDepTreeDep struct {
 	Dependencies     []pipDepTreeDep
 }
 
-func flattenPipDepTree(pkg pipDepTreeDep, from module.ImportPath) []Imported {
-	var imports []Imported
+func flattenPipDepTree(pkg pipDepTreeDep, from module.ImportPath) []builderutil.Imported {
+	var imports []builderutil.Imported
 	locator := module.Locator{
 		Fetcher:  "pip",
 		Project:  pkg.PackageName,
@@ -82,7 +89,7 @@ func flattenPipDepTree(pkg pipDepTreeDep, from module.ImportPath) []Imported {
 	for _, dep := range pkg.Dependencies {
 		imports = append(imports, flattenPipDepTree(dep, append(from, locator))...)
 	}
-	imports = append(imports, Imported{
+	imports = append(imports, builderutil.Imported{
 		Locator: locator,
 		From:    append(module.ImportPath{}, from...),
 	})
@@ -116,7 +123,11 @@ func (builder *PipBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 	}
 
 	// Run helper.
-	out, _, err := runLogged(m.Dir, "python", pipdeptreeFile.Name(), "--local-only", "--json-tree")
+	out, _, err := exec.Run(exec.Cmd{
+		Name: builder.PythonCmd,
+		Argv: []string{pipdeptreeFile.Name(), "--local-only", "--json-tree"},
+		Dir:  m.Dir,
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not run `pipdeptree`")
 	}
@@ -129,7 +140,7 @@ func (builder *PipBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 	}
 
 	// Flatten tree.
-	var imports []Imported
+	var imports []builderutil.Imported
 	for _, dep := range pipdeptreeOutput {
 		imports = append(imports, flattenPipDepTree(dep, module.ImportPath{
 			module.Locator{
@@ -139,7 +150,7 @@ func (builder *PipBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 			},
 		})...)
 	}
-	deps := computeImportPaths(imports)
+	deps := builderutil.ComputeImportPaths(imports)
 
 	log.Logger.Debugf("Done running Pip analysis: %#v", deps)
 	return deps, nil
@@ -150,9 +161,9 @@ func (builder *PipBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool,
 	log.Logger.Debugf("Checking Pip build: %#v %#v", m, allowUnresolved)
 
 	// TODO: support `pip freeze` output and other alternative methods?
-	isBuilt, err := hasFile(m.Dir, "requirements.txt")
+	isBuilt, err := files.Exists(m.Dir, "requirements.txt")
 	if err != nil {
-		return false, fmt.Errorf("could not find `requirements.txt`: %s", err.Error())
+		return false, err
 	}
 
 	log.Logger.Debugf("Done checking Pip build: %#v", isBuilt)

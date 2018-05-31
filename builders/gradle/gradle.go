@@ -1,14 +1,15 @@
-package builders
+package gradle
 
 import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/fossas/fossa-cli/builders/builderutil"
+	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -24,7 +25,7 @@ func (builder *GradleBuilder) Initialize() error {
 	log.Logger.Debug("Initializing Gradle builder...")
 
 	// Set Gradle context variables
-	gradleCmd, gradleVersionOut, err := which("--version --offline", os.Getenv("GRADLE_BINARY"), "./gradlew", "gradle")
+	gradleCmd, gradleVersionOut, err := exec.Which("--version --offline", os.Getenv("GRADLE_BINARY"), "./gradlew", "gradle")
 	if err == nil {
 		builder.GradleCmd = gradleCmd
 
@@ -67,16 +68,18 @@ func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 	}
 
 	// NOTE: we are intentionally using exec.Command over runLogged here, due to path issues with defining cmd.Dir
-	dependenciesCmd := exec.Command(builder.GradleCmd, taskName, "-q", "--configuration="+taskConfiguration, "--offline", "-a")
-	dependenciesCmd.Env = os.Environ()
-	dependenciesCmd.Env = append(dependenciesCmd.Env, "TERM=dumb")
-
-	dependenciesOutput, err := dependenciesCmd.Output()
+	dependenciesOutput, _, err := exec.Run(exec.Cmd{
+		Name: builder.GradleCmd,
+		Argv: []string{taskName, "-q", "--configuration=" + taskConfiguration, "--offline", "-a"},
+		WithEnv: map[string]string{
+			"TERM": "dumb",
+		},
+	})
 	if len(dependenciesOutput) == 0 || err != nil {
 		return nil, fmt.Errorf("could not run `gradle task %s:dependencies`", taskName)
 	}
 
-	var imports []Imported
+	var imports []builderutil.Imported
 	root := module.Locator{
 		Fetcher:  "root",
 		Project:  "root",
@@ -117,7 +120,7 @@ func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 		}
 		// Add to imports
 		from = from[:depth/5]
-		imports = append(imports, Imported{
+		imports = append(imports, builderutil.Imported{
 			Locator: locator,
 			// This seems like a no-op, but this causes a memory copy that prevents
 			// the most bullshit bug you have ever seen.
@@ -125,7 +128,7 @@ func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 		})
 		from = append(from, locator)
 	}
-	deps := computeImportPaths(imports)
+	deps := builderutil.ComputeImportPaths(imports)
 
 	log.Logger.Debugf("Done running Gradle analysis: %#v", deps)
 	return deps, nil
@@ -150,7 +153,10 @@ func (builder *GradleBuilder) DiscoverModules(dir string) ([]module.Config, erro
 	// TODO: support custom *.gradle files
 	if _, err := os.Stat(filepath.Join(dir, "build.gradle")); err == nil {
 		// Use bare exec.Command as runLogged errors when resolving outside of dir
-		taskListOutput, gradleTaskErr := exec.Command(builder.GradleCmd, "tasks", "--all", "-q", "-a", "--offline").Output()
+		taskListOutput, _, gradleTaskErr := exec.Run(exec.Cmd{
+			Name: builder.GradleCmd,
+			Argv: []string{"tasks", "--all", "-q", "-a", "--offline"},
+		})
 		if len(taskListOutput) > 0 && gradleTaskErr == nil {
 			// Search for subprojects using Gradle task list instead of grepping for build.gradle
 			var moduleConfigurations []module.Config

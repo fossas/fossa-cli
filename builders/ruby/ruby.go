@@ -1,4 +1,4 @@
-package builders
+package ruby
 
 import (
 	"fmt"
@@ -12,6 +12,9 @@ import (
 	"github.com/bmatcuk/doublestar"
 	"github.com/pkg/errors"
 
+	"github.com/fossas/fossa-cli/builders/builderutil"
+	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -33,7 +36,7 @@ func (builder *RubyBuilder) Initialize() error {
 	log.Logger.Debug("Initializing Ruby builder...")
 
 	// Set Ruby context variables
-	rubyCmd, rubyVersion, err := which("-v", os.Getenv("RUBY_BINARY"), "ruby")
+	rubyCmd, rubyVersion, err := exec.Which("-v", os.Getenv("RUBY_BINARY"), "ruby")
 	if err != nil {
 		log.Logger.Warningf("Could not find Ruby binary (try setting $RUBY_BINARY): %s", err.Error())
 	}
@@ -41,7 +44,7 @@ func (builder *RubyBuilder) Initialize() error {
 	builder.RubyVersion = rubyVersion
 
 	// Set Gem context variables
-	gemCmd, gemVersion, err := which("-v", os.Getenv("GEM_BINARY"), "gem")
+	gemCmd, gemVersion, err := exec.Which("-v", os.Getenv("GEM_BINARY"), "gem")
 	if err != nil {
 		log.Logger.Warningf("Could not find Gem binary (try setting $GEM_BINARY): %s", err.Error())
 	}
@@ -49,7 +52,7 @@ func (builder *RubyBuilder) Initialize() error {
 	builder.GemVersion = gemVersion
 
 	// Set Bundler context variables
-	bundlerCmd, bundlerVersion, err := which("-v", os.Getenv("BUNDLER_BINARY"), "bundler", "bundle")
+	bundlerCmd, bundlerVersion, err := exec.Which("-v", os.Getenv("BUNDLER_BINARY"), "bundler", "bundle")
 	if err != nil {
 		return fmt.Errorf("could not find Bundler binary (try setting $BUNDLER_BINARY): %s", err.Error())
 	}
@@ -65,13 +68,21 @@ func (builder *RubyBuilder) Build(m module.Module, force bool) error {
 	log.Logger.Debugf("Running Ruby build: %#v %#v", m, force)
 
 	if force {
-		_, _, err := runLogged(m.Dir, "rm", "Gemfile.lock")
+		_, _, err := exec.Run(exec.Cmd{
+			Dir:  m.Dir,
+			Name: "rm",
+			Argv: []string{"Gemfile.lock"},
+		})
 		if err != nil {
 			return fmt.Errorf("could not remove Ruby cache: %s", err.Error())
 		}
 	}
 
-	_, _, err := runLogged(m.Dir, builder.BundlerCmd, "install", "--deployment", "--frozen")
+	_, _, err := exec.Run(exec.Cmd{
+		Dir:  m.Dir,
+		Name: builder.BundlerCmd,
+		Argv: []string{"install", "--deployment", "--frozen"},
+	})
 	if err != nil {
 		return fmt.Errorf("could not run Ruby build: %s", err.Error())
 	}
@@ -115,12 +126,12 @@ func hydrateRubyGems(root rubyGem, edges map[string]map[string]bool, versions ma
 	return root
 }
 
-func flattenRubyGems(root rubyGem, from module.ImportPath) []Imported {
-	var imports []Imported
+func flattenRubyGems(root rubyGem, from module.ImportPath) []builderutil.Imported {
+	var imports []builderutil.Imported
 	for _, dep := range root.imports {
 		imports = append(imports, flattenRubyGems(dep, append(from, root.Locator))...)
 	}
-	imports = append(imports, Imported{
+	imports = append(imports, builderutil.Imported{
 		Locator: root.Locator,
 		From:    append(module.ImportPath{}, from...),
 	})
@@ -210,9 +221,9 @@ func (builder *RubyBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mo
 	}, edges, versions)
 
 	imports := flattenRubyGems(graph, module.ImportPath{})
-	// Add to direct dependencies -- this assumes all git dependencies are top-level (which I think is generally correct)
+	// Add to direct dependencies -- this assumes all git dependencies are top-level (exec.Which I think is generally correct)
 	for project, revision := range gitDeps {
-		imports = append(imports, Imported{
+		imports = append(imports, builderutil.Imported{
 			Locator: module.Locator{
 				Fetcher:  "git",
 				Project:  project,
@@ -222,7 +233,7 @@ func (builder *RubyBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mo
 		})
 	}
 	// Remove "root" module at the end of `imports`
-	deps := computeImportPaths(imports[:len(imports)-1])
+	deps := builderutil.ComputeImportPaths(imports[:len(imports)-1])
 
 	log.Logger.Debugf("Done running Ruby analysis: %#v", deps)
 	return deps, nil
@@ -232,10 +243,13 @@ func (builder *RubyBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mo
 func (builder *RubyBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
 	log.Logger.Debugf("Checking Ruby build: %#v %#v", m, allowUnresolved)
 
-	ok, err := hasFile(m.Dir, "Gemfile.lock")
+	ok, err := files.Exists(m.Dir, "Gemfile.lock")
+	if err != nil {
+		return false, err
+	}
 
 	log.Logger.Debugf("Done checking Ruby build: %#v", ok)
-	return ok, err
+	return ok, nil
 }
 
 // IsModule is not implemented

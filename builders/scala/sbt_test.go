@@ -1,4 +1,4 @@
-package builders_test
+package scala_test
 
 import (
 	"testing"

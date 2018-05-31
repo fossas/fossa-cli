@@ -1,4 +1,4 @@
-package builders
+package golang
 
 import (
 	"errors"
@@ -7,7 +7,7 @@ import (
 	"go/token"
 	"io/ioutil"
 	"os"
-	"os/exec"
+	osexec "os/exec"
 	"path"
 	"path/filepath"
 	"strings"
@@ -15,6 +15,9 @@ import (
 	"github.com/BurntSushi/toml"
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/fossas/fossa-cli/builders/builderutil"
+	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -60,7 +63,7 @@ func (builder *GoBuilder) Initialize() error {
 	log.Logger.Debug("Initializing Go builder...")
 
 	// Set Go context variables
-	goCmd, goVersion, err := which("version", os.Getenv("GO_BINARY"), "go")
+	goCmd, goVersion, err := exec.Which("version", os.Getenv("GO_BINARY"), "go")
 	if err != nil {
 		return fmt.Errorf("could not find Go binary (try setting $GO_BINARY): %s", err.Error())
 	}
@@ -68,34 +71,34 @@ func (builder *GoBuilder) Initialize() error {
 	builder.GoVersion = goVersion
 
 	// Set Dep context variables
-	depCmd, depVersion, depErr := which("version", os.Getenv("DEP_BINARY"), "dep")
+	depCmd, depVersion, depErr := exec.Which("version", os.Getenv("DEP_BINARY"), "dep")
 	builder.DepCmd = depCmd
 	builder.DepVersion = depVersion
 
 	// Set Glide context variables
-	glideCmd, glideVersion, glideErr := which("-v", os.Getenv("GLIDE_BINARY"), "glide")
+	glideCmd, glideVersion, glideErr := exec.Which("-v", os.Getenv("GLIDE_BINARY"), "glide")
 	builder.GlideCmd = glideCmd
 	builder.GlideVersion = glideVersion
 
 	// Set Godep context variables
-	godepCmd, godepVersion, godepErr := which("version", os.Getenv("GODEP_BINARY"), "godep")
+	godepCmd, godepVersion, godepErr := exec.Which("version", os.Getenv("GODEP_BINARY"), "godep")
 	builder.GodepCmd = godepCmd
 	builder.GodepVersion = godepVersion
 
 	// Set Govendor context variables
-	govendorCmd, govendorVersion, govendorErr := which("--version", os.Getenv("GOVENDOR_BINARY"), "govendor")
+	govendorCmd, govendorVersion, govendorErr := exec.Which("--version", os.Getenv("GOVENDOR_BINARY"), "govendor")
 	builder.GovendorCmd = govendorCmd
 	builder.GovendorVersion = govendorVersion
 
 	// Set vndr context variables
 	// NOTE: vndr doesn't have a version flag and exits with code 1 on `--help`
-	vndrCmd, _, vndrErr := whichWithResolver([]string{os.Getenv("VNDR_BINARY"), "vndr"}, func(cmd string) (string, error) {
-		_, _, err := run(cmd, "--help")
-		_, isExitError := err.(*exec.ExitError)
+	vndrCmd, _, vndrErr := exec.WhichWithResolver([]string{os.Getenv("VNDR_BINARY"), "vndr"}, func(cmd string) (string, bool, error) {
+		_, _, err := exec.Run(exec.Cmd{Name: cmd, Argv: []string{"--help"}})
+		_, isExitError := err.(*osexec.ExitError)
 		if err != nil && !isExitError {
-			return "", err
+			return "", false, err
 		}
-		return "", nil
+		return "", true, nil
 	})
 	builder.VndrCmd = vndrCmd
 	builder.VndrVersion = ""
@@ -110,34 +113,34 @@ func (builder *GoBuilder) Initialize() error {
 
 // Helpers for finding a Go project folder
 func hasDepManifest(path string) (bool, error) {
-	return hasFile(path, "Gopkg.toml")
+	return files.Exists(path, "Gopkg.toml")
 }
 
 func hasGlideManifest(path string) (bool, error) {
-	return hasFile(path, "glide.yaml")
+	return files.Exists(path, "glide.yaml")
 }
 
 func hasGodepManifest(path string) (bool, error) {
-	ok, err := isFolder(path, "Godeps")
+	ok, err := files.ExistsFolder(path, "Godeps")
 	if err != nil {
 		return false, err
 	}
 	if !ok {
 		return false, nil
 	}
-	return hasFile(path, "Godeps", "Godeps.json")
+	return files.Exists(path, "Godeps", "Godeps.json")
 }
 
 func hasGovendorManifest(path string) (bool, error) {
-	return hasFile(path, "vendor", "vendor.json")
+	return files.Exists(path, "vendor", "vendor.json")
 }
 
 func hasVndrManifest(path string) (bool, error) {
-	return hasFile(path, "vendor.conf")
+	return files.Exists(path, "vendor.conf")
 }
 
 func hasGdmManifest(path string) (bool, error) {
-	return isFile(path, "Godeps")
+	return files.Exists(path, "Godeps")
 }
 
 func findGoProjectFolder(fromPath string) (string, bool, error) {
@@ -155,7 +158,11 @@ func findGoProjectFolder(fromPath string) (string, bool, error) {
 func runGoTool(projectFolder string, hasManifest fileChecker, buildCmd string, cleanCmd string, force bool) error {
 	cleanCmds := strings.Split(cleanCmd, " ")
 	return runGoToolWithCleaner(projectFolder, hasManifest, buildCmd, force, func() error {
-		_, _, err := runLogged(projectFolder, cleanCmds[0], cleanCmds[1:]...)
+		_, _, err := exec.Run(exec.Cmd{
+			Dir:  projectFolder,
+			Name: cleanCmds[0],
+			Argv: cleanCmds[1:],
+		})
 		return err
 	})
 }
@@ -175,7 +182,11 @@ func runGoToolWithCleaner(projectFolder string, hasManifest fileChecker, buildCm
 				return fmt.Errorf("could not remove %s cache: %s", toolName, err.Error())
 			}
 		}
-		_, _, err := runLogged(projectFolder, buildCmds[0], buildCmds[1:]...)
+		_, _, err := exec.Run(exec.Cmd{
+			Dir:  projectFolder,
+			Name: buildCmds[0],
+			Argv: buildCmds[1:],
+		})
 		if err != nil {
 			return fmt.Errorf("could not run %s build: %s", toolName, err.Error())
 		}
@@ -216,19 +227,36 @@ func (builder *GoBuilder) Build(m module.Module, force bool) error {
 
 	// Govendor is handled differently because it stores its manifest _within_ the vendor folder
 	err = runGoToolWithCleaner(projectFolder, hasGovendorManifest, "govendor sync", force, func() error {
-		_, _, err := runLogged(projectFolder, "mv", "vendor/vendor.json", "vendor.json.bak")
+		// TODO: these should be OS syscalls, not execs.
+		_, _, err := exec.Run(exec.Cmd{
+			Dir:  projectFolder,
+			Name: "mv",
+			Argv: []string{"vendor/vendor.json", "vendor.json.bak"},
+		})
 		if err != nil {
 			return err
 		}
-		_, _, err = runLogged(projectFolder, "rm", "-rf", "vendor")
+		_, _, err = exec.Run(exec.Cmd{
+			Dir:  projectFolder,
+			Name: "rm",
+			Argv: []string{"-rf", "vendor"},
+		})
 		if err != nil {
 			return err
 		}
-		_, _, err = runLogged(projectFolder, "mkdir", "-p", "vendor")
+		_, _, err = exec.Run(exec.Cmd{
+			Dir:  projectFolder,
+			Name: "mkdir",
+			Argv: []string{"-p", "vendor"},
+		})
 		if err != nil {
 			return err
 		}
-		_, _, err = runLogged(projectFolder, "mv", "vendor.json.bak", "vendor/vendor.json")
+		_, _, err = exec.Run(exec.Cmd{
+			Dir:  projectFolder,
+			Name: "mv",
+			Argv: []string{"vendor.json.bak", "vendor/vendor.json"},
+		})
 		if err != nil {
 			return err
 		}
@@ -246,7 +274,11 @@ func (builder *GoBuilder) Build(m module.Module, force bool) error {
 	}
 
 	// Run an actual Go build
-	_, _, err = runLogged(m.Dir, "go", "build", "./...")
+	_, _, err = exec.Run(exec.Cmd{
+		Dir:  m.Dir,
+		Name: builder.GoCmd,
+		Argv: []string{"build", "./..."},
+	})
 	if err != nil {
 		return err
 	}
@@ -433,16 +465,20 @@ func goImportIsInternal(pkg string) bool {
 }
 
 // NOTE: we don't really need the module.Module argument, that's just a hack so I can use runLogged easily.
-func getGoImportsRecurse(builder *GoBuilder, m module.Module, memo map[string]string, from module.ImportPath, pkg string) ([]Imported, error) {
+func getGoImportsRecurse(builder *GoBuilder, m module.Module, memo map[string]string, from module.ImportPath, pkg string) ([]builderutil.Imported, error) {
 	if goImportIsInternal(pkg) {
-		return []Imported{}, nil
+		return []builderutil.Imported{}, nil
 	}
 
 	stdout, ok := memo[pkg]
 	if !ok {
 		var err error
 		// TODO: error case for build tag exclusions -- we need to pass architecture flag
-		stdout, _, err = runLogged(m.Dir, builder.GoCmd, "list", "-f", "{{ join .Imports \"\\n\" }}", pkg)
+		stdout, _, err = exec.Run(exec.Cmd{
+			Dir:  m.Dir,
+			Name: builder.GoCmd,
+			Argv: []string{"list", "-f", "{{ join .Imports \"\\n\" }}", pkg},
+		})
 		if err != nil {
 			return nil, fmt.Errorf("could not trace imports: %s", err.Error())
 		}
@@ -454,7 +490,7 @@ func getGoImportsRecurse(builder *GoBuilder, m module.Module, memo map[string]st
 		Project:  pkg,
 		Revision: "",
 	}
-	var imports []Imported
+	var imports []builderutil.Imported
 	for _, dep := range strings.Split(stdout, "\n") {
 		if dep == "" {
 			continue
@@ -465,7 +501,7 @@ func getGoImportsRecurse(builder *GoBuilder, m module.Module, memo map[string]st
 		}
 		imports = append(imports, transitive...)
 	}
-	imports = append(imports, Imported{
+	imports = append(imports, builderutil.Imported{
 		Locator: locator,
 		// From:    append(module.ImportPath{}, from...),
 	})
@@ -474,7 +510,7 @@ func getGoImportsRecurse(builder *GoBuilder, m module.Module, memo map[string]st
 }
 
 // Build a dependency list given an entry point.
-func getGoImports(builder *GoBuilder, m module.Module) ([]Imported, error) {
+func getGoImports(builder *GoBuilder, m module.Module) ([]builderutil.Imported, error) {
 	imports, err := getGoImportsRecurse(
 		builder,
 		m,
@@ -562,7 +598,7 @@ func findRevisionRecurse(projects map[string]string, importPath string) (string,
 var errNoLockfile = errors.New("could not find lockfile")
 
 // TODO: there might actually be a more sane way of doing this: search upwards
-// in the import path for every /vendor/ folder, which should accompany every
+// in the import path for every /vendor/ folder, exec.Which should accompany every
 // package manifest (unless, of course, you're using legacy Godeps or another
 // import path rewriting tool...)
 func readLockfile(dir string) (map[string]string, error) {
@@ -573,7 +609,7 @@ func readLockfile(dir string) (map[string]string, error) {
 		log.Logger.Debugf("Found Dep manifest")
 
 		var lockfile depLockfile
-		parseLoggedWithUnmarshaller(filepath.Join(dir, "Gopkg.lock"), &lockfile, func(data []byte, v interface{}) error {
+		files.ReadUnmarshal(&lockfile, filepath.Join(dir, "Gopkg.lock"), func(data []byte, v interface{}) error {
 			_, err := toml.Decode(string(data), v)
 			return err
 		})
@@ -588,7 +624,7 @@ func readLockfile(dir string) (map[string]string, error) {
 		log.Logger.Debugf("Found Glide manifest")
 
 		var lockfile glideLockfile
-		parseLoggedWithUnmarshaller(filepath.Join(dir, "glide.lock"), &lockfile, yaml.Unmarshal)
+		files.ReadUnmarshal(&lockfile, filepath.Join(dir, "glide.lock"), yaml.Unmarshal)
 		for _, dependency := range lockfile.Imports {
 			lockfileVersions[dependency.Name] = dependency.Version
 		}
@@ -600,7 +636,7 @@ func readLockfile(dir string) (map[string]string, error) {
 		log.Logger.Debugf("Found Godeps manifest")
 
 		var lockfile godepLockfile
-		parseLogged(filepath.Join(dir, "Godeps", "Godeps.json"), &lockfile)
+		files.ReadJSON(&lockfile, filepath.Join(dir, "Godeps", "Godeps.json"))
 		for _, dependency := range lockfile.Deps {
 			lockfileVersions[dependency.ImportPath] = dependency.Rev
 		}
@@ -612,7 +648,7 @@ func readLockfile(dir string) (map[string]string, error) {
 		log.Logger.Debugf("Found Govendor manifest")
 
 		var lockfile govendorLockfile
-		parseLogged(filepath.Join(dir, "vendor", "vendor.json"), &lockfile)
+		files.ReadJSON(&lockfile, filepath.Join(dir, "vendor", "vendor.json"))
 		for _, dependency := range lockfile.Package {
 			lockfileVersions[dependency.Path] = dependency.Revision
 		}
@@ -730,7 +766,7 @@ func (builder *GoBuilder) Analyze(m module.Module, allowUnresolved bool) ([]modu
 		}
 	}
 	log.Logger.Debugf("Traced dependencies: %#v", traced)
-	deps := computeImportPaths(traced)
+	deps := builderutil.ComputeImportPaths(traced)
 
 	log.Logger.Debugf("Done running Go analysis: %#v", deps)
 	return deps, nil
@@ -764,13 +800,13 @@ func (builder *GoBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, 
 
 	// Check for lockfiles
 	if ok, err := hasDepManifest(projectFolder); err == nil && ok {
-		if ok, err := hasFile(projectFolder, "Gopkg.lock"); err != nil || !ok {
+		if ok, err := files.Exists(projectFolder, "Gopkg.lock"); err != nil || !ok {
 			log.Logger.Debugf("Checking Go build failed: Dep manifest found, but no lockfile")
 			return false, err
 		}
 	}
 	if ok, err := hasGlideManifest(projectFolder); err == nil && ok {
-		if ok, err := hasFile(projectFolder, "glide.lock"); err != nil || !ok {
+		if ok, err := files.Exists(projectFolder, "glide.lock"); err != nil || !ok {
 			log.Logger.Debugf("Checking Go build failed: Glide manifest found, but no lockfile")
 			return false, err
 		}
@@ -827,4 +863,39 @@ func (builder *GoBuilder) DiscoverModules(dir string) ([]module.Config, error) {
 		return nil, fmt.Errorf("could not discover go modules: %s", err.Error())
 	}
 	return modules, nil
+}
+
+func orPredicates(predicates ...fileChecker) fileChecker {
+	return func(path string) (bool, error) {
+		for _, predicate := range predicates {
+			ok, err := predicate(path)
+			if err != nil {
+				return false, err
+			}
+			if ok {
+				return ok, nil
+			}
+		}
+		return false, nil
+	}
+}
+
+type fileChecker func(path string) (bool, error)
+
+func findAncestor(stopWhen fileChecker, path string) (string, bool, error) {
+	absPath, err := filepath.Abs(path)
+	if absPath == string(filepath.Separator) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	stop, err := stopWhen(absPath)
+	if err != nil {
+		return "", false, err
+	}
+	if stop {
+		return absPath, true, nil
+	}
+	return findAncestor(stopWhen, filepath.Dir(path))
 }
