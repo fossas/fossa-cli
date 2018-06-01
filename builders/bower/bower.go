@@ -173,7 +173,7 @@ func (builder *BowerBuilder) IsBuilt(m module.Module, allowUnresolved bool) (boo
 
 	// TODO: Check if the installed modules are consistent with what's in the
 	// actual manifest.
-	isBuilt, err := files.Exists(resolveBowerComponentsDirectory(m.Dir))
+	isBuilt, err := files.ExistsFolder(resolveBowerComponentsDirectory(m.Dir))
 	if err != nil {
 		return false, err
 	}
