@@ -17,7 +17,7 @@ build: $(BIN)/fossa
 
 $(BIN)/fossa: $(GO_BINDATA)
 	mkdir -p $$(dirname $@)
-	$< -pkg bindata -o builders/bindata/bindata.go builders/python/bindata/pipdeptree.py
+	$< -pkg bindata -o builders/python/bindata/bindata.go builders/python/bindata/pipdeptree.py
 	go build -o $@ $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
 
 $(PREFIX)/fossa: $(BIN)/fossa
