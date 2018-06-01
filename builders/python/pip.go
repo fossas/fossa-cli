@@ -9,8 +9,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/fossas/fossa-cli/builders/bindata"
 	"github.com/fossas/fossa-cli/builders/builderutil"
-	"github.com/fossas/fossa-cli/builders/python/bindata"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
