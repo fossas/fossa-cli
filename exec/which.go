@@ -40,5 +40,5 @@ func WhichWithResolver(cmds []string, resolve WhichResolver) (string, string, er
 		}
 		log.Logger.Debugf("Tried resolving `%s` but did not work: %#v %#v", cmd, err, version)
 	}
-	return "", "", errors.New("could not resolve version")
+	return "", "", errors.New("could not resolve command")
 }

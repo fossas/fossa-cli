@@ -3,11 +3,17 @@ package files
 import (
 	"encoding/json"
 
+	"github.com/BurntSushi/toml"
+
 	"github.com/fossas/fossa-cli/log"
 )
 
 func ReadJSON(v interface{}, path string) error {
 	return ReadUnmarshal(v, path, json.Unmarshal)
+}
+
+func ReadTOML(v interface{}, path string) error {
+	return ReadUnmarshal(v, path, toml.Unmarshal)
 }
 
 type UnmarshalFunc func(data []byte, v interface{}) error

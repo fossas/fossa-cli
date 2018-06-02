@@ -1,4 +1,4 @@
-// Package log provides utilities for providing output to the user.
+// Package log implements application-level logging.
 package log
 
 import (
@@ -67,8 +67,10 @@ func Printf(format string, args ...interface{}) {
 	fmt.Printf(format, args...)
 }
 
+// Fields are a simple wrapper for structured logging fields.
 type Fields map[string]interface{}
 
+// An Entry is a structured logging entry.
 type Entry struct {
 	Message string
 	Error   error
