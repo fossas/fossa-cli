@@ -1,7 +1,7 @@
 package builderutil
 
 import (
-	"crypto/md5" // #nosec
+	"crypto/md5" // nolint: gas
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
@@ -27,7 +27,7 @@ func GetHashes(path string) (module.Hashes, error) {
 	}
 	hashes.SHA1 = hex.EncodeToString(sha1Hash.Sum(nil))
 
-	md5Hash := md5.New() // #nosec
+	md5Hash := md5.New() // nolint: gas
 	if _, err := io.Copy(md5Hash, f); err != nil {
 		return hashes, err
 	}
