@@ -10,12 +10,12 @@ import (
 
 // Cmd represents a single command.
 type Cmd struct {
-	Name string
-	Argv []string
-	Dir  string
+	Name string   // The command name.
+	Argv []string // The command arguments.
+	Dir  string   // The command's working directory.
 
-	Env     map[string]string
-	WithEnv map[string]string
+	Env     map[string]string // If set, the command's environment is _set_ to Env.
+	WithEnv map[string]string // If set, the command's environment is _added_ to WithEnv.
 }
 
 // Run executes a `Cmd`.

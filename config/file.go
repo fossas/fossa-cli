@@ -21,10 +21,10 @@ type configFileCLIV1 struct {
 	// Upload configuration.
 	APIKey   string `yaml:"api_key,omitempty"`
 	Server   string `yaml:"server,omitempty"`
+	Fetcher  string `yaml:"fetcher,omitempty"` // Defaults to custom
 	Project  string `yaml:"project,omitempty"`
 	Revision string `yaml:"revision,omitempty"`
-	Branch   string `yaml:"branch,omitempty"`
-	Fetcher  string `yaml:"fetcher,omitempty"` // fetcher defaults to custom
+	Branch   string `yaml:"branch,omitempty"` // Only used with custom fetcher
 }
 
 type configFileAnalyzeV1 struct {
