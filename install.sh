@@ -33,9 +33,8 @@ function askRoot {
     echo
     echo -e "\\t$*"
     echo
-    # The -k flag forces sudo to re-ask the user for their authorization
     if command -v sudo > /dev/null; then
-      sudo -k "$@"
+      sudo "$@"
     elif command -v su > /dev/null; then
       su root -c "/bin/bash $@"
     else
