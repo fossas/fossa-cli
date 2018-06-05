@@ -34,12 +34,17 @@
 
 ## Installation
 
-Install the latest [Github Release](releases/) using `curl`:
+Install on **MacOS (Darwin) or Linux amd6** using `curl`:
 ```bash
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
 ```
 
-We support Windows, MacOS (Darwin), and Linux amd64 machines.
+Install on **Windows** using `cmd.exe`:
+```powershell
+@"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -InputFormat None -ExecutionPolicy Bypass -Command "iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install.ps1'))"
+```
+
+These commands will execute scripts to fetch and install the latest [Github Release](releases/).
 
 ## Quick Start
 
