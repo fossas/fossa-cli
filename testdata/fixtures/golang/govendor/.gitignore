@@ -1,2 +1,2 @@
-vendor
+vendor/*
 !vendor/vendor.json
