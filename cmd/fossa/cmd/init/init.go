@@ -1,4 +1,4 @@
-package main
+package init
 
 import (
 	"fmt"
@@ -10,10 +10,25 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/builders"
-	config "github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/cmd/fossa/flags"
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
+
+var Cmd = cli.Command{
+	Name:   "init",
+	Usage:  "Initialize a .fossa.yml configuration file",
+	Action: Run,
+	Flags: flags.WithGlobalFlags([]cli.Flag{
+		cli.BoolFlag{Name: "O, overwrite", Usage: "overwrite modules in config even if they exist"},
+		cli.BoolFlag{Name: "include-all", Usage: "include suspicious modules (`docs`, `test` or `example` in name)"},
+	}),
+}
+
+func Run(ctx *cli.Context) {}
+
+func Do() {}
 
 func initCmd(c *cli.Context) {
 	conf, err := config.New(c)

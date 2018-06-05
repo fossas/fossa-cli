@@ -8,6 +8,8 @@ import (
 	logging "github.com/op/go-logging"
 )
 
+var Debug = Logger.Debug
+
 // Logger is a re-exported logger from `go-logging`. Originally, we provided
 // wrapper functions around the specific logging methods that we use, but this
 // causes the package, file, and line numbers to be useless (they all point to
@@ -31,10 +33,10 @@ import (
 // failures, and are generally only used as sanity checks for invariants.
 var Logger = logging.MustGetLogger("fossa-cli")
 
-// Initialize configures logging. If `interactive` is true, then logging will
+// Init configures logging. If `interactive` is true, then logging will
 // include colors and ANSI codes (e.g. spinners). If `debug` is true, then
 // logging will include debugging output.
-func Initialize(interactive, debug bool) {
+func Init(interactive, debug bool) {
 	// If `interactive`, then use ANSI codes (spinner + colors)
 	useSpinner = interactive
 	var colorOn, colorOff string

@@ -14,6 +14,7 @@ type Cmd struct {
 	Argv []string // The command arguments.
 	Dir  string   // The command's working directory.
 
+	// If neither Env nor WithEnv are set, the environment is inherited from os.Environ().
 	Env     map[string]string // If set, the command's environment is _set_ to Env.
 	WithEnv map[string]string // If set, the command's environment is _added_ to WithEnv.
 }
@@ -33,10 +34,12 @@ func Run(cmd Cmd) (stdout string, stderr string, err error) {
 	if cmd.Env != nil {
 		xc.Env = toEnv(cmd.Env)
 	}
-
 	if cmd.WithEnv != nil {
 		xc.Env = append(xc.Env, os.Environ()...)
 		xc.Env = append(xc.Env, toEnv(cmd.Env)...)
+	}
+	if cmd.Env == nil && cmd.WithEnv == nil {
+		xc.Env = os.Environ()
 	}
 
 	log.Logger.Debugf("Running in directory: %s", xc.Dir)

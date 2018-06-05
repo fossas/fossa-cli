@@ -1,6 +1,6 @@
-// Package golang provides functions for working with the Go tool. This package
+// Package gocmd provides functions for working with the Go tool. This package
 // is not named "go" because that name collides with a reserved keyword.
-package golang
+package gocmd
 
 import (
 	"encoding/json"

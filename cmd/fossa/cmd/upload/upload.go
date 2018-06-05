@@ -11,7 +11,7 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/api/fossa"
-	"github.com/fossas/fossa-cli/cmd/fossa/cliutil"
+	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/log"
@@ -89,7 +89,8 @@ func getInput(ctx *cli.Context, usingLocators bool) ([]fossa.SourceUnit, error) 
 }
 
 func Run(ctx *cli.Context) {
-	c := cliutil.Initialize(ctx, true)
+	cmdutil.Init(ctx)
+	c := config.MustNew(ctx)
 
 	data, err := getInput(ctx, c.UploadCmd.UseLocators)
 	if err != nil {

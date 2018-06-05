@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/BurntSushi/toml"
+	yaml "gopkg.in/yaml.v2"
 
 	"github.com/fossas/fossa-cli/log"
 )
@@ -14,6 +15,10 @@ func ReadJSON(v interface{}, path string) error {
 
 func ReadTOML(v interface{}, path string) error {
 	return ReadUnmarshal(v, path, toml.Unmarshal)
+}
+
+func ReadYAML(v interface{}, path string) error {
+	return ReadUnmarshal(v, path, yaml.Unmarshal)
 }
 
 type UnmarshalFunc func(data []byte, v interface{}) error
