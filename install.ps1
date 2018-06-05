@@ -22,6 +22,7 @@ $ErrorActionPreference = "Stop"
 
 $github = "https://github.com"
 $latestUri = "$github/fossas/fossa-cli/releases/latest"
+$extractDir = "$env:ALLUSERSPROFILE\fossa-cli"
 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 
@@ -39,7 +40,7 @@ $zipFile = "$TempDir\fossa-cli.zip"
 
 (New-Object System.Net.WebClient).DownloadFile($downloadUri, $zipFile)
 
-Expand-Archive -Path $zipFile -DestinationPath "$TempDir\fossa-cli\" -Force
+Expand-Archive -Path $zipFile -DestinationPath $extractDir -Force
 
 $ErrorActionPreference = "Continue"
 
