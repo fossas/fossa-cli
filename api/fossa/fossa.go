@@ -14,8 +14,8 @@ var (
 	apiKey    string
 )
 
-// Initialize sets up an API instance.
-func Initialize(server, APIKey string) error {
+// Init sets up an API instance.
+func Init(server, APIKey string) error {
 	var err error
 	serverURL, err = url.Parse(server)
 	if err != nil {
@@ -25,9 +25,9 @@ func Initialize(server, APIKey string) error {
 	return nil
 }
 
-// MustInitialize crashes and logs a fatal exception if `Initialize` fails.
-func MustInitialize(server, APIKey string) {
-	err := Initialize(server, APIKey)
+// MustInit crashes and logs a fatal exception if `Init` fails.
+func MustInit(server, APIKey string) {
+	err := Init(server, APIKey)
 	if err != nil {
 		log.Logger.Fatal(log.Entry{
 			Message: "could not initialize API",

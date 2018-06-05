@@ -12,14 +12,16 @@ package golang
 import (
 	"os"
 
-	"github.com/fossas/fossa-cli/buildtools/golang"
+	"github.com/fossas/fossa-cli/buildtools/gocmd"
 	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/pkg"
 	"github.com/fossas/fossa-cli/project"
+	"github.com/pkg/errors"
 )
 
 // An Analyzer contains structs used in the analysis of Go packages.
 type Analyzer struct {
-	Go        golang.Go
+	Go        gocmd.Go
 	GoVersion string
 }
 
@@ -30,7 +32,7 @@ func New(options project.GoOptions) (*Analyzer, error) {
 		return nil, err
 	}
 	return &Analyzer{
-		Go: golang.Go{
+		Go: gocmd.Go{
 			Cmd:  cmd,
 			OS:   options.BuildOS,
 			Arch: options.BuildArch,
@@ -41,8 +43,21 @@ func New(options project.GoOptions) (*Analyzer, error) {
 
 // Discover runs `go list ./...`.
 func (a *Analyzer) Discover(dir string) ([]project.Project, error) {
-	a.Go.List([]string{"./..."})
-	return nil, nil
+	found, err := a.Go.List([]string{"./..."})
+	if err != nil {
+		return nil, errors.Wrap(err, "could not find Go projects")
+	}
+
+	var projects []project.Project
+	for _, p := range found {
+		projects = append(projects, project.Project{
+			Name:         p.Name,
+			Type:         pkg.Go,
+			IsExecutable: p.Name == "main",
+			BuildTarget:  p.ImportPath,
+		})
+	}
+	return projects, nil
 }
 
 // Clean runs `go clean $PKG`.

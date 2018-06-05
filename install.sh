@@ -113,6 +113,7 @@ function install {
   RELEASE_URL="$GH/$USER/$REPO/releases/download/$RELEASE"
   bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_${OS}_${ARCH}.tar.gz" > release.tar.gz || fail "downloading release failed"
   bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_checksums.txt" > checksums.txt || fail "downloading checksums failed"
+  # TODO: checksums are not actually validated. We need to check with `sha256sum` on Linux and `shasum -a 256` on MacOS.
 
   # Extract release
   tar zxf release.tar.gz || fail "tar failed"

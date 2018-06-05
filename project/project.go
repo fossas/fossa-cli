@@ -15,6 +15,7 @@ type Project struct {
 	Dir         string `yaml:"cwd,omitempty"`    // The CWD to analyze the project from.
 
 	Options interface{} `yaml:"options,omitempty"` // The analyzer option struct of the project type.
+	Context interface{} `yaml:"-"`                 // Extra metadata set by analyzers.
 
 	Imports []pkg.ID               `yaml:"-"` // Direct dependencies of the root package.
 	Deps    map[pkg.ID]pkg.Package `yaml:"-"` // All transitive dependencies of the root package (including Imports).
@@ -24,15 +25,4 @@ type Project struct {
 // otherwise.
 func (p *Project) IsAnalyzed() bool {
 	return p.Imports != nil && p.Deps != nil
-}
-
-// GoOptions sets analyzer options for Go projects.
-type GoOptions struct {
-	BuildOS         string // The target build OS (for build tags).
-	BuildArch       string // The target build architecture (for build tags).
-	Strategy        string // See the Go analyzer documentation.
-	LockfilePath    string // For non-standard lockfile locations.
-	AllowUnresolved bool   // Allow unresolved revisions.
-	// AllowUnresolvedPrefix string // If set, restricts unresolved revisions to only those that match the prefix.
-	// SkipTrace             bool   // If true, skips dependency tracing.
 }

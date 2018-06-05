@@ -9,6 +9,7 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/urfave/cli"
 
+	"github.com/fossas/fossa-cli/cmd/fossa/version"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -86,7 +87,7 @@ func New(c *cli.Context) (CLIConfig, error) {
 		},
 
 		ConfigFilePath: c.String("config"),
-		Version:        c.App.Metadata["version"].(string),
+		Version:        version.ShortString(),
 	}
 
 	// Load configuration file and set overrides.
@@ -118,7 +119,7 @@ func New(c *cli.Context) (CLIConfig, error) {
 	}
 
 	// Configure logging.
-	log.Initialize(config.Interactive, config.Debug)
+	log.Init(config.Interactive, config.Debug)
 
 	log.Logger.Debugf("Configuration initialized: %#v", config)
 	return config, nil
