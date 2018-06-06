@@ -20,13 +20,14 @@ var (
 )
 
 var Cmd = cli.Command{
-	Name:   "build",
-	Usage:  "Run a default project build",
-	Action: Run,
-	Flags: flags.WithGlobalFlags([]cli.Flag{
+	Name:      "build",
+	Usage:     "Run a default project build",
+	Action:    Run,
+	ArgsUsage: "MODULE",
+	Flags: flags.WithGlobalFlags(flags.WithModulesFlags([]cli.Flag{
 		cli.BoolFlag{Name: Clean, Usage: "clean artifacts before building"},
 		cli.BoolFlag{Name: Force, Usage: "rebuild module even if it appears to already be built"},
-	}),
+	})),
 }
 
 var _ cli.ActionFunc = Run

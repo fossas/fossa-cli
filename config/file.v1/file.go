@@ -19,6 +19,9 @@ type File struct {
 
 	CLI     CLIProperties
 	Analyze AnalyzeProperties
+
+	// Internal computed + cached properties.
+	modules []module.Module
 }
 
 type CLIProperties struct {
@@ -100,7 +103,7 @@ func readModules(file *File) ([]module.Module, error) {
 	var modules []module.Module
 	for _, config := range file.Analyze.Modules {
 		// Parse and validate module type.
-		t, err := pkg.Parse(config.Type)
+		t, err := pkg.ParseType(config.Type)
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not parse module type %s", config.Type)
 		}
