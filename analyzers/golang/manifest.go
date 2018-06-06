@@ -4,18 +4,17 @@ import (
 	"path/filepath"
 
 	"github.com/fossas/fossa-cli/buildtools/godep"
+	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/fossas/fossa-cli/project"
 )
 
-func (a *Analyzer) ResolveManifest(p project.Project) (project.Project, error) {
-	options := p.Options.(project.GoOptions)
+func (a *Analyzer) ResolveManifest(p module.Module) (module.Module, error) {
 	// Read the lockfile.
-	lockfilePath := options.LockfilePath
+	lockfilePath := a.Options.LockfilePath
 	if lockfilePath == "" {
 		lockfilePath = filepath.Join(p.Dir, "Godeps", "Godeps.json")
 	}
-	godepPkgs, err := godep.ReadFile(options.LockfilePath)
+	godepPkgs, err := godep.ReadFile(a.Options.LockfilePath)
 	if err != nil {
 		return p, err
 	}

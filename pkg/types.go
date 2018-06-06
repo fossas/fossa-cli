@@ -43,6 +43,7 @@ var AllTypes = []Type{
 }
 
 // Parse returns the canonical package type given a string key.
+// TODO: if we got rid of aliases, we could use `go generate` with https://github.com/alvaroloes/enumer.
 func Parse(key string) (Type, error) {
 	switch key {
 	// Ant aliases
@@ -142,4 +143,37 @@ func Parse(key string) (Type, error) {
 		return VendoredArchives, nil
 	}
 	return Type(-1), errors.New("unknown package type")
+}
+
+func (t Type) String() string {
+	switch t {
+	case Ant:
+		return "ant"
+	case Bower:
+		return "bower"
+	case Cocoapods:
+		return "cocoapods"
+	case Composer:
+		return "composer"
+	case Go:
+		return "go"
+	case Gradle:
+		return "gradle"
+	case Maven:
+		return "maven"
+	case NodeJS:
+		return "nodejs"
+	case NuGet:
+		return "nuget"
+	case Python:
+		return "pip"
+	case Ruby:
+		return "ruby"
+	case Scala:
+		return "sbt"
+	case VendoredArchives:
+		return "vendoredarchives"
+	default:
+		return "UNKNOWN"
+	}
 }

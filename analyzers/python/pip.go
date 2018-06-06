@@ -1,5 +1,6 @@
 package python
 
+//go:generate go-bindata -pkg bindata -o ./bindata/bindata.go ./bindata/pipdeptree.py
 import (
 	"encoding/json"
 	"fmt"

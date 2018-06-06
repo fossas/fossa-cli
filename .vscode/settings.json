@@ -1,9 +1,8 @@
 {
   "files.watcherExclude": {
-    "**/.git/objects/**": true,
-    "**/.git/subtree-cache/**": true,
-    "**/node_modules/**": true,
-    "text/fixtures/*/**": true,
+    "**/.git/**": true,
+    "**/.git/": true,
+    "testdata/fixtures/**": true,
     "vendor/**": true
   }
 }

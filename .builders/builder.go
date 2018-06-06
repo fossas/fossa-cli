@@ -1,8 +1,6 @@
 package builders
 
 import (
-	"github.com/fossas/fossa-cli/module"
-
 	"github.com/fossas/fossa-cli/builders/ant"
 	"github.com/fossas/fossa-cli/builders/archive"
 	"github.com/fossas/fossa-cli/builders/bower"
@@ -19,33 +17,33 @@ import (
 )
 
 // New instantiates a Builder given a ModuleType
-func New(moduleType module.Type) module.Builder {
+func New(moduleType pkg.Type) pkg.Builder {
 	switch moduleType {
-	case module.Ant:
+	case pkg.Ant:
 		return &ant.AntBuilder{}
-	case module.Bower:
+	case pkg.Bower:
 		return &bower.BowerBuilder{}
-	case module.Cocoapods:
+	case pkg.Cocoapods:
 		return &cocoapods.CocoapodsBuilder{}
-	case module.Composer:
+	case pkg.Composer:
 		return &php.ComposerBuilder{}
-	case module.Golang:
+	case pkg.Golang:
 		return &golang.GoBuilder{}
-	case module.Gradle:
+	case pkg.Gradle:
 		return &gradle.GradleBuilder{}
-	case module.Maven:
+	case pkg.Maven:
 		return &maven.MavenBuilder{}
-	case module.Nodejs:
+	case pkg.Nodejs:
 		return &nodejs.NodeJSBuilder{}
-	case module.NuGet:
+	case pkg.NuGet:
 		return &nuget.NuGetBuilder{}
-	case module.Pip:
+	case pkg.Pip:
 		return &python.PipBuilder{}
-	case module.Ruby:
+	case pkg.Ruby:
 		return &ruby.RubyBuilder{}
-	case module.SBT:
+	case pkg.SBT:
 		return &scala.SBTBuilder{}
-	case module.VendoredArchives:
+	case pkg.VendoredArchives:
 		return &archive.VendoredArchiveBuilder{}
 	}
 	return nil

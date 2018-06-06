@@ -1,161 +1,99 @@
 package config
 
 import (
-	"fmt"
 	"io/ioutil"
-	"os"
+	"strings"
 
-	"github.com/fossas/fossa-cli/module"
-	git "gopkg.in/src-d/go-git.v4"
 	yaml "gopkg.in/yaml.v2"
+
+	v1 "github.com/fossas/fossa-cli/config/file.v1"
+	"github.com/fossas/fossa-cli/module"
 )
 
-type configFileV1 struct {
-	Version int `yaml:"version"`
+// File defines the minimum interface for usage as a configuration file. We use
+// an interface here in anticipation of new versions of configuration files,
+// which will likely be implemented as different structs.
+type File interface {
+	APIKey() string
+	Server() string
 
-	CLI     configFileCLIV1
-	Analyze configFileAnalyzeV1
+	Fetcher() string
+	Project() string
+	Branch() string
+	Revision() string
+
+	Modules() []module.Module
 }
 
-type configFileCLIV1 struct {
-	// Upload configuration.
-	APIKey   string `yaml:"api_key,omitempty"`
-	Server   string `yaml:"server,omitempty"`
-	Fetcher  string `yaml:"fetcher,omitempty"` // Defaults to custom
-	Project  string `yaml:"project,omitempty"`
-	Revision string `yaml:"revision,omitempty"`
-	Branch   string `yaml:"branch,omitempty"` // Only used with custom fetcher
+type NoFile struct{}
+
+func (_ NoFile) APIKey() string {
+	return ""
 }
 
-type configFileAnalyzeV1 struct {
-	Modules []module.Config `yaml:"modules,omitempty"`
+func (_ NoFile) Server() string {
+	return ""
 }
 
-func readConfigFile(path string) (string, configFileV1, error) {
-	if _, err := os.Stat(path); path != "" && err != nil && os.IsNotExist(err) {
-		return path, configFileV1{}, fmt.Errorf("invalid config file specified")
-	} else if _, err := os.Stat(".fossa.yml"); err == nil {
-		path = ".fossa.yml"
-	} else if _, err = os.Stat(".fossa.yaml"); err == nil {
-		path = ".fossa.yaml"
-	}
-
-	if path == "" {
-		conf, err := setDefaultValues(configFileV1{})
-		return path, conf, err
-	}
-	conf, err := parseConfigFile(path)
-	return path, conf, err
+func (_ NoFile) Fetcher() string {
+	return ""
 }
 
-func parseConfigFile(filename string) (configFileV1, error) {
-	// Read configuration file.
-	var config configFileV1
-
-	bytes, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return config, err
-	}
-
-	err = yaml.Unmarshal(bytes, &config)
-	if err != nil {
-		return config, err
-	}
-
-	config, err = setDefaultValues(config)
-	if err != nil {
-		return config, err
-	}
-
-	return config, nil
+func (_ NoFile) Project() string {
+	return ""
 }
 
-func setDefaultValues(c configFileV1) (configFileV1, error) {
-	// Set config version
-	c.Version = 1
-
-	// Set default endpoint.
-	endpoint := os.Getenv("FOSSA_ENDPOINT")
-	if endpoint != "" {
-		c.CLI.Server = endpoint
-	}
-	if c.CLI.Server == "" {
-		c.CLI.Server = "https://app.fossa.io"
-	}
-
-	// Load API key from environment variable.
-	apiKey := os.Getenv("FOSSA_API_KEY")
-	if apiKey != "" {
-		c.CLI.APIKey = apiKey
-	}
-
-	// Default to custom.
-	if c.CLI.Fetcher == "" {
-		c.CLI.Fetcher = "custom"
-	}
-
-	// Infer default locator and project from `git`.
-	if c.CLI.Project == "" || c.CLI.Revision == "" || c.CLI.Branch == "" {
-		// TODO: this needs to happen in the module directory, not the working
-		// directory
-		repo, err := git.PlainOpen(".")
-		if err == nil {
-			if c.CLI.Project == "" {
-				origin, err := repo.Remote("origin")
-				if err == nil && origin != nil {
-					c.CLI.Project = origin.Config().URLs[0]
-				}
-			}
-			if c.CLI.Revision == "" {
-				revision, err := repo.Head()
-				if err == nil {
-					c.CLI.Revision = revision.Hash().String()
-				}
-			}
-			if c.CLI.Branch == "" {
-				revision, err := repo.Head()
-				if err == nil {
-					c.CLI.Revision = revision.Hash().String()
-				}
-				c.CLI.Branch = revision.Name().String()
-			}
-		}
-	}
-
-	return c, nil
+func (_ NoFile) Branch() string {
+	return ""
 }
 
-// WriteConfigFile writes a config state to yaml
-func WriteConfigFile(conf *CLIConfig) error {
-	if conf.ConfigFilePath == "" {
-		conf.ConfigFilePath = ".fossa.yml"
+func (_ NoFile) Revision() string {
+	return ""
+}
+
+func (_ NoFile) Modules() []module.Module {
+	return []module.Module{}
+}
+
+// InitFile writes the current configuration to the current configuration file
+// path.
+func InitFile(modules []module.Module) error {
+	// Construct module configs.
+	var configs []v1.ModuleProperties
+	for _, m := range Modules() {
+		configs = append(configs, v1.ModuleProperties{
+			Name:    m.Name,
+			Path:    m.BuildTarget,
+			Type:    m.Type.String(),
+			Options: m.Options,
+		})
 	}
 
-	keyToWrite := ""
-	if os.Getenv("FOSSA_API_KEY") == "" {
-		keyToWrite = conf.APIKey
-	}
-
-	writeConfig := configFileV1{
+	// Construct configuration file.
+	file := v1.File{
 		Version: 1,
-		CLI: configFileCLIV1{
-			APIKey:  keyToWrite,
-			Server:  conf.Endpoint,
-			Project: conf.Project,
-			Fetcher: conf.Fetcher,
+		CLI: v1.CLIProperties{
+			Server:  Endpoint(),
+			Fetcher: Fetcher(),
+			Project: Project(),
+			Branch:  Branch(),
 		},
-		Analyze: configFileAnalyzeV1{
-			Modules: conf.Modules,
+		Analyze: v1.AnalyzeProperties{
+			Modules: configs,
 		},
 	}
-	yamlConfig, err := yaml.Marshal(writeConfig)
+
+	// Write file with header.
+	data, err := yaml.Marshal(file)
 	if err != nil {
 		return err
 	}
-
-	configHeader := []byte(`# Generated by FOSSA CLI (https://github.com/fossas/fossa-cli)
-# Visit https://fossa.io to learn more
-`)
-
-	return ioutil.WriteFile(conf.ConfigFilePath, append(configHeader, yamlConfig...), 0777)
+	configHeader := []byte(
+		strings.Join([]string{
+			"# Generated by FOSSA CLI (https://github.com/fossas/fossa-cli)",
+			"# Visit https://fossa.io to learn more",
+			"",
+			"",
+		}, "\n"))
+	return ioutil.WriteFile(Filepath(), append(configHeader, data...), 0777)
 }

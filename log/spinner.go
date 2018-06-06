@@ -19,6 +19,14 @@ func ShowSpinner(message string) {
 	}
 }
 
+// PauseSpinner pauses the spinner and returns a function for unpausing.
+// TODO: we need to write our own logging functions that use this to prevent
+// interrupting the spinner while logging a message.
+func PauseSpinner() func() {
+	s.Stop()
+	return s.Restart
+}
+
 // StopSpinner stops a progress spinner.
 func StopSpinner() {
 	s.Stop()
