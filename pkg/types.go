@@ -42,9 +42,9 @@ var AllTypes = []Type{
 	VendoredArchives,
 }
 
-// Parse returns the canonical package type given a string key.
+// ParseType returns the canonical package type given a string key.
 // TODO: if we got rid of aliases, we could use `go generate` with https://github.com/alvaroloes/enumer.
-func Parse(key string) (Type, error) {
+func ParseType(key string) (Type, error) {
 	switch key {
 	// Ant aliases
 	case "ant":

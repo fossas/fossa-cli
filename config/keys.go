@@ -60,5 +60,16 @@ func Branch() string {
 /**** Analysis configuration keys ****/
 
 func Modules() []module.Module {
+	args := ctx.Args()
+	if args.Present() {
+		if ctx.NArg() != 1 {
+		}
+		options := ctx.StringSlice(flags.Option)
+		for _, a := range args {
+			sections := strings.Split(a, ":")
+			modules =
+			mtype := sections[0]
+		}
+	}
 	return file.Modules()
 }

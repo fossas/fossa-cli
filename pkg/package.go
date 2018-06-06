@@ -1,6 +1,8 @@
 // Package pkg defines a generic software package.
 package pkg
 
+import "strings"
+
 // An ID uniquely identifies a package.
 type ID struct {
 	// Type, Name, and Revision describe _what_ package is being identified. The
@@ -13,6 +15,14 @@ type ID struct {
 	// Location is _where_ the package is found. For example, an NPM package with
 	// the same name and revision may be found in two different registries.
 	Location string
+}
+
+func (id *ID) String() string {
+	return "id:" + escapeIDComponent(id.Type.String()) + ":" + escapeIDComponent(id.Name) + ":" + escapeIDComponent(id.Revision)
+}
+
+func escapeIDComponent(s string) string {
+	return strings.Replace(s, ":", "\\:", -1)
 }
 
 // An Import is a combination of a (potentially unresolved) dependency target

@@ -47,6 +47,16 @@ var (
 	DebugF  = cli.BoolFlag{Name: Debug, Usage: "print debug information to stderr"}
 )
 
+func WithModulesFlags(f []cli.Flag) []cli.Flag {
+	return append(f, Modules...)
+}
+
+var (
+	Modules = []cli.Flag{OptionF}
+	Option  = "option"
+	OptionF = cli.StringSliceFlag{Name: Option, Usage: "options for the module (format is `key:value` e.g. allow-unresolved:true)"}
+)
+
 var (
 	AnalysisCmd = []cli.Flag{ShowOutputF}
 	ShowOutput  = "output"

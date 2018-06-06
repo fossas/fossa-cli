@@ -21,7 +21,7 @@ var Cmd = cli.Command{
 	Name:      "upload",
 	Usage:     "Uploads user-provided test results to FOSSA",
 	Action:    Run,
-	ArgsUsage: "<data>",
+	ArgsUsage: "DATA",
 	Flags: flags.WithGlobalFlags([]cli.Flag{
 		cli.BoolFlag{Name: "l, locators", Usage: "upload data in locator format (instead of JSON)"},
 	}),

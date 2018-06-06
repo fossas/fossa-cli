@@ -8,13 +8,13 @@ LDFLAGS:=-ldflags '-X github.com/fossas/fossa-cli/cmd/fossa/version.version=$(sh
 all: build
 
 $(DEP):
-	go get github.com/golang/dep/cmd/dep
+	[ -f $@ ] || go get -u github.com/golang/dep/cmd/dep
 
 $(GO_BINDATA):
-	go get github.com/go-bindata/go-bindata/...
+	[ -f $@ ] || go get -u github.com/go-bindata/go-bindata/...
 
 $(STRINGER):
-	go get golang.org/x/tools/cmd/stringer
+	[ -f $@ ] || go get -u golang.org/x/tools/cmd/stringer
 
 .PHONY: build
 build: $(BIN)/fossa
