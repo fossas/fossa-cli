@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	"github.com/fossas/fossa-cli/analyzers/golang"
+	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/fossas/fossa-cli/project"
 )
 
 // Errors that occur when loading analyzers.
@@ -17,18 +17,18 @@ var (
 
 // An Analyzer is an implementation of functionality for different build systems.
 type Analyzer interface {
-	Discover(dir string) ([]project.Project, error) // Finds projects in a given directory.
+	Discover(dir string) ([]module.Module, error) // Finds modules in a given directory.
 
 	// These methods all make best-effort attempts.
-	Clean(config project.Project) error           // Cleans build artifacts.
-	Build(config project.Project) error           // Builds the program.
-	IsBuilt(config project.Project) (bool, error) // Checks whether a program has been built.
+	Clean(config module.Module) error           // Cleans build artifacts.
+	Build(config module.Module) error           // Builds the module.
+	IsBuilt(config module.Module) (bool, error) // Checks whether a module has been built.
 
-	Analyze(config project.Project) (project.Project, error) // Runs an analysis of a program.
+	Analyze(config module.Module) (module.Module, error) // Runs an analysis of a module.
 }
 
 // New returns the analyzer for any given package type.
-func New(key pkg.Type, options interface{}) (Analyzer, error) {
+func New(key pkg.Type, options map[string]interface{}) (Analyzer, error) {
 	switch key {
 	case pkg.Ant:
 		return nil, ErrAnalyzerNotImplemented
@@ -39,11 +39,7 @@ func New(key pkg.Type, options interface{}) (Analyzer, error) {
 	case pkg.Composer:
 		return nil, ErrAnalyzerNotImplemented
 	case pkg.Go:
-		opts, ok := options.(project.GoOptions)
-		if !ok {
-			return nil, errors.New("golang analyzer requires GoOptions")
-		}
-		return golang.New(opts)
+		return golang.New(options)
 	case pkg.Gradle:
 		return nil, ErrAnalyzerNotImplemented
 	case pkg.Maven:

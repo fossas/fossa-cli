@@ -1,23 +1,26 @@
 BIN="$(shell go env GOPATH)/bin"
 DEP="$(BIN)/dep"
 GO_BINDATA="$(BIN)/go-bindata"
+STRINGER="$(BIN)/stringer"
 PREFIX?=/usr/local/bin
 LDFLAGS:=-ldflags '-X github.com/fossas/fossa-cli/cmd/fossa/version.version=$(shell git rev-parse --abbrev-ref HEAD) -X github.com/fossas/fossa-cli/cmd/fossa/version.commit=$(shell git rev-parse HEAD) -X "github.com/fossas/fossa-cli/cmd/fossa/version.goversion=$(shell go version)" -X github.com/fossas/fossa-cli/cmd/fossa/version.buildType=development'
 
 all: build
 
-$(DEP): ## Grab golang/dep utility
+$(DEP):
 	go get github.com/golang/dep/cmd/dep
 
 $(GO_BINDATA):
-	go get -u github.com/go-bindata/go-bindata/...
+	go get github.com/go-bindata/go-bindata/...
+
+$(STRINGER):
+	go get golang.org/x/tools/cmd/stringer
 
 .PHONY: build
 build: $(BIN)/fossa
 
-$(BIN)/fossa: $(GO_BINDATA)
-	mkdir -p $$(dirname $@)
-	$< -pkg bindata -o builders/python/bindata/bindata.go builders/python/bindata/pipdeptree.py
+$(BIN)/fossa: $(GO_BINDATA) $(STRINGER)
+	go generate ./...
 	go build -o $@ $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
 
 $(PREFIX)/fossa: $(BIN)/fossa

@@ -2,12 +2,17 @@ package flags
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/urfave/cli"
 )
 
-func abbr(fullname string) string {
-	return fmt.Sprintf("%s, %s", fullname[0], fullname)
+func Short(name string) string {
+	return fmt.Sprintf("%c, %s", name[0], name)
+}
+
+func ShortUpper(name string) string {
+	return fmt.Sprintf("%s, %s", strings.ToUpper(name[:1]), name)
 }
 
 func WithAPIFlags(f []cli.Flag) []cli.Flag {
@@ -15,17 +20,17 @@ func WithAPIFlags(f []cli.Flag) []cli.Flag {
 }
 
 var (
-	API              = []cli.Flag{Endpoint, Fetcher, Project, Revision, Branch}
-	EndpointFlagName = "endpoint"
-	Endpoint         = cli.StringFlag{Name: abbr(EndpointFlagName), Usage: "the FOSSA server endpoint (default: 'https://app.fossa.io')"}
-	FetcherFlagName  = "fetcher"
-	Fetcher          = cli.StringFlag{Name: abbr(FetcherFlagName), Usage: "type of fetcher to use for fossa. (default: 'custom')"}
-	ProjectFlagName  = "project"
-	Project          = cli.StringFlag{Name: abbr(ProjectFlagName), Usage: "this repository's URL or VCS endpoint (default: VCS remote 'origin')"}
-	RevisionFlagName = "revision"
-	Revision         = cli.StringFlag{Name: abbr(RevisionFlagName), Usage: "this repository's current revision hash (default: VCS hash HEAD)"}
-	BranchFlagName   = "branch"
-	Branch           = cli.StringFlag{Name: abbr(BranchFlagName), Usage: "this repository's current branch (default: current VCS branch)"}
+	API       = []cli.Flag{EndpointF, FetcherF, ProjectF, RevisionF, BranchF}
+	Endpoint  = "endpoint"
+	EndpointF = cli.StringFlag{Name: Short(Endpoint), Usage: "the FOSSA server endpoint (default: 'https://app.fossa.io')"}
+	Fetcher   = "fetcher"
+	FetcherF  = cli.StringFlag{Name: Short(Fetcher), Usage: "type of fetcher to use for fossa. (default: 'custom')"}
+	Project   = "project"
+	ProjectF  = cli.StringFlag{Name: Short(Project), Usage: "this repository's URL or VCS endpoint (default: VCS remote 'origin')"}
+	Revision  = "revision"
+	RevisionF = cli.StringFlag{Name: Short(Revision), Usage: "this repository's current revision hash (default: VCS hash HEAD)"}
+	Branch    = "branch"
+	BranchF   = cli.StringFlag{Name: Short(Branch), Usage: "this repository's current branch (default: current VCS branch)"}
 )
 
 func WithGlobalFlags(f []cli.Flag) []cli.Flag {
@@ -33,15 +38,17 @@ func WithGlobalFlags(f []cli.Flag) []cli.Flag {
 }
 
 var (
-	Global         = []cli.Flag{Config, NoAnsi, Debug}
-	ConfigFlagName = "config"
-	Config         = cli.StringFlag{Name: abbr(ConfigFlagName), Usage: "path to config file (default: '.fossa.{yml,yaml}')"}
-	NoAnsiFlagName = "no-ansi"
-	NoAnsi         = cli.BoolFlag{Name: NoAnsiFlagName, Usage: "do not use interactive mode (ANSI codes)"}
-	DebugFlagName  = "debug"
-	Debug          = cli.BoolFlag{Name: DebugFlagName, Usage: "print debug information to stderr"}
+	Global  = []cli.Flag{ConfigF, NoAnsiF, DebugF}
+	Config  = "config"
+	ConfigF = cli.StringFlag{Name: Short(Config), Usage: "path to config file (default: '.fossa.{yml,yaml}')"}
+	NoAnsi  = "no-ansi"
+	NoAnsiF = cli.BoolFlag{Name: NoAnsi, Usage: "do not use interactive mode (ANSI codes)"}
+	Debug   = "debug"
+	DebugF  = cli.BoolFlag{Name: Debug, Usage: "print debug information to stderr"}
 )
 
 var (
-	AnalysisShowOutput = cli.BoolFlag{Name: "o, output", Usage: "print results to stdout instead of uploading to FOSSA"}
+	AnalysisCmd = []cli.Flag{ShowOutputF}
+	ShowOutput  = "output"
+	ShowOutputF = cli.BoolFlag{Name: Short(ShowOutput), Usage: "print results to stdout instead of uploading to FOSSA"}
 )

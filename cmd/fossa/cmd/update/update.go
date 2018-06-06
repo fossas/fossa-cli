@@ -15,9 +15,10 @@ import (
 
 const updateEndpoint = "fossas/fossa-cli"
 
-var ErrDevelopmentBuild = errors.New("development builds cannot be automatically updated")
-
-var ErrInvalidVersion = errors.New("invalid version (are you using a development binary?)")
+var (
+	ErrDevelopmentBuild = errors.New("development builds cannot be automatically updated")
+	ErrInvalidVersion   = errors.New("invalid version (are you using a development binary?)")
+)
 
 var Cmd = cli.Command{
 	Name:   "update",
@@ -57,7 +58,7 @@ func AvailableUpdate() (bool, error) {
 
 	latest, found, err := selfupdate.DetectLatest(updateEndpoint)
 	if err != nil {
-		return false, errors.Wrapf(err, "could not check for updates")
+		return false, errors.Wrap(err, "could not check for updates")
 	}
 
 	if !found || latest.Version.Equals(current) {
