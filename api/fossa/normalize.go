@@ -5,6 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -43,42 +44,43 @@ func NormalizeType(t pkg.Type) (string, error) {
 	switch t {
 	case pkg.NodeJS:
 		return "commonjspackage", nil
+	default:
+		return t.String(), nil
 	}
-	return "", errors.Errorf("unknown module type: %s", string(t))
+	return "", errors.Errorf("unknown module type: %s", t.String())
 }
 
-// func Normalize(analysis []module.Analyzed) ([]SourceUnit, error) {
-// 	var normalized []SourceUnit
-// 	for _, analyzed := range analysis {
-// 		var deps []Dependency
-// 		for _, dep := range analyzed.Dependencies {
-// 			data, err := json.Marshal(dep)
-// 			if err != nil {
-// 				return nil, errors.Wrap(err, "could not marshal analyzed dependency")
-// 			}
+func Normalize(modules []module.Module) ([]SourceUnit, error) {
+	var normalized []SourceUnit
+	for _, analyzed := range modules {
+		var deps []Dependency
+		for _, dep := range analyzed.Deps {
+			data, err := json.Marshal(dep)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not marshal analyzed dependency")
+			}
 
-// 			deps = append(deps, Dependency{
-// 				Locator: dep.Locator.String(),
-// 				Data:    (*json.RawMessage)(&data),
-// 			})
-// 		}
+			deps = append(deps, Dependency{
+				Locator: LocatorOf(dep.ID).String(),
+				Data:    (*json.RawMessage)(&data),
+			})
+		}
 
-// 		normalizedType, err := NormalizeType(analyzed.pkg.Type)
-// 		if err != nil {
-// 			return nil, errors.Wrap(err, "could not normalize analyzed module type")
-// 		}
+		normalizedType, err := NormalizeType(analyzed.Type)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not normalize analyzed module type")
+		}
 
-// 		normalized = append(normalized, SourceUnit{
-// 			Name:     analyzed.Module.Name,
-// 			Type:     normalizedType,
-// 			Manifest: analyzed.Module.Target,
-// 			Build: Build{
-// 				Artifact:     "default",
-// 				Context:      analyzed.Builder,
-// 				Succeeded:    true,
-// 				Dependencies: deps,
-// 			},
-// 		})
-// 	}
-// 	return normalized, nil
-// }
+		normalized = append(normalized, SourceUnit{
+			Name:     analyzed.Name,
+			Type:     normalizedType,
+			Manifest: analyzed.BuildTarget,
+			Build: Build{
+				Artifact:     "default",
+				Succeeded:    true,
+				Dependencies: deps,
+			},
+		})
+	}
+	return normalized, nil
+}

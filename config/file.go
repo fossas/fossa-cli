@@ -17,6 +17,7 @@ type File interface {
 	APIKey() string
 	Server() string
 
+	Title() string
 	Fetcher() string
 	Project() string
 	Branch() string
@@ -32,6 +33,10 @@ func (_ NoFile) APIKey() string {
 }
 
 func (_ NoFile) Server() string {
+	return ""
+}
+
+func (_ NoFile) Title() string {
 	return ""
 }
 
@@ -60,7 +65,7 @@ func (_ NoFile) Modules() []module.Module {
 func InitFile(modules []module.Module) error {
 	// Construct module configs.
 	var configs []v1.ModuleProperties
-	for _, m := range Modules() {
+	for _, m := range modules {
 		configs = append(configs, v1.ModuleProperties{
 			Name:    m.Name,
 			Path:    m.BuildTarget,
