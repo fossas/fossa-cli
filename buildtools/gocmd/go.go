@@ -52,6 +52,9 @@ func (g *Go) ListOne(pkg string) (Package, error) {
 	if err != nil {
 		return Package{}, err
 	}
+	if len(pkgs) != 1 {
+		return Package{}, errors.New("go build target specifies multiple packages")
+	}
 	return pkgs[0], nil
 }
 
