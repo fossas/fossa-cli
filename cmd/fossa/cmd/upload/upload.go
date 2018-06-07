@@ -3,7 +3,6 @@ package upload
 import (
 	"encoding/json"
 	"io/ioutil"
-	"net/url"
 	"os"
 	"strings"
 
@@ -17,13 +16,17 @@ import (
 	"github.com/fossas/fossa-cli/log"
 )
 
+var (
+	Locators = "locators"
+)
+
 var Cmd = cli.Command{
 	Name:      "upload",
 	Usage:     "Uploads user-provided test results to FOSSA",
 	Action:    Run,
 	ArgsUsage: "DATA",
 	Flags: flags.WithGlobalFlags([]cli.Flag{
-		cli.BoolFlag{Name: "l, locators", Usage: "upload data in locator format (instead of JSON)"},
+		cli.BoolFlag{Name: flags.Short(Locators), Usage: "upload data in locator format (instead of JSON)"},
 	}),
 }
 
@@ -89,49 +92,33 @@ func getInput(ctx *cli.Context, usingLocators bool) ([]fossa.SourceUnit, error) 
 }
 
 func Run(ctx *cli.Context) {
-	cmdutil.Init(ctx)
-	c := config.MustNew(ctx)
+	err := cmdutil.Init(ctx)
+	if err != nil {
+		log.Logger.Fatalf("Could not initialize: %s", err.Error())
+	}
 
-	data, err := getInput(ctx, c.UploadCmd.UseLocators)
+	data, err := getInput(ctx, ctx.Bool(Locators))
 	if err != nil {
 		log.Logger.Fatalf("Bad input: %s", err.Error())
 	}
 
-	locator, err := Do(c, data)
+	locator, err := Do(data)
 	if err != nil {
 		log.Logger.Fatalf("Upload failed: %s", err.Error())
 	}
-	baseURL, err := url.Parse(c.Endpoint)
-	reportBranch := c.Branch
-	if reportBranch == "" {
-		reportBranch = "master"
-	}
-	reportURL, err := url.Parse("/projects/" + url.QueryEscape(locator.Fetcher+"+"+locator.Project) + "/refs/branch/" + reportBranch + "/" + url.QueryEscape(locator.Revision) + "/browse/dependencies")
-	log.Printf(`
-============================================================
-
-    View FOSSA Report:
-    ` + strings.Replace(baseURL.ResolveReference(reportURL).String(), "%", "%%", -1) + `
-
-============================================================
-`)
+	log.Printf(cmdutil.FmtReportURL(locator))
 }
 
-func Do(c config.CLIConfig, data []fossa.SourceUnit) (fossa.Locator, error) {
-	if c.Project == "" {
+func Do(data []fossa.SourceUnit) (fossa.Locator, error) {
+	if config.Project() == "" {
 		log.Logger.Fatalf("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
 	}
-	if c.Fetcher != "custom" && c.Revision == "" {
+	if config.Fetcher() != "custom" && config.Revision() == "" {
 		log.Logger.Fatalf("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
 	}
 	if len(data) == 0 {
 		log.Logger.Fatalf("No data to upload")
 	}
 
-	title := data[0].Name
-	if c.Fetcher == "custom" && title == "" {
-		title = c.Project
-	}
-
-	return fossa.Upload(c.Fetcher, c.Project, c.Revision, title, c.Branch, data)
+	return fossa.Upload(config.Fetcher(), config.Project(), config.Revision(), config.Title(), config.Branch(), data)
 }

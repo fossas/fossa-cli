@@ -5,7 +5,6 @@ import (
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -30,6 +29,7 @@ type CLIProperties struct {
 	Server   string `yaml:"server,omitempty"`
 	Fetcher  string `yaml:"fetcher,omitempty"` // Defaults to custom
 	Project  string `yaml:"project,omitempty"`
+	Title    string `yaml:"title,omitempty"`
 	Revision string `yaml:"revision,omitempty"`
 	Branch   string `yaml:"branch,omitempty"` // Only used with custom fetcher
 }
@@ -64,6 +64,24 @@ func New(data []byte) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Parse module configurations into modules.
+	for _, config := range file.Analyze.Modules {
+		// Parse and validate module type.
+		t, err := pkg.ParseType(config.Type)
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not parse module type %s", config.Type)
+		}
+
+		file.modules = append(file.modules, module.Module{
+			Name:        config.Name,
+			Type:        t,
+			BuildTarget: config.Path,
+			Dir:         config.Path,
+			Options:     config.Options,
+		})
+	}
+
 	return &file, nil
 }
 
@@ -73,6 +91,13 @@ func (file *File) APIKey() string {
 
 func (file *File) Server() string {
 	return file.CLI.Server
+}
+
+func (file *File) Title() string {
+	if file.CLI.Title == "" {
+		return file.CLI.Project
+	}
+	return file.CLI.Title
 }
 
 func (file *File) Fetcher() string {
@@ -92,31 +117,5 @@ func (file *File) Revision() string {
 }
 
 func (file *File) Modules() []module.Module {
-	modules, err := readModules(file)
-	if err != nil {
-		log.Logger.Panicf("config file was constructed but modules were invalid: %s", err.Error())
-	}
-	return modules
+	return file.modules
 }
-
-func readModules(file *File) ([]module.Module, error) {
-	var modules []module.Module
-	for _, config := range file.Analyze.Modules {
-		// Parse and validate module type.
-		t, err := pkg.ParseType(config.Type)
-		if err != nil {
-			return nil, errors.Wrapf(err, "could not parse module type %s", config.Type)
-		}
-
-		modules = append(modules, module.Module{
-			Name:        config.Name,
-			Type:        t,
-			BuildTarget: config.Path,
-			Dir:         config.Path,
-			Options:     config.Options,
-		})
-	}
-	return modules, nil
-}
-
-// func Upgrade(v1 File) v2.File {}

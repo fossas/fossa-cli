@@ -38,7 +38,10 @@ func Run(ctx *cli.Context) error {
 		log.Logger.Fatalf("Could not initialize: %s", err.Error())
 	}
 
-	modules := config.Modules()
+	modules, err := config.Modules()
+	if err != nil {
+		log.Logger.Fatalf("Could not parse modules: %s", err.Error())
+	}
 	if len(modules) == 0 {
 		log.Logger.Fatal("No modules specified.")
 	}

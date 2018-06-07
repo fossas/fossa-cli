@@ -23,6 +23,8 @@ var (
 	API       = []cli.Flag{EndpointF, FetcherF, ProjectF, RevisionF, BranchF}
 	Endpoint  = "endpoint"
 	EndpointF = cli.StringFlag{Name: Short(Endpoint), Usage: "the FOSSA server endpoint (default: 'https://app.fossa.io')"}
+	Title     = "title"
+	TitleF    = cli.StringFlag{Name: Short(Title), Usage: "the title of the FOSSA project. (default: the project name)"}
 	Fetcher   = "fetcher"
 	FetcherF  = cli.StringFlag{Name: Short(Fetcher), Usage: "type of fetcher to use for fossa. (default: 'custom')"}
 	Project   = "project"

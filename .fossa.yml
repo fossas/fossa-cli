@@ -10,4 +10,4 @@ analyze:
   modules:
   - name: fossa
     path: cmd/fossa
-    type: Go
+    type: go

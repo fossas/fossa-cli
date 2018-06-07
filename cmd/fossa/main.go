@@ -5,8 +5,11 @@ import (
 
 	"github.com/urfave/cli"
 
+	"github.com/fossas/fossa-cli/cmd/fossa/cmd/analyze"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/build"
 	initcmd "github.com/fossas/fossa-cli/cmd/fossa/cmd/init"
+	"github.com/fossas/fossa-cli/cmd/fossa/cmd/update"
+	"github.com/fossas/fossa-cli/cmd/fossa/cmd/upload"
 	"github.com/fossas/fossa-cli/cmd/fossa/version"
 )
 
@@ -21,23 +24,8 @@ func main() {
 	app.Commands = []cli.Command{
 		initcmd.Cmd,
 		build.Cmd,
-		// {
-		// 	Name:   "analyze",
-		// 	Usage:  "Analyze built dependencies",
-		// 	Action: analyzeCmd,
-		// 	Flags: []cli.Flag{
-		// 		cli.StringFlag{Name: "c, config", Usage: configUsage},
-		// 		cli.StringFlag{Name: "fetcher", Usage: fetcherUsage},
-		// 		cli.StringFlag{Name: "p, project", Usage: projectUsage},
-		// 		cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
-		// 		cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
-		// 		flags.Branch,
-		// 		cli.StringSliceFlag{Name: "m, modules", Usage: "the modules to analyze"},
-		// 		cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
-		// 		cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
-		// 		cli.BoolFlag{Name: "debug", Usage: debugUsage},
-		// 	},
-		// },
+		analyze.Cmd,
+		upload.Cmd,
 		// {
 		// 	Name:   "test",
 		// 	Usage:  "Test current revision against FOSSA scan status and exit with errors if issues are found",
@@ -52,8 +40,6 @@ func main() {
 		// 		cli.BoolFlag{Name: "debug", Usage: debugUsage},
 		// 	},
 		// },
-		// upload.Cmd,
-		// update.Cmd,
 		// {
 		// 	Name:   "report",
 		// 	Usage:  "Generates a license report",
@@ -69,6 +55,7 @@ func main() {
 		// 		cli.BoolFlag{Name: "debug", Usage: debugUsage},
 		// 	},
 		// },
+		update.Cmd,
 	}
 
 	app.Run(os.Args)

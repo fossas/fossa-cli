@@ -3,6 +3,8 @@ package fossa
 import (
 	"regexp"
 	"strings"
+
+	"github.com/fossas/fossa-cli/pkg"
 )
 
 type Locator struct {
@@ -66,4 +68,12 @@ func ReadImportPath(s ImportPathString) ImportPath {
 		out = append(out, ReadLocator(part))
 	}
 	return out
+}
+
+func LocatorOf(id pkg.ID) Locator {
+	return Locator{
+		Fetcher:  id.Type.String(),
+		Project:  id.Name,
+		Revision: id.Revision,
+	}
 }
