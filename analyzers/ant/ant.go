@@ -14,8 +14,7 @@ import (
 	"github.com/bmatcuk/doublestar"
 	"github.com/gnewton/jargo"
 
-	"github.com/fossas/fossa-cli/builders/builderutil"
-	"github.com/fossas/fossa-cli/builders/maven"
+	"github.com/fossas/fossa-cli/analyzers/maven"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
@@ -95,7 +94,7 @@ func (builder *AntBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 	for _, jarFilePath := range jarFilePaths {
 		locator, err := locatorFromJar(jarFilePath)
 		if err == nil {
-			hashes, _ := builderutil.GetHashes(jarFilePath)
+			hashes, _ := GetHashes(jarFilePath)
 			dependencies = append(dependencies, module.Dependency{
 				Locator: locator,
 				Hashes:  hashes,

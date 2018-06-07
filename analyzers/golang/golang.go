@@ -1,4 +1,4 @@
-//
+// Package golang implements the analyzer for Go.
 //
 // Strategies:
 // - default
@@ -107,10 +107,41 @@ func (a *Analyzer) IsBuilt(p module.Module) (bool, error) {
 // Analyze builds a dependency graph using go list and then looks up revisions
 // using tool-specific lockfiles.
 func (a *Analyzer) Analyze(p module.Module) (module.Module, error) {
+	// Read lockfiles to get revisions.
 	switch a.Options.Strategy {
+	// Read revisions from a tool manifest at a specified location.
 	case "manifest:godep":
-		return a.ResolveManifest(p)
+		return p, errors.New("not yet implemented")
+	case "manifest:govendor":
+		return p, errors.New("not yet implemented")
+	case "manifest:dep":
+		return p, errors.New("not yet implemented")
+	case "manifest:vndr":
+		return p, errors.New("not yet implemented")
+	case "manifest:glide":
+		return p, errors.New("not yet implemented")
+
+	// Resolve revisions by traversing the local $GOPATH and calling the package's
+	// VCS.
+	case "gopath-vcs":
+		return p, errors.New("not yet implemented")
+
+	// Read revisions from an auto-detected tool manifest.
 	default:
-		return p, nil
+		return p, errors.New("not yet implemented")
 	}
+
+	// Use `go list` to get imports and deps of module.
+	gopkg, err := a.Go.ListOne(p.BuildTarget)
+	if err != nil {
+		return module.Module{}, err
+	}
+	var imports []pkg.ID
+	for _, i := range gopkg.Imports {
+		imports = append(imports, pkg.ID{})
+	}
+
+	// Use `go list` to get imports of deps of module.
+
+	return p, nil
 }

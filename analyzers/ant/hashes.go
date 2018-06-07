@@ -1,4 +1,4 @@
-package builderutil
+package ant
 
 import (
 	"crypto/md5" // nolint: gas
