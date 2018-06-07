@@ -2,27 +2,16 @@
 
 <#
     .SYNOPSIS
-    Executes the latest available FOSSA release from GitHub.
-    
-    .PARAMETER ApiKey
-    The FOSSA API key to be used for the current Powershell Session.
-
-    .PARAMETER TempDir
-    The directory used for FOSSA download and extraction.
+    Download and install the latest available FOSSA release from GitHub.
 #>
-
-[CmdletBinding()]
-Param(
-    $TempDir = $env:TEMP,
-    [Parameter(Mandatory=$true)]
-    $ApiKey
-)
 
 $ErrorActionPreference = "Stop"
 
 $github = "https://github.com"
 $latestUri = "$github/fossas/fossa-cli/releases/latest"
 $extractDir = "$env:ALLUSERSPROFILE\fossa-cli"
+
+Write-Verbose "Looking up latest release..."
 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 
@@ -34,7 +23,10 @@ if ($releasePage -inotmatch 'href=\"(.*?releases\/download\/.*?windows.*?)\"')
 }
 
 $downloadUri = "$github/$($Matches[1])"
-Write-Verbose "Download from: $downloadUri"
+Write-Verbose "Downloading from: $downloadUri"
+
+$TempDir = Join-Path [System.IO.Path]::GetTempPath() "fossa-cli"
+if (![System.IO.Directory]::Exists($TempDir)) {[void][System.IO.Directory]::CreateDirectory($TempDir)}
 
 $zipFile = "$TempDir\fossa-cli.zip"
 
@@ -44,6 +36,5 @@ Expand-Archive -Path $zipFile -DestinationPath $extractDir -Force
 
 $ErrorActionPreference = "Continue"
 
-$env:FOSSA_API_KEY = $ApiKey
-
-& "$TempDir\fossa-cli\fossa.exe"
+Write-Verbose "Installed fossa-cli at: $extractDir\fossa-cli\fossa.exe"
+Write-Verbose "Get started by running: fossa.exe --help"
