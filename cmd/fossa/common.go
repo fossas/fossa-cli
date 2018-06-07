@@ -14,7 +14,7 @@ import (
 )
 
 var client = http.Client{
-	Timeout: 10 * time.Second,
+	Timeout: 60 * time.Second,
 }
 
 func isTimeout(err error) bool {
