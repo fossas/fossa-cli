@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
 // ErrNoLockfile is returned if a dep manifest is found without an accompanying lockfile.
@@ -22,6 +23,15 @@ type Project struct {
 // A Lockfile contains the contents of a dep lockfile.
 type Lockfile struct {
 	Projects []Project
+}
+
+// New constructs a golang.Resolver
+func New(dirname string) (Lockfile, error) {
+	return Lockfile{}, errors.New("not implemented")
+}
+
+func (l Lockfile) Resolve(importpath string) (pkg.ID, error) {
+	return pkg.ID{}, errors.New("not implemented")
 }
 
 // UsedIn checks whether dep is used correctly within a project folder.

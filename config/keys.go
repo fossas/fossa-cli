@@ -109,13 +109,6 @@ func Modules() ([]module.Module, error) {
 			} else if i, err := strconv.Atoi(value); err == nil {
 				// Attempt to parse as number.
 				options[key] = i
-			} else if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
-				// Attempt to parse as list.
-				noPrefix := strings.TrimPrefix(value, "[")
-				noSuffix := strings.TrimPrefix(noPrefix, "]")
-				noSpace := strings.TrimSpace(noSuffix)
-				elements := strings.Split(noSpace, ",")
-				options[key] = elements
 			} else {
 				// Treat as a string.
 				options[key] = value
