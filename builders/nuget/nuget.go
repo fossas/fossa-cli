@@ -465,7 +465,7 @@ func (builder *NuGetBuilder) DiscoverModules(dir string) ([]module.Config, error
 		if !seen {
 			moduleConfigs = append(moduleConfigs, module.Config{
 				Name: packageName,
-				Path: packagePath,
+				Path: path,
 				Type: "nuget",
 			})
 		}
