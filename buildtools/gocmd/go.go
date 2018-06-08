@@ -18,8 +18,8 @@ type Package struct {
 	Dir        string      // Absolute location on filesystem.
 	IsInternal bool        // Whether the package is an internal package.
 	IsStdLib   bool        // Whether the package is a part of the standard library.
-	Imports    []string    // The package's direct dependencies.
-	Deps       []string    // The package's transitive dependencies.
+	Imports    []string    // Direct dependencies.
+	Deps       []string    // Transitive dependencies.
 	Error      interface{} // A package loading error, if applicable.
 }
 
@@ -44,6 +44,15 @@ type GoListOutput struct {
 	Dir        string
 	Standard   bool
 	Imports    []string
+	Error      *GoListPackageError
+	DepsErrors []*GoListPackageError
+}
+
+// GoListPackageError is the PackageError struct defined in `go help list`.
+type GoListPackageError struct {
+	ImportStack []string
+	Pos         string
+	Err         string
 }
 
 // ListOne runs List for a single package.
@@ -76,7 +85,7 @@ func (g *Go) List(pkgs []string) ([]Package, error) {
 			// more useful.
 			return nil, errors.New("bad OS/architecture target")
 		}
-		return nil, errors.Wrap(err, "could not run go list")
+		return nil, errors.Errorf("could not run go list: %s (%s)", strings.TrimSpace(stderr), err)
 	}
 	// The output for each package is valid JSON, but the output overall is not
 	// valid JSON until we massage it a bit.
@@ -88,14 +97,21 @@ func (g *Go) List(pkgs []string) ([]Package, error) {
 	// Parse output into Packages.
 	var ret []Package
 	for _, pkg := range output {
-		ret = append(ret, Package{
+		p := Package{
 			Name:       Name(pkg.ImportPath),
 			ImportPath: pkg.ImportPath,
 			Dir:        pkg.Dir,
 			IsInternal: strings.Index(pkg.ImportPath, "internal") != -1,
 			IsStdLib:   pkg.Standard,
 			Imports:    pkg.Imports,
-		})
+		}
+		if pkg.DepsErrors != nil {
+			p.Error = pkg.DepsErrors
+		}
+		if pkg.Error != nil {
+			p.Error = pkg.Error
+		}
+		ret = append(ret, p)
 	}
 	return ret, nil
 }

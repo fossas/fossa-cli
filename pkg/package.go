@@ -40,10 +40,10 @@ type Package struct {
 	Authors          []Author
 	Description      string
 	DeclaredLicenses []LicenseExpr
-	ProjectURL       string // The URL of the project (often the "homepage" URL)
-	SourceCodeURL    string // The URL at which source code can be obtained (often a git repository)
-	RegistryURL      string // The URL of the package's registry (e.g. if using private registries)
-	DownloadURL      string // The URL at which binaries or compiled bundles can be downloaded
+	ProjectURL       string // URL of the project (often the "homepage" URL)
+	SourceCodeURL    string // URL at which source code can be obtained (often a git repository)
+	RegistryURL      string // URL of the package's registry (e.g. if using private registries)
+	DownloadURL      string // URL at which binaries or compiled bundles can be downloaded
 
 	Imports []Import
 	// A package's resolution strategy is set by the analyzer which resolves it,

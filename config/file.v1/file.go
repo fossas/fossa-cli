@@ -45,24 +45,24 @@ type ModuleProperties struct {
 	Options map[string]interface{} `yaml:"options,omitempty"`
 }
 
-func New(data []byte) (*File, error) {
+func New(data []byte) (File, error) {
 	// Check whether version is correct. We first unmarshal into a map so that if
 	// the type of `version` is not `int`, we can identify that issue distinct
 	// from malformed YAML and handle it specially.
 	var contents map[string]interface{}
 	err := yaml.Unmarshal(data, &contents)
 	if err != nil {
-		return nil, err
+		return File{}, err
 	}
 	if v, ok := contents["version"].(int); !ok || v != 1 {
-		return nil, ErrWrongVersion
+		return File{}, ErrWrongVersion
 	}
 
 	// Use mapstructure to fill out the File struct.
 	var file File
 	err = mapstructure.Decode(contents, &file)
 	if err != nil {
-		return nil, err
+		return File{}, err
 	}
 
 	// Parse module configurations into modules.
@@ -70,7 +70,7 @@ func New(data []byte) (*File, error) {
 		// Parse and validate module type.
 		t, err := pkg.ParseType(config.Type)
 		if err != nil {
-			return nil, errors.Wrapf(err, "could not parse module type %s", config.Type)
+			return File{}, errors.Wrapf(err, "could not parse module type %s", config.Type)
 		}
 
 		file.modules = append(file.modules, module.Module{
@@ -82,40 +82,40 @@ func New(data []byte) (*File, error) {
 		})
 	}
 
-	return &file, nil
+	return file, nil
 }
 
-func (file *File) APIKey() string {
+func (file File) APIKey() string {
 	return file.CLI.APIKey
 }
 
-func (file *File) Server() string {
+func (file File) Server() string {
 	return file.CLI.Server
 }
 
-func (file *File) Title() string {
+func (file File) Title() string {
 	if file.CLI.Title == "" {
 		return file.CLI.Project
 	}
 	return file.CLI.Title
 }
 
-func (file *File) Fetcher() string {
+func (file File) Fetcher() string {
 	return file.CLI.Fetcher
 }
 
-func (file *File) Project() string {
+func (file File) Project() string {
 	return file.CLI.Project
 }
 
-func (file *File) Branch() string {
+func (file File) Branch() string {
 	return file.CLI.Branch
 }
 
-func (file *File) Revision() string {
+func (file File) Revision() string {
 	return file.CLI.Revision
 }
 
-func (file *File) Modules() []module.Module {
+func (file File) Modules() []module.Module {
 	return file.modules
 }

@@ -8,13 +8,13 @@ import "github.com/fossas/fossa-cli/pkg"
 // of that package.
 type Module struct {
 	Name         string   `yaml:"name"` // Uniquely identifies the module.
-	Type         pkg.Type `yaml:"type"` // The type of the root package, used to select the module's analyzer.
+	Type         pkg.Type `yaml:"type"` // Type of the root package, used to select the module's analyzer.
 	IsExecutable bool     `yaml:"-"`    // Used for filtering discovered projects.
 
-	BuildTarget string `yaml:"target,omitempty"` // The exact build target in the semantics of the module's analyzers.
-	Dir         string `yaml:"cwd,omitempty"`    // The CWD to analyze the module from.
+	BuildTarget string `yaml:"target,omitempty"` // Exact build target in the semantics of the module's analyzers.
+	Dir         string `yaml:"cwd,omitempty"`    // CWD to analyze the module from.
 
-	Options map[string]interface{} `yaml:"options,omitempty"` // The analyzer option struct of the module type.
+	Options map[string]interface{} `yaml:"options,omitempty"` // Analyzer option struct of the module type.
 	Context interface{}            `yaml:"-"`                 // Extra metadata set by analyzers.
 
 	Imports []pkg.ID               `yaml:"-"` // Direct dependencies of the root package.

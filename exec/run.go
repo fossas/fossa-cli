@@ -10,9 +10,9 @@ import (
 
 // Cmd represents a single command.
 type Cmd struct {
-	Name string   // The command name.
-	Argv []string // The command arguments.
-	Dir  string   // The command's working directory.
+	Name string   // Command name.
+	Argv []string // Command arguments.
+	Dir  string   // Command's working directory.
 
 	// If neither Env nor WithEnv are set, the environment is inherited from os.Environ().
 	Env     map[string]string // If set, the command's environment is _set_ to Env.
@@ -33,12 +33,10 @@ func Run(cmd Cmd) (stdout string, stderr string, err error) {
 
 	if cmd.Env != nil {
 		xc.Env = toEnv(cmd.Env)
-	}
-	if cmd.WithEnv != nil {
-		xc.Env = append(xc.Env, os.Environ()...)
+	} else if cmd.WithEnv != nil {
 		xc.Env = append(xc.Env, toEnv(cmd.Env)...)
-	}
-	if cmd.Env == nil && cmd.WithEnv == nil {
+		xc.Env = append(xc.Env, os.Environ()...)
+	} else {
 		xc.Env = os.Environ()
 	}
 

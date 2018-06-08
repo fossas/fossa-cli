@@ -1,24 +1,29 @@
 // Package golang implements the analyzer for Go.
 //
-// Strategies:
-// - default
-// - use specific tool, read specific manifest at weird location (anki)
+// This package is implemented by externally calling both the `go` tool and any
+// external build tools.
 //
-// options:
-// - allow unresolved
-// - allow unresolved prefix (hashi govendor)
+// FAQ
+//
+// Why not use `go/build`, or a library like `KyleBanks/depth`?
+//
+// The `go` tool's interface is incredibly stable over different releases, but
+// the internals are not. Using these libraries causes crashes when analyzing
+// code that is compiled using a different version of Go. (This was how the
+// analyzer was originally implemented.)
 package golang
 
 import (
 	"os"
 
 	"github.com/mitchellh/mapstructure"
+	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
 	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/pkg/errors"
 )
 
 // An Analyzer contains structs used in the analysis of Go packages.
@@ -31,14 +36,14 @@ type Analyzer struct {
 
 // Options set analyzer options for Go modules.
 type Options struct {
-	BuildOS               string   `mapstructure:"os"`                      // The target build OS (for build tags).
-	BuildArch             string   `mapstructure:"arch"`                    // The target build architecture (for build tags).
-	Strategy              string   `mapstructure:"strategy"`                // See the Go analyzer documentation.
-	Strategies            []string `mapstructure:"strategies"`              // Fallback strategies to try in succession.
-	LockfilePath          string   `mapstructure:"lockfile"`                // For non-standard lockfile locations.
-	AllowUnresolved       bool     `mapstructure:"allow-unresolved"`        // Allow unresolved revisions.
-	AllowUnresolvedPrefix string   `mapstructure:"allow-unresolved-prefix"` // If set, restricts unresolved revisions to only those that match the prefix.
-	SkipImportTracing     bool     `mapstructure:"skip-tracing"`            // If true, skips dependency tracing.
+	BuildOS               string `mapstructure:"os"`                      // Target build OS (for build tags).
+	BuildArch             string `mapstructure:"arch"`                    // Target build architecture (for build tags).
+	Strategy              string `mapstructure:"strategy"`                // See the Go analyzer documentation.
+	LockfilePath          string `mapstructure:"lockfile"`                // For non-standard lockfile locations with strategies `manifest:*`.
+	AllowUnresolved       bool   `mapstructure:"allow-unresolved"`        // Allow unresolved revisions.
+	AllowUnresolvedPrefix string `mapstructure:"allow-unresolved-prefix"` // If set, allows unresolved revisions for packages whose import path's prefix matches.
+	SkipImportTracing     bool   `mapstructure:"skip-tracing"`            // If true, skips dependency tracing.
+	SkipProject           bool   `mapstructure:"skip-project"`            // If true, skips project detection.
 }
 
 // New constructs an Analyzer.
@@ -86,18 +91,18 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 }
 
 // Clean runs `go clean $PKG`.
-func (a *Analyzer) Clean(p module.Module) error {
-	return a.Go.Clean([]string{p.BuildTarget})
+func (a *Analyzer) Clean(m module.Module) error {
+	return a.Go.Clean([]string{m.BuildTarget})
 }
 
 // Build runs `go build $PKG`.
-func (a *Analyzer) Build(p module.Module) error {
-	return a.Go.Build([]string{p.BuildTarget})
+func (a *Analyzer) Build(m module.Module) error {
+	return a.Go.Build([]string{m.BuildTarget})
 }
 
 // IsBuilt runs `go list $PKG` and checks for errors.
-func (a *Analyzer) IsBuilt(p module.Module) (bool, error) {
-	pkg, err := a.Go.ListOne(p.BuildTarget)
+func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
+	pkg, err := a.Go.ListOne(m.BuildTarget)
 	if err != nil {
 		return false, err
 	}
@@ -106,42 +111,59 @@ func (a *Analyzer) IsBuilt(p module.Module) (bool, error) {
 
 // Analyze builds a dependency graph using go list and then looks up revisions
 // using tool-specific lockfiles.
-func (a *Analyzer) Analyze(p module.Module) (module.Module, error) {
+func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
+	// Get Go project.
+	project, err := a.GetProject(m.BuildTarget)
+	if err != nil {
+		return m, err
+	}
+	log.Logger.Debugf("Go project: %#v", project)
+
 	// Read lockfiles to get revisions.
+	var lockfile Resolver
 	switch a.Options.Strategy {
 	// Read revisions from a tool manifest at a specified location.
-	case "manifest:godep":
-		return p, errors.New("not yet implemented")
-	case "manifest:govendor":
-		return p, errors.New("not yet implemented")
 	case "manifest:dep":
-		return p, errors.New("not yet implemented")
-	case "manifest:vndr":
-		return p, errors.New("not yet implemented")
+		return m, errors.New("not yet implemented")
+	case "manifest:gdm":
+		return m, errors.New("not yet implemented")
 	case "manifest:glide":
-		return p, errors.New("not yet implemented")
+		return m, errors.New("not yet implemented")
+	case "manifest:godep":
+		return m, errors.New("not yet implemented")
+	case "manifest:govendor":
+		return m, errors.New("not yet implemented")
+	case "manifest:vndr":
+		return m, errors.New("not yet implemented")
 
 	// Resolve revisions by traversing the local $GOPATH and calling the package's
 	// VCS.
 	case "gopath-vcs":
-		return p, errors.New("not yet implemented")
+		return m, errors.New("not yet implemented")
 
 	// Read revisions from an auto-detected tool manifest.
 	default:
-		return p, errors.New("not yet implemented")
+		lockfile, err = NewResolver(project.Tool, project.Manifest)
+		if err != nil {
+			return m, err
+		}
 	}
 
-	// Use `go list` to get imports and deps of module.
-	gopkg, err := a.Go.ListOne(p.BuildTarget)
-	if err != nil {
-		return module.Module{}, err
-	}
-	var imports []pkg.ID
-	for _, i := range gopkg.Imports {
-		imports = append(imports, pkg.ID{})
-	}
+	_ = lockfile
 
-	// Use `go list` to get imports of deps of module.
+	// // Use `go list` to get imports and deps of module.
+	// gopkg, err := a.Go.ListOne(m.BuildTarget)
+	// if err != nil {
+	// 	return module.Module{}, err
+	// }
+	// var imports []pkg.ID
+	// for _, i := range gopkg.Imports {
+	// 	imports = append(imports, pkg.ID{})
+	// }
 
-	return p, nil
+	// // Use `go list` to get imports of deps of module.
+
+	// // If import tracing fails, warn and upload the lockfile.
+
+	return m, nil
 }
