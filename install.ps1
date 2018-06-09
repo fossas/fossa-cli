@@ -5,6 +5,10 @@
     Download and install the latest available FOSSA release from GitHub.
 #>
 
+[CmdletBinding()]
+Param()
+
+$OldEAP = $ErrorActionPreference #Preserve the original value
 $ErrorActionPreference = "Stop"
 
 $github = "https://github.com"
@@ -34,7 +38,11 @@ $zipFile = "$TempDir\fossa-cli.zip"
 
 Expand-Archive -Path $zipFile -DestinationPath $extractDir -Force
 
-$ErrorActionPreference = "Continue"
+$ErrorActionPreference = $OldEAP
 
-Write-Verbose "Installed fossa-cli at: $extractDir\fossa-cli\fossa.exe"
-Write-Verbose "Get started by running: fossa.exe --help"
+$fossa = "$extractDir\fossa.exe"
+
+Write-Host "Installed fossa-cli at: $fossa"
+Write-Host "Get started by running: fossa.exe --help"
+
+Write-Output $fossa
