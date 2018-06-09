@@ -25,7 +25,7 @@ if ($releasePage -inotmatch 'href=\"(.*?releases\/download\/.*?windows.*?)\"')
 $downloadUri = "$github/$($Matches[1])"
 Write-Verbose "Downloading from: $downloadUri"
 
-$TempDir = Join-Path [System.IO.Path]::GetTempPath() "fossa-cli"
+$TempDir = Join-Path ([System.IO.Path]::GetTempPath()) "fossa-cli"
 if (![System.IO.Directory]::Exists($TempDir)) {[void][System.IO.Directory]::CreateDirectory($TempDir)}
 
 $zipFile = "$TempDir\fossa-cli.zip"
