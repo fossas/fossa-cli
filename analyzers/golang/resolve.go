@@ -3,7 +3,7 @@ package golang
 import (
 	"errors"
 
-	"github.com/fossas/fossa-cli/pkg"
+	"github.com/fossas/fossa-cli/buildtools/dep"
 )
 
 var (
@@ -13,13 +13,13 @@ var (
 // A Resolver provides a single method for resolving the revision of a Go
 // package.
 type Resolver interface {
-	Resolve(importpath string) pkg.ID
+	Resolve(importpath string) (string, error)
 }
 
 func NewResolver(resolver, dir string) (Resolver, error) {
 	switch resolver {
 	case "dep":
-		return nil, errors.New("not yet implemented")
+		return dep.New(dir)
 	case "gdm":
 		return nil, errors.New("not yet implemented")
 	case "glide":

@@ -44,6 +44,7 @@ type GoListOutput struct {
 	Dir        string
 	Standard   bool
 	Imports    []string
+	Deps       []string
 	Error      *GoListPackageError
 	DepsErrors []*GoListPackageError
 }
@@ -104,6 +105,7 @@ func (g *Go) List(pkgs []string) ([]Package, error) {
 			IsInternal: strings.Index(pkg.ImportPath, "internal") != -1,
 			IsStdLib:   pkg.Standard,
 			Imports:    pkg.Imports,
+			Deps:       pkg.Deps,
 		}
 		if pkg.DepsErrors != nil {
 			p.Error = pkg.DepsErrors

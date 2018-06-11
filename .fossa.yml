@@ -9,5 +9,5 @@ cli:
 analyze:
   modules:
   - name: fossa
-    path: cmd/fossa
+    path: ./cmd/fossa
     type: go

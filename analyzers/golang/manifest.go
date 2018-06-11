@@ -70,7 +70,7 @@ func (a *Analyzer) ResolveManifest(p module.Module) (module.Module, error) {
 			}
 			imports = append(imports, pkg.Import{
 				Target: "",
-				Resolved: &pkg.ID{
+				Resolved: pkg.ID{
 					Type:     pkg.Go,
 					Name:     imported,
 					Revision: importedRevision.Rev,

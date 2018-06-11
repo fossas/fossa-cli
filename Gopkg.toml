@@ -1,3 +1,11 @@
+ignored = [
+  "github.com/fossas/fossa-cli/fixtures/*"
+]
+
+[prune]
+  go-tests = true
+  unused-packages = true
+
 [[constraint]]
   name = "github.com/BurntSushi/toml"
   version = "0.3.0"
@@ -45,7 +53,3 @@
 [[constraint]]
   name = "gopkg.in/yaml.v2"
   version = "2.2.1"
-
-[prune]
-  go-tests = true
-  unused-packages = true

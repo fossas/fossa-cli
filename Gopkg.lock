@@ -109,6 +109,12 @@
   revision = "b8bc1bf767474819792c23f32d8286a45736f1c6"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/mitchellh/mapstructure"
+  packages = ["."]
+  revision = "bb74f1db0675b241733089d5a1faa5dd8b0ef57b"
+
+[[projects]]
   name = "github.com/op/go-logging"
   packages = ["."]
   revision = "b2cb9fa56473e98db8caba80237377e83fe44db5"
@@ -328,6 +334,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "94bec085468456848c5504b0e6fd27e2ba6f2c34ee437657b807c2f2d7dafb25"
+  inputs-digest = "6f8817d06c5d0140d92e0f30a8167f620c97a45e129ed3ce97e1a7370a07dccd"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -29,7 +29,7 @@ func escapeIDComponent(s string) string {
 // and the exact resolved pkg.ID of the dependency.
 type Import struct {
 	Target   string
-	Resolved *ID
+	Resolved ID
 }
 
 // A Package represents a single package at a semantic level. The precise
@@ -37,13 +37,13 @@ type Import struct {
 type Package struct {
 	ID ID
 
-	Authors          []Author
-	Description      string
-	DeclaredLicenses []LicenseExpr
-	ProjectURL       string // URL of the project (often the "homepage" URL)
-	SourceCodeURL    string // URL at which source code can be obtained (often a git repository)
-	RegistryURL      string // URL of the package's registry (e.g. if using private registries)
-	DownloadURL      string // URL at which binaries or compiled bundles can be downloaded
+	Authors          []Author      `json:",omitempty"`
+	Description      string        `json:",omitempty"`
+	DeclaredLicenses []LicenseExpr `json:",omitempty"`
+	ProjectURL       string        `json:",omitempty"` // URL of the project (often the "homepage" URL)
+	SourceCodeURL    string        `json:",omitempty"` // URL at which source code can be obtained (often a git repository)
+	RegistryURL      string        `json:",omitempty"` // URL of the package's registry (e.g. if using private registries)
+	DownloadURL      string        `json:",omitempty"` // URL at which binaries or compiled bundles can be downloaded
 
 	Imports []Import
 	// A package's resolution strategy is set by the analyzer which resolves it,

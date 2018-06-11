@@ -15,11 +15,13 @@ package golang
 
 import (
 	"os"
+	"strings"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
+	"github.com/fossas/fossa-cli/errutil"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
@@ -102,6 +104,7 @@ func (a *Analyzer) Build(m module.Module) error {
 
 // IsBuilt runs `go list $PKG` and checks for errors.
 func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
+	log.Logger.Debugf("%#v", m)
 	pkg, err := a.Go.ListOne(m.BuildTarget)
 	if err != nil {
 		return false, err
@@ -112,6 +115,7 @@ func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
 // Analyze builds a dependency graph using go list and then looks up revisions
 // using tool-specific lockfiles.
 func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
+	log.Logger.Debugf("%#v", m)
 	// Get Go project.
 	project, err := a.GetProject(m.BuildTarget)
 	if err != nil {
@@ -149,21 +153,118 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		}
 	}
 
-	_ = lockfile
+	log.Logger.Debugf("Lockfile: %#v", lockfile)
 
-	// // Use `go list` to get imports and deps of module.
-	// gopkg, err := a.Go.ListOne(m.BuildTarget)
-	// if err != nil {
-	// 	return module.Module{}, err
-	// }
-	// var imports []pkg.ID
-	// for _, i := range gopkg.Imports {
-	// 	imports = append(imports, pkg.ID{})
-	// }
+	// Use `go list` to get imports and deps of module.
+	main, err := a.Go.ListOne(m.BuildTarget)
+	if err != nil {
+		return m, err
+	}
+	log.Logger.Debugf("Go main package: %#v", main)
+	deps, err := a.Go.List(main.Deps)
+	if err != nil {
+		return m, err
+	}
 
-	// // Use `go list` to get imports of deps of module.
+	// Construct map of unvendored import path to package.
+	gopkgs := append(deps, main)
+	gopkgMap := make(map[string]gocmd.Package)
+	for _, p := range gopkgs {
+		gopkgMap[Unvendor(p.ImportPath)] = p
+	}
+	// cgo imports don't have revisions.
+	gopkgMap["C"] = gocmd.Package{
+		Name:     "C",
+		IsStdLib: true,
+	}
 
-	// // If import tracing fails, warn and upload the lockfile.
+	// Construct dependency graph.
+	pkgs := make(map[pkg.ID]pkg.Package)
+	_ = pkgs
+	for _, gopkg := range gopkgs {
+		log.Logger.Debugf("Getting revision for: %#v", gopkg)
 
+		// Get revision.
+		revision, err := GetRevision(project, lockfile, gopkg)
+		if err != nil {
+			return m, err
+		}
+		id := pkg.ID{
+			Type:     pkg.Go,
+			Name:     Unvendor(gopkg.ImportPath),
+			Revision: revision,
+			Location: "", // TODO: fill this field with something useful?
+		}
+
+		// Resolve imports.
+		var imports []pkg.Import
+		for _, i := range gopkg.Imports {
+			name := Unvendor(i)
+			revision, err := GetRevision(project, lockfile, gopkgMap[name])
+			if err != nil {
+				return m, err
+			}
+			imports = append(imports, pkg.Import{
+				Target: name,
+				Resolved: pkg.ID{
+					Type:     pkg.Go,
+					Name:     name,
+					Revision: revision,
+					Location: "",
+				},
+			})
+		}
+
+		pkgs[id] = pkg.Package{
+			ID:      id,
+			Imports: imports,
+		}
+	}
+
+	// Construct imports list.
+	var imports []pkg.ID
+	for _, i := range main.Imports {
+		name := Unvendor(i)
+		revision, err := GetRevision(project, lockfile, gopkgMap[name])
+		if err != nil {
+			return m, err
+		}
+
+		imports = append(imports, pkg.ID{
+			Type:     pkg.Go,
+			Name:     name,
+			Revision: revision,
+			Location: "",
+		})
+	}
+
+	m.Deps = pkgs
+	m.Imports = imports
 	return m, nil
+}
+
+// GetRevision resolves a revision, returning errutil.ErrNoRevisionForPackage
+// when no revision is found unless a revision is not required.
+//
+// Packages require a resolved revision unless:
+//
+//   1. The package is part of the standard library.
+//   2. The package is internal.
+//   3. The package is within the project.
+//
+func GetRevision(project Project, resolver Resolver, gopkg gocmd.Package) (string, error) {
+	log.Logger.Debugf("GetRevision: %#v", gopkg)
+	name := Unvendor(gopkg.ImportPath)
+	revision, err := resolver.Resolve(name)
+	if err == errutil.ErrNoRevisionForPackage {
+		log.Logger.Debugf("Could not find revision for package %#v", name)
+		if gopkg.IsStdLib || gopkg.IsInternal || strings.HasPrefix(gopkg.Dir, project.Dir) {
+			log.Logger.Debugf("Skipping package: %#v", gopkg)
+			return "", nil
+		}
+	}
+	if err != nil {
+		return "", err
+	}
+	return revision, nil
 }

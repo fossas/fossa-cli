@@ -3,10 +3,11 @@ package dep
 
 import (
 	"errors"
+	"path"
 	"path/filepath"
 
+	"github.com/fossas/fossa-cli/errutil"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/fossas/fossa-cli/pkg"
 )
 
 // ErrNoLockfile is returned if a dep manifest is found without an accompanying lockfile.
@@ -23,15 +24,44 @@ type Project struct {
 // A Lockfile contains the contents of a dep lockfile.
 type Lockfile struct {
 	Projects []Project
+
+	normalized map[string]string // A normalized map of package import paths to revisions.
 }
 
 // New constructs a golang.Resolver
 func New(dirname string) (Lockfile, error) {
-	return Lockfile{}, errors.New("not implemented")
+	ok, err := UsedIn(dirname)
+	if err != nil {
+		return Lockfile{}, err
+	}
+	if !ok {
+		return Lockfile{}, errors.New("directory does not use dep")
+	}
+	lockfile, err := ReadRaw(filepath.Join(dirname, "Gopkg.lock"))
+	if err != nil {
+		return Lockfile{}, err
+	}
+	normalized := make(map[string]string)
+	for _, project := range lockfile.Projects {
+		for _, pkg := range project.Packages {
+			normalized[path.Join(project.Name, pkg)] = project.Revision
+		}
+	}
+	return Lockfile{
+		Projects:   lockfile.Projects,
+		normalized: normalized,
+	}, nil
 }
 
-func (l Lockfile) Resolve(importpath string) (pkg.ID, error) {
-	return pkg.ID{}, errors.New("not implemented")
+// Resolve returns the revision of an imported Go package contained within the
+// lockfile. If the package is not found, errutil.ErrNoRevisionForPackage is
+// returned.
+func (l Lockfile) Resolve(importpath string) (string, error) {
+	rev, ok := l.normalized[importpath]
+	if !ok {
+		return "", errutil.ErrNoRevisionForPackage
+	}
+	return rev, nil
 }
 
 // UsedIn checks whether dep is used correctly within a project folder.
@@ -72,4 +102,14 @@ func ReadFile(filename string) ([]Project, error) {
 		return nil, err
 	}
 	return lockfile.Projects, nil
+}
+
+// ReadRaw reads a raw Lockfile from a Gopkg.lock file.
+func ReadRaw(filename string) (Lockfile, error) {
+	var lockfile Lockfile
+	err := files.ReadTOML(&lockfile, filename)
+	if err != nil {
+		return Lockfile{}, err
+	}
+	return lockfile, nil
 }

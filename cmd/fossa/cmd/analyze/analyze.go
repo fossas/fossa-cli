@@ -1,6 +1,7 @@
 package analyze
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/urfave/cli"
@@ -65,7 +66,11 @@ func Run(ctx *cli.Context) error {
 		log.Logger.Fatalf("Could not normalize output: %s", err.Error())
 	}
 	if ctx.Bool(Output) {
-		log.Printf("%#v", normalized)
+		out, err := json.Marshal(normalized)
+		if err != nil {
+			log.Logger.Fatalf("Could not marshal output: %s", err.Error())
+		}
+		log.Printf("%s", string(out))
 		return nil
 	}
 	locator, err := fossa.Upload(config.Fetcher(), config.Project(), config.Revision(), config.Title(), config.Branch(), normalized)

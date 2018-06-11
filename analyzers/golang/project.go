@@ -9,7 +9,7 @@ import (
 type Project struct {
 	Tool     string // Name of the dependency management tool used by the project, if any.
 	Manifest string // Absolute path to the tool's manifest file for this project, if any.
-	Internal string // Absolute path of the first-party code folder, if any.
+	Dir      string // Absolute path of the first-party code folder, if any.
 }
 
 // GetProject gets the project containing any Go package.
@@ -58,7 +58,7 @@ func (a *Analyzer) GetProject(pkg string) (Project, error) {
 	// Find the nearest lockfile.
 	var toolName string
 	manifestDir, err := files.WalkUp(dir, func(d string) (bool, error) {
-		either := &resultExists{}
+		either := &eitherStr{}
 		either.Find("godep", d, "Godeps", "Godeps.json")
 		either.Find("govendor", d, "vendor", "vendor.json")
 		either.Find("dep", d, "Gopkg.toml")
@@ -68,15 +68,15 @@ func (a *Analyzer) GetProject(pkg string) (Project, error) {
 		if either.err != nil {
 			return false, either.err
 		}
-		if either.which != "" {
-			toolName = either.which
+		if either.result != "" {
+			toolName = either.result
 		}
-		return either.which != "", nil
+		return either.result != "", nil
 	})
 
 	// Find the nearest VCS repository.
 	repoRoot, err := files.WalkUp(dir, func(d string) (bool, error) {
-		either := &resultExists{}
+		either := &eitherStr{}
 		either.FindFolder("git", d, ".git")
 		either.FindFolder("svn", d, ".svn")
 		either.FindFolder("hg", d, ".hg")
@@ -84,7 +84,7 @@ func (a *Analyzer) GetProject(pkg string) (Project, error) {
 		if either.err != nil {
 			return false, either.err
 		}
-		return either.which != "", nil
+		return either.result != "", nil
 	})
 	if err != nil {
 		return Project{}, err
@@ -93,17 +93,17 @@ func (a *Analyzer) GetProject(pkg string) (Project, error) {
 	return Project{
 		Tool:     toolName,
 		Manifest: manifestDir,
-		Internal: repoRoot,
+		Dir:      repoRoot,
 	}, nil
 }
 
 // This is a monomorphic Either monad. I miss Haskell.
-type resultExists struct {
-	which string
-	err   error
+type eitherStr struct {
+	result string
+	err    error
 }
 
-func (r *resultExists) Bind(which string, find func(pathElems ...string) (bool, error), pathElems ...string) {
+func (r *eitherStr) Bind(tool string, find func(pathElems ...string) (bool, error), pathElems ...string) {
 	if r.err != nil {
 		return
 	}
@@ -113,14 +113,14 @@ func (r *resultExists) Bind(which string, find func(pathElems ...string) (bool, 
 		r.err = err
 	}
 	if ok {
-		r.which = which
+		r.result = tool
 	}
 }
 
-func (r *resultExists) Find(which string, pathElems ...string) {
-	r.Bind(which, files.Exists, pathElems...)
+func (r *eitherStr) Find(tool string, pathElems ...string) {
+	r.Bind(tool, files.Exists, pathElems...)
 }
 
-func (r *resultExists) FindFolder(which string, pathElems ...string) {
-	r.Bind(which, files.ExistsFolder, pathElems...)
+func (r *eitherStr) FindFolder(tool string, pathElems ...string) {
+	r.Bind(tool, files.ExistsFolder, pathElems...)
 }
