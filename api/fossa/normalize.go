@@ -57,11 +57,6 @@ func Normalize(modules []module.Module) ([]SourceUnit, error) {
 	for _, analyzed := range modules {
 		var deps []Dependency
 		for _, dep := range analyzed.Deps {
-			data, err := json.Marshal(dep)
-			if err != nil {
-				return nil, errors.Wrap(err, "could not marshal analyzed dependency")
-			}
-
 			var imports []string
 			for _, i := range dep.Imports {
 				imports = append(imports, LocatorOf(i.Resolved).String())
@@ -70,7 +65,6 @@ func Normalize(modules []module.Module) ([]SourceUnit, error) {
 			deps = append(deps, Dependency{
 				Locator: LocatorOf(dep.ID).String(),
 				Imports: imports,
-				Data:    (*json.RawMessage)(&data),
 			})
 		}
 
