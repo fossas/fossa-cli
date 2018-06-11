@@ -23,12 +23,14 @@ type Build struct {
 	Succeeded bool
 	Error     error `json:",omitempty"`
 
+	Imports      []string
 	Dependencies []Dependency
 }
 
 type Dependency struct {
 	// Location
 	Locator string `json:"locator"`
+	Imports []string
 
 	// Metadata
 	Data *json.RawMessage `json:"data,omitempty"`
@@ -60,8 +62,14 @@ func Normalize(modules []module.Module) ([]SourceUnit, error) {
 				return nil, errors.Wrap(err, "could not marshal analyzed dependency")
 			}
 
+			var imports []string
+			for _, i := range dep.Imports {
+				imports = append(imports, LocatorOf(i.Resolved).String())
+			}
+
 			deps = append(deps, Dependency{
 				Locator: LocatorOf(dep.ID).String(),
+				Imports: imports,
 				Data:    (*json.RawMessage)(&data),
 			})
 		}
@@ -71,6 +79,10 @@ func Normalize(modules []module.Module) ([]SourceUnit, error) {
 			return nil, errors.Wrap(err, "could not normalize analyzed module type")
 		}
 
+		var imports []string
+		for _, i := range analyzed.Imports {
+			imports = append(imports, LocatorOf(i).String())
+		}
 		normalized = append(normalized, SourceUnit{
 			Name:     analyzed.Name,
 			Type:     normalizedType,
@@ -79,6 +91,7 @@ func Normalize(modules []module.Module) ([]SourceUnit, error) {
 				Artifact:     "default",
 				Succeeded:    true,
 				Dependencies: deps,
+				Imports:      imports,
 			},
 		})
 	}
