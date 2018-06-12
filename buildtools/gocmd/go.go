@@ -40,6 +40,7 @@ type Go struct {
 // GoListOutput is a subset of the output of `go list`. See `go help list` for
 // details.
 type GoListOutput struct {
+	Name       string
 	ImportPath string
 	Dir        string
 	Standard   bool
@@ -80,7 +81,7 @@ func (g *Go) List(pkgs []string) ([]Package, error) {
 			"GOARCH": g.Arch,
 		},
 	})
-	if err != nil {
+	if err != nil && stdout == "" {
 		if strings.Index(stderr, "build constraints exclude all Go files") != -1 {
 			// TODO: add better documentation around this error, and rename it to be
 			// more useful.
@@ -99,7 +100,7 @@ func (g *Go) List(pkgs []string) ([]Package, error) {
 	var ret []Package
 	for _, pkg := range output {
 		p := Package{
-			Name:       Name(pkg.ImportPath),
+			Name:       pkg.Name,
 			ImportPath: pkg.ImportPath,
 			Dir:        pkg.Dir,
 			IsInternal: strings.Index(pkg.ImportPath, "internal") != -1,

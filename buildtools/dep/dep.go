@@ -8,6 +8,7 @@ import (
 
 	"github.com/fossas/fossa-cli/errutil"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
 // ErrNoLockfile is returned if a dep manifest is found without an accompanying lockfile.
@@ -21,11 +22,22 @@ type Project struct {
 	Version  string
 }
 
-// A Lockfile contains the contents of a dep lockfile.
+// A Lockfile contains the contents of a dep lockfile. Lockfiles are resolvers.
 type Lockfile struct {
 	Projects []Project
 
-	normalized map[string]string // A normalized map of package import paths to revisions.
+	normalized map[string]pkg.Import // A normalized map of package import paths to revisions.
+}
+
+// Resolve returns the revision of an imported Go package contained within the
+// lockfile. If the package is not found, errutil.ErrNoRevisionForPackage is
+// returned.
+func (l Lockfile) Resolve(importpath string) (pkg.Import, error) {
+	rev, ok := l.normalized[importpath]
+	if !ok {
+		return pkg.Import{}, errutil.ErrNoRevisionForPackage
+	}
+	return rev, nil
 }
 
 // New constructs a golang.Resolver
@@ -41,27 +53,24 @@ func New(dirname string) (Lockfile, error) {
 	if err != nil {
 		return Lockfile{}, err
 	}
-	normalized := make(map[string]string)
+	normalized := make(map[string]pkg.Import)
 	for _, project := range lockfile.Projects {
-		for _, pkg := range project.Packages {
-			normalized[path.Join(project.Name, pkg)] = project.Revision
+		for _, pk := range project.Packages {
+			importpath := path.Join(project.Name, pk)
+			normalized[importpath] = pkg.Import{
+				Target: project.Version,
+				Resolved: pkg.ID{
+					Type:     pkg.Go,
+					Name:     importpath,
+					Revision: project.Revision,
+					Location: "",
+				},
+			}
 		}
 	}
-	return Lockfile{
-		Projects:   lockfile.Projects,
-		normalized: normalized,
-	}, nil
-}
 
-// Resolve returns the revision of an imported Go package contained within the
-// lockfile. If the package is not found, errutil.ErrNoRevisionForPackage is
-// returned.
-func (l Lockfile) Resolve(importpath string) (string, error) {
-	rev, ok := l.normalized[importpath]
-	if !ok {
-		return "", errutil.ErrNoRevisionForPackage
-	}
-	return rev, nil
+	lockfile.normalized = normalized
+	return lockfile, nil
 }
 
 // UsedIn checks whether dep is used correctly within a project folder.

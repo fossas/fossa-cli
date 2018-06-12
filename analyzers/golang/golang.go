@@ -81,12 +81,13 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 	}
 
 	var projects []module.Module
-	for _, p := range found {
+	for _, f := range found {
+		log.Logger.Debugf("Found Go module: %#v", f)
 		projects = append(projects, module.Module{
-			Name:         p.Name,
+			Name:         Unvendor(f.ImportPath),
 			Type:         pkg.Go,
-			IsExecutable: p.Name == "main",
-			BuildTarget:  p.ImportPath,
+			IsExecutable: f.Name == "main",
+			BuildTarget:  f.ImportPath,
 		})
 	}
 	return projects, nil
@@ -192,7 +193,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		id := pkg.ID{
 			Type:     pkg.Go,
 			Name:     Unvendor(gopkg.ImportPath),
-			Revision: revision,
+			Revision: revision.Resolved.Revision,
 			Location: "", // TODO: fill this field with something useful?
 		}
 
@@ -209,7 +210,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 				Resolved: pkg.ID{
 					Type:     pkg.Go,
 					Name:     name,
-					Revision: revision,
+					Revision: revision.Resolved.Revision,
 					Location: "",
 				},
 			})
@@ -233,7 +234,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		imports = append(imports, pkg.ID{
 			Type:     pkg.Go,
 			Name:     name,
-			Revision: revision,
+			Revision: revision.Resolved.Revision,
 			Location: "",
 		})
 	}
@@ -252,7 +253,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 //   2. The package is internal.
 //   3. The package is within the project.
 //
-func GetRevision(project Project, resolver Resolver, gopkg gocmd.Package) (string, error) {
+func GetRevision(project Project, resolver Resolver, gopkg gocmd.Package) (pkg.Import, error) {
 	log.Logger.Debugf("GetRevision: %#v", gopkg)
 	name := Unvendor(gopkg.ImportPath)
 	revision, err := resolver.Resolve(name)
@@ -260,11 +261,11 @@ func GetRevision(project Project, resolver Resolver, gopkg gocmd.Package) (strin
 		log.Logger.Debugf("Could not find revision for package %#v", name)
 		if gopkg.IsStdLib || gopkg.IsInternal || strings.HasPrefix(gopkg.Dir, project.Dir) {
 			log.Logger.Debugf("Skipping package: %#v", gopkg)
-			return "", nil
+			return pkg.Import{}, nil
 		}
 	}
 	if err != nil {
-		return "", err
+		return pkg.Import{}, err
 	}
 	return revision, nil
 }

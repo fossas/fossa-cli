@@ -29,8 +29,8 @@ type Build struct {
 
 type Dependency struct {
 	// Location
-	Locator string `json:"locator"`
-	Imports []string
+	Locator string   `json:"locator"`
+	Imports []string `json:"imports,omitempty"`
 
 	// Metadata
 	Data *json.RawMessage `json:"data,omitempty"`

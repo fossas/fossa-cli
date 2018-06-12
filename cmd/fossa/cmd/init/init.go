@@ -70,21 +70,30 @@ func Do(overwrite, includeAll bool) ([]module.Module, error) {
 		discovered = append(discovered, modules...)
 	}
 
-	// Filter suspicious modules.
+	// Filter noisy modules (docs, examples, etc.).
 	if includeAll {
 		return discovered, nil
 	}
 	var filtered []module.Module
 	for _, d := range discovered {
-		matched, err := regexp.MatchString("(docs?/|test|example|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/|third_party/)", d.Dir)
+		log.Logger.Debugf("Discovered: %#v", d)
+
+		// Match name regexp.
+		matched, err := regexp.MatchString("(docs?/|test|examples?|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/|third_party/)", d.Dir)
 		if err != nil {
 			return nil, err
 		}
 		if matched {
 			log.Logger.Warningf("Filtering out suspicious module: %s (%s)", d.Name, d.BuildTarget)
-		} else {
-			filtered = append(filtered, d)
+			continue
 		}
+
+		// For Go, filter out non-executable packages.
+		if d.Type == pkg.Go && !d.IsExecutable {
+			continue
+		}
+
+		filtered = append(filtered, d)
 	}
 	return filtered, nil
 }

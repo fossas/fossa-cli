@@ -22,7 +22,6 @@ jobs:
           command: |
             # Invalidate pkg cache for FOSSA CLI binary
             rm -rf /home/fossa/go/pkg/linux_amd64/github.com/fossas/fossa-cli
-            dep ensure
             make
       - save_cache:
           key: v1-gopkg-cache-{{ checksum "Gopkg.lock" }}
@@ -30,20 +29,27 @@ jobs:
             - "/home/fossa/go/pkg"
             - "/home/fossa/go/src/github.com/fossas/fossa-cli/vendor"
       - run:
-          name: Run integration test
+          name: Run unit tests
           command: |
             # Load shell helpers (e.g. sdkman)
             source /home/fossa/.bashrc
             # Run tests
-            go test ./builders
+            go test ./...
+      - run:
+          name: Run integration tests
+          command: |
+            # Load shell helpers (e.g. sdkman)
+            source /home/fossa/.bashrc
+            # Run tests
+            ./test.sh
       - run:
           name: Run FOSSA build
           command: |
-            fossa --debug 2>$ARTIFACTS/fossa-build-stderr
+            fossa --debug 2> tee $ARTIFACTS/fossa-build-stderr
       - run:
           name: Run FOSSA license check
           command: |
-            fossa test --debug 2>$ARTIFACTS/fossa-test-stderr
+            fossa test --debug 2> tee $ARTIFACTS/fossa-test-stderr
       - store_test_results:
           path: /tmp/test-results
       - store_artifacts:
