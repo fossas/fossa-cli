@@ -42,7 +42,8 @@ func Init(c *cli.Context) error {
 	filename = fname
 
 	// Third, try to open the local VCS repository.
-	r, err := git.PlainOpen(".") // TODO: will this work if _within_ but not _at the root_ of a git repository?
+	// TODO: this will break if _within_ but not _at the root_ of a git repository
+	r, err := git.PlainOpen(".")
 	if err == git.ErrRepositoryNotExists {
 		return nil
 	}

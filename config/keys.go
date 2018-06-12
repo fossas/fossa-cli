@@ -21,7 +21,7 @@ var (
 
 // Interactive is true if the user desires interactive output.
 func Interactive() bool {
-	return isatty.IsTerminal(os.Stdout.Fd()) && !ctx.Bool(flags.NoAnsi)
+	return isatty.IsTerminal(os.Stderr.Fd()) && !ctx.Bool(flags.NoAnsi)
 }
 
 // Debug is true if the user has requested debug-level logging.
@@ -43,7 +43,7 @@ func APIKey() string {
 
 // Endpoint is the desired FOSSA backend endpoint.
 func Endpoint() string {
-	return TryStrings(ctx.String(flags.Endpoint), file.Server())
+	return TryStrings(ctx.String(flags.Endpoint), file.Server(), "https://app.fossa.io")
 }
 
 /**** Project configuration keys ****/
@@ -53,22 +53,41 @@ func Title() string {
 }
 
 func Fetcher() string {
-	return TryStrings(ctx.String(flags.Fetcher), file.Fetcher())
+	return TryStrings(ctx.String(flags.Fetcher), file.Fetcher(), "custom")
 }
 
-// TODO: auto-detect based on VCS
 func Project() string {
-	return TryStrings(ctx.String(flags.Project), file.Project())
+	inferred := ""
+	if repo != nil {
+		origin, err := repo.Remote("origin")
+		if err == nil && origin != nil {
+			inferred = origin.Config().URLs[0]
+		}
+	}
+	return TryStrings(ctx.String(flags.Project), file.Project(), inferred)
 }
 
-// TODO: auto-detect based on VCS
 func Revision() string {
-	return TryStrings(ctx.String(flags.Revision), file.Revision())
+	inferred := ""
+	if repo != nil {
+		revision, err := repo.Head()
+		if err == nil {
+			inferred = revision.Hash().String()
+		}
+	}
+	return TryStrings(ctx.String(flags.Revision), file.Revision(), inferred)
 }
 
-// TODO: auto-detect based on VCS
 func Branch() string {
-	return TryStrings(ctx.String(flags.Branch), file.Branch())
+	inferred := ""
+	if repo != nil {
+		revision, err := repo.Head()
+		if err == nil {
+			// TODO: check whether this prefix trimming is actually correct.
+			inferred = strings.TrimPrefix(revision.Name().String(), "refs/heads/")
+		}
+	}
+	return TryStrings(ctx.String(flags.Branch), file.Branch(), inferred, "master")
 }
 
 /**** Analysis configuration keys ****/

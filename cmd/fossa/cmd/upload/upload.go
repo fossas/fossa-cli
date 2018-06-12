@@ -92,7 +92,7 @@ func getInput(ctx *cli.Context, usingLocators bool) ([]fossa.SourceUnit, error) 
 }
 
 func Run(ctx *cli.Context) {
-	err := cmdutil.Init(ctx)
+	err := cmdutil.InitWithAPI(ctx)
 	if err != nil {
 		log.Logger.Fatalf("Could not initialize: %s", err.Error())
 	}
@@ -102,10 +102,12 @@ func Run(ctx *cli.Context) {
 		log.Logger.Fatalf("Bad input: %s", err.Error())
 	}
 
+	log.ShowSpinner("Uploading...")
 	locator, err := Do(data)
 	if err != nil {
 		log.Logger.Fatalf("Upload failed: %s", err.Error())
 	}
+	log.StopSpinner()
 	log.Printf(cmdutil.FmtReportURL(locator))
 }
 

@@ -73,10 +73,14 @@ func Run(ctx *cli.Context) error {
 		log.Printf("%s", string(out))
 		return nil
 	}
+
+	fossa.MustInit(config.Endpoint(), config.APIKey())
+	log.ShowSpinner("Uploading analysis...")
 	locator, err := fossa.Upload(config.Fetcher(), config.Project(), config.Revision(), config.Title(), config.Branch(), normalized)
 	if err != nil {
 		log.Logger.Fatalf("Error during upload: %s", err.Error())
 	}
+	log.StopSpinner()
 	log.Printf(cmdutil.FmtReportURL(locator))
 	return nil
 }

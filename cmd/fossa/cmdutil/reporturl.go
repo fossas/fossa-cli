@@ -1,7 +1,6 @@
 package cmdutil
 
 import (
-	"fmt"
 	"net/url"
 	"strings"
 
@@ -25,14 +24,13 @@ func FmtReportURL(locator fossa.Locator) string {
 			"/refs/branch/" +
 			reportBranch +
 			"/" +
-			url.QueryEscape(locator.Revision) +
-			"/browse/dependencies")
-	return fmt.Sprintf(`
+			url.QueryEscape(locator.Revision))
+	return `
 ============================================================
 
     View FOSSA Report:
     ` + strings.Replace(baseURL.ResolveReference(reportURL).String(), "%", "%%", -1) + `
 
 ============================================================
-`)
+`
 }

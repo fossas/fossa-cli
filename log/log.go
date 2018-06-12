@@ -39,6 +39,7 @@ var Logger = logging.MustGetLogger("fossa-cli")
 func Init(interactive, debug bool) {
 	// If `interactive`, then use ANSI codes (spinner + colors)
 	useSpinner = interactive
+	s.Writer = os.Stderr
 	var colorOn, colorOff string
 	if interactive {
 		colorOn = "%{color}"

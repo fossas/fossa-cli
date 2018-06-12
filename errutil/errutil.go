@@ -13,3 +13,8 @@ var (
 var (
 	ErrNoRevisionForPackage = errors.New("no revision found for package name")
 )
+
+// VCS errors.
+var (
+	ErrRepositoryNotFound = errors.New("no repository found")
+)
