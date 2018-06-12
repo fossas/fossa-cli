@@ -26,6 +26,7 @@ var commit string
 var goversion string
 
 const (
+	formatUsage               = "Format of the report output. Can be text (default) or json"
 	configUsage               = "path to config file (default: .fossa.{yml,yaml})"
 	fetcherUsage              = "type of fetcher to use for fossa. Default's to custom"
 	projectUsage              = "this repository's URL or VCS endpoint (default: VCS remote 'origin')"
@@ -128,6 +129,7 @@ func main() {
 			Usage:  "Generates a license report",
 			Action: reportCmd,
 			Flags: []cli.Flag{
+				cli.StringFlag{Name: "f, format", Usage: formatUsage, Value: "text"},
 				cli.StringFlag{Name: "c, config", Usage: configUsage},
 				cli.StringFlag{Name: "fetcher", Usage: fetcherUsage},
 				cli.StringFlag{Name: "p, project", Usage: projectUsage},

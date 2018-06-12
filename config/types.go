@@ -36,6 +36,7 @@ type UploadConfig struct {
 // ReportConfig specifies the config for the report command
 type ReportConfig struct {
 	Type string // Either "dependencies" or "licenses"
+	Format string // Either "text" or "json"
 }
 
 // CLIConfig specifies the config available to the cli

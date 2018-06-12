@@ -50,7 +50,7 @@ func getRevisions(apiURL string, apiKey string, locators []string) ([]dependency
 	return deps, nil
 }
 
-func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, analyses []analysis) {
+func getDependencies(s *spinner.Spinner, endpoint, apiKey string, analyses []analysis, format string) []dependencyResponse {
 	server, err := url.Parse(endpoint)
 	if err != nil {
 		log.Logger.Fatalf("Invalid FOSSA endpoint: %s", err.Error())
@@ -60,7 +60,9 @@ func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, analyses []anal
 		log.Logger.Fatalf("Invalid API endpoint: %s", err.Error())
 	}
 
-	s.Suffix = " Loading licenses..."
+	if format == "text" {
+		s.Suffix = " Loading licenses..."
+	}
 	s.Start()
 	total := 0
 	for _, a := range analyses {
@@ -92,8 +94,10 @@ func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, analyses []anal
 					responses = append(responses, responsePage...)
 					locators = []string{}
 					s.Stop()
-					s.Suffix = fmt.Sprintf(" Loading licenses (%d/%d done)...", len(responses), total)
-					s.Restart()
+					if format == "text" {
+						s.Suffix = fmt.Sprintf(" Loading licenses (%d/%d done)...", len(responses), total)
+						s.Restart()
+					}
 				}
 			}
 		}
@@ -107,9 +111,13 @@ func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, analyses []anal
 		responses = append(responses, responsePage...)
 	}
 	s.Stop()
+	return responses
+}
 
+func reportLicenses(s *spinner.Spinner, endpoint, apiKey string, analyses []analysis, format string) {
+	dependencies := getDependencies(s, endpoint, apiKey, analyses, format)
 	depsByLicense := make(map[licenseResponse][]dependencyResponse)
-	for _, dep := range responses {
+	for _, dep := range dependencies {
 		for _, license := range dep.Licenses {
 			depsByLicense[license] = append(depsByLicense[license], dep)
 		}
@@ -146,7 +154,9 @@ func reportCmd(c *cli.Context) {
 
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
 
-	s.Suffix = " Analyzing modules..."
+	if conf.ReportCmd.Format == "text" {
+		s.Suffix = " Analyzing modules..."
+	}
 	s.Start()
 	analyses, err := doAnalyze(conf.Modules, conf.AnalyzeCmd.AllowUnresolved)
 	s.Stop()
@@ -156,17 +166,23 @@ func reportCmd(c *cli.Context) {
 
 	switch conf.ReportCmd.Type {
 	case "licenses":
-		reportLicenses(s, conf.Endpoint, conf.APIKey, analyses)
+		reportLicenses(s, conf.Endpoint, conf.APIKey, analyses, conf.ReportCmd.Format)
 	case "dependencies":
-		outMap := make(map[string][]module.Dependency)
-		for _, a := range analyses {
-			outMap[a.module.Name] = a.dependencies
+		if conf.ReportCmd.Format == "text" {
+			outMap := make(map[string][]module.Dependency)
+			for _, a := range analyses {
+				outMap[a.module.Name] = a.dependencies
+			}
+			out, err := json.Marshal(outMap)
+			if err != nil {
+				log.Logger.Fatalf("Could not marshal analysis: %s", err.Error())
+			}
+			fmt.Println(string(out))
+		} else if conf.ReportCmd.Format == "json" {
+			dependencies := getDependencies(s, conf.Endpoint, conf.APIKey, analyses, conf.ReportCmd.Format)
+			jsonOut, _ := json.Marshal(dependencies)
+			fmt.Println(string(jsonOut))
 		}
-		out, err := json.Marshal(outMap)
-		if err != nil {
-			log.Logger.Fatalf("Could not marshal analysis: %s", err.Error())
-		}
-		fmt.Println(string(out))
 	default:
 		log.Logger.Fatalf("Report type is not recognized (supported types are \"dependencies\" or \"licenses\": %s", conf.ReportCmd.Type)
 	}
