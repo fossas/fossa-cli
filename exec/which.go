@@ -8,7 +8,7 @@ import (
 
 // Which picks a command out of a list of candidates.
 func Which(arg string, cmds ...string) (cmd string, output string, err error) {
-	return WhichArgs([]string{arg}, cmds...)
+	return WhichArgs(strings.Split(arg, " "), cmds...)
 }
 
 // WhichArgs is `Which` but passes multiple arguments to each candidate.
