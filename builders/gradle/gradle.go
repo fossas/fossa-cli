@@ -25,7 +25,7 @@ func (builder *GradleBuilder) Initialize() error {
 	log.Logger.Debug("Initializing Gradle builder...")
 
 	// Set Gradle context variables
-	gradleCmd, gradleVersionOut, err := exec.Which("--version --offline", os.Getenv("GRADLE_BINARY"), "./gradlew", "gradle")
+	gradleCmd, gradleVersionOut, err := exec.WhichArgs([]string{"--version", "--offline"}, os.Getenv("GRADLE_BINARY"), "./gradlew", "gradle")
 	if err == nil {
 		builder.GradleCmd = gradleCmd
 
