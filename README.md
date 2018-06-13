@@ -121,7 +121,7 @@ After configuration, you can now preview and upload new results:
 
 ```bash
 # Run FOSSA analysis and preview the results we're going to upload
-fossa -o
+fossa analyze -o
 
 # Run FOSSA and upload results
 # Going forward, you only need to run this one-liner
