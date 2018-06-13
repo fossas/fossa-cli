@@ -48,7 +48,7 @@ These commands will execute scripts to fetch and install the latest [Github Rele
 
 ## Quick Start
 
-Run `fossa -o` in your repo directory to output a dependency report in JSON:
+Run `fossa analyze -o` in your repo directory to output a dependency report in JSON:
 ```json
 [
   {
