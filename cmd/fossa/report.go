@@ -16,6 +16,10 @@ import (
 	"github.com/fossas/fossa-cli/module"
 )
 
+const (
+	textFormat = "text"
+)
+
 type dependencyResponse struct {
 	Loc struct {
 		Package  string
@@ -60,7 +64,7 @@ func getDependencies(s *spinner.Spinner, endpoint, apiKey string, analyses []ana
 		log.Logger.Fatalf("Invalid API endpoint: %s", err.Error())
 	}
 
-	if format == "text" {
+	if format == textFormat {
 		s.Suffix = " Loading licenses..."
 	}
 	s.Start()
@@ -94,7 +98,7 @@ func getDependencies(s *spinner.Spinner, endpoint, apiKey string, analyses []ana
 					responses = append(responses, responsePage...)
 					locators = []string{}
 					s.Stop()
-					if format == "text" {
+					if format == textFormat {
 						s.Suffix = fmt.Sprintf(" Loading licenses (%d/%d done)...", len(responses), total)
 						s.Restart()
 					}
@@ -154,7 +158,7 @@ func reportCmd(c *cli.Context) {
 
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
 
-	if conf.ReportCmd.Format == "text" {
+	if conf.ReportCmd.Format == textFormat {
 		s.Suffix = " Analyzing modules..."
 	}
 	s.Start()
@@ -168,7 +172,7 @@ func reportCmd(c *cli.Context) {
 	case "licenses":
 		reportLicenses(s, conf.Endpoint, conf.APIKey, analyses, conf.ReportCmd.Format)
 	case "dependencies":
-		if conf.ReportCmd.Format == "text" {
+		if conf.ReportCmd.Format == textFormat {
 			outMap := make(map[string][]module.Dependency)
 			for _, a := range analyses {
 				outMap[a.module.Name] = a.dependencies
