@@ -25,7 +25,7 @@ func (builder *GradleBuilder) Initialize() error {
 	log.Logger.Debug("Initializing Gradle builder...")
 
 	// Set Gradle context variables
-	gradleCmd, gradleVersionOut, err := exec.Which("--version --offline", os.Getenv("GRADLE_BINARY"), "./gradlew", "gradle")
+	gradleCmd, gradleVersionOut, err := exec.WhichArgs([]string{"--version", "--offline"}, os.Getenv("GRADLE_BINARY"), "./gradlew", "gradle")
 	if err == nil {
 		builder.GradleCmd = gradleCmd
 
@@ -76,7 +76,7 @@ func (builder *GradleBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 		},
 	})
 	if len(dependenciesOutput) == 0 || err != nil {
-		return nil, fmt.Errorf("could not run `gradle task %s:dependencies`", taskName)
+		return nil, fmt.Errorf("could not run `gradle %s -q --configuration=%s --offline -a`", taskName, taskConfiguration)
 	}
 
 	var imports []builderutil.Imported

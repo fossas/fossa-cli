@@ -102,7 +102,7 @@ func (builder *PipBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 	log.Logger.Debugf("Running Pip analysis: %#v %#v", m, allowUnresolved)
 
 	// Write helper to disk.
-	pipdeptreeSrc, err := bindata.Asset("builders/bindata/pipdeptree.py")
+	pipdeptreeSrc, err := bindata.Asset("builders/python/bindata/pipdeptree.py")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not read `pipdeptree` helper")
 	}
