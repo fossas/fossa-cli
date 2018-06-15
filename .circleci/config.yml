@@ -11,7 +11,7 @@ jobs:
   build:
     <<: *defaults
     docker:
-      - image: quay.io/fossa/fossa-cli:latest
+      - image: quay.io/fossa/fossa-cli:circleci
     steps:
       - checkout
       - run:
@@ -19,6 +19,7 @@ jobs:
           command: |
             mkdir -p $TEST_RESULTS
             mkdir -p $ARTIFACTS
+            mkdir -p $WORKSPACE
       - restore_cache:
           keys:
             - v1-gopkg-cache-{{ checksum "Gopkg.lock" }}
@@ -43,11 +44,11 @@ jobs:
       - run:
           name: Run FOSSA analysis
           command: |
-            fossa analyze --debug 2> tee $ARTIFACTS/fossa-build-stderr
+            fossa analyze --debug > $ARTIFACTS/fossa-analyze-stdout 2> >(tee $ARTIFACTS/fossa-analyze-stderr >&2)
       - run:
           name: Run FOSSA license check
           command: |
-            fossa test --debug 2> tee $ARTIFACTS/fossa-test-stderr
+            fossa test --debug > $ARTIFACTS/fossa-test-stdout 2> >(tee $ARTIFACTS/fossa-test-stderr >&2)
       - run:
           name: Save artifacts
           command: |
@@ -56,8 +57,8 @@ jobs:
           name: Save workspace
           command: |
             cp $(which fossa) $WORKSPACE
-      - store_test_results:
-          path: /tmp/test-results
+      # - store_test_results:
+      #     path: /tmp/test-results
       - store_artifacts:
           path: /tmp/artifacts
       - persist_to_workspace:
@@ -67,8 +68,13 @@ jobs:
   test:
     <<: *defaults
     docker:
-      - image: quay.io/fossa/fossa-cli-test:latest
+      - image: quay.io/fossa/fossa-cli-test:circleci
     steps:
+      - run:
+          name: Make folders
+          command: |
+            mkdir -p $TEST_RESULTS
+            mkdir -p $ARTIFACTS
       - attach_workspace:
           at: /tmp/workspace
       - run:
@@ -81,7 +87,11 @@ jobs:
             # Load shell helpers (e.g. sdkman)
             source /home/fossa/.bashrc
             # Run tests
-            ./test.sh
+            ./test.sh > $ARTIFACTS/integration-test-stdout 2> >(tee $ARTIFACTS/integration-test-stderr >&2)
+      # - store_test_results:
+      #     path: /tmp/test-results
+      - store_artifacts:
+          path: /tmp/artifacts
 
 workflows:
   version: 2
