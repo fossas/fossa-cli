@@ -29,6 +29,10 @@ import (
 // _Panic_ messages are errors that are unforeseen, should never happen, and
 // indicate that something has gone terribly wrong. They are akin to assertion
 // failures, and are generally only used as sanity checks for invariants.
+//
+// TODO: we can probably write our own logger with runtime.Caller, or use the
+// logger from go-core. It might be helpful to have structured logging here,
+// especially considering how large some entries get.
 var Logger = logging.MustGetLogger("fossa-cli")
 
 // Init initializes application-level logging.

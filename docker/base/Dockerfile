@@ -99,9 +99,3 @@ RUN curl https://getcomposer.org/installer | sudo php -- --install-dir=/usr/loca
 # Install `go-bindata` and `goreleaser`
 RUN go get -u github.com/go-bindata/go-bindata/... && \
     go get -u github.com/goreleaser/goreleaser/...
-
-# Add FOSSA CLI
-ADD . $GOPATH/src/github.com/fossas/fossa-cli
-RUN sudo chown -R fossa:fossa $GOPATH/src/github.com/fossas
-
-CMD [ "/bin/bash" ]

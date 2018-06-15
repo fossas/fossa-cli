@@ -3,21 +3,17 @@
 set -e
 
 # Test known good Go projects:
-
-# Download Kubernetes
-mkdir -p $GOPATH/src/k8s.io
-cd $GOPATH/src/k8s.io
-git clone --depth=1 https://github.com/kubernetes/kubernetes
-cd kubernetes
-
-# Run build
+## FOSSA CLI (dep)
+cd $GOPATH/src/github.com/fossas/fossa-cli
 fossa init
-fossa analyze --output
+time fossa analyze --output go:./cmd/fossa
 
-# Download Consul
-go get -u github.com/hashicorp/consul
+## Kubernetes (godep)
+cd $GOPATH/src/k8s.io/kubernetes
+fossa init
+time fossa analyze --output --option allow-unresolved-prefix:k8s.io go:./cmd/kube-apiserver
+
+## Consul (govendor)
 cd $GOPATH/src/github.com/hashicorp/consul
-
-# Run build
 fossa init
-fossa analyze --output
+time fossa analyze --output --option allow-nested-vendor:true --option allow-deep-vendor:true go:.

@@ -27,6 +27,7 @@ type Lockfile struct {
 	normalized map[string]pkg.Import
 }
 
+// Resolve implements resolver.Resolver for godep.
 func (l Lockfile) Resolve(importpath string) (pkg.Import, error) {
 	rev, ok := l.normalized[importpath]
 	if !ok {
@@ -35,6 +36,7 @@ func (l Lockfile) Resolve(importpath string) (pkg.Import, error) {
 	return rev, nil
 }
 
+// New constructs a godep Lockfile while pre-computing the revision lookup.
 func New(dirname string) (Lockfile, error) {
 	ok, err := UsedIn(dirname)
 	if err != nil {

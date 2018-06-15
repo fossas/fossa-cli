@@ -1,18 +1,26 @@
 package golang
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/pkg/errors"
+
+	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/files"
 )
 
 // A Project is a single folder that forms a coherent "project" for a developer
 // and is versioned as a single unit. It may contain multiple Go packages.
 type Project struct {
-	Tool     string // Name of the dependency management tool used by the project, if any.
-	Manifest string // Absolute path to the tool's manifest file for this project, if any.
-	Dir      string // Absolute path of the first-party code folder, if any.
+	Tool       resolver.Type // Name of the dependency management tool used by the project, if any.
+	Manifest   string        // Absolute path to the tool's manifest file for this project, if any.
+	Dir        string        // Absolute path of the first-party code folder, if any.
+	ImportPath string        // Import path prefix of project code.
 }
 
-// GetProject gets the project containing any Go package.
+// Project calculates the project containing any Go package.
 //
 // This function searches upwards from the Go package's directory, looking for
 // lockfiles of supported dependency management tools. If none are found, it
@@ -48,53 +56,60 @@ type Project struct {
 //      import paths. This is also a very strong convention.
 //
 // Both of these assumptions can be overridden by the user.
-func (a *Analyzer) GetProject(pkg string) (Project, error) {
-	// Get the directory.
+func (a *Analyzer) Project(pkg string) (Project, error) {
+	// Check for a cached project.
+	cached, ok := a.projectCache[pkg]
+	if ok {
+		return cached, nil
+	}
+
+	// Get the package directory.
 	dir, err := a.Dir(pkg)
 	if err != nil {
 		return Project{}, err
 	}
 
 	// Find the nearest lockfile.
-	var toolName string
-	manifestDir, err := files.WalkUp(dir, func(d string) (bool, error) {
-		either := &eitherStr{}
-		either.Find("godep", d, "Godeps", "Godeps.json")
-		either.Find("govendor", d, "vendor", "vendor.json")
-		either.Find("dep", d, "Gopkg.toml")
-		either.Find("vndr", d, "vendor.conf")
-		either.Find("glide", d, "glide.yaml")
-		either.Find("gdm", d, "Godeps")
-		if either.err != nil {
-			return false, either.err
-		}
-		if either.result != "" {
-			toolName = either.result
-		}
-		return either.result != "", nil
-	})
+	tool, manifestDir, err := NearestLockfile(dir)
 
 	// Find the nearest VCS repository.
-	repoRoot, err := files.WalkUp(dir, func(d string) (bool, error) {
-		either := &eitherStr{}
-		either.FindFolder("git", d, ".git")
-		either.FindFolder("svn", d, ".svn")
-		either.FindFolder("hg", d, ".hg")
-		either.FindFolder("bzr", d, ".bzr")
-		if either.err != nil {
-			return false, either.err
-		}
-		return either.result != "", nil
-	})
+	_, repoRoot, err := NearestVCS(dir)
 	if err != nil {
 		return Project{}, err
 	}
 
-	return Project{
-		Tool:     toolName,
-		Manifest: manifestDir,
-		Dir:      repoRoot,
-	}, nil
+	// Handle nested vendor folders: in order to do lockfile computations, the
+	// "project" of a nested dependency is its parent.
+	parent := VendorParent(dir)
+
+	// Project root is the lower of the nearest VCS or the vendor parent.
+	projectDir := repoRoot
+	if strings.HasPrefix(parent, repoRoot) {
+		projectDir = parent
+	}
+
+	// Compute the project import path prefix.
+	if os.Getenv("GOPATH") == "" {
+		return Project{}, errors.New("no $GOPATH set")
+	}
+	gopath, err := filepath.Abs(os.Getenv("GOPATH"))
+	if err != nil {
+		return Project{}, errors.Wrap(err, "could not get absolute $GOPATH")
+	}
+	importPrefix, err := filepath.Rel(filepath.Join(gopath, "src"), projectDir)
+	if err != nil {
+		return Project{}, errors.Wrap(err, "could not compute import prefix")
+	}
+
+	// Cache the computed project.
+	project := Project{
+		Tool:       tool,
+		Manifest:   manifestDir,
+		Dir:        projectDir,
+		ImportPath: importPrefix,
+	}
+	a.projectCache[pkg] = project
+	return project, nil
 }
 
 // This is a monomorphic Either monad. I miss Haskell.

@@ -7,6 +7,7 @@ LDFLAGS:=-ldflags '-X github.com/fossas/fossa-cli/cmd/fossa/version.version=$(sh
 
 all: build
 
+# Various required tools.
 $(DEP):
 	[ -f $@ ] || go get -u github.com/golang/dep/cmd/dep
 
@@ -16,6 +17,7 @@ $(GO_BINDATA):
 $(STRINGER):
 	[ -f $@ ] || go get -u golang.org/x/tools/cmd/stringer
 
+# Building the CLI.
 .PHONY: build
 build: $(BIN)/fossa
 
@@ -26,15 +28,29 @@ $(BIN)/fossa: $(GO_BINDATA) $(STRINGER)
 $(PREFIX)/fossa: $(BIN)/fossa
 	mv $< $@
 
-vendor: $(DEP)
-	$< ensure -v
+# Building various Docker images.
+.PHONY: docker-base
+docker-base: ./docker/base/Dockerfile
+	sudo docker build -t fossa-cli-base -f ./docker/base/Dockerfile .
 
+.PHONY: docker-devel
+docker-devel: docker-base ./docker/devel/Dockerfile
+	sudo docker build -t fossa-cli-devel -f ./docker/devel/Dockerfile .
+
+.PHONY: docker-test
+docker-test: docker-base ./docker/test/Dockerfile
+	sudo docker build -t fossa-cli-test -f ./docker/test/Dockerfile .
+
+# Useful build tasks.
 .PHONY: install
 install: $(PREFIX)/fossa
 
 .PHONY: uninstall
 uninstall:
 	rm $(PREFIX)/fossa
+
+vendor: $(DEP)
+	$< ensure -v
 
 .PHONY: clean
 clean:

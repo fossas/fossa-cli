@@ -3,23 +3,25 @@ package monad
 
 // EitherStr is a monomorphic Either monad specialized to string. I miss Haskell.
 type EitherStr struct {
-	result string
-	err    error
+	Result string
+	Err    error
 }
 
+// EitherStrFunc defines monadic EitherStr functions.
 type EitherStrFunc func(previous string) (string, error)
 
-func (r *EitherStr) Bind(f EitherStrFunc) error {
-	if r.err != nil {
-		return r.err
+// Bind lifts EitherStrFuncs into the EitherStr monad.
+func (r *EitherStr) Bind(f EitherStrFunc) *EitherStr {
+	if r.Err != nil {
+		return r
 	}
 
-	result, err := f(r.result)
+	result, err := f(r.Result)
 	if err != nil {
-		r.err = err
-		return err
+		r.Err = err
+		return r
 	}
 
-	r.result = result
-	return nil
+	r.Result = result
+	return r
 }

@@ -15,25 +15,30 @@ package golang
 
 import (
 	"os"
-	"strings"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
+	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
-	"github.com/fossas/fossa-cli/errutil"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-// An Analyzer contains structs used in the analysis of Go packages.
+// An Analyzer contains structs used in the analysis of Go packages. It
+// implements analyzer.Analyzer.
 type Analyzer struct {
 	Go        gocmd.Go
 	GoVersion string
 
 	Options Options
+
+	// These caches prevent redundant filesystem lookups and execs, and help a lot
+	// when dealing with nested vendoring.
+	resolverCache map[string]resolver.Resolver
+	projectCache  map[string]Project
 }
 
 // Options set analyzer options for Go modules.
@@ -44,18 +49,23 @@ type Options struct {
 	LockfilePath          string `mapstructure:"lockfile"`                // For non-standard lockfile locations with strategies `manifest:*`.
 	AllowUnresolved       bool   `mapstructure:"allow-unresolved"`        // Allow unresolved revisions.
 	AllowUnresolvedPrefix string `mapstructure:"allow-unresolved-prefix"` // If set, allows unresolved revisions for packages whose import path's prefix matches.
+	AllowNestedVendor     bool   `mapstructure:"allow-nested-vendor"`     // If true, allows vendor folders to be nested and attempts to resolve using parent lockfile lookup.
+	AllowDeepVendor       bool   `mapstructure:"allow-deep-vendor"`       // If true, allows nested vendored dependencies to be resolved using ancestor lockfiles farther than their direct parent.
 	SkipImportTracing     bool   `mapstructure:"skip-tracing"`            // If true, skips dependency tracing.
 	SkipProject           bool   `mapstructure:"skip-project"`            // If true, skips project detection.
 }
 
 // New constructs an Analyzer.
 func New(opts map[string]interface{}) (*Analyzer, error) {
+	log.Logger.Debug("%#v", opts)
+
 	// Parse and validate options.
 	var options Options
 	err := mapstructure.Decode(opts, &options)
 	if err != nil {
 		return nil, err
 	}
+	log.Logger.Debug("Decoded options: %#v", options)
 
 	// Construct analyzer.
 	cmd, version, err := exec.Which("version", os.Getenv("FOSSA_GO_CMD"), "go")
@@ -70,6 +80,9 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 		},
 		GoVersion: version,
 		Options:   options,
+
+		resolverCache: make(map[string]resolver.Resolver),
+		projectCache:  make(map[string]Project),
 	}, nil
 }
 
@@ -105,167 +118,10 @@ func (a *Analyzer) Build(m module.Module) error {
 
 // IsBuilt runs `go list $PKG` and checks for errors.
 func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
-	log.Logger.Debugf("%#v", m)
+	log.Logger.Debug("%#v", m)
 	pkg, err := a.Go.ListOne(m.BuildTarget)
 	if err != nil {
 		return false, err
 	}
 	return pkg.Error == nil, nil
-}
-
-// Analyze builds a dependency graph using go list and then looks up revisions
-// using tool-specific lockfiles.
-func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
-	log.Logger.Debugf("%#v", m)
-	// Get Go project.
-	project, err := a.GetProject(m.BuildTarget)
-	if err != nil {
-		return m, err
-	}
-	log.Logger.Debugf("Go project: %#v", project)
-
-	// Read lockfiles to get revisions.
-	var lockfile Resolver
-	switch a.Options.Strategy {
-	// Read revisions from a tool manifest at a specified location.
-	case "manifest:dep":
-		return m, errors.New("not yet implemented")
-	case "manifest:gdm":
-		return m, errors.New("not yet implemented")
-	case "manifest:glide":
-		return m, errors.New("not yet implemented")
-	case "manifest:godep":
-		return m, errors.New("not yet implemented")
-	case "manifest:govendor":
-		return m, errors.New("not yet implemented")
-	case "manifest:vndr":
-		return m, errors.New("not yet implemented")
-
-	// Resolve revisions by traversing the local $GOPATH and calling the package's
-	// VCS.
-	case "gopath-vcs":
-		return m, errors.New("not yet implemented")
-
-	// Read revisions from an auto-detected tool manifest.
-	default:
-		lockfile, err = NewResolver(project.Tool, project.Manifest)
-		if err != nil {
-			return m, err
-		}
-	}
-
-	log.Logger.Debugf("Lockfile: %#v", lockfile)
-
-	// Use `go list` to get imports and deps of module.
-	main, err := a.Go.ListOne(m.BuildTarget)
-	if err != nil {
-		return m, err
-	}
-	log.Logger.Debugf("Go main package: %#v", main)
-	deps, err := a.Go.List(main.Deps)
-	if err != nil {
-		return m, err
-	}
-
-	// Construct map of unvendored import path to package.
-	gopkgs := append(deps, main)
-	gopkgMap := make(map[string]gocmd.Package)
-	for _, p := range gopkgs {
-		gopkgMap[Unvendor(p.ImportPath)] = p
-	}
-	// cgo imports don't have revisions.
-	gopkgMap["C"] = gocmd.Package{
-		Name:     "C",
-		IsStdLib: true,
-	}
-
-	// Construct dependency graph.
-	pkgs := make(map[pkg.ID]pkg.Package)
-	_ = pkgs
-	for _, gopkg := range gopkgs {
-		log.Logger.Debugf("Getting revision for: %#v", gopkg)
-
-		// Get revision.
-		revision, err := GetRevision(project, lockfile, gopkg)
-		if err != nil {
-			return m, err
-		}
-		id := pkg.ID{
-			Type:     pkg.Go,
-			Name:     Unvendor(gopkg.ImportPath),
-			Revision: revision.Resolved.Revision,
-			Location: "", // TODO: fill this field with something useful?
-		}
-
-		// Resolve imports.
-		var imports []pkg.Import
-		for _, i := range gopkg.Imports {
-			name := Unvendor(i)
-			revision, err := GetRevision(project, lockfile, gopkgMap[name])
-			if err != nil {
-				return m, err
-			}
-			imports = append(imports, pkg.Import{
-				Target: name,
-				Resolved: pkg.ID{
-					Type:     pkg.Go,
-					Name:     name,
-					Revision: revision.Resolved.Revision,
-					Location: "",
-				},
-			})
-		}
-
-		pkgs[id] = pkg.Package{
-			ID:      id,
-			Imports: imports,
-		}
-	}
-
-	// Construct imports list.
-	var imports []pkg.ID
-	for _, i := range main.Imports {
-		name := Unvendor(i)
-		revision, err := GetRevision(project, lockfile, gopkgMap[name])
-		if err != nil {
-			return m, err
-		}
-
-		imports = append(imports, pkg.ID{
-			Type:     pkg.Go,
-			Name:     name,
-			Revision: revision.Resolved.Revision,
-			Location: "",
-		})
-	}
-
-	m.Deps = pkgs
-	m.Imports = imports
-	return m, nil
-}
-
-// GetRevision resolves a revision, returning errutil.ErrNoRevisionForPackage
-// when no revision is found unless a revision is not required.
-//
-// Packages require a resolved revision unless:
-//
-//   1. The package is part of the standard library.
-//   2. The package is internal.
-//   3. The package is within the project.
-//
-func GetRevision(project Project, resolver Resolver, gopkg gocmd.Package) (pkg.Import, error) {
-	log.Logger.Debugf("GetRevision: %#v", gopkg)
-	name := Unvendor(gopkg.ImportPath)
-	revision, err := resolver.Resolve(name)
-	if err == errutil.ErrNoRevisionForPackage {
-		log.Logger.Debugf("Could not find revision for package %#v", name)
-		if gopkg.IsStdLib || gopkg.IsInternal || strings.HasPrefix(gopkg.Dir, project.Dir) {
-			log.Logger.Debugf("Skipping package: %#v", gopkg)
-			return pkg.Import{}, nil
-		}
-	}
-	if err != nil {
-		return pkg.Import{}, err
-	}
-	return revision, nil
 }
