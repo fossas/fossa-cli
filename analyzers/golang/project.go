@@ -1,12 +1,6 @@
 package golang
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
-
-	"github.com/pkg/errors"
-
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/files"
 )
@@ -78,34 +72,17 @@ func (a *Analyzer) Project(pkg string) (Project, error) {
 		return Project{}, err
 	}
 
-	// Handle nested vendor folders: in order to do lockfile computations, the
-	// "project" of a nested dependency is its parent.
-	parent := VendorParent(dir)
-
-	// Project root is the lower of the nearest VCS or the vendor parent.
-	projectDir := repoRoot
-	if strings.HasPrefix(parent, repoRoot) {
-		projectDir = parent
-	}
-
 	// Compute the project import path prefix.
-	if os.Getenv("GOPATH") == "" {
-		return Project{}, errors.New("no $GOPATH set")
-	}
-	gopath, err := filepath.Abs(os.Getenv("GOPATH"))
+	importPrefix, err := ImportPath(repoRoot)
 	if err != nil {
-		return Project{}, errors.Wrap(err, "could not get absolute $GOPATH")
-	}
-	importPrefix, err := filepath.Rel(filepath.Join(gopath, "src"), projectDir)
-	if err != nil {
-		return Project{}, errors.Wrap(err, "could not compute import prefix")
+		return Project{}, err
 	}
 
 	// Cache the computed project.
 	project := Project{
 		Tool:       tool,
 		Manifest:   manifestDir,
-		Dir:        projectDir,
+		Dir:        repoRoot,
 		ImportPath: importPrefix,
 	}
 	a.projectCache[pkg] = project

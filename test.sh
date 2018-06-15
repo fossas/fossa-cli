@@ -17,3 +17,13 @@ time fossa analyze --output --option allow-unresolved-prefix:k8s.io go:./cmd/kub
 cd $GOPATH/src/github.com/hashicorp/consul
 fossa init
 time fossa analyze --output --option allow-nested-vendor:true --option allow-deep-vendor:true go:.
+
+## Docker (vndr)
+cd $GOPATH/src/github.com/docker/docker
+fossa init
+time fossa analyze --output --option allow-unresolved-prefix:"github.com/docker archive/tar" go:./cmd/dockerd
+
+## Docker CE (vndr)
+cd $GOPATH/src/github.com/docker/docker-ce
+fossa init
+time fossa analyze --output --option allow-unresolved-prefix:"github.com/docker archive/tar" --option allow-external-vendor-prefix:github.com/docker/docker go:./components/engine/cmd/dockerd

@@ -1,7 +1,4 @@
 // Package govendor provides tools for working with govendor.
-//
-// Govendor is unique among the Go dependency management tools in that it is the
-// only tool which does not flatten `vendor/` folders.
 package govendor
 
 import (

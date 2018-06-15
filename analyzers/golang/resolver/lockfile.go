@@ -6,6 +6,7 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/dep"
 	"github.com/fossas/fossa-cli/buildtools/godep"
 	"github.com/fossas/fossa-cli/buildtools/govendor"
+	"github.com/fossas/fossa-cli/buildtools/vndr"
 )
 
 // Errors from lockfile resolvers.
@@ -37,7 +38,7 @@ func FromLockfile(tool Type, dir string) (Resolver, error) {
 	case Govendor:
 		return govendor.New(dir)
 	case Vndr:
-		return nil, errors.New("not yet implemented")
+		return vndr.New(dir)
 	default:
 		return nil, ErrResolverNotFound
 	}

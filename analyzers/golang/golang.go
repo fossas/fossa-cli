@@ -43,16 +43,18 @@ type Analyzer struct {
 
 // Options set analyzer options for Go modules.
 type Options struct {
-	BuildOS               string `mapstructure:"os"`                      // Target build OS (for build tags).
-	BuildArch             string `mapstructure:"arch"`                    // Target build architecture (for build tags).
-	Strategy              string `mapstructure:"strategy"`                // See the Go analyzer documentation.
-	LockfilePath          string `mapstructure:"lockfile"`                // For non-standard lockfile locations with strategies `manifest:*`.
-	AllowUnresolved       bool   `mapstructure:"allow-unresolved"`        // Allow unresolved revisions.
-	AllowUnresolvedPrefix string `mapstructure:"allow-unresolved-prefix"` // If set, allows unresolved revisions for packages whose import path's prefix matches.
-	AllowNestedVendor     bool   `mapstructure:"allow-nested-vendor"`     // If true, allows vendor folders to be nested and attempts to resolve using parent lockfile lookup.
-	AllowDeepVendor       bool   `mapstructure:"allow-deep-vendor"`       // If true, allows nested vendored dependencies to be resolved using ancestor lockfiles farther than their direct parent.
-	SkipImportTracing     bool   `mapstructure:"skip-tracing"`            // If true, skips dependency tracing.
-	SkipProject           bool   `mapstructure:"skip-project"`            // If true, skips project detection.
+	BuildOS                   string `mapstructure:"os"`                           // Target build OS (for build tags).
+	BuildArch                 string `mapstructure:"arch"`                         // Target build architecture (for build tags).
+	Strategy                  string `mapstructure:"strategy"`                     // See the Go analyzer documentation.
+	LockfilePath              string `mapstructure:"lockfile"`                     // For non-standard lockfile locations with strategies `manifest:*`.
+	AllowUnresolved           bool   `mapstructure:"allow-unresolved"`             // Allow unresolved revisions.
+	AllowUnresolvedPrefix     string `mapstructure:"allow-unresolved-prefix"`      // If set, allows unresolved revisions for packages whose import path's prefix matches. Multiple space-delimited prefixes can be specified.
+	AllowNestedVendor         bool   `mapstructure:"allow-nested-vendor"`          // Allows vendor folders to be nested and attempts to resolve using parent lockfile lookup.
+	AllowDeepVendor           bool   `mapstructure:"allow-deep-vendor"`            // Allows nested vendored dependencies to be resolved using ancestor lockfiles farther than their direct parent.
+	AllowExternalVendor       bool   `mapstructure:"allow-external-vendor"`        // Allows reading vendor lockfiles of other projects.
+	AllowExternalVendorPrefix string `mapstructure:"allow-external-vendor-prefix"` // If set, allow reading vendor lockfiles of projects whose import path's prefix matches. Multiple space-delimited prefixes can be specified.
+	SkipImportTracing         bool   `mapstructure:"skip-tracing"`                 // Skips dependency tracing.
+	SkipProject               bool   `mapstructure:"skip-project"`                 // Skips project detection.
 }
 
 // New constructs an Analyzer.

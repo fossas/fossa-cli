@@ -1,11 +1,19 @@
 package golang
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
 	"github.com/fossas/fossa-cli/pkg"
+)
+
+// Errors that occur while running utilities.
+var (
+	ErrNoGOPATH = errors.New("no $GOPATH set")
 )
 
 // Dir returns the absolute path to a Go package.
@@ -17,6 +25,22 @@ func (a *Analyzer) Dir(importpath string) (string, error) {
 	return pkg.Dir, nil
 }
 
+// ImportPath returns the import path of a package located at the directory.
+func ImportPath(dir string) (string, error) {
+	if os.Getenv("GOPATH") == "" {
+		return "", ErrNoGOPATH
+	}
+	gopath, err := filepath.Abs(os.Getenv("GOPATH"))
+	if err != nil {
+		return "", errors.Wrap(err, "could not get absolute $GOPATH")
+	}
+	importpath, err := filepath.Rel(filepath.Join(gopath, "src"), dir)
+	if err != nil {
+		return "", errors.Wrap(err, "could not compute import prefix")
+	}
+	return importpath, nil
+}
+
 // Unvendor takes a vendorized import path and strips all vendor folder
 // prefixes.
 func Unvendor(importpath string) string {
@@ -24,9 +48,13 @@ func Unvendor(importpath string) string {
 	return sections[len(sections)-1]
 }
 
-// VendorParent returns the directory that contains a vendored directory.
+// VendorParent returns the directory that contains a vendored directory, or "."
+// if none exists.
 func VendorParent(dirname string) string {
 	separator := filepath.FromSlash("/vendor/")
+	if strings.Index(dirname, separator) == -1 {
+		return "."
+	}
 	sections := strings.Split(dirname, separator)
 	return strings.Join(sections[:len(sections)-1], separator)
 }

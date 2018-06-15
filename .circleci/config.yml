@@ -28,13 +28,13 @@ jobs:
           paths:
             - "/home/fossa/go/pkg"
             - "/home/fossa/go/src/github.com/fossas/fossa-cli/vendor"
-      - run:
-          name: Run unit tests
-          command: |
-            # Load shell helpers (e.g. sdkman)
-            source /home/fossa/.bashrc
-            # Run tests
-            go test ./...
+      # - run:
+      #     name: Run unit tests
+      #     command: |
+      #       # Load shell helpers (e.g. sdkman)
+      #       source /home/fossa/.bashrc
+      #       # Run tests
+      #       go test ./...
       - run:
           name: Run integration tests
           command: |
