@@ -33,6 +33,7 @@ func (l Lockfile) ResolveStrict(importpath string) (pkg.Import, error) {
 	if !ok {
 		return pkg.Import{}, errutil.ErrNoRevisionForPackage
 	}
+	rev.Resolved.Name = importpath
 	return rev, nil
 }
 
@@ -80,4 +81,9 @@ func New(pathElems ...string) (Lockfile, error) {
 	}
 
 	return lockfile, nil
+}
+
+// UsedIn checks whether gpm is used conventionally within a project folder.
+func UsedIn(dirname string) (bool, error) {
+	return files.Exists(dirname, "Godeps")
 }

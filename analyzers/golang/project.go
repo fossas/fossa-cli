@@ -2,6 +2,7 @@ package golang
 
 import (
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
+	"github.com/fossas/fossa-cli/log"
 )
 
 // A Project is a single folder that forms a coherent "project" for a developer
@@ -50,6 +51,8 @@ type Project struct {
 //
 // Both of these assumptions can be overridden by the user.
 func (a *Analyzer) Project(pkg string) (Project, error) {
+	log.Logger.Debugf("%#v", pkg)
+
 	// Check for a cached project.
 	cached, ok := a.projectCache[pkg]
 	if ok {

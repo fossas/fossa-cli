@@ -19,7 +19,7 @@ func fileMode(elem ...string) (os.FileMode, error) {
 
 func Exists(pathElems ...string) (bool, error) {
 	mode, err := fileMode(pathElems...)
-	if os.IsNotExist(err) {
+	if notExistErr(err) {
 		return false, nil
 	}
 	if err != nil {
@@ -30,7 +30,7 @@ func Exists(pathElems ...string) (bool, error) {
 
 func ExistsFolder(pathElems ...string) (bool, error) {
 	mode, err := fileMode(pathElems...)
-	if os.IsNotExist(err) {
+	if notExistErr(err) {
 		return false, nil
 	}
 	if err != nil {
@@ -49,4 +49,16 @@ func ReadFile(pathElems ...string) ([]byte, error) {
 	}
 
 	return contents, err
+}
+
+// os.IsNotExist doesn't handle non-existent parent directories e.g.
+// stat /some/path/without/a/parent.json: not a directory
+func notExistErr(err error) bool {
+	if os.IsNotExist(err) {
+		return true
+	}
+	if _, ok := err.(*os.PathError); ok {
+		return true
+	}
+	return false
 }

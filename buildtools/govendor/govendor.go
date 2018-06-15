@@ -38,6 +38,7 @@ func (l Lockfile) Resolve(importpath string) (pkg.Import, error) {
 		log.Logger.Debugf("Trying: %#v", p)
 		rev, ok := l.normalized[p]
 		if ok {
+			rev.Resolved.Name = importpath
 			return rev, nil
 		}
 	}

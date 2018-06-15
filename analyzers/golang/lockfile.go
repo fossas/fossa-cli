@@ -5,6 +5,7 @@ import (
 
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/monad"
 	"github.com/pkg/errors"
 )
@@ -18,6 +19,8 @@ var (
 // LockfileIn returns the type of lockfile within a directory, or
 // ErrNoLockfileInDir if none is found.
 func LockfileIn(dirname string) (resolver.Type, error) {
+	log.Logger.Debugf("%#v", dirname)
+
 	either := monad.EitherStr{}
 	result := either.
 		Bind(findFile("godep", filepath.Join(dirname, "Godeps", "Godeps.json"))).
@@ -27,6 +30,7 @@ func LockfileIn(dirname string) (resolver.Type, error) {
 		Bind(findFile("glide", filepath.Join(dirname, "glide.yaml"))).
 		Bind(findFile("gdm", filepath.Join(dirname, "Godeps")))
 	if result.Err != nil {
+		log.Logger.Debugf("Err: %#v", result.Err.Error())
 		return "", result.Err
 	}
 	if result.Result == "" {

@@ -93,6 +93,8 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		// Resolve dependency imports.
 		var imports []pkg.Import
 		for _, i := range gopkg.Imports {
+			log.Logger.Debugf("Resolving import of: %#v", gopkg)
+			log.Logger.Debugf("Resolving dependency import: %#v", i)
 			revision, err := a.Revision(project, r, gopkgMap[i])
 			if err != nil {
 				return m, errors.Wrapf(err, "could not resolve %s", i)

@@ -25,6 +25,19 @@ RUN mkdir -p $GOPATH/src/github.com/docker && \
     git clone --depth=1 https://github.com/docker/docker && \
     git clone --depth=1 https://github.com/docker/docker-ce
 
+## InfluxDB (gdm)
+## This is an older version of InfluxDB that still used GDM -- the current
+## revision has migrated to Dep.
+RUN mkdir -p $GOPATH/src/github.com/influxdata && \
+    cd $GOPATH/src/github.com/influxdata && \
+    git clone https://github.com/influxdata/influxdb && \
+    cd influxdb && \
+    git reset --hard d606fcf19a5bb81566aac58cd223638a8720be2c && \
+    go get github.com/influxdata/influxdb/cmd/influx
+
+## rkt (glide)
+RUN go get -u -v github.com/rkt/rkt/rkt
+
 # Add FOSSA CLI
 ADD . $GOPATH/src/github.com/fossas/fossa-cli
 RUN sudo chown -R fossa:fossa $GOPATH/src/github.com/fossas && \

@@ -4,6 +4,8 @@ import (
 	"errors"
 
 	"github.com/fossas/fossa-cli/buildtools/dep"
+	"github.com/fossas/fossa-cli/buildtools/gdm"
+	"github.com/fossas/fossa-cli/buildtools/glide"
 	"github.com/fossas/fossa-cli/buildtools/godep"
 	"github.com/fossas/fossa-cli/buildtools/govendor"
 	"github.com/fossas/fossa-cli/buildtools/vndr"
@@ -30,9 +32,9 @@ func FromLockfile(tool Type, dir string) (Resolver, error) {
 	case Dep:
 		return dep.New(dir)
 	case Gdm:
-		return nil, errors.New("not yet implemented")
+		return gdm.New(dir)
 	case Glide:
-		return nil, errors.New("not yet implemented")
+		return glide.New(dir)
 	case Godep:
 		return godep.New(dir)
 	case Govendor:
