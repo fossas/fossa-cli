@@ -31,15 +31,17 @@ $(PREFIX)/fossa: $(BIN)/fossa
 # Building various Docker images.
 .PHONY: docker-base
 docker-base: ./docker/base/Dockerfile
-	sudo docker build -t fossa-cli-base -f ./docker/base/Dockerfile .
+	sudo docker build -t quay.io/fossa/fossa-cli-base -f ./docker/base/Dockerfile .
 
 .PHONY: docker
 docker-devel: docker-base ./docker/devel/Dockerfile
-	sudo docker build -t fossa-cli-devel -f ./docker/devel/Dockerfile .
+	sudo docker build -t fossa-cli -f ./docker/devel/Dockerfile .
+	sudo docker tag fossa-cli quay.io/fossa/fossa-cli
 
 .PHONY: docker-test
 docker-test: docker-base ./docker/test/Dockerfile
 	sudo docker build -t fossa-cli-test -f ./docker/test/Dockerfile .
+	sudo docker tag fossa-cli-test quay.io/fossa/fossa-cli-test
 
 # Useful build tasks.
 .PHONY: install
@@ -56,5 +58,6 @@ vendor: $(DEP)
 clean:
 	rm -f $(BIN)/fossa
 
-# TODO: release task that builds and deploys in the Dockerfile?
-# TODO: test task that runs in Dockerfile?
+.PHONY: release
+release:
+	GOVERSION=$(go version) goreleaser --rm-dist

@@ -10,7 +10,7 @@ RUN mkdir -p $GOPATH/src/k8s.io && \
     cd $GOPATH/src/k8s.io && \
     git clone --depth=1 https://github.com/kubernetes/kubernetes && \
     cd kubernetes && \
-    make
+    make ./cmd/kube-apiserver
 
 ## Consul (nested govendor)
 ### This is currently vendored because of the go-discover vendor.json syntax
