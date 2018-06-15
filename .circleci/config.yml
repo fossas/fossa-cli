@@ -57,11 +57,11 @@ jobs:
           command: |
             cp $(which fossa) $WORKSPACE
       - store_test_results:
-          path: $TEST_RESULTS
+          path: /tmp/test-results
       - store_artifacts:
-          path: $ARTIFACTS
+          path: /tmp/artifacts
       - persist_to_workspace:
-          root: $WORKSPACE
+          root: /tmp/workspace
           paths:
             - fossa
   test:
@@ -70,7 +70,7 @@ jobs:
       - image: quay.io/fossa/fossa-cli-test:latest
     steps:
       - attach_workspace:
-          at: $WORKSPACE
+          at: /tmp/workspace
       - run:
           name: Load workspace
           command: |
