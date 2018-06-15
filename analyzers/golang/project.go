@@ -2,7 +2,6 @@ package golang
 
 import (
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
-	"github.com/fossas/fossa-cli/files"
 )
 
 // A Project is a single folder that forms a coherent "project" for a developer
@@ -87,32 +86,4 @@ func (a *Analyzer) Project(pkg string) (Project, error) {
 	}
 	a.projectCache[pkg] = project
 	return project, nil
-}
-
-// This is a monomorphic Either monad. I miss Haskell.
-type eitherStr struct {
-	result string
-	err    error
-}
-
-func (r *eitherStr) Bind(tool string, find func(pathElems ...string) (bool, error), pathElems ...string) {
-	if r.err != nil {
-		return
-	}
-
-	ok, err := find(pathElems...)
-	if err != nil {
-		r.err = err
-	}
-	if ok {
-		r.result = tool
-	}
-}
-
-func (r *eitherStr) Find(tool string, pathElems ...string) {
-	r.Bind(tool, files.Exists, pathElems...)
-}
-
-func (r *eitherStr) FindFolder(tool string, pathElems ...string) {
-	r.Bind(tool, files.ExistsFolder, pathElems...)
 }

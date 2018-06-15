@@ -44,6 +44,10 @@ docker-test: docker-base ./docker/test/Dockerfile
 	sudo docker tag fossa-cli-test quay.io/fossa/fossa-cli-test
 
 # Useful build tasks.
+.PHONY: test
+test: docker-test
+	sudo docker run fossa-cli-test
+
 .PHONY: install
 install: $(PREFIX)/fossa
 
@@ -51,6 +55,7 @@ install: $(PREFIX)/fossa
 uninstall:
 	rm $(PREFIX)/fossa
 
+.PHONY: vendor
 vendor: $(DEP)
 	$< ensure -v
 
