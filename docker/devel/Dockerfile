@@ -1,4 +1,4 @@
-FROM fossa-cli-base
+FROM quay.io/fossa/fossa-cli-base
 
 # Add FOSSA CLI
 ADD . $GOPATH/src/github.com/fossas/fossa-cli

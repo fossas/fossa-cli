@@ -33,7 +33,7 @@ $(PREFIX)/fossa: $(BIN)/fossa
 docker-base: ./docker/base/Dockerfile
 	sudo docker build -t fossa-cli-base -f ./docker/base/Dockerfile .
 
-.PHONY: docker-devel
+.PHONY: docker
 docker-devel: docker-base ./docker/devel/Dockerfile
 	sudo docker build -t fossa-cli-devel -f ./docker/devel/Dockerfile .
 
