@@ -8,14 +8,19 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"text/template"
 	"time"
 
 	"github.com/fossas/fossa-cli/log"
+	"github.com/spf13/afero"
 )
 
 var client = http.Client{
 	Timeout: 60 * time.Second,
 }
+
+var fs = afero.NewOsFs()
 
 func isTimeout(err error) bool {
 	if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
@@ -69,4 +74,17 @@ func makeAPIRequest(method, endpoint, apiKey string, payload []byte) ([]byte, er
 
 	log.Logger.Debugf("Got API response: %#v", string(body))
 	return body, nil
+}
+
+func openOutFile(filename string, mode os.FileMode) (out io.WriteCloser, err error) {
+	if filename == "-" {
+		return os.Stdout, nil
+	}
+	return fs.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, mode.Perm())
+}
+
+func processTmpl(tmpl *template.Template, tmplData interface{}) (data []byte, err error) {
+	var tpl bytes.Buffer
+	err = tmpl.Execute(&tpl, tmplData)
+	return tpl.Bytes(), err
 }
