@@ -81,7 +81,10 @@ func ouputAnalyze(conf config.CLIConfig, normalModules []normalizedModule) {
 	}
 
 	defer out.Close()
-	out.Write(msg)
+	_, err = out.Write(msg)
+	if err != nil {
+		log.Logger.Fatalf("Could write output: %s", err.Error())
+	}
 }
 
 type analysis struct {

@@ -211,5 +211,8 @@ func reportCmd(c *cli.Context) {
 	}
 
 	defer out.Close()
-	out.Write(msg)
+	_, err = out.Write(msg)
+	if err != nil {
+		log.Logger.Fatalf("Could write output: %s", err.Error())
+	}
 }
