@@ -64,7 +64,8 @@ func New(c *cli.Context) (CLIConfig, error) {
 		},
 
 		AnalyzeCmd: AnalyzeConfig{
-			Output:          c.Bool("output"),
+			Output:          c.String("output"),
+			Template:        c.String("template"),
 			AllowUnresolved: c.Bool("allow-unresolved"),
 		},
 
@@ -82,7 +83,9 @@ func New(c *cli.Context) (CLIConfig, error) {
 		},
 
 		ReportCmd: ReportConfig{
-			Type: c.String("type"),
+			Type:     c.String("type"),
+			Output:   c.String("output"),
+			Template: c.String("template"),
 		},
 
 		ConfigFilePath: c.String("config"),

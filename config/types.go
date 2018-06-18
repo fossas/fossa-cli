@@ -18,7 +18,8 @@ type BuildConfig struct {
 
 // AnalyzeConfig specifies the config for the analyze command
 type AnalyzeConfig struct {
-	Output          bool
+	Output          string
+	Template        string
 	AllowUnresolved bool
 }
 
@@ -35,7 +36,9 @@ type UploadConfig struct {
 
 // ReportConfig specifies the config for the report command
 type ReportConfig struct {
-	Type string // Either "dependencies" or "licenses"
+	Type     string // Either "dependencies" or "licenses"
+	Output   string
+	Template string
 }
 
 // CLIConfig specifies the config available to the cli

@@ -3,7 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+	"io"
+	"text/template"
 
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/log"
@@ -31,22 +32,59 @@ func analyzeCmd(c *cli.Context) {
 	if err != nil {
 		log.Logger.Fatalf("Could not normalize build data: %s", err.Error())
 	}
+	ouputAnalyze(conf, normalModules)
+}
 
-	if conf.AnalyzeCmd.Output {
-		buildData, err := json.Marshal(normalModules)
+func ouputAnalyze(conf config.CLIConfig, normalModules []normalizedModule) {
+	var (
+		msg    []byte
+		tmpl   *template.Template
+		out    io.WriteCloser
+		err    error
+		upload = true
+	)
+	out, err = openOutFile("-", 0774)
+	if err != nil {
+		log.Logger.Fatalf("Could not open output file: %s", err.Error())
+	}
+
+	if conf.AnalyzeCmd.Template != "" {
+		upload = false
+		tmpl, err = template.ParseFiles(conf.AnalyzeCmd.Template)
+		if err != nil {
+			log.Logger.Fatalf("Could not parse template data: %s", err.Error())
+		}
+		msg, err = processTmpl(tmpl, normalModules)
+		if err != nil {
+			log.Logger.Fatalf("Could not process template data: %s", err.Error())
+		}
+	}
+
+	if conf.AnalyzeCmd.Output != "" {
+		upload = false
+		out, err = openOutFile(conf.AnalyzeCmd.Output, 0774)
+		if err != nil {
+			log.Logger.Fatalf("Could not open output file: %s", err.Error())
+		}
+	}
+
+	if upload {
+		msg, err = doUpload(conf, normalModules)
+		if err != nil {
+			log.Logger.Fatalf("Upload failed: %s", err.Error())
+		}
+	} else if len(msg) == 0 {
+		msg, err = json.Marshal(normalModules)
 		if err != nil {
 			log.Logger.Fatalf("Could not marshal analysis results: %s", err.Error())
 		}
-		fmt.Println(string(buildData))
-		os.Exit(0)
-		return
 	}
 
-	msg, err := doUpload(conf, normalModules)
+	defer out.Close()
+	_, err = out.Write(msg)
 	if err != nil {
-		log.Logger.Fatalf("Upload failed: %s", err.Error())
+		log.Logger.Fatalf("Could write output: %s", err.Error())
 	}
-	fmt.Print(msg)
 }
 
 type analysis struct {
