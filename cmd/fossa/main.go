@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -32,7 +31,8 @@ const (
 	revisionUsage             = "this repository's current revision hash (default: VCS hash HEAD)"
 	endpointUsage             = "the FOSSA server endpoint (default: https://app.fossa.io)"
 	buildForceUsage           = "ignore cached build artifacts"
-	analyzeOutputUsage        = "print results to stdout instead of uploading to FOSSA"
+	analyzeOutputUsage        = "print results to file instead of uploading to FOSSA. (default: -)"
+	analyzeTemplateUsage      = "process results via specified template before outputting to specified output"
 	analyzeAllowResolvedUsage = "allow unresolved dependencies"
 	debugUsage                = "print debug information to stderr"
 )
@@ -60,7 +60,8 @@ func main() {
 		// --gradle-configuration=bar
 		// --allow-unbuilt
 		// --no-ansi
-		cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
+		cli.StringFlag{Name: "o, output", Usage: analyzeOutputUsage},
+		cli.StringFlag{Name: "t, template", Usage: analyzeTemplateUsage},
 		cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
 		cli.BoolFlag{Name: "build", Usage: "run a default build in module directories if they have not been pre-built"},
 		cli.BoolFlag{Name: "f, force", Usage: buildForceUsage},
@@ -102,7 +103,8 @@ func main() {
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
 				flags.Branch,
 				cli.StringSliceFlag{Name: "m, modules", Usage: "the modules to analyze"},
-				cli.BoolFlag{Name: "o, output", Usage: analyzeOutputUsage},
+				cli.StringFlag{Name: "o, output", Usage: analyzeOutputUsage},
+				cli.StringFlag{Name: "t, template", Usage: analyzeTemplateUsage},
 				cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
@@ -134,7 +136,9 @@ func main() {
 				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
 				cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},
-				cli.StringFlag{Name: "t, type", Usage: "the type of report to generate (either \"dependencies\" or \"licenses\"", Value: "licenses"},
+				cli.StringFlag{Name: "rt, type", Usage: "the type of report to generate (either \"dependencies\" or \"licenses\"", Value: "licenses"},
+				cli.StringFlag{Name: "o, output", Usage: analyzeOutputUsage},
+				cli.StringFlag{Name: "t, template", Usage: analyzeTemplateUsage},
 				cli.BoolFlag{Name: "debug", Usage: debugUsage},
 			},
 		},
@@ -253,20 +257,6 @@ func defaultCmd(c *cli.Context) {
 		})
 	}
 
-	if conf.AnalyzeCmd.Output {
-		normalModules, err := normalizeAnalysis(analyses)
-		if err != nil {
-			log.Logger.Fatalf("Could not normalize build data: %s", err.Error())
-		}
-		buildData, err := json.Marshal(normalModules)
-		if err != nil {
-			log.Logger.Fatalf("Could marshal analysis results: %s", err.Error())
-		}
-		fmt.Println(string(buildData))
-		os.Exit(0)
-		return
-	}
-
 	s.Stop()
 	s.Suffix = fmt.Sprintf(" Writing configuration...")
 	s.Restart()
@@ -284,10 +274,5 @@ func defaultCmd(c *cli.Context) {
 	if err != nil {
 		log.Logger.Fatalf("Could not normalize build data: %s", err.Error())
 	}
-	msg, err := doUpload(conf, normalModules)
-	s.Stop()
-	if err != nil {
-		log.Logger.Fatalf("Upload failed: %s", err.Error())
-	}
-	fmt.Print(msg)
+	ouputAnalyze(conf, normalModules)
 }

@@ -124,10 +124,10 @@ func uploadCmd(c *cli.Context) {
 	fmt.Print(msg)
 }
 
-func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error) {
+func doUpload(conf config.CLIConfig, results []normalizedModule) ([]byte, error) {
 	fossaBaseURL, err := url.Parse(conf.Endpoint)
 	if err != nil {
-		return "", fmt.Errorf("invalid FOSSA endpoint")
+		return []byte{}, fmt.Errorf("invalid FOSSA endpoint")
 	}
 
 	if conf.Project == "" {
@@ -145,7 +145,7 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 	// Re-marshal into build data
 	buildData, err := json.Marshal(results)
 	if err != nil {
-		return "", err
+		return []byte{}, err
 	}
 
 	log.Logger.Debugf("Uploading build data from (%#v) modules: %#v", len(results), string(buildData))
@@ -171,9 +171,9 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 		// HACK: really, we should be exporting this error and comparing against it
 		if err.Error() == "bad server response: 428" {
 			// TODO: handle "Managed Project" workflow
-			return "", fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo (to submit a custom project, set Fetcher to `custom` in `.fossa.yml`)")
+			return []byte{}, fmt.Errorf("invalid project or revision; make sure this version is published and FOSSA has access to your repo (to submit a custom project, set Fetcher to `custom` in `.fossa.yml`)")
 		}
-		return "", fmt.Errorf("could not upload: %s", err.Error())
+		return []byte{}, fmt.Errorf("could not upload: %s", err.Error())
 	}
 
 	log.Logger.Debugf("Upload succeeded")
@@ -181,7 +181,7 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 
 	var jsonResponse map[string]interface{}
 	if err := json.Unmarshal(res, &jsonResponse); err != nil {
-		return "", fmt.Errorf("invalid response, but build was uploaded")
+		return []byte{}, fmt.Errorf("invalid response, but build was uploaded")
 	}
 	locParts := strings.Split(jsonResponse["locator"].(string), "$")
 	reportBranch := conf.Branch
@@ -189,7 +189,7 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 		reportBranch = "master"
 	}
 	getRef, _ := url.Parse("/projects/" + url.QueryEscape(locParts[0]) + "/refs/branch/" + reportBranch + "/" + url.QueryEscape(locParts[1]) + "/browse/dependencies")
-	return fmt.Sprint(`
+	return []byte(`
 ============================================================
 
     View FOSSA Report:
