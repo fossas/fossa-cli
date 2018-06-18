@@ -52,7 +52,7 @@ func New(dirname string) (Lockfile, error) {
 	if !ok {
 		return Lockfile{}, errors.New("directory does not use glide")
 	}
-	lockfile, err := ReadRaw(filepath.Join(dirname, "glide.lock"))
+	lockfile, err := FromFile(filepath.Join(dirname, "glide.lock"))
 	if err != nil {
 		return Lockfile{}, err
 	}
@@ -112,23 +112,8 @@ func UsedIn(dirname string) (bool, error) {
 	return false, nil
 }
 
-// Read returns the contents of a glide project.
-func Read(dirname string) ([]Import, error) {
-	return ReadFile(filepath.Join(dirname, "glide.lock"))
-}
-
-// ReadFile returns the contents of a glide lockfile.
-func ReadFile(filename string) ([]Import, error) {
-	var lockfile Lockfile
-	err := files.ReadYAML(&lockfile, filename)
-	if err != nil {
-		return nil, err
-	}
-	return lockfile.Imports, nil
-}
-
-// ReadRaw reads a raw Lockfile from a glide.lock file.
-func ReadRaw(filename string) (Lockfile, error) {
+// FromFile reads a raw Lockfile from a glide.lock file.
+func FromFile(filename string) (Lockfile, error) {
 	var lockfile Lockfile
 	err := files.ReadYAML(&lockfile, filename)
 	if err != nil {

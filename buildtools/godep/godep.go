@@ -45,7 +45,7 @@ func New(dirname string) (Lockfile, error) {
 	if !ok {
 		return Lockfile{}, errors.New("directory does not use godep")
 	}
-	lockfile, err := ReadRaw(filepath.Join(dirname, "Godeps", "Godeps.json"))
+	lockfile, err := FromFile(filepath.Join(dirname, "Godeps", "Godeps.json"))
 	if err != nil {
 		return Lockfile{}, err
 	}
@@ -71,23 +71,8 @@ func UsedIn(dirname string) (bool, error) {
 	return files.Exists(dirname, "Godeps", "Godeps.json")
 }
 
-// Read returns the contents of a godep project.
-func Read(dirname string) ([]Package, error) {
-	return ReadFile(filepath.Join(dirname, "Godeps", "Godeps.json"))
-}
-
-// ReadFile returns the contents of a godep lockfile.
-func ReadFile(filename string) ([]Package, error) {
-	var lockfile Lockfile
-	err := files.ReadJSON(&lockfile, filename)
-	if err != nil {
-		return nil, err
-	}
-	return lockfile.Deps, nil
-}
-
-// ReadRaw reads a raw Lockfile from a Godeps/Godeps.json file.
-func ReadRaw(filename string) (Lockfile, error) {
+// FromFile reads a raw Lockfile from a Godeps/Godeps.json file.
+func FromFile(filename string) (Lockfile, error) {
 	var lockfile Lockfile
 	err := files.ReadJSON(&lockfile, filename)
 	if err != nil {

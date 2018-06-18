@@ -49,7 +49,7 @@ func New(dirname string) (Lockfile, error) {
 	if !ok {
 		return Lockfile{}, errors.New("directory does not use dep")
 	}
-	lockfile, err := ReadRaw(filepath.Join(dirname, "Gopkg.lock"))
+	lockfile, err := FromFile(filepath.Join(dirname, "Gopkg.lock"))
 	if err != nil {
 		return Lockfile{}, err
 	}
@@ -98,23 +98,8 @@ func UsedIn(dirname string) (bool, error) {
 	return false, nil
 }
 
-// Read returns the contents of a dep project.
-func Read(dirname string) ([]Project, error) {
-	return ReadFile(filepath.Join(dirname, "Gopkg.lock"))
-}
-
-// ReadFile returns the contents of a dep lockfile.
-func ReadFile(filename string) ([]Project, error) {
-	var lockfile Lockfile
-	err := files.ReadTOML(&lockfile, filename)
-	if err != nil {
-		return nil, err
-	}
-	return lockfile.Projects, nil
-}
-
-// ReadRaw reads a raw Lockfile from a Gopkg.lock file.
-func ReadRaw(filename string) (Lockfile, error) {
+// FromFile reads a raw Lockfile from a Gopkg.lock file.
+func FromFile(filename string) (Lockfile, error) {
 	var lockfile Lockfile
 	err := files.ReadTOML(&lockfile, filename)
 	if err != nil {

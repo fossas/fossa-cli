@@ -1,3 +1,4 @@
+// Package gdm implements a Go package resolver for the gdm tool.
 package gdm
 
 import (
@@ -7,7 +8,7 @@ import (
 	"github.com/fossas/fossa-cli/files"
 )
 
-// New constructs a gdm lockfile.
+// New constructs a gdm lockfile from a project directory.
 func New(dirname string) (gpm.Lockfile, error) {
 	ok, err := UsedIn(dirname)
 	if err != nil {
@@ -17,7 +18,7 @@ func New(dirname string) (gpm.Lockfile, error) {
 		return nil, errors.New("directory does not use gdm")
 	}
 
-	lockfile, err := gpm.New(dirname, "Godeps")
+	lockfile, err := FromFile(dirname, "Godeps")
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +26,12 @@ func New(dirname string) (gpm.Lockfile, error) {
 	return lockfile, nil
 }
 
-// UsedIn checks whether gdm is used correctly within a project folder.
+// UsedIn checks whether gdm is used correctly within a project directory.
 func UsedIn(dirname string) (bool, error) {
 	return files.Exists(dirname, "Godeps")
+}
+
+// FromFile constructs a gdm lockfile from a specific file.
+func FromFile(pathElems ...string) (gpm.Lockfile, error) {
+	return gpm.FromFile(pathElems...)
 }

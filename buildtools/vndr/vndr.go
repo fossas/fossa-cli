@@ -17,7 +17,7 @@ func New(dirname string) (gpm.Lockfile, error) {
 		return nil, errors.New("directory does not use vndr")
 	}
 
-	lockfile, err := gpm.New(dirname, "vendor.conf")
+	lockfile, err := gpm.FromFile(dirname, "vendor.conf")
 	if err != nil {
 		return nil, err
 	}
@@ -28,4 +28,8 @@ func New(dirname string) (gpm.Lockfile, error) {
 // UsedIn checks whether vndr is used correctly within a project folder.
 func UsedIn(dirname string) (bool, error) {
 	return files.Exists(dirname, "vendor.conf")
+}
+
+func FromFile(filename string) (gpm.Lockfile, error) {
+	return gpm.FromFile(filename)
 }

@@ -2,7 +2,13 @@ package golang
 
 import (
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
+	"github.com/fossas/fossa-cli/buildtools/dep"
+	"github.com/fossas/fossa-cli/buildtools/gdm"
+	"github.com/fossas/fossa-cli/buildtools/glide"
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
+	"github.com/fossas/fossa-cli/buildtools/godep"
+	"github.com/fossas/fossa-cli/buildtools/govendor"
+	"github.com/fossas/fossa-cli/buildtools/vndr"
 	"github.com/fossas/fossa-cli/errutil"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
@@ -25,20 +31,54 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	// Read lockfiles to get revisions.
 	var r resolver.Resolver
 	switch a.Options.Strategy {
-	// Read revisions from a tool manifest at a specified location.
-	// TODO: implement these strategies.
 	case "manifest:dep":
-		return m, errutil.ErrNotImplemented
+		if a.Options.LockfilePath == "" {
+			return m, errors.New("manifest strategy specified without lockfile path")
+		}
+		r, err = dep.FromFile(a.Options.LockfilePath)
+		if err != nil {
+			return m, err
+		}
 	case "manifest:gdm":
-		return m, errutil.ErrNotImplemented
+		if a.Options.LockfilePath == "" {
+			return m, errors.New("manifest strategy specified without lockfile path")
+		}
+		r, err = gdm.FromFile(a.Options.LockfilePath)
+		if err != nil {
+			return m, err
+		}
 	case "manifest:glide":
-		return m, errutil.ErrNotImplemented
+		if a.Options.LockfilePath == "" {
+			return m, errors.New("manifest strategy specified without lockfile path")
+		}
+		r, err = glide.FromFile(a.Options.LockfilePath)
+		if err != nil {
+			return m, err
+		}
 	case "manifest:godep":
-		return m, errutil.ErrNotImplemented
+		if a.Options.LockfilePath == "" {
+			return m, errors.New("manifest strategy specified without lockfile path")
+		}
+		r, err = godep.FromFile(a.Options.LockfilePath)
+		if err != nil {
+			return m, err
+		}
 	case "manifest:govendor":
-		return m, errutil.ErrNotImplemented
+		if a.Options.LockfilePath == "" {
+			return m, errors.New("manifest strategy specified without lockfile path")
+		}
+		r, err = govendor.FromFile(a.Options.LockfilePath)
+		if err != nil {
+			return m, err
+		}
 	case "manifest:vndr":
-		return m, errutil.ErrNotImplemented
+		if a.Options.LockfilePath == "" {
+			return m, errors.New("manifest strategy specified without lockfile path")
+		}
+		r, err = vndr.FromFile(a.Options.LockfilePath)
+		if err != nil {
+			return m, err
+		}
 
 	// Resolve revisions by traversing the local $GOPATH and calling the package's
 	// VCS.

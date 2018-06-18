@@ -53,7 +53,7 @@ func New(dirname string) (Lockfile, error) {
 	if !ok {
 		return Lockfile{}, errors.New("directory does not use govendor")
 	}
-	lockfile, err := ReadRaw(filepath.Join(dirname, "vendor", "vendor.json"))
+	lockfile, err := FromFile(filepath.Join(dirname, "vendor", "vendor.json"))
 	if err != nil {
 		return Lockfile{}, err
 	}
@@ -79,23 +79,8 @@ func UsedIn(dirname string) (bool, error) {
 	return files.Exists(dirname, "vendor", "vendor.json")
 }
 
-// Read returns the contents of a govendor project.
-func Read(dirname string) ([]Package, error) {
-	return ReadFile(filepath.Join(dirname, "vendor", "vendor.json"))
-}
-
-// ReadFile returns the contents of a govendor lockfile.
-func ReadFile(filename string) ([]Package, error) {
-	var lockfile Lockfile
-	err := files.ReadJSON(&lockfile, filename)
-	if err != nil {
-		return nil, err
-	}
-	return lockfile.Package, nil
-}
-
-// ReadRaw reads a raw Lockfile from a vendor/vendor.json file.
-func ReadRaw(filename string) (Lockfile, error) {
+// FromFile reads a raw Lockfile from a vendor/vendor.json file.
+func FromFile(filename string) (Lockfile, error) {
 	var lockfile Lockfile
 	err := files.ReadJSON(&lockfile, filename)
 	if err != nil {

@@ -1,3 +1,4 @@
+// Package files implements utility routines for finding and reading files.
 package files
 
 import (

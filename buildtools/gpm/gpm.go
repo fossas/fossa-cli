@@ -37,10 +37,10 @@ func (l Lockfile) ResolveStrict(importpath string) (pkg.Import, error) {
 	return rev, nil
 }
 
-// New reads and parses a GPM-format lockfile.
-func New(pathElems ...string) (Lockfile, error) {
+// FromFile reads and parses a GPM-format lockfile.
+func FromFile(filename ...string) (Lockfile, error) {
 	// Read lockfile.
-	data, err := files.ReadFile(pathElems...)
+	data, err := files.ReadFile(filename...)
 	if err != nil {
 		return nil, err
 	}
