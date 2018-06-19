@@ -1,6 +1,7 @@
 package ant
 
 import (
+	"bufio"
 	"crypto/md5" // nolint: gas
 	"crypto/sha1"
 	"crypto/sha256"
@@ -21,23 +22,22 @@ func GetHashes(path string) (module.Hashes, error) {
 	}
 	defer f.Close()
 
-	sha1Hash := sha1.New()
-	if _, err := io.Copy(sha1Hash, f); err != nil {
-		return hashes, err
-	}
-	hashes.SHA1 = hex.EncodeToString(sha1Hash.Sum(nil))
+	md5 := md5.New() // nolint: gas
+	sha1 := sha1.New()
+	sha256 := sha256.New()
 
-	md5Hash := md5.New() // nolint: gas
-	if _, err := io.Copy(md5Hash, f); err != nil {
-		return hashes, err
+	// Read the file once and write to a multiplexer
+	// so we can calculate all hashes simultaneously
+	pagesize := os.Getpagesize()
+	reader := bufio.NewReaderSize(f, pagesize)
+	multiWriter := io.MultiWriter(md5, sha1, sha256)
+	if _, err := io.Copy(multiWriter, reader); err != nil {
+		panic(err.Error())
 	}
-	hashes.MD5 = hex.EncodeToString(md5Hash.Sum(nil))
 
-	sha256Hash := sha256.New()
-	if _, err := io.Copy(sha256Hash, f); err != nil {
-		return hashes, err
-	}
-	hashes.SHA256 = hex.EncodeToString(sha256Hash.Sum(nil))
+	hashes.MD5 = hex.EncodeToString(md5.Sum(nil))
+	hashes.SHA1 = hex.EncodeToString(sha1.Sum(nil))
+	hashes.SHA256 = hex.EncodeToString(sha256.Sum(nil))
 
 	return hashes, err
 }
