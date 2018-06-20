@@ -1,6 +1,7 @@
 package fossa
 
 import (
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -18,6 +19,16 @@ func (l Locator) String() string {
 		return l.Fetcher + "+" + l.Project + "$" + l.Revision
 	}
 	return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
+}
+
+func (l Locator) QueryString() string {
+	if l.Fetcher == "go" {
+		l.Fetcher = "git"
+	}
+	if l.Fetcher != "git" {
+		return url.QueryEscape(l.Fetcher + "+" + l.Project + "$" + l.Revision)
+	}
+	return url.QueryEscape("git+" + NormalizeGitURL(l.Project) + "$" + l.Revision)
 }
 
 func NormalizeGitURL(project string) string {
@@ -69,8 +80,8 @@ func ReadImportPath(s ImportPathString) ImportPath {
 	return out
 }
 
-func LocatorOf(id pkg.ID) Locator {
-	return Locator{
+func LocatorOf(id pkg.ID) *Locator {
+	return &Locator{
 		Fetcher:  id.Type.String(),
 		Project:  id.Name,
 		Revision: id.Revision,

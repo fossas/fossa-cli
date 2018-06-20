@@ -57,3 +57,13 @@ func Post(endpoint string, body []byte) (res string, statusCode int, err error) 
 	u := mustParse(endpoint)
 	return api.Post(u, apiKey, body)
 }
+
+func Get(endpoint string) (res string, statusCode int, err error) {
+	u := mustParse(endpoint)
+	return api.Get(u, apiKey, nil)
+}
+
+func GetJSON(endpoint string, v interface{}) (statusCode int, err error) {
+	u := mustParse(endpoint)
+	return api.GetJSON(u, apiKey, nil, v)
+}
