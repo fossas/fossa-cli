@@ -1,59 +1,75 @@
 #!/usr/bin/env bash
 
 # TODO: move these into `*_test.go` files.
+set -xe
 
-set -e
 
 # Test known good Go projects:
 ## FOSSA CLI (dep)
 echo "Testing fossa-cli"
 cd $GOPATH/src/github.com/fossas/fossa-cli
+echo '{{range $p, $base := .}}' > test.tmpl
+echo '{{range $i, $dep := $base.Build.Dependencies }}{{$dep.Locator}}' >> test.tmpl
+echo '{{end}}{{end}}' >> test.tmpl
+
+rm -f *.test-tmp
 fossa init
 cat .fossa.yml
-time fossa analyze --output go:./cmd/fossa | json
+time fossa analyze --output - go:./cmd/fossa | json
+time fossa analyze --template test.tmpl --output analyze.test-tmp go:./cmd/fossa
+cat analyze.test-tmp
+time fossa report licenses --output TEST_NOTICE.test-tmp --show-unknown go:./cmd/fossa
+cat TEST_NOTICE.test-tmp
+time fossa report dependencies --output deps.test-tmp go:./cmd/fossa
+cat deps.test-tmp
 
 ## Kubernetes (godep)
 echo "Testing kubernetes"
 cd $GOPATH/src/k8s.io/kubernetes
 fossa init
-cat .fossa.yml
-time fossa analyze --output --option allow-unresolved-prefix:k8s.io go:./cmd/kube-apiserver | json
+time fossa analyze --option allow-unresolved-prefix:k8s.io --output - go:./cmd/kube-apiserver
+time fossa report licenses --option allow-unresolved-prefix:k8s.io go:./cmd/kube-apiserver
+time fossa report dependencies --option allow-unresolved-prefix:k8s.io --option allow-unresolved-prefix:k8s.io go:./cmd/kube-apiserver
 
 ## Consul (govendor)
 echo "Testing consul"
 cd $GOPATH/src/github.com/hashicorp/consul
 fossa init
-cat .fossa.yml
-time fossa analyze --output --option allow-nested-vendor:true --option allow-deep-vendor:true go:. | json
+time fossa analyze --output - --option allow-nested-vendor:true --option allow-deep-vendor:true go:.
+time fossa report licenses --option allow-nested-vendor:true --option allow-deep-vendor:true go:.
+time fossa report dependencies --option allow-nested-vendor:true --option allow-deep-vendor:true  go:.
 
 ## Docker (vndr)
 echo "Testing docker"
 cd $GOPATH/src/github.com/docker/docker
 fossa init
-cat .fossa.yml
-time fossa analyze --output --option allow-unresolved-prefix:"github.com/docker archive/tar" go:./cmd/dockerd | json
+time fossa analyze --output - --option allow-unresolved-prefix:"github.com/docker archive/tar" go:./cmd/dockerd
+time fossa report licenses --option allow-unresolved-prefix:"github.com/docker archive/tar" go:./cmd/dockerd
+time fossa report dependencies --option allow-unresolved-prefix:"github.com/docker archive/tar" go:./cmd/dockerd
 
 ## Docker CE (vndr)
 echo "Testing moby"
 cd $GOPATH/src/github.com/docker/docker-ce
 fossa init
-cat .fossa.yml
-time fossa analyze --output --option allow-unresolved-prefix:"github.com/docker archive/tar" --option allow-external-vendor-prefix:github.com/docker/docker go:./components/engine/cmd/dockerd | json
+time fossa analyze --output - --option allow-unresolved-prefix:"github.com/docker archive/tar" --option allow-external-vendor-prefix:github.com/docker/docker go:./components/engine/cmd/dockerd
+time fossa report licenses --option allow-unresolved-prefix:"github.com/docker archive/tar" --option allow-external-vendor-prefix:github.com/docker/docker go:./components/engine/cmd/dockerd
+time fossa report dependencies --option allow-unresolved-prefix:"github.com/docker archive/tar" --option allow-external-vendor-prefix:github.com/docker/docker go:./components/engine/cmd/dockerd
 
 ## InfluxDB (gdm)
 echo "Testing influxDB"
 cd $GOPATH/src/github.com/influxdata/influxdb
 fossa init
-cat .fossa.yml
-time fossa analyze --output --option allow-unresolved-prefix:github.com/influxdata go:./cmd/influxd | json
+time fossa analyze --output - --option allow-unresolved-prefix:github.com/influxdata go:./cmd/influxd
+time fossa report licenses --option allow-unresolved-prefix:github.com/influxdata go:./cmd/influxd
+time fossa report dependencies --option allow-unresolved-prefix:github.com/influxdata go:./cmd/influxd
 
 ## rkt (glide)
 echo "Testing rkt"
 cd $GOPATH/src/github.com/rkt/rkt
 fossa init
-cat .fossa.yml
-time fossa analyze --output go:./rkt | json
-
+time fossa analyze --output - go:./rkt
+time fossa report licenses go:./rkt
+time fossa report dependencies go:./rkt
 ## Jaeger (glide)
 echo "Testing jaeger"
 cd $GOPATH/src/github.com/jaegertracing/jaeger

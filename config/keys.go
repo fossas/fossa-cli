@@ -114,6 +114,7 @@ func Modules() ([]module.Module, error) {
 		}
 
 		// Parse options.
+		optionFs = append(optionFs, ctx.GlobalStringSlice(flags.Option)...)
 		options := make(map[string]interface{})
 		for _, option := range optionFs {
 			sections := strings.Split(option, ":")
