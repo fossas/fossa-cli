@@ -30,8 +30,8 @@ GOOD: https://app.fossa.io/api/revisions/git%2Bgithub.com%2Fprometheus%2Fclient_
       -301-> https://app.fossa.io/api/revisions/git%2Bgithub.com%2Fprometheus%2Fclient_model%2499fa1f4be8e564e8a6b613da7fa6f46c9edafc6c/
 */
 var licensesCmd = cli.Command{
-	Name:      "licenses",
-	Usage:     "Generate licenses report",
+	Name:  "licenses",
+	Usage: "Generate licenses report",
 	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithModulesFlags([]cli.Flag{
 		cli.StringFlag{Name: flags.Short(Output), Destination: &outputFlag, Value: "-", Usage: "Output file for report"},
 		cli.StringFlag{Name: flags.Short(Template), Destination: &templateFlag, Usage: "process report via template prior to sending it to output"},
@@ -71,10 +71,10 @@ func generateLicenses(ctx *cli.Context) (err error) {
 	depsByLicence := make(map[string]fossa.Revisions, 0)
 	for _, rev := range revs {
 		for _, licence := range rev.Licenses {
-			if _, ok := depsByLicence[licence.LicenseId]; !ok {
-				depsByLicence[licence.LicenseId] = make(fossa.Revisions, 0)
+			if _, ok := depsByLicence[licence.LicenseID]; !ok {
+				depsByLicence[licence.LicenseID] = make(fossa.Revisions, 0)
 			}
-			depsByLicence[licence.LicenseId] = append(depsByLicence[licence.LicenseId], rev)
+			depsByLicence[licence.LicenseID] = append(depsByLicence[licence.LicenseID], rev)
 		}
 	}
 

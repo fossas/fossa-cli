@@ -1,11 +1,11 @@
 package analyze
 
 import (
-	"os"
-	"text/template"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"text/template"
 
 	"github.com/urfave/cli"
 
@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	Output = "output"
+	Output   = "output"
 	Template = "template"
 )
 
@@ -50,7 +50,7 @@ func Run(ctx *cli.Context) error {
 		log.Logger.Fatal("No modules specified.")
 	}
 
-	analyzed, err := AnalyzeModules(modules)
+	analyzed, err := Modules(modules)
 	if err != nil {
 		log.Logger.Fatalf("Could not analyze modules: %s", err.Error())
 		return err
@@ -69,7 +69,7 @@ func Run(ctx *cli.Context) error {
 	return uploadAnalysis(normalized)
 }
 
-func AnalyzeModules(modules []module.Module) (analyzed []module.Module, err error) {
+func Modules(modules []module.Module) (analyzed []module.Module, err error) {
 	defer log.StopSpinner()
 	for i, m := range modules {
 		log.ShowSpinner(fmt.Sprintf("Analyzing module (%d/%d): %s", i+1, len(modules), m.Name))
@@ -91,8 +91,8 @@ func AnalyzeModules(modules []module.Module) (analyzed []module.Module, err erro
 
 func outputAnalysis(outputFile, templateFile string, normalized []fossa.SourceUnit) (err error) {
 	var (
-		msg    []byte
-		tmpl   *template.Template
+		msg  []byte
+		tmpl *template.Template
 	)
 
 	if templateFile == "" {

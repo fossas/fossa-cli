@@ -10,8 +10,8 @@ import (
 )
 
 var dependenciesCmd = cli.Command{
-	Name:      "dependencies",
-	Usage:     "Generate dependencies report",
+	Name:  "dependencies",
+	Usage: "Generate dependencies report",
 	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithModulesFlags([]cli.Flag{
 		cli.StringFlag{Name: flags.Short(Output), Destination: &outputFlag, Value: "-", Usage: "Output file for report"},
 		cli.StringFlag{Name: flags.Short(Template), Destination: &templateFlag, Usage: "process report via template prior to sending it to output"},
@@ -22,7 +22,7 @@ var dependenciesCmd = cli.Command{
 
 func generateDependencies(ctx *cli.Context) (err error) {
 	pkgs := make([]pkg.Package, 0)
-	for _,  module := range analyzed {
+	for _, module := range analyzed {
 		for _, pkg := range module.Deps {
 			pkgs = append(pkgs, pkg)
 		}

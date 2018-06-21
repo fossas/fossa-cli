@@ -3,29 +3,29 @@ package report
 import (
 	"encoding/json"
 	"io/ioutil"
-	"text/template"
 	"os"
+	"text/template"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/analyze"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
-	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/urfave/cli"
 )
 
 var (
-	Output = "output"
-	Template = "template"
-	Unknown = "show-unknown"
-	analyzed []module.Module
-	outputFlag string
+	Output       = "output"
+	Template     = "template"
+	Unknown      = "show-unknown"
+	analyzed     []module.Module
+	outputFlag   string
 	templateFlag string
 )
 
 var Cmd = cli.Command{
-	Name:      "report",
-	Usage:     "Generate reports",
+	Name:  "report",
+	Usage: "Generate reports",
 	Subcommands: []cli.Command{
 		dependenciesCmd,
 		licensesCmd,
@@ -46,7 +46,7 @@ func prepareReportCtx(ctx *cli.Context) (err error) {
 		log.Logger.Fatal("No modules specified.")
 	}
 
-	analyzed, err = analyze.AnalyzeModules(modules)
+	analyzed, err = analyze.Modules(modules)
 	if err != nil {
 		log.Logger.Fatalf("Could not analyze modules: %s", err.Error())
 	}
@@ -56,7 +56,7 @@ func prepareReportCtx(ctx *cli.Context) (err error) {
 
 func outputReport(outputFile string, tmpl *template.Template, data interface{}) (err error) {
 	var (
-		msg    []byte
+		msg []byte
 	)
 
 	if tmpl == nil {

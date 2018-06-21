@@ -7,27 +7,27 @@ import (
 )
 
 type License struct {
-	Id int64 `json:"id"`
-	LicenseId string `json:"licenseId"`
-	RevisionID string `json:"revisionId"`
-	LicenseGroupId int64 `json:"licenseGroupId"`
-	Ignored bool `json:"ignored"`
-	Title string `json:"title"`
-	URL string `json:"url"`
-	FullText string `json:"text"`
-	Copyright string `json:"copyright"`
+	Id             int64  `json:"id"`
+	LicenseID      string `json:"licenseId"`
+	RevisionID     string `json:"revisionId"`
+	LicenseGroupID int64  `json:"licenseGroupId"`
+	Ignored        bool   `json:"ignored"`
+	Title          string `json:"title"`
+	URL            string `json:"url"`
+	FullText       string `json:"text"`
+	Copyright      string `json:"copyright"`
 }
 
 type Revision struct {
-	Locator *Locator `json:"loc"`
+	Locator  *Locator `json:"loc"`
 	Licenses Licenses `json:"licenses"`
-	Project *Project `json:"project"`
+	Project  *Project `json:"project"`
 }
 
 type Project struct {
-	Title string `json:"title"`
-	URL string `json:"url"`
-	Public bool `json:"public"`
+	Title   string   `json:"title"`
+	URL     string   `json:"url"`
+	Public  bool     `json:"public"`
 	Authors []string `json:"authors"`
 }
 
@@ -45,14 +45,14 @@ func FetchRevisionForPackage(p pkg.Package) (rev *Revision, err error) {
 	}
 	if len(rev.Licenses) == 0 {
 		rev.Licenses = append(rev.Licenses, &License{
-			LicenseId: "UNKNOWN",
+			LicenseID: "UNKNOWN",
 		})
 	}
 
 	if rev.Project == nil {
 		rev.Project = &Project{
 			Title: rev.Locator.Project,
-			URL: "UNKNOWN",
+			URL:   "UNKNOWN",
 		}
 	}
 	return rev, err
@@ -100,8 +100,8 @@ func FetchRevisionForDeps(deps map[pkg.ID]pkg.Package) (revs Revisions, err erro
 	revs = make(Revisions, 0)
 	for range chunks {
 		select {
-			case ret := <-ch:
-				revs = append(revs, ret...)
+		case ret := <-ch:
+			revs = append(revs, ret...)
 		}
 	}
 
