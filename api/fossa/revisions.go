@@ -7,7 +7,7 @@ import (
 )
 
 type License struct {
-	Id             int64  `json:"id"`
+	ID             int64  `json:"id"`
 	LicenseID      string `json:"licenseId"`
 	RevisionID     string `json:"revisionId"`
 	LicenseGroupID int64  `json:"licenseGroupId"`
