@@ -6,6 +6,7 @@ import (
 
 	"github.com/fossas/fossa-cli/analyzers/golang"
 	"github.com/fossas/fossa-cli/analyzers/nodejs"
+	"github.com/fossas/fossa-cli/analyzers/python"
 
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -51,7 +52,7 @@ func New(key pkg.Type, options map[string]interface{}) (Analyzer, error) {
 	case pkg.NuGet:
 		return nil, ErrAnalyzerNotImplemented
 	case pkg.Python:
-		return nil, ErrAnalyzerNotImplemented
+		return python.New(options)
 	case pkg.Ruby:
 		return nil, ErrAnalyzerNotImplemented
 	case pkg.Scala:

@@ -51,7 +51,7 @@ test: docker-test
 .PHONY: dev
 dev: docker-test-base
 	sudo docker run -it \
-		-v $$GOPATH/github.com/fossas/fossa-cli:/home/fossa/go/src/github.com/fossas/fossa-cli \
+		-v $$GOPATH/src/github.com/fossas/fossa-cli:/home/fossa/go/src/github.com/fossas/fossa-cli \
 		-v $$GOPATH/bin:/home/fossa/go/bin \
 		quay.io/fossa/fossa-cli-test-base /bin/bash
 

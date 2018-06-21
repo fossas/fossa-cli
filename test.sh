@@ -79,3 +79,8 @@ time fossa analyze --output
 cd $HOME/request
 fossa init
 time fossa analyze --output
+
+# Test known good Python projects"
+cd $HOME/vibora
+fossa init
+time fossa analyze --output

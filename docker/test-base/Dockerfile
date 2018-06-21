@@ -63,3 +63,6 @@ RUN git clone --depth=1 https://github.com/mafintosh/sodium-encryption && \
 RUN git clone --depth=1 https://github.com/request/request && \
     cd request && \
     npm install --production
+
+# Known good Python projects
+RUN git clone --depth=1 https://github.com/vibora-io/vibora

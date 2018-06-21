@@ -122,7 +122,7 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 		if !info.IsDir() && info.Name() == "package.json" {
 			name := filepath.Base(filepath.Dir(path))
 			// Parse from project name from `package.json` if possible
-			if manifest, err := npm.FromManifest(path); err == nil {
+			if manifest, err := npm.FromManifest(path); err == nil && manifest.Name != "" {
 				name = manifest.Name
 			}
 
@@ -255,7 +255,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	return m, nil
 }
 
-func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p npm.Output) map[pkg.ID]pkg.Package {
+func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p npm.Output) {
 	for name, dep := range p.Dependencies {
 		// Construct ID.
 		id := pkg.ID{
@@ -290,6 +290,4 @@ func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p npm.Output) map[pkg.ID]pkg.Pac
 		// Recurse in imports.
 		recurseDeps(pkgMap, dep)
 	}
-
-	return pkgMap
 }

@@ -55,7 +55,7 @@ func Run(ctx *cli.Context) error {
 		}
 		result, err := analyzer.Analyze(m)
 		if err != nil {
-			log.Logger.Warningf("Could not analyze: %s", err.Error())
+			log.Logger.Fatalf("Could not analyze: %s", err.Error())
 		}
 		analyzed = append(analyzed, result)
 	}

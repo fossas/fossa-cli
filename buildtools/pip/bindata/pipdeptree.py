@@ -1,9 +1,10 @@
-# This file was taken from the pipdeptree project at:
-# https://github.com/naiquevin/pipdeptree
-# This is licensed under the MIT License:
-
+# This file was taken from [pipdeptree](https://github.com/naiquevin/pipdeptree)
+# at commit ee5eaf86ed0f49ea97601475e048d81e5b381902.
+#
+# It is licensed under the MIT License:
+#
 # Copyright (c) 2015 Vineet Naik (naikvin@gmail.com)
-
+#
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
 # "Software"), to deal in the Software without restriction, including
@@ -11,10 +12,10 @@
 # distribute, sublicense, and/or sell copies of the Software, and to
 # permit persons to whom the Software is furnished to do so, subject to
 # the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 # MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -261,7 +262,7 @@ class ReqPackage(Package):
 
     @property
     def version_spec(self):
-        specs = self._obj.specs
+        specs = sorted(self._obj.specs, reverse=True)  # `reverse` makes '>' prior to '<'
         return ','.join([''.join(sp) for sp in specs]) if specs else None
 
     @property
@@ -304,8 +305,8 @@ class ReqPackage(Package):
                 'required_version': self.version_spec}
 
 
-def render_tree(tree, list_all=True, show_only=None, frozen=False):
-    """Convert to tree to string representation
+def render_tree(tree, list_all=True, show_only=None, frozen=False, exclude=None):
+    """Convert tree to string representation
 
     :param dict tree: the package tree
     :param bool list_all: whether to list all the pgks at the root
@@ -315,6 +316,8 @@ def render_tree(tree, list_all=True, show_only=None, frozen=False):
                           output. This is optional arg, default: None.
     :param bool frozen: whether or not show the names of the pkgs in
                         the output that's favourable to pip --freeze
+    :param set exclude: set of select packages to be excluded from the
+                          output. This is optional arg, default: None.
     :returns: string representation of the tree
     :rtype: str
 
@@ -334,6 +337,8 @@ def render_tree(tree, list_all=True, show_only=None, frozen=False):
         nodes = [p for p in nodes if p.key not in branch_keys]
 
     def aux(node, parent=None, indent=0, chain=None):
+        if exclude and (node.key in exclude or node.project_name in exclude):
+            return []
         if chain is None:
             chain = [node.project_name]
         node_str = node.render(parent, frozen)
@@ -551,6 +556,11 @@ def get_parser():
                             'Comma separated list of select packages to show '
                             'in the output. If set, --all will be ignored.'
                         ))
+    parser.add_argument('-e', '--exclude',
+                        help=(
+                            'Comma separated list of select packages to exclude '
+                            'from the output. If set, --all will be ignored.'
+                        ), metavar='PACKAGES')
     parser.add_argument('-j', '--json', action='store_true', default=False,
                         help=(
                             'Display dependency tree as json. This will yield '
@@ -572,10 +582,13 @@ def get_parser():
     return parser
 
 
-def main():
+def _get_args():
     parser = get_parser()
-    args = parser.parse_args()
+    return parser.parse_args()
 
+
+def main():
+    args = _get_args()
     pkgs = get_installed_distributions(local_only=args.local_only,
                                            user_only=args.user_only)
 
@@ -624,10 +637,15 @@ def main():
             return_code = 1
 
     show_only = set(args.packages.split(',')) if args.packages else None
+    exclude = set(args.exclude.split(',')) if args.exclude else None
+
+    if show_only and exclude and (show_only & exclude):
+        print('Conflicting packages found in --packages and --exclude lists.', file=sys.stderr)
+        sys.exit(1)
 
     tree = render_tree(tree if not args.reverse else reverse_tree(tree),
                        list_all=args.all, show_only=show_only,
-                       frozen=args.freeze)
+                       frozen=args.freeze, exclude=exclude)
     print(tree)
     return return_code
 
