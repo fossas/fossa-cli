@@ -29,24 +29,31 @@ $(PREFIX)/fossa: $(BIN)/fossa
 	mv $< $@
 
 # Building various Docker images.
-.PHONY: docker-base
 docker-base: ./docker/base/Dockerfile
 	sudo docker build -t quay.io/fossa/fossa-cli-base -f ./docker/base/Dockerfile .
 
+docker-test-base: docker-base ./docker/test-base/Dockerfile
+	sudo docker build -t quay.io/fossa/fossa-cli-test-base -f ./docker/test-base/Dockerfile .
+
 .PHONY: docker
-docker: docker-base ./docker/devel/Dockerfile
-	sudo docker build -t fossa-cli -f ./docker/devel/Dockerfile .
-	sudo docker tag fossa-cli quay.io/fossa/fossa-cli
+docker: docker-base ./docker/cli/Dockerfile
+	sudo docker build -t quay.io/fossa/fossa-cli -f ./docker/cli/Dockerfile .
 
 .PHONY: docker-test
-docker-test: docker-base ./docker/test/Dockerfile
-	sudo docker build -t fossa-cli-test -f ./docker/test/Dockerfile .
-	sudo docker tag fossa-cli-test quay.io/fossa/fossa-cli-test
+docker-test: docker-test-base ./docker/test/Dockerfile
+	sudo docker build -t quay.io/fossa/fossa-cli-test -f ./docker/test/Dockerfile .
 
 # Useful build tasks.
 .PHONY: test
 test: docker-test
-	sudo docker run fossa-cli-test
+	sudo docker run quay.io/fossa/fossa-cli-test
+
+.PHONY: dev
+dev: docker-test-base
+	sudo docker run -it \
+		-v $$GOPATH/github.com/fossas/fossa-cli:/home/fossa/go/src/github.com/fossas/fossa-cli \
+		-v $$GOPATH/bin:/home/fossa/go/bin \
+		quay.io/fossa/fossa-cli-test-base /bin/bash
 
 .PHONY: install
 install: $(PREFIX)/fossa

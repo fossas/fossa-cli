@@ -1,11 +1,14 @@
-FROM ubuntu:16.04
+# This Dockerfile provides all build tools that FOSSA CLI invokes. It's useful
+# for trying out FOSSA CLI on machines that may not have all the necessary
+# build tools.
+FROM ubuntu:18.04
 
 # Workaround for add-apt-repository (see https://github.com/oerdnj/deb.sury.org/issues/56)
 ENV LC_ALL=C.UTF-8 DEBIAN_FRONTEND=noninteractive 
 
 # Housekeeping + CircleCI requirements
 RUN apt-get update && \
-    apt-get -y install \
+    apt-get install -y \
       # Useful scripting utilities
       sudo \
       # Required by CircleCI
@@ -77,8 +80,8 @@ RUN wget https://nodejs.org/dist/v8.9.4/node-v8.9.4-linux-x64.tar.xz -O /tmp/nod
     npm config set prefix $HOME/.npm
 ENV PATH=$PATH:/home/fossa/.npm/bin
 
-# Install Node.js build tools
-RUN npm i -g bower yarn
+# Install Node.js build + debugging tools
+RUN npm i -g bower yarn json
 
 # Install Ruby runtime
 RUN sudo apt-get install -y ruby-full
@@ -86,11 +89,14 @@ RUN sudo apt-get install -y ruby-full
 # Install Ruby build tools
 RUN sudo gem install bundler
 
+# Install Python runtime
+RUN sudo apt-get install -y python
+
 # Install Cocoapods
 RUN sudo gem install cocoapods -v 0.39.0
 
 # Install PHP runtime
-RUN sudo apt-get install -y php7.2 php7.2-gd php7.2-curl php7.2-intl
+RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y php7.2 php7.2-gd php7.2-curl php7.2-intl
 
 # Install PHP build tools
 RUN curl https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer && \

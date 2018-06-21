@@ -1,3 +1,4 @@
+# This Dockerfile contains the base tools and the pre-compiled FOSSA CLI.
 FROM quay.io/fossa/fossa-cli-base
 
 # Add FOSSA CLI
