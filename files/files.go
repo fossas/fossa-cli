@@ -40,7 +40,7 @@ func ExistsFolder(pathElems ...string) (bool, error) {
 	return mode.IsDir(), nil
 }
 
-func ReadFile(pathElems ...string) ([]byte, error) {
+func Read(pathElems ...string) ([]byte, error) {
 	name := filepath.Join(pathElems...)
 
 	log.Logger.Debugf("Reading file `%s`", name)
@@ -62,4 +62,8 @@ func notExistErr(err error) bool {
 		return true
 	}
 	return false
+}
+
+func Rm(pathElems ...string) error {
+	return os.RemoveAll(filepath.Join(pathElems...))
 }

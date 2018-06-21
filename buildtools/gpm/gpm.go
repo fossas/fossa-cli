@@ -6,6 +6,7 @@ import (
 
 	"github.com/fossas/fossa-cli/errutil"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -40,7 +41,7 @@ func (l Lockfile) ResolveStrict(importpath string) (pkg.Import, error) {
 // FromFile reads and parses a GPM-format lockfile.
 func FromFile(filename ...string) (Lockfile, error) {
 	// Read lockfile.
-	data, err := files.ReadFile(filename...)
+	data, err := files.Read(filename...)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +50,9 @@ func FromFile(filename ...string) (Lockfile, error) {
 	lockfile := make(map[string]pkg.Import)
 	s := string(data)
 	lines := strings.Split(s, "\n")
+	log.Logger.Debugf("lines: %#v", lines)
 	for _, line := range lines {
+		log.Logger.Debugf("line: %#v", line)
 		// Remove comments.
 		commentStart := strings.Index(line, "#")
 		if commentStart != -1 {
@@ -66,6 +69,7 @@ func FromFile(filename ...string) (Lockfile, error) {
 
 		// Parse fields: <import path> <revision> [repository]
 		fields := strings.Fields(line)
+		log.Logger.Debugf("fields: %#v", fields)
 		repo := ""
 		if len(fields) == 3 {
 			repo = fields[2]

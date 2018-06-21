@@ -68,7 +68,7 @@ func readFile(c *cli.Context) (File, string, error) {
 	}
 
 	// Try to unmarshal the configuration file into a known config file version.
-	data, err := files.ReadFile(filename)
+	data, err := files.Read(filename)
 	if err != nil {
 		return NoFile{}, filename, err
 	}

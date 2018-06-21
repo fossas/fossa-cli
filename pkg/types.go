@@ -97,6 +97,8 @@ func ParseType(key string) (Type, error) {
 		fallthrough
 	case "npmpackage":
 		fallthrough
+	case "npm":
+		fallthrough
 	case "nodejs":
 		return NodeJS, nil
 
@@ -148,27 +150,27 @@ func ParseType(key string) (Type, error) {
 func (t Type) String() string {
 	switch t {
 	case Ant:
-		return "ant"
+		return "mvn"
 	case Bower:
 		return "bower"
 	case Cocoapods:
-		return "cocoapods"
+		return "pod"
 	case Composer:
 		return "composer"
 	case Go:
 		return "go"
 	case Gradle:
-		return "gradle"
+		return "mvn"
 	case Maven:
-		return "maven"
+		return "mvn"
 	case NodeJS:
-		return "nodejs"
+		return "npm"
 	case NuGet:
 		return "nuget"
 	case Python:
 		return "pip"
 	case Ruby:
-		return "ruby"
+		return "gem"
 	case Scala:
 		return "sbt"
 	case VendoredArchives:

@@ -75,7 +75,7 @@ func Normalize(modules []module.Module) ([]SourceUnit, error) {
 
 		var imports []string
 		for _, i := range analyzed.Imports {
-			imports = append(imports, LocatorOf(i).String())
+			imports = append(imports, LocatorOf(i.Resolved).String())
 		}
 		normalized = append(normalized, SourceUnit{
 			Name:     analyzed.Name,

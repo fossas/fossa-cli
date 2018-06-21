@@ -1,7 +1,9 @@
 package golang
 
 import (
-	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
+	"github.com/pkg/errors"
+
+	// Each of these build tools provide a resolver.Resolver
 	"github.com/fossas/fossa-cli/buildtools/dep"
 	"github.com/fossas/fossa-cli/buildtools/gdm"
 	"github.com/fossas/fossa-cli/buildtools/glide"
@@ -9,11 +11,12 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/godep"
 	"github.com/fossas/fossa-cli/buildtools/govendor"
 	"github.com/fossas/fossa-cli/buildtools/vndr"
+
+	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/errutil"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/pkg/errors"
 )
 
 // Analyze builds a dependency graph using go list and then looks up revisions
@@ -106,7 +109,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		return m, err
 	}
 
-	// Construct map of unvendored import path to package.
+	// Construct map of import path to package.
 	gopkgs := append(deps, main)
 	gopkgMap := make(map[string]gocmd.Package)
 	for _, p := range gopkgs {
@@ -117,6 +120,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		Name:     "C",
 		IsStdLib: true, // This is so we don't try to lookup a revision. Maybe there should be a NoRevision bool field?
 	}
+	log.Logger.Debugf("gopkgMap: %#v", gopkgMap)
 
 	// Construct transitive dependency graph.
 	pkgs := make(map[pkg.ID]pkg.Package)
@@ -133,6 +137,10 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		// Resolve dependency imports.
 		var imports []pkg.Import
 		for _, i := range gopkg.Imports {
+			_, ok := gopkgMap[i]
+			if !ok {
+				log.Logger.Fatalf("Could not find Go package for %#v, your build may have errors. Try `go list -json <MODULE>`.", i)
+			}
 			log.Logger.Debugf("Resolving import of: %#v", gopkg)
 			log.Logger.Debugf("Resolving dependency import: %#v", i)
 			revision, err := a.Revision(project, r, gopkgMap[i])
@@ -149,14 +157,14 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	}
 
 	// Construct direct imports list.
-	var imports []pkg.ID
+	var imports []pkg.Import
 	for _, i := range main.Imports {
 		revision, err := a.Revision(project, r, gopkgMap[i])
 		if err != nil {
 			return m, err
 		}
 
-		imports = append(imports, revision.Resolved)
+		imports = append(imports, revision)
 	}
 
 	m.Deps = pkgs

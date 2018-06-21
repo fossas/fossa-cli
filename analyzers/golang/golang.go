@@ -1,5 +1,8 @@
 // Package golang implements the analyzer for Go.
 //
+// A `BuildTarget` in Go is defined as an import path (see `go help importpath`
+// for details).
+//
 // This package is implemented by externally calling both the `go` tool and any
 // external build tools.
 //
@@ -103,6 +106,7 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 			Type:         pkg.Go,
 			IsExecutable: f.Name == "main",
 			BuildTarget:  f.ImportPath,
+			Dir:          f.Dir,
 		})
 	}
 	return projects, nil

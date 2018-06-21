@@ -33,7 +33,7 @@ type UnmarshalFunc func(data []byte, v interface{}) error
 func ReadUnmarshal(unmarshal UnmarshalFunc, v interface{}, pathElems ...string) error {
 	filename := filepath.Join(pathElems...)
 	log.Logger.Debugf("Parsing file `%s`", filename)
-	contents, err := ReadFile(pathElems...)
+	contents, err := Read(pathElems...)
 	if err != nil {
 		return err
 	}

@@ -37,3 +37,45 @@ time fossa analyze --output --option allow-unresolved-prefix:github.com/influxda
 cd $GOPATH/src/github.com/rkt/rkt
 fossa init
 time fossa analyze --output go:./rkt
+
+# Test known good NodeJS projects:
+cd $HOME/puppeteer
+fossa init
+time fossa analyze --output
+
+cd $HOME/pkg
+fossa init
+time fossa analyze --output
+
+cd $HOME/faker.js
+fossa init
+time fossa analyze --output
+
+cd $HOME/fastify
+fossa init
+time fossa analyze --output
+
+cd $HOME/nest
+fossa init
+time fossa analyze --output
+
+cd $HOME/ohm
+fossa init
+time fossa analyze --output
+
+cd $HOME/express
+fossa init
+time fossa analyze --output
+
+## standard has missing peer dependencies.
+cd $HOME/standard
+fossa init
+time fossa analyze --output --option allow-npm-err:true
+
+cd $HOME/sodium-encryption
+fossa init
+time fossa analyze --output
+
+cd $HOME/request
+fossa init
+time fossa analyze --output
