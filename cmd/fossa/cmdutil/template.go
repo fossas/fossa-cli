@@ -1,8 +1,8 @@
 package cmdutil
 
 import (
-	"text/template"
 	"bytes"
+	"text/template"
 )
 
 func ProcessTmpl(tmpl *template.Template, tmplData interface{}) (data []byte, err error) {
