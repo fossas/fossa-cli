@@ -38,6 +38,11 @@ cd $GOPATH/src/github.com/rkt/rkt
 fossa init
 time fossa analyze --output go:./rkt
 
+## Jaeger (glide)
+cd $GOPATH/src/github.com/jaegertracing/jaeger
+fossa init
+time fossa analyze --output go:./cmd/agent
+
 # Test known good NodeJS projects:
 cd $HOME/puppeteer
 fossa init
@@ -80,7 +85,7 @@ cd $HOME/request
 fossa init
 time fossa analyze --output
 
-# Test known good Python projects"
+# Test known good Python projects:
 cd $HOME/vibora
 fossa init
 time fossa analyze --output

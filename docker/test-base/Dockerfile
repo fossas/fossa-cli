@@ -10,9 +10,6 @@ RUN mkdir -p $GOPATH/src/k8s.io && \
     cd kubernetes && \
     make ./cmd/kube-apiserver
 
-## Consul (nested govendor)
-RUN go get -u -v github.com/hashicorp/consul
-
 ## Docker, Docker CE (vndr)
 RUN mkdir -p $GOPATH/src/github.com/docker && \
     cd $GOPATH/src/github.com/docker && \
@@ -29,8 +26,16 @@ RUN mkdir -p $GOPATH/src/github.com/influxdata && \
     git reset --hard d606fcf19a5bb81566aac58cd223638a8720be2c && \
     go get github.com/influxdata/influxdb/...
 
+## Consul (nested govendor)
+RUN go get -u -v github.com/hashicorp/consul
+
 ## rkt (glide)
 RUN go get -u -v github.com/rkt/rkt/rkt
+
+## Jaeger (glide)
+RUN go get -u -v github.com/jaegertracing/jaeger && \
+    cd $GOPATH/src/github.com/jaegertracing/jaeger && \
+    glide install
 
 # Known good NodeJS projects
 RUN git clone --depth=1 https://github.com/GoogleChrome/puppeteer && \
