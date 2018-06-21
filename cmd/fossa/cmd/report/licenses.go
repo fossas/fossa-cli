@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"text/template"
 
+	"github.com/urfave/cli"
+
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/log"
-	"github.com/urfave/cli"
 )
 
 const defaultLicenceReportTemplate = `# 3rd-Party Software License Notice
@@ -24,11 +25,6 @@ The following software have components provided under the terms of this license:
 {{end}}
 `
 
-/*
-BAD:  https://app.fossa.io/api/revisions?locator=git%2Bgithub.com%2Fprometheus%2Fclient_model%2Fgo%2499fa1f4be8e564e8a6b613da7fa6f46c9edafc6c
-GOOD: https://app.fossa.io/api/revisions/git%2Bgithub.com%2Fprometheus%2Fclient_model%2Fgo%2499fa1f4be8e564e8a6b613da7fa6f46c9edafc6c
-      -301-> https://app.fossa.io/api/revisions/git%2Bgithub.com%2Fprometheus%2Fclient_model%2499fa1f4be8e564e8a6b613da7fa6f46c9edafc6c/
-*/
 var licensesCmd = cli.Command{
 	Name:  "licenses",
 	Usage: "Generate licenses report",
@@ -53,7 +49,7 @@ func generateLicenses(ctx *cli.Context) (err error) {
 				log.ShowSpinner(fmt.Sprintf("Fetching Licence Info (%d/%d): %s", i+1, totalDeps, dep.ID.Name))
 				rev, err := fossa.FetchRevisionForPackage(dep)
 				if err != nil {
-					println(err.Error())
+					log.Logger.Warning(err.Error())
 					continue
 				}
 				revs = append(revs, rev)
@@ -67,14 +63,13 @@ func generateLicenses(ctx *cli.Context) (err error) {
 		}
 	}
 
-	// TODO: Make sure Revisions is a set
-	depsByLicence := make(map[string]fossa.Revisions, 0)
+	depsByLicence := make(map[string]map[string]*fossa.Revision, 0)
 	for _, rev := range revs {
 		for _, licence := range rev.Licenses {
 			if _, ok := depsByLicence[licence.LicenseID]; !ok {
-				depsByLicence[licence.LicenseID] = make(fossa.Revisions, 0)
+				depsByLicence[licence.LicenseID] = make(map[string]*fossa.Revision, 0)
 			}
-			depsByLicence[licence.LicenseID] = append(depsByLicence[licence.LicenseID], rev)
+			depsByLicence[licence.LicenseID][rev.Locator.String()] = rev
 		}
 	}
 
