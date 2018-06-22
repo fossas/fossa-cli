@@ -1,8 +1,0 @@
-{
-  "dependencies": {
-    "express": "^4.16.2"
-  },
-  "devDependencies": {
-    "superagent": "^3.8.2"
-  }
-}

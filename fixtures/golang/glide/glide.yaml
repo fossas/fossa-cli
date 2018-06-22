@@ -1,6 +1,0 @@
-package: github.com/fossas/fossa-cli/test/fixtures/golang/glide
-import:
-- package: github.com/rkt/rkt
-  version: ^1.29.0
-  subpackages:
-  - networking
