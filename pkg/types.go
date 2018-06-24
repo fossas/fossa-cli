@@ -129,6 +129,8 @@ func ParseType(key string) (Type, error) {
 		fallthrough
 	case "rubygems":
 		fallthrough
+	case "rb":
+		fallthrough
 	case "ruby":
 		return Ruby, nil
 

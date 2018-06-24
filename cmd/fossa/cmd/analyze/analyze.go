@@ -52,6 +52,7 @@ func Run(ctx *cli.Context) error {
 		analyzer, err := analyzers.New(m.Type, m.Options)
 		if err != nil {
 			log.Logger.Warningf("Could not load analyzer: %s", err.Error())
+			continue
 		}
 		result, err := analyzer.Analyze(m)
 		if err != nil {

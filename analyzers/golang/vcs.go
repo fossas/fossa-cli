@@ -11,7 +11,7 @@ import (
 // Errors that occur when finding VCS repositories.
 var (
 	ErrNoVCSInDir   = errors.New("could not find VCS repository in directory")
-	ErrNoNearestVCS = errors.New("could not nearest VCS repository in directory")
+	ErrNoNearestVCS = errors.New("could not find nearest VCS repository in directory")
 )
 
 // VCSIn returns the type of VCS repository rooted at a directory, or

@@ -13,7 +13,7 @@ import (
 // Errors that occur while finding lockfiles.
 var (
 	ErrNoLockfileInDir   = errors.New("could not find lockfile in directory")
-	ErrNoNearestLockfile = errors.New("could not nearest lockfile of directory")
+	ErrNoNearestLockfile = errors.New("could not find nearest lockfile of directory")
 )
 
 // LockfileIn returns the type of lockfile within a directory, or

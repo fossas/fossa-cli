@@ -9,8 +9,8 @@ ENV LC_ALL=C.UTF-8 DEBIAN_FRONTEND=noninteractive
 # Housekeeping + CircleCI requirements
 RUN apt-get update && \
     apt-get install -y \
-      # Useful scripting utilities
-      sudo \
+      # Useful scripting + debugging utilities
+      sudo tmux \
       # Required by CircleCI
       git ssh tar gzip ca-certificates \
       # Used by various build tools

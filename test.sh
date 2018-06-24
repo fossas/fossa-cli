@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# TODO: move these into `*_test.go` files.
+
 set -e
 
 # Test known good Go projects:
@@ -62,7 +64,7 @@ time fossa analyze --output
 
 cd $HOME/nest
 fossa init
-time fossa analyze --output
+time fossa analyze --output npm:package.json
 
 cd $HOME/ohm
 fossa init
@@ -86,6 +88,13 @@ fossa init
 time fossa analyze --output
 
 # Test known good Python projects:
+## Since we parse `requirements.txt`, many projects (like Django) which only
+## provide `setup.py` are not suitable.
 cd $HOME/vibora
+fossa init
+time fossa analyze --output
+
+# Test known good Ruby projects:
+cd $HOME/rails
 fossa init
 time fossa analyze --output

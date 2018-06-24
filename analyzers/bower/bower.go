@@ -15,23 +15,28 @@ import (
 	"github.com/fossas/fossa-cli/module"
 )
 
-type Configuration struct {
+type ConfigFile struct {
 	Cwd       string `json:"cwd"`
 	Directory string `json:"directory"`
 	Registry  string `json:"registry"`
 }
 
-// BowerBuilder implements Builder for Bower
-type BowerBuilder struct {
+type Analyzer struct {
 	NodeCmd     string
 	NodeVersion string
 
 	BowerCmd     string
 	BowerVersion string
+
+	Options Options
+}
+
+type Options struct {
+	ComponentsDir string `mapstructure:"components-dir"`
 }
 
 // Initialize collects metadata on Node and Bower binaries
-func (builder *BowerBuilder) Initialize() error {
+func (builder *Analyzer) Initialize() error {
 	log.Logger.Debug("Initializing Bower builder...")
 
 	// Set Node context variables
@@ -55,7 +60,7 @@ func (builder *BowerBuilder) Initialize() error {
 }
 
 // Build runs `bower install --production` and cleans with `rm -rf bower_components`
-func (builder *BowerBuilder) Build(m module.Module, force bool) error {
+func (builder *Analyzer) Build(m module.Module, force bool) error {
 	log.Logger.Debugf("Running Bower build: %#v", m, force)
 
 	if force {
@@ -114,7 +119,7 @@ func normalizeBowerComponents(parent module.ImportPath, c bowerListManifest) []b
 
 // Analyze reads the output of `bower ls --json`
 // TODO: fall back to old method of reading `bower_components/*/.bower.json`s?
-func (builder *BowerBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
+func (builder *Analyzer) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
 	log.Logger.Debugf("Running Bower analysis: %#v %#v", m, allowUnresolved)
 
 	stdout, _, err := exec.Run(exec.Cmd{Dir: m.Dir, Name: "bower", Argv: []string{"ls", "--json"}})
@@ -168,7 +173,7 @@ func resolveBowerComponentsDirectory(dir string) string {
 }
 
 // IsBuilt checks for the existence of `$PROJECT/bower_components`
-func (builder *BowerBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
+func (builder *Analyzer) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
 	log.Logger.Debug("Checking Bower build: %#v %#v", m, allowUnresolved)
 
 	// TODO: Check if the installed modules are consistent with what's in the
@@ -183,12 +188,12 @@ func (builder *BowerBuilder) IsBuilt(m module.Module, allowUnresolved bool) (boo
 }
 
 // IsModule is not implemented
-func (builder *BowerBuilder) IsModule(target string) (bool, error) {
-	return false, errors.New("IsModule is not implemented for BowerBuilder")
+func (builder *Analyzer) IsModule(target string) (bool, error) {
+	return false, errors.New("IsModule is not implemented for Analyzer")
 }
 
 // DiscoverModules finds any bower.json modules not in node_modules or bower_components folders
-func (builder *BowerBuilder) DiscoverModules(dir string) ([]module.Config, error) {
+func (builder *Analyzer) DiscoverModules(dir string) ([]module.Config, error) {
 	var moduleConfigs []module.Config
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {

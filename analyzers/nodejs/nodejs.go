@@ -109,7 +109,7 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Logger.Debugf("Failed to access path %s: %s\a", path, err.Error())
+			log.Logger.Debugf("Failed to access path %s: %s\n", path, err.Error())
 			return err
 		}
 

@@ -1,3 +1,7 @@
+// Package python provides analysers for Python projects.
+//
+// A `BuildTarget` in Python is the directory of the Python project, generally
+// containing `requirements.txt` or `setup.py`.
 package python
 
 import (
@@ -18,6 +22,7 @@ type Analyzer struct {
 	PythonCmd     string
 	PythonVersion string
 
+	Pip     pip.Pip
 	Options Options
 }
 
@@ -39,14 +44,24 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 	log.Logger.Debug("Decoded options: %#v", options)
 
 	// Construct analyzer.
-	cmd, version, err := exec.Which("--version", os.Getenv("FOSSA_PYTHON_CMD"), "python", "python3", "python2.7")
+	pythonCmd, pythonVersion, err := exec.Which("--version", os.Getenv("FOSSA_PYTHON_CMD"), "python", "python3", "python2.7")
 	if err != nil {
 		return nil, err
 	}
+	// TODO: this should be fatal depending on the configured strategy.
+	pipCmd, _, err := exec.Which("--version", os.Getenv("FOSSA_PIP_CMD"), "pip3", "pip")
+	if err != nil {
+		log.Logger.Warningf("`pip` command not detected")
+	}
 	return &Analyzer{
-		PythonCmd:     cmd,
-		PythonVersion: version,
-		Options:       options,
+		PythonCmd:     pythonCmd,
+		PythonVersion: pythonVersion,
+
+		Pip: pip.Pip{
+			Cmd:       pipCmd,
+			PythonCmd: pythonCmd,
+		},
+		Options: options,
 	}, nil
 }
 
@@ -104,10 +119,7 @@ func (a *Analyzer) Clean(m module.Module) error {
 }
 
 func (a *Analyzer) Build(m module.Module) error {
-	p := pip.Pip{
-		PythonCmd: a.PythonCmd,
-	}
-	return p.Install(a.reqFile(m))
+	return a.Pip.Install(a.requirementsFile(m))
 }
 
 func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
@@ -115,12 +127,9 @@ func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
 }
 
 func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
-	p := pip.Pip{
-		PythonCmd: a.PythonCmd,
-	}
 	switch a.Options.Strategy {
 	case "deptree":
-		tree, err := p.DepTree()
+		tree, err := a.Pip.DepTree()
 		if err != nil {
 			return m, err
 		}
@@ -129,7 +138,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		m.Deps = graph
 		return m, nil
 	case "pip":
-		reqs, err := p.List()
+		reqs, err := a.Pip.List()
 		if err != nil {
 			return m, err
 		}
@@ -138,7 +147,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	case "requirements":
 		fallthrough
 	default:
-		reqs, err := pip.FromFile(a.reqFile(m))
+		reqs, err := pip.FromFile(a.requirementsFile(m))
 		if err != nil {
 			return m, err
 		}
@@ -147,7 +156,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	}
 }
 
-func (a *Analyzer) reqFile(m module.Module) string {
+func (a *Analyzer) requirementsFile(m module.Module) string {
 	reqFilename := filepath.Join(m.Dir, "requirements.txt")
 	if a.Options.RequirementsPath != "" {
 		reqFilename = a.Options.RequirementsPath

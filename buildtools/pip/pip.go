@@ -9,6 +9,8 @@ import (
 	"github.com/fossas/fossa-cli/log"
 )
 
+// TODO: add a Python sidecar that evaluates `setup.py`.
+
 type Pip struct {
 	Cmd       string
 	PythonCmd string

@@ -37,7 +37,7 @@ RUN go get -u -v github.com/jaegertracing/jaeger && \
     cd $GOPATH/src/github.com/jaegertracing/jaeger && \
     glide install
 
-# Known good NodeJS projects
+# Known good NodeJS projects:
 RUN git clone --depth=1 https://github.com/GoogleChrome/puppeteer && \
     cd puppeteer && \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1 npm install --production
@@ -69,5 +69,18 @@ RUN git clone --depth=1 https://github.com/request/request && \
     cd request && \
     npm install --production
 
-# Known good Python projects
+# Known good Python projects:
 RUN git clone --depth=1 https://github.com/vibora-io/vibora
+
+# Known good Ruby projects:
+## The apt dependencies are for native extensions.
+RUN sudo apt-get install -y \
+    zlib1g-dev liblzma-dev libncurses5-dev libtool autoconf libxml2-dev \
+    libmysqlclient-dev postgresql-server-dev-all libsqlite3-dev && \
+    git clone --depth=1 https://github.com/rails/rails && \
+    cd rails && \
+    bundle install --deployment --without doc job cable storage ujs test db
+
+RUN git clone --depth=1 https://github.com/hashicorp/vagrant && \
+    cd vagrant && \
+    bundle install
