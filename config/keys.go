@@ -95,6 +95,8 @@ func Branch() string {
 func Modules() ([]module.Module, error) {
 	// If arguments are present, use arguments.
 	args := ctx.Args()
+	optionFs := ctx.StringSlice(flags.Option)
+
 	if args.Present() {
 		// Validate arguments.
 		if ctx.NArg() != 1 {
@@ -112,12 +114,12 @@ func Modules() ([]module.Module, error) {
 		}
 
 		// Parse options.
-		optionFs := ctx.StringSlice(flags.Option)
 		options := make(map[string]interface{})
 		for _, option := range optionFs {
 			sections := strings.Split(option, ":")
 			key := sections[0]
 			value := strings.Join(sections[1:], "")
+			log.Logger.Debugf("%#v %#v %#v", sections, key, value)
 			// Attempt to parse as boolean.
 			if value == "true" {
 				options[key] = true
@@ -144,5 +146,8 @@ func Modules() ([]module.Module, error) {
 		return m, nil
 	}
 
+	if optionFs != nil {
+		log.Logger.Warningf("Found %d options passed via command line, but modules are being loaded from configuration file. Ignoring options.", len(optionFs))
+	}
 	return file.Modules(), nil
 }

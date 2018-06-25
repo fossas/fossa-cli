@@ -5,6 +5,7 @@ import (
 
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/log"
 )
 
 type NPM struct {
@@ -25,6 +26,8 @@ func (n *NPM) List(dir string) (Output, error) {
 		Argv: []string{"ls", "--json"},
 		Dir:  dir,
 	})
+	log.Logger.Debugf("err: %#v", err)
+	log.Logger.Debugf("AllowErr: %#v", n.AllowErr)
 	if err != nil && !n.AllowErr {
 		return Output{}, err
 	}
