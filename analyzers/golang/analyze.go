@@ -124,7 +124,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 
 	// Construct transitive dependency graph.
 	pkgs := make(map[pkg.ID]pkg.Package)
-	for _, gopkg := range gopkgs {
+	for _, gopkg := range deps {
 		log.Logger.Debugf("Getting revision for: %#v", gopkg)
 
 		// Resolve dependency.
