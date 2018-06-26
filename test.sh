@@ -98,3 +98,7 @@ time fossa analyze --output
 cd $HOME/rails
 fossa init
 time fossa analyze --output
+
+cd $HOME/consul
+fossa init
+time fossa analyze --output

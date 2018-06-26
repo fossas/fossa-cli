@@ -84,3 +84,8 @@ RUN sudo apt-get install -y \
 RUN git clone --depth=1 https://github.com/hashicorp/vagrant && \
     cd vagrant && \
     bundle install
+
+# Known good Gradle projects:
+RUN git clone --depth=1 https://github.com/ReactiveX/RxJava && \
+    cd RxJava && \
+    ./gradlew
