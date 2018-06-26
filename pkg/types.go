@@ -152,7 +152,7 @@ func ParseType(key string) (Type, error) {
 func (t Type) String() string {
 	switch t {
 	case Ant:
-		return "mvn"
+		return "ant"
 	case Bower:
 		return "bower"
 	case Cocoapods:
@@ -162,7 +162,7 @@ func (t Type) String() string {
 	case Go:
 		return "go"
 	case Gradle:
-		return "mvn"
+		return "gradle"
 	case Maven:
 		return "mvn"
 	case NodeJS:

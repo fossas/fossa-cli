@@ -107,7 +107,7 @@ func Modules() ([]module.Module, error) {
 		arg := args.First()
 		sections := strings.Split(arg, ":")
 		typename := sections[0]
-		name := strings.Join(sections[1:], "")
+		name := strings.Join(sections[1:], ":")
 		mtype, err := pkg.ParseType(typename)
 		if err != nil {
 			return nil, err
@@ -118,7 +118,7 @@ func Modules() ([]module.Module, error) {
 		for _, option := range optionFs {
 			sections := strings.Split(option, ":")
 			key := sections[0]
-			value := strings.Join(sections[1:], "")
+			value := strings.Join(sections[1:], ":")
 			log.Logger.Debugf("%#v %#v %#v", sections, key, value)
 			// Attempt to parse as boolean.
 			if value == "true" {
@@ -146,7 +146,7 @@ func Modules() ([]module.Module, error) {
 		return m, nil
 	}
 
-	if optionFs != nil {
+	if len(optionFs) > 0 {
 		log.Logger.Warningf("Found %d options passed via command line, but modules are being loaded from configuration file. Ignoring options.", len(optionFs))
 	}
 	return file.Modules(), nil

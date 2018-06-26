@@ -86,6 +86,6 @@ RUN git clone --depth=1 https://github.com/hashicorp/vagrant && \
     bundle install
 
 # Known good Gradle projects:
-RUN git clone --depth=1 https://github.com/ReactiveX/RxJava && \
-    cd RxJava && \
-    ./gradlew
+RUN git clone --depth=1 https://github.com/hibernate/hibernate-orm && \
+    cd hibernate-orm && \
+    bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && ./gradlew"

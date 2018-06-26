@@ -10,7 +10,7 @@ ENV LC_ALL=C.UTF-8 DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y \
       # Useful scripting + debugging utilities
-      sudo tmux \
+      sudo tmux tree \
       # Required by CircleCI
       git ssh tar gzip ca-certificates \
       # Used by various build tools

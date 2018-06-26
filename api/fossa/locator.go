@@ -71,8 +71,19 @@ func ReadImportPath(s ImportPathString) ImportPath {
 
 func LocatorOf(id pkg.ID) Locator {
 	return Locator{
-		Fetcher:  id.Type.String(),
+		Fetcher:  LocatorType(id.Type),
 		Project:  id.Name,
 		Revision: id.Revision,
+	}
+}
+
+func LocatorType(t pkg.Type) string {
+	switch t {
+	case pkg.Gradle:
+		return "mvn"
+	case pkg.Ant:
+		return "mvn"
+	default:
+		return t.String()
 	}
 }

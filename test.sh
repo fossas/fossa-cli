@@ -99,6 +99,11 @@ cd $HOME/rails
 fossa init
 time fossa analyze --output
 
-cd $HOME/consul
+cd $HOME/vagrant
+fossa init
+time fossa analyze --output
+
+# Test known good Gradle projects:
+cd $HOME/hibernate-orm
 fossa init
 time fossa analyze --output
