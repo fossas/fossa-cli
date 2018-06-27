@@ -12,6 +12,7 @@ var (
 	Root        = struct{}{}
 )
 
+// TODO: rewrite this with genny?
 type LineParser func(line string) (level int, node interface{}, err error)
 
 func ReadTree(lines string, parser LineParser) (Rooted, error) {
