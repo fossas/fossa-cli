@@ -132,7 +132,7 @@ func (a *Analyzer) RevisionContextualLookup(project Project, gopkg gocmd.Package
 // with) the project, or otherwise don't have revisions.
 func (a *Analyzer) UnresolvedOK(project Project, gopkg gocmd.Package) bool {
 	withinDir :=
-		strings.HasPrefix(gopkg.Dir, project.Dir) && strings.Index(gopkg.Dir, "/vendor/") == -1
+		strings.HasPrefix(gopkg.Dir, project.Dir) && !strings.Contains(gopkg.Dir, "/vendor/")
 
 	allowedPrefixes := strings.Split(a.Options.AllowUnresolvedPrefix, " ")
 	hasAllowedPrefix := false

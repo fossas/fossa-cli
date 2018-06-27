@@ -93,12 +93,12 @@ func (builder *SBTBuilder) Analyze(m module.Module, allowUnresolved bool) ([]mod
 	// Filter lines to only include dependency tree
 	var depLines []string
 	for _, line := range strings.Split(output, "\n") {
-		if strings.Index(line, "[info] Loading ") != -1 ||
-			strings.Index(line, "[info] Resolving ") != -1 ||
-			strings.Index(line, "[info] Set ") != -1 ||
-			strings.Index(line, "[info] Updating ") != -1 ||
-			strings.Index(line, "[info] Done ") != -1 ||
-			strings.Index(line, "[info] ") != 0 {
+		if strings.HasPrefix(line, "[info] Loading ") ||
+			strings.HasPrefix(line, "[info] Resolving ") ||
+			strings.HasPrefix(line, "[info] Set ") ||
+			strings.HasPrefix(line, "[info] Updating ") ||
+			strings.HasPrefix(line, "[info] Done ") ||
+			!strings.HasPrefix(line, "[info] ") {
 			log.Logger.Debugf("Ignoring line: %#v", line)
 			continue
 		}

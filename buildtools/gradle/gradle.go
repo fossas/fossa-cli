@@ -5,8 +5,11 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/log"
 )
 
@@ -23,7 +26,7 @@ type Dependency struct {
 	IsProject bool
 }
 
-func (g *Gradle) Dependencies(project, configuration string) (map[Dependency][]Dependency, error) {
+func (g *Gradle) Dependencies(project, configuration string) ([]Dependency, map[Dependency][]Dependency, error) {
 	args := []string{
 		project + ":dependencies",
 		"--quiet",
@@ -38,16 +41,16 @@ func (g *Gradle) Dependencies(project, configuration string) (map[Dependency][]D
 	return g.DependenciesTask(args...)
 }
 
-func (g *Gradle) DependenciesTask(taskArgs ...string) (map[Dependency][]Dependency, error) {
+func (g *Gradle) DependenciesTask(taskArgs ...string) ([]Dependency, map[Dependency][]Dependency, error) {
 	stdout, err := g.Run(taskArgs...)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	deps, err := ParseDependencies(stdout)
+	imports, deps, err := ParseDependencies(stdout)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return deps, nil
+	return imports, deps, nil
 }
 
 func (g *Gradle) Projects() ([]string, error) {
@@ -80,15 +83,13 @@ func (g *Gradle) Run(taskArgs ...string) (string, error) {
 
 var Root = Dependency{}
 
-func ParseDependencies(stdout string) (map[Dependency][]Dependency, error) {
-	edges := make(map[Dependency]map[Dependency]bool)
-	parents := []Dependency{Root}
-	r := regexp.MustCompile("^([ `+\\\\|-]+)([^ `+\\\\|-].+)$")
+func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency, error) {
+	result, err := graph.ReadTree(stdout, func(line string) (int, interface{}, error) {
+		r := regexp.MustCompile("^([ `+\\\\|-]+)([^ `+\\\\|-].+)$")
 
-	for _, line := range strings.Split(string(stdout), "\n") {
 		// Skip non-dependency lines.
 		if !r.MatchString(line) {
-			continue
+			return -1, nil, graph.ErrSkipLine
 		}
 
 		// Match line.
@@ -96,19 +97,19 @@ func ParseDependencies(stdout string) (map[Dependency][]Dependency, error) {
 		depth := len(matches[1])
 		if depth%5 != 0 {
 			// Sanity check.
-			log.Logger.Panicf("Bad depth: %#v %s %#v", depth, line, matches)
+			return -1, nil, errors.Errorf("bad depth: %#v %s %#v", depth, line, matches)
 		}
 
 		// Parse dependency.
 		dep := matches[2]
+		withoutOmit := strings.TrimSuffix(dep, " (*)")
 		var parsed Dependency
-		if strings.HasPrefix(dep, "project :") {
+		if strings.HasPrefix(withoutOmit, "project :") {
 			parsed = Dependency{
 				Name:      strings.TrimPrefix(dep, "project :"),
 				IsProject: true,
 			}
 		} else {
-			withoutOmit := strings.TrimSuffix(dep, " (*)")
 			sections := strings.Split(withoutOmit, ":")
 			name := strings.Join(sections[:len(sections)-1], ":")
 			version := sections[len(sections)-1]
@@ -126,25 +127,21 @@ func ParseDependencies(stdout string) (map[Dependency][]Dependency, error) {
 			}
 		}
 
-		// Add to graph.
-		parents = parents[:depth/5]
-		parent := parents[len(parents)-1]
-		_, ok := edges[parent]
-		if !ok {
-			edges[parent] = make(map[Dependency]bool)
-		}
-		edges[parent][parsed] = true
-		parents = append(parents, parsed)
+		log.Logger.Debugf("%#v %#v", depth/5, parsed)
+		return depth / 5, parsed, nil
+	})
+	if err != nil {
+		return nil, nil, err
 	}
 
-	graph := make(map[Dependency][]Dependency)
-	for parent, children := range edges {
-		for child := range children {
-			graph[parent] = append(graph[parent], child)
-		}
-	}
+	var imports []Dependency
+	g := make(map[Dependency][]Dependency)
 
-	return graph, nil
+	err = graph.Unwrap(&imports, &g, result)
+	if err != nil {
+		return nil, nil, err
+	}
+	return imports, g, nil
 }
 
 func Cmd(dir string) (string, error) {

@@ -69,6 +69,8 @@ func ParseType(key string) (Type, error) {
 	// Composer aliases
 	case "composerpackage":
 		fallthrough
+	case "php":
+		fallthrough
 	case "composer":
 		return Composer, nil
 

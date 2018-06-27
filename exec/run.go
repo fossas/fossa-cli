@@ -19,6 +19,8 @@ type Cmd struct {
 	WithEnv map[string]string // If set, the command's environment is _added_ to WithEnv.
 }
 
+// func RunJSON(v interface{}, cmd Cmd) (stderr string, err error) {}
+
 // Run executes a `Cmd`.
 func Run(cmd Cmd) (stdout string, stderr string, err error) {
 	log.Logger.Debugf("Running command: %#v", append([]string{cmd.Name}, cmd.Argv...))

@@ -201,7 +201,7 @@ func (builder *MavenBuilder) IsBuilt(m module.Module, allowUnresolved bool) (boo
 		Argv: []string{"dependency:list", "-B"},
 	})
 	if err != nil {
-		if strings.Index(output, "Could not find artifact") != -1 {
+		if strings.Contains(output, "Could not find artifact") {
 			return false, nil
 		}
 		return false, err

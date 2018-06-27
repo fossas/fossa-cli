@@ -8,6 +8,7 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/golang"
 	"github.com/fossas/fossa-cli/analyzers/gradle"
 	"github.com/fossas/fossa-cli/analyzers/nodejs"
+	"github.com/fossas/fossa-cli/analyzers/php"
 	"github.com/fossas/fossa-cli/analyzers/python"
 	"github.com/fossas/fossa-cli/analyzers/ruby"
 
@@ -48,7 +49,7 @@ func New(key pkg.Type, options map[string]interface{}) (Analyzer, error) {
 	case pkg.Cocoapods:
 		return nil, ErrAnalyzerNotImplemented
 	case pkg.Composer:
-		return nil, ErrAnalyzerNotImplemented
+		return php.New(options)
 	case pkg.Go:
 		return golang.New(options)
 	case pkg.Gradle:

@@ -52,7 +52,7 @@ func Unvendor(importpath string) string {
 // if none exists.
 func VendorParent(dirname string) string {
 	separator := filepath.FromSlash("/vendor/")
-	if strings.Index(dirname, separator) == -1 {
+	if !strings.Contains(dirname, separator) {
 		return "."
 	}
 	sections := strings.Split(dirname, separator)

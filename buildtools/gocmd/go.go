@@ -82,7 +82,7 @@ func (g *Go) List(pkgs []string) ([]Package, error) {
 		},
 	})
 	if err != nil && stdout == "" {
-		if strings.Index(stderr, "build constraints exclude all Go files") != -1 {
+		if strings.Contains(stderr, "build constraints exclude all Go files") {
 			// TODO: add better documentation around this error, and rename it to be
 			// more useful.
 			return nil, errors.New("bad OS/architecture target")
@@ -103,7 +103,7 @@ func (g *Go) List(pkgs []string) ([]Package, error) {
 			Name:       pkg.Name,
 			ImportPath: pkg.ImportPath,
 			Dir:        pkg.Dir,
-			IsInternal: strings.Index(pkg.ImportPath, "internal") != -1,
+			IsInternal: strings.Contains(pkg.ImportPath, "internal"),
 			IsStdLib:   pkg.Standard,
 			Imports:    pkg.Imports,
 			Deps:       pkg.Deps,

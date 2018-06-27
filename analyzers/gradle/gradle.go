@@ -90,17 +90,11 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 				return err
 			}
 			for _, project := range projects {
-				// TODO: this won't work until v2 configuration files are implemented.
-				// modules = append(modules, module.Module{
-				// 	Name:        name,
-				// 	Type:        pkg.Gradle,
-				// 	BuildTarget: project + ":compile",
-				// 	Dir:         dir,
-				// })
 				modules = append(modules, module.Module{
-					Name:        name,
+					Name:        filepath.Join(name, project),
 					Type:        pkg.Gradle,
 					BuildTarget: dir,
+					Dir:         dir,
 					Options: map[string]interface{}{
 						"project": project,
 					},
@@ -138,30 +132,31 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		Dir:    m.Dir,
 		Online: a.Options.Online,
 	}
+	var imports []gradle.Dependency
 	var deps map[gradle.Dependency][]gradle.Dependency
 	var err error
 	if a.Options.Task != "" {
-		deps, err = g.DependenciesTask(strings.Split(a.Options.Task, " ")...)
+		imports, deps, err = g.DependenciesTask(strings.Split(a.Options.Task, " ")...)
 		if err != nil {
 			return m, err
 		}
 	} else if a.Options.Project != "" {
-		deps, err = g.Dependencies(a.Options.Project, a.Options.Configuration)
+		imports, deps, err = g.Dependencies(a.Options.Project, a.Options.Configuration)
 		if err != nil {
 			return m, err
 		}
 	} else {
 		targets := strings.Split(m.BuildTarget, ":")
-		deps, err = g.Dependencies(targets[0], targets[1])
+		imports, deps, err = g.Dependencies(targets[0], targets[1])
 		if err != nil {
 			return m, err
 		}
 	}
 
 	// Set direct dependencies.
-	var imports []pkg.Import
-	for _, dep := range deps[gradle.Root] {
-		imports = append(imports, pkg.Import{
+	var i []pkg.Import
+	for _, dep := range imports {
+		i = append(i, pkg.Import{
 			Target: dep.Target,
 			Resolved: pkg.ID{
 				Type:     pkg.Gradle,
@@ -200,7 +195,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		}
 	}
 
-	m.Imports = imports
+	m.Imports = i
 	m.Deps = graph
 	return m, nil
 }

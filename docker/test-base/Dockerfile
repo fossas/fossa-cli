@@ -94,3 +94,8 @@ RUN git clone --depth=1 https://github.com/hibernate/hibernate-orm && \
 RUN git clone --depth=1 https://github.com/fossas/bower-example-project && \
     cd bower-example-project && \
     bower install --production
+
+# Known good PHP projects:
+RUN git clone --depth=1 https://github.com/Sylius/Sylius && \
+    cd Sylius && \
+    composer install --prefer-dist --no-dev --no-plugins --no-scripts

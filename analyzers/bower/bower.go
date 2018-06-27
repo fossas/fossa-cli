@@ -28,6 +28,11 @@ type Analyzer struct {
 	Options Options
 }
 
+// TODO: strategies:
+// - bower list
+// - read components
+// - read manifest
+
 type Options struct {
 	Strategy      string `mapstructure:"strategy"`
 	ComponentsDir string `mapstructure:"components"`

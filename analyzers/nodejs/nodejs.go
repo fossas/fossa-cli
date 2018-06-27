@@ -255,6 +255,8 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	return m, nil
 }
 
+// TODO: implement this generically in package graph (Bower also has an
+// implementation)
 func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p npm.Output) {
 	for name, dep := range p.Dependencies {
 		// Construct ID.
