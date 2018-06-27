@@ -1,200 +1,68 @@
+// Package bower implements analyzers for the Bower package manager.
+//
+// A `BuildTarget` for bower is the path to the `bower.json` of a project.
 package bower
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
-	"github.com/fossas/fossa-cli/builders/builderutil"
+	"github.com/fossas/fossa-cli/buildtools/bower"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
-type ConfigFile struct {
-	Cwd       string `json:"cwd"`
-	Directory string `json:"directory"`
-	Registry  string `json:"registry"`
-}
-
 type Analyzer struct {
-	NodeCmd     string
-	NodeVersion string
-
 	BowerCmd     string
 	BowerVersion string
+
+	Bower bower.Bower
 
 	Options Options
 }
 
 type Options struct {
-	ComponentsDir string `mapstructure:"components-dir"`
+	Strategy      string `mapstructure:"strategy"`
+	ComponentsDir string `mapstructure:"components"`
 }
 
-// Initialize collects metadata on Node and Bower binaries
-func (builder *Analyzer) Initialize() error {
-	log.Logger.Debug("Initializing Bower builder...")
-
-	// Set Node context variables
-	nodeCmd, nodeVersion, err := exec.Which("-v", os.Getenv("NODE_BINARY"), "node", "nodejs")
-	if err != nil {
-		log.Logger.Warningf("Could not find Node binary (try setting $NODE_BINARY): %s", err.Error())
-	}
-	builder.NodeCmd = nodeCmd
-	builder.NodeVersion = nodeVersion
-
+func New(opts map[string]interface{}) (*Analyzer, error) {
+	log.Logger.Debug("%#v", opts)
 	// Set Bower context variables
 	bowerCmd, bowerVersion, err := exec.Which("-v", os.Getenv("BOWER_BINARY"), "bower")
 	if err != nil {
-		return errors.Wrap(err, "could not find Bower binary (try setting $BOWER_BINARY)")
-	}
-	builder.BowerCmd = bowerCmd
-	builder.BowerVersion = bowerVersion
-
-	log.Logger.Debugf("Done initializing Bower builder: %#v", builder)
-	return nil
-}
-
-// Build runs `bower install --production` and cleans with `rm -rf bower_components`
-func (builder *Analyzer) Build(m module.Module, force bool) error {
-	log.Logger.Debugf("Running Bower build: %#v", m, force)
-
-	if force {
-		_, _, err := exec.Run(exec.Cmd{Dir: m.Dir, Name: "rm", Argv: []string{"-rf", "bower_components"}})
-		if err != nil {
-			return fmt.Errorf("could not remove Bower cache: %s", err.Error())
-		}
+		return nil, errors.Wrap(err, "could not find Bower binary (try setting $BOWER_BINARY)")
 	}
 
-	_, _, err := exec.Run(exec.Cmd{Dir: m.Dir, Name: builder.BowerCmd, Argv: []string{"install", "--production"}})
+	// Decode options
+	var options Options
+	err = mapstructure.Decode(opts, &options)
 	if err != nil {
-		return fmt.Errorf("could not run Bower build: %s", err.Error())
+		return nil, err
 	}
 
-	log.Logger.Debug("Done running Bower build.")
-	return nil
-}
+	analyzer := Analyzer{
+		BowerCmd:     bowerCmd,
+		BowerVersion: bowerVersion,
 
-type bowerListManifest struct {
-	PkgMeta struct {
-		Name    string
-		Version string
-	}
-	Dependencies map[string]bowerListManifest
-}
-
-type bowerJSONManifest struct {
-	Name    string
-	Version string
-}
-
-func normalizeBowerComponents(parent module.ImportPath, c bowerListManifest) []builderutil.Imported {
-	var deps []builderutil.Imported
-	for _, dep := range c.Dependencies {
-		deps = append(
-			deps,
-			normalizeBowerComponents(
-				append(parent, module.Locator{
-					Fetcher:  "bower",
-					Project:  c.PkgMeta.Name,
-					Revision: c.PkgMeta.Version,
-				}),
-				dep,
-			)...)
+		Options: options,
 	}
 
-	return append(deps, builderutil.Imported{
-		Locator: module.Locator{
-			Fetcher:  "bower",
-			Project:  c.PkgMeta.Name,
-			Revision: c.PkgMeta.Version,
-		},
-		From: append(module.ImportPath{}, parent...),
-	})
+	log.Logger.Debugf("analyzer: %#v", analyzer)
+	return &analyzer, nil
 }
 
-// Analyze reads the output of `bower ls --json`
-// TODO: fall back to old method of reading `bower_components/*/.bower.json`s?
-func (builder *Analyzer) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	log.Logger.Debugf("Running Bower analysis: %#v %#v", m, allowUnresolved)
-
-	stdout, _, err := exec.Run(exec.Cmd{Dir: m.Dir, Name: "bower", Argv: []string{"ls", "--json"}})
-	if err != nil {
-		return nil, errors.Wrap(err, "could not run `bower ls --json`")
-	}
-
-	var output bowerListManifest
-	err = json.Unmarshal([]byte(stdout), &output)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not parse `bower ls --json` output")
-	}
-
-	var depList []builderutil.Imported
-	for _, dep := range output.Dependencies {
-		depList = append(
-			depList,
-			normalizeBowerComponents(
-				[]module.Locator{
-					module.Locator{
-						Fetcher:  "root",
-						Project:  "root", // TODO: This should be the project name, we'll need to pass that in via the module
-						Revision: "root",
-					},
-				},
-				dep,
-			)...,
-		)
-	}
-	deps := builderutil.ComputeImportPaths(depList)
-
-	log.Logger.Debugf("Done running Bower analysis: %#v", deps)
-	return deps, nil
-}
-
-// resolveBowerComponentsDirectory resolves a component dir from a `.bowerrc` file, falling back to `bower_components`
-func resolveBowerComponentsDirectory(dir string) string {
-	bowerConfigPath := filepath.Join(dir, ".bowerrc")
-	bowerComponentsPath := filepath.Join(dir, "bower_components")
-
-	if bowerConfigExists, err := files.Exists(bowerConfigPath); err == nil && bowerConfigExists {
-		var bowerConfiguration Configuration
-		files.ReadJSON(&bowerConfiguration, bowerConfigPath)
-
-		if bowerConfiguration.Directory != "" {
-			bowerComponentsPath = bowerConfiguration.Directory
-		}
-	}
-
-	return bowerComponentsPath
-}
-
-// IsBuilt checks for the existence of `$PROJECT/bower_components`
-func (builder *Analyzer) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
-	log.Logger.Debug("Checking Bower build: %#v %#v", m, allowUnresolved)
-
-	// TODO: Check if the installed modules are consistent with what's in the
-	// actual manifest.
-	isBuilt, err := files.ExistsFolder(resolveBowerComponentsDirectory(m.Dir))
-	if err != nil {
-		return false, err
-	}
-
-	log.Logger.Debugf("Done checking Bower build: %#v", isBuilt)
-	return isBuilt, nil
-}
-
-// IsModule is not implemented
-func (builder *Analyzer) IsModule(target string) (bool, error) {
-	return false, errors.New("IsModule is not implemented for Analyzer")
-}
-
-// DiscoverModules finds any bower.json modules not in node_modules or bower_components folders
-func (builder *Analyzer) DiscoverModules(dir string) ([]module.Config, error) {
-	var moduleConfigs []module.Config
+// Discover finds any `bower.json`s not in `node_modules` or `bower_components`
+// folders.
+func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
+	var moduleConfigs []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.Logger.Debugf("Failed to access path %s: %s", path, err.Error())
@@ -207,19 +75,21 @@ func (builder *Analyzer) DiscoverModules(dir string) ([]module.Config, error) {
 		}
 
 		if !info.IsDir() && info.Name() == "bower.json" {
-			moduleName := filepath.Base(filepath.Dir(path))
+			dir := filepath.Dir(path)
+			name := filepath.Base(dir)
 
-			// Parse from bower.json and set moduleName if successful
-			var manifest bowerJSONManifest
-			if err := files.ReadJSON(&manifest, path); err == nil {
-				moduleName = manifest.Name
+			// Parse from bower.json and set name if successful
+			manifest, err := bower.ReadManifest(path)
+			if err == nil {
+				name = manifest.Name
 			}
 
-			log.Logger.Debugf("Found Bower package: %s (%s)", path, moduleName)
-			moduleConfigs = append(moduleConfigs, module.Config{
-				Name: moduleName,
-				Path: path,
-				Type: string(module.Bower),
+			log.Logger.Debugf("Found Bower package: %s (%s)", path, name)
+			moduleConfigs = append(moduleConfigs, module.Module{
+				Name:        name,
+				Type:        pkg.Bower,
+				BuildTarget: path,
+				Dir:         dir,
 			})
 		}
 		return nil
@@ -230,4 +100,108 @@ func (builder *Analyzer) DiscoverModules(dir string) ([]module.Config, error) {
 	}
 
 	return moduleConfigs, nil
+}
+
+func (a *Analyzer) Clean(m module.Module) error {
+	// TODO: this is an example of when analyzer.New should take a module.
+	b, err := bower.New(a.BowerCmd, m.Dir)
+	if err != nil {
+		return err
+	}
+	return b.Clean()
+}
+
+// Build runs `bower install --production`
+func (a *Analyzer) Build(m module.Module) error {
+	b, err := bower.New(a.BowerCmd, m.Dir)
+	if err != nil {
+		return err
+	}
+	return b.Install(true)
+}
+
+// IsBuilt checks for the existence of a components folder.
+func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
+	config, err := bower.ReadConfig(m.Dir)
+	if err != nil {
+		return false, err
+	}
+	// TODO: Check if the installed modules are consistent with what's in the
+	// actual manifest.
+	isBuilt, err := files.ExistsFolder(config.Directory)
+	if err != nil {
+		return false, err
+	}
+
+	log.Logger.Debugf("Done checking Bower build: %#v", isBuilt)
+	return isBuilt, nil
+}
+
+func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
+	b, err := bower.New(a.BowerCmd, m.Dir)
+	if err != nil {
+		return m, err
+	}
+
+	p, err := b.List()
+	if err != nil {
+		return m, err
+	}
+
+	var imports []pkg.Import
+	for _, dep := range p.Dependencies {
+		imports = append(imports, pkg.Import{
+			Target: dep.PkgMeta.TargetName + "@" + dep.PkgMeta.TargetVersion,
+			Resolved: pkg.ID{
+				Type:     pkg.Bower,
+				Name:     dep.PkgMeta.Name,
+				Revision: dep.PkgMeta.Version,
+				Location: dep.Endpoint.Source,
+			},
+		})
+	}
+
+	graph := make(map[pkg.ID]pkg.Package)
+	recurseDeps(graph, p)
+
+	m.Imports = imports
+	m.Deps = graph
+	return m, err
+}
+
+func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p bower.Package) {
+	for name, dep := range p.Dependencies {
+		// Construct ID.
+		id := pkg.ID{
+			Type:     pkg.Bower,
+			Name:     name,
+			Revision: dep.PkgMeta.Version,
+			Location: dep.Endpoint.Source,
+		}
+		// Don't process duplicates.
+		_, ok := pkgMap[id]
+		if ok {
+			continue
+		}
+		// Get direct imports.
+		var imports []pkg.Import
+		for name, i := range p.Dependencies {
+			imports = append(imports, pkg.Import{
+				Target: i.PkgMeta.TargetName + "@" + i.PkgMeta.TargetVersion,
+				Resolved: pkg.ID{
+					Type:     pkg.Bower,
+					Name:     name,
+					Revision: i.PkgMeta.Version,
+					Location: i.Endpoint.Source,
+				},
+			})
+		}
+		// Update map.
+		pkgMap[id] = pkg.Package{
+			ID:      id,
+			Imports: imports,
+		}
+		// Recurse in imports.
+		recurseDeps(pkgMap, dep)
+	}
 }

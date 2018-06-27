@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	Overwrite  = "overwrite"
+	Update     = "update"
 	IncludeAll = "include-all"
 )
 
@@ -27,7 +27,7 @@ var Cmd = cli.Command{
 	Usage:  "Initialize a .fossa.yml configuration file",
 	Action: Run,
 	Flags: flags.WithGlobalFlags([]cli.Flag{
-		cli.BoolFlag{Name: flags.ShortUpper(Overwrite), Usage: "overwrite modules in config even if they exist"},
+		cli.BoolFlag{Name: Update, Usage: "update an existing configuration file"},
 		cli.BoolFlag{Name: IncludeAll, Usage: "include suspicious modules (e.g. `docs`, `test` or `example` in name)"},
 	}),
 }
@@ -39,7 +39,7 @@ func Run(ctx *cli.Context) error {
 	if err != nil {
 		log.Logger.Fatalf("Could not initialize: %s", err.Error())
 	}
-	modules, err := Do(ctx.Bool(Overwrite), ctx.Bool(IncludeAll))
+	modules, err := Do(ctx.Bool(Update), ctx.Bool(IncludeAll))
 	if err != nil {
 		log.Logger.Fatalf("Could not run init: %s", err.Error())
 	}
@@ -51,7 +51,7 @@ func Run(ctx *cli.Context) error {
 }
 
 // Do discovers modules within the current working directory.
-func Do(overwrite, includeAll bool) ([]module.Module, error) {
+func Do(update, includeAll bool) ([]module.Module, error) {
 	defer log.StopSpinner()
 	log.ShowSpinner("Initializing...")
 
@@ -69,6 +69,8 @@ func Do(overwrite, includeAll bool) ([]module.Module, error) {
 		}
 		discovered = append(discovered, modules...)
 	}
+
+	// TODO: Check whether modules were previously ignored.
 
 	// Filter noisy modules (docs, examples, etc.).
 	if includeAll {

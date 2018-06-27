@@ -4,6 +4,7 @@ package analyzers
 import (
 	"errors"
 
+	"github.com/fossas/fossa-cli/analyzers/bower"
 	"github.com/fossas/fossa-cli/analyzers/golang"
 	"github.com/fossas/fossa-cli/analyzers/gradle"
 	"github.com/fossas/fossa-cli/analyzers/nodejs"
@@ -25,12 +26,17 @@ type Analyzer interface {
 	Discover(dir string) ([]module.Module, error) // Finds modules in a given directory.
 
 	// These methods all make best-effort attempts.
-	Clean(config module.Module) error           // Cleans build artifacts.
-	Build(config module.Module) error           // Builds the module.
-	IsBuilt(config module.Module) (bool, error) // Checks whether a module has been built.
+	Clean(m module.Module) error           // Cleans build artifacts.
+	Build(m module.Module) error           // Builds the module.
+	IsBuilt(m module.Module) (bool, error) // Checks whether a module has been built.
 
-	Analyze(config module.Module) (module.Module, error) // Runs an analysis of a module.
+	Analyze(m module.Module) (module.Module, error) // Runs an analysis of a module.
 }
+
+// TODO: it probably makes more sense for analyzers to contain a module (because
+// some analyzer.New() methods work better with e.g. m.Dir or m.BuildTarget for
+// setting up tools -- alternatively, they'd need an a.Initialize(m)), and for
+// Discover to be implemented separately.
 
 // New returns the analyzer for any given package type.
 func New(key pkg.Type, options map[string]interface{}) (Analyzer, error) {
@@ -38,7 +44,7 @@ func New(key pkg.Type, options map[string]interface{}) (Analyzer, error) {
 	case pkg.Ant:
 		return nil, ErrAnalyzerNotImplemented
 	case pkg.Bower:
-		return nil, ErrAnalyzerNotImplemented
+		return bower.New(options)
 	case pkg.Cocoapods:
 		return nil, ErrAnalyzerNotImplemented
 	case pkg.Composer:

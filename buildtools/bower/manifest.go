@@ -1,14 +1,23 @@
 package bower
 
-import "github.com/fossas/fossa-cli/errutil"
+import (
+	"github.com/fossas/fossa-cli/errutil"
+	"github.com/fossas/fossa-cli/files"
+)
 
-type Import struct {
-	Name    string
-	Version string
+type Manifest struct {
+	Name            string
+	DevDependencies map[string]string
+	Dependencies    map[string]string
 }
 
-func FromManifest(filename string) ([]Import, error) {
-	return nil, errutil.ErrNotImplemented
+func ReadManifest(filename string) (Manifest, error) {
+	var manifest Manifest
+	err := files.ReadJSON(&manifest, filename)
+	if err != nil {
+		return Manifest{}, err
+	}
+	return manifest, nil
 }
 
 func FromComponents(dir string) ([]Package, error) {

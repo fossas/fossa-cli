@@ -4,6 +4,8 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"github.com/fossas/fossa-cli/errutil"
+
 	yaml "gopkg.in/yaml.v2"
 
 	v1 "github.com/fossas/fossa-cli/config/file.v1"
@@ -67,10 +69,12 @@ func InitFile(modules []module.Module) error {
 	var configs []v1.ModuleProperties
 	for _, m := range modules {
 		configs = append(configs, v1.ModuleProperties{
-			Name:    m.Name,
-			Path:    m.BuildTarget,
-			Type:    m.Type.String(),
-			Options: m.Options,
+			Name:        m.Name,
+			Type:        m.Type.String(),
+			BuildTarget: m.BuildTarget,
+			Path:        m.Dir,
+			Options:     m.Options,
+			Ignore:      m.Ignore,
 		})
 	}
 
@@ -101,4 +105,8 @@ func InitFile(modules []module.Module) error {
 			"",
 		}, "\n"))
 	return ioutil.WriteFile(Filepath(), append(configHeader, data...), 0777)
+}
+
+func UpdateFile(modules []module.Module) error {
+	return errutil.ErrNotImplemented
 }

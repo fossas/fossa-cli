@@ -39,10 +39,12 @@ type AnalyzeProperties struct {
 }
 
 type ModuleProperties struct {
-	Name    string                 `yaml:"name"`
-	Path    string                 `yaml:"path"`
-	Type    string                 `yaml:"type"`
-	Options map[string]interface{} `yaml:"options,omitempty"`
+	Name        string                 `yaml:"name"`
+	Ignore      bool                   `yaml:"ignore,omitempty"`
+	Type        string                 `yaml:"type"`
+	BuildTarget string                 `yaml:"target,omitempty"`
+	Path        string                 `yaml:"path"`
+	Options     map[string]interface{} `yaml:"options,omitempty"`
 }
 
 func New(data []byte) (File, error) {
@@ -73,12 +75,18 @@ func New(data []byte) (File, error) {
 			return File{}, errors.Wrapf(err, "could not parse module type %s", config.Type)
 		}
 
+		target := config.BuildTarget
+		if target == "" {
+			target = config.Path
+		}
+
 		file.modules = append(file.modules, module.Module{
 			Name:        config.Name,
 			Type:        t,
-			BuildTarget: config.Path,
+			BuildTarget: target,
 			Dir:         config.Path,
 			Options:     config.Options,
+			Ignore:      config.Ignore,
 		})
 	}
 

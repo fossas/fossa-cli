@@ -89,3 +89,8 @@ RUN git clone --depth=1 https://github.com/hashicorp/vagrant && \
 RUN git clone --depth=1 https://github.com/hibernate/hibernate-orm && \
     cd hibernate-orm && \
     bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && ./gradlew"
+
+# Known good Bower projects:
+RUN git clone --depth=1 https://github.com/fossas/bower-example-project && \
+    cd bower-example-project && \
+    bower install --production
