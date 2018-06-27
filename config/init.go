@@ -45,6 +45,7 @@ func New(c *cli.Context) (CLIConfig, error) {
 		APIKey:         c.String("api_key"),
 		Fetcher:        c.String("fetcher"),
 		Project:        c.String("project"),
+		Branch:         c.String("branch"),
 		Revision:       c.String("revision"),
 		Endpoint:       c.String("endpoint"),
 		Modules:        modules,
@@ -87,6 +88,9 @@ func New(c *cli.Context) (CLIConfig, error) {
 
 	if config.Project == "" {
 		config.Project = configFile.CLI.Project
+	}
+	if config.Branch == "" {
+		config.Branch = configFile.CLI.Branch
 	}
 	if config.Revision == "" {
 		config.Revision = configFile.CLI.Revision

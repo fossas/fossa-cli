@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
-	"github.com/fossas/fossa-cli/module"
 	git "gopkg.in/src-d/go-git.v4"
 	yaml "gopkg.in/yaml.v2"
+
+	"github.com/fossas/fossa-cli/module"
 )
 
 type configFileV1 struct {
@@ -22,6 +24,7 @@ type configFileCLIV1 struct {
 	APIKey   string `yaml:"api_key,omitempty"`
 	Server   string `yaml:"server,omitempty"`
 	Project  string `yaml:"project,omitempty"`
+	Branch   string `yaml:"branch,omitempty"`
 	Revision string `yaml:"revision,omitempty"`
 	Fetcher  string `yaml:"fetcher,omitempty"` // fetcher defaults to custom
 }
@@ -94,24 +97,27 @@ func setDefaultValues(c configFileV1) (configFileV1, error) {
 	}
 
 	// Infer default locator and project from `git`.
-	if c.CLI.Project == "" || c.CLI.Revision == "" {
+	if c.CLI.Project == "" || c.CLI.Revision == "" || c.CLI.Branch == "" {
 		// TODO: this needs to happen in the module directory, not the working
 		// directory
 		repo, err := git.PlainOpen(".")
 		if err == nil {
-			project := c.CLI.Project
-			if project == "" {
+			if c.CLI.Project == "" {
 				origin, err := repo.Remote("origin")
 				if err == nil && origin != nil {
-					project = origin.Config().URLs[0]
-					c.CLI.Project = project
+					c.CLI.Project = origin.Config().URLs[0]
 				}
 			}
-			revision := c.CLI.Revision
-			if revision == "" {
+			if c.CLI.Revision == "" {
 				revision, err := repo.Head()
 				if err == nil {
 					c.CLI.Revision = revision.Hash().String()
+				}
+			}
+			if c.CLI.Branch == "" {
+				revision, err := repo.Head()
+				if err == nil {
+					c.CLI.Branch = strings.TrimPrefix(string(revision.Name()), "refs/heads/")
 				}
 			}
 		}

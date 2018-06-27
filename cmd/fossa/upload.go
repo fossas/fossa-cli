@@ -152,14 +152,19 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 
 	analysisLogger.Debugf("Uploading build data from (%#v) modules: %#v", len(results), string(buildData))
 
-	fossaEndpoint := "/api/builds/custom?locator=" + url.QueryEscape(string(module.MakeLocator(conf.Fetcher, conf.Project, conf.Revision))) + "&v=" + version
+	branch := "master"
+	if conf.Branch != "" {
+		branch = conf.Branch
+	}
+
+	fossaEndpoint := "/api/builds/custom?locator=" + url.QueryEscape(string(module.MakeLocator(conf.Fetcher, conf.Project, conf.Revision))) + "&branch=" + url.QueryEscape(branch) + "&v=" + url.QueryEscape(version)
 	if conf.Fetcher == "custom" {
 		defaultProjectTitle := results[0].Name
 		cwd, _ := filepath.Abs(".")
 		if cwd != "" {
 			defaultProjectTitle = filepath.Base(cwd)
 		}
-		fossaEndpoint += fmt.Sprintf("&managedBuild=true&title=%s", url.PathEscape(defaultProjectTitle))
+		fossaEndpoint += fmt.Sprintf("&managedBuild=true&title=%s", url.QueryEscape(defaultProjectTitle))
 	}
 
 	postRef, _ := url.Parse(fossaEndpoint)
@@ -185,7 +190,7 @@ func doUpload(conf config.CLIConfig, results []normalizedModule) (string, error)
 		return "", fmt.Errorf("invalid response, but build was uploaded")
 	}
 	locParts := strings.Split(jsonResponse["locator"].(string), "$")
-	getRef, _ := url.Parse("/projects/" + url.QueryEscape(locParts[0]) + "/refs/branch/master/" + url.QueryEscape(locParts[1]) + "/browse/dependencies")
+	getRef, _ := url.Parse("/projects/" + url.QueryEscape(locParts[0]) + "/refs/branch/" + url.QueryEscape(conf.Branch) + "/" + url.QueryEscape(locParts[1]) + "/browse/dependencies")
 	return fmt.Sprint(`
 ============================================================
 

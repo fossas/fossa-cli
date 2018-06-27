@@ -27,6 +27,7 @@ const (
 	configUsage               = "path to config file (default: .fossa.{yml,yaml})"
 	fetcherUsage              = "type of fetcher to use for fossa. Default's to custom"
 	projectUsage              = "this repository's URL or VCS endpoint (default: VCS remote 'origin')"
+	branchUsage               = "this repository's branch (default: current VCS branch)"
 	revisionUsage             = "this repository's current revision hash (default: VCS hash HEAD)"
 	endpointUsage             = "the FOSSA server endpoint (default: https://app.fossa.io)"
 	buildForceUsage           = "ignore cached build artifacts"
@@ -45,6 +46,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{Name: "c, config", Usage: configUsage},
 		cli.StringFlag{Name: "p, project", Usage: projectUsage},
+		cli.StringFlag{Name: "branch", Usage: branchUsage},
 		cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 		cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
 		cli.StringFlag{Name: "m, modules", Usage: "the modules to build and analyze"},
@@ -87,6 +89,7 @@ func main() {
 				cli.StringFlag{Name: "c, config", Usage: configUsage},
 				cli.StringFlag{Name: "fetcher", Usage: fetcherUsage},
 				cli.StringFlag{Name: "p, project", Usage: projectUsage},
+				cli.StringFlag{Name: "branch", Usage: branchUsage},
 				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
 				cli.StringFlag{Name: "m, modules", Usage: "the modules to analyze"},
@@ -103,6 +106,7 @@ func main() {
 				cli.StringFlag{Name: "c, config", Usage: configUsage},
 				cli.StringFlag{Name: "fetcher", Usage: fetcherUsage},
 				cli.StringFlag{Name: "p, project", Usage: projectUsage},
+				cli.StringFlag{Name: "branch", Usage: branchUsage},
 				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
 				cli.IntFlag{Name: "t, timeout", Usage: "timeout for waiting for build status in seconds", Value: 60 * 10},
@@ -117,6 +121,7 @@ func main() {
 				cli.StringFlag{Name: "c, config", Usage: configUsage},
 				cli.StringFlag{Name: "fetcher", Usage: fetcherUsage},
 				cli.StringFlag{Name: "p, project", Usage: projectUsage},
+				cli.StringFlag{Name: "branch", Usage: branchUsage},
 				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
 				cli.BoolFlag{Name: "l, locators", Usage: "upload data in locator format instead of JSON"},
@@ -140,6 +145,7 @@ func main() {
 				cli.StringFlag{Name: "c, config", Usage: configUsage},
 				cli.StringFlag{Name: "fetcher", Usage: fetcherUsage},
 				cli.StringFlag{Name: "p, project", Usage: projectUsage},
+				cli.StringFlag{Name: "branch", Usage: branchUsage},
 				cli.StringFlag{Name: "r, revision", Usage: revisionUsage},
 				cli.StringFlag{Name: "e, endpoint", Usage: endpointUsage},
 				cli.BoolFlag{Name: "allow-unresolved", Usage: analyzeAllowResolvedUsage},

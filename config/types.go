@@ -47,6 +47,7 @@ type CLIConfig struct {
 	APIKey   string
 	Fetcher  string
 	Project  string
+	Branch   string
 	Revision string
 	Endpoint string
 	Modules  []module.Config
