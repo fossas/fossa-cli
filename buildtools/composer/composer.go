@@ -9,7 +9,6 @@ import (
 
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/log"
 )
 
@@ -26,6 +25,8 @@ type Package struct {
 type Show struct {
 	Installed []Package
 }
+
+//go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Package' | sed -e 's/package graph/package composer/' > readtree_generated.go"
 
 func (c *Composer) Dependencies(dir string) ([]Package, map[Package][]Package, error) {
 	// Run `composer show --format=json --no-ansi` to get resolved versions
@@ -49,16 +50,20 @@ func (c *Composer) Dependencies(dir string) ([]Package, map[Package][]Package, e
 		return nil, nil, errors.Wrap(err, "could not get dependency list from Composer")
 	}
 
-	result, err := graph.ReadTree(treeOutput, func(line string) (int, interface{}, error) {
-		// Skip empty lines.
-		if line == "" {
-			return -1, nil, graph.ErrSkipLine
+	// Skip empty lines.
+	var filteredLines []string
+	for _, line := range strings.Split(treeOutput, "\n") {
+		if line != "" {
+			filteredLines = append(filteredLines, line)
 		}
+	}
 
+	imports, graph, err := ReadPackageTree(strings.Join(filteredLines, "\n"), func(line string) (int, Package, error) {
 		if line[0] != '`' && line[0] != '|' && line[0] != ' ' {
 			// We're at a top-level package.
 			sections := strings.Split(line, " ")
 			name := sections[0]
+			log.Logger.Debugf("DIRECT %#v", name)
 			return 1, pkgMap[name], nil
 		}
 
@@ -71,26 +76,26 @@ func (c *Composer) Dependencies(dir string) ([]Package, map[Package][]Package, e
 			// Sanity check
 			log.Logger.Panicf("Bad depth: %#v %s %#v", depth, line, matches)
 		}
+		level := depth/3 + 1
+		log.Logger.Debugf("%#v %#v", level, name)
 
-		// Skip PHP runtime dependencies (these are always leaves)
-		if matches[2] == "php" {
-			return -1, nil, graph.ErrSkipLine
+		// Resolve special names
+		if name == "php" || strings.HasPrefix(name, "ext-") {
+			return level, Package{Name: name}, nil
 		}
 
-		return depth/3 + 1, pkgMap[name], nil
+		p, ok := pkgMap[name]
+		if !ok {
+			log.Logger.Warningf("Could not resolve: %#v", name)
+			return level, Package{Name: name}, nil
+		}
+		return level, p, nil
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var imports []Package
-	g := make(map[Package][]Package)
-
-	err = graph.Unwrap(&imports, &g, result)
-	if err != nil {
-		return nil, nil, err
-	}
-	return imports, g, nil
+	return imports, graph, nil
 }
 
 func (c *Composer) Show(dir string) (Show, error) {

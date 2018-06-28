@@ -169,10 +169,6 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	// Set transitive dependencies.
 	graph := make(map[pkg.ID]pkg.Package)
 	for parent, children := range deps {
-		if parent == gradle.Root {
-			continue
-		}
-
 		id := pkg.ID{
 			Type:     pkg.Gradle,
 			Name:     parent.Name,

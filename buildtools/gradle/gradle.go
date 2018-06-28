@@ -9,7 +9,6 @@ import (
 
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/log"
 )
 
@@ -81,23 +80,26 @@ func (g *Gradle) Run(taskArgs ...string) (string, error) {
 	return stdout, nil
 }
 
-var Root = Dependency{}
+//go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package gradle/' > readtree_generated.go"
 
 func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency, error) {
-	result, err := graph.ReadTree(stdout, func(line string) (int, interface{}, error) {
-		r := regexp.MustCompile("^([ `+\\\\|-]+)([^ `+\\\\|-].+)$")
+	r := regexp.MustCompile("^([ `+\\\\|-]+)([^ `+\\\\|-].+)$")
 
-		// Skip non-dependency lines.
-		if !r.MatchString(line) {
-			return -1, nil, graph.ErrSkipLine
+	// Skip non-dependency lines.
+	var filteredLines []string
+	for _, line := range strings.Split(stdout, "\n") {
+		if r.MatchString(line) {
+			filteredLines = append(filteredLines, line)
 		}
+	}
 
+	imports, graph, err := ReadDependencyTree(strings.Join(filteredLines, "\n"), func(line string) (int, Dependency, error) {
 		// Match line.
 		matches := r.FindStringSubmatch(line)
 		depth := len(matches[1])
 		if depth%5 != 0 {
 			// Sanity check.
-			return -1, nil, errors.Errorf("bad depth: %#v %s %#v", depth, line, matches)
+			return -1, Dependency{}, errors.Errorf("bad depth: %#v %s %#v", depth, line, matches)
 		}
 
 		// Parse dependency.
@@ -134,14 +136,7 @@ func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency
 		return nil, nil, err
 	}
 
-	var imports []Dependency
-	g := make(map[Dependency][]Dependency)
-
-	err = graph.Unwrap(&imports, &g, result)
-	if err != nil {
-		return nil, nil, err
-	}
-	return imports, g, nil
+	return imports, graph, nil
 }
 
 func Cmd(dir string) (string, error) {

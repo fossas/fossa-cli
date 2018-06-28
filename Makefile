@@ -1,9 +1,9 @@
 BIN="$(shell go env GOPATH)/bin"
 DEP="$(BIN)/dep"
 GO_BINDATA="$(BIN)/go-bindata"
-STRINGER="$(BIN)/stringer"
+GENNY="$(BIN)/genny"
 PREFIX?=/usr/local/bin
-LDFLAGS:=-ldflags '-X github.com/fossas/fossa-cli/cmd/fossa/version.version=$(shell git rev-parse --abbrev-ref HEAD) -X github.com/fossas/fossa-cli/cmd/fossa/version.commit=$(shell git rev-parse HEAD) -X "github.com/fossas/fossa-cli/cmd/fossa/version.goversion=$(shell go version)" -X github.com/fossas/fossa-cli/cmd/fossa/version.buildType=development'
+LDFLAGS:=-ldflags '-extldflags "-static" -X github.com/fossas/fossa-cli/cmd/fossa/version.version=$(shell git rev-parse --abbrev-ref HEAD) -X github.com/fossas/fossa-cli/cmd/fossa/version.commit=$(shell git rev-parse HEAD) -X "github.com/fossas/fossa-cli/cmd/fossa/version.goversion=$(shell go version)" -X github.com/fossas/fossa-cli/cmd/fossa/version.buildType=development'
 
 all: build
 
@@ -14,14 +14,14 @@ $(DEP):
 $(GO_BINDATA):
 	[ -f $@ ] || go get -u github.com/go-bindata/go-bindata/...
 
-$(STRINGER):
-	[ -f $@ ] || go get -u golang.org/x/tools/cmd/stringer
+$(GENNY):
+	[ -f $@ ] || go get -u github.com/cheekybits/genny
 
 # Building the CLI.
 .PHONY: build
 build: $(BIN)/fossa
 
-$(BIN)/fossa: $(GO_BINDATA) $(STRINGER)
+$(BIN)/fossa: $(GO_BINDATA) $(GENNY)
 	go generate ./...
 	go build -o $@ $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
 
