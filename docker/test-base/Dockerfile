@@ -90,6 +90,12 @@ RUN git clone --depth=1 https://github.com/hibernate/hibernate-orm && \
     cd hibernate-orm && \
     bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && ./gradlew"
 
+RUN git clone --depth=1 https://github.com/google/iosched && \
+    cd iosched && \
+    bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && \
+    yes | sdkmanager --licenses && \
+    ./gradlew"
+
 # Known good Bower projects:
 RUN git clone --depth=1 https://github.com/fossas/bower-example-project && \
     cd bower-example-project && \
@@ -99,3 +105,8 @@ RUN git clone --depth=1 https://github.com/fossas/bower-example-project && \
 RUN git clone --depth=1 https://github.com/Sylius/Sylius && \
     cd Sylius && \
     composer install --prefer-dist --no-dev --no-plugins --no-scripts
+
+# Known good Maven projects:
+RUN git clone --depth=1 https://github.com/apache/hadoop && \
+    cd hadoop && \
+    bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && mvn dependency:resolve"

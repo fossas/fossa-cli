@@ -4,17 +4,15 @@
 
 package gradle
 
-import "strings"
-
 // level is 1-indexed
 type LineParser func(line string) (level int, node Dependency, err error)
 
-func ReadDependencyTree(lines string, parser LineParser) ([]Dependency, map[Dependency][]Dependency, error) {
+func ReadDependencyTree(lines []string, parser LineParser) ([]Dependency, map[Dependency][]Dependency, error) {
 	var imports []Dependency
 	edges := make(map[Dependency]map[Dependency]bool)
 	parents := []Dependency{}
 
-	for _, line := range strings.Split(string(lines), "\n") {
+	for _, line := range lines {
 		level, node, err := parser(line)
 		if err != nil {
 			return nil, nil, err

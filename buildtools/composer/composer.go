@@ -58,7 +58,7 @@ func (c *Composer) Dependencies(dir string) ([]Package, map[Package][]Package, e
 		}
 	}
 
-	imports, graph, err := ReadPackageTree(strings.Join(filteredLines, "\n"), func(line string) (int, Package, error) {
+	return ReadPackageTree(filteredLines, func(line string) (int, Package, error) {
 		if line[0] != '`' && line[0] != '|' && line[0] != ' ' {
 			// We're at a top-level package.
 			sections := strings.Split(line, " ")
@@ -91,11 +91,6 @@ func (c *Composer) Dependencies(dir string) ([]Package, map[Package][]Package, e
 		}
 		return level, p, nil
 	})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return imports, graph, nil
 }
 
 func (c *Composer) Show(dir string) (Show, error) {

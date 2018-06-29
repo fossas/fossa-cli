@@ -146,9 +146,22 @@ cat .fossa.yml
 time fossa analyze --output | json
 
 # Test known good Gradle projects:
-echo "Testing hibernate-orm"
 source $HOME/.sdkman/bin/sdkman-init.sh
+## Other testing candidates:
+## - Netflix OSS projects
+## - ReactiveX/RxJava
+## - Spring
+## - Mockito
+## - TryGhost/Ghost-Android
+git clone https://github.com/ReactiveX/RxJava gradle
+echo "Testing hibernate-orm"
 cd $HOME/hibernate-orm
+fossa init
+cat .fossa.yml
+time fossa analyze --output | json
+
+echo "Testing iosched"
+cd $HOME/iosched
 fossa init
 cat .fossa.yml
 time fossa analyze --output | json

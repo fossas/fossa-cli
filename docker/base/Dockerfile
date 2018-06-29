@@ -47,9 +47,9 @@ RUN ["/bin/bash", "-c", "\
 
 # Install Android SDK
 RUN wget https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip -O /tmp/sdk-tools-linux.zip && \
-    sudo unzip /tmp/sdk-tools-linux.zip -d /opt/android-sdk && \
-    sudo chmod -R 775 /opt/android-sdk
-ENV PATH=$PATH:/opt/android-sdk/tools/bin ANDROID_HOME=/opt/android-sdk
+    mkdir -p $HOME/Android/Sdk && \
+    unzip /tmp/sdk-tools-linux.zip -d $HOME/Android/Sdk
+ENV PATH=$PATH:/home/fossa/Android/Sdk/tools/bin ANDROID_HOME=/home/fossa/Android/Sdk
 
 # Install Go compiler
 RUN wget https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz -O /tmp/go.tar.gz && \

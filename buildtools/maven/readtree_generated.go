@@ -2,15 +2,15 @@
 // Any changes will be lost if this file is regenerated.
 // see https://github.com/cheekybits/genny
 
-package composer
+package maven
 
 // level is 1-indexed
-type LineParser func(line string) (level int, node Package, err error)
+type LineParser func(line string) (level int, node Dependency, err error)
 
-func ReadPackageTree(lines []string, parser LineParser) ([]Package, map[Package][]Package, error) {
-	var imports []Package
-	edges := make(map[Package]map[Package]bool)
-	parents := []Package{}
+func ReadDependencyTree(lines []string, parser LineParser) ([]Dependency, map[Dependency][]Dependency, error) {
+	var imports []Dependency
+	edges := make(map[Dependency]map[Dependency]bool)
+	parents := []Dependency{}
 
 	for _, line := range lines {
 		level, node, err := parser(line)
@@ -28,14 +28,14 @@ func ReadPackageTree(lines []string, parser LineParser) ([]Package, map[Package]
 			parent := parents[len(parents)-1]
 			_, ok := edges[parent]
 			if !ok {
-				edges[parent] = make(map[Package]bool)
+				edges[parent] = make(map[Dependency]bool)
 			}
 			edges[parent][node] = true
 		}
 		parents = append(parents, node)
 	}
 
-	graph := make(map[Package][]Package)
+	graph := make(map[Dependency][]Dependency)
 	for parent, children := range edges {
 		for child := range children {
 			graph[parent] = append(graph[parent], child)

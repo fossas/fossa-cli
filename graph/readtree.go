@@ -1,8 +1,6 @@
 package graph
 
 import (
-	"strings"
-
 	"github.com/cheekybits/genny/generic"
 )
 
@@ -11,12 +9,12 @@ type Generic generic.Type
 // level is 1-indexed
 type LineParser func(line string) (level int, node Generic, err error)
 
-func ReadGenericTree(lines string, parser LineParser) ([]Generic, map[Generic][]Generic, error) {
+func ReadGenericTree(lines []string, parser LineParser) ([]Generic, map[Generic][]Generic, error) {
 	var imports []Generic
 	edges := make(map[Generic]map[Generic]bool)
 	parents := []Generic{}
 
-	for _, line := range strings.Split(string(lines), "\n") {
+	for _, line := range lines {
 		level, node, err := parser(line)
 		if err != nil {
 			return nil, nil, err

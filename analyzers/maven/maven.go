@@ -1,269 +1,188 @@
 package maven
 
 import (
-	"encoding/xml"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
-	"github.com/bmatcuk/doublestar"
-
-	"github.com/fossas/fossa-cli/builders/builderutil"
-	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+
+	"github.com/mitchellh/mapstructure"
+	"github.com/pkg/errors"
+
+	"github.com/fossas/fossa-cli/buildtools/maven"
+	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
-// MavenArtifact implements Dependency for Maven builds
-type MavenArtifact struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-}
-
-// Fetcher always returns mvn for MavenArtifact
-func (m MavenArtifact) Fetcher() string {
-	return "mvn"
-}
-
-// Package returns the package spec for MavenArtifact
-func (m MavenArtifact) Package() string {
-	return m.Name
-}
-
-// Revision returns the version spec for MavenArtifact
-func (m MavenArtifact) Revision() string {
-	return m.Version
-}
-
-// Dependencies is not implemented for MavenArtifact
-func (m MavenArtifact) Dependencies() []module.Dependency {
-	return nil
-}
-
-// POMFile represents the schema of a common pom.xml file
-type POMFile struct {
-	XMLName     xml.Name `xml:"project"`
-	ArtifactID  string   `xml:"artifactId"`
-	GroupID     string   `xml:"groupId"`
-	Version     string   `xml:"version"`
-	Description string   `xml:"description"`
-	Name        string   `xml:"name"`
-	URL         string   `xml:"url"`
-}
-
-// MavenBuilder implements Builder for Apache Maven (*.pom.xml) builds
-type MavenBuilder struct {
+type Analyzer struct {
 	JavaCmd     string
 	JavaVersion string
 
-	MvnCmd     string
-	MvnVersion string
+	MavenCmd     string
+	MavenVersion string
+
+	Maven   maven.Maven
+	Options Options
 }
 
-// Initialize collects metadata on Java and Maven binaries
-func (builder *MavenBuilder) Initialize() error {
-	log.Logger.Debug("Initializing Maven builder...")
+type Options struct {
+	Flags string
+}
+
+func New(opts map[string]interface{}) (*Analyzer, error) {
+	log.Logger.Debug("Initializing Maven analyzer...")
 
 	// Set Java context variables
 	javaCmd, javaVersion, err := exec.Which("-version", os.Getenv("JAVA_BINARY"), "java")
 	if err != nil {
 		log.Logger.Warningf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
 	}
-	builder.JavaCmd = javaCmd
-	builder.JavaVersion = javaVersion
 
 	// Set Maven context variables
 	mavenCmd, mavenVersion, err := exec.Which("--version", os.Getenv("MAVEN_BINARY"), "mvn")
 	if err != nil {
-		return fmt.Errorf("could not find Maven binary (try setting $MAVEN_BINARY): %s", err.Error())
+		return nil, fmt.Errorf("could not find Maven binary (try setting $MAVEN_BINARY): %s", err.Error())
 	}
-	builder.MvnCmd = mavenCmd
-	builder.MvnVersion = mavenVersion
 
-	log.Logger.Debugf("Done initializing Maven builder: %#v", builder)
-	return nil
+	var options Options
+	err = mapstructure.Decode(opts, &options)
+	if err != nil {
+		return nil, err
+	}
+
+	analyzer := Analyzer{
+		JavaCmd:     javaCmd,
+		JavaVersion: javaVersion,
+
+		MavenCmd:     mavenCmd,
+		MavenVersion: mavenVersion,
+
+		Maven: maven.Maven{
+			Cmd: mavenCmd,
+		},
+		Options: options,
+	}
+	log.Logger.Debugf("Done initializing Maven analyzer: %#v", analyzer)
+	return &analyzer, nil
 }
 
-// Build runs `mvn install -DskipTests -Drat.skip=true` and cleans with `mvn clean`
-func (builder *MavenBuilder) Build(m module.Module, force bool) error {
-	log.Logger.Debugf("Running Maven build: %#v %#v", m, force)
-
-	if force {
-		_, _, err := exec.Run(exec.Cmd{
-			Dir:  m.Dir,
-			Name: builder.MvnCmd,
-			Argv: []string{"clean"},
-		})
+func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
+	log.Logger.Debugf("%#v", dir)
+	var modules []module.Module
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return fmt.Errorf("could not remove Maven cache: %s", err.Error())
+			log.Logger.Debugf("Failed to access path %s: %s\n", path, err.Error())
+			return err
 		}
-	}
 
-	_, _, err := exec.Run(exec.Cmd{
-		Dir:  m.Dir,
-		Name: builder.MvnCmd,
-		Argv: []string{"install", "-DskipTests", "-Drat.skip=true"},
-	})
-	if err != nil {
-		return fmt.Errorf("could not run Maven build: %s", err.Error())
-	}
-
-	log.Logger.Debug("Done running Maven build.")
-	return nil
-}
-
-// Analyze parses the output of `mvn dependency:list`
-func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	log.Logger.Debugf("Running Maven analysis: %#v %#v", m, allowUnresolved)
-
-	output, _, err := exec.Run(exec.Cmd{
-		Dir:  m.Dir,
-		Name: builder.MvnCmd,
-		Argv: []string{"dependency:tree"},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("could not get dependency list from Maven: %s", err.Error())
-	}
-
-	// Get dependency tree (rooted at each direct dependency).
-	lines := strings.Split(string(output), "\n")
-	startRegex := regexp.MustCompile("^\\[INFO\\] --- .*? ---$")
-	var depLines []string
-	inGraph := false
-	for _, line := range lines {
-		if startRegex.MatchString(line) {
-			if inGraph {
-				// Sanity check
-				log.Logger.Panicf("Bad graph separation: %s", line)
+		if info.IsDir() {
+			ok, err := files.Exists(path, "pom.xml")
+			if err != nil {
+				return err
 			}
-			inGraph = true
-			continue
+			if !ok {
+				return nil
+			}
+
+			dir := filepath.Dir(path)
+			submodules, err := a.Maven.Modules(dir)
+			if err != nil {
+				log.Logger.Debugf("Modules err: %#v %#v", err.Error(), err)
+				return err
+			}
+
+			for _, m := range submodules {
+				modules = append(modules, module.Module{
+					Name:        m,
+					Type:        pkg.Maven,
+					BuildTarget: m,
+					Dir:         dir,
+				})
+			}
+			log.Logger.Debugf("skipDir: %#v", path)
+			// Don't continue recursing, because anything else is probably a
+			// subproject.
+			return filepath.SkipDir
 		}
-		if line == "[INFO] " || line == "[INFO] ------------------------------------------------------------------------" {
-			inGraph = false
-			continue
-		}
-		if inGraph {
-			depLines = append(depLines, line)
-		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, errors.Wrap(err, "could not find Maven projects")
 	}
 
-	// Parse dependency tree
-	var imports []builderutil.Imported
-	root := module.Locator{
-		Fetcher:  "root",
-		Project:  "root",
-		Revision: "root",
-	}
-	from := module.ImportPath{root}
-	depRegex := regexp.MustCompile("^\\[INFO\\] ([ `+\\\\|-]*)([^ `+\\\\|-].+)$")
-	locatorRegex := regexp.MustCompile("([^:]+):([^:]+):([^:]*):([^:]+)")
-	for _, line := range depLines {
-		// Match for context
-		depMatches := depRegex.FindStringSubmatch(line)
-		depth := len(depMatches[1])
-		if depth%3 != 0 {
-			// Sanity check
-			log.Logger.Panicf("Bad depth: %#v %s %#v", depth, line, depMatches)
-		}
-		// Parse locator
-		locatorMatches := locatorRegex.FindStringSubmatch(depMatches[2])
-		locator := module.Locator{
-			Fetcher:  "mvn",
-			Project:  locatorMatches[1] + ":" + locatorMatches[2],
-			Revision: locatorMatches[4],
-		}
-		// Add to imports
-		from = from[:depth/3]
-		imports = append(imports, builderutil.Imported{
-			Locator: locator,
-			From:    append(module.ImportPath{}, from...),
-		})
-		from = append(from, locator)
-	}
-	deps := builderutil.ComputeImportPaths(imports)
-
-	log.Logger.Debugf("Done running Maven analysis: %#v", deps)
-	return deps, nil
+	return modules, nil
 }
 
-// IsBuilt checks whether `mvn dependency:list` produces output.
-func (builder *MavenBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
-	log.Logger.Debugf("Checking Maven build: %#v %#v", m, allowUnresolved)
+func (a *Analyzer) Clean(m module.Module) error {
+	return a.Maven.Clean(m.Dir)
+}
 
-	output, _, err := exec.Run(exec.Cmd{
-		Dir:  m.Dir,
-		Name: builder.MvnCmd,
-		Argv: []string{"dependency:list", "-B"},
-	})
+func (a *Analyzer) Build(m module.Module) error {
+	return a.Maven.Compile(m.Dir)
+}
+
+// IsBuilt checks whether `mvn dependency:list` produces an error.
+func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
+	output, err := a.Maven.DependencyList(m.Dir)
 	if err != nil {
 		if strings.Contains(output, "Could not find artifact") {
 			return false, nil
 		}
 		return false, err
 	}
-	isBuilt := output != ""
-
-	log.Logger.Debugf("Done checking Maven build: %#v", isBuilt)
-	return isBuilt, nil
+	return output != "", nil
 }
 
-// IsModule is not implemented
-func (builder *MavenBuilder) IsModule(target string) (bool, error) {
-	return false, errors.New("IsModule is not implemented for MavenBuilder")
-}
-
-// DiscoverModules finds either a root pom.xml file or all pom.xmls in the specified dir
-func (builder *MavenBuilder) DiscoverModules(dir string) ([]module.Config, error) {
-	_, err := os.Stat(filepath.Join(dir, "pom.xml"))
-	if err == nil {
-		// Root pom found; parse and return
-		artifactName := filepath.Base(filepath.Dir(dir))
-		var rootPom POMFile
-		if err := files.ReadUnmarshal(&rootPom, filepath.Join(dir, "pom.xml"), xml.Unmarshal); err == nil {
-			if rootPom.Name != "" {
-				artifactName = rootPom.Name
-			} else if rootPom.ArtifactID != "" {
-				artifactName = rootPom.ArtifactID
-			}
-
-		}
-		return []module.Config{
-			{
-				Name: artifactName,
-				Path: "pom.xml",
-				Type: "mvn",
-			},
-		}, nil
-	}
-
-	// No pom in root directory; find and parse all of them
-	pomFilePaths, err := doublestar.Glob(filepath.Join(dir, "**", "pom.xml"))
+func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
+	log.Logger.Debugf("%#v", m)
+	imports, graph, err := a.Maven.DependencyTree(m.Dir, m.BuildTarget)
 	if err != nil {
-		return nil, err
+		return m, err
 	}
-	moduleConfigs := make([]module.Config, len(pomFilePaths))
-	for i, path := range pomFilePaths {
-		artifactName := filepath.Base(filepath.Dir(dir))
-		var artifactPom POMFile
-		if err := files.ReadUnmarshal(&artifactPom, path, xml.Unmarshal); err == nil {
-			if artifactPom.Name != "" {
-				artifactName = artifactPom.Name
-			} else if artifactPom.ArtifactID != "" {
-				artifactName = artifactPom.ArtifactID
-			}
+
+	// Set direct dependencies.
+	var i []pkg.Import
+	for _, dep := range imports {
+		i = append(i, pkg.Import{
+			Resolved: pkg.ID{
+				Type:     pkg.Maven,
+				Name:     dep.Name,
+				Revision: dep.Version,
+			},
+		})
+	}
+
+	// Set transitive dependencies.
+	g := make(map[pkg.ID]pkg.Package)
+	for parent, children := range graph {
+		id := pkg.ID{
+			Type:     pkg.Maven,
+			Name:     parent.Name,
+			Revision: parent.Version,
 		}
-		path, _ := filepath.Rel(dir, path)
-		moduleConfigs[i] = module.Config{
-			Name: artifactName,
-			Path: path,
-			Type: "mvn",
+		var imports []pkg.Import
+		for _, child := range children {
+			imports = append(imports, pkg.Import{
+				Target: child.Version,
+				Resolved: pkg.ID{
+					Type:     pkg.Maven,
+					Name:     child.Name,
+					Revision: child.Version,
+				},
+			})
+		}
+		g[id] = pkg.Package{
+			ID:      id,
+			Imports: imports,
 		}
 	}
 
-	return moduleConfigs, nil
+	m.Imports = i
+	m.Deps = g
+	return m, nil
 }

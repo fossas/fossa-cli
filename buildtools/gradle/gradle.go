@@ -52,6 +52,7 @@ func (g *Gradle) DependenciesTask(taskArgs ...string) ([]Dependency, map[Depende
 	return imports, deps, nil
 }
 
+// TODO: rename this -- this is really projects with :dependencies tasks
 func (g *Gradle) Projects() ([]string, error) {
 	stdout, err := g.Run("tasks", "--all", "--quiet")
 	if err != nil {
@@ -93,7 +94,7 @@ func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency
 		}
 	}
 
-	imports, graph, err := ReadDependencyTree(strings.Join(filteredLines, "\n"), func(line string) (int, Dependency, error) {
+	return ReadDependencyTree(filteredLines, func(line string) (int, Dependency, error) {
 		// Match line.
 		matches := r.FindStringSubmatch(line)
 		depth := len(matches[1])
@@ -132,11 +133,6 @@ func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency
 		log.Logger.Debugf("%#v %#v", depth/5, parsed)
 		return depth / 5, parsed, nil
 	})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return imports, graph, nil
 }
 
 func Cmd(dir string) (string, error) {

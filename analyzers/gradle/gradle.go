@@ -16,6 +16,7 @@ import (
 
 	"github.com/fossas/fossa-cli/buildtools/gradle"
 	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -65,6 +66,9 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 
 // Discover searches for `build.gradle` files and creates a module for each
 // `*:dependencies` task in the output of `gradle tasks`.
+//
+// TODO: use the output of `gradle projects` and try `gradle
+// <project>:dependencies` for each project?
 func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 	log.Logger.Debugf("%#v", dir)
 	var modules []module.Module
@@ -74,7 +78,15 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 			return err
 		}
 
-		if !info.IsDir() && info.Name() == "build.gradle" {
+		if info.IsDir() {
+			ok, err := files.Exists(path, "build.gradle")
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return nil
+			}
+
 			dir := filepath.Dir(path)
 			name := filepath.Base(dir)
 			cmd, err := gradle.Cmd(dir)
@@ -100,6 +112,9 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 					},
 				})
 			}
+			// Don't continue recursing, because anything else is probably a
+			// subproject.
+			return filepath.SkipDir
 		}
 		return nil
 	})

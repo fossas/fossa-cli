@@ -2,6 +2,7 @@ package files
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
@@ -18,6 +19,11 @@ func ReadJSON(v interface{}, pathElems ...string) error {
 // ReadTOML reads and unmarshals a file as if it contained TOML.
 func ReadTOML(v interface{}, pathElems ...string) error {
 	return ReadUnmarshal(toml.Unmarshal, v, pathElems...)
+}
+
+// ReadXML reads and unmarshals a file as if it contained XML.
+func ReadXML(v interface{}, pathElems ...string) error {
+	return ReadUnmarshal(xml.Unmarshal, v, pathElems...)
 }
 
 // ReadYAML reads and unmarshals a file as if it contained YAML.

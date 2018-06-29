@@ -1,10 +1,10 @@
 package v1
 
 import (
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -60,15 +60,16 @@ func New(data []byte) (File, error) {
 		return File{}, ErrWrongVersion
 	}
 
-	// Use mapstructure to fill out the File struct.
+	// Unmarshal file.
 	var file File
-	err = mapstructure.Decode(contents, &file)
+	err = yaml.Unmarshal(data, &file)
 	if err != nil {
 		return File{}, err
 	}
 
 	// Parse module configurations into modules.
 	for _, config := range file.Analyze.Modules {
+		log.Logger.Debugf("config: %#v", config)
 		// Parse and validate module type.
 		t, err := pkg.ParseType(config.Type)
 		if err != nil {
