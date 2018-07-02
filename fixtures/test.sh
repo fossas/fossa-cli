@@ -19,9 +19,3 @@ git clone https://github.com/graphcool/prisma sbt
 cd sbt
 git checkout 90058a94b096b3c0dece8df332288755632981de
 cd ..
-
-# NuGet projects
-git clone https://github.com/bitwarden/core nuget
-cd nuget
-git checkout fa198213af4af3e2075559a7d459dc8f78b131a2
-cd ..

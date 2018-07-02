@@ -22,6 +22,7 @@ type Manifest struct {
 type Dependency struct {
 	Name    string
 	Version string
+	Failed  bool
 }
 
 type Maven struct {
@@ -115,7 +116,12 @@ func (m *Maven) DependencyTree(dir, module string) ([]Dependency, map[Dependency
 		depMatches := depRegex.FindStringSubmatch(matches[2])
 		name := depMatches[1] + ":" + depMatches[2]
 		revision := depMatches[4]
+		failed := false
+		if strings.HasSuffix(revision, " FAILED") {
+			revision = strings.TrimSuffix(revision, " FAILED")
+			failed = true
+		}
 
-		return level, Dependency{Name: name, Version: revision}, nil
+		return level, Dependency{Name: name, Version: revision, Failed: failed}, nil
 	})
 }

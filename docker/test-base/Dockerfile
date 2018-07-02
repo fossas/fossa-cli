@@ -86,6 +86,12 @@ RUN git clone --depth=1 https://github.com/hashicorp/vagrant && \
     bundle install
 
 # Known good Gradle projects:
+## Other testing candidates:
+## - Netflix OSS projects
+## - ReactiveX/RxJava
+## - Spring
+## - Mockito
+## - TryGhost/Ghost-Android
 RUN git clone --depth=1 https://github.com/hibernate/hibernate-orm && \
     cd hibernate-orm && \
     bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && ./gradlew"
@@ -107,6 +113,16 @@ RUN git clone --depth=1 https://github.com/Sylius/Sylius && \
     composer install --prefer-dist --no-dev --no-plugins --no-scripts
 
 # Known good Maven projects:
+## Other testing candidates:
+## - clojure/clojure
+## - sendgrid/sendgrid-java
+## - google/truth
+## - google/auto
 RUN git clone --depth=1 https://github.com/apache/hadoop && \
     cd hadoop && \
     bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && mvn dependency:resolve"
+
+# Known good NuGet projects:
+RUN git clone --depth=1 https://github.com/bitwarden/core && \
+    cd core/src/Api && \
+    dotnet restore
