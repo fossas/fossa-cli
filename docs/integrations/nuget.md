@@ -9,7 +9,7 @@ NuGet support in FOSSA CLI depends on the following tools existing in your envir
 
 ## Usage
 
-Add a `nuget` module with the path to the folder `bower.json` in your project.
+Add a `nuget` module with the path to the folder of `project.json` or `packages.config` in your project.
 
 ```yaml
 analyze:
