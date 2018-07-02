@@ -3,12 +3,12 @@ package main
 import (
 	"os"
 
-	"github.com/fossas/fossa-cli/cmd/fossa/cmd/report"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/analyze"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/build"
 	initcmd "github.com/fossas/fossa-cli/cmd/fossa/cmd/init"
+	"github.com/fossas/fossa-cli/cmd/fossa/cmd/report"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/update"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/upload"
 	"github.com/fossas/fossa-cli/cmd/fossa/version"

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"text/template"
 
+	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/api/fossa"
@@ -28,11 +29,9 @@ The following software have components provided under the terms of this license:
 var licensesCmd = cli.Command{
 	Name:  "licenses",
 	Usage: "Generate licenses report",
-	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithModulesFlags([]cli.Flag{
-		cli.StringFlag{Name: flags.Short(Output), Destination: &outputFlag, Value: "-", Usage: "Output file for report"},
-		cli.StringFlag{Name: flags.Short(Template), Destination: &templateFlag, Usage: "process report via template prior to sending it to output"},
+	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithModulesFlags(flags.WithReportTemplateFlags([]cli.Flag{
 		cli.BoolFlag{Name: flags.Short(Unknown), Usage: "license report including unkown (warning this is SLOW)"},
-	}))),
+	})))),
 	Before: prepareReportCtx,
 	Action: generateLicenses,
 }
@@ -46,7 +45,7 @@ func generateLicenses(ctx *cli.Context) (err error) {
 			i := 0
 			for _, dep := range module.Deps {
 				i++
-				log.ShowSpinner(fmt.Sprintf("Fetching Licence Info (%d/%d): %s", i+1, totalDeps, dep.ID.Name))
+				log.ShowSpinner(fmt.Sprintf("Fetching License Info (%d/%d): %s", i+1, totalDeps, dep.ID.Name))
 				rev, err := fossa.FetchRevisionForPackage(dep)
 				if err != nil {
 					log.Logger.Warning(err.Error())
@@ -65,11 +64,11 @@ func generateLicenses(ctx *cli.Context) (err error) {
 
 	depsByLicence := make(map[string]map[string]*fossa.Revision, 0)
 	for _, rev := range revs {
-		for _, licence := range rev.Licenses {
-			if _, ok := depsByLicence[licence.LicenseID]; !ok {
-				depsByLicence[licence.LicenseID] = make(map[string]*fossa.Revision, 0)
+		for _, license := range rev.Licenses {
+			if _, ok := depsByLicence[license.LicenseID]; !ok {
+				depsByLicence[license.LicenseID] = make(map[string]*fossa.Revision, 0)
 			}
-			depsByLicence[licence.LicenseID][rev.Locator.String()] = rev
+			depsByLicence[license.LicenseID][rev.Locator.String()] = rev
 		}
 	}
 
@@ -78,13 +77,13 @@ func generateLicenses(ctx *cli.Context) (err error) {
 		log.Logger.Fatalf("Could not parse template data: %s", err.Error())
 	}
 
-	if templateFlag != "" {
-		tmpl, err = template.ParseFiles(templateFlag)
+	if ctx.String(flags.Template) != "" {
+		tmpl, err = template.ParseFiles(ctx.String(flags.Template))
 		if err != nil {
 			log.Logger.Fatalf("Could not parse template data: %s", err.Error())
 		}
 	}
 	log.StopSpinner()
 
-	return outputReport(outputFlag, tmpl, depsByLicence)
+	return cmdutil.OutputData(ctx.String(flags.ShowOutput), tmpl, depsByLicence)
 }

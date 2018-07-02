@@ -1,10 +1,7 @@
 package analyze
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"text/template"
 
 	"github.com/urfave/cli"
@@ -18,20 +15,12 @@ import (
 	"github.com/fossas/fossa-cli/module"
 )
 
-var (
-	Output   = "output"
-	Template = "template"
-)
-
 var Cmd = cli.Command{
 	Name:      "analyze",
 	Usage:     "Analyze built dependencies",
 	Action:    Run,
 	ArgsUsage: "MODULE",
-	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithModulesFlags([]cli.Flag{
-		cli.StringFlag{Name: flags.Short(Output), Usage: "send analysis to output file instead of uploading to FOSSA (default: -)"},
-		cli.StringFlag{Name: flags.Short(Template), Usage: "process analysis via template prior to sending it to output"},
-	}))),
+	Flags:     flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithModulesFlags(flags.WithAnalysisTemplateFlags([]cli.Flag{})))),
 }
 
 var _ cli.ActionFunc = Run
@@ -62,8 +51,19 @@ func Run(ctx *cli.Context) error {
 		return err
 	}
 
-	if ctx.String(Output) != "" || ctx.String(Template) != "" {
-		return outputAnalysis(ctx.String(Output), ctx.String(Template), normalized)
+	if ctx.String(flags.ShowOutput) != "" || ctx.String(flags.Template) != "" {
+		var tmpl *template.Template
+		if ctx.String(flags.Template) != "" {
+			tmpl, err = template.ParseFiles(ctx.String(flags.Template))
+			if err != nil {
+				log.Logger.Fatalf("Could not parse template data: %s", err.Error())
+			}
+
+			if ctx.String(flags.ShowOutput) == "" {
+				ctx.Set(flags.ShowOutput, "-")
+			}
+		}
+		return cmdutil.OutputData(ctx.String(flags.ShowOutput), tmpl, normalized)
 	}
 
 	return uploadAnalysis(normalized)
@@ -87,39 +87,6 @@ func Modules(modules []module.Module) (analyzed []module.Module, err error) {
 	log.StopSpinner()
 
 	return analyzed, err
-}
-
-func outputAnalysis(outputFile, templateFile string, normalized []fossa.SourceUnit) (err error) {
-	var (
-		msg  []byte
-		tmpl *template.Template
-	)
-
-	if templateFile == "" {
-		msg, err = json.Marshal(normalized)
-		if err != nil {
-			log.Logger.Fatalf("Could not marshal output: %s", err.Error())
-			return err
-		}
-	} else {
-		tmpl, err = template.ParseFiles(templateFile)
-		if err != nil {
-			log.Logger.Fatalf("Could not parse template data: %s", err.Error())
-			return err
-		}
-		msg, err = cmdutil.ProcessTmpl(tmpl, normalized)
-		if err != nil {
-			log.Logger.Fatalf("Could not process template data: %s", err.Error())
-			return err
-		}
-	}
-
-	if outputFile == "-" {
-		_, err = os.Stdout.Write(msg)
-		return err
-	}
-
-	return ioutil.WriteFile(outputFile, msg, 0664)
 }
 
 func uploadAnalysis(normalized []fossa.SourceUnit) error {

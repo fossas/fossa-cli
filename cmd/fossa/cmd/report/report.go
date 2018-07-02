@@ -15,12 +15,8 @@ import (
 )
 
 var (
-	Output       = "output"
-	Template     = "template"
-	Unknown      = "show-unknown"
-	analyzed     []module.Module
-	outputFlag   string
-	templateFlag string
+	Unknown  = "show-unknown"
+	analyzed []module.Module
 )
 
 var Cmd = cli.Command{

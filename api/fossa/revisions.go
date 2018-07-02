@@ -40,6 +40,10 @@ func FetchRevisionForPackage(p pkg.Package) (rev *Revision, err error) {
 	ep, _ = ep.Parse("/api/revisions/" + locator.QueryString())
 	_, err = GetJSON(ep.String(), &rev)
 
+	if err != nil {
+		return rev, err
+	}
+
 	if rev.Locator == nil {
 		rev.Locator = locator
 	}
@@ -85,7 +89,11 @@ func FetchRevisionForDeps(deps map[pkg.ID]pkg.Package) (revs Revisions, err erro
 			qs.Add("locator", q)
 		}
 		ep := serverURL
-		ep, _ = ep.Parse("/api/revisions?" + qs.Encode())
+		ep, err = ep.Parse("/api/revisions?" + qs.Encode())
+
+		if err != nil {
+			return revs, err
+		}
 
 		go func(url string) {
 			var ret Revisions

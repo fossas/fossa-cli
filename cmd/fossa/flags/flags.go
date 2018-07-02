@@ -60,7 +60,22 @@ var (
 )
 
 var (
-	AnalysisCmd = []cli.Flag{ShowOutputF}
+	AnalysisCmd = []cli.Flag{ShowOutputF, TemplateF}
 	ShowOutput  = "output"
-	ShowOutputF = cli.BoolFlag{Name: Short(ShowOutput), Usage: "print results to stdout instead of uploading to FOSSA"}
+	ShowOutputF = cli.StringFlag{Name: Short(ShowOutput), Usage: "send analysis to output file instead of uploading to FOSSA (default: -)"}
+)
+
+func WithAnalysisTemplateFlags(f []cli.Flag) []cli.Flag {
+	return append(f, AnalysisCmd...)
+}
+
+func WithReportTemplateFlags(f []cli.Flag) []cli.Flag {
+	return append(f, ReportCmd...)
+}
+
+var (
+	ReportCmd = []cli.Flag{OutputF, TemplateF}
+	OutputF   = cli.StringFlag{Name: Short(ShowOutput), Value: "-", Usage: "Output file for report"}
+	Template  = "template"
+	TemplateF = cli.StringFlag{Name: Short(Template), Usage: "process report via template file prior to sending it to output"}
 )
