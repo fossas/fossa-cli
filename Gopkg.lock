@@ -26,6 +26,12 @@
   version = "1.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/cheekybits/genny"
+  packages = ["generic"]
+  revision = "9127e812e1e9e501ce899a18121d316ecb52e4ba"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -352,6 +358,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d73224cc15e302f77fc1e80ee2e3dcbebbf50c907fd85936e3849eecfeaa05f3"
+  inputs-digest = "9281a30574f9e98e8e7ec192b7f0f86d7274c63b881f08b4e672f2331a7e77b7"
   solver-name = "gps-cdcl"
   solver-version = 1
