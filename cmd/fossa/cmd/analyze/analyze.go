@@ -60,7 +60,10 @@ func Run(ctx *cli.Context) error {
 			}
 
 			if ctx.String(flags.ShowOutput) == "" {
-				ctx.Set(flags.ShowOutput, "-")
+				err = ctx.Set(flags.ShowOutput, "-")
+				if err != nil {
+					log.Logger.Fatalf("Could not set default output to STDOUT", err.Error())
+				}
 			}
 		}
 		return cmdutil.OutputData(ctx.String(flags.ShowOutput), tmpl, normalized)

@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 
-	"github.com/fossas/fossa-cli/cmd/fossa/cmd/report"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/analyze"
