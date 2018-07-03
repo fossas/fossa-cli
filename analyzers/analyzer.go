@@ -9,6 +9,7 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/gradle"
 	"github.com/fossas/fossa-cli/analyzers/maven"
 	"github.com/fossas/fossa-cli/analyzers/nodejs"
+	"github.com/fossas/fossa-cli/analyzers/nuget"
 	"github.com/fossas/fossa-cli/analyzers/php"
 	"github.com/fossas/fossa-cli/analyzers/python"
 	"github.com/fossas/fossa-cli/analyzers/ruby"
@@ -60,14 +61,12 @@ func New(key pkg.Type, options map[string]interface{}) (Analyzer, error) {
 	case pkg.NodeJS:
 		return nodejs.New(options)
 	case pkg.NuGet:
-		return nil, ErrAnalyzerNotImplemented
+		return nuget.New(options)
 	case pkg.Python:
 		return python.New(options)
 	case pkg.Ruby:
 		return ruby.New(options)
 	case pkg.Scala:
-		return nil, ErrAnalyzerNotImplemented
-	case pkg.VendoredArchives:
 		return nil, ErrAnalyzerNotImplemented
 	}
 	return nil, ErrUnknownPackageType

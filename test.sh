@@ -179,3 +179,10 @@ cd $HOME/hadoop
 fossa init
 cat .fossa.yml
 time fossa analyze --output mvn:org.apache.hadoop:hadoop-yarn-client | json
+
+# Test known good NuGet projects:
+echo "Testing bitwarden"
+cd $HOME/core
+fossa init
+cat .fossa.yml
+time fossa analyze --output nuget:src/Api/Api.csproj | json

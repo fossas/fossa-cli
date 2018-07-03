@@ -35,11 +35,9 @@ docker-base: ./docker/base/Dockerfile
 docker-test-base: docker-base ./docker/test-base/Dockerfile
 	sudo docker build -t quay.io/fossa/fossa-cli-test-base -f ./docker/test-base/Dockerfile .
 
-.PHONY: docker
 docker: docker-base ./docker/cli/Dockerfile
 	sudo docker build -t quay.io/fossa/fossa-cli -f ./docker/cli/Dockerfile .
 
-.PHONY: docker-test
 docker-test: docker-test-base ./docker/test/Dockerfile
 	sudo docker build -t quay.io/fossa/fossa-cli-test -f ./docker/test/Dockerfile .
 

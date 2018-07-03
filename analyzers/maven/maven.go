@@ -108,6 +108,7 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 			// subproject.
 			return filepath.SkipDir
 		}
+
 		return nil
 	})
 

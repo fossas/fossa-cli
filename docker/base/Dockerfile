@@ -10,7 +10,7 @@ ENV LC_ALL=C.UTF-8 DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y \
       # Useful scripting + debugging utilities
-      sudo tmux tree \
+      sudo tmux tree vim \
       # Required by CircleCI
       git ssh tar gzip ca-certificates \
       # Used by various build tools
@@ -25,7 +25,8 @@ RUN useradd fossa && \
     mkdir /home/fossa && \
     chown fossa /home/fossa && \
     echo "fossa ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/fossa && \
-    chmod 0440 /etc/sudoers.d/fossa
+    chmod 0440 /etc/sudoers.d/fossa && \
+    usermod -s /bin/bash fossa
 USER fossa
 WORKDIR /home/fossa
 
