@@ -2,7 +2,6 @@ package fossa
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/url"
 
 	"github.com/pkg/errors"
@@ -46,19 +45,33 @@ func Upload(fetcher, project, revision, title, branch string, data []SourceUnit)
 	}
 	log.Logger.Debugf("Uploading data from %#v modules: %#v", len(data), string(payload))
 
-	endpoint := "/api/builds/custom?locator=" + url.QueryEscape(Locator{Fetcher: fetcher, Project: project, Revision: revision}.String()) + "&v=" + version.ShortString()
+	locator := Locator{Fetcher: fetcher, Project: project, Revision: revision}
+
+	var ep *url.URL
+	q := url.Values{}
+	if ep, err = url.Parse("/api/builds/custom"); err != nil {
+		log.Logger.Fatal("Failed to generate upload uri")
+	}
+	ep.ForceQuery = true
+	q.Add("locator", locator.QueryString())
+	q.Add("v", version.ShortString())
+
 	if fetcher == "custom" {
-		endpoint += fmt.Sprintf("&managedBuild=true&title=%s", url.QueryEscape(title))
+		q.Add("managedBuild", "true")
+		q.Add("title", title)
 	}
 	if branch != "" {
-		endpoint += fmt.Sprintf("&branch=%s", url.QueryEscape(branch))
+		q.Add("branch", branch)
 	}
 	if revision != "" {
-		endpoint += fmt.Sprintf("&revision=%s", url.QueryEscape(revision))
+		q.Add("revision", revision)
 	}
-	log.Logger.Debugf("Sending build data to %#v", endpoint)
+	if ep, err = ep.Parse("?" + q.Encode()); err != nil {
+		log.Logger.Fatal("Failed to generate upload uri")
+	}
+	log.Logger.Debugf("Sending build data to %#v", ep.String())
 
-	res, statusCode, err := Post(endpoint, payload)
+	res, statusCode, err := Post(ep.String(), payload)
 	log.Logger.Debugf("Response: %#v", res)
 
 	if statusCode == 428 {
