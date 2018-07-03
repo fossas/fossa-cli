@@ -37,7 +37,7 @@ type Revisions = []*Revision
 func FetchRevisionForPackage(p pkg.Package) (rev *Revision, err error) {
 	locator := LocatorOf(p.ID)
 	ep := serverURL
-	ep, _ = ep.Parse("/api/revisions/" + locator.QueryString())
+	ep, _ = ep.Parse("/api/revisions/" + url.PathEscape(locator.QueryString()))
 	_, err = GetJSON(ep.String(), &rev)
 
 	if err != nil {
@@ -65,8 +65,7 @@ func FetchRevisionForPackage(p pkg.Package) (rev *Revision, err error) {
 func FetchRevisionForDeps(deps map[pkg.ID]pkg.Package) (revs Revisions, err error) {
 	pkgs := make([]string, 0, len(deps))
 	for pkgID := range deps {
-		qs, _ := url.QueryUnescape(LocatorOf(pkgID).QueryString())
-		pkgs = append(pkgs, qs)
+		pkgs = append(pkgs, LocatorOf(pkgID).QueryString())
 	}
 
 	// Split pkgs into chunks of 20 for performance reasons
@@ -89,16 +88,13 @@ func FetchRevisionForDeps(deps map[pkg.ID]pkg.Package) (revs Revisions, err erro
 			qs.Add("locator", q)
 		}
 		ep := serverURL
-		ep, err = ep.Parse("/api/revisions?" + qs.Encode())
-
-		if err != nil {
+		if ep, err = ep.Parse("/api/revisions?" + qs.Encode()); err != nil {
 			return revs, err
 		}
 
 		go func(url string) {
 			var ret Revisions
-			_, err = GetJSON(ep.String(), &ret)
-			if err != nil {
+			if _, err := GetJSON(ep.String(), &ret); err != nil {
 				close(ch)
 			}
 			ch <- ret

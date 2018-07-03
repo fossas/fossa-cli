@@ -47,12 +47,7 @@ func Upload(fetcher, project, revision, title, branch string, data []SourceUnit)
 
 	locator := Locator{Fetcher: fetcher, Project: project, Revision: revision}
 
-	var ep *url.URL
 	q := url.Values{}
-	if ep, err = url.Parse("/api/builds/custom"); err != nil {
-		log.Logger.Fatal("Failed to generate upload uri")
-	}
-	ep.ForceQuery = true
 	q.Add("locator", locator.QueryString())
 	q.Add("v", version.ShortString())
 
@@ -66,7 +61,8 @@ func Upload(fetcher, project, revision, title, branch string, data []SourceUnit)
 	if revision != "" {
 		q.Add("revision", revision)
 	}
-	if ep, err = ep.Parse("?" + q.Encode()); err != nil {
+	var ep *url.URL
+	if ep, err = url.Parse("/api/builds/custom?" + q.Encode()); err != nil {
 		log.Logger.Fatal("Failed to generate upload uri")
 	}
 	log.Logger.Debugf("Sending build data to %#v", ep.String())

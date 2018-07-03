@@ -1,7 +1,6 @@
 package fossa
 
 import (
-	"net/url"
 	"regexp"
 	"strings"
 
@@ -25,10 +24,7 @@ func (l Locator) QueryString() string {
 	if l.Fetcher == "go" {
 		l.Fetcher = "git"
 	}
-	if l.Fetcher != "git" {
-		return url.QueryEscape(l.Fetcher + "+" + l.Project + "$" + l.Revision)
-	}
-	return url.QueryEscape("git+" + NormalizeGitURL(l.Project) + "$" + l.Revision)
+	return l.String()
 }
 
 func NormalizeGitURL(project string) string {
