@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -49,7 +50,8 @@ func Endpoint() string {
 /**** Project configuration keys ****/
 
 func Title() string {
-	return TryStrings(ctx.String(flags.Title), file.Title())
+	dir, _ := os.Getwd()
+	return TryStrings(ctx.String(flags.Title), file.Title(), filepath.Base(dir))
 }
 
 func Fetcher() string {
@@ -96,6 +98,8 @@ func Modules() ([]module.Module, error) {
 	// If arguments are present, use arguments.
 	args := ctx.Args()
 	optionFs := ctx.StringSlice(flags.Option)
+
+	log.Logger.Debugf("args: %#v", args)
 
 	if args.Present() {
 		// Validate arguments.
