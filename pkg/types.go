@@ -1,6 +1,9 @@
 package pkg
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 // NOTE: please keep these lists in alphabetical order.
 
@@ -45,7 +48,7 @@ var AllTypes = []Type{
 // ParseType returns the canonical package type given a string key.
 // TODO: if we got rid of aliases, we could use `go generate` with https://github.com/alvaroloes/enumer.
 func ParseType(key string) (Type, error) {
-	switch key {
+	switch strings.ToLower(key) {
 	// Ant aliases
 	case "ant":
 		return Ant, nil

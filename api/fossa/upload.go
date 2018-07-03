@@ -48,10 +48,13 @@ func Upload(fetcher, project, revision, title, branch string, data []SourceUnit)
 
 	endpoint := "/api/builds/custom?locator=" + url.QueryEscape(Locator{Fetcher: fetcher, Project: project, Revision: revision}.String()) + "&v=" + version.ShortString()
 	if fetcher == "custom" {
-		endpoint += fmt.Sprintf("&managedBuild=true&title=%s", url.PathEscape(title))
+		endpoint += fmt.Sprintf("&managedBuild=true&title=%s", url.QueryEscape(title))
 	}
 	if branch != "" {
-		endpoint += fmt.Sprintf("&branch=%s", url.PathEscape(branch))
+		endpoint += fmt.Sprintf("&branch=%s", url.QueryEscape(branch))
+	}
+	if revision != "" {
+		endpoint += fmt.Sprintf("&revision=%s", url.QueryEscape(revision))
 	}
 	log.Logger.Debugf("Sending build data to %#v", endpoint)
 
