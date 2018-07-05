@@ -11,7 +11,7 @@ jobs:
   build:
     <<: *defaults
     docker:
-      - image: quay.io/fossa/fossa-cli:circleci
+      - image: quay.io/fossa/fossa-cli-base:circleci
     steps:
       - checkout
       - run:

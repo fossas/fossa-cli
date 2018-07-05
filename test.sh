@@ -239,3 +239,12 @@ cat .fossa.yml
 time fossa analyze --output - mvn:org.apache.hadoop:hadoop-yarn-client | json
 time fossa report licenses mvn:org.apache.hadoop:hadoop-yarn-client
 time fossa report dependencies mvn:org.apache.hadoop:hadoop-yarn-client | json
+
+# Test known good NuGet projects:
+echo "Testing bitwarden"
+cd $HOME/core
+fossa init
+cat .fossa.yml
+time fossa analyze --output - nuget:src/Api/Api.csproj | json
+time fossa report licenses nuget:src/Api/Api.csproj
+time fossa report dependencies nuget:src/Api/Api.csproj | json

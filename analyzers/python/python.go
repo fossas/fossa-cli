@@ -143,6 +143,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 			return m, err
 		}
 		m.Imports = FromRequirements(reqs)
+		m.Deps = fromImports(m.Imports)
 		return m, nil
 	case "requirements":
 		fallthrough
@@ -152,6 +153,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 			return m, err
 		}
 		m.Imports = FromRequirements(reqs)
+		m.Deps = fromImports(m.Imports)
 		return m, nil
 	}
 }
@@ -163,4 +165,14 @@ func (a *Analyzer) requirementsFile(m module.Module) string {
 	}
 	log.Logger.Debugf("%#v", reqFilename)
 	return reqFilename
+}
+
+func fromImports(imports []pkg.Import) map[pkg.ID]pkg.Package {
+	deps := make(map[pkg.ID]pkg.Package)
+	for _, i := range imports {
+		deps[i.Resolved] = pkg.Package{
+			ID: i.Resolved,
+		}
+	}
+	return deps
 }

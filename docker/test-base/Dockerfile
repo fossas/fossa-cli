@@ -126,3 +126,13 @@ RUN git clone --depth=1 https://github.com/apache/hadoop && \
 RUN git clone --depth=1 https://github.com/bitwarden/core && \
     cd core/src/Api && \
     dotnet restore
+RUN git clone --depth=1 https://github.com/cloudRoutine/FsBuild && \
+    cd FsBuild/src/FsBuild
+RUN git clone --depth=1 https://github.com/enricosada/dotnet-proj-info && \
+    cd dotnet-proj-info/src/Dotnet.ProjInfo && \
+    dotnet restore
+RUN git clone --depth=1 https://github.com/LarsSkovslund/NuGet.Package.Builder && \
+    cd NuGet.Package.Builder/Source/NuGet.Package.Builder && \
+    dotnet restore
+RUN git clone --depth=1 https://github.com/OctopusDeploy/CSProjToXProj && \
+    cd CSProjToXProj/src/CSProjToXProj

@@ -20,7 +20,7 @@ func WithAPIFlags(f []cli.Flag) []cli.Flag {
 }
 
 var (
-	API       = []cli.Flag{EndpointF, FetcherF, ProjectF, RevisionF, BranchF}
+	API       = []cli.Flag{EndpointF, TitleF, FetcherF, ProjectF, RevisionF, BranchF}
 	Endpoint  = "endpoint"
 	EndpointF = cli.StringFlag{Name: Short(Endpoint), Usage: "the FOSSA server endpoint (default: 'https://app.fossa.io')"}
 	Title     = "title"
