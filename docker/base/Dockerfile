@@ -45,6 +45,8 @@ RUN ["/bin/bash", "-c", "\
     sdk install scala && \
     sdk install sbt \
     "]
+RUN mkdir -p $HOME/.sbt/1.0/plugins && \
+    echo 'addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.9.0")' > $HOME/.sbt/1.0/plugins/plugins.sbt
 
 # Install Android SDK
 RUN wget https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip -O /tmp/sdk-tools-linux.zip && \

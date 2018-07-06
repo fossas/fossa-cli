@@ -136,3 +136,14 @@ RUN git clone --depth=1 https://github.com/LarsSkovslund/NuGet.Package.Builder &
     dotnet restore
 RUN git clone --depth=1 https://github.com/OctopusDeploy/CSProjToXProj && \
     cd CSProjToXProj/src/CSProjToXProj
+
+# Known good Scala projects:
+## Other testing candidates:
+## -  apache/spark
+## -  linkerd/linkerd
+## -  graphcool/prisma
+## -  twitter/finagle
+RUN git clone https://github.com/graphcool/prisma
+    # && \
+    # cd prisma && \
+    # bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && sbt compile"
