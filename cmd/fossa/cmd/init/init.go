@@ -43,7 +43,7 @@ func Run(ctx *cli.Context) error {
 	if err != nil {
 		log.Logger.Fatalf("Could not run init: %s", err.Error())
 	}
-	err = config.InitFile(modules)
+	err = config.WriteFile(modules)
 	if err != nil {
 		log.Logger.Fatalf("Could not write config: %s", err.Error())
 	}

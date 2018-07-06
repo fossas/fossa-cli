@@ -64,7 +64,7 @@ func (_ NoFile) Modules() []module.Module {
 
 // InitFile writes the current configuration to the current configuration file
 // path.
-func InitFile(modules []module.Module) error {
+func InitFile(modules []module.Module) File {
 	// Construct module configs.
 	var configs []v1.ModuleProperties
 	for _, m := range modules {
@@ -79,18 +79,21 @@ func InitFile(modules []module.Module) error {
 	}
 
 	// Construct configuration file.
-	file := v1.File{
+	return v1.File{
 		Version: 1,
 		CLI: v1.CLIProperties{
 			Server:  Endpoint(),
 			Fetcher: Fetcher(),
 			Project: Project(),
-			Branch:  Branch(),
 		},
 		Analyze: v1.AnalyzeProperties{
 			Modules: configs,
 		},
 	}
+}
+
+func WriteFile(modules []module.Module) error {
+	file := InitFile(modules)
 
 	// Write file with header.
 	data, err := yaml.Marshal(file)

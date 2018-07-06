@@ -14,6 +14,11 @@ import (
 	isatty "github.com/mattn/go-isatty"
 )
 
+/**** Mock configuration values ****/
+var (
+	MockBranch string
+)
+
 /**** Global configuration keys ****/
 
 var (
@@ -22,12 +27,12 @@ var (
 
 // Interactive is true if the user desires interactive output.
 func Interactive() bool {
-	return isatty.IsTerminal(os.Stderr.Fd()) && !ctx.Bool(flags.NoAnsi)
+	return isatty.IsTerminal(os.Stderr.Fd()) && !BoolFlag(flags.NoAnsi)
 }
 
 // Debug is true if the user has requested debug-level logging.
 func Debug() bool {
-	return ctx.Bool(flags.Debug)
+	return BoolFlag(flags.Debug)
 }
 
 // Filepath is the configuration file path.
@@ -44,18 +49,18 @@ func APIKey() string {
 
 // Endpoint is the desired FOSSA backend endpoint.
 func Endpoint() string {
-	return TryStrings(ctx.String(flags.Endpoint), file.Server(), "https://app.fossa.io")
+	return TryStrings(StringFlag(flags.Endpoint), file.Server(), "https://app.fossa.io")
 }
 
 /**** Project configuration keys ****/
 
 func Title() string {
 	dir, _ := os.Getwd()
-	return TryStrings(ctx.String(flags.Title), file.Title(), filepath.Base(dir))
+	return TryStrings(StringFlag(flags.Title), file.Title(), filepath.Base(dir))
 }
 
 func Fetcher() string {
-	return TryStrings(ctx.String(flags.Fetcher), file.Fetcher(), "custom")
+	return TryStrings(StringFlag(flags.Fetcher), file.Fetcher(), "custom")
 }
 
 func Project() string {
@@ -66,7 +71,7 @@ func Project() string {
 			inferred = origin.Config().URLs[0]
 		}
 	}
-	return TryStrings(ctx.String(flags.Project), file.Project(), inferred)
+	return TryStrings(StringFlag(flags.Project), file.Project(), inferred)
 }
 
 func Revision() string {
@@ -77,7 +82,7 @@ func Revision() string {
 			inferred = revision.Hash().String()
 		}
 	}
-	return TryStrings(ctx.String(flags.Revision), file.Revision(), inferred)
+	return TryStrings(StringFlag(flags.Revision), file.Revision(), inferred)
 }
 
 func Branch() string {
@@ -89,7 +94,7 @@ func Branch() string {
 			inferred = strings.TrimPrefix(revision.Name().String(), "refs/heads/")
 		}
 	}
-	return TryStrings(ctx.String(flags.Branch), file.Branch(), inferred, "master")
+	return TryStrings(MockBranch, StringFlag(flags.Branch), file.Branch(), inferred, "master")
 }
 
 /**** Analysis configuration keys ****/
