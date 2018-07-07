@@ -43,7 +43,7 @@ docker-test: docker-test-base ./docker/test/Dockerfile
 
 # Useful build tasks.
 .PHONY: test
-test: docker-test
+test:
 	make unit-test
 	make acceptance-test
 
