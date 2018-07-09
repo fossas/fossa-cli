@@ -168,6 +168,10 @@ func (builder *NodeJSBuilder) Analyze(m module.Module, allowUnresolved bool) ([]
 func (builder *NodeJSBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
 	log.Logger.Debugf("Checking Nodejs build: %#v %#v", m, allowUnresolved)
 
+	if allowUnresolved {
+		return true, nil
+	}
+
 	// test: there are some package.json with no deps (no node_modules)
 	// TODO: Check if the installed modules are consistent with what's in the
 	// actual manifest.
