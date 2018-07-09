@@ -132,6 +132,12 @@ fossa init
 cat .fossa.yml
 time fossa analyze --output | json
 
+echo "Testing sentry"
+cd $HOME/sentry
+fossa init
+cat .fossa.yml
+time fossa analyze --output --option strategy:deptree pip:. | json
+
 # Test known good Ruby projects:
 echo "Testing rails"
 cd $HOME/rails

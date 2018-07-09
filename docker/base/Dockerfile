@@ -93,7 +93,7 @@ RUN sudo apt-get install -y ruby-full
 RUN sudo gem install bundler
 
 # Install Python runtime
-RUN sudo apt-get install -y python
+RUN sudo apt-get install -y python python-pip
 
 # Install Cocoapods
 RUN sudo gem install cocoapods -v 0.39.0

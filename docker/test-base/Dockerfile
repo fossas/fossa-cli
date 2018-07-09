@@ -71,6 +71,16 @@ RUN git clone --depth=1 https://github.com/request/request && \
 
 # Known good Python projects:
 RUN git clone --depth=1 https://github.com/vibora-io/vibora
+RUN git clone --depth=1 https://github.com/ansible/ansible
+RUN git clone --depth=1 https://github.com/getsentry/sentry && \
+    cd sentry && \
+    pip install -r requirements-base.txt && \
+    pip install -r requirements-dev.txt
+RUN git clone --depth=1 https://github.com/fabric/fabric
+RUN git clone --depth=1 https://github.com/boto/boto
+RUN git clone --depth=1 https://github.com/samuelclay/NewsBlur
+RUN git clone --depth=1 https://github.com/kennethreiz/legit
+RUN git clone --depth=1 https://github.com/sshuttle/sshuttle
 
 # Known good Ruby projects:
 ## The apt dependencies are for native extensions.
