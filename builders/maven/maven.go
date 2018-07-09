@@ -123,7 +123,7 @@ func (builder *MavenBuilder) Analyze(m module.Module, allowUnresolved bool) ([]m
 	output, _, err := exec.Run(exec.Cmd{
 		Dir:  m.Dir,
 		Name: builder.MvnCmd,
-		Argv: []string{"dependency:tree"},
+		Argv: []string{"dependency:tree", "-B"},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not get dependency list from Maven: %s", err.Error())
