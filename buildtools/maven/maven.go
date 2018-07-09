@@ -73,11 +73,11 @@ func (m *Maven) DependencyList(dir string) (string, error) {
 	return output, err
 }
 
-func (m *Maven) DependencyTree(dir, module string) ([]Dependency, map[Dependency][]Dependency, error) {
+func (m *Maven) DependencyTree(dir, project string) ([]Dependency, map[Dependency][]Dependency, error) {
 	output, _, err := exec.Run(exec.Cmd{
 		Name: m.Cmd,
 		Dir:  dir,
-		Argv: []string{"dependency:tree", "--batch-mode", "--projects", module},
+		Argv: []string{"dependency:tree", "--batch-mode", "--projects", project},
 	})
 	if err != nil {
 		return nil, nil, err

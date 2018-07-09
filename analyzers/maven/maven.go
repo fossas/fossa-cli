@@ -1,3 +1,6 @@
+// Package maven implements Maven analysis.
+//
+// A `BuildTarget` for Maven is the Maven project name.
 package maven
 
 import (

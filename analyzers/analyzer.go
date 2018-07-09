@@ -13,6 +13,7 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/php"
 	"github.com/fossas/fossa-cli/analyzers/python"
 	"github.com/fossas/fossa-cli/analyzers/ruby"
+	"github.com/fossas/fossa-cli/analyzers/scala"
 
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -67,7 +68,7 @@ func New(key pkg.Type, options map[string]interface{}) (Analyzer, error) {
 	case pkg.Ruby:
 		return ruby.New(options)
 	case pkg.Scala:
-		return nil, ErrAnalyzerNotImplemented
+		return scala.New(options)
 	}
 	return nil, ErrUnknownPackageType
 }

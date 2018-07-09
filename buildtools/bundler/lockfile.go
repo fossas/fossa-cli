@@ -77,6 +77,7 @@ func FromLockfile(filename string) (Lockfile, error) {
 		case "GEM":
 			lockfile.Gem = append(lockfile.Gem, ParseSpecSection(section))
 		case "DEPENDENCIES":
+			// TODO: add dependencies
 		default:
 			continue
 		}
