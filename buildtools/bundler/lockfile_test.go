@@ -17,6 +17,7 @@ func TestLockfileParsing(t *testing.T) {
 	testSections(t, l.Git)
 	testSections(t, l.Path)
 	testSections(t, l.Gem)
+	assert.NotEmpty(t, l.Dependencies)
 
 	t.Logf("%#v", l)
 }
