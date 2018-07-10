@@ -83,6 +83,7 @@ func New(c *cli.Context) (CLIConfig, error) {
 
 		ReportCmd: ReportConfig{
 			Type: c.String("type"),
+			Format: c.String("format"),
 		},
 
 		ConfigFilePath: c.String("config"),
