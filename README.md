@@ -48,7 +48,7 @@ These commands will execute scripts to fetch and install the latest [Github Rele
 
 ## Quick Start
 
-Run `fossa -o` in your repo directory to output a dependency report in JSON:
+Run `fossa analyze -o` in your repo directory to output a dependency report in JSON:
 ```json
 [
   {
@@ -121,7 +121,7 @@ After configuration, you can now preview and upload new results:
 
 ```bash
 # Run FOSSA analysis and preview the results we're going to upload
-fossa -o
+fossa analyze -o
 
 # Run FOSSA and upload results
 # Going forward, you only need to run this one-liner
