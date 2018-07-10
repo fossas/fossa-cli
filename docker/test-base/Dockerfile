@@ -156,3 +156,9 @@ RUN git clone --depth=1 https://github.com/OctopusDeploy/CSProjToXProj && \
 RUN git clone https://github.com/graphcool/prisma && \
     cd prisma && \
     bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && sbt dependencyTree"
+
+# Known good Cocoapods projects:
+RUN git clone https://github.com/HeroTransitions/Hero
+RUN git clone https://github.com/lhc70000/iina
+RUN git clone https://github.com/onevcat/Kingfisher
+RUN git clone https://github.com/MacDownApp/macdown

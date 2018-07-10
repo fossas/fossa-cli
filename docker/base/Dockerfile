@@ -96,7 +96,7 @@ RUN sudo gem install bundler
 RUN sudo apt-get install -y python python-pip
 
 # Install Cocoapods
-RUN sudo gem install cocoapods -v 0.39.0
+RUN sudo gem install cocoapods -v 1.5.3
 
 # Install PHP runtime
 RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \

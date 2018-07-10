@@ -40,7 +40,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 	}
 
 	// Get Maven binary.
-	mvnBin, _, err := exec.Which("--version", options.Binary, "mvn")
+	mvnBin, _, err := exec.Which("--version", options.Binary, os.Getenv("MAVEN_BINARY"), "mvn")
 
 	analyzer := Analyzer{
 		Maven: maven.Maven{
