@@ -20,11 +20,11 @@ func FmtReportURL(locator fossa.Locator) string {
 	}
 	reportURL, err := url.Parse(
 		"/projects/" +
-			url.QueryEscape(locator.Fetcher+"+"+locator.Project) +
+			url.PathEscape(locator.Fetcher+"+"+locator.Project) +
 			"/refs/branch/" +
-			reportBranch +
+			url.PathEscape(reportBranch) +
 			"/" +
-			url.QueryEscape(locator.Revision))
+			url.PathEscape(locator.Revision))
 	return `
 ============================================================
 
