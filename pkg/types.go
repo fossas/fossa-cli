@@ -18,6 +18,7 @@ const (
 	Cocoapods             // Cocoapods (https://cocoapods.org)
 	Composer              // Composer (https://getcomposer.org)
 	Go                    // dep (https://github.com/golang/dep), glide (https://github.com/Masterminds/glide), godep (https://github.com/tools/godep), govendor (experimental, https://github.com/kardianos/govendor), vndr (https://github.com/LK4D4/vndr)
+	Git                   // git
 	Gradle                // Gradle (https://gradle.org)
 	Maven                 // Maven (https://maven.apache.org)
 	NodeJS                // NPM (https://www.npmjs.com), Yarn (https://yarnpkg.com)
@@ -162,6 +163,8 @@ func (t Type) String() string {
 		return "composer"
 	case Go:
 		return "go"
+	case Git:
+		return "git"
 	case Gradle:
 		return "gradle"
 	case Maven:
@@ -177,6 +180,6 @@ func (t Type) String() string {
 	case Scala:
 		return "sbt"
 	default:
-		return "UNKNOWN"
+		panic(t)
 	}
 }

@@ -20,9 +20,9 @@ func FromRequirements(reqs []pip.Requirement) []pkg.Import {
 	return imports
 }
 
-func FromTree(tree pip.DepTree) ([]pkg.Import, map[pkg.ID]pkg.Package) {
+func FromTree(tree []pip.DepTree) ([]pkg.Import, map[pkg.ID]pkg.Package) {
 	var imports []pkg.Import
-	for _, dep := range tree.Dependencies {
+	for _, dep := range tree {
 		imports = append(imports, pkg.Import{
 			Target: dep.Target,
 			Resolved: pkg.ID{
@@ -34,7 +34,9 @@ func FromTree(tree pip.DepTree) ([]pkg.Import, map[pkg.ID]pkg.Package) {
 	}
 
 	graph := make(map[pkg.ID]pkg.Package)
-	flattenTree(graph, tree)
+	for _, subtree := range tree {
+		flattenTree(graph, subtree)
+	}
 
 	return imports, graph
 }
@@ -43,7 +45,7 @@ func flattenTree(graph map[pkg.ID]pkg.Package, tree pip.DepTree) {
 	for _, dep := range tree.Dependencies {
 		// Construct ID.
 		id := pkg.ID{
-			Type:     pkg.NodeJS,
+			Type:     pkg.Python,
 			Name:     dep.Package,
 			Revision: dep.Resolved,
 		}
@@ -57,7 +59,7 @@ func flattenTree(graph map[pkg.ID]pkg.Package, tree pip.DepTree) {
 		for _, i := range tree.Dependencies {
 			imports = append(imports, pkg.Import{
 				Resolved: pkg.ID{
-					Type:     pkg.NodeJS,
+					Type:     pkg.Python,
 					Name:     i.Package,
 					Revision: i.Resolved,
 				},

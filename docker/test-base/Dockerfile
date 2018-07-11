@@ -71,6 +71,16 @@ RUN git clone --depth=1 https://github.com/request/request && \
 
 # Known good Python projects:
 RUN git clone --depth=1 https://github.com/vibora-io/vibora
+RUN git clone --depth=1 https://github.com/ansible/ansible
+RUN git clone --depth=1 https://github.com/getsentry/sentry && \
+    cd sentry && \
+    pip install -r requirements-base.txt && \
+    pip install -r requirements-dev.txt
+RUN git clone --depth=1 https://github.com/fabric/fabric
+RUN git clone --depth=1 https://github.com/boto/boto
+RUN git clone --depth=1 https://github.com/samuelclay/NewsBlur
+RUN git clone --depth=1 https://github.com/kennethreitz/legit
+RUN git clone --depth=1 https://github.com/sshuttle/sshuttle
 
 # Known good Ruby projects:
 ## The apt dependencies are for native extensions.
@@ -136,3 +146,30 @@ RUN git clone --depth=1 https://github.com/LarsSkovslund/NuGet.Package.Builder &
     dotnet restore
 RUN git clone --depth=1 https://github.com/OctopusDeploy/CSProjToXProj && \
     cd CSProjToXProj/src/CSProjToXProj
+
+# Known good Scala projects:
+## Other testing candidates:
+## - apache/spark
+## - linkerd/linkerd
+## - graphcool/prisma
+## - twitter/finagle
+RUN git clone --depth=1 https://github.com/graphcool/prisma && \
+    cd prisma && \
+    bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && sbt dependencyTree"
+
+# Known good Cocoapods projects:
+RUN git clone --depth=1 https://github.com/HeroTransitions/Hero
+RUN git clone --depth=1 https://github.com/lhc70000/iina
+RUN git clone --depth=1 https://github.com/onevcat/Kingfisher
+RUN git clone --depth=1 https://github.com/MacDownApp/macdown
+
+# Known good Ant projects:
+## Other testing candidates:
+## - kissyui/kissy
+## - arduino/Arduino
+## - Cyberqat/Red-Dwarf
+## - mproch/apache-ode
+## - mediaslave/phrails
+## - noerd/Multiple-File-Upload-Package
+## - mikaelkindborg/droidscript
+RUN git clone --depth=1 https://github.com/fossas/ant-example-project

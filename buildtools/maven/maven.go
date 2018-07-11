@@ -73,23 +73,27 @@ func (m *Maven) DependencyList(dir string) (string, error) {
 	return output, err
 }
 
-//go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package maven/' > readtree_generated.go"
-
-func (m *Maven) DependencyTree(dir, module string) ([]Dependency, map[Dependency][]Dependency, error) {
+func (m *Maven) DependencyTree(dir, project string) ([]Dependency, map[Dependency][]Dependency, error) {
 	output, _, err := exec.Run(exec.Cmd{
 		Name: m.Cmd,
 		Dir:  dir,
-		Argv: []string{"dependency:tree", "--batch-mode", "--projects", module},
+		Argv: []string{"dependency:tree", "--batch-mode", "--projects", project},
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
+	return ParseDependencyTree(output)
+}
+
+//go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package maven/' > readtree_generated.go"
+
+func ParseDependencyTree(stdin string) ([]Dependency, map[Dependency][]Dependency, error) {
 	var filteredLines []string
 	start := regexp.MustCompile("^\\[INFO\\] --- .*? ---$")
 	started := false
 	r := regexp.MustCompile("^\\[INFO\\] ([ `+\\\\|-]*)([^ `+\\\\|-].+)$")
-	for _, line := range strings.Split(output, "\n") {
+	for _, line := range strings.Split(stdin, "\n") {
 		if line == "[INFO] " || line == "[INFO] ------------------------------------------------------------------------" {
 			started = false
 		}

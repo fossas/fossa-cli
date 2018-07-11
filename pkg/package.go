@@ -45,6 +45,12 @@ type Package struct {
 	RegistryURL      string        `json:",omitempty"` // URL of the package's registry (e.g. if using private registries)
 	DownloadURL      string        `json:",omitempty"` // URL at which binaries or compiled bundles can be downloaded
 
+	// These are specific to the package's build, and tell us metadata about _how_
+	// this package was used.
+	BuildTool      string // Example: `yarn`
+	OriginManifest string // Example: `./package.json`
+	Registry       string // Example: `npm:npmjs.org`
+
 	Imports []Import
 	// A package's resolution strategy is set by the analyzer which resolves it,
 	// and the meaning will vary depending on the analyzer used.

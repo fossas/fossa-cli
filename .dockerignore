@@ -1,4 +1,3 @@
 .git
 docker
 dist
-testdata/bower/bower_components

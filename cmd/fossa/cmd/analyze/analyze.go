@@ -81,6 +81,13 @@ func Modules(modules []module.Module) (analyzed []module.Module, err error) {
 			log.Logger.Warningf("Could not load analyzer: %s", err.Error())
 			continue
 		}
+		built, err := analyzer.IsBuilt(m)
+		if err != nil {
+			log.Logger.Warningf("Could not determine whether module is built: %s", err.Error())
+		}
+		if !built {
+			log.Logger.Warningf("Module does not appear to be built")
+		}
 		result, err := analyzer.Analyze(m)
 		if err != nil {
 			log.Logger.Fatalf("Could not analyze: %s", err.Error())

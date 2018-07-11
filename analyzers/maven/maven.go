@@ -1,72 +1,55 @@
+// Package maven implements Maven analysis.
+//
+// A `BuildTarget` for Maven is the Maven project name.
 package maven
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/fossas/fossa-cli/files"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/buildtools/maven"
 	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
 type Analyzer struct {
-	JavaCmd     string
-	JavaVersion string
-
-	MavenCmd     string
-	MavenVersion string
-
 	Maven   maven.Maven
 	Options Options
 }
 
 type Options struct {
-	Flags string
+	Binary  string `mapstructure:"bin"`
+	Command string `mapstructure:"cmd"`
 }
 
 func New(opts map[string]interface{}) (*Analyzer, error) {
-	log.Logger.Debug("Initializing Maven analyzer...")
+	log.Logger.Debugf("%#v", opts)
 
-	// Set Java context variables
-	javaCmd, javaVersion, err := exec.Which("-version", os.Getenv("JAVA_BINARY"), "java")
-	if err != nil {
-		log.Logger.Warningf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
-	}
-
-	// Set Maven context variables
-	mavenCmd, mavenVersion, err := exec.Which("--version", os.Getenv("MAVEN_BINARY"), "mvn")
-	if err != nil {
-		return nil, fmt.Errorf("could not find Maven binary (try setting $MAVEN_BINARY): %s", err.Error())
-	}
-
+	// Decode options.
 	var options Options
-	err = mapstructure.Decode(opts, &options)
+	err := mapstructure.Decode(opts, &options)
 	if err != nil {
 		return nil, err
 	}
 
+	// Get Maven binary.
+	mvnBin, _, err := exec.Which("--version", options.Binary, os.Getenv("MAVEN_BINARY"), "mvn")
+
 	analyzer := Analyzer{
-		JavaCmd:     javaCmd,
-		JavaVersion: javaVersion,
-
-		MavenCmd:     mavenCmd,
-		MavenVersion: mavenVersion,
-
 		Maven: maven.Maven{
-			Cmd: mavenCmd,
+			Cmd: mvnBin,
 		},
 		Options: options,
 	}
-	log.Logger.Debugf("Done initializing Maven analyzer: %#v", analyzer)
+
+	log.Logger.Debugf("%#v", analyzer)
 	return &analyzer, nil
 }
 
@@ -141,7 +124,22 @@ func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
 
 func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	log.Logger.Debugf("%#v", m)
-	imports, graph, err := a.Maven.DependencyTree(m.Dir, m.BuildTarget)
+
+	var imports []maven.Dependency
+	var graph map[maven.Dependency][]maven.Dependency
+	var err error
+	if a.Options.Command == "" {
+		imports, graph, err = a.Maven.DependencyTree(m.Dir, m.BuildTarget)
+	} else {
+		var output string
+		output, _, err = exec.Shell(exec.Cmd{
+			Command: a.Options.Command,
+		})
+		if err != nil {
+			return m, err
+		}
+		imports, graph, err = maven.ParseDependencyTree(output)
+	}
 	if err != nil {
 		return m, err
 	}

@@ -43,7 +43,24 @@ docker-test: docker-test-base ./docker/test/Dockerfile
 
 # Useful build tasks.
 .PHONY: test
-test: docker-test
+test:
+	make unit-test
+	make acceptance-test
+
+.PHONY: unit-test
+unit-test:
+	# TODO: this should be go test ./... once all packages (particularly,
+	# analyzers) work.
+	go test \
+		./analyzers/nodejs \
+		./analyzers/golang \
+		./config \
+		./cmd/fossa/version \
+		./buildtools/bundler \
+		./buildtools/gocmd
+
+.PHONY: acceptance-test
+acceptance-test: docker-test
 	sudo docker run quay.io/fossa/fossa-cli-test
 
 .PHONY: dev

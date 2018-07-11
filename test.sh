@@ -178,6 +178,12 @@ time fossa analyze --output - | json
 time fossa report licenses 
 time fossa report dependencies | json
 
+echo "Testing sentry"
+cd $HOME/sentry
+fossa init
+cat .fossa.yml
+time fossa analyze --output --option strategy:deptree pip:. | json
+
 # Test known good Ruby projects:
 echo "Testing rails"
 cd $HOME/rails
@@ -248,3 +254,45 @@ cat .fossa.yml
 time fossa analyze --output - nuget:src/Api/Api.csproj | json
 time fossa report licenses nuget:src/Api/Api.csproj
 time fossa report dependencies nuget:src/Api/Api.csproj | json
+
+# Test known good Cocoapods projects:
+echo "Testing macdown"
+cd $HOME/macdown
+fossa init
+cat .fossa.yml
+time fossa analyze --output - pod:. | json
+time fossa report licenses pod:.
+time fossa report dependencies pod:. | json
+
+echo "Testing Hero"
+cd $HOME/Hero
+fossa init
+cat .fossa.yml
+time fossa analyze --output - pod:. | json
+time fossa report licenses pod:.
+time fossa report dependencies pod:. | json
+
+echo "Testing iina"
+cd $HOME/iina
+fossa init
+cat .fossa.yml
+time fossa analyze --output - pod:. | json
+time fossa report licenses pod:.
+time fossa report dependencies pod:. | json
+
+echo "Testing Kingfisher"
+cd $HOME/Kingfisher
+fossa init
+cat .fossa.yml
+time fossa analyze --output - pod:. | json
+time fossa report licenses pod:.
+time fossa report dependencies pod:. | json
+
+# Test known good Ant projects:
+echo "Testing ant-example-project"
+cd $HOME/ant-example-project
+fossa init
+cat .fossa.yml
+time fossa analyze --output - ant:. | json
+time fossa report licenses ant:.
+time fossa report dependencies ant:. | json

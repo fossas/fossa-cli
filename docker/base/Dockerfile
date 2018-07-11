@@ -41,10 +41,13 @@ RUN ["/bin/bash", "-c", "\
     sdk install java && \
     sdk install maven && \
     sdk install gradle && \
+    sdk install ant && \
     # Install Scala runtime and build tools
     sdk install scala && \
     sdk install sbt \
     "]
+RUN mkdir -p $HOME/.sbt/1.0/plugins && \
+    echo 'addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.9.0")' > $HOME/.sbt/1.0/plugins/plugins.sbt
 
 # Install Android SDK
 RUN wget https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip -O /tmp/sdk-tools-linux.zip && \
@@ -91,10 +94,10 @@ RUN sudo apt-get install -y ruby-full
 RUN sudo gem install bundler
 
 # Install Python runtime
-RUN sudo apt-get install -y python
+RUN sudo apt-get install -y python python-pip
 
 # Install Cocoapods
-RUN sudo gem install cocoapods -v 0.39.0
+RUN sudo gem install cocoapods -v 1.5.3
 
 # Install PHP runtime
 RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \

@@ -8,11 +8,14 @@ import (
 	"github.com/fossas/fossa-cli/log"
 )
 
-// Cmd represents a single command.
+// Cmd represents a single command. If Name and Argv are set, this is treated as
+// an executable. If Command is set, this is treated as a shell command.
 type Cmd struct {
-	Name string   // Command name.
-	Argv []string // Command arguments.
-	Dir  string   // Command's working directory.
+	Name    string   // Executable name.
+	Argv    []string // Executable arguments.
+	Command string   // Shell command.
+
+	Dir string // The Command's working directory.
 
 	// If neither Env nor WithEnv are set, the environment is inherited from os.Environ().
 	Env     map[string]string // If set, the command's environment is _set_ to Env.
@@ -22,7 +25,7 @@ type Cmd struct {
 // func RunJSON(v interface{}, cmd Cmd) (stderr string, err error) {}
 
 // Run executes a `Cmd`.
-func Run(cmd Cmd) (stdout string, stderr string, err error) {
+func Run(cmd Cmd) (stdout, stderr string, err error) {
 	log.Logger.Debugf("Running command: %#v", append([]string{cmd.Name}, cmd.Argv...))
 
 	var stderrBuffer bytes.Buffer

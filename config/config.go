@@ -22,8 +22,8 @@ import (
 
 var (
 	ctx  *cli.Context
-	file File
 	repo *git.Repository
+	file File = NoFile{}
 )
 
 // Init initializes application-level configuration.
@@ -64,7 +64,7 @@ func readFile(c *cli.Context) (File, string, error) {
 		return NoFile{}, ".fossa.yml", nil
 	}
 	if err != nil {
-		return NoFile{}, ".fossa.yml", nil
+		return NoFile{}, ".fossa.yml", err
 	}
 
 	// Try to unmarshal the configuration file into a known config file version.

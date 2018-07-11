@@ -13,25 +13,34 @@ import (
 
 	"github.com/bmatcuk/doublestar"
 	"github.com/gnewton/jargo"
+	"github.com/mitchellh/mapstructure"
 
-	"github.com/fossas/fossa-cli/analyzers/maven"
+	"github.com/fossas/fossa-cli/buildtools/maven"
+
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
-// AntBuilder implements build context for SBT builds
-type AntBuilder struct {
+// Analyzer implements build context for SBT builds
+type Analyzer struct {
 	AntCmd     string
 	AntVersion string
 
 	JavaCmd     string
 	JavaVersion string
+
+	Options Options
+}
+
+type Options struct {
+	LibDir string
 }
 
 // Initialize collects metadata on Java and SBT binaries
-func (builder *AntBuilder) Initialize() error {
+func New(opts map[string]interface{}) (*Analyzer, error) {
 	log.Logger.Debugf("Initializing Ant builder...")
 
 	// Set Java context variables
@@ -39,76 +48,90 @@ func (builder *AntBuilder) Initialize() error {
 	if err != nil {
 		log.Logger.Warningf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
 	}
-	builder.JavaCmd = javaCmd
-	builder.JavaVersion = javaVersion
 
 	// Set Ant context variables
 	antCmd, antVersionOut, err := exec.Which("-version", os.Getenv("ANT_BINARY"), "ant")
 	if err != nil {
-		return fmt.Errorf("could not find Ant binary (try setting $ANT_BINARY): %s", err.Error())
+		return nil, fmt.Errorf("could not find Ant binary (try setting $ANT_BINARY): %s", err.Error())
 	}
 
-	builder.AntCmd = antCmd
 	antVersionMatchRe := regexp.MustCompile(`version ([0-9]+\.[0-9]+.\w+)`)
 	match := antVersionMatchRe.FindStringSubmatch(antVersionOut)
 
+	antVersion := ""
 	if len(match) == 2 {
-		builder.AntVersion = match[1]
+		antVersion = match[1]
 	}
 
-	log.Logger.Debugf("Initialized Ant builder: %#v", builder)
-	return nil
-}
-
-// Build is currently not implemented
-func (builder *AntBuilder) Build(m module.Module, force bool) error {
-	return errors.New("Ant builder is not implemented")
-}
-
-// Analyze resolves a lib directory and parses the jars inside
-func (builder *AntBuilder) Analyze(m module.Module, allowUnresolved bool) ([]module.Dependency, error) {
-	log.Logger.Debugf("Running Ant analysis: %#v %#v in %s", m, allowUnresolved, m.Dir)
-
-	options := m.Context.(map[string]interface{})
-
-	libdir := "lib"
-	if options["libdir"] != nil {
-		libdir = options["libdir"].(string)
-	}
-
-	log.Logger.Debugf("resolving ant libs in: %s", libdir)
-	if ok, err := files.ExistsFolder(m.Dir, libdir); !ok || err != nil {
-		return nil, errors.New("unable to resolve library directory, try specifying it using the `modules.options.libdir` property in `fossa.yml`")
-	}
-
-	jarFilePaths, err := doublestar.Glob(filepath.Join(libdir, "*.jar"))
+	// Decode options.
+	var options Options
+	err = mapstructure.Decode(opts, &options)
 	if err != nil {
 		return nil, err
 	}
 
+	return &Analyzer{
+		AntCmd:     antCmd,
+		AntVersion: antVersion,
+
+		JavaCmd:     javaCmd,
+		JavaVersion: javaVersion,
+
+		Options: options,
+	}, nil
+}
+
+// Clean is currently not implemented
+func (a *Analyzer) Clean(m module.Module) error {
+	return errors.New("Clean is not implemented for Ant")
+}
+
+// Build is currently not implemented
+func (a *Analyzer) Build(m module.Module) error {
+	return errors.New("Build is not implemented for Ant")
+}
+
+// Analyze resolves a lib directory and parses the jars inside
+func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
+	log.Logger.Debugf("Running Ant analysis: %#v in %s", m, m.Dir)
+
+	libdir := "lib"
+	if a.Options.LibDir != "" {
+		libdir = a.Options.LibDir
+	}
+
+	log.Logger.Debugf("resolving ant libs in: %s", libdir)
+	if ok, err := files.ExistsFolder(m.Dir, libdir); !ok || err != nil {
+		return m, errors.New("unable to resolve library directory, try specifying it using the `modules.options.libdir` property in `fossa.yml`")
+	}
+
+	jarFilePaths, err := doublestar.Glob(filepath.Join(libdir, "*.jar"))
+	if err != nil {
+		return m, err
+	}
+
 	log.Logger.Debugf("Running Ant analysis: %#v", jarFilePaths)
 
-	var dependencies []module.Dependency
-
 	// traverse through libdir and and resolve jars
+	var imports []pkg.Import
 	for _, jarFilePath := range jarFilePaths {
 		locator, err := locatorFromJar(jarFilePath)
 		if err == nil {
-			hashes, _ := GetHashes(jarFilePath)
-			dependencies = append(dependencies, module.Dependency{
-				Locator: locator,
-				Hashes:  hashes,
+			// hashes, _ := GetHashes(jarFilePath)
+			imports = append(imports, pkg.Import{
+				Resolved: locator,
 			})
 		} else {
 			log.Logger.Warningf("unable to resolve Jar: %s", jarFilePath)
 		}
 	}
 
-	return dependencies, nil
+	m.Imports = imports
+	return m, nil
 }
 
-func getPOMFromJar(path string) (maven.POMFile, error) {
-	var pomFile maven.POMFile
+func getPOMFromJar(path string) (maven.Manifest, error) {
+	var pomFile maven.Manifest
 
 	log.Logger.Debugf(path)
 	if path == "" {
@@ -156,7 +179,7 @@ func getPOMFromJar(path string) (maven.POMFile, error) {
 }
 
 // locatorFromJar resolves a locator from a .jar file by inspecting its contents
-func locatorFromJar(path string) (module.Locator, error) {
+func locatorFromJar(path string) (pkg.ID, error) {
 	log.Logger.Debugf("processing locator from Jar: %s", path)
 
 	info, err := jargo.GetJarInfo(path)
@@ -172,9 +195,9 @@ func locatorFromJar(path string) (module.Locator, error) {
 		pomFile, err := getPOMFromJar(pomFilePath)
 		if err == nil {
 			log.Logger.Debugf("resolving locator from pom: %s", pomFilePath)
-			return module.Locator{
-				Fetcher:  "mvn",
-				Project:  pomFile.GroupID + ":" + pomFile.ArtifactID,
+			return pkg.ID{
+				Type:     pkg.Maven,
+				Name:     pomFile.GroupID + ":" + pomFile.ArtifactID,
 				Revision: pomFile.Version,
 			}, nil
 		} else {
@@ -185,9 +208,9 @@ func locatorFromJar(path string) (module.Locator, error) {
 		manifest := *info.Manifest
 		if manifest["Bundle-SymbolicName"] != "" && manifest["Implementation-Version"] != "" {
 			log.Logger.Debugf("resolving locator from META-INF: %s", info.Manifest)
-			return module.Locator{
-				Fetcher:  "mvn",
-				Project:  manifest["Bundle-SymbolicName"], // TODO: identify GroupId
+			return pkg.ID{
+				Type:     pkg.Maven,
+				Name:     manifest["Bundle-SymbolicName"], // TODO: identify GroupId
 				Revision: manifest["Implementation-Version"],
 			}, nil
 		}
@@ -209,28 +232,23 @@ func locatorFromJar(path string) (module.Locator, error) {
 	}
 
 	if parsedProjectName == "" {
-		return module.Locator{}, errors.New("unable to parse jar file")
+		return pkg.ID{}, errors.New("unable to parse jar file")
 	}
 
-	return module.Locator{
-		Fetcher:  "mvn",
-		Project:  parsedProjectName,
+	return pkg.ID{
+		Type:     pkg.Maven,
+		Name:     parsedProjectName,
 		Revision: parsedRevisionName,
 	}, nil
 }
 
 // IsBuilt always returns true for Ant builds
-func (builder *AntBuilder) IsBuilt(m module.Module, allowUnresolved bool) (bool, error) {
+func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
 	return true, nil
 }
 
-// IsModule is not implemented
-func (builder *AntBuilder) IsModule(target string) (bool, error) {
-	return false, errors.New("IsModule is not implemented for AntBuilder")
-}
-
-// DiscoverModules returns a root build.xml if found, and build configs for all sub-projects otherwise
-func (builder *AntBuilder) DiscoverModules(dir string) ([]module.Config, error) {
+// Discover returns a root build.xml if found, and build configs for all sub-projects otherwise
+func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 	_, err := os.Stat(filepath.Join(dir, "build.xml"))
 	if err == nil {
 		// find the root build, as it can invoke tasks sub-builds
@@ -239,11 +257,11 @@ func (builder *AntBuilder) DiscoverModules(dir string) ([]module.Config, error) 
 			absDir = dir
 		}
 		artifactName := filepath.Base(absDir)
-		return []module.Config{
+		return []module.Module{
 			{
 				Name: artifactName,
-				Path: "build.xml",
-				Type: "ant",
+				Dir:  "build.xml",
+				Type: pkg.Ant,
 			},
 		}, nil
 	}
@@ -253,13 +271,13 @@ func (builder *AntBuilder) DiscoverModules(dir string) ([]module.Config, error) 
 	if err != nil {
 		return nil, err
 	}
-	moduleConfigs := make([]module.Config, len(antFilePaths))
+	moduleConfigs := make([]module.Module, len(antFilePaths))
 	for i, path := range antFilePaths {
 		artifactName := filepath.Dir(path) // Use the dirname as it's impossible to reliably parse from build.xml
-		moduleConfigs[i] = module.Config{
+		moduleConfigs[i] = module.Module{
 			Name: artifactName,
-			Path: path,
-			Type: "ant",
+			Dir:  path,
+			Type: pkg.Ant,
 		}
 	}
 	return moduleConfigs, nil

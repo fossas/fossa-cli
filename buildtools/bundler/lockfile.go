@@ -77,6 +77,7 @@ func FromLockfile(filename string) (Lockfile, error) {
 		case "GEM":
 			lockfile.Gem = append(lockfile.Gem, ParseSpecSection(section))
 		case "DEPENDENCIES":
+			lockfile.Dependencies = ParseDependenciesSection(section)
 		default:
 			continue
 		}
@@ -159,4 +160,28 @@ func ParseSpecs(s string) []Spec {
 	specs = append(specs, curr)
 
 	return specs
+}
+
+func ParseDependenciesSection(section string) []Requirement {
+	lines := strings.Split(strings.TrimSpace(section), "\n")
+
+	// Ignore header.
+	var requirements []Requirement
+	for _, line := range lines[1:] {
+		matches := requirementsRegex.FindStringSubmatch(line)
+		spaces := matches[1]
+		name := matches[2]
+		version := ""
+		if len(matches) == 5 {
+			version = matches[4]
+		}
+		log.Logger.Debugf("Parsed: %#v %#v %#v\n", spaces, name, version)
+		requirements = append(requirements, Requirement{
+			Name:    strings.TrimSuffix(name, "!"),
+			Pinned:  strings.HasSuffix(name, "!"),
+			Version: VersionSpecifier(version),
+		})
+	}
+
+	return requirements
 }
