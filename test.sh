@@ -192,3 +192,28 @@ cd $HOME/core
 fossa init
 cat .fossa.yml
 time fossa analyze --output nuget:src/Api/Api.csproj | json
+
+# Test known good Cocoapods projects:
+echo "Testing macdown"
+cd $HOME/macdown
+fossa init
+cat .fossa.yml
+time fossa analyze --output pod:. | json
+
+echo "Testing Hero"
+cd $HOME/Hero
+fossa init
+cat .fossa.yml
+time fossa analyze --output pod:. | json
+
+echo "Testing iina"
+cd $HOME/iina
+fossa init
+cat .fossa.yml
+time fossa analyze --output pod:. | json
+
+echo "Testing Kingfisher"
+cd $HOME/Kingfisher
+fossa init
+cat .fossa.yml
+time fossa analyze --output pod:. | json

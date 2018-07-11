@@ -1,15 +1,17 @@
 // Package cocoapods implements Cocoapods analysis.
 //
-// A `BuildTarget` for Cocoapods is the path to the Podfile.
+// A `BuildTarget` for Cocoapods is the path to the directory with the Podfile.
 package cocoapods
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/mitchellh/mapstructure"
 
+	"github.com/fossas/fossa-cli/buildtools/cocoapods"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
@@ -20,6 +22,8 @@ import (
 type Analyzer struct {
 	PodCmd     string
 	PodVersion string
+
+	Pod cocoapods.Cocoapods
 
 	Options Options
 }
@@ -42,8 +46,12 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 	log.Logger.Debug("Decoded options: %#v", options)
 
 	analyzer := Analyzer{
-		podCmd:     podCmd,
-		podVersion: podVersion,
+		PodCmd:     podCmd,
+		PodVersion: podVersion,
+
+		Pod: cocoapods.Cocoapods{
+			Bin: podCmd,
+		},
 
 		Options: options,
 	}
@@ -95,14 +103,101 @@ func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
 	return isBuilt, nil
 }
 
-func (a *Analyzer) Clean(m module.Module) (bool, error) {
-	log.Logger.Debugf("Checking Cocoapods build: %#v", m)
+func (a *Analyzer) Clean(m module.Module) error {
+	log.Logger.Warning("Clean is not implemented for Cocoapods")
+	return nil
+}
 
-	isBuilt, err := files.Exists(m.Dir, "Podfile.lock")
+func (a *Analyzer) Build(m module.Module) error {
+	return a.Pod.Install(m.Dir)
+}
+
+func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
+	lockfile, err := cocoapods.FromLockfile(m.Dir, "Podfile.lock")
 	if err != nil {
-		return false, err
+		return module.Module{}, err
 	}
 
-	log.Logger.Debugf("Done checking Cocoapods build: %#v", isBuilt)
-	return isBuilt, nil
+	// Construct a map of spec repositories.
+	specRepos := make(map[string]string)
+	for repo, pods := range lockfile.SpecRepos {
+		for _, pod := range pods {
+			specRepos[pod] = repo
+		}
+	}
+
+	// Construct a map of all dependencies.
+	nameToID := make(map[string]pkg.ID)
+	for _, pod := range lockfile.Pods {
+		// Get pod name: strip subspecs.
+		name := PodName(pod.Name)
+		id := pkg.ID{
+			Type:     pkg.Cocoapods,
+			Name:     name,
+			Revision: pod.Version,
+		}
+
+		// Check if this pod is from an external source.
+		if source, ok := lockfile.ExternalSources[pod.Name]; ok {
+			if source.Git != "" {
+				// Check if this pod is from a git repository.
+				git, ok := lockfile.CheckoutOptions[pod.Name]
+				if !ok {
+					log.Logger.Warningf("Could not identify commit of git repository pod: %s", pod.Name)
+				} else {
+					// TODO: we should probably set this on Location instead, but this is
+					// a quick hack because otherwise we'd have to special-case pod
+					// handling to check Location.
+					id.Type = pkg.Git
+					id.Name = git.Git
+					id.Revision = git.Commit
+				}
+			} else if source.Path != "" {
+				// Check if this pod is vendored: we don't support this, but we can try
+				// to look the name up as a Cocoapod.
+			} else {
+				log.Logger.Warningf("Could not identify externally sourced pod: %s", pod.Name)
+			}
+		}
+
+		nameToID[name] = id
+	}
+
+	// Construct dependency graph edges.
+	graph := make(map[pkg.ID]pkg.Package)
+	for _, pod := range lockfile.Pods {
+		id := nameToID[PodName(pod.Name)]
+
+		var imports []pkg.Import
+		for _, dep := range pod.Dependencies {
+			imports = append(imports, pkg.Import{
+				Target:   dep.String(),
+				Resolved: nameToID[PodName(dep.Name)],
+			})
+		}
+
+		graph[id] = pkg.Package{
+			ID:      id,
+			Imports: imports,
+		}
+	}
+
+	// Construct direct dependencies list.
+	var imports []pkg.Import
+	for _, dep := range lockfile.Dependencies {
+		imports = append(imports, pkg.Import{
+			Target:   dep.String(),
+			Resolved: nameToID[PodName(dep.Name)],
+		})
+	}
+
+	m.Deps = graph
+	m.Imports = imports
+
+	return m, nil
+}
+
+// PodName strips subspecs.
+func PodName(spec string) string {
+	return strings.Split(spec, "/")[0]
 }
