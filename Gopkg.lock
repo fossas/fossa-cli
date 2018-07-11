@@ -22,8 +22,14 @@
 [[projects]]
   name = "github.com/briandowns/spinner"
   packages = ["."]
-  revision = "48dbb65d7bd5c74ab50d53d04c949f20e3d14944"
-  version = "1.0"
+  revision = "5b875a9171af19dbde37e70a8fcbe2ebd7285e05"
+  version = "1.1"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/cheekybits/genny"
+  packages = ["generic"]
+  revision = "9127e812e1e9e501ce899a18121d316ecb52e4ba"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -112,7 +118,7 @@
   branch = "master"
   name = "github.com/mitchellh/go-homedir"
   packages = ["."]
-  revision = "b8bc1bf767474819792c23f32d8286a45736f1c6"
+  revision = "3864e76763d94a6df2f9960b16a20a33da9f9a66"
 
 [[projects]]
   branch = "master"
@@ -148,7 +154,7 @@
   branch = "master"
   name = "github.com/rhysd/go-github-selfupdate"
   packages = ["selfupdate"]
-  revision = "953b97fcd154498041d22cd4442486df1e4eec26"
+  revision = "41c1bbb0804a2994dae69502a8c76e7c456ad45e"
 
 [[projects]]
   name = "github.com/sergi/go-diff"
@@ -197,10 +203,10 @@
   version = "v1.20.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/xanzy/ssh-agent"
   packages = ["."]
-  revision = "ba9c9e33906f58169366275e3450db66139a31a9"
+  revision = "640f0ab560aeb89d523bb6ac322b1244d5c3796c"
+  version = "v0.2.0"
 
 [[projects]]
   branch = "master"
@@ -211,6 +217,7 @@
     "ed25519",
     "ed25519/internal/edwards25519",
     "internal/chacha20",
+    "internal/subtle",
     "openpgp",
     "openpgp/armor",
     "openpgp/elgamal",
@@ -222,7 +229,7 @@
     "ssh/agent",
     "ssh/knownhosts"
   ]
-  revision = "1a580b3eff7814fc9b40602fd35256c63b50f491"
+  revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
 
 [[projects]]
   branch = "master"
@@ -231,7 +238,7 @@
     "context",
     "context/ctxhttp"
   ]
-  revision = "2491c5de3490fced2f6cff376127c667efeed857"
+  revision = "039a4258aec0ad3c79b905677cceeab13b296a77"
 
 [[projects]]
   branch = "master"
@@ -240,7 +247,7 @@
     ".",
     "internal"
   ]
-  revision = "cdc340f7c179dbbfa4afd43b7614e8fcadde4269"
+  revision = "ef147856a6ddbb60760db74283d2424e98c87bff"
 
 [[projects]]
   branch = "master"
@@ -249,7 +256,7 @@
     "unix",
     "windows"
   ]
-  revision = "7c87d13f8e835d2fb3a70a2912c811ed0c1d241b"
+  revision = "1b2967e3c290b7c545b3db0deeda16e9be4f98a2"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -275,8 +282,8 @@
     "internal/urlfetch",
     "urlfetch"
   ]
-  revision = "150dc57a1b433e64154302bdc40b6bb8aefa313a"
-  version = "v1.0.0"
+  revision = "b1f26356af11148e710935ed1ac8a7f5702c7612"
+  version = "v1.1.0"
 
 [[projects]]
   name = "gopkg.in/src-d/go-billy.v4"
@@ -287,8 +294,8 @@
     "osfs",
     "util"
   ]
-  revision = "df053870ae7070b0350624ba5a22161ba3796cc0"
-  version = "v4.1.1"
+  revision = "83cf655d40b15b427014d7875d10850f96edba14"
+  version = "v4.2.0"
 
 [[projects]]
   name = "gopkg.in/src-d/go-git.v4"
@@ -323,7 +330,7 @@
     "plumbing/transport/ssh",
     "storage",
     "storage/filesystem",
-    "storage/filesystem/internal/dotgit",
+    "storage/filesystem/dotgit",
     "storage/memory",
     "utils/binary",
     "utils/diff",
@@ -334,8 +341,8 @@
     "utils/merkletrie/internal/frame",
     "utils/merkletrie/noder"
   ]
-  revision = "57570e84f8c5739f0f4a59387493e590e709dde9"
-  version = "v4.4.0"
+  revision = "3bd5e82b2512d85becae9677fa06b5a973fd4cfb"
+  version = "v4.5.0"
 
 [[projects]]
   name = "gopkg.in/warnings.v0"
@@ -352,6 +359,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d73224cc15e302f77fc1e80ee2e3dcbebbf50c907fd85936e3849eecfeaa05f3"
+  inputs-digest = "7b91189a5340c9dda6d390cb659cd16571dbaaf03af665ee1ea4c72bf92683bb"
   solver-name = "gps-cdcl"
   solver-version = 1
