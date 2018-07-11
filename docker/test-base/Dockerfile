@@ -149,16 +149,27 @@ RUN git clone --depth=1 https://github.com/OctopusDeploy/CSProjToXProj && \
 
 # Known good Scala projects:
 ## Other testing candidates:
-## -  apache/spark
-## -  linkerd/linkerd
-## -  graphcool/prisma
-## -  twitter/finagle
-RUN git clone https://github.com/graphcool/prisma && \
+## - apache/spark
+## - linkerd/linkerd
+## - graphcool/prisma
+## - twitter/finagle
+RUN git clone --depth=1 https://github.com/graphcool/prisma && \
     cd prisma && \
     bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && sbt dependencyTree"
 
 # Known good Cocoapods projects:
-RUN git clone https://github.com/HeroTransitions/Hero
-RUN git clone https://github.com/lhc70000/iina
-RUN git clone https://github.com/onevcat/Kingfisher
-RUN git clone https://github.com/MacDownApp/macdown
+RUN git clone --depth=1 https://github.com/HeroTransitions/Hero
+RUN git clone --depth=1 https://github.com/lhc70000/iina
+RUN git clone --depth=1 https://github.com/onevcat/Kingfisher
+RUN git clone --depth=1 https://github.com/MacDownApp/macdown
+
+# Known good Ant projects:
+## Other testing candidates:
+## - kissyui/kissy
+## - arduino/Arduino
+## - Cyberqat/Red-Dwarf
+## - mproch/apache-ode
+## - mediaslave/phrails
+## - noerd/Multiple-File-Upload-Package
+## - mikaelkindborg/droidscript
+RUN git clone --depth=1 https://github.com/fossas/ant-example-project

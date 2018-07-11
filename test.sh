@@ -217,3 +217,10 @@ cd $HOME/Kingfisher
 fossa init
 cat .fossa.yml
 time fossa analyze --output pod:. | json
+
+# Test known good Ant projects:
+echo "Testing ant-example-project"
+cd $HOME/ant-example-project
+fossa init
+cat .fossa.yml
+time fossa analyze --output ant:. | json

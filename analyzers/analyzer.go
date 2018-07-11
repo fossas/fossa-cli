@@ -4,6 +4,7 @@ package analyzers
 import (
 	"errors"
 
+	"github.com/fossas/fossa-cli/analyzers/ant"
 	"github.com/fossas/fossa-cli/analyzers/bower"
 	"github.com/fossas/fossa-cli/analyzers/cocoapods"
 	"github.com/fossas/fossa-cli/analyzers/golang"
@@ -42,7 +43,7 @@ type Analyzer interface {
 func New(key pkg.Type, options map[string]interface{}) (Analyzer, error) {
 	switch key {
 	case pkg.Ant:
-		return nil, ErrAnalyzerNotImplemented
+		return ant.New(options)
 	case pkg.Bower:
 		return bower.New(options)
 	case pkg.Cocoapods:

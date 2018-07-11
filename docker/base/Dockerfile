@@ -41,6 +41,7 @@ RUN ["/bin/bash", "-c", "\
     sdk install java && \
     sdk install maven && \
     sdk install gradle && \
+    sdk install ant && \
     # Install Scala runtime and build tools
     sdk install scala && \
     sdk install sbt \
