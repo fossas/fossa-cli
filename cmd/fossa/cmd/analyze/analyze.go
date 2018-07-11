@@ -1,8 +1,8 @@
 package analyze
 
 import (
-	"encoding/json"
 	"fmt"
+	"text/template"
 
 	"github.com/urfave/cli"
 
@@ -15,18 +15,12 @@ import (
 	"github.com/fossas/fossa-cli/module"
 )
 
-var (
-	Output = "output"
-)
-
 var Cmd = cli.Command{
 	Name:      "analyze",
 	Usage:     "Analyze built dependencies",
 	Action:    Run,
 	ArgsUsage: "MODULE",
-	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithModulesFlags([]cli.Flag{
-		cli.BoolFlag{Name: flags.Short(Output), Usage: "show analysis output instead of uploading to FOSSA"},
-	}))),
+	Flags:     flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithModulesFlags(flags.WithAnalysisTemplateFlags([]cli.Flag{})))),
 }
 
 var _ cli.ActionFunc = Run
@@ -45,7 +39,40 @@ func Run(ctx *cli.Context) error {
 		log.Logger.Fatal("No modules specified.")
 	}
 
-	var analyzed []module.Module
+	analyzed, err := Modules(modules)
+	if err != nil {
+		log.Logger.Fatalf("Could not analyze modules: %s", err.Error())
+		return err
+	}
+
+	normalized, err := fossa.Normalize(analyzed)
+	if err != nil {
+		log.Logger.Fatalf("Could not normalize output: %s", err.Error())
+		return err
+	}
+
+	if ctx.String(flags.ShowOutput) != "" || ctx.String(flags.Template) != "" {
+		var tmpl *template.Template
+		if ctx.String(flags.Template) != "" {
+			tmpl, err = template.ParseFiles(ctx.String(flags.Template))
+			if err != nil {
+				log.Logger.Fatalf("Could not parse template data: %s", err.Error())
+			}
+
+			if ctx.String(flags.ShowOutput) == "" {
+				err = ctx.Set(flags.ShowOutput, "-")
+				if err != nil {
+					log.Logger.Fatalf("Could not set default output to STDOUT", err.Error())
+				}
+			}
+		}
+		return cmdutil.OutputData(ctx.String(flags.ShowOutput), tmpl, normalized)
+	}
+
+	return uploadAnalysis(normalized)
+}
+
+func Modules(modules []module.Module) (analyzed []module.Module, err error) {
 	defer log.StopSpinner()
 	for i, m := range modules {
 		log.ShowSpinner(fmt.Sprintf("Analyzing module (%d/%d): %s", i+1, len(modules), m.Name))
@@ -69,26 +96,18 @@ func Run(ctx *cli.Context) error {
 	}
 	log.StopSpinner()
 
-	normalized, err := fossa.Normalize(analyzed)
-	if err != nil {
-		log.Logger.Fatalf("Could not normalize output: %s", err.Error())
-	}
-	if ctx.Bool(Output) {
-		out, err := json.Marshal(normalized)
-		if err != nil {
-			log.Logger.Fatalf("Could not marshal output: %s", err.Error())
-		}
-		log.Printf("%s", string(out))
-		return nil
-	}
+	return analyzed, err
+}
 
+func uploadAnalysis(normalized []fossa.SourceUnit) error {
 	fossa.MustInit(config.Endpoint(), config.APIKey())
 	log.ShowSpinner("Uploading analysis...")
 	locator, err := fossa.Upload(config.Fetcher(), config.Project(), config.Revision(), config.Title(), config.Branch(), normalized)
+	log.StopSpinner()
 	if err != nil {
 		log.Logger.Fatalf("Error during upload: %s", err.Error())
+		return err
 	}
-	log.StopSpinner()
 	log.Printf(cmdutil.FmtReportURL(locator))
 	return nil
 }

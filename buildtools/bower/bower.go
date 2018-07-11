@@ -52,6 +52,9 @@ func (b *Bower) List() (Package, error) {
 		Argv: []string{"list", "--json"},
 		Dir:  b.Config.CWD,
 	})
+	if err != nil {
+		return Package{}, err
+	}
 	var pkg Package
 	err = json.Unmarshal([]byte(stdout), &pkg)
 	if err != nil {

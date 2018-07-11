@@ -20,6 +20,13 @@ func (l Locator) String() string {
 	return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
 }
 
+func (l Locator) QueryString() string {
+	if l.Fetcher == "go" {
+		l.Fetcher = "git"
+	}
+	return l.String()
+}
+
 func NormalizeGitURL(project string) string {
 	// Remove fetcher prefix (in case project is derived from splitting a locator on '$')
 	noFetcherPrefix := strings.TrimPrefix(project, "git+")
@@ -69,8 +76,8 @@ func ReadImportPath(s ImportPathString) ImportPath {
 	return out
 }
 
-func LocatorOf(id pkg.ID) Locator {
-	return Locator{
+func LocatorOf(id pkg.ID) *Locator {
+	return &Locator{
 		Fetcher:  LocatorType(id.Type),
 		Project:  id.Name,
 		Revision: id.Revision,
