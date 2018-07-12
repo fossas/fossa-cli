@@ -31,10 +31,6 @@ var Cmd = cli.Command{
 	}),
 }
 
-type APIResponse struct {
-	Locator string
-}
-
 func ParseLocators(locators string) (fossa.SourceUnit, error) {
 	var deps []fossa.SourceUnitDependency
 	lines := strings.Split(locators, "\n")

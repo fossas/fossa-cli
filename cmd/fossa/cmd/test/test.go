@@ -3,19 +3,21 @@ package test
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/url"
 	"os"
 	"time"
 
-	"github.com/briandowns/spinner"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 
+	"github.com/fossas/fossa-cli/api"
+	"github.com/fossas/fossa-cli/api/fossa"
+	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/log"
-	"github.com/fossas/fossa-cli/module"
 )
+
+var Timeout = "timeout"
 
 const pollRequestDelay = 8 * time.Second
 const buildsEndpoint = "/api/revisions/%s/build"
@@ -25,181 +27,113 @@ var Cmd = cli.Command{
 	Name:   "test",
 	Usage:  "Test current revision against FOSSA scan status and exit with errors if issues are found",
 	Action: Run,
-	Flags:  flags.WithGlobalFlags(flags.WithAPIFlags(([]cli.Flag{}))),
+	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(([]cli.Flag{
+		cli.IntFlag{Name: Timeout, Value: 10 * 60, Usage: "duration to wait for build completion (in seconds)"},
+	}))),
 }
 
 var _ cli.ActionFunc = Run
 
-type buildResponse struct {
-	ID    int
-	Error string
-	Task  struct {
-		Status string
+func Run(ctx *cli.Context) error {
+	err := cmdutil.InitWithAPI(ctx)
+	if err != nil {
+		log.Logger.Fatalf("Could not initialize: %s", err.Error())
 	}
+
+	issues, err := Do(time.After(time.Duration(ctx.Int(Timeout)) * time.Second))
+	if err != nil {
+		log.Logger.Fatalf("Could not test revision: %s", err.Error())
+	}
+
+	log.Logger.Debugf("Test succeeded: %#v", issues)
+	if len(issues) == 0 {
+		fmt.Fprintln(os.Stderr, "Test passed! 0 issues found")
+		return nil
+	}
+
+	pluralizedIssues := "issues"
+	if len(issues) == 1 {
+		pluralizedIssues = "issue"
+	}
+	fmt.Fprintf(os.Stderr, "Test failed! %d %s found\n", len(issues), pluralizedIssues)
+
+	marshalled, err := json.Marshal(issues)
+	if err != nil {
+		log.Logger.Fatalf("Could not marshal unresolved issues: %s", err)
+	}
+	fmt.Println(string(marshalled))
+
+	os.Exit(1)
+	return nil
 }
 
-func getBuild(endpoint, apiKey, fetcher, project, revision string) (buildResponse, error) {
-	server, err := url.Parse(endpoint)
-	if err != nil {
-		return buildResponse{}, fmt.Errorf("invalid FOSSA endpoint: %s", err.Error())
+func Do(stop <-chan time.Time) ([]fossa.Issue, error) {
+	log.ShowSpinner("Waiting for analysis to complete...")
+
+	project := fossa.Locator{
+		Fetcher:  config.Fetcher(),
+		Project:  config.Project(),
+		Revision: config.Revision(),
 	}
 
-	buildsURL, err := url.Parse(fmt.Sprintf(buildsEndpoint, url.PathEscape(module.Locator{Fetcher: fetcher, Project: project, Revision: revision}.String())))
+	_, err := CheckBuild(project, stop)
 	if err != nil {
-		return buildResponse{}, fmt.Errorf("invalid FOSSA builds endpoint: %s", err.Error())
-	}
-	url := server.ResolveReference(buildsURL).String()
-
-	log.Logger.Debugf("Making Builds API request to: %#v", url)
-	res, err := makeAPIRequest(http.MethodPut, url, apiKey, nil)
-	if isTimeout(err) {
-		return buildResponse{}, err
-	}
-	if err != nil {
-		return buildResponse{}, fmt.Errorf("could not make FOSSA build request: %s", err)
+		log.Logger.Fatalf("Could not load build: %s", err.Error())
 	}
 
-	var build buildResponse
-	err = json.Unmarshal(res, &build)
+	log.ShowSpinner("Waiting for FOSSA scan results...")
+
+	issues, err := CheckIssues(project, stop)
 	if err != nil {
-		return buildResponse{}, fmt.Errorf("could not parse FOSSA build: %#v %#v", err.Error(), string(res))
+		log.Logger.Fatalf("Could not load issues: %s", err.Error())
 	}
 
-	return build, nil
+	log.StopSpinner()
+	return issues, nil
 }
 
-type revisionResponse struct {
-	Meta []struct {
-		LastScan string `json:"last_scan"`
-	}
-	Issues []issueResponse
-}
-
-type issueResponse struct {
-	Resolved bool
-	Type     string
-	// RevisionID string // TODO: We need to get this information from /api/issues?fromRevision=
-}
-
-func getRevision(endpoint, apiKey, fetcher, project, revision string) (revisionResponse, error) {
-	server, err := url.Parse(endpoint)
-	if err != nil {
-		return revisionResponse{}, fmt.Errorf("invalid FOSSA endpoint: %s", err.Error())
-	}
-
-	revisionsURL, err := url.Parse(fmt.Sprintf(revisionsEndpoint, url.PathEscape(string(module.Locator{Fetcher: fetcher, Project: project, Revision: revision}.String()))))
-	if err != nil {
-		return revisionResponse{}, fmt.Errorf("invalid FOSSA issues endpoint: %s", err.Error())
-	}
-	url := server.ResolveReference(revisionsURL).String()
-
-	log.Logger.Debugf("Making Revisions API request to: %#v", url)
-	res, err := makeAPIRequest(http.MethodGet, url, apiKey, nil)
-	if err != nil {
-		return revisionResponse{}, err
-	}
-
-	var revisionJSON revisionResponse
-	err = json.Unmarshal(res, &revisionJSON)
-	if err != nil {
-		return revisionResponse{}, fmt.Errorf("could not parse FOSSA revision: %#v %#v", err.Error(), res)
-	}
-	return revisionJSON, nil
-}
-
-func doTest(s *spinner.Spinner, race chan testResult, endpoint, apiKey, fetcher, project, revision string) {
-	s.Suffix = " Waiting for analysis to complete..."
-	s.Start()
-
-buildLoop:
+func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, error) {
 	for {
-		build, err := getBuild(endpoint, apiKey, fetcher, project, revision)
-		if isTimeout(err) {
-			time.Sleep(pollRequestDelay)
-			continue
-		}
-		if err != nil {
-			race <- testResult{err: err, issues: nil}
-			return
-		}
-		log.Logger.Debugf("Got build: %#v", build)
-		switch build.Task.Status {
-		case "SUCCEEDED":
-			break buildLoop
-		case "FAILED":
-			race <- testResult{err: fmt.Errorf("failed to analyze build #%d: %s (visit FOSSA or contact support@fossa.io)", build.ID, build.Error), issues: nil}
-			return
+		select {
+		case <-stop:
+			return fossa.Build{}, errors.New("timed out while waiting for build")
 		default:
-		}
-		time.Sleep(pollRequestDelay)
-	}
-
-	s.Suffix = " Waiting for FOSSA scan results..."
-	s.Restart()
-
-	for {
-		revision, err := getRevision(endpoint, apiKey, fetcher, project, revision)
-		if err != nil {
-			race <- testResult{err: err, issues: nil}
-			return
-		}
-		log.Logger.Debugf("Got revision: %#v", revision)
-		if len(revision.Meta) > 0 && revision.Meta[0].LastScan != "" {
-			race <- testResult{err: nil, issues: revision.Issues}
-			return
-		}
-		time.Sleep(pollRequestDelay)
-	}
-}
-
-type testResult struct {
-	err    error
-	issues []issueResponse
-}
-
-func Run(c *cli.Context) error {
-	conf, err := config.New(c)
-	if err != nil {
-		log.Logger.Fatalf("Could not load configuration: %s", err.Error())
-	}
-
-	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-	s.Writer = os.Stderr
-	race := make(chan testResult, 1)
-	go doTest(s, race, conf.Endpoint, conf.APIKey, conf.Fetcher, conf.Project, conf.Revision)
-	select {
-	case result := <-race:
-		s.Stop()
-		if result.err != nil {
-			log.Logger.Fatalf("Could not execute test: %s", result.err.Error())
-		}
-		log.Logger.Debugf("Test succeeded: %#v", result.issues)
-		if len(result.issues) == 0 {
-			fmt.Fprintln(os.Stderr, "Test passed! 0 issues found")
-		} else {
-			var unresolvedIssues []issueResponse
-			for _, issue := range result.issues {
-				if !issue.Resolved {
-					unresolvedIssues = append(unresolvedIssues, issue)
-				}
+			build, err := fossa.GetBuild(locator)
+			if _, ok := err.(api.TimeoutError); ok {
+				time.Sleep(pollRequestDelay)
+				continue
 			}
-
-			pluralizedIssues := "issues"
-			if len(unresolvedIssues) == 1 {
-				pluralizedIssues = "issue"
-			}
-			fmt.Fprintf(os.Stderr, "Test failed! %d %s found\n", len(unresolvedIssues), pluralizedIssues)
-
-			issues, err := json.Marshal(unresolvedIssues)
 			if err != nil {
-				log.Logger.Fatalf("Could not marshal unresolved issues: %s", err)
+				return fossa.Build{}, errors.Wrap(err, "error while loading build")
 			}
-			fmt.Println(string(issues))
-
-			os.Exit(1)
+			switch build.Task.Status {
+			case "SUCCEEDED":
+				return build, nil
+			case "FAILED":
+				return fossa.Build{}, fmt.Errorf("failed to analyze build #%d: %s (visit FOSSA or contact support@fossa.io)", build.ID, build.Error)
+			default:
+				time.Sleep(pollRequestDelay)
+			}
 		}
-	case <-time.After(conf.TestCmd.Timeout):
-		s.Stop()
-		log.Logger.Fatalf("Timed out while waiting for issue report")
+	}
+}
+
+func CheckIssues(locator fossa.Locator, stop <-chan time.Time) ([]fossa.Issue, error) {
+	for {
+		select {
+		case <-stop:
+			return nil, errors.New("timed out while waiting for scan")
+		default:
+			issues, err := fossa.GetIssues(locator)
+			if _, ok := err.(api.TimeoutError); ok {
+				time.Sleep(pollRequestDelay)
+				continue
+			}
+			if err != nil {
+				return nil, errors.Wrap(err, "error while loading issues")
+			}
+			log.Logger.Debugf("Got issues: %#v", issues)
+			return issues, nil
+		}
 	}
 }

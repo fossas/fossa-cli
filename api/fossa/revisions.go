@@ -1,11 +1,10 @@
 package fossa
 
 import (
+	"fmt"
 	"net/url"
-	"path"
 
 	"github.com/fossas/fossa-cli/log"
-	"github.com/fossas/fossa-cli/pkg"
 )
 
 // A License holds the FOSSA API response for the license API.
@@ -35,12 +34,6 @@ type RevisionMeta struct {
 	LastScan string `json:"last_scan"`
 }
 
-// An Issue holds the FOSSA API response for the issue API.
-type Issue struct {
-	Resolved bool
-	Type     string
-}
-
 // A Project holds the FOSSA API response for the project API.
 type Project struct {
 	Title   string
@@ -50,13 +43,12 @@ type Project struct {
 }
 
 // RevisionsAPI is the API endpoint for revisions.
-const RevisionsAPI = "/api/revisions"
+const RevisionsAPI = "/api/revisions/%s"
 
 // GetRevision loads a single revision.
-func GetRevision(id pkg.ID) (Revision, error) {
-	locator := LocatorOf(id)
+func GetRevision(locator Locator) (Revision, error) {
 	var revision Revision
-	_, err := GetJSON(path.Join(RevisionsAPI, url.PathEscape(locator.String())), &revision)
+	_, err := GetJSON(fmt.Sprintf(RevisionsAPI, url.PathEscape(locator.String())), &revision)
 	if err != nil {
 		return Revision{}, err
 	}
@@ -80,23 +72,23 @@ func GetRevision(id pkg.ID) (Revision, error) {
 }
 
 // GetRevisions loads many revisions in batched requests.
-func GetRevisions(ids []pkg.ID) (revs []Revision, err error) {
-	var locators []string
-	for _, id := range ids {
-		locators = append(locators, LocatorOf(id).String())
+func GetRevisions(locators []Locator) (revs []Revision, err error) {
+	var locs []string
+	for _, loc := range locators {
+		locs = append(locs, loc.String())
 	}
 
 	// Split locators into chunks of 20 (this is an API limitation).
 	chunks := make([][]string, 0)
 	chunkSize := 20
-	for i := 0; i < len(locators); i += chunkSize {
+	for i := 0; i < len(locs); i += chunkSize {
 		end := i + chunkSize
 
-		if end > len(locators) {
-			end = len(locators)
+		if end > len(locs) {
+			end = len(locs)
 		}
 
-		chunks = append(chunks, locators[i:end])
+		chunks = append(chunks, locs[i:end])
 	}
 
 	// Make chunked API calls in parallel.
@@ -116,7 +108,7 @@ func GetRevisions(ids []pkg.ID) (revs []Revision, err error) {
 			} else {
 				responses <- revisions
 			}
-		}(RevisionsAPI + "?" + qs.Encode())
+		}(fmt.Sprintf(RevisionsAPI, "?"+qs.Encode()))
 	}
 
 	var revisions []Revision
