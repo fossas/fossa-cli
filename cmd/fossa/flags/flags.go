@@ -59,23 +59,14 @@ var (
 	OptionF = cli.StringSliceFlag{Name: Option, Usage: "options for the module (format is `key:value` e.g. allow-unresolved:true)"}
 )
 
-var (
-	AnalysisCmd = []cli.Flag{ShowOutputF, TemplateF}
-	ShowOutput  = "output"
-	ShowOutputF = cli.StringFlag{Name: ShowOutput, Usage: "send analysis to output file instead of uploading to FOSSA (default: -)"}
-)
-
-func WithAnalysisTemplateFlags(f []cli.Flag) []cli.Flag {
-	return append(f, AnalysisCmd...)
-}
-
 func WithReportTemplateFlags(f []cli.Flag) []cli.Flag {
 	return append(f, ReportCmd...)
 }
 
 var (
-	ReportCmd = []cli.Flag{OutputF, TemplateF}
-	OutputF   = cli.StringFlag{Name: ShowOutput, Value: "-", Usage: "Output file for report"}
-	Template  = "template"
-	TemplateF = cli.StringFlag{Name: Template, Usage: "process result via template file prior to sending it to output"}
+	ReportCmd   = []cli.Flag{OutputFileF, TemplateF}
+	OutputFile  = "output-file"
+	OutputFileF = cli.StringFlag{Name: OutputFile, Value: "-", Usage: "Output file for report"}
+	Template    = "template"
+	TemplateF   = cli.StringFlag{Name: Template, Usage: "process result via template file prior to sending it to output"}
 )

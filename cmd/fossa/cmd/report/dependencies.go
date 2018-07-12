@@ -1,8 +1,6 @@
 package report
 
 import (
-	"text/template"
-
 	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/log"
@@ -14,11 +12,15 @@ var dependenciesCmd = cli.Command{
 	Name:   "dependencies",
 	Usage:  "Generate dependencies report",
 	Flags:  flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithModulesFlags(flags.WithReportTemplateFlags([]cli.Flag{})))),
-	Before: prepareReportCtx,
-	Action: generateDependencies,
+	Action: dependenciesRun,
 }
 
-func generateDependencies(ctx *cli.Context) (err error) {
+func dependenciesRun(ctx *cli.Context) error {
+	analyzed, err := analyzeModules(ctx)
+	if err != nil {
+		log.Logger.Fatal("Could not analyze modules: %s", err.Error())
+	}
+
 	pkgs := make([]pkg.Package, 0)
 	for _, module := range analyzed {
 		for _, pkg := range module.Deps {
@@ -26,14 +28,13 @@ func generateDependencies(ctx *cli.Context) (err error) {
 		}
 	}
 
-	var tmpl *template.Template
-
-	if ctx.String(flags.Template) != "" {
-		tmpl, err = template.ParseFiles(ctx.String(flags.Template))
+	if tmplFile := ctx.String(flags.Template); tmplFile != "" {
+		err := cmdutil.OutputWithTemplateFile(tmplFile, pkgs)
 		if err != nil {
 			log.Logger.Fatalf("Could not parse template data: %s", err.Error())
 		}
+		return nil
 	}
 
-	return cmdutil.OutputData(ctx.String(flags.ShowOutput), tmpl, pkgs)
+	return log.PrintJSON(pkgs)
 }

@@ -30,13 +30,18 @@ var licensesCmd = cli.Command{
 	Name:  "licenses",
 	Usage: "Generate licenses report",
 	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithModulesFlags(flags.WithReportTemplateFlags([]cli.Flag{
-		cli.BoolFlag{Name: flags.Short(Unknown), Usage: "license report including unkown (warning this is SLOW)"},
+		// TODO: what does this actually do?
+		cli.BoolFlag{Name: flags.Short(Unknown), Usage: "include unknown licenses"},
 	})))),
-	Before: prepareReportCtx,
-	Action: generateLicenses,
+	Action: licensesRun,
 }
 
-func generateLicenses(ctx *cli.Context) (err error) {
+func licensesRun(ctx *cli.Context) (err error) {
+	analyzed, err := analyzeModules(ctx)
+	if err != nil {
+		log.Logger.Fatal("Could not analyze modules: %s", err.Error())
+	}
+
 	defer log.StopSpinner()
 	revs := make([]fossa.Revision, 0)
 	for _, module := range analyzed {
@@ -45,7 +50,12 @@ func generateLicenses(ctx *cli.Context) (err error) {
 			i := 0
 			for _, dep := range module.Deps {
 				i++
-				log.ShowSpinner(fmt.Sprintf("Fetching License Info (%d/%d): %s", i+1, totalDeps, dep.ID.Name))
+				log.ShowSpinner(fmt.Sprintf("Fetching License Info (%d/%d): %s", i, totalDeps, dep.ID.Name))
+				locator := fossa.LocatorOf(dep.ID)
+				// Quirk of the licenses API: Go projects are stored under the git fetcher.
+				if locator.Fetcher == "go" {
+					locator.Fetcher = "git"
+				}
 				rev, err := fossa.GetRevision(fossa.LocatorOf(dep.ID))
 				if err != nil {
 					log.Logger.Warning(err.Error())
@@ -57,7 +67,11 @@ func generateLicenses(ctx *cli.Context) (err error) {
 			log.ShowSpinner("Fetching License Info")
 			var locators []fossa.Locator
 			for _, dep := range module.Deps {
-				locators = append(locators, fossa.LocatorOf(dep.ID))
+				locator := fossa.LocatorOf(dep.ID)
+				if locator.Fetcher == "go" {
+					locator.Fetcher = "git"
+				}
+				locators = append(locators, locator)
 			}
 			revs, err = fossa.GetRevisions(locators)
 			if err != nil {
@@ -65,6 +79,7 @@ func generateLicenses(ctx *cli.Context) (err error) {
 			}
 		}
 	}
+	log.StopSpinner()
 
 	depsByLicense := make(map[string]map[string]fossa.Revision, 0)
 	for _, rev := range revs {
@@ -76,18 +91,18 @@ func generateLicenses(ctx *cli.Context) (err error) {
 		}
 	}
 
+	if tmplFile := ctx.String(flags.Template); tmplFile != "" {
+		err := cmdutil.OutputWithTemplateFile(tmplFile, depsByLicense)
+		if err != nil {
+			log.Logger.Fatalf("Could not parse template data: %s", err.Error())
+		}
+		return nil
+	}
+
 	tmpl, err := template.New("base").Parse(defaultLicenseReportTemplate)
 	if err != nil {
 		log.Logger.Fatalf("Could not parse template data: %s", err.Error())
 	}
 
-	if ctx.String(flags.Template) != "" {
-		tmpl, err = template.ParseFiles(ctx.String(flags.Template))
-		if err != nil {
-			log.Logger.Fatalf("Could not parse template data: %s", err.Error())
-		}
-	}
-	log.StopSpinner()
-
-	return cmdutil.OutputData(ctx.String(flags.ShowOutput), tmpl, depsByLicense)
+	return cmdutil.OutputWithTemplate(tmpl, depsByLicense)
 }

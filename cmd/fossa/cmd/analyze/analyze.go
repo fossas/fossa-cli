@@ -2,7 +2,6 @@ package analyze
 
 import (
 	"fmt"
-	"text/template"
 
 	"github.com/urfave/cli"
 
@@ -15,12 +14,17 @@ import (
 	"github.com/fossas/fossa-cli/module"
 )
 
+var ShowOutput = "output"
+
 var Cmd = cli.Command{
 	Name:      "analyze",
 	Usage:     "Analyze built dependencies",
 	Action:    Run,
 	ArgsUsage: "MODULE",
-	Flags:     flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithModulesFlags(flags.WithAnalysisTemplateFlags([]cli.Flag{})))),
+	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithModulesFlags([]cli.Flag{
+		cli.BoolFlag{Name: flags.Short(ShowOutput), Usage: "print results to stdout instead of uploading to FOSSA"},
+		flags.TemplateF,
+	}))),
 }
 
 var _ cli.ActionFunc = Run
@@ -39,7 +43,7 @@ func Run(ctx *cli.Context) error {
 		log.Logger.Fatal("No modules specified.")
 	}
 
-	analyzed, err := Modules(modules)
+	analyzed, err := Do(modules)
 	if err != nil {
 		log.Logger.Fatalf("Could not analyze modules: %s", err.Error())
 		return err
@@ -51,28 +55,23 @@ func Run(ctx *cli.Context) error {
 		return err
 	}
 
-	if ctx.String(flags.ShowOutput) != "" || ctx.String(flags.Template) != "" {
-		var tmpl *template.Template
-		if ctx.String(flags.Template) != "" {
-			tmpl, err = template.ParseFiles(ctx.String(flags.Template))
+	if ctx.Bool(ShowOutput) {
+		if tmplFile := ctx.String(flags.Template); tmplFile != "" {
+			err := cmdutil.OutputWithTemplateFile(tmplFile, normalized)
 			if err != nil {
 				log.Logger.Fatalf("Could not parse template data: %s", err.Error())
 			}
-
-			if ctx.String(flags.ShowOutput) == "" {
-				err = ctx.Set(flags.ShowOutput, "-")
-				if err != nil {
-					log.Logger.Fatalf("Could not set default output to STDOUT", err.Error())
-				}
-			}
+		} else {
+			log.PrintJSON(normalized)
 		}
-		return cmdutil.OutputData(ctx.String(flags.ShowOutput), tmpl, normalized)
+
+		return nil
 	}
 
 	return uploadAnalysis(normalized)
 }
 
-func Modules(modules []module.Module) (analyzed []module.Module, err error) {
+func Do(modules []module.Module) (analyzed []module.Module, err error) {
 	defer log.StopSpinner()
 	for i, m := range modules {
 		log.ShowSpinner(fmt.Sprintf("Analyzing module (%d/%d): %s", i+1, len(modules), m.Name))

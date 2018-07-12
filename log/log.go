@@ -2,6 +2,7 @@
 package log
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -72,6 +73,16 @@ func Print(args ...interface{}) {
 // Printf outputs a formatted message to STDOUT.
 func Printf(format string, args ...interface{}) {
 	fmt.Printf(format, args...)
+}
+
+// PrintJSON outputs JSON to STDOUT.
+func PrintJSON(data interface{}) error {
+	msg, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(msg))
+	return nil
 }
 
 // Fields are a simple wrapper for structured logging fields.

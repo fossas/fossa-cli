@@ -2,44 +2,26 @@ package cmdutil
 
 import (
 	"bytes"
-	"encoding/json"
-	"io/ioutil"
-	"os"
+	"fmt"
 	"text/template"
-
-	"github.com/fossas/fossa-cli/log"
 )
 
-func ProcessTmpl(tmpl *template.Template, tmplData interface{}) (data []byte, err error) {
-	var tpl bytes.Buffer
-	err = tmpl.Execute(&tpl, tmplData)
-	return tpl.Bytes(), err
-}
-
-func OutputData(outputFile string, tmpl *template.Template, data interface{}) (err error) {
-	var (
-		msg []byte
-	)
-
-	if tmpl == nil {
-		msg, err = json.Marshal(data)
-		println()
-		if err != nil {
-			log.Logger.Fatalf("Could not marshal output: %s", err.Error())
-			return err
-		}
-	} else {
-		msg, err = ProcessTmpl(tmpl, data)
-		if err != nil {
-			log.Logger.Fatalf("Could not process template data: %s", err.Error())
-			return err
-		}
-	}
-
-	if outputFile == "-" {
-		_, err = os.Stdout.Write(msg)
+func OutputWithTemplateFile(tmplFilename string, data interface{}) error {
+	tmpl, err := template.ParseFiles(tmplFilename)
+	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(outputFile, msg, 0664)
+	return OutputWithTemplate(tmpl, data)
+}
+
+func OutputWithTemplate(tmpl *template.Template, data interface{}) error {
+	var buf bytes.Buffer
+	err := tmpl.Execute(&buf, data)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(buf.Bytes()))
+	return nil
 }

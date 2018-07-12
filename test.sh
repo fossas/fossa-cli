@@ -15,19 +15,16 @@ echo '{{end}}{{end}}' >> test.tmpl
 rm -f *.test-tmp
 fossa init
 cat .fossa.yml
-time fossa analyze --template test.tmpl --output analyze.test-tmp go:./cmd/fossa
-cat analyze.test-tmp
-time fossa report licenses --output TEST_NOTICE.test-tmp --show-unknown go:./cmd/fossa
-cat TEST_NOTICE.test-tmp
-time fossa report dependencies --output deps.test-tmp go:./cmd/fossa
-cat deps.test-tmp
+time fossa analyze --template test.tmpl --output go:./cmd/fossa
+time fossa report licenses --output --show-unknown go:./cmd/fossa
+time fossa report dependencies --output go:./cmd/fossa
 
 ## Kubernetes (godep)
 echo "Testing kubernetes"
 cd $GOPATH/src/k8s.io/kubernetes
 fossa init
 cat .fossa.yml
-time fossa analyze --output - --option allow-unresolved-prefix:k8s.io go:./cmd/kube-apiserver | json
+time fossa analyze --output --option allow-unresolved-prefix:k8s.io go:./cmd/kube-apiserver | json
 time fossa report licenses --option allow-unresolved-prefix:k8s.io go:./cmd/kube-apiserver
 time fossa report dependencies --option allow-unresolved-prefix:k8s.io go:./cmd/kube-apiserver | json
 
@@ -36,7 +33,7 @@ echo "Testing consul"
 cd $GOPATH/src/github.com/hashicorp/consul
 fossa init
 cat .fossa.yml
-time fossa analyze --output - --option allow-nested-vendor:true --option allow-deep-vendor:true go:. | json
+time fossa analyze --output --option allow-nested-vendor:true --option allow-deep-vendor:true go:. | json
 time fossa report licenses --option allow-nested-vendor:true --option allow-deep-vendor:true go:.
 time fossa report dependencies --option allow-nested-vendor:true --option allow-deep-vendor:true go:. | json
 
@@ -45,7 +42,7 @@ echo "Testing docker"
 cd $GOPATH/src/github.com/docker/docker
 fossa init
 cat .fossa.yml
-time fossa analyze --output - --option allow-unresolved-prefix:"github.com/docker archive/tar" go:./cmd/dockerd | json
+time fossa analyze --output --option allow-unresolved-prefix:"github.com/docker archive/tar" go:./cmd/dockerd | json
 time fossa report licenses --option allow-unresolved-prefix:"github.com/docker archive/tar" go:./cmd/dockerd
 time fossa report dependencies --option allow-unresolved-prefix:"github.com/docker archive/tar" go:./cmd/dockerd | json
 
@@ -54,7 +51,7 @@ echo "Testing moby"
 cd $GOPATH/src/github.com/docker/docker-ce
 fossa init
 cat .fossa.yml
-time fossa analyze --output - --option allow-unresolved-prefix:"github.com/docker archive/tar" --option allow-external-vendor-prefix:github.com/docker/docker go:./components/engine/cmd/dockerd | json
+time fossa analyze --output --option allow-unresolved-prefix:"github.com/docker archive/tar" --option allow-external-vendor-prefix:github.com/docker/docker go:./components/engine/cmd/dockerd | json
 time fossa report licenses --option allow-unresolved-prefix:"github.com/docker archive/tar" --option allow-external-vendor-prefix:github.com/docker/docker go:./components/engine/cmd/dockerd
 time fossa report dependencies --option allow-unresolved-prefix:"github.com/docker archive/tar" --option allow-external-vendor-prefix:github.com/docker/docker go:./components/engine/cmd/dockerd | json
 
@@ -63,7 +60,7 @@ echo "Testing influxDB"
 cd $GOPATH/src/github.com/influxdata/influxdb
 fossa init
 cat .fossa.yml
-time fossa analyze --output - --option allow-unresolved-prefix:github.com/influxdata go:./cmd/influxd | json
+time fossa analyze --output --option allow-unresolved-prefix:github.com/influxdata go:./cmd/influxd | json
 time fossa report licenses --option allow-unresolved-prefix:github.com/influxdata go:./cmd/influxd
 time fossa report dependencies --option allow-unresolved-prefix:github.com/influxdata go:./cmd/influxd | json
 
@@ -72,7 +69,7 @@ echo "Testing rkt"
 cd $GOPATH/src/github.com/rkt/rkt
 fossa init
 cat .fossa.yml
-time fossa analyze --output - go:./rkt | json
+time fossa analyze --output go:./rkt | json
 time fossa report licenses go:./rkt
 time fossa report dependencies go:./rkt | json
 
@@ -81,7 +78,7 @@ echo "Testing jaeger"
 cd $GOPATH/src/github.com/jaegertracing/jaeger
 fossa init
 cat .fossa.yml
-time fossa analyze --output - go:./cmd/agent | json
+time fossa analyze --output go:./cmd/agent | json
 time fossa report licenses go:./cmd/agent
 time fossa report dependencies go:./cmd/agent | json
 
@@ -90,7 +87,7 @@ echo "Testing puppeteer"
 cd $HOME/puppeteer
 fossa init
 cat .fossa.yml
-time fossa analyze --output - | json
+time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
@@ -98,7 +95,7 @@ echo "Testing pkg"
 cd $HOME/pkg
 fossa init
 cat .fossa.yml
-time fossa analyze --output - | json
+time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
@@ -106,7 +103,7 @@ echo "Testing faker.js"
 cd $HOME/faker.js
 fossa init
 cat .fossa.yml
-time fossa analyze --output - | json
+time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
@@ -114,7 +111,7 @@ echo "Testing fastify"
 cd $HOME/fastify
 fossa init
 cat .fossa.yml
-time fossa analyze --output - | json
+time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
@@ -122,7 +119,7 @@ echo "Testing nest"
 cd $HOME/nest
 fossa init
 cat .fossa.yml
-time fossa analyze --output - npm:package.json | json
+time fossa analyze --output npm:package.json | json
 time fossa report licenses npm:package.json
 time fossa report dependencies npm:package.json | json
 
@@ -130,7 +127,7 @@ echo "Testing ohm"
 cd $HOME/ohm
 fossa init
 cat .fossa.yml
-time fossa analyze --output - | json
+time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
@@ -138,7 +135,7 @@ echo "Testing express"
 cd $HOME/express
 fossa init
 cat .fossa.yml
-time fossa analyze --output - | json
+time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
@@ -147,7 +144,7 @@ echo "Testing standard"
 cd $HOME/standard
 fossa init
 cat .fossa.yml
-time fossa analyze --output - --option allow-npm-err:true | json
+time fossa analyze --output --option allow-npm-err:true | json
 time fossa report licenses --option allow-npm-err:true 
 time fossa report dependencies --option allow-npm-err:true  | json
 
@@ -155,7 +152,7 @@ echo "Testing sodium-encryption"
 cd $HOME/sodium-encryption
 fossa init
 cat .fossa.yml
-time fossa analyze --output - | json
+time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
@@ -163,7 +160,7 @@ echo "Testing request"
 cd $HOME/request
 fossa init
 cat .fossa.yml
-time fossa analyze --output - | json
+time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
@@ -174,7 +171,7 @@ echo "Testing vibora"
 cd $HOME/vibora
 fossa init
 cat .fossa.yml
-time fossa analyze --output - | json
+time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
@@ -189,7 +186,7 @@ echo "Testing rails"
 cd $HOME/rails
 fossa init
 cat .fossa.yml
-time fossa analyze --output - | json
+time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
@@ -197,7 +194,7 @@ echo "Testing vagrant"
 cd $HOME/vagrant
 fossa init
 cat .fossa.yml
-time fossa analyze --output - | json
+time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
@@ -207,7 +204,7 @@ echo "Testing hibernate-orm"
 cd $HOME/hibernate-orm
 fossa init
 cat .fossa.yml
-time fossa analyze --output - | json
+time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
@@ -215,7 +212,7 @@ echo "Testing iosched"
 cd $HOME/iosched
 fossa init
 cat .fossa.yml
-time fossa analyze --output - | json
+time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
@@ -224,7 +221,7 @@ echo "Testing bower-example-project"
 cd $HOME/bower-example-project
 fossa init
 cat .fossa.yml
-time fossa analyze --output - | json
+time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
@@ -233,7 +230,7 @@ echo "Testing sylius"
 cd $HOME/Sylius
 fossa init
 cat .fossa.yml
-time fossa analyze --output - php:. | json
+time fossa analyze --output php:. | json
 time fossa report licenses php:.
 time fossa report dependencies php:. | json
 
@@ -242,7 +239,7 @@ echo "Testing hadoop"
 cd $HOME/hadoop
 fossa init
 cat .fossa.yml
-time fossa analyze --output - mvn:org.apache.hadoop:hadoop-yarn-client | json
+time fossa analyze --output mvn:org.apache.hadoop:hadoop-yarn-client | json
 time fossa report licenses mvn:org.apache.hadoop:hadoop-yarn-client
 time fossa report dependencies mvn:org.apache.hadoop:hadoop-yarn-client | json
 
@@ -251,7 +248,7 @@ echo "Testing bitwarden"
 cd $HOME/core
 fossa init
 cat .fossa.yml
-time fossa analyze --output - nuget:src/Api/Api.csproj | json
+time fossa analyze --output nuget:src/Api/Api.csproj | json
 time fossa report licenses nuget:src/Api/Api.csproj
 time fossa report dependencies nuget:src/Api/Api.csproj | json
 
@@ -260,7 +257,7 @@ echo "Testing macdown"
 cd $HOME/macdown
 fossa init
 cat .fossa.yml
-time fossa analyze --output - pod:. | json
+time fossa analyze --output pod:. | json
 time fossa report licenses pod:.
 time fossa report dependencies pod:. | json
 
@@ -268,7 +265,7 @@ echo "Testing Hero"
 cd $HOME/Hero
 fossa init
 cat .fossa.yml
-time fossa analyze --output - pod:. | json
+time fossa analyze --output pod:. | json
 time fossa report licenses pod:.
 time fossa report dependencies pod:. | json
 
@@ -276,7 +273,7 @@ echo "Testing iina"
 cd $HOME/iina
 fossa init
 cat .fossa.yml
-time fossa analyze --output - pod:. | json
+time fossa analyze --output pod:. | json
 time fossa report licenses pod:.
 time fossa report dependencies pod:. | json
 
@@ -284,7 +281,7 @@ echo "Testing Kingfisher"
 cd $HOME/Kingfisher
 fossa init
 cat .fossa.yml
-time fossa analyze --output - pod:. | json
+time fossa analyze --output pod:. | json
 time fossa report licenses pod:.
 time fossa report dependencies pod:. | json
 
@@ -293,6 +290,6 @@ echo "Testing ant-example-project"
 cd $HOME/ant-example-project
 fossa init
 cat .fossa.yml
-time fossa analyze --output - ant:. | json
+time fossa analyze --output ant:. | json
 time fossa report licenses ant:.
 time fossa report dependencies ant:. | json
