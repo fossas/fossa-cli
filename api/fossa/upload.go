@@ -23,10 +23,7 @@ var (
 	ErrRevisionDoesNotExist = errors.New("revision does not exist (are the project and revision correct and published in FOSSA?)")
 )
 
-// func UploadGitProject(project, revision string, data []SourceUnit) {}
-
-// func UploadCustomProject(project, revision, title string, data []SourceUnit) {}
-
+// Upload uploads a project's analysis.
 func Upload(fetcher, project, revision, title, branch string, data []SourceUnit) (Locator, error) {
 	// Check preconditions
 	if fetcher != "custom" && revision == "" {
@@ -48,7 +45,7 @@ func Upload(fetcher, project, revision, title, branch string, data []SourceUnit)
 	locator := Locator{Fetcher: fetcher, Project: project, Revision: revision}
 
 	q := url.Values{}
-	q.Add("locator", locator.QueryString())
+	q.Add("locator", locator.String())
 	q.Add("v", version.ShortString())
 
 	if fetcher == "custom" {

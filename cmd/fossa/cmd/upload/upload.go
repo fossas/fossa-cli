@@ -16,6 +16,7 @@ import (
 	"github.com/fossas/fossa-cli/log"
 )
 
+// Command-specific flags for `fossa upload`.
 var (
 	Locators = "locators"
 )
@@ -35,13 +36,13 @@ type APIResponse struct {
 }
 
 func ParseLocators(locators string) (fossa.SourceUnit, error) {
-	var deps []fossa.Dependency
+	var deps []fossa.SourceUnitDependency
 	lines := strings.Split(locators, "\n")
 	for _, line := range lines {
-		deps = append(deps, fossa.Dependency{Locator: line})
+		deps = append(deps, fossa.SourceUnitDependency{Locator: line})
 	}
 	return fossa.SourceUnit{
-		Build: fossa.Build{
+		Build: fossa.SourceUnitBuild{
 			Succeeded:    true,
 			Dependencies: deps,
 		},

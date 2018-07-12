@@ -53,17 +53,20 @@ func mustParse(endpoint string) *url.URL {
 	return u
 }
 
-func Post(endpoint string, body []byte) (res string, statusCode int, err error) {
-	u := mustParse(endpoint)
-	return api.Post(u, apiKey, body)
-}
-
+// Get makes a GET request to a FOSSA API endpoint.
 func Get(endpoint string) (res string, statusCode int, err error) {
 	u := mustParse(endpoint)
 	return api.Get(u, apiKey, nil)
 }
 
+// GetJSON makes a JSON GET request to a FOSSA API endpoint.
 func GetJSON(endpoint string, v interface{}) (statusCode int, err error) {
 	u := mustParse(endpoint)
 	return api.GetJSON(u, apiKey, nil, v)
+}
+
+// Post makes a POST request to a FOSSA API endpoint.
+func Post(endpoint string, body []byte) (res string, statusCode int, err error) {
+	u := mustParse(endpoint)
+	return api.Post(u, apiKey, body)
 }

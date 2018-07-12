@@ -2,112 +2,130 @@ package fossa
 
 import (
 	"net/url"
+	"path"
 
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
+// A License holds the FOSSA API response for the license API.
 type License struct {
-	ID             int64  `json:"id"`
-	LicenseID      string `json:"licenseId"`
-	RevisionID     string `json:"revisionId"`
-	LicenseGroupID int64  `json:"licenseGroupId"`
-	Ignored        bool   `json:"ignored"`
-	Title          string `json:"title"`
-	URL            string `json:"url"`
-	FullText       string `json:"text"`
-	Copyright      string `json:"copyright"`
+	ID             int64
+	LicenseID      string
+	RevisionID     string
+	LicenseGroupID int64
+	Ignored        bool
+	Title          string
+	URL            string
+	FullText       string
+	Copyright      string
 }
 
+// A Revision holds the FOSSA API response for the revision API.
 type Revision struct {
 	Locator  *Locator `json:"loc"`
-	Licenses Licenses `json:"licenses"`
-	Project  *Project `json:"project"`
+	Licenses []License
+	Project  *Project
+	Meta     []RevisionMeta
+	Issues   []Issue
 }
 
+// A RevisionMeta holds metadata about a FOSSA API revision.
+type RevisionMeta struct {
+	LastScan string `json:"last_scan"`
+}
+
+// An Issue holds the FOSSA API response for the issue API.
+type Issue struct {
+	Resolved bool
+	Type     string
+}
+
+// A Project holds the FOSSA API response for the project API.
 type Project struct {
-	Title   string   `json:"title"`
-	URL     string   `json:"url"`
-	Public  bool     `json:"public"`
-	Authors []string `json:"authors"`
+	Title   string
+	URL     string
+	Public  bool
+	Authors []string
 }
 
-type Licenses = []*License
-type Revisions = []*Revision
+// RevisionsAPI is the API endpoint for revisions.
+const RevisionsAPI = "/api/revisions"
 
-func FetchRevisionForPackage(p pkg.Package) (rev *Revision, err error) {
-	locator := LocatorOf(p.ID)
-	ep := serverURL
-	ep, _ = ep.Parse("/api/revisions/" + url.PathEscape(locator.QueryString()))
-	_, err = GetJSON(ep.String(), &rev)
-
+// GetRevision loads a single revision.
+func GetRevision(id pkg.ID) (Revision, error) {
+	locator := LocatorOf(id)
+	var revision Revision
+	_, err := GetJSON(path.Join(RevisionsAPI, url.PathEscape(locator.String())), &revision)
 	if err != nil {
-		return rev, err
+		return Revision{}, err
 	}
 
-	if rev.Locator == nil {
-		rev.Locator = locator
+	if revision.Locator == nil {
+		revision.Locator = &locator
 	}
-	if len(rev.Licenses) == 0 {
-		rev.Licenses = append(rev.Licenses, &License{
+	if len(revision.Licenses) == 0 {
+		revision.Licenses = append(revision.Licenses, License{
 			LicenseID: "UNKNOWN",
 		})
 	}
-
-	if rev.Project == nil {
-		rev.Project = &Project{
-			Title: rev.Locator.Project,
+	if revision.Project == nil {
+		revision.Project = &Project{
+			Title: revision.Locator.Project,
 			URL:   "UNKNOWN",
 		}
 	}
-	return rev, err
+
+	return revision, err
 }
 
-func FetchRevisionForDeps(deps map[pkg.ID]pkg.Package) (revs Revisions, err error) {
-	pkgs := make([]string, 0, len(deps))
-	for pkgID := range deps {
-		pkgs = append(pkgs, LocatorOf(pkgID).QueryString())
+// GetRevisions loads many revisions in batched requests.
+func GetRevisions(ids []pkg.ID) (revs []Revision, err error) {
+	var locators []string
+	for _, id := range ids {
+		locators = append(locators, LocatorOf(id).String())
 	}
 
-	// Split pkgs into chunks of 20 for performance reasons
+	// Split locators into chunks of 20 (this is an API limitation).
 	chunks := make([][]string, 0)
 	chunkSize := 20
-	for i := 0; i < len(pkgs); i += chunkSize {
+	for i := 0; i < len(locators); i += chunkSize {
 		end := i + chunkSize
 
-		if end > len(pkgs) {
-			end = len(pkgs)
+		if end > len(locators) {
+			end = len(locators)
 		}
 
-		chunks = append(chunks, pkgs[i:end])
+		chunks = append(chunks, locators[i:end])
 	}
 
-	ch := make(chan Revisions, len(chunks)) // buffered
+	// Make chunked API calls in parallel.
+	responses := make(chan []Revision, len(chunks))
 	for _, chunk := range chunks {
 		qs := url.Values{}
 		for _, q := range chunk {
 			qs.Add("locator", q)
 		}
-		ep := serverURL
-		if ep, err = ep.Parse("/api/revisions?" + qs.Encode()); err != nil {
-			return revs, err
-		}
 
-		go func(url string) {
-			var ret Revisions
-			if _, err := GetJSON(ep.String(), &ret); err != nil {
-				close(ch)
+		go func(endpoint string) {
+			var revisions []Revision
+			_, err := GetJSON(endpoint, &revisions)
+			if err != nil {
+				log.Logger.Warningf("Failed to get some revisions: %s", err.Error())
+				responses <- []Revision{}
+			} else {
+				responses <- revisions
 			}
-			ch <- ret
-		}(ep.String())
+		}(RevisionsAPI + "?" + qs.Encode())
 	}
 
-	revs = make(Revisions, 0)
+	var revisions []Revision
 	for range chunks {
 		select {
-		case ret := <-ch:
-			revs = append(revs, ret...)
+		case r := <-responses:
+			revisions = append(revisions, r...)
 		}
 	}
 
-	return revs, err
+	return revisions, err
 }

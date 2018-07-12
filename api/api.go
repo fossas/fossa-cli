@@ -1,11 +1,9 @@
-// Package api provides low-level primitives for implementing interfaces to
-// various HTTP APIs.
+// Package api provides low-level primitives for HTTP APIs.
 package api
 
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -13,10 +11,12 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/fossas/fossa-cli/log"
 )
 
-var c = http.Client{
+var defaultClient = http.Client{
 	Timeout: 60 * time.Second,
 	Transport: &http.Transport{
 		DisableKeepAlives: true,
@@ -56,9 +56,9 @@ func jsonAPIRequest(method string, endpoint *url.URL, APIKey string, body []byte
 	if err != nil {
 		return code, err
 	}
-	jsonErr := json.Unmarshal(res, v)
-	if jsonErr != nil {
-		return code, fmt.Errorf("could not unmarshal JSON API response: %s", jsonErr.Error())
+	err = json.Unmarshal(res, v)
+	if err != nil {
+		return code, errors.Wrap(err, "could not unmarshal JSON API response")
 	}
 	return code, nil
 }
@@ -73,9 +73,10 @@ func isTimeout(err error) bool {
 	return false
 }
 
+// TimeoutError is an error caused by an HTTP request timeout.
 type TimeoutError error
 
-// MakeAPIRequest runs and logs a request backed by an `http.Client`.
+// MakeAPIRequest runs and logs a request backed by a default `http.Client`.
 func MakeAPIRequest(method string, endpoint *url.URL, APIKey string, body []byte) (res []byte, statusCode int, err error) {
 	log.Logger.Debug(log.Entry{
 		Message: "making API request",
@@ -90,26 +91,26 @@ func MakeAPIRequest(method string, endpoint *url.URL, APIKey string, body []byte
 	// Construct request.
 	req, err := http.NewRequest(method, endpoint.String(), bytes.NewReader(body))
 	if err != nil {
-		return nil, 0, fmt.Errorf("could not construct API HTTP request: %s", err.Error())
+		return nil, 0, errors.Wrap(err, "could not construct API HTTP request")
 	}
 	req.Close = true
 	req.Header.Set("Authorization", "token "+APIKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	// Send request.
-	response, err := c.Do(req)
+	response, err := defaultClient.Do(req)
 	if err != nil {
 		if isTimeout(err) {
-			return nil, 0, TimeoutError(fmt.Errorf("API request timed out: %s", err.Error()))
+			return nil, 0, TimeoutError(errors.Wrap(err, "API request timed out"))
 		}
-		return nil, 0, fmt.Errorf("could not send API HTTP request: %s", err.Error())
+		return nil, 0, errors.Wrap(err, "could not send API HTTP request")
 	}
 	defer response.Body.Close()
 
 	// Read request.
 	res, err = ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, 0, fmt.Errorf("could not read API HTTP response: %s", err.Error())
+		return nil, 0, errors.Wrap(err, "could not read API HTTP response")
 	}
 
 	log.Logger.Debugf("Got API response: %#v", string(res))

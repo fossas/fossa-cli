@@ -5,6 +5,7 @@ import (
 	"text/template"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
+	"github.com/fossas/fossa-cli/pkg"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/api/fossa"
@@ -38,7 +39,7 @@ var licensesCmd = cli.Command{
 
 func generateLicenses(ctx *cli.Context) (err error) {
 	defer log.StopSpinner()
-	revs := make(fossa.Revisions, 0)
+	revs := make([]fossa.Revision, 0)
 	for _, module := range analyzed {
 		if ctx.Bool(Unknown) {
 			totalDeps := len(module.Deps)
@@ -46,7 +47,7 @@ func generateLicenses(ctx *cli.Context) (err error) {
 			for _, dep := range module.Deps {
 				i++
 				log.ShowSpinner(fmt.Sprintf("Fetching License Info (%d/%d): %s", i+1, totalDeps, dep.ID.Name))
-				rev, err := fossa.FetchRevisionForPackage(dep)
+				rev, err := fossa.GetRevision(dep.ID)
 				if err != nil {
 					log.Logger.Warning(err.Error())
 					continue
@@ -55,18 +56,22 @@ func generateLicenses(ctx *cli.Context) (err error) {
 			}
 		} else {
 			log.ShowSpinner("Fetching Licence Info")
-			revs, err = fossa.FetchRevisionForDeps(module.Deps)
+			var ids []pkg.ID
+			for _, dep := range module.Deps {
+				ids = append(ids, dep.ID)
+			}
+			revs, err = fossa.GetRevisions(ids)
 			if err != nil {
 				log.Logger.Fatalf("Could not fetch revisions: %s", err.Error())
 			}
 		}
 	}
 
-	depsByLicence := make(map[string]map[string]*fossa.Revision, 0)
+	depsByLicence := make(map[string]map[string]fossa.Revision, 0)
 	for _, rev := range revs {
 		for _, license := range rev.Licenses {
 			if _, ok := depsByLicence[license.LicenseID]; !ok {
-				depsByLicence[license.LicenseID] = make(map[string]*fossa.Revision, 0)
+				depsByLicence[license.LicenseID] = make(map[string]fossa.Revision, 0)
 			}
 			depsByLicence[license.LicenseID][rev.Locator.String()] = rev
 		}

@@ -7,6 +7,7 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
+// Locator serializes FOSSA API locators.
 type Locator struct {
 	Fetcher  string `json:"fetcher"`
 	Project  string `json:"package"`
@@ -20,18 +21,13 @@ func (l Locator) String() string {
 	return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
 }
 
-func (l Locator) QueryString() string {
-	if l.Fetcher == "go" {
-		l.Fetcher = "git"
-	}
-	return l.String()
-}
-
+// NormalizeGitURL normalizes all forms of git remote URLs to a single standard
+// form.
 func NormalizeGitURL(project string) string {
-	// Remove fetcher prefix (in case project is derived from splitting a locator on '$')
+	// Remove fetcher prefix (in case project is derived from splitting a locator on '$').
 	noFetcherPrefix := strings.TrimPrefix(project, "git+")
 
-	// Normalize Git URL format
+	// Normalize Git URL format.
 	noGitExtension := strings.TrimSuffix(noFetcherPrefix, ".git")
 	handleGitHubSSH := strings.Replace(noGitExtension, "git@github.com:", "github.com/", 1)
 
@@ -42,13 +38,15 @@ func NormalizeGitURL(project string) string {
 	return noHTTPSPrefix
 }
 
+// IsResolved returns true only if a locator is resolved.
 func (l Locator) IsResolved() bool {
 	return l.Revision != ""
 }
 
-func ReadLocator(s string) Locator {
-	r := regexp.MustCompile("^(.*?)\\+(.*?)\\$(.*?)$")
-	matches := r.FindStringSubmatch(s)
+// ReadLocator parses a string locator into a Locator.
+func ReadLocator(locator string) Locator {
+	locatorRegexp := regexp.MustCompile("^(.*?)\\+(.*?)\\$(.*?)$")
+	matches := locatorRegexp.FindStringSubmatch(locator)
 	return Locator{
 		Fetcher:  matches[1],
 		Project:  matches[2],
@@ -56,41 +54,22 @@ func ReadLocator(s string) Locator {
 	}
 }
 
-type ImportPath []Locator
-type ImportPathString string
-
-func (p ImportPath) String() ImportPathString {
-	var out []string
-	for _, locator := range p {
-		out = append(out, locator.String())
+// LocatorOf returns the locator of a pkg.ID.
+func LocatorOf(id pkg.ID) Locator {
+	// Normalize locator fetchers.
+	fetcher := id.Type.String()
+	switch id.Type {
+	case pkg.Gradle:
+		fetcher = "mvn"
+	case pkg.Ant:
+		fetcher = "mvn"
+	case pkg.Go:
+		fetcher = "git"
 	}
-	return ImportPathString(strings.Join(out, " "))
-}
 
-func ReadImportPath(s ImportPathString) ImportPath {
-	parts := strings.Split(string(s), " ")
-	var out []Locator
-	for _, part := range parts {
-		out = append(out, ReadLocator(part))
-	}
-	return out
-}
-
-func LocatorOf(id pkg.ID) *Locator {
-	return &Locator{
-		Fetcher:  LocatorType(id.Type),
+	return Locator{
+		Fetcher:  fetcher,
 		Project:  id.Name,
 		Revision: id.Revision,
-	}
-}
-
-func LocatorType(t pkg.Type) string {
-	switch t {
-	case pkg.Gradle:
-		return "mvn"
-	case pkg.Ant:
-		return "mvn"
-	default:
-		return t.String()
 	}
 }

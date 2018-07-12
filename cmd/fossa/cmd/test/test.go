@@ -11,14 +11,24 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/urfave/cli"
 
+	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
 
-const pollRequestDelay = time.Duration(8) * time.Second
+const pollRequestDelay = 8 * time.Second
 const buildsEndpoint = "/api/revisions/%s/build"
 const revisionsEndpoint = "/api/revisions/%s"
+
+var Cmd = cli.Command{
+	Name:   "test",
+	Usage:  "Test current revision against FOSSA scan status and exit with errors if issues are found",
+	Action: Run,
+	Flags:  flags.WithGlobalFlags(flags.WithAPIFlags(([]cli.Flag{}))),
+}
+
+var _ cli.ActionFunc = Run
 
 type buildResponse struct {
 	ID    int
@@ -147,7 +157,7 @@ type testResult struct {
 	issues []issueResponse
 }
 
-func testCmd(c *cli.Context) {
+func Run(c *cli.Context) error {
 	conf, err := config.New(c)
 	if err != nil {
 		log.Logger.Fatalf("Could not load configuration: %s", err.Error())
