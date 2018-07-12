@@ -23,7 +23,7 @@ func GetIssues(locator Locator) ([]Issue, error) {
 	q.Add("fromRevision", locator.String())
 	q.Add("count", "1000")
 	var issues []Issue
-	_, err := GetJSON(fmt.Sprintf(IssuesAPI, url.PathEscape(locator.String())+"?"+q.Encode()), &issues)
+	_, err := GetJSON(fmt.Sprintf(IssuesAPI, "?"+q.Encode()), &issues)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get Issues from API")
 	}

@@ -41,6 +41,8 @@ func Run(ctx *cli.Context) error {
 	}
 
 	issues, err := Do(time.After(time.Duration(ctx.Int(Timeout)) * time.Second))
+	log.ShowSpinner("")
+	log.StopSpinner()
 	if err != nil {
 		log.Logger.Fatalf("Could not test revision: %s", err.Error())
 	}
@@ -98,7 +100,7 @@ func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, erro
 		case <-stop:
 			return fossa.Build{}, errors.New("timed out while waiting for build")
 		default:
-			build, err := fossa.GetBuild(locator)
+			builds, err := fossa.GetBuilds(locator)
 			if _, ok := err.(api.TimeoutError); ok {
 				time.Sleep(pollRequestDelay)
 				continue
@@ -106,11 +108,16 @@ func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, erro
 			if err != nil {
 				return fossa.Build{}, errors.Wrap(err, "error while loading build")
 			}
-			switch build.Task.Status {
+			if len(builds) == 0 {
+				time.Sleep(pollRequestDelay)
+				continue
+			}
+			latestBuild := builds[0]
+			switch latestBuild.Task.Status {
 			case "SUCCEEDED":
-				return build, nil
+				return latestBuild, nil
 			case "FAILED":
-				return fossa.Build{}, fmt.Errorf("failed to analyze build #%d: %s (visit FOSSA or contact support@fossa.io)", build.ID, build.Error)
+				return latestBuild, fmt.Errorf("failed to analyze build #%d: %s (visit FOSSA or contact support@fossa.io)", latestBuild.ID, latestBuild.Error)
 			default:
 				time.Sleep(pollRequestDelay)
 			}

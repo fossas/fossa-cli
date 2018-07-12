@@ -63,8 +63,6 @@ func LocatorOf(id pkg.ID) Locator {
 		fetcher = "mvn"
 	case pkg.Ant:
 		fetcher = "mvn"
-	case pkg.Go:
-		fetcher = "git"
 	}
 
 	return Locator{

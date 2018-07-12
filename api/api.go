@@ -43,6 +43,11 @@ func PostJSON(endpoint *url.URL, apiKey string, body []byte, v interface{}) (sta
 	return jsonAPIRequest(http.MethodPost, endpoint, apiKey, body, v)
 }
 
+// PutJSON is a convenience method for MakeAPIRequest.
+func PutJSON(endpoint *url.URL, apiKey string, body []byte, v interface{}) (statusCode int, err error) {
+	return jsonAPIRequest(http.MethodPut, endpoint, apiKey, body, v)
+}
+
 func stringAPIRequest(method string, endpoint *url.URL, APIKey string, body []byte) (string, int, error) {
 	res, code, err := MakeAPIRequest(method, endpoint, APIKey, body)
 	if err != nil {
@@ -78,7 +83,7 @@ type TimeoutError error
 
 // MakeAPIRequest runs and logs a request backed by a default `http.Client`.
 func MakeAPIRequest(method string, endpoint *url.URL, APIKey string, body []byte) (res []byte, statusCode int, err error) {
-	log.Logger.Debug(log.Entry{
+	log.Logger.Debugf("%s", log.Entry{
 		Message: "making API request",
 		Fields: log.Fields{
 			"endpoint": *endpoint,
