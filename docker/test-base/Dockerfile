@@ -37,6 +37,15 @@ RUN go get -u -v github.com/jaegertracing/jaeger && \
     cd $GOPATH/src/github.com/jaegertracing/jaeger && \
     glide install
 
+## gocode (none)
+RUN go get -u -v github.com/nsf/gocode
+
+## Caddy (gvt)
+RUN go get -u -v github.com/mholt/caddy/caddy && \
+    go get github.com/caddyserver/builds && \
+    cd $GOPATH/src/github.com/mholt/caddy/caddy && \
+    go run build.go
+
 # Known good NodeJS projects:
 RUN git clone --depth=1 https://github.com/GoogleChrome/puppeteer && \
     cd puppeteer && \

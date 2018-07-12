@@ -81,7 +81,8 @@ func Do(update, includeAll bool) ([]module.Module, error) {
 		log.Logger.Debugf("Discovered: %#v", d)
 
 		// Match name regexp.
-		matched, err := regexp.MatchString("(docs?/|test|examples?|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/|third_party/)", d.Dir)
+		// TODO: should we match on full path sections (e.g. right now, this will filter out `a/b/foovendor/c`)?
+		matched, err := regexp.MatchString("(docs?/|[Tt]est|examples?|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/|third_party/|tmp/)", d.Dir)
 		if err != nil {
 			return nil, err
 		}
