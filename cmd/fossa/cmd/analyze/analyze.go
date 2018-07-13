@@ -22,7 +22,7 @@ var Cmd = cli.Command{
 	Action:    Run,
 	ArgsUsage: "MODULE",
 	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithModulesFlags([]cli.Flag{
-		cli.BoolFlag{Name: flags.Short(ShowOutput), Usage: "print results to stdout instead of uploading to FOSSA"},
+		cli.BoolFlag{Name: "show-output, output, o", Usage: "print results to stdout instead of uploading to FOSSA"},
 		flags.TemplateF,
 	}))),
 }
