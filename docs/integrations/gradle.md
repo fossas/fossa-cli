@@ -72,7 +72,7 @@ analyze:
       type: gradle
 ```
 
-NOTE: While `app` and `compile` are two very common tasks/configurations, your Gradle build may be different.  For instance, many Gradle builds may use the configuration `release` or `default` instead of `compile`.  See the `Troubleshooting` section below for steps in figuring out the right configuration for you.
+NOTE: While `app` and `compile` are two very common tasks/configurations, your Gradle build may be different.  For instance, many Gradle builds may use the configuration `implementation` (for Android), `release` or `default` instead of `compile`.  See the `Troubleshooting` section below for steps in figuring out the right configuration for you.
 
 ## Troubleshooting
 Since `fossa` operates directly on Gradle, it requires your build environment to be satisfied and Gradle tasks to reliably succeed before `fossa` can run.
@@ -109,3 +109,4 @@ If you'd like to help us improve our Gradle integration, please feel free to fil
  1. Support multiple independent "root" Gradle builds that may be segregated in a codebase
  2. Implement a cheap build validation method to tell the user whether a Gradle build is satisfied without invoking a Gradle runtime
  3. Support multiple configurations for a single module definition i.e. `app:compile:runtime`
+ 
