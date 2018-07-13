@@ -41,8 +41,6 @@ func Run(ctx *cli.Context) error {
 	}
 
 	issues, err := Do(time.After(time.Duration(ctx.Int(Timeout)) * time.Second))
-	log.ShowSpinner("")
-	log.StopSpinner()
 	if err != nil {
 		log.Logger.Fatalf("Could not test revision: %s", err.Error())
 	}
@@ -70,12 +68,18 @@ func Run(ctx *cli.Context) error {
 }
 
 func Do(stop <-chan time.Time) ([]fossa.Issue, error) {
+	defer log.StopSpinner()
 	log.ShowSpinner("Waiting for analysis to complete...")
+
+	revision := config.Revision()
+	if revision == "" {
+		return nil, errors.New("could not detect current revision (please set with --revision)")
+	}
 
 	project := fossa.Locator{
 		Fetcher:  config.Fetcher(),
 		Project:  config.Project(),
-		Revision: config.Revision(),
+		Revision: revision,
 	}
 
 	_, err := CheckBuild(project, stop)
