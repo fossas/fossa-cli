@@ -109,4 +109,3 @@ If you'd like to help us improve our Gradle integration, please feel free to fil
  1. Support multiple independent "root" Gradle builds that may be segregated in a codebase
  2. Implement a cheap build validation method to tell the user whether a Gradle build is satisfied without invoking a Gradle runtime
  3. Support multiple configurations for a single module definition i.e. `app:compile:runtime`
- 
