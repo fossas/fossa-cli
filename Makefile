@@ -61,11 +61,11 @@ unit-test:
 
 .PHONY: acceptance-test
 acceptance-test: docker-test
-	sudo docker run quay.io/fossa/fossa-cli-test
+	sudo docker run --rm quay.io/fossa/fossa-cli-test
 
 .PHONY: dev
 dev: docker-test-base
-	sudo docker run -it \
+	sudo docker run --rm -it \
 		-v $$GOPATH/src/github.com/fossas/fossa-cli:/home/fossa/go/src/github.com/fossas/fossa-cli \
 		-v $$GOPATH/bin:/home/fossa/go/bin \
 		quay.io/fossa/fossa-cli-test-base /bin/bash

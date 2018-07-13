@@ -160,5 +160,7 @@ func Modules() ([]module.Module, error) {
 	if len(optionFs) > 0 {
 		log.Logger.Warningf("Found %d options passed via command line, but modules are being loaded from configuration file. Ignoring options.", len(optionFs))
 	}
+
+	// TODO: specifying zero modules should be an error (we should add a test for this)
 	return file.Modules(), nil
 }

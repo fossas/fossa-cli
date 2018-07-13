@@ -21,10 +21,11 @@ var (
 )
 
 var Cmd = cli.Command{
-	Name:   "update",
-	Usage:  "Updates `fossa` to the latest version",
-	Action: Do,
-	Flags:  flags.Global,
+	Name:    "update",
+	Aliases: []string{"upgrade"},
+	Usage:   "Updates `fossa` to the latest version",
+	Action:  Do,
+	Flags:   flags.Global,
 }
 
 func Do(c *cli.Context) {
