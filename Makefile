@@ -49,15 +49,7 @@ test:
 
 .PHONY: unit-test
 unit-test:
-	# TODO: this should be go test ./... once all packages (particularly,
-	# analyzers) work.
-	go test \
-		./analyzers/nodejs \
-		./analyzers/golang \
-		./config \
-		./cmd/fossa/version \
-		./buildtools/bundler \
-		./buildtools/gocmd
+	go test ./...
 
 .PHONY: acceptance-test
 acceptance-test: docker-test

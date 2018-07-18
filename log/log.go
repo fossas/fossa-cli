@@ -36,6 +36,10 @@ import (
 // especially considering how large some entries get.
 var Logger = logging.MustGetLogger("fossa-cli")
 
+// TODO: we want to selectively turn logging off for tests, or maybe redirect
+// test output to a buffer that we only print if `t.Failed()`, so we avoid
+// dumping logs for all tests when only one test in a suite fails.
+
 // Init initializes application-level logging.
 //
 // If `interactive` is true, then logging will include colors and ANSI codes

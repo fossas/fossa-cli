@@ -81,6 +81,33 @@ func (s *SBT) DependencyTree(dir, project, configuration string) ([]Dependency, 
 		return nil, nil, errors.Wrap(err, "could not get dependency tree from SBT")
 	}
 
+	return ParseDependencyTree(output, project == "root" || project == "")
+}
+
+func (s *SBT) DependencyList(dir, project, configuration string) (string, error) {
+	output, _, err := exec.Run(exec.Cmd{
+		Dir:  dir,
+		Name: s.Bin,
+		Argv: []string{"-no-colors", Task(project, configuration, "dependencyList")},
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "could not get dependency list from SBT")
+	}
+
+	// Filter lines to only include dependency list.
+	var depLines []string
+	for _, line := range strings.Split(output, "\n") {
+		if FilterLine(line) {
+			log.Logger.Debugf("Matched line: %#v", line)
+			depLines = append(depLines, line)
+		} else {
+			log.Logger.Debugf("Ignoring line: %#v", line)
+		}
+	}
+	return strings.Join(depLines, "\n"), err
+}
+
+func ParseDependencyTree(output string, rootBuild bool) ([]Dependency, map[Dependency][]Dependency, error) {
 	// Filter lines to only include dependency tree.
 	spacerRegex := regexp.MustCompile("^\\[info\\] ([ `+\\\\|-]*)(\\s*?)$")
 	var depLines []string
@@ -95,7 +122,6 @@ func (s *SBT) DependencyTree(dir, project, configuration string) ([]Dependency, 
 
 	// Non-root builds only have one sub-project, so we collapse the first layer
 	// of imports.
-	rootBuild := project == "root" || project == ""
 	if !rootBuild {
 		// Remove the sub-project line.
 		depLines = depLines[1:]
@@ -136,37 +162,24 @@ func (s *SBT) DependencyTree(dir, project, configuration string) ([]Dependency, 
 	})
 }
 
-func (s *SBT) DependencyList(dir, project, configuration string) (string, error) {
-	output, _, err := exec.Run(exec.Cmd{
-		Dir:  dir,
-		Name: s.Bin,
-		Argv: []string{"-no-colors", Task(project, configuration, "dependencyList")},
-	})
-	if err != nil {
-		return "", errors.Wrap(err, "could not get dependency list from SBT")
-	}
-
-	// Filter lines to only include dependency list.
-	var depLines []string
-	for _, line := range strings.Split(output, "\n") {
-		if FilterLine(line) {
-			log.Logger.Debugf("Matched line: %#v", line)
-			depLines = append(depLines, line)
-		} else {
-			log.Logger.Debugf("Ignoring line: %#v", line)
-		}
-	}
-	return strings.Join(depLines, "\n"), err
-}
-
 func FilterLine(line string) bool {
-	return !(strings.HasPrefix(line, "[info] Loading ") ||
-		strings.HasPrefix(line, "[info] Resolving ") ||
-		strings.HasPrefix(line, "[info] Set ") ||
-		strings.HasPrefix(line, "[info] In file:") ||
-		strings.HasPrefix(line, "[info] Updating ") ||
-		strings.HasPrefix(line, "[info] Done ")) &&
-		strings.HasPrefix(line, "[info] ")
+	trimmed := strings.TrimSpace(line)
+	if !strings.HasPrefix(trimmed, "[info ]") {
+		return false
+	}
+	infoMsg := strings.TrimPrefix(trimmed, "[info] ")
+	return !(strings.HasPrefix(infoMsg, "Loading ") ||
+		strings.HasPrefix(infoMsg, "Compiling ") ||
+		strings.HasPrefix(infoMsg, "Non-compiled module ") ||
+		strings.HasPrefix(strings.TrimSpace(infoMsg), "Compilation ") ||
+		strings.HasPrefix(infoMsg, "Resolving ") ||
+		strings.HasPrefix(infoMsg, "Resolved ") ||
+		strings.HasPrefix(infoMsg, "Set ") ||
+		strings.HasPrefix(infoMsg, "In file:") ||
+		strings.HasPrefix(infoMsg, "Updating ") ||
+		strings.HasPrefix(infoMsg, "Done ") ||
+		strings.HasPrefix(infoMsg, "downloading ") ||
+		strings.HasPrefix(strings.TrimSpace(infoMsg), "[SUCCESSFUL ]"))
 }
 
 func Task(project, configuration, task string) string {
