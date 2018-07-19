@@ -2,3 +2,5 @@
 docker
 docs
 dist
+# This testdata ignore doesn't seem to work.
+**/testdata/**

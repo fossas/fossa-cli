@@ -5,6 +5,8 @@ import (
 
 	"github.com/urfave/cli"
 
+	"github.com/fossas/fossa-cli/log"
+
 	"github.com/fossas/fossa-cli/cmd/fossa/version"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/analyze"
@@ -34,5 +36,15 @@ func main() {
 		update.Cmd,
 	}
 
-	app.Run(os.Args)
+	err := app.Run(os.Args)
+	if err != nil {
+		switch e := err.(type) {
+		case *cli.ExitError:
+			os.Exit(e.ExitCode())
+		default:
+			// TODO: port all log.Logger.Fatal to instead return an error.
+			log.Logger.Debugf("Error: %#v", err.Error())
+			os.Exit(1)
+		}
+	}
 }

@@ -97,6 +97,9 @@ func ParseDependencyTree(stdin string) ([]Dependency, map[Dependency][]Dependenc
 		if line == "[INFO] " || line == "[INFO] ------------------------------------------------------------------------" {
 			started = false
 		}
+		if strings.HasPrefix(line, "[INFO] Downloading ") {
+			continue
+		}
 		if started {
 			filteredLines = append(filteredLines, line)
 		}
@@ -104,6 +107,7 @@ func ParseDependencyTree(stdin string) ([]Dependency, map[Dependency][]Dependenc
 			started = true
 		}
 	}
+
 	// Remove first line, which is just the direct dependency.
 	filteredLines = filteredLines[1:]
 

@@ -53,7 +53,7 @@ unit-test:
 
 .PHONY: acceptance-test
 acceptance-test: docker-test
-	sudo docker run --rm quay.io/fossa/fossa-cli-test
+	sudo docker run --rm -it quay.io/fossa/fossa-cli-test
 
 .PHONY: dev
 dev: docker-test-base

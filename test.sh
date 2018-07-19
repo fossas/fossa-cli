@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
 # TODO: move these into `*_test.go` files.
-set -xe
-
+set -exo pipefail
 
 # Test known good Go projects:
 ## FOSSA CLI (dep)
@@ -16,8 +15,8 @@ rm -f *.test-tmp
 fossa init
 cat .fossa.yml
 time fossa analyze --template test.tmpl --output go:./cmd/fossa
-time fossa report licenses --output --show-unknown go:./cmd/fossa
-time fossa report dependencies --output go:./cmd/fossa
+time fossa report licenses --show-unknown go:./cmd/fossa
+time fossa report dependencies go:./cmd/fossa
 
 ## Kubernetes (godep)
 echo "Testing kubernetes"
