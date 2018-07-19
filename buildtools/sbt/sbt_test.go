@@ -75,4 +75,13 @@ func TestFilterLines(t *testing.T) {
 		actual := sbt.FilterLine(line)
 		assert.False(t, actual, line)
 	}
+
+	allowed := []string{
+		"[info] 	* prisma",
+	}
+
+	for _, line := range allowed {
+		actual := sbt.FilterLine(line)
+		assert.True(t, actual, line)
+	}
 }

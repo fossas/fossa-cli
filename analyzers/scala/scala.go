@@ -75,12 +75,15 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 	log.Logger.Debugf("%#v", dir)
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		log.Logger.Debugf("Searching path: %#v", path)
+
 		if err != nil {
 			log.Logger.Debugf("Failed to access path %s: %s\n", path, err.Error())
 			return err
 		}
 
 		if info.IsDir() {
+			log.Logger.Debugf("Path is folder")
 			ok, err := files.Exists(path, "build.sbt")
 			if err != nil {
 				return err
@@ -88,6 +91,7 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 			if !ok {
 				return nil
 			}
+			log.Logger.Debugf("Path has build.sbt")
 
 			dir := filepath.Dir(path)
 			projects, err := a.SBT.Projects(dir)

@@ -164,7 +164,7 @@ func ParseDependencyTree(output string, rootBuild bool) ([]Dependency, map[Depen
 
 func FilterLine(line string) bool {
 	trimmed := strings.TrimSpace(line)
-	if !strings.HasPrefix(trimmed, "[info ]") {
+	if !strings.HasPrefix(trimmed, "[info] ") {
 		return false
 	}
 	infoMsg := strings.TrimPrefix(trimmed, "[info] ")
@@ -174,6 +174,8 @@ func FilterLine(line string) bool {
 		strings.HasPrefix(strings.TrimSpace(infoMsg), "Compilation ") ||
 		strings.HasPrefix(infoMsg, "Resolving ") ||
 		strings.HasPrefix(infoMsg, "Resolved ") ||
+		strings.HasPrefix(infoMsg, "Fetching ") ||
+		strings.HasPrefix(infoMsg, "Fetched ") ||
 		strings.HasPrefix(infoMsg, "Set ") ||
 		strings.HasPrefix(infoMsg, "In file:") ||
 		strings.HasPrefix(infoMsg, "Updating ") ||
