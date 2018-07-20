@@ -134,7 +134,7 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 			modules = append(modules, module.Module{
 				Name:        name,
 				Type:        pkg.NodeJS,
-				BuildTarget: path,
+				BuildTarget: filepath.Dir(path),
 				Dir:         filepath.Dir(path),
 			})
 		}
@@ -199,12 +199,12 @@ func (a *Analyzer) Build(m module.Module) error {
 func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
 	log.Logger.Debugf("Checking Node.js build: %#v", m)
 
-	manifest, err := npm.FromManifest(filepath.Dir(m.BuildTarget))
+	manifest, err := npm.FromManifest(filepath.Join(m.BuildTarget, "package.json"))
 	if err != nil {
 		return false, errors.Wrap(err, "could not parse package manifest to check build")
 	}
 
-	if len(manifest.Dependencies) > 0 {
+	if len(manifest.Dependencies) == 0 {
 		log.Logger.Debugf("Done checking Node.js build: project has no dependencies")
 		return true, nil
 	}
