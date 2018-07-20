@@ -20,7 +20,8 @@
 </p>
 
 ## Background
-`fossa` analyzes complex codebases to generate dependency reports and license notices.  By leveraging existing build environments, it can generate fast and highly-accurate results.
+
+`fossa` analyzes complex codebases to generate dependency reports and license notices. By leveraging existing build environments, it can generate fast and highly-accurate results.
 
 **Features:**
 
@@ -186,6 +187,6 @@ If you're in San Francisco, come to our monthly [Open Source Happy Hour](http://
 
 `fossa` is Open Source and licensed under the [MPL-2.0](https://tldrlegal.com/license/mozilla-public-license-2.0-(mpl-2)).
 
-You are free to use `fossa` for commercial or personal purposes.  Enjoy!
+You are free to use `fossa` for commercial or personal purposes. Enjoy!
 
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli?ref=badge_large)

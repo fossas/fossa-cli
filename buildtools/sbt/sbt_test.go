@@ -19,8 +19,10 @@ func TestSanityCheckParseDependencyTree(t *testing.T) {
 	fixture, err := ioutil.ReadFile(filepath.Join("testdata", "sbt_dependencytree_nocolor-prisma-stdout"))
 	assert.NoError(t, err)
 
-	_, _, err = sbt.ParseDependencyTree(string(fixture), true)
+	imports, graphs, err := sbt.ParseDependencyTree(string(fixture), true)
 	assert.NoError(t, err)
+	t.Log(imports)
+	t.Log(graphs)
 }
 
 func TestFilterLines(t *testing.T) {

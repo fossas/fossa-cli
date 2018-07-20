@@ -1,0 +1,40 @@
+# Changelog
+
+## Versioning policy
+
+This versioning policy only applies for versions below 1.0.0. We will develop a
+separate versioning policy after the 1.0.0 release.
+
+We generally follow semantic versioning, but semantic versioning does not
+specify pre-1.0.0 behavior. Here is how `fossa` pre-1.0.0 releases will work:
+
+- Any update that creates a breaking change (i.e. a change that causes a
+  previously working configuration to fail) will bump the minor version.
+- All other updates will bump the patch version.
+- Preview, beta, and other special releases will have a pre-release identifer in
+  the semantic version, and will be marked as pre-release on GitHub Releases.
+
+## Version history
+
+Major breaking changes and new features will be recorded here. For a much more
+detailed automated changelog, see the changelogs accompanying each GitHub
+Release.
+
+### 0.7.0-beta
+
+- Analyzers can now take options. The exact options depend on the analyzer.
+- **Breaking:** Modules now have "targets", distinct from their name and path.
+  Targets help specify things like Maven projects, Maven configurations, etc.
+
+### 0.4.5
+- `fossa` is now licensed under MPL-2.0 instead of AGPLv3
+- Non-fatal missing binaries no longer cause builds to fail (this should help a
+  lot for Go)
+
+### 0.4.1
+- Managed Builds are now supported: you no longer need to have a corresponding
+  Git project within FOSSA to upload build results.
+- **Breaking:** By default, new projects will use Managed Builds (i.e. their
+  fetcher will be `custom`). This is different from the original default, which
+  set the fetcher to be `git`. This will break your configuration if you do not
+  explicitly set the project's fetcher.

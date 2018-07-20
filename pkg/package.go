@@ -52,10 +52,21 @@ type Package struct {
 	Registry       string // Example: `npm:npmjs.org`
 
 	Imports []Import
+	// SourceFiles []File
+	// Qualifier   Qualifier
+
 	// A package's resolution strategy is set by the analyzer which resolves it,
 	// and the meaning will vary depending on the analyzer used.
 	Strategy string
 }
+
+type Qualifier int
+
+const (
+	Production Qualifier = iota
+	Development
+	Test
+)
 
 // An Author is a package author.
 type Author struct {
@@ -70,3 +81,9 @@ type Author struct {
 type LicenseExpr string
 
 // TODO: Implement LicenseExpr as a parsed expression tree?
+
+// TODO: Implement file-level granularity?
+type File struct {
+	Path       string
+	Qualifiers string // For example, Go build tags
+}

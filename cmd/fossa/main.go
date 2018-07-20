@@ -20,10 +20,11 @@ import (
 
 func main() {
 	app := cli.App{
-		Name:    "fossa-cli",
-		Usage:   "Fast, portable and reliable dependency analysis (https://github.com/fossas/fossa-cli/)",
-		Version: version.String(),
-		Action:  cli.ShowAppHelp,
+		Name:                 "fossa-cli",
+		Usage:                "Fast, portable and reliable dependency analysis (https://github.com/fossas/fossa-cli/)",
+		Version:              version.String(),
+		Action:               cli.ShowAppHelp,
+		EnableBashCompletion: true,
 	}
 
 	app.Commands = []cli.Command{
