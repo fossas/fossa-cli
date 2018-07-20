@@ -21,7 +21,7 @@ var Cmd = cli.Command{
 	Usage:     "Analyze built dependencies",
 	Action:    Run,
 	ArgsUsage: "MODULE",
-	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithModulesFlags([]cli.Flag{
+	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithOptions([]cli.Flag{
 		cli.BoolFlag{Name: "show-output, output, o", Usage: "print results to stdout instead of uploading to FOSSA"},
 		flags.TemplateF,
 	}))),
@@ -75,23 +75,25 @@ func Do(modules []module.Module) (analyzed []module.Module, err error) {
 	defer log.StopSpinner()
 	for i, m := range modules {
 		log.ShowSpinner(fmt.Sprintf("Analyzing module (%d/%d): %s", i+1, len(modules), m.Name))
-		analyzer, err := analyzers.New(m.Type, m.Options)
+		analyzer, err := analyzers.New(m)
 		if err != nil {
 			log.Logger.Warningf("Could not load analyzer: %s", err.Error())
 			continue
 		}
-		built, err := analyzer.IsBuilt(m)
+		built, err := analyzer.IsBuilt()
 		if err != nil {
 			log.Logger.Warningf("Could not determine whether module is built: %s", err.Error())
 		}
 		if !built {
 			log.Logger.Warningf("Module does not appear to be built")
 		}
-		result, err := analyzer.Analyze(m)
+		deps, err := analyzer.Analyze()
 		if err != nil {
 			log.Logger.Fatalf("Could not analyze: %s", err.Error())
 		}
-		analyzed = append(analyzed, result)
+		m.Imports = deps.Direct
+		m.Deps = deps.Transitive
+		analyzed = append(analyzed, m)
 	}
 	log.StopSpinner()
 

@@ -24,7 +24,7 @@ var Cmd = cli.Command{
 	Usage:     "Run a default project build",
 	Action:    Run,
 	ArgsUsage: "MODULE",
-	Flags: flags.WithGlobalFlags(flags.WithModulesFlags([]cli.Flag{
+	Flags: flags.WithGlobalFlags(flags.WithOptions([]cli.Flag{
 		cli.BoolFlag{Name: Clean, Usage: "clean artifacts before building"},
 		cli.BoolFlag{Name: Force, Usage: "rebuild module even if it appears to already be built"},
 	})),
@@ -59,17 +59,17 @@ func Run(ctx *cli.Context) error {
 }
 
 func Do(m module.Module, clean, force bool) error {
-	analyzer, err := analyzers.New(m.Type, m.Options)
+	analyzer, err := analyzers.New(m)
 	if err != nil {
 		return err
 	}
 	if clean {
-		err := analyzer.Clean(m)
+		err := analyzer.Clean()
 		if err != nil {
 			return errors.Wrap(err, "could not clean module build")
 		}
 	}
-	built, err := analyzer.IsBuilt(m)
+	built, err := analyzer.IsBuilt()
 	if err != nil {
 		return errors.Wrap(err, "could not determine whether module is built")
 	}
@@ -80,7 +80,7 @@ func Do(m module.Module, clean, force bool) error {
 			return errors.New("module appears to already be built")
 		}
 	}
-	err = analyzer.Build(m)
+	err = analyzer.Build()
 	if err != nil {
 		return err
 	}

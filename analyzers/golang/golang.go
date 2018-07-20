@@ -8,7 +8,7 @@
 //
 // FAQ
 //
-// Why not use `go/build`, or a library like `KyleBanks/depth`?
+// 1. Why not use `go/build`, or a library like `KyleBanks/depth`?
 //
 // The `go` tool's interface is incredibly stable over different releases, but
 // the internals are not. Using these libraries causes crashes when analyzing
@@ -20,14 +20,12 @@ import (
 	"os"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
-	"github.com/fossas/fossa-cli/pkg"
 )
 
 // An Analyzer contains structs used in the analysis of Go packages. It
@@ -36,6 +34,7 @@ type Analyzer struct {
 	Go        gocmd.Go
 	GoVersion string
 
+	Module  module.Module
 	Options Options
 
 	// These caches prevent redundant filesystem lookups and execs, and help a lot
@@ -61,12 +60,12 @@ type Options struct {
 }
 
 // New constructs an Analyzer.
-func New(opts map[string]interface{}) (*Analyzer, error) {
-	log.Logger.Debug("%#v", opts)
+func New(m module.Module) (*Analyzer, error) {
+	log.Logger.Debug("%#v", m)
 
 	// Parse and validate options.
 	var options Options
-	err := mapstructure.Decode(opts, &options)
+	err := mapstructure.Decode(m.Options, &options)
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +76,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &Analyzer{
 		Go: gocmd.Go{
 			Cmd:  cmd,
@@ -84,46 +84,30 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 			Arch: options.BuildArch,
 		},
 		GoVersion: version,
-		Options:   options,
+
+		Module:  m,
+		Options: options,
 
 		resolverCache: make(map[string]resolver.Resolver),
 		projectCache:  make(map[string]Project),
 	}, nil
 }
 
-// Discover runs `go list ./...`.
-func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
-	found, err := a.Go.List([]string{"./..."})
-	if err != nil {
-		return nil, errors.Wrap(err, "could not find Go projects")
-	}
-
-	var projects []module.Module
-	for _, f := range found {
-		log.Logger.Debugf("Found Go module: %#v", f)
-		projects = append(projects, module.Module{
-			Name:         Unvendor(f.ImportPath),
-			Type:         pkg.Go,
-			IsExecutable: f.Name == "main",
-			BuildTarget:  f.ImportPath,
-			Dir:          f.Dir,
-		})
-	}
-	return projects, nil
-}
-
 // Clean runs `go clean $PKG`.
-func (a *Analyzer) Clean(m module.Module) error {
+func (a *Analyzer) Clean() error {
+	m := a.Module
 	return a.Go.Clean([]string{m.BuildTarget})
 }
 
 // Build runs `go build $PKG`.
-func (a *Analyzer) Build(m module.Module) error {
+func (a *Analyzer) Build() error {
+	m := a.Module
 	return a.Go.Build([]string{m.BuildTarget})
 }
 
 // IsBuilt runs `go list $PKG` and checks for errors.
-func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
+func (a *Analyzer) IsBuilt() (bool, error) {
+	m := a.Module
 	log.Logger.Debug("%#v", m)
 	pkg, err := a.Go.ListOne(m.BuildTarget)
 	if err != nil {

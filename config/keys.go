@@ -99,13 +99,46 @@ func Branch() string {
 
 /**** Analysis configuration keys ****/
 
+func Options() (map[string]interface{}, error) {
+	opts := ctx.StringSlice(flags.Option)
+	opts = append(opts, ctx.GlobalStringSlice(flags.Option)...)
+
+	options := make(map[string]interface{})
+	for _, option := range opts {
+		sections := strings.Split(option, ":")
+		key := sections[0]
+		value := strings.Join(sections[1:], ":")
+		log.Logger.Debugf("%#v %#v %#v", sections, key, value)
+		// Attempt to parse as boolean.
+		if value == "true" {
+			options[key] = true
+			continue
+		} else if value == "false" {
+			options[key] = false
+			continue
+		} else if i, err := strconv.Atoi(value); err == nil {
+			// Attempt to parse as number.
+			options[key] = i
+		} else {
+			// Treat as a string.
+			options[key] = value
+		}
+	}
+
+	return options, nil
+}
+
 func Modules() ([]module.Module, error) {
-	// If arguments are present, use arguments.
 	args := ctx.Args()
-	optionFs := ctx.StringSlice(flags.Option)
+	options, err := Options()
+	if err != nil {
+		return nil, err
+	}
 
 	log.Logger.Debugf("args: %#v", args)
+	log.Logger.Debugf("options: %#v", options)
 
+	// If arguments are present, prefer arguments over the configuration file.
 	if args.Present() {
 		// Validate arguments.
 		if ctx.NArg() != 1 {
@@ -122,31 +155,6 @@ func Modules() ([]module.Module, error) {
 			return nil, err
 		}
 
-		// Parse options.
-		optionFs = append(optionFs, ctx.GlobalStringSlice(flags.Option)...)
-		optionFs = append(optionFs, ctx.GlobalStringSlice(flags.Option)...)
-		options := make(map[string]interface{})
-		for _, option := range optionFs {
-			sections := strings.Split(option, ":")
-			key := sections[0]
-			value := strings.Join(sections[1:], ":")
-			log.Logger.Debugf("%#v %#v %#v", sections, key, value)
-			// Attempt to parse as boolean.
-			if value == "true" {
-				options[key] = true
-				continue
-			} else if value == "false" {
-				options[key] = false
-				continue
-			} else if i, err := strconv.Atoi(value); err == nil {
-				// Attempt to parse as number.
-				options[key] = i
-			} else {
-				// Treat as a string.
-				options[key] = value
-			}
-		}
-
 		m := []module.Module{module.Module{
 			Name:        name,
 			Type:        mtype,
@@ -157,8 +165,10 @@ func Modules() ([]module.Module, error) {
 		return m, nil
 	}
 
-	if len(optionFs) > 0 {
-		log.Logger.Warningf("Found %d options passed via command line, but modules are being loaded from configuration file. Ignoring options.", len(optionFs))
+	if l := len(options); l > 0 {
+		log.Logger.Warningf(
+			"Found %d options passed via command line, but modules are being loaded from configuration file. Ignoring options.",
+			l)
 	}
 
 	// TODO: specifying zero modules should be an error (we should add a test for this)

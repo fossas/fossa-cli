@@ -29,7 +29,7 @@ The following software have components provided under the terms of this license:
 var licensesCmd = cli.Command{
 	Name:  "licenses",
 	Usage: "Generate licenses report",
-	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithModulesFlags(flags.WithReportTemplateFlags([]cli.Flag{
+	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithOptions(flags.WithReportTemplateFlags([]cli.Flag{
 		// TODO: what does this actually do?
 		cli.BoolFlag{Name: flags.Short(Unknown), Usage: "include unknown licenses"},
 	})))),
