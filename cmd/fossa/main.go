@@ -5,8 +5,10 @@ import (
 
 	"github.com/urfave/cli"
 
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/log"
 
+	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/version"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/analyze"
@@ -23,8 +25,11 @@ func main() {
 		Name:                 "fossa-cli",
 		Usage:                "Fast, portable and reliable dependency analysis (https://github.com/fossas/fossa-cli/)",
 		Version:              version.String(),
-		Action:               cli.ShowAppHelp,
+		Action:               Run,
 		EnableBashCompletion: true,
+		Flags: []cli.Flag{
+			cli.BoolFlag{Name: flags.Short(analyze.ShowOutput), Usage: "run a complete analysis with output"},
+		},
 	}
 
 	app.Commands = []cli.Command{
@@ -48,4 +53,22 @@ func main() {
 			os.Exit(1)
 		}
 	}
+}
+
+func Run(ctx *cli.Context) error {
+	if config.APIKey() == "" && !ctx.Bool(analyze.ShowOutput) {
+		return cli.ShowAppHelp(ctx)
+	}
+
+	err := initc.Run(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = analyze.Run(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
