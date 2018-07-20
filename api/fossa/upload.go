@@ -58,13 +58,13 @@ func Upload(fetcher, project, revision, title, branch string, data []SourceUnit)
 	if revision != "" {
 		q.Add("revision", revision)
 	}
-	var ep *url.URL
-	if ep, err = url.Parse("/api/builds/custom?" + q.Encode()); err != nil {
+	endpoint, err := url.Parse("/api/builds/custom?" + q.Encode())
+	if err != nil {
 		log.Logger.Fatal("Failed to generate upload uri")
 	}
-	log.Logger.Debugf("Sending build data to %#v", ep.String())
+	log.Logger.Debugf("Sending build data to %#v", endpoint.String())
 
-	res, statusCode, err := Post(ep.String(), payload)
+	res, statusCode, err := Post(endpoint.String(), payload)
 	log.Logger.Debugf("Response: %#v", res)
 
 	if statusCode == 428 {
