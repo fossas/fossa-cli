@@ -68,7 +68,7 @@ jobs:
   test:
     <<: *defaults
     docker:
-      - image: quay.io/fossa/fossa-cli-test:circleci
+      - image: quay.io/fossa/fossa-cli-test-base:circleci
     steps:
       - run:
           name: Make folders
