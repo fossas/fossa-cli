@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 
 	logging "github.com/op/go-logging"
 )
@@ -46,6 +47,8 @@ var Logger = logging.MustGetLogger("fossa-cli")
 // (e.g. progress spinners). If `debug` is true, then logging will include
 // debugging output.
 func Init(interactive, debug bool) {
+	interactive = interactive && runtime.GOOS != "windows"
+
 	// If `interactive`, then use ANSI codes (spinner + colors)
 	useSpinner = interactive
 	s.Writer = os.Stderr
