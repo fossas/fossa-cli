@@ -80,3 +80,6 @@ clean:
 .PHONY: release
 release:
 	GOVERSION=$$(go version) goreleaser --rm-dist
+	RELEASE=$(git tag -l --points-at HEAD)
+	VERSION=${RELEASE#v}
+	sed "s/# RELEASE=/RELEASE=\'$RELEASE\'/; s/# VERSION=/VERSION=\'$VERSION\'/" install_tpl.sh > install.sh
