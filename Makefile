@@ -79,4 +79,4 @@ clean:
 
 .PHONY: release
 release:
-	GOVERSION=$$(go version) goreleaser --rm-dist --skip-publish --skip-validate
+	GOVERSION=$$(go version) goreleaser --rm-dist
