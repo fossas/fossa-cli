@@ -156,45 +156,8 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		return m, err
 	}
 
-	// Set direct dependencies.
-	var i []pkg.Import
-	for _, dep := range imports {
-		i = append(i, pkg.Import{
-			Resolved: pkg.ID{
-				Type:     pkg.Scala,
-				Name:     dep.Name,
-				Revision: dep.Version,
-			},
-		})
-	}
-
-	// Set transitive dependencies.
-	g := make(map[pkg.ID]pkg.Package)
-	for parent, children := range graph {
-		id := pkg.ID{
-			Type:     pkg.Scala,
-			Name:     parent.Name,
-			Revision: parent.Version,
-		}
-		var imports []pkg.Import
-		for _, child := range children {
-			imports = append(imports, pkg.Import{
-				Target: child.Version,
-				Resolved: pkg.ID{
-					Type:     pkg.Scala,
-					Name:     child.Name,
-					Revision: child.Version,
-				},
-			})
-		}
-		g[id] = pkg.Package{
-			ID:      id,
-			Imports: imports,
-		}
-	}
-
-	m.Imports = i
-	m.Deps = g
+	m.Imports = imports
+	m.Deps = graph
 	return m, nil
 }
 

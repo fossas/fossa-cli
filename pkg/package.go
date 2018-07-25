@@ -32,6 +32,10 @@ type Import struct {
 	Resolved ID
 }
 
+type Imports []Import
+
+type Deps map[ID]Package
+
 // A Package represents a single package at a semantic level. The precise
 // definition of "package" will vary from language to language.
 type Package struct {

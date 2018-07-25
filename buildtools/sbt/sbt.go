@@ -7,7 +7,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
 type SBT struct {
@@ -64,24 +66,48 @@ func (s *SBT) Projects(dir string) ([]string, error) {
 	return projects, nil
 }
 
-//go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package sbt/' > readtree_generated.go"
-
 type Dependency struct {
 	Name    string
 	Version string
 }
 
-func (s *SBT) DependencyTree(dir, project, configuration string) ([]Dependency, map[Dependency][]Dependency, error) {
+func (s *SBT) DependencyTree(dir, project, configuration string) (pkg.Imports, pkg.Deps, error) {
 	output, _, err := exec.Run(exec.Cmd{
 		Dir:  dir,
 		Name: s.Bin,
-		Argv: []string{"-no-colors", Task(project, configuration, "dependencyTree")},
+		Argv: []string{"-no-colors", Task(project, configuration, "dependencyGraphMl")},
 	})
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "could not get dependency tree from SBT")
+		return nil, nil, errors.Wrap(err, "could not get dependency graph from SBT")
 	}
 
-	return ParseDependencyTree(output, project == "root" || project == "")
+	file := ""
+	r := regexp.MustCompile("^\\[info\\] Wrote dependency graph to '(.*?)'$")
+	for _, line := range strings.Split(output, "\n") {
+		matches := r.FindStringSubmatch(line)
+		if matches != nil {
+			file = matches[1]
+		}
+	}
+	log.Logger.Debugf("file: %#v", file)
+
+	var root GraphML
+	err = files.ReadXML(&root, file)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "could not parse SBT dependency graph")
+	}
+	log.Logger.Debugf("graph: %#v", root)
+
+	evicted, _, err := exec.Run(exec.Cmd{
+		Dir:  dir,
+		Name: s.Bin,
+		Argv: []string{"-no-colors", Task(project, configuration, "evicted")},
+	})
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "could not get version conflict resolutions from SBT")
+	}
+
+	return ParseDependencyGraph(root.Graph, evicted)
 }
 
 func (s *SBT) DependencyList(dir, project, configuration string) (string, error) {
@@ -105,61 +131,6 @@ func (s *SBT) DependencyList(dir, project, configuration string) (string, error)
 		}
 	}
 	return strings.Join(depLines, "\n"), err
-}
-
-func ParseDependencyTree(output string, rootBuild bool) ([]Dependency, map[Dependency][]Dependency, error) {
-	// Filter lines to only include dependency tree.
-	spacerRegex := regexp.MustCompile("^\\[info\\] ([ `+\\\\|-]*)(\\s*?)$")
-	var depLines []string
-	for _, line := range strings.Split(output, "\n") {
-		if FilterLine(line) && !spacerRegex.MatchString(line) {
-			log.Logger.Debugf("Matched line: %#v", line)
-			depLines = append(depLines, line)
-		} else {
-			log.Logger.Debugf("Ignoring line: %#v", line)
-		}
-	}
-
-	// Non-root builds only have one sub-project, so we collapse the first layer
-	// of imports.
-	if !rootBuild {
-		// Remove the sub-project line.
-		depLines = depLines[1:]
-	}
-
-	depRegex := regexp.MustCompile("^\\[info\\] ([ `+\\\\|-]*)([^ `+\\\\|-].+)$")
-	locatorRegex := regexp.MustCompile("([^:\\s]+):([^:\\s]+):([^:\\s]+).*")
-	return ReadDependencyTree(depLines, func(line string) (int, Dependency, error) {
-		log.Logger.Debugf("Parsing line: %#v\n", line)
-
-		// Match for context
-		depMatches := depRegex.FindStringSubmatch(line)
-		log.Logger.Debugf("Dep matches: %#v\n", depMatches)
-		depth := len(depMatches[1])
-
-		// SBT quirk: the indentation from level 1 to level 2 is 4 spaces, but all others are 2 spaces
-		if depth >= 4 {
-			depth -= 2
-		}
-		// Handle non-root builds.
-		if !rootBuild {
-			depth -= 2
-		}
-
-		if depth%2 != 0 {
-			// Sanity check
-			log.Logger.Panicf("Bad depth: %#v %s %#v", depth, line, depMatches)
-		}
-		// Parse locator
-		locatorMatches := locatorRegex.FindStringSubmatch(depMatches[2])
-		log.Logger.Debugf("Locator matches: %#v\n", locatorMatches)
-		dep := Dependency{
-			Name:    locatorMatches[1] + ":" + locatorMatches[2],
-			Version: locatorMatches[3],
-		}
-
-		return depth / 2, dep, nil
-	})
 }
 
 func FilterLine(line string) bool {
