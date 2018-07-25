@@ -1,0 +1,355 @@
+<graphml xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd" xmlns:y="http://www.yworks.com/xml/graphml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://graphml.graphdrawing.org/xmlns">
+        <key for="node" id="d0" yfiles.type="nodegraphics"/>
+        <graph id="Graph" edgedefault="undirected">
+          <node id="com.prisma:metrics_2.12:0.1.0-SNAPSHOT"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.prisma:metrics_2.12:0.1.0-SNAPSHOT</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="io.micrometer:micrometer-registry-prometheus:1.0.4"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>io.micrometer:micrometer-registry-prometheus:1.0.4</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="io.prometheus:simpleclient_common:0.2.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>io.prometheus:simpleclient_common:0.2.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="io.prometheus:simpleclient:0.2.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>io.prometheus:simpleclient:0.2.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="io.micrometer:micrometer-core:1.0.4"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>io.micrometer:micrometer-core:1.0.4</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="org.latencyutils:LatencyUtils:2.0.3"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>org.latencyutils:LatencyUtils:2.0.3</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.github.ben-manes.caffeine:caffeine:2.5.5"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.github.ben-manes.caffeine:caffeine:2.5.5</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.github.ben-manes.caffeine:caffeine:2.3.4"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.github.ben-manes.caffeine:caffeine:2.3.4</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="ch.megard:akka-http-cors_2.12:0.3.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>ch.megard:akka-http-cors_2.12:0.3.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:finagle-http_2.12:6.44.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:finagle-http_2.12:6.44.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:finagle-http2_2.12:6.44.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:finagle-http2_2.12:6.44.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="io.netty:netty-codec-http2:4.1.9.Final"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>io.netty:netty-codec-http2:4.1.9.Final</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:finagle-netty4-http_2.12:6.44.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:finagle-netty4-http_2.12:6.44.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:finagle-netty4_2.12:6.44.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:finagle-netty4_2.12:6.44.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="io.netty:netty-handler-proxy:4.1.9.Final"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>io.netty:netty-handler-proxy:4.1.9.Final</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="io.netty:netty-codec-http:4.1.9.Final"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>io.netty:netty-codec-http:4.1.9.Final</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="io.netty:netty-codec-socks:4.1.9.Final"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>io.netty:netty-codec-socks:4.1.9.Final</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="io.netty:netty-transport-native-epoll:4.1.9.Final"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>io.netty:netty-transport-native-epoll:4.1.9.Final</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="io.netty:netty-handler:4.1.9.Final"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>io.netty:netty-handler:4.1.9.Final</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="io.netty:netty-codec:4.1.9.Final"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>io.netty:netty-codec:4.1.9.Final</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="io.netty:netty-transport:4.1.9.Final"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>io.netty:netty-transport:4.1.9.Final</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="io.netty:netty-resolver:4.1.9.Final"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>io.netty:netty-resolver:4.1.9.Final</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="io.netty:netty-buffer:4.1.9.Final"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>io.netty:netty-buffer:4.1.9.Final</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="io.netty:netty-common:4.1.9.Final"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>io.netty:netty-common:4.1.9.Final</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:finagle-base-http_2.12:6.44.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:finagle-base-http_2.12:6.44.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="commons-lang:commons-lang:2.6"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>commons-lang:commons-lang:2.6</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:util-collection_2.12:6.43.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:util-collection_2.12:6.43.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:finagle-core_2.12:6.44.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:finagle-core_2.12:6.44.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="io.netty:netty:3.10.1.Final"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>io.netty:netty:3.10.1.Final</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:util-tunable_2.12:6.43.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:util-tunable_2.12:6.43.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:util-security_2.12:6.43.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:util-security_2.12:6.43.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:util-jvm_2.12:6.43.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:util-jvm_2.12:6.43.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:util-hashing_2.12:6.43.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:util-hashing_2.12:6.43.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:util-codec_2.12:6.43.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:util-codec_2.12:6.43.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:util-cache_2.12:6.43.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:util-cache_2.12:6.43.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:finagle-toggle_2.12:6.44.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:finagle-toggle_2.12:6.44.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.thoughtworks.paranamer:paranamer:2.8"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.thoughtworks.paranamer:paranamer:2.8</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:util-logging_2.12:6.43.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:util-logging_2.12:6.43.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:util-stats_2.12:6.43.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:util-stats_2.12:6.43.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.google.code.findbugs:jsr305:2.0.1"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.google.code.findbugs:jsr305:2.0.1</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.google.code.findbugs:jsr305:1.3.9"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.google.code.findbugs:jsr305:1.3.9</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:util-lint_2.12:6.43.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:util-lint_2.12:6.43.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:util-app_2.12:6.43.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:util-app_2.12:6.43.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:util-registry_2.12:6.43.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:util-registry_2.12:6.43.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:util-core_2.12:6.43.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:util-core_2.12:6.43.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.google.guava:guava:19.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.google.guava:guava:19.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.google.guava:guava:12.0.1"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.google.guava:guava:12.0.1</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.twitter:util-function_2.12:6.43.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.twitter:util-function_2.12:6.43.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.typesafe.akka:akka-testkit_2.12:2.5.11"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.typesafe.akka:akka-testkit_2.12:2.5.11</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="org.hdrhistogram:HdrHistogram:2.1.10"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>org.hdrhistogram:HdrHistogram:2.1.10</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.typesafe.akka:akka-http_2.12:10.1.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.typesafe.akka:akka-http_2.12:10.1.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.typesafe.akka:akka-http-core_2.12:10.1.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.typesafe.akka:akka-http-core_2.12:10.1.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.typesafe.akka:akka-parsing_2.12:10.1.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.typesafe.akka:akka-parsing_2.12:10.1.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.typesafe.akka:akka-stream_2.12:2.5.11"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.typesafe.akka:akka-stream_2.12:2.5.11</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.typesafe:ssl-config-core_2.12:0.2.2"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.typesafe:ssl-config-core_2.12:0.2.2</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="org.scala-lang.modules:scala-parser-combinators_2.12:1.0.4"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>org.scala-lang.modules:scala-parser-combinators_2.12:1.0.4</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="org.reactivestreams:reactive-streams:1.0.2"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>org.reactivestreams:reactive-streams:1.0.2</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.typesafe.akka:akka-protobuf_2.12:2.5.11"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.typesafe.akka:akka-protobuf_2.12:2.5.11</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.typesafe.akka:akka-actor_2.12:2.5.11"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.typesafe.akka:akka-actor_2.12:2.5.11</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.typesafe:config:1.3.2"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.typesafe:config:1.3.2</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.typesafe:config:1.2.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.typesafe:config:1.2.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.prisma:scala-utils_2.12:0.1.0-SNAPSHOT"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.prisma:scala-utils_2.12:0.1.0-SNAPSHOT</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.prisma:error-reporting_2.12:0.1.0-SNAPSHOT"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.prisma:error-reporting_2.12:0.1.0-SNAPSHOT</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.typesafe.play:play-json_2.12:2.6.8"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.typesafe.play:play-json_2.12:2.6.8</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.fasterxml.jackson.core:jackson-databind:2.8.9"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.fasterxml.jackson.core:jackson-databind:2.8.9</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.fasterxml.jackson.core:jackson-databind:2.6.7"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.fasterxml.jackson.core:jackson-databind:2.6.7</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.fasterxml.jackson.core:jackson-databind:2.8.4"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.fasterxml.jackson.core:jackson-databind:2.8.4</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.fasterxml.jackson.core:jackson-annotations:2.8.9"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.fasterxml.jackson.core:jackson-annotations:2.8.9</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.fasterxml.jackson.core:jackson-annotations:2.6.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.fasterxml.jackson.core:jackson-annotations:2.6.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.fasterxml.jackson.core:jackson-annotations:2.8.4"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.fasterxml.jackson.core:jackson-annotations:2.8.4</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.fasterxml.jackson.core:jackson-annotations:2.8.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.fasterxml.jackson.core:jackson-annotations:2.8.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.fasterxml.jackson.core:jackson-core:2.8.9"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.fasterxml.jackson.core:jackson-core:2.8.9</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.fasterxml.jackson.core:jackson-core:2.6.7"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.fasterxml.jackson.core:jackson-core:2.6.7</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.fasterxml.jackson.core:jackson-core:2.8.4"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.fasterxml.jackson.core:jackson-core:2.8.4</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="joda-time:joda-time:2.9.9"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>joda-time:joda-time:2.9.9</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="org.typelevel:macro-compat_2.12:1.1.1"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>org.typelevel:macro-compat_2.12:1.1.1</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.typesafe.play:play-functional_2.12:2.6.8"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.typesafe.play:play-functional_2.12:2.6.8</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="com.bugsnag:bugsnag:3.0.2"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>com.bugsnag:bugsnag:3.0.2</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="org.slf4j:slf4j-api:1.7.21"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>org.slf4j:slf4j-api:1.7.21</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="org.scalactic:scalactic_2.12:3.0.4"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>org.scalactic:scalactic_2.12:3.0.4</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="org.scala-lang:scala-reflect:2.12.3"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>org.scala-lang:scala-reflect:2.12.3</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="org.scala-lang.modules:scala-java8-compat_2.12:0.8.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>org.scala-lang.modules:scala-java8-compat_2.12:0.8.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node>
+          <edge source="com.prisma:metrics_2.12:0.1.0-SNAPSHOT" target="io.micrometer:micrometer-registry-prometheus:1.0.4"/><edge source="io.micrometer:micrometer-registry-prometheus:1.0.4" target="io.prometheus:simpleclient_common:0.2.0"/><edge source="io.prometheus:simpleclient_common:0.2.0" target="io.prometheus:simpleclient:0.2.0"/><edge source="io.micrometer:micrometer-registry-prometheus:1.0.4" target="io.micrometer:micrometer-core:1.0.4"/><edge source="io.micrometer:micrometer-core:1.0.4" target="org.latencyutils:LatencyUtils:2.0.3"/><edge source="com.prisma:metrics_2.12:0.1.0-SNAPSHOT" target="com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT"/><edge source="com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT" target="com.github.ben-manes.caffeine:caffeine:2.5.5"/><edge source="com.twitter:util-stats_2.12:6.43.0" target="com.github.ben-manes.caffeine:caffeine:2.5.5"/><edge source="com.twitter:util-cache_2.12:6.43.0" target="com.github.ben-manes.caffeine:caffeine:2.5.5"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="com.github.ben-manes.caffeine:caffeine:2.5.5"/><edge source="com.twitter:util-stats_2.12:6.43.0" target="com.github.ben-manes.caffeine:caffeine:2.3.4"/><edge source="com.twitter:util-cache_2.12:6.43.0" target="com.github.ben-manes.caffeine:caffeine:2.3.4"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="com.github.ben-manes.caffeine:caffeine:2.3.4"/><edge source="com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT" target="ch.megard:akka-http-cors_2.12:0.3.0"/><edge source="com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT" target="com.twitter:finagle-http_2.12:6.44.0"/><edge source="com.twitter:finagle-http_2.12:6.44.0" target="com.twitter:finagle-http2_2.12:6.44.0"/><edge source="com.twitter:finagle-http2_2.12:6.44.0" target="io.netty:netty-codec-http2:4.1.9.Final"/><edge source="com.twitter:finagle-http_2.12:6.44.0" target="com.twitter:finagle-netty4-http_2.12:6.44.0"/><edge source="com.twitter:finagle-http2_2.12:6.44.0" target="com.twitter:finagle-netty4-http_2.12:6.44.0"/><edge source="com.twitter:finagle-http2_2.12:6.44.0" target="com.twitter:finagle-netty4_2.12:6.44.0"/><edge source="com.twitter:finagle-netty4-http_2.12:6.44.0" target="com.twitter:finagle-netty4_2.12:6.44.0"/><edge source="com.twitter:finagle-netty4_2.12:6.44.0" target="io.netty:netty-handler-proxy:4.1.9.Final"/><edge source="com.twitter:finagle-http2_2.12:6.44.0" target="io.netty:netty-handler-proxy:4.1.9.Final"/><edge source="io.netty:netty-codec-http2:4.1.9.Final" target="io.netty:netty-codec-http:4.1.9.Final"/><edge source="io.netty:netty-handler-proxy:4.1.9.Final" target="io.netty:netty-codec-http:4.1.9.Final"/><edge source="com.twitter:finagle-http2_2.12:6.44.0" target="io.netty:netty-codec-http:4.1.9.Final"/><edge source="com.twitter:finagle-netty4-http_2.12:6.44.0" target="io.netty:netty-codec-http:4.1.9.Final"/><edge source="io.netty:netty-handler-proxy:4.1.9.Final" target="io.netty:netty-codec-socks:4.1.9.Final"/><edge source="com.twitter:finagle-netty4_2.12:6.44.0" target="io.netty:netty-transport-native-epoll:4.1.9.Final"/><edge source="com.twitter:finagle-http2_2.12:6.44.0" target="io.netty:netty-transport-native-epoll:4.1.9.Final"/><edge source="io.netty:netty-codec-http2:4.1.9.Final" target="io.netty:netty-handler:4.1.9.Final"/><edge source="com.twitter:finagle-netty4_2.12:6.44.0" target="io.netty:netty-handler:4.1.9.Final"/><edge source="com.twitter:finagle-http2_2.12:6.44.0" target="io.netty:netty-handler:4.1.9.Final"/><edge source="io.netty:netty-codec-http:4.1.9.Final" target="io.netty:netty-codec:4.1.9.Final"/><edge source="io.netty:netty-codec-socks:4.1.9.Final" target="io.netty:netty-codec:4.1.9.Final"/><edge source="io.netty:netty-handler:4.1.9.Final" target="io.netty:netty-codec:4.1.9.Final"/><edge source="io.netty:netty-codec:4.1.9.Final" target="io.netty:netty-transport:4.1.9.Final"/><edge source="com.twitter:finagle-netty4_2.12:6.44.0" target="io.netty:netty-transport:4.1.9.Final"/><edge source="io.netty:netty-handler-proxy:4.1.9.Final" target="io.netty:netty-transport:4.1.9.Final"/><edge source="io.netty:netty-handler:4.1.9.Final" target="io.netty:netty-transport:4.1.9.Final"/><edge source="io.netty:netty-transport-native-epoll:4.1.9.Final" target="io.netty:netty-transport:4.1.9.Final"/><edge source="com.twitter:finagle-http2_2.12:6.44.0" target="io.netty:netty-transport:4.1.9.Final"/><edge source="io.netty:netty-transport:4.1.9.Final" target="io.netty:netty-resolver:4.1.9.Final"/><edge source="io.netty:netty-transport:4.1.9.Final" target="io.netty:netty-buffer:4.1.9.Final"/><edge source="io.netty:netty-handler:4.1.9.Final" target="io.netty:netty-buffer:4.1.9.Final"/><edge source="io.netty:netty-transport-native-epoll:4.1.9.Final" target="io.netty:netty-buffer:4.1.9.Final"/><edge source="io.netty:netty-resolver:4.1.9.Final" target="io.netty:netty-common:4.1.9.Final"/><edge source="io.netty:netty-buffer:4.1.9.Final" target="io.netty:netty-common:4.1.9.Final"/><edge source="io.netty:netty-transport-native-epoll:4.1.9.Final" target="io.netty:netty-common:4.1.9.Final"/><edge source="com.twitter:finagle-http_2.12:6.44.0" target="com.twitter:finagle-base-http_2.12:6.44.0"/><edge source="com.twitter:finagle-http2_2.12:6.44.0" target="com.twitter:finagle-base-http_2.12:6.44.0"/><edge source="com.twitter:finagle-netty4-http_2.12:6.44.0" target="com.twitter:finagle-base-http_2.12:6.44.0"/><edge source="com.twitter:finagle-http_2.12:6.44.0" target="commons-lang:commons-lang:2.6"/><edge source="com.twitter:finagle-base-http_2.12:6.44.0" target="commons-lang:commons-lang:2.6"/><edge source="com.twitter:finagle-netty4-http_2.12:6.44.0" target="commons-lang:commons-lang:2.6"/><edge source="com.twitter:finagle-http_2.12:6.44.0" target="com.twitter:util-collection_2.12:6.43.0"/><edge source="com.twitter:finagle-base-http_2.12:6.44.0" target="com.twitter:util-collection_2.12:6.43.0"/><edge source="com.twitter:finagle-base-http_2.12:6.44.0" target="com.twitter:finagle-core_2.12:6.44.0"/><edge source="com.twitter:finagle-netty4_2.12:6.44.0" target="com.twitter:finagle-core_2.12:6.44.0"/><edge source="com.twitter:finagle-http2_2.12:6.44.0" target="com.twitter:finagle-core_2.12:6.44.0"/><edge source="com.twitter:finagle-http2_2.12:6.44.0" target="io.netty:netty:3.10.1.Final"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="io.netty:netty:3.10.1.Final"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="com.twitter:util-tunable_2.12:6.43.0"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="com.twitter:util-security_2.12:6.43.0"/><edge source="com.twitter:finagle-netty4-http_2.12:6.44.0" target="com.twitter:util-jvm_2.12:6.43.0"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="com.twitter:util-jvm_2.12:6.43.0"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="com.twitter:util-hashing_2.12:6.43.0"/><edge source="com.twitter:finagle-http_2.12:6.44.0" target="com.twitter:util-codec_2.12:6.43.0"/><edge source="com.twitter:finagle-netty4_2.12:6.44.0" target="com.twitter:util-codec_2.12:6.43.0"/><edge source="com.twitter:finagle-netty4-http_2.12:6.44.0" target="com.twitter:util-codec_2.12:6.43.0"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="com.twitter:util-codec_2.12:6.43.0"/><edge source="com.twitter:finagle-netty4_2.12:6.44.0" target="com.twitter:util-cache_2.12:6.43.0"/><edge source="com.twitter:finagle-http2_2.12:6.44.0" target="com.twitter:util-cache_2.12:6.43.0"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="com.twitter:util-cache_2.12:6.43.0"/><edge source="com.twitter:finagle-http_2.12:6.44.0" target="com.twitter:finagle-toggle_2.12:6.44.0"/><edge source="com.twitter:finagle-netty4_2.12:6.44.0" target="com.twitter:finagle-toggle_2.12:6.44.0"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="com.twitter:finagle-toggle_2.12:6.44.0"/><edge source="com.twitter:util-tunable_2.12:6.43.0" target="com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4"/><edge source="com.twitter:finagle-toggle_2.12:6.44.0" target="com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4"/><edge source="com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4" target="com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4"/><edge source="com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4" target="com.thoughtworks.paranamer:paranamer:2.8"/><edge source="com.twitter:finagle-http_2.12:6.44.0" target="com.twitter:util-logging_2.12:6.43.0"/><edge source="com.twitter:finagle-base-http_2.12:6.44.0" target="com.twitter:util-logging_2.12:6.43.0"/><edge source="com.twitter:finagle-toggle_2.12:6.44.0" target="com.twitter:util-logging_2.12:6.43.0"/><edge source="com.twitter:util-security_2.12:6.43.0" target="com.twitter:util-logging_2.12:6.43.0"/><edge source="com.twitter:finagle-http2_2.12:6.44.0" target="com.twitter:util-logging_2.12:6.43.0"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="com.twitter:util-logging_2.12:6.43.0"/><edge source="com.twitter:util-logging_2.12:6.43.0" target="com.twitter:util-stats_2.12:6.43.0"/><edge source="com.twitter:finagle-netty4_2.12:6.44.0" target="com.twitter:util-stats_2.12:6.43.0"/><edge source="com.twitter:finagle-toggle_2.12:6.44.0" target="com.twitter:util-stats_2.12:6.43.0"/><edge source="com.twitter:finagle-netty4-http_2.12:6.44.0" target="com.twitter:util-stats_2.12:6.43.0"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="com.twitter:util-stats_2.12:6.43.0"/><edge source="com.google.guava:guava:12.0.1" target="com.google.code.findbugs:jsr305:2.0.1"/><edge source="com.twitter:util-stats_2.12:6.43.0" target="com.google.code.findbugs:jsr305:2.0.1"/><edge source="com.twitter:util-cache_2.12:6.43.0" target="com.google.code.findbugs:jsr305:2.0.1"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="com.google.code.findbugs:jsr305:2.0.1"/><edge source="com.google.guava:guava:12.0.1" target="com.google.code.findbugs:jsr305:1.3.9"/><edge source="com.twitter:util-stats_2.12:6.43.0" target="com.twitter:util-lint_2.12:6.43.0"/><edge source="com.twitter:finagle-netty4_2.12:6.44.0" target="com.twitter:util-lint_2.12:6.43.0"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="com.twitter:util-lint_2.12:6.43.0"/><edge source="com.twitter:util-logging_2.12:6.43.0" target="com.twitter:util-app_2.12:6.43.0"/><edge source="com.twitter:util-tunable_2.12:6.43.0" target="com.twitter:util-app_2.12:6.43.0"/><edge source="com.twitter:finagle-netty4_2.12:6.44.0" target="com.twitter:util-app_2.12:6.43.0"/><edge source="com.twitter:finagle-toggle_2.12:6.44.0" target="com.twitter:util-app_2.12:6.43.0"/><edge source="com.twitter:util-jvm_2.12:6.43.0" target="com.twitter:util-app_2.12:6.43.0"/><edge source="com.twitter:finagle-netty4-http_2.12:6.44.0" target="com.twitter:util-app_2.12:6.43.0"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="com.twitter:util-app_2.12:6.43.0"/><edge source="com.twitter:util-app_2.12:6.43.0" target="com.twitter:util-registry_2.12:6.43.0"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="com.twitter:util-registry_2.12:6.43.0"/><edge source="com.twitter:util-logging_2.12:6.43.0" target="com.twitter:util-core_2.12:6.43.0"/><edge source="com.twitter:util-collection_2.12:6.43.0" target="com.twitter:util-core_2.12:6.43.0"/><edge source="com.twitter:finagle-toggle_2.12:6.44.0" target="com.twitter:util-core_2.12:6.43.0"/><edge source="com.twitter:util-codec_2.12:6.43.0" target="com.twitter:util-core_2.12:6.43.0"/><edge source="com.twitter:util-security_2.12:6.43.0" target="com.twitter:util-core_2.12:6.43.0"/><edge source="com.twitter:util-cache_2.12:6.43.0" target="com.twitter:util-core_2.12:6.43.0"/><edge source="com.twitter:finagle-http2_2.12:6.44.0" target="com.twitter:util-core_2.12:6.43.0"/><edge source="com.twitter:finagle-netty4-http_2.12:6.44.0" target="com.twitter:util-core_2.12:6.43.0"/><edge source="com.twitter:util-stats_2.12:6.43.0" target="com.twitter:util-core_2.12:6.43.0"/><edge source="com.twitter:util-tunable_2.12:6.43.0" target="com.twitter:util-core_2.12:6.43.0"/><edge source="com.twitter:util-registry_2.12:6.43.0" target="com.twitter:util-core_2.12:6.43.0"/><edge source="com.twitter:finagle-netty4_2.12:6.44.0" target="com.twitter:util-core_2.12:6.43.0"/><edge source="com.twitter:util-jvm_2.12:6.43.0" target="com.twitter:util-core_2.12:6.43.0"/><edge source="com.twitter:util-app_2.12:6.43.0" target="com.twitter:util-core_2.12:6.43.0"/><edge source="com.twitter:finagle-core_2.12:6.44.0" target="com.twitter:util-core_2.12:6.43.0"/><edge source="com.twitter:finagle-http_2.12:6.44.0" target="com.google.guava:guava:19.0"/><edge source="com.twitter:util-collection_2.12:6.43.0" target="com.google.guava:guava:19.0"/><edge source="com.bugsnag:bugsnag:3.0.2" target="com.google.guava:guava:19.0"/><edge source="com.twitter:finagle-toggle_2.12:6.44.0" target="com.google.guava:guava:19.0"/><edge source="com.twitter:util-cache_2.12:6.43.0" target="com.google.guava:guava:19.0"/><edge source="com.twitter:util-app_2.12:6.43.0" target="com.google.guava:guava:19.0"/><edge source="com.bugsnag:bugsnag:3.0.2" target="com.google.guava:guava:12.0.1"/><edge source="com.twitter:util-core_2.12:6.43.0" target="com.twitter:util-function_2.12:6.43.0"/><edge source="com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT" target="com.typesafe.akka:akka-testkit_2.12:2.5.11"/><edge source="io.micrometer:micrometer-core:1.0.4" target="org.hdrhistogram:HdrHistogram:2.1.10"/><edge source="com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT" target="com.typesafe.akka:akka-http_2.12:10.1.0"/><edge source="ch.megard:akka-http-cors_2.12:0.3.0" target="com.typesafe.akka:akka-http_2.12:10.1.0"/><edge source="com.typesafe.akka:akka-http_2.12:10.1.0" target="com.typesafe.akka:akka-http-core_2.12:10.1.0"/><edge source="com.typesafe.akka:akka-http-core_2.12:10.1.0" target="com.typesafe.akka:akka-parsing_2.12:10.1.0"/><edge source="com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT" target="com.typesafe.akka:akka-stream_2.12:2.5.11"/><edge source="com.typesafe.akka:akka-stream_2.12:2.5.11" target="com.typesafe:ssl-config-core_2.12:0.2.2"/><edge source="com.typesafe:ssl-config-core_2.12:0.2.2" target="org.scala-lang.modules:scala-parser-combinators_2.12:1.0.4"/><edge source="com.twitter:util-core_2.12:6.43.0" target="org.scala-lang.modules:scala-parser-combinators_2.12:1.0.4"/><edge source="com.typesafe.akka:akka-stream_2.12:2.5.11" target="org.reactivestreams:reactive-streams:1.0.2"/><edge source="com.typesafe.akka:akka-stream_2.12:2.5.11" target="com.typesafe.akka:akka-protobuf_2.12:2.5.11"/><edge source="com.typesafe.akka:akka-stream_2.12:2.5.11" target="com.typesafe.akka:akka-actor_2.12:2.5.11"/><edge source="com.typesafe.akka:akka-testkit_2.12:2.5.11" target="com.typesafe.akka:akka-actor_2.12:2.5.11"/><edge source="com.typesafe.akka:akka-actor_2.12:2.5.11" target="com.typesafe:config:1.3.2"/><edge source="com.typesafe:ssl-config-core_2.12:0.2.2" target="com.typesafe:config:1.3.2"/><edge source="com.typesafe.akka:akka-actor_2.12:2.5.11" target="com.typesafe:config:1.2.0"/><edge source="com.typesafe:ssl-config-core_2.12:0.2.2" target="com.typesafe:config:1.2.0"/><edge source="com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT" target="com.prisma:scala-utils_2.12:0.1.0-SNAPSHOT"/><edge source="com.prisma:metrics_2.12:0.1.0-SNAPSHOT" target="com.prisma:error-reporting_2.12:0.1.0-SNAPSHOT"/><edge source="com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT" target="com.prisma:error-reporting_2.12:0.1.0-SNAPSHOT"/><edge source="com.prisma:error-reporting_2.12:0.1.0-SNAPSHOT" target="com.typesafe.play:play-json_2.12:2.6.8"/><edge source="com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT" target="com.typesafe.play:play-json_2.12:2.6.8"/><edge source="com.typesafe.play:play-json_2.12:2.6.8" target="com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9"/><edge source="com.typesafe.play:play-json_2.12:2.6.8" target="com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9"/><edge source="com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4" target="com.fasterxml.jackson.core:jackson-databind:2.8.9"/><edge source="com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9" target="com.fasterxml.jackson.core:jackson-databind:2.8.9"/><edge source="com.twitter:util-tunable_2.12:6.43.0" target="com.fasterxml.jackson.core:jackson-databind:2.8.9"/><edge source="com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4" target="com.fasterxml.jackson.core:jackson-databind:2.8.9"/><edge source="com.bugsnag:bugsnag:3.0.2" target="com.fasterxml.jackson.core:jackson-databind:2.8.9"/><edge source="com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9" target="com.fasterxml.jackson.core:jackson-databind:2.8.9"/><edge source="com.twitter:finagle-toggle_2.12:6.44.0" target="com.fasterxml.jackson.core:jackson-databind:2.8.9"/><edge source="com.typesafe.play:play-json_2.12:2.6.8" target="com.fasterxml.jackson.core:jackson-databind:2.8.9"/><edge source="com.bugsnag:bugsnag:3.0.2" target="com.fasterxml.jackson.core:jackson-databind:2.6.7"/><edge source="com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4" target="com.fasterxml.jackson.core:jackson-databind:2.8.4"/><edge source="com.twitter:util-tunable_2.12:6.43.0" target="com.fasterxml.jackson.core:jackson-databind:2.8.4"/><edge source="com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4" target="com.fasterxml.jackson.core:jackson-databind:2.8.4"/><edge source="com.twitter:finagle-toggle_2.12:6.44.0" target="com.fasterxml.jackson.core:jackson-databind:2.8.4"/><edge source="com.fasterxml.jackson.core:jackson-databind:2.6.7" target="com.fasterxml.jackson.core:jackson-annotations:2.8.9"/><edge source="com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4" target="com.fasterxml.jackson.core:jackson-annotations:2.8.9"/><edge source="com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9" target="com.fasterxml.jackson.core:jackson-annotations:2.8.9"/><edge source="com.fasterxml.jackson.core:jackson-databind:2.8.9" target="com.fasterxml.jackson.core:jackson-annotations:2.8.9"/><edge source="com.typesafe.play:play-json_2.12:2.6.8" target="com.fasterxml.jackson.core:jackson-annotations:2.8.9"/><edge source="com.fasterxml.jackson.core:jackson-databind:2.6.7" target="com.fasterxml.jackson.core:jackson-annotations:2.6.0"/><edge source="com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4" target="com.fasterxml.jackson.core:jackson-annotations:2.8.4"/><edge source="com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9" target="com.fasterxml.jackson.core:jackson-annotations:2.8.0"/><edge source="com.fasterxml.jackson.core:jackson-databind:2.8.9" target="com.fasterxml.jackson.core:jackson-annotations:2.8.0"/><edge source="com.fasterxml.jackson.core:jackson-databind:2.6.7" target="com.fasterxml.jackson.core:jackson-core:2.8.9"/><edge source="com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9" target="com.fasterxml.jackson.core:jackson-core:2.8.9"/><edge source="com.twitter:util-tunable_2.12:6.43.0" target="com.fasterxml.jackson.core:jackson-core:2.8.9"/><edge source="com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4" target="com.fasterxml.jackson.core:jackson-core:2.8.9"/><edge source="com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9" target="com.fasterxml.jackson.core:jackson-core:2.8.9"/><edge source="com.fasterxml.jackson.core:jackson-databind:2.8.9" target="com.fasterxml.jackson.core:jackson-core:2.8.9"/><edge source="com.twitter:finagle-toggle_2.12:6.44.0" target="com.fasterxml.jackson.core:jackson-core:2.8.9"/><edge source="com.typesafe.play:play-json_2.12:2.6.8" target="com.fasterxml.jackson.core:jackson-core:2.8.9"/><edge source="com.fasterxml.jackson.core:jackson-databind:2.6.7" target="com.fasterxml.jackson.core:jackson-core:2.6.7"/><edge source="com.twitter:util-tunable_2.12:6.43.0" target="com.fasterxml.jackson.core:jackson-core:2.8.4"/><edge source="com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4" target="com.fasterxml.jackson.core:jackson-core:2.8.4"/><edge source="com.twitter:finagle-toggle_2.12:6.44.0" target="com.fasterxml.jackson.core:jackson-core:2.8.4"/><edge source="com.typesafe.play:play-json_2.12:2.6.8" target="joda-time:joda-time:2.9.9"/><edge source="com.typesafe.play:play-json_2.12:2.6.8" target="org.typelevel:macro-compat_2.12:1.1.1"/><edge source="com.typesafe.play:play-json_2.12:2.6.8" target="com.typesafe.play:play-functional_2.12:2.6.8"/><edge source="com.prisma:error-reporting_2.12:0.1.0-SNAPSHOT" target="com.bugsnag:bugsnag:3.0.2"/><edge source="com.bugsnag:bugsnag:3.0.2" target="org.slf4j:slf4j-api:1.7.21"/><edge source="com.prisma:error-reporting_2.12:0.1.0-SNAPSHOT" target="org.scalactic:scalactic_2.12:3.0.4"/><edge source="com.prisma:metrics_2.12:0.1.0-SNAPSHOT" target="org.scalactic:scalactic_2.12:3.0.4"/><edge source="com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT" target="org.scalactic:scalactic_2.12:3.0.4"/><edge source="com.prisma:scala-utils_2.12:0.1.0-SNAPSHOT" target="org.scalactic:scalactic_2.12:3.0.4"/><edge source="org.scalactic:scalactic_2.12:3.0.4" target="org.scala-lang:scala-reflect:2.12.3"/><edge source="com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4" target="org.scala-lang:scala-reflect:2.12.3"/><edge source="com.twitter:util-core_2.12:6.43.0" target="org.scala-lang:scala-reflect:2.12.3"/><edge source="com.typesafe.play:play-json_2.12:2.6.8" target="org.scala-lang:scala-reflect:2.12.3"/><edge source="com.prisma:error-reporting_2.12:0.1.0-SNAPSHOT" target="org.scala-lang.modules:scala-java8-compat_2.12:0.8.0"/><edge source="com.prisma:metrics_2.12:0.1.0-SNAPSHOT" target="org.scala-lang.modules:scala-java8-compat_2.12:0.8.0"/><edge source="com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT" target="org.scala-lang.modules:scala-java8-compat_2.12:0.8.0"/><edge source="com.prisma:scala-utils_2.12:0.1.0-SNAPSHOT" target="org.scala-lang.modules:scala-java8-compat_2.12:0.8.0"/><edge source="com.typesafe.akka:akka-actor_2.12:2.5.11" target="org.scala-lang.modules:scala-java8-compat_2.12:0.8.0"/>
+        </graph>
+      </graphml>

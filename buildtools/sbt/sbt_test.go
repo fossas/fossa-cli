@@ -5,24 +5,27 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/fossas/fossa-cli/files"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/buildtools/sbt"
-	"github.com/fossas/fossa-cli/log"
 )
 
 func TestSanityCheckParseDependencyTree(t *testing.T) {
-	// This is a hack so that logging from this test does not swamp all other log
-	// output.
-	log.Init(false, false)
-
-	fixture, err := ioutil.ReadFile(filepath.Join("testdata", "sbt_dependencytree_nocolor-prisma-stdout"))
+	var graph sbt.GraphML
+	err := files.ReadXML(&graph, filepath.Join("testdata", "sbt_dependencygraphml-prisma.xml"))
 	assert.NoError(t, err)
 
-	imports, graphs, err := sbt.ParseDependencyTree(string(fixture), true)
+	evicted, err := ioutil.ReadFile(filepath.Join("testdata", "sbt_evicted_nocolor-prisma"))
 	assert.NoError(t, err)
-	t.Log(imports)
-	t.Log(graphs)
+
+	_, pkgs, err := sbt.ParseDependencyGraph(graph.Graph, string(evicted))
+	assert.NoError(t, err)
+
+	for id, pkg := range pkgs {
+		assert.Equal(t, id, pkg.ID)
+	}
 }
 
 func TestFilterLines(t *testing.T) {

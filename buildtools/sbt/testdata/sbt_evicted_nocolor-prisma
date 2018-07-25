@@ -1,0 +1,1166 @@
+[info] Loading settings from plugins.sbt ...
+[info] Loading global plugins from /home/fossa/.sbt/1.0/plugins
+[info] Loading settings from plugins.sbt ...
+[info] Loading project definition from /home/fossa/prisma/server/project
+[info] Loading settings from build.sbt ...
+[info] Loading settings from build.sbt ...
+[info] Loading settings from build.sbt ...
+[info] Loading settings from build.sbt ...
+[info] Loading settings from build.sbt,version.sbt ...
+[info] Loading settings from build.sbt ...
+[info] Resolving key references (26602 settings) ...
+[info] Set current project to server (in build file:/home/fossa/prisma/server/)
+[info] Updating {file:/home/fossa/prisma/server/}root...
+[info] Done updating.
+[info] Updating {file:/home/fossa/prisma/server/}shared-models...
+[info] Done updating.
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over 2.8.0
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.9.4)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.9.4)
+[info] 	    +- com.prisma:shared-models_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] Updating {file:/home/fossa/prisma/server/}api-connector...
+[info] Done updating.
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over 2.8.0
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.9.4)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.9.4)
+[info] 	    +- com.prisma:shared-models_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	* com.chuusai:shapeless_2.12:2.3.3 is selected over 2.3.2
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 2.3.3)
+[info] 	    +- org.parboiled:parboiled_2.12:2.1.4                 (depends on 2.3.2)
+[info] Updating {file:/home/fossa/prisma/server/}api-connector-jdbc...
+[info] Updating {file:/home/fossa/prisma/server/}deploy-connector...
+[info] Done updating.
+[info] Updating {file:/home/fossa/prisma/server/}deploy-connector-postgres...
+[info] Updating {file:/home/fossa/prisma/server/}deploy-connector-mysql...
+[info] Done updating.
+[warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+[warn] 	* com.google.code.findbugs:jsr305:2.0.1 is selected over 1.3.9
+[warn] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.google.guava:guava:12.0.1                      (depends on 1.3.9)
+[warn] 	* com.google.guava:guava:19.0 is selected over 12.0.1
+[warn] 	    +- com.twitter:util-app_2.12:6.43.0 ()                (depends on 19.0)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 19.0)
+[warn] 	    +- com.twitter:util-collection_2.12:6.43.0 ()         (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-http_2.12:6.44.0 ()            (depends on 19.0)
+[warn] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 12.0.1)
+[warn] Run 'evicted' to see detailed eviction warnings
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* org.slf4j:slf4j-api:1.7.25 is selected over 1.7.21
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.7.25)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 1.7.21)
+[info] 	    +- com.zaxxer:HikariCP:2.5.1                          (depends on 1.7.21)
+[info] 	* com.github.ben-manes.caffeine:caffeine:2.5.5 is selected over 2.3.4
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.5)
+[info] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.3.4)
+[info] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	* org.reactivestreams:reactive-streams:1.0.2 is selected over 1.0.0
+[info] 	    +- com.typesafe.akka:akka-stream_2.12:2.5.11 ()       (depends on 1.0.2)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.0.0)
+[info] 	* com.typesafe:config:1.3.2 is selected over {1.2.1, 1.2.0}
+[info] 	    +- com.typesafe:ssl-config-core_2.12:0.2.2            (depends on 1.2.0)
+[info] 	    +- com.typesafe.akka:akka-actor_2.12:2.5.11 ()        (depends on 1.2.0)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.2.1)
+[info] 	* com.fasterxml.jackson.core:jackson-databind:2.8.9 is selected over {2.8.4, 2.6.7}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 2.6.7)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over {2.8.4, 2.8.0}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-core:2.8.9 is selected over 2.8.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.9.4)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.9.4)
+[info] 	    +- com.prisma:shared-models_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	* com.chuusai:shapeless_2.12:2.3.3 is selected over 2.3.2
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 2.3.3)
+[info] 	    +- org.parboiled:parboiled_2.12:2.1.4                 (depends on 2.3.2)
+[warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+[warn] 	* com.google.code.findbugs:jsr305:2.0.1 is selected over 1.3.9
+[warn] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.google.guava:guava:12.0.1                      (depends on 1.3.9)
+[warn] 	* com.google.guava:guava:19.0 is selected over 12.0.1
+[warn] 	    +- com.twitter:util-app_2.12:6.43.0 ()                (depends on 19.0)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 19.0)
+[warn] 	    +- com.twitter:util-collection_2.12:6.43.0 ()         (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-http_2.12:6.44.0 ()            (depends on 19.0)
+[warn] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 12.0.1)
+[warn] Run 'evicted' to see detailed eviction warnings
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* com.github.ben-manes.caffeine:caffeine:2.5.5 is selected over 2.3.4
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.5)
+[info] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.3.4)
+[info] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	* com.typesafe:config:1.3.2 is selected over 1.2.0
+[info] 	    +- com.typesafe:ssl-config-core_2.12:0.2.2            (depends on 1.2.0)
+[info] 	    +- com.typesafe.akka:akka-actor_2.12:2.5.11 ()        (depends on 1.2.0)
+[info] 	* com.fasterxml.jackson.core:jackson-databind:2.8.9 is selected over {2.8.4, 2.6.7}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 2.6.7)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over {2.8.4, 2.8.0}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-core:2.8.9 is selected over 2.8.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.9.4)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.9.4)
+[info] 	    +- com.prisma:shared-models_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	* com.chuusai:shapeless_2.12:2.3.3 is selected over 2.3.2
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 2.3.3)
+[info] 	    +- org.parboiled:parboiled_2.12:2.1.4                 (depends on 2.3.2)
+[info] Updating {file:/home/fossa/prisma/server/}workers...
+[info] Done updating.
+[info] Updating {file:/home/fossa/prisma/server/}api-connector-mysql...
+[info] Done updating.
+[info] Updating {file:/home/fossa/prisma/server/}api-connector-postgres...
+[info] Done updating.
+[warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+[warn] 	* com.google.code.findbugs:jsr305:2.0.1 is selected over 1.3.9
+[warn] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.google.guava:guava:12.0.1                      (depends on 1.3.9)
+[warn] 	* com.google.guava:guava:19.0 is selected over 12.0.1
+[warn] 	    +- com.twitter:util-app_2.12:6.43.0 ()                (depends on 19.0)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 19.0)
+[warn] 	    +- com.twitter:util-collection_2.12:6.43.0 ()         (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-http_2.12:6.44.0 ()            (depends on 19.0)
+[warn] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 12.0.1)
+[warn] Run 'evicted' to see detailed eviction warnings
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* org.slf4j:slf4j-api:1.7.25 is selected over 1.7.21
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.7.25)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 1.7.21)
+[info] 	    +- com.zaxxer:HikariCP:2.5.1                          (depends on 1.7.21)
+[info] 	* com.github.ben-manes.caffeine:caffeine:2.5.5 is selected over 2.3.4
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.5)
+[info] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.3.4)
+[info] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	* org.reactivestreams:reactive-streams:1.0.2 is selected over 1.0.0
+[info] 	    +- com.typesafe.akka:akka-stream_2.12:2.5.11 ()       (depends on 1.0.2)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.0.0)
+[info] 	* com.typesafe:config:1.3.2 is selected over {1.2.1, 1.2.0}
+[info] 	    +- com.typesafe:ssl-config-core_2.12:0.2.2            (depends on 1.2.0)
+[info] 	    +- com.typesafe.akka:akka-actor_2.12:2.5.11 ()        (depends on 1.2.0)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.2.1)
+[info] 	* com.fasterxml.jackson.core:jackson-databind:2.8.9 is selected over {2.8.4, 2.6.7}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 2.6.7)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over {2.8.4, 2.8.0}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-core:2.8.9 is selected over 2.8.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.9.4)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.9.4)
+[info] 	    +- com.prisma:shared-models_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	* com.chuusai:shapeless_2.12:2.3.3 is selected over 2.3.2
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 2.3.3)
+[info] 	    +- org.parboiled:parboiled_2.12:2.1.4                 (depends on 2.3.2)
+[warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+[warn] 	* com.google.code.findbugs:jsr305:2.0.1 is selected over 1.3.9
+[warn] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.google.guava:guava:12.0.1                      (depends on 1.3.9)
+[warn] 	* com.google.guava:guava:19.0 is selected over 12.0.1
+[warn] 	    +- com.twitter:util-app_2.12:6.43.0 ()                (depends on 19.0)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 19.0)
+[warn] 	    +- com.twitter:util-collection_2.12:6.43.0 ()         (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-http_2.12:6.44.0 ()            (depends on 19.0)
+[warn] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 12.0.1)
+[warn] Run 'evicted' to see detailed eviction warnings
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* org.slf4j:slf4j-api:1.7.25 is selected over 1.7.21
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.7.25)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 1.7.21)
+[info] 	    +- com.zaxxer:HikariCP:2.5.1                          (depends on 1.7.21)
+[info] 	* com.github.ben-manes.caffeine:caffeine:2.5.5 is selected over 2.3.4
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.5)
+[info] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.3.4)
+[info] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	* org.reactivestreams:reactive-streams:1.0.2 is selected over 1.0.0
+[info] 	    +- com.typesafe.akka:akka-stream_2.12:2.5.11 ()       (depends on 1.0.2)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.0.0)
+[info] 	* com.typesafe:config:1.3.2 is selected over {1.2.1, 1.2.0}
+[info] 	    +- com.typesafe:ssl-config-core_2.12:0.2.2            (depends on 1.2.0)
+[info] 	    +- com.typesafe.akka:akka-actor_2.12:2.5.11 ()        (depends on 1.2.0)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.2.1)
+[info] 	* com.fasterxml.jackson.core:jackson-databind:2.8.9 is selected over {2.8.4, 2.6.7}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 2.6.7)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over {2.8.4, 2.8.0}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-core:2.8.9 is selected over 2.8.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.9.4)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.9.4)
+[info] 	    +- com.prisma:shared-models_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	* com.chuusai:shapeless_2.12:2.3.3 is selected over 2.3.2
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 2.3.3)
+[info] 	    +- org.parboiled:parboiled_2.12:2.1.4                 (depends on 2.3.2)
+[warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+[warn] 	* com.google.code.findbugs:jsr305:2.0.1 is selected over 1.3.9
+[warn] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.google.guava:guava:12.0.1                      (depends on 1.3.9)
+[warn] 	* com.google.guava:guava:19.0 is selected over 12.0.1
+[warn] 	    +- com.twitter:util-app_2.12:6.43.0 ()                (depends on 19.0)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 19.0)
+[warn] 	    +- com.twitter:util-collection_2.12:6.43.0 ()         (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-http_2.12:6.44.0 ()            (depends on 19.0)
+[warn] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 12.0.1)
+[warn] Run 'evicted' to see detailed eviction warnings
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* org.slf4j:slf4j-api:1.7.25 is selected over 1.7.21
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.7.25)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 1.7.21)
+[info] 	    +- com.zaxxer:HikariCP:2.5.1                          (depends on 1.7.21)
+[info] 	* com.github.ben-manes.caffeine:caffeine:2.5.5 is selected over 2.3.4
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.5)
+[info] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.3.4)
+[info] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	* org.reactivestreams:reactive-streams:1.0.2 is selected over 1.0.0
+[info] 	    +- com.typesafe.akka:akka-stream_2.12:2.5.11 ()       (depends on 1.0.2)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.0.0)
+[info] 	* com.typesafe:config:1.3.2 is selected over {1.2.1, 1.2.0}
+[info] 	    +- com.typesafe:ssl-config-core_2.12:0.2.2            (depends on 1.2.0)
+[info] 	    +- com.typesafe.akka:akka-actor_2.12:2.5.11 ()        (depends on 1.2.0)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.2.1)
+[info] 	* com.fasterxml.jackson.core:jackson-databind:2.8.9 is selected over {2.8.4, 2.6.7}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 2.6.7)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over {2.8.4, 2.8.0}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-core:2.8.9 is selected over 2.8.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.9.4)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.9.4)
+[info] 	    +- com.prisma:shared-models_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	* com.chuusai:shapeless_2.12:2.3.3 is selected over 2.3.2
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 2.3.3)
+[info] 	    +- org.parboiled:parboiled_2.12:2.1.4                 (depends on 2.3.2)
+[info] Done updating.
+[warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+[warn] 	* com.google.guava:guava:19.0 is selected over 12.0.1
+[warn] 	    +- com.twitter:util-app_2.12:6.43.0 ()                (depends on 19.0)
+[warn] 	    +- com.prisma:workers_2.12:0.1.0-SNAPSHOT             (depends on 19.0)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 19.0)
+[warn] 	    +- com.twitter:util-collection_2.12:6.43.0 ()         (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-http_2.12:6.44.0 ()            (depends on 19.0)
+[warn] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 12.0.1)
+[warn] Run 'evicted' to see detailed eviction warnings
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* org.slf4j:slf4j-api:1.7.25 is selected over {1.7.21, 1.7.20}
+[info] 	    +- com.typesafe.scala-logging:scala-logging_2.12:3.7.0 (depends on 1.7.25)
+[info] 	    +- ch.qos.logback:logback-classic:1.1.7               (depends on 1.7.20)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 1.7.21)
+[info] 	    +- com.rabbitmq:amqp-client:4.1.0                     (depends on 1.7.21)
+[info] 	* io.spray:spray-json_2.12:1.3.4 is selected over 1.3.3
+[info] 	    +- com.typesafe.akka:akka-http-spray-json_2.12:10.1.0 () (depends on 1.3.4)
+[info] 	    +- org.sangria-graphql:sangria-spray-json_2.12:1.0.0  (depends on 1.3.3)
+[info] 	* com.github.ben-manes.caffeine:caffeine:2.5.5 is selected over 2.3.4
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.5)
+[info] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.3.4)
+[info] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	* ch.qos.logback:logback-core:1.1.7 is selected over 1.1.6
+[info] 	    +- ch.qos.logback:logback-classic:1.1.7               (depends on 1.1.7)
+[info] 	    +- net.logstash.logback:logstash-logback-encoder:4.7  (depends on 1.1.6)
+[info] 	* com.typesafe:config:1.3.2 is selected over 1.2.0
+[info] 	    +- com.typesafe:ssl-config-core_2.12:0.2.2            (depends on 1.2.0)
+[info] 	    +- com.typesafe.akka:akka-actor_2.12:2.5.11 ()        (depends on 1.2.0)
+[info] 	* com.typesafe.play:play-json_2.12:2.6.8 is selected over 2.6.6
+[info] 	    +- com.prisma:workers_2.12:0.1.0-SNAPSHOT             (depends on 2.6.6)
+[info] 	    +- org.sangria-graphql:sangria-play-json_2.12:1.0.4   (depends on 2.6.6)
+[info] 	    +- com.prisma:message-bus_2.12:0.1.0-SNAPSHOT         (depends on 2.6.6)
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.6.6)
+[info] 	    +- com.prisma:error-reporting_2.12:0.1.0-SNAPSHOT     (depends on 2.6.6)
+[info] 	* com.fasterxml.jackson.core:jackson-databind:2.8.9 is selected over {2.6.7, 2.6.5, 2.8.4}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4 (depends on 2.8.4)
+[info] 	    +- net.logstash.logback:logstash-logback-encoder:4.7  (depends on 2.6.5)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 2.6.7)
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over {2.6.0, 2.8.4, 2.8.0}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.6.7  (depends on 2.6.0)
+[info] 	* com.fasterxml.jackson.core:jackson-core:2.8.9 is selected over {2.6.7, 2.8.4}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.6.7  (depends on 2.6.7)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:workers_2.12:0.1.0-SNAPSHOT             (depends on 2.9.4)
+[info] Done updating.
+[warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+[warn] 	* com.google.code.findbugs:jsr305:2.0.1 is selected over 1.3.9
+[warn] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.google.guava:guava:12.0.1                      (depends on 1.3.9)
+[warn] 	* com.google.guava:guava:19.0 is selected over 12.0.1
+[warn] 	    +- com.twitter:util-app_2.12:6.43.0 ()                (depends on 19.0)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 19.0)
+[warn] 	    +- com.twitter:util-collection_2.12:6.43.0 ()         (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-http_2.12:6.44.0 ()            (depends on 19.0)
+[warn] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 12.0.1)
+[warn] Run 'evicted' to see detailed eviction warnings
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* org.slf4j:slf4j-api:1.7.25 is selected over 1.7.21
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.7.25)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 1.7.21)
+[info] 	    +- com.zaxxer:HikariCP:2.5.1                          (depends on 1.7.21)
+[info] 	* com.github.ben-manes.caffeine:caffeine:2.5.5 is selected over 2.3.4
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.5)
+[info] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.3.4)
+[info] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	* org.reactivestreams:reactive-streams:1.0.2 is selected over 1.0.0
+[info] 	    +- com.typesafe.akka:akka-stream_2.12:2.5.11 ()       (depends on 1.0.2)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.0.0)
+[info] 	* com.typesafe:config:1.3.2 is selected over {1.2.1, 1.2.0}
+[info] 	    +- com.typesafe:ssl-config-core_2.12:0.2.2            (depends on 1.2.0)
+[info] 	    +- com.typesafe.akka:akka-actor_2.12:2.5.11 ()        (depends on 1.2.0)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.2.1)
+[info] 	* com.fasterxml.jackson.core:jackson-databind:2.8.9 is selected over {2.8.4, 2.6.7}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 2.6.7)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over {2.8.4, 2.8.0}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-core:2.8.9 is selected over 2.8.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.9.4)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.9.4)
+[info] 	    +- com.prisma:shared-models_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	* com.chuusai:shapeless_2.12:2.3.3 is selected over 2.3.2
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 2.3.3)
+[info] 	    +- org.parboiled:parboiled_2.12:2.1.4                 (depends on 2.3.2)
+[info] Updating {file:/home/fossa/prisma/server/}utils...
+[info] Updating {file:/home/fossa/prisma/server/}servers-shared...
+[info] Updating {file:/home/fossa/prisma/server/}deploy...
+[info] Done updating.
+[warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+[warn] 	* com.google.code.findbugs:jsr305:2.0.1 is selected over 1.3.9
+[warn] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.google.guava:guava:12.0.1                      (depends on 1.3.9)
+[warn] 	* com.google.guava:guava:19.0 is selected over 12.0.1
+[warn] 	    +- com.twitter:util-app_2.12:6.43.0 ()                (depends on 19.0)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 19.0)
+[warn] 	    +- com.twitter:util-collection_2.12:6.43.0 ()         (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-http_2.12:6.44.0 ()            (depends on 19.0)
+[warn] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 12.0.1)
+[warn] Run 'evicted' to see detailed eviction warnings
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* org.slf4j:slf4j-api:1.7.25 is selected over 1.7.21
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.7.25)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 1.7.21)
+[info] 	    +- com.zaxxer:HikariCP:2.5.1                          (depends on 1.7.21)
+[info] 	* com.github.ben-manes.caffeine:caffeine:2.5.5 is selected over 2.3.4
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.5)
+[info] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.3.4)
+[info] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	* org.reactivestreams:reactive-streams:1.0.2 is selected over 1.0.0
+[info] 	    +- com.typesafe.akka:akka-stream_2.12:2.5.11 ()       (depends on 1.0.2)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.0.0)
+[info] 	* com.typesafe:config:1.3.2 is selected over {1.2.1, 1.2.0}
+[info] 	    +- com.typesafe:ssl-config-core_2.12:0.2.2            (depends on 1.2.0)
+[info] 	    +- com.typesafe.akka:akka-actor_2.12:2.5.11 ()        (depends on 1.2.0)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.2.1)
+[info] 	* com.fasterxml.jackson.core:jackson-databind:2.8.9 is selected over {2.8.4, 2.6.7}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 2.6.7)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over {2.8.4, 2.8.0}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-core:2.8.9 is selected over 2.8.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.9.4)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.9.4)
+[info] 	    +- com.prisma:shared-models_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	* com.chuusai:shapeless_2.12:2.3.3 is selected over 2.3.2
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 2.3.3)
+[info] 	    +- org.parboiled:parboiled_2.12:2.1.4                 (depends on 2.3.2)
+[info] Done updating.
+[warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+[warn] 	* com.google.guava:guava:19.0 is selected over 12.0.1
+[warn] 	    +- com.twitter:util-app_2.12:6.43.0 ()                (depends on 19.0)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 19.0)
+[warn] 	    +- com.twitter:util-collection_2.12:6.43.0 ()         (depends on 19.0)
+[warn] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-http_2.12:6.44.0 ()            (depends on 19.0)
+[warn] 	    +- com.prisma:deploy_2.12:0.1.0-SNAPSHOT              (depends on 19.0)
+[warn] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 12.0.1)
+[warn] Run 'evicted' to see detailed eviction warnings
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* com.github.ben-manes.caffeine:caffeine:2.5.5 is selected over 2.3.4
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.5)
+[info] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.3.4)
+[info] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	* com.chuusai:shapeless_2.12:2.3.3 is selected over 2.3.2
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 2.3.3)
+[info] 	    +- org.parboiled:parboiled_2.12:2.1.4                 (depends on 2.3.2)
+[info] 	* ch.qos.logback:logback-core:1.1.7 is selected over 1.1.6
+[info] 	    +- ch.qos.logback:logback-classic:1.1.7               (depends on 1.1.7)
+[info] 	    +- net.logstash.logback:logstash-logback-encoder:4.7  (depends on 1.1.6)
+[info] 	* org.slf4j:slf4j-api:1.7.25 is selected over {1.7.21, 1.7.20}
+[info] 	    +- com.typesafe.scala-logging:scala-logging_2.12:3.7.0 (depends on 1.7.25)
+[info] 	    +- ch.qos.logback:logback-classic:1.1.7               (depends on 1.7.20)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 1.7.21)
+[info] 	    +- com.rabbitmq:amqp-client:4.1.0                     (depends on 1.7.21)
+[info] 	* com.typesafe.play:play-json_2.12:2.6.8 is selected over 2.6.6
+[info] 	    +- com.prisma:graphql-client_2.12:0.1.0-SNAPSHOT      (depends on 2.6.8)
+[info] 	    +- com.prisma:message-bus_2.12:0.1.0-SNAPSHOT         (depends on 2.6.8)
+[info] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 2.6.8)
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.6.8)
+[info] 	    +- com.prisma:error-reporting_2.12:0.1.0-SNAPSHOT     (depends on 2.6.8)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.6.8)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.6.8)
+[info] 	    +- com.prisma:deploy_2.12:0.1.0-SNAPSHOT              (depends on 2.6.8)
+[info] 	    +- org.sangria-graphql:sangria-play-json_2.12:1.0.4   (depends on 2.6.6)
+[info] 	* com.fasterxml.jackson.core:jackson-databind:2.8.9 is selected over {2.6.7, 2.8.4, 2.6.5}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- net.logstash.logback:logstash-logback-encoder:4.7  (depends on 2.6.5)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 2.6.7)
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over {2.8.4, 2.8.0}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-core:2.8.9 is selected over 2.8.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 2.9.4)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.9.4)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.9.4)
+[info] 	    +- com.prisma:shared-models_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	    +- com.prisma:deploy_2.12:0.1.0-SNAPSHOT              (depends on 2.9.4)
+[info] 	* io.spray:spray-json_2.12:1.3.4 is selected over 1.3.3
+[info] 	    +- com.typesafe.akka:akka-http-spray-json_2.12:10.1.0 () (depends on 1.3.4)
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 1.3.3)
+[info] 	    +- org.sangria-graphql:sangria-spray-json_2.12:1.0.0  (depends on 1.3.3)
+[info] 	* com.typesafe:config:1.3.2 is selected over 1.2.0
+[info] 	    +- com.typesafe:ssl-config-core_2.12:0.2.2            (depends on 1.2.0)
+[info] 	    +- com.typesafe.akka:akka-actor_2.12:2.5.11 ()        (depends on 1.2.0)
+[info] Done updating.
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* ch.qos.logback:logback-core:1.1.7 is selected over 1.1.6
+[info] 	    +- ch.qos.logback:logback-classic:1.1.7               (depends on 1.1.7)
+[info] 	    +- net.logstash.logback:logstash-logback-encoder:4.7  (depends on 1.1.6)
+[info] 	* org.slf4j:slf4j-api:1.7.25 is selected over 1.7.20
+[info] 	    +- com.typesafe.scala-logging:scala-logging_2.12:3.7.0 (depends on 1.7.25)
+[info] 	    +- ch.qos.logback:logback-classic:1.1.7               (depends on 1.7.20)
+[info] 	* com.typesafe.play:play-json_2.12:2.6.8 is selected over 2.6.6
+[info] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 2.6.8)
+[info] 	    +- org.sangria-graphql:sangria-play-json_2.12:1.0.4   (depends on 2.6.6)
+[info] 	* com.fasterxml.jackson.core:jackson-databind:2.8.9 is selected over {2.8.4, 2.6.5}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- net.logstash.logback:logstash-logback-encoder:4.7  (depends on 2.6.5)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over {2.8.4, 2.8.0}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-core:2.8.9 is selected over 2.8.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 2.9.4)
+[info] 	* io.spray:spray-json_2.12:1.3.4 is selected over 1.3.3
+[info] 	    +- com.typesafe.akka:akka-http-spray-json_2.12:10.1.0 () (depends on 1.3.4)
+[info] 	    +- org.sangria-graphql:sangria-spray-json_2.12:1.0.0  (depends on 1.3.3)
+[info] 	* com.typesafe:config:1.3.2 is selected over 1.2.0
+[info] 	    +- com.typesafe:ssl-config-core_2.12:0.2.2            (depends on 1.2.0)
+[info] 	    +- com.typesafe.akka:akka-actor_2.12:2.5.11 ()        (depends on 1.2.0)
+[info] Updating {file:/home/fossa/prisma/server/}subscriptions...
+[info] Updating {file:/home/fossa/prisma/server/}api...
+[info] Updating {file:/home/fossa/prisma/server/}integration-tests-mysql...
+[info] Updating {file:/home/fossa/prisma/server/}prisma-local...
+[info] Done updating.
+[info] Updating {file:/home/fossa/prisma/server/}prisma-prod...
+[info] Done updating.
+[warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+[warn] 	* com.google.guava:guava:19.0 is selected over 12.0.1
+[warn] 	    +- com.twitter:util-app_2.12:6.43.0 ()                (depends on 19.0)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 19.0)
+[warn] 	    +- com.twitter:util-collection_2.12:6.43.0 ()         (depends on 19.0)
+[warn] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-http_2.12:6.44.0 ()            (depends on 19.0)
+[warn] 	    +- com.prisma:subscriptions_2.12:0.1.0-SNAPSHOT       (depends on 19.0)
+[warn] 	    +- com.prisma:api_2.12:0.1.0-SNAPSHOT                 (depends on 19.0)
+[warn] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 12.0.1)
+[warn] 	* com.google.code.findbugs:jsr305:3.0.0 is selected over 2.0.1
+[warn] 	    +- com.prisma:cache_2.12:0.1.0-SNAPSHOT               (depends on 3.0.0)
+[warn] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] Run 'evicted' to see detailed eviction warnings
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* com.github.ben-manes.caffeine:caffeine:2.5.5 is selected over 2.3.4
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.5)
+[info] 	    +- com.prisma:cache_2.12:0.1.0-SNAPSHOT               (depends on 2.5.5)
+[info] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.3.4)
+[info] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	* com.chuusai:shapeless_2.12:2.3.3 is selected over 2.3.2
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 2.3.3)
+[info] 	    +- org.parboiled:parboiled_2.12:2.1.4                 (depends on 2.3.2)
+[info] 	* ch.qos.logback:logback-core:1.1.7 is selected over 1.1.6
+[info] 	    +- ch.qos.logback:logback-classic:1.1.7               (depends on 1.1.7)
+[info] 	    +- net.logstash.logback:logstash-logback-encoder:4.7  (depends on 1.1.6)
+[info] 	* org.slf4j:slf4j-api:1.7.25 is selected over {1.7.21, 1.7.20}
+[info] 	    +- com.typesafe.scala-logging:scala-logging_2.12:3.7.0 (depends on 1.7.25)
+[info] 	    +- ch.qos.logback:logback-classic:1.1.7               (depends on 1.7.20)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 1.7.21)
+[info] 	    +- com.rabbitmq:amqp-client:4.1.0                     (depends on 1.7.21)
+[info] 	* com.typesafe.play:play-json_2.12:2.6.8 is selected over 2.6.6
+[info] 	    +- com.prisma:message-bus_2.12:0.1.0-SNAPSHOT         (depends on 2.6.8)
+[info] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 2.6.8)
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.6.8)
+[info] 	    +- com.prisma:error-reporting_2.12:0.1.0-SNAPSHOT     (depends on 2.6.8)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.6.8)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.6.8)
+[info] 	    +- com.prisma:subscriptions_2.12:0.1.0-SNAPSHOT       (depends on 2.6.8)
+[info] 	    +- com.prisma:api_2.12:0.1.0-SNAPSHOT                 (depends on 2.6.8)
+[info] 	    +- org.sangria-graphql:sangria-play-json_2.12:1.0.4   (depends on 2.6.6)
+[info] 	* com.fasterxml.jackson.core:jackson-databind:2.8.9 is selected over {2.6.7, 2.8.4, 2.6.5}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- net.logstash.logback:logstash-logback-encoder:4.7  (depends on 2.6.5)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 2.6.7)
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over {2.8.4, 2.8.0}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-core:2.8.9 is selected over 2.8.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 2.9.4)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.9.4)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.9.4)
+[info] 	    +- com.prisma:shared-models_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	    +- com.prisma:subscriptions_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	    +- com.prisma:api_2.12:0.1.0-SNAPSHOT                 (depends on 2.9.4)
+[info] 	* io.spray:spray-json_2.12:1.3.4 is selected over 1.3.3
+[info] 	    +- com.typesafe.akka:akka-http-spray-json_2.12:10.1.0 () (depends on 1.3.4)
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 1.3.3)
+[info] 	    +- org.sangria-graphql:sangria-spray-json_2.12:1.0.0  (depends on 1.3.3)
+[info] 	* com.typesafe.akka:akka-stream_2.12:2.5.11 is selected over 2.5.8
+[info] 	    +- com.typesafe.akka:akka-stream-testkit_2.12:2.5.11 () (depends on 2.5.11)
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.11)
+[info] 	    +- com.prisma:sangria-utils_2.12:0.1.0-SNAPSHOT       (depends on 2.5.11)
+[info] 	    +- com.typesafe.play:play-streams_2.12:2.6.8          (depends on 2.5.8)
+[info] 	* org.reactivestreams:reactive-streams:1.0.2 is selected over 1.0.1
+[info] 	    +- com.typesafe.akka:akka-stream_2.12:2.5.11 ()       (depends on 1.0.2)
+[info] 	    +- com.typesafe.play:play-streams_2.12:2.6.8          (depends on 1.0.1)
+[info] 	* com.typesafe:config:1.3.2 is selected over 1.2.0
+[info] 	    +- com.typesafe:ssl-config-core_2.12:0.2.2            (depends on 1.2.0)
+[info] 	    +- com.typesafe.akka:akka-actor_2.12:2.5.11 ()        (depends on 1.2.0)
+[warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+[warn] 	* com.google.guava:guava:19.0 is selected over 12.0.1
+[warn] 	    +- com.prisma:workers_2.12:0.1.0-SNAPSHOT             (depends on 19.0)
+[warn] 	    +- com.twitter:util-app_2.12:6.43.0 ()                (depends on 19.0)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 19.0)
+[warn] 	    +- com.prisma:prisma-local_2.12:0.1.0-SNAPSHOT        (depends on 19.0)
+[warn] 	    +- com.twitter:util-collection_2.12:6.43.0 ()         (depends on 19.0)
+[warn] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 19.0)
+[warn] 	    +- com.prisma:subscriptions_2.12:0.1.0-SNAPSHOT       (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-http_2.12:6.44.0 ()            (depends on 19.0)
+[warn] 	    +- com.prisma:deploy_2.12:0.1.0-SNAPSHOT              (depends on 19.0)
+[warn] 	    +- com.prisma:api_2.12:0.1.0-SNAPSHOT                 (depends on 19.0)
+[warn] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 12.0.1)
+[warn] 	* com.google.code.findbugs:jsr305:3.0.0 is selected over 2.0.1
+[warn] 	    +- com.prisma:cache_2.12:0.1.0-SNAPSHOT               (depends on 3.0.0)
+[warn] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] Run 'evicted' to see detailed eviction warnings
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* org.slf4j:slf4j-api:1.7.25 is selected over {1.7.21, 1.7.20}
+[info] 	    +- com.typesafe.scala-logging:scala-logging_2.12:3.7.0 (depends on 1.7.25)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.7.25)
+[info] 	    +- ch.qos.logback:logback-classic:1.1.7               (depends on 1.7.20)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 1.7.21)
+[info] 	    +- com.zaxxer:HikariCP:2.5.1                          (depends on 1.7.21)
+[info] 	    +- com.rabbitmq:amqp-client:4.1.0                     (depends on 1.7.21)
+[info] 	* com.github.ben-manes.caffeine:caffeine:2.5.5 is selected over 2.3.4
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.5)
+[info] 	    +- com.prisma:cache_2.12:0.1.0-SNAPSHOT               (depends on 2.5.5)
+[info] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.3.4)
+[info] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	* ch.qos.logback:logback-core:1.1.7 is selected over 1.1.6
+[info] 	    +- ch.qos.logback:logback-classic:1.1.7               (depends on 1.1.7)
+[info] 	    +- net.logstash.logback:logstash-logback-encoder:4.7  (depends on 1.1.6)
+[info] 	* io.spray:spray-json_2.12:1.3.4 is selected over 1.3.3
+[info] 	    +- com.typesafe.akka:akka-http-spray-json_2.12:10.1.0 () (depends on 1.3.4)
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 1.3.3)
+[info] 	    +- org.sangria-graphql:sangria-spray-json_2.12:1.0.0  (depends on 1.3.3)
+[info] 	* com.typesafe.akka:akka-stream_2.12:2.5.11 is selected over 2.5.8
+[info] 	    +- com.typesafe.akka:akka-stream-testkit_2.12:2.5.11 () (depends on 2.5.11)
+[info] 	    +- com.prisma:graphql-client_2.12:0.1.0-SNAPSHOT      (depends on 2.5.11)
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.11)
+[info] 	    +- com.prisma:sangria-utils_2.12:0.1.0-SNAPSHOT       (depends on 2.5.11)
+[info] 	    +- com.typesafe.play:play-streams_2.12:2.6.8          (depends on 2.5.8)
+[info] 	* org.reactivestreams:reactive-streams:1.0.2 is selected over {1.0.0, 1.0.1}
+[info] 	    +- com.typesafe.akka:akka-stream_2.12:2.5.11 ()       (depends on 1.0.2)
+[info] 	    +- com.typesafe.play:play-streams_2.12:2.6.8          (depends on 1.0.1)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.0.0)
+[info] 	* com.typesafe:config:1.3.2 is selected over {1.2.1, 1.2.0}
+[info] 	    +- com.typesafe:ssl-config-core_2.12:0.2.2            (depends on 1.2.0)
+[info] 	    +- com.typesafe.akka:akka-actor_2.12:2.5.11 ()        (depends on 1.2.0)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.2.1)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:workers_2.12:0.1.0-SNAPSHOT             (depends on 2.9.4)
+[info] 	    +- com.prisma:prisma-local_2.12:0.1.0-SNAPSHOT        (depends on 2.9.4)
+[info] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 2.9.4)
+[info] 	    +- com.prisma:subscriptions_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.9.4)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.9.4)
+[info] 	    +- com.prisma:shared-models_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	    +- com.prisma:deploy_2.12:0.1.0-SNAPSHOT              (depends on 2.9.4)
+[info] 	    +- com.prisma:api_2.12:0.1.0-SNAPSHOT                 (depends on 2.9.4)
+[info] 	* com.typesafe.play:play-json_2.12:2.6.8 is selected over 2.6.6
+[info] 	    +- com.prisma:workers_2.12:0.1.0-SNAPSHOT             (depends on 2.6.8)
+[info] 	    +- com.prisma:prisma-local_2.12:0.1.0-SNAPSHOT        (depends on 2.6.8)
+[info] 	    +- com.prisma:error-reporting_2.12:0.1.0-SNAPSHOT     (depends on 2.6.8)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.6.8)
+[info] 	    +- com.prisma:deploy_2.12:0.1.0-SNAPSHOT              (depends on 2.6.8)
+[info] 	    +- com.prisma:graphql-client_2.12:0.1.0-SNAPSHOT      (depends on 2.6.8)
+[info] 	    +- com.prisma:message-bus_2.12:0.1.0-SNAPSHOT         (depends on 2.6.8)
+[info] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 2.6.8)
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.6.8)
+[info] 	    +- com.prisma:subscriptions_2.12:0.1.0-SNAPSHOT       (depends on 2.6.8)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.6.8)
+[info] 	    +- com.prisma:api_2.12:0.1.0-SNAPSHOT                 (depends on 2.6.8)
+[info] 	    +- org.sangria-graphql:sangria-play-json_2.12:1.0.4   (depends on 2.6.6)
+[info] 	* com.fasterxml.jackson.core:jackson-databind:2.8.9 is selected over {2.6.7, 2.8.4, 2.6.5}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- net.logstash.logback:logstash-logback-encoder:4.7  (depends on 2.6.5)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 2.6.7)
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over {2.8.4, 2.8.0}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-core:2.8.9 is selected over 2.8.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	* com.chuusai:shapeless_2.12:2.3.3 is selected over 2.3.2
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 2.3.3)
+[info] 	    +- org.parboiled:parboiled_2.12:2.1.4                 (depends on 2.3.2)
+[info] Done updating.
+[warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+[warn] 	* com.google.code.findbugs:jsr305:3.0.0 is selected over 2.0.1
+[warn] 	    +- com.prisma:cache_2.12:0.1.0-SNAPSHOT               (depends on 3.0.0)
+[warn] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	* com.google.guava:guava:19.0 is selected over 12.0.1
+[warn] 	    +- com.twitter:util-app_2.12:6.43.0 ()                (depends on 19.0)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 19.0)
+[warn] 	    +- com.twitter:util-collection_2.12:6.43.0 ()         (depends on 19.0)
+[warn] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-http_2.12:6.44.0 ()            (depends on 19.0)
+[warn] 	    +- com.prisma:api_2.12:0.1.0-SNAPSHOT                 (depends on 19.0)
+[warn] 	    +- com.prisma:deploy_2.12:0.1.0-SNAPSHOT              (depends on 19.0)
+[warn] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 12.0.1)
+[warn] Run 'evicted' to see detailed eviction warnings
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* com.github.ben-manes.caffeine:caffeine:2.5.5 is selected over 2.3.4
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.5)
+[info] 	    +- com.prisma:cache_2.12:0.1.0-SNAPSHOT               (depends on 2.5.5)
+[info] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.3.4)
+[info] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	* com.chuusai:shapeless_2.12:2.3.3 is selected over 2.3.2
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 2.3.3)
+[info] 	    +- org.parboiled:parboiled_2.12:2.1.4                 (depends on 2.3.2)
+[info] 	* ch.qos.logback:logback-core:1.1.7 is selected over 1.1.6
+[info] 	    +- ch.qos.logback:logback-classic:1.1.7               (depends on 1.1.7)
+[info] 	    +- net.logstash.logback:logstash-logback-encoder:4.7  (depends on 1.1.6)
+[info] 	* org.slf4j:slf4j-api:1.7.25 is selected over {1.7.21, 1.7.20}
+[info] 	    +- com.typesafe.scala-logging:scala-logging_2.12:3.7.0 (depends on 1.7.25)
+[info] 	    +- ch.qos.logback:logback-classic:1.1.7               (depends on 1.7.20)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 1.7.21)
+[info] 	    +- com.rabbitmq:amqp-client:4.1.0                     (depends on 1.7.21)
+[info] 	* com.typesafe.play:play-json_2.12:2.6.8 is selected over 2.6.6
+[info] 	    +- com.prisma:graphql-client_2.12:0.1.0-SNAPSHOT      (depends on 2.6.8)
+[info] 	    +- com.prisma:message-bus_2.12:0.1.0-SNAPSHOT         (depends on 2.6.8)
+[info] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 2.6.8)
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.6.8)
+[info] 	    +- com.prisma:error-reporting_2.12:0.1.0-SNAPSHOT     (depends on 2.6.8)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.6.8)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.6.8)
+[info] 	    +- com.prisma:api_2.12:0.1.0-SNAPSHOT                 (depends on 2.6.8)
+[info] 	    +- com.prisma:deploy_2.12:0.1.0-SNAPSHOT              (depends on 2.6.8)
+[info] 	    +- org.sangria-graphql:sangria-play-json_2.12:1.0.4   (depends on 2.6.6)
+[info] 	* com.fasterxml.jackson.core:jackson-databind:2.8.9 is selected over {2.6.7, 2.8.4, 2.6.5}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- net.logstash.logback:logstash-logback-encoder:4.7  (depends on 2.6.5)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 2.6.7)
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over {2.8.4, 2.8.0}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-core:2.8.9 is selected over 2.8.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 2.9.4)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.9.4)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.9.4)
+[info] 	    +- com.prisma:shared-models_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	    +- com.prisma:api_2.12:0.1.0-SNAPSHOT                 (depends on 2.9.4)
+[info] 	    +- com.prisma:deploy_2.12:0.1.0-SNAPSHOT              (depends on 2.9.4)
+[info] 	* io.spray:spray-json_2.12:1.3.4 is selected over 1.3.3
+[info] 	    +- com.typesafe.akka:akka-http-spray-json_2.12:10.1.0 () (depends on 1.3.4)
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 1.3.3)
+[info] 	    +- org.sangria-graphql:sangria-spray-json_2.12:1.0.0  (depends on 1.3.3)
+[info] 	* com.typesafe:config:1.3.2 is selected over 1.2.0
+[info] 	    +- com.typesafe:ssl-config-core_2.12:0.2.2            (depends on 1.2.0)
+[info] 	    +- com.typesafe.akka:akka-actor_2.12:2.5.11 ()        (depends on 1.2.0)
+[info] Done updating.
+[warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+[warn] 	* com.google.guava:guava:19.0 is selected over 12.0.1
+[warn] 	    +- com.twitter:util-app_2.12:6.43.0 ()                (depends on 19.0)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 19.0)
+[warn] 	    +- com.twitter:util-collection_2.12:6.43.0 ()         (depends on 19.0)
+[warn] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-http_2.12:6.44.0 ()            (depends on 19.0)
+[warn] 	    +- com.prisma:api_2.12:0.1.0-SNAPSHOT                 (depends on 19.0)
+[warn] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 12.0.1)
+[warn] 	* com.google.code.findbugs:jsr305:3.0.0 is selected over 2.0.1
+[warn] 	    +- com.prisma:cache_2.12:0.1.0-SNAPSHOT               (depends on 3.0.0)
+[warn] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] Run 'evicted' to see detailed eviction warnings
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* com.github.ben-manes.caffeine:caffeine:2.5.5 is selected over 2.3.4
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.5)
+[info] 	    +- com.prisma:cache_2.12:0.1.0-SNAPSHOT               (depends on 2.5.5)
+[info] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.3.4)
+[info] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	* com.chuusai:shapeless_2.12:2.3.3 is selected over 2.3.2
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 2.3.3)
+[info] 	    +- org.parboiled:parboiled_2.12:2.1.4                 (depends on 2.3.2)
+[info] 	* ch.qos.logback:logback-core:1.1.7 is selected over 1.1.6
+[info] 	    +- ch.qos.logback:logback-classic:1.1.7               (depends on 1.1.7)
+[info] 	    +- net.logstash.logback:logstash-logback-encoder:4.7  (depends on 1.1.6)
+[info] 	* org.slf4j:slf4j-api:1.7.25 is selected over {1.7.21, 1.7.20}
+[info] 	    +- com.typesafe.scala-logging:scala-logging_2.12:3.7.0 (depends on 1.7.25)
+[info] 	    +- ch.qos.logback:logback-classic:1.1.7               (depends on 1.7.20)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 1.7.21)
+[info] 	    +- com.rabbitmq:amqp-client:4.1.0                     (depends on 1.7.21)
+[info] 	* com.typesafe.play:play-json_2.12:2.6.8 is selected over 2.6.6
+[info] 	    +- com.prisma:message-bus_2.12:0.1.0-SNAPSHOT         (depends on 2.6.8)
+[info] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 2.6.8)
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.6.8)
+[info] 	    +- com.prisma:error-reporting_2.12:0.1.0-SNAPSHOT     (depends on 2.6.8)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.6.8)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.6.8)
+[info] 	    +- com.prisma:api_2.12:0.1.0-SNAPSHOT                 (depends on 2.6.8)
+[info] 	    +- org.sangria-graphql:sangria-play-json_2.12:1.0.4   (depends on 2.6.6)
+[info] 	* com.fasterxml.jackson.core:jackson-databind:2.8.9 is selected over {2.6.7, 2.8.4, 2.6.5}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- net.logstash.logback:logstash-logback-encoder:4.7  (depends on 2.6.5)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 2.6.7)
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over {2.8.4, 2.8.0}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-core:2.8.9 is selected over 2.8.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 2.9.4)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.9.4)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.9.4)
+[info] 	    +- com.prisma:shared-models_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	    +- com.prisma:api_2.12:0.1.0-SNAPSHOT                 (depends on 2.9.4)
+[info] 	* io.spray:spray-json_2.12:1.3.4 is selected over 1.3.3
+[info] 	    +- com.typesafe.akka:akka-http-spray-json_2.12:10.1.0 () (depends on 1.3.4)
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 1.3.3)
+[info] 	    +- org.sangria-graphql:sangria-spray-json_2.12:1.0.0  (depends on 1.3.3)
+[info] 	* com.typesafe:config:1.3.2 is selected over 1.2.0
+[info] 	    +- com.typesafe:ssl-config-core_2.12:0.2.2            (depends on 1.2.0)
+[info] 	    +- com.typesafe.akka:akka-actor_2.12:2.5.11 ()        (depends on 1.2.0)
+[info] Done updating.
+[warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+[warn] 	* com.google.guava:guava:19.0 is selected over 12.0.1
+[warn] 	    +- com.prisma:workers_2.12:0.1.0-SNAPSHOT             (depends on 19.0)
+[warn] 	    +- com.twitter:util-app_2.12:6.43.0 ()                (depends on 19.0)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 19.0)
+[warn] 	    +- com.twitter:util-collection_2.12:6.43.0 ()         (depends on 19.0)
+[warn] 	    +- com.prisma:prisma-prod_2.12:0.1.0-SNAPSHOT         (depends on 19.0)
+[warn] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 19.0)
+[warn] 	    +- com.prisma:subscriptions_2.12:0.1.0-SNAPSHOT       (depends on 19.0)
+[warn] 	    +- com.twitter:finagle-http_2.12:6.44.0 ()            (depends on 19.0)
+[warn] 	    +- com.prisma:deploy_2.12:0.1.0-SNAPSHOT              (depends on 19.0)
+[warn] 	    +- com.prisma:api_2.12:0.1.0-SNAPSHOT                 (depends on 19.0)
+[warn] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 12.0.1)
+[warn] 	* com.google.code.findbugs:jsr305:3.0.0 is selected over 2.0.1
+[warn] 	    +- com.prisma:cache_2.12:0.1.0-SNAPSHOT               (depends on 3.0.0)
+[warn] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.0.1)
+[warn] Run 'evicted' to see detailed eviction warnings
+[info] Here are other depedency conflicts that were resolved:
+[info] 	* org.slf4j:slf4j-api:1.7.25 is selected over {1.7.21, 1.7.20}
+[info] 	    +- com.typesafe.scala-logging:scala-logging_2.12:3.7.0 (depends on 1.7.25)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.7.25)
+[info] 	    +- ch.qos.logback:logback-classic:1.1.7               (depends on 1.7.20)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 1.7.21)
+[info] 	    +- com.zaxxer:HikariCP:2.5.1                          (depends on 1.7.21)
+[info] 	    +- com.rabbitmq:amqp-client:4.1.0                     (depends on 1.7.21)
+[info] 	* com.github.ben-manes.caffeine:caffeine:2.5.5 is selected over 2.3.4
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.5)
+[info] 	    +- com.prisma:cache_2.12:0.1.0-SNAPSHOT               (depends on 2.5.5)
+[info] 	    +- com.twitter:finagle-core_2.12:6.44.0 ()            (depends on 2.3.4)
+[info] 	    +- com.twitter:util-cache_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	    +- com.twitter:util-stats_2.12:6.43.0 ()              (depends on 2.3.4)
+[info] 	* ch.qos.logback:logback-core:1.1.7 is selected over 1.1.6
+[info] 	    +- ch.qos.logback:logback-classic:1.1.7               (depends on 1.1.7)
+[info] 	    +- net.logstash.logback:logstash-logback-encoder:4.7  (depends on 1.1.6)
+[info] 	* io.spray:spray-json_2.12:1.3.4 is selected over 1.3.3
+[info] 	    +- com.typesafe.akka:akka-http-spray-json_2.12:10.1.0 () (depends on 1.3.4)
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 1.3.3)
+[info] 	    +- org.sangria-graphql:sangria-spray-json_2.12:1.0.0  (depends on 1.3.3)
+[info] 	* com.typesafe.akka:akka-stream_2.12:2.5.11 is selected over 2.5.8
+[info] 	    +- com.typesafe.akka:akka-stream-testkit_2.12:2.5.11 () (depends on 2.5.11)
+[info] 	    +- com.prisma:graphql-client_2.12:0.1.0-SNAPSHOT      (depends on 2.5.11)
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.5.11)
+[info] 	    +- com.prisma:sangria-utils_2.12:0.1.0-SNAPSHOT       (depends on 2.5.11)
+[info] 	    +- com.typesafe.play:play-streams_2.12:2.6.8          (depends on 2.5.8)
+[info] 	* org.reactivestreams:reactive-streams:1.0.2 is selected over {1.0.0, 1.0.1}
+[info] 	    +- com.typesafe.akka:akka-stream_2.12:2.5.11 ()       (depends on 1.0.2)
+[info] 	    +- com.typesafe.play:play-streams_2.12:2.6.8          (depends on 1.0.1)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.0.0)
+[info] 	* com.typesafe:config:1.3.2 is selected over {1.2.1, 1.2.0}
+[info] 	    +- com.typesafe:ssl-config-core_2.12:0.2.2            (depends on 1.2.0)
+[info] 	    +- com.typesafe.akka:akka-actor_2.12:2.5.11 ()        (depends on 1.2.0)
+[info] 	    +- com.typesafe.slick:slick_2.12:3.2.3                (depends on 1.2.1)
+[info] 	* joda-time:joda-time:2.9.9 is selected over 2.9.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.9.9)
+[info] 	    +- com.prisma:workers_2.12:0.1.0-SNAPSHOT             (depends on 2.9.4)
+[info] 	    +- com.prisma:prisma-prod_2.12:0.1.0-SNAPSHOT         (depends on 2.9.4)
+[info] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 2.9.4)
+[info] 	    +- com.prisma:subscriptions_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.9.4)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.9.4)
+[info] 	    +- com.prisma:shared-models_2.12:0.1.0-SNAPSHOT       (depends on 2.9.4)
+[info] 	    +- com.prisma:deploy_2.12:0.1.0-SNAPSHOT              (depends on 2.9.4)
+[info] 	    +- com.prisma:api_2.12:0.1.0-SNAPSHOT                 (depends on 2.9.4)
+[info] 	* com.typesafe.play:play-json_2.12:2.6.8 is selected over 2.6.6
+[info] 	    +- com.prisma:workers_2.12:0.1.0-SNAPSHOT             (depends on 2.6.8)
+[info] 	    +- com.prisma:prisma-prod_2.12:0.1.0-SNAPSHOT         (depends on 2.6.8)
+[info] 	    +- com.prisma:error-reporting_2.12:0.1.0-SNAPSHOT     (depends on 2.6.8)
+[info] 	    +- com.prisma:json-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.6.8)
+[info] 	    +- com.prisma:deploy_2.12:0.1.0-SNAPSHOT              (depends on 2.6.8)
+[info] 	    +- com.prisma:graphql-client_2.12:0.1.0-SNAPSHOT      (depends on 2.6.8)
+[info] 	    +- com.prisma:message-bus_2.12:0.1.0-SNAPSHOT         (depends on 2.6.8)
+[info] 	    +- com.prisma:servers-shared_2.12:0.1.0-SNAPSHOT      (depends on 2.6.8)
+[info] 	    +- com.prisma:akka-utils_2.12:0.1.0-SNAPSHOT          (depends on 2.6.8)
+[info] 	    +- com.prisma:subscriptions_2.12:0.1.0-SNAPSHOT       (depends on 2.6.8)
+[info] 	    +- com.prisma:gc-values_2.12:0.1.0-SNAPSHOT           (depends on 2.6.8)
+[info] 	    +- com.prisma:api_2.12:0.1.0-SNAPSHOT                 (depends on 2.6.8)
+[info] 	    +- org.sangria-graphql:sangria-play-json_2.12:1.0.4   (depends on 2.6.6)
+[info] 	* com.fasterxml.jackson.core:jackson-databind:2.8.9 is selected over {2.6.7, 2.8.4, 2.6.5}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- net.logstash.logback:logstash-logback-encoder:4.7  (depends on 2.6.5)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-paranamer:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.bugsnag:bugsnag:3.0.2                          (depends on 2.6.7)
+[info] 	* com.fasterxml.jackson.core:jackson-annotations:2.8.9 is selected over {2.8.4, 2.8.0}
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.0)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.0)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	* com.fasterxml.jackson.core:jackson-core:2.8.9 is selected over 2.8.4
+[info] 	    +- com.typesafe.play:play-json_2.12:2.6.8             (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.core:jackson-databind:2.8.9  (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.9 (depends on 2.8.9)
+[info] 	    +- com.prisma:rabbit-processor_2.12:0.1.0-SNAPSHOT    (depends on 2.8.4)
+[info] 	    +- com.twitter:finagle-toggle_2.12:6.44.0 ()          (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.fasterxml.jackson.module:jackson-module-scala_2.12:2.8.4 (depends on 2.8.4)
+[info] 	    +- com.twitter:util-tunable_2.12:6.43.0 ()            (depends on 2.8.4)
+[info] 	* com.chuusai:shapeless_2.12:2.3.3 is selected over 2.3.2
+[info] 	    +- io.lemonlabs:scala-uri_2.12:1.1.1                  (depends on 2.3.3)
+[info] 	    +- org.parboiled:parboiled_2.12:2.1.4                 (depends on 2.3.2)
+[success] Total time: 42 s, completed Jul 25, 2018 4:10:33 AM
