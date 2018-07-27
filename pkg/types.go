@@ -160,7 +160,7 @@ func (t Type) String() string {
 	case Cocoapods:
 		return "pod"
 	case Composer:
-		return "composer"
+		return "comp"
 	case Go:
 		return "go"
 	case Git:
