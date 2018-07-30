@@ -3,21 +3,27 @@
 # TODO: move these into `*_test.go` files.
 set -exo pipefail
 
-# Test known good Go projects:
-## FOSSA CLI (dep)
+# Test FOSSA CLI (dep)
 echo "Testing fossa-cli"
 cd $GOPATH/src/github.com/fossas/fossa-cli
+fossa init
+cat .fossa.yml
+
+## Test proxy usage
+### Proxied request should succeed (proxy server taken from https://www.proxynova.com/proxy-server-list/country-us/)
+time HTTPS_PROXY=206.189.145.13:8080 fossa report licenses
+### Incorrectly proxied request should fail
+time HTTPS_PROXY=1.2.3.4:80 fossa report licenses > /tmp/incorrect-proxy-report && [[ "$(wc -l /tmp/incorrect-proxy-report)" == "5 /tmp/incorrect-proxy-report" ]]
+
+## Test report templates
 echo '{{range $p, $base := .}}' > test.tmpl
 echo '{{range $i, $dep := $base.Build.Dependencies }}{{$dep.Locator}}' >> test.tmpl
 echo '{{end}}{{end}}' >> test.tmpl
-
-rm -f *.test-tmp
-fossa init
-cat .fossa.yml
 time fossa analyze --template test.tmpl --output go:./cmd/fossa
 time fossa report licenses --show-unknown go:./cmd/fossa
 time fossa report dependencies go:./cmd/fossa
 
+# Test known good Go projects:
 ## Kubernetes (godep)
 echo "Testing kubernetes"
 cd $GOPATH/src/k8s.io/kubernetes
