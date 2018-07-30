@@ -1,8 +1,11 @@
 BIN="$(shell go env GOPATH)/bin"
 DEP="$(BIN)/dep"
+PREFIX?=/usr/local/bin
+
 GO_BINDATA="$(BIN)/go-bindata"
 GENNY="$(BIN)/genny"
-PREFIX?=/usr/local/bin
+
+GORELEASER_FLAGS?=--rm-dist
 LDFLAGS:=-ldflags '-extldflags "-static" -X github.com/fossas/fossa-cli/cmd/fossa/version.version=$(shell git rev-parse --abbrev-ref HEAD) -X github.com/fossas/fossa-cli/cmd/fossa/version.commit=$(shell git rev-parse HEAD) -X "github.com/fossas/fossa-cli/cmd/fossa/version.goversion=$(shell go version)" -X github.com/fossas/fossa-cli/cmd/fossa/version.buildType=development'
 
 all: build
@@ -79,7 +82,16 @@ clean:
 
 .PHONY: release
 release:
-	GOVERSION=$$(go version) goreleaser --rm-dist
-	RELEASE=$(git tag -l --points-at HEAD)
-	VERSION=${RELEASE#v}
-	sed "s/# RELEASE=/RELEASE=\'$RELEASE\'/; s/# VERSION=/VERSION=\'$VERSION\'/" install_tpl.sh > install.sh
+	# Check that the installer has been generated for this tag.
+	[ "$$(grep "^  RELEASE='$$(git tag -l --points-at HEAD)'$$" install.sh | wc -l)" = "1" ]
+	GOVERSION=$$(go version) goreleaser $(GORELEASER_FLAGS)
+
+.PHONY: release-test
+release-test:
+	GORELEASER_FLAGS="--rm-dist --skip-publish" make release
+
+.PHONY: installer
+installer:
+	export LATEST_STABLE_RELEASE=$$(curl https://api.github.com/repos/fossas/fossa-cli/releases/latest | grep tag_name | cut -d'"' -f4); \
+	export RELEASE=$$(git tag -l --points-at HEAD); \
+	sed "s/# RELEASE=/RELEASE=\'$$RELEASE\'/; s/# LATEST_STABLE_RELEASE=/LATEST_STABLE_RELEASE=\'$$LATEST_STABLE_RELEASE\'/" install_tpl.sh > install.sh

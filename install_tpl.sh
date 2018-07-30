@@ -105,10 +105,16 @@ function install {
   cd $TMP_DIR || fail "changing directory to $TMP_DIR failed"
 
   # Download and validate release
-  # DO NOT REMOVE THE FOLLOWING TWO LINES. They are used to generate
-  # installation scripts for new releases.
+
+  # DO NOT REMOVE THE FOLLOWING LINES. THEY ARE AUTOMATICALLY POPULATED DURING
+  # THE RELEASE PROCESS.
+  # ============= DO NOT EDIT ==================
+  # LATEST_STABLE_RELEASE=
   # RELEASE=
-  # VERSION=
+  # ============= =========== ==================
+
+  VERSION=${RELEASE#v}
+
   echo "Installing $USER/$REPO $RELEASE..."
   RELEASE_URL="$GH/$USER/$REPO/releases/download/$RELEASE"
   bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_${OS}_${ARCH}.tar.gz" > release.tar.gz || fail "downloading release failed"
