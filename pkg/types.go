@@ -73,6 +73,8 @@ func ParseType(key string) (Type, error) {
 		fallthrough
 	case "php":
 		fallthrough
+	case "comp":
+		fallthrough
 	case "composer":
 		return Composer, nil
 
@@ -160,7 +162,7 @@ func (t Type) String() string {
 	case Cocoapods:
 		return "pod"
 	case Composer:
-		return "comp"
+		return "composer"
 	case Go:
 		return "go"
 	case Git:

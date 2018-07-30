@@ -59,6 +59,8 @@ func LocatorOf(id pkg.ID) Locator {
 	// Normalize locator fetchers.
 	fetcher := id.Type.String()
 	switch id.Type {
+	case pkg.Composer:
+		fetcher = "comp"
 	case pkg.Gradle:
 		fetcher = "mvn"
 	case pkg.Ant:
