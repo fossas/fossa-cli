@@ -20,6 +20,7 @@ var defaultClient = http.Client{
 	Timeout: 60 * time.Second,
 	Transport: &http.Transport{
 		DisableKeepAlives: true,
+		Proxy:             http.ProxyFromEnvironment,
 	},
 }
 
