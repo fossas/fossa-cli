@@ -4,10 +4,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/fossas/fossa-cli/analyzers/ruby"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestCustomGemfileLockPath(t *testing.T) {
