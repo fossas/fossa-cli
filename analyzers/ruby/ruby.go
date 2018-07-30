@@ -32,8 +32,8 @@ type Analyzer struct {
 }
 
 type Options struct {
-	Strategy string `mapstructure:"strategy"`
-	// LockfilePath string `mapstructure:"gemfile-lock-path"`
+	Strategy     string `mapstructure:"strategy"`
+	LockfilePath string `mapstructure:"gemfile-lock-path"`
 }
 
 func New(opts map[string]interface{}) (*Analyzer, error) {
@@ -121,6 +121,11 @@ func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
 }
 
 func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
+	lockfilePath := filepath.Join(m.Dir, "Gemfile.lock")
+	if a.Options.LockfilePath != "" {
+		lockfilePath = a.Options.LockfilePath
+	}
+
 	switch a.Options.Strategy {
 	case "list":
 		gems, err := a.Bundler.List()
@@ -132,7 +137,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		m.Deps = graph
 		return m, nil
 	case "lockfile":
-		lockfile, err := bundler.FromLockfile(filepath.Join(m.Dir, "Gemfile.lock"))
+		lockfile, err := bundler.FromLockfile(lockfilePath)
 		if err != nil {
 			return m, err
 		}
@@ -143,7 +148,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	case "list-lockfile":
 		fallthrough
 	default:
-		lockfile, err := bundler.FromLockfile(filepath.Join(m.Dir, "Gemfile.lock"))
+		lockfile, err := bundler.FromLockfile(lockfilePath)
 		if err != nil {
 			return m, err
 		}
