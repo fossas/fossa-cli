@@ -105,10 +105,10 @@ function install {
   cd $TMP_DIR || fail "changing directory to $TMP_DIR failed"
 
   # Download and validate release
-  bash -c "$GET $GH_API/repos/$USER/$REPO/releases/latest" > latest || fail "downloading latest release metadata failed"
-  RELEASE=$(grep tag_name latest | cut -d'"' -f4)
-  VERSION=${RELEASE#v} # remove prefix "v"
-
+  # DO NOT REMOVE THE FOLLOWING TWO LINES. They are used to generate
+  # installation scripts for new releases.
+  # RELEASE=
+  # VERSION=
   echo "Installing $USER/$REPO $RELEASE..."
   RELEASE_URL="$GH/$USER/$REPO/releases/download/$RELEASE"
   bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_${OS}_${ARCH}.tar.gz" > release.tar.gz || fail "downloading release failed"
