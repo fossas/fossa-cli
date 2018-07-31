@@ -51,6 +51,9 @@ func Init(c *cli.Context) error {
 		return err
 	}
 	r, err := git.PlainOpen(vcsDir)
+	if err == git.ErrRepositoryNotExists {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
