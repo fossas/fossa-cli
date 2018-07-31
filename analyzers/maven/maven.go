@@ -81,7 +81,7 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 				parsedArtifactName := filepath.Base(filepath.Dir(dir))
 				var parsedPom maven.Manifest
 				if err := files.ReadXML(&parsedPom, path, "pom.xml"); err != nil {
-					log.Logger.Debugf("Unable to parse modules through `mvn`: %#v %#v", err.Error(), err)
+					log.Logger.Debugf("Unable to parse modules through `pom.xml`: %#v %#v", err.Error(), err)
 					return nil
 				}
 
