@@ -8,6 +8,8 @@
 # THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # ---
 
+set -x
+
 TMP_DIR="/tmp/install-fossa-cli"
 
 function cleanup {
@@ -113,12 +115,13 @@ function install {
   RELEASE='v0.7.0-beta.8'
   # ============= =========== ==================
 
-  VERSION=${LATEST_STABLE_RELEASE#v}
+  LATEST_STABLE_VERSION=${LATEST_STABLE_RELEASE#v}
+  VERSION=${RELEASE#v}
 
-  echo "Installing $USER/$REPO $RELEASE..."
-  RELEASE_URL="$GH/$USER/$REPO/releases/download/$RELEASE"
-  bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_${OS}_${ARCH}.tar.gz" > release.tar.gz || fail "downloading release failed"
-  bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_checksums.txt" > checksums.txt || fail "downloading checksums failed"
+  echo "Installing $USER/$REPO $LATEST_STABLE_RELEASE..."
+  RELEASE_URL="$GH/$USER/$REPO/releases/download/$LATEST_STABLE_RELEASE"
+  bash -c "$GET $RELEASE_URL/${REPO}_${LATEST_STABLE_VERSION}_${OS}_${ARCH}.tar.gz" > release.tar.gz || fail "downloading release failed"
+  bash -c "$GET $RELEASE_URL/${REPO}_${LATEST_STABLE_VERSION}_checksums.txt" > checksums.txt || fail "downloading checksums failed"
   # TODO: checksums are not actually validated. We need to check with `sha256sum` on Linux and `shasum -a 256` on MacOS.
 
   # Extract release
