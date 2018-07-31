@@ -6,6 +6,7 @@ import (
 	"errors"
 	"path/filepath"
 
+	"github.com/fossas/fossa-cli"
 	"github.com/fossas/fossa-cli/errutil"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/monad"
@@ -29,40 +30,40 @@ var (
 
 // VCSIn returns the type of VCS repository rooted at a directory, or
 // ErrNoVCSInDir if none is found.
-func VCSIn(dirname string) (string, error) {
-	either := monad.EitherStr{}
+func vcsIn(dirname string) (cli.VCSType, error) {
+	either := monad.EitherVCSType{}
 	result := either.
-		Bind(files.FindFolder("git", filepath.Join(dirname, ".git"))).
-		Bind(files.FindFolder("svn", filepath.Join(dirname, ".svn"))).
-		Bind(files.FindFolder("hg", filepath.Join(dirname, ".hg"))).
-		Bind(files.FindFolder("bzr", filepath.Join(dirname, ".bzr")))
+		BindVCSType(findVCSFolder(cli.Git, filepath.Join(dirname, ".git"))).
+		BindVCSType(findVCSFolder(cli.Subversion, filepath.Join(dirname, ".svn"))).
+		BindVCSType(findVCSFolder(cli.Mercurial, filepath.Join(dirname, ".hg"))).
+		BindVCSType(findVCSFolder(cli.Bazaar, filepath.Join(dirname, ".bzr")))
 	if result.Err != nil {
-		return "", result.Err
+		return 0, result.Err
 	}
-	if result.Result == "" {
-		return "", ErrNoVCSInDir
+	if result.Result == 0 {
+		return 0, ErrNoVCSInDir
 	}
 	return result.Result, nil
 }
 
 // NearestVCS returns the type and directory of the nearest VCS repository
 // containing the directory, or ErrNoNearestVCS if none is found.
-func NearestVCS(dirname string) (vcsName string, vcsDir string, err error) {
+func NearestVCS(dirname string) (vcsType cli.VCSType, vcsDir string, err error) {
 	vcsDir, err = files.WalkUp(dirname, func(d string) error {
-		tool, err := VCSIn(d)
+		tool, err := vcsIn(d)
 		if err == ErrNoVCSInDir {
 			return nil
 		}
 		if err != nil {
 			return err
 		}
-		vcsName = tool
+		vcsType = tool
 		return files.ErrStopWalk
 	})
 	if err == files.ErrDirNotFound {
-		return "", "", ErrNoNearestVCS
+		return 0, "", ErrNoNearestVCS
 	}
-	return vcsName, vcsDir, err
+	return vcsType, vcsDir, err
 }
 
 // GetRepository returns the location of the repository containing dirname,
@@ -76,13 +77,13 @@ func GetRepository(dirname string) (string, error) {
 		return "", err
 	}
 	switch vcsName {
-	case "git":
+	case cli.Git:
 		return vcsDir, nil
-	case "svn":
+	case cli.Subversion:
 		return "", errutil.ErrNotImplemented
-	case "hg":
+	case cli.Mercurial:
 		return "", errutil.ErrNotImplemented
-	case "bzr":
+	case cli.Bazaar:
 		return "", errutil.ErrNotImplemented
 	default:
 		return "", errutil.ErrNotImplemented

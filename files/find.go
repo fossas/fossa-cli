@@ -55,7 +55,7 @@ func WalkUp(startdir string, walker WalkUpFunc) (string, error) {
 // one of many files exist.
 type finder func(pathElems ...string) (bool, error)
 
-func bindFinder(name string, find finder, pathElems ...string) monad.EitherStrFunc {
+func BindFinder(name string, find finder, pathElems ...string) monad.EitherStrFunc {
 	return func(prev string) (string, error) {
 		ok, err := find(pathElems...)
 		if err != nil {
@@ -66,12 +66,4 @@ func bindFinder(name string, find finder, pathElems ...string) monad.EitherStrFu
 		}
 		return prev, nil
 	}
-}
-
-func findFile(tool string, pathElems ...string) monad.EitherStrFunc {
-	return bindFinder(tool, Exists, pathElems...)
-}
-
-func FindFolder(tool string, pathElems ...string) monad.EitherStrFunc {
-	return bindFinder(tool, ExistsFolder, pathElems...)
 }
