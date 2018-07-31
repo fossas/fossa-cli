@@ -74,8 +74,29 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 			dir := filepath.Dir(path)
 			submodules, err := a.Maven.Modules(dir)
 			if err != nil {
-				log.Logger.Debugf("Modules err: %#v %#v", err.Error(), err)
-				return err
+				// Failed to parse modules via calling into `mvn`
+				// Fallback to parsing the pom.xml and walking the file tree
+				log.Logger.Debugf("Unable to parse modules through `mvn`: %#v %#v", err.Error(), err)
+
+				parsedArtifactName := filepath.Base(filepath.Dir(dir))
+				var parsedPom maven.Manifest
+				if err := files.ReadXML(&parsedPom, path, "pom.xml"); err != nil {
+					log.Logger.Debugf("Unable to parse modules through `mvn`: %#v %#v", err.Error(), err)
+					return nil
+				}
+
+				if parsedPom.Name != "" {
+					parsedArtifactName = parsedPom.Name
+				} else if parsedPom.ArtifactID != "" {
+					parsedArtifactName = parsedPom.ArtifactID
+				}
+				modules = append(modules, module.Module{
+					Name:        parsedArtifactName,
+					Type:        pkg.Maven,
+					BuildTarget: parsedArtifactName,
+					Dir:         dir,
+				})
+				return nil
 			}
 
 			for _, m := range submodules {
