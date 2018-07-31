@@ -12,16 +12,6 @@ import (
 	"github.com/fossas/fossa-cli/monad"
 )
 
-type Type int
-
-const (
-	_ Type = iota
-	Subversion
-	Git
-	Mercurial
-	Bazaar
-)
-
 // Errors that occur when finding VCS repositories.
 var (
 	ErrNoVCSInDir   = errors.New("could not find VCS repository in directory")
@@ -69,14 +59,14 @@ func NearestVCS(dirname string) (vcsType cli.VCSType, vcsDir string, err error) 
 // GetRepository returns the location of the repository containing dirname,
 // errutil.ErrRepositoryNotFound on error.
 func GetRepository(dirname string) (string, error) {
-	vcsName, vcsDir, err := NearestVCS(dirname)
+	vcsType, vcsDir, err := NearestVCS(dirname)
 	if err == ErrNoNearestVCS {
 		return "", errutil.ErrRepositoryNotFound
 	}
 	if err != nil {
 		return "", err
 	}
-	switch vcsName {
+	switch vcsType {
 	case cli.Git:
 		return vcsDir, nil
 	case cli.Subversion:
