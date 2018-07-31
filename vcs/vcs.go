@@ -57,7 +57,8 @@ func NearestVCS(dirname string) (vcsType cli.VCSType, vcsDir string, err error) 
 }
 
 // GetRepository returns the location of the repository containing dirname,
-// errutil.ErrRepositoryNotFound on error.
+// errutil.ErrRepositoryNotFound if none is found, or errutil.ErrNotImplemented
+// if an unsupported VCS is found.
 func GetRepository(dirname string) (string, error) {
 	vcsType, vcsDir, err := NearestVCS(dirname)
 	if err == ErrNoNearestVCS {

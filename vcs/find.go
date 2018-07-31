@@ -6,7 +6,7 @@ import (
 	"github.com/fossas/fossa-cli/monad"
 )
 
-// vcsFinder, bindVCSFidner, and friends are EitherVCSType functions for finding whether
+// vcsFinder, bindVCSFinder, and friends are EitherVCSType functions for finding whether
 // one of many files exist.
 type vcsFinder func(pathElems ...string) (bool, error)
 

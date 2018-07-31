@@ -37,7 +37,7 @@ type EitherVCSType struct {
 // EitherVCSTypeFunc defines monadic EitherStr functions.
 type EitherVCSTypeFunc func(previous cli.VCSType) (cli.VCSType, error)
 
-// BindVCSType lfits EitherVCSTypeFuncs into the EitherVCSType monad.
+// BindVCSType lifts EitherVCSTypeFuncs into the EitherVCSType monad.
 func (r *EitherVCSType) BindVCSType(f EitherVCSTypeFunc) *EitherVCSType {
 	if r.Err != nil {
 		return r
