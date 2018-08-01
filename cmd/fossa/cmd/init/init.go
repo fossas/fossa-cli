@@ -40,12 +40,16 @@ func Run(ctx *cli.Context) error {
 		log.Logger.Fatalf("Could not initialize: %s", err.Error())
 	}
 
-	analyzeTargets, err := config.Modules()
 	if err != nil {
 		log.Logger.Fatalf("Could not read configuration: %s", err.Error())
 	}
 
-	if len(analyzeTargets) == 0 || ctx.Bool(Update) {
+	hasConfigFile, err := config.ExistsFile()
+	if err != nil {
+		log.Logger.Fatalf("Could not detect configuration file: %s", err.Error())
+	}
+
+	if !hasConfigFile || ctx.Bool(Update) {
 		modules, err := Do(ctx.Bool(IncludeAll))
 		if err != nil {
 			log.Logger.Fatalf("Could not run init: %s", err.Error())

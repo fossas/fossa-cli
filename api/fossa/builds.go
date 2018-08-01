@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const BuildRevisionAPI = "/api/revisions/%s/build"
 const BuildsAPI = "/api/builds/%s"
 
 // A Build holds the FOSSA API response for the builds API.
