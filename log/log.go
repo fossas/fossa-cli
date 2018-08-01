@@ -67,7 +67,7 @@ func Init(interactive, debug bool) {
 	if debug {
 		stderrBackend.SetLevel(logging.DEBUG, "")
 	} else {
-		stderrBackend.SetLevel(logging.WARNING, "")
+		stderrBackend.SetLevel(logging.INFO, "")
 	}
 	logging.SetBackend(stderrBackend)
 }

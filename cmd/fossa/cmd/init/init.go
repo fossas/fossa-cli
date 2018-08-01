@@ -43,10 +43,19 @@ func Run(ctx *cli.Context) error {
 	if err != nil {
 		log.Logger.Fatalf("Could not run init: %s", err.Error())
 	}
+
 	err = config.WriteFile(modules)
 	if err != nil {
 		log.Logger.Fatalf("Could not write config: %s", err.Error())
+		return nil
 	}
+
+	if len(modules) > 0 {
+		log.Logger.Infof("Successfully wrote (%s) modules to config", len(modules))
+		return nil
+	}
+
+	log.Logger.Warning("Did not discover any modules for analysis")
 	return nil
 }
 
