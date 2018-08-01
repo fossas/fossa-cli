@@ -39,19 +39,29 @@ func Run(ctx *cli.Context) error {
 	if err != nil {
 		log.Logger.Fatalf("Could not initialize: %s", err.Error())
 	}
-	modules, err := Do(ctx.Bool(Update), ctx.Bool(IncludeAll))
+
+	analyzeTargets, err := config.Modules()
 	if err != nil {
-		log.Logger.Fatalf("Could not run init: %s", err.Error())
+		log.Logger.Fatalf("Could not read configuration: %s", err.Error())
 	}
-	err = config.WriteFile(modules)
-	if err != nil {
-		log.Logger.Fatalf("Could not write config: %s", err.Error())
+
+	if len(analyzeTargets) == 0 || ctx.Bool(Update) {
+		modules, err := Do(ctx.Bool(IncludeAll))
+		if err != nil {
+			log.Logger.Fatalf("Could not run init: %s", err.Error())
+		}
+		err = config.WriteFile(modules)
+		if err != nil {
+			log.Logger.Fatalf("Could not write config: %s", err.Error())
+		}
+	} else {
+		log.Logger.Warning("Existing configuration available; skipping initialization")
 	}
 	return nil
 }
 
 // Do discovers modules within the current working directory.
-func Do(update, includeAll bool) ([]module.Module, error) {
+func Do(includeAll bool) ([]module.Module, error) {
 	defer log.StopSpinner()
 	log.ShowSpinner("Initializing...")
 
