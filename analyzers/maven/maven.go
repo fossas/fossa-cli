@@ -58,7 +58,6 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 	log.Logger.Debugf("%#v", dir)
 	var modules []module.Module
 
-	skipDependencyList := false
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.Logger.Debugf("Failed to access path %s: %s\n", path, err.Error())
@@ -75,52 +74,51 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 			}
 
 			dir := filepath.Dir(path)
-			var dependencyListErr error
-			if !skipDependencyList {
-				var submodules []string
-				submodules, dependencyListErr = a.Maven.Modules(dir)
-				if dependencyListErr == nil {
-					for _, m := range submodules {
-						modules = append(modules, module.Module{
-							Name:        m,
-							Type:        pkg.Maven,
-							BuildTarget: m,
-							Dir:         dir,
-						})
-					}
-					log.Logger.Debugf("skipDir: %#v", path)
-					// Don't continue recursing, because anything else is probably a
-					// subproject.
-					return filepath.SkipDir
+			submodules, err := a.Maven.Modules(dir)
+			if len(submodules) == 0 {
+				// Failed to parse modules via calling into `mvn` or this is a single-module build
+				// Fallback to parsing the pom.xml and skipping the underlying file tree assuming they are subprojects
+				if err != nil {
+					log.Logger.Debugf("Unable to parse modules through `mvn`: %#v %#v", err.Error(), err)
+				}
+				var parsedPom maven.Manifest
+				pomParseError := files.ReadXML(&parsedPom, path, "pom.xml")
+
+				groupId := parsedPom.GroupID
+				if groupId == "" {
+					groupId = parsedPom.Parent.GroupID
+				}
+
+				if parsedPom.Name == "" || groupId == "" || parsedPom.ArtifactID == "" {
+					pomParseError = errors.Errorf("invalid manifest at %s/pom.xml", path)
+				}
+
+				if pomParseError != nil {
+					log.Logger.Warningf("Unable to parse module: %#v %#v", pomParseError.Error(), pomParseError)
+					return nil
+				}
+
+				modules = append(modules, module.Module{
+					Name:        parsedPom.Name,
+					Type:        pkg.Maven,
+					BuildTarget: groupId + ":" + parsedPom.ArtifactID,
+					Dir:         dir,
+				})
+			} else {
+				for _, m := range submodules {
+					modules = append(modules, module.Module{
+						Name:        m,
+						Type:        pkg.Maven,
+						BuildTarget: m,
+						Dir:         dir,
+					})
 				}
 			}
 
-			// Failed to parse modules via calling into `mvn`
-			// Fallback to parsing the pom.xml and walking the file tree for the rest of Discover()
-			skipDependencyList = true
-			if dependencyListErr != nil {
-				log.Logger.Debugf("Unable to parse modules through `mvn`: %#v %#v", dependencyListErr.Error(), dependencyListErr)
-			}
-
-			var parsedPom maven.Manifest
-			pomParseError := files.ReadXML(&parsedPom, path, "pom.xml")
-
-			if parsedPom.Name == "" || parsedPom.ArtifactID == "" {
-				pomParseError = errors.New("invalid Maven manifest")
-			}
-
-			if pomParseError != nil {
-				log.Logger.Warningf("Unable to parse module: %#v %#v", pomParseError.Error(), pomParseError)
-				return nil
-			}
-
-			modules = append(modules, module.Module{
-				Name:        parsedPom.Name,
-				Type:        pkg.Maven,
-				BuildTarget: parsedPom.ArtifactID,
-				Dir:         dir,
-			})
-			return nil
+			log.Logger.Debugf("skipDir: %#v", path)
+			// Don't continue recursing, because anything else is probably a
+			// subproject.
+			return filepath.SkipDir
 		}
 
 		return nil

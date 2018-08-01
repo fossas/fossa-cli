@@ -51,7 +51,7 @@ func Run(ctx *cli.Context) error {
 	}
 
 	if len(modules) > 0 {
-		log.Logger.Infof("Successfully wrote (%s) modules to config", len(modules))
+		log.Logger.Infof("Successfully wrote (%d) modules to config", len(modules))
 		return nil
 	}
 

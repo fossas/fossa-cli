@@ -10,13 +10,20 @@ import (
 )
 
 type Manifest struct {
-	Project     xml.Name `xml:"project"`
-	ArtifactID  string   `xml:"artifactId"`
-	GroupID     string   `xml:"groupId"`
-	Version     string   `xml:"version"`
-	Description string   `xml:"description"`
-	Name        string   `xml:"name"`
-	URL         string   `xml:"url"`
+	Project     xml.Name       `xml:"project"`
+	Parent      ParentManifest `xml:"parent"`
+	ArtifactID  string         `xml:"artifactId"`
+	GroupID     string         `xml:"groupId"`
+	Version     string         `xml:"version"`
+	Description string         `xml:"description"`
+	Name        string         `xml:"name"`
+	URL         string         `xml:"url"`
+}
+
+type ParentManifest struct {
+	ArtifactID string `xml:"artifactId"`
+	GroupID    string `xml:"groupId"`
+	Version    string `xml:"version"`
 }
 
 type Dependency struct {
