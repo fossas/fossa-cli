@@ -2,21 +2,33 @@ package maven
 
 import (
 	"encoding/xml"
+	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
 )
 
 type Manifest struct {
-	Project     xml.Name
-	ArtifactID  string
-	GroupID     string
-	Version     string
-	Description string
-	Name        string
-	URL         string
+	Project     xml.Name `xml:"project"`
+	Parent      Parent   `xml:"parent"`
+	Modules     []string `xml:"modules>module"`
+	ArtifactID  string   `xml:"artifactId"`
+	GroupID     string   `xml:"groupId"`
+	Version     string   `xml:"version"`
+	Description string   `xml:"description"`
+	Name        string   `xml:"name"`
+	URL         string   `xml:"url"`
+}
+
+type Parent struct {
+	ArtifactID string `xml:"artifactId"`
+	GroupID    string `xml:"groupId"`
+	Version    string `xml:"version"`
 }
 
 type Dependency struct {
@@ -47,20 +59,28 @@ func (m *Maven) Compile(dir string) error {
 	return err
 }
 
-func (m *Maven) Modules(dir string) ([]string, error) {
-	deps, err := m.DependencyList(dir)
+func Modules(dir string) ([]string, error) {
+	var pom Manifest
+	err := files.ReadXML(&pom, filepath.Join(dir, "pom.xml"))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not read POM file")
 	}
+
 	var modules []string
-	lines := strings.Split(deps, "\n")
-	r := regexp.MustCompile("^\\[INFO\\] --+< (.*?) >--+$")
-	for _, line := range lines {
-		if r.MatchString(line) {
-			matches := r.FindStringSubmatch(line)
-			modules = append(modules, matches[1])
+	for _, module := range pom.Modules {
+		children, err := Modules(filepath.Join(dir, module))
+		if err != nil {
+			return nil, errors.Wrap(err, "could not read child modules")
 		}
+		modules = append(modules, children...)
 	}
+
+	groupID := pom.GroupID
+	if groupID == "" {
+		groupID = pom.Parent.GroupID
+	}
+	modules = append(modules, groupID+":"+pom.ArtifactID)
+
 	return modules, nil
 }
 
