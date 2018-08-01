@@ -34,7 +34,7 @@ type EitherVCS struct {
 	Err    error
 }
 
-// EitherVCSFunc defines monadic EitherStr functions.
+// EitherVCSFunc defines monadic EitherVCS functions.
 type EitherVCSFunc func(previous cli.VCS) (cli.VCS, error)
 
 // BindVCS lifts EitherVCSFuncs into the EitherVCS monad.
