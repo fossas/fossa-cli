@@ -20,13 +20,13 @@ var (
 
 // VCSIn returns the type of VCS repository rooted at a directory, or
 // ErrNoVCSInDir if none is found.
-func vcsIn(dirname string) (cli.VCSType, error) {
-	either := monad.EitherVCSType{}
+func vcsIn(dirname string) (cli.VCS, error) {
+	either := monad.EitherVCS{}
 	result := either.
-		BindVCSType(findVCSFolder(cli.Git, filepath.Join(dirname, ".git"))).
-		BindVCSType(findVCSFolder(cli.Subversion, filepath.Join(dirname, ".svn"))).
-		BindVCSType(findVCSFolder(cli.Mercurial, filepath.Join(dirname, ".hg"))).
-		BindVCSType(findVCSFolder(cli.Bazaar, filepath.Join(dirname, ".bzr")))
+		BindVCS(findVCSFolder(cli.Git, filepath.Join(dirname, ".git"))).
+		BindVCS(findVCSFolder(cli.Subversion, filepath.Join(dirname, ".svn"))).
+		BindVCS(findVCSFolder(cli.Mercurial, filepath.Join(dirname, ".hg"))).
+		BindVCS(findVCSFolder(cli.Bazaar, filepath.Join(dirname, ".bzr")))
 	if result.Err != nil {
 		return 0, result.Err
 	}
@@ -38,7 +38,7 @@ func vcsIn(dirname string) (cli.VCSType, error) {
 
 // NearestVCS returns the type and directory of the nearest VCS repository
 // containing the directory, or ErrNoNearestVCS if none is found.
-func NearestVCS(dirname string) (vcsType cli.VCSType, vcsDir string, err error) {
+func NearestVCS(dirname string) (vcsType cli.VCS, vcsDir string, err error) {
 	vcsDir, err = files.WalkUp(dirname, func(d string) error {
 		tool, err := vcsIn(d)
 		if err == ErrNoVCSInDir {

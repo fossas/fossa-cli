@@ -28,17 +28,17 @@ func (r *EitherStr) Bind(f EitherStrFunc) *EitherStr {
 	return r
 }
 
-// EitherVCSType is an Either monad specialized to VCSType.
-type EitherVCSType struct {
-	Result cli.VCSType
+// EitherVCS is an Either monad specialized to VCS.
+type EitherVCS struct {
+	Result cli.VCS
 	Err    error
 }
 
-// EitherVCSTypeFunc defines monadic EitherStr functions.
-type EitherVCSTypeFunc func(previous cli.VCSType) (cli.VCSType, error)
+// EitherVCSFunc defines monadic EitherStr functions.
+type EitherVCSFunc func(previous cli.VCS) (cli.VCS, error)
 
-// BindVCSType lifts EitherVCSTypeFuncs into the EitherVCSType monad.
-func (r *EitherVCSType) BindVCSType(f EitherVCSTypeFunc) *EitherVCSType {
+// BindVCS lifts EitherVCSFuncs into the EitherVCS monad.
+func (r *EitherVCS) BindVCS(f EitherVCSFunc) *EitherVCS {
 	if r.Err != nil {
 		return r
 	}

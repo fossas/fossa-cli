@@ -6,12 +6,12 @@ import (
 	"github.com/fossas/fossa-cli/monad"
 )
 
-// vcsFinder, bindVCSFinder, and friends are EitherVCSType functions for finding whether
+// vcsFinder, bindVCSFinder, and friends are EitherVCS functions for finding whether
 // one of many files exist.
 type vcsFinder func(pathElems ...string) (bool, error)
 
-func bindVCSFinder(tool cli.VCSType, find vcsFinder, pathElems ...string) monad.EitherVCSTypeFunc {
-	return func(prev cli.VCSType) (cli.VCSType, error) {
+func bindVCSFinder(tool cli.VCS, find vcsFinder, pathElems ...string) monad.EitherVCSFunc {
+	return func(prev cli.VCS) (cli.VCS, error) {
 		ok, err := find(pathElems...)
 		if err != nil {
 			return 0, err
@@ -23,6 +23,6 @@ func bindVCSFinder(tool cli.VCSType, find vcsFinder, pathElems ...string) monad.
 	}
 }
 
-func findVCSFolder(tool cli.VCSType, pathElems ...string) monad.EitherVCSTypeFunc {
+func findVCSFolder(tool cli.VCS, pathElems ...string) monad.EitherVCSFunc {
 	return bindVCSFinder(tool, files.ExistsFolder, pathElems...)
 }
