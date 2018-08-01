@@ -32,12 +32,6 @@
   revision = "9127e812e1e9e501ce899a18121d316ecb52e4ba"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/cheekybits/genny"
-  packages = ["generic"]
-  revision = "9127e812e1e9e501ce899a18121d316ecb52e4ba"
-
-[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -130,7 +124,7 @@
   branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  revision = "bb74f1db0675b241733089d5a1faa5dd8b0ef57b"
+  revision = "f15292f7a699fcc1a38a80977f80a046874ba8ac"
 
 [[projects]]
   name = "github.com/op/go-logging"
@@ -235,7 +229,7 @@
     "ssh/agent",
     "ssh/knownhosts"
   ]
-  revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
+  revision = "c126467f60eb25f8f27e5a981f32a87e3965053f"
 
 [[projects]]
   branch = "master"
@@ -244,7 +238,7 @@
     "context",
     "context/ctxhttp"
   ]
-  revision = "039a4258aec0ad3c79b905677cceeab13b296a77"
+  revision = "49c15d80dfbc983ea25246ee959d970efe09ec09"
 
 [[projects]]
   branch = "master"
@@ -253,7 +247,7 @@
     ".",
     "internal"
   ]
-  revision = "ef147856a6ddbb60760db74283d2424e98c87bff"
+  revision = "3d292e4d0cdc3a0113e6d207bb137145ef1de42f"
 
 [[projects]]
   branch = "master"
@@ -262,7 +256,7 @@
     "unix",
     "windows"
   ]
-  revision = "1b2967e3c290b7c545b3db0deeda16e9be4f98a2"
+  revision = "bd9dbc187b6e1dacfdd2722a87e83093c2d7bd6e"
 
 [[projects]]
   name = "golang.org/x/text"
