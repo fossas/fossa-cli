@@ -14,6 +14,7 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/composer"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -22,6 +23,7 @@ import (
 type Analyzer struct {
 	Composer composer.Composer
 
+	Module  module.Module
 	Options Options
 }
 
@@ -35,8 +37,8 @@ type Options struct {
 	Strategy string `mapstructure:"strategy"`
 }
 
-func New(opts map[string]interface{}) (*Analyzer, error) {
-	log.Logger.Debug("%#v", opts)
+func New(m module.Module) (*Analyzer, error) {
+	log.Logger.Debug("%#v", m.Options)
 	// Set Bower context variables
 	composerCmd, _, err := exec.Which("--version", os.Getenv("COMPOSER_BINARY"), "composer")
 	if err != nil {
@@ -45,7 +47,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 
 	// Decode options
 	var options Options
-	err = mapstructure.Decode(opts, &options)
+	err = mapstructure.Decode(m.Options, &options)
 	if err != nil {
 		return nil, err
 	}
@@ -55,6 +57,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 			Cmd: composerCmd,
 		},
 
+		Module:  m,
 		Options: options,
 	}
 
@@ -63,7 +66,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 }
 
 // Discover finds `composer.json`s not a /vendor/ folder
-func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
+func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -105,30 +108,31 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 	return modules, nil
 }
 
-func (a *Analyzer) Clean(m module.Module) error {
-	return a.Composer.Clean(m.Dir)
+func (a *Analyzer) Clean() error {
+	return a.Composer.Clean(a.Module.Dir)
 }
 
-func (a *Analyzer) Build(m module.Module) error {
-	return a.Composer.Install(m.Dir)
+func (a *Analyzer) Build() error {
+	return a.Composer.Install(a.Module.Dir)
 }
 
-func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
-	_, err := a.Composer.Show(m.Dir)
+func (a *Analyzer) IsBuilt() (bool, error) {
+	_, err := a.Composer.Show(a.Module.Dir)
 	if err != nil {
 		return false, nil
 	}
 	return true, nil
 }
 
-func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
-	imports, graph, err := a.Composer.Dependencies(m.Dir)
+func (a *Analyzer) Analyze() (graph.Deps, error) {
+	imports, deps, err := a.Composer.Dependencies(a.Module.Dir)
 	if err != nil {
-		return m, err
+		return graph.Deps{}, err
 	}
 
+	var pkgImports []pkg.Import
 	for _, i := range imports {
-		m.Imports = append(m.Imports, pkg.Import{
+		pkgImports = append(pkgImports, pkg.Import{
 			Resolved: pkg.ID{
 				Type:     pkg.Composer,
 				Name:     i.Name,
@@ -138,15 +142,15 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	}
 
 	g := make(map[pkg.ID]pkg.Package)
-	for parent, children := range graph {
+	for parent, children := range deps {
 		id := pkg.ID{
 			Type:     pkg.Composer,
 			Name:     parent.Name,
 			Revision: parent.Version,
 		}
-		var deps []pkg.Import
+		var parentImports []pkg.Import
 		for _, child := range children {
-			deps = append(deps, pkg.Import{
+			parentImports = append(parentImports, pkg.Import{
 				Resolved: pkg.ID{
 					Type:     pkg.Composer,
 					Name:     child.Name,
@@ -156,10 +160,12 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		}
 		g[id] = pkg.Package{
 			ID:      id,
-			Imports: deps,
+			Imports: parentImports,
 		}
 	}
-	m.Deps = g
 
-	return m, nil
+	return graph.Deps{
+		Direct:     pkgImports,
+		Transitive: g,
+	}, nil
 }

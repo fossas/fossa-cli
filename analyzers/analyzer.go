@@ -8,6 +8,7 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/bower"
 	"github.com/fossas/fossa-cli/analyzers/cocoapods"
 	"github.com/fossas/fossa-cli/analyzers/golang"
+	"github.com/fossas/fossa-cli/analyzers/php"
 
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
@@ -40,8 +41,8 @@ func New(m module.Module) (Analyzer, error) {
 		return bower.New(m)
 	case pkg.Cocoapods:
 		return cocoapods.New(m)
-	// case pkg.Composer:
-	// 	return php.New(m)
+	case pkg.Composer:
+		return php.New(m)
 	case pkg.Go:
 		return golang.New(m)
 		// case pkg.Gradle:
