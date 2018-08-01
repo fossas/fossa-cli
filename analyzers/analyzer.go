@@ -4,6 +4,7 @@ package analyzers
 import (
 	"errors"
 
+	"github.com/fossas/fossa-cli/analyzers/ant"
 	"github.com/fossas/fossa-cli/analyzers/golang"
 
 	"github.com/fossas/fossa-cli/graph"
@@ -31,8 +32,8 @@ type Analyzer interface {
 // New returns the analyzer for any given package type.
 func New(m module.Module) (Analyzer, error) {
 	switch m.Type {
-	// case pkg.Ant:
-	// 	return ant.New(m)
+	case pkg.Ant:
+		return ant.New(m)
 	// case pkg.Bower:
 	// 	return bower.New(m)
 	// case pkg.Cocoapods:
