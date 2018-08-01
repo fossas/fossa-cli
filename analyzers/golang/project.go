@@ -3,6 +3,7 @@ package golang
 import (
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/log"
+	"github.com/fossas/fossa-cli/vcs"
 )
 
 // A Project is a single folder that forms a coherent "project" for a developer
@@ -69,7 +70,7 @@ func (a *Analyzer) Project(pkg string) (Project, error) {
 	tool, manifestDir, err := NearestLockfile(dir)
 
 	// Find the nearest VCS repository.
-	_, repoRoot, err := NearestVCS(dir)
+	_, repoRoot, err := vcs.NearestVCS(dir)
 	if err != nil {
 		return Project{}, err
 	}

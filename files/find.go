@@ -3,6 +3,8 @@ package files
 import (
 	"errors"
 	"path/filepath"
+
+	"github.com/fossas/fossa-cli/monad"
 )
 
 // blaf
@@ -47,4 +49,21 @@ func WalkUp(startdir string, walker WalkUpFunc) (string, error) {
 		return "", err
 	}
 	return "", ErrDirNotFound
+}
+
+// finder, bindFinder, and friends are EitherStr functions for finding whether
+// one of many files exist.
+type finder func(pathElems ...string) (bool, error)
+
+func BindFinder(name string, find finder, pathElems ...string) monad.EitherStrFunc {
+	return func(prev string) (string, error) {
+		ok, err := find(pathElems...)
+		if err != nil {
+			return "", err
+		}
+		if ok {
+			return name, nil
+		}
+		return prev, nil
+	}
 }
