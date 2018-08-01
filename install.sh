@@ -112,7 +112,7 @@ function install {
   # THE RELEASE PROCESS.
   # ============= DO NOT EDIT ==================
   LATEST_STABLE_RELEASE='v0.6.7'
-  RELEASE='v0.7.0-beta.8'
+  RELEASE='v0.7.0-beta.9'
   # ============= =========== ==================
 
   LATEST_STABLE_VERSION=${LATEST_STABLE_RELEASE#v}
