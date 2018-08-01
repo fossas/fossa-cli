@@ -2,25 +2,29 @@ package analyzers
 
 import (
 	"github.com/fossas/fossa-cli/analyzers/ant"
+	"github.com/fossas/fossa-cli/analyzers/bower"
 	"github.com/fossas/fossa-cli/analyzers/golang"
 
 	"github.com/fossas/fossa-cli/module"
 )
 
+type discoverFunc func(dir string, options map[string]interface{}) ([]module.Module, error)
+
 func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	var modules []module.Module
-
-	antModules, err := ant.Discover(dir, options)
-	if err != nil {
-		return nil, err
+	discoverFuncs := []discoverFunc{
+		ant.Discover,
+		bower.Discover,
+		golang.Discover,
 	}
-	modules = append(modules, antModules...)
 
-	goModules, err := golang.Discover(dir, options)
-	if err != nil {
-		return nil, err
+	for _, f := range discoverFuncs {
+		discovered, err := f(dir, options)
+		if err != nil {
+			return nil, err
+		}
+		modules = append(modules, discovered...)
 	}
-	modules = append(modules, goModules...)
 
 	return modules, nil
 }

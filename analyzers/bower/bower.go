@@ -14,6 +14,7 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/bower"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -25,6 +26,7 @@ type Analyzer struct {
 
 	Bower bower.Bower
 
+	Module  module.Module
 	Options Options
 }
 
@@ -38,8 +40,8 @@ type Options struct {
 	ComponentsDir string `mapstructure:"components"`
 }
 
-func New(opts map[string]interface{}) (*Analyzer, error) {
-	log.Logger.Debug("%#v", opts)
+func New(m module.Module) (*Analyzer, error) {
+	log.Logger.Debug("%#v", m.Options)
 	// Set Bower context variables
 	bowerCmd, bowerVersion, err := exec.Which("-v", os.Getenv("BOWER_BINARY"), "bower")
 	if err != nil {
@@ -48,7 +50,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 
 	// Decode options
 	var options Options
-	err = mapstructure.Decode(opts, &options)
+	err = mapstructure.Decode(m.Options, &options)
 	if err != nil {
 		return nil, err
 	}
@@ -57,6 +59,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 		BowerCmd:     bowerCmd,
 		BowerVersion: bowerVersion,
 
+		Module:  m,
 		Options: options,
 	}
 
@@ -66,7 +69,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 
 // Discover finds any `bower.json`s not in `node_modules` or `bower_components`
 // folders.
-func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
+func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	var moduleConfigs []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -107,9 +110,9 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 	return moduleConfigs, nil
 }
 
-func (a *Analyzer) Clean(m module.Module) error {
+func (a *Analyzer) Clean() error {
 	// TODO: this is an example of when analyzer.New should take a module.
-	b, err := bower.New(a.BowerCmd, m.Dir)
+	b, err := bower.New(a.BowerCmd, a.Module.Dir)
 	if err != nil {
 		return err
 	}
@@ -117,8 +120,8 @@ func (a *Analyzer) Clean(m module.Module) error {
 }
 
 // Build runs `bower install --production`
-func (a *Analyzer) Build(m module.Module) error {
-	b, err := bower.New(a.BowerCmd, m.Dir)
+func (a *Analyzer) Build() error {
+	b, err := bower.New(a.BowerCmd, a.Module.Dir)
 	if err != nil {
 		return err
 	}
@@ -126,8 +129,8 @@ func (a *Analyzer) Build(m module.Module) error {
 }
 
 // IsBuilt checks for the existence of a components folder.
-func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
-	config, err := bower.ReadConfig(m.Dir)
+func (a *Analyzer) IsBuilt() (bool, error) {
+	config, err := bower.ReadConfig(a.Module.Dir)
 	if err != nil {
 		return false, err
 	}
@@ -142,15 +145,15 @@ func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
 	return isBuilt, nil
 }
 
-func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
-	b, err := bower.New(a.BowerCmd, m.Dir)
+func (a *Analyzer) Analyze() (graph.Deps, error) {
+	b, err := bower.New(a.BowerCmd, a.Module.Dir)
 	if err != nil {
-		return m, err
+		return graph.Deps{}, err
 	}
 
 	p, err := b.List()
 	if err != nil {
-		return m, err
+		return graph.Deps{}, err
 	}
 
 	var imports []pkg.Import
@@ -166,12 +169,13 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		})
 	}
 
-	graph := make(map[pkg.ID]pkg.Package)
-	recurseDeps(graph, p)
+	deps := make(map[pkg.ID]pkg.Package)
+	recurseDeps(deps, p)
 
-	m.Imports = imports
-	m.Deps = graph
-	return m, err
+	return graph.Deps{
+		Direct:     imports,
+		Transitive: deps,
+	}, nil
 }
 
 func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p bower.Package) {

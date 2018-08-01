@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/fossas/fossa-cli/analyzers/ant"
+	"github.com/fossas/fossa-cli/analyzers/bower"
 	"github.com/fossas/fossa-cli/analyzers/golang"
 
 	"github.com/fossas/fossa-cli/graph"
@@ -34,8 +35,8 @@ func New(m module.Module) (Analyzer, error) {
 	switch m.Type {
 	case pkg.Ant:
 		return ant.New(m)
-	// case pkg.Bower:
-	// 	return bower.New(m)
+	case pkg.Bower:
+		return bower.New(m)
 	// case pkg.Cocoapods:
 	// 	return cocoapods.New(m)
 	// case pkg.Composer:
