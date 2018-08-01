@@ -71,8 +71,7 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 				return nil
 			}
 
-			dir := filepath.Dir(path)
-			submodules, err := a.Maven.Modules(dir)
+			submodules, err := maven.Modules(path)
 			if err != nil {
 				log.Logger.Debugf("Modules err: %#v %#v", err.Error(), err)
 				return err
@@ -83,7 +82,7 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 					Name:        m,
 					Type:        pkg.Maven,
 					BuildTarget: m,
-					Dir:         dir,
+					Dir:         path,
 				})
 			}
 			log.Logger.Debugf("skipDir: %#v", path)
