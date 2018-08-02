@@ -13,16 +13,16 @@ import (
 
 func TestGetRepositoryAtRoot(t *testing.T) {
 	wd, _ := os.Getwd()
-	vcsDir, err := vcs.GetRepository(filepath.Join("testdata", "git"))
+	vcsDir, err := vcs.GetRepository("..")
 	assert.NoError(t, err)
-	assert.Equal(t, filepath.Join(wd, "testdata", "git"), vcsDir)
+	assert.Equal(t, filepath.Join(wd, ".."), vcsDir)
 }
 
 func TestGetRepositoryBelowRoot(t *testing.T) {
 	wd, _ := os.Getwd()
-	vcsDir, err := vcs.GetRepository(filepath.Join("testdata", "git", "nested", "directory"))
+	vcsDir, err := vcs.GetRepository("testdata")
 	assert.NoError(t, err)
-	assert.Equal(t, filepath.Join(wd, "testdata", "git"), vcsDir)
+	assert.Equal(t, filepath.Join(wd, ".."), vcsDir)
 }
 
 func TestGetRepositoryUnsupportedVCS(t *testing.T) {
