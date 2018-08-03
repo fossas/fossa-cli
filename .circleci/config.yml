@@ -40,7 +40,7 @@ jobs:
       - run:
           name: Run unit tests
           command: |
-            make junit-test > $TEST_RESULTS/go-test-report.xml
+            make -s junit-test > $TEST_RESULTS/go-test-report.xml
       - run:
           name: Run FOSSA analysis
           command: |
