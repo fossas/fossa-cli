@@ -26,8 +26,8 @@ Please provide the following:
 
 **Environment (please complete the following information):**
  - OS: [e.g. Windows]
- - Are you running in CI?: [e.g. No / Yes: \<CI provider name\>]
- - Are you running in a Docker image?: [e.g. No / Yes: \<image name\>]
+ - Are you running in CI?: [e.g. No / Yes: CI_PROVIDER_NAME]
+ - Are you running in a Docker image?: [e.g. No / Yes: DOCKER_IMAGE_NAME]
 
 **Additional context**
 Add any other context about the problem here.
