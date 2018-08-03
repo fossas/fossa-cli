@@ -21,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/buildtools/npm"
+	"github.com/fossas/fossa-cli/graph"
 
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
@@ -39,6 +40,7 @@ type Analyzer struct {
 	YarnCmd     string
 	YarnVersion string
 
+	Module  module.Module
 	Options Options
 }
 
@@ -63,8 +65,8 @@ type Options struct {
 }
 
 // New configures Node, NPM, and Yarn commands.
-func New(opts map[string]interface{}) (*Analyzer, error) {
-	log.Logger.Debug("%#v", opts)
+func New(m module.Module) (*Analyzer, error) {
+	log.Logger.Debug("%#v", m.Options)
 
 	nodeCmd, nodeVersion, nodeErr := exec.Which("-v", os.Getenv("FOSSA_NODE_CMD"), "node", "nodejs")
 	if nodeErr != nil {
@@ -80,7 +82,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 	}
 
 	var options Options
-	err := mapstructure.Decode(opts, &options)
+	err := mapstructure.Decode(m.Options, &options)
 	if err != nil {
 		return nil, err
 	}
@@ -95,6 +97,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 		YarnCmd:     yarnCmd,
 		YarnVersion: yarnVersion,
 
+		Module:  m,
 		Options: options,
 	}
 
@@ -104,7 +107,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 
 // Discover searches for `package.json`s not within a `node_modules` or
 // `bower_components`.
-func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
+func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	log.Logger.Debugf("%#v", dir)
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -148,22 +151,22 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 	return modules, nil
 }
 
-func (a *Analyzer) Clean(m module.Module) error {
-	return files.Rm(m.Dir, "node_modules")
+func (a *Analyzer) Clean() error {
+	return files.Rm(a.Module.Dir, "node_modules")
 }
 
 // Build runs `yarn install --production --frozen-lockfile` if there exists a
 // `yarn.lock` and `yarn` is available. Otherwise, it runs
 // `npm install --production`.
-func (a *Analyzer) Build(m module.Module) error {
-	log.Logger.Debugf("Running Node.js build: %#v", m)
+func (a *Analyzer) Build() error {
+	log.Logger.Debugf("Running Node.js build: %#v", a.Module)
 
 	// Prefer Yarn where possible
-	if ok, err := files.Exists(m.Dir, "yarn.lock"); err == nil && ok && a.YarnCmd != "" {
+	if ok, err := files.Exists(a.Module.Dir, "yarn.lock"); err == nil && ok && a.YarnCmd != "" {
 		_, _, err := exec.Run(exec.Cmd{
 			Name: a.YarnCmd,
 			Argv: []string{"install", "--production", "--frozen-lockfile"},
-			Dir:  m.Dir,
+			Dir:  a.Module.Dir,
 		})
 		if err != nil {
 			return errors.Wrap(err, "could not run `yarn` build")
@@ -172,7 +175,7 @@ func (a *Analyzer) Build(m module.Module) error {
 		_, _, err := exec.Run(exec.Cmd{
 			Name: a.NPMCmd,
 			Argv: []string{"install", "--production"},
-			Dir:  m.Dir,
+			Dir:  a.Module.Dir,
 		})
 		if err != nil {
 			return errors.Wrap(err, "could not run `npm` build")
@@ -196,10 +199,10 @@ func (a *Analyzer) Build(m module.Module) error {
 //
 // TODO: with significantly more effort, we can eliminate both of these
 // situations.
-func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
-	log.Logger.Debugf("Checking Node.js build: %#v", m)
+func (a *Analyzer) IsBuilt() (bool, error) {
+	log.Logger.Debugf("Checking Node.js build: %#v", a.Module)
 
-	manifest, err := npm.FromManifest(filepath.Join(m.BuildTarget, "package.json"))
+	manifest, err := npm.FromManifest(filepath.Join(a.Module.BuildTarget, "package.json"))
 	if err != nil {
 		return false, errors.Wrap(err, "could not parse package manifest to check build")
 	}
@@ -209,7 +212,7 @@ func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
 		return true, nil
 	}
 
-	hasNodeModules, err := files.ExistsFolder(m.Dir, "node_modules")
+	hasNodeModules, err := files.ExistsFolder(a.Module.Dir, "node_modules")
 	if err != nil {
 		return false, err
 	}
@@ -218,15 +221,15 @@ func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
 	return hasNodeModules, nil
 }
 
-func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
-	log.Logger.Debugf("Running Nodejs analysis: %#v", m)
+func (a *Analyzer) Analyze() (graph.Deps, error) {
+	log.Logger.Debugf("Running Nodejs analysis: %#v", a.Module)
 
 	// Get packages.
 	n := npm.NPM{
 		Cmd:      a.NPMCmd,
 		AllowErr: a.Options.AllowNPMErr,
 	}
-	pkgs, err := n.List(filepath.Dir(m.BuildTarget))
+	pkgs, err := n.List(filepath.Dir(a.Module.BuildTarget))
 	if err != nil {
 		log.Logger.Warningf("NPM had non-zero exit code: %s", err.Error())
 	}
@@ -249,10 +252,12 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	deps := make(map[pkg.ID]pkg.Package)
 	recurseDeps(deps, pkgs)
 
-	m.Imports = imports
-	m.Deps = deps
 	log.Logger.Debugf("Done running Nodejs analysis: %#v", deps)
-	return m, nil
+
+	return graph.Deps{
+		Direct:     imports,
+		Transitive: deps,
+	}, nil
 }
 
 // TODO: implement this generically in package graph (Bower also has an
