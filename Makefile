@@ -84,7 +84,7 @@ unit-test:
 
 .PHONY: junit-test
 junit-test: $(GO_JUNIT_REPORT)
-	make unit-test | go-junit-report
+	go test -v ./... | go-junit-report
 
 .PHONY: integration-test
 integration-test: docker-test
