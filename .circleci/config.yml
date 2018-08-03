@@ -1,7 +1,6 @@
 version: 2
 
 defaults: &defaults
-  working_directory: /home/fossa/go/src/github.com/fossas/fossa-cli
   environment:
     TEST_RESULTS: /tmp/test-results
     ARTIFACTS: /tmp/artifacts
@@ -10,8 +9,9 @@ defaults: &defaults
 jobs:
   build:
     <<: *defaults
+    working_directory: /go/src/github.com/fossas/fossa-cli
     docker:
-      - image: quay.io/fossa/fossa-cli-base:circleci
+      - image: circleci/golang:1
     steps:
       - checkout
       - run:
@@ -22,25 +22,25 @@ jobs:
             mkdir -p $WORKSPACE
       - restore_cache:
           keys:
-            - v1-gopkg-cache-{{ checksum "Gopkg.lock" }}
+            - v2-gopkg-cache-{{ checksum "Gopkg.lock" }}
       - run:
           name: Compile CLI
           command: |
-            # Invalidate pkg cache for FOSSA CLI binary
-            rm -rf /home/fossa/go/pkg/linux_amd64/github.com/fossas/fossa-cli
+            # Invalidate cache for FOSSA CLI binary
+            rm -rf /go/pkg/linux_amd64/github.com/fossas/fossa-cli
+            rm -f /go/bin/fossa
+            # Compile CLI
             make
       - save_cache:
           key: v1-gopkg-cache-{{ checksum "Gopkg.lock" }}
           paths:
-            - "/home/fossa/go/pkg"
-            - "/home/fossa/go/src/github.com/fossas/fossa-cli/vendor"
-      # - run:
-      #     name: Run unit tests
-      #     command: |
-      #       # Load shell helpers (e.g. sdkman)
-      #       source /home/fossa/.bashrc
-      #       # Run tests
-      #       go test ./...
+            - "/go/bin"
+            - "/go/pkg"
+            - "/go/src/github.com/fossas/fossa-cli/vendor"
+      - run:
+          name: Run unit tests
+          command: |
+            make -s junit-test > $TEST_RESULTS/go-test-report.xml
       - run:
           name: Run FOSSA analysis
           command: |
@@ -52,13 +52,14 @@ jobs:
       - run:
           name: Save artifacts
           command: |
+            cp -R $TEST_RESULTS $ARTIFACTS
             cp $(which fossa) $ARTIFACTS
       - run:
           name: Save workspace
           command: |
             cp $(which fossa) $WORKSPACE
-      # - store_test_results:
-      #     path: /tmp/test-results
+      - store_test_results:
+          path: /tmp/test-results
       - store_artifacts:
           path: /tmp/artifacts
       - persist_to_workspace:
@@ -67,6 +68,7 @@ jobs:
             - fossa
   test:
     <<: *defaults
+    working_directory: /home/fossa/go/src/github.com/fossas/fossa-cli
     docker:
       - image: quay.io/fossa/fossa-cli-test:circleci
     steps:
