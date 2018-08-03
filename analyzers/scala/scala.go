@@ -80,7 +80,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	// Construct SBT instance (for listing projects).
 	sbtCmd, _, err := exec.Which("-no-colors about", os.Getenv("SBT_BINARY"), "sbt")
 	if err != nil {
-		return nil, fmt.Errorf("could not find SBT binary (try setting $SBT_BINARY): %s", err.Error())
+		return nil, nil
 	}
 	sbt := sbt.SBT{
 		Bin: sbtCmd,
