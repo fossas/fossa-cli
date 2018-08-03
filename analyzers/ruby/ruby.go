@@ -50,11 +50,11 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 	// Construct analyzer.
 	rubyCmd, rubyVersion, err := exec.Which("--version", os.Getenv("FOSSA_RUBY_CMD"), "ruby")
 	if err != nil {
-		return nil, err
+		log.Logger.Warningf("Could not resolve Ruby")
 	}
 	bundlerCmd, bundlerVersion, err := exec.Which("--version", os.Getenv("FOSSA_BUNDLER_CMD"), "bundler", "bundle")
 	if err != nil {
-		return nil, err
+		log.Logger.Warningf("Could not resolve Bundler")
 	}
 	return &Analyzer{
 		RubyCmd:     rubyCmd,
