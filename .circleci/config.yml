@@ -35,6 +35,13 @@ jobs:
             - "/home/fossa/go/pkg"
             - "/home/fossa/go/src/github.com/fossas/fossa-cli/vendor"
       - run:
+          name: Run unit tests
+          command: |
+            # Load shell helpers (e.g. sdkman)
+            source /home/fossa/.bashrc
+            # Run tests
+            go test ./...
+      - run:
           name: Run FOSSA analysis
           command: |
             fossa analyze --debug > $ARTIFACTS/fossa-analyze-stdout 2> >(tee $ARTIFACTS/fossa-analyze-stderr >&2)
@@ -50,8 +57,8 @@ jobs:
           name: Save workspace
           command: |
             cp $(which fossa) $WORKSPACE
-      # - store_test_results:
-      #     path: /tmp/test-results
+      - store_test_results:
+          path: /tmp/test-results
       - store_artifacts:
           path: /tmp/artifacts
       - persist_to_workspace:
@@ -74,13 +81,6 @@ jobs:
           name: Load workspace
           command: |
             cp $WORKSPACE/fossa $GOPATH/bin/fossa
-      - run:
-          name: Run unit tests
-          command: |
-            # Load shell helpers (e.g. sdkman)
-            source /home/fossa/.bashrc
-            # Run tests
-            go test ./...
       - run:
           name: Run integration tests
           command: |
