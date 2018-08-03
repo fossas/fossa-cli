@@ -1,7 +1,6 @@
 version: 2
 
 defaults: &defaults
-  working_directory: /home/fossa/go/src/github.com/fossas/fossa-cli
   environment:
     TEST_RESULTS: /tmp/test-results
     ARTIFACTS: /tmp/artifacts
@@ -10,8 +9,9 @@ defaults: &defaults
 jobs:
   build:
     <<: *defaults
+    working_directory: /home/go/src/github.com/fossas/fossa-cli
     docker:
-      - image: quay.io/fossa/fossa-cli-base:circleci
+      - image: circleci/golang:1
     steps:
       - checkout
       - run:
@@ -26,21 +26,21 @@ jobs:
       - run:
           name: Compile CLI
           command: |
-            # Invalidate pkg cache for FOSSA CLI binary
-            rm -rf /home/fossa/go/pkg/linux_amd64/github.com/fossas/fossa-cli
+            # Invalidate cache for FOSSA CLI binary
+            rm -rf /home/go/pkg/linux_amd64/github.com/fossas/fossa-cli
+            rm -f /home/go/bin/fossa
+            # Compile CLI
             make
       - save_cache:
           key: v1-gopkg-cache-{{ checksum "Gopkg.lock" }}
           paths:
-            - "/home/fossa/go/pkg"
-            - "/home/fossa/go/src/github.com/fossas/fossa-cli/vendor"
+            - "/home/go/bin"
+            - "/home/go/pkg"
+            - "/home/go/src/github.com/fossas/fossa-cli/vendor"
       - run:
           name: Run unit tests
           command: |
-            # Load shell helpers (e.g. sdkman)
-            source /home/fossa/.bashrc
-            # Run tests
-            go test ./...
+            make junit-test > $TEST_RESULTS/go-test-report.xml
       - run:
           name: Run FOSSA analysis
           command: |
@@ -67,6 +67,7 @@ jobs:
             - fossa
   test:
     <<: *defaults
+    working_directory: /home/fossa/go/src/github.com/fossas/fossa-cli
     docker:
       - image: quay.io/fossa/fossa-cli-test:circleci
     steps:

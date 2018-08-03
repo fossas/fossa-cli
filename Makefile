@@ -4,6 +4,7 @@ PREFIX?=/usr/local/bin
 
 GO_BINDATA="$(BIN)/go-bindata"
 GENNY="$(BIN)/genny"
+GO_JUNIT_REPORT="$(BIN)/go-junit-report"
 
 GORELEASER_FLAGS?=--rm-dist
 LDFLAGS:=-ldflags '-extldflags "-static" -X github.com/fossas/fossa-cli/cmd/fossa/version.version=$(shell git rev-parse --abbrev-ref HEAD) -X github.com/fossas/fossa-cli/cmd/fossa/version.commit=$(shell git rev-parse HEAD) -X "github.com/fossas/fossa-cli/cmd/fossa/version.goversion=$(shell go version)" -X github.com/fossas/fossa-cli/cmd/fossa/version.buildType=development'
@@ -19,6 +20,9 @@ $(GO_BINDATA):
 
 $(GENNY):
 	[ -f $@ ] || go get -u github.com/cheekybits/genny
+
+$(GO_JUNIT_REPORT):
+	[ -f $@ ] || go get -u github.com/jstemmer/go-junit-report
 
 # Building the CLI.
 .PHONY: build
@@ -44,20 +48,7 @@ docker: docker-base ./docker/cli/Dockerfile
 docker-test: docker-test-base ./docker/test/Dockerfile
 	sudo docker build -t quay.io/fossa/fossa-cli-test -f ./docker/test/Dockerfile .
 
-# Useful build tasks.
-.PHONY: test
-test:
-	make unit-test
-	make acceptance-test
-
-.PHONY: unit-test
-unit-test:
-	go test ./...
-
-.PHONY: acceptance-test
-acceptance-test: docker-test
-	sudo docker run --rm -it quay.io/fossa/fossa-cli-test
-
+# Development tasks.
 .PHONY: dev
 dev: docker-test-base
 	sudo docker run --rm -it \
@@ -80,6 +71,25 @@ vendor: $(DEP)
 clean:
 	rm -f $(BIN)/fossa
 
+# Testing tasks.
+.PHONY: test
+test:
+	make unit-test
+	make integration-test
+
+.PHONY: unit-test
+unit-test:
+	go test ./...
+
+.PHONY: junit-test
+junit-test: $(GO_JUNIT_REPORT)
+	make unit-test | go-junit-report
+
+.PHONY: integration-test
+integration-test: docker-test
+	sudo docker run --rm -it quay.io/fossa/fossa-cli-test
+
+# Release tasks.
 .PHONY: release
 release:
 	# Check that the installer has been generated for this tag.
