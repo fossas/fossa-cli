@@ -14,6 +14,7 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/maven"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -21,6 +22,7 @@ import (
 
 type Analyzer struct {
 	Maven   maven.Maven
+	Module  module.Module
 	Options Options
 }
 
@@ -29,12 +31,12 @@ type Options struct {
 	Command string `mapstructure:"cmd"`
 }
 
-func New(opts map[string]interface{}) (*Analyzer, error) {
-	log.Logger.Debugf("%#v", opts)
+func New(m module.Module) (*Analyzer, error) {
+	log.Logger.Debugf("%#v", m.Options)
 
 	// Decode options.
 	var options Options
-	err := mapstructure.Decode(opts, &options)
+	err := mapstructure.Decode(m.Options, &options)
 	if err != nil {
 		return nil, err
 	}
@@ -46,6 +48,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 		Maven: maven.Maven{
 			Cmd: mvnBin,
 		},
+		Module:  m,
 		Options: options,
 	}
 
@@ -53,7 +56,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 	return &analyzer, nil
 }
 
-func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
+func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	log.Logger.Debugf("%#v", dir)
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -101,17 +104,17 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 	return modules, nil
 }
 
-func (a *Analyzer) Clean(m module.Module) error {
-	return a.Maven.Clean(m.Dir)
+func (a *Analyzer) Clean() error {
+	return a.Maven.Clean(a.Module.Dir)
 }
 
-func (a *Analyzer) Build(m module.Module) error {
-	return a.Maven.Compile(m.Dir)
+func (a *Analyzer) Build() error {
+	return a.Maven.Compile(a.Module.Dir)
 }
 
 // IsBuilt checks whether `mvn dependency:list` produces an error.
-func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
-	output, err := a.Maven.DependencyList(m.Dir)
+func (a *Analyzer) IsBuilt() (bool, error) {
+	output, err := a.Maven.DependencyList(a.Module.Dir)
 	if err != nil {
 		if strings.Contains(output, "Could not find artifact") {
 			return false, nil
@@ -121,26 +124,26 @@ func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
 	return output != "", nil
 }
 
-func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
-	log.Logger.Debugf("%#v", m)
+func (a *Analyzer) Analyze() (graph.Deps, error) {
+	log.Logger.Debugf("%#v", a.Module)
 
 	var imports []maven.Dependency
-	var graph map[maven.Dependency][]maven.Dependency
+	var deps map[maven.Dependency][]maven.Dependency
 	var err error
 	if a.Options.Command == "" {
-		imports, graph, err = a.Maven.DependencyTree(m.Dir, m.BuildTarget)
+		imports, deps, err = a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
 	} else {
 		var output string
 		output, _, err = exec.Shell(exec.Cmd{
 			Command: a.Options.Command,
 		})
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
-		imports, graph, err = maven.ParseDependencyTree(output)
+		imports, deps, err = maven.ParseDependencyTree(output)
 	}
 	if err != nil {
-		return m, err
+		return graph.Deps{}, err
 	}
 
 	// Set direct dependencies.
@@ -157,7 +160,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 
 	// Set transitive dependencies.
 	g := make(map[pkg.ID]pkg.Package)
-	for parent, children := range graph {
+	for parent, children := range deps {
 		id := pkg.ID{
 			Type:     pkg.Maven,
 			Name:     parent.Name,
@@ -180,7 +183,8 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		}
 	}
 
-	m.Imports = i
-	m.Deps = g
-	return m, nil
+	return graph.Deps{
+		Direct:     i,
+		Transitive: g,
+	}, nil
 }

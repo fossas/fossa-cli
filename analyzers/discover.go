@@ -6,6 +6,7 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/cocoapods"
 	"github.com/fossas/fossa-cli/analyzers/golang"
 	"github.com/fossas/fossa-cli/analyzers/gradle"
+	"github.com/fossas/fossa-cli/analyzers/maven"
 	"github.com/fossas/fossa-cli/analyzers/php"
 
 	"github.com/fossas/fossa-cli/module"
@@ -22,6 +23,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 		php.Discover,
 		golang.Discover,
 		gradle.Discover,
+		maven.Discover,
 	}
 
 	for _, f := range discoverFuncs {
