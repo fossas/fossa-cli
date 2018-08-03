@@ -133,7 +133,11 @@ func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
 	}
 	// TODO: Check if the installed modules are consistent with what's in the
 	// actual manifest.
-	isBuilt, err := files.ExistsFolder(config.Directory)
+	bowerComponentsDir := config.Directory
+	if !filepath.IsAbs(bowerComponentsDir) {
+		bowerComponentsDir = filepath.join(m.Dir, config.Directory)
+	}
+	isBuilt, err := files.ExistsFolder(bowerComponentsDir)
 	if err != nil {
 		return false, err
 	}

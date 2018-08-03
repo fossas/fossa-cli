@@ -14,7 +14,7 @@ type Config struct {
 func NewConfig(cwd string) Config {
 	return Config{
 		CWD:       cwd,
-		Directory: filepath.Join(cwd, "bower_components"),
+		Directory: "bower_components",
 	}
 }
 
