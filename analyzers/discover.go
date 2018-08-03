@@ -8,7 +8,11 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/gradle"
 	"github.com/fossas/fossa-cli/analyzers/maven"
 	"github.com/fossas/fossa-cli/analyzers/nodejs"
+	"github.com/fossas/fossa-cli/analyzers/nuget"
 	"github.com/fossas/fossa-cli/analyzers/php"
+	"github.com/fossas/fossa-cli/analyzers/python"
+	"github.com/fossas/fossa-cli/analyzers/ruby"
+	"github.com/fossas/fossa-cli/analyzers/scala"
 
 	"github.com/fossas/fossa-cli/module"
 )
@@ -26,6 +30,10 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 		gradle.Discover,
 		maven.Discover,
 		nodejs.Discover,
+		nuget.Discover,
+		python.Discover,
+		ruby.Discover,
+		scala.Discover,
 	}
 
 	for _, f := range discoverFuncs {

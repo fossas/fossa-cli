@@ -13,30 +13,33 @@ import (
 
 func TestCustomGemfileLockPath(t *testing.T) {
 	buildTarget := "github.com/fossas/fossa-cli/cmd/fossa"
-
-	analyzer, err := ruby.New(map[string]interface{}{
-		"strategy":          "lockfile",
-		"gemfile-lock-path": filepath.Join("testdata", "Gemfile.lock"),
-	})
-	assert.NoError(t, err)
-
-	customLockfileAnalyzer, err := ruby.New(map[string]interface{}{
-		"strategy":          "lockfile",
-		"gemfile-lock-path": filepath.Join("testdata", "CustomGemfile.lock"),
-	})
-	assert.NoError(t, err)
-
 	m := module.Module{
 		Name:        "test",
 		Type:        pkg.Ruby,
 		BuildTarget: buildTarget,
 	}
 
-	analyzed, err := analyzer.Analyze(m)
+	gemModule := m
+	gemModule.Options = map[string]interface{}{
+		"strategy":          "lockfile",
+		"gemfile-lock-path": filepath.Join("testdata", "Gemfile.lock"),
+	}
+	analyzer, err := ruby.New(gemModule)
 	assert.NoError(t, err)
 
-	analyzedCustom, err := customLockfileAnalyzer.Analyze(m)
+	customModule := m
+	customModule.Options = map[string]interface{}{
+		"strategy":          "lockfile",
+		"gemfile-lock-path": filepath.Join("testdata", "CustomGemfile.lock"),
+	}
+	customLockfileAnalyzer, err := ruby.New(customModule)
 	assert.NoError(t, err)
 
-	assert.NotEqual(t, analyzed.Deps, analyzedCustom.Deps)
+	analyzed, err := analyzer.Analyze()
+	assert.NoError(t, err)
+
+	analyzedCustom, err := customLockfileAnalyzer.Analyze()
+	assert.NoError(t, err)
+
+	assert.NotEqual(t, analyzed, analyzedCustom)
 }

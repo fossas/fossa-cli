@@ -27,6 +27,7 @@ type Analyzer struct {
 	Version string
 
 	dotNET  dotnet.DotNET
+	Module  module.Module
 	Options Options
 }
 
@@ -34,8 +35,8 @@ type Options struct {
 	Target string
 }
 
-func New(opts map[string]interface{}) (*Analyzer, error) {
-	log.Logger.Debug("%#v", opts)
+func New(m module.Module) (*Analyzer, error) {
+	log.Logger.Debug("%#v", m.Options)
 	// Set Bower context variables
 	dotnetCmd, dotnetVersion, err := exec.Which("--version", os.Getenv("DOTNET_BINARY"), "dotnet")
 	if err != nil {
@@ -44,7 +45,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 
 	// Decode options
 	var options Options
-	err = mapstructure.Decode(opts, &options)
+	err = mapstructure.Decode(m.Options, &options)
 	if err != nil {
 		return nil, err
 	}
@@ -56,6 +57,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 		dotNET: dotnet.DotNET{
 			Cmd: dotnetCmd,
 		},
+		Module:  m,
 		Options: options,
 	}
 
@@ -63,7 +65,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 	return &analyzer, nil
 }
 
-func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
+func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -126,15 +128,15 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 	return modules, nil
 }
 
-func (a *Analyzer) Clean(m module.Module) error {
+func (a *Analyzer) Clean() error {
 	log.Logger.Warning("Clean is not implemented for NuGet")
 	return nil
 }
 
-func (a *Analyzer) Build(m module.Module) error {
-	return a.dotNET.Build(Dir(m))
+func (a *Analyzer) Build() error {
+	return a.dotNET.Build(Dir(a.Module))
 }
 
-func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
-	return files.Exists(Dir(m), "obj", "project.assets.json")
+func (a *Analyzer) IsBuilt() (bool, error) {
+	return files.Exists(Dir(a.Module), "obj", "project.assets.json")
 }

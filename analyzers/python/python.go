@@ -13,6 +13,7 @@ import (
 
 	"github.com/fossas/fossa-cli/buildtools/pip"
 	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -23,6 +24,7 @@ type Analyzer struct {
 	PythonVersion string
 
 	Pip     pip.Pip
+	Module  module.Module
 	Options Options
 }
 
@@ -32,12 +34,12 @@ type Options struct {
 	VirtualEnv       string `mapstructure:"venv"`
 }
 
-func New(opts map[string]interface{}) (*Analyzer, error) {
-	log.Logger.Debug("%#v", opts)
+func New(m module.Module) (*Analyzer, error) {
+	log.Logger.Debug("%#v", m.Options)
 
 	// Parse and validate options.
 	var options Options
-	err := mapstructure.Decode(opts, &options)
+	err := mapstructure.Decode(m.Options, &options)
 	if err != nil {
 		return nil, err
 	}
@@ -61,13 +63,14 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 			Cmd:       pipCmd,
 			PythonCmd: pythonCmd,
 		},
+		Module:  m,
 		Options: options,
 	}, nil
 }
 
 // Discover constructs modules in all directories with a `requirements.txt` or
 // `setup.py`.
-func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
+func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	// A map of directory to module. This is to avoid multiple modules in one
 	// directory e.g. if we find _both_ a `requirements.txt` and `setup.py`.
 	modules := make(map[string]module.Module)
@@ -113,48 +116,53 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 }
 
 // Clean logs a warning and does nothing for Python.
-func (a *Analyzer) Clean(m module.Module) error {
+func (a *Analyzer) Clean() error {
 	log.Logger.Warningf("Clean is not implemented for Python")
 	return nil
 }
 
-func (a *Analyzer) Build(m module.Module) error {
-	return a.Pip.Install(a.requirementsFile(m))
+func (a *Analyzer) Build() error {
+	return a.Pip.Install(a.requirementsFile(a.Module))
 }
 
-func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
+func (a *Analyzer) IsBuilt() (bool, error) {
 	return true, nil
 }
 
-func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
+func (a *Analyzer) Analyze() (graph.Deps, error) {
 	switch a.Options.Strategy {
 	case "deptree":
 		tree, err := a.Pip.DepTree()
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
-		imports, graph := FromTree(tree)
-		m.Imports = imports
-		m.Deps = graph
-		return m, nil
+		imports, deps := FromTree(tree)
+		return graph.Deps{
+			Direct:     imports,
+			Transitive: deps,
+		}, nil
 	case "pip":
 		reqs, err := a.Pip.List()
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
-		m.Imports = FromRequirements(reqs)
-		m.Deps = fromImports(m.Imports)
-		return m, nil
+		imports := FromRequirements(reqs)
+		return graph.Deps{
+			Direct:     imports,
+			Transitive: fromImports(imports),
+		}, nil
 	case "requirements":
 		fallthrough
 	default:
-		reqs, err := pip.FromFile(a.requirementsFile(m))
+		reqs, err := pip.FromFile(a.requirementsFile(a.Module))
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
-		m.Imports = FromRequirements(reqs)
-		m.Deps = fromImports(m.Imports)
-		return m, nil
+		imports := FromRequirements(reqs)
+		return graph.Deps{
+			Direct:     imports,
+			Transitive: fromImports(imports),
+		}, nil
 	}
 }
 

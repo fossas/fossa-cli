@@ -15,6 +15,7 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/sbt"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -28,12 +29,13 @@ type Analyzer struct {
 	JavaVersion string
 
 	SBT     sbt.SBT
+	Module  module.Module
 	Options Options
 }
 
 type Options struct{}
 
-func New(opts map[string]interface{}) (*Analyzer, error) {
+func New(m module.Module) (*Analyzer, error) {
 	// Set Java context variables
 	javaCmd, javaVersion, err := exec.Which("-version", os.Getenv("JAVA_BINARY"), "java")
 	if err != nil {
@@ -48,7 +50,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 
 	// Parse and validate options.
 	var options Options
-	err = mapstructure.Decode(opts, &options)
+	err = mapstructure.Decode(m.Options, &options)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +66,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 		SBT: sbt.SBT{
 			Bin: sbtCmd,
 		},
+		Module:  m,
 		Options: options,
 	}
 
@@ -71,10 +74,20 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 	return &analyzer, nil
 }
 
-func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
+func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	log.Logger.Debugf("%#v", dir)
+
+	// Construct SBT instance (for listing projects).
+	sbtCmd, _, err := exec.Which("-no-colors about", os.Getenv("SBT_BINARY"), "sbt")
+	if err != nil {
+		return nil, fmt.Errorf("could not find SBT binary (try setting $SBT_BINARY): %s", err.Error())
+	}
+	sbt := sbt.SBT{
+		Bin: sbtCmd,
+	}
+
 	var modules []module.Module
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		log.Logger.Debugf("Searching path: %#v", path)
 
 		if err != nil {
@@ -94,7 +107,7 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 			log.Logger.Debugf("Path has build.sbt")
 
 			dir := filepath.Dir(path)
-			projects, err := a.SBT.Projects(dir)
+			projects, err := sbt.Projects(dir)
 			if err != nil {
 				log.Logger.Debugf("Modules err: %#v %#v", err.Error(), err)
 				return err
@@ -124,20 +137,20 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 	return modules, nil
 }
 
-func (a *Analyzer) Clean(m module.Module) error {
-	project, configuration := ParseTarget(m.BuildTarget)
-	return a.SBT.Clean(m.Dir, project, configuration)
+func (a *Analyzer) Clean() error {
+	project, configuration := ParseTarget(a.Module.BuildTarget)
+	return a.SBT.Clean(a.Module.Dir, project, configuration)
 }
 
-func (a *Analyzer) Build(m module.Module) error {
-	project, configuration := ParseTarget(m.BuildTarget)
-	return a.SBT.Compile(m.Dir, project, configuration)
+func (a *Analyzer) Build() error {
+	project, configuration := ParseTarget(a.Module.BuildTarget)
+	return a.SBT.Compile(a.Module.Dir, project, configuration)
 }
 
 // IsBuilt checks whether `mvn dependency:list` produces an error.
-func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
-	project, configuration := ParseTarget(m.BuildTarget)
-	output, err := a.SBT.DependencyList(m.Dir, project, configuration)
+func (a *Analyzer) IsBuilt() (bool, error) {
+	project, configuration := ParseTarget(a.Module.BuildTarget)
+	output, err := a.SBT.DependencyList(a.Module.Dir, project, configuration)
 	if err != nil {
 		if strings.Contains(output, "Could not find artifact") {
 			return false, nil
@@ -147,18 +160,19 @@ func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
 	return output != "", nil
 }
 
-func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
-	log.Logger.Debugf("%#v", m)
+func (a *Analyzer) Analyze() (graph.Deps, error) {
+	log.Logger.Debugf("%#v", a.Module)
 
-	project, configuration := ParseTarget(m.BuildTarget)
-	imports, graph, err := a.SBT.DependencyTree(m.Dir, project, configuration)
+	project, configuration := ParseTarget(a.Module.BuildTarget)
+	imports, deps, err := a.SBT.DependencyTree(a.Module.Dir, project, configuration)
 	if err != nil {
-		return m, err
+		return graph.Deps{}, err
 	}
 
-	m.Imports = imports
-	m.Deps = graph
-	return m, nil
+	return graph.Deps{
+		Direct:     imports,
+		Transitive: deps,
+	}, nil
 }
 
 func ParseTarget(target string) (project string, configuration string) {

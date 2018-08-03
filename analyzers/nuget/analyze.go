@@ -5,42 +5,44 @@ import (
 
 	"github.com/fossas/fossa-cli/buildtools/dotnet"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/log"
-	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
-	log.Logger.Debugf("%#v", m)
+func (a *Analyzer) Analyze() (graph.Deps, error) {
+	log.Logger.Debugf("%#v", a.Module)
 	// Parse lockfile.
-	lockfile, err := dotnet.ReadLockfile(filepath.Join(Dir(m), "obj", "project.assets.json"))
+	lockfile, err := dotnet.ReadLockfile(filepath.Join(Dir(a.Module), "obj", "project.assets.json"))
 	if err != nil {
-		return m, err
+		return graph.Deps{}, err
 	}
 
 	// Compute project graph.
 	projects := make(map[string]dotnet.Manifest)
-	err = Projects(projects, m.BuildTarget)
+	err = Projects(projects, a.Module.BuildTarget)
 	if err != nil {
-		return m, err
+		return graph.Deps{}, err
 	}
-	root := projects[m.BuildTarget]
+	root := projects[a.Module.BuildTarget]
 	id := pkg.ID{
 		Type:     pkg.NuGet,
 		Name:     root.Name(),
 		Revision: root.Version(),
-		Location: m.BuildTarget,
+		Location: a.Module.BuildTarget,
 	}
 
 	// Compute package graph.
 	deps := make(map[pkg.ID]pkg.Package)
-	Packages(projects, lockfile, deps, m.BuildTarget)
+	Packages(projects, lockfile, deps, a.Module.BuildTarget)
 
-	m.Imports = deps[id].Imports
+	imports := deps[id].Imports
 	delete(deps, id)
-	m.Deps = deps
 
-	return m, nil
+	return graph.Deps{
+		Direct:     imports,
+		Transitive: deps,
+	}, nil
 }
 
 func Projects(projects map[string]dotnet.Manifest, projectFile string) error {
