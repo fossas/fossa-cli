@@ -9,7 +9,7 @@ defaults: &defaults
 jobs:
   build:
     <<: *defaults
-    working_directory: /home/go/src/github.com/fossas/fossa-cli
+    working_directory: /go/src/github.com/fossas/fossa-cli
     docker:
       - image: circleci/golang:1
     steps:
@@ -27,16 +27,16 @@ jobs:
           name: Compile CLI
           command: |
             # Invalidate cache for FOSSA CLI binary
-            rm -rf /home/go/pkg/linux_amd64/github.com/fossas/fossa-cli
-            rm -f /home/go/bin/fossa
+            rm -rf /go/pkg/linux_amd64/github.com/fossas/fossa-cli
+            rm -f /go/bin/fossa
             # Compile CLI
             make
       - save_cache:
           key: v1-gopkg-cache-{{ checksum "Gopkg.lock" }}
           paths:
-            - "/home/go/bin"
-            - "/home/go/pkg"
-            - "/home/go/src/github.com/fossas/fossa-cli/vendor"
+            - "/go/bin"
+            - "/go/pkg"
+            - "/go/src/github.com/fossas/fossa-cli/vendor"
       - run:
           name: Run unit tests
           command: |
