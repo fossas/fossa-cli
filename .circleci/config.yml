@@ -22,7 +22,7 @@ jobs:
             mkdir -p $WORKSPACE
       - restore_cache:
           keys:
-            - v1-gopkg-cache-{{ checksum "Gopkg.lock" }}
+            - v2-gopkg-cache-{{ checksum "Gopkg.lock" }}
       - run:
           name: Compile CLI
           command: |
