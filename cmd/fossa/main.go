@@ -20,19 +20,16 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/upload"
 )
 
-func main() {
-	app := cli.App{
-		Name:                 "fossa-cli",
-		Usage:                "Fast, portable and reliable dependency analysis (https://github.com/fossas/fossa-cli/)",
-		Version:              version.String(),
-		Action:               Run,
-		EnableBashCompletion: true,
-		Flags: []cli.Flag{
-			cli.BoolFlag{Name: flags.Short(analyze.ShowOutput), Usage: "run a complete analysis with output"},
-		},
-	}
-
-	app.Commands = []cli.Command{
+var App = cli.App{
+	Name:                 "fossa-cli",
+	Usage:                "Fast, portable and reliable dependency analysis (https://github.com/fossas/fossa-cli/)",
+	Version:              version.String(),
+	Action:               Run,
+	EnableBashCompletion: true,
+	Flags: flags.WithGlobalFlags([]cli.Flag{
+		cli.BoolFlag{Name: flags.Short(analyze.ShowOutput), Usage: "run a complete analysis with output"},
+	}),
+	Commands: []cli.Command{
 		initc.Cmd,
 		build.Cmd,
 		analyze.Cmd,
@@ -40,9 +37,11 @@ func main() {
 		report.Cmd,
 		test.Cmd,
 		update.Cmd,
-	}
+	},
+}
 
-	err := app.Run(os.Args)
+func main() {
+	err := App.Run(os.Args)
 	if err != nil {
 		switch e := err.(type) {
 		case *cli.ExitError:

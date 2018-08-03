@@ -18,6 +18,7 @@ import (
 	v1 "github.com/fossas/fossa-cli/config/file.v1"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
+	"github.com/fossas/fossa-cli/vcs"
 )
 
 var (
@@ -42,8 +43,14 @@ func Init(c *cli.Context) error {
 	filename = fname
 
 	// Third, try to open the local VCS repository.
-	// TODO: this will break if _within_ but not _at the root_ of a git repository
-	r, err := git.PlainOpen(".")
+	vcsDir, err := vcs.GetRepository(".")
+	if err == vcs.ErrNoNearestVCS {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	r, err := git.PlainOpen(vcsDir)
 	if err == git.ErrRepositoryNotExists {
 		return nil
 	}
