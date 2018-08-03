@@ -52,6 +52,7 @@ jobs:
       - run:
           name: Save artifacts
           command: |
+            cp -R $TEST_RESULTS $ARTIFACTS
             cp $(which fossa) $ARTIFACTS
       - run:
           name: Save workspace
