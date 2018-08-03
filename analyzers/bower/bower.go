@@ -55,9 +55,15 @@ func New(m module.Module) (*Analyzer, error) {
 		return nil, err
 	}
 
+	b, err := bower.New(bowerCmd, m.Dir)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not set up Bower")
+	}
+
 	analyzer := Analyzer{
 		BowerCmd:     bowerCmd,
 		BowerVersion: bowerVersion,
+		Bower:        *b,
 
 		Module:  m,
 		Options: options,
@@ -111,21 +117,12 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 }
 
 func (a *Analyzer) Clean() error {
-	// TODO: this is an example of when analyzer.New should take a module.
-	b, err := bower.New(a.BowerCmd, a.Module.Dir)
-	if err != nil {
-		return err
-	}
-	return b.Clean()
+	return a.Bower.Clean()
 }
 
 // Build runs `bower install --production`
 func (a *Analyzer) Build() error {
-	b, err := bower.New(a.BowerCmd, a.Module.Dir)
-	if err != nil {
-		return err
-	}
-	return b.Install(true)
+	return a.Bower.Install(true)
 }
 
 // IsBuilt checks for the existence of a components folder.
@@ -146,12 +143,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	b, err := bower.New(a.BowerCmd, a.Module.Dir)
-	if err != nil {
-		return graph.Deps{}, err
-	}
-
-	p, err := b.List()
+	p, err := a.Bower.List()
 	if err != nil {
 		return graph.Deps{}, err
 	}
