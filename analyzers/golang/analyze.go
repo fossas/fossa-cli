@@ -3,7 +3,7 @@ package golang
 import (
 	"github.com/pkg/errors"
 
-	// Each of these build tools provide a resolver.Resolver
+	// Each of these build tools provides a resolver.Resolver
 	"github.com/fossas/fossa-cli/buildtools/dep"
 	"github.com/fossas/fossa-cli/buildtools/gdm"
 	"github.com/fossas/fossa-cli/buildtools/glide"
@@ -14,20 +14,21 @@ import (
 
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/errutil"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/log"
-	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
 // Analyze builds a dependency graph using go list and then looks up revisions
 // using tool-specific lockfiles.
-func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
+func (a *Analyzer) Analyze() (graph.Deps, error) {
+	m := a.Module
 	log.Logger.Debug("%#v", m)
 
 	// Get Go project.
 	project, err := a.Project(m.BuildTarget)
 	if err != nil {
-		return m, err
+		return graph.Deps{}, err
 	}
 	log.Logger.Debugf("Go project: %#v", project)
 
@@ -36,63 +37,63 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	switch a.Options.Strategy {
 	case "manifest:dep":
 		if a.Options.LockfilePath == "" {
-			return m, errors.New("manifest strategy specified without lockfile path")
+			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
 		}
 		r, err = dep.FromFile(a.Options.LockfilePath)
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
 	case "manifest:gdm":
 		if a.Options.LockfilePath == "" {
-			return m, errors.New("manifest strategy specified without lockfile path")
+			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
 		}
 		r, err = gdm.FromFile(a.Options.LockfilePath)
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
 	case "manifest:glide":
 		if a.Options.LockfilePath == "" {
-			return m, errors.New("manifest strategy specified without lockfile path")
+			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
 		}
 		r, err = glide.FromFile(a.Options.LockfilePath)
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
 	case "manifest:godep":
 		if a.Options.LockfilePath == "" {
-			return m, errors.New("manifest strategy specified without lockfile path")
+			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
 		}
 		r, err = godep.FromFile(a.Options.LockfilePath)
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
 	case "manifest:govendor":
 		if a.Options.LockfilePath == "" {
-			return m, errors.New("manifest strategy specified without lockfile path")
+			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
 		}
 		r, err = govendor.FromFile(a.Options.LockfilePath)
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
 	case "manifest:vndr":
 		if a.Options.LockfilePath == "" {
-			return m, errors.New("manifest strategy specified without lockfile path")
+			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
 		}
 		r, err = vndr.FromFile(a.Options.LockfilePath)
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
 
 	// Resolve revisions by traversing the local $GOPATH and calling the package's
 	// VCS.
 	case "gopath-vcs":
-		return m, errutil.ErrNotImplemented
+		return graph.Deps{}, errutil.ErrNotImplemented
 
 	// Read revisions from an auto-detected tool manifest.
 	default:
 		r, err = a.ResolverFromLockfile(project.Tool, project.Manifest)
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
 	}
 
@@ -101,12 +102,12 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	// Use `go list` to get imports and deps of module.
 	main, err := a.Go.ListOne(m.BuildTarget)
 	if err != nil {
-		return m, err
+		return graph.Deps{}, err
 	}
 	log.Logger.Debugf("Go main package: %#v", main)
 	deps, err := a.Go.List(main.Deps)
 	if err != nil {
-		return m, err
+		return graph.Deps{}, err
 	}
 
 	// Construct map of import path to package.
@@ -130,7 +131,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		// Resolve dependency.
 		revision, err := a.Revision(project, r, gopkg)
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
 		id := revision.Resolved
 
@@ -145,7 +146,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 			log.Logger.Debugf("Resolving dependency import: %#v", i)
 			revision, err := a.Revision(project, r, gopkgMap[i])
 			if err != nil {
-				return m, errors.Wrapf(err, "could not resolve %s", i)
+				return graph.Deps{}, errors.Wrapf(err, "could not resolve %s", i)
 			}
 			imports = append(imports, revision)
 		}
@@ -161,7 +162,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	for _, i := range main.Imports {
 		revision, err := a.Revision(project, r, gopkgMap[i])
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
 
 		imports = append(imports, revision)
@@ -169,5 +170,8 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 
 	m.Deps = pkgs
 	m.Imports = imports
-	return m, nil
+	return graph.Deps{
+		Direct:     imports,
+		Transitive: pkgs,
+	}, nil
 }

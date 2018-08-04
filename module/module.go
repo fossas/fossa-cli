@@ -16,7 +16,6 @@ type Module struct {
 	Dir         string `yaml:"cwd,omitempty"`    // CWD to analyze the module from.
 
 	Options map[string]interface{} `yaml:"options,omitempty"` // Analyzer option struct of the module type.
-	Context interface{}            `yaml:"-"`                 // Extra metadata set by analyzers.
 
 	Imports []pkg.Import           `yaml:"-"` // Direct dependencies of the root package.
 	Deps    map[pkg.ID]pkg.Package `yaml:"-"` // All transitive dependencies of the root package (including Imports).

@@ -49,14 +49,14 @@ var (
 	DebugF  = cli.BoolFlag{Name: Debug, Usage: "print debug information to stderr"}
 )
 
-func WithModulesFlags(f []cli.Flag) []cli.Flag {
-	return append(f, Modules...)
+func WithOptions(f []cli.Flag) []cli.Flag {
+	return append(f, Options...)
 }
 
 var (
-	Modules = []cli.Flag{OptionF}
+	Options = []cli.Flag{OptionF}
 	Option  = "option"
-	OptionF = cli.StringSliceFlag{Name: Option, Usage: "options for the module (format is `key:value` e.g. allow-unresolved:true)"}
+	OptionF = cli.StringSliceFlag{Name: Option, Usage: "set configurable options (format is `key:value` e.g. allow-unresolved:true)"}
 )
 
 func WithReportTemplateFlags(f []cli.Flag) []cli.Flag {

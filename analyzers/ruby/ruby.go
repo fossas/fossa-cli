@@ -13,6 +13,7 @@ import (
 
 	"github.com/fossas/fossa-cli/buildtools/bundler"
 	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -28,6 +29,7 @@ type Analyzer struct {
 	BundlerVersion string
 
 	Bundler bundler.Bundler
+	Module  module.Module
 	Options Options
 }
 
@@ -36,12 +38,12 @@ type Options struct {
 	LockfilePath string `mapstructure:"gemfile-lock-path"`
 }
 
-func New(opts map[string]interface{}) (*Analyzer, error) {
-	log.Logger.Debug("%#v", opts)
+func New(m module.Module) (*Analyzer, error) {
+	log.Logger.Debug("%#v", m.Options)
 
 	// Parse and validate options.
 	var options Options
-	err := mapstructure.Decode(opts, &options)
+	err := mapstructure.Decode(m.Options, &options)
 	if err != nil {
 		return nil, err
 	}
@@ -66,12 +68,13 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 		Bundler: bundler.Bundler{
 			Cmd: bundlerCmd,
 		},
+		Module:  m,
 		Options: options,
 	}, nil
 }
 
 // Discover constructs modules in all directories with a `Gemfile`.
-func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
+func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -101,18 +104,18 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 }
 
 // Clean logs a warning and does nothing for Ruby.
-func (a *Analyzer) Clean(m module.Module) error {
+func (a *Analyzer) Clean() error {
 	// TODO: maybe this should delete `vendor/` for `bundle --deployment`
 	// installations? How would we detect that?
 	log.Logger.Warningf("Clean is not implemented for Ruby")
 	return nil
 }
 
-func (a *Analyzer) Build(m module.Module) error {
+func (a *Analyzer) Build() error {
 	return a.Bundler.Install()
 }
 
-func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
+func (a *Analyzer) IsBuilt() (bool, error) {
 	_, err := a.Bundler.List()
 	if err != nil {
 		return false, err
@@ -120,8 +123,8 @@ func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
 	return true, nil
 }
 
-func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
-	lockfilePath := filepath.Join(m.Dir, "Gemfile.lock")
+func (a *Analyzer) Analyze() (graph.Deps, error) {
+	lockfilePath := filepath.Join(a.Module.Dir, "Gemfile.lock")
 	if a.Options.LockfilePath != "" {
 		lockfilePath = a.Options.LockfilePath
 	}
@@ -130,35 +133,38 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	case "list":
 		gems, err := a.Bundler.List()
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
-		imports, graph := FromGems(gems)
-		m.Imports = imports
-		m.Deps = graph
-		return m, nil
+		imports, deps := FromGems(gems)
+		return graph.Deps{
+			Direct:     imports,
+			Transitive: deps,
+		}, nil
 	case "lockfile":
 		lockfile, err := bundler.FromLockfile(lockfilePath)
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
-		imports, graph := FromLockfile(lockfile)
-		m.Imports = imports
-		m.Deps = graph
-		return m, nil
+		imports, deps := FromLockfile(lockfile)
+		return graph.Deps{
+			Direct:     imports,
+			Transitive: deps,
+		}, nil
 	case "list-lockfile":
 		fallthrough
 	default:
 		lockfile, err := bundler.FromLockfile(lockfilePath)
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
 		gems, err := a.Bundler.List()
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
-		imports, graph := FilteredLockfile(gems, lockfile)
-		m.Imports = imports
-		m.Deps = graph
-		return m, nil
+		imports, deps := FilteredLockfile(gems, lockfile)
+		return graph.Deps{
+			Direct:     imports,
+			Transitive: deps,
+		}, nil
 	}
 }

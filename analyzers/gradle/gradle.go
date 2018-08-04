@@ -17,6 +17,7 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/gradle"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -25,6 +26,7 @@ import (
 type Analyzer struct {
 	GradleCmd string
 
+	Module  module.Module
 	Options Options
 }
 
@@ -38,17 +40,18 @@ type Options struct {
 	Configuration string `mapstructure:"configuration"`
 }
 
-func New(opts map[string]interface{}) (*Analyzer, error) {
-	log.Logger.Debugf("%#v", opts)
+func New(m module.Module) (*Analyzer, error) {
+	log.Logger.Debugf("%#v", m.Options)
 
 	var options Options
-	err := mapstructure.Decode(opts, &options)
+	err := mapstructure.Decode(m.Options, &options)
 	if err != nil {
 		return nil, err
 	}
 
 	analyzer := Analyzer{
 		GradleCmd: options.Cmd,
+		Module:    m,
 		Options:   options,
 	}
 
@@ -69,7 +72,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 //
 // TODO: use the output of `gradle projects` and try `gradle
 // <project>:dependencies` for each project?
-func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
+func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	log.Logger.Debugf("%#v", dir)
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -126,25 +129,25 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 	return modules, nil
 }
 
-func (a *Analyzer) Clean(m module.Module) error {
+func (a *Analyzer) Clean() error {
 	return nil
 }
 
-func (a *Analyzer) Build(m module.Module) error {
+func (a *Analyzer) Build() error {
 	return nil
 }
 
-func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
+func (a *Analyzer) IsBuilt() (bool, error) {
 	return true, nil
 }
 
-func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
-	log.Logger.Debugf("Running Gradle analysis: %#v", m)
+func (a *Analyzer) Analyze() (graph.Deps, error) {
+	log.Logger.Debugf("Running Gradle analysis: %#v", a.Module)
 
 	// Get packages.
 	g := gradle.Gradle{
 		Cmd:    a.GradleCmd,
-		Dir:    m.Dir,
+		Dir:    a.Module.Dir,
 		Online: a.Options.Online,
 	}
 	var imports []gradle.Dependency
@@ -153,18 +156,18 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	if a.Options.Task != "" {
 		imports, deps, err = g.DependenciesTask(strings.Split(a.Options.Task, " ")...)
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
 	} else if a.Options.Project != "" {
 		imports, deps, err = g.Dependencies(a.Options.Project, a.Options.Configuration)
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
 	} else {
-		targets := strings.Split(m.BuildTarget, ":")
+		targets := strings.Split(a.Module.BuildTarget, ":")
 		imports, deps, err = g.Dependencies(targets[0], targets[1])
 		if err != nil {
-			return m, err
+			return graph.Deps{}, err
 		}
 	}
 
@@ -182,7 +185,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	}
 
 	// Set transitive dependencies.
-	graph := make(map[pkg.ID]pkg.Package)
+	d := make(map[pkg.ID]pkg.Package)
 	for parent, children := range deps {
 		id := pkg.ID{
 			Type:     pkg.Gradle,
@@ -200,13 +203,14 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 				},
 			})
 		}
-		graph[id] = pkg.Package{
+		d[id] = pkg.Package{
 			ID:      id,
 			Imports: imports,
 		}
 	}
 
-	m.Imports = i
-	m.Deps = graph
-	return m, nil
+	return graph.Deps{
+		Direct:     i,
+		Transitive: d,
+	}, nil
 }

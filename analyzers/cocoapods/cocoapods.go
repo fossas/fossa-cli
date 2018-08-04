@@ -14,6 +14,7 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/cocoapods"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -25,12 +26,13 @@ type Analyzer struct {
 
 	Pod cocoapods.Cocoapods
 
+	Module  module.Module
 	Options Options
 }
 
 type Options struct{}
 
-func New(opts map[string]interface{}) (*Analyzer, error) {
+func New(m module.Module) (*Analyzer, error) {
 	// Set Cocoapods context variables
 	podCmd, podVersion, err := exec.Which("--version", os.Getenv("COCOAPODS_BINARY"), "pod")
 	if err != nil {
@@ -39,7 +41,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 
 	// Parse and validate options.
 	var options Options
-	err = mapstructure.Decode(opts, &options)
+	err = mapstructure.Decode(m.Options, &options)
 	if err != nil {
 		return nil, err
 	}
@@ -53,6 +55,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 			Bin: podCmd,
 		},
 
+		Module:  m,
 		Options: options,
 	}
 
@@ -61,7 +64,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 }
 
 // Discover constructs modules in all directories with a `Podfile`.
-func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
+func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -91,10 +94,10 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 }
 
 // IsBuilt checks whether `Podfile.lock` exists
-func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
-	log.Logger.Debugf("Checking Cocoapods build: %#v", m)
+func (a *Analyzer) IsBuilt() (bool, error) {
+	log.Logger.Debugf("Checking Cocoapods build: %#v", a.Module)
 
-	isBuilt, err := files.Exists(m.Dir, "Podfile.lock")
+	isBuilt, err := files.Exists(a.Module.Dir, "Podfile.lock")
 	if err != nil {
 		return false, err
 	}
@@ -103,19 +106,19 @@ func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
 	return isBuilt, nil
 }
 
-func (a *Analyzer) Clean(m module.Module) error {
+func (a *Analyzer) Clean() error {
 	log.Logger.Warning("Clean is not implemented for Cocoapods")
 	return nil
 }
 
-func (a *Analyzer) Build(m module.Module) error {
-	return a.Pod.Install(m.Dir)
+func (a *Analyzer) Build() error {
+	return a.Pod.Install(a.Module.Dir)
 }
 
-func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
-	lockfile, err := cocoapods.FromLockfile(m.Dir, "Podfile.lock")
+func (a *Analyzer) Analyze() (graph.Deps, error) {
+	lockfile, err := cocoapods.FromLockfile(a.Module.Dir, "Podfile.lock")
 	if err != nil {
-		return module.Module{}, err
+		return graph.Deps{}, err
 	}
 
 	// Construct a map of spec repositories.
@@ -164,7 +167,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	}
 
 	// Construct dependency graph edges.
-	graph := make(map[pkg.ID]pkg.Package)
+	deps := make(map[pkg.ID]pkg.Package)
 	for _, pod := range lockfile.Pods {
 		id := nameToID[PodName(pod.Name)]
 
@@ -176,7 +179,7 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 			})
 		}
 
-		graph[id] = pkg.Package{
+		deps[id] = pkg.Package{
 			ID:      id,
 			Imports: imports,
 		}
@@ -191,13 +194,14 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		})
 	}
 
-	m.Deps = graph
-	m.Imports = imports
-
-	return m, nil
+	return graph.Deps{
+		Direct:     imports,
+		Transitive: deps,
+	}, nil
 }
 
-// PodName strips subspecs.
+// PodName strips subspecs. See https://guides.cocoapods.org/syntax/podspec.html#subspec
+// for details.
 func PodName(spec string) string {
 	return strings.Split(spec, "/")[0]
 }

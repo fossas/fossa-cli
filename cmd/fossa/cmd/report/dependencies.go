@@ -11,7 +11,7 @@ import (
 var dependenciesCmd = cli.Command{
 	Name:   "dependencies",
 	Usage:  "Generate dependencies report",
-	Flags:  flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithModulesFlags(flags.WithReportTemplateFlags([]cli.Flag{})))),
+	Flags:  flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithOptions(flags.WithReportTemplateFlags([]cli.Flag{})))),
 	Action: dependenciesRun,
 }
 

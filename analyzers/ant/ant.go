@@ -16,6 +16,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/fossas/fossa-cli/buildtools/maven"
+	"github.com/fossas/fossa-cli/graph"
 
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
@@ -32,6 +33,7 @@ type Analyzer struct {
 	JavaCmd     string
 	JavaVersion string
 
+	Module  module.Module
 	Options Options
 }
 
@@ -40,7 +42,7 @@ type Options struct {
 }
 
 // Initialize collects metadata on Java and SBT binaries
-func New(opts map[string]interface{}) (*Analyzer, error) {
+func New(m module.Module) (*Analyzer, error) {
 	log.Logger.Debugf("Initializing Ant builder...")
 
 	// Set Java context variables
@@ -65,7 +67,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 
 	// Decode options.
 	var options Options
-	err = mapstructure.Decode(opts, &options)
+	err = mapstructure.Decode(m.Options, &options)
 	if err != nil {
 		return nil, err
 	}
@@ -77,23 +79,24 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 		JavaCmd:     javaCmd,
 		JavaVersion: javaVersion,
 
+		Module:  m,
 		Options: options,
 	}, nil
 }
 
 // Clean is currently not implemented
-func (a *Analyzer) Clean(m module.Module) error {
+func (a *Analyzer) Clean() error {
 	return errors.New("Clean is not implemented for Ant")
 }
 
 // Build is currently not implemented
-func (a *Analyzer) Build(m module.Module) error {
+func (a *Analyzer) Build() error {
 	return errors.New("Build is not implemented for Ant")
 }
 
 // Analyze resolves a lib directory and parses the jars inside
-func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
-	log.Logger.Debugf("Running Ant analysis: %#v in %s", m, m.Dir)
+func (a *Analyzer) Analyze() (graph.Deps, error) {
+	log.Logger.Debugf("Running Ant analysis: %#v in %s", a.Module, a.Module.Dir)
 
 	libdir := "lib"
 	if a.Options.LibDir != "" {
@@ -101,13 +104,13 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	}
 
 	log.Logger.Debugf("resolving ant libs in: %s", libdir)
-	if ok, err := files.ExistsFolder(m.Dir, libdir); !ok || err != nil {
-		return m, errors.New("unable to resolve library directory, try specifying it using the `modules.options.libdir` property in `fossa.yml`")
+	if ok, err := files.ExistsFolder(a.Module.Dir, libdir); !ok || err != nil {
+		return graph.Deps{}, errors.New("unable to resolve library directory, try specifying it using the `modules.options.libdir` property in `fossa.yml`")
 	}
 
 	jarFilePaths, err := doublestar.Glob(filepath.Join(libdir, "*.jar"))
 	if err != nil {
-		return m, err
+		return graph.Deps{}, err
 	}
 
 	log.Logger.Debugf("Running Ant analysis: %#v", jarFilePaths)
@@ -126,8 +129,9 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 		}
 	}
 
-	m.Imports = imports
-	return m, nil
+	return graph.Deps{
+		Direct: imports,
+	}, nil
 }
 
 func getPOMFromJar(path string) (maven.Manifest, error) {
@@ -243,12 +247,12 @@ func locatorFromJar(path string) (pkg.ID, error) {
 }
 
 // IsBuilt always returns true for Ant builds
-func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
+func (a *Analyzer) IsBuilt() (bool, error) {
 	return true, nil
 }
 
 // Discover returns a root build.xml if found, and build configs for all sub-projects otherwise
-func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
+func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	_, err := os.Stat(filepath.Join(dir, "build.xml"))
 	if err == nil {
 		// find the root build, as it can invoke tasks sub-builds

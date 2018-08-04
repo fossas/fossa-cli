@@ -19,6 +19,7 @@ import (
 var (
 	Update     = "update"
 	IncludeAll = "include-all"
+	Type       = "type"
 )
 
 // Cmd exports the `init` CLI command.
@@ -26,10 +27,11 @@ var Cmd = cli.Command{
 	Name:   "init",
 	Usage:  "Initialize a .fossa.yml configuration file",
 	Action: Run,
-	Flags: flags.WithGlobalFlags([]cli.Flag{
-		cli.BoolFlag{Name: Update, Usage: "update an existing configuration file"},
+	Flags: flags.WithGlobalFlags(flags.WithOptions([]cli.Flag{
+		// cli.BoolFlag{Name: Update, Usage: "update an existing configuration file"},
 		cli.BoolFlag{Name: IncludeAll, Usage: "include suspicious modules (e.g. `docs`, `test` or `example` in name)"},
-	}),
+		cli.StringSliceFlag{Name: Type, Usage: "the module types to check for"},
+	})),
 }
 
 var _ cli.ActionFunc = Run
@@ -40,17 +42,17 @@ func Run(ctx *cli.Context) error {
 		log.Logger.Fatalf("Could not initialize: %s", err.Error())
 	}
 
-	if err != nil {
-		log.Logger.Fatalf("Could not read configuration: %s", err.Error())
-	}
-
 	hasConfigFile, err := config.ExistsFile()
 	if err != nil {
 		log.Logger.Fatalf("Could not detect configuration file: %s", err.Error())
 	}
 
 	if !hasConfigFile || ctx.Bool(Update) {
-		modules, err := Do(ctx.Bool(IncludeAll))
+		options, err := config.Options()
+		if err != nil {
+			log.Logger.Fatalf("Could not parse options: %s", err.Error())
+		}
+		modules, err := Do(ctx.Bool(IncludeAll), options)
 		if err != nil {
 			log.Logger.Fatalf("Could not run init: %s", err.Error())
 		}
@@ -65,23 +67,14 @@ func Run(ctx *cli.Context) error {
 }
 
 // Do discovers modules within the current working directory.
-func Do(includeAll bool) ([]module.Module, error) {
+func Do(includeAll bool, options map[string]interface{}) ([]module.Module, error) {
 	defer log.StopSpinner()
 	log.ShowSpinner("Initializing...")
 
 	// Discover all modules.
-	var discovered []module.Module
-	for _, t := range pkg.AllTypes {
-		analyzer, err := analyzers.New(t, nil)
-		if err != nil {
-			log.Logger.Warningf("Could not initialize analyzer for type %s: %s", t.String(), err.Error())
-			continue
-		}
-		modules, err := analyzer.Discover(".")
-		if err != nil {
-			log.Logger.Warningf("Discovery failed for analyzer %s: %s", t.String(), err.Error())
-		}
-		discovered = append(discovered, modules...)
+	discovered, err := analyzers.Discover(".", options)
+	if err != nil {
+		log.Logger.Warningf("An error occurred during discovery: %s", err.Error())
 	}
 
 	// TODO: Check whether modules were previously ignored.
