@@ -6,6 +6,7 @@ import (
 
 	"github.com/fossas/fossa-cli/analyzers/ant"
 	"github.com/fossas/fossa-cli/analyzers/bower"
+	"github.com/fossas/fossa-cli/analyzers/carthage"
 	"github.com/fossas/fossa-cli/analyzers/cocoapods"
 	"github.com/fossas/fossa-cli/analyzers/golang"
 	"github.com/fossas/fossa-cli/analyzers/gradle"
@@ -46,6 +47,8 @@ func New(m module.Module) (Analyzer, error) {
 		return ant.New(m)
 	case pkg.Bower:
 		return bower.New(m)
+	case pkg.Carthage:
+		return carthage.New(m)
 	case pkg.Cocoapods:
 		return cocoapods.New(m)
 	case pkg.Composer:

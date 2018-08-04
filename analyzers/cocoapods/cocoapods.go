@@ -88,7 +88,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("Could not find Ruby package manifests: %s", err.Error())
+		return nil, fmt.Errorf("Could not find Cocoapods package manifests: %s", err.Error())
 	}
 	return modules, nil
 }

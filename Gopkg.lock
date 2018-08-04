@@ -157,6 +157,12 @@
   revision = "41c1bbb0804a2994dae69502a8c76e7c456ad45e"
 
 [[projects]]
+  name = "github.com/rveen/ogdl"
+  packages = ["."]
+  revision = "9c9b3105ea3ec8a13b76adc11b81e419995fe2e0"
+  version = "v1.1"
+
+[[projects]]
   name = "github.com/sergi/go-diff"
   packages = ["diffmatchpatch"]
   revision = "1744e2970ca51c86172c8190fadad617561ed6e7"
@@ -286,6 +292,12 @@
   version = "v1.1.0"
 
 [[projects]]
+  name = "gopkg.in/rveen/ogdl.v1"
+  packages = ["."]
+  revision = "9c9b3105ea3ec8a13b76adc11b81e419995fe2e0"
+  version = "v1.1"
+
+[[projects]]
   name = "gopkg.in/src-d/go-billy.v4"
   packages = [
     ".",
@@ -359,6 +371,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7b91189a5340c9dda6d390cb659cd16571dbaaf03af665ee1ea4c72bf92683bb"
+  inputs-digest = "114c37925fa91500f875c230a58d32dc68ecc52940654c419829c823ff1ac46a"
   solver-name = "gps-cdcl"
   solver-version = 1

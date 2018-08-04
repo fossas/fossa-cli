@@ -61,3 +61,7 @@
 [prune]
   go-tests = true
   unused-packages = true
+
+[[constraint]]
+  name = "gopkg.in/rveen/ogdl.v1"
+  version = "1.1.0"
