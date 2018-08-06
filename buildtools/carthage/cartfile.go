@@ -9,7 +9,7 @@ import (
 	"github.com/rveen/ogdl"
 )
 
-type ResolvedCartfile struct {
+type Package struct {
 	Name         string // Name of project
 	Version      string // Version of project
 	Dependencies []Requirement
@@ -23,10 +23,10 @@ type Requirement struct {
 	CheckoutName string // if github repo, i.e. "Quick/Nimble", Name will be "Nimble"
 }
 
-// Attempt to construct a ResolvedCartfile from a dep given the parent directory
-func (r Requirement) CartfileFromRequirement(dir string) (ResolvedCartfile, error) {
+// Attempt to construct a Package from a dep given the parent directory
+func (r Requirement) PackageFromRequirement(dir string) (Package, error) {
 	log.Logger.Debugf("Attempting to build Cartfile with dep %#v", r.CheckoutName)
-	var resolvedCartfile ResolvedCartfile
+	var resolvedCartfile Package
 
 	requirementDirectory := filepath.Join(dir, "Carthage/Checkouts", r.CheckoutName)
 
@@ -82,11 +82,11 @@ _
 		jspahrsummers/xcconfigs
 			0.9
 */
-func FromResolvedCartfile(projectName string, dir string) (ResolvedCartfile, error) {
+func FromResolvedCartfile(projectName string, dir string) (Package, error) {
 	cartfilePath := filepath.Join(dir, "Cartfile.resolved")
 	checkoutsDir := filepath.Join(dir, "Carthage/Checkouts")
 	log.Logger.Debugf("Parsing Cartfile.resolved at %#v", cartfilePath)
-	var cartfile ResolvedCartfile
+	var cartfile Package
 	cartfileGraph := ogdl.FromFile(cartfilePath)
 
 	var allDependencies []Requirement

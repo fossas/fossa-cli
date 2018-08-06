@@ -165,9 +165,9 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	return m, nil
 }
 
-func recurseDeps(pkgMap map[pkg.ID]pkg.Package, currentCartfile carthage.ResolvedCartfile) {
-	log.Logger.Debugf("Searching Carthage deps for project %#v", currentCartfile.Name)
-	for _, dep := range currentCartfile.Dependencies {
+func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p carthage.Package) {
+	log.Logger.Debugf("Searching Carthage deps for project %#v", p.Name)
+	for _, dep := range p.Dependencies {
 		// Construct ID.
 		id := pkg.ID{
 			Type:     pkg.Carthage,
@@ -181,13 +181,13 @@ func recurseDeps(pkgMap map[pkg.ID]pkg.Package, currentCartfile carthage.Resolve
 		}
 
 		// Get direct imports.
-		var imports make([]pkg.Import, 0)
+		var imports []pkg.Import
 
 		// Get Transitive Dep Info
-		newCartfile, err := dep.CartfileFromRequirement(currentCartfile.Dir)
+		newCartfile, err := dep.PackageFromRequirement(p.Dir)
 
 		if err != nil {
-			log.Logger.Warningf("Error parsing Cartfile.resolved at %#v: %#v. Continuing...", currentCartfile.Dir, err.Error())
+			log.Logger.Warningf("Error parsing Cartfile.resolved at %#v: %#v. Continuing...", p.Dir, err.Error())
 		} else {
 			for _, i := range newCartfile.Dependencies {
 				imports = append(imports, pkg.Import{
