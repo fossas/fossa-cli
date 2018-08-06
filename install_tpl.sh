@@ -109,11 +109,10 @@ function install {
   # DO NOT REMOVE THE FOLLOWING LINES. THEY ARE AUTOMATICALLY POPULATED DURING
   # THE RELEASE PROCESS.
   # ============= DO NOT EDIT ==================
-  # LATEST_STABLE_RELEASE=
   # RELEASE=
   # ============= =========== ==================
 
-  VERSION=${LATEST_STABLE_RELEASE#v}
+  VERSION=${RELEASE#v}
 
   echo "Installing $USER/$REPO $RELEASE..."
   RELEASE_URL="$GH/$USER/$REPO/releases/download/$RELEASE"
