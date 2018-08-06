@@ -292,12 +292,6 @@
   version = "v1.1.0"
 
 [[projects]]
-  name = "gopkg.in/rveen/ogdl.v1"
-  packages = ["."]
-  revision = "9c9b3105ea3ec8a13b76adc11b81e419995fe2e0"
-  version = "v1.1"
-
-[[projects]]
   name = "gopkg.in/src-d/go-billy.v4"
   packages = [
     ".",
@@ -371,6 +365,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "114c37925fa91500f875c230a58d32dc68ecc52940654c419829c823ff1ac46a"
+  inputs-digest = "ebd18a400874f9bacbabf2a2faa45ae090d943c796e48e53b047db09e7ab19a8"
   solver-name = "gps-cdcl"
   solver-version = 1
