@@ -135,7 +135,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 	// actual manifest.
 	bowerComponentsDir := config.Directory
 	if !filepath.IsAbs(bowerComponentsDir) {
-		bowerComponentsDir = filepath.Join(m.Dir, config.Directory)
+		bowerComponentsDir = filepath.Join(a.Module.Dir, config.Directory)
 	}
 	isBuilt, err := files.ExistsFolder(bowerComponentsDir)
 	if err != nil {
