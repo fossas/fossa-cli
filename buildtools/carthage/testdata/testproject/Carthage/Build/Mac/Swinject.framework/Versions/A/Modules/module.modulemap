@@ -1,0 +1,11 @@
+framework module Swinject {
+  umbrella header "Swinject.h"
+
+  export *
+  module * { export * }
+}
+
+module Swinject.Swift {
+    header "Swinject-Swift.h"
+    requires objc
+}

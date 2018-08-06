@@ -1,0 +1,501 @@
+BCSymbolMap Version: 2.0
++[OCMockObject initialize]
++[OCMockObject mockForClass:]
++[OCMockObject mockForProtocol:]
++[OCMockObject partialMockForObject:]
++[OCMockObject niceMockForClass:]
++[OCMockObject niceMockForProtocol:]
++[OCMockObject _makeNice:]
++[OCMockObject observerMock]
+-[OCMockObject init]
+-[OCMockObject dealloc]
+-[OCMockObject description]
+-[OCMockObject addStub:]
+-[OCMockObject addExpectation:]
+-[OCMockObject setExpectationOrderMatters:]
+-[OCMockObject stopMocking]
+-[OCMockObject stub]
+-[OCMockObject expect]
+-[OCMockObject reject]
+-[OCMockObject verify]
+-[OCMockObject verifyAtLocation:]
+-[OCMockObject verifyWithDelay:]
+-[OCMockObject verifyWithDelay:atLocation:]
+-[OCMockObject verifyInvocation:]
+-[OCMockObject verifyInvocation:atLocation:]
+-[OCMockObject forwardingTargetForSelector:]
+-[OCMockObject handleSelector:]
+-[OCMockObject forwardInvocation:]
+-[OCMockObject handleInvocation:]
+-[OCMockObject _nextExpectedInvocation]
+-[OCMockObject handleUnRecordedInvocation:]
+-[OCMockObject doesNotRecognizeSelector:]
+-[OCMockObject _stubDescriptions:]
+Apple LLVM version 9.1.0 (clang-902.0.39.2)
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMockObject.m
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source
+-[OCClassMockObject initWithClass:]
+-[OCClassMockObject dealloc]
+-[OCClassMockObject description]
+-[OCClassMockObject mockedClass]
+-[OCClassMockObject stopMocking]
+-[OCClassMockObject addStub:]
+-[OCClassMockObject prepareClassForClassMethodMocking]
+___54-[OCClassMockObject prepareClassForClassMethodMocking]_block_invoke
+___copy_helper_block_
+___destroy_helper_block_
+-[OCClassMockObject setupForwarderForClassMethodSelector:]
+-[OCClassMockObject forwardInvocationForClassObject:]
+-[OCClassMockObject initializeForClassObject]
+-[OCClassMockObject methodSignatureForSelector:]
+-[OCClassMockObject mockObjectClass]
+-[OCClassMockObject class]
+-[OCClassMockObject respondsToSelector:]
+-[OCClassMockObject isKindOfClass:]
+-[OCClassMockObject conformsToProtocol:]
+-[OCClassMockObject(NSIsKindsImplementation) isNSValue__]
+-[OCClassMockObject(NSIsKindsImplementation) isNSTimeZone__]
+-[OCClassMockObject(NSIsKindsImplementation) isNSSet__]
+-[OCClassMockObject(NSIsKindsImplementation) isNSOrderedSet__]
+-[OCClassMockObject(NSIsKindsImplementation) isNSNumber__]
+-[OCClassMockObject(NSIsKindsImplementation) isNSDate__]
+-[OCClassMockObject(NSIsKindsImplementation) isNSString__]
+-[OCClassMockObject(NSIsKindsImplementation) isNSDictionary__]
+-[OCClassMockObject(NSIsKindsImplementation) isNSData__]
+-[OCClassMockObject(NSIsKindsImplementation) isNSArray__]
+___block_descriptor_tmp
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCClassMockObject.m
+__destroy_helper_block_
+__copy_helper_block_
+__54-[OCClassMockObject prepareClassForClassMethodMocking]_block_invoke
+-[OCPartialMockObject initWithObject:]
+-[OCPartialMockObject dealloc]
+-[OCPartialMockObject description]
+-[OCPartialMockObject realObject]
+-[OCPartialMockObject assertClassIsSupported:]
+-[OCPartialMockObject classToSubclassForObject:]
+-[OCPartialMockObject stopMocking]
+-[OCPartialMockObject addStub:]
+-[OCPartialMockObject handleUnRecordedInvocation:]
+-[OCPartialMockObject prepareObjectForInstanceMethodMocking]
+___60-[OCPartialMockObject prepareObjectForInstanceMethodMocking]_block_invoke
+-[OCPartialMockObject setupForwarderForSelector:]
+-[OCPartialMockObject classForRealObject]
+-[OCPartialMockObject forwardingTargetForSelectorForRealObject:]
+-[OCPartialMockObject ocmock_replaced_forwardingTargetForSelector:]
+-[OCPartialMockObject forwardInvocationForRealObject:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCPartialMockObject.m
+__60-[OCPartialMockObject prepareObjectForInstanceMethodMocking]_block_invoke
+-[OCProtocolMockObject initWithProtocol:]
+-[OCProtocolMockObject description]
+-[OCProtocolMockObject methodSignatureForSelector:]
+-[OCProtocolMockObject conformsToProtocol:]
+-[OCProtocolMockObject respondsToSelector:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCProtocolMockObject.m
+-[OCMRecorder init]
+-[OCMRecorder initWithMockObject:]
+-[OCMRecorder setMockObject:]
+-[OCMRecorder dealloc]
+-[OCMRecorder description]
+-[OCMRecorder invocationMatcher]
+-[OCMRecorder classMethod]
+-[OCMRecorder ignoringNonObjectArgs]
+-[OCMRecorder methodSignatureForSelector:]
+-[OCMRecorder forwardInvocation:]
+-[OCMRecorder doesNotRecognizeSelector:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMRecorder.m
+-[OCMStubRecorder init]
+-[OCMStubRecorder stub]
+-[OCMStubRecorder andReturn:]
+-[OCMStubRecorder andReturnValue:]
+-[OCMStubRecorder andThrow:]
+-[OCMStubRecorder andPost:]
+-[OCMStubRecorder andCall:onObject:]
+-[OCMStubRecorder andDo:]
+-[OCMStubRecorder andForwardToRealObject]
+-[OCMStubRecorder forwardInvocation:]
+-[OCMStubRecorder(Properties) _andReturn]
+___41-[OCMStubRecorder(Properties) _andReturn]_block_invoke
+-[OCMStubRecorder(Properties) _andThrow]
+___40-[OCMStubRecorder(Properties) _andThrow]_block_invoke
+___copy_helper_block_.52
+___destroy_helper_block_.53
+-[OCMStubRecorder(Properties) _andPost]
+___39-[OCMStubRecorder(Properties) _andPost]_block_invoke
+___copy_helper_block_.57
+___destroy_helper_block_.58
+-[OCMStubRecorder(Properties) _andCall]
+___39-[OCMStubRecorder(Properties) _andCall]_block_invoke
+___copy_helper_block_.62
+___destroy_helper_block_.63
+-[OCMStubRecorder(Properties) _andDo]
+___37-[OCMStubRecorder(Properties) _andDo]_block_invoke
+___copy_helper_block_.67
+___destroy_helper_block_.68
+-[OCMStubRecorder(Properties) _andForwardToRealObject]
+___54-[OCMStubRecorder(Properties) _andForwardToRealObject]_block_invoke
+___copy_helper_block_.72
+___destroy_helper_block_.73
+___block_descriptor_tmp.55
+___block_descriptor_tmp.60
+___block_descriptor_tmp.65
+___block_descriptor_tmp.70
+___block_descriptor_tmp.75
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMStubRecorder.m
+__54-[OCMStubRecorder(Properties) _andForwardToRealObject]_block_invoke
+__37-[OCMStubRecorder(Properties) _andDo]_block_invoke
+__39-[OCMStubRecorder(Properties) _andCall]_block_invoke
+__39-[OCMStubRecorder(Properties) _andPost]_block_invoke
+__40-[OCMStubRecorder(Properties) _andThrow]_block_invoke
+__41-[OCMStubRecorder(Properties) _andReturn]_block_invoke
+-[OCMExpectationRecorder init]
+-[OCMExpectationRecorder expectation]
+-[OCMExpectationRecorder never]
+-[OCMExpectationRecorder forwardInvocation:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMExpectationRecorder.m
+-[OCMVerifier init]
+-[OCMVerifier forwardInvocation:]
+-[OCMVerifier dealloc]
+-[OCMVerifier location]
+-[OCMVerifier setLocation:]
+_OBJC_IVAR_$_OCMVerifier._location
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMVerifier.m
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMVerifier.h
+-[OCMInvocationMatcher dealloc]
+-[OCMInvocationMatcher setInvocation:]
+-[OCMInvocationMatcher setRecordedAsClassMethod:]
+-[OCMInvocationMatcher recordedAsClassMethod]
+-[OCMInvocationMatcher setIgnoreNonObjectArgs:]
+-[OCMInvocationMatcher description]
+-[OCMInvocationMatcher recordedInvocation]
+-[OCMInvocationMatcher matchesSelector:]
+-[OCMInvocationMatcher matchesInvocation:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMInvocationMatcher.m
+-[OCMInvocationStub init]
+-[OCMInvocationStub dealloc]
+-[OCMInvocationStub addInvocationAction:]
+-[OCMInvocationStub invocationActions]
+-[OCMInvocationStub handleInvocation:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMInvocationStub.m
+-[OCMInvocationExpectation setMatchAndReject:]
+-[OCMInvocationExpectation isMatchAndReject]
+-[OCMInvocationExpectation isSatisfied]
+-[OCMInvocationExpectation handleInvocation:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMInvocationExpectation.m
+-[OCMRealObjectForwarder handleInvocation:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMRealObjectForwarder.m
+-[OCMBlockCaller initWithCallBlock:]
+-[OCMBlockCaller dealloc]
+-[OCMBlockCaller handleInvocation:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMBlockCaller.m
+-[OCMBoxedReturnValueProvider handleInvocation:]
+-[OCMBoxedReturnValueProvider isMethodReturnType:compatibleWithValueType:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMBoxedReturnValueProvider.m
+-[OCMExceptionReturnValueProvider handleInvocation:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMExceptionReturnValueProvider.m
+-[OCMIndirectReturnValueProvider initWithProvider:andSelector:]
+-[OCMIndirectReturnValueProvider dealloc]
+-[OCMIndirectReturnValueProvider handleInvocation:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMIndirectReturnValueProvider.m
+-[OCMNotificationPoster initWithNotification:]
+-[OCMNotificationPoster dealloc]
+-[OCMNotificationPoster handleInvocation:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMNotificationPoster.m
+-[OCMReturnValueProvider initWithValue:]
+-[OCMReturnValueProvider dealloc]
+-[OCMReturnValueProvider handleInvocation:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMReturnValueProvider.m
++[OCMLocation locationWithTestCase:file:line:]
+-[OCMLocation initWithTestCase:file:line:]
+-[OCMLocation dealloc]
+-[OCMLocation testCase]
+-[OCMLocation file]
+-[OCMLocation line]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMLocation.m
+OCMMakeLocation
++[OCMMacroState beginStubMacro]
++[OCMMacroState endStubMacro]
++[OCMMacroState beginExpectMacro]
++[OCMMacroState endExpectMacro]
++[OCMMacroState beginRejectMacro]
++[OCMMacroState endRejectMacro]
++[OCMMacroState beginVerifyMacroAtLocation:]
++[OCMMacroState endVerifyMacro]
++[OCMMacroState globalState]
+-[OCMMacroState initWithRecorder:]
+-[OCMMacroState dealloc]
+-[OCMMacroState recorder]
+-[OCMMacroState switchToClassMethod]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMMacroState.m
+-[OCMBlockArgCaller initWithBlockArguments:]
+-[OCMBlockArgCaller dealloc]
+-[OCMBlockArgCaller copyWithZone:]
+-[OCMBlockArgCaller handleArgument:]
+l_OBJC_PROTOCOL_$_NSCopying
+l_OBJC_LABEL_PROTOCOL_$_NSCopying
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMBlockArgCaller.m
+-[OCObserverMockObject init]
+-[OCObserverMockObject retain]
+-[OCObserverMockObject dealloc]
+-[OCObserverMockObject description]
+-[OCObserverMockObject setExpectationOrderMatters:]
+-[OCObserverMockObject autoRemoveFromCenter:]
+-[OCObserverMockObject expect]
+-[OCObserverMockObject verify]
+-[OCObserverMockObject verifyAtLocation:]
+-[OCObserverMockObject notificationWithName:object:]
+-[OCObserverMockObject notificationWithName:object:userInfo:]
+-[OCObserverMockObject handleNotification:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCObserverMockObject.m
+-[OCMObserverRecorder dealloc]
+-[OCMObserverRecorder notificationWithName:object:]
+-[OCMObserverRecorder notificationWithName:object:userInfo:]
+-[OCMObserverRecorder matchesNotification:]
+-[OCMObserverRecorder argument:matchesArgument:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMObserverRecorder.m
++[OCMArg any]
++[OCMArg anyPointer]
++[OCMArg anyObjectRef]
++[OCMArg anySelector]
++[OCMArg isNil]
++[OCMArg isNotNil]
++[OCMArg isEqual:]
++[OCMArg isNotEqual:]
++[OCMArg isKindOfClass:]
+___24+[OCMArg isKindOfClass:]_block_invoke
++[OCMArg checkWithSelector:onObject:]
++[OCMArg checkWithBlock:]
++[OCMArg setTo:]
++[OCMArg setToValue:]
++[OCMArg invokeBlock]
++[OCMArg invokeBlockWithArgs:]
++[OCMArg defaultValue]
++[OCMArg resolveSpecialValues:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMArg.m
+__24+[OCMArg isKindOfClass:]_block_invoke
++[OCMConstraint constraint]
+-[OCMConstraint evaluate:]
+-[OCMConstraint copyWithZone:]
++[OCMConstraint constraintWithSelector:onObject:]
++[OCMConstraint constraintWithSelector:onObject:withValue:]
+-[OCMAnyConstraint evaluate:]
+-[OCMIsNilConstraint evaluate:]
+-[OCMIsNotNilConstraint evaluate:]
+-[OCMIsNotEqualConstraint evaluate:]
+-[OCMInvocationConstraint evaluate:]
+-[OCMBlockConstraint initWithConstraintBlock:]
+-[OCMBlockConstraint dealloc]
+-[OCMBlockConstraint evaluate:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMConstraint.m
+-[OCMPassByRefSetter initWithValue:]
+-[OCMPassByRefSetter dealloc]
+-[OCMPassByRefSetter handleArgument:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMPassByRefSetter.m
++[NSInvocation(OCMAdditions) invocationForBlock:withArguments:]
+-[NSInvocation(OCMAdditions) retainObjectArgumentsExcludingObject:]
+-[NSInvocation(OCMAdditions) setArgumentWithObject:atIndex:]
+-[NSInvocation(OCMAdditions) getArgumentAtIndexAsObject:]
+-[NSInvocation(OCMAdditions) invocationDescription]
+-[NSInvocation(OCMAdditions) argumentDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) objectDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) boolDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) charDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) unsignedCharDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) intDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) unsignedIntDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) shortDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) unsignedShortDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) longDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) unsignedLongDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) longLongDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) unsignedLongLongDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) doubleDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) floatDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) longDoubleDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) structDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) pointerDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) cStringDescriptionAtIndex:]
+-[NSInvocation(OCMAdditions) selectorDescriptionAtIndex:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/NSInvocation+OCMAdditions.m
++[NSMethodSignature(OCMAdditions) signatureForDynamicPropertyAccessedWithSelector:inClass:]
++[NSMethodSignature(OCMAdditions) propertyMatchingSelector:inClass:isGetter:]
++[NSMethodSignature(OCMAdditions) signatureForBlock:]
+-[NSMethodSignature(OCMAdditions) usesSpecialStructureReturn]
+-[NSMethodSignature(OCMAdditions) fullTypeString]
+-[NSMethodSignature(OCMAdditions) fullObjCTypes]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/NSMethodSignature+OCMAdditions.m
+-[NSNotificationCenter(OCMAdditions) addMockObserver:name:object:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/NSNotificationCenter+OCMAdditions.m
++[NSObject(OCMAdditions) instanceMethodForwarderForSelector:]
++[NSObject(OCMAdditions) enumerateMethodsInClass:usingBlock:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/NSObject+OCMAdditions.m
+-[NSValue(OCMAdditions) getBytes:objCType:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/NSValue+OCMAdditions.m
+OCMNumberForValue
+_OCMIsUnqualifiedBlockType
+_ParseStructType
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMFunctions.m
+ParseStructType
+OCMReportFailure
+OCMGetAssociatedMockForObject
+OCMSetAssociatedMockForObject
+OCMGetAssociatedMockForClass
+OCMSetAssociatedMockForClass
+OCMOriginalSelectorForAlias
+OCMIsAliasSelector
+OCMAliasForOriginalSelector
+OCMCreateSubclass
+OCMEqualTypesAllowingOpaqueStructs
+OCMEqualTypesAllowingOpaqueStructsInternal
+OCMTypeWithoutQualifiers
+OCMNumberTypeForObjCType
+OCMIsObjectType
+NSMakeRange
+/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS11.4.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRange.h
+OCMIsUnqualifiedClassType
+OCMIsUnqualifiedBlockType
+OCMIsBlockType
+-[OCMArgAction handleArgument:]
+/Users/edoernen/Projects/OCMock/Repositories/ocmock/Source/OCMock/OCMArgAction.m
+/Users/edoernen/Library/Developer/Xcode/DerivedData/OCMock-ctmrwfmuuhefopamykxylxhiubyc/Build/Intermediates.noindex/ArchiveIntermediates/OCMock iOS/IntermediateBuildFilesPath/OCMock.build/Release-iphoneos/OCMock iOS.build/DerivedSources/OCMock_vers.c
+__ZL15__ARCLite__loadv
+__ZL58__arclite_NSMutableDictionary__setObject_forKeyedSubscriptP19NSMutableDictionaryP13objc_selectorP11objc_objectS4_
+__ZL22add_image_hook_swiftV1PK11mach_headerl
+__ZL42__arclite_NSUndoManagerProxy_isKindOfClassP11objc_objectP13objc_selectorP10objc_class
+__ZL30__arclite_NSManagedObject_initP11objc_objectP13objc_selector
+__ZL41__arclite_NSManagedObject_allocWithEntityP11objc_objectP13objc_selectorS0_
+__ZL36__arclite_NSManagedObject_allocBatchP11objc_objectP13objc_selectorPS0_S0_j
+__ZL37__arclite_NSKKMS_fastIndexForKnownKeyP11objc_objectP13objc_selectorS0_
+__ZL28__arclite_NSKKMS_indexForKeyP11objc_objectP13objc_selectorS0_
+__ZL29__arclite_NSKKsD_objectForKeyP11objc_objectP13objc_selectorS0_
+__ZL35__arclite_NSKKsD_removeObjectForKeyP11objc_objectP13objc_selectorS0_
+__ZL33__arclite_NSKKsD_setObject_forKeyP11objc_objectP13objc_selectorS0_S0_
+__ZL41__arclite_NSKKsD_addEntriesFromDictionaryP11objc_objectP13objc_selectorP12NSDictionary
+__ZL28__arclite_objc_readClassPairP10objc_classPK15objc_image_info
+__ZL32__arclite_objc_allocateClassPairP10objc_classPKcm
+__ZL32__arclite_object_getIndexedIvarsP11objc_object
+__ZL23__arclite_objc_getClassPKc
+__ZL27__arclite_objc_getMetaClassPKc
+__ZL31__arclite_objc_getRequiredClassPKc
+__ZL26__arclite_objc_lookUpClassPKc
+__ZL26__arclite_objc_getProtocolPKc
+__ZL23__arclite_class_getNameP10objc_class
+__ZL26__arclite_protocol_getNameP8Protocol
+__ZL37__arclite_objc_copyClassNamesForImagePKcPj
+__ZL17transcribeMethodsP10objc_classP15glue_class_ro_t
+__ZL19transcribeProtocolsP10objc_classP15glue_class_ro_t
+__ZL20transcribePropertiesP10objc_classP15glue_class_ro_t
+__ZL14initialize_impP11objc_objectP13objc_selector
+__ZL18allocateMaybeSwiftP18glue_swift_class_tm
+__ZL22copySwiftV1MangledNamePKcb
+__ZL13demangledNamePKcb
+__ZL16scanMangledFieldRPKcS0_S1_Ri
+__ZL30arclite_uninitialized_functionv
+__ZL12cxxConstructP11objc_object
+__ZL20fixStringForCoreDataP11objc_object
+_OBJC_METACLASS_$___ARCLite__
+__ZL24OBJC_CLASS_$___ARCLite__
+__ZL31OBJC_METACLASS_RO_$___ARCLite__
+__non_lazy_classes
+__ZL27OBJC_CLASS_RO_$___ARCLite__
+__ZL11_class_name
+__ZL32OBJC_$_CLASS_METHODS___ARCLite__
+__ZL17_load_method_name
+__ZL17_load_method_type
+l_OBJC_PROTOCOL_$___ARCLiteKeyedSubscripting__
+l_OBJC_LABEL_PROTOCOL_$___ARCLiteKeyedSubscripting__
+l_OBJC_PROTOCOL_REFERENCE_$___ARCLiteKeyedSubscripting__
+__ZL30NSUndoManagerProxy_targetClass
+__ZL29original_NSManagedObject_init
+__ZL40original_NSManagedObject_allocWithEntity
+__ZL35original_NSManagedObject_allocBatch
+__ZL25NSMutableDictionary_class
+__ZL22NSConstantString_class
+__ZL14NSString_class
+__ZL36original_NSKKMS_fastIndexForKnownKey
+__ZL27original_NSKKMS_indexForKey
+__ZL28original_NSKKsD_objectForKey
+__ZL34original_NSKKsD_removeObjectForKey
+__ZL32original_NSKKsD_setObject_forKey
+__ZL40original_NSKKsD_addEntriesFromDictionary
+__ZZL22add_image_hook_swiftV1PK11mach_headerlE7patches
+__ZGVZL22add_image_hook_swiftV1PK11mach_headerlE7patches
+__ZL31original_objc_allocateClassPair
+__ZL31original_object_getIndexedIvars
+__ZL22original_objc_getClass
+__ZL26original_objc_getMetaClass
+__ZL30original_objc_getRequiredClass
+__ZL25original_objc_lookUpClass
+__ZL25original_objc_getProtocol
+__ZL22original_class_getName
+__ZL25original_protocol_getName
+__ZL36original_objc_copyClassNamesForImage
+__ZL12demangleLock
+__ZL9Demangled
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x objective-c++ -arch arm64 -fmessage-length=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit=0 -std=c++11 -Wno-trigraphs -fno-exceptions -fno-rtti -fno-sanitize=vptr -mpascal-strings -Os -Wno-missing-field-initializers -Wmissing-prototypes -Wno-implicit-atomic-properties -Wno-arc-repeated-use-of-weak -Wno-non-virtual-dtor -Wno-overloaded-virtual -Wno-exit-time-destructors -Wno-missing-braces -Wparentheses -Wswitch -Wno-unused-function -Wno-unused-label -Wno-unused-parameter -Wunused-variable -Wunused-value -Wno-empty-body -Wno-uninitialized -Wno-unknown-pragmas -Wno-shadow -Wno-four-char-constants -Wno-conversion -Wno-constant-conversion -Wno-int-conversion -Wno-bool-conversion -Wno-enum-conversion -Wno-float-conversion -Wno-non-literal-null-conversion -Wno-objc-literal-conversion -Wshorten-64-to-32 -Wno-newline-eof -Wno-selector -Wno-strict-selector-match -Wno-undeclared-selector -Wno-deprecated-implementations -Wno-c++11-extensions -D NDEBUG=1 -D OBJC_OLD_DISPATCH_PROTOTYPES=1 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS11.3.Internal.sdk -fstrict-aliasing -Wprotocol -Wdeprecated-declarations -Winvalid-offsetof -miphoneos-version-min=4.3 -g -fno-threadsafe-statics -Wno-sign-conversion -Wno-infinite-recursion -Wno-move -Wno-comma -Wno-block-capture-autoreleasing -Wno-strict-prototypes -Wno-range-loop-analysis -fembed-bitcode=all -iquote /Library/Caches/com.apple.xbs/Binaries/arclite_iOS/install/TempContent/Objects/arclite.build/arclite_iOS.build/arclite_iphoneos-generated-files.hmap -I /Library/Caches/com.apple.xbs/Binaries/arclite_iOS/install/TempContent/Objects/arclite.build/arclite_iOS.build/arclite_iphoneos-own-target-headers.hmap -I /Library/Caches/com.apple.xbs/Binaries/arclite_iOS/install/TempContent/Objects/arclite.build/arclite_iOS.build/arclite_iphoneos-all-target-headers.hmap -iquote /Library/Caches/com.apple.xbs/Binaries/arclite_iOS/install/TempContent/Objects/arclite.build/arclite_iOS.build/arclite_iphoneos-project-headers.hmap -I /Library/Caches/com.apple.xbs/Binaries/arclite_iOS/install/Symbols/BuiltProducts/include -I /Library/Caches/com.apple.xbs/Binaries/arclite_iOS/install/TempContent/Objects/arclite.build/arclite_iOS.build/DerivedSources/arm64 -I /Library/Caches/com.apple.xbs/Binaries/arclite_iOS/install/TempContent/Objects/arclite.build/arclite_iOS.build/DerivedSources -F/Library/Caches/com.apple.xbs/Binaries/arclite_iOS/install/Symbols/BuiltProducts -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS11.3.Internal.sdk/System/Library/PrivateFrameworks -Wall -Wextra -Wno-gcc-compat -Wno-error=incomplete-umbrella -Wno-error=invalid-ios-deployment-target -Wno-error=incomplete-umbrella -Wno-error=invalid-ios-deployment-target -MMD -MT dependencies -MF /Library/Caches/com.apple.xbs/Binaries/arclite_iOS/install/TempContent/Objects/arclite.build/arclite_iOS.build/Objects-normal/arm64/arclite.d --serialize-diagnostics /Library/Caches/com.apple.xbs/Binaries/arclite_iOS/install/TempContent/Objects/arclite.build/arclite_iOS.build/Objects-normal/arm64/arclite.dia -c /Library/Caches/com.apple.xbs/Sources/arclite_iOS/arclite-67/source/arclite.mm -o /Library/Caches/com.apple.xbs/Binaries/arclite_iOS/install/TempContent/Objects/arclite.build/arclite_iOS.build/Objects-normal/arm64/arclite.o -mlinker-version=351.8
+/Library/Caches/com.apple.xbs/Sources/arclite_iOS/arclite-67/source/arclite.mm
+/Library/Caches/com.apple.xbs/Sources/arclite_iOS/arclite-67
+fixStringForCoreData
+cxxConstruct
+arclite_uninitialized_function
+scanMangledField
+/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS11.3.Internal.sdk/usr/include/_ctype.h
+__isctype
+demangledName
+copySwiftV1DemangledName
+copySwiftV1MangledName
+allocateMaybeSwift
+word_align
+isSwift
+initialize_imp
+transcribeProperties
+property_list_nth
+transcribeProtocols
+transcribeMethods
+data
+method_list_nth
+__arclite_objc_copyClassNamesForImage
+__arclite_protocol_getName
+__arclite_class_getName
+__arclite_objc_getProtocol
+__arclite_objc_lookUpClass
+__arclite_objc_getRequiredClass
+__arclite_objc_getMetaClass
+__arclite_objc_getClass
+__arclite_object_getIndexedIvars
+__arclite_objc_allocateClassPair
+metaclass
+__arclite_objc_readClassPair
+transcribeIvars
+ivar_list_nth
+max
+alignment
+ro
+fastFlags
+__arclite_NSKKsD_addEntriesFromDictionary
+__arclite_NSKKsD_setObject_forKey
+__arclite_NSKKsD_removeObjectForKey
+__arclite_NSKKsD_objectForKey
+__arclite_NSKKMS_indexForKey
+__arclite_NSKKMS_fastIndexForKnownKey
+__arclite_NSManagedObject_allocBatch
+__arclite_NSManagedObject_allocWithEntity
+__arclite_NSManagedObject_init
+__arclite_NSUndoManagerProxy_isKindOfClass
+add_image_hook_swiftV1
+patch_lazy_pointers
+patch_t<const char **(const char *, unsigned int *)>
+patch_t<const char *(Protocol *)>
+patch_t<const char *(Class)>
+patch_t<Protocol *(const char *)>
+patch_t<Class (const char *)>
+patch_t<void *(id)>
+patch_t<Class (Class, const char *, unsigned long)>
+patch_t<Class (Class, const objc_image_info *)>
+__arclite_NSMutableDictionary__setObject_forKeyedSubscript
+__ARCLite__load
+install_swiftV1
+replaceMethod
+install_dict_nil_value
+addOrReplaceMethod
+keyedGetter

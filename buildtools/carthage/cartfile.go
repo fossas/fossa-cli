@@ -1,11 +1,13 @@
 package carthage
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
+	"github.com/fossas/fossa-cli/pkg"
 	"github.com/rveen/ogdl"
 )
 
@@ -40,7 +42,7 @@ func (r Requirement) PackageFromRequirement(dir string) (Package, error) {
 
 	if hasResolvedCartfile == false {
 		log.Logger.Debugf("Cartfile.resolved missing in: %#v, exiting.", requirementDirectory)
-		return resolvedCartfile, nil
+		return resolvedCartfile, fmt.Errorf("Cartfile.resolved missing in: %#v", requirementDirectory)
 	}
 
 	// get current Cartfile.resolved
@@ -139,4 +141,49 @@ func FromResolvedCartfile(projectName string, dir string) (Package, error) {
 
 	log.Logger.Debugf("Done parsing Cartfile.resolved")
 	return cartfile, nil
+}
+
+func RecurseDeps(pkgMap map[pkg.ID]pkg.Package, p Package) {
+	log.Logger.Debugf("Searching Carthage deps for project %#v", p.Name)
+	for _, dep := range p.Dependencies {
+		// Construct ID.
+		id := pkg.ID{
+			Type:     pkg.Carthage,
+			Name:     dep.Name,
+			Revision: dep.Revision,
+		}
+		// Don't process duplicates.
+		_, ok := pkgMap[id]
+		if ok {
+			continue
+		}
+
+		// Get direct imports.
+		var imports []pkg.Import
+
+		// Get Transitive Dep Info
+		newPackage, err := dep.PackageFromRequirement(p.Dir)
+
+		if err != nil {
+			log.Logger.Warningf("Error parsing Cartfile.resolved at %#v: %#v. Continuing...", p.Dir, err.Error())
+		} else {
+			for _, i := range newPackage.Dependencies {
+				imports = append(imports, pkg.Import{
+					Target: i.String(),
+					Resolved: pkg.ID{
+						Type:     pkg.Carthage,
+						Name:     i.Name,
+						Revision: i.Revision,
+					},
+				})
+			}
+		}
+		// Update map.
+		pkgMap[id] = pkg.Package{
+			ID:      id,
+			Imports: imports,
+		}
+		// Recurse in imports.
+		RecurseDeps(pkgMap, newPackage)
+	}
 }

@@ -157,55 +157,10 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 
 	// Set transitive dependencies.
 	deps := make(map[pkg.ID]pkg.Package)
-	recurseDeps(deps, resolvedCartfile)
+	carthage.RecurseDeps(deps, resolvedCartfile)
 
 	m.Imports = imports
 	m.Deps = deps
 	log.Logger.Debugf("Done running Carthage analysis: %#v", deps)
 	return m, nil
-}
-
-func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p carthage.Package) {
-	log.Logger.Debugf("Searching Carthage deps for project %#v", p.Name)
-	for _, dep := range p.Dependencies {
-		// Construct ID.
-		id := pkg.ID{
-			Type:     pkg.Carthage,
-			Name:     dep.Name,
-			Revision: dep.Revision,
-		}
-		// Don't process duplicates.
-		_, ok := pkgMap[id]
-		if ok {
-			continue
-		}
-
-		// Get direct imports.
-		var imports []pkg.Import
-
-		// Get Transitive Dep Info
-		newCartfile, err := dep.PackageFromRequirement(p.Dir)
-
-		if err != nil {
-			log.Logger.Warningf("Error parsing Cartfile.resolved at %#v: %#v. Continuing...", p.Dir, err.Error())
-		} else {
-			for _, i := range newCartfile.Dependencies {
-				imports = append(imports, pkg.Import{
-					Target: i.String(),
-					Resolved: pkg.ID{
-						Type:     pkg.Carthage,
-						Name:     i.Name,
-						Revision: i.Revision,
-					},
-				})
-			}
-		}
-		// Update map.
-		pkgMap[id] = pkg.Package{
-			ID:      id,
-			Imports: imports,
-		}
-		// Recurse in imports.
-		recurseDeps(pkgMap, newCartfile)
-	}
 }

@@ -89,7 +89,7 @@ func Do(includeAll bool, options map[string]interface{}) ([]module.Module, error
 
 		// Match name regexp.
 		// TODO: should we match on full path sections (e.g. right now, this will filter out `a/b/foovendor/c`)?
-		matched, err := regexp.MatchString("(docs?/|[Tt]est|examples?|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/|third_party/|tmp/)", d.Dir)
+		matched, err := regexp.MatchString("(docs?/|[Tt]est|examples?|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/|third_party/|tmp/|Carthage/Checkouts/)", d.Dir)
 		if err != nil {
 			return nil, err
 		}
