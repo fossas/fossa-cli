@@ -1,9 +1,0 @@
-{
-  "commitish" : "2.4.1",
-  "Mac" : [
-    {
-      "name" : "Swinject",
-      "hash" : "9e9e2d908ba13f46d341461a012995350502b05b0ca267af107602ebf6980810"
-    }
-  ]
-}
