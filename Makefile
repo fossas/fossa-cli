@@ -93,16 +93,14 @@ integration-test: docker-test
 # Release tasks.
 .PHONY: release
 release:
-	# Check that the installer has been generated for this tag.
-	[ "$$(grep "^  RELEASE='$$(git tag -l --points-at HEAD)'$$" install.sh | wc -l)" = "1" ]
-	GOVERSION=$$(go version) goreleaser $(GORELEASER_FLAGS)
-
-.PHONY: release-test
-release-test:
-	GORELEASER_FLAGS="--rm-dist --skip-publish" make release
+	if [ -z "$$RELEASE" ]; then exit 1; fi
+	mv install.sh install.prev.sh
+	make -s installer > install.sh
+	git tag $(RELEASE)
+	git add install.sh
+	git commit -m "release($(RELEASE)): Release version $(RELEASE)"
+	GOVERSION=$$(go version) goreleaser $(GORELEASER_FLAGS) || (git reset HEAD^ && git tag -d $(RELEASE) && rm install.sh && mv install.prev.sh install.sh && exit 1)
 
 .PHONY: installer
 installer:
-	export LATEST_STABLE_RELEASE=$$(curl https://api.github.com/repos/fossas/fossa-cli/releases/latest | grep tag_name | cut -d'"' -f4); \
-	export RELEASE=$$(git tag -l --points-at HEAD); \
-	sed "s/# RELEASE=/RELEASE=\'$$RELEASE\'/; s/# LATEST_STABLE_RELEASE=/LATEST_STABLE_RELEASE=\'$$LATEST_STABLE_RELEASE\'/" install_tpl.sh > install.sh
+	sed "s/# RELEASE=/RELEASE=\'$(RELEASE)\'/" install_tpl.sh
