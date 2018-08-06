@@ -16,6 +16,7 @@ func TestLockfileParsing(t *testing.T) {
 	assert.NoError(t, err)
 
 	data, err := json.Marshal(carthagePackage)
+	assert.NoError(t, err)
 	log.Printf("Imports: %s", string(data))
 
 	deps := make(map[pkg.ID]pkg.Package)
