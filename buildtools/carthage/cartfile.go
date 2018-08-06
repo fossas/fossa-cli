@@ -36,7 +36,7 @@ func (r Requirement) PackageFromRequirement(dir string) (Package, error) {
 	hasResolvedCartfile, err := files.Exists(filepath.Join(requirementDirectory, "Cartfile.resolved"))
 
 	if err != nil {
-		log.Logger.Warningf("Error checking for resolved cartfile: %#v, %#v", requirementDirectory, err.Error())
+		log.Logger.Debugf("Error checking for resolved cartfile: %#v, %#v", requirementDirectory, err.Error())
 		return resolvedCartfile, err
 	}
 

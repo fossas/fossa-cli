@@ -9,6 +9,8 @@ import (
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/fossas/fossa-cli/buildtools/carthage"
+	"github.com/fossas/fossa-cli/graph"
+
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
@@ -22,12 +24,13 @@ type Analyzer struct {
 
 	Carthage carthage.Carthage
 
+	Module  module.Module
 	Options Options
 }
 
 type Options struct{}
 
-func New(opts map[string]interface{}) (*Analyzer, error) {
+func New(m module.Module) (*Analyzer, error) {
 	// Set Carthage context variables
 	cartCmd, cartVersion, err := exec.Which("version", os.Getenv("CARTHAGE_BINARY"), "carthage")
 	if err != nil {
@@ -36,7 +39,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 
 	// Parse and validate options.
 	var options Options
-	err = mapstructure.Decode(opts, &options)
+	err = mapstructure.Decode(m.Options, &options)
 	if err != nil {
 		return nil, err
 	}
@@ -51,6 +54,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 		},
 
 		Options: options,
+		Module:  m,
 	}
 
 	log.Logger.Debugf("%#v", analyzer)
@@ -58,7 +62,7 @@ func New(opts map[string]interface{}) (*Analyzer, error) {
 }
 
 // Discover constructs modules in all directories with a `Cartfile`.
-func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
+func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -103,16 +107,16 @@ func (a *Analyzer) Discover(dir string) ([]module.Module, error) {
 }
 
 // IsBuilt checks whether file `Cartfile.resolved` exists, and also if a `Carthage` folder exists
-func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
-	log.Logger.Debugf("Checking Carthage build: %#v", m)
-	hasResolvedCartfile, err := files.Exists(filepath.Join(m.Dir, "Cartfile.resolved"))
+func (a *Analyzer) IsBuilt() (bool, error) {
+	log.Logger.Debugf("Checking Carthage build: %#v", a.Module)
+	hasResolvedCartfile, err := files.Exists(filepath.Join(a.Module.Dir, "Cartfile.resolved"))
 
 	if err != nil {
 		log.Logger.Warningf("Error checking Carthage build: %#v", err.Error())
 		return false, err
 	}
 
-	hasCarthageFolder, err := files.ExistsFolder(m.Dir, "Carthage")
+	hasCarthageFolder, err := files.ExistsFolder(a.Module.Dir, "Carthage")
 	if err != nil {
 		log.Logger.Warningf("Error checking Carthage build: %#v", err.Error())
 		return false, err
@@ -124,23 +128,22 @@ func (a *Analyzer) IsBuilt(m module.Module) (bool, error) {
 	return isBuilt, nil
 }
 
-func (a *Analyzer) Clean(m module.Module) error {
-	// we COULD do: files.Rm(m.Dir, "Carthage"), however sometimes this folder is checked in to source control
-	log.Logger.Warning("Clean is not implemented for Carthage")
-	return nil
+func (a *Analyzer) Clean() error {
+	return files.Rm(a.Module.Dir, "Carthage")
 }
 
-func (a *Analyzer) Build(m module.Module) error {
-	return a.Carthage.Install(m.Dir)
+func (a *Analyzer) Build() error {
+	return a.Carthage.Install(a.Module.Dir)
 }
 
-func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
-	log.Logger.Debugf("Running Carthage analysis: %#v", m)
-	resolvedCartfile, err := carthage.FromResolvedCartfile("ROOT", m.Dir)
+func (a *Analyzer) Analyze() (graph.Deps, error) {
+	var deps graph.Deps
+	log.Logger.Debugf("Running Carthage analysis: %#v", a.Module)
+	resolvedCartfile, err := carthage.FromResolvedCartfile("ROOT", a.Module.Dir)
 	if err != nil {
-		return module.Module{}, err
+		return deps, err
 	}
-	cartfilePath := filepath.Join(m.Dir, "Cartfile.resolved")
+	cartfilePath := filepath.Join(a.Module.Dir, "Cartfile.resolved")
 	// Set direct dependencies.
 	var imports []pkg.Import
 	for _, dep := range resolvedCartfile.Dependencies {
@@ -156,11 +159,14 @@ func (a *Analyzer) Analyze(m module.Module) (module.Module, error) {
 	}
 
 	// Set transitive dependencies.
-	deps := make(map[pkg.ID]pkg.Package)
-	carthage.RecurseDeps(deps, resolvedCartfile)
+	transitiveDeps := make(map[pkg.ID]pkg.Package)
+	carthage.RecurseDeps(transitiveDeps, resolvedCartfile)
 
-	m.Imports = imports
-	m.Deps = deps
-	log.Logger.Debugf("Done running Carthage analysis: %#v", deps)
-	return m, nil
+	log.Logger.Debugf("Done running Carthage analysis: %#v", transitiveDeps)
+
+	return graph.Deps{
+		Direct:     imports,
+		Transitive: transitiveDeps,
+	}, nil
+
 }
