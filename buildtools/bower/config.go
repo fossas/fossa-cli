@@ -11,27 +11,29 @@ type Config struct {
 	Directory string `json:"directory"`
 }
 
+func NewConfig(cwd string) Config {
+	return Config{
+		CWD:       cwd,
+		Directory: "bower_components",
+	}
+}
+
 // TODO: this is nowhere near complete -- there's all sorts of crazy cascading
 // mechanisms that configure Bower.
 func ReadConfig(dir string) (Config, error) {
+	config := NewConfig(dir)
 	ok, err := files.Exists(dir, ".bowerrc")
-	if err != nil {
-		return Config{}, err
-	}
 	if ok {
 		return ReadConfigFile(filepath.Join(dir, ".bowerrc"))
 	}
-	return Config{
-		CWD:       dir,
-		Directory: filepath.Join(dir, "bower_components"),
-	}, nil
+	return config, err
 }
 
 func ReadConfigFile(filename string) (Config, error) {
-	var config Config
+	config := NewConfig(filepath.Dir(filename))
 	err := files.ReadJSON(&config, filename)
 	if err != nil {
-		return Config{}, err
+		return config, err
 	}
 	return config, nil
 }
