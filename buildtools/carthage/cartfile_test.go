@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLockfileParsing(t *testing.T) {
+func TestCartfileParsing(t *testing.T) {
 	carthagePackage, err := carthage.FromResolvedCartfile("TestProject", filepath.Join("testdata", "testproject"))
 	assert.NoError(t, err)
 
