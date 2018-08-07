@@ -1,0 +1,3 @@
+package setup
+
+func Setup() {}

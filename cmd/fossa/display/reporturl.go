@@ -9,7 +9,7 @@ import (
 	"github.com/fossas/fossa-cli/log"
 )
 
-func FmtReportURL(locator fossa.Locator) string {
+func ReportURL(locator fossa.Locator) string {
 	baseURL, err := url.Parse(config.Endpoint())
 	if err != nil {
 		log.Logger.Fatalf("Invalid FOSSA endpoint: %s", err.Error())

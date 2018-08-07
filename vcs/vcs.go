@@ -6,7 +6,6 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/fossas/fossa-cli/errutil"
 	"github.com/fossas/fossa-cli/files"
 )
 
