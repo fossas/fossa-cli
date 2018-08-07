@@ -91,18 +91,24 @@ integration-test: docker-test
 	sudo docker run --rm -it quay.io/fossa/fossa-cli-test
 
 # Release tasks.
-.PHONY: release
-release:
+.PHONY: prepare-release
+prepare-release:
 	if [ -z "$$RELEASE" ]; then exit 1; fi
 	mv install.sh install.prev.sh
 	make -s installer > install.sh
-	git tag $(RELEASE) || make rollback-release
 	git add install.sh
-	git commit -m "release($(RELEASE)): Release version $(RELEASE)" || make rollback-release
-	GOVERSION=$$(go version) goreleaser $(GORELEASER_FLAGS) || (git reset HEAD^ && make rollback-release)
+	git commit -m "release($(RELEASE)): Release version $(RELEASE)" || make abort-release
+	git tag $(RELEASE) || (git reset HEAD^ && make abort-release)
+	rm install.prev.sh
 
-.PHONY: rollback-release
-rollback-release:
+.PHONY: release
+release:
+	if [ -z "$$(git tag -l --points-at HEAD)" ]; then exit 1; fi
+	[ "$$(grep "^  RELEASE='$$(git tag -l --points-at HEAD)'$$" install.sh | wc -l)" = "1" ]
+	GOVERSION=$$(go version) goreleaser $(GORELEASER_FLAGS)
+
+.PHONY: abort-release
+abort-release:
 	git tag -d $(RELEASE)
 	rm install.sh
 	mv install.prev.sh install.sh
