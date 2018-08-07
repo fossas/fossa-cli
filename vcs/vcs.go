@@ -16,9 +16,9 @@ var (
 	ErrNoNearestVCS = errors.New("could not find nearest VCS repository in directory")
 )
 
-// VCSIn returns the type of VCS repository rooted at a directory, or
+// In returns the type of VCS repository rooted at a directory, or
 // ErrNoVCSInDir if none is found.
-func vcsIn(dirname string) (VCS, error) {
+func In(dirname string) (VCS, error) {
 	for _, vcs := range Types {
 		ok, err := files.ExistsFolder(filepath.Join(dirname, MetadataFolder(vcs)))
 		if err != nil {
@@ -31,12 +31,12 @@ func vcsIn(dirname string) (VCS, error) {
 	return 0, ErrNoVCSInDir
 }
 
-// NearestVCS returns the type and directory of the nearest VCS repository
+// Nearest returns the type and directory of the nearest VCS repository
 // containing the directory, or ErrNoNearestVCS if none is found.
-func NearestVCS(dirname string) (VCS, string, error) {
+func Nearest(dirname string) (VCS, string, error) {
 	var vcs VCS
 	dir, err := files.WalkUp(dirname, func(d string) error {
-		tool, err := vcsIn(d)
+		tool, err := In(d)
 		if err == ErrNoVCSInDir {
 			return nil
 		}
@@ -56,7 +56,7 @@ func NearestVCS(dirname string) (VCS, string, error) {
 // errutil.ErrRepositoryNotFound if none is found, or errutil.ErrNotImplemented
 // if an unsupported VCS is found.
 func GetRepository(dirname string) (string, error) {
-	vcs, dir, err := NearestVCS(dirname)
+	vcs, dir, err := Nearest(dirname)
 	if err == ErrNoNearestVCS {
 		return "", errutil.ErrRepositoryNotFound
 	}

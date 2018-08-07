@@ -70,7 +70,7 @@ func (a *Analyzer) Project(pkg string) (Project, error) {
 	tool, manifestDir, err := NearestLockfile(dir)
 
 	// Find the nearest VCS repository.
-	_, repoRoot, err := vcs.NearestVCS(dir)
+	_, repoRoot, err := vcs.Nearest(dir)
 	if err != nil {
 		return Project{}, err
 	}
