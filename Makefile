@@ -96,10 +96,18 @@ release:
 	if [ -z "$$RELEASE" ]; then exit 1; fi
 	mv install.sh install.prev.sh
 	make -s installer > install.sh
-	git tag $(RELEASE)
+	git tag $(RELEASE) || make rollback-release
 	git add install.sh
-	git commit -m "release($(RELEASE)): Release version $(RELEASE)"
-	GOVERSION=$$(go version) goreleaser $(GORELEASER_FLAGS) || (git reset HEAD^ && git tag -d $(RELEASE) && rm install.sh && mv install.prev.sh install.sh && exit 1)
+	git commit -m "release($(RELEASE)): Release version $(RELEASE)" || make rollback-release
+	GOVERSION=$$(go version) goreleaser $(GORELEASER_FLAGS) || (git reset HEAD^ && make rollback-release)
+
+.PHONY: rollback-release
+rollback-release:
+	git tag -d $(RELEASE)
+	rm install.sh
+	mv install.prev.sh install.sh
+	git reset HEAD .
+	exit 1
 
 .PHONY: installer
 installer:
