@@ -14,6 +14,7 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/ruby"
 	"github.com/fossas/fossa-cli/analyzers/scala"
 
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -39,7 +40,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	for _, f := range discoverFuncs {
 		discovered, err := f(dir, options)
 		if err != nil {
-			return nil, err
+			log.Logger.Warningf("An error occurred during discovery: %s", err.Error())
 		}
 		modules = append(modules, discovered...)
 	}

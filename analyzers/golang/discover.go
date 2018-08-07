@@ -33,7 +33,7 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 
 	cmd, _, err := exec.Which("version", options.Cmd, "go")
 	if err != nil {
-		return nil, err
+		return nil, errors.New("`go` not found, skipping searching for Go projects")
 	}
 
 	g := gocmd.Go{
