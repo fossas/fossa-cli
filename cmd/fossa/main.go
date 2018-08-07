@@ -8,6 +8,7 @@ import (
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/log"
 
+	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/version"
 
@@ -55,6 +56,8 @@ func main() {
 }
 
 func Run(ctx *cli.Context) error {
+	cmdutil.Init(ctx)
+
 	if config.APIKey() == "" && !ctx.Bool(analyze.ShowOutput) {
 		return cli.ShowAppHelp(ctx)
 	}
