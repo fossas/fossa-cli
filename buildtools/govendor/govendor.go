@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/fossas/fossa-cli/errutil"
+	"github.com/fossas/fossa-cli/buildtools"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/pkg"
@@ -42,7 +42,7 @@ func (l Lockfile) Resolve(importpath string) (pkg.Import, error) {
 			return rev, nil
 		}
 	}
-	return pkg.Import{}, errutil.ErrNoRevisionForPackage
+	return pkg.Import{}, buildtools.ErrNoRevisionForPackage
 }
 
 func New(dirname string) (Lockfile, error) {

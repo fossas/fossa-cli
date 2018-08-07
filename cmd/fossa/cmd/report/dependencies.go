@@ -1,7 +1,9 @@
 package report
 
 import (
-	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
+	"fmt"
+
+	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/pkg"
@@ -29,7 +31,8 @@ func dependenciesRun(ctx *cli.Context) error {
 	}
 
 	if tmplFile := ctx.String(flags.Template); tmplFile != "" {
-		err := cmdutil.OutputWithTemplateFile(tmplFile, pkgs)
+		output, err := display.TemplateFile(tmplFile, pkgs)
+		fmt.Println(output)
 		if err != nil {
 			log.Logger.Fatalf("Could not parse template data: %s", err.Error())
 		}

@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/fossas/fossa-cli/errutil"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
 
 	yaml "gopkg.in/yaml.v2"
@@ -112,7 +112,7 @@ func WriteFile(modules []module.Module) error {
 }
 
 func UpdateFile(modules []module.Module) error {
-	return errutil.ErrNotImplemented
+	return errors.ErrNotImplemented
 }
 
 func ExistsFile() (bool, error) {

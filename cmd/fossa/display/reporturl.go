@@ -1,4 +1,4 @@
-package cmdutil
+package display
 
 import (
 	"net/url"

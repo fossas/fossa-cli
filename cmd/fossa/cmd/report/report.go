@@ -4,7 +4,7 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/analyze"
-	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
+	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
@@ -24,7 +24,7 @@ var Cmd = cli.Command{
 }
 
 func analyzeModules(ctx *cli.Context) ([]module.Module, error) {
-	err := cmdutil.InitWithAPI(ctx)
+	err := setup.Setup(ctx)
 	if err != nil {
 		return nil, err
 	}

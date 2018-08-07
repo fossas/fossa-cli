@@ -1,27 +1,25 @@
-package cmdutil
+package display
 
 import (
 	"bytes"
-	"fmt"
 	"text/template"
 )
 
-func OutputWithTemplateFile(tmplFilename string, data interface{}) error {
-	tmpl, err := template.ParseFiles(tmplFilename)
+func TemplateFile(filename string, data interface{}) (string, error) {
+	tmpl, err := template.ParseFiles(filename)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return OutputWithTemplate(tmpl, data)
+	return Template(tmpl, data)
 }
 
-func OutputWithTemplate(tmpl *template.Template, data interface{}) error {
+func Template(tmpl *template.Template, data interface{}) (string, error) {
 	var buf bytes.Buffer
 	err := tmpl.Execute(&buf, data)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	fmt.Println(string(buf.Bytes()))
-	return nil
+	return string(buf.Bytes()), nil
 }

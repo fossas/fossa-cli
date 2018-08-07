@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
+	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/api/fossa"
@@ -92,7 +92,8 @@ func licensesRun(ctx *cli.Context) (err error) {
 	}
 
 	if tmplFile := ctx.String(flags.Template); tmplFile != "" {
-		err := cmdutil.OutputWithTemplateFile(tmplFile, depsByLicense)
+		output, err := display.TemplateFile(tmplFile, depsByLicense)
+		fmt.Println(output)
 		if err != nil {
 			log.Logger.Fatalf("Could not parse template data: %s", err.Error())
 		}
@@ -104,5 +105,7 @@ func licensesRun(ctx *cli.Context) (err error) {
 		log.Logger.Fatalf("Could not parse template data: %s", err.Error())
 	}
 
-	return cmdutil.OutputWithTemplate(tmpl, depsByLicense)
+	output, err := display.Template(tmpl, depsByLicense)
+	fmt.Println(output)
+	return nil
 }

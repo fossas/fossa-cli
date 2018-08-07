@@ -4,13 +4,13 @@ import (
 	"strings"
 
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
+	"github.com/fossas/fossa-cli/buildtools"
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
-	"github.com/fossas/fossa-cli/errutil"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-// Revision resolves a revision, returning errutil.ErrNoRevisionForPackage
+// Revision resolves a revision, returning buildtools.ErrNoRevisionForPackage
 // when no revision is found (unless a revision is not required).
 func (a *Analyzer) Revision(project Project, r resolver.Resolver, gopkg gocmd.Package) (pkg.Import, error) {
 	if a.Options.AllowNestedVendor ||
@@ -30,7 +30,7 @@ func (a *Analyzer) RevisionDirect(project Project, r resolver.Resolver, gopkg go
 
 	name := Unvendor(gopkg.ImportPath)
 	revision, err := r.Resolve(name)
-	if err == errutil.ErrNoRevisionForPackage {
+	if err == buildtools.ErrNoRevisionForPackage {
 		log.Logger.Debugf("Could not find revision for package %#v", name)
 
 		if a.UnresolvedOK(project, gopkg) {
@@ -87,7 +87,7 @@ func (a *Analyzer) RevisionContextual(project Project, gopkg gocmd.Package) (pkg
 	if a.UnresolvedOK(project, gopkg) {
 		return UnresolvedImport(gopkg), nil
 	}
-	return pkg.Import{}, errutil.ErrNoRevisionForPackage
+	return pkg.Import{}, buildtools.ErrNoRevisionForPackage
 }
 
 // RevisionContextualLookup attempts to resolve a revision of a package using

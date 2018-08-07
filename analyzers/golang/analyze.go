@@ -13,7 +13,6 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/vndr"
 
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
-	"github.com/fossas/fossa-cli/errutil"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/pkg"

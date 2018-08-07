@@ -29,8 +29,9 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/api/fossa"
-	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
+	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
+	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/log"
 )
@@ -108,7 +109,7 @@ func getInput(ctx *cli.Context, usingLocators bool) ([]fossa.SourceUnit, error) 
 }
 
 func Run(ctx *cli.Context) {
-	err := cmdutil.InitWithAPI(ctx)
+	err := setup.Setup(ctx)
 	if err != nil {
 		log.Logger.Fatalf("Could not initialize: %s", err.Error())
 	}
@@ -124,7 +125,7 @@ func Run(ctx *cli.Context) {
 		log.Logger.Fatalf("Upload failed: %s", err.Error())
 	}
 	log.StopSpinner()
-	log.Printf(cmdutil.FmtReportURL(locator))
+	log.Printf(display.ReportURL(locator))
 }
 
 func Do(data []fossa.SourceUnit) (fossa.Locator, error) {

@@ -6,7 +6,6 @@ import (
 	"net/url"
 
 	"github.com/fossas/fossa-cli/api"
-	"github.com/fossas/fossa-cli/log"
 )
 
 var (
@@ -14,7 +13,7 @@ var (
 	apiKey    string
 )
 
-// Init sets up an API instance.
+// Init sets up the API package.
 func Init(server, APIKey string) error {
 	var err error
 	serverURL, err = url.Parse(server)
@@ -25,49 +24,30 @@ func Init(server, APIKey string) error {
 	return nil
 }
 
-// MustInit crashes and logs a fatal exception if `Init` fails.
-func MustInit(server, APIKey string) {
-	err := Init(server, APIKey)
-	if err != nil {
-		log.Logger.Fatal(log.Entry{
-			Message: "could not initialize API",
-			Error:   err,
-			Fields: log.Fields{
-				"server":  server,
-				"API key": APIKey,
-			},
-		}.String())
-	}
-}
-
-func mustParse(endpoint string) *url.URL {
+// Get makes an authenticated GET request to a FOSSA API endpoint.
+func Get(endpoint string) (res string, statusCode int, err error) {
 	u, err := serverURL.Parse(endpoint)
 	if err != nil {
-		log.Logger.Fatal(log.Entry{
-			Message: "invalid API endpoint",
-			Error:   err,
-			Fields:  log.Fields{"endpoint": endpoint},
-		}.String())
-		return nil
+		return "", 0, err
 	}
-	return u
-}
-
-// Get makes a GET request to a FOSSA API endpoint.
-func Get(endpoint string) (res string, statusCode int, err error) {
-	u := mustParse(endpoint)
 	return api.Get(u, apiKey, nil)
 }
 
-// GetJSON makes a JSON GET request to a FOSSA API endpoint.
+// GetJSON makes an authenticated JSON GET request to a FOSSA API endpoint.
 func GetJSON(endpoint string, v interface{}) (statusCode int, err error) {
-	u := mustParse(endpoint)
+	u, err := serverURL.Parse(endpoint)
+	if err != nil {
+		return "", 0, err
+	}
 	return api.GetJSON(u, apiKey, nil, v)
 }
 
-// Post makes a POST request to a FOSSA API endpoint.
+// Post makes an authenticated POST request to a FOSSA API endpoint.
 // TODO: maybe `body` should be an `io.Reader` instead.
 func Post(endpoint string, body []byte) (res string, statusCode int, err error) {
-	u := mustParse(endpoint)
+	u, err := serverURL.Parse(endpoint)
+	if err != nil {
+		return "", 0, err
+	}
 	return api.Post(u, apiKey, body)
 }

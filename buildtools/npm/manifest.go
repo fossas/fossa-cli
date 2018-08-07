@@ -1,7 +1,7 @@
 package npm
 
 import (
-	"github.com/fossas/fossa-cli/errutil"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
 )
 
@@ -22,7 +22,7 @@ func FromManifest(filename string) (Manifest, error) {
 }
 
 func FromNodeModules(dir string) ([]Manifest, error) {
-	return nil, errutil.ErrNotImplemented
+	return nil, errors.ErrNotImplemented
 }
 
 type Lockfile struct {
@@ -33,5 +33,5 @@ type Lockfile struct {
 }
 
 func FromLockfile(filename string) (Lockfile, error) {
-	return Lockfile{}, errutil.ErrNotImplemented
+	return Lockfile{}, errors.ErrNotImplemented
 }

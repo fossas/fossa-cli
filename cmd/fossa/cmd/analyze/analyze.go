@@ -7,7 +7,6 @@ import (
 
 	"github.com/fossas/fossa-cli/analyzers"
 	"github.com/fossas/fossa-cli/api/fossa"
-	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/log"
@@ -31,7 +30,7 @@ var Cmd = cli.Command{
 var _ cli.ActionFunc = Run
 
 func Run(ctx *cli.Context) error {
-	err := cmdutil.InitWithAPI(ctx)
+	err := display.Init(ctx)
 	if err != nil {
 		log.Logger.Fatalf("Could not initialize: %s", err.Error())
 	}
@@ -59,7 +58,8 @@ func Run(ctx *cli.Context) error {
 
 	if ctx.Bool(ShowOutput) {
 		if tmplFile := ctx.String(flags.Template); tmplFile != "" {
-			err := cmdutil.OutputWithTemplateFile(tmplFile, normalized)
+			output, err := display.TemplateFile(tmplFile, normalized)
+			fmt.Println(output)
 			if err != nil {
 				log.Logger.Fatalf("Could not parse template data: %s", err.Error())
 			}
@@ -136,6 +136,6 @@ func uploadAnalysis(normalized []fossa.SourceUnit) error {
 		log.Logger.Fatalf("Error during upload: %s", err.Error())
 		return err
 	}
-	log.Printf(cmdutil.FmtReportURL(locator))
+	log.Printf(display.ReportURL(locator))
 	return nil
 }

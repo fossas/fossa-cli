@@ -1,4 +1,4 @@
-package log
+package setup
 
 import (
 	"time"
@@ -17,14 +17,6 @@ func ShowSpinner(message string) {
 		s.Suffix = " " + message
 		s.Restart()
 	}
-}
-
-// PauseSpinner pauses the spinner and returns a function for unpausing.
-// TODO: we need to write our own logging functions that use this to prevent
-// interrupting the spinner while logging a message.
-func PauseSpinner() func() {
-	s.Stop()
-	return s.Restart
 }
 
 // StopSpinner stops a progress spinner.
