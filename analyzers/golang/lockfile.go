@@ -6,7 +6,6 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
-	"github.com/fossas/fossa-cli/monad"
 	"github.com/pkg/errors"
 )
 
@@ -21,22 +20,25 @@ var (
 func LockfileIn(dirname string) (resolver.Type, error) {
 	log.Logger.Debugf("%#v", dirname)
 
-	either := monad.EitherStr{}
-	result := either.
-		Bind(findFile("godep", filepath.Join(dirname, "Godeps", "Godeps.json"))).
-		Bind(findFile("govendor", filepath.Join(dirname, "vendor", "vendor.json"))).
-		Bind(findFile("dep", filepath.Join(dirname, "Gopkg.toml"))).
-		Bind(findFile("vndr", filepath.Join(dirname, "vendor.conf"))).
-		Bind(findFile("glide", filepath.Join(dirname, "glide.yaml"))).
-		Bind(findFile("gdm", filepath.Join(dirname, "Godeps")))
-	if result.Err != nil {
-		log.Logger.Debugf("Err: %#v", result.Err.Error())
-		return "", result.Err
+	lockfiles := [][2]string{
+		[2]string{"godep", filepath.Join(dirname, "Godeps", "Godeps.json")},
+		[2]string{"govendor", filepath.Join(dirname, "vendor", "vendor.json")},
+		[2]string{"dep", filepath.Join(dirname, "Gopkg.toml")},
+		[2]string{"vndr", filepath.Join(dirname, "vendor.conf")},
+		[2]string{"glide", filepath.Join(dirname, "glide.yaml")},
+		[2]string{"gdm", filepath.Join(dirname, "Godeps")},
 	}
-	if result.Result == "" {
-		return "", ErrNoLockfileInDir
+
+	for _, lockfile := range lockfiles {
+		ok, err := files.Exists(lockfile[1])
+		if err != nil {
+			return "", err
+		}
+		if ok {
+			return resolver.Type(lockfile[0]), nil
+		}
 	}
-	return resolver.Type(result.Result), nil
+	return "", ErrNoLockfileInDir
 }
 
 // NearestLockfile returns the type and directory of the nearest lockfile in an
