@@ -109,7 +109,7 @@ function install {
   # DO NOT REMOVE THE FOLLOWING LINES. THEY ARE AUTOMATICALLY POPULATED DURING
   # THE RELEASE PROCESS.
   # ============= DO NOT EDIT ==================
-  RELEASE='v0.7.0'
+  RELEASE='v0.7.1'
   # ============= =========== ==================
 
   VERSION=${RELEASE#v}
