@@ -15,6 +15,7 @@ type Type int
 const (
 	Ant       Type = iota // Apache Ant (https://ant.apache.org)
 	Bower                 // Bower (https://bower.io)
+	Carthage              // Carthage (https://github.com/Carthage/Carthage)
 	Cocoapods             // Cocoapods (https://cocoapods.org)
 	Composer              // Composer (https://getcomposer.org)
 	Go                    // dep (https://github.com/golang/dep), glide (https://github.com/Masterminds/glide), godep (https://github.com/tools/godep), govendor (experimental, https://github.com/kardianos/govendor), vndr (https://github.com/LK4D4/vndr)
@@ -32,6 +33,7 @@ const (
 var AllTypes = []Type{
 	Ant,
 	Bower,
+	Carthage,
 	Cocoapods,
 	Composer,
 	Go,
@@ -57,6 +59,12 @@ func ParseType(key string) (Type, error) {
 		fallthrough
 	case "bower":
 		return Bower, nil
+
+	// Carthage aliases
+	case "carthage":
+		fallthrough
+	case "cart":
+		return Carthage, nil
 
 	// Cocoapods aliases
 	case "ios":
@@ -159,6 +167,8 @@ func (t Type) String() string {
 		return "ant"
 	case Bower:
 		return "bower"
+	case Carthage:
+		return "cart"
 	case Cocoapods:
 		return "pod"
 	case Composer:
