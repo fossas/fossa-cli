@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/rveen/ogdl"
 
 	"github.com/fossas/fossa-cli/files"
-	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/pkg"
 )
 

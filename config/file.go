@@ -4,12 +4,14 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/fossas/fossa-cli/errors"
-	"github.com/fossas/fossa-cli/files"
-
+	"github.com/apex/log"
+	"github.com/urfave/cli"
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	v1 "github.com/fossas/fossa-cli/config/file.v1"
+	"github.com/fossas/fossa-cli/errors"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -91,6 +93,31 @@ func InitFile(modules []module.Module) File {
 			Modules: configs,
 		},
 	}
+}
+
+// ReadFile reads the configuration file specified by CLI flags.
+func ReadFile(c *cli.Context) (File, string, error) {
+	// Find a configuration file if one exists.
+	flag := ctx.String(flags.Config)
+	log.WithField("filename", flag).Debug("reading configuration file")
+	filename, err := TryFiles(flag, ".fossa.yml", ".fossa.yaml")
+	if err == ErrFileNotFound {
+		return NoFile{}, ".fossa.yml", nil
+	}
+	if err != nil {
+		return NoFile{}, ".fossa.yml", err
+	}
+
+	// Try to unmarshal the configuration file into a known config file version.
+	data, err := files.Read(filename)
+	if err != nil {
+		return NoFile{}, filename, err
+	}
+	file, err := v1.New(data)
+	if err != nil {
+		return NoFile{}, filename, err
+	}
+	return file, filename, err
 }
 
 func WriteFile(modules []module.Module) error {

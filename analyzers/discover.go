@@ -1,6 +1,8 @@
 package analyzers
 
 import (
+	"github.com/apex/log"
+
 	"github.com/fossas/fossa-cli/analyzers/ant"
 	"github.com/fossas/fossa-cli/analyzers/bower"
 	"github.com/fossas/fossa-cli/analyzers/carthage"
@@ -15,7 +17,6 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/ruby"
 	"github.com/fossas/fossa-cli/analyzers/scala"
 
-	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
 

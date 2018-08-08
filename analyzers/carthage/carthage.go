@@ -6,14 +6,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/apex/log"
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/fossas/fossa-cli/buildtools/carthage"
-	"github.com/fossas/fossa-cli/graph"
-
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/fossas/fossa-cli/log"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )

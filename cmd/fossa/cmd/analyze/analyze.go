@@ -5,11 +5,12 @@ import (
 
 	"github.com/urfave/cli"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/analyzers"
 	"github.com/fossas/fossa-cli/api/fossa"
+	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/config"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -74,9 +75,9 @@ func Run(ctx *cli.Context) error {
 }
 
 func Do(modules []module.Module) (analyzed []module.Module, err error) {
-	defer log.StopSpinner()
+	defer display.ClearProgress()
 	for i, m := range modules {
-		log.ShowSpinner(fmt.Sprintf("Analyzing module (%d/%d): %s", i+1, len(modules), m.Name))
+		display.InProgress(fmt.Sprintf("Analyzing module (%d/%d): %s", i+1, len(modules), m.Name))
 
 		// Handle raw modules differently from all others.
 		// TODO: maybe this should occur during the analysis step?
@@ -85,7 +86,7 @@ func Do(modules []module.Module) (analyzed []module.Module, err error) {
 		if m.Type == pkg.Raw {
 			locator, err := fossa.UploadTarball(m.BuildTarget)
 			if err != nil {
-				log.Logger.Warningf("Could not upload raw module: %s", err.Error())
+				log.Warnf("Could not upload raw module: %s", err.Error())
 			}
 			id := pkg.ID{
 				Type:     pkg.Raw,
@@ -122,16 +123,16 @@ func Do(modules []module.Module) (analyzed []module.Module, err error) {
 		m.Deps = deps.Transitive
 		analyzed = append(analyzed, m)
 	}
-	log.StopSpinner()
+	display.ClearProgress()
 
 	return analyzed, err
 }
 
 func uploadAnalysis(normalized []fossa.SourceUnit) error {
 	fossa.MustInit(config.Endpoint(), config.APIKey())
-	log.ShowSpinner("Uploading analysis...")
+	display.InProgress("Uploading analysis...")
 	locator, err := fossa.Upload(config.Fetcher(), config.Project(), config.Revision(), config.Title(), config.Branch(), normalized)
-	log.StopSpinner()
+	display.ClearProgress()
 	if err != nil {
 		log.Logger.Fatalf("Error during upload: %s", err.Error())
 		return err

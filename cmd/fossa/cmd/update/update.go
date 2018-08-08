@@ -3,14 +3,15 @@ package update
 import (
 	"fmt"
 
+	"github.com/apex/log"
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	"github.com/rhysd/go-github-selfupdate/selfupdate"
 	"github.com/urfave/cli"
 
+	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/version"
-	"github.com/apex/log"
 )
 
 const updateEndpoint = "fossas/fossa-cli"
@@ -29,7 +30,7 @@ var Cmd = cli.Command{
 }
 
 func Do(c *cli.Context) {
-	log.ShowSpinner("Checking for updates...")
+	display.InProgress("Checking for updates...")
 
 	ok, err := AvailableUpdate()
 	if err != nil {

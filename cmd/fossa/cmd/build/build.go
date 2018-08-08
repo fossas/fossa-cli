@@ -46,9 +46,9 @@ func Run(ctx *cli.Context) error {
 		log.Logger.Fatal("No modules specified.")
 	}
 
-	defer log.StopSpinner()
+	defer display.ClearProgress()
 	for i, m := range modules {
-		log.ShowSpinner(fmt.Sprintf("Building module (%d/%d): %s", i+1, len(modules), m.Name))
+		display.InProgress(fmt.Sprintf("Building module (%d/%d): %s", i+1, len(modules), m.Name))
 		err := Do(m, ctx.Bool(Clean), ctx.Bool(Force))
 		if err != nil {
 			log.Logger.Warningf("Could not build: %s", err.Error())

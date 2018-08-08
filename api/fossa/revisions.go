@@ -103,7 +103,7 @@ func GetRevisions(locators []Locator) (revs []Revision, err error) {
 			var revisions []Revision
 			_, err := GetJSON(endpoint, &revisions)
 			if err != nil {
-				log.Logger.Warningf("Failed to get some revisions: %s", err.Error())
+				log.Warnf("Failed to get some revisions: %s", err.Error())
 				responses <- []Revision{}
 			} else {
 				responses <- revisions

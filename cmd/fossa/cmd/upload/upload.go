@@ -28,12 +28,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
-	"github.com/apex/log"
 )
 
 // Command-specific flags for `fossa upload`.
@@ -119,12 +119,12 @@ func Run(ctx *cli.Context) {
 		log.Logger.Fatalf("Bad input: %s", err.Error())
 	}
 
-	log.ShowSpinner("Uploading...")
+	display.InProgress("Uploading...")
 	locator, err := Do(data)
 	if err != nil {
 		log.Logger.Fatalf("Upload failed: %s", err.Error())
 	}
-	log.StopSpinner()
+	display.ClearProgress()
 	log.Printf(display.ReportURL(locator))
 }
 

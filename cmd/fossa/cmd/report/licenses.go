@@ -7,9 +7,9 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/urfave/cli"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
-	"github.com/apex/log"
 )
 
 const defaultLicenseReportTemplate = `# 3rd-Party Software License Notice
@@ -42,7 +42,7 @@ func licensesRun(ctx *cli.Context) (err error) {
 		log.Logger.Fatal("Could not analyze modules: %s", err.Error())
 	}
 
-	defer log.StopSpinner()
+	defer display.ClearProgress()
 	revs := make([]fossa.Revision, 0)
 	for _, module := range analyzed {
 		if ctx.Bool(Unknown) {
@@ -50,7 +50,7 @@ func licensesRun(ctx *cli.Context) (err error) {
 			i := 0
 			for _, dep := range module.Deps {
 				i++
-				log.ShowSpinner(fmt.Sprintf("Fetching License Info (%d/%d): %s", i, totalDeps, dep.ID.Name))
+				display.InProgress(fmt.Sprintf("Fetching License Info (%d/%d): %s", i, totalDeps, dep.ID.Name))
 				locator := fossa.LocatorOf(dep.ID)
 				// Quirk of the licenses API: Go projects are stored under the git fetcher.
 				if locator.Fetcher == "go" {
@@ -64,7 +64,7 @@ func licensesRun(ctx *cli.Context) (err error) {
 				revs = append(revs, rev)
 			}
 		} else {
-			log.ShowSpinner("Fetching License Info")
+			display.InProgress("Fetching License Info")
 			var locators []fossa.Locator
 			for _, dep := range module.Deps {
 				locator := fossa.LocatorOf(dep.ID)
@@ -79,7 +79,7 @@ func licensesRun(ctx *cli.Context) (err error) {
 			}
 		}
 	}
-	log.StopSpinner()
+	display.ClearProgress()
 
 	depsByLicense := make(map[string]map[string]fossa.Revision, 0)
 	for _, rev := range revs {

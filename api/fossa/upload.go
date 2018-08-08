@@ -6,8 +6,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/fossas/fossa-cli/cmd/fossa/version"
 	"github.com/apex/log"
+	"github.com/fossas/fossa-cli/cmd/fossa/version"
 )
 
 // Errors related to preconditions.
@@ -27,20 +27,23 @@ var (
 func Upload(fetcher, project, revision, title, branch string, data []SourceUnit) (Locator, error) {
 	// Check preconditions
 	if fetcher != "custom" && revision == "" {
-		log.Logger.Fatalf("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
+		log.Fatal("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
 	}
 	if project == "" {
-		log.Logger.Fatalf("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
+		log.Fatal("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
 	}
 	if len(data) == 0 {
-		log.Logger.Fatalf("No data to upload")
+		log.Fatal("No data to upload")
 	}
 
 	payload, err := json.Marshal(data)
 	if err != nil {
 		return Locator{}, errors.Wrap(err, "could not marshal upload data")
 	}
-	log.Logger.Debugf("Uploading data from %#v modules: %#v", len(data), string(payload))
+	log.WithFields(log.Fields{
+		"modules": data,
+		"payload": string(payload),
+	}).Debug("uploading build")
 
 	locator := Locator{Fetcher: fetcher, Project: project, Revision: revision}
 
@@ -60,12 +63,12 @@ func Upload(fetcher, project, revision, title, branch string, data []SourceUnit)
 	}
 	endpoint, err := url.Parse("/api/builds/custom?" + q.Encode())
 	if err != nil {
-		log.Logger.Fatal("Failed to generate upload uri")
+		log.Fatal("Failed to generate upload URL")
 	}
-	log.Logger.Debugf("Sending build data to %#v", endpoint.String())
+	log.WithField("endpoint", endpoint.String()).Debug("uploading build")
 
 	res, statusCode, err := Post(endpoint.String(), payload)
-	log.Logger.Debugf("Response: %#v", res)
+	log.WithField("response", res).Debug("build upload completed")
 
 	if statusCode == 428 {
 		// TODO: handle "Managed Project" workflow
@@ -75,7 +78,7 @@ func Upload(fetcher, project, revision, title, branch string, data []SourceUnit)
 	} else if err != nil {
 		return Locator{}, errors.Wrap(err, "could not upload")
 	}
-	log.Logger.Debugf("Upload finished")
+	log.Debug("build upload succeeded")
 
 	var unmarshalled struct {
 		Locator string

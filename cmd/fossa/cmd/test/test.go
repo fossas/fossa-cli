@@ -68,8 +68,8 @@ func Run(ctx *cli.Context) error {
 }
 
 func Do(stop <-chan time.Time) ([]fossa.Issue, error) {
-	defer log.StopSpinner()
-	log.ShowSpinner("Waiting for analysis to complete...")
+	defer display.ClearProgress()
+	display.InProgress("Waiting for analysis to complete...")
 
 	revision := config.Revision()
 	if revision == "" {
@@ -96,14 +96,14 @@ func Do(stop <-chan time.Time) ([]fossa.Issue, error) {
 		log.Logger.Fatalf("Could not load build: %s", err.Error())
 	}
 
-	log.ShowSpinner("Waiting for FOSSA scan results...")
+	display.InProgress("Waiting for FOSSA scan results...")
 
 	issues, err := CheckIssues(project, stop)
 	if err != nil {
 		log.Logger.Fatalf("Could not load issues: %s", err.Error())
 	}
 
-	log.StopSpinner()
+	display.ClearProgress()
 	return issues, nil
 }
 

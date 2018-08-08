@@ -37,7 +37,7 @@ func Get(endpoint string) (res string, statusCode int, err error) {
 func GetJSON(endpoint string, v interface{}) (statusCode int, err error) {
 	u, err := serverURL.Parse(endpoint)
 	if err != nil {
-		return "", 0, err
+		return 0, err
 	}
 	return api.GetJSON(u, apiKey, nil, v)
 }
@@ -50,4 +50,13 @@ func Post(endpoint string, body []byte) (res string, statusCode int, err error) 
 		return "", 0, err
 	}
 	return api.Post(u, apiKey, body)
+}
+
+// PutJSON makes an authenticated JSON PUT request to a FOSSA API endpoint.
+func PutJSON(endpoint string, body []byte, v interface{}) (statusCode int, err error) {
+	u, err := serverURL.Parse(endpoint)
+	if err != nil {
+		return 0, err
+	}
+	return api.PutJSON(u, apiKey, body, v)
 }

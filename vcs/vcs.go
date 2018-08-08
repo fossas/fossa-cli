@@ -11,8 +11,9 @@ import (
 
 // Errors that occur when finding VCS repositories.
 var (
-	ErrNoVCSInDir   = errors.New("could not find VCS repository in directory")
-	ErrNoNearestVCS = errors.New("could not find nearest VCS repository in directory")
+	ErrNoVCSInDir     = errors.New("could not find VCS repository in directory")
+	ErrNoNearestVCS   = errors.New("could not find nearest VCS repository in directory")
+	ErrUnsupportedVCS = errors.New("VCS type is not supported")
 )
 
 // In returns the type of VCS repository rooted at a directory, or
@@ -41,6 +42,9 @@ func Nearest(dirname string) (VCS, string, error) {
 		}
 		if err != nil {
 			return err
+		}
+		if tool == Subversion || tool == Mercurial || tool == Bazaar {
+			return ErrUnsupportedVCS
 		}
 		vcs = tool
 		return files.ErrStopWalk

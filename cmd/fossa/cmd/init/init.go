@@ -68,8 +68,8 @@ func Run(ctx *cli.Context) error {
 
 // Do discovers modules within the current working directory.
 func Do(includeAll bool, options map[string]interface{}) ([]module.Module, error) {
-	defer log.StopSpinner()
-	log.ShowSpinner("Initializing...")
+	defer display.ClearProgress()
+	display.InProgress("Initializing...")
 
 	// Discover all modules.
 	discovered, err := analyzers.Discover(".", options)
