@@ -79,9 +79,14 @@ func Upload(fetcher, project, revision, title, branch string, data []SourceUnit)
 
 	var unmarshalled struct {
 		Locator string
+		error   string
 	}
 	err = json.Unmarshal([]byte(res), &unmarshalled)
-	if err != nil {
+	if err != nil || unmarshalled.error != "" {
+		return Locator{}, errors.Errorf("bad response: %s", res)
+	}
+
+	if unmarshalled.Locator == "" {
 		return Locator{}, errors.Errorf("bad response: %s", res)
 	}
 
