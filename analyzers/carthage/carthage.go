@@ -137,11 +137,10 @@ func (a *Analyzer) Build() error {
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	var deps graph.Deps
 	log.Logger.Debugf("Running Carthage analysis: %#v", a.Module)
 	resolvedCartfile, err := carthage.FromResolvedCartfile("ROOT", a.Module.Dir)
 	if err != nil {
-		return deps, err
+		return graph.Deps{}, err
 	}
 	cartfilePath := filepath.Join(a.Module.Dir, "Cartfile.resolved")
 	// Set direct dependencies.

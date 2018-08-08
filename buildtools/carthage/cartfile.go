@@ -5,10 +5,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/rveen/ogdl"
+
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/rveen/ogdl"
 )
 
 type Package struct {
@@ -26,7 +27,7 @@ type Requirement struct {
 }
 
 // Attempt to construct a Package from a dep given the parent directory
-func (r Requirement) PackageFromRequirement(dir string) (Package, error) {
+func (r Requirement) Package(dir string) (Package, error) {
 	log.Logger.Debugf("Attempting to build Cartfile with dep %#v", r.CheckoutName)
 	var resolvedCartfile Package
 
@@ -162,7 +163,7 @@ func RecurseDeps(pkgMap map[pkg.ID]pkg.Package, p Package) {
 		var imports []pkg.Import
 
 		// Get Transitive Dep Info
-		newPackage, err := dep.PackageFromRequirement(p.Dir)
+		newPackage, err := dep.Package(p.Dir)
 
 		if err != nil {
 			log.Logger.Warningf("Error parsing Cartfile.resolved at %#v: %#v. Continuing...", p.Dir, err.Error())
