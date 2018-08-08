@@ -49,7 +49,7 @@ func (r Requirement) Package(dir string) (Package, error) {
 	// get current Cartfile.resolved
 	resolvedCartfile, cartfileErr := FromResolvedCartfile(r.CheckoutName, requirementDirectory)
 	if cartfileErr != nil {
-		log.Logger.Warningf("Error parsing Cartfile.resolved at %#v: %#v", requirementDirectory, err.Error())
+		log.Logger.Debugf("Error parsing Cartfile.resolved at %#v: %#v", requirementDirectory, err.Error())
 		return resolvedCartfile, cartfileErr
 	}
 
@@ -166,7 +166,7 @@ func RecurseDeps(pkgMap map[pkg.ID]pkg.Package, p Package) {
 		newPackage, err := dep.Package(p.Dir)
 
 		if err != nil {
-			log.Logger.Warningf("Error parsing Cartfile.resolved at %#v: %#v. Continuing...", p.Dir, err.Error())
+			log.Logger.Debugf("Error parsing Cartfile.resolved at %#v: %#v. Continuing...", p.Dir, err.Error())
 		} else {
 			for _, i := range newPackage.Dependencies {
 				imports = append(imports, pkg.Import{
