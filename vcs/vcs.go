@@ -53,13 +53,10 @@ func Nearest(dirname string) (VCS, string, error) {
 }
 
 // GetRepository returns the location of the repository containing dirname,
-// errutil.ErrRepositoryNotFound if none is found, or errutil.ErrNotImplemented
-// if an unsupported VCS is found.
+// ErrNoNearestVCS if none is found, or errutil.ErrNotImplemented if an
+// unsupported VCS is found.
 func GetRepository(dirname string) (string, error) {
 	vcs, dir, err := Nearest(dirname)
-	if err == ErrNoNearestVCS {
-		return "", errutil.ErrRepositoryNotFound
-	}
 	if err != nil {
 		return "", err
 	}

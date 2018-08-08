@@ -13,20 +13,25 @@ import (
 
 func TestGetRepositoryAtRoot(t *testing.T) {
 	wd, _ := os.Getwd()
-	vcsDir, err := vcs.GetRepository("..")
+	dir, err := vcs.GetRepository("..")
 	assert.NoError(t, err)
-	assert.Equal(t, filepath.Join(wd, ".."), vcsDir)
+	assert.Equal(t, filepath.Join(wd, ".."), dir)
 }
 
 func TestGetRepositoryBelowRoot(t *testing.T) {
 	wd, _ := os.Getwd()
-	vcsDir, err := vcs.GetRepository("testdata")
+	dir, err := vcs.GetRepository("testdata")
 	assert.NoError(t, err)
-	assert.Equal(t, filepath.Join(wd, ".."), vcsDir)
+	assert.Equal(t, filepath.Join(wd, ".."), dir)
 }
 
 func TestGetRepositoryUnsupportedVCS(t *testing.T) {
-	vcsDir, err := vcs.GetRepository(filepath.Join("testdata", "subversion", "nested", "directory"))
-	assert.Error(t, err, errutil.ErrNotImplemented)
-	assert.Equal(t, "", vcsDir)
+	dir, err := vcs.GetRepository(filepath.Join("testdata", "subversion", "nested", "directory"))
+	assert.Equal(t, err, errutil.ErrNotImplemented)
+	assert.Equal(t, "", dir)
+}
+
+func TestGetRepositoryWithoutVCSReturnsErrNoNearestVCS(t *testing.T) {
+	_, err := vcs.GetRepository("/")
+	assert.Equal(t, err, vcs.ErrNoNearestVCS)
 }
