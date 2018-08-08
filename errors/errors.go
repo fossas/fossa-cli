@@ -26,6 +26,8 @@ This error is commonly seen. It usually occurs because mvn dependency:list is fa
 Please try the suggestions before filing a bug. If none of the suggestions work,
 you can file a bug at <https://github.com/fossas/fossa-cli/issues/new>.
 
+For additional support, ask the #cli channel at <https://slack.fossa.io>.
+
 CREATING AN ISSUE:
 
 Before creating an issue, please search GitHub issues for similar problems. When
@@ -37,10 +39,10 @@ func Wrap(cause error, err Error) Error {
 	switch e := cause.(type) {
 	case *Error:
 		return Error{
-			Cause:             e,
-			Code:              err.Code,
-			Message:           err.Message,
-			ProbablyUserError: err.ProbablyUserError,
+			Cause:        e,
+			Common:       err.Common,
+			Explanation:  err.Explanation,
+			Instructions: err.Instructions,
 		}
 	default:
 	}

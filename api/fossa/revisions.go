@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 )
 
 // A License holds the FOSSA API response for the license API.

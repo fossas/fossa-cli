@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/apex/log"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
-	"github.com/fossas/fossa-cli/log"
 )
 
 var Timeout = "timeout"

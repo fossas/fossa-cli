@@ -7,11 +7,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/apex/log"
+	isatty "github.com/mattn/go-isatty"
+
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
-	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
-	isatty "github.com/mattn/go-isatty"
 )
 
 /**** Mock configuration values ****/
@@ -108,7 +109,11 @@ func Options() (map[string]interface{}, error) {
 		sections := strings.Split(option, ":")
 		key := sections[0]
 		value := strings.Join(sections[1:], ":")
-		log.Logger.Debugf("%#v %#v %#v", sections, key, value)
+		log.WithFields(log.Fields{
+			"sections": sections,
+			"key":      key,
+			"value":    value,
+		}).Debug("parsing options")
 		// Attempt to parse as boolean.
 		if value == "true" {
 			options[key] = true
@@ -135,8 +140,10 @@ func Modules() ([]module.Module, error) {
 		return nil, err
 	}
 
-	log.Logger.Debugf("args: %#v", args)
-	log.Logger.Debugf("options: %#v", options)
+	log.WithFields(log.Fields{
+		"args":    args,
+		"options": options,
+	}).Debug("parsing modules")
 
 	// If arguments are present, prefer arguments over the configuration file.
 	if args.Present() {
@@ -161,14 +168,20 @@ func Modules() ([]module.Module, error) {
 			BuildTarget: name,
 			Options:     options,
 		}}
-		log.Logger.Debugf("Parsed module from arguments: %#v", m)
+
+		log.WithField("module", m).Debug("parsed module")
 		return m, nil
 	}
 
 	if l := len(options); l > 0 {
-		log.Logger.Warningf(
-			"Found %d options passed via command line, but modules are being loaded from configuration file. Ignoring options.",
-			l)
+		log.
+			WithFields(log.Fields{
+				"options": options,
+			}).
+			Warnf(
+				"Found %d options via flag, but modules are being loaded from configuration file. Ignoring options.",
+				len(options),
+			)
 	}
 
 	// TODO: specifying zero modules should be an error (we should add a test for this)

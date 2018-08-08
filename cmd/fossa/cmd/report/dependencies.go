@@ -5,7 +5,7 @@ import (
 
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/pkg"
 	"github.com/urfave/cli"
 )

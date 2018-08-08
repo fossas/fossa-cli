@@ -8,7 +8,7 @@ import (
 
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/pkg"
 )
 

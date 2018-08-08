@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/version"
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 )
 
 // Errors related to preconditions.

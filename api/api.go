@@ -11,9 +11,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/apex/log"
 	"github.com/pkg/errors"
-
-	"github.com/fossas/fossa-cli/log"
 )
 
 var defaultClient = http.Client{
@@ -79,15 +78,12 @@ type TimeoutError error
 
 // MakeAPIRequest runs and logs a request backed by a default `http.Client`.
 func MakeAPIRequest(method string, endpoint *url.URL, APIKey string, body []byte) (res []byte, statusCode int, err error) {
-	log.Logger.Debugf("%s", log.Entry{
-		Message: "making API request",
-		Fields: log.Fields{
-			"endpoint": *endpoint,
-			"method":   method,
-			"API key":  APIKey,
-			"body":     string(body),
-		},
-	}.String())
+	log.WithFields(log.Fields{
+		"endpoint": *endpoint,
+		"method":   method,
+		"API key":  APIKey,
+		"body":     string(body),
+	}).Debug("making API request")
 
 	// Construct request.
 	req, err := http.NewRequest(method, endpoint.String(), bytes.NewReader(body))
@@ -114,6 +110,6 @@ func MakeAPIRequest(method string, endpoint *url.URL, APIKey string, body []byte
 		return nil, 0, errors.Wrap(err, "could not read API HTTP response")
 	}
 
-	log.Logger.Debugf("Got API response: %#v", string(res))
+	log.WithField("response", string(res)).Debug("got API response")
 	return res, response.StatusCode, nil
 }

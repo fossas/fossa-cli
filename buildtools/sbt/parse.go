@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/pkg"
 )
 

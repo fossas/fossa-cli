@@ -11,13 +11,13 @@
 package config
 
 import (
+	"github.com/apex/log"
 	"github.com/urfave/cli"
 	git "gopkg.in/src-d/go-git.v4"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	v1 "github.com/fossas/fossa-cli/config/file.v1"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/vcs"
 )
 
@@ -31,10 +31,9 @@ var (
 func Init(c *cli.Context) error {
 	// First, set the CLI flags.
 	ctx = c
-	log.Init(Interactive(), Debug())
 
 	// Second, try to load a configuration file.
-	f, fname, err := readFile(c)
+	f, fname, err := ReadFile(c)
 	log.Logger.Debugf("Loaded configuration file: %#v %#v", f, fname)
 	if err != nil {
 		return err
@@ -43,7 +42,7 @@ func Init(c *cli.Context) error {
 	filename = fname
 
 	// Third, try to open the local VCS repository.
-	vcsDir, err := vcs.GetRepository(".")
+	vcsDir, err := vcs.Nearest(".")
 	if err == vcs.ErrNoNearestVCS {
 		return nil
 	}
@@ -61,8 +60,8 @@ func Init(c *cli.Context) error {
 	return nil
 }
 
-// readFile reads the configuration file specified by CLI flags.
-func readFile(c *cli.Context) (File, string, error) {
+// ReadFile reads the configuration file specified by CLI flags.
+func ReadFile(c *cli.Context) (File, string, error) {
 	// Find a configuration file if one exists.
 	flag := ctx.String(flags.Config)
 	log.Logger.Debugf("Trying to find configuration file at %#v", flag)

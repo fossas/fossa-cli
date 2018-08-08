@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 )
 
 // Cmd represents a single command. If Name and Argv are set, this is treated as
@@ -26,7 +26,10 @@ type Cmd struct {
 
 // Run executes a `Cmd`.
 func Run(cmd Cmd) (stdout, stderr string, err error) {
-	log.Logger.Debugf("Running command: %#v", append([]string{cmd.Name}, cmd.Argv...))
+	log.WithFields(log.Fields{
+		"name": cmd.Name,
+		"argv": cmd.Argv,
+	}).Debug("called Run")
 
 	var stderrBuffer bytes.Buffer
 	xc := exec.Command(cmd.Name, cmd.Argv...)
@@ -45,16 +48,19 @@ func Run(cmd Cmd) (stdout, stderr string, err error) {
 		xc.Env = os.Environ()
 	}
 
-	log.Logger.Debugf("Running in directory: %s", xc.Dir)
-	log.Logger.Debugf("Running with environment: %#v", xc.Env)
+	log.WithFields(log.Fields{
+		"dir": xc.Dir,
+		"env": xc.Env,
+	}).Debug("executing command")
 
 	stdoutBuffer, err := xc.Output()
 	stdout = string(stdoutBuffer)
 	stderr = stderrBuffer.String()
 
-	log.Logger.Debugf("STDOUT: %#v", stdout)
-	log.Logger.Debugf("STDERR: %#v", stderr)
-	log.Logger.Debugf("Done running.")
+	log.WithFields(log.Fields{
+		"stdout": stdout,
+		"stderr": stderr,
+	}).Debug("done running")
 
 	return stdout, stderr, err
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/analyze"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/module"
 )
 

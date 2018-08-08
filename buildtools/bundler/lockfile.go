@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/files"
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 )
 
 type Lockfile struct {

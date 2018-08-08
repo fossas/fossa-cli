@@ -1,16 +1,44 @@
-package setup
+package display
 
 import (
-	"io"
 	"os"
 	"runtime"
 
+	"github.com/apex/log"
 	logging "github.com/op/go-logging"
 )
 
-func SetLogging(interactive, debug bool, output io.Writer) {}
+var Entries []log.Entry
 
-func Handler() {}
+func Test() {
+	log.SetHandler(log.HandlerFunc(TestHandler))
+}
+
+func TestHandler(entry *log.Entry) error {
+	Entries = append(Entries, *entry)
+	return nil
+}
+
+func Init(interactive, debug bool) {
+	// Disable Unicode and ANSI control characters on Windows.
+	if runtime.GOOS == "windows" {
+		interactive = false
+	}
+
+	log.SetHandler()
+
+	useSpinner = interactive
+	s.Writer = os.Stderr
+	var colorOn, colorOff string
+	if interactive {
+		colorOn = "%{color}"
+		colorOff = "%{color:reset}"
+	}
+}
+
+func Handler(entry *log.Entry) error {
+
+}
 
 // TODO: we want to selectively turn logging off for tests, or maybe redirect
 // test output to a buffer that we only print if `t.Failed()`, so we avoid

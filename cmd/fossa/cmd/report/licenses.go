@@ -9,7 +9,7 @@ import (
 
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 )
 
 const defaultLicenseReportTemplate = `# 3rd-Party Software License Notice

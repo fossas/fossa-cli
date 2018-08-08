@@ -6,7 +6,7 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/config"
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"

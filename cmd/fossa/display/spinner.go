@@ -1,4 +1,4 @@
-package setup
+package display
 
 import (
 	"time"
@@ -11,15 +11,15 @@ var (
 	s          = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
 )
 
-// ShowSpinner shows a progress spinner with a message.
-func ShowSpinner(message string) {
+// InProgress shows a progress spinner with a message.
+func InProgress(message string) {
 	if useSpinner {
 		s.Suffix = " " + message
 		s.Restart()
 	}
 }
 
-// StopSpinner stops a progress spinner.
-func StopSpinner() {
+// ClearProgress stops a progress spinner.
+func ClearProgress() {
 	s.Stop()
 }

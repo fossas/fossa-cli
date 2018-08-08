@@ -6,7 +6,7 @@ import (
 
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/config"
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 )
 
 func ReportURL(locator fossa.Locator) string {

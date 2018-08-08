@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 )
 
 func fileMode(elem ...string) (os.FileMode, error) {
@@ -43,10 +43,10 @@ func ExistsFolder(pathElems ...string) (bool, error) {
 func Read(pathElems ...string) ([]byte, error) {
 	name := filepath.Join(pathElems...)
 
-	log.Logger.Debugf("Reading file `%s`", name)
+	log.WithField("filename", name).Debug("reading file")
 	contents, err := ioutil.ReadFile(name)
 	if err != nil {
-		log.Logger.Debugf("Could not read file `%s`: %s", name, err.Error())
+		log.WithError(err).WithField("filename", name).Debug("unable to read file")
 	}
 
 	return contents, err

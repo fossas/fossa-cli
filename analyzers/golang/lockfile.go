@@ -3,10 +3,11 @@ package golang
 import (
 	"path/filepath"
 
+	"github.com/apex/log"
+	"github.com/pkg/errors"
+
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/fossas/fossa-cli/log"
-	"github.com/pkg/errors"
 )
 
 // Errors that occur while finding lockfiles.
