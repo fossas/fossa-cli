@@ -56,7 +56,7 @@ func New(m module.Module) (*Analyzer, error) {
 		Module:  m,
 	}
 
-	log.Logger.Debugf("%#v", analyzer)
+	log.WithField("analyzer", analyzer).Debug("constructed analyzer")
 	return &analyzer, nil
 }
 

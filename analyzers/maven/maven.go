@@ -11,11 +11,11 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/buildtools/maven"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -52,12 +52,12 @@ func New(m module.Module) (*Analyzer, error) {
 		Options: options,
 	}
 
-	log.Logger.Debugf("%#v", analyzer)
+	log.WithField("analyzer", analyzer).Debug("constructed analyzer")
 	return &analyzer, nil
 }
 
 func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
-	log.Logger.Debugf("%#v", dir)
+	log.WithField("dir", dir).Debug("discovering modules")
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {

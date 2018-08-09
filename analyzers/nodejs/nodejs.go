@@ -23,9 +23,9 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/npm"
 	"github.com/fossas/fossa-cli/graph"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -108,7 +108,7 @@ func New(m module.Module) (*Analyzer, error) {
 // Discover searches for `package.json`s not within a `node_modules` or
 // `bower_components`.
 func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
-	log.Logger.Debugf("%#v", dir)
+	log.WithField("dir", dir).Debug("discovering modules")
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {

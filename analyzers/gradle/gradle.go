@@ -14,11 +14,11 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/buildtools/gradle"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -73,7 +73,7 @@ func New(m module.Module) (*Analyzer, error) {
 // TODO: use the output of `gradle projects` and try `gradle
 // <project>:dependencies` for each project?
 func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
-	log.Logger.Debugf("%#v", dir)
+	log.WithField("dir", dir).Debug("discovering modules")
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {

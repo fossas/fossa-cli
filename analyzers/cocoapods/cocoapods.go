@@ -11,11 +11,11 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/buildtools/cocoapods"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -59,7 +59,7 @@ func New(m module.Module) (*Analyzer, error) {
 		Options: options,
 	}
 
-	log.Logger.Debugf("%#v", analyzer)
+	log.WithField("analyzer", analyzer).Debug("constructed analyzer")
 	return &analyzer, nil
 }
 

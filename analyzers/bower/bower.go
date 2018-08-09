@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/apex/log"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -41,7 +41,7 @@ type Options struct {
 }
 
 func New(m module.Module) (*Analyzer, error) {
-	log.Logger.Debug("%#v", m.Options)
+	log.WithField("module", m).Debug("constructing Bower analyzer")
 	// Set Bower context variables
 	bowerCmd, bowerVersion, err := exec.Which("-v", os.Getenv("BOWER_BINARY"), "bower")
 	if err != nil {
@@ -69,7 +69,7 @@ func New(m module.Module) (*Analyzer, error) {
 		Options: options,
 	}
 
-	log.Logger.Debugf("analyzer: %#v", analyzer)
+	log.WithField("analyzer", analyzer).Debug("constructed Bower analyzer")
 	return &analyzer, nil
 }
 
@@ -79,12 +79,12 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	var moduleConfigs []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Logger.Debugf("Failed to access path %s: %s", path, err.Error())
+			log.WithError(err).WithField("path", path).Debug("error while walking")
 			return err
 		}
 		// Skip **/node_modules and **/bower_components directories
 		if info.IsDir() && (info.Name() == "node_modules" || info.Name() == "bower_components") {
-			log.Logger.Debugf("Skipping directory: %s", info.Name())
+			log.WithField("dir", info.Name()).Debug("skipping directory")
 			return filepath.SkipDir
 		}
 
@@ -98,7 +98,10 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				name = manifest.Name
 			}
 
-			log.Logger.Debugf("Found Bower package: %s (%s)", path, name)
+			log.WithFields(log.Fields{
+				"path": path,
+				"name": name,
+			}).Debug("discovered Bower module")
 			moduleConfigs = append(moduleConfigs, module.Module{
 				Name:        name,
 				Type:        pkg.Bower,
@@ -142,7 +145,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 		return false, err
 	}
 
-	log.Logger.Debugf("Done checking Bower build: %#v", isBuilt)
+	log.WithField("isBuilt", isBuilt).Debug("done checking Bower build")
 	return isBuilt, nil
 }
 
