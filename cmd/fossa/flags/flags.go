@@ -7,6 +7,31 @@ import (
 	"github.com/urfave/cli"
 )
 
+func Combine(sets ...[]cli.Flag) []cli.Flag {
+	flags := make(map[string]cli.Flag)
+	for _, s := range sets {
+		for _, f := range s {
+			name := f.GetName()
+			prev, ok := flags[name]
+			if ok {
+				if prev == f {
+					continue
+				} else {
+					panic(f)
+				}
+			} else {
+				flags[name] = f
+			}
+		}
+	}
+
+	var combined []cli.Flag
+	for _, f := range flags {
+		combined = append(combined, f)
+	}
+	return combined
+}
+
 func Short(name string) string {
 	return fmt.Sprintf("%c, %s", name[0], name)
 }
