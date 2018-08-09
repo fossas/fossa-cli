@@ -27,7 +27,10 @@ type Edge struct {
 }
 
 func ParseDependencyGraph(graph Graph, evicted string) (pkg.Imports, pkg.Deps, error) {
-	log.Logger.Debugf("%#v %#v", graph, evicted)
+	log.WithFields(log.Fields{
+		"graph":   graph,
+		"evicted": evicted,
+	}).Debug("parsing XML graph with evictions")
 
 	replacements := ParseEvicted(evicted)
 
@@ -36,7 +39,7 @@ func ParseDependencyGraph(graph Graph, evicted string) (pkg.Imports, pkg.Deps, e
 		source := ParsePackageID(edge.Source)
 		target := ParsePackageID(edge.Target)
 
-		log.Logger.Debugf("source: %#v", source)
+		log.WithField("source", source).Debug("parsing graph edge")
 
 		_, ok := deps[source]
 		if !ok {

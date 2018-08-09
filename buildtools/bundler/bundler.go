@@ -3,8 +3,9 @@ package bundler
 import (
 	"strings"
 
-	"github.com/fossas/fossa-cli/exec"
 	"github.com/apex/log"
+
+	"github.com/fossas/fossa-cli/exec"
 )
 
 type Bundler struct {
@@ -29,7 +30,7 @@ func (b *Bundler) List() ([]Gem, error) {
 	var gems []Gem
 	for _, line := range lines[1:] { // The first line is "Gems included by the bundle:"
 		trimmed := strings.TrimPrefix(line, "  * ")
-		log.Logger.Debugf("trimmed: %#v", trimmed)
+		log.WithField("trimmed", trimmed).Debug("parsing line")
 		sections := strings.Split(trimmed, " ")
 		gems = append(gems, Gem{
 			Name:     sections[0],

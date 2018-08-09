@@ -4,11 +4,11 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -45,22 +45,12 @@ func (s *SBT) Projects(dir string) ([]string, error) {
 	}
 
 	// Filter lines to only include projects.
-	var projectLines []string
-	for _, line := range strings.Split(output, "\n") {
-		if FilterLine(line) {
-			log.Logger.Debugf("Matched line: %#v", line)
-			projectLines = append(projectLines, line)
-		} else {
-			log.Logger.Debugf("Ignoring line: %#v", line)
-		}
-	}
-
 	var projects []string
-	for _, project := range projectLines {
-		log.Logger.Debugf("Raw project: %#v", project)
+	for _, project := range FilterLines(strings.Split(output, "\n")) {
+		log.WithField("project", project).Debug("project line")
 		noPrefix := strings.TrimPrefix(project, "[info] 	   ")
 		noSelectedPrefix := strings.TrimPrefix(noPrefix, "[info] 	 * ")
-		log.Logger.Debugf("Trimmed project: %#v", project)
+		log.WithField("project", project).Debug("trimmed project line")
 		projects = append(projects, noSelectedPrefix)
 	}
 	return projects, nil
@@ -89,14 +79,14 @@ func (s *SBT) DependencyTree(dir, project, configuration string) (pkg.Imports, p
 			file = matches[1]
 		}
 	}
-	log.Logger.Debugf("file: %#v", file)
+	log.WithField("file", file).Debug("graph XML file")
 
 	var root GraphML
 	err = files.ReadXML(&root, file)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "could not parse SBT dependency graph")
 	}
-	log.Logger.Debugf("graph: %#v", root)
+	log.WithField("root", root).Debug("parsed XML graph")
 
 	evicted, _, err := exec.Run(exec.Cmd{
 		Dir:  dir,
@@ -121,16 +111,7 @@ func (s *SBT) DependencyList(dir, project, configuration string) (string, error)
 	}
 
 	// Filter lines to only include dependency list.
-	var depLines []string
-	for _, line := range strings.Split(output, "\n") {
-		if FilterLine(line) {
-			log.Logger.Debugf("Matched line: %#v", line)
-			depLines = append(depLines, line)
-		} else {
-			log.Logger.Debugf("Ignoring line: %#v", line)
-		}
-	}
-	return strings.Join(depLines, "\n"), err
+	return strings.Join(FilterLines(strings.Split(output, "\n")), "\n"), err
 }
 
 func FilterLine(line string) bool {
@@ -153,6 +134,19 @@ func FilterLine(line string) bool {
 		strings.HasPrefix(infoMsg, "Done ") ||
 		strings.HasPrefix(infoMsg, "downloading ") ||
 		strings.HasPrefix(strings.TrimSpace(infoMsg), "[SUCCESSFUL ]"))
+}
+
+func FilterLines(lines []string) []string {
+	var filtered []string
+	for _, line := range lines {
+		if FilterLine(line) {
+			log.WithField("line", line).Debug("matched line")
+			filtered = append(filtered, line)
+		} else {
+			log.WithField("line", line).Debug("ignoring line")
+		}
+	}
+	return filtered
 }
 
 func Task(project, configuration, task string) string {

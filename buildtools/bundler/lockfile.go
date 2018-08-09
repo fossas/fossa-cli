@@ -4,10 +4,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/files"
-	"github.com/apex/log"
 )
 
 type Lockfile struct {
@@ -129,7 +129,11 @@ func ParseSpecs(s string) []Spec {
 		if len(matches) == 5 {
 			version = matches[4]
 		}
-		log.Logger.Debugf("Parsed: %#v %#v %#v\n", spaces, name, version)
+		log.WithFields(log.Fields{
+			"spaces":  spaces,
+			"name":    name,
+			"version": version,
+		}).Debug("parsing spec line")
 
 		switch len(spaces) {
 		// This is a spec.
@@ -152,11 +156,11 @@ func ParseSpecs(s string) []Spec {
 			})
 		default:
 			// TODO: this should return an error instead of panicking.
-			log.Logger.Panicf("Malformed lockfile")
+			log.Fatal("Malformed lockfile")
 		}
 	}
 	// Push the last spec.
-	log.Logger.Debugf("Pushing last: %#v\n", curr)
+	log.WithField("spec", curr).Debug("push last spec")
 	specs = append(specs, curr)
 
 	return specs
@@ -175,7 +179,11 @@ func ParseDependenciesSection(section string) []Requirement {
 		if len(matches) == 5 {
 			version = matches[4]
 		}
-		log.Logger.Debugf("Parsed: %#v %#v %#v\n", spaces, name, version)
+		log.WithFields(log.Fields{
+			"spaces":  spaces,
+			"name":    name,
+			"version": version,
+		}).Debug("parsing dependency line")
 		requirements = append(requirements, Requirement{
 			Name:    strings.TrimSuffix(name, "!"),
 			Pinned:  strings.HasSuffix(name, "!"),

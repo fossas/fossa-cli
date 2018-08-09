@@ -6,11 +6,11 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/apex/log"
 )
 
 type Manifest struct {
@@ -133,12 +133,12 @@ func ParseDependencyTree(stdin string) ([]Dependency, map[Dependency][]Dependenc
 
 	depRegex := regexp.MustCompile("([^:]+):([^:]+):([^:]*):([^:]+)")
 	return ReadDependencyTree(filteredLines, func(line string) (int, Dependency, error) {
-		log.Logger.Debugf("line: %#v", line)
+		log.WithField("line", line).Debug("parsing output line")
 		matches := r.FindStringSubmatch(line)
 		depth := len(matches[1])
 		if depth%3 != 0 {
 			// Sanity check
-			log.Logger.Panicf("Bad depth: %#v %s %#v", depth, line)
+			log.WithField("depth", depth).Fatal("bad depth")
 		}
 		level := depth / 3
 		depMatches := depRegex.FindStringSubmatch(matches[2])
