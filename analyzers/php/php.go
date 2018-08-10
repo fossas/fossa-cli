@@ -11,11 +11,11 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/buildtools/composer"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -38,7 +38,7 @@ type Options struct {
 }
 
 func New(m module.Module) (*Analyzer, error) {
-	log.Logger.Debug("%#v", m.Options)
+	log.WithField("options", m.Options).Debug("constructing analyzer")
 	// Set Bower context variables
 	composerCmd, _, err := exec.Which("--version", os.Getenv("COMPOSER_BINARY"), "composer")
 	if err != nil {
@@ -61,7 +61,7 @@ func New(m module.Module) (*Analyzer, error) {
 		Options: options,
 	}
 
-	log.Logger.Debugf("analyzer: %#v", analyzer)
+	log.Debugf("analyzer: %#v", analyzer)
 	return &analyzer, nil
 }
 
@@ -70,13 +70,13 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Logger.Debugf("failed to access path %s: %s\n", path, err.Error())
+			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
 			return err
 		}
 
 		// Skip the /vendor/ folder
 		if info.IsDir() && info.Name() == "vendor" {
-			log.Logger.Debugf("skipping `vendor` directory: %s", info.Name())
+			log.Debugf("skipping `vendor` directory: %s", info.Name())
 			return filepath.SkipDir
 		}
 
@@ -90,7 +90,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				name = composerPackage.Name
 			}
 
-			log.Logger.Debugf("found Composer package: %s (%s)", path, name)
+			log.Debugf("found Composer package: %s (%s)", path, name)
 			modules = append(modules, module.Module{
 				Name:        name,
 				Type:        pkg.Composer,

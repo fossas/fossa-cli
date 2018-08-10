@@ -21,6 +21,7 @@ package upload
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -68,7 +69,7 @@ func ParseLocators(locators string) (fossa.SourceUnit, error) {
 func hasPipeInput() bool {
 	stat, err := os.Stdin.Stat()
 	if err != nil {
-		log.Logger.Warningf("Could not read stdin")
+		log.Warnf("Could not read stdin")
 		return false
 	}
 	return (stat.Mode() & os.ModeCharDevice) == 0
@@ -111,32 +112,32 @@ func getInput(ctx *cli.Context, usingLocators bool) ([]fossa.SourceUnit, error) 
 func Run(ctx *cli.Context) {
 	err := setup.Setup(ctx)
 	if err != nil {
-		log.Logger.Fatalf("Could not initialize: %s", err.Error())
+		log.Fatalf("Could not initialize: %s", err.Error())
 	}
 
 	data, err := getInput(ctx, ctx.Bool(Locators))
 	if err != nil {
-		log.Logger.Fatalf("Bad input: %s", err.Error())
+		log.Fatalf("Bad input: %s", err.Error())
 	}
 
 	display.InProgress("Uploading...")
 	locator, err := Do(data)
 	if err != nil {
-		log.Logger.Fatalf("Upload failed: %s", err.Error())
+		log.Fatalf("Upload failed: %s", err.Error())
 	}
 	display.ClearProgress()
-	log.Printf(display.ReportURL(locator))
+	fmt.Printf(display.ReportURL(locator))
 }
 
 func Do(data []fossa.SourceUnit) (fossa.Locator, error) {
 	if config.Project() == "" {
-		log.Logger.Fatalf("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
+		log.Fatalf("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
 	}
 	if config.Fetcher() != "custom" && config.Revision() == "" {
-		log.Logger.Fatalf("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
+		log.Fatalf("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
 	}
 	if len(data) == 0 {
-		log.Logger.Fatalf("No data to upload")
+		log.Fatalf("No data to upload")
 	}
 
 	return fossa.Upload(config.Fetcher(), config.Project(), config.Revision(), config.Title(), config.Branch(), data)

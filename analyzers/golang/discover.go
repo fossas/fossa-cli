@@ -4,9 +4,9 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
 	"github.com/fossas/fossa-cli/exec"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -21,7 +21,7 @@ type DiscoverOptions struct {
 
 // Discover runs `go list ./...`.
 func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) {
-	log.Logger.Debug("%#v", opts)
+	log.Debugf("%#v", opts)
 
 	// Parse and validate options.
 	var options DiscoverOptions
@@ -29,7 +29,7 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 	if err != nil {
 		return nil, err
 	}
-	log.Logger.Debug("Decoded options: %#v", options)
+	log.WithField("options", options).Debug("parsed analyzer options")
 
 	cmd, _, err := exec.Which("version", options.Cmd, "go")
 	if err != nil {
@@ -48,7 +48,7 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 
 	var projects []module.Module
 	for _, f := range found {
-		log.Logger.Debugf("Found Go module: %#v", f)
+		log.Debugf("Found Go module: %#v", f)
 		projects = append(projects, module.Module{
 			Name:         Unvendor(f.ImportPath),
 			Type:         pkg.Go,

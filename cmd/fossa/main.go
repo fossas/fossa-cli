@@ -5,8 +5,8 @@ import (
 
 	"github.com/urfave/cli"
 
-	"github.com/fossas/fossa-cli/config"
 	"github.com/apex/log"
+	"github.com/fossas/fossa-cli/config"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
@@ -50,8 +50,8 @@ func main() {
 		case *cli.ExitError:
 			os.Exit(e.ExitCode())
 		default:
-			// TODO: port all log.Logger.Fatal to instead return an error.
-			log.Logger.Debugf("Error: %#v", err.Error())
+			// TODO: port all log.Fatal to instead return an error.
+			log.Debugf("Error: %#v", err.Error())
 			os.Exit(1)
 		}
 	}

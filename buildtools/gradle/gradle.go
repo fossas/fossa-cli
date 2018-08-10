@@ -7,9 +7,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/apex/log"
 )
 
 type Gradle struct {
@@ -69,7 +69,7 @@ func (g *Gradle) Projects() ([]string, error) {
 }
 
 func (g *Gradle) Run(taskArgs ...string) (string, error) {
-	log.Logger.Debugf("%#v", g)
+	log.Debugf("%#v", g)
 	stdout, _, err := exec.Run(exec.Cmd{
 		Name: g.Cmd,
 		Argv: taskArgs,
@@ -130,7 +130,7 @@ func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency
 			}
 		}
 
-		log.Logger.Debugf("%#v %#v", depth/5, parsed)
+		log.Debugf("%#v %#v", depth/5, parsed)
 		return depth / 5, parsed, nil
 	})
 }

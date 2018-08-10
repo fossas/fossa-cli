@@ -41,7 +41,7 @@ type Options struct {
 }
 
 func New(m module.Module) (*Analyzer, error) {
-	log.Logger.Debugf("%#v", m.Options)
+	log.Debugf("%#v", m.Options)
 
 	var options Options
 	err := mapstructure.Decode(m.Options, &options)
@@ -58,12 +58,12 @@ func New(m module.Module) (*Analyzer, error) {
 	if analyzer.GradleCmd == "" {
 		gradle, _, err := exec.Which("-v", os.Getenv("FOSSA_GRADLE_CMD"), "./gradlew", "gradle")
 		if err != nil {
-			log.Logger.Warningf("Could not find Gradle: %s", err.Error())
+			log.Warnf("Could not find Gradle: %s", err.Error())
 		}
 		analyzer.GradleCmd = gradle
 	}
 
-	log.Logger.Debugf("Initialized Gradle analyzer: %#v", analyzer)
+	log.Debugf("Initialized Gradle analyzer: %#v", analyzer)
 	return &analyzer, nil
 }
 
@@ -77,7 +77,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Logger.Debugf("Failed to access path %s: %s\n", path, err.Error())
+			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
 			return err
 		}
 
@@ -142,7 +142,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	log.Logger.Debugf("Running Gradle analysis: %#v", a.Module)
+	log.Debugf("Running Gradle analysis: %#v", a.Module)
 
 	// Get packages.
 	g := gradle.Gradle{

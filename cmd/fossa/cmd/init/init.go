@@ -9,10 +9,11 @@ import (
 
 	"github.com/urfave/cli"
 
+	"github.com/apex/log"
+	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -39,29 +40,29 @@ var _ cli.ActionFunc = Run
 func Run(ctx *cli.Context) error {
 	err := setup.Setup(ctx)
 	if err != nil {
-		log.Logger.Fatalf("Could not initialize: %s", err.Error())
+		log.Fatalf("Could not initialize: %s", err.Error())
 	}
 
 	hasConfigFile, err := config.ExistsFile()
 	if err != nil {
-		log.Logger.Fatalf("Could not detect configuration file: %s", err.Error())
+		log.Fatalf("Could not detect configuration file: %s", err.Error())
 	}
 
 	if !hasConfigFile || ctx.Bool(Update) {
 		options, err := config.Options()
 		if err != nil {
-			log.Logger.Fatalf("Could not parse options: %s", err.Error())
+			log.Fatalf("Could not parse options: %s", err.Error())
 		}
 		modules, err := Do(ctx.Bool(IncludeAll), options)
 		if err != nil {
-			log.Logger.Fatalf("Could not run init: %s", err.Error())
+			log.Fatalf("Could not run init: %s", err.Error())
 		}
 		err = config.WriteFile(modules)
 		if err != nil {
-			log.Logger.Fatalf("Could not write config: %s", err.Error())
+			log.Fatalf("Could not write config: %s", err.Error())
 		}
 	} else {
-		log.Logger.Warning("Existing configuration available; skipping initialization")
+		log.Warn("Existing configuration available; skipping initialization")
 	}
 	return nil
 }
@@ -74,7 +75,7 @@ func Do(includeAll bool, options map[string]interface{}) ([]module.Module, error
 	// Discover all modules.
 	discovered, err := analyzers.Discover(".", options)
 	if err != nil {
-		log.Logger.Warningf("An error occurred during discovery: %s", err.Error())
+		log.Warnf("An error occurred during discovery: %s", err.Error())
 	}
 
 	// TODO: Check whether modules were previously ignored.
@@ -85,7 +86,7 @@ func Do(includeAll bool, options map[string]interface{}) ([]module.Module, error
 	}
 	var filtered []module.Module
 	for _, d := range discovered {
-		log.Logger.Debugf("Discovered: %#v", d)
+		log.Debugf("Discovered: %#v", d)
 
 		// Match name regexp.
 		// TODO: should we match on full path sections (e.g. right now, this will filter out `a/b/foovendor/c`)?
@@ -94,7 +95,7 @@ func Do(includeAll bool, options map[string]interface{}) ([]module.Module, error
 			return nil, err
 		}
 		if matched {
-			log.Logger.Warningf("Filtering out suspicious module: %s (%s)", d.Name, d.BuildTarget)
+			log.Warnf("Filtering out suspicious module: %s (%s)", d.Name, d.BuildTarget)
 			continue
 		}
 

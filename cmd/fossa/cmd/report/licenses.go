@@ -39,7 +39,7 @@ var licensesCmd = cli.Command{
 func licensesRun(ctx *cli.Context) (err error) {
 	analyzed, err := analyzeModules(ctx)
 	if err != nil {
-		log.Logger.Fatal("Could not analyze modules: %s", err.Error())
+		log.Fatalf("Could not analyze modules: %s", err.Error())
 	}
 
 	defer display.ClearProgress()
@@ -58,7 +58,7 @@ func licensesRun(ctx *cli.Context) (err error) {
 				}
 				rev, err := fossa.GetRevision(fossa.LocatorOf(dep.ID))
 				if err != nil {
-					log.Logger.Warning(err.Error())
+					log.Warn(err.Error())
 					continue
 				}
 				revs = append(revs, rev)
@@ -75,7 +75,7 @@ func licensesRun(ctx *cli.Context) (err error) {
 			}
 			revs, err = fossa.GetRevisions(locators)
 			if err != nil {
-				log.Logger.Fatalf("Could not fetch revisions: %s", err.Error())
+				log.Fatalf("Could not fetch revisions: %s", err.Error())
 			}
 		}
 	}
@@ -95,14 +95,14 @@ func licensesRun(ctx *cli.Context) (err error) {
 		output, err := display.TemplateFile(tmplFile, depsByLicense)
 		fmt.Println(output)
 		if err != nil {
-			log.Logger.Fatalf("Could not parse template data: %s", err.Error())
+			log.Fatalf("Could not parse template data: %s", err.Error())
 		}
 		return nil
 	}
 
 	tmpl, err := template.New("base").Parse(defaultLicenseReportTemplate)
 	if err != nil {
-		log.Logger.Fatalf("Could not parse template data: %s", err.Error())
+		log.Fatalf("Could not parse template data: %s", err.Error())
 	}
 
 	output, err := display.Template(tmpl, depsByLicense)

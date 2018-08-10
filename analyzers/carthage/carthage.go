@@ -42,7 +42,7 @@ func New(m module.Module) (*Analyzer, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Logger.Debug("Decoded options: %#v", options)
+	log.WithField("options", options).Debug("parsed analyzer options")
 
 	analyzer := Analyzer{
 		CarthageCmd:     cartCmd,
@@ -65,7 +65,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Logger.Debugf("Failed to access path %s: %s\n", path, err.Error())
+			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
 			return err
 		}
 
@@ -77,7 +77,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				cartfilePath := filepath.Join(filepath.Dir(path), "Cartfile")
 				cartfileExists, err := files.Exists(cartfilePath)
 				if err != nil {
-					log.Logger.Debugf("Error searching for Cartfile: %s (%s)", path, err.Error())
+					log.Debugf("Error searching for Cartfile: %s (%s)", path, err.Error())
 				}
 
 				if cartfileExists == true {
@@ -85,7 +85,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				}
 			}
 
-			log.Logger.Debugf("Found Carthage package: %s (%s)", path, moduleName)
+			log.Debugf("Found Carthage package: %s (%s)", path, moduleName)
 			relPath, _ := filepath.Rel(dir, path)
 			modules = append(modules, module.Module{
 				Name:        moduleName,
@@ -107,23 +107,23 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 
 // IsBuilt checks whether file `Cartfile.resolved` exists, and also if a `Carthage` folder exists
 func (a *Analyzer) IsBuilt() (bool, error) {
-	log.Logger.Debugf("Checking Carthage build: %#v", a.Module)
+	log.Debugf("Checking Carthage build: %#v", a.Module)
 	hasResolvedCartfile, err := files.Exists(filepath.Join(a.Module.Dir, "Cartfile.resolved"))
 
 	if err != nil {
-		log.Logger.Warningf("Error checking Carthage build: %#v", err.Error())
+		log.Warnf("Error checking Carthage build: %#v", err.Error())
 		return false, err
 	}
 
 	hasCarthageFolder, err := files.ExistsFolder(a.Module.Dir, "Carthage")
 	if err != nil {
-		log.Logger.Warningf("Error checking Carthage build: %#v", err.Error())
+		log.Warnf("Error checking Carthage build: %#v", err.Error())
 		return false, err
 	}
 
 	isBuilt := hasCarthageFolder && hasResolvedCartfile
 
-	log.Logger.Debugf("Done checking Carthage build: %#v", isBuilt)
+	log.Debugf("Done checking Carthage build: %#v", isBuilt)
 	return isBuilt, nil
 }
 
@@ -136,7 +136,7 @@ func (a *Analyzer) Build() error {
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	log.Logger.Debugf("Running Carthage analysis: %#v", a.Module)
+	log.Debugf("Running Carthage analysis: %#v", a.Module)
 	resolvedCartfile, err := carthage.FromResolvedCartfile("ROOT", a.Module.Dir)
 	if err != nil {
 		return graph.Deps{}, err
@@ -160,7 +160,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	transitiveDeps := make(map[pkg.ID]pkg.Package)
 	carthage.RecurseDeps(transitiveDeps, resolvedCartfile)
 
-	log.Logger.Debugf("Done running Carthage analysis: %#v", transitiveDeps)
+	log.Debugf("Done running Carthage analysis: %#v", transitiveDeps)
 
 	return graph.Deps{
 		Direct:     imports,

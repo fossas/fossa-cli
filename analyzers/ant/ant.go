@@ -18,9 +18,9 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/maven"
 	"github.com/fossas/fossa-cli/graph"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -43,12 +43,12 @@ type Options struct {
 
 // Initialize collects metadata on Java and SBT binaries
 func New(m module.Module) (*Analyzer, error) {
-	log.Logger.Debugf("Initializing Ant builder...")
+	log.Debugf("Initializing Ant builder...")
 
 	// Set Java context variables
 	javaCmd, javaVersion, err := exec.Which("-version", os.Getenv("JAVA_BINARY"), "java")
 	if err != nil {
-		log.Logger.Warningf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
+		log.Warnf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
 	}
 
 	// Set Ant context variables
@@ -96,14 +96,14 @@ func (a *Analyzer) Build() error {
 
 // Analyze resolves a lib directory and parses the jars inside
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	log.Logger.Debugf("Running Ant analysis: %#v in %s", a.Module, a.Module.Dir)
+	log.Debugf("Running Ant analysis: %#v in %s", a.Module, a.Module.Dir)
 
 	libdir := "lib"
 	if a.Options.LibDir != "" {
 		libdir = a.Options.LibDir
 	}
 
-	log.Logger.Debugf("resolving ant libs in: %s", libdir)
+	log.Debugf("resolving ant libs in: %s", libdir)
 	if ok, err := files.ExistsFolder(a.Module.Dir, libdir); !ok || err != nil {
 		return graph.Deps{}, errors.New("unable to resolve library directory, try specifying it using the `modules.options.libdir` property in `fossa.yml`")
 	}
@@ -113,7 +113,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		return graph.Deps{}, err
 	}
 
-	log.Logger.Debugf("Running Ant analysis: %#v", jarFilePaths)
+	log.Debugf("Running Ant analysis: %#v", jarFilePaths)
 
 	// traverse through libdir and and resolve jars
 	var imports []pkg.Import
@@ -125,7 +125,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 				Resolved: locator,
 			})
 		} else {
-			log.Logger.Warningf("unable to resolve Jar: %s", jarFilePath)
+			log.Warnf("unable to resolve Jar: %s", jarFilePath)
 		}
 	}
 
@@ -137,7 +137,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 func getPOMFromJar(path string) (maven.Manifest, error) {
 	var pomFile maven.Manifest
 
-	log.Logger.Debugf(path)
+	log.Debugf(path)
 	if path == "" {
 		return pomFile, errors.New("invalid POM path specified")
 	}
@@ -184,7 +184,7 @@ func getPOMFromJar(path string) (maven.Manifest, error) {
 
 // locatorFromJar resolves a locator from a .jar file by inspecting its contents
 func locatorFromJar(path string) (pkg.ID, error) {
-	log.Logger.Debugf("processing locator from Jar: %s", path)
+	log.Debugf("processing locator from Jar: %s", path)
 
 	info, err := jargo.GetJarInfo(path)
 	if err == nil {
@@ -198,20 +198,20 @@ func locatorFromJar(path string) (pkg.ID, error) {
 
 		pomFile, err := getPOMFromJar(pomFilePath)
 		if err == nil {
-			log.Logger.Debugf("resolving locator from pom: %s", pomFilePath)
+			log.Debugf("resolving locator from pom: %s", pomFilePath)
 			return pkg.ID{
 				Type:     pkg.Maven,
 				Name:     pomFile.GroupID + ":" + pomFile.ArtifactID,
 				Revision: pomFile.Version,
 			}, nil
 		} else {
-			log.Logger.Debugf("%s", err)
+			log.Debugf("%s", err)
 		}
 
 		// failed to decode pom file, fall back to META-INF
 		manifest := *info.Manifest
 		if manifest["Bundle-SymbolicName"] != "" && manifest["Implementation-Version"] != "" {
-			log.Logger.Debugf("resolving locator from META-INF: %s", info.Manifest)
+			log.Debugf("resolving locator from META-INF: %s", info.Manifest)
 			return pkg.ID{
 				Type:     pkg.Maven,
 				Name:     manifest["Bundle-SymbolicName"], // TODO: identify GroupId

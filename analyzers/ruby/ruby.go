@@ -11,10 +11,10 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/buildtools/bundler"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/graph"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -39,7 +39,7 @@ type Options struct {
 }
 
 func New(m module.Module) (*Analyzer, error) {
-	log.Logger.Debug("%#v", m.Options)
+	log.WithField("options", m.Options).Debug("constructing analyzer")
 
 	// Parse and validate options.
 	var options Options
@@ -47,16 +47,16 @@ func New(m module.Module) (*Analyzer, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Logger.Debug("Decoded options: %#v", options)
+	log.WithField("options", options).Debug("parsed analyzer options")
 
 	// Construct analyzer.
 	rubyCmd, rubyVersion, err := exec.Which("--version", os.Getenv("FOSSA_RUBY_CMD"), "ruby")
 	if err != nil {
-		log.Logger.Warningf("Could not resolve Ruby")
+		log.Warnf("Could not resolve Ruby")
 	}
 	bundlerCmd, bundlerVersion, err := exec.Which("--version", os.Getenv("FOSSA_BUNDLER_CMD"), "bundler", "bundle")
 	if err != nil {
-		log.Logger.Warningf("Could not resolve Bundler")
+		log.Warnf("Could not resolve Bundler")
 	}
 	return &Analyzer{
 		RubyCmd:     rubyCmd,
@@ -78,13 +78,16 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Logger.Debugf("Failed to access path %s: %s\n", path, err.Error())
+			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
 		}
 
 		if !info.IsDir() && info.Name() == "Gemfile" {
 			moduleName := filepath.Base(path)
 
-			log.Logger.Debugf("Found Ruby package: %s (%s)", path, moduleName)
+			log.WithFields(log.Fields{
+				"path": path,
+				"name": moduleName,
+			}).Debug("found Ruby module")
 			relPath, _ := filepath.Rel(dir, path)
 			modules = append(modules, module.Module{
 				Name:        moduleName,
@@ -107,7 +110,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 func (a *Analyzer) Clean() error {
 	// TODO: maybe this should delete `vendor/` for `bundle --deployment`
 	// installations? How would we detect that?
-	log.Logger.Warningf("Clean is not implemented for Ruby")
+	log.Warnf("Clean is not implemented for Ruby")
 	return nil
 }
 

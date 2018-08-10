@@ -3,15 +3,15 @@ package nuget
 import (
 	"path/filepath"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/buildtools/dotnet"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	log.Logger.Debugf("%#v", a.Module)
+	log.WithField("module", a.Module).Debug("analyzing module")
 	// Parse lockfile.
 	lockfile, err := dotnet.ReadLockfile(filepath.Join(Dir(a.Module), "obj", "project.assets.json"))
 	if err != nil {
@@ -71,9 +71,9 @@ func Projects(projects map[string]dotnet.Manifest, projectFile string) error {
 }
 
 func Packages(projects map[string]dotnet.Manifest, lockfile dotnet.Lockfile, deps map[pkg.ID]pkg.Package, dep string) pkg.ID {
-	log.Logger.Debugf("%#v", dep)
+	log.Debugf("%#v", dep)
 	if project, ok := projects[dotnet.Path(dep)]; ok {
-		log.Logger.Debugf("%#v", project)
+		log.Debugf("%#v", project)
 		name := project.Name()
 		version := project.Version()
 

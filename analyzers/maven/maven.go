@@ -32,7 +32,7 @@ type Options struct {
 }
 
 func New(m module.Module) (*Analyzer, error) {
-	log.Logger.Debugf("%#v", m.Options)
+	log.Debugf("%#v", m.Options)
 
 	// Decode options.
 	var options Options
@@ -61,7 +61,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Logger.Debugf("Failed to access path %s: %s\n", path, err.Error())
+			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
 			return err
 		}
 
@@ -76,7 +76,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 
 			submodules, err := maven.Modules(path)
 			if err != nil {
-				log.Logger.Debugf("Modules err: %#v %#v", err.Error(), err)
+				log.WithError(err).Debug("could not get modules at path")
 				return err
 			}
 
@@ -88,7 +88,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 					Dir:         path,
 				})
 			}
-			log.Logger.Debugf("skipDir: %#v", path)
+			log.WithField("path", path).Debug("skipping")
 			// Don't continue recursing, because anything else is probably a
 			// subproject.
 			return filepath.SkipDir
@@ -125,7 +125,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	log.Logger.Debugf("%#v", a.Module)
+	log.WithField("module", a.Module).Debug("analyzing module")
 
 	var imports []maven.Dependency
 	var deps map[maven.Dependency][]maven.Dependency

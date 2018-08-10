@@ -63,7 +63,7 @@ func (c *Composer) Dependencies(dir string) ([]Package, map[Package][]Package, e
 			// We're at a top-level package.
 			sections := strings.Split(line, " ")
 			name := sections[0]
-			log.Logger.Debugf("DIRECT %#v", name)
+			log.WithField("name", name).Debug("parsing Composer package")
 			return 1, pkgMap[name], nil
 		}
 
@@ -74,10 +74,13 @@ func (c *Composer) Dependencies(dir string) ([]Package, map[Package][]Package, e
 		depth := len(matches[1])
 		if depth%3 != 0 {
 			// Sanity check
-			log.Logger.Panicf("Bad depth: %#v %s %#v", depth, line, matches)
+			panic(line)
 		}
 		level := depth/3 + 1
-		log.Logger.Debugf("%#v %#v", level, name)
+		log.WithFields(log.Fields{
+			"name":  name,
+			"level": level,
+		}).Debug("parsing Composer tree")
 
 		// Resolve special names
 		if name == "php" || strings.HasPrefix(name, "ext-") {
@@ -86,7 +89,7 @@ func (c *Composer) Dependencies(dir string) ([]Package, map[Package][]Package, e
 
 		p, ok := pkgMap[name]
 		if !ok {
-			log.Logger.Warningf("Could not resolve: %#v", name)
+			log.WithField("name", name).Warn("could not resolve Composer package version")
 			return level, Package{Name: name}, nil
 		}
 		return level, p, nil

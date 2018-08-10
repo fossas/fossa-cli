@@ -28,28 +28,28 @@ type Requirement struct {
 
 // Attempt to construct a Package from a dep given the parent directory
 func (r Requirement) Package(dir string) (Package, error) {
-	log.Logger.Debugf("Attempting to build Cartfile with dep %#v", r.CheckoutName)
+	log.Debugf("Attempting to build Cartfile with dep %#v", r.CheckoutName)
 	var resolvedCartfile Package
 
 	requirementDirectory := filepath.Join(dir, "Carthage/Checkouts", r.CheckoutName)
 
-	log.Logger.Debugf("Checking for Cartfile.resolved at: %#v", requirementDirectory)
+	log.Debugf("Checking for Cartfile.resolved at: %#v", requirementDirectory)
 	hasResolvedCartfile, err := files.Exists(filepath.Join(requirementDirectory, "Cartfile.resolved"))
 
 	if err != nil {
-		log.Logger.Debugf("Error checking for resolved cartfile: %#v, %#v", requirementDirectory, err.Error())
+		log.Debugf("Error checking for resolved cartfile: %#v, %#v", requirementDirectory, err.Error())
 		return resolvedCartfile, err
 	}
 
 	if hasResolvedCartfile == false {
-		log.Logger.Debugf("Cartfile.resolved missing in: %#v, exiting.", requirementDirectory)
+		log.Debugf("Cartfile.resolved missing in: %#v, exiting.", requirementDirectory)
 		return resolvedCartfile, fmt.Errorf("Cartfile.resolved missing in: %#v", requirementDirectory)
 	}
 
 	// get current Cartfile.resolved
 	resolvedCartfile, cartfileErr := FromResolvedCartfile(r.CheckoutName, requirementDirectory)
 	if cartfileErr != nil {
-		log.Logger.Debugf("Error parsing Cartfile.resolved at %#v: %#v", requirementDirectory, err.Error())
+		log.Debugf("Error parsing Cartfile.resolved at %#v: %#v", requirementDirectory, err.Error())
 		return resolvedCartfile, cartfileErr
 	}
 
@@ -88,7 +88,7 @@ _
 func FromResolvedCartfile(projectName string, dir string) (Package, error) {
 	cartfilePath := filepath.Join(dir, "Cartfile.resolved")
 	checkoutsDir := filepath.Join(dir, "Carthage/Checkouts")
-	log.Logger.Debugf("Parsing Cartfile.resolved at %#v", cartfilePath)
+	log.Debugf("Parsing Cartfile.resolved at %#v", cartfilePath)
 	var cartfile Package
 	cartfileGraph := ogdl.FromFile(cartfilePath)
 
@@ -97,7 +97,7 @@ func FromResolvedCartfile(projectName string, dir string) (Package, error) {
 	// Parse the OGDL
 	for _, originGraph := range cartfileGraph.Out {
 		if originGraph.ThisType() != "string" {
-			log.Logger.Warning("Malformed Origin in Cartfile")
+			log.Warn("Malformed Origin in Cartfile")
 		}
 
 		origin := originGraph.ThisString()
@@ -117,12 +117,12 @@ func FromResolvedCartfile(projectName string, dir string) (Package, error) {
 		depCheckoutsDirExists, err := files.ExistsFolder(depCheckoutsDir)
 
 		if err != nil {
-			log.Logger.Warningf("Error checking for existence of dir: %#v", depCheckoutsDir)
+			log.Warnf("Error checking for existence of dir: %#v", depCheckoutsDir)
 			continue
 		}
 
 		if depCheckoutsDirExists == false {
-			log.Logger.Debugf("Checkouts folder doesn't exist for %#v. Skipping dependency.", checkoutName)
+			log.Debugf("Checkouts folder doesn't exist for %#v. Skipping dependency.", checkoutName)
 			continue
 		}
 
@@ -140,12 +140,12 @@ func FromResolvedCartfile(projectName string, dir string) (Package, error) {
 	cartfile.Name = projectName
 	cartfile.Dir = dir
 
-	log.Logger.Debugf("Done parsing Cartfile.resolved")
+	log.Debugf("Done parsing Cartfile.resolved")
 	return cartfile, nil
 }
 
 func RecurseDeps(pkgMap map[pkg.ID]pkg.Package, p Package) {
-	log.Logger.Debugf("Searching Carthage deps for project %#v", p.Name)
+	log.Debugf("Searching Carthage deps for project %#v", p.Name)
 	for _, dep := range p.Dependencies {
 		// Construct ID.
 		id := pkg.ID{
@@ -166,7 +166,7 @@ func RecurseDeps(pkgMap map[pkg.ID]pkg.Package, p Package) {
 		newPackage, err := dep.Package(p.Dir)
 
 		if err != nil {
-			log.Logger.Debugf("Error parsing Cartfile.resolved at %#v: %#v. Continuing...", p.Dir, err.Error())
+			log.Debugf("Error parsing Cartfile.resolved at %#v: %#v. Continuing...", p.Dir, err.Error())
 		} else {
 			for _, i := range newPackage.Dependencies {
 				imports = append(imports, pkg.Import{

@@ -19,12 +19,12 @@ package golang
 import (
 	"os"
 
+	"github.com/apex/log"
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
 	"github.com/fossas/fossa-cli/exec"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -61,7 +61,7 @@ type Options struct {
 
 // New constructs an Analyzer.
 func New(m module.Module) (*Analyzer, error) {
-	log.Logger.Debug("%#v", m)
+	log.Debugf("%#v", m)
 
 	// Parse and validate options.
 	var options Options
@@ -69,7 +69,7 @@ func New(m module.Module) (*Analyzer, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Logger.Debug("Decoded options: %#v", options)
+	log.WithField("options", options).Debug("parsed analyzer options")
 
 	// Construct analyzer.
 	cmd, version, err := exec.Which("version", os.Getenv("FOSSA_GO_CMD"), "go")
@@ -108,7 +108,7 @@ func (a *Analyzer) Build() error {
 // IsBuilt runs `go list $PKG` and checks for errors.
 func (a *Analyzer) IsBuilt() (bool, error) {
 	m := a.Module
-	log.Logger.Debug("%#v", m)
+	log.Debugf("%#v", m)
 	pkg, err := a.Go.ListOne(m.BuildTarget)
 	if err != nil {
 		return false, err

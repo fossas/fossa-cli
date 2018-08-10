@@ -4,15 +4,15 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/config"
-	"github.com/apex/log"
 )
 
 func ReportURL(locator fossa.Locator) string {
 	baseURL, err := url.Parse(config.Endpoint())
 	if err != nil {
-		log.Logger.Fatalf("Invalid FOSSA endpoint: %s", err.Error())
+		log.Fatalf("Invalid FOSSA endpoint: %s", err.Error())
 	}
 	reportBranch := config.Branch()
 	if reportBranch == "" {

@@ -1,6 +1,6 @@
 package errors
 
-import "errors"
+import "github.com/pkg/errors"
 
 // General errors.
 var (
@@ -35,7 +35,15 @@ creating the issue, please attach the debug log located at:
 	/tmp/fossa-cli-debug-log.`
 }
 
-func Wrap(cause error, err Error) Error {
+func Wrap(cause error, msg string) error {
+	return errors.Wrap(cause, msg)
+}
+
+func Wrapf(cause error, format string, args ...interface{}) error {
+	return errors.Wrapf(cause, format, args...)
+}
+
+func WrapError(cause error, err Error) Error {
 	switch e := cause.(type) {
 	case *Error:
 		return Error{

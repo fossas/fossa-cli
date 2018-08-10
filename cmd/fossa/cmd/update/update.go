@@ -34,18 +34,18 @@ func Do(c *cli.Context) {
 
 	ok, err := AvailableUpdate()
 	if err != nil {
-		log.Logger.Fatalf("Unable to update: %s", err.Error())
+		log.Fatalf("Unable to update: %s", err.Error())
 	}
 	if !ok {
-		log.Logger.Fatalf("No updates available")
+		log.Fatalf("No updates available")
 	}
 
 	version, err := Update()
 	if err != nil {
-		log.Logger.Fatalf("Update failed: %s", err.Error())
+		log.Fatalf("Update failed: %s", err.Error())
 	}
 
-	log.Logger.Notice("fossa has been updated to " + version.String())
+	log.Info("fossa has been updated to " + version.String())
 }
 
 func AvailableUpdate() (bool, error) {

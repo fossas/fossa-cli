@@ -16,8 +16,8 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
-	"github.com/fossas/fossa-cli/exec"
 	"github.com/apex/log"
+	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -36,7 +36,7 @@ type Options struct {
 }
 
 func New(m module.Module) (*Analyzer, error) {
-	log.Logger.Debug("%#v", m.Options)
+	log.WithField("options", m.Options).Debug("constructing analyzer")
 	// Set Bower context variables
 	dotnetCmd, dotnetVersion, err := exec.Which("--version", os.Getenv("DOTNET_BINARY"), "dotnet")
 	if err != nil {
@@ -61,7 +61,7 @@ func New(m module.Module) (*Analyzer, error) {
 		Options: options,
 	}
 
-	log.Logger.Debugf("analyzer: %#v", analyzer)
+	log.Debugf("analyzer: %#v", analyzer)
 	return &analyzer, nil
 }
 
@@ -69,7 +69,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Logger.Debugf("Failed to access path %s: %s\n", path, err.Error())
+			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
 			return err
 		}
 
@@ -129,7 +129,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 }
 
 func (a *Analyzer) Clean() error {
-	log.Logger.Warning("Clean is not implemented for NuGet")
+	log.Warn("Clean is not implemented for NuGet")
 	return nil
 }
 

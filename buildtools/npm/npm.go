@@ -3,9 +3,9 @@ package npm
 import (
 	"encoding/json"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/apex/log"
 )
 
 type NPM struct {
@@ -26,8 +26,8 @@ func (n *NPM) List(dir string) (Output, error) {
 		Argv: []string{"ls", "--json"},
 		Dir:  dir,
 	})
-	log.Logger.Debugf("err: %#v", err)
-	log.Logger.Debugf("AllowErr: %#v", n.AllowErr)
+	log.Debugf("err: %#v", err)
+	log.Debugf("AllowErr: %#v", n.AllowErr)
 	if err != nil && !n.AllowErr {
 		return Output{}, err
 	}

@@ -90,15 +90,15 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 
 	var modules []module.Module
 	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		log.Logger.Debugf("Searching path: %#v", path)
+		log.WithField("path", path).Debug("discovering modules")
 
 		if err != nil {
-			log.Logger.Debugf("Failed to access path %s: %s\n", path, err.Error())
+			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
 			return err
 		}
 
 		if info.IsDir() {
-			log.Logger.Debugf("Path is folder")
+			log.Debug("path is folder")
 			ok, err := files.Exists(path, "build.sbt")
 			if err != nil {
 				return err
@@ -106,12 +106,12 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			if !ok {
 				return nil
 			}
-			log.Logger.Debugf("Path has build.sbt")
+			log.Debug("Path has build.sbt")
 
 			dir := filepath.Dir(path)
 			projects, err := sbt.Projects(dir)
 			if err != nil {
-				log.Logger.Debugf("Modules err: %#v %#v", err.Error(), err)
+				log.WithError(err).Debug("could not get modules at path")
 				return err
 			}
 
@@ -123,7 +123,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 					Dir:         dir,
 				})
 			}
-			log.Logger.Debugf("skipDir: %#v", path)
+			log.WithField("path", path).Debug("skipping")
 			// Don't continue recursing, because anything else is probably a
 			// subproject.
 			return filepath.SkipDir
@@ -163,7 +163,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	log.Logger.Debugf("%#v", a.Module)
+	log.WithField("module", a.Module).Debug("analyzing module")
 
 	project, configuration := ParseTarget(a.Module.BuildTarget)
 	imports, deps, err := a.SBT.DependencyTree(a.Module.Dir, project, configuration)

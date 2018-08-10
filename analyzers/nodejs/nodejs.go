@@ -66,19 +66,19 @@ type Options struct {
 
 // New configures Node, NPM, and Yarn commands.
 func New(m module.Module) (*Analyzer, error) {
-	log.Logger.Debug("%#v", m.Options)
+	log.WithField("options", m.Options).Debug("constructing analyzer")
 
 	nodeCmd, nodeVersion, nodeErr := exec.Which("-v", os.Getenv("FOSSA_NODE_CMD"), "node", "nodejs")
 	if nodeErr != nil {
-		log.Logger.Warningf("Could not find Node.JS: %s", nodeErr.Error())
+		log.Warnf("Could not find Node.JS: %s", nodeErr.Error())
 	}
 	npmCmd, npmVersion, npmErr := exec.Which("-v", os.Getenv("FOSSA_NPM_CMD"), "npm")
 	if npmErr != nil {
-		log.Logger.Warningf("Could not find NPM: %s", npmErr.Error())
+		log.Warnf("Could not find NPM: %s", npmErr.Error())
 	}
 	yarnCmd, yarnVersion, yarnErr := exec.Which("-v", os.Getenv("FOSSA_YARN_CMD"), "yarn")
 	if yarnErr != nil && npmErr != nil {
-		log.Logger.Warningf("Could not find Yarn: %s", yarnErr.Error())
+		log.Warnf("Could not find Yarn: %s", yarnErr.Error())
 	}
 
 	var options Options
@@ -101,7 +101,7 @@ func New(m module.Module) (*Analyzer, error) {
 		Options: options,
 	}
 
-	log.Logger.Debugf("Initialized Node.js analyzer: %#v", analyzer)
+	log.Debugf("Initialized Node.js analyzer: %#v", analyzer)
 	return &analyzer, nil
 }
 
@@ -112,13 +112,13 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Logger.Debugf("Failed to access path %s: %s\n", path, err.Error())
+			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
 			return err
 		}
 
 		// Skip **/node_modules and **/bower_components
 		if info.IsDir() && (info.Name() == "node_modules" || info.Name() == "bower_components") {
-			log.Logger.Debugf("Skipping directory: %s", info.Name())
+			log.Debugf("Skipping directory: %s", info.Name())
 			return filepath.SkipDir
 		}
 
@@ -129,10 +129,10 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				name = manifest.Name
 			}
 
-			log.Logger.Debugf("Found NodeJS project: %s (%s)", path, name)
+			log.Debugf("Found NodeJS project: %s (%s)", path, name)
 			path, err = filepath.Rel(dir, path)
 			if err != nil {
-				log.Logger.Panicf("Could not construct NodeJS project path", err.Error())
+				panic(err)
 			}
 			modules = append(modules, module.Module{
 				Name:        name,
@@ -159,7 +159,7 @@ func (a *Analyzer) Clean() error {
 // `yarn.lock` and `yarn` is available. Otherwise, it runs
 // `npm install --production`.
 func (a *Analyzer) Build() error {
-	log.Logger.Debugf("Running Node.js build: %#v", a.Module)
+	log.Debugf("Running Node.js build: %#v", a.Module)
 
 	// Prefer Yarn where possible
 	if ok, err := files.Exists(a.Module.Dir, "yarn.lock"); err == nil && ok && a.YarnCmd != "" {
@@ -184,7 +184,7 @@ func (a *Analyzer) Build() error {
 		return errors.New("no Node.JS build tools detected")
 	}
 
-	log.Logger.Debug("Done running Node.js build.")
+	log.Debug("Done running Node.js build.")
 	return nil
 }
 
@@ -200,7 +200,7 @@ func (a *Analyzer) Build() error {
 // TODO: with significantly more effort, we can eliminate both of these
 // situations.
 func (a *Analyzer) IsBuilt() (bool, error) {
-	log.Logger.Debugf("Checking Node.js build: %#v", a.Module)
+	log.Debugf("Checking Node.js build: %#v", a.Module)
 
 	manifest, err := npm.FromManifest(filepath.Join(a.Module.BuildTarget, "package.json"))
 	if err != nil {
@@ -208,7 +208,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 	}
 
 	if len(manifest.Dependencies) == 0 {
-		log.Logger.Debugf("Done checking Node.js build: project has no dependencies")
+		log.Debugf("Done checking Node.js build: project has no dependencies")
 		return true, nil
 	}
 
@@ -217,12 +217,12 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 		return false, err
 	}
 
-	log.Logger.Debugf("Done checking Node.js build: %#v", hasNodeModules)
+	log.Debugf("Done checking Node.js build: %#v", hasNodeModules)
 	return hasNodeModules, nil
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	log.Logger.Debugf("Running Nodejs analysis: %#v", a.Module)
+	log.Debugf("Running Nodejs analysis: %#v", a.Module)
 
 	// Get packages.
 	n := npm.NPM{
@@ -231,7 +231,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	}
 	pkgs, err := n.List(filepath.Dir(a.Module.BuildTarget))
 	if err != nil {
-		log.Logger.Warningf("NPM had non-zero exit code: %s", err.Error())
+		log.Warnf("NPM had non-zero exit code: %s", err.Error())
 	}
 
 	// Set direct dependencies.
@@ -252,7 +252,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	deps := make(map[pkg.ID]pkg.Package)
 	recurseDeps(deps, pkgs)
 
-	log.Logger.Debugf("Done running Nodejs analysis: %#v", deps)
+	log.Debugf("Done running Nodejs analysis: %#v", deps)
 
 	return graph.Deps{
 		Direct:     imports,

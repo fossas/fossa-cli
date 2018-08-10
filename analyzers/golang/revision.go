@@ -3,10 +3,10 @@ package golang
 import (
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/buildtools"
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -25,16 +25,16 @@ func (a *Analyzer) Revision(project Project, r resolver.Resolver, gopkg gocmd.Pa
 // RevisionDirect resolves a revision by looking up its revision in the
 // project's lockfile. This works for most conventional projects.
 func (a *Analyzer) RevisionDirect(project Project, r resolver.Resolver, gopkg gocmd.Package) (pkg.Import, error) {
-	log.Logger.Debugf("Project: %#v", project)
-	log.Logger.Debugf("Package: %#v", gopkg)
+	log.Debugf("Project: %#v", project)
+	log.Debugf("Package: %#v", gopkg)
 
 	name := Unvendor(gopkg.ImportPath)
 	revision, err := r.Resolve(name)
 	if err == buildtools.ErrNoRevisionForPackage {
-		log.Logger.Debugf("Could not find revision for package %#v", name)
+		log.Debugf("Could not find revision for package %#v", name)
 
 		if a.UnresolvedOK(project, gopkg) {
-			log.Logger.Debugf("Skipping package: %#v", gopkg)
+			log.Debugf("Skipping package: %#v", gopkg)
 			return UnresolvedImport(gopkg), nil
 		}
 	}
@@ -61,16 +61,16 @@ func (a *Analyzer) RevisionDirect(project Project, r resolver.Resolver, gopkg go
 // In theory, this is only used for setups that _build very carefully_, but are
 // otherwise prone to exploding. In practice, this seems to be required a lot.
 func (a *Analyzer) RevisionContextual(project Project, gopkg gocmd.Package) (pkg.Import, error) {
-	log.Logger.Debugf("Project: %#v", project)
-	log.Logger.Debugf("Package: %#v", gopkg)
+	log.Debugf("Project: %#v", project)
+	log.Debugf("Package: %#v", gopkg)
 
 	// Search upwards in parent directories.
 	for dir := VendorParent(gopkg.Dir); dir != "." && a.ParentOK(project, gopkg, dir); dir = VendorParent(dir) {
-		log.Logger.Debugf("Trying dir: %#v", dir)
+		log.Debugf("Trying dir: %#v", dir)
 
 		revision, err := a.RevisionContextualLookup(project, gopkg, dir)
 		if err == ErrNoLockfileInDir {
-			log.Logger.Debugf("No lockfile found.")
+			log.Debugf("No lockfile found.")
 			if a.Options.AllowDeepVendor {
 				continue
 			} else {
@@ -93,7 +93,7 @@ func (a *Analyzer) RevisionContextual(project Project, gopkg gocmd.Package) (pkg
 // RevisionContextualLookup attempts to resolve a revision of a package using
 // the lockfile in a specific directory.
 func (a *Analyzer) RevisionContextualLookup(project Project, gopkg gocmd.Package, dir string) (pkg.Import, error) {
-	log.Logger.Debugf("Trying dir: %#v", dir)
+	log.Debugf("Trying dir: %#v", dir)
 
 	// Try to get a resolver from a lockfile.
 	tool, err := LockfileIn(dir)
@@ -162,9 +162,9 @@ func (a *Analyzer) UnresolvedOK(project Project, gopkg gocmd.Package) bool {
 //      vendoring import path prefix is a prefix of the import path that a
 //      package at the directory would have.
 func (a *Analyzer) ParentOK(project Project, gopkg gocmd.Package, dir string) bool {
-	log.Logger.Debugf("Project: %#v", project)
-	log.Logger.Debugf("Package: %#v", gopkg)
-	log.Logger.Debugf("Dir: %#v", dir)
+	log.Debugf("Project: %#v", project)
+	log.Debugf("Package: %#v", gopkg)
+	log.Debugf("Dir: %#v", dir)
 
 	// If this returns an error, it should already have failed when creating the
 	// project.

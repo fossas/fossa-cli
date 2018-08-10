@@ -43,7 +43,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	for _, f := range discoverFuncs {
 		discovered, err := f(dir, options)
 		if err != nil {
-			log.Logger.Warningf("An error occurred during discovery: %s", err.Error())
+			log.Warnf("An error occurred during discovery: %s", err.Error())
 		}
 		modules = append(modules, discovered...)
 	}

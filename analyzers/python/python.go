@@ -9,12 +9,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/apex/log"
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/fossas/fossa-cli/buildtools/pip"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/graph"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -35,7 +35,7 @@ type Options struct {
 }
 
 func New(m module.Module) (*Analyzer, error) {
-	log.Logger.Debug("%#v", m.Options)
+	log.WithField("options", m.Options).Debug("constructing analyzer")
 
 	// Parse and validate options.
 	var options Options
@@ -43,7 +43,7 @@ func New(m module.Module) (*Analyzer, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Logger.Debug("Decoded options: %#v", options)
+	log.WithField("options", options).Debug("parsed analyzer options")
 
 	// Construct analyzer.
 	pythonCmd, pythonVersion, err := exec.Which("--version", os.Getenv("FOSSA_PYTHON_CMD"), "python", "python3", "python2.7")
@@ -53,7 +53,7 @@ func New(m module.Module) (*Analyzer, error) {
 	// TODO: this should be fatal depending on the configured strategy.
 	pipCmd, _, err := exec.Which("--version", os.Getenv("FOSSA_PIP_CMD"), "pip3", "pip")
 	if err != nil {
-		log.Logger.Warningf("`pip` command not detected")
+		log.Warn("`pip` command not detected")
 	}
 	return &Analyzer{
 		PythonCmd:     pythonCmd,
@@ -77,7 +77,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 
 	err := filepath.Walk(dir, func(filename string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Logger.Debugf("Failed to access path %s: %s\n", filename, err.Error())
+			log.WithError(err).WithField("filename", filename).Debug("failed to access path")
 			return err
 		}
 
@@ -91,7 +91,10 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 
 			moduleName := filepath.Base(moduleDir)
 
-			log.Logger.Debugf("Found Python package: %s (%s)", filename, moduleName)
+			log.WithFields(log.Fields{
+				"path": filename,
+				"name": moduleName,
+			}).Debug("constructing Python module")
 			relPath, _ := filepath.Rel(dir, filename)
 			modules[moduleDir] = module.Module{
 				Name:        moduleName,
@@ -117,7 +120,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 
 // Clean logs a warning and does nothing for Python.
 func (a *Analyzer) Clean() error {
-	log.Logger.Warningf("Clean is not implemented for Python")
+	log.Warnf("Clean is not implemented for Python")
 	return nil
 }
 
@@ -171,7 +174,7 @@ func (a *Analyzer) requirementsFile(m module.Module) string {
 	if a.Options.RequirementsPath != "" {
 		reqFilename = a.Options.RequirementsPath
 	}
-	log.Logger.Debugf("%#v", reqFilename)
+	log.WithField("path", reqFilename).Debug("requirements.txt filepath")
 	return reqFilename
 }
 

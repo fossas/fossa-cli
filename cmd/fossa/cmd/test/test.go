@@ -12,6 +12,7 @@ import (
 
 	"github.com/fossas/fossa-cli/api"
 	"github.com/fossas/fossa-cli/api/fossa"
+	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
@@ -37,15 +38,15 @@ var _ cli.ActionFunc = Run
 func Run(ctx *cli.Context) error {
 	err := setup.Setup(ctx)
 	if err != nil {
-		log.Logger.Fatalf("Could not initialize: %s", err.Error())
+		log.Fatalf("Could not initialize: %s", err.Error())
 	}
 
 	issues, err := Do(time.After(time.Duration(ctx.Int(Timeout)) * time.Second))
 	if err != nil {
-		log.Logger.Fatalf("Could not test revision: %s", err.Error())
+		log.Fatalf("Could not test revision: %s", err.Error())
 	}
 
-	log.Logger.Debugf("Test succeeded: %#v", issues)
+	log.Debugf("Test succeeded: %#v", issues)
 	if len(issues) == 0 {
 		fmt.Fprintln(os.Stderr, "Test passed! 0 issues found")
 		return nil
@@ -59,7 +60,7 @@ func Run(ctx *cli.Context) error {
 
 	marshalled, err := json.Marshal(issues)
 	if err != nil {
-		log.Logger.Fatalf("Could not marshal unresolved issues: %s", err)
+		log.Fatalf("Could not marshal unresolved issues: %s", err)
 	}
 	fmt.Println(string(marshalled))
 
@@ -93,14 +94,14 @@ func Do(stop <-chan time.Time) ([]fossa.Issue, error) {
 
 	_, err := CheckBuild(project, stop)
 	if err != nil {
-		log.Logger.Fatalf("Could not load build: %s", err.Error())
+		log.Fatalf("Could not load build: %s", err.Error())
 	}
 
 	display.InProgress("Waiting for FOSSA scan results...")
 
 	issues, err := CheckIssues(project, stop)
 	if err != nil {
-		log.Logger.Fatalf("Could not load issues: %s", err.Error())
+		log.Fatalf("Could not load issues: %s", err.Error())
 	}
 
 	display.ClearProgress()
@@ -152,7 +153,7 @@ func CheckIssues(locator fossa.Locator, stop <-chan time.Time) ([]fossa.Issue, e
 			if err != nil {
 				return nil, errors.Wrap(err, "error while loading issues")
 			}
-			log.Logger.Debugf("Got issues: %#v", issues)
+			log.Debugf("Got issues: %#v", issues)
 			return issues, nil
 		}
 	}

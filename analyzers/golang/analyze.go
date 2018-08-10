@@ -1,9 +1,10 @@
 package golang
 
 import (
-	"github.com/pkg/errors"
+	"github.com/apex/log"
 
 	// Each of these build tools provides a resolver.Resolver
+	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/buildtools/dep"
 	"github.com/fossas/fossa-cli/buildtools/gdm"
 	"github.com/fossas/fossa-cli/buildtools/glide"
@@ -12,9 +13,8 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/govendor"
 	"github.com/fossas/fossa-cli/buildtools/vndr"
 
-	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/graph"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -22,14 +22,14 @@ import (
 // using tool-specific lockfiles.
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	m := a.Module
-	log.Logger.Debug("%#v", m)
+	log.Debugf("%#v", m)
 
 	// Get Go project.
 	project, err := a.Project(m.BuildTarget)
 	if err != nil {
 		return graph.Deps{}, err
 	}
-	log.Logger.Debugf("Go project: %#v", project)
+	log.Debugf("Go project: %#v", project)
 
 	// Read lockfiles to get revisions.
 	var r resolver.Resolver
@@ -86,7 +86,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	// Resolve revisions by traversing the local $GOPATH and calling the package's
 	// VCS.
 	case "gopath-vcs":
-		return graph.Deps{}, errutil.ErrNotImplemented
+		return graph.Deps{}, errors.ErrNotImplemented
 
 	// Read revisions from an auto-detected tool manifest.
 	default:
@@ -96,14 +96,14 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		}
 	}
 
-	log.Logger.Debugf("Resolver: %#v", r)
+	log.Debugf("Resolver: %#v", r)
 
 	// Use `go list` to get imports and deps of module.
 	main, err := a.Go.ListOne(m.BuildTarget)
 	if err != nil {
 		return graph.Deps{}, err
 	}
-	log.Logger.Debugf("Go main package: %#v", main)
+	log.Debugf("Go main package: %#v", main)
 	deps, err := a.Go.List(main.Deps)
 	if err != nil {
 		return graph.Deps{}, err
@@ -120,12 +120,12 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		Name:     "C",
 		IsStdLib: true, // This is so we don't try to lookup a revision. Maybe there should be a NoRevision bool field?
 	}
-	log.Logger.Debugf("gopkgMap: %#v", gopkgMap)
+	log.Debugf("gopkgMap: %#v", gopkgMap)
 
 	// Construct transitive dependency graph.
 	pkgs := make(map[pkg.ID]pkg.Package)
 	for _, gopkg := range deps {
-		log.Logger.Debugf("Getting revision for: %#v", gopkg)
+		log.Debugf("Getting revision for: %#v", gopkg)
 
 		// Resolve dependency.
 		revision, err := a.Revision(project, r, gopkg)
@@ -139,10 +139,10 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		for _, i := range gopkg.Imports {
 			_, ok := gopkgMap[i]
 			if !ok {
-				log.Logger.Fatalf("Could not find Go package for %#v, your build may have errors. Try `go list -json <MODULE>`.", i)
+				log.Fatalf("Could not find Go package for %#v, your build may have errors. Try `go list -json <MODULE>`.", i)
 			}
-			log.Logger.Debugf("Resolving import of: %#v", gopkg)
-			log.Logger.Debugf("Resolving dependency import: %#v", i)
+			log.Debugf("Resolving import of: %#v", gopkg)
+			log.Debugf("Resolving dependency import: %#v", i)
 			revision, err := a.Revision(project, r, gopkgMap[i])
 			if err != nil {
 				return graph.Deps{}, errors.Wrapf(err, "could not resolve %s", i)

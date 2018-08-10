@@ -45,7 +45,7 @@ func New(m module.Module) (*Analyzer, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Logger.Debug("Decoded options: %#v", options)
+	log.WithField("options", options).Debug("parsed analyzer options")
 
 	analyzer := Analyzer{
 		PodCmd:     podCmd,
@@ -68,13 +68,16 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Logger.Debugf("Failed to access path %s: %s\n", path, err.Error())
+			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
 		}
 
 		if !info.IsDir() && info.Name() == "Podfile" {
 			moduleName := filepath.Base(path)
 
-			log.Logger.Debugf("Found Cocoapods package: %s (%s)", path, moduleName)
+			log.WithFields(log.Fields{
+				"path": path,
+				"name": moduleName,
+			}).Debug("constructing Cocoapods module")
 			relPath, _ := filepath.Rel(dir, path)
 			modules = append(modules, module.Module{
 				Name:        moduleName,
@@ -95,19 +98,19 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 
 // IsBuilt checks whether `Podfile.lock` exists
 func (a *Analyzer) IsBuilt() (bool, error) {
-	log.Logger.Debugf("Checking Cocoapods build: %#v", a.Module)
+	log.Debugf("Checking Cocoapods build: %#v", a.Module)
 
 	isBuilt, err := files.Exists(a.Module.Dir, "Podfile.lock")
 	if err != nil {
 		return false, err
 	}
 
-	log.Logger.Debugf("Done checking Cocoapods build: %#v", isBuilt)
+	log.Debugf("Done checking Cocoapods build: %#v", isBuilt)
 	return isBuilt, nil
 }
 
 func (a *Analyzer) Clean() error {
-	log.Logger.Warning("Clean is not implemented for Cocoapods")
+	log.Warn("Clean is not implemented for Cocoapods")
 	return nil
 }
 
@@ -146,7 +149,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 				// Check if this pod is from a git repository.
 				git, ok := lockfile.CheckoutOptions[pod.Name]
 				if !ok {
-					log.Logger.Warningf("Could not identify commit of git repository pod: %s", pod.Name)
+					log.Warnf("Could not identify commit of git repository pod: %s", pod.Name)
 				} else {
 					// TODO: we should probably set this on Location instead, but this is
 					// a quick hack because otherwise we'd have to special-case pod
@@ -159,7 +162,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 				// Check if this pod is vendored: we don't support this, but we can try
 				// to look the name up as a Cocoapod.
 			} else {
-				log.Logger.Warningf("Could not identify externally sourced pod: %s", pod.Name)
+				log.Warnf("Could not identify externally sourced pod: %s", pod.Name)
 			}
 		}
 

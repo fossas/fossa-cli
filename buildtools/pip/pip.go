@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/apex/log"
+
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/apex/log"
 )
 
 // TODO: add a Python sidecar that evaluates `setup.py`.
@@ -62,7 +63,7 @@ func FromFile(filename string) ([]Requirement, error) {
 		if strings.HasPrefix(trimmed, "#") || trimmed == "" {
 			continue
 		}
-		log.Logger.Debugf("line: %#v", line)
+		log.WithField("line", line).Debug("parsing line")
 		// See https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format
 		// and https://pip.pypa.io/en/stable/reference/pip_install/#pip-install-examples
 		matched := false

@@ -4,9 +4,9 @@ import (
 	"path"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/buildtools"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -50,9 +50,9 @@ func FromFile(filename ...string) (Lockfile, error) {
 	lockfile := make(map[string]pkg.Import)
 	s := string(data)
 	lines := strings.Split(s, "\n")
-	log.Logger.Debugf("lines: %#v", lines)
+	log.Debugf("lines: %#v", lines)
 	for _, line := range lines {
-		log.Logger.Debugf("line: %#v", line)
+		log.WithField("line", line).Debug("parsing line")
 		// Remove comments.
 		commentStart := strings.Index(line, "#")
 		if commentStart != -1 {
@@ -69,7 +69,7 @@ func FromFile(filename ...string) (Lockfile, error) {
 
 		// Parse fields: <import path> <revision> [repository]
 		fields := strings.Fields(line)
-		log.Logger.Debugf("fields: %#v", fields)
+		log.Debugf("fields: %#v", fields)
 		repo := ""
 		if len(fields) == 3 {
 			repo = fields[2]

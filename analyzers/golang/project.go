@@ -1,8 +1,8 @@
 package golang
 
 import (
-	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/apex/log"
+	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/vcs"
 )
 
@@ -52,7 +52,7 @@ type Project struct {
 //
 // Both of these assumptions can be overridden by the user.
 func (a *Analyzer) Project(pkg string) (Project, error) {
-	log.Logger.Debugf("%#v", pkg)
+	log.Debugf("%#v", pkg)
 
 	// Check for a cached project.
 	cached, ok := a.projectCache[pkg]

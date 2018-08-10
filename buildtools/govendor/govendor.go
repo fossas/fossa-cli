@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/buildtools"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -33,9 +33,9 @@ type Lockfile struct {
 }
 
 func (l Lockfile) Resolve(importpath string) (pkg.Import, error) {
-	log.Logger.Debugf("%#v", importpath)
+	log.Debugf("%#v", importpath)
 	for p := importpath; p != "." && p != "/"; p = path.Dir(p) {
-		log.Logger.Debugf("Trying: %#v", p)
+		log.Debugf("Trying: %#v", p)
 		rev, ok := l.normalized[p]
 		if ok {
 			rev.Resolved.Name = importpath
