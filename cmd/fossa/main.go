@@ -27,9 +27,11 @@ var App = cli.App{
 	Version:              version.String(),
 	Action:               Run,
 	EnableBashCompletion: true,
-	Flags: flags.WithGlobalFlags([]cli.Flag{
-		cli.BoolFlag{Name: flags.Short(analyze.ShowOutput), Usage: "run a complete analysis with output"},
-	}),
+	Flags: flags.Combine(
+		initc.Cmd.Flags,
+		analyze.Cmd.Flags,
+		flags.WithGlobalFlags(nil),
+	),
 	Commands: []cli.Command{
 		initc.Cmd,
 		build.Cmd,
