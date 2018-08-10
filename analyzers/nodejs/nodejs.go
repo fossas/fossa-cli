@@ -60,8 +60,8 @@ type Analyzer struct {
 // If no strategies are specified, the analyzer will try each of these
 // strategies in descending order.
 type Options struct {
-	Strategy    string `mapstructure:"strategy"`
-	AllowNPMErr bool   `mapstructure:"allow-npm-err"`
+	Strategy     string `mapstructure:"strategy"`
+	StrictNPMErr bool   `mapstructure:"strict-npm-err"`
 }
 
 // New configures Node, NPM, and Yarn commands.
@@ -226,12 +226,13 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	// Get packages.
 	n := npm.NPM{
-		Cmd:      a.NPMCmd,
-		AllowErr: a.Options.AllowNPMErr,
+		Cmd:       a.NPMCmd,
+		StrictErr: a.Options.StrictNPMErr,
 	}
 	pkgs, err := n.List(filepath.Dir(a.Module.BuildTarget))
 	if err != nil {
-		log.Logger.Warningf("NPM had non-zero exit code: %s", err.Error())
+		// Only ever warn on errors; handling behavior is implemented by n.List()
+		log.Logger.Warningf("Warning during Nodejs analysis: %s", err.Error())
 	}
 
 	// Set direct dependencies.

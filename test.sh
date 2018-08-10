@@ -149,9 +149,9 @@ echo "Testing standard"
 cd $HOME/standard
 fossa init
 cat .fossa.yml
-time fossa analyze --output --option allow-npm-err:true | json
-time fossa report licenses --option allow-npm-err:true 
-time fossa report dependencies --option allow-npm-err:true  | json
+time fossa analyze --output | json
+time fossa report licenses
+time fossa report dependencies | json
 
 echo "Testing sodium-encryption"
 cd $HOME/sodium-encryption

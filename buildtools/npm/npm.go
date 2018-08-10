@@ -9,8 +9,8 @@ import (
 )
 
 type NPM struct {
-	Cmd      string
-	AllowErr bool
+	Cmd       string
+	StrictErr bool
 }
 
 type Output struct {
@@ -27,8 +27,8 @@ func (n *NPM) List(dir string) (Output, error) {
 		Dir:  dir,
 	})
 	log.Logger.Debugf("err: %#v", err)
-	log.Logger.Debugf("AllowErr: %#v", n.AllowErr)
-	if err != nil && !n.AllowErr {
+	log.Logger.Debugf("StrictErr: %#v", n.StrictErr)
+	if err != nil && n.StrictErr {
 		return Output{}, err
 	}
 	var output Output
@@ -49,7 +49,7 @@ func (n *NPM) Install(dir string) error {
 		Argv: []string{"install", "--production"},
 		Dir:  dir,
 	})
-	if err != nil && !n.AllowErr {
+	if err != nil && n.StrictErr {
 		return err
 	}
 	return nil
