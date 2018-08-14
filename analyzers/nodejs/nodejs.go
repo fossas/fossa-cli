@@ -227,7 +227,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	// Get packages.
 	n := npm.NPM{
 		Cmd:      a.NPMCmd,
-		AllowErr: a.Options.AllowNPMErr,
+		AllowErr: a.Options.AllowNPMErr || true, // TODO: we should have a strict mode instead of an allow mode
 	}
 	pkgs, err := n.List(filepath.Dir(a.Module.BuildTarget))
 	if err != nil {
