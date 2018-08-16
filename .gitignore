@@ -1,3 +1,5 @@
 _vendor-*/
 dist/
 bin/
+.SCRATCH
+.vscode/
