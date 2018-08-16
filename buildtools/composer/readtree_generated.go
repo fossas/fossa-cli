@@ -20,9 +20,9 @@ func ReadPackageTree(lines []string, parser LineParser) ([]Package, map[Package]
 
 		// Add to graph.
 		if len(parents) > level {
-			parents = parents[:level]
+			parents = parents[:level-1]
 		}
-		if len(parents) == 0 {
+		if level == 1 {
 			imports = append(imports, node)
 		} else {
 			parent := parents[len(parents)-1]
@@ -39,6 +39,12 @@ func ReadPackageTree(lines []string, parser LineParser) ([]Package, map[Package]
 	for parent, children := range edges {
 		for child := range children {
 			graph[parent] = append(graph[parent], child)
+		}
+	}
+	for _, i := range imports {
+		_, ok := edges[i]
+		if !ok {
+			graph[i] = nil
 		}
 	}
 
