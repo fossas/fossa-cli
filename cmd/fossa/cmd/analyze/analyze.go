@@ -50,6 +50,7 @@ func Run(ctx *cli.Context) error {
 		return err
 	}
 
+	log.Logger.Debugf("analyzed: %#v", analyzed)
 	normalized, err := fossa.Normalize(analyzed)
 	if err != nil {
 		log.Logger.Fatalf("Could not normalize output: %s", err.Error())
