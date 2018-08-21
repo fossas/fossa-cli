@@ -4,12 +4,9 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"crypto/md5"
-	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"io"
 	"io/ioutil"
-	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,15 +16,13 @@ import (
 	"github.com/fossas/fossa-cli/log"
 )
 
-var SignedURLAPI = "/api/components/signed_url"
+var (
+	SignedURLAPI       = "/api/components/signed_url"
+	ComponentsBuildAPI = "/api/components/build"
+)
 
 type SignedURL struct {
 	SignedURL string
-}
-
-type TarballSpec struct {
-	PackageSpec string `json:"packageSpec"`
-	Revision    string `json:"revision"`
 }
 
 // UploadTarball archives, compresses, and uploads a specified directory. It
@@ -47,69 +42,61 @@ type TarballSpec struct {
 // idea. (See https://circleci.com/docs/2.0/configuration-reference/#resource_class
 // for an example of our memory constraints.)
 func UploadTarball(dir string) (Locator, error) {
-	_, err := os.Stat(dir)
+	p, err := filepath.Abs(dir)
+	name := filepath.Base(p)
+	if err != nil {
+		return Locator{}, err
+	}
+	_, err = os.Stat(p)
 	if err != nil {
 		return Locator{}, err
 	}
 
 	// Run first pass: tarball creation and hashing.
-	tmp, hash, err := CreateTarball(dir)
+	tarball, hash, err := CreateTarball(p)
+	if err != nil {
+		return Locator{}, err
+	}
+	info, err := tarball.Stat()
 	if err != nil {
 		return Locator{}, err
 	}
 
 	// Get signed URL for uploading.
+	revision := hex.EncodeToString(hash)
 	q := url.Values{}
-	q.Add("packageSpec", filepath.Base(dir))
-	q.Add("revision", hex.EncodeToString(hash))
-	var url SignedURL
-	_, err = GetJSON(SignedURLAPI+"?"+q.Encode(), &url)
+	q.Add("packageSpec", name)
+	q.Add("revision", revision)
+	var signed SignedURL
+	_, err = GetJSON(SignedURLAPI+"?"+q.Encode(), &signed)
 	if err != nil {
 		return Locator{}, err
 	}
 
 	// Run second pass: multi-part uploading.
 	r, w := io.Pipe()
-	// In parallel, stream temporary file to POST.
-	m := multipart.NewWriter(w)
+	// In parallel, stream temporary file to PUT.
 	go func() {
 		defer w.Close()
-		defer tmp.Close()
-
-		data, err := m.CreateFormFile("file", filepath.Base(dir))
-		if err != nil {
-			log.Logger.Fatalf("Unable to upload: %s", err.Error())
-		}
-
-		_, err = io.Copy(data, tmp)
-		if err != nil {
-			log.Logger.Fatalf("Unable to upload: %s", err.Error())
-		}
-
-		meta, err := m.CreateFormField(filepath.Base(dir))
-		if err != nil {
-			log.Logger.Fatalf("Unable to upload: %s", err.Error())
-		}
-		metadata := TarballSpec{
-			PackageSpec: filepath.Base(dir),
-			Revision:    base64.StdEncoding.EncodeToString(hash),
-		}
-		marshalled, err := json.Marshal(metadata)
-		if err != nil {
-			log.Logger.Fatalf("Unable to upload: %s", err.Error())
-		}
-		_, err = meta.Write(marshalled)
-		if err != nil {
-			log.Logger.Fatalf("Unable to upload: %s", err.Error())
-		}
-
-		err = m.Close()
+		defer tarball.Close()
+		tarball.Seek(0, 0)
+		_, err = io.Copy(w, tarball)
 		if err != nil {
 			log.Logger.Fatalf("Unable to upload: %s", err.Error())
 		}
 	}()
 
-	res, err := http.Post("", m.FormDataContentType(), r)
+	req, err := http.NewRequest(http.MethodPut, signed.SignedURL, r)
+	if err != nil {
+		return Locator{}, err
+	}
+	req.Header.Set("Content-Type", "binary/octet-stream")
+	req.ContentLength = info.Size()
+	req.GetBody = func() (io.ReadCloser, error) {
+		return r, nil
+	}
+	log.Logger.Debugf("req: %#v", req)
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return Locator{}, err
 	}
@@ -119,19 +106,35 @@ func UploadTarball(dir string) (Locator, error) {
 	if err != nil {
 		return Locator{}, err
 	}
-	log.Logger.Info("%#v", body)
+	log.Logger.Debugf("%#v", string(body))
 
-	return Locator{}, nil
+	// Queue the component build.
+	build := url.Values{}
+	build.Add("archives[0][packageSpec]", name)
+	build.Add("archives[0][revision]", revision)
+	log.Logger.Debugf("queueing build: %#v", build)
+	res, err = http.PostForm(mustParse(ComponentsBuildAPI).String(), build)
+	if err != nil {
+		return Locator{}, err
+	}
+	log.Logger.Debugf("%#v", string(body))
+
+	return Locator{
+		Fetcher:  "archive",
+		Project:  name,
+		Revision: revision,
+	}, nil
 }
 
 // CreateTarball archives and compresses a directory's contents to a temporary
-// file while simultaneously computing its MD5 hash.
+// file while simultaneously computing its MD5 hash. The caller is responsible
+// for closing the file handle.
 func CreateTarball(dir string) (*os.File, []byte, error) {
-	tmp, err := ioutil.TempFile("", "fossa-tar-"+dir+"-")
+	tmp, err := ioutil.TempFile("", "fossa-tar-"+filepath.Base(dir)+"-")
 	if err != nil {
 		return nil, nil, err
 	}
-	defer tmp.Close()
+	defer tmp.Sync()
 
 	h := md5.New()
 

@@ -31,7 +31,7 @@ var Cmd = cli.Command{
 var _ cli.ActionFunc = Run
 
 func Run(ctx *cli.Context) error {
-	err := cmdutil.Init(ctx)
+	err := cmdutil.InitWithAPI(ctx)
 	if err != nil {
 		log.Logger.Fatalf("Could not initialize: %s", err.Error())
 	}
@@ -78,10 +78,23 @@ func Do(modules []module.Module) (analyzed []module.Module, err error) {
 		log.ShowSpinner(fmt.Sprintf("Analyzing module (%d/%d): %s", i+1, len(modules), m.Name))
 
 		// Handle raw modules differently from all others.
+		// TODO: maybe this should occur during the analysis step?
+		// TODO: maybe this should target a third-party folder, rather than a single
+		// folder? Maybe "third-party folder" should be a separate module type?
 		if m.Type == pkg.Raw {
-			err = fossa.UploadTarball(m.BuildTarget)
+			locator, err := fossa.UploadTarball(m.BuildTarget)
 			if err != nil {
 				log.Logger.Warningf("Could not upload raw module: %s", err.Error())
+			}
+			id := pkg.ID{
+				Type:     pkg.Raw,
+				Name:     locator.Project,
+				Revision: locator.Revision,
+			}
+			m.Imports = []pkg.Import{pkg.Import{Resolved: id}}
+			m.Deps = make(map[pkg.ID]pkg.Package)
+			m.Deps[id] = pkg.Package{
+				ID: id,
 			}
 			analyzed = append(analyzed, m)
 			continue
