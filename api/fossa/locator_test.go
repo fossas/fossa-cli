@@ -1,7 +1,6 @@
 package fossa_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/fossas/fossa-cli/api/fossa"
@@ -27,11 +26,12 @@ func TestLocatorFetcher(t *testing.T) {
 		{pkg.Python, "pip"},
 		{pkg.Ruby, "gem"},
 		{pkg.Scala, "mvn"},
+		{pkg.Raw, "archive"},
 	}
 	for _, tc := range testcases {
 		id := pkg.ID{
 			Type: tc.Type,
 		}
-		assert.True(t, strings.HasPrefix(fossa.LocatorOf(id).String(), tc.Fetcher+"+"))
+		assert.Equal(t, tc.Fetcher, fossa.LocatorOf(id).Fetcher, tc.Fetcher)
 	}
 }

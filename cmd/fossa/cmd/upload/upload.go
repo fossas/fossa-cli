@@ -1,3 +1,22 @@
+// Package upload implements `fossa upload`.
+//
+// `fossa upload` provides manual overrides for users whose builds are too
+// complex or too custom for `fossa analyze` to successfully analyze. It
+// essentially acts as a thin wrapper on top of the FOSSA API.
+//
+// This command has multiple upload modes which accept different kinds of input.
+// The upload modes are:
+//
+//   1. Raw mode (default): uses the raw JSON that the CLI would normally
+//      upload. This is a thin wrapper over cURL.
+//   2. Locator mode: provides a newline-delimited list of locators. This is the
+//      simplest data format to generate, but also provides the least metadata.
+//      Most simple shell scripts could probably generate this.
+//   3. Graph mode (not implemented): provides the JSON dependency graph format
+//      used internally by the CLI. This is a good balance between complexity
+//      and ease-of-use. Generating this probably needs a proper script.
+//   4. Tarball mode (not implemented): provides a folder to upload as a project
+//      tarball.
 package upload
 
 import (

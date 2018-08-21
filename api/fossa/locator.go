@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -16,6 +17,13 @@ type Locator struct {
 
 func (l Locator) String() string {
 	if l.Fetcher != "git" {
+		if l.Fetcher == "archive" {
+			orgID, err := GetOrganizationID()
+			if err != nil {
+				log.Logger.Warningf("Could not get OrganizationID while constructing locator")
+			}
+			l.Project = orgID + "/" + l.Project
+		}
 		return l.Fetcher + "+" + l.Project + "$" + l.Revision
 	}
 	return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
@@ -56,6 +64,11 @@ func ReadLocator(locator string) Locator {
 
 // LocatorOf returns the locator of a pkg.ID.
 func LocatorOf(id pkg.ID) Locator {
+	// TODO: maybe this should panic?
+	if id.Type == pkg.Invalid {
+		log.Logger.Warningf("Unrecognized locator")
+		return Locator{}
+	}
 	// Normalize locator fetchers.
 	fetcher := id.Type.String()
 	switch id.Type {

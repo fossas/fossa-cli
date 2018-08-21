@@ -12,6 +12,7 @@ import (
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
 var ShowOutput = "output"
@@ -30,7 +31,7 @@ var Cmd = cli.Command{
 var _ cli.ActionFunc = Run
 
 func Run(ctx *cli.Context) error {
-	err := cmdutil.Init(ctx)
+	err := cmdutil.InitWithAPI(ctx)
 	if err != nil {
 		log.Logger.Fatalf("Could not initialize: %s", err.Error())
 	}
@@ -49,6 +50,7 @@ func Run(ctx *cli.Context) error {
 		return err
 	}
 
+	log.Logger.Debugf("analyzed: %#v", analyzed)
 	normalized, err := fossa.Normalize(analyzed)
 	if err != nil {
 		log.Logger.Fatalf("Could not normalize output: %s", err.Error())
@@ -75,8 +77,33 @@ func Do(modules []module.Module) (analyzed []module.Module, err error) {
 	defer log.StopSpinner()
 	for i, m := range modules {
 		log.ShowSpinner(fmt.Sprintf("Analyzing module (%d/%d): %s", i+1, len(modules), m.Name))
+
+		// Handle raw modules differently from all others.
+		// TODO: maybe this should occur during the analysis step?
+		// TODO: maybe this should target a third-party folder, rather than a single
+		// folder? Maybe "third-party folder" should be a separate module type?
+		if m.Type == pkg.Raw {
+			locator, err := fossa.UploadTarball(m.BuildTarget)
+			if err != nil {
+				log.Logger.Warningf("Could not upload raw module: %s", err.Error())
+			}
+			id := pkg.ID{
+				Type:     pkg.Raw,
+				Name:     locator.Project,
+				Revision: locator.Revision,
+			}
+			m.Imports = []pkg.Import{pkg.Import{Resolved: id}}
+			m.Deps = make(map[pkg.ID]pkg.Package)
+			m.Deps[id] = pkg.Package{
+				ID: id,
+			}
+			analyzed = append(analyzed, m)
+			continue
+		}
+
 		analyzer, err := analyzers.New(m)
 		if err != nil {
+			analyzed = append(analyzed, m)
 			log.Logger.Warningf("Could not load analyzer: %s", err.Error())
 			continue
 		}
