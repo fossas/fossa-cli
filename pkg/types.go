@@ -13,7 +13,8 @@ type Type int
 
 // Supported package types.
 const (
-	Ant       Type = iota // Apache Ant (https://ant.apache.org)
+	Invalid   Type = iota // Placeholder
+	Ant                   // Apache Ant (https://ant.apache.org)
 	Bower                 // Bower (https://bower.io)
 	Carthage              // Carthage (https://github.com/Carthage/Carthage)
 	Cocoapods             // Cocoapods (https://cocoapods.org)
@@ -27,6 +28,7 @@ const (
 	Python                // Pip (https://pip.pypa.io)
 	Ruby                  // Bundler (https://bundler.io)
 	Scala                 // SBT (https://www.scala-sbt.org)
+	Raw                   // Unsupported languages
 )
 
 // AllTypes enumerates all package types.
@@ -44,6 +46,7 @@ var AllTypes = []Type{
 	Python,
 	Ruby,
 	Scala,
+	Raw,
 }
 
 // ParseType returns the canonical package type given a string key.
@@ -156,6 +159,24 @@ func ParseType(key string) (Type, error) {
 	case "sbt":
 		return Scala, nil
 
+	// Raw aliases
+	case "c":
+		fallthrough
+	case "c++":
+		fallthrough
+	case "cpp":
+		fallthrough
+	case "tar":
+		fallthrough
+	case "tarball":
+		fallthrough
+	case "vendor":
+		fallthrough
+	case "vendored":
+		fallthrough
+	case "raw":
+		return Raw, nil
+
 	default:
 		return Type(-1), errors.New("unknown package type")
 	}
@@ -191,6 +212,8 @@ func (t Type) String() string {
 		return "gem"
 	case Scala:
 		return "sbt"
+	case Raw:
+		return "archive"
 	default:
 		panic(t)
 	}

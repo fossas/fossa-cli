@@ -27,6 +27,7 @@ func TestLocatorFetcher(t *testing.T) {
 		{pkg.Python, "pip"},
 		{pkg.Ruby, "gem"},
 		{pkg.Scala, "mvn"},
+		{pkg.Raw, "archive"},
 	}
 	for _, tc := range testcases {
 		id := pkg.ID{

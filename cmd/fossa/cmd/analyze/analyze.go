@@ -12,6 +12,7 @@ import (
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
 var ShowOutput = "output"
@@ -75,8 +76,20 @@ func Do(modules []module.Module) (analyzed []module.Module, err error) {
 	defer log.StopSpinner()
 	for i, m := range modules {
 		log.ShowSpinner(fmt.Sprintf("Analyzing module (%d/%d): %s", i+1, len(modules), m.Name))
+
+		// Handle raw modules differently from all others.
+		if m.Type == pkg.Raw {
+			err = fossa.UploadTarball(m.BuildTarget)
+			if err != nil {
+				log.Logger.Warningf("Could not upload raw module: %s", err.Error())
+			}
+			analyzed = append(analyzed, m)
+			continue
+		}
+
 		analyzer, err := analyzers.New(m)
 		if err != nil {
+			analyzed = append(analyzed, m)
 			log.Logger.Warningf("Could not load analyzer: %s", err.Error())
 			continue
 		}

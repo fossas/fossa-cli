@@ -182,3 +182,6 @@ RUN git clone --depth=1 https://github.com/MacDownApp/macdown
 ## - noerd/Multiple-File-Upload-Package
 ## - mikaelkindborg/droidscript
 RUN git clone --depth=1 https://github.com/fossas/ant-example-project
+
+# Raw projects:
+RUN git clone --depth=1 https://github.com/jelaas/bifrost-framework
