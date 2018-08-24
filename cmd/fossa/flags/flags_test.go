@@ -17,7 +17,7 @@ func TestCombine(t *testing.T) {
 		[]cli.Flag{fooFlag},
 		[]cli.Flag{fooFlag, helloFlag},
 	)
-	assert.Equal(t, combined, []cli.Flag{fooFlag, helloFlag})
+	assert.ElementsMatch(t, combined, []cli.Flag{fooFlag, helloFlag})
 
 	assert.Panics(t, func() {
 		flags.Combine(
