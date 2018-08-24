@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/fossas/fossa-cli/log"
 )
@@ -89,7 +88,10 @@ func UploadTarball(dir string) (Locator, error) {
 	go func() {
 		defer w.Close()
 		defer tarball.Close()
-		tarball.Seek(0, 0)
+		_, err := tarball.Seek(0, 0)
+		if err != nil {
+			log.Logger.Fatalf("Unable to upload: %s", err.Error())
+		}
 		_, err = io.Copy(w, tarball)
 		if err != nil {
 			log.Logger.Fatalf("Unable to upload: %s", err.Error())
@@ -145,11 +147,15 @@ func UploadTarball(dir string) (Locator, error) {
 // file while simultaneously computing its MD5 hash. The caller is responsible
 // for closing the file handle.
 func CreateTarball(dir string) (*os.File, []byte, error) {
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	tmp, err := ioutil.TempFile("", "fossa-tar-"+filepath.Base(dir)+"-")
 	if err != nil {
 		return nil, nil, err
 	}
-	defer tmp.Sync()
 
 	h := md5.New()
 
@@ -178,9 +184,10 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 		if err != nil {
 			return err
 		}
-		header.Name = strings.TrimPrefix(filename, string(filepath.Separator))
-		header.Name = strings.TrimPrefix(filename, dir)
-		header.Name = strings.TrimPrefix(filename, string(filepath.Separator))
+		header.Name, err = filepath.Rel(filepath.Dir(dir), filename)
+		if err != nil {
+			return err
+		}
 
 		err = t.WriteHeader(header)
 		if err != nil {
@@ -192,22 +199,39 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 			return nil
 		}
 
+		// For regular files, write the file.
 		file, err := os.Open(filename)
 		if err != nil {
 			return err
 		}
 		defer file.Close()
 
+		log.Logger.Debugf("Archiving: %#v", filename)
 		_, err = io.Copy(t, file)
 		if err != nil {
 			return err
 		}
-		// Close again to force a disk flush. Closing an *os.File is undefined, but
-		// safe in practice. See https://github.com/golang/go/issues/20705.
+		// Close again to force a disk flush. Closing an *os.File twice is
+		// undefined, but safe in practice.
+		// See https://github.com/golang/go/issues/20705.
 		file.Close()
 
 		return nil
 	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Clean up and flush writers.
+	err = t.Flush()
+	if err != nil {
+		return nil, nil, err
+	}
+	err = g.Flush()
+	if err != nil {
+		return nil, nil, err
+	}
+	err = tmp.Sync()
 	if err != nil {
 		return nil, nil, err
 	}

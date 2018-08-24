@@ -2,6 +2,7 @@ package fossa_test
 
 import (
 	"encoding/base64"
+	"log"
 	"os"
 	"testing"
 
@@ -13,11 +14,16 @@ import (
 func TestCreateTar(t *testing.T) {
 	tmp, hash, err := fossa.CreateTarball("testdata")
 	assert.NoError(t, err)
+	log.Printf("Hash: %#v", hash)
 
 	// The file matching this hash has been manually checked to make sure it's a
 	// correct, readable tarball with the correct contents.
-	assert.Equal(t, "NLa6Blne2KpQbgevwB3R+A==", base64.StdEncoding.EncodeToString(hash))
+	assert.Equal(t, "5fRhTw+40JqCpCoJuph+hw==", base64.StdEncoding.EncodeToString(hash))
 
-	err = os.Remove(tmp.Name())
-	assert.NoError(t, err)
+	if os.Getenv("KEEP_TMP") == "" {
+		err = os.Remove(tmp.Name())
+		assert.NoError(t, err)
+	} else {
+		log.Printf("Generated tarball at: %#v", tmp.Name())
+	}
 }
