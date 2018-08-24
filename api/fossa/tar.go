@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -20,6 +21,15 @@ var (
 	SignedURLAPI       = "/api/components/signed_url"
 	ComponentsBuildAPI = "/api/components/build"
 )
+
+type ComponentSpec struct {
+	Archives []Component `json:"archives"`
+}
+
+type Component struct {
+	PackageSpec string `json:"packageSpec"`
+	Revision    string `json:"revision"`
+}
 
 type SignedURL struct {
 	SignedURL string
@@ -86,6 +96,7 @@ func UploadTarball(dir string) (Locator, error) {
 		}
 	}()
 
+	// TODO: should this be a new base API method?
 	req, err := http.NewRequest(http.MethodPut, signed.SignedURL, r)
 	if err != nil {
 		return Locator{}, err
@@ -109,15 +120,19 @@ func UploadTarball(dir string) (Locator, error) {
 	log.Logger.Debugf("%#v", string(body))
 
 	// Queue the component build.
-	build := url.Values{}
-	build.Add("archives[0][packageSpec]", name)
-	build.Add("archives[0][revision]", revision)
-	log.Logger.Debugf("queueing build: %#v", build)
-	res, err = http.PostForm(mustParse(ComponentsBuildAPI).String(), build)
+	build := ComponentSpec{
+		Archives: []Component{
+			Component{PackageSpec: name, Revision: revision},
+		},
+	}
+	data, err := json.Marshal(build)
 	if err != nil {
 		return Locator{}, err
 	}
-	log.Logger.Debugf("%#v", string(body))
+	_, _, err = Post(ComponentsBuildAPI, data)
+	if err != nil {
+		return Locator{}, err
+	}
 
 	return Locator{
 		Fetcher:  "archive",

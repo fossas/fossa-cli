@@ -66,13 +66,8 @@ func GetJSON(endpoint string, v interface{}) (statusCode int, err error) {
 }
 
 // Post makes a POST request to a FOSSA API endpoint.
+// TODO: maybe `body` should be an `io.Reader` instead.
 func Post(endpoint string, body []byte) (res string, statusCode int, err error) {
 	u := mustParse(endpoint)
 	return api.Post(u, apiKey, body)
-}
-
-// PutJSON makes a JSON PUT request to a FOSSA API endpoint.
-func PutJSON(endpoint string, body []byte, v interface{}) (statusCode int, err error) {
-	u := mustParse(endpoint)
-	return api.PutJSON(u, apiKey, body, v)
 }
