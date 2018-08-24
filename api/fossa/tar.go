@@ -5,13 +5,13 @@ import (
 	"compress/gzip"
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/fossas/fossa-cli/log"
 )
@@ -20,6 +20,15 @@ var (
 	SignedURLAPI       = "/api/components/signed_url"
 	ComponentsBuildAPI = "/api/components/build"
 )
+
+type ComponentSpec struct {
+	Archives []Component `json:"archives"`
+}
+
+type Component struct {
+	PackageSpec string `json:"packageSpec"`
+	Revision    string `json:"revision"`
+}
 
 type SignedURL struct {
 	SignedURL string
@@ -79,13 +88,17 @@ func UploadTarball(dir string) (Locator, error) {
 	go func() {
 		defer w.Close()
 		defer tarball.Close()
-		tarball.Seek(0, 0)
+		_, err := tarball.Seek(0, 0)
+		if err != nil {
+			log.Logger.Fatalf("Unable to upload: %s", err.Error())
+		}
 		_, err = io.Copy(w, tarball)
 		if err != nil {
 			log.Logger.Fatalf("Unable to upload: %s", err.Error())
 		}
 	}()
 
+	// TODO: should this be a new base API method?
 	req, err := http.NewRequest(http.MethodPut, signed.SignedURL, r)
 	if err != nil {
 		return Locator{}, err
@@ -109,15 +122,19 @@ func UploadTarball(dir string) (Locator, error) {
 	log.Logger.Debugf("%#v", string(body))
 
 	// Queue the component build.
-	build := url.Values{}
-	build.Add("archives[0][packageSpec]", name)
-	build.Add("archives[0][revision]", revision)
-	log.Logger.Debugf("queueing build: %#v", build)
-	res, err = http.PostForm(mustParse(ComponentsBuildAPI).String(), build)
+	build := ComponentSpec{
+		Archives: []Component{
+			Component{PackageSpec: name, Revision: revision},
+		},
+	}
+	data, err := json.Marshal(build)
 	if err != nil {
 		return Locator{}, err
 	}
-	log.Logger.Debugf("%#v", string(body))
+	_, _, err = Post(ComponentsBuildAPI, data)
+	if err != nil {
+		return Locator{}, err
+	}
 
 	return Locator{
 		Fetcher:  "archive",
@@ -130,17 +147,19 @@ func UploadTarball(dir string) (Locator, error) {
 // file while simultaneously computing its MD5 hash. The caller is responsible
 // for closing the file handle.
 func CreateTarball(dir string) (*os.File, []byte, error) {
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	tmp, err := ioutil.TempFile("", "fossa-tar-"+filepath.Base(dir)+"-")
 	if err != nil {
 		return nil, nil, err
 	}
-	defer tmp.Sync()
 
 	h := md5.New()
 
-	m := io.MultiWriter(h, tmp)
-
-	g := gzip.NewWriter(m)
+	g := gzip.NewWriter(tmp)
 	defer g.Close()
 
 	t := tar.NewWriter(g)
@@ -159,13 +178,18 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 		// 	return filepath.SkipDir
 		// }
 
+		_, err = io.WriteString(h, info.Name())
+		if err != nil {
+			return err
+		}
 		header, err := tar.FileInfoHeader(info, info.Name())
 		if err != nil {
 			return err
 		}
-		header.Name = strings.TrimPrefix(filename, string(filepath.Separator))
-		header.Name = strings.TrimPrefix(filename, dir)
-		header.Name = strings.TrimPrefix(filename, string(filepath.Separator))
+		header.Name, err = filepath.Rel(filepath.Dir(dir), filename)
+		if err != nil {
+			return err
+		}
 
 		err = t.WriteHeader(header)
 		if err != nil {
@@ -177,22 +201,43 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 			return nil
 		}
 
+		// For regular files, write the file.
 		file, err := os.Open(filename)
 		if err != nil {
 			return err
 		}
 		defer file.Close()
 
+		log.Logger.Debugf("Archiving: %#v", filename)
 		_, err = io.Copy(t, file)
 		if err != nil {
 			return err
 		}
-		// Close again to force a disk flush. Closing an *os.File is undefined, but
-		// safe in practice. See https://github.com/golang/go/issues/20705.
+		_, err = io.Copy(h, file)
+		if err != nil {
+			return err
+		}
+		// Close again to force a disk flush. Closing an *os.File twice is
+		// undefined, but safe in practice.
+		// See https://github.com/golang/go/issues/20705.
 		file.Close()
 
 		return nil
 	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Clean up and flush writers.
+	err = t.Flush()
+	if err != nil {
+		return nil, nil, err
+	}
+	err = g.Flush()
+	if err != nil {
+		return nil, nil, err
+	}
+	err = tmp.Sync()
 	if err != nil {
 		return nil, nil, err
 	}
