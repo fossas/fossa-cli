@@ -18,7 +18,7 @@ func TestCreateTar(t *testing.T) {
 
 	// The file matching this hash has been manually checked to make sure it's a
 	// correct, readable tarball with the correct contents.
-	assert.Equal(t, "5fRhTw+40JqCpCoJuph+hw==", base64.StdEncoding.EncodeToString(hash))
+	assert.Equal(t, "h9NNNZQ7ascb5H06xpAc4A==", base64.StdEncoding.EncodeToString(hash))
 
 	if os.Getenv("KEEP_TMP") == "" {
 		err = os.Remove(tmp.Name())

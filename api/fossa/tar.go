@@ -159,9 +159,7 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 
 	h := md5.New()
 
-	m := io.MultiWriter(h, tmp)
-
-	g := gzip.NewWriter(m)
+	g := gzip.NewWriter(tmp)
 	defer g.Close()
 
 	t := tar.NewWriter(g)
@@ -180,6 +178,10 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 		// 	return filepath.SkipDir
 		// }
 
+		_, err = io.WriteString(h, info.Name())
+		if err != nil {
+			return err
+		}
 		header, err := tar.FileInfoHeader(info, info.Name())
 		if err != nil {
 			return err
@@ -208,6 +210,10 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 
 		log.Logger.Debugf("Archiving: %#v", filename)
 		_, err = io.Copy(t, file)
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(h, file)
 		if err != nil {
 			return err
 		}
