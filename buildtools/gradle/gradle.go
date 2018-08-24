@@ -105,15 +105,15 @@ func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency
 
 		// Parse dependency.
 		dep := matches[2]
-		withoutOmit := strings.TrimSuffix(dep, " (*)")
+		withoutAnnotations := strings.TrimSuffix(strings.TrimSuffix(strings.TrimSuffix(dep, " (*)"), " (n)"), " FAILED")
 		var parsed Dependency
-		if strings.HasPrefix(withoutOmit, "project :") {
+		if strings.HasPrefix(withoutAnnotations, "project :") {
 			parsed = Dependency{
 				Name:      strings.TrimPrefix(dep, "project :"),
 				IsProject: true,
 			}
 		} else {
-			sections := strings.Split(withoutOmit, ":")
+			sections := strings.Split(withoutAnnotations, ":")
 			name := strings.Join(sections[:len(sections)-1], ":")
 			version := sections[len(sections)-1]
 			target := version
