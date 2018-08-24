@@ -194,7 +194,7 @@ GEM
     concurrent-ruby (1.0.5)
     concurrent-ruby (1.0.5-java)
     connection_pool (2.2.2)
-    cookiejar (0.3.3)
+    cookiejar (0.3.3)!
     crass (1.0.4)
     curses (1.0.2)
     daemons (1.2.6)
@@ -289,7 +289,7 @@ GEM
     jwt (2.1.0)
     kindlerb (1.2.0)
       mustache
-      nokogiri
+      nokogiri!
     libxml-ruby (3.1.0)
     listen (3.1.5)
       rb-fsevent (~> 0.9, >= 0.9.4)
