@@ -8,22 +8,19 @@ var (
 )
 
 type Error struct {
-	Cause        error
-	Common       bool
-	Explanation  string
-	Instructions []string
+	Cause           error
+	Common          bool
+	Message         string
+	Troubleshooting string
 }
 
 func (e *Error) Error() string {
-	return `Error: unable to foo the bar.
-
+	return `Error: ` + e.Message + `
 TROUBLESHOOTING:
 
-This error is commonly seen. It usually occurs because mvn dependency:list is failing.
+` + e.Troubleshooting + `
 
-- Ensure that mvn dependency:list works
-
-Please try the suggestions before filing a bug. If none of the suggestions work,
+Please try troubleshooting before filing a bug. If none of the suggestions work,
 you can file a bug at <https://github.com/fossas/fossa-cli/issues/new>.
 
 For additional support, ask the #cli channel at <https://slack.fossa.io>.
@@ -32,7 +29,9 @@ CREATING AN ISSUE:
 
 Before creating an issue, please search GitHub issues for similar problems. When
 creating the issue, please attach the debug log located at:
-	/tmp/fossa-cli-debug-log.`
+
+  /tmp/fossa-cli-debug-log
+`
 }
 
 func Wrap(cause error, msg string) error {
@@ -47,10 +46,10 @@ func WrapError(cause error, err Error) Error {
 	switch e := cause.(type) {
 	case *Error:
 		return Error{
-			Cause:        e,
-			Common:       err.Common,
-			Explanation:  err.Explanation,
-			Instructions: err.Instructions,
+			Cause:           e,
+			Common:          err.Common,
+			Message:         err.Message,
+			Troubleshooting: err.Troubleshooting,
 		}
 	default:
 	}

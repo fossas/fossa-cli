@@ -9,7 +9,10 @@
 
 [[projects]]
   name = "github.com/apex/log"
-  packages = ["."]
+  packages = [
+    ".",
+    "handlers/cli"
+  ]
   revision = "0296d6eb16bb28f8a0c55668affcf4876dc269be"
   version = "v1.0.0"
 
@@ -131,12 +134,6 @@
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
   revision = "f15292f7a699fcc1a38a80977f80a046874ba8ac"
-
-[[projects]]
-  name = "github.com/op/go-logging"
-  packages = ["."]
-  revision = "b2cb9fa56473e98db8caba80237377e83fe44db5"
-  version = "v1"
 
 [[projects]]
   name = "github.com/pelletier/go-buffruneio"
@@ -371,6 +368,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7b528b9d275c3dd70af28baffea935a71b141abf37c0659de6f5e31775dd7e14"
+  inputs-digest = "cef0cf926e66becbcaeec0ac04638120df41cf807fe1afa82fafc3b28d895d6d"
   solver-name = "gps-cdcl"
   solver-version = 1

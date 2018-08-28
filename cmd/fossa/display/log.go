@@ -5,6 +5,7 @@ import (
 	"runtime"
 
 	"github.com/apex/log"
+	"github.com/apex/log/handlers/cli"
 )
 
 var Entries []log.Entry
@@ -24,7 +25,10 @@ func Init(interactive, debug bool) error {
 		interactive = false
 	}
 
-	// log.SetHandler()
+	log.SetHandler(cli.New(os.Stderr))
+	if debug {
+		log.SetLevel(log.DebugLevel)
+	}
 
 	useSpinner = interactive
 	s.Writer = os.Stderr
