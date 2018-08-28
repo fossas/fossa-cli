@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -20,7 +20,7 @@ func (l Locator) String() string {
 		if l.Fetcher == "archive" {
 			orgID, err := GetOrganizationID()
 			if err != nil {
-				log.Logger.Warningf("Could not get OrganizationID while constructing locator")
+				log.Warnf("Could not get OrganizationID while constructing locator")
 			}
 			l.Project = orgID + "/" + l.Project
 		}
@@ -66,7 +66,7 @@ func ReadLocator(locator string) Locator {
 func LocatorOf(id pkg.ID) Locator {
 	// TODO: maybe this should panic?
 	if id.Type == pkg.Invalid {
-		log.Logger.Warningf("Unrecognized locator")
+		log.Warnf("Unrecognized locator")
 		return Locator{}
 	}
 	// Normalize locator fetchers.
