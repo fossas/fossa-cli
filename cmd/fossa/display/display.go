@@ -1,3 +1,6 @@
+// Package display implements
+//
+// It is not called package log
 package display
 
 import (
@@ -5,6 +8,7 @@ import (
 	"fmt"
 )
 
+// JSON is a convenience function for printing JSON to STDOUT.
 func JSON(data interface{}) (int, error) {
 	msg, err := json.Marshal(data)
 	if err != nil {

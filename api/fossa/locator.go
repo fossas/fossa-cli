@@ -1,10 +1,13 @@
 package fossa
 
 import (
+	"net/url"
 	"regexp"
 	"strings"
 
 	"github.com/apex/log"
+
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -29,6 +32,31 @@ func (l Locator) String() string {
 	return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
 }
 
+// URL provides a formatted FOSSA URL to a locator.
+func (l Locator) URL() string {
+	server, err := url.Parse(config.Endpoint())
+	if err != nil {
+		log.Fatalf("Invalid FOSSA endpoint: %s", err.Error())
+	}
+	branch := config.Branch()
+	if branch == "" {
+		branch = "master"
+	}
+	url, err := url.Parse(
+		"/projects/" +
+			url.PathEscape(l.Fetcher+"+"+l.Project) +
+			"/refs/branch/" +
+			url.PathEscape(branch) +
+			"/" +
+			url.PathEscape(l.Revision))
+	return strings.Replace(server.ResolveReference(url).String(), "%", "%%", -1)
+}
+
+// IsResolved returns true only if a locator is resolved.
+func (l Locator) IsResolved() bool {
+	return l.Revision != ""
+}
+
 // NormalizeGitURL normalizes all forms of git remote URLs to a single standard
 // form.
 func NormalizeGitURL(project string) string {
@@ -44,11 +72,6 @@ func NormalizeGitURL(project string) string {
 	noHTTPSPrefix := strings.TrimPrefix(noHTTPPrefix, "https://")
 
 	return noHTTPSPrefix
-}
-
-// IsResolved returns true only if a locator is resolved.
-func (l Locator) IsResolved() bool {
-	return l.Revision != ""
 }
 
 // ReadLocator parses a string locator into a Locator.
