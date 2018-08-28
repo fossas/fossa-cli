@@ -50,9 +50,15 @@ function install {
   REPO="fossa-cli"
   BIN="fossa"
   INSECURE="false"
-  OUT_DIR="/usr/local/bin"
+  if [[ $LOCAL = "true" ]];
+  then
+    OUT_DIR=$PWD
+  else
+    OUT_DIR="/usr/local/bin"
+  fi
   GH="https://github.com"
   GH_API="https://api.github.com"
+
 
   # `bash` check
   [ ! "$BASH_VERSION" ] && fail "Please use bash instead"
@@ -127,8 +133,13 @@ function install {
   # Move binary into output directory
   chmod +x $BIN || fail "chmod +x failed"
 
-  # Admin privileges are required to run this command
-  askRoot mv $BIN $OUT_DIR/$BIN || fail "mv failed"
+  if [[ $LOCAL = "true" ]];
+  then
+    mv $BIN $OUT_DIR || fail "mv failed"
+  else
+    # Admin privileges are required to run this command
+    askRoot mv $BIN $OUT_DIR || fail "mv failed"
+  fi
   echo "Installed at $OUT_DIR/$BIN"
 }
 
