@@ -24,7 +24,7 @@ var (
 )
 
 // Upload uploads a project's analysis.
-func Upload(fetcher, project, revision, title, branch string, data []SourceUnit) (Locator, error) {
+func Upload(fetcher, project, revision, title, branch, projectURL, jiraProjectKey string, data []SourceUnit) (Locator, error) {
 	// Check preconditions
 	if fetcher != "custom" && revision == "" {
 		log.Fatal("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
@@ -57,6 +57,12 @@ func Upload(fetcher, project, revision, title, branch string, data []SourceUnit)
 	}
 	if branch != "" {
 		q.Add("branch", branch)
+	}
+	if projectURL != "" {
+		q.Add("projectURL", projectURL)
+	}
+	if jiraProjectKey != "" {
+		q.Add("jiraProjectKey", jiraProjectKey)
 	}
 	if revision != "" {
 		q.Add("revision", revision)

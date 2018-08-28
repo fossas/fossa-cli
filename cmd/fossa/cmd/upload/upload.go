@@ -140,5 +140,5 @@ func Do(data []fossa.SourceUnit) (fossa.Locator, error) {
 		log.Fatalf("No data to upload")
 	}
 
-	return fossa.Upload(config.Fetcher(), config.Project(), config.Revision(), config.Title(), config.Branch(), data)
+	return fossa.Upload(config.Fetcher(), config.Project(), config.Revision(), config.Title(), config.Branch(), config.ProjectURL(), config.JiraProjectKey(), data)
 }

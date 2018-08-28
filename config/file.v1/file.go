@@ -25,13 +25,15 @@ type File struct {
 
 type CLIProperties struct {
 	// Upload configuration.
-	APIKey   string `yaml:"api_key,omitempty"`
-	Server   string `yaml:"server,omitempty"`
-	Fetcher  string `yaml:"fetcher,omitempty"` // Defaults to custom
-	Project  string `yaml:"project,omitempty"`
-	Title    string `yaml:"title,omitempty"`
-	Revision string `yaml:"revision,omitempty"`
-	Branch   string `yaml:"branch,omitempty"` // Only used with custom fetcher
+	APIKey         string `yaml:"api_key,omitempty"`
+	Server         string `yaml:"server,omitempty"`
+	Fetcher        string `yaml:"fetcher,omitempty"` // Defaults to custom
+	Project        string `yaml:"project,omitempty"`
+	Title          string `yaml:"title,omitempty"`
+	Revision       string `yaml:"revision,omitempty"`
+	Branch         string `yaml:"branch,omitempty"`           // Only used with custom fetcher
+	ProjectURL     string `yaml:"project_url,omitempty"`      // Only used with custom fetcher
+	JiraProjectKey string `yaml:"jira_project_key,omitempty"` // Only used with custom fetcher
 }
 
 type AnalyzeProperties struct {
@@ -119,6 +121,14 @@ func (file File) Project() string {
 
 func (file File) Branch() string {
 	return file.CLI.Branch
+}
+
+func (file File) ProjectURL() string {
+	return file.CLI.ProjectURL
+}
+
+func (file File) JiraProjectKey() string {
+	return file.CLI.JiraProjectKey
 }
 
 func (file File) Revision() string {

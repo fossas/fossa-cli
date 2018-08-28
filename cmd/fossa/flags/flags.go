@@ -45,19 +45,23 @@ func WithAPIFlags(f []cli.Flag) []cli.Flag {
 }
 
 var (
-	API       = []cli.Flag{EndpointF, TitleF, FetcherF, ProjectF, RevisionF, BranchF}
-	Endpoint  = "endpoint"
-	EndpointF = cli.StringFlag{Name: Short(Endpoint), Usage: "the FOSSA server endpoint (default: 'https://app.fossa.io')"}
-	Title     = "title"
-	TitleF    = cli.StringFlag{Name: Short(Title), Usage: "the title of the FOSSA project. (default: the project name)"}
-	Fetcher   = "fetcher"
-	FetcherF  = cli.StringFlag{Name: Short(Fetcher), Usage: "type of fetcher to use for fossa. (default: 'custom')"}
-	Project   = "project"
-	ProjectF  = cli.StringFlag{Name: Short(Project), Usage: "this repository's URL or VCS endpoint (default: VCS remote 'origin')"}
-	Revision  = "revision"
-	RevisionF = cli.StringFlag{Name: Short(Revision), Usage: "this repository's current revision hash (default: VCS hash HEAD)"}
-	Branch    = "branch"
-	BranchF   = cli.StringFlag{Name: Short(Branch), Usage: "this repository's current branch (default: current VCS branch)"}
+	API             = []cli.Flag{EndpointF, TitleF, FetcherF, ProjectF, RevisionF, BranchF, ProjectURLF, JiraProjectKeyF}
+	Endpoint        = "endpoint"
+	EndpointF       = cli.StringFlag{Name: Short(Endpoint), Usage: "the FOSSA server endpoint (default: 'https://app.fossa.io')"}
+	Title           = "title"
+	TitleF          = cli.StringFlag{Name: Short(Title), Usage: "the title of the FOSSA project. (default: the project name)"}
+	Fetcher         = "fetcher"
+	FetcherF        = cli.StringFlag{Name: Short(Fetcher), Usage: "type of fetcher to use for fossa. (default: 'custom')"}
+	Project         = "project"
+	ProjectF        = cli.StringFlag{Name: Short(Project), Usage: "this repository's URL or VCS endpoint (default: VCS remote 'origin')"}
+	Revision        = "revision"
+	RevisionF       = cli.StringFlag{Name: Short(Revision), Usage: "this repository's current revision hash (default: VCS hash HEAD)"}
+	Branch          = "branch"
+	BranchF         = cli.StringFlag{Name: Short(Branch), Usage: "this repository's current branch (default: current VCS branch)"}
+	ProjectURL      = "project-url"
+	ProjectURLF     = cli.StringFlag{Name: ShortUpper(ProjectURL), Usage: "this repository's home page"}
+	JiraProjectKey  = "jira-project-key"
+	JiraProjectKeyF = cli.StringFlag{Name: Short(JiraProjectKey), Usage: "this repository's JIRA project key"}
 )
 
 func WithGlobalFlags(f []cli.Flag) []cli.Flag {

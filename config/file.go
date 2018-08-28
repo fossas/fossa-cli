@@ -27,6 +27,8 @@ type File interface {
 	Project() string
 	Branch() string
 	Revision() string
+	ProjectURL() string
+	JiraProjectKey() string
 
 	Modules() []module.Module
 }
@@ -54,6 +56,14 @@ func (_ NoFile) Project() string {
 }
 
 func (_ NoFile) Branch() string {
+	return ""
+}
+
+func (_ NoFile) ProjectURL() string {
+	return ""
+}
+
+func (_ NoFile) JiraProjectKey() string {
 	return ""
 }
 

@@ -8,11 +8,13 @@ import (
 type File struct {
 	Version int `yaml:"version"`
 
-	Endpoint    string `yaml:"server,omitempty"`
-	Project     string `yaml:"project,omitempty"`
-	Revision    string `yaml:"revision,omitempty"`
-	Branch      string `yaml:"branch,omitempty"`
-	ImportedVCS bool   `yaml:"imported-vcs,omitempty"`
+	Endpoint       string `yaml:"server,omitempty"`
+	Project        string `yaml:"project,omitempty"`
+	Revision       string `yaml:"revision,omitempty"`
+	Branch         string `yaml:"branch,omitempty"`
+	ProjectURL     string `yaml:"project_url,omitempty"`
+	JiraProjectKey string `yaml:"jira_project_key,omitempty"`
+	ImportedVCS    bool   `yaml:"imported-vcs,omitempty"`
 
 	Modules []module.Module
 }
