@@ -16,6 +16,6 @@ func TestInitWorksWithoutGitRepository(t *testing.T) {
 	assert.NoError(t, err)
 
 	ctx := cli.NewContext(cli.NewApp(), flag.NewFlagSet("test", 0), nil)
-	err = config.Init(ctx)
+	err = config.SetContext(ctx)
 	assert.NoError(t, err)
 }
