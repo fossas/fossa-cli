@@ -32,7 +32,7 @@ func (l Locator) String() string {
 	return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
 }
 
-// URL provides a formatted FOSSA URL to a locator.
+// URL calculates the FOSSA URL for a project's locator.
 func (l Locator) URL() string {
 	server, err := url.Parse(config.Endpoint())
 	if err != nil {
@@ -50,6 +50,18 @@ func (l Locator) URL() string {
 			"/" +
 			url.PathEscape(l.Revision))
 	return strings.Replace(server.ResolveReference(url).String(), "%", "%%", -1)
+}
+
+// ReportURL provides a formatted URL.
+func (l Locator) ReportURL() string {
+	return `
+============================================================
+
+    View FOSSA Report:
+    ` + l.URL() + `
+
+============================================================
+`
 }
 
 // IsResolved returns true only if a locator is resolved.

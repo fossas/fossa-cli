@@ -1,47 +1,89 @@
 package display
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"runtime"
 
 	"github.com/apex/log"
-	"github.com/apex/log/handlers/cli"
 )
 
-var Entries []log.Entry
+var (
+	file     *os.File
+	useColor bool
+	level    log.Level
+)
 
-func Test() {
-	log.SetHandler(log.HandlerFunc(TestHandler))
-}
-
-func TestHandler(entry *log.Entry) error {
-	Entries = append(Entries, *entry)
-	return nil
-}
-
-func Init(interactive, debug bool) error {
+// SetInteractive turns colors and ANSI control characters on or off.
+func SetInteractive(interactive bool) {
 	// Disable Unicode and ANSI control characters on Windows.
 	if runtime.GOOS == "windows" {
-		interactive = false
+		return
 	}
 
-	log.SetHandler(cli.New(os.Stderr))
-	if debug {
-		log.SetLevel(log.DebugLevel)
-	}
-
+	// Configure spinner.
 	useSpinner = interactive
-	s.Writer = os.Stderr
-	// var colorOn, colorOff string
-	// if interactive {
-	// 	colorOn = "%{color}"
-	// 	colorOff = "%{color:reset}"
-	// }
+}
 
+// SetDebug turns debug logging to STDERR on or off.
+//
+// The log file always writes debug-level entries.
+func SetDebug(debug bool) {
+	// This sets the `level` variable rather than calling `log.SetLevel`, because
+	// calling `log.SetLevel` filters entries by level _before_ they reach the
+	// handler. This is not desirable, because we always want our handler to see
+	// debug entries so they can be written to the log file.
+	if debug {
+		level = log.DebugLevel
+	} else {
+		level = log.InfoLevel
+	}
+}
+
+// SetFile sets the log file. By default, this is set to a temporary file.
+func SetFile(filename string) error {
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	file = f
 	return nil
 }
 
+// File returns the log file name.
+func File() string {
+	return file.Name()
+}
+
+// Handler handles log entries. It multiplexes them into two outputs, writing
+// human-readable messages to STDERR and machine-readable entries to a log file.
+//
+// TODO: does this need to be synchronised?
 func Handler(entry *log.Entry) error {
+	// If in debug mode, add caller.
+	// TODO: implement this.
+
+	// Write entry to STDERR.
+	if entry.Level > level {
+		fmt.Fprintf(os.Stderr, "%s %s\n", entry.Level, entry.Message)
+	}
+
+	// Write entry to log file.
+	data, err := json.Marshal(entry)
+	if err != nil {
+		return err
+	}
+	data = append(data, byte('\n'))
+	_, err = file.Write(data)
+	if err != nil {
+		return err
+	}
+	err = file.Sync()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

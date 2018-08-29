@@ -58,7 +58,7 @@ func main() {
 }
 
 func Run(ctx *cli.Context) error {
-	setup.Setup(ctx)
+	setup.SetContext(ctx)
 
 	if config.APIKey() == "" && !ctx.Bool(analyze.ShowOutput) {
 		return cli.ShowAppHelp(ctx)

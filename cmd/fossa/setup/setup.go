@@ -1,6 +1,9 @@
+// Package setup implements initialization for all application packages.
 package setup
 
 import (
+	"fmt"
+
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/api/fossa"
@@ -8,17 +11,27 @@ import (
 	"github.com/fossas/fossa-cli/config"
 )
 
-func Setup(ctx *cli.Context) error {
-	// We set these defaults first, otherwise the logging defaults will print
-	// output as configuration is initialized.
-	err := config.Init(ctx)
+// SetContext initializes all application-level packages.
+func SetContext(ctx *cli.Context) error {
+	// Set up configuration.
+	err := config.SetContext(ctx)
 	if err != nil {
 		return err
 	}
 
 	// Set up logging.
-	display.Init(config.Interactive(), config.Debug())
+	fmt.Println(config.Debug())
+	display.SetInteractive(config.Interactive())
+	display.SetDebug(config.Debug())
 
 	// Set up API.
-	return fossa.Init(config.Endpoint(), config.APIKey())
+	err = fossa.SetEndpoint(config.Endpoint())
+	if err != nil {
+		return err
+	}
+	fossa.SetAPIKey(config.APIKey())
+
+	return nil
 }
+
+// TODO: testing version of SetContext?

@@ -24,7 +24,7 @@ var Cmd = cli.Command{
 }
 
 func analyzeModules(ctx *cli.Context) ([]module.Module, error) {
-	err := setup.Setup(ctx)
+	err := setup.SetContext(ctx)
 	if err != nil {
 		return nil, err
 	}

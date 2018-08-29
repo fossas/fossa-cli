@@ -32,7 +32,7 @@ var Cmd = cli.Command{
 var _ cli.ActionFunc = Run
 
 func Run(ctx *cli.Context) error {
-	err := setup.Setup(ctx)
+	err := setup.SetContext(ctx)
 	if err != nil {
 		log.Fatalf("Could not initialize: %s", err.Error())
 	}
@@ -137,6 +137,6 @@ func uploadAnalysis(normalized []fossa.SourceUnit) error {
 		log.Fatalf("Error during upload: %s", err.Error())
 		return err
 	}
-	fmt.Printf(display.ReportURL(locator))
+	fmt.Printf(locator.ReportURL())
 	return nil
 }

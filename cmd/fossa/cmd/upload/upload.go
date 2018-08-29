@@ -110,7 +110,7 @@ func getInput(ctx *cli.Context, usingLocators bool) ([]fossa.SourceUnit, error) 
 }
 
 func Run(ctx *cli.Context) {
-	err := setup.Setup(ctx)
+	err := setup.SetContext(ctx)
 	if err != nil {
 		log.Fatalf("Could not initialize: %s", err.Error())
 	}
@@ -126,7 +126,7 @@ func Run(ctx *cli.Context) {
 		log.Fatalf("Upload failed: %s", err.Error())
 	}
 	display.ClearProgress()
-	fmt.Printf(display.ReportURL(locator))
+	fmt.Printf(locator.ReportURL())
 }
 
 func Do(data []fossa.SourceUnit) (fossa.Locator, error) {

@@ -24,8 +24,8 @@ var (
 	file File = NoFile{}
 )
 
-// Init initializes application-level configuration.
-func Init(c *cli.Context) error {
+// SetContext initializes application-level configuration.
+func SetContext(c *cli.Context) error {
 	// First, set the CLI flags.
 	ctx = c
 

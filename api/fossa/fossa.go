@@ -13,15 +13,17 @@ var (
 	apiKey    string
 )
 
-// Init sets up the API package.
-func Init(server, APIKey string) error {
-	var err error
-	serverURL, err = url.Parse(server)
+func SetEndpoint(endpoint string) error {
+	u, err := url.Parse(endpoint)
 	if err != nil {
 		return err
 	}
-	apiKey = APIKey
+	serverURL = u
 	return nil
+}
+
+func SetAPIKey(key string) {
+	apiKey = key
 }
 
 // Get makes an authenticated GET request to a FOSSA API endpoint.
