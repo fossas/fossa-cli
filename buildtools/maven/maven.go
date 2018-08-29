@@ -97,7 +97,7 @@ func (m *Maven) DependencyTree(dir, project string) ([]Dependency, map[Dependenc
 	output, _, err := exec.Run(exec.Cmd{
 		Name: m.Cmd,
 		Dir:  dir,
-		Argv: []string{"dependency:tree", "--batch-mode", "--projects", project},
+		Argv: []string{"dependency:tree", "--batch-mode", "-Dscope=runtime"},
 	})
 	if err != nil {
 		return nil, nil, err
