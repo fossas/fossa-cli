@@ -21,8 +21,6 @@ import (
 var Timeout = "timeout"
 
 const pollRequestDelay = 8 * time.Second
-const buildsEndpoint = "/api/revisions/%s/build"
-const revisionsEndpoint = "/api/revisions/%s"
 
 var Cmd = cli.Command{
 	Name:   "test",

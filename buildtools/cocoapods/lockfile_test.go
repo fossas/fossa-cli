@@ -15,5 +15,6 @@ func TestLockfileParsing(t *testing.T) {
 	assert.NoError(t, err)
 
 	data, err := json.Marshal(lockfile)
+	assert.NoError(t, err)
 	fmt.Printf("%s", string(data))
 }

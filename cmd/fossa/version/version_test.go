@@ -41,12 +41,6 @@ var prod = versions{
 	goversion: "go version go1.10.2 linux/amd64",
 }
 
-func testShortStringSpaces(t *testing.T) {
-	if s := ShortString(); len(strings.Fields(s)) > 1 {
-		t.Errorf("ShortString() had whitespace: %#v", s)
-	}
-}
-
 func TestShortStringHasNoSpaces(t *testing.T) {
 	testCases := []versions{
 		noLdFlags, dev, prod,

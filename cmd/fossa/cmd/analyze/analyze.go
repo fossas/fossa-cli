@@ -66,7 +66,10 @@ func Run(ctx *cli.Context) error {
 				log.Fatalf("Could not parse template data: %s", err.Error())
 			}
 		} else {
-			display.JSON(normalized)
+			_, err := display.JSON(normalized)
+			if err != nil {
+				log.Fatalf("Could not serialize to JSON: %s", err.Error())
+			}
 		}
 
 		return nil
