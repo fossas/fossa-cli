@@ -3,16 +3,20 @@
   version = "0.3.0"
 
 [[constraint]]
+  name = "github.com/apex/log"
+  version = "1.0.0"
+
+[[constraint]]
   name = "github.com/blang/semver"
   version = "3.5.1"
 
 [[constraint]]
   name = "github.com/bmatcuk/doublestar"
-  version = "1.0.9"
+  version = "1.1.1"
 
 [[constraint]]
   name = "github.com/briandowns/spinner"
-  version = "1.1.0"
+  version = "1.2.0"
 
 [[constraint]]
   branch = "master"
@@ -27,11 +31,7 @@
   version = "0.0.3"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/mitchellh/mapstructure"
-
-[[constraint]]
-  name = "github.com/op/go-logging"
   version = "1.0.0"
 
 [[constraint]]
@@ -43,6 +43,10 @@
   name = "github.com/rhysd/go-github-selfupdate"
 
 [[constraint]]
+  name = "github.com/rveen/ogdl"
+  version = "1.1.0"
+
+[[constraint]]
   name = "github.com/stretchr/testify"
   version = "1.2.2"
 
@@ -52,7 +56,7 @@
 
 [[constraint]]
   name = "gopkg.in/src-d/go-git.v4"
-  version = "4.5.0"
+  version = "4.6.0"
 
 [[constraint]]
   name = "gopkg.in/yaml.v2"
@@ -61,7 +65,3 @@
 [prune]
   go-tests = true
   unused-packages = true
-
-[[constraint]]
-  name = "github.com/apex/log"
-  version = "1.0.0"
