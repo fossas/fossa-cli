@@ -2,11 +2,12 @@ package display
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 
 	"github.com/apex/log"
+	"github.com/apex/log/handlers/cli"
 )
 
 var (
@@ -62,11 +63,17 @@ func File() string {
 // TODO: does this need to be synchronised?
 func Handler(entry *log.Entry) error {
 	// If in debug mode, add caller.
-	// TODO: implement this.
+	if level == log.DebugLevel {
+		_, filename, line, _ := runtime.Caller(5)
+		entry.Fields["caller"] = filename + ":" + strconv.Itoa(line)
+	}
 
 	// Write entry to STDERR.
-	if entry.Level > level {
-		fmt.Fprintf(os.Stderr, "%s %s\n", entry.Level, entry.Message)
+	if entry.Level >= level {
+		err := cli.Default.HandleLog(entry)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Write entry to log file.
@@ -86,38 +93,3 @@ func Handler(entry *log.Entry) error {
 
 	return nil
 }
-
-// TODO: we want to selectively turn logging off for tests, or maybe redirect
-// test output to a buffer that we only print if `t.Failed()`, so we avoid
-// dumping logs for all tests when only one test in a suite fails.
-
-// Init initializes application-level logging.
-//
-// If `interactive` is true, then logging will include colors and ANSI codes
-// (e.g. progress spinners). If `debug` is true, then logging will include
-// debugging output.
-// func Init(interactive, debug bool) {
-// 	interactive = interactive && runtime.GOOS != "windows"
-
-// 	// If `interactive`, then use ANSI codes (spinner + colors)
-// 	useSpinner = interactive
-// 	s.Writer = os.Stderr
-// 	var colorOn, colorOff string
-// 	if interactive {
-// 		colorOn = "%{color}"
-// 		colorOff = "%{color:reset}"
-// 	}
-
-// 	// If `debug`, then log in debug format and at debug level.
-// 	formatter := logging.MustStringFormatter(colorOn + "%{level}" + colorOff + " %{message}")
-// 	if debug {
-// 		formatter = logging.MustStringFormatter(colorOn + "%{time} %{level} %{shortpkg}/%{shortfile}/%{shortfunc}" + colorOff + " %{message}")
-// 	}
-// 	stderrBackend := logging.AddModuleLevel(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), formatter))
-// 	if debug {
-// 		stderrBackend.SetLevel(logging.DEBUG, "")
-// 	} else {
-// 		stderrBackend.SetLevel(logging.WARNING, "")
-// 	}
-// 	logging.SetBackend(stderrBackend)
-// }

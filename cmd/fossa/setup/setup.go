@@ -2,8 +2,6 @@
 package setup
 
 import (
-	"fmt"
-
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/api/fossa"
@@ -20,7 +18,6 @@ func SetContext(ctx *cli.Context) error {
 	}
 
 	// Set up logging.
-	fmt.Println(config.Debug())
 	display.SetInteractive(config.Interactive())
 	display.SetDebug(config.Debug())
 

@@ -1,17 +1,15 @@
 package display
 
-import "github.com/apex/log"
+import (
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/memory"
+)
 
-// Entries collects log entries during testing.
-var Entries []log.Entry
+// TestHandler collects log entries during testing.
+var TestHandler log.Handler
 
 // Test sets up logging with testing defaults.
 func Test() {
-	log.SetHandler(log.HandlerFunc(TestHandler))
-}
-
-// TestHandler handles log entries while testing.
-func TestHandler(entry *log.Entry) error {
-	Entries = append(Entries, *entry)
-	return nil
+	TestHandler = memory.New()
+	log.SetHandler(TestHandler)
 }

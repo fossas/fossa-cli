@@ -2,8 +2,6 @@
 package display
 
 import (
-	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"time"
@@ -29,13 +27,7 @@ func init() {
 	// entries that we would write to the log file.
 	log.SetLevel(log.DebugLevel)
 	log.SetHandler(log.HandlerFunc(Handler))
-}
-
-// JSON is a convenience function for printing JSON to STDOUT.
-func JSON(data interface{}) (int, error) {
-	msg, err := json.Marshal(data)
-	if err != nil {
-		return 0, err
-	}
-	return fmt.Println(string(msg))
+	// TODO: we do this because we log while reading files in `config.SetContext`,
+	// but we really should only read files lazily.
+	level = log.InfoLevel
 }
