@@ -2,7 +2,7 @@ package carthage_test
 
 import (
 	"encoding/json"
-	"log"
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -17,7 +17,7 @@ func TestCartfileParsing(t *testing.T) {
 
 	data, err := json.Marshal(carthagePackage)
 	assert.NoError(t, err)
-	log.Printf("Imports: %s", string(data))
+	fmt.Printf("Imports: %s", string(data))
 
 	deps := make(map[pkg.ID]pkg.Package)
 	carthage.RecurseDeps(deps, carthagePackage)
@@ -46,6 +46,6 @@ func TestCartfileParsing(t *testing.T) {
 		}
 	}
 
-	log.Printf("Deps: %#v", deps)
+	fmt.Printf("Deps: %#v", deps)
 
 }

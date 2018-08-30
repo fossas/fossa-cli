@@ -4,7 +4,7 @@ import (
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -69,7 +69,7 @@ func New(data []byte) (File, error) {
 
 	// Parse module configurations into modules.
 	for _, config := range file.Analyze.Modules {
-		log.Logger.Debugf("config: %#v", config)
+		log.WithField("config", config).Debug("parsed module configuration")
 		// Parse and validate module type.
 		t, err := pkg.ParseType(config.Type)
 		if err != nil {

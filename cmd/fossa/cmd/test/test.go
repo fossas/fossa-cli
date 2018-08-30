@@ -6,15 +6,16 @@ import (
 	"os"
 	"time"
 
+	"github.com/apex/log"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/api"
 	"github.com/fossas/fossa-cli/api/fossa"
-	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
+	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
+	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
-	"github.com/fossas/fossa-cli/log"
 )
 
 var Timeout = "timeout"
@@ -35,17 +36,17 @@ var Cmd = cli.Command{
 var _ cli.ActionFunc = Run
 
 func Run(ctx *cli.Context) error {
-	err := cmdutil.InitWithAPI(ctx)
+	err := setup.SetContext(ctx)
 	if err != nil {
-		log.Logger.Fatalf("Could not initialize: %s", err.Error())
+		log.Fatalf("Could not initialize: %s", err.Error())
 	}
 
 	issues, err := Do(time.After(time.Duration(ctx.Int(Timeout)) * time.Second))
 	if err != nil {
-		log.Logger.Fatalf("Could not test revision: %s", err.Error())
+		log.Fatalf("Could not test revision: %s", err.Error())
 	}
 
-	log.Logger.Debugf("Test succeeded: %#v", issues)
+	log.Debugf("Test succeeded: %#v", issues)
 	if len(issues) == 0 {
 		fmt.Fprintln(os.Stderr, "Test passed! 0 issues found")
 		return nil
@@ -59,7 +60,7 @@ func Run(ctx *cli.Context) error {
 
 	marshalled, err := json.Marshal(issues)
 	if err != nil {
-		log.Logger.Fatalf("Could not marshal unresolved issues: %s", err)
+		log.Fatalf("Could not marshal unresolved issues: %s", err)
 	}
 	fmt.Println(string(marshalled))
 
@@ -68,8 +69,8 @@ func Run(ctx *cli.Context) error {
 }
 
 func Do(stop <-chan time.Time) ([]fossa.Issue, error) {
-	defer log.StopSpinner()
-	log.ShowSpinner("Waiting for analysis to complete...")
+	defer display.ClearProgress()
+	display.InProgress("Waiting for analysis to complete...")
 
 	revision := config.Revision()
 	if revision == "" {
@@ -93,17 +94,17 @@ func Do(stop <-chan time.Time) ([]fossa.Issue, error) {
 
 	_, err := CheckBuild(project, stop)
 	if err != nil {
-		log.Logger.Fatalf("Could not load build: %s", err.Error())
+		log.Fatalf("Could not load build: %s", err.Error())
 	}
 
-	log.ShowSpinner("Waiting for FOSSA scan results...")
+	display.InProgress("Waiting for FOSSA scan results...")
 
 	issues, err := CheckIssues(project, stop)
 	if err != nil {
-		log.Logger.Fatalf("Could not load issues: %s", err.Error())
+		log.Fatalf("Could not load issues: %s", err.Error())
 	}
 
-	log.StopSpinner()
+	display.ClearProgress()
 	return issues, nil
 }
 
@@ -152,7 +153,7 @@ func CheckIssues(locator fossa.Locator, stop <-chan time.Time) ([]fossa.Issue, e
 			if err != nil {
 				return nil, errors.Wrap(err, "error while loading issues")
 			}
-			log.Logger.Debugf("Got issues: %#v", issues)
+			log.Debugf("Got issues: %#v", issues)
 			return issues, nil
 		}
 	}

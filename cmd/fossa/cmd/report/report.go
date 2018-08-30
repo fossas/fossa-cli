@@ -3,10 +3,10 @@ package report
 import (
 	"github.com/urfave/cli"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/analyze"
-	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
+	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
-	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -24,7 +24,7 @@ var Cmd = cli.Command{
 }
 
 func analyzeModules(ctx *cli.Context) ([]module.Module, error) {
-	err := cmdutil.InitWithAPI(ctx)
+	err := setup.SetContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func analyzeModules(ctx *cli.Context) ([]module.Module, error) {
 		return nil, err
 	}
 	if len(modules) == 0 {
-		log.Logger.Fatal("No modules specified.")
+		log.Fatal("No modules specified.")
 	}
 
 	analyzed, err := analyze.Do(modules)

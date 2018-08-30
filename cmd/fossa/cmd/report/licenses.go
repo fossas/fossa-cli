@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
+	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/urfave/cli"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
-	"github.com/fossas/fossa-cli/log"
 )
 
 const defaultLicenseReportTemplate = `# 3rd-Party Software License Notice
@@ -39,10 +39,10 @@ var licensesCmd = cli.Command{
 func licensesRun(ctx *cli.Context) (err error) {
 	analyzed, err := analyzeModules(ctx)
 	if err != nil {
-		log.Logger.Fatal("Could not analyze modules: %s", err.Error())
+		log.Fatalf("Could not analyze modules: %s", err.Error())
 	}
 
-	defer log.StopSpinner()
+	defer display.ClearProgress()
 	revs := make([]fossa.Revision, 0)
 	for _, module := range analyzed {
 		if ctx.Bool(Unknown) {
@@ -50,7 +50,7 @@ func licensesRun(ctx *cli.Context) (err error) {
 			i := 0
 			for _, dep := range module.Deps {
 				i++
-				log.ShowSpinner(fmt.Sprintf("Fetching License Info (%d/%d): %s", i, totalDeps, dep.ID.Name))
+				display.InProgress(fmt.Sprintf("Fetching License Info (%d/%d): %s", i, totalDeps, dep.ID.Name))
 				locator := fossa.LocatorOf(dep.ID)
 				// Quirk of the licenses API: Go projects are stored under the git fetcher.
 				if locator.Fetcher == "go" {
@@ -58,13 +58,13 @@ func licensesRun(ctx *cli.Context) (err error) {
 				}
 				rev, err := fossa.GetRevision(fossa.LocatorOf(dep.ID))
 				if err != nil {
-					log.Logger.Warning(err.Error())
+					log.Warn(err.Error())
 					continue
 				}
 				revs = append(revs, rev)
 			}
 		} else {
-			log.ShowSpinner("Fetching License Info")
+			display.InProgress("Fetching License Info")
 			var locators []fossa.Locator
 			for _, dep := range module.Deps {
 				locator := fossa.LocatorOf(dep.ID)
@@ -75,11 +75,11 @@ func licensesRun(ctx *cli.Context) (err error) {
 			}
 			revs, err = fossa.GetRevisions(locators)
 			if err != nil {
-				log.Logger.Fatalf("Could not fetch revisions: %s", err.Error())
+				log.Fatalf("Could not fetch revisions: %s", err.Error())
 			}
 		}
 	}
-	log.StopSpinner()
+	display.ClearProgress()
 
 	depsByLicense := make(map[string]map[string]fossa.Revision, 0)
 	for _, rev := range revs {
@@ -92,17 +92,20 @@ func licensesRun(ctx *cli.Context) (err error) {
 	}
 
 	if tmplFile := ctx.String(flags.Template); tmplFile != "" {
-		err := cmdutil.OutputWithTemplateFile(tmplFile, depsByLicense)
+		output, err := display.TemplateFile(tmplFile, depsByLicense)
+		fmt.Println(output)
 		if err != nil {
-			log.Logger.Fatalf("Could not parse template data: %s", err.Error())
+			log.Fatalf("Could not parse template data: %s", err.Error())
 		}
 		return nil
 	}
 
 	tmpl, err := template.New("base").Parse(defaultLicenseReportTemplate)
 	if err != nil {
-		log.Logger.Fatalf("Could not parse template data: %s", err.Error())
+		log.Fatalf("Could not parse template data: %s", err.Error())
 	}
 
-	return cmdutil.OutputWithTemplate(tmpl, depsByLicense)
+	output, err := display.Template(tmpl, depsByLicense)
+	fmt.Println(output)
+	return nil
 }

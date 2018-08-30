@@ -4,9 +4,9 @@ import (
 	"path"
 	"strings"
 
-	"github.com/fossas/fossa-cli/errutil"
+	"github.com/apex/log"
+	"github.com/fossas/fossa-cli/buildtools"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -17,7 +17,7 @@ type Lockfile map[string]pkg.Import
 func (l Lockfile) Resolve(importpath string) (pkg.Import, error) {
 	for p := importpath; p != "." && p != "/"; p = path.Dir(p) {
 		rev, err := l.ResolveStrict(p)
-		if err == errutil.ErrNoRevisionForPackage {
+		if err == buildtools.ErrNoRevisionForPackage {
 			continue
 		}
 		if err != nil {
@@ -25,14 +25,14 @@ func (l Lockfile) Resolve(importpath string) (pkg.Import, error) {
 		}
 		return rev, nil
 	}
-	return pkg.Import{}, errutil.ErrNoRevisionForPackage
+	return pkg.Import{}, buildtools.ErrNoRevisionForPackage
 }
 
 // ResolveStrict looks up packages as if the lockfile contained import paths.
 func (l Lockfile) ResolveStrict(importpath string) (pkg.Import, error) {
 	rev, ok := l[importpath]
 	if !ok {
-		return pkg.Import{}, errutil.ErrNoRevisionForPackage
+		return pkg.Import{}, buildtools.ErrNoRevisionForPackage
 	}
 	rev.Resolved.Name = importpath
 	return rev, nil
@@ -50,9 +50,9 @@ func FromFile(filename ...string) (Lockfile, error) {
 	lockfile := make(map[string]pkg.Import)
 	s := string(data)
 	lines := strings.Split(s, "\n")
-	log.Logger.Debugf("lines: %#v", lines)
+	log.Debugf("lines: %#v", lines)
 	for _, line := range lines {
-		log.Logger.Debugf("line: %#v", line)
+		log.WithField("line", line).Debug("parsing line")
 		// Remove comments.
 		commentStart := strings.Index(line, "#")
 		if commentStart != -1 {
@@ -69,7 +69,7 @@ func FromFile(filename ...string) (Lockfile, error) {
 
 		// Parse fields: <import path> <revision> [repository]
 		fields := strings.Fields(line)
-		log.Logger.Debugf("fields: %#v", fields)
+		log.Debugf("fields: %#v", fields)
 		repo := ""
 		if len(fields) == 3 {
 			repo = fields[2]

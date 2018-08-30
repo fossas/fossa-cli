@@ -13,7 +13,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 )
 
 var (
@@ -90,11 +90,11 @@ func UploadTarball(dir string) (Locator, error) {
 		defer tarball.Close()
 		_, err := tarball.Seek(0, 0)
 		if err != nil {
-			log.Logger.Fatalf("Unable to upload: %s", err.Error())
+			log.Fatalf("Unable to upload: %s", err.Error())
 		}
 		_, err = io.Copy(w, tarball)
 		if err != nil {
-			log.Logger.Fatalf("Unable to upload: %s", err.Error())
+			log.Fatalf("Unable to upload: %s", err.Error())
 		}
 	}()
 
@@ -108,7 +108,7 @@ func UploadTarball(dir string) (Locator, error) {
 	req.GetBody = func() (io.ReadCloser, error) {
 		return r, nil
 	}
-	log.Logger.Debugf("req: %#v", req)
+	log.Debugf("req: %#v", req)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return Locator{}, err
@@ -119,7 +119,7 @@ func UploadTarball(dir string) (Locator, error) {
 	if err != nil {
 		return Locator{}, err
 	}
-	log.Logger.Debugf("%#v", string(body))
+	log.Debugf("%#v", string(body))
 
 	// Queue the component build.
 	build := ComponentSpec{
@@ -208,7 +208,7 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 		}
 		defer file.Close()
 
-		log.Logger.Debugf("Archiving: %#v", filename)
+		log.Debugf("Archiving: %#v", filename)
 		_, err = io.Copy(t, file)
 		if err != nil {
 			return err

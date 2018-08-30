@@ -5,11 +5,11 @@ import (
 
 	"github.com/urfave/cli"
 
+	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/config"
-	"github.com/fossas/fossa-cli/log"
 
-	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
+	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/cmd/fossa/version"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/analyze"
@@ -50,15 +50,15 @@ func main() {
 		case *cli.ExitError:
 			os.Exit(e.ExitCode())
 		default:
-			// TODO: port all log.Logger.Fatal to instead return an error.
-			log.Logger.Debugf("Error: %#v", err.Error())
+			// TODO: port all log.Fatal to instead return an error.
+			log.Debugf("Error: %#v", err.Error())
 			os.Exit(1)
 		}
 	}
 }
 
 func Run(ctx *cli.Context) error {
-	cmdutil.Init(ctx)
+	setup.SetContext(ctx)
 
 	if config.APIKey() == "" && !ctx.Bool(analyze.ShowOutput) {
 		return cli.ShowAppHelp(ctx)

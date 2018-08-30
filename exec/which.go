@@ -3,7 +3,7 @@ package exec
 import (
 	"errors"
 
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 )
 
 // Which picks a command out of a list of candidates.
@@ -38,7 +38,10 @@ func WhichWithResolver(cmds []string, resolve WhichResolver) (string, string, er
 		if ok {
 			return cmd, version, nil
 		}
-		log.Logger.Debugf("Tried resolving `%s` but did not work: %#v %#v", cmd, err, version)
+		log.WithError(err).WithFields(log.Fields{
+			"cmd":     cmd,
+			"version": version,
+		})
 	}
 	return "", "", errors.New("could not resolve command")
 }

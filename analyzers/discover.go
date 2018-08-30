@@ -1,6 +1,8 @@
 package analyzers
 
 import (
+	"github.com/apex/log"
+
 	"github.com/fossas/fossa-cli/analyzers/ant"
 	"github.com/fossas/fossa-cli/analyzers/bower"
 	"github.com/fossas/fossa-cli/analyzers/carthage"
@@ -15,7 +17,6 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/ruby"
 	"github.com/fossas/fossa-cli/analyzers/scala"
 
-	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -42,7 +43,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	for _, f := range discoverFuncs {
 		discovered, err := f(dir, options)
 		if err != nil {
-			log.Logger.Warningf("An error occurred during discovery: %s", err.Error())
+			log.Warnf("An error occurred during discovery: %s", err.Error())
 		}
 		modules = append(modules, discovered...)
 	}

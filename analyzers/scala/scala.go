@@ -4,11 +4,11 @@
 package scala
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
@@ -16,7 +16,6 @@ import (
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
-	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -39,13 +38,16 @@ func New(m module.Module) (*Analyzer, error) {
 	// Set Java context variables
 	javaCmd, javaVersion, err := exec.Which("-version", os.Getenv("JAVA_BINARY"), "java")
 	if err != nil {
-		log.Logger.Warningf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
+		// Is JAVA_HOME set?
+		// Is $FOSSA_JAVA_BINARY set?
+		log.WithError(err).Warn("could not find Java binary")
 	}
 
 	// Set SBT context variables
 	sbtCmd, sbtVersion, err := exec.Which("-no-colors about", os.Getenv("SBT_BINARY"), "sbt")
 	if err != nil {
-		return nil, fmt.Errorf("could not find SBT binary (try setting $SBT_BINARY): %s", err.Error())
+		// Is FOSSA_SBT_BINARY set?
+		log.WithError(err).Warn("could not find SBT binary")
 	}
 
 	// Parse and validate options.
@@ -54,7 +56,7 @@ func New(m module.Module) (*Analyzer, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Logger.Debug("Decoded options: %#v", options)
+	log.WithField("options", options).Debug("decoded SBT analyzer options")
 
 	analyzer := Analyzer{
 		JavaCmd:     javaCmd,
@@ -70,12 +72,12 @@ func New(m module.Module) (*Analyzer, error) {
 		Options: options,
 	}
 
-	log.Logger.Debugf("%#v", analyzer)
+	log.WithField("analyzer", analyzer).Debug("constructed SBT analyzer")
 	return &analyzer, nil
 }
 
 func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
-	log.Logger.Debugf("%#v", dir)
+	log.WithField("dir", dir).Debug("discovering modules")
 
 	// Construct SBT instance (for listing projects).
 	sbtCmd, _, err := exec.Which("-no-colors about", os.Getenv("SBT_BINARY"), "sbt")
@@ -88,15 +90,15 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 
 	var modules []module.Module
 	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		log.Logger.Debugf("Searching path: %#v", path)
+		log.WithField("path", path).Debug("discovering modules")
 
 		if err != nil {
-			log.Logger.Debugf("Failed to access path %s: %s\n", path, err.Error())
+			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
 			return err
 		}
 
 		if info.IsDir() {
-			log.Logger.Debugf("Path is folder")
+			log.Debug("path is folder")
 			ok, err := files.Exists(path, "build.sbt")
 			if err != nil {
 				return err
@@ -104,12 +106,12 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			if !ok {
 				return nil
 			}
-			log.Logger.Debugf("Path has build.sbt")
+			log.Debug("Path has build.sbt")
 
 			dir := filepath.Dir(path)
 			projects, err := sbt.Projects(dir)
 			if err != nil {
-				log.Logger.Debugf("Modules err: %#v %#v", err.Error(), err)
+				log.WithError(err).Debug("could not get modules at path")
 				return err
 			}
 
@@ -121,7 +123,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 					Dir:         dir,
 				})
 			}
-			log.Logger.Debugf("skipDir: %#v", path)
+			log.WithField("path", path).Debug("skipping")
 			// Don't continue recursing, because anything else is probably a
 			// subproject.
 			return filepath.SkipDir
@@ -161,7 +163,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	log.Logger.Debugf("%#v", a.Module)
+	log.WithField("module", a.Module).Debug("analyzing module")
 
 	project, configuration := ParseTarget(a.Module.BuildTarget)
 	imports, deps, err := a.SBT.DependencyTree(a.Module.Dir, project, configuration)

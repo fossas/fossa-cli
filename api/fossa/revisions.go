@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 )
 
 // A License holds the FOSSA API response for the license API.
@@ -103,7 +103,7 @@ func GetRevisions(locators []Locator) (revs []Revision, err error) {
 			var revisions []Revision
 			_, err := GetJSON(endpoint, &revisions)
 			if err != nil {
-				log.Logger.Warningf("Failed to get some revisions: %s", err.Error())
+				log.Warnf("Failed to get some revisions: %s", err.Error())
 				responses <- []Revision{}
 			} else {
 				responses <- revisions

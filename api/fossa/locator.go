@@ -1,10 +1,13 @@
 package fossa
 
 import (
+	"net/url"
 	"regexp"
 	"strings"
 
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
+
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -20,13 +23,50 @@ func (l Locator) String() string {
 		if l.Fetcher == "archive" {
 			orgID, err := GetOrganizationID()
 			if err != nil {
-				log.Logger.Warningf("Could not get OrganizationID while constructing locator")
+				log.Warnf("Could not get OrganizationID while constructing locator")
 			}
 			l.Project = orgID + "/" + l.Project
 		}
 		return l.Fetcher + "+" + l.Project + "$" + l.Revision
 	}
 	return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
+}
+
+// URL calculates the FOSSA URL for a project's locator.
+func (l Locator) URL() string {
+	server, err := url.Parse(config.Endpoint())
+	if err != nil {
+		log.Fatalf("Invalid FOSSA endpoint: %s", err.Error())
+	}
+	branch := config.Branch()
+	if branch == "" {
+		branch = "master"
+	}
+	url, err := url.Parse(
+		"/projects/" +
+			url.PathEscape(l.Fetcher+"+"+l.Project) +
+			"/refs/branch/" +
+			url.PathEscape(branch) +
+			"/" +
+			url.PathEscape(l.Revision))
+	return strings.Replace(server.ResolveReference(url).String(), "%", "%%", -1)
+}
+
+// ReportURL provides a formatted URL.
+func (l Locator) ReportURL() string {
+	return `
+============================================================
+
+    View FOSSA Report:
+    ` + l.URL() + `
+
+============================================================
+`
+}
+
+// IsResolved returns true only if a locator is resolved.
+func (l Locator) IsResolved() bool {
+	return l.Revision != ""
 }
 
 // NormalizeGitURL normalizes all forms of git remote URLs to a single standard
@@ -46,11 +86,6 @@ func NormalizeGitURL(project string) string {
 	return noHTTPSPrefix
 }
 
-// IsResolved returns true only if a locator is resolved.
-func (l Locator) IsResolved() bool {
-	return l.Revision != ""
-}
-
 // ReadLocator parses a string locator into a Locator.
 func ReadLocator(locator string) Locator {
 	locatorRegexp := regexp.MustCompile("^(.*?)\\+(.*?)\\$(.*?)$")
@@ -66,7 +101,7 @@ func ReadLocator(locator string) Locator {
 func LocatorOf(id pkg.ID) Locator {
 	// TODO: maybe this should panic?
 	if id.Type == pkg.Invalid {
-		log.Logger.Warningf("Unrecognized locator")
+		log.Warnf("Unrecognized locator")
 		return Locator{}
 	}
 	// Normalize locator fetchers.

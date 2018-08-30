@@ -2,7 +2,7 @@ package cocoapods_test
 
 import (
 	"encoding/json"
-	"log"
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -15,5 +15,5 @@ func TestLockfileParsing(t *testing.T) {
 	assert.NoError(t, err)
 
 	data, err := json.Marshal(lockfile)
-	log.Printf("%s", string(data))
+	fmt.Printf("%s", string(data))
 }

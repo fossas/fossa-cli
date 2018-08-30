@@ -11,13 +11,10 @@
 package config
 
 import (
+	"github.com/apex/log"
 	"github.com/urfave/cli"
 	git "gopkg.in/src-d/go-git.v4"
 
-	"github.com/fossas/fossa-cli/cmd/fossa/flags"
-	v1 "github.com/fossas/fossa-cli/config/file.v1"
-	"github.com/fossas/fossa-cli/files"
-	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/vcs"
 )
 
@@ -27,30 +24,30 @@ var (
 	file File = NoFile{}
 )
 
-// Init initializes application-level configuration.
-func Init(c *cli.Context) error {
+// SetContext initializes application-level configuration.
+func SetContext(c *cli.Context) error {
 	// First, set the CLI flags.
 	ctx = c
-	log.Init(Interactive(), Debug())
 
 	// Second, try to load a configuration file.
-	f, fname, err := readFile(c)
-	log.Logger.Debugf("Loaded configuration file: %#v %#v", f, fname)
+	f, fname, err := ReadFile(c)
 	if err != nil {
 		return err
 	}
+
+	log.WithField("filename", fname).Debug("loaded configuration file")
 	file = f
 	filename = fname
 
 	// Third, try to open the local VCS repository.
-	vcsDir, err := vcs.GetRepository(".")
+	_, dir, err := vcs.Nearest(".")
 	if err == vcs.ErrNoNearestVCS {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	r, err := git.PlainOpen(vcsDir)
+	r, err := git.PlainOpen(dir)
 	if err == git.ErrRepositoryNotExists {
 		return nil
 	}
@@ -58,30 +55,6 @@ func Init(c *cli.Context) error {
 		return err
 	}
 	repo = r
+
 	return nil
-}
-
-// readFile reads the configuration file specified by CLI flags.
-func readFile(c *cli.Context) (File, string, error) {
-	// Find a configuration file if one exists.
-	flag := ctx.String(flags.Config)
-	log.Logger.Debugf("Trying to find configuration file at %#v", flag)
-	filename, err := TryFiles(flag, ".fossa.yml", ".fossa.yaml")
-	if err == ErrFileNotFound {
-		return NoFile{}, ".fossa.yml", nil
-	}
-	if err != nil {
-		return NoFile{}, ".fossa.yml", err
-	}
-
-	// Try to unmarshal the configuration file into a known config file version.
-	data, err := files.Read(filename)
-	if err != nil {
-		return NoFile{}, filename, err
-	}
-	file, err := v1.New(data)
-	if err != nil {
-		return NoFile{}, filename, err
-	}
-	return file, filename, err
 }

@@ -1,7 +1,7 @@
 package bower
 
 import (
-	"github.com/fossas/fossa-cli/errutil"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
 )
 
@@ -21,5 +21,5 @@ func ReadManifest(filename string) (Manifest, error) {
 }
 
 func FromComponents(dir string) ([]Package, error) {
-	return nil, errutil.ErrNotImplemented
+	return nil, errors.ErrNotImplemented
 }

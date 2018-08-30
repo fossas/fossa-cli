@@ -3,10 +3,11 @@ package golang
 import (
 	"path/filepath"
 
+	"github.com/apex/log"
+	"github.com/pkg/errors"
+
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/fossas/fossa-cli/log"
-	"github.com/pkg/errors"
 )
 
 // Errors that occur while finding lockfiles.
@@ -18,7 +19,7 @@ var (
 // LockfileIn returns the type of lockfile within a directory, or
 // ErrNoLockfileInDir if none is found.
 func LockfileIn(dirname string) (resolver.Type, error) {
-	log.Logger.Debugf("%#v", dirname)
+	log.Debugf("%#v", dirname)
 
 	lockfiles := [][2]string{
 		[2]string{"godep", filepath.Join(dirname, "Godeps", "Godeps.json")},

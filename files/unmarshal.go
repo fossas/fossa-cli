@@ -8,7 +8,7 @@ import (
 	"github.com/BurntSushi/toml"
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/fossas/fossa-cli/log"
+	"github.com/apex/log"
 )
 
 // ReadJSON reads and unmarshals a file as if it contained JSON.
@@ -38,14 +38,17 @@ type UnmarshalFunc func(data []byte, v interface{}) error
 // UnmarshalFunc.
 func ReadUnmarshal(unmarshal UnmarshalFunc, v interface{}, pathElems ...string) error {
 	filename := filepath.Join(pathElems...)
-	log.Logger.Debugf("Parsing file `%s`", filename)
+	log.WithField("filename", filename).Debug("unmarshalling file")
 	contents, err := Read(pathElems...)
 	if err != nil {
 		return err
 	}
 	err = unmarshal(contents, v)
 	if err != nil {
-		log.Logger.Debugf("Could not parse file `%s`: %s", filename, err.Error())
+		log.
+			WithError(err).
+			WithField("filename", filename).
+			Debug("unable to unmarshal file")
 	}
 	return err
 }

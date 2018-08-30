@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/fossas/fossa-cli/errutil"
 	"github.com/fossas/fossa-cli/vcs"
 )
 
@@ -27,7 +26,7 @@ func TestGetRepositoryBelowRoot(t *testing.T) {
 
 func TestGetRepositoryUnsupportedVCS(t *testing.T) {
 	dir, err := vcs.GetRepository(filepath.Join("testdata", "subversion", "nested", "directory"))
-	assert.Equal(t, err, errutil.ErrNotImplemented)
+	assert.Equal(t, err, vcs.ErrUnsupportedVCS)
 	assert.Equal(t, "", dir)
 }
 

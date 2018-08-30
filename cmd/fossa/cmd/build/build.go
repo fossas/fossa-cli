@@ -3,14 +3,15 @@ package build
 import (
 	"fmt"
 
+	"github.com/apex/log"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/analyzers"
-	"github.com/fossas/fossa-cli/cmd/fossa/cmdutil"
+	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
+	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
-	"github.com/fossas/fossa-cli/log"
 	"github.com/fossas/fossa-cli/module"
 )
 
@@ -33,28 +34,28 @@ var Cmd = cli.Command{
 var _ cli.ActionFunc = Run
 
 func Run(ctx *cli.Context) error {
-	err := cmdutil.Init(ctx)
+	err := setup.SetContext(ctx)
 	if err != nil {
-		log.Logger.Fatalf("Could not initialize: %s", err.Error())
+		log.Fatalf("Could not initialize: %s", err.Error())
 	}
 
 	modules, err := config.Modules()
 	if err != nil {
-		log.Logger.Fatalf("Could not parse modules: %s", err.Error())
+		log.Fatalf("Could not parse modules: %s", err.Error())
 	}
 	if len(modules) == 0 {
-		log.Logger.Fatal("No modules specified.")
+		log.Fatal("No modules specified.")
 	}
 
-	defer log.StopSpinner()
+	defer display.ClearProgress()
 	for i, m := range modules {
-		log.ShowSpinner(fmt.Sprintf("Building module (%d/%d): %s", i+1, len(modules), m.Name))
+		display.InProgress(fmt.Sprintf("Building module (%d/%d): %s", i+1, len(modules), m.Name))
 		err := Do(m, ctx.Bool(Clean), ctx.Bool(Force))
 		if err != nil {
-			log.Logger.Warningf("Could not build: %s", err.Error())
+			log.Warnf("Could not build: %s", err.Error())
 		}
 	}
-	log.Logger.Notice("Build succeeded, ready to analyze!")
+	log.Info("Build succeeded, ready to analyze!")
 	return nil
 }
 
@@ -75,7 +76,7 @@ func Do(m module.Module, clean, force bool) error {
 	}
 	if built {
 		if force {
-			log.Logger.Warningf("Module %s appears to be built, but --force was passed: building anyway...", m.Name)
+			log.Warnf("Module %s appears to be built, but --force was passed: building anyway...", m.Name)
 		} else {
 			return errors.New("module appears to already be built")
 		}
