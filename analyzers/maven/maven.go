@@ -43,6 +43,9 @@ func New(m module.Module) (*Analyzer, error) {
 
 	// Get Maven binary.
 	mvnBin, _, err := exec.Which("--version", options.Binary, os.Getenv("MAVEN_BINARY"), "mvn")
+	if err != nil {
+		log.Warnf("Could not find Maven binary: %s", err.Error())
+	}
 
 	analyzer := Analyzer{
 		Maven: maven.Maven{

@@ -58,13 +58,16 @@ func main() {
 }
 
 func Run(ctx *cli.Context) error {
-	setup.SetContext(ctx)
+	err := setup.SetContext(ctx)
+	if err != nil {
+		return err
+	}
 
 	if config.APIKey() == "" && !ctx.Bool(analyze.ShowOutput) {
 		return cli.ShowAppHelp(ctx)
 	}
 
-	err := initc.Run(ctx)
+	err = initc.Run(ctx)
 	if err != nil {
 		return err
 	}
