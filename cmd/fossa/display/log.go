@@ -5,6 +5,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
@@ -64,8 +65,23 @@ func File() string {
 func Handler(entry *log.Entry) error {
 	// If in debug mode, add caller.
 	if level == log.DebugLevel {
-		_, filename, line, _ := runtime.Caller(5)
-		entry.Fields["caller"] = filename + ":" + strconv.Itoa(line)
+		entry.Fields["callers"] = []string{}
+		// See https://golang.org/pkg/runtime/#Frames
+		pcs := make([]uintptr, 20)
+		n := runtime.Callers(0, pcs)
+		pcs = pcs[:n]
+		frames := runtime.CallersFrames(pcs)
+		for {
+			frame, more := frames.Next()
+			if !strings.Contains(frame.File, "runtime/") &&
+				!strings.Contains(frame.File, "cmd/fossa/display/") &&
+				!strings.Contains(frame.File, "apex/log/") {
+				entry.Fields["callers"] = append(entry.Fields["callers"].([]string), frame.File+":"+frame.Function+":"+strconv.Itoa(frame.Line))
+			}
+			if !more {
+				break
+			}
+		}
 	}
 
 	// Write entry to STDERR.
