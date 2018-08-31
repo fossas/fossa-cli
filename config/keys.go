@@ -102,8 +102,8 @@ func ProjectURL() string {
 	return TryStrings(StringFlag(flags.ProjectURL), file.ProjectURL(), "")
 }
 
-func JiraProjectKey() string {
-	return TryStrings(StringFlag(flags.JiraProjectKey), file.JiraProjectKey(), "")
+func JIRAProjectKey() string {
+	return TryStrings(StringFlag(flags.JIRAProjectKey), file.JIRAProjectKey(), "")
 }
 
 /**** Analysis configuration keys ****/

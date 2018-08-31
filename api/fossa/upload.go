@@ -23,13 +23,20 @@ var (
 	ErrRevisionDoesNotExist = errors.New("revision does not exist (are the project and revision correct and published in FOSSA?)")
 )
 
+// UploadOptions are optional keys that provide extra metadata for an upload.
+type UploadOptions struct {
+	Branch         string
+	ProjectURL     string
+	JIRAProjectKey string
+}
+
 // Upload uploads a project's analysis.
-func Upload(fetcher, project, revision, title, branch, projectURL, jiraProjectKey string, data []SourceUnit) (Locator, error) {
+func Upload(title string, locator Locator, options UploadOptions, data []SourceUnit) (Locator, error) {
 	// Check preconditions
-	if fetcher != "custom" && revision == "" {
+	if locator.Fetcher != "custom" && locator.Revision == "" {
 		log.Fatal("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
 	}
-	if project == "" {
+	if locator.Project == "" {
 		log.Fatal("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
 	}
 	if len(data) == 0 {
@@ -45,28 +52,24 @@ func Upload(fetcher, project, revision, title, branch, projectURL, jiraProjectKe
 		"payload": string(payload),
 	}).Debug("uploading build")
 
-	locator := Locator{Fetcher: fetcher, Project: project, Revision: revision}
-
 	q := url.Values{}
 	q.Add("locator", locator.String())
 	q.Add("v", version.ShortString())
-
-	if fetcher == "custom" {
+	if locator.Fetcher == "custom" {
 		q.Add("managedBuild", "true")
 		q.Add("title", title)
 	}
-	if branch != "" {
-		q.Add("branch", branch)
+
+	if options.Branch != "" {
+		q.Add("branch", options.Branch)
 	}
-	if projectURL != "" {
-		q.Add("projectURL", projectURL)
+	if options.ProjectURL != "" {
+		q.Add("projectURL", options.ProjectURL)
 	}
-	if jiraProjectKey != "" {
-		q.Add("jiraProjectKey", jiraProjectKey)
+	if options.JIRAProjectKey != "" {
+		q.Add("jiraProjectKey", options.JIRAProjectKey)
 	}
-	if revision != "" {
-		q.Add("revision", revision)
-	}
+
 	endpoint, err := url.Parse("/api/builds/custom?" + q.Encode())
 	if err != nil {
 		log.Fatal("Failed to generate upload URL")
