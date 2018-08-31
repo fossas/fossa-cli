@@ -2,30 +2,26 @@ package display
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
 
 	"github.com/apex/log"
-	"github.com/apex/log/handlers/cli"
-)
-
-var (
-	file     *os.File
-	useColor bool
-	level    log.Level
+	"github.com/fatih/color"
 )
 
 // SetInteractive turns colors and ANSI control characters on or off.
 func SetInteractive(interactive bool) {
 	// Disable Unicode and ANSI control characters on Windows.
 	if runtime.GOOS == "windows" {
-		return
+		useANSI = false
+	} else {
+		useANSI = interactive
 	}
-
-	// Configure spinner.
-	useSpinner = interactive
+	// Use color when interactive.
+	color.NoColor = !useANSI
 }
 
 // SetDebug turns debug logging to STDERR on or off.
@@ -86,7 +82,26 @@ func Handler(entry *log.Entry) error {
 
 	// Write entry to STDERR.
 	if entry.Level >= level {
-		err := cli.Default.HandleLog(entry)
+		msg := ""
+		switch entry.Level {
+		case log.DebugLevel:
+			msg += color.WhiteString("DEBUG")
+		case log.InfoLevel:
+			msg += color.WhiteString("INFO")
+		case log.WarnLevel:
+			msg += color.YellowString("WARNING")
+		case log.ErrorLevel:
+			msg += color.RedString("ERROR")
+		case log.FatalLevel:
+			msg += color.RedString("FATAL")
+		}
+
+		msg += " " + entry.Message
+		for _, field := range entry.Fields.Names() {
+			msg += fmt.Sprintf(" %s=%+v", field, entry.Fields.Get(field))
+		}
+
+		_, err := fmt.Fprintln(os.Stderr, msg)
 		if err != nil {
 			return err
 		}
@@ -95,7 +110,17 @@ func Handler(entry *log.Entry) error {
 	// Write entry to log file.
 	data, err := json.Marshal(entry)
 	if err != nil {
-		return err
+		// There are some entries that we can't serialize to JSON (for example, a
+		// map that uses a struct as a key). In these cases, serialize to Go format
+		// and print a string.
+		switch err.(type) {
+		case *json.UnsupportedTypeError:
+			data = []byte(fmt.Sprintf("%#v", entry))
+		case *json.UnsupportedValueError:
+			data = []byte(fmt.Sprintf("%#v", entry))
+		default:
+			return err
+		}
 	}
 	data = append(data, byte('\n'))
 	_, err = file.Write(data)
