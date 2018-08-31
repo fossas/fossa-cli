@@ -47,9 +47,9 @@ var Cmd = cli.Command{
 	Usage:     "Uploads user-provided test results to FOSSA",
 	Action:    Run,
 	ArgsUsage: "DATA",
-	Flags: flags.WithGlobalFlags([]cli.Flag{
+	Flags: flags.WithAPIFlags(flags.WithGlobalFlags([]cli.Flag{
 		cli.BoolFlag{Name: flags.Short(Locators), Usage: "upload data in locator format (instead of JSON)"},
-	}),
+	})),
 }
 
 func ParseLocators(locators string) (fossa.SourceUnit, error) {
