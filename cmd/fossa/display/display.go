@@ -10,6 +10,13 @@ import (
 	"github.com/briandowns/spinner"
 )
 
+var (
+	file    *os.File
+	s       *spinner.Spinner
+	useANSI bool
+	level   log.Level
+)
+
 func init() {
 	// Set up spinner.
 	s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)

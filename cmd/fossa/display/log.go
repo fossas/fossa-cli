@@ -2,30 +2,26 @@ package display
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
 
 	"github.com/apex/log"
-	"github.com/apex/log/handlers/cli"
-)
-
-var (
-	file     *os.File
-	useColor bool
-	level    log.Level
+	"github.com/fatih/color"
 )
 
 // SetInteractive turns colors and ANSI control characters on or off.
 func SetInteractive(interactive bool) {
 	// Disable Unicode and ANSI control characters on Windows.
 	if runtime.GOOS == "windows" {
-		return
+		useANSI = false
+	} else {
+		useANSI = interactive
 	}
-
-	// Configure spinner.
-	useSpinner = interactive
+	// Use color when interactive.
+	color.NoColor = !useANSI
 }
 
 // SetDebug turns debug logging to STDERR on or off.
@@ -86,7 +82,31 @@ func Handler(entry *log.Entry) error {
 
 	// Write entry to STDERR.
 	if entry.Level >= level {
-		err := cli.Default.HandleLog(entry)
+		msg := ""
+		switch entry.Level {
+		case log.DebugLevel:
+			msg += color.WhiteString("DEBUG")
+			break
+		case log.InfoLevel:
+			msg += color.WhiteString("INFO")
+			break
+		case log.WarnLevel:
+			msg += color.YellowString("WARNING")
+			break
+		case log.ErrorLevel:
+			msg += color.RedString("ERROR")
+			break
+		case log.FatalLevel:
+			msg += color.RedString("FATAL")
+			break
+		}
+
+		msg += " " + entry.Message
+		for _, field := range entry.Fields.Names() {
+			msg += fmt.Sprintf(" %s=%+v", field, entry.Fields.Get(field))
+		}
+
+		_, err := fmt.Fprintln(os.Stderr, msg)
 		if err != nil {
 			return err
 		}
