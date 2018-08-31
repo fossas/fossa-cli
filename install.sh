@@ -118,7 +118,7 @@ function install {
   echo "Installing $USER/$REPO $RELEASE..."
   RELEASE_URL="$GH/$USER/$REPO/releases/download/$RELEASE"
   FILE="${REPO}_${VERSION}_${OS}_${ARCH}.tar.gz"
-  bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_${OS}_${ARCH}.tar.gz" > release.tar.gz || fail "downloading release failed"
+  bash -c "$GET $RELEASE_URL/$FILE" > $FILE || fail "downloading release failed"
   bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_checksums.txt" > checksums.txt || fail "downloading checksums failed"
 
   if command -v shasum >/dev/null 2>&1; then
