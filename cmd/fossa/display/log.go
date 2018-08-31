@@ -115,7 +115,19 @@ func Handler(entry *log.Entry) error {
 	// Write entry to log file.
 	data, err := json.Marshal(entry)
 	if err != nil {
-		return err
+		// There are some entries that we can't serialize to JSON (for example, a
+		// map that uses a struct as a key). In these cases, serialize to Go format
+		// and print a string.
+		switch err.(type) {
+		case *json.UnsupportedTypeError:
+			data = []byte(fmt.Sprintf("%#v", entry))
+			break
+		case *json.UnsupportedValueError:
+			data = []byte(fmt.Sprintf("%#v", entry))
+			break
+		default:
+			return err
+		}
 	}
 	data = append(data, byte('\n'))
 	_, err = file.Write(data)
