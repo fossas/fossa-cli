@@ -50,12 +50,7 @@ function install {
   REPO="fossa-cli"
   BIN="fossa"
   INSECURE="false"
-  if [[ $LOCAL = "true" ]];
-  then
-    OUT_DIR=$PWD
-  else
-    OUT_DIR="/usr/local/bin"
-  fi
+  OUT_DIR="/usr/local/bin"
   GH="https://github.com"
   GH_API="https://api.github.com"
 
@@ -122,13 +117,21 @@ function install {
 
   echo "Installing $USER/$REPO $RELEASE..."
   RELEASE_URL="$GH/$USER/$REPO/releases/download/$RELEASE"
+  FILE="${REPO}_${VERSION}_${OS}_${ARCH}.tar.gz"
   bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_${OS}_${ARCH}.tar.gz" > release.tar.gz || fail "downloading release failed"
   bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_checksums.txt" > checksums.txt || fail "downloading checksums failed"
-  # TODO: checksums are not actually validated. We need to check with `sha256sum` on Linux and `shasum -a 256` on MacOS.
+
+  if command -v shasum >/dev/null 2>&1; then
+    shasum $FILE -a 256 -c checksums.txt 2>&1 | grep OK >/dev/null || fail "shasum failed"
+  elif command -v shasum >/dev/null 2>&1; then
+    sha256sum $FILE -c checksums.txt 2>&1 | grep OK >/dev/null || fail "sha256sum failed"
+  else
+    echo "WARNING: could not validate checksums (neither shasum nor sha256sum installed)"
+  fi
 
   # Extract release
-  tar zxf release.tar.gz || fail "tar failed"
-  rm release.tar.gz
+  tar zxf $FILE || fail "tar failed"
+  rm $FILE
 
   # Move binary into output directory
   chmod +x $BIN || fail "chmod +x failed"
