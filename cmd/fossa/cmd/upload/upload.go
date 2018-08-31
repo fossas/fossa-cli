@@ -42,6 +42,7 @@ var (
 	Locators = "locators"
 )
 
+// Cmd is the CLI command struct for uploading.
 var Cmd = cli.Command{
 	Name:      "upload",
 	Usage:     "Uploads user-provided test results to FOSSA",
@@ -52,18 +53,31 @@ var Cmd = cli.Command{
 	})),
 }
 
+// ParseLocators parses newline-delimited string locators into SourceUnits.
 func ParseLocators(locators string) (fossa.SourceUnit, error) {
+	// Handle empty input.
+	if locators == "" {
+		return fossa.SourceUnit{}, errors.New("upload did not receive any input")
+	}
+
+	// Handle bad input with empty lines.
 	var deps []fossa.SourceUnitDependency
 	lines := strings.Split(locators, "\n")
 	for _, line := range lines {
-		deps = append(deps, fossa.SourceUnitDependency{Locator: line})
+		if line == "" {
+			continue
+		}
+		deps = append(deps, fossa.SourceUnitDependency{Locator: line, Imports: make([]string, 0)})
 	}
+
+	// TODO: validate the locators.
+
 	return fossa.SourceUnit{
 		Build: fossa.SourceUnitBuild{
 			Succeeded:    true,
 			Dependencies: deps,
 		},
-	}, nil // TODO: validate the locators
+	}, nil
 }
 
 func hasPipeInput() bool {
@@ -76,7 +90,7 @@ func hasPipeInput() bool {
 }
 
 func getInput(ctx *cli.Context, usingLocators bool) ([]fossa.SourceUnit, error) {
-	// Read input
+	// Read input.
 	var raw string
 	if hasPipeInput() {
 		stdin, err := ioutil.ReadAll(os.Stdin)
@@ -92,23 +106,24 @@ func getInput(ctx *cli.Context, usingLocators bool) ([]fossa.SourceUnit, error) 
 		raw = args.First()
 	}
 
-	// Parse input
+	// Parse input.
 	if usingLocators {
 		sourceUnit, err := ParseLocators(raw)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not parse build data")
 		}
 		return []fossa.SourceUnit{sourceUnit}, nil
-	} else {
-		var out []fossa.SourceUnit
-		err := json.Unmarshal([]byte(raw), &out)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not parse build data")
-		}
-		return out, nil
 	}
+
+	var out []fossa.SourceUnit
+	err := json.Unmarshal([]byte(raw), &out)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not parse build data")
+	}
+	return out, nil
 }
 
+// Run executes the upload command.
 func Run(ctx *cli.Context) {
 	err := setup.SetContext(ctx)
 	if err != nil {
@@ -129,17 +144,9 @@ func Run(ctx *cli.Context) {
 	fmt.Printf(locator.ReportURL())
 }
 
+// Do performs a SourceUnit upload of the current project without other side
+// effects.
 func Do(data []fossa.SourceUnit) (fossa.Locator, error) {
-	if config.Project() == "" {
-		log.Fatalf("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
-	}
-	if config.Fetcher() != "custom" && config.Revision() == "" {
-		log.Fatalf("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
-	}
-	if len(data) == 0 {
-		log.Fatalf("No data to upload")
-	}
-
 	return fossa.Upload(
 		config.Title(),
 		fossa.Locator{

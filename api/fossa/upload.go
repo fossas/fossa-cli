@@ -32,15 +32,15 @@ type UploadOptions struct {
 
 // Upload uploads a project's analysis.
 func Upload(title string, locator Locator, options UploadOptions, data []SourceUnit) (Locator, error) {
-	// Check preconditions
+	// Check preconditions.
 	if locator.Fetcher != "custom" && locator.Revision == "" {
-		log.Fatal("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
+		return Locator{}, errors.New("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
 	}
 	if locator.Project == "" {
-		log.Fatal("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
+		return Locator{}, errors.New("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
 	}
 	if len(data) == 0 {
-		log.Fatal("No data to upload")
+		return Locator{}, errors.New("No data to upload")
 	}
 
 	payload, err := json.Marshal(data)
@@ -72,7 +72,7 @@ func Upload(title string, locator Locator, options UploadOptions, data []SourceU
 
 	endpoint, err := url.Parse("/api/builds/custom?" + q.Encode())
 	if err != nil {
-		log.Fatal("Failed to generate upload URL")
+		return Locator{}, errors.New("Failed to generate upload URL")
 	}
 	log.WithField("endpoint", endpoint.String()).Debug("uploading build")
 
