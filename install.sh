@@ -7,6 +7,7 @@
 # The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 # THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # ---
+# THIS FILE WAS AUTOMATICALLY GENERATED ON Fri 31 Aug 14:47:22 PDT 2018 FROM install_template.sh. DO NOT EDIT.
 
 TMP_DIR="/tmp/install-fossa-cli"
 
@@ -50,14 +51,11 @@ function install {
   REPO="fossa-cli"
   BIN="fossa"
   INSECURE="false"
-  OUT_DIR="/usr/local/bin"
   GH="https://github.com"
   GH_API="https://api.github.com"
 
-
   # `bash` check
   [ ! "$BASH_VERSION" ] && fail "Please use bash instead"
-  [ ! -d $OUT_DIR ] && fail "output directory missing: $OUT_DIR"
 
   # Check for non-POSIX dependencies
   GET=""
@@ -118,12 +116,12 @@ function install {
   echo "Installing $USER/$REPO $RELEASE..."
   RELEASE_URL="$GH/$USER/$REPO/releases/download/$RELEASE"
   FILE="${REPO}_${VERSION}_${OS}_${ARCH}.tar.gz"
-  bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_${OS}_${ARCH}.tar.gz" > release.tar.gz || fail "downloading release failed"
+  bash -c "$GET $RELEASE_URL/$FILE" > $FILE || fail "downloading release failed"
   bash -c "$GET $RELEASE_URL/${REPO}_${VERSION}_checksums.txt" > checksums.txt || fail "downloading checksums failed"
 
   if command -v shasum >/dev/null 2>&1; then
     shasum $FILE -a 256 -c checksums.txt 2>&1 | grep OK >/dev/null || fail "shasum failed"
-  elif command -v shasum >/dev/null 2>&1; then
+  elif command -v sha256sum >/dev/null 2>&1; then
     sha256sum $FILE -c checksums.txt 2>&1 | grep OK >/dev/null || fail "sha256sum failed"
   else
     echo "WARNING: could not validate checksums (neither shasum nor sha256sum installed)"
@@ -136,11 +134,14 @@ function install {
   # Move binary into output directory
   chmod +x $BIN || fail "chmod +x failed"
 
+  OUT_DIR=""
   if [[ $LOCAL = "true" ]];
   then
+    OUT_DIR=${FOSSA_INSTALL_DIR:-$OLDPWD}
     mv $BIN $OUT_DIR || fail "mv failed"
   else
     # Admin privileges are required to run this command
+    OUT_DIR=${FOSSA_INSTALL_DIR:-"/usr/local/bin"}
     askRoot mv $BIN $OUT_DIR || fail "mv failed"
   fi
   echo "Installed at $OUT_DIR/$BIN"

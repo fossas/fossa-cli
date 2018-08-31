@@ -120,7 +120,7 @@ function install {
 
   if command -v shasum >/dev/null 2>&1; then
     shasum $FILE -a 256 -c checksums.txt 2>&1 | grep OK >/dev/null || fail "shasum failed"
-  elif command -v shasum >/dev/null 2>&1; then
+  elif command -v sha256sum >/dev/null 2>&1; then
     sha256sum $FILE -c checksums.txt 2>&1 | grep OK >/dev/null || fail "sha256sum failed"
   else
     echo "WARNING: could not validate checksums (neither shasum nor sha256sum installed)"
