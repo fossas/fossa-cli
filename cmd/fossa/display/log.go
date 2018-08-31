@@ -86,19 +86,14 @@ func Handler(entry *log.Entry) error {
 		switch entry.Level {
 		case log.DebugLevel:
 			msg += color.WhiteString("DEBUG")
-			break
 		case log.InfoLevel:
 			msg += color.WhiteString("INFO")
-			break
 		case log.WarnLevel:
 			msg += color.YellowString("WARNING")
-			break
 		case log.ErrorLevel:
 			msg += color.RedString("ERROR")
-			break
 		case log.FatalLevel:
 			msg += color.RedString("FATAL")
-			break
 		}
 
 		msg += " " + entry.Message
@@ -121,10 +116,8 @@ func Handler(entry *log.Entry) error {
 		switch err.(type) {
 		case *json.UnsupportedTypeError:
 			data = []byte(fmt.Sprintf("%#v", entry))
-			break
 		case *json.UnsupportedValueError:
 			data = []byte(fmt.Sprintf("%#v", entry))
-			break
 		default:
 			return err
 		}
