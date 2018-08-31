@@ -98,6 +98,14 @@ func Branch() string {
 	return TryStrings(MockBranch, StringFlag(flags.Branch), file.Branch(), inferred, "master")
 }
 
+func ProjectURL() string {
+	return TryStrings(StringFlag(flags.ProjectURL), file.ProjectURL(), "")
+}
+
+func JIRAProjectKey() string {
+	return TryStrings(StringFlag(flags.JIRAProjectKey), file.JIRAProjectKey(), "")
+}
+
 /**** Analysis configuration keys ****/
 
 func Options() (map[string]interface{}, error) {
