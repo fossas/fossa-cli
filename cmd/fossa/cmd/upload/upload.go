@@ -64,7 +64,7 @@ func ParseLocators(locators string) (fossa.SourceUnit, error) {
 	var deps []fossa.SourceUnitDependency
 	lines := strings.Split(locators, "\n")
 	for _, line := range lines {
-		if line == "" {
+		if strings.TrimSpace(line) == "" {
 			continue
 		}
 		deps = append(deps, fossa.SourceUnitDependency{Locator: line, Imports: make([]string, 0)})
