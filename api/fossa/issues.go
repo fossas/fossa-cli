@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const IssuesAPI = "/api/issues/%s"
+const IssuesAPI = "/api/cli/%s/issues"
 
 // An Issue holds the FOSSA API response for the issue API.
 type Issue struct {
@@ -17,15 +17,17 @@ type Issue struct {
 	Type           string
 }
 
+type Issues struct {
+	Count  int
+	Issues []Issue
+}
+
 // GetIssues loads the issues for a project.
-func GetIssues(locator Locator) ([]Issue, error) {
-	q := url.Values{}
-	q.Add("fromRevision", locator.String())
-	q.Add("count", "1000")
-	var issues []Issue
-	_, err := GetJSON(fmt.Sprintf(IssuesAPI, "?"+q.Encode()), &issues)
+func GetIssues(locator Locator) (Issues, error) {
+	var issues Issues
+	_, err := GetJSON(fmt.Sprintf(IssuesAPI, url.PathEscape(locator.String())), &issues)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get Issues from API")
+		return Issues{}, errors.Wrap(err, "could not get Issues from API")
 	}
 
 	return issues, nil

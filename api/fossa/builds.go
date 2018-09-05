@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const BuildsAPI = "/api/builds/%s"
+const BuildsAPI = "/api/cli/%s/latest_build"
 
 // A Build holds the FOSSA API response for the builds API.
 type Build struct {
@@ -18,30 +18,13 @@ type Build struct {
 	}
 }
 
-func QueueBuild(locator Locator) (Build, error) {
-	q := url.Values{}
-	q.Add("locator", locator.String())
-
+// GetLatestBuild loads the most recent build for a revision.
+func GetLatestBuild(locator Locator) (Build, error) {
 	var build Build
-	_, err := GetJSON(fmt.Sprintf(BuildsAPI, "?"+q.Encode()), &build)
+	_, err := GetJSON(fmt.Sprintf(BuildsAPI, url.PathEscape(locator.String())), &build)
 	if err != nil {
 		return Build{}, errors.Wrap(err, "could not get Build from API")
 	}
 
 	return build, nil
-}
-
-// GetBuilds loads the build for a revision.
-func GetBuilds(locator Locator) ([]Build, error) {
-	q := url.Values{}
-	q.Add("locator", locator.String())
-	q.Add("sort", "-createdAt")
-
-	var builds []Build
-	_, err := GetJSON(fmt.Sprintf(BuildsAPI, "?"+q.Encode()), &builds)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get Build from API")
-	}
-
-	return builds, nil
 }

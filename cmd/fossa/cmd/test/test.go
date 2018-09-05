@@ -1,7 +1,6 @@
 package test
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -44,35 +43,28 @@ func Run(ctx *cli.Context) error {
 		log.Fatalf("Could not test revision: %s", err.Error())
 	}
 
-	log.Debugf("Test succeeded: %#v", issues)
-	if len(issues) == 0 {
+	if issues.Count == 0 {
 		fmt.Fprintln(os.Stderr, "Test passed! 0 issues found")
 		return nil
 	}
 
 	pluralizedIssues := "issues"
-	if len(issues) == 1 {
+	if issues.Count == 1 {
 		pluralizedIssues = "issue"
 	}
-	fmt.Fprintf(os.Stderr, "Test failed! %d %s found\n", len(issues), pluralizedIssues)
-
-	marshalled, err := json.Marshal(issues)
-	if err != nil {
-		log.Fatalf("Could not marshal unresolved issues: %s", err)
-	}
-	fmt.Println(string(marshalled))
+	fmt.Fprintf(os.Stderr, "Test failed! %d %s found\n", issues.Count, pluralizedIssues)
 
 	os.Exit(1)
 	return nil
 }
 
-func Do(stop <-chan time.Time) ([]fossa.Issue, error) {
+func Do(stop <-chan time.Time) (fossa.Issues, error) {
 	defer display.ClearProgress()
 	display.InProgress("Waiting for analysis to complete...")
 
 	revision := config.Revision()
 	if revision == "" {
-		return nil, errors.New("could not detect current revision (please set with --revision)")
+		return fossa.Issues{}, errors.New("could not detect current revision (please set with --revision)")
 	}
 
 	project := fossa.Locator{
@@ -85,7 +77,7 @@ func Do(stop <-chan time.Time) ([]fossa.Issue, error) {
 	if project.Fetcher == "custom" {
 		orgID, err := fossa.GetOrganizationID()
 		if err != nil {
-			return nil, err
+			return fossa.Issues{}, err
 		}
 		project.Project = orgID + "/" + fossa.NormalizeGitURL(project.Project)
 	}
@@ -112,7 +104,7 @@ func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, erro
 		case <-stop:
 			return fossa.Build{}, errors.New("timed out while waiting for build")
 		default:
-			builds, err := fossa.GetBuilds(locator)
+			build, err := fossa.GetLatestBuild(locator)
 			if _, ok := err.(api.TimeoutError); ok {
 				time.Sleep(pollRequestDelay)
 				continue
@@ -120,16 +112,11 @@ func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, erro
 			if err != nil {
 				return fossa.Build{}, errors.Wrap(err, "error while loading build")
 			}
-			if len(builds) == 0 {
-				time.Sleep(pollRequestDelay)
-				continue
-			}
-			latestBuild := builds[0]
-			switch latestBuild.Task.Status {
+			switch build.Task.Status {
 			case "SUCCEEDED":
-				return latestBuild, nil
+				return build, nil
 			case "FAILED":
-				return latestBuild, fmt.Errorf("failed to analyze build #%d: %s (visit FOSSA or contact support@fossa.io)", latestBuild.ID, latestBuild.Error)
+				return build, fmt.Errorf("failed to analyze build #%d: %s (visit FOSSA or contact support@fossa.io)", build.ID, build.Error)
 			default:
 				time.Sleep(pollRequestDelay)
 			}
@@ -137,11 +124,11 @@ func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, erro
 	}
 }
 
-func CheckIssues(locator fossa.Locator, stop <-chan time.Time) ([]fossa.Issue, error) {
+func CheckIssues(locator fossa.Locator, stop <-chan time.Time) (fossa.Issues, error) {
 	for {
 		select {
 		case <-stop:
-			return nil, errors.New("timed out while waiting for scan")
+			return fossa.Issues{}, errors.New("timed out while waiting for scan")
 		default:
 			issues, err := fossa.GetIssues(locator)
 			if _, ok := err.(api.TimeoutError); ok {
@@ -149,7 +136,7 @@ func CheckIssues(locator fossa.Locator, stop <-chan time.Time) ([]fossa.Issue, e
 				continue
 			}
 			if err != nil {
-				return nil, errors.Wrap(err, "error while loading issues")
+				return fossa.Issues{}, errors.Wrap(err, "error while loading issues")
 			}
 			log.Debugf("Got issues: %#v", issues)
 			return issues, nil
