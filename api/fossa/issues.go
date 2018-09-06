@@ -11,6 +11,7 @@ const IssuesAPI = "/api/cli/%s/issues"
 
 // An Issue holds the FOSSA API response for the issue API.
 type Issue struct {
+	ID             int
 	PriorityString string
 	Resolved       bool
 	Revision       Revision

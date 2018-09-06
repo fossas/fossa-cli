@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -53,6 +54,12 @@ func Run(ctx *cli.Context) error {
 		pluralizedIssues = "issue"
 	}
 	fmt.Fprintf(os.Stderr, "Test failed! %d %s found\n", issues.Count, pluralizedIssues)
+
+	marshalled, err := json.Marshal(issues)
+	if err != nil {
+		log.Fatalf("Could not marshal unresolved issues: %s", err)
+	}
+	fmt.Println(string(marshalled))
 
 	os.Exit(1)
 	return nil
