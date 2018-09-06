@@ -57,6 +57,12 @@ dev: docker-test-base
 		-v $$GOPATH/bin:/home/fossa/go/bin \
 		quay.io/fossa/fossa-cli-test-base /bin/bash
 
+.PHONY: dev-mac
+dev-mac: docker-test-base
+	docker run --rm -it \
+		-v $$GOPATH/src/github.com/fossas/fossa-cli:/home/fossa/go/src/github.com/fossas/fossa-cli \
+		quay.io/fossa/fossa-cli-test-base /bin/bash
+
 .PHONY: install
 install: $(PREFIX)/fossa
 
@@ -71,6 +77,7 @@ vendor: $(DEP)
 .PHONY: clean
 clean:
 	rm -f $(BIN)/fossa
+	find -name *_generated.go | grep -v vendor | xargs rm -f
 
 # Testing tasks.
 .PHONY: test
