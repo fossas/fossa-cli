@@ -57,8 +57,8 @@ dev: docker-test-base
 		-v $$GOPATH/bin:/home/fossa/go/bin \
 		quay.io/fossa/fossa-cli-test-base /bin/bash
 
-.PHONY: dev-mac
-dev-mac: docker-test-base
+.PHONY: dev-osx
+dev-osx: docker-test-base
 	docker run --rm -it \
 		-v $$GOPATH/src/github.com/fossas/fossa-cli:/home/fossa/go/src/github.com/fossas/fossa-cli \
 		quay.io/fossa/fossa-cli-test-base /bin/bash
