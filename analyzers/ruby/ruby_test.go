@@ -73,9 +73,9 @@ func TestFallbackOnMissingBundler(t *testing.T) {
 	}
 
 	lockfileBasedAnalyzer, lockfileBasedAnalyzerErr := ruby.New(gemModuleUsingLockfile)
-	fallbackBasedAnalyzer, fallbackBasedAnalyzerErr := ruby.New(gemModuleUsingFallbackToLockfile)
-
 	assert.NoError(t, lockfileBasedAnalyzerErr)
+
+	fallbackBasedAnalyzer, fallbackBasedAnalyzerErr := ruby.New(gemModuleUsingFallbackToLockfile)
 	assert.NoError(t, fallbackBasedAnalyzerErr)
 
 	fallbackBasedAnalyzer.Bundler = bundler.Bundler{
@@ -83,10 +83,13 @@ func TestFallbackOnMissingBundler(t *testing.T) {
 	}
 
 	lockfileBasedAnalyze, lockfileBasedAnalyzerErr := lockfileBasedAnalyzer.Analyze()
-	fallbackBasedAnalyze, fallbackBasedAnalyzerErr := fallbackBasedAnalyzer.Analyze()
-
 	assert.NoError(t, lockfileBasedAnalyzerErr)
+
+	fallbackBasedAnalyze, fallbackBasedAnalyzerErr := fallbackBasedAnalyzer.Analyze()
 	assert.NoError(t, fallbackBasedAnalyzerErr)
 
+	// ensure that the arrays are actually populated and we aren't comparing equivalent empty results
+	assert.NotZero(t, len(fallbackBasedAnalyze.Direct))
+	assert.NotZero(t, len(lockfileBasedAnalyze.Direct))
 	assert.Equal(t, fallbackBasedAnalyze, lockfileBasedAnalyze)
 }
