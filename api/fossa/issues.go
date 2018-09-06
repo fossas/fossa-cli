@@ -18,6 +18,8 @@ type Issue struct {
 	Type           string
 }
 
+// A wrapped list of issues returned by the FOSSA CLI issues endpoint
+// If a push-only API key is used, then only the count is returned
 type Issues struct {
 	Count  int
 	Issues []Issue

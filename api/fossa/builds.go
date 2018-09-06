@@ -18,7 +18,8 @@ type Build struct {
 	}
 }
 
-// GetLatestBuild loads the most recent build for a revision.
+// GetLatestBuild loads the most recent build for a revision
+// or returns an error if the revision does not exist, or the revision has no builds.
 func GetLatestBuild(locator Locator) (Build, error) {
 	var build Build
 	_, err := GetJSON(fmt.Sprintf(BuildsAPI, url.PathEscape(locator.String())), &build)

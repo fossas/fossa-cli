@@ -124,8 +124,10 @@ func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, erro
 				return build, nil
 			case "FAILED":
 				return build, fmt.Errorf("failed to analyze build #%d: %s (visit FOSSA or contact support@fossa.io)", build.ID, build.Error)
-			default:
+			case "CREATED", "ASSIGNED", "RUNNING":
 				time.Sleep(pollRequestDelay)
+			default:
+				return fossa.Build{}, fmt.Errorf("unknown task status: %s", build.Task.Status)
 			}
 		}
 	}
