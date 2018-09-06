@@ -137,47 +137,75 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 }
 
 func (a *Analyzer) analyzeHelper(strategy string) (graph.Deps, error) {
+	lockfilePath := a.getLockfilePath()
+
+	switch strategy {
+	case "list":
+		return a.bundlerListAnalyzerStrategy()
+	case "lockfile":
+		return a.lockfileAnalyzerStrategy(lockfilePath)
+	case "list-lockfile":
+		fallthrough
+	default:
+		return a.defaultAnalyzerStrategy(lockfilePath)
+	}
+}
+
+func (a *Analyzer) bundlerListAnalyzerStrategy() (graph.Deps, error) {
+	gems, err := a.Bundler.List()
+	if err != nil {
+		lockfilePath := a.getLockfilePath()
+
+		return a.lockfileAnalyzerStrategy(lockfilePath)
+	}
+
+	imports, deps := FromGems(gems)
+
+	return graph.Deps{
+		Direct:     imports,
+		Transitive: deps,
+	}, nil
+}
+
+func (a *Analyzer) lockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, error) {
+	lockfile, err := bundler.FromLockfile(lockfilePath)
+	if err != nil {
+		return a.defaultAnalyzerStrategy(lockfilePath)
+	}
+
+	imports, deps := FromLockfile(lockfile)
+
+	return graph.Deps{
+		Direct:     imports,
+		Transitive: deps,
+	}, nil
+}
+
+func (a *Analyzer) defaultAnalyzerStrategy(lockfilePath string) (graph.Deps, error) {
+	lockfile, err := bundler.FromLockfile(lockfilePath)
+	if err != nil {
+		return graph.Deps{}, err
+	}
+
+	gems, err := a.Bundler.List()
+	if err != nil {
+		return graph.Deps{}, err
+	}
+
+	imports, deps := FilteredLockfile(gems, lockfile)
+
+	return graph.Deps{
+		Direct:     imports,
+		Transitive: deps,
+	}, nil
+}
+
+func (a *Analyzer) getLockfilePath() string {
 	lockfilePath := filepath.Join(a.Module.Dir, "Gemfile.lock")
+
 	if a.Options.LockfilePath != "" {
 		lockfilePath = a.Options.LockfilePath
 	}
 
-	switch strategy {
-	case "list":
-		gems, err := a.Bundler.List()
-		if err != nil {
-			return a.analyzeHelper("lockfile")
-		}
-		imports, deps := FromGems(gems)
-		return graph.Deps{
-			Direct:     imports,
-			Transitive: deps,
-		}, nil
-	case "lockfile":
-		lockfile, err := bundler.FromLockfile(lockfilePath)
-		if err != nil {
-			return a.analyzeHelper("list-lockfile")
-		}
-		imports, deps := FromLockfile(lockfile)
-		return graph.Deps{
-			Direct:     imports,
-			Transitive: deps,
-		}, nil
-	case "list-lockfile":
-		fallthrough
-	default:
-		lockfile, err := bundler.FromLockfile(lockfilePath)
-		if err != nil {
-			return graph.Deps{}, err
-		}
-		gems, err := a.Bundler.List()
-		if err != nil {
-			return graph.Deps{}, err
-		}
-		imports, deps := FilteredLockfile(gems, lockfile)
-		return graph.Deps{
-			Direct:     imports,
-			Transitive: deps,
-		}, nil
-	}
+	return lockfilePath
 }
