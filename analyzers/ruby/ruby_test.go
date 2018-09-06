@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/fossas/fossa-cli/buildtools/bundler"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/analyzers/ruby"
@@ -42,4 +44,49 @@ func TestCustomGemfileLockPath(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NotEqual(t, analyzed, analyzedCustom)
+}
+
+func TestFallbackOnMissingBundler(t *testing.T) {
+	buildTarget := "github.com/fossas/fossa-cli/cmd/fossa"
+	useLockfileOptions := map[string]interface{}{
+		"strategy":          "lockfile",
+		"gemfile-lock-path": filepath.Join("testdata", "Gemfile.lock"),
+	}
+
+	useBundlerWithLockfilePathOptions := map[string]interface{}{
+		"strategy":          "list",
+		"gemfile-lock-path": filepath.Join("testdata", "Gemfile.lock"),
+	}
+
+	gemModuleUsingLockfile := module.Module{
+		Name:        "test",
+		Type:        pkg.Ruby,
+		BuildTarget: buildTarget,
+		Options:     useLockfileOptions,
+	}
+
+	gemModuleUsingFallbackToLockfile := module.Module{
+		Name:        "test",
+		Type:        pkg.Ruby,
+		BuildTarget: buildTarget,
+		Options:     useBundlerWithLockfilePathOptions,
+	}
+
+	lockfileBasedAnalyzer, lockfileBasedAnalyzerErr := ruby.New(gemModuleUsingLockfile)
+	fallbackBasedAnalyzer, fallbackBasedAnalyzerErr := ruby.New(gemModuleUsingFallbackToLockfile)
+
+	assert.NoError(t, lockfileBasedAnalyzerErr)
+	assert.NoError(t, fallbackBasedAnalyzerErr)
+
+	fallbackBasedAnalyzer.Bundler = bundler.Bundler{
+		Cmd: "doesntWork",
+	}
+
+	lockfileBasedAnalyze, lockfileBasedAnalyzerErr := lockfileBasedAnalyzer.Analyze()
+	fallbackBasedAnalyze, fallbackBasedAnalyzerErr := fallbackBasedAnalyzer.Analyze()
+
+	assert.NoError(t, lockfileBasedAnalyzerErr)
+	assert.NoError(t, fallbackBasedAnalyzerErr)
+
+	assert.Equal(t, fallbackBasedAnalyze, lockfileBasedAnalyze)
 }

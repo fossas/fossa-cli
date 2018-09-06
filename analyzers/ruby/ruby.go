@@ -127,16 +127,26 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
+	strategy := "list"
+
+	if a.Options.Strategy != "" {
+		strategy = a.Options.Strategy
+	}
+
+	return a.analyzeHelper(strategy)
+}
+
+func (a *Analyzer) analyzeHelper(strategy string) (graph.Deps, error) {
 	lockfilePath := filepath.Join(a.Module.Dir, "Gemfile.lock")
 	if a.Options.LockfilePath != "" {
 		lockfilePath = a.Options.LockfilePath
 	}
 
-	switch a.Options.Strategy {
+	switch strategy {
 	case "list":
 		gems, err := a.Bundler.List()
 		if err != nil {
-			return graph.Deps{}, err
+			return a.analyzeHelper("lockfile")
 		}
 		imports, deps := FromGems(gems)
 		return graph.Deps{
@@ -146,7 +156,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	case "lockfile":
 		lockfile, err := bundler.FromLockfile(lockfilePath)
 		if err != nil {
-			return graph.Deps{}, err
+			return a.analyzeHelper("list-lockfile")
 		}
 		imports, deps := FromLockfile(lockfile)
 		return graph.Deps{
