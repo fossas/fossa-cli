@@ -14,7 +14,7 @@ import (
 )
 
 func TestCustomGemfileLockPath(t *testing.T) {
-	buildTarget := "github.com/fossas/fossa-cli/cmd/fossa"
+	buildTarget := "testdata"
 	m := module.Module{
 		Name:        "test",
 		Type:        pkg.Ruby,
@@ -47,7 +47,7 @@ func TestCustomGemfileLockPath(t *testing.T) {
 }
 
 func TestFallbackOnMissingBundler(t *testing.T) {
-	buildTarget := "github.com/fossas/fossa-cli/cmd/fossa"
+	buildTarget := "testdata"
 	useLockfileOptions := map[string]interface{}{
 		"strategy":          "lockfile",
 		"gemfile-lock-path": filepath.Join("testdata", "Gemfile.lock"),
