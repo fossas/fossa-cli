@@ -93,11 +93,21 @@ func (m *Maven) DependencyList(dir string) (string, error) {
 	return output, err
 }
 
-func (m *Maven) DependencyTree(dir, project string) ([]Dependency, map[Dependency][]Dependency, error) {
+func (m *Maven) DependencyTree(dir, subProject string, scope string) ([]Dependency, map[Dependency][]Dependency, error) {
+	project := subProject
+	if project == "" {
+		project = "."
+	}
+
+	argv := []string{"dependency:tree", "--batch-mode", "--projects", project, "-Dscope=runtime"}
+
+	if scope != "" {
+		argv = []string{"dependency:tree", "--batch-mode", "--projects", project, "-Dscope=" + scope}
+	}
 	output, _, err := exec.Run(exec.Cmd{
 		Name: m.Cmd,
 		Dir:  dir,
-		Argv: []string{"dependency:tree", "--batch-mode", "-Dscope=runtime"},
+		Argv: argv,
 	})
 	if err != nil {
 		return nil, nil, err

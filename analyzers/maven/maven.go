@@ -1,6 +1,7 @@
 // Package maven implements Maven analysis.
 //
-// A `BuildTarget` for Maven is the Maven project name.
+// A `BuildTarget` for Maven is a reactor build target
+// specified by [groupId]:artifactId or by its relative path
 package maven
 
 import (
@@ -29,6 +30,7 @@ type Analyzer struct {
 type Options struct {
 	Binary  string `mapstructure:"bin"`
 	Command string `mapstructure:"cmd"`
+	Scope   string `mapstructure:"scope"`
 }
 
 func New(m module.Module) (*Analyzer, error) {
@@ -134,7 +136,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	var deps map[maven.Dependency][]maven.Dependency
 	var err error
 	if a.Options.Command == "" {
-		imports, deps, err = a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
+		imports, deps, err = a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget, a.Options.Scope)
 	} else {
 		var output string
 		output, _, err = exec.Shell(exec.Cmd{
