@@ -133,10 +133,6 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		strategy = a.Options.Strategy
 	}
 
-	return a.analyzeHelper(strategy)
-}
-
-func (a *Analyzer) analyzeHelper(strategy string) (graph.Deps, error) {
 	lockfilePath := a.getLockfilePath()
 
 	switch strategy {
