@@ -4,11 +4,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fossas/fossa-cli/buildtools/bundler"
-
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/analyzers/ruby"
+	"github.com/fossas/fossa-cli/buildtools/bundler"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -89,7 +88,7 @@ func TestFallbackOnMissingBundler(t *testing.T) {
 	assert.NoError(t, fallbackBasedAnalyzerErr)
 
 	// ensure that the arrays are actually populated and we aren't comparing equivalent empty results
-	assert.NotZero(t, len(fallbackBasedAnalyze.Direct))
-	assert.NotZero(t, len(lockfileBasedAnalyze.Direct))
+	assert.NotEmpty(t, fallbackBasedAnalyze.Direct)
+	assert.NotEmpty(t, lockfileBasedAnalyze.Direct)
 	assert.Equal(t, fallbackBasedAnalyze, lockfileBasedAnalyze)
 }

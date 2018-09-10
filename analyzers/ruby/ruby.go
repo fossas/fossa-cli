@@ -127,17 +127,13 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	strategy := "list"
+	strategy := "list-lockfile"
 
 	if a.Options.Strategy != "" {
 		strategy = a.Options.Strategy
 	}
 
-	return a.analyzeHelper(strategy)
-}
-
-func (a *Analyzer) analyzeHelper(strategy string) (graph.Deps, error) {
-	lockfilePath := a.getLockfilePath()
+	lockfilePath := a.lockfilePath()
 
 	switch strategy {
 	case "list":
@@ -147,14 +143,29 @@ func (a *Analyzer) analyzeHelper(strategy string) (graph.Deps, error) {
 	case "list-lockfile":
 		fallthrough
 	default:
-		return a.defaultAnalyzerStrategy(lockfilePath)
+		lockfile, err := bundler.FromLockfile(lockfilePath)
+		if err != nil {
+			return a.lockfileAnalyzerStrategy(lockfilePath)
+		}
+
+		gems, err := a.Bundler.List()
+		if err != nil {
+			return graph.Deps{}, err
+		}
+
+		imports, deps := FilteredLockfile(gems, lockfile)
+
+		return graph.Deps{
+			Direct:     imports,
+			Transitive: deps,
+		}, nil
 	}
 }
 
 func (a *Analyzer) bundlerListAnalyzerStrategy() (graph.Deps, error) {
 	gems, err := a.Bundler.List()
 	if err != nil {
-		lockfilePath := a.getLockfilePath()
+		lockfilePath := a.lockfilePath()
 
 		return a.lockfileAnalyzerStrategy(lockfilePath)
 	}
@@ -170,7 +181,7 @@ func (a *Analyzer) bundlerListAnalyzerStrategy() (graph.Deps, error) {
 func (a *Analyzer) lockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, error) {
 	lockfile, err := bundler.FromLockfile(lockfilePath)
 	if err != nil {
-		return a.defaultAnalyzerStrategy(lockfilePath)
+		return a.bundlerListAnalyzerStrategy()
 	}
 
 	imports, deps := FromLockfile(lockfile)
@@ -181,31 +192,9 @@ func (a *Analyzer) lockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, er
 	}, nil
 }
 
-func (a *Analyzer) defaultAnalyzerStrategy(lockfilePath string) (graph.Deps, error) {
-	lockfile, err := bundler.FromLockfile(lockfilePath)
-	if err != nil {
-		return graph.Deps{}, err
-	}
-
-	gems, err := a.Bundler.List()
-	if err != nil {
-		return graph.Deps{}, err
-	}
-
-	imports, deps := FilteredLockfile(gems, lockfile)
-
-	return graph.Deps{
-		Direct:     imports,
-		Transitive: deps,
-	}, nil
-}
-
-func (a *Analyzer) getLockfilePath() string {
-	lockfilePath := filepath.Join(a.Module.Dir, "Gemfile.lock")
-
+func (a *Analyzer) lockfilePath() string {
 	if a.Options.LockfilePath != "" {
-		lockfilePath = a.Options.LockfilePath
+		return a.Options.LockfilePath
 	}
-
-	return lockfilePath
+	return filepath.Join(a.Module.Dir, "Gemfile.lock")
 }
