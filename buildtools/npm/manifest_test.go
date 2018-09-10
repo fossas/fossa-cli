@@ -17,6 +17,7 @@ func TestFromManifest(t *testing.T) {
 }
 
 func TestFromNodeModules(t *testing.T) {
+	t.Skip("not yet implemented")
 	manifests, err := FromNodeModules("testdata/package.json")
 	assert.NoError(t, err)
 
