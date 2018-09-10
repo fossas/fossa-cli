@@ -18,12 +18,16 @@ func TestCustomGemfileLockPath(t *testing.T) {
 		Name:        "test",
 		Type:        pkg.Ruby,
 		BuildTarget: buildTarget,
+		Dir:         buildTarget,
 	}
+
+	p := filepath.Join("testdata", "Gemfile.lock")
+
+	print(p)
 
 	gemModule := m
 	gemModule.Options = map[string]interface{}{
-		"strategy":          "lockfile",
-		"gemfile-lock-path": filepath.Join("testdata", "Gemfile.lock"),
+		"strategy": "lockfile",
 	}
 	analyzer, err := ruby.New(gemModule)
 	assert.NoError(t, err)
@@ -48,8 +52,7 @@ func TestCustomGemfileLockPath(t *testing.T) {
 func TestFallbackOnMissingBundler(t *testing.T) {
 	buildTarget := "testdata"
 	useLockfileOptions := map[string]interface{}{
-		"strategy":          "lockfile",
-		"gemfile-lock-path": filepath.Join("testdata", "Gemfile.lock"),
+		"strategy": "lockfile",
 	}
 
 	useBundlerWithLockfilePathOptions := map[string]interface{}{}
@@ -58,6 +61,7 @@ func TestFallbackOnMissingBundler(t *testing.T) {
 		Name:        "test",
 		Type:        pkg.Ruby,
 		BuildTarget: buildTarget,
+		Dir:         buildTarget,
 		Options:     useLockfileOptions,
 	}
 
