@@ -156,7 +156,11 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 		gems, err := a.Bundler.List()
 		if err != nil {
-			return graph.Deps{}, err
+			if !shouldFallback {
+				return graph.Deps{}, err
+			}
+
+			return a.lockfileAnalyzerStrategy(lockfilePath, shouldFallback)
 		}
 
 		imports, deps := FilteredLockfile(gems, lockfile)

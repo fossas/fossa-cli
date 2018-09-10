@@ -52,9 +52,7 @@ func TestFallbackOnMissingBundler(t *testing.T) {
 		"gemfile-lock-path": filepath.Join("testdata", "Gemfile.lock"),
 	}
 
-	useBundlerWithLockfilePathOptions := map[string]interface{}{
-		"strategy": "list",
-	}
+	useBundlerWithLockfilePathOptions := map[string]interface{}{}
 
 	gemModuleUsingLockfile := module.Module{
 		Name:        "test",
