@@ -141,7 +141,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	case "list":
 		return a.bundlerListAnalyzerStrategy()
 	case "lockfile":
-		return a.lockfileAnalyzerStrategy(lockfilePath, shouldFallback)
+		return a.lockfileAnalyzerStrategy(lockfilePath)
 	case "list-lockfile":
 		fallthrough
 	default:
@@ -151,7 +151,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 				return graph.Deps{}, err
 			}
 
-			return a.lockfileAnalyzerStrategy(lockfilePath, shouldFallback)
+			return a.lockfileAnalyzerStrategy(lockfilePath)
 		}
 
 		gems, err := a.Bundler.List()
@@ -160,7 +160,17 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 				return graph.Deps{}, err
 			}
 
-			return a.lockfileAnalyzerStrategy(lockfilePath, shouldFallback)
+			deps, err := a.lockfileAnalyzerStrategy(lockfilePath)
+
+			if err != nil {
+				if !shouldFallback {
+					return graph.Deps{}, err
+				}
+
+				return a.bundlerListAnalyzerStrategy()
+			}
+
+			return deps, err
 		}
 
 		imports, deps := FilteredLockfile(gems, lockfile)
@@ -186,14 +196,10 @@ func (a *Analyzer) bundlerListAnalyzerStrategy() (graph.Deps, error) {
 	}, nil
 }
 
-func (a *Analyzer) lockfileAnalyzerStrategy(lockfilePath string, shouldFallback bool) (graph.Deps, error) {
+func (a *Analyzer) lockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, error) {
 	lockfile, err := bundler.FromLockfile(lockfilePath)
 	if err != nil {
-		if !shouldFallback {
-			return graph.Deps{}, err
-		}
-
-		return a.bundlerListAnalyzerStrategy()
+		return graph.Deps{}, err
 	}
 
 	imports, deps := FromLockfile(lockfile)
