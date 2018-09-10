@@ -192,26 +192,6 @@ func (a *Analyzer) lockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, er
 	}, nil
 }
 
-func (a *Analyzer) listLockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, error) {
-	lockfile, err := bundler.FromLockfile(lockfilePath)
-	if err != nil {
-
-		return graph.Deps{}, err
-	}
-
-	gems, err := a.Bundler.List()
-	if err != nil {
-		return graph.Deps{}, err
-	}
-
-	imports, deps := FilteredLockfile(gems, lockfile)
-
-	return graph.Deps{
-		Direct:     imports,
-		Transitive: deps,
-	}, nil
-}
-
 func (a *Analyzer) lockfilePath() string {
 	if a.Options.LockfilePath != "" {
 		return a.Options.LockfilePath
