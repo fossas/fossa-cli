@@ -8,7 +8,13 @@ import (
 	"github.com/fossas/fossa-cli/files"
 )
 
-type NPM struct {
+type NPM interface {
+	List(dir string) (Output, error)
+	Clean(dir string) error
+	Install(dir string) error
+}
+
+type SystemNPM struct {
 	Cmd      string
 	AllowErr bool
 }
@@ -20,7 +26,7 @@ type Output struct {
 	Dependencies map[string]Output
 }
 
-func (n *NPM) List(dir string) (Output, error) {
+func (n *SystemNPM) List(dir string) (Output, error) {
 	stdout, _, err := exec.Run(exec.Cmd{
 		Name: n.Cmd,
 		Argv: []string{"ls", "--json"},
@@ -39,11 +45,11 @@ func (n *NPM) List(dir string) (Output, error) {
 	return output, nil
 }
 
-func (n *NPM) Clean(dir string) error {
+func (n *SystemNPM) Clean(dir string) error {
 	return files.Rm(dir, "node_modules")
 }
 
-func (n *NPM) Install(dir string) error {
+func (n *SystemNPM) Install(dir string) error {
 	_, _, err := exec.Run(exec.Cmd{
 		Name: n.Cmd,
 		Argv: []string{"install", "--production"},
