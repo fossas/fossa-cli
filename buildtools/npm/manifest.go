@@ -1,6 +1,9 @@
 package npm
 
 import (
+	"path/filepath"
+	"strings"
+
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
 )
@@ -22,7 +25,31 @@ func FromManifest(filename string) (Manifest, error) {
 }
 
 func FromNodeModules(dir string) ([]Manifest, error) {
-	return nil, errors.ErrNotImplemented
+	if !strings.HasSuffix(dir, "node_modules") {
+		dir = filepath.Join(dir, "node_modules")
+	}
+
+	manifests := make([]Manifest, 0)
+	dirNames, err := files.DirectoryNames(dir)
+
+	if err != nil {
+		return manifests, err
+	}
+
+	for _, dirName := range dirNames {
+		manifestFile := filepath.Join(dir, dirName, "package.json")
+		manifestExists, err := files.Exists(manifestFile)
+
+		if manifestExists && err == nil {
+			manifest, err := FromManifest(manifestFile)
+
+			if err == nil {
+				manifests = append(manifests, manifest)
+			}
+		}
+	}
+
+	return manifests, nil
 }
 
 type Lockfile struct {

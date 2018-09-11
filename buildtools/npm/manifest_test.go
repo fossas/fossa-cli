@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/fossas/fossa-cli/files"
 	"github.com/stretchr/testify/assert"
-	// "github.com/fossas/fossa-cli/buildtools/npm/manifest"
 )
 
 func TestFromManifest(t *testing.T) {
@@ -17,8 +17,8 @@ func TestFromManifest(t *testing.T) {
 }
 
 func TestFromNodeModules(t *testing.T) {
-	t.Skip("not yet implemented")
-	manifests, err := FromNodeModules("testdata/package.json")
+	// t.Skip("not yet implemented")
+	manifests, err := FromNodeModules("testdata")
 	assert.NoError(t, err)
 
 	/*
@@ -65,4 +65,11 @@ func containtsDep(manifests []Manifest, name string, version string) bool {
 	_, err := selectDep(manifests, name, version)
 
 	return err == nil
+}
+
+func TestSomethign(t *testing.T) {
+	fileNames, err := files.DirectoryNames("./testdata")
+	assert.NoError(t, err)
+
+	assert.NotEmpty(t, fileNames)
 }
