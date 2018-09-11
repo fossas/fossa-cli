@@ -185,5 +185,3 @@ RUN git clone --depth=1 https://github.com/fossas/ant-example-project
 
 # Raw projects:
 RUN git clone --depth=1 https://github.com/jelaas/bifrost-framework
-
-RUN go get -u github.com/derekparker/delve/cmd/dlv
