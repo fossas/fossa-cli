@@ -21,10 +21,6 @@ func TestCustomGemfileLockPath(t *testing.T) {
 		Dir:         buildTarget,
 	}
 
-	p := filepath.Join("testdata", "Gemfile.lock")
-
-	print(p)
-
 	gemModule := m
 	gemModule.Options = map[string]interface{}{
 		"strategy": "lockfile",
