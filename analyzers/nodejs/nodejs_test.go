@@ -15,7 +15,7 @@ func TestNoDependencies(t *testing.T) {
 }
 
 func TestAnalyzeWithNpmLs(t *testing.T) {
-	buildTarget := "fixtures/with_node_modules/"
+	buildTarget := "fixtures/with_node_modules/node_modules"
 
 	nodeModule := module.Module{
 		Name:        "test",
@@ -30,8 +30,8 @@ func TestAnalyzeWithNpmLs(t *testing.T) {
 	analysisResults, err := analyzer.Analyze()
 	assert.NoError(t, err)
 
-	assert.NotEmpty(t, analysisResults.Direct)
-	assert.NotEmpty(t, analysisResults.Transitive)
+	assert.Len(t, analysisResults.Direct, 1)
+	assert.Len(t, analysisResults.Transitive, 7)
 }
 
 func TestUsingNodeModuleFallback(t *testing.T) {
