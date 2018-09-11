@@ -5,7 +5,7 @@
 //
 // A `BuildTarget` for Node.js is defined as the relative path to the directory
 // containing the `package.json`, and the `Dir` is defined as the CWD for
-// running tools.
+// running build tools (like `npm` or `yarn`).
 //
 // `npm` and `yarn` are explicitly supported as first-class tools. Where
 // possible, these tools are queried before falling back to other strategies.
@@ -17,15 +17,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/apex/log"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/buildtools/npm"
-	"github.com/fossas/fossa-cli/graph"
-
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -151,6 +150,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	return modules, nil
 }
 
+// Clean removes `node_modules`.
 func (a *Analyzer) Clean() error {
 	return files.Rm(a.Module.Dir, "node_modules")
 }
@@ -161,7 +161,7 @@ func (a *Analyzer) Clean() error {
 func (a *Analyzer) Build() error {
 	log.Debugf("Running Node.js build: %#v", a.Module)
 
-	// Prefer Yarn where possible
+	// Prefer Yarn where possible.
 	if ok, err := files.Exists(a.Module.Dir, "yarn.lock"); err == nil && ok && a.YarnCmd != "" {
 		_, _, err := exec.Run(exec.Cmd{
 			Name: a.YarnCmd,
@@ -263,6 +263,7 @@ func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p npm.Output) {
 		// Don't process duplicates.
 		_, ok := pkgMap[id]
 		if ok {
+			// We need to union here because `npm ls --json` sometimes de-duplicates vendored transitive dependencies.
 			continue
 		}
 		// Get direct imports.

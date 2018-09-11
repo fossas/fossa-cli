@@ -23,7 +23,7 @@ func init() {
 	s.Writer = os.Stderr
 
 	// Set up log file.
-	f, err := ioutil.TempFile("", "fossa-cli-log-")
+	f, err := ioutil.TempFile("", "fossa-cli.*.log")
 	if err != nil {
 		log.WithError(err).Warnf("could not open log file")
 	}
