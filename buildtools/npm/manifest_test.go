@@ -22,14 +22,14 @@ func TestFromNodeModules(t *testing.T) {
 	assert.NoError(t, err)
 
 	/*
-	   └─┬ chai@4.1.2
-	     ├── assertion-error@1.1.0
-	     ├── check-error@1.0.2
-	     ├─┬ deep-eql@3.0.1
-	     │ └── type-detect@4.0.8 deduped
-	     ├── get-func-name@2.0.0
-	     ├── pathval@1.1.0
-	     └── type-detect@4.0.8
+		└─┬ chai@4.1.2
+			├── assertion-error@1.1.0
+			├── check-error@1.0.2
+			├─┬ deep-eql@3.0.1
+			│ └── type-detect@4.0.8 deduped
+			├── get-func-name@2.0.0
+			├── pathval@1.1.0
+			└── type-detect@4.0.8
 	*/
 
 	assert.NotEmpty(t, manifests)
@@ -62,7 +62,7 @@ func selectDep(manifests []Manifest, name string, version string) ([]Manifest, e
 }
 
 func containtsDep(manifests []Manifest, name string, version string) bool {
-	manifests, err := selectDep(manifests, name, version)
+	_, err := selectDep(manifests, name, version)
 
 	return err == nil
 }
