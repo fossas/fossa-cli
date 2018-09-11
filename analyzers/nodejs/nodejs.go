@@ -223,6 +223,8 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		log.Warnf("NPM had non-zero exit code: %s", err.Error())
 	}
 
+	// TODO: we should move this functionality in to the buildtool, and have it
+	// return `pkg.Package`s.
 	// Set direct dependencies.
 	var imports []pkg.Import
 	for name, dep := range pkgs.Dependencies {
@@ -260,13 +262,10 @@ func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p npm.Output) {
 			Revision: dep.Version,
 			Location: dep.Resolved,
 		}
-		// Don't process duplicates.
-		_, ok := pkgMap[id]
-		if ok {
-			// We need to union here because `npm ls --json` sometimes de-duplicates vendored transitive dependencies.
-			continue
-		}
-		// Get direct imports.
+		// Handle previously seen (usually deduplicated) entries: see #257.
+		previous := pkgMap[id]
+
+		// Set direct imports.
 		var imports []pkg.Import
 		for name, i := range p.Dependencies {
 			imports = append(imports, pkg.Import{
@@ -280,9 +279,12 @@ func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p npm.Output) {
 			})
 		}
 		// Update map.
+		// NOTE: We're assuming that each deduplicated dependency's imports will
+		// only be listed once. This assumption might not be true. If it's not, then
+		// we need to do a set union instead of a list concatenation.
 		pkgMap[id] = pkg.Package{
 			ID:      id,
-			Imports: imports,
+			Imports: append(imports, previous.Imports...),
 		}
 		// Recurse in imports.
 		recurseDeps(pkgMap, dep)
