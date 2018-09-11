@@ -155,30 +155,30 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		}
 
 		gems, err := a.Bundler.List()
-		if err != nil {
-			if !shouldFallback {
-				return graph.Deps{}, err
-			}
+		if err == nil {
+			imports, deps := FilteredLockfile(gems, lockfile)
 
-			deps, err := a.lockfileAnalyzerStrategy(lockfilePath)
+			return graph.Deps{
+				Direct:     imports,
+				Transitive: deps,
+			}, nil
+		}
 
-			if err != nil {
-				if !shouldFallback {
-					return graph.Deps{}, err
-				}
+		if !shouldFallback {
+			return graph.Deps{}, err
+		}
 
-				return a.bundlerListAnalyzerStrategy()
-			}
+		deps, err := a.lockfileAnalyzerStrategy(lockfilePath)
 
+		if err == nil {
 			return deps, err
 		}
 
-		imports, deps := FilteredLockfile(gems, lockfile)
+		if !shouldFallback {
+			return graph.Deps{}, err
+		}
 
-		return graph.Deps{
-			Direct:     imports,
-			Transitive: deps,
-		}, nil
+		return a.bundlerListAnalyzerStrategy()
 	}
 }
 
