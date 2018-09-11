@@ -36,7 +36,7 @@ func TestAnalyzeWithNpmLs(t *testing.T) {
 
 func TestUsingNodeModuleFallback(t *testing.T) {
 	t.Skip("not yet implemented")
-	buildTarget := "fixtures/with_node_modules"
+	buildTarget := "fixtures/with_node_modules/"
 
 	nodeModule := module.Module{
 		Name:        "test",
