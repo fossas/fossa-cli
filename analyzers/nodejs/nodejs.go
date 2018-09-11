@@ -225,7 +225,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Debugf("Running Nodejs analysis: %#v", a.Module)
 
 	// Get packages.
-	n := npm.NPM{
+	n := npm.SystemNPM{
 		Cmd:      a.NPMCmd,
 		AllowErr: a.Options.AllowNPMErr || true, // TODO: we should have a strict mode instead of an allow mode
 	}
