@@ -2,7 +2,6 @@ package npm
 
 import (
 	"path/filepath"
-	"strings"
 
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
@@ -27,7 +26,6 @@ func PackageFromManifest(filename string) (pkg.Package, error) {
 }
 
 func FromNodeModules(dir string) (graph.Deps, error) {
-	var directDepsIds []pkg.ID
 	transitiveDeps := make(map[pkg.ID]pkg.Package)
 
 	exists, err := files.Exists(dir, "package.json")
@@ -43,12 +41,8 @@ func FromNodeModules(dir string) (graph.Deps, error) {
 	}
 
 	directDeps := pkg.Imports
-	for _, dirDep := range directDeps {
-		directDepsIds = append(directDepsIds, dirDep.Resolved)
-	}
 
-	transitiveDeps, err = fromSubNodeModules(dir, directDepsIds)
-
+	transitiveDeps, err = fromSubNodeModules(dir)
 	if err != nil {
 		return graph.Deps{}, err
 	}
@@ -59,12 +53,42 @@ func FromNodeModules(dir string) (graph.Deps, error) {
 	}, nil
 }
 
-func fromSubNodeModules(dir string, submodulesToExclude []pkg.ID) (map[pkg.ID]pkg.Package, error) {
-	if !strings.HasSuffix(dir, "/node_modules") {
-		dir = filepath.Join(dir, "node_modules")
+func fromSubNodeModules(dir string) (map[pkg.ID]pkg.Package, error) {
+	pkgs := make(map[pkg.ID]pkg.Package)
+	pkg, err := PackageFromManifest(filepath.Join(dir, "package.json"))
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, nil
+	pkgs[pkg.ID] = pkg
+	dir = filepath.Join(dir, "node_modules")
+
+	nodeModulesExist, err := files.ExistsFolder(dir)
+	if err != nil {
+		return nil, nil
+	}
+	if !nodeModulesExist {
+		return pkgs, nil
+	}
+
+	subDirNames, err := files.DirectoryNames(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	// base case is no additional layers of node modules, in which case this loops never runs
+	for _, subDir := range subDirNames {
+		subDirPackages, err := fromSubNodeModules(filepath.Join(dir, subDir))
+		if err != nil {
+			return nil, err
+		}
+
+		for pid, p := range subDirPackages {
+			pkgs[pid] = p
+		}
+	}
+
+	return pkgs, nil
 }
 
 type Lockfile struct {
