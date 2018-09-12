@@ -18,7 +18,7 @@ func TestFromManifest(t *testing.T) {
 }
 
 func TestFromNodeModules(t *testing.T) {
-	// testFromNodeModulesByFixture(t, "flattened_node_modules")
+	testFromNodeModulesByFixture(t, "flattened_node_modules")
 	testFromNodeModulesByFixture(t, "nested_node_modules")
 }
 
