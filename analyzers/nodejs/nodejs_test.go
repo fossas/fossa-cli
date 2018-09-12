@@ -24,7 +24,11 @@ func (n MockNPM) List(dir string) (npm.Output, error) {
 	var output npm.Output
 	dir, _ = os.Getwd()
 
-	files.ReadJSON(&output, dir, "fixtures/npmLsOutput.json")
+	err := files.ReadJSON(&output, dir, "fixtures/npmLsOutput.json")
+
+	if err != nil {
+		panic(err)
+	}
 
 	return output, nil
 }
