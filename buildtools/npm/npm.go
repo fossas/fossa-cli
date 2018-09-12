@@ -67,7 +67,7 @@ func (n SystemNPM) Install(dir string) error {
 	return nil
 }
 
-func New(options map[string]interface{}) NPM {
+func New(options map[string]interface{}) (NPM, error) {
 	npmCmd, _, npmErr := exec.Which("-v", os.Getenv("FOSSA_NPM_CMD"), "npm")
 
 	if npmErr != nil {
@@ -75,10 +75,14 @@ func New(options map[string]interface{}) NPM {
 	}
 
 	var decodedOptions Options
-	mapstructure.Decode(options, &decodedOptions)
+	err := mapstructure.Decode(options, &decodedOptions)
+
+	if err != nil {
+		return nil, err
+	}
 
 	return SystemNPM{
 		Cmd:      npmCmd,
 		AllowErr: decodedOptions.AllowNPMErr || true,
-	}
+	}, nil
 }
