@@ -2,6 +2,7 @@ package npm_test
 
 import (
 	"errors"
+	"path/filepath"
 	"testing"
 
 	"github.com/fossas/fossa-cli/files"
@@ -11,10 +12,6 @@ import (
 )
 
 func TestFromManifest(t *testing.T) {
-
-}
-
-func testFromNodeModulesByFixture(t *testing.T, fixture string) {
 	manifest, err := npm.FromManifest("testdata/package.json")
 	assert.NoError(t, err)
 
@@ -24,7 +21,16 @@ func testFromNodeModulesByFixture(t *testing.T, fixture string) {
 
 func TestFromNodeModules(t *testing.T) {
 	// t.Skip("not yet implemented")
-	manifests, err := npm.FromNodeModules("testdata")
+	testFromNodeModulesByFixture(t, "flattened_node_modules")
+	testFromNodeModulesByFixture(t, "nested_node_modules")
+}
+
+func testFromNodeModulesByFixture(t *testing.T, fixture string) {
+	// t.Skip("not yet implemented")
+	path := filepath.Join("fixtures", fixture)
+
+	print(path)
+	manifests, err := npm.FromNodeModules(filepath.Join("fixtures", fixture))
 	assert.NoError(t, err)
 
 	/*
