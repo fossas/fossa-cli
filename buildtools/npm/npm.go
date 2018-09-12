@@ -7,7 +7,6 @@ import (
 	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/mitchellh/mapstructure"
 )
 
 type Options struct {
@@ -67,22 +66,15 @@ func (n SystemNPM) Install(dir string) error {
 	return nil
 }
 
-func New(options map[string]interface{}) (NPM, error) {
+func New() (NPM, error) {
 	npmCmd, _, npmErr := exec.Which("-v", os.Getenv("FOSSA_NPM_CMD"), "npm")
 
 	if npmErr != nil {
 		log.Warnf("Could not find NPM: %s", npmErr.Error())
 	}
 
-	var decodedOptions Options
-	err := mapstructure.Decode(options, &decodedOptions)
-
-	if err != nil {
-		return nil, err
-	}
-
 	return SystemNPM{
 		Cmd:      npmCmd,
-		AllowErr: decodedOptions.AllowNPMErr || true,
+		AllowErr: true,
 	}, nil
 }

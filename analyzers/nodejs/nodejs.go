@@ -64,7 +64,7 @@ type Options struct {
 }
 
 // New configures Node, NPM, and Yarn commands.
-func New(m module.Module, npmTool npm.NPM) (*Analyzer, error) {
+func New(m module.Module) (*Analyzer, error) {
 	log.WithField("options", m.Options).Debug("constructing analyzer")
 
 	nodeCmd, nodeVersion, nodeErr := exec.Which("-v", os.Getenv("FOSSA_NODE_CMD"), "node", "nodejs")
@@ -79,6 +79,14 @@ func New(m module.Module, npmTool npm.NPM) (*Analyzer, error) {
 	var options Options
 	err := mapstructure.Decode(m.Options, &options)
 	if err != nil {
+		return nil, err
+	}
+
+	npmTool, err := npm.New()
+
+	if err != nil {
+		log.Error("Could not initialize npm tooling")
+
 		return nil, err
 	}
 
