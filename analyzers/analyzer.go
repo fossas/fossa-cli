@@ -60,7 +60,12 @@ func New(m module.Module) (Analyzer, error) {
 	case pkg.Maven:
 		return maven.New(m)
 	case pkg.NodeJS:
-		return nodejs.New(m)
+		npmTool, err := nodejs.SystemNpmTool(m.Options)
+		if err != nil {
+			return nil, err
+		}
+
+		return nodejs.New(m, npmTool)
 	case pkg.NuGet:
 		return nuget.New(m)
 	case pkg.Python:
