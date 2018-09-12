@@ -19,7 +19,7 @@ func TestFromManifest(t *testing.T) {
 }
 
 func TestFromNodeModules(t *testing.T) {
-	t.Skip("not yet implemented")
+	// t.Skip("not yet implemented")
 	manifests, err := npm.FromNodeModules("testdata")
 	assert.NoError(t, err)
 
@@ -40,7 +40,7 @@ func TestFromNodeModules(t *testing.T) {
 	assert.True(t, containsDep(manifests, "check-error", "1.0.2"), "Manifests does not include dep check-error")
 	assert.True(t, containsDep(manifests, "get-func-name", "2.0.0"), "Manifests does not include dep get-func-name")
 	assert.True(t, containsDep(manifests, "pathval", "1.1.0"), "Manifests does not include dep pathval")
-	assert.True(t, containsDep(manifests, "type-detect", "4.0.8"), "Manifests does not include dep type-detect")
+	assert.True(t, containsDep(manifests, "type-detect", "3.0.0"), "Manifests does not include dep type-detect")
 
 	// check transitive dep's existance
 	dep, err := selectDep(manifests, "deep-eql", "3.0.1")
@@ -49,6 +49,7 @@ func TestFromNodeModules(t *testing.T) {
 	assert.NotEmpty(t, dep.Dependencies)
 	assert.Len(t, dep.Dependencies, 1)
 	assert.Contains(t, dep.Dependencies, "type-detect")
+	assert.Equal(t, "^4.0.0", dep.Dependencies["type-detect"])
 }
 
 func selectDep(manifests []npm.Manifest, name string, version string) (npm.Manifest, error) {
