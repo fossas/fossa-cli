@@ -20,9 +20,9 @@ func TestNoDependencies(t *testing.T) {
 
 type MockNPM struct{}
 
-func (n MockNPM) List(dir string) (npm.Output, error) {
+func (n MockNPM) List(_ string) (npm.Output, error) {
 	var output npm.Output
-	dir, _ = os.Getwd()
+	dir, _ := os.Getwd()
 
 	err := files.ReadJSON(&output, dir, "fixtures/npmLsOutput.json")
 
