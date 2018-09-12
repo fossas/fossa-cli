@@ -24,14 +24,15 @@ func TestFromNodeModules(t *testing.T) {
 	assert.NoError(t, err)
 
 	/*
-		└─┬ chai@4.1.2
-			├── assertion-error@1.1.0
-			├── check-error@1.0.2
-			├─┬ deep-eql@3.0.1
-			│ └── type-detect@4.0.8 deduped
-			├── get-func-name@2.0.0
-			├── pathval@1.1.0
-			└── type-detect@4.0.8
+		├─┬ chai@4.1.2
+		│ ├── assertion-error@1.1.0
+		│ ├── check-error@1.0.2
+		│ ├─┬ deep-eql@3.0.1
+		│ │ └── type-detect@4.0.8
+		│ ├── get-func-name@2.0.0
+		│ ├── pathval@1.1.0
+		│ └── type-detect@4.0.8
+		└── type-detect@3.0.0
 	*/
 
 	assert.NotEmpty(t, manifests)
