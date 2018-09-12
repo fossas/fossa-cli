@@ -2,7 +2,6 @@ package npm
 
 import (
 	"path/filepath"
-	"strings"
 
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
@@ -23,48 +22,69 @@ func FromManifest(filename string) (Manifest, error) {
 	return manifest, nil
 }
 
+// func FromNodeModules(dir string) ([]Manifest, error) {
+// 	if !strings.HasSuffix(dir, "node_modules/") {
+// 		dir = filepath.Join(dir, "node_modules/")
+// 	}
+
+// 	manifests := make([]Manifest, 0)
+// 	dirNames, err := files.DirectoryNames(dir)
+
+// 	if err != nil {
+// 		return manifests, err
+// 	}
+
+// 	for _, dirName := range dirNames {
+// 		manifestFile := filepath.Join(dir, dirName, "package.json")
+// 		manifestExists, err := files.Exists(manifestFile)
+
+// 		if manifestExists && err == nil {
+// 			manifest, err := FromManifest(manifestFile)
+
+// 			if err == nil {
+// 				manifests = append(manifests, manifest)
+// 			}
+// 		}
+// 	}
+
+// 	return manifests, nil
+// }
+
 func FromNodeModules(dir string) ([]Manifest, error) {
-	if !strings.HasSuffix(dir, "node_modules") {
-		dir = filepath.Join(dir, "node_modules")
-	}
-
 	manifests := make([]Manifest, 0)
-	dirNames, err := files.DirectoryNames(dir)
 
+	nodeModulesFolderExists, err := dirHasNodeModulesFolder(dir)
 	if err != nil {
 		return manifests, err
 	}
 
-	for _, dirName := range dirNames {
-		manifestFile := filepath.Join(dir, dirName, "package.json")
-		manifestExists, err := files.Exists(manifestFile)
+	if !nodeModulesFolderExists {
+		manifest, err := FromManifest(filepath.Join(dir, "package.json"))
+		if err != nil {
+			return manifests, nil
+		}
 
-		if manifestExists && err == nil {
-			manifest, err := FromManifest(manifestFile)
+		manifests = append(manifests, manifest)
+	} else {
+		dir = filepath.Join(dir, "node_modules")
 
-			if err == nil {
-				manifests = append(manifests, manifest)
+		subModuleDirectories, err := files.DirectoryNames(dir)
+		if err != nil {
+			return manifests, err
+		}
+
+		for _, subModuleDir := range subModuleDirectories {
+			subManifests, err := FromNodeModules(filepath.Join(dir, subModuleDir))
+			if err != nil {
+				return []Manifest{}, nil
 			}
+
+			manifests = append(manifests, subManifests...)
 		}
 	}
 
 	return manifests, nil
 }
-
-// func FromNodeModules(dir string) ([]Manifest, error) {
-// 	manifests := make([]Manifest, 0)
-
-// 	nodeModulesFolderExists, err := dirHasNodeModulesFolder(dir)
-// 	if err != nil {
-// 		return manifests, err
-// 	}
-
-// 	if !nodeModulesFolderExists {
-// 		return
-// 	}
-
-// 	return manifests, nil
-// }
 
 type Lockfile struct {
 	Dependencies map[string]struct {

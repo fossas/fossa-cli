@@ -21,7 +21,7 @@ func TestFromManifest(t *testing.T) {
 
 func TestFromNodeModules(t *testing.T) {
 	// t.Skip("not yet implemented")
-	testFromNodeModulesByFixture(t, "flattened_node_modules")
+	// testFromNodeModulesByFixture(t, "flattened_node_modules")
 	testFromNodeModulesByFixture(t, "nested_node_modules")
 }
 
