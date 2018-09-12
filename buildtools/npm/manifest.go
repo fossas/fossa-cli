@@ -1,8 +1,12 @@
 package npm
 
 import (
+	"path/filepath"
+	"strings"
+
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -22,8 +26,45 @@ func PackageFromManifest(filename string) (pkg.Package, error) {
 	return convertManifestToPkg(manifest), nil
 }
 
-func FromNodeModules(dir string) (pkg.Package, error) {
-	return pkg.Package{}, errors.ErrNotImplemented
+func FromNodeModules(dir string) (graph.Deps, error) {
+	var directDepsIds []pkg.ID
+	transitiveDeps := make(map[pkg.ID]pkg.Package)
+
+	exists, err := files.Exists(dir, "package.json")
+	if err != nil {
+		return graph.Deps{}, err
+	} else if !exists {
+		return graph.Deps{}, errors.New("No package.json at root of node project")
+	}
+
+	pkg, err := PackageFromManifest(filepath.Join(dir, "package.json"))
+	if err != nil {
+		return graph.Deps{}, err
+	}
+
+	directDeps := pkg.Imports
+	for _, dirDep := range directDeps {
+		directDepsIds = append(directDepsIds, dirDep.Resolved)
+	}
+
+	transitiveDeps, err = fromSubNodeModules(dir, directDepsIds)
+
+	if err != nil {
+		return graph.Deps{}, err
+	}
+
+	return graph.Deps{
+		Direct:     directDeps,
+		Transitive: transitiveDeps,
+	}, nil
+}
+
+func fromSubNodeModules(dir string, submodulesToExclude []pkg.ID) (map[pkg.ID]pkg.Package, error) {
+	if !strings.HasSuffix(dir, "/node_modules") {
+		dir = filepath.Join(dir, "node_modules")
+	}
+
+	return nil, nil
 }
 
 type Lockfile struct {
