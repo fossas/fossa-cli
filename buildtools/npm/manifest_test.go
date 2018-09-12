@@ -11,6 +11,10 @@ import (
 )
 
 func TestFromManifest(t *testing.T) {
+
+}
+
+func testFromNodeModulesByFixture(t *testing.T, fixture string) {
 	manifest, err := npm.FromManifest("testdata/package.json")
 	assert.NoError(t, err)
 

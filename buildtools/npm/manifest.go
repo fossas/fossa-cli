@@ -9,9 +9,8 @@ import (
 )
 
 type Manifest struct {
-	Name    string
-	Version string
-
+	Name         string
+	Version      string
 	Dependencies map[string]string
 }
 
@@ -52,6 +51,21 @@ func FromNodeModules(dir string) ([]Manifest, error) {
 	return manifests, nil
 }
 
+// func FromNodeModules(dir string) ([]Manifest, error) {
+// 	manifests := make([]Manifest, 0)
+
+// 	nodeModulesFolderExists, err := dirHasNodeModulesFolder(dir)
+// 	if err != nil {
+// 		return manifests, err
+// 	}
+
+// 	if !nodeModulesFolderExists {
+// 		return
+// 	}
+
+// 	return manifests, nil
+// }
+
 type Lockfile struct {
 	Dependencies map[string]struct {
 		Version  string
@@ -61,4 +75,12 @@ type Lockfile struct {
 
 func FromLockfile(filename string) (Lockfile, error) {
 	return Lockfile{}, errors.ErrNotImplemented
+}
+
+func dirHasPackageJson(dir string) (bool, error) {
+	return files.Exists(dir, "package.json")
+}
+
+func dirHasNodeModulesFolder(dir string) (bool, error) {
+	return files.ExistsFolder(dir, "node_modules")
 }
