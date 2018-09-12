@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	// "github.com/fossas/fossa-cli/buildtools/npm/manifest"
 )
 
 func TestFromManifest(t *testing.T) {
