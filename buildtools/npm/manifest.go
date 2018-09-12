@@ -1,89 +1,30 @@
 package npm
 
 import (
-	"path/filepath"
+	"github.com/fossas/fossa-cli/pkg"
 
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
 )
 
-type Manifest struct {
+type manifest struct {
 	Name         string
 	Version      string
 	Dependencies map[string]string
 }
 
-func FromManifest(filename string) (Manifest, error) {
-	var manifest Manifest
+func PackageFromManifest(filename string) (pkg.Package, error) {
+	var manifest manifest
 	err := files.ReadJSON(&manifest, filename)
 	if err != nil {
-		return Manifest{}, err
+		return pkg.Package{}, err
 	}
-	return manifest, nil
+
+	return convertManifestToPkg(manifest), nil
 }
 
-// func FromNodeModules(dir string) ([]Manifest, error) {
-// 	if !strings.HasSuffix(dir, "node_modules/") {
-// 		dir = filepath.Join(dir, "node_modules/")
-// 	}
-
-// 	manifests := make([]Manifest, 0)
-// 	dirNames, err := files.DirectoryNames(dir)
-
-// 	if err != nil {
-// 		return manifests, err
-// 	}
-
-// 	for _, dirName := range dirNames {
-// 		manifestFile := filepath.Join(dir, dirName, "package.json")
-// 		manifestExists, err := files.Exists(manifestFile)
-
-// 		if manifestExists && err == nil {
-// 			manifest, err := FromManifest(manifestFile)
-
-// 			if err == nil {
-// 				manifests = append(manifests, manifest)
-// 			}
-// 		}
-// 	}
-
-// 	return manifests, nil
-// }
-
-func FromNodeModules(dir string) ([]Manifest, error) {
-	manifests := make([]Manifest, 0)
-
-	nodeModulesFolderExists, err := dirHasNodeModulesFolder(dir)
-	if err != nil {
-		return manifests, err
-	}
-
-	if !nodeModulesFolderExists {
-		manifest, err := FromManifest(filepath.Join(dir, "package.json"))
-		if err != nil {
-			return manifests, nil
-		}
-
-		manifests = append(manifests, manifest)
-	} else {
-		dir = filepath.Join(dir, "node_modules")
-
-		subModuleDirectories, err := files.DirectoryNames(dir)
-		if err != nil {
-			return manifests, err
-		}
-
-		for _, subModuleDir := range subModuleDirectories {
-			subManifests, err := FromNodeModules(filepath.Join(dir, subModuleDir))
-			if err != nil {
-				return []Manifest{}, nil
-			}
-
-			manifests = append(manifests, subManifests...)
-		}
-	}
-
-	return manifests, nil
+func FromNodeModules(dir string) (pkg.Package, error) {
+	return pkg.Package{}, errors.ErrNotImplemented
 }
 
 type Lockfile struct {
@@ -97,10 +38,33 @@ func FromLockfile(filename string) (Lockfile, error) {
 	return Lockfile{}, errors.ErrNotImplemented
 }
 
-func dirHasPackageJson(dir string) (bool, error) {
-	return files.Exists(dir, "package.json")
+func convertManifestToPkg(manifest manifest) pkg.Package {
+	id := pkg.ID{
+		Type:     pkg.NodeJS,
+		Name:     manifest.Name,
+		Revision: manifest.Version,
+	}
+
+	var imports pkg.Imports
+	for depName, version := range manifest.Dependencies {
+		imports = append(imports, createImport(depName, version))
+	}
+
+	return pkg.Package{
+		ID:      id,
+		Imports: imports,
+	}
 }
 
-func dirHasNodeModulesFolder(dir string) (bool, error) {
-	return files.ExistsFolder(dir, "node_modules")
+func createImport(packageName string, version string) pkg.Import {
+	id := pkg.ID{
+		Type:     pkg.NodeJS,
+		Name:     packageName,
+		Revision: version,
+	}
+
+	return pkg.Import{
+		Target:   packageName,
+		Resolved: id,
+	}
 }
