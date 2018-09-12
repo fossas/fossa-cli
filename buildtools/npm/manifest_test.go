@@ -33,11 +33,11 @@ func TestFromNodeModules(t *testing.T) {
 	*/
 
 	assert.NotEmpty(t, manifests)
-	assert.True(t, containtsDep(manifests, "assertion-error", "1.1.0"), "Manifests does not include dep assertion-error")
-	assert.True(t, containtsDep(manifests, "check-error", "1.0.2"), "Manifests does not include dep check-error")
-	assert.True(t, containtsDep(manifests, "get-func-name", "2.0.0"), "Manifests does not include dep get-func-name")
-	assert.True(t, containtsDep(manifests, "pathval", "1.1.0"), "Manifests does not include dep pathval")
-	assert.True(t, containtsDep(manifests, "type-detect", "4.0.8"), "Manifests does not include dep type-detect")
+	assert.True(t, containsDep(manifests, "assertion-error", "1.1.0"), "Manifests does not include dep assertion-error")
+	assert.True(t, containsDep(manifests, "check-error", "1.0.2"), "Manifests does not include dep check-error")
+	assert.True(t, containsDep(manifests, "get-func-name", "2.0.0"), "Manifests does not include dep get-func-name")
+	assert.True(t, containsDep(manifests, "pathval", "1.1.0"), "Manifests does not include dep pathval")
+	assert.True(t, containsDep(manifests, "type-detect", "4.0.8"), "Manifests does not include dep type-detect")
 
 	// check transitive dep's existance
 	deps, err := selectDep(manifests, "deep-eql", "3.0.1")
@@ -61,7 +61,7 @@ func selectDep(manifests []Manifest, name string, version string) ([]Manifest, e
 	return emptyArr, errors.New("could not find manifest")
 }
 
-func containtsDep(manifests []Manifest, name string, version string) bool {
+func containsDep(manifests []Manifest, name string, version string) bool {
 	_, err := selectDep(manifests, name, version)
 
 	return err == nil
