@@ -1,14 +1,16 @@
-package npm
+package npm_test
 
 import (
 	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/fossas/fossa-cli/buildtools/npm"
 )
 
 func TestFromManifest(t *testing.T) {
-	manifest, err := FromManifest("testdata/package.json")
+	manifest, err := npm.FromManifest("testdata/package.json")
 	assert.NoError(t, err)
 
 	assert.NotEmpty(t, manifest.Dependencies)
@@ -17,7 +19,7 @@ func TestFromManifest(t *testing.T) {
 
 func TestFromNodeModules(t *testing.T) {
 	t.Skip("not yet implemented")
-	manifests, err := FromNodeModules("testdata/package.json")
+	manifests, err := npm.FromNodeModules("testdata/package.json")
 	assert.NoError(t, err)
 
 	/*
@@ -47,17 +49,17 @@ func TestFromNodeModules(t *testing.T) {
 	assert.Contains(t, dep.Dependencies, "type-detect")
 }
 
-func selectDep(manifests []Manifest, name string, version string) (Manifest, error) {
+func selectDep(manifests []npm.Manifest, name string, version string) (npm.Manifest, error) {
 	for _, v := range manifests {
 		if v.Name == name && v.Version == version {
 			return v, nil
 		}
 	}
 
-	return Manifest{}, errors.New("could not find manifest")
+	return npm.Manifest{}, errors.New("could not find manifest")
 }
 
-func containsDep(manifests []Manifest, name string, version string) bool {
+func containsDep(manifests []npm.Manifest, name string, version string) bool {
 	_, err := selectDep(manifests, name, version)
 	return err == nil
 }
