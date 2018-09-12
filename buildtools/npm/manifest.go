@@ -1,10 +1,9 @@
 package npm
 
 import (
-	"github.com/fossas/fossa-cli/pkg"
-
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
 type manifest struct {
