@@ -167,7 +167,6 @@ func (a *Analyzer) Build() error {
 		}
 	} else {
 		err := a.Tool.Install(a.Module.Dir)
-
 		if err != nil {
 			return errors.Wrap(err, "could not run `npm` build")
 		}
