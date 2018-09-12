@@ -83,12 +83,12 @@ func fromSubNodeModules(dir string) (map[pkg.ID]pkg.Package, error) {
 			return nil, err
 		}
 
-		resolveInstalledVersion(pkg, subDirPackages)
-
 		for pid, p := range subDirPackages {
 			pkgs[pid] = p
 		}
 	}
+
+	resolveInstalledVersion(pkg, pkgs)
 
 	return pkgs, nil
 }
