@@ -83,12 +83,25 @@ func fromSubNodeModules(dir string) (map[pkg.ID]pkg.Package, error) {
 			return nil, err
 		}
 
+		resolveInstalledVersion(pkg, subDirPackages)
+
 		for pid, p := range subDirPackages {
 			pkgs[pid] = p
 		}
 	}
 
 	return pkgs, nil
+}
+
+// replaces the potentially semver versions with the explicit version found 1 depth away from the root packages
+func resolveInstalledVersion(rootPackage pkg.Package, modules map[pkg.ID]pkg.Package) {
+	for i, imported := range rootPackage.Imports {
+		for moduleKey := range modules {
+			if moduleKey.Name == imported.Target {
+				rootPackage.Imports[i].Resolved = moduleKey
+			}
+		}
+	}
 }
 
 type Lockfile struct {
