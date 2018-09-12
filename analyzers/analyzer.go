@@ -17,7 +17,6 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/python"
 	"github.com/fossas/fossa-cli/analyzers/ruby"
 	"github.com/fossas/fossa-cli/analyzers/scala"
-	"github.com/fossas/fossa-cli/buildtools/npm"
 
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
@@ -61,13 +60,7 @@ func New(m module.Module) (Analyzer, error) {
 	case pkg.Maven:
 		return maven.New(m)
 	case pkg.NodeJS:
-		sysNpmTool, err := npm.New(m.Options)
-
-		if err != nil {
-			return nil, err
-		}
-
-		return nodejs.New(m, sysNpmTool)
+		return nodejs.New(m)
 	case pkg.NuGet:
 		return nuget.New(m)
 	case pkg.Python:

@@ -40,29 +40,25 @@ func TestFromNodeModules(t *testing.T) {
 	assert.True(t, containsDep(manifests, "type-detect", "4.0.8"), "Manifests does not include dep type-detect")
 
 	// check transitive dep's existance
-	deps, err := selectDep(manifests, "deep-eql", "3.0.1")
+	dep, err := selectDep(manifests, "deep-eql", "3.0.1")
 	assert.NoError(t, err, "Manifests does not include dep deep-eql")
 
-	deepEql := deps[0]
-	assert.NotEmpty(t, deepEql.Dependencies)
-	assert.Len(t, deepEql.Dependencies, 1)
-	assert.Contains(t, deepEql.Dependencies, "type-detect")
+	assert.NotEmpty(t, dep.Dependencies)
+	assert.Len(t, dep.Dependencies, 1)
+	assert.Contains(t, dep.Dependencies, "type-detect")
 }
 
-func selectDep(manifests []Manifest, name string, version string) ([]Manifest, error) {
+func selectDep(manifests []Manifest, name string, version string) (Manifest, error) {
 	for _, v := range manifests {
 		if v.Name == name && v.Version == version {
-			return []Manifest{v}, nil
+			return v, nil
 		}
 	}
 
-	var emptyArr []Manifest
-
-	return emptyArr, errors.New("could not find manifest")
+	return Manifest{}, errors.New("could not find manifest")
 }
 
 func containsDep(manifests []Manifest, name string, version string) bool {
 	_, err := selectDep(manifests, name, version)
-
 	return err == nil
 }
