@@ -10,16 +10,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// func TestFromManifest(t *testing.T) {
-// 	manifest, err := npm.FromManifest("testdata/package.json")
-// 	assert.NoError(t, err)
+func TestFromManifest(t *testing.T) {
+	pkg, err := npm.PackageFromManifest("fixtures/nested_node_modules/package.json")
+	assert.NoError(t, err)
 
-// 	assert.NotEmpty(t, manifest.Dependencies)
-// 	assert.Equal(t, manifest.Dependencies["chai"], "4.1.2")
-// }
+	assert.NotEmpty(t, pkg.Imports)
+}
 
 func TestFromNodeModules(t *testing.T) {
-	// t.Skip("not yet implemented")
 	// testFromNodeModulesByFixture(t, "flattened_node_modules")
 	testFromNodeModulesByFixture(t, "nested_node_modules")
 }
@@ -78,7 +76,6 @@ func testFromNodeModulesByFixture(t *testing.T, fixture string) {
 	assert.Contains(t, depGraph.Direct, chaiDirectDep)
 	assert.Contains(t, depGraph.Direct, typeDetectDirectDep)
 
-	// TODO: remove dupes
 	assert.Len(t, depGraph.Transitive, 9)
 
 	typeDetectTransitiveDepKey := pkg.ID{
