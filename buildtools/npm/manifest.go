@@ -1,28 +1,30 @@
 package npm
 
 import (
+	"github.com/fossas/fossa-cli/pkg"
+
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
 )
 
-type Manifest struct {
-	Name    string
-	Version string
-
+type manifest struct {
+	Name         string
+	Version      string
 	Dependencies map[string]string
 }
 
-func FromManifest(filename string) (Manifest, error) {
-	var manifest Manifest
+func PackageFromManifest(filename string) (pkg.Package, error) {
+	var manifest manifest
 	err := files.ReadJSON(&manifest, filename)
 	if err != nil {
-		return Manifest{}, err
+		return pkg.Package{}, err
 	}
-	return manifest, nil
+
+	return convertManifestToPkg(manifest), nil
 }
 
-func FromNodeModules(dir string) ([]Manifest, error) {
-	return nil, errors.ErrNotImplemented
+func FromNodeModules(dir string) (pkg.Package, error) {
+	return pkg.Package{}, errors.ErrNotImplemented
 }
 
 type Lockfile struct {
@@ -34,4 +36,35 @@ type Lockfile struct {
 
 func FromLockfile(filename string) (Lockfile, error) {
 	return Lockfile{}, errors.ErrNotImplemented
+}
+
+func convertManifestToPkg(manifest manifest) pkg.Package {
+	id := pkg.ID{
+		Type:     pkg.NodeJS,
+		Name:     manifest.Name,
+		Revision: manifest.Version,
+	}
+
+	var imports pkg.Imports
+	for depName, version := range manifest.Dependencies {
+		imports = append(imports, createImport(depName, version))
+	}
+
+	return pkg.Package{
+		ID:      id,
+		Imports: imports,
+	}
+}
+
+func createImport(packageName string, version string) pkg.Import {
+	id := pkg.ID{
+		Type:     pkg.NodeJS,
+		Name:     packageName,
+		Revision: version,
+	}
+
+	return pkg.Import{
+		Target:   packageName,
+		Resolved: id,
+	}
 }
