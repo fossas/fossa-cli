@@ -34,8 +34,7 @@ type Analyzer struct {
 	NodeCmd     string
 	NodeVersion string
 
-	NPMCmd     string
-	NPMVersion string
+	Tool npm.NPM
 
 	YarnCmd     string
 	YarnVersion string
@@ -72,12 +71,8 @@ func New(m module.Module) (*Analyzer, error) {
 	if nodeErr != nil {
 		log.Warnf("Could not find Node.JS: %s", nodeErr.Error())
 	}
-	npmCmd, npmVersion, npmErr := exec.Which("-v", os.Getenv("FOSSA_NPM_CMD"), "npm")
-	if npmErr != nil {
-		log.Warnf("Could not find NPM: %s", npmErr.Error())
-	}
 	yarnCmd, yarnVersion, yarnErr := exec.Which("-v", os.Getenv("FOSSA_YARN_CMD"), "yarn")
-	if yarnErr != nil && npmErr != nil {
+	if yarnErr != nil {
 		log.Warnf("Could not find Yarn: %s", yarnErr.Error())
 	}
 
@@ -87,12 +82,19 @@ func New(m module.Module) (*Analyzer, error) {
 		return nil, err
 	}
 
+	npmTool, err := npm.New()
+
+	if err != nil {
+		log.Error("Could not initialize npm tooling")
+
+		return nil, err
+	}
+
 	analyzer := Analyzer{
 		NodeCmd:     nodeCmd,
 		NodeVersion: nodeVersion,
 
-		NPMCmd:     npmCmd,
-		NPMVersion: npmVersion,
+		Tool: npmTool,
 
 		YarnCmd:     yarnCmd,
 		YarnVersion: yarnVersion,
@@ -171,17 +173,11 @@ func (a *Analyzer) Build() error {
 		if err != nil {
 			return errors.Wrap(err, "could not run `yarn` build")
 		}
-	} else if a.NPMCmd != "" {
-		_, _, err := exec.Run(exec.Cmd{
-			Name: a.NPMCmd,
-			Argv: []string{"install", "--production"},
-			Dir:  a.Module.Dir,
-		})
+	} else {
+		err := a.Tool.Install(a.Module.Dir)
 		if err != nil {
 			return errors.Wrap(err, "could not run `npm` build")
 		}
-	} else {
-		return errors.New("no Node.JS build tools detected")
 	}
 
 	log.Debug("Done running Node.js build.")
@@ -224,12 +220,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Debugf("Running Nodejs analysis: %#v", a.Module)
 
-	// Get packages.
-	n := npm.NPM{
-		Cmd:      a.NPMCmd,
-		AllowErr: a.Options.AllowNPMErr || true, // TODO: we should have a strict mode instead of an allow mode
-	}
-	pkgs, err := n.List(filepath.Dir(a.Module.BuildTarget))
+	pkgs, err := a.Tool.List(filepath.Dir(a.Module.BuildTarget))
 	if err != nil {
 		log.Warnf("NPM had non-zero exit code: %s", err.Error())
 	}
