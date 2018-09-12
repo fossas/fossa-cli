@@ -244,7 +244,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	}, nil
 }
 
-func SystemNpmTool(options map[string]interface{}) (npm.SystemNPM, error) {
+func SystemNpmTool(options map[string]interface{}) npm.NPM {
 	npmCmd, _, npmErr := exec.Which("-v", os.Getenv("FOSSA_NPM_CMD"), "npm")
 
 	if npmErr != nil {
@@ -252,16 +252,12 @@ func SystemNpmTool(options map[string]interface{}) (npm.SystemNPM, error) {
 	}
 
 	var decodedOptions Options
-	err := mapstructure.Decode(options, &decodedOptions)
-
-	if err != nil {
-		return npm.SystemNPM{}, err
-	}
+	mapstructure.Decode(options, &decodedOptions)
 
 	return npm.SystemNPM{
 		Cmd:      npmCmd,
-		AllowErr: decodedOptions.AllowNPMErr,
-	}, nil
+		AllowErr: decodedOptions.AllowNPMErr || true,
+	}
 }
 
 // TODO: implement this generically in package graph (Bower also has an
