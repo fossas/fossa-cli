@@ -51,8 +51,10 @@ func TestAnalyzeWithNpmLs(t *testing.T) {
 		Options:     map[string]interface{}{},
 	}
 
-	analyzer, err := nodejs.New(nodeModule, MockNPM{})
+	analyzer, err := nodejs.New(nodeModule)
 	assert.NoError(t, err)
+
+	analyzer.Tool = MockNPM{}
 
 	analysisResults, err := analyzer.Analyze()
 	assert.NoError(t, err)
