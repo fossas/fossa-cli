@@ -26,7 +26,7 @@ type Output struct {
 	Dependencies map[string]Output
 }
 
-func (n *SystemNPM) List(dir string) (Output, error) {
+func (n SystemNPM) List(dir string) (Output, error) {
 	stdout, _, err := exec.Run(exec.Cmd{
 		Name: n.Cmd,
 		Argv: []string{"ls", "--json"},
@@ -45,11 +45,11 @@ func (n *SystemNPM) List(dir string) (Output, error) {
 	return output, nil
 }
 
-func (n *SystemNPM) Clean(dir string) error {
+func (n SystemNPM) Clean(dir string) error {
 	return files.Rm(dir, "node_modules")
 }
 
-func (n *SystemNPM) Install(dir string) error {
+func (n SystemNPM) Install(dir string) error {
 	_, _, err := exec.Run(exec.Cmd{
 		Name: n.Cmd,
 		Argv: []string{"install", "--production"},
