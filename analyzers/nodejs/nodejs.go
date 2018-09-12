@@ -244,22 +244,6 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	}, nil
 }
 
-func SystemNpmTool(options map[string]interface{}) npm.NPM {
-	npmCmd, _, npmErr := exec.Which("-v", os.Getenv("FOSSA_NPM_CMD"), "npm")
-
-	if npmErr != nil {
-		log.Warnf("Could not find NPM: %s", npmErr.Error())
-	}
-
-	var decodedOptions Options
-	mapstructure.Decode(options, &decodedOptions)
-
-	return npm.SystemNPM{
-		Cmd:      npmCmd,
-		AllowErr: decodedOptions.AllowNPMErr || true,
-	}
-}
-
 // TODO: implement this generically in package graph (Bower also has an
 // implementation)
 func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p npm.Output) {
