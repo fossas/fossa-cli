@@ -2,11 +2,17 @@ package npm
 
 import (
 	"encoding/json"
+	"os"
 
 	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/mitchellh/mapstructure"
 )
+
+type Options struct {
+	AllowNPMErr bool `mapstructure:"allow-npm-err"`
+}
 
 type NPM interface {
 	List(dir string) (Output, error)
@@ -59,4 +65,20 @@ func (n SystemNPM) Install(dir string) error {
 		return err
 	}
 	return nil
+}
+
+func New(options map[string]interface{}) NPM {
+	npmCmd, _, npmErr := exec.Which("-v", os.Getenv("FOSSA_NPM_CMD"), "npm")
+
+	if npmErr != nil {
+		log.Warnf("Could not find NPM: %s", npmErr.Error())
+	}
+
+	var decodedOptions Options
+	mapstructure.Decode(options, &decodedOptions)
+
+	return SystemNPM{
+		Cmd:      npmCmd,
+		AllowErr: decodedOptions.AllowNPMErr || true,
+	}
 }
