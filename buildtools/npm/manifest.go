@@ -35,17 +35,19 @@ func FromNodeModules(dir string) (graph.Deps, error) {
 		return graph.Deps{}, errors.New("No package.json at root of node project")
 	}
 
-	pkg, err := PackageFromManifest(filepath.Join(dir, "package.json"))
+	rootPackage, err := PackageFromManifest(filepath.Join(dir, "package.json"))
 	if err != nil {
 		return graph.Deps{}, err
 	}
 
-	directDeps := pkg.Imports
+	directDeps := rootPackage.Imports
 
 	transitiveDeps, err = fromSubNodeModules(dir)
 	if err != nil {
 		return graph.Deps{}, err
 	}
+
+	delete(transitiveDeps, rootPackage.ID)
 
 	return graph.Deps{
 		Direct:     directDeps,
@@ -55,12 +57,11 @@ func FromNodeModules(dir string) (graph.Deps, error) {
 
 func fromSubNodeModules(dir string) (map[pkg.ID]pkg.Package, error) {
 	pkgs := make(map[pkg.ID]pkg.Package)
-	pkg, err := PackageFromManifest(filepath.Join(dir, "package.json"))
+	currentPackage, err := PackageFromManifest(filepath.Join(dir, "package.json"))
 	if err != nil {
 		return nil, err
 	}
 
-	pkgs[pkg.ID] = pkg
 	dir = filepath.Join(dir, "node_modules")
 
 	nodeModulesExist, err := files.ExistsFolder(dir)
@@ -88,7 +89,9 @@ func fromSubNodeModules(dir string) (map[pkg.ID]pkg.Package, error) {
 		}
 	}
 
-	resolveInstalledVersion(pkg, pkgs)
+	pkgs[currentPackage.ID] = currentPackage
+
+	resolveInstalledVersion(currentPackage, pkgs)
 
 	return pkgs, nil
 }

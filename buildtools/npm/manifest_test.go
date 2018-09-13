@@ -34,8 +34,6 @@ func TestFromNodeModules(t *testing.T) {
 	└── type-detect@3.0.0
 */
 func testFromNodeModulesByFixture(t *testing.T, fixture string) {
-	// t.Skip("not yet implemented")
-
 	depGraph, err := npm.FromNodeModules(filepath.Join("fixtures", fixture))
 	assert.NoError(t, err)
 
@@ -76,7 +74,7 @@ func testFromNodeModulesByFixture(t *testing.T, fixture string) {
 	assert.Contains(t, depGraph.Direct, chaiDirectDep)
 	assert.Contains(t, depGraph.Direct, typeDetectDirectDep)
 
-	assert.Len(t, depGraph.Transitive, 9)
+	assert.Len(t, depGraph.Transitive, 8)
 
 	typeDetectTransitiveDepKey := pkg.ID{
 		Location: "",
