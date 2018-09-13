@@ -33,6 +33,7 @@ func TestFromNodeModules(t *testing.T) {
 	│ └── type-detect@4.0.8
 	└── type-detect@3.0.0
 */
+
 func testFromNodeModulesByFixture(t *testing.T, fixture string) {
 
 	depGraph, err := npm.FromNodeModules(filepath.Join("fixtures", fixture))
