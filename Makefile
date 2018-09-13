@@ -6,6 +6,7 @@ PREFIX?=/usr/local/bin
 GO_BINDATA="$(BIN)/go-bindata"
 GENNY="$(BIN)/genny"
 GO_JUNIT_REPORT="$(BIN)/go-junit-report"
+GOVERALLS="$(BIN)/goveralls"
 
 GORELEASER_FLAGS?=--rm-dist
 LDFLAGS:=-ldflags '-extldflags "-static" -X github.com/fossas/fossa-cli/cmd/fossa/version.version=$(shell git rev-parse --abbrev-ref HEAD) -X github.com/fossas/fossa-cli/cmd/fossa/version.commit=$(shell git rev-parse HEAD) -X "github.com/fossas/fossa-cli/cmd/fossa/version.goversion=$(shell go version)" -X github.com/fossas/fossa-cli/cmd/fossa/version.buildType=development'
@@ -24,6 +25,9 @@ $(GENNY):
 
 $(GO_JUNIT_REPORT):
 	[ -f $@ ] || go get -u github.com/jstemmer/go-junit-report
+
+$(GOVERALLS):
+	[ -f $@ ] || go get -u github.com/mattn/goveralls
 
 # Building the CLI.
 .PHONY: build
@@ -90,8 +94,8 @@ unit-test:
 	go test ./...
 
 .PHONY: junit-test
-junit-test: $(GO_JUNIT_REPORT)
-	go test -v ./... | go-junit-report
+junit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
+	goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) | go-junit-report
 
 .PHONY: integration-test
 integration-test: docker-test
