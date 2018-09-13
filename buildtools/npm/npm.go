@@ -2,13 +2,24 @@ package npm
 
 import (
 	"encoding/json"
+	"os"
 
 	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 )
 
-type NPM struct {
+type Options struct {
+	AllowNPMErr bool `mapstructure:"allow-npm-err"`
+}
+
+type NPM interface {
+	List(dir string) (Output, error)
+	Clean(dir string) error
+	Install(dir string) error
+}
+
+type SystemNPM struct {
 	Cmd      string
 	AllowErr bool
 }
@@ -20,7 +31,7 @@ type Output struct {
 	Dependencies map[string]Output
 }
 
-func (n *NPM) List(dir string) (Output, error) {
+func (n SystemNPM) List(dir string) (Output, error) {
 	stdout, _, err := exec.Run(exec.Cmd{
 		Name: n.Cmd,
 		Argv: []string{"ls", "--json"},
@@ -39,11 +50,11 @@ func (n *NPM) List(dir string) (Output, error) {
 	return output, nil
 }
 
-func (n *NPM) Clean(dir string) error {
+func (n SystemNPM) Clean(dir string) error {
 	return files.Rm(dir, "node_modules")
 }
 
-func (n *NPM) Install(dir string) error {
+func (n SystemNPM) Install(dir string) error {
 	_, _, err := exec.Run(exec.Cmd{
 		Name: n.Cmd,
 		Argv: []string{"install", "--production"},
@@ -53,4 +64,17 @@ func (n *NPM) Install(dir string) error {
 		return err
 	}
 	return nil
+}
+
+func New() (NPM, error) {
+	npmCmd, _, npmErr := exec.Which("-v", os.Getenv("FOSSA_NPM_CMD"), "npm")
+
+	if npmErr != nil {
+		log.Warnf("Could not find NPM: %s", npmErr.Error())
+	}
+
+	return SystemNPM{
+		Cmd:      npmCmd,
+		AllowErr: true,
+	}, nil
 }
