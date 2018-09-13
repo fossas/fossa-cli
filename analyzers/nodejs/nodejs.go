@@ -83,10 +83,8 @@ func New(m module.Module) (*Analyzer, error) {
 	}
 
 	npmTool, err := npm.New()
-
 	if err != nil {
 		log.Error("Could not initialize npm tooling")
-
 		return nil, err
 	}
 
