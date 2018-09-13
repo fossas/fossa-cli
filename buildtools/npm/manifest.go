@@ -42,12 +42,10 @@ func FromNodeModules(dir string) (graph.Deps, error) {
 
 	directDeps := rootPackage.Imports
 
-	transitiveDeps, err = fromSubNodeModules(dir)
+	transitiveDeps, err = fromSubNodeModules(dir, rootPackage.ID.Name)
 	if err != nil {
 		return graph.Deps{}, err
 	}
-
-	delete(transitiveDeps, rootPackage.ID)
 
 	return graph.Deps{
 		Direct:     directDeps,
@@ -55,11 +53,16 @@ func FromNodeModules(dir string) (graph.Deps, error) {
 	}, nil
 }
 
-func fromSubNodeModules(dir string) (map[pkg.ID]pkg.Package, error) {
+func fromSubNodeModules(dir string, rootProjectName string) (map[pkg.ID]pkg.Package, error) {
 	pkgs := make(map[pkg.ID]pkg.Package)
 	currentPackage, err := PackageFromManifest(filepath.Join(dir, "package.json"))
 	if err != nil {
 		return nil, err
+	}
+
+	// root package's imports are the graph's direct deps. This function will include all package.jsons except the root project (with this line)
+	if rootProjectName != currentPackage.ID.Name {
+		pkgs[currentPackage.ID] = currentPackage
 	}
 
 	dir = filepath.Join(dir, "node_modules")
@@ -79,7 +82,7 @@ func fromSubNodeModules(dir string) (map[pkg.ID]pkg.Package, error) {
 
 	// base case is no additional layers of node modules, in which case this loops never runs
 	for _, subDir := range subDirNames {
-		subDirPackages, err := fromSubNodeModules(filepath.Join(dir, subDir))
+		subDirPackages, err := fromSubNodeModules(filepath.Join(dir, subDir), rootProjectName)
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +92,7 @@ func fromSubNodeModules(dir string) (map[pkg.ID]pkg.Package, error) {
 		}
 	}
 
-	pkgs[currentPackage.ID] = currentPackage
+	// this assignment must come after the recursive call
 
 	resolveInstalledVersion(currentPackage, pkgs)
 

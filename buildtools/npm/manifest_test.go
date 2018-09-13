@@ -34,6 +34,7 @@ func TestFromNodeModules(t *testing.T) {
 	└── type-detect@3.0.0
 */
 func testFromNodeModulesByFixture(t *testing.T, fixture string) {
+
 	depGraph, err := npm.FromNodeModules(filepath.Join("fixtures", fixture))
 	assert.NoError(t, err)
 
@@ -92,8 +93,8 @@ func testFromNodeModulesByFixture(t *testing.T, fixture string) {
 	assert.True(t, ContainsImport(chaiProject.Imports, "assertion-error", "1.1.0"), "missing assertion-error@1.1.0")
 	assert.True(t, ContainsImport(chaiProject.Imports, "check-error", "1.0.2"), "missing check-error@1.0.2")
 	assert.True(t, ContainsImport(chaiProject.Imports, "get-func-name", "2.0.0"), "missing get-func-name")
-	assert.True(t, ContainsImport(chaiProject.Imports, "pathval", "1.1.0"), "missing assertion-error@1.1.0")
-	assert.True(t, ContainsImport(chaiProject.Imports, "type-detect", "4.0.8"), "missing assertion-error@1.1.0")
+	assert.True(t, ContainsImport(chaiProject.Imports, "pathval", "1.1.0"), "missing pathvalr@1.1.0")
+	assert.True(t, ContainsImport(chaiProject.Imports, "type-detect", "4.0.8"), "missing type-detect@4.0.8")
 }
 
 func ContainsImport(imports pkg.Imports, packageName string, revision string) bool {
