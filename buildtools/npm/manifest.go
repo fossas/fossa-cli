@@ -66,6 +66,7 @@ func FromLockfile(filename string) (Lockfile, error) {
 	return Lockfile{}, errors.ErrNotImplemented
 }
 
+// TODO: add support for NODE_PATH and GLOBAL_FOLDERS.
 func subModulePath(moduleName string, currentDir string) (string, error) {
 	var modulePath string
 	parentPath := filepath.Dir(currentDir)
