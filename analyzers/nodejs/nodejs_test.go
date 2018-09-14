@@ -25,6 +25,10 @@ func TestNoDependencies(t *testing.T) {
 	a, err := analyzers.New(m)
 	assert.NoError(t, err)
 
+	a.(*nodejs.Analyzer).Tool = MockNPM{
+		JSONFilename: filepath.Join("testdata", "empty", "npm-ls-json.json"),
+	}
+
 	deps, err := a.Analyze()
 	assert.NoError(t, err)
 	assert.Empty(t, deps.Direct)
@@ -52,6 +56,10 @@ func TestDuplicateDependencies(t *testing.T) {
 
 	a, err := analyzers.New(m)
 	assert.NoError(t, err)
+
+	a.(*nodejs.Analyzer).Tool = MockNPM{
+		JSONFilename: filepath.Join("testdata", "duplicates", "npm-ls-json.json"),
+	}
 
 	// We run this multiple times because this bug may flake; map traversal order
 	// is random in Go.
