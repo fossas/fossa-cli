@@ -35,7 +35,6 @@ func TestFromNodeModules(t *testing.T) {
 */
 
 func testFromNodeModulesByFixture(t *testing.T, fixture string) {
-
 	depGraph, err := npm.FromNodeModules(filepath.Join("fixtures", fixture))
 	assert.NoError(t, err)
 
