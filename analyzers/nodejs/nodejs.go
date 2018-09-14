@@ -196,7 +196,7 @@ func (a *Analyzer) Build() error {
 func (a *Analyzer) IsBuilt() (bool, error) {
 	log.Debugf("Checking Node.js build: %#v", a.Module)
 
-	pkg, err := npm.PackageFromManifest(a.Module.BuildTarget, "package.json")
+	pkg, err := npm.PackageFromManifest(filepath.Join(a.Module.BuildTarget, "package.json"))
 	if err != nil {
 		return false, errors.Wrap(err, "could not parse package manifest to check build")
 	}

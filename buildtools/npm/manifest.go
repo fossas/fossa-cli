@@ -66,6 +66,34 @@ func FromLockfile(filename string) (Lockfile, error) {
 	return Lockfile{}, errors.ErrNotImplemented
 }
 
+func subModulePath(moduleName string, currentDir string) (string, error) {
+	var modulePath string
+	parentPath := filepath.Dir(currentDir)
+	if filepath.Base(currentDir) == "node_modules" {
+		modulePath = filepath.Join(currentDir, moduleName)
+
+		// remove extra node_modules
+		parentPath = filepath.Dir(parentPath)
+	} else {
+		modulePath = filepath.Join(currentDir, "node_modules", moduleName)
+	}
+
+	moduleFolderExists, err := files.ExistsFolder(modulePath)
+	if err != nil {
+		return "", err
+	}
+
+	if moduleFolderExists {
+		return modulePath, nil
+	}
+
+	if parentPath == currentDir {
+		return "", errors.New("cannot find source of module " + moduleName)
+	}
+
+	return subModulePath(moduleName, parentPath)
+}
+
 func convertManifestToPkg(manifest manifest) pkg.Package {
 	id := pkg.ID{
 		Type:     pkg.NodeJS,
@@ -101,12 +129,10 @@ func fromSubNodeModules(currentDir string, rootNodeModuleDir string, previousPac
 	submoduleProjects := make(map[pkg.ID]pkg.Package)
 
 	for i, imported := range previousPackage.Imports {
-		validSubmodulePath, err := findValidSubModulePath(imported.Target, currentDir, rootNodeModuleDir)
+		validSubmodulePath, err := subModulePath(imported.Target, currentDir)
 		if err != nil {
 			return nil, err
 		}
-
-		validSubmodulePath = filepath.Join(validSubmodulePath, imported.Target)
 
 		subProject, err := PackageFromManifest(validSubmodulePath, "package.json")
 		if err != nil {
