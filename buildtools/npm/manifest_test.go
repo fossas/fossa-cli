@@ -11,7 +11,7 @@ import (
 )
 
 func TestFromManifest(t *testing.T) {
-	pkg, err := npm.PackageFromManifest("fixtures/nested_node_modules/", "package.json")
+	pkg, err := npm.PackageFromManifest(filepath.Join("fixtures", "nested_node_modules/"), "package.json")
 	assert.NoError(t, err)
 
 	assert.NotEmpty(t, pkg.Imports)
