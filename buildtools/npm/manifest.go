@@ -16,10 +16,10 @@ type manifest struct {
 }
 
 // generates a package definition for the provided manifest in the supplied directory
-func PackageFromManifest(dir string, manifestFileName string) (pkg.Package, error) {
+func PackageFromManifest(pathElems ...string) (pkg.Package, error) {
 	var manifest manifest
 
-	filePath := filepath.Join(dir, manifestFileName)
+	filePath := filepath.Join(pathElems...)
 
 	err := files.ReadJSON(&manifest, filePath)
 	if err != nil {
