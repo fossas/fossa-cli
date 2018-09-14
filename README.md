@@ -17,6 +17,9 @@
   <a href="http://slack.fossa.io/">
     <img src="https://slack.fossa.io/badge.svg">
   </a>
+  <a href='https://coveralls.io/github/fossas/fossa-cli?branch=master'>
+    <img src='https://coveralls.io/repos/github/fossas/fossa-cli/badge.svg?branch=master' alt='coverage status' />
+  </a>
 </p>
 
 ## Background

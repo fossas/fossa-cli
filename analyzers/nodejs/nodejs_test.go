@@ -1,6 +1,7 @@
 package nodejs_test
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ func TestNoDependencies(t *testing.T) {
 }
 
 func TestAnalyzeWithNpmLs(t *testing.T) {
-	buildTarget := "fixtures/with_node_modules"
+	buildTarget := filepath.Join("fixtures", "with_node_modules")
 
 	nodeModule := module.Module{
 		Name:        "test",
@@ -27,7 +28,9 @@ func TestAnalyzeWithNpmLs(t *testing.T) {
 	analyzer, err := nodejs.New(nodeModule)
 	assert.NoError(t, err)
 
-	analyzer.Tool = nodejs.MockNPM{}
+	analyzer.Tool = MockNPM{
+		JSONFilename: filepath.Join("fixtures", "npmLsOutput.json"),
+	}
 
 	analysisResults, err := analyzer.Analyze()
 	assert.NoError(t, err)

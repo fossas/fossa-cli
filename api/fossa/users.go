@@ -1,16 +1,15 @@
 package fossa
 
 import (
-	"fmt"
-	"net/url"
+	"errors"
 	"strconv"
 )
 
-var UsersAPI = "/api/users/%s"
+const OrganizationAPI = "/api/cli/organization"
 
 var CachedOrganizationID = -1
 
-type User struct {
+type Organization struct {
 	OrganizationID int
 }
 
@@ -19,15 +18,15 @@ func GetOrganizationID() (string, error) {
 		return strconv.Itoa(CachedOrganizationID), nil
 	}
 
-	q := url.Values{}
-	q.Add("count", "1")
-
-	var users []User
-	_, err := GetJSON(fmt.Sprintf(UsersAPI, "?"+q.Encode()), &users)
+	var organization Organization
+	_, err := GetJSON(OrganizationAPI, &organization)
 	if err != nil {
 		return "", err
 	}
+	if organization.OrganizationID == 0 {
+		return "", errors.New("could not get organization for api key")
+	}
 
-	CachedOrganizationID = users[0].OrganizationID
+	CachedOrganizationID = organization.OrganizationID
 	return strconv.Itoa(CachedOrganizationID), nil
 }
