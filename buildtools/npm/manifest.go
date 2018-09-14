@@ -126,13 +126,17 @@ func fromSubNodeModules(currentDir string, rootNodeModuleDir string, previousPac
 			return nil, err
 		}
 
-		for pkgID, nextLevelSubModule := range nextLevelSubModules {
-			submoduleProjects[nextLevelSubModule.ID] = nextLevelSubModule
-			submoduleProjects[pkgID] = nextLevelSubModule
-		}
+		addNextDepthSubModulesToSubModuleAccumulator(submoduleProjects, nextLevelSubModules)
 	}
 
 	return submoduleProjects, nil
+}
+
+func addNextDepthSubModulesToSubModuleAccumulator(accumulator map[pkg.ID]pkg.Package, nextDepthModules map[pkg.ID]pkg.Package) {
+	for pkgID, nextLevelSubModule := range nextDepthModules {
+		accumulator[nextLevelSubModule.ID] = nextLevelSubModule
+		accumulator[pkgID] = nextLevelSubModule
+	}
 }
 
 func findValidSubModulePath(submodule string, currentDir string, rootNodeModuleDir string) (string, error) {
