@@ -58,6 +58,48 @@ func FromNodeModules(dir string) (graph.Deps, error) {
 	}, nil
 }
 
+type Lockfile struct {
+	Dependencies map[string]struct {
+		Version  string
+		Requires map[string]string
+	}
+}
+
+func FromLockfile(filename string) (Lockfile, error) {
+	return Lockfile{}, errors.ErrNotImplemented
+}
+
+func convertManifestToPkg(manifest manifest) pkg.Package {
+	id := pkg.ID{
+		Type:     pkg.NodeJS,
+		Name:     manifest.Name,
+		Revision: manifest.Version,
+	}
+
+	var imports pkg.Imports
+	for depName, version := range manifest.Dependencies {
+		imports = append(imports, createImport(depName, version))
+	}
+
+	return pkg.Package{
+		ID:      id,
+		Imports: imports,
+	}
+}
+
+func createImport(packageName string, version string) pkg.Import {
+	id := pkg.ID{
+		Type:     pkg.NodeJS,
+		Name:     packageName,
+		Revision: version,
+	}
+
+	return pkg.Import{
+		Target:   packageName,
+		Resolved: id,
+	}
+}
+
 func fromSubNodeModules(currentDir string, rootNodeModuleDir string, previousPackage pkg.Package) (map[pkg.ID]pkg.Package, error) {
 	submoduleProjects := make(map[pkg.ID]pkg.Package)
 
@@ -121,46 +163,4 @@ func submoduleByNodeModules(currentDir string, submodule string) (string, error)
 	}
 
 	return filepath.Join(currentDir, "node_modules"), nil
-}
-
-type Lockfile struct {
-	Dependencies map[string]struct {
-		Version  string
-		Requires map[string]string
-	}
-}
-
-func FromLockfile(filename string) (Lockfile, error) {
-	return Lockfile{}, errors.ErrNotImplemented
-}
-
-func convertManifestToPkg(manifest manifest) pkg.Package {
-	id := pkg.ID{
-		Type:     pkg.NodeJS,
-		Name:     manifest.Name,
-		Revision: manifest.Version,
-	}
-
-	var imports pkg.Imports
-	for depName, version := range manifest.Dependencies {
-		imports = append(imports, createImport(depName, version))
-	}
-
-	return pkg.Package{
-		ID:      id,
-		Imports: imports,
-	}
-}
-
-func createImport(packageName string, version string) pkg.Import {
-	id := pkg.ID{
-		Type:     pkg.NodeJS,
-		Name:     packageName,
-		Revision: version,
-	}
-
-	return pkg.Import{
-		Target:   packageName,
-		Resolved: id,
-	}
 }
