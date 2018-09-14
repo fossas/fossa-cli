@@ -127,6 +127,9 @@ func fromSubNodeModules(currentDir string, previousPackage pkg.Package) (map[pkg
 
 	for i, imported := range previousPackage.Imports {
 		pathToSubModule, subProject, err := subModule(imported.Target, currentDir)
+		if err != nil {
+			return nil, err
+		}
 
 		submoduleProjects[subProject.ID] = subProject
 
