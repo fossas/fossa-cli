@@ -10,16 +10,6 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-/*
-	keep a reference to the first depth of node_modules
-	For each dep, search 1 level deeper than you are currently located.
-	If not found, reference the root level. If found, use that.
-
-	Use the packages created from submodules and match on TargetName/ID.Name to resolve the revision
-
-	Make sacrifice to relevant god
-*/
-
 type manifest struct {
 	Name         string
 	Version      string
