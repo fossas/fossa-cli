@@ -15,7 +15,7 @@ type manifest struct {
 	Dependencies map[string]string
 }
 
-// generates a package definition for the provided manifest in the supplied directory
+// PackageFromManifest generates a package definition for the provided manifest in the supplied directory
 func PackageFromManifest(pathElems ...string) (pkg.Package, error) {
 	var manifest manifest
 
@@ -29,13 +29,13 @@ func PackageFromManifest(pathElems ...string) (pkg.Package, error) {
 	return convertManifestToPkg(manifest), nil
 }
 
-// Generates the dep graph based on the manifest provided in the supplied directory
+// FromNodeModules Generates the dep graph based on the manifest provided in the supplied directory
 func FromNodeModules(dir string, manifestFileName string) (graph.Deps, error) {
 	exists, err := files.Exists(dir, manifestFileName)
 	if err != nil {
 		return graph.Deps{}, err
 	} else if !exists {
-		return graph.Deps{}, errors.New("No package.json at root of node project")
+		return graph.Deps{}, errors.New("no package.json at root of node project")
 	}
 
 	rootPackage, err := PackageFromManifest(dir, manifestFileName)
