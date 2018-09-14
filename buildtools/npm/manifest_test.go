@@ -96,16 +96,11 @@ func testFromNodeModulesByFixture(t *testing.T, fixture string) {
 
 func AssertImport(t *testing.T, imports pkg.Imports, name, revision string) {
 	// Inline the `ContainsImport` logic.
-	contained := ContainsImport(imports, name, revision)
-	assert.True(t, contained, "missing "+name+"@"+revision)
-}
-
-func ContainsImport(imports pkg.Imports, packageName string, revision string) bool {
 	for _, importedProj := range imports {
-		if importedProj.Resolved.Name == packageName && importedProj.Resolved.Revision == revision {
-			return true
+		if importedProj.Resolved.Name == name && importedProj.Resolved.Revision == revision {
+			return
 		}
 	}
 
-	return false
+	assert.Fail(t, "missing "+name+"@"+revision)
 }
