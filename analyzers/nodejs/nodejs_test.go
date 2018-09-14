@@ -16,7 +16,7 @@ func TestNoDependencies(t *testing.T) {
 }
 
 func TestAnalyzeWithNpmLs(t *testing.T) {
-	buildTarget := filepath.Join("fixtures", "with_node_modules")
+	buildTarget := filepath.Join("testdata", "chai", "installed")
 
 	nodeModule := module.Module{
 		Name:        "test",
@@ -29,7 +29,7 @@ func TestAnalyzeWithNpmLs(t *testing.T) {
 	assert.NoError(t, err)
 
 	analyzer.Tool = MockNPM{
-		JSONFilename: filepath.Join("fixtures", "npmLsOutput.json"),
+		JSONFilename: filepath.Join("testdata", "chai", "npm-ls-json.json"),
 	}
 
 	analysisResults, err := analyzer.Analyze()
