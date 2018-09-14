@@ -140,8 +140,6 @@ func addNextDepthSubModulesToSubModuleAccumulator(accumulator map[pkg.ID]pkg.Pac
 }
 
 func findValidSubModulePath(submodule string, currentDir string, rootNodeModuleDir string) (string, error) {
-	var path string = ""
-
 	// check n + 1 depth
 	path, err := submoduleByNodeModules(currentDir, submodule)
 	if err != nil {
