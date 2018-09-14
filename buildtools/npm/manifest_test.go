@@ -87,11 +87,17 @@ func testFromNodeModulesByFixture(t *testing.T, fixture string) {
 	chaiProject := depGraph.Transitive[chaiDirectDep.Resolved]
 	assert.NotNil(t, chaiProject)
 	assert.Len(t, chaiProject.Imports, 6)
-	assert.True(t, ContainsImport(chaiProject.Imports, "assertion-error", "1.1.0"), "missing assertion-error@1.1.0")
-	assert.True(t, ContainsImport(chaiProject.Imports, "check-error", "1.0.2"), "missing check-error@1.0.2")
-	assert.True(t, ContainsImport(chaiProject.Imports, "get-func-name", "2.0.0"), "missing get-func-name")
-	assert.True(t, ContainsImport(chaiProject.Imports, "pathval", "1.1.0"), "missing pathval@1.1.0")
-	assert.True(t, ContainsImport(chaiProject.Imports, "type-detect", "4.0.8"), "missing type-detect@4.0.8")
+	AssertImport(t, chaiProject.Imports, "assertion-error", "1.1.0")
+	AssertImport(t, chaiProject.Imports, "check-error", "1.0.2")
+	AssertImport(t, chaiProject.Imports, "get-func-name", "2.0.0")
+	AssertImport(t, chaiProject.Imports, "pathval", "1.1.0")
+	AssertImport(t, chaiProject.Imports, "type-detect", "4.0.8")
+}
+
+func AssertImport(t *testing.T, imports pkg.Imports, name, revision string) {
+	// Inline the `ContainsImport` logic.
+	contained := ContainsImport(imports, name, revision)
+	assert.True(t, contained, "missing "+name+"@"+revision)
 }
 
 func ContainsImport(imports pkg.Imports, packageName string, revision string) bool {
