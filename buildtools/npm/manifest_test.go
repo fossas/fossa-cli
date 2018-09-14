@@ -10,11 +10,10 @@ import (
 )
 
 func TestFromManifest(t *testing.T) {
-	manifest, err := npm.FromManifest("testdata/package.json")
+	manifestPackage, err := npm.PackageFromManifest("testdata/package.json")
 	assert.NoError(t, err)
 
-	assert.NotEmpty(t, manifest.Dependencies)
-	assert.Equal(t, manifest.Dependencies["chai"], "4.1.2")
+	assert.NotEmpty(t, manifestPackage.Imports)
 }
 
 func TestFromNodeModules(t *testing.T) {
