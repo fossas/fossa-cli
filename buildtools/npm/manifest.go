@@ -43,8 +43,6 @@ func FromNodeModules(dir string, manifestFileName string) (graph.Deps, error) {
 		return graph.Deps{}, err
 	}
 
-	directDeps := rootPackage.Imports
-
 	transitiveDeps, err := fromSubNodeModules(dir, dir, rootPackage)
 
 	if err != nil {
@@ -52,7 +50,7 @@ func FromNodeModules(dir string, manifestFileName string) (graph.Deps, error) {
 	}
 
 	return graph.Deps{
-		Direct:     directDeps,
+		Direct:     rootPackage.Imports,
 		Transitive: transitiveDeps,
 	}, nil
 }
