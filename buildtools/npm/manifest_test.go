@@ -85,6 +85,7 @@ func testFromNodeModulesByFixture(t *testing.T, fixture string) {
 	assert.Contains(t, depGraph.Transitive, typeDetectTransitiveDepKey)
 
 	chaiProject := depGraph.Transitive[chaiDirectDep.Resolved]
+	assert.Equal(t, chaiDirectDep.Resolved, chaiProject.ID)
 	assert.NotNil(t, chaiProject)
 	assert.Len(t, chaiProject.Imports, 6)
 	AssertImport(t, chaiProject.Imports, "assertion-error", "1.1.0")
@@ -92,6 +93,10 @@ func testFromNodeModulesByFixture(t *testing.T, fixture string) {
 	AssertImport(t, chaiProject.Imports, "get-func-name", "2.0.0")
 	AssertImport(t, chaiProject.Imports, "pathval", "1.1.0")
 	AssertImport(t, chaiProject.Imports, "type-detect", "4.0.8")
+
+	typeDetectProject := depGraph.Transitive[typeDetectDirectDep.Resolved]
+	assert.Equal(t, typeDetectDirectDep.Resolved, typeDetectProject.ID)
+	assert.Empty(t, typeDetectProject.Imports)
 }
 
 func AssertImport(t *testing.T, imports pkg.Imports, name, revision string) {
