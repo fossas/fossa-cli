@@ -103,25 +103,22 @@ func convertManifestToPkg(manifest manifest) pkg.Package {
 
 	var imports pkg.Imports
 	for depName, version := range manifest.Dependencies {
-		imports = append(imports, createImport(depName, version))
+		id := pkg.ID{
+			Type:     pkg.NodeJS,
+			Name:     depName,
+			Revision: version,
+		}
+
+		depImport := pkg.Import{
+			Target:   depName,
+			Resolved: id,
+		}
+		imports = append(imports, depImport)
 	}
 
 	return pkg.Package{
 		ID:      id,
 		Imports: imports,
-	}
-}
-
-func createImport(packageName string, version string) pkg.Import {
-	id := pkg.ID{
-		Type:     pkg.NodeJS,
-		Name:     packageName,
-		Revision: version,
-	}
-
-	return pkg.Import{
-		Target:   packageName,
-		Resolved: id,
 	}
 }
 
