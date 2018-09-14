@@ -1,0 +1,137 @@
+{
+  "problems": [
+    "peer dep missing: request@^2.34, required by request-promise@4.2.2",
+    "peer dep missing: request@^2.34, required by request-promise-core@1.1.1"
+  ],
+  "dependencies": {
+    "babel-polyfill": {
+      "version": "6.26.0",
+      "from": "babel-polyfill@6.26.0",
+      "resolved": "https://registry.npmjs.org/babel-polyfill/-/babel-polyfill-6.26.0.tgz",
+      "dependencies": {
+        "babel-runtime": {
+          "version": "6.26.0",
+          "from": "babel-runtime@6.26.0",
+          "resolved": "https://registry.npmjs.org/babel-runtime/-/babel-runtime-6.26.0.tgz",
+          "dependencies": {
+            "regenerator-runtime": {
+              "version": "0.11.1",
+              "from": "regenerator-runtime@0.11.1",
+              "resolved": "https://registry.npmjs.org/regenerator-runtime/-/regenerator-runtime-0.11.1.tgz"
+            },
+            "core-js": {
+              "version": "2.5.7",
+              "from": "core-js@2.5.7",
+              "resolved": "https://registry.npmjs.org/core-js/-/core-js-2.5.7.tgz"
+            }
+          }
+        },
+        "core-js": {
+          "version": "2.5.7",
+          "from": "core-js@2.5.7",
+          "resolved": "https://registry.npmjs.org/core-js/-/core-js-2.5.7.tgz"
+        },
+        "regenerator-runtime": {
+          "version": "0.10.5",
+          "from": "regenerator-runtime@0.10.5",
+          "resolved": "https://registry.npmjs.org/regenerator-runtime/-/regenerator-runtime-0.10.5.tgz"
+        }
+      }
+    },
+    "jira-client": {
+      "version": "6.4.1",
+      "from": "jira-client@6.4.1",
+      "resolved": "https://registry.npmjs.org/jira-client/-/jira-client-6.4.1.tgz",
+      "problems": [
+        "peer dep missing: request@^2.34, required by request-promise@4.2.2",
+        "peer dep missing: request@^2.34, required by request-promise-core@1.1.1"
+      ],
+      "dependencies": {
+        "babel-runtime": {
+          "version": "6.26.0",
+          "from": "babel-runtime@6.26.0",
+          "resolved": "https://registry.npmjs.org/babel-runtime/-/babel-runtime-6.26.0.tgz"
+        },
+        "request-promise": {
+          "version": "4.2.2",
+          "from": "request-promise@4.2.2",
+          "resolved": "https://registry.npmjs.org/request-promise/-/request-promise-4.2.2.tgz",
+          "problems": [
+            "peer dep missing: request@^2.34, required by request-promise-core@1.1.1"
+          ],
+          "dependencies": {
+            "bluebird": {
+              "version": "3.5.2",
+              "from": "bluebird@3.5.2",
+              "resolved": "https://registry.npmjs.org/bluebird/-/bluebird-3.5.2.tgz"
+            },
+            "request-promise-core": {
+              "version": "1.1.1",
+              "from": "request-promise-core@1.1.1",
+              "resolved": "https://registry.npmjs.org/request-promise-core/-/request-promise-core-1.1.1.tgz",
+              "dependencies": {
+                "lodash": {
+                  "version": "4.17.10",
+                  "from": "lodash@4.17.10",
+                  "resolved": "https://registry.npmjs.org/lodash/-/lodash-4.17.10.tgz"
+                }
+              }
+            },
+            "stealthy-require": {
+              "version": "1.1.1",
+              "from": "stealthy-require@1.1.1",
+              "resolved": "https://registry.npmjs.org/stealthy-require/-/stealthy-require-1.1.1.tgz"
+            },
+            "tough-cookie": {
+              "version": "2.4.3",
+              "from": "tough-cookie@2.4.3",
+              "resolved": "https://registry.npmjs.org/tough-cookie/-/tough-cookie-2.4.3.tgz",
+              "dependencies": {
+                "psl": {
+                  "version": "1.1.29",
+                  "from": "psl@1.1.29",
+                  "resolved": "https://registry.npmjs.org/psl/-/psl-1.1.29.tgz"
+                },
+                "punycode": {
+                  "version": "1.4.1",
+                  "from": "punycode@1.4.1",
+                  "resolved": "https://registry.npmjs.org/punycode/-/punycode-1.4.1.tgz"
+                }
+              }
+            },
+            "request": {
+              "required": {
+                "_id": "request@^2.34",
+                "name": "request",
+                "version": "^2.34",
+                "peerMissing": [
+                  {
+                    "requiredBy": "request-promise-core@1.1.1",
+                    "requires": "request@^2.34"
+                  }
+                ],
+                "dependencies": {}
+              },
+              "peerMissing": true
+            }
+          }
+        },
+        "request": {
+          "required": {
+            "_id": "request@^2.34",
+            "name": "request",
+            "version": "^2.34",
+            "peerMissing": [
+              {
+                "requiredBy": "request-promise@4.2.2",
+                "requires": "request@^2.34"
+              }
+            ],
+            "dependencies": {}
+          },
+          "peerMissing": true
+        }
+      }
+    }
+  }
+}

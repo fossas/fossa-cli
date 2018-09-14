@@ -5,7 +5,7 @@
 //
 // A `BuildTarget` for Node.js is defined as the relative path to the directory
 // containing the `package.json`, and the `Dir` is defined as the CWD for
-// running tools.
+// running build tools (like `npm` or `yarn`).
 //
 // `npm` and `yarn` are explicitly supported as first-class tools. Where
 // possible, these tools are queried before falling back to other strategies.
@@ -17,15 +17,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/apex/log"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/buildtools/npm"
-	"github.com/fossas/fossa-cli/graph"
-
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -151,6 +150,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	return modules, nil
 }
 
+// Clean removes `node_modules`.
 func (a *Analyzer) Clean() error {
 	return files.Rm(a.Module.Dir, "node_modules")
 }
@@ -161,7 +161,7 @@ func (a *Analyzer) Clean() error {
 func (a *Analyzer) Build() error {
 	log.Debugf("Running Node.js build: %#v", a.Module)
 
-	// Prefer Yarn where possible
+	// Prefer Yarn where possible.
 	if ok, err := files.Exists(a.Module.Dir, "yarn.lock"); err == nil && ok && a.YarnCmd != "" {
 		_, _, err := exec.Run(exec.Cmd{
 			Name: a.YarnCmd,
@@ -223,6 +223,8 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		log.Warnf("NPM had non-zero exit code: %s", err.Error())
 	}
 
+	// TODO: we should move this functionality in to the buildtool, and have it
+	// return `pkg.Package`s.
 	// Set direct dependencies.
 	var imports []pkg.Import
 	for name, dep := range pkgs.Dependencies {
@@ -260,12 +262,10 @@ func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p npm.Output) {
 			Revision: dep.Version,
 			Location: dep.Resolved,
 		}
-		// Don't process duplicates.
-		_, ok := pkgMap[id]
-		if ok {
-			continue
-		}
-		// Get direct imports.
+		// Handle previously seen (usually deduplicated) entries: see #257.
+		previous := pkgMap[id]
+
+		// Set direct imports.
 		var imports []pkg.Import
 		for name, i := range p.Dependencies {
 			imports = append(imports, pkg.Import{
@@ -279,9 +279,12 @@ func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p npm.Output) {
 			})
 		}
 		// Update map.
+		// NOTE: We're assuming that each deduplicated dependency's imports will
+		// only be listed once. This assumption might not be true. If it's not, then
+		// we need to do a set union instead of a list concatenation.
 		pkgMap[id] = pkg.Package{
 			ID:      id,
-			Imports: imports,
+			Imports: append(imports, previous.Imports...),
 		}
 		// Recurse in imports.
 		recurseDeps(pkgMap, dep)

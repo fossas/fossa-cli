@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "babel-polyfill": "6.26.0",
+    "jira-client": "6.4.1"
+  }
+}
