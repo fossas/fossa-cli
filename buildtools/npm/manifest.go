@@ -76,7 +76,7 @@ func fromSubNodeModules(currentDir string, rootNodeModuleDir string, previousPac
 
 		submoduleProjects[subProject.ID] = subProject
 
-		// update previous project's revision resolved reference to stamp out non-deterministic behavior (e.g. semver form package.json)
+		// update previous project's revision resolved reference to stamp out non-deterministic behavior (e.g. semver defined versions in package.json)
 		previousPackage.Imports[i].Resolved.Revision = subProject.ID.Revision
 
 		nextLevelSubModules, err := fromSubNodeModules(validSubmodulePath, rootNodeModuleDir, subProject)
