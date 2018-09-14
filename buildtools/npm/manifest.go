@@ -126,22 +126,14 @@ func fromSubNodeModules(currentDir string, previousPackage pkg.Package) (map[pkg
 	submoduleProjects := make(map[pkg.ID]pkg.Package)
 
 	for i, imported := range previousPackage.Imports {
-		validSubmodulePath, err := subModulePath(imported.Target, currentDir)
-		if err != nil {
-			return nil, err
-		}
-
-		subProject, err := PackageFromManifest(validSubmodulePath, "package.json")
-		if err != nil {
-			return nil, err
-		}
+		pathToSubModule, subProject, err := subModule(imported.Target, currentDir)
 
 		submoduleProjects[subProject.ID] = subProject
 
 		// update previous project's revision resolved reference to stamp out non-deterministic behavior (e.g. semver defined versions in package.json)
 		previousPackage.Imports[i].Resolved.Revision = subProject.ID.Revision
 
-		nextLevelSubModules, err := fromSubNodeModules(validSubmodulePath, subProject)
+		nextLevelSubModules, err := fromSubNodeModules(pathToSubModule, subProject)
 		if err != nil {
 			return nil, err
 		}
@@ -153,4 +145,18 @@ func fromSubNodeModules(currentDir string, previousPackage pkg.Package) (map[pkg
 	}
 
 	return submoduleProjects, nil
+}
+
+func subModule(moduleName string, currentDir string) (pathToSubModule string, modulePackage pkg.Package, err error) {
+	pathToSubModule, err = subModulePath(moduleName, currentDir)
+	if err != nil {
+		return "", pkg.Package{}, err
+	}
+
+	modulePackage, err = PackageFromManifest(pathToSubModule, "package.json")
+	if err != nil {
+		return "", pkg.Package{}, err
+	}
+
+	return
 }
