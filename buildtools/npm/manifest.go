@@ -115,7 +115,6 @@ func findValidSubModulePath(submodule string, currentDir string, rootNodeModuleD
 }
 
 func submoduleByNodeModules(currentDir string, submodule string) (string, error) {
-	// print(currentDir)
 	moduleExists, err := files.ExistsFolder(currentDir, "node_modules", submodule)
 	if err != nil || !moduleExists {
 		return "", err
