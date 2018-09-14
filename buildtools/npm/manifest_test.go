@@ -60,19 +60,6 @@ func testFromNodeModulesByFixture(t *testing.T, fixture string) {
 		},
 	}
 
-	/*
-
-		├─┬ chai@4.1.2
-		│ ├── assertion-error@1.1.0
-		│ ├── check-error@1.0.2
-		│ ├─┬ deep-eql@3.0.1
-		│ │ └── type-detect@4.0.8
-		│ ├── get-func-name@2.0.0
-		│ ├── pathval@1.1.0
-		│ └── type-detect@4.0.8
-		└── type-detect@3.0.0
-
-	*/
 	assert.Contains(t, depGraph.Direct, chaiDirectDep)
 	assert.Contains(t, depGraph.Direct, typeDetectDirectDep)
 
