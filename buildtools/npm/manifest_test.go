@@ -4,10 +4,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fossas/fossa-cli/pkg"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/buildtools/npm"
-	"github.com/stretchr/testify/assert"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
 func TestFromManifest(t *testing.T) {
