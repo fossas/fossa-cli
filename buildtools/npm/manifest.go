@@ -154,31 +154,3 @@ func fromSubNodeModules(currentDir string, rootNodeModuleDir string, previousPac
 
 	return submoduleProjects, nil
 }
-
-func findValidSubModulePath(submodule string, currentDir string, rootNodeModuleDir string) (string, error) {
-	// check n + 1 depth
-	path, err := submoduleByNodeModules(currentDir, submodule)
-	if err != nil {
-		return "", err
-	}
-
-	if path != "" {
-		return path, nil
-	}
-
-	path, err = submoduleByNodeModules(rootNodeModuleDir, submodule)
-	if err != nil {
-		return "", err
-	}
-
-	return path, nil
-}
-
-func submoduleByNodeModules(currentDir string, submodule string) (string, error) {
-	moduleExists, err := files.ExistsFolder(currentDir, "node_modules", submodule)
-	if err != nil || !moduleExists {
-		return "", err
-	}
-
-	return filepath.Join(currentDir, "node_modules"), nil
-}
