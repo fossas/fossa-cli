@@ -35,7 +35,7 @@ func getDirectDepImports() (chaiDirectDep pkg.Import, typeDetectDirectDep pkg.Im
 }
 
 func TestFromManifest(t *testing.T) {
-	pkg, err := npm.PackageFromManifest(filepath.Join("fixtures", "nested_node_modules/"), "package.json")
+	pkg, err := npm.PackageFromManifest(filepath.Join("testdata", "nested_node_modules/"), "package.json")
 	assert.NoError(t, err)
 
 	chaiDirectDep, typeDetectDirectDep := getDirectDepImports()
@@ -64,7 +64,7 @@ func TestFromNodeModules(t *testing.T) {
 
 func testFromNodeModulesByFixture(t *testing.T, fixture string) {
 	chaiDirectDep, typeDetectDirectDep := getDirectDepImports()
-	depGraph, err := npm.FromNodeModules(filepath.Join("fixtures", fixture), "package.json")
+	depGraph, err := npm.FromNodeModules(filepath.Join("testdata", fixture), "package.json")
 	assert.NoError(t, err)
 
 	assert.Len(t, depGraph.Direct, 2)
