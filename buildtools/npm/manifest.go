@@ -46,7 +46,7 @@ func FromNodeModules(dir string) (graph.Deps, error) {
 
 	directDeps := rootPackage.Imports
 
-	transitiveDeps, err := fromSubNodeModules2(dir, dir, rootPackage)
+	transitiveDeps, err := fromSubNodeModules(dir, dir, rootPackage)
 
 	if err != nil {
 		return graph.Deps{}, err
@@ -58,7 +58,7 @@ func FromNodeModules(dir string) (graph.Deps, error) {
 	}, nil
 }
 
-func fromSubNodeModules2(currentDir string, rootNodeModuleDir string, previousPackage pkg.Package) (map[pkg.ID]pkg.Package, error) {
+func fromSubNodeModules(currentDir string, rootNodeModuleDir string, previousPackage pkg.Package) (map[pkg.ID]pkg.Package, error) {
 	submoduleProjects := make(map[pkg.ID]pkg.Package)
 
 	for i, imported := range previousPackage.Imports {
@@ -79,7 +79,7 @@ func fromSubNodeModules2(currentDir string, rootNodeModuleDir string, previousPa
 		// update previous project's revision resolved reference to stamp out non-deterministic behavior (e.g. semver form package.json)
 		previousPackage.Imports[i].Resolved.Revision = subProject.ID.Revision
 
-		nextLevelSubModules, err := fromSubNodeModules2(validSubmodulePath, rootNodeModuleDir, subProject)
+		nextLevelSubModules, err := fromSubNodeModules(validSubmodulePath, rootNodeModuleDir, subProject)
 		if err != nil {
 			return nil, err
 		}
