@@ -16,11 +16,12 @@ type manifest struct {
 	Dependencies map[string]string
 }
 
-func PackageFromManifest(filename string) (pkg.Package, error) {
+// generates a package definition for the provided manifest in the supplied directory
+func PackageFromManifest(filename string, manifestFileName string) (pkg.Package, error) {
 	var manifest manifest
 
-	if !strings.HasSuffix(filename, "package.json") {
-		filename = filepath.Join(filename, "package.json")
+	if !strings.HasSuffix(filename, manifestFileName) {
+		filename = filepath.Join(filename, manifestFileName)
 	}
 
 	err := files.ReadJSON(&manifest, filename)
@@ -31,15 +32,16 @@ func PackageFromManifest(filename string) (pkg.Package, error) {
 	return convertManifestToPkg(manifest), nil
 }
 
-func FromNodeModules(dir string) (graph.Deps, error) {
-	exists, err := files.Exists(dir, "package.json")
+// Generates the dep graph based on the manifest provided in the supplied directory
+func FromNodeModules(dir string, manifestFileName string) (graph.Deps, error) {
+	exists, err := files.Exists(dir, manifestFileName)
 	if err != nil {
 		return graph.Deps{}, err
 	} else if !exists {
 		return graph.Deps{}, errors.New("No package.json at root of node project")
 	}
 
-	rootPackage, err := PackageFromManifest(filepath.Join(dir, "package.json"))
+	rootPackage, err := PackageFromManifest(dir, manifestFileName)
 	if err != nil {
 		return graph.Deps{}, err
 	}
@@ -111,7 +113,7 @@ func fromSubNodeModules(currentDir string, rootNodeModuleDir string, previousPac
 
 		validSubmodulePath = filepath.Join(validSubmodulePath, imported.Target)
 
-		subProject, err := PackageFromManifest(validSubmodulePath)
+		subProject, err := PackageFromManifest(validSubmodulePath, "package.json")
 		if err != nil {
 			return nil, err
 		}

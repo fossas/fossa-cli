@@ -11,7 +11,7 @@ import (
 )
 
 func TestFromManifest(t *testing.T) {
-	pkg, err := npm.PackageFromManifest("fixtures/nested_node_modules/package.json")
+	pkg, err := npm.PackageFromManifest("fixtures/nested_node_modules/", "package.json")
 	assert.NoError(t, err)
 
 	assert.NotEmpty(t, pkg.Imports)
@@ -35,7 +35,7 @@ func TestFromNodeModules(t *testing.T) {
 */
 
 func testFromNodeModulesByFixture(t *testing.T, fixture string) {
-	depGraph, err := npm.FromNodeModules(filepath.Join("fixtures", fixture))
+	depGraph, err := npm.FromNodeModules(filepath.Join("fixtures", fixture), "package.json")
 	assert.NoError(t, err)
 
 	assert.Len(t, depGraph.Direct, 2)
