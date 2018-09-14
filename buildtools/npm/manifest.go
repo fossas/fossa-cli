@@ -2,7 +2,6 @@ package npm
 
 import (
 	"path/filepath"
-	"strings"
 
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
@@ -17,14 +16,12 @@ type manifest struct {
 }
 
 // generates a package definition for the provided manifest in the supplied directory
-func PackageFromManifest(filename string, manifestFileName string) (pkg.Package, error) {
+func PackageFromManifest(dir string, manifestFileName string) (pkg.Package, error) {
 	var manifest manifest
 
-	if !strings.HasSuffix(filename, manifestFileName) {
-		filename = filepath.Join(filename, manifestFileName)
-	}
+	filePath := filepath.Join(dir, manifestFileName)
 
-	err := files.ReadJSON(&manifest, filename)
+	err := files.ReadJSON(&manifest, filePath)
 	if err != nil {
 		return pkg.Package{}, err
 	}
