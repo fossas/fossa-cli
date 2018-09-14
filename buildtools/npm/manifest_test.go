@@ -10,11 +10,39 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
+func getDirectDepImports() (chaiDirectDep pkg.Import, typeDetectDirectDep pkg.Import) {
+	chaiDirectDep = pkg.Import{
+		Target: "chai",
+		Resolved: pkg.ID{
+			Location: "",
+			Name:     "chai",
+			Revision: "4.1.2",
+			Type:     pkg.NodeJS,
+		},
+	}
+
+	typeDetectDirectDep = pkg.Import{
+		Target: "type-detect",
+		Resolved: pkg.ID{
+			Location: "",
+			Name:     "type-detect",
+			Revision: "3.0.0",
+			Type:     pkg.NodeJS,
+		},
+	}
+
+	return
+}
+
 func TestFromManifest(t *testing.T) {
 	pkg, err := npm.PackageFromManifest(filepath.Join("fixtures", "nested_node_modules/"), "package.json")
 	assert.NoError(t, err)
 
-	assert.NotEmpty(t, pkg.Imports)
+	chaiDirectDep, typeDetectDirectDep := getDirectDepImports()
+
+	assert.Len(t, pkg.Imports, 2)
+	assert.Contains(t, pkg.Imports, chaiDirectDep)
+	assert.Contains(t, pkg.Imports, typeDetectDirectDep)
 }
 
 func TestFromNodeModules(t *testing.T) {
@@ -35,29 +63,11 @@ func TestFromNodeModules(t *testing.T) {
 */
 
 func testFromNodeModulesByFixture(t *testing.T, fixture string) {
+	chaiDirectDep, typeDetectDirectDep := getDirectDepImports()
 	depGraph, err := npm.FromNodeModules(filepath.Join("fixtures", fixture), "package.json")
 	assert.NoError(t, err)
 
 	assert.Len(t, depGraph.Direct, 2)
-	chaiDirectDep := pkg.Import{
-		Target: "chai",
-		Resolved: pkg.ID{
-			Location: "",
-			Name:     "chai",
-			Revision: "4.1.2",
-			Type:     pkg.NodeJS,
-		},
-	}
-
-	typeDetectDirectDep := pkg.Import{
-		Target: "type-detect",
-		Resolved: pkg.ID{
-			Location: "",
-			Name:     "type-detect",
-			Revision: "3.0.0",
-			Type:     pkg.NodeJS,
-		},
-	}
 
 	assert.Contains(t, depGraph.Direct, chaiDirectDep)
 	assert.Contains(t, depGraph.Direct, typeDetectDirectDep)
