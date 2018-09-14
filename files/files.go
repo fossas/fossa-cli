@@ -67,20 +67,3 @@ func notExistErr(err error) bool {
 func Rm(pathElems ...string) error {
 	return os.RemoveAll(filepath.Join(pathElems...))
 }
-
-func DirectoryNames(path string) ([]string, error) {
-	dirs := make([]string, 0)
-
-	files, err := ioutil.ReadDir(path)
-	if err != nil {
-		return dirs, err
-	}
-
-	for _, file := range files {
-		if file.IsDir() {
-			dirs = append(dirs, file.Name())
-		}
-	}
-
-	return dirs, nil
-}
