@@ -30,20 +30,24 @@ func PackageFromManifest(pathElems ...string) (pkg.Package, error) {
 }
 
 // FromNodeModules generates the dep graph based on the manifest provided in the supplied directory
-func FromNodeModules(dir string, manifestFileName string) (graph.Deps, error) {
-	exists, err := files.Exists(dir, manifestFileName)
+func FromNodeModules(pathElems ...string) (graph.Deps, error) {
+	manifestPath := filepath.Join(pathElems...)
+	exists, err := files.Exists(manifestPath)
 	if err != nil {
 		return graph.Deps{}, err
 	} else if !exists {
 		return graph.Deps{}, errors.New("no package.json at root of node project")
 	}
 
-	rootPackage, err := PackageFromManifest(dir, manifestFileName)
+	rootPackage, err := PackageFromManifest(manifestPath)
 	if err != nil {
 		return graph.Deps{}, err
 	}
 
-	transitiveDeps, err := fromModulesHelper(dir, rootPackage)
+	// The root package also get's bundled in, but it is not a dep of itself, so remove it
+	transitiveDeps, err := fromModulesHelper(manifestPath)
+
+	delete(transitiveDeps, rootPackage.ID)
 
 	if err != nil {
 		return graph.Deps{}, err
@@ -67,7 +71,7 @@ func FromLockfile(filename string) (Lockfile, error) {
 }
 
 // TODO: add support for NODE_PATH and GLOBAL_FOLDERS.
-func subModulePath(moduleName string, startingDir string) (string, error) {
+func modulePath(startingDir string, moduleName string) (string, error) {
 	filePath, err := files.WalkUp(startingDir, func(currentDir string) (err error) {
 		if filepath.Base(currentDir) == moduleName {
 			return files.ErrStopWalk
@@ -85,7 +89,7 @@ func subModulePath(moduleName string, startingDir string) (string, error) {
 		return nil
 	})
 
-	return filepath.Join(filePath, moduleName), err
+	return filepath.Join(filePath, moduleName, "package.json"), err
 }
 
 func convertManifestToPkg(manifest manifest) pkg.Package {
@@ -116,36 +120,51 @@ func convertManifestToPkg(manifest manifest) pkg.Package {
 	}
 }
 
-func fromModulesHelper(currentDir string, previousPackage pkg.Package) (map[pkg.ID]pkg.Package, error) {
-	submoduleProjects := make(map[pkg.ID]pkg.Package)
+func fromModulesHelper(pathToModule string) (map[pkg.ID]pkg.Package, error) {
+	moduleProjects := make(map[pkg.ID]pkg.Package)
+	currentDir := filepath.Dir(pathToModule)
 
-	for i, imported := range previousPackage.Imports {
-		pathToSubModule, subProject, err := subModule(imported.Target, filepath.Join(currentDir, "node_modules"))
+	currentModule, err := PackageFromManifest(pathToModule)
+	if err != nil {
+		println(pathToModule)
+		return nil, err
+	}
+
+	for i, imported := range currentModule.Imports {
+		currentDirWithNodeModules := filepath.Join(currentDir, "node_modules")
+		pathToDepModule, err := modulePath(currentDirWithNodeModules, imported.Target)
 		if err != nil {
 			return nil, err
 		}
 
-		submoduleProjects[subProject.ID] = subProject
+		modulePackage, err := PackageFromManifest(pathToDepModule) //, "package.json")
+		if err != nil {
+			return nil, err
+		}
+
+		moduleProjects[modulePackage.ID] = modulePackage
 
 		// update previous project's revision resolved reference to stamp out non-deterministic behavior (e.g. semver defined versions in package.json)
-		previousPackage.Imports[i].Resolved.Revision = subProject.ID.Revision
+		currentModule.Imports[i].Resolved = modulePackage.ID
+		println("UPDATING " + currentModule.Imports[i].Target + "@" + currentModule.Imports[i].Resolved.Revision + " to " + modulePackage.ID.Revision)
 
-		nextLevelSubModules, err := fromModulesHelper(pathToSubModule, subProject)
+		moduleProjects[currentModule.ID] = currentModule
+
+		nextLevelSubModules, err := fromModulesHelper(pathToDepModule)
 		if err != nil {
 			return nil, err
 		}
 
 		for _, nextLevelSubModule := range nextLevelSubModules {
-			submoduleProjects[nextLevelSubModule.ID] = nextLevelSubModule
+			moduleProjects[nextLevelSubModule.ID] = nextLevelSubModule
 		}
 	}
 
-	return submoduleProjects, nil
+	return moduleProjects, nil
 }
 
-func subModule(moduleName string, currentDir string) (string, pkg.Package, error) {
-	pathToSubModule, err := subModulePath(moduleName, currentDir)
-
+func subModule(currentDir string, moduleName string) (string, pkg.Package, error) {
+	pathToSubModule, err := modulePath(currentDir, moduleName)
 	if err != nil {
 		return "", pkg.Package{}, err
 	}
