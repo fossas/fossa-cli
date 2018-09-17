@@ -43,7 +43,7 @@ func FromNodeModules(dir string, manifestFileName string) (graph.Deps, error) {
 		return graph.Deps{}, err
 	}
 
-	transitiveDeps, err := fromSubNodeModules(dir, rootPackage)
+	transitiveDeps, err := fromModulesHelper(dir, rootPackage)
 
 	if err != nil {
 		return graph.Deps{}, err
@@ -116,7 +116,7 @@ func convertManifestToPkg(manifest manifest) pkg.Package {
 	}
 }
 
-func fromSubNodeModules(currentDir string, previousPackage pkg.Package) (map[pkg.ID]pkg.Package, error) {
+func fromModulesHelper(currentDir string, previousPackage pkg.Package) (map[pkg.ID]pkg.Package, error) {
 	submoduleProjects := make(map[pkg.ID]pkg.Package)
 
 	for i, imported := range previousPackage.Imports {
@@ -130,7 +130,7 @@ func fromSubNodeModules(currentDir string, previousPackage pkg.Package) (map[pkg
 		// update previous project's revision resolved reference to stamp out non-deterministic behavior (e.g. semver defined versions in package.json)
 		previousPackage.Imports[i].Resolved.Revision = subProject.ID.Revision
 
-		nextLevelSubModules, err := fromSubNodeModules(pathToSubModule, subProject)
+		nextLevelSubModules, err := fromModulesHelper(pathToSubModule, subProject)
 		if err != nil {
 			return nil, err
 		}
