@@ -162,17 +162,3 @@ func fromModulesHelper(pathToModule string) (map[pkg.ID]pkg.Package, error) {
 
 	return moduleProjects, nil
 }
-
-func subModule(currentDir string, moduleName string) (string, pkg.Package, error) {
-	pathToSubModule, err := modulePath(currentDir, moduleName)
-	if err != nil {
-		return "", pkg.Package{}, err
-	}
-
-	modulePackage, err := PackageFromManifest(pathToSubModule, "package.json")
-	if err != nil {
-		return "", pkg.Package{}, err
-	}
-
-	return pathToSubModule, modulePackage, nil
-}
