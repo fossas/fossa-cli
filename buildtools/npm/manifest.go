@@ -67,32 +67,25 @@ func FromLockfile(filename string) (Lockfile, error) {
 }
 
 // TODO: add support for NODE_PATH and GLOBAL_FOLDERS.
-func subModulePath(moduleName string, currentDir string) (string, error) {
-	var modulePath string
-	parentPath := filepath.Dir(currentDir)
-	if filepath.Base(currentDir) == "node_modules" {
-		modulePath = filepath.Join(currentDir, moduleName)
+func subModulePath(moduleName string, startingDir string) (string, error) {
+	filePath, err := files.WalkUp(startingDir, func(currentDir string) (err error) {
+		if filepath.Base(currentDir) == moduleName {
+			return files.ErrStopWalk
+		}
 
-		// remove extra node_modules
-		parentPath = filepath.Dir(parentPath)
-	} else {
-		modulePath = filepath.Join(currentDir, "node_modules", moduleName)
-	}
+		exists, err := files.ExistsFolder(filepath.Join(currentDir, moduleName))
+		if err != nil {
+			return err
+		}
 
-	moduleFolderExists, err := files.ExistsFolder(modulePath)
-	if err != nil {
-		return "", err
-	}
+		if exists {
+			return files.ErrStopWalk
+		}
 
-	if moduleFolderExists {
-		return modulePath, nil
-	}
+		return nil
+	})
 
-	if parentPath == currentDir {
-		return "", errors.New("cannot find source of module " + moduleName)
-	}
-
-	return subModulePath(moduleName, parentPath)
+	return filepath.Join(filePath, moduleName), err
 }
 
 func convertManifestToPkg(manifest manifest) pkg.Package {
@@ -127,7 +120,7 @@ func fromSubNodeModules(currentDir string, previousPackage pkg.Package) (map[pkg
 	submoduleProjects := make(map[pkg.ID]pkg.Package)
 
 	for i, imported := range previousPackage.Imports {
-		pathToSubModule, subProject, err := subModule(imported.Target, currentDir)
+		pathToSubModule, subProject, err := subModule(imported.Target, filepath.Join(currentDir, "node_modules"))
 		if err != nil {
 			return nil, err
 		}
@@ -152,6 +145,7 @@ func fromSubNodeModules(currentDir string, previousPackage pkg.Package) (map[pkg
 
 func subModule(moduleName string, currentDir string) (pathToSubModule string, modulePackage pkg.Package, err error) {
 	pathToSubModule, err = subModulePath(moduleName, currentDir)
+	println(pathToSubModule)
 	if err != nil {
 		return "", pkg.Package{}, err
 	}
