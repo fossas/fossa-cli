@@ -142,9 +142,8 @@ func fromSubNodeModules(currentDir string, previousPackage pkg.Package) (map[pkg
 			return nil, err
 		}
 
-		for pkgID, nextLevelSubModule := range nextLevelSubModules {
+		for _, nextLevelSubModule := range nextLevelSubModules {
 			submoduleProjects[nextLevelSubModule.ID] = nextLevelSubModule
-			submoduleProjects[pkgID] = nextLevelSubModule
 		}
 	}
 
