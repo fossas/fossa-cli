@@ -143,17 +143,17 @@ func fromModulesHelper(currentDir string, previousPackage pkg.Package) (map[pkg.
 	return submoduleProjects, nil
 }
 
-func subModule(moduleName string, currentDir string) (pathToSubModule string, modulePackage pkg.Package, err error) {
-	pathToSubModule, err = subModulePath(moduleName, currentDir)
-	println(pathToSubModule)
+func subModule(moduleName string, currentDir string) (string, pkg.Package, error) {
+	pathToSubModule, err := subModulePath(moduleName, currentDir)
+
 	if err != nil {
 		return "", pkg.Package{}, err
 	}
 
-	modulePackage, err = PackageFromManifest(pathToSubModule, "package.json")
+	modulePackage, err := PackageFromManifest(pathToSubModule, "package.json")
 	if err != nil {
 		return "", pkg.Package{}, err
 	}
 
-	return
+	return pathToSubModule, modulePackage, nil
 }
