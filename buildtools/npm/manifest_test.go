@@ -35,7 +35,7 @@ func getDirectDepImports() (chaiDirectDep pkg.Import, typeDetectDirectDep pkg.Im
 }
 
 func TestFromManifest(t *testing.T) {
-	pkg, err := npm.PackageFromManifest(filepath.Join("testdata", "nested_node_modules/"), "package.json")
+	pkg, err := npm.PackageFromManifest(filepath.Join("testdata", "nested_node_modules"), "package.json")
 	assert.NoError(t, err)
 
 	chaiDirectDep, typeDetectDirectDep := getDirectDepImports()
