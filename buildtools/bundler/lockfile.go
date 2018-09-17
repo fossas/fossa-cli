@@ -51,7 +51,7 @@ func (r *Requirement) String() string {
 }
 
 // ^(leading whitespace)(name)(optional: exclamation mark or (space + (version specifier) within parentheses (optional: exclamation mark)))$
-var requirementsRegex = regexp.MustCompile("^( *?)(\\S+?)(?:\\!?|( \\((.*?)\\)\\!?)?)$")
+var requirementsRegex = regexp.MustCompile(`^( *?)(\S+?)(?:\!?|( \((.*?)\)\!?)?)$`)
 
 // TODO: actually parse these. We ignore them right now, so I haven't bothered
 // implementing parsing logic.

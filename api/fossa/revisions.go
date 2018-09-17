@@ -113,10 +113,8 @@ func GetRevisions(locators []Locator) (revs []Revision, err error) {
 
 	var revisions []Revision
 	for range chunks {
-		select {
-		case r := <-responses:
-			revisions = append(revisions, r...)
-		}
+		r := <-responses
+		revisions = append(revisions, r...)
 	}
 
 	return revisions, err

@@ -23,5 +23,5 @@ func Template(tmpl *template.Template, data interface{}) (string, error) {
 		return "", err
 	}
 
-	return string(buf.Bytes()), nil
+	return buf.String(), nil
 }

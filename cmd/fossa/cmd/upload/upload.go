@@ -141,7 +141,7 @@ func Run(ctx *cli.Context) {
 		log.Fatalf("Upload failed: %s", err.Error())
 	}
 	display.ClearProgress()
-	fmt.Printf(locator.ReportURL())
+	fmt.Println(locator.ReportURL())
 }
 
 // Do performs a SourceUnit upload of the current project without other side
