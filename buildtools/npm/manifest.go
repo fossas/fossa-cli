@@ -128,7 +128,6 @@ func fromModulesHelper(pathToModule string) (map[pkg.ID]pkg.Package, error) {
 
 	currentModule, err := PackageFromManifest(pathToModule)
 	if err != nil {
-		println(pathToModule)
 		return nil, err
 	}
 
@@ -148,7 +147,6 @@ func fromModulesHelper(pathToModule string) (map[pkg.ID]pkg.Package, error) {
 
 		// update previous project's revision resolved reference to stamp out non-deterministic behavior (e.g. semver defined versions in package.json)
 		currentModule.Imports[i].Resolved = modulePackage.ID
-		println("UPDATING " + currentModule.Imports[i].Target + "@" + currentModule.Imports[i].Resolved.Revision + " to " + modulePackage.ID.Revision)
 
 		moduleProjects[currentModule.ID] = currentModule
 
