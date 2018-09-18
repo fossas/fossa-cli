@@ -10,7 +10,7 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-var chaiDirectDep pkg.Import = pkg.Import{
+var chaiDirectDep = pkg.Import{
 	Target: "chai",
 	Resolved: pkg.ID{
 		Location: "",
@@ -20,7 +20,7 @@ var chaiDirectDep pkg.Import = pkg.Import{
 	},
 }
 
-var typeDetectDirectDep pkg.Import = pkg.Import{
+var typeDetectDirectDep = pkg.Import{
 	Target: "type-detect",
 	Resolved: pkg.ID{
 		Location: "",
