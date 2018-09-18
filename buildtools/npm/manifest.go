@@ -9,24 +9,54 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-type manifest struct {
+type Manifest struct {
 	Name         string
 	Version      string
 	Dependencies map[string]string
 }
 
-// PackageFromManifest generates a package definition for the provided manifest in the supplied directory
-func PackageFromManifest(pathElems ...string) (pkg.Package, error) {
-	var manifest manifest
+// FromManifest creates a manifest from the filepath provided
+func FromManifest(pathElems ...string) (Manifest, error) {
+	var manifest Manifest
 
 	filePath := filepath.Join(pathElems...)
 
 	err := files.ReadJSON(&manifest, filePath)
 	if err != nil {
+		return Manifest{}, err
+	}
+
+	return manifest, nil
+}
+
+// PackageFromManifest generates a package definition for the provided manifest in the supplied directory
+func PackageFromManifest(pathElems ...string) (pkg.Package, error) {
+	filePath := filepath.Join(pathElems...)
+	manifest, err := FromManifest(filePath)
+	if err != nil {
 		return pkg.Package{}, err
 	}
 
-	return convertManifestToPkg(manifest), nil
+	manifestAsPackage := convertManifestToPkg(manifest)
+
+	// attempt to resolve revisions if node_modules folder exists and package any imports
+	if len(manifestAsPackage.Imports) == 0 {
+		return manifestAsPackage, nil
+	}
+
+	nodeModuleDirectory := filepath.Join(filepath.Dir(filePath), "node_modules")
+	nodeModulesExists, err := files.ExistsFolder(nodeModuleDirectory)
+	if err != nil {
+		return pkg.Package{}, err
+	}
+
+	if !nodeModulesExists {
+		return manifestAsPackage, nil
+	}
+
+	resolveDirectDependencyVersions(&manifestAsPackage, nodeModuleDirectory)
+
+	return manifestAsPackage, nil
 }
 
 // FromNodeModules generates the dep graph based on the manifest provided at the supplied path
@@ -95,7 +125,7 @@ func modulePath(startingDir string, moduleName string) (string, error) {
 }
 
 // convertManifestToPkg converts a given manifest to a package. Does not resolve unresolved imports
-func convertManifestToPkg(manifest manifest) pkg.Package {
+func convertManifestToPkg(manifest Manifest) pkg.Package {
 	id := pkg.ID{
 		Type:     pkg.NodeJS,
 		Name:     manifest.Name,
@@ -132,7 +162,7 @@ func fromModulesHelper(pathToModule string) (map[pkg.ID]pkg.Package, error) {
 		return nil, err
 	}
 
-	for i, imported := range currentModule.Imports {
+	for _, imported := range currentModule.Imports {
 		currentDirWithNodeModules := filepath.Join(currentDir, "node_modules")
 		pathToDepModule, err := modulePath(currentDirWithNodeModules, imported.Target)
 		if err != nil {
@@ -145,10 +175,6 @@ func fromModulesHelper(pathToModule string) (map[pkg.ID]pkg.Package, error) {
 		}
 
 		moduleProjects[modulePackage.ID] = modulePackage
-
-		// update previous project's revision resolved reference to stamp out non-deterministic behavior (e.g. semver defined versions in package.json)
-		currentModule.Imports[i].Resolved = modulePackage.ID
-
 		moduleProjects[currentModule.ID] = currentModule
 
 		nextLevelSubModules, err := fromModulesHelper(pathToDepModule)
@@ -162,4 +188,22 @@ func fromModulesHelper(pathToModule string) (map[pkg.ID]pkg.Package, error) {
 	}
 
 	return moduleProjects, nil
+}
+
+func resolveDirectDependencyVersions(providedPackge *pkg.Package, nodeModuleDirectory string) error {
+	for i, directDep := range providedPackge.Imports {
+		directDepPath, err := modulePath(nodeModuleDirectory, directDep.Target)
+		if err != nil {
+			return err
+		}
+
+		directDepManifest, err := FromManifest(directDepPath)
+		if err != nil {
+			return err
+		}
+
+		providedPackge.Imports[i].Resolved.Revision = directDepManifest.Version
+	}
+
+	return nil
 }
