@@ -155,6 +155,14 @@ func convertManifestToPkg(manifest Manifest) pkg.Package {
 	}
 }
 
+/*
+	1. get package at pathToModule
+	2. add  currentPackage to the accumulator
+	3. for each of the dependencies found in currentPackage
+		3a. determine the correct path to that module
+		3b. create a package for that dependency and add it to the accumulator
+		3c. recurse to 1 using the path to the dependency
+*/
 func fromModulesHelper(pathToModule string, moduleProjects *map[pkg.ID]pkg.Package) error {
 	currentDir := filepath.Dir(pathToModule)
 
