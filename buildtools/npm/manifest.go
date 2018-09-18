@@ -54,7 +54,10 @@ func PackageFromManifest(pathElems ...string) (pkg.Package, error) {
 		return manifestAsPackage, nil
 	}
 
-	resolveDirectDependencyVersions(&manifestAsPackage, nodeModuleDirectory)
+	err = resolveDirectDependencyVersions(&manifestAsPackage, nodeModuleDirectory)
+	if !nodeModulesExists {
+		return manifestAsPackage, nil
+	}
 
 	return manifestAsPackage, nil
 }
