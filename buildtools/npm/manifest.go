@@ -29,7 +29,7 @@ func FromManifest(pathElems ...string) (Manifest, error) {
 	return manifest, nil
 }
 
-// PackageFromManifest generates a package definition for the provided manifest in the supplied directory
+// PackageFromManifest generates a package definition for the provided manifest in the supplied directory. Performs revision resolution
 func PackageFromManifest(pathElems ...string) (pkg.Package, error) {
 	filePath := filepath.Join(pathElems...)
 	manifest, err := FromManifest(filePath)
