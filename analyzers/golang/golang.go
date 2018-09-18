@@ -49,6 +49,7 @@ type Options struct {
 	BuildArch                 string `mapstructure:"arch"`                         // Target build architecture (for build tags).
 	Strategy                  string `mapstructure:"strategy"`                     // See the Go analyzer documentation.
 	LockfilePath              string `mapstructure:"lockfile"`                     // For non-standard lockfile locations with strategies `manifest:*`.
+	ManifestPath              string `mapstructure:"manifest"`                     // For non-standard manifest locations with strategies `manifest:*`.
 	AllowUnresolved           bool   `mapstructure:"allow-unresolved"`             // Allow unresolved revisions.
 	AllowUnresolvedPrefix     string `mapstructure:"allow-unresolved-prefix"`      // If set, allows unresolved revisions for packages whose import path's prefix matches. Multiple space-delimited prefixes can be specified.
 	AllowNestedVendor         bool   `mapstructure:"allow-nested-vendor"`          // Allows vendor folders to be nested and attempts to resolve using parent lockfile lookup.

@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"errors"
+	"path/filepath"
 
 	"github.com/fossas/fossa-cli/buildtools/dep"
 	"github.com/fossas/fossa-cli/buildtools/gdm"
@@ -30,7 +31,7 @@ const (
 func FromLockfile(tool Type, dir string) (Resolver, error) {
 	switch tool {
 	case Dep:
-		return dep.New(dir)
+		return dep.New(filepath.Join(dir, "Gopkg.lock"), filepath.Join(dir, "Gopkg.toml"))
 	case Gdm:
 		return gdm.New(dir)
 	case Glide:
