@@ -29,7 +29,7 @@ func PackageFromManifest(pathElems ...string) (pkg.Package, error) {
 	return convertManifestToPkg(manifest), nil
 }
 
-// FromNodeModules generates the dep graph based on the manifest provided in the supplied directory
+// FromNodeModules generates the dep graph based on the manifest provided at the supplied path
 func FromNodeModules(pathElems ...string) (graph.Deps, error) {
 	manifestPath := filepath.Join(pathElems...)
 	exists, err := files.Exists(manifestPath)
