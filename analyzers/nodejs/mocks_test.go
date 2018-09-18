@@ -1,6 +1,8 @@
 package nodejs_test
 
 import (
+	"errors"
+
 	"github.com/fossas/fossa-cli/buildtools/npm"
 	"github.com/fossas/fossa-cli/files"
 )
@@ -24,4 +26,18 @@ func (n MockNPM) Clean(dir string) error {
 
 func (n MockNPM) Install(dir string) error {
 	return nil
+}
+
+type MockNPMFailure struct{}
+
+func (n MockNPMFailure) List(_ string) (npm.Output, error) {
+	return npm.Output{}, errors.New("expected failure")
+}
+
+func (n MockNPMFailure) Clean(dir string) error {
+	return errors.New("expected failure")
+}
+
+func (n MockNPMFailure) Install(dir string) error {
+	return errors.New("expected failure")
 }
