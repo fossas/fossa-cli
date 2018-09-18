@@ -110,8 +110,9 @@ func (m *Maven) DependencyTree(dir, project string) ([]Dependency, map[Dependenc
 
 func ParseDependencyTree(stdin string) ([]Dependency, map[Dependency][]Dependency, error) {
 	var filteredLines []string
-	start := regexp.MustCompile("^\\[INFO\\] --- .*? ---$")
+	start := regexp.MustCompile(`^\[INFO\] --- .*? ---$`)
 	started := false
+	// nolint:megacheck
 	r := regexp.MustCompile("^\\[INFO\\] ([ `+\\\\|-]*)([^ `+\\\\|-].+)$")
 	for _, line := range strings.Split(stdin, "\n") {
 		if line == "[INFO] " || line == "[INFO] ------------------------------------------------------------------------" {

@@ -72,7 +72,7 @@ func (s *SBT) DependencyTree(dir, project, configuration string) (pkg.Imports, p
 	}
 
 	file := ""
-	r := regexp.MustCompile("^\\[info\\] Wrote dependency graph to '(.*?)'$")
+	r := regexp.MustCompile(`^\[info\] Wrote dependency graph to '(.*?)'$`)
 	for _, line := range strings.Split(output, "\n") {
 		matches := r.FindStringSubmatch(line)
 		if matches != nil {

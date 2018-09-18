@@ -68,6 +68,7 @@ func (c *Composer) Dependencies(dir string) ([]Package, map[Package][]Package, e
 		}
 
 		// We're somewhere in the tree.
+		// nolint:megacheck
 		r := regexp.MustCompile("^([ \\|`-]+)([^ \\|`-][^ ]+) (.*)$")
 		matches := r.FindStringSubmatch(line)
 		name := matches[2]

@@ -84,6 +84,7 @@ func (g *Gradle) Run(taskArgs ...string) (string, error) {
 //go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package gradle/' > readtree_generated.go"
 
 func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency, error) {
+	// nolint:megacheck
 	r := regexp.MustCompile("^([ `+\\\\|-]+)([^ `+\\\\|-].+)$")
 
 	// Skip non-dependency lines.

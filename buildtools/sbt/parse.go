@@ -74,7 +74,7 @@ func ParseDependencyGraph(graph Graph, evicted string) (pkg.Imports, pkg.Deps, e
 
 func ParseEvicted(evicted string) map[pkg.ID]pkg.ID {
 	replacements := make(map[pkg.ID]pkg.ID)
-	r := regexp.MustCompile("^\\[info\\] 	\\* (.*?) is selected over (.*?)$")
+	r := regexp.MustCompile(`^\[info\] 	\* (.*?) is selected over (.*?)$`)
 	for _, line := range strings.Split(evicted, "\n") {
 		matches := r.FindStringSubmatch(line)
 		if matches != nil {
@@ -99,7 +99,7 @@ func ParseEvicted(evicted string) map[pkg.ID]pkg.ID {
 }
 
 func ParsePackageID(packageID string) pkg.ID {
-	r := regexp.MustCompile("([^:\\s]+):([^:\\s]+):([^:\\s]+).*")
+	r := regexp.MustCompile(`([^:\s]+):([^:\s]+):([^:\s]+).*`)
 	matches := r.FindStringSubmatch(packageID)
 	return pkg.ID{
 		Type:     pkg.Scala,
