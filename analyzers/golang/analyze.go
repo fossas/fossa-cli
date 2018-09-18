@@ -38,10 +38,17 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		if a.Options.LockfilePath == "" {
 			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
 		}
-		r, err = dep.New(a.Options.LockfilePath, a.Options.ManifestPath)
+		depResolver := dep.Resolver{}
+		depResolver.Lockfile, err = dep.ReadLockfile(a.Options.LockfilePath)
 		if err != nil {
 			return graph.Deps{}, err
 		}
+
+		depResolver.Manifest, err = dep.ReadManifest(a.Options.ManifestPath)
+		if err != nil {
+			return graph.Deps{}, err
+		}
+		r = depResolver
 	case "manifest:gdm":
 		if a.Options.LockfilePath == "" {
 			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")

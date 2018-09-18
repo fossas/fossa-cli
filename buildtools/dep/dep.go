@@ -2,6 +2,7 @@
 package dep
 
 import (
+	"fmt"
 	"path"
 	"strings"
 
@@ -113,17 +114,28 @@ func readLockfile(filepath string) (lockfile, error) {
 		}
 	}
 
-	lock.normalized = normalized
-	return lock, nil
+	resolver.Lockfile.normalized = normalized
+	return resolver, nil
 }
 
-// readManifest returns a manifest using the provided filepath.
-func readManifest(filepath string) (manifest, error) {
-	var man manifest
-	err := files.ReadTOML(&man, filepath)
+// ReadLockFile accepts the filepath of a lockfile which it parses into a lockfile object
+func ReadLockfile(filepath string) (Lockfile, error) {
+	var lockfile Lockfile
+
+	err := files.ReadTOML(&lockfile, filepath)
 	if err != nil {
-		return manifest{}, errors.Wrap(err, "No manifest Gopkg.toml found")
+		return Lockfile{}, errors.New(fmt.Sprintf("No lockfile Gopkg.lock found: %+v", err))
+	}
+	return lockfile, nil
+}
+
+// ReadManifest accepts the filepath of a manifest which it parses into a manifest object
+func ReadManifest(filepath string) (Manifest, error) {
+	var manifest Manifest
+	err := files.ReadTOML(&manifest, filepath)
+	if err != nil {
+		return Manifest{}, errors.New(fmt.Sprintf("No manifest Gopkg.toml found: %+v", err))
 	}
 
-	return man, nil
+	return manifest, nil
 }
