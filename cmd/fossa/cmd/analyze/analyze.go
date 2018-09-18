@@ -152,6 +152,6 @@ func uploadAnalysis(normalized []fossa.SourceUnit) error {
 		log.Fatalf("Error during upload: %s", err.Error())
 		return err
 	}
-	fmt.Printf(locator.ReportURL())
+	fmt.Println(locator.ReportURL())
 	return nil
 }

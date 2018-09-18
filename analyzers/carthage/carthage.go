@@ -80,7 +80,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 					log.Debugf("Error searching for Cartfile: %s (%s)", path, err.Error())
 				}
 
-				if cartfileExists == true {
+				if cartfileExists {
 					return nil // This will get picked up before/later if it exists in the same directory
 				}
 			}

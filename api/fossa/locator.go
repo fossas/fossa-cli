@@ -49,6 +49,9 @@ func (l Locator) URL() string {
 			url.PathEscape(branch) +
 			"/" +
 			url.PathEscape(l.Revision))
+	if err != nil {
+		log.Fatalf("Invalid FOSSA URL: %s", err.Error())
+	}
 	return strings.Replace(server.ResolveReference(url).String(), "%", "%%", -1)
 }
 
@@ -88,7 +91,7 @@ func NormalizeGitURL(project string) string {
 
 // ReadLocator parses a string locator into a Locator.
 func ReadLocator(locator string) Locator {
-	locatorRegexp := regexp.MustCompile("^(.*?)\\+(.*?)\\$(.*?)$")
+	locatorRegexp := regexp.MustCompile(`^(.*?)\+(.*?)\$(.*?)$`)
 	matches := locatorRegexp.FindStringSubmatch(locator)
 	return Locator{
 		Fetcher:  matches[1],
