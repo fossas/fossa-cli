@@ -14,6 +14,9 @@
   <a href="https://goreportcard.com/report/github.com/fossas/fossa-cli">
     <img src="https://goreportcard.com/badge/github.com/fossas/fossa-cli">
   </a>
+  <a href="https://golangci.com/r/github.com/fossas/fossa-cli">
+    <img src="https://golangci.com/badges/github.com/fossas/fossa-cli.svg">
+  </a>
   <a href="http://slack.fossa.io/">
     <img src="https://slack.fossa.io/badge.svg">
   </a>

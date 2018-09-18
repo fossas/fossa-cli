@@ -85,15 +85,13 @@ func Do(includeAll bool, options map[string]interface{}) ([]module.Module, error
 		return discovered, nil
 	}
 	var filtered []module.Module
+	suspicious := regexp.MustCompile("(docs?/|[Tt]est|examples?|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/|third_party/|tmp/|Carthage/Checkouts/)")
 	for _, d := range discovered {
 		log.Debugf("Discovered: %#v", d)
 
 		// Match name regexp.
 		// TODO: should we match on full path sections (e.g. right now, this will filter out `a/b/foovendor/c`)?
-		matched, err := regexp.MatchString("(docs?/|[Tt]est|examples?|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/|third_party/|tmp/|Carthage/Checkouts/)", d.Dir)
-		if err != nil {
-			return nil, err
-		}
+		matched := suspicious.MatchString(d.Dir)
 		if matched {
 			log.Warnf("Filtering out suspicious module: %s (%s)", d.Name, d.BuildTarget)
 			continue

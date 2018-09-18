@@ -81,11 +81,11 @@ func licensesRun(ctx *cli.Context) (err error) {
 	}
 	display.ClearProgress()
 
-	depsByLicense := make(map[string]map[string]fossa.Revision, 0)
+	depsByLicense := make(map[string]map[string]fossa.Revision)
 	for _, rev := range revs {
 		for _, license := range rev.Licenses {
 			if _, ok := depsByLicense[license.LicenseID]; !ok {
-				depsByLicense[license.LicenseID] = make(map[string]fossa.Revision, 0)
+				depsByLicense[license.LicenseID] = make(map[string]fossa.Revision)
 			}
 			depsByLicense[license.LicenseID][rev.Locator.String()] = rev
 		}

@@ -40,6 +40,6 @@ func dependenciesRun(ctx *cli.Context) error {
 		return nil
 	}
 
-	display.JSON(pkgs)
-	return nil
+	_, err = display.JSON(pkgs)
+	return err
 }

@@ -41,7 +41,7 @@ func (r Requirement) Package(dir string) (Package, error) {
 		return resolvedCartfile, err
 	}
 
-	if hasResolvedCartfile == false {
+	if !hasResolvedCartfile {
 		log.Debugf("Cartfile.resolved missing in: %#v, exiting.", requirementDirectory)
 		return resolvedCartfile, fmt.Errorf("Cartfile.resolved missing in: %#v", requirementDirectory)
 	}
@@ -121,7 +121,7 @@ func FromResolvedCartfile(projectName string, dir string) (Package, error) {
 			continue
 		}
 
-		if depCheckoutsDirExists == false {
+		if !depCheckoutsDirExists {
 			log.Debugf("Checkouts folder doesn't exist for %#v. Skipping dependency.", checkoutName)
 			continue
 		}
