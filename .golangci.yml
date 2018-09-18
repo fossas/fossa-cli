@@ -1,0 +1,26 @@
+run:
+  skip-files:
+    - ".*_generated\\.go$"
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  misspell:
+    locale: US
+  unused:
+    check-exported: true
+  unparam:
+    algo: rta
+    check-exported: true
+
+linters:
+  enable-all: true
+  disable:
+    - maligned
+    - prealloc
+    - lll
+
+issues:
+  max-per-linter: 0
+  max-same: 0
