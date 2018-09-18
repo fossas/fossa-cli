@@ -124,7 +124,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 		if !info.IsDir() && info.Name() == "package.json" {
 			name := filepath.Base(filepath.Dir(path))
 			// Parse from project name from `package.json` if possible
-			if manifest, err := npm.FromManifest(path, "package.json"); err == nil && pkg.ID.Name != "" {
+			if manifest, err := npm.FromManifest(path, "package.json"); err == nil && manifest.Name != "" {
 				name = manifest.Name
 			}
 
