@@ -103,7 +103,6 @@ func testFromNodeModulesByFixture(t *testing.T, fixture string) {
 }
 
 func AssertImport(t *testing.T, imports pkg.Imports, name, revision string) {
-	// Inline the `ContainsImport` logic.
 	for _, importedProj := range imports {
 		if importedProj.Resolved.Name == name && importedProj.Resolved.Revision == revision {
 			return
