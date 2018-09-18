@@ -1,17 +1,15 @@
-package maven
+package maven_test
 
 import (
 	"encoding/xml"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/apex/log"
-	"github.com/pkg/errors"
-
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/pkg/errors"
 )
 
 type Manifest struct {
@@ -38,28 +36,15 @@ type Dependency struct {
 	Failed  bool
 }
 
-type Maven interface {
-	Clean(dir string) error
-	Compile(dir string) error
-	DependencyList(dir string) (string, error)
-	DependencyTree(dir, project string) ([]Dependency, map[Dependency][]Dependency, error)
-}
-
-// SystemMaven is prod implementation. MockMaven (analyzers/maven/mocks_test.go) is for testing
-type SystemMaven struct {
+type MockMaven struct {
 	Cmd string
 }
 
-func (m SystemMaven) Clean(dir string) error {
-	_, _, err := exec.Run(exec.Cmd{
-		Name: m.Cmd,
-		Argv: []string{"clean", "--batch-mode"},
-		Dir:  dir,
-	})
-	return err
+func (m MockMaven) Clean(dir string) error {
+	return nil
 }
 
-func (m SystemMaven) Compile(dir string) error {
+func (m MockMaven) Compile(dir string) error {
 	_, _, err := exec.Run(exec.Cmd{
 		Name: m.Cmd,
 		Argv: []string{"compile", "-DskipTests", "-Drat.skip=true", "--batch-mode"},
@@ -93,7 +78,7 @@ func Modules(dir string) ([]string, error) {
 	return modules, nil
 }
 
-func (m SystemMaven) DependencyList(dir string) (string, error) {
+func (m MockMaven) DependencyList(dir string) (string, error) {
 	output, _, err := exec.Run(exec.Cmd{
 		Name: m.Cmd,
 		Dir:  dir,
@@ -102,7 +87,7 @@ func (m SystemMaven) DependencyList(dir string) (string, error) {
 	return output, err
 }
 
-func (m SystemMaven) DependencyTree(dir, project string) ([]Dependency, map[Dependency][]Dependency, error) {
+func (m MockMaven) DependencyTree(dir, project string) ([]Dependency, map[Dependency][]Dependency, error) {
 	output, _, err := exec.Run(exec.Cmd{
 		Name: m.Cmd,
 		Dir:  dir,
@@ -161,15 +146,4 @@ func ParseDependencyTree(stdin string) ([]Dependency, map[Dependency][]Dependenc
 
 		return level, Dependency{Name: name, Version: revision, Failed: failed}, nil
 	})
-}
-
-func New(binary string) (Maven, error) {
-	mvnBin, _, err := exec.Which("--version", binary, os.Getenv("MAVEN_BINARY"), "mvn")
-	if err != nil {
-		log.Warnf("Could not find Maven binary: %s", err.Error())
-	}
-
-	return SystemMaven{
-		Cmd: mvnBin,
-	}, nil
 }

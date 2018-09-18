@@ -21,7 +21,10 @@ import (
 )
 
 type Analyzer struct {
-	Maven   maven.Maven
+	Maven maven.Maven
+
+	Tool maven.Maven
+
 	Module  module.Module
 	Options Options
 }
@@ -47,10 +50,20 @@ func New(m module.Module) (*Analyzer, error) {
 		log.Warnf("Could not find Maven binary: %s", err.Error())
 	}
 
+	// To do: only pass in the options string necessary for this
+	mvnTool, err := maven.New(m.Options.Binary)
+	if err != nil {
+		log.Error("Could not initialize maven tooling")
+		return nil, err
+	}
+
 	analyzer := Analyzer{
 		Maven: maven.Maven{
 			Cmd: mvnBin,
 		},
+
+		Tool: mvnTool,
+
 		Module:  m,
 		Options: options,
 	}
