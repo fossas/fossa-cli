@@ -57,7 +57,7 @@ func TestFromNodeModules(t *testing.T) {
 */
 
 func testFromNodeModulesByFixture(t *testing.T, fixture string) {
-	depGraph, err := npm.FromNodeModules(filepath.Join("testdata", fixture), "package.json")
+	depGraph, err := npm.FromNodeModules("testdata", fixture, "package.json")
 	assert.NoError(t, err)
 
 	assert.Len(t, depGraph.Direct, 2)
