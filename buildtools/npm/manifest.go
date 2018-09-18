@@ -94,6 +94,7 @@ func modulePath(startingDir string, moduleName string) (string, error) {
 	return filepath.Join(filePath, moduleName, "package.json"), err
 }
 
+// convertManifestToPkg converts a given manifest to a package. Does not resolve unresolved imports
 func convertManifestToPkg(manifest manifest) pkg.Package {
 	id := pkg.ID{
 		Type:     pkg.NodeJS,
