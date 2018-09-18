@@ -44,9 +44,11 @@ func FromNodeModules(pathElems ...string) (graph.Deps, error) {
 		return graph.Deps{}, err
 	}
 
-	// The root package also get's bundled in, but it is not a dep of itself, so remove it
 	transitiveDeps, err := fromModulesHelper(manifestPath)
 
+	// the fromNodeModulesHelper replaces semver versions with actual versions found in the node_modules dir, so replace the root project with the less ambiguous solution
+	rootPackage = transitiveDeps[rootPackage.ID]
+	// The root package also get's bundled in, but it is not a dep of itself, so remove it
 	delete(transitiveDeps, rootPackage.ID)
 
 	if err != nil {

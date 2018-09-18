@@ -31,12 +31,22 @@ var typeDetectDirectDep pkg.Import = pkg.Import{
 }
 
 func TestFromManifest(t *testing.T) {
+	semverTypeDetectKey := pkg.Import{
+		Target: "type-detect",
+		Resolved: pkg.ID{
+			Location: "",
+			Name:     "type-detect",
+			Revision: "^3.0.0",
+			Type:     pkg.NodeJS,
+		},
+	}
+
 	pkg, err := npm.PackageFromManifest(filepath.Join("testdata", "nested_node_modules"), "package.json")
 	assert.NoError(t, err)
 
 	assert.Len(t, pkg.Imports, 2)
 	assert.Contains(t, pkg.Imports, chaiDirectDep)
-	assert.Contains(t, pkg.Imports, typeDetectDirectDep)
+	assert.Contains(t, pkg.Imports, semverTypeDetectKey)
 }
 
 func TestFromNodeModules(t *testing.T) {
