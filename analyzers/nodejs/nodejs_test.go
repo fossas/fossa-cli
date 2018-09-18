@@ -109,25 +109,27 @@ func TestAnalyzeWithNpmLs(t *testing.T) {
 }
 
 func TestUsingNodeModuleFallback(t *testing.T) {
-	t.Skip("not yet implemented")
-	// buildTarget := "fixtures/with_node_modules/"
+	buildTarget := filepath.Join("testdata", "chai", "installed")
 
-	// nodeModule := module.Module{
-	// 	Name:        "test",
-	// 	Type:        pkg.NodeJS,
-	// 	BuildTarget: buildTarget,
-	// 	Options:     map[string]interface{}{},
-	// }
+	nodeModule := module.Module{
+		Name:        "test",
+		Type:        pkg.NodeJS,
+		BuildTarget: buildTarget,
+		Options:     map[string]interface{}{},
+	}
 
-	// sysTool := nodejs.SystemNpmTool(nodeModule.Options)
+	analyzer, err := nodejs.New(nodeModule)
+	assert.NoError(t, err)
 
-	// analyzer, err := nodejs.New(nodeModule)
-	// assert.NoError(t, err)
+	analyzer.Tool = MockNPMFailure{}
 
-	// analyzer.NPMCmd = "badNpmCommand"
+	analysisResults, err := analyzer.Analyze()
+	assert.NoError(t, err)
 
-	// analysisResults, err := analyzer.Analyze()
-	// assert.NoError(t, err)
+	for dep := range analysisResults.Transitive {
+		println(dep.Name + "@" + dep.Revision)
+	}
 
-	// assert.NotEmpty(t, analysisResults.Direct)
+	assert.Len(t, analysisResults.Direct, 1)
+	assert.Len(t, analysisResults.Transitive, 7)
 }
