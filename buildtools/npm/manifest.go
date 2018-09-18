@@ -74,7 +74,9 @@ func FromNodeModules(pathElems ...string) (graph.Deps, error) {
 		return graph.Deps{}, err
 	}
 
-	transitiveDeps, err := fromModulesHelper(manifestPath)
+	transitiveDeps := make(map[pkg.ID]pkg.Package)
+
+	err = fromModulesHelper(manifestPath, &transitiveDeps)
 
 	// the fromNodeModulesHelper replaces semver versions with actual versions found in the node_modules dir, so replace the root project with the less ambiguous solution
 	rootPackage = transitiveDeps[rootPackage.ID]
@@ -153,41 +155,37 @@ func convertManifestToPkg(manifest Manifest) pkg.Package {
 	}
 }
 
-func fromModulesHelper(pathToModule string) (map[pkg.ID]pkg.Package, error) {
-	moduleProjects := make(map[pkg.ID]pkg.Package)
+func fromModulesHelper(pathToModule string, moduleProjects *map[pkg.ID]pkg.Package) error {
 	currentDir := filepath.Dir(pathToModule)
 
 	currentModule, err := PackageFromManifest(pathToModule)
 	if err != nil {
-		return nil, err
+		return err
 	}
+
+	(*moduleProjects)[currentModule.ID] = currentModule
 
 	for _, imported := range currentModule.Imports {
 		currentDirWithNodeModules := filepath.Join(currentDir, "node_modules")
 		pathToDepModule, err := modulePath(currentDirWithNodeModules, imported.Target)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		modulePackage, err := PackageFromManifest(pathToDepModule) //, "package.json")
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		moduleProjects[modulePackage.ID] = modulePackage
-		moduleProjects[currentModule.ID] = currentModule
+		(*moduleProjects)[modulePackage.ID] = modulePackage
 
-		nextLevelSubModules, err := fromModulesHelper(pathToDepModule)
+		err = fromModulesHelper(pathToDepModule, moduleProjects)
 		if err != nil {
-			return nil, err
-		}
-
-		for _, nextLevelSubModule := range nextLevelSubModules {
-			moduleProjects[nextLevelSubModule.ID] = nextLevelSubModule
+			return err
 		}
 	}
 
-	return moduleProjects, nil
+	return nil
 }
 
 func resolveDirectDependencyVersions(providedPackge *pkg.Package, nodeModuleDirectory string) error {
