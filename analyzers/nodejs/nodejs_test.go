@@ -131,3 +131,22 @@ func TestUsingNodeModuleFallback(t *testing.T) {
 
 	// assert.NotEmpty(t, analysisResults.Direct)
 }
+
+func TestOnlyProdDeps(t *testing.T) {
+    m := module.Module{
+		Dir:  filepath.Join("testdata", "prodonly"),
+		Type: pkg.NodeJS,
+	}
+
+	a, err := analyzers.New(m)
+	assert.NoError(t, err)
+
+	a.(*nodejs.Analyzer).Tool = MockNPM{
+		JSONFilename: filepath.Join("testdata", "prodonly", "package.json"),
+	}
+
+	deps, err := a.Analyze()
+	assert.NoError(t, err)
+	assert.Empty(t, deps.Direct)
+	assert.Empty(t, deps.Transitive)
+}
