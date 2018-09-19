@@ -1,39 +1,48 @@
 package node
- import (
+
+import (
 	"os"
 	"path/filepath"
 	"sync"
- 	"github.com/fossas/fossa-cli/exec"
+
+	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/test/testtools"
 )
- type Project struct {
+
+type Project struct {
 	name   string
 	url    string
 	commit string
 	env    map[string]string
 }
- type NodeInitializer struct {
+
+type NodeInitializer struct {
 	projects []Project
 }
- func New() NodeInitializer {
+
+func New() NodeInitializer {
 	return NodeInitializer{
 		projects: projects,
 	}
 }
- func (n NodeInitializer) BuildAll() error {
+
+func (n NodeInitializer) BuildAll() error {
 	testDir := n.FixtureDirectory()
- 	var waitGroup sync.WaitGroup
+	var waitGroup sync.WaitGroup
 	waitGroup.Add(len(n.projects))
- 	for _, project := range n.projects {
+
+	for _, project := range n.projects {
 		// Cloning an installing are slow, so run in parallel for each project
 		go func(proj Project) {
 			defer waitGroup.Done()
+
 			projectDir := filepath.Join(testDir, proj.name)
- 			err := testtools.Clone(projectDir, proj.url, proj.commit)
+			err := testtools.Clone(projectDir, proj.url, proj.commit)
 			if err != nil && err.Error() != "repository already exists" {
 				panic(err)
 			}
- 			_, _, err = exec.Run(exec.Cmd{
+
+			_, _, err = exec.Run(exec.Cmd{
 				Name:    "npm",
 				Argv:    []string{"install", "--production"},
 				Dir:     projectDir,
@@ -45,17 +54,21 @@ package node
 			}
 		}(project)
 	}
+
 	waitGroup.Wait()
- 	return nil
+	return nil
 }
- func (n NodeInitializer) RemoveAll() error {
+
+func (n NodeInitializer) RemoveAll() error {
 	testDir := n.FixtureDirectory()
- 	return os.RemoveAll(testDir)
+	return os.RemoveAll(testDir)
 }
- func (n NodeInitializer) FixtureDirectory() string {
+
+func (n NodeInitializer) FixtureDirectory() string {
 	return filepath.Join(os.TempDir(), "nodejs")
 }
- var projects = []Project{
+
+var projects = []Project{
 	Project{
 		name:   "puppeteer",
 		url:    "https://github.com/GoogleChrome/puppeteer",
