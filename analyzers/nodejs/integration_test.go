@@ -1,13 +1,17 @@
 // +build integration
 
-package nodejs
+package nodejs_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/fossas/fossa-cli/analyzers"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/fossas/fossa-cli/test/testdata_project_initializers/node"
+	"github.com/fossas/fossa-cli/module"
+	"github.com/fossas/fossa-cli/pkg"
+	"github.com/fossas/fossa-cli/test/project_initializer/node"
 	"github.com/fossas/fossa-cli/test/testtools"
 	"github.com/stretchr/testify/assert"
 )
@@ -40,6 +44,23 @@ func TestTestSetup(t *testing.T) {
 	assertProjectFixtureExists(t, "standard")
 	assertProjectFixtureExists(t, "sodium-encryption")
 	assertProjectFixtureExists(t, "request")
+}
+
+func TestStandardJsAnalysis(t *testing.T) {
+	module := module.Module{
+		Dir:     filepath.Join(nodeInitializer.FixtureDirectory(), "standard"),
+		Type:    pkg.NodeJS,
+		Name:    "standardjs",
+		Options: map[string]interface{}{"allow-npm-err": true},
+	}
+
+	analyzer, err := analyzers.New(module)
+	assert.NoError(t, err)
+
+	deps, err := analyzer.Analyze()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, deps.Direct)
+	assert.NotEmpty(t, deps.Transitive)
 }
 
 func assertProjectFixtureExists(t *testing.T, name string) {
