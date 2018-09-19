@@ -8,14 +8,14 @@ import (
 
 func TestNoProdDeps(t *testing.T) {
     dir := "buildtools/npm/testdata"
-    n, e := npm.New()
-    if e != nil {
-        t.Error("npm.New():", e)
+    n, err := npm.New()
+    if err != nil {
+        t.Error("npm.New():", err)
     }
 
-    eInstall := n.Install(dir)
-    if eInstall != nil {
-        t.Error("npm.Install():", eInstall)
+    err = n.Install(dir)
+    if err != nil {
+        t.Error("npm.Install():", err)
     }
 
     out, err := n.List(dir)
