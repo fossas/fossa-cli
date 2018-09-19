@@ -1,8 +1,7 @@
-// +build integration
-
-package nodejs_test
+package nodejsanalyzer
 
 import (
+	"flag"
 	"os"
 	"testing"
 
@@ -18,6 +17,12 @@ import (
 var nodeInitializer = node.New()
 
 func TestMain(m *testing.M) {
+	// flags are not parsed at this point. In order to have testing.Short() read actually provided values, this must be executed
+	flag.Parse()
+	if testing.Short() {
+		return
+	}
+
 	teardownTests, err := testtools.SetupTests(nodeInitializer)
 	if err != nil {
 		if err.Error() != "repository already exists" {
