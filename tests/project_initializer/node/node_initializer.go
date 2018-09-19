@@ -5,10 +5,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/fossas/fossa-cli/files"
-
 	"github.com/fossas/fossa-cli/exec"
-	"github.com/fossas/fossa-cli/test/testtools"
+	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/tests/testtools"
 )
 
 type Project struct {
