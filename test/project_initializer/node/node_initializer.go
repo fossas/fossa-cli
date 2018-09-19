@@ -35,6 +35,7 @@ func (n NodeInitializer) BuildAll() error {
 		return err
 	}
 	if testDirExists {
+		println(testDir + "already exists, skipping initialization step")
 		return nil
 	}
 
@@ -49,6 +50,8 @@ func (n NodeInitializer) BuildAll() error {
 			projectDir := filepath.Join(testDir, proj.name)
 			err := testtools.Clone(projectDir, proj.url, proj.commit)
 			if err != nil && err.Error() != "repository already exists" {
+				println("failed to clone " + proj.name)
+				println(err.Error())
 				panic(err)
 			}
 
@@ -60,11 +63,14 @@ func (n NodeInitializer) BuildAll() error {
 				Command: "npm",
 			})
 			if err != nil {
-				panic(err)
+				println("failed to run npm install on " + proj.name)
+				println(err.Error())
 			}
 
 			err = testtools.FossaInit(projectDir)
 			if err != nil {
+				println("failed to run fossa init on " + proj.name)
+				println(err.Error())
 				panic(err)
 			}
 		}(project)

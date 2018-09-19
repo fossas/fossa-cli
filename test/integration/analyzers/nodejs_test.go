@@ -26,6 +26,7 @@ func TestMain(m *testing.M) {
 	teardownTests, err := testtools.SetupTests(nodeInitializer)
 	if err != nil {
 		if err.Error() != "repository already exists" {
+			println(err.Error())
 			panic(err)
 		}
 	}
