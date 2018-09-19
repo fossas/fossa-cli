@@ -4,7 +4,6 @@ package nodejs_test
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/fossas/fossa-cli/analyzers"
@@ -48,7 +47,7 @@ func TestTestSetup(t *testing.T) {
 
 func TestStandardJsAnalysis(t *testing.T) {
 	module := module.Module{
-		Dir:     filepath.Join(nodeInitializer.FixtureDirectory(), "standard"),
+		Dir:     nodeInitializer.FixtureDirectory(),
 		Type:    pkg.NodeJS,
 		Name:    "standardjs",
 		Options: map[string]interface{}{"allow-npm-err": true},
