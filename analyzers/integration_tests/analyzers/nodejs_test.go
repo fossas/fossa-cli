@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"github.com/fossas/fossa-cli/analyzers"
+	"github.com/fossas/fossa-cli/analyzers/integration_tests/project_initializer/node"
+	"github.com/fossas/fossa-cli/analyzers/integration_tests/testtools"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/fossas/fossa-cli/test/project_initializer/node"
-	"github.com/fossas/fossa-cli/test/testtools"
 	"github.com/stretchr/testify/assert"
 )
 
