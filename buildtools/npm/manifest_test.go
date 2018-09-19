@@ -1,65 +1,103 @@
 package npm_test
 
 import (
-	"errors"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/buildtools/npm"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
+var chaiDirectDep = pkg.Import{
+	Target: "chai",
+	Resolved: pkg.ID{
+		Location: "",
+		Name:     "chai",
+		Revision: "4.1.2",
+		Type:     pkg.NodeJS,
+	},
+}
+
+var typeDetectDirectDep = pkg.Import{
+	Target: "type-detect",
+	Resolved: pkg.ID{
+		Location: "",
+		Name:     "type-detect",
+		Revision: "3.0.0",
+		Type:     pkg.NodeJS,
+	},
+}
+
 func TestFromManifest(t *testing.T) {
-	manifest, err := npm.FromManifest("testdata/package.json")
+	pkg, err := npm.PackageFromManifest(filepath.Join("testdata", "nested_node_modules"), "package.json")
 	assert.NoError(t, err)
 
-	assert.NotEmpty(t, manifest.Dependencies)
-	assert.Equal(t, manifest.Dependencies["chai"], "4.1.2")
+	assert.Len(t, pkg.Imports, 2)
+	assert.Contains(t, pkg.Imports, chaiDirectDep)
+	assert.Contains(t, pkg.Imports, typeDetectDirectDep)
 }
 
 func TestFromNodeModules(t *testing.T) {
-	t.Skip("not yet implemented")
-	manifests, err := npm.FromNodeModules("testdata/package.json")
-	assert.NoError(t, err)
-
-	/*
-		└─┬ chai@4.1.2
-			├── assertion-error@1.1.0
-			├── check-error@1.0.2
-			├─┬ deep-eql@3.0.1
-			│ └── type-detect@4.0.8 deduped
-			├── get-func-name@2.0.0
-			├── pathval@1.1.0
-			└── type-detect@4.0.8
-	*/
-
-	assert.NotEmpty(t, manifests)
-	assert.True(t, containsDep(manifests, "assertion-error", "1.1.0"), "Manifests does not include dep assertion-error")
-	assert.True(t, containsDep(manifests, "check-error", "1.0.2"), "Manifests does not include dep check-error")
-	assert.True(t, containsDep(manifests, "get-func-name", "2.0.0"), "Manifests does not include dep get-func-name")
-	assert.True(t, containsDep(manifests, "pathval", "1.1.0"), "Manifests does not include dep pathval")
-	assert.True(t, containsDep(manifests, "type-detect", "4.0.8"), "Manifests does not include dep type-detect")
-
-	// check transitive dep's existance
-	dep, err := selectDep(manifests, "deep-eql", "3.0.1")
-	assert.NoError(t, err, "Manifests does not include dep deep-eql")
-
-	assert.NotEmpty(t, dep.Dependencies)
-	assert.Len(t, dep.Dependencies, 1)
-	assert.Contains(t, dep.Dependencies, "type-detect")
+	testFromNodeModulesByFixture(t, "flattened_node_modules")
+	testFromNodeModulesByFixture(t, "nested_node_modules")
 }
 
-func selectDep(manifests []npm.Manifest, name string, version string) (npm.Manifest, error) {
-	for _, v := range manifests {
-		if v.Name == name && v.Version == version {
-			return v, nil
+/*
+	├─┬ chai@4.1.2
+	│ ├── assertion-error@1.1.0
+	│ ├── check-error@1.0.2
+	│ ├─┬ deep-eql@3.0.1
+	│ │ └── type-detect@4.0.8
+	│ ├── get-func-name@2.0.0
+	│ ├── pathval@1.1.0
+	│ └── type-detect@4.0.8
+	└── type-detect@3.0.0
+*/
+
+func testFromNodeModulesByFixture(t *testing.T, fixture string) {
+	depGraph, err := npm.FromNodeModules("testdata", fixture, "package.json")
+	assert.NoError(t, err)
+
+	assert.Len(t, depGraph.Direct, 2)
+
+	assert.Contains(t, depGraph.Direct, chaiDirectDep)
+	assert.Contains(t, depGraph.Direct, typeDetectDirectDep)
+
+	assert.Len(t, depGraph.Transitive, 8)
+
+	typeDetectTransitiveDepKey := pkg.ID{
+		Location: "",
+		Name:     "type-detect",
+		Revision: "4.0.8",
+		Type:     pkg.NodeJS,
+	}
+
+	// ensure project that is both a transitive and direct dep have correct versions based on where they live
+	assert.Contains(t, depGraph.Transitive, typeDetectTransitiveDepKey)
+
+	chaiProject := depGraph.Transitive[chaiDirectDep.Resolved]
+	assert.Equal(t, chaiDirectDep.Resolved, chaiProject.ID)
+	assert.NotNil(t, chaiProject)
+	assert.Len(t, chaiProject.Imports, 6)
+	AssertImport(t, chaiProject.Imports, "assertion-error", "1.1.0")
+	AssertImport(t, chaiProject.Imports, "check-error", "1.0.2")
+	AssertImport(t, chaiProject.Imports, "get-func-name", "2.0.0")
+	AssertImport(t, chaiProject.Imports, "pathval", "1.1.0")
+	AssertImport(t, chaiProject.Imports, "type-detect", "4.0.8")
+
+	typeDetectProject := depGraph.Transitive[typeDetectDirectDep.Resolved]
+	assert.Equal(t, typeDetectDirectDep.Resolved, typeDetectProject.ID)
+	assert.Empty(t, typeDetectProject.Imports)
+}
+
+func AssertImport(t *testing.T, imports pkg.Imports, name, revision string) {
+	for _, importedProj := range imports {
+		if importedProj.Resolved.Name == name && importedProj.Resolved.Revision == revision {
+			return
 		}
 	}
 
-	return npm.Manifest{}, errors.New("could not find manifest")
-}
-
-func containsDep(manifests []npm.Manifest, name string, version string) bool {
-	_, err := selectDep(manifests, name, version)
-	return err == nil
+	assert.Fail(t, "missing "+name+"@"+revision)
 }

@@ -124,7 +124,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 		if !info.IsDir() && info.Name() == "package.json" {
 			name := filepath.Base(filepath.Dir(path))
 			// Parse from project name from `package.json` if possible
-			if manifest, err := npm.FromManifest(path); err == nil && manifest.Name != "" {
+			if manifest, err := npm.FromManifest(path, "package.json"); err == nil && manifest.Name != "" {
 				name = manifest.Name
 			}
 
@@ -196,7 +196,7 @@ func (a *Analyzer) Build() error {
 func (a *Analyzer) IsBuilt() (bool, error) {
 	log.Debugf("Checking Node.js build: %#v", a.Module)
 
-	manifest, err := npm.FromManifest(filepath.Join(a.Module.BuildTarget, "package.json"))
+	manifest, err := npm.FromManifest(a.Module.BuildTarget, "package.json")
 	if err != nil {
 		return false, errors.Wrap(err, "could not parse package manifest to check build")
 	}
