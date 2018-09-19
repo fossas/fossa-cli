@@ -42,7 +42,7 @@ func Run(cmd Cmd) (stdout, stderr string, err error) {
 	if cmd.Env != nil {
 		xc.Env = toEnv(cmd.Env)
 	} else if cmd.WithEnv != nil {
-		xc.Env = append(xc.Env, toEnv(cmd.Env)...)
+		xc.Env = append(xc.Env, toEnv(cmd.WithEnv)...)
 		xc.Env = append(xc.Env, os.Environ()...)
 	} else {
 		xc.Env = os.Environ()
