@@ -1,4 +1,4 @@
-SHELL=/bin/bash -o pipefail
+SHELL=/usr/bin/env bash -o pipefail
 BIN="$(shell go env GOPATH)/bin"
 DEP="$(BIN)/dep"
 PREFIX?=/usr/local/bin
