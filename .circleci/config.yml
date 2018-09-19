@@ -89,7 +89,7 @@ jobs:
             # Load shell helpers (e.g. sdkman)
             source /home/fossa/.bashrc
 
-            # Run integration tagged native tests
+            # Run native integration tests
             go test ./test/integration...
             #Run shell based tests
             ./test.sh > $ARTIFACTS/integration-test-stdout 2> >(tee $ARTIFACTS/integration-test-stderr >&2)
