@@ -1,6 +1,8 @@
 package testtools
 
 import (
+	"github.com/fossas/fossa-cli/exec"
+
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 )
@@ -44,6 +46,21 @@ func Clone(dir string, repoURL string, commit string) error {
 	err = worktree.Checkout(&git.CheckoutOptions{
 		Hash: plumbing.NewHash(commit),
 	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func FossaInit(projectDir string) error {
+	cmd := exec.Cmd{
+		Argv:    []string{"init"},
+		Name:    "fossa",
+		Dir:     projectDir,
+		Command: "fossa",
+	}
+	_, _, err := exec.Run(cmd)
 	if err != nil {
 		return err
 	}

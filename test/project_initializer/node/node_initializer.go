@@ -52,6 +52,11 @@ func (n NodeInitializer) BuildAll() error {
 			if err != nil {
 				panic(err)
 			}
+
+			err = testtools.FossaInit(projectDir)
+			if err != nil {
+				panic(err)
+			}
 		}(project)
 	}
 
