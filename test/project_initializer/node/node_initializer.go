@@ -39,6 +39,11 @@ func (n NodeInitializer) BuildAll() error {
 		return nil
 	}
 
+	err = os.Mkdir(testDir, 0700)
+	if err != nil {
+		return err
+	}
+
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(len(n.projects))
 
