@@ -7,7 +7,7 @@ import (
 
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
-	"github.com/fossas/fossa-cli/tests/testtools"
+	"github.com/fossas/fossa-cli/test/testtools"
 )
 
 type Project struct {
