@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/fossas/fossa-cli/files"
+
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/test/testtools"
 )
@@ -28,6 +30,14 @@ func New() NodeInitializer {
 
 func (n NodeInitializer) BuildAll() error {
 	testDir := n.FixtureDirectory()
+	testDirExists, err := files.ExistsFolder(testDir)
+	if err != nil {
+		return err
+	}
+	if testDirExists {
+		return nil
+	}
+
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(len(n.projects))
 
