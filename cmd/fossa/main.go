@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -67,7 +66,7 @@ func Run(ctx *cli.Context) error {
 
 	if config.APIKey() == "" && !ctx.Bool(analyze.ShowOutput) {
 		fmt.Printf("Incorrect Usage. FOSSA_API_KEY must be set as an environment variable or provided in .fossa.yml\n\n")
-		return errors.New("No API KEY provided")
+		log.Fatalf("No API KEY provided")
 	}
 
 	err = initc.Run(ctx)
