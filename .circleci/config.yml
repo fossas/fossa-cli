@@ -70,7 +70,7 @@ jobs:
     <<: *defaults
     working_directory: /home/fossa/go/src/github.com/fossas/fossa-cli
     docker:
-      - image: quay.io/fossa/fossa-cli-test:circleci
+      - image: quay.io/fossa/fossa-cli-base:circleci
     steps:
       - run:
           name: Make folders
