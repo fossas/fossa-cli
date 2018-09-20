@@ -41,7 +41,7 @@ func TestMain(m *testing.M) {
 
 	exitCode := m.Run()
 	defer os.Exit(exitCode)
-	defer cleanUp(nodeAnalyzerFixtureDir)
+	// defer cleanUp(nodeAnalyzerFixtureDir)
 }
 
 // While not testing the core functionality, this ensures that the tests have been setup correctly as needed for a prereq to run the analyzer steps
