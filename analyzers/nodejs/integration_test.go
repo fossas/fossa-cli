@@ -25,11 +25,17 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	testUtils.Clone(nodeAnalyzerFixtureDir, projects)
+	err := testUtils.Clone(nodeAnalyzerFixtureDir, projects)
+	if err != nil {
+		panic(err)
+	}
 
 	println("projects cloned, starting initialization")
 
-	initializeProjects(nodeAnalyzerFixtureDir)
+	err = initializeProjects(nodeAnalyzerFixtureDir)
+	if err != nil {
+		panic(err)
+	}
 
 	println("Initialization complete, running tests")
 
@@ -175,6 +181,9 @@ var projects = []testUtils.ProjectFixture{
 	},
 }
 
-func cleanUp(dir string) error {
-	return os.RemoveAll(dir)
+func cleanUp(dir string) {
+	err := os.RemoveAll(dir)
+	if err != nil {
+		panic(err)
+	}
 }
