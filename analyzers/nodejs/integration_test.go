@@ -96,7 +96,7 @@ func initializeProjects(testDir string) error {
 			println("installing " + proj.Name)
 			projectDir := filepath.Join(testDir, proj.Name)
 
-			_, _, err := exec.Run(exec.Cmd{
+			stdOut, errOut, err := exec.Run(exec.Cmd{
 				Name:    "npm",
 				Argv:    []string{"install", "--production"},
 				Dir:     projectDir,
@@ -104,16 +104,30 @@ func initializeProjects(testDir string) error {
 				Command: "npm",
 			})
 			if err != nil {
+				println(errOut)
 				println("failed to run npm install on " + proj.Name)
 			}
 
-			println("starting fossa init for " + projectDir)
-			err = testUtils.FossaInit(projectDir)
+			println(stdOut)
+
+			// save time on local
+			ymlAlreadyExists, err := files.Exists(filepath.Join(projectDir, ".fossa.yml"))
+			if err != nil {
+				panic(err)
+			}
+			if ymlAlreadyExists {
+				return
+			}
+
+			println("starting fossa init for " + proj.Name)
+			stdOut, err = testUtils.FossaInit(projectDir)
 			if err != nil {
 				println("failed to run fossa init on " + proj.Name)
 				println(err.Error())
 				panic(err)
 			}
+			println(stdOut)
+			println("completed fossa init for " + proj.Name)
 		}(project)
 	}
 

@@ -75,17 +75,18 @@ func Clone(baseDir string, projects []ProjectFixture) error {
 	return nil
 }
 
-func FossaInit(projectDir string) error {
+func FossaInit(projectDir string) (string, error) {
 	cmd := exec.Cmd{
 		Argv:    []string{"init"},
 		Name:    "fossa",
 		Dir:     projectDir,
 		Command: "fossa",
 	}
-	_, _, err := exec.Run(cmd)
+	stdOut, errMsg, err := exec.Run(cmd)
 	if err != nil {
-		return err
+		println(errMsg)
+		return "", err
 	}
 
-	return nil
+	return stdOut, nil
 }
