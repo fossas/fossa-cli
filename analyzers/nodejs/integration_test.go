@@ -77,7 +77,7 @@ func TestAnalysisOutput(t *testing.T) {
 			deps, err := analyzer.Analyze()
 			assert.NoError(t, err)
 			// faker has no deps
-			if proj.Name == "faker" {
+			if proj.Name == "fakerjs" {
 				assert.Empty(t, deps.Direct)
 				assert.Empty(t, deps.Transitive)
 			} else {
