@@ -60,21 +60,32 @@ func TestTestSetup(t *testing.T) {
 	assertProjectFixtureExists(t, "request")
 }
 
-func TestStandardJsAnalysis(t *testing.T) {
-	module := module.Module{
-		Dir:     filepath.Join(nodeAnalyzerFixtureDir, "standard"),
-		Type:    pkg.NodeJS,
-		Name:    "standardjs",
-		Options: map[string]interface{}{"allow-npm-err": true},
+func TestAnalysisOutput(t *testing.T) {
+	for _, proj := range projects {
+		t.Run(proj.Name, func(t *testing.T) {
+			module := module.Module{
+				Dir:         filepath.Join(nodeAnalyzerFixtureDir, proj.Name),
+				Type:        pkg.NodeJS,
+				Name:        "standardjs",
+				Options:     map[string]interface{}{"allow-npm-err": true},
+				BuildTarget: filepath.Join(nodeAnalyzerFixtureDir, proj.Name, "package.json"),
+			}
+
+			analyzer, err := analyzers.New(module)
+			assert.NoError(t, err)
+
+			deps, err := analyzer.Analyze()
+			assert.NoError(t, err)
+			// faker has no deps
+			if proj.Name == "faker" {
+				assert.Empty(t, deps.Direct)
+				assert.Empty(t, deps.Transitive)
+			} else {
+				assert.NotEmpty(t, deps.Direct)
+				assert.NotEmpty(t, deps.Transitive)
+			}
+		})
 	}
-
-	analyzer, err := analyzers.New(module)
-	assert.NoError(t, err)
-
-	deps, err := analyzer.Analyze()
-	assert.NoError(t, err)
-	assert.NotEmpty(t, deps.Direct)
-	assert.NotEmpty(t, deps.Transitive)
 }
 
 func assertProjectFixtureExists(t *testing.T, name string) {
