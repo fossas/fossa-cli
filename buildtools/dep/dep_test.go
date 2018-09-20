@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+<<<<<<< HEAD
 func TestResolve(t *testing.T) {
 	resolver, err := dep.New("testdata/Gopkg.lock", "testdata/Gopkg.toml")
 	assert.Equal(t, err, nil)
