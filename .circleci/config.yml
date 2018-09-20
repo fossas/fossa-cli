@@ -73,6 +73,9 @@ jobs:
       - image: quay.io/fossa/fossa-cli-test-base:circleci
     steps:
       - checkout
+      - run: 
+          name: Compile fossa binary
+          command: make
       - run:
           name: Make folders
           command: |
