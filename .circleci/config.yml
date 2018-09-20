@@ -90,7 +90,8 @@ jobs:
             source /home/fossa/.bashrc
 
             # Run native integration tests
-            go test ./analyzers/integration_tests/... -v
+            # as long as -short is not being called, integration tests get run
+            go test ./...
             #Run shell based tests
             ./test.sh > $ARTIFACTS/integration-test-stdout 2> >(tee $ARTIFACTS/integration-test-stderr >&2)
       # - store_test_results:
