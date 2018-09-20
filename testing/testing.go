@@ -72,28 +72,6 @@ func Clone(baseDir string, projects []ProjectFixture) error {
 
 	waitGroup.Wait()
 
-	// repo, err := git.PlainClone(dir, false, &git.CloneOptions{
-	// 	URL:               repoURL,
-	// 	RecurseSubmodules: 1,
-	// })
-	// if err != nil && err.Error() != "repository already exists" {
-	// 	return err
-	// }
-
-	// 	worktree, err := repo.Worktree()
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	err = worktree.Checkout(&git.CheckoutOptions{
-	// 		Hash: plumbing.NewHash(commit),
-	// 	})
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	return nil
-	// }
-
 	return nil
 }
 
