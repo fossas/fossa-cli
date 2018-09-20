@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/fossas/fossa-cli/analyzers"
 	"github.com/fossas/fossa-cli/exec"
@@ -93,10 +94,11 @@ func initializeProjects(testDir string) error {
 	for _, project := range projects {
 		go func(proj testUtils.ProjectFixture) {
 			defer waitGroup.Done()
+			startTime := time.Now()
 			println("installing " + proj.Name)
 			projectDir := filepath.Join(testDir, proj.Name)
 
-			stdOut, errOut, err := exec.Run(exec.Cmd{
+			_, errOut, err := exec.Run(exec.Cmd{
 				Name:    "npm",
 				Argv:    []string{"install", "--production"},
 				Dir:     projectDir,
@@ -108,7 +110,8 @@ func initializeProjects(testDir string) error {
 				println("failed to run npm install on " + proj.Name)
 			}
 
-			println(stdOut)
+			elapsedTime := time.Since(startTime)
+			println(proj.Name, " install time: ", elapsedTime.Seconds(), "s")
 
 			// save time on local
 			ymlAlreadyExists, err := files.Exists(filepath.Join(projectDir, ".fossa.yml"))
@@ -119,15 +122,16 @@ func initializeProjects(testDir string) error {
 				return
 			}
 
-			println("starting fossa init for " + proj.Name)
-			stdOut, err = testUtils.FossaInit(projectDir)
+			println(proj.Name, " starting fossa init")
+			startTime = time.Now()
+			_, err = testUtils.FossaInit(projectDir)
 			if err != nil {
 				println("failed to run fossa init on " + proj.Name)
 				println(err.Error())
 				panic(err)
 			}
-			println(stdOut)
-			println("completed fossa init for " + proj.Name)
+			elapsedTime = time.Since(startTime)
+			println(proj.Name, " init time: ", elapsedTime.Seconds(), "s")
 		}(project)
 	}
 
