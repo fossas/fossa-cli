@@ -31,31 +31,16 @@ func Run(cmd Cmd) (stdout, stderr string, err error) {
 		"argv": cmd.Argv,
 	}).Debug("called Run")
 
-	var stderrBuffer bytes.Buffer
-	xc := exec.Command(cmd.Name, cmd.Argv...)
-	xc.Stderr = &stderrBuffer
-
-	if cmd.Dir != "" {
-		xc.Dir = cmd.Dir
-	}
-
-	if cmd.Env != nil {
-		xc.Env = toEnv(cmd.Env)
-	} else if cmd.WithEnv != nil {
-		xc.Env = append(xc.Env, toEnv(cmd.WithEnv)...)
-		xc.Env = append(xc.Env, os.Environ()...)
-	} else {
-		xc.Env = os.Environ()
-	}
+	xc, stderrBuf := BuildExec(cmd)
 
 	log.WithFields(log.Fields{
 		"dir": xc.Dir,
 		"env": xc.Env,
 	}).Debug("executing command")
 
-	stdoutBuffer, err := xc.Output()
-	stdout = string(stdoutBuffer)
-	stderr = stderrBuffer.String()
+	stdoutBuf, err := xc.Output()
+	stdout = string(stdoutBuf)
+	stderr = stderrBuf.String()
 
 	log.WithFields(log.Fields{
 		"stdout": stdout,
@@ -71,4 +56,27 @@ func toEnv(env map[string]string) []string {
 		out = append(out, key+"="+val)
 	}
 	return out
+}
+
+// BuildExec translates FOSSA exec structures into standard library exec
+// commands.
+func BuildExec(cmd Cmd) (*exec.Cmd, bytes.Buffer) {
+	var stderr bytes.Buffer
+	xc := exec.Command(cmd.Name, cmd.Argv...)
+	xc.Stderr = &stderr
+
+	if cmd.Dir != "" {
+		xc.Dir = cmd.Dir
+	}
+
+	if cmd.Env != nil {
+		xc.Env = toEnv(cmd.Env)
+	} else if cmd.WithEnv != nil {
+		xc.Env = append(xc.Env, toEnv(cmd.WithEnv)...)
+		xc.Env = append(xc.Env, os.Environ()...)
+	} else {
+		xc.Env = os.Environ()
+	}
+
+	return xc, stderr
 }
