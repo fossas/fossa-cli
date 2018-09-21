@@ -8,7 +8,7 @@ import (
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 
-	"github.com/fossas/fossa-cli/cmd/fossa/app"
+	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 )
 
@@ -75,35 +75,19 @@ func Clone(baseDir string, projects []ProjectFixture) error {
 	return nil
 }
 
-// FossaInit effectively executes app.App.Run("init") within the provided directory
-func FossaInit(projectDir string, apiKey string) error {
-	// save the existing value of api key for any subsequent executions with different values (especially important if on CI)
-	initialAPIKey := os.Getenv("FOSSA_API_KEY")
-	err := os.Setenv("FOSSA_API_KEY", apiKey)
-	if err != nil {
-		return err
+// FossaInit executes fossa init the provided directory
+func FossaInit(projectDir string) error {
+	cmd := exec.Cmd{
+		Argv:    []string{"init"},
+		Name:    "fossa",
+		Dir:     projectDir,
+		Command: "fossa",
 	}
 
-	initialDir, err := os.Getwd()
+	_, errMsg, err := exec.Run(cmd)
 	if err != nil {
-		return err
+		println(errMsg)
 	}
 
-	err = os.Chdir(projectDir)
-	if err != nil {
-		return err
-	}
-
-	err = app.App.Run([]string{"init"})
-	if err != nil {
-		return err
-	}
-
-	// undo all tmp changes inside this test
-	err = os.Setenv("FOSSA_API_KEY", initialAPIKey)
-	if err != nil {
-		return err
-	}
-
-	return os.Chdir(initialDir)
+	return err
 }
