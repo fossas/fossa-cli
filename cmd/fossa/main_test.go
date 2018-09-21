@@ -5,10 +5,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	main "github.com/fossas/fossa-cli/cmd/fossa"
+	"github.com/fossas/fossa-cli/cmd/fossa/app"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 )
 
 func TestMainProvidesDebugFlag(t *testing.T) {
-	assert.Contains(t, main.App.VisibleFlags(), flags.DebugF)
+	assert.Contains(t, app.App.VisibleFlags(), flags.DebugF)
 }
