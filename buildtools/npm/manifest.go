@@ -82,7 +82,7 @@ func FromNodeModules(pathElems ...string) (graph.Deps, error) {
 
 	transitiveDeps := make(map[pkg.ID]pkg.Package)
 
-	err = fromModulesHelper(manifestPath, &transitiveDeps)
+	err = fromModulesHelper(manifestPath, transitiveDeps)
 
 	// The root package also get's bundled in, but it is not a dep of itself, so remove it
 	delete(transitiveDeps, rootPackage.ID)
@@ -167,7 +167,7 @@ func convertManifestToPkg(manifest Manifest) pkg.Package {
 		3b. create a package for that dependency and add it to the accumulator
 		3c. recurse to 1 using the path to the dependency
 */
-func fromModulesHelper(pathToModule string, moduleProjects *map[pkg.ID]pkg.Package) error {
+func fromModulesHelper(pathToModule string, moduleProjects map[pkg.ID]pkg.Package) error {
 	currentDir := filepath.Dir(pathToModule)
 
 	currentModule, err := PackageFromManifest(pathToModule)
@@ -175,7 +175,7 @@ func fromModulesHelper(pathToModule string, moduleProjects *map[pkg.ID]pkg.Packa
 		return err
 	}
 
-	(*moduleProjects)[currentModule.ID] = currentModule
+	moduleProjects[currentModule.ID] = currentModule
 
 	for _, imported := range currentModule.Imports {
 		currentDirWithNodeModules := filepath.Join(currentDir, "node_modules")
@@ -189,7 +189,7 @@ func fromModulesHelper(pathToModule string, moduleProjects *map[pkg.ID]pkg.Packa
 			return err
 		}
 
-		(*moduleProjects)[modulePackage.ID] = modulePackage
+		moduleProjects[modulePackage.ID] = modulePackage
 
 		err = fromModulesHelper(pathToDepModule, moduleProjects)
 		if err != nil {
