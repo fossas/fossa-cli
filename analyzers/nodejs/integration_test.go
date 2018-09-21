@@ -66,11 +66,10 @@ func TestAnalysisOutput(t *testing.T) {
 	t.Parallel()
 	for _, proj := range projects {
 		t.Run(proj.Name, func(t *testing.T) {
-			t.Parallel()
 			module := module.Module{
 				Dir:         filepath.Join(nodeAnalyzerFixtureDir, proj.Name),
 				Type:        pkg.NodeJS,
-				Name:        "standardjs",
+				Name:        proj.Name,
 				Options:     map[string]interface{}{"allow-npm-err": true},
 				BuildTarget: filepath.Join(nodeAnalyzerFixtureDir, proj.Name, "package.json"),
 			}
@@ -139,7 +138,8 @@ func initializeProjects(testDir string) error {
 
 			println(proj.Name, " starting fossa init")
 			startTime = time.Now()
-			_, err = testUtils.FossaInit(projectDir)
+			// any key will work to prevent the "NEED KEY" error message
+			err = testUtils.FossaInit(projectDir, "abc")
 			if err != nil {
 				println("failed to run fossa init on " + proj.Name)
 				println(err.Error())
