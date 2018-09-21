@@ -5,11 +5,11 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/fossas/fossa-cli/exec"
-	"github.com/fossas/fossa-cli/files"
-
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+
+	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 )
 
 // ProjectFixture describes a git locator for a test fixture and env vars for when it is to be built

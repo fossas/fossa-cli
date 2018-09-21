@@ -8,13 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/fossas/fossa-cli/analyzers"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 	testUtils "github.com/fossas/fossa-cli/testing"
-	"github.com/stretchr/testify/assert"
 )
 
 var nodeAnalyzerFixtureDir = filepath.Join(testUtils.FixtureDirectory(), "nodejs", "analyzer")
