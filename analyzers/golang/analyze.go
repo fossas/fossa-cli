@@ -1,6 +1,8 @@
 package golang
 
 import (
+	"path/filepath"
+
 	"github.com/apex/log"
 
 	// Each of these build tools provides a resolver.Resolver
@@ -36,7 +38,12 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	switch a.Options.Strategy {
 	case "manifest:dep":
 		if a.Options.LockfilePath == "" {
-			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
+			log.Debug("dep manifest strategy specified without lockfile path")
+			a.Options.LockfilePath = filepath.Join(project.Manifest, "Gopkg.lock")
+		}
+		if a.Options.ManifestPath == "" {
+			log.Debug("dep manifest strategy specified without manifest path")
+			a.Options.ManifestPath = filepath.Join(project.Manifest, "Gopkg.toml")
 		}
 		depResolver := dep.Resolver{}
 		depResolver.Lockfile, err = dep.ReadLockfile(a.Options.LockfilePath)
@@ -51,7 +58,8 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		r = depResolver
 	case "manifest:gdm":
 		if a.Options.LockfilePath == "" {
-			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
+			log.Debug("gdm manifest strategy specified without lockfile path")
+			a.Options.LockfilePath = filepath.Join(project.Manifest, "Godeps")
 		}
 		r, err = gdm.New(a.Options.LockfilePath)
 		if err != nil {
@@ -59,7 +67,12 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		}
 	case "manifest:glide":
 		if a.Options.LockfilePath == "" {
-			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
+			log.Debug("glide manifest strategy specified without lockfile path")
+			a.Options.LockfilePath = filepath.Join(project.Manifest, "glide.lock")
+		}
+		if a.Options.ManifestPath == "" {
+			log.Debug("glide manifest strategy specified without manifest path")
+			a.Options.ManifestPath = filepath.Join(project.Manifest, "glide.yaml")
 		}
 		r, err = glide.New(a.Options.LockfilePath, a.Options.ManifestPath)
 		if err != nil {
@@ -67,7 +80,8 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		}
 	case "manifest:godep":
 		if a.Options.LockfilePath == "" {
-			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
+			log.Debug("godep manifest strategy specified without lockfile path")
+			a.Options.LockfilePath = filepath.Join(project.Manifest, "Godeps", "Godeps.json")
 		}
 		r, err = godep.New(a.Options.LockfilePath)
 		if err != nil {
@@ -75,7 +89,8 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		}
 	case "manifest:govendor":
 		if a.Options.LockfilePath == "" {
-			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
+			log.Debug("govendor manifest strategy specified without lockfile path")
+			a.Options.LockfilePath = filepath.Join(project.Manifest, "vendor", "vendor.json")
 		}
 		r, err = govendor.New(a.Options.LockfilePath)
 		if err != nil {
@@ -83,7 +98,8 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		}
 	case "manifest:vndr":
 		if a.Options.LockfilePath == "" {
-			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
+			log.Debug("vndr manifest strategy specified without lockfile path")
+			a.Options.LockfilePath = filepath.Join(project.Manifest, "vendor.conf")
 		}
 		r, err = vndr.New(a.Options.LockfilePath)
 		if err != nil {
