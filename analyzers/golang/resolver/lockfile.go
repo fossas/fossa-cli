@@ -35,7 +35,7 @@ func FromLockfile(tool Type, dir string) (Resolver, error) {
 	case Gdm:
 		return gdm.New(dir)
 	case Glide:
-		return glide.New(dir)
+		return glide.New(filepath.Join(dir, "glide.lock"), filepath.Join(dir, "glide.yaml"))
 	case Godep:
 		return godep.New(dir)
 	case Govendor:

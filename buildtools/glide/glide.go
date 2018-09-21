@@ -4,7 +4,6 @@ package glide
 import (
 	"errors"
 	"path"
-	"path/filepath"
 	"time"
 
 	"github.com/fossas/fossa-cli/buildtools"
@@ -44,18 +43,57 @@ func (l Lockfile) Resolve(importpath string) (pkg.Import, error) {
 }
 
 // New constructs a golang.Resolver
-func New(dirname string) (Lockfile, error) {
-	ok, err := UsedIn(dirname)
+func New(lockfilePath string, manifestPath string) (Lockfile, error) {
+	ok, err := UsedIn(lockfilePath, manifestPath)
 	if err != nil {
 		return Lockfile{}, err
 	}
+
 	if !ok {
 		return Lockfile{}, errors.New("directory does not use glide")
 	}
-	lockfile, err := FromFile(filepath.Join(dirname, "glide.lock"))
+
+	lockfile, err := FromFile(lockfilePath)
 	if err != nil {
 		return Lockfile{}, err
 	}
+
+	return lockfile, nil
+}
+
+// UsedIn checks whether glide is used correctly within a project folder.
+func UsedIn(lockfilePath string, manifestPath string) (bool, error) {
+	// Check whether there exists a manifest.
+	ok, err := files.Exists(manifestPath)
+	if err != nil {
+		return false, err
+	}
+
+	if ok {
+		// Check whether there exists a lockfile.
+		ok, err := files.Exists(lockfilePath)
+		if err != nil {
+			return false, err
+		}
+		// If both exist, then glide is being used correctly.
+		if ok {
+			return true, nil
+		}
+		// If only a manifest exists, then return ErrNoLockfile.
+		return true, ErrNoLockfile
+	}
+	// If there is no manifest, then glide is not being used.
+	return false, nil
+}
+
+// FromFile reads a raw Lockfile from a glide.lock file.
+func FromFile(filename string) (Lockfile, error) {
+	var lockfile Lockfile
+	err := files.ReadYAML(&lockfile, filename)
+	if err != nil {
+		return Lockfile{}, err
+	}
+
 	normalized := make(map[string]pkg.Import)
 	for _, project := range lockfile.Imports {
 		for _, subpkg := range project.Subpackages {
@@ -84,40 +122,5 @@ func New(dirname string) (Lockfile, error) {
 	}
 
 	lockfile.normalized = normalized
-	return lockfile, nil
-}
-
-// UsedIn checks whether glide is used correctly within a project folder.
-func UsedIn(dirname string) (bool, error) {
-	// Check whether there exists a manifest.
-	ok, err := files.Exists(dirname, "glide.yaml")
-	if err != nil {
-		return false, err
-	}
-
-	if ok {
-		// Check whether there exists a lockfile.
-		ok, err := files.Exists(dirname, "glide.lock")
-		if err != nil {
-			return false, err
-		}
-		// If both exist, then glide is being used correctly.
-		if ok {
-			return true, nil
-		}
-		// If only a manifest exists, then return ErrNoLockfile.
-		return true, ErrNoLockfile
-	}
-	// If there is no manifest, then glide is not being used.
-	return false, nil
-}
-
-// FromFile reads a raw Lockfile from a glide.lock file.
-func FromFile(filename string) (Lockfile, error) {
-	var lockfile Lockfile
-	err := files.ReadYAML(&lockfile, filename)
-	if err != nil {
-		return Lockfile{}, err
-	}
 	return lockfile, nil
 }
