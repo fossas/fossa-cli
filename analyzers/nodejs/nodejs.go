@@ -221,7 +221,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	pkgs, err := a.Tool.List(filepath.Dir(a.Module.BuildTarget))
 	if err != nil {
 		log.Warnf("NPM had non-zero exit code: %s", err.Error())
-		log.Info("Using fallback of node_modules")
+		log.Debug("Using fallback of node_modules")
 
 		return npm.FromNodeModules(a.Module.BuildTarget, "package.json")
 	}
