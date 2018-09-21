@@ -3,7 +3,6 @@ package godep
 
 import (
 	"errors"
-	"path/filepath"
 
 	"github.com/fossas/fossa-cli/buildtools"
 	"github.com/fossas/fossa-cli/files"
@@ -37,18 +36,34 @@ func (l Lockfile) Resolve(importpath string) (pkg.Import, error) {
 }
 
 // New constructs a godep Lockfile while pre-computing the revision lookup.
-func New(dirname string) (Lockfile, error) {
-	ok, err := UsedIn(dirname)
+func New(lockfilePath string) (Lockfile, error) {
+	ok, err := UsedIn(lockfilePath)
 	if err != nil {
 		return Lockfile{}, err
 	}
 	if !ok {
 		return Lockfile{}, errors.New("directory does not use godep")
 	}
-	lockfile, err := FromFile(filepath.Join(dirname, "Godeps", "Godeps.json"))
+	lockfile, err := FromFile(lockfilePath)
 	if err != nil {
 		return Lockfile{}, err
 	}
+	return lockfile, nil
+}
+
+// UsedIn checks whether godep is used correctly within a project folder.
+func UsedIn(lockfilePath string) (bool, error) {
+	return files.Exists(lockfilePath)
+}
+
+// FromFile reads a raw Lockfile from a Godeps/Godeps.json file.
+func FromFile(filename string) (Lockfile, error) {
+	var lockfile Lockfile
+	err := files.ReadJSON(&lockfile, filename)
+	if err != nil {
+		return Lockfile{}, err
+	}
+
 	normalized := make(map[string]pkg.Import)
 	for _, project := range lockfile.Deps {
 		normalized[project.ImportPath] = pkg.Import{
@@ -63,20 +78,5 @@ func New(dirname string) (Lockfile, error) {
 	}
 
 	lockfile.normalized = normalized
-	return lockfile, nil
-}
-
-// UsedIn checks whether godep is used correctly within a project folder.
-func UsedIn(dirname string) (bool, error) {
-	return files.Exists(dirname, "Godeps", "Godeps.json")
-}
-
-// FromFile reads a raw Lockfile from a Godeps/Godeps.json file.
-func FromFile(filename string) (Lockfile, error) {
-	var lockfile Lockfile
-	err := files.ReadJSON(&lockfile, filename)
-	if err != nil {
-		return Lockfile{}, err
-	}
 	return lockfile, nil
 }
