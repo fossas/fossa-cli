@@ -90,82 +90,64 @@ time fossa report dependencies go:./cmd/agent | json
 # Test known good NodeJS projects:
 echo "Testing puppeteer"
 cd $HOME/puppeteer
-fossa init
 cat .fossa.yml
-time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
 echo "Testing pkg"
 cd $HOME/pkg
-fossa init
 cat .fossa.yml
-time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
 echo "Testing faker.js"
 cd $HOME/faker.js
-fossa init
 cat .fossa.yml
-time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
 echo "Testing fastify"
 cd $HOME/fastify
-fossa init
 cat .fossa.yml
-time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
 echo "Testing nest"
 cd $HOME/nest
-fossa init
 cat .fossa.yml
-time fossa analyze --output npm:package.json | json
 time fossa report licenses npm:package.json
 time fossa report dependencies npm:package.json | json
 
 echo "Testing ohm"
 cd $HOME/ohm
-fossa init
 cat .fossa.yml
-time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
 echo "Testing express"
 cd $HOME/express
-fossa init
 cat .fossa.yml
-time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
 ## standard has missing peer dependencies.
 echo "Testing standard"
 cd $HOME/standard
-fossa init
 cat .fossa.yml
-time fossa analyze --output --option allow-npm-err:true | json
+# tested natively
+# time fossa analyze --output --option allow-npm-err:true | json
 time fossa report licenses --option allow-npm-err:true 
 time fossa report dependencies --option allow-npm-err:true  | json
 
 echo "Testing sodium-encryption"
 cd $HOME/sodium-encryption
-fossa init
 cat .fossa.yml
-time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
 echo "Testing request"
 cd $HOME/request
-fossa init
 cat .fossa.yml
-time fossa analyze --output | json
 time fossa report licenses 
 time fossa report dependencies | json
 
