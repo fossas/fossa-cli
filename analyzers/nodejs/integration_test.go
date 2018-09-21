@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -32,17 +31,14 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	println("projects cloned, starting initialization")
-
 	err = initializeProjects(nodeAnalyzerFixtureDir)
 	if err != nil {
 		panic(err)
 	}
 
-	println("Initialization complete, running tests")
-
 	exitCode := m.Run()
 	defer os.Exit(exitCode)
+	// uncomment this if you need test files cleaned up locally
 	// defer cleanUp(nodeAnalyzerFixtureDir)
 }
 
@@ -108,8 +104,7 @@ func initializeProjects(testDir string) error {
 	for _, project := range projects {
 		go func(proj testUtils.ProjectFixture) {
 			defer waitGroup.Done()
-			startTime := time.Now()
-			println("installing " + proj.Name)
+
 			projectDir := filepath.Join(testDir, proj.Name)
 
 			_, errOut, err := exec.Run(exec.Cmd{
@@ -124,9 +119,6 @@ func initializeProjects(testDir string) error {
 				println("failed to run npm install on " + proj.Name)
 			}
 
-			elapsedTime := time.Since(startTime)
-			println(proj.Name, " install time: ", elapsedTime.Seconds(), "s")
-
 			// save time on local
 			ymlAlreadyExists, err := files.Exists(filepath.Join(projectDir, ".fossa.yml"))
 			if err != nil {
@@ -136,8 +128,6 @@ func initializeProjects(testDir string) error {
 				return
 			}
 
-			println(proj.Name, " starting fossa init")
-			startTime = time.Now()
 			// any key will work to prevent the "NEED KEY" error message
 			err = testUtils.FossaInit(projectDir, "abc")
 			if err != nil {
@@ -145,8 +135,6 @@ func initializeProjects(testDir string) error {
 				println(err.Error())
 				panic(err)
 			}
-			elapsedTime = time.Since(startTime)
-			println(proj.Name, " init time: ", elapsedTime.Seconds(), "s")
 		}(project)
 	}
 

@@ -5,11 +5,10 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/fossas/fossa-cli/cmd/fossa/app"
-
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 
+	"github.com/fossas/fossa-cli/cmd/fossa/app"
 	"github.com/fossas/fossa-cli/files"
 )
 
@@ -33,7 +32,7 @@ func Clone(baseDir string, projects []ProjectFixture) error {
 		return err
 	}
 	if baseDirExists {
-		println(baseDir + "already exists, skipping initialization step")
+		println(baseDir + "already exists, assuming that clone has already been executed")
 		return nil
 	}
 
