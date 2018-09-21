@@ -8,22 +8,22 @@ import (
 )
 
 func TestIsIgnored(t *testing.T) {
-	manifest := Manifest{Ignored: []string{"apple", "orange*"}}
+	man := manifest{Ignored: []string{"apple", "orange*"}}
 
 	// File listed in ignored list is ignored.
-	valid := manifest.isIgnored("apple")
+	valid := man.isIgnored("apple")
 	assert.Equal(t, valid, true)
 
 	// Wildcard entry properly ignores its own package.
-	valid = manifest.isIgnored("orange")
+	valid = man.isIgnored("orange")
 	assert.Equal(t, valid, true)
 
 	// Wildcard entry properly ignores other packages.
-	valid = manifest.isIgnored("orange/blood")
+	valid = man.isIgnored("orange/blood")
 	assert.Equal(t, valid, true)
 
 	// File not listed in ignored list is not ignored.
-	valid = manifest.isIgnored("apple/fuji")
+	valid = man.isIgnored("apple/fuji")
 	assert.Equal(t, valid, false)
 }
 
@@ -62,8 +62,8 @@ func TestReadLockfile(t *testing.T) {
 
 func TestReadManifest(t *testing.T) {
 	// Reading a valid manifest returns expected data.
-	manifest, err := readManifest("testdata/Gopkg.toml")
-	expectedManifest := Manifest{
+	man, err := readManifest("testdata/Gopkg.toml")
+	expectedManifest := manifest{
 		Ignored: []string{
 			"cat/puma",
 			"cat/big/*",
@@ -71,7 +71,7 @@ func TestReadManifest(t *testing.T) {
 	}
 
 	assert.Equal(t, err, nil)
-	assert.Equal(t, manifest, expectedManifest)
+	assert.Equal(t, man, expectedManifest)
 
 	// Reading an invalid manifest returns an expected error.
 	_, err = readManifest("NotAFile")

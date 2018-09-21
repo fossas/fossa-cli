@@ -11,14 +11,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Resolver contains both the lockfile and Manifest information. Resolver implements golang.Resolver.
+// Resolver contains both the lockfile and manifest information. Resolver implements golang.Resolver.
 type Resolver struct {
-	Manifest Manifest
+	manifest manifest
 	lockfile lockfile
 }
 
-// Manifest contains the ignored packages in a dep toml file. Manifest implements golang.Resolver.
-type Manifest struct {
+// manifest contains the ignored packages in a dep toml file. manifest implements golang.Resolver.
+type manifest struct {
 	Ignored []string
 }
 
@@ -40,7 +40,7 @@ type Project struct {
 // lockfile and checks to see if it should be ignored. If the package cannot be
 // ignored and is not found, buildtools.ErrNoRevisionForPackage is returned.
 func (r Resolver) Resolve(importpath string) (pkg.Import, error) {
-	if r.Manifest.isIgnored(importpath) {
+	if r.manifest.isIgnored(importpath) {
 		return pkg.Import{}, buildtools.ErrPackageIsIgnored
 	}
 
@@ -53,7 +53,7 @@ func (r Resolver) Resolve(importpath string) (pkg.Import, error) {
 }
 
 // isIgnored checks if a Go package can be ignored according to a dep manifest.
-func (m Manifest) isIgnored(importpath string) bool {
+func (m manifest) isIgnored(importpath string) bool {
 	for _, ignoredPackage := range m.Ignored {
 		if strings.HasSuffix(ignoredPackage, "*") {
 			ignoredPrefix := ignoredPackage[:len(ignoredPackage)-1]
@@ -80,7 +80,7 @@ func New(lockfilePath string, manifestPath string) (Resolver, error) {
 		return Resolver{}, err
 	}
 
-	resolver.Manifest, err = readManifest(manifestPath)
+	resolver.manifest, err = readManifest(manifestPath)
 	if err != nil {
 		return Resolver{}, err
 	}
@@ -117,13 +117,13 @@ func readLockfile(filepath string) (lockfile, error) {
 	return lock, nil
 }
 
-// readManifest returns a Manifest using the provided filepath.
-func readManifest(filepath string) (Manifest, error) {
-	var manifest Manifest
-	err := files.ReadTOML(&manifest, filepath)
+// readManifest returns a manifest using the provided filepath.
+func readManifest(filepath string) (manifest, error) {
+	var man manifest
+	err := files.ReadTOML(&man, filepath)
 	if err != nil {
-		return Manifest{}, errors.Wrap(err, "No manifest Gopkg.toml found")
+		return manifest{}, errors.Wrap(err, "No manifest Gopkg.toml found")
 	}
 
-	return manifest, nil
+	return man, nil
 }
