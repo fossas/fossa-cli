@@ -1,0 +1,12 @@
+{
+  "name": "example",
+  "version": "0.0.0-development",
+  "author": "nohbudy",
+  "license": "MIT",
+  "dependencies": {
+    "production": "0.0.1"
+  },
+  "devDependencies": {
+    "development": "0.0.1"
+  }
+}

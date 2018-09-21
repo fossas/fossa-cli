@@ -128,6 +128,14 @@ time fossa analyze --output npm:package.json | json
 time fossa report licenses npm:package.json
 time fossa report dependencies npm:package.json | json
 
+echo "Testing npm"
+cd $HOME/npm
+fossa init
+cat .fossa.yml
+time fossa analyze --output | json
+time fossa report licenses
+time fossa report dependencies | json
+
 echo "Testing ohm"
 cd $HOME/ohm
 fossa init
