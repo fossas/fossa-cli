@@ -4,7 +4,6 @@ defaults: &defaults
   environment:
     TEST_RESULTS: /tmp/test-results
     ARTIFACTS: /tmp/artifacts
-    WORKSPACE: /tmp/workspace
 
 jobs:
   build:
@@ -19,7 +18,6 @@ jobs:
           command: |
             mkdir -p $TEST_RESULTS
             mkdir -p $ARTIFACTS
-            mkdir -p $WORKSPACE
       - restore_cache:
           keys:
             - v2-gopkg-cache-{{ checksum "Gopkg.lock" }}
@@ -54,18 +52,10 @@ jobs:
           command: |
             cp -R $TEST_RESULTS $ARTIFACTS
             cp $(which fossa) $ARTIFACTS
-      - run:
-          name: Save workspace
-          command: |
-            cp $(which fossa) $WORKSPACE
       - store_test_results:
           path: /tmp/test-results
       - store_artifacts:
           path: /tmp/artifacts
-      - persist_to_workspace:
-          root: /tmp/workspace
-          paths:
-            - fossa
   test:
     <<: *defaults
     working_directory: /home/fossa/go/src/github.com/fossas/fossa-cli
@@ -81,8 +71,6 @@ jobs:
           command: |
             mkdir -p $TEST_RESULTS
             mkdir -p $ARTIFACTS
-      - attach_workspace:
-          at: /tmp/workspace
       - run:
           name: Run integration tests
           command: |
