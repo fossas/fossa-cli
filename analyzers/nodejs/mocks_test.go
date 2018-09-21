@@ -31,13 +31,13 @@ func (n MockNPM) Install(dir string) error {
 type MockNPMFailure struct{}
 
 func (n MockNPMFailure) List(_ string) (npm.Output, error) {
-	return npm.Output{}, errors.New("expected failure")
+	return npm.Output{}, errors.New("expected failure for npm list")
 }
 
 func (n MockNPMFailure) Clean(dir string) error {
-	return errors.New("expected failure")
+	return errors.New("expected failure for npm clean")
 }
 
 func (n MockNPMFailure) Install(dir string) error {
-	return errors.New("expected failure")
+	return errors.New("expected failure for npm i")
 }
