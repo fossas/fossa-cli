@@ -53,7 +53,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		if a.Options.LockfilePath == "" {
 			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
 		}
-		r, err = gdm.FromFile(a.Options.LockfilePath)
+		r, err = gdm.New(a.Options.LockfilePath)
 		if err != nil {
 			return graph.Deps{}, err
 		}
@@ -85,7 +85,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		if a.Options.LockfilePath == "" {
 			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
 		}
-		r, err = vndr.FromFile(a.Options.LockfilePath)
+		r, err = vndr.New(a.Options.LockfilePath)
 		if err != nil {
 			return graph.Deps{}, err
 		}

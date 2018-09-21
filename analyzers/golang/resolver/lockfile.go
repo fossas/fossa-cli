@@ -33,7 +33,7 @@ func FromLockfile(tool Type, dir string) (Resolver, error) {
 	case Dep:
 		return dep.New(filepath.Join(dir, "Gopkg.lock"), filepath.Join(dir, "Gopkg.toml"))
 	case Gdm:
-		return gdm.New(dir)
+		return gdm.New(filepath.Join(dir, "Godeps"))
 	case Glide:
 		return glide.New(filepath.Join(dir, "glide.lock"), filepath.Join(dir, "glide.yaml"))
 	case Godep:
@@ -41,7 +41,7 @@ func FromLockfile(tool Type, dir string) (Resolver, error) {
 	case Govendor:
 		return govendor.New(filepath.Join(dir, "vendor", "vendor.json"))
 	case Vndr:
-		return vndr.New(dir)
+		return vndr.New(filepath.Join(dir, "vendor.conf"))
 	default:
 		return nil, ErrResolverNotFound
 	}

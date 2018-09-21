@@ -8,8 +8,8 @@ import (
 )
 
 // New constructs a vndr lockfile.
-func New(dirname string) (gpm.Lockfile, error) {
-	ok, err := UsedIn(dirname)
+func New(lockfilePath string) (gpm.Lockfile, error) {
+	ok, err := UsedIn(lockfilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -17,7 +17,7 @@ func New(dirname string) (gpm.Lockfile, error) {
 		return nil, errors.New("directory does not use vndr")
 	}
 
-	lockfile, err := gpm.FromFile(dirname, "vendor.conf")
+	lockfile, err := gpm.FromFile(lockfilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +26,8 @@ func New(dirname string) (gpm.Lockfile, error) {
 }
 
 // UsedIn checks whether vndr is used correctly within a project folder.
-func UsedIn(dirname string) (bool, error) {
-	return files.Exists(dirname, "vendor.conf")
+func UsedIn(lockfilePath string) (bool, error) {
+	return files.Exists(lockfilePath)
 }
 
 func FromFile(filename string) (gpm.Lockfile, error) {

@@ -9,8 +9,8 @@ import (
 )
 
 // New constructs a gdm lockfile from a project directory.
-func New(dirname string) (gpm.Lockfile, error) {
-	ok, err := UsedIn(dirname)
+func New(lockfilePath string) (gpm.Lockfile, error) {
+	ok, err := UsedIn(lockfilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -18,7 +18,7 @@ func New(dirname string) (gpm.Lockfile, error) {
 		return nil, errors.New("directory does not use gdm")
 	}
 
-	lockfile, err := FromFile(dirname, "Godeps")
+	lockfile, err := FromFile(lockfilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -27,8 +27,8 @@ func New(dirname string) (gpm.Lockfile, error) {
 }
 
 // UsedIn checks whether gdm is used correctly within a project directory.
-func UsedIn(dirname string) (bool, error) {
-	return files.Exists(dirname, "Godeps")
+func UsedIn(lockfilePath string) (bool, error) {
+	return files.Exists(lockfilePath)
 }
 
 // FromFile constructs a gdm lockfile from a specific file.
