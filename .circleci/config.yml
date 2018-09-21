@@ -95,7 +95,7 @@ jobs:
 
             # Run native integration tests
             # as long as -short is not being called, integration tests get run
-            go test ./...
+            go test ./... -v -timeout 900s # 15 min
             #Run shell based tests
             ./test.sh > $ARTIFACTS/integration-test-stdout 2> >(tee $ARTIFACTS/integration-test-stderr >&2)
       # - store_test_results:
