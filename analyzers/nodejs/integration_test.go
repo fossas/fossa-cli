@@ -49,6 +49,7 @@ func TestMain(m *testing.M) {
 // While not testing the core functionality, this ensures that the tests have been setup correctly as needed for a prereq to run the analyzer steps
 // This test itself does not incur any overhead.
 func TestTestSetup(t *testing.T) {
+	t.Parallel()
 	assertProjectFixtureExists(t, "puppeteer")
 	// faker has no deps
 	// assertProjectFixtureExists(t, "fakerjs")
@@ -62,8 +63,10 @@ func TestTestSetup(t *testing.T) {
 }
 
 func TestAnalysisOutput(t *testing.T) {
+	t.Parallel()
 	for _, proj := range projects {
 		t.Run(proj.Name, func(t *testing.T) {
+			t.Parallel()
 			module := module.Module{
 				Dir:         filepath.Join(nodeAnalyzerFixtureDir, proj.Name),
 				Type:        pkg.NodeJS,
