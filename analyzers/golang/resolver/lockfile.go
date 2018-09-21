@@ -39,7 +39,7 @@ func FromLockfile(tool Type, dir string) (Resolver, error) {
 	case Godep:
 		return godep.New(filepath.Join(dir, "Godeps", "Godeps.json"))
 	case Govendor:
-		return govendor.New(dir)
+		return govendor.New(filepath.Join(dir, "vendor", "vendor.json"))
 	case Vndr:
 		return vndr.New(dir)
 	default:

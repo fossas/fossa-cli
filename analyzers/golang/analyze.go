@@ -77,7 +77,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		if a.Options.LockfilePath == "" {
 			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
 		}
-		r, err = govendor.FromFile(a.Options.LockfilePath)
+		r, err = govendor.New(a.Options.LockfilePath)
 		if err != nil {
 			return graph.Deps{}, err
 		}

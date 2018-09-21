@@ -4,7 +4,6 @@ package govendor
 import (
 	"errors"
 	"path"
-	"path/filepath"
 	"time"
 
 	"github.com/apex/log"
@@ -45,18 +44,34 @@ func (l Lockfile) Resolve(importpath string) (pkg.Import, error) {
 	return pkg.Import{}, buildtools.ErrNoRevisionForPackage
 }
 
-func New(dirname string) (Lockfile, error) {
-	ok, err := UsedIn(dirname)
+func New(lockfilePath string) (Lockfile, error) {
+	ok, err := UsedIn(lockfilePath)
 	if err != nil {
 		return Lockfile{}, err
 	}
 	if !ok {
 		return Lockfile{}, errors.New("directory does not use govendor")
 	}
-	lockfile, err := FromFile(filepath.Join(dirname, "vendor", "vendor.json"))
+	lockfile, err := FromFile(lockfilePath)
 	if err != nil {
 		return Lockfile{}, err
 	}
+	return lockfile, nil
+}
+
+// UsedIn checks whether govendor is used correctly within a project folder.
+func UsedIn(lockfilePath string) (bool, error) {
+	return files.Exists(lockfilePath)
+}
+
+// FromFile reads a raw Lockfile from a vendor/vendor.json file.
+func FromFile(filename string) (Lockfile, error) {
+	var lockfile Lockfile
+	err := files.ReadJSON(&lockfile, filename)
+	if err != nil {
+		return Lockfile{}, err
+	}
+
 	normalized := make(map[string]pkg.Import)
 	for _, project := range lockfile.Package {
 		normalized[project.Path] = pkg.Import{
@@ -71,20 +86,5 @@ func New(dirname string) (Lockfile, error) {
 	}
 
 	lockfile.normalized = normalized
-	return lockfile, nil
-}
-
-// UsedIn checks whether govendor is used correctly within a project folder.
-func UsedIn(dirname string) (bool, error) {
-	return files.Exists(dirname, "vendor", "vendor.json")
-}
-
-// FromFile reads a raw Lockfile from a vendor/vendor.json file.
-func FromFile(filename string) (Lockfile, error) {
-	var lockfile Lockfile
-	err := files.ReadJSON(&lockfile, filename)
-	if err != nil {
-		return Lockfile{}, err
-	}
 	return lockfile, nil
 }
