@@ -84,6 +84,16 @@ func TestDuplicateDependencies(t *testing.T) {
 	}
 }
 
+var chaiDirectDep = pkg.Import{
+	Target: "chai",
+	Resolved: pkg.ID{
+		Location: "",
+		Name:     "chai",
+		Revision: "4.1.2",
+		Type:     pkg.NodeJS,
+	},
+}
+
 func TestAnalyzeWithNpmLs(t *testing.T) {
 	buildTarget := filepath.Join("testdata", "chai", "installed")
 
@@ -126,10 +136,25 @@ func TestUsingNodeModuleFallback(t *testing.T) {
 	analysisResults, err := analyzer.Analyze()
 	assert.NoError(t, err)
 
-	for dep := range analysisResults.Transitive {
-		println(dep.Name + "@" + dep.Revision)
+	chaiProject := analysisResults.Transitive[chaiDirectDep.Resolved]
+	AssertImport(t, chaiProject.Imports, "assertion-error", "1.1.0")
+	AssertImport(t, chaiProject.Imports, "check-error", "1.0.2")
+	AssertImport(t, chaiProject.Imports, "get-func-name", "2.0.0")
+	AssertImport(t, chaiProject.Imports, "pathval", "1.1.0")
+	AssertImport(t, chaiProject.Imports, "deep-eql", "3.0.1")
+	AssertImport(t, chaiProject.Imports, "type-detect", "4.0.8")
+}
+
+func AssertImport(t *testing.T, imports pkg.Imports, name, revision string) {
+	for _, importedProj := range imports {
+		if importedProj.Resolved.Name == name {
+			if importedProj.Resolved.Revision == revision {
+				return
+			}
+
+			assert.Fail(t, "found "+name+"@"+importedProj.Resolved.Revision+" instead of "+revision)
+		}
 	}
 
-	assert.Len(t, analysisResults.Direct, 1)
-	assert.Len(t, analysisResults.Transitive, 7)
+	assert.Fail(t, "missing "+name+"@"+revision)
 }
