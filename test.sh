@@ -36,6 +36,8 @@ time fossa report dependencies --option allow-unresolved-prefix:k8s.io go:./cmd/
 ## Consul (govendor)
 echo "Testing consul"
 cd $GOPATH/src/github.com/hashicorp/consul
+# Commit where this command worked in previous docker image
+git checkout 7fa6bb022f8cbd9c9dc8de89132cf47333050966
 fossa init
 cat .fossa.yml
 time fossa analyze --output --option allow-nested-vendor:true --option allow-deep-vendor:true go:. | json
