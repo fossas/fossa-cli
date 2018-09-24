@@ -87,7 +87,6 @@ func TestDuplicateDependencies(t *testing.T) {
 var chaiDirectDep = pkg.Import{
 	Target: "chai",
 	Resolved: pkg.ID{
-		Location: "",
 		Name:     "chai",
 		Revision: "4.1.2",
 		Type:     pkg.NodeJS,
