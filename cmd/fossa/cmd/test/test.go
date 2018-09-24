@@ -86,7 +86,7 @@ func Do(stop <-chan time.Time) (fossa.Issues, error) {
 		if err != nil {
 			return fossa.Issues{}, err
 		}
-		project.Project = orgID + "/" + fossa.NormalizeGitURL(project.Project)
+		project.Project = orgID + "/" + project.Project
 	}
 
 	_, err := CheckBuild(project, stop)
