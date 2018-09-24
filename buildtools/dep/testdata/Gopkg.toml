@@ -1,0 +1,5 @@
+ignored = ["cat/puma", "cat/big/*"]
+
+[[constraint]]
+  name = "cat/fossa"
+  version = "0.3.0"

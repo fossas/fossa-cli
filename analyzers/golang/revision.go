@@ -38,6 +38,11 @@ func (a *Analyzer) RevisionDirect(project Project, r resolver.Resolver, gopkg go
 			return UnresolvedImport(gopkg), nil
 		}
 	}
+
+	if err == buildtools.ErrPackageIsIgnored {
+		return UnresolvedImport(gopkg), nil
+	}
+
 	if err != nil {
 		return pkg.Import{}, err
 	}
