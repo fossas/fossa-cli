@@ -18,7 +18,7 @@ RUN mkdir -p $GOPATH/src/github.com/docker && \
 
 ## InfluxDB (gdm)
 ## This is an older version of InfluxDB that still used GDM -- the current
-## revision has migrated to Dep.
+## revision has migrated to `dep`.
 RUN mkdir -p $GOPATH/src/github.com/influxdata && \
     cd $GOPATH/src/github.com/influxdata && \
     git clone https://github.com/influxdata/influxdb && \

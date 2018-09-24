@@ -20,7 +20,13 @@ jobs:
             mkdir -p $ARTIFACTS
       - restore_cache:
           keys:
-            - v2-gopkg-cache-{{ checksum "Gopkg.lock" }}
+            # Note: CircleCI keys caches on prefix string matches, breaking ties
+            # by taking the latest cache.
+            # See https://circleci.com/docs/2.0/caching/#restoring-cache and
+            # https://discuss.circleci.com/t/circle-2-0-caching-is-too-limited-to-be-very-useful/11694/12.
+            - v3-{{ checksum "Gopkg.lock" }}-{{ .Branch }}-{{ .Revision }}
+            - v3-{{ checksum "Gopkg.lock" }}-{{ .Branch }}
+            - v3-{{ checksum "Gopkg.lock" }}
       - run:
           name: Compile CLI
           command: |

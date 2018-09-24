@@ -44,25 +44,19 @@ $(PREFIX)/fossa: $(BIN)/fossa
 docker-base: ./docker/base/Dockerfile
 	sudo docker build -t quay.io/fossa/fossa-cli-base -f ./docker/base/Dockerfile .
 
-docker-test-base: docker-base ./docker/test-base/Dockerfile
-	sudo docker build -t quay.io/fossa/fossa-cli-test-base -f ./docker/test-base/Dockerfile .
-
-docker: docker-base ./docker/cli/Dockerfile
-	sudo docker build -t quay.io/fossa/fossa-cli -f ./docker/cli/Dockerfile .
-
-docker-test: docker-test-base ./docker/test/Dockerfile
-	sudo docker build -t quay.io/fossa/fossa-cli-test -f ./docker/test/Dockerfile .
+docker-fixtures: ./docker/fixtures/Dockerfile
+	sudo docker build -t quay.io/fossa/fossa-cli-fixtures -f ./docker/fixtures/Dockerfile .
 
 # Development tasks.
 .PHONY: dev
-dev: docker-test-base
+dev: docker-fixtures
 	sudo docker run --rm -it \
 		-v $$GOPATH/src/github.com/fossas/fossa-cli:/home/fossa/go/src/github.com/fossas/fossa-cli \
 		-v $$GOPATH/bin:/home/fossa/go/bin \
 		quay.io/fossa/fossa-cli-test-base /bin/bash
 
 .PHONY: dev-osx
-dev-osx: docker-test-base
+dev-osx: docker-fixtures
 	docker run --rm -it \
 		-v $$GOPATH/src/github.com/fossas/fossa-cli:/home/fossa/go/src/github.com/fossas/fossa-cli \
 		quay.io/fossa/fossa-cli-test-base /bin/bash
