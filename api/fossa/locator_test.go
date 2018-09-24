@@ -35,3 +35,32 @@ func TestLocatorFetcher(t *testing.T) {
 		assert.Equal(t, tc.Fetcher, fossa.LocatorOf(id).Fetcher, tc.Fetcher)
 	}
 }
+
+func TestNormalizeGit(t *testing.T) {
+	//No idea what it should be yet
+
+}
+
+func TestStringCustom(t *testing.T) {
+	custom := fossa.Locator{
+		Fetcher:  "custom",
+		Project:  "6214/git@github.com:fossa/fossa-custom.git",
+		Revision: "SHAVALUE",
+	}
+
+	stringified := custom.String()
+	expected := "custom+6214/git@github.com:fossa/fossa-custom.git$SHAVALUE"
+	assert.Equal(t, stringified, expected)
+}
+
+func TestStringGit(t *testing.T) {
+	custom := fossa.Locator{
+		Fetcher:  "git",
+		Project:  "git@github.com:fossas/fossa-cli.git",
+		Revision: "SHAVALUE",
+	}
+
+	stringified := custom.String()
+	expected := "git+github.com/fossas/fossa-cli$SHAVALUE"
+	assert.Equal(t, stringified, expected)
+}

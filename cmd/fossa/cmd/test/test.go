@@ -80,15 +80,6 @@ func Do(stop <-chan time.Time) (fossa.Issues, error) {
 		Revision: revision,
 	}
 
-	// Fixes https://github.com/fossas/fossa-cli/issues/181.
-	if project.Fetcher == "custom" {
-		orgID, err := fossa.GetOrganizationID()
-		if err != nil {
-			return fossa.Issues{}, err
-		}
-		project.Project = orgID + "/" + project.Project
-	}
-
 	_, err := CheckBuild(project, stop)
 	if err != nil {
 		log.Fatalf("Could not load build: %s", err.Error())
