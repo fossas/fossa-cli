@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/pkg"
 	"gopkg.in/yaml.v2"
 )
 
@@ -15,7 +16,14 @@ type lockfileEntry struct {
 
 type YarnLockfile map[string]lockfileEntry
 
-func FromLockfile(pathElems ...string) (YarnLockfile, error) {
+func FromLockfile(pathElems ...string) (pkg.Package, error) {
+	// filePath := filepath.Join(pathElems...)
+	// lockfile, err := readLockfile(filePath)
+
+	return pkg.Package{}, nil
+}
+
+func readLockfile(pathElems ...string) (YarnLockfile, error) {
 	var lockfile YarnLockfile
 
 	filePath := filepath.Join(pathElems...)
