@@ -2,8 +2,10 @@ package yarn
 
 import (
 	"path/filepath"
+	"regexp"
 
 	"github.com/fossas/fossa-cli/files"
+	"gopkg.in/yaml.v2"
 )
 
 type lockfileEntry struct {
@@ -11,14 +13,23 @@ type lockfileEntry struct {
 	Dependencies map[string]string
 }
 
-type YarnLockfile []lockfileEntry
+type YarnLockfile map[string]lockfileEntry
 
 func FromLockfile(pathElems ...string) (YarnLockfile, error) {
 	var lockfile YarnLockfile
 
 	filePath := filepath.Join(pathElems...)
 
-	err := files.ReadYAML(&lockfile, filePath)
+	fileContent, err := files.Read(filePath)
+	if err != nil {
+		return YarnLockfile{}, err
+	}
+
+	r, err := regexp.Compile("\\s\"")
+	yamlCompatLockfile := r.ReplaceAll(fileContent, []byte(": \""))
+	println(string(fileContent))
+
+	err = yaml.Unmarshal(yamlCompatLockfile, &lockfile)
 	if err != nil {
 		return YarnLockfile{}, err
 	}
