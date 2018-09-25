@@ -14,20 +14,20 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-// FromLockfile builds a dependency graph based on the the lockfile found in the provided path
+// FromLockfile builds a dependency graph based on lockfiles found in the project root. The pathElems should point to the project manifest (packge.json)
 func FromLockfile(pathElems ...string) (graph.Deps, error) {
-	filePath := filepath.Join(pathElems...)
-	yarnLockfileExists, err := files.Exists(filePath)
+	manifestPath := filepath.Join(pathElems...)
+	lockFilePath := filepath.Join(filepath.Dir(manifestPath), "yarn.lock")
+	yarnLockfileExists, err := files.Exists(lockFilePath)
 	if err != nil {
 		return graph.Deps{}, err
 	}
 	if !yarnLockfileExists {
-		return graph.Deps{}, errors.New(filePath + " does not exist")
+		return graph.Deps{}, errors.New(lockFilePath + " does not exist")
 	}
 
 	// To know which deps are direct, we need the manifest def
-	manifestPath := filepath.Join(filepath.Dir(filePath), "package.json")
-	lockfile, err := readLockfile(filePath)
+	lockfile, err := readLockfile(lockFilePath)
 	if err != nil {
 		return graph.Deps{}, nil
 	}
