@@ -1,6 +1,7 @@
 package yarn_test
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,7 @@ import (
   └── type-detect@4.0.8
 */
 func TestSimpleLockfile(t *testing.T) {
-	deps, err := yarn.FromLockfile("testdata", "yarn.lock")
+	deps, err := yarn.FromProject(filepath.Join("testdata", "package.json"), filepath.Join("testdata", "yarn.lock"))
 	assert.NoError(t, err)
 
 	assert.Len(t, deps.Direct, 1)
