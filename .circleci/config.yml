@@ -25,6 +25,11 @@ jobs:
           command: |
             mkdir -p $TEST_RESULTS
             mkdir -p $ARTIFACTS
+      # See https://discuss.circleci.com/t/unable-to-restore-bundle-from-cache-using-circleci-ruby-docker-images/24249/6
+      # for context.
+      - run:
+          name: Cache permissions workaround
+          command: sudo chown -R circleci /go/bin
       - restore_cache:
           keys:
             # Note: CircleCI keys caches on prefix string matches, breaking ties
