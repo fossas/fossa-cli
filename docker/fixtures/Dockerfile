@@ -1,5 +1,5 @@
 # This Dockerfile contains all the test fixtures for integration testing.
-FROM fossa/fossa-cli-buildtools
+FROM fossa/fossa-cli:buildtools
 
 # Known good Go projects (some are `git clone`d because `go get` causes
 # compilation errors):

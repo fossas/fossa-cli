@@ -1,7 +1,7 @@
 # This Dockerfile provides all build tools that FOSSA CLI invokes. It's useful
 # for developing the FOSSA CLI on machines that may not have all the necessary
 # build tools.
-FROM fossa/fossa-cli-base
+FROM fossa/fossa-cli:base
 
 # Workaround for add-apt-repository (see
 # https://github.com/oerdnj/deb.sury.org/issues/56).

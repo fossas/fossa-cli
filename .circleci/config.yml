@@ -13,7 +13,7 @@ jobs:
     <<: *defaults
     working_directory: /go/src/github.com/fossas/fossa-cli
     docker:
-      # We might want to use fossa/fossa-cli-base instead, depending on which
+      # We might want to use fossa/fossa-cli:base instead, depending on which
       # gets better performance. The trade-off is that the CircleCI image is
       # cached but the FOSSA CLI image has build tools baked into it (but also
       # is correspondingly larger).
@@ -65,9 +65,9 @@ jobs:
     <<: *defaults
     working_directory: /home/fossa/go/src/github.com/fossas/fossa-cli
     docker:
-      # TODO: when we deprecate fossa-cli-fixtures, this should change to
-      # fossa-cli-buildtools.
-      - image: fossa/fossa-cli-fixtures:circleci
+      # TODO: when we deprecate fossa-cli:fixtures, this should change to
+      # fossa-cli:buildtools.
+      - image: fossa/fossa-cli:fixtures
     steps:
       - checkout
       - run:
