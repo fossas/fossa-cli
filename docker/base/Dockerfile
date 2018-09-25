@@ -1,6 +1,6 @@
 # This Dockerfile is the base image for developing the FOSSA CLI. It sets up the
 # non-root FOSSA user account, but contains no build tools or other extras.
-FROM ubuntu:18.04
+FROM buildpack-deps:18.04-scm
 
 # Housekeeping + CircleCI requirements + build utilities.
 RUN apt-get update && \
@@ -9,8 +9,6 @@ RUN apt-get update && \
       sudo tmux tree vim curl \
       # Required by CircleCI:
       git ssh tar gzip ca-certificates
-      # Used by various build tools:
-    #   apt-transport-https build-essential libssl-dev software-properties-common
 
 # Add and drop down to non-root user.
 RUN useradd fossa && \

@@ -1,12 +1,13 @@
 SHELL=/bin/bash -o pipefail
-BIN="$(shell go env GOPATH)/bin"
-DEP="$(BIN)/dep"
-PREFIX?=/usr/local/bin
+BIN=$(shell go env GOPATH)/bin
 
-GO_BINDATA="$(BIN)/go-bindata"
-GENNY="$(BIN)/genny"
-GO_JUNIT_REPORT="$(BIN)/go-junit-report"
-GOVERALLS="$(BIN)/goveralls"
+DEP=$(BIN)/dep
+GO_BINDATA=$(BIN)/go-bindata
+GENNY=$(BIN)/genny
+GO_JUNIT_REPORT=$(BIN)/go-junit-report
+GOVERALLS=$(BIN)/goveralls
+
+IMAGE?=buildtools
 
 GORELEASER_FLAGS?=--rm-dist
 LDFLAGS:=-ldflags '-extldflags "-static" -X github.com/fossas/fossa-cli/cmd/fossa/version.version=$(shell git rev-parse --abbrev-ref HEAD) -X github.com/fossas/fossa-cli/cmd/fossa/version.commit=$(shell git rev-parse HEAD) -X "github.com/fossas/fossa-cli/cmd/fossa/version.goversion=$(shell go version)" -X github.com/fossas/fossa-cli/cmd/fossa/version.buildType=development'
@@ -15,19 +16,19 @@ all: build
 
 # Various required tools.
 $(DEP):
-	[ -f $@ ] || go get -u github.com/golang/dep/cmd/dep
+	curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
 $(GO_BINDATA):
-	[ -f $@ ] || go get -u github.com/go-bindata/go-bindata/...
+	go get -u -v github.com/go-bindata/go-bindata/...
 
 $(GENNY):
-	[ -f $@ ] || go get -u github.com/cheekybits/genny
+	go get -u -v github.com/cheekybits/genny
 
 $(GO_JUNIT_REPORT):
-	[ -f $@ ] || go get -u github.com/jstemmer/go-junit-report
+	go get -u -v github.com/jstemmer/go-junit-report
 
 $(GOVERALLS):
-	[ -f $@ ] || go get -u github.com/mattn/goveralls
+	go get -u -v github.com/mattn/goveralls
 
 # Building the CLI.
 .PHONY: build
@@ -37,36 +38,33 @@ $(BIN)/fossa: $(GO_BINDATA) $(GENNY)
 	go generate ./...
 	go build -o $@ $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
 
-$(PREFIX)/fossa: $(BIN)/fossa
-	mv $< $@
-
 # Building various Docker images.
 docker-base: ./docker/base/Dockerfile
-	sudo docker build -t quay.io/fossa/fossa-cli-base -f ./docker/base/Dockerfile .
+	sudo docker build -t fossa/fossa-cli-base -f ./docker/base/Dockerfile .
 
+docker-buildtools: ./docker/buildtools/Dockerfile
+	sudo docker build -t fossa/fossa-cli-buildtools -f ./docker/buildtools/Dockerfile .
+
+## TODO: we will deprecate this image once native integration tests are
+## completely ready.
 docker-fixtures: ./docker/fixtures/Dockerfile
-	sudo docker build -t quay.io/fossa/fossa-cli-fixtures -f ./docker/fixtures/Dockerfile .
+	sudo docker build -t fossa/fossa-cli-fixtures -f ./docker/fixtures/Dockerfile .
 
 # Development tasks.
 .PHONY: dev
-dev: docker-fixtures
+dev: docker-$(IMAGE)
 	sudo docker run --rm -it \
 		-v $$GOPATH/src/github.com/fossas/fossa-cli:/home/fossa/go/src/github.com/fossas/fossa-cli \
 		-v $$GOPATH/bin:/home/fossa/go/bin \
-		quay.io/fossa/fossa-cli-test-base /bin/bash
+		fossa/fossa-cli-$(IMAGE) /bin/bash
 
 .PHONY: dev-osx
-dev-osx: docker-fixtures
+dev-osx: docker-$(IMAGE)
 	docker run --rm -it \
 		-v $$GOPATH/src/github.com/fossas/fossa-cli:/home/fossa/go/src/github.com/fossas/fossa-cli \
-		quay.io/fossa/fossa-cli-test-base /bin/bash
-
-.PHONY: install
-install: $(PREFIX)/fossa
-
-.PHONY: uninstall
-uninstall:
-	rm $(PREFIX)/fossa
+		# We don't mount the $GOPATH/bin because the host machine's binaries are
+		# compiled for Darwin and won't run on Docker (Linux).
+		fossa/fossa-cli-$(IMAGE) /bin/bash
 
 .PHONY: vendor
 vendor: $(DEP)
@@ -81,11 +79,11 @@ clean:
 .PHONY: test
 test:
 	make unit-test
-	make integration-test
+	# make integration-test
 
 .PHONY: unit-test
 unit-test:
-	go test ./...
+	go test -short ./...
 
 .PHONY: junit-test
 junit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
@@ -93,7 +91,8 @@ junit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
 
 .PHONY: integration-test
 integration-test: docker-test
-	sudo docker run --rm -it quay.io/fossa/fossa-cli-test
+	echo "native integration tests are a WIP"
+	# sudo docker run --rm -it quay.io/fossa/fossa-cli-test
 
 # Release tasks.
 .PHONY: prepare-release
