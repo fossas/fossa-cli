@@ -106,6 +106,14 @@ func JIRAProjectKey() string {
 	return TryStrings(StringFlag(flags.JIRAProjectKey), file.JIRAProjectKey(), "")
 }
 
+func Link() string {
+	return TryStrings(StringFlag(flags.Link), file.Link(), "")
+}
+
+func Team() string {
+	return TryStrings(StringFlag(flags.Team), file.Team(), "")
+}
+
 /**** Analysis configuration keys ****/
 
 func Options() (map[string]interface{}, error) {
