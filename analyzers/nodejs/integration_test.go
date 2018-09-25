@@ -18,7 +18,7 @@ import (
 	"github.com/fossas/fossa-cli/testing/runfossa"
 )
 
-var nodeAnalyzerFixtureDir = filepath.Join(fixtures.FixtureDirectory(), "nodejs", "analyzer")
+var nodeAnalyzerFixtureDir = filepath.Join(fixtures.Directory(), "nodejs", "analyzer")
 
 func TestMain(m *testing.M) {
 	// flags are not parsed at this point. In order to have testing.Short() read actually provided values, this must be executed

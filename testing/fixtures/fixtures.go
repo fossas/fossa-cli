@@ -18,8 +18,8 @@ type Project struct {
 	Env    map[string]string
 }
 
-// FixtureDirectory returns the directory under which tests fixtures should be placed
-func FixtureDirectory() string {
+// Directory returns the directory under which tests fixtures should be placed
+func Directory() string {
 	return filepath.Join(os.TempDir(), "fossa-cli-fixtures")
 }
 
