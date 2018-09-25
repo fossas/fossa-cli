@@ -55,7 +55,7 @@ func (l Locator) URL() string {
 	if err != nil {
 		log.Fatalf("Invalid FOSSA URL: %s", err.Error())
 	}
-	return strings.Replace(server.ResolveReference(url).String(), "%", "%%", -1)
+	return server.ResolveReference(url).String()
 }
 
 // ReportURL provides a formatted URL.
