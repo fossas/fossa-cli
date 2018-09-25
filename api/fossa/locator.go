@@ -51,7 +51,7 @@ func (l Locator) OrgString() string {
 }
 
 // URL calculates the FOSSA URL for a project's locator.
-func (l Locator) URL() string {
+func (l Locator) URLString() string {
 	server, err := url.Parse(config.Endpoint())
 	if err != nil {
 		log.Fatalf("Invalid FOSSA endpoint: %s", err.Error())
@@ -70,7 +70,7 @@ func (l Locator) URL() string {
 	if err != nil {
 		log.Fatalf("Invalid FOSSA URL: %s", err.Error())
 	}
-	return strings.Replace(server.ResolveReference(url).String(), "%", "%%", -1)
+	return server.ResolveReference(url).String()
 }
 
 // ReportURL provides a formatted URL.
@@ -79,7 +79,7 @@ func (l Locator) ReportURL() string {
 ============================================================
 
     View FOSSA Report:
-    ` + l.URL() + `
+    ` + l.URLString() + `
 
 ============================================================
 `
