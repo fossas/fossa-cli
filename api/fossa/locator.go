@@ -39,12 +39,16 @@ func (l Locator) OrgString() string {
 		return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
 	}
 
-	if l.Fetcher == "archive" || l.Fetcher == "custom" {
-		orgID, err := GetOrganizationID()
-		if err != nil {
-			log.Warnf("Could not get OrganizationID while constructing locator")
-		}
+	orgID, err := GetOrganizationID()
+	if err != nil {
+		log.Warnf("Could not get OrganizationID while constructing locator")
+	}
+
+	if l.Fetcher == "archive" {
 		l.Project = orgID + "/" + l.Project
+	}
+	if l.Fetcher == "custom" {
+		l.Project = orgID + "/" + NormalizeGitURL(l.Project)
 	}
 
 	return l.Fetcher + "+" + l.Project + "$" + l.Revision
