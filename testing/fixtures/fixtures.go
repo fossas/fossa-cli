@@ -10,7 +10,7 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 
-// Project describes a git locator for a test fixture and env vars for when it is to be built
+// Project describes a git repo for a test fixture and env vars for when it is to be built
 type Project struct {
 	Name   string
 	URL    string
