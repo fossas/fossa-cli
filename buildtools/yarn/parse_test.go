@@ -9,21 +9,6 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-func TestParse(t *testing.T) {
-	lockfile, err := yarn.FromLockfile("testdata", "yarn.lock")
-	assert.NoError(t, err)
-	assert.NotEmpty(t, lockfile)
-}
-
-var chaiDirectDep = pkg.Import{
-	Target: "chai",
-	Resolved: pkg.ID{
-		Name:     "chai",
-		Revision: "4.1.2",
-		Type:     pkg.NodeJS,
-	},
-}
-
 /*
 └─┬ chai@4.1.2
   ├── assertion-error@1.1.0
