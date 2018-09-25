@@ -59,7 +59,7 @@ dev: docker-$(IMAGE)
 	sudo docker run --rm -it \
 		-v $$GOPATH/src/github.com/fossas/fossa-cli:/home/fossa/go/src/github.com/fossas/fossa-cli \
 		-v $$GOPATH/bin:/home/fossa/go/bin \
-		fossa/fossa-cli-$(IMAGE) /bin/bash
+		fossa/fossa-cli:$(IMAGE) /bin/bash
 
 .PHONY: dev-osx
 dev-osx: docker-$(IMAGE)
@@ -67,7 +67,7 @@ dev-osx: docker-$(IMAGE)
 		-v $$GOPATH/src/github.com/fossas/fossa-cli:/home/fossa/go/src/github.com/fossas/fossa-cli \
 		# We don't mount the $GOPATH/bin because the host machine's binaries are
 		# compiled for Darwin and won't run on Docker (Linux).
-		fossa/fossa-cli-$(IMAGE) /bin/bash
+		fossa/fossa-cli:$(IMAGE) /bin/bash
 
 .PHONY: vendor
 vendor: $(DEP)
