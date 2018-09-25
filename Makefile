@@ -39,15 +39,18 @@ $(BIN)/fossa: $(GO_BINDATA) $(GENNY)
 	go build -o $@ $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
 
 # Building various Docker images.
+.PHONY:
 docker-base: ./docker/base/Dockerfile
 	sudo docker build -t fossa/fossa-cli:base -f ./docker/base/Dockerfile .
 
-docker-buildtools: ./docker/buildtools/Dockerfile
+.PHONY:
+docker-buildtools: docker-base ./docker/buildtools/Dockerfile
 	sudo docker build -t fossa/fossa-cli:buildtools -f ./docker/buildtools/Dockerfile .
 
 ## TODO: we will deprecate this image once native integration tests are
 ## completely ready.
-docker-fixtures: ./docker/fixtures/Dockerfile
+.PHONY:
+docker-fixtures: docker-buildtools ./docker/fixtures/Dockerfile
 	sudo docker build -t fossa/fossa-cli:fixtures -f ./docker/fixtures/Dockerfile .
 
 # Development tasks.

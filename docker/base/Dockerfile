@@ -2,13 +2,9 @@
 # non-root FOSSA user account, but contains no build tools or other extras.
 FROM buildpack-deps:18.04-scm
 
-# Housekeeping + CircleCI requirements + build utilities.
+# Add useful scripting + debugging utilities.
 RUN apt-get update && \
-    apt-get install -y \
-      # Useful scripting + debugging utilities:
-      sudo tmux tree vim curl \
-      # Required by CircleCI:
-      git ssh tar gzip ca-certificates
+    apt-get install -y sudo tmux tree vim
 
 # Add and drop down to non-root user.
 RUN useradd fossa && \
