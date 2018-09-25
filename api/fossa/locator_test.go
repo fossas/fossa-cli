@@ -36,14 +36,38 @@ func TestLocatorFetcher(t *testing.T) {
 	}
 }
 
-func TestStringGit(t *testing.T) {
+func TestUploadStringGit(t *testing.T) {
+	git := fossa.Locator{
+		Fetcher:  "git",
+		Project:  "git@github.com:fossas/fossa-cli.git",
+		Revision: "SHAVALUE",
+	}
+
+	stringified := git.UploadString()
+	expected := "git+github.com/fossas/fossa-cli$SHAVALUE"
+	assert.Equal(t, stringified, expected)
+}
+
+func TestOrgStringGit(t *testing.T) {
+	custom := fossa.Locator{
+		Fetcher:  "custom",
+		Project:  "git@github.com:fossas/fossa-cli.git",
+		Revision: "SHAVALUE",
+	}
+
+	stringified := custom.UploadString()
+	expected := "custom+git@github.com:fossas/fossa-cli.git$SHAVALUE"
+	assert.Equal(t, stringified, expected)
+}
+
+func TestURLString(t *testing.T) {
 	custom := fossa.Locator{
 		Fetcher:  "git",
 		Project:  "git@github.com:fossas/fossa-cli.git",
 		Revision: "SHAVALUE",
 	}
 
-	stringified := custom.String()
-	expected := "git+github.com/fossas/fossa-cli$SHAVALUE"
+	stringified := custom.URLString()
+	expected := "https://app.fossa.io/projects/git+git@github.com:fossas%2Ffossa-cli.git/refs/branch/master/SHAVALUE"
 	assert.Equal(t, stringified, expected)
 }

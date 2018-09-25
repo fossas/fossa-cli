@@ -87,7 +87,7 @@ func licensesRun(ctx *cli.Context) (err error) {
 			if _, ok := depsByLicense[license.LicenseID]; !ok {
 				depsByLicense[license.LicenseID] = make(map[string]fossa.Revision)
 			}
-			depsByLicense[license.LicenseID][rev.Locator.String()] = rev
+			depsByLicense[license.LicenseID][rev.Locator.OrgString()] = rev
 		}
 	}
 

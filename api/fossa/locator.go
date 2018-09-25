@@ -18,25 +18,44 @@ type Locator struct {
 	Revision string `json:"revision"`
 }
 
-// String returns a locator converted to a string as a URL path for API access.
-func (l Locator) String() string {
+// UploadString returns a locator converted to a string as a URL path for API access.
+func (l Locator) UploadString() string {
+	if l.Fetcher != "git" {
+		if l.Fetcher == "archive" {
+			orgID, err := GetOrganizationID()
+			if err != nil {
+				log.Warnf("Could not get OrganizationID while constructing locator")
+			}
+			l.Project = orgID + "/" + l.Project
+		}
+		return l.Fetcher + "+" + l.Project + "$" + l.Revision
+	}
+	return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
+}
+
+// Org returns a locator converted to a string as a URL path for API access.
+func (l Locator) OrgString() string {
 	if l.Fetcher == "git" {
 		return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
 	}
 
-	if l.Fetcher == "archive" || l.Fetcher == "custom" {
-		orgID, err := GetOrganizationID()
-		if err != nil {
-			log.Warnf("Could not get OrganizationID while constructing locator")
-		}
+	orgID, err := GetOrganizationID()
+	if err != nil {
+		log.Warnf("Could not get OrganizationID while constructing locator")
+	}
+
+	if l.Fetcher == "archive" {
 		l.Project = orgID + "/" + l.Project
+	}
+	if l.Fetcher == "custom" {
+		l.Project = orgID + "/" + NormalizeGitURL(l.Project)
 	}
 
 	return l.Fetcher + "+" + l.Project + "$" + l.Revision
 }
 
 // URL calculates the FOSSA URL for a project's locator.
-func (l Locator) URL() string {
+func (l Locator) URLString() string {
 	server, err := url.Parse(config.Endpoint())
 	if err != nil {
 		log.Fatalf("Invalid FOSSA endpoint: %s", err.Error())
@@ -55,7 +74,7 @@ func (l Locator) URL() string {
 	if err != nil {
 		log.Fatalf("Invalid FOSSA URL: %s", err.Error())
 	}
-	return strings.Replace(server.ResolveReference(url).String(), "%", "%%", -1)
+	return server.ResolveReference(url).String()
 }
 
 // ReportURL provides a formatted URL.
@@ -64,7 +83,7 @@ func (l Locator) ReportURL() string {
 ============================================================
 
     View FOSSA Report:
-    ` + l.URL() + `
+    ` + l.URLString() + `
 
 ============================================================
 `

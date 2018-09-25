@@ -63,11 +63,11 @@ func Normalize(modules []module.Module) ([]SourceUnit, error) {
 		for _, dep := range analyzed.Deps {
 			var imports []string
 			for _, i := range dep.Imports {
-				imports = append(imports, LocatorOf(i.Resolved).String())
+				imports = append(imports, LocatorOf(i.Resolved).OrgString())
 			}
 
 			deps = append(deps, SourceUnitDependency{
-				Locator: LocatorOf(dep.ID).String(),
+				Locator: LocatorOf(dep.ID).OrgString(),
 				Imports: imports,
 			})
 		}
@@ -79,7 +79,7 @@ func Normalize(modules []module.Module) ([]SourceUnit, error) {
 
 		var imports []string
 		for _, i := range analyzed.Imports {
-			imports = append(imports, LocatorOf(i.Resolved).String())
+			imports = append(imports, LocatorOf(i.Resolved).OrgString())
 		}
 		normalized = append(normalized, SourceUnit{
 			Name:     analyzed.Name,

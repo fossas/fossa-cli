@@ -28,7 +28,7 @@ type Issues struct {
 // GetIssues loads the issues for a project.
 func GetIssues(locator Locator) (Issues, error) {
 	var issues Issues
-	_, err := GetJSON(fmt.Sprintf(IssuesAPI, url.PathEscape(locator.String())), &issues)
+	_, err := GetJSON(fmt.Sprintf(IssuesAPI, url.PathEscape(locator.OrgString())), &issues)
 	if err != nil {
 		return Issues{}, errors.Wrap(err, "could not get Issues from API")
 	}
