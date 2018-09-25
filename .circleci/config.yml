@@ -31,14 +31,14 @@ jobs:
             # by taking the latest cache.
             # See https://circleci.com/docs/2.0/caching/#restoring-cache and
             # https://discuss.circleci.com/t/circle-2-0-caching-is-too-limited-to-be-very-useful/11694/12.
-            - v3-{{ checksum "Gopkg.lock" }}-{{ .Branch }}-{{ .Revision }}
-            - v3-{{ checksum "Gopkg.lock" }}-{{ .Branch }}
-            - v3-{{ checksum "Gopkg.lock" }}
+            - v4-{{ checksum "Gopkg.lock" }}-{{ .Branch }}-{{ .Revision }}
+            - v4-{{ checksum "Gopkg.lock" }}-{{ .Branch }}
+            - v4-{{ checksum "Gopkg.lock" }}
       - run:
           name: Compile CLI
           command: make
       - save_cache:
-          key: v3-{{ checksum "Gopkg.lock" }}-{{ .Branch }}-{{ .Revision }}
+          key: v4-{{ checksum "Gopkg.lock" }}-{{ .Branch }}-{{ .Revision }}
           paths:
             - ~/.cache/go-build
             - /go/bin
@@ -67,7 +67,7 @@ jobs:
     docker:
       # TODO: when we deprecate fossa-cli:fixtures, this should change to
       # fossa-cli:buildtools.
-      - image: fossa/fossa-cli:fixtures
+      - image: fossa/fossa-cli:buildtools
     steps:
       - checkout
       - run:
@@ -99,7 +99,7 @@ jobs:
       - run:
           name: Install CLI
           command: |
-            curl https://raw.githubusercontent.com/fossas/fossa-cli/{{ .Revision }}/install.sh | bash
+            curl https://raw.githubusercontent.com/fossas/fossa-cli/$CIRCLE_SHA1/install.sh | bash
       - run:
           name: Run FOSSA analysis
           command: |
@@ -114,11 +114,12 @@ jobs:
             cp $(which fossa) $ARTIFACTS
       - store_artifacts:
           path: /tmp/artifacts
-
+  # TODO(leo): set up automated releases.
+  # release:
 workflows:
   version: 2
   tests:
     jobs:
       - unit-test
-      - integration-test
+      # - integration-test
       - end-to-end-test
