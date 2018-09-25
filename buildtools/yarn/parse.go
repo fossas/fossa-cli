@@ -78,6 +78,9 @@ func readLockfile(pathElems ...string) (yarnLockfile, error) {
 	}
 
 	r, err := regexp.Compile("\\s\"")
+	if err != nil {
+		return yarnLockfile{}, err
+	}
 	yamlCompatLockfile := r.ReplaceAll(fileContent, []byte(": \""))
 	println(string(fileContent))
 
