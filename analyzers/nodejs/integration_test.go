@@ -14,10 +14,11 @@ import (
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
-	testUtils "github.com/fossas/fossa-cli/testing"
+	"github.com/fossas/fossa-cli/testing/fixtures"
+	"github.com/fossas/fossa-cli/testing/runfossa"
 )
 
-var nodeAnalyzerFixtureDir = filepath.Join(testUtils.FixtureDirectory(), "nodejs", "analyzer")
+var nodeAnalyzerFixtureDir = filepath.Join(fixtures.FixtureDirectory(), "nodejs", "analyzer")
 
 func TestMain(m *testing.M) {
 	// flags are not parsed at this point. In order to have testing.Short() read actually provided values, this must be executed
@@ -26,7 +27,7 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	err := testUtils.Clone(nodeAnalyzerFixtureDir, projects)
+	err := fixtures.Clone(nodeAnalyzerFixtureDir, projects)
 	if err != nil {
 		panic(err)
 	}
@@ -102,7 +103,7 @@ func initializeProjects(testDir string) error {
 	waitGroup.Add(len(projects))
 
 	for _, project := range projects {
-		go func(proj testUtils.ProjectFixture) {
+		go func(proj fixtures.ProjectFixture) {
 			defer waitGroup.Done()
 
 			projectDir := filepath.Join(testDir, proj.Name)
@@ -129,7 +130,7 @@ func initializeProjects(testDir string) error {
 			}
 
 			// any key will work to prevent the "NEED KEY" error message
-			err = testUtils.FossaInit(projectDir)
+			err = runfossa.Init(projectDir)
 			if err != nil {
 				println("failed to run fossa init on " + proj.Name)
 				println(err.Error())
@@ -143,8 +144,8 @@ func initializeProjects(testDir string) error {
 	return nil
 }
 
-var projects = []testUtils.ProjectFixture{
-	testUtils.ProjectFixture{
+var projects = []fixtures.ProjectFixture{
+	fixtures.ProjectFixture{
 		Name:   "puppeteer",
 		URL:    "https://github.com/GoogleChrome/puppeteer",
 		Commit: "b97bddf8e5750d20c6ba82392eebe2a3fd2dd218",
@@ -152,49 +153,49 @@ var projects = []testUtils.ProjectFixture{
 			"PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "1",
 		},
 	},
-	testUtils.ProjectFixture{
+	fixtures.ProjectFixture{
 		Name:   "fakerjs",
 		URL:    "https://github.com/Marak/faker.js",
 		Commit: "3a4bb358614c1e1f5d73f4df45c13a1a7aa013d7",
 		Env:    map[string]string{},
 	},
-	testUtils.ProjectFixture{
+	fixtures.ProjectFixture{
 		Name:   "fastify",
 		URL:    "https://github.com/fastify/fastify",
 		Commit: "1b16a4c5e381f9292d3ac2c327c3bda4bd277408",
 		Env:    map[string]string{},
 	},
-	testUtils.ProjectFixture{
+	fixtures.ProjectFixture{
 		Name:   "nest",
 		URL:    "https://github.com/nestjs/nest",
 		Commit: "ce498e86150f7de4a260f0c393d47ec4cc920ea1",
 		Env:    map[string]string{},
 	},
-	testUtils.ProjectFixture{
+	fixtures.ProjectFixture{
 		Name:   "ohm",
 		URL:    "https://github.com/harc/ohm",
 		Commit: "8202eff3723cfa26522134e7b003cf31ab5de445",
 		Env:    map[string]string{},
 	},
-	testUtils.ProjectFixture{
+	fixtures.ProjectFixture{
 		Name:   "express",
 		URL:    "https://github.com/expressjs/express",
 		Commit: "b4eb1f59d39d801d7365c86b04500f16faeb0b1c",
 		Env:    map[string]string{},
 	},
-	testUtils.ProjectFixture{
+	fixtures.ProjectFixture{
 		Name:   "standard",
 		URL:    "https://github.com/standard/standard",
 		Commit: "bc02256fa2c03632e657248483c55a752e63e724",
 		Env:    map[string]string{},
 	},
-	testUtils.ProjectFixture{
+	fixtures.ProjectFixture{
 		Name:   "sodium-encryption",
 		URL:    "https://github.com/mafintosh/sodium-encryption",
 		Commit: "42a7cba0f97718157e8c7a386ef94ba31e16837a",
 		Env:    map[string]string{},
 	},
-	testUtils.ProjectFixture{
+	fixtures.ProjectFixture{
 		Name:   "request",
 		URL:    "https://github.com/request/request",
 		Commit: "8162961dfdb73dc35a5a4bfeefb858c2ed2ccbb7",
