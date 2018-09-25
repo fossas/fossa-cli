@@ -76,7 +76,6 @@ jobs:
           command: |
             # Load shell helpers (e.g. sdkman)
             source /home/fossa/.bashrc
-
             # Run native integration tests
             # as long as -short is not being called, integration tests get run
             go test ./... -v -timeout 900s # 15 min
