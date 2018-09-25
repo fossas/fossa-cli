@@ -45,8 +45,8 @@ func TestSimpleLockfile(t *testing.T) {
 	assert.Equal(t, "4.1.2", deps.Direct[0].Resolved.Revision)
 
 	AssertDeps(t, deps.Transitive, "assertion-error", "1.1.0")
-	AssertDeps(t, deps.Transitive, "check-error", "1.1.2")
-	AssertDeps(t, deps.Transitive, "deep-eql", "1.1.1")
+	AssertDeps(t, deps.Transitive, "check-error", "1.0.2")
+	AssertDeps(t, deps.Transitive, "deep-eql", "3.0.1")
 	AssertDeps(t, deps.Transitive, "get-func-name", "2.0.0")
 	AssertDeps(t, deps.Transitive, "pathval", "1.1.0")
 	AssertDeps(t, deps.Transitive, "type-detect", "4.0.8")
