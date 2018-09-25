@@ -108,11 +108,11 @@ jobs:
       - run:
           name: Run FOSSA analysis
           command: |
-            fossa analyze --debug > $ARTIFACTS/fossa-analyze-stdout 2> >(tee $ARTIFACTS/fossa-analyze-stderr >&2)
+            fossa analyze --debug > $ARTIFACTS/fossa-analyze-stdout 2> $ARTIFACTS/fossa-analyze-stderr
       - run:
           name: Run FOSSA license check
           command: |
-            fossa test --debug > $ARTIFACTS/fossa-test-stdout 2> >(tee $ARTIFACTS/fossa-test-stderr >&2)
+            fossa test --debug > $ARTIFACTS/fossa-test-stdout 2> $ARTIFACTS/fossa-test-stderr
       - run:
           name: Save artifacts
           command: |
