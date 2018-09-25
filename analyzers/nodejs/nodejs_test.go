@@ -84,6 +84,15 @@ func TestDuplicateDependencies(t *testing.T) {
 	}
 }
 
+var chaiDirectDep = pkg.Import{
+	Target: "chai",
+	Resolved: pkg.ID{
+		Name:     "chai",
+		Revision: "4.1.2",
+		Type:     pkg.NodeJS,
+	},
+}
+
 func TestAnalyzeWithNpmLs(t *testing.T) {
 	buildTarget := filepath.Join("testdata", "chai", "installed")
 
@@ -109,25 +118,42 @@ func TestAnalyzeWithNpmLs(t *testing.T) {
 }
 
 func TestUsingNodeModuleFallback(t *testing.T) {
-	t.Skip("not yet implemented")
-	// buildTarget := "fixtures/with_node_modules/"
+	buildTarget := filepath.Join("testdata", "chai", "installed")
 
-	// nodeModule := module.Module{
-	// 	Name:        "test",
-	// 	Type:        pkg.NodeJS,
-	// 	BuildTarget: buildTarget,
-	// 	Options:     map[string]interface{}{},
-	// }
+	nodeModule := module.Module{
+		Name:        "test",
+		Type:        pkg.NodeJS,
+		BuildTarget: buildTarget,
+		Options:     map[string]interface{}{},
+	}
 
-	// sysTool := nodejs.SystemNpmTool(nodeModule.Options)
+	analyzer, err := nodejs.New(nodeModule)
+	assert.NoError(t, err)
 
-	// analyzer, err := nodejs.New(nodeModule)
-	// assert.NoError(t, err)
+	analyzer.Tool = MockNPMFailure{}
 
-	// analyzer.NPMCmd = "badNpmCommand"
+	analysisResults, err := analyzer.Analyze()
+	assert.NoError(t, err)
 
-	// analysisResults, err := analyzer.Analyze()
-	// assert.NoError(t, err)
+	chaiProject := analysisResults.Transitive[chaiDirectDep.Resolved]
+	AssertImport(t, chaiProject.Imports, "assertion-error", "1.1.0")
+	AssertImport(t, chaiProject.Imports, "check-error", "1.0.2")
+	AssertImport(t, chaiProject.Imports, "get-func-name", "2.0.0")
+	AssertImport(t, chaiProject.Imports, "pathval", "1.1.0")
+	AssertImport(t, chaiProject.Imports, "deep-eql", "3.0.1")
+	AssertImport(t, chaiProject.Imports, "type-detect", "4.0.8")
+}
 
-	// assert.NotEmpty(t, analysisResults.Direct)
+func AssertImport(t *testing.T, imports pkg.Imports, name, revision string) {
+	for _, importedProj := range imports {
+		if importedProj.Resolved.Name == name {
+			if importedProj.Resolved.Revision == revision {
+				return
+			}
+
+			assert.Fail(t, "found "+name+"@"+importedProj.Resolved.Revision+" instead of "+revision)
+		}
+	}
+
+	assert.Fail(t, "missing "+name+"@"+revision)
 }
