@@ -27,4 +27,5 @@ RUN mkdir -p $GOPATH/bin && \
     go get -u -v github.com/go-bindata/go-bindata/... && \
     go get -u -v github.com/cheekybits/genny && \
     go get -u -v github.com/jstemmer/go-junit-report && \
-    go get -u -v github.com/mattn/goveralls
+    go get -u -v github.com/mattn/goveralls && \
+    go get -u -v github.com/derekparker/delve/cmd/dlv
