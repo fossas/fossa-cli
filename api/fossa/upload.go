@@ -30,7 +30,7 @@ type UploadOptions struct {
 	JIRAProjectKey string
 }
 
-// Upload uploads a project's analysis.
+// Upload uploads a project's analysis
 func Upload(title string, locator Locator, options UploadOptions, data []SourceUnit) (Locator, error) {
 	// Check preconditions.
 	if locator.Fetcher == "git" && locator.Revision == "" {
@@ -53,7 +53,7 @@ func Upload(title string, locator Locator, options UploadOptions, data []SourceU
 	}).Debug("uploading build")
 
 	q := url.Values{}
-	q.Add("locator", locator.String())
+	q.Add("locator", locator.UploadString())
 	q.Add("v", version.ShortString())
 	if locator.Fetcher == "custom" {
 		q.Add("managedBuild", "true")

@@ -18,8 +18,23 @@ type Locator struct {
 	Revision string `json:"revision"`
 }
 
-// String returns a locator converted to a string as a URL path for API access.
-func (l Locator) String() string {
+// UploadString returns a locator converted to a string as a URL path for API access.
+func (l Locator) UploadString() string {
+	if l.Fetcher != "git" {
+		if l.Fetcher == "archive" {
+			orgID, err := GetOrganizationID()
+			if err != nil {
+				log.Warnf("Could not get OrganizationID while constructing locator")
+			}
+			l.Project = orgID + "/" + l.Project
+		}
+		return l.Fetcher + "+" + l.Project + "$" + l.Revision
+	}
+	return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
+}
+
+// Org returns a locator converted to a string as a URL path for API access.
+func (l Locator) OrgString() string {
 	if l.Fetcher == "git" {
 		return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
 	}

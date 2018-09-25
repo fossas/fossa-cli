@@ -48,7 +48,7 @@ const RevisionsAPI = "/api/revisions/%s"
 // GetRevision loads a single revision.
 func GetRevision(locator Locator) (Revision, error) {
 	var revision Revision
-	_, err := GetJSON(fmt.Sprintf(RevisionsAPI, url.PathEscape(locator.String())), &revision)
+	_, err := GetJSON(fmt.Sprintf(RevisionsAPI, url.PathEscape(locator.OrgString())), &revision)
 	if err != nil {
 		return Revision{}, err
 	}
@@ -75,7 +75,7 @@ func GetRevision(locator Locator) (Revision, error) {
 func GetRevisions(locators []Locator) (revs []Revision, err error) {
 	var locs []string
 	for _, loc := range locators {
-		locs = append(locs, loc.String())
+		locs = append(locs, loc.OrgString())
 	}
 
 	// Split locators into chunks of 20 (this is an API limitation).
