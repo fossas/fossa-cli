@@ -22,7 +22,7 @@ type Build struct {
 // or returns an error if the revision does not exist, or the revision has no builds.
 func GetLatestBuild(locator Locator) (Build, error) {
 	var build Build
-	_, err := GetJSON(fmt.Sprintf(BuildsAPI, url.PathEscape(locator.String())), &build)
+	_, err := GetJSON(fmt.Sprintf(BuildsAPI, url.PathEscape(locator.OrgString())), &build)
 	if err != nil {
 		return Build{}, errors.Wrap(err, "could not get Build from API")
 	}
