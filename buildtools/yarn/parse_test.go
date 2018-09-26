@@ -25,7 +25,7 @@ func TestSimpleLockfile(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, deps.Direct, 2)
-	assert.Len(t, deps.Transitive, 7)
+	assert.Len(t, deps.Transitive, 8)
 
 	var chaiImport pkg.Import
 	var typeDetectImport pkg.Import
