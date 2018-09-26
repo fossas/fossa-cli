@@ -30,7 +30,7 @@ func FromProject(manifestPath string, lockFilePath string) (graph.Deps, error) {
 		return graph.Deps{}, nil
 	}
 
-	directDeps, err := directDepsFromManifest(manifestPath)
+	directDeps, err := lockfile.directDeps(manifestPath)
 	if err != nil {
 		return graph.Deps{}, nil
 	}
@@ -41,7 +41,8 @@ func FromProject(manifestPath string, lockFilePath string) (graph.Deps, error) {
 	}, nil
 }
 
-func directDepsFromManifest(manifestPath string) (pkg.Imports, error) {
+func (l yarnLockfile) directDeps(manifestPath string) (pkg.Imports, error) {
+	// PackageFromManifest requires node_modules, so we must use FromManifest. This does not guarantee resolved versions
 	manifest, err := npm.FromManifest(manifestPath)
 	if err != nil {
 		return pkg.Imports{}, nil
@@ -55,7 +56,7 @@ func directDepsFromManifest(manifestPath string) (pkg.Imports, error) {
 			Target: name,
 			Resolved: pkg.ID{
 				Name:     name,
-				Revision: revision,
+				Revision: l.resolve(name, revision),
 				Type:     pkg.NodeJS,
 			},
 		}
