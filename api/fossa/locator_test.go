@@ -72,24 +72,24 @@ func TestStringCustom(t *testing.T) {
 func TestStringCustomGitHTTP(t *testing.T) {
 	http := fossa.Locator{
 		Fetcher:  "custom",
-		Project:  "http://github.com/zendesk/samson.git",
+		Project:  "http://github.com/fossa/fossa-cli.git",
 		Revision: "SHAVALUE",
 	}
 
 	stringified := http.String()
-	expected := "custom+http://github.com/zendesk/samson.git$SHAVALUE"
+	expected := "custom+http://github.com/fossa/fossa-cli.git$SHAVALUE"
 	assert.Equal(t, stringified, expected)
 }
 
 func TestStringCustomGitSSH(t *testing.T) {
 	ssh := fossa.Locator{
 		Fetcher:  "custom",
-		Project:  "git@github.com:zendesk/samson.git",
+		Project:  "git@github.com:fossa/fossa-cli.git",
 		Revision: "SHAVALUE",
 	}
 
 	stringified := ssh.String()
-	expected := "custom+git@github.com:zendesk/samson.git$SHAVALUE"
+	expected := "custom+git@github.com:fossa/fossa-cli.git$SHAVALUE"
 	assert.Equal(t, stringified, expected)
 }
 
@@ -130,12 +130,12 @@ func TestOrgStringCustomGitHTTP(t *testing.T) {
 	fossa.MockOrgID = "3000"
 	http := fossa.Locator{
 		Fetcher:  "custom",
-		Project:  "http://github.com/zendesk/samson.git",
+		Project:  "http://github.com/fossa/fossa-cli.git",
 		Revision: "SHAVALUE",
 	}
 
 	stringified := http.OrgString()
-	expected := "custom+3000/github.com/zendesk/samson$SHAVALUE"
+	expected := "custom+3000/github.com/fossa/fossa-cli$SHAVALUE"
 	assert.Equal(t, stringified, expected)
 }
 
@@ -143,12 +143,12 @@ func TestOrgStringCustomGitSSH(t *testing.T) {
 	fossa.MockOrgID = "3000"
 	ssh := fossa.Locator{
 		Fetcher:  "custom",
-		Project:  "git@github.com:zendesk/samson.git",
+		Project:  "git@github.com:fossa/fossa-cli.git",
 		Revision: "SHAVALUE",
 	}
 
 	stringified := ssh.OrgString()
-	expected := "custom+3000/git@github.com:zendesk/samson.git$SHAVALUE"
+	expected := "custom+3000/git@github.com:fossa/fossa-cli.git$SHAVALUE"
 	assert.Equal(t, stringified, expected)
 }
 

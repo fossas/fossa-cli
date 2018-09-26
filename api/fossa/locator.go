@@ -33,8 +33,8 @@ func (l Locator) String() string {
 	return l.Fetcher + "+" + l.Project + "$" + l.Revision
 }
 
-// OrgString returns a locator converted to a string as a URL path for API access
-// OrgID included for a custom fetcher
+// OrgString returns a locator converted to a string as a URL path for API access.
+// The OrgID is included for custom fetchers.
 func (l Locator) OrgString() string {
 	if l.Fetcher == "git" {
 		return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
