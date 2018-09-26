@@ -23,13 +23,29 @@ func (l Locator) String() string {
 	if l.Fetcher == "git" {
 		return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
 	}
+	if l.Fetcher == "archive" {
+		orgID, err := GetOrganizationID()
+		if err != nil {
+			log.Warnf("Could not get OrganizationID while constructing locator")
+		}
+		l.Project = orgID + "/" + l.Project
+	}
+	return l.Fetcher + "+" + l.Project + "$" + l.Revision
+}
+
+// OrgString returns a locator converted to a string as a URL path for API access.
+// The OrgID is included for custom fetchers.
+func (l Locator) OrgString() string {
+	if l.Fetcher == "git" {
+		return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
+	}
 
 	if l.Fetcher == "archive" || l.Fetcher == "custom" {
 		orgID, err := GetOrganizationID()
 		if err != nil {
 			log.Warnf("Could not get OrganizationID while constructing locator")
 		}
-		l.Project = orgID + "/" + l.Project
+		l.Project = orgID + "/" + NormalizeGitURLTest(l.Project)
 	}
 
 	return l.Fetcher + "+" + l.Project + "$" + l.Revision
@@ -55,7 +71,7 @@ func (l Locator) URL() string {
 	if err != nil {
 		log.Fatalf("Invalid FOSSA URL: %s", err.Error())
 	}
-	return strings.Replace(server.ResolveReference(url).String(), "%", "%%", -1)
+	return server.ResolveReference(url).String()
 }
 
 // ReportURL provides a formatted URL.
@@ -87,6 +103,25 @@ func NormalizeGitURL(project string) string {
 
 	// Remove protocols
 	noHTTPPrefix := strings.TrimPrefix(handleGitHubSSH, "http://")
+	noHTTPSPrefix := strings.TrimPrefix(noHTTPPrefix, "https://")
+
+	return noHTTPSPrefix
+}
+
+// NormalizeGitURL normalizes all forms of git remote URLs to a single standard
+// form. This works around the backend only normalizing strings starting with http.
+// HACK until the backend and cli are more in sync
+func NormalizeGitURLTest(project string) string {
+	// Remove fetcher prefix (in case project is derived from splitting a locator on '$').
+	noFetcherPrefix := strings.TrimPrefix(project, "git+")
+
+	// Normalize Git URL format only if not ssh
+	if strings.HasPrefix(noFetcherPrefix, "http") {
+		noFetcherPrefix = strings.TrimSuffix(noFetcherPrefix, ".git")
+	}
+
+	// Remove protocols
+	noHTTPPrefix := strings.TrimPrefix(noFetcherPrefix, "http://")
 	noHTTPSPrefix := strings.TrimPrefix(noHTTPPrefix, "https://")
 
 	return noHTTPSPrefix

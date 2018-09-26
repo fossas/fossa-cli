@@ -7,15 +7,22 @@ import (
 
 const OrganizationAPI = "/api/cli/organization"
 
-var CachedOrganizationID = -1
+var (
+	cachedOrganizationID = -1
+	MockOrgID            string
+)
 
 type Organization struct {
 	OrganizationID int
 }
 
 func GetOrganizationID() (string, error) {
-	if CachedOrganizationID != -1 {
-		return strconv.Itoa(CachedOrganizationID), nil
+	if MockOrgID != "" {
+		return MockOrgID, nil
+	}
+
+	if cachedOrganizationID != -1 {
+		return strconv.Itoa(cachedOrganizationID), nil
 	}
 
 	var organization Organization
@@ -27,6 +34,6 @@ func GetOrganizationID() (string, error) {
 		return "", errors.New("could not get organization for api key")
 	}
 
-	CachedOrganizationID = organization.OrganizationID
-	return strconv.Itoa(CachedOrganizationID), nil
+	cachedOrganizationID = organization.OrganizationID
+	return strconv.Itoa(cachedOrganizationID), nil
 }
