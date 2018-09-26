@@ -34,8 +34,7 @@ type Analyzer struct {
 	NodeCmd     string
 	NodeVersion string
 
-	NPMTool npm.NPM
-
+	NPMTool  npm.NPM
 	YarnTool yarn.YarnTool
 
 	Module  module.Module
