@@ -250,7 +250,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Warnf("Could not determine deps from node_modules")
 	log.Debug("Using fallback of lockfile check")
 	// currently only support yarn.lock
-	return yarn.FromProject(a.Module.BuildTarget, filepath.Join(filepath.Dir(a.Module.BuildTarget), "yarn.lock"))
+	return yarn.FromProject(filepath.Join(a.Module.BuildTarget, "package.json"), filepath.Join(a.Module.BuildTarget, "yarn.lock"))
 }
 
 // TODO: implement this generically in package graph (Bower also has an

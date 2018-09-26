@@ -136,6 +136,7 @@ func TestUsingNodeModuleFallback(t *testing.T) {
 	assert.NoError(t, err)
 
 	chaiProject := analysisResults.Transitive[chaiDirectDep.Resolved]
+	assert.NotNil(t, chaiProject)
 	AssertImport(t, chaiProject.Imports, "assertion-error", "1.1.0")
 	AssertImport(t, chaiProject.Imports, "check-error", "1.0.2")
 	AssertImport(t, chaiProject.Imports, "get-func-name", "2.0.0")
@@ -156,4 +157,31 @@ func AssertImport(t *testing.T, imports pkg.Imports, name, revision string) {
 	}
 
 	assert.Fail(t, "missing "+name+"@"+revision)
+}
+
+func TestUsingYarnLockfileFallback(t *testing.T) {
+	buildTarget := filepath.Join("testdata", "chai", "installed-yarn-lockfile")
+
+	nodeModule := module.Module{
+		Name:        "test",
+		Type:        pkg.NodeJS,
+		BuildTarget: buildTarget,
+		Options:     map[string]interface{}{},
+	}
+
+	analyzer, err := nodejs.New(nodeModule)
+	assert.NoError(t, err)
+
+	analyzer.NPMTool = MockNPMFailure{}
+
+	analysisResults, err := analyzer.Analyze()
+	assert.NoError(t, err)
+
+	chaiProject := analysisResults.Transitive[chaiDirectDep.Resolved]
+	AssertImport(t, chaiProject.Imports, "assertion-error", "1.1.0")
+	AssertImport(t, chaiProject.Imports, "check-error", "1.0.2")
+	AssertImport(t, chaiProject.Imports, "get-func-name", "2.0.0")
+	AssertImport(t, chaiProject.Imports, "pathval", "1.1.0")
+	AssertImport(t, chaiProject.Imports, "deep-eql", "3.0.1")
+	AssertImport(t, chaiProject.Imports, "type-detect", "4.0.8")
 }
