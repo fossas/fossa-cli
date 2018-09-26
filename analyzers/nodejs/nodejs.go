@@ -156,7 +156,7 @@ func (a *Analyzer) Build() error {
 
 	// Prefer Yarn where possible.
 	if ok, err := files.Exists(a.Module.Dir, "yarn.lock"); err == nil && ok && a.YarnTool.Exists() {
-		a.YarnTool.Install(a.Module.Dir)
+		err := a.YarnTool.Install(a.Module.Dir)
 		if err != nil {
 			return errors.Wrap(err, "could not run `yarn` build")
 		}
