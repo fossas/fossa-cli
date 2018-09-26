@@ -24,11 +24,24 @@ func TestSimpleLockfile(t *testing.T) {
 	deps, err := yarn.FromProject(filepath.Join("testdata", "package.json"), filepath.Join("testdata", "yarn.lock"))
 	assert.NoError(t, err)
 
-	assert.Len(t, deps.Direct, 1)
+	assert.Len(t, deps.Direct, 2)
 	assert.Len(t, deps.Transitive, 7)
 
-	assert.Equal(t, "chai", deps.Direct[0].Target)
-	assert.Equal(t, "4.1.2", deps.Direct[0].Resolved.Revision)
+	var chaiImport pkg.Import
+	var typeDetectImport pkg.Import
+
+	if deps.Direct[0].Target == "chai" {
+		chaiImport = deps.Direct[0]
+		typeDetectImport = deps.Direct[1]
+	} else {
+		chaiImport = deps.Direct[1]
+		typeDetectImport = deps.Direct[0]
+	}
+
+	assert.Equal(t, "chai", chaiImport.Target)
+	assert.Equal(t, "4.1.2", chaiImport.Resolved.Revision)
+	assert.Equal(t, "type-detect", typeDetectImport.Target)
+	assert.Equal(t, "3.0.0", typeDetectImport.Resolved.Revision)
 
 	AssertDeps(t, deps.Transitive, "assertion-error", "1.1.0")
 	AssertDeps(t, deps.Transitive, "check-error", "1.0.2")
@@ -36,6 +49,7 @@ func TestSimpleLockfile(t *testing.T) {
 	AssertDeps(t, deps.Transitive, "get-func-name", "2.0.0")
 	AssertDeps(t, deps.Transitive, "pathval", "1.1.0")
 	AssertDeps(t, deps.Transitive, "type-detect", "4.0.8")
+	AssertDeps(t, deps.Transitive, "type-detect", "3.0.0")
 	AssertDeps(t, deps.Transitive, "chai", "4.1.2")
 }
 
