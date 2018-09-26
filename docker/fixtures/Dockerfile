@@ -1,5 +1,5 @@
 # This Dockerfile contains all the test fixtures for integration testing.
-FROM quay.io/fossa/fossa-cli-base
+FROM fossa/fossa-cli:buildtools
 
 # Known good Go projects (some are `git clone`d because `go get` causes
 # compilation errors):
@@ -18,7 +18,7 @@ RUN mkdir -p $GOPATH/src/github.com/docker && \
 
 ## InfluxDB (gdm)
 ## This is an older version of InfluxDB that still used GDM -- the current
-## revision has migrated to Dep.
+## revision has migrated to `dep`.
 RUN mkdir -p $GOPATH/src/github.com/influxdata && \
     cd $GOPATH/src/github.com/influxdata && \
     git clone https://github.com/influxdata/influxdb && \

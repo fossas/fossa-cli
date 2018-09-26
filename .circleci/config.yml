@@ -5,11 +5,18 @@ defaults: &defaults
     TEST_RESULTS: /tmp/test-results
     ARTIFACTS: /tmp/artifacts
 
+# We use two separate stages to ensure that unit tests run in an environment
+# _without_ build tools. This helps us test that fallback behaviour works
+# correctly when build tools are missing.
 jobs:
-  build:
+  unit-test:
     <<: *defaults
     working_directory: /go/src/github.com/fossas/fossa-cli
     docker:
+      # We might want to use fossa/fossa-cli:base instead, depending on which
+      # gets better performance. The trade-off is that the CircleCI image is
+      # cached but the FOSSA CLI image has build tools baked into it (but also
+      # is correspondingly larger).
       - image: circleci/golang:1
     steps:
       - checkout
@@ -18,35 +25,38 @@ jobs:
           command: |
             mkdir -p $TEST_RESULTS
             mkdir -p $ARTIFACTS
+      # See https://discuss.circleci.com/t/unable-to-restore-bundle-from-cache-using-circleci-ruby-docker-images/24249/6
+      # for context.
+      - run:
+          name: Cache permissions workaround
+          command: sudo chown -R circleci /go/bin
       - restore_cache:
           keys:
-            - v2-gopkg-cache-{{ checksum "Gopkg.lock" }}
+            # Note: CircleCI keys caches on prefix string matches, breaking ties
+            # by taking the latest cache.
+            # See https://circleci.com/docs/2.0/caching/#restoring-cache and
+            # https://discuss.circleci.com/t/circle-2-0-caching-is-too-limited-to-be-very-useful/11694/12.
+            - v4-{{ checksum "Gopkg.lock" }}-{{ .Branch }}-{{ .Revision }}
+            - v4-{{ checksum "Gopkg.lock" }}-{{ .Branch }}
+            - v4-{{ checksum "Gopkg.lock" }}
       - run:
           name: Compile CLI
-          command: |
-            # Invalidate cache for FOSSA CLI binary
-            rm -rf /go/pkg/linux_amd64/github.com/fossas/fossa-cli
-            rm -f /go/bin/fossa
-            # Compile CLI
-            make
+          command: make
       - save_cache:
-          key: v1-gopkg-cache-{{ checksum "Gopkg.lock" }}
+          key: v4-{{ checksum "Gopkg.lock" }}-{{ .Branch }}-{{ .Revision }}
           paths:
-            - "/go/bin"
-            - "/go/pkg"
-            - "/go/src/github.com/fossas/fossa-cli/vendor"
+            - ~/.cache/go-build
+            - /go/bin
+            - /go/src/github.com/fossas/fossa-cli/vendor
+      - run:
+          name: Remove Go build tools
+          command: |
+            rm $(which go)
+            rm $(which dep)
       - run:
           name: Run unit tests
           command: |
             make -s junit-test > $TEST_RESULTS/go-test-report.xml
-      - run:
-          name: Run FOSSA analysis
-          command: |
-            fossa analyze --debug > $ARTIFACTS/fossa-analyze-stdout 2> >(tee $ARTIFACTS/fossa-analyze-stderr >&2)
-      - run:
-          name: Run FOSSA license check
-          command: |
-            fossa test --debug > $ARTIFACTS/fossa-test-stdout 2> >(tee $ARTIFACTS/fossa-test-stderr >&2)
       - run:
           name: Save artifacts
           command: |
@@ -56,16 +66,15 @@ jobs:
           path: /tmp/test-results
       - store_artifacts:
           path: /tmp/artifacts
-  test:
+  integration-test:
     <<: *defaults
     working_directory: /home/fossa/go/src/github.com/fossas/fossa-cli
     docker:
-      - image: quay.io/fossa/fossa-cli-test-base:circleci
+      # TODO: when we deprecate fossa-cli:fixtures, this should change to
+      # fossa-cli:buildtools.
+      - image: fossa/fossa-cli:buildtools
     steps:
       - checkout
-      - run: 
-          name: Compile fossa binary
-          command: make
       - run:
           name: Make folders
           command: |
@@ -77,18 +86,45 @@ jobs:
             # Load shell helpers (e.g. sdkman)
             source /home/fossa/.bashrc
             # Run tests
-            # these tests were inherently broken. Keep them for refernce, but comment out their call to speed up move to native
-            #./test.sh > $ARTIFACTS/integration-test-stdout 2> >(tee $ARTIFACTS/integration-test-stderr >&2)
-      # - store_test_results:
-      #     path: /tmp/test-results
+            # ./test.sh > $ARTIFACTS/integration-test-stdout 2> >(tee $ARTIFACTS/integration-test-stderr >&2)
+      - store_test_results:
+          path: /tmp/test-results
       - store_artifacts:
           path: /tmp/artifacts
-
+  end-to-end-test:
+    <<: *defaults
+    working_directory: /go/src/github.com/fossas/fossa-cli
+    docker:
+      - image: circleci/golang:1
+    steps:
+      - checkout
+      - run:
+          name: Make folders
+          command: mkdir -p $ARTIFACTS
+      - run:
+          name: Install CLI
+          command: |
+            curl https://raw.githubusercontent.com/fossas/fossa-cli/$CIRCLE_SHA1/install.sh | bash
+      - run:
+          name: Run FOSSA analysis
+          command: |
+            fossa analyze --debug > $ARTIFACTS/fossa-analyze-stdout 2> $ARTIFACTS/fossa-analyze-stderr
+      - run:
+          name: Run FOSSA license check
+          command: |
+            fossa test --debug > $ARTIFACTS/fossa-test-stdout 2> $ARTIFACTS/fossa-test-stderr
+      - run:
+          name: Save artifacts
+          command: |
+            cp $(which fossa) $ARTIFACTS
+      - store_artifacts:
+          path: /tmp/artifacts
+  # TODO(leo): set up automated releases.
+  # release:
 workflows:
   version: 2
-  build-and-test:
+  tests:
     jobs:
-      - build
-      - test:
-          requires:
-            - build
+      - unit-test
+      # - integration-test
+      - end-to-end-test
