@@ -67,7 +67,7 @@ func TestAnalysisOutput(t *testing.T) {
 				Dir:         filepath.Join(nodeAnalyzerFixtureDir, proj.Name),
 				Type:        pkg.NodeJS,
 				Name:        proj.Name,
-				Options:     map[string]interface{}{"allow-npm-err": true},
+				Options:     map[string]interface{}{"allow-npm-err": proj.Name == "standard"},
 				BuildTarget: filepath.Join(nodeAnalyzerFixtureDir, proj.Name, "package.json"),
 			}
 
