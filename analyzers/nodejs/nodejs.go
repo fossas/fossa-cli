@@ -17,6 +17,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/fossas/fossa-cli/buildtools/yarn"
+
 	"github.com/apex/log"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -35,8 +37,7 @@ type Analyzer struct {
 
 	NPMTool npm.NPM
 
-	YarnCmd     string
-	YarnVersion string
+	YarnTool yarn.YarnTool
 
 	Module  module.Module
 	Options Options
@@ -70,10 +71,6 @@ func New(m module.Module) (*Analyzer, error) {
 	if nodeErr != nil {
 		log.Warnf("Could not find Node.JS: %s", nodeErr.Error())
 	}
-	yarnCmd, yarnVersion, yarnErr := exec.Which("-v", os.Getenv("FOSSA_YARN_CMD"), "yarn")
-	if yarnErr != nil {
-		log.Warnf("Could not find Yarn: %s", yarnErr.Error())
-	}
 
 	var options Options
 	err := mapstructure.Decode(m.Options, &options)
@@ -91,10 +88,8 @@ func New(m module.Module) (*Analyzer, error) {
 		NodeCmd:     nodeCmd,
 		NodeVersion: nodeVersion,
 
-		NPMTool: npmTool,
-
-		YarnCmd:     yarnCmd,
-		YarnVersion: yarnVersion,
+		NPMTool:  npmTool,
+		YarnTool: yarn.New(),
 
 		Module:  m,
 		Options: options,
