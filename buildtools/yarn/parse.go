@@ -80,7 +80,6 @@ func readLockfile(pathElems ...string) (yarnLockfile, error) {
 		return yarnLockfile{}, err
 	}
 	yamlCompatLockfile := r.ReplaceAll(fileContent, []byte(": \""))
-	println(string(fileContent))
 
 	err = yaml.Unmarshal(yamlCompatLockfile, &lockfile)
 	if err != nil {
