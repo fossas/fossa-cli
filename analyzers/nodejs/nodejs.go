@@ -210,39 +210,47 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Debugf("Running Nodejs analysis: %#v", a.Module)
 
 	pkgs, err := a.NPMTool.List(filepath.Dir(a.Module.BuildTarget))
-	if err != nil {
-		log.Warnf("NPM had non-zero exit code: %s", err.Error())
-		log.Debug("Using fallback of node_modules")
+	if err == nil {
+		// TODO: we should move this functionality in to the buildtool, and have it
+		// return `pkg.Package`s.
+		// Set direct dependencies.
+		var imports []pkg.Import
+		for name, dep := range pkgs.Dependencies {
+			imports = append(imports, pkg.Import{
+				Target: dep.From,
+				Resolved: pkg.ID{
+					Type:     pkg.NodeJS,
+					Name:     name,
+					Revision: dep.Version,
+					Location: dep.Resolved,
+				},
+			})
+		}
 
-		return npm.FromNodeModules(a.Module.BuildTarget, "package.json")
+		// Set transitive dependencies.
+		deps := make(map[pkg.ID]pkg.Package)
+		recurseDeps(deps, pkgs)
+
+		log.Debugf("Done running Nodejs analysis: %#v", deps)
+
+		return graph.Deps{
+			Direct:     imports,
+			Transitive: deps,
+		}, nil
 	}
 
-	// TODO: we should move this functionality in to the buildtool, and have it
-	// return `pkg.Package`s.
-	// Set direct dependencies.
-	var imports []pkg.Import
-	for name, dep := range pkgs.Dependencies {
-		imports = append(imports, pkg.Import{
-			Target: dep.From,
-			Resolved: pkg.ID{
-				Type:     pkg.NodeJS,
-				Name:     name,
-				Revision: dep.Version,
-				Location: dep.Resolved,
-			},
-		})
+	log.Warnf("NPM had non-zero exit code: %s", err.Error())
+	log.Debug("Using fallback of node_modules")
+
+	deps, err := npm.FromNodeModules(a.Module.BuildTarget, "package.json")
+	if err == nil {
+		return deps, nil
 	}
 
-	// Set transitive dependencies.
-	deps := make(map[pkg.ID]pkg.Package)
-	recurseDeps(deps, pkgs)
-
-	log.Debugf("Done running Nodejs analysis: %#v", deps)
-
-	return graph.Deps{
-		Direct:     imports,
-		Transitive: deps,
-	}, nil
+	log.Warnf("Could not determine deps from node_modules")
+	log.Debug("Using fallback of lockfile check")
+	// currently only support yarn.lock
+	return yarn.FromProject(a.Module.BuildTarget, filepath.Join(filepath.Dir(a.Module.BuildTarget), "yarn.lock"))
 }
 
 // TODO: implement this generically in package graph (Bower also has an
