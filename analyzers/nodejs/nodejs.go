@@ -33,7 +33,7 @@ type Analyzer struct {
 	NodeCmd     string
 	NodeVersion string
 
-	Tool npm.NPM
+	NPMTool npm.NPM
 
 	YarnCmd     string
 	YarnVersion string
@@ -91,7 +91,7 @@ func New(m module.Module) (*Analyzer, error) {
 		NodeCmd:     nodeCmd,
 		NodeVersion: nodeVersion,
 
-		Tool: npmTool,
+		NPMTool: npmTool,
 
 		YarnCmd:     yarnCmd,
 		YarnVersion: yarnVersion,
@@ -172,7 +172,7 @@ func (a *Analyzer) Build() error {
 			return errors.Wrap(err, "could not run `yarn` build")
 		}
 	} else {
-		err := a.Tool.Install(a.Module.Dir)
+		err := a.NPMTool.Install(a.Module.Dir)
 		if err != nil {
 			return errors.Wrap(err, "could not run `npm` build")
 		}
@@ -218,7 +218,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Debugf("Running Nodejs analysis: %#v", a.Module)
 
-	pkgs, err := a.Tool.List(filepath.Dir(a.Module.BuildTarget))
+	pkgs, err := a.NPMTool.List(filepath.Dir(a.Module.BuildTarget))
 	if err != nil {
 		log.Warnf("NPM had non-zero exit code: %s", err.Error())
 		log.Debug("Using fallback of node_modules")

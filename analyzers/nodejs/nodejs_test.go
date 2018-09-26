@@ -25,7 +25,7 @@ func TestNoDependencies(t *testing.T) {
 	a, err := analyzers.New(m)
 	assert.NoError(t, err)
 
-	a.(*nodejs.Analyzer).Tool = MockNPM{
+	a.(*nodejs.Analyzer).NPMTool = MockNPM{
 		JSONFilename: filepath.Join("testdata", "empty", "npm-ls-json.json"),
 	}
 
@@ -57,7 +57,7 @@ func TestDuplicateDependencies(t *testing.T) {
 	a, err := analyzers.New(m)
 	assert.NoError(t, err)
 
-	a.(*nodejs.Analyzer).Tool = MockNPM{
+	a.(*nodejs.Analyzer).NPMTool = MockNPM{
 		JSONFilename: filepath.Join("testdata", "duplicates", "npm-ls-json.json"),
 	}
 
@@ -106,7 +106,7 @@ func TestAnalyzeWithNpmLs(t *testing.T) {
 	analyzer, err := nodejs.New(nodeModule)
 	assert.NoError(t, err)
 
-	analyzer.Tool = MockNPM{
+	analyzer.NPMTool = MockNPM{
 		JSONFilename: filepath.Join("testdata", "chai", "npm-ls-json.json"),
 	}
 
@@ -130,7 +130,7 @@ func TestUsingNodeModuleFallback(t *testing.T) {
 	analyzer, err := nodejs.New(nodeModule)
 	assert.NoError(t, err)
 
-	analyzer.Tool = MockNPMFailure{}
+	analyzer.NPMTool = MockNPMFailure{}
 
 	analysisResults, err := analyzer.Analyze()
 	assert.NoError(t, err)
