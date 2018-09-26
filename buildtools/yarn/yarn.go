@@ -11,6 +11,8 @@ type YarnTool interface {
 	// TODO: implement yarn list --production --frozen-lockfile. Skipping for now because the implementation relies 100% on yarn.lock
 	// List(dir string) error
 	Install(dir string) error
+	// Exists returns true if yarn is available
+	Exists() bool
 }
 
 type SystemYarn struct {
@@ -26,6 +28,10 @@ func New() YarnTool {
 	return SystemYarn{
 		Cmd: yarnCmd,
 	}
+}
+
+func (y SystemYarn) Exists() bool {
+	return y.Cmd != ""
 }
 
 func (y SystemYarn) Install(dir string) error {

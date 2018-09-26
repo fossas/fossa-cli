@@ -157,12 +157,8 @@ func (a *Analyzer) Build() error {
 	log.Debugf("Running Node.js build: %#v", a.Module)
 
 	// Prefer Yarn where possible.
-	if ok, err := files.Exists(a.Module.Dir, "yarn.lock"); err == nil && ok && a.YarnCmd != "" {
-		_, _, err := exec.Run(exec.Cmd{
-			Name: a.YarnCmd,
-			Argv: []string{"install", "--production", "--frozen-lockfile"},
-			Dir:  a.Module.Dir,
-		})
+	if ok, err := files.Exists(a.Module.Dir, "yarn.lock"); err == nil && ok && a.YarnTool.Exists() {
+		a.YarnTool.Install(a.Module.Dir)
 		if err != nil {
 			return errors.Wrap(err, "could not run `yarn` build")
 		}
