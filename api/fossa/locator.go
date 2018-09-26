@@ -20,19 +20,21 @@ type Locator struct {
 
 // String returns a locator converted to a string as a URL path for API access.
 func (l Locator) String() string {
-	if l.Fetcher != "git" {
-		if l.Fetcher == "archive" {
-			orgID, err := GetOrganizationID()
-			if err != nil {
-				log.Warnf("Could not get OrganizationID while constructing locator")
-			}
-			l.Project = orgID + "/" + l.Project
-		}
-		return l.Fetcher + "+" + l.Project + "$" + l.Revision
+	if l.Fetcher == "git" {
+		return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
 	}
-	return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
+	if l.Fetcher == "archive" {
+		orgID, err := GetOrganizationID()
+		if err != nil {
+			log.Warnf("Could not get OrganizationID while constructing locator")
+		}
+		l.Project = orgID + "/" + l.Project
+	}
+	return l.Fetcher + "+" + l.Project + "$" + l.Revision
 }
 
+// OrgString returns a locator converted to a string as a URL path for API access
+// OrgID included for a custom fetcher
 func (l Locator) OrgString() string {
 	if l.Fetcher == "git" {
 		return "git+" + NormalizeGitURL(l.Project) + "$" + l.Revision
@@ -108,6 +110,7 @@ func NormalizeGitURL(project string) string {
 
 // NormalizeGitURL normalizes all forms of git remote URLs to a single standard
 // form. This works around the backend only normalizing strings starting with http.
+// HACK until the backend and cli are more in sync
 func NormalizeGitURLTest(project string) string {
 	// Remove fetcher prefix (in case project is derived from splitting a locator on '$').
 	noFetcherPrefix := strings.TrimPrefix(project, "git+")
@@ -116,9 +119,6 @@ func NormalizeGitURLTest(project string) string {
 	if strings.HasPrefix(noFetcherPrefix, "http") {
 		noFetcherPrefix = strings.TrimSuffix(noFetcherPrefix, ".git")
 	}
-
-	// Will not need this part ever
-	// handleGitHubSSH := strings.Replace(noGitExtension, "git@github.com:", "github.com/", 1)
 
 	// Remove protocols
 	noHTTPPrefix := strings.TrimPrefix(noFetcherPrefix, "http://")

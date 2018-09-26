@@ -7,13 +7,20 @@ import (
 
 const OrganizationAPI = "/api/cli/organization"
 
-var CachedOrganizationID = -1
+var (
+	CachedOrganizationID = -1
+	MockOrgID            string
+)
 
 type Organization struct {
 	OrganizationID int
 }
 
 func GetOrganizationID() (string, error) {
+	if MockOrgID != "" {
+		return MockOrgID, nil
+	}
+
 	if CachedOrganizationID != -1 {
 		return strconv.Itoa(CachedOrganizationID), nil
 	}
