@@ -130,5 +130,5 @@ workflows:
   tests:
     jobs:
       - unit-test
-      # - integration-test
+      - integration-test
       - end-to-end-test
