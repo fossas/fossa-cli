@@ -87,7 +87,7 @@ jobs:
             source /home/fossa/.bashrc
             # Run native integration tests
             # as long as -short is not being called, integration tests get run
-            go test ./... -v 
+            make -s integration-test > $TEST_RESULTS/go-test-report.xml
             #Run shell based tests
             # these tests were inherently broken. Keep them for refernce, but comment out their call to speed up move to native
             #./test.sh > $ARTIFACTS/integration-test-stdout 2> >(tee $ARTIFACTS/integration-test-stderr >&2)

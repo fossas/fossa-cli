@@ -90,11 +90,13 @@ unit-test:
 
 .PHONY: junit-test
 junit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
-	goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" | go-junit-report
+	go test ./... -short
 
 .PHONY: integration-test
-integration-test: docker-test
-	echo "native integration tests are a WIP"
+integration-test: 
+	# integration tests rely on calling shell isntances of fossa-cli, so ensure the binary is compiled
+	make
+	goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) | go-junit-report
 	# sudo docker run --rm -it quay.io/fossa/fossa-cli-test
 
 # Release tasks.
