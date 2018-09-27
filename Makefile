@@ -123,7 +123,14 @@ integration-test: docker-test
 
 # Release tasks.
 install.sh: $(GODOWNLOADER)
-	godownloader --repo=fossas/fossa-cli | sed 's/\.\/bin/\/usr\/local\/bin/' > install.sh
+	# 1. Set default installation location to /usr/local/bin.
+	# 2. Use default permissions for /usr/local/bin.
+	# 3. Try `sudo install` when `install` fails.
+	godownloader --repo=fossas/fossa-cli \
+		| sed 's/\.\/bin/\/usr\/local\/bin/' \
+		| sed 's/install -d/install -d -m 775/' \
+		| sed 's/install "$${srcdir}\/$${binexe}" "$${BINDIR}\/"/install "$${srcdir}\/$${binexe}" "$${BINDIR}\/" 2> \/dev\/null || sudo install "$${srcdir}\/$${binexe}" "$${BINDIR}\/"/' \
+		> install.sh
 
 .PHONY: release
 release: $(GORELEASER) install.sh
