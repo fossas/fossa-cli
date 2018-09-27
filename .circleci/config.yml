@@ -80,6 +80,9 @@ jobs:
           command: |
             mkdir -p $TEST_RESULTS
             mkdir -p $ARTIFACTS
+      - restore_cache:
+          keys:
+            - v1-integration-test-fixtures
       - run:
           name: Run integration tests
           command: |
@@ -91,6 +94,11 @@ jobs:
             #Run shell based tests
             # these tests were inherently broken. Keep them for refernce, but comment out their call to speed up move to native
             #./test.sh > $ARTIFACTS/integration-test-stdout 2> >(tee $ARTIFACTS/integration-test-stderr >&2)
+      # cache the fixtures generated from cloning, installation, and building so we can save time on runs
+      - save_cache:
+        key: v1-integration-test-fixtures
+        paths:
+          - /tmp/fossa-cli-fixtures
       - store_test_results:
           path: /tmp/test-results
       - store_artifacts:
