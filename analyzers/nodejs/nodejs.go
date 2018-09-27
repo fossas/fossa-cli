@@ -34,8 +34,8 @@ type Analyzer struct {
 	NodeCmd     string
 	NodeVersion string
 
-	NPMTool  npm.NPM
-	YarnTool yarn.YarnTool
+	NPM  npm.NPM
+	Yarn yarn.YarnTool
 
 	Module  module.Module
 	Options Options
@@ -86,8 +86,8 @@ func New(m module.Module) (*Analyzer, error) {
 		NodeCmd:     nodeCmd,
 		NodeVersion: nodeVersion,
 
-		NPMTool:  npmTool,
-		YarnTool: yarn.New(),
+		NPM:  npmTool,
+		Yarn: yarn.New(),
 
 		Module:  m,
 		Options: options,
@@ -155,13 +155,13 @@ func (a *Analyzer) Build() error {
 	log.Debugf("Running Node.js build: %#v", a.Module)
 
 	// Prefer Yarn where possible.
-	if ok, err := files.Exists(a.Module.Dir, "yarn.lock"); err == nil && ok && a.YarnTool.Exists() {
-		err := a.YarnTool.Install(a.Module.Dir)
+	if ok, err := files.Exists(a.Module.Dir, "yarn.lock"); err == nil && ok && a.Yarn.Exists() {
+		err := a.Yarn.Install(a.Module.Dir)
 		if err != nil {
 			return errors.Wrap(err, "could not run `yarn` build")
 		}
 	} else {
-		err := a.NPMTool.Install(a.Module.Dir)
+		err := a.NPM.Install(a.Module.Dir)
 		if err != nil {
 			return errors.Wrap(err, "could not run `npm` build")
 		}
@@ -207,7 +207,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Debugf("Running Nodejs analysis: %#v", a.Module)
 
-	pkgs, err := a.NPMTool.List(filepath.Dir(a.Module.BuildTarget))
+	pkgs, err := a.NPM.List(filepath.Dir(a.Module.BuildTarget))
 	if err == nil {
 		// TODO: we should move this functionality in to the buildtool, and have it
 		// return `pkg.Package`s.
