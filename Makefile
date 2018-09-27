@@ -90,7 +90,11 @@ unit-test:
 
 .PHONY: junit-test
 junit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
-	goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" | go-junit-report
+	if [ "$($COVERALLS_TOKEN)" == "" ]; then \
+		goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" | go-junit-report; \
+	else \
+		go test -v ./... | go-junit-report; \
+	fi;
 
 .PHONY: integration-test
 integration-test: docker-test
