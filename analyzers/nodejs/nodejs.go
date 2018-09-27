@@ -81,11 +81,17 @@ func New(m module.Module) (*Analyzer, error) {
 		return nil, err
 	}
 
+	yarnTool, err := yarn.New()
+	if err != nil {
+		log.Error("Could not initialze yarn tooling")
+		return nil, err
+	}
+
 	analyzer := Analyzer{
 		NodeVersion: nodeVersion,
 
 		NPM:  npmTool,
-		Yarn: yarn.New(),
+		Yarn: yarnTool,
 
 		Module:  m,
 		Options: options,
@@ -205,38 +211,41 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Debugf("Running Nodejs analysis: %#v", a.Module)
 
-	pkgs, err := a.NPM.List(filepath.Dir(a.Module.BuildTarget))
-	if err == nil {
-		// TODO: we should move this functionality in to the buildtool, and have it
-		// return `pkg.Package`s.
-		// Set direct dependencies.
-		var imports []pkg.Import
-		for name, dep := range pkgs.Dependencies {
-			imports = append(imports, pkg.Import{
-				Target: dep.From,
-				Resolved: pkg.ID{
-					Type:     pkg.NodeJS,
-					Name:     name,
-					Revision: dep.Version,
-					Location: dep.Resolved,
-				},
-			})
+	// if npm as a tool does not exist, skip this
+	if a.NPM.Exists() {
+		pkgs, err := a.NPM.List(filepath.Dir(a.Module.BuildTarget))
+		if err == nil {
+			// TODO: we should move this functionality in to the buildtool, and have it
+			// return `pkg.Package`s.
+			// Set direct dependencies.
+			var imports []pkg.Import
+			for name, dep := range pkgs.Dependencies {
+				imports = append(imports, pkg.Import{
+					Target: dep.From,
+					Resolved: pkg.ID{
+						Type:     pkg.NodeJS,
+						Name:     name,
+						Revision: dep.Version,
+						Location: dep.Resolved,
+					},
+				})
+			}
+
+			// Set transitive dependencies.
+			deps := make(map[pkg.ID]pkg.Package)
+			recurseDeps(deps, pkgs)
+
+			log.Debugf("Done running Nodejs analysis: %#v", deps)
+
+			return graph.Deps{
+				Direct:     imports,
+				Transitive: deps,
+			}, nil
 		}
 
-		// Set transitive dependencies.
-		deps := make(map[pkg.ID]pkg.Package)
-		recurseDeps(deps, pkgs)
-
-		log.Debugf("Done running Nodejs analysis: %#v", deps)
-
-		return graph.Deps{
-			Direct:     imports,
-			Transitive: deps,
-		}, nil
+		log.Warnf("NPM had non-zero exit code: %s", err.Error())
+		log.Debug("Using fallback of node_modules")
 	}
-
-	log.Warnf("NPM had non-zero exit code: %s", err.Error())
-	log.Debug("Using fallback of node_modules")
 
 	deps, err := npm.FromNodeModules(a.Module.BuildTarget, "package.json")
 	if err == nil {
@@ -245,6 +254,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	log.Warnf("Could not determine deps from node_modules")
 	log.Debug("Using fallback of lockfile check")
+
 	// currently only support yarn.lock
 	return yarn.FromProject(filepath.Join(a.Module.BuildTarget, "package.json"), filepath.Join(a.Module.BuildTarget, "yarn.lock"))
 }

@@ -19,15 +19,16 @@ type SystemYarn struct {
 	Cmd string
 }
 
-func New() YarnTool {
+func New() (YarnTool, error) {
 	yarnCmd, _, yarnErr := exec.Which("-v", os.Getenv("FOSSA_NPM_CMD"), "yarn")
 	if yarnErr != nil {
 		log.Warnf("Could not find Yarn %s", yarnErr.Error())
+		return SystemYarn{}, yarnErr
 	}
 
 	return SystemYarn{
 		Cmd: yarnCmd,
-	}
+	}, nil
 }
 
 func (y SystemYarn) Exists() bool {
