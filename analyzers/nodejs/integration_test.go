@@ -75,9 +75,8 @@ func TestNodejsAnalsis(t *testing.T) {
 			for _, arg := range proj.Args {
 				if arg == "allow-npm-err" {
 					shouldAllowNpmErr = true
+					break
 				}
-
-				break
 			}
 			module := module.Module{
 				Dir:         filepath.Join(nodeAnalyzerFixtureDir, proj.Name),
