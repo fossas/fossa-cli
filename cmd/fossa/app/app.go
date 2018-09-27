@@ -19,26 +19,28 @@ import (
 	"github.com/fossas/fossa-cli/config"
 )
 
-var App = cli.App{
-	Name:                 "fossa-cli",
-	Usage:                "Fast, portable and reliable dependency analysis (https://github.com/fossas/fossa-cli/)",
-	Version:              version.String(),
-	Action:               Run,
-	EnableBashCompletion: true,
-	Flags: flags.Combine(
-		initc.Cmd.Flags,
-		analyze.Cmd.Flags,
-		flags.WithGlobalFlags(nil),
-	),
-	Commands: []cli.Command{
-		initc.Cmd,
-		build.Cmd,
-		analyze.Cmd,
-		upload.Cmd,
-		report.Cmd,
-		test.Cmd,
-		update.Cmd,
-	},
+func New() *cli.App {
+	return &cli.App{
+		Name:                 "fossa-cli",
+		Usage:                "Fast, portable and reliable dependency analysis (https://github.com/fossas/fossa-cli/)",
+		Version:              version.String(),
+		Action:               Run,
+		EnableBashCompletion: true,
+		Flags: flags.Combine(
+			initc.Cmd.Flags,
+			analyze.Cmd.Flags,
+			flags.WithGlobalFlags(nil),
+		),
+		Commands: []cli.Command{
+			initc.Cmd,
+			build.Cmd,
+			analyze.Cmd,
+			upload.Cmd,
+			report.Cmd,
+			test.Cmd,
+			update.Cmd,
+		},
+	}
 }
 
 func Run(ctx *cli.Context) error {

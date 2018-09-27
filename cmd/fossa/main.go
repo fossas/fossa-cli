@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	err := app.App.Run(os.Args)
+	err := app.New().Run(os.Args)
 	if err != nil {
 		switch e := err.(type) {
 		case *cli.ExitError:

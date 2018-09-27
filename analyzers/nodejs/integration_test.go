@@ -60,14 +60,17 @@ func TestTestSetup(t *testing.T) {
 }
 
 func TestAnalysisOutput(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 	for _, proj := range projects {
 		t.Run(proj.Name, func(t *testing.T) {
+			// t.Parallel()
+			allowNpmErr := proj.Name == "standard"
+			projPath := filepath.Join(nodeAnalyzerFixtureDir, proj.Name)
 			module := module.Module{
-				Dir:         filepath.Join(nodeAnalyzerFixtureDir, proj.Name),
+				Dir:         projPath,
 				Type:        pkg.NodeJS,
 				Name:        proj.Name,
-				Options:     map[string]interface{}{"allow-npm-err": proj.Name == "standard"},
+				Options:     map[string]interface{}{"allow-npm-err": allowNpmErr},
 				BuildTarget: filepath.Join(nodeAnalyzerFixtureDir, proj.Name, "package.json"),
 			}
 
@@ -84,6 +87,11 @@ func TestAnalysisOutput(t *testing.T) {
 				assert.NotEmpty(t, deps.Direct)
 				assert.NotEmpty(t, deps.Transitive)
 			}
+
+			str, err := runfossa.ReportLicenses(projPath, "--option", "allow-npm-err:true")
+			assert.NoError(t, err)
+			assert.NotNil(t, str)
+			assert.NotEqual(t, "", str)
 		})
 	}
 }
