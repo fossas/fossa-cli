@@ -17,6 +17,7 @@ type NPM interface {
 	List(dir string) (Output, error)
 	Clean(dir string) error
 	Install(dir string) error
+	Exists() bool
 }
 
 type SystemNPM struct {
@@ -29,6 +30,10 @@ type Output struct {
 	From         string
 	Resolved     string
 	Dependencies map[string]Output
+}
+
+func (n SystemNPM) Exists() bool {
+	return n.Cmd != ""
 }
 
 func (n SystemNPM) List(dir string) (Output, error) {

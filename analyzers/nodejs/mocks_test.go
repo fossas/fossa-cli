@@ -28,6 +28,11 @@ func (n MockNPM) Install(dir string) error {
 	return nil
 }
 
+// Keeping this true means that yarn will not be favored
+func (n MockNPM) Exists() bool {
+	return true
+}
+
 type MockNPMFailure struct{}
 
 func (n MockNPMFailure) List(_ string) (npm.Output, error) {
@@ -40,4 +45,8 @@ func (n MockNPMFailure) Clean(dir string) error {
 
 func (n MockNPMFailure) Install(dir string) error {
 	return errors.New("expected failure for npm i")
+}
+
+func (n MockNPMFailure) Exists() bool {
+	return true
 }
