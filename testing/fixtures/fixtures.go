@@ -15,7 +15,7 @@ type Project struct {
 	Name   string
 	URL    string
 	Commit string
-	Env    map[string]string
+	// Env    map[string]string
 }
 
 // Directory returns the directory under which tests fixtures should be placed
