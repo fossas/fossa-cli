@@ -130,7 +130,7 @@ func initializeProjects(testDir string) error {
 			}
 
 			// any key will work to prevent the "NEED KEY" error message
-			err = runfossa.Init(projectDir)
+			_, err = runfossa.Init(projectDir)
 			if err != nil {
 				println("failed to run fossa init on " + proj.Name)
 				println(err.Error())
