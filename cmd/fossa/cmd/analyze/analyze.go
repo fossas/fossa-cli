@@ -145,6 +145,8 @@ func uploadAnalysis(normalized []fossa.SourceUnit) error {
 			Branch:         config.Branch(),
 			ProjectURL:     config.ProjectURL(),
 			JIRAProjectKey: config.JIRAProjectKey(),
+			Link:           config.Link(),
+			Team:           config.Team(),
 		},
 		normalized)
 	display.ClearProgress()

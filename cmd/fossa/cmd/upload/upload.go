@@ -158,6 +158,8 @@ func Do(data []fossa.SourceUnit) (fossa.Locator, error) {
 			Branch:         config.Branch(),
 			ProjectURL:     config.ProjectURL(),
 			JIRAProjectKey: config.JIRAProjectKey(),
+			Link:           config.Link(),
+			Team:           config.Team(),
 		},
 		data)
 }
