@@ -163,6 +163,16 @@ func initializeProjects(testDir string) error {
 			defer waitGroup.Done()
 
 			projectDir := filepath.Join(testDir, proj.Name)
+			println("initializing " + projectDir)
+			nodeModulesExist, err := files.ExistsFolder(projectDir, "node_modules")
+			if err != nil {
+				panic(err)
+			}
+
+			if nodeModulesExist {
+				println("node modules already exists for " + proj.Name + "skipping initialization")
+				return
+			}
 
 			_, errOut, err := exec.Run(exec.Cmd{
 				Name:    "npm",
