@@ -22,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/buildtools/npm"
+	"github.com/fossas/fossa-cli/buildtools/yarn"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
@@ -30,13 +31,10 @@ import (
 )
 
 type Analyzer struct {
-	NodeCmd     string
 	NodeVersion string
 
-	Tool npm.NPM
-
-	YarnCmd     string
-	YarnVersion string
+	NPM  npm.NPM
+	Yarn yarn.YarnTool
 
 	Module  module.Module
 	Options Options
@@ -66,13 +64,9 @@ type Options struct {
 func New(m module.Module) (*Analyzer, error) {
 	log.WithField("options", m.Options).Debug("constructing analyzer")
 
-	nodeCmd, nodeVersion, nodeErr := exec.Which("-v", os.Getenv("FOSSA_NODE_CMD"), "node", "nodejs")
+	_, nodeVersion, nodeErr := exec.Which("-v", os.Getenv("FOSSA_NODE_CMD"), "node", "nodejs")
 	if nodeErr != nil {
 		log.Warnf("Could not find Node.JS: %s", nodeErr.Error())
-	}
-	yarnCmd, yarnVersion, yarnErr := exec.Which("-v", os.Getenv("FOSSA_YARN_CMD"), "yarn")
-	if yarnErr != nil {
-		log.Warnf("Could not find Yarn: %s", yarnErr.Error())
 	}
 
 	var options Options
@@ -87,14 +81,17 @@ func New(m module.Module) (*Analyzer, error) {
 		return nil, err
 	}
 
+	yarnTool, err := yarn.New()
+	if err != nil {
+		log.Error("Could not initialze yarn tooling")
+		return nil, err
+	}
+
 	analyzer := Analyzer{
-		NodeCmd:     nodeCmd,
 		NodeVersion: nodeVersion,
 
-		Tool: npmTool,
-
-		YarnCmd:     yarnCmd,
-		YarnVersion: yarnVersion,
+		NPM:  npmTool,
+		Yarn: yarnTool,
 
 		Module:  m,
 		Options: options,
@@ -162,17 +159,13 @@ func (a *Analyzer) Build() error {
 	log.Debugf("Running Node.js build: %#v", a.Module)
 
 	// Prefer Yarn where possible.
-	if ok, err := files.Exists(a.Module.Dir, "yarn.lock"); err == nil && ok && a.YarnCmd != "" {
-		_, _, err := exec.Run(exec.Cmd{
-			Name: a.YarnCmd,
-			Argv: []string{"install", "--production", "--frozen-lockfile"},
-			Dir:  a.Module.Dir,
-		})
+	if ok, err := files.Exists(a.Module.Dir, "yarn.lock"); err == nil && ok && a.Yarn.Exists() {
+		err := a.Yarn.Install(a.Module.Dir)
 		if err != nil {
 			return errors.Wrap(err, "could not run `yarn` build")
 		}
 	} else {
-		err := a.Tool.Install(a.Module.Dir)
+		err := a.NPM.Install(a.Module.Dir)
 		if err != nil {
 			return errors.Wrap(err, "could not run `npm` build")
 		}
@@ -218,40 +211,52 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Debugf("Running Nodejs analysis: %#v", a.Module)
 
-	pkgs, err := a.Tool.List(filepath.Dir(a.Module.BuildTarget))
-	if err != nil {
+	// if npm as a tool does not exist, skip this
+	if a.NPM.Exists() {
+		pkgs, err := a.NPM.List(filepath.Dir(a.Module.BuildTarget))
+		if err == nil {
+			// TODO: we should move this functionality in to the buildtool, and have it
+			// return `pkg.Package`s.
+			// Set direct dependencies.
+			var imports []pkg.Import
+			for name, dep := range pkgs.Dependencies {
+				imports = append(imports, pkg.Import{
+					Target: dep.From,
+					Resolved: pkg.ID{
+						Type:     pkg.NodeJS,
+						Name:     name,
+						Revision: dep.Version,
+						Location: dep.Resolved,
+					},
+				})
+			}
+
+			// Set transitive dependencies.
+			deps := make(map[pkg.ID]pkg.Package)
+			recurseDeps(deps, pkgs)
+
+			log.Debugf("Done running Nodejs analysis: %#v", deps)
+
+			return graph.Deps{
+				Direct:     imports,
+				Transitive: deps,
+			}, nil
+		}
+
 		log.Warnf("NPM had non-zero exit code: %s", err.Error())
 		log.Debug("Using fallback of node_modules")
-
-		return npm.FromNodeModules(a.Module.BuildTarget, "package.json")
 	}
 
-	// TODO: we should move this functionality in to the buildtool, and have it
-	// return `pkg.Package`s.
-	// Set direct dependencies.
-	var imports []pkg.Import
-	for name, dep := range pkgs.Dependencies {
-		imports = append(imports, pkg.Import{
-			Target: dep.From,
-			Resolved: pkg.ID{
-				Type:     pkg.NodeJS,
-				Name:     name,
-				Revision: dep.Version,
-				Location: dep.Resolved,
-			},
-		})
+	deps, err := npm.FromNodeModules(a.Module.BuildTarget, "package.json")
+	if err == nil {
+		return deps, nil
 	}
 
-	// Set transitive dependencies.
-	deps := make(map[pkg.ID]pkg.Package)
-	recurseDeps(deps, pkgs)
+	log.Warnf("Could not determine deps from node_modules")
+	log.Debug("Using fallback of lockfile check")
 
-	log.Debugf("Done running Nodejs analysis: %#v", deps)
-
-	return graph.Deps{
-		Direct:     imports,
-		Transitive: deps,
-	}, nil
+	// currently only support yarn.lock
+	return yarn.FromProject(filepath.Join(a.Module.BuildTarget, "package.json"), filepath.Join(a.Module.BuildTarget, "yarn.lock"))
 }
 
 // TODO: implement this generically in package graph (Bower also has an

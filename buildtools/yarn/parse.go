@@ -125,6 +125,7 @@ func (l yarnLockfile) resolveDepGraph() map[pkg.ID]pkg.Package {
 			// extract only the package name, remove any versioning info
 			Name:     strings.Split(manifestID, "@")[0],
 			Revision: entry.Version,
+			Type:     pkg.NodeJS,
 		}
 		depGraph[pkgID] = pkg.Package{
 			ID:       pkgID,
