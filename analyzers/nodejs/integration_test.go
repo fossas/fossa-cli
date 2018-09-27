@@ -64,15 +64,24 @@ func TestTestSetup(t *testing.T) {
 	assertProjectFixtureExists(t, "request")
 }
 
-func TestNodejs(t *testing.T) {
+func TestNodejsAnalsis(t *testing.T) {
 	t.Parallel()
 	for _, proj := range projects {
-		t.Run(proj.Name, func(t *testing.T) {
+		t.Run("Analysis:"+proj.Name, func(t *testing.T) {
+			t.Parallel()
+			shouldAllowNpmErr := false
+			for _, arg := range proj.Args {
+				if arg == "allow-npm-err" {
+					shouldAllowNpmErr = true
+				}
+
+				break
+			}
 			module := module.Module{
 				Dir:         filepath.Join(nodeAnalyzerFixtureDir, proj.Name),
 				Type:        pkg.NodeJS,
 				Name:        proj.Name,
-				Options:     map[string]interface{}{"allow-npm-err": proj.Name == "standard"},
+				Options:     map[string]interface{}{"allow-npm-err": shouldAllowNpmErr},
 				BuildTarget: filepath.Join(nodeAnalyzerFixtureDir, proj.Name, "package.json"),
 			}
 
@@ -89,6 +98,34 @@ func TestNodejs(t *testing.T) {
 				assert.NotEmpty(t, deps.Direct)
 				assert.NotEmpty(t, deps.Transitive)
 			}
+		})
+	}
+}
+
+func TestNodejsLicenseReporting(t *testing.T) {
+	t.Parallel()
+	for _, proj := range projects {
+		t.Run("License reporting:"+proj.Name, func(t *testing.T) {
+			t.Parallel()
+			projDir := filepath.Join(nodeAnalyzerFixtureDir, proj.Name)
+
+			stdOut, err := runfossa.LicenseReport(projDir, proj.Args)
+			assert.NoError(t, err)
+			assert.NotEqual(t, "", stdOut)
+		})
+	}
+}
+
+func TestNodejsDependencyReporting(t *testing.T) {
+	t.Parallel()
+	for _, proj := range projects {
+		t.Run("Dependency reporting:"+proj.Name, func(t *testing.T) {
+			t.Parallel()
+			projDir := filepath.Join(nodeAnalyzerFixtureDir, proj.Name)
+
+			stdOut, err := runfossa.DependencyReport(projDir, proj.Args)
+			assert.NoError(t, err)
+			assert.NotEqual(t, "", stdOut)
 		})
 	}
 }
@@ -143,7 +180,6 @@ func initializeProjects(testDir string) error {
 			}
 		}(project)
 	}
-
 	waitGroup.Wait()
 
 	return nil
@@ -151,7 +187,8 @@ func initializeProjects(testDir string) error {
 
 type NodejsProject struct {
 	fixtures.Project
-	Env map[string]string
+	Env  map[string]string
+	Args []string
 }
 
 var projects = []NodejsProject{
@@ -211,7 +248,8 @@ var projects = []NodejsProject{
 			URL:    "https://github.com/standard/standard",
 			Commit: "bc02256fa2c03632e657248483c55a752e63e724",
 		},
-		Env: map[string]string{},
+		Env:  map[string]string{},
+		Args: []string{"--option", "allow-npm-err:true"},
 	},
 	NodejsProject{
 		Project: fixtures.Project{
