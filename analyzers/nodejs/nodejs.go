@@ -31,7 +31,6 @@ import (
 )
 
 type Analyzer struct {
-	NodeCmd     string
 	NodeVersion string
 
 	NPM  npm.NPM
@@ -65,7 +64,7 @@ type Options struct {
 func New(m module.Module) (*Analyzer, error) {
 	log.WithField("options", m.Options).Debug("constructing analyzer")
 
-	nodeCmd, nodeVersion, nodeErr := exec.Which("-v", os.Getenv("FOSSA_NODE_CMD"), "node", "nodejs")
+	_, nodeVersion, nodeErr := exec.Which("-v", os.Getenv("FOSSA_NODE_CMD"), "node", "nodejs")
 	if nodeErr != nil {
 		log.Warnf("Could not find Node.JS: %s", nodeErr.Error())
 	}
@@ -83,7 +82,6 @@ func New(m module.Module) (*Analyzer, error) {
 	}
 
 	analyzer := Analyzer{
-		NodeCmd:     nodeCmd,
 		NodeVersion: nodeVersion,
 
 		NPM:  npmTool,
