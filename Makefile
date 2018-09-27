@@ -123,7 +123,7 @@ integration-test: docker-test
 
 # Release tasks.
 install.sh: $(GODOWNLOADER)
-	godownloader --repo=fossas/fossa-cli > install.sh
+	godownloader --repo=fossas/fossa-cli | sed 's/\.\/bin/\/usr\/local\/bin/' > install.sh
 
 .PHONY: release
 release: $(GORELEASER) install.sh
