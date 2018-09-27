@@ -1,6 +1,7 @@
 package nodejs_test
 
 import (
+	"encoding/json"
 	"flag"
 	"os"
 	"path/filepath"
@@ -66,7 +67,8 @@ func TestTestSetup(t *testing.T) {
 
 func TestNodejsAnalsis(t *testing.T) {
 	t.Parallel()
-	for _, proj := range projects {
+	for _, project := range projects {
+		proj := project
 		t.Run("Analysis:"+proj.Name, func(t *testing.T) {
 			t.Parallel()
 			shouldAllowNpmErr := false
@@ -104,7 +106,8 @@ func TestNodejsAnalsis(t *testing.T) {
 
 func TestNodejsLicenseReporting(t *testing.T) {
 	t.Parallel()
-	for _, proj := range projects {
+	for _, project := range projects {
+		proj := project
 		t.Run("License reporting:"+proj.Name, func(t *testing.T) {
 			t.Parallel()
 			projDir := filepath.Join(nodeAnalyzerFixtureDir, proj.Name)
@@ -118,14 +121,25 @@ func TestNodejsLicenseReporting(t *testing.T) {
 
 func TestNodejsDependencyReporting(t *testing.T) {
 	t.Parallel()
-	for _, proj := range projects {
+	for _, project := range projects {
+		proj := project
 		t.Run("Dependency reporting:"+proj.Name, func(t *testing.T) {
 			t.Parallel()
 			projDir := filepath.Join(nodeAnalyzerFixtureDir, proj.Name)
 
 			stdOut, err := runfossa.DependencyReport(projDir, proj.Args)
 			assert.NoError(t, err)
-			assert.NotEqual(t, "", stdOut)
+
+			pkgs := make([]pkg.Package, 0)
+
+			err = json.Unmarshal([]byte(stdOut), &pkgs)
+			assert.NoError(t, err)
+
+			if proj.Name == "fakerjs" {
+				assert.Empty(t, pkgs)
+			} else {
+				assert.NotEmpty(t, pkgs)
+			}
 		})
 	}
 }
