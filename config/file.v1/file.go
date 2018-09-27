@@ -34,6 +34,8 @@ type CLIProperties struct {
 	Branch         string `yaml:"branch,omitempty"`           // Only used with custom fetcher
 	ProjectURL     string `yaml:"project_url,omitempty"`      // Only used with custom fetcher
 	JIRAProjectKey string `yaml:"jira_project_key,omitempty"` // Only used with custom fetcher
+	Link           string `yaml:"link,omitempty"`
+	Team           string `yaml:"team,omitempty"`
 }
 
 type AnalyzeProperties struct {
@@ -129,6 +131,14 @@ func (file File) ProjectURL() string {
 
 func (file File) JIRAProjectKey() string {
 	return file.CLI.JIRAProjectKey
+}
+
+func (file File) Link() string {
+	return file.CLI.Link
+}
+
+func (file File) Team() string {
+	return file.CLI.Link
 }
 
 func (file File) Revision() string {
