@@ -18,6 +18,8 @@ import (
 )
 
 type ObjectStorage struct {
+	options Options
+
 	// deltaBaseCache is an object cache uses to cache delta's bases when
 	deltaBaseCache cache.Object
 
@@ -27,7 +29,17 @@ type ObjectStorage struct {
 
 // NewObjectStorage creates a new ObjectStorage with the given .git directory.
 func NewObjectStorage(dir *dotgit.DotGit) (ObjectStorage, error) {
+	return NewObjectStorageWithOptions(dir, Options{})
+}
+
+// NewObjectStorageWithOptions creates a new ObjectStorage with the given .git
+// directory and sets its options.
+func NewObjectStorageWithOptions(
+	dir *dotgit.DotGit,
+	ops Options,
+) (ObjectStorage, error) {
 	s := ObjectStorage{
+		options:        ops,
 		deltaBaseCache: cache.NewObjectLRUDefault(),
 		dir:            dir,
 	}
@@ -62,6 +74,7 @@ func (s *ObjectStorage) loadIdxFile(h plumbing.Hash) (err error) {
 	}
 
 	defer ioutil.CheckClose(f, &err)
+
 	idxf := idxfile.NewMemoryIndex()
 	d := idxfile.NewDecoder(f)
 	if err = d.Decode(idxf); err != nil {
@@ -268,7 +281,9 @@ func (s *ObjectStorage) getFromPackfile(h plumbing.Hash, canBeDelta bool) (
 		return nil, err
 	}
 
-	defer ioutil.CheckClose(f, &err)
+	if !s.options.KeepDescriptors {
+		defer ioutil.CheckClose(f, &err)
+	}
 
 	idx := s.index[pack]
 	if canBeDelta {
@@ -295,7 +310,14 @@ func (s *ObjectStorage) decodeObjectAt(
 		return nil, err
 	}
 
-	return packfile.NewPackfile(idx, s.dir.Fs(), f).GetByOffset(offset)
+	var p *packfile.Packfile
+	if s.deltaBaseCache != nil {
+		p = packfile.NewPackfileWithCache(idx, s.dir.Fs(), f, s.deltaBaseCache)
+	} else {
+		p = packfile.NewPackfile(idx, s.dir.Fs(), f)
+	}
+
+	return p.GetByOffset(offset)
 }
 
 func (s *ObjectStorage) decodeDeltaObjectAt(
@@ -404,6 +426,11 @@ func (s *ObjectStorage) buildPackfileIters(t plumbing.ObjectType, seen map[plumb
 	}, nil
 }
 
+// Close closes all opened files.
+func (s *ObjectStorage) Close() error {
+	return s.dir.Close()
+}
+
 type lazyPackfilesIter struct {
 	hashes []plumbing.Hash
 	open   func(h plumbing.Hash) (storer.EncodedObjectIter, error)
@@ -486,7 +513,14 @@ func newPackfileIter(
 	index idxfile.Index,
 	cache cache.Object,
 ) (storer.EncodedObjectIter, error) {
-	iter, err := packfile.NewPackfile(index, fs, f).GetByType(t)
+	var p *packfile.Packfile
+	if cache != nil {
+		p = packfile.NewPackfileWithCache(index, fs, f, cache)
+	} else {
+		p = packfile.NewPackfile(index, fs, f)
+	}
+
+	iter, err := p.GetByType(t)
 	if err != nil {
 		return nil, err
 	}
