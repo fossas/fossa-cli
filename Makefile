@@ -88,13 +88,13 @@ test:
 unit-test:
 	go test -short ./...
 
-.PHONY: junit-test
-junit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
-	if [ "$($COVERALLS_TOKEN)" == "" ]; then \
-		goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" | go-junit-report; \
+.PHONY: ci-unit-test
+ci-unit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
+	if [ -z "$${COVERALLS_TOKEN}" ]; then \
+		go test -short -v ./... | go-junit-report; \
 	else \
-		go test -v ./... | go-junit-report; \
-	fi;
+		goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" | go-junit-report; \
+	fi
 
 .PHONY: integration-test
 integration-test: docker-test
