@@ -94,7 +94,7 @@ junit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
 
 .PHONY: integration-test
 integration-test: 
-	# integration tests rely on calling shell isntances of fossa-cli, so ensure the binary is compiled
+	# ensure the binary is recompiled before every test
 	make
 	go test ./... -v
 
