@@ -35,6 +35,7 @@ $(GOVERALLS):
 build: $(BIN)/fossa
 
 $(BIN)/fossa: $(GO_BINDATA) $(GENNY)
+	dep check
 	go generate ./...
 	go build -o $@ $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
 
