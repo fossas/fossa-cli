@@ -11,7 +11,7 @@ import (
 	"github.com/fossas/fossa-cli/exec"
 )
 
-//go:generate go-bindata -pkg bindata -o ./bindata/bindata.go ./bindata/pipdeptree.py
+//go:generate go-bindata -pkg bindata -modtime 1 -o ./bindata/bindata.go ./bindata/pipdeptree.py
 
 type DepTree struct {
 	Package      string `json:"package_name"`
