@@ -54,7 +54,8 @@ $(GODOWNLOADER):
 .PHONY: build
 build: $(BIN)/fossa
 
-$(BIN)/fossa: $(GO_BINDATA) $(GENNY)
+$(BIN)/fossa: $(GO_BINDATA) $(GENNY) $(DEP)
+	dep check
 	go generate ./...
 	go build -o $@ $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
 
