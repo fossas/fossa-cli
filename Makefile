@@ -96,8 +96,7 @@ junit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
 integration-test: 
 	# integration tests rely on calling shell isntances of fossa-cli, so ensure the binary is compiled
 	make
-	goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) | go-junit-report
-	# sudo docker run --rm -it quay.io/fossa/fossa-cli-test
+	go test ./... -v
 
 # Release tasks.
 .PHONY: prepare-release

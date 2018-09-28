@@ -88,12 +88,7 @@ jobs:
           command: |
             # Load shell helpers (e.g. sdkman)
             source /home/fossa/.bashrc
-            # Run native integration tests
-            # as long as -short is not being called, integration tests get run
-            make -s integration-test > $TEST_RESULTS/go-test-report.xml
-            #Run shell based tests
-            # these tests were inherently broken. Keep them for refernce, but comment out their call to speed up move to native
-            #./test.sh > $ARTIFACTS/integration-test-stdout 2> >(tee $ARTIFACTS/integration-test-stderr >&2)
+            goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) | go-junit-report > $TEST_RESULTS/go-test-report.xml
       # cache the fixtures generated from cloning, installation, and building so we can save time on runs
       - save_cache:
           key: v1-integration-test-fixtures
