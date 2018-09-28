@@ -65,7 +65,7 @@ func TestTestSetup(t *testing.T) {
 	assertProjectFixtureExists(t, "request")
 }
 
-func TestNodejsAnalsis(t *testing.T) {
+func TestNodejsAnalysis(t *testing.T) {
 	t.Parallel()
 	for _, project := range projects {
 		proj := project
