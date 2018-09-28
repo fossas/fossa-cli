@@ -1,20 +1,28 @@
+# Makefile variables.
 SHELL=/bin/bash -o pipefail
 BIN=$(shell go env GOPATH)/bin
 
+## Build tools.
 DEP=$(BIN)/dep
 GO_BINDATA=$(BIN)/go-bindata
 GENNY=$(BIN)/genny
+
+## Test tools.
 GO_JUNIT_REPORT=$(BIN)/go-junit-report
 GOVERALLS=$(BIN)/goveralls
 
-IMAGE?=buildtools
+## Release tools.
+GORELEASER=$(BIN)/goreleaser
+GODOWNLOADER=$(BIN)/godownloader
 
+## Configurations.
+IMAGE?=buildtools
 GORELEASER_FLAGS?=--rm-dist
 LDFLAGS:=-ldflags '-extldflags "-static" -X github.com/fossas/fossa-cli/cmd/fossa/version.version=$(shell git rev-parse --abbrev-ref HEAD) -X github.com/fossas/fossa-cli/cmd/fossa/version.commit=$(shell git rev-parse HEAD) -X "github.com/fossas/fossa-cli/cmd/fossa/version.goversion=$(shell go version)" -X github.com/fossas/fossa-cli/cmd/fossa/version.buildType=development'
 
 all: build
 
-# Various required tools.
+# Installing tools.
 $(DEP):
 	curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
@@ -29,6 +37,18 @@ $(GO_JUNIT_REPORT):
 
 $(GOVERALLS):
 	go get -u -v github.com/mattn/goveralls
+
+$(GORELEASER):
+	go get -d github.com/goreleaser/goreleaser
+	cd $$GOPATH/src/github.com/goreleaser/goreleaser
+	dep ensure -vendor-only
+	go install github.com/goreleaser/goreleaser
+
+$(GODOWNLOADER):
+	go get -d github.com/goreleaser/godownloader
+	cd $$GOPATH/src/github.com/goreleaser/godownloader
+	dep ensure -vendor-only
+	go install github.com/goreleaser/godownloader
 
 # Building the CLI.
 .PHONY: build
@@ -102,30 +122,16 @@ integration-test: docker-test
 	# sudo docker run --rm -it quay.io/fossa/fossa-cli-test
 
 # Release tasks.
-.PHONY: prepare-release
-prepare-release:
-	if [ -z "$$RELEASE" ]; then exit 1; fi
-	mv install.sh install.prev.sh
-	make -s installer > install.sh
-	git add install.sh
-	git commit -m "release($(RELEASE)): Release version $(RELEASE)" || make abort-release
-	git tag $(RELEASE) || (git reset HEAD^ && make abort-release)
-	rm install.prev.sh
+install.sh: $(GODOWNLOADER)
+	# 1. Set default installation location to /usr/local/bin.
+	# 2. Use default permissions for /usr/local/bin.
+	# 3. Try `sudo install` when `install` fails.
+	godownloader --repo=fossas/fossa-cli \
+		| sed 's/\.\/bin/\/usr\/local\/bin/' \
+		| sed 's/install -d/install -d -m 775/' \
+		| sed 's/install "$${srcdir}\/$${binexe}" "$${BINDIR}\/"/install "$${srcdir}\/$${binexe}" "$${BINDIR}\/" 2> \/dev\/null || sudo install "$${srcdir}\/$${binexe}" "$${BINDIR}\/"/' \
+		> install.sh
 
 .PHONY: release
-release:
-	if [ -z "$$(git tag -l --points-at HEAD)" ]; then exit 1; fi
-	[ "$$(grep "^  RELEASE='$$(git tag -l --points-at HEAD)'$$" install.sh | wc -l)" = "1" ]
+release: $(GORELEASER) install.sh
 	GOVERSION=$$(go version) goreleaser $(GORELEASER_FLAGS)
-
-.PHONY: abort-release
-abort-release:
-	git tag -d $(RELEASE)
-	rm install.sh
-	mv install.prev.sh install.sh
-	git reset HEAD .
-	exit 1
-
-.PHONY: installer
-installer:
-	sed "s/# RELEASE=/RELEASE=\'$(RELEASE)\'/" install_template.sh | sed "10s;^;# THIS FILE WAS AUTOMATICALLY GENERATED ON $(shell date) FROM install_template.sh. DO NOT EDIT.\n;"
