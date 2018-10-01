@@ -1,6 +1,6 @@
 [[constraint]]
   name = "github.com/BurntSushi/toml"
-  version = "0.3.0"
+  version = "0.3.1"
 
 [[constraint]]
   name = "github.com/apex/log"
@@ -19,8 +19,12 @@
   version = "1.2.0"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/cheekybits/genny"
+  version = "1.0.0"
+
+[[constraint]]
+  name = "github.com/fatih/color"
+  version = "1.7.0"
 
 [[constraint]]
   branch = "master"
@@ -28,7 +32,7 @@
 
 [[constraint]]
   name = "github.com/mattn/go-isatty"
-  version = "0.0.3"
+  version = "0.0.4"
 
 [[constraint]]
   name = "github.com/mitchellh/mapstructure"
@@ -39,8 +43,8 @@
   version = "0.8.0"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/rhysd/go-github-selfupdate"
+  version = "1.0.0"
 
 [[constraint]]
   name = "github.com/rveen/ogdl"
@@ -56,7 +60,7 @@
 
 [[constraint]]
   name = "gopkg.in/src-d/go-git.v4"
-  version = "4.6.0"
+  version = "4.7.0"
 
 [[constraint]]
   name = "gopkg.in/yaml.v2"

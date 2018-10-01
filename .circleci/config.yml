@@ -36,18 +36,17 @@ jobs:
             # by taking the latest cache.
             # See https://circleci.com/docs/2.0/caching/#restoring-cache and
             # https://discuss.circleci.com/t/circle-2-0-caching-is-too-limited-to-be-very-useful/11694/12.
-            - v4-{{ checksum "Gopkg.lock" }}-{{ .Branch }}-{{ .Revision }}
-            - v4-{{ checksum "Gopkg.lock" }}-{{ .Branch }}
-            - v4-{{ checksum "Gopkg.lock" }}
+            - v5-{{ checksum "Gopkg.lock" }}-{{ .Branch }}-{{ .Revision }}
+            - v5-{{ checksum "Gopkg.lock" }}-{{ .Branch }}
+            - v5-{{ checksum "Gopkg.lock" }}
       - run:
           name: Compile CLI
           command: make
       - save_cache:
-          key: v4-{{ checksum "Gopkg.lock" }}-{{ .Branch }}-{{ .Revision }}
+          key: v5-{{ checksum "Gopkg.lock" }}-{{ .Branch }}-{{ .Revision }}
           paths:
             - ~/.cache/go-build
             - /go/bin
-            - /go/src/github.com/fossas/fossa-cli/vendor
       - run:
           name: Remove Go build tools
           command: |
@@ -56,7 +55,7 @@ jobs:
       - run:
           name: Run unit tests
           command: |
-            make -s junit-test > $TEST_RESULTS/go-test-report.xml
+            make -s ci-unit-test > $TEST_RESULTS/go-test-report.xml
       - run:
           name: Save artifacts
           command: |
