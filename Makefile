@@ -82,13 +82,13 @@ dev: docker-$(IMAGE)
 		-v $$GOPATH/bin:/home/fossa/go/bin \
 		fossa/fossa-cli:$(IMAGE) /bin/bash
 
+# We don't mount the $GOPATH/bin because the host machine's binaries are
+# compiled for Darwin and won't run on Docker (Linux).
 .PHONY: dev-osx
 dev-osx: docker-$(IMAGE)
 	docker run --rm -it \
 		-v $$GOPATH/src/github.com/fossas/fossa-cli:/home/fossa/go/src/github.com/fossas/fossa-cli \
 		fossa/fossa-cli:$(IMAGE) /bin/bash
-		# We don't mount the $GOPATH/bin because the host machine's binaries are
-		# compiled for Darwin and won't run on Docker (Linux).
 
 .PHONY: vendor
 vendor: $(DEP)
