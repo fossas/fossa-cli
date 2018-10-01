@@ -4,6 +4,7 @@ defaults: &defaults
   environment:
     TEST_RESULTS: /tmp/test-results
     ARTIFACTS: /tmp/artifacts
+    COVERALLS_PARALLEL: true
 
 # We use two separate stages to ensure that unit tests run in an environment
 # _without_ build tools. This helps us test that fallback behaviour works
@@ -56,6 +57,10 @@ jobs:
           name: Run unit tests
           command: |
             make -s ci-unit-test > $TEST_RESULTS/go-test-report.xml
+      - run: 
+          name: Notify coveralls of finished build/test
+          command: |
+            curl -k coveralls.io/webhook?repo_token=$COVERALLS_REPO_TOKEN -d "payload[build_num]=$CIRCLE_BUILD_NUM&payload[status]=done"
       - run:
           name: Save artifacts
           command: |
@@ -88,6 +93,10 @@ jobs:
             # Load shell helpers (e.g. sdkman)
             source /home/fossa/.bashrc
             make -s integration-test > $TEST_RESULTS/go-test-report.xml
+      - run: 
+          name: Notify coveralls of finished build/test
+          command: |
+            curl -k coveralls.io/webhook?repo_token=$COVERALLS_REPO_TOKEN -d "payload[build_num]=$CIRCLE_BUILD_NUM&payload[status]=done"
       # cache the fixtures generated from cloning, installation, and building so we can save time on runs
       - save_cache:
           key: v1-integration-test-fixtures
