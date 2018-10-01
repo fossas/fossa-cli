@@ -57,10 +57,6 @@ jobs:
           name: Run unit tests
           command: |
             make -s ci-unit-test > $TEST_RESULTS/go-test-report.xml
-      - run: 
-          name: Notify coveralls of finished build/test
-          command: |
-            curl -k https://coveralls.io/webhook?repo_token=$COVERALLS_TOKEN -d "payload[build_num]=$CIRCLE_BUILD_NUM&payload[status]=done"
       - run:
           name: Save artifacts
           command: |
@@ -93,10 +89,6 @@ jobs:
             # Load shell helpers (e.g. sdkman)
             source /home/fossa/.bashrc
             make -s integration-test > $TEST_RESULTS/go-test-report.xml
-      - run: 
-          name: Notify coveralls of finished build/test
-          command: |
-            curl -k https://coveralls.io/webhook?repo_token=$COVERALLS_TOKEN -d "payload[build_num]=$CIRCLE_BUILD_NUM&payload[status]=done"
       # cache the fixtures generated from cloning, installation, and building so we can save time on runs
       - save_cache:
           key: v1-integration-test-fixtures
