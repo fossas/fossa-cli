@@ -12,10 +12,11 @@ import (
 
 // Project describes a git repo for a test fixture and env vars for when it is to be built
 type Project struct {
-	Name   string
-	URL    string
-	Commit string
-	Env    map[string]string
+	Name    string
+	URL     string
+	Commit  string
+	Options map[string]interface{}
+	Env     map[string]string
 }
 
 // Directory returns the directory under which tests fixtures should be placed

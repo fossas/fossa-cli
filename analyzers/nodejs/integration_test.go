@@ -7,6 +7,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/apex/log"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/analyzers"
@@ -59,15 +60,18 @@ func TestTestSetup(t *testing.T) {
 	assertProjectFixtureExists(t, "request")
 }
 
-func TestAnalysisOutput(t *testing.T) {
+func TestNodejsAnalysis(t *testing.T) {
 	t.Parallel()
-	for _, proj := range projects {
-		t.Run(proj.Name, func(t *testing.T) {
+	for _, project := range projects {
+		proj := project
+		t.Run("Analysis:"+proj.Name, func(t *testing.T) {
+			t.Parallel()
+
 			module := module.Module{
 				Dir:         filepath.Join(nodeAnalyzerFixtureDir, proj.Name),
 				Type:        pkg.NodeJS,
 				Name:        proj.Name,
-				Options:     map[string]interface{}{"allow-npm-err": proj.Name == "standard"},
+				Options:     proj.Options,
 				BuildTarget: filepath.Join(nodeAnalyzerFixtureDir, proj.Name, "package.json"),
 			}
 
@@ -107,6 +111,16 @@ func initializeProjects(testDir string) error {
 			defer waitGroup.Done()
 
 			projectDir := filepath.Join(testDir, proj.Name)
+			log.Debug("initializing " + projectDir)
+			nodeModulesExist, err := files.ExistsFolder(projectDir, "node_modules")
+			if err != nil {
+				panic(err)
+			}
+
+			if nodeModulesExist {
+				log.Debug("node modules already exists for " + proj.Name + "skipping initialization")
+				return
+			}
 
 			_, errOut, err := exec.Run(exec.Cmd{
 				Name:    "npm",
@@ -116,8 +130,8 @@ func initializeProjects(testDir string) error {
 				Command: "npm",
 			})
 			if err != nil {
-				println(errOut)
-				println("failed to run npm install on " + proj.Name)
+				log.Error(errOut)
+				log.Error("failed to run npm install on " + proj.Name)
 			}
 
 			// save time on local
@@ -130,15 +144,16 @@ func initializeProjects(testDir string) error {
 			}
 
 			// any key will work to prevent the "NEED KEY" error message
-			err = runfossa.Init(projectDir)
+			stdout, stderr, err := runfossa.Init(projectDir)
 			if err != nil {
-				println("failed to run fossa init on " + proj.Name)
-				println(err.Error())
+				log.Error("failed to run fossa init on " + proj.Name)
+				log.Error(stdout)
+				log.Error(stderr)
+				log.Error(err.Error())
 				panic(err)
 			}
 		}(project)
 	}
-
 	waitGroup.Wait()
 
 	return nil
@@ -157,49 +172,43 @@ var projects = []fixtures.Project{
 		Name:   "fakerjs",
 		URL:    "https://github.com/Marak/faker.js",
 		Commit: "3a4bb358614c1e1f5d73f4df45c13a1a7aa013d7",
-		Env:    map[string]string{},
 	},
 	fixtures.Project{
 		Name:   "fastify",
 		URL:    "https://github.com/fastify/fastify",
 		Commit: "1b16a4c5e381f9292d3ac2c327c3bda4bd277408",
-		Env:    map[string]string{},
 	},
 	fixtures.Project{
 		Name:   "nest",
 		URL:    "https://github.com/nestjs/nest",
 		Commit: "ce498e86150f7de4a260f0c393d47ec4cc920ea1",
-		Env:    map[string]string{},
 	},
 	fixtures.Project{
 		Name:   "ohm",
 		URL:    "https://github.com/harc/ohm",
 		Commit: "8202eff3723cfa26522134e7b003cf31ab5de445",
-		Env:    map[string]string{},
 	},
 	fixtures.Project{
+
 		Name:   "express",
 		URL:    "https://github.com/expressjs/express",
 		Commit: "b4eb1f59d39d801d7365c86b04500f16faeb0b1c",
-		Env:    map[string]string{},
 	},
 	fixtures.Project{
-		Name:   "standard",
-		URL:    "https://github.com/standard/standard",
-		Commit: "bc02256fa2c03632e657248483c55a752e63e724",
-		Env:    map[string]string{},
+		Name:    "standard",
+		URL:     "https://github.com/standard/standard",
+		Commit:  "bc02256fa2c03632e657248483c55a752e63e724",
+		Options: map[string]interface{}{"allow-npm-err": true},
 	},
 	fixtures.Project{
 		Name:   "sodium-encryption",
 		URL:    "https://github.com/mafintosh/sodium-encryption",
 		Commit: "42a7cba0f97718157e8c7a386ef94ba31e16837a",
-		Env:    map[string]string{},
 	},
 	fixtures.Project{
 		Name:   "request",
 		URL:    "https://github.com/request/request",
 		Commit: "8162961dfdb73dc35a5a4bfeefb858c2ed2ccbb7",
-		Env:    map[string]string{},
 	},
 }
 
