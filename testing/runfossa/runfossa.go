@@ -13,17 +13,13 @@ func Init(projectDir string) (string, error) {
 	return output, nil
 }
 
-var licenseReportCmd = []string{"report", "licenses"}
-
 func LicenseReport(projectDir string, args []string) (string, error) {
-	args = append(licenseReportCmd, args...)
+	args = append([]string{"report", "licenses"}, args...)
 	return runfossa(projectDir, args)
 }
 
-var dependencyReportCmd = []string{"report", "dependencies"}
-
 func DependencyReport(projectDir string, args []string) (string, error) {
-	args = append(dependencyReportCmd, args...)
+	args = append([]string{"report", "dependencies"}, args...)
 	return runfossa(projectDir, args)
 }
 
