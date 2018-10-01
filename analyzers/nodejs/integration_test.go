@@ -7,6 +7,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/apex/log"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/analyzers"
@@ -110,14 +111,14 @@ func initializeProjects(testDir string) error {
 			defer waitGroup.Done()
 
 			projectDir := filepath.Join(testDir, proj.Name)
-			println("initializing " + projectDir)
+			log.Debug("initializing " + projectDir)
 			nodeModulesExist, err := files.ExistsFolder(projectDir, "node_modules")
 			if err != nil {
 				panic(err)
 			}
 
 			if nodeModulesExist {
-				println("node modules already exists for " + proj.Name + "skipping initialization")
+				log.Debug("node modules already exists for " + proj.Name + "skipping initialization")
 				return
 			}
 
@@ -129,8 +130,8 @@ func initializeProjects(testDir string) error {
 				Command: "npm",
 			})
 			if err != nil {
-				println(errOut)
-				println("failed to run npm install on " + proj.Name)
+				log.Error(errOut)
+				log.Error("failed to run npm install on " + proj.Name)
 			}
 
 			// save time on local
@@ -145,10 +146,10 @@ func initializeProjects(testDir string) error {
 			// any key will work to prevent the "NEED KEY" error message
 			stdout, stderr, err := runfossa.Init(projectDir)
 			if err != nil {
-				println("failed to run fossa init on " + proj.Name)
-				println(stdout)
-				println(stderr)
-				println(err.Error())
+				log.Error("failed to run fossa init on " + proj.Name)
+				log.Error(stdout)
+				log.Error(stderr)
+				log.Error(err.Error())
 				panic(err)
 			}
 		}(project)
