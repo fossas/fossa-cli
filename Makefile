@@ -116,7 +116,7 @@ ci-unit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
 .PHONY: integration-test
 integration-test: 
 	# ensure the binary is recompiled before every test
-	make
+	make 
 	if [ -z "$${COVERALLS_TOKEN}" ]; then \
 		go test -v ./... | go-junit-report; \
 	else \

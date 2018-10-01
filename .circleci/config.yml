@@ -87,7 +87,7 @@ jobs:
           command: |
             # Load shell helpers (e.g. sdkman)
             source /home/fossa/.bashrc
-            goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) | go-junit-report > $TEST_RESULTS/go-test-report.xml
+            make integration-test > $TEST_RESULTS/go-test-report.xml
       # cache the fixtures generated from cloning, installation, and building so we can save time on runs
       - save_cache:
           key: v1-integration-test-fixtures
