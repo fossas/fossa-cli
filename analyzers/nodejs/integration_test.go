@@ -165,49 +165,48 @@ var projects = []fixtures.Project{
 			"PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "1",
 		},
 	},
-	// fixtures.Project{
+	fixtures.Project{
+		Name:   "fakerjs",
+		URL:    "https://github.com/Marak/faker.js",
+		Commit: "3a4bb358614c1e1f5d73f4df45c13a1a7aa013d7",
+	},
+	fixtures.Project{
+		Name:   "fastify",
+		URL:    "https://github.com/fastify/fastify",
+		Commit: "1b16a4c5e381f9292d3ac2c327c3bda4bd277408",
+	},
+	fixtures.Project{
+		Name:   "nest",
+		URL:    "https://github.com/nestjs/nest",
+		Commit: "ce498e86150f7de4a260f0c393d47ec4cc920ea1",
+	},
+	fixtures.Project{
+		Name:   "ohm",
+		URL:    "https://github.com/harc/ohm",
+		Commit: "8202eff3723cfa26522134e7b003cf31ab5de445",
+	},
+	fixtures.Project{
 
-	// 	Name:   "fakerjs",
-	// 	URL:    "https://github.com/Marak/faker.js",
-	// 	Commit: "3a4bb358614c1e1f5d73f4df45c13a1a7aa013d7",
-	// },
-	// fixtures.Project{
-	// 	Name:   "fastify",
-	// 	URL:    "https://github.com/fastify/fastify",
-	// 	Commit: "1b16a4c5e381f9292d3ac2c327c3bda4bd277408",
-	// },
-	// fixtures.Project{
-	// 	Name:   "nest",
-	// 	URL:    "https://github.com/nestjs/nest",
-	// 	Commit: "ce498e86150f7de4a260f0c393d47ec4cc920ea1",
-	// },
-	// fixtures.Project{
-	// 	Name:   "ohm",
-	// 	URL:    "https://github.com/harc/ohm",
-	// 	Commit: "8202eff3723cfa26522134e7b003cf31ab5de445",
-	// },
-	// fixtures.Project{
-
-	// 	Name:   "express",
-	// 	URL:    "https://github.com/expressjs/express",
-	// 	Commit: "b4eb1f59d39d801d7365c86b04500f16faeb0b1c",
-	// },
-	// fixtures.Project{
-	// 	Name:    "standard",
-	// 	URL:     "https://github.com/standard/standard",
-	// 	Commit:  "bc02256fa2c03632e657248483c55a752e63e724",
-	// 	Options: map[string]interface{}{"allow-npm-err": true},
-	// },
-	// fixtures.Project{
-	// 	Name:   "sodium-encryption",
-	// 	URL:    "https://github.com/mafintosh/sodium-encryption",
-	// 	Commit: "42a7cba0f97718157e8c7a386ef94ba31e16837a",
-	// },
-	// fixtures.Project{
-	// 	Name:   "request",
-	// 	URL:    "https://github.com/request/request",
-	// 	Commit: "8162961dfdb73dc35a5a4bfeefb858c2ed2ccbb7",
-	// },
+		Name:   "express",
+		URL:    "https://github.com/expressjs/express",
+		Commit: "b4eb1f59d39d801d7365c86b04500f16faeb0b1c",
+	},
+	fixtures.Project{
+		Name:    "standard",
+		URL:     "https://github.com/standard/standard",
+		Commit:  "bc02256fa2c03632e657248483c55a752e63e724",
+		Options: map[string]interface{}{"allow-npm-err": true},
+	},
+	fixtures.Project{
+		Name:   "sodium-encryption",
+		URL:    "https://github.com/mafintosh/sodium-encryption",
+		Commit: "42a7cba0f97718157e8c7a386ef94ba31e16837a",
+	},
+	fixtures.Project{
+		Name:   "request",
+		URL:    "https://github.com/request/request",
+		Commit: "8162961dfdb73dc35a5a4bfeefb858c2ed2ccbb7",
+	},
 }
 
 func cleanUp(dir string) {
