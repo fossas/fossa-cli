@@ -86,9 +86,9 @@ dev: docker-$(IMAGE)
 dev-osx: docker-$(IMAGE)
 	docker run --rm -it \
 		-v $$GOPATH/src/github.com/fossas/fossa-cli:/home/fossa/go/src/github.com/fossas/fossa-cli \
+		fossa/fossa-cli:$(IMAGE) /bin/bash
 		# We don't mount the $GOPATH/bin because the host machine's binaries are
 		# compiled for Darwin and won't run on Docker (Linux).
-		fossa/fossa-cli:$(IMAGE) /bin/bash
 
 .PHONY: vendor
 vendor: $(DEP)
@@ -118,7 +118,7 @@ integration-test:
 	# ensure the binary is recompiled before every test
 	make
 	if [ -z "$${COVERALLS_TOKEN}" ]; then \
-		go test -short -v ./... | go-junit-report; \
+		go test -v ./... | go-junit-report; \
 	else \
 		goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) | go-junit-report; \
 	fi
