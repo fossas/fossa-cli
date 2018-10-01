@@ -71,18 +71,12 @@ func TestNodejsAnalysis(t *testing.T) {
 		proj := project
 		t.Run("Analysis:"+proj.Name, func(t *testing.T) {
 			t.Parallel()
-			shouldAllowNpmErr := false
-			for _, arg := range proj.Args {
-				if arg == "allow-npm-err" {
-					shouldAllowNpmErr = true
-					break
-				}
-			}
+
 			module := module.Module{
 				Dir:         filepath.Join(nodeAnalyzerFixtureDir, proj.Name),
 				Type:        pkg.NodeJS,
 				Name:        proj.Name,
-				Options:     map[string]interface{}{"allow-npm-err": shouldAllowNpmErr},
+				Options:     proj.Options,
 				BuildTarget: filepath.Join(nodeAnalyzerFixtureDir, proj.Name, "package.json"),
 			}
 
@@ -212,8 +206,8 @@ func initializeProjects(testDir string) error {
 
 type NodejsProject struct {
 	fixtures.Project
-	Env  map[string]string
-	Args []string
+	Env     map[string]string
+	Options map[string]interface{}
 }
 
 var projects = []NodejsProject{
@@ -273,8 +267,8 @@ var projects = []NodejsProject{
 			URL:    "https://github.com/standard/standard",
 			Commit: "bc02256fa2c03632e657248483c55a752e63e724",
 		},
-		Env:  map[string]string{},
-		Args: []string{"--option", "allow-npm-err:true"},
+		Env:     map[string]string{},
+		Options: map[string]interface{}{"allow-npm-err": true},
 	},
 	NodejsProject{
 		Project: fixtures.Project{
