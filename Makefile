@@ -111,7 +111,11 @@ unit-test:
 
 .PHONY: ci-unit-test
 ci-unit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
-	go test -short -v ./... | go-junit-report;
+	if [ -z "$${COVERALLS_TOKEN}" ]; then \
+		go test -v ./... | go-junit-report; \
+	else \
+		goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" | go-junit-report; \
+	fi
 
 .PHONY: integration-test
 integration-test: 
