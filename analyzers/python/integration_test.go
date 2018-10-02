@@ -72,10 +72,6 @@ func TestPythonAnalysis(t *testing.T) {
 				BuildTarget: projDir,
 			}
 
-			if proj.Name == "sentry" {
-				module.Options["strategy"] = "deptree"
-			}
-
 			analyzer, err := analyzers.New(module)
 			assert.NoError(t, err)
 
