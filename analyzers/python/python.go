@@ -5,6 +5,7 @@
 package python
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -74,6 +75,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	// A map of directory to module. This is to avoid multiple modules in one
 	// directory e.g. if we find _both_ a `requirements.txt` and `setup.py`.
 	modules := make(map[string]module.Module)
+	fmt.Println("Help me NPWWWWWWW")
 
 	err := filepath.Walk(dir, func(filename string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -154,6 +156,9 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 			Direct:     imports,
 			Transitive: fromImports(imports),
 		}, nil
+	case "pipfile":
+		err := errors.New("Pipfile not implemented yet")
+		return graph.Deps{}, err
 	case "requirements":
 		fallthrough
 	default:
