@@ -4,16 +4,18 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/apex/log"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/analyzers"
-	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 	"github.com/fossas/fossa-cli/testing/fixtures"
-	"github.com/stretchr/testify/assert"
+	"github.com/fossas/fossa-cli/testing/runfossa"
 )
 
 var pythonAnalyzerFixtureDir = filepath.Join(fixtures.Directory(), "python", "analyzer")
@@ -30,27 +32,35 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	sentryLocation := filepath.Join(pythonAnalyzerFixtureDir, "sentry")
-	stdout, stdErr, err := exec.Run(exec.Cmd{
-		Name:    "pip",
-		Argv:    []string{"install", "-r", "requirements-base.txt"},
-		Dir:     sentryLocation,
-		Command: "pip",
-	})
+	// sentryLocation := filepath.Join(pythonAnalyzerFixtureDir, "sentry")
+	// stdout, stdErr, err := exec.Run(exec.Cmd{
+	// 	Name:    "pip",
+	// 	Argv:    []string{"install", "-r", "requirements-base.txt"},
+	// 	Dir:     sentryLocation,
+	// 	Command: "pip",
+	// })
+	// if err != nil {
+	// 	log.Error(stdout)
+	// 	log.Error(stdErr)
+	// 	log.Error(err.Error())
+
+	// 	// panic(err)
+	// }
+	// _, stdErr, err = exec.Run(exec.Cmd{
+	// 	Name:    "pip",
+	// 	Argv:    []string{"install", "-r", "requirements-dev.txt"},
+	// 	Dir:     sentryLocation,
+	// 	Command: "pip",
+	// })
+	// if err != nil {
+	// 	log.Error(stdErr)
+	// 	panic(err)
+	// }
+
+	err = initializeProjects(pythonAnalyzerFixtureDir)
 	if err != nil {
-		log.Error(stdout)
-		log.Error(stdErr)
-		panic(err)
-	}
-	_, stdErr, err = exec.Run(exec.Cmd{
-		Name:    "pip",
-		Argv:    []string{"install", "-r", "requirements-dev.txt"},
-		Dir:     sentryLocation,
-		Command: "pip",
-	})
-	if err != nil {
-		log.Error(stdErr)
-		panic(err)
+		log.Fatal(err.Error())
+		os.Exit(1)
 	}
 
 	exitCode := m.Run()
@@ -95,11 +105,11 @@ var projects = []fixtures.Project{
 		URL:    "https://github.com/ansible/ansible",
 		Commit: "649403c3a179277ec2ad7373962cb7baee2f715f",
 	},
-	fixtures.Project{
-		Name:   "sentry",
-		URL:    "https://github.com/getsentry/sentry",
-		Commit: "985a917353d23caa112d133cfa6873389d831be5",
-	},
+	// fixtures.Project{
+	// 	Name:   "sentry",
+	// 	URL:    "https://github.com/getsentry/sentry",
+	// 	Commit: "985a917353d23caa112d133cfa6873389d831be5",
+	// },
 	fixtures.Project{
 		Name:   "fabric",
 		URL:    "https://github.com/fabric/fabric",
@@ -125,4 +135,39 @@ var projects = []fixtures.Project{
 		URL:    "https://github.com/sshuttle/sshuttle",
 		Commit: "6dc368bde8128cd27ad80d48772420ff68a92c8f",
 	},
+}
+
+func initializeProjects(testDir string) error {
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(len(projects))
+
+	for _, project := range projects {
+		go func(proj fixtures.Project) {
+			defer waitGroup.Done()
+
+			projectDir := filepath.Join(testDir, proj.Name)
+
+			// save time on local
+			ymlAlreadyExists, err := files.Exists(filepath.Join(projectDir, ".fossa.yml"))
+			if err != nil {
+				panic(err)
+			}
+			if ymlAlreadyExists {
+				return
+			}
+
+			// any key will work to prevent the "NEED KEY" error message
+			stdout, stderr, err := runfossa.Init(projectDir)
+			if err != nil {
+				log.Error("failed to run fossa init on " + proj.Name)
+				log.Error(stdout)
+				log.Error(stderr)
+				log.Error(err.Error())
+				panic(err)
+			}
+		}(project)
+	}
+	waitGroup.Wait()
+
+	return nil
 }
