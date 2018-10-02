@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/apex/log"
+
 	"github.com/fossas/fossa-cli/analyzers"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/module"
@@ -36,8 +38,8 @@ func TestMain(m *testing.M) {
 		Command: "pip",
 	})
 	if err != nil {
-		println(stdout)
-		println(stdErr)
+		log.Error(stdout)
+		log.Error(stdErr)
 		panic(err)
 	}
 	_, stdErr, err = exec.Run(exec.Cmd{
@@ -47,7 +49,7 @@ func TestMain(m *testing.M) {
 		Command: "pip",
 	})
 	if err != nil {
-		println(stdErr)
+		log.Error(stdErr)
 		panic(err)
 	}
 
