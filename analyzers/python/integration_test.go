@@ -94,12 +94,11 @@ var projects = []fixtures.Project{
 		URL:    "https://github.com/vibora-io/vibora",
 		Commit: "51d6691a430bbb6ac57df54dc7d8276f62953bb2",
 	},
-	// ansible is failing checkout to a commit with the error: worktree contains unstaged changes, but I cannot figure out why
-	// fixtures.Project{
-	// 	Name:   "ansible",
-	// 	URL:    "https://github.com/ansible/ansible",
-	// 	Commit: "649403c3a179277ec2ad7373962cb7baee2f715f",
-	// },
+	fixtures.Project{
+		Name:   "ansible",
+		URL:    "https://github.com/ansible/ansible",
+		Commit: "649403c3a179277ec2ad7373962cb7baee2f715f",
+	},
 	fixtures.Project{
 		Name:   "sentry",
 		URL:    "https://github.com/getsentry/sentry",
