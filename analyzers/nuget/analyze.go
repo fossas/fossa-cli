@@ -71,7 +71,6 @@ func Projects(projects map[string]dotnet.Manifest, projectFile string) error {
 }
 
 func Packages(projects map[string]dotnet.Manifest, lockfile dotnet.Lockfile, deps map[pkg.ID]pkg.Package, dep string) pkg.ID {
-	log.Debugf("%#v", dep)
 	if project, ok := projects[dotnet.Path(dep)]; ok {
 		log.Debugf("%#v", project)
 		name := project.Name()
