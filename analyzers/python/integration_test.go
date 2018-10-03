@@ -32,6 +32,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
+	// pip install on sentry causes a seg fault; ignore for now
 	// sentryLocation := filepath.Join(pythonAnalyzerFixtureDir, "sentry")
 	// stdout, stdErr, err := exec.Run(exec.Cmd{
 	// 	Name:    "pip",
