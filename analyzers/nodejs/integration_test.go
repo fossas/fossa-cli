@@ -27,8 +27,6 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	log.SetLevel(log.DebugLevel)
-
 	err := fixtures.Clone(nodeAnalyzerFixtureDir, projects)
 	if err != nil {
 		panic(err)
