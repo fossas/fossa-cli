@@ -89,8 +89,11 @@ func InitializeProjects(testDir string, projects []Project, projectInitializer P
 	for _, project := range projects {
 		go func(proj Project) {
 			defer waitGroup.Done()
+			err := projectInitializer(proj, filepath.Join(testDir, proj.Name))
+
+			// separate the initialization step from locking to decrease time locking out other writers
 			threadsafeErrorsByProject.Lock()
-			threadsafeErrorsByProject.errorsByProject[proj.Name] = projectInitializer(proj, filepath.Join(testDir, proj.Name))
+			threadsafeErrorsByProject.errorsByProject[proj.Name] = err
 			threadsafeErrorsByProject.Unlock()
 		}(project)
 	}
