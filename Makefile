@@ -103,7 +103,7 @@ clean:
 .PHONY: test
 test:
 	make unit-test
-	# make integration-test
+	make integration-test
 
 .PHONY: unit-test
 unit-test:
@@ -112,15 +112,21 @@ unit-test:
 .PHONY: ci-unit-test
 ci-unit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
 	if [ -z "$${COVERALLS_TOKEN}" ]; then \
-		go test -v ./... | go-junit-report; \
+		go test -short -v ./... | go-junit-report; \
 	else \
 		goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" | go-junit-report; \
 	fi
 
 .PHONY: integration-test
-integration-test: 
-	# ensure the binary is recompiled before every test
-	make 
+integration-test:
+	# Ensure the binary is recompiled before every test.
+	make
+	go test ./...
+
+.PHONY: ci-integration-test
+ci-integration-test:
+	# Ensure the binary is recompiled before every test.
+	make
 	if [ -z "$${COVERALLS_TOKEN}" ]; then \
 		go test -v ./... | go-junit-report; \
 	else \
