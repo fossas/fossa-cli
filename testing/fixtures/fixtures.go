@@ -82,28 +82,24 @@ func InitializeProjects(testDir string, projects []Project, projectInitializer P
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(len(projects))
 
-	errChannel := make(chan projectErrorChannel)
+	threadsafeErrorsByProject := threadableErrorsByProject{
+		errorsByProject: make(map[string]error, len(projects)),
+	}
+
 	for _, project := range projects {
 		go func(proj Project) {
 			defer waitGroup.Done()
-			errChannel <- projectErrorChannel{
-				err:      projectInitializer(proj, filepath.Join(testDir, proj.Name)),
-				projName: proj.Name,
-			}
+			threadsafeErrorsByProject.Lock()
+			threadsafeErrorsByProject.errorsByProject[proj.Name] = projectInitializer(proj, filepath.Join(testDir, proj.Name))
+			threadsafeErrorsByProject.Unlock()
 		}(project)
 	}
 	waitGroup.Wait()
-	close(errChannel)
 
-	errorsByProject := make(map[string]error, len(projects))
-	for errorByProject := range errChannel {
-		errorsByProject[errorByProject.projName] = errorByProject.err
-	}
-
-	return errorsByProject
+	return threadsafeErrorsByProject.errorsByProject
 }
 
-type projectErrorChannel struct {
-	err      error
-	projName string
+type threadableErrorsByProject struct {
+	sync.Mutex
+	errorsByProject map[string]error
 }
