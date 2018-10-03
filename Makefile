@@ -38,16 +38,16 @@ $(GO_JUNIT_REPORT):
 $(GOVERALLS):
 	go get -u -v github.com/mattn/goveralls
 
-$(GORELEASER):
+$(GORELEASER): $(DEP)
 	go get -d github.com/goreleaser/goreleaser
 	cd $$GOPATH/src/github.com/goreleaser/goreleaser
 	dep ensure -vendor-only
 	go install github.com/goreleaser/goreleaser
 
-$(GODOWNLOADER):
-	go get -d github.com/goreleaser/godownloader
-	cd $$GOPATH/src/github.com/goreleaser/godownloader
-	dep ensure -vendor-only
+$(GODOWNLOADER): $(DEP)
+	mkdir -p $$GOPATH/src/github.com/goreleaser
+	cd $$GOPATH/src/github.com/goreleaser && git clone https://github.com/goreleaser/godownloader
+	cd $$GOPATH/src/github.com/goreleaser/godownloader && dep ensure
 	go install github.com/goreleaser/godownloader
 
 # Building the CLI.
