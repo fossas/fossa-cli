@@ -120,7 +120,7 @@ func projectInitializer(proj fixtures.Project, projectDir string) error {
 		return nil
 	}
 
-	stdOut, errOut, err := exec.Run(exec.Cmd{
+	_, errOut, err := exec.Run(exec.Cmd{
 		Name:    "npm",
 		Argv:    []string{"install", "--production"},
 		Dir:     projectDir,
@@ -128,7 +128,7 @@ func projectInitializer(proj fixtures.Project, projectDir string) error {
 		Command: "npm",
 	})
 	if err != nil {
-		log.Error(stdOut + "\n" + errOut)
+		log.Error(errOut)
 		log.Error("failed to run npm install on " + proj.Name)
 	}
 
