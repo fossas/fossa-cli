@@ -112,7 +112,7 @@ func assertProjectFixtureExists(t *testing.T, name string) {
 func projectInitializer(proj fixtures.Project, projectDir string) error {
 	nodeModulesExist, err := files.ExistsFolder(projectDir, "node_modules")
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	if nodeModulesExist {
