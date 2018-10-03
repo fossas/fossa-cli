@@ -73,3 +73,37 @@ func Clone(baseDir string, projects []Project) error {
 
 	return nil
 }
+
+// ProjectInitializerFunction defines how a single project should be initialized *after* it has already been cloned
+type ProjectInitializerFunction func(proj Project, projectDir string) error
+
+// InitializeProjects initializes provided projects in parallel using the provided initialization function. Errors are returned as a map of the Project.Name to the error thrown
+func InitializeProjects(testDir string, projects []Project, projectInitializer ProjectInitializerFunction) map[string]error {
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(len(projects))
+
+	errChannel := make(chan projectErrorChannel)
+	for _, project := range projects {
+		go func(proj Project) {
+			defer waitGroup.Done()
+			errChannel <- projectErrorChannel{
+				err:      projectInitializer(proj, filepath.Join(testDir, proj.Name)),
+				projName: proj.Name,
+			}
+		}(project)
+	}
+	waitGroup.Wait()
+	close(errChannel)
+
+	errorsByProject := make(map[string]error, len(projects))
+	for errorByProject := range errChannel {
+		errorsByProject[errorByProject.projName] = errorByProject.err
+	}
+
+	return errorsByProject
+}
+
+type projectErrorChannel struct {
+	err      error
+	projName string
+}
