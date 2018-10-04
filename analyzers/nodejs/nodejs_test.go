@@ -110,7 +110,7 @@ func testAnalyzeWithNpmLs(t *testing.T, buildTarget string) {
 	assert.NoError(t, err)
 
 	analyzer.NPM = MockNPM{
-		JSONFilename: filepath.Join("testdata", "chai", "npm-ls-json.json"),
+		JSONFilename: filepath.Join(buildTarget, "npm-ls-json.json"),
 	}
 
 	analysisResults, err := analyzer.Analyze()
