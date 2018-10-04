@@ -5,7 +5,6 @@
 package python
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +13,8 @@ import (
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/fossas/fossa-cli/buildtools/pip"
+	"github.com/fossas/fossa-cli/buildtools/pipenv"
+
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
@@ -75,14 +76,13 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	// A map of directory to module. This is to avoid multiple modules in one
 	// directory e.g. if we find _both_ a `requirements.txt` and `setup.py`.
 	modules := make(map[string]module.Module)
-	fmt.Println("Help me NPWWWWWWW")
 
 	err := filepath.Walk(dir, func(filename string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.WithError(err).WithField("filename", filename).Debug("failed to access path")
 			return err
 		}
-
+		fmt.Println(info.Name())
 		if !info.IsDir() && (info.Name() == "requirements.txt" || info.Name() == "setup.py") {
 			moduleDir := filepath.Dir(filename)
 			_, ok := modules[moduleDir]
@@ -156,9 +156,15 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 			Direct:     imports,
 			Transitive: fromImports(imports),
 		}, nil
-	case "pipfile":
-		err := errors.New("Pipfile not implemented yet")
-		return graph.Deps{}, err
+	case "pipenv":
+		imports, err := pipenv.FromFile("Pipfile.Lock")
+		if err != nil {
+			return graph.Deps{}, err
+		}
+		return graph.Deps{
+			Direct:     imports,
+			Transitive: fromImports(imports),
+		}, nil
 	case "requirements":
 		fallthrough
 	default:
