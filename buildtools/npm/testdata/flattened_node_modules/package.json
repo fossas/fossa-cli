@@ -6,5 +6,8 @@
   "dependencies": {
     "chai": "4.1.2",
     "type-detect": "^3.0.0"
+  },
+  "devDependencies": {
+    "is-odd": "^3.0.1"
   }
 }
