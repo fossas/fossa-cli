@@ -137,6 +137,8 @@ func ParseType(key string) (Type, error) {
 	case "pythonprogram":
 		fallthrough
 	case "pip":
+		fallthrough
+	case "pipenv":
 		return Python, nil
 
 	// Ruby aliases

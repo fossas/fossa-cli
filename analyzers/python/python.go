@@ -13,6 +13,8 @@ import (
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/fossas/fossa-cli/buildtools/pip"
+	"github.com/fossas/fossa-cli/buildtools/pipenv"
+
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
@@ -80,7 +82,6 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			log.WithError(err).WithField("filename", filename).Debug("failed to access path")
 			return err
 		}
-
 		if !info.IsDir() && (info.Name() == "requirements.txt" || info.Name() == "setup.py") {
 			moduleDir := filepath.Dir(filename)
 			_, ok := modules[moduleDir]
@@ -150,6 +151,15 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 			return graph.Deps{}, err
 		}
 		imports := FromRequirements(reqs)
+		return graph.Deps{
+			Direct:     imports,
+			Transitive: fromImports(imports),
+		}, nil
+	case "pipenv":
+		imports, err := pipenv.FromFile("Pipfile.Lock")
+		if err != nil {
+			return graph.Deps{}, err
+		}
 		return graph.Deps{
 			Direct:     imports,
 			Transitive: fromImports(imports),
