@@ -77,14 +77,12 @@ func New(m module.Module) (*Analyzer, error) {
 
 	npmTool, err := npm.New()
 	if err != nil {
-		log.Error("Could not initialize npm tooling")
-		return nil, err
+		log.Warn("Could not initialize npm tooling")
 	}
 
 	yarnTool, err := yarn.New()
 	if err != nil {
-		log.Error("Could not initialze yarn tooling")
-		return nil, err
+		log.Warn("Could not initialze yarn tooling")
 	}
 
 	analyzer := Analyzer{
@@ -165,6 +163,10 @@ func (a *Analyzer) Build() error {
 			return errors.Wrap(err, "could not run `yarn` build")
 		}
 	} else {
+		if !a.NPM.Exists() {
+			return errors.New("attempting to build using npm without npm tooling")
+		}
+
 		err := a.NPM.Install(a.Module.Dir)
 		if err != nil {
 			return errors.Wrap(err, "could not run `npm` build")
