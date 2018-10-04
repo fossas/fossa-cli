@@ -94,8 +94,11 @@ var chaiDirectDep = pkg.Import{
 }
 
 func TestAnalyzeWithNpmLs(t *testing.T) {
-	buildTarget := filepath.Join("testdata", "chai", "installed")
-
+	testAnalyzeWithNpmLs(t, filepath.Join("testdata", "chai", "installed"))
+	testAnalyzeWithNpmLs(t, filepath.Join("testdata", "chai", "installed-lockfile"))
+	testAnalyzeWithNpmLs(t, filepath.Join("testdata", "chai", "dev-deps"))
+}
+func testAnalyzeWithNpmLs(t *testing.T, buildTarget string) {
 	nodeModule := module.Module{
 		Name:        "test",
 		Type:        pkg.NodeJS,
