@@ -4,7 +4,6 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 
 	"github.com/apex/log"
@@ -28,15 +27,7 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	err := fixtures.Clone(nodeAnalyzerFixtureDir, projects)
-	if err != nil {
-		panic(err)
-	}
-
-	err = initializeProjects(nodeAnalyzerFixtureDir)
-	if err != nil {
-		panic(err)
-	}
+	fixtures.Initialize(nodeAnalyzerFixtureDir, projects, projectInitializer)
 
 	exitCode := m.Run()
 	defer os.Exit(exitCode)
@@ -102,59 +93,45 @@ func assertProjectFixtureExists(t *testing.T, name string) {
 	assert.True(t, exists, name+" did not have its node modules installed")
 }
 
-func initializeProjects(testDir string) error {
-	var waitGroup sync.WaitGroup
-	waitGroup.Add(len(projects))
-
-	for _, project := range projects {
-		go func(proj fixtures.Project) {
-			defer waitGroup.Done()
-
-			projectDir := filepath.Join(testDir, proj.Name)
-			log.Debug("initializing " + projectDir)
-			nodeModulesExist, err := files.ExistsFolder(projectDir, "node_modules")
-			if err != nil {
-				panic(err)
-			}
-
-			if nodeModulesExist {
-				log.Debug("node modules already exists for " + proj.Name + "skipping initialization")
-				return
-			}
-
-			_, errOut, err := exec.Run(exec.Cmd{
-				Name:    "npm",
-				Argv:    []string{"install", "--production"},
-				Dir:     projectDir,
-				WithEnv: proj.Env,
-				Command: "npm",
-			})
-			if err != nil {
-				log.Error(errOut)
-				log.Error("failed to run npm install on " + proj.Name)
-			}
-
-			// save time on local
-			ymlAlreadyExists, err := files.Exists(filepath.Join(projectDir, ".fossa.yml"))
-			if err != nil {
-				panic(err)
-			}
-			if ymlAlreadyExists {
-				return
-			}
-
-			// any key will work to prevent the "NEED KEY" error message
-			stdout, stderr, err := runfossa.Init(projectDir)
-			if err != nil {
-				log.Error("failed to run fossa init on " + proj.Name)
-				log.Error(stdout)
-				log.Error(stderr)
-				log.Error(err.Error())
-				panic(err)
-			}
-		}(project)
+func projectInitializer(proj fixtures.Project, projectDir string) error {
+	nodeModulesExist, err := files.ExistsFolder(projectDir, "node_modules")
+	if err != nil {
+		return err
 	}
-	waitGroup.Wait()
+
+	if nodeModulesExist {
+		log.Debug("node_modules already exists for " + proj.Name + "skipping initialization")
+		return nil
+	}
+
+	_, errOut, err := exec.Run(exec.Cmd{
+		Name:    "npm",
+		Argv:    []string{"install", "--production"},
+		Dir:     projectDir,
+		WithEnv: proj.Env,
+		Command: "npm",
+	})
+	if err != nil {
+		log.Error(errOut)
+		log.Error("failed to run npm install on " + proj.Name)
+		return err
+	}
+
+	ymlAlreadyExists, err := files.Exists(filepath.Join(projectDir, ".fossa.yml"))
+	if err != nil {
+		return err
+	}
+	if ymlAlreadyExists {
+		return nil
+	}
+
+	stdout, stderr, err := runfossa.Init(projectDir)
+	if err != nil {
+		log.Error("failed to run fossa init on " + proj.Name)
+		log.Error(stdout)
+		log.Error(stderr)
+		return err
+	}
 
 	return nil
 }
