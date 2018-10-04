@@ -82,7 +82,6 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			log.WithError(err).WithField("filename", filename).Debug("failed to access path")
 			return err
 		}
-		fmt.Println(info.Name())
 		if !info.IsDir() && (info.Name() == "requirements.txt" || info.Name() == "setup.py") {
 			moduleDir := filepath.Dir(filename)
 			_, ok := modules[moduleDir]
