@@ -118,8 +118,12 @@ func TestAnalyzeWithNpmLs(t *testing.T) {
 }
 
 func TestUsingNodeModuleFallback(t *testing.T) {
-	buildTarget := filepath.Join("testdata", "chai", "installed")
+	testUsingNodeModuleFallback(t, filepath.Join("testdata", "chai", "installed"))
+	testUsingNodeModuleFallback(t, filepath.Join("testdata", "chai", "installed-lockfile"))
+	testUsingNodeModuleFallback(t, filepath.Join("testdata", "chai", "dev-deps"))
+}
 
+func testUsingNodeModuleFallback(t *testing.T, buildTarget string) {
 	nodeModule := module.Module{
 		Name:        "test",
 		Type:        pkg.NodeJS,
