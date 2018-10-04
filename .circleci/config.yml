@@ -21,6 +21,11 @@ jobs:
       - image: circleci/golang:1
     steps:
       - checkout
+      # temp hack to make sure custom goveralls works
+      - run:
+          name: Install fossa fork of goveralls
+          command: |
+            go get github.com/fossas/goveralls
       - run:
           name: Make folders
           command: |
@@ -75,6 +80,11 @@ jobs:
       - image: fossa/fossa-cli:buildtools
     steps:
       - checkout
+      # temp hack to make sure custom goveralls works
+      - run:
+          name: Install fossa fork of goveralls
+          command: |
+            go get github.com/fossas/goveralls
       - run:
           name: Make folders
           command: |
@@ -135,7 +145,7 @@ jobs:
       - run: 
           name: Notify coveralls of finished build/test
           command: |
-            curl -k https://coveralls.io/webhook?repo_token=$COVERALLS_TOKEN -d "payload[build_num]=$CIRCLE_BUILD_NUM&payload[status]=done"
+            curl -k https://coveralls.io/webhook?repo_token=$COVERALLS_TOKEN -d "payload[build_num]=$CIRCLE_WORKFLOW_ID&payload[status]=done"
   # TODO(leo): set up automated releases.
   # release:
 workflows:
