@@ -27,23 +27,7 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	err := fixtures.Clone(nodeAnalyzerFixtureDir, projects)
-	if err != nil {
-		panic(err)
-	}
-
-	initializationErrors := fixtures.InitializeProjects(nodeAnalyzerFixtureDir, projects, projectInitializer)
-	initializationErrorFound := false
-	for projName, err := range initializationErrors {
-		if err != nil {
-			initializationErrorFound = true
-			log.Error("Error initializing node project" + projName + " " + err.Error())
-		}
-	}
-
-	if initializationErrorFound {
-		os.Exit(1)
-	}
+	fixtures.InitializeProjects(nodeAnalyzerFixtureDir, projects, projectInitializer)
 
 	exitCode := m.Run()
 	defer os.Exit(exitCode)

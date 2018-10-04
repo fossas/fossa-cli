@@ -24,20 +24,23 @@ func Directory() string {
 	return filepath.Join(os.TempDir(), "fossa-cli-fixtures")
 }
 
-// Clone executes git clone in target directory and checksout the provided commit, or master if left ""
-func Clone(baseDir string, projects []Project) error {
+// ProjectInitializerFunction defines how a single project should be initialized *after* it has already been cloned
+type ProjectInitializerFunction func(proj Project, projectDir string) error
+
+// InitializeProjects executes git clone in target directory and checksout the provided commit, then runts the initializerFn. This is done asynchronously for each provided project
+func InitializeProjects(baseDir string, projects []Project, initializerFn ProjectInitializerFunction) {
 	baseDirExists, err := files.ExistsFolder(baseDir)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	if baseDirExists {
 		println(baseDir + "already exists, assuming that clone has already been executed")
-		return nil
+		return
 	}
 
 	err = os.MkdirAll(baseDir, os.FileMode(0700))
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	var waitGroup sync.WaitGroup
@@ -66,43 +69,13 @@ func Clone(baseDir string, projects []Project) error {
 			if err != nil {
 				panic(err)
 			}
+
+			err = initializerFn(proj, projectDir)
+			if err != nil {
+				panic(err)
+			}
 		}(project)
 	}
 
 	waitGroup.Wait()
-
-	return nil
-}
-
-// ProjectInitializerFunction defines how a single project should be initialized *after* it has already been cloned
-type ProjectInitializerFunction func(proj Project, projectDir string) error
-
-// InitializeProjects initializes provided projects in parallel using the provided initialization function. Errors are returned as a map of the Project.Name to the error thrown
-func InitializeProjects(testDir string, projects []Project, projectInitializer ProjectInitializerFunction) map[string]error {
-	var waitGroup sync.WaitGroup
-	waitGroup.Add(len(projects))
-
-	threadsafeErrorsByProject := threadableErrorsByProject{
-		errorsByProject: make(map[string]error, len(projects)),
-	}
-
-	for _, project := range projects {
-		go func(proj Project) {
-			defer waitGroup.Done()
-			err := projectInitializer(proj, filepath.Join(testDir, proj.Name))
-
-			// separate the initialization step from locking to decrease time locking out other writers
-			threadsafeErrorsByProject.Lock()
-			threadsafeErrorsByProject.errorsByProject[proj.Name] = err
-			threadsafeErrorsByProject.Unlock()
-		}(project)
-	}
-	waitGroup.Wait()
-
-	return threadsafeErrorsByProject.errorsByProject
-}
-
-type threadableErrorsByProject struct {
-	sync.Mutex
-	errorsByProject map[string]error
 }
