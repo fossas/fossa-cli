@@ -36,7 +36,7 @@ $(GO_JUNIT_REPORT):
 	go get -u -v github.com/jstemmer/go-junit-report
 
 $(GOVERALLS):
-	go get -u -v github.com/mattn/goveralls
+	go get -u -v github.com/fossas/goveralls
 
 $(GORELEASER):
 	go get -d github.com/goreleaser/goreleaser
@@ -114,7 +114,7 @@ ci-unit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
 	if [ -z "$${COVERALLS_TOKEN}" ]; then \
 		go test -v ./... | go-junit-report; \
 	else \
-		goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" -jobid $(CIRCLE_WORKFLOW_ID) | go-junit-report; \
+		goveralls -v -jobid $(CIRCLE_WORKFLOW_ID) -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" | go-junit-report; \
 	fi
 
 .PHONY: integration-test
