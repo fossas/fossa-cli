@@ -27,8 +27,8 @@ func Directory() string {
 // ProjectInitializerFunction defines how a single project should be initialized *after* it has already been cloned
 type ProjectInitializerFunction func(proj Project, projectDir string) error
 
-// InitializeProjects executes git clone in target directory and checksout the provided commit, then runts the initializerFn. This is done asynchronously for each provided project
-func InitializeProjects(baseDir string, projects []Project, initializerFn ProjectInitializerFunction) {
+// Initialize executes git clone in target directory and checksout the provided commit, then runts the initializerFn. This is done asynchronously for each provided project
+func Initialize(baseDir string, projects []Project, initializerFn ProjectInitializerFunction) {
 	baseDirExists, err := files.ExistsFolder(baseDir)
 	if err != nil {
 		panic(err)

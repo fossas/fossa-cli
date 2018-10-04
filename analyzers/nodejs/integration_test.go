@@ -27,7 +27,7 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	fixtures.InitializeProjects(nodeAnalyzerFixtureDir, projects, projectInitializer)
+	fixtures.Initialize(nodeAnalyzerFixtureDir, projects, projectInitializer)
 
 	exitCode := m.Run()
 	defer os.Exit(exitCode)
@@ -100,7 +100,7 @@ func projectInitializer(proj fixtures.Project, projectDir string) error {
 	}
 
 	if nodeModulesExist {
-		log.Debug("node modules already exists for " + proj.Name + "skipping initialization")
+		log.Debug("node_modules already exists for " + proj.Name + "skipping initialization")
 		return nil
 	}
 
@@ -114,9 +114,9 @@ func projectInitializer(proj fixtures.Project, projectDir string) error {
 	if err != nil {
 		log.Error(errOut)
 		log.Error("failed to run npm install on " + proj.Name)
+		return err
 	}
 
-	// save time on local
 	ymlAlreadyExists, err := files.Exists(filepath.Join(projectDir, ".fossa.yml"))
 	if err != nil {
 		return err
@@ -125,7 +125,6 @@ func projectInitializer(proj fixtures.Project, projectDir string) error {
 		return nil
 	}
 
-	// any key will work to prevent the "NEED KEY" error message
 	stdout, stderr, err := runfossa.Init(projectDir)
 	if err != nil {
 		log.Error("failed to run fossa init on " + proj.Name)
