@@ -124,7 +124,7 @@ integration-test:
 	if [ -z "$${COVERALLS_TOKEN}" ]; then \
 		go test -v ./... | go-junit-report; \
 	else \
-		goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -jobid $(CIRCLE_WORKFLOW_ID) | go-junit-report; \
+		goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -jobid $(CIRCLE_WORKFLOW_ID)  | go-junit-report; \
 	fi
 
 # Release tasks.
