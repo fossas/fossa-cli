@@ -4,6 +4,7 @@ defaults: &defaults
   environment:
     TEST_RESULTS: /tmp/test-results
     ARTIFACTS: /tmp/artifacts
+    COVERALLS_PARALLEL: true
 
 # We use two separate stages to ensure that unit tests run in an environment
 # _without_ build tools. This helps us test that fallback behaviour works
@@ -20,6 +21,11 @@ jobs:
       - image: circleci/golang:1
     steps:
       - checkout
+      # temp hack to make sure custom goveralls works
+      - run:
+          name: Install fossa fork of goveralls
+          command: |
+            go get github.com/fossas/goveralls
       - run:
           name: Make folders
           command: |
@@ -74,6 +80,11 @@ jobs:
       - image: fossa/fossa-cli:buildtools
     steps:
       - checkout
+      # temp hack to make sure custom goveralls works
+      - run:
+          name: Install fossa fork of goveralls
+          command: |
+            go get github.com/fossas/goveralls
       - run:
           name: Make folders
           command: |
@@ -125,6 +136,16 @@ jobs:
             cp $(which fossa) $ARTIFACTS
       - store_artifacts:
           path: /tmp/artifacts
+  report-coverage:
+    <<: *defaults
+    # image doesn't really matter, so just use something that can load quickly
+    docker:
+      - image: circleci/golang:1
+    steps:
+      - run: 
+          name: Notify coveralls of finished build/test
+          command: |
+            curl -k https://coveralls.io/webhook?repo_token=$COVERALLS_TOKEN -d "payload[build_num]=$CIRCLE_WORKFLOW_ID&payload[status]=done"
   # TODO(leo): set up automated releases.
   # release:
 workflows:
@@ -134,3 +155,9 @@ workflows:
       - unit-test
       - integration-test
       - end-to-end-test
+      - report-coverage:
+          requires:
+            - unit-test
+            - integration-test
+            - end-to-end-test
+
