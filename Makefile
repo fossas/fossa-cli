@@ -35,6 +35,7 @@ $(GENNY):
 $(GO_JUNIT_REPORT):
 	go get -u -v github.com/jstemmer/go-junit-report
 
+# HACK: our fork of goveralls allows custom job IDs
 $(GOVERALLS):
 	go get -u -v github.com/fossas/goveralls
 
@@ -114,7 +115,7 @@ ci-unit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
 	if [ -z "$${COVERALLS_TOKEN}" ]; then \
 		go test -short -v ./... | go-junit-report; \
 	else \
-		goveralls -v -jobid $(CIRCLE_WORKFLOW_ID) -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" | go-junit-report; \
+		goveralls -v -jobid $(CIRCLE_SHA1) -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" | go-junit-report; \
 	fi
 
 .PHONY: integration-test
@@ -130,7 +131,7 @@ ci-integration-test:
 	if [ -z "$${COVERALLS_TOKEN}" ]; then \
 		go test -v ./... | go-junit-report; \
 	else \
-		goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -jobid $(CIRCLE_WORKFLOW_ID) | go-junit-report; \
+		goveralls -v -jobid $(CIRCLE_SHA1) -service=circle-ci -repotoken=$(COVERALLS_TOKEN) | go-junit-report; \
 	fi
 
 # Release tasks.
