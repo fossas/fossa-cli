@@ -83,7 +83,7 @@ RUN sudo apt-key adv --keyserver packages.microsoft.com --recv-keys EB3E94ADBE12
     sudo apt-get update && \
     sudo apt-get install -y dotnet-sdk-2.1
 
-# add tooling for rails fixture
+# add native tools for rails fixture
 RUN sudo apt-get install -y \
     zlib1g-dev liblzma-dev libncurses5-dev libtool autoconf libxml2-dev \
     libmysqlclient-dev postgresql-server-dev-all libsqlite3-dev && \
