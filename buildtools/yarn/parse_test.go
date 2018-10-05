@@ -75,7 +75,7 @@ func TestTransitiveCollisionsWithDirectProdDeps(t *testing.T) {
 
 func TestTransitiveCollisionsWithTransProdDeps(t *testing.T) {
 	t.Parallel()
-	for _, testNameDirName := range []string{"trans_devdep_name_and_rev_collision_with_trans_proddep"} {
+	for _, testNameDirName := range []string{"trans_devdep_name_and_rev_collision_with_trans_proddep", "trans_devdep_name_collision_with_trans_proddep"} {
 		testPathBase := filepath.Join("testdata", testNameDirName)
 		t.Run(testNameDirName, func(t *testing.T) {
 			t.Parallel()
