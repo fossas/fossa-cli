@@ -146,4 +146,6 @@ install.sh: $(GODOWNLOADER)
 
 .PHONY: release
 release: $(GORELEASER) install.sh
+	# Check that the commit is tagged and starts with "v".
+	[[ $$(git tag -l --points-at HEAD) == v* ]]
 	GOVERSION=$$(go version) goreleaser $(GORELEASER_FLAGS)
