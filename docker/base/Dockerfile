@@ -27,5 +27,6 @@ RUN mkdir -p $GOPATH/bin && \
     go get -u -v github.com/go-bindata/go-bindata/... && \
     go get -u -v github.com/cheekybits/genny && \
     go get -u -v github.com/jstemmer/go-junit-report && \
-    go get -u -v github.com/mattn/goveralls && \
+    # HACK: our fork of goveralls allows custom job IDs
+    go get -u -v github.com/fossas/goveralls && \
     go get -u -v github.com/derekparker/delve/cmd/dlv
