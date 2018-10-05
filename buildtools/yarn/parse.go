@@ -4,7 +4,6 @@ import (
 	"errors"
 	"path/filepath"
 	"regexp"
-	"strings"
 
 	yaml "gopkg.in/yaml.v2"
 
@@ -16,6 +15,14 @@ import (
 
 // FromProject builds a dependency graph based on the provided lockfile and manifest
 func FromProject(manifestPath string, lockFilePath string) (graph.Deps, error) {
+	rootPackageJsonExists, err := files.Exists(manifestPath)
+	if err != nil {
+		return graph.Deps{}, err
+	}
+	if !rootPackageJsonExists {
+		return graph.Deps{}, errors.New(manifestPath + " does not exist")
+	}
+
 	yarnLockfileExists, err := files.Exists(lockFilePath)
 	if err != nil {
 		return graph.Deps{}, err
@@ -27,43 +34,35 @@ func FromProject(manifestPath string, lockFilePath string) (graph.Deps, error) {
 	// To know which deps are direct, we need the manifest def
 	lockfile, err := readLockfile(lockFilePath)
 	if err != nil {
-		return graph.Deps{}, nil
+		return graph.Deps{}, err
 	}
 
-	directDeps, err := lockfile.directDeps(manifestPath)
-	if err != nil {
-		return graph.Deps{}, nil
-	}
-
-	return graph.Deps{
-		Direct:     directDeps,
-		Transitive: lockfile.resolveDepGraph(),
-	}, nil
-}
-
-func (l yarnLockfile) directDeps(manifestPath string) (pkg.Imports, error) {
-	// PackageFromManifest requires node_modules, so we must use FromManifest. This does not guarantee resolved versions
 	manifest, err := npm.FromManifest(manifestPath)
 	if err != nil {
-		return pkg.Imports{}, nil
+		return graph.Deps{}, err
 	}
 
 	directDeps := make(pkg.Imports, len(manifest.Dependencies))
-
 	i := 0
 	for name, revision := range manifest.Dependencies {
 		directDeps[i] = pkg.Import{
 			Target: name,
 			Resolved: pkg.ID{
 				Name:     name,
-				Revision: l.resolve(name, revision),
+				Revision: lockfile.resolve(name, revision),
 				Type:     pkg.NodeJS,
 			},
 		}
 		i++
 	}
 
-	return directDeps, nil
+	transitiveDepGraph := make(map[pkg.ID]pkg.Package)
+	lockfile.resolveDepGraph(manifest.Dependencies, transitiveDepGraph)
+
+	return graph.Deps{
+		Direct:     directDeps,
+		Transitive: transitiveDepGraph,
+	}, nil
 }
 
 func readLockfile(pathElems ...string) (yarnLockfile, error) {
@@ -104,10 +103,20 @@ func (l yarnLockfile) resolve(moduleName string, unresolvedRevision string) stri
 	return l[moduleName+"@"+unresolvedRevision].Version
 }
 
-func (l yarnLockfile) resolveDepGraph() map[pkg.ID]pkg.Package {
-	depGraph := make(map[pkg.ID]pkg.Package, len(l))
+func (l yarnLockfile) resolveDepGraph(unresolvedDirectDeps map[string]string, depGraph map[pkg.ID]pkg.Package) {
+	for directDepName, unresolvedVersion := range unresolvedDirectDeps {
+		lockfileKey := directDepName + "@" + unresolvedVersion
 
-	for manifestID, entry := range l {
+		entry := l[lockfileKey]
+
+		// Create package key for current dep
+		pkgID := pkg.ID{
+			Name:     directDepName,
+			Revision: entry.Version,
+			Type:     pkg.NodeJS,
+		}
+
+		// Build direct deps for current import
 		imports := make(pkg.Imports, len(entry.Dependencies))
 		i := 0
 		for name, semverRevision := range entry.Dependencies {
@@ -121,18 +130,15 @@ func (l yarnLockfile) resolveDepGraph() map[pkg.ID]pkg.Package {
 			}
 			i++
 		}
-		pkgID := pkg.ID{
-			// extract only the package name, remove any versioning info
-			Name:     strings.Split(manifestID, "@")[0],
-			Revision: entry.Version,
-			Type:     pkg.NodeJS,
-		}
+
+		// Add new package to dep graph
 		depGraph[pkgID] = pkg.Package{
 			ID:       pkgID,
 			Imports:  imports,
 			Strategy: "yarn-lockfile",
 		}
-	}
 
-	return depGraph
+		// recurse for the n-2 direct deps
+		l.resolveDepGraph(entry.Dependencies, depGraph)
+	}
 }

@@ -31,6 +31,16 @@ get-func-name@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/get-func-name/-/get-func-name-2.0.0.tgz#ead774abee72e20409433a066366023dd6887a41"
 
+is-number@^6.0.0:
+  version "6.0.0"
+  resolved "https://registry.yarnpkg.com/is-number/-/is-number-6.0.0.tgz#e6d15ad31fc262887cccf217ae5f9316f81b1995"
+
+is-odd@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/is-odd/-/is-odd-3.0.1.tgz#65101baf3727d728b66fa62f50cda7f2d3989601"
+  dependencies:
+    is-number "^6.0.0"
+
 pathval@^1.0.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/pathval/-/pathval-1.1.0.tgz#b942e6d4bde653005ef6b71361def8727d0645e0"

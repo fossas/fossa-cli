@@ -7,7 +7,11 @@ builds:
       - linux
     goarch:
       - amd64
-    ldflags: -extldflags "-static" -s -w -X github.com/fossas/fossa-cli/cmd/fossa/version.version={{.Version}} -X github.com/fossas/fossa-cli/cmd/fossa/version.commit={{.Commit}} -X "github.com/fossas/fossa-cli/cmd/fossa/version.goversion={{.Env.GOVERSION}}" -X github.com/fossas/fossa-cli/cmd/fossa/version.buildType=release
+    ldflags: -extldflags "-static" -s -w
+      -X github.com/fossas/fossa-cli/cmd/fossa/version.version={{.Version}}
+      -X github.com/fossas/fossa-cli/cmd/fossa/version.commit={{.Commit}}
+      -X "github.com/fossas/fossa-cli/cmd/fossa/version.goversion={{.Env.GOVERSION}}"
+      -X github.com/fossas/fossa-cli/cmd/fossa/version.buildType=release
 archive:
   format_overrides:
     - goos: windows
