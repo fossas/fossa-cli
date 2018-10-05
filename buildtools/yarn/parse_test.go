@@ -59,13 +59,12 @@ func TestTransDepNameAndRevisionCollisionWithProdDirectDep(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, deps.Direct, 1)
-	assert.Len(t, deps.Transitive, 2)
+	assert.Len(t, deps.Transitive, 1)
 
 	assert.Equal(t, "a", deps.Direct[0].Target)
 	assert.Equal(t, "1.0.1", deps.Direct[0].Resolved.Revision)
 
 	AssertDeps(t, deps.Transitive, "a", "1.0.1")
-	AssertDeps(t, deps.Transitive, "b", "1.0.1")
 }
 
 func AssertDeps(t *testing.T, transitiveDeps map[pkg.ID]pkg.Package, name, revision string) {
