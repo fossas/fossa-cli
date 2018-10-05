@@ -55,7 +55,7 @@ func TestSimpleLockfile(t *testing.T) {
 
 func TestTransitiveCollisionsWithDirectProdDeps(t *testing.T) {
 	t.Parallel()
-	for _, testNameDirName := range []string{"trans_devdep_name_and_rev_collision_with_prod_dirdep", "trans_devdep_name_collision_with_prod_dirdep"} {
+	for _, testNameDirName := range []string{"trans_devdep_name_and_rev_collision_with_dir_proddep", "trans_devdep_name_collision_with_dir_proddep"} {
 		testPathBase := filepath.Join("testdata", testNameDirName)
 		t.Run(testNameDirName, func(t *testing.T) {
 			t.Parallel()
