@@ -93,11 +93,23 @@ var chaiDirectDep = pkg.Import{
 	},
 }
 
-func TestAnalyzeWithNpmLs(t *testing.T) {
-	testAnalyzeWithNpmLs(t, filepath.Join("testdata", "chai", "installed"))
-	testAnalyzeWithNpmLs(t, filepath.Join("testdata", "chai", "installed-lockfile"))
-	testAnalyzeWithNpmLs(t, filepath.Join("testdata", "chai", "dev-deps"))
+var npmChaiFixtures = []string{
+	filepath.Join("testdata", "chai", "installed"),
+	filepath.Join("testdata", "chai", "installed-lockfile"),
+	filepath.Join("testdata", "chai", "dev-deps"),
 }
+
+func TestAnalyzeWithNpmLs(t *testing.T) {
+	t.Parallel()
+	for _, fixturePath := range npmChaiFixtures {
+		t.Run(fixturePath, func(t *testing.T) {
+			t.Parallel()
+			testAnalyzeWithNpmLs(t, fixturePath)
+
+		})
+	}
+}
+
 func testAnalyzeWithNpmLs(t *testing.T, buildTarget string) {
 	nodeModule := module.Module{
 		Name:        "test",
@@ -121,9 +133,14 @@ func testAnalyzeWithNpmLs(t *testing.T, buildTarget string) {
 }
 
 func TestUsingNodeModuleFallback(t *testing.T) {
-	testUsingNodeModuleFallback(t, filepath.Join("testdata", "chai", "installed"))
-	testUsingNodeModuleFallback(t, filepath.Join("testdata", "chai", "installed-lockfile"))
-	testUsingNodeModuleFallback(t, filepath.Join("testdata", "chai", "dev-deps"))
+	t.Parallel()
+	for _, fixturePath := range npmChaiFixtures {
+		t.Run(fixturePath, func(t *testing.T) {
+			t.Parallel()
+			testUsingNodeModuleFallback(t, fixturePath)
+
+		})
+	}
 }
 
 func testUsingNodeModuleFallback(t *testing.T, buildTarget string) {
