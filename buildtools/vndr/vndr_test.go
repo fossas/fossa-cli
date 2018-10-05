@@ -6,6 +6,7 @@ import (
 	"github.com/fossas/fossa-cli/buildtools"
 	"github.com/fossas/fossa-cli/buildtools/vndr"
 	"github.com/fossas/fossa-cli/pkg"
+
 	"github.com/stretchr/testify/assert"
 )
 
