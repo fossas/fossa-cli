@@ -125,7 +125,7 @@ integration-test:
 	go test ./...
 
 .PHONY: ci-integration-test
-ci-integration-test:
+ci-integration-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
 	# Ensure the binary is recompiled before every test.
 	make
 	if [ -z "$${COVERALLS_TOKEN}" ]; then \
