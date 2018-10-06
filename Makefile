@@ -63,17 +63,17 @@ $(BIN)/fossa: $(GO_BINDATA) $(GENNY) $(DEP)
 # Building various Docker images.
 .PHONY:
 docker-base: ./docker/base/Dockerfile
-	sudo docker build -t fossa/fossa-cli:base -f ./docker/base/Dockerfile .
+	sudo docker build -t fossa/fossa-cli:base -f ./docker/base/Dockerfile $(DOCKER_FLAGS) .
 
 .PHONY:
 docker-buildtools: docker-base ./docker/buildtools/Dockerfile
-	sudo docker build -t fossa/fossa-cli:buildtools -f ./docker/buildtools/Dockerfile .
+	sudo docker build -t fossa/fossa-cli:buildtools -f ./docker/buildtools/Dockerfile $(DOCKER_FLAGS) .
 
 ## TODO: we will deprecate this image once native integration tests are
 ## completely ready.
 .PHONY:
 docker-fixtures: docker-buildtools ./docker/fixtures/Dockerfile
-	sudo docker build -t fossa/fossa-cli:fixtures -f ./docker/fixtures/Dockerfile .
+	sudo docker build -t fossa/fossa-cli:fixtures -f ./docker/fixtures/Dockerfile $(DOCKER_FLAGS) .
 
 # Development tasks.
 .PHONY: dev
@@ -115,7 +115,7 @@ ci-unit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
 	if [ -z "$${COVERALLS_TOKEN}" ]; then \
 		go test -short -v ./... | go-junit-report; \
 	else \
-		goveralls -v -jobid $(CIRCLE_SHA1) -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" | go-junit-report; \
+		goveralls -v -jobid $(CIRCLE_WORKFLOW_ID)-$(CIRCLE_SHA1) -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" | go-junit-report; \
 	fi
 
 .PHONY: integration-test
@@ -131,7 +131,7 @@ ci-integration-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
 	if [ -z "$${COVERALLS_TOKEN}" ]; then \
 		go test -v ./... | go-junit-report; \
 	else \
-		goveralls -v -jobid $(CIRCLE_SHA1) -service=circle-ci -repotoken=$(COVERALLS_TOKEN) | go-junit-report; \
+		goveralls -v -jobid $(CIRCLE_WORKFLOW_ID)-$(CIRCLE_SHA1) -service=circle-ci -repotoken=$(COVERALLS_TOKEN) | go-junit-report; \
 	fi
 
 # Release tasks.
