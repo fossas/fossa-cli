@@ -2,18 +2,12 @@
 # yarn lockfile v1
 
 
-a@^1.0.0:
-  version "1.0.1"
-  resolved "someurl"
-  dependencies:
-    b "^2.0.0"
-
-b@^2.0.0:
+a@>1.0.0:
   version "2.0.2"
   resolved "someurl"
-
-c@^2.0.0:
-  version "2.0.1"
-  resolved "someurl"
   dependencies:
-    b "^2.0.0"
+    b ">3.0.0"
+
+b@>3.0.0:
+  version "4.0.4"
+  resolved "someurl"
