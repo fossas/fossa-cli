@@ -110,7 +110,7 @@ jobs:
       - run:
           name: Install CLI
           command: |
-            curl https://raw.githubusercontent.com/fossas/fossa-cli/$CIRCLE_WORKFLOW_ID-$CIRCLE_SHA1/install.sh | bash
+            curl https://raw.githubusercontent.com/fossas/fossa-cli/$CIRCLE_SHA1/install.sh | bash
       - run:
           name: Run FOSSA analysis
           command: |
@@ -134,7 +134,7 @@ jobs:
       - run:
           name: Notify coveralls of finished workflow
           command: |
-            curl -k https://coveralls.io/webhook?repo_token=$COVERALLS_TOKEN -d "payload[build_num]=$CIRCLE_WORKFLOW_ID-$CIRCLE_SHA1&payload[status]=done"
+            curl -k https://coveralls.io/webhook?repo_token=$COVERALLS_TOKEN -d "payload[build_num]=$CIRCLE_WORKFLOW_ID-$CIRCLE_BUILD_NUM-$CIRCLE_SHA1&payload[status]=done"
   # TODO(leo): set up automated releases.
   # release:
 workflows:
