@@ -115,7 +115,7 @@ ci-unit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
 	if [ -z "$${COVERALLS_TOKEN}" ]; then \
 		go test -short -v ./... | go-junit-report; \
 	else \
-		goveralls -v -jobid $(CIRCLE_WORKFLOW_ID)-$(CIRCLE_BUILD_NUM)-$(CIRCLE_SHA1) -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" | go-junit-report; \
+		goveralls -v -jobid $(CIRCLE_WORKFLOW_ID)-$(CIRCLE_SHA1) -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" | go-junit-report; \
 	fi
 
 .PHONY: integration-test
@@ -131,7 +131,7 @@ ci-integration-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
 	if [ -z "$${COVERALLS_TOKEN}" ]; then \
 		go test -v ./... | go-junit-report; \
 	else \
-		goveralls -v -jobid $(CIRCLE_WORKFLOW_ID)-$(CIRCLE_BUILD_NUM)-$(CIRCLE_SHA1) -service=circle-ci -repotoken=$(COVERALLS_TOKEN) | go-junit-report; \
+		goveralls -v -jobid $(CIRCLE_WORKFLOW_ID)-$(CIRCLE_SHA1) -service=circle-ci -repotoken=$(COVERALLS_TOKEN) | go-junit-report; \
 	fi
 
 # Release tasks.
