@@ -3,3 +3,4 @@ dist/
 bin/
 .SCRATCH
 .vscode/
+coverage.txt

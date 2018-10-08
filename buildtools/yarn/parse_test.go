@@ -53,6 +53,26 @@ func TestSimpleLockfile(t *testing.T) {
 	AssertDeps(t, deps.Transitive, "chai", "4.1.2")
 }
 
+func TestTransitiveCollisionsWithDirectProdDeps(t *testing.T) {
+	t.Parallel()
+	for _, testNameDirName := range []string{"trans_dep_name_and_revision_collision_with_prod_direct_dep", "trans_dep_name_collision_with_prod_direct_dep"} {
+		testPathBase := filepath.Join("testdata", testNameDirName)
+		t.Run(testNameDirName, func(t *testing.T) {
+			t.Parallel()
+			deps, err := yarn.FromProject(filepath.Join(testPathBase, "package.json"), filepath.Join(testPathBase, "yarn.lock"))
+			assert.NoError(t, err)
+
+			assert.Len(t, deps.Direct, 1)
+			assert.Len(t, deps.Transitive, 1)
+
+			assert.Equal(t, "a", deps.Direct[0].Target)
+			assert.Equal(t, "1.0.1", deps.Direct[0].Resolved.Revision)
+
+			AssertDeps(t, deps.Transitive, "a", "1.0.1")
+		})
+	}
+}
+
 func AssertDeps(t *testing.T, transitiveDeps map[pkg.ID]pkg.Package, name, revision string) {
 	for pkgID, _ := range transitiveDeps {
 		if pkgID.Name == name && pkgID.Revision == revision {

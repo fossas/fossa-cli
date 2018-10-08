@@ -9,7 +9,6 @@ GENNY=$(BIN)/genny
 
 ## Test tools.
 GO_JUNIT_REPORT=$(BIN)/go-junit-report
-GOVERALLS=$(BIN)/goveralls
 
 ## Release tools.
 GORELEASER=$(BIN)/goreleaser
@@ -35,9 +34,6 @@ $(GENNY):
 $(GO_JUNIT_REPORT):
 	go get -u -v github.com/jstemmer/go-junit-report
 
-$(GOVERALLS):
-	go get -u -v github.com/mattn/goveralls
-
 $(GORELEASER): $(DEP)
 	go get -d github.com/goreleaser/goreleaser
 	cd $$GOPATH/src/github.com/goreleaser/goreleaser
@@ -62,17 +58,17 @@ $(BIN)/fossa: $(GO_BINDATA) $(GENNY) $(DEP)
 # Building various Docker images.
 .PHONY:
 docker-base: ./docker/base/Dockerfile
-	sudo docker build -t fossa/fossa-cli:base -f ./docker/base/Dockerfile .
+	sudo docker build -t fossa/fossa-cli:base -f ./docker/base/Dockerfile $(DOCKER_FLAGS) .
 
 .PHONY:
 docker-buildtools: docker-base ./docker/buildtools/Dockerfile
-	sudo docker build -t fossa/fossa-cli:buildtools -f ./docker/buildtools/Dockerfile .
+	sudo docker build -t fossa/fossa-cli:buildtools -f ./docker/buildtools/Dockerfile $(DOCKER_FLAGS) .
 
 ## TODO: we will deprecate this image once native integration tests are
 ## completely ready.
 .PHONY:
 docker-fixtures: docker-buildtools ./docker/fixtures/Dockerfile
-	sudo docker build -t fossa/fossa-cli:fixtures -f ./docker/fixtures/Dockerfile .
+	sudo docker build -t fossa/fossa-cli:fixtures -f ./docker/fixtures/Dockerfile $(DOCKER_FLAGS) .
 
 # Development tasks.
 .PHONY: dev
@@ -107,31 +103,23 @@ test:
 
 .PHONY: unit-test
 unit-test:
-	go test -short ./...
+	go test -short -covermode=atomic $(GO_TEST_FLAGS) ./...
 
 .PHONY: ci-unit-test
-ci-unit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
-	if [ -z "$${COVERALLS_TOKEN}" ]; then \
-		go test -short -v ./... | go-junit-report; \
-	else \
-		goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" | go-junit-report; \
-	fi
+ci-unit-test: $(GO_JUNIT_REPORT)
+	GO_TEST_FLAGS="-coverprofile=coverage.txt -v" make -s unit-test | go-junit-report;
+	if [ -n "$${CODECOV_TOKEN}" ]; then curl -s https://codecov.io/bash | bash 1>&2; fi
 
 .PHONY: integration-test
 integration-test:
 	# Ensure the binary is recompiled before every test.
 	make
-	go test ./...
+	go test -covermode=atomic $(GO_TEST_FLAGS) ./...
 
 .PHONY: ci-integration-test
-ci-integration-test:
-	# Ensure the binary is recompiled before every test.
-	make
-	if [ -z "$${COVERALLS_TOKEN}" ]; then \
-		go test -v ./... | go-junit-report; \
-	else \
-		goveralls -v -service=circle-ci -repotoken=$(COVERALLS_TOKEN) | go-junit-report; \
-	fi
+ci-integration-test: $(GO_JUNIT_REPORT)
+	GO_TEST_FLAGS="-coverprofile=coverage.txt -v" make -s integration-test | go-junit-report;
+	if [ -n "$${CODECOV_TOKEN}" ]; then curl -s https://codecov.io/bash | bash 1>&2; fi
 
 # Release tasks.
 install.sh: $(GODOWNLOADER)
@@ -146,4 +134,6 @@ install.sh: $(GODOWNLOADER)
 
 .PHONY: release
 release: $(GORELEASER) install.sh
+	# Check that the commit is tagged and starts with "v".
+	[[ $$(git tag -l --points-at HEAD) == v* ]]
 	GOVERSION=$$(go version) goreleaser $(GORELEASER_FLAGS)

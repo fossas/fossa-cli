@@ -7,9 +7,13 @@ FROM fossa/fossa-cli:base
 # https://github.com/oerdnj/deb.sury.org/issues/56).
 ENV LC_ALL=C.UTF-8 DEBIAN_FRONTEND=noninteractive 
 
-# Install build tool requirements.
+# Install build tool and fixture requirements.
 RUN sudo apt-get install -y \
-    apt-transport-https build-essential libssl-dev software-properties-common
+    # Build tools
+    apt-transport-https build-essential libssl-dev software-properties-common \
+    # Rails (nokogiri)
+    zlib1g-dev liblzma-dev libncurses5-dev libtool autoconf libxml2-dev \
+    libmysqlclient-dev postgresql-server-dev-all libsqlite3-dev
 
 # Install JVM version manager.
 RUN sudo apt-get install -y zip unzip && \
@@ -82,8 +86,3 @@ RUN sudo apt-key adv --keyserver packages.microsoft.com --recv-keys EB3E94ADBE12
     sudo sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/microsoft-ubuntu-bionic-prod bionic main" > /etc/apt/sources.list.d/dotnetdev.list' && \
     sudo apt-get update && \
     sudo apt-get install -y dotnet-sdk-2.1
-
-# Add native tools for rails project fixture.
-RUN sudo apt-get install -y \
-    zlib1g-dev liblzma-dev libncurses5-dev libtool autoconf libxml2-dev \
-    libmysqlclient-dev postgresql-server-dev-all libsqlite3-dev 

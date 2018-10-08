@@ -93,9 +93,24 @@ var chaiDirectDep = pkg.Import{
 	},
 }
 
-func TestAnalyzeWithNpmLs(t *testing.T) {
-	buildTarget := filepath.Join("testdata", "chai", "installed")
+var npmChaiFixtures = []string{
+	filepath.Join("testdata", "chai", "installed"),
+	filepath.Join("testdata", "chai", "installed-lockfile"),
+	filepath.Join("testdata", "chai", "dev-deps"),
+}
 
+func TestAnalyzeWithNpmLs(t *testing.T) {
+	t.Parallel()
+	for _, fixturePath := range npmChaiFixtures {
+		t.Run(fixturePath, func(t *testing.T) {
+			t.Parallel()
+			testAnalyzeWithNpmLs(t, fixturePath)
+
+		})
+	}
+}
+
+func testAnalyzeWithNpmLs(t *testing.T, buildTarget string) {
 	nodeModule := module.Module{
 		Name:        "test",
 		Type:        pkg.NodeJS,
@@ -107,7 +122,7 @@ func TestAnalyzeWithNpmLs(t *testing.T) {
 	assert.NoError(t, err)
 
 	analyzer.NPM = MockNPM{
-		JSONFilename: filepath.Join("testdata", "chai", "npm-ls-json.json"),
+		JSONFilename: filepath.Join(buildTarget, "npm-ls-json.json"),
 	}
 
 	analysisResults, err := analyzer.Analyze()
@@ -118,8 +133,17 @@ func TestAnalyzeWithNpmLs(t *testing.T) {
 }
 
 func TestUsingNodeModuleFallback(t *testing.T) {
-	buildTarget := filepath.Join("testdata", "chai", "installed")
+	t.Parallel()
+	for _, fixturePath := range npmChaiFixtures {
+		t.Run(fixturePath, func(t *testing.T) {
+			t.Parallel()
+			testUsingNodeModuleFallback(t, fixturePath)
 
+		})
+	}
+}
+
+func testUsingNodeModuleFallback(t *testing.T, buildTarget string) {
 	nodeModule := module.Module{
 		Name:        "test",
 		Type:        pkg.NodeJS,
