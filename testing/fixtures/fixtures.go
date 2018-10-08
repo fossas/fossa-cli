@@ -24,21 +24,34 @@ func Directory() string {
 	return filepath.Join(os.TempDir(), "fossa-cli-fixtures")
 }
 
+var mutex = sync.Mutex{}
+
+func createFixtureFolder(baseDir string) error {
+	mutex.Lock()
+	baseDirExists, err := files.ExistsFolder(baseDir)
+	if err != nil {
+		return err
+	}
+	if baseDirExists {
+		println(baseDir + "already exists, assuming that clone has already been executed")
+		return nil
+	}
+
+	err = os.MkdirAll(baseDir, os.FileMode(0700))
+	if err != nil {
+		return err
+	}
+	mutex.Unlock()
+
+	return nil
+}
+
 // ProjectInitializerFunction defines how a single project should be initialized *after* it has already been cloned
 type ProjectInitializerFunction func(proj Project, projectDir string) error
 
 // Initialize executes git clone in target directory and checksout the provided commit, then runts the initializerFn. This is done asynchronously for each provided project
 func Initialize(baseDir string, projects []Project, initializerFn ProjectInitializerFunction) {
-	baseDirExists, err := files.ExistsFolder(baseDir)
-	if err != nil {
-		panic(err)
-	}
-	if baseDirExists {
-		println(baseDir + "already exists, assuming that clone has already been executed")
-		return
-	}
-
-	err = os.MkdirAll(baseDir, os.FileMode(0700))
+	err := createFixtureFolder(baseDir)
 	if err != nil {
 		panic(err)
 	}
