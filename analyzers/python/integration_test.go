@@ -53,7 +53,7 @@ func TestPythonAnalysis(t *testing.T) {
 				Dir:         projDir,
 				Type:        pkg.Python,
 				Name:        proj.Name,
-				Options:     map[string]interface{}{"strategy": "deptree"},
+				Options:     map[string]interface{}{},
 				BuildTarget: projDir,
 			}
 
