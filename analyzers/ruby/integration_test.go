@@ -26,8 +26,6 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	log.SetLevel(log.DebugLevel)
-
 	fixtures.Initialize(rubyAnalyzerFixtureDir, projects, func(proj fixtures.Project, projectDir string) error {
 		ymlAlreadyExists, err := files.Exists(filepath.Join(projectDir, ".fossa.yml"))
 		if err != nil {
