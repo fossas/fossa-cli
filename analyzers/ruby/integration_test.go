@@ -41,12 +41,12 @@ func TestMain(m *testing.M) {
 
 		// we could extend or refactor the fixtures.Project struct, but because this is a single case, this is simpler for the time being
 		if proj.Name == "rails" {
-			args = append(args, []string{"--deployment", "--without", "doc", "job", "cable", "storage", "ujs", "test", "db"}...)
+			args = append(args, []string{"--deployment", "--without doc job cable storage ujs test db"}...)
 		}
 
 		_, stderr, err := exec.Run(exec.Cmd{
-			Command: "bundler",
-			Name:    "bundler",
+			Command: "bundle",
+			Name:    "bundle",
 			Argv:    args,
 			Dir:     projectDir,
 		})
@@ -105,9 +105,9 @@ var projects = []fixtures.Project{
 		Commit: "3a875402189f0d42446963ff0322f413f892d544",
 	},
 	// release tag v2.1.5
-	fixtures.Project{
-		Name:   "vagrant",
-		URL:    "https://github.com/hashicorp/vagrant",
-		Commit: "47b2f27d2728e56ac1d3d8bb78bf34b1f9956056",
-	},
+	// fixtures.Project{
+	// 	Name:   "vagrant",
+	// 	URL:    "https://github.com/hashicorp/vagrant",
+	// 	Commit: "47b2f27d2728e56ac1d3d8bb78bf34b1f9956056",
+	// },
 }
