@@ -41,7 +41,7 @@ func TestMain(m *testing.M) {
 
 		// we could extend or refactor the fixtures.Project struct, but because this is a single case, this is simpler for the time being
 		if proj.Name == "rails" {
-			args = append(args, []string{"--deployment", "--without doc job cable storage ujs test db"}...)
+			args = append(args, []string{"--deployment", "--without", "doc", "job", "cable", "storage", "ujs", "test", "db"}...)
 		}
 
 		_, stderr, err := exec.Run(exec.Cmd{
