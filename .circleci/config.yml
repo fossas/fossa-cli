@@ -125,16 +125,6 @@ jobs:
             cp $(which fossa) $ARTIFACTS
       - store_artifacts:
           path: /tmp/artifacts
-  report-coverage:
-    <<: *defaults
-    # Image doesn't really matter, use something that can load quickly.
-    docker:
-      - image: circleci/golang:1
-    steps:
-      - run:
-          name: Notify coveralls of finished workflow
-          command: |
-            curl -k https://coveralls.io/webhook?repo_token=$COVERALLS_TOKEN -d "payload[build_num]=$CIRCLE_WORKFLOW_ID-$CIRCLE_SHA1&payload[status]=done"
   # TODO(leo): set up automated releases.
   # release:
 workflows:
@@ -144,7 +134,3 @@ workflows:
       - unit-test
       - integration-test
       - end-to-end-test
-      - report-coverage:
-          requires:
-            - unit-test
-            - integration-test

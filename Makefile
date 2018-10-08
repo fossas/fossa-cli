@@ -9,7 +9,6 @@ GENNY=$(BIN)/genny
 
 ## Test tools.
 GO_JUNIT_REPORT=$(BIN)/go-junit-report
-GOVERALLS=$(BIN)/goveralls
 
 ## Release tools.
 GORELEASER=$(BIN)/goreleaser
@@ -34,10 +33,6 @@ $(GENNY):
 
 $(GO_JUNIT_REPORT):
 	go get -u -v github.com/jstemmer/go-junit-report
-
-# HACK: our fork of goveralls allows custom job IDs
-$(GOVERALLS):
-	go get -u -v github.com/fossas/goveralls
 
 $(GORELEASER): $(DEP)
 	go get -d github.com/goreleaser/goreleaser
@@ -108,31 +103,23 @@ test:
 
 .PHONY: unit-test
 unit-test:
-	go test -short ./...
+	go test -short -covermode=atomic $(GO_TEST_FLAGS) ./...
 
 .PHONY: ci-unit-test
-ci-unit-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
-	if [ -z "$${COVERALLS_TOKEN}" ]; then \
-		go test -short -v ./... | go-junit-report; \
-	else \
-		goveralls -v -jobid $(CIRCLE_WORKFLOW_ID)-$(CIRCLE_SHA1) -service=circle-ci -repotoken=$(COVERALLS_TOKEN) -flags "-short" | go-junit-report; \
-	fi
+ci-unit-test: $(GO_JUNIT_REPORT)
+	GO_TEST_FLAGS="-coverprofile=coverage.txt -v" make -s unit-test | go-junit-report;
+	if [ -n "$${CODECOV_TOKEN}" ]; then curl -s https://codecov.io/bash | bash; fi
 
 .PHONY: integration-test
 integration-test:
 	# Ensure the binary is recompiled before every test.
 	make
-	go test ./...
+	go test -covermode=atomic $(GO_TEST_FLAGS) ./...
 
 .PHONY: ci-integration-test
-ci-integration-test: $(GO_JUNIT_REPORT) $(GOVERALLS)
-	# Ensure the binary is recompiled before every test.
-	make
-	if [ -z "$${COVERALLS_TOKEN}" ]; then \
-		go test -v ./... | go-junit-report; \
-	else \
-		goveralls -v -jobid $(CIRCLE_WORKFLOW_ID)-$(CIRCLE_SHA1) -service=circle-ci -repotoken=$(COVERALLS_TOKEN) | go-junit-report; \
-	fi
+ci-integration-test: $(GO_JUNIT_REPORT)
+	GO_TEST_FLAGS="-coverprofile=coverage.txt -v" make -s integration-test | go-junit-report;
+	if [ -n "$${CODECOV_TOKEN}" ]; then curl -s https://codecov.io/bash | bash; fi
 
 # Release tasks.
 install.sh: $(GODOWNLOADER)
