@@ -23,6 +23,11 @@ func (l Lockfile) Resolve(importpath string) (pkg.Import, error) {
 		if err != nil {
 			return pkg.Import{}, err
 		}
+
+		// Check for a user specified package location and set it.
+		if rev.Resolved.Location != "" {
+			rev.Resolved.Name = rev.Resolved.Location
+		}
 		return rev, nil
 	}
 	return pkg.Import{}, buildtools.ErrNoRevisionForPackage

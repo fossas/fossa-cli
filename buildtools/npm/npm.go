@@ -39,7 +39,7 @@ func (n SystemNPM) Exists() bool {
 func (n SystemNPM) List(dir string) (Output, error) {
 	stdout, _, err := exec.Run(exec.Cmd{
 		Name: n.Cmd,
-		Argv: []string{"ls", "--json"},
+		Argv: []string{"ls", "--json", "--production"},
 		Dir:  dir,
 	})
 	log.Debugf("err: %#v", err)

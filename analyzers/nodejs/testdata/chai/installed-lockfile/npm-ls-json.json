@@ -1,0 +1,50 @@
+{
+  "name": "testdata",
+  "version": "1.0.0",
+  "dependencies": {
+    "chai": {
+      "version": "4.1.2",
+      "from": "chai@4.1.2",
+      "resolved": "https://registry.npmjs.org/chai/-/chai-4.1.2.tgz",
+      "dependencies": {
+        "assertion-error": {
+          "version": "1.1.0",
+          "from": "assertion-error@^1.0.1",
+          "resolved": "https://registry.npmjs.org/assertion-error/-/assertion-error-1.1.0.tgz"
+        },
+        "check-error": {
+          "version": "1.0.2",
+          "from": "check-error@^1.0.1",
+          "resolved": "https://registry.npmjs.org/check-error/-/check-error-1.0.2.tgz"
+        },
+        "deep-eql": {
+          "version": "3.0.1",
+          "from": "deep-eql@^3.0.0",
+          "resolved": "https://registry.npmjs.org/deep-eql/-/deep-eql-3.0.1.tgz",
+          "dependencies": {
+            "type-detect": {
+              "version": "4.0.8",
+              "from": "type-detect@^4.0.0",
+              "resolved": "https://registry.npmjs.org/type-detect/-/type-detect-4.0.8.tgz"
+            }
+          }
+        },
+        "get-func-name": {
+          "version": "2.0.0",
+          "from": "get-func-name@^2.0.0",
+          "resolved": "https://registry.npmjs.org/get-func-name/-/get-func-name-2.0.0.tgz"
+        },
+        "pathval": {
+          "version": "1.1.0",
+          "from": "pathval@^1.0.0",
+          "resolved": "https://registry.npmjs.org/pathval/-/pathval-1.1.0.tgz"
+        },
+        "type-detect": {
+          "version": "4.0.8",
+          "from": "type-detect@^4.0.0",
+          "resolved": "https://registry.npmjs.org/type-detect/-/type-detect-4.0.8.tgz"
+        }
+      }
+    }
+  }
+}

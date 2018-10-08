@@ -18,7 +18,7 @@ func TestResolve(t *testing.T) {
 	assert.Equal(t, err, buildtools.ErrNoRevisionForPackage)
 	assert.Equal(t, revision, pkg.Import{})
 
-	// Test that cat/puma is an accepted revision.
+	// Test that cat/puma is an ignored revision.
 	revision, err = resolver.Resolve("cat/puma")
 	assert.Equal(t, err, buildtools.ErrPackageIsIgnored)
 	assert.Equal(t, revision, pkg.Import{})

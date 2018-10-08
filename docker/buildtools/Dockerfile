@@ -7,9 +7,13 @@ FROM fossa/fossa-cli:base
 # https://github.com/oerdnj/deb.sury.org/issues/56).
 ENV LC_ALL=C.UTF-8 DEBIAN_FRONTEND=noninteractive 
 
-# Install build tool requirements.
+# Install build tool and fixture requirements.
 RUN sudo apt-get install -y \
-    apt-transport-https build-essential libssl-dev software-properties-common
+    # Build tools
+    apt-transport-https build-essential libssl-dev software-properties-common \
+    # Rails (nokogiri)
+    zlib1g-dev liblzma-dev libncurses5-dev libtool autoconf libxml2-dev \
+    libmysqlclient-dev postgresql-server-dev-all libsqlite3-dev
 
 # Install JVM version manager.
 RUN sudo apt-get install -y zip unzip && \
