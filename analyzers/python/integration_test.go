@@ -112,33 +112,3 @@ var projects = []fixtures.Project{
 		Commit: "6dc368bde8128cd27ad80d48772420ff68a92c8f",
 	},
 }
-
-func projectInitializer(proj fixtures.Project, projectDir string) error {
-	stdout, stderr, err := runfossa.Init(projectDir)
-	if err != nil {
-		log.Error("failed to run fossa init on " + proj.Name)
-		log.Error(stdout)
-		log.Error(stderr)
-		return err
-	}
-
-	return nil
-}
-
-// func initializeProjects(testDir string) error {
-// 	var waitGroup sync.WaitGroup
-// 	waitGroup.Add(len(projects))
-
-// 	for _, project := range projects {
-// 		go func(proj fixtures.Project) {
-// 			defer waitGroup.Done()
-
-// 			projectDir := filepath.Join(testDir, proj.Name)
-
-// 			}
-// 		}(project)
-// 	}
-// 	waitGroup.Wait()
-
-// 	return nil
-// }
