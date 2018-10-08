@@ -75,7 +75,7 @@ var projects = []fixtures.Project{
 		URL:    "https://github.com/vibora-io/vibora",
 		Commit: "51d6691a430bbb6ac57df54dc7d8276f62953bb2",
 	},
-	// sentry seg faults on pip install
+	// sentry seg faults on pip install. This is linked to the particular commit. This can be resolved down the line once native integration tests are stable
 	// fixtures.Project{
 	// 	Name:   "sentry",
 	// 	URL:    "https://github.com/getsentry/sentry",
