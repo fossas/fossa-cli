@@ -75,40 +75,43 @@ var projects = []fixtures.Project{
 		URL:    "https://github.com/vibora-io/vibora",
 		Commit: "51d6691a430bbb6ac57df54dc7d8276f62953bb2",
 	},
-	fixtures.Project{
-		Name:   "ansible",
-		URL:    "https://github.com/ansible/ansible",
-		Commit: "649403c3a179277ec2ad7373962cb7baee2f715f",
-	},
 	// sentry seg faults on pip install
 	// fixtures.Project{
 	// 	Name:   "sentry",
 	// 	URL:    "https://github.com/getsentry/sentry",
 	// 	Commit: "985a917353d23caa112d133cfa6873389d831be5",
 	// },
-	fixtures.Project{
-		Name:   "fabric",
-		URL:    "https://github.com/fabric/fabric",
-		Commit: "c37df4cae043eee3b6c5fc39a98d72437b45a938",
-	},
-	fixtures.Project{
-		Name:   "boto",
-		URL:    "https://github.com/boto/boto",
-		Commit: "eca5f987aa59ec7490aa91466853c36b0cf40b3c",
-	},
-	fixtures.Project{
-		Name:   "NewsBlur",
-		URL:    "https://github.com/samuelclay/NewsBlur",
-		Commit: "121daffcdae4bc324cf6e81f095e28529e81372d",
-	},
-	fixtures.Project{
-		Name:   "legit",
-		URL:    "https://github.com/kennethreitz/legit",
-		Commit: "20187b45ce4d32146d2a2d493c315924c1cc8287",
-	},
-	fixtures.Project{
-		Name:   "sshuttle",
-		URL:    "https://github.com/sshuttle/sshuttle",
-		Commit: "6dc368bde8128cd27ad80d48772420ff68a92c8f",
-	},
+	// The original fixture docker image contained the projects listed below, however the test.sh file did not test them
+	// For this reason, these will remain untested until we reach test parity with the previous integraiton tests.
+	// TODO: support the fixture cases listed below. Note that the circle cache number will need to be updated for this to take effect
+	// fixtures.Project{
+	// 	Name:   "ansible",
+	// 	URL:    "https://github.com/ansible/ansible",
+	// 	Commit: "649403c3a179277ec2ad7373962cb7baee2f715f",
+	// },
+	// fixtures.Project{
+	// 	Name:   "fabric",
+	// 	URL:    "https://github.com/fabric/fabric",
+	// 	Commit: "c37df4cae043eee3b6c5fc39a98d72437b45a938",
+	// },
+	// fixtures.Project{
+	// 	Name:   "boto",
+	// 	URL:    "https://github.com/boto/boto",
+	// 	Commit: "eca5f987aa59ec7490aa91466853c36b0cf40b3c",
+	// },
+	// fixtures.Project{
+	// 	Name:   "NewsBlur",
+	// 	URL:    "https://github.com/samuelclay/NewsBlur",
+	// 	Commit: "121daffcdae4bc324cf6e81f095e28529e81372d",
+	// },
+	// fixtures.Project{
+	// 	Name:   "legit",
+	// 	URL:    "https://github.com/kennethreitz/legit",
+	// 	Commit: "20187b45ce4d32146d2a2d493c315924c1cc8287",
+	// },
+	// fixtures.Project{
+	// 	Name:   "sshuttle",
+	// 	URL:    "https://github.com/sshuttle/sshuttle",
+	// 	Commit: "6dc368bde8128cd27ad80d48772420ff68a92c8f",
+	// },
 }
