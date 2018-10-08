@@ -55,7 +55,7 @@ func TestSimpleLockfile(t *testing.T) {
 
 func TestTransitiveCollisionsWithDirectProdDeps(t *testing.T) {
 	t.Parallel()
-	for _, testNameDirName := range []string{"trans_dep_name_and_revision_collision_with_prod_direct_dep", "trans_dep_name_collision_with_prod_direct_dep"} {
+	for _, testNameDirName := range []string{"trans_devdep_name_and_rev_collision_with_dir_proddep", "trans_devdep_name_collision_with_dir_proddep"} {
 		testPathBase := filepath.Join("testdata", testNameDirName)
 		t.Run(testNameDirName, func(t *testing.T) {
 			t.Parallel()
@@ -69,6 +69,27 @@ func TestTransitiveCollisionsWithDirectProdDeps(t *testing.T) {
 			assert.Equal(t, "1.0.1", deps.Direct[0].Resolved.Revision)
 
 			AssertDeps(t, deps.Transitive, "a", "1.0.1")
+		})
+	}
+}
+
+func TestTransitiveCollisionsWithTransProdDeps(t *testing.T) {
+	t.Parallel()
+	for _, testNameDirName := range []string{"trans_devdep_name_and_rev_collision_with_trans_proddep", "trans_devdep_name_collision_with_trans_proddep"} {
+		testPathBase := filepath.Join("testdata", testNameDirName)
+		t.Run(testNameDirName, func(t *testing.T) {
+			t.Parallel()
+			deps, err := yarn.FromProject(filepath.Join(testPathBase, "package.json"), filepath.Join(testPathBase, "yarn.lock"))
+			assert.NoError(t, err)
+
+			assert.Len(t, deps.Direct, 1)
+			assert.Len(t, deps.Transitive, 2)
+
+			assert.Equal(t, "a", deps.Direct[0].Target)
+			assert.Equal(t, "1.0.1", deps.Direct[0].Resolved.Revision)
+
+			AssertDeps(t, deps.Transitive, "a", "1.0.1")
+			AssertDeps(t, deps.Transitive, "b", "2.0.2")
 		})
 	}
 }
