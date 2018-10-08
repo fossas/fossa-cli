@@ -108,7 +108,7 @@ unit-test:
 .PHONY: ci-unit-test
 ci-unit-test: $(GO_JUNIT_REPORT)
 	GO_TEST_FLAGS="-coverprofile=coverage.txt -v" make -s unit-test | go-junit-report;
-	if [ -n "$${CODECOV_TOKEN}" ]; then curl -s https://codecov.io/bash | bash; fi
+	if [ -n "$${CODECOV_TOKEN}" ]; then curl -s https://codecov.io/bash | bash 1>&2; fi
 
 .PHONY: integration-test
 integration-test:
@@ -119,7 +119,7 @@ integration-test:
 .PHONY: ci-integration-test
 ci-integration-test: $(GO_JUNIT_REPORT)
 	GO_TEST_FLAGS="-coverprofile=coverage.txt -v" make -s integration-test | go-junit-report;
-	if [ -n "$${CODECOV_TOKEN}" ]; then curl -s https://codecov.io/bash | bash; fi
+	if [ -n "$${CODECOV_TOKEN}" ]; then curl -s https://codecov.io/bash | bash 1>&2; fi
 
 # Release tasks.
 install.sh: $(GODOWNLOADER)
