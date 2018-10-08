@@ -26,24 +26,25 @@ func Directory() string {
 
 var mutex = sync.Mutex{}
 
-func createFixtureFolder(baseDir string) error {
+// createFixtureFolder threadsafe creation of fixture folders. Returns true if they already exist
+func createFixtureFolder(baseDir string) (bool, error) {
 	mutex.Lock()
+	defer mutex.Unlock()
 	baseDirExists, err := files.ExistsFolder(baseDir)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if baseDirExists {
 		println(baseDir + "already exists, assuming that clone has already been executed")
-		return nil
+		return false, nil
 	}
 
 	err = os.MkdirAll(baseDir, os.FileMode(0700))
 	if err != nil {
-		return err
+		return false, err
 	}
-	mutex.Unlock()
 
-	return nil
+	return false, nil
 }
 
 // ProjectInitializerFunction defines how a single project should be initialized *after* it has already been cloned
@@ -51,9 +52,12 @@ type ProjectInitializerFunction func(proj Project, projectDir string) error
 
 // Initialize executes git clone in target directory and checksout the provided commit, then runts the initializerFn. This is done asynchronously for each provided project
 func Initialize(baseDir string, projects []Project, initializerFn ProjectInitializerFunction) {
-	err := createFixtureFolder(baseDir)
+	fixturesExist, err := createFixtureFolder(baseDir)
 	if err != nil {
 		panic(err)
+	}
+	if fixturesExist {
+		return
 	}
 
 	var waitGroup sync.WaitGroup
