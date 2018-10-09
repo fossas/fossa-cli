@@ -118,7 +118,7 @@ integration-test:
 
 .PHONY: ci-integration-test
 ci-integration-test: $(GO_JUNIT_REPORT)
-	GO_TEST_FLAGS="-p 256 -coverprofile=coverage.txt -v" make -s integration-test | go-junit-report;
+	GO_TEST_FLAGS="-coverprofile=coverage.txt -v" make -s integration-test | go-junit-report;
 	if [ -n "$${CODECOV_TOKEN}" ]; then curl -s https://codecov.io/bash | bash 1>&2; fi
 
 # Release tasks.
