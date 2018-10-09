@@ -1,7 +1,6 @@
 package nodejs_test
 
 import (
-	"flag"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,39 +19,14 @@ import (
 
 var nodeAnalyzerFixtureDir = filepath.Join(fixtures.Directory(), "nodejs", "analyzer")
 
-func TestMain(m *testing.M) {
-	// flags are not parsed at this point. In order to have testing.Short() read actually provided values, this must be executed
-	flag.Parse()
+func TestNodejsAnalysis(t *testing.T) {
 	if testing.Short() {
 		return
 	}
+	t.Parallel()
 
 	fixtures.Initialize(nodeAnalyzerFixtureDir, projects, projectInitializer)
 
-	exitCode := m.Run()
-	defer os.Exit(exitCode)
-	// uncomment this if you need test files cleaned up locally
-	// defer cleanUp(nodeAnalyzerFixtureDir)
-}
-
-// While not testing the core functionality, this ensures that the tests have been setup correctly as needed for a prereq to run the analyzer steps
-// This test itself does not incur any overhead.
-func TestTestSetup(t *testing.T) {
-	t.Parallel()
-	assertProjectFixtureExists(t, "puppeteer")
-	// faker has no deps
-	// assertProjectFixtureExists(t, "fakerjs")
-	assertProjectFixtureExists(t, "fastify")
-	assertProjectFixtureExists(t, "nest")
-	assertProjectFixtureExists(t, "ohm")
-	assertProjectFixtureExists(t, "express")
-	assertProjectFixtureExists(t, "standard")
-	assertProjectFixtureExists(t, "sodium-encryption")
-	assertProjectFixtureExists(t, "request")
-}
-
-func TestNodejsAnalysis(t *testing.T) {
-	t.Parallel()
 	for _, project := range projects {
 		proj := project
 		t.Run("Analysis:"+proj.Name, func(t *testing.T) {
@@ -81,16 +55,6 @@ func TestNodejsAnalysis(t *testing.T) {
 			}
 		})
 	}
-}
-
-func assertProjectFixtureExists(t *testing.T, name string) {
-	exists, err := files.ExistsFolder(nodeAnalyzerFixtureDir, name)
-	assert.NoError(t, err)
-	assert.True(t, exists, name+" was not properly cloned")
-
-	exists, err = files.ExistsFolder(nodeAnalyzerFixtureDir, name, "node_modules")
-	assert.NoError(t, err)
-	assert.True(t, exists, name+" did not have its node modules installed")
 }
 
 func projectInitializer(proj fixtures.Project, projectDir string) error {
