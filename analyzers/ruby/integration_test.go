@@ -69,7 +69,7 @@ func TestMain(m *testing.M) {
 	defer os.Exit(exitCode)
 }
 
-func TestAnalylze(t *testing.T) {
+func TestAnalyze(t *testing.T) {
 	t.Parallel()
 	for _, project := range projects {
 		proj := project
