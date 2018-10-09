@@ -1,8 +1,6 @@
 package python_test
 
 import (
-	"flag"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -18,12 +16,11 @@ import (
 
 var pythonAnalyzerFixtureDir = filepath.Join(fixtures.Directory(), "python", "analyzer")
 
-func TestMain(m *testing.M) {
-	// flags are not parsed at this point. In order to have testing.Short() read actually provided values, this must be executed
-	flag.Parse()
+func TestPythonAnalysis(t *testing.T) {
 	if testing.Short() {
 		return
 	}
+	t.Parallel()
 
 	// err := fixtures.Clone(pythonAnalyzerFixtureDir, projects)
 	fixtures.Initialize(pythonAnalyzerFixtureDir, projects, func(proj fixtures.Project, projectDir string) error {
@@ -37,13 +34,6 @@ func TestMain(m *testing.M) {
 
 		return nil
 	})
-
-	exitCode := m.Run()
-	defer os.Exit(exitCode)
-}
-
-func TestPythonAnalysis(t *testing.T) {
-	t.Parallel()
 	for _, project := range projects {
 		proj := project
 		projDir := filepath.Join(pythonAnalyzerFixtureDir, proj.Name)
