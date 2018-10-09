@@ -27,8 +27,28 @@ func Directory() string {
 // ProjectInitializerFunction defines how a single project should be initialized *after* it has already been cloned
 type ProjectInitializerFunction func(proj Project, projectDir string) error
 
-// Initialize executes git clone in target directory and checksout the provided commit, then runts the initializerFn. This is done asynchronously for each provided project
+// Initialize executes git clone in target directory and checksout the provided commit, then runts the initializerFn. This is done asynchronously for each provided project.
+// If the same fixture (keyed by baseDir) calls this function twice, the first call will run the initialization while the second waits for the first to complete. After the first
+// completes, the second returns without doing any further work. This allows multiple tests for the same fixture to live within the same file without running into concurrency issues
 func Initialize(baseDir string, projects []Project, initializerFn ProjectInitializerFunction) {
+	globalLockMutex.Lock()
+	// if the lock already exists, then that particular fixture has already begun initialization; wait until initialization is complete, then return
+	if fixtureMutex, mutexExists := fixtureInitializerLocks[baseDir]; mutexExists {
+		globalLockMutex.Unlock()
+		// call Lock to cause the thread to wait until the execution is complete
+		fixtureMutex.Lock()
+		fixtureMutex.Unlock()
+
+		return
+	} else {
+		currentFixtureLock := &sync.Mutex{}
+		currentFixtureLock.Lock()
+		defer currentFixtureLock.Unlock()
+
+		fixtureInitializerLocks[baseDir] = currentFixtureLock
+	}
+	globalLockMutex.Unlock()
+
 	baseDirExists, err := files.ExistsFolder(baseDir)
 	if err != nil {
 		panic(err)
@@ -79,3 +99,9 @@ func Initialize(baseDir string, projects []Project, initializerFn ProjectInitial
 
 	waitGroup.Wait()
 }
+
+// Manages parallel access to the fixtureInitializerLocks. This prevents two integration tests with the same fixture from reading and writing fixtureInitializerLocks at the same time, potentially missing each other's execution
+var globalLockMutex = sync.Mutex{}
+
+// Used to determine which fixtures have started initialization and causes all future calls to the function to wait until initialization is complete, then skip it
+var fixtureInitializerLocks = make(map[string]*sync.Mutex)

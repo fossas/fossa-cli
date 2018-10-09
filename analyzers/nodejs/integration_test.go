@@ -1,7 +1,6 @@
 package nodejs_test
 
 import (
-	"flag"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,25 +19,15 @@ import (
 
 var nodeAnalyzerFixtureDir = filepath.Join(fixtures.Directory(), "nodejs", "analyzer")
 
-func TestMain(m *testing.M) {
-	// flags are not parsed at this point. In order to have testing.Short() read actually provided values, this must be executed
-	flag.Parse()
-	if testing.Short() {
-		return
-	}
-
-	fixtures.Initialize(nodeAnalyzerFixtureDir, projects, projectInitializer)
-
-	exitCode := m.Run()
-	defer os.Exit(exitCode)
-	// uncomment this if you need test files cleaned up locally
-	// defer cleanUp(nodeAnalyzerFixtureDir)
-}
-
 // While not testing the core functionality, this ensures that the tests have been setup correctly as needed for a prereq to run the analyzer steps
 // This test itself does not incur any overhead.
 func TestTestSetup(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Integration tests do not run with -short testing flag")
+	}
 	t.Parallel()
+	fixtures.Initialize(nodeAnalyzerFixtureDir, projects, projectInitializer)
+
 	assertProjectFixtureExists(t, "puppeteer")
 	// faker has no deps
 	// assertProjectFixtureExists(t, "fakerjs")
@@ -52,12 +41,15 @@ func TestTestSetup(t *testing.T) {
 }
 
 func TestNodejsAnalysis(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Integration tests do not run with -short testing flag")
+	}
 	t.Parallel()
+	fixtures.Initialize(nodeAnalyzerFixtureDir, projects, projectInitializer)
 	for _, project := range projects {
 		proj := project
 		t.Run("Analysis:"+proj.Name, func(t *testing.T) {
 			t.Parallel()
-
 			module := module.Module{
 				Dir:         filepath.Join(nodeAnalyzerFixtureDir, proj.Name),
 				Type:        pkg.NodeJS,
@@ -93,7 +85,11 @@ func assertProjectFixtureExists(t *testing.T, name string) {
 	assert.True(t, exists, name+" did not have its node modules installed")
 }
 
+var counter = 0
+
 func projectInitializer(proj fixtures.Project, projectDir string) error {
+	println("PROJECT INITIALIZER CALL " + string(counter) + " " + proj.Name)
+	counter++
 	nodeModulesExist, err := files.ExistsFolder(projectDir, "node_modules")
 	if err != nil {
 		return err
