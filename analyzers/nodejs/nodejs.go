@@ -277,7 +277,7 @@ func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p npm.Output) {
 
 		// Set direct imports.
 		var imports []pkg.Import
-		for name, i := range p.Dependencies {
+		for name, i := range dep.Dependencies {
 			imports = append(imports, pkg.Import{
 				Target: i.From,
 				Resolved: pkg.ID{

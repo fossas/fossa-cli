@@ -50,7 +50,7 @@ $(GODOWNLOADER): $(DEP)
 .PHONY: build
 build: $(BIN)/fossa
 
-$(BIN)/fossa: $(GO_BINDATA) $(GENNY) $(DEP)
+$(BIN)/fossa: $(GO_BINDATA) $(GENNY) $(DEP) $(shell find . -name *.go)
 	dep check
 	go generate ./...
 	go build -o $@ $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
@@ -93,7 +93,7 @@ vendor: $(DEP)
 .PHONY: clean
 clean:
 	rm -f $(BIN)/fossa
-	find -name *_generated.go | grep -v vendor | xargs rm -f
+	find . -name *_generated.go | grep -v vendor | xargs rm -f
 
 # Testing tasks.
 .PHONY: test
