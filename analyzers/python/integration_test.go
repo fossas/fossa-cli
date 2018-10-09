@@ -1,8 +1,6 @@
 package python_test
 
 import (
-	"flag"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -18,32 +16,12 @@ import (
 
 var pythonAnalyzerFixtureDir = filepath.Join(fixtures.Directory(), "python", "analyzer")
 
-func TestMain(m *testing.M) {
-	// flags are not parsed at this point. In order to have testing.Short() read actually provided values, this must be executed
-	flag.Parse()
-	if testing.Short() {
-		return
-	}
-
-	// err := fixtures.Clone(pythonAnalyzerFixtureDir, projects)
-	fixtures.Initialize(pythonAnalyzerFixtureDir, projects, func(proj fixtures.Project, projectDir string) error {
-		stdout, stderr, err := runfossa.Init(projectDir)
-		if err != nil {
-			log.Error("failed to run fossa init on " + proj.Name)
-			log.Error(stdout)
-			log.Error(stderr)
-			return err
-		}
-
-		return nil
-	})
-
-	exitCode := m.Run()
-	defer os.Exit(exitCode)
-}
-
 func TestPythonAnalysis(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Integration tests do not run with -short testing flag")
+	}
 	t.Parallel()
+	fixtures.Initialize(pythonAnalyzerFixtureDir, projects, projectInitializer)
 	for _, project := range projects {
 		proj := project
 		projDir := filepath.Join(pythonAnalyzerFixtureDir, proj.Name)
@@ -67,6 +45,18 @@ func TestPythonAnalysis(t *testing.T) {
 			assert.NotEmpty(t, deps.Transitive)
 		})
 	}
+}
+
+func projectInitializer(proj fixtures.Project, projectDir string) error {
+	stdout, stderr, err := runfossa.Init(projectDir)
+	if err != nil {
+		log.Error("failed to run fossa init on " + proj.Name)
+		log.Error(stdout)
+		log.Error(stderr)
+		return err
+	}
+
+	return nil
 }
 
 var projects = []fixtures.Project{
