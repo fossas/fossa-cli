@@ -42,7 +42,7 @@ func createFixtureFolder(baseDir string) (bool, error) {
 	}
 	if baseDirExists {
 		println(baseDir + "already exists, assuming that clone has already been executed")
-		return false, nil
+		return true, nil
 	}
 
 	err = os.MkdirAll(baseDir, os.FileMode(0700))
