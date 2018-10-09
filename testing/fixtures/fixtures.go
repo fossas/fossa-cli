@@ -14,9 +14,11 @@ import (
 
 // Project describes how to download, build, and analyse a fixture.
 type Project struct {
-	Name          string
-	URL           string
-	Commit        string
+	Name   string
+	URL    string
+	Commit string
+	// Ref points to a particular reference. It will always be preferred over Commit
+	Ref           string
 	ModuleOptions map[string]interface{}
 	Env           map[string]string
 }
@@ -58,23 +60,36 @@ func Initialize(baseDir string, projects []Project, initializer ProjectInitializ
 			defer waitGroup.Done()
 
 			projectDir := filepath.Join(baseDir, project.Name)
-			repo, err := git.PlainClone(projectDir, false, &git.CloneOptions{
-				URL:               project.URL,
-				RecurseSubmodules: 1,
-			})
-			if err != nil {
-				panic(err)
-			}
+			if project.Ref != "" {
+				_, err := git.PlainClone(projectDir, false, &git.CloneOptions{
+					URL:               project.URL,
+					Depth:             1,
+					RecurseSubmodules: 1,
+					ReferenceName:     plumbing.ReferenceName(project.Ref),
+					SingleBranch:      true,
+				})
+				if err != nil {
+					panic(err)
+				}
+			} else {
+				repo, err := git.PlainClone(projectDir, false, &git.CloneOptions{
+					URL:               project.URL,
+					RecurseSubmodules: 1,
+				})
+				if err != nil {
+					panic(err)
+				}
 
-			worktree, err := repo.Worktree()
-			if err != nil {
-				panic(err)
-			}
-			err = worktree.Checkout(&git.CheckoutOptions{
-				Hash: plumbing.NewHash(project.Commit),
-			})
-			if err != nil {
-				panic(err)
+				worktree, err := repo.Worktree()
+				if err != nil {
+					panic(err)
+				}
+				err = worktree.Checkout(&git.CheckoutOptions{
+					Hash: plumbing.NewHash(project.Commit),
+				})
+				if err != nil {
+					panic(err)
+				}
 			}
 
 			err = initializer(project, projectDir)

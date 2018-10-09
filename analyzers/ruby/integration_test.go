@@ -97,16 +97,14 @@ func TestAnalyze(t *testing.T) {
 }
 
 var projects = []fixtures.Project{
-	// branch 5-2-stable
 	fixtures.Project{
 		Name:   "rails",
 		URL:    "https://github.com/rails/rails",
-		Commit: "3a875402189f0d42446963ff0322f413f892d544",
+		Ref:    "refs/tags/v5.2.1",
 	},
-	// release tag v2.1.5
 	fixtures.Project{
 		Name:   "vagrant",
 		URL:    "https://github.com/hashicorp/vagrant",
-		Commit: "47b2f27d2728e56ac1d3d8bb78bf34b1f9956056",
+		Ref: "refs/tags/v2.1.5"
 	},
 }
