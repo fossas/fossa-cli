@@ -85,11 +85,7 @@ func assertProjectFixtureExists(t *testing.T, name string) {
 	assert.True(t, exists, name+" did not have its node modules installed")
 }
 
-var counter = 0
-
 func projectInitializer(proj fixtures.Project, projectDir string) error {
-	println("PROJECT INITIALIZER CALL " + string(counter) + " " + proj.Name)
-	counter++
 	nodeModulesExist, err := files.ExistsFolder(projectDir, "node_modules")
 	if err != nil {
 		return err
