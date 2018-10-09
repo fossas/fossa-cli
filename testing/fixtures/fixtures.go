@@ -79,7 +79,7 @@ func Initialize(baseDir string, projects []Project, initializerFn ProjectInitial
 				URL:               proj.URL,
 				RecurseSubmodules: 1,
 			})
-			if err != nil && err.Error() != "repository already exists" {
+			if err != nil {
 				panic(err)
 			}
 
