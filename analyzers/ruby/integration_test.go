@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/apex/log"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/fossas/fossa-cli/analyzers"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
@@ -14,7 +16,6 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 	"github.com/fossas/fossa-cli/testing/fixtures"
 	"github.com/fossas/fossa-cli/testing/runfossa"
-	"github.com/stretchr/testify/assert"
 )
 
 var rubyAnalyzerFixtureDir = filepath.Join(fixtures.Directory(), "ruby", "analyzer")
