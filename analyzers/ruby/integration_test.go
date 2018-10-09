@@ -20,7 +20,7 @@ import (
 var rubyAnalyzerFixtureDir = filepath.Join(fixtures.Directory(), "ruby", "analyzer")
 
 func TestMain(m *testing.M) {
-	// flags are not parsed at this point. In order to have testing.Short() read actually provided values, this must be executed
+	// Flags are not parsed at this point. In order to have testing.Short() read actually provided values, this must be executed
 	flag.Parse()
 	if testing.Short() {
 		return
