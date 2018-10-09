@@ -26,6 +26,12 @@ func Directory() string {
 
 var mutex = sync.Mutex{}
 
+func ensureBaseDirectoryExists() error {
+	_, err := createFixtureFolder(Directory())
+
+	return err
+}
+
 // createFixtureFolder threadsafe creation of fixture folders. Returns true if they already exist
 func createFixtureFolder(baseDir string) (bool, error) {
 	mutex.Lock()
@@ -52,6 +58,7 @@ type ProjectInitializerFunction func(proj Project, projectDir string) error
 
 // Initialize executes git clone in target directory and checksout the provided commit, then runts the initializerFn. This is done asynchronously for each provided project
 func Initialize(baseDir string, projects []Project, initializerFn ProjectInitializerFunction) {
+	ensureBaseDirectoryExists()
 	fixturesExist, err := createFixtureFolder(baseDir)
 	if err != nil {
 		panic(err)
