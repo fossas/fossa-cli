@@ -62,7 +62,7 @@ func TestNodejsAnalysis(t *testing.T) {
 				Dir:         filepath.Join(nodeAnalyzerFixtureDir, proj.Name),
 				Type:        pkg.NodeJS,
 				Name:        proj.Name,
-				Options:     proj.Options,
+				Options:     proj.ModuleOptions,
 				BuildTarget: filepath.Join(nodeAnalyzerFixtureDir, proj.Name, "package.json"),
 			}
 
@@ -172,10 +172,10 @@ var projects = []fixtures.Project{
 		Commit: "b4eb1f59d39d801d7365c86b04500f16faeb0b1c",
 	},
 	fixtures.Project{
-		Name:    "standard",
-		URL:     "https://github.com/standard/standard",
-		Commit:  "bc02256fa2c03632e657248483c55a752e63e724",
-		Options: map[string]interface{}{"allow-npm-err": true},
+		Name:          "standard",
+		URL:           "https://github.com/standard/standard",
+		Commit:        "bc02256fa2c03632e657248483c55a752e63e724",
+		ModuleOptions: map[string]interface{}{"allow-npm-err": true},
 	},
 	fixtures.Project{
 		Name:   "sodium-encryption",
