@@ -13,6 +13,50 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
+// TestNodeAnalyze checks that Analyze() runs correctly and returns the correct
+// graph.Deps object by asserting on direct and transitive dependencies
+func TestNodeAnalyze(t *testing.T) {
+	m := module.Module{
+		Dir:  filepath.Join("testdata", "normal"),
+		Type: pkg.NodeJS,
+	}
+
+	a, err := analyzers.New(m)
+	assert.NoError(t, err)
+
+	a.(*nodejs.Analyzer).NPM = MockNPM{
+		JSONFilename: filepath.Join("testdata", "normal", "npm-ls-json.json"),
+	}
+
+	deps, err := a.Analyze()
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, len(deps.Direct))
+	assertImport(t, deps.Direct, "babel-polyfill", "6.26.0")
+
+	assert.Equal(t, 5, len(deps.Transitive))
+
+	babelPolyfillPackage := assertPackageReturnImports(t, deps.Transitive, "babel-polyfill", "6.26.0")
+	assert.Equal(t, 3, len(babelPolyfillPackage.Imports))
+	assertImport(t, babelPolyfillPackage.Imports, "babel-runtime", "6.26.0")
+	assertImport(t, babelPolyfillPackage.Imports, "core-js", "2.5.7")
+	assertImport(t, babelPolyfillPackage.Imports, "regenerator-runtime", "0.10.5")
+
+	babelRuntimePackage := assertPackageReturnImports(t, deps.Transitive, "babel-runtime", "6.26.0")
+	assert.Equal(t, 2, len(babelRuntimePackage.Imports))
+	assertImport(t, babelRuntimePackage.Imports, "core-js", "2.5.7")
+	assertImport(t, babelRuntimePackage.Imports, "regenerator-runtime", "0.11.1")
+
+	coreJSPackage := assertPackageReturnImports(t, deps.Transitive, "core-js", "2.5.7")
+	assert.Equal(t, 0, len(coreJSPackage.Imports))
+
+	regenerator11Package := assertPackageReturnImports(t, deps.Transitive, "regenerator-runtime", "0.11.1")
+	assert.Equal(t, 0, len(regenerator11Package.Imports))
+
+	regenerator10Package := assertPackageReturnImports(t, deps.Transitive, "regenerator-runtime", "0.10.5")
+	assert.Equal(t, 0, len(regenerator10Package.Imports))
+}
+
 // TestNoDependencies checks that there is no error even when `package.json` is
 // missing a `dependencies` key or has an empty object as the value for
 // `dependencies`.
@@ -105,7 +149,6 @@ func TestAnalyzeWithNpmLs(t *testing.T) {
 		t.Run(fixturePath, func(t *testing.T) {
 			t.Parallel()
 			testAnalyzeWithNpmLs(t, fixturePath)
-
 		})
 	}
 }
@@ -161,26 +204,12 @@ func testUsingNodeModuleFallback(t *testing.T, buildTarget string) {
 
 	chaiProject := analysisResults.Transitive[chaiDirectDep.Resolved]
 	assert.NotNil(t, chaiProject)
-	AssertImport(t, chaiProject.Imports, "assertion-error", "1.1.0")
-	AssertImport(t, chaiProject.Imports, "check-error", "1.0.2")
-	AssertImport(t, chaiProject.Imports, "get-func-name", "2.0.0")
-	AssertImport(t, chaiProject.Imports, "pathval", "1.1.0")
-	AssertImport(t, chaiProject.Imports, "deep-eql", "3.0.1")
-	AssertImport(t, chaiProject.Imports, "type-detect", "4.0.8")
-}
-
-func AssertImport(t *testing.T, imports pkg.Imports, name, revision string) {
-	for _, importedProj := range imports {
-		if importedProj.Resolved.Name == name {
-			if importedProj.Resolved.Revision == revision {
-				return
-			}
-
-			assert.Fail(t, "found "+name+"@"+importedProj.Resolved.Revision+" instead of "+revision)
-		}
-	}
-
-	assert.Fail(t, "missing "+name+"@"+revision)
+	assertImport(t, chaiProject.Imports, "assertion-error", "1.1.0")
+	assertImport(t, chaiProject.Imports, "check-error", "1.0.2")
+	assertImport(t, chaiProject.Imports, "get-func-name", "2.0.0")
+	assertImport(t, chaiProject.Imports, "pathval", "1.1.0")
+	assertImport(t, chaiProject.Imports, "deep-eql", "3.0.1")
+	assertImport(t, chaiProject.Imports, "type-detect", "4.0.8")
 }
 
 func TestUsingYarnLockfileFallback(t *testing.T) {
@@ -202,10 +231,35 @@ func TestUsingYarnLockfileFallback(t *testing.T) {
 	assert.NoError(t, err)
 
 	chaiProject := analysisResults.Transitive[chaiDirectDep.Resolved]
-	AssertImport(t, chaiProject.Imports, "assertion-error", "1.1.0")
-	AssertImport(t, chaiProject.Imports, "check-error", "1.0.2")
-	AssertImport(t, chaiProject.Imports, "get-func-name", "2.0.0")
-	AssertImport(t, chaiProject.Imports, "pathval", "1.1.0")
-	AssertImport(t, chaiProject.Imports, "deep-eql", "3.0.1")
-	AssertImport(t, chaiProject.Imports, "type-detect", "4.0.8")
+	assertImport(t, chaiProject.Imports, "assertion-error", "1.1.0")
+	assertImport(t, chaiProject.Imports, "check-error", "1.0.2")
+	assertImport(t, chaiProject.Imports, "get-func-name", "2.0.0")
+	assertImport(t, chaiProject.Imports, "pathval", "1.1.0")
+	assertImport(t, chaiProject.Imports, "deep-eql", "3.0.1")
+	assertImport(t, chaiProject.Imports, "type-detect", "4.0.8")
+}
+
+func assertPackageReturnImports(t *testing.T, packages map[pkg.ID]pkg.Package, name, revision string) pkg.Package {
+	for ID := range packages {
+		if ID.Name == name && ID.Revision == revision {
+			return packages[ID]
+		}
+	}
+
+	assert.Fail(t, "missing "+name+"@"+revision)
+	return pkg.Package{}
+}
+
+func assertImport(t *testing.T, imports pkg.Imports, name, revision string) {
+	for _, importedProj := range imports {
+		if importedProj.Resolved.Name == name {
+			if importedProj.Resolved.Revision == revision {
+				return
+			}
+
+			assert.Fail(t, "found "+name+"@"+importedProj.Resolved.Revision+" instead of "+revision)
+		}
+	}
+
+	assert.Fail(t, "missing "+name+"@"+revision)
 }
