@@ -1,8 +1,6 @@
 package ruby_test
 
 import (
-	"flag"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -20,58 +18,13 @@ import (
 
 var rubyAnalyzerFixtureDir = filepath.Join(fixtures.Directory(), "ruby", "analyzer")
 
-func TestMain(m *testing.M) {
-	// Flags are not parsed at this point. In order to have testing.Short() read actually provided values, this must be executed
-	flag.Parse()
+func TestAnalyze(t *testing.T) {
 	if testing.Short() {
 		return
 	}
-
-	fixtures.Initialize(rubyAnalyzerFixtureDir, projects, func(proj fixtures.Project, projectDir string) error {
-		ymlAlreadyExists, err := files.Exists(filepath.Join(projectDir, ".fossa.yml"))
-		if err != nil {
-			panic(err)
-		}
-		if ymlAlreadyExists {
-			return nil
-		}
-
-		args := []string{"install"}
-
-		// we could extend or refactor the fixtures.Project struct, but because this is a single case, this is simpler for the time being
-		if proj.Name == "rails" {
-			args = append(args, []string{"--deployment", "--without", "doc", "job", "cable", "storage", "ujs", "test", "db"}...)
-		}
-
-		_, stderr, err := exec.Run(exec.Cmd{
-			Command: "bundle",
-			Name:    "bundle",
-			Argv:    args,
-			Dir:     projectDir,
-		})
-		if err != nil {
-			log.Error("failed to run fossa init on " + proj.Name)
-			log.Error(stderr)
-			return err
-		}
-
-		// any key will work to prevent the "NEED KEY" error message
-		_, stderr, err = runfossa.Init(projectDir)
-		if err != nil {
-			log.Error("failed to run fossa init on " + proj.Name)
-			log.Error(stderr)
-			return err
-		}
-
-		return nil
-	})
-
-	exitCode := m.Run()
-	defer os.Exit(exitCode)
-}
-
-func TestAnalyze(t *testing.T) {
 	t.Parallel()
+
+	fixtures.Initialize(rubyAnalyzerFixtureDir, projects, projectInitializer)
 	for _, project := range projects {
 		proj := project
 		t.Run("Analysis:\t"+proj.Name, func(t *testing.T) {
@@ -96,15 +49,54 @@ func TestAnalyze(t *testing.T) {
 	}
 }
 
+func projectInitializer(proj fixtures.Project, projectDir string) error {
+	ymlAlreadyExists, err := files.Exists(filepath.Join(projectDir, ".fossa.yml"))
+	if err != nil {
+		panic(err)
+	}
+	if ymlAlreadyExists {
+		return nil
+	}
+
+	args := []string{"install"}
+
+	// we could extend or refactor the fixtures.Project struct, but because this is a single case, this is simpler for the time being
+	if proj.Name == "rails" {
+		args = append(args, []string{"--deployment", "--without", "doc", "job", "cable", "storage", "ujs", "test", "db"}...)
+	}
+
+	_, stderr, err := exec.Run(exec.Cmd{
+		Command: "bundle",
+		Name:    "bundle",
+		Argv:    args,
+		Dir:     projectDir,
+	})
+	if err != nil {
+		log.Error("failed to run fossa init on " + proj.Name)
+		log.Error(stderr)
+		return err
+	}
+
+	// any key will work to prevent the "NEED KEY" error message
+	_, stderr, err = runfossa.Init(projectDir)
+	if err != nil {
+		log.Error("failed to run fossa init on " + proj.Name)
+		log.Error(stderr)
+		return err
+	}
+
+	return nil
+}
+
 var projects = []fixtures.Project{
 	fixtures.Project{
-		Name:   "rails",
-		URL:    "https://github.com/rails/rails",
-		Ref:    "refs/tags/v5.2.1",
+		Name: "rails",
+		URL:  "https://github.com/rails/rails",
+		Ref:  "refs/tags/v5.2.1",
 	},
 	fixtures.Project{
-		Name:   "vagrant",
-		URL:    "https://github.com/hashicorp/vagrant",
-		Ref: "refs/tags/v2.1.5"
+		Name: "vagrant",
+		URL:  "https://github.com/hashicorp/vagrant",
+		Ref:  "refs/tags/v2.1.5",
 	},
 }
