@@ -87,7 +87,7 @@ jobs:
           command: |
             # Load shell helpers (e.g. sdkman)
             source /home/fossa/.bashrc
-            make -s ci-integration-test > $TEST_RESULTS/go-test-report.xml
+            #make -s ci-integration-test > $TEST_RESULTS/go-test-report.xml
       # cache the fixtures generated from cloning, installation, and building so we can save time on runs
       - save_cache:
           key: v3-integration-test-fixtures
