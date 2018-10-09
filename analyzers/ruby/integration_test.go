@@ -103,9 +103,9 @@ var projects = []fixtures.Project{
 		Commit: "3a875402189f0d42446963ff0322f413f892d544",
 	},
 	// release tag v2.1.5
-	// fixtures.Project{
-	// 	Name:   "vagrant",
-	// 	URL:    "https://github.com/hashicorp/vagrant",
-	// 	Commit: "47b2f27d2728e56ac1d3d8bb78bf34b1f9956056",
-	// },
+	fixtures.Project{
+		Name:   "vagrant",
+		URL:    "https://github.com/hashicorp/vagrant",
+		Commit: "47b2f27d2728e56ac1d3d8bb78bf34b1f9956056",
+	},
 }
