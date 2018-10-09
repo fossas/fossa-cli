@@ -5,78 +5,61 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/fossas/fossa-cli/files"
+	"github.com/apex/log"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+
+	"github.com/fossas/fossa-cli/files"
 )
 
-// Project describes a git repo for a test fixture and env vars for when it is to be built
+// Project describes how to download, build, and analyse a fixture.
 type Project struct {
-	Name    string
-	URL     string
-	Commit  string
-	Options map[string]interface{}
-	Env     map[string]string
+	Name          string
+	URL           string
+	Commit        string
+	ModuleOptions map[string]interface{}
+	Env           map[string]string
 }
 
-// Directory returns the directory under which tests fixtures should be placed
+// Directory returns the path to test fixtures.
 func Directory() string {
 	return filepath.Join(os.TempDir(), "fossa-cli-fixtures")
 }
 
-var mutex = sync.Mutex{}
+// ProjectInitializer defines how a single project should be initialized after
+// it has been cloned.
+type ProjectInitializer func(p Project, projectDir string) error
 
-func ensureBaseDirectoryExists() error {
-	_, err := createFixtureFolder(Directory())
-
-	return err
-}
-
-// createFixtureFolder threadsafe creation of fixture folders. Returns true if they already exist
-func createFixtureFolder(baseDir string) (bool, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
+// Initialize clones and initializes a fixture into a directory.
+func Initialize(baseDir string, projects []Project, initializer ProjectInitializer) {
+	// Exit early when fixtures already exist.
+	// This is a bit scary since we don't validate whether the fixtures are
+	// correct, but corrupted fixtures should cause erratic test failures. If we
+	// wanted to validate fixtures, we might want to store e.g. a hash of the
+	// fixture contents and verify against that (or validate the commit of the Git
+	// repositories).
 	baseDirExists, err := files.ExistsFolder(baseDir)
-	if err != nil {
-		return false, err
-	}
-	if baseDirExists {
-		println(baseDir + "already exists, assuming that clone has already been executed")
-		return true, nil
-	}
-
-	err = os.MkdirAll(baseDir, os.FileMode(0700))
-	if err != nil {
-		return false, err
-	}
-
-	return false, nil
-}
-
-// ProjectInitializerFunction defines how a single project should be initialized *after* it has already been cloned
-type ProjectInitializerFunction func(proj Project, projectDir string) error
-
-// Initialize executes git clone in target directory and checksout the provided commit, then runts the initializerFn. This is done asynchronously for each provided project
-func Initialize(baseDir string, projects []Project, initializerFn ProjectInitializerFunction) {
-	ensureBaseDirectoryExists()
-	fixturesExist, err := createFixtureFolder(baseDir)
-	if err != nil {
-		panic(err)
-	}
-	if fixturesExist {
+	if err == nil && baseDirExists {
+		log.Debug(baseDir + " already exists, assuming fixtures OK")
 		return
 	}
 
+	// Make the fixtures directory.
+	err = os.MkdirAll(baseDir, os.FileMode(0700))
+	if err != nil {
+		panic(err)
+	}
+
+	// Clone and initialize in parallel.
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(len(projects))
-
-	for _, project := range projects {
-		go func(proj Project) {
+	for _, p := range projects {
+		go func(project Project) {
 			defer waitGroup.Done()
-			projectDir := filepath.Join(baseDir, proj.Name)
 
+			projectDir := filepath.Join(baseDir, project.Name)
 			repo, err := git.PlainClone(projectDir, false, &git.CloneOptions{
-				URL:               proj.URL,
+				URL:               project.URL,
 				RecurseSubmodules: 1,
 			})
 			if err != nil {
@@ -88,17 +71,17 @@ func Initialize(baseDir string, projects []Project, initializerFn ProjectInitial
 				panic(err)
 			}
 			err = worktree.Checkout(&git.CheckoutOptions{
-				Hash: plumbing.NewHash(proj.Commit),
+				Hash: plumbing.NewHash(project.Commit),
 			})
 			if err != nil {
 				panic(err)
 			}
 
-			err = initializerFn(proj, projectDir)
+			err = initializer(project, projectDir)
 			if err != nil {
 				panic(err)
 			}
-		}(project)
+		}(p)
 	}
 
 	waitGroup.Wait()

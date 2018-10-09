@@ -80,7 +80,7 @@ func TestAnalylze(t *testing.T) {
 				Dir:         filepath.Join(rubyAnalyzerFixtureDir, proj.Name),
 				Type:        pkg.Ruby,
 				Name:        proj.Name,
-				Options:     proj.Options,
+				Options:     proj.ModuleOptions,
 				BuildTarget: filepath.Join(rubyAnalyzerFixtureDir, proj.Name),
 			}
 
