@@ -48,7 +48,7 @@ $(GODOWNLOADER): $(DEP)
 	go install github.com/goreleaser/godownloader
 
 $(GOLANGCI_LINT):
-	[ -f $@ ] || go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
 
 # Building the CLI.
 .PHONY: build
