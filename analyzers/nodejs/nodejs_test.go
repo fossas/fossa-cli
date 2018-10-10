@@ -13,8 +13,34 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
+/*
+{
+  "dependencies": {
+    "a": {
+      "version": "1.0.0",
+      "dependencies": {
+        "b": {
+          "version": "2.0.0",
+          "dependencies": {
+            "d": {
+              "version": "4.0.0"
+            },
+            "c": {
+              "version": "3.0.0"
+            }
+          }
+        },
+        "c": {
+          "version": "3.0.0"
+        }
+      }
+    }
+  }
+}
+*/
+
 // TestNDepsTransitiveImports verifies that each dependency returned by Analyze()
-// in the transitive dependency list contains the correct dependencies.
+// in the transitive dependency list contains the correct dependency imports.
 func TestNDepsTransitiveImports(t *testing.T) {
 	m := module.Module{
 		Dir:  filepath.Join("testdata", "transitive-deps"),
