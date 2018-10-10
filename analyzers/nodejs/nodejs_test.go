@@ -13,8 +13,8 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-// testNDepsTransitiveImports checks that Analyze() returns the correct transitive deps
-// by asserting on transitive dependencies
+// TestNDepsTransitiveImports verifies that each dependency returned by Analyze()
+// in the transitive dependency list contains the correct dependencies.
 func TestNDepsTransitiveImports(t *testing.T) {
 	m := module.Module{
 		Dir:  filepath.Join("testdata", "transitive-deps"),
@@ -32,24 +32,28 @@ func TestNDepsTransitiveImports(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, len(deps.Direct))
-	assertImport(t, deps.Direct, "a", "1.0")
+	assertImport(t, deps.Direct, "a", "1.0.0")
 
 	assert.Equal(t, 4, len(deps.Transitive))
 
-	babelPolyfillPackage := assertPackageReturnImports(t, deps.Transitive, "a", "1.0")
+	babelPolyfillPackage := assertPackageReturnImports(deps.Transitive, "a", "1.0.0")
+	assert.NotEqual(t, babelPolyfillPackage, pkg.Package{})
 	assert.Equal(t, 2, len(babelPolyfillPackage.Imports))
-	assertImport(t, babelPolyfillPackage.Imports, "b", "2.0")
-	assertImport(t, babelPolyfillPackage.Imports, "c", "3.0")
+	assertImport(t, babelPolyfillPackage.Imports, "b", "2.0.0")
+	assertImport(t, babelPolyfillPackage.Imports, "c", "3.0.0")
 
-	babelRuntimePackage := assertPackageReturnImports(t, deps.Transitive, "b", "2.0")
+	babelRuntimePackage := assertPackageReturnImports(deps.Transitive, "b", "2.0.0")
+	assert.NotEqual(t, babelRuntimePackage, pkg.Package{})
 	assert.Equal(t, 2, len(babelRuntimePackage.Imports))
-	assertImport(t, babelRuntimePackage.Imports, "c", "3.0")
-	assertImport(t, babelRuntimePackage.Imports, "d", "4.0")
+	assertImport(t, babelRuntimePackage.Imports, "c", "3.0.0")
+	assertImport(t, babelRuntimePackage.Imports, "d", "4.0.0")
 
-	coreJSPackage := assertPackageReturnImports(t, deps.Transitive, "c", "3.0")
+	coreJSPackage := assertPackageReturnImports(deps.Transitive, "c", "3.0.0")
+	assert.NotEqual(t, coreJSPackage, pkg.Package{})
 	assert.Equal(t, 0, len(coreJSPackage.Imports))
 
-	regenerator11Package := assertPackageReturnImports(t, deps.Transitive, "d", "4.0")
+	regenerator11Package := assertPackageReturnImports(deps.Transitive, "d", "4.0.0")
+	assert.NotEqual(t, regenerator11Package, pkg.Package{})
 	assert.Equal(t, 0, len(regenerator11Package.Imports))
 }
 
@@ -235,14 +239,13 @@ func TestUsingYarnLockfileFallback(t *testing.T) {
 	assertImport(t, chaiProject.Imports, "type-detect", "4.0.8")
 }
 
-func assertPackageReturnImports(t *testing.T, packages map[pkg.ID]pkg.Package, name, revision string) pkg.Package {
+func assertPackageReturnImports(packages map[pkg.ID]pkg.Package, name, revision string) pkg.Package {
 	for ID := range packages {
 		if ID.Name == name && ID.Revision == revision {
 			return packages[ID]
 		}
 	}
 
-	assert.Fail(t, "missing "+name+"@"+revision)
 	return pkg.Package{}
 }
 
