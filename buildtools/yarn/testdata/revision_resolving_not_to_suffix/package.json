@@ -1,0 +1,7 @@
+{
+  "name": "testdata",
+  "version": "1.0.0",
+  "dependencies": {
+    "a":">1.0.0"
+  }
+}
