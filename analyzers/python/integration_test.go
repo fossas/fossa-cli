@@ -19,7 +19,6 @@ var pythonAnalyzerFixtureDir = filepath.Join(fixtures.Directory(), "python", "an
 func TestPythonAnalysis(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Integration tests to not run with the -short test flag")
-		return
 	}
 	t.Parallel()
 
