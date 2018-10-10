@@ -21,6 +21,7 @@ var nodeAnalyzerFixtureDir = filepath.Join(fixtures.Directory(), "nodejs", "anal
 
 func TestNodejsAnalysis(t *testing.T) {
 	if testing.Short() {
+		t.Skip("Integration tests to not run with the -short test flag")
 		return
 	}
 	t.Parallel()
