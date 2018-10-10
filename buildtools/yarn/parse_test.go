@@ -94,6 +94,23 @@ func TestTransitiveCollisionsWithTransProdDeps(t *testing.T) {
 	}
 }
 
+func TestRevisionsResolvingNotToSuffix(t *testing.T) {
+	t.Parallel()
+	testPathBase := filepath.Join("testdata", "revision_resolving_not_to_suffix")
+	deps, err := yarn.FromProject(filepath.Join(testPathBase, "package.json"), filepath.Join(testPathBase, "yarn.lock"))
+	assert.NoError(t, err)
+
+	assert.Len(t, deps.Direct, 1)
+	assert.Len(t, deps.Transitive, 2)
+
+	assert.Equal(t, "a", deps.Direct[0].Target)
+	assert.Equal(t, "2.0.2", deps.Direct[0].Resolved.Revision)
+
+	AssertDeps(t, deps.Transitive, "a", "2.0.2")
+	AssertDeps(t, deps.Transitive, "b", "4.0.4")
+
+}
+
 func AssertDeps(t *testing.T, transitiveDeps map[pkg.ID]pkg.Package, name, revision string) {
 	for pkgID, _ := range transitiveDeps {
 		if pkgID.Name == name && pkgID.Revision == revision {
