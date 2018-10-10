@@ -1,0 +1,8 @@
+{
+    "name": "fixture",
+    "type": "project",
+    "require": {
+        "php": "^7.2",
+        "twig/twig": "^2.0"
+    }
+}

@@ -58,7 +58,7 @@ func (c *Composer) Dependencies(dir string) ([]Package, map[Package][]Package, e
 		}
 	}
 
-	return ReadPackageTree(filteredLines, func(line string) (int, Package, error) {
+	imports, deps, err := ReadPackageTree(filteredLines, func(line string) (int, Package, error) {
 		if line[0] != '`' && line[0] != '|' && line[0] != ' ' {
 			// We're at a top-level package.
 			sections := strings.Split(line, " ")
@@ -94,6 +94,36 @@ func (c *Composer) Dependencies(dir string) ([]Package, map[Package][]Package, e
 		}
 		return level, p, nil
 	})
+
+	if err != nil {
+		return imports, deps, err
+	}
+
+	// Filter out "comp+php" imports
+	filteredImports := make([]Package, 0)
+	for _, currPackage := range imports {
+		if currPackage.Name != "php" {
+			filteredImports = append(filteredImports, currPackage)
+		}
+	}
+
+	// Filter out deps, both parent and children with locator as "php"
+	filteredDeps := make(map[Package][]Package)
+	for parent, children := range deps {
+		if parent.Name != "php" {
+			_, ok := filteredDeps[parent]
+			if !ok {
+				filteredDeps[parent] = make([]Package, 0)
+			}
+			for _, child := range children {
+				if child.Name != "php" {
+					filteredDeps[parent] = append(filteredDeps[parent], child)
+				}
+			}
+		}
+	}
+
+	return filteredImports, filteredDeps, nil
 }
 
 func (c *Composer) Show(dir string) (Show, error) {
