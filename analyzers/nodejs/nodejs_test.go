@@ -14,29 +14,11 @@ import (
 )
 
 /*
-{
-  "dependencies": {
-    "a": {
-      "version": "1.0.0",
-      "dependencies": {
-        "b": {
-          "version": "2.0.0",
-          "dependencies": {
-            "d": {
-              "version": "4.0.0"
-            },
-            "c": {
-              "version": "3.0.0"
-            }
-          }
-        },
-        "c": {
-          "version": "3.0.0"
-        }
-      }
-    }
-  }
-}
+   └─┬ a@1.0.0
+     ├─┬ b@2.0.0
+     │ ├── c@3.0.0
+     │ └── d@4.0.0
+     └── c@3.0.0
 */
 
 // TestNDepsTransitiveImports verifies that each dependency returned by Analyze()
@@ -62,25 +44,25 @@ func TestNDepsTransitiveImports(t *testing.T) {
 
 	assert.Equal(t, 4, len(deps.Transitive))
 
-	babelPolyfillPackage := assertPackageReturnImports(deps.Transitive, "a", "1.0.0")
-	assert.NotEqual(t, babelPolyfillPackage, pkg.Package{})
-	assert.Equal(t, 2, len(babelPolyfillPackage.Imports))
-	assertImport(t, babelPolyfillPackage.Imports, "b", "2.0.0")
-	assertImport(t, babelPolyfillPackage.Imports, "c", "3.0.0")
+	packageA := assertPackageReturnImports(deps.Transitive, "a", "1.0.0")
+	assert.NotEqual(t, packageA, pkg.Package{})
+	assert.Equal(t, 2, len(packageA.Imports))
+	assertImport(t, packageA.Imports, "b", "2.0.0")
+	assertImport(t, packageA.Imports, "c", "3.0.0")
 
-	babelRuntimePackage := assertPackageReturnImports(deps.Transitive, "b", "2.0.0")
-	assert.NotEqual(t, babelRuntimePackage, pkg.Package{})
-	assert.Equal(t, 2, len(babelRuntimePackage.Imports))
-	assertImport(t, babelRuntimePackage.Imports, "c", "3.0.0")
-	assertImport(t, babelRuntimePackage.Imports, "d", "4.0.0")
+	packageB := assertPackageReturnImports(deps.Transitive, "b", "2.0.0")
+	assert.NotEqual(t, packageB, pkg.Package{})
+	assert.Equal(t, 2, len(packageB.Imports))
+	assertImport(t, packageB.Imports, "c", "3.0.0")
+	assertImport(t, packageB.Imports, "d", "4.0.0")
 
-	coreJSPackage := assertPackageReturnImports(deps.Transitive, "c", "3.0.0")
-	assert.NotEqual(t, coreJSPackage, pkg.Package{})
-	assert.Equal(t, 0, len(coreJSPackage.Imports))
+	packageC := assertPackageReturnImports(deps.Transitive, "c", "3.0.0")
+	assert.NotEqual(t, packageC, pkg.Package{})
+	assert.Equal(t, 0, len(packageC.Imports))
 
-	regenerator11Package := assertPackageReturnImports(deps.Transitive, "d", "4.0.0")
-	assert.NotEqual(t, regenerator11Package, pkg.Package{})
-	assert.Equal(t, 0, len(regenerator11Package.Imports))
+	packageD := assertPackageReturnImports(deps.Transitive, "d", "4.0.0")
+	assert.NotEqual(t, packageD, pkg.Package{})
+	assert.Equal(t, 0, len(packageD.Imports))
 }
 
 // TestNoDependencies checks that there is no error even when `package.json` is
