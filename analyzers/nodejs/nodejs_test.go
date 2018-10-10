@@ -13,9 +13,9 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-// TestNodeAnalyze checks that Analyze() runs correctly and returns the correct
-// graph.Deps object by asserting on direct and transitive dependencies
-func TestNodeAnalyze(t *testing.T) {
+// testNDepsTransitiveImports checks that Analyze() returns the correct transitive deps
+// by asserting on transitive dependencies
+func testNDepsTransitiveImports(t *testing.T) {
 	m := module.Module{
 		Dir:  filepath.Join("testdata", "normal"),
 		Type: pkg.NodeJS,
@@ -32,29 +32,25 @@ func TestNodeAnalyze(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, len(deps.Direct))
-	assertImport(t, deps.Direct, "babel-polyfill", "6.26.0")
+	assertImport(t, deps.Direct, "a", "1.0")
 
-	assert.Equal(t, 5, len(deps.Transitive))
+	assert.Equal(t, 4, len(deps.Transitive))
 
-	babelPolyfillPackage := assertPackageReturnImports(t, deps.Transitive, "babel-polyfill", "6.26.0")
-	assert.Equal(t, 3, len(babelPolyfillPackage.Imports))
-	assertImport(t, babelPolyfillPackage.Imports, "babel-runtime", "6.26.0")
-	assertImport(t, babelPolyfillPackage.Imports, "core-js", "2.5.7")
-	assertImport(t, babelPolyfillPackage.Imports, "regenerator-runtime", "0.10.5")
+	babelPolyfillPackage := assertPackageReturnImports(t, deps.Transitive, "a", "1.0")
+	assert.Equal(t, 2, len(babelPolyfillPackage.Imports))
+	assertImport(t, babelPolyfillPackage.Imports, "b", "2.0")
+	assertImport(t, babelPolyfillPackage.Imports, "c", "3.0")
 
-	babelRuntimePackage := assertPackageReturnImports(t, deps.Transitive, "babel-runtime", "6.26.0")
+	babelRuntimePackage := assertPackageReturnImports(t, deps.Transitive, "b", "2.0")
 	assert.Equal(t, 2, len(babelRuntimePackage.Imports))
-	assertImport(t, babelRuntimePackage.Imports, "core-js", "2.5.7")
-	assertImport(t, babelRuntimePackage.Imports, "regenerator-runtime", "0.11.1")
+	assertImport(t, babelRuntimePackage.Imports, "c", "3.0")
+	assertImport(t, babelRuntimePackage.Imports, "d", "4.0")
 
-	coreJSPackage := assertPackageReturnImports(t, deps.Transitive, "core-js", "2.5.7")
+	coreJSPackage := assertPackageReturnImports(t, deps.Transitive, "c", "3.0")
 	assert.Equal(t, 0, len(coreJSPackage.Imports))
 
-	regenerator11Package := assertPackageReturnImports(t, deps.Transitive, "regenerator-runtime", "0.11.1")
+	regenerator11Package := assertPackageReturnImports(t, deps.Transitive, "d", "4.0")
 	assert.Equal(t, 0, len(regenerator11Package.Imports))
-
-	regenerator10Package := assertPackageReturnImports(t, deps.Transitive, "regenerator-runtime", "0.10.5")
-	assert.Equal(t, 0, len(regenerator10Package.Imports))
 }
 
 // TestNoDependencies checks that there is no error even when `package.json` is
