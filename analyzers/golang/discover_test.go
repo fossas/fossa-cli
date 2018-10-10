@@ -12,8 +12,6 @@ func TestDiscoverUsesRelativePaths(t *testing.T) {
 	modules, err := golang.Discover(filepath.Join("..", ".."), nil)
 	assert.NoError(t, err)
 
-	t.Logf("%#v", modules)
-
 	for _, m := range modules {
 		assert.True(t, !filepath.IsAbs(m.Dir), "%#v is an absolute directory", m.Dir)
 	}
