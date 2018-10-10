@@ -15,9 +15,9 @@ import (
 
 // testNDepsTransitiveImports checks that Analyze() returns the correct transitive deps
 // by asserting on transitive dependencies
-func testNDepsTransitiveImports(t *testing.T) {
+func TestNDepsTransitiveImports(t *testing.T) {
 	m := module.Module{
-		Dir:  filepath.Join("testdata", "normal"),
+		Dir:  filepath.Join("testdata", "transitive-deps"),
 		Type: pkg.NodeJS,
 	}
 
@@ -25,7 +25,7 @@ func testNDepsTransitiveImports(t *testing.T) {
 	assert.NoError(t, err)
 
 	a.(*nodejs.Analyzer).NPM = MockNPM{
-		JSONFilename: filepath.Join("testdata", "normal", "npm-ls-json.json"),
+		JSONFilename: filepath.Join("testdata", "transitive-deps", "npm-ls-json.json"),
 	}
 
 	deps, err := a.Analyze()
