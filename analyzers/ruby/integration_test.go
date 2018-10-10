@@ -18,7 +18,7 @@ import (
 
 var rubyAnalyzerFixtureDir = filepath.Join(fixtures.Directory(), "ruby", "analyzer")
 
-func TestAnalyze(t *testing.T) {
+func TestRubyIntegration(t *testing.T) {
 	if testing.Short() {
 		return
 	}

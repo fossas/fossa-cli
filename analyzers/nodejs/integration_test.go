@@ -19,7 +19,7 @@ import (
 
 var nodeAnalyzerFixtureDir = filepath.Join(fixtures.Directory(), "nodejs", "analyzer")
 
-func TestNodejsAnalysis(t *testing.T) {
+func TestNodejsIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Integration tests to not run with the -short test flag")
 	}

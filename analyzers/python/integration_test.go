@@ -16,7 +16,7 @@ import (
 
 var pythonAnalyzerFixtureDir = filepath.Join(fixtures.Directory(), "python", "analyzer")
 
-func TestPythonAnalysis(t *testing.T) {
+func TestPythonIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Integration tests to not run with the -short test flag")
 	}
