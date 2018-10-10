@@ -44,24 +44,24 @@ func TestNDepsTransitiveImports(t *testing.T) {
 
 	assert.Equal(t, 4, len(deps.Transitive))
 
-	packageA := assertPackageReturnImports(deps.Transitive, "a", "1.0.0")
-	assert.NotEqual(t, packageA, pkg.Package{})
+	packageA := findPackage(deps.Transitive, "a", "1.0.0")
+	assert.NotZero(t, packageA)
 	assert.Equal(t, 2, len(packageA.Imports))
 	assertImport(t, packageA.Imports, "b", "2.0.0")
 	assertImport(t, packageA.Imports, "c", "3.0.0")
 
-	packageB := assertPackageReturnImports(deps.Transitive, "b", "2.0.0")
-	assert.NotEqual(t, packageB, pkg.Package{})
+	packageB := findPackage(deps.Transitive, "b", "2.0.0")
+	assert.NotZero(t, packageB)
 	assert.Equal(t, 2, len(packageB.Imports))
 	assertImport(t, packageB.Imports, "c", "3.0.0")
 	assertImport(t, packageB.Imports, "d", "4.0.0")
 
-	packageC := assertPackageReturnImports(deps.Transitive, "c", "3.0.0")
-	assert.NotEqual(t, packageC, pkg.Package{})
+	packageC := findPackage(deps.Transitive, "c", "3.0.0")
+	assert.NotZero(t, packageC)
 	assert.Equal(t, 0, len(packageC.Imports))
 
-	packageD := assertPackageReturnImports(deps.Transitive, "d", "4.0.0")
-	assert.NotEqual(t, packageD, pkg.Package{})
+	packageD := findPackage(deps.Transitive, "d", "4.0.0")
+	assert.NotZero(t, packageD)
 	assert.Equal(t, 0, len(packageD.Imports))
 }
 
@@ -247,10 +247,10 @@ func TestUsingYarnLockfileFallback(t *testing.T) {
 	assertImport(t, chaiProject.Imports, "type-detect", "4.0.8")
 }
 
-func assertPackageReturnImports(packages map[pkg.ID]pkg.Package, name, revision string) pkg.Package {
-	for ID := range packages {
-		if ID.Name == name && ID.Revision == revision {
-			return packages[ID]
+func findPackage(packages map[pkg.ID]pkg.Package, name, revision string) pkg.Package {
+	for id := range packages {
+		if id.Name == name && id.Revision == revision {
+			return packages[id]
 		}
 	}
 
