@@ -29,7 +29,7 @@ func TestNodejsAnalysis(t *testing.T) {
 
 	for _, project := range projects {
 		proj := project
-		t.Run("Analysis:"+proj.Name, func(t *testing.T) {
+		t.Run("Analysis: "+proj.Name, func(t *testing.T) {
 			t.Parallel()
 
 			module := module.Module{
