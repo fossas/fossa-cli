@@ -1,10 +1,13 @@
 package golang
 
 import (
+	"os"
+	"path/filepath"
+
+	"github.com/apex/log"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/module"
@@ -38,6 +41,7 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 
 	g := gocmd.Go{
 		Cmd:  cmd,
+		Dir:  dir,
 		OS:   options.BuildOS,
 		Arch: options.BuildArch,
 	}
@@ -46,15 +50,23 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 		return nil, errors.Wrap(err, "could not find Go projects")
 	}
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not find Go projects")
+	}
 	var projects []module.Module
 	for _, f := range found {
 		log.Debugf("Found Go module: %#v", f)
+		path, err := filepath.Rel(cwd, f.Dir)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not find Go projects")
+		}
 		projects = append(projects, module.Module{
 			Name:         Unvendor(f.ImportPath),
 			Type:         pkg.Go,
 			IsExecutable: f.Name == "main",
 			BuildTarget:  f.ImportPath,
-			Dir:          f.Dir,
+			Dir:          path,
 		})
 	}
 	return projects, nil
