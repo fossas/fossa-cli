@@ -23,6 +23,7 @@ type Analyzer struct {
 	PythonCmd     string
 	PythonVersion string
 
+	Pipenv  pipenv.Pipenv
 	Pip     pip.Pip
 	Module  module.Module
 	Options Options
@@ -59,6 +60,7 @@ func New(m module.Module) (*Analyzer, error) {
 		PythonCmd:     pythonCmd,
 		PythonVersion: pythonVersion,
 
+		Pipenv: pipenv.New(),
 		Pip: pip.Pip{
 			Cmd:       pipCmd,
 			PythonCmd: pythonCmd,
@@ -154,6 +156,15 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 			Direct:     imports,
 			Transitive: fromImports(imports),
 		}, nil
+<<<<<<< HEAD
+=======
+	case "pipenv":
+		depGraph, err := a.Pipenv.Deps()
+		if err != nil {
+			return depGraph, err
+		}
+		return depGraph, nil
+>>>>>>> 121342a... testing added to work around shell commands
 	case "requirements":
 		fallthrough
 	default:

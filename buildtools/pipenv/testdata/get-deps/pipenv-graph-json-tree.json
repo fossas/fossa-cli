@@ -1,0 +1,34 @@
+[
+    {
+        "package_name": "a",
+        "installed_version": "1.0.0",
+        "required_version": "1.0.0",
+        "dependencies": []
+    },
+    {
+        "package_name": "b",
+        "installed_version": "2.0.0",
+        "required_version": "2.0.0",
+        "dependencies": [
+            {
+                "package_name": "c",
+                "installed_version": "3.0.0",
+                "required_version": "3.0.0",
+                "dependencies": [
+                    {
+                        "package_name": "d",
+                        "installed_version": "4.0.0",
+                        "required_version": "4.0.0",
+                        "dependencies": []
+                    }
+                ]
+            },
+            {
+                "package_name": "e",
+                "installed_version": "5.0.0",
+                "required_version": "5.0.0",
+                "dependencies": []
+            }
+        ]
+    }
+]
