@@ -5,10 +5,10 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/fossas/fossa-cli/buildtools/pipenv"
 	"github.com/fossas/fossa-cli/pkg"
-
-	"github.com/stretchr/testify/assert"
 )
 
 type MockExec struct {
