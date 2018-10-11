@@ -13,6 +13,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/fossas/fossa-cli/buildtools/pip"
+	"github.com/fossas/fossa-cli/buildtools/pipenv"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
@@ -156,15 +157,12 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 			Direct:     imports,
 			Transitive: fromImports(imports),
 		}, nil
-<<<<<<< HEAD
-=======
 	case "pipenv":
 		depGraph, err := a.Pipenv.Deps()
 		if err != nil {
 			return depGraph, err
 		}
 		return depGraph, nil
->>>>>>> 121342a... testing added to work around shell commands
 	case "requirements":
 		fallthrough
 	default:
