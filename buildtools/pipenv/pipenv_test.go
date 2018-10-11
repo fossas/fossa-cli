@@ -97,14 +97,14 @@ func TestNoFile(t *testing.T) {
 }
 
 func TestBadFile(t *testing.T) {
-	file, err := ioutil.ReadFile("bad.json")
+	file, err := ioutil.ReadFile("testdata/get-deps/bad.json")
 	assert.NoError(t, err)
 
 	testEnv := newMockPipenv(file, nil)
 
 	deps, err := testEnv.Deps()
 	assert.Zero(t, deps)
-	assert.EqualError(t, err, "could not unmarshall JSON into dependency list: unexpected end of JSON input")
+	assert.EqualError(t, err, "could not unmarshall JSON into dependency list: json: cannot unmarshal string into Go value of type []pipenv.dependency")
 }
 
 func findPackage(packages map[pkg.ID]pkg.Package, name, revision string) pkg.Package {
