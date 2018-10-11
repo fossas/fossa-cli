@@ -4,8 +4,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fossas/fossa-cli/analyzers/golang"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/fossas/fossa-cli/analyzers/golang"
 )
 
 func TestDiscoverUsesRelativePaths(t *testing.T) {
