@@ -1,6 +1,7 @@
 package pipenv_test
 
 import (
+	"errors"
 	"io/ioutil"
 	"testing"
 
@@ -11,11 +12,21 @@ import (
 )
 
 type MockExec struct {
-	File string
+	File  string
+	Error error
 }
 
 func (m MockExec) DataAccess(s string) (string, error) {
-	return m.File, nil
+	return m.File, m.Error
+}
+
+func newMockPipenv(file []byte, err error) pipenv.SystemPipenv {
+	return pipenv.SystemPipenv{
+		PipenvExec: MockExec{
+			File:  string(file),
+			Error: err,
+		},
+	}
 }
 
 /*
@@ -28,11 +39,7 @@ func (m MockExec) DataAccess(s string) (string, error) {
 func TestDirectDeps(t *testing.T) {
 	file, err := ioutil.ReadFile("testdata/get-deps/pipenv-graph-json-tree.json")
 	assert.NoError(t, err)
-	testEnv := pipenv.SystemPipenv{
-		PipenvExec: MockExec{
-			File: string(file),
-		},
-	}
+	testEnv := newMockPipenv(file, nil)
 
 	deps, error := testEnv.Deps()
 	assert.NoError(t, error)
@@ -48,11 +55,7 @@ func TestDirectDeps(t *testing.T) {
 func TestTransitiveDeps(t *testing.T) {
 	file, err := ioutil.ReadFile("testdata/get-deps/pipenv-graph-json-tree.json")
 	assert.NoError(t, err)
-	testEnv := pipenv.SystemPipenv{
-		PipenvExec: MockExec{
-			File: string(file),
-		},
-	}
+	testEnv := newMockPipenv(file, nil)
 
 	deps, error := testEnv.Deps()
 	assert.NoError(t, error)
@@ -85,23 +88,21 @@ func TestTransitiveDeps(t *testing.T) {
 	assert.Equal(t, 0, len(packageE.Imports))
 }
 
-func TestErrorCase(t *testing.T) {
-	file, err := ioutil.ReadFile("testdata/get-deps/pipenv-graph-json-tree.json")
-	assert.NoError(t, err)
-	testEnv := pipenv.SystemPipenv{
-		PipenvExec: MockExec{
-			File: string(file),
-		},
-	}
+func TestNoFile(t *testing.T) {
+	testEnv := newMockPipenv([]byte{}, errors.New("test error"))
 
-	deps, error := testEnv.Deps()
-	assert.NoError(t, error)
+	deps, err := testEnv.Deps()
+	assert.Zero(t, deps)
+	assert.EqualError(t, err, "test error")
+}
 
-	imports := deps.Direct
-	assert.NotZero(t, imports)
-	assert.Equal(t, 2, len(imports))
-	assertImport(t, imports, "a", "1.0.0")
-	assertImport(t, imports, "b", "2.0.0")
+func TestBadFile(t *testing.T) {
+	file, err := ioutil.ReadFile("bad.json")
+	testEnv := newMockPipenv(file, nil)
+
+	deps, err := testEnv.Deps()
+	assert.Zero(t, deps)
+	assert.EqualError(t, err, "could not unmarshall JSON into dependency list: unexpected end of JSON input")
 }
 
 func findPackage(packages map[pkg.ID]pkg.Package, name, revision string) pkg.Package {
