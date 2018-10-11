@@ -42,6 +42,7 @@ func TestDirectDeps(t *testing.T) {
 	assert.Equal(t, 2, len(imports))
 	assertImport(t, imports, "a", "1.0.0")
 	assertImport(t, imports, "b", "2.0.0")
+
 }
 
 func TestTransitiveDeps(t *testing.T) {
@@ -61,7 +62,8 @@ func TestTransitiveDeps(t *testing.T) {
 
 	packageA := findPackage(graph, "a", "1.0.0")
 	assert.NotZero(t, packageA)
-	assert.Equal(t, 0, len(packageA.Imports))
+	assert.Equal(t, 1, len(packageA.Imports))
+	assertImport(t, packageA.Imports, "e", "5.0.0")
 
 	packageB := findPackage(graph, "b", "2.0.0")
 	assert.NotZero(t, packageB)
@@ -81,6 +83,25 @@ func TestTransitiveDeps(t *testing.T) {
 	packageE := findPackage(graph, "e", "5.0.0")
 	assert.NotZero(t, packageE)
 	assert.Equal(t, 0, len(packageE.Imports))
+}
+
+func TestErrorCase(t *testing.T) {
+	file, err := ioutil.ReadFile("testdata/get-deps/pipenv-graph-json-tree.json")
+	assert.NoError(t, err)
+	testEnv := pipenv.SystemPipenv{
+		PipenvExec: MockExec{
+			File: string(file),
+		},
+	}
+
+	deps, error := testEnv.Deps()
+	assert.NoError(t, error)
+
+	imports := deps.Direct
+	assert.NotZero(t, imports)
+	assert.Equal(t, 2, len(imports))
+	assertImport(t, imports, "a", "1.0.0")
+	assertImport(t, imports, "b", "2.0.0")
 }
 
 func findPackage(packages map[pkg.ID]pkg.Package, name, revision string) pkg.Package {

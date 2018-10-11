@@ -3,7 +3,14 @@
         "package_name": "a",
         "installed_version": "1.0.0",
         "required_version": "1.0.0",
-        "dependencies": []
+        "dependencies": [    
+            {
+            "package_name": "e",
+            "installed_version": "5.0.0",
+            "required_version": "5.0.0",
+            "dependencies": []
+            }
+        ]
     },
     {
         "package_name": "b",
@@ -31,4 +38,5 @@
             }
         ]
     }
+
 ]
