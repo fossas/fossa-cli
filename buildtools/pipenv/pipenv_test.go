@@ -98,6 +98,8 @@ func TestNoFile(t *testing.T) {
 
 func TestBadFile(t *testing.T) {
 	file, err := ioutil.ReadFile("bad.json")
+	assert.NoError(t, err)
+
 	testEnv := newMockPipenv(file, nil)
 
 	deps, err := testEnv.Deps()
