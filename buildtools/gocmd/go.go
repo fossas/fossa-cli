@@ -33,6 +33,7 @@ func Name(importPath string) string {
 // Go contains configuration information for the Go tool.
 type Go struct {
 	Cmd  string
+	Dir  string
 	OS   string
 	Arch string
 }
@@ -76,6 +77,7 @@ func (g *Go) List(pkgs []string) ([]Package, error) {
 	stdout, stderr, err := exec.Run(exec.Cmd{
 		Name: g.Cmd,
 		Argv: append([]string{"list", "-json"}, pkgs...),
+		Dir:  g.Dir,
 		WithEnv: map[string]string{
 			"GOOS":   g.OS,
 			"GOARCH": g.Arch,
