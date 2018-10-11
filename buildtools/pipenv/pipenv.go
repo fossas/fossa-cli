@@ -14,21 +14,21 @@ type Pipenv interface {
 	Deps() (graph.Deps, error)
 }
 
-// Exectable allows a custom dataAccess function to be used by Deps().
-type Exectable interface {
+// Executable allows a custom DataAccess function to be used by Deps().
+type Executable interface {
 	DataAccess(string) (string, error)
 }
 
 // SystemPipenv implements Pipenv.
 type SystemPipenv struct {
-	PipenvExec Exectable
+	PipenvExec Executable
 }
 
-// EnvironmentData implements pipenvExecutable and returns data output from pipenv.
+// EnvironmentData implements Executable and returns data output from pipenv.
 type EnvironmentData struct{}
 
-// dependency is used to unmarshall the output from pipenv graph and store
-// an object representing an imported dependency.
+// dependency is used to unmarshall the output from `pipenv graph --json-tree`
+// and store an object representing an imported dependency.
 type dependency struct {
 	Package      string `json:"package_name"`
 	Resolved     string `json:"installed_version"`
