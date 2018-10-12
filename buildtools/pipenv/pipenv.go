@@ -14,18 +14,10 @@ type Pipenv interface {
 	Deps() (graph.Deps, error)
 }
 
-// Executable is a proxy to the pipenv build tools data access functionality.
-type Executable interface {
-	GraphJSON() (string, error)
-}
-
-// PipenvCmd implements Pipenv.
+// PipenvCmd controls the data access function for Pipenv.
 type PipenvCmd struct {
-	PipenvExec Executable
+	Graph func() (string, error)
 }
-
-// EnvironmentData implements Executable and returns data output from pipenv.
-type EnvironmentData struct{}
 
 // dependency is used to unmarshall the output from `pipenv graph --json-tree`
 // and store an object representing an imported dependency.
@@ -39,7 +31,7 @@ type dependency struct {
 // New returns a new Pipenv instance that controls data access.
 func New() Pipenv {
 	return PipenvCmd{
-		PipenvExec: EnvironmentData{},
+		Graph: GraphJSON,
 	}
 }
 
@@ -47,7 +39,7 @@ func New() Pipenv {
 // using the data from p.PipenvExec.DataAccess.
 func (p PipenvCmd) Deps() (graph.Deps, error) {
 	depGraph := graph.Deps{}
-	rawJSON, err := p.PipenvExec.GraphJSON()
+	rawJSON, err := p.Graph()
 	if err != nil {
 		return depGraph, err
 	}
@@ -72,7 +64,7 @@ func getDependencies(graphJSONFile string) ([]dependency, error) {
 }
 
 // GraphJSON returns the output from `pipenv graph --json-tree`.
-func (data EnvironmentData) GraphJSON() (string, error) {
+func GraphJSON() (string, error) {
 	out, _, err := exec.Run(exec.Cmd{
 		Name: "pipenv",
 		Argv: []string{"graph", "--json-tree"},

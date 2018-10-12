@@ -11,20 +11,11 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-type MockExec struct {
-	File  string
-	Error error
-}
-
-func (m MockExec) GraphJSON() (string, error) {
-	return m.File, m.Error
-}
-
+// newMockPipenv constructs a pipenv.PipenvCmd with a custom Graph function.
 func newMockPipenv(file []byte, err error) pipenv.PipenvCmd {
 	return pipenv.PipenvCmd{
-		PipenvExec: MockExec{
-			File:  string(file),
-			Error: err,
+		Graph: func() (string, error) {
+			return string(file), err
 		},
 	}
 }
