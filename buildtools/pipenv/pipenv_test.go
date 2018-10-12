@@ -16,12 +16,12 @@ type MockExec struct {
 	Error error
 }
 
-func (m MockExec) DataAccess(s string) (string, error) {
+func (m MockExec) GraphJSON() (string, error) {
 	return m.File, m.Error
 }
 
-func newMockPipenv(file []byte, err error) pipenv.SystemPipenv {
-	return pipenv.SystemPipenv{
+func newMockPipenv(file []byte, err error) pipenv.PipenvCmd {
+	return pipenv.PipenvCmd{
 		PipenvExec: MockExec{
 			File:  string(file),
 			Error: err,
@@ -94,17 +94,6 @@ func TestNoFile(t *testing.T) {
 	deps, err := testEnv.Deps()
 	assert.Zero(t, deps)
 	assert.EqualError(t, err, "test error")
-}
-
-func TestBadFile(t *testing.T) {
-	file, err := ioutil.ReadFile("testdata/get-deps/bad.json")
-	assert.NoError(t, err)
-
-	testEnv := newMockPipenv(file, nil)
-
-	deps, err := testEnv.Deps()
-	assert.Zero(t, deps)
-	assert.EqualError(t, err, "could not unmarshall JSON into dependency list: json: cannot unmarshal string into Go value of type []pipenv.dependency")
 }
 
 func findPackage(packages map[pkg.ID]pkg.Package, name, revision string) pkg.Package {

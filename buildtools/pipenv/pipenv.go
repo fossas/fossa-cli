@@ -14,13 +14,13 @@ type Pipenv interface {
 	Deps() (graph.Deps, error)
 }
 
-// Executable allows a custom DataAccess function to be used by Deps().
+// Executable is a proxy to the pipenv build tools data access functionality.
 type Executable interface {
-	DataAccess(string) (string, error)
+	GraphJSON() (string, error)
 }
 
-// SystemPipenv implements Pipenv.
-type SystemPipenv struct {
+// PipenvCmd implements Pipenv.
+type PipenvCmd struct {
 	PipenvExec Executable
 }
 
@@ -36,18 +36,18 @@ type dependency struct {
 	Dependencies []dependency
 }
 
-// New returns a new Pipenv object used for JSON data retrieval.
+// New returns a new Pipenv instance that controls data access.
 func New() Pipenv {
-	return SystemPipenv{
+	return PipenvCmd{
 		PipenvExec: EnvironmentData{},
 	}
 }
 
 // Deps returns the list of imports and associated package graph
 // using the data from p.PipenvExec.DataAccess.
-func (p SystemPipenv) Deps() (graph.Deps, error) {
+func (p PipenvCmd) Deps() (graph.Deps, error) {
 	depGraph := graph.Deps{}
-	rawJSON, err := p.PipenvExec.DataAccess("")
+	rawJSON, err := p.PipenvExec.GraphJSON()
 	if err != nil {
 		return depGraph, err
 	}
@@ -57,8 +57,8 @@ func (p SystemPipenv) Deps() (graph.Deps, error) {
 		return depGraph, err
 	}
 
-	depGraph.Direct = importsFromDependencies(deps)
-	depGraph.Transitive = graphFromDependencies(deps)
+	depGraph.Direct = getDirectDeps(deps)
+	depGraph.Transitive = getTransitiveDeps(deps)
 	return depGraph, nil
 }
 
@@ -66,26 +66,24 @@ func getDependencies(graphJSONFile string) ([]dependency, error) {
 	var depList []dependency
 	err := json.Unmarshal([]byte(graphJSONFile), &depList)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not unmarshall JSON into dependency list")
+		return nil, errors.Wrap(err, "Could not unmarshall JSON into dependency list")
 	}
 	return depList, nil
 }
 
-// DataAccess returns the output from `pipenv graph --json-tree`
-func (data EnvironmentData) DataAccess(dirname string) (string, error) {
+// GraphJSON returns the output from `pipenv graph --json-tree`.
+func (data EnvironmentData) GraphJSON() (string, error) {
 	out, _, err := exec.Run(exec.Cmd{
 		Name: "pipenv",
 		Argv: []string{"graph", "--json-tree"},
-		Dir:  dirname,
 	})
-
 	if err != nil {
-		err = errors.Wrapf(err, "could not run `pipenv graph --json-tree` within the current directory: %+s", dirname)
+		err = errors.Wrap(err, "Could not run `pipenv graph --json-tree` within the current directory")
 	}
 	return out, err
 }
 
-func importsFromDependencies(depList []dependency) []pkg.Import {
+func getDirectDeps(depList []dependency) []pkg.Import {
 	var imports []pkg.Import
 	for _, dep := range depList {
 		imports = append(imports, pkg.Import{
@@ -100,7 +98,7 @@ func importsFromDependencies(depList []dependency) []pkg.Import {
 	return imports
 }
 
-func graphFromDependencies(directDeps []dependency) map[pkg.ID]pkg.Package {
+func getTransitiveDeps(directDeps []dependency) map[pkg.ID]pkg.Package {
 	graph := make(map[pkg.ID]pkg.Package)
 	for _, dep := range directDeps {
 		id := pkg.ID{
