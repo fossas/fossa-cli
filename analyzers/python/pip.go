@@ -56,7 +56,7 @@ func flattenTree(graph map[pkg.ID]pkg.Package, tree pip.DepTree) {
 		}
 		// Get direct imports.
 		var imports []pkg.Import
-		for _, i := range tree.Dependencies {
+		for _, i := range dep.Dependencies {
 			imports = append(imports, pkg.Import{
 				Resolved: pkg.ID{
 					Type:     pkg.Python,
