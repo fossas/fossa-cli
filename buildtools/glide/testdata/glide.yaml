@@ -1,0 +1,5 @@
+package: test/glide
+import:
+- package: rsc.io/letsencrypt
+  repo: fossas/privatefork
+- package: fossas/package-one
