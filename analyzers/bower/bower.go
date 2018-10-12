@@ -193,7 +193,7 @@ func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p bower.Package) {
 		}
 		// Get direct imports.
 		var imports []pkg.Import
-		for name, i := range p.Dependencies {
+		for name, i := range dep.Dependencies {
 			imports = append(imports, pkg.Import{
 				Target: i.PkgMeta.TargetName + "@" + i.PkgMeta.TargetVersion,
 				Resolved: pkg.ID{
