@@ -37,7 +37,7 @@ func New(dirname string) Pipenv {
 	}
 }
 
-// Deps returns the dependencies of a pipenv project
+// Deps returns the dependencies of a pipenv project.
 func (p PipenvCmd) Deps() (graph.Deps, error) {
 	depGraph := graph.Deps{}
 	rawJSON, err := p.Graph(p.Dir)
