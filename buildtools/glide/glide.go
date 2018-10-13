@@ -20,6 +20,7 @@ type Import struct {
 	Name        string
 	Version     string
 	Subpackages []string
+	Repo        string
 }
 
 // A Lockfile contains the contents of a glide lockfile. Lockfiles are resolvers.
@@ -34,11 +35,16 @@ type Lockfile struct {
 
 // Resolve returns the revision of an imported Go package contained within the
 // lockfile. If the package is not found, buildtools.ErrNoRevisionForPackage is
-// returned.
+// returned. If the revision has an aliased location, that is returned in place of the
+// existing name.
 func (l Lockfile) Resolve(importpath string) (pkg.Import, error) {
 	rev, ok := l.normalized[importpath]
 	if !ok {
 		return pkg.Import{}, buildtools.ErrNoRevisionForPackage
+	}
+
+	if rev.Resolved.Location != "" {
+		rev.Resolved.Name = rev.Resolved.Location
 	}
 	return rev, nil
 }
@@ -66,7 +72,7 @@ func New(dirname string) (Lockfile, error) {
 					Type:     pkg.Go,
 					Name:     importpath,
 					Revision: project.Version,
-					Location: "",
+					Location: project.Repo,
 				},
 			}
 		}
@@ -78,7 +84,7 @@ func New(dirname string) (Lockfile, error) {
 				Type:     pkg.Go,
 				Name:     project.Name,
 				Revision: project.Version,
-				Location: "",
+				Location: project.Repo,
 			},
 		}
 	}

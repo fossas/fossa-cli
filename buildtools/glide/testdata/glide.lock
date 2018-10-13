@@ -1,0 +1,8 @@
+hash: 12345
+updated: 2018-10-12T14:37:49.968644-07:00
+imports:
+- name: fossas/package-one
+  version: 1000
+- name: rsc.io/letsencrypt
+  version: 2000
+  repo: fossas/privatefork
