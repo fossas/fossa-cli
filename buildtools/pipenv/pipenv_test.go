@@ -14,7 +14,7 @@ import (
 // newMockPipenv constructs a pipenv.PipenvCmd with a custom Graph function.
 func newMockPipenv(file []byte, err error) pipenv.PipenvCmd {
 	return pipenv.PipenvCmd{
-		Graph: func() (string, error) {
+		Graph: func(string) (string, error) {
 			return string(file), err
 		},
 	}

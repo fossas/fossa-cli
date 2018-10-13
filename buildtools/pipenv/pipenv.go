@@ -9,17 +9,18 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-// Pipenv enables python.go to use a custom Deps() function for testing.
+// Pipenv defines the interface for all pipenv tool implementation.
 type Pipenv interface {
 	Deps() (graph.Deps, error)
 }
 
-// PipenvCmd controls the data access function for Pipenv.
+// PipenvCmd implements Pipenv by parsing command output.
 type PipenvCmd struct {
-	Graph func() (string, error)
+	Dir   string
+	Graph func(dir string) (string, error)
 }
 
-// dependency is used to unmarshall the output from `pipenv graph --json-tree`
+// dependency is used to unmarshal the output from `pipenv graph --json-tree`
 // and store an object representing an imported dependency.
 type dependency struct {
 	Package      string `json:"package_name"`
@@ -28,18 +29,18 @@ type dependency struct {
 	Dependencies []dependency
 }
 
-// New returns a new Pipenv instance that controls data access.
-func New() Pipenv {
+// New constructs a Pipenv instance that calls the pipenv build tool.
+func New(dirname string) Pipenv {
 	return PipenvCmd{
+		Dir:   dirname,
 		Graph: GraphJSON,
 	}
 }
 
-// Deps returns the list of imports and associated package graph
-// using the data from p.PipenvExec.DataAccess.
+// Deps returns the dependencies of a pipenv project
 func (p PipenvCmd) Deps() (graph.Deps, error) {
 	depGraph := graph.Deps{}
-	rawJSON, err := p.Graph()
+	rawJSON, err := p.Graph(p.Dir)
 	if err != nil {
 		return depGraph, err
 	}
@@ -64,10 +65,11 @@ func getDependencies(graphJSONFile string) ([]dependency, error) {
 }
 
 // GraphJSON returns the output from `pipenv graph --json-tree`.
-func GraphJSON() (string, error) {
+func GraphJSON(dirname string) (string, error) {
 	out, _, err := exec.Run(exec.Cmd{
 		Name: "pipenv",
 		Argv: []string{"graph", "--json-tree"},
+		Dir:  dirname,
 	})
 	if err != nil {
 		err = errors.Wrap(err, "Could not run `pipenv graph --json-tree` within the current directory")

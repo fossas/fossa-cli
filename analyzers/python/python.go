@@ -61,7 +61,7 @@ func New(m module.Module) (*Analyzer, error) {
 		PythonCmd:     pythonCmd,
 		PythonVersion: pythonVersion,
 
-		Pipenv: pipenv.New(),
+		Pipenv: pipenv.New(m.Dir),
 		Pip: pip.Pip{
 			Cmd:       pipCmd,
 			PythonCmd: pythonCmd,
