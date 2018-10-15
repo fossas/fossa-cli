@@ -132,6 +132,40 @@ func Do(modules []module.Module) (analyzed []module.Module, err error) {
 	return analyzed, err
 }
 
+func uploadAnalysisV1(normalized []fossa.SourceUnit) error {
+	display.InProgress("Uploading analysis...")
+
+	uploadBody := fossa.V1UploadBody{
+		Analysis: normalized,
+	}
+
+	uploadBody.Project.Id = config.Project()
+	uploadBody.Project.Team = config.Team()
+	uploadBody.Project.Url = config.ProjectURL()
+	uploadBody.Project.Title = config.Title()
+	uploadBody.Project.Jira = config.JIRAProjectKey()
+
+	uploadBody.Revision.Link = config.Link()
+	uploadBody.Revision.Id = config.Revision()
+
+	uploadBody.Vcs.Reference = config.Branch()
+
+	if config.GitVcsExists() {
+		uploadBody.Vcs.Type = "git"
+	} else {
+		uploadBody.Vcs.Type = "none"
+	}
+
+	locator, err := fossa.UploadV1(uploadBody)
+	display.ClearProgress()
+	if err != nil {
+		log.Fatalf("Error during upload: %s", err.Error())
+		return err
+	}
+	fmt.Println(locator.ReportURL())
+	return nil
+}
+
 func uploadAnalysis(normalized []fossa.SourceUnit) error {
 	display.InProgress("Uploading analysis...")
 	locator, err := fossa.Upload(

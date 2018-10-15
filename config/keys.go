@@ -86,6 +86,10 @@ func Revision() string {
 	return TryStrings(StringFlag(flags.Revision), file.Revision(), inferred)
 }
 
+func GitVcsExists() bool {
+	return repo != nil
+}
+
 func Branch() string {
 	inferred := ""
 	if repo != nil {
