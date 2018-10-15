@@ -9,19 +9,18 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-// Pipenv defines the interface for all pipenv tool implementation.
+// Pipenv defines the interface for all pipenv tool implementations.
 type Pipenv interface {
 	Deps() (graph.Deps, error)
 }
 
-// PipenvCmd implements Pipenv by parsing command output.
-type PipenvCmd struct {
+// Cmd implements Pipenv by parsing command output.
+type Cmd struct {
 	Dir   string
 	Graph func(dir string) (string, error)
 }
 
-// dependency is used to unmarshal the output from `pipenv graph --json-tree`
-// and store an object representing an imported dependency.
+// dependency is used to unmarshal the output from `pipenv graph --json-tree`.
 type dependency struct {
 	Package      string `json:"package_name"`
 	Resolved     string `json:"installed_version"`
@@ -31,14 +30,14 @@ type dependency struct {
 
 // New constructs a Pipenv instance that calls the pipenv build tool.
 func New(dirname string) Pipenv {
-	return PipenvCmd{
+	return Cmd{
 		Dir:   dirname,
 		Graph: GraphJSON,
 	}
 }
 
 // Deps returns the dependencies of a pipenv project.
-func (p PipenvCmd) Deps() (graph.Deps, error) {
+func (p Cmd) Deps() (graph.Deps, error) {
 	depGraph := graph.Deps{}
 	rawJSON, err := p.Graph(p.Dir)
 	if err != nil {
@@ -55,11 +54,11 @@ func (p PipenvCmd) Deps() (graph.Deps, error) {
 	return depGraph, nil
 }
 
-func getDependencies(graphJSONFile string) ([]dependency, error) {
+func getDependencies(graphJSON string) ([]dependency, error) {
 	var depList []dependency
-	err := json.Unmarshal([]byte(graphJSONFile), &depList)
+	err := json.Unmarshal([]byte(graphJSON), &depList)
 	if err != nil {
-		return nil, errors.Wrap(err, "Could not unmarshall JSON into dependency list")
+		return nil, errors.Wrap(err, "Could not unmarshal JSON into dependency list")
 	}
 	return depList, nil
 }

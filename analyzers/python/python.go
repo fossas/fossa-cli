@@ -159,10 +159,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		}, nil
 	case "pipenv":
 		depGraph, err := a.Pipenv.Deps()
-		if err != nil {
-			return depGraph, err
-		}
-		return depGraph, nil
+		return depGraph, err
 	case "requirements":
 		fallthrough
 	default:

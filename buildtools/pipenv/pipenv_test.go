@@ -11,15 +11,6 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-// newMockPipenv constructs a pipenv.PipenvCmd with a custom Graph function.
-func newMockPipenv(file []byte, err error) pipenv.PipenvCmd {
-	return pipenv.PipenvCmd{
-		Graph: func(string) (string, error) {
-			return string(file), err
-		},
-	}
-}
-
 /*
 	├── a@1.0.0
 	└─┬ b@2.0.0
@@ -30,7 +21,7 @@ func newMockPipenv(file []byte, err error) pipenv.PipenvCmd {
 func TestDirectDeps(t *testing.T) {
 	file, err := ioutil.ReadFile("testdata/get-deps/pipenv-graph-json-tree.json")
 	assert.NoError(t, err)
-	testEnv := newMockPipenv(file, nil)
+	testEnv := Mock(file, nil)
 
 	deps, error := testEnv.Deps()
 	assert.NoError(t, error)
@@ -40,13 +31,12 @@ func TestDirectDeps(t *testing.T) {
 	assert.Equal(t, 2, len(imports))
 	assertImport(t, imports, "a", "1.0.0")
 	assertImport(t, imports, "b", "2.0.0")
-
 }
 
 func TestTransitiveDeps(t *testing.T) {
 	file, err := ioutil.ReadFile("testdata/get-deps/pipenv-graph-json-tree.json")
 	assert.NoError(t, err)
-	testEnv := newMockPipenv(file, nil)
+	testEnv := Mock(file, nil)
 
 	deps, error := testEnv.Deps()
 	assert.NoError(t, error)
@@ -80,11 +70,20 @@ func TestTransitiveDeps(t *testing.T) {
 }
 
 func TestNoFile(t *testing.T) {
-	testEnv := newMockPipenv([]byte{}, errors.New("test error"))
+	testEnv := Mock([]byte{}, errors.New("test error"))
 
 	deps, err := testEnv.Deps()
 	assert.Zero(t, deps)
 	assert.EqualError(t, err, "test error")
+}
+
+// Mock constructs a pipenv.Cmd using mock build tool output.
+func Mock(file []byte, err error) pipenv.Cmd {
+	return pipenv.Cmd{
+		Graph: func(string) (string, error) {
+			return string(file), err
+		},
+	}
 }
 
 func findPackage(packages map[pkg.ID]pkg.Package, name, revision string) pkg.Package {
