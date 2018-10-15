@@ -34,6 +34,7 @@ type V1UploadBody struct {
 
 // Upload uploads a project's analysis.
 func UploadV1(uploadBody V1UploadBody) (Locator, error) {
+	log.Info("Uploading build using API v1")
 	// Check preconditions.
 	if uploadBody.Revision.Id == "" {
 		return Locator{}, errors.New("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")

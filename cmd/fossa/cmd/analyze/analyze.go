@@ -140,28 +140,24 @@ func uploadAnalysis(normalized []fossa.SourceUnit) error {
 
 	// lists out all compatible versions, where versions listed earlier in the list should be preferred to be used over later appearing versions
 	compatibleVersionsByPreference := []string{"v1", "v0"}
-	var selectedApiVersion string
 	for _, compatibleVersion := range compatibleVersionsByPreference {
-		if selectedApiVersion != "" {
-			break
-		}
 		for _, supportedVersion := range supportedApiVersions {
 			if supportedVersion == compatibleVersion {
-				selectedApiVersion = supportedVersion
+				switch supportedVersion {
+				case "v1":
+					return uploadAnalysisV1(normalized)
+				case "v0":
+					fallthrough
+				default:
+					return uploadAnalysisV0(normalized)
+				}
 			}
-			break
 		}
 	}
 
-	switch selectedApiVersion {
-	case "v1":
-		return uploadAnalysisV1(normalized)
-	case "v0":
-		fallthrough
-	default:
-		return uploadAnalysisV0(normalized)
-
-	}
+	// default to using the old api when nothing is found
+	log.Warn("Could not find any compatible and supported API versions. Attempting to use the v0 upload path.")
+	return uploadAnalysisV0(normalized)
 }
 
 func uploadAnalysisV1(normalized []fossa.SourceUnit) error {

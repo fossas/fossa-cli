@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/apex/log"
 	"github.com/pkg/errors"
 )
 
@@ -16,10 +17,11 @@ func GetSupportedApiVersions() ([]string, error) {
 
 	res, statusCode, err := Get(endpoint.String())
 	if err != nil {
-		return []string{}, errors.Wrap(err, "Could not get supported API versions")
+		return []string{}, errors.Wrap(err, "Could not get supported API versions.")
 	}
 	// If we can't find the endpoint, assume that v0 is supported (case of releasing CLI before core support is ready)
 	if statusCode == 404 {
+		log.Info("Could not find the supported versions endpoint, defaulting to v0 upload path.")
 		return []string{"v0"}, nil
 	}
 
