@@ -54,15 +54,6 @@ func (p Cmd) Deps() (graph.Deps, error) {
 	return depGraph, nil
 }
 
-func getDependencies(graphJSON string) ([]dependency, error) {
-	var depList []dependency
-	err := json.Unmarshal([]byte(graphJSON), &depList)
-	if err != nil {
-		return nil, errors.Wrap(err, "Could not unmarshal JSON into dependency list")
-	}
-	return depList, nil
-}
-
 // GraphJSON returns the output from `pipenv graph --json-tree`.
 func GraphJSON(dirname string) (string, error) {
 	out, _, err := exec.Run(exec.Cmd{
@@ -74,6 +65,15 @@ func GraphJSON(dirname string) (string, error) {
 		err = errors.Wrap(err, "Could not run `pipenv graph --json-tree` within the current directory")
 	}
 	return out, err
+}
+
+func getDependencies(graphJSON string) ([]dependency, error) {
+	var depList []dependency
+	err := json.Unmarshal([]byte(graphJSON), &depList)
+	if err != nil {
+		return nil, errors.Wrap(err, "Could not unmarshal JSON into dependency list")
+	}
+	return depList, nil
 }
 
 func getDirectDeps(depList []dependency) []pkg.Import {
