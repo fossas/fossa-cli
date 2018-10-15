@@ -132,6 +132,38 @@ func Do(modules []module.Module) (analyzed []module.Module, err error) {
 	return analyzed, err
 }
 
+func uploadAnalysis(normalized []fossa.SourceUnit) error {
+	supportedApiVersions, err := fossa.GetSupportedApiVersions()
+	if err != nil {
+		return err
+	}
+
+	// lists out all compatible versions, where versions listed earlier in the list should be preferred to be used over later appearing versions
+	compatibleVersionsByPreference := []string{"v1", "v0"}
+	var selectedApiVersion string
+	for _, compatibleVersion := range compatibleVersionsByPreference {
+		if selectedApiVersion != "" {
+			break
+		}
+		for _, supportedVersion := range supportedApiVersions {
+			if supportedVersion == compatibleVersion {
+				selectedApiVersion = supportedVersion
+			}
+			break
+		}
+	}
+
+	switch selectedApiVersion {
+	case "v1":
+		return uploadAnalysisV1(normalized)
+	case "v0":
+		fallthrough
+	default:
+		return uploadAnalysisV0(normalized)
+
+	}
+}
+
 func uploadAnalysisV1(normalized []fossa.SourceUnit) error {
 	display.InProgress("Uploading analysis...")
 
@@ -166,7 +198,7 @@ func uploadAnalysisV1(normalized []fossa.SourceUnit) error {
 	return nil
 }
 
-func uploadAnalysis(normalized []fossa.SourceUnit) error {
+func uploadAnalysisV0(normalized []fossa.SourceUnit) error {
 	display.InProgress("Uploading analysis...")
 	locator, err := fossa.Upload(
 		config.Title(),
