@@ -57,7 +57,7 @@ func UploadV1(uploadBody V1UploadBody) (Locator, error) {
 
 	uploadBody.Meta.v = version.ShortString()
 
-	endpoint, err := url.Parse("/api/cli/v1/upload_build")
+	endpoint, err := url.Parse("/api/cli/v1/build")
 	if err != nil {
 		return Locator{}, errors.New("Failed to generate upload URL")
 	}
