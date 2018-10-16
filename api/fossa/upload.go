@@ -5,15 +5,12 @@ import (
 
 	"github.com/apex/log"
 
-	"github.com/fossas/fossa-cli/api/fossa"
-	"github.com/fossas/fossa-cli/api/fossa/v0"
-	"github.com/fossas/fossa-cli/api/fossa/v1"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/config"
 )
 
-func UploadAnalysis(normalized []fossa.SourceUnit) error {
-	latestSupportedVersion, err := fossa.GetLatestSupportedAPIVersion()
+func UploadAnalysis(normalized []SourceUnit) error {
+	latestSupportedVersion, err := GetLatestSupportedAPIVersion()
 	if err != nil {
 		return err
 	}
@@ -32,10 +29,10 @@ func UploadAnalysis(normalized []fossa.SourceUnit) error {
 	}
 }
 
-func uploadAnalysisV1(normalized []fossa.SourceUnit) error {
+func uploadAnalysisV1(normalized []SourceUnit) error {
 	display.InProgress("Uploading analysis...")
 
-	uploadBody := v1.V1UploadBody{
+	uploadBody := V1UploadBody{
 		Analysis: normalized,
 	}
 
@@ -56,7 +53,7 @@ func uploadAnalysisV1(normalized []fossa.SourceUnit) error {
 		uploadBody.VCS.Type = "none"
 	}
 
-	locator, err := v1.Upload(uploadBody)
+	locator, err := UploadV1(uploadBody)
 	display.ClearProgress()
 	if err != nil {
 		log.Fatalf("Error during upload: %s", err.Error())
@@ -65,16 +62,16 @@ func uploadAnalysisV1(normalized []fossa.SourceUnit) error {
 	return nil
 }
 
-func uploadAnalysisV0(normalized []fossa.SourceUnit) error {
+func uploadAnalysisV0(normalized []SourceUnit) error {
 	display.InProgress("Uploading analysis...")
-	locator, err := v0.Upload(
+	locator, err := UploadV0(
 		config.Title(),
-		fossa.Locator{
+		Locator{
 			Fetcher:  config.Fetcher(),
 			Project:  config.Project(),
 			Revision: config.Revision(),
 		},
-		v0.UploadOptions{
+		UploadOptions{
 			Branch:         config.Branch(),
 			ProjectURL:     config.ProjectURL(),
 			JIRAProjectKey: config.JIRAProjectKey(),
