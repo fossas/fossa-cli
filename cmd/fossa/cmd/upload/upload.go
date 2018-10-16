@@ -26,15 +26,14 @@ import (
 	"os"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
-	"github.com/fossas/fossa-cli/config"
 )
 
 // Command-specific flags for `fossa upload`.
@@ -147,19 +146,5 @@ func Run(ctx *cli.Context) {
 // Do performs a SourceUnit upload of the current project without other side
 // effects.
 func Do(data []fossa.SourceUnit) (fossa.Locator, error) {
-	return fossa.Upload(
-		config.Title(),
-		fossa.Locator{
-			Fetcher:  config.Fetcher(),
-			Project:  config.Project(),
-			Revision: config.Revision(),
-		},
-		fossa.UploadOptions{
-			Branch:         config.Branch(),
-			ProjectURL:     config.ProjectURL(),
-			JIRAProjectKey: config.JIRAProjectKey(),
-			Link:           config.Link(),
-			Team:           config.Team(),
-		},
-		data)
+	return fossa.UploadAnalysis(data)
 }

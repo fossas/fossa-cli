@@ -34,7 +34,7 @@ type UploadOptions struct {
 }
 
 // Upload uploads a project's analysis.
-func Upload(title string, locator fossa.Locator, options UploadOptions, data []fossa.SourceUnit) (Locator, error) {
+func Upload(title string, locator fossa.Locator, options UploadOptions, data []fossa.SourceUnit) (fossa.Locator, error) {
 	log.Debug("Uploading build using API v0")
 	// Check preconditions.
 	if locator.Fetcher == "git" && locator.Revision == "" {
@@ -44,7 +44,7 @@ func Upload(title string, locator fossa.Locator, options UploadOptions, data []f
 		return fossa.Locator{}, errors.New("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
 	}
 	if len(data) == 0 {
-		return Locator{}, errors.New("No data to upload")
+		return fossa.Locator{}, errors.New("No data to upload")
 	}
 
 	payload, err := json.Marshal(data)
@@ -86,7 +86,7 @@ func Upload(title string, locator fossa.Locator, options UploadOptions, data []f
 	}
 	log.WithField("endpoint", endpoint.String()).Debug("uploading build")
 
-	res, statusCode, err := Post(endpoint.String(), payload)
+	res, statusCode, err := fossa.Post(endpoint.String(), payload)
 	log.WithField("response", res).Debug("build upload completed")
 
 	if statusCode == 428 {
@@ -112,5 +112,5 @@ func Upload(title string, locator fossa.Locator, options UploadOptions, data []f
 		return fossa.Locator{}, errors.Errorf("bad response: %s", res)
 	}
 
-	return ReadLocator(unmarshalled.Locator), nil
+	return fossa.ReadLocator(unmarshalled.Locator), nil
 }
