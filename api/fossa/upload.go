@@ -34,7 +34,7 @@ type UploadOptions struct {
 
 // Upload uploads a project's analysis.
 func Upload(title string, locator Locator, options UploadOptions, data []SourceUnit) (Locator, error) {
-	log.Info("Uploading build using API v0")
+	log.Debug("Uploading build using API v0")
 	// Check preconditions.
 	if locator.Fetcher == "git" && locator.Revision == "" {
 		return Locator{}, errors.New("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
