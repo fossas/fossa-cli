@@ -170,7 +170,7 @@ func uploadAnalysisV1(normalized []fossa.SourceUnit) error {
 
 	uploadBody.Vcs.Reference = config.Branch()
 
-	if config.GitVcsExists() {
+	if config.VCS() != nil {
 		uploadBody.Vcs.Type = "git"
 	} else {
 		uploadBody.Vcs.Type = "none"
