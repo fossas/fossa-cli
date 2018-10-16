@@ -1,18 +1,16 @@
 package fossa
 
 import (
-	"fmt"
-
 	"github.com/apex/log"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/config"
 )
 
-func UploadAnalysis(normalized []SourceUnit) error {
+func UploadAnalysis(normalized []SourceUnit) (Locator, error) {
 	latestSupportedVersion, err := GetLatestSupportedAPIVersion()
 	if err != nil {
-		return err
+		return Locator{}, err
 	}
 
 	switch latestSupportedVersion {
@@ -29,7 +27,7 @@ func UploadAnalysis(normalized []SourceUnit) error {
 	}
 }
 
-func uploadAnalysisV1(normalized []SourceUnit) error {
+func uploadAnalysisV1(normalized []SourceUnit) (Locator, error) {
 	display.InProgress("Uploading analysis...")
 
 	uploadBody := V1UploadBody{
@@ -58,11 +56,11 @@ func uploadAnalysisV1(normalized []SourceUnit) error {
 	if err != nil {
 		log.Fatalf("Error during upload: %s", err.Error())
 	}
-	fmt.Println(locator.ReportURL())
-	return nil
+	// fmt.Println(locator.ReportURL())
+	return locator, nil
 }
 
-func uploadAnalysisV0(normalized []SourceUnit) error {
+func uploadAnalysisV0(normalized []SourceUnit) (Locator, error) {
 	display.InProgress("Uploading analysis...")
 	locator, err := UploadV0(
 		config.Title(),
@@ -84,6 +82,6 @@ func uploadAnalysisV0(normalized []SourceUnit) error {
 		log.Fatalf("Error during upload: %s", err.Error())
 		return err
 	}
-	fmt.Println(locator.ReportURL())
-	return nil
+	// fmt.Println(locator.ReportURL())
+	return locator, nil
 }
