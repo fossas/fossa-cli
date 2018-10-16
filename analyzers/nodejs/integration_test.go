@@ -37,7 +37,7 @@ func TestNodejsIntegration(t *testing.T) {
 				Type:        pkg.NodeJS,
 				Name:        proj.Name,
 				Options:     proj.ModuleOptions,
-				BuildTarget: filepath.Join(nodeAnalyzerFixtureDir, proj.Name, "package.json"),
+				BuildTarget: filepath.Join(nodeAnalyzerFixtureDir, proj.Name),
 			}
 
 			analyzer, err := analyzers.New(module)
