@@ -2,7 +2,6 @@ package fossa
 
 import (
 	"encoding/json"
-	"net/url"
 
 	"github.com/pkg/errors"
 
@@ -57,13 +56,7 @@ func UploadV1(uploadBody V1UploadBody) (Locator, error) {
 
 	uploadBody.Meta.v = version.ShortString()
 
-	endpoint, err := url.Parse("/api/cli/v1/build")
-	if err != nil {
-		return Locator{}, errors.New("Failed to generate upload URL")
-	}
-	log.WithField("endpoint", endpoint.String()).Debug("uploading build")
-
-	res, statusCode, err := Post(endpoint.String(), payload)
+	res, statusCode, err := Post("/api/cli/v1/build", payload)
 	log.WithField("response", res).Debug("build upload completed")
 
 	if statusCode == 428 {

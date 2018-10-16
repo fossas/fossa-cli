@@ -180,7 +180,6 @@ func uploadAnalysisV1(normalized []fossa.SourceUnit) error {
 	display.ClearProgress()
 	if err != nil {
 		log.Fatalf("Error during upload: %s", err.Error())
-		return err
 	}
 	fmt.Println(locator.ReportURL())
 	return nil
