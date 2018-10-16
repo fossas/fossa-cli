@@ -30,8 +30,8 @@ func TestNestedModules(t *testing.T) {
 
 /* Ignored Module Order
 	└─┬ ignored-modules
-	  ├── node_modules
-      └── bower_components
+  	  ├── node_modules
+  	  └── bower_components
 */
 func TestNodeModulesAndBowerIgnored(t *testing.T) {
 	var expectedModules []module.Module
