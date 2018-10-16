@@ -1,12 +1,13 @@
-package fossa
+package v0
 
 import (
 	"encoding/json"
 	"net/url"
 
+	"github.com/apex/log"
 	"github.com/pkg/errors"
 
-	"github.com/apex/log"
+	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/version"
 )
 
@@ -33,14 +34,14 @@ type UploadOptions struct {
 }
 
 // Upload uploads a project's analysis.
-func Upload(title string, locator Locator, options UploadOptions, data []SourceUnit) (Locator, error) {
+func Upload(title string, locator fossa.Locator, options UploadOptions, data []fossa.SourceUnit) (Locator, error) {
 	log.Debug("Uploading build using API v0")
 	// Check preconditions.
 	if locator.Fetcher == "git" && locator.Revision == "" {
-		return Locator{}, errors.New("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
+		return fossa.Locator{}, errors.New("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
 	}
 	if locator.Project == "" {
-		return Locator{}, errors.New("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
+		return fossa.Locator{}, errors.New("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
 	}
 	if len(data) == 0 {
 		return Locator{}, errors.New("No data to upload")
@@ -48,7 +49,7 @@ func Upload(title string, locator Locator, options UploadOptions, data []SourceU
 
 	payload, err := json.Marshal(data)
 	if err != nil {
-		return Locator{}, errors.Wrap(err, "could not marshal upload data")
+		return fossa.Locator{}, errors.Wrap(err, "could not marshal upload data")
 	}
 	log.WithFields(log.Fields{
 		"modules": data,
@@ -81,7 +82,7 @@ func Upload(title string, locator Locator, options UploadOptions, data []SourceU
 
 	endpoint, err := url.Parse("/api/builds/custom?" + q.Encode())
 	if err != nil {
-		return Locator{}, errors.New("Failed to generate upload URL")
+		return fossa.Locator{}, errors.New("Failed to generate upload URL")
 	}
 	log.WithField("endpoint", endpoint.String()).Debug("uploading build")
 
@@ -90,11 +91,11 @@ func Upload(title string, locator Locator, options UploadOptions, data []SourceU
 
 	if statusCode == 428 {
 		// TODO: handle "Managed Project" workflow
-		return Locator{}, errors.New("invalid project or revision; make sure this version is published and FOSSA has access to your repo (to submit a custom project, set Fetcher to `custom` in `.fossa.yml`)")
+		return fossa.Locator{}, errors.New("invalid project or revision; make sure this version is published and FOSSA has access to your repo (to submit a custom project, set Fetcher to `custom` in `.fossa.yml`)")
 	} else if statusCode == 403 {
-		return Locator{}, errors.New("you do not have permission to upload builds for this project")
+		return fossa.Locator{}, errors.New("you do not have permission to upload builds for this project")
 	} else if err != nil {
-		return Locator{}, errors.Wrap(err, "could not upload")
+		return fossa.Locator{}, errors.Wrap(err, "could not upload")
 	}
 	log.Debug("build upload succeeded")
 
@@ -104,11 +105,11 @@ func Upload(title string, locator Locator, options UploadOptions, data []SourceU
 	}
 	err = json.Unmarshal([]byte(res), &unmarshalled)
 	if err != nil || unmarshalled.Error != "" {
-		return Locator{}, errors.Errorf("Error response from API: %s", res)
+		return fossa.Locator{}, errors.Errorf("Error response from API: %s", res)
 	}
 
 	if unmarshalled.Locator == "" {
-		return Locator{}, errors.Errorf("bad response: %s", res)
+		return fossa.Locator{}, errors.Errorf("bad response: %s", res)
 	}
 
 	return ReadLocator(unmarshalled.Locator), nil

@@ -3,11 +3,13 @@ package analyze
 import (
 	"fmt"
 
+	"github.com/apex/log"
 	"github.com/urfave/cli"
 
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/analyzers"
 	"github.com/fossas/fossa-cli/api/fossa"
+	"github.com/fossas/fossa-cli/api/fossa/v0"
+	"github.com/fossas/fossa-cli/api/fossa/v1"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
@@ -155,7 +157,7 @@ func uploadAnalysis(normalized []fossa.SourceUnit) error {
 func uploadAnalysisV1(normalized []fossa.SourceUnit) error {
 	display.InProgress("Uploading analysis...")
 
-	uploadBody := fossa.V1UploadBody{
+	uploadBody := v1.V1UploadBody{
 		Analysis: normalized,
 	}
 
@@ -176,7 +178,7 @@ func uploadAnalysisV1(normalized []fossa.SourceUnit) error {
 		uploadBody.VCS.Type = "none"
 	}
 
-	locator, err := fossa.UploadV1(uploadBody)
+	locator, err := v1.Upload(uploadBody)
 	display.ClearProgress()
 	if err != nil {
 		log.Fatalf("Error during upload: %s", err.Error())
@@ -187,14 +189,14 @@ func uploadAnalysisV1(normalized []fossa.SourceUnit) error {
 
 func uploadAnalysisV0(normalized []fossa.SourceUnit) error {
 	display.InProgress("Uploading analysis...")
-	locator, err := fossa.Upload(
+	locator, err := v0.Upload(
 		config.Title(),
 		fossa.Locator{
 			Fetcher:  config.Fetcher(),
 			Project:  config.Project(),
 			Revision: config.Revision(),
 		},
-		fossa.UploadOptions{
+		v0.UploadOptions{
 			Branch:         config.Branch(),
 			ProjectURL:     config.ProjectURL(),
 			JIRAProjectKey: config.JIRAProjectKey(),
