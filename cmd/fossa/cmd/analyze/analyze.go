@@ -168,12 +168,12 @@ func uploadAnalysisV1(normalized []fossa.SourceUnit) error {
 	uploadBody.Revision.Link = config.Link()
 	uploadBody.Revision.Id = config.Revision()
 
-	uploadBody.Vcs.Reference = config.Branch()
+	uploadBody.VCS.Reference = config.Branch()
 
 	if config.VCS() != nil {
-		uploadBody.Vcs.Type = "git"
+		uploadBody.VCS.Type = "git"
 	} else {
-		uploadBody.Vcs.Type = "none"
+		uploadBody.VCS.Type = "none"
 	}
 
 	locator, err := fossa.UploadV1(uploadBody)

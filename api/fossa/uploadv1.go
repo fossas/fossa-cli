@@ -10,7 +10,7 @@ import (
 )
 
 type V1UploadBody struct {
-	Vcs struct {
+	VCS struct {
 		Type      string
 		Reference string
 	}
