@@ -16,12 +16,12 @@ import (
        	├── module-2
       	└── module-3
 */
-func TestDiscoverNestedModules(t *testing.T) {
+func TestNestedModules(t *testing.T) {
 	var expectedModules []module.Module
+	expectedModules = append(expectedModules, newModule("nested-modules", "."))
+	expectedModules = append(expectedModules, newModule("module-1", "module-1"))
 	expectedModules = append(expectedModules, newModule("module-2", "module-1/module-2"))
 	expectedModules = append(expectedModules, newModule("module-3", "module-1/module-3"))
-	expectedModules = append(expectedModules, newModule("module-1", "module-1"))
-	expectedModules = append(expectedModules, newModule("nested-modules", "."))
 
 	modules, err := nodejs.Discover("testdata/nested-modules", make(map[string]interface{}))
 	assert.NoError(t, err)
@@ -30,7 +30,7 @@ func TestDiscoverNestedModules(t *testing.T) {
 
 /* Ignored Module Order
 	└─┬ ignored-modules
-      ├── node_modules
+	  ├── node_modules
       └── bower_components
 */
 func TestNodeModulesAndBowerIgnored(t *testing.T) {
