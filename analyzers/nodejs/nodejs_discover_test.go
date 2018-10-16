@@ -13,8 +13,8 @@ import (
 /* Nested Module Order
 	└─┬ nested-modules
       └─┬ module-1
-       	├── module-2
-      	└── module-3
+        ├── module-2
+        └── module-3
 */
 func TestNestedModules(t *testing.T) {
 	var expectedModules []module.Module
