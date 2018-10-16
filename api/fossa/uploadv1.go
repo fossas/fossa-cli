@@ -3,9 +3,9 @@ package fossa
 import (
 	"encoding/json"
 
+	"github.com/apex/log"
 	"github.com/pkg/errors"
 
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/cmd/fossa/version"
 )
 
