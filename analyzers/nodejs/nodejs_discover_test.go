@@ -11,9 +11,9 @@ import (
 )
 
 /* Nested Module Order
-	└─┬ nested-modules
+    └─┬ nested-modules
       └─┬ module-1
-        ├── module-2
+		├── module-2
         └── module-3
 */
 func TestNestedModules(t *testing.T) {
