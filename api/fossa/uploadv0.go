@@ -10,19 +10,6 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/version"
 )
 
-// Errors related to preconditions.
-var (
-	ErrNoProject   = errors.New("no project provided for upload")
-	ErrNoRevision  = errors.New("no revision provided for upload")
-	ErrNoBuildData = errors.New("no build data to upload")
-)
-
-// Errors resulting from a bad API response.
-var (
-	ErrForbidden            = errors.New("authentication failed (is the API key correct?)")
-	ErrRevisionDoesNotExist = errors.New("revision does not exist (are the project and revision correct and published in FOSSA?)")
-)
-
 // UploadOptions are optional keys that provide extra metadata for an upload.
 type UploadOptions struct {
 	Branch         string
@@ -37,13 +24,13 @@ func UploadV0(title string, locator Locator, options UploadOptions, data []Sourc
 	log.Debug("Uploading build using API v0")
 	// Check preconditions.
 	if locator.Fetcher == "git" && locator.Revision == "" {
-		return Locator{}, errors.New("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.yml`")
+		return Locator{}, ErrRevisionInvalid
 	}
 	if locator.Project == "" {
-		return Locator{}, errors.New("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
+		return Locator{}, ErrProjectIdInvalid
 	}
 	if len(data) == 0 {
-		return Locator{}, errors.New("No data to upload")
+		return Locator{}, ErrEmptyDataUpload
 	}
 
 	payload, err := json.Marshal(data)
@@ -92,7 +79,7 @@ func UploadV0(title string, locator Locator, options UploadOptions, data []Sourc
 		// TODO: handle "Managed Project" workflow
 		return Locator{}, errors.New("invalid project or revision; make sure this version is published and FOSSA has access to your repo (to submit a custom project, set Fetcher to `custom` in `.fossa.yml`)")
 	} else if statusCode == 403 {
-		return Locator{}, errors.New("you do not have permission to upload builds for this project")
+		return Locator{}, ErrForbidden
 	} else if err != nil {
 		return Locator{}, errors.Wrap(err, "could not upload")
 	}

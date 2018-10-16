@@ -1,10 +1,19 @@
 package fossa
 
 import (
+	"errors"
+
 	"github.com/apex/log"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/config"
+)
+
+var (
+	ErrForbidden        = errors.New("you do not have permission to upload builds for this project")
+	ErrEmptyDataUpload  = errors.New("No data to upload")
+	ErrRevisionInvalid  = errors.New("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
+	ErrProjectIdInvalid = errors.New("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
 )
 
 func UploadAnalysis(normalized []SourceUnit) (Locator, error) {

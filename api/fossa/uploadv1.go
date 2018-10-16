@@ -36,13 +36,13 @@ func UploadV1(uploadBody V1UploadBody) (Locator, error) {
 	log.Debug("Uploading build using API v1")
 	// Check preconditions.
 	if uploadBody.Revision.Id == "" {
-		return Locator{}, errors.New("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
+		return Locator{}, ErrRevisionInvalid
 	}
 	if uploadBody.Project.Id == "" {
-		return Locator{}, errors.New("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
+		return Locator{}, ErrProjectIdInvalid
 	}
 	if len(uploadBody.Analysis) == 0 {
-		return Locator{}, errors.New("No data to upload")
+		return Locator{}, ErrEmptyDataUpload
 	}
 
 	payload, err := json.Marshal(uploadBody)
@@ -59,11 +59,8 @@ func UploadV1(uploadBody V1UploadBody) (Locator, error) {
 	res, statusCode, err := Post("/api/cli/v1/build", payload)
 	log.WithField("response", res).Debug("build upload completed")
 
-	if statusCode == 428 {
-		// TODO: handle "Managed Project" workflow
-		return Locator{}, errors.New("invalid project or revision; make sure this version is published and FOSSA has access to your repo (to submit a custom project, set Fetcher to `custom` in `.fossa.yml`)")
-	} else if statusCode == 403 {
-		return Locator{}, errors.New("you do not have permission to upload builds for this project")
+	if statusCode == 403 {
+		return Locator{}, ErrForbidden
 	} else if err != nil {
 		return Locator{}, errors.Wrap(err, "could not upload")
 	}
