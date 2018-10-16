@@ -56,7 +56,6 @@ func uploadAnalysisV1(normalized []SourceUnit) (Locator, error) {
 	if err != nil {
 		log.Fatalf("Error during upload: %s", err.Error())
 	}
-	// fmt.Println(locator.ReportURL())
 	return locator, nil
 }
 
@@ -80,8 +79,7 @@ func uploadAnalysisV0(normalized []SourceUnit) (Locator, error) {
 	display.ClearProgress()
 	if err != nil {
 		log.Fatalf("Error during upload: %s", err.Error())
-		return err
+		return Locator{}, err
 	}
-	// fmt.Println(locator.ReportURL())
 	return locator, nil
 }

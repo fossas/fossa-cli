@@ -75,7 +75,14 @@ func Run(ctx *cli.Context) error {
 		return nil
 	}
 
-	return fossa.UploadAnalysis(normalized)
+	locator, err := fossa.UploadAnalysis(normalized)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(locator.ReportURL())
+
+	return nil
 }
 
 func Do(modules []module.Module) (analyzed []module.Module, err error) {
