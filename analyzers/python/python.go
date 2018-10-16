@@ -13,6 +13,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/fossas/fossa-cli/buildtools/pip"
+	"github.com/fossas/fossa-cli/buildtools/pipenv"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
@@ -23,6 +24,7 @@ type Analyzer struct {
 	PythonCmd     string
 	PythonVersion string
 
+	Pipenv  pipenv.Pipenv
 	Pip     pip.Pip
 	Module  module.Module
 	Options Options
@@ -59,6 +61,7 @@ func New(m module.Module) (*Analyzer, error) {
 		PythonCmd:     pythonCmd,
 		PythonVersion: pythonVersion,
 
+		Pipenv: pipenv.New(m.Dir),
 		Pip: pip.Pip{
 			Cmd:       pipCmd,
 			PythonCmd: pythonCmd,
@@ -154,6 +157,9 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 			Direct:     imports,
 			Transitive: fromImports(imports),
 		}, nil
+	case "pipenv":
+		depGraph, err := a.Pipenv.Deps()
+		return depGraph, err
 	case "requirements":
 		fallthrough
 	default:
