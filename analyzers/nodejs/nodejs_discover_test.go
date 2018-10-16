@@ -17,15 +17,13 @@ import (
         └── module-3
 */
 func TestNestedModules(t *testing.T) {
-	var expectedModules []module.Module
-	expectedModules = append(expectedModules, newModule("nested-modules", "."))
-	expectedModules = append(expectedModules, newModule("module-1", "module-1"))
-	expectedModules = append(expectedModules, newModule("module-2", "module-1/module-2"))
-	expectedModules = append(expectedModules, newModule("module-3", "module-1/module-3"))
-
 	modules, err := nodejs.Discover("testdata/nested-modules", make(map[string]interface{}))
 	assert.NoError(t, err)
-	assert.Equal(t, expectedModules, modules)
+	assert.Equal(t, len(modules), 4)
+	assert.Contains(t, modules, newModule("nested-modules", "."))
+	assert.Contains(t, modules, newModule("module-1", "module-1"))
+	assert.Contains(t, modules, newModule("module-2", "module-1/module-2"))
+	assert.Contains(t, modules, newModule("module-3", "module-1/module-3"))
 }
 
 /* Ignored Module Order
@@ -34,12 +32,10 @@ func TestNestedModules(t *testing.T) {
   	  └── bower_components
 */
 func TestNodeModulesAndBowerIgnored(t *testing.T) {
-	var expectedModules []module.Module
-	expectedModules = append(expectedModules, newModule("ignored-modules", "."))
-
 	modules, err := nodejs.Discover("testdata/ignored-modules", make(map[string]interface{}))
 	assert.NoError(t, err)
-	assert.Equal(t, expectedModules, modules)
+	assert.Equal(t, len(modules), 1)
+	assert.Contains(t, modules, newModule("ignored-modules", "."))
 }
 
 func newModule(name, location string) module.Module {
