@@ -14,7 +14,7 @@ import (
     └─┬ nested-modules
       └─┬ module-1
 		├── module-2
-        └── module-3
+		└── module-3
 */
 func TestNestedModules(t *testing.T) {
 	modules, err := nodejs.Discover("testdata/nested-modules", make(map[string]interface{}))
