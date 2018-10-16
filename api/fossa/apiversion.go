@@ -35,7 +35,7 @@ func getSupportedAPIVersions() ([]string, error) {
 	}
 	// If we can't find the endpoint, assume that v0 is supported (case of releasing CLI before core support is ready)
 	if statusCode == 404 {
-		log.Info("Could not find the supported versions endpoint, defaulting to v0 upload path.")
+		log.Warn("Could not find the supported versions endpoint, defaulting to v0 upload path.")
 		return []string{"v0"}, nil
 	}
 
