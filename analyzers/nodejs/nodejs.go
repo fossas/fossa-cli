@@ -190,7 +190,7 @@ func (a *Analyzer) Build() error {
 // TODO: with significantly more effort, we can eliminate both of these
 // situations.
 func (a *Analyzer) IsBuilt() (bool, error) {
-	a.sanitizeBuildTarget()
+	a.Module.BuildTarget = fixLegacyBuildTarget(a.Module.BuildTarget)
 	log.Debugf("Checking Node.js build: %#v", a.Module)
 
 	manifest, err := npm.FromManifest(a.Module.BuildTarget, "package.json")
@@ -213,7 +213,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	a.sanitizeBuildTarget()
+	a.Module.BuildTarget = fixLegacyBuildTarget(a.Module.BuildTarget)
 	log.Debugf("Running Nodejs analysis: %#v", a.Module)
 	// if npm as a tool does not exist, skip this
 	if a.NPM.Exists() {
@@ -263,16 +263,17 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	return yarn.FromProject(filepath.Join(a.Module.BuildTarget, "package.json"), filepath.Join(a.Module.BuildTarget, "yarn.lock"))
 }
 
-// sanitizeBuildTarget ensures that legacy behavior stays intact but users are warned if it is implemented.
-func (a *Analyzer) sanitizeBuildTarget() {
-	if strings.HasSuffix(a.Module.BuildTarget, "/package.json") {
-		log.Warn("Specifiying the package.json file as a module's target in fossa's config file is no longer supported. Only the directory is neccessary.")
-		a.Module.BuildTarget = strings.TrimSuffix(a.Module.BuildTarget, "/package.json")
+// fixLegacyBuildTarget ensures that legacy behavior stays intact but users are warned if it is implemented.
+func fixLegacyBuildTarget(target string) string {
+	if strings.HasSuffix(target, "/package.json") {
+		log.Warn("Specifying the package.json file as a module's target in fossa's config file is no longer supported. Instead, the target should specify the path to the project folder.")
+		target = strings.TrimSuffix(target, "/package.json")
 	}
-	if strings.HasSuffix(a.Module.BuildTarget, "/") {
-		log.Warn("The provided fossa config file is malformed. Ensure there are no trailings /'s in any of the specified modules' targets.")
-		a.Module.BuildTarget = strings.TrimSuffix(a.Module.BuildTarget, "/")
+	if strings.HasSuffix(target, "/") {
+		log.Warn("Trailing slashes in module targets are not suppoorted.")
+		target = strings.TrimSuffix(target, "/")
 	}
+	return target
 }
 
 // TODO: implement this generically in package graph (Bower also has an
