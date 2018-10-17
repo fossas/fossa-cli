@@ -189,17 +189,25 @@ func Modules() ([]module.Module, error) {
 		return m, nil
 	}
 
-	if l := len(options); l > 0 {
-		log.
-			WithFields(log.Fields{
-				"options": options,
-			}).
-			Warnf(
-				"Found %d options via flag, but modules are being loaded from configuration file. Ignoring options.",
-				len(options),
-			)
+	// TODO: specifying zero modules should be an error (we should add a test for this)
+	return modulesWithOptions(file.Modules(), options), nil
+}
+
+// modulesWithOptions applies command line options to each module and overwrites conflicting options.
+func modulesWithOptions(modules []module.Module, options map[string]interface{}) []module.Module {
+	if len(options) == 0 {
+		return modules
 	}
 
-	// TODO: specifying zero modules should be an error (we should add a test for this)
-	return file.Modules(), nil
+	for index := range modules {
+		if modules[index].Options == nil {
+			modules[index].Options = options
+		} else {
+			for key, val := range options {
+				modules[index].Options[key] = val
+			}
+		}
+	}
+
+	return modules
 }
