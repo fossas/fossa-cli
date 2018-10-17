@@ -266,11 +266,11 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 // sanitizeBuildTarget ensures that legacy behavior stays intact but users are warned if it is implemented.
 func (a *Analyzer) sanitizeBuildTarget() {
 	if strings.HasSuffix(a.Module.BuildTarget, "/package.json") {
-		log.Warn("Specifiying package.json as a module's target in .fossa.yml is no longer supported. Only the directory is neccessary.")
+		log.Warn("Specifiying the package.json file as a module's target in fossa's config file is no longer supported. Only the directory is neccessary.")
 		a.Module.BuildTarget = strings.TrimSuffix(a.Module.BuildTarget, "/package.json")
 	}
 	if strings.HasSuffix(a.Module.BuildTarget, "/") {
-		log.Warn("The provided .fossa.yml file is malformed. Ensure there are no trailings /'s in any of the specified modules' targets.")
+		log.Warn("The provided fossa config file is malformed. Ensure there are no trailings /'s in any of the specified modules' targets.")
 		a.Module.BuildTarget = strings.TrimSuffix(a.Module.BuildTarget, "/")
 	}
 }
