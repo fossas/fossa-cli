@@ -16,6 +16,7 @@ package nodejs
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/apex/log"
 	"github.com/mitchellh/mapstructure"
@@ -189,6 +190,7 @@ func (a *Analyzer) Build() error {
 // TODO: with significantly more effort, we can eliminate both of these
 // situations.
 func (a *Analyzer) IsBuilt() (bool, error) {
+	a.sanitizeBuildTarget()
 	log.Debugf("Checking Node.js build: %#v", a.Module)
 
 	manifest, err := npm.FromManifest(a.Module.BuildTarget, "package.json")
@@ -211,8 +213,8 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
+	a.sanitizeBuildTarget()
 	log.Debugf("Running Nodejs analysis: %#v", a.Module)
-
 	// if npm as a tool does not exist, skip this
 	if a.NPM.Exists() {
 		pkgs, err := a.NPM.List(a.Module.BuildTarget)
@@ -259,6 +261,18 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	// currently only support yarn.lock
 	return yarn.FromProject(filepath.Join(a.Module.BuildTarget, "package.json"), filepath.Join(a.Module.BuildTarget, "yarn.lock"))
+}
+
+// sanitizeBuildTarget ensures that legacy behavior stays intact but users are warned if it is implemented.
+func (a *Analyzer) sanitizeBuildTarget() {
+	if strings.HasSuffix(a.Module.BuildTarget, "/package.json") {
+		log.Warn("Specifiying package.json as a module's target in .fossa.yml is no longer supported. Only the directory is neccessary.")
+		a.Module.BuildTarget = strings.TrimSuffix(a.Module.BuildTarget, "/package.json")
+	}
+	if strings.HasSuffix(a.Module.BuildTarget, "/") {
+		log.Warn("The provided .fossa.yml file is malformed. Ensure there are no trailings /'s in any of the specified modules' targets.")
+		a.Module.BuildTarget = strings.TrimSuffix(a.Module.BuildTarget, "/")
+	}
 }
 
 // TODO: implement this generically in package graph (Bower also has an
