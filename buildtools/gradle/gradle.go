@@ -54,6 +54,7 @@ func (g *Gradle) DependenciesTask(taskArgs ...string) ([]Dependency, map[Depende
 
 // TODO: rename this -- this is really projects with :dependencies tasks
 func (g *Gradle) Projects() ([]string, error) {
+	r := regexp.MustCompile("^([a-zA-Z]*)[:]?dependencies")
 	stdout, err := g.Run("tasks", "--all", "--quiet")
 	if err != nil {
 		return nil, err
@@ -61,8 +62,8 @@ func (g *Gradle) Projects() ([]string, error) {
 	var projects []string
 	lines := strings.Split(stdout, "\n")
 	for _, line := range lines {
-		if i := strings.Index(line, ":dependencies"); i != -1 {
-			projects = append(projects, line[:i])
+		if matches := r.FindStringSubmatch(line); len(matches) > 1 {
+			projects = append(projects, matches[1])
 		}
 	}
 	return projects, nil

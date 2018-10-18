@@ -108,7 +108,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				modules = append(modules, module.Module{
 					Name:        filepath.Join(name, project),
 					Type:        pkg.Gradle,
-					BuildTarget: dir,
+					BuildTarget: ":compile",
 					Dir:         dir,
 					Options: map[string]interface{}{
 						"project": project,
