@@ -44,6 +44,7 @@ func TestModulesCommandLineOptions(t *testing.T) {
 	assert.Equal(t, 1, len(modules[2].Options))
 	assert.Equal(t, true, modules[2].Options["allow-unresolved"])
 }
+
 func TestNoModulesError(t *testing.T) {
 	// Set the expected flags.
 	flagSet := flag.NewFlagSet("test", 0)
