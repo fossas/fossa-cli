@@ -16,18 +16,6 @@ func New(m module.Module) (*Analyzer, error) {
 	}, nil
 }
 
-/*
-
-type Analyzer interface {
-	// These methods all make best-effort attempts.
-	Clean() error           // Cleans build artifacts.
-	Build() error           // Builds the module.
-	IsBuilt() (bool, error) // Checks whether a module has been built.
-
-	Analyze() (graph.Deps, error) // Runs an analysis of a module.
-}
-*/
-
 func (a Analyzer) Clean() error {
 	return nil
 }
