@@ -3,9 +3,9 @@ package analyze
 import (
 	"fmt"
 
+	"github.com/apex/log"
 	"github.com/urfave/cli"
 
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/analyzers"
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
@@ -51,6 +51,10 @@ func Run(ctx *cli.Context) error {
 		return err
 	}
 
+	if !ctx.Bool(ShowOutput) {
+		uploadRawModules(modules)
+	}
+
 	log.Debugf("analyzed: %#v", analyzed)
 	normalized, err := fossa.Normalize(analyzed)
 	if err != nil {
@@ -82,29 +86,6 @@ func Do(modules []module.Module) (analyzed []module.Module, err error) {
 	defer display.ClearProgress()
 	for i, m := range modules {
 		display.InProgress(fmt.Sprintf("Analyzing module (%d/%d): %s", i+1, len(modules), m.Name))
-
-		// Handle raw modules differently from all others.
-		// TODO: maybe this should occur during the analysis step?
-		// TODO: maybe this should target a third-party folder, rather than a single
-		// folder? Maybe "third-party folder" should be a separate module type?
-		if m.Type == pkg.Raw {
-			locator, err := fossa.UploadTarball(m.BuildTarget)
-			if err != nil {
-				log.Warnf("Could not upload raw module: %s", err.Error())
-			}
-			id := pkg.ID{
-				Type:     pkg.Raw,
-				Name:     locator.Project,
-				Revision: locator.Revision,
-			}
-			m.Imports = []pkg.Import{pkg.Import{Resolved: id}}
-			m.Deps = make(map[pkg.ID]pkg.Package)
-			m.Deps[id] = pkg.Package{
-				ID: id,
-			}
-			analyzed = append(analyzed, m)
-			continue
-		}
 
 		analyzer, err := analyzers.New(m)
 		if err != nil {
@@ -156,4 +137,28 @@ func uploadAnalysis(normalized []fossa.SourceUnit) error {
 	}
 	fmt.Println(locator.ReportURL())
 	return nil
+}
+
+// uploadRawModules uploads any raw modules to core and saves the server generated/selected revision and project name
+func uploadRawModules(modules []module.Module) {
+	for _, module := range modules {
+		if module.Type != pkg.Raw {
+			continue
+		}
+
+		locator, err := fossa.UploadTarball(module.BuildTarget)
+		if err != nil {
+			log.Warnf("Could not upload raw module: %s", err.Error())
+		}
+		id := pkg.ID{
+			Type:     pkg.Raw,
+			Name:     locator.Project,
+			Revision: locator.Revision,
+		}
+
+		module.Imports = []pkg.Import{pkg.Import{Resolved: id}}
+		module.Deps[id] = pkg.Package{
+			ID: id,
+		}
+	}
 }
