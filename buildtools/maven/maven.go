@@ -113,7 +113,8 @@ func ParseDependencyTree(stdin string) ([]Dependency, map[Dependency][]Dependenc
 	start := regexp.MustCompile("^\\[INFO\\] --- .*? ---$")
 	started := false
 	r := regexp.MustCompile("^\\[INFO\\] ([ `+\\\\|-]*)([^ `+\\\\|-].+)$")
-	for _, line := range strings.Split(stdin, "\n") {
+	splitReg := regexp.MustCompile("\r?\n")
+	for _, line := range splitReg.Split(stdin, -1) {
 		if line == "[INFO] " || line == "[INFO] ------------------------------------------------------------------------" {
 			started = false
 		}
@@ -129,6 +130,9 @@ func ParseDependencyTree(stdin string) ([]Dependency, map[Dependency][]Dependenc
 	}
 
 	// Remove first line, which is just the direct dependency.
+	if len(filteredLines) == 0 {
+		return nil, nil, errors.New("error parsing lines")
+	}
 	filteredLines = filteredLines[1:]
 
 	depRegex := regexp.MustCompile("([^:]+):([^:]+):([^:]*):([^:]+)")
