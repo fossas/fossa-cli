@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	ErrForbidden        = errors.New("you do not have permission to upload builds for this project")
+	ErrForbidden        = errors.New("you do not have permission to upload builds for this project (is the API key correct?)")
 	ErrEmptyDataUpload  = errors.New("No data to upload")
 	ErrRevisionInvalid  = errors.New("Could not infer revision name from `git` remote named `origin`. To submit a custom project, set Fetcher to `custom` in `.fossa.yml`")
 	ErrProjectIdInvalid = errors.New("Could not infer project name from either `.fossa.yml` or `git` remote named `origin`")
