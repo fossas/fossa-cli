@@ -37,8 +37,6 @@ func UploadAnalysis(normalized []SourceUnit) (Locator, error) {
 }
 
 func uploadAnalysisV1(normalized []SourceUnit) (Locator, error) {
-	display.InProgress("Uploading analysis...")
-
 	uploadBody := V1UploadBody{
 		Analysis: normalized,
 	}
@@ -69,7 +67,6 @@ func uploadAnalysisV1(normalized []SourceUnit) (Locator, error) {
 }
 
 func uploadAnalysisV0(normalized []SourceUnit) (Locator, error) {
-	display.InProgress("Uploading analysis...")
 	locator, err := UploadV0(
 		config.Title(),
 		Locator{

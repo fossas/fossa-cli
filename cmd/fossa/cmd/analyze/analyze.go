@@ -75,6 +75,7 @@ func Run(ctx *cli.Context) error {
 		return nil
 	}
 
+	display.InProgress("Uploading analysis...")
 	locator, err := fossa.UploadAnalysis(normalized)
 	if err != nil {
 		return err
