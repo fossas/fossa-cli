@@ -44,3 +44,21 @@ func TestModulesCommandLineOptions(t *testing.T) {
 	assert.Equal(t, 1, len(modules[2].Options))
 	assert.Equal(t, true, modules[2].Options["allow-unresolved"])
 }
+func TestNoModulesError(t *testing.T) {
+	// Set the expected flags.
+	flagSet := flag.NewFlagSet("test", 0)
+	flags.ConfigF.Apply(flagSet)
+
+	// Set the flag values.
+	ctx := cli.NewContext(cli.NewApp(), flagSet, nil)
+	err := ctx.Set(flags.Config, "testdata/test_no_modules.yml")
+	assert.NoError(t, err)
+
+	// Finalize the context.
+	err = config.SetContext(ctx)
+	assert.NoError(t, err)
+
+	modules, err := config.Modules()
+	assert.EqualError(t, err, "No modules provided")
+	assert.Equal(t, 0, len(modules))
+}

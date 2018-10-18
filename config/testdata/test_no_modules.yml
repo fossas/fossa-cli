@@ -1,0 +1,5 @@
+version: 1
+cli:
+  server: https://app.fossa.io
+  fetcher: custom
+  project: test-project

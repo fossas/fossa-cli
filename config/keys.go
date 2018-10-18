@@ -189,8 +189,12 @@ func Modules() ([]module.Module, error) {
 		return m, nil
 	}
 
-	// TODO: specifying zero modules should be an error (we should add a test for this)
-	return modulesWithOptions(file.Modules(), options), nil
+	modules := file.Modules()
+	if len(modules) == 0 {
+		return modules, errors.New("No modules provided")
+	}
+
+	return modulesWithOptions(modules, options), nil
 }
 
 // modulesWithOptions applies command line options to each module and overwrites conflicting options.
