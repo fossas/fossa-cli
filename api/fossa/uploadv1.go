@@ -16,17 +16,17 @@ type V1UploadBody struct {
 	}
 	Project struct {
 		Title string
-		Id    string
-		Url   string
-		Jira  string
+		ID    string
+		URL   string
+		JIRA  string
 		Team  string
 	}
 	Revision struct {
-		Id   string
+		ID   string
 		Link string
 	}
 	Meta struct {
-		v string
+		V string
 	}
 	Analysis []SourceUnit
 }
@@ -35,10 +35,10 @@ type V1UploadBody struct {
 func UploadV1(uploadBody V1UploadBody) (Locator, error) {
 	log.Debug("Uploading build using API v1")
 	// Check preconditions.
-	if uploadBody.Revision.Id == "" {
+	if uploadBody.Revision.ID == "" {
 		return Locator{}, ErrRevisionInvalid
 	}
-	if uploadBody.Project.Id == "" {
+	if uploadBody.Project.ID == "" {
 		return Locator{}, ErrProjectIdInvalid
 	}
 	if len(uploadBody.Analysis) == 0 {
@@ -54,7 +54,7 @@ func UploadV1(uploadBody V1UploadBody) (Locator, error) {
 		"payload": string(payload),
 	}).Debug("uploading build")
 
-	uploadBody.Meta.v = version.ShortString()
+	uploadBody.Meta.V = version.ShortString()
 
 	res, statusCode, err := Post("/api/cli/v1/build", payload)
 	log.WithField("response", res).Debug("build upload completed")

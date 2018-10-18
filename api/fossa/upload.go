@@ -41,14 +41,14 @@ func uploadAnalysisV1(normalized []SourceUnit) (Locator, error) {
 		Analysis: normalized,
 	}
 
-	uploadBody.Project.Id = config.Project()
+	uploadBody.Project.ID = config.Project()
 	uploadBody.Project.Team = config.Team()
-	uploadBody.Project.Url = config.ProjectURL()
+	uploadBody.Project.URL = config.ProjectURL()
 	uploadBody.Project.Title = config.Title()
-	uploadBody.Project.Jira = config.JIRAProjectKey()
+	uploadBody.Project.JIRA = config.JIRAProjectKey()
 
 	uploadBody.Revision.Link = config.Link()
-	uploadBody.Revision.Id = config.Revision()
+	uploadBody.Revision.ID = config.Revision()
 
 	uploadBody.VCS.Reference = config.Branch()
 
