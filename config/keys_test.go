@@ -19,11 +19,13 @@ func TestModulesCommandLineOptions(t *testing.T) {
 
 	// Set the flag values
 	ctx := cli.NewContext(cli.NewApp(), flagSet, nil)
-	ctx.Set(flags.Config, "testdata/test.yml")
-	ctx.Set(flags.Option, "allow-unresolved:true")
+	err := ctx.Set(flags.Config, "testdata/test.yml")
+	assert.NoError(t, err)
+	err = ctx.Set(flags.Option, "allow-unresolved:true")
+	assert.NoError(t, err)
 
 	//Finalize the context
-	err := config.SetContext(ctx)
+	err = config.SetContext(ctx)
 	assert.NoError(t, err)
 
 	modules, err := config.Modules()
