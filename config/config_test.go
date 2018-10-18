@@ -19,7 +19,8 @@ func TestInitWorksWithoutGitRepository(t *testing.T) {
 	err = os.Chdir("/")
 	assert.NoError(t, err)
 	defer func() {
-		os.Chdir(cwd)
+		err = os.Chdir(cwd)
+		assert.NoError(t, err)
 	}()
 
 	// Check that there actually is no Git repository.
