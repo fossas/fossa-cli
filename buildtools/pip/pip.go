@@ -82,7 +82,7 @@ func FromFile(filename string) ([]Requirement, error) {
 		}
 		if !matched {
 			reqs = append(reqs, Requirement{
-				Name: trimmed,
+				Name: checkForExtra(trimmed),
 			})
 		}
 	}
