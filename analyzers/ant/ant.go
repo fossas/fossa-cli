@@ -105,7 +105,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	log.Debugf("resolving ant libs in: %s", libdir)
 	if ok, err := files.ExistsFolder(a.Module.Dir, libdir); !ok || err != nil {
-		return graph.Deps{}, errors.New("unable to resolve library directory, try specifying it using the `modules.options.libdir` property in `fossa.yml`")
+		return graph.Deps{}, errors.New("unable to resolve library directory, try specifying it using the `modules.options.libdir` property in `.fossa.yml`")
 	}
 
 	jarFilePaths, err := doublestar.Glob(filepath.Join(libdir, "*.jar"))
