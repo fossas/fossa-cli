@@ -28,7 +28,7 @@ func TestParseDependencyTreeDOS(t *testing.T) {
 func TestParseDependencyTreeUnix(t *testing.T) {
 	// Check that the file is still unix formatted.
 	osxFile := "testdata/osx.out"
-	out, err := exec.Command("file", osxFile).Output()
+	out, err := exec.Command("file", "--help").Output()
 	assert.NoError(t, err)
 	assert.Equal(t, "testdata/osx.out: ASCII text\n", string(out))
 
