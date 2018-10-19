@@ -72,7 +72,7 @@ func FromFile(filename string) ([]Requirement, error) {
 			sections := strings.Split(trimmed, op)
 			if len(sections) == 2 {
 				reqs = append(reqs, Requirement{
-					Name:     sections[0],
+					Name:     checkForExtra(sections[0]),
 					Revision: sections[1],
 					Operator: op,
 				})
@@ -88,4 +88,23 @@ func FromFile(filename string) ([]Requirement, error) {
 	}
 
 	return reqs, nil
+}
+
+// https://www.python.org/dev/peps/pep-0508/#extras
+func checkForExtra(name string) string {
+	if strings.HasSuffix(name, "]") {
+		i := strings.Index(name, "[")
+		if i > 0 {
+			return name[:i]
+		}
+	}
+	return name
+
+	/* 	return strings.Split(name, "[")[0]
+	 */
+
+	/*  if strings.HasSuffix(name, "]") {
+		return strings.Split(name, "[")[0]
+	}
+	return name */
 }
