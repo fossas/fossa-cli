@@ -53,9 +53,12 @@ jobs:
             rm $(which go)
             rm $(which dep)
       - run:
-          name: Run unit tests
+          name: Install dependencies
           command: |
             sudo apt-get install file
+      - run:
+          name: Run unit tests
+          command: |
             make -s ci-unit-test > $TEST_RESULTS/go-test-report.xml
       - run:
           name: Save artifacts
