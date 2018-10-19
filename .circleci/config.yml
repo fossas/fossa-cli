@@ -55,6 +55,7 @@ jobs:
       - run:
           name: Run unit tests
           command: |
+            sudo apt-get install file
             make -s ci-unit-test > $TEST_RESULTS/go-test-report.xml
       - run:
           name: Save artifacts
