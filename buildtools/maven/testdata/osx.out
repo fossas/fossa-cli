@@ -1,0 +1,19 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< de.frank:jmh-introduction >----------------------
+[INFO] Building JMH benchmarks: intro, basic benchmarks, algorithms and some architectural support benchmarks 1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-dependency-plugin:2.8:tree (default-cli) @ jmh-introduction ---
+[INFO] de.frank:jmh-introduction:jar:1-SNAPSHOT
+[INFO] +- dep:one:jar:1.0.0:provided
+[INFO] \- dep:two:jar:2.0.0:compile
+[INFO]    +- dep:three:jar:3.0.0:compile
+[INFO]    |  \- dep:four:jar:4.0.0:compile
+[INFO]    \- dep:five:jar:5.0.0:compile
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 0.832 s
+[INFO] Finished at: 2018-10-18T15:03:36-07:00
+[INFO] ------------------------------------------------------------------------

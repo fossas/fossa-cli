@@ -19,7 +19,7 @@ func ReadPackageTree(lines []string, parser LineParser) ([]Package, map[Package]
 		}
 
 		// Add to graph.
-		if len(parents) > level {
+		if len(parents) >= level {
 			parents = parents[:level-1]
 		}
 		if level == 1 {
