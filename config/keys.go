@@ -151,15 +151,7 @@ func Options() (map[string]interface{}, error) {
 
 func Modules() ([]module.Module, error) {
 	args := ctx.Args()
-	options, err := Options()
-	if err != nil {
-		return nil, err
-	}
-
-	log.WithFields(log.Fields{
-		"args":    args,
-		"options": options,
-	}).Debug("parsing modules")
+	log.WithFields(log.Fields{"args": args}).Debug("parsing modules")
 
 	// If arguments are present, prefer arguments over the configuration file.
 	if args.Present() {
@@ -178,28 +170,45 @@ func Modules() ([]module.Module, error) {
 			return nil, err
 		}
 
+		// Note that these parsed modules do not have any options set yet.
 		m := []module.Module{module.Module{
 			Name:        name,
 			Type:        mtype,
 			BuildTarget: name,
-			Options:     options,
 		}}
 
 		log.WithField("module", m).Debug("parsed module")
 		return m, nil
 	}
 
-	if l := len(options); l > 0 {
-		log.
-			WithFields(log.Fields{
-				"options": options,
-			}).
-			Warnf(
-				"Found %d options via flag, but modules are being loaded from configuration file. Ignoring options.",
-				len(options),
-			)
+	// Otherwise, get the modules from the configuration file.
+	modules := file.Modules()
+	if len(modules) == 0 {
+		return modules, errors.New("No modules provided")
 	}
 
-	// TODO: specifying zero modules should be an error (we should add a test for this)
-	return file.Modules(), nil
+	// Parse options set via the command line.
+	options, err := Options()
+	if err != nil {
+		return nil, err
+	}
+	log.WithFields(log.Fields{"options": options}).Debug("parsing options")
+
+	// Set options passed via the command line on all modules. For modules where
+	// this conflicts with a configuration file option, prefer the command line
+	// option.
+	for i, m := range modules {
+		if m.Options == nil {
+			modules[i].Options = make(map[string]interface{})
+		}
+
+		// We iterate over and copy the command-line options instead of setting the
+		// module options equal to avoid _unsetting_ module options that were set
+		// within the configuration file.
+		for key, val := range options {
+			modules[i].Options[key] = val
+		}
+	}
+
+	return modules, nil
 }
