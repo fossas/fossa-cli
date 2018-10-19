@@ -13,7 +13,8 @@ import (
 func TestParseDependencyTreeDOS(t *testing.T) {
 	// Check that the file is still dos formatted.
 	dosFile := "testdata/dos.out"
-	out, _ := exec.Command("file", dosFile).Output()
+	out, err := exec.Command("file", dosFile).Output()
+	assert.NoError(t, err)
 	assert.Equal(t, "testdata/dos.out: ASCII text, with CRLF line terminators\n", string(out))
 
 	dat, err := ioutil.ReadFile(dosFile)
@@ -27,7 +28,8 @@ func TestParseDependencyTreeDOS(t *testing.T) {
 func TestParseDependencyTreeUnix(t *testing.T) {
 	// Check that the file is still unix formatted.
 	osxFile := "testdata/osx.out"
-	out, _ := exec.Command("file", osxFile).Output()
+	out, err := exec.Command("file", osxFile).Output()
+	assert.NoError(t, err)
 	assert.Equal(t, "testdata/osx.out: ASCII text\n", string(out))
 
 	dat, err := ioutil.ReadFile(osxFile)
