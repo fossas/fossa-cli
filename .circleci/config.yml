@@ -108,7 +108,7 @@ jobs:
           name: Make folders
           command: mkdir -p $ARTIFACTS
       - run:
-          name: Install CLI
+          name: Make CLI
           command: |
             make
       - run:
@@ -127,11 +127,9 @@ jobs:
           path: /tmp/artifacts
   installer-test:
     <<: *defaults
-    working_directory: /go/src/github.com/fossas/fossa-cli
     docker:
       - image: circleci/golang:1
     steps:
-      - checkout
       - run:
           name: Make folders
           command: mkdir -p $ARTIFACTS
@@ -142,7 +140,7 @@ jobs:
       - run:
           name: Run FOSSA analysis
           command: |
-            fossa analyze -o --debug > $ARTIFACTS/fossa-installer-analyze-stdout 2> $ARTIFACTS/fossa-installer-analyze-stderr
+            fossa help > $ARTIFACTS/fossa-installer-help-stdout 2> $ARTIFACTS/fossa-installer-help-stderr
       - run:
           name: Save artifacts
           command: |
