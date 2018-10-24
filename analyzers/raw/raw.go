@@ -1,6 +1,9 @@
 package raw
 
 import (
+	"github.com/apex/log"
+
+	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -29,12 +32,15 @@ func (a Analyzer) IsBuilt() (bool, error) {
 }
 
 func (a Analyzer) Analyze() (graph.Deps, error) {
+	// The locator for the tarball is determined serverside, so we must upload the tarball before we can build the depGraph.
+	locator, err := fossa.UploadTarball(a.Module.BuildTarget)
+	if err != nil {
+		log.Warnf("Could not upload raw module: %s", err.Error())
+	}
 	id := pkg.ID{
-		Type: pkg.Raw,
-		Name: a.Module.Name,
-		// we cannot determine the revision without performing an upload. Let the caller overwrite this value if actually uploading.
-		// If the user requests output only, we don't need to compute the actual revision
-		Revision: "stubbedRevision",
+		Type:     pkg.Raw,
+		Name:     locator.Project,
+		Revision: locator.Revision,
 	}
 
 	return graph.Deps{

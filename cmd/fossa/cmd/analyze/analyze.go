@@ -45,14 +45,10 @@ func Run(ctx *cli.Context) error {
 		log.Fatal("No modules specified.")
 	}
 
-	analyzed, err := Do(modules)
+	analyzed, err := Do(modules, !ctx.Bool(ShowOutput))
 	if err != nil {
 		log.Fatalf("Could not analyze modules: %s", err.Error())
 		return err
-	}
-
-	if !ctx.Bool(ShowOutput) {
-		uploadRawModules(modules)
 	}
 
 	log.Debugf("analyzed: %#v", analyzed)
@@ -82,9 +78,14 @@ func Run(ctx *cli.Context) error {
 	return uploadAnalysis(normalized)
 }
 
-func Do(modules []module.Module) (analyzed []module.Module, err error) {
+func Do(modules []module.Module, outputOnly bool) (analyzed []module.Module, err error) {
 	defer display.ClearProgress()
 	for i, m := range modules {
+		// raw modules require uploading to be properly analyzed, so just ignore them if --output is provided
+		if m.Type == pkg.Raw && outputOnly {
+			continue
+		}
+
 		display.InProgress(fmt.Sprintf("Analyzing module (%d/%d): %s", i+1, len(modules), m.Name))
 
 		analyzer, err := analyzers.New(m)
@@ -137,28 +138,4 @@ func uploadAnalysis(normalized []fossa.SourceUnit) error {
 	}
 	fmt.Println(locator.ReportURL())
 	return nil
-}
-
-// uploadRawModules uploads any raw modules to core and saves the server generated/selected revision and project name
-func uploadRawModules(modules []module.Module) {
-	for _, module := range modules {
-		if module.Type != pkg.Raw {
-			continue
-		}
-
-		locator, err := fossa.UploadTarball(module.BuildTarget)
-		if err != nil {
-			log.Warnf("Could not upload raw module: %s", err.Error())
-		}
-		id := pkg.ID{
-			Type:     pkg.Raw,
-			Name:     locator.Project,
-			Revision: locator.Revision,
-		}
-
-		module.Imports = []pkg.Import{pkg.Import{Resolved: id}}
-		module.Deps[id] = pkg.Package{
-			ID: id,
-		}
-	}
 }
