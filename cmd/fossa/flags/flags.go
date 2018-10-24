@@ -63,7 +63,7 @@ var (
 	JIRAProjectKey  = "jira-project-key"
 	JIRAProjectKeyF = cli.StringFlag{Name: Short(JIRAProjectKey), Usage: "this repository's JIRA project key"}
 	Link            = "link"
-	LinkF           = cli.StringFlag{Name: Short(Link), Usage: "a link to attach to the current build"}
+	LinkF           = cli.StringFlag{Name: ShortUpper(Link), Usage: "a link to attach to the current build"}
 	Team            = "team"
 	TeamF           = cli.StringFlag{Name: ShortUpper(Team), Usage: "this repository's team inside your organization"}
 )

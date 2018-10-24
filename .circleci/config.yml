@@ -108,9 +108,9 @@ jobs:
           name: Make folders
           command: mkdir -p $ARTIFACTS
       - run:
-          name: Install CLI
+          name: Make CLI
           command: |
-            curl https://raw.githubusercontent.com/fossas/fossa-cli/$CIRCLE_SHA1/install.sh | bash
+            make
       - run:
           name: Run FOSSA analysis
           command: |
@@ -119,6 +119,28 @@ jobs:
           name: Run FOSSA license check
           command: |
             fossa test --debug > $ARTIFACTS/fossa-test-stdout 2> $ARTIFACTS/fossa-test-stderr
+      - run:
+          name: Save artifacts
+          command: |
+            cp $(which fossa) $ARTIFACTS
+      - store_artifacts:
+          path: /tmp/artifacts
+  installer-test:
+    <<: *defaults
+    docker:
+      - image: circleci/golang:1
+    steps:
+      - run:
+          name: Make folders
+          command: mkdir -p $ARTIFACTS
+      - run:
+          name: Install CLI
+          command: |
+            curl https://raw.githubusercontent.com/fossas/fossa-cli/$CIRCLE_SHA1/install.sh | bash
+      - run:
+          name: Run FOSSA help
+          command: |
+            fossa help > $ARTIFACTS/fossa-installer-help-stdout 2> $ARTIFACTS/fossa-installer-help-stderr
       - run:
           name: Save artifacts
           command: |
@@ -134,3 +156,4 @@ workflows:
       - unit-test
       - integration-test
       - end-to-end-test
+      - installer-test

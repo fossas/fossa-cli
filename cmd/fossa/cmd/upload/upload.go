@@ -124,24 +124,26 @@ func getInput(ctx *cli.Context, usingLocators bool) ([]fossa.SourceUnit, error) 
 }
 
 // Run executes the upload command.
-func Run(ctx *cli.Context) {
+func Run(ctx *cli.Context) error {
 	err := setup.SetContext(ctx)
 	if err != nil {
-		log.Fatalf("Could not initialize: %s", err.Error())
+		return errors.Wrap(err, "could not initialize")
 	}
 
 	data, err := getInput(ctx, ctx.Bool(Locators))
 	if err != nil {
-		log.Fatalf("Bad input: %s", err.Error())
+		return errors.Wrap(err, "bad input")
 	}
 
 	display.InProgress("Uploading...")
 	locator, err := Do(data)
 	if err != nil {
-		log.Fatalf("Upload failed: %s", err.Error())
+		return errors.Wrap(err, "upload failed")
 	}
 	display.ClearProgress()
 	fmt.Println(locator.ReportURL())
+
+	return nil
 }
 
 // Do performs a SourceUnit upload of the current project without other side
