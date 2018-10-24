@@ -52,7 +52,7 @@ func main() {
 			os.Exit(e.ExitCode())
 		default:
 			// TODO: port all log.Fatal to instead return an error.
-			log.Debugf("Error: %#v", err.Error())
+			log.Errorf(err.Error())
 			os.Exit(1)
 		}
 	}
