@@ -138,7 +138,7 @@ jobs:
           command: |
             curl https://raw.githubusercontent.com/fossas/fossa-cli/$CIRCLE_SHA1/install.sh | bash
       - run:
-          name: Run FOSSA analysis
+          name: Run FOSSA help
           command: |
             fossa help > $ARTIFACTS/fossa-installer-help-stdout 2> $ARTIFACTS/fossa-installer-help-stderr
       - run:
