@@ -265,13 +265,13 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 // fixLegacyBuildTarget ensures that legacy behavior stays intact but users are warned if it is implemented.
 func fixLegacyBuildTarget(target string) string {
-	if strings.HasSuffix(target, "/package.json") {
+	if strings.HasSuffix(target, string(filepath.Separator)+"package.json") {
 		log.Warn("Specifying the package.json file as a module's target in fossa's config file is no longer supported. Instead, the target should specify the path to the project folder.")
-		target = strings.TrimSuffix(target, "/package.json")
+		target = strings.TrimSuffix(target, string(filepath.Separator)+"package.json")
 	}
-	if strings.HasSuffix(target, "/") {
+	if strings.HasSuffix(target, string(filepath.Separator)) {
 		log.Warn("Trailing slashes in module targets are not suppoorted.")
-		target = strings.TrimSuffix(target, "/")
+		target = strings.TrimSuffix(target, string(filepath.Separator))
 	}
 	return target
 }
