@@ -16,6 +16,7 @@ package nodejs
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/apex/log"
 	"github.com/mitchellh/mapstructure"
@@ -189,6 +190,7 @@ func (a *Analyzer) Build() error {
 // TODO: with significantly more effort, we can eliminate both of these
 // situations.
 func (a *Analyzer) IsBuilt() (bool, error) {
+	a.Module.BuildTarget = fixLegacyBuildTarget(a.Module.BuildTarget)
 	log.Debugf("Checking Node.js build: %#v", a.Module)
 
 	manifest, err := npm.FromManifest(a.Module.BuildTarget, "package.json")
@@ -211,11 +213,11 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
+	a.Module.BuildTarget = fixLegacyBuildTarget(a.Module.BuildTarget)
 	log.Debugf("Running Nodejs analysis: %#v", a.Module)
-
 	// if npm as a tool does not exist, skip this
 	if a.NPM.Exists() {
-		pkgs, err := a.NPM.List(filepath.Dir(a.Module.BuildTarget))
+		pkgs, err := a.NPM.List(a.Module.BuildTarget)
 		if err == nil {
 			// TODO: we should move this functionality in to the buildtool, and have it
 			// return `pkg.Package`s.
@@ -259,6 +261,19 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	// currently only support yarn.lock
 	return yarn.FromProject(filepath.Join(a.Module.BuildTarget, "package.json"), filepath.Join(a.Module.BuildTarget, "yarn.lock"))
+}
+
+// fixLegacyBuildTarget ensures that legacy behavior stays intact but users are warned if it is implemented.
+func fixLegacyBuildTarget(target string) string {
+	if strings.HasSuffix(target, string(filepath.Separator)+"package.json") {
+		log.Warn("Specifying the package.json file as a module's target in fossa's config file is no longer supported. Instead, the target should specify the path to the project folder.")
+		target = strings.TrimSuffix(target, string(filepath.Separator)+"package.json")
+	}
+	if strings.HasSuffix(target, string(filepath.Separator)) {
+		log.Warn("Trailing slashes in module targets are not suppoorted.")
+		target = strings.TrimSuffix(target, string(filepath.Separator))
+	}
+	return target
 }
 
 // TODO: implement this generically in package graph (Bower also has an
