@@ -110,7 +110,7 @@ jobs:
       - run:
           name: Install CLI
           command: |
-            curl https://raw.githubusercontent.com/fossas/fossa-cli/$CIRCLE_SHA1/install.sh | bash
+            make build
       - run:
           name: Run FOSSA analysis
           command: |
