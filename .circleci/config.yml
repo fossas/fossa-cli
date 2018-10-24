@@ -142,7 +142,7 @@ jobs:
       - run:
           name: Run FOSSA analysis
           command: |
-            fossa analyze --debug > $ARTIFACTS/fossa-installer-analyze-stdout 2> $ARTIFACTS/fossa-installer-analyze-stderr
+            fossa analyze -o --debug > $ARTIFACTS/fossa-installer-analyze-stdout 2> $ARTIFACTS/fossa-installer-analyze-stderr
       - run:
           name: Save artifacts
           command: |
@@ -158,3 +158,4 @@ workflows:
       - unit-test
       - integration-test
       - end-to-end-test
+      - installer-test
