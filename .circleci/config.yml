@@ -116,6 +116,10 @@ jobs:
           command: |
             fossa analyze --debug > $ARTIFACTS/fossa-analyze-stdout 2> $ARTIFACTS/fossa-analyze-stderr
       - run:
+          name: Run FOSSA upload
+          command: |
+            fossa analyze --debug | fossa upload > $ARTIFACTS/fossa-upload-stdout 2> $ARTIFACTS/fossa-upload-stderr
+      - run:
           name: Run FOSSA license check
           command: |
             fossa test --debug > $ARTIFACTS/fossa-test-stdout 2> $ARTIFACTS/fossa-test-stderr
