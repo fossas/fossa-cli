@@ -1,0 +1,15 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< fossa:test >----------------------
+[INFO] Maven dos formatted output with CRLR line endings.
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-dependency-plugin:2.8:tree (default-cli) @ fossa ---
+[INFO] fossa:test:jar:1-SNAPSHOT
+[INFO] +- dep:one:jar:1.0.0:compile
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 0.774 s
+[INFO] Finished at: 2018-10-18T14:56:02-07:00
+[INFO] ------------------------------------------------------------------------
