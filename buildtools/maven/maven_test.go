@@ -2,7 +2,7 @@ package maven_test
 
 import (
 	"io/ioutil"
-	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,60 +11,42 @@ import (
 )
 
 func TestParseDependencyTreeDOS(t *testing.T) {
-	// Check that the file is still dos formatted.
-	dosFile := "testdata/dos.out"
-	out, err := exec.Command("file", dosFile).Output()
+	// Check that the file is still DOS formatted.
+	data, err := ioutil.ReadFile(filepath.Join("testdata", "dos.out"))
 	assert.NoError(t, err)
-	assert.Equal(t, "testdata/dos.out: ASCII text, with CRLF line terminators\n", string(out))
 
-	dat, err := ioutil.ReadFile(dosFile)
-	assert.NoError(t, err)
-	direct, transitive, err := maven.ParseDependencyTree(string(dat))
-	assert.NoError(t, err)
-	assert.NotEmpty(t, direct)
-	assert.NotEmpty(t, transitive)
-}
-func TestParseDependencyTreeDOSCat(t *testing.T) {
-	// Check that the file is still dos formatted.
-	dosFile := "testdata/dos.out"
-	cat, err := exec.Command("cat", "-e", dosFile).Output()
-	assert.NoError(t, err)
-	assert.Contains(t, string(cat), "^M$")
+	fixture := string(data)
+	for i := range fixture {
+		if i == 0 {
+			continue
+		}
+		if fixture[i] == '\n' {
+			assert.Equal(t, uint8('\r'), fixture[i-1])
+		}
+	}
 
-	dat, err := ioutil.ReadFile(dosFile)
-	assert.NoError(t, err)
-	direct, transitive, err := maven.ParseDependencyTree(string(dat))
+	direct, transitive, err := maven.ParseDependencyTree(fixture)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, direct)
 	assert.NotEmpty(t, transitive)
 }
 
 func TestParseDependencyTreeUnix(t *testing.T) {
-	// Check that the file is still unix formatted.
-	osxFile := "testdata/osx.out"
-	out, err := exec.Command("file", osxFile).Output()
+	// Check that the file is still Unix formatted.
+	data, err := ioutil.ReadFile(filepath.Join("testdata", "unix.out"))
 	assert.NoError(t, err)
-	assert.Equal(t, "testdata/osx.out: ASCII text\n", string(out))
 
-	dat, err := ioutil.ReadFile(osxFile)
-	assert.NoError(t, err)
-	direct, transitive, err := maven.ParseDependencyTree(string(dat))
-	assert.NoError(t, err)
-	assert.NotEmpty(t, direct)
-	assert.NotEmpty(t, transitive)
-}
+	fixture := string(data)
+	for i := range fixture {
+		if i == 0 {
+			continue
+		}
+		if fixture[i] == '\n' {
+			assert.NotEqual(t, '\r', fixture[i-1])
+		}
+	}
 
-func TestParseDependencyTreeOSXCat(t *testing.T) {
-	// Check that the file is still dos formatted.
-	osxFile := "testdata/osx.out"
-	cat, err := exec.Command("cat", "-e", osxFile).Output()
-	assert.NoError(t, err)
-	assert.NotContains(t, string(cat), "^M$")
-	assert.Contains(t, string(cat), "$")
-
-	dat, err := ioutil.ReadFile(osxFile)
-	assert.NoError(t, err)
-	direct, transitive, err := maven.ParseDependencyTree(string(dat))
+	direct, transitive, err := maven.ParseDependencyTree(fixture)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, direct)
 	assert.NotEmpty(t, transitive)
