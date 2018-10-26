@@ -1,153 +1,116 @@
-// Package dep provides functions for working with the dep tool.
 package gomodules
 
 import (
 	"encoding/json"
-	"fmt"
-	"path"
 	"strings"
 
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/buildtools"
 	"github.com/fossas/fossa-cli/exec"
-	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-// Resolver contains both the lockfile and manifest information. Resolver implements golang.Resolver.
+// Resolver maps modules from import paths to their pkg.import representation.
 type Resolver struct {
-	manifest manifest
-	lockfile lockfile
+	pathMap map[string]pkg.Import
 }
 
-// manifest contains the ignored packages in a dep toml file. manifest implements golang.Resolver.
-type manifest struct {
-	Ignored []string
+// module is used to unmarshal `go list -m -json all`.
+type module struct {
+	Path    string
+	Version string
+	Replace replace
 }
-
-// lockfile contains the Projects in a dep lockfile and a corresponding map for retrieving project data.
-type lockfile struct {
-	Projects   []Project
-	normalized map[string]pkg.Import
-}
-
-// Project is a single imported repository within a dep project.
-type Project struct {
-	Name     string
-	Packages []string
-	Revision string
-	Version  string
-}
-
-type Module struct {
+type replace struct {
 	Path    string
 	Version string
 }
 
-// Resolve returns the revision of an imported Go package contained within the
-// lockfile and checks to see if it should be ignored. If the package cannot be
-// ignored and is not found, buildtools.ErrNoRevisionForPackage is returned.
+// Resolve reduces a Go package to its module path and returns its revision
+// contained within pathmapping. buildtools.ErrNoRevisionForPackage is returned
+// if the package cannoth be found.
 func (r Resolver) Resolve(importpath string) (pkg.Import, error) {
-	if r.manifest.isIgnored(importpath) {
-		return pkg.Import{}, buildtools.ErrPackageIsIgnored
+	split := strings.Split(importpath, "/")
+	for i := range split {
+		revision, ok := r.pathMap[importpath]
+		if ok {
+			return revision, nil
+		}
+		importpath = strings.TrimSuffix(importpath, "/"+split[len(split)-i-1])
 	}
-
-	revision, ok := r.lockfile.normalized[importpath]
-	if !ok {
-		return pkg.Import{}, buildtools.ErrNoRevisionForPackage
-	}
-
-	return revision, nil
+	return pkg.Import{}, buildtools.ErrNoRevisionForPackage
 }
 
-// isIgnored checks if a Go package can be ignored according to a dep manifest.
-func (m manifest) isIgnored(importpath string) bool {
-	for _, ignoredPackage := range m.Ignored {
-		if strings.HasSuffix(ignoredPackage, "*") {
-			ignoredPrefix := ignoredPackage[:len(ignoredPackage)-1]
-			if strings.HasPrefix(importpath, ignoredPrefix) {
-				return true
-			}
-		}
-
-		if ignoredPackage == importpath {
-			return true
-		}
-	}
-
-	return false
-}
-
-// New constructs a golang.Resolver given the path to the manifest and lockfile.
-func New(lockfilePath string) (Resolver, error) {
-	var err error
-
-	out, _, err := exec.Run(exec.Cmd{
-		Name: "go",
-		Argv: []string{"list", "-m", "-json", "all"},
-		Dir:  lockfilePath,
-	})
+// New connects goModuleList and a parser to return a golang.Resolver.
+func New(dir string) (Resolver, error) {
+	moduleJSON, err := goModuleList(dir)
 	if err != nil {
-		err = errors.Wrap(err, "Could not run `go list -m -json all` within the current directory")
-	}
-	resolver, err := parseModules(out)
-	if err != nil {
-		err = errors.Wrap(err, "Could not unmarshall jsn")
+		return Resolver{}, errors.Wrap(err, "Could not run go list")
 	}
 
+	resolver, err := ParseModuleJSON(moduleJSON)
+	if err != nil {
+		return Resolver{}, errors.Wrap(err, "Could not parse json")
+	}
 	return resolver, nil
 }
 
-func parseModules(modules string) (Resolver, error) {
+// ParseModuleJSON returns a golang.Resolver from the output of `go list -m -json all`.
+// Replaced modules are handled in place and added to the pathmapping.
+func ParseModuleJSON(moduleJSON string) (Resolver, error) {
 	resolver := Resolver{}
-
-	var modList []Module
-	err := json.Unmarshal([]byte(modules), &modList)
+	var modList []module
+	// The output for each module is valid JSON, but the output overall is not.
+	err := json.Unmarshal([]byte("["+strings.Replace(moduleJSON, "}\n{", "},{", -1)+"]"), &modList)
 	if err != nil {
 		return resolver, errors.Wrap(err, "Could not unmarshal JSON into module list")
 	}
-	fmt.Printf("\n\n%+v\n\n", modList)
 
-	return resolver, nil
-}
+	normalizedModules := make(map[string]pkg.Import)
+	for _, mod := range modList {
+		importpath := mod.Path
 
-// readLockfile returns a lockfile object using the provided filepath.
-func readLockfile(filepath string) (lockfile, error) {
-	var lock lockfile
-
-	err := files.ReadTOML(&lock, filepath)
-	if err != nil {
-		return lockfile{}, errors.Wrap(err, "No lockfile Gopkg.lock found")
-	}
-
-	normalized := make(map[string]pkg.Import)
-	for _, project := range lock.Projects {
-		for _, pk := range project.Packages {
-			importpath := path.Join(project.Name, pk)
-			normalized[importpath] = pkg.Import{
-				Target: project.Version,
-				Resolved: pkg.ID{
-					Type:     pkg.Go,
-					Name:     importpath,
-					Revision: project.Revision,
-					Location: "",
-				},
+		// Handle replaced modules.
+		emptyReplace := replace{}
+		if mod.Replace != emptyReplace {
+			mod = module{
+				Version: mod.Replace.Version,
+				Path:    mod.Replace.Path,
 			}
+		}
+
+		version := extractRevision(mod.Version)
+		normalizedModules[importpath] = pkg.Import{
+			Target: version,
+			Resolved: pkg.ID{
+				Type:     pkg.Go,
+				Name:     mod.Path,
+				Revision: version,
+			},
 		}
 	}
 
-	lock.normalized = normalized
-	return lock, nil
+	resolver.pathMap = normalizedModules
+	return resolver, nil
 }
 
-// readManifest returns a manifest using the provided filepath.
-func readManifest(filepath string) (manifest, error) {
-	var man manifest
-	err := files.ReadTOML(&man, filepath)
+func goModuleList(path string) (string, error) {
+	out, _, err := exec.Run(exec.Cmd{
+		Name: "go",
+		Argv: []string{"list", "-m", "-json", "all"},
+		Dir:  path,
+	})
 	if err != nil {
-		return manifest{}, errors.Wrap(err, "No manifest Gopkg.toml found")
+		return "", errors.Wrapf(err, "Could not run `go list -m -json all` within the current directory: %s", path)
 	}
+	return out, nil
+}
 
-	return man, nil
+func extractRevision(version string) string {
+	split := strings.Split(version, "-")
+	if len(split) < 3 {
+		return split[0]
+	}
+	return split[2]
 }
