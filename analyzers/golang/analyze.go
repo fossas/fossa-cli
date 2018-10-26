@@ -1,18 +1,17 @@
 package golang
 
 import (
-	"github.com/apex/log"
+	"github.com/apex/log" // Each of these build tools provides a resolver.Resolver
 
-	// Each of these build tools provides a resolver.Resolver
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/buildtools/dep"
 	"github.com/fossas/fossa-cli/buildtools/gdm"
 	"github.com/fossas/fossa-cli/buildtools/glide"
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
 	"github.com/fossas/fossa-cli/buildtools/godep"
+	"github.com/fossas/fossa-cli/buildtools/gomodules"
 	"github.com/fossas/fossa-cli/buildtools/govendor"
 	"github.com/fossas/fossa-cli/buildtools/vndr"
-
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
@@ -34,6 +33,14 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	// Read lockfiles to get revisions.
 	var r resolver.Resolver
 	switch a.Options.Strategy {
+	case "manifest:gomodules":
+		if a.Options.LockfilePath == "" {
+			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
+		}
+		r, err = gomodules.New(a.Options.LockfilePath)
+		if err != nil {
+			return graph.Deps{}, err
+		}
 	case "manifest:dep":
 		if a.Options.LockfilePath == "" {
 			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
