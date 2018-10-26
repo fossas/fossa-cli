@@ -4,10 +4,10 @@
 version: 1
 cli:
   server: https://app.fossa.io
-  fetcher: custom
-  project: cli-raw
+  fetcher: git
+  project: git@github.com:fossas/fossa-cli.git
 analyze:
   modules:
   - name: fossa
-    path: ./cmd/fossa
-    type: raw
+    target: ./cmd/fossa
+    type: go

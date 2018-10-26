@@ -22,22 +22,23 @@ type module struct {
 	Version string
 	Replace replace
 }
+
 type replace struct {
 	Path    string
 	Version string
 }
 
 // Resolve reduces a Go package to its module path and returns its revision
-// contained within pathmapping. buildtools.ErrNoRevisionForPackage is returned
-// if the package cannoth be found.
+// contained within pathMap. buildtools.ErrNoRevisionForPackage is returned
+// if the package cannot be found.
 func (r Resolver) Resolve(importpath string) (pkg.Import, error) {
-	split := strings.Split(importpath, "/")
-	for i := range split {
+	splitPath := strings.Split(importpath, "/")
+	for i := range splitPath {
 		revision, ok := r.pathMap[importpath]
 		if ok {
 			return revision, nil
 		}
-		importpath = strings.TrimSuffix(importpath, "/"+split[len(split)-i-1])
+		importpath = strings.TrimSuffix(importpath, "/"+splitPath[len(splitPath)-i-1])
 	}
 	return pkg.Import{}, buildtools.ErrNoRevisionForPackage
 }
@@ -57,7 +58,7 @@ func New(dir string) (Resolver, error) {
 }
 
 // ParseModuleJSON returns a golang.Resolver from the output of `go list -m -json all`.
-// Replaced modules are handled in place and added to the pathmapping.
+// Replaced modules are handled in place and added to the pathMap.
 func ParseModuleJSON(moduleJSON string) (Resolver, error) {
 	resolver := Resolver{}
 	var modList []module
