@@ -99,12 +99,4 @@ func checkForExtra(name string) string {
 		}
 	}
 	return name
-
-	/* 	return strings.Split(name, "[")[0]
-	 */
-
-	/*  if strings.HasSuffix(name, "]") {
-		return strings.Split(name, "[")[0]
-	}
-	return name */
 }
