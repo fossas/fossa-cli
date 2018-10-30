@@ -2,6 +2,8 @@ package gomodules
 
 import (
 	"encoding/json"
+	"os"
+	"path"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -11,7 +13,7 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-// Resolver maps modules from import paths to their pkg.import representation.
+// Resolver maps modules from import paths to their pkg.Import representation.
 type Resolver struct {
 	pathMap map[string]pkg.Import
 }
@@ -28,17 +30,14 @@ type replace struct {
 	Version string
 }
 
-// Resolve reduces a Go package to its module path and returns its revision
-// contained within pathMap. buildtools.ErrNoRevisionForPackage is returned
-// if the package cannot be found.
+// Resolve calculates a package's module path from its import path,
+// and returns the resolved pkg.Import for the module path.
 func (r Resolver) Resolve(importpath string) (pkg.Import, error) {
-	splitPath := strings.Split(importpath, "/")
-	for i := range splitPath {
-		revision, ok := r.pathMap[importpath]
+	for p := importpath; p != "." && p != "/"; p = path.Dir(p) {
+		revision, ok := r.pathMap[p]
 		if ok {
 			return revision, nil
 		}
-		importpath = strings.TrimSuffix(importpath, "/"+splitPath[len(splitPath)-i-1])
 	}
 	return pkg.Import{}, buildtools.ErrNoRevisionForPackage
 }
@@ -50,16 +49,21 @@ func New(dir string) (Resolver, error) {
 		return Resolver{}, errors.Wrap(err, "Could not run go list")
 	}
 
-	resolver, err := ParseModuleJSON(moduleJSON)
+	resolver, err := parseModuleJSON(moduleJSON)
 	if err != nil {
 		return Resolver{}, errors.Wrap(err, "Could not parse json")
 	}
 	return resolver, nil
 }
 
-// ParseModuleJSON returns a golang.Resolver from the output of `go list -m -json all`.
+// Mock creates a golang.Resolver using any string input.
+func Mock(modules string) (Resolver, error) {
+	return parseModuleJSON(modules)
+}
+
+// parseModuleJSON returns a golang.Resolver from the output of `go list -m -json all`.
 // Replaced modules are handled in place and added to the pathMap.
-func ParseModuleJSON(moduleJSON string) (Resolver, error) {
+func parseModuleJSON(moduleJSON string) (Resolver, error) {
 	resolver := Resolver{}
 	var modList []module
 	// The output for each module is valid JSON, but the output overall is not.
@@ -97,17 +101,26 @@ func ParseModuleJSON(moduleJSON string) (Resolver, error) {
 }
 
 func goModuleList(path string) (string, error) {
-	out, _, err := exec.Run(exec.Cmd{
-		Name: "go",
+	cmd := os.Getenv("FOSSA_GO_CMD")
+	if cmd == "" {
+		cmd = "go"
+	}
+
+	stdout, stderr, err := exec.Run(exec.Cmd{
+		Name: cmd,
 		Argv: []string{"list", "-m", "-json", "all"},
 		Dir:  path,
 	})
 	if err != nil {
-		return "", errors.Wrapf(err, "Could not run `go list -m -json all` within the current directory: %s", path)
+		return "", errors.Errorf("Could not run `go list -m -json all` within path %s: %s (%s)", path, strings.TrimSpace(stderr), err)
 	}
-	return out, nil
+
+	return stdout, nil
 }
 
+// extractRevision returns the correct revision from a gomodules version which has
+// the form of "version-date-gitSHA" or "version". If gitSHA is present we want to
+// return it as this means version is v0.0.0.
 func extractRevision(version string) string {
 	split := strings.Split(version, "-")
 	if len(split) < 3 {

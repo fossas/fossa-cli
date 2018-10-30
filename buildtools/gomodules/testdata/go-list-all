@@ -6,6 +6,10 @@
 	"GoMod": "/Test/Full/Output/Format"
 }
 {
+	"Path": "test/basic/monorepo",
+	"Version": "v2.0.0"
+}
+{
 	"Path": "test/versionzero",
 	"Version": "v0.0.0-20180831171423-123456789000"
 }

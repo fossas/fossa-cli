@@ -12,11 +12,10 @@ import (
 )
 
 func TestResolver(t *testing.T) {
-	// This file is stored as txt because `go list -json` does not output valid json.
-	file, err := ioutil.ReadFile(filepath.Join("testdata", "go-list-all.txt"))
+	file, err := ioutil.ReadFile(filepath.Join("testdata", "go-list-all"))
 	assert.NoError(t, err)
 
-	resolver, err := gomodules.ParseModuleJSON(string(file))
+	resolver, err := gomodules.Mock(string(file))
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resolver)
 
@@ -29,6 +28,11 @@ func TestResolver(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "test/basic", revision.Resolved.Name)
 	assert.Equal(t, "v1.1.1", revision.Resolved.Revision)
+
+	revision, err = resolver.Resolve("test/basic/monorepo/package")
+	assert.NoError(t, err)
+	assert.Equal(t, "test/basic/monorepo", revision.Resolved.Name)
+	assert.Equal(t, "v2.0.0", revision.Resolved.Revision)
 
 	revision, err = resolver.Resolve("test/versionzero")
 	assert.NoError(t, err)

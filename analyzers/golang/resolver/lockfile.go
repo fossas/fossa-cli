@@ -23,7 +23,7 @@ const (
 	Dep       = Type("dep")
 	Gdm       = Type("gdm")
 	Glide     = Type("glide")
-	Gomodules = Type("gomodules")
+	GoModules = Type("gomodules")
 	Godep     = Type("godep")
 	Govendor  = Type("govendor")
 	Vndr      = Type("vndr")
@@ -32,7 +32,7 @@ const (
 // FromLockfile constructs a resolver from a lockfile and its directory.
 func FromLockfile(tool Type, dir string) (Resolver, error) {
 	switch tool {
-	case Gomodules:
+	case GoModules:
 		return gomodules.New(dir)
 	case Dep:
 		return dep.New(filepath.Join(dir, "Gopkg.lock"), filepath.Join(dir, "Gopkg.toml"))
