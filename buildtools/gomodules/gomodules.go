@@ -101,11 +101,10 @@ func parseModuleJSON(moduleJSON string) (Resolver, error) {
 }
 
 func goModuleList(path string) (string, error) {
-	cmd := os.Getenv("FOSSA_GO_CMD")
-	if cmd == "" {
-		cmd = "go"
+	cmd, _, err := exec.Which("version", os.Getenv("FOSSA_GO_CMD"), "go")
+	if err != nil {
+		return "", err
 	}
-
 	stdout, stderr, err := exec.Run(exec.Cmd{
 		Name: cmd,
 		Argv: []string{"list", "-m", "-json", "all"},
