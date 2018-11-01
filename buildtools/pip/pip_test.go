@@ -17,4 +17,6 @@ func TestFromFile(t *testing.T) {
 	assert.Contains(t, reqs, pip.Requirement{Name: "latest"})
 	assert.Contains(t, reqs, pip.Requirement{Name: "latestExtra"})
 	assert.Contains(t, reqs, pip.Requirement{Name: "notEqualOp", Revision: "3.0.0", Operator: ">="})
+	assert.NotContains(t, reqs, pip.Requirement{Name: "-r other-requirements.txt"})
+	assert.NotContains(t, reqs, pip.Requirement{Name: "--option test-option"})
 }

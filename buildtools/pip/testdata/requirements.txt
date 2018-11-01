@@ -1,3 +1,5 @@
+--option test-option
+-r other-requirements.txt
 simple==1.0.0
 extra[extra]==2.0.0
 latest
