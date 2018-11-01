@@ -60,7 +60,7 @@ func FromFile(filename string) ([]Requirement, error) {
 	var reqs []Requirement
 	for _, line := range strings.Split(string(contents), "\n") {
 		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "#") || trimmed == "" {
+		if strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, "-") || trimmed == "" {
 			continue
 		}
 		log.WithField("line", line).Debug("parsing line")
