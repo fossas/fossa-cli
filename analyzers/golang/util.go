@@ -5,10 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
 	"github.com/fossas/fossa-cli/pkg"
+	"github.com/pkg/errors"
 )
 
 // Errors that occur while running utilities.
@@ -18,7 +17,7 @@ var (
 
 // Dir returns the absolute path to a Go package.
 func (a *Analyzer) Dir(importpath string) (string, error) {
-	pkg, err := a.Go.ListOne(importpath)
+	pkg, err := a.Go.ListOne([]string{}, importpath)
 	if err != nil {
 		return "", err
 	}

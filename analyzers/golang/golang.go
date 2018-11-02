@@ -20,12 +20,11 @@ import (
 	"os"
 
 	"github.com/apex/log"
-	"github.com/mitchellh/mapstructure"
-
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/module"
+	"github.com/mitchellh/mapstructure"
 )
 
 // An Analyzer contains structs used in the analysis of Go packages. It
@@ -110,7 +109,7 @@ func (a *Analyzer) Build() error {
 func (a *Analyzer) IsBuilt() (bool, error) {
 	m := a.Module
 	log.Debugf("%#v", m)
-	pkg, err := a.Go.ListOne(m.BuildTarget)
+	pkg, err := a.Go.ListOne([]string{}, m.BuildTarget)
 	if err != nil {
 		return false, err
 	}

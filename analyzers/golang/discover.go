@@ -5,13 +5,12 @@ import (
 	"path/filepath"
 
 	"github.com/apex/log"
-	"github.com/mitchellh/mapstructure"
-	"github.com/pkg/errors"
-
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
+	"github.com/mitchellh/mapstructure"
+	"github.com/pkg/errors"
 )
 
 type DiscoverOptions struct {
@@ -45,7 +44,7 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 		OS:   options.BuildOS,
 		Arch: options.BuildArch,
 	}
-	found, err := g.List([]string{"./..."})
+	found, err := g.List([]string{}, []string{"./..."})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not find Go projects")
 	}

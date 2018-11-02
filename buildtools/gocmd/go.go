@@ -4,11 +4,11 @@ package gocmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/fossas/fossa-cli/exec"
+	"github.com/pkg/errors"
 )
 
 // Package represents a single Go package.
@@ -59,8 +59,8 @@ type GoListPackageError struct {
 }
 
 // ListOne runs List for a single package.
-func (g *Go) ListOne(pkg string) (Package, error) {
-	pkgs, err := g.List([]string{pkg})
+func (g *Go) ListOne(flags []string, pkg string) (Package, error) {
+	pkgs, err := g.List(flags, []string{pkg})
 	if err != nil {
 		return Package{}, err
 	}
@@ -71,12 +71,14 @@ func (g *Go) ListOne(pkg string) (Package, error) {
 }
 
 // List runs `go list` to return information about packages.
-func (g *Go) List(pkgs []string) ([]Package, error) {
+func (g *Go) List(flags, pkgs []string) ([]Package, error) {
 	// Run `go list -json $PKG` and unmarshal output.
 	var output []GoListOutput
+	flags = append(flags, pkgs...)
+	fmt.Println(flags)
 	stdout, stderr, err := exec.Run(exec.Cmd{
 		Name: g.Cmd,
-		Argv: append([]string{"list", "-json"}, pkgs...),
+		Argv: append([]string{"list", "-json"}, flags...),
 		Dir:  g.Dir,
 		WithEnv: map[string]string{
 			"GOOS":   g.OS,
