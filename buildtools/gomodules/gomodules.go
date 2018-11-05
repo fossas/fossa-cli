@@ -123,7 +123,7 @@ func goModuleList(path string) (string, error) {
 func extractRevision(version string) string {
 	split := strings.Split(version, "-")
 	if len(split) < 3 {
-		return split[0]
+		return strings.TrimSuffix(version, "+incompatible")
 	}
 	return split[2]
 }
