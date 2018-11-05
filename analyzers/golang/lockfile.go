@@ -22,6 +22,7 @@ func LockfileIn(dirname string) (resolver.Type, error) {
 	log.Debugf("%#v", dirname)
 
 	lockfiles := [][2]string{
+		[2]string{"gomodules", filepath.Join(dirname, "go.mod")},
 		[2]string{"godep", filepath.Join(dirname, "Godeps", "Godeps.json")},
 		[2]string{"govendor", filepath.Join(dirname, "vendor", "vendor.json")},
 		[2]string{"dep", filepath.Join(dirname, "Gopkg.toml")},

@@ -1,0 +1,31 @@
+{
+	"Path": "test/basic",
+	"Version": "v1.1.1",
+	"Time": "2018-09-22T23:35:52Z",
+	"Dir": "/Test/Full/Output/Format",
+	"GoMod": "/Test/Full/Output/Format"
+}
+{
+	"Path": "test/basic/monorepo",
+	"Version": "v2.0.0"
+}
+{
+	"Path": "test/versionzero",
+	"Version": "v0.0.0-20180831171423-123456789000"
+}
+{
+	"Path": "replace/fork",
+	"Version": "v9.0.0",
+	"Replace": {
+		"Path": "private/fork",
+		"Version": "v9.0.0"
+	}
+}
+{
+	"Path": "replace/version",
+	"Version": "v9.0.0",
+	"Replace": {
+		"Path": "replace/version",
+		"Version": "v1.0.0"
+	}
+}

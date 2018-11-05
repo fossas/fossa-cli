@@ -8,6 +8,7 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/gdm"
 	"github.com/fossas/fossa-cli/buildtools/glide"
 	"github.com/fossas/fossa-cli/buildtools/godep"
+	"github.com/fossas/fossa-cli/buildtools/gomodules"
 	"github.com/fossas/fossa-cli/buildtools/govendor"
 	"github.com/fossas/fossa-cli/buildtools/vndr"
 )
@@ -19,17 +20,20 @@ var (
 
 // Lockfile resolvers.
 const (
-	Dep      = Type("dep")
-	Gdm      = Type("gdm")
-	Glide    = Type("glide")
-	Godep    = Type("godep")
-	Govendor = Type("govendor")
-	Vndr     = Type("vndr")
+	Dep       = Type("dep")
+	Gdm       = Type("gdm")
+	Glide     = Type("glide")
+	GoModules = Type("gomodules")
+	Godep     = Type("godep")
+	Govendor  = Type("govendor")
+	Vndr      = Type("vndr")
 )
 
 // FromLockfile constructs a resolver from a lockfile and its directory.
 func FromLockfile(tool Type, dir string) (Resolver, error) {
 	switch tool {
+	case GoModules:
+		return gomodules.New(dir)
 	case Dep:
 		return dep.New(filepath.Join(dir, "Gopkg.lock"), filepath.Join(dir, "Gopkg.toml"))
 	case Gdm:

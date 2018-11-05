@@ -10,6 +10,7 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/glide"
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
 	"github.com/fossas/fossa-cli/buildtools/godep"
+	"github.com/fossas/fossa-cli/buildtools/gomodules"
 	"github.com/fossas/fossa-cli/buildtools/govendor"
 	"github.com/fossas/fossa-cli/buildtools/vndr"
 
@@ -34,6 +35,14 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	// Read lockfiles to get revisions.
 	var r resolver.Resolver
 	switch a.Options.Strategy {
+	case "manifest:gomodules":
+		if a.Options.LockfilePath == "" {
+			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
+		}
+		r, err = gomodules.New(a.Options.LockfilePath)
+		if err != nil {
+			return graph.Deps{}, err
+		}
 	case "manifest:dep":
 		if a.Options.LockfilePath == "" {
 			return graph.Deps{}, errors.New("manifest strategy specified without lockfile path")
