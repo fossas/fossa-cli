@@ -1,9 +1,8 @@
 package golang
 
 import (
-	"fmt"
-
 	"github.com/apex/log" // Each of these build tools provides a resolver.Resolver
+
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/buildtools/dep"
 	"github.com/fossas/fossa-cli/buildtools/gdm"
@@ -107,13 +106,11 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Debugf("Resolver: %#v", r)
 
 	var tagImports []pkg.Import
+	importMap := make(map[pkg.Import]bool)
 	pkgs := make(map[pkg.ID]pkg.Package)
 
-	tags := []string{"windows", "linux", "freebsd"}
-	/* 	tags := []string{"windows", "linux", "freebsd", "android", "darwin", "dragonfly", "nacl", "netbsd", "openbsd", "plan9", "solaris", "386", "amd64", "amd64p32", "arm", "armbe", "arm64", "arm64be", "ppc64", "ppc64le", "mips", "mipsle", "mips64", "mips64le", "mips64p32", "mips64p32le", "ppc", "s390", "s390x", "sparc", "sparc64"} */
-
+	tags := a.allBuildTags()
 	for _, tag := range tags {
-		fmt.Println(tag)
 		// Use `go list` to get imports and deps of module.
 		flags := []string{"-tags", tag}
 		main, err := a.Go.ListOne(flags, m.BuildTarget)
@@ -140,8 +137,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		log.Debugf("gopkgMap: %#v", gopkgMap)
 
 		// Construct transitive dependency graph.
-		/* 		pkgs := make(map[pkg.ID]pkg.Package)
-		 */for _, gopkg := range deps {
+		for _, gopkg := range deps {
 			log.Debugf("Getting revision for: %#v", gopkg)
 
 			// Resolve dependency.
@@ -154,6 +150,9 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 			// Check if the ID exists in pkgs. If not then go through with this
 			// Should be much quicker because we're hitting a map in resolve and a map
 			// here with pkgs.
+			if _, ok := pkgs[id]; ok {
+				continue
+			}
 
 			// Resolve dependency imports.
 			var imports []pkg.Import
@@ -178,34 +177,33 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		}
 
 		// Construct direct imports list.
-		/* 		fmt.Println(main.Imports)
-		 */fmt.Println(len(pkgs))
 		for _, i := range main.Imports {
 			revision, err := a.Revision(project, r, gopkgMap[i])
 			if err != nil {
 				return graph.Deps{}, err
 			}
 
-			if !alreadyImported(revision, tagImports) {
+			if _, exists := importMap[revision]; !exists {
 				tagImports = append(tagImports, revision)
-
+				importMap[revision] = true
 			}
 		}
-
-		m.Deps = pkgs
-		m.Imports = tagImports
 	}
+
+	m.Deps = pkgs
+	m.Imports = tagImports
+
 	return graph.Deps{
 		Direct:     tagImports,
 		Transitive: pkgs,
 	}, nil
 }
 
-func alreadyImported(rev pkg.Import, imports []pkg.Import) bool {
-	for _, revision := range imports {
-		if revision == rev {
-			return true
-		}
+func (a *Analyzer) allBuildTags() []string {
+	tags := a.Options.Tags
+	if a.Options.AllTags {
+		tags = append(tags, osTags...)
+		tags = append(tags, archTags...)
 	}
-	return false
+	return tags
 }

@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/fossas/fossa-cli/exec"
 	"github.com/pkg/errors"
+
+	"github.com/fossas/fossa-cli/exec"
 )
 
 // Package represents a single Go package.
@@ -32,10 +33,8 @@ func Name(importPath string) string {
 
 // Go contains configuration information for the Go tool.
 type Go struct {
-	Cmd  string
-	Dir  string
-	OS   string
-	Arch string
+	Cmd string
+	Dir string
 }
 
 // GoListOutput is a subset of the output of `go list`. See `go help list` for
@@ -80,10 +79,6 @@ func (g *Go) List(flags, pkgs []string) ([]Package, error) {
 		Name: g.Cmd,
 		Argv: append([]string{"list", "-json"}, flags...),
 		Dir:  g.Dir,
-		/* 		WithEnv: map[string]string{
-			"GOOS":   g.OS,
-			"GOARCH": g.Arch,
-		}, */
 	})
 	if err != nil && stdout == "" {
 		if strings.Contains(stderr, "build constraints exclude all Go files") {
@@ -128,10 +123,6 @@ func (g *Go) Build(pkgs []string) error {
 	_, _, err := exec.Run(exec.Cmd{
 		Name: g.Cmd,
 		Argv: append([]string{"build"}, pkgs...),
-		WithEnv: map[string]string{
-			"GOOS":   g.OS,
-			"GOARCH": g.Arch,
-		},
 	})
 	return err
 }

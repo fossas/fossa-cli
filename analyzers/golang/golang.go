@@ -20,11 +20,12 @@ import (
 	"os"
 
 	"github.com/apex/log"
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/buildtools/gocmd"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/module"
-	"github.com/mitchellh/mapstructure"
 )
 
 // An Analyzer contains structs used in the analysis of Go packages. It
@@ -44,20 +45,23 @@ type Analyzer struct {
 
 // Options set analyzer options for Go modules.
 type Options struct {
-	BuildOS                   string `mapstructure:"os"`                           // Target build OS (for build tags).
-	BuildArch                 string `mapstructure:"arch"`                         // Target build architecture (for build tags).
-	Strategy                  string `mapstructure:"strategy"`                     // See the Go analyzer documentation.
-	LockfilePath              string `mapstructure:"lockfile"`                     // For non-standard lockfile locations with strategies `manifest:*`.
-	ManifestPath              string `mapstructure:"manifest"`                     // For non-standard manifest locations with strategies `manifest:*`.
-	AllowUnresolved           bool   `mapstructure:"allow-unresolved"`             // Allow unresolved revisions.
-	AllowUnresolvedPrefix     string `mapstructure:"allow-unresolved-prefix"`      // If set, allows unresolved revisions for packages whose import path's prefix matches. Multiple space-delimited prefixes can be specified.
-	AllowNestedVendor         bool   `mapstructure:"allow-nested-vendor"`          // Allows vendor folders to be nested and attempts to resolve using parent lockfile lookup.
-	AllowDeepVendor           bool   `mapstructure:"allow-deep-vendor"`            // Allows nested vendored dependencies to be resolved using ancestor lockfiles farther than their direct parent.
-	AllowExternalVendor       bool   `mapstructure:"allow-external-vendor"`        // Allows reading vendor lockfiles of other projects.
-	AllowExternalVendorPrefix string `mapstructure:"allow-external-vendor-prefix"` // If set, allow reading vendor lockfiles of projects whose import path's prefix matches. Multiple space-delimited prefixes can be specified.
-	SkipImportTracing         bool   `mapstructure:"skip-tracing"`                 // Skips dependency tracing.
-	SkipProject               bool   `mapstructure:"skip-project"`                 // Skips project detection.
+	Tags                      []string `mapstructure:"tags"`                         // specify individual build configurations
+	AllTags                   bool     `mapstructure:"all-tags"`                     // Turn on all fossa default build tags
+	Strategy                  string   `mapstructure:"strategy"`                     // See the Go analyzer documentation.
+	LockfilePath              string   `mapstructure:"lockfile"`                     // For non-standard lockfile locations with strategies `manifest:*`.
+	ManifestPath              string   `mapstructure:"manifest"`                     // For non-standard manifest locations with strategies `manifest:*`.
+	AllowUnresolved           bool     `mapstructure:"allow-unresolved"`             // Allow unresolved revisions.
+	AllowUnresolvedPrefix     string   `mapstructure:"allow-unresolved-prefix"`      // If set, allows unresolved revisions for packages whose import path's prefix matches. Multiple space-delimited prefixes can be specified.
+	AllowNestedVendor         bool     `mapstructure:"allow-nested-vendor"`          // Allows vendor folders to be nested and attempts to resolve using parent lockfile lookup.
+	AllowDeepVendor           bool     `mapstructure:"allow-deep-vendor"`            // Allows nested vendored dependencies to be resolved using ancestor lockfiles farther than their direct parent.
+	AllowExternalVendor       bool     `mapstructure:"allow-external-vendor"`        // Allows reading vendor lockfiles of other projects.
+	AllowExternalVendorPrefix string   `mapstructure:"allow-external-vendor-prefix"` // If set, allow reading vendor lockfiles of projects whose import path's prefix matches. Multiple space-delimited prefixes can be specified.
+	SkipImportTracing         bool     `mapstructure:"skip-tracing"`                 // Skips dependency tracing.
+	SkipProject               bool     `mapstructure:"skip-project"`                 // Skips project detection.
 }
+
+var osTags = []string{"windows", "linux", "freebsd", "android", "darwin", "dragonfly", "nacl", "netbsd", "openbsd", "plan9", "solaris"}
+var archTags = []string{"386", "amd64", "amd64p32", "arm", "armbe", "arm64", "arm64be", "ppc64", "ppc64le", "mips", "mipsle", "mips64", "mips64le", "mips64p32", "mips64p32le", "ppc", "s390", "s390x", "sparc", "sparc64"}
 
 // New constructs an Analyzer.
 func New(m module.Module) (*Analyzer, error) {
@@ -79,9 +83,7 @@ func New(m module.Module) (*Analyzer, error) {
 
 	return &Analyzer{
 		Go: gocmd.Go{
-			Cmd:  cmd,
-			OS:   options.BuildOS,
-			Arch: options.BuildArch,
+			Cmd: cmd,
 		},
 		GoVersion: version,
 

@@ -2,6 +2,7 @@ package golang
 
 import (
 	"github.com/apex/log"
+
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/vcs"
 )
