@@ -18,7 +18,7 @@ func TestProjectNotInDeps(t *testing.T) {
 	analyzer, err := golang.New(module.Module{Name: "test", Type: pkg.Go, BuildTarget: buildTarget})
 	assert.NoError(t, err)
 
-	main, err := analyzer.Go.ListOne(buildTarget)
+	main, err := analyzer.Go.ListOne([]string{}, buildTarget)
 	assert.NoError(t, err)
 
 	deps, err := analyzer.Analyze()
