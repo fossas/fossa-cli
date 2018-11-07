@@ -80,10 +80,10 @@ func (g *Go) List(flags, pkgs []string) ([]Package, error) {
 		Name: g.Cmd,
 		Argv: append([]string{"list", "-json"}, flags...),
 		Dir:  g.Dir,
-		WithEnv: map[string]string{
+		/* 		WithEnv: map[string]string{
 			"GOOS":   g.OS,
 			"GOARCH": g.Arch,
-		},
+		}, */
 	})
 	if err != nil && stdout == "" {
 		if strings.Contains(stderr, "build constraints exclude all Go files") {

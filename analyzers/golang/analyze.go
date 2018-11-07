@@ -106,10 +106,12 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	log.Debugf("Resolver: %#v", r)
 
-	var imports []pkg.Import
+	var tagImports []pkg.Import
 	pkgs := make(map[pkg.ID]pkg.Package)
 
-	tags := []string{"linux", "freebsd", "windows"}
+	tags := []string{"windows", "linux", "freebsd"}
+	/* 	tags := []string{"windows", "linux", "freebsd", "android", "darwin", "dragonfly", "nacl", "netbsd", "openbsd", "plan9", "solaris", "386", "amd64", "amd64p32", "arm", "armbe", "arm64", "arm64be", "ppc64", "ppc64le", "mips", "mipsle", "mips64", "mips64le", "mips64p32", "mips64p32le", "ppc", "s390", "s390x", "sparc", "sparc64"} */
+
 	for _, tag := range tags {
 		fmt.Println(tag)
 		// Use `go list` to get imports and deps of module.
@@ -138,8 +140,8 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		log.Debugf("gopkgMap: %#v", gopkgMap)
 
 		// Construct transitive dependency graph.
-		pkgs := make(map[pkg.ID]pkg.Package)
-		for _, gopkg := range deps {
+		/* 		pkgs := make(map[pkg.ID]pkg.Package)
+		 */for _, gopkg := range deps {
 			log.Debugf("Getting revision for: %#v", gopkg)
 
 			// Resolve dependency.
@@ -148,6 +150,10 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 				return graph.Deps{}, err
 			}
 			id := revision.Resolved
+
+			// Check if the ID exists in pkgs. If not then go through with this
+			// Should be much quicker because we're hitting a map in resolve and a map
+			// here with pkgs.
 
 			// Resolve dependency imports.
 			var imports []pkg.Import
@@ -172,22 +178,34 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		}
 
 		// Construct direct imports list.
+		/* 		fmt.Println(main.Imports)
+		 */fmt.Println(len(pkgs))
 		for _, i := range main.Imports {
 			revision, err := a.Revision(project, r, gopkgMap[i])
 			if err != nil {
 				return graph.Deps{}, err
 			}
 
-			imports = append(imports, revision)
+			if !alreadyImported(revision, tagImports) {
+				tagImports = append(tagImports, revision)
+
+			}
 		}
 
 		m.Deps = pkgs
-		m.Imports = imports
-
-		fmt.Println(imports)
+		m.Imports = tagImports
 	}
 	return graph.Deps{
-		Direct:     imports,
+		Direct:     tagImports,
 		Transitive: pkgs,
 	}, nil
+}
+
+func alreadyImported(rev pkg.Import, imports []pkg.Import) bool {
+	for _, revision := range imports {
+		if revision == rev {
+			return true
+		}
+	}
+	return false
 }
