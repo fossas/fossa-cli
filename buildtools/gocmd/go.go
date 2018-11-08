@@ -4,7 +4,6 @@ package gocmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -74,7 +73,6 @@ func (g *Go) List(flags, pkgs []string) ([]Package, error) {
 	// Run `go list -json $PKG` and unmarshal output.
 	var output []GoListOutput
 	flags = append(flags, pkgs...)
-	fmt.Println(flags)
 	stdout, stderr, err := exec.Run(exec.Cmd{
 		Name: g.Cmd,
 		Argv: append([]string{"list", "-json"}, flags...),

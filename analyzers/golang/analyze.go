@@ -1,8 +1,9 @@
 package golang
 
 import (
-	"github.com/apex/log" // Each of these build tools provides a resolver.Resolver
+	"github.com/apex/log"
 
+	// Each of these build tools provides a resolver.Resolver=
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/buildtools/dep"
 	"github.com/fossas/fossa-cli/buildtools/gdm"
@@ -12,6 +13,7 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/gomodules"
 	"github.com/fossas/fossa-cli/buildtools/govendor"
 	"github.com/fossas/fossa-cli/buildtools/vndr"
+
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"

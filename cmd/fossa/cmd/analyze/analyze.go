@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/apex/log"
+	"github.com/urfave/cli"
+
 	"github.com/fossas/fossa-cli/analyzers"
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
@@ -12,7 +14,6 @@ import (
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/urfave/cli"
 )
 
 var ShowOutput = "output"
