@@ -207,5 +207,7 @@ func (a *Analyzer) getBuildTags() []string {
 		tags = append(tags, osTags...)
 		tags = append(tags, archTags...)
 	}
+
+	tags = append(tags, "")
 	return tags
 }
