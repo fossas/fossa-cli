@@ -107,11 +107,11 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	log.Debugf("Resolver: %#v", r)
 
-	var tagImports []pkg.Import
+	var allImports []pkg.Import
 	importMap := make(map[pkg.Import]bool)
-	pkgs := make(map[pkg.ID]pkg.Package)
+	transitiveDeps := make(map[pkg.ID]pkg.Package)
 
-	tags := a.allBuildTags()
+	tags := a.getBuildTags()
 	for _, tag := range tags {
 		// Use `go list` to get imports and deps of module.
 		flags := []string{"-tags", tag}
@@ -149,10 +149,8 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 			}
 			id := revision.Resolved
 
-			// Check if the ID exists in pkgs. If not then go through with this
-			// Should be much quicker because we're hitting a map in resolve and a map
-			// here with pkgs.
-			if _, ok := pkgs[id]; ok {
+			// Check if the revision has already been scanned.
+			if _, ok := transitiveDeps[id]; ok {
 				continue
 			}
 
@@ -172,7 +170,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 				imports = append(imports, revision)
 			}
 
-			pkgs[id] = pkg.Package{
+			transitiveDeps[id] = pkg.Package{
 				ID:      id,
 				Imports: imports,
 			}
@@ -185,23 +183,25 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 				return graph.Deps{}, err
 			}
 
+			// Check if revision was added by a previous build tag.
 			if _, exists := importMap[revision]; !exists {
-				tagImports = append(tagImports, revision)
+				allImports = append(allImports, revision)
 				importMap[revision] = true
 			}
 		}
 	}
 
-	m.Deps = pkgs
-	m.Imports = tagImports
+	m.Deps = transitiveDeps
+	m.Imports = allImports
 
 	return graph.Deps{
-		Direct:     tagImports,
-		Transitive: pkgs,
+		Direct:     allImports,
+		Transitive: transitiveDeps,
 	}, nil
 }
 
-func (a *Analyzer) allBuildTags() []string {
+// getBuildTags compiles a list of all user provided and requested build constraints.
+func (a *Analyzer) getBuildTags() []string {
 	tags := a.Options.Tags
 	if a.Options.AllTags {
 		tags = append(tags, osTags...)
