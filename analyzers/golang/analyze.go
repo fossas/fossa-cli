@@ -3,7 +3,7 @@ package golang
 import (
 	"github.com/apex/log"
 
-	// Each of these build tools provides a resolver.Resolver=
+	// Each of these build tools provides a resolver.Resolver
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/buildtools/dep"
 	"github.com/fossas/fossa-cli/buildtools/gdm"
