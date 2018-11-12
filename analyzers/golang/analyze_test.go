@@ -28,3 +28,41 @@ func TestProjectNotInDeps(t *testing.T) {
 		assert.NotEqual(t, main.ImportPath, dep.ID.Name)
 	}
 }
+
+var semver = pkg.ID{
+	Type:     pkg.Go,
+	Name:     "github.com/blang/semver",
+	Revision: "2ee87856327ba09384cabd113bc6b5d174e9ec0f",
+}
+
+var toml = pkg.ID{
+	Type:     pkg.Go,
+	Name:     "github.com/BurntSushi/toml",
+	Revision: "3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005",
+}
+
+func TestProjectWithoutBuildTags(t *testing.T) {
+	testModule := module.Module{}
+	testModule.BuildTarget = "github.com/fossas/fossa-cli/analyzers/golang/testdata/demotags"
+
+	analyzer, err := golang.New(testModule)
+	assert.NoError(t, err)
+	deps, err := analyzer.Analyze()
+	assert.NoError(t, err)
+	assert.Contains(t, deps.Transitive, toml)
+	assert.NotContains(t, deps.Transitive, semver)
+}
+
+func TestProjectWithBuildTags(t *testing.T) {
+	testModule := module.Module{}
+	testModule.Options = make(map[string]interface{})
+	testModule.Options["tags"] = []string{"customtag"}
+	testModule.BuildTarget = "github.com/fossas/fossa-cli/analyzers/golang/testdata/demotags"
+
+	analyzer, err := golang.New(testModule)
+	assert.NoError(t, err)
+	deps, err := analyzer.Analyze()
+	assert.NoError(t, err)
+	assert.Contains(t, deps.Transitive, toml)
+	assert.Contains(t, deps.Transitive, semver)
+}

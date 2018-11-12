@@ -111,10 +111,9 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	importMap := make(map[pkg.Import]bool)
 	transitiveDeps := make(map[pkg.ID]pkg.Package)
 
-	tags := a.getBuildTags()
-	for _, tag := range tags {
+	for _, buildTag := range a.BuildTags {
 		// Use `go list` to get imports and deps of module.
-		flags := []string{"-tags", tag}
+		flags := []string{"-tags", buildTag}
 		main, err := a.Go.ListOne(flags, m.BuildTarget)
 		if err != nil {
 			return graph.Deps{}, err
@@ -198,16 +197,4 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		Direct:     allImports,
 		Transitive: transitiveDeps,
 	}, nil
-}
-
-// getBuildTags compiles a list of all user provided and requested build constraints.
-func (a *Analyzer) getBuildTags() []string {
-	tags := a.Options.Tags
-	if a.Options.AllTags {
-		tags = append(tags, osTags...)
-		tags = append(tags, archTags...)
-	}
-
-	tags = append(tags, "")
-	return tags
 }

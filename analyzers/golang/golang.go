@@ -37,6 +37,8 @@ type Analyzer struct {
 	Module  module.Module
 	Options Options
 
+	BuildTags []string
+
 	// These caches prevent redundant filesystem lookups and execs, and help a lot
 	// when dealing with nested vendoring.
 	resolverCache map[string]resolver.Resolver
@@ -81,6 +83,15 @@ func New(m module.Module) (*Analyzer, error) {
 		return nil, err
 	}
 
+	// Compile a list of all user requested build constraints.
+	tags := options.Tags
+	if options.AllTags {
+		tags = append(tags, osTags...)
+		tags = append(tags, archTags...)
+	}
+	// Include the current build setup.
+	tags = append(tags, "")
+
 	return &Analyzer{
 		Go: gocmd.Go{
 			Cmd: cmd,
@@ -89,6 +100,8 @@ func New(m module.Module) (*Analyzer, error) {
 
 		Module:  m,
 		Options: options,
+
+		BuildTags: tags,
 
 		resolverCache: make(map[string]resolver.Resolver),
 		projectCache:  make(map[string]Project),
