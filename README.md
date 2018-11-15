@@ -183,7 +183,7 @@ Check out the [User Guide](docs/user-guide.md) for more details.
 
 ## Development
 
-View our [Contribution Guidelines](CONTRIBUTING.md) to get started.
+View our [Contribution Guidelines](.github/CONTRIBUTING.md) to get started.
 
 Join our public [Slack Channel](https://slack.fossa.io).
 
