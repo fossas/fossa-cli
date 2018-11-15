@@ -44,7 +44,7 @@ func New(m module.Module) (*Analyzer, error) {
 	}
 
 	// Set SBT context variables
-	sbtCmd, sbtVersion, err := exec.Which("-no-colors about", os.Getenv("SBT_BINARY"), "sbt")
+	sbtCmd, sbtVersion, err := exec.WhichArgs([]string{"-no-colors", "about"}, os.Getenv("SBT_BINARY"), "sbt")
 	if err != nil {
 		// Is FOSSA_SBT_BINARY set?
 		log.WithError(err).Warn("could not find SBT binary")
@@ -80,7 +80,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	log.WithField("dir", dir).Debug("discovering modules")
 
 	// Construct SBT instance (for listing projects).
-	sbtCmd, _, err := exec.Which("-no-colors about", os.Getenv("SBT_BINARY"), "sbt")
+	sbtCmd, _, err := exec.WhichArgs([]string{"-no-colors", "about"}, os.Getenv("SBT_BINARY"), "sbt")
 	if err != nil {
 		return nil, nil
 	}
