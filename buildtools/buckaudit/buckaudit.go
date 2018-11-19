@@ -15,13 +15,12 @@ type dependencies struct {
 	Deps map[string][]string
 }
 
-var TestDep = "//third-party/java/maven:maven-model"
-
 // Deps returns the dependencies of a Buck project using the buck audit command
 // Define the package name when building the commands and make it part of a buck object for testing purposes
 func Deps() (graph.Deps, error) {
 	// Get the upload json
-	pkg := "//src/com/facebook/buck/core/module:module"
+	//pkg := "//src/com/facebook/buck/cli/bootstrapper:bootstrapper"
+	pkg := "//src/com/facebook/buck/jvm/java/lang/model:model"
 	depPaths, err := deps(pkg)
 	if err != nil {
 		return graph.Deps{}, nil
@@ -34,16 +33,9 @@ func Deps() (graph.Deps, error) {
 		return graph.Deps{}, nil
 	}
 
-	// Get the graph json
-	fmt.Println("\n------------- Getting Transitive Graph ----------------------\n")
-	depGraphJSONOut, err := transDepsJSON(pkg)
-	if err != nil {
-		return graph.Deps{}, nil
-	}
-
 	// Make the graph
 	fmt.Println("\n-------------- Making Transitive Graph ----------------------\n")
-	transDeps, err := depGraph(depGraphJSONOut, revisionMap)
+	transDeps, err := depGraph(pkg, revisionMap)
 	if err != nil {
 		return graph.Deps{}, nil
 	}
@@ -89,31 +81,21 @@ func uploadDeps(depJSON string) (map[string]string, error) {
 	return revisionMap, nil
 }
 
-func transDepsJSON(pkg string) (string, error) {
-	out, _, err := exec.Run(exec.Cmd{
-		Name: "buck",
-		Argv: []string{"audit", "dependencies", "--json", "--transitive", pkg},
-	})
-
-	if err != nil {
-		err = errors.Wrapf(err, "Could not run `buck audit input --json %s` within the current directory", pkg)
-	}
-	return out, err
-}
-
-func depGraph(graphJSON string, revisionMap map[string]string) (map[pkg.ID]pkg.Package, error) {
+func depGraph(pack string, revisionMap map[string]string) (map[pkg.ID]pkg.Package, error) {
 	/* 	depList := buckAudit("buck", "--transitive")
-	 */fullGraph := make(map[pkg.ID]pkg.Package)
-	deps := []string{TestDep}
+	 */
+	fullGraph := make(map[pkg.ID]pkg.Package)
+	depGraph := buckAudit(pack, "--transitive")
+	fmt.Println(depGraph)
 
-	for _, dep := range deps {
+	for _, dep := range depGraph.Deps[pack] {
 		deepDeps := buckAudit(dep)
 		fmt.Printf("deep\n")
 		fmt.Println(dep, deepDeps)
 		var imports []pkg.Import
 
 		fmt.Printf("Deep Deps%+v\n", deepDeps)
-		for _, deepdep := range deepDeps.Deps[TestDep] {
+		for _, deepdep := range deepDeps.Deps[dep] {
 			fmt.Println("DEEEEEP DEPS")
 			// Create the secondary level deps ID
 			deepID := pkg.ID{
@@ -150,15 +132,17 @@ func depGraph(graphJSON string, revisionMap map[string]string) (map[pkg.ID]pkg.P
 }
 
 func directDeps(pack string, revisionMap map[string]string) ([]pkg.Import, error) {
-	imports := []pkg.Import{
-		pkg.Import{
-			Target: TestDep,
+	imports := []pkg.Import{}
+	deps := buckAudit(pack)
+	for _, dep := range deps.Deps[pack] {
+		imports = append(imports, pkg.Import{
+			Target: dep,
 			Resolved: pkg.ID{
 				Type:     pkg.Raw,
-				Name:     TestDep,
-				Revision: revisionMap[TestDep],
+				Name:     dep,
+				Revision: revisionMap[dep],
 			},
-		},
+		})
 	}
 
 	return imports, nil
