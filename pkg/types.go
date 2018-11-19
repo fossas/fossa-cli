@@ -16,6 +16,7 @@ const (
 	Invalid   Type = iota // Placeholder
 	Ant                   // Apache Ant (https://ant.apache.org)
 	Bower                 // Bower (https://bower.io)
+	Buck                  // Buck (https://buckbuild.com)
 	Carthage              // Carthage (https://github.com/Carthage/Carthage)
 	Cocoapods             // Cocoapods (https://cocoapods.org)
 	Composer              // Composer (https://getcomposer.org)
@@ -35,6 +36,7 @@ const (
 var AllTypes = []Type{
 	Ant,
 	Bower,
+	Buck,
 	Carthage,
 	Cocoapods,
 	Composer,
@@ -62,6 +64,10 @@ func ParseType(key string) (Type, error) {
 		fallthrough
 	case "bower":
 		return Bower, nil
+
+	// Buck aliases
+	case "buck":
+		return Buck, nil
 
 	// Carthage aliases
 	case "carthage":
@@ -188,6 +194,8 @@ func (t Type) String() string {
 		return "ant"
 	case Bower:
 		return "bower"
+	case Buck:
+		return "buck"
 	case Carthage:
 		return "cart"
 	case Cocoapods:

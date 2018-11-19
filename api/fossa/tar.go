@@ -244,3 +244,179 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 
 	return tmp, h.Sum(nil), nil
 }
+
+// UploadTarballFiles uploads a list of files.
+func UploadTarballFiles(files []string, depName string) (Locator, error) {
+	absFiles := make([]string, len(files))
+	for i, file := range files {
+		p, err := filepath.Abs(file)
+		if err != nil {
+			return Locator{}, err
+		}
+		_, err = os.Stat(p)
+		if err != nil {
+			return Locator{}, err
+		}
+		absFiles[i] = p
+	}
+
+	// Run first pass: tarball creation and hashing.
+	tarball, hash, err := CreateTarballFromFiles(absFiles, depName)
+
+	if err != nil {
+		return Locator{}, err
+	}
+
+	_, err = tarball.Stat()
+	if err != nil {
+		return Locator{}, err
+	}
+
+	// Get signed URL for uploading.
+	revision := hex.EncodeToString(hash)
+	q := url.Values{}
+	q.Add("packageSpec", depName)
+	q.Add("revision", revision)
+	/* 	var signed SignedURL
+	 */ /* 	_, err = GetJSON(SignedURLAPI+"?"+q.Encode(), &signed)
+	   	if err != nil {
+	   		return Locator{}, err
+	   	} */
+
+	// Run second pass: multi-part uploading.
+	/* 	_, w := io.Pipe()
+	   	// In parallel, stream temporary file to PUT.
+	   	go func() {
+	   		defer w.Close()
+	   		defer tarball.Close()
+	   		_, err := tarball.Seek(0, 0)
+	   		if err != nil {
+	   			log.Fatalf("Unable to upload: %s", err.Error())
+	   		}
+	   		_, err = io.Copy(w, tarball)
+	   		if err != nil {
+	   			log.Fatalf("Unable to upload: %s", err.Error())
+	   		}
+	   	}() */
+
+	// TODO: should this be a new base API method?
+	/* 	req, err := http.NewRequest(http.MethodPut, signed.SignedURL, r)
+	   	if err != nil {
+	   		return Locator{}, err
+	   	}
+	   	req.Header.Set("Content-Type", "binary/octet-stream")
+	   	req.ContentLength = info.Size()
+	   	req.GetBody = func() (io.ReadCloser, error) {
+	   		return r, nil
+	   	}
+	   	log.Debugf("req: %#v", req)
+	   	res, err := http.DefaultClient.Do(req)
+	   	if err != nil {
+	   		return Locator{}, err
+	   	}
+	   	defer res.Body.Close()
+
+	   	body, err := ioutil.ReadAll(res.Body)
+	   	if err != nil {
+	   		return Locator{}, err
+	   	}
+	   	log.Debugf("%#v", string(body)) */
+
+	// Queue the component build.
+	/* 	build := ComponentSpec{
+	   		Archives: []Component{
+	   			Component{PackageSpec: depName, Revision: revision},
+	   		},
+	   	}
+	   	data, err := json.Marshal(build)
+	   	if err != nil {
+	   		return Locator{}, err
+	   	} */
+	/* 	_, _, err = Post(ComponentsBuildAPI, data)
+	   	if err != nil {
+	   		return Locator{}, err
+	   	} */
+
+	loc := Locator{
+		Fetcher:  "archive",
+		Project:  depName,
+		Revision: revision,
+	}
+	return loc, nil
+}
+
+// CreateTarballFromFiles creates a tarball from specific files
+func CreateTarballFromFiles(files []string, name string) (*os.File, []byte, error) {
+	tmp, err := ioutil.TempFile("", "fossa-tar-tempfile-")
+	if err != nil {
+		return nil, nil, err
+	}
+	h := md5.New()
+
+	g := gzip.NewWriter(tmp)
+	defer g.Close()
+
+	t := tar.NewWriter(g)
+	defer t.Close()
+
+	for _, file := range files {
+		info, _ := os.Lstat(file)
+		_, err = io.WriteString(h, info.Name())
+		if err != nil {
+			return nil, nil, err
+		}
+		header, err := tar.FileInfoHeader(info, info.Name())
+		if err != nil {
+			return nil, nil, err
+		}
+		header.Name = file
+
+		err = t.WriteHeader(header)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Exit early for directories, symlinks, etc.
+		if !info.Mode().IsRegular() {
+			return nil, nil, nil
+		}
+
+		// For regular files, write the file.
+		filename, err := os.Open(file)
+		if err != nil {
+			return nil, nil, err
+		}
+		defer filename.Close()
+
+		log.Debugf("Archiving: %#v", file)
+		_, err = io.Copy(t, filename)
+		if err != nil {
+			return nil, nil, err
+		}
+		_, err = io.Copy(h, filename)
+		if err != nil {
+			return nil, nil, err
+		}
+		// Close again to force a disk flush. Closing an *os.File twice is
+		// undefined, but safe in practice.
+		// See https://github.com/golang/go/issues/20705.
+		filename.Close()
+
+	}
+
+	// Clean up and flush writers.
+	err = t.Flush()
+	if err != nil {
+		return nil, nil, err
+	}
+	err = g.Flush()
+	if err != nil {
+		return nil, nil, err
+	}
+	err = tmp.Sync()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return tmp, h.Sum(nil), nil
+}
