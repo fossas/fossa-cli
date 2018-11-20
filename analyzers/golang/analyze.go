@@ -114,12 +114,12 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	for _, buildTag := range a.BuildTags {
 		// Use `go list` to get imports and deps of module.
 		flags := []string{"-tags", buildTag}
-		main, err := a.Go.ListOne(flags, m.BuildTarget)
+		main, err := a.Go.ListOne(m.BuildTarget, flags)
 		if err != nil {
 			return graph.Deps{}, err
 		}
 		log.Debugf("Go main package: %#v", main)
-		deps, err := a.Go.List(flags, main.Deps)
+		deps, err := a.Go.List(main.Deps, flags)
 		if err != nil {
 			return graph.Deps{}, err
 		}

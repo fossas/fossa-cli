@@ -18,7 +18,7 @@ var (
 
 // Dir returns the absolute path to a Go package.
 func (a *Analyzer) Dir(importpath string) (string, error) {
-	pkg, err := a.Go.ListOne([]string{}, importpath)
+	pkg, err := a.Go.ListOne(importpath, nil)
 	if err != nil {
 		return "", err
 	}

@@ -124,7 +124,7 @@ func (a *Analyzer) Build() error {
 func (a *Analyzer) IsBuilt() (bool, error) {
 	m := a.Module
 	log.Debugf("%#v", m)
-	pkg, err := a.Go.ListOne([]string{}, m.BuildTarget)
+	pkg, err := a.Go.ListOne(m.BuildTarget, nil)
 	if err != nil {
 		return false, err
 	}

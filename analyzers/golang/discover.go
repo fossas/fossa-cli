@@ -43,7 +43,7 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 		Cmd: cmd,
 		Dir: dir,
 	}
-	found, err := g.List([]string{}, []string{"./..."})
+	found, err := g.List([]string{"./..."}, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not find Go projects")
 	}
