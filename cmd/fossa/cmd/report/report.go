@@ -10,7 +10,7 @@ import (
 	"github.com/fossas/fossa-cli/module"
 )
 
-var (
+const (
 	Unknown = "show-unknown"
 )
 
