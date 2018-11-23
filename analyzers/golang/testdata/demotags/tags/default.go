@@ -3,10 +3,5 @@
 
 package tags
 
-import (
-	"fmt"
-)
-
 func Build() {
-	fmt.Println("notag")
 }
