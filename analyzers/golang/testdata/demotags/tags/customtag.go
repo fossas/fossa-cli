@@ -2,9 +2,7 @@
 
 package tags
 
-import (
-	"imports/customtag"
-)
+import "imports/customtag"
 
 func Build() {
 	customtag.New()
