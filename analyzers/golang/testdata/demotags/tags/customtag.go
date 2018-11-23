@@ -3,9 +3,9 @@
 package tags
 
 import (
-	"github.com/blang/semver"
+	"imports/customtag"
 )
 
-func BuildTags() {
-	semver.Make("1-0-0.test")
+func Build() {
+	customtag.New()
 }

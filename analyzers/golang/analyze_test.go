@@ -29,16 +29,16 @@ func TestProjectNotInDeps(t *testing.T) {
 	}
 }
 
-var semver = pkg.ID{
+var customtag = pkg.ID{
 	Type:     pkg.Go,
-	Name:     "github.com/blang/semver",
-	Revision: "2ee87856327ba09384cabd113bc6b5d174e9ec0f",
+	Name:     "imports/customtag",
+	Revision: "54321",
 }
 
-var toml = pkg.ID{
+var combo = pkg.ID{
 	Type:     pkg.Go,
-	Name:     "github.com/BurntSushi/toml",
-	Revision: "3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005",
+	Name:     "imports/combo",
+	Revision: "12345",
 }
 
 func TestProjectWithoutBuildTags(t *testing.T) {
@@ -49,8 +49,8 @@ func TestProjectWithoutBuildTags(t *testing.T) {
 	assert.NoError(t, err)
 	deps, err := analyzer.Analyze()
 	assert.NoError(t, err)
-	assert.Contains(t, deps.Transitive, toml)
-	assert.NotContains(t, deps.Transitive, semver)
+	assert.NotContains(t, deps.Transitive, combo)
+	assert.NotContains(t, deps.Transitive, customtag)
 }
 
 func TestProjectWithBuildTags(t *testing.T) {
@@ -63,6 +63,20 @@ func TestProjectWithBuildTags(t *testing.T) {
 	assert.NoError(t, err)
 	deps, err := analyzer.Analyze()
 	assert.NoError(t, err)
-	assert.Contains(t, deps.Transitive, toml)
-	assert.Contains(t, deps.Transitive, semver)
+	assert.Contains(t, deps.Transitive, customtag)
+	assert.NotContains(t, deps.Transitive, combo)
+}
+
+func TestProjectWithMultipleBuildTags(t *testing.T) {
+	testModule := module.Module{}
+	testModule.Options = make(map[string]interface{})
+	testModule.Options["tags"] = []string{"combo1 combo2"}
+	testModule.BuildTarget = "github.com/fossas/fossa-cli/analyzers/golang/testdata/demotags"
+
+	analyzer, err := golang.New(testModule)
+	assert.NoError(t, err)
+	deps, err := analyzer.Analyze()
+	assert.NoError(t, err)
+	assert.Contains(t, deps.Transitive, combo)
+	assert.NotContains(t, deps.Transitive, customtag)
 }

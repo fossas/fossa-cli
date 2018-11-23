@@ -1,9 +1,12 @@
+// +build !customtag
+// +build !combo1, !combo2
+
 package tags
 
 import (
-	"github.com/BurntSushi/toml"
+	"fmt"
 )
 
 func Build() {
-	toml.Decode("", "")
+	fmt.Println("notag")
 }
