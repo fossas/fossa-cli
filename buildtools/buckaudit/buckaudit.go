@@ -62,9 +62,9 @@ func deps(pkg string) (string, error) {
 	return out, err
 }
 
-func uploadDeps(depJSON string) (map[string]string, error) {
+func uploadDeps(depJSON string) (map[string]fossa.Locator, error) {
 	var depList dependencies
-	revisionMap := make(map[string]string)
+	revisionMap := make(map[string]fossa.Locator)
 	err := json.Unmarshal([]byte(depJSON), &depList.Deps)
 	if err != nil {
 		return revisionMap, errors.Wrap(err, "Could not unmarshal JSON into dependency list")
@@ -74,14 +74,14 @@ func uploadDeps(depJSON string) (map[string]string, error) {
 		locator, err := fossa.UploadTarballFiles(files, dep)
 		fmt.Printf("\nfiles uploading %+v\n", files)
 		fmt.Printf("locator: %s\nerror: %+v\n", locator, err)
-		revisionMap[dep] = locator.Revision
+		revisionMap[dep] = locator
 	}
 
 	// Tar all of the source files up and upload each individually
 	return revisionMap, nil
 }
 
-func depGraph(pack string, revisionMap map[string]string) (map[pkg.ID]pkg.Package, error) {
+func depGraph(pack string, revisionMap map[string]fossa.Locator) (map[pkg.ID]pkg.Package, error) {
 	/* 	depList := buckAudit("buck", "--transitive")
 	 */
 	fullGraph := make(map[pkg.ID]pkg.Package)
@@ -100,8 +100,8 @@ func depGraph(pack string, revisionMap map[string]string) (map[pkg.ID]pkg.Packag
 			// Create the secondary level deps ID
 			deepID := pkg.ID{
 				Type:     pkg.Raw,
-				Name:     deepdep,
-				Revision: revisionMap[deepdep],
+				Name:     revisionMap[deepdep].Project,
+				Revision: revisionMap[deepdep].Revision,
 			}
 
 			// Create the package
@@ -118,8 +118,8 @@ func depGraph(pack string, revisionMap map[string]string) (map[pkg.ID]pkg.Packag
 		// Create the head deps id and add its imports to its package and add to the map
 		id := pkg.ID{
 			Type:     pkg.Raw,
-			Name:     dep,
-			Revision: revisionMap[dep],
+			Name:     revisionMap[dep].Project,
+			Revision: revisionMap[dep].Revision,
 		}
 		fullGraph[id] = pkg.Package{
 			ID:      id,
@@ -131,7 +131,7 @@ func depGraph(pack string, revisionMap map[string]string) (map[pkg.ID]pkg.Packag
 	return fullGraph, nil
 }
 
-func directDeps(pack string, revisionMap map[string]string) ([]pkg.Import, error) {
+func directDeps(pack string, revisionMap map[string]fossa.Locator) ([]pkg.Import, error) {
 	imports := []pkg.Import{}
 	deps := buckAudit(pack)
 	for _, dep := range deps.Deps[pack] {
@@ -139,8 +139,8 @@ func directDeps(pack string, revisionMap map[string]string) ([]pkg.Import, error
 			Target: dep,
 			Resolved: pkg.ID{
 				Type:     pkg.Raw,
-				Name:     dep,
-				Revision: revisionMap[dep],
+				Name:     revisionMap[dep].Project,
+				Revision: revisionMap[dep].Revision,
 			},
 		})
 	}

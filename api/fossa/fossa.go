@@ -3,6 +3,7 @@
 package fossa
 
 import (
+	"fmt"
 	"net/url"
 
 	"github.com/fossas/fossa-cli/api"
@@ -48,6 +49,7 @@ func GetJSON(endpoint string, v interface{}) (statusCode int, err error) {
 // TODO: maybe `body` should be an `io.Reader` instead.
 func Post(endpoint string, body []byte) (res string, statusCode int, err error) {
 	u, err := serverURL.Parse(endpoint)
+	fmt.Println(u)
 	if err != nil {
 		return "", 0, err
 	}

@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/apex/log"
 )
@@ -94,6 +95,7 @@ func UploadTarball(dir string) (Locator, error) {
 			log.Fatalf("Unable to upload: %s", err.Error())
 		}
 		_, err = io.Copy(w, tarball)
+
 		if err != nil {
 			log.Fatalf("Unable to upload: %s", err.Error())
 		}
@@ -137,11 +139,13 @@ func UploadTarball(dir string) (Locator, error) {
 		return Locator{}, err
 	}
 
-	return Locator{
+	locator := Locator{
 		Fetcher:  "archive",
 		Project:  name,
 		Revision: revision,
-	}, nil
+	}
+	fmt.Println(locator)
+	return locator, nil
 }
 
 // CreateTarball archives and compresses a directory's contents to a temporary
@@ -154,6 +158,7 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 	}
 
 	tmp, err := ioutil.TempFile("", "fossa-tar-"+filepath.Base(dir)+"-")
+	fmt.Println(tmp.Name())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -203,6 +208,7 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 		}
 
 		// For regular files, write the file.
+		fmt.Println(filename)
 		file, err := os.Open(filename)
 		if err != nil {
 			return err
@@ -260,12 +266,14 @@ func UploadTarballFiles(files []string, depName string) (Locator, error) {
 		}
 		absFiles[i] = p
 	}
+	depName = strings.Split(depName, ":")[len(strings.Split(depName, ":"))-1]
 
 	// Run first pass: tarball creation and hashing.
 	tarball, hash, err := CreateTarballFromFiles(absFiles, depName)
 	if err != nil {
 		return Locator{}, err
 	}
+	fmt.Printf("\n\ntarball info: %+v\n\n", tarball.Name())
 
 	info, err := tarball.Stat()
 	if err != nil {
@@ -278,10 +286,9 @@ func UploadTarballFiles(files []string, depName string) (Locator, error) {
 	q.Add("packageSpec", depName)
 	q.Add("revision", revision)
 	var signed SignedURL
+	fmt.Println(SignedURLAPI)
 	_, err = GetJSON(SignedURLAPI+"?"+q.Encode(), &signed)
 	if err != nil {
-		fmt.Println("Get SignedURL error")
-		fmt.Println(signed)
 
 		return Locator{}, err
 	}
@@ -345,12 +352,14 @@ func UploadTarballFiles(files []string, depName string) (Locator, error) {
 		Project:  depName,
 		Revision: revision,
 	}
+	fmt.Println("locator", loc)
 	return loc, nil
 }
 
 // CreateTarballFromFiles creates a tarball from specific files
 func CreateTarballFromFiles(files []string, name string) (*os.File, []byte, error) {
-	tmp, err := ioutil.TempFile("", "fossa-tar-tempfile-")
+	tmp, err := ioutil.TempFile("", "fossa-tar-tempfile-"+name+"-")
+	fmt.Println("tempfile", tmp.Name())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -385,6 +394,7 @@ func CreateTarballFromFiles(files []string, name string) (*os.File, []byte, erro
 		}
 
 		// For regular files, write the file.
+		fmt.Println(file)
 		filename, err := os.Open(file)
 		if err != nil {
 			return nil, nil, err
@@ -404,7 +414,6 @@ func CreateTarballFromFiles(files []string, name string) (*os.File, []byte, erro
 		// undefined, but safe in practice.
 		// See https://github.com/golang/go/issues/20705.
 		filename.Close()
-
 	}
 
 	// Clean up and flush writers.
