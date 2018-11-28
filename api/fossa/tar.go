@@ -6,7 +6,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -19,8 +18,9 @@ import (
 )
 
 var (
-	SignedURLAPI       = "/api/components/signed_url"
-	ComponentsBuildAPI = "/api/components/build"
+	SignedURLAPI            = "/api/components/signed_url"
+	ComponentsBuildAPI      = "/api/components/build"
+	ComponentsDependencyAPI = "/api/components/dependency"
 )
 
 type ComponentSpec struct {
@@ -144,7 +144,6 @@ func UploadTarball(dir string) (Locator, error) {
 		Project:  name,
 		Revision: revision,
 	}
-	fmt.Println(locator)
 	return locator, nil
 }
 
@@ -158,7 +157,6 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 	}
 
 	tmp, err := ioutil.TempFile("", "fossa-tar-"+filepath.Base(dir)+"-")
-	fmt.Println(tmp.Name())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -208,7 +206,6 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 		}
 
 		// For regular files, write the file.
-		fmt.Println(filename)
 		file, err := os.Open(filename)
 		if err != nil {
 			return err
@@ -252,7 +249,7 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 	return tmp, h.Sum(nil), nil
 }
 
-// UploadTarballFiles uploads a list of files.
+// UploadTarballFiles runs the logic inside of UploadTarball on a list of files.
 func UploadTarballFiles(files []string, depName string) (Locator, error) {
 	absFiles := make([]string, len(files))
 	for i, file := range files {
@@ -266,14 +263,17 @@ func UploadTarballFiles(files []string, depName string) (Locator, error) {
 		}
 		absFiles[i] = p
 	}
-	depName = strings.Split(depName, ":")[len(strings.Split(depName, ":"))-1]
+
+	// Modify the dependency name to appease core.
+	// Changes "//src/fossa/buildtools:buck" into "buildtools-buck"
+	depSplit := strings.Split(depName, "/")
+	dependency := strings.Replace(depSplit[len(depSplit)-1], ":", "-", 1)
 
 	// Run first pass: tarball creation and hashing.
-	tarball, hash, err := CreateTarballFromFiles(absFiles, depName)
+	tarball, hash, err := CreateTarballFromFiles(files, dependency)
 	if err != nil {
 		return Locator{}, err
 	}
-	fmt.Printf("\n\ntarball info: %+v\n\n", tarball.Name())
 
 	info, err := tarball.Stat()
 	if err != nil {
@@ -283,13 +283,11 @@ func UploadTarballFiles(files []string, depName string) (Locator, error) {
 	// Get signed URL for uploading.
 	revision := hex.EncodeToString(hash)
 	q := url.Values{}
-	q.Add("packageSpec", depName)
+	q.Add("packageSpec", dependency)
 	q.Add("revision", revision)
 	var signed SignedURL
-	fmt.Println(SignedURLAPI)
 	_, err = GetJSON(SignedURLAPI+"?"+q.Encode(), &signed)
 	if err != nil {
-
 		return Locator{}, err
 	}
 
@@ -335,31 +333,29 @@ func UploadTarballFiles(files []string, depName string) (Locator, error) {
 	// Queue the component build.
 	build := ComponentSpec{
 		Archives: []Component{
-			Component{PackageSpec: depName, Revision: revision},
+			Component{PackageSpec: dependency, Revision: revision},
 		},
 	}
 	data, err := json.Marshal(build)
 	if err != nil {
 		return Locator{}, err
 	}
-	_, _, err = Post(ComponentsBuildAPI, data)
+	_, _, err = Post(ComponentsDependencyAPI, data)
 	if err != nil {
 		return Locator{}, err
 	}
 
 	loc := Locator{
 		Fetcher:  "archive",
-		Project:  depName,
+		Project:  dependency,
 		Revision: revision,
 	}
-	fmt.Println("locator", loc)
 	return loc, nil
 }
 
 // CreateTarballFromFiles creates a tarball from specific files
 func CreateTarballFromFiles(files []string, name string) (*os.File, []byte, error) {
 	tmp, err := ioutil.TempFile("", "fossa-tar-tempfile-"+name+"-")
-	fmt.Println("tempfile", tmp.Name())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -394,7 +390,6 @@ func CreateTarballFromFiles(files []string, name string) (*os.File, []byte, erro
 		}
 
 		// For regular files, write the file.
-		fmt.Println(file)
 		filename, err := os.Open(file)
 		if err != nil {
 			return nil, nil, err

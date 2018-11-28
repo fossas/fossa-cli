@@ -11,11 +11,8 @@ type Analyzer struct {
 	Module module.Module
 }
 
-// Options??
-
 // New constructs a new Buck analyzer from a module
 func New(module module.Module) (*Analyzer, error) {
-
 	analyzer := Analyzer{
 		Module: module,
 	}
@@ -39,5 +36,5 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 
 // Analyze analyzers a buck package and its dependencies
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	return buckaudit.Deps()
+	return buckaudit.Deps(a.Module.Name)
 }

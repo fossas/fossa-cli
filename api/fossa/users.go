@@ -2,7 +2,6 @@ package fossa
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 )
 
@@ -18,7 +17,6 @@ type Organization struct {
 }
 
 func GetOrganizationID() (string, error) {
-	fmt.Println("GETTTING ORG IDD")
 	if MockOrgID != "" {
 		return MockOrgID, nil
 	}
