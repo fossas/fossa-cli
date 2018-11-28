@@ -4,17 +4,16 @@ package init
 import (
 	"regexp"
 
-	"github.com/fossas/fossa-cli/analyzers"
-	"github.com/fossas/fossa-cli/pkg"
-
+	"github.com/apex/log"
 	"github.com/urfave/cli"
 
-	"github.com/apex/log"
+	"github.com/fossas/fossa-cli/analyzers"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/module"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
 var (
