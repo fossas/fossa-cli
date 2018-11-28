@@ -19,7 +19,6 @@ type buckOutput struct {
 // Deps returns the dependencies of a Buck project using the buck audit command
 func Deps(name string) (graph.Deps, error) {
 	// Upload the dependencies.
-	name = "//src/com/facebook/buck/jvm/java/lang/model:model"
 	locatorMap, err := uploadDeps(name)
 	if err != nil {
 		return graph.Deps{}, nil
