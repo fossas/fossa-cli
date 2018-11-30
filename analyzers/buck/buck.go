@@ -7,7 +7,7 @@ import (
 	"github.com/apex/log"
 	"github.com/pkg/errors"
 
-	"github.com/fossas/fossa-cli/buildtools/buckaudit"
+	"github.com/fossas/fossa-cli/buildtools/buck"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -43,7 +43,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 
 // Analyze analyzers a buck package and its dependencies.
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	return buckaudit.Deps(a.Module.Name)
+	return buck.Deps(a.Module.BuildTarget)
 }
 
 // Discover finds directories that correspond to Buck projects.

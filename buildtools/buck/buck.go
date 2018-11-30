@@ -1,9 +1,8 @@
-package buckaudit
+package buck
 
 import (
 	"encoding/json"
-
-	"github.com/apex/log"
+	"strings"
 
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/errors"
@@ -17,21 +16,21 @@ type buckOutput struct {
 }
 
 // Deps returns the dependencies of a Buck project using the buck audit command
-func Deps(name string) (graph.Deps, error) {
+func Deps(target string) (graph.Deps, error) {
 	// Upload the dependencies.
-	locatorMap, err := uploadDeps(name)
+	locatorMap, err := uploadDeps(target)
 	if err != nil {
 		return graph.Deps{}, nil
 	}
 
 	// Get the transitive dependency graph.
-	transDeps, err := depGraph(name, locatorMap)
+	transDeps, err := depGraph(target, locatorMap)
 	if err != nil {
 		return graph.Deps{}, nil
 	}
 
 	// Get the direct dependencies.
-	imports, err := directDeps(name, locatorMap)
+	imports, err := directDeps(target, locatorMap)
 	if err != nil {
 		return graph.Deps{}, nil
 	}
@@ -42,19 +41,22 @@ func Deps(name string) (graph.Deps, error) {
 	}, nil
 }
 
-func uploadDeps(pack string) (map[string]fossa.Locator, error) {
+func uploadDeps(target string) (map[string]fossa.Locator, error) {
 	locatorMap := make(map[string]fossa.Locator)
-	depList, err := buckAudit("input", pack)
+	depList, err := buckAudit("input", target)
 	if err != nil {
 		return locatorMap, err
 	}
 
 	// Upload files and map the corresponding locator to the full dep path.
 	for dep, files := range depList.outputMapping {
-		locator, err := fossa.UploadTarballFiles(files, dep)
+		// Modify the dependency name to appease core.
+		// Changes "//src/fossa/buildtools:buck" into "buildtools-buck"
+		depSplit := strings.Split(dep, "/")
+		dependency := strings.Replace(depSplit[len(depSplit)-1], ":", "-", 1)
+		locator, err := fossa.UploadTarballDependencyFiles(files, dependency)
 		if err != nil {
-			log.Debugf("error uploading dependency: %s\n", dep)
-			continue
+			return locatorMap, err
 		}
 		locatorMap[dep] = locator
 	}
@@ -62,14 +64,14 @@ func uploadDeps(pack string) (map[string]fossa.Locator, error) {
 	return locatorMap, nil
 }
 
-func depGraph(pack string, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Package, error) {
+func depGraph(target string, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Package, error) {
 	fullGraph := make(map[pkg.ID]pkg.Package)
-	depList, err := buckAudit("dependencies", pack, "--transitive")
+	depList, err := buckAudit("dependencies", target, "--transitive")
 	if err != nil {
 		return fullGraph, err
 	}
 
-	for _, dep := range depList.outputMapping[pack] {
+	for _, dep := range depList.outputMapping[target] {
 		transDeps, err := buckAudit("dependencies", dep)
 		if err != nil {
 			return fullGraph, err
@@ -85,13 +87,13 @@ func depGraph(pack string, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.
 			}
 
 			// Create the package
-			pack := pkg.Import{
+			transImport := pkg.Import{
 				Target:   transDep,
 				Resolved: transID,
 			}
 
 			// Add it to the transitive list
-			imports = append(imports, pack)
+			imports = append(imports, transImport)
 		}
 
 		// Create the head deps id and add its imports to its package and add to the map
@@ -109,14 +111,14 @@ func depGraph(pack string, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.
 	return fullGraph, nil
 }
 
-func directDeps(pack string, locatorMap map[string]fossa.Locator) ([]pkg.Import, error) {
+func directDeps(target string, locatorMap map[string]fossa.Locator) ([]pkg.Import, error) {
 	imports := []pkg.Import{}
-	deps, err := buckAudit("dependencies", pack)
+	deps, err := buckAudit("dependencies", target)
 	if err != nil {
 		return imports, err
 	}
 
-	for _, dep := range deps.outputMapping[pack] {
+	for _, dep := range deps.outputMapping[target] {
 		imports = append(imports, pkg.Import{
 			Target: dep,
 			Resolved: pkg.ID{
@@ -130,14 +132,14 @@ func directDeps(pack string, locatorMap map[string]fossa.Locator) ([]pkg.Import,
 	return imports, nil
 }
 
-func buckAudit(cmd, pack string, args ...string) (buckOutput, error) {
+func buckAudit(cmd, target string, args ...string) (buckOutput, error) {
 	var output buckOutput
 	out, _, err := exec.Run(exec.Cmd{
 		Name: "buck",
-		Argv: append([]string{"audit", cmd, "--json", pack}, args...),
+		Argv: append([]string{"audit", cmd, "--json", target}, args...),
 	})
 	if err != nil {
-		return output, errors.Wrapf(err, "Could not run `buck audit %s --json %s` within the current directory", cmd, pack)
+		return output, errors.Wrapf(err, "Could not run `buck audit %s --json %s` within the current directory", cmd, target)
 	}
 
 	err = json.Unmarshal([]byte(out), &output.outputMapping)
