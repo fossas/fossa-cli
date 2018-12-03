@@ -1,5 +1,5 @@
 // Package fossa provides a high-level interface to the FOSSA API (by default,
-// located at https://app.fossa.io).
+// located at https://app.fossa.com).
 package fossa
 
 import (

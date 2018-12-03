@@ -23,7 +23,7 @@ TROUBLESHOOTING:
 Please try troubleshooting before filing a bug. If none of the suggestions work,
 you can file a bug at <https://github.com/fossas/fossa-cli/issues/new>.
 
-For additional support, ask the #cli channel at <https://slack.fossa.io>.
+For additional support, ask the #cli channel at <https://slack.fossa.com>.
 
 CREATING AN ISSUE:
 
