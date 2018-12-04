@@ -47,6 +47,12 @@ func New(m module.Module) (*Analyzer, error) {
 	}
 	log.WithField("options", options).Debug("parsed analyzer options")
 
+	// Edge case: `Dir` is not set when passing module configurations from the command line.
+	// TODO: we really need to refactor the Module struct.
+	if m.Dir == "" {
+		m.Dir = m.BuildTarget
+	}
+
 	analyzer := Analyzer{
 		PodCmd:     podCmd,
 		PodVersion: podVersion,
