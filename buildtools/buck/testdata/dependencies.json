@@ -1,0 +1,5 @@
+{
+      "//buck/test:one": [
+            "//buck/test:two"
+      ]
+    }

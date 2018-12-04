@@ -371,6 +371,14 @@
   version = "v1.2.0"
 
 [[projects]]
+  digest = "1:6295a00553abd595aa3c647d36b58eae91410f107ad554873aaaf7c71ca55855"
+  name = "gopkg.in/go-ini/ini.v1"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ffaaebdac6e54ce73b4e196b8406920921304ec9"
+  version = "v1.39.1"
+
+[[projects]]
   digest = "1:866df945fc92cd221d2b384dca7de5f3131a6113b9f72a7a8019ae5046abe828"
   name = "gopkg.in/src-d/go-billy.v4"
   packages = [
@@ -469,6 +477,7 @@
     "github.com/rveen/ogdl",
     "github.com/stretchr/testify/assert",
     "github.com/urfave/cli",
+    "gopkg.in/go-ini/ini.v1",
     "gopkg.in/src-d/go-git.v4",
     "gopkg.in/src-d/go-git.v4/plumbing",
     "gopkg.in/yaml.v2",
