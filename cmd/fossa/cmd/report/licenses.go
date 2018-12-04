@@ -1,6 +1,7 @@
 package report
 
 import (
+	"encoding/json"
 	"fmt"
 	"text/template"
 
@@ -26,12 +27,18 @@ The following software have components provided under the terms of this license:
 {{end}}
 `
 
+const (
+	JSON    = "json"
+	Unknown = "show-unknown"
+)
+
 var licensesCmd = cli.Command{
 	Name:  "licenses",
 	Usage: "Generate licenses report",
 	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithOptions(flags.WithReportTemplateFlags([]cli.Flag{
 		// TODO: what does this actually do?
 		cli.BoolFlag{Name: flags.Short(Unknown), Usage: "include unknown licenses"},
+		cli.BoolFlag{Name: JSON, Usage: "format output as JSON"},
 	})))),
 	Action: licensesRun,
 }
@@ -80,6 +87,15 @@ func licensesRun(ctx *cli.Context) (err error) {
 		}
 	}
 	display.ClearProgress()
+
+	if ctx.Bool(JSON) {
+		output, err := json.Marshal(revs)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(output))
+		return nil
+	}
 
 	depsByLicense := make(map[string]map[string]fossa.Revision)
 	for _, rev := range revs {

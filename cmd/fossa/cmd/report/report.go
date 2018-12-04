@@ -10,10 +10,6 @@ import (
 	"github.com/fossas/fossa-cli/module"
 )
 
-var (
-	Unknown = "show-unknown"
-)
-
 var Cmd = cli.Command{
 	Name:  "report",
 	Usage: "Generate reports",
