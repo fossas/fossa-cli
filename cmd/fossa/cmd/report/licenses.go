@@ -28,7 +28,8 @@ The following software have components provided under the terms of this license:
 `
 
 const (
-	JSON = "json"
+	JSON    = "json"
+	Unknown = "show-unknown"
 )
 
 var licensesCmd = cli.Command{
