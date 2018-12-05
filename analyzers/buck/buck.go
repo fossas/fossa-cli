@@ -53,7 +53,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	return a.Cmd.Deps(a.Upload)
 }
 
-// Discover tries to find a Buck project by first looking for a ".buckconfig" file and then a "BUCK" file.
+// Discover finds a Buck project by first looking for a ".buckconfig" file and then a "BUCK" file.
 func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) {
 	var moduleList []module.Module
 
@@ -65,11 +65,11 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 		}
 
 		repositories, err := file.GetSection("repositories")
-		// If no repositores are listed we are at the head of the cell. Attempt to use the base directory.
+		// If no repositores are listed we are at the head of a cell. Attempt to use the base directory.
 		if err != nil {
 			wd, err := os.Getwd()
 			if err != nil {
-				return nil, errors.Errorf("Could not get working directory: %s", err)
+				return nil, errors.Errorf("Cannot get working directory: %s", err)
 			}
 			baseDirectory := filepath.Base(wd)
 			bestGuessTarget := ":" + baseDirectory
@@ -101,7 +101,7 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 	if err == nil {
 		wd, err := os.Getwd()
 		if err != nil {
-			return nil, errors.Errorf("Could not get working directory: %s", err)
+			return nil, errors.Errorf("Cannot get working directory: %s", err)
 		}
 
 		buckRoot, err := buckCmd("root")

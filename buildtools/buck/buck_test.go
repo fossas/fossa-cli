@@ -39,7 +39,7 @@ func TestTransitiveDeps(t *testing.T) {
 func Mock(file string, err error) buck.Cmd {
 	return buck.Cmd{
 		Target: "//buck/test:one",
-		Audit: func(cmd, target string, args ...string) (buck.BuckOutput, error) {
+		Audit: func(cmd, target string, args ...string) (buck.AuditOutput, error) {
 			switch cmd {
 			case "input":
 				return buckAuditFile("testdata/input.json"), nil
@@ -55,18 +55,21 @@ func Mock(file string, err error) buck.Cmd {
 				case "//buck/test:three":
 					return buckAuditFile("testdata/dependenciesDepThree.json"), nil
 				default:
-					return buck.BuckOutput{}, nil
+					return buck.AuditOutput{}, nil
 				}
 			default:
-				return buck.BuckOutput{}, nil
+				return buck.AuditOutput{}, nil
 			}
 		},
 	}
 }
 
-func buckAuditFile(file string) buck.BuckOutput {
-	fileRead, _ := ioutil.ReadFile(file)
-	var output buck.BuckOutput
+func buckAuditFile(file string) buck.AuditOutput {
+	var output buck.AuditOutput
+	fileRead, err := ioutil.ReadFile(file)
+	if err != nil {
+		return output
+	}
 	json.Unmarshal([]byte(fileRead), &output.OutputMapping)
 	return output
 }
