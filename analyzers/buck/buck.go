@@ -18,6 +18,7 @@ package buck
 
 import (
 	"os"
+	"path"
 	"strings"
 
 	"github.com/apex/log"
@@ -43,7 +44,7 @@ func New(module module.Module) (*Analyzer, error) {
 	analyzer := Analyzer{
 		Module: module,
 		Upload: true,
-		Cmd:    buck.New(module.Dir, module.BuildTarget),
+		Cmd:    buck.New(module.BuildTarget),
 	}
 	return &analyzer, nil
 }
@@ -75,10 +76,16 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 // 2. "BUCK" file is found.
 // 	a. Run `buck targets <directory>:` to find all local targets.
 func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) {
+	return DiscoverWithCommand(dir, opts, buckCmd)
+}
+
+// DiscoverWithCommand is used to operate Discovery with a custom `buck` command.
+func DiscoverWithCommand(dir string, opts map[string]interface{}, buckCommand func(string, ...string) (string, error)) ([]module.Module, error) {
 	var moduleList []module.Module
-	_, err := os.Stat(".buckconfig")
+
+	_, err := os.Stat(path.Join(dir, ".buckconfig"))
 	if err == nil {
-		file, err := ini.Load(".buckconfig")
+		file, err := ini.Load(path.Join(dir, ".buckconfig"))
 		if err != nil {
 			return nil, errors.Errorf("Unable to read .buckconfig file: %s", err)
 		}
@@ -91,7 +98,7 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 			return moduleList, nil
 		}
 
-		out, err := buckCmd("targets", "//")
+		out, err := buckCommand("targets", "//")
 		if err != nil {
 			return nil, err
 		}
@@ -103,21 +110,21 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 		return moduleList, nil
 	}
 
-	_, err = os.Stat("BUCK")
+	_, err = os.Stat(path.Join(dir, "BUCK"))
 	if err == nil {
 		wd, err := os.Getwd()
 		if err != nil {
 			return nil, errors.Errorf("Cannot get working directory: %s", err)
 		}
 
-		buckRoot, err := buckCmd("root")
+		buckRoot, err := buckCommand("root")
 		if err != nil {
 			return nil, err
 		}
 
 		// Condition the current directory to the format of "parent/child:" from the root directory.
 		buckDirectory := strings.TrimPrefix(wd, strings.TrimSpace(buckRoot)+"/")
-		out, err := buckCmd("targets", buckDirectory+":")
+		out, err := buckCommand("targets", buckDirectory+":")
 		if err != nil {
 			return nil, err
 		}
@@ -125,15 +132,11 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 		targets := strings.Split(out, "\n")
 		for _, target := range targets {
 			if len(target) > 0 {
-				moduleList = append(moduleList, newModule(target, target, strings.TrimSpace(buckRoot)))
+				moduleList = append(moduleList, newModule(target, target, dir))
 			}
 		}
-
-		return moduleList, nil
 	}
-
-	return nil, errors.Errorf("Could not find Buck config file: %s", err.Error())
-
+	return moduleList, nil
 }
 
 func buckCmd(cmd string, args ...string) (string, error) {

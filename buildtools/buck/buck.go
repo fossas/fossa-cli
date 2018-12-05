@@ -29,15 +29,15 @@ type Buck interface {
 
 // Cmd implements Buck and defines how to retrieve buck audit output.
 type Cmd struct {
-	RootDir string
+	RootDir func() (string, error)
 	Target  string
 	Audit   func(cmd, target string, args ...string) (AuditOutput, error)
 }
 
 // New creates a new Buck instance that calls the buck build tool.
-func New(dir, target string) Buck {
+func New(target string) Buck {
 	return Cmd{
-		RootDir: dir,
+		RootDir: buckRoot,
 		Target:  target,
 		Audit:   buckAudit,
 	}
@@ -78,13 +78,19 @@ func uploadDeps(b Cmd, upload bool) (map[string]fossa.Locator, error) {
 	if err != nil {
 		return locatorMap, err
 	}
+
+	rootDir, err := b.RootDir()
+	if err != nil {
+		return locatorMap, errors.Wrap(err, "Cannot get buck root")
+	}
+
 	wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
 	// Upload individual dependencies and keep a reference to the generated locators.
 	for d, f := range depList.OutputMapping {
 		wg.Add()
 		go func(dep string, files []string) {
 			defer wg.Done()
-			locator, err := fossa.UploadTarballDependencyFiles(b.RootDir, files, sanitizeBuckTarget(dep), upload)
+			locator, err := fossa.UploadTarballDependencyFiles(rootDir, files, sanitizeBuckTarget(dep), upload)
 			if err != nil {
 				log.Warnf("Cannot make locator map: %s", err)
 			}
@@ -185,4 +191,16 @@ func buckAudit(cmd, target string, args ...string) (AuditOutput, error) {
 	}
 
 	return output, nil
+}
+
+func buckRoot() (string, error) {
+	root, _, err := exec.Run(exec.Cmd{
+		Name: "buck",
+		Argv: []string{"root"},
+	})
+	if err != nil {
+		return root, errors.Wrap(err, "Could not run `buck root` within the current directory")
+	}
+
+	return strings.TrimSpace(root), nil
 }

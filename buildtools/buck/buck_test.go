@@ -3,6 +3,7 @@ package buck_test
 import (
 	"encoding/json"
 	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -38,6 +39,9 @@ func TestTransitiveDeps(t *testing.T) {
 // Mock constructs a buck.Cmd using mock build tool output.
 func Mock(file string, err error) buck.Cmd {
 	return buck.Cmd{
+		RootDir: func() (string, error) {
+			return os.Getwd()
+		},
 		Target: "//buck/test:one",
 		Audit: func(cmd, target string, args ...string) (buck.AuditOutput, error) {
 			switch cmd {

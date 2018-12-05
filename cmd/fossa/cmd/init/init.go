@@ -84,7 +84,7 @@ func Do(includeAll bool, options map[string]interface{}) ([]module.Module, error
 		return discovered, nil
 	}
 	var filtered []module.Module
-	suspicious := regexp.MustCompile("(docs?/|[Tt]est|examples?|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/|third_party/|tmp/|Carthage/Checkouts/)")
+	suspicious := regexp.MustCompile("(docs?/|[Tt]est|examples?|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/|third[_-]party/|tmp/|Carthage/Checkouts/)")
 	for _, d := range discovered {
 		log.Debugf("Discovered: %#v", d)
 
