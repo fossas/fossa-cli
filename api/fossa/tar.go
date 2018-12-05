@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 
 	"github.com/apex/log"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -177,12 +178,11 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 // Fossa to be treated as a dependency.
 func UploadTarballDependencyFiles(dir string, files []string, name string, upload bool) (Locator, error) {
 	absFiles := make([]string, len(files))
-
 	for i, file := range files {
 		p := filepath.Join(dir, file)
 		_, err := os.Stat(p)
 		if err != nil {
-			return Locator{}, err
+			return Locator{}, errors.Errorf("File: %s does not exist: %s", p, err)
 		}
 		absFiles[i] = p
 	}
