@@ -70,7 +70,10 @@ func buckAuditFile(file string) buck.AuditOutput {
 	if err != nil {
 		return output
 	}
-	json.Unmarshal([]byte(fileRead), &output.OutputMapping)
+	err = json.Unmarshal([]byte(fileRead), &output.OutputMapping)
+	if err != nil {
+		return output
+	}
 	return output
 }
 
