@@ -2,7 +2,13 @@ package buck
 
 import (
 	"encoding/json"
+	"fmt"
+	"runtime"
 	"strings"
+	"time"
+
+	"github.com/apex/log"
+	"github.com/remeh/sizedwaitgroup"
 
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/errors"
@@ -40,11 +46,12 @@ func New(dir, target string) Buck {
 // Deps finds and uploads the dependencies of a Buck target using the buck audit command and
 // returns the dependency graph.
 func (b Cmd) Deps(upload bool) (graph.Deps, error) {
+	start := time.Now()
 	locatorMap, err := uploadDeps(b, upload)
 	if err != nil {
 		return graph.Deps{}, nil
 	}
-
+	uploadTime := time.Now()
 	transDeps, err := depGraph(b, locatorMap)
 	if err != nil {
 		return graph.Deps{}, nil
@@ -54,6 +61,10 @@ func (b Cmd) Deps(upload bool) (graph.Deps, error) {
 	if err != nil {
 		return graph.Deps{}, nil
 	}
+	depsTime := time.Now()
+
+	fmt.Println(uploadTime.Sub(start))
+	fmt.Println(depsTime.Sub(uploadTime))
 
 	return graph.Deps{
 		Direct:     imports,
@@ -67,15 +78,20 @@ func uploadDeps(b Cmd, upload bool) (map[string]fossa.Locator, error) {
 	if err != nil {
 		return locatorMap, err
 	}
-
+	wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
 	// Upload individual dependencies and keep a reference to the generated locators.
-	for dep, files := range depList.OutputMapping {
-		locator, err := fossa.UploadTarballDependencyFiles(b.RootDir, files, sanitizeBuckTarget(dep), upload)
-		if err != nil {
-			return locatorMap, err
-		}
-		locatorMap[dep] = locator
+	for d, f := range depList.OutputMapping {
+		wg.Add()
+		go func(dep string, files []string) {
+			defer wg.Done()
+			locator, err := fossa.UploadTarballDependencyFiles(b.RootDir, files, sanitizeBuckTarget(dep), upload)
+			if err != nil {
+				log.Warnf("Cannot make locator map: %s", err)
+			}
+			locatorMap[dep] = locator
+		}(d, f)
 	}
+	wg.Wait()
 
 	return locatorMap, nil
 }
@@ -87,34 +103,40 @@ func depGraph(b Cmd, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Packag
 		return transitiveDeps, err
 	}
 
-	for _, dep := range depList.OutputMapping[b.Target] {
-		transDeps, err := b.Audit("dependencies", dep)
-		if err != nil {
-			return transitiveDeps, err
-		}
+	wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
+	for _, d := range depList.OutputMapping[b.Target] {
+		wg.Add()
+		go func(dep string) {
+			defer wg.Done()
+			transDeps, err := b.Audit("dependencies", dep)
+			if err != nil {
+				log.Warn("o noooooo")
+			}
 
-		var imports []pkg.Import
-		for _, transDep := range transDeps.OutputMapping[dep] {
-			imports = append(imports, pkg.Import{
-				Target: transDep,
-				Resolved: pkg.ID{
-					Type:     pkg.Raw,
-					Name:     locatorMap[transDep].Project,
-					Revision: locatorMap[transDep].Revision,
-				},
-			})
-		}
+			var imports []pkg.Import
+			for _, transDep := range transDeps.OutputMapping[dep] {
+				imports = append(imports, pkg.Import{
+					Target: transDep,
+					Resolved: pkg.ID{
+						Type:     pkg.Raw,
+						Name:     locatorMap[transDep].Project,
+						Revision: locatorMap[transDep].Revision,
+					},
+				})
+			}
 
-		id := pkg.ID{
-			Type:     pkg.Raw,
-			Name:     locatorMap[dep].Project,
-			Revision: locatorMap[dep].Revision,
-		}
-		transitiveDeps[id] = pkg.Package{
-			ID:      id,
-			Imports: imports,
-		}
+			id := pkg.ID{
+				Type:     pkg.Raw,
+				Name:     locatorMap[dep].Project,
+				Revision: locatorMap[dep].Revision,
+			}
+			transitiveDeps[id] = pkg.Package{
+				ID:      id,
+				Imports: imports,
+			}
+		}(d)
 	}
+	wg.Wait()
 
 	return transitiveDeps, nil
 }

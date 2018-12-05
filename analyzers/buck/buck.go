@@ -18,7 +18,6 @@ package buck
 
 import (
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/apex/log"
@@ -64,7 +63,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 	return true, nil
 }
 
-// Analyze analyzers a buck package and its dependencies.
+// Analyze analyzes a buck build target and its dependencies.
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	return a.Cmd.Deps(a.Upload)
 }
@@ -72,7 +71,6 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 // Discover finds a Buck project by first looking for a ".buckconfig" file and then a "BUCK" file.
 func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) {
 	var moduleList []module.Module
-
 	_, err := os.Stat(".buckconfig")
 	if err == nil {
 		file, err := ini.Load(".buckconfig")
@@ -80,36 +78,13 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 			return nil, errors.Errorf("Unable to read .buckconfig file: %s", err)
 		}
 
-		repositories, err := file.GetSection("repositories")
-		// If no repositores are listed we are at the head of a cell. Attempt to use the base directory.
-		if err != nil {
-			wd, err := os.Getwd()
-			if err != nil {
-				return nil, errors.Errorf("Cannot get working directory: %s", err)
+		aliases, err := file.GetSection("alias")
+		if err == nil {
+			for name, target := range aliases.KeysHash() {
+				moduleList = append(moduleList, newModule(name, target, dir))
 			}
-			baseDirectory := filepath.Base(wd)
-			bestGuessTarget := ":" + baseDirectory
-
-			_, err = buckCmd("targets", bestGuessTarget)
-			if err != nil {
-				log.Warnf("Buck module %s's build target was incorrectly indentified.", baseDirectory)
-			}
-
-			return append(moduleList, newModule(baseDirectory, bestGuessTarget, ".")), nil
 		}
 
-		for name, dir := range repositories.KeysHash() {
-			target := name
-			aliases, err := file.GetSection("alias")
-			if err == nil {
-				alias, err := aliases.GetKey(name)
-				if err == nil {
-					target = alias.String()
-				}
-			}
-
-			moduleList = append(moduleList, newModule(name, target, dir))
-		}
 		return moduleList, nil
 	}
 
@@ -125,7 +100,7 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 			return nil, err
 		}
 
-		// Condition the current directory to of format "parent/child:" from the root directory.
+		// Condition the current directory to the format of "parent/child:" from the root directory.
 		buckDirectory := strings.TrimPrefix(wd, strings.TrimSpace(buckRoot)+"/")
 		out, err := buckCmd("targets", buckDirectory+":")
 		if err != nil {
