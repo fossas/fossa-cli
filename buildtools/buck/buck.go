@@ -48,6 +48,7 @@ func (b Cmd) Deps(upload bool) (graph.Deps, error) {
 	if err != nil {
 		return graph.Deps{}, nil
 	}
+
 	transDeps, err := depGraph(b, locatorMap)
 	if err != nil {
 		return graph.Deps{}, nil
