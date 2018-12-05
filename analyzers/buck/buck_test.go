@@ -63,6 +63,6 @@ func mockBuck(cmd string, args ...string) (string, error) {
 	case "targets":
 		return "//test:one\n//test:two", nil
 	default:
-		return "", errors.New("Cannot identify the buck command")
+		return "", errors.New("Cannot identify the test command")
 	}
 }

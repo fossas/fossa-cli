@@ -2,10 +2,8 @@ package buck
 
 import (
 	"encoding/json"
-	"fmt"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/apex/log"
 	"github.com/remeh/sizedwaitgroup"
@@ -46,12 +44,10 @@ func New(target string) Buck {
 // Deps finds and uploads the dependencies of a Buck target using the buck audit command and
 // returns the dependency graph.
 func (b Cmd) Deps(upload bool) (graph.Deps, error) {
-	start := time.Now()
 	locatorMap, err := uploadDeps(b, upload)
 	if err != nil {
 		return graph.Deps{}, nil
 	}
-	uploadTime := time.Now()
 	transDeps, err := depGraph(b, locatorMap)
 	if err != nil {
 		return graph.Deps{}, nil
@@ -61,10 +57,6 @@ func (b Cmd) Deps(upload bool) (graph.Deps, error) {
 	if err != nil {
 		return graph.Deps{}, nil
 	}
-	depsTime := time.Now()
-
-	fmt.Println(uploadTime.Sub(start))
-	fmt.Println(depsTime.Sub(uploadTime))
 
 	return graph.Deps{
 		Direct:     imports,
@@ -92,7 +84,7 @@ func uploadDeps(b Cmd, upload bool) (map[string]fossa.Locator, error) {
 			defer wg.Done()
 			locator, err := fossa.UploadTarballDependencyFiles(rootDir, files, sanitizeBuckTarget(dep), upload)
 			if err != nil {
-				log.Warnf("Cannot make locator map: %s", err)
+				log.Warnf("Cannot upload files for %v: %s", dep, err)
 			}
 			locatorMap[dep] = locator
 		}(d, f)
@@ -116,7 +108,7 @@ func depGraph(b Cmd, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Packag
 			defer wg.Done()
 			transDeps, err := b.Audit("dependencies", dep)
 			if err != nil {
-				log.Warn("o noooooo")
+				log.Warnf("Cannot retrieve depenedency list for %v: %s", dep, err)
 			}
 
 			var imports []pkg.Import
