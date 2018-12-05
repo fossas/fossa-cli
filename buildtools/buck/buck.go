@@ -23,15 +23,17 @@ type Buck interface {
 
 // Cmd implements Buck and defines how to retrieve buck audit output.
 type Cmd struct {
-	Target string
-	Audit  func(cmd, target string, args ...string) (AuditOutput, error)
+	RootDir string
+	Target  string
+	Audit   func(cmd, target string, args ...string) (AuditOutput, error)
 }
 
 // New creates a new Buck instance that calls the buck build tool.
-func New(target string) Buck {
+func New(dir, target string) Buck {
 	return Cmd{
-		Target: target,
-		Audit:  buckAudit,
+		RootDir: dir,
+		Target:  target,
+		Audit:   buckAudit,
 	}
 }
 
@@ -68,7 +70,7 @@ func uploadDeps(b Cmd, upload bool) (map[string]fossa.Locator, error) {
 
 	// Upload individual dependencies and keep a reference to the generated locators.
 	for dep, files := range depList.OutputMapping {
-		locator, err := fossa.UploadTarballDependencyFiles(files, sanitizeBuckTarget(dep), upload)
+		locator, err := fossa.UploadTarballDependencyFiles(b.RootDir, files, sanitizeBuckTarget(dep), upload)
 		if err != nil {
 			return locatorMap, err
 		}

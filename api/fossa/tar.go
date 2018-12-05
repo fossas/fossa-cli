@@ -175,14 +175,12 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 
 // UploadTarballDependencyFiles generates and uploads a tarball from the provided list of files to
 // Fossa to be treated as a dependency.
-func UploadTarballDependencyFiles(files []string, name string, upload bool) (Locator, error) {
+func UploadTarballDependencyFiles(dir string, files []string, name string, upload bool) (Locator, error) {
 	absFiles := make([]string, len(files))
+
 	for i, file := range files {
-		p, err := filepath.Abs(file)
-		if err != nil {
-			return Locator{}, err
-		}
-		_, err = os.Stat(p)
+		p := filepath.Join(dir, file)
+		_, err := os.Stat(p)
 		if err != nil {
 			return Locator{}, err
 		}
@@ -190,7 +188,7 @@ func UploadTarballDependencyFiles(files []string, name string, upload bool) (Loc
 	}
 
 	// Run first pass: tarball creation and hashing.
-	tarball, hash, err := CreateTarballFromFiles(files, name)
+	tarball, hash, err := CreateTarballFromFiles(absFiles, name)
 	if err != nil {
 		return Locator{}, err
 	}
@@ -275,17 +273,15 @@ func CreateTarballFromFiles(files []string, name string) (*os.File, []byte, erro
 	return tmp, h.Sum(nil), nil
 }
 
+// Upload the supplied tarball to the given endpoint.
+// Note: "name" should not have any "/"s or core.
 func tarballUpload(endpoint, name string, upload bool, tarball *os.File, hash []byte) (Locator, error) {
 	info, err := tarball.Stat()
 	if err != nil {
 		return Locator{}, err
 	}
 
-	// Get revision for locator.
 	revision := hex.EncodeToString(hash)
-	q := url.Values{}
-	q.Add("packageSpec", name)
-	q.Add("revision", revision)
 
 	if !upload {
 		return Locator{
@@ -294,6 +290,10 @@ func tarballUpload(endpoint, name string, upload bool, tarball *os.File, hash []
 			Revision: revision,
 		}, nil
 	}
+
+	q := url.Values{}
+	q.Add("packageSpec", name)
+	q.Add("revision", revision)
 
 	// Get signed URL for uploading.
 	var signed SignedURL

@@ -1,3 +1,19 @@
+// Package buck implements the analyzer for Buck. https://buckbuild.com
+//
+// A `BuildTarget` in Buck is defined as a Build Target by Buck which is in
+// in the format of `//src/build:target`. Buck defines this as a strin used to
+// identify a Build Rule.
+//
+// This package is implemented by externally calling the `buck` build tool.
+//
+// FAQ
+//
+// 1. Why is analyzing manifest files not a supported strategy as it is for other tools?
+//
+// `.buckconfig` can be used to discover cells but the `repository` field which
+// defines cells is not required .
+// `BUCK` files are written in python and can be difficult to parse.
+// `buck audit` provides json formatted data for dependency and input information.
 package buck
 
 import (
@@ -28,7 +44,7 @@ func New(module module.Module) (*Analyzer, error) {
 	analyzer := Analyzer{
 		Module: module,
 		Upload: true,
-		Cmd:    buck.New(module.BuildTarget),
+		Cmd:    buck.New(module.Dir, module.BuildTarget),
 	}
 	return &analyzer, nil
 }
@@ -119,7 +135,7 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 		targets := strings.Split(out, "\n")
 		for _, target := range targets {
 			if len(target) > 0 {
-				moduleList = append(moduleList, newModule(target, target, buckDirectory))
+				moduleList = append(moduleList, newModule(target, target, strings.TrimSpace(buckRoot)))
 			}
 		}
 
