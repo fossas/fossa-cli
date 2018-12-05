@@ -69,6 +69,11 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 }
 
 // Discover finds a Buck project by first looking for a ".buckconfig" file and then a "BUCK" file.
+// 1. ".buckconfig" file is found and we know that that we are at the root of a Buck cell.
+// 	a. Attempt to find user defined aliases in .buckconfig.
+// 	b. No Aliases, run `buck targets //` to find all local targets.
+// 2. "BUCK" file is found.
+// 	a. Run `buck targets <directory>:` to find all local targets.
 func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) {
 	var moduleList []module.Module
 	_, err := os.Stat(".buckconfig")
@@ -79,12 +84,22 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 		}
 
 		aliases, err := file.GetSection("alias")
-		if err == nil {
+		if err == nil && len(aliases.Keys()) > 0 {
 			for name, target := range aliases.KeysHash() {
 				moduleList = append(moduleList, newModule(name, target, dir))
 			}
+			return moduleList, nil
 		}
 
+		out, err := buckCmd("targets", "//")
+		if err != nil {
+			return nil, err
+		}
+
+		buckTargetList := strings.Split(strings.TrimSpace(out), "\n")
+		for _, target := range buckTargetList {
+			moduleList = append(moduleList, newModule(target, target, dir))
+		}
 		return moduleList, nil
 	}
 
