@@ -15,7 +15,7 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-// AuditOutput models the output from "buck audit" command.
+// AuditOutput models the output from the `buck audit` command.
 type AuditOutput struct {
 	OutputMapping map[string][]string
 }
@@ -29,10 +29,10 @@ type Buck interface {
 type Cmd struct {
 	RootDir func() (string, error)
 	Target  string
-	Audit   func(cmd, target string, args ...string) (AuditOutput, error)
+	Audit   func(string, string, ...string) (AuditOutput, error)
 }
 
-// New creates a new Buck instance that calls the buck build tool.
+// New creates a new Buck instance that calls the buck build tool directly.
 func New(target string) Buck {
 	return Cmd{
 		RootDir: buckRoot,
@@ -41,7 +41,7 @@ func New(target string) Buck {
 	}
 }
 
-// Deps finds and uploads the dependencies of a Buck target using the buck audit command and
+// Deps finds and uploads the dependencies of a Buck target using the supplied command and
 // returns the dependency graph.
 func (b Cmd) Deps(upload bool) (graph.Deps, error) {
 	locatorMap, err := uploadDeps(b, upload)
@@ -161,7 +161,7 @@ func directDeps(b Cmd, locatorMap map[string]fossa.Locator) ([]pkg.Import, error
 	return imports, nil
 }
 
-// Change buildtarget "//src/fossa/buildtools:buck" into "buildtools-buck"
+// Change buildtarget `//src/fossa/buildtools:buck` into `buildtools-buck`
 // to appease core and simplify naming.
 func sanitizeBuckTarget(target string) string {
 	depSplit := strings.Split(target, "/")
@@ -180,7 +180,7 @@ func buckAudit(cmd, target string, args ...string) (AuditOutput, error) {
 
 	err = json.Unmarshal([]byte(out), &output.OutputMapping)
 	if err != nil {
-		return output, errors.Wrap(err, "Could not unmarshal JSON into dependency list")
+		return output, errors.Wrap(err, "Could not unmarshal `buck audit` JSON into dependency list")
 	}
 
 	return output, nil

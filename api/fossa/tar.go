@@ -274,7 +274,7 @@ func CreateTarballFromFiles(files []string, name string) (*os.File, []byte, erro
 }
 
 // Upload the supplied tarball to the given endpoint.
-// Note: "name" should not have any "/"s or core.
+// Note: "name" should not have any "/"s to ensure core can parse it.
 func tarballUpload(endpoint, name string, upload bool, tarball *os.File, hash []byte) (Locator, error) {
 	info, err := tarball.Stat()
 	if err != nil {
