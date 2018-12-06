@@ -15,6 +15,8 @@ import (
 
 	"github.com/apex/log"
 	"github.com/pkg/errors"
+
+	"github.com/fossas/fossa-cli/files"
 )
 
 var (
@@ -176,12 +178,12 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 
 // UploadTarballDependencyFiles generates and uploads a tarball from the provided list of files to
 // Fossa to be treated as a dependency.
-func UploadTarballDependencyFiles(dir string, files []string, name string, upload bool) (Locator, error) {
-	absFiles := make([]string, len(files))
-	for i, file := range files {
+func UploadTarballDependencyFiles(dir string, fileList []string, name string, upload bool) (Locator, error) {
+	absFiles := make([]string, len(fileList))
+	for i, file := range fileList {
 		p := filepath.Join(dir, file)
-		_, err := os.Stat(p)
-		if err != nil {
+		pExists, err := files.Exists(p)
+		if err != nil && !pExists {
 			return Locator{}, errors.Errorf("File: %s does not exist: %s", p, err)
 		}
 		absFiles[i] = p

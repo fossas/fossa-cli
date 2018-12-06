@@ -27,6 +27,7 @@ import (
 
 	"github.com/fossas/fossa-cli/buildtools/buck"
 	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -82,8 +83,8 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 // DiscoverWithCommand is used to operate Discovery with a custom `buck` command.
 func DiscoverWithCommand(dir string, opts map[string]interface{}, buckCommand func(string, ...string) (string, error)) ([]module.Module, error) {
 	var moduleList []module.Module
-	_, err := os.Stat(path.Join(dir, ".buckconfig"))
-	if err == nil {
+	buckConfig, err := files.Exists(dir, ".buckconfig")
+	if err == nil && buckConfig {
 		file, err := ini.Load(path.Join(dir, ".buckconfig"))
 		if err != nil {
 			return nil, errors.Errorf("Unable to read `.buckconfig`: %s", err)
@@ -109,8 +110,8 @@ func DiscoverWithCommand(dir string, opts map[string]interface{}, buckCommand fu
 		return moduleList, nil
 	}
 
-	_, err = os.Stat(path.Join(dir, "BUCK"))
-	if err == nil {
+	buckFile, err := files.Exists(dir, "BUCK")
+	if err == nil && buckFile {
 		wd, err := os.Getwd()
 		if err != nil {
 			return nil, errors.Errorf("Cannot get working directory: %s", err)
