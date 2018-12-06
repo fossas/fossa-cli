@@ -11,16 +11,15 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/bmatcuk/doublestar"
 	"github.com/gnewton/jargo"
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/fossas/fossa-cli/buildtools/maven"
-	"github.com/fossas/fossa-cli/graph"
-
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -264,9 +263,10 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 
 		return []module.Module{
 			{
-				Name: filepath.Base(absDir),
-				Dir:  dir,
-				Type: pkg.Ant,
+				Name:        filepath.Base(absDir),
+				Dir:         dir,
+				BuildTarget: dir,
+				Type:        pkg.Ant,
 			},
 		}, nil
 	}
@@ -286,9 +286,10 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 		}
 
 		moduleConfigs = append(moduleConfigs, module.Module{
-			Name: filepath.Base(pathDir),
-			Dir:  pathDir,
-			Type: pkg.Ant,
+			Name:        filepath.Base(pathDir),
+			Dir:         pathDir,
+			BuildTarget: pathDir,
+			Type:        pkg.Ant,
 		})
 	}
 	return moduleConfigs, nil

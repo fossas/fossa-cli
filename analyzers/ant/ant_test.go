@@ -3,10 +3,11 @@ package ant_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/fossas/fossa-cli/analyzers/ant"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestDiscoveryRoot(t *testing.T) {
@@ -14,9 +15,10 @@ func TestDiscoveryRoot(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(modules))
 	assert.Contains(t, modules, module.Module{
-		Name: "valid",
-		Type: pkg.Ant,
-		Dir:  "testdata/valid",
+		Name:        "valid",
+		Type:        pkg.Ant,
+		BuildTarget: "testdata/valid",
+		Dir:         "testdata/valid",
 	})
 }
 func TestDiscoveryEmptyRoot(t *testing.T) {
@@ -24,8 +26,9 @@ func TestDiscoveryEmptyRoot(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(modules))
 	assert.Contains(t, modules, module.Module{
-		Name: "valid",
-		Type: pkg.Ant,
-		Dir:  "testdata/valid",
+		Name:        "valid",
+		Type:        pkg.Ant,
+		BuildTarget: "testdata/valid",
+		Dir:         "testdata/valid",
 	})
 }
