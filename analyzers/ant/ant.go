@@ -254,17 +254,18 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 // Discover returns a root build.xml if found, and build configs for all sub-projects otherwise
 func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	_, err := os.Stat(filepath.Join(dir, "build.xml"))
-	if err == nil {
+	libCheck, libErr := files.ExistsFolder(dir, "lib")
+	if err == nil && libCheck && libErr == nil {
 		// find the root build, as it can invoke tasks sub-builds
 		absDir, err := filepath.Abs(dir)
 		if err != nil {
 			absDir = dir
 		}
-		artifactName := filepath.Base(absDir)
+
 		return []module.Module{
 			{
-				Name: artifactName,
-				Dir:  "build.xml",
+				Name: filepath.Base(absDir),
+				Dir:  dir,
 				Type: pkg.Ant,
 			},
 		}, nil
@@ -275,14 +276,20 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	if err != nil {
 		return nil, err
 	}
-	moduleConfigs := make([]module.Module, len(antFilePaths))
-	for i, path := range antFilePaths {
-		artifactName := filepath.Dir(path) // Use the dirname as it's impossible to reliably parse from build.xml
-		moduleConfigs[i] = module.Module{
-			Name: artifactName,
-			Dir:  path,
-			Type: pkg.Ant,
+
+	var moduleConfigs []module.Module
+	for _, filePath := range antFilePaths {
+		pathDir := filepath.Dir(filePath) // Use the dirname as it's impossible to reliably parse from build.xml
+		lib, err := files.ExistsFolder(pathDir, "lib")
+		if err != nil || !lib {
+			continue
 		}
+
+		moduleConfigs = append(moduleConfigs, module.Module{
+			Name: filepath.Base(pathDir),
+			Dir:  pathDir,
+			Type: pkg.Ant,
+		})
 	}
 	return moduleConfigs, nil
 }
