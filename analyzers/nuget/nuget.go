@@ -65,6 +65,8 @@ func New(m module.Module) (*Analyzer, error) {
 	return &analyzer, nil
 }
 
+var xmlProj = regexp.MustCompile(`.*\.(cs|x|vb|db|fs)proj$`)
+
 func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -81,7 +83,6 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			// TODO(#172): this will use the lexicographically first indicator in the
 			// directory, but we actually want the _best_ indicator (i.e. we should
 			// prefer a *.csproj over a *.nuspec when both are available).
-			xmlProj := regexp.MustCompile(`.*\.(cs|x|vb|db|fs)proj`)
 			if xmlProj.MatchString(name) {
 				// For *.{cs,x,vb,db,fs}proj files, use the first <RootNamespace> seen.
 				var manifest dotnet.Manifest
