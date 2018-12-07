@@ -70,17 +70,17 @@ func TestParseDependencyTree(t *testing.T) {
 	dat, err := ioutil.ReadFile("testdata/unix.out")
 	assert.NoError(t, err)
 	direct, transitive, err := maven.ParseDependencyTree(string(dat))
-
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(direct))
-	depList := []maven.Dependency{depOne, depTwo}
-	assert.Equal(t, depList, direct)
 
-	expectedGraph := map[maven.Dependency][]maven.Dependency{
-		depOne:   nil,
-		depTwo:   []maven.Dependency{depThree, depFive},
-		depThree: []maven.Dependency{depFour},
-	}
-	assert.Equal(t, expectedGraph, transitive)
+	assert.Equal(t, 2, len(direct))
+	assert.Contains(t, direct, depOne)
+	assert.Contains(t, direct, depTwo)
+
 	assert.Equal(t, 3, len(transitive))
+	assert.Contains(t, transitive, depOne)
+	assert.Contains(t, transitive, depTwo)
+	assert.Contains(t, transitive[depTwo], depThree)
+	assert.Contains(t, transitive[depTwo], depFive)
+	assert.Contains(t, transitive, depThree)
+	assert.Contains(t, transitive[depThree], depFour)
 }
