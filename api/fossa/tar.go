@@ -20,9 +20,8 @@ import (
 )
 
 var (
-	SignedURLAPI            = "/api/components/signed_url"
-	ComponentsBuildAPI      = "/api/components/build"
-	ComponentsDependencyAPI = "/api/components/dependency"
+	SignedURLAPI       = "/api/components/signed_url"
+	ComponentsBuildAPI = "/api/components/build"
 )
 
 type ComponentSpec struct {
@@ -71,7 +70,7 @@ func UploadTarball(dir string) (Locator, error) {
 		return Locator{}, err
 	}
 
-	return tarballUpload(ComponentsBuildAPI, name, true, tarball, hash)
+	return tarballUpload(name, false, true, tarball, hash)
 }
 
 // CreateTarball archives and compresses a directory's contents to a temporary
@@ -195,7 +194,7 @@ func UploadTarballDependencyFiles(dir string, fileList []string, name string, up
 		return Locator{}, err
 	}
 
-	return tarballUpload(ComponentsDependencyAPI, name, upload, tarball, hash)
+	return tarballUpload(name, true, upload, tarball, hash)
 }
 
 // CreateTarballFromFiles archives and compresses a list of files to a temporary
@@ -277,7 +276,7 @@ func CreateTarballFromFiles(files []string, name string) (*os.File, []byte, erro
 
 // Upload the supplied tarball to the given endpoint.
 // Note: "name" should not have any "/"s to ensure core can parse it.
-func tarballUpload(endpoint, name string, upload bool, tarball *os.File, hash []byte) (Locator, error) {
+func tarballUpload(name string, dependency, upload bool, tarball *os.File, hash []byte) (Locator, error) {
 	info, err := tarball.Stat()
 	if err != nil {
 		return Locator{}, err
@@ -354,7 +353,13 @@ func tarballUpload(endpoint, name string, upload bool, tarball *os.File, hash []
 	if err != nil {
 		return Locator{}, err
 	}
-	_, _, err = Post(endpoint, data)
+
+	dependencyParameter := url.Values{}
+	if dependency {
+		dependencyParameter.Add("dependency", "true")
+
+	}
+	_, _, err = Post(ComponentsBuildAPI+"?"+dependencyParameter.Encode(), data)
 	if err != nil {
 		return Locator{}, err
 	}
