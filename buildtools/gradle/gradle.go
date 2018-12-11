@@ -10,6 +10,8 @@ import (
 	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
 type Gradle struct {
@@ -25,13 +27,10 @@ type Dependency struct {
 	IsProject bool
 }
 
-func (g *Gradle) Dependencies(project, configuration string) ([]Dependency, map[Dependency][]Dependency, error) {
+func (g *Gradle) Dependencies(project string) (map[string]graph.Deps, error) {
 	args := []string{
 		project + ":dependencies",
 		"--quiet",
-	}
-	if configuration != "" {
-		args = append(args, "--configuration="+configuration)
 	}
 	if !g.Online {
 		args = append(args, "--offline")
@@ -40,16 +39,36 @@ func (g *Gradle) Dependencies(project, configuration string) ([]Dependency, map[
 	return g.DependenciesTask(args...)
 }
 
-func (g *Gradle) DependenciesTask(taskArgs ...string) ([]Dependency, map[Dependency][]Dependency, error) {
+func (g *Gradle) DependenciesTask(taskArgs ...string) (map[string]graph.Deps, error) {
 	stdout, err := g.Run(taskArgs...)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	imports, deps, err := ParseDependencies(stdout)
-	if err != nil {
-		return nil, nil, err
+
+	// Parse individual configurations.
+	configurations := make(map[string]graph.Deps)
+	// Divide output into configurations. Each configuration is separated by an
+	// empty line, started with a configuration name (and optional description),
+	// and has a dependency as its second line.
+	sections := strings.Split(stdout, "\n\n")
+	for _, section := range sections {
+		lines := strings.Split(section, "\n")
+		if len(lines) < 2 {
+			continue
+		}
+		config := strings.Split(lines[0], " - ")[0]
+		if lines[1] == "No dependencies" {
+			configurations[config] = graph.Deps{}
+		} else if strings.HasPrefix(lines[1], "\\--- ") || strings.HasPrefix(lines[1], "+--- ") {
+			imports, deps, err := ParseDependencies(section)
+			if err != nil {
+				return nil, err
+			}
+			configurations[config] = NormalizeDependencies(imports, deps)
+		}
 	}
-	return imports, deps, nil
+
+	return configurations, nil
 }
 
 // TODO: rename this -- this is really projects with :dependencies tasks
@@ -108,6 +127,7 @@ func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency
 		withoutAnnotations := strings.TrimSuffix(strings.TrimSuffix(strings.TrimSuffix(dep, " (*)"), " (n)"), " FAILED")
 		var parsed Dependency
 		if strings.HasPrefix(withoutAnnotations, "project :") {
+			// TODO: the desired method for handling this might be to recurse into the subproject.
 			parsed = Dependency{
 				Name:      strings.TrimPrefix(dep, "project :"),
 				IsProject: true,
@@ -153,4 +173,49 @@ func Cmd(dir string) (string, error) {
 	}
 
 	return "gradle", nil
+}
+
+func NormalizeDependencies(imports []Dependency, deps map[Dependency][]Dependency) graph.Deps {
+	// Set direct dependencies.
+	var i []pkg.Import
+	for _, dep := range imports {
+		i = append(i, pkg.Import{
+			Target: dep.Target,
+			Resolved: pkg.ID{
+				Type:     pkg.Gradle,
+				Name:     dep.Name,
+				Revision: dep.Resolved,
+			},
+		})
+	}
+
+	// Set transitive dependencies.
+	d := make(map[pkg.ID]pkg.Package)
+	for parent, children := range deps {
+		id := pkg.ID{
+			Type:     pkg.Gradle,
+			Name:     parent.Name,
+			Revision: parent.Resolved,
+		}
+		var imports []pkg.Import
+		for _, child := range children {
+			imports = append(imports, pkg.Import{
+				Target: child.Resolved,
+				Resolved: pkg.ID{
+					Type:     pkg.Gradle,
+					Name:     child.Name,
+					Revision: child.Resolved,
+				},
+			})
+		}
+		d[id] = pkg.Package{
+			ID:      id,
+			Imports: imports,
+		}
+	}
+
+	return graph.Deps{
+		Direct:     i,
+		Transitive: d,
+	}
 }
