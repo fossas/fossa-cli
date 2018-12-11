@@ -207,9 +207,7 @@ func mergeGraphs(gs ...graph.Deps) graph.Deps {
 	}
 
 	for _, g := range gs {
-		for _, i := range g.Direct {
-			merged.Direct = append(merged.Direct, i)
-		}
+		merged.Direct = append(merged.Direct, g.Direct...)
 		for id, dep := range g.Transitive {
 			merged.Transitive[id] = dep
 		}
