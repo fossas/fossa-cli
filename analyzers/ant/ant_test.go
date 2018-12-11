@@ -11,24 +11,19 @@ import (
 )
 
 func TestDiscoveryRoot(t *testing.T) {
-	modules, err := ant.Discover("testdata/valid", make(map[string]interface{}))
+	modules, err := ant.Discover("testdata/valid-ant", make(map[string]interface{}))
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(modules))
+	assert.Equal(t, 2, len(modules))
 	assert.Contains(t, modules, module.Module{
-		Name:        "valid",
+		Name:        "valid-ant",
 		Type:        pkg.Ant,
-		BuildTarget: "testdata/valid",
-		Dir:         "testdata/valid",
+		BuildTarget: ".",
+		Dir:         ".",
 	})
-}
-func TestDiscoveryEmptyRoot(t *testing.T) {
-	modules, err := ant.Discover("testdata", make(map[string]interface{}))
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(modules))
 	assert.Contains(t, modules, module.Module{
-		Name:        "valid",
+		Name:        "valid-sub-dir",
 		Type:        pkg.Ant,
-		BuildTarget: "testdata/valid",
-		Dir:         "testdata/valid",
+		BuildTarget: "valid-sub-dir",
+		Dir:         "valid-sub-dir",
 	})
 }

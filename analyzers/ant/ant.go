@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bufio"
 	"encoding/xml"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,6 +16,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/fossas/fossa-cli/buildtools/maven"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
@@ -24,7 +24,7 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-// Analyzer implements build context for SBT builds
+// Analyzer implements build context for Ant builds
 type Analyzer struct {
 	AntCmd     string
 	AntVersion string
@@ -40,7 +40,7 @@ type Options struct {
 	LibDir string
 }
 
-// Initialize collects metadata on Java and SBT binaries
+// Initialize collects metadata on Java and Ant binaries.
 func New(m module.Module) (*Analyzer, error) {
 	log.Debugf("Initializing Ant builder...")
 
@@ -83,17 +83,17 @@ func New(m module.Module) (*Analyzer, error) {
 	}, nil
 }
 
-// Clean is currently not implemented
+// Clean is currently not implemented.
 func (a *Analyzer) Clean() error {
 	return errors.New("Clean is not implemented for Ant")
 }
 
-// Build is currently not implemented
+// Build is currently not implemented.
 func (a *Analyzer) Build() error {
 	return errors.New("Build is not implemented for Ant")
 }
 
-// Analyze resolves a lib directory and parses the jars inside
+// Analyze resolves a lib directory and parses the jars inside.
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Debugf("Running Ant analysis: %#v in %s", a.Module, a.Module.Dir)
 
@@ -181,7 +181,7 @@ func getPOMFromJar(path string) (maven.Manifest, error) {
 	return pomFile, errors.New("unable to parse POM from Jar")
 }
 
-// locatorFromJar resolves a locator from a .jar file by inspecting its contents
+// locatorFromJar resolves a locator from a .jar file by inspecting its contents.
 func locatorFromJar(path string) (pkg.ID, error) {
 	log.Debugf("processing locator from Jar: %s", path)
 
@@ -245,52 +245,53 @@ func locatorFromJar(path string) (pkg.ID, error) {
 	}, nil
 }
 
-// IsBuilt always returns true for Ant builds
+// IsBuilt always returns true for Ant builds.
 func (a *Analyzer) IsBuilt() (bool, error) {
 	return true, nil
 }
 
-// Discover returns a root build.xml if found, and build configs for all sub-projects otherwise
+// Discover returns any directory that contains a "build.xml" file and a "lib" directory.
 func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
-	_, err := os.Stat(filepath.Join(dir, "build.xml"))
-	libCheck, libErr := files.ExistsFolder(dir, "lib")
-	if err == nil && libCheck && libErr == nil {
-		// find the root build, as it can invoke tasks sub-builds
-		absDir, err := filepath.Abs(dir)
+	modules := []module.Module{}
+
+	err := filepath.Walk(dir, func(filename string, info os.FileInfo, err error) error {
 		if err != nil {
-			absDir = dir
+			log.WithError(err).WithField("filename", filename).Debug("failed to access path")
+			return err
 		}
 
-		return []module.Module{
-			{
-				Name:        filepath.Base(absDir),
-				Dir:         dir,
-				BuildTarget: dir,
-				Type:        pkg.Ant,
-			},
-		}, nil
-	}
+		if !info.IsDir() && (info.Name() == "build.xml") {
+			moduleDir := filepath.Dir(filename)
+			libCheck, err := files.ExistsFolder(moduleDir, "lib")
+			if err != nil {
+				return errors.Wrap(err, "Error discovering ant modules")
+			}
 
-	// no build.xml in root directory; find and parse all of them
-	antFilePaths, err := doublestar.Glob(filepath.Join(dir, "**", "build.xml"))
+			if libCheck {
+				moduleName := filepath.Base(moduleDir)
+				log.WithFields(log.Fields{
+					"path": filename,
+					"name": moduleName,
+				}).Debug("constructing Ant module")
+				relPath, err := filepath.Rel(dir, filename)
+				if err != nil {
+					return errors.Wrap(err, "Error discovering ant modules")
+				}
+
+				modules = append(modules, module.Module{
+					Name:        moduleName,
+					Type:        pkg.Ant,
+					BuildTarget: filepath.Dir(relPath),
+					Dir:         filepath.Dir(relPath),
+				})
+			}
+		}
+		return nil
+	})
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Could not find Ant package manifests: %s", err.Error())
 	}
 
-	var moduleConfigs []module.Module
-	for _, filePath := range antFilePaths {
-		pathDir := filepath.Dir(filePath) // Use the dirname as it's impossible to reliably parse from build.xml
-		lib, err := files.ExistsFolder(pathDir, "lib")
-		if err != nil || !lib {
-			continue
-		}
-
-		moduleConfigs = append(moduleConfigs, module.Module{
-			Name:        filepath.Base(pathDir),
-			Dir:         pathDir,
-			BuildTarget: pathDir,
-			Type:        pkg.Ant,
-		})
-	}
-	return moduleConfigs, nil
+	return modules, nil
 }
