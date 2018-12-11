@@ -40,12 +40,10 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 	}
 
 	g := gocmd.Go{
-		Cmd:  cmd,
-		Dir:  dir,
-		OS:   options.BuildOS,
-		Arch: options.BuildArch,
+		Cmd: cmd,
+		Dir: dir,
 	}
-	found, err := g.List([]string{"./..."})
+	found, err := g.List([]string{"./..."}, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not find Go projects")
 	}

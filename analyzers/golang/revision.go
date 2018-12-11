@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/apex/log"
+
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/buildtools"
 	"github.com/fossas/fossa-cli/buildtools/gocmd"

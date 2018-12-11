@@ -107,79 +107,94 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	log.Debugf("Resolver: %#v", r)
 
-	// Use `go list` to get imports and deps of module.
-	main, err := a.Go.ListOne(m.BuildTarget)
-	if err != nil {
-		return graph.Deps{}, err
-	}
-	log.Debugf("Go main package: %#v", main)
-	deps, err := a.Go.List(main.Deps)
-	if err != nil {
-		return graph.Deps{}, err
-	}
+	var allImports []pkg.Import
+	importMap := make(map[pkg.Import]bool)
+	transitiveDeps := make(map[pkg.ID]pkg.Package)
 
-	// Construct map of import path to package.
-	gopkgs := append(deps, main)
-	gopkgMap := make(map[string]gocmd.Package)
-	for _, p := range gopkgs {
-		gopkgMap[p.ImportPath] = p
-	}
-	// cgo imports don't have revisions.
-	gopkgMap["C"] = gocmd.Package{
-		Name:     "C",
-		IsStdLib: true, // This is so we don't try to lookup a revision. Maybe there should be a NoRevision bool field?
-	}
-	log.Debugf("gopkgMap: %#v", gopkgMap)
-
-	// Construct transitive dependency graph.
-	pkgs := make(map[pkg.ID]pkg.Package)
-	for _, gopkg := range deps {
-		log.Debugf("Getting revision for: %#v", gopkg)
-
-		// Resolve dependency.
-		revision, err := a.Revision(project, r, gopkg)
+	for _, buildTag := range a.BuildTags {
+		// Use `go list` to get imports and deps of module.
+		flags := []string{"-tags", buildTag}
+		main, err := a.Go.ListOne(m.BuildTarget, flags)
 		if err != nil {
 			return graph.Deps{}, err
 		}
-		id := revision.Resolved
+		log.Debugf("Go main package: %#v", main)
+		deps, err := a.Go.List(main.Deps, flags)
+		if err != nil {
+			return graph.Deps{}, err
+		}
 
-		// Resolve dependency imports.
-		var imports []pkg.Import
-		for _, i := range gopkg.Imports {
-			_, ok := gopkgMap[i]
-			if !ok {
-				log.Fatalf("Could not find Go package for %#v, your build may have errors. Try `go list -json <MODULE>`.", i)
+		// Construct map of import path to package.
+		gopkgs := append(deps, main)
+		gopkgMap := make(map[string]gocmd.Package)
+		for _, p := range gopkgs {
+			gopkgMap[p.ImportPath] = p
+		}
+		// cgo imports don't have revisions.
+		gopkgMap["C"] = gocmd.Package{
+			Name:     "C",
+			IsStdLib: true, // This is so we don't try to lookup a revision. Maybe there should be a NoRevision bool field?
+		}
+		log.Debugf("gopkgMap: %#v", gopkgMap)
+
+		// Construct transitive dependency graph.
+		for _, gopkg := range deps {
+			log.Debugf("Getting revision for: %#v", gopkg)
+
+			// Resolve dependency.
+			revision, err := a.Revision(project, r, gopkg)
+			if err != nil {
+				return graph.Deps{}, err
 			}
-			log.Debugf("Resolving import of: %#v", gopkg)
-			log.Debugf("Resolving dependency import: %#v", i)
+			id := revision.Resolved
+
+			// Check if the revision has already been scanned.
+			if _, ok := transitiveDeps[id]; ok {
+				continue
+			}
+
+			// Resolve dependency imports.
+			var imports []pkg.Import
+			for _, i := range gopkg.Imports {
+				_, ok := gopkgMap[i]
+				if !ok {
+					log.Fatalf("Could not find Go package for %#v, your build may have errors. Try `go list -json <MODULE>`.", i)
+				}
+				log.Debugf("Resolving import of: %#v", gopkg)
+				log.Debugf("Resolving dependency import: %#v", i)
+				revision, err := a.Revision(project, r, gopkgMap[i])
+				if err != nil {
+					return graph.Deps{}, errors.Wrapf(err, "could not resolve %s", i)
+				}
+				imports = append(imports, revision)
+			}
+
+			transitiveDeps[id] = pkg.Package{
+				ID:      id,
+				Imports: imports,
+			}
+		}
+
+		// Construct direct imports list.
+		for _, i := range main.Imports {
 			revision, err := a.Revision(project, r, gopkgMap[i])
 			if err != nil {
-				return graph.Deps{}, errors.Wrapf(err, "could not resolve %s", i)
+				return graph.Deps{}, err
 			}
-			imports = append(imports, revision)
-		}
 
-		pkgs[id] = pkg.Package{
-			ID:      id,
-			Imports: imports,
+			// Check if revision was added by a previous build tag.
+			if _, exists := importMap[revision]; !exists {
+				allImports = append(allImports, revision)
+				importMap[revision] = true
+			}
 		}
 	}
 
-	// Construct direct imports list.
-	var imports []pkg.Import
-	for _, i := range main.Imports {
-		revision, err := a.Revision(project, r, gopkgMap[i])
-		if err != nil {
-			return graph.Deps{}, err
-		}
+	m.Deps = transitiveDeps
+	m.Imports = allImports
 
-		imports = append(imports, revision)
-	}
-
-	m.Deps = pkgs
-	m.Imports = imports
 	return graph.Deps{
-		Direct:     imports,
-		Transitive: pkgs,
+		Direct:     allImports,
+		Transitive: transitiveDeps,
 	}, nil
 }

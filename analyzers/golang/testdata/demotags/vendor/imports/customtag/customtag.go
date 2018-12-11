@@ -1,0 +1,4 @@
+package customtag
+
+func New() {
+}

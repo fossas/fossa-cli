@@ -32,10 +32,8 @@ func Name(importPath string) string {
 
 // Go contains configuration information for the Go tool.
 type Go struct {
-	Cmd  string
-	Dir  string
-	OS   string
-	Arch string
+	Cmd string
+	Dir string
 }
 
 // GoListOutput is a subset of the output of `go list`. See `go help list` for
@@ -59,8 +57,8 @@ type GoListPackageError struct {
 }
 
 // ListOne runs List for a single package.
-func (g *Go) ListOne(pkg string) (Package, error) {
-	pkgs, err := g.List([]string{pkg})
+func (g *Go) ListOne(pkg string, flags []string) (Package, error) {
+	pkgs, err := g.List([]string{pkg}, flags)
 	if err != nil {
 		return Package{}, err
 	}
@@ -71,17 +69,14 @@ func (g *Go) ListOne(pkg string) (Package, error) {
 }
 
 // List runs `go list` to return information about packages.
-func (g *Go) List(pkgs []string) ([]Package, error) {
+func (g *Go) List(pkgs, flags []string) ([]Package, error) {
 	// Run `go list -json $PKG` and unmarshal output.
 	var output []GoListOutput
+	argv := append(flags, pkgs...)
 	stdout, stderr, err := exec.Run(exec.Cmd{
 		Name: g.Cmd,
-		Argv: append([]string{"list", "-json"}, pkgs...),
+		Argv: append([]string{"list", "-json"}, argv...),
 		Dir:  g.Dir,
-		WithEnv: map[string]string{
-			"GOOS":   g.OS,
-			"GOARCH": g.Arch,
-		},
 	})
 	if err != nil && stdout == "" {
 		if strings.Contains(stderr, "build constraints exclude all Go files") {
@@ -126,10 +121,6 @@ func (g *Go) Build(pkgs []string) error {
 	_, _, err := exec.Run(exec.Cmd{
 		Name: g.Cmd,
 		Argv: append([]string{"build"}, pkgs...),
-		WithEnv: map[string]string{
-			"GOOS":   g.OS,
-			"GOARCH": g.Arch,
-		},
 	})
 	return err
 }

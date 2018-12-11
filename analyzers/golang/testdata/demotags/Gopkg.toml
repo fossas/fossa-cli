@@ -1,0 +1,11 @@
+[[constraint]]
+  name = "imports/combo"
+  version = "1.0.0"
+
+[[constraint]]
+  name = "imports/customtag"
+  version = "3.0.0"
+
+[prune]
+  go-tests = true
+  unused-packages = true

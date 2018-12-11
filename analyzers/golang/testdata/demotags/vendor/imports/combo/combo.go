@@ -1,0 +1,4 @@
+package combo
+
+func New() {
+}

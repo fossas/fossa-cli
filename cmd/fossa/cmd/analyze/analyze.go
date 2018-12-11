@@ -3,9 +3,9 @@ package analyze
 import (
 	"fmt"
 
+	"github.com/apex/log"
 	"github.com/urfave/cli"
 
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/analyzers"
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
