@@ -51,3 +51,36 @@ func TestParseDependencyTreeUnix(t *testing.T) {
 	assert.NotEmpty(t, direct)
 	assert.NotEmpty(t, transitive)
 }
+
+/*
+	├── dep:one:1.0.0
+	└─┬ dep:two:2.0.0
+	  ├─┬ dep:three:3.0.0
+	  │ └── dep:four:4.0.0
+	  └── dep:five:5.0.0
+*/
+
+var depOne = maven.Dependency{Name: "dep:one", Version: "1.0.0", Failed: false}
+var depTwo = maven.Dependency{Name: "dep:two", Version: "2.0.0", Failed: false}
+var depThree = maven.Dependency{Name: "dep:three", Version: "3.0.0", Failed: false}
+var depFour = maven.Dependency{Name: "dep:four", Version: "4.0.0", Failed: false}
+var depFive = maven.Dependency{Name: "dep:five", Version: "5.0.0", Failed: false}
+
+func TestParseDependencyTree(t *testing.T) {
+	dat, err := ioutil.ReadFile("testdata/unix.out")
+	assert.NoError(t, err)
+	direct, transitive, err := maven.ParseDependencyTree(string(dat))
+	assert.NoError(t, err)
+
+	assert.Equal(t, 2, len(direct))
+	assert.Contains(t, direct, depOne)
+	assert.Contains(t, direct, depTwo)
+
+	assert.Equal(t, 3, len(transitive))
+	assert.Contains(t, transitive, depOne)
+	assert.Contains(t, transitive, depTwo)
+	assert.Contains(t, transitive[depTwo], depThree)
+	assert.Contains(t, transitive[depTwo], depFive)
+	assert.Contains(t, transitive, depThree)
+	assert.Contains(t, transitive[depThree], depFour)
+}

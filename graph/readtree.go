@@ -21,7 +21,7 @@ func ReadGenericTree(lines []string, parser LineParser) ([]Generic, map[Generic]
 		}
 
 		// Add to graph.
-		if len(parents) > level {
+		if len(parents) >= level {
 			parents = parents[:level-1]
 		}
 		if level == 1 {

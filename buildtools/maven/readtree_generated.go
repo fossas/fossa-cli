@@ -19,7 +19,7 @@ func ReadDependencyTree(lines []string, parser LineParser) ([]Dependency, map[De
 		}
 
 		// Add to graph.
-		if len(parents) > level {
+		if len(parents) >= level {
 			parents = parents[:level-1]
 		}
 		if level == 1 {
