@@ -20,13 +20,14 @@ const (
 	Carthage              // Carthage (https://github.com/Carthage/Carthage)
 	Cocoapods             // Cocoapods (https://cocoapods.org)
 	Composer              // Composer (https://getcomposer.org)
-	Go                    // dep (https://github.com/golang/dep), glide (https://github.com/Masterminds/glide), godep (https://github.com/tools/godep), govendor (experimental, https://github.com/kardianos/govendor), vndr (https://github.com/LK4D4/vndr)
+	Debian                // Debian (https://manpages.debian.org/stretch/dpkg/dpkg.1.en.html)
+	Go                    // dep (https://github.com/golang/dep), glide (https://github.com/Masterminds/glide), godep (https://github.com/tools/godep), govendor (experimental, https://github.com/kardianos/govendor), vndr (https://github.com/LK4D4/vndr), gomodules (https://github.com/golang/go/wiki/Modules)
 	Git                   // git
 	Gradle                // Gradle (https://gradle.org)
 	Maven                 // Maven (https://maven.apache.org)
 	NodeJS                // NPM (https://www.npmjs.com), Yarn (https://yarnpkg.com)
 	NuGet                 // NuGet (https://www.nuget.org)
-	Python                // Pip (https://pip.pypa.io)
+	Python                // Pip (https://pip.pypa.io), Pipenv (https://pipenv.readthedocs.io/en/latest/)
 	Ruby                  // Bundler (https://bundler.io)
 	Scala                 // SBT (https://www.scala-sbt.org)
 	Raw                   // Unsupported languages
@@ -40,6 +41,7 @@ var AllTypes = []Type{
 	Carthage,
 	Cocoapods,
 	Composer,
+	Debian,
 	Go,
 	Gradle,
 	Maven,
@@ -95,6 +97,11 @@ func ParseType(key string) (Type, error) {
 	case "composer":
 		return Composer, nil
 
+	case "debian":
+		fallthrough
+	case "dpkg":
+		return Debian, nil
+
 	// Go aliases
 	case "gopackage":
 		fallthrough
@@ -143,6 +150,8 @@ func ParseType(key string) (Type, error) {
 	case "pythonprogram":
 		fallthrough
 	case "pip":
+		fallthrough
+	case "pipenv":
 		return Python, nil
 
 	// Ruby aliases
