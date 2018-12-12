@@ -14,7 +14,6 @@ import (
 
 	"github.com/fossas/fossa-cli/buildtools/pip"
 	"github.com/fossas/fossa-cli/buildtools/pipenv"
-	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
@@ -100,7 +99,6 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				"name": moduleName,
 			}).Debug("constructing Python module")
 			relPath, _ := filepath.Rel(dir, filename)
-
 			modules[moduleDir] = module.Module{
 				Name:        moduleName,
 				Type:        pkg.Python,
