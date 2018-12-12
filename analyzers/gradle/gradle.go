@@ -108,7 +108,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				modules = append(modules, module.Module{
 					Name:        filepath.Join(name, project),
 					Type:        pkg.Gradle,
-					BuildTarget: project + ":compile",
+					BuildTarget: project + ":",
 					Dir:         dir,
 				})
 			}
@@ -116,7 +116,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				modules = append(modules, module.Module{
 					Name:        name,
 					Type:        pkg.Gradle,
-					BuildTarget: ":compile",
+					BuildTarget: ":",
 					Dir:         dir,
 				})
 			}
@@ -179,22 +179,20 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		}
 	}
 
+	defaultConfigurations := []string{"compile", "api", "implementation"}
 	if a.Options.Configuration != "" {
 		configurations = strings.Split(a.Options.Configuration, ",")
 	} else if len(targets) > 1 && targets[1] != "" {
 		configurations = strings.Split(targets[1], ",")
-	}
-
-	if len(configurations) == 0 {
-		return mergeGraphs(depsByConfig["compile"], depsByConfig["api"], depsByConfig["implementation"]), nil
+	} else {
+		configurations = defaultConfigurations
 	}
 
 	merged := graph.Deps{
 		Direct:     nil,
 		Transitive: make(map[pkg.ID]pkg.Package),
 	}
-	configs := strings.Split(targets[1], ",")
-	for _, config := range configs {
+	for _, config := range configurations {
 		merged = mergeGraphs(merged, depsByConfig[config])
 	}
 	return merged, nil
@@ -206,11 +204,17 @@ func mergeGraphs(gs ...graph.Deps) graph.Deps {
 		Transitive: make(map[pkg.ID]pkg.Package),
 	}
 
+	importSet := make(map[pkg.Import]bool)
 	for _, g := range gs {
-		merged.Direct = append(merged.Direct, g.Direct...)
+		for _, i := range g.Direct {
+			importSet[i] = true
+		}
 		for id, dep := range g.Transitive {
 			merged.Transitive[id] = dep
 		}
+	}
+	for i := range importSet {
+		merged.Direct = append(merged.Direct, i)
 	}
 
 	return merged
