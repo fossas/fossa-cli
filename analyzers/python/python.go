@@ -99,10 +99,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				"path": filename,
 				"name": moduleName,
 			}).Debug("constructing Python module")
-			relPath, err := filepath.Rel(dir, filename)
-			if err != nil {
-				return errors.Wrap(err, "Error discovering python modules")
-			}
+			relPath, _ := filepath.Rel(dir, filename)
 
 			modules[moduleDir] = module.Module{
 				Name:        moduleName,
