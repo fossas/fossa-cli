@@ -11,10 +11,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/buildtools/gradle"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"

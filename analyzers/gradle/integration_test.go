@@ -4,11 +4,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fossas/fossa-cli/testing/runfossa"
-
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/testing/fixtures"
+	"github.com/fossas/fossa-cli/testing/runfossa"
 )
 
 var (
