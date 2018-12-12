@@ -11,10 +11,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/buildtools/gradle"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
@@ -108,11 +108,16 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				modules = append(modules, module.Module{
 					Name:        filepath.Join(name, project),
 					Type:        pkg.Gradle,
-					BuildTarget: dir,
+					BuildTarget: project + ":",
 					Dir:         dir,
-					Options: map[string]interface{}{
-						"project": project,
-					},
+				})
+			}
+			if len(projects) == 0 {
+				modules = append(modules, module.Module{
+					Name:        name,
+					Type:        pkg.Gradle,
+					BuildTarget: ":",
+					Dir:         dir,
 				})
 			}
 			// Don't continue recursing, because anything else is probably a
@@ -150,67 +155,67 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		Dir:    a.Module.Dir,
 		Online: a.Options.Online,
 	}
-	var imports []gradle.Dependency
-	var deps map[gradle.Dependency][]gradle.Dependency
+
+	var project string
+	var configurations []string
+	var depsByConfig map[string]graph.Deps
 	var err error
+	targets := strings.Split(a.Module.BuildTarget, ":")
+
 	if a.Options.Task != "" {
-		imports, deps, err = g.DependenciesTask(strings.Split(a.Options.Task, " ")...)
-		if err != nil {
-			return graph.Deps{}, err
-		}
-	} else if a.Options.Project != "" {
-		imports, deps, err = g.Dependencies(a.Options.Project, a.Options.Configuration)
+		depsByConfig, err = g.DependenciesTask(strings.Split(a.Options.Task, " ")...)
 		if err != nil {
 			return graph.Deps{}, err
 		}
 	} else {
-		targets := strings.Split(a.Module.BuildTarget, ":")
-		imports, deps, err = g.Dependencies(targets[0], targets[1])
+		if a.Options.Project != "" {
+			project = a.Options.Project
+		} else {
+			project = targets[0]
+		}
+		depsByConfig, err = g.Dependencies(project)
 		if err != nil {
 			return graph.Deps{}, err
 		}
 	}
 
-	// Set direct dependencies.
-	var i []pkg.Import
-	for _, dep := range imports {
-		i = append(i, pkg.Import{
-			Target: dep.Target,
-			Resolved: pkg.ID{
-				Type:     pkg.Gradle,
-				Name:     dep.Name,
-				Revision: dep.Resolved,
-			},
-		})
+	defaultConfigurations := []string{"compile", "api", "implementation"}
+	if a.Options.Configuration != "" {
+		configurations = strings.Split(a.Options.Configuration, ",")
+	} else if len(targets) > 1 && targets[1] != "" {
+		configurations = strings.Split(targets[1], ",")
+	} else {
+		configurations = defaultConfigurations
 	}
 
-	// Set transitive dependencies.
-	d := make(map[pkg.ID]pkg.Package)
-	for parent, children := range deps {
-		id := pkg.ID{
-			Type:     pkg.Gradle,
-			Name:     parent.Name,
-			Revision: parent.Resolved,
-		}
-		var imports []pkg.Import
-		for _, child := range children {
-			imports = append(imports, pkg.Import{
-				Target: child.Resolved,
-				Resolved: pkg.ID{
-					Type:     pkg.Gradle,
-					Name:     child.Name,
-					Revision: child.Resolved,
-				},
-			})
-		}
-		d[id] = pkg.Package{
-			ID:      id,
-			Imports: imports,
-		}
+	merged := graph.Deps{
+		Direct:     nil,
+		Transitive: make(map[pkg.ID]pkg.Package),
+	}
+	for _, config := range configurations {
+		merged = mergeGraphs(merged, depsByConfig[config])
+	}
+	return merged, nil
+}
+
+func mergeGraphs(gs ...graph.Deps) graph.Deps {
+	merged := graph.Deps{
+		Direct:     nil,
+		Transitive: make(map[pkg.ID]pkg.Package),
 	}
 
-	return graph.Deps{
-		Direct:     i,
-		Transitive: d,
-	}, nil
+	importSet := make(map[pkg.Import]bool)
+	for _, g := range gs {
+		for _, i := range g.Direct {
+			importSet[i] = true
+		}
+		for id, dep := range g.Transitive {
+			merged.Transitive[id] = dep
+		}
+	}
+	for i := range importSet {
+		merged.Direct = append(merged.Direct, i)
+	}
+
+	return merged
 }
