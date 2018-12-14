@@ -1,8 +1,6 @@
 package debian
 
 import (
-	"fmt"
-
 	"github.com/fossas/fossa-cli/buildtools/debian"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
@@ -42,6 +40,5 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 // Runs the same command on all deps and pulls out locators. Does a tarball upload similar to Buck
 // Get deps, upload deps, create graph.
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	fmt.Println(a.Module.BuildTarget, "module")
 	return a.Cmd.Dependencies(a.Module.BuildTarget)
 }

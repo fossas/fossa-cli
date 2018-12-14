@@ -211,6 +211,8 @@ func (t Type) String() string {
 		return "pod"
 	case Composer:
 		return "composer"
+	case Debian:
+		return "debian"
 	case Go:
 		return "go"
 	case Git:
