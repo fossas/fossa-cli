@@ -16,7 +16,6 @@ func Discover(dir string, option map[string]interface{}) ([]module.Module, error
 }
 
 func New(m module.Module) (*Analyzer, error) {
-
 	return &Analyzer{
 		Module: m,
 
@@ -36,9 +35,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 	return true, nil
 }
 
-// Analyze for Debian takes a user specified debian package and runs dpkg command
-// Runs the same command on all deps and pulls out locators. Does a tarball upload similar to Buck
-// Get deps, upload deps, create graph.
+// Analyze for Debian takes a user specified debian package and uploads all transitive dependencies.
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	return a.Cmd.Dependencies(a.Module.BuildTarget)
 }

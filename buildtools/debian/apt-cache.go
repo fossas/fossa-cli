@@ -6,9 +6,11 @@ import (
 	"github.com/fossas/fossa-cli/exec"
 )
 
-// Parse the dependencies, don't include virtual dependencies.
-func DirectDeps(target string) ([]string, error) {
-	output, err := DebCommand(target)
+// Return all direct dependencies as an array of strings.
+// Currently we ignore all virtual dependencies but include "Suggested" deps
+// which are later verified before inclusion in the dep graph.
+func directDeps(target string) ([]string, error) {
+	output, err := aptCache(target)
 	if err != nil {
 		return nil, err
 	}
@@ -23,9 +25,11 @@ func DirectDeps(target string) ([]string, error) {
 	return dependencies, nil
 }
 
-// Parse the dependencies, don't include virtual dependencies.
-func TransitiveDeps(target string) ([]string, error) {
-	output, err := DebCommand("--recurse", target)
+// Return all transitive dependencies as an array of strings.
+// Ignore all virtual dependencies and it is important to note that this
+// can return duplicates.
+func transitiveDeps(target string) ([]string, error) {
+	output, err := aptCache("--recurse", target)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +45,8 @@ func TransitiveDeps(target string) ([]string, error) {
 	return dependencies, nil
 }
 
-func DebCommand(argv ...string) (string, error) {
+// Return the string output from running "apt-cache" with the supplied arguments.
+func aptCache(argv ...string) (string, error) {
 	out, _, err := exec.Run(exec.Cmd{
 		Name: "apt-cache",
 		Argv: append([]string{"depends"}, argv...),
