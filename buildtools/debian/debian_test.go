@@ -12,15 +12,15 @@ import (
 
 func TestDependencies(t *testing.T) {
 	cmd := Mock()
-	graph, err := cmd.Dependencies("depOne")
+	depOneGraph, err := cmd.Dependencies("depOne")
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(graph.Direct))
+	assert.Equal(t, 1, len(depOneGraph.Direct))
 
-	assert.Equal(t, 2, len(graph.Transitive))
-	depOnePackage := findPackage(graph.Transitive, "depOne", "df453766e8a8e0a25efd4f1c984c397c")
+	assert.Equal(t, 2, len(depOneGraph.Transitive))
+	depOnePackage := findPackage(depOneGraph.Transitive, "depOne", "df453766e8a8e0a25efd4f1c984c397c")
 	assert.Equal(t, 1, len(depOnePackage.Imports))
 	assertImport(t, depOnePackage.Imports, "depTwo", "e8e6206fc3b3f4bc6efa6f009fbf2f37")
-	depTwoPackage := findPackage(graph.Transitive, "depTwo", "e8e6206fc3b3f4bc6efa6f009fbf2f37")
+	depTwoPackage := findPackage(depOneGraph.Transitive, "depTwo", "e8e6206fc3b3f4bc6efa6f009fbf2f37")
 	assert.Equal(t, 0, len(depTwoPackage.Imports))
 }
 
