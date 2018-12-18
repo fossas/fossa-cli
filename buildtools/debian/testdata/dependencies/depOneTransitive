@@ -1,0 +1,4 @@
+depOne
+  Depends: depTwo
+depTwo
+  Suggests: depThree 

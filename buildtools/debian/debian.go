@@ -2,6 +2,7 @@ package debian
 
 import (
 	"path/filepath"
+	"sync"
 
 	"github.com/apex/log"
 
@@ -12,7 +13,7 @@ import (
 
 type Cmd struct {
 	Directory string
-	NoUpload  bool
+	Upload    bool
 	DebCmd    func(...string) (string, error)
 }
 
@@ -20,7 +21,7 @@ type Cmd struct {
 func New() Cmd {
 	return Cmd{
 		Directory: "/usr/share/doc/",
-		NoUpload:  false,
+		Upload:    true,
 		DebCmd:    aptCache,
 	}
 }
@@ -39,22 +40,22 @@ func New() Cmd {
 //
 func (d Cmd) Dependencies(target string) (graph.Deps, error) {
 	// Get all relevant dependencies.
-	depList, err := transitiveDeps(target)
+	depList, err := transitiveDeps(d.DebCmd, target)
 	if err != nil {
 		return graph.Deps{}, err
 	}
 
 	// Loop over the dep list create the locator map from valid package uploads.
-	locatorMap := uploadDeps(depList, d.Directory)
+	locatorMap := uploadDeps(depList, d.Directory, d.Upload)
 
 	// Loop over the locator map, get direct deps for each and build the graph.
-	depGraph := dependencyGraph(locatorMap)
+	depGraph := dependencyGraph(d.DebCmd, locatorMap)
 
 	directDeps := []pkg.Import{
 		pkg.Import{
 			Target: target,
 			Resolved: pkg.ID{
-				Type:     pkg.Debian,
+				Type:     pkg.Raw,
 				Name:     target,
 				Revision: locatorMap[target],
 			},
@@ -67,11 +68,11 @@ func (d Cmd) Dependencies(target string) (graph.Deps, error) {
 	}, nil
 }
 
-func uploadDeps(dependencies []string, directory string) map[string]string {
+func uploadDeps(dependencies []string, directory string, upload bool) map[string]string {
 	var locatorMap = make(map[string]string)
 	for _, dep := range dependencies {
 		if _, ok := locatorMap[dep]; !ok {
-			revision, err := fossa.UploadTarballDependency(filepath.Join(directory, dep))
+			revision, err := fossa.UploadTarballDependency(filepath.Join(directory, dep), upload)
 			if err != nil {
 				log.Debugf("Error uploading %v: %+v", dep, err)
 			} else {
@@ -83,18 +84,21 @@ func uploadDeps(dependencies []string, directory string) map[string]string {
 	return locatorMap
 }
 
-func dependencyGraph(locatorMap map[string]string) map[pkg.ID]pkg.Package {
+func dependencyGraph(command func(...string) (string, error), locatorMap map[string]string) map[pkg.ID]pkg.Package {
+	wg := sync.WaitGroup{}
 	var depGraph = make(map[pkg.ID]pkg.Package)
 	for t, r := range locatorMap {
+		wg.Add(1)
 		go func(target, revision string) {
+			defer wg.Done()
 			if _, ok := locatorMap[target]; ok {
-				dependecies, err := directDeps(target)
+				dependencies, err := directDeps(command, target)
 				if err != nil {
 					log.Debugf("Error retrieving deps for %+v: %+v", target, err)
 				}
 
 				importedDeps := []pkg.Import{}
-				for _, dep := range dependecies {
+				for _, dep := range dependencies {
 					if _, ok := locatorMap[dep]; ok {
 						importedDeps = append(importedDeps, pkg.Import{
 							Target: dep,
@@ -119,6 +123,7 @@ func dependencyGraph(locatorMap map[string]string) map[pkg.ID]pkg.Package {
 			}
 		}(t, r)
 	}
+	wg.Wait()
 
 	return depGraph
 }

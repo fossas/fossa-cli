@@ -53,15 +53,15 @@ type SignedURL struct {
 // Since this will be running within CI machines, this is probably not a good
 // idea. (See https://circleci.com/docs/2.0/configuration-reference/#resource_class
 // for an example of our memory constraints.)
-func UploadTarballDependency(dir string) (Locator, error) {
-	return UploadTarball(dir, true)
+func UploadTarballDependency(dir string, upload bool) (Locator, error) {
+	return UploadTarball(dir, true, upload)
 }
 
 func UploadTarballProject(dir string) (Locator, error) {
-	return UploadTarball(dir, false)
+	return UploadTarball(dir, false, true)
 }
 
-func UploadTarball(dir string, dependency bool) (Locator, error) {
+func UploadTarball(dir string, dependency bool, upload bool) (Locator, error) {
 	p, err := filepath.Abs(dir)
 	name := filepath.Base(p)
 	if err != nil {
@@ -78,7 +78,7 @@ func UploadTarball(dir string, dependency bool) (Locator, error) {
 		return Locator{}, err
 	}
 
-	return tarballUpload(name, false, true, tarball, hash)
+	return tarballUpload(name, false, upload, tarball, hash)
 }
 
 // CreateTarball archives and compresses a directory's contents to a temporary

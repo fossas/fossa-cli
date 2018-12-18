@@ -9,8 +9,8 @@ import (
 // Return all direct dependencies as an array of strings.
 // Currently we ignore all virtual dependencies but include "Suggested" deps
 // which are later verified before inclusion in the dep graph.
-func directDeps(target string) ([]string, error) {
-	output, err := aptCache(target)
+func directDeps(command func(...string) (string, error), target string) ([]string, error) {
+	output, err := command(target)
 	if err != nil {
 		return nil, err
 	}
@@ -28,8 +28,8 @@ func directDeps(target string) ([]string, error) {
 // Return all transitive dependencies as an array of strings.
 // Ignore all virtual dependencies and it is important to note that this
 // can return duplicates.
-func transitiveDeps(target string) ([]string, error) {
-	output, err := aptCache("--recurse", target)
+func transitiveDeps(command func(...string) (string, error), target string) ([]string, error) {
+	output, err := command("--recurse", target)
 	if err != nil {
 		return nil, err
 	}
