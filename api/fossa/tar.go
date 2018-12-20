@@ -176,7 +176,7 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 }
 
 // UploadTarballDependencyFiles generates and uploads a tarball from the provided list of files to
-// Fossa to be treated as a dependency.
+// FOSSA. The tarball's contents are marked as a component (as opposed to a project).
 func UploadTarballDependencyFiles(dir string, fileList []string, name string, upload bool) (Locator, error) {
 	absFiles := make([]string, len(fileList))
 	for i, file := range fileList {

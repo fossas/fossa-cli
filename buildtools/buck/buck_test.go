@@ -2,6 +2,8 @@ package buck_test
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -15,7 +17,7 @@ import (
 
 func TestDirectDeps(t *testing.T) {
 	fossa.MockOrgID = "1"
-	testEnv := Mock("help", nil)
+	testEnv := Mock()
 
 	deps, err := testEnv.Deps(false)
 	assert.NoError(t, err)
@@ -25,19 +27,19 @@ func TestDirectDeps(t *testing.T) {
 
 func TestTransitiveDeps(t *testing.T) {
 	fossa.MockOrgID = "1"
-	testEnv := Mock("help", nil)
+	testEnv := Mock()
 
 	deps, err := testEnv.Deps(false)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(deps.Transitive))
-	packageTwo := findPackage(deps.Transitive, "test-two")
-	assert.NotZero(t, packageTwo)
+	packageTwo, err := findPackage(deps.Transitive, "test-two")
+	assert.NoError(t, err)
 	assert.Equal(t, 1, len(packageTwo.Imports))
 	assertImport(t, packageTwo.Imports, "test-three")
 }
 
 // Mock constructs a buck.Cmd using mock build tool output.
-func Mock(file string, err error) buck.Cmd {
+func Mock() buck.Cmd {
 	return buck.Cmd{
 		RootDir: func() (string, error) {
 			return os.Getwd()
@@ -70,24 +72,24 @@ func Mock(file string, err error) buck.Cmd {
 
 func buckAuditFile(file string) buck.AuditOutput {
 	var output buck.AuditOutput
-	fileRead, err := ioutil.ReadFile(file)
+	contents, err := ioutil.ReadFile(file)
 	if err != nil {
 		return output
 	}
-	err = json.Unmarshal([]byte(fileRead), &output.OutputMapping)
+	err = json.Unmarshal([]byte(contents), &output.OutputMapping)
 	if err != nil {
 		return output
 	}
 	return output
 }
 
-func findPackage(packages map[pkg.ID]pkg.Package, name string) pkg.Package {
+func findPackage(packages map[pkg.ID]pkg.Package, name string) (pkg.Package, error) {
 	for id := range packages {
 		if id.Name == name {
-			return packages[id]
+			return packages[id], nil
 		}
 	}
-	return pkg.Package{}
+	return pkg.Package{}, errors.New(fmt.Sprintf("Package %s not found", name))
 }
 
 func assertImport(t *testing.T, imports pkg.Imports, name string) {

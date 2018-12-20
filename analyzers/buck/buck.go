@@ -1,7 +1,7 @@
 // Package buck implements the analyzer for Buck. https://buckbuild.com
 //
 // A `BuildTarget` in Buck is defined as a Build Target by Buck which is in
-// in the format of `//src/build:target`. Buck defines this as a strin used to
+// in the format of `//src/build:target`. Buck defines this as a string used to
 // identify a Build Rule.
 //
 // This package is implemented by externally calling the `buck` build tool.
@@ -12,7 +12,7 @@
 //
 // `.buckconfig` can be used to discover cells but the `repository` field which
 // defines cells is not required .
-// `BUCK` files are written in python and can be difficult to parse.
+// `BUCK` files are written in Skylark (a dialect of Python) and are impossible to statically analyze.
 // `buck audit` provides json formatted data for dependency and input information.
 package buck
 
@@ -70,17 +70,17 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	return a.Cmd.Deps(a.Upload)
 }
 
-// Discover finds a Buck project by first looking for a ".buckconfig" file and then a "BUCK" file.
+// Discover is used to operate Discovery with a custom `buck` command.
+func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) {
+	return DiscoverWithCommand(dir, opts, buckCmd)
+}
+
+// DiscoverWithCommand finds a Buck project by first looking for a ".buckconfig" file and then a "BUCK" file.
 // 1. ".buckconfig" file is found and we know that that we are at the root of a Buck cell.
 // 	a. Attempt to find user defined aliases in .buckconfig.
 // 	b. No aliases, run `buck targets //` to find all local targets.
 // 2. "BUCK" file is found.
 // 	a. Run `buck targets <directory>:` to find all local targets.
-func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) {
-	return DiscoverWithCommand(dir, opts, buckCmd)
-}
-
-// DiscoverWithCommand is used to operate Discovery with a custom `buck` command.
 func DiscoverWithCommand(dir string, opts map[string]interface{}, buckCommand func(string, ...string) (string, error)) ([]module.Module, error) {
 	var moduleList []module.Module
 	buckConfig, err := files.Exists(dir, ".buckconfig")

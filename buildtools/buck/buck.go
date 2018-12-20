@@ -1,7 +1,6 @@
 package buck
 
 import (
-	"encoding/json"
 	"runtime"
 	"strings"
 
@@ -10,7 +9,6 @@ import (
 
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/errors"
-	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -166,34 +164,4 @@ func directDeps(b Cmd, locatorMap map[string]fossa.Locator) ([]pkg.Import, error
 func sanitizeBuckTarget(target string) string {
 	depSplit := strings.Split(target, "/")
 	return strings.Replace(depSplit[len(depSplit)-1], ":", "-", 1)
-}
-
-func buckAudit(cmd, target string, args ...string) (AuditOutput, error) {
-	var output AuditOutput
-	out, _, err := exec.Run(exec.Cmd{
-		Name: "buck",
-		Argv: append([]string{"audit", cmd, "--json", target}, args...),
-	})
-	if err != nil {
-		return output, errors.Wrapf(err, "Could not run `buck audit %s --json %s %+v` within the current directory", cmd, target, args)
-	}
-
-	err = json.Unmarshal([]byte(out), &output.OutputMapping)
-	if err != nil {
-		return output, errors.Wrap(err, "Could not unmarshal `buck audit` JSON into dependency list")
-	}
-
-	return output, nil
-}
-
-func buckRoot() (string, error) {
-	root, _, err := exec.Run(exec.Cmd{
-		Name: "buck",
-		Argv: []string{"root"},
-	})
-	if err != nil {
-		return root, errors.Wrap(err, "Could not run `buck root` within the current directory")
-	}
-
-	return strings.TrimSpace(root), nil
 }
