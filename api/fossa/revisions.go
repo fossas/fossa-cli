@@ -45,6 +45,16 @@ type Project struct {
 // RevisionsAPI is the API endpoint for revisions.
 const RevisionsAPI = "/api/revisions/%s"
 
+// RevisionsDependenciesAPI is the API endpoint to retrieve transitive dependencies of a revision.
+const RevisionsDependenciesAPI = "/api/revisions/%s/dependencies"
+
+// GetRevisionDependencies returns all transitive dependencies for a project revision.
+func GetRevisionDependencies(locator Locator) ([]Revision, error) {
+	var revisions []Revision
+	_, err := GetJSON(fmt.Sprintf(RevisionsDependenciesAPI, url.PathEscape(locator.OrgString())), &revisions)
+	return revisions, err
+}
+
 // GetRevision loads a single revision.
 func GetRevision(locator Locator) (Revision, error) {
 	var revision Revision
@@ -74,9 +84,6 @@ func GetRevision(locator Locator) (Revision, error) {
 // GetRevisions loads many revisions in batched requests.
 func GetRevisions(locators []Locator) (revs []Revision, err error) {
 	var locs []string
-	for _, loc := range locators {
-		locs = append(locs, loc.String())
-	}
 
 	// Split locators into chunks of 20 (this is an API limitation).
 	chunks := make([][]string, 0)
