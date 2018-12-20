@@ -2,7 +2,6 @@ package buck_test
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -89,7 +88,7 @@ func findPackage(packages map[pkg.ID]pkg.Package, name string) (pkg.Package, err
 			return packages[id], nil
 		}
 	}
-	return pkg.Package{}, errors.New(fmt.Sprintf("Package %s not found", name))
+	return pkg.Package{}, fmt.Errorf("Package %s not found", name)
 }
 
 func assertImport(t *testing.T, imports pkg.Imports, name string) {
