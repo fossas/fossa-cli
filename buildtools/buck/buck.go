@@ -23,25 +23,23 @@ type Buck interface {
 	Deps(bool) (graph.Deps, error)
 }
 
-// Cmd implements Buck and defines how to retrieve buck audit output.
-type Cmd struct {
-	RootDir func() (string, error)
-	Target  string
-	Audit   func(string, string, ...string) (AuditOutput, error)
+// Cmd implements Buck and defines how to retrieve buck output.
+type Setup struct {
+	Target string
+	Cmd    func(string, ...string) (string, error)
 }
 
 // New creates a new Buck instance that calls the buck build tool directly.
 func New(target string) Buck {
-	return Cmd{
-		RootDir: buckRoot,
-		Target:  target,
-		Audit:   buckAudit,
+	return Setup{
+		Target: target,
+		Cmd:    Cmd,
 	}
 }
 
 // Deps finds and uploads the dependencies of a Buck target using the supplied command and
 // returns the dependency graph.
-func (b Cmd) Deps(upload bool) (graph.Deps, error) {
+func (b Setup) Deps(upload bool) (graph.Deps, error) {
 	locatorMap, err := uploadDeps(b, upload)
 	if err != nil {
 		return graph.Deps{}, nil
@@ -63,17 +61,18 @@ func (b Cmd) Deps(upload bool) (graph.Deps, error) {
 	}, nil
 }
 
-func uploadDeps(b Cmd, upload bool) (map[string]fossa.Locator, error) {
+func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, error) {
 	locatorMap := make(map[string]fossa.Locator)
-	depList, err := b.Audit("input", b.Target)
+	depList, err := cmdAudit(b.Cmd, "input", b.Target)
 	if err != nil {
 		return locatorMap, err
 	}
 
-	rootDir, err := b.RootDir()
+	rootDir, err := b.Cmd("root")
 	if err != nil {
 		return locatorMap, errors.Wrap(err, "Cannot get buck root")
 	}
+	rootDir = strings.TrimSpace(rootDir)
 
 	wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
 	// Upload individual dependencies and keep a reference to the generated locators.
@@ -93,9 +92,9 @@ func uploadDeps(b Cmd, upload bool) (map[string]fossa.Locator, error) {
 	return locatorMap, nil
 }
 
-func depGraph(b Cmd, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Package, error) {
+func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Package, error) {
 	transitiveDeps := make(map[pkg.ID]pkg.Package)
-	depList, err := b.Audit("dependencies", b.Target, "--transitive")
+	depList, err := cmdAudit(b.Cmd, "dependencies", b.Target, "--transitive")
 	if err != nil {
 		return transitiveDeps, err
 	}
@@ -105,7 +104,7 @@ func depGraph(b Cmd, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Packag
 		wg.Add()
 		go func(dep string) {
 			defer wg.Done()
-			transDeps, err := b.Audit("dependencies", dep)
+			transDeps, err := cmdAudit(b.Cmd, "dependencies", dep)
 			if err != nil {
 				log.Warnf("Cannot retrieve depenedency list for %v: %s", dep, err)
 			}
@@ -138,9 +137,9 @@ func depGraph(b Cmd, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Packag
 	return transitiveDeps, nil
 }
 
-func directDeps(b Cmd, locatorMap map[string]fossa.Locator) ([]pkg.Import, error) {
+func directDeps(b Setup, locatorMap map[string]fossa.Locator) ([]pkg.Import, error) {
 	imports := []pkg.Import{}
-	deps, err := b.Audit("dependencies", b.Target)
+	deps, err := cmdAudit(b.Cmd, "dependencies", b.Target)
 	if err != nil {
 		return imports, err
 	}

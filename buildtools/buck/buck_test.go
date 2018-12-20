@@ -1,7 +1,6 @@
 package buck_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -38,48 +37,47 @@ func TestTransitiveDeps(t *testing.T) {
 }
 
 // Mock constructs a buck.Cmd using mock build tool output.
-func Mock() buck.Cmd {
-	return buck.Cmd{
-		RootDir: func() (string, error) {
-			return os.Getwd()
-		},
+func Mock() buck.Setup {
+	return buck.Setup{
 		Target: "//buck/test:one",
-		Audit: func(cmd, target string, args ...string) (buck.AuditOutput, error) {
+		Cmd: func(cmd string, args ...string) (string, error) {
 			switch cmd {
-			case "input":
-				return buckAuditFile("testdata/input.json"), nil
-			case "dependencies":
-				switch target {
-				case "//buck/test:one":
-					if len(args) > 0 && args[0] == "--transitive" {
-						return buckAuditFile("testdata/dependenciesTransitive.json"), nil
+			case "root":
+				return os.Getwd()
+			case "audit":
+				switch args[0] {
+				case "input":
+					return testFile("testdata/input.json")
+				case "dependencies":
+					switch args[2] {
+					case "//buck/test:one":
+						if len(args) > 3 && args[3] == "--transitive" {
+							return testFile("testdata/dependenciesTransitive.json")
+						}
+						return testFile("testdata/dependencies.json")
+					case "//buck/test:two":
+						return testFile("testdata/dependenciesDepTwo.json")
+					case "//buck/test:three":
+						return testFile("testdata/dependenciesDepThree.json")
+					default:
+						return "", nil
 					}
-					return buckAuditFile("testdata/dependencies.json"), nil
-				case "//buck/test:two":
-					return buckAuditFile("testdata/dependenciesDepTwo.json"), nil
-				case "//buck/test:three":
-					return buckAuditFile("testdata/dependenciesDepThree.json"), nil
 				default:
-					return buck.AuditOutput{}, nil
+					return "", nil
 				}
 			default:
-				return buck.AuditOutput{}, nil
+				return "", nil
 			}
 		},
 	}
 }
 
-func buckAuditFile(file string) buck.AuditOutput {
-	var output buck.AuditOutput
+func testFile(file string) (string, error) {
 	contents, err := ioutil.ReadFile(file)
 	if err != nil {
-		return output
+		return "", err
 	}
-	err = json.Unmarshal([]byte(contents), &output.OutputMapping)
-	if err != nil {
-		return output
-	}
-	return output
+	return string(contents), nil
 }
 
 func findPackage(packages map[pkg.ID]pkg.Package, name string) (pkg.Package, error) {
