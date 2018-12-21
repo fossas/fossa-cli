@@ -3,6 +3,7 @@ package buck
 import (
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/apex/log"
 	"github.com/remeh/sizedwaitgroup"
@@ -75,6 +76,7 @@ func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, error) {
 	rootDir = strings.TrimSpace(rootDir)
 
 	wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
+	lock := sync.RWMutex{}
 	// Upload individual dependencies and keep a reference to the generated locators.
 	for d, f := range depList.OutputMapping {
 		wg.Add()
@@ -84,7 +86,10 @@ func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, error) {
 			if err != nil {
 				log.Warnf("Cannot upload files for %v: %s", dep, err)
 			}
+
+			lock.Lock()
 			locatorMap[dep] = locator
+			lock.Unlock()
 		}(d, f)
 	}
 	wg.Wait()
@@ -98,7 +103,7 @@ func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Pack
 	if err != nil {
 		return transitiveDeps, err
 	}
-
+	mapLock := sync.RWMutex{}
 	wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
 	for _, d := range depList.OutputMapping[b.Target] {
 		wg.Add()
@@ -120,16 +125,18 @@ func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Pack
 					},
 				})
 			}
-
 			id := pkg.ID{
 				Type:     pkg.Raw,
 				Name:     locatorMap[dep].Project,
 				Revision: locatorMap[dep].Revision,
 			}
+
+			mapLock.Lock()
 			transitiveDeps[id] = pkg.Package{
 				ID:      id,
 				Imports: imports,
 			}
+			mapLock.Unlock()
 		}(d)
 	}
 	wg.Wait()
