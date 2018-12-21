@@ -68,24 +68,34 @@ func (d Cmd) Dependencies(target string) (graph.Deps, error) {
 	}, nil
 }
 
-func uploadDeps(dependencies []string, directory string, upload bool) map[string]string {
+func uploadDeps(dependencies map[string]string, directory string, upload bool) map[string]string {
 	var locatorMap = make(map[string]string)
-	for _, dep := range dependencies {
-		if _, ok := locatorMap[dep]; !ok {
+	wg := sync.WaitGroup{}
+	mapLock := sync.RWMutex{}
+
+	for d := range dependencies {
+		wg.Add(1)
+		go func(dep string) {
+			defer wg.Done()
+
 			revision, err := fossa.UploadTarballDependency(filepath.Join(directory, dep), upload)
 			if err != nil {
 				log.Debugf("Error uploading %v: %+v", dep, err)
 			} else {
+				mapLock.Lock()
 				locatorMap[dep] = revision.Revision
+				mapLock.Unlock()
 			}
-		}
+		}(d)
 	}
+	wg.Wait()
 
 	return locatorMap
 }
 
 func dependencyGraph(command func(...string) (string, error), locatorMap map[string]string) map[pkg.ID]pkg.Package {
 	wg := sync.WaitGroup{}
+	mapLock := sync.RWMutex{}
 	var depGraph = make(map[pkg.ID]pkg.Package)
 	for t, r := range locatorMap {
 		wg.Add(1)
@@ -116,10 +126,12 @@ func dependencyGraph(command func(...string) (string, error), locatorMap map[str
 					Name:     target,
 					Revision: revision,
 				}
+				mapLock.Lock()
 				depGraph[targetID] = pkg.Package{
 					ID:      targetID,
 					Imports: importedDeps,
 				}
+				mapLock.Unlock()
 			}
 		}(t, r)
 	}

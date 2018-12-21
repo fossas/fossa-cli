@@ -28,18 +28,18 @@ func directDeps(command func(...string) (string, error), target string) ([]strin
 // Return all transitive dependencies as an array of strings.
 // Ignore all virtual dependencies and it is important to note that this
 // can return duplicates.
-func transitiveDeps(command func(...string) (string, error), target string) ([]string, error) {
+func transitiveDeps(command func(...string) (string, error), target string) (map[string]string, error) {
 	output, err := command("--recurse", target)
 	if err != nil {
 		return nil, err
 	}
 
-	dependencies := []string{}
+	dependencies := make(map[string]string)
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
 		dep := strings.Split(strings.Replace(line, " ", "", -1), ":")
 		if len(dep) == 1 && dep[0] != "" && !strings.HasPrefix(dep[0], "<") {
-			dependencies = append(dependencies, dep[0])
+			dependencies[dep[0]] = ""
 		}
 	}
 	return dependencies, nil
