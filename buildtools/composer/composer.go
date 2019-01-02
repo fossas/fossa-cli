@@ -137,6 +137,10 @@ func (c *Composer) Show(dir string) (Show, error) {
 		return Show{}, errors.Wrap(err, "could not get dependency list from Composer")
 	}
 	var showJSON Show
+	// if there are no deps, this will be returned. Attempting to unmarshal it will throw an error, so return eagerly
+	if strings.HasPrefix(showOutput, "[]") {
+		return showJSON, nil
+	}
 	err = json.Unmarshal([]byte(showOutput), &showJSON)
 	if err != nil {
 		return Show{}, errors.Wrapf(err, "could not parse dependency list as JSON: %#v", showOutput)
