@@ -153,6 +153,8 @@ func Modules() ([]module.Module, error) {
 	args := ctx.Args()
 	log.WithFields(log.Fields{"args": args}).Debug("parsing modules")
 
+	var modules []module.Module
+
 	// If arguments are present, prefer arguments over the configuration file.
 	if args.Present() {
 		// Validate arguments.
@@ -171,20 +173,20 @@ func Modules() ([]module.Module, error) {
 		}
 
 		// Note that these parsed modules do not have any options set yet.
-		m := []module.Module{module.Module{
+		m := module.Module{
 			Name:        name,
 			Type:        mtype,
 			BuildTarget: name,
-		}}
+		}
 
 		log.WithField("module", m).Debug("parsed module")
-		return m, nil
-	}
-
-	// Otherwise, get the modules from the configuration file.
-	modules := file.Modules()
-	if len(modules) == 0 {
-		return modules, errors.New("No modules provided")
+		modules = append(modules, m)
+	} else {
+		// Otherwise, get the modules from the configuration file.
+		modules = file.Modules()
+		if len(modules) == 0 {
+			return modules, errors.New("No modules provided")
+		}
 	}
 
 	// Parse options set via the command line.
