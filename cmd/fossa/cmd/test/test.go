@@ -124,6 +124,7 @@ func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, erro
 	}
 }
 
+// CheckIssues polls the issues endpoint until an issue scan has been run on the latest project revision.
 func CheckIssues(locator fossa.Locator, stop <-chan time.Time) (fossa.Issues, error) {
 	for {
 		select {
@@ -138,8 +139,14 @@ func CheckIssues(locator fossa.Locator, stop <-chan time.Time) (fossa.Issues, er
 			if err != nil {
 				return fossa.Issues{}, errors.Wrap(err, "error while loading issues")
 			}
-			log.Debugf("Got issues: %#v", issues)
-			return issues, nil
+			switch issues.Status {
+			case "WAITING":
+				time.Sleep(pollRequestDelay)
+			case "SCANNED":
+				return issues, nil
+			default:
+				return issues, fmt.Errorf("unknown task status: %s", issues.Status)
+			}
 		}
 	}
 }
