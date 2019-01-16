@@ -84,6 +84,9 @@ func GetRevision(locator Locator) (Revision, error) {
 // GetRevisions loads many revisions in batched requests.
 func GetRevisions(locators []Locator) (revs []Revision, err error) {
 	var locs []string
+	for _, loc := range locators {
+		locs = append(locs, loc.String())
+	}
 
 	// Split locators into chunks of 20 (this is an API limitation).
 	chunks := make([][]string, 0)

@@ -30,17 +30,12 @@ The following software have components provided under the terms of this license:
 {{end}}
 `
 
-const (
-	JSON    = "json"
-	Unknown = "show-unknown"
-)
+const JSON = "json"
 
 var licensesCmd = cli.Command{
 	Name:  "licenses",
 	Usage: "Generate licenses report",
 	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithOptions(flags.WithReportTemplateFlags([]cli.Flag{
-		// TODO: what does this actually do?
-		cli.BoolFlag{Name: flags.Short(Unknown), Usage: "include unknown licenses"},
 		cli.BoolFlag{Name: JSON, Usage: "format output as JSON"},
 	})))),
 	Action: licensesRun,
@@ -52,8 +47,10 @@ func licensesRun(ctx *cli.Context) (err error) {
 		log.Fatalf("Could not initialize: %s", err.Error())
 	}
 
-	revs := make([]fossa.Revision, 0)
+	defer display.ClearProgress()
+	display.InProgress(fmt.Sprint("Fetching License Information"))
 
+	revs := make([]fossa.Revision, 0)
 	locator := fossa.Locator{
 		Fetcher:  config.Fetcher(),
 		Project:  config.Project(),
