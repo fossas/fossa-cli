@@ -1,0 +1,7 @@
+{
+  "//buck/test:two": ["testdata/dependenciesDepTwo.json"],
+  "//buck/test:three": [
+    "testdata/input.json",
+    "testdata/dependencies.json"
+  ]
+}

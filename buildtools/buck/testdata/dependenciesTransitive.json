@@ -1,0 +1,6 @@
+{
+      "//buck/test:one": [
+            "//buck/test:two",
+            "//buck/test:three"
+      ]
+}

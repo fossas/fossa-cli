@@ -6,6 +6,7 @@ import (
 
 	"github.com/fossas/fossa-cli/analyzers/ant"
 	"github.com/fossas/fossa-cli/analyzers/bower"
+	"github.com/fossas/fossa-cli/analyzers/buck"
 	"github.com/fossas/fossa-cli/analyzers/carthage"
 	"github.com/fossas/fossa-cli/analyzers/cocoapods"
 	"github.com/fossas/fossa-cli/analyzers/golang"
@@ -17,7 +18,6 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/python"
 	"github.com/fossas/fossa-cli/analyzers/ruby"
 	"github.com/fossas/fossa-cli/analyzers/scala"
-
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -69,6 +69,8 @@ func New(m module.Module) (Analyzer, error) {
 		return ruby.New(m)
 	case pkg.Scala:
 		return scala.New(m)
+	case pkg.Buck:
+		return buck.New(m)
 	}
 	return nil, ErrUnknownModuleType
 }

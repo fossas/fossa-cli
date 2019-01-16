@@ -14,6 +14,9 @@ import (
 	"path/filepath"
 
 	"github.com/apex/log"
+	"github.com/pkg/errors"
+
+	"github.com/fossas/fossa-cli/files"
 )
 
 var (
@@ -66,81 +69,8 @@ func UploadTarball(dir string) (Locator, error) {
 	if err != nil {
 		return Locator{}, err
 	}
-	info, err := tarball.Stat()
-	if err != nil {
-		return Locator{}, err
-	}
 
-	// Get signed URL for uploading.
-	revision := hex.EncodeToString(hash)
-	q := url.Values{}
-	q.Add("packageSpec", name)
-	q.Add("revision", revision)
-	var signed SignedURL
-	_, err = GetJSON(SignedURLAPI+"?"+q.Encode(), &signed)
-	if err != nil {
-		return Locator{}, err
-	}
-
-	// Run second pass: multi-part uploading.
-	r, w := io.Pipe()
-	// In parallel, stream temporary file to PUT.
-	go func() {
-		defer w.Close()
-		defer tarball.Close()
-		_, err := tarball.Seek(0, 0)
-		if err != nil {
-			log.Fatalf("Unable to upload: %s", err.Error())
-		}
-		_, err = io.Copy(w, tarball)
-		if err != nil {
-			log.Fatalf("Unable to upload: %s", err.Error())
-		}
-	}()
-
-	// TODO: should this be a new base API method?
-	req, err := http.NewRequest(http.MethodPut, signed.SignedURL, r)
-	if err != nil {
-		return Locator{}, err
-	}
-	req.Header.Set("Content-Type", "binary/octet-stream")
-	req.ContentLength = info.Size()
-	req.GetBody = func() (io.ReadCloser, error) {
-		return r, nil
-	}
-	log.Debugf("req: %#v", req)
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return Locator{}, err
-	}
-	defer res.Body.Close()
-
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return Locator{}, err
-	}
-	log.Debugf("%#v", string(body))
-
-	// Queue the component build.
-	build := ComponentSpec{
-		Archives: []Component{
-			Component{PackageSpec: name, Revision: revision},
-		},
-	}
-	data, err := json.Marshal(build)
-	if err != nil {
-		return Locator{}, err
-	}
-	_, _, err = Post(ComponentsBuildAPI, data)
-	if err != nil {
-		return Locator{}, err
-	}
-
-	return Locator{
-		Fetcher:  "archive",
-		Project:  name,
-		Revision: revision,
-	}, nil
+	return tarballUpload(name, false, true, tarball, hash)
 }
 
 // CreateTarball archives and compresses a directory's contents to a temporary
@@ -243,4 +173,200 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 	}
 
 	return tmp, h.Sum(nil), nil
+}
+
+// UploadTarballDependencyFiles generates and uploads a tarball from the provided list of files to
+// FOSSA. The tarball's contents are marked as a component (as opposed to a project).
+func UploadTarballDependencyFiles(dir string, fileList []string, name string, upload bool) (Locator, error) {
+	absFiles := make([]string, len(fileList))
+	for i, file := range fileList {
+		p := filepath.Join(dir, file)
+		pExists, err := files.Exists(p)
+		if err != nil && !pExists {
+			return Locator{}, errors.Errorf("File: %s does not exist: %s", p, err)
+		}
+		absFiles[i] = p
+	}
+
+	// Run first pass: tarball creation and hashing.
+	tarball, hash, err := CreateTarballFromFiles(absFiles, name)
+	if err != nil {
+		return Locator{}, err
+	}
+
+	return tarballUpload(name, true, upload, tarball, hash)
+}
+
+// CreateTarballFromFiles archives and compresses a list of files to a temporary
+// file while simultaneously computing its MD5 hash. The caller is responsible
+// for closing the file handle.
+func CreateTarballFromFiles(files []string, name string) (*os.File, []byte, error) {
+	tmp, err := ioutil.TempFile("", "fossa-tar-tempfile-"+name+"-")
+	if err != nil {
+		return nil, nil, err
+	}
+	h := md5.New()
+
+	g := gzip.NewWriter(tmp)
+	defer g.Close()
+
+	t := tar.NewWriter(g)
+	defer t.Close()
+
+	for _, file := range files {
+		info, _ := os.Lstat(file)
+		_, err = io.WriteString(h, info.Name())
+		if err != nil {
+			return nil, nil, err
+		}
+		header, err := tar.FileInfoHeader(info, info.Name())
+		if err != nil {
+			return nil, nil, err
+		}
+		header.Name = file
+
+		err = t.WriteHeader(header)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Exit early for directories, symlinks, etc.
+		if !info.Mode().IsRegular() {
+			return nil, nil, nil
+		}
+
+		// For regular files, write the file.
+		filename, err := os.Open(file)
+		if err != nil {
+			return nil, nil, err
+		}
+		defer filename.Close()
+
+		log.Debugf("Archiving: %#v", file)
+		_, err = io.Copy(t, filename)
+		if err != nil {
+			return nil, nil, err
+		}
+		_, err = io.Copy(h, filename)
+		if err != nil {
+			return nil, nil, err
+		}
+		// Close again to force a disk flush. Closing an *os.File twice is
+		// undefined, but safe in practice.
+		// See https://github.com/golang/go/issues/20705.
+		filename.Close()
+	}
+
+	// Clean up and flush writers.
+	err = t.Flush()
+	if err != nil {
+		return nil, nil, err
+	}
+	err = g.Flush()
+	if err != nil {
+		return nil, nil, err
+	}
+	err = tmp.Sync()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return tmp, h.Sum(nil), nil
+}
+
+// Upload the supplied tarball to the given endpoint.
+// Note: "name" should not have any "/"s to ensure core can parse it.
+func tarballUpload(name string, dependency, upload bool, tarball *os.File, hash []byte) (Locator, error) {
+	info, err := tarball.Stat()
+	if err != nil {
+		return Locator{}, err
+	}
+
+	revision := hex.EncodeToString(hash)
+
+	if !upload {
+		return Locator{
+			Fetcher:  "archive",
+			Project:  name,
+			Revision: revision,
+		}, nil
+	}
+
+	q := url.Values{}
+	q.Add("packageSpec", name)
+	q.Add("revision", revision)
+
+	// Get signed URL for uploading.
+	var signed SignedURL
+	_, err = GetJSON(SignedURLAPI+"?"+q.Encode(), &signed)
+	if err != nil {
+		return Locator{}, err
+	}
+
+	// Run second pass: multi-part uploading.
+	r, w := io.Pipe()
+	// In parallel, stream temporary file to PUT.
+	go func() {
+		defer w.Close()
+		defer tarball.Close()
+		_, err := tarball.Seek(0, 0)
+		if err != nil {
+			log.Fatalf("Unable to upload: %s", err.Error())
+		}
+		_, err = io.Copy(w, tarball)
+
+		if err != nil {
+			log.Fatalf("Unable to upload: %s", err.Error())
+		}
+	}()
+
+	// TODO: should this be a new base API method?
+	req, err := http.NewRequest(http.MethodPut, signed.SignedURL, r)
+	if err != nil {
+		return Locator{}, err
+	}
+	req.Header.Set("Content-Type", "binary/octet-stream")
+	req.ContentLength = info.Size()
+	req.GetBody = func() (io.ReadCloser, error) {
+		return r, nil
+	}
+	log.Debugf("req: %#v", req)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return Locator{}, err
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return Locator{}, err
+	}
+	log.Debugf("%#v", string(body))
+
+	// Queue the component build.
+	build := ComponentSpec{
+		Archives: []Component{
+			Component{PackageSpec: name, Revision: revision},
+		},
+	}
+	data, err := json.Marshal(build)
+	if err != nil {
+		return Locator{}, err
+	}
+
+	dependencyParameter := url.Values{}
+	if dependency {
+		dependencyParameter.Add("dependency", "true")
+
+	}
+	_, _, err = Post(ComponentsBuildAPI+"?"+dependencyParameter.Encode(), data)
+	if err != nil {
+		return Locator{}, err
+	}
+
+	return Locator{
+		Fetcher:  "archive",
+		Project:  name,
+		Revision: revision,
+	}, nil
 }

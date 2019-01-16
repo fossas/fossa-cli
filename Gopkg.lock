@@ -200,6 +200,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:bb90467981c5e812c4d1c78e498a1416b04cb5149dc5fa2200ab758c37488f6f"
+  name = "github.com/remeh/sizedwaitgroup"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5e7302b12ccef91dce9fde2f5bda6d5c7ea5d2eb"
+
+[[projects]]
   digest = "1:16e6fde687529deaefbeff14841b694cb6d67dfc31884bac6214313e96e107bc"
   name = "github.com/rhysd/go-github-selfupdate"
   packages = ["selfupdate"]
@@ -371,6 +379,14 @@
   version = "v1.2.0"
 
 [[projects]]
+  digest = "1:6295a00553abd595aa3c647d36b58eae91410f107ad554873aaaf7c71ca55855"
+  name = "gopkg.in/go-ini/ini.v1"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ffaaebdac6e54ce73b4e196b8406920921304ec9"
+  version = "v1.39.1"
+
+[[projects]]
   digest = "1:866df945fc92cd221d2b384dca7de5f3131a6113b9f72a7a8019ae5046abe828"
   name = "gopkg.in/src-d/go-billy.v4"
   packages = [
@@ -465,10 +481,12 @@
     "github.com/mattn/go-isatty",
     "github.com/mitchellh/mapstructure",
     "github.com/pkg/errors",
+    "github.com/remeh/sizedwaitgroup",
     "github.com/rhysd/go-github-selfupdate/selfupdate",
     "github.com/rveen/ogdl",
     "github.com/stretchr/testify/assert",
     "github.com/urfave/cli",
+    "gopkg.in/go-ini/ini.v1",
     "gopkg.in/src-d/go-git.v4",
     "gopkg.in/src-d/go-git.v4/plumbing",
     "gopkg.in/yaml.v2",
