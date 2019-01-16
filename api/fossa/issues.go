@@ -23,6 +23,7 @@ type Issue struct {
 type Issues struct {
 	Count  int
 	Issues []Issue
+	Status string
 }
 
 // GetIssues loads the issues for a project.
