@@ -78,7 +78,7 @@ func UploadTarball(dir string, dependency bool, upload bool) (Locator, error) {
 		return Locator{}, err
 	}
 
-	return tarballUpload(name, false, upload, tarball, hash)
+	return tarballUpload(name, dependency, upload, tarball, hash)
 }
 
 // CreateTarball archives and compresses a directory's contents to a temporary
