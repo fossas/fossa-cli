@@ -141,7 +141,7 @@ func CheckIssues(locator fossa.Locator, stop <-chan time.Time) (fossa.Issues, er
 			}
 			switch issues.Status {
 			case "WAITING":
-				log.Debugf("Got issues: %#v", issues)
+				time.Sleep(pollRequestDelay)
 			case "SCANNED":
 				return issues, nil
 			default:
