@@ -15,6 +15,7 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/maven"
 	"github.com/fossas/fossa-cli/analyzers/nodejs"
 	"github.com/fossas/fossa-cli/analyzers/nuget"
+	"github.com/fossas/fossa-cli/analyzers/okbuck"
 	"github.com/fossas/fossa-cli/analyzers/php"
 	"github.com/fossas/fossa-cli/analyzers/python"
 	"github.com/fossas/fossa-cli/analyzers/ruby"
@@ -66,6 +67,8 @@ func New(m module.Module) (Analyzer, error) {
 		return nodejs.New(m)
 	case pkg.NuGet:
 		return nuget.New(m)
+	case pkg.OkBuck:
+		return okbuck.New(m)
 	case pkg.Python:
 		return python.New(m)
 	case pkg.Ruby:
