@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/fossas/fossa-cli/cmd/fossa/display"
+	"github.com/apex/log"
 	"github.com/urfave/cli"
 
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/api/fossa"
+	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
+	"github.com/fossas/fossa-cli/cmd/fossa/setup"
+	"github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/errors"
 )
 
 const defaultLicenseReportTemplate = `# 3rd-Party Software License Notice
@@ -27,66 +30,36 @@ The following software have components provided under the terms of this license:
 {{end}}
 `
 
-const (
-	JSON    = "json"
-	Unknown = "show-unknown"
-)
+const JSON = "json"
 
 var licensesCmd = cli.Command{
 	Name:  "licenses",
 	Usage: "Generate licenses report",
 	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithOptions(flags.WithReportTemplateFlags([]cli.Flag{
-		// TODO: what does this actually do?
-		cli.BoolFlag{Name: flags.Short(Unknown), Usage: "include unknown licenses"},
 		cli.BoolFlag{Name: JSON, Usage: "format output as JSON"},
 	})))),
 	Action: licensesRun,
 }
 
 func licensesRun(ctx *cli.Context) (err error) {
-	analyzed, err := analyzeModules(ctx)
+	err = setup.SetContext(ctx)
 	if err != nil {
-		log.Fatalf("Could not analyze modules: %s", err.Error())
+		log.Fatalf("Could not initialize: %s", err.Error())
 	}
 
 	defer display.ClearProgress()
+	display.InProgress(fmt.Sprint("Fetching License Information"))
+
 	revs := make([]fossa.Revision, 0)
-	for _, module := range analyzed {
-		if ctx.Bool(Unknown) {
-			totalDeps := len(module.Deps)
-			i := 0
-			for _, dep := range module.Deps {
-				i++
-				display.InProgress(fmt.Sprintf("Fetching License Info (%d/%d): %s", i, totalDeps, dep.ID.Name))
-				locator := fossa.LocatorOf(dep.ID)
-				// Quirk of the licenses API: Go projects are stored under the git fetcher.
-				if locator.Fetcher == "go" {
-					locator.Fetcher = "git"
-				}
-				rev, err := fossa.GetRevision(fossa.LocatorOf(dep.ID))
-				if err != nil {
-					log.Warn(err.Error())
-					continue
-				}
-				revs = append(revs, rev)
-			}
-		} else {
-			display.InProgress("Fetching License Info")
-			var locators []fossa.Locator
-			for _, dep := range module.Deps {
-				locator := fossa.LocatorOf(dep.ID)
-				if locator.Fetcher == "go" {
-					locator.Fetcher = "git"
-				}
-				locators = append(locators, locator)
-			}
-			revs, err = fossa.GetRevisions(locators)
-			if err != nil {
-				log.Fatalf("Could not fetch revisions: %s", err.Error())
-			}
-		}
+	locator := fossa.Locator{
+		Fetcher:  config.Fetcher(),
+		Project:  config.Project(),
+		Revision: config.Revision(),
 	}
-	display.ClearProgress()
+	revs, err = fossa.GetRevisionDependencies(locator)
+	if err != nil {
+		return errors.Wrapf(err, "Unable to find licenses for project %s:", locator)
+	}
 
 	if ctx.Bool(JSON) {
 		output, err := json.Marshal(revs)
