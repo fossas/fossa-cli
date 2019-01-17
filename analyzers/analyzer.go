@@ -9,6 +9,7 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/buck"
 	"github.com/fossas/fossa-cli/analyzers/carthage"
 	"github.com/fossas/fossa-cli/analyzers/cocoapods"
+	"github.com/fossas/fossa-cli/analyzers/debian"
 	"github.com/fossas/fossa-cli/analyzers/golang"
 	"github.com/fossas/fossa-cli/analyzers/gradle"
 	"github.com/fossas/fossa-cli/analyzers/maven"
@@ -53,6 +54,8 @@ func New(m module.Module) (Analyzer, error) {
 		return cocoapods.New(m)
 	case pkg.Composer:
 		return php.New(m)
+	case pkg.Debian:
+		return debian.New(m)
 	case pkg.Go:
 		return golang.New(m)
 	case pkg.Gradle:
