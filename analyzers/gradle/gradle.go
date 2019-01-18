@@ -31,10 +31,10 @@ type Analyzer struct {
 }
 
 type Options struct {
-	Cmd    string `mapstructure:"cmd"`
-	Task   string `mapstructure:"task"`
-	Online bool   `mapstructure:"online"`
-
+	Cmd           string `mapstructure:"cmd"`
+	Task          string `mapstructure:"task"`
+	Online        bool   `mapstructure:"online"`
+	AllSubmodules bool   `mapstructure:"allsubmodules"`
 	// TODO: These are temporary until v2 configuration files (with proper BuildTarget) are implemented.
 	Project       string `mapstructure:"project"`
 	Configuration string `mapstructure:"configuration"`
@@ -162,7 +162,16 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	var err error
 	targets := strings.Split(a.Module.BuildTarget, ":")
 
-	if a.Options.Task != "" {
+	if a.Options.AllSubmodules {
+		submodules, err := g.Projects()
+		if err != nil {
+			return graph.Deps{}, err
+		}
+		depsByConfig, err = g.ProjectListDependencies(submodules)
+		if err != nil {
+			return graph.Deps{}, err
+		}
+	} else if a.Options.Task != "" {
 		depsByConfig, err = g.DependenciesTask(strings.Split(a.Options.Task, " ")...)
 		if err != nil {
 			return graph.Deps{}, err
