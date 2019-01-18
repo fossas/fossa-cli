@@ -114,10 +114,10 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			}
 			if len(projects) == 0 {
 				modules = append(modules, module.Module{
-					Name:        name,
+					Name:        filepath.Base(path),
 					Type:        pkg.Gradle,
 					BuildTarget: ":",
-					Dir:         dir,
+					Dir:         path,
 				})
 			}
 			// Don't continue recursing, because anything else is probably a
