@@ -88,11 +88,11 @@ func (b Setup) Deps() (graph.Deps, error) {
 func extractDependencies(output []Target) []Dependency {
 	var deps []Dependency
 	for _, out := range output {
-		tmp := strings.Split(out.MavenCoordinates, ":")
-		if len(tmp) == 4 {
+		splitDep := strings.Split(out.MavenCoordinates, ":")
+		if len(splitDep) == 4 {
 			deps = append(deps, Dependency{
-				Name:     tmp[0] + ":" + tmp[1],
-				Revision: tmp[3],
+				Name:     splitDep[0] + ":" + splitDep[1],
+				Revision: splitDep[3],
 			})
 		}
 	}
