@@ -27,7 +27,9 @@ type Dependency struct {
 	IsProject bool
 }
 
-func (g *Gradle) ProjectListDependencies(projects []string) (map[string]graph.Deps, error) {
+// MergeProjectsDependecies creates a complete configuration to dep graph map by
+// looping through a given list of projects and merging their dependencies by configuration.
+func (g *Gradle) MergeProjectsDependencies(projects []string) (map[string]graph.Deps, error) {
 	configurationMap := make(map[string]graph.Deps)
 	for _, project := range projects {
 		depGraph, err := g.Dependencies(project)

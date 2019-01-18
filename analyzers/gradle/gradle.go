@@ -167,7 +167,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		if err != nil {
 			return graph.Deps{}, err
 		}
-		depsByConfig, err = g.ProjectListDependencies(submodules)
+		depsByConfig, err = g.MergeProjectsDependencies(submodules)
 		if err != nil {
 			return graph.Deps{}, err
 		}
