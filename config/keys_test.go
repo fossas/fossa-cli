@@ -51,11 +51,12 @@ func TestModulesWithAnArgumentAndOptions(t *testing.T) {
 	flagSet := flag.NewFlagSet("test", 0)
 	flags.ConfigF.Apply(flagSet)
 	flags.OptionF.Apply(flagSet)
-	flagSet.Parse([]string{"gradle:argumentmodule"})
+	err := flagSet.Parse([]string{"gradle:argumentmodule"})
+	assert.NoError(t, err)
 
 	// Set the flag values.
 	ctx := cli.NewContext(cli.NewApp(), flagSet, nil)
-	err := ctx.Set(flags.Config, "testdata/test.yml")
+	err = ctx.Set(flags.Config, "testdata/test.yml")
 	assert.NoError(t, err)
 	err = ctx.Set(flags.Option, "allsubmodules:true")
 	assert.NoError(t, err)
