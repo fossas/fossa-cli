@@ -27,6 +27,39 @@ type Dependency struct {
 	IsProject bool
 }
 
+// MergeProjectsDependecies creates a complete configuration to dep graph map by
+// looping through a given list of projects and merging their dependencies by configuration.
+func (g *Gradle) MergeProjectsDependencies(projects []string) (map[string]graph.Deps, error) {
+	configurationMap := make(map[string]graph.Deps)
+	for _, project := range projects {
+		depGraph, err := g.Dependencies(project)
+		if err != nil {
+			return configurationMap, err
+		}
+		for configuration, configGraph := range depGraph {
+			if configurationMap[configuration].Direct == nil {
+				configurationMap[configuration] = configGraph
+			} else {
+				for id, transitivePackage := range configGraph.Transitive {
+					configurationMap[configuration].Transitive[id] = transitivePackage
+				}
+				tempDirect := configurationMap[configuration].Direct
+				for _, dep := range configGraph.Direct {
+					if !contains(tempDirect, dep) {
+						tempDirect = append(tempDirect, dep)
+					}
+				}
+				configurationMap[configuration] = graph.Deps{
+					Direct:     tempDirect,
+					Transitive: configurationMap[configuration].Transitive,
+				}
+			}
+		}
+	}
+
+	return configurationMap, nil
+}
+
 func (g *Gradle) Dependencies(project string) (map[string]graph.Deps, error) {
 	args := []string{
 		project + ":dependencies",
@@ -218,4 +251,13 @@ func NormalizeDependencies(imports []Dependency, deps map[Dependency][]Dependenc
 		Direct:     i,
 		Transitive: d,
 	}
+}
+
+func contains(array []pkg.Import, check pkg.Import) bool {
+	for _, val := range array {
+		if val == check {
+			return true
+		}
+	}
+	return false
 }
