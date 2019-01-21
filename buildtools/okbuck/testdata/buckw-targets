@@ -1,0 +1,10 @@
+[
+{
+  "buck.base_path" : "dependency1",
+  "mavenCoords" : "dep:one:jar:1.0.0"
+},
+{
+  "buck.base_path" : "dep2",
+  "mavenCoords" : "dep:two:jar:2.0.0"
+}
+]

@@ -27,6 +27,7 @@ const (
 	Maven                 // Maven (https://maven.apache.org)
 	NodeJS                // NPM (https://www.npmjs.com), Yarn (https://yarnpkg.com)
 	NuGet                 // NuGet (https://www.nuget.org)
+	OkBuck                // OkBuck (https://github.com/uber/okbuck)
 	Python                // Pip (https://pip.pypa.io), Pipenv (https://pipenv.readthedocs.io/en/latest/)
 	Ruby                  // Bundler (https://bundler.io)
 	Scala                 // SBT (https://www.scala-sbt.org)
@@ -47,6 +48,7 @@ var AllTypes = []Type{
 	Maven,
 	NodeJS,
 	NuGet,
+	OkBuck,
 	Python,
 	Ruby,
 	Scala,
@@ -138,6 +140,9 @@ func ParseType(key string) (Type, error) {
 	case "nuget":
 		return NuGet, nil
 
+	case "okbuck":
+		return OkBuck, nil
+
 	// Python aliases:
 	case "python":
 		fallthrough
@@ -225,6 +230,8 @@ func (t Type) String() string {
 		return "npm"
 	case NuGet:
 		return "nuget"
+	case OkBuck:
+		return "okbuck"
 	case Python:
 		return "pip"
 	case Ruby:
