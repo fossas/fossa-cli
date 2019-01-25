@@ -95,7 +95,6 @@ func ParseSpecSection(section string) Section {
 	refRegex := regexp.MustCompile("\n  ref: (.*?)\n")
 	tagRegex := regexp.MustCompile("\n  tag: (.*?)\n")
 	branchRegex := regexp.MustCompile("\n  branch: (.*?)\n")
-
 	specs := regexp.MustCompile("(?s)\n  specs:\n(.*?)$")
 
 	return Section{
@@ -105,7 +104,7 @@ func ParseSpecSection(section string) Section {
 		Ref:      fromMaybe(refRegex.FindStringSubmatch(section), 1),
 		Tag:      fromMaybe(tagRegex.FindStringSubmatch(section), 1),
 		Branch:   fromMaybe(branchRegex.FindStringSubmatch(section), 1),
-		Specs:    ParseSpecs(specs.FindStringSubmatch(section)[1]),
+		Specs:    ParseSpecs(specs.FindStringSubmatch(section)),
 	}
 }
 
@@ -116,9 +115,16 @@ func fromMaybe(s []string, i int) string {
 	return ""
 }
 
-func ParseSpecs(s string) []Spec {
-	lines := strings.Split(s, "\n")
+func ParseSpecs(spec []string) []Spec {
 	var specs []Spec
+	if len(spec) < 2 {
+		log.Debug("No specs found in Gemfile")
+		return specs
+	}
+
+	s := spec[1]
+	lines := strings.Split(s, "\n")
+
 	var curr Spec
 	for i, line := range lines {
 		matches := requirementsRegex.FindStringSubmatch(line)

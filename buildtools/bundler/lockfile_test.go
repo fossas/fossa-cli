@@ -22,6 +22,13 @@ func TestLockfileParsing(t *testing.T) {
 	t.Logf("%#v", l)
 }
 
+func TestBadLockfileParsing(t *testing.T) {
+	l, err := bundler.FromLockfile(filepath.Join("testdata", "BadGemfile.lock"))
+	assert.NoError(t, err)
+	assert.Empty(t, l.Dependencies)
+	t.Logf("%#v", l)
+}
+
 func testSections(t *testing.T, sections []bundler.Section) {
 	for _, section := range sections {
 		assert.NotEmpty(t, section.Specs)
