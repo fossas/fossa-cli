@@ -10,22 +10,25 @@ import (
 
 // OkBuck defines an interface for all OkBuck tool implementations.
 type OkBuck interface {
-	Deps() (graph.Deps, error)
+	Deps(string) (graph.Deps, error)
 }
 
-// Setup implements OkBuck and defines how to retrieve okbuck output.
+// Setup implements OkBuck and defines how to retrieve OkBuck output.
 type Setup struct {
 	Target string
 	Cmd    func(string, ...string) (string, error)
 }
 
-// Target represents an okbuck build target.
+// Target represents an OkBuck build target.
 type Target struct {
+	BinaryJar        string `json:"binaryJar"`
+	Aar              string `json:"aar"`
 	MavenCoordinates string `json:"mavenCoords"`
 }
 
 // Dependency holds revision information after parsing output.
 type Dependency struct {
+	Jar      string
 	Name     string
 	Revision string
 }
@@ -38,63 +41,132 @@ func New(target string) OkBuck {
 	}
 }
 
-// Deps finds the dependencies of an OkBuck target using the supplied command and
-// returns the dependency graph.
-func (b Setup) Deps() (graph.Deps, error) {
+// Deps finds the dependencies of an OkBuck target or classpath using
+// the supplied command and returns the dependency graph.
+func (b Setup) Deps(classpath string) (graph.Deps, error) {
 	out, err := b.Cmd("targets", b.Target, "--json")
 	if err != nil {
 		return graph.Deps{}, err
 	}
 
-	var mavenCoordinates []Target
-	err = json.Unmarshal([]byte(out), &mavenCoordinates)
+	var targets []Target
+	err = json.Unmarshal([]byte(out), &targets)
 	if err != nil {
-		return graph.Deps{}, nil
+		return graph.Deps{}, err
 	}
 
-	imports := extractDependencies(mavenCoordinates)
-	var direct []pkg.Import
-	for _, dep := range imports {
-		direct = append(direct, pkg.Import{
-			Resolved: pkg.ID{
-				Type:     pkg.Maven,
-				Name:     dep.Name,
-				Revision: dep.Revision,
-			},
-		})
+	dependencies := depsFromTargets(targets)
+
+	if classpath != "" {
+		out, err := b.Cmd("audit", "classpath", classpath)
+		if err != nil {
+			return graph.Deps{}, err
+		}
+		jars := classpathJars(out)
+		return graphFromJars(jars, dependencies), nil
 	}
 
-	transitive := make(map[pkg.ID]pkg.Package)
-	for _, dep := range imports {
+	depGraph := graph.Deps{
+		Direct:     []pkg.Import{},
+		Transitive: make(map[pkg.ID]pkg.Package),
+	}
+	for _, dep := range dependencies {
 		id := pkg.ID{
 			Type:     pkg.Maven,
 			Name:     dep.Name,
 			Revision: dep.Revision,
 		}
-		transitive[id] = pkg.Package{
+		depGraph.Direct = append(depGraph.Direct, pkg.Import{
+			Resolved: id,
+		})
+		depGraph.Transitive[id] = pkg.Package{
 			ID:      id,
 			Imports: []pkg.Import{},
 		}
 	}
 
-	fullGraph := graph.Deps{
-		Direct:     direct,
-		Transitive: transitive,
-	}
-
-	return fullGraph, nil
+	return depGraph, nil
 }
 
-func extractDependencies(output []Target) []Dependency {
+// depsFromTargets takes an OkBuck target and creates a Dependency with
+// Name, Revision, and Jar fields that can be interpreted by Fossa.
+func depsFromTargets(targets []Target) []Dependency {
 	var deps []Dependency
-	for _, out := range output {
-		splitDep := strings.Split(out.MavenCoordinates, ":")
+	for _, target := range targets {
+		splitDep := strings.Split(target.MavenCoordinates, ":")
 		if len(splitDep) == 4 {
 			deps = append(deps, Dependency{
+				Jar:      conditionJar(target),
 				Name:     splitDep[0] + ":" + splitDep[1],
 				Revision: splitDep[3],
 			})
 		}
 	}
 	return deps
+}
+
+// classpathJars reads output from the buck audit classpath command and
+// separates the unique jar identifies from the line.
+// .okbuck/android/constraint/__package.aar#aar_prebuilt_jar__/classes.jar -> package.aar
+// .okbuck/android/constraint/__package.jar__/package.jar -> package.jar
+func classpathJars(cmdOut string) []string {
+	jarList := strings.Split(cmdOut, "\n")
+	deps := []string{}
+	for _, jar := range jarList {
+		jarFromLine := strings.Split(jar, "_")
+		if len(jarFromLine) >= 3 {
+			jarFromLine = strings.Split(jarFromLine[2], "#")
+		}
+		deps = append(deps, jarFromLine[0])
+	}
+	return deps
+}
+
+func graphFromJars(jarList []string, dependencies []Dependency) graph.Deps {
+	depGraph := graph.Deps{
+		Direct:     []pkg.Import{},
+		Transitive: make(map[pkg.ID]pkg.Package),
+	}
+
+	jarMap := mapJars(dependencies)
+	for _, jar := range jarList {
+		dep := jarMap[jar]
+		if dep != (Dependency{}) {
+			id := pkg.ID{
+				Type:     pkg.Maven,
+				Name:     dep.Name,
+				Revision: dep.Revision,
+			}
+			depGraph.Direct = append(depGraph.Direct, pkg.Import{
+				Resolved: id,
+			})
+			depGraph.Transitive[id] = pkg.Package{
+				ID:      id,
+				Imports: []pkg.Import{},
+			}
+		}
+	}
+	return depGraph
+}
+
+// mapJars creates a maping of a Dependency jar to the full Dependency.
+func mapJars(dependencies []Dependency) map[string]Dependency {
+	jarMap := make(map[string]Dependency)
+	for _, dependency := range dependencies {
+		jarMap[dependency.Jar] = dependency
+	}
+	return jarMap
+}
+
+// conditionJar determines what a targets jar string should be.
+// "aar" : ":package.aar__downloaded" -> package.aar
+// "binaryJar" : ":package.jar__downloaded" -> package.jar
+func conditionJar(target Target) string {
+	jar := target.BinaryJar
+	if target.Aar != "" {
+		jar = target.Aar
+	}
+	jar = strings.TrimPrefix(jar, ":")
+	jar = strings.Split(jar, "_")[0]
+	return jar
 }
