@@ -1,10 +1,10 @@
-// Package buck implements the analyzer for Buck. https://buckbuild.com
+// Package okbuck implements the analyzer for OkBuck. https://github.com/uber/okbuck.
 //
-// A `BuildTarget` in Buck is defined as a Build Target by Buck which is in
-// in the format of `//src/build:target`. Buck defines this as a string used to
+// A `BuildTarget` in OkBuck is defined as a Build Target by OkBuck which is in
+// in the format of `//src/build:target`. OkBuck defines this as a string used to
 // identify a Build Rule.
 //
-// This package is implemented by externally calling the `buck` build tool.
+// This package is implemented by externally calling the `okbuck` build tool.
 //
 // FAQ
 //
@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/apex/log"
+	"github.com/mitchellh/mapstructure"
 
 	"github.com/fossas/fossa-cli/buildtools/okbuck"
 	"github.com/fossas/fossa-cli/files"
@@ -31,15 +32,32 @@ import (
 
 // Analyzer defines a OkBuck analyzer.
 type Analyzer struct {
-	Module module.Module
-	Setup  okbuck.OkBuck
+	Module  module.Module
+	Setup   okbuck.OkBuck
+	Options Options
+}
+
+// Options sets analyzer options for Go modules.
+type Options struct {
+	ClassPath string `mapstructure:"classpath"` // Specify the classpath to target for a specific configurations dependencies.
 }
 
 // New constructs a new OkBuck analyzer from a module.
 func New(module module.Module) (*Analyzer, error) {
+	log.Debugf("%#v", module)
+
+	// Parse and validate options.
+	var options Options
+	err := mapstructure.Decode(module.Options, &options)
+	if err != nil {
+		return nil, err
+	}
+	log.WithField("options", options).Debug("parsed analyzer options")
+
 	analyzer := Analyzer{
-		Module: module,
-		Setup:  okbuck.New(module.BuildTarget),
+		Module:  module,
+		Setup:   okbuck.New(module.BuildTarget),
+		Options: options,
 	}
 	return &analyzer, nil
 }
@@ -59,9 +77,9 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 	return true, nil
 }
 
-// Analyze analyzes an okbuck build target and its dependencies.
+// Analyze analyzes an OkBuck build target and its dependencies.
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	return a.Setup.Deps()
+	return a.Setup.Deps(a.Options.ClassPath)
 }
 
 // Discover searches for `buckw` executables in the present directory.

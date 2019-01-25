@@ -12,23 +12,41 @@ import (
 )
 
 func TestOkBuck(t *testing.T) {
-	temp := MockOkBuck("testdata/buckw-targets")
-	testGraph, err := temp.Deps()
+	temp := MockOkBuck("testdata/buckw-targets", "")
+	testGraph, err := temp.Deps("")
 	assert.NoError(t, err)
-
 	assertImport(t, testGraph.Direct, "dep:one")
 	assertImport(t, testGraph.Direct, "dep:two")
 
-	dep1, err := findPackage(testGraph.Transitive, "dep:two")
+	dep2, err := findPackage(testGraph.Transitive, "dep:two")
 	assert.NoError(t, err)
-	assert.Empty(t, dep1.Imports)
+	assert.Empty(t, dep2.Imports)
 }
 
-func MockOkBuck(file string) okbuck.OkBuck {
+func TestOkBuckClassPath(t *testing.T) {
+	temp := MockOkBuck("testdata/buckw-targets", "testdata/buckw-classpath")
+	testGraph, err := temp.Deps("classpath")
+	assert.NoError(t, err)
+	assertImport(t, testGraph.Direct, "dep:one")
+	assertImport(t, testGraph.Direct, "dep:three")
+
+	dep3, err := findPackage(testGraph.Transitive, "dep:three")
+	assert.NoError(t, err)
+	assert.Empty(t, dep3.Imports)
+}
+
+func MockOkBuck(file string, classpath string) okbuck.OkBuck {
 	return okbuck.Setup{
 		Target: "test",
-		Cmd: func(string, ...string) (string, error) {
-			return testFile(file)
+		Cmd: func(args ...string) (string, error) {
+			switch args[0] {
+			case "targets":
+				return testFile(file)
+			case "audit":
+				return testFile(classpath)
+			default:
+				return testFile(file)
+			}
 		},
 	}
 }

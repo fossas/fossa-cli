@@ -1,10 +1,16 @@
 [
 {
+  "aar" : ":package.aar__downloaded",
   "buck.base_path" : "dependency1",
   "mavenCoords" : "dep:one:jar:1.0.0"
 },
 {
   "buck.base_path" : "dep2",
   "mavenCoords" : "dep:two:jar:2.0.0"
+},
+{
+  "binaryJar" : ":package.jar__downloaded",
+  "buck.base_path" : "dep3",
+  "mavenCoords" : "dep:three:jar:3.0.0"
 }
 ]
