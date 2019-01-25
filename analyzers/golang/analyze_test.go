@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/analyzers/golang"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -27,6 +28,18 @@ func TestProjectNotInDeps(t *testing.T) {
 	for _, dep := range deps.Transitive {
 		assert.NotEqual(t, main.ImportPath, dep.ID.Name)
 	}
+}
+
+func TestPackageNoDeps(t *testing.T) {
+	testModule := module.Module{}
+	testModule.BuildTarget = "github.com/fossas/fossa-cli/analyzers/golang/testdata/nodeps"
+
+	analyzer, err := golang.New(testModule)
+	assert.NoError(t, err)
+
+	testGraph, err := analyzer.Analyze()
+	assert.NoError(t, err)
+	assert.Equal(t, testGraph, graph.Deps{})
 }
 
 var customtag = pkg.ID{

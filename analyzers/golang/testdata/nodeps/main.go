@@ -1,0 +1,5 @@
+package nodeps
+
+func main() {
+
+}
