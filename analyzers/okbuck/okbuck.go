@@ -21,12 +21,13 @@ import (
 	"path/filepath"
 
 	"github.com/apex/log"
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/fossas/fossa-cli/buildtools/okbuck"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/mitchellh/mapstructure"
 )
 
 // Analyzer defines a OkBuck analyzer.

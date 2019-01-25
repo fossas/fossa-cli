@@ -5,9 +5,10 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/fossas/fossa-cli/buildtools/okbuck"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestOkBuck(t *testing.T) {
