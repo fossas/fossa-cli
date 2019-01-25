@@ -3,7 +3,6 @@ package golang
 import (
 	"github.com/apex/log"
 
-	// Each of these build tools provides a resolver.Resolver
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
 	"github.com/fossas/fossa-cli/buildtools/dep"
 	"github.com/fossas/fossa-cli/buildtools/gdm"
@@ -13,7 +12,6 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/gomodules"
 	"github.com/fossas/fossa-cli/buildtools/govendor"
 	"github.com/fossas/fossa-cli/buildtools/vndr"
-
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
@@ -118,6 +116,12 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		if err != nil {
 			return graph.Deps{}, err
 		}
+
+		if len(main.Deps) == 0 {
+			log.Warnf("No imports found for buid target %+v", m.BuildTarget)
+			return graph.Deps{}, nil
+		}
+
 		log.Debugf("Go main package: %#v", main)
 		deps, err := a.Go.List(main.Deps, flags)
 		if err != nil {
