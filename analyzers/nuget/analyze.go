@@ -1,10 +1,12 @@
 package nuget
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/buildtools/dotnet"
+	"github.com/fossas/fossa-cli/buildtools/paket"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
@@ -12,6 +14,12 @@ import (
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.WithField("module", a.Module).Debug("analyzing module")
+
+	if a.Options.Strategy == "paket" {
+		fmt.Println("Helloooo paket")
+		return paket.DependencyGraph(a.Options.Target)
+	}
+
 	// Parse lockfile.
 	lockfile, err := dotnet.ReadLockfile(filepath.Join(Dir(a.Module), "obj", "project.assets.json"))
 	if err != nil {

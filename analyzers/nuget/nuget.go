@@ -10,14 +10,12 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/fossas/fossa-cli/buildtools/dotnet"
-	"github.com/fossas/fossa-cli/files"
-
-	"github.com/mitchellh/mapstructure"
-	"github.com/pkg/errors"
-
 	"github.com/apex/log"
+	"github.com/mitchellh/mapstructure"
+
+	"github.com/fossas/fossa-cli/buildtools/dotnet"
 	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -32,7 +30,8 @@ type Analyzer struct {
 }
 
 type Options struct {
-	Target string
+	Target   string
+	Strategy string `mapstructure:"strategy"`
 }
 
 func New(m module.Module) (*Analyzer, error) {
@@ -40,7 +39,8 @@ func New(m module.Module) (*Analyzer, error) {
 	// Set Bower context variables
 	dotnetCmd, dotnetVersion, err := exec.Which("--version", os.Getenv("DOTNET_BINARY"), "dotnet")
 	if err != nil {
-		return nil, errors.Wrap(err, "could not find dotnet binary (try setting $DOTNET_BINARY)")
+		log.Warn("Cannot find .NET binary")
+		//return nil, errors.Wrap(err, "could not find dotnet binary (try setting $DOTNET_BINARY)")
 	}
 
 	// Decode options
@@ -80,6 +80,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			dir := filepath.Dir(path)
 			moduleName := name
 
+			options := make(map[string]interface{})
 			// TODO(#172): this will use the lexicographically first indicator in the
 			// directory, but we actually want the _best_ indicator (i.e. we should
 			// prefer a *.csproj over a *.nuspec when both are available).
@@ -106,6 +107,8 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			} else if name == "packages.config" || name == "project.json" {
 				// For other module indicators, use the directory name.
 				moduleName = filepath.Base(dir)
+			} else if name == "paket.lock" {
+				options["strategy"] = "paket"
 			} else {
 				// TODO: get modules from `sln` files via `dotnet sln list`?
 				return nil
@@ -116,6 +119,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				Type:        pkg.NuGet,
 				BuildTarget: path,
 				Dir:         dir,
+				Options:     options,
 			})
 			return filepath.SkipDir
 		}
