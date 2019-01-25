@@ -18,9 +18,9 @@ func TestOkBuck(t *testing.T) {
 	assertImport(t, testGraph.Direct, "dep:one")
 	assertImport(t, testGraph.Direct, "dep:two")
 
-	dep1, err := findPackage(testGraph.Transitive, "dep:two")
+	dep2, err := findPackage(testGraph.Transitive, "dep:two")
 	assert.NoError(t, err)
-	assert.Empty(t, dep1.Imports)
+	assert.Empty(t, dep2.Imports)
 }
 
 func TestOkBuckClassPath(t *testing.T) {
@@ -30,16 +30,16 @@ func TestOkBuckClassPath(t *testing.T) {
 	assertImport(t, testGraph.Direct, "dep:one")
 	assertImport(t, testGraph.Direct, "dep:three")
 
-	dep1, err := findPackage(testGraph.Transitive, "dep:three")
+	dep3, err := findPackage(testGraph.Transitive, "dep:three")
 	assert.NoError(t, err)
-	assert.Empty(t, dep1.Imports)
+	assert.Empty(t, dep3.Imports)
 }
 
 func MockOkBuck(file string, classpath string) okbuck.OkBuck {
 	return okbuck.Setup{
 		Target: "test",
-		Cmd: func(command string, temp ...string) (string, error) {
-			switch command {
+		Cmd: func(args ...string) (string, error) {
+			switch args[0] {
 			case "targets":
 				return testFile(file)
 			case "audit":

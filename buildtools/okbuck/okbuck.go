@@ -16,7 +16,7 @@ type OkBuck interface {
 // Setup implements OkBuck and defines how to retrieve OkBuck output.
 type Setup struct {
 	Target string
-	Cmd    func(string, ...string) (string, error)
+	Cmd    func(...string) (string, error)
 }
 
 // Target represents an OkBuck build target.
@@ -76,9 +76,7 @@ func (b Setup) Deps(classpath string) (graph.Deps, error) {
 			Name:     dep.Name,
 			Revision: dep.Revision,
 		}
-		depGraph.Direct = append(depGraph.Direct, pkg.Import{
-			Resolved: id,
-		})
+		depGraph.Direct = append(depGraph.Direct, pkg.Import{Resolved: id})
 		depGraph.Transitive[id] = pkg.Package{
 			ID:      id,
 			Imports: []pkg.Import{},
@@ -88,8 +86,8 @@ func (b Setup) Deps(classpath string) (graph.Deps, error) {
 	return depGraph, nil
 }
 
-// depsFromTargets takes an OkBuck target and creates a Dependency with
-// Name, Revision, and Jar fields that can be interpreted by Fossa.
+// depsFromTargets takes an OkBuck target list and creates a list of
+// Dependencies that can be used to build a graph.Deps object.
 func depsFromTargets(targets []Target) []Dependency {
 	var deps []Dependency
 	for _, target := range targets {
@@ -105,10 +103,10 @@ func depsFromTargets(targets []Target) []Dependency {
 	return deps
 }
 
-// classpathJars reads output from the buck audit classpath command and
-// separates the unique jar identifies from the line.
-// .okbuck/android/constraint/__package.aar#aar_prebuilt_jar__/classes.jar -> package.aar
-// .okbuck/android/constraint/__package.jar__/package.jar -> package.jar
+// classpathJars reads output from `buck audit classpath` and
+// finds the unique jar identifies. Examples:
+// .okbuck/android/constraint/__package.aar#aar_prebuilt_jar__/classes.jar --> package.aar
+// .okbuck/android/constraint/__package.jar__/package.jar --> package.jar
 func classpathJars(cmdOut string) []string {
 	jarList := strings.Split(cmdOut, "\n")
 	deps := []string{}
@@ -137,9 +135,7 @@ func graphFromJars(jarList []string, dependencies []Dependency) graph.Deps {
 				Name:     dep.Name,
 				Revision: dep.Revision,
 			}
-			depGraph.Direct = append(depGraph.Direct, pkg.Import{
-				Resolved: id,
-			})
+			depGraph.Direct = append(depGraph.Direct, pkg.Import{Resolved: id})
 			depGraph.Transitive[id] = pkg.Package{
 				ID:      id,
 				Imports: []pkg.Import{},
@@ -149,7 +145,7 @@ func graphFromJars(jarList []string, dependencies []Dependency) graph.Deps {
 	return depGraph
 }
 
-// mapJars creates a maping of a Dependency jar to the full Dependency.
+// mapJars creates a mapping of a jar to the full Dependency.
 func mapJars(dependencies []Dependency) map[string]Dependency {
 	jarMap := make(map[string]Dependency)
 	for _, dependency := range dependencies {
@@ -158,7 +154,7 @@ func mapJars(dependencies []Dependency) map[string]Dependency {
 	return jarMap
 }
 
-// conditionJar determines what a targets jar string should be.
+// conditionJar determines what an OkBuck targets jar is.
 // "aar" : ":package.aar__downloaded" -> package.aar
 // "binaryJar" : ":package.jar__downloaded" -> package.jar
 func conditionJar(target Target) string {

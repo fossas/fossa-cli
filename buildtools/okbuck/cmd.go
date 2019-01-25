@@ -5,14 +5,14 @@ import (
 	"github.com/fossas/fossa-cli/exec"
 )
 
-func Cmd(cmd string, args ...string) (string, error) {
+func Cmd(args ...string) (string, error) {
 	out, _, err := exec.Run(exec.Cmd{
 		Name: "./buckw",
-		Argv: append([]string{cmd}, args...),
+		Argv: args,
 	})
 
 	if err != nil {
-		return out, errors.Wrapf(err, "Could not run `buckw %s %+v` within the current directory", cmd, args)
+		return out, errors.Wrapf(err, "Could not run `buckw %+v` within the current directory", args)
 	}
 	return out, nil
 }
