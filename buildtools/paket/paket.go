@@ -9,14 +9,13 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-type Lockfile struct {
-	Groups []Group
-}
+// Group defines a paket dependency group.
 type Group struct {
 	Name  string
 	Specs []Spec
 }
 
+// Spec defines a paket dependency and all of its attributes.
 type Spec struct {
 	Remote       string
 	Name         string
@@ -25,21 +24,28 @@ type Spec struct {
 	Dependencies []string
 }
 
+// DependencyGraph produces a full dep graph with access to a "paket.lock" file.
 func DependencyGraph(target string) (graph.Deps, error) {
-	// ideally this is a mapping of map[Name]Dependency where Dependency is
-	// Name, Revision, and Imports(string), and Type
-	lockfile, _ := readLockfile(target)
-	graph, _ := graphFromLockfile(lockfile)
+	groups, err := readLockfile(target)
+	if err != nil {
+		return graph.Deps{}, err
+	}
 
-	return graph, nil
+	depGraph, err := graphFromLockfile(groups)
+	if err != nil {
+		return graph.Deps{}, err
+	}
+
+	return depGraph, nil
 }
 
-func readLockfile(filename string) (Lockfile, error) {
+func readLockfile(filename string) ([]Group, error) {
 	contents, err := files.Read(filename)
 	if err != nil {
-		return Lockfile{}, errors.Wrapf(err, "could not read lockfile: %s", filename)
+		return []Group{}, errors.Wrapf(err, "could not read lockfile: %s", filename)
 	}
-	lockfile := Lockfile{}
+
+	lockfile := []Group{}
 	groups := strings.Split(string(contents), "GROUP ")
 	for _, group := range groups {
 		newSpec := Spec{}
@@ -47,6 +53,7 @@ func readLockfile(filename string) (Lockfile, error) {
 		sections := strings.Split(group, "\n")
 		packagetype := pkg.NuGet
 		remote := ""
+
 		for _, section := range sections {
 			switch section {
 			case "HTTP":
@@ -89,20 +96,21 @@ func readLockfile(filename string) (Lockfile, error) {
 			appendedGroup.Specs = append(appendedGroup.Specs, newSpec)
 		}
 		appendedGroup.Name = sections[0]
-		lockfile.Groups = append(lockfile.Groups, appendedGroup)
+		lockfile = append(lockfile, appendedGroup)
 	}
 
 	return lockfile, nil
 }
 
-func graphFromLockfile(lockfile Lockfile) (graph.Deps, error) {
+func graphFromLockfile(lockfile []Group) (graph.Deps, error) {
 	packageMap := make(map[string]pkg.Import)
-	for _, group := range lockfile.Groups {
+	for _, group := range lockfile {
 		for _, spec := range group.Specs {
 			name := spec.Name
 			if spec.Type == pkg.Git {
 				name = spec.Remote + "/" + spec.Name
 			}
+
 			packageMap[spec.Name] = pkg.Import{
 				Target: spec.Name,
 				Resolved: pkg.ID{
@@ -119,16 +127,18 @@ func graphFromLockfile(lockfile Lockfile) (graph.Deps, error) {
 		Direct:     []pkg.Import{},
 		Transitive: make(map[pkg.ID]pkg.Package),
 	}
-	for _, group := range lockfile.Groups {
+	for _, group := range lockfile {
 		for _, spec := range group.Specs {
-			packID := packageMap[spec.Name].Resolved
-			packageGraph.Direct = append(packageGraph.Direct, packageMap[spec.Name])
+			packageImport := packageMap[spec.Name]
+			packageGraph.Direct = append(packageGraph.Direct, packageImport)
+
 			imports := []pkg.Import{}
 			for _, dep := range spec.Dependencies {
 				imports = append(imports, packageMap[dep])
 			}
-			packageGraph.Transitive[packID] = pkg.Package{
-				ID:      packID,
+
+			packageGraph.Transitive[packageImport.Resolved] = pkg.Package{
+				ID:      packageImport.Resolved,
 				Imports: imports,
 			}
 		}
