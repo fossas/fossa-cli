@@ -31,7 +31,7 @@ func DependencyGraph(target string) (graph.Deps, error) {
 		return graph.Deps{}, err
 	}
 
-	depGraph, err := graphFromLockfile(groups)
+	depGraph, err := graphFromGroups(groups)
 	if err != nil {
 		return graph.Deps{}, err
 	}
@@ -45,15 +45,15 @@ func readLockfile(filename string) ([]Group, error) {
 		return []Group{}, errors.Wrapf(err, "could not read lockfile: %s", filename)
 	}
 
-	lockfile := []Group{}
-	groups := strings.Split(string(contents), "GROUP ")
-	for _, group := range groups {
+	groups := []Group{}
+	groupSplit := strings.Split(string(contents), "GROUP ")
+	for _, group := range groupSplit {
 		newSpec := Spec{}
 		appendedGroup := Group{}
-		sections := strings.Split(group, "\n")
 		packagetype := pkg.NuGet
 		remote := ""
 
+		sections := strings.Split(group, "\n")
 		for _, section := range sections {
 			switch section {
 			case "HTTP":
@@ -65,15 +65,15 @@ func readLockfile(filename string) ([]Group, error) {
 			case "NUGET":
 				packagetype = pkg.NuGet
 			default:
-				// THIS IS GARBAGE.
 				if !strings.HasPrefix(section, "  ") {
 					continue
 				}
-				// Improve this match. Contains would be more robust but not as quick, which doesn't realllly matter.
-				if strings.HasPrefix(section, "  remote: ") {
+
+				if strings.Contains(section, "remote:") {
 					remote = strings.Split(section, "remote: ")[1]
 					continue
 				}
+
 				matches := strings.Split(section, " ")
 				if strings.HasPrefix(section, "      ") {
 					newSpec.Dependencies = append(newSpec.Dependencies, matches[6])
@@ -82,6 +82,10 @@ func readLockfile(filename string) ([]Group, error) {
 
 				if newSpec.Name != "" {
 					appendedGroup.Specs = append(appendedGroup.Specs, newSpec)
+				}
+
+				if len(matches) < 6 {
+					continue
 				}
 				revision := findRevision(matches[5])
 				newSpec = Spec{
@@ -92,19 +96,20 @@ func readLockfile(filename string) ([]Group, error) {
 				}
 			}
 		}
+
 		if newSpec.Name != "" {
 			appendedGroup.Specs = append(appendedGroup.Specs, newSpec)
 		}
 		appendedGroup.Name = sections[0]
-		lockfile = append(lockfile, appendedGroup)
+		groups = append(groups, appendedGroup)
 	}
 
-	return lockfile, nil
+	return groups, nil
 }
 
-func graphFromLockfile(lockfile []Group) (graph.Deps, error) {
+func graphFromGroups(groups []Group) (graph.Deps, error) {
 	packageMap := make(map[string]pkg.Import)
-	for _, group := range lockfile {
+	for _, group := range groups {
 		for _, spec := range group.Specs {
 			name := spec.Name
 			if spec.Type == pkg.Git {
@@ -127,7 +132,7 @@ func graphFromLockfile(lockfile []Group) (graph.Deps, error) {
 		Direct:     []pkg.Import{},
 		Transitive: make(map[pkg.ID]pkg.Package),
 	}
-	for _, group := range lockfile {
+	for _, group := range groups {
 		for _, spec := range group.Specs {
 			packageImport := packageMap[spec.Name]
 			packageGraph.Direct = append(packageGraph.Direct, packageImport)
