@@ -49,6 +49,10 @@ func readLockfile(filename string) (Lockfile, error) {
 		remote := ""
 		for _, section := range sections {
 			switch section {
+			case "HTTP":
+				fallthrough
+			case "GIT":
+				fallthrough
 			case "GITHUB":
 				packagetype = pkg.Git
 			case "NUGET":
@@ -95,11 +99,15 @@ func graphFromLockfile(lockfile Lockfile) (graph.Deps, error) {
 	packageMap := make(map[string]pkg.Import)
 	for _, group := range lockfile.Groups {
 		for _, spec := range group.Specs {
+			name := spec.Name
+			if spec.Type == pkg.Git {
+				name = spec.Remote + "/" + spec.Name
+			}
 			packageMap[spec.Name] = pkg.Import{
 				Target: spec.Name,
 				Resolved: pkg.ID{
 					Type:     spec.Type,
-					Name:     spec.Name,
+					Name:     name,
 					Revision: spec.Version,
 					Location: spec.Remote,
 				},
