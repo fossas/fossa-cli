@@ -37,6 +37,14 @@
 - Generates offline documentation for license notices & third-party attributions
 - Tests dependencies against license violations, audits and vulnerabilities (coming soon!) by integrating with https://fossa.io
 
+### Supported Languages
+
+|               Language                |                              Package Managers                              |
+| ------------------------------------- | -------------------------------------------------------------------------- |
+| [Golang](docs/integrations/golang.md) | Dep, Glide, Godep, Govendor, Vndr, Gdm, Gomodules                          |
+| Java                                  | [Maven](docs/integrations/maven.md), [Gradle](docs/integrations/gradle.md) |
+| Scala                                 | Sbt                                                                        |
+|                                       |                                                                            |
 [Click here to learn more](docs/how-it-works.md) about the reasons and technical details behind this project.
 
 ## Installation
@@ -77,7 +85,7 @@ Run `fossa -o` in your repo directory to output a dependency report in JSON:
 ]
 ```
 
-Run `fossa` and provide a [FOSSA API Key](https://docs.fossa.io/docs/api-reference) to get a rich, hosted report:
+Run `fossa` and provide a [FOSSA API Key](https://docs.fossa.io/docs/api-reference) to get a rich, hosted report on [fossa.com](fossa.com):
 
 ```bash
 export FOSSA_API_KEY="YOUR_API_KEY_HERE"
@@ -115,8 +123,6 @@ analyze:
     - name: fossa-cli
       path: ./cmd/fossa
       type: go
-
-# ...
 ```
 
 Check out our [User Guide](docs/user-guide.md) to learn about editing this file.
@@ -183,8 +189,6 @@ Check out the [User Guide](docs/user-guide.md) for more details.
 View our [Contribution Guidelines](.github/CONTRIBUTING.md) to get started.
 
 Join our public [Slack Channel](https://slack.fossa.io).
-
-If you're in San Francisco, come to our monthly [Open Source Happy Hour](http://meetup.fossa.io) to meet us F2F!
 
 ## License
 

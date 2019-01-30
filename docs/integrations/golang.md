@@ -1,6 +1,6 @@
 # Go
 
-## Installation
+## Support
 
 Go support in FOSSA CLI depends on the following tools existing in your environment:
 
@@ -20,10 +20,27 @@ Add a `go` module with the GOPATH to your entry point.
 ```yaml
 analyze:
   modules:
-    - name: your-go-project
-      path: github.com/you/your-project
-      type: go
+    - name:   your-go-project
+      type:   go
+      target: github.com/you/your-project
+      path:   github.com/you/your-project
 ```
+
+## Options
+|            Option            |  Type   |           Name            |                 Common Use Case                  |
+| ---------------------------- | ------- | ------------------------- | ------------------------------------------------ |
+| os                           | string  | [BuildOS](#BuildOS)                   | Set the OS to build the go module for.           |
+| arch                         | string  | [BuildArch](#BuildArch)                 | Set the architecture to build the go module for. |
+| strategy                     | string  | [Strategy](#Strategy)                  | Set the fossa analysis strategy.                 |
+| lockfile                     | string  | [LockfilePath](#LockfilePath)              | Path to a custom lockfile.                       |
+| allow-external-vendor-prefix | boolean | [AllowExternalVendorPrefix](#AllowExternalVendorPrefix) | Unsure                                           |
+
+#### BuildOS
+#### BuildOS
+#### Strategy
+#### LockfilePath
+#### AllowExternalVendorPrefix
+
 
 ## Design
 

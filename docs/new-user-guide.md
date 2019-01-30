@@ -1,11 +1,38 @@
 # User Guide
+
 ## Configuration
 
-The CLI has 3 methods of configuration:
+The CLI can be configured by either generating and modifying a configuration file, `fossa.yml`, from `fossa init` or by providing flags to each command.
 
-1. `$FOSSA_API_KEY` and `$FOSSA_ENDPOINT` can be set by environment variable.
-2. `.fossa.yaml` contains most of the configurable settings, and override environment variables.
-3. Flags can be passed directly to commands, and will override both environment variables and the configuration file.
+1. Configuration file `.fossa.yaml` generated from `fossa init`.
+1. Flags passed to each command
+
+### `.fossa.yaml`
+
+The CLI searches for a `.fossa.yaml` in the working directory. Information about each of the fields and customization can be found
+
+#### v1 (current)
+
+```yaml
+version: 1
+
+cli:
+  # # Defaults to https://app.fossa.io
+  # server: https://fossa.on-prem
+  api_key: some-key-here
+  # # If `project` or `locator` are unset, infer locator from VCS.
+  # project: git+github.com/fossas/fossa-cli
+  # locator: git+github.com/fossas/fossa-cli$revision
+
+analyze:
+  modules:
+    - name: fossa-cli
+      type: gopackage
+      target: ./cmd/fossa
+      path: ./cmd/fossa
+      options:
+        allowUnresolved: true
+```
 
 ### Modules and the module spec
 
@@ -45,37 +72,12 @@ The characters `:` and `,` are regarded as special characters. They may be escap
 - `nodejs:.,rubygem:./docs`
 - `go:./cmd/fossa`
 
-### `.fossa.yaml`
-
-The CLI searches for a `.fossa.yaml` in the working directory.
-
-#### v1 (current)
-
-```yaml
-version: 1
-
-cli:
-  # # Defaults to https://app.fossa.io
-  # server: https://fossa.on-prem
-  api_key: some-key-here
-  # # If `project` or `locator` are unset, infer locator from VCS.
-  # project: git+github.com/fossas/fossa-cli
-  # locator: git+github.com/fossas/fossa-cli$revision
-
-analyze:
-  modules:
-    - name: fossa-cli
-      type: gopackage
-      target: ./cmd/fossa
-      path: ./cmd/fossa
-      options:
-        allowUnresolved: true
-```
-
+## Project Analysis
+### `fossa analyze`
 
 ## Uploading Custom Builds
 
-If your build is too complex or your build system is heavily customized, `fossa` may be unable to correctly analyze your build. In that case, you can still upload build information to using `fossa upload` to fossa.io for build analysis and issue triage.
+If your build is too complex or your build system is heavily customized, `fossa` may be unable to correctly analyze your build. In that case, you can still upload build information using `fossa upload` to fossa.io for build analysis and issue triage.
 
 ### Data Format
 
@@ -155,7 +157,7 @@ mvn+org.apache.hadoop:hadoop-core$2.6.0-mr1-cdh5.5.0
 All flags should be passed to the invoked subcommand. Global flags are currently NOT supported.
 
 ### `fossa`
-Runs an analysis, uploading the results to FOSSA. Can optionally build if required.
+Create a configuration file and run an analysis, uploading the results to FOSSA. Can optionally build if required.
 
 #### Example
 ```bash
