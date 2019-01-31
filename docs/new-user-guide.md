@@ -1,19 +1,16 @@
 # User Guide
 
+The three most commonly used functions of fossa are
+1. Configuration
+1. Analysis
+1. Test
 ## Configuration
-
-
 The intention of the fossa-cli is to create an accurate configuration by running `fossa init` followed by `fossa analyze`. 
 
-The CLI can be configured by either generating and modifying a configuration file, `fossa.yml`, from `fossa init` or by providing flags to each command.
-
-1. Configuration file `.fossa.yaml` generated from `fossa init`.
-1. Flags passed to each command
+Configured can be acheived through a configuration file, `fossa.yml`, or directly with arguments and flags to the shell command.
 
 ### `.fossa.yaml`
-The CLI searches for a `.fossa.yaml` in the working directory. Information about each of the fields and customization can be found in [.fossa.yml](/docs/config-file) documentation.
-
-#### v1 (current)
+The CLI searches for `.fossa.yaml` in the working directory. Information about each of the fields and customization can be found in [.fossa.yml](/docs/config-file) documentation.
 
 ```yaml
 version: 1
@@ -75,10 +72,9 @@ The characters `:` and `,` are regarded as special characters. They may be escap
 - `go:./cmd/fossa`
 
 ## Project Analysis
-### `fossa analyze`
 
-## Uploading Custom Builds
-
+## Upload Custom Builds
+### `fossa upload`
 If your build is too complex or your build system is heavily customized, `fossa` may be unable to correctly analyze your build. In that case, you can still upload build information using `fossa upload` to fossa.io for build analysis and issue triage.
 
 ### Data Format
@@ -157,7 +153,15 @@ mvn+org.apache.hadoop:hadoop-core$2.6.0-mr1-cdh5.5.0
 ## CLI Reference
 
 All flags should be passed to the invoked subcommand. Global flags are currently NOT supported.
-
+| Command                   | Description                                       |
+| ------------------------- | ------------------------------------------------- |
+| [fossa](#fossa)           | Initialization and analysis.                      |
+| [fossa init](#fossa-init) | Generate configuration file.                      |
+| fossa analyze             | Analyze the current configuration.                |
+| fossa test                | Retrieve the results from the latest fossa scan.  |
+| fossa upload              | Upload a custom build.                            |
+| fossa report              | Retrieve information about the latest fossa scan. |
+| fossa update              | Update the current cli version.                   |
 ### `fossa`
 Create a configuration file and run an analysis, uploading the results to FOSSA. Can optionally build if required.
 
@@ -166,6 +170,7 @@ Create a configuration file and run an analysis, uploading the results to FOSSA.
 # Runs an analysis and uploads the results.
 FOSSA_API_KEY=YOUR_API_KEY fossa -m go:./cmd/fossa
 ```
+
 
 #### Flags
 ##### `-c, --config file_name`
@@ -285,19 +290,6 @@ Sets the modules and paths to ignore when analyzing dependencies. -->
 
 ##### `-o, --output`
 Prints analysis results to `stdout` instead of uploading results to a FOSSA server. When this flag is set, `fossa analyze` provides interactive output on `stderr`.
-
-##### `--allow-unresolved`
-Do not fail on unresolved dependencies.
-
-For some languages, running `fossa analyze` will result in the following error even if you've built your code:
-
-```bash
-CRITICAL Module {MODULE_NAME} does not appear to be built. Try first running your build or `fossa build`, and then running `fossa`.
-```
-
-This happens when `fossa` fails to verify whether your environment has completed a build due to some kind of error. This could be due to a highly custom build process, non-conventional environment state or a misconfiguration of your build.
-
-Passing `--allow-unresolved` will soften the verification standards that `fossa` runs for each language integration.
 
 ##### `--debug`
 Print debugging information to `stderr`.
