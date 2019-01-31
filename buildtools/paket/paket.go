@@ -15,7 +15,7 @@ type Group struct {
 	Specs []Spec
 }
 
-// Spec defines a paket dependency and all of its attributes.
+// Spec defines a paket dependency and its attributes.
 type Spec struct {
 	Remote       string
 	Name         string
@@ -24,7 +24,7 @@ type Spec struct {
 	Dependencies []string
 }
 
-// DependencyGraph produces a full dep graph with access to a "paket.lock" file.
+// DependencyGraph parses a "paket.lock" file to create a dependency graph.
 func DependencyGraph(target string) (graph.Deps, error) {
 	groups, err := readLockfile(target)
 	if err != nil {
@@ -49,7 +49,7 @@ func readLockfile(filename string) ([]Group, error) {
 	groupSplit := strings.Split(string(contents), "GROUP ")
 	for _, group := range groupSplit {
 		newSpec := Spec{}
-		appendedGroup := Group{}
+		newGroup := Group{}
 		packagetype := pkg.NuGet
 		remote := ""
 
@@ -76,34 +76,34 @@ func readLockfile(filename string) ([]Group, error) {
 
 				matches := strings.Split(section, " ")
 				if strings.HasPrefix(section, "      ") {
-					newSpec.Dependencies = append(newSpec.Dependencies, matches[6])
+					if len(matches) >= 7 {
+						newSpec.Dependencies = append(newSpec.Dependencies, matches[6])
+					}
 					continue
 				}
 
 				if newSpec.Name != "" {
-					appendedGroup.Specs = append(appendedGroup.Specs, newSpec)
+					newGroup.Specs = append(newGroup.Specs, newSpec)
 				}
 
-				if len(matches) < 6 {
-					continue
-				}
-				revision := findRevision(matches[5])
-				newSpec = Spec{
-					Remote:  remote,
-					Type:    packagetype,
-					Name:    matches[4],
-					Version: revision,
+				if len(matches) >= 6 {
+					revision := findRevision(matches[5])
+					newSpec = Spec{
+						Remote:  remote,
+						Type:    packagetype,
+						Name:    matches[4],
+						Version: revision,
+					}
 				}
 			}
 		}
 
 		if newSpec.Name != "" {
-			appendedGroup.Specs = append(appendedGroup.Specs, newSpec)
+			newGroup.Specs = append(newGroup.Specs, newSpec)
 		}
-		appendedGroup.Name = sections[0]
-		groups = append(groups, appendedGroup)
+		newGroup.Name = sections[0]
+		groups = append(groups, newGroup)
 	}
-
 	return groups, nil
 }
 
