@@ -2,14 +2,16 @@
 
 ## Configuration
 
+
+The intention of the fossa-cli is to create an accurate configuration by running `fossa init` followed by `fossa analyze`. 
+
 The CLI can be configured by either generating and modifying a configuration file, `fossa.yml`, from `fossa init` or by providing flags to each command.
 
 1. Configuration file `.fossa.yaml` generated from `fossa init`.
 1. Flags passed to each command
 
 ### `.fossa.yaml`
-
-The CLI searches for a `.fossa.yaml` in the working directory. Information about each of the fields and customization can be found
+The CLI searches for a `.fossa.yaml` in the working directory. Information about each of the fields and customization can be found in [.fossa.yml](/docs/config-file) documentation.
 
 #### v1 (current)
 
@@ -161,8 +163,7 @@ Create a configuration file and run an analysis, uploading the results to FOSSA.
 
 #### Example
 ```bash
-# Runs an analysis and uploads the results. Builds if required.
-# This is probably the command you want.
+# Runs an analysis and uploads the results.
 FOSSA_API_KEY=YOUR_API_KEY fossa -m go:./cmd/fossa
 ```
 
