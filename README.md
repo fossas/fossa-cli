@@ -37,14 +37,22 @@
 - Generates offline documentation for license notices & third-party attributions
 - Tests dependencies against license violations, audits and vulnerabilities (coming soon!) by integrating with https://fossa.io
 
-### Supported Languages
+### Supported Environments
+|              Environment              |                                              Package Managers                                               |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Android                               | [Gradle](docs/integrations/gradle.md)                                                                       |
+| Debian                                | Dpkg                                                                                                        |
+| [Golang](docs/integrations/golang.md) | Dep, Gomodules, Vndr, GDM, Glide, Godep, Govendor                                                           |
+| Groovy                                | [Gradle](docs/integrations/gradle.md)                                                                       |
+| Java                                  | [Gradle](docs/integrations/gradle.md), [Maven](docs/integrations/maven.md), [Ant](docs/integrations/ant.md) |
+| Monorepo                              | [okbuck](docs/integrations/okbuck.md), [Buck](docs/integrations/buck.md)                                    |
+| [.NET](docs/integrations/nuget.md)    | NuGet, Paket                                                                                                |
+| Objective-C                           | [Cocoapods](docs/integrations/cocoapods.md), [Carthage](docs/integrations/carthage.md)                      |
+| [Python](docs/integrations/python.md) | Pip, Pipenv, requirements.txt                                                                               |
+| PHP                                   | [Composer](docs/integrations/composer.md)                                                                   |
+| [Python](docs/integrations/ruby.md)   | Bundler                                                                                                     |
+| Scala                                 | [SBT](docs/integrations/sbt.md)                                                                             |
 
-|               Language                |                              Package Managers                              |
-| ------------------------------------- | -------------------------------------------------------------------------- |
-| [Golang](docs/integrations/golang.md) | Dep, Glide, Godep, Govendor, Vndr, Gdm, Gomodules                          |
-| Java                                  | [Maven](docs/integrations/maven.md), [Gradle](docs/integrations/gradle.md) |
-| Scala                                 | Sbt                                                                        |
-|                                       |                                                                            |
 [Click here to learn more](docs/how-it-works.md) about the reasons and technical details behind this project.
 
 ## Installation
