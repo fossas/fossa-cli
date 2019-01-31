@@ -19,7 +19,9 @@ func TestPaketDependencyGraph(t *testing.T) {
 	assertImport(t, graph.Direct, "Dep.Four", "4.0.0", pkg.NuGet)
 	assertImport(t, graph.Direct, "Dep.Five", "5.0.0", pkg.NuGet)
 	assertImport(t, graph.Direct, "Dep.Six", "6.0.0", pkg.NuGet)
-	assertImport(t, graph.Direct, "user/repo/src/app/file", "0341a2e614eb2a7f34607cec914eb0ed83ce9add", pkg.Git)
+	assertImport(t, graph.Direct, "user/repo/src/app/file", "0987654321", pkg.Git)
+	assertImport(t, graph.Direct, "www/website/src/file", "123456789", pkg.Git)
+	assertImport(t, graph.Direct, "user/otherrepo/src/secondfile", "5678901234", pkg.Git)
 
 	dependencyOne, err := findPackage(graph.Transitive, "Dep.One")
 	assert.NoError(t, err)
@@ -45,7 +47,15 @@ func TestPaketDependencyGraph(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, dependencySix.Imports)
 
-	dependencyGit, err := findPackage(graph.Transitive, "user/repo/src/app/file")
+	dependencyGitHub, err := findPackage(graph.Transitive, "user/repo/src/app/file")
+	assert.NoError(t, err)
+	assert.Empty(t, dependencyGitHub.Imports)
+
+	dependencyHTTP, err := findPackage(graph.Transitive, "www/website/src/file")
+	assert.NoError(t, err)
+	assert.Empty(t, dependencyHTTP.Imports)
+
+	dependencyGit, err := findPackage(graph.Transitive, "user/otherrepo/src/secondfile")
 	assert.NoError(t, err)
 	assert.Empty(t, dependencyGit.Imports)
 }

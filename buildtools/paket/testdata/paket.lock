@@ -9,7 +9,13 @@ NUGET
     Dep.Four (4.0.0)
 GITHUB
   remote: user/repo
-    src/app/file (0341a2e614eb2a7f34607cec914eb0ed83ce9add)
+    src/app/file (0987654321)
+HTTP
+  remote: www/website
+    src/file (123456789)
+GIT
+  remote: user/otherrepo
+    src/secondfile (5678901234)
 GROUP Build
 CONTENT: NONE
 RESTRICTION: >= something
