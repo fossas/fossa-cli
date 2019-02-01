@@ -52,6 +52,7 @@
 | PHP                                   | [Composer](docs/integrations/composer.md)                                                                   |
 | [Python](docs/integrations/ruby.md)   | Bundler                                                                                                     |
 | Scala                                 | [SBT](docs/integrations/sbt.md)                                                                             |
+If your development environemnt is not supported, check out the [archive](docs/integrations/archive.md) uploader which allows direct license scanning of source code files.
 
 [Click here to learn more](docs/how-it-works.md) about the reasons and technical details behind this project.
 

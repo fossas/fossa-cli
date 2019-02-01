@@ -7,9 +7,9 @@ The fossa configuration file should be created by running `fossa init`
 version: 1
 
 cli:
-  server: https://app.fossa.io
-  fetcher: custom
-  project: fossa-cli
+* server: https://app.fossa.io
+* fetcher: custom
+* project: fossa-cli
 * api_key: some-key-here
 * revision: 234823483
 * locator: custom+github.com/fossas/fossa-cli$revision
@@ -36,8 +36,10 @@ analyze:
 ### `version:`
 Specifies the current fossa configuration file version being used.
 ### `cli:`
-#### `server:`
-Primary endpoint that the cli sends its requests to. This field only needs to be modified when running an on-premise or local instance of `fossa.com`.
+#### `server:` (Optional)
+Primary endpoint that the cli sends its requests to. This field only needs to be modified when running a local instance of `fossa.com`.
+
+Default: `https://app.fossa.io`
 
 #### `fetcher:` (Optional)
 Describes the type of project fossa is uploading, there are two options:
@@ -46,8 +48,10 @@ Describes the type of project fossa is uploading, there are two options:
 
 Default: `custom`
 
-#### `project:`
+#### `project:` (Optional)
 This is the name of the project which will be used to construct a project locator which uniquely identifies a project on the fossa projects page. Keeping this name consistent ensures that all future analysis run is correlated to the same project.
+
+Default: Project name will be obtained from the version control software (VCS) in the project.
 
 #### `api_key:` (Optional)
 Holds a unique Fossa API Key which is used to send uploads to the correct organization. 
@@ -66,18 +70,29 @@ This allows you to manually specify a project locator
 Default: locator is created using fetcher, api_key, project, and revision.
 
 ### `analyze:`
+
 #### `modules:`
 Array of modules to be analyzed in the order they are listed.
+
 #### `name:`
 Name of the module being analyzed. This field has no implication on analysis and is for organizational and debugging purposes only.
+
 #### `type:`
 Type of module being analyzed, list of supported modules corresponds closely with the [supported languages list](../README.md#SupportedLanguages).
 
 If type is set to `archive`, fossa will upload a copy of all source code inside the folder and run a full license scan on all files.
+
 #### `target:`
 Build target for the specified module. 
+
 #### `path:`
 Path to the root of the project folder.
+
+#### `ignore:` (Optional)
+If set to `true` this module will be skipped.
+
+Default: `false`
+
 #### `option:` (Optional)
 Most options are unique to the type of module being analyzed. Refer to the [supported languages' pages](../README.md#SupportedLanguages) for documentation on the full list of options available.
 

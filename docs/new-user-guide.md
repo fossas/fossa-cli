@@ -1,39 +1,38 @@
 # User Guide
 
-The three most commonly used functions of fossa are
-1. Configuration
-1. Analysis
-1. Test
-## Configuration
-The intention of the fossa-cli is to create an accurate configuration by running `fossa init` followed by `fossa analyze`. 
+Fossa is most commonly used to analyze a project and extract its full dependency graph. This page explains how to configure each of those stepa in depth as well as the other features of the fossa-cli. If you are looking for a guided walkthrough refer to our [demo guide](how-it-works.md).
 
-Configured can be acheived through a configuration file, `fossa.yml`, or directly with arguments and flags to the shell command.
+- Configuring a Project
+- Analyzing a Project
+- Uploading a Custom build
 
-### `.fossa.yaml`
-The CLI searches for `.fossa.yaml` in the working directory. Information about each of the fields and customization can be found in [.fossa.yml](/docs/config-file) documentation.
+## 1. Configuring a Project
+
+Configuration can be acheived through a configuration file, `fossa.yml`, or directly with arguments and flags to the shell command. The fossa-cli's intention is to create a functioning and accurate configuration by running `fossa init`. Manual configuration should only be required for complex builds or to tweak personal preferences
+
+### Configuration file
+A configuration file can be created by running `fossa init` at the root of the project you wish to analyze.
+
+The CLI searches for `.fossa.yml` in the working directory. Information about each of the fields and customization can be found in [.fossa.yml](/docs/config-file) documentation.
 
 ```yaml
 version: 1
 
 cli:
-  # # Defaults to https://app.fossa.io
-  # server: https://fossa.on-prem
-  api_key: some-key-here
-  # # If `project` or `locator` are unset, infer locator from VCS.
-  # project: git+github.com/fossas/fossa-cli
-  # locator: git+github.com/fossas/fossa-cli$revision
-
+  server: https://app.fossa.io
+  fetcher: custom
+  project: git+github.com/fossas/fossa-cli
 analyze:
   modules:
     - name: fossa-cli
-      type: gopackage
-      target: ./cmd/fossa
-      path: ./cmd/fossa
-      options:
-        allowUnresolved: true
+      type: go
+      target: github.com/fossas/fossa-cli/cmd/fossa
+      path: cmd/fossa
 ```
 
-### Modules and the module spec
+### Argument configuration
+
+Argument and flag configuration always takes precendence of configuration file 
 
 The CLI must be configured to build specific modules as entry points. 
 
@@ -71,7 +70,8 @@ The characters `:` and `,` are regarded as special characters. They may be escap
 - `nodejs:.,rubygem:./docs`
 - `go:./cmd/fossa`
 
-## Project Analysis
+## 2. Analyzing a Project
+
 
 ## Upload Custom Builds
 ### `fossa upload`
