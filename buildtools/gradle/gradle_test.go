@@ -26,7 +26,7 @@ var depFour = gradle.Dependency{Name: "dep:four", Resolved: "4.0", Target: "4.0"
 var depFive = gradle.Dependency{Name: "dep:five", Resolved: "5.0", Target: "5.0", IsProject: false}
 
 func TestParseDependencyTree(t *testing.T) {
-	dat, err := ioutil.ReadFile("testdata/gradle.out")
+	dat, err := ioutil.ReadFile("testdata/gradleDependencies")
 	assert.NoError(t, err)
 	direct, transitive, err := gradle.ParseDependencies(string(dat))
 	fmt.Println(direct)
