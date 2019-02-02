@@ -39,6 +39,10 @@ func ReadDependencyTree(lines []string, parser LineParser) ([]Dependency, map[De
 	for parent, children := range edges {
 		for child := range children {
 			graph[parent] = append(graph[parent], child)
+			_, ok := graph[child]
+			if !ok {
+				graph[child] = nil
+			}
 		}
 	}
 	for _, i := range imports {
