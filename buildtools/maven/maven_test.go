@@ -76,11 +76,13 @@ func TestParseDependencyTree(t *testing.T) {
 	assert.Contains(t, direct, depOne)
 	assert.Contains(t, direct, depTwo)
 
-	assert.Equal(t, 3, len(transitive))
+	assert.Equal(t, 5, len(transitive))
 	assert.Contains(t, transitive, depOne)
 	assert.Contains(t, transitive, depTwo)
 	assert.Contains(t, transitive[depTwo], depThree)
 	assert.Contains(t, transitive[depTwo], depFive)
 	assert.Contains(t, transitive, depThree)
 	assert.Contains(t, transitive[depThree], depFour)
+	assert.Contains(t, transitive, depFour)
+	assert.Contains(t, transitive, depFive)
 }
