@@ -1,19 +1,15 @@
 # User Guide
 
-Fossa is most commonly used to analyze a project and extract its full dependency graph. This page explains how to configure each of those stepa in depth as well as the other features of the fossa-cli. If you are looking for a guided walkthrough refer to our [demo guide](how-it-works.md).
-
-- Configuring a Project
-- Analyzing a Project
-- Uploading a Custom build
+Fossa is most commonly used to analyze a project and extract its full dependency graph,which can then be uploaded to fossa.com using an API key. This page explains how to configure this workflow as well as the other features of the fossa-cli. If you are looking for a guided walk-through refer to our [demo guide](how-it-works.md).
 
 ## 1. Configuring a Project
 
-Configuration can be acheived through a configuration file, `fossa.yml`, or directly with arguments and flags to the shell command. The fossa-cli's intention is to create a functioning and accurate configuration by running `fossa init`. Manual configuration should only be required for complex builds or to tweak personal preferences
+Configuration can be achieved through a configuration file, `fossa.yml`, or directly with arguments and flags to the `fossa` command. The fossa-cli was built to create accurate configuration files by running [`fossa init`](#fossa-init) and only require manual configuration for complex builds or to tweak personal preferences.
 
 ### Configuration file
-A configuration file can be created by running `fossa init` at the root of the project you wish to analyze.
+A configuration file is created by running [`fossa init`](#fossa-init) at the root of the project you wish to analyze. The cli will move down the file tree and search for all relevant modules.
+> Note: Fossa will exclude modules it has determined to be test, development, or dependency modules by default. Add `--include-all` to retain all modules.
 
-The CLI searches for `.fossa.yml` in the working directory. Information about each of the fields and customization can be found in [.fossa.yml](/docs/config-file) documentation.
 
 ```yaml
 version: 1
@@ -30,40 +26,13 @@ analyze:
       path: cmd/fossa
 ```
 
+Information about each of these fields and customization can be found in [.fossa.yml](/docs/config-file) documentation.
+
 ### Argument configuration
 
-Argument and flag configuration always takes precendence of configuration file 
+Single modules can be provided by including an argument such as `fossa analyze <module_type>:<target>` which first resolves the type of analysis and then supplies the build target for the analysis. More examples located [here](#Examples).
 
-The CLI must be configured to build specific modules as entry points. 
-
-Providing entry points helps reduce false positives. For example, a Go project may have a `docs/` folder that provides documentation using a Ruby static site generator. If the static site generator is not distributed to users, it's generally not necessary to analyze it for license obligations.
-
-When used with the CLI flag, the module spec is defined as:
-
-```
-module1,module2,module3
-```
-
-where a module is defined as:
-
-```
-module_type:module_path
-```
-`module_path` can be specified as either a relative path from the working directory of the `fossa` invocation, or as an absolute path.
-
-`module_type` is one of the following:
-
-- `nodejs`: Node.js support (including NPM and Yarn)
-- `bower`: JavaScript support using Bower
-- `composer`: Composer support
-- `go`: Go support for `dep`, `glide`, `godep`, `govendor`, and `vndr`
-- `maven`: Java support using Maven
-- `gradle`: Java support using Gradle
-- `bundler`: Ruby support using Bundler
-- `sbt`: Scala support using SBT
-- `vendoredarchives`: Support for Node modules inside RPMs. This is highly experimental.
-
-The characters `:` and `,` are regarded as special characters. They may be escaped by a preceding backslash (`\`). <!-- TODO: this escaping is not actually implemented. -->
+> Note: Argument and flag configurations take precedence over a configuration file.
 
 #### Examples
 
@@ -72,6 +41,14 @@ The characters `:` and `,` are regarded as special characters. They may be escap
 
 ## 2. Analyzing a Project
 
+1. Run `fossa analyze -o` to verify that analysis succeeds. This command will output analysis to stdout instead of uploading them.
+2. Obtain a `FOSSA_API_KEY`. Refer to the [Fossa manual].(https://docs.fossa.com/docs/api-reference#section-api-tokens) for instructions.
+3. Run `export FOSSA_API_KEY=<your-api-key>` to set the environment variable.
+4. Run [`fossa analyze`](#fossa-analyze). This will analyze your project and upload the results to the specified server, app.fossa.com by default. 
+
+> Note: You can add the FOSSA_API_KEY inline with the command `FOSSA_API_KEY=<your-key> fossa analyze`
+
+Analysis can vary greatly depending on which environment you are in. Refer to the individual [supported environments](../README.md/#supported-environments) pages for more information and available options.
 
 ## Upload Custom Builds
 ### `fossa upload`
@@ -152,29 +129,39 @@ mvn+org.apache.hadoop:hadoop-core$2.6.0-mr1-cdh5.5.0
 
 ## CLI Reference
 
-All flags should be passed to the invoked subcommand. Global flags are currently NOT supported.
-| Command                   | Description                                       |
-| ------------------------- | ------------------------------------------------- |
-| [fossa](#fossa)           | Initialization and analysis.                      |
-| [fossa init](#fossa-init) | Generate configuration file.                      |
-| fossa analyze             | Analyze the current configuration.                |
-| fossa test                | Retrieve the results from the latest fossa scan.  |
-| fossa upload              | Upload a custom build.                            |
-| fossa report              | Retrieve information about the latest fossa scan. |
-| fossa update              | Update the current cli version.                   |
+All flags should be passed to the invoked sub-command. Global flags are currently NOT supported.
+| Command                         | Description                                       |
+| ------------------------------- | ------------------------------------------------- |
+| [fossa](#fossa)                 | Initialization and analysis.                      |
+| [fossa init](#fossa-init)       | Generate configuration file.                      |
+| [fossa analyze](#fossa-analyze) | Analyze the current configuration.                |
+| [fossa test](#fossa-test)       | Fail a CI job on the latest fossa scan.           |
+| [fossa upload](#fossa-upload)   | Upload a custom build.                            |
+| [fossa report](#fossa-report)   | Retrieve information about the latest fossa scan. |
+| [fossa update](#fossa-update)   | Update the current cli version.                   |
+
 ### `fossa`
-Create a configuration file and run an analysis, uploading the results to FOSSA. Can optionally build if required.
+Combination of [`fossa init`](#fossa-init) and [`fossa analyze`](#fossa-analyze) for simplicity.
 
-#### Example
+#### Example all-in-one command
 ```bash
-# Runs an analysis and uploads the results.
-FOSSA_API_KEY=YOUR_API_KEY fossa -m go:./cmd/fossa
+# Creates a config file, runs an analysis, and uploads the results.
+FOSSA_API_KEY=YOUR_API_KEY fossa
 ```
-
-
+  
+| Flag                         | Short | Description                                                     |
+| ---------------------------- | ----- | --------------------------------------------------------------- |
+| [--config](#fossa)           | `-c`  | Path to a config file                                           |
+| [--project](#fossa-init)     | `-p`  | Configuration value for [project](/docs/config-file.md/#Fields) |
+| [--revision](#fossa-analyze) | `-r`  |
+| [--endpoint](#fossa-test)    | `-e`  |
+| [--output](#fossa-upload)    | `-o`  |
+| [--debug](#fossa-report)     |       |
+| [--version](#fossa-update)   | `-v`  |
+| [--help](#fossa-update)      | `-h`  |
 #### Flags
 ##### `-c, --config file_name`
-Path to a configuration file. Defaults to `.fossa.yaml`.
+Path to a configuration file. Defaults to `.fossa.yml`.
 
 ##### `-p, --project project_name`
 Sets the configuration value for the FOSSA project.
@@ -185,20 +172,8 @@ Sets the configuration value for the FOSSA project's revision.
 ##### `-e, --endpoint url`
 Sets the endpoint of the FOSSA server. Useful for on-premises deployments.
 
-##### `-m, --modules module_spec`
-Passed to `fossa build` and `fossa analyze`.
-
-<!-- ##### `-i, --ignore ignore_spec`
-Passed to `fossa analyze`. -->
-
 ##### `-o, --output`
 Passed to `fossa analyze`.
-
-##### `-b, --build`
-Runs a build if required.
-
-##### `-f, --force`
-Passed to `fossa build`.
 
 ##### `--debug`
 Print debugging information to `stderr`.
@@ -212,6 +187,8 @@ Print a help message, then exit.
 ### `fossa init`
 
 Makes a best-effort attempt at inferring the correct configuration from current system state. If successful, it will write the configuration to a new or existing config file (defaults to `.fossa.yml`).
+
+> Note: if a configuration file exists, `fossa init` will **not** overwrite it.
 
 If there are no modules defined in the configuration, it will scan the working directory for code modules to analyze.  You can pass the `--overwrite` to overwrite any existing modules in configuration.
 
@@ -289,7 +266,7 @@ Sets the modules to use as entry points when analyzing dependencies.
 Sets the modules and paths to ignore when analyzing dependencies. -->
 
 ##### `-o, --output`
-Prints analysis results to `stdout` instead of uploading results to a FOSSA server. When this flag is set, `fossa analyze` provides interactive output on `stderr`.
+Prints analysis results to `stdout` instead of uploading results to a FOSSA server.
 
 ##### `--debug`
 Print debugging information to `stderr`.
