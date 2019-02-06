@@ -1,81 +1,57 @@
 # User Guide
-## Configuration
 
-The CLI has 3 methods of configuration:
+Fossa is most commonly used to analyze a project and extract its full dependency graph,which can then be uploaded to fossa.com using an API key. This page explains how to configure this workflow as well as the other features of the fossa-cli. If you are looking for a guided walk-through refer to our [demo guide](how-it-works.md).
 
-1. `$FOSSA_API_KEY` and `$FOSSA_ENDPOINT` can be set by environment variable.
-2. `.fossa.yaml` contains most of the configurable settings, and override environment variables.
-3. Flags can be passed directly to commands, and will override both environment variables and the configuration file.
+## 1. Configuring a Project
 
-### Modules and the module spec
+Configuration can be achieved through a configuration file, `fossa.yml`, or directly with arguments and flags to the `fossa` command. The fossa-cli was built to create accurate configuration files by running [`fossa init`](#fossa-init) and only require manual configuration for complex builds or to tweak personal preferences.
 
-The CLI must be configured to build specific modules as entry points. 
+### Configuration file
+A configuration file is created by running [`fossa init`](#fossa-init) at the root of the project you wish to analyze. The cli will move down the file tree and search for all relevant modules.
+> Note: Fossa will exclude modules it has determined to be test, development, or dependency modules by default. Add `--include-all` to retain all modules.
 
-Providing entry points helps reduce false positives. For example, a Go project may have a `docs/` folder that provides documentation using a Ruby static site generator. If the static site generator is not distributed to users, it's generally not necessary to analyze it for license obligations.
 
-When used with the CLI flag, the module spec is defined as:
+```yaml
+version: 1
 
+cli:
+  server: https://app.fossa.io
+  fetcher: custom
+  project: git+github.com/fossas/fossa-cli
+analyze:
+  modules:
+    - name: fossa-cli
+      type: go
+      target: github.com/fossas/fossa-cli/cmd/fossa
+      path: cmd/fossa
 ```
-module1,module2,module3
-```
 
-where a module is defined as:
+Information about each of these fields and customization can be found in [.fossa.yml](/docs/config-file) documentation.
 
-```
-module_type:module_path
-```
-`module_path` can be specified as either a relative path from the working directory of the `fossa` invocation, or as an absolute path.
+### Argument configuration
 
-`module_type` is one of the following:
+Single modules can be provided by including an argument such as `fossa analyze <module_type>:<target>` which first resolves the type of analysis and then supplies the build target for the analysis. More examples located [here](#Examples).
 
-- `nodejs`: Node.js support (including NPM and Yarn)
-- `bower`: JavaScript support using Bower
-- `composer`: Composer support
-- `go`: Go support for `dep`, `glide`, `godep`, `govendor`, and `vndr`
-- `maven`: Java support using Maven
-- `gradle`: Java support using Gradle
-- `bundler`: Ruby support using Bundler
-- `sbt`: Scala support using SBT
-- `vendoredarchives`: Support for Node modules inside RPMs. This is highly experimental.
-
-The characters `:` and `,` are regarded as special characters. They may be escaped by a preceding backslash (`\`). <!-- TODO: this escaping is not actually implemented. -->
+> Note: Argument and flag configurations take precedence over a configuration file.
 
 #### Examples
 
 - `nodejs:.,rubygem:./docs`
 - `go:./cmd/fossa`
 
-### `.fossa.yaml`
+## 2. Analyzing a Project
 
-The CLI searches for a `.fossa.yaml` in the working directory.
+1. Verify that analysis succeeds by running [`fossa analyze -o`](#fossa-analyze) without error. This command will output analysis to stdout instead of uploading.
+2. Obtain a `FOSSA_API_KEY`. Refer to the [Fossa manual](https://docs.fossa.com/docs/api-reference#section-api-tokens) for instructions.
+3. Run `export FOSSA_API_KEY=<your-api-key>` to set the environment variable.
+4. Run [`fossa analyze`](#fossa-analyze). This will analyze your project and upload the results to the specified server, app.fossa.com by default. 
 
-#### v1 (current)
+> Note: You can add the FOSSA_API_KEY inline with the command `FOSSA_API_KEY=<your-key> fossa analyze`
 
-```yaml
-version: 1
+Analysis can vary greatly depending on which environment you are in. Refer to the individual [supported environments](../README.md/#supported-environments) pages for more information and available options.
 
-cli:
-  # # Defaults to https://app.fossa.io
-  # server: https://fossa.on-prem
-  api_key: some-key-here
-  # # If `project` or `locator` are unset, infer locator from VCS.
-  # project: git+github.com/fossas/fossa-cli
-  # locator: git+github.com/fossas/fossa-cli$revision
-
-analyze:
-  modules:
-    - name: fossa-cli
-      type: gopackage
-      target: ./cmd/fossa
-      path: ./cmd/fossa
-      options:
-        allowUnresolved: true
-```
-
-
-## Uploading Custom Builds
-
-If your build is too complex or your build system is heavily customized, `fossa` may be unable to correctly analyze your build. In that case, you can still upload build information to using `fossa upload` to fossa.io for build analysis and issue triage.
+## Upload Custom Builds
+If your build is too complex or your build system is heavily customized, `fossa` may be unable to correctly analyze your build. In that case, you can still upload build information using [`fossa upload`](#fossa-upload) to fossa.io for build analysis and issue triage.
 
 ### Data Format
 
@@ -152,76 +128,59 @@ mvn+org.apache.hadoop:hadoop-core$2.6.0-mr1-cdh5.5.0
 
 ## CLI Reference
 
-All flags should be passed to the invoked subcommand. Global flags are currently NOT supported.
+All flags should be passed to the invoked sub-command. Global flags are currently NOT supported.
+| Command                           | Description                                       |
+| --------------------------------- | ------------------------------------------------- |
+| [`fossa`](#fossa)                 | Initialization and analysis.                      |
+| [`fossa init`](#fossa-init)       | Generate configuration file.                      |
+| [`fossa analyze`](#fossa-analyze) | Analyze the current configuration.                |
+| [`fossa test`](#fossa-test)       | Fail a CI job on the latest fossa scan.           |
+| [`fossa upload`](#fossa-upload)   | Upload a custom build.                            |
+| [`fossa report`](#fossa-report)   | Retrieve information about the latest fossa scan. |
+| `fossa update`                    | Update the current cli version.                   |
 
 ### `fossa`
-Runs an analysis, uploading the results to FOSSA. Can optionally build if required.
+Combination of [`fossa init`](#fossa-init) and [`fossa analyze`](#fossa-analyze) for simplicity.
 
-#### Example
+#### Example all-in-one command
 ```bash
-# Runs an analysis and uploads the results. Builds if required.
-# This is probably the command you want.
-FOSSA_API_KEY=YOUR_API_KEY fossa -m go:./cmd/fossa
+# Creates a config file, runs an analysis, and uploads the results.
+FOSSA_API_KEY=YOUR_API_KEY fossa
 ```
-
-#### Flags
-##### `-c, --config file_name`
-Path to a configuration file. Defaults to `.fossa.yaml`.
-
-##### `-p, --project project_name`
-Sets the configuration value for the FOSSA project.
-
-##### `-r, --revision revision_hash`
-Sets the configuration value for the FOSSA project's revision.
-
-##### `-e, --endpoint url`
-Sets the endpoint of the FOSSA server. Useful for on-premises deployments.
-
-##### `-m, --modules module_spec`
-Passed to `fossa build` and `fossa analyze`.
-
-<!-- ##### `-i, --ignore ignore_spec`
-Passed to `fossa analyze`. -->
-
-##### `-o, --output`
-Passed to `fossa analyze`.
-
-##### `-b, --build`
-Runs a build if required.
-
-##### `-f, --force`
-Passed to `fossa build`.
-
-##### `--debug`
-Print debugging information to `stderr`.
-
-##### `-v, --version`
-Print the version, then exit.
-
-##### `-h, --help`
-Print a help message, then exit.
+  
+| Flag         | Short | Description                                                                 |
+| ------------ | ----- | --------------------------------------------------------------------------- |
+| `--config`   | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.    |
+| `--project`  | `-p`  | Configuration value for [project](/docs/config-file.md/#project-optional)   |
+| `--revision` | `-r`  | Configuration value for [revision](/docs/config-file.md/#revision-optional) |
+| `--endpoint` | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional) |
+| `--output`   | `-o`  | Output `fossa analyze` results to stdout.                                   |
+| `--debug`    |       | Print debugging information to stderr.                                      |
+| `--version ` | `-v`  | Print the currently installed fossa-cli version.                            |
+| `--help`     | `-h`  | Print a help message.                                                       |
 
 ### `fossa init`
 
 Makes a best-effort attempt at inferring the correct configuration from current system state. If successful, it will write the configuration to a new or existing config file (defaults to `.fossa.yml`).
 
+> Note: if a configuration file exists, `fossa init` will **not** overwrite it.
+
 If there are no modules defined in the configuration, it will scan the working directory for code modules to analyze.  You can pass the `--overwrite` to overwrite any existing modules in configuration.
 
-By default, this command will filter out any modules that have `docs`, `test` or `example` in the path.  You can disable this by passing the `--include-all` flag.
+By default, `fossa init` filters modules that are suspected to be development, test, or dependency. The filter removes all modules that have any of the following in their filepath: `docs, test, examples, third-party, vendor, tmp,node_modules, .srclib-cache, spec, Godeps, .git, bower_components,  Carthage, and Checkouts`. Filtering can be disabled by passing the `--include-all` flag.
 
-#### Flags
-##### `-O, --overwrite`
-Force scanning for new modules and overwrite any existing config.
+#### Example
+```bash
+# Creates the .fossa.yml file in the current directory.
+fossa init --overwrite
+```
 
-##### `--include-all`
-Include any suspicious modules that would have been filtered out (`docs`, `test`, `example`).
-
-##### `--debug`
-Print debugging information to `stderr`.
-
-##### `-h, --help`
-Print a help message, then exit.
-
+| Flag            | Short | Description                                   |
+| --------------- | ----- | --------------------------------------------- |
+| `--overwrite`   | `-O`  | Overwrite the file `.fossa.yml` if it exists. |
+| `--include-all` |       | Include all modules.                          |
+| `--debug`       |       | Print debugging information to stderr.        |
+| `--help`        | `-h`  | Print a help message.                         |
 
 ### `fossa build`
 
@@ -230,127 +189,43 @@ Makes a best-effort attempt at building the project using default build conventi
 #### Example
 ```bash
 # No API key is required for builds
-fossa build -m go:./cmd/fossa
+fossa build
 ```
 
-#### Flags
-##### `-c, --config file_name`
-Path to a configuration file. Defaults to `.fossa.yaml`.
+| Flag       | Short | Description                                                                   |
+| ---------- | ----- | ----------------------------------------------------------------------------- |
+| `--config` | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.      |
+| `--force`  | `-f`  | Clear cached build artifacts (`node_modules`) and run the build from scratch. |
+| `--debug`  |       | Print debugging information to stderr.                                        |
+| `--help`   | `-h`  | Print a help message.                                                         |
 
-##### `-m, --modules module_spec`
-Sets the modules to use as entry points for building the project.
-
-##### `-f, --force`
-Clear cached build artifacts (such as a `node_modules` folder), and run the build from scratch.
-
-**WARNING:** This command will delete cached build artifacts! This is generally not what you want, unless you intend to use FOSSA to build your production binary. If you build your production binary ahead of time, you should NOT delete your build artifacts. Deleting build artifacts and re-running the build may cause some build systems to non-deterministically resolve a different set of dependencies, which will make your FOSSA analysis less accurate.
-
-##### `--debug`
-Print debugging information to `stderr`.
-
-##### `-h, --help`
-Print a help message, then exit.
+>**WARNING:** `--force` will delete all cached build artifacts! This command is not recommended unless you intend to use FOSSA to build your production binary. If you build your production binary ahead of time, you should NOT delete your build artifacts. Deleting build artifacts and re-running the build may cause build systems to non-deterministically resolve a different set of dependencies, which will make your FOSSA analysis less accurate.
 
 ### `fossa analyze`
 
-Analyzes the project for a list of its dependencies, optionally uploading the results to FOSSA.
+Analyzes the project for a list of its dependencies, optionally uploading the results to FOSSA. If analysis fails, first look at the documentation in the [supported environments](../README.md/#supported-environments) pages for information specific to your environment, and flags that can be set to condition fossa to your setup. 
 
+> Note: Analysis requires an API Key unless `--output` is set.
 #### Example
 ```bash
-# Show analysis results
-FOSSA_API_KEY=YOUR_API_KEY fossa analyze --output
+# Run analysis using .fossa.yml modules and upload to the server endpoint.
+FOSSA_API_KEY=YOUR_API_KEY fossa analyze
 ```
 
-#### Flags
-##### `-c, --config file_name`
-Path to a configuration file. Defaults to `.fossa.yaml`.
-
-##### `-p, --project project_name`
-Sets the configuration value for the FOSSA project.
-
-##### `-r, --revision revision_hash`
-Sets the configuration value for the FOSSA project's revision.
-
-##### `-e, --endpoint url`
-Sets the endpoint of the FOSSA server. Useful for on-premises deployments.
-
-##### `-m, --modules module_spec`
-Sets the modules to use as entry points when analyzing dependencies.
-
-<!-- ##### `-i, --ignore ignore_spec`
-Sets the modules and paths to ignore when analyzing dependencies. -->
-
-##### `-o, --output`
-Prints analysis results to `stdout` instead of uploading results to a FOSSA server. When this flag is set, `fossa analyze` provides interactive output on `stderr`.
-
-##### `--allow-unresolved`
-Do not fail on unresolved dependencies.
-
-For some languages, running `fossa analyze` will result in the following error even if you've built your code:
-
-```bash
-CRITICAL Module {MODULE_NAME} does not appear to be built. Try first running your build or `fossa build`, and then running `fossa`.
-```
-
-This happens when `fossa` fails to verify whether your environment has completed a build due to some kind of error. This could be due to a highly custom build process, non-conventional environment state or a misconfiguration of your build.
-
-Passing `--allow-unresolved` will soften the verification standards that `fossa` runs for each language integration.
-
-##### `--debug`
-Print debugging information to `stderr`.
-
-##### `-h, --help`
-Print a help message, then exit.
-
-### `fossa upload`
-
-Uploads user-provided build data to FOSSA. This allows users to manually provide a dependency list if their build system is too complex for FOSSA's default analyzer.
-
-#### Example
-```bash
-# You can manually override the project and revision name.
-# This is useful when `fossa` can't manually infer them from `git`.
-FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --project=PROJECT_NAME --revision=SOME_HASH --data=$(fossa analyze --output)
-```
-
-#### Flags
-##### `-c, --config file_name`
-Path to a configuration file. Defaults to `.fossa.yaml`.
-
-##### `-p, --project project_name`
-Sets the configuration value for the FOSSA project.
-
-##### `-r, --revision revision_hash`
-Sets the configuration value for the FOSSA project's revision.
-
-##### `-e, --endpoint url`
-Sets the endpoint of the FOSSA server. Useful for on-premises deployments.
-
-##### `--data`
-The user-provided build data. See `fossa analyze --output` for an example of the correct build data format.
-
-##### `--debug`
-Print debugging information to `stderr`.
-
-##### `-h, --help`
-Print a help message, then exit.
-
-### `fossa report`
-
-Print the project's license report.
-
-#### Flags
-<!-- ##### `-j, --json`
-Print the report data in JSON format.
--->
-
-##### `--debug`
-Print debugging information to `stderr`.
-
-##### `-h, --help`
-Print a help message, then exit.
+| Flag         | Short | Description                                                                 |
+| ------------ | ----- | --------------------------------------------------------------------------- |
+| `--config`   | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.    |
+| `--project`  | `-p`  | Configuration value for [project](/docs/config-file.md/#project-optional)   |
+| `--revision` | `-r`  | Configuration value for [revision](/docs/config-file.md/#revision-optional) |
+| `--endpoint` | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional) |
+| `--output`   | `-o`  | Output `fossa analyze` results to stdout.                                   |
+| `--debug`    |       | Print debugging information to stderr.                                      |
+| `--help`     | `-h`  | Print a help message.                                                       |
 
 ### `fossa test`
+Checks whether the project has licensing issues, as configured by its policy within FOSSA. If there are issues, it prints them on `stdout` and exits with code 1. If there are not issues, it exits with code 0. Fossa test can be used to fail a CI pipeline job.
+
+> Note: Report always requires an API Key to be set. 
 
 #### Example
 ```bash
@@ -358,23 +233,56 @@ Print a help message, then exit.
 FOSSA_API_KEY=YOUR_API_KEY_HERE fossa test --timeout 600
 ```
 
-Checks whether the project has licensing issues, as configured by its policy within FOSSA. If there are issues, it prints them on `stdout` and exits with code 1. If there are not issues, it exits with code 0.
+| flag         | short | description                                                                      |
+| ------------ | ----- | -------------------------------------------------------------------------------- |
+| `--config`   | `-c`  | path to a [configuration file](/docs/config-file.md) including filename.         |
+| `--project`  | `-p`  | configuration value for [project](/docs/config-file.md/#project-optional)        |
+| `--revision` | `-r`  | configuration value for [revision](/docs/config-file.md/#revision-optional)      |
+| `--endpoint` | `-e`  | configuration value for [endpoint](/docs/config-file.md/#endpoint-optional)      |
+| `--timeout`  | `-t`  | The amount of seconds to wait for an issue scan to complete. Default: 10 minutes |
+| `--debug`    |       | print debugging information to stderr.                                           |
+| `--help`     | `-h`  | print a help message.                                                            |
 
-#### Flags
-<!-- ##### `-j, --json`
-Print issues in JSON format. -->
+### `fossa upload`
 
-##### `-c, --config file_name`
-Path to a configuration file. Defaults to `.fossa.yaml`.
+Uploads user-provided build data to FOSSA. This allows users to manually provide a dependency list if their build system is too complex for FOSSA's default analyzer.
 
-##### `-p, --project project_name`
-Sets the configuration value for the FOSSA project.
+> Note: Upload always requires an API Key to be set.
 
-##### `-r, --revision revision_hash`
-Sets the configuration value for the FOSSA project's revision.
+#### Example
+```bash
+# Manually overriding the project and revision name is useful when `fossa` cannot infer them from `git`.
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --project=PROJECT_NAME --revision=SOME_HASH --data=output.txt
+```
 
-##### `-e, --endpoint url`
-Sets the endpoint of the FOSSA server. Useful for on-premises deployments.
+| flag         | short | description                                                                                   |
+| ------------ | ----- | --------------------------------------------------------------------------------------------- |
+| `--config`   | `-c`  | path to a [configuration file](/docs/config-file.md) including filename.                      |
+| `--project`  | `-p`  | configuration value for [project](/docs/config-file.md/#project-optional)                     |
+| `--revision` | `-r`  | configuration value for [revision](/docs/config-file.md/#revision-optional)                   |
+| `--endpoint` | `-e`  | configuration value for [endpoint](/docs/config-file.md/#endpoint-optional)                   |
+| `--data`     |       | user provided build data. see [custom builds](#uploading-custom-builds) for more information. |
+| `--debug`    |       | print debugging information to stderr.                                                        |
+| `--help`     | `-h`  | print a help message.                                                                         |
 
-##### `-t, --timeout`
-The amount of time to wait for an issue report (in seconds). Defaults to 10 minutes.
+### `fossa report`
+
+Report accesses the scanned report online from using the existing configuration file and outputs information directly to the command line. Report offers two different commands:
+#### `fossa report licenses` 
+Outputs detailed information about the licenses used by the current project and which dependencies are using which licenses.
+
+#### `fossa report dependencies`
+Outputs detailed information about the dependencies that are being used by the current project.
+
+> Note: Report always requires an API Key to be set. 
+
+#### Example
+```bash
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa report licenses --json
+```
+
+| flag      | short | description                                  |
+| --------- | ----- | -------------------------------------------- |
+| `--json`  | `-j`  | Print the report information in JSON format. |
+| `--debug` |       | print debugging information to stderr.       |
+| `--help`  | `-h`  | print a help message.                        |
