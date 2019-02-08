@@ -31,10 +31,11 @@ type Analyzer struct {
 }
 
 type Options struct {
-	Cmd           string `mapstructure:"cmd"`
-	Task          string `mapstructure:"task"`
-	Online        bool   `mapstructure:"online"`
-	AllSubmodules bool   `mapstructure:"allsubmodules"`
+	Cmd               string `mapstructure:"cmd"`
+	Task              string `mapstructure:"task"`
+	Online            bool   `mapstructure:"online"`
+	AllSubmodules     bool   `mapstructure:"allsubmodules"`
+	AllConfigurations bool   `mapstructure:"all-configurations"`
 	// TODO: These are temporary until v2 configuration files (with proper BuildTarget) are implemented.
 	Project       string `mapstructure:"project"`
 	Configuration string `mapstructure:"configuration"`
@@ -160,7 +161,6 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	var configurations []string
 	var depsByConfig map[string]graph.Deps
 	var err error
-	targets := strings.Split(a.Module.BuildTarget, ":")
 
 	if a.Options.AllSubmodules {
 		submodules, err := g.Projects()
@@ -180,7 +180,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		if a.Options.Project != "" {
 			project = a.Options.Project
 		} else {
-			project = targets[0]
+			project = a.Module.BuildTarget
 		}
 		depsByConfig, err = g.Dependencies(project)
 		if err != nil {
@@ -191,8 +191,10 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	defaultConfigurations := []string{"compile", "api", "implementation", "compileDependenciesMetadata", "apiDependenciesMetadata", "implementationDependenciesMetadata"}
 	if a.Options.Configuration != "" {
 		configurations = strings.Split(a.Options.Configuration, ",")
-	} else if len(targets) > 1 && targets[1] != "" {
-		configurations = strings.Split(targets[1], ",")
+	} else if a.Options.AllConfigurations {
+		for config := range depsByConfig {
+			configurations = append(configurations, config)
+		}
 	} else {
 		configurations = defaultConfigurations
 	}
