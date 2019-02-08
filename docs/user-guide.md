@@ -183,25 +183,6 @@ fossa init --overwrite
 | `--debug`       |       | Print debugging information to stderr.        |
 | `--help`        | `-h`  | Print a help message.                         |
 
-### `fossa build`
-
-Makes a best-effort attempt at building the project using default build conventions.
-
-#### Example
-```bash
-# No API key is required for builds
-fossa build
-```
-
-| Flag       | Short | Description                                                                   |
-| ---------- | ----- | ----------------------------------------------------------------------------- |
-| `--config` | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.      |
-| `--force`  | `-f`  | Clear cached build artifacts (`node_modules`) and run the build from scratch. |
-| `--debug`  |       | Print debugging information to stderr.                                        |
-| `--help`   | `-h`  | Print a help message.                                                         |
-
->**WARNING:** `--force` will delete all cached build artifacts! This command is not recommended unless you intend to use FOSSA to build your production binary. If you build your production binary ahead of time, you should NOT delete your build artifacts. Deleting build artifacts and re-running the build may cause build systems to non-deterministically resolve a different set of dependencies, which will make your FOSSA analysis less accurate.
-
 ### `fossa analyze`
 
 Analyzes the project for a list of its dependencies, optionally uploading the results to FOSSA. If analysis fails, first look at the documentation in the [supported environments](../README.md/#supported-environments) pages for information specific to your environment, and flags that can be set to condition fossa to your setup. 
@@ -287,3 +268,22 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa report licenses --json
 | `--json`  | `-j`  | Print the report information in JSON format. |
 | `--debug` |       | print debugging information to stderr.       |
 | `--help`  | `-h`  | print a help message.                        |
+
+### `fossa build`
+
+Makes a best-effort attempt at building the project using default build conventions.
+
+#### Example
+```bash
+# No API key is required for builds
+fossa build
+```
+
+| Flag       | Short | Description                                                                   |
+| ---------- | ----- | ----------------------------------------------------------------------------- |
+| `--config` | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.      |
+| `--force`  | `-f`  | Clear cached build artifacts (`node_modules`) and run the build from scratch. |
+| `--debug`  |       | Print debugging information to stderr.                                        |
+| `--help`   | `-h`  | Print a help message.                                                         |
+
+>**WARNING:** `--force` will delete all cached build artifacts! This command is not recommended unless you intend to use FOSSA to build your production binary. If you build your production binary ahead of time, you should NOT delete your build artifacts. Deleting build artifacts and re-running the build may cause build systems to non-deterministically resolve a different set of dependencies, which will make your FOSSA analysis less accurate.
