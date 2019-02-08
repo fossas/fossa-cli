@@ -46,7 +46,7 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa analyze
 ```
 By default, this uploads your build results to fossa.com where the project can scan for licensing and security issues.
 
-### Step 4. Testing your Project
+### Step 4. Testing
 
 Uploading a build to fossa.com gives the user the ability to run [license and compliancy scans](https://docs.fossa.com/docs/running-a-scan) on the project. Issue scans can be run against user defined [policies](https://docs.fossa.com/docs/policies) which single out non compliant licenses and create [issues](https://docs.fossa.com/docs/triaging-issues) for the user to address. Information about this integration can be found in the [fossa.com manual](https://docs.fossa.com/docs/getting-started).
 
@@ -58,7 +58,7 @@ Issues on a project in a user's account fossa.com represent policy violations th
 FOSSA_API_KEY=YOUR_API_KEY_HERE fossa test
 ```
 
-### Step 5. Finalizing the changes
+### Step 5. Finalizing
 
 Save your [configuration file](config-file.md) to the repository so that it can be shared amongst teammates and stored for CI runs. 
 
