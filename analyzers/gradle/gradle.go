@@ -188,7 +188,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		}
 	}
 
-	defaultConfigurations := []string{"compile", "api", "implementation"}
+	defaultConfigurations := []string{"compile", "api", "implementation", "compileDependenciesMetadata", "apiDependenciesMetadata", "implementationDependenciesMetadata"}
 	if a.Options.Configuration != "" {
 		configurations = strings.Split(a.Options.Configuration, ",")
 	} else if len(targets) > 1 && targets[1] != "" {
