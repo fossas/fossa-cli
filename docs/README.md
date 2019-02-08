@@ -18,7 +18,7 @@
 
 ## [How it Works](how-it-works.md/#how-it-works)
 - [Walkthrough](how-it-works.md/#walkthrough)
-    1. [Building](how-it-works.md/#building)
+    1. [Building](how-it-works.md/#step-1-building)
     2. [Configuration](how-it-works.md/#configuration)
     3. [Analysis](how-it-works.md/#analysis)
     4. [Testing](how-it-works.md/#testing)
