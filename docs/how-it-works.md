@@ -1,107 +1,73 @@
-## How it works
-`fossa` works by analyzing your project for dependencies after your build system has built your project. This provides much more precise dependency information than just reading package manifest files:
+# How it works
+`fossa` analyzes your project for dependencies after a build system has finished building a project. This provides more precise dependency information than just reading package manifest files which cause the following issues:
 
-- Some build tools are non-deterministic, so two builds with the same configuration may result in different dependencies being used.
-- Many ecosystems use semantic versioning to specify dependency ranges, so running the same build at different points in time may result in different dependencies if a new version was published.
-- Some build tools will execute external commands or arbitrary code which is impossible to statically analyze.
+- Build tools can be non-deterministic, meaning two builds with the same configuration may result in different dependencies.
+- Many ecosystems use semantic versioning to specify dependency ranges in manifests which can lead to a build with newer dependencies than the production system. 
 
-Instead of trying to guess at your build system's behavior, `fossa` runs locally using your build tools to determine a list of exact dependencies used by your binary.
-
-`fossa` supports a wide variety of languages, package managers, and build tools out of the box:
-
- - JavaScript: `bower`, `npm`, `yarn`
- - Java/Scala: `mvn`, `gradle`, `sbt`, `ant`, `ivy`
- - Python: `pip`, `setuptools`
- - Ruby: `bundler`
- - iOS: `cocoapods`
- - PHP: `composer`
- - Go: `dep`, `glide`, `godep`, `govendor`, `vndr`, `gdm`
- - .NET (C#, VB): `nuget`
- - Archives: `*.rpm`
+Instead of trying to guess at your build system's behavior, `fossa` runs locally using your build tools and analyzing lockfiles to determine a list of exact dependencies used by your binary.
 
 ## Walkthrough
 
-In this walkthrough, we'll demonstrate running `fossa` on `fossa`. By the end, you should be set up to just invoke the default command on every run:
-
-```bash
-# This will just Do The Right Thing
-FOSSA_API_KEY=YOUR_API_KEY_HERE fossa
-```
+In this walkthrough, the `fossa-cli` will analyze the [fossa-cli](https://github.com/fossas/fossa-cli) to illustrate how the tool can be used. By the end, you should be able to set up fossa for your own project and retrieve results from fossa.com.
 
 ### Step 1. Building
 
-Run a production build of your project. For most conventional builds, FOSSA can handle this for you:
+#### Prerequisites
+- Go1.10 or higher installed.
+- A working [GOPATH directory](https://github.com/golang/go/wiki/GOPATH), commonly located at `/Users/<user_name>/go`.
+
+#### Steps
+1. Clone the cli repository into the src directory of your GOPATH.
+   - `cd $GOPATH/src`
+   - `git clone https://github.com/fossas/fossa-cli.git`
+2. Build the fossa project by running `make` in the root directory to install all required dependencies. 
+
+A working build is not required for all module types but it is best practice to ensure that the project is built before running an analysis. Building a project ensures that the dependencies and lockfiles are accurate as well as guaranteeing a working project. Fossa will first validate that the project can be built when debugging any cli issues.
+
+### Step 2. Configuration
+
+After a build has completed the fossa project can be configured. Foss reccomends configuring a project using [.fossa.yml](config-file.md) created by [`fossa init`](user-guide.md/#fossa-init). Navigate to the root of the project directory and run the following to create a configuration file:
 
 ```bash
-# Check out the [user guide](docs/user-guide.md) for details on the module spec.
-fossa build --modules go:./cmd/fossa
+fossa init
 ```
 
-This will attempt a best-effort build by invoking your local build tools.
+### Step 3. Analysis
+Once your project is built, [`fossa analyze`](user-guide.md/#fossa-analyze) can be used to scan for dependencies and upload a dependency graph.
 
-**NOTE:** Since many build systems are non-deterministic, we don't necessarily recommend building using `fossa`. Instead, you should build using your usual production method and then use `fossa` to analyze your build.
-
-### Step 2. Analyzing
-Once your project is built, `fossa` can analyze it for dependencies:
-
+Verify that analysis completes before uploading with the `--output` flag.
 ```bash
-# For most supported languages, this should work out of the box
-FOSSA_API_KEY=YOUR_API_KEY_HERE fossa analyze --modules go:./cmd/fossa
-
-# I can also output the results
-FOSSA_API_KEY=YOUR_API_KEY_HERE fossa analyze --output --modules go:./cmd/fossa
+# Using .fossa.yml configuration analyze and output the results.
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa analyze --output
 ```
-
-By default, this uploads your build results to fossa.io where you can use them to check for licensing and other issues. You can optionally disable this feature:
-
+After analysis succeeds, run again without the output command to upload results.
 ```bash
-# Just output the analysis results
-fossa analyze --output --modules go:./cmd/fossa
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa analyze
 ```
+By default, this uploads your build results to fossa.com where the project can scan for licensing and security issues.
 
-If FOSSA can't analyze your build correctly, you can also manually provide a set of results to upload:
+### Step 4. Testing your Project
 
-```bash
-# Check out the [user guide](docs/user-guide.md) for the upload format.
-FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --data=YOUR_DATA_HERE
-```
+Uploading a build to fossa.com gives the user the ability to run [license and compliancy scans](https://docs.fossa.com/docs/running-a-scan) on the project. Issue scans can be run against user defined [policies](https://docs.fossa.com/docs/policies) which single out non compliant licenses and create [issues](https://docs.fossa.com/docs/triaging-issues) for the user to address. Information about this integration can be found in the [fossa.com manual](https://docs.fossa.com/docs/getting-started).
 
-### Step 3. Testing your builds
-
-You can use `fossa` with projects on fossa.io to test your build for licensing and compliance issues. You can specify the project's licensing policy at app.fossa.io, and the CLI will automatically pull it from there.
-
-(You can read more about [Provided Builds](https://fossa.io/docs/getting-started/provided-builds) here).
-
-With policies, you can test your build for issues after you upload an analysis:
+Issues on a project in a user's account fossa.com represent policy violations that can be undesirable. Fossa runs a check using `fossa test` in its CI pipeline to verify that all new PR's pass Fossa's policy. This guarantees that all new code in the fossa-cli repository is compliant with our open source requirements. This command can be run locally or in a CI immediately after analysis completes. The test waits up to 10 minutes for the project's latest build to finish scanning before reporting the results.
 
 ```bash
-# This fails with exit code 1 if your project has issues
+# This fails with exit code 1 if your project has unresolved issues.
+# Run with the same configuration file as analysis.
 FOSSA_API_KEY=YOUR_API_KEY_HERE fossa test
 ```
 
-You can add this as part of your CI's build and testing process to prevent builds with licensing issues from being pushed to production.
+### Step 5. Finalizing the changes
 
-### Step 4. Committing your configurations
+Save your [configuration file](config-file.md) to the repository so that it can be shared amongst teammates and stored for CI runs. 
 
-These configurations can be saved to a `.fossa.yaml` configuration file that `fossa` will read on every invocation. Use these to share your configuration among your teammates. Here's `fossa`'s configuration:
+Fossa provides many ways to share the results of a scan and if you maintain an open source repository this is a good way to let your users know you care about staying open source. Publicizing your results is an easy way to show what dependencies you use and the licenses they bring with it. Use the badges below to share your results!
 
-```yaml
-version: 1
+<p align="center">
+  <a href="https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli?ref=badge_shield" alt="FOSSA Status">
+    <img src="https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli.svg?type=shield"/>
+  </a>
+</p>
 
-# For more details, check out the [user guide](docs/user-guide.md)
-analyze:
-  modules:
-    - name: fossa-cli
-      path: ./cmd/fossa
-      type: go
-```
-
-With a configuration in place, you can just run `fossa` to analyze your project's build:
-
-```bash
-# Build, analyze, and upload -- pluggable into your development workflow
-FOSSA_API_KEY=YOUR_API_KEY_HERE fossa
-
-# The one-liner for testing after upload is pretty simple too
-FOSSA_API_KEY=YOUR_API_KEY_HERE fossa && fossa test
-```
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli?ref=badge_large)

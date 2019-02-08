@@ -1,6 +1,6 @@
 # User Guide
 
-Fossa is most commonly used to analyze a project and extract its full dependency graph,which can then be uploaded to fossa.com using an API key. This page explains how to configure this workflow as well as the other features of the fossa-cli. If you are looking for a guided walk-through refer to our [demo guide](how-it-works.md).
+Fossa is most commonly used to analyze a project and extract its full dependency graph, which can then be uploaded to fossa.com using an API key. This page explains how to configure this workflow as well as the other features of the fossa-cli. If you are looking for a guided walk-through with information along the way refer to [How it Works](how-it-works.md).
 
 ## 1. Configuring a Project
 
@@ -129,6 +129,7 @@ mvn+org.apache.hadoop:hadoop-core$2.6.0-mr1-cdh5.5.0
 ## CLI Reference
 
 All flags should be passed to the invoked sub-command. Global flags are currently NOT supported.
+
 | Command                           | Description                                       |
 | --------------------------------- | ------------------------------------------------- |
 | [`fossa`](#fossa)                 | Initialization and analysis.                      |
@@ -269,7 +270,7 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --project=PROJECT_NAME --revision=S
 
 Report accesses the scanned report online from using the existing configuration file and outputs information directly to the command line. Report offers two different commands:
 #### `fossa report licenses` 
-Outputs detailed information about the licenses used by the current project and which dependencies are using which licenses.
+Outputs detailed information about the licenses used by the current project and which dependencies are using which licenses. An example of this can be found in the [Notice file](./Notice) for the fossa-cli.
 
 #### `fossa report dependencies`
 Outputs detailed information about the dependencies that are being used by the current project.

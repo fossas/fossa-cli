@@ -45,8 +45,8 @@ Default: `https://app.fossa.io`
 
 #### `fetcher:` (Optional)
 Describes the type of project fossa is uploading, there are two options:
-- `custom` - Main fetcher option utilized today. 
-- `git` (deprecated) - Signifies a project on Github and attempts to create one source of truth for the specified project fossa.com. No longer used as Github integrations can now be achieved using `custom`.
+- `custom` - Main fetcher option utilized today, specifies a cli build to the server endpoint. 
+- `git` (deprecated) - Corresponds to an existing project on Fossa that was importing from a code hosting site. No longer necessary as Fossa.com differentiates between types of builds.
 
 Default: `custom`
 
