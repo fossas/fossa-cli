@@ -19,10 +19,10 @@
 ## [How it Works](how-it-works.md/#how-it-works)
 - [Walkthrough](how-it-works.md/#walkthrough)
     1. [Building](how-it-works.md/#step-1-building)
-    2. [Configuration](how-it-works.md/#configuration)
-    3. [Analysis](how-it-works.md/#analysis)
-    4. [Testing](how-it-works.md/#testing)
-    5. [Finalizing](how-it-works.md/#finalizing)
+    2. [Configuration](how-it-works.md/#step-2-configuration)
+    3. [Analysis](how-it-works.md/#step-3-analysis)
+    4. [Testing](how-it-works.md/#step-4-testing)
+    5. [Finalizing](how-it-works.md/#step-5-finalizing)
 
 ## [Configuration File](config-file.md#fossa.yml)
 
