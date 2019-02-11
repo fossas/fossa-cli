@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/buildtools/gradle"
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
@@ -161,6 +162,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	var configurations []string
 	var depsByConfig map[string]graph.Deps
 	var err error
+	targets := strings.Split(a.Module.BuildTarget, ":")
 
 	if a.Options.AllSubmodules {
 		submodules, err := g.Projects()
@@ -179,6 +181,8 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	} else {
 		if a.Options.Project != "" {
 			project = a.Options.Project
+		} else if config.Version() < 2 {
+			project = targets[0]
 		} else {
 			project = a.Module.BuildTarget
 		}
@@ -191,6 +195,8 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	defaultConfigurations := []string{"compile", "api", "implementation", "compileDependenciesMetadata", "apiDependenciesMetadata", "implementationDependenciesMetadata"}
 	if a.Options.Configuration != "" {
 		configurations = strings.Split(a.Options.Configuration, ",")
+	} else if config.Version() < 2 && len(targets) > 1 && targets[1] != "" {
+		configurations = strings.Split(targets[1], ",")
 	} else if a.Options.AllConfigurations {
 		for config := range depsByConfig {
 			configurations = append(configurations, config)

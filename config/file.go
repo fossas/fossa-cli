@@ -19,6 +19,8 @@ import (
 // an interface here in anticipation of new versions of configuration files,
 // which will likely be implemented as different structs.
 type File interface {
+	GetVersion() int
+
 	APIKey() string
 	Server() string
 
@@ -36,6 +38,10 @@ type File interface {
 }
 
 type NoFile struct{}
+
+func (_ NoFile) GetVersion() int {
+	return 0
+}
 
 func (_ NoFile) APIKey() string {
 	return ""
@@ -103,7 +109,7 @@ func InitFile(modules []module.Module) File {
 
 	// Construct configuration file.
 	return v1.File{
-		Version: 1,
+		Version: 2,
 		CLI: v1.CLIProperties{
 			Server:  Endpoint(),
 			Fetcher: Fetcher(),

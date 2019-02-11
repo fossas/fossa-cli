@@ -9,10 +9,6 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-var (
-	ErrWrongVersion = errors.New("config file version is not 1")
-)
-
 type File struct {
 	Version int `yaml:"version"`
 
@@ -60,9 +56,6 @@ func New(data []byte) (File, error) {
 	if err != nil {
 		return File{}, err
 	}
-	if v, ok := contents["version"].(int); !ok || v != 1 {
-		return File{}, ErrWrongVersion
-	}
 
 	// Unmarshal file.
 	var file File
@@ -104,6 +97,10 @@ func New(data []byte) (File, error) {
 	}
 
 	return file, nil
+}
+
+func (file File) GetVersion() int {
+	return file.Version
 }
 
 func (file File) APIKey() string {
