@@ -35,7 +35,7 @@ type Options struct {
 	Cmd               string `mapstructure:"cmd"`
 	Task              string `mapstructure:"task"`
 	Online            bool   `mapstructure:"online"`
-	AllSubmodules     bool   `mapstructure:"allsubmodules"`
+	AllSubmodules     bool   `mapstructure:"all-submodules"`
 	AllConfigurations bool   `mapstructure:"all-configurations"`
 	// TODO: These are temporary until v2 configuration files (with proper BuildTarget) are implemented.
 	Project       string `mapstructure:"project"`
@@ -151,6 +151,18 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Debugf("Running Gradle analysis: %#v", a.Module)
 
+	version := config.Version()
+	// cli v0.7.21 or earlier. This version takes a build target in the format of <project>:<configuration>.
+	if version > 0 && version <= 1 {
+		return parseModuleV1(a)
+	}
+	// cli v0.7.22 and later does not split project on `:` to account for deep sub-projects.
+	return parseModuleV2(a)
+}
+
+var defaultConfigurations = []string{"compile", "api", "implementation", "compileDependenciesMetadata", "apiDependenciesMetadata", "implementationDependenciesMetadata"}
+
+func parseModuleV1(a *Analyzer) (graph.Deps, error) {
 	// Get packages.
 	g := gradle.Gradle{
 		Cmd:    a.GradleCmd,
@@ -181,8 +193,63 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	} else {
 		if a.Options.Project != "" {
 			project = a.Options.Project
-		} else if config.Version() < 2 {
+		} else {
 			project = targets[0]
+		}
+		depsByConfig, err = g.Dependencies(project)
+		if err != nil {
+			return graph.Deps{}, err
+		}
+	}
+
+	if a.Options.Configuration != "" {
+		configurations = strings.Split(a.Options.Configuration, ",")
+	} else if len(targets) > 1 && targets[1] != "" {
+		configurations = strings.Split(targets[1], ",")
+	} else {
+		configurations = defaultConfigurations
+	}
+
+	merged := graph.Deps{
+		Direct:     nil,
+		Transitive: make(map[pkg.ID]pkg.Package),
+	}
+	for _, config := range configurations {
+		merged = mergeGraphs(merged, depsByConfig[config])
+	}
+	return merged, nil
+}
+
+func parseModuleV2(a *Analyzer) (graph.Deps, error) {
+	// Get packages.
+	g := gradle.Gradle{
+		Cmd:    a.GradleCmd,
+		Dir:    a.Module.Dir,
+		Online: a.Options.Online,
+	}
+
+	var project string
+	var configurations []string
+	var depsByConfig map[string]graph.Deps
+	var err error
+
+	if a.Options.AllSubmodules {
+		submodules, err := g.Projects()
+		if err != nil {
+			return graph.Deps{}, err
+		}
+		depsByConfig, err = g.MergeProjectsDependencies(submodules)
+		if err != nil {
+			return graph.Deps{}, err
+		}
+	} else if a.Options.Task != "" {
+		depsByConfig, err = g.DependenciesTask(strings.Split(a.Options.Task, " ")...)
+		if err != nil {
+			return graph.Deps{}, err
+		}
+	} else {
+		if a.Options.Project != "" {
+			project = a.Options.Project
 		} else {
 			project = a.Module.BuildTarget
 		}
@@ -192,11 +259,8 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		}
 	}
 
-	defaultConfigurations := []string{"compile", "api", "implementation", "compileDependenciesMetadata", "apiDependenciesMetadata", "implementationDependenciesMetadata"}
 	if a.Options.Configuration != "" {
 		configurations = strings.Split(a.Options.Configuration, ",")
-	} else if config.Version() < 2 && len(targets) > 1 && targets[1] != "" {
-		configurations = strings.Split(targets[1], ",")
 	} else if a.Options.AllConfigurations {
 		for config := range depsByConfig {
 			configurations = append(configurations, config)
