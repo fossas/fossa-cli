@@ -26,6 +26,10 @@ var (
 	filename string
 )
 
+func Version() int {
+	return file.GetVersion()
+}
+
 // Interactive is true if the user desires interactive output.
 func Interactive() bool {
 	return isatty.IsTerminal(os.Stderr.Fd()) && !BoolFlag(flags.NoAnsi)
