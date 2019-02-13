@@ -34,7 +34,6 @@ func TestGradleIntegration(t *testing.T) {
 
 	targets := []string{
 		"gradle:grpc-netty",
-		"gradle:grpc-netty:compile",
 	}
 
 	for _, target := range targets {
