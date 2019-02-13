@@ -4,36 +4,77 @@
 
 Gradle support in FOSSA CLI depends on the following tools existing in your environment:
 
-- Java (defaults to `java`, configure with `$JAVA_BINARY`)
 - Gradle (defaults to `gradle` or local `gradlew`, configure with `$GRADLE_BINARY`)
 
-## Usage
+## Configuration
 
-### Automatic Configuration
+### Automatic
 
 `fossa init` will attempt a "best-effort" strategy to look through all available Gradle tasks/configurations and elect the most likely ones used for a production build.
 
- 1. Look for a root Gradle build (`build.gradle`)
- 2. Run and parse the output of `gradle tasks --all -q -a --offline` to find all available sub-tasks that support a `:dependencies` command
- 3. If task list succeeds but no sub-tasks are available, fallback to the root `dependencies` task in `build.gradle`
- 4. Filter out any suspicious-looking tasks (i.e. labeled `test` or `testCompile`)
- 5. Write tasks to configuration (`fossa.yml`)
+ 1. Look for a root Gradle build (`build.gradle`).
+ 2. Run `gradle tasks --all -q -a` to find all available sub-modules that support a `:dependencies` command.
+ 3. If no valid tasks are found, list the root project, `:`, as a Build Target.
+ 3. Filter out any suspicious-looking tasks (i.e. labeled `test` or `testCompile`).
+ 4. Write tasks to configuration (`fossa.yml`).
 
-If a gradle wrapper was provided in the same directory (`./gradlew`), `fossa` will prefer to use that over the local `gradle` binary.
+If a gradle wrapper was provided in the same directory (`./gradlew`), `fossa` will use that over the local `gradle` binary.
 
-### Manual Configuration
+### Manual
 
 `fossa init` will automatically generate this configuration for you, but if you'd like to manually configure, add a `gradle` module to your `fossa.yml`:
 
 ```yaml
 analyze:
   modules:
-    - name: {task}:{configuration}
-      path: {path-to-build.gradle}
+    - name: project-name
+      path: path-to-build.gradle
+      target: subproject
       type: gradle
 ```
+## Options
 
-For Gradle modules, `fossa` requires a few peices of information to run dependency analysis:
+| Option          |  Type  | Name                                      | Common Use Case                                                 |
+| --------------- | :----: | ----------------------------------------- | --------------------------------------------------------------- |
+| `cmd`           | string | [Cmd](#cmd:-string>)                      | Specify the gradle command to use.                              |
+| `task`          | string | [Task](#task:-<string>)                   | Specify the gradle task to run.                                 |
+| `online`        |  bool  | [Online](#online:-<bool>)                 | Specify a go package manager.                                   |
+| `allsubmodules` |  bool  | [All Submodules](#all-submodules:-<bool>) | Add `--offline` to the `gradle <project>:dependencies` command. |
+| `configuration` | string | [Configuration](#configuration:-<string>) | List of configurations to analyze.                              |
+
+
+#### `cmd: <string>` 
+
+Specify the command for fossa to use when it runs gradle commands. By default, the cli will select the first command of `cmd` option, `$FOSSA_GRADLE_COMMAND`, `./gradlew`, and `gradle` to execute `<cmd> -v` successfully.
+
+#### `task: <string>`
+
+Specify the exact arguments to be run by the gradle command before analyzing output for dependencies. By default this is `<project>:dependencies --quiet --offline` but this can be changed to anything using this option.
+
+#### `online: <bool>`
+
+When set to true, this option will remove the `--offline` flag from the command `gradle <project>:dependencies --quiet --offline` used to find the dependencies of the specified project.
+
+#### `allsubmodules: <bool>`
+
+This options tells Fossa to scan for all sub projects of the specified module. The primary use case of this option is when running fossa using only arguments such as `fossa analyze gradle:.`. This ensures that all sub-projects of the root project are also scanned.
+
+#### `configuration: <string>`
+
+This option takes a comma delimited list of configurations to include in the dependency scan. Fossa includes a few configurations by default but allows the user to specify any specific configurations they are interested in.
+
+Example:
+```yaml
+    configuration: implementation,implementationTest,customConfiguration
+```
+
+## Design
+
+### Building
+### Analysis
+### Known Limitations
+### FAQ
+For Gradle modules, `fossa` requires a few pieces of information to run dependency analysis:
 
 - `task` - the name of the task/subtask used to generate your build (most often this is `app` or empty string `''` for root)
 - `configuration` - the configuration your task runs during a production build (if undefined, defaults to `compile`)
@@ -95,17 +136,3 @@ If you're having trouble getting correct dependency data, try verifying the foll
 If running the gradle command in your terminal does not succeed that means your gradle build is not properly configured.
 
 If it does succeed but produces unexpected or empty output, it means you have likely selected the wrong task or configuration for `fossa` to analyze.  Running without the `--configuration` will give you the full output and help you find the right configuration to select.
-
-### Reporting issues
-
-If you're still having problems, open up an issue on this repo with the full logs/output of `fossa -o --debug` and your `fossa.yml` file.
-
-Optionally, provide your `build.gradle` for more context.
-
-## Roadmap
-
-If you'd like to help us improve our Gradle integration, please feel free to file and assign yourself to an issue on this repo.
-
- 1. Support multiple independent "root" Gradle builds that may be segregated in a codebase
- 2. Implement a cheap build validation method to tell the user whether a Gradle build is satisfied without invoking a Gradle runtime
- 3. Support multiple configurations for a single module definition i.e. `app:compile:runtime`

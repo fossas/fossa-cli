@@ -16,9 +16,13 @@ Go support in FOSSA CLI depends on the following tools existing in your environm
 
 ## Configuration
 
-Automatic: Run `fossa init` which detects all executable go packages in the directory and creates a configuration file. If you are trying to analyze a go library that does not contain any executables run `fossa init --include-all`. Refer to [Discovery](#Discovery) for more information on the auto-configuration logic.
+### Automatic 
 
-Manual: Add a module with `type: go`, `target` set to the name of the executable package, and `path` set to the location of the executable package. 
+Run `fossa init` which detects all executable go packages in the directory and creates a configuration file. If you are trying to analyze a go library that does not contain any executables run `fossa init --include-all`. Refer to [Discovery](#Discovery) for more information on the auto-configuration logic.
+
+### Manual
+
+Add a module with `type: go`, `target` set to the name of the executable package, and `path` set to the location of the executable package. 
 
 See [Options](#Options) for an in depth look at all of the available options for a Go module.
 
