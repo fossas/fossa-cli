@@ -14,14 +14,6 @@ cli:
 * revision: 1234567
 * locator: custom+github.com/fossas/fossa-cli$revision
 
-Unsure if should be included
-* title:
-* branch:
-* project_url:
-* jira_project_key:
-* link:
-* team:
-
 analyze:
   modules:
     - name: fossa-cli
@@ -32,6 +24,32 @@ analyze:
 *     options:
         <option>: <value>
 ```
+
+It is important to mention that the fossa configuration file will often times have multiple modules such as below:
+
+```yaml
+version: 1
+cli:
+  server: https://app.fossa.io
+  fetcher: custom
+  project: gradle-test
+analyze:
+  modules:
+  - name: data
+    type: gradle
+    target: 'data:'
+    path: .
+    option:
+      all-configurations: true
+  - name: api
+    type: gradle
+    target: 'api:'
+    path: .
+```
+
+In the example above, only one of the modules has an option listed. If `fossa analyze` is run, only the `data` module will be run with `all-configurations: true` as expected. However, configuration file's option can be over ruled by command line options. If `fossa analyze --option all-configurations:false` is run, both modules will be run with `all-configurations: false`, including `data`.
+
+
 ## Fields
 ### `version:`
 
