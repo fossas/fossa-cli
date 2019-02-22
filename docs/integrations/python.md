@@ -53,7 +53,7 @@ Example:
     requirements: config/myrequirements.txt
 ```
 
-### Analysis
+## Analysis
 
 The analysis strategy selected determines how analysis is completed for the Python analyzer. By default the fossa-cli will analyze a requirements.txt file to determine dependencies. Benefits and limitations of strategies are listed below.
 

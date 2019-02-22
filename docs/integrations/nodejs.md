@@ -1,37 +1,34 @@
 # Node.js
 
-## Installation
+## Support
 
 Node.js support in FOSSA CLI depends on the following tools existing in your environment:
 
-- Node.js (defaults to `node`, configure with `$NODE_BINARY`)
-- At least one of:
-  1. NPM (defaults to `npm`, configure with `$NPM_BINARY`)
-  2. Yarn (defaults to `yarn`, configure with `$YARN_BINARY`)
+- Node.js (defaults to `node`, configure with `$FOSSA_NODE_CMD`)
+- NPM (defaults to `npm`, configure with `$NPM_BINARY`)
 
-## Usage
+## Configuration
+   
+Automatic: Run `fossa init` to detect all `package.json` files in the file tree not located inside of a `node_modules` folder.
 
-Add a `nodejs` module with the path to the `package.json` in your project.
+Manual: Add a `nodejs` module with path and target set to the directory where the `package.json` file is located in your project.
 
 ```yaml
 analyze:
   modules:
     - name: your-nodejs-project
-      path: package.json
       type: nodejs
+      path: .
+      target: .
 ```
 
-## Design
-### Building
+## Analysis
 
-If a `yarn.lock` is found, then builds are run using `yarn install --frozen-lockfile`. Otherwise, builds are run using `npm install --production`.
+Analysis for nodejs projects is executed a number of ways starting with the most accurate method and falling back to the least likely method to succeed as ordered:
+1. Parse output from `npm ls --json --production` - Runs if `npm` exists on the system and provides an accurate list of all dependencies needed to build the production project.
+2. Parse `package.json` - Runs if `package.json` can be successfully parsed into a dependency graph.
+3. Parse `yarn.lock` - Final strategy which detects dependencies based on the yarn lockfile.
 
-If `--force` is set, the build command also runs `rm -rf node_modules` before running the build.
+## Known limitations
 
-### Analysis
-
-Analysis checks for Node.js package manifests at `glob(**/node_modules/*/package.json)`. It reads the `version` key (which is a required key) in these manifests to determine the resolved version of your Node dependencies.
-
-#### Known limitations
-
-- We assume that your Node packages are installed at `node_modules`. Ideally, we would read this location from your `$NODE_PATH`, but this has not yet been implemented.
+- We assume that your Node packages are installed at `node_modules`. Currently we do not offer a way to read this directory to determine what packages are installed.
