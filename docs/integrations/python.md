@@ -12,7 +12,7 @@ Python support relies on the presence of one of the following:
 
 Automatic: Run `fossa init` which detects all python directories that contain `requirements.txt` or `setup.py`.
 
-Manual: Add a module with `type: pip`, and `target` and `path` set to the root of the Python project.
+Manual: Add a module with `type: pip`, and `target` and `dir` set to the root of the Python project.
 
 See [Options](#Options) for an in depth look at all of the available options for a Python module.
 
@@ -22,7 +22,7 @@ analyze:
     - name:   github.com/fossas/fossa-cli/cmd/fossa
       type:   pip
       target: python/project
-      path:   python/project
+      dir:   python/project
       options:
         strategy: pipenv
 ```
@@ -53,7 +53,8 @@ Example:
     requirements: config/myrequirements.txt
 ```
 
-## Analysis
+## Design
+### Analysis
 
 The analysis strategy selected determines how analysis is completed for the Python analyzer. By default the fossa-cli will analyze a requirements.txt file to determine dependencies. Benefits and limitations of strategies are listed below.
 
