@@ -29,8 +29,6 @@ analyze:
 | `bin`  | string | [Binary](#Binary:-<string>)   | Custom maven binary executable.                      |
 | `cmd`  | string | [Command](#Command:-<string>) | Custom command that outputs a maven dependency tree. |
 
-## Design
-
-### Analysis
+## Analysis
 
 Fossa analyzes a maven project by parsing the output from `maven dependency:tree --batch-mode --projects <project>` into a dependency graph.

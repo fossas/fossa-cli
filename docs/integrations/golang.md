@@ -119,39 +119,7 @@ Allows reading vendor lockfiles of other projects.
 #### `allow-external-vendor-prefix: <string>`
 If set, allow reading vendor lockfiles of projects whose import path's prefix matches. Multiple space-delimited prefixes can be specified.
 
-## Design
-
-The Go plugin assumes that the configured entry point is in a larger project managed by one of our 7 supported tools. It detects the project folder by looking for the nearest parent folder that also contains a tool manifest. The manifests searched for are:
-
-1. `dep`: `Gopkg.toml`
-2. `glide`: `glide.yaml`
-3. `godep`: `Godeps/Godeps.json`
-4. `govendor`: `vendor/vendor.json`
-5. `vndr`: `vendor.conf`
-6. `gdm`: `Godeps`
-7. `gomodules`: `go.mod`
-
-When the plugin finds a project folder it assumes that every tool with a manifest in the project folder is used to manage the current project.
-
-### Building
-
-Builds are run differently depending on the detected tools in the project folder:
-
-1. `dep`: `dep ensure`
-2. `glide`: `glide install`
-3. `godep`: `godep save`
-4. `govendor`: `govendor sync`
-5. `vndr`: `vndr`
-
-If `--force` is set, each tool also clears its cache differently:
-
-1. `dep`: `rm -rf vendor Gopkg.lock`
-2. `glide`: `rm -rf vendor glide.lock`
-3. `godep`: `rm -rf vendor Godeps`
-4. `govendor`: `mv vendor/vendor.json vendor.json.bak && rm -rf vendor && mkdir -p vendor && mv vendor.json.bak vendor/vendor.json`
-5. `vndr`: `rm-rf vendor`
-
-### Analysis
+## Analysis
 
 Analysis happens in 3 steps:
 
@@ -166,7 +134,7 @@ Step (3) is the most complex part of analysis. Not all import paths have revisio
 In order to resolve the project of an import path, we check whether any of its prefixes have revisions in the Go project's manifests. If so, we assume that project contains the package we're importing and use its revision.
 
 
-### Known limitations
+## Known limitations
 
 - We do not currently support unvendored or tool-less imports.
   <!--
@@ -175,9 +143,9 @@ In order to resolve the project of an import path, we check whether any of its p
   - If the import is vendored, get the project name from its filesystem location and check the checksum of its contents against revision hashes of known revisions published by that project.
   - Allow the user to manually specify revisions, using either top-level configuration file (e.g. `//.fossa.yaml`) or a package-level configuration file (e.g. `//vendor/github.com/author/project/.revision`)
   -->
-### FAQ
+## FAQ
 
-#### Q: Why are all dependencies listed in go.mod not found in the discovered dependency graph?
+### Q: Why are all dependencies listed in go.mod not found in the discovered dependency graph?
 Fossa-cli finds all dependencies being used with `go list` and then finds their revision by parsing `go.mod`. Gomodules installs all transitive dependencies for a dependency, including the packages which are unused in the first party code. This results in many transitive dependencies listed in `go.mod` never actually being utilized. 
 
 Example: You need package `foo` from source `company/repository`. `go.mod` will import all packages including `company/repository/bar` and its transitive dependencies. `company/repository/bar`'s dependencies will go unused in your project and will not be picked up by `fossa-cli` but will appear in `go.mod`.

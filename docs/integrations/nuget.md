@@ -22,9 +22,7 @@ analyze:
       target: src/MyCompany.SomeProject.Module
 ```
 
-## Design
-
-### Analysis
+## Analysis
 
 `fossa analyze` will first attempt to resolve any existing NuGet lockfile created by your build (at `{module.path}/project.lock.json or {module.path}/obj/project.assets.json`).  It will parse these files for dependencies that were installed under the `libraries` key.  If `fossa` failed to resolve a lockfile (one was not created during the build or found), `fossa` will fall back to analyzing your `packages` directory.
 

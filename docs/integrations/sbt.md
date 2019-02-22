@@ -25,9 +25,7 @@ analyze:
       target: <project>:<configuration>
 ```
 
-## Design
-
-### Analysis
+## Analysis
 
 Analysis parses the output of `sbt -no-colors <project>/<configuration>:dependencyList` to retrieve a full list of dependencies utilized by your project.
 
