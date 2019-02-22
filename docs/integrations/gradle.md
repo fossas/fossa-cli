@@ -32,7 +32,9 @@ analyze:
       target: subproject
       type: gradle
 ```
+
 ## Options
+
 | Option               |  Type  | Name                                          | Common Use Case                                                            | | -------------------- | :----: | --------------------------------------------- | -------------------------------------------------------------------------- | | `cmd`                | string | [Cmd](#cmd:-string>)                          | Specify the gradle command to use.                                         |
 | `task`               | string | [Task](#task:-<string>)                       | Specify the gradle task to run.                                            |
 | `online`             |  bool  | [Online](#online:-<bool>)                     | Remove `--offline` from the `gradle <project>:dependencies` command.       |
@@ -42,18 +44,23 @@ analyze:
 
 
 #### `cmd: <string>` 
+
 Specify the command for fossa to use when it runs gradle commands. By default, the cli will select the first command of `cmd` option, `$FOSSA_GRADLE_COMMAND`, `./gradlew`, and `gradle` to execute `<cmd> -v` successfully.
 
 #### `task: <string>`
+
 Specify the exact arguments to be run by the gradle command before analyzing output for dependencies. By default this is `<project>:dependencies --quiet --offline` but this can be changed to anything using this option.
 
 #### `online: <bool>`
+
 When set to true, this option will remove the `--offline` flag from the command `gradle <project>:dependencies --quiet --offline` used to find the dependencies of the specified project.
 
 #### `all-submodules: <bool>`
+
 This options tells Fossa to scan for all sub projects of the specified module. The primary use case of this option is when running fossa using only arguments such as `fossa analyze gradle:.`. This ensures that all sub-projects of the root project are also scanned. If `fossa init` has been run, this command is largely unnecessary as all of the sub-projects will already be listed as build targets within the configuration file.
 
 #### `configuration: <string>`
+
 This option takes a comma delimited list of configurations to include in the dependency scan. Fossa includes a few configurations by default but allows the user to specify any specific configurations they are interested in.
 
 The default list of configurations is: `compile, api, implementation, compileDependenciesMetadata, apiDependenciesMetadata, implementationDependenciesMetadata`
@@ -64,9 +71,11 @@ Example:
 ```
 
 #### `all-configurations: <bool>`
+
 When set to true, fossa will ignore the default list of configurations and include the dependencies from every configuration found. This is useful when analyzing development, test, and debug dependencies is desired. 
 
 ## Analysis
+
 Analysis for gradle projects happens in 3 steps:
 
 1. `<cmd> <project>:dependencies` is run.

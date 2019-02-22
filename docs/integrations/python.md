@@ -10,10 +10,12 @@ Python support relies on the presence of one of the following:
 
 ## Configuration
 
-### Automatic 
+### Automatic
+
 Run `fossa init` which detects all python directories that contain `requirements.txt` or `setup.py`.
 
 ### Manual
+
 Add a module with `type: pip`, and `target` and `dir` set to the root of the Python project.
 
 See [Options](#Options) for an in depth look at all of the available options for a Python module.
@@ -30,6 +32,7 @@ analyze:
 ```
 
 ## Options
+
 | Option         |  Type  | Name                                         | Common Use Case                           |
 | -------------- | :----: | -------------------------------------------- | ----------------------------------------- |
 | `strategy`     | string | [Strategy](#Strategy:-<string>)              | Specify a Python analysis strategy.       |
@@ -38,7 +41,8 @@ analyze:
 | `venv`         | string | [Virtual Env](#All-Tags:-<bool>)                  | Make sure all OS and Arch tags are caught. |
 --->
 
-#### `strategy: <string>`
+#### `strategy: <striong>`
+
 Manually specify the python analysis strategy to be used. Supported options:
 - `requirements`: Parse `requirements.txt` to find all dependencies used. 
 - `pip`: Run `pip list --format=json` to find all dependencies in the current environment. `pip` over report the dependencies used if your environment is used to build multiple python projects.
@@ -48,6 +52,7 @@ Manually specify the python analysis strategy to be used. Supported options:
 Default: `requirements`
 
 #### `requirements: <string>`
+
 Specify the location of a `requirements.txt` file located outside of the project's root directory or a custom named file.
 
 Example:

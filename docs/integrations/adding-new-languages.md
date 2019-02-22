@@ -1,6 +1,7 @@
 # Adding New Languages
 
 ## How language integrations work
+
 You can add support for a languages by creating a `Builder` for that language.
 The `Builder` interface describes key functionality that FOSSA CLI relies on to
 perform dependency analysis:
