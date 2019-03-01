@@ -12,7 +12,7 @@ Python support relies on the presence of one of the following:
 
 ### Automatic
 
-Run `fossa init` which detects all python directories that contain `requirements.txt` or `setup.py`.
+Run `fossa init` to detect all python directories that contain `requirements.txt` or `setup.py`.
 
 ### Manual
 
@@ -23,10 +23,10 @@ See [Options](#Options) for an in depth look at all of the available options for
 ```yaml
 analyze:
   modules:
-    - name:   github.com/fossas/fossa-cli/cmd/fossa
-      type:   pip
+    - name: github.com/fossas/fossa-cli/cmd/fossa
+      type: pip
       target: python/project
-      dir:   python/project
+      dir:  python/project
       options:
         strategy: pipenv
 ```

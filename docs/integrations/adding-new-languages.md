@@ -2,11 +2,11 @@
 
 ## How language integrations work
 
-You can add support for a languages by creating a `Builder` for that language.
-The `Builder` interface describes key functionality that FOSSA CLI relies on to
+You can add support for a languages by creating an `Analyzer` for that language.
+The `Analyzer` interface describes key functionality that FOSSA CLI relies on to
 perform dependency analysis:
 
-- `Initialize` does initialization for the builder and gathers environment
+- `Discover` does initialization for the builder and gathers environment
   context (e.g. binary paths).
 - `Build` runs a default build of the module if the user requests it.
 - `Analyze` returns a list of dependencies in a standard format.
