@@ -28,4 +28,4 @@ analyze:
 
 ## Analysis
 
-Cartage projects are analyzed by parsing a `Cartfile.resolved` file and massaging the data into a dependency graph.
+Carthage projects are analyzed by parsing a `Cartfile.resolved` file and massaging the data into a dependency graph.
