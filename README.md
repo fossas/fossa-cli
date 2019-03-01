@@ -27,7 +27,7 @@
 
 ## Background
 
-`fossa` analyzes complex codebases to generate dependency reports and license notices. By leveraging existing build environments, it can generate fast and highly-accurate results.
+`fossa` analyzes complex codebases to generate dependency reports and license notices. It can generate fast and highly-accurate results, by leveraging existing build environments. Refer to the [FOSSA CLI User Manual](docs/Readme.md) for in depth information about using this tool.
 
 **Features:**
 
@@ -78,7 +78,7 @@ A more in depth look at the FOSSA CLI is available in the [manual page](docs/REA
 
 Run `fossa -o` in your project directory to output a sample dependency report in JSON:
 
-> Note: Running `fossa` is equivalent to running `fossa init` followed by `fossa analyze`
+> Note: Running `fossa` is equivalent to running `fossa init` followed by `fossa analyze`.
 ```json
 [
   {
@@ -88,22 +88,17 @@ Run `fossa -o` in your project directory to output a sample dependency report in
     "Build": {
         "Imports": [
           "go+github.com/rhysd/go-github-selfupdate$d5c53b8d0552a7bf6b36457cd458d27c80e0210b",
-          ...
         ],
         "Dependencies": [
           {
             "locator": "go+gopkg.in/src-d/go-git.v4/utils/merkletrie/internal/frame$cd64b4d630b6c2d2b3d72e9615e14f9d58bb5787",
             "imports": [
               "go+gopkg.in/src-d/go-git.v4/utils/merkletrie/noder$cd64b4d630b6c2d2b3d72e9615e14f9d58bb5787",
-              ...
             ]
           },
-        ...
       ],
-      ...
     }
   },
-  ...
 ]
 ```
 
