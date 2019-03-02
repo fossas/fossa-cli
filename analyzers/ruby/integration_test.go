@@ -1,6 +1,7 @@
 package ruby_test
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -51,12 +52,14 @@ func TestRubyIntegration(t *testing.T) {
 
 func projectInitializer(proj fixtures.Project, projectDir string) error {
 	ymlAlreadyExists, err := files.Exists(filepath.Join(projectDir, ".fossa.yml"))
+
 	if err != nil {
 		panic(err)
 	}
 	if ymlAlreadyExists {
 		return nil
 	}
+	fmt.Println("At Start")
 
 	args := []string{"install"}
 
@@ -84,19 +87,20 @@ func projectInitializer(proj fixtures.Project, projectDir string) error {
 		log.Error(stderr)
 		return err
 	}
+	fmt.Println("here")
 
 	return nil
 }
 
 var projects = []fixtures.Project{
 	fixtures.Project{
-		Name: "rails",
-		URL:  "https://github.com/rails/rails",
-		Ref:  "refs/tags/v5.2.1",
+		Name:   "rails",
+		URL:    "https://github.com/rails/rails",
+		Commit: "fc5dd0b85189811062c85520fd70de8389b55aeb",
 	},
 	fixtures.Project{
-		Name: "vagrant",
-		URL:  "https://github.com/hashicorp/vagrant",
-		Ref:  "refs/tags/v2.1.5",
+		Name:   "vagrant",
+		URL:    "https://github.com/hashicorp/vagrant",
+		Commit: "37dc3dc6489e2a0ecc7b20ca73719e8c1ce2a4e2",
 	},
 }
