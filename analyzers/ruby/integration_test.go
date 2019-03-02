@@ -1,7 +1,6 @@
 package ruby_test
 
 import (
-	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -92,13 +91,13 @@ func projectInitializer(proj fixtures.Project, projectDir string) error {
 
 var projects = []fixtures.Project{
 	fixtures.Project{
-		Name: "rails",
-		URL:  "https://github.com/rails/rails",
-		Commit: "f4a30d2a0706f278a20c63a3d99288de79b52e5f"
+		Name:   "rails",
+		URL:    "https://github.com/rails/rails",
+		Commit: "f4a30d2a0706f278a20c63a3d99288de79b52e5f",
 	},
 	fixtures.Project{
-		Name: "vagrant",
-		URL:  "https://github.com/hashicorp/vagrant",
-		Commit: "b4d87e6ce9926592bee6943b1feff2194590d62f" 
+		Name:   "vagrant",
+		URL:    "https://github.com/hashicorp/vagrant",
+		Commit: "b4d87e6ce9926592bee6943b1feff2194590d62f",
 	},
 }
