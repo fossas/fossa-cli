@@ -59,7 +59,6 @@ func projectInitializer(proj fixtures.Project, projectDir string) error {
 	if ymlAlreadyExists {
 		return nil
 	}
-	fmt.Println("At Start")
 
 	args := []string{"install"}
 
@@ -87,20 +86,19 @@ func projectInitializer(proj fixtures.Project, projectDir string) error {
 		log.Error(stderr)
 		return err
 	}
-	fmt.Println("here")
 
 	return nil
 }
 
 var projects = []fixtures.Project{
 	fixtures.Project{
-		Name:   "rails",
-		URL:    "https://github.com/rails/rails",
-		Commit: "fc5dd0b85189811062c85520fd70de8389b55aeb",
+		Name: "rails",
+		URL:  "https://github.com/rails/rails",
+		Commit: "f4a30d2a0706f278a20c63a3d99288de79b52e5f"
 	},
 	fixtures.Project{
-		Name:   "vagrant",
-		URL:    "https://github.com/hashicorp/vagrant",
-		Commit: "37dc3dc6489e2a0ecc7b20ca73719e8c1ce2a4e2",
+		Name: "vagrant",
+		URL:  "https://github.com/hashicorp/vagrant",
+		Commit: "b4d87e6ce9926592bee6943b1feff2194590d62f" 
 	},
 }
