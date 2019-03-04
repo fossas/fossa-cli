@@ -1,6 +1,6 @@
 # Go
 
-## Installation
+## Support
 
 Go support in FOSSA CLI depends on the following tools existing in your environment:
 
@@ -12,62 +12,141 @@ Go support in FOSSA CLI depends on the following tools existing in your environm
   4. Govendor (defaults to `govendor`, configure with `$GOVENDOR_BINARY`)
   5. Vndr (defaults to `vndr`, configure with `$VNDR_BINARY`)
   6. Gdm (defaults to `gdm`, configure with `$GDM_BINARY`)
+  7. Gomodules, the presence of `go.mod`.
 
-## Usage
+## Configuration
 
-Add a `go` module with the GOPATH to your entry point.
+### Automatic 
+
+Run `fossa init` which detects all executable go packages in the directory and creates a configuration file. If you are trying to analyze a go library that does not contain any executables run `fossa init --include-all`. Refer to [Discovery](#Discovery) for more information on the auto-configuration logic.
+
+### Manual
+
+Add a module with `type: go`, `target` set to the name of the executable package, and `path` set to the location of the executable package. 
+
+See [Options](#Options) for an in depth look at all of the available options for a Go module.
 
 ```yaml
 analyze:
   modules:
-    - name: your-go-project
-      path: github.com/you/your-project
-      type: go
+    - name:   github.com/fossas/fossa-cli/cmd/fossa
+      type:   go
+      target: github.com/fossas/fossa-cli/cmd/fossa
+      path:   cmd/fossa
+      options:
+        allow-unresolved: true
 ```
 
-## Design
+## Options
 
-The Go plugin assumes that the configured entry point is in a larger project managed by one of our 5 supported tools. It detects the project folder by looking for the nearest parent folder that also contains a tool manifest. The manifests searched for are:
+| Option                         |   Type   | Name                                                                    | Common Use Case                              |
+| ------------------------------ | :------: | ----------------------------------------------------------------------- | -------------------------------------------- |
+| `tags`                         | []string | [Tags](#Tags:-<[]string>)                                               | Project utilizes go build tags.              |
+| `all-tags`                     |   bool   | [All Tags](#All-Tags:-<bool>)                                           | Make sure all OS and Arch tags are caught.   |
+| `strategy`                     |  string  | [Strategy](#Strategy:-<string>)                                         | Specify a go package manager.                |
+| `lockfile`                     |  string  | [Lockfile Path](#LockfilePath:-<string>)                                | Specify a custom lockfile.                   |
+| `manifest`                     |  string  | [Manifest Path](#ManifestPath:-<string>)                                | Specify a custom manifest file.              |
+| `allow-unresolved`             |   bool   | [Allow Unresolved](#Allow-Unresolved:-<bool>)                           | Dependency revision is not in lockfile.      |
+| `allow-unresolved-prefix`      |  string  | [Allow Unresolved Prefix](#Allow-Unresolved-Prefix:-<string>)           | Allow a specific unresolved package.         |
+| `allow-nested-vendor`          |   bool   | [Allow Nested Vendor](#Allow-Nested-Vendor:-<bool>)                     | Project's parent holds the desired lockfile. |
+| `allow-deep-vendor`            |   bool   | [Allow Deep Vendor](#Allow-Deep-Vendor:-<bool>)                         | Project is deep in a vendor directory.       |
+| `allow-external-vendor`        |   bool   | [Allow External Vendor](#Allow-External-Vendor:-<bool>)                 | Read lockfiles of other projects.            |
+| `allow-external-vendor-prefix` |  string  | [Allow External Vendor Prefix](#Allow-External-Vendor-Prefix:-<string>) | Read lockfiles that match the prefix.        |
+<!--- In code but currently unused
+| `skip-tracing`                 |   bool   | [Skip Import Tracing](#Skip-Tracing:-<bool>)                            | Skip dependency tracing.                     |
+| `skip-project`                 |   bool   | [Skip Project](#Skip-Project:-<bool>)                                   | Skip project detection.                      |
+--->
 
-1. `dep`: `Gopkg.toml`
-2. `glide`: `glide.yaml`
-3. `godep`: `Godeps/Godeps.json`
-4. `govendor`: `vendor/vendor.json`
-5. `vndr`: `vendor.conf`
 
-When the plugin finds a project folder, it assumes that every tool with a manifest in the project folder is used to manage the current project.
+#### `tags: <[]string>` 
 
-### Building
+Allows you to specify different build tags and combinations for analysis. 
+Example: 
+```yaml
+    tags:
+      - windows
+      - test
+      - !windows
+      - custom-test-build linux
+```
 
-Builds are run differently depending on the detected tools in the project folder:
+#### `all-tags: <bool>`
 
-1. `dep`: `dep ensure`
-2. `glide`: `glide install`
-3. `godep`: `godep save`
-4. `govendor`: `govendor sync`
-5. `vndr`: `vndr`
+Analyzes your project using a list of predefined build tags and merges the results. This analyzes your project with each tag but does not try any combinations. If you have a build that uses a combination build tag use the [Tags](#Tags:-<[]string>) option.
 
-If `--force` is set, each tool also clears its cache differently:
+Predefined build tags:
 
-1. `dep`: `rm -rf vendor Gopkg.lock`
-2. `glide`: `rm -rf vendor glide.lock`
-3. `godep`: `rm -rf vendor Godeps`
-4. `govendor`: `mv vendor/vendor.json vendor.json.bak && rm -rf vendor && mkdir -p vendor && mv vendor.json.bak vendor/vendor.json`
-5. `vndr`: `rm-rf vendor`
+- ``` "windows", "linux", "freebsd", "android", "darwin", "dragonfly", "nacl", "netbsd", "openbsd", "plan9", "solaris" "386", "amd64", "amd64p32", "arm", "armbe", "arm64", "arm64be", "ppc64", "ppc64le", "mips", "mipsle", "mips64", "mips64le", "mips64p32", "mips64p32le", "ppc", "s390", "s390x", "sparc", "sparc64"```
 
-### Analysis
+#### `strategy: <string>`
+
+Manually specify the golang package manager being used. This should be untouched unless fossa is incorrectly attempting to analyze the wrong strategy. If this option is set, it is recommended [lockfile](#LockfilePath:-<string>) and [manifest](#ManifestPath:-<string>) be set as well. A list of supported strategies is as follows:
+- ```gomodules, dep, gdm, glide, godep, govendorvndr, gopath-vcs```
+
+#### `lockfile: <string>`
+
+If your project has a custom lockfile or location specify it with this flag.
+Custom lockfiles interfere with the cli's ability to determine which package manager is being used and it is recommended that the [strategy](#strategy) flag also be set.
+
+Example:
+```yaml
+    lockfile: config/customLockfile.lock
+```
+#### `manifest: <string>`                    
+
+If your project has a custom manifest or location specify it with this flag.
+Custom lockfiles interfere with the cli's ability to determine which package manager is being used and it is recommended that the [strategy](#strategy) flag also be set.
+
+Example:
+```yaml
+    manifest: config/customManifest.toml
+```
+#### `allow-unresolved: <bool>`            
+
+If analysis finds any dependencies from `go list` that do not have a revision specified in a lockfile, analysis will fail by default. If it is acceptable to skip these packages during analysis and upload an incomplete dependency graph set `allow-unresolved: true`. This problem is usually a result of the underlying project having build issues. 
+
+#### `allow-unresolved-prefix: <string>`   
+
+Specify a package that is allowed to be unresolved based on its prefix. 
+
+Example: This will permit any dependencies with the prefix `github.com/fossas` to be unresolved. 
+```yaml
+allow-unresolved-prefix: github.com/fossas
+```
+See [Allow Unresolved](#Allow-unresolved:-<bool>) for use cases and steps to resolve the underlying issue.
+
+#### `allow-nested-vendor: <bool>`         
+
+Allows vendor folders to be nested and attempts to resolve using parent lockfile lookup.
+
+#### `allow-deep-vendor: <bool>`           
+
+Allows nested vendored dependencies to be resolved using ancestor lockfiles farther than their direct parent.
+
+#### `allow-external-vendor: <bool>`       
+
+Allows reading vendor lockfiles of other projects.
+
+#### `allow-external-vendor-prefix: <string>`
+
+If set, allow reading vendor lockfiles of projects whose import path's prefix matches. Multiple space-delimited prefixes can be specified.
+
+## Analysis
 
 Analysis happens in 3 steps:
 
-1. Use `depth` to perform import tracing on the specified entry point.
-2. Read all tool manifests in the project folder.
-3. Resolve all import paths into projects, and look up the project in the manifests to determine the revision of the imported package.
+1. Use `go list <target>` to determine the imports of the specified package.
+2. Read all manifests in the project folder and store dependency information.
+3. Match each package import to a dependency from the manifest to obtain revision information.
 
-The most complex part here is step (3). Not all import paths have revisions directly associated with them. For example, it's possible to import a package called `github.com/author-name/project-name/package-folder/package`. Depending on the tool, this import path may not have a revision associated with it. Instead, the revision is associated with the imported _project_: in this case, that would be `github.com/author-name/project-name`.
+> note: If a revision is not found for an import, Analysis will fail. Either fix the import error or enable [Allow Unresolved](#allow-unresolved:-<bool>)
+
+Step (3) is the most complex part of analysis. Not all import paths have revisions directly associated with them. It is possible to import a package called `github.com/author-name/project-name/package-folder/package` and depending on the tool, this import path may not have a revision associated with it. Instead, the revision is associated with the imported _project_: in this case, that would be `github.com/author-name/project-name`. 
 
 In order to resolve the project of an import path, we check whether any of its prefixes have revisions in the Go project's manifests. If so, we assume that project contains the package we're importing and use its revision.
 
-#### Known limitations
+
+## Known limitations
 
 - We do not currently support unvendored or tool-less imports.
   <!--
@@ -76,3 +155,10 @@ In order to resolve the project of an import path, we check whether any of its p
   - If the import is vendored, get the project name from its filesystem location and check the checksum of its contents against revision hashes of known revisions published by that project.
   - Allow the user to manually specify revisions, using either top-level configuration file (e.g. `//.fossa.yaml`) or a package-level configuration file (e.g. `//vendor/github.com/author/project/.revision`)
   -->
+## FAQ
+
+### Q: Why are all dependencies listed in go.mod not found in the discovered dependency graph?
+
+Fossa-cli finds all dependencies being used with `go list` and then finds their revision by parsing `go.mod`. Gomodules installs all transitive dependencies for a dependency, including the packages which are unused in the first party code. This results in many transitive dependencies listed in `go.mod` never actually being utilized. 
+
+Example: You need package `foo` from source `company/repository`. `go.mod` will import all packages including `company/repository/bar` and its transitive dependencies. `company/repository/bar`'s dependencies will go unused in your project and will not be picked up by `fossa-cli` but will appear in `go.mod`.

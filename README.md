@@ -27,7 +27,7 @@
 
 ## Background
 
-`fossa` analyzes complex codebases to generate dependency reports and license notices. By leveraging existing build environments, it can generate fast and highly-accurate results.
+`fossa` analyzes complex codebases to generate dependency reports and license notices. It can generate fast and highly-accurate results, by leveraging existing build environments. Refer to the [FOSSA CLI User Manual](docs/Readme.md) for in depth information about using this tool.
 
 **Features:**
 
@@ -37,7 +37,29 @@
 - Generates offline documentation for license notices & third-party attributions
 - Tests dependencies against license violations, audits and vulnerabilities (coming soon!) by integrating with https://fossa.io
 
-[Click here to learn more](docs/how-it-works.md) about the reasons and technical details behind this project.
+### Supported Environments
+| Environment                           | Package Managers                                                                                            |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Android                               | [Gradle](docs/integrations/gradle.md)                                                                       |
+| [Debian](docs/integration/debian.md)  | Dpkg                                                                                                        |
+| [Golang](docs/integrations/golang.md) | Dep, Gomodules, Vndr, GDM, Glide, Godep, Govendor                                                           |
+| Groovy                                | [Gradle](docs/integrations/gradle.md)                                                                       |
+| Java                                  | [Gradle](docs/integrations/gradle.md), [Maven](docs/integrations/maven.md), [Ant](docs/integrations/ant.md) |
+| Javascript                            | [nodejs & npm](docs/integrations/nodejs.md)                                                                 |
+| Kotlin                                | [Gradle](docs/integrations/gradle.md)                                                                       |
+| Monorepo tooling                      | [okbuck](docs/integrations/okbuck.md), [Buck](docs/integrations/buck.md)                                    |
+| [.NET](docs/integrations/nuget.md)    | NuGet, Paket                                                                                                |
+| Objective-C                           | [Cocoapods](docs/integrations/cocoapods.md), [Carthage](docs/integrations/carthage.md)                      |
+| PHP                                   | [Composer](docs/integrations/composer.md)                                                                   |
+| [Python](docs/integrations/python.md) | Pip, Pipenv, requirements.txt                                                                               |
+| [Ruby](docs/integrations/ruby.md      | Bundler                                                                                                     |
+| Scala                                 | [SBT](docs/integrations/sbt.md)                                                                             |
+| Swift                                 | [Cocoapods](docs/integrations/cocoapods.md), [Carthage](docs/integrations/carthage.md)                      |
+| C, C++                                | [archive](docs/integrations/archive.md)                                                                     |
+
+If your development environment is not supported, check out the [archive](docs/integrations/archive.md) uploader which allows direct license scanning of source code files.
+
+[Click here to learn more](docs/user-guide.md) about the technical details behind this project.
 
 ## Installation
 
@@ -52,7 +74,11 @@ These commands will execute scripts to fetch and install the latest [Github Rele
 
 ## Quick Start
 
-Run `fossa -o` in your repo directory to output a dependency report in JSON:
+A more in depth look at the FOSSA CLI is available in the [manual page](docs/README.md#FOSSA-CLI-Documentation).
+
+Run `fossa -o` in your project directory to output a sample dependency report in JSON:
+
+> Note: Running `fossa` is equivalent to running `fossa init` followed by `fossa analyze`.
 ```json
 [
   {
@@ -60,29 +86,27 @@ Run `fossa -o` in your repo directory to output a dependency report in JSON:
     "Type": "golang",
     "Manifest": "github.com/fossas/fossa-cli/cmd/fossa",
     "Build": {
-      "Dependencies": [
-        {
-          "locator": "go+github.com/rhysd/go-github-selfupdate$d5c53b8d0552a7bf6b36457cd458d27c80e0210b",
-          "data": {
-            "name": "github.com/rhysd/go-github-selfupdate",
-            "version": "d5c53b8d0552a7bf6b36457cd458d27c80e0210b"
-          }
-        },
-        ...
+        "Imports": [
+          "go+github.com/rhysd/go-github-selfupdate$d5c53b8d0552a7bf6b36457cd458d27c80e0210b",
+        ],
+        "Dependencies": [
+          {
+            "locator": "go+gopkg.in/src-d/go-git.v4/utils/merkletrie/internal/frame$cd64b4d630b6c2d2b3d72e9615e14f9d58bb5787",
+            "imports": [
+              "go+gopkg.in/src-d/go-git.v4/utils/merkletrie/noder$cd64b4d630b6c2d2b3d72e9615e14f9d58bb5787",
+            ]
+          },
       ],
-      ...
     }
   },
-  ...
 ]
 ```
 
-Run `fossa` and provide a [FOSSA API Key](https://docs.fossa.io/docs/api-reference) to get a rich, hosted report:
+Next, Run `fossa` and provide a [FOSSA API Key](https://docs.fossa.io/docs/api-reference) to get a rich, hosted report on [fossa.com](fossa.com):
 
 ```bash
 export FOSSA_API_KEY="YOUR_API_KEY_HERE"
 
-# Now, you can just run `fossa`!
 fossa
 
 # Output:
@@ -95,8 +119,6 @@ fossa
 
 ## Configuration
 
-Initialize configuation and scan for supported modules:
-
 ```bash
 fossa init # writes to `.fossa.yml`
 ```
@@ -105,31 +127,29 @@ This will initialize a `.fossa.yml` file that looks like this:
 
 ```yaml
 version: 1
-
 cli:
   server: https://app.fossa.io
+  fetcher: custom
   project: github.com/fossas/fossa-cli
-
 analyze:
   modules:
     - name: fossa-cli
-      path: ./cmd/fossa
       type: go
-
-# ...
+      target: github.com/fossas/fossa-cli/cmd/fossa
+      path: ./cmd/fossa
 ```
 
-Check out our [User Guide](docs/user-guide.md) to learn about editing this file.
+Check out the [User Guide](docs/user-guide.md) to learn about editing this file.
 
 After configuration, you can now preview and upload new results:
 
 ```bash
-# Run FOSSA analysis and preview the results we're going to upload
-fossa -o
+# Run FOSSA analysis and preview the results to be uploaded.
+fossa analyze -o
 
 # Run FOSSA and upload results
 # Going forward, you only need to run this one-liner
-FOSSA_API_KEY=YOUR_API_KEY_HERE fossa
+FOSSA_API_KEY=YOUR_API_KEY_HERE fossa analyze
 ```
 
 ## Integrating with CI
@@ -175,16 +195,11 @@ fossa report --type licenses > NOTICE.txt
 
 License data is provided by [https://fossa.io](https://fossa.io)'s 500GB open source registry.
 
-## Reference
-Check out the [User Guide](docs/user-guide.md) for more details.
-
 ## Development
 
 View our [Contribution Guidelines](.github/CONTRIBUTING.md) to get started.
 
 Join our public [Slack Channel](https://slack.fossa.io).
-
-If you're in San Francisco, come to our monthly [Open Source Happy Hour](http://meetup.fossa.io) to meet us F2F!
 
 ## License
 

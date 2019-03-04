@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/apex/log"
-
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
@@ -33,7 +32,7 @@ func New() Cmd {
 //	are used by the system. This is the reason we debug errors when a tarball upload fails.
 //
 // Analysis steps are as follows:
-//	1. Find all transitive dependencies for the target package/.
+//	1. Find all transitive dependencies for the target package.
 //	2. Upload all valid dependencies and retrieve locator information.
 //	3. Loop through all valid dependencies and find their direct dependencies using d.DebCmd
 //	4. Construct a dependency graph with the direct dependency information.Dependencies
