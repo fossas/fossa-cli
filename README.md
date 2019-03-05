@@ -31,31 +31,31 @@
 
 **Features:**
 
-- Supports [over 20+ languages & environments](docs/how-it-works.md) (JavaScript, Java, Ruby, Python, Golang, PHP, .NET, etc...)
-- Auto-configures for monoliths; instantly handles multiple builds in large codebases
-- Fast & portable; a cross-platform binary you can drop into CI or dev machines
-- Generates offline documentation for license notices & third-party attributions
-- Tests dependencies against license violations, audits and vulnerabilities (coming soon!) by integrating with https://fossa.io
+- Supports over 20+ languages & environments (JavaScript, Java, Ruby, Python, Golang, PHP, .NET, etc...)
+- Auto-configures for monoliths; instantly handles multiple builds in large codebases.
+- Fast & portable; a cross-platform binary you can drop into CI or dev machines.
+- Generates offline documentation for license notices & third-party attributions.
+- Tests dependencies against license violations, audits and vulnerabilities (coming soon!) by integrating with https://fossa.io.
 
 ### Supported Environments
-| Environment                           | Package Managers                                                                                            |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Android                               | [Gradle](docs/integrations/gradle.md)                                                                       |
-| [Debian](docs/integration/debian.md)  | Dpkg                                                                                                        |
-| [Golang](docs/integrations/golang.md) | Dep, Gomodules, Vndr, GDM, Glide, Godep, Govendor                                                           |
-| Groovy                                | [Gradle](docs/integrations/gradle.md)                                                                       |
-| Java                                  | [Gradle](docs/integrations/gradle.md), [Maven](docs/integrations/maven.md), [Ant](docs/integrations/ant.md) |
-| Javascript                            | [nodejs & npm](docs/integrations/nodejs.md)                                                                 |
-| Kotlin                                | [Gradle](docs/integrations/gradle.md)                                                                       |
-| Monorepo tooling                      | [okbuck](docs/integrations/okbuck.md), [Buck](docs/integrations/buck.md)                                    |
-| [.NET](docs/integrations/nuget.md)    | NuGet, Paket                                                                                                |
-| Objective-C                           | [Cocoapods](docs/integrations/cocoapods.md), [Carthage](docs/integrations/carthage.md)                      |
-| PHP                                   | [Composer](docs/integrations/composer.md)                                                                   |
-| [Python](docs/integrations/python.md) | Pip, Pipenv, requirements.txt                                                                               |
-| [Ruby](docs/integrations/ruby.md      | Bundler                                                                                                     |
-| Scala                                 | [SBT](docs/integrations/sbt.md)                                                                             |
-| Swift                                 | [Cocoapods](docs/integrations/cocoapods.md), [Carthage](docs/integrations/carthage.md)                      |
-| C, C++                                | [archive](docs/integrations/archive.md)                                                                     |
+| Environment                                  | Package Managers                                                                                                             |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Android                                      | [Gradle](docs/integrations/gradle.md#gradle)                                                                                 |
+| [Debian](docs/integration/debian.md#debian)  | Dpkg                                                                                                                         |
+| [Golang](docs/integrations/golang.md#go)     | Dep, Gomodules, Vndr, GDM, Glide, Godep, Govendor                                                                            |
+| Groovy                                       | [Gradle](docs/integrations/gradle.md#gradle)                                                                                 |
+| Java                                         | [Gradle](docs/integrations/gradle.md#gradle), [Maven](docs/integrations/maven.md#maven), [Ant](docs/integrations/ant.md#ant) |
+| Javascript                                   | [nodejs & npm](docs/integrations/nodejs.md#node.js)                                                                          |
+| Kotlin                                       | [Gradle](docs/integrations/gradle.md#gradle)                                                                                 |
+| Monorepo tooling                             | [okbuck](docs/integrations/okbuck.md#okbuck), [Buck](docs/integrations/buck.md#buck)                                         |
+| [.NET](docs/integrations/nuget.md#nuget)     | NuGet, Paket                                                                                                                 |
+| Objective-C                                  | [Cocoapods](docs/integrations/cocoapods.md#cocoapods), [Carthage](docs/integrations/carthage.md#carthage)                    |
+| PHP                                          | [Composer](docs/integrations/composer.md#composer)                                                                           |
+| [Python](docs/integrations/python.md#python) | Pip, Pipenv, requirements.txt                                                                                                |
+| [Ruby](docs/integrations/ruby.md#ruby)       | Bundler                                                                                                                      |
+| Scala                                        | [SBT](docs/integrations/sbt.md#sbt)                                                                                          |
+| Swift                                        | [Cocoapods](docs/integrations/cocoapods.md#cocoapods), [Carthage](docs/integrations/carthage.md#carthage)                    |
+| C, C++                                       | [archive](docs/integrations/archive.md#archive)                                                                              |
 
 If your development environment is not supported, check out the [archive](docs/integrations/archive.md) uploader which allows direct license scanning of source code files.
 
