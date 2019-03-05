@@ -7,14 +7,14 @@ The FOSSA CLI is designed to discover all build environments in your project and
 
 The user guide provides an in depth look at the FOSSA CLI's discovery and analysis process. This guide includes documentation on the available `fossa` commands, their usage, and the configuration options available for each.
 
-1. [Configuring a Project](user-guide.md/#configuring-a-project)
+1. [Configuring a Project](user-guide.md/#i1configuring-a-project)
      - [Configuration File](user-guide.md/#configuration-file)
      - [Argument Configuration](user-guide.md/#argument-configuration)   
-2. [Analyzing a Project](user-guide.md/#)
-      -  [Uploading Custom Builds](user-guide.md/#Uploading-Custom-Builds)
-         - [Data Format](user-guide.md/#Data-Format)
-         - [Locator Spec](user-guide.md/#Locator-Spec)
-3. [CLI Reference](user-guide.md/#CLI-Reference)
+2. [Analyzing a Project](user-guide.md/#2-analyzing-a-project)
+      -  [Uploading Custom Builds](user-guide.md/#uploading-custom-builds)
+         - [Data Format](user-guide.md/#data-format)
+         - [Locator Spec](user-guide.md/#locator-spec)
+3. [CLI Reference](user-guide.md/#cli-reference)
       - [`fossa`](user-guide.md/#fossa)
       - [`init`](user-guide.md/#fossa-init)
       - [`analyze`](user-guide.md/#fossa-analyze)
@@ -33,7 +33,7 @@ This document is a walk-through of getting started with the FOSSA CLI and is aim
     4. [Testing](how-it-works.md#step-4-testing)
     5. [Finalizing](how-it-works.md#step-5-finalizing)
 
-## [Configuration File](config-file.md#fossa.yml)
+## [Configuration File](config-file.md#fossayml)
 
 ## Environment Integrations
 - General Layout
@@ -43,21 +43,21 @@ This document is a walk-through of getting started with the FOSSA CLI and is aim
   - Design
   - FAQ
 - Environments
-  - [ant](integrations/ant.md)
-  - [archive](integrations/archive.md)
-  - [bower](integrations/bower.md)
-  - [buck](integrations/buck.md)
-  - [carthage](integrations/carthage.md)
-  - [cocoapods](integrations/cocoapods.md)
-  - [composer](integrations/composer.md)
-  - [debian](integrations/debian.md)
-  - [golang](integrations/golang.md)
-  - [gradle](integrations/gradle.md)
-  - [maven](integrations/maven.md)
-  - [nodejs](integrations/nodejs.md)
-  - [nuget](integrations/nuget.md)
-  - [okbuck](integrsations/okbuck.md)
-  - [python](integrations/python.md)
-  - [ruby](integrations/ruby.md)
-  - [scala](integrations/sbt.md)
+  - [ant](integrations/ant.md#ant--ivy)
+  - [archive](integrations/archive.md--archive)
+  - [bower](integrations/bower.md#bower)
+  - [buck](integrations/buck.md#buck)
+  - [carthage](integrations/carthage.md#carthage)
+  - [cocoapods](integrations/cocoapods.md#cocoapods)
+  - [composer](integrations/composer.md#composer)
+  - [debian](integrations/debian.md#debian)
+  - [golang](integrations/golang.md#go)
+  - [gradle](integrations/gradle.md#gradle)
+  - [maven](integrations/maven.md#maven)
+  - [nodejs](integrations/nodejs.md#nodejs)
+  - [nuget](integrations/nuget.md#nuget-net)
+  - [okbuck](integrsations/okbuck.md#okbuck)
+  - [python](integrations/python.md#python)
+  - [ruby](integrations/ruby.md#ruby)
+  - [scala](integrations/sbt.md#sbt)
   

@@ -74,11 +74,11 @@ These commands will execute scripts to fetch and install the latest [GitHub Rele
 
 ## Quick Start
 
-A more in depth look at the FOSSA CLI is available in the [manual page](docs/README.md#FOSSA-CLI-Documentation).
+A more in depth look at the FOSSA CLI is available in the [manual](docs/README.md#FOSSA-CLI-Documentation).
 
 Run `fossa -o` in your project directory to output a sample dependency report in JSON:
 
-> Note: Running `fossa` is equivalent to running `fossa init` followed by `fossa analyze`.
+> Note: Running [`fossa`](user-guide.md/#fossa) is equivalent to running [`fossa init`](docs/user-guide.md#fossa-init) followed by [`fossa analyze`](docs/user-guide.md#fossa-analyze).
 ```json
 [
   {
@@ -141,7 +141,7 @@ analyze:
 
 Check out the [User Guide](docs/user-guide.md#user-guide) to learn about editing this file.
 
-After [configuration](docs/user-guide.md#1-configuring-a-project), you can now [analyze](docs/user-guide.md#2-analyzing-a-project) and upload new results:
+After [configuration](docs/user-guide.md#1-configuring-a-project), you can now [analyze](docs/user-guide.md#2-analyzing-a-project) the project and upload new results:
 
 ```bash
 # Run FOSSA analysis and preview the results to be uploaded.
@@ -193,7 +193,7 @@ fossa report --type licenses > NOTICE.txt
 
 [See this repo's NOTICE file](NOTICE) for an example.
 
-License data is provided by [https://fossa.io](https://fossa.io)'s 500GB open source registry.
+License data is provided by [https://fossa.io](https://fossa.com)'s 500GB open source registry.
 
 ## Development
 
