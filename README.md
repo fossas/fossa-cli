@@ -156,10 +156,14 @@ analyze:
 Check out the [User Guide](docs/user-guide.md#user-guide) to learn about editing this file.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 After [configuration](docs/user-guide.md#1-configuring-a-project), you can now [analyze](docs/user-guide.md#2-analyzing-a-project) the project and upload new results:
 =======
 After [configuration](docs/user-guide.md#1-configuring-a-project), you can now [analyze](docs/user-guide.md#2-analyzing-a-project) and upload new results:
 >>>>>>> better links
+=======
+After [configuration](docs/user-guide.md#1-configuring-a-project), you can now [analyze](docs/user-guide.md#2-analyzing-a-project) the project and upload new results:
+>>>>>>> manual nits
 
 ```bash
 # Run FOSSA analysis and preview the results to be uploaded.
@@ -215,7 +219,11 @@ fossa report --type licenses > NOTICE.txt
 
 [See this repo's NOTICE file](NOTICE) for an example.
 
+<<<<<<< HEAD
 License data is provided by [https://fossa.com](https://fossa.com)'s 500GB open source registry.
+=======
+License data is provided by [https://fossa.io](https://fossa.com)'s 500GB open source registry.
+>>>>>>> manual nits
 
 ## Development
 
