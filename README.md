@@ -41,21 +41,21 @@
 | Environment                                  | Package Managers                                                                                                             |
 | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Android                                      | [Gradle](docs/integrations/gradle.md#gradle)                                                                                 |
-| [Debian](docs/integration/debian.md#debian)  | Dpkg                                                                                                                         |
+| [Debian](docs/integrations/debian.md#debian)  | Dpkg                                                                                                                         |
 | [Golang](docs/integrations/golang.md#go)     | Dep, Gomodules, Vndr, GDM, Glide, Godep, Govendor                                                                            |
 | Groovy                                       | [Gradle](docs/integrations/gradle.md#gradle)                                                                                 |
-| Java                                         | [Gradle](docs/integrations/gradle.md#gradle), [Maven](docs/integrations/maven.md#maven), [Ant](docs/integrations/ant.md#ant) |
-| Javascript                                   | [nodejs & npm](docs/integrations/nodejs.md#node.js)                                                                          |
+| Java                                         | [Gradle](docs/integrations/gradle.md#gradle), [Maven](docs/integrations/maven.md#maven), [Ant](docs/integrations/ant.md#ant--ivy) |
+| Javascript                                   | [nodejs & npm](docs/integrations/nodejs.md#nodejs)                                                                          |
 | Kotlin                                       | [Gradle](docs/integrations/gradle.md#gradle)                                                                                 |
 | Monorepo tooling                             | [okbuck](docs/integrations/okbuck.md#okbuck), [Buck](docs/integrations/buck.md#buck)                                         |
-| [.NET](docs/integrations/nuget.md#nuget)     | NuGet, Paket                                                                                                                 |
+| [.NET](docs/integrations/nuget.md#nuget-net)     | NuGet, Paket                                                                                                                 |
 | Objective-C                                  | [Cocoapods](docs/integrations/cocoapods.md#cocoapods), [Carthage](docs/integrations/carthage.md#carthage)                    |
 | PHP                                          | [Composer](docs/integrations/composer.md#composer)                                                                           |
 | [Python](docs/integrations/python.md#python) | Pip, Pipenv, requirements.txt                                                                                                |
 | [Ruby](docs/integrations/ruby.md#ruby)       | Bundler                                                                                                                      |
 | Scala                                        | [SBT](docs/integrations/sbt.md#sbt)                                                                                          |
 | Swift                                        | [Cocoapods](docs/integrations/cocoapods.md#cocoapods), [Carthage](docs/integrations/carthage.md#carthage)                    |
-| C, C++                                       | [archive](docs/integrations/archive.md#archive)                                                                              |
+| C, C++                                       | [Archive Uploader](docs/integrations/archive.md#archive)                                                                              |
 
 If your development environment is not supported, check out the [archive](docs/integrations/archive.md) uploader which allows direct license scanning of source code files.
 
