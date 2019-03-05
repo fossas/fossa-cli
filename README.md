@@ -27,7 +27,7 @@
 
 ## Background
 
-`fossa` analyzes complex codebases to generate dependency reports and license notices. It can generate fast and highly-accurate results, by leveraging existing build environments. Refer to the [FOSSA CLI User Manual](docs/Readme.md) for in depth information about using this tool.
+`fossa` analyzes complex codebases to generate dependency reports and license notices. It can generate fast and highly-accurate results, by leveraging existing build environments. Refer to the [FOSSA CLI User Manual](docs/README.md) for in depth information about using this tool.
 
 **Features:**
 
