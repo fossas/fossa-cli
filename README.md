@@ -70,6 +70,7 @@ The following commands will execute scripts to fetch and install the latest [Git
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
 ```
 
+<<<<<<< HEAD
 ### Windows with Powershell:
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install.ps1'))
@@ -79,6 +80,11 @@ Add `C:\ProgramData\fossa-cli` to your path by modifying your `profile.ps1` file
 ```powershell
 $env:Path += ";C:\ProgramData\fossa-cli"
 ``` 
+=======
+Install on **Windows** by downloading from [GitHub Releases](https://github.com/fossas/fossa-cli/releases).
+
+These commands will execute scripts to fetch and install the latest [GitHub Releases](https://github.com/fossas/fossa-cli/releases).
+>>>>>>> better links
 
 ## Quick Start
 
@@ -149,7 +155,11 @@ analyze:
 
 Check out the [User Guide](docs/user-guide.md#user-guide) to learn about editing this file.
 
+<<<<<<< HEAD
 After [configuration](docs/user-guide.md#1-configuring-a-project), you can now [analyze](docs/user-guide.md#2-analyzing-a-project) the project and upload new results:
+=======
+After [configuration](docs/user-guide.md#1-configuring-a-project), you can now [analyze](docs/user-guide.md#2-analyzing-a-project) and upload new results:
+>>>>>>> better links
 
 ```bash
 # Run FOSSA analysis and preview the results to be uploaded.
@@ -163,7 +173,11 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa analyze
 ## Integrating with CI
 
 ### Testing for License Violations
+<<<<<<< HEAD
 If you've integrated with https://fossa.com, you can use [`fossa test`](docs/user-guide.md#fossa-test) to fail builds against your [FOSSA scan status](https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli/refs/branch/master/5e225327846320e9dfb8bf12673afa2eb4144fb4/preview).
+=======
+If you've integrated with https://fossa.io, you can use [`fossa test`](docs/user-guide.md#fossa-test) to fail builds against your [FOSSA scan status](https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli/refs/branch/master/5e225327846320e9dfb8bf12673afa2eb4144fb4/preview).
+>>>>>>> better links
 
 ```bash
 # Exit with a failing status and dump an issue report to stderr
