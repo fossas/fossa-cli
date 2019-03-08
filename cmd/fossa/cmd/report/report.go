@@ -1,9 +1,9 @@
 package report
 
 import (
+	"github.com/apex/log"
 	"github.com/urfave/cli"
 
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/analyze"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
@@ -33,7 +33,7 @@ func analyzeModules(ctx *cli.Context) ([]module.Module, error) {
 		log.Fatal("No modules specified.")
 	}
 
-	analyzed, err := analyze.Do(modules)
+	analyzed, err := analyze.Do(modules, false)
 	if err != nil {
 		return nil, err
 	}
