@@ -119,15 +119,15 @@ func allSubprojectDeps(b Setup) (AuditOutput, error) {
 		}
 	}
 	start := time.Now()
-
-	// wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
-	wg := sync.WaitGroup{}
+	inputLists := make(chan AuditOutput, len(targets))
+	wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
 	for _, target := range targets {
 		fmt.Println("One More")
-		wg.Add(1)
+		wg.Add()
 		go func(targ string) {
 			defer wg.Done()
 			inputs, err := cmdAudit(b.Cmd, "input", targ)
+			inputLists <- inputs
 			fmt.Println(inputs)
 			if err != nil {
 				log.Warnf("Cannot retrieve inputs for %v: %s", targ, err)
@@ -135,6 +135,13 @@ func allSubprojectDeps(b Setup) (AuditOutput, error) {
 		}(target)
 	}
 	wg.Wait()
+
+	close(inputLists)
+	for targe := range inputLists {
+		fmt.Println("this works?", targe)
+		fmt.Println(len(targets), len(inputLists))
+	}
+
 	fmt.Println(time.Since(start))
 
 	return allInputs, err

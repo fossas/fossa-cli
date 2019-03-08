@@ -21,6 +21,7 @@
 package buck
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -83,6 +84,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 
 // Analyze analyzes a buck build target and its dependencies.
 func (a *Analyzer) Analyze() (graph.Deps, error) {
+	fmt.Println("here")
 	return a.Setup.Deps(a.Upload)
 }
 
