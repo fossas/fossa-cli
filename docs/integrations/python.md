@@ -41,7 +41,7 @@ analyze:
 | `venv`         | string | [Virtual Env](#All-Tags:-<bool>)                  | Make sure all OS and Arch tags are caught. |
 --->
 
-#### `strategy: <striong>`
+#### `strategy: <string>`
 
 Manually specify the python analysis strategy to be used. Supported options:
 - `requirements`: Parse `requirements.txt` to find all dependencies used. 

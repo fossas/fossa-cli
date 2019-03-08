@@ -41,17 +41,17 @@ analyze:
 
 | Option                         |   Type   | Name                                                                    | Common Use Case                              |
 | ------------------------------ | :------: | ----------------------------------------------------------------------- | -------------------------------------------- |
-| `tags`                         | []string | [Tags](#Tags:-<[]string>)                                               | Project utilizes go build tags.              |
-| `all-tags`                     |   bool   | [All Tags](#All-Tags:-<bool>)                                           | Make sure all OS and Arch tags are caught.   |
-| `strategy`                     |  string  | [Strategy](#Strategy:-<string>)                                         | Specify a go package manager.                |
-| `lockfile`                     |  string  | [Lockfile Path](#LockfilePath:-<string>)                                | Specify a custom lockfile.                   |
-| `manifest`                     |  string  | [Manifest Path](#ManifestPath:-<string>)                                | Specify a custom manifest file.              |
-| `allow-unresolved`             |   bool   | [Allow Unresolved](#Allow-Unresolved:-<bool>)                           | Dependency revision is not in lockfile.      |
-| `allow-unresolved-prefix`      |  string  | [Allow Unresolved Prefix](#Allow-Unresolved-Prefix:-<string>)           | Allow a specific unresolved package.         |
-| `allow-nested-vendor`          |   bool   | [Allow Nested Vendor](#Allow-Nested-Vendor:-<bool>)                     | Project's parent holds the desired lockfile. |
-| `allow-deep-vendor`            |   bool   | [Allow Deep Vendor](#Allow-Deep-Vendor:-<bool>)                         | Project is deep in a vendor directory.       |
-| `allow-external-vendor`        |   bool   | [Allow External Vendor](#Allow-External-Vendor:-<bool>)                 | Read lockfiles of other projects.            |
-| `allow-external-vendor-prefix` |  string  | [Allow External Vendor Prefix](#Allow-External-Vendor-Prefix:-<string>) | Read lockfiles that match the prefix.        |
+| `tags`                         | []string | [Tags](#tags-string)                                               | Project utilizes go build tags.              |
+| `all-tags`                     |   bool   | [All Tags](#all-tags-bool)                                           | Make sure all OS and Arch tags are caught.   |
+| `strategy`                     |  string  | [Strategy](#strategy-string)                                         | Specify a go package manager.                |
+| `lockfile`                     |  string  | [Lockfile Path](#lockfilepath-string)                                | Specify a custom lockfile.                   |
+| `manifest`                     |  string  | [Manifest Path](#manifestpath-string)                                | Specify a custom manifest file.              |
+| `allow-unresolved`             |   bool   | [Allow Unresolved](#allow-unresolved-bool)                           | Dependency revision is not in lockfile.      |
+| `allow-unresolved-prefix`      |  string  | [Allow Unresolved Prefix](#allow-unresolved-prefix-string)           | Allow a specific unresolved package.         |
+| `allow-nested-vendor`          |   bool   | [Allow Nested Vendor](#allow-nested-vendor-bool)                     | Project's parent holds the desired lockfile. |
+| `allow-deep-vendor`            |   bool   | [Allow Deep Vendor](#allow-deep-vendor-bool)                         | Project is deep in a vendor directory.       |
+| `allow-external-vendor`        |   bool   | [Allow External Vendor](#allow-external-vendor-bool)                 | Read lockfiles of other projects.            |
+| `allow-external-vendor-prefix` |  string  | [Allow External Vendor Prefix](#allow-external-vendor-prefix-string) | Read lockfiles that match the prefix.        |
 <!--- In code but currently unused
 | `skip-tracing`                 |   bool   | [Skip Import Tracing](#Skip-Tracing:-<bool>)                            | Skip dependency tracing.                     |
 | `skip-project`                 |   bool   | [Skip Project](#Skip-Project:-<bool>)                                   | Skip project detection.                      |
