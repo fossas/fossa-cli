@@ -31,8 +31,8 @@ analyze:
 
 | Option              |  Type  | Name                                     | Common Use Case                       |
 | ------------------- | :----: | ---------------------------------------- | ------------------------------------- |
-| `strategy`          | string | [Strategy](#Strategy:-<string>)          | Specify a Ruby analysis strategy.     |
-| `gemfile-lock-path` | string | [Lockfile Path](#requirements:-<string>) | Specify a custom `Gemfile.lock` file. |
+| `strategy`          | string | [Strategy](#strategy-string)          | Specify a Ruby analysis strategy.     |
+| `gemfile-lock-path` | string | [Lockfile Path](#requirements-string) | Specify a custom `Gemfile.lock` file. |
 
 #### `strategy: <string>`
 

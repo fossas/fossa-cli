@@ -35,8 +35,8 @@ analyze:
 
 | Option         |  Type  | Name                                         | Common Use Case                           |
 | -------------- | :----: | -------------------------------------------- | ----------------------------------------- |
-| `strategy`     | string | [Strategy](#Strategy:-<string>)              | Specify a Python analysis strategy.       |
-| `requirements` | string | [Requirements Path](#requirements:-<string>) | Specify a custom `requirements.txt` file. |
+| `strategy`     | string | [Strategy](#strategy-string)              | Specify a Python analysis strategy.       |
+| `requirements` | string | [Requirements Path](#requirements-string) | Specify a custom `requirements.txt` file. |
 <!--- In code but currently unused
 | `venv`         | string | [Virtual Env](#All-Tags:-<bool>)                  | Make sure all OS and Arch tags are caught. |
 --->
