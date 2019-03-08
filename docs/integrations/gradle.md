@@ -35,12 +35,14 @@ analyze:
 
 ## Options
 
-| Option               |  Type  | Name                                          | Common Use Case                                                            | | -------------------- | :----: | --------------------------------------------- | -------------------------------------------------------------------------- | | `cmd`                | string | [Cmd](#cmd:-string>)                          | Specify the gradle command to use.                                         |
-| `task`               | string | [Task](#task:-<string>)                       | Specify the gradle task to run.                                            |
-| `online`             |  bool  | [Online](#online:-<bool>)                     | Remove `--offline` from the `gradle <project>:dependencies` command.       |
-| `all-submodules`     |  bool  | [All Submodules](#all-submodules:-<bool>)     | Running `fossa analyze gradle:.` and you want to analyze all sub-projects. |
-| `configuration`      | string | [Configuration](#configuration:-<string>)     | Comma separated list of configurations to analyze.                         |
-| `all-configurations` |  bool  | [All Configurations](#all-configurations:-<bool>) | Analyze all configurations for the gradle project.                         |
+  | Option               |  Type  | Name                                              | Common Use Case                                                            |
+  | -------------------- | :----: | ------------------------------------------------- | -------------------------------------------------------------------------- |
+  | `cmd`                | string | [Cmd](#cmd-string)                              | Specify the gradle command to use.                                         |
+  | `task`               | string | [Task](#task-string)                           | Specify the gradle task to run.                                            |
+  | `online`             |  bool  | [Online](#online-bool)                         | Remove `--offline` from the `gradle <project>:dependencies` command.       |
+  | `all-submodules`     |  bool  | [All Submodules](#all-submodules-bool)         | Running `fossa analyze gradle:.` and you want to analyze all sub-projects. |
+  | `configuration`      | string | [Configuration](#configuration-string)         | Comma separated list of configurations to analyze.                         |
+  | `all-configurations` |  bool  | [All Configurations](#all-configurations-bool) | Analyze all configurations for the gradle project.                         |
 
 
 #### `cmd: <string>` 

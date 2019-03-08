@@ -29,7 +29,7 @@ analyze:
 
 | Option      |  Type  | Name                              | Common Use Case                                      |
 | ----------- | :----: | --------------------------------- | ---------------------------------------------------- |
-| `classpath` | string | [Class Path](#classpath:-<string>) | Retrieve the dependencies from a specific classpath. |
+| `classpath` | string | [Class Path](#classpath-string) | Retrieve the dependencies from a specific classpath. |
 
 #### `classpath: <striong>`
 

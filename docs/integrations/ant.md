@@ -36,7 +36,7 @@ If you have a complex Ant build that stores libraries in multiple locations, you
 
 | Option   |  Type  | Name                        | Common Use Case                            |
 | -------- | :----: | --------------------------- | ------------------------------------------ |
-| `libdir` | string | [LibDir](#libdir:-<string>) | Specify the path to the ant lib directory. |
+| `libdir` | string | [LibDir](#libdir-string) | Specify the path to the ant lib directory. |
 
 
 #### `libdir: <string>` 

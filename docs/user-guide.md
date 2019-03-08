@@ -1,10 +1,9 @@
 # User Guide
 
-Fossa is most commonly used to analyze a project and extract its full dependency graph, which can then be uploaded to fossa.com using an API key. This page explains how to configure this workflow as well as the other features of the fossa-cli. If you are looking for a guided walk-through with information along the way refer to [How it Works](how-it-works.md).
-
+Fossa is most commonly used to analyze a project and extract its full dependency graph, which can then be uploaded to fossa.com using an API key. This page explains how to configure this workflow as well as the other features of the FOSSA CLI. If you are looking for a guided walk-through with information along the way refer to [How it Works](how-it-works.md#how-it-works)
 ## 1. Configuring a Project
 
-Configuration can be achieved through a configuration file, `fossa.yml`, or directly with arguments and flags to the `fossa` command. The fossa-cli was built to create accurate configuration files by running [`fossa init`](#fossa-init) and only require manual configuration for complex builds or to tweak personal preferences.
+Configuration can be achieved through a configuration file, `fossa.yml`(config-file.md#fossayml), or directly with arguments and flags to the [`fossa`](#fossa) command. The FOSSA CLI was built to create accurate configuration files by running [`fossa init`](#fossa-init) and only require manual configuration for complex builds or to tweak personal preferences.
 
 ### Configuration file
 A configuration file is created by running [`fossa init`](#fossa-init) at the root of the project you wish to analyze. The cli will move down the file tree and search for all relevant modules.
@@ -26,11 +25,11 @@ analyze:
       path: cmd/fossa
 ```
 
-Information about each of these fields and customization can be found in [.fossa.yml](/docs/config-file) documentation.
+Information about each of these fields and customization can be found in [.fossa.yml](config-file.md#fossayml) documentation.
 
 ### Argument configuration
 
-Single modules can be provided by including an argument such as `fossa analyze <module_type>:<target>` which first resolves the type of analysis and then supplies the build target for the analysis. More examples located [here](#Examples).
+Modules can be provided by including an argument such as `fossa analyze <module_type>:<target>` which determines the type of analysis and then supplies the build target. More examples are located below.
 
 > Note: Argument and flag configurations take precedence over a configuration file.
 
@@ -42,7 +41,7 @@ Single modules can be provided by including an argument such as `fossa analyze <
 ## 2. Analyzing a Project
 
 1. Verify that analysis succeeds by running [`fossa analyze -o`](#fossa-analyze) without error. This command will output analysis to stdout instead of uploading.
-2. Obtain a `FOSSA_API_KEY`. Refer to the [Fossa manual](https://docs.fossa.com/docs/api-reference#section-api-tokens) for instructions.
+2. Obtain a `FOSSA_API_KEY`. Refer to the [FOSSA.com manual](https://docs.fossa.com/docs/api-reference#section-api-tokens) for instructions.
 3. Run `export FOSSA_API_KEY=<your-api-key>` to set the environment variable.
 4. Run [`fossa analyze`](#fossa-analyze). This will analyze your project and upload the results to the specified server, app.fossa.com by default. 
 
@@ -157,7 +156,7 @@ FOSSA_API_KEY=YOUR_API_KEY fossa
 | `--endpoint` | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional) |
 | `--output`   | `-o`  | Output `fossa analyze` results to stdout.                                   |
 | `--debug`    |       | Print debugging information to stderr.                                      |
-| `--version ` | `-v`  | Print the currently installed fossa-cli version.                            |
+| `--version ` | `-v`  | Print the currently installed FOSSA CLI version.                            |
 | `--help`     | `-h`  | Print a help message.                                                       |
 
 ### `fossa init`
@@ -251,7 +250,7 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --project=PROJECT_NAME --revision=S
 
 Report accesses the scanned report online from using the existing configuration file and outputs information directly to the command line. Report offers two different commands:
 #### `fossa report licenses` 
-Outputs detailed information about the licenses used by the current project and which dependencies are using which licenses. An example of this can be found in the [Notice file](./Notice) for the fossa-cli.
+Outputs detailed information about the licenses used by the current project and which dependencies are using which licenses. An example of this can be found in the [Notice file](./Notice) for the FOSSA CLI.
 
 #### `fossa report dependencies`
 Outputs detailed information about the dependencies that are being used by the current project.
@@ -269,21 +268,3 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa report licenses --json
 | `--debug` |       | print debugging information to stderr.       |
 | `--help`  | `-h`  | print a help message.                        |
 
-### `fossa build`
-
-Makes a best-effort attempt at building the project using default build conventions.
-
-#### Example
-```bash
-# No API key is required for builds
-fossa build
-```
-
-| Flag       | Short | Description                                                                   |
-| ---------- | ----- | ----------------------------------------------------------------------------- |
-| `--config` | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.      |
-| `--force`  | `-f`  | Clear cached build artifacts (`node_modules`) and run the build from scratch. |
-| `--debug`  |       | Print debugging information to stderr.                                        |
-| `--help`   | `-h`  | Print a help message.                                                         |
-
->**WARNING:** `--force` will delete all cached build artifacts! This command is not recommended unless you intend to use FOSSA to build your production binary. If you build your production binary ahead of time, you should NOT delete your build artifacts. Deleting build artifacts and re-running the build may cause build systems to non-deterministically resolve a different set of dependencies, which will make your FOSSA analysis less accurate.

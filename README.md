@@ -27,39 +27,39 @@
 
 ## Background
 
-`fossa` analyzes complex codebases to generate dependency reports and license notices. It can generate fast and highly-accurate results, by leveraging existing build environments. Refer to the [FOSSA CLI User Manual](docs/Readme.md) for in depth information about using this tool.
+`fossa` analyzes complex codebases to generate dependency reports and license notices. It can generate fast and highly-accurate results, by leveraging existing build environments. Refer to the [FOSSA CLI User Manual](docs/README.md#fossa-cli-documentation) for in depth information about using this tool.
 
 **Features:**
 
-- Supports [over 20+ languages & environments](docs/how-it-works.md) (JavaScript, Java, Ruby, Python, Golang, PHP, .NET, etc...)
-- Auto-configures for monoliths; instantly handles multiple builds in large codebases
-- Fast & portable; a cross-platform binary you can drop into CI or dev machines
-- Generates offline documentation for license notices & third-party attributions
-- Tests dependencies against license violations, audits and vulnerabilities (coming soon!) by integrating with https://fossa.io
+- Supports over 20+ languages & environments (JavaScript, Java, Ruby, Python, Golang, PHP, .NET, etc...)
+- Auto-configures for monoliths; instantly handles multiple builds in large codebases.
+- Fast & portable; a cross-platform binary you can drop into CI or dev machines.
+- Generates offline documentation for license notices & third-party attributions.
+- Tests dependencies against license violations, audits and vulnerabilities (coming soon!) by integrating with https://fossa.io.
 
 ### Supported Environments
-| Environment                           | Package Managers                                                                                            |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Android                               | [Gradle](docs/integrations/gradle.md)                                                                       |
-| [Debian](docs/integration/debian.md)  | Dpkg                                                                                                        |
-| [Golang](docs/integrations/golang.md) | Dep, Gomodules, Vndr, GDM, Glide, Godep, Govendor                                                           |
-| Groovy                                | [Gradle](docs/integrations/gradle.md)                                                                       |
-| Java                                  | [Gradle](docs/integrations/gradle.md), [Maven](docs/integrations/maven.md), [Ant](docs/integrations/ant.md) |
-| Javascript                            | [nodejs & npm](docs/integrations/nodejs.md)                                                                 |
-| Kotlin                                | [Gradle](docs/integrations/gradle.md)                                                                       |
-| Monorepo tooling                      | [okbuck](docs/integrations/okbuck.md), [Buck](docs/integrations/buck.md)                                    |
-| [.NET](docs/integrations/nuget.md)    | NuGet, Paket                                                                                                |
-| Objective-C                           | [Cocoapods](docs/integrations/cocoapods.md), [Carthage](docs/integrations/carthage.md)                      |
-| PHP                                   | [Composer](docs/integrations/composer.md)                                                                   |
-| [Python](docs/integrations/python.md) | Pip, Pipenv, requirements.txt                                                                               |
-| [Ruby](docs/integrations/ruby.md      | Bundler                                                                                                     |
-| Scala                                 | [SBT](docs/integrations/sbt.md)                                                                             |
-| Swift                                 | [Cocoapods](docs/integrations/cocoapods.md), [Carthage](docs/integrations/carthage.md)                      |
-| C, C++                                | [archive](docs/integrations/archive.md)                                                                     |
+| Environment                                  | Package Managers                                                                                                             |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Android                                      | [Gradle](docs/integrations/gradle.md#gradle)                                                                                 |
+| [Debian](docs/integrations/debian.md#debian)  | Dpkg                                                                                                                         |
+| [Golang](docs/integrations/golang.md#go)     | Dep, Gomodules, Vndr, GDM, Glide, Godep, Govendor                                                                            |
+| Groovy                                       | [Gradle](docs/integrations/gradle.md#gradle)                                                                                 |
+| Java                                         | [Gradle](docs/integrations/gradle.md#gradle), [Maven](docs/integrations/maven.md#maven), [Ant](docs/integrations/ant.md#ant--ivy) |
+| Javascript                                   | [nodejs & npm](docs/integrations/nodejs.md#nodejs)                                                                          |
+| Kotlin                                       | [Gradle](docs/integrations/gradle.md#gradle)                                                                                 |
+| Monorepo tooling                             | [okbuck](docs/integrations/okbuck.md#okbuck), [Buck](docs/integrations/buck.md#buck)                                         |
+| [.NET](docs/integrations/nuget.md#nuget-net)     | NuGet, Paket                                                                                                                 |
+| Objective-C                                  | [Cocoapods](docs/integrations/cocoapods.md#cocoapods), [Carthage](docs/integrations/carthage.md#carthage)                    |
+| PHP                                          | [Composer](docs/integrations/composer.md#composer)                                                                           |
+| [Python](docs/integrations/python.md#python) | Pip, Pipenv, requirements.txt                                                                                                |
+| [Ruby](docs/integrations/ruby.md#ruby)       | Bundler                                                                                                                      |
+| Scala                                        | [SBT](docs/integrations/sbt.md#sbt)                                                                                          |
+| Swift                                        | [Cocoapods](docs/integrations/cocoapods.md#cocoapods), [Carthage](docs/integrations/carthage.md#carthage)                    |
+| C, C++                                       | [Archive Uploader](docs/integrations/archive.md#archive)                                                                              |
 
-If your development environment is not supported, check out the [archive](docs/integrations/archive.md) uploader which allows direct license scanning of source code files.
+If your development environment is not supported, check out the [archive](docs/integrations/archive.md#archive) uploader which allows direct license scanning of source code files.
 
-[Click here to learn more](docs/user-guide.md) about the technical details behind this project.
+[Click here to learn more](docs/user-guide.md#user-guide) about the technical details behind this project.
 
 ## Installation
 
@@ -68,17 +68,17 @@ Install on **MacOS (Darwin) or Linux amd64** using `curl`:
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
 ```
 
-Install on **Windows** by downloading from [GitHub Releases](releases/).
+Install on **Windows** by downloading from [GitHub Releases](https://github.com/fossas/fossa-cli/releases).
 
-These commands will execute scripts to fetch and install the latest [Github Release](releases/).
+These commands will execute scripts to fetch and install the latest [GitHub Releases](https://github.com/fossas/fossa-cli/releases).
 
 ## Quick Start
 
-A more in depth look at the FOSSA CLI is available in the [manual page](docs/README.md#FOSSA-CLI-Documentation).
+A more in depth look at the FOSSA CLI is available in the [manual](docs/README.md#FOSSA-CLI-Documentation).
 
 Run `fossa -o` in your project directory to output a sample dependency report in JSON:
 
-> Note: Running `fossa` is equivalent to running `fossa init` followed by `fossa analyze`.
+> Note: Running [`fossa`](user-guide.md/#fossa) is equivalent to running [`fossa init`](docs/user-guide.md#fossa-init) followed by [`fossa analyze`](docs/user-guide.md#fossa-analyze).
 ```json
 [
   {
@@ -102,7 +102,7 @@ Run `fossa -o` in your project directory to output a sample dependency report in
 ]
 ```
 
-Next, Run `fossa` and provide a [FOSSA API Key](https://docs.fossa.io/docs/api-reference) to get a rich, hosted report on [fossa.com](fossa.com):
+Next, Run `fossa` and provide a [FOSSA API Key](https://docs.fossa.io/docs/api-reference) to get a rich, hosted report on [fossa.com](https://fossa.com):
 
 ```bash
 export FOSSA_API_KEY="YOUR_API_KEY_HERE"
@@ -123,7 +123,7 @@ fossa
 fossa init # writes to `.fossa.yml`
 ```
 
-This will initialize a `.fossa.yml` file that looks like this:
+This will initialize a [`.fossa.yml`](docs/config-file.md#fossayml) file that looks like this:
 
 ```yaml
 version: 1
@@ -139,9 +139,9 @@ analyze:
       path: ./cmd/fossa
 ```
 
-Check out the [User Guide](docs/user-guide.md) to learn about editing this file.
+Check out the [User Guide](docs/user-guide.md#user-guide) to learn about editing this file.
 
-After configuration, you can now preview and upload new results:
+After [configuration](docs/user-guide.md#1-configuring-a-project), you can now [analyze](docs/user-guide.md#2-analyzing-a-project) the project and upload new results:
 
 ```bash
 # Run FOSSA analysis and preview the results to be uploaded.
@@ -155,7 +155,7 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa analyze
 ## Integrating with CI
 
 ### Testing for License Violations
-If you've integrated with https://fossa.io, you can use `fossa test` to fail builds against your FOSSA scan status.
+If you've integrated with https://fossa.io, you can use [`fossa test`](docs/user-guide.md#fossa-test) to fail builds against your [FOSSA scan status](https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli/refs/branch/master/5e225327846320e9dfb8bf12673afa2eb4144fb4/preview).
 
 ```bash
 # Exit with a failing status and dump an issue report to stderr
@@ -184,8 +184,8 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa test
 
 ### Generating License Notices
 
-To generate a license notice with each CI build, you can use the `fossa report` command:
-
+You are able to generate a license notice with each CI build using the [`fossa report`](docs/user-guide.md#fossa-report) command:
+  
 ```bash
 # write a license notice to NOTICE.txt
 fossa report --type licenses > NOTICE.txt
@@ -193,7 +193,7 @@ fossa report --type licenses > NOTICE.txt
 
 [See this repo's NOTICE file](NOTICE) for an example.
 
-License data is provided by [https://fossa.io](https://fossa.io)'s 500GB open source registry.
+License data is provided by [https://fossa.io](https://fossa.com)'s 500GB open source registry.
 
 ## Development
 
