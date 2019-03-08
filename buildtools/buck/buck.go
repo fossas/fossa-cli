@@ -1,9 +1,11 @@
 package buck
 
 import (
+	"fmt"
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/apex/log"
 	"github.com/remeh/sizedwaitgroup"
@@ -64,9 +66,15 @@ func (b Setup) Deps(upload bool) (graph.Deps, error) {
 
 func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, error) {
 	locatorMap := make(map[string]fossa.Locator)
-	depList, err := cmdAudit(b.Cmd, "input", b.Target)
-	if err != nil {
-		return locatorMap, err
+	depList := AuditOutput{}
+	var err error
+	if true {
+		depList, err = allSubprojectDeps(b)
+	} else {
+		depList, err = cmdAudit(b.Cmd, "input", b.Target)
+		if err != nil {
+			return locatorMap, err
+		}
 	}
 
 	rootDir, err := b.Cmd("root")
@@ -97,6 +105,41 @@ func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, error) {
 	return locatorMap, nil
 }
 
+func allSubprojectDeps(b Setup) (AuditOutput, error) {
+	allInputs := AuditOutput{}
+
+	out, err := Cmd("targets", b.Target)
+	if err != nil {
+		return allInputs, err
+	}
+
+	targets := strings.Split(out, "\n")
+	for _, target := range targets {
+		if len(target) > 0 {
+		}
+	}
+	start := time.Now()
+
+	// wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
+	wg := sync.WaitGroup{}
+	for _, target := range targets {
+		fmt.Println("One More")
+		wg.Add(1)
+		go func(targ string) {
+			defer wg.Done()
+			inputs, err := cmdAudit(b.Cmd, "input", targ)
+			fmt.Println(inputs)
+			if err != nil {
+				log.Warnf("Cannot retrieve inputs for %v: %s", targ, err)
+			}
+		}(target)
+	}
+	wg.Wait()
+	fmt.Println(time.Since(start))
+
+	return allInputs, err
+}
+
 func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Package, error) {
 	transitiveDeps := make(map[pkg.ID]pkg.Package)
 	depList, err := cmdAudit(b.Cmd, "dependencies", b.Target, "--transitive")
@@ -109,9 +152,10 @@ func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Pack
 		wg.Add()
 		go func(dep string) {
 			defer wg.Done()
+			fmt.Println(dep)
 			transDeps, err := cmdAudit(b.Cmd, "dependencies", dep)
 			if err != nil {
-				log.Warnf("Cannot retrieve depenedency list for %v: %s", dep, err)
+				log.Warnf("Cannot retrieve dependency list for %v: %s", dep, err)
 			}
 
 			var imports []pkg.Import
