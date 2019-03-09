@@ -5,7 +5,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/apex/log"
 	"github.com/remeh/sizedwaitgroup"
@@ -70,6 +69,9 @@ func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, error) {
 	var err error
 	if true {
 		depList, err = allSubprojectDeps(b)
+		if err != nil {
+			return locatorMap, err
+		}
 	} else {
 		depList, err = cmdAudit(b.Cmd, "input", b.Target)
 		if err != nil {
@@ -91,6 +93,7 @@ func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, error) {
 		go func(dep string, files []string) {
 			defer wg.Done()
 			locator, err := fossa.UploadTarballDependencyFiles(rootDir, files, sanitizeBuckTarget(dep), upload)
+			fmt.Println(dep, sanitizeBuckTarget(dep))
 			if err != nil {
 				log.Warnf("Cannot upload files for %v: %s", dep, err)
 			}
@@ -105,61 +108,70 @@ func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, error) {
 	return locatorMap, nil
 }
 
+// allSubprojectDeps takes a target such as //third-party/... and determines
+// the full list of dependencies specified by its targets.
 func allSubprojectDeps(b Setup) (AuditOutput, error) {
-	allInputs := AuditOutput{}
+	allInputs := AuditOutput{OutputMapping: make(map[string][]string)}
 
-	out, err := Cmd("targets", b.Target)
+	targets, err := cmdTargets(b.Cmd, b.Target)
 	if err != nil {
 		return allInputs, err
 	}
-
-	targets := strings.Split(out, "\n")
-	for _, target := range targets {
-		if len(target) > 0 {
-		}
-	}
-	start := time.Now()
-	inputLists := make(chan AuditOutput, len(targets))
+	targetInputLists := make(chan AuditOutput, len(targets))
 	wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
 	for _, target := range targets {
-		fmt.Println("One More")
 		wg.Add()
-		go func(targ string) {
+		go func(t string) {
 			defer wg.Done()
-			inputs, err := cmdAudit(b.Cmd, "input", targ)
-			inputLists <- inputs
-			fmt.Println(inputs)
+			inputList, err := cmdAudit(b.Cmd, "input", t)
+			targetInputLists <- inputList
 			if err != nil {
-				log.Warnf("Cannot retrieve inputs for %v: %s", targ, err)
+				log.Warnf("Cannot retrieve inputs for %v: %s", t, err)
 			}
 		}(target)
 	}
 	wg.Wait()
 
-	close(inputLists)
-	for targe := range inputLists {
-		fmt.Println("this works?", targe)
-		fmt.Println(len(targets), len(inputLists))
+	close(targetInputLists)
+	for targetInputList := range targetInputLists {
+		for name, values := range targetInputList.OutputMapping {
+			_, present := allInputs.OutputMapping[name]
+			if !present {
+				allInputs.OutputMapping[name] = values
+			}
+		}
 	}
-
-	fmt.Println(time.Since(start))
 
 	return allInputs, err
 }
 
 func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Package, error) {
 	transitiveDeps := make(map[pkg.ID]pkg.Package)
-	depList, err := cmdAudit(b.Cmd, "dependencies", b.Target, "--transitive")
-	if err != nil {
-		return transitiveDeps, err
+
+	allDependencies := []string{}
+	if true {
+		// We do not need to check for the transitive graph because we assume the given
+		// target returns all build rules underneath it, flattening the dependency graph.
+		var err error
+		allDependencies, err = cmdTargets(b.Cmd, b.Target)
+		if err != nil {
+			return transitiveDeps, err
+		}
+	} else {
+		depList, err := cmdAudit(b.Cmd, "dependencies", b.Target, "--transitive")
+		if err != nil {
+			return transitiveDeps, err
+		}
+		allDependencies = depList.OutputMapping[b.Target]
 	}
+
 	mapLock := sync.RWMutex{}
 	wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
-	for _, d := range depList.OutputMapping[b.Target] {
+	for _, d := range allDependencies {
+		fmt.Println(d)
 		wg.Add()
 		go func(dep string) {
 			defer wg.Done()
-			fmt.Println(dep)
 			transDeps, err := cmdAudit(b.Cmd, "dependencies", dep)
 			if err != nil {
 				log.Warnf("Cannot retrieve dependency list for %v: %s", dep, err)
@@ -167,6 +179,7 @@ func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Pack
 
 			var imports []pkg.Import
 			for _, transDep := range transDeps.OutputMapping[dep] {
+				fmt.Println(transDep, pkg.Raw, locatorMap[transDep].Project, locatorMap[transDep].Revision)
 				imports = append(imports, pkg.Import{
 					Target: transDep,
 					Resolved: pkg.ID{
@@ -197,12 +210,21 @@ func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Pack
 
 func directDeps(b Setup, locatorMap map[string]fossa.Locator) ([]pkg.Import, error) {
 	imports := []pkg.Import{}
-	deps, err := cmdAudit(b.Cmd, "dependencies", b.Target)
-	if err != nil {
-		return imports, err
+	directDeps := []string{}
+	if true {
+		var err error
+		directDeps, err = cmdTargets(b.Cmd, b.Target)
+		if err != nil {
+			return imports, err
+		}
+	} else {
+		deps, err := cmdAudit(b.Cmd, "dependencies", b.Target)
+		if err != nil {
+			return imports, err
+		}
+		directDeps = deps.OutputMapping[b.Target]
 	}
-
-	for _, dep := range deps.OutputMapping[b.Target] {
+	for _, dep := range directDeps {
 		imports = append(imports, pkg.Import{
 			Target: dep,
 			Resolved: pkg.ID{
