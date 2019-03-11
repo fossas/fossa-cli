@@ -45,7 +45,7 @@ func Run(ctx *cli.Context) error {
 		log.Fatal("No modules specified.")
 	}
 
-	analyzed, err := Do(modules)
+	analyzed, err := Do(modules, !ctx.Bool(ShowOutput))
 	if err != nil {
 		log.Fatalf("Could not analyze modules: %s", err.Error())
 		return err
@@ -78,7 +78,7 @@ func Run(ctx *cli.Context) error {
 	return uploadAnalysis(normalized)
 }
 
-func Do(modules []module.Module) (analyzed []module.Module, err error) {
+func Do(modules []module.Module, upload bool) (analyzed []module.Module, err error) {
 	defer display.ClearProgress()
 	for i, m := range modules {
 		display.InProgress(fmt.Sprintf("Analyzing module (%d/%d): %s", i+1, len(modules), m.Name))
@@ -88,7 +88,7 @@ func Do(modules []module.Module) (analyzed []module.Module, err error) {
 		// TODO: maybe this should target a third-party folder, rather than a single
 		// folder? Maybe "third-party folder" should be a separate module type?
 		if m.Type == pkg.Raw {
-			locator, err := fossa.UploadTarballProject(m.BuildTarget)
+			locator, err := fossa.UploadTarballDependency(m.BuildTarget, upload)
 			if err != nil {
 				log.Warnf("Could not upload raw module: %s", err.Error())
 			}
