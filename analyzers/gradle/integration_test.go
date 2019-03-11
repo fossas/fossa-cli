@@ -3,8 +3,8 @@ package gradle_test
 import (
 	"path/filepath"
 	"testing"
-	"time"
 
+	"github.com/apex/log"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/testing/fixtures"
@@ -26,12 +26,16 @@ func TestGradleIntegration(t *testing.T) {
 	}
 
 	fixtures.Initialize(fixtureDir, []fixtures.Project{project}, func(p fixtures.Project, dir string) error {
+
+		_, stderr, err := runfossa.Init(dir)
+		if err != nil {
+			log.Error("failed to run fossa init on " + p.Name)
+			log.Error(stderr)
+			return err
+		}
+
 		return nil
 	})
-	time.Sleep(20000 * time.Millisecond)
-	dir := filepath.Join(fixtureDir, project.Name)
-	_, _, err := runfossa.Init(dir)
-	assert.NoError(t, err)
 
 	targets := []string{
 		"gradle:grpc-netty",
