@@ -41,6 +41,7 @@ func TestGradleIntegration(t *testing.T) {
 		"gradle:grpc-netty",
 	}
 
+	dir := filepath.Join(fixtureDir, project.Name)
 	for _, target := range targets {
 		output, err := runfossa.AnalyzeOutput(dir, []string{target})
 		assert.NoError(t, err)
