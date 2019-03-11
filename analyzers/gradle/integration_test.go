@@ -3,6 +3,7 @@ package gradle_test
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -27,7 +28,7 @@ func TestGradleIntegration(t *testing.T) {
 	fixtures.Initialize(fixtureDir, []fixtures.Project{project}, func(p fixtures.Project, dir string) error {
 		return nil
 	})
-
+	time.Sleep(20000 * time.Millisecond)
 	dir := filepath.Join(fixtureDir, project.Name)
 	_, _, err := runfossa.Init(dir)
 	assert.NoError(t, err)
