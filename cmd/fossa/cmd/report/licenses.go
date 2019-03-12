@@ -49,13 +49,12 @@ func licensesRun(ctx *cli.Context) (err error) {
 	defer display.ClearProgress()
 	display.InProgress(fmt.Sprint("Fetching License Information"))
 
-	revs := make([]fossa.Revision, 0)
 	locator := fossa.Locator{
 		Fetcher:  config.Fetcher(),
 		Project:  config.Project(),
 		Revision: config.Revision(),
 	}
-	revs, err = fossa.GetRevisionDependencies(locator)
+	revs, err := fossa.GetRevisionDependencies(locator)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to find licenses for project %s:", locator)
 	}
