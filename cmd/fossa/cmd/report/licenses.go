@@ -68,8 +68,8 @@ func licensesRun(ctx *cli.Context) (err error) {
 		return nil
 	}
 
-	// Dependencies can have multiple matches to the same license. Dependencies
-	// can be listed multiple times if the duplicates are not checked.
+	// Dependencies can have duplicate license matches which must be checked
+	// otherwise a dependency can appear multiple times under a single license.
 	revisionsByLicense := make(map[string][]fossa.Revision)
 	for _, rev := range revs {
 		foundLicenses := make(map[string]bool)
