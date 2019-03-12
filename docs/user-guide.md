@@ -148,16 +148,16 @@ Combination of [`fossa init`](#fossa-init) and [`fossa analyze`](#fossa-analyze)
 FOSSA_API_KEY=YOUR_API_KEY fossa
 ```
   
-| Flag         | Short | Description                                                                 |
-| ------------ | ----- | --------------------------------------------------------------------------- |
-| `--config`   | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.    |
-| `--project`  | `-p`  | Configuration value for [project](/docs/config-file.md/#project-optional)   |
-| `--revision` | `-r`  | Configuration value for [revision](/docs/config-file.md/#revision-optional) |
-| `--endpoint` | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional) |
-| `--output`   | `-o`  | Output `fossa analyze` results to stdout.                                   |
-| `--debug`    |       | Print debugging information to stderr.                                      |
-| `--version ` | `-v`  | Print the currently installed FOSSA CLI version.                            |
-| `--help`     | `-h`  | Print a help message.                                                       |
+| Flag         | Short | Description                                                                  |
+| ------------ | ----- | ---------------------------------------------------------------------------- |
+| `--config`   | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.     |
+| `--project`  | `-p`  | Configuration value for [project](/docs/config-file.md/#project-optional).   |
+| `--revision` | `-r`  | Configuration value for [revision](/docs/config-file.md/#revision-optional). |
+| `--endpoint` | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional). |
+| `--output`   | `-o`  | Output `fossa analyze` results to stdout.                                    |
+| `--debug`    |       | Print debugging information to stderr.                                       |
+| `--version ` | `-v`  | Print the currently installed FOSSA CLI version.                             |
+| `--help`     | `-h`  | Print a help message.                                                        |
 
 ### `fossa init`
 
@@ -193,15 +193,15 @@ Analyzes the project for a list of its dependencies, optionally uploading the re
 FOSSA_API_KEY=YOUR_API_KEY fossa analyze
 ```
 
-| Flag         | Short | Description                                                                 |
-| ------------ | ----- | --------------------------------------------------------------------------- |
-| `--config`   | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.    |
-| `--project`  | `-p`  | Configuration value for [project](/docs/config-file.md/#project-optional)   |
-| `--revision` | `-r`  | Configuration value for [revision](/docs/config-file.md/#revision-optional) |
-| `--endpoint` | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional) |
-| `--output`   | `-o`  | Output `fossa analyze` results to stdout.                                   |
-| `--debug`    |       | Print debugging information to stderr.                                      |
-| `--help`     | `-h`  | Print a help message.                                                       |
+| Flag         | Short | Description                                                                  |
+| ------------ | ----- | ---------------------------------------------------------------------------- |
+| `--config`   | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.     |
+| `--project`  | `-p`  | Configuration value for [project](/docs/config-file.md/#project-optional).   |
+| `--revision` | `-r`  | Configuration value for [revision](/docs/config-file.md/#revision-optional). |
+| `--endpoint` | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional). |
+| `--output`   | `-o`  | Output `fossa analyze` results to stdout.                                    |
+| `--debug`    |       | Print debugging information to stderr.                                       |
+| `--help`     | `-h`  | Print a help message.                                                        |
 
 ### `fossa test`
 Checks whether the project has licensing issues, as configured by its policy within FOSSA. If there are issues, it prints them on `stdout` and exits with code 1. If there are not issues, it exits with code 0. Fossa test can be used to fail a CI pipeline job.
@@ -214,15 +214,16 @@ Checks whether the project has licensing issues, as configured by its policy wit
 FOSSA_API_KEY=YOUR_API_KEY_HERE fossa test --timeout 600
 ```
 
-| flag         | short | description                                                                      |
-| ------------ | ----- | -------------------------------------------------------------------------------- |
-| `--config`   | `-c`  | path to a [configuration file](/docs/config-file.md) including filename.         |
-| `--project`  | `-p`  | configuration value for [project](/docs/config-file.md/#project-optional)        |
-| `--revision` | `-r`  | configuration value for [revision](/docs/config-file.md/#revision-optional)      |
-| `--endpoint` | `-e`  | configuration value for [endpoint](/docs/config-file.md/#endpoint-optional)      |
-| `--timeout`  | `-t`  | The amount of seconds to wait for an issue scan to complete. Default: 10 minutes |
-| `--debug`    |       | print debugging information to stderr.                                           |
-| `--help`     | `-h`  | print a help message.                                                            |
+| flag                | short | description                                                                       |
+| ------------------- | ----- | --------------------------------------------------------------------------------- |
+| `--config`          | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.          |
+| `--project`         | `-p`  | Configuration value for [project](/docs/config-file.md/#project-optional).        |
+| `--revision`        | `-r`  | Configuration value for [revision](/docs/config-file.md/#revision-optional).      |
+| `--endpoint`        | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional).      |
+| `--timeout`         | `-t`  | The amount of seconds to wait for an issue scan to complete. Default: 10 minutes. |
+| `--debug`           |       | Print debugging information to stderr.                                            |
+| `--help`            | `-h`  | Print a help message.                                                             |
+| `--suppress-issues` |       | Don't exit on stderr if issues are found.                                         |
 
 ### `fossa upload`
 
@@ -238,13 +239,13 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --project=PROJECT_NAME --revision=S
 
 | flag         | short | description                                                                                   |
 | ------------ | ----- | --------------------------------------------------------------------------------------------- |
-| `--config`   | `-c`  | path to a [configuration file](/docs/config-file.md) including filename.                      |
-| `--project`  | `-p`  | configuration value for [project](/docs/config-file.md/#project-optional)                     |
-| `--revision` | `-r`  | configuration value for [revision](/docs/config-file.md/#revision-optional)                   |
-| `--endpoint` | `-e`  | configuration value for [endpoint](/docs/config-file.md/#endpoint-optional)                   |
-| `--data`     |       | user provided build data. see [custom builds](#uploading-custom-builds) for more information. |
-| `--debug`    |       | print debugging information to stderr.                                                        |
-| `--help`     | `-h`  | print a help message.                                                                         |
+| `--config`   | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.                      |
+| `--project`  | `-p`  | Configuration value for [project](/docs/config-file.md/#project-optional).                    |
+| `--revision` | `-r`  | Configuration value for [revision](/docs/config-file.md/#revision-optional).                  |
+| `--endpoint` | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional).                  |
+| `--data`     |       | User provided build data. see [custom builds](#uploading-custom-builds) for more information. |
+| `--debug`    |       | Print debugging information to stderr.                                                        |
+| `--help`     | `-h`  | Print a help message.                                                                         |
 
 ### `fossa report`
 
@@ -265,6 +266,6 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa report licenses --json
 | flag      | short | description                                  |
 | --------- | ----- | -------------------------------------------- |
 | `--json`  | `-j`  | Print the report information in JSON format. |
-| `--debug` |       | print debugging information to stderr.       |
-| `--help`  | `-h`  | print a help message.                        |
+| `--debug` |       | Print debugging information to stderr.       |
+| `--help`  | `-h`  | Print a help message.                        |
 
