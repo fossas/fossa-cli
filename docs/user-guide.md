@@ -248,14 +248,15 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --project=PROJECT_NAME --revision=S
 
 ### `fossa report`
 
-Report accesses the scanned report online from using the existing configuration file and outputs information directly to the command line. Report offers two different commands:
+Report accesses the scanned report on FOSSA.com using the existing configuration file and outputs information directly to the command line. Report offers two different commands:
+
 #### `fossa report licenses` 
-Outputs detailed information about the licenses used by the current project and which dependencies are using which licenses. An example of this can be found in the [Notice file](./Notice) for the FOSSA CLI.
+Outputs detailed information about the licenses and corresponding dependencies used by the project. An example of this can be found in the [Notice file](./Notice) for the FOSSA CLI.
 
 #### `fossa report dependencies`
 Outputs detailed information about the dependencies that are being used by the current project.
 
-> Note: Report always requires an API Key to be set. 
+> Note: `fossa report` requires an API Key to be set. 
 
 #### Example
 ```bash
@@ -264,7 +265,7 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa report licenses --json
 
 | flag      | short | description                                  |
 | --------- | ----- | -------------------------------------------- |
-| `--json`  | `-j`  | Print the report information in JSON format. |
-| `--debug` |       | print debugging information to stderr.       |
-| `--help`  | `-h`  | print a help message.                        |
+| `--json`  |       | Print the report information in JSON format. |
+| `--debug` |       | Print debugging information to stderr.       |
+| `--help`  | `-h`  | Print a help message.                        |
 
