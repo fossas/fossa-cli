@@ -19,6 +19,7 @@ import (
 )
 
 var Timeout = "timeout"
+var SuppressIssues = "suppress-issues"
 
 const pollRequestDelay = 8 * time.Second
 
@@ -28,6 +29,7 @@ var Cmd = cli.Command{
 	Action: Run,
 	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(([]cli.Flag{
 		cli.IntFlag{Name: Timeout, Value: 10 * 60, Usage: "duration to wait for build completion (in seconds)"},
+		cli.BoolFlag{Name: SuppressIssues, Usage: "don't exit on stderr if issues are found"},
 	}))),
 }
 
@@ -61,7 +63,9 @@ func Run(ctx *cli.Context) error {
 	}
 	fmt.Println(string(marshalled))
 
-	os.Exit(1)
+	if !ctx.Bool(SuppressIssues) {
+		os.Exit(1)
+	}
 	return nil
 }
 
