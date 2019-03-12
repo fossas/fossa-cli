@@ -3,6 +3,7 @@ package report
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"text/template"
 
 	"github.com/apex/log"
@@ -29,8 +30,6 @@ The following software have components provided under the terms of this license:
 {{- end}}
 {{end}}
 `
-
-const JSON = "json"
 
 var licensesCmd = cli.Command{
 	Name:  "licenses",
@@ -70,23 +69,27 @@ func licensesRun(ctx *cli.Context) (err error) {
 		return nil
 	}
 
-	depsByLicense := make(map[string]map[string]fossa.Revision)
+	// Dependencies can have multiple matches to the same license. Dependencies
+	// can be listed multiple times if the duplicates are not checked.
+	revisionsByLicense := make(map[string][]fossa.Revision)
 	for _, rev := range revs {
+		foundLicenses := make(map[string]bool)
 		for _, license := range rev.Licenses {
-			if _, ok := depsByLicense[license.LicenseID]; !ok {
-				depsByLicense[license.LicenseID] = make(map[string]fossa.Revision)
+			_, duplicate := foundLicenses[license.LicenseID]
+			if !duplicate {
+				foundLicenses[license.LicenseID] = true
+				revisionsByLicense[license.LicenseID] = append(revisionsByLicense[license.LicenseID], rev)
 			}
-			depsByLicense[license.LicenseID][rev.Locator.String()] = rev
+
 		}
 	}
 
-	if tmplFile := ctx.String(flags.Template); tmplFile != "" {
-		output, err := display.TemplateFile(tmplFile, depsByLicense)
-		fmt.Println(output)
-		if err != nil {
-			log.Fatalf("Could not parse template data: %s", err.Error())
-		}
-		return nil
+	// Sort the dependency lists alphabetically by Project Title.
+	for license, depList := range revisionsByLicense {
+		sort.Slice(depList[:], func(i, j int) bool {
+			return depList[i].Project.Title < depList[j].Project.Title
+		})
+		revisionsByLicense[license] = depList
 	}
 
 	tmpl, err := template.New("base").Parse(defaultLicenseReportTemplate)
@@ -94,7 +97,7 @@ func licensesRun(ctx *cli.Context) (err error) {
 		log.Fatalf("Could not parse template data: %s", err.Error())
 	}
 
-	output, err := display.Template(tmpl, depsByLicense)
+	output, err := display.Template(tmpl, revisionsByLicense)
 	fmt.Println(output)
 	return nil
 }
