@@ -68,7 +68,10 @@ Install on **MacOS (Darwin) or Linux amd64** using `curl`:
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
 ```
 
-Install on **Windows** by downloading from [GitHub Releases](https://github.com/fossas/fossa-cli/releases).
+Install on **Windows** using powershell:
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install.ps1'))
+```
 
 These commands will execute scripts to fetch and install the latest [GitHub Releases](https://github.com/fossas/fossa-cli/releases).
 
