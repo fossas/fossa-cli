@@ -137,10 +137,10 @@ func (g *Gradle) Run(taskArgs ...string) (string, error) {
 
 func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency, error) {
 	r := regexp.MustCompile("^([ `+\\\\|-]+)([^ `+\\\\|-].+)$")
-
+	splitReg := regexp.MustCompile("\r?\n")
 	// Skip non-dependency lines.
 	var filteredLines []string
-	for _, line := range strings.Split(stdout, "\n") {
+	for _, line := range splitReg.Split(stdout, -1) {
 		if r.MatchString(line) {
 			filteredLines = append(filteredLines, line)
 		}

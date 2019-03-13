@@ -58,7 +58,7 @@ func New(m module.Module) (*Analyzer, error) {
 	}
 
 	if analyzer.GradleCmd == "" {
-		gradle, _, err := exec.Which("-v", os.Getenv("FOSSA_GRADLE_CMD"), "./gradlew", "gradle")
+		gradle, _, err := exec.Which("-v", os.Getenv("FOSSA_GRADLE_CMD"), "./gradlew", "./gradlew.bat" "gradle")
 		if err != nil {
 			log.Warnf("Could not find Gradle: %s", err.Error())
 		}
