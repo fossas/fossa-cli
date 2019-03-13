@@ -59,15 +59,18 @@ func FromFile(filename string) ([]Requirement, error) {
 
 	var reqs []Requirement
 	for _, line := range strings.Split(string(contents), "\n") {
-		trimmed := strings.TrimSpace(line)
+		// Remove all line comments and whitespace.
+		commentSplit := strings.Split(line, "#")
+		trimmed := strings.TrimSpace(commentSplit[0])
 		if strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, "-") || trimmed == "" {
 			continue
 		}
+
 		log.WithField("line", line).Debug("parsing line")
 		// See https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format
 		// and https://pip.pypa.io/en/stable/reference/pip_install/#pip-install-examples
 		matched := false
-		operators := []string{"<=", ">=", "==", ">", "<", "!="}
+		operators := []string{"===", "<=", ">=", "==", ">", "<", "!=", "~="}
 		for _, op := range operators {
 			sections := strings.Split(trimmed, op)
 			if len(sections) == 2 {
