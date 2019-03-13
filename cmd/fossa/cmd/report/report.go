@@ -10,6 +10,8 @@ import (
 	"github.com/fossas/fossa-cli/module"
 )
 
+const JSON = "json"
+
 var Cmd = cli.Command{
 	Name:  "report",
 	Usage: "Generate reports",
