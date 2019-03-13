@@ -25,11 +25,16 @@ var depFour = gradle.Dependency{Name: "dep:four", Resolved: "4.0", Target: "4.0"
 var depFive = gradle.Dependency{Name: "dep:five", Resolved: "5.0", Target: "5.0", IsProject: false}
 
 func TestParseDependencyTree(t *testing.T) {
-	files := []string{"testdata/unix", "testdata/dos"}
-	for _, file := range files {
-		dat, err := ioutil.ReadFile(file)
+	dos := "testdata/dos"
+	unix := "testdata/unix"
+	for _, file := range []string{unix, dos} {
+		data, err := ioutil.ReadFile(file)
 		assert.NoError(t, err)
-		direct, transitive, err := gradle.ParseDependencies(string(dat))
+		if file == dos {
+			assertDosFile(t, data)
+		}
+
+		direct, transitive, err := gradle.ParseDependencies(string(data))
 		assert.NoError(t, err)
 
 		assert.Equal(t, 3, len(direct))
@@ -47,5 +52,17 @@ func TestParseDependencyTree(t *testing.T) {
 		assert.Contains(t, transitive[depThree], depFour)
 		assert.Contains(t, transitive, depFour)
 		assert.Contains(t, transitive, depFive)
+	}
+}
+
+func assertDosFile(t *testing.T, file []byte) {
+	fixture := string(file)
+	for i := range fixture {
+		if i == 0 {
+			continue
+		}
+		if fixture[i] == '\n' {
+			assert.Equal(t, uint8('\r'), fixture[i-1])
+		}
 	}
 }
