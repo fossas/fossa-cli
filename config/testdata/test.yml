@@ -1,6 +1,6 @@
 version: 1
 cli:
-  server: https://app.fossa.io
+  server: https://app.fossa.com
   fetcher: custom
   project: test-project
 analyze:

@@ -7,7 +7,7 @@ The fossa configuration file can be created manually by running `fossa init` whi
 version: 1
 
 cli:
-* server: https://app.fossa.io
+* server: https://app.fossa.com
 * fetcher: custom
 * project: fossa-cli
 * api_key: some-key-here
@@ -28,9 +28,9 @@ analyze:
 It is important to mention that the fossa configuration file will often times have multiple modules such as below:
 
 ```yaml
-version: 1
+version: 2
 cli:
-  server: https://app.fossa.io
+  server: https://app.fossa.com
   fetcher: custom
   project: gradle-test
 analyze:
@@ -59,7 +59,7 @@ Specifies the current fossa configuration file version being used. Version 1 is 
 #### `server:` (Optional)
 Sets the endpoint that the cli will send requests to. This field should only be modified when running a local on-premise instance of `fossa.com`.
 
-Default: `https://app.fossa.io`
+Default: `https://app.fossa.com`
 
 #### `fetcher:` (Optional)
 Describes the type of project fossa is uploading, there are two options:

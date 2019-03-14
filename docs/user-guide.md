@@ -14,7 +14,7 @@ A configuration file is created by running [`fossa init`](#fossa-init) at the ro
 version: 1
 
 cli:
-  server: https://app.fossa.io
+  server: https://app.fossa.com
   fetcher: custom
   project: git+github.com/fossas/fossa-cli
 analyze:
@@ -50,7 +50,7 @@ Modules can be provided by including an argument such as `fossa analyze <module_
 Analysis can vary greatly depending on which environment you are in. Refer to the individual [supported environments](../README.md/#supported-environments) pages for more information and available options.
 
 ## Upload Custom Builds
-If your build is too complex or your build system is heavily customized, `fossa` may be unable to correctly analyze your build. In that case, you can still upload build information using [`fossa upload`](#fossa-upload) to fossa.io for build analysis and issue triage.
+If your build is too complex or your build system is heavily customized, `fossa` may be unable to correctly analyze your build. In that case, you can still upload build information using [`fossa upload`](#fossa-upload) to fossa.com for build analysis and issue triage.
 
 ### Data Format
 
