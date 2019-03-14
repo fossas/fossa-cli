@@ -4,7 +4,7 @@
 
 Gradle support in FOSSA CLI depends on the following tools existing in your environment:
 
-- Gradle (defaults to `gradle` or local `gradlew`, configure with `$GRADLE_BINARY`)
+- Gradle (defaults to the first successful command to run from the following list: `$FOSSA_GRADLE_CMD`, `gradlew`, `gradlew.bat`, `gradle`)
 
 ## Configuration
 
@@ -15,10 +15,10 @@ Gradle support in FOSSA CLI depends on the following tools existing in your envi
  1. Look for a root Gradle build (`build.gradle`).
  2. Run `gradle tasks --all` to find all available sub-modules that support a `:dependencies` command.
  3. If no valid tasks are found, list the root project, `:`, as a Build Target.
- 3. Filter out any suspicious-looking tasks (i.e. labeled `test` or `testCompile`).
- 4. Write tasks to configuration (`fossa.yml`).
+ 4. Filter out any suspicious-looking tasks (i.e. labeled `test` or `testCompile`).
+ 5. Write tasks to configuration (`fossa.yml`).
 
-If a gradle wrapper was provided in the same directory (`./gradlew`), `fossa` will use that over the local `gradle` binary.
+If a gradle wrapper was provided in the same directory (`./gradlew`, `./gradlew.bat`), `fossa` will use that over the local `gradle` binary.
 
 ### Manual
 

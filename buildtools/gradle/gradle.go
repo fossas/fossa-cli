@@ -83,7 +83,8 @@ func (g *Gradle) DependenciesTask(taskArgs ...string) (map[string]graph.Deps, er
 	// Divide output into configurations. Each configuration is separated by an
 	// empty line, started with a configuration name (and optional description),
 	// and has a dependency as its second line.
-	sections := strings.Split(stdout, "\n\n")
+	splitReg := regexp.MustCompile("\r?\n\r?\n")
+	sections := splitReg.Split(stdout, -1)
 	for _, section := range sections {
 		lines := strings.Split(section, "\n")
 		if len(lines) < 2 {
@@ -137,10 +138,10 @@ func (g *Gradle) Run(taskArgs ...string) (string, error) {
 
 func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency, error) {
 	r := regexp.MustCompile("^([ `+\\\\|-]+)([^ `+\\\\|-].+)$")
-
+	splitReg := regexp.MustCompile("\r?\n")
 	// Skip non-dependency lines.
 	var filteredLines []string
-	for _, line := range strings.Split(stdout, "\n") {
+	for _, line := range splitReg.Split(stdout, -1) {
 		if r.MatchString(line) {
 			filteredLines = append(filteredLines, line)
 		}

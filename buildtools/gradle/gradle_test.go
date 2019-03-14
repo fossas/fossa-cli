@@ -1,7 +1,6 @@
 package gradle_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"testing"
 
@@ -26,26 +25,44 @@ var depFour = gradle.Dependency{Name: "dep:four", Resolved: "4.0", Target: "4.0"
 var depFive = gradle.Dependency{Name: "dep:five", Resolved: "5.0", Target: "5.0", IsProject: false}
 
 func TestParseDependencyTree(t *testing.T) {
-	dat, err := ioutil.ReadFile("testdata/gradleDependencies")
-	assert.NoError(t, err)
-	direct, transitive, err := gradle.ParseDependencies(string(dat))
-	fmt.Println(direct)
-	fmt.Println(transitive)
-	assert.NoError(t, err)
+	dos := "testdata/dos"
+	unix := "testdata/unix"
+	for _, file := range []string{unix, dos} {
+		data, err := ioutil.ReadFile(file)
+		assert.NoError(t, err)
+		if file == dos {
+			assertDosFile(t, data)
+		}
 
-	assert.Equal(t, 3, len(direct))
-	assert.Contains(t, direct, depProject)
-	assert.Contains(t, direct, depOne)
-	assert.Contains(t, direct, depTwo)
+		direct, transitive, err := gradle.ParseDependencies(string(data))
+		assert.NoError(t, err)
 
-	assert.Equal(t, 6, len(transitive))
-	assert.Contains(t, transitive, depProject)
-	assert.Contains(t, transitive, depOne)
-	assert.Contains(t, transitive, depTwo)
-	assert.Contains(t, transitive[depTwo], depThree)
-	assert.Contains(t, transitive[depTwo], depFive)
-	assert.Contains(t, transitive, depThree)
-	assert.Contains(t, transitive[depThree], depFour)
-	assert.Contains(t, transitive, depFour)
-	assert.Contains(t, transitive, depFive)
+		assert.Equal(t, 3, len(direct))
+		assert.Contains(t, direct, depProject)
+		assert.Contains(t, direct, depOne)
+		assert.Contains(t, direct, depTwo)
+
+		assert.Equal(t, 6, len(transitive))
+		assert.Contains(t, transitive, depProject)
+		assert.Contains(t, transitive, depOne)
+		assert.Contains(t, transitive, depTwo)
+		assert.Contains(t, transitive[depTwo], depThree)
+		assert.Contains(t, transitive[depTwo], depFive)
+		assert.Contains(t, transitive, depThree)
+		assert.Contains(t, transitive[depThree], depFour)
+		assert.Contains(t, transitive, depFour)
+		assert.Contains(t, transitive, depFive)
+	}
+}
+
+func assertDosFile(t *testing.T, file []byte) {
+	fixture := string(file)
+	for i := range fixture {
+		if i == 0 {
+			continue
+		}
+		if fixture[i] == '\n' {
+			assert.Equal(t, uint8('\r'), fixture[i-1])
+		}
+	}
 }
