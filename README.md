@@ -63,14 +63,22 @@ If your development environment is not supported, check out the [archive](docs/i
 
 ## Installation
 
-Install on **MacOS (Darwin) or Linux amd64** using `curl`:
+The following commands will execute scripts to fetch and install the latest [GitHub Releases](https://github.com/fossas/fossa-cli/releases) on the corresponding operating system.
+
+### MacOS (Darwin) or Linux amd64:
 ```bash
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
 ```
 
-Install on **Windows** by downloading from [GitHub Releases](https://github.com/fossas/fossa-cli/releases).
+### Windows with Powershell:
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install.ps1'))
+```
 
-These commands will execute scripts to fetch and install the latest [GitHub Releases](https://github.com/fossas/fossa-cli/releases).
+Add `C:\ProgramData\fossa-cli` to your path by modifying your `profile.ps1` file or temporarily with the following command:
+```powershell
+$env:Path += ";C:\ProgramData\fossa-cli"
+``` 
 
 ## Quick Start
 
