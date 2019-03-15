@@ -115,8 +115,12 @@ func getInput(ctx *cli.Context, usingLocators bool) ([]fossa.SourceUnit, error) 
 		return []fossa.SourceUnit{sourceUnit}, nil
 	}
 
+	file, err := ioutil.ReadFile(raw)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not read file")
+	}
 	var out []fossa.SourceUnit
-	err := json.Unmarshal([]byte(raw), &out)
+	err = json.Unmarshal(file, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not parse build data")
 	}
