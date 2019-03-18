@@ -29,6 +29,7 @@ type Analyzer struct {
 
 	Module  module.Module
 	Options Options
+	Setup   gradle.GradleSetup
 }
 
 type Options struct {
@@ -55,6 +56,7 @@ func New(m module.Module) (*Analyzer, error) {
 		GradleCmd: options.Cmd,
 		Module:    m,
 		Options:   options,
+		Setup:     gradle.New("dir"),
 	}
 
 	if analyzer.GradleCmd == "" {
@@ -168,6 +170,7 @@ func parseModuleV1(a *Analyzer) (graph.Deps, error) {
 		Cmd:    a.GradleCmd,
 		Dir:    a.Module.Dir,
 		Online: a.Options.Online,
+		Setup:  a.Setup,
 	}
 
 	var project string
@@ -186,7 +189,7 @@ func parseModuleV1(a *Analyzer) (graph.Deps, error) {
 			return graph.Deps{}, err
 		}
 	} else if a.Options.Task != "" {
-		depsByConfig, err = g.DependenciesTask(strings.Split(a.Options.Task, " ")...)
+		depsByConfig, err = g.Setup.DependenciesTask(g.Cmd, strings.Split(a.Options.Task, " ")...)
 		if err != nil {
 			return graph.Deps{}, err
 		}
@@ -226,6 +229,7 @@ func parseModuleV2(a *Analyzer) (graph.Deps, error) {
 		Cmd:    a.GradleCmd,
 		Dir:    a.Module.Dir,
 		Online: a.Options.Online,
+		Setup:  a.Setup,
 	}
 
 	var project string
@@ -243,7 +247,7 @@ func parseModuleV2(a *Analyzer) (graph.Deps, error) {
 			return graph.Deps{}, err
 		}
 	} else if a.Options.Task != "" {
-		depsByConfig, err = g.DependenciesTask(strings.Split(a.Options.Task, " ")...)
+		depsByConfig, err = g.Setup.DependenciesTask(g.Cmd, strings.Split(a.Options.Task, " ")...)
 		if err != nil {
 			return graph.Deps{}, err
 		}

@@ -18,6 +18,7 @@ type Gradle struct {
 	Cmd    string
 	Dir    string
 	Online bool
+	Setup  GradleSetup
 }
 
 type Dependency struct {
@@ -25,6 +26,24 @@ type Dependency struct {
 	Target    string
 	Resolved  string
 	IsProject bool
+}
+
+type GradleSetup interface {
+	// MergeProjectsDependencies([]string) (map[string]graph.Deps, error)
+	// Dependencies(string) (map[string]graph.Deps, error)
+	DependenciesTask(string, ...string) (map[string]graph.Deps, error)
+}
+
+type Setup struct {
+	Target string
+	Cmd    func(string, ...string) (string, error)
+}
+
+func New(target string) GradleSetup {
+	return Setup{
+		Target: target,
+		Cmd:    GradleCmd,
+	}
 }
 
 // MergeProjectsDependecies creates a complete configuration to dep graph map by
@@ -69,11 +88,11 @@ func (g *Gradle) Dependencies(project string) (map[string]graph.Deps, error) {
 		args = append(args, "--offline")
 	}
 
-	return g.DependenciesTask(args...)
+	return g.Setup.DependenciesTask(g.Cmd, args...)
 }
 
-func (g *Gradle) DependenciesTask(taskArgs ...string) (map[string]graph.Deps, error) {
-	stdout, err := g.Run(taskArgs...)
+func (g Setup) DependenciesTask(command string, taskArgs ...string) (map[string]graph.Deps, error) {
+	stdout, err := g.Cmd(command, taskArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -261,4 +280,14 @@ func contains(array []pkg.Import, check pkg.Import) bool {
 		}
 	}
 	return false
+}
+func GradleCmd(command string, taskArgs ...string) (string, error) {
+	stdout, _, err := exec.Run(exec.Cmd{
+		Name: command,
+		Argv: taskArgs,
+	})
+	if err != nil {
+		return "", err
+	}
+	return stdout, nil
 }

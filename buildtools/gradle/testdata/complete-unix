@@ -1,0 +1,133 @@
+*** Skipping the build of codegen and compilation of proto files because skipCodegen=true
+
+> Task :grpc-netty:dependencies
+
+------------------------------------------------------------
+Project :grpc-netty - gRPC: Netty
+------------------------------------------------------------
+
+alpnagent
+\--- org.mortbay.jetty.alpn:jetty-alpn-agent:2.0.9
+
+archives - Configuration for archive artifacts.
+No dependencies
+
+compile - Dependencies for source set 'main' (deprecated, use 'implementation ' instead).
++--- project :grpc-core
+|    +--- project :grpc-context
+|    +--- com.google.code.gson:gson:2.7
+|    +--- com.google.errorprone:error_prone_annotations:2.2.0
+|    +--- com.google.code.findbugs:jsr305:3.0.2
+|    +--- org.codehaus.mojo:animal-sniffer-annotations:1.17
+|    +--- com.google.guava:guava:26.0-android
+|    |    +--- org.checkerframework:checker-compat-qual:2.5.2
+|    |    \--- com.google.j2objc:j2objc-annotations:1.1
+|    +--- io.opencensus:opencensus-api:0.19.2
+|    \--- io.opencensus:opencensus-contrib-grpc-metrics:0.19.2
+|         \--- io.opencensus:opencensus-api:0.19.2
++--- io.netty:netty-codec-http2:[4.1.32.Final] FAILED
+\--- io.netty:netty-handler-proxy:4.1.32.Final
+     +--- io.netty:netty-transport:4.1.32.Final
+     |    +--- io.netty:netty-buffer:4.1.32.Final
+     |    |    \--- io.netty:netty-common:4.1.32.Final
+     |    \--- io.netty:netty-resolver:4.1.32.Final
+     |         \--- io.netty:netty-common:4.1.32.Final
+     +--- io.netty:netty-codec-socks:4.1.32.Final
+     |    \--- io.netty:netty-codec:4.1.32.Final
+     |         \--- io.netty:netty-transport:4.1.32.Final (*)
+     \--- io.netty:netty-codec-http:4.1.32.Final
+          \--- io.netty:netty-codec:4.1.32.Final (*)
+
+runtime - Runtime dependencies for source set 'main' (deprecated, use 'runtimeOnly ' instead).
++--- project :grpc-core
+|    +--- project :grpc-context
+|    +--- com.google.code.gson:gson:2.7
+|    +--- com.google.errorprone:error_prone_annotations:2.2.0
+|    +--- com.google.code.findbugs:jsr305:3.0.2
+|    +--- org.codehaus.mojo:animal-sniffer-annotations:1.17
+|    +--- com.google.guava:guava:26.0-android
+|    |    +--- org.checkerframework:checker-compat-qual:2.5.2
+|    |    \--- com.google.j2objc:j2objc-annotations:1.1
+|    +--- io.opencensus:opencensus-api:0.19.2
+|    \--- io.opencensus:opencensus-contrib-grpc-metrics:0.19.2
+|         \--- io.opencensus:opencensus-api:0.19.2
++--- io.netty:netty-codec-http2:[4.1.32.Final] FAILED
+\--- io.netty:netty-handler-proxy:4.1.32.Final
+     +--- io.netty:netty-transport:4.1.32.Final
+     |    +--- io.netty:netty-buffer:4.1.32.Final
+     |    |    \--- io.netty:netty-common:4.1.32.Final
+     |    \--- io.netty:netty-resolver:4.1.32.Final
+     |         \--- io.netty:netty-common:4.1.32.Final
+     +--- io.netty:netty-codec-socks:4.1.32.Final
+     |    \--- io.netty:netty-codec:4.1.32.Final
+     |         \--- io.netty:netty-transport:4.1.32.Final (*)
+     \--- io.netty:netty-codec-http:4.1.32.Final
+          \--- io.netty:netty-codec:4.1.32.Final (*)
+
+testCompile - Dependencies for source set 'test' (deprecated, use 'testImplementation ' instead).
++--- project :grpc-core
+|    +--- project :grpc-context
+|    +--- com.google.code.gson:gson:2.7
+|    +--- com.google.errorprone:error_prone_annotations:2.2.0 -> 2.3.1
+|    +--- com.google.code.findbugs:jsr305:3.0.2
+|    +--- org.codehaus.mojo:animal-sniffer-annotations:1.17
+|    +--- com.google.guava:guava:26.0-android
+|    |    +--- org.checkerframework:checker-compat-qual:2.5.2 -> 2.5.3
+|    |    +--- com.google.j2objc:j2objc-annotations:1.1
+|    |    +--- com.google.code.findbugs:jsr305:3.0.2
+|    |    +--- com.google.errorprone:error_prone_annotations:2.1.3 -> 2.3.1
+|    |    \--- org.codehaus.mojo:animal-sniffer-annotations:1.14 -> 1.17
+|    +--- io.opencensus:opencensus-api:0.19.2
+|    \--- io.opencensus:opencensus-contrib-grpc-metrics:0.19.2
+|         \--- io.opencensus:opencensus-api:0.19.2
++--- io.netty:netty-codec-http2:[4.1.32.Final] FAILED
++--- io.netty:netty-handler-proxy:4.1.32.Final
+|    +--- io.netty:netty-transport:4.1.32.Final
+|    |    +--- io.netty:netty-buffer:4.1.32.Final
+|    |    |    \--- io.netty:netty-common:4.1.32.Final
+|    |    \--- io.netty:netty-resolver:4.1.32.Final
+|    |         \--- io.netty:netty-common:4.1.32.Final
+|    +--- io.netty:netty-codec-socks:4.1.32.Final
+|    |    \--- io.netty:netty-codec:4.1.32.Final
+|    |         \--- io.netty:netty-transport:4.1.32.Final (*)
+|    \--- io.netty:netty-codec-http:4.1.32.Final
+|         \--- io.netty:netty-codec:4.1.32.Final (*)
++--- junit:junit:4.12
+|    \--- org.hamcrest:hamcrest-core:1.3
++--- org.mockito:mockito-core:1.9.5
+|    +--- org.hamcrest:hamcrest-core:1.1 -> 1.3
+|    \--- org.objenesis:objenesis:1.0
++--- com.google.truth:truth:0.42
+|    +--- com.google.guava:guava:25.1-android -> 26.0-android (*)
+|    +--- org.checkerframework:checker-compat-qual:2.5.3
+|    +--- org.checkerframework:checker-qual:2.5.3
+|    +--- junit:junit:4.12 (*)
+|    +--- com.googlecode.java-diff-utils:diffutils:1.3.0
+|    +--- com.google.auto.value:auto-value-annotations:1.6.2
+|    \--- com.google.errorprone:error_prone_annotations:2.3.1
++--- project :grpc-testing
+|    +--- project :grpc-core (*)
+|    +--- project :grpc-stub
+|    |    \--- project :grpc-core (*)
+|    +--- junit:junit:4.12 (*)
+|    \--- org.mockito:mockito-core:1.9.5 (*)
+\--- project :grpc-testing-proto
+     +--- project :grpc-protobuf
+     |    +--- project :grpc-core (*)
+     |    +--- com.google.protobuf:protobuf-java:3.6.1
+     |    +--- com.google.guava:guava:26.0-android (*)
+     |    +--- com.google.api.grpc:proto-google-common-protos:1.12.0
+     |    \--- project :grpc-protobuf-lite
+     |         +--- project :grpc-core (*)
+     |         \--- com.google.guava:guava:26.0-android (*)
+     \--- project :grpc-stub (*)
+
+testRuntimeOnly - Runtime only dependencies for source set 'test'. (n)
+No dependencies
+
+(*) - dependencies omitted (listed previously)
+
+A web-based, searchable dependency report is available by adding the --scan option.
+
+BUILD SUCCESSFUL in 0s
+1 actionable task: 1 executed

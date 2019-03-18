@@ -66,3 +66,24 @@ func assertDosFile(t *testing.T, file []byte) {
 		}
 	}
 }
+
+func TestAllDependencies(t *testing.T) {
+	for _, file := range []string{"testdata/complete-dos"} {
+		g := MockGradle(t, file)
+		graph, err := g.Dependencies("")
+		assert.NoError(t, err)
+		assert.Equal(t, 6, len(graph))
+	}
+}
+
+func MockGradle(t *testing.T, file string) gradle.Gradle {
+	fileContents, err := ioutil.ReadFile(file)
+	assert.NoError(t, err)
+	return gradle.Gradle{
+		Setup: gradle.Setup{
+			Cmd: func(tmp string, args ...string) (string, error) {
+				return string(fileContents), nil
+			},
+		},
+	}
+}
