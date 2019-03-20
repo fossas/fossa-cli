@@ -71,12 +71,7 @@ func New(m module.Module) (*Analyzer, error) {
 	return &analyzer, nil
 }
 
-// Discover searches for `build.gradle` files and creates a module for each
-// `*:dependencies` task in the output of `gradle tasks`.
-//
-// TODO: use the output of `gradle projects` and try `gradle
-// <project>:dependencies` for each project?
-func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
+func DiscoverWithCommand(dir string, options map[string]interface{}, command func(string, ...string) (string, error)) ([]module.Module, error) {
 	log.WithField("dir", dir).Debug("discovering modules")
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -100,11 +95,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			if err != nil {
 				return err
 			}
-			g := gradle.Gradle{
-				Cmd: cmd,
-				Dir: dir,
-			}
-			projects, err := g.Projects()
+			projects, err := gradle.Projects(command)
 			if err != nil {
 				return err
 			}
@@ -136,6 +127,15 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	}
 
 	return modules, nil
+}
+
+// Discover searches for `build.gradle` files and creates a module for each
+// `*:dependencies` task in the output of `gradle tasks`.
+//
+// TODO: use the output of `gradle projects` and try `gradle
+// <project>:dependencies` for each project?
+func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
+	return DiscoverWithCommand(dir, options, gradle.GradleCmd)
 }
 
 func (a *Analyzer) Clean() error {
@@ -209,6 +209,10 @@ func parseModuleV1(a *Analyzer) (graph.Deps, error) {
 		configurations = strings.Split(a.Options.Configuration, ",")
 	} else if len(targets) > 1 && targets[1] != "" {
 		configurations = strings.Split(targets[1], ",")
+	} else if a.Options.AllConfigurations {
+		for config := range depsByConfig {
+			configurations = append(configurations, config)
+		}
 	} else {
 		configurations = defaultConfigurations
 	}

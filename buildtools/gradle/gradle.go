@@ -125,8 +125,8 @@ func (g Setup) DependenciesTask(command string, taskArgs ...string) (map[string]
 }
 
 // TODO: rename this -- this is really projects with :dependencies tasks
-func (g *Gradle) Projects() ([]string, error) {
-	stdout, err := g.Run("tasks", "--all", "--quiet")
+func Projects(command func(string, ...string) (string, error)) ([]string, error) {
+	stdout, err := command("tasks", "--all", "--quiet")
 	if err != nil {
 		return nil, err
 	}

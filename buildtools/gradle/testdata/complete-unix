@@ -12,31 +12,15 @@ alpnagent
 archives - Configuration for archive artifacts.
 No dependencies
 
-compile - Dependencies for source set 'main' (deprecated, use 'implementation ' instead).
-+--- project :grpc-core
-|    +--- project :grpc-context
-|    +--- com.google.code.gson:gson:2.7
-|    +--- com.google.errorprone:error_prone_annotations:2.2.0
-|    +--- com.google.code.findbugs:jsr305:3.0.2
-|    +--- org.codehaus.mojo:animal-sniffer-annotations:1.17
-|    +--- com.google.guava:guava:26.0-android
-|    |    +--- org.checkerframework:checker-compat-qual:2.5.2
-|    |    \--- com.google.j2objc:j2objc-annotations:1.1
-|    +--- io.opencensus:opencensus-api:0.19.2
-|    \--- io.opencensus:opencensus-contrib-grpc-metrics:0.19.2
-|         \--- io.opencensus:opencensus-api:0.19.2
-+--- io.netty:netty-codec-http2:[4.1.32.Final] FAILED
-\--- io.netty:netty-handler-proxy:4.1.32.Final
-     +--- io.netty:netty-transport:4.1.32.Final
-     |    +--- io.netty:netty-buffer:4.1.32.Final
-     |    |    \--- io.netty:netty-common:4.1.32.Final
-     |    \--- io.netty:netty-resolver:4.1.32.Final
-     |         \--- io.netty:netty-common:4.1.32.Final
-     +--- io.netty:netty-codec-socks:4.1.32.Final
-     |    \--- io.netty:netty-codec:4.1.32.Final
-     |         \--- io.netty:netty-transport:4.1.32.Final (*)
-     \--- io.netty:netty-codec-http:4.1.32.Final
-          \--- io.netty:netty-codec:4.1.32.Final (*)
+test - custom dependency map for easy testing purposes
++--- project :core
++--- dep:one:1.0
+|    \--- dep:three:3.0
+|         \--- dep:four:4.0
+\--- dep:two:2.0
+     +--- dep:three:3.0
+     |    \--- dep:four:4.0
+     \--- dep:five:5.0
 
 runtime - Runtime dependencies for source set 'main' (deprecated, use 'runtimeOnly ' instead).
 +--- project :grpc-core
