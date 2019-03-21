@@ -31,7 +31,7 @@ func TestAllDependencies(t *testing.T) {
 		}
 
 		g := MockGradle(t, file)
-		graph, err := g.Dependencies("argument-not-needed-for-mock")
+		graph, err := gradle.Dependencies("argument-not-needed-for-mock", g)
 		assert.NoError(t, err)
 
 		direct := graph["test"].Direct
@@ -73,14 +73,12 @@ func TestAllDependencies(t *testing.T) {
 	}
 }
 
-func MockGradle(t *testing.T, file string) gradle.Gradle {
+func MockGradle(t *testing.T, file string) gradle.ShellCommand {
 	fileContents, err := ioutil.ReadFile(file)
 	assert.NoError(t, err)
-	return gradle.Gradle{
-		Setup: gradle.Setup{
-			Cmd: func(tmp string, args ...string) (string, error) {
-				return string(fileContents), nil
-			},
+	return gradle.ShellCommand{
+		Cmd: func(tmp string, args ...string) (string, error) {
+			return string(fileContents), nil
 		},
 	}
 }

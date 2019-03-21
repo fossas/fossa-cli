@@ -14,13 +14,15 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-type Gradle struct {
-	Cmd    string
+// ShellCommand controls the information needed to run a gradle command.
+type ShellCommand struct {
+	Binary string
 	Dir    string
 	Online bool
-	Setup  GradleSetup
+	Cmd    func(string, ...string) (string, error)
 }
 
+// Dependency models a gradle dependency.
 type Dependency struct {
 	Name      string
 	Target    string
@@ -28,30 +30,29 @@ type Dependency struct {
 	IsProject bool
 }
 
-type GradleSetup interface {
-	// MergeProjectsDependencies([]string) (map[string]graph.Deps, error)
-	// Dependencies(string) (map[string]graph.Deps, error)
-	DependenciesTask(string, ...string) (map[string]graph.Deps, error)
+// Input is an interface for any point where gradle analysis requires input from
+// a file, shell command, or other source.
+type Input interface {
+	ProjectDependencies(...string) (map[string]graph.Deps, error)
+	DependencyTasks() ([]string, error)
 }
 
-type Setup struct {
-	Target string
-	Cmd    func(string, ...string) (string, error)
-}
-
-func New(target string) GradleSetup {
-	return Setup{
-		Target: target,
-		Cmd:    GradleCmd,
+// NewShellInput creates a new ShellCommand and returns it as an Input.
+func NewShellInput(binary, dir string, online bool) Input {
+	return ShellCommand{
+		Binary: binary,
+		Dir:    dir,
+		Online: online,
+		Cmd:    Cmd,
 	}
 }
 
-// MergeProjectsDependecies creates a complete configuration to dep graph map by
+// MergeProjectsDependencies creates a complete configuration to dep graph map by
 // looping through a given list of projects and merging their dependencies by configuration.
-func (g *Gradle) MergeProjectsDependencies(projects []string) (map[string]graph.Deps, error) {
+func MergeProjectsDependencies(i Input, projects []string) (map[string]graph.Deps, error) {
 	configurationMap := make(map[string]graph.Deps)
 	for _, project := range projects {
-		depGraph, err := g.Dependencies(project)
+		depGraph, err := Dependencies(project, i)
 		if err != nil {
 			return configurationMap, err
 		}
@@ -79,20 +80,22 @@ func (g *Gradle) MergeProjectsDependencies(projects []string) (map[string]graph.
 	return configurationMap, nil
 }
 
-func (g *Gradle) Dependencies(project string) (map[string]graph.Deps, error) {
+// Dependencies returns the dependencies of a gradle project
+func Dependencies(project string, i Input) (map[string]graph.Deps, error) {
 	args := []string{
 		project + ":dependencies",
 		"--quiet",
 	}
-	if !g.Online {
-		args = append(args, "--offline")
-	}
 
-	return g.Setup.DependenciesTask(g.Cmd, args...)
+	return i.ProjectDependencies(args...)
 }
 
-func (g Setup) DependenciesTask(command string, taskArgs ...string) (map[string]graph.Deps, error) {
-	stdout, err := g.Cmd(command, taskArgs...)
+// ProjectDependencies returns the dependencies of a given gradle project
+func (s ShellCommand) ProjectDependencies(taskArgs ...string) (map[string]graph.Deps, error) {
+	if !s.Online {
+		taskArgs = append(taskArgs, "--offline")
+	}
+	stdout, err := s.Cmd(s.Binary, taskArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -124,9 +127,9 @@ func (g Setup) DependenciesTask(command string, taskArgs ...string) (map[string]
 	return configurations, nil
 }
 
-// TODO: rename this -- this is really projects with :dependencies tasks
-func Projects(command func(string, ...string) (string, error)) ([]string, error) {
-	stdout, err := command("tasks", "--all", "--quiet")
+// DependencyTasks returns a list of gradle projects by analyzing a list of gradle tasks.
+func (s ShellCommand) DependencyTasks() ([]string, error) {
+	stdout, err := s.Cmd(s.Binary, "tasks", "--all", "--quiet")
 	if err != nil {
 		return nil, err
 	}
@@ -138,19 +141,6 @@ func Projects(command func(string, ...string) (string, error)) ([]string, error)
 		}
 	}
 	return projects, nil
-}
-
-func (g *Gradle) Run(taskArgs ...string) (string, error) {
-	log.Debugf("%#v", g)
-	stdout, _, err := exec.Run(exec.Cmd{
-		Name: g.Cmd,
-		Argv: taskArgs,
-		Dir:  g.Dir,
-	})
-	if err != nil {
-		return "", err
-	}
-	return stdout, nil
 }
 
 //go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package gradle/' > readtree_generated.go"
@@ -208,7 +198,21 @@ func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency
 	})
 }
 
-func Cmd(dir string) (string, error) {
+// Cmd executes the gradle shell command.
+func Cmd(command string, taskArgs ...string) (string, error) {
+	stdout, _, err := exec.Run(exec.Cmd{
+		Name: command,
+		Argv: taskArgs,
+	})
+	if err != nil {
+		return "", err
+	}
+	return stdout, nil
+}
+
+// ValidBinary finds the best possible gradle command to run for
+// shell commands.
+func ValidBinary(dir string) (string, error) {
 	ok, err := files.Exists(dir, "gradlew")
 	if err != nil {
 		return "", err
@@ -228,6 +232,7 @@ func Cmd(dir string) (string, error) {
 	return "gradle", nil
 }
 
+// NormalizeDependencies turns a dependency map into a FOSSA recognized dependency graph.
 func NormalizeDependencies(imports []Dependency, deps map[Dependency][]Dependency) graph.Deps {
 	// Set direct dependencies.
 	var i []pkg.Import
@@ -280,14 +285,4 @@ func contains(array []pkg.Import, check pkg.Import) bool {
 		}
 	}
 	return false
-}
-func GradleCmd(command string, taskArgs ...string) (string, error) {
-	stdout, _, err := exec.Run(exec.Cmd{
-		Name: command,
-		Argv: taskArgs,
-	})
-	if err != nil {
-		return "", err
-	}
-	return stdout, nil
 }

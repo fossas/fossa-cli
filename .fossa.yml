@@ -5,7 +5,7 @@ version: 1
 cli:
 analyze:
   modules:
-  - name: github.com/fossas/fossa-cli/cmd/fossa
-    type: go
-    target: github.com/fossas/fossa-cli/cmd/fossa
-    path: cmd/fossa
+  - name: github.com/fossas/fossa-cli/tmp/fossa
+    type: put
+    target: github.com/fossas/fossa-cli/tmp/fossa
+    path: tmp/fossa

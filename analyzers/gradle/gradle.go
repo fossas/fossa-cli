@@ -25,11 +25,9 @@ import (
 )
 
 type Analyzer struct {
-	GradleCmd string
-
 	Module  module.Module
 	Options Options
-	Setup   gradle.GradleSetup
+	Input   gradle.Input
 }
 
 type Options struct {
@@ -45,38 +43,47 @@ type Options struct {
 
 func New(m module.Module) (*Analyzer, error) {
 	log.Debugf("%#v", m.Options)
-
 	var options Options
 	err := mapstructure.Decode(m.Options, &options)
 	if err != nil {
 		return nil, err
 	}
 
-	analyzer := Analyzer{
-		GradleCmd: options.Cmd,
-		Module:    m,
-		Options:   options,
-		Setup:     gradle.New("dir"),
-	}
-
-	if analyzer.GradleCmd == "" {
+	binary := options.Cmd
+	if binary == "" {
 		gradle, _, err := exec.Which("-v", os.Getenv("FOSSA_GRADLE_CMD"), "./gradlew", ".\\gradlew.bat", "gradle")
 		if err != nil {
 			log.Warnf("Could not find Gradle: %s", err.Error())
 		}
-		analyzer.GradleCmd = gradle
+		binary = gradle
+	}
+
+	shellInput := gradle.NewShellInput(binary, m.Dir, options.Online)
+	analyzer := Analyzer{
+		Module:  m,
+		Options: options,
+		Input:   shellInput,
 	}
 
 	log.Debugf("Initialized Gradle analyzer: %#v", analyzer)
 	return &analyzer, nil
 }
 
+// Discover searches for `build.gradle` files and creates a module for each
+// `*:dependencies` task in the output of `gradle tasks`.
+//
+// TODO: use the output of `gradle projects` and try `gradle
+// <project>:dependencies` for each project?
+func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
+	return DiscoverWithCommand(dir, options, gradle.Cmd)
+}
+
 func DiscoverWithCommand(dir string, options map[string]interface{}, command func(string, ...string) (string, error)) ([]module.Module, error) {
-	log.WithField("dir", dir).Debug("discovering modules")
+	log.WithField("dir", dir).Debug("discovering gradle modules")
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
+			log.WithError(err).WithField("path", path).Debug("error while walking filepath discovering gradle modules")
 			return err
 		}
 
@@ -91,14 +98,20 @@ func DiscoverWithCommand(dir string, options map[string]interface{}, command fun
 
 			dir := filepath.Dir(path)
 			name := filepath.Base(dir)
-			cmd, err := gradle.Cmd(dir)
+			cmd, err := gradle.ValidBinary(dir)
 			if err != nil {
 				return err
 			}
-			projects, err := gradle.Projects(command)
+			s := gradle.ShellCommand{
+				Binary: cmd,
+				Dir:    dir,
+				Cmd:    command,
+			}
+			projects, err := s.DependencyTasks()
 			if err != nil {
 				return err
 			}
+
 			for _, project := range projects {
 				modules = append(modules, module.Module{
 					Name:        filepath.Join(name, project),
@@ -129,15 +142,6 @@ func DiscoverWithCommand(dir string, options map[string]interface{}, command fun
 	return modules, nil
 }
 
-// Discover searches for `build.gradle` files and creates a module for each
-// `*:dependencies` task in the output of `gradle tasks`.
-//
-// TODO: use the output of `gradle projects` and try `gradle
-// <project>:dependencies` for each project?
-func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
-	return DiscoverWithCommand(dir, options, gradle.GradleCmd)
-}
-
 func (a *Analyzer) Clean() error {
 	return nil
 }
@@ -165,41 +169,31 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 var defaultConfigurations = []string{"compile", "api", "implementation", "compileDependenciesMetadata", "apiDependenciesMetadata", "implementationDependenciesMetadata"}
 
 func parseModuleV1(a *Analyzer) (graph.Deps, error) {
-	// Get packages.
-	g := gradle.Gradle{
-		Cmd:    a.GradleCmd,
-		Dir:    a.Module.Dir,
-		Online: a.Options.Online,
-		Setup:  a.Setup,
-	}
-
-	var project string
 	var configurations []string
 	var depsByConfig map[string]graph.Deps
 	var err error
 	targets := strings.Split(a.Module.BuildTarget, ":")
 
 	if a.Options.AllSubmodules {
-		submodules, err := g.Projects()
+		submodules, err := a.Input.DependencyTasks()
 		if err != nil {
 			return graph.Deps{}, err
 		}
-		depsByConfig, err = g.MergeProjectsDependencies(submodules)
+		depsByConfig, err = gradle.MergeProjectsDependencies(a.Input, submodules)
 		if err != nil {
 			return graph.Deps{}, err
 		}
 	} else if a.Options.Task != "" {
-		depsByConfig, err = g.Setup.DependenciesTask(g.Cmd, strings.Split(a.Options.Task, " ")...)
+		depsByConfig, err = a.Input.ProjectDependencies(strings.Split(a.Options.Task, " ")...)
 		if err != nil {
 			return graph.Deps{}, err
 		}
 	} else {
-		if a.Options.Project != "" {
-			project = a.Options.Project
-		} else {
+		project := a.Options.Project
+		if project == "" {
 			project = targets[0]
 		}
-		depsByConfig, err = g.Dependencies(project)
+		depsByConfig, err = gradle.Dependencies(project, a.Input)
 		if err != nil {
 			return graph.Deps{}, err
 		}
@@ -228,40 +222,30 @@ func parseModuleV1(a *Analyzer) (graph.Deps, error) {
 }
 
 func parseModuleV2(a *Analyzer) (graph.Deps, error) {
-	// Get packages.
-	g := gradle.Gradle{
-		Cmd:    a.GradleCmd,
-		Dir:    a.Module.Dir,
-		Online: a.Options.Online,
-		Setup:  a.Setup,
-	}
-
-	var project string
 	var configurations []string
 	var depsByConfig map[string]graph.Deps
 	var err error
 
 	if a.Options.AllSubmodules {
-		submodules, err := g.Projects()
+		submodules, err := a.Input.DependencyTasks()
 		if err != nil {
 			return graph.Deps{}, err
 		}
-		depsByConfig, err = g.MergeProjectsDependencies(submodules)
+		depsByConfig, err = gradle.MergeProjectsDependencies(a.Input, submodules)
 		if err != nil {
 			return graph.Deps{}, err
 		}
 	} else if a.Options.Task != "" {
-		depsByConfig, err = g.Setup.DependenciesTask(g.Cmd, strings.Split(a.Options.Task, " ")...)
+		depsByConfig, err = a.Input.ProjectDependencies(strings.Split(a.Options.Task, " ")...)
 		if err != nil {
 			return graph.Deps{}, err
 		}
 	} else {
-		if a.Options.Project != "" {
-			project = a.Options.Project
-		} else {
+		project := a.Options.Project
+		if project == "" {
 			project = a.Module.BuildTarget
 		}
-		depsByConfig, err = g.Dependencies(project)
+		depsByConfig, err = gradle.Dependencies(project, a.Input)
 		if err != nil {
 			return graph.Deps{}, err
 		}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/fossas/fossa-cli/analyzers/gradle"
 	"github.com/fossas/fossa-cli/graph"
+	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -32,8 +33,8 @@ var testMap = map[string]graph.Deps{
 }
 
 func TestGradleDependencies(t *testing.T) {
-	mock := MockGradle{ConfigMap: testMap}
-	a := gradle.Analyzer{Setup: mock}
+	mock := MockInput(testMap)
+	a := gradle.Analyzer{Input: mock}
 	graph, err := a.Analyze()
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(graph.Transitive))
@@ -46,7 +47,7 @@ func TestGradleDependencies(t *testing.T) {
 func TestGradleDependenciesAllConfigurations(t *testing.T) {
 	mock := MockGradle{ConfigMap: testMap}
 	a := gradle.Analyzer{
-		Setup: mock,
+		Input: mock,
 		Options: gradle.Options{
 			AllConfigurations: true,
 		},
@@ -61,9 +62,9 @@ func TestGradleDependenciesAllConfigurations(t *testing.T) {
 }
 
 func TestGradleDependenciesCustomConfigurations(t *testing.T) {
-	mock := MockGradle{ConfigMap: testMap}
+	mock := MockInput(testMap)
 	a := gradle.Analyzer{
-		Setup: mock,
+		Input: mock,
 		Options: gradle.Options{
 			Configuration: "compile,custom",
 		},
@@ -78,22 +79,43 @@ func TestGradleDependenciesCustomConfigurations(t *testing.T) {
 }
 
 func TestGradleDiscovery(t *testing.T) {
-	modules, err := gradle.DiscoverWithCommand(dir, mockCommand("testdata/tasks-all"))
+	modules, err := gradle.DiscoverWithCommand("testdata", make(map[string]interface{}), mockCommand("testdata/gradle-tasks-all"))
 	assert.NoError(t, err)
-	assert.Equal(t, 5, len(modules))
+	assert.Equal(t, 2, len(modules))
+	assert.True(t, moduleExists("grpc-netty", modules))
+	assert.True(t, moduleExists("grpc-xds", modules))
 }
 
-type MockGradle struct {
-	ConfigMap    map[string]graph.Deps
-	ProjectsFile string
-}
-
-func mockCommand(taskOutput string) func(string, ...string) (string, error) {
+func mockCommand(mockOutput string) func(string, ...string) (string, error) {
 	return func(string, ...string) (string, error) {
-		return string(ioutil.ReadFile(taskOutput))
+		output, err := ioutil.ReadFile(mockOutput)
+		return string(output), err
 	}
 }
 
-func (m MockGradle) DependenciesTask(temp string, args ...string) (map[string]graph.Deps, error) {
+type MockGradle struct {
+	ConfigMap map[string]graph.Deps
+}
+
+func (m MockGradle) ProjectDependencies(args ...string) (map[string]graph.Deps, error) {
 	return m.ConfigMap, nil
+}
+
+func (m MockGradle) DependencyTasks() ([]string, error) {
+	return []string{}, nil
+}
+
+func MockInput(config map[string]graph.Deps) MockGradle {
+	return MockGradle{
+		ConfigMap: config,
+	}
+}
+
+func moduleExists(name string, modules []module.Module) bool {
+	for _, module := range modules {
+		if module.Name == name {
+			return true
+		}
+	}
+	return false
 }
