@@ -53,7 +53,7 @@ func New(m module.Module) (*Analyzer, error) {
 	if binary == "" {
 		gradle, _, err := exec.Which("-v", os.Getenv("FOSSA_GRADLE_CMD"), "./gradlew", ".\\gradlew.bat", "gradle")
 		if err != nil {
-			log.Warnf("Could not find Gradle: %s", err.Error())
+			log.Warnf("A build.gradle file has been found at %s, but Gradle could not be found. Ensure that Fossa can access `gradle`, `gradlew`, `gradlew.bat`, or set the `FOSSA_GRADLE_CMD` environment variable. Error: %s", m.Dir, err.Error())
 		}
 		binary = gradle
 	}
@@ -98,12 +98,12 @@ func DiscoverWithCommand(dir string, options map[string]interface{}, command fun
 
 			dir := filepath.Dir(path)
 			name := filepath.Base(dir)
-			cmd, err := gradle.ValidBinary(dir)
+			bin, err := gradle.ValidBinary(dir)
 			if err != nil {
 				return err
 			}
 			s := gradle.ShellCommand{
-				Binary: cmd,
+				Binary: bin,
 				Dir:    dir,
 				Cmd:    command,
 			}

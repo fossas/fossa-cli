@@ -24,10 +24,12 @@ func TestAllDependencies(t *testing.T) {
 	dos := "testdata/complete-dos"
 	unix := "testdata/complete-unix"
 	for _, file := range []string{dos, unix} {
+		data, err := ioutil.ReadFile(file)
+		assert.NoError(t, err)
 		if file == dos {
-			data, err := ioutil.ReadFile(file)
-			assert.NoError(t, err)
 			assertDosFile(t, data)
+		} else if file == unix {
+			assertUnixFile(t, data)
 		}
 
 		g := MockGradle(t, file)
@@ -91,6 +93,18 @@ func assertDosFile(t *testing.T, file []byte) {
 		}
 		if fixture[i] == '\n' {
 			assert.Equal(t, uint8('\r'), fixture[i-1])
+		}
+	}
+}
+
+func assertUnixFile(t *testing.T, file []byte) {
+	fixture := string(file)
+	for i := range fixture {
+		if i == 0 {
+			continue
+		}
+		if fixture[i] == '\n' {
+			assert.NotEqual(t, uint8('\r'), fixture[i-1])
 		}
 	}
 }
