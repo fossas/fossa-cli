@@ -35,7 +35,7 @@
 - Auto-configures for monoliths; instantly handles multiple builds in large codebases.
 - Fast & portable; a cross-platform binary you can drop into CI or dev machines.
 - Generates offline documentation for license notices & third-party attributions.
-- Tests dependencies against license violations, audits and vulnerabilities (coming soon!) by integrating with https://fossa.io.
+- Tests dependencies against license violations, audits and vulnerabilities (coming soon!) by integrating with https://fossa.com.
 
 ### Supported Environments
 | Environment                                  | Package Managers                                                                                                             |
@@ -110,7 +110,7 @@ Run `fossa -o` in your project directory to output a sample dependency report in
 ]
 ```
 
-Next, Run `fossa` and provide a [FOSSA API Key](https://docs.fossa.io/docs/api-reference) to get a rich, hosted report on [fossa.com](https://fossa.com):
+Next, Run `fossa` and provide a [FOSSA API Key](https://docs.fossa.com/docs/api-reference) to get a rich, hosted report on [fossa.com](https://fossa.com):
 
 ```bash
 export FOSSA_API_KEY="YOUR_API_KEY_HERE"
@@ -120,7 +120,7 @@ fossa
 # Output:
 # ==========================================================
 #
-#    View FOSSA Report: https://app.fossa.io/{YOUR_LINK}
+#    View FOSSA Report: https://app.fossa.com/{YOUR_LINK}
 #
 # ==========================================================
 ```
@@ -136,7 +136,7 @@ This will initialize a [`.fossa.yml`](docs/config-file.md#fossayml) file that lo
 ```yaml
 version: 1
 cli:
-  server: https://app.fossa.io
+  server: https://app.fossa.com
   fetcher: custom
   project: github.com/fossas/fossa-cli
 analyze:
@@ -163,7 +163,7 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa analyze
 ## Integrating with CI
 
 ### Testing for License Violations
-If you've integrated with https://fossa.io, you can use [`fossa test`](docs/user-guide.md#fossa-test) to fail builds against your [FOSSA scan status](https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli/refs/branch/master/5e225327846320e9dfb8bf12673afa2eb4144fb4/preview).
+If you've integrated with https://fossa.com, you can use [`fossa test`](docs/user-guide.md#fossa-test) to fail builds against your [FOSSA scan status](https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli/refs/branch/master/5e225327846320e9dfb8bf12673afa2eb4144fb4/preview).
 
 ```bash
 # Exit with a failing status and dump an issue report to stderr
@@ -201,7 +201,7 @@ fossa report --type licenses > NOTICE.txt
 
 [See this repo's NOTICE file](NOTICE) for an example.
 
-License data is provided by [https://fossa.io](https://fossa.com)'s 500GB open source registry.
+License data is provided by [https://fossa.com](https://fossa.com)'s 500GB open source registry.
 
 ## Development
 

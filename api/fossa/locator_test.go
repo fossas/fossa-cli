@@ -3,9 +3,10 @@ package fossa_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestLocatorFetcher(t *testing.T) {
@@ -160,6 +161,6 @@ func TestURL(t *testing.T) {
 	}
 
 	stringified := git.URL()
-	expected := "https://app.fossa.io/projects/git+git@github.com:fossas%2Ffossa-cli.git/refs/branch/master/SHAVALUE"
+	expected := "https://app.fossa.com/projects/git+git@github.com:fossas%2Ffossa-cli.git/refs/branch/master/SHAVALUE"
 	assert.Equal(t, stringified, expected)
 }
