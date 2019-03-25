@@ -15,7 +15,7 @@ var (
 	project    = fixtures.Project{
 		Name:   "grpc-java",
 		URL:    "https://github.com/grpc/grpc-java",
-		Commit: "cf083239e7cbbde7e8ed7d3f038202735f84c2d3",
+		Commit: "f4a31ec62d038abf6faea7abaf377e2df3d308f0",
 	}
 )
 
