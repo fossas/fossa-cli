@@ -33,7 +33,7 @@ func TestGradleIntegration(t *testing.T) {
 	assert.NoError(t, err)
 
 	targets := []string{
-		"gradle:grpc-netty",
+		":grpc-netty",
 	}
 
 	for _, target := range targets {
