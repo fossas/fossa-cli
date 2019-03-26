@@ -4,8 +4,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/apex/log"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/testing/fixtures"
 	"github.com/fossas/fossa-cli/testing/runfossa"
 )
@@ -25,6 +27,18 @@ func TestGradleIntegration(t *testing.T) {
 	}
 
 	fixtures.Initialize(fixtureDir, []fixtures.Project{project}, func(p fixtures.Project, dir string) error {
+
+		args := []string{"build"}
+		_, stderr, err := exec.Run(exec.Cmd{
+			Command: "./gradlew",
+			Name:    "./gradlew",
+			Argv:    args,
+			Dir:     dir,
+		})
+		if err != nil {
+			log.Error("Error running ./gradlew")
+			log.Error(stderr)
+		}
 		return nil
 	})
 

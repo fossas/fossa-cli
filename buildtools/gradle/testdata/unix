@@ -1,9 +1,0 @@
-compile - Dependencies for source set 'main' (deprecated, use 'implementation ' instead).
-+--- project :core
-+--- dep:one:1.0
-|    \--- dep:three:3.0
-|         \--- dep:four:4.0
-\--- dep:two:2.0
-     +--- dep:three:3.0
-     |    \--- dep:four:4.0
-     \--- dep:five:5.0
