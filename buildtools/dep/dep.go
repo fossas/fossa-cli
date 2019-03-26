@@ -5,10 +5,11 @@ import (
 	"path"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/fossas/fossa-cli/buildtools"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/pkg/errors"
 )
 
 // Resolver contains both the lockfile and manifest information. Resolver implements golang.Resolver.
@@ -100,13 +101,17 @@ func readLockfile(filepath string) (lockfile, error) {
 	normalized := make(map[string]pkg.Import)
 	for _, project := range lock.Projects {
 		for _, pk := range project.Packages {
+			revision := project.Version
+			if revision == "" {
+				revision = project.Revision
+			}
 			importpath := path.Join(project.Name, pk)
 			normalized[importpath] = pkg.Import{
 				Target: project.Version,
 				Resolved: pkg.ID{
 					Type:     pkg.Go,
 					Name:     importpath,
-					Revision: project.Revision,
+					Revision: revision,
 					Location: "",
 				},
 			}
