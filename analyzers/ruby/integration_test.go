@@ -73,7 +73,7 @@ func projectInitializer(proj fixtures.Project, projectDir string) error {
 		Dir:     projectDir,
 	})
 	if err != nil {
-		log.Error("failed to run fossa init on " + proj.Name)
+		log.Error("failed to run bundle on " + proj.Name)
 		log.Error(stderr)
 		return err
 	}
@@ -91,9 +91,9 @@ func projectInitializer(proj fixtures.Project, projectDir string) error {
 
 var projects = []fixtures.Project{
 	fixtures.Project{
-		Name:   "rails",
-		URL:    "https://github.com/rails/rails",
-		Commit: "f4a30d2a0706f278a20c63a3d99288de79b52e5f",
+		Name:   "fluentd",
+		URL:    "https://github.com/fluent/fluentd.git",
+		Commit: "3566901ab4a00e0168b4a6078153dde85601fc53",
 	},
 	fixtures.Project{
 		Name:   "vagrant",
