@@ -1,7 +1,6 @@
 package gradle_test
 
 import (
-	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -27,10 +26,8 @@ func TestGradleIntegration(t *testing.T) {
 		t.Skip("Skip integration test")
 	}
 
-	fmt.Println(fixtureDir)
 	fixtures.Initialize(fixtureDir, []fixtures.Project{project}, func(p fixtures.Project, dir string) error {
 
-		fmt.Println("running gradle build")
 		args := []string{"build"}
 		_, stderr, err := exec.Run(exec.Cmd{
 			Command: "./gradlew",
@@ -46,9 +43,8 @@ func TestGradleIntegration(t *testing.T) {
 	})
 
 	dir := filepath.Join(fixtureDir, project.Name)
-	out, e, err := runfossa.Init(dir)
+	_, _, err := runfossa.Init(dir)
 	assert.NoError(t, err)
-	fmt.Println(out, e)
 
 	targets := []string{
 		"gradle:grpc-netty",
@@ -56,7 +52,6 @@ func TestGradleIntegration(t *testing.T) {
 
 	for _, target := range targets {
 		output, err := runfossa.AnalyzeOutput(dir, []string{target})
-		fmt.Println(output)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, output)
 		assert.NotEmpty(t, output[0].Build.Dependencies)
