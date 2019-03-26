@@ -93,11 +93,11 @@ var projects = []fixtures.Project{
 	fixtures.Project{
 		Name:   "rails",
 		URL:    "https://github.com/rails/rails",
-		Commit: "6a5c8b91998c56e50b5cc934d968947cd319f735",
+		Commit: "f4a30d2a0706f278a20c63a3d99288de79b52e5f",
 	},
 	fixtures.Project{
 		Name:   "vagrant",
 		URL:    "https://github.com/hashicorp/vagrant",
-		Commit: "d9f3f88ff0f966de0797b669a4ede3de655ca443",
+		Commit: "b4d87e6ce9926592bee6943b1feff2194590d62f",
 	},
 }
