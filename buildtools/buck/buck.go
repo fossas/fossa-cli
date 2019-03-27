@@ -93,7 +93,6 @@ func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, error) {
 		go func(dep string, files []string) {
 			defer wg.Done()
 			locator, err := fossa.UploadTarballDependencyFiles(rootDir, files, sanitizeBuckTarget(dep), upload)
-			fmt.Println(dep, sanitizeBuckTarget(dep))
 			if err != nil {
 				log.Warnf("Cannot upload files for %v: %s", dep, err)
 			}
@@ -168,8 +167,7 @@ func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Pack
 	mapLock := sync.RWMutex{}
 	wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
 	for _, d := range allDependencies {
-		fmt.Println(d)
-		wg.Add()
+d		wg.Add()
 		go func(dep string) {
 			defer wg.Done()
 			transDeps, err := cmdAudit(b.Cmd, "dependencies", dep)
@@ -179,8 +177,7 @@ func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Pack
 
 			var imports []pkg.Import
 			for _, transDep := range transDeps.OutputMapping[dep] {
-				fmt.Println(transDep, pkg.Raw, locatorMap[transDep].Project, locatorMap[transDep].Revision)
-				imports = append(imports, pkg.Import{
+d				imports = append(imports, pkg.Import{
 					Target: transDep,
 					Resolved: pkg.ID{
 						Type:     pkg.Raw,
