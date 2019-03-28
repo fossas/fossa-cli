@@ -95,6 +95,7 @@ func New(m module.Module) (*Analyzer, error) {
 	return &Analyzer{
 		Go: gocmd.Go{
 			Cmd: cmd,
+			Dir: m.Dir,
 		},
 		GoVersion: version,
 
