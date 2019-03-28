@@ -4,6 +4,10 @@
 // in the format of `//src/build:target`. Buck defines this as a string used to
 // identify a Build Rule.
 //
+// Understanding target patterns is helpful to understand how buck projects are built
+// and managed. Documentation can be found on Bazel's website here:
+// https://docs.bazel.build/versions/master/guide.html#target-patterns
+//
 // This package is implemented by externally calling the `buck` build tool.
 //
 // FAQ

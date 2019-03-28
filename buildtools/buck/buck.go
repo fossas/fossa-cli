@@ -64,9 +64,18 @@ func (b Setup) Deps(upload bool) (graph.Deps, error) {
 
 func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, error) {
 	locatorMap := make(map[string]fossa.Locator)
-	depList, err := cmdAudit(b.Cmd, "input", b.Target)
-	if err != nil {
-		return locatorMap, err
+	depList := AuditOutput{}
+	var err error
+	if targetIsWildcard(b.Target) {
+		depList, err = allSubprojectDeps(b)
+		if err != nil {
+			return locatorMap, err
+		}
+	} else {
+		depList, err = cmdAudit(b.Cmd, "input", b.Target)
+		if err != nil {
+			return locatorMap, err
+		}
 	}
 
 	rootDir, err := b.Cmd("root")
@@ -97,21 +106,73 @@ func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, error) {
 	return locatorMap, nil
 }
 
+// allSubprojectDeps takes a target such as //third-party/... and determines
+// the full list of dependencies specified by its targets.
+func allSubprojectDeps(b Setup) (AuditOutput, error) {
+	allInputs := AuditOutput{OutputMapping: make(map[string][]string)}
+
+	targets, err := cmdTargets(b.Cmd, b.Target)
+	if err != nil {
+		return allInputs, err
+	}
+
+	targetInputLists := make(chan AuditOutput, len(targets))
+	wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
+	for _, target := range targets {
+		wg.Add()
+		go func(t string) {
+			defer wg.Done()
+			inputList, err := cmdAudit(b.Cmd, "input", t)
+			targetInputLists <- inputList
+			if err != nil {
+				log.Warnf("Cannot retrieve inputs for %v: %s", t, err)
+			}
+		}(target)
+	}
+	wg.Wait()
+
+	close(targetInputLists)
+	for targetInputList := range targetInputLists {
+		for name, values := range targetInputList.OutputMapping {
+			_, present := allInputs.OutputMapping[name]
+			if !present {
+				allInputs.OutputMapping[name] = values
+			}
+		}
+	}
+
+	return allInputs, err
+}
+
 func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Package, error) {
 	transitiveDeps := make(map[pkg.ID]pkg.Package)
-	depList, err := cmdAudit(b.Cmd, "dependencies", b.Target, "--transitive")
-	if err != nil {
-		return transitiveDeps, err
+
+	var allDependencies []string
+	if targetIsWildcard(b.Target) {
+		// We do not need to check for the transitive graph because we assume the given
+		// target returns all build rules underneath it, flattening the dependency graph.
+		var err error
+		allDependencies, err = cmdTargets(b.Cmd, b.Target)
+		if err != nil {
+			return transitiveDeps, err
+		}
+	} else {
+		depList, err := cmdAudit(b.Cmd, "dependencies", b.Target, "--transitive")
+		if err != nil {
+			return transitiveDeps, err
+		}
+		allDependencies = depList.OutputMapping[b.Target]
 	}
+
 	mapLock := sync.RWMutex{}
 	wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
-	for _, d := range depList.OutputMapping[b.Target] {
+	for _, d := range allDependencies {
 		wg.Add()
 		go func(dep string) {
 			defer wg.Done()
 			transDeps, err := cmdAudit(b.Cmd, "dependencies", dep)
 			if err != nil {
-				log.Warnf("Cannot retrieve depenedency list for %v: %s", dep, err)
+				log.Warnf("Cannot retrieve dependency list for %v: %s", dep, err)
 			}
 
 			var imports []pkg.Import
@@ -146,12 +207,22 @@ func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Pack
 
 func directDeps(b Setup, locatorMap map[string]fossa.Locator) ([]pkg.Import, error) {
 	imports := []pkg.Import{}
-	deps, err := cmdAudit(b.Cmd, "dependencies", b.Target)
-	if err != nil {
-		return imports, err
+	var directDeps []string
+	if targetIsWildcard(b.Target) {
+		var err error
+		directDeps, err = cmdTargets(b.Cmd, b.Target)
+		if err != nil {
+			return imports, err
+		}
+	} else {
+		deps, err := cmdAudit(b.Cmd, "dependencies", b.Target)
+		if err != nil {
+			return imports, err
+		}
+		directDeps = deps.OutputMapping[b.Target]
 	}
 
-	for _, dep := range deps.OutputMapping[b.Target] {
+	for _, dep := range directDeps {
 		imports = append(imports, pkg.Import{
 			Target: dep,
 			Resolved: pkg.ID{
@@ -163,6 +234,11 @@ func directDeps(b Setup, locatorMap map[string]fossa.Locator) ([]pkg.Import, err
 	}
 
 	return imports, nil
+}
+
+// targetIsWildcard checks if the specified target specifies subprojects.
+func targetIsWildcard(target string) bool {
+	return strings.HasSuffix(target, "...")
 }
 
 // Change buildtarget `//src/fossa/buildtools:buck` into `buildtools-buck`

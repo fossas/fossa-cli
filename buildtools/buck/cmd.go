@@ -2,6 +2,7 @@ package buck
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/exec"
@@ -32,4 +33,19 @@ func cmdAudit(command func(string, ...string) (string, error), cmd string, argv 
 		return output, errors.Wrap(err, "Could not unmarshal `buck audit` JSON into dependency list")
 	}
 	return output, nil
+}
+
+func cmdTargets(command func(string, ...string) (string, error), argv ...string) ([]string, error) {
+	targets := []string{}
+	out, err := command("targets", argv...)
+	if err != nil {
+		return targets, err
+	}
+
+	for _, target := range strings.Split(out, "\n") {
+		if len(target) > 0 {
+			targets = append(targets, target)
+		}
+	}
+	return targets, nil
 }

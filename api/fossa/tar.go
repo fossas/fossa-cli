@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/apex/log"
 	"github.com/pkg/errors"
@@ -231,7 +232,7 @@ func CreateTarballFromFiles(files []string, name string) (*os.File, []byte, erro
 		if err != nil {
 			return nil, nil, err
 		}
-		header.Name = file
+		header.Name = strings.TrimPrefix(file, "/")
 
 		err = t.WriteHeader(header)
 		if err != nil {

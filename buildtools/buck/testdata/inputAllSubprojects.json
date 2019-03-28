@@ -1,0 +1,9 @@
+{
+  "//buck/test:one": ["testdata/inputAllSubprojects.json"],
+  "//buck/test:two": ["testdata/dependenciesDepTwo.json"],
+  "//buck/test:three": [
+    "testdata/input.json",
+    "testdata/dependencies.json"
+  ]
+}
+    

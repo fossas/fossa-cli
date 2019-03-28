@@ -17,23 +17,53 @@ func TestDirectDeps(t *testing.T) {
 	fossa.MockOrgID = "1"
 	testEnv := Mock()
 
-	deps, err := testEnv.Deps(false)
+	direct, err := testEnv.Deps(false)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(deps.Direct))
-	assertImport(t, deps.Direct, "test-two")
-}
+	assert.Equal(t, 1, len(direct.Direct))
+	assertImport(t, direct.Direct, "test-two")
 
-func TestTransitiveDeps(t *testing.T) {
-	fossa.MockOrgID = "1"
-	testEnv := Mock()
-
-	deps, err := testEnv.Deps(false)
+	transitive, err := testEnv.Deps(false)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(deps.Transitive))
-	packageTwo, err := findPackage(deps.Transitive, "test-two")
+	assert.Equal(t, 2, len(transitive.Transitive))
+
+	packageTwo, err := findPackage(transitive.Transitive, "test-two")
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(packageTwo.Imports))
 	assertImport(t, packageTwo.Imports, "test-three")
+
+	packageThree, err := findPackage(transitive.Transitive, "test-three")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(packageThree.Imports))
+}
+
+func TestDepsAllSubprojects(t *testing.T) {
+	fossa.MockOrgID = "1"
+	testBuck := mockSubProjects()
+
+	direct, err := testBuck.Deps(false)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(direct.Direct))
+	assertImport(t, direct.Direct, "test-one")
+	assertImport(t, direct.Direct, "test-two")
+	assertImport(t, direct.Direct, "test-three")
+
+	transitive, err := testBuck.Deps(false)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(transitive.Transitive))
+
+	packageOne, err := findPackage(transitive.Transitive, "test-one")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(packageOne.Imports))
+	assertImport(t, packageOne.Imports, "test-two")
+
+	packageTwo, err := findPackage(transitive.Transitive, "test-two")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(packageTwo.Imports))
+	assertImport(t, packageTwo.Imports, "test-three")
+
+	packageThree, err := findPackage(transitive.Transitive, "test-three")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(packageThree.Imports))
 }
 
 // Mock constructs a buck.Cmd using mock build tool output.
@@ -65,6 +95,40 @@ func Mock() buck.Setup {
 				default:
 					return "", nil
 				}
+			default:
+				return "", nil
+			}
+		},
+	}
+}
+
+func mockSubProjects() buck.Setup {
+	return buck.Setup{
+		Target: "//buck/allprojects/...",
+		Cmd: func(cmd string, args ...string) (string, error) {
+			switch cmd {
+			case "root":
+				return os.Getwd()
+			case "audit":
+				switch args[0] {
+				case "input":
+					return testFile("testdata/inputAllSubprojects.json")
+				case "dependencies":
+					switch args[2] {
+					case "//buck/test:one":
+						return testFile("testdata/dependencies.json")
+					case "//buck/test:two":
+						return testFile("testdata/dependenciesDepTwo.json")
+					case "//buck/test:three":
+						return testFile("testdata/dependenciesDepThree.json")
+					default:
+						return "", nil
+					}
+				default:
+					return "", nil
+				}
+			case "targets":
+				return testFile("testdata/targets.txt")
 			default:
 				return "", nil
 			}
