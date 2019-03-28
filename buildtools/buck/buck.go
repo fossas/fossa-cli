@@ -147,7 +147,7 @@ func allSubprojectDeps(b Setup) (AuditOutput, error) {
 func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Package, error) {
 	transitiveDeps := make(map[pkg.ID]pkg.Package)
 
-	allDependencies := []string{}
+	var allDependencies []string
 	if targetIsSubprojects(b.Target) {
 		// We do not need to check for the transitive graph because we assume the given
 		// target returns all build rules underneath it, flattening the dependency graph.
@@ -207,7 +207,7 @@ func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Pack
 
 func directDeps(b Setup, locatorMap map[string]fossa.Locator) ([]pkg.Import, error) {
 	imports := []pkg.Import{}
-	directDeps := []string{}
+	var directDeps []string
 	if targetIsSubprojects(b.Target) {
 		var err error
 		directDeps, err = cmdTargets(b.Cmd, b.Target)

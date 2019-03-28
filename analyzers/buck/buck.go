@@ -26,7 +26,6 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"gopkg.in/go-ini/ini.v1"
 
@@ -39,29 +38,17 @@ import (
 
 // Analyzer defines a Buck analyzer.
 type Analyzer struct {
-	Module  module.Module
-	Upload  bool
-	Setup   buck.Buck
-	Options Options
-}
-
-type Options struct {
-	AllSubPackages bool `mapstructure:"all-subpackages"`
+	Module module.Module
+	Upload bool
+	Setup  buck.Buck
 }
 
 // New constructs a new Buck analyzer from a module.
 func New(module module.Module) (*Analyzer, error) {
-	var options Options
-	err := mapstructure.Decode(module.Options, &options)
-	if err != nil {
-		return nil, err
-	}
-
 	analyzer := Analyzer{
-		Module:  module,
-		Upload:  true,
-		Setup:   buck.New(module.BuildTarget),
-		Options: options,
+		Module: module,
+		Upload: true,
+		Setup:  buck.New(module.BuildTarget),
 	}
 	return &analyzer, nil
 }
