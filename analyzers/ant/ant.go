@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bufio"
 	"encoding/xml"
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -17,7 +16,6 @@ import (
 
 	"github.com/fossas/fossa-cli/buildtools/maven"
 	"github.com/fossas/fossa-cli/errors"
-	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
@@ -26,58 +24,26 @@ import (
 
 // Analyzer implements build context for Ant builds
 type Analyzer struct {
-	AntCmd     string
-	AntVersion string
-
-	JavaCmd     string
-	JavaVersion string
-
 	Module  module.Module
 	Options Options
 }
 
 type Options struct {
-	LibDir string
+	LibDirectory string `mapstructure:"lib-directory"`
 }
 
 // Initialize collects metadata on Java and Ant binaries.
 func New(m module.Module) (*Analyzer, error) {
 	log.Debugf("Initializing Ant builder...")
 
-	// Set Java context variables
-	javaCmd, javaVersion, err := exec.Which("-version", os.Getenv("JAVA_BINARY"), "java")
-	if err != nil {
-		log.Warnf("Could not find Java binary (try setting $JAVA_BINARY): %s", err.Error())
-	}
-
-	// Set Ant context variables
-	antCmd, antVersionOut, err := exec.Which("-version", os.Getenv("ANT_BINARY"), "ant")
-	if err != nil {
-		return nil, fmt.Errorf("could not find Ant binary (try setting $ANT_BINARY): %s", err.Error())
-	}
-
-	antVersionMatchRe := regexp.MustCompile(`version ([0-9]+\.[0-9]+.\w+)`)
-	match := antVersionMatchRe.FindStringSubmatch(antVersionOut)
-
-	antVersion := ""
-	if len(match) == 2 {
-		antVersion = match[1]
-	}
-
 	// Decode options.
 	var options Options
-	err = mapstructure.Decode(m.Options, &options)
+	err := mapstructure.Decode(m.Options, &options)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Analyzer{
-		AntCmd:     antCmd,
-		AntVersion: antVersion,
-
-		JavaCmd:     javaCmd,
-		JavaVersion: javaVersion,
-
 		Module:  m,
 		Options: options,
 	}, nil
@@ -98,8 +64,8 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Debugf("Running Ant analysis: %#v in %s", a.Module, a.Module.Dir)
 
 	libdir := "lib"
-	if a.Options.LibDir != "" {
-		libdir = a.Options.LibDir
+	if a.Options.LibDirectory != "" {
+		libdir = a.Options.LibDirectory
 	}
 
 	log.Debugf("resolving ant libs in: %s", libdir)
@@ -131,54 +97,6 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	return graph.Deps{
 		Direct: imports,
 	}, nil
-}
-
-func getPOMFromJar(path string) (maven.Manifest, error) {
-	var pomFile maven.Manifest
-
-	log.Debugf(path)
-	if path == "" {
-		return pomFile, errors.New("invalid POM path specified")
-	}
-
-	jarFile, err := os.Open(path)
-	if err != nil {
-		return pomFile, err
-	}
-
-	defer jarFile.Close()
-
-	zfi, err := jarFile.Stat()
-	if err != nil {
-		return pomFile, err
-	}
-
-	zr, err := zip.NewReader(jarFile, zfi.Size())
-	if err != nil {
-		return pomFile, err
-	}
-
-	for _, f := range zr.File {
-		// decode a single pom.xml directly from jar
-		if f.Name == path {
-			rc, err := f.Open()
-			if err != nil {
-				return pomFile, err
-			}
-			defer rc.Close()
-
-			reader := bufio.NewReader(rc)
-			decoder := xml.NewDecoder(reader)
-
-			if err := decoder.Decode(&pomFile); err != nil {
-				return pomFile, err
-			}
-
-			return pomFile, nil
-		}
-	}
-
-	return pomFile, errors.New("unable to parse POM from Jar")
 }
 
 // locatorFromJar resolves a locator from a .jar file by inspecting its contents.
@@ -245,6 +163,54 @@ func locatorFromJar(path string) (pkg.ID, error) {
 	}, nil
 }
 
+func getPOMFromJar(path string) (maven.Manifest, error) {
+	var pomFile maven.Manifest
+
+	log.Debugf(path)
+	if path == "" {
+		return pomFile, errors.New("invalid POM path specified")
+	}
+
+	jarFile, err := os.Open(path)
+	if err != nil {
+		return pomFile, err
+	}
+
+	defer jarFile.Close()
+
+	zfi, err := jarFile.Stat()
+	if err != nil {
+		return pomFile, err
+	}
+
+	zr, err := zip.NewReader(jarFile, zfi.Size())
+	if err != nil {
+		return pomFile, err
+	}
+
+	for _, f := range zr.File {
+		// decode a single pom.xml directly from jar
+		if f.Name == path {
+			rc, err := f.Open()
+			if err != nil {
+				return pomFile, err
+			}
+			defer rc.Close()
+
+			reader := bufio.NewReader(rc)
+			decoder := xml.NewDecoder(reader)
+
+			if err := decoder.Decode(&pomFile); err != nil {
+				return pomFile, err
+			}
+
+			return pomFile, nil
+		}
+	}
+
+	return pomFile, errors.New("unable to parse POM from Jar")
+}
+
 // IsBuilt always returns true for Ant builds.
 func (a *Analyzer) IsBuilt() (bool, error) {
 	return true, nil
@@ -290,7 +256,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("Could not find Ant package manifests: %s", err.Error())
+		return nil, errors.Wrap(err, "Could not find Ant package manifests: %s")
 	}
 
 	return modules, nil
