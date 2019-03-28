@@ -82,20 +82,24 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	// traverse through libdir and and resolve jars
 	var imports []pkg.Import
+	depGraph := make(map[pkg.ID]pkg.Package)
 	for _, jarFilePath := range jarFilePaths {
 		locator, err := locatorFromJar(jarFilePath)
 		if err == nil {
-			// hashes, _ := GetHashes(jarFilePath)
 			imports = append(imports, pkg.Import{
 				Resolved: locator,
 			})
+			depGraph[locator] = pkg.Package{
+				ID: locator,
+			}
 		} else {
 			log.Warnf("unable to resolve Jar: %s", jarFilePath)
 		}
 	}
 
 	return graph.Deps{
-		Direct: imports,
+		Direct:     imports,
+		Transitive: depGraph,
 	}, nil
 }
 
