@@ -1,7 +1,6 @@
 package buck
 
 import (
-	"fmt"
 	"runtime"
 	"strings"
 	"sync"
@@ -67,7 +66,7 @@ func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, error) {
 	locatorMap := make(map[string]fossa.Locator)
 	depList := AuditOutput{}
 	var err error
-	if true {
+	if targetIsSubprojects(b.Target) {
 		depList, err = allSubprojectDeps(b)
 		if err != nil {
 			return locatorMap, err
@@ -116,6 +115,7 @@ func allSubprojectDeps(b Setup) (AuditOutput, error) {
 	if err != nil {
 		return allInputs, err
 	}
+
 	targetInputLists := make(chan AuditOutput, len(targets))
 	wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
 	for _, target := range targets {
@@ -148,7 +148,7 @@ func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Pack
 	transitiveDeps := make(map[pkg.ID]pkg.Package)
 
 	allDependencies := []string{}
-	if true {
+	if targetIsSubprojects(b.Target) {
 		// We do not need to check for the transitive graph because we assume the given
 		// target returns all build rules underneath it, flattening the dependency graph.
 		var err error
@@ -167,7 +167,7 @@ func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Pack
 	mapLock := sync.RWMutex{}
 	wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
 	for _, d := range allDependencies {
-d		wg.Add()
+		wg.Add()
 		go func(dep string) {
 			defer wg.Done()
 			transDeps, err := cmdAudit(b.Cmd, "dependencies", dep)
@@ -177,7 +177,7 @@ d		wg.Add()
 
 			var imports []pkg.Import
 			for _, transDep := range transDeps.OutputMapping[dep] {
-d				imports = append(imports, pkg.Import{
+				imports = append(imports, pkg.Import{
 					Target: transDep,
 					Resolved: pkg.ID{
 						Type:     pkg.Raw,
@@ -208,7 +208,7 @@ d				imports = append(imports, pkg.Import{
 func directDeps(b Setup, locatorMap map[string]fossa.Locator) ([]pkg.Import, error) {
 	imports := []pkg.Import{}
 	directDeps := []string{}
-	if true {
+	if targetIsSubprojects(b.Target) {
 		var err error
 		directDeps, err = cmdTargets(b.Cmd, b.Target)
 		if err != nil {
@@ -221,6 +221,7 @@ func directDeps(b Setup, locatorMap map[string]fossa.Locator) ([]pkg.Import, err
 		}
 		directDeps = deps.OutputMapping[b.Target]
 	}
+
 	for _, dep := range directDeps {
 		imports = append(imports, pkg.Import{
 			Target: dep,
@@ -233,6 +234,11 @@ func directDeps(b Setup, locatorMap map[string]fossa.Locator) ([]pkg.Import, err
 	}
 
 	return imports, nil
+}
+
+// targetIsSubprojects checks if the specified target specifies subprojects.
+func targetIsSubprojects(target string) bool {
+	return strings.HasSuffix(target, "...")
 }
 
 // Change buildtarget `//src/fossa/buildtools:buck` into `buildtools-buck`
