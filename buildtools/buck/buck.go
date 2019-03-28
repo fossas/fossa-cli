@@ -66,7 +66,7 @@ func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, error) {
 	locatorMap := make(map[string]fossa.Locator)
 	depList := AuditOutput{}
 	var err error
-	if targetIsSubprojects(b.Target) {
+	if targetIsWildcard(b.Target) {
 		depList, err = allSubprojectDeps(b)
 		if err != nil {
 			return locatorMap, err
@@ -148,7 +148,7 @@ func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Pack
 	transitiveDeps := make(map[pkg.ID]pkg.Package)
 
 	var allDependencies []string
-	if targetIsSubprojects(b.Target) {
+	if targetIsWildcard(b.Target) {
 		// We do not need to check for the transitive graph because we assume the given
 		// target returns all build rules underneath it, flattening the dependency graph.
 		var err error
@@ -208,7 +208,7 @@ func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Pack
 func directDeps(b Setup, locatorMap map[string]fossa.Locator) ([]pkg.Import, error) {
 	imports := []pkg.Import{}
 	var directDeps []string
-	if targetIsSubprojects(b.Target) {
+	if targetIsWildcard(b.Target) {
 		var err error
 		directDeps, err = cmdTargets(b.Cmd, b.Target)
 		if err != nil {
@@ -236,8 +236,8 @@ func directDeps(b Setup, locatorMap map[string]fossa.Locator) ([]pkg.Import, err
 	return imports, nil
 }
 
-// targetIsSubprojects checks if the specified target specifies subprojects.
-func targetIsSubprojects(target string) bool {
+// targetIsWildcard checks if the specified target specifies subprojects.
+func targetIsWildcard(target string) bool {
 	return strings.HasSuffix(target, "...")
 }
 
