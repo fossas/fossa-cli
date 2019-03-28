@@ -203,7 +203,7 @@ func UploadTarballDependencyFiles(dir string, fileList []string, name string, up
 		return Locator{}, err
 	}
 
-	return tarballUpload(name, false, upload, tarball, hash)
+	return tarballUpload(name, true, upload, tarball, hash)
 }
 
 // CreateTarballFromFiles archives and compresses a list of files to a temporary
@@ -292,7 +292,7 @@ func tarballUpload(name string, dependency, upload bool, tarball *os.File, hash 
 	}
 
 	revision := hex.EncodeToString(hash)
-	revision = "4"
+
 	if !upload {
 		return Locator{
 			Fetcher:  "archive",
