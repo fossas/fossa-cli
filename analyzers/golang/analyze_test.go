@@ -45,7 +45,7 @@ func TestPackageNoDeps(t *testing.T) {
 var customtag = pkg.ID{
 	Type:     pkg.Go,
 	Name:     "imports/customtag",
-	Revision: "54321",
+	Revision: "v3.0.0",
 }
 
 var combo = pkg.ID{

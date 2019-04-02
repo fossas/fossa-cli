@@ -3,8 +3,9 @@ package dep
 import (
 	"testing"
 
-	"github.com/fossas/fossa-cli/pkg"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/fossas/fossa-cli/pkg"
 )
 
 func TestIsIgnored(t *testing.T) {
@@ -45,7 +46,7 @@ func TestReadLockfile(t *testing.T) {
 				Resolved: pkg.ID{
 					Type:     pkg.Go,
 					Name:     "cat/fossa",
-					Revision: "1",
+					Revision: "v0.3.0",
 					Location: "",
 				},
 			},

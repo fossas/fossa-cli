@@ -6,14 +6,13 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "12345"
-  version = "v1.0.0"
 
 [[projects]]
   name = "imports/customtag"
   packages = ["."]
   pruneopts = "UT"
   revision = "54321"
-  version = "v2.0.0"
+  version = "v3.0.0"
 
 [solve-meta]
   analyzer-name = "dep"
