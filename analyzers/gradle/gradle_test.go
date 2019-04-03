@@ -82,8 +82,8 @@ func TestGradleDiscovery(t *testing.T) {
 	modules, err := gradle.DiscoverWithCommand("testdata", make(map[string]interface{}), mockCommand("testdata/gradle-tasks-all"))
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(modules))
-	assert.True(t, moduleExists("grpc-netty", modules))
-	assert.True(t, moduleExists("grpc-xds", modules))
+	assert.True(t, moduleExists("testdata/grpc-netty", modules))
+	assert.True(t, moduleExists("testdata/grpc-xds", modules))
 }
 
 func mockCommand(mockOutput string) func(string, ...string) (string, error) {
