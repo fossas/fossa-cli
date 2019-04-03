@@ -22,13 +22,11 @@ func TestRubyIntegration(t *testing.T) {
 	if testing.Short() {
 		return
 	}
-	t.Parallel()
 
 	fixtures.Initialize(rubyAnalyzerFixtureDir, projects, projectInitializer)
 	for _, project := range projects {
 		proj := project
 		t.Run("Analysis:\t"+proj.Name, func(t *testing.T) {
-			t.Parallel()
 
 			module := module.Module{
 				Dir:         filepath.Join(rubyAnalyzerFixtureDir, proj.Name),
