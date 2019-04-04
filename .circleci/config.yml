@@ -81,7 +81,7 @@ jobs:
             mkdir -p $ARTIFACTS
       - restore_cache:
           keys:
-            - v4-integration-test-fixtures
+            - ${CACHE_VERSION}-integration-test-fixtures
       - run:
           name: Run integration tests
           command: |
