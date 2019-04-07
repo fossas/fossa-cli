@@ -92,6 +92,11 @@ func FromResolvedCartfile(projectName string, dir string) (Package, error) {
 	var cartfile Package
 	cartfileGraph := ogdl.FromFile(cartfilePath)
 
+	if cartfileGraph == nil {
+		log.Debugf("Done parsing empty Cartfile.resolved")
+		return cartfile, nil
+	}
+
 	var allDependencies []Requirement
 
 	// Parse the OGDL
