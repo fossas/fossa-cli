@@ -79,20 +79,12 @@ jobs:
           command: |
             mkdir -p $TEST_RESULTS
             mkdir -p $ARTIFACTS
-      - restore_cache:
-          keys:
-            - v4-integration-test-fixtures
       - run:
           name: Run integration tests
           command: |
             # Load shell helpers (e.g. sdkman)
             source /home/fossa/.bashrc
             make -s ci-integration-test > $TEST_RESULTS/go-test-report.xml
-      # cache the fixtures generated from cloning, installation, and building so we can save time on runs
-      - save_cache:
-          key: v4-integration-test-fixtures
-          paths:
-            - /tmp/fossa-cli-fixtures
       - store_test_results:
           path: /tmp/test-results
       - store_artifacts:
