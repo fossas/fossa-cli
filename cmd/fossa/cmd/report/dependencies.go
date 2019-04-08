@@ -26,7 +26,7 @@ This project includes the following dependencies sorted by corresponding locatio
 ========================================================================
 The following software has been found at this location:
 {{range $i, $dep := $deps}}
-- {{$dep.Project.Title}} - {{$dep.Locator.Revision}} - (from {{$dep.Locator.Project}})
+- {{$dep.Project.Title}} - {{$dep.Locator.Revision}} - (from {{$dep.Project.URL}})
 {{- end}}
 {{end}}
 `

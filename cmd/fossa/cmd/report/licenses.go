@@ -26,7 +26,7 @@ This software includes the following software and licenses:
 ========================================================================
 The following software have components provided under the terms of this license:
 {{range $i, $dep := $deps}}
-- {{$dep.Project.Title}} (from {{$dep.Locator.Project}})
+- {{$dep.Project.Title}} (from {{$dep.Project.URL}})
 {{- end}}
 {{end}}
 `
