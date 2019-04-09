@@ -7,12 +7,11 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-	"github.com/pkg/errors"
-
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
+	"github.com/pkg/errors"
 )
 
 // ShellCommand controls the information needed to run a gradle command.
@@ -93,7 +92,10 @@ func Dependencies(project string, i Input) (map[string]graph.Deps, error) {
 
 // ProjectDependencies returns the dependencies of a given gradle project
 func (s ShellCommand) ProjectDependencies(taskArgs ...string) (map[string]graph.Deps, error) {
-	arguments := append(taskArgs, "-p", s.Dir)
+	arguments := taskArgs
+	if s.Dir != "" {
+		arguments = append(arguments, "-p", s.Dir)
+	}
 	if !s.Online {
 		arguments = append(arguments, "--offline")
 	}
@@ -131,7 +133,11 @@ func (s ShellCommand) ProjectDependencies(taskArgs ...string) (map[string]graph.
 
 // DependencyTasks returns a list of gradle projects by analyzing a list of gradle tasks.
 func (s ShellCommand) DependencyTasks() ([]string, error) {
-	stdout, err := s.Cmd(s.Binary, "tasks", "--all", "--quiet", "-p", s.Dir)
+	arguments := []string{"tasks", "--all", "--quiet"}
+	if s.Dir != "" {
+		arguments = append(arguments, "-p", s.Dir)
+	}
+	stdout, err := s.Cmd(s.Binary, arguments...)
 	if err != nil {
 		return nil, err
 	}
