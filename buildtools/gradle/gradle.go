@@ -7,11 +7,12 @@ import (
 	"strings"
 
 	"github.com/apex/log"
+	"github.com/pkg/errors"
+
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/pkg/errors"
 )
 
 // ShellCommand controls the information needed to run a gradle command.
