@@ -6,9 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/fossas/fossa-cli/buildtools/carthage"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestCartfileParsing(t *testing.T) {
@@ -48,4 +49,9 @@ func TestCartfileParsing(t *testing.T) {
 
 	fmt.Printf("Deps: %#v", deps)
 
+}
+
+func TestNoPanicOnEmptyFile(t *testing.T) {
+	_, err := carthage.FromResolvedCartfile("TestProject", filepath.Join("testdata", "testempty"))
+	assert.NoError(t, err)
 }
