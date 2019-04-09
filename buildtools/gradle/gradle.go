@@ -1,6 +1,7 @@
 package gradle
 
 import (
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -92,10 +93,14 @@ func Dependencies(project string, i Input) (map[string]graph.Deps, error) {
 
 // ProjectDependencies returns the dependencies of a given gradle project
 func (s ShellCommand) ProjectDependencies(taskArgs ...string) (map[string]graph.Deps, error) {
-	if !s.Online {
-		taskArgs = append(taskArgs, "--offline")
+	arguments := taskArgs
+	if s.Dir != "" {
+		arguments = append(arguments, "-p", s.Dir)
 	}
-	stdout, err := s.Cmd(s.Binary, taskArgs...)
+	if !s.Online {
+		arguments = append(arguments, "--offline")
+	}
+	stdout, err := s.Cmd(s.Binary, arguments...)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +134,11 @@ func (s ShellCommand) ProjectDependencies(taskArgs ...string) (map[string]graph.
 
 // DependencyTasks returns a list of gradle projects by analyzing a list of gradle tasks.
 func (s ShellCommand) DependencyTasks() ([]string, error) {
-	stdout, err := s.Cmd(s.Binary, "tasks", "--all", "--quiet")
+	arguments := []string{"tasks", "--all", "--quiet"}
+	if s.Dir != "" {
+		arguments = append(arguments, "-p", s.Dir)
+	}
+	stdout, err := s.Cmd(s.Binary, arguments...)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +214,7 @@ func Cmd(command string, taskArgs ...string) (string, error) {
 		Argv: taskArgs,
 	})
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "error executing command `%s` with arguments `%s`", command, taskArgs)
 	}
 	return stdout, nil
 }
@@ -213,6 +222,11 @@ func Cmd(command string, taskArgs ...string) (string, error) {
 // ValidBinary finds the best possible gradle command to run for
 // shell commands.
 func ValidBinary(dir string) (string, error) {
+	gradleEnv := os.Getenv("FOSSA_GRADLE_CMD")
+	if gradleEnv != "" {
+		return gradleEnv, nil
+	}
+
 	ok, err := files.Exists(dir, "gradlew")
 	if err != nil {
 		return "", err

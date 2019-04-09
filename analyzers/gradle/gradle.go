@@ -17,7 +17,6 @@ import (
 
 	"github.com/fossas/fossa-cli/buildtools/gradle"
 	"github.com/fossas/fossa-cli/config"
-	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
@@ -51,11 +50,10 @@ func New(m module.Module) (*Analyzer, error) {
 
 	binary := options.Cmd
 	if binary == "" {
-		gradle, _, err := exec.Which("-v", os.Getenv("FOSSA_GRADLE_CMD"), "./gradlew", ".\\gradlew.bat", "gradle")
+		binary, err = gradle.ValidBinary(m.Dir)
 		if err != nil {
 			log.Warnf("A build.gradle file has been found at %s, but Gradle could not be found. Ensure that Fossa can access `gradle`, `gradlew`, `gradlew.bat`, or set the `FOSSA_GRADLE_CMD` environment variable. Error: %s", m.Dir, err.Error())
 		}
-		binary = gradle
 	}
 
 	shellInput := gradle.NewShellInput(binary, m.Dir, options.Online)
@@ -96,20 +94,19 @@ func DiscoverWithCommand(dir string, options map[string]interface{}, command fun
 				return nil
 			}
 
-			dir := filepath.Dir(path)
-			name := filepath.Base(dir)
-			bin, err := gradle.ValidBinary(dir)
+			name := filepath.Base(path)
+			bin, err := gradle.ValidBinary(path)
 			if err != nil {
 				return err
 			}
 			s := gradle.ShellCommand{
 				Binary: bin,
-				Dir:    dir,
+				Dir:    path,
 				Cmd:    command,
 			}
 			projects, err := s.DependencyTasks()
 			if err != nil {
-				return err
+				return filepath.SkipDir
 			}
 
 			for _, project := range projects {
@@ -117,7 +114,7 @@ func DiscoverWithCommand(dir string, options map[string]interface{}, command fun
 					Name:        filepath.Join(name, project),
 					Type:        pkg.Gradle,
 					BuildTarget: project + ":",
-					Dir:         dir,
+					Dir:         path,
 				})
 			}
 			if len(projects) == 0 {
