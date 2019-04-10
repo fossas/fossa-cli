@@ -24,6 +24,8 @@ const (
 	Go                    // dep (https://github.com/golang/dep), glide (https://github.com/Masterminds/glide), godep (https://github.com/tools/godep), govendor (experimental, https://github.com/kardianos/govendor), vndr (https://github.com/LK4D4/vndr), gomodules (https://github.com/golang/go/wiki/Modules)
 	Git                   // git
 	Gradle                // Gradle (https://gradle.org)
+	HaskellCabal          // Haskell with cabal-install (https://www.haskell.org/cabal/)
+	HaskellStack          // Haskell with stack (https://www.haskellstack.org/)
 	Maven                 // Maven (https://maven.apache.org)
 	NodeJS                // NPM (https://www.npmjs.com), Yarn (https://yarnpkg.com)
 	NuGet                 // NuGet (https://www.nuget.org)
@@ -45,6 +47,8 @@ var AllTypes = []Type{
 	Debian,
 	Go,
 	Gradle,
+	HaskellCabal,
+	HaskellStack,
 	Maven,
 	NodeJS,
 	NuGet,
@@ -115,6 +119,18 @@ func ParseType(key string) (Type, error) {
 	// Gradle aliases
 	case "gradle":
 		return Gradle, nil
+
+	// Haskell with cabal-install aliases
+	case "haskell/cabal":
+		fallthrough
+	case "cabal":
+		return HaskellCabal, nil
+
+	// Haskell with stack aliases
+	case "haskell/stack":
+		fallthrough
+	case "stack":
+		return HaskellStack, nil
 
 	// Maven aliases
 	case "javaartifact":
@@ -224,6 +240,10 @@ func (t Type) String() string {
 		return "git"
 	case Gradle:
 		return "gradle"
+	case HaskellCabal:
+		return "haskell/cabal-install"
+	case HaskellStack:
+		return "haskell/stack"
 	case Maven:
 		return "mvn"
 	case NodeJS:
