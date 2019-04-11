@@ -2,6 +2,8 @@
 package haskell
 
 import (
+	"github.com/fossas/fossa-cli/errors"
+	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
@@ -42,9 +44,6 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	} else {
 		panic("Unknown haskell analysis strategy: " + a.Options.Strategy)
 	}
-	// TODO: dist-newstyle/cache/plan.json first
-	// TODO: cabal new-build plan.json somehow? --dry-run?
-	panic("implement me")
 }
 
 const CabalPlanRelPath = "dist-newstyle/cache/plan.json"
@@ -58,91 +57,124 @@ type Package struct {
 	Id      string   `mapstructure:"id"`
 	Name    string   `mapstructure:"pkg-name"`
 	Version string   `mapstructure:"pkg-version"`
-	Blah    string   `mapstructure:"blah"`
 
+	Components map[string]Component `mapstructure:"components"` // Not always present
+	Depends    []string             `mapstructure:"depends"`    // Dependencies can be defined here or in Components.*.Depends
+	Style      string               `mapstructure:"style"`      // Only exists for packages with type `configured`
+}
+
+type Component struct {
 	Depends []string `mapstructure:"depends"`
-	Style   string   `mapstructure:"style"` // Only exists for packages with type `configured`
 }
 
 func (a *Analyzer) AnalyzeCabal() (graph.Deps, error) {
 	cabalPlanPath := filepath.Join(a.Module.Dir, CabalPlanRelPath)
 
-	if exists, _ := files.Exists(cabalPlanPath); exists {
-		// Parse cabal new-build's build plan
-		var rawPlan map[string]interface{}
-		var plan    CabalPlan
+	// If plan.json doesn't exist, generate it
+	if exists, _ := files.Exists(cabalPlanPath); !exists {
+		_, _, err := exec.Run(exec.Cmd{
+			Name: "cabal",
+			Argv: []string{"new-build", "--dry-run"},
+		})
 
-		if err := files.ReadJSON(&rawPlan, cabalPlanPath); err != nil {
+		if err != nil {
 			return graph.Deps{}, err
 		}
-		if err := mapstructure.Decode(rawPlan, &plan); err != nil {
-			return graph.Deps{}, err
+	}
+
+	if exists, _ := files.Exists(cabalPlanPath); !exists {
+		// TODO: fallback to another strategy?
+		return graph.Deps{}, errors.New("Couldn't find or generate cabal solver plan")
+	}
+
+	// Parse cabal new-build's build plan
+	var rawPlan map[string]interface{}
+	var plan    CabalPlan
+
+	if err := files.ReadJSON(&rawPlan, cabalPlanPath); err != nil {
+		return graph.Deps{}, err
+	}
+	if err := mapstructure.Decode(rawPlan, &plan); err != nil {
+		return graph.Deps{}, err
+	}
+
+	var packages = make(map[string]Package)
+	for _, p := range plan.Packages {
+		packages[p.Id] = p
+	}
+
+	// Determine which of the projects in the plan are ours. Our projects
+	// will have type "configured" and style "local"
+	var ourProjects []Package
+
+	for id, p := range packages {
+		if p.Type == "configured" && p.Style == "local" {
+			ourProjects = append(ourProjects, p)
+			delete(packages, id)
 		}
+	}
 
-		var packages = make(map[string]Package)
-		for _, p := range plan.Packages {
-			packages[p.Id] = p
-		}
+	// Determine direct imports
+	// TODO TODO : include components.*.depends ugh
+	// TODO: do we need to include Target?
+	var imports []pkg.Import
 
-		// Determine which of the projects in the plan are ours. Our projects
-		// will have type "configured" and style "local"
-		var ourProjects []Package
+	for _, project := range ourProjects {
+		// todo: duplicate code
+		for _, depId := range project.Depends {
+			if dep, ok := packages[depId]; ok {
+				delete(packages, depId)
 
-		for id, p := range packages {
-			if p.Type == "configured" && p.Style == "local" {
-				ourProjects = append(ourProjects, p)
-				delete(packages, id)
+				imports = append(imports, pkg.Import{
+					// TODO: do we need to include Target?
+					Resolved: pkg.ID{
+						Type:     pkg.Haskell,
+						Name:     dep.Name,
+						Revision: dep.Version,
+					},
+				})
 			}
 		}
+		for _, component := range project.Components {
+			// todo: duplicate code
+			for _, depId := range component.Depends {
+				if dep, ok := packages[depId]; ok {
+					delete(packages, depId)
 
-		// Determine direct imports
-		// TODO TODO : include components.*.depends ugh
-		// TODO: do we need to include Target?
-		var imports []pkg.Import
-
-		for _, project := range ourProjects {
-			if project.Depends != nil {
-				for _, depId := range project.Depends {
-					if dep, ok := packages[depId]; ok {
-						delete(packages, depId)
-
-						imports = append(imports, pkg.Import{
-							// TODO: do we need to include Target?
-							Resolved: pkg.ID{
-								Type:     pkg.Haskell,
-								Name:     dep.Name,
-								Revision: dep.Version,
-							},
-						})
-					}
+					imports = append(imports, pkg.Import{
+						// TODO: do we need to include Target?
+						Resolved: pkg.ID{
+							Type:     pkg.Haskell,
+							Name:     dep.Name,
+							Revision: dep.Version,
+						},
+					})
 				}
 			}
 		}
-
-		// Add remaining packages as transitive deps
-
-		var transitive = make(map[pkg.ID]pkg.Package)
-
-		for _, project := range packages {
-			pkgId := pkg.ID{
-				Type: pkg.Haskell,
-				Name: project.Name,
-				Revision: project.Version,
-			}
-			transitive[pkgId] = pkg.Package{
-				ID: pkgId,
-			}
-		}
-
-		deps := graph.Deps{
-			Direct: imports,
-			Transitive: transitive,
-		}
-
-		return deps, nil
 	}
-	// TODO: cabal new-build plan.json somehow? --dry-run?
-	panic("implementme")
+
+	// Add remaining packages as transitive deps
+
+	var transitive = make(map[pkg.ID]pkg.Package)
+
+	for _, project := range packages {
+		pkgId := pkg.ID{
+			Type: pkg.Haskell,
+			Name: project.Name,
+			Revision: project.Version,
+		}
+		transitive[pkgId] = pkg.Package{
+			ID: pkgId,
+		}
+	}
+
+	deps := graph.Deps{
+		Direct: imports,
+		Transitive: transitive,
+	}
+
+	return deps, nil
 }
 
 func (a *Analyzer) AnalyzeStack() (graph.Deps, error) {
