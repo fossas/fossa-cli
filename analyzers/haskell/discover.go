@@ -10,6 +10,16 @@ import (
 	"strings"
 )
 
+func NewModule(moduleName string, relativeDir string, strategy string) module.Module {
+	return module.Module{
+		Name:        moduleName,
+		Type:        pkg.Haskell,
+		BuildTarget: relativeDir,
+		Dir:         relativeDir,
+		Options:     map[string]interface{}{"strategy": strategy},
+	}
+}
+
 func Discover(baseDir string, options map[string]interface{}) ([]module.Module, error) {
 	// List of discovered projects. Projects can be defined in
 	// `cabal.project` or `stack.yaml` files
@@ -29,30 +39,16 @@ func Discover(baseDir string, options map[string]interface{}) ([]module.Module, 
 			return nil
 		}
 
+		// TODO: get module name from somewhere
 		moduleName     := filepath.Base(path)
 		relativeDir, _ := filepath.Rel(baseDir, filepath.Dir(path))
 
 		if info.Name() == "cabal.project" {
-			projects[relativeDir] = module.Module{
-				Name:        moduleName,
-				Type:        pkg.HaskellCabal,
-				BuildTarget: relativeDir,
-				Dir:         relativeDir,
-			}
+			projects[relativeDir] = NewModule(moduleName, relativeDir, "cabal-install")
 		} else if info.Name() == "stack.yaml" {
-			projects[relativeDir] = module.Module{
-				Name:        moduleName,
-				Type:        pkg.HaskellStack,
-				BuildTarget: relativeDir,
-				Dir:         relativeDir,
-			}
+			projects[relativeDir] = NewModule(moduleName, relativeDir, "stack")
 		} else if strings.HasSuffix(info.Name(), ".cabal") {
-			cabalFiles[relativeDir] = module.Module{
-				Name:        moduleName,
-				Type:        pkg.HaskellCabal,
-				BuildTarget: relativeDir,
-				Dir:         relativeDir,
-			}
+			cabalFiles[relativeDir] = NewModule(moduleName, relativeDir, "cabal-install")
 		}
 
 		return nil

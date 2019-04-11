@@ -3,6 +3,7 @@ package analyzers
 
 import (
 	"errors"
+	"github.com/fossas/fossa-cli/analyzers/haskell"
 
 	"github.com/fossas/fossa-cli/analyzers/ant"
 	"github.com/fossas/fossa-cli/analyzers/bower"
@@ -61,6 +62,8 @@ func New(m module.Module) (Analyzer, error) {
 		return golang.New(m)
 	case pkg.Gradle:
 		return gradle.New(m)
+	case pkg.Haskell:
+		return haskell.New(m)
 	case pkg.Maven:
 		return maven.New(m)
 	case pkg.NodeJS:
