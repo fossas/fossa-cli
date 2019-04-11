@@ -99,6 +99,8 @@ func (a *Analyzer) AnalyzeCabal() (graph.Deps, error) {
 		return graph.Deps{}, err
 	}
 
+	// Elements in this map are packages that haven't been scanned for
+	// dependencies yet
 	var packages = make(map[string]Package)
 	for _, p := range plan.Packages {
 		packages[p.Id] = p
@@ -116,8 +118,6 @@ func (a *Analyzer) AnalyzeCabal() (graph.Deps, error) {
 	}
 
 	// Determine direct imports
-	// TODO TODO : include components.*.depends ugh
-	// TODO: do we need to include Target?
 	var imports []pkg.Import
 
 	for _, project := range ourProjects {
@@ -204,59 +204,31 @@ func (a *Analyzer) AnalyzeStack() (graph.Deps, error) {
 	// Our direct dependencies
 	var imports []pkg.Import
 
-	for _, line := range strings.Split(localDepsStdout, "\n") {
-		var dep = strings.Split(line, " ")
-
-		if len(dep) < 2 {
-			continue
-		}
-
-		var name    = dep[0]
-		var version = dep[1]
-
-		// Add to imports if we haven't seen this dep already
-		if _, ok := seen[line]; !ok {
-			seen[line] = true
-
-			imports = append(imports, pkg.Import{
-				// TODO: do we need to include Target?
-				Resolved: pkg.ID{
-					Type:     pkg.Haskell,
-					Name:     name,
-					Revision: version,
-				},
-			})
-		}
-	}
+	FoldStackDeps(seen, localDepsStdout, func(name string, version string) {
+		imports = append(imports, pkg.Import{
+			// TODO: do we need to include Target?
+			Resolved: pkg.ID{
+				Type:     pkg.Haskell,
+				Name:     name,
+				Revision: version,
+			},
+		})
+	})
 
 	// Our transitive dependencies
 	var transitive = make(map[pkg.ID]pkg.Package)
 
-	for _, line := range strings.Split(allDepsStdout, "\n") {
-		var dep = strings.Split(line, " ")
-
-		if len(dep) < 2 {
-			continue
+	FoldStackDeps(seen, allDepsStdout, func(name string, version string){
+		pkgId := pkg.ID{
+			Type: pkg.Haskell,
+			Name: name,
+			Revision: version,
 		}
 
-		var name    = dep[0]
-		var version = dep[1]
-
-		// Add to imports if we haven't seen this dep already
-		if _, ok := seen[line]; !ok {
-			seen[line] = true
-
-			pkgId := pkg.ID{
-				Type: pkg.Haskell,
-				Name: name,
-				Revision: version,
-			}
-
-			transitive[pkgId] = pkg.Package{
-				ID: pkgId,
-			}
+		transitive[pkgId] = pkg.Package{
+			ID: pkgId,
 		}
-	}
+	})
 
 	deps := graph.Deps{
 		Direct: imports,
@@ -264,6 +236,26 @@ func (a *Analyzer) AnalyzeStack() (graph.Deps, error) {
 	}
 
 	return deps, nil
+}
+
+func FoldStackDeps(seen map[string]bool, depsOutput string, consume func(string, string)) {
+	for _, line := range strings.Split(depsOutput, "\n") {
+		var dep = strings.Split(line, " ")
+
+		if len(dep) < 2 {
+			continue
+		}
+
+		var name    = dep[0]
+		var version = dep[1]
+
+		// Add to imports if we haven't seen this dep already
+		if _, ok := seen[line]; !ok {
+			seen[line] = true
+
+			consume(name,version)
+		}
+	}
 }
 
 func (Analyzer) Clean() error {
