@@ -14,10 +14,10 @@ import (
 const CabalPlanRelPath = "dist-newstyle/cache/plan.json"
 
 type CabalPlan struct {
-	Packages []Package `mapstructure:"install-plan"`
+	InstallPlans []InstallPlan `mapstructure:"install-plan"`
 }
 
-type Package struct {
+type InstallPlan struct {
 	Type    string   `mapstructure:"type"`
 	Id      string   `mapstructure:"id"`
 	Name    string   `mapstructure:"pkg-name"`
@@ -63,81 +63,67 @@ func AnalyzeCabal(m module.Module) (graph.Deps, error) {
 		return graph.Deps{}, err
 	}
 
-	// Elements in this map are packages that haven't been scanned for
-	// dependencies yet
-	var packages = make(map[string]Package)
-	for _, p := range plan.Packages {
-		packages[p.Id] = p
+	// Key a map of install plans by their IDs
+	// this is used when building out the dependency graph
+	var installPlans = make(map[string]InstallPlan)
+	for _, p := range plan.InstallPlans {
+		installPlans[p.Id] = p
 	}
 
-	// Determine which of the projects in the plan are ours. Our projects
-	// will have type "configured" and style "local"
-	var ourProjects []Package
+	var dependencyGraph = make(map[pkg.ID]pkg.Package)
+	var directDependencies []pkg.Import
 
-	for id, p := range packages {
+	// Build the entire dependency graph, keeping track of our direct
+	// dependencies
+	for _, p := range plan.InstallPlans {
+		var builtPackage = InstallPlanToPackage(installPlans, p)
+
 		if p.Type == "configured" && p.Style == "local" {
-			ourProjects = append(ourProjects, p)
-			delete(packages, id)
+			directDependencies = append(directDependencies, builtPackage.Imports...)
 		}
-	}
 
-	// Determine direct imports
-	var imports []pkg.Import
-
-	for _, project := range ourProjects {
-		// todo: duplicate code
-		for _, depId := range project.Depends {
-			if dep, ok := packages[depId]; ok {
-				delete(packages, depId)
-
-				imports = append(imports, pkg.Import{
-					// TODO: do we need to include Target?
-					Resolved: pkg.ID{
-						Type:     pkg.Haskell,
-						Name:     dep.Name,
-						Revision: dep.Version,
-					},
-				})
-			}
-		}
-		for _, component := range project.Components {
-			// todo: duplicate code
-			for _, depId := range component.Depends {
-				if dep, ok := packages[depId]; ok {
-					delete(packages, depId)
-
-					imports = append(imports, pkg.Import{
-						// TODO: do we need to include Target?
-						Resolved: pkg.ID{
-							Type:     pkg.Haskell,
-							Name:     dep.Name,
-							Revision: dep.Version,
-						},
-					})
-				}
-			}
-		}
-	}
-
-	// Add remaining packages as transitive deps
-
-	var transitive = make(map[pkg.ID]pkg.Package)
-
-	for _, project := range packages {
-		pkgId := pkg.ID{
-			Type: pkg.Haskell,
-			Name: project.Name,
-			Revision: project.Version,
-		}
-		transitive[pkgId] = pkg.Package{
-			ID: pkgId,
-		}
+		dependencyGraph[builtPackage.ID] = builtPackage
 	}
 
 	deps := graph.Deps{
-		Direct: imports,
-		Transitive: transitive,
+		Direct: directDependencies,
+		Transitive: dependencyGraph,
 	}
 
 	return deps, nil
+}
+
+func InstallPlanToID(plan InstallPlan) pkg.ID {
+	return pkg.ID{
+		Type:     pkg.Haskell,
+		Name:     plan.Name,
+		Revision: plan.Version,
+	}
+}
+
+func InstallPlanToPackage(installPlans map[string]InstallPlan, plan InstallPlan) pkg.Package {
+	var imports []pkg.Import
+
+	for _, depId := range plan.Depends {
+		dep := installPlans[depId]
+
+		imports = append(imports, pkg.Import{
+			Resolved: InstallPlanToID(dep),
+		})
+	}
+
+	for _, component := range plan.Components {
+		for _, depId := range component.Depends {
+			dep := installPlans[depId]
+
+			imports = append(imports, pkg.Import{
+				Resolved: InstallPlanToID(dep),
+			})
+		}
+	}
+
+	return pkg.Package{
+		ID: InstallPlanToID(plan),
+		Imports: imports,
+	}
 }
