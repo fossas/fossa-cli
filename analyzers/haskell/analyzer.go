@@ -13,11 +13,6 @@ import (
 	"strings"
 )
 
-type Options struct {
-	// TODO: strategy as enum?
-	Strategy string `mapstructure:"strategy"`
-}
-
 type Analyzer struct {
 	Module  module.Module
 	Options Options
@@ -38,12 +33,12 @@ func New(m module.Module) (*Analyzer, error) {
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	if a.Options.Strategy == "cabal-install" {
+	if a.Options.Strategy == CabalInstall {
 		return a.AnalyzeCabal()
-	} else if a.Options.Strategy == "stack" {
+	} else if a.Options.Strategy == Stack {
 		return a.AnalyzeStack()
 	} else {
-		panic("Unknown haskell analysis strategy: " + a.Options.Strategy)
+		return graph.Deps{}, errors.New("Unknown haskell analysis strategy")
 	}
 }
 

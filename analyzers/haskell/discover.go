@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func NewModule(moduleName string, relativeDir string, strategy string) module.Module {
+func NewModule(moduleName string, relativeDir string, strategy Strategy) module.Module {
 	return module.Module{
 		Name:        moduleName,
 		Type:        pkg.Haskell,
@@ -44,11 +44,11 @@ func Discover(baseDir string, options map[string]interface{}) ([]module.Module, 
 		relativeDir, _ := filepath.Rel(baseDir, filepath.Dir(path))
 
 		if info.Name() == "cabal.project" {
-			projects[relativeDir] = NewModule(moduleName, relativeDir, "cabal-install")
+			projects[relativeDir] = NewModule(moduleName, relativeDir, CabalInstall)
 		} else if info.Name() == "stack.yaml" {
-			projects[relativeDir] = NewModule(moduleName, relativeDir, "stack")
+			projects[relativeDir] = NewModule(moduleName, relativeDir, Stack)
 		} else if strings.HasSuffix(info.Name(), ".cabal") {
-			cabalFiles[relativeDir] = NewModule(moduleName, relativeDir, "cabal-install")
+			cabalFiles[relativeDir] = NewModule(moduleName, relativeDir, CabalInstall)
 		}
 
 		return nil
