@@ -10,6 +10,7 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 	"github.com/mitchellh/mapstructure"
 	"path/filepath"
+	"strings"
 )
 
 type Options struct {
@@ -178,8 +179,91 @@ func (a *Analyzer) AnalyzeCabal() (graph.Deps, error) {
 }
 
 func (a *Analyzer) AnalyzeStack() (graph.Deps, error) {
-	// TODO: `stack ls dependencies --depth X`, split on space
-	panic("implementme")
+	// Stack ls dependencies outputs deps in the form:
+	// packageone 0.0.1.0
+	// packagetwo 0.0.1.0
+	// ...
+
+	localDepsStdout, _, err := exec.Run(exec.Cmd{
+		Name: "stack",
+		Argv: []string{"ls", "dependencies", "--depth", "1"},
+	})
+
+	if err != nil {
+		return graph.Deps{}, err
+	}
+
+	allDepsStdout, _, err := exec.Run(exec.Cmd{
+		Name: "stack",
+		Argv: []string{"ls", "dependencies"},
+	})
+
+	// Keep track of recorded packages so we don't include them twice
+	var seen = make(map[string]bool)
+
+	// Our direct dependencies
+	var imports []pkg.Import
+
+	for _, line := range strings.Split(localDepsStdout, "\n") {
+		var dep = strings.Split(line, " ")
+
+		if len(dep) < 2 {
+			continue
+		}
+
+		var name    = dep[0]
+		var version = dep[1]
+
+		// Add to imports if we haven't seen this dep already
+		if _, ok := seen[line]; !ok {
+			seen[line] = true
+
+			imports = append(imports, pkg.Import{
+				// TODO: do we need to include Target?
+				Resolved: pkg.ID{
+					Type:     pkg.Haskell,
+					Name:     name,
+					Revision: version,
+				},
+			})
+		}
+	}
+
+	// Our transitive dependencies
+	var transitive = make(map[pkg.ID]pkg.Package)
+
+	for _, line := range strings.Split(allDepsStdout, "\n") {
+		var dep = strings.Split(line, " ")
+
+		if len(dep) < 2 {
+			continue
+		}
+
+		var name    = dep[0]
+		var version = dep[1]
+
+		// Add to imports if we haven't seen this dep already
+		if _, ok := seen[line]; !ok {
+			seen[line] = true
+
+			pkgId := pkg.ID{
+				Type: pkg.Haskell,
+				Name: name,
+				Revision: version,
+			}
+
+			transitive[pkgId] = pkg.Package{
+				ID: pkgId,
+			}
+		}
+	}
+
+	deps := graph.Deps{
+		Direct: imports,
+		Transitive: transitive,
+	}
+
+	return deps, nil
 }
 
 func (Analyzer) Clean() error {
