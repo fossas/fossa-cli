@@ -3,6 +3,8 @@
 
 The FOSSA CLI is designed to discover all build environments in your project and extract third party dependency information from all of them.
 
+## [F.A.Q.](faq.md)
+
 ## [User Guide](user-guide.md#user-guide)
 
 The user guide provides an in depth look at the FOSSA CLI's discovery and analysis process. This guide includes documentation on the available `fossa` commands, their usage, and the configuration options available for each.

@@ -35,7 +35,7 @@ fossa init
 ### Step 3. Analysis
 Once your project is built, [`fossa analyze`](user-guide.md/#fossa-analyze) can be used to scan for dependencies and upload a dependency graph.
 
-Verify that analysis completes before uploading by testing with the `--output` flag.
+Verify that analysis completes before uploading by testing with the `--output` flag to show the data which will be uploaded to the server endpoint.
 ```bash
 # Using .fossa.yml configuration analyze and output the results.
 FOSSA_API_KEY=YOUR_API_KEY_HERE fossa analyze --output
