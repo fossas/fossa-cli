@@ -54,7 +54,7 @@ func dependenciesRun(ctx *cli.Context) error {
 		Project:  config.Project(),
 		Revision: config.Revision(),
 	}
-	revs, err := fossa.GetRevisionDependencies(locator)
+	revs, err := fossa.GetRevisionDependencies(locator, true)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to find dependencies for project %s:", locator)
 	}
