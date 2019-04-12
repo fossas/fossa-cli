@@ -16,7 +16,6 @@ type License struct {
 	Ignored        bool
 	Title          string
 	URL            string
-	FullText       string
 	Copyright      string
 	Text           string
 	Attribution    string
