@@ -54,7 +54,7 @@ func licensesRun(ctx *cli.Context) (err error) {
 		Project:  config.Project(),
 		Revision: config.Revision(),
 	}
-	revs, err := fossa.GetRevisionDependencies(locator)
+	revs, err := fossa.GetRevisionDependencies(locator, true)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to find licenses for project %s:", locator)
 	}

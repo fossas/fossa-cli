@@ -18,6 +18,8 @@ type License struct {
 	URL            string
 	FullText       string
 	Copyright      string
+	Text           string
+	Attribution    string
 }
 
 // A Revision holds the FOSSA API response for the revision API.
@@ -49,9 +51,16 @@ const RevisionsAPI = "/api/revisions/%s"
 const RevisionsDependenciesAPI = "/api/revisions/%s/dependencies"
 
 // GetRevisionDependencies returns all transitive dependencies for a project revision.
-func GetRevisionDependencies(locator Locator) ([]Revision, error) {
+func GetRevisionDependencies(locator Locator, licenseText bool) ([]Revision, error) {
 	var revisions []Revision
-	_, err := GetJSON(fmt.Sprintf(RevisionsDependenciesAPI, url.PathEscape(locator.OrgString())), &revisions)
+	licenseParams := url.Values{}
+	if licenseText {
+		licenseParams.Add("include_license_text", "true")
+		licenseParams.Add("generate_attribution", "true")
+	}
+
+	url := fmt.Sprintf(RevisionsDependenciesAPI, url.PathEscape(locator.OrgString())) + "?" + licenseParams.Encode()
+	_, err := GetJSON(url, &revisions)
 	return revisions, err
 }
 
