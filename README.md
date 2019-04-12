@@ -1,7 +1,7 @@
 ![FOSSA](https://raw.githubusercontent.com/fossas/fossa-cli/master/docs/assets/header.png)
 
 <p align="center">
-  <b>fossa-cli</b> - Fast, portable and reliable dependency analysis for any codebase.
+  <b>fossa-cli</b> - Fast, portable, and reliable dependency analysis for any codebase.
 </p>
 
 <p align="center">
@@ -37,7 +37,49 @@
 - Generates offline documentation for license notices & third-party attributions.
 - Tests dependencies against license violations, audits and vulnerabilities (coming soon!) by integrating with https://fossa.com.
 
-### Supported Environments
+## Installation
+
+The following commands will execute scripts to fetch and install the latest [GitHub Releases](https://github.com/fossas/fossa-cli/releases) on the corresponding operating system.
+
+### MacOS (Darwin) or Linux amd64:
+```bash
+curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
+```
+
+### Windows with Powershell:
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install.ps1'))
+```
+
+Add `C:\ProgramData\fossa-cli` to your path by modifying your `profile.ps1` file or temporarily with the following command:
+```powershell
+$env:Path += ";C:\ProgramData\fossa-cli"
+``` 
+
+## Quick Start
+
+Run `fossa` and provide a [FOSSA API Key](https://docs.fossa.com/docs/api-reference) to create a local [configuration file](docs/config-file.md#fossayml) and analyze the project. The project information will be uploaded and a link to a rich, hosted report on [fossa.com](https://fossa.com) will be output:
+
+```bash
+FOSSA_API_KEY="YOUR_API_KEY_HERE" fossa
+
+# Output:
+# ==========================================================
+#
+#    View FOSSA Report: https://app.fossa.com/{YOUR_LINK}
+#
+# ==========================================================
+```
+> Note: Running [`fossa`](user-guide.md/#fossa) is equivalent to running [`fossa init`](docs/user-guide.md#fossa-init) followed by [`fossa analyze`](docs/user-guide.md#fossa-analyze).
+## Documentation
+
+If you run into a problem using the FOSSA CLI, most issues can be resolved by looking at our documentation in the [FOSSA CLI User Manual](docs/README.md#fossa-cli-documentation). This will shed light to how we analyze specific ecosystems and how to accurately configure your project.
+
+If you have questions please refer to the [FAQ](docs/faq.md#faq). If your question is related to a bug or feature please open an issue on GitHub. You can also reach out to fossa directly at support@fossa.com.
+
+If you are interested in learning more about FOSSA you can visit our homepage at fossa.com and look at our [online documentation](https://docs.fossa.com/docs).
+
+## Supported Environments
 | Environment                                  | Package Managers                                                                                                             |
 | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Android                                      | [Gradle](docs/integrations/gradle.md#gradle)                                                                                 |
@@ -60,70 +102,6 @@
 If your development environment is not supported, check out the [archive](docs/integrations/archive.md#archive) uploader which allows direct license scanning of source code files.
 
 [Click here to learn more](docs/user-guide.md#user-guide) about the technical details behind this project.
-
-## Installation
-
-The following commands will execute scripts to fetch and install the latest [GitHub Releases](https://github.com/fossas/fossa-cli/releases) on the corresponding operating system.
-
-### MacOS (Darwin) or Linux amd64:
-```bash
-curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
-```
-
-### Windows with Powershell:
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install.ps1'))
-```
-
-Add `C:\ProgramData\fossa-cli` to your path by modifying your `profile.ps1` file or temporarily with the following command:
-```powershell
-$env:Path += ";C:\ProgramData\fossa-cli"
-``` 
-
-## Quick Start
-
-A more in depth look at the FOSSA CLI is available in the [manual](docs/README.md#FOSSA-CLI-Documentation).
-
-Run `fossa -o` in your project directory to output a sample dependency report in JSON:
-
-> Note: Running [`fossa`](user-guide.md/#fossa) is equivalent to running [`fossa init`](docs/user-guide.md#fossa-init) followed by [`fossa analyze`](docs/user-guide.md#fossa-analyze).
-```json
-[
-  {
-    "Name": "fossa-cli",
-    "Type": "golang",
-    "Manifest": "github.com/fossas/fossa-cli/cmd/fossa",
-    "Build": {
-        "Imports": [
-          "go+github.com/rhysd/go-github-selfupdate$d5c53b8d0552a7bf6b36457cd458d27c80e0210b",
-        ],
-        "Dependencies": [
-          {
-            "locator": "go+gopkg.in/src-d/go-git.v4/utils/merkletrie/internal/frame$cd64b4d630b6c2d2b3d72e9615e14f9d58bb5787",
-            "imports": [
-              "go+gopkg.in/src-d/go-git.v4/utils/merkletrie/noder$cd64b4d630b6c2d2b3d72e9615e14f9d58bb5787",
-            ]
-          },
-      ],
-    }
-  },
-]
-```
-
-Next, Run `fossa` and provide a [FOSSA API Key](https://docs.fossa.com/docs/api-reference) to get a rich, hosted report on [fossa.com](https://fossa.com):
-
-```bash
-export FOSSA_API_KEY="YOUR_API_KEY_HERE"
-
-fossa
-
-# Output:
-# ==========================================================
-#
-#    View FOSSA Report: https://app.fossa.com/{YOUR_LINK}
-#
-# ==========================================================
-```
 
 ## Configuration
 
