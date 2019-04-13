@@ -15,6 +15,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+type errorResponse struct {
+	Error string `json:"error"`
+}
+
 var defaultClient = http.Client{
 	Timeout: 60 * time.Second,
 	Transport: &http.Transport{
@@ -58,7 +62,9 @@ func jsonAPIRequest(method string, endpoint *url.URL, APIKey string, body []byte
 	}
 	err = json.Unmarshal(res, v)
 	if err != nil {
-		return code, errors.Wrap(err, "could not unmarshal JSON API response")
+		apiError := errorResponse{}
+		json.Unmarshal(res, &apiError)
+		return code, errors.Wrap(err, apiError.Error)
 	}
 	return code, nil
 }
