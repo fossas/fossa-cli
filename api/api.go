@@ -62,9 +62,7 @@ func jsonAPIRequest(method string, endpoint *url.URL, APIKey string, body []byte
 	}
 	err = json.Unmarshal(res, v)
 	if err != nil {
-		apiError := errorResponse{}
-		json.Unmarshal(res, &apiError)
-		return code, errors.Wrap(err, apiError.Error)
+		return code, errors.Wrap(err, "could not unmarshal JSON API response")
 	}
 	return code, nil
 }
@@ -115,7 +113,13 @@ func MakeAPIRequest(method string, endpoint *url.URL, APIKey string, body []byte
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "could not read API HTTP response")
 	}
-
 	log.WithField("response", string(res)).Debug("got API response")
+
+	apiError := errorResponse{}
+	err = json.Unmarshal(res, &apiError)
+	if apiError.Error != "" && err == nil {
+		return res, response.StatusCode, errors.New(apiError.Error)
+	}
+
 	return res, response.StatusCode, nil
 }
