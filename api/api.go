@@ -15,6 +15,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+type errorResponse struct {
+	Error string `json:"error"`
+}
+
 var defaultClient = http.Client{
 	Timeout: 60 * time.Second,
 	Transport: &http.Transport{
@@ -109,7 +113,13 @@ func MakeAPIRequest(method string, endpoint *url.URL, APIKey string, body []byte
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "could not read API HTTP response")
 	}
-
 	log.WithField("response", string(res)).Debug("got API response")
+
+	apiError := errorResponse{}
+	err = json.Unmarshal(res, &apiError)
+	if apiError.Error != "" && err == nil {
+		return res, response.StatusCode, errors.New(apiError.Error)
+	}
+
 	return res, response.StatusCode, nil
 }
