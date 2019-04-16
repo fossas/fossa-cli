@@ -7,6 +7,6 @@ type Options struct {
 type Strategy string
 const (
 	CabalInstall Strategy = "cabal-install"
-	Stack                 = "stack"
+	Stack        Strategy = "stack"
 )
 
