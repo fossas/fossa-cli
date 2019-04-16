@@ -1,64 +1,51 @@
 package analyzer
 
 import (
-	"github.com/fossas/fossa-cli/buildtools/cabal"
+	"github.com/fossas/fossa-cli/buildtools/stack"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-func TestAnalyzeCabalPure(t *testing.T) {
-	// Basic test with an input that hits all of the edge-cases:
-	// - pre-existing libraries
-	// - dependencies within components
-	// - dependencies at the top level
-	input := cabal.Plan{
-		InstallPlans: []cabal.InstallPlan{
-			{
-				Type: "configured",
-				Id: "pckg-n-0.0.1.0",
-				Name: "package-one",
-				Version: "0.0.1.0",
-
-				Components: map[string]cabal.Component{
-					"lib": {
-						Depends: []string{"pckg-tw-0.0.1.0"},
-					},
-				},
-				Style: "global",
-			},
-			{
-				Type: "configured",
-				Id: "pckg-tw-0.0.1.0",
-				Name: "package-two",
-				Version: "0.0.1.0",
-
-				Depends: []string{"pkcg-thr-0.0.1.0", "pkcg-fr-0.0.1.0"},
-				Style: "local",
-			},
-			{
-				Type: "pre-existing",
-				Id: "pkcg-thr-0.0.1.0",
-				Name: "package-three",
-				Version: "0.0.1.0",
-
-				Depends: []string{"pkcg-fr-0.0.1.0"},
-			},
-			{
-				Type: "configured",
-				Id: "pkcg-fr-0.0.1.0",
-				Name: "package-four",
-				Version: "0.0.1.0",
-
-				Depends: []string{},
-				Style: "global",
-			},
+func TestAnalyzeStackPure(t *testing.T) {
+	stackImmediateDeps := []stack.Dep{
+		{
+			Name: "package-three",
+			Version: "0.0.1.0",
+		},
+		{
+			Name: "package-four",
+			Version: "0.0.1.0",
 		},
 	}
 
-	// Shared model example -- when modifying this, also modify in stack_test.go
-	deps := AnalyzeCabalPure(input)
+	stackAllDeps := append(stackImmediateDeps,
+		stack.Dep{
+			Name: "package-one",
+			Version: "0.0.1.0",
+		},
+		stack.Dep{
+			Name: "package-two",
+			Version: "0.0.1.0",
+		},
+	)
+
+	depMap := map[stack.Canonical][]stack.Canonical{
+		{Identifier: "package-one-0.0.1.0"}: {
+			{Identifier: "package-two-0.0.1.0"},
+		},
+		{Identifier: "package-two-0.0.1.0"}: {
+			{Identifier: "package-three-0.0.1.0"},
+			{Identifier: "package-four-0.0.1.0"},
+		},
+		{Identifier: "package-three-0.0.1.0"}: {
+			{Identifier: "package-four-0.0.1.0"},
+		},
+	}
+
+	// Shared model example -- when modifying this, also modify in cabal_test.go
+	deps := AnalyzeStackPure(stackAllDeps, stackImmediateDeps, depMap)
 
 	packageOne := pkg.ID{
 		Type: pkg.Haskell,
