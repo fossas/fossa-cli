@@ -17,7 +17,7 @@ USER fossa
 WORKDIR /home/fossa
 
 # Install Go compiler and toolchain.
-RUN wget https://dl.google.com/go/go1.11.linux-amd64.tar.gz -O /tmp/go.tar.gz && \
+RUN wget https://dl.google.com/go/go1.12.4.linux-amd64.tar.gz -O /tmp/go.tar.gz && \
     sudo tar -xf /tmp/go.tar.gz -C /usr/local 
 ENV GOPATH=/home/fossa/go PATH=$PATH:/usr/local/go/bin:/home/fossa/go/bin
 
