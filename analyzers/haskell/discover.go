@@ -39,7 +39,6 @@ func Discover(baseDir string, options map[string]interface{}) ([]module.Module, 
 			return nil
 		}
 
-		// TODO: get module name from somewhere
 		moduleName     := filepath.Base(path)
 		relativeDir, _ := filepath.Rel(baseDir, filepath.Dir(path))
 
@@ -62,7 +61,6 @@ func Discover(baseDir string, options map[string]interface{}) ([]module.Module, 
 	for cabalFilePath := range cabalFiles {
 		for projectPath := range projects {
 			// TODO: parse cabal.project and stack.yaml instead of using their paths?
-			// TODO: tests for this relative filepath thing
 			rel, err := filepath.Rel(projectPath, cabalFilePath)
 			if err == nil && !strings.Contains(rel, "..") {
 				delete(cabalFiles, cabalFilePath)
@@ -71,7 +69,7 @@ func Discover(baseDir string, options map[string]interface{}) ([]module.Module, 
 		}
 	}
 
-	var modules []module.Module //make([]module.Module, len(projects) + len(cabalFiles))
+	var modules []module.Module
 	for _, m := range projects {
 		modules = append(modules, m)
 	}
