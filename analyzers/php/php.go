@@ -54,7 +54,7 @@ func New(m module.Module) (*Analyzer, error) {
 
 	analyzer := Analyzer{
 		Composer: composer.Composer{
-			Cmd: composerCmd,
+			Runner: composer.NewRunner(composerCmd),
 		},
 
 		Module:  m,
