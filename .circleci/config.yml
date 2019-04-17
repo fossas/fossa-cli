@@ -69,8 +69,6 @@ jobs:
     <<: *defaults
     working_directory: /home/fossa/go/src/github.com/fossas/fossa-cli
     docker:
-      # TODO: when we deprecate fossa-cli:fixtures, this should change to
-      # fossa-cli:buildtools.
       - image: fossa/fossa-cli:buildtools
     steps:
       - checkout
