@@ -97,7 +97,7 @@ Array of modules that will be analyzed in the order they are listed.
 Name of the module being analyzed. This field has no implication on analysis and is for user organization and debugging purposes only.
 
 #### `type:`
-Type of module being analyzed. Supported types can be found in the *Configuration* section of each [supported environment's page](../README.md#Supported-Environmetns) page.
+Type of module being analyzed. Supported types can be found in the *Configuration* section of each [supported environment's page](../README.md#Supported-Environments) page.
 
 #### `target:`
 Build target for the specified module. Target will be used differently depending on which `type` is selected and is most heavily utilized in analysis methods that shell out to a command such as `go list <target>` or `./gradlew target`.
@@ -111,6 +111,6 @@ If set to `true` this module will be skipped.
 Default: `false`
 
 #### `option:` (Optional)
-Most options are unique to the type of module being analyzed. Refer to the [supported environments' pages](../README.md#Supported-Environmetns) for documentation on the full list of options available.
+Most options are unique to the type of module being analyzed. Refer to the [supported environments' pages](../README.md#Supported-Environments) for documentation on the full list of options available.
 
 Default: No options.

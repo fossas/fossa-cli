@@ -7,12 +7,12 @@ Go support in FOSSA CLI depends on the following tools existing in your environm
 - Go (defaults to `go`, configure with `$GO_BINARY`)
 - At least one of:
   1. Dep (defaults to `dep`, configure with `$DEP_BINARY`)
-  2. Glide (defaults to `glide`, configure with `$GLIDE_BINARY`)
-  3. Godep (defaults to `godep`, configure with `$GODEP_BINARY`)
-  4. Govendor (defaults to `govendor`, configure with `$GOVENDOR_BINARY`)
-  5. Vndr (defaults to `vndr`, configure with `$VNDR_BINARY`)
-  6. Gdm (defaults to `gdm`, configure with `$GDM_BINARY`)
-  7. Gomodules, the presence of `go.mod`.
+  2. Gomodules, the presence of `go.mod`.
+  3. Glide (defaults to `glide`, configure with `$GLIDE_BINARY`)
+  4. Godep (defaults to `godep`, configure with `$GODEP_BINARY`)
+  5. Govendor (defaults to `govendor`, configure with `$GOVENDOR_BINARY`)
+  6. Vndr (defaults to `vndr`, configure with `$VNDR_BINARY`)
+  7. Gdm (defaults to `gdm`, configure with `$GDM_BINARY`)
 
 ## Configuration
 

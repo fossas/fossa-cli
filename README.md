@@ -70,12 +70,12 @@ FOSSA_API_KEY="YOUR_API_KEY_HERE" fossa
 #
 # ==========================================================
 ```
-> Note: Running [`fossa`](user-guide.md/#fossa) is equivalent to running [`fossa init`](docs/user-guide.md#fossa-init) followed by [`fossa analyze`](docs/user-guide.md#fossa-analyze).
+> Note: Running [`fossa`](docs/user-guide.md/#fossa) is equivalent to running [`fossa init`](docs/user-guide.md#fossa-init) followed by [`fossa analyze`](docs/user-guide.md#fossa-analyze).
 ## Documentation
 
 If you run into a problem using the FOSSA CLI, most issues can be resolved by looking at our documentation in the [FOSSA CLI User Manual](docs/README.md#fossa-cli-documentation). This will shed light to how we analyze specific ecosystems and how to accurately configure your project.
 
-If you have questions please refer to the [FAQ](docs/faq.md#faq). If your question is related to a bug or feature please open an issue on GitHub. You can also reach out to fossa directly at support@fossa.com.
+If you have questions please refer to the [FAQ](docs/faq.md#frequently-asked-questions). If your question is related to a bug or feature please open an issue on GitHub. You can also reach out to fossa directly at support@fossa.com.
 
 If you are interested in learning more about FOSSA you can visit our homepage at fossa.com and look at our [online documentation](https://docs.fossa.com/docs).
 
