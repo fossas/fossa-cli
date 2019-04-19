@@ -10,6 +10,10 @@ import (
 )
 
 func TestDiscover(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Composer requires build tool")
+	}
+
 	module, err := php.Discover("testdata", nil)
 	assert.NoError(t, err)
 
