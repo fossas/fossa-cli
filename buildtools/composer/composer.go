@@ -9,13 +9,22 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/exec"
-	"github.com/fossas/fossa-cli/files"
 )
 
 //go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Package' | sed -e 's/package graph/package composer/' > readtree_generated.go"
 
-type Composer struct {
-	Runner
+// A Composer can return the output of the `show` and `install` commands.
+type Composer interface {
+	// Show returns the output of running the `show` command in dir with optional additional arguments.
+	Show(dir string, args ...string) (stdout string, stderr string, err error)
+
+	// Install returns the output of running the `install` command in dir with optional additional arguments.
+	Install(dir string, args ...string) (stdout string, stderr string, err error)
+}
+
+// NewComposer returns a Runner that invokes the real composer binary.
+func NewComposer(composerBinary string) Composer {
+	return runner(composerBinary)
 }
 
 type Package struct {
@@ -24,29 +33,15 @@ type Package struct {
 	Description string
 }
 
-// A Show structure has a list of dependencies reported by Composer.
-type Show struct {
+// A ShowOutput structure has a list of dependencies reported by Composer.
+type ShowOutput struct {
 	Installed []Package `json:"installed"`
 }
 
-// A Runner can execute the relevant composer commands.
-type Runner interface {
-	// RunShow runs the `show` command in the dir specified with optional additional arguments.
-	RunShow(dir string, args ...string) (stdout string, stderr string, err error)
+// The runner type implements the Composer interface and execs the composer binary.
+type runner string
 
-	// RunInstall runs the `install` command in the dir specified with optional additional arguments.
-	RunInstall(dir string, args ...string) (stdout string, stderr string, err error)
-}
-
-// NewRunner returns a Runner that invokes the real composer binary.
-func NewRunner(composerBinary string) Runner {
-	return realRunner(composerBinary)
-}
-
-// A realRunner implements the Runner interface and execs the composer binary.
-type realRunner string
-
-func (r realRunner) RunShow(dir string, args ...string) (stdout string, stderr string, err error) {
+func (r runner) Show(dir string, args ...string) (stdout string, stderr string, err error) {
 	return exec.Run(exec.Cmd{
 		Name: string(r),
 		Argv: append([]string{"show"}, args...),
@@ -54,7 +49,7 @@ func (r realRunner) RunShow(dir string, args ...string) (stdout string, stderr s
 	})
 }
 
-func (r realRunner) RunInstall(dir string, args ...string) (stdout string, stderr string, err error) {
+func (r runner) Install(dir string, args ...string) (stdout string, stderr string, err error) {
 	return exec.Run(exec.Cmd{
 		Name: string(r),
 		Argv: append([]string{"install"}, args...),
@@ -62,9 +57,9 @@ func (r realRunner) RunInstall(dir string, args ...string) (stdout string, stder
 	})
 }
 
-func (c Composer) Dependencies(dir string) ([]Package, map[Package][]Package, error) {
+func Dependencies(dir string, c Composer) ([]Package, map[Package][]Package, error) {
 	// Run `composer show --format=json --no-ansi` to get resolved versions.
-	show, err := c.Show(dir)
+	show, err := Show(dir, c)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -75,7 +70,7 @@ func (c Composer) Dependencies(dir string) ([]Package, map[Package][]Package, er
 	}
 
 	// Run `composer show --tree --no-ansi` to get paths.
-	treeOutput, _, err := c.RunShow(dir, "--tree", "--no-ansi")
+	treeOutput, _, err := c.Show(dir, "--tree", "--no-ansi")
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "could not get dependency list from Composer")
 	}
@@ -88,6 +83,8 @@ func (c Composer) Dependencies(dir string) ([]Package, map[Package][]Package, er
 		}
 	}
 
+	treeLine := regexp.MustCompile("^([ |`-]+)([^ |`-][^ ]+) .*$")
+
 	imports, deps, err := ReadPackageTree(filteredLines, func(line string) (int, Package, error) {
 		if line[0] != '`' && line[0] != '|' && line[0] != ' ' {
 			// We're at a top-level package.
@@ -98,8 +95,7 @@ func (c Composer) Dependencies(dir string) ([]Package, map[Package][]Package, er
 		}
 
 		// We're somewhere in the tree.
-		r := regexp.MustCompile("^([ |`-]+)([^ |`-][^ ]+) (.*)$")
-		matches := r.FindStringSubmatch(line)
+		matches := treeLine.FindStringSubmatch(line)
 		name := matches[2]
 		depth := len(matches[1])
 		if depth%3 != 0 {
@@ -112,7 +108,7 @@ func (c Composer) Dependencies(dir string) ([]Package, map[Package][]Package, er
 			"level": level,
 		}).Debug("parsing Composer tree")
 
-		// Resolve special names
+		// Resolve special names.
 		if name == "php" || strings.HasPrefix(name, "ext-") {
 			return level, Package{Name: name}, nil
 		}
@@ -156,29 +152,27 @@ func (c Composer) Dependencies(dir string) ([]Package, map[Package][]Package, er
 	return filteredImports, filteredDeps, nil
 }
 
-func (c Composer) Show(dir string) (Show, error) {
+// Install calls Install on the Composer with dir as the CWD.
+func Install(dir string, c Composer) error {
+	_, _, err := c.Install(dir, "--prefer-dist", "--no-dev", "--no-plugins", "--no-scripts")
+	return err
+}
+
+// Show calls Show on the Composer with dir as the CWD.
+func Show(dir string, c Composer) (ShowOutput, error) {
 	// Run `composer show --format=json --no-ansi` to get resolved versions
-	showOutput, _, err := c.RunShow(dir, "--format=json", "--no-ansi")
+	output, _, err := c.Show(dir, "--format=json", "--no-ansi")
 	if err != nil {
-		return Show{}, errors.Wrap(err, "could not get dependency list from Composer")
+		return ShowOutput{}, errors.Wrap(err, "could not get dependency list from Composer")
 	}
-	var showJSON Show
-	// if there are no deps, this will be returned. Attempting to unmarshal it will throw an error, so return eagerly
-	if strings.HasPrefix(showOutput, "[]") {
+	var showJSON ShowOutput
+	// If there are no deps, `[]` will be returned. Do not attempt to unmarshal it into a Show struct.
+	if strings.HasPrefix(output, "[]") {
 		return showJSON, nil
 	}
-	err = json.Unmarshal([]byte(showOutput), &showJSON)
+	err = json.Unmarshal([]byte(output), &showJSON)
 	if err != nil {
-		return Show{}, errors.Wrapf(err, "could not parse dependency list as JSON: %#v", showOutput)
+		return ShowOutput{}, errors.Wrapf(err, "could not parse dependency list as JSON: %#v", output)
 	}
 	return showJSON, nil
-}
-
-func (c Composer) Clean(dir string) error {
-	return files.Rm(dir, "vendor")
-}
-
-func (c Composer) Install(dir string) error {
-	_, _, err := c.RunInstall(dir, "--prefer-dist", "--no-dev", "--no-plugins", "--no-scripts")
-	return err
 }

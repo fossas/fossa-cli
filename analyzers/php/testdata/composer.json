@@ -2,7 +2,7 @@
     "name": "fixture",
     "type": "project",
     "require": {
-        "php": "^7.2",
+        "php": "^7.1",
         "twig/twig": "^2.0"
     }
 }
