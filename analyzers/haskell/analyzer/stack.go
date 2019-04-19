@@ -8,7 +8,6 @@ import (
 )
 
 func AnalyzeStack(m module.Module) (graph.Deps, error) {
-	// Get all deps from
 	stackAllDeps, err := stack.GetStackDependencies(m.Dir, nil)
 
 	if err != nil {

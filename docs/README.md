@@ -57,6 +57,7 @@ This document is a walk-through of getting started with the FOSSA CLI and is aim
   - [dotnet](integrations/dotnet.md#net)
   - [golang](integrations/golang.md#go)
   - [gradle](integrations/gradle.md#gradle)
+  - [haskell](integrations/haskell.md#haskell)
   - [maven](integrations/maven.md#maven)
   - [nodejs](integrations/nodejs.md#nodejs)
   - [okbuck](integrsations/okbuck.md#okbuck)
