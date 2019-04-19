@@ -13,16 +13,56 @@ package config
 import (
 	"github.com/apex/log"
 	"github.com/urfave/cli"
-	git "gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4"
 
 	"github.com/fossas/fossa-cli/vcs"
 )
 
 var (
 	ctx  *cli.Context
-	repo *git.Repository
 	file File = NoFile{}
+
+	repoOLD *git.Repository
+
+	Repo Repository
 )
+
+// A Repository represents the current state of a version-controlled repository.
+type Repository interface {
+	Project() string
+	Head() Revision
+}
+
+type Revision struct {
+	Branch     string
+	RevisionID string
+}
+
+type GitRepository struct {
+}
+
+func (gr *GitRepository) Head() Revision {
+	panic("implement me")
+}
+
+func (gr *GitRepository) Project() string {
+	origin, err := repoOLD.Remote("origin")
+	if err == nil && origin != nil {
+		return origin.Config().URLs[0]
+	}
+	return ""
+}
+
+type SubversionRepository struct {
+}
+
+func (*SubversionRepository) Project() string {
+	panic("implement me")
+}
+
+func (*SubversionRepository) Head() Revision {
+	panic("implement me")
+}
 
 // SetContext initializes application-level configuration.
 func SetContext(c *cli.Context) error {
@@ -40,21 +80,29 @@ func SetContext(c *cli.Context) error {
 	filename = fname
 
 	// Third, try to open the local VCS repository.
-	_, dir, err := vcs.Nearest(".")
-	if err == vcs.ErrNoNearestVCS {
+	vcsType, dir, err := vcs.Nearest(".")
+	switch err {
+	case nil:
+	case vcs.ErrNoNearestVCS:
 		return nil
-	}
-	if err != nil {
+	case vcs.ErrUnsupportedVCS:
+		// Construct a revision ID.
+	default:
 		return err
 	}
-	r, err := git.PlainOpen(dir)
-	if err == git.ErrRepositoryNotExists {
-		return nil
+
+	switch vcsType {
+	case vcs.Git:
+		r, err := git.PlainOpen(dir)
+		if err == git.ErrRepositoryNotExists {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		repoOLD = r
+	case vcs.Subversion:
 	}
-	if err != nil {
-		return err
-	}
-	repo = r
 
 	return nil
 }

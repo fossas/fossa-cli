@@ -24,10 +24,10 @@ func TestGetRepositoryBelowRoot(t *testing.T) {
 	assert.Equal(t, filepath.Join(wd, ".."), dir)
 }
 
-func TestGetRepositoryUnsupportedVCS(t *testing.T) {
+func TestGetRepositorySubversion(t *testing.T) {
 	dir, err := vcs.GetRepository(filepath.Join("testdata", "subversion", "nested", "directory"))
-	assert.Equal(t, err, vcs.ErrUnsupportedVCS)
-	assert.Equal(t, "", dir)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, dir)
 }
 
 func TestGetRepositoryWithoutVCSReturnsErrNoNearestVCS(t *testing.T) {

@@ -43,9 +43,6 @@ func Nearest(dirname string) (VCS, string, error) {
 		if err != nil {
 			return err
 		}
-		if tool == Subversion || tool == Mercurial || tool == Bazaar {
-			return ErrUnsupportedVCS
-		}
 		vcs = tool
 		return files.ErrStopWalk
 	})
@@ -64,10 +61,8 @@ func GetRepository(dirname string) (string, error) {
 		return "", err
 	}
 	switch vcs {
-	case Git:
+	case Git, Subversion:
 		return dir, nil
-	case Subversion:
-		return "", errors.ErrNotImplemented
 	case Mercurial:
 		return "", errors.ErrNotImplemented
 	case Bazaar:

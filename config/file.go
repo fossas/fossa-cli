@@ -113,7 +113,7 @@ func InitFile(modules []module.Module) File {
 		CLI: v1.CLIProperties{
 			Server:  Endpoint(),
 			Fetcher: Fetcher(),
-			Project: Project(),
+			Project: Repo.Project(),
 		},
 		Analyze: v1.AnalyzeProperties{
 			Modules: configs,
