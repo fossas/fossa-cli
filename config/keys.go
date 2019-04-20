@@ -68,33 +68,26 @@ func Fetcher() string {
 	return TryStrings(StringFlag(flags.Fetcher), file.Fetcher(), "custom")
 }
 
-func project() string {
+func Project() string {
 	inferred := ""
-	if Repo != nil {
-		inferred = Repo.Project()
+	if repo != nil {
+		inferred = repo.Project()
 	}
 	return TryStrings(StringFlag(flags.Project), file.Project(), inferred)
 }
 
-func revision() string {
+func Revision() string {
 	inferred := ""
-	if repoOLD != nil {
-		revision, err := repoOLD.Head()
-		if err == nil {
-			inferred = revision.Hash().String()
-		}
+	if repo != nil {
+		inferred = repo.Head().RevisionID
 	}
 	return TryStrings(StringFlag(flags.Revision), file.Revision(), inferred)
 }
 
 func Branch() string {
 	inferred := ""
-	if repoOLD != nil {
-		revision, err := repoOLD.Head()
-		if err == nil {
-			// TODO: check whether this prefix trimming is actually correct.
-			inferred = strings.TrimPrefix(revision.Name().String(), "refs/heads/")
-		}
+	if repo != nil {
+		inferred = repo.Head().Branch
 	}
 	return TryStrings(MockBranch, StringFlag(flags.Branch), file.Branch(), inferred, "master")
 }
