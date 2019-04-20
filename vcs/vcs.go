@@ -9,6 +9,20 @@ import (
 	"github.com/fossas/fossa-cli/files"
 )
 
+// A System represents the current state of a version-controlled repository.
+type System interface {
+	// Project returns the string uniquely identifying this codebase.
+	Project() string
+
+	// Head returns the latest revision that is being examined.
+	Head() Revision
+}
+
+type Revision struct {
+	Branch     string
+	RevisionID string
+}
+
 // Errors that occur when finding VCS repositories.
 var (
 	ErrNoVCSInDir     = errors.New("could not find VCS repository in directory")
@@ -61,11 +75,9 @@ func GetRepository(dirname string) (string, error) {
 		return "", err
 	}
 	switch vcs {
-	case Git, Subversion:
+	case Git, Subversion, None:
 		return dir, nil
-	case Mercurial:
-		return "", errors.ErrNotImplemented
-	case Bazaar:
+	case Mercurial, Bazaar:
 		return "", errors.ErrNotImplemented
 	default:
 		return "", errors.ErrNotImplemented
