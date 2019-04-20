@@ -57,6 +57,9 @@ func Nearest(dirname string) (VCS, string, error) {
 		if err != nil {
 			return err
 		}
+		if tool == Mercurial || tool == Bazaar {
+			return ErrUnsupportedVCS
+		}
 		vcs = tool
 		return files.ErrStopWalk
 	})
