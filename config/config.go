@@ -45,6 +45,7 @@ func SetContext(c *cli.Context) error {
 		// OK
 	case vcs.ErrNoNearestVCS:
 		vcsType = vcs.None
+		dir = "."
 	default:
 		return err
 	}
