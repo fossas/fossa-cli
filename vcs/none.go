@@ -13,6 +13,8 @@ type NoRepository struct {
 	revisionId time.Time
 }
 
+// NewNoRepository takes the directory marking the root of a codebase that is not version controlled and
+// returns an implementation of the System interface that uses the filesystem and current time as metadata.
 func NewNoRepository(dir string) (*NoRepository, error) {
 	return &NoRepository{
 		dir:        dir,

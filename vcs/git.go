@@ -9,6 +9,8 @@ type GitRepository struct {
 	dir string
 }
 
+// NewGitRepository takes the directory where a git repository exists and returns an implementation of the
+// System interface that uses the repository's metadata.
 func NewGitRepository(dir string) (*GitRepository, error) {
 	r, err := git.PlainOpen(dir)
 	if err == git.ErrRepositoryNotExists {

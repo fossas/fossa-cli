@@ -45,9 +45,6 @@ func SetContext(c *cli.Context) error {
 		// OK
 	case vcs.ErrNoNearestVCS:
 		vcsType = vcs.None
-	case vcs.ErrUnsupportedVCS:
-		// Currently, all we do is fail to set up the repo.
-		return nil
 	default:
 		return err
 	}

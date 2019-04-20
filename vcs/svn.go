@@ -13,10 +13,12 @@ type SubversionRepository struct {
 	dir string
 	cmd string
 
-	// info is loaded only once if it's needed
+	// info is loaded only once if it's needed.
 	info *svnInfo
 }
 
+// NewSubversionRepository takes the directory where a Subversion repository exists and returns an
+// implementation of the System interface that uses the repository's metadata.
 func NewSubversionRepository(dir string) (*SubversionRepository, error) {
 	cmd, _, err := exec.Which("--version", os.Getenv("SVN_BINARY"), "svn")
 	if err != nil {
@@ -46,6 +48,9 @@ func (s *SubversionRepository) Head() Revision {
 }
 
 func (s *SubversionRepository) loadInfo() error {
+	if s.info != nil {
+		return nil
+	}
 	stdout, _, err := exec.Run(exec.Cmd{
 		Name: s.cmd,
 		Argv: []string{"info", "--xml"},

@@ -12,7 +12,7 @@ const (
 	None
 )
 
-// Types hast the VCS types that are identifiable by walking a directory tree.
+// Types has the VCS types that are identifiable by walking a directory tree.
 var Types = [4]VCS{
 	Subversion,
 	Git,
