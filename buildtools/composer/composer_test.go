@@ -2,6 +2,7 @@ package composer_test
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,7 +46,7 @@ func TestDependencies(t *testing.T) {
         {
             "name": "symfony/polyfill-mbstring",
             "version": "v1.9.0",
-            "description": "Symfony polyfill for the Mbstring extension"
+            "description": "Polyfill for Mbstring"
         },
         {
             "name": "twig/twig",
@@ -55,6 +56,12 @@ func TestDependencies(t *testing.T) {
     ]
 }`
 
+	type pkg = composer.Package
+
+	p1 := pkg{"twig/twig", "v2.5.0", "Twig, the flexible, fast, and secure template language for PHP"}
+	p2 := pkg{"symfony/polyfill-ctype", "v1.9.0", "Symfony polyfill for ctype functions"}
+	p3 := pkg{"symfony/polyfill-mbstring", "v1.9.0", "Polyfill for Mbstring"}
+
 	runner := mockRunner{
 		showTreeOutput: tree,
 		showOutput:     show,
@@ -63,18 +70,40 @@ func TestDependencies(t *testing.T) {
 	imports, deps, err := composer.Dependencies("", runner)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, len(imports), fmt.Sprintf("Got: %v", imports))
-	assert.Equal(t, 3, len(deps), fmt.Sprintf("Got: %v", deps))
+	// Check for all expected dependencies, and ensure that "php" is not one of them.
+	expectedImports := []pkg{p1}
 
-	// Ensure there are no PHP dependencies.
-	for _, dep := range imports {
-		assert.NotEqual(t, "php", dep.Name)
+	assert.Equal(t, len(expectedImports), len(imports), fmt.Sprintf("Got: %v", imports))
+	assert.Equal(t, expectedImports, imports)
+
+	expectedDeps := map[string][]pkg{
+		"twig/twig":                 {p2, p3},
+		"symfony/polyfill-ctype":    {},
+		"symfony/polyfill-mbstring": {},
 	}
 
-	for id, dep := range deps {
-		assert.NotEqual(t, "php", id.Name)
-		for _, deepDep := range dep {
-			assert.NotEqual(t, "php", deepDep.Name)
+	for pkgName, pkgDeps := range expectedDeps {
+		var found *pkg
+		for k := range deps {
+			if k.Name == pkgName {
+				found = &k
+				break
+			}
+		}
+		assert.NotNil(t, found)
+
+		// The pkgDeps slice and the corresponding slice in deps may have all the same data but with the
+		// elements not in the same order because they're taken from iteration over a map.
+		for _, dep := range pkgDeps {
+			// Find a Package with the same data.
+			sameFound := false
+			for _, gotDep := range deps[*found] {
+				if reflect.DeepEqual(dep, gotDep) {
+					sameFound = true
+					break
+				}
+			}
+			assert.True(t, sameFound)
 		}
 	}
 }
