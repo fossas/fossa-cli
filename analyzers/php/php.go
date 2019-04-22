@@ -8,10 +8,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/apex/log"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/buildtools/composer"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
@@ -53,9 +53,7 @@ func New(m module.Module) (*Analyzer, error) {
 	}
 
 	analyzer := Analyzer{
-		Composer: composer.Composer{
-			Cmd: composerCmd,
-		},
+		Composer: composer.NewComposer(composerCmd),
 
 		Module:  m,
 		Options: options,
@@ -109,23 +107,20 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 }
 
 func (a *Analyzer) Clean() error {
-	return a.Composer.Clean(a.Module.Dir)
+	return files.Rm(a.Module.Dir, "vendor")
 }
 
 func (a *Analyzer) Build() error {
-	return a.Composer.Install(a.Module.Dir)
+	return composer.Install(a.Module.Dir, a.Composer)
 }
 
 func (a *Analyzer) IsBuilt() (bool, error) {
-	_, err := a.Composer.Show(a.Module.Dir)
-	if err != nil {
-		return false, nil
-	}
-	return true, nil
+	_, err := composer.Show(a.Module.Dir, a.Composer)
+	return err == nil, nil
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	imports, deps, err := a.Composer.Dependencies(a.Module.Dir)
+	imports, deps, err := composer.Dependencies(a.Module.Dir, a.Composer)
 	if err != nil {
 		return graph.Deps{}, err
 	}
