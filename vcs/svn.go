@@ -51,11 +51,16 @@ func (s *SubversionRepository) loadInfo() error {
 	if s.info != nil {
 		return nil
 	}
+
 	stdout, _, err := exec.Run(exec.Cmd{
 		Name: s.cmd,
 		Argv: []string{"info", "--xml"},
 		Dir:  s.dir,
 	})
+	if err != nil {
+		return err
+	}
+
 	var info svnInfo
 	err = info.unmarshalXML([]byte(stdout))
 	if err != nil {
