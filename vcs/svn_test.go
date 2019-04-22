@@ -2,6 +2,7 @@ package vcs
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,6 +28,26 @@ const svnInfoXML = `<?xml version="1.0" encoding="UTF-8"?>
 </entry>
 </info>`
 
+func TestNewSubversionRepository(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skip integration test")
+	}
+
+	dir := filepath.Join("testdata", "subversion")
+	repo, err := NewSubversionRepository(dir)
+	assert.NoError(t, err)
+
+	var project string
+	assert.NotPanics(t, func() {
+		project = repo.Project()
+	})
+
+	assert.Equal(t, "file:///tmp/demo", project)
+	head := repo.Head()
+	assert.Equal(t, "trunk", head.Branch)
+	assert.Equal(t, "0", head.RevisionID)
+}
+
 func TestSvnBranchFromInfo(t *testing.T) {
 	// info has only the fields that this function considers.
 	type info struct {
@@ -37,33 +58,20 @@ func TestSvnBranchFromInfo(t *testing.T) {
 		branch string
 	}{
 		{
-			info{
-				URL:         "https://svn.a.com/proj",
-				relativeURL: "^/proj",
-				repoRoot:    "https://svn.a.com",
-			},
+			info{URL: "https://svn.a.com/proj", relativeURL: "^/proj", repoRoot: "https://svn.a.com"},
 			"trunk",
 		},
 		{
-			info{
-				URL:         "https://svn.a.com/proj/branches/my-branch",
-				relativeURL: "^/proj",
-				repoRoot:    "https://svn.a.com",
-			},
-			"my-branch",
+			info{URL: "https://a.com/proj/branches/b2", relativeURL: "^/proj", repoRoot: "https://a.com"},
+			"b2",
 		},
 		{
-			info{
-				URL:         "https://b.co/my-proj",
-				relativeURL: "^/",
-				repoRoot:    "https://b.co/my-proj",
-			},
+			info{URL: "https://b.co/my-proj", relativeURL: "^/", repoRoot: "https://b.co/my-proj",},
 			"trunk",
 		},
 	}
-	for i := range cases {
+	for i, tc := range cases {
 		t.Run(fmt.Sprintf("case_%d", i), func(t *testing.T) {
-			tc := &cases[i]
 			var info svnInfo
 			info.Entry.URL = tc.info.URL
 			info.Entry.RelativeURL = tc.info.relativeURL

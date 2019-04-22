@@ -54,6 +54,7 @@ func (s *SubversionRepository) loadInfo() error {
 	stdout, _, err := exec.Run(exec.Cmd{
 		Name: s.cmd,
 		Argv: []string{"info", "--xml"},
+		Dir:  s.dir,
 	})
 	var info svnInfo
 	err = info.unmarshalXML([]byte(stdout))
@@ -75,15 +76,14 @@ func svnBranchFromInfo(info *svnInfo) string {
 	)
 
 	// Branches are typically identified by being under this directory.
-	branches := "/branches"
+	branches := "/branches/"
 
 	if strings.HasPrefix(trimmed, branches) {
 		// This is an ordinary branch.
 		trimmed = strings.TrimPrefix(trimmed, branches)
+	} else {
+		trimmed = strings.TrimPrefix(trimmed, "/")
 	}
-
-	// Whether or not the branch is under /branches it will have a leading slash if it's not trunk.
-	trimmed = strings.TrimPrefix(trimmed, "/")
 
 	if trimmed != "" {
 		return trimmed
