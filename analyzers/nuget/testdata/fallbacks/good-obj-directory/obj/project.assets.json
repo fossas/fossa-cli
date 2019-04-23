@@ -1,0 +1,9 @@
+{
+      "version": 3,
+      "targets": {
+        ".NETFramework,Version=v4.5.2": {
+          "test-package-assets/1.0.0": { }
+      }
+    }
+}
+    

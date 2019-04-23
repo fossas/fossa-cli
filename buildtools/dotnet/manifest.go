@@ -67,16 +67,31 @@ type ItemGroup struct {
 
 type Reference struct {
 	Include string `xml:",attr"`
-	Version string `xml:",attr"`
+	Version string `xml:"Version"`
 }
 
 type NuSpec struct {
-	Metadata Metadata
+	Metadata Metadata `xml:"metadata"`
+	Xmlns    string   `xml:"xmlns,attr"`
 }
 
 type Metadata struct {
-	ID      string
-	Version string
+	ID           string       `xml:"id"`
+	Version      string       `xml:"version"`
+	Dependencies Dependencies `xml:"dependencies"`
+}
+
+type Dependencies struct {
+	Groups []Group `xml:"group"`
+}
+
+type Group struct {
+	Dependencies []Dependency `xml:"dependency"`
+}
+
+type Dependency struct {
+	ID      string `xml:"id,attr"`
+	Version string `xml:"version,attr"`
 }
 
 type Lockfile struct {
@@ -86,9 +101,28 @@ type Lockfile struct {
 	resolved map[string]resolved
 }
 
+type Packages struct {
+	Package []Dependency `xml:"package"`
+}
+
 type resolved struct {
 	Version string
 	Imports map[string]string
+}
+
+type Project struct {
+	Version string `json:"version"`
+	// Works for all deps which are <name> : <version>
+	// Dependencies map[string]string `json:"dependencies"`
+	// Works for deps where they are <name> : {
+	// "version" : <version>
+	// }
+	// Dependencies map[string]Dependser `json:"dependencies"`
+	Dependencies map[string]interface{} `json:"dependencies"`
+}
+
+type Dependser struct {
+	Version string `json:"version"`
 }
 
 func ReadLockfile(filename string) (Lockfile, error) {

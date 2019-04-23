@@ -11,13 +11,12 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-	"github.com/mitchellh/mapstructure"
-
 	"github.com/fossas/fossa-cli/buildtools/dotnet"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
+	"github.com/mitchellh/mapstructure"
 )
 
 type Analyzer struct {
@@ -40,7 +39,6 @@ func New(m module.Module) (*Analyzer, error) {
 	dotnetCmd, dotnetVersion, err := exec.Which("--version", os.Getenv("DOTNET_BINARY"), "dotnet")
 	if err != nil {
 		log.Warn("Cannot find .NET binary")
-		//return nil, errors.Wrap(err, "could not find dotnet binary (try setting $DOTNET_BINARY)")
 	}
 
 	// Decode options
@@ -68,7 +66,7 @@ func New(m module.Module) (*Analyzer, error) {
 var xmlProj = regexp.MustCompile(`.*\.(cs|x|vb|db|fs)proj$`)
 
 func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
-	var modules []module.Module
+	moduleMap := make(map[string]module.Module)
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
@@ -78,12 +76,14 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 		if !info.IsDir() {
 			name := info.Name()
 			dir := filepath.Dir(path)
-			moduleName := name
+			moduleName := dir
+			target := dir
+			currentModule, dirCovered := moduleMap[dir]
 
-			options := make(map[string]interface{})
-			// TODO(#172): this will use the lexicographically first indicator in the
-			// directory, but we actually want the _best_ indicator (i.e. we should
-			// prefer a *.csproj over a *.nuspec when both are available).
+			// Module preference
+			// 1. Package Reference
+			// 2. Nuspec
+			// 3. packages.config, project.json, paket.lock
 			if xmlProj.MatchString(name) {
 				// For *.{cs,x,vb,db,fs}proj files, use the first <RootNamespace> seen.
 				var manifest dotnet.Manifest
@@ -94,7 +94,8 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				if n := manifest.Name(); n != "" {
 					moduleName = n
 				}
-			} else if strings.HasSuffix(name, ".nuspec") {
+				target = path
+			} else if strings.HasSuffix(name, ".nuspec") && (!dirCovered || !xmlProj.MatchString(currentModule.BuildTarget)) {
 				// For *.nuspec files, use the <id>.
 				var nuspec dotnet.NuSpec
 				err := files.ReadXML(&nuspec, path)
@@ -104,24 +105,22 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				if id := nuspec.Metadata.ID; id != "" {
 					moduleName = id
 				}
-			} else if name == "packages.config" || name == "project.json" {
+				target = path
+			} else if (name == "packages.config" || name == "project.json" || name == "paket.lock") && !dirCovered {
 				// For other module indicators, use the directory name.
-				moduleName = filepath.Base(dir)
-			} else if name == "paket.lock" {
-				options["strategy"] = "paket"
+				target = dir
 			} else {
 				// TODO: get modules from `sln` files via `dotnet sln list`?
 				return nil
 			}
 
-			modules = append(modules, module.Module{
+			moduleMap[dir] = module.Module{
 				Name:        moduleName,
 				Type:        pkg.NuGet,
-				BuildTarget: path,
+				BuildTarget: target,
 				Dir:         dir,
-				Options:     options,
-			})
-			return filepath.SkipDir
+			}
+			return nil
 		}
 
 		return nil
@@ -130,6 +129,10 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 		return nil, err
 	}
 
+	var modules []module.Module
+	for _, module := range moduleMap {
+		modules = append(modules, module)
+	}
 	return modules, nil
 }
 

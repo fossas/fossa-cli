@@ -1,138 +1,102 @@
 package nuget
 
 import (
+	"fmt"
 	"path/filepath"
+	"regexp"
 
 	"github.com/apex/log"
-
 	"github.com/fossas/fossa-cli/buildtools/dotnet"
 	"github.com/fossas/fossa-cli/buildtools/paket"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
-	"github.com/fossas/fossa-cli/pkg"
 )
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.WithField("module", a.Module).Debug("analyzing module")
 
-	if a.Options.Strategy == "paket" {
+	dir := Dir(a.Module)
+	if dir == "." {
+		dir = ""
+	}
+	// Strategies
+	// 1. Paket
+	// 2. check for projects.assets.json
+	// 3. analyze the build target
+	// 4. packages.config & project.json
+
+	// Questions
+	// This is heavily reliant on the discovery stage to find the correct file, difficult to handle for package reference which is a significant amount of projects.
+	// Currently I would like to discover the correct file between package reference, to nuspec, to packages.config.
+	// This doesn't allow for fallbacks if the file cannot be read
+
+	switch a.Options.Strategy {
+	case "paket":
 		return paket.DependencyGraph(a.Module.BuildTarget)
-	}
+	case "packagereference":
+		return dotnet.PackageReferenceGraph(a.Module.BuildTarget)
+	case "nuspec":
+		return dotnet.NuspecGraph(a.Module.BuildTarget)
+	case "packageconfig":
+		return dotnet.ProjectGraph(filepath.Join(dir, "packages.config"))
+	case "projectjson":
+		return dotnet.ProjectGraph(filepath.Join(dir, "project.json"))
+	default:
 
-	// Parse lockfile.
-	lockfile, err := dotnet.ReadLockfile(filepath.Join(Dir(a.Module), "obj", "project.assets.json"))
-	if err != nil {
-		return graph.Deps{}, err
-	}
+		if exists, err := files.Exists(filepath.Join(dir, "paket.lock")); exists && err == nil {
+			return paket.DependencyGraph(filepath.Join(dir, "paket.lock"))
+		}
 
-	// Compute project graph.
-	projects := make(map[string]dotnet.Manifest)
-	err = Projects(projects, a.Module.BuildTarget)
-	if err != nil {
-		return graph.Deps{}, err
-	}
-	root := projects[a.Module.BuildTarget]
-	id := pkg.ID{
-		Type:     pkg.NuGet,
-		Name:     root.Name(),
-		Revision: root.Version(),
-		Location: a.Module.BuildTarget,
-	}
+		// Try to use the resolving method js
+		if exists, err := files.Exists(filepath.Join(dir, "obj", "project.assets.json")); exists && err == nil {
+			graph, err := dotnet.ResolveStrategy(a.Module.BuildTarget, a.Module.Dir)
+			if err == nil {
+				return graph, nil
+			}
+			log.Warnf("Error trying to get dependencies from project.assets.json: %s", err.Error())
+		}
+		log.Warn("project.assets.json has not been found")
 
-	// Compute package graph.
-	deps := make(map[pkg.ID]pkg.Package)
-	Packages(projects, lockfile, deps, a.Module.BuildTarget)
+		// Use a packageReference function xml
+		var xmlProj = regexp.MustCompile(`.*\.(cs|x|vb|db|fs)proj$`)
+		if xmlProj.MatchString(a.Module.BuildTarget) {
+			if exists, err := files.Exists(a.Module.BuildTarget); !exists || err != nil {
+				fmt.Println("file doesn't exist or error", err, exists)
+			}
+			graph, err := dotnet.PackageReferenceGraph(a.Module.BuildTarget)
+			if err == nil && len(graph.Transitive) > 0 {
+				return graph, nil
+			}
+			log.Warnf("Error trying to read package reference file `%s`: %+v", a.Module.BuildTarget, err)
+		}
 
-	imports := deps[id].Imports
-	delete(deps, id)
+		pattern := filepath.Join(a.Module.Dir, "*nuspec")
+		if fileMatches, err := filepath.Glob(pattern); err == nil && len(fileMatches) > 0 {
+			file := fileMatches[0]
+			if exists, err := files.Exists(file); !exists || err != nil {
+				fmt.Println("file doesn't exist or error", err, exists)
+			}
+			graph, err := dotnet.NuspecGraph(file)
+			if err == nil {
+				return graph, err
+			}
+			log.Warnf("Error trying to read package reference file `%s`: %+v", a.Module.BuildTarget, err.Error())
+		}
 
-	return graph.Deps{
-		Direct:     imports,
-		Transitive: deps,
-	}, nil
-}
+		if exists, err := files.Exists(filepath.Join(dir, "packages.config")); exists && err == nil {
+			graph, err := dotnet.PackageConfigGraph(filepath.Join(dir, "packages.config"))
+			if err == nil {
+				return graph, err
+			}
+		}
 
-func Projects(projects map[string]dotnet.Manifest, projectFile string) error {
-	// Break out of cycles.
-	if _, ok := projects[projectFile]; ok {
-		return nil
-	}
-
-	// Read manifest.
-	var manifest dotnet.Manifest
-	err := files.ReadXML(&manifest, projectFile)
-	if err != nil {
-		return err
-	}
-	projects[projectFile] = manifest
-
-	// Get all project references and recurse.
-	for _, reference := range manifest.Projects() {
-		err = Projects(projects, filepath.Join(filepath.Dir(projectFile), dotnet.Path(reference.Include)))
-		if err != nil {
-			return err
+		if exists, err := files.Exists(filepath.Join(dir, "project.json")); exists && err == nil {
+			graph, err := dotnet.ProjectGraph(filepath.Join(dir, "project.json"))
+			if err == nil {
+				return graph, err
+			}
 		}
 	}
 
-	return nil
-}
-
-func Packages(projects map[string]dotnet.Manifest, lockfile dotnet.Lockfile, deps map[pkg.ID]pkg.Package, dep string) pkg.ID {
-	if project, ok := projects[dotnet.Path(dep)]; ok {
-		log.Debugf("%#v", project)
-		name := project.Name()
-		version := project.Version()
-
-		id := pkg.ID{
-			Type:     pkg.NuGet,
-			Name:     name,
-			Revision: version,
-			Location: dep,
-		}
-
-		var imports []pkg.Import
-		for _, ref := range project.Packages() {
-			imports = append(imports, pkg.Import{
-				Target:   ref.Include + "@" + ref.Version,
-				Resolved: Packages(projects, lockfile, deps, ref.Include),
-			})
-		}
-		for _, ref := range project.Projects() {
-			imports = append(imports, pkg.Import{
-				Target:   ref.Include + "@" + ref.Version,
-				Resolved: Packages(projects, lockfile, deps, filepath.Join(filepath.Dir(dep), dotnet.Path(ref.Include))),
-			})
-		}
-
-		deps[id] = pkg.Package{
-			ID:      id,
-			Imports: imports,
-		}
-
-		return id
-	} else {
-		name := dep
-		version := lockfile.Resolve(name)
-
-		id := pkg.ID{
-			Type:     pkg.NuGet,
-			Name:     name,
-			Revision: version,
-		}
-
-		var imports []pkg.Import
-		for p, version := range lockfile.Imports(dep) {
-			imports = append(imports, pkg.Import{
-				Target:   p + "@" + version,
-				Resolved: Packages(projects, lockfile, deps, p),
-			})
-		}
-
-		deps[id] = pkg.Package{
-			ID:      id,
-			Imports: imports,
-		}
-
-		return id
-	}
+	return graph.Deps{}, nil
 }
