@@ -71,7 +71,8 @@ Default: `custom`
 #### `project:` (Optional)
 Name of the project being analyzed. This is used to construct part of the project locator used to uniquely identify a project uploaded to fossa.com.
 
-Default: Obtained from version control software (VCS) in the directory.
+Default: Obtained from version control software (VCS) in the directory, or the name of the directory where the
+project is found if VCS is not used.
 
 #### `api_key:` (Optional)
 Holds a unique Fossa API Key which is used to determine which organization to associate the upload with. Fossa **strongly advises** against including this field to ensure that personal API keys are not committed to your repository. Fossa recommends running `export FOSSA_API_KEY=<your-api-key>` as an alternative. 
@@ -81,12 +82,14 @@ Default: Environment variable `FOSSA_API_KEY` will be used.
 #### `revision:` (Optional)
 Specifies a projects revision. This is used to construct part of the project locator used to uniquely identify a project uploaded to fossa.com. Revision can be thought of as a version number appended to each upload, used to distinguish the analysis of your present day project from all previous analysis.
 
-Default: Obtains the commit sha from the version control software (VCS) located in the directory.
+Default: Obtains the commit SHA from the version control software (VCS) located in the directory, or a similar
+string from the current time if VCS is not used.
 
 #### `locator:` (Optional)
 Manually specify the project locator that is used to identify the unique project on fossa.com. Fossa does not recommend manually setting the locator.
 
-Default: locator is created using fetcher, api_key to find organization ID, project, revision, and other information from the local VCS software.
+Default: The locator is created using the fetcher name, your organization ID, project, revision, and other
+information from the local VCS state or directory in which the project is found.
 
 ### `analyze:`
 

@@ -61,7 +61,7 @@ func Endpoint() string {
 
 func Title() string {
 	dir, _ := os.Getwd()
-	return TryStrings(StringFlag(flags.Title), file.Title(), filepath.Base(dir))
+	return TryStrings(StringFlag(flags.Title), file.Title(), Project(), filepath.Base(dir))
 }
 
 func Fetcher() string {

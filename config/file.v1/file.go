@@ -112,9 +112,6 @@ func (file File) Server() string {
 }
 
 func (file File) Title() string {
-	if file.CLI.Title == "" {
-		return file.CLI.Project
-	}
 	return file.CLI.Title
 }
 
