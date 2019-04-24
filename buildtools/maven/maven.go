@@ -107,11 +107,6 @@ func Modules(path string, checked map[string]bool) ([]MvnModule, error) {
 		return nil, errors.Wrapf(err, "could not read POM file %q", pomFile)
 	}
 
-	groupId := pom.GroupID
-	if groupId == "" {
-		groupId = pom.Parent.GroupID
-	}
-
 	modules := make([]MvnModule, 1, 1+len(pom.Modules))
 
 	modules[0] = MvnModule{Name: pom.Name, Target: pomFile, Dir: dir}
