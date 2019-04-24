@@ -1,0 +1,20 @@
+{
+      "version": "1",
+      "compilationOptions": {
+            "test": true
+      },
+      "dependencies": {
+            "one": "1.0.0",
+            "two": "2.0.0"
+      },
+      "code": [
+            "**/*.cs"
+      ],
+      "frameworks": {
+            "dummy": {
+                  "frameworkAssemblies": {
+                        "fake": ""
+                  }
+            }
+      }
+}

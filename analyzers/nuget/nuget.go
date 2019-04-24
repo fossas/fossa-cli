@@ -20,16 +20,12 @@ import (
 )
 
 type Analyzer struct {
-	Cmd     string
-	Version string
-
 	dotNET  dotnet.DotNET
 	Module  module.Module
 	Options Options
 }
 
 type Options struct {
-	Target   string
 	Strategy string `mapstructure:"strategy"`
 }
 
@@ -49,11 +45,9 @@ func New(m module.Module) (*Analyzer, error) {
 	}
 
 	analyzer := Analyzer{
-		Cmd:     dotnetCmd,
-		Version: dotnetVersion,
-
 		dotNET: dotnet.DotNET{
-			Cmd: dotnetCmd,
+			Version: dotnetVersion,
+			Cmd:     dotnetCmd,
 		},
 		Module:  m,
 		Options: options,
