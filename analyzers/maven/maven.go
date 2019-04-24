@@ -1,6 +1,7 @@
 // Package maven implements Maven analysis.
 //
-// A `BuildTarget` for Maven is the Maven project name.
+// A `BuildTarget` for Maven is either a path to a directory containing a POM manifest or a path to such a
+// file from the FOSSA project root.
 package maven
 
 import (
@@ -62,6 +63,8 @@ func New(m module.Module) (*Analyzer, error) {
 func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	log.WithField("dir", dir).Debug("discovering modules")
 	var modules []module.Module
+	checked := make(map[string]bool, 7)
+
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
@@ -77,7 +80,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				return nil
 			}
 
-			submodules, err := maven.Modules(path)
+			submodules, err := maven.Modules(path, checked)
 			if err != nil {
 				log.WithError(err).Debug("could not get modules at path")
 				return err
@@ -85,16 +88,13 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 
 			for _, m := range submodules {
 				modules = append(modules, module.Module{
-					Name:        m,
+					Name:        m.Name,
 					Type:        pkg.Maven,
-					BuildTarget: m,
-					Dir:         path,
+					BuildTarget: m.Target,
+					Dir:         m.Dir,
 				})
 			}
-			log.WithField("path", path).Debug("skipping")
-			// Don't continue recursing, because anything else is probably a
-			// subproject.
-			return filepath.SkipDir
+			// Continue recursing because there may be modules that are not declared under the current module.
 		}
 
 		return nil
@@ -141,11 +141,16 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 			Command: a.Options.Command,
 		})
 		if err != nil {
+			// Because this was a custom shell command, we do not fall back to any other strategies.
 			return graph.Deps{}, err
 		}
 		imports, deps, err = maven.ParseDependencyTree(output)
 	}
 	if err != nil {
+		log.Warn("Could not use Maven to determine dependencies. Falling back to parse pom.xml file.")
+
+		//pomData, err := maven.ReadPOM(a.Module)
+
 		return graph.Deps{}, err
 	}
 

@@ -2,15 +2,16 @@ package maven
 
 import (
 	"encoding/xml"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/apex/log"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/exec"
-	"github.com/fossas/fossa-cli/files"
 )
 
 type Manifest struct {
@@ -59,27 +60,72 @@ func (m *Maven) Compile(dir string) error {
 	return err
 }
 
-func Modules(dir string) ([]string, error) {
-	var pom Manifest
-	err := files.ReadXML(&pom, filepath.Join(dir, "pom.xml"))
+// A MvnModule can identify a Maven project with a groupId:artifactId string, a nested
+type MvnModule struct {
+	// Name is taken from the module's POM file.
+	Name string
+
+	// Target is the relative path from the root of the FOSSA project to the module's manifest file or to
+	// the directory containing the module's "pom.xml". The target may name a file other than "pom.xml" and
+	// it may even be the groupId:artifactId string identifying the "Maven project".
+	Target string
+
+	// Path is the relative path from the root of the FOSSA project to the module.
+	Dir string
+
+	GroupId    string
+	ArtifactId string
+}
+
+// Modules returns a list specifying the Maven module at path, which may name a file or directory, and all the
+// Maven modules nested below it. The Target field of each MvnModule is set to the directory or manifest file
+// describing the module. The visited manifest files are listed in the checked map.
+func Modules(path string, checked map[string]bool) ([]MvnModule, error) {
+	cwd, err := os.Getwd()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not read POM file")
+		return nil, errors.Wrap(err, "could not get CWD")
 	}
 
-	var modules []string
+	dir := path
+	pomFile := path
+	if strings.HasSuffix(path, ".xml") {
+		// We have the manifest file but still need its directory path.
+		dir, err = filepath.Rel(cwd, filepath.Dir(path))
+	} else {
+		// We have the directory and will assume it uses the standard name for the manifest file.
+		pomFile = filepath.Join(path, "pom.xml")
+	}
+
+	if checked[pomFile] {
+		return nil, nil
+	}
+
+	checked[pomFile] = true
+
+	var pom Manifest
+	if err := files.ReadXML(&pom, pomFile); err != nil {
+		return nil, errors.Wrapf(err, "could not read POM file %q", pomFile)
+	}
+
+	groupId := pom.GroupID
+	if groupId == "" {
+		groupId = pom.Parent.GroupID
+	}
+
+	modules := make([]MvnModule, 1, 1+len(pom.Modules))
+
+	modules[0] = MvnModule{
+		Name: pom.Name, Target: pomFile, Dir: dir, GroupId: groupId, ArtifactId: pom.ArtifactID,
+	}
+
 	for _, module := range pom.Modules {
-		children, err := Modules(filepath.Join(dir, module))
+		childPath := filepath.Join(dir, module)
+		children, err := Modules(childPath, checked)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not read child modules")
+			return nil, errors.Wrapf(err, "could not read child module at %q", childPath)
 		}
 		modules = append(modules, children...)
 	}
-
-	groupID := pom.GroupID
-	if groupID == "" {
-		groupID = pom.Parent.GroupID
-	}
-	modules = append(modules, groupID+":"+pom.ArtifactID)
 
 	return modules, nil
 }
