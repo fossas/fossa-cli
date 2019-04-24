@@ -91,6 +91,9 @@ func Modules(path string, checked map[string]bool) ([]MvnModule, error) {
 	if strings.HasSuffix(path, ".xml") {
 		// We have the manifest file but still need its directory path.
 		dir, err = filepath.Rel(cwd, filepath.Dir(path))
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not get relative path to %q", path)
+		}
 	} else {
 		// We have the directory and will assume it uses the standard name for the manifest file.
 		pomFile = filepath.Join(path, "pom.xml")
