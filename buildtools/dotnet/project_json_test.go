@@ -22,7 +22,7 @@ func TestProjectJSON(t *testing.T) {
 	assert.NotEmpty(t, depOne)
 	assert.Empty(t, depOne.Imports)
 	depTwo := findPackage(testGraph.Transitive, "two", "2.0.0")
-	assert.NotEmptyt, depTwo)
+	assert.NotEmpty(t, depTwo)
 	assert.Empty(t, depTwo.Imports)
 }
 

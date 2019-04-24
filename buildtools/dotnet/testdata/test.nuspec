@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package xmlns="test">
+  <metadata minClientVersion="2.12">
+    <id>NUnit</id>
+    <title>NUnit</title>
+    <version>$version$</version>
+    <dependencies>
+      <group targetFramework="testone" />
+      <group targetFramework="testtwo">
+        <dependency id="one" version="1.0.0" />
+        <dependency id="two" version="2.0.0" />
+      </group>
+      <group targetFramework="testthree">
+        <dependency id="three" version="3.0.0" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

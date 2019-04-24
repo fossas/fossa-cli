@@ -41,20 +41,20 @@ func ResolveStrategy(target, dir string) (graph.Deps, error) {
 	if err != nil {
 		return graph.Deps{}, err
 	}
-	root := projects[target]
-	id := pkg.ID{
-		Type:     pkg.NuGet,
-		Name:     root.Name(),
-		Revision: root.Version(),
-		Location: target,
-	}
 
 	// Compute package graph.
 	deps := make(map[pkg.ID]pkg.Package)
 	packagesOutput(projects, lockfile, deps, target)
 
-	imports := deps[id].Imports
-	delete(deps, id)
+	root := projects[target]
+	rootID := pkg.ID{
+		Type:     pkg.NuGet,
+		Name:     root.Name(),
+		Revision: root.Version(),
+		Location: target,
+	}
+	imports := deps[rootID].Imports
+	deleteProjects(deps, projects)
 
 	return graph.Deps{
 		Direct:     imports,
@@ -84,10 +84,7 @@ func packagesOutput(projects map[string]Manifest, lockfile Lockfile, deps map[pk
 			})
 		}
 		for _, ref := range project.projects() {
-			imports = append(imports, pkg.Import{
-				Target:   ref.Include + "@" + ref.Version,
-				Resolved: packagesOutput(projects, lockfile, deps, filepath.Join(filepath.Dir(dep), Path(ref.Include))),
-			})
+			packagesOutput(projects, lockfile, deps, filepath.Join(filepath.Dir(dep), Path(ref.Include)))
 		}
 
 		deps[id] = pkg.Package{
@@ -96,29 +93,40 @@ func packagesOutput(projects map[string]Manifest, lockfile Lockfile, deps map[pk
 		}
 
 		return id
-	} else {
-		name := dep
-		version := lockfile.resolve(name)
+	}
 
-		id := pkg.ID{
+	name := dep
+	version := lockfile.resolve(name)
+
+	id := pkg.ID{
+		Type:     pkg.NuGet,
+		Name:     name,
+		Revision: version,
+	}
+
+	var imports []pkg.Import
+	for p, version := range lockfile.imports(dep) {
+		imports = append(imports, pkg.Import{
+			Target:   p + "@" + version,
+			Resolved: packagesOutput(projects, lockfile, deps, p),
+		})
+	}
+
+	deps[id] = pkg.Package{
+		ID:      id,
+		Imports: imports,
+	}
+
+	return id
+}
+
+func deleteProjects(deps map[pkg.ID]pkg.Package, projects map[string]Manifest) {
+	for project, manifest := range projects {
+		delete(deps, pkg.ID{
 			Type:     pkg.NuGet,
-			Name:     name,
-			Revision: version,
-		}
-
-		var imports []pkg.Import
-		for p, version := range lockfile.imports(dep) {
-			imports = append(imports, pkg.Import{
-				Target:   p + "@" + version,
-				Resolved: packagesOutput(projects, lockfile, deps, p),
-			})
-		}
-
-		deps[id] = pkg.Package{
-			ID:      id,
-			Imports: imports,
-		}
-
-		return id
+			Name:     manifest.Name(),
+			Revision: manifest.Name(),
+			Location: project,
+		})
 	}
 }
