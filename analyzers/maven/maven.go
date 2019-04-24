@@ -148,9 +148,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	}
 	if err != nil {
 		log.Warn("Could not use Maven to determine dependencies. Falling back to parse pom.xml file.")
-		// TODO
-		//pomData, err := maven.ReadPOM(a.Module)
-
+		// TODO: Read each POM manifest's dependencies list.
 		return graph.Deps{}, err
 	}
 

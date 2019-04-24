@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-	"github.com/fossas/fossa-cli/files"
 	"github.com/pkg/errors"
 
 	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 )
 
 type Manifest struct {
@@ -70,7 +70,7 @@ type MvnModule struct {
 	// it may even be the groupId:artifactId string identifying the "Maven project".
 	Target string
 
-	// Path is the relative path from the root of the FOSSA project to the module.
+	// Dir is the relative path from the root of the FOSSA project to the module.
 	Dir string
 }
 
