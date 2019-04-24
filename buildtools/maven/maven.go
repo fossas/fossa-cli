@@ -2,7 +2,6 @@ package maven
 
 import (
 	"encoding/xml"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -77,17 +76,13 @@ type MvnModule struct {
 // Modules returns a list specifying the Maven module at path, which may name a file or directory, and all the
 // Maven modules nested below it. The Target field of each MvnModule is set to the directory or manifest file
 // describing the module. The visited manifest files are listed in the checked map.
-func Modules(path string, checked map[string]bool) ([]MvnModule, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get CWD")
-	}
-
+func Modules(path string, baseDir string, checked map[string]bool) ([]MvnModule, error) {
 	dir := path
 	pomFile := path
 	if strings.HasSuffix(path, ".xml") {
 		// We have the manifest file but still need its directory path.
-		dir, err = filepath.Rel(cwd, filepath.Dir(path))
+		var err error
+		dir, err = filepath.Rel(baseDir, filepath.Dir(path))
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not get relative path to %q", path)
 		}
@@ -113,7 +108,7 @@ func Modules(path string, checked map[string]bool) ([]MvnModule, error) {
 
 	for _, module := range pom.Modules {
 		childPath := filepath.Join(dir, module)
-		children, err := Modules(childPath, checked)
+		children, err := Modules(childPath, baseDir, checked)
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not read child module at %q", childPath)
 		}

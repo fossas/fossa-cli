@@ -80,7 +80,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				return nil
 			}
 
-			submodules, err := maven.Modules(path, checked)
+			submodules, err := maven.Modules(path, dir, checked)
 			if err != nil {
 				log.WithError(err).Debug("could not get modules at path")
 				return err
