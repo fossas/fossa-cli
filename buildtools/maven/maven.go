@@ -60,7 +60,7 @@ func (m *Maven) Compile(dir string) error {
 	return err
 }
 
-// A MvnModule can identify a Maven project with a groupId:artifactId string, a nested
+// A MvnModule can identify a Maven project with the target path.
 type MvnModule struct {
 	// Name is taken from the module's POM file.
 	Name string
@@ -72,9 +72,6 @@ type MvnModule struct {
 
 	// Path is the relative path from the root of the FOSSA project to the module.
 	Dir string
-
-	GroupId    string
-	ArtifactId string
 }
 
 // Modules returns a list specifying the Maven module at path, which may name a file or directory, and all the
@@ -117,9 +114,7 @@ func Modules(path string, checked map[string]bool) ([]MvnModule, error) {
 
 	modules := make([]MvnModule, 1, 1+len(pom.Modules))
 
-	modules[0] = MvnModule{
-		Name: pom.Name, Target: pomFile, Dir: dir, GroupId: groupId, ArtifactId: pom.ArtifactID,
-	}
+	modules[0] = MvnModule{Name: pom.Name, Target: pomFile, Dir: dir}
 
 	for _, module := range pom.Modules {
 		childPath := filepath.Join(dir, module)
