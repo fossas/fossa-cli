@@ -147,9 +147,18 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		imports, deps, err = maven.ParseDependencyTree(output)
 	}
 	if err != nil {
-		// log.Warn("Could not use Maven to determine dependencies. Falling back to parse pom.xml file.")
-		// TODO: Read each POM manifest's dependencies list.
-		return graph.Deps{}, err
+		buildTarget := a.Module.BuildTarget
+		if !strings.HasSuffix(buildTarget, ".xml") {
+			return graph.Deps{}, err
+		}
+		log.Warnf("Could not use Maven to determine dependencies for %q. Falling back to parse %q file.",
+			a.Module.Name,
+			a.Module.BuildTarget)
+		var pom maven.Manifest
+		if err := files.ReadXML(&pom, a.Module.BuildTarget); err != nil {
+			return graph.Deps{}, err
+		}
+		imports = pom.Dependencies
 	}
 
 	// Set direct dependencies.

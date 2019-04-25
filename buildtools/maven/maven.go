@@ -14,15 +14,16 @@ import (
 )
 
 type Manifest struct {
-	Project     xml.Name `xml:"project"`
-	Parent      Parent   `xml:"parent"`
-	Modules     []string `xml:"modules>module"`
-	ArtifactID  string   `xml:"artifactId"`
-	GroupID     string   `xml:"groupId"`
-	Version     string   `xml:"version"`
-	Description string   `xml:"description"`
-	Name        string   `xml:"name"`
-	URL         string   `xml:"url"`
+	Project      xml.Name     `xml:"project"`
+	Parent       Parent       `xml:"parent"`
+	Modules      []string     `xml:"modules>module"`
+	ArtifactID   string       `xml:"artifactId"`
+	GroupID      string       `xml:"groupId"`
+	Version      string       `xml:"version"`
+	Description  string       `xml:"description"`
+	Name         string       `xml:"name"`
+	URL          string       `xml:"url"`
+	Dependencies []Dependency `xml:"dependencies>dependency"`
 }
 
 type Parent struct {
@@ -32,9 +33,16 @@ type Parent struct {
 }
 
 type Dependency struct {
-	Name    string
-	Version string
-	Failed  bool
+	Name string
+
+	GroupId    string `xml:"groupId"`
+	ArtifactId string `xml:"artifactId"`
+	Version    string `xml:"version"`
+
+	// Scope is where the dependency is used, such as "test" or "runtime".
+	Scope string `xml:"scope"`
+
+	Failed bool
 }
 
 type Maven struct {
