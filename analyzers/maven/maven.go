@@ -147,18 +147,16 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		imports, deps, err = maven.ParseDependencyTree(output)
 	}
 	if err != nil {
-		buildTarget := a.Module.BuildTarget
-		if !strings.HasSuffix(buildTarget, ".xml") {
-			return graph.Deps{}, err
-		}
-		log.Warnf("Could not use Maven to determine dependencies for %q. Falling back to parse %q file.",
+		log.Warnf(
+			"Could not use Maven to determine dependencies for %q. Falling back to use manifest file.",
 			a.Module.Name,
 			a.Module.BuildTarget)
-		var pom maven.Manifest
-		if err := files.ReadXML(&pom, a.Module.BuildTarget); err != nil {
-			return graph.Deps{}, err
+		mvnError := err
+		imports, err = DepsFromModule(a.Module.BuildTarget)
+		if err != nil {
+			return graph.Deps{},
+				errors.Wrapf(err, "could not identify dependencies; original error: %v", mvnError)
 		}
-		imports = pom.Dependencies
 	}
 
 	// Set direct dependencies.
@@ -202,4 +200,22 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		Direct:     i,
 		Transitive: g,
 	}, nil
+}
+
+// DepsFromModule takes a build target identifier, typically a path to a module's manifest file (pom.xml) or
+// simply to a module's directory. If buildTarget is a groupId:artifactId tuple, this function returns an
+// error.
+func DepsFromModule(buildTarget string) ([]maven.Dependency, error) {
+	pomFile := buildTarget
+	if !strings.HasSuffix(pomFile, ".xml") {
+		pomFile = filepath.Join(buildTarget, "pom.xml")
+	}
+	if exists, _ := files.Exists(pomFile); !exists {
+		return nil, errors.New("cannot identify manifest file")
+	}
+	var pom maven.Manifest
+	if err := files.ReadXML(&pom, pomFile); err != nil {
+		return nil, err
+	}
+	return pom.Dependencies, nil
 }
