@@ -11,6 +11,8 @@
 package config
 
 import (
+	"fmt"
+
 	"github.com/apex/log"
 	"github.com/urfave/cli"
 
@@ -41,14 +43,13 @@ func SetContext(c *cli.Context) error {
 
 	// Third, try to open the local VCS repository.
 	vcsType, dir, err := vcs.Nearest(".")
-	switch err {
-	case nil:
-		// OK
-	case vcs.ErrNoNearestVCS:
-		vcsType = vcs.None
-		dir = "."
-	default:
-		return err
+	if err != nil {
+		if err == vcs.ErrNoNearestVCS {
+			vcsType = vcs.None
+			dir = "."
+		} else {
+			return err
+		}
 	}
 
 	var r vcs.System
@@ -60,6 +61,8 @@ func SetContext(c *cli.Context) error {
 		r, err = vcs.NewSubversionRepository(dir)
 	case vcs.None:
 		r, err = vcs.NewNoRepository(dir)
+	default:
+		err = fmt.Errorf("VCS type %s is not supported", vcsType)
 	}
 
 	if err != nil {

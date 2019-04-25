@@ -1,5 +1,4 @@
-// Package vcs implements functions for interacting with version control
-// systems.
+// Package vcs supports interacting with version control systems.
 package vcs
 
 import (
@@ -25,15 +24,14 @@ type Revision struct {
 
 // Errors that occur when finding VCS repositories.
 var (
-	ErrNoVCSInDir     = errors.New("could not find VCS repository in directory")
-	ErrNoNearestVCS   = errors.New("could not find nearest VCS repository in directory")
-	ErrUnsupportedVCS = errors.New("VCS type is not supported")
+	ErrNoVCSInDir   = errors.New("could not find VCS repository in directory")
+	ErrNoNearestVCS = errors.New("could not find nearest VCS repository in directory")
 )
 
 // In returns the type of VCS repository rooted at a directory, or
 // ErrNoVCSInDir if none is found.
 func In(dirname string) (VCS, error) {
-	for _, vcs := range Types {
+	for _, vcs := range findableTypes {
 		ok, err := files.ExistsFolder(filepath.Join(dirname, MetadataFolder(vcs)))
 		if err != nil {
 			return 0, err
@@ -45,8 +43,8 @@ func In(dirname string) (VCS, error) {
 	return 0, ErrNoVCSInDir
 }
 
-// Nearest returns the type and directory of the nearest VCS repository
-// containing the directory, or ErrNoNearestVCS if none is found.
+// Nearest returns the type and directory of the nearest VCS repository containing or at
+// dirname, or ErrNoNearestVCS if none is found.
 func Nearest(dirname string) (VCS, string, error) {
 	var vcs VCS
 	dir, err := files.WalkUp(dirname, func(d string) error {
@@ -56,9 +54,6 @@ func Nearest(dirname string) (VCS, string, error) {
 		}
 		if err != nil {
 			return err
-		}
-		if tool == Mercurial || tool == Bazaar {
-			return ErrUnsupportedVCS
 		}
 		vcs = tool
 		return files.ErrStopWalk

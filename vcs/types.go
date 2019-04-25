@@ -12,8 +12,23 @@ const (
 	None
 )
 
-// Types has the VCS types that are identifiable by walking a directory tree.
-var Types = [4]VCS{
+func (v VCS) String() string {
+	switch v {
+	case Subversion:
+		return "Subversion"
+	case Git:
+		return "Git"
+	case Mercurial:
+		return "Mercurial"
+	case Bazaar:
+		return "Bazaar"
+	default:
+		return ""
+	}
+}
+
+// findableTypes has the VCS types that are identifiable by walking a directory tree.
+var findableTypes = [4]VCS{
 	Subversion,
 	Git,
 	Mercurial,
