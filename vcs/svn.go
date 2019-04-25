@@ -9,65 +9,46 @@ import (
 	"github.com/fossas/fossa-cli/exec"
 )
 
+// SubversionRepository implements the System interface.
 type SubversionRepository struct {
-	dir string
-	cmd string
-
-	// info is loaded only once if it's needed.
-	info *svnInfo
+	dir  string
+	cmd  string
+	info svnInfo
 }
 
-// NewSubversionRepository takes the directory where a Subversion repository exists and returns an
-// implementation of the System interface that uses the repository's metadata.
+// NewSubversionRepository uses the Subversion repository's metadata at dir to identify the codebase.
 func NewSubversionRepository(dir string) (*SubversionRepository, error) {
 	cmd, _, err := exec.Which("--version", os.Getenv("SVN_BINARY"), "svn")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not find svn binary")
 	}
-	return &SubversionRepository{
-		dir: dir,
-		cmd: cmd,
-	}, nil
-}
-
-func (s *SubversionRepository) Project() string {
-	if err := s.loadInfo(); err != nil {
-		panic(err)
-	}
-	return s.info.Entry.URL
-}
-
-func (s *SubversionRepository) Head() Revision {
-	if err := s.loadInfo(); err != nil {
-		panic(err)
-	}
-	return Revision{
-		Branch:     svnBranchFromInfo(s.info),
-		RevisionID: s.info.Entry.Revision,
-	}
-}
-
-func (s *SubversionRepository) loadInfo() error {
-	if s.info != nil {
-		return nil
-	}
-
 	stdout, _, err := exec.Run(exec.Cmd{
-		Name: s.cmd,
+		Name: cmd,
 		Argv: []string{"info", "--xml"},
-		Dir:  s.dir,
+		Dir:  dir,
 	})
 	if err != nil {
-		return err
+		return nil, errors.Wrapf(err, "could not run `%s info`", cmd)
 	}
 
-	var info svnInfo
-	err = info.unmarshalXML([]byte(stdout))
-	if err != nil {
-		return err
+	repo := SubversionRepository{
+		dir: dir,
+		cmd: cmd,
 	}
-	s.info = &info
-	return nil
+
+	if err = repo.info.unmarshalXML([]byte(stdout)); err != nil {
+		return nil, err
+	}
+	return &repo, nil
+}
+
+func (s *SubversionRepository) Project() string { return s.info.Entry.URL }
+
+func (s *SubversionRepository) Head() Revision {
+	return Revision{
+		Branch:     svnBranchFromInfo(&s.info),
+		RevisionID: s.info.Entry.Revision,
+	}
 }
 
 // svnBranchFromInfo extracts the name of the branch from the info provided.

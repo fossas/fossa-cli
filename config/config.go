@@ -12,8 +12,9 @@ package config
 
 import (
 	"github.com/apex/log"
-	"github.com/fossas/fossa-cli/vcs"
 	"github.com/urfave/cli"
+
+	"github.com/fossas/fossa-cli/vcs"
 )
 
 var (

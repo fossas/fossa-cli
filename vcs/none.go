@@ -8,15 +8,15 @@ import (
 	"github.com/fossas/fossa-cli/errors"
 )
 
-// A NoRepository system is used in a project that is not version controlled.
+// NoRepository implements the System interface. This is used for projects that are not version controlled.
 type NoRepository struct {
-	dir        string
-	project    string
+	dir     string
+	project string
+	// revisionId is the current time because this is easy on the CI process.
 	revisionId time.Time
 }
 
-// NewNoRepository takes the directory marking the root of a codebase that is not version controlled and
-// returns an implementation of the System interface that uses the filesystem and current time as metadata.
+// NewNoRepository uses the name of dir and the current time to identify the codebase.
 func NewNoRepository(dir string) (*NoRepository, error) {
 	path, err := filepath.Abs(dir)
 	if err != nil {
@@ -29,9 +29,7 @@ func NewNoRepository(dir string) (*NoRepository, error) {
 	}, nil
 }
 
-func (nr *NoRepository) Project() string {
-	return nr.project
-}
+func (nr *NoRepository) Project() string { return nr.project }
 
 func (nr *NoRepository) Head() Revision {
 	return Revision{

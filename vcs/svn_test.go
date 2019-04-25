@@ -2,31 +2,12 @@ package vcs
 
 import (
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
-
-const svnInfoXML = `<?xml version="1.0" encoding="UTF-8"?>
-<info>
-<entry
-   path="."
-   revision="2071031"
-   kind="dir">
-<url>https://plugins.svn.wordpress.org/wp-stateless</url>
-<relative-url>^/wp-stateless</relative-url>
-<repository>
-<root>https://plugins.svn.wordpress.org</root>
-<uuid>b8457f37-d9ea-0310-8a92-e5e31aec5664</uuid>
-</repository>
-<wc-info>
-<wcroot-abspath>/Users/u/sample-apps/wps</wcroot-abspath>
-<schedule>normal</schedule>
-<depth>infinity</depth>
-</wc-info>
-</entry>
-</info>`
 
 func TestNewSubversionRepository(t *testing.T) {
 	if testing.Short() {
@@ -83,8 +64,11 @@ func TestSvnBranchFromInfo(t *testing.T) {
 }
 
 func TestSvnInfo_unmarshalXML(t *testing.T) {
+	data, err := ioutil.ReadFile(filepath.Join("testdata", "svn-info.xml"))
+	assert.NoError(t, err)
+
 	var s svnInfo
-	err := s.unmarshalXML([]byte(svnInfoXML))
+	err = s.unmarshalXML(data)
 	assert.NoError(t, err)
 
 	assert.Equal(t, s.Entry.Revision, "2071031")

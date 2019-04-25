@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fossas/fossa-cli/vcs"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/fossas/fossa-cli/vcs"
 )
 
 func TestNewNoRepository(t *testing.T) {
@@ -18,9 +19,8 @@ func TestNewNoRepository(t *testing.T) {
 	assert.Equal(t, "none", repo.Project())
 
 	head := repo.Head()
-	revision := head.RevisionID
-	assert.True(t, len(revision) > 8)
-	revisionTime, err := strconv.ParseInt(revision, 16, 63)
+	assert.True(t, len(head.RevisionID) > 8)
+	revisionTime, err := strconv.ParseInt(head.RevisionID, 16, 63)
 	assert.NoError(t, err)
 	assert.True(t, revisionTime <= time.Now().UnixNano())
 	assert.Equal(t, head.Branch, "none")
