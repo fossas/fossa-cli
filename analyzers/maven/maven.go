@@ -63,7 +63,7 @@ func New(m module.Module) (*Analyzer, error) {
 func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	log.WithField("dir", dir).Debug("discovering modules")
 	var modules []module.Module
-	checked := make(map[string]bool, 7)
+	checked := make(map[string]bool)
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -91,7 +91,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 					Name:        m.Name,
 					Type:        pkg.Maven,
 					BuildTarget: m.Target,
-					Dir:         m.Dir,
+					Dir:         dir,
 				})
 			}
 			// Continue recursing because there may be modules that are not declared under the current module.
