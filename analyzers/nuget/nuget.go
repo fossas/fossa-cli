@@ -11,12 +11,13 @@ import (
 	"strings"
 
 	"github.com/apex/log"
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/fossas/fossa-cli/buildtools/dotnet"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/mitchellh/mapstructure"
 )
 
 type Analyzer struct {
@@ -104,7 +105,6 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				// For other module indicators, use the directory name.
 				target = dir
 			} else {
-				// TODO: get modules from `sln` files via `dotnet sln list`?
 				return nil
 			}
 

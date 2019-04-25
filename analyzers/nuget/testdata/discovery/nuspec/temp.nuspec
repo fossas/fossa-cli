@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<package xmlns="test">
+  <metadata minClientVersion="2.12">
+    <id>NUnit</id>
+  </metadata>
+</package>
