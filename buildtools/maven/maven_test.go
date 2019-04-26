@@ -10,6 +10,23 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/maven"
 )
 
+func TestResolveManifestFromBuildTarget(t *testing.T) {
+	testdataDir := filepath.Join("..", "..", "analyzers", "maven", "testdata")
+
+	// A directory path.
+	pom, err := maven.ResolveManifestFromBuildTarget(testdataDir)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "com.domain.name:stuff", pom.GroupID+":"+pom.ArtifactID)
+	}
+
+	// A POM file path.
+	path2 := filepath.Join(testdataDir, "nested", "pom.xml")
+	pom2, err := maven.ResolveManifestFromBuildTarget(path2)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "com.someone.code.a:gson-extras", pom2.GroupID+":"+pom2.ArtifactID)
+	}
+}
+
 func TestParseDependencyTreeDOS(t *testing.T) {
 	// Check that the file is still DOS formatted.
 	data, err := ioutil.ReadFile(filepath.Join("testdata", "dos.out"))

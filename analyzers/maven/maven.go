@@ -117,7 +117,7 @@ func (a *Analyzer) Build() error {
 
 // IsBuilt checks whether `mvn dependency:list` produces an error.
 func (a *Analyzer) IsBuilt() (bool, error) {
-	output, err := a.Maven.DependencyList(a.Module.Dir)
+	output, err := a.Maven.DependencyList(a.Module.Dir, a.Module.BuildTarget)
 	if err != nil {
 		if strings.Contains(output, "Could not find artifact") {
 			return false, nil
@@ -152,15 +152,16 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 			a.Module.Name,
 			a.Module.BuildTarget)
 		mvnError := err
-		imports, err = DepsFromModule(a.Module.BuildTarget)
+		pom, err := maven.ResolveManifestFromBuildTarget(a.Module.BuildTarget)
 		if err != nil {
 			return graph.Deps{},
 				errors.Wrapf(err, "could not identify dependencies; original error: %v", mvnError)
 		}
+		a.Maven.AddCachedManifest(a.Module.BuildTarget, pom)
 	}
 
 	// Set direct dependencies.
-	var i []pkg.Import
+	i := make([]pkg.Import, 0, len(imports))
 	for _, dep := range imports {
 		i = append(i, pkg.Import{
 			Resolved: pkg.ID{
@@ -200,22 +201,4 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		Direct:     i,
 		Transitive: g,
 	}, nil
-}
-
-// DepsFromModule takes a build target identifier, typically a path to a module's manifest file (pom.xml) or
-// simply to a module's directory. If buildTarget is a groupId:artifactId tuple, this function returns an
-// error.
-func DepsFromModule(buildTarget string) ([]maven.Dependency, error) {
-	pomFile := buildTarget
-	if !strings.HasSuffix(pomFile, ".xml") {
-		pomFile = filepath.Join(buildTarget, "pom.xml")
-	}
-	if exists, _ := files.Exists(pomFile); !exists {
-		return nil, errors.New("cannot identify manifest file")
-	}
-	var pom maven.Manifest
-	if err := files.ReadXML(&pom, pomFile); err != nil {
-		return nil, err
-	}
-	return pom.Dependencies, nil
 }

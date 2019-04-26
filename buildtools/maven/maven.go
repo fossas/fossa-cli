@@ -2,6 +2,7 @@ package maven
 
 import (
 	"encoding/xml"
+	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -47,6 +48,10 @@ type Dependency struct {
 
 type Maven struct {
 	Cmd string
+
+	// manifestCache caches parsed POM manifest files with build target identifiers as keys. This map may
+	// be nil at any time.
+	manifestCache map[string]*Manifest
 }
 
 func (m *Maven) Clean(dir string) error {
@@ -65,6 +70,46 @@ func (m *Maven) Compile(dir string) error {
 		Dir:  dir,
 	})
 	return err
+}
+
+// CachedManifest returns the manifest from the internal cache, or nil if it is not set.
+func (m *Maven) CachedManifest(target string) *Manifest {
+	if m.manifestCache == nil {
+		return nil
+	}
+	return m.manifestCache[target]
+}
+
+// AddCachedManifest saves the provided POM manifest data to the analyzer's cache.
+func (m *Maven) AddCachedManifest(target string, pom *Manifest) {
+	if m.manifestCache == nil {
+		m.manifestCache = make(map[string]*Manifest)
+	}
+	m.manifestCache[target] = pom
+}
+
+// ResolveManifestFromBuildTarget tries to determine what buildTarget is supposed to be and then reads the POM
+// manifest file pointed to by buildTarget if it is a path to such a file or module.
+func ResolveManifestFromBuildTarget(buildTarget string) (*Manifest, error) {
+	var pomFile string
+	if !strings.HasSuffix(buildTarget, ".xml") {
+		pomFile = filepath.Join(buildTarget, "pom.xml")
+	} else {
+		pomFile = buildTarget
+	}
+	if ok, _ := files.Exists(pomFile); !ok {
+		if strings.Count(buildTarget, ":") == 1 {
+			// This is likely a module ID.
+			return nil, fmt.Errorf("build target %q appears to be a module identifier", buildTarget)
+		}
+		return nil, fmt.Errorf("module manfist file %q does not exist", buildTarget)
+	}
+
+	var pom Manifest
+	if err := files.ReadXML(&pom, pomFile); err != nil {
+		return nil, err
+	}
+	return &pom, nil
 }
 
 // A MvnModule can identify a Maven project with the target path.
@@ -122,26 +167,57 @@ func Modules(path string, baseDir string, checked map[string]bool) ([]MvnModule,
 	return modules, nil
 }
 
-func (m *Maven) DependencyList(dir string) (string, error) {
-	output, _, err := exec.Run(exec.Cmd{
-		Name: m.Cmd,
-		Dir:  dir,
-		Argv: []string{"dependency:list", "--batch-mode"},
-	})
-	return output, err
+// DependencyList runs Maven's dependency:list goal for the specified project.
+func (m *Maven) DependencyList(dir, buildTarget string) (string, error) {
+	return m.tryDependencyCommands("list", dir, buildTarget)
 }
 
-func (m *Maven) DependencyTree(dir, project string) ([]Dependency, map[Dependency][]Dependency, error) {
-	output, _, err := exec.Run(exec.Cmd{
-		Name: m.Cmd,
-		Dir:  dir,
-		Argv: []string{"dependency:tree", "--batch-mode", "--projects", project},
-	})
+// DependencyTree runs Maven's dependency:tree goal for the specified project.
+func (m *Maven) DependencyTree(dir, buildTarget string) ([]Dependency, map[Dependency][]Dependency, error) {
+	output, err := m.tryDependencyCommands("tree", dir, buildTarget)
 	if err != nil {
 		return nil, nil, err
 	}
-
 	return ParseDependencyTree(output)
+}
+
+func (m *Maven) tryDependencyCommands(subGoal, dir, buildTarget string) (stdout string, err error) {
+	goalArgs := []string{"dependency:" + subGoal, "--batch-mode"}
+	cmd := exec.Cmd{Name: m.Cmd, Dir: dir}
+
+	// First, we try with the buildTarget because we have no idea what it is or whether the reactor already
+	// knows about the module.
+	cmd.Argv = append(goalArgs, "--projects", buildTarget)
+	output, _, err := exec.Run(cmd)
+	if err != nil {
+		// Now we will try to identify the groupId:artifactId identifier for the module and specify the path
+		// to the manifest file directly.
+		pomFilePath := buildTarget
+		projId := buildTarget
+		if cachedPOM := m.CachedManifest(buildTarget); cachedPOM != nil {
+			projId = cachedPOM.GroupID + ":" + cachedPOM.ArtifactID
+		} else {
+			pom, err2 := ResolveManifestFromBuildTarget(buildTarget)
+			if err2 != nil {
+				// Using buildTarget as a module ID or as a path to a manifest did not work.
+				// Return just the error from running the goal the first time.
+				return "", errors.Wrap(err, "could not use Maven to list dependencies")
+			}
+			m.AddCachedManifest(buildTarget, pom)
+		}
+
+		// At this point we still don't know if pomFilePath locates a manifest file, so adjust it if needed.
+		if !strings.HasSuffix(pomFilePath, ".xml") {
+			pomFilePath = filepath.Join(pomFilePath, "pom.xml")
+		}
+
+		cmd.Argv = append(goalArgs, "--projects", projId, "--file", pomFilePath)
+
+		var err2 error
+		output, _, err2 = exec.Run(cmd)
+		err = errors.Wrapf(err2, "could not run %s (original error: %v)", goalArgs[0], err)
+	}
+	return output, err
 }
 
 //go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package maven/' > readtree_generated.go"
