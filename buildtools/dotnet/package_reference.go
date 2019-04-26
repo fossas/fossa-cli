@@ -69,7 +69,11 @@ func PackageReferenceGraph(file string) (graph.Deps, error) {
 	dependencyMap := make(map[pkg.ID]pkg.Package)
 
 	projects := make(map[string]Manifest)
-	Projects(projects, file)
+	err := Projects(projects, file)
+	if err != nil {
+		return graph.Deps{}, nil
+	}
+
 	for _, project := range projects {
 		for _, reference := range project.packages() {
 			id := pkg.ID{
