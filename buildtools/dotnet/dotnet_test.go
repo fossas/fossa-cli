@@ -3,8 +3,9 @@ package dotnet_test
 import (
 	"testing"
 
-	"github.com/fossas/fossa-cli/buildtools/dotnet"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/fossas/fossa-cli/buildtools/dotnet"
 )
 
 func TestResolveStrategy(t *testing.T) {

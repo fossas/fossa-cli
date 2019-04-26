@@ -11,23 +11,13 @@ import (
 	"github.com/fossas/fossa-cli/graph"
 )
 
+// Analyze determines the best way to analyze a .NET project by first looking for
+// a pre set strategy and then falling back through a number of methods.
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.WithField("module", a.Module).Debug("analyzing module")
 	dir := Dir(a.Module)
-	if dir == "." {
-		dir = ""
-	}
-	// Strategies
-	// 1. Paket
-	// 2. check for projects.assets.json
-	// 3. analyze the build target
-	// 4. packages.config & project.json
 
-	// Questions
-	// This is heavily reliant on the discovery stage to find the correct file, difficult to handle for package reference which is a significant amount of projects.
-	// Currently I would like to discover the correct file between package reference, to nuspec, to packages.config.
-	// This doesn't allow for fallbacks if the file cannot be read
-
+	// 1. Check for a set strategy.
 	switch a.Options.Strategy {
 	case "paket":
 		return paket.DependencyGraph(a.Module.BuildTarget)
@@ -39,60 +29,80 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		return dotnet.ProjectGraph(filepath.Join(dir, "packages.config"))
 	case "projectjson":
 		return dotnet.ProjectGraph(filepath.Join(dir, "project.json"))
-	default:
-		if exists, err := files.Exists(filepath.Join(dir, "paket.lock")); exists && err == nil {
-			return paket.DependencyGraph(filepath.Join(dir, "paket.lock"))
-		}
+	}
 
-		if exists, err := files.Exists(filepath.Join(dir, "obj", "project.assets.json")); exists && err == nil {
-			depGraph, err := dotnet.ResolveStrategy(a.Module.BuildTarget, a.Module.Dir)
-			if err == nil && len(depGraph.Transitive) > 0 {
+	// 2. Check for Paket.
+	// https://fsprojects.github.io/Paket/
+	if exists, err := files.Exists(filepath.Join(dir, "paket.lock")); exists && err == nil {
+		return paket.DependencyGraph(filepath.Join(dir, "paket.lock"))
+	}
+
+	// 3. Check for `project.assets.json` which is the nuget lockfile.
+	// https://docs.microsoft.com/en-us/nuget/consume-packages/dependency-resolution
+	if exists, err := files.Exists(filepath.Join(dir, "obj", "project.assets.json")); exists && err == nil {
+		depGraph, err := dotnet.ResolveStrategy(a.Module.BuildTarget, a.Module.Dir)
+		if returnGraph(a.Module.BuildTarget, err, len(depGraph.Transitive)) {
+			return depGraph, nil
+		}
+	}
+
+	// 4. Check for a Package Reference file used by NuGet 4.0+.
+	// https://docs.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files
+	var xmlProj = regexp.MustCompile(`.*\.(cs|x|vb|db|fs)proj$`)
+	if xmlProj.MatchString(a.Module.BuildTarget) {
+		exists, err := files.Exists(a.Module.BuildTarget)
+		if !exists || err != nil {
+			log.Warnf("`%s` cannot be read. File exists: %b. Error: %s", a.Module.BuildTarget, exists, err)
+		} else {
+			depGraph, err := dotnet.PackageReferenceGraph(a.Module.BuildTarget)
+			if returnGraph(a.Module.BuildTarget, err, len(depGraph.Transitive)) {
 				return depGraph, nil
 			}
-			log.Warnf("There was a problem reading dependencies from project.assets.json: %s, %+v", err.Error(), depGraph)
 		}
+	}
 
-		var xmlProj = regexp.MustCompile(`.*\.(cs|x|vb|db|fs)proj$`)
-		if xmlProj.MatchString(a.Module.BuildTarget) {
-			exists, err := files.Exists(a.Module.BuildTarget)
-			if exists && err == nil {
-				graph, err := dotnet.PackageReferenceGraph(a.Module.BuildTarget)
-				if err == nil && len(graph.Transitive) > 0 {
-					return graph, nil
-				}
-				log.Warnf("There was a problem analyzing the package reference file `%s`. Error: %s. Graph: %+v", a.Module.BuildTarget, err, graph)
-			} else {
-				log.Warnf("Target `%s` is unable to be read. File exists: %b. Error: %s", a.Module.BuildTarget, exists, err)
-			}
+	// 5. Check if a nuspec file exists and if it contains dependency information.
+	// https://docs.microsoft.com/en-us/nuget/reference/nuspec
+	pattern := filepath.Join(a.Module.Dir, "*nuspec")
+	fileMatches, err := filepath.Glob(pattern)
+	if err == nil && len(fileMatches) > 0 {
+		file := fileMatches[0]
+		depGraph, err := dotnet.NuspecGraph(file)
+		if returnGraph(file, err, len(depGraph.Transitive)) {
+			return depGraph, nil
 		}
+	}
 
-		pattern := filepath.Join(a.Module.Dir, "*nuspec")
-		fileMatches, err := filepath.Glob(pattern)
-		if err == nil && len(fileMatches) > 0 {
-			file := fileMatches[0]
-			graph, err := dotnet.NuspecGraph(file)
-			if err == nil && len(graph.Transitive) > 0 {
-				return graph, nil
-			}
-			log.Warnf("There was a problem analyzing the nuspec file `%s`. Error: %s. Graph: %+v", file, err, graph)
+	// 6. Check for a `packages.config` file.
+	// https://docs.microsoft.com/en-us/nuget/reference/packages-config
+	if exists, err := files.Exists(filepath.Join(dir, "packages.config")); exists && err == nil {
+		file := filepath.Join(dir, "packages.config")
+		depGraph, err := dotnet.PackageConfigGraph(file)
+		if returnGraph(file, err, len(depGraph.Transitive)) {
+			return depGraph, nil
 		}
+	}
 
-		if exists, err := files.Exists(filepath.Join(dir, "packages.config")); exists && err == nil {
-			graph, err := dotnet.PackageConfigGraph(filepath.Join(dir, "packages.config"))
-			if err == nil && len(graph.Transitive) > 0 {
-				return graph, err
-			}
-			log.Warnf("There was a problem analyzing packages.config. Error: %s. Graph: %+v", err, graph)
-		}
-
-		if exists, err := files.Exists(filepath.Join(dir, "project.json")); exists && err == nil {
-			graph, err := dotnet.ProjectGraph(filepath.Join(dir, "project.json"))
-			if err == nil && len(graph.Transitive) > 0 {
-				return graph, err
-			}
-			log.Warnf("There was a problem analyzing project.json. Error: %s. Graph: %+v", err, graph)
+	// 7. Check for a `project.json` file which was used until NuGet 4.0.
+	// https://docs.microsoft.com/en-us/nuget/archive/project-json
+	if exists, err := files.Exists(filepath.Join(dir, "project.json")); exists && err == nil {
+		file := filepath.Join(dir, "project.json")
+		depGraph, err := dotnet.ProjectGraph(file)
+		if returnGraph(file, err, len(depGraph.Transitive)) {
+			return depGraph, nil
 		}
 	}
 
 	return graph.Deps{}, nil
+}
+
+func returnGraph(file string, err error, dependencyCount int) bool {
+	if err != nil {
+		log.Warnf("Error reading dependencies from `%s`: %s", file, err)
+		return false
+	} else if dependencyCount == 0 {
+		log.Warnf("No dependencies were found in `%s`", file)
+		return false
+	}
+	return true
 }

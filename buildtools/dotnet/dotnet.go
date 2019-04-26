@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/apex/log"
+
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
@@ -29,7 +30,6 @@ func Path(s string) string {
 }
 
 func ResolveStrategy(target, dir string) (graph.Deps, error) {
-	// Parse lockfile.
 	lockfile, err := readLockfile(filepath.Join(dir, "obj", "project.assets.json"))
 	if err != nil {
 		return graph.Deps{}, err

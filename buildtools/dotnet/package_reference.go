@@ -100,7 +100,6 @@ func Projects(projects map[string]Manifest, projectFile string) error {
 		return nil
 	}
 
-	// Read manifest.
 	var manifest Manifest
 	err := files.ReadXML(&manifest, projectFile)
 	if err != nil {
@@ -108,7 +107,7 @@ func Projects(projects map[string]Manifest, projectFile string) error {
 	}
 	projects[projectFile] = manifest
 
-	// Get all project references and recurse.
+	// Get all project reference files and recurse.
 	for _, reference := range manifest.projects() {
 		err = Projects(projects, filepath.Join(filepath.Dir(projectFile), Path(reference.Include)))
 		if err != nil {

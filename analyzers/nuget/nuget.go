@@ -73,7 +73,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			dir := filepath.Dir(path)
 			moduleName := dir
 			target := dir
-			currentModule, dirCovered := moduleMap[dir]
+			existingModule, directoryDiscovered := moduleMap[dir]
 
 			// Module preference
 			// 1. Package Reference
@@ -90,7 +90,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 					moduleName = n
 				}
 				target = path
-			} else if strings.HasSuffix(name, ".nuspec") && (!dirCovered || !xmlProj.MatchString(currentModule.BuildTarget)) {
+			} else if strings.HasSuffix(name, ".nuspec") && (!directoryDiscovered || !xmlProj.MatchString(existingModule.BuildTarget)) {
 				// For *.nuspec files, use the <id>.
 				var nuspec dotnet.NuSpec
 				err := files.ReadXML(&nuspec, path)
@@ -101,7 +101,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 					moduleName = id
 				}
 				target = path
-			} else if (name == "packages.config" || name == "project.json" || name == "paket.lock") && !dirCovered {
+			} else if (name == "packages.config" || name == "project.json" || name == "paket.lock") && !directoryDiscovered {
 				// For other module indicators, use the directory name.
 				target = dir
 			} else {
