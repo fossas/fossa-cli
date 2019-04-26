@@ -149,8 +149,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	if err != nil {
 		log.Warnf(
 			"Could not use Maven to determine dependencies for %q. Falling back to use manifest file.",
-			a.Module.Name,
-			a.Module.BuildTarget)
+			a.Module.Name)
 		mvnError := err
 		pom, err := maven.ResolveManifestFromBuildTarget(a.Module.BuildTarget)
 		if err != nil {
