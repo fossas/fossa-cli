@@ -5,7 +5,11 @@
       },
       "dependencies": {
             "one": "1.0.0",
-            "two": "2.0.0"
+            "two": "2.0.0",
+            "three": {
+                  "version": "3.0.0",
+                  "type": "test"
+            }
       },
       "code": [
             "**/*.cs"
