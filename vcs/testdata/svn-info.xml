@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<info>
+<entry
+   path="."
+   revision="2071031"
+   kind="dir">
+<url>https://plugins.svn.wordpress.org/wp-stateless</url>
+<relative-url>^/wp-stateless</relative-url>
+<repository>
+<root>https://plugins.svn.wordpress.org</root>
+<uuid>b8457f37-d9ea-0310-8a92-e5e31aec5664</uuid>
+</repository>
+<wc-info>
+<wcroot-abspath>/Users/u/sample-apps/wps</wcroot-abspath>
+<schedule>normal</schedule>
+<depth>infinity</depth>
+</wc-info>
+</entry>
+</info>

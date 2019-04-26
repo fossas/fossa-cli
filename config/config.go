@@ -11,17 +11,19 @@
 package config
 
 import (
+	"fmt"
+
 	"github.com/apex/log"
 	"github.com/urfave/cli"
-	git "gopkg.in/src-d/go-git.v4"
 
 	"github.com/fossas/fossa-cli/vcs"
 )
 
 var (
 	ctx  *cli.Context
-	repo *git.Repository
 	file File = NoFile{}
+
+	repo vcs.System
 )
 
 // SetContext initializes application-level configuration.
@@ -40,21 +42,33 @@ func SetContext(c *cli.Context) error {
 	filename = fname
 
 	// Third, try to open the local VCS repository.
-	_, dir, err := vcs.Nearest(".")
-	if err == vcs.ErrNoNearestVCS {
-		return nil
-	}
+	vcsType, dir, err := vcs.Nearest(".")
 	if err != nil {
-		return err
+		if err == vcs.ErrNoNearestVCS {
+			vcsType = vcs.None
+			dir = "."
+		} else {
+			return err
+		}
 	}
-	r, err := git.PlainOpen(dir)
-	if err == git.ErrRepositoryNotExists {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	repo = r
 
+	var r vcs.System
+
+	switch vcsType {
+	case vcs.Git:
+		r, err = vcs.NewGitRepository(dir)
+	case vcs.Subversion:
+		r, err = vcs.NewSubversionRepository(dir)
+	case vcs.None:
+		r, err = vcs.NewNoRepository(dir)
+	default:
+		err = fmt.Errorf("VCS type %s is not supported", vcsType)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	repo = r
 	return nil
 }

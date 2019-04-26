@@ -1,5 +1,4 @@
-// Package vcs implements functions for interacting with version control
-// systems.
+// Package vcs supports interacting with version control systems.
 package vcs
 
 import (
@@ -9,17 +8,30 @@ import (
 	"github.com/fossas/fossa-cli/files"
 )
 
+// A System represents the current state of a version-controlled repository.
+type System interface {
+	// Project returns the string uniquely identifying this codebase.
+	Project() string
+
+	// Head returns the latest revision that is being examined.
+	Head() Revision
+}
+
+type Revision struct {
+	Branch     string
+	RevisionID string
+}
+
 // Errors that occur when finding VCS repositories.
 var (
-	ErrNoVCSInDir     = errors.New("could not find VCS repository in directory")
-	ErrNoNearestVCS   = errors.New("could not find nearest VCS repository in directory")
-	ErrUnsupportedVCS = errors.New("VCS type is not supported")
+	ErrNoVCSInDir   = errors.New("could not find VCS repository in directory")
+	ErrNoNearestVCS = errors.New("could not find nearest VCS repository in directory")
 )
 
 // In returns the type of VCS repository rooted at a directory, or
 // ErrNoVCSInDir if none is found.
 func In(dirname string) (VCS, error) {
-	for _, vcs := range Types {
+	for _, vcs := range findableTypes {
 		ok, err := files.ExistsFolder(filepath.Join(dirname, MetadataFolder(vcs)))
 		if err != nil {
 			return 0, err
@@ -31,8 +43,8 @@ func In(dirname string) (VCS, error) {
 	return 0, ErrNoVCSInDir
 }
 
-// Nearest returns the type and directory of the nearest VCS repository
-// containing the directory, or ErrNoNearestVCS if none is found.
+// Nearest returns the type and directory of the nearest VCS repository containing or at
+// dirname, or ErrNoNearestVCS if none is found.
 func Nearest(dirname string) (VCS, string, error) {
 	var vcs VCS
 	dir, err := files.WalkUp(dirname, func(d string) error {
@@ -42,9 +54,6 @@ func Nearest(dirname string) (VCS, string, error) {
 		}
 		if err != nil {
 			return err
-		}
-		if tool == Subversion || tool == Mercurial || tool == Bazaar {
-			return ErrUnsupportedVCS
 		}
 		vcs = tool
 		return files.ErrStopWalk
@@ -64,14 +73,10 @@ func GetRepository(dirname string) (string, error) {
 		return "", err
 	}
 	switch vcs {
-	case Git:
+	case Git, Subversion, None:
 		return dir, nil
-	case Subversion:
-		return "", errors.ErrNotImplemented
-	case Mercurial:
-		return "", errors.ErrNotImplemented
-	case Bazaar:
-		return "", errors.ErrNotImplemented
+	case Mercurial, Bazaar:
+		fallthrough
 	default:
 		return "", errors.ErrNotImplemented
 	}

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-	isatty "github.com/mattn/go-isatty"
+	"github.com/mattn/go-isatty"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/module"
@@ -61,7 +61,7 @@ func Endpoint() string {
 
 func Title() string {
 	dir, _ := os.Getwd()
-	return TryStrings(StringFlag(flags.Title), file.Title(), filepath.Base(dir))
+	return TryStrings(StringFlag(flags.Title), file.Title(), Project(), filepath.Base(dir))
 }
 
 func Fetcher() string {
@@ -71,10 +71,7 @@ func Fetcher() string {
 func Project() string {
 	inferred := ""
 	if repo != nil {
-		origin, err := repo.Remote("origin")
-		if err == nil && origin != nil {
-			inferred = origin.Config().URLs[0]
-		}
+		inferred = repo.Project()
 	}
 	return TryStrings(StringFlag(flags.Project), file.Project(), inferred)
 }
@@ -82,10 +79,7 @@ func Project() string {
 func Revision() string {
 	inferred := ""
 	if repo != nil {
-		revision, err := repo.Head()
-		if err == nil {
-			inferred = revision.Hash().String()
-		}
+		inferred = repo.Head().RevisionID
 	}
 	return TryStrings(StringFlag(flags.Revision), file.Revision(), inferred)
 }
@@ -93,11 +87,7 @@ func Revision() string {
 func Branch() string {
 	inferred := ""
 	if repo != nil {
-		revision, err := repo.Head()
-		if err == nil {
-			// TODO: check whether this prefix trimming is actually correct.
-			inferred = strings.TrimPrefix(revision.Name().String(), "refs/heads/")
-		}
+		inferred = repo.Head().Branch
 	}
 	return TryStrings(MockBranch, StringFlag(flags.Branch), file.Branch(), inferred, "master")
 }
