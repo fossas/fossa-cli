@@ -3,8 +3,9 @@ package vcs
 import (
 	"strings"
 
-	"github.com/fossas/fossa-cli/errors"
 	"gopkg.in/src-d/go-git.v4"
+
+	"github.com/fossas/fossa-cli/errors"
 )
 
 // GitRepository implements the System interface.
@@ -20,6 +21,7 @@ func NewGitRepository(dir string) (*GitRepository, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	ref, err := r.Head()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get HEAD of git repository")
