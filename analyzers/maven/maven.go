@@ -146,17 +146,17 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		}
 		imports, deps, err = maven.ParseDependencyTree(output)
 	}
-	if err != nil {
+	if err != nil || len(imports) == 0 {
 		log.Warnf(
 			"Could not use Maven to determine dependencies for %q. Falling back to use manifest file.",
 			a.Module.Name)
 		mvnError := err
-		pom, err := maven.ResolveManifestFromBuildTarget(a.Module.BuildTarget)
+		pom, err := a.Maven.ResolveManifestFromBuildTarget(a.Module.BuildTarget)
 		if err != nil {
 			return graph.Deps{},
 				errors.Wrapf(err, "could not identify dependencies; original error: %v", mvnError)
 		}
-		a.Maven.AddCachedManifest(a.Module.BuildTarget, pom)
+		imports = pom.Dependencies
 	}
 
 	// Set direct dependencies.
@@ -174,14 +174,16 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	// Set transitive dependencies.
 	g := make(map[pkg.ID]pkg.Package)
 	for parent, children := range deps {
-		id := pkg.ID{
-			Type:     pkg.Maven,
-			Name:     parent.Name,
-			Revision: parent.Version,
+		pack := pkg.Package{
+			ID: pkg.ID{
+				Type:     pkg.Maven,
+				Name:     parent.Name,
+				Revision: parent.Version,
+			},
+			Imports: make([]pkg.Import, 0, len(children)),
 		}
-		var imports []pkg.Import
 		for _, child := range children {
-			imports = append(imports, pkg.Import{
+			pack.Imports = append(pack.Imports, pkg.Import{
 				Target: child.Version,
 				Resolved: pkg.ID{
 					Type:     pkg.Maven,
@@ -190,10 +192,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 				},
 			})
 		}
-		g[id] = pkg.Package{
-			ID:      id,
-			Imports: imports,
-		}
+		g[pack.ID] = pack
 	}
 
 	return graph.Deps{

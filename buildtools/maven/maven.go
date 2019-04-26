@@ -72,25 +72,9 @@ func (m *Maven) Compile(dir string) error {
 	return err
 }
 
-// CachedManifest returns the manifest from the internal cache, or nil if it is not set.
-func (m *Maven) CachedManifest(target string) *Manifest {
-	if m.manifestCache == nil {
-		return nil
-	}
-	return m.manifestCache[target]
-}
-
-// AddCachedManifest saves the provided POM manifest data to the analyzer's cache.
-func (m *Maven) AddCachedManifest(target string, pom *Manifest) {
-	if m.manifestCache == nil {
-		m.manifestCache = make(map[string]*Manifest)
-	}
-	m.manifestCache[target] = pom
-}
-
 // ResolveManifestFromBuildTarget tries to determine what buildTarget is supposed to be and then reads the POM
 // manifest file pointed to by buildTarget if it is a path to such a file or module.
-func ResolveManifestFromBuildTarget(buildTarget string) (*Manifest, error) {
+func (m *Maven) ResolveManifestFromBuildTarget(buildTarget string) (*Manifest, error) {
 	var pomFile string
 	if !strings.HasSuffix(buildTarget, ".xml") {
 		pomFile = filepath.Join(buildTarget, "pom.xml")
@@ -109,6 +93,10 @@ func ResolveManifestFromBuildTarget(buildTarget string) (*Manifest, error) {
 	if err := files.ReadXML(&pom, pomFile); err != nil {
 		return nil, err
 	}
+	if m.manifestCache == nil {
+		m.manifestCache = make(map[string]*Manifest)
+	}
+	m.manifestCache[buildTarget] = &pom
 	return &pom, nil
 }
 
@@ -190,18 +178,13 @@ func (m *Maven) tryDependencyCommands(subGoal, dir, buildTarget string) (stdout 
 	cmd.Argv = append(goalArgs, "--projects", buildTarget)
 	output, _, err := exec.Run(cmd)
 	if err != nil {
-		// Now we will try to identify the groupId:artifactId identifier for the module and specify the path
-		// to the manifest file directly.
-		pom := m.CachedManifest(buildTarget)
-		if pom == nil {
-			var err2 error
-			pom, err2 = ResolveManifestFromBuildTarget(buildTarget)
-			if err2 != nil {
-				// Using buildTarget as a module ID or as a path to a manifest did not work.
-				// Return just the error from running the mvn goal the first time.
-				return "", errors.Wrap(err, "could not use Maven to list dependencies")
-			}
-			m.AddCachedManifest(buildTarget, pom)
+		// Now we try to identify the groupId:artifactId identifier for the module and specify the path to
+		// the manifest file directly.
+		pom, err2 := m.ResolveManifestFromBuildTarget(buildTarget)
+		if err2 != nil {
+			// Using buildTarget as a module ID or as a path to a manifest did not work.
+			// Return just the error from running the mvn goal the first time.
+			return "", errors.Wrap(err, "could not use Maven to list dependencies")
 		}
 
 		// At this point we still don't know if buildTarget is the path to a directory or to a manifest file,
@@ -213,7 +196,6 @@ func (m *Maven) tryDependencyCommands(subGoal, dir, buildTarget string) (stdout 
 
 		cmd.Argv = append(goalArgs, "--projects", pom.GroupID+":"+pom.ArtifactID, "--file", pomFilePath)
 
-		var err2 error
 		output, _, err2 = exec.Run(cmd)
 		err = errors.Wrapf(err2, "could not run %s (original error: %v)", goalArgs[0], err)
 	}
