@@ -2,6 +2,7 @@ package dotnet
 
 import (
 	"path/filepath"
+	"regexp"
 
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
@@ -61,6 +62,12 @@ func (m *Manifest) projects() []Reference {
 		projects = append(projects, itemGroup.ProjectReference...)
 	}
 	return projects
+}
+
+// IsPackageReferenceFile checks for a valid package reference file name.
+func IsPackageReferenceFile(filename string) bool {
+	var xmlProj = regexp.MustCompile(`\.(cs|x|vb|db|fs)proj$`)
+	return xmlProj.MatchString(filename)
 }
 
 // PackageReferenceGraph reads a package reference file and returns a dependency graph.

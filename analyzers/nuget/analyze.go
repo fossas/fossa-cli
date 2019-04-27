@@ -2,9 +2,9 @@ package nuget
 
 import (
 	"path/filepath"
-	"regexp"
 
 	"github.com/apex/log"
+
 	"github.com/fossas/fossa-cli/buildtools/dotnet"
 	"github.com/fossas/fossa-cli/buildtools/paket"
 	"github.com/fossas/fossa-cli/files"
@@ -48,8 +48,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	// 4. Check for a Package Reference file used by NuGet 4.0+.
 	// https://docs.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files
-	var xmlProj = regexp.MustCompile(`.*\.(cs|x|vb|db|fs)proj$`)
-	if xmlProj.MatchString(a.Module.BuildTarget) {
+	if dotnet.IsPackageReferenceFile(a.Module.BuildTarget) {
 		exists, err := files.Exists(a.Module.BuildTarget)
 		if !exists || err != nil {
 			log.Warnf("`%s` cannot be read. File exists: %b. Error: %s", a.Module.BuildTarget, exists, err)
@@ -100,7 +99,9 @@ func returnGraph(file string, err error, dependencyCount int) bool {
 	if err != nil {
 		log.Warnf("Error reading dependencies from `%s`: %s", file, err)
 		return false
-	} else if dependencyCount == 0 {
+	}
+
+	if dependencyCount == 0 {
 		log.Warnf("No dependencies were found in `%s`", file)
 		return false
 	}

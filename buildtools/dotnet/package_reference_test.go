@@ -3,8 +3,9 @@ package dotnet_test
 import (
 	"testing"
 
-	"github.com/fossas/fossa-cli/buildtools/dotnet"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/fossas/fossa-cli/buildtools/dotnet"
 )
 
 func TestPackageReference(t *testing.T) {
@@ -29,4 +30,14 @@ func TestPackageReference(t *testing.T) {
 	depThree := findPackage(testGraph.Transitive, "three", "3.0.0")
 	assert.NotEmpty(t, depThree)
 	assert.Empty(t, depThree.Imports)
+}
+
+func TestIsPackageReferenceFile(t *testing.T) {
+	assert.True(t, dotnet.IsPackageReferenceFile("test.csproj"))
+	assert.True(t, dotnet.IsPackageReferenceFile("test.temp.xproj"))
+	assert.True(t, dotnet.IsPackageReferenceFile("test.project.temp.vbproj"))
+	assert.True(t, dotnet.IsPackageReferenceFile("test.dbproj"))
+	assert.True(t, dotnet.IsPackageReferenceFile("test.fsproj"))
+	assert.False(t, dotnet.IsPackageReferenceFile("temp.proj"))
+	assert.False(t, dotnet.IsPackageReferenceFile("packages.nuspec"))
 }

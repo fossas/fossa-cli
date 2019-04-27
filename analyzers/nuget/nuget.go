@@ -7,7 +7,6 @@ package nuget
 import (
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/apex/log"
@@ -58,8 +57,6 @@ func New(m module.Module) (*Analyzer, error) {
 	return &analyzer, nil
 }
 
-var xmlProj = regexp.MustCompile(`.*\.(cs|x|vb|db|fs)proj$`)
-
 func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	moduleMap := make(map[string]module.Module)
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -79,7 +76,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			// 1. Package Reference
 			// 2. Nuspec
 			// 3. packages.config, project.json, paket.lock
-			if xmlProj.MatchString(name) {
+			if dotnet.IsPackageReferenceFile(name) {
 				// For *.{cs,x,vb,db,fs}proj files, use the first <RootNamespace> seen.
 				var manifest dotnet.Manifest
 				err := files.ReadXML(&manifest, path)
