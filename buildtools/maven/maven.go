@@ -141,7 +141,12 @@ func Modules(path string, baseDir string, checked map[string]bool) ([]MvnModule,
 
 	modules := make([]MvnModule, 1, 1+len(pom.Modules))
 
-	modules[0] = MvnModule{Name: pom.Name, Target: pomFile, Dir: dir}
+	name := pom.Name
+	if name == "" {
+		name = pom.ArtifactID
+	}
+
+	modules[0] = MvnModule{Name: name, Target: pomFile, Dir: dir}
 
 	for _, module := range pom.Modules {
 		childPath := filepath.Join(dir, module)

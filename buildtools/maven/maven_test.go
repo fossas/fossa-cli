@@ -10,8 +10,9 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/maven"
 )
 
+var testdataDir = filepath.Join("..", "..", "analyzers", "maven", "testdata")
+
 func TestResolveManifestFromBuildTarget(t *testing.T) {
-	testdataDir := filepath.Join("..", "..", "analyzers", "maven", "testdata")
 	var m maven.Maven
 
 	// A directory path.
@@ -21,10 +22,36 @@ func TestResolveManifestFromBuildTarget(t *testing.T) {
 	}
 
 	// A POM file path.
-	path2 := filepath.Join(testdataDir, "nested", "pom.xml")
-	pom2, err := m.ResolveManifestFromBuildTarget(path2)
+	pom2, err := m.ResolveManifestFromBuildTarget(filepath.Join(testdataDir, "nested", "pom.xml"))
 	if assert.NoError(t, err) {
 		assert.Equal(t, "com.someone.code.a:gson-extras", pom2.GroupID+":"+pom2.ArtifactID)
+	}
+
+	// A project identifier.
+	_, err3 := m.ResolveManifestFromBuildTarget("something:else")
+	if assert.Error(t, err3) {
+		assert.Contains(t, err3.Error(), "appears to be a module identifier")
+	}
+}
+
+func TestModules(t *testing.T) {
+	fullPath := filepath.Join(testdataDir, "pom.xml")
+	checked := make(map[string]bool)
+	mods, err := maven.Modules(fullPath, testdataDir, checked)
+	if assert.NoError(t, err) {
+		assert.Len(t, mods, 1)
+	}
+
+	// Reading the same file should simply nil and do no work.
+	resultAgain, errAgain := maven.Modules(fullPath, testdataDir, checked)
+	assert.Nil(t, resultAgain)
+	assert.Nil(t, errAgain)
+
+	checked2 := make(map[string]bool)
+	dirOnlyPath := filepath.Join(testdataDir, "nested")
+	mods2, err := maven.Modules(dirOnlyPath, testdataDir, checked2)
+	if assert.NoError(t, err) {
+		assert.Len(t, mods2, 2)
 	}
 }
 
