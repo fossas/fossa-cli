@@ -109,7 +109,7 @@ If your development environment is not supported, check out the [archive](docs/i
 fossa init # writes to `.fossa.yml`
 ```
 
-This will initialize a [`.fossa.yml`](docs/config-file.md#fossayml) file that looks like this:
+Running `fossa init` will create a hidden configuration file called [`.fossa.yml`](docs/config-file.md#fossayml) which looks like this:
 
 ```yaml
 version: 1

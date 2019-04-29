@@ -1,0 +1,19 @@
+{
+      "version": 3,
+      "targets": {
+            ".NETFramework,Version=v4.0": {
+                  "one/1.0.0": {
+                        "type": "package",
+                        "dependencies": {
+                              "three": "3.0.0"
+                        }
+                  },
+                  "two/2.0.0": {
+                        "type": "package"
+                  },
+                  "three/3.0.0": {
+                        "type": "package"
+                  }
+            }
+      }
+}
