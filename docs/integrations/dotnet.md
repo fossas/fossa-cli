@@ -1,8 +1,8 @@
-# NuGet (.NET)
+# .NET
 
 ## Installation
 
-NuGet support in FOSSA CLI only depends on the presence of nuget manifest files in the directory.
+.NET support in FOSSA CLI only depends on the presence of .NET related manifest files in the directory.
 
 ## Configuration
 
@@ -25,11 +25,11 @@ analyze:
 
 | Option     |  Type  | Name                         | Common Use Case                    |
 | ---------- | :----: | ---------------------------- | ---------------------------------- |
-| `strategy` | string | [Strategy](#strategy-string) | Specify a NuGet analysis strategy. |
+| `strategy` | string | [Strategy](#strategy-string) | Specify a .NET analysis strategy. |
 
 #### `strategy: <string>`
 
-Manually specify the NuGet analysis strategy to be used. Supported options:
+Manually specify the .NET analysis strategy to be used. Supported options:
 - `paket`: Parse `paket.lock` file.
 - `package-reference`: Parse a Package Reference file.
 - `nuspec`: Parse a NuSpec file.
