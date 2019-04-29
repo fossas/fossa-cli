@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 
 	"github.com/apex/log"
+
 	"github.com/fossas/fossa-cli/buildtools/dotnet"
 	"github.com/fossas/fossa-cli/buildtools/paket"
 	"github.com/fossas/fossa-cli/files"
