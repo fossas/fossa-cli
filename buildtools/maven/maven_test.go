@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/buildtools/maven"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
 var testdataDir = filepath.Join("..", "..", "analyzers", "maven", "testdata")
@@ -29,9 +30,7 @@ func TestResolveManifestFromBuildTarget(t *testing.T) {
 
 	// A project identifier.
 	_, err3 := m.ResolveManifestFromBuildTarget("something:else")
-	if assert.Error(t, err3) {
-		assert.Contains(t, err3.Error(), "appears to be a module identifier")
-	}
+	assert.Error(t, err3)
 }
 
 func TestModules(t *testing.T) {
@@ -41,11 +40,6 @@ func TestModules(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Len(t, mods, 1)
 	}
-
-	// Reading the same file should simply nil and do no work.
-	resultAgain, errAgain := maven.Modules(fullPath, testdataDir, checked)
-	assert.Nil(t, resultAgain)
-	assert.Nil(t, errAgain)
 
 	checked2 := make(map[string]bool)
 	dirOnlyPath := filepath.Join(testdataDir, "nested")
@@ -105,11 +99,11 @@ func TestParseDependencyTreeUnix(t *testing.T) {
 	  └── dep:five:5.0.0
 */
 
-var depOne = maven.Dependency{Name: "dep:one", Version: "1.0.0", Failed: false}
-var depTwo = maven.Dependency{Name: "dep:two", Version: "2.0.0", Failed: false}
-var depThree = maven.Dependency{Name: "dep:three", Version: "3.0.0", Failed: false}
-var depFour = maven.Dependency{Name: "dep:four", Version: "4.0.0", Failed: false}
-var depFive = maven.Dependency{Name: "dep:five", Version: "5.0.0", Failed: false}
+var depOne = pkg.ID{Type: pkg.Maven, Name: "dep:one", Revision: "1.0.0"}
+var depTwo = pkg.ID{Type: pkg.Maven, Name: "dep:two", Revision: "2.0.0"}
+var depThree = pkg.ID{Type: pkg.Maven, Name: "dep:three", Revision: "3.0.0"}
+var depFour = pkg.ID{Type: pkg.Maven, Name: "dep:four", Revision: "4.0.0"}
+var depFive = pkg.ID{Type: pkg.Maven, Name: "dep:five", Revision: "5.0.0"}
 
 func TestParseDependencyTree(t *testing.T) {
 	dat, err := ioutil.ReadFile("testdata/unix.out")
@@ -118,16 +112,16 @@ func TestParseDependencyTree(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 2, len(direct))
-	assert.Contains(t, direct, depOne)
-	assert.Contains(t, direct, depTwo)
+	assert.Contains(t, direct, pkg.Import{Target: "", Resolved: depOne})
+	assert.Contains(t, direct, pkg.Import{Target: "", Resolved: depTwo})
 
 	assert.Equal(t, 5, len(transitive))
 	assert.Contains(t, transitive, depOne)
 	assert.Contains(t, transitive, depTwo)
-	assert.Contains(t, transitive[depTwo], depThree)
-	assert.Contains(t, transitive[depTwo], depFive)
+	assert.Contains(t, transitive[depTwo].Imports, pkg.Import{Target: "3.0.0", Resolved: depThree})
+	assert.Contains(t, transitive[depTwo].Imports, pkg.Import{Target: "5.0.0", Resolved: depFive})
 	assert.Contains(t, transitive, depThree)
-	assert.Contains(t, transitive[depThree], depFour)
+	assert.Contains(t, transitive[depThree].Imports, pkg.Import{Target: "4.0.0", Resolved: depFour})
 	assert.Contains(t, transitive, depFour)
 	assert.Contains(t, transitive, depFive)
 }

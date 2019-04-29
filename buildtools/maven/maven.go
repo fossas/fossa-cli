@@ -3,6 +3,7 @@ package maven
 import (
 	"encoding/xml"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
 type Manifest struct {
@@ -46,12 +48,72 @@ type Dependency struct {
 	Failed bool
 }
 
+type depsList []Dependency
+
+func (d depsList) toImports() []pkg.Import {
+	i := make([]pkg.Import, 0, len(d))
+	for _, dep := range d {
+		i = append(i, pkg.Import{
+			Resolved: pkg.ID{
+				Type:     pkg.Maven,
+				Name:     dep.Name,
+				Revision: dep.Version,
+			},
+		})
+	}
+	return i
+}
+
+// ToGraphDeps returns simply the list of dependencies listed within the manifest file.
+func (m *Manifest) ToGraphDeps() ([]pkg.Import, map[pkg.ID]pkg.Package) {
+	imports := depsList(m.Dependencies).toImports()
+
+	// From just a POM file we don't know what really depends on what, so list all imports in the graph.
+	g := make(map[pkg.ID]pkg.Package)
+	for _, dep := range m.Dependencies {
+		pack := pkg.Package{
+			ID: pkg.ID{
+				Type:     pkg.Maven,
+				Name:     dep.Name,
+				Revision: dep.Version,
+			},
+		}
+		g[pack.ID] = pack
+	}
+
+	return imports, g
+}
+
+type depsMap map[Dependency][]Dependency
+
+func (d depsMap) toPkgGraph() map[pkg.ID]pkg.Package {
+	g := make(map[pkg.ID]pkg.Package)
+	for parent, children := range d {
+		pack := pkg.Package{
+			ID: pkg.ID{
+				Type:     pkg.Maven,
+				Name:     parent.Name,
+				Revision: parent.Version,
+			},
+			Imports: make([]pkg.Import, 0, len(children)),
+		}
+		for _, child := range children {
+			pack.Imports = append(pack.Imports, pkg.Import{
+				Target: child.Version,
+				Resolved: pkg.ID{
+					Type:     pkg.Maven,
+					Name:     child.Name,
+					Revision: child.Version,
+				},
+			})
+		}
+		g[pack.ID] = pack
+	}
+	return g
+}
+
 type Maven struct {
 	Cmd string
-
-	// manifestCache caches parsed POM manifest files with build target identifiers as keys. This map may
-	// be nil at any time.
-	manifestCache map[string]*Manifest
 }
 
 func (m *Maven) Clean(dir string) error {
@@ -76,27 +138,27 @@ func (m *Maven) Compile(dir string) error {
 // manifest file pointed to by buildTarget if it is a path to such a file or module.
 func (m *Maven) ResolveManifestFromBuildTarget(buildTarget string) (*Manifest, error) {
 	var pomFile string
-	if !strings.HasSuffix(buildTarget, ".xml") {
-		pomFile = filepath.Join(buildTarget, "pom.xml")
-	} else {
-		pomFile = buildTarget
-	}
-	if ok, _ := files.Exists(pomFile); !ok {
+	stat, err := os.Stat(buildTarget)
+	if err != nil {
+		// buildTarget is not a path.
 		if strings.Count(buildTarget, ":") == 1 {
 			// This is likely a module ID.
-			return nil, fmt.Errorf("build target %q appears to be a module identifier", buildTarget)
+			return nil, fmt.Errorf("cannot identify POM file for module %q", buildTarget)
 		}
-		return nil, fmt.Errorf("module manfist file %q does not exist", buildTarget)
+		return nil, fmt.Errorf("manfist file for %q cannot be read", buildTarget)
+	}
+	if stat.IsDir() {
+		// We have the directory and will assume it uses the standard name for the manifest file.
+		pomFile = filepath.Join(buildTarget, "pom.xml")
+	} else {
+		// We have the manifest file but still need its directory path.
+		pomFile = buildTarget
 	}
 
 	var pom Manifest
 	if err := files.ReadXML(&pom, pomFile); err != nil {
 		return nil, err
 	}
-	if m.manifestCache == nil {
-		m.manifestCache = make(map[string]*Manifest)
-	}
-	m.manifestCache[buildTarget] = &pom
 	return &pom, nil
 }
 
@@ -120,15 +182,24 @@ type MvnModule struct {
 func Modules(path string, baseDir string, checked map[string]bool) ([]MvnModule, error) {
 	dir := path
 	pomFile := path
-	if strings.HasSuffix(path, ".xml") {
-		// We have the manifest file but still need its directory path.
-		dir = filepath.Dir(path)
-	} else {
+	stat, err := os.Stat(path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not check type of %q", path)
+	}
+	if stat.IsDir() {
 		// We have the directory and will assume it uses the standard name for the manifest file.
 		pomFile = filepath.Join(path, "pom.xml")
+	} else {
+		// We have the manifest file but still need its directory path.
+		dir = filepath.Dir(path)
 	}
 
-	if checked[pomFile] {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not get absolute path of %q", absPath)
+	}
+
+	if checked[absPath] {
 		return nil, nil
 	}
 
@@ -166,7 +237,7 @@ func (m *Maven) DependencyList(dir, buildTarget string) (string, error) {
 }
 
 // DependencyTree runs Maven's dependency:tree goal for the specified project.
-func (m *Maven) DependencyTree(dir, buildTarget string) ([]Dependency, map[Dependency][]Dependency, error) {
+func (m *Maven) DependencyTree(dir, buildTarget string) ([]pkg.Import, map[pkg.ID]pkg.Package, error) {
 	output, err := m.tryDependencyCommands("tree", dir, buildTarget)
 	if err != nil {
 		return nil, nil, err
@@ -209,7 +280,7 @@ func (m *Maven) tryDependencyCommands(subGoal, dir, buildTarget string) (stdout 
 
 //go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package maven/' > readtree_generated.go"
 
-func ParseDependencyTree(stdin string) ([]Dependency, map[Dependency][]Dependency, error) {
+func ParseDependencyTree(stdin string) ([]pkg.Import, map[pkg.ID]pkg.Package, error) {
 	var filteredLines []string
 	start := regexp.MustCompile("^\\[INFO\\] --- .*? ---$")
 	started := false
@@ -237,7 +308,7 @@ func ParseDependencyTree(stdin string) ([]Dependency, map[Dependency][]Dependenc
 	filteredLines = filteredLines[1:]
 
 	depRegex := regexp.MustCompile("([^:]+):([^:]+):([^:]*):([^:]+)")
-	return ReadDependencyTree(filteredLines, func(line string) (int, Dependency, error) {
+	imports, deps, err := ReadDependencyTree(filteredLines, func(line string) (int, Dependency, error) {
 		log.WithField("line", line).Debug("parsing output line")
 		matches := r.FindStringSubmatch(line)
 		depth := len(matches[1])
@@ -257,4 +328,8 @@ func ParseDependencyTree(stdin string) ([]Dependency, map[Dependency][]Dependenc
 
 		return level, Dependency{Name: name, Version: revision, Failed: failed}, nil
 	})
+	if err != nil {
+		return nil, nil, err
+	}
+	return depsList(imports).toImports(), depsMap(deps).toPkgGraph(), nil
 }

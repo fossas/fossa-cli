@@ -1,7 +1,7 @@
 // Package maven implements Maven analysis.
 //
-// A `BuildTarget` for Maven is either a path to a directory containing a POM manifest or a path to such a
-// file from the FOSSA project root.
+// A `BuildTarget` for Maven is either a Maven project ID (groupId:artifactId), or a path to a directory in
+// which there is a "pom.xml" file, or a path to a POM file.
 package maven
 
 import (
@@ -30,6 +30,8 @@ type Analyzer struct {
 type Options struct {
 	Binary  string `mapstructure:"bin"`
 	Command string `mapstructure:"cmd"`
+	// Strategy can be "pom-file", "maven-tree", or empty.
+	Strategy string `mapstructure:"strategy"`
 }
 
 func New(m module.Module) (*Analyzer, error) {
@@ -130,73 +132,48 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.WithField("module", a.Module).Debug("analyzing module")
 
-	var imports []maven.Dependency
-	var deps map[maven.Dependency][]maven.Dependency
+	var imports []pkg.Import
+	var deps map[pkg.ID]pkg.Package
 	var err error
-	if a.Options.Command == "" {
-		imports, deps, err = a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
-	} else {
-		var output string
-		output, _, err = exec.Shell(exec.Cmd{
-			Command: a.Options.Command,
-		})
-		if err != nil {
-			// Because this was a custom shell command, we do not fall back to any other strategies.
-			return graph.Deps{}, err
-		}
-		imports, deps, err = maven.ParseDependencyTree(output)
-	}
-	if err != nil || len(imports) == 0 {
-		log.Warnf(
-			"Could not use Maven to determine dependencies for %q. Falling back to use manifest file.",
-			a.Module.Name)
-		mvnError := err
+	switch a.Options.Strategy {
+	case "pom-file":
 		pom, err := a.Maven.ResolveManifestFromBuildTarget(a.Module.BuildTarget)
 		if err != nil {
-			return graph.Deps{},
-				errors.Wrapf(err, "could not identify dependencies; original error: %v", mvnError)
+			return graph.Deps{}, err
 		}
-		imports = pom.Dependencies
-	}
-
-	// Set direct dependencies.
-	i := make([]pkg.Import, 0, len(imports))
-	for _, dep := range imports {
-		i = append(i, pkg.Import{
-			Resolved: pkg.ID{
-				Type:     pkg.Maven,
-				Name:     dep.Name,
-				Revision: dep.Version,
-			},
-		})
-	}
-
-	// Set transitive dependencies.
-	g := make(map[pkg.ID]pkg.Package)
-	for parent, children := range deps {
-		pack := pkg.Package{
-			ID: pkg.ID{
-				Type:     pkg.Maven,
-				Name:     parent.Name,
-				Revision: parent.Version,
-			},
-			Imports: make([]pkg.Import, 0, len(children)),
-		}
-		for _, child := range children {
-			pack.Imports = append(pack.Imports, pkg.Import{
-				Target: child.Version,
-				Resolved: pkg.ID{
-					Type:     pkg.Maven,
-					Name:     child.Name,
-					Revision: child.Version,
-				},
+		imports, deps = pom.ToGraphDeps()
+	case "maven-tree":
+		imports, deps, err = a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
+	default:
+		if a.Options.Command == "" {
+			imports, deps, err = a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
+		} else {
+			var output string
+			output, _, err = exec.Shell(exec.Cmd{
+				Command: a.Options.Command,
 			})
+			if err != nil {
+				// Because this was a custom shell command, we do not fall back to any other strategies.
+				return graph.Deps{}, err
+			}
+			imports, deps, err = maven.ParseDependencyTree(output)
 		}
-		g[pack.ID] = pack
+		if err != nil || len(imports) == 0 {
+			log.Warnf(
+				"Could not use Maven to determine dependencies for %q. Falling back to use manifest file.",
+				a.Module.Name)
+			mvnError := err
+			pom, err := a.Maven.ResolveManifestFromBuildTarget(a.Module.BuildTarget)
+			if err != nil {
+				return graph.Deps{},
+					errors.Wrapf(err, "could not identify dependencies; original error: %v", mvnError)
+			}
+			imports, deps = pom.ToGraphDeps()
+		}
 	}
 
 	return graph.Deps{
-		Direct:     i,
-		Transitive: g,
+		Direct:     imports,
+		Transitive: deps,
 	}, nil
 }
