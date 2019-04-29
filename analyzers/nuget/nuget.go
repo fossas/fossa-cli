@@ -87,7 +87,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 					moduleName = n
 				}
 				target = path
-			} else if strings.HasSuffix(name, ".nuspec") && (!directoryDiscovered || !xmlProj.MatchString(existingModule.BuildTarget)) {
+			} else if strings.HasSuffix(name, ".nuspec") && (!directoryDiscovered || !dotnet.IsPackageReferenceFile(existingModule.BuildTarget)) {
 				// For *.nuspec files, use the <id>.
 				var nuspec dotnet.NuSpec
 				err := files.ReadXML(&nuspec, path)
