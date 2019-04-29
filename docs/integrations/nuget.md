@@ -2,35 +2,53 @@
 
 ## Installation
 
-NuGet support in FOSSA CLI depends on the following tools existing in your environment:
-
-- [.NET Core CLI](https://docs.microsoft.com/en-us/dotnet/core/tools/) (defaults to `dotnet`, configure with `$DOTNET_BINARY`)
-- [NuGet](https://www.nuget.org/downloads) (defaults to `nuget`, configure with `$NUGET_BINARY`)
+NuGet support in FOSSA CLI only depends on the presence of nuget manifest files in the directory.
 
 ## Configuration
 
-Automatic: Run `fossa init` to walk the file tree and find any directories that contain `packages.config` or `project.json`.
+Automatic: Run `fossa init` to walk the file tree and find any directories that contain a Package Reference file, NuSpec file, `packages.config`, `project.json`, or `paket.lock`.
 
-Manual: Add a module with `type` set to `nuget`, `dir` set to the location of the a `project.json` or `packages.config` file, and `target` to the path to that directory.
+Manual: Add a module with `type` set to `nuget`, `target` to the path of the manifest file, and `dir` set to the location of the manifest file.
 
 ```yaml
 analyze:
   modules:
     - name: NugetModule
       type: nuget
-      dir: MyCompany.SomeProject.Module
-      target: src/MyCompany.SomeProject.Module
+      target: MyProject/Manifest.csproj
+      dir: MyProject
+      options:
+        strategy: package-reference
 ```
+
+## Options
+
+| Option     |  Type  | Name                         | Common Use Case                    |
+| ---------- | :----: | ---------------------------- | ---------------------------------- |
+| `strategy` | string | [Strategy](#strategy-string) | Specify a NuGet analysis strategy. |
+
+#### `strategy: <string>`
+
+Manually specify the NuGet analysis strategy to be used. Supported options:
+- `paket`: Parse `paket.lock` file.
+- `package-reference`: Parse a Package Reference file.
+- `nuspec`: Parse a NuSpec file.
+- `packages-config`: Parse `packages.config` file.
+- `project-json`: Parse `project.json` file.
 
 ## Analysis
 
-`fossa analyze` will first attempt to resolve any existing NuGet lockfile created by your build (at `{module.path}/project.lock.json or {module.path}/obj/project.assets.json`).  It will parse these files for dependencies that were installed under the `libraries` key.  If `fossa` failed to resolve a lockfile (one was not created during the build or found), `fossa` will fall back to analyzing your `packages` directory.
+Default .NET analysis follows a series of fallbacks which attempts to determine a dependency graph by starting with the most accurate method and falling to the least accurate:
+
+1. Paket: Look for `paket.lock` and read for dependencies.
+2. Resolving method: Attempt to resolve any existing NuGet lockfile created by your build (at `{module.path}/obj/project.assets.json`). It will parse this file for installed dependencies and compare them to the Package Reference file in order to determine an accurate dependency graph.
+3. Package Reference: Look for a file that matches the Package Reference file format and read for dependencies.
+4. NuSpec: Look for a NuSpec file and read for dependencies.
+5. Packages Config: Look for `packages.config` and read for dependencies.
+6. Project JSON: Look for `project.json` and read for dependencies.
 
 ## Known limitations
 
-- doesn't support conditional direct dependencies (e.g. conditioned on target framework) -- will get all references regardless of target framework.
-- only supports top-level itemgroup/packagereferences (not e.g. those under choose element).
-
+- Doesn't support conditional direct dependencies (e.g. conditioned on target framework) -- will get all references regardless of target framework.
+- Only supports top-level itemgroup/packagereferences (not e.g. those under choose element).
 - Currently, `fossa` supports NuGet lockfiles of `v2` and `v3` schemas.
-- `fossa` assumes your package directory is located at `{module.path}/packages`.  If you use a global package folder or another path, we reccomend you generate a lockfile for your build..
-- Due to the assumptions about package installation locations, verifying whether a module is built is unreliable sans-lockfile.  If you receive an inaccurate error that your build is unsatisfied, run `fossa` with the `--allow-unresolved` flag.

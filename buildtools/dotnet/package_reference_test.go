@@ -16,12 +16,12 @@ func TestPackageReference(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, testGraph.Direct, 3)
-	assertImport(t, testGraph.Direct, "one", "1.0.0")
+	assertImport(t, testGraph.Direct, "one", "[1.0,2.0)")
 	assertImport(t, testGraph.Direct, "two", "2.0.0")
 	assertImport(t, testGraph.Direct, "three", "3.0.0")
 
 	assert.Len(t, testGraph.Transitive, 3)
-	depOne := findPackage(testGraph.Transitive, "one", "1.0.0")
+	depOne := findPackage(testGraph.Transitive, "one", "[1.0,2.0)")
 	assert.NotEmpty(t, depOne)
 	assert.Empty(t, depOne.Imports)
 	depTwo := findPackage(testGraph.Transitive, "two", "2.0.0")

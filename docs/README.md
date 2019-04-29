@@ -9,14 +9,15 @@ The FOSSA CLI is designed to discover all build environments in your project and
 
 The user guide provides an in depth look at the FOSSA CLI's discovery and analysis process. This guide includes documentation on the available `fossa` commands, their usage, and the configuration options available for each.
 
-1. [Configuring a Project](user-guide.md/#i1configuring-a-project)
+1. [Installing the FOSSA CLI](user-guide.md/#1-installation)
+1. [Configuring a Project](user-guide.md/#2-configuring-a-project)
      - [Configuration File](user-guide.md/#configuration-file)
      - [Argument Configuration](user-guide.md/#argument-configuration)   
-2. [Analyzing a Project](user-guide.md/#2-analyzing-a-project)
+1. [Analyzing a Project](user-guide.md/#3-analyzing-a-project)
       -  [Uploading Custom Builds](user-guide.md/#uploading-custom-builds)
          - [Data Format](user-guide.md/#data-format)
          - [Locator Spec](user-guide.md/#locator-spec)
-3. [CLI Reference](user-guide.md/#cli-reference)
+1. [CLI Reference](user-guide.md/#cli-reference)
       - [`fossa`](user-guide.md/#fossa)
       - [`init`](user-guide.md/#fossa-init)
       - [`analyze`](user-guide.md/#fossa-analyze)
@@ -46,7 +47,7 @@ This document is a walk-through of getting started with the FOSSA CLI and is aim
   - FAQ
 - Environments
   - [ant](integrations/ant.md#ant--ivy)
-  - [archive](integrations/archive.md--archive)
+  - [archive](integrations/archive.md#archive)
   - [bower](integrations/bower.md#bower)
   - [buck](integrations/buck.md#buck)
   - [carthage](integrations/carthage.md#carthage)

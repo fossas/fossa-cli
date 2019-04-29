@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 
 	"github.com/apex/log"
-
 	"github.com/fossas/fossa-cli/buildtools/dotnet"
 	"github.com/fossas/fossa-cli/buildtools/paket"
 	"github.com/fossas/fossa-cli/files"
@@ -21,13 +20,13 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	switch a.Options.Strategy {
 	case "paket":
 		return paket.DependencyGraph(a.Module.BuildTarget)
-	case "packagereference":
+	case "package-reference":
 		return dotnet.PackageReferenceGraph(a.Module.BuildTarget)
 	case "nuspec":
 		return dotnet.NuspecGraph(a.Module.BuildTarget)
-	case "packageconfig":
+	case "package-config":
 		return dotnet.ProjectGraph(filepath.Join(dir, "packages.config"))
-	case "projectjson":
+	case "project-json":
 		return dotnet.ProjectGraph(filepath.Join(dir, "project.json"))
 	}
 
