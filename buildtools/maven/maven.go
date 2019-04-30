@@ -13,6 +13,7 @@ import (
 
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -65,11 +66,13 @@ func (d depsList) toImports() []pkg.Import {
 }
 
 // ToGraphDeps returns simply the list of dependencies listed within the manifest file.
-func (m *Manifest) ToGraphDeps() ([]pkg.Import, map[pkg.ID]pkg.Package) {
-	imports := depsList(m.Dependencies).toImports()
+func (m *Manifest) ToGraphDeps() graph.Deps {
+	g := graph.Deps{
+		Direct:     depsList(m.Dependencies).toImports(),
+		Transitive: make(map[pkg.ID]pkg.Package),
+	}
 
 	// From just a POM file we don't know what really depends on what, so list all imports in the graph.
-	g := make(map[pkg.ID]pkg.Package)
 	for _, dep := range m.Dependencies {
 		pack := pkg.Package{
 			ID: pkg.ID{
@@ -78,10 +81,10 @@ func (m *Manifest) ToGraphDeps() ([]pkg.Import, map[pkg.ID]pkg.Package) {
 				Revision: dep.Version,
 			},
 		}
-		g[pack.ID] = pack
+		g.Transitive[pack.ID] = pack
 	}
 
-	return imports, g
+	return g
 }
 
 type depsMap map[Dependency][]Dependency
@@ -237,10 +240,10 @@ func (m *Maven) DependencyList(dir, buildTarget string) (string, error) {
 }
 
 // DependencyTree runs Maven's dependency:tree goal for the specified project.
-func (m *Maven) DependencyTree(dir, buildTarget string) ([]pkg.Import, map[pkg.ID]pkg.Package, error) {
+func (m *Maven) DependencyTree(dir, buildTarget string) (graph.Deps, error) {
 	output, err := m.tryDependencyCommands("tree", dir, buildTarget)
 	if err != nil {
-		return nil, nil, err
+		return graph.Deps{}, err
 	}
 	return ParseDependencyTree(output)
 }
@@ -280,7 +283,7 @@ func (m *Maven) tryDependencyCommands(subGoal, dir, buildTarget string) (stdout 
 
 //go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package maven/' > readtree_generated.go"
 
-func ParseDependencyTree(stdin string) ([]pkg.Import, map[pkg.ID]pkg.Package, error) {
+func ParseDependencyTree(stdin string) (graph.Deps, error) {
 	var filteredLines []string
 	start := regexp.MustCompile("^\\[INFO\\] --- .*? ---$")
 	started := false
@@ -303,7 +306,7 @@ func ParseDependencyTree(stdin string) ([]pkg.Import, map[pkg.ID]pkg.Package, er
 
 	// Remove first line, which is just the direct dependency.
 	if len(filteredLines) == 0 {
-		return nil, nil, errors.New("error parsing lines")
+		return graph.Deps{}, errors.New("error parsing lines")
 	}
 	filteredLines = filteredLines[1:]
 
@@ -329,7 +332,7 @@ func ParseDependencyTree(stdin string) ([]pkg.Import, map[pkg.ID]pkg.Package, er
 		return level, Dependency{Name: name, Version: revision, Failed: failed}, nil
 	})
 	if err != nil {
-		return nil, nil, err
+		return graph.Deps{}, err
 	}
-	return depsList(imports).toImports(), depsMap(deps).toPkgGraph(), nil
+	return graph.Deps{Direct: depsList(imports).toImports(), Transitive: depsMap(deps).toPkgGraph()}, nil
 }

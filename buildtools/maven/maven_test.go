@@ -64,10 +64,10 @@ func TestParseDependencyTreeDOS(t *testing.T) {
 		}
 	}
 
-	direct, transitive, err := maven.ParseDependencyTree(fixture)
+	deps, err := maven.ParseDependencyTree(fixture)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, direct)
-	assert.NotEmpty(t, transitive)
+	assert.NotEmpty(t, deps.Direct)
+	assert.NotEmpty(t, deps.Transitive)
 }
 
 func TestParseDependencyTreeUnix(t *testing.T) {
@@ -85,10 +85,10 @@ func TestParseDependencyTreeUnix(t *testing.T) {
 		}
 	}
 
-	direct, transitive, err := maven.ParseDependencyTree(fixture)
+	deps, err := maven.ParseDependencyTree(fixture)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, direct)
-	assert.NotEmpty(t, transitive)
+	assert.NotEmpty(t, deps.Direct)
+	assert.NotEmpty(t, deps.Transitive)
 }
 
 /*
@@ -108,20 +108,20 @@ var depFive = pkg.ID{Type: pkg.Maven, Name: "dep:five", Revision: "5.0.0"}
 func TestParseDependencyTree(t *testing.T) {
 	dat, err := ioutil.ReadFile("testdata/unix.out")
 	assert.NoError(t, err)
-	direct, transitive, err := maven.ParseDependencyTree(string(dat))
+	deps, err := maven.ParseDependencyTree(string(dat))
 	assert.NoError(t, err)
 
-	assert.Equal(t, 2, len(direct))
-	assert.Contains(t, direct, pkg.Import{Target: "", Resolved: depOne})
-	assert.Contains(t, direct, pkg.Import{Target: "", Resolved: depTwo})
+	assert.Equal(t, 2, len(deps.Direct))
+	assert.Contains(t, deps.Direct, pkg.Import{Target: "", Resolved: depOne})
+	assert.Contains(t, deps.Direct, pkg.Import{Target: "", Resolved: depTwo})
 
-	assert.Equal(t, 5, len(transitive))
-	assert.Contains(t, transitive, depOne)
-	assert.Contains(t, transitive, depTwo)
-	assert.Contains(t, transitive[depTwo].Imports, pkg.Import{Target: "3.0.0", Resolved: depThree})
-	assert.Contains(t, transitive[depTwo].Imports, pkg.Import{Target: "5.0.0", Resolved: depFive})
-	assert.Contains(t, transitive, depThree)
-	assert.Contains(t, transitive[depThree].Imports, pkg.Import{Target: "4.0.0", Resolved: depFour})
-	assert.Contains(t, transitive, depFour)
-	assert.Contains(t, transitive, depFive)
+	assert.Equal(t, 5, len(deps.Transitive))
+	assert.Contains(t, deps.Transitive, depOne)
+	assert.Contains(t, deps.Transitive, depTwo)
+	assert.Contains(t, deps.Transitive[depTwo].Imports, pkg.Import{Target: "3.0.0", Resolved: depThree})
+	assert.Contains(t, deps.Transitive[depTwo].Imports, pkg.Import{Target: "5.0.0", Resolved: depFive})
+	assert.Contains(t, deps.Transitive, depThree)
+	assert.Contains(t, deps.Transitive[depThree].Imports, pkg.Import{Target: "4.0.0", Resolved: depFour})
+	assert.Contains(t, deps.Transitive, depFour)
+	assert.Contains(t, deps.Transitive, depFive)
 }

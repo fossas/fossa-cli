@@ -132,21 +132,20 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.WithField("module", a.Module).Debug("analyzing module")
 
-	var imports []pkg.Import
-	var deps map[pkg.ID]pkg.Package
-	var err error
 	switch a.Options.Strategy {
 	case "pom-file":
 		pom, err := a.Maven.ResolveManifestFromBuildTarget(a.Module.BuildTarget)
 		if err != nil {
 			return graph.Deps{}, err
 		}
-		imports, deps = pom.ToGraphDeps()
+		return pom.ToGraphDeps(), nil
 	case "maven-tree":
-		imports, deps, err = a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
+		return a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
 	default:
+		var deps graph.Deps
+		var err error
 		if a.Options.Command == "" {
-			imports, deps, err = a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
+			deps, err = a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
 		} else {
 			var output string
 			output, _, err = exec.Shell(exec.Cmd{
@@ -156,9 +155,9 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 				// Because this was a custom shell command, we do not fall back to any other strategies.
 				return graph.Deps{}, err
 			}
-			imports, deps, err = maven.ParseDependencyTree(output)
+			deps, err = maven.ParseDependencyTree(output)
 		}
-		if err != nil || len(imports) == 0 {
+		if err != nil || len(deps.Direct) == 0 {
 			log.Warnf(
 				"Could not use Maven to determine dependencies for %q. Falling back to use manifest file.",
 				a.Module.Name)
@@ -168,12 +167,8 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 				return graph.Deps{},
 					errors.Wrapf(err, "could not identify dependencies; original error: %v", mvnError)
 			}
-			imports, deps = pom.ToGraphDeps()
+			return pom.ToGraphDeps(), nil
 		}
+		return deps, nil
 	}
-
-	return graph.Deps{
-		Direct:     imports,
-		Transitive: deps,
-	}, nil
 }
