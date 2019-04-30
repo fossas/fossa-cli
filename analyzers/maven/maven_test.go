@@ -3,8 +3,9 @@ package maven_test
 import (
 	"testing"
 
-	"github.com/fossas/fossa-cli/analyzers/maven"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/fossas/fossa-cli/analyzers/maven"
 )
 
 func TestDiscover(t *testing.T) {

@@ -19,9 +19,9 @@ func TestGraphFromTarget(t *testing.T) {
 	id3 := pkg.ID{Type: pkg.Maven, Name: "junit:junit", Revision: "3.8.2"}
 
 	wantDirect := []pkg.Import{
-		{"", id1},
-		{"", id2},
-		{"", id3},
+		{Target: "", Resolved: id1},
+		{Target: "", Resolved: id2},
+		{Target: "", Resolved: id3},
 	}
 	wantTransitive := map[pkg.ID]pkg.Package{
 		id1: {ID: id1},
