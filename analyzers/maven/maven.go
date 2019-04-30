@@ -117,7 +117,7 @@ func (a *Analyzer) Build() error {
 	return a.Maven.Compile(a.Module.Dir)
 }
 
-// IsBuilt checks whether `mvn dependency:list` produces an error.
+// IsBuilt checks whether `mvn dependency:list` returns without error.
 func (a *Analyzer) IsBuilt() (bool, error) {
 	output, err := a.Maven.DependencyList(a.Module.Dir, a.Module.BuildTarget)
 	if err != nil {
@@ -142,21 +142,17 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	case "maven-tree":
 		return a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
 	default:
-		var deps graph.Deps
-		var err error
-		if a.Options.Command == "" {
-			deps, err = a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
-		} else {
-			var output string
-			output, _, err = exec.Shell(exec.Cmd{
+		if a.Options.Command != "" {
+			output, _, err := exec.Shell(exec.Cmd{
 				Command: a.Options.Command,
 			})
 			if err != nil {
 				// Because this was a custom shell command, we do not fall back to any other strategies.
 				return graph.Deps{}, err
 			}
-			deps, err = maven.ParseDependencyTree(output)
+			return maven.ParseDependencyTree(output)
 		}
+		deps, err := a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
 		if err != nil || len(deps.Direct) == 0 {
 			log.Warnf(
 				"Could not use Maven to determine dependencies for %q. Falling back to use manifest file.",
