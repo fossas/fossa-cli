@@ -134,11 +134,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	switch a.Options.Strategy {
 	case "pom-file":
-		pom, err := a.Maven.ResolveManifestFromBuildTarget(a.Module.BuildTarget)
-		if err != nil {
-			return graph.Deps{}, err
-		}
-		return pom.ToGraphDeps(), nil
+		return maven.GraphFromTarget(a.Module.BuildTarget)
 	case "maven-tree":
 		return a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
 	default:
@@ -152,19 +148,21 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 			}
 			return maven.ParseDependencyTree(output)
 		}
+
 		deps, err := a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
-		if err != nil || len(deps.Direct) == 0 {
+		if err != nil {
 			log.Warnf(
-				"Could not use Maven to determine dependencies for %q. Falling back to use manifest file.",
+				"Could not use Maven to determine dependencies for %q: %v. Falling back to use manifest file.",
+				a.Module.Name,
+				err,
+			)
+		} else if len(deps.Direct) == 0 {
+			log.Warnf("Maven did not find dependencies for %q. Falling back to use manifest file.",
 				a.Module.Name)
-			mvnError := err
-			pom, err := a.Maven.ResolveManifestFromBuildTarget(a.Module.BuildTarget)
-			if err != nil {
-				return graph.Deps{},
-					errors.Wrapf(err, "could not identify dependencies; original error: %v", mvnError)
-			}
-			return pom.ToGraphDeps(), nil
+		} else {
+			return deps, nil
 		}
-		return deps, nil
+
+		return maven.GraphFromTarget(a.Module.BuildTarget)
 	}
 }

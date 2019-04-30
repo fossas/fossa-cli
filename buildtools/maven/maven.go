@@ -1,8 +1,6 @@
 package maven
 
 import (
-	"encoding/xml"
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -16,104 +14,6 @@ import (
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
 )
-
-type Manifest struct {
-	Project      xml.Name     `xml:"project"`
-	Parent       Parent       `xml:"parent"`
-	Modules      []string     `xml:"modules>module"`
-	ArtifactID   string       `xml:"artifactId"`
-	GroupID      string       `xml:"groupId"`
-	Version      string       `xml:"version"`
-	Description  string       `xml:"description"`
-	Name         string       `xml:"name"`
-	URL          string       `xml:"url"`
-	Dependencies []Dependency `xml:"dependencies>dependency"`
-}
-
-type Parent struct {
-	ArtifactID string `xml:"artifactId"`
-	GroupID    string `xml:"groupId"`
-	Version    string `xml:"version"`
-}
-
-type Dependency struct {
-	Name string
-
-	GroupId    string `xml:"groupId"`
-	ArtifactId string `xml:"artifactId"`
-	Version    string `xml:"version"`
-
-	// Scope is where the dependency is used, such as "test" or "runtime".
-	Scope string `xml:"scope"`
-
-	Failed bool
-}
-
-type depsList []Dependency
-
-func (d depsList) toImports() []pkg.Import {
-	i := make([]pkg.Import, 0, len(d))
-	for _, dep := range d {
-		i = append(i, pkg.Import{
-			Resolved: pkg.ID{
-				Type:     pkg.Maven,
-				Name:     dep.Name,
-				Revision: dep.Version,
-			},
-		})
-	}
-	return i
-}
-
-// ToGraphDeps returns simply the list of dependencies listed within the manifest file.
-func (m *Manifest) ToGraphDeps() graph.Deps {
-	g := graph.Deps{
-		Direct:     depsList(m.Dependencies).toImports(),
-		Transitive: make(map[pkg.ID]pkg.Package),
-	}
-
-	// From just a POM file we don't know what really depends on what, so list all imports in the graph.
-	for _, dep := range m.Dependencies {
-		pack := pkg.Package{
-			ID: pkg.ID{
-				Type:     pkg.Maven,
-				Name:     dep.Name,
-				Revision: dep.Version,
-			},
-		}
-		g.Transitive[pack.ID] = pack
-	}
-
-	return g
-}
-
-type depsMap map[Dependency][]Dependency
-
-func (d depsMap) toPkgGraph() map[pkg.ID]pkg.Package {
-	g := make(map[pkg.ID]pkg.Package)
-	for parent, children := range d {
-		pack := pkg.Package{
-			ID: pkg.ID{
-				Type:     pkg.Maven,
-				Name:     parent.Name,
-				Revision: parent.Version,
-			},
-			Imports: make([]pkg.Import, 0, len(children)),
-		}
-		for _, child := range children {
-			pack.Imports = append(pack.Imports, pkg.Import{
-				Target: child.Version,
-				Resolved: pkg.ID{
-					Type:     pkg.Maven,
-					Name:     child.Name,
-					Revision: child.Version,
-				},
-			})
-		}
-		g[pack.ID] = pack
-	}
-	return g
-}
 
 type Maven struct {
 	Cmd string
@@ -135,34 +35,6 @@ func (m *Maven) Compile(dir string) error {
 		Dir:  dir,
 	})
 	return err
-}
-
-// ResolveManifestFromBuildTarget tries to determine what buildTarget is supposed to be and then reads the POM
-// manifest file pointed to by buildTarget if it is a path to such a file or module.
-func (m *Maven) ResolveManifestFromBuildTarget(buildTarget string) (*Manifest, error) {
-	var pomFile string
-	stat, err := os.Stat(buildTarget)
-	if err != nil {
-		// buildTarget is not a path.
-		if strings.Count(buildTarget, ":") == 1 {
-			// This is likely a module ID.
-			return nil, fmt.Errorf("cannot identify POM file for module %q", buildTarget)
-		}
-		return nil, fmt.Errorf("manfist file for %q cannot be read", buildTarget)
-	}
-	if stat.IsDir() {
-		// We have the directory and will assume it uses the standard name for the manifest file.
-		pomFile = filepath.Join(buildTarget, "pom.xml")
-	} else {
-		// We have the manifest file but still need its directory path.
-		pomFile = buildTarget
-	}
-
-	var pom Manifest
-	if err := files.ReadXML(&pom, pomFile); err != nil {
-		return nil, err
-	}
-	return &pom, nil
 }
 
 // A MvnModule can identify a Maven project with the target path.
@@ -259,7 +131,7 @@ func (m *Maven) tryDependencyCommands(subGoal, dir, buildTarget string) (stdout 
 	if err != nil {
 		// Now we try to identify the groupId:artifactId identifier for the module and specify the path to
 		// the manifest file directly.
-		pom, err2 := m.ResolveManifestFromBuildTarget(buildTarget)
+		pom, err2 := ResolveManifestFromBuildTarget(buildTarget)
 		if err2 != nil {
 			// Using buildTarget as a module ID or as a path to a manifest did not work.
 			// Return just the error from running the mvn goal the first time.
@@ -321,7 +193,6 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 		}
 		level := depth / 3
 		depMatches := depRegex.FindStringSubmatch(matches[2])
-		name := depMatches[1] + ":" + depMatches[2]
 		revision := depMatches[4]
 		failed := false
 		if strings.HasSuffix(revision, " FAILED") {
@@ -329,10 +200,54 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 			failed = true
 		}
 
-		return level, Dependency{Name: name, Version: revision, Failed: failed}, nil
+		dep := Dependency{GroupId: depMatches[1], ArtifactId: depMatches[2], Version: revision, Failed: failed}
+		return level, dep, nil
 	})
 	if err != nil {
 		return graph.Deps{}, err
 	}
-	return graph.Deps{Direct: depsList(imports).toImports(), Transitive: depsMap(deps).toPkgGraph()}, nil
+	return graph.Deps{
+		Direct:     depsListToImports(imports),
+		Transitive: depsMapToPkgGraph(deps),
+	}, nil
+}
+
+func depsListToImports(d []Dependency) []pkg.Import {
+	i := make([]pkg.Import, 0, len(d))
+	for _, dep := range d {
+		i = append(i, pkg.Import{
+			Resolved: pkg.ID{
+				Type:     pkg.Maven,
+				Name:     dep.ID(),
+				Revision: dep.Version,
+			},
+		})
+	}
+	return i
+}
+
+func depsMapToPkgGraph(deps map[Dependency][]Dependency) map[pkg.ID]pkg.Package {
+	pkgGraph := make(map[pkg.ID]pkg.Package)
+	for parent, children := range deps {
+		pack := pkg.Package{
+			ID: pkg.ID{
+				Type:     pkg.Maven,
+				Name:     parent.ID(),
+				Revision: parent.Version,
+			},
+			Imports: make([]pkg.Import, 0, len(children)),
+		}
+		for _, child := range children {
+			pack.Imports = append(pack.Imports, pkg.Import{
+				Target: child.Version,
+				Resolved: pkg.ID{
+					Type:     pkg.Maven,
+					Name:     child.ID(),
+					Revision: child.Version,
+				},
+			})
+		}
+		pkgGraph[pack.ID] = pack
+	}
+	return pkgGraph
 }

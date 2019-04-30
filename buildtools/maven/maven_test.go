@@ -13,26 +13,6 @@ import (
 
 var testdataDir = filepath.Join("..", "..", "analyzers", "maven", "testdata")
 
-func TestResolveManifestFromBuildTarget(t *testing.T) {
-	var m maven.Maven
-
-	// A directory path.
-	pom, err := m.ResolveManifestFromBuildTarget(testdataDir)
-	if assert.NoError(t, err) {
-		assert.Equal(t, "com.domain.name:stuff", pom.GroupID+":"+pom.ArtifactID)
-	}
-
-	// A POM file path.
-	pom2, err := m.ResolveManifestFromBuildTarget(filepath.Join(testdataDir, "nested", "pom.xml"))
-	if assert.NoError(t, err) {
-		assert.Equal(t, "com.someone.code.a:gson-extras", pom2.GroupID+":"+pom2.ArtifactID)
-	}
-
-	// A project identifier.
-	_, err3 := m.ResolveManifestFromBuildTarget("something:else")
-	assert.Error(t, err3)
-}
-
 func TestModules(t *testing.T) {
 	fullPath := filepath.Join(testdataDir, "pom.xml")
 	checked := make(map[string]bool)
