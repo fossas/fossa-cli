@@ -1,6 +1,7 @@
 // Package maven implements Maven analysis.
 //
-// A `BuildTarget` for Maven is the Maven project name.
+// A `BuildTarget` for Maven is either a Maven project ID (groupId:artifactId), or a path to a directory in
+// which there is a "pom.xml" file, or a path to a POM file.
 package maven
 
 import (
@@ -29,6 +30,8 @@ type Analyzer struct {
 type Options struct {
 	Binary  string `mapstructure:"bin"`
 	Command string `mapstructure:"cmd"`
+	// Strategy can be "pom-file", "maven-tree", or empty.
+	Strategy string `mapstructure:"strategy"`
 }
 
 func New(m module.Module) (*Analyzer, error) {
@@ -62,6 +65,8 @@ func New(m module.Module) (*Analyzer, error) {
 func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	log.WithField("dir", dir).Debug("discovering modules")
 	var modules []module.Module
+	checked := make(map[string]bool)
+
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
@@ -77,7 +82,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				return nil
 			}
 
-			submodules, err := maven.Modules(path)
+			submodules, err := maven.Modules(path, dir, checked)
 			if err != nil {
 				log.WithError(err).Debug("could not get modules at path")
 				return err
@@ -85,16 +90,13 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 
 			for _, m := range submodules {
 				modules = append(modules, module.Module{
-					Name:        m,
+					Name:        m.Name,
 					Type:        pkg.Maven,
-					BuildTarget: m,
-					Dir:         path,
+					BuildTarget: m.Target,
+					Dir:         dir,
 				})
 			}
-			log.WithField("path", path).Debug("skipping")
-			// Don't continue recursing, because anything else is probably a
-			// subproject.
-			return filepath.SkipDir
+			// Continue recursing because there may be modules that are not declared under the current module.
 		}
 
 		return nil
@@ -115,9 +117,9 @@ func (a *Analyzer) Build() error {
 	return a.Maven.Compile(a.Module.Dir)
 }
 
-// IsBuilt checks whether `mvn dependency:list` produces an error.
+// IsBuilt checks whether `mvn dependency:list` returns without error.
 func (a *Analyzer) IsBuilt() (bool, error) {
-	output, err := a.Maven.DependencyList(a.Module.Dir)
+	output, err := a.Maven.DependencyList(a.Module.Dir, a.Module.BuildTarget)
 	if err != nil {
 		if strings.Contains(output, "Could not find artifact") {
 			return false, nil
@@ -130,64 +132,37 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.WithField("module", a.Module).Debug("analyzing module")
 
-	var imports []maven.Dependency
-	var deps map[maven.Dependency][]maven.Dependency
-	var err error
-	if a.Options.Command == "" {
-		imports, deps, err = a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
-	} else {
-		var output string
-		output, _, err = exec.Shell(exec.Cmd{
-			Command: a.Options.Command,
-		})
-		if err != nil {
-			return graph.Deps{}, err
-		}
-		imports, deps, err = maven.ParseDependencyTree(output)
-	}
-	if err != nil {
-		return graph.Deps{}, err
-	}
-
-	// Set direct dependencies.
-	var i []pkg.Import
-	for _, dep := range imports {
-		i = append(i, pkg.Import{
-			Resolved: pkg.ID{
-				Type:     pkg.Maven,
-				Name:     dep.Name,
-				Revision: dep.Version,
-			},
-		})
-	}
-
-	// Set transitive dependencies.
-	g := make(map[pkg.ID]pkg.Package)
-	for parent, children := range deps {
-		id := pkg.ID{
-			Type:     pkg.Maven,
-			Name:     parent.Name,
-			Revision: parent.Version,
-		}
-		var imports []pkg.Import
-		for _, child := range children {
-			imports = append(imports, pkg.Import{
-				Target: child.Version,
-				Resolved: pkg.ID{
-					Type:     pkg.Maven,
-					Name:     child.Name,
-					Revision: child.Version,
-				},
+	switch a.Options.Strategy {
+	case "pom-file":
+		return maven.GraphFromTarget(a.Module.BuildTarget)
+	case "maven-tree":
+		return a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
+	default:
+		if a.Options.Command != "" {
+			output, _, err := exec.Shell(exec.Cmd{
+				Command: a.Options.Command,
 			})
+			if err != nil {
+				// Because this was a custom shell command, we do not fall back to any other strategies.
+				return graph.Deps{}, err
+			}
+			return maven.ParseDependencyTree(output)
 		}
-		g[id] = pkg.Package{
-			ID:      id,
-			Imports: imports,
-		}
-	}
 
-	return graph.Deps{
-		Direct:     i,
-		Transitive: g,
-	}, nil
+		deps, err := a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
+		if err != nil {
+			log.Warnf(
+				"Could not use Maven to determine dependencies for %q: %v. Falling back to use manifest file.",
+				a.Module.Name,
+				err,
+			)
+		} else if len(deps.Direct) == 0 {
+			log.Warnf("Maven did not find dependencies for %q. Falling back to use manifest file.",
+				a.Module.Name)
+		} else {
+			return deps, nil
+		}
+
+		return maven.GraphFromTarget(a.Module.BuildTarget)
+	}
 }

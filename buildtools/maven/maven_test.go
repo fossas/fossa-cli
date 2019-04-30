@@ -8,7 +8,26 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/buildtools/maven"
+	"github.com/fossas/fossa-cli/pkg"
 )
+
+var testdataDir = filepath.Join("..", "..", "analyzers", "maven", "testdata")
+
+func TestModules(t *testing.T) {
+	fullPath := filepath.Join(testdataDir, "pom.xml")
+	checked := make(map[string]bool)
+	mods, err := maven.Modules(fullPath, testdataDir, checked)
+	if assert.NoError(t, err) {
+		assert.Len(t, mods, 1)
+	}
+
+	checked2 := make(map[string]bool)
+	dirOnlyPath := filepath.Join(testdataDir, "nested")
+	mods2, err := maven.Modules(dirOnlyPath, testdataDir, checked2)
+	if assert.NoError(t, err) {
+		assert.Len(t, mods2, 2)
+	}
+}
 
 func TestParseDependencyTreeDOS(t *testing.T) {
 	// Check that the file is still DOS formatted.
@@ -25,10 +44,10 @@ func TestParseDependencyTreeDOS(t *testing.T) {
 		}
 	}
 
-	direct, transitive, err := maven.ParseDependencyTree(fixture)
+	deps, err := maven.ParseDependencyTree(fixture)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, direct)
-	assert.NotEmpty(t, transitive)
+	assert.NotEmpty(t, deps.Direct)
+	assert.NotEmpty(t, deps.Transitive)
 }
 
 func TestParseDependencyTreeUnix(t *testing.T) {
@@ -46,10 +65,10 @@ func TestParseDependencyTreeUnix(t *testing.T) {
 		}
 	}
 
-	direct, transitive, err := maven.ParseDependencyTree(fixture)
+	deps, err := maven.ParseDependencyTree(fixture)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, direct)
-	assert.NotEmpty(t, transitive)
+	assert.NotEmpty(t, deps.Direct)
+	assert.NotEmpty(t, deps.Transitive)
 }
 
 /*
@@ -60,29 +79,29 @@ func TestParseDependencyTreeUnix(t *testing.T) {
 	  └── dep:five:5.0.0
 */
 
-var depOne = maven.Dependency{Name: "dep:one", Version: "1.0.0", Failed: false}
-var depTwo = maven.Dependency{Name: "dep:two", Version: "2.0.0", Failed: false}
-var depThree = maven.Dependency{Name: "dep:three", Version: "3.0.0", Failed: false}
-var depFour = maven.Dependency{Name: "dep:four", Version: "4.0.0", Failed: false}
-var depFive = maven.Dependency{Name: "dep:five", Version: "5.0.0", Failed: false}
+var depOne = pkg.ID{Type: pkg.Maven, Name: "dep:one", Revision: "1.0.0"}
+var depTwo = pkg.ID{Type: pkg.Maven, Name: "dep:two", Revision: "2.0.0"}
+var depThree = pkg.ID{Type: pkg.Maven, Name: "dep:three", Revision: "3.0.0"}
+var depFour = pkg.ID{Type: pkg.Maven, Name: "dep:four", Revision: "4.0.0"}
+var depFive = pkg.ID{Type: pkg.Maven, Name: "dep:five", Revision: "5.0.0"}
 
 func TestParseDependencyTree(t *testing.T) {
 	dat, err := ioutil.ReadFile("testdata/unix.out")
 	assert.NoError(t, err)
-	direct, transitive, err := maven.ParseDependencyTree(string(dat))
+	deps, err := maven.ParseDependencyTree(string(dat))
 	assert.NoError(t, err)
 
-	assert.Equal(t, 2, len(direct))
-	assert.Contains(t, direct, depOne)
-	assert.Contains(t, direct, depTwo)
+	assert.Equal(t, 2, len(deps.Direct))
+	assert.Contains(t, deps.Direct, pkg.Import{Target: "", Resolved: depOne})
+	assert.Contains(t, deps.Direct, pkg.Import{Target: "", Resolved: depTwo})
 
-	assert.Equal(t, 5, len(transitive))
-	assert.Contains(t, transitive, depOne)
-	assert.Contains(t, transitive, depTwo)
-	assert.Contains(t, transitive[depTwo], depThree)
-	assert.Contains(t, transitive[depTwo], depFive)
-	assert.Contains(t, transitive, depThree)
-	assert.Contains(t, transitive[depThree], depFour)
-	assert.Contains(t, transitive, depFour)
-	assert.Contains(t, transitive, depFive)
+	assert.Equal(t, 5, len(deps.Transitive))
+	assert.Contains(t, deps.Transitive, depOne)
+	assert.Contains(t, deps.Transitive, depTwo)
+	assert.Contains(t, deps.Transitive[depTwo].Imports, pkg.Import{Target: "3.0.0", Resolved: depThree})
+	assert.Contains(t, deps.Transitive[depTwo].Imports, pkg.Import{Target: "5.0.0", Resolved: depFive})
+	assert.Contains(t, deps.Transitive, depThree)
+	assert.Contains(t, deps.Transitive[depThree].Imports, pkg.Import{Target: "4.0.0", Resolved: depFour})
+	assert.Contains(t, deps.Transitive, depFour)
+	assert.Contains(t, deps.Transitive, depFive)
 }
