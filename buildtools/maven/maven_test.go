@@ -21,6 +21,12 @@ func TestModules(t *testing.T) {
 		assert.Len(t, mods, 1)
 	}
 
+	// After the pom.xml file in testdataDir has been checked, make sure we don't check it again.
+	modsAgain, err := maven.Modules(testdataDir, testdataDir, checked)
+	if assert.NoError(t, err) {
+		assert.Nil(t, modsAgain)
+	}
+
 	checked2 := make(map[string]bool)
 	dirOnlyPath := filepath.Join(testdataDir, "nested")
 	mods2, err := maven.Modules(dirOnlyPath, testdataDir, checked2)

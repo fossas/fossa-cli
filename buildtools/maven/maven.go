@@ -69,16 +69,16 @@ func Modules(path string, baseDir string, checked map[string]bool) ([]MvnModule,
 		dir = filepath.Dir(path)
 	}
 
-	absPath, err := filepath.Abs(path)
+	absPath, err := filepath.Abs(pomFile)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not get absolute path of %q", absPath)
+		return nil, errors.Wrapf(err, "could not get absolute path of %q", pomFile)
 	}
 
 	if checked[absPath] {
 		return nil, nil
 	}
 
-	checked[pomFile] = true
+	checked[absPath] = true
 
 	var pom Manifest
 	if err := files.ReadXML(&pom, pomFile); err != nil {
