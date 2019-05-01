@@ -181,7 +181,7 @@ func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency
 		if strings.HasPrefix(withoutAnnotations, "project :") {
 			// TODO: the desired method for handling this might be to recurse into the subproject.
 			parsed = Dependency{
-				Name:      strings.TrimPrefix(dep, "project :"),
+				Name:      strings.TrimPrefix(withoutAnnotations, "project :"),
 				IsProject: true,
 			}
 		} else {
