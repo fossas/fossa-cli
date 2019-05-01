@@ -25,10 +25,10 @@ type ShellCommand struct {
 
 // Dependency models a gradle dependency.
 type Dependency struct {
-	Name      string
-	Target    string
-	Resolved  string
-	IsProject bool
+	Name             string
+	RequestedVersion string
+	ResolvedVersion  string
+	IsProject        bool
 }
 
 // Input is an interface for any point where gradle analysis requires input from
@@ -185,20 +185,31 @@ func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency
 				IsProject: true,
 			}
 		} else {
-			sections := strings.Split(withoutAnnotations, ":")
-			name := strings.Join(sections[:len(sections)-1], ":")
-			version := sections[len(sections)-1]
-			target := version
-			resolved := version
-			versionSections := strings.Split(version, " -> ")
-			if len(versionSections) == 2 {
-				target = versionSections[0]
-				resolved = versionSections[1]
+			// The line withoutAnnotations can have the form:
+			//  1. group:project:requestedVersion
+			//  2. group:project:requestedVersion -> resolvedVersion
+			//  3. group:project -> resolvedVersion
+
+			var name, requestedVer, resolvedVer string
+
+			sections := strings.Split(withoutAnnotations, " -> ")
+			requestedIsNotResolved := len(sections) == 2
+
+			idSections := strings.Split(sections[0], ":")
+			name = idSections[0] + ":" + idSections[1]
+			if len(idSections) > 2 {
+				requestedVer = idSections[2]
+			}
+
+			if requestedIsNotResolved {
+				resolvedVer = sections[1]
+			} else {
+				resolvedVer = requestedVer
 			}
 			parsed = Dependency{
-				Name:     name,
-				Target:   target,
-				Resolved: resolved,
+				Name:             name,
+				RequestedVersion: requestedVer,
+				ResolvedVersion:  resolvedVer,
 			}
 		}
 
@@ -252,11 +263,11 @@ func NormalizeDependencies(imports []Dependency, deps map[Dependency][]Dependenc
 	var i []pkg.Import
 	for _, dep := range imports {
 		i = append(i, pkg.Import{
-			Target: dep.Target,
+			Target: dep.RequestedVersion,
 			Resolved: pkg.ID{
 				Type:     pkg.Gradle,
 				Name:     dep.Name,
-				Revision: dep.Resolved,
+				Revision: dep.ResolvedVersion,
 			},
 		})
 	}
@@ -267,16 +278,16 @@ func NormalizeDependencies(imports []Dependency, deps map[Dependency][]Dependenc
 		id := pkg.ID{
 			Type:     pkg.Gradle,
 			Name:     parent.Name,
-			Revision: parent.Resolved,
+			Revision: parent.ResolvedVersion,
 		}
 		var imports []pkg.Import
 		for _, child := range children {
 			imports = append(imports, pkg.Import{
-				Target: child.Resolved,
+				Target: child.ResolvedVersion,
 				Resolved: pkg.ID{
 					Type:     pkg.Gradle,
 					Name:     child.Name,
-					Revision: child.Resolved,
+					Revision: child.ResolvedVersion,
 				},
 			})
 		}
