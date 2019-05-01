@@ -1,0 +1,326 @@
+Starting a Gradle Daemon (subsequent builds will be faster)
+
+> Configure project :something-something
+Existing tags in registry: {"name":"somebody/something-something","tags":["latest","0","0.0.1","0.0"]}
+
+> Task :something-something:dependencies
+
+------------------------------------------------------------
+Project :something-something
+------------------------------------------------------------
+
+annotationProcessor - Annotation processors and their dependencies for source set 'main'.
+\--- org.projectlombok:lombok:1.16.16
+
+apiElements - API elements for main. (n)
+No dependencies
+
+compile - Dependencies for source set 'main' (deprecated, use 'implementation' instead).
+No dependencies
+
+compileClasspath - Compile classpath for source set 'main'.
++--- org.projectlombok:lombok:1.16.16
++--- org.springframework.boot:spring-boot-starter -> 2.1.0.RELEASE
+|    +--- org.springframework.boot:spring-boot:2.1.0.RELEASE
+|    |    +--- org.springframework:spring-core:5.1.2.RELEASE
+|    |    |    \--- org.springframework:spring-jcl:5.1.2.RELEASE
+|    |    \--- org.springframework:spring-context:5.1.2.RELEASE
+|    |         +--- org.springframework:spring-aop:5.1.2.RELEASE
+|    |         |    +--- org.springframework:spring-beans:5.1.2.RELEASE
+|    |         |    |    \--- org.springframework:spring-core:5.1.2.RELEASE (*)
+|    |         |    \--- org.springframework:spring-core:5.1.2.RELEASE (*)
+|    |         +--- org.springframework:spring-beans:5.1.2.RELEASE (*)
+|    |         +--- org.springframework:spring-core:5.1.2.RELEASE (*)
+|    |         \--- org.springframework:spring-expression:5.1.2.RELEASE
+|    |              \--- org.springframework:spring-core:5.1.2.RELEASE (*)
+|    +--- org.springframework.boot:spring-boot-autoconfigure:2.1.0.RELEASE
+|    |    \--- org.springframework.boot:spring-boot:2.1.0.RELEASE (*)
+|    +--- org.springframework.boot:spring-boot-starter-logging:2.1.0.RELEASE
+|    |    +--- ch.qos.logback:logback-classic:1.2.3
+|    |    |    +--- ch.qos.logback:logback-core:1.2.3
+|    |    |    \--- org.slf4j:slf4j-api:1.7.25
+|    |    +--- org.apache.logging.log4j:log4j-to-slf4j:2.11.1
+|    |    |    +--- org.slf4j:slf4j-api:1.7.25
+|    |    |    \--- org.apache.logging.log4j:log4j-api:2.11.1
+|    |    \--- org.slf4j:jul-to-slf4j:1.7.25
+|    |         \--- org.slf4j:slf4j-api:1.7.25
+|    +--- javax.annotation:javax.annotation-api:1.3.2
+|    +--- org.springframework:spring-core:5.1.2.RELEASE (*)
+|    \--- org.yaml:snakeyaml:1.23
++--- org.springframework.boot:spring-boot-starter-actuator -> 2.1.0.RELEASE
+|    +--- org.springframework.boot:spring-boot-starter:2.1.0.RELEASE (*)
+|    +--- org.springframework.boot:spring-boot-actuator-autoconfigure:2.1.0.RELEASE
+|    |    +--- org.springframework.boot:spring-boot-actuator:2.1.0.RELEASE
+|    |    |    \--- org.springframework.boot:spring-boot:2.1.0.RELEASE (*)
+|    |    +--- org.springframework.boot:spring-boot-autoconfigure:2.1.0.RELEASE (*)
+|    |    +--- com.fasterxml.jackson.core:jackson-databind:2.9.7
+|    |    |    +--- com.fasterxml.jackson.core:jackson-annotations:2.9.0
+|    |    |    \--- com.fasterxml.jackson.core:jackson-core:2.9.7
+|    |    +--- org.springframework:spring-core:5.1.2.RELEASE (*)
+|    |    +--- org.springframework:spring-context:5.1.2.RELEASE (*)
+|    |    \--- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.9.7
+|    |         +--- com.fasterxml.jackson.core:jackson-annotations:2.9.0
+|    |         +--- com.fasterxml.jackson.core:jackson-core:2.9.7
+|    |         \--- com.fasterxml.jackson.core:jackson-databind:2.9.7 (*)
+|    \--- io.micrometer:micrometer-core:1.1.0
+|         +--- org.hdrhistogram:HdrHistogram:2.1.9
+|         \--- org.latencyutils:LatencyUtils:2.0.3
++--- org.springframework.boot:spring-boot-starter-web -> 2.1.0.RELEASE
+|    +--- org.springframework.boot:spring-boot-starter:2.1.0.RELEASE (*)
+|    +--- org.springframework.boot:spring-boot-starter-json:2.1.0.RELEASE
+|    |    +--- org.springframework.boot:spring-boot-starter:2.1.0.RELEASE (*)
+|    |    +--- org.springframework:spring-web:5.1.2.RELEASE
+|    |    |    +--- org.springframework:spring-beans:5.1.2.RELEASE (*)
+|    |    |    \--- org.springframework:spring-core:5.1.2.RELEASE (*)
+|    |    +--- com.fasterxml.jackson.core:jackson-databind:2.9.7 (*)
+|    |    +--- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.9.7
+|    |    |    +--- com.fasterxml.jackson.core:jackson-core:2.9.7
+|    |    |    \--- com.fasterxml.jackson.core:jackson-databind:2.9.7 (*)
+|    |    +--- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.9.7 (*)
+|    |    \--- com.fasterxml.jackson.module:jackson-module-parameter-names:2.9.7
+|    |         +--- com.fasterxml.jackson.core:jackson-core:2.9.7
+|    |         \--- com.fasterxml.jackson.core:jackson-databind:2.9.7 (*)
+|    +--- org.springframework.boot:spring-boot-starter-tomcat:2.1.0.RELEASE
+|    |    +--- javax.annotation:javax.annotation-api:1.3.2
+|    |    +--- org.apache.tomcat.embed:tomcat-embed-core:9.0.12
+|    |    +--- org.apache.tomcat.embed:tomcat-embed-el:9.0.12
+|    |    \--- org.apache.tomcat.embed:tomcat-embed-websocket:9.0.12
+|    |         \--- org.apache.tomcat.embed:tomcat-embed-core:9.0.12
+|    +--- org.hibernate.validator:hibernate-validator:6.0.13.Final
+|    |    +--- javax.validation:validation-api:2.0.1.Final
+|    |    +--- org.jboss.logging:jboss-logging:3.3.2.Final
+|    |    \--- com.fasterxml:classmate:1.3.4 -> 1.4.0
+|    +--- org.springframework:spring-web:5.1.2.RELEASE (*)
+|    \--- org.springframework:spring-webmvc:5.1.2.RELEASE
+|         +--- org.springframework:spring-aop:5.1.2.RELEASE (*)
+|         +--- org.springframework:spring-beans:5.1.2.RELEASE (*)
+|         +--- org.springframework:spring-context:5.1.2.RELEASE (*)
+|         +--- org.springframework:spring-core:5.1.2.RELEASE (*)
+|         +--- org.springframework:spring-expression:5.1.2.RELEASE (*)
+|         \--- org.springframework:spring-web:5.1.2.RELEASE (*)
++--- org.springframework.boot:spring-boot-starter-aop -> 2.1.0.RELEASE
+|    +--- org.springframework.boot:spring-boot-starter:2.1.0.RELEASE (*)
+|    +--- org.springframework:spring-aop:5.1.2.RELEASE (*)
+|    \--- org.aspectj:aspectjweaver:1.9.2
++--- org.springframework.cloud:spring-cloud-starter-config -> 2.0.2.RELEASE
+|    +--- org.springframework.cloud:spring-cloud-starter:2.0.2.RELEASE
+|    |    +--- org.springframework.boot:spring-boot-starter:2.0.6.RELEASE -> 2.1.0.RELEASE (*)
+|    |    +--- org.springframework.cloud:spring-cloud-context:2.0.2.RELEASE
+|    |    |    \--- org.springframework.security:spring-security-crypto:5.0.9.RELEASE -> 5.1.1.RELEASE
+|    |    +--- org.springframework.cloud:spring-cloud-commons:2.0.2.RELEASE
+|    |    |    \--- org.springframework.security:spring-security-crypto:5.0.9.RELEASE -> 5.1.1.RELEASE
+|    |    \--- org.springframework.security:spring-security-rsa:1.0.7.RELEASE
+|    |         \--- org.bouncycastle:bcpkix-jdk15on:1.60
+|    |              \--- org.bouncycastle:bcprov-jdk15on:1.60
+|    +--- org.springframework.cloud:spring-cloud-config-client:2.0.2.RELEASE
+|    |    +--- org.springframework.boot:spring-boot-autoconfigure:2.0.6.RELEASE -> 2.1.0.RELEASE (*)
+|    |    +--- org.springframework.cloud:spring-cloud-commons:2.0.2.RELEASE (*)
+|    |    +--- org.springframework.cloud:spring-cloud-context:2.0.2.RELEASE (*)
+|    |    +--- org.springframework:spring-web:5.0.10.RELEASE -> 5.1.2.RELEASE (*)
+|    |    +--- com.fasterxml.jackson.core:jackson-annotations:2.9.0
+|    |    \--- com.fasterxml.jackson.core:jackson-databind:2.9.7 (*)
+|    \--- com.fasterxml.jackson.core:jackson-databind:2.9.7 (*)
++--- org.springframework.cloud:spring-cloud-starter-netflix-eureka-client -> 2.0.2.RELEASE
+|    +--- org.springframework.cloud:spring-cloud-starter:2.0.2.RELEASE (*)
+|    +--- org.springframework.cloud:spring-cloud-netflix-core:2.0.2.RELEASE
+|    |    +--- org.springframework.boot:spring-boot-autoconfigure:2.0.6.RELEASE -> 2.1.0.RELEASE (*)
+|    |    \--- org.springframework.boot:spring-boot-starter-aop:2.0.6.RELEASE -> 2.1.0.RELEASE (*)
+|    +--- org.springframework.cloud:spring-cloud-netflix-eureka-client:2.0.2.RELEASE
+|    |    \--- org.springframework.cloud:spring-cloud-netflix-core:2.0.2.RELEASE (*)
+|    +--- com.netflix.eureka:eureka-client:1.9.3
+|    |    +--- org.codehaus.jettison:jettison:1.3.7
+|    |    |    \--- stax:stax-api:1.0.1
+|    |    +--- com.netflix.netflix-commons:netflix-eventbus:0.3.0
+|    |    |    +--- org.slf4j:slf4j-api:1.6.4 -> 1.7.25
+|    |    |    +--- com.netflix.netflix-commons:netflix-infix:0.3.0
+|    |    |    |    +--- org.slf4j:slf4j-api:1.6.4 -> 1.7.25
+|    |    |    |    +--- commons-jxpath:commons-jxpath:1.3
+|    |    |    |    +--- joda-time:joda-time:2.3 -> 2.10.1
+|    |    |    |    +--- org.antlr:antlr-runtime:3.4
+|    |    |    |    |    +--- org.antlr:stringtemplate:3.2.1
+|    |    |    |    |    |    \--- antlr:antlr:2.7.7
+|    |    |    |    |    \--- antlr:antlr:2.7.7
+|    |    |    |    +--- com.google.guava:guava:14.0.1 -> 20.0
+|    |    |    |    \--- com.google.code.gson:gson:2.1 -> 2.8.5
+|    |    |    +--- com.netflix.servo:servo-core:0.5.3 -> 0.12.21
+|    |    |    |    +--- org.slf4j:slf4j-api:1.7.25
+|    |    |    |    \--- com.google.guava:guava:19.0 -> 20.0
+|    |    |    +--- com.netflix.archaius:archaius-core:0.3.3 -> 0.7.6
+|    |    |    |    +--- commons-configuration:commons-configuration:1.8
+|    |    |    |    |    \--- commons-lang:commons-lang:2.6
+|    |    |    |    +--- org.slf4j:slf4j-api:1.6.4 -> 1.7.25
+|    |    |    |    +--- com.google.guava:guava:16.0 -> 20.0
+|    |    |    |    +--- com.fasterxml.jackson.core:jackson-annotations:2.4.3 -> 2.9.0
+|    |    |    |    +--- com.fasterxml.jackson.core:jackson-core:2.4.3 -> 2.9.7
+|    |    |    |    \--- com.fasterxml.jackson.core:jackson-databind:2.4.3 -> 2.9.7 (*)
+|    |    |    \--- org.apache.commons:commons-math:2.2
+|    |    +--- com.thoughtworks.xstream:xstream:1.4.10
+|    |    |    +--- xmlpull:xmlpull:1.1.3.1
+|    |    |    \--- xpp3:xpp3_min:1.1.4c
+|    |    +--- com.netflix.archaius:archaius-core:0.7.6 (*)
+|    |    +--- javax.ws.rs:jsr311-api:1.1.1
+|    |    +--- com.netflix.servo:servo-core:0.12.21 (*)
+|    |    +--- com.sun.jersey:jersey-core:1.19.1
+|    |    |    \--- javax.ws.rs:jsr311-api:1.1.1
+|    |    +--- com.sun.jersey:jersey-client:1.19.1
+|    |    |    \--- com.sun.jersey:jersey-core:1.19.1 (*)
+|    |    +--- com.sun.jersey.contribs:jersey-apache-client4:1.19.1
+|    |    |    +--- org.apache.httpcomponents:httpclient:4.1.1 -> 4.5.6
+|    |    |    |    +--- org.apache.httpcomponents:httpcore:4.4.10
+|    |    |    |    \--- commons-codec:commons-codec:1.10 -> 1.11
+|    |    |    \--- com.sun.jersey:jersey-client:1.19.1 (*)
+|    |    +--- org.apache.httpcomponents:httpclient:4.5.3 -> 4.5.6 (*)
+|    |    +--- com.google.inject:guice:4.1.0
+|    |    |    +--- javax.inject:javax.inject:1
+|    |    |    +--- aopalliance:aopalliance:1.0
+|    |    |    \--- com.google.guava:guava:19.0 -> 20.0
+|    |    +--- com.github.vlsi.compactmap:compactmap:1.2.1
+|    |    |    \--- com.github.andrewoma.dexx:dexx-collections:0.2
+|    |    +--- com.fasterxml.jackson.core:jackson-annotations:2.9.4 -> 2.9.0
+|    |    +--- com.fasterxml.jackson.core:jackson-core:2.9.4 -> 2.9.7
+|    |    \--- com.fasterxml.jackson.core:jackson-databind:2.9.4 -> 2.9.7 (*)
+|    +--- com.netflix.eureka:eureka-core:1.9.3
+|    |    +--- com.netflix.eureka:eureka-client:1.9.3 (*)
+|    |    +--- com.thoughtworks.xstream:xstream:1.4.10 (*)
+|    |    +--- javax.ws.rs:jsr311-api:1.1.1
+|    |    \--- org.codehaus.woodstox:woodstox-core-asl:4.4.1
+|    |         +--- javax.xml.stream:stax-api:1.0-2
+|    |         \--- org.codehaus.woodstox:stax2-api:3.1.4
+|    +--- org.springframework.cloud:spring-cloud-starter-netflix-archaius:2.0.2.RELEASE
+|    |    +--- org.springframework.cloud:spring-cloud-starter:2.0.2.RELEASE (*)
+|    |    +--- org.springframework.cloud:spring-cloud-netflix-ribbon:2.0.2.RELEASE
+|    |    |    \--- org.springframework.cloud:spring-cloud-netflix-archaius:2.0.2.RELEASE
+|    |    +--- org.springframework.cloud:spring-cloud-netflix-archaius:2.0.2.RELEASE
+|    |    +--- com.netflix.archaius:archaius-core:0.7.6 (*)
+|    |    \--- commons-configuration:commons-configuration:1.8 (*)
+|    +--- org.springframework.cloud:spring-cloud-starter-netflix-ribbon:2.0.2.RELEASE
+|    |    +--- org.springframework.cloud:spring-cloud-starter:2.0.2.RELEASE (*)
+|    |    +--- org.springframework.cloud:spring-cloud-netflix-ribbon:2.0.2.RELEASE (*)
+|    |    +--- org.springframework.cloud:spring-cloud-starter-netflix-archaius:2.0.2.RELEASE (*)
+|    |    +--- com.netflix.ribbon:ribbon:2.2.5
+|    |    |    +--- com.netflix.ribbon:ribbon-core:2.2.5
+|    |    |    |    +--- org.slf4j:slf4j-api:1.6.4 -> 1.7.25
+|    |    |    |    +--- com.google.guava:guava:16.0 -> 20.0
+|    |    |    |    +--- commons-configuration:commons-configuration:1.8 (*)
+|    |    |    |    +--- commons-lang:commons-lang:2.6
+|    |    |    |    \--- com.netflix.archaius:archaius-core:0.7.4 -> 0.7.6 (*)
+|    |    |    +--- com.netflix.ribbon:ribbon-transport:2.2.5
+|    |    |    |    +--- com.netflix.ribbon:ribbon-core:2.2.5 (*)
+|    |    |    |    +--- com.netflix.ribbon:ribbon-loadbalancer:2.2.5
+|    |    |    |    |    +--- com.netflix.ribbon:ribbon-core:2.2.5 (*)
+|    |    |    |    |    +--- com.netflix.netflix-commons:netflix-statistics:0.1.1
+|    |    |    |    |    |    \--- org.slf4j:slf4j-api:1.6.4 -> 1.7.25
+|    |    |    |    |    +--- io.reactivex:rxjava:1.0.9 -> 1.2.0
+|    |    |    |    |    +--- org.slf4j:slf4j-api:1.7.12 -> 1.7.25
+|    |    |    |    |    +--- com.netflix.servo:servo-core:0.10.1 -> 0.12.21 (*)
+|    |    |    |    |    +--- com.google.guava:guava:16.0.1 -> 20.0
+|    |    |    |    |    +--- com.netflix.archaius:archaius-core:0.7.4 -> 0.7.6 (*)
+|    |    |    |    |    \--- com.netflix.netflix-commons:netflix-commons-util:0.1.1 -> 0.3.0
+|    |    |    |    |         +--- org.slf4j:slf4j-api:1.6.4 -> 1.7.25
+|    |    |    |    |         \--- javax.inject:javax.inject:1
+|    |    |    |    +--- io.reactivex:rxjava:1.0.10 -> 1.2.0
+|    |    |    |    +--- io.reactivex:rxnetty:0.4.9
+|    |    |    |    |    +--- io.reactivex:rxjava:1.0.10 -> 1.2.0
+|    |    |    |    |    \--- org.slf4j:slf4j-api:1.7.6 -> 1.7.25
+|    |    |    |    +--- io.reactivex:rxnetty-contexts:0.4.9
+|    |    |    |    |    +--- io.reactivex:rxjava:1.0.10 -> 1.2.0
+|    |    |    |    |    \--- io.reactivex:rxnetty:0.4.9 (*)
+|    |    |    |    +--- io.reactivex:rxnetty-servo:0.4.9
+|    |    |    |    |    +--- io.reactivex:rxjava:1.0.10 -> 1.2.0
+|    |    |    |    |    +--- io.reactivex:rxnetty:0.4.9 (*)
+|    |    |    |    |    \--- com.netflix.servo:servo-core:0.7.5 -> 0.12.21 (*)
+|    |    |    |    +--- javax.inject:javax.inject:1
+|    |    |    |    +--- org.slf4j:slf4j-api:1.7.12 -> 1.7.25
+|    |    |    |    +--- com.google.guava:guava:16.0.1 -> 20.0
+|    |    |    |    \--- com.netflix.archaius:archaius-core:0.7.4 -> 0.7.6 (*)
+|    |    |    +--- com.netflix.hystrix:hystrix-core:1.4.3 -> 1.5.12
+|    |    |    |    +--- org.slf4j:slf4j-api:1.7.0 -> 1.7.25
+|    |    |    |    +--- com.netflix.archaius:archaius-core:0.4.1 -> 0.7.6 (*)
+|    |    |    |    +--- io.reactivex:rxjava:1.2.0
+|    |    |    |    \--- org.hdrhistogram:HdrHistogram:2.1.9
+|    |    |    +--- javax.inject:javax.inject:1
+|    |    |    +--- io.reactivex:rxjava:1.0.10 -> 1.2.0
+|    |    |    +--- io.reactivex:rxnetty:0.4.9 (*)
+|    |    |    +--- commons-configuration:commons-configuration:1.8 (*)
+|    |    |    +--- com.google.guava:guava:16.0.1 -> 20.0
+|    |    |    \--- com.netflix.archaius:archaius-core:0.7.4 -> 0.7.6 (*)
+|    |    +--- com.netflix.ribbon:ribbon-core:2.2.5 (*)
+|    |    +--- com.netflix.ribbon:ribbon-httpclient:2.2.5
+|    |    |    +--- com.netflix.ribbon:ribbon-core:2.2.5 (*)
+|    |    |    +--- com.netflix.ribbon:ribbon-loadbalancer:2.2.5 (*)
+|    |    |    +--- commons-collections:commons-collections:3.2.2
+|    |    |    +--- org.apache.httpcomponents:httpclient:4.2.1 -> 4.5.6 (*)
+|    |    |    +--- com.sun.jersey:jersey-client:1.19.1 (*)
+|    |    |    +--- com.sun.jersey.contribs:jersey-apache-client4:1.19.1 (*)
+|    |    |    +--- org.slf4j:slf4j-api:1.7.12 -> 1.7.25
+|    |    |    +--- com.netflix.servo:servo-core:0.10.1 -> 0.12.21 (*)
+|    |    |    +--- com.google.guava:guava:16.0.1 -> 20.0
+|    |    |    +--- com.netflix.archaius:archaius-core:0.7.4 -> 0.7.6 (*)
+|    |    |    \--- com.netflix.netflix-commons:netflix-commons-util:0.1.1 -> 0.3.0 (*)
+|    |    +--- com.netflix.ribbon:ribbon-loadbalancer:2.2.5 (*)
+|    |    \--- io.reactivex:rxjava:1.2.0
+|    +--- com.netflix.ribbon:ribbon-eureka:2.2.5
+|    |    +--- com.netflix.ribbon:ribbon-core:2.2.5 (*)
+|    |    +--- com.netflix.ribbon:ribbon-loadbalancer:2.2.5 (*)
+|    |    +--- com.netflix.eureka:eureka-client:1.4.6 -> 1.9.3 (*)
+|    |    +--- org.slf4j:slf4j-api:1.7.12 -> 1.7.25
+|    |    \--- com.netflix.archaius:archaius-core:0.7.4 -> 0.7.6 (*)
+|    \--- com.thoughtworks.xstream:xstream:1.4.10 (*)
++--- io.springfox:springfox-swagger2:2.9.2
+|    +--- io.swagger:swagger-annotations:1.5.20
+|    +--- io.swagger:swagger-models:1.5.20
+|    |    +--- com.fasterxml.jackson.core:jackson-annotations:2.9.5 -> 2.9.0
+|    |    +--- org.slf4j:slf4j-api:1.7.22 -> 1.7.25
+|    |    \--- io.swagger:swagger-annotations:1.5.20
+|    +--- io.springfox:springfox-spi:2.9.2
+|    |    \--- io.springfox:springfox-core:2.9.2
+|    |         +--- net.bytebuddy:byte-buddy:1.8.12 -> 1.9.3
+|    |         +--- com.google.guava:guava:20.0
+|    |         +--- com.fasterxml:classmate:1.4.0
+|    |         +--- org.slf4j:slf4j-api:1.7.25
+|    |         +--- org.springframework.plugin:spring-plugin-core:1.2.0.RELEASE
+|    |         |    +--- org.springframework:spring-beans:4.0.9.RELEASE -> 5.1.2.RELEASE (*)
+|    |         |    +--- org.springframework:spring-context:4.0.9.RELEASE -> 5.1.2.RELEASE (*)
+|    |         |    +--- org.springframework:spring-aop:4.0.9.RELEASE -> 5.1.2.RELEASE (*)
+|    |         |    \--- org.slf4j:slf4j-api:1.7.10 -> 1.7.25
+|    |         \--- org.springframework.plugin:spring-plugin-metadata:1.2.0.RELEASE
+|    |              +--- org.springframework.plugin:spring-plugin-core:1.2.0.RELEASE (*)
+|    |              \--- org.slf4j:slf4j-api:1.7.10 -> 1.7.25
+|    +--- io.springfox:springfox-schema:2.9.2
+|    |    +--- io.springfox:springfox-core:2.9.2 (*)
+|    |    \--- io.springfox:springfox-spi:2.9.2 (*)
+|    +--- io.springfox:springfox-swagger-common:2.9.2
+|    |    +--- io.swagger:swagger-annotations:1.5.20
+|    |    +--- io.swagger:swagger-models:1.5.20 (*)
+|    |    +--- io.springfox:springfox-spi:2.9.2 (*)
+|    |    +--- io.springfox:springfox-schema:2.9.2 (*)
+|    |    +--- io.springfox:springfox-spring-web:2.9.2
+|    |    |    +--- com.google.guava:guava:20.0
+|    |    |    +--- com.fasterxml:classmate:1.4.0
+|    |    |    +--- org.slf4j:slf4j-api:1.7.25
+|    |    |    +--- org.springframework.plugin:spring-plugin-core:1.2.0.RELEASE (*)
+|    |    |    +--- org.springframework.plugin:spring-plugin-metadata:1.2.0.RELEASE (*)
+|    |    |    \--- io.springfox:springfox-spi:2.9.2 (*)
+|    |    +--- com.google.guava:guava:20.0
+|    |    +--- com.fasterxml:classmate:1.4.0
+|    |    +--- org.slf4j:slf4j-api:1.7.25
+|    |    +--- org.springframework.plugin:spring-plugin-core:1.2.0.RELEASE (*)
+|    |    \--- org.springframework.plugin:spring-plugin-metadata:1.2.0.RELEASE (*)
+|    +--- io.springfox:springfox-spring-web:2.9.2 (*)
+|    +--- com.google.guava:guava:20.0
+|    +--- com.fasterxml:classmate:1.4.0
+|    +--- org.slf4j:slf4j-api:1.7.25
+|    +--- org.springframework.plugin:spring-plugin-core:1.2.0.RELEASE (*)
+|    +--- org.springframework.plugin:spring-plugin-metadata:1.2.0.RELEASE (*)
+|    \--- org.mapstruct:mapstruct:1.2.0.Final
++--- io.springfox:springfox-swagger-ui:2.9.2
+|    \--- io.springfox:springfox-spring-web:2.9.2 (*)
+\--- project :simple-reference-service-api
+
+(*) - dependencies omitted (listed previously)
+
+(n) - Not resolved (configuration is not meant to be resolved)
+
+A web-based, searchable dependency report is available by adding the --scan option.
+
+BUILD SUCCESSFUL in 8s
