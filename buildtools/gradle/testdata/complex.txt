@@ -12,10 +12,7 @@ Project :something-something
 annotationProcessor - Annotation processors and their dependencies for source set 'main'.
 \--- org.projectlombok:lombok:1.16.16
 
-apiElements - API elements for main. (n)
-No dependencies
-
-compile - Dependencies for source set 'main' (deprecated, use 'implementation' instead).
+bootArchives - Configuration for Spring Boot archive artifacts.
 No dependencies
 
 compileClasspath - Compile classpath for source set 'main'.
@@ -212,8 +209,6 @@ compileClasspath - Compile classpath for source set 'main'.
 |    |    |    |    |    |    \--- org.slf4j:slf4j-api:1.6.4 -> 1.7.25
 |    |    |    |    |    +--- io.reactivex:rxjava:1.0.9 -> 1.2.0
 |    |    |    |    |    +--- org.slf4j:slf4j-api:1.7.12 -> 1.7.25
-|    |    |    |    |    +--- com.netflix.servo:servo-core:0.10.1 -> 0.12.21 (*)
-|    |    |    |    |    +--- com.google.guava:guava:16.0.1 -> 20.0
 |    |    |    |    |    +--- com.netflix.archaius:archaius-core:0.7.4 -> 0.7.6 (*)
 |    |    |    |    |    \--- com.netflix.netflix-commons:netflix-commons-util:0.1.1 -> 0.3.0
 |    |    |    |    |         +--- org.slf4j:slf4j-api:1.6.4 -> 1.7.25
@@ -222,9 +217,6 @@ compileClasspath - Compile classpath for source set 'main'.
 |    |    |    |    +--- io.reactivex:rxnetty:0.4.9
 |    |    |    |    |    +--- io.reactivex:rxjava:1.0.10 -> 1.2.0
 |    |    |    |    |    \--- org.slf4j:slf4j-api:1.7.6 -> 1.7.25
-|    |    |    |    +--- io.reactivex:rxnetty-contexts:0.4.9
-|    |    |    |    |    +--- io.reactivex:rxjava:1.0.10 -> 1.2.0
-|    |    |    |    |    \--- io.reactivex:rxnetty:0.4.9 (*)
 |    |    |    |    +--- io.reactivex:rxnetty-servo:0.4.9
 |    |    |    |    |    +--- io.reactivex:rxjava:1.0.10 -> 1.2.0
 |    |    |    |    |    +--- io.reactivex:rxnetty:0.4.9 (*)
@@ -280,7 +272,6 @@ compileClasspath - Compile classpath for source set 'main'.
 |    |         +--- org.slf4j:slf4j-api:1.7.25
 |    |         +--- org.springframework.plugin:spring-plugin-core:1.2.0.RELEASE
 |    |         |    +--- org.springframework:spring-beans:4.0.9.RELEASE -> 5.1.2.RELEASE (*)
-|    |         |    +--- org.springframework:spring-context:4.0.9.RELEASE -> 5.1.2.RELEASE (*)
 |    |         |    +--- org.springframework:spring-aop:4.0.9.RELEASE -> 5.1.2.RELEASE (*)
 |    |         |    \--- org.slf4j:slf4j-api:1.7.10 -> 1.7.25
 |    |         \--- org.springframework.plugin:spring-plugin-metadata:1.2.0.RELEASE
@@ -293,12 +284,8 @@ compileClasspath - Compile classpath for source set 'main'.
 |    |    +--- io.swagger:swagger-annotations:1.5.20
 |    |    +--- io.swagger:swagger-models:1.5.20 (*)
 |    |    +--- io.springfox:springfox-spi:2.9.2 (*)
-|    |    +--- io.springfox:springfox-schema:2.9.2 (*)
 |    |    +--- io.springfox:springfox-spring-web:2.9.2
 |    |    |    +--- com.google.guava:guava:20.0
-|    |    |    +--- com.fasterxml:classmate:1.4.0
-|    |    |    +--- org.slf4j:slf4j-api:1.7.25
-|    |    |    +--- org.springframework.plugin:spring-plugin-core:1.2.0.RELEASE (*)
 |    |    |    +--- org.springframework.plugin:spring-plugin-metadata:1.2.0.RELEASE (*)
 |    |    |    \--- io.springfox:springfox-spi:2.9.2 (*)
 |    |    +--- com.google.guava:guava:20.0
@@ -309,9 +296,6 @@ compileClasspath - Compile classpath for source set 'main'.
 |    +--- io.springfox:springfox-spring-web:2.9.2 (*)
 |    +--- com.google.guava:guava:20.0
 |    +--- com.fasterxml:classmate:1.4.0
-|    +--- org.slf4j:slf4j-api:1.7.25
-|    +--- org.springframework.plugin:spring-plugin-core:1.2.0.RELEASE (*)
-|    +--- org.springframework.plugin:spring-plugin-metadata:1.2.0.RELEASE (*)
 |    \--- org.mapstruct:mapstruct:1.2.0.Final
 +--- io.springfox:springfox-swagger-ui:2.9.2
 |    \--- io.springfox:springfox-spring-web:2.9.2 (*)
