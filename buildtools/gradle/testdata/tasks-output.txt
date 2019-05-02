@@ -6,26 +6,13 @@ Build tasks
 -----------
 dependencies-proj:assemble - Assembles the outputs of this project.
 dependencies-proj:build - Assembles and tests this project.
-dependencies-proj:buildDependents - Assembles and tests this project and all projects that depend on it.
 dependencies-proj:buildNeeded - Assembles and tests this project and all projects it depends on.
 dependencies-proj:classes - Assembles main classes.
-dependencies-proj:clean - Deletes the build directory.
-dependencies-proj:jar - Assembles a jar archive containing the main classes.
-dependencies-proj:testClasses - Assembles test classes.
 
 Build Setup tasks
 -----------------
 init - Initializes a new Gradle build. [incubating]
 wrapper - Generates Gradle wrapper files. [incubating]
-
-Documentation tasks
--------------------
-dependencies-proj:groovydoc - Generates Groovydoc API documentation for the main source code.
-dependencies-proj:javadoc - Generates Javadoc API documentation for the main source code.
-
-Formatting tasks
-----------------
-dependencies-proj:ktlintFormat - Fix Kotlin code style deviations.
 
 Help tasks
 ----------
@@ -50,28 +37,9 @@ dependencies-proj:properties - Displays the properties of project ':dependencies
 tasks - Displays the tasks runnable from root project 'dependencies-proj' (some of the displayed tasks may belong to subprojects).
 dependencies-proj:tasks - Displays the tasks runnable from project ':dependencies-proj'.
 
-Publishing tasks
-----------------
-dependencies-proj:bintrayUpload - Publishes artifacts to bintray.com.
-
 Verification tasks
 ------------------
 dependencies-proj:check - Runs all checks.
 dependencies-proj:ktlint - Check Kotlin code style.
 dependencies-proj:test - Runs the unit tests.
 
-Other tasks
------------
-dependencies-proj:compileGroovy - Compiles the main Groovy source.
-dependencies-proj:compileJava - Compiles main Java source.
-dependencies-proj:compileKotlin - Compiles the source set 'main'.kotlin.
-dependencies-proj:compileTestGroovy - Compiles the test Groovy source.
-dependencies-proj:compileTestJava - Compiles test Java source.
-dependencies-proj:compileTestKotlin - Compiles the source set 'test'.kotlin.
-dependencies-proj:copyMainKotlinClasses
-dependencies-proj:copyTestKotlinClasses
-dependencies-proj:coveralls
-dependencies-proj:install - Installs the 'archives' artifacts into the local Maven repository.
-dependencies-proj:jacocoTestReport
-dependencies-proj:javadocJar
-dependencies-proj:processResources - Processes main resources.
