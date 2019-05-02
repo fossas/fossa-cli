@@ -3,6 +3,7 @@ package fossa
 import (
 	"fmt"
 	"net/url"
+	"regexp"
 
 	"github.com/pkg/errors"
 )
@@ -11,11 +12,20 @@ const IssuesAPI = "/api/cli/%s/issues"
 
 // An Issue holds the FOSSA API response for the issue API.
 type Issue struct {
-	ID             int
-	PriorityString string
-	Resolved       bool
-	Revision       Revision
-	Type           string
+	ID             int    `json:"id"`
+	PriorityString string `json:"priorityString"`
+	Resolved       bool   `json:"resolved"`
+	RevisionID     string `json:"revisionId"`
+	Type           string `json:"type"`
+	Rule           Rule   `json:"rule`
+
+	Name     string
+	Revision string
+}
+
+// Rule holds the representation of an Issue Rule.
+type Rule struct {
+	License string `json:"licenseId"`
 }
 
 // A wrapped list of issues returned by the FOSSA CLI issues endpoint
@@ -24,6 +34,8 @@ type Issues struct {
 	Count  int
 	Issues []Issue
 	Status string
+
+	NormalizedByType map[string][]Issue
 }
 
 // GetIssues loads the issues for a project.
@@ -34,5 +46,44 @@ func GetIssues(locator Locator) (Issues, error) {
 		return Issues{}, errors.Wrap(err, "could not get Issues from API")
 	}
 
+	issues.normalize()
 	return issues, nil
+}
+
+func (issues *Issues) normalize() {
+	typeMap := make(map[string][]Issue)
+	for _, issue := range issues.Issues {
+		issue.extractLocator()
+		formattedType := formatType(issue.Type)
+		typeMap[formattedType] = append(typeMap[formattedType], issue)
+	}
+
+	issues.NormalizedByType = typeMap
+}
+
+func formatType(issueType string) string {
+	switch issueType {
+	case "policy_conflict":
+		return "Denied by Policy"
+	case "policy_flag":
+		return "Flagged by Policy"
+	case "vulnerability":
+		return "Vulnerability"
+	case "unlicensed_dependency":
+		return "Unlicensed Dependency"
+	case "outdated_dependency":
+		return "Outdated Dependency"
+	default:
+		return "Unrecognized Issue Type"
+	}
+}
+
+func (issue *Issue) extractLocator() {
+	locator := regexp.MustCompile("[\\+\\,\\$\\s]+").Split(issue.RevisionID, -1)
+	if len(locator) >= 2 {
+		issue.Name = locator[1]
+	}
+	if len(locator) >= 3 {
+		issue.Revision = locator[2]
+	}
 }

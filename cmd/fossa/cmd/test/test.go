@@ -1,22 +1,33 @@
 package test
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
+	"text/tabwriter"
+	"text/template"
 	"time"
 
 	"github.com/apex/log"
-	"github.com/pkg/errors"
-	"github.com/urfave/cli"
-
 	"github.com/fossas/fossa-cli/api"
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
+	"github.com/pkg/errors"
+	"github.com/urfave/cli"
 )
+
+const defaultTestTemplate = `Test Failed. {{.Count}} {{if gt .Count 1 -}} issues {{- else -}} issue {{- end}} found:
+{{- range $type, $issues := .NormalizedByType}}
+========================================================================
+{{$type}}
+========================================================================
+{{range $i, $issue := $issues}}
+{{$issue.Name}}	{{$issue.Revision}}	{{$issue.Rule.License}}
+{{- end}}
+{{end}}
+`
 
 var Timeout = "timeout"
 var SuppressIssues = "suppress-issues"
@@ -51,17 +62,18 @@ func Run(ctx *cli.Context) error {
 		return nil
 	}
 
-	pluralizedIssues := "issues"
-	if issues.Count == 1 {
-		pluralizedIssues = "issue"
-	}
-	fmt.Fprintf(os.Stderr, "Test failed! %d %s found\n", issues.Count, pluralizedIssues)
-
-	marshalled, err := json.Marshal(issues)
+	testTemplate, err := template.New("base").Parse(defaultTestTemplate)
 	if err != nil {
-		log.Fatalf("Could not marshal unresolved issues: %s", err)
+		return err
 	}
-	fmt.Println(string(marshalled))
+
+	w := tabwriter.NewWriter(os.Stderr, 10, 12, 5, ' ', 0)
+	err = testTemplate.Execute(w, issues)
+	if err != nil {
+		return err
+	}
+
+	w.Flush()
 
 	if !ctx.Bool(SuppressIssues) {
 		os.Exit(1)
