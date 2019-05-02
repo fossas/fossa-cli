@@ -2,16 +2,17 @@ package display
 
 import (
 	"bytes"
-	"log"
 	"text/tabwriter"
 	"text/template"
+
+	"github.com/fossas/fossa-cli/errors"
 )
 
 // TemplateFile renders a template file and its context to string.
 func TemplateFile(filename string, data interface{}) (string, error) {
 	tmpl, err := template.ParseFiles(filename)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "Could not parse template data")
 	}
 
 	return Template(tmpl, data)
@@ -21,7 +22,7 @@ func TemplateFile(filename string, data interface{}) (string, error) {
 func TemplateString(templateString string, data interface{}) (string, error) {
 	tmpl, err := template.New("base").Parse(templateString)
 	if err != nil {
-		log.Fatalf("Could not parse template data: %s", err.Error())
+		return "", errors.Wrap(err, "Could not parse template data")
 	}
 	return Template(tmpl, data)
 }
@@ -41,7 +42,7 @@ func Template(tmpl *template.Template, data interface{}) (string, error) {
 func TemplateFormatTabs(tmpl string, data interface{}, minWidth, tabWidth, padding int) (string, error) {
 	testTemplate, err := template.New("base").Parse(tmpl)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "Could not parse template data")
 	}
 
 	var buf bytes.Buffer
