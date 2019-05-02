@@ -3,19 +3,18 @@ package test
 import (
 	"fmt"
 	"os"
-	"text/tabwriter"
-	"text/template"
 	"time"
 
 	"github.com/apex/log"
+	"github.com/pkg/errors"
+	"github.com/urfave/cli"
+
 	"github.com/fossas/fossa-cli/api"
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
-	"github.com/pkg/errors"
-	"github.com/urfave/cli"
 )
 
 const defaultTestTemplate = `Test Failed. {{.Count}} {{if gt .Count 1 -}} issues {{- else -}} issue {{- end}} found:
@@ -62,18 +61,11 @@ func Run(ctx *cli.Context) error {
 		return nil
 	}
 
-	testTemplate, err := template.New("base").Parse(defaultTestTemplate)
+	output, err := display.TemplateFormatTabs(defaultTestTemplate, issues, 12, 10, 5)
 	if err != nil {
 		return err
 	}
-
-	w := tabwriter.NewWriter(os.Stderr, 10, 12, 5, ' ', 0)
-	err = testTemplate.Execute(w, issues)
-	if err != nil {
-		return err
-	}
-
-	w.Flush()
+	fmt.Println(output)
 
 	if !ctx.Bool(SuppressIssues) {
 		os.Exit(1)

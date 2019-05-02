@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"text/template"
 
 	"github.com/apex/log"
 	"github.com/urfave/cli"
@@ -83,12 +82,7 @@ func dependenciesRun(ctx *cli.Context) error {
 		revisionsByFetcher[fetcher] = depList
 	}
 
-	tmpl, err := template.New("base").Parse(defaultDependenciesReportTemplate)
-	if err != nil {
-		log.Fatalf("Could not parse template data: %s", err.Error())
-	}
-
-	output, err := display.Template(tmpl, revisionsByFetcher)
+	output, err := display.TemplateString(defaultDependenciesReportTemplate, revisionsByFetcher)
 	fmt.Println(output)
 	return err
 }

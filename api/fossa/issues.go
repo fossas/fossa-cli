@@ -10,24 +10,6 @@ import (
 
 const IssuesAPI = "/api/cli/%s/issues"
 
-// An Issue holds the FOSSA API response for the issue API.
-type Issue struct {
-	ID             int    `json:"id"`
-	PriorityString string `json:"priorityString"`
-	Resolved       bool   `json:"resolved"`
-	RevisionID     string `json:"revisionId"`
-	Type           string `json:"type"`
-	Rule           Rule   `json:"rule`
-
-	Name     string
-	Revision string
-}
-
-// Rule holds the representation of an Issue Rule.
-type Rule struct {
-	License string `json:"licenseId"`
-}
-
 // A wrapped list of issues returned by the FOSSA CLI issues endpoint
 // If a push-only API key is used, then only the count is returned
 type Issues struct {
@@ -36,6 +18,24 @@ type Issues struct {
 	Status string
 
 	NormalizedByType map[string][]Issue
+}
+
+// An Issue holds the FOSSA API response for the issue API.
+type Issue struct {
+	ID             int    `json:"id"`
+	PriorityString string `json:"priorityString"`
+	Resolved       bool   `json:"resolved"`
+	RevisionID     string `json:"revisionId"`
+	Type           string `json:"type"`
+	Rule           Rule   `json:"rule"`
+
+	Name     string
+	Revision string
+}
+
+// Rule holds the representation of an Issue's Rule.
+type Rule struct {
+	License string `json:"licenseId"`
 }
 
 // GetIssues loads the issues for a project.
@@ -74,7 +74,7 @@ func formatType(issueType string) string {
 	case "outdated_dependency":
 		return "Outdated Dependency"
 	default:
-		return "Unrecognized Issue Type"
+		return issueType
 	}
 }
 
