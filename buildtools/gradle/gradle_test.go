@@ -75,6 +75,54 @@ func TestAllDependencies(t *testing.T) {
 	}
 }
 
+func TestParseDependencies(t *testing.T) {
+	data, err := ioutil.ReadFile("testdata/complex.txt")
+	assert.NoError(t, err)
+	imports, deps, err := gradle.ParseDependencies(string(data))
+	assert.NoError(t, err)
+
+	// A simple dependency.
+	expectImport1 := gradle.Dependency{
+		Name:             "io.springfox:springfox-swagger2",
+		RequestedVersion: "2.9.2",
+		ResolvedVersion:  "2.9.2",
+	}
+	assert.Contains(t, imports, expectImport1)
+
+	// Without a requested version.
+	expectImport2 := gradle.Dependency{
+		Name:             "org.springframework.boot:spring-boot-starter",
+		RequestedVersion: "",
+		ResolvedVersion:  "2.1.0.RELEASE",
+	}
+	assert.Contains(t, imports, expectImport2)
+
+	// With a requested version and resolved version.
+	expectDep1 := gradle.Dependency{
+		Name:             "com.fasterxml:classmate",
+		RequestedVersion: "1.3.4",
+		ResolvedVersion:  "1.4.0",
+	}
+	assert.Contains(t, deps, expectDep1)
+
+	// With a requested version and resolved version.
+	expectDep2 := gradle.Dependency{
+		Name:             "org.slf4j:slf4j-api",
+		RequestedVersion: "1.6.4",
+		ResolvedVersion:  "1.7.25",
+	}
+	assert.Contains(t, deps, expectDep2)
+}
+
+func TestShellCommand_DependencyTasks(t *testing.T) {
+	// We should be able to identify the projects by running "gradle tasks" even if a project has the
+	// word "dependencies" in it.
+	cmd := MockGradle(t, "testdata/tasks-output.txt")
+	projects, err := cmd.DependencyTasks()
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"dependencies-proj"}, projects)
+}
+
 func MockGradle(t *testing.T, file string) gradle.ShellCommand {
 	fileContents, err := ioutil.ReadFile(file)
 	assert.NoError(t, err)
