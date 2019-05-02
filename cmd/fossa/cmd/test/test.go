@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -30,6 +31,7 @@ const defaultTestTemplate = `Test Failed. {{.Count}} {{if gt .Count 1 -}} issues
 
 var Timeout = "timeout"
 var SuppressIssues = "suppress-issues"
+var JSON = "json"
 
 const pollRequestDelay = 8 * time.Second
 
@@ -40,6 +42,7 @@ var Cmd = cli.Command{
 	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(([]cli.Flag{
 		cli.IntFlag{Name: Timeout, Value: 10 * 60, Usage: "duration to wait for build completion (in seconds)"},
 		cli.BoolFlag{Name: SuppressIssues, Usage: "don't exit on stderr if issues are found"},
+		cli.BoolFlag{Name: JSON, Usage: "format failed issues as JSON"},
 	}))),
 }
 
@@ -61,9 +64,18 @@ func Run(ctx *cli.Context) error {
 		return nil
 	}
 
-	output, err := display.TemplateFormatTabs(defaultTestTemplate, issues, 12, 10, 5)
-	if err != nil {
-		return err
+	output := ""
+	if ctx.Bool(JSON) {
+		json, err := json.Marshal(issues)
+		if err != nil {
+			return err
+		}
+		output = string(json)
+	} else {
+		output, err = display.TemplateFormatTabs(defaultTestTemplate, issues, 12, 10, 5)
+		if err != nil {
+			return err
+		}
 	}
 	fmt.Println(output)
 
