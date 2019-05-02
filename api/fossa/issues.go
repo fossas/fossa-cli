@@ -79,7 +79,7 @@ func formatType(issueType string) string {
 }
 
 func (issue *Issue) extractLocator() {
-	locator := regexp.MustCompile("[\\+\\,\\$\\s]+").Split(issue.RevisionID, -1)
+	locator := regexp.MustCompile("[+$]").Split(issue.RevisionID, -1)
 	if len(locator) >= 2 {
 		issue.Name = locator[1]
 	}
