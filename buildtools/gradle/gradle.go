@@ -145,7 +145,7 @@ func (s ShellCommand) DependencyTasks() ([]string, error) {
 	var projects []string
 	lines := strings.Split(stdout, "\n")
 	for _, line := range lines {
-		if i := strings.Index(line, ":dependencies"); i != -1 {
+		if i := strings.Index(line, ":dependencies -"); i != -1 {
 			projects = append(projects, line[:i])
 		}
 	}

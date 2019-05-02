@@ -114,6 +114,15 @@ func TestParseDependencies(t *testing.T) {
 	assert.Contains(t, deps, expectDep2)
 }
 
+func TestShellCommand_DependencyTasks(t *testing.T) {
+	// We should be able to identify the projects by running "gradle tasks" even if a project has the
+	// word "dependencies" in it.
+	cmd := MockGradle(t, "testdata/tasks-output.txt")
+	projects, err := cmd.DependencyTasks()
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"dependencies-proj"}, projects)
+}
+
 func MockGradle(t *testing.T, file string) gradle.ShellCommand {
 	fileContents, err := ioutil.ReadFile(file)
 	assert.NoError(t, err)
