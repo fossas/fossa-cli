@@ -7,23 +7,23 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/pkg/errors"
-	"github.com/urfave/cli"
-
 	"github.com/fossas/fossa-cli/api"
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
+	"github.com/pkg/errors"
+	"github.com/urfave/cli"
 )
 
 const defaultTestTemplate = `Test Failed! {{.Count}} {{if gt .Count 1 -}} issues {{- else -}} issue {{- end}} found:
 {{- range $type, $issues := .NormalizedByType}}
-========================================================================
+------------------------------------------------------------------------
 {{$type}}
-========================================================================
-{{range $i, $issue := $issues}}
+------------------------------------------------------------------------
+Dependency	Revision	{{if or (eq $type "Flagged by Policy") (eq $type "Denied by Policy") -}} License {{- end}}
+{{- range $i, $issue := $issues}}
 {{$issue.Name}}	{{$issue.Revision}}	{{$issue.Rule.License}}
 {{- end}}
 {{end}}
