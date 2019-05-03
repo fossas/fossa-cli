@@ -1,7 +1,7 @@
 package display
 
 import (
-	"bytes"
+	"strings"
 	"text/tabwriter"
 	"text/template"
 
@@ -29,13 +29,13 @@ func TemplateString(templateString string, data interface{}) (string, error) {
 
 // Template renders a template and its context to a string.
 func Template(tmpl *template.Template, data interface{}) (string, error) {
-	var buf bytes.Buffer
-	err := tmpl.Execute(&buf, data)
+	var builder strings.Builder
+	err := tmpl.Execute(&builder, data)
 	if err != nil {
 		return "", err
 	}
 
-	return buf.String(), nil
+	return builder.String(), nil
 }
 
 // TemplateFormatTabs renders a template with the desired tab format.
@@ -45,12 +45,12 @@ func TemplateFormatTabs(tmpl string, data interface{}, minWidth, tabWidth, paddi
 		return "", errors.Wrap(err, "Could not parse template data")
 	}
 
-	var buf bytes.Buffer
-	w := tabwriter.NewWriter(&buf, minWidth, tabWidth, padding, ' ', 0)
+	var builder strings.Builder
+	w := tabwriter.NewWriter(&builder, minWidth, tabWidth, padding, ' ', 0)
 	err = testTemplate.Execute(w, data)
 	if err != nil {
 		return "", err
 	}
 
-	return buf.String(), nil
+	return builder.String(), nil
 }

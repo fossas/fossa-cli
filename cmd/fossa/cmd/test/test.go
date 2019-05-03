@@ -18,7 +18,7 @@ import (
 	"github.com/fossas/fossa-cli/config"
 )
 
-const defaultTestTemplate = `Test Failed. {{.Count}} {{if gt .Count 1 -}} issues {{- else -}} issue {{- end}} found:
+const defaultTestTemplate = `Test Failed! {{.Count}} {{if gt .Count 1 -}} issues {{- else -}} issue {{- end}} found:
 {{- range $type, $issues := .NormalizedByType}}
 ========================================================================
 {{$type}}
@@ -29,9 +29,11 @@ const defaultTestTemplate = `Test Failed. {{.Count}} {{if gt .Count 1 -}} issues
 {{end}}
 `
 
-var Timeout = "timeout"
-var SuppressIssues = "suppress-issues"
-var JSON = "json"
+const (
+	Timeout        = "timeout"
+	SuppressIssues = "suppress-issues"
+	JSON           = "json"
+)
 
 const pollRequestDelay = 8 * time.Second
 
@@ -39,11 +41,11 @@ var Cmd = cli.Command{
 	Name:   "test",
 	Usage:  "Test current revision against FOSSA scan status and exit with errors if issues are found",
 	Action: Run,
-	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(([]cli.Flag{
+	Flags: flags.WithGlobalFlags(flags.WithAPIFlags([]cli.Flag{
 		cli.IntFlag{Name: Timeout, Value: 10 * 60, Usage: "duration to wait for build completion (in seconds)"},
 		cli.BoolFlag{Name: SuppressIssues, Usage: "don't exit on stderr if issues are found"},
 		cli.BoolFlag{Name: JSON, Usage: "format failed issues as JSON"},
-	}))),
+	})),
 }
 
 var _ cli.ActionFunc = Run
@@ -60,7 +62,7 @@ func Run(ctx *cli.Context) error {
 	}
 
 	if issues.Count == 0 {
-		fmt.Fprintln(os.Stderr, "Test passed! 0 issues found")
+		fmt.Fprintln(os.Stderr, "Test Passed! 0 issues found")
 		return nil
 	}
 
@@ -105,8 +107,6 @@ func Do(stop <-chan time.Time) (fossa.Issues, error) {
 		log.Fatalf("Could not load build: %s", err.Error())
 	}
 
-	display.InProgress("Waiting for FOSSA scan results...")
-
 	issues, err := CheckIssues(project, stop)
 	if err != nil {
 		log.Fatalf("Could not load issues: %s", err.Error())
@@ -130,6 +130,9 @@ func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, erro
 			if err != nil {
 				return fossa.Build{}, errors.Wrap(err, "error while loading build")
 			}
+
+			display.InProgress(fmt.Sprintf("Project status is %s. Waiting for FOSSA scan results...", build.Task.Status))
+
 			switch build.Task.Status {
 			case "SUCCEEDED":
 				return build, nil
