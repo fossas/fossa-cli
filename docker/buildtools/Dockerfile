@@ -8,7 +8,8 @@ FROM fossa/fossa-cli:base
 ENV LC_ALL=C.UTF-8 DEBIAN_FRONTEND=noninteractive 
 
 # Install build tool and fixture requirements.
-RUN sudo apt-get install -y \
+RUN sudo apt-get update && \
+    sudo apt-get install -y \
     # Build tools
     apt-transport-https build-essential libssl-dev software-properties-common \
     # Rails (nokogiri)
