@@ -19,9 +19,9 @@ import (
 
 const defaultTestTemplate = `Test Failed! {{.Count}} {{if gt .Count 1 -}} issues {{- else -}} issue {{- end}} found:
 {{- range $type, $issues := .NormalizedByType}}
-------------------------------------------------------------------------
+========================================================================
 {{$type}}
-------------------------------------------------------------------------
+========================================================================
 Dependency	Revision	{{if or (eq $type "Flagged by Policy") (eq $type "Denied by Policy") -}} License {{- end}}
 {{- range $i, $issue := $issues}}
 {{$issue.Name}}	{{$issue.Revision}}	{{$issue.Rule.License}}
