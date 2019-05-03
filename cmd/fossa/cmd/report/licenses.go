@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"text/template"
 
 	"github.com/apex/log"
 	"github.com/urfave/cli"
@@ -91,12 +90,7 @@ func licensesRun(ctx *cli.Context) (err error) {
 		revisionsByLicense[license] = depList
 	}
 
-	tmpl, err := template.New("base").Parse(defaultLicenseReportTemplate)
-	if err != nil {
-		log.Fatalf("Could not parse template data: %s", err.Error())
-	}
-
-	output, err := display.Template(tmpl, revisionsByLicense)
+	output, err := display.TemplateString(defaultLicenseReportTemplate, revisionsByLicense)
 	fmt.Println(output)
 	return nil
 }

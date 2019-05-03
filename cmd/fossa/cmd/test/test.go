@@ -18,8 +18,26 @@ import (
 	"github.com/fossas/fossa-cli/config"
 )
 
-var Timeout = "timeout"
-var SuppressIssues = "suppress-issues"
+const defaultTestTemplate = `Test Failed! {{.Count}} {{if gt .Count 1 -}} issues {{- else -}} issue {{- end}} found.
+{{- $length := len .NormalizedByType -}} {{ if eq $length 0 }}
+Detailed issue data cannot be read. This could be related to using a push-only API token.
+{{- end}}
+{{- range $type, $issues := .NormalizedByType}}
+========================================================================
+{{$type}}
+========================================================================
+Dependency	Revision	{{if or (eq $type "Flagged by Policy") (eq $type "Denied by Policy") -}} License {{- end}}
+{{- range $i, $issue := $issues}}
+{{$issue.Name}}	{{$issue.Revision}}	{{$issue.Rule.License }}
+{{- end}}
+{{end}}
+`
+
+const (
+	Timeout        = "timeout"
+	SuppressIssues = "suppress-issues"
+	JSON           = "json"
+)
 
 const pollRequestDelay = 8 * time.Second
 
@@ -27,10 +45,11 @@ var Cmd = cli.Command{
 	Name:   "test",
 	Usage:  "Test current revision against FOSSA scan status and exit with errors if issues are found",
 	Action: Run,
-	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(([]cli.Flag{
+	Flags: flags.WithGlobalFlags(flags.WithAPIFlags([]cli.Flag{
 		cli.IntFlag{Name: Timeout, Value: 10 * 60, Usage: "duration to wait for build completion (in seconds)"},
 		cli.BoolFlag{Name: SuppressIssues, Usage: "don't exit on stderr if issues are found"},
-	}))),
+		cli.BoolFlag{Name: JSON, Usage: "format failed issues as JSON"},
+	})),
 }
 
 var _ cli.ActionFunc = Run
@@ -47,21 +66,24 @@ func Run(ctx *cli.Context) error {
 	}
 
 	if issues.Count == 0 {
-		fmt.Fprintln(os.Stderr, "Test passed! 0 issues found")
+		fmt.Fprintln(os.Stderr, "Test Passed! 0 issues found")
 		return nil
 	}
 
-	pluralizedIssues := "issues"
-	if issues.Count == 1 {
-		pluralizedIssues = "issue"
+	output := ""
+	if ctx.Bool(JSON) {
+		json, err := json.Marshal(issues)
+		if err != nil {
+			return err
+		}
+		output = string(json)
+	} else {
+		output, err = display.TemplateFormatTabs(defaultTestTemplate, issues, 12, 10, 5)
+		if err != nil {
+			return err
+		}
 	}
-	fmt.Fprintf(os.Stderr, "Test failed! %d %s found\n", issues.Count, pluralizedIssues)
-
-	marshalled, err := json.Marshal(issues)
-	if err != nil {
-		log.Fatalf("Could not marshal unresolved issues: %s", err)
-	}
-	fmt.Println(string(marshalled))
+	fmt.Println(output)
 
 	if !ctx.Bool(SuppressIssues) {
 		os.Exit(1)
@@ -89,8 +111,6 @@ func Do(stop <-chan time.Time) (fossa.Issues, error) {
 		log.Fatalf("Could not load build: %s", err.Error())
 	}
 
-	display.InProgress("Waiting for FOSSA scan results...")
-
 	issues, err := CheckIssues(project, stop)
 	if err != nil {
 		log.Fatalf("Could not load issues: %s", err.Error())
@@ -114,6 +134,9 @@ func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, erro
 			if err != nil {
 				return fossa.Build{}, errors.Wrap(err, "error while loading build")
 			}
+
+			display.InProgress(fmt.Sprintf("Project status is %s. Waiting for FOSSA scan results...", build.Task.Status))
+
 			switch build.Task.Status {
 			case "SUCCEEDED":
 				return build, nil
