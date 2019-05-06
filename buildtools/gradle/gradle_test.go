@@ -112,6 +112,24 @@ func TestParseDependencies(t *testing.T) {
 		ResolvedVersion:  "1.7.25",
 	}
 	assert.Contains(t, deps, expectDep2)
+
+	// A project.
+	expectProject1 := gradle.Dependency{
+		Name:             "typical-project-name",
+		RequestedVersion: "",
+		ResolvedVersion:  "",
+		IsProject:        true,
+	}
+	assert.Contains(t, deps, expectProject1)
+
+	// A project.
+	expectProject2 := gradle.Dependency{
+		Name:             "no-colons-in-project-name",
+		RequestedVersion: "",
+		ResolvedVersion:  "",
+		IsProject:        true,
+	}
+	assert.Contains(t, deps, expectProject2)
 }
 
 func TestShellCommand_DependencyTasks(t *testing.T) {
