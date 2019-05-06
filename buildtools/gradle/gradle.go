@@ -178,10 +178,11 @@ func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency
 		dep := matches[2]
 		withoutAnnotations := strings.TrimSuffix(strings.TrimSuffix(strings.TrimSuffix(dep, " (*)"), " (n)"), " FAILED")
 		var parsed Dependency
-		if strings.HasPrefix(withoutAnnotations, "project :") {
+		if strings.HasPrefix(withoutAnnotations, "project ") {
 			// TODO: the desired method for handling this might be to recurse into the subproject.
 			parsed = Dependency{
-				Name:      strings.TrimPrefix(withoutAnnotations, "project :"),
+				// The project name may or may not have a leading colon.
+				Name:      strings.TrimPrefix(strings.TrimPrefix(withoutAnnotations, "project "), ":"),
 				IsProject: true,
 			}
 		} else {
@@ -196,9 +197,12 @@ func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency
 			requestedIsNotResolved := len(sections) == 2
 
 			idSections := strings.Split(sections[0], ":")
-			name = idSections[0] + ":" + idSections[1]
-			if len(idSections) > 2 {
-				requestedVer = idSections[2]
+			name = idSections[0]
+			if len(idSections) > 1 {
+				name += ":" + idSections[1]
+				if len(idSections) > 2 {
+					requestedVer = idSections[2]
+				}
 			}
 
 			if requestedIsNotResolved {

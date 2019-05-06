@@ -193,13 +193,9 @@ compileClasspath - Compile classpath for source set 'main'.
 |    |    \--- io.swagger:swagger-annotations:1.5.20
 |    +--- io.springfox:springfox-spi:2.9.2
 |    |    \--- io.springfox:springfox-core:2.9.2
-|    |         +--- net.bytebuddy:byte-buddy:1.8.12 -> 1.9.3
-|    |         +--- com.google.guava:guava:20.0
-|    |         +--- com.fasterxml:classmate:1.4.0
 |    |         +--- org.slf4j:slf4j-api:1.7.25
 |    |         +--- org.springframework.plugin:spring-plugin-core:1.2.0.RELEASE
 |    |         |    +--- org.springframework:spring-beans:4.0.9.RELEASE -> 5.1.2.RELEASE (*)
-|    |         |    +--- org.springframework:spring-aop:4.0.9.RELEASE -> 5.1.2.RELEASE (*)
 |    |         |    \--- org.slf4j:slf4j-api:1.7.10 -> 1.7.25
 |    |         \--- org.springframework.plugin:spring-plugin-metadata:1.2.0.RELEASE
 |    |              +--- org.springframework.plugin:spring-plugin-core:1.2.0.RELEASE (*)
@@ -208,19 +204,18 @@ compileClasspath - Compile classpath for source set 'main'.
 |    |    +--- io.springfox:springfox-core:2.9.2 (*)
 |    |    \--- io.springfox:springfox-spi:2.9.2 (*)
 |    +--- io.springfox:springfox-swagger-common:2.9.2
-|    |    +--- io.springfox:springfox-spring-web:2.9.2
-|    |    |    +--- org.springframework.plugin:spring-plugin-metadata:1.2.0.RELEASE (*)
-|    |    |    \--- io.springfox:springfox-spi:2.9.2 (*)
-|    |    +--- com.google.guava:guava:20.0
-|    |    +--- com.fasterxml:classmate:1.4.0
 |    |    +--- org.slf4j:slf4j-api:1.7.25
 |    |    \--- org.springframework.plugin:spring-plugin-metadata:1.2.0.RELEASE (*)
 |    +--- io.springfox:springfox-spring-web:2.9.2 (*)
-|    +--- com.fasterxml:classmate:1.4.0
 |    \--- org.mapstruct:mapstruct:1.2.0.Final
 +--- io.springfox:springfox-swagger-ui:2.9.2
 |    \--- io.springfox:springfox-spring-web:2.9.2 (*)
-\--- project :simple-reference-service-api
+\--- project :typical-project-name
+
+implementation - Implementation only dependencies for source set 'main'. (n)
++--- io.something:swagger-ui:2.9.2 (n)
++--- something-no-colons (n)
+\--- project no-colons-in-project-name (n)
 
 (*) - dependencies omitted (listed previously)
 
