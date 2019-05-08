@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/apex/log"
 	"github.com/pkg/errors"
@@ -17,10 +18,12 @@ import (
 
 // ShellCommand controls the information needed to run a gradle command.
 type ShellCommand struct {
-	Binary string
-	Dir    string
-	Online bool
-	Cmd    func(string, ...string) (string, error)
+	Binary  string
+	Dir     string
+	Online  bool
+	Timeout int
+	Retries int
+	Cmd     func(command string, timeout int, retries int, arguments ...string) (string, error)
 }
 
 // Dependency models a gradle dependency.
@@ -39,12 +42,14 @@ type Input interface {
 }
 
 // NewShellInput creates a new ShellCommand and returns it as an Input.
-func NewShellInput(binary, dir string, online bool) Input {
+func NewShellInput(binary, dir string, online bool, timeout, retries int) Input {
 	return ShellCommand{
-		Binary: binary,
-		Dir:    dir,
-		Online: online,
-		Cmd:    Cmd,
+		Binary:  binary,
+		Dir:     dir,
+		Online:  online,
+		Timeout: timeout,
+		Retries: retries,
+		Cmd:     Cmd,
 	}
 }
 
@@ -100,7 +105,7 @@ func (s ShellCommand) ProjectDependencies(taskArgs ...string) (map[string]graph.
 	if !s.Online {
 		arguments = append(arguments, "--offline")
 	}
-	stdout, err := s.Cmd(s.Binary, arguments...)
+	stdout, err := s.Cmd(s.Binary, s.Timeout, s.Retries, arguments...)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +143,7 @@ func (s ShellCommand) DependencyTasks() ([]string, error) {
 	if s.Dir != "" {
 		arguments = append(arguments, "-p", s.Dir)
 	}
-	stdout, err := s.Cmd(s.Binary, arguments...)
+	stdout, err := s.Cmd(s.Binary, s.Timeout, s.Retries, arguments...)
 	if err != nil {
 		return nil, err
 	}
@@ -223,15 +228,18 @@ func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency
 }
 
 // Cmd executes the gradle shell command.
-func Cmd(command string, taskArgs ...string) (string, error) {
-	stdout, _, err := exec.Run(exec.Cmd{
-		Name: command,
-		Argv: taskArgs,
-	})
-	if err != nil {
-		return "", errors.Wrapf(err, "error executing command `%s` with arguments `%s`", command, taskArgs)
+func Cmd(command string, timeout, retries int, taskArgs ...string) (string, error) {
+	tempcmd := exec.Cmd{
+		Name: "sleep",
+		Argv: []string{"5"},
 	}
-	return stdout, nil
+
+	stdout, stderr, err := exec.RunTimeoutRetry(tempcmd, time.Duration(timeout), retries)
+	if stderr != "" {
+		return stdout, errors.Errorf("", stderr)
+	}
+
+	return stdout, err
 }
 
 // ValidBinary finds the best possible gradle command to run for

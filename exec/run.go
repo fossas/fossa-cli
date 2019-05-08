@@ -2,10 +2,14 @@ package exec
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
+	"strings"
+	"time"
 
 	"github.com/apex/log"
+	"github.com/pkg/errors"
 )
 
 // Cmd represents a single command. If Name and Argv are set, this is treated as
@@ -20,6 +24,8 @@ type Cmd struct {
 	// If neither Env nor WithEnv are set, the environment is inherited from os.Environ().
 	Env     map[string]string // If set, the command's environment is _set_ to Env.
 	WithEnv map[string]string // If set, the command's environment is _added_ to WithEnv.
+
+	exec *exec.Cmd
 }
 
 // Run executes a `Cmd`.
@@ -46,6 +52,70 @@ func Run(cmd Cmd) (stdout, stderr string, err error) {
 	}).Debug("done running")
 
 	return stdout, stderr, err
+}
+
+// RunTimeoutRetry runs a command and will retry the amount of times specified.
+func RunTimeoutRetry(cmd Cmd, timeout time.Duration, retries int) (string, string, error) {
+	var stdout, stderr string
+	var err error
+
+	for i := 0; i < retries; i++ {
+		stdout, stderr, err = RunTimeout(cmd, timeout)
+		if err == nil {
+			return stdout, stderr, nil
+		}
+	}
+
+	return stdout, stderr, errors.Wrapf(err, "Retry limit of %d reached", retries)
+}
+
+// RunTimeout executes a `Cmd` and waits to see if it times out.
+func RunTimeout(cmd Cmd, timeout time.Duration) (string, string, error) {
+	seconds := timeout * time.Second
+	log.WithFields(log.Fields{
+		"name": cmd.Name,
+		"argv": cmd.Argv,
+	}).Debug("called Start")
+
+	xc, stderr := BuildExec(cmd)
+	var stdout strings.Builder
+	xc.Stdout = &stdout
+
+	err := xc.Start()
+	if err != nil {
+		return "", "", errors.Wrap(err, "Error starting command ")
+	}
+
+	log.WithFields(log.Fields{
+		"dir": xc.Dir,
+		"env": xc.Env,
+	}).Debug("executing command")
+
+	done := make(chan error, 1)
+	go func() {
+		done <- xc.Wait()
+	}()
+
+	select {
+	case <-time.After(seconds):
+		err := xc.Process.Kill()
+		if err != nil {
+			return "", "", errors.Wrapf(err, "Error killing the process")
+		}
+
+		return "", "", errors.New(fmt.Sprintf("Operation timed out running `%s %s` after %s", cmd.Name, cmd.Argv, timeout))
+	case err := <-done:
+		if err != nil {
+			return "", "", errors.Wrap(err, "Error waiting for command to finish")
+		}
+
+		log.WithFields(log.Fields{
+			"stdout": stdout.String(),
+			"stderr": stderr.String(),
+		}).Debug("done running")
+		return stdout.String(), stderr.String(), nil
+	}
+
 }
 
 func toEnv(env map[string]string) []string {

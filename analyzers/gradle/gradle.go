@@ -35,6 +35,8 @@ type Options struct {
 	Online            bool   `mapstructure:"online"`
 	AllSubmodules     bool   `mapstructure:"all-submodules"`
 	AllConfigurations bool   `mapstructure:"all-configurations"`
+	Timeout           int    `mapstructure:"timeout"`
+	Retries           int    `mapstructure:"retries"`
 	// TODO: These are temporary until v2 configuration files (with proper BuildTarget) are implemented.
 	Project       string `mapstructure:"project"`
 	Configuration string `mapstructure:"configuration"`
@@ -55,8 +57,10 @@ func New(m module.Module) (*Analyzer, error) {
 			log.Warnf("A build.gradle file has been found at %s, but Gradle could not be found. Ensure that Fossa can access `gradle`, `gradlew`, `gradlew.bat`, or set the `FOSSA_GRADLE_CMD` environment variable. Error: %s", m.Dir, err.Error())
 		}
 	}
+	retries := options.Retries
+	timeout := options.Timeout
 
-	shellInput := gradle.NewShellInput(binary, m.Dir, options.Online)
+	shellInput := gradle.NewShellInput(binary, m.Dir, options.Online, timeout, retries)
 	analyzer := Analyzer{
 		Module:  m,
 		Options: options,
@@ -76,7 +80,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	return DiscoverWithCommand(dir, options, gradle.Cmd)
 }
 
-func DiscoverWithCommand(dir string, options map[string]interface{}, command func(string, ...string) (string, error)) ([]module.Module, error) {
+func DiscoverWithCommand(dir string, options map[string]interface{}, command func(string, int, int, ...string) (string, error)) ([]module.Module, error) {
 	log.WithField("dir", dir).Debug("discovering gradle modules")
 	var modules []module.Module
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
