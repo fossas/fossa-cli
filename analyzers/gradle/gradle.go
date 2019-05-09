@@ -57,10 +57,8 @@ func New(m module.Module) (*Analyzer, error) {
 			log.Warnf("A build.gradle file has been found at %s, but Gradle could not be found. Ensure that Fossa can access `gradle`, `gradlew`, `gradlew.bat`, or set the `FOSSA_GRADLE_CMD` environment variable. Error: %s", m.Dir, err.Error())
 		}
 	}
-	retries := options.Retries
-	timeout := options.Timeout
 
-	shellInput := gradle.NewShellInput(binary, m.Dir, options.Online, timeout, retries)
+	shellInput := gradle.NewShellInput(binary, m.Dir, options.Online, options.Timeout, options.Retries)
 	analyzer := Analyzer{
 		Module:  m,
 		Options: options,

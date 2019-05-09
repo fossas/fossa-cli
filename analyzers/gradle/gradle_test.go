@@ -86,8 +86,8 @@ func TestGradleDiscovery(t *testing.T) {
 	assert.True(t, moduleExists("testdata/grpc-xds", modules))
 }
 
-func mockCommand(mockOutput string) func(string, ...string) (string, error) {
-	return func(string, ...string) (string, error) {
+func mockCommand(mockOutput string) func(string, int, int, ...string) (string, error) {
+	return func(string, int, int, ...string) (string, error) {
 		output, err := ioutil.ReadFile(mockOutput)
 		return string(output), err
 	}

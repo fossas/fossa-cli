@@ -18,60 +18,59 @@ type Cmd struct {
 	Name    string   // Executable name.
 	Argv    []string // Executable arguments.
 	Command string   // Shell command.
+	Dir     string   // The Command's working directory.
 
-	Dir string // The Command's working directory.
+	Timeout time.Duration // Specifies the amount of time a command is allowed to run.
+	Retries int           // Amount of times a command can be retried.
 
 	// If neither Env nor WithEnv are set, the environment is inherited from os.Environ().
 	Env     map[string]string // If set, the command's environment is _set_ to Env.
 	WithEnv map[string]string // If set, the command's environment is _added_ to WithEnv.
-
-	exec *exec.Cmd
 }
 
 // Run executes a `Cmd`.
-func Run(cmd Cmd) (stdout, stderr string, err error) {
-	log.WithFields(log.Fields{
-		"name": cmd.Name,
-		"argv": cmd.Argv,
-	}).Debug("called Run")
+func Run(cmd Cmd) (string, string, error) {
+	var stdout, stderr string
+	var err error
 
-	xc, stderrBuf := BuildExec(cmd)
+	for i := 0; i <= cmd.Retries; i++ {
+		if cmd.Timeout != 0 {
+			stdout, stderr, err = runWithTimeout(cmd)
+		} else {
+			log.WithFields(log.Fields{
+				"name": cmd.Name,
+				"argv": cmd.Argv,
+			}).Debug("called Run")
 
-	log.WithFields(log.Fields{
-		"dir": xc.Dir,
-		"env": xc.Env,
-	}).Debug("executing command")
+			xc, stderrBuf := BuildExec(cmd)
 
-	stdoutBuf, err := xc.Output()
-	stdout = string(stdoutBuf)
-	stderr = stderrBuf.String()
+			log.WithFields(log.Fields{
+				"dir": xc.Dir,
+				"env": xc.Env,
+			}).Debug("executing command")
 
-	log.WithFields(log.Fields{
-		"stdout": stdout,
-		"stderr": stderr,
-	}).Debug("done running")
+			var stdoutBuf []byte
+			stdoutBuf, err = xc.Output()
+			stdout = string(stdoutBuf)
+			stderr = stderrBuf.String()
+
+			log.WithFields(log.Fields{
+				"stdout": stdout,
+				"stderr": stderr,
+			}).Debug("done running")
+		}
+
+		if err == nil {
+			break
+		}
+	}
 
 	return stdout, stderr, err
 }
 
-// RunTimeoutRetry runs a command and will retry the amount of times specified.
-func RunTimeoutRetry(cmd Cmd, timeout time.Duration, retries int) (string, string, error) {
-	var stdout, stderr string
-	var err error
-
-	for i := 0; i < retries; i++ {
-		stdout, stderr, err = RunTimeout(cmd, timeout)
-		if err == nil {
-			return stdout, stderr, nil
-		}
-	}
-
-	return stdout, stderr, errors.Wrapf(err, "Retry limit of %d reached", retries)
-}
-
 // RunTimeout executes a `Cmd` and waits to see if it times out.
-func RunTimeout(cmd Cmd, timeout time.Duration) (string, string, error) {
-	seconds := timeout * time.Second
+func runWithTimeout(cmd Cmd) (string, string, error) {
+	seconds := cmd.Timeout
 	log.WithFields(log.Fields{
 		"name": cmd.Name,
 		"argv": cmd.Argv,
@@ -103,7 +102,7 @@ func RunTimeout(cmd Cmd, timeout time.Duration) (string, string, error) {
 			return "", "", errors.Wrapf(err, "Error killing the process")
 		}
 
-		return "", "", errors.New(fmt.Sprintf("Operation timed out running `%s %s` after %s", cmd.Name, cmd.Argv, timeout))
+		return "", "", errors.New(fmt.Sprintf("Operation timed out running `%s %s` after %s", cmd.Name, cmd.Argv, cmd.Timeout))
 	case err := <-done:
 		if err != nil {
 			return "", "", errors.Wrap(err, "Error waiting for command to finish")

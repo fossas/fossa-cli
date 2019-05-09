@@ -230,13 +230,15 @@ func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency
 // Cmd executes the gradle shell command.
 func Cmd(command string, timeout, retries int, taskArgs ...string) (string, error) {
 	tempcmd := exec.Cmd{
-		Name: "sleep",
-		Argv: []string{"5"},
+		Name:    command,
+		Argv:    taskArgs,
+		Timeout: time.Duration(timeout) * time.Second,
+		Retries: retries,
 	}
 
-	stdout, stderr, err := exec.RunTimeoutRetry(tempcmd, time.Duration(timeout), retries)
+	stdout, stderr, err := exec.Run(tempcmd)
 	if stderr != "" {
-		return stdout, errors.Errorf("", stderr)
+		return stdout, errors.Errorf("%s", stderr)
 	}
 
 	return stdout, err
