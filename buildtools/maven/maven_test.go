@@ -18,51 +18,44 @@ func TestModules(t *testing.T) {
 	// Here we mostly just test the discovery of POM files, and analyzers/maven tests that we get the correct
 	// list of MvnModules.
 
-	path1 := filepath.Join(testdataDir, "pom.xml")
+	simplePom := filepath.Join(testdataDir, "pom.xml")
 	checked := make(map[string]bool)
-	mods, err := maven.Modules(path1, testdataDir, checked)
-	if assert.NoError(t, err) {
-		assert.Len(t, mods, 1)
-		for _, mod := range mods {
-			exists, err := files.Exists(mod.Dir, mod.Target)
-			assert.NoError(t, err)
-			assert.True(t, exists)
-		}
-	}
+	mods, err := maven.Modules(simplePom, testdataDir, checked)
+	assert.NoError(t, err)
+	assert.Len(t, mods, 1)
+	exists, err := files.Exists(mods[0].Dir, mods[0].Target)
+	assert.NoError(t, err)
+	assert.True(t, exists)
 
-	// After the pom.xml file in testdataDir has been checked, make sure we don't check it again.
-	modsAgain, err := maven.Modules(path1, testdataDir, checked)
-	if assert.NoError(t, err) {
-		assert.Nil(t, modsAgain)
-	}
+	// Now that pom.xml in testdataDir has been checked, make sure we don't check it again.
+	modsAgain, err := maven.Modules(simplePom, testdataDir, checked)
+	assert.NoError(t, err)
+	assert.Nil(t, modsAgain)
 
 	// Make sure we follow references to other modules (module as path to a file) listed in the POM file.
-	path2 := filepath.Join(testdataDir, "nested", "pom.xml")
-	mods2, err := maven.Modules(path2, testdataDir, make(map[string]bool))
-	if assert.NoError(t, err) {
-		assert.Len(t, mods2, 2)
-		for _, mod := range mods2 {
-			exists, err := files.Exists(mod.Dir, mod.Target)
-			assert.NoError(t, err)
-			assert.True(t, exists)
-		}
+	pomWithModules := filepath.Join(testdataDir, "nested", "pom.xml")
+	mods2, err := maven.Modules(pomWithModules, testdataDir, make(map[string]bool))
+	assert.NoError(t, err)
+	assert.Len(t, mods2, 2)
+	for _, mod := range mods2 {
+		exists, err := files.Exists(mod.Dir, mod.Target)
+		assert.NoError(t, err)
+		assert.True(t, exists)
 	}
 
 	// Make sure we follow references to other modules (module as path to a directory) listed in the POM file.
-	path3 := filepath.Join(testdataDir, "pom-minimal.xml")
-	mods3, err := maven.Modules(path3, testdataDir, make(map[string]bool))
-	if assert.NoError(t, err) {
-		assert.Len(t, mods3, 3)
-
-		// Test fallback to artifact ID if name is not given in the manifest.
-		assert.Contains(t, mods3, maven.MvnModule{Name: "minimal", Target: "pom-minimal.xml", Dir: testdataDir})
-
-		for _, mod := range mods3 {
-			exists, err := files.Exists(mod.Dir, mod.Target)
-			assert.NoError(t, err)
-			assert.True(t, exists)
-		}
+	pomWithModules2 := filepath.Join(testdataDir, "pom-minimal.xml")
+	mods3, err := maven.Modules(pomWithModules2, testdataDir, make(map[string]bool))
+	assert.NoError(t, err)
+	assert.Len(t, mods3, 3)
+	for _, mod := range mods3 {
+		exists, err := files.Exists(mod.Dir, mod.Target)
+		assert.NoError(t, err)
+		assert.True(t, exists)
 	}
+
+	// Test the fallback to artifact ID if name is not given in the manifest.
+	assert.Contains(t, mods3, maven.MvnModule{Name: "minimal", Target: "pom-minimal.xml", Dir: testdataDir})
 }
 
 func TestParseDependencyTreeDOS(t *testing.T) {
