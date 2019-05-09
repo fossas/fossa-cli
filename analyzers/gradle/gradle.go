@@ -78,10 +78,16 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	return DiscoverWithCommand(dir, options, gradle.Cmd)
 }
 
-func DiscoverWithCommand(dir string, options map[string]interface{}, command func(string, int, int, ...string) (string, error)) ([]module.Module, error) {
+func DiscoverWithCommand(dir string, userOptions map[string]interface{}, command func(string, int, int, ...string) (string, error)) ([]module.Module, error) {
+	var options Options
+	err := mapstructure.Decode(userOptions, &options)
+	if err != nil {
+		return nil, err
+	}
+
 	log.WithField("dir", dir).Debug("discovering gradle modules")
 	var modules []module.Module
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.WithError(err).WithField("path", path).Debug("error while walking filepath discovering gradle modules")
 			return err
@@ -102,10 +108,14 @@ func DiscoverWithCommand(dir string, options map[string]interface{}, command fun
 				return err
 			}
 			s := gradle.ShellCommand{
-				Binary: bin,
-				Dir:    path,
-				Cmd:    command,
+				Binary:  bin,
+				Dir:     path,
+				Cmd:     command,
+				Timeout: options.Timeout,
+				Online:  options.Online,
+				Retries: options.Retries,
 			}
+
 			projects, err := s.DependencyTasks()
 			if err != nil {
 				return filepath.SkipDir

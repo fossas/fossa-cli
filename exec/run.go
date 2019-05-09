@@ -2,7 +2,6 @@ package exec
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -28,7 +27,7 @@ type Cmd struct {
 	WithEnv map[string]string // If set, the command's environment is _added_ to WithEnv.
 }
 
-// Run executes a `Cmd`.
+// Run executes a `Cmd`, retries the specified amount, and checks for command timeout if specified.
 func Run(cmd Cmd) (string, string, error) {
 	var stdout, stderr string
 	var err error
@@ -70,7 +69,6 @@ func Run(cmd Cmd) (string, string, error) {
 
 // RunTimeout executes a `Cmd` and waits to see if it times out.
 func runWithTimeout(cmd Cmd) (string, string, error) {
-	seconds := cmd.Timeout
 	log.WithFields(log.Fields{
 		"name": cmd.Name,
 		"argv": cmd.Argv,
@@ -82,7 +80,7 @@ func runWithTimeout(cmd Cmd) (string, string, error) {
 
 	err := xc.Start()
 	if err != nil {
-		return "", "", errors.Wrap(err, "Error starting command ")
+		return "", "", errors.Wrap(err, "error starting command")
 	}
 
 	log.WithFields(log.Fields{
@@ -90,22 +88,22 @@ func runWithTimeout(cmd Cmd) (string, string, error) {
 		"env": xc.Env,
 	}).Debug("executing command")
 
-	done := make(chan error, 1)
+	done := make(chan error)
 	go func() {
 		done <- xc.Wait()
 	}()
 
 	select {
-	case <-time.After(seconds):
+	case <-time.After(cmd.Timeout):
 		err := xc.Process.Kill()
 		if err != nil {
-			return "", "", errors.Wrapf(err, "Error killing the process")
+			return "", "", errors.Wrapf(err, "error killing the process")
 		}
 
-		return "", "", errors.New(fmt.Sprintf("Operation timed out running `%s %s` after %s", cmd.Name, cmd.Argv, cmd.Timeout))
+		return "", "", errors.Errorf("operation timed out running `%s %s` after %s", cmd.Name, cmd.Argv, cmd.Timeout)
 	case err := <-done:
 		if err != nil {
-			return "", "", errors.Wrap(err, "Error waiting for command to finish")
+			return "", "", errors.Wrap(err, "error waiting for command to finish")
 		}
 
 		log.WithFields(log.Fields{

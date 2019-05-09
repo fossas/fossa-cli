@@ -145,6 +145,7 @@ func (s ShellCommand) DependencyTasks() ([]string, error) {
 	}
 	stdout, err := s.Cmd(s.Binary, s.Timeout, s.Retries, arguments...)
 	if err != nil {
+		log.Warnf("Error found running `%s %s`: %s", s.Binary, arguments, err)
 		return nil, err
 	}
 	var projects []string

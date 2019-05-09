@@ -95,7 +95,7 @@ func TestRunTimeoutTimesOut(t *testing.T) {
 func TestRunRetry(t *testing.T) {
 	command := exec.Cmd{
 		Name:    "sleep",
-		Argv:    []string{"3"},
+		Argv:    []string{"4"},
 		Timeout: 1 * time.Second,
 		Retries: 1,
 	}
@@ -108,8 +108,9 @@ func TestRunRetry(t *testing.T) {
 	command.Retries = 4
 	start = time.Now()
 	_, _, err = exec.Run(command)
+	end := time.Now()
 	assert.Error(t, err)
 	// 4 retries with a 1 second timeout means that the command should take 5 seconds to error.
-	assert.True(t, time.Since(start) > 5*time.Second)
-	assert.True(t, time.Since(start) < 6*time.Second)
+	assert.True(t, end.Sub(start) > 5*time.Second)
+	assert.True(t, end.Sub(start) < 6*time.Second)
 }
