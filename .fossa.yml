@@ -5,7 +5,7 @@ version: 2
 cli:
   server: https://app.fossa.com
   fetcher: custom
-  project: git@github.com:fossas/fossa-cli
+  project: https://github.com/fossas/fossa-cli
 analyze:
   modules:
   - name: github.com/fossas/fossa-cli/cmd/fossa
