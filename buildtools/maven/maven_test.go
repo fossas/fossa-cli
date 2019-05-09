@@ -8,30 +8,60 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/buildtools/maven"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
 var testdataDir = filepath.Join("..", "..", "analyzers", "maven", "testdata")
 
 func TestModules(t *testing.T) {
-	fullPath := filepath.Join(testdataDir, "pom.xml")
+	// Here we mostly just test the discovery of POM files, and analyzers/maven tests that we get the correct
+	// list of MvnModules.
+
+	path1 := filepath.Join(testdataDir, "pom.xml")
 	checked := make(map[string]bool)
-	mods, err := maven.Modules(fullPath, testdataDir, checked)
+	mods, err := maven.Modules(path1, testdataDir, checked)
 	if assert.NoError(t, err) {
 		assert.Len(t, mods, 1)
+		for _, mod := range mods {
+			exists, err := files.Exists(mod.Dir, mod.Target)
+			assert.NoError(t, err)
+			assert.True(t, exists)
+		}
 	}
 
 	// After the pom.xml file in testdataDir has been checked, make sure we don't check it again.
-	modsAgain, err := maven.Modules(testdataDir, testdataDir, checked)
+	modsAgain, err := maven.Modules(path1, testdataDir, checked)
 	if assert.NoError(t, err) {
 		assert.Nil(t, modsAgain)
 	}
 
-	checked2 := make(map[string]bool)
-	dirOnlyPath := filepath.Join(testdataDir, "nested")
-	mods2, err := maven.Modules(dirOnlyPath, testdataDir, checked2)
+	// Make sure we follow references to other modules (module as path to a file) listed in the POM file.
+	path2 := filepath.Join(testdataDir, "nested", "pom.xml")
+	mods2, err := maven.Modules(path2, testdataDir, make(map[string]bool))
 	if assert.NoError(t, err) {
 		assert.Len(t, mods2, 2)
+		for _, mod := range mods2 {
+			exists, err := files.Exists(mod.Dir, mod.Target)
+			assert.NoError(t, err)
+			assert.True(t, exists)
+		}
+	}
+
+	// Make sure we follow references to other modules (module as path to a directory) listed in the POM file.
+	path3 := filepath.Join(testdataDir, "pom-minimal.xml")
+	mods3, err := maven.Modules(path3, testdataDir, make(map[string]bool))
+	if assert.NoError(t, err) {
+		assert.Len(t, mods3, 3)
+
+		// Test fallback to artifact ID if name is not given in the manifest.
+		assert.Contains(t, mods3, maven.MvnModule{Name: "minimal", Target: "pom-minimal.xml", Dir: testdataDir})
+
+		for _, mod := range mods3 {
+			exists, err := files.Exists(mod.Dir, mod.Target)
+			assert.NoError(t, err)
+			assert.True(t, exists)
+		}
 	}
 }
 

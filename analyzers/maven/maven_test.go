@@ -16,13 +16,16 @@ func TestDiscover(t *testing.T) {
 
 	p1 := modules[0]
 	assert.Equal(t, "Project 1 Sample", p1.Name)
-	assert.Equal(t, "testdata/pom.xml", p1.BuildTarget)
+	assert.Equal(t, "pom.xml", p1.BuildTarget)
+	assert.Equal(t, "testdata", p1.Dir)
 
 	p2 := modules[1]
 	assert.Equal(t, "Project Sample", p2.Name)
-	assert.Equal(t, "testdata/nested/pom.xml", p2.BuildTarget)
+	assert.Equal(t, "pom.xml", p2.BuildTarget)
+	assert.Equal(t, "testdata/nested", p2.Dir)
 
 	p3 := modules[2]
 	assert.Equal(t, "Other Project", p3.Name)
-	assert.Equal(t, "testdata/nested/pom-other.xml", p3.BuildTarget)
+	assert.Equal(t, "pom-other.xml", p3.BuildTarget)
+	assert.Equal(t, "testdata/nested", p3.Dir)
 }

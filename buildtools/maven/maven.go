@@ -93,8 +93,7 @@ func Modules(pomFilePath string, reactorDir string, checked map[string]bool) ([]
 		childPath := filepath.Join(pomDir, module)
 		childStat, err := os.Stat(childPath)
 		if err != nil {
-			log.WithError(err).Warnf("Could not check type of %q", childPath)
-			continue
+			return nil, errors.Wrapf(err, "could not check type of %q", childPath)
 		}
 		if childStat.IsDir() {
 			// Assume the listed module uses the standard name for the manifest file.
