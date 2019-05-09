@@ -56,7 +56,7 @@ Specify the command for fossa to use when it runs gradle commands. By default, t
 
 Specify the exact arguments to be run by the gradle command before analyzing output for dependencies. By default this is `<project>:dependencies --quiet --offline` but this can be changed to anything using this option.
 
-#### `timeout: <int>` 
+#### `timeout: <int>`
 
 Specify the amount of time in seconds that a gradle command is allowed to run before timing out. When fossa shells out to run `gradle` or `gradlew` the command can hang and consume extra resources. This option allows a user to kill the command and continue analyzing a project.
 
