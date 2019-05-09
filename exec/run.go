@@ -19,8 +19,8 @@ type Cmd struct {
 	Command string   // Shell command.
 	Dir     string   // The Command's working directory.
 
-	Timeout time.Duration // Specifies the amount of time a command is allowed to run.
-	Retries int           // Amount of times a command can be retried.
+	Timeout string // Specifies the amount of time a command is allowed to run.
+	Retries int    // Amount of times a command can be retried.
 
 	// If neither Env nor WithEnv are set, the environment is inherited from os.Environ().
 	Env     map[string]string // If set, the command's environment is _set_ to Env.
@@ -33,7 +33,7 @@ func Run(cmd Cmd) (string, string, error) {
 	var err error
 
 	for i := 0; i <= cmd.Retries; i++ {
-		if cmd.Timeout != 0 {
+		if cmd.Timeout != "" {
 			stdout, stderr, err = runWithTimeout(cmd)
 		} else {
 			log.WithFields(log.Fields{
@@ -93,8 +93,13 @@ func runWithTimeout(cmd Cmd) (string, string, error) {
 		done <- xc.Wait()
 	}()
 
+	timeout, err := time.ParseDuration((cmd.Timeout))
+	if err != nil {
+		return "", "", errors.Wrap(err, "unable to determine timeout value")
+	}
+
 	select {
-	case <-time.After(cmd.Timeout):
+	case <-time.After(timeout):
 		err := xc.Process.Kill()
 		if err != nil {
 			return "", "", errors.Wrapf(err, "error killing the process")

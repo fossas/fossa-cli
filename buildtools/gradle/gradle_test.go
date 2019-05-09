@@ -145,7 +145,7 @@ func MockGradle(t *testing.T, file string) gradle.ShellCommand {
 	fileContents, err := ioutil.ReadFile(file)
 	assert.NoError(t, err)
 	return gradle.ShellCommand{
-		Cmd: func(string, int, int, ...string) (string, error) {
+		Cmd: func(string, string, int, ...string) (string, error) {
 			return string(fileContents), nil
 		},
 	}

@@ -69,7 +69,7 @@ func TestRunFails(t *testing.T) {
 func TestRunTimeoutSucceeds(t *testing.T) {
 	command := exec.Cmd{
 		Name:    "pwd",
-		Timeout: 3 * time.Second,
+		Timeout: "3s",
 	}
 
 	stdout, stderr, err := exec.Run(command)
@@ -82,12 +82,12 @@ func TestRunTimeoutTimesOut(t *testing.T) {
 	command := exec.Cmd{
 		Name:    "sleep",
 		Argv:    []string{"2"},
-		Timeout: 3 * time.Second,
+		Timeout: "3s",
 	}
 	_, _, err := exec.Run(command)
 	assert.NoError(t, err)
 
-	command.Timeout = 1 * time.Second
+	command.Timeout = "1s"
 	_, _, err = exec.Run(command)
 	assert.Contains(t, err.Error(), "timed out")
 }
@@ -96,7 +96,7 @@ func TestRunRetry(t *testing.T) {
 	command := exec.Cmd{
 		Name:    "sleep",
 		Argv:    []string{"4"},
-		Timeout: 1 * time.Second,
+		Timeout: "1s",
 		Retries: 1,
 	}
 

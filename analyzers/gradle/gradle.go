@@ -35,7 +35,7 @@ type Options struct {
 	Online            bool   `mapstructure:"online"`
 	AllSubmodules     bool   `mapstructure:"all-submodules"`
 	AllConfigurations bool   `mapstructure:"all-configurations"`
-	Timeout           int    `mapstructure:"timeout"`
+	Timeout           string `mapstructure:"timeout"`
 	Retries           int    `mapstructure:"retries"`
 	// TODO: These are temporary until v2 configuration files (with proper BuildTarget) are implemented.
 	Project       string `mapstructure:"project"`
@@ -78,7 +78,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	return DiscoverWithCommand(dir, options, gradle.Cmd)
 }
 
-func DiscoverWithCommand(dir string, userOptions map[string]interface{}, command func(string, int, int, ...string) (string, error)) ([]module.Module, error) {
+func DiscoverWithCommand(dir string, userOptions map[string]interface{}, command func(string, string, int, ...string) (string, error)) ([]module.Module, error) {
 	var options Options
 	err := mapstructure.Decode(userOptions, &options)
 	if err != nil {

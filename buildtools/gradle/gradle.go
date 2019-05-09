@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/apex/log"
 	"github.com/pkg/errors"
@@ -21,9 +20,9 @@ type ShellCommand struct {
 	Binary  string
 	Dir     string
 	Online  bool
-	Timeout int
+	Timeout string
 	Retries int
-	Cmd     func(command string, timeout int, retries int, arguments ...string) (string, error)
+	Cmd     func(command string, timeout string, retries int, arguments ...string) (string, error)
 }
 
 // Dependency models a gradle dependency.
@@ -42,7 +41,7 @@ type Input interface {
 }
 
 // NewShellInput creates a new ShellCommand and returns it as an Input.
-func NewShellInput(binary, dir string, online bool, timeout, retries int) Input {
+func NewShellInput(binary, dir string, online bool, timeout string, retries int) Input {
 	return ShellCommand{
 		Binary:  binary,
 		Dir:     dir,
@@ -229,11 +228,11 @@ func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency
 }
 
 // Cmd executes the gradle shell command.
-func Cmd(command string, timeout, retries int, taskArgs ...string) (string, error) {
+func Cmd(command string, timeout string, retries int, taskArgs ...string) (string, error) {
 	tempcmd := exec.Cmd{
 		Name:    command,
 		Argv:    taskArgs,
-		Timeout: time.Duration(timeout) * time.Second,
+		Timeout: timeout,
 		Retries: retries,
 	}
 
