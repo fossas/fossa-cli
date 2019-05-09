@@ -52,10 +52,9 @@ type MvnModule struct {
 	Dir string
 }
 
-// Modules returns a list specifying the Maven module at path, which may name a file or directory, and all the
-// Maven modules nested below it. The Target field of each MvnModule is set to the manifest file describing
-// the module. The visited manifest files are listed in the checked map.
-// If fromParent is true, then this path was supplied as a module from a parent's POM file.??
+// Modules returns a list of all Maven modules at the directory of pomFilePath and below. The Target field of
+// each MvnModule is set to the manifest file describing the module. The checked map is used to keep track of
+// the modules that have already been checked.
 func Modules(pomFilePath string, reactorDir string, checked map[string]bool) ([]MvnModule, error) {
 	absPath, err := filepath.Abs(pomFilePath)
 	if err != nil {
