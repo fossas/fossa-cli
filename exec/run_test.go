@@ -40,6 +40,7 @@ func TestDefaultEnv(t *testing.T) {
 	c, _ := exec.BuildExec(exec.Cmd{
 		Name: "example",
 	})
+
 	assert.Contains(t, c.Env, "alice=bob")
 }
 
@@ -47,12 +48,37 @@ func TestRun(t *testing.T) {
 	command := exec.Cmd{
 		Name: "pwd",
 	}
-	stdout, _, err := exec.Run(command)
+
+	stdout, stderr, err := exec.Run(command)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, stdout)
+	assert.Empty(t, stderr)
 }
 
-func TestRunTimeout(t *testing.T) {
+func TestRunFails(t *testing.T) {
+	command := exec.Cmd{
+		Name: "FakeCommand",
+	}
+
+	stdout, stderr, err := exec.Run(command)
+	assert.Error(t, err)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+}
+
+func TestRunTimeoutSucceeds(t *testing.T) {
+	command := exec.Cmd{
+		Name:    "pwd",
+		Timeout: 3 * time.Second,
+	}
+
+	stdout, stderr, err := exec.Run(command)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, stdout)
+	assert.Empty(t, stderr)
+}
+
+func TestRunTimeoutTimesOut(t *testing.T) {
 	command := exec.Cmd{
 		Name:    "sleep",
 		Argv:    []string{"2"},
