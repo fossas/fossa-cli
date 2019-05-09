@@ -82,9 +82,9 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				return nil
 			}
 
-			submodules, err := maven.Modules(path, dir, checked)
+			submodules, err := maven.Modules(filepath.Join(path, "pom.xml"), path, checked)
 			if err != nil {
-				log.WithError(err).Debug("could not get modules at path")
+				log.WithError(err).Debugf("could not get modules at path %s", path)
 				return err
 			}
 
@@ -93,7 +93,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 					Name:        m.Name,
 					Type:        pkg.Maven,
 					BuildTarget: m.Target,
-					Dir:         dir,
+					Dir:         m.Dir,
 				})
 			}
 			// Continue recursing because there may be modules that are not declared under the current module.

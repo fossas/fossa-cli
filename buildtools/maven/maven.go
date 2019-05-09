@@ -47,31 +47,19 @@ type MvnModule struct {
 	// it may even be the groupId:artifactId string identifying the "Maven project".
 	Target string
 
-	// Dir is the relative path from the root of the FOSSA project to the module.
+	// Dir is the relative path from the root of the FOSSA project to either the module or to a parent module
+	// under which this one is listed. This is where `mvn` should be run to get the dependency tree.
 	Dir string
 }
 
 // Modules returns a list specifying the Maven module at path, which may name a file or directory, and all the
-// Maven modules nested below it. The Target field of each MvnModule is set to the directory or manifest file
-// describing the module. The visited manifest files are listed in the checked map.
-func Modules(path string, baseDir string, checked map[string]bool) ([]MvnModule, error) {
-	dir := path
-	pomFile := path
-	stat, err := os.Stat(path)
+// Maven modules nested below it. The Target field of each MvnModule is set to the manifest file describing
+// the module. The visited manifest files are listed in the checked map.
+// If fromParent is true, then this path was supplied as a module from a parent's POM file.??
+func Modules(pomFilePath string, reactorDir string, checked map[string]bool) ([]MvnModule, error) {
+	absPath, err := filepath.Abs(pomFilePath)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not check type of %q", path)
-	}
-	if stat.IsDir() {
-		// We have the directory and will assume it uses the standard name for the manifest file.
-		pomFile = filepath.Join(path, "pom.xml")
-	} else {
-		// We have the manifest file but still need its directory path.
-		dir = filepath.Dir(path)
-	}
-
-	absPath, err := filepath.Abs(pomFile)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not get absolute path of %q", pomFile)
+		return nil, errors.Wrapf(err, "could not get absolute path of %q", pomFilePath)
 	}
 
 	if checked[absPath] {
@@ -81,8 +69,8 @@ func Modules(path string, baseDir string, checked map[string]bool) ([]MvnModule,
 	checked[absPath] = true
 
 	var pom Manifest
-	if err := files.ReadXML(&pom, pomFile); err != nil {
-		return nil, errors.Wrapf(err, "could not read POM file %q", pomFile)
+	if err := files.ReadXML(&pom, absPath); err != nil {
+		return nil, errors.Wrapf(err, "could not read POM file %q", absPath)
 	}
 
 	modules := make([]MvnModule, 1, 1+len(pom.Modules))
@@ -92,11 +80,27 @@ func Modules(path string, baseDir string, checked map[string]bool) ([]MvnModule,
 		name = pom.ArtifactID
 	}
 
-	modules[0] = MvnModule{Name: name, Target: pomFile, Dir: dir}
+	pomRelative, err := filepath.Rel(reactorDir, pomFilePath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not determine relative path of %q from %q", pomFilePath, reactorDir)
+	}
+
+	modules[0] = MvnModule{Name: name, Target: pomRelative, Dir: reactorDir}
+
+	pomDir := filepath.Dir(pomFilePath)
 
 	for _, module := range pom.Modules {
-		childPath := filepath.Join(dir, module)
-		children, err := Modules(childPath, baseDir, checked)
+		childPath := filepath.Join(pomDir, module)
+		childStat, err := os.Stat(childPath)
+		if err != nil {
+			log.WithError(err).Warnf("Could not check type of %q", childPath)
+			continue
+		}
+		if childStat.IsDir() {
+			// Assume the listed module uses the standard name for the manifest file.
+			childPath = filepath.Join(childPath, "pom.xml")
+		}
+		children, err := Modules(childPath, pomDir, checked)
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not read child module at %q", childPath)
 		}
