@@ -35,14 +35,17 @@ analyze:
 
 ## Options
 
-  | Option               |  Type  | Name                                              | Common Use Case                                                            |
-  | -------------------- | :----: | ------------------------------------------------- | -------------------------------------------------------------------------- |
-  | `cmd`                | string | [Cmd](#cmd-string)                              | Specify the gradle command to use.                                         |
+  | Option               |  Type  | Name                                           | Common Use Case                                                            |
+  | -------------------- | :----: | ---------------------------------------------- | -------------------------------------------------------------------------- |
+  | `cmd`                | string | [Cmd](#cmd-string)                             | Specify the gradle command to use.                                         |
   | `task`               | string | [Task](#task-string)                           | Specify the gradle task to run.                                            |
+  | `timeout`            | string | [Timeout](#timeout-string)                     | Specify the length of time a `gradle` command is allowed to run.           |
+  | `retries`            |  int   | [Retries](#retries-int)                        | Specify the number of times to retry a `gradle` command when it fails.     |
   | `online`             |  bool  | [Online](#online-bool)                         | Remove `--offline` from the `gradle <project>:dependencies` command.       |
   | `all-submodules`     |  bool  | [All Submodules](#all-submodules-bool)         | Running `fossa analyze gradle:.` and you want to analyze all sub-projects. |
   | `configuration`      | string | [Configuration](#configuration-string)         | Comma separated list of configurations to analyze.                         |
   | `all-configurations` |  bool  | [All Configurations](#all-configurations-bool) | Analyze all configurations for the gradle project.                         |
+
 
 
 #### `cmd: <string>` 
@@ -52,6 +55,15 @@ Specify the command for fossa to use when it runs gradle commands. By default, t
 #### `task: <string>`
 
 Specify the exact arguments to be run by the gradle command before analyzing output for dependencies. By default this is `<project>:dependencies --quiet --offline` but this can be changed to anything using this option.
+
+#### `timeout: <string>`
+
+Specify the amount of time in that a gradle command is allowed to run before timing out. When fossa shells out to run `gradle` or `gradlew` the command can hang and consume extra resources. This option allows a user to kill the command and continue analyzing a project.
+> A duration string is a sequence of numbers, each with a unit suffix, such as "500ms", "1.5m", or "2h45m". Valid time units are "ms", "s", "m", "h".
+
+#### `retries: <int>`
+
+Specify the amount of times to retry running the gradle command after it fails to complete. This command works best in conjunction with the `timeout` option in order to allow a command to be killed and retried.
 
 #### `online: <bool>`
 
