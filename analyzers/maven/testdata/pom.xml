@@ -5,12 +5,8 @@
  <artifactId>stuff</artifactId>
  <packaging>jar</packaging>
  <version>1.0-SNAPSHOT</version>
- <inceptionYear>2019</inceptionYear>
  <name>Project 1 Sample</name>
  <description>A sample project</description>
- <properties>
-  <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
- </properties>
  <dependencies>
   <dependency>
    <groupId>com.google.code.g</groupId>
