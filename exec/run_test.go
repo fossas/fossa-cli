@@ -105,12 +105,12 @@ func TestRunRetry(t *testing.T) {
 	assert.Error(t, err)
 	assert.WithinDuration(t, start, time.Now(), 3*time.Second)
 
-	command.Retries = 4
+	command.Retries = 5
 	start = time.Now()
 	_, _, err = exec.Run(command)
 	end := time.Now()
 	assert.Error(t, err)
-	// 4 retries with a 1 second timeout means that the command should take 5 seconds to error.
-	assert.True(t, end.Sub(start) > 5*time.Second)
-	assert.True(t, end.Sub(start) < 6*time.Second)
+	// 5 retries with a 1 second timeout means the command should take more than 6 seconds,
+	// opposed to the 4 seconds it would take without the timeout.
+	assert.True(t, end.Sub(start) > 6*time.Second)
 }
