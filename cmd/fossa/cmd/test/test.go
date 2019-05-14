@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/api"
@@ -16,6 +15,7 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/errors"
 )
 
 const defaultTestTemplate = `Test Failed! {{.Count}} {{if gt .Count 1 -}} issues {{- else -}} issue {{- end}} found.

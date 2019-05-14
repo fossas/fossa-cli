@@ -5,9 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/pkg/errors"
-
 	"github.com/fossas/fossa-cli/buildtools/pip/bindata"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/exec"
 )
 

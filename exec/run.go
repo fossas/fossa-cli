@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/pkg/errors"
+	"github.com/fossas/fossa-cli/errors"
 )
 
 // Cmd represents a single command. If Name and Argv are set, this is treated as

@@ -35,6 +35,10 @@ creating the issue, please attach the debug log located at:
 `
 }
 
+func Errorf(format string, args ...interface{}) error {
+	return errors.Errorf(format, args...)
+}
+
 func Wrap(cause error, msg string) error {
 	return errors.Wrap(cause, msg)
 }

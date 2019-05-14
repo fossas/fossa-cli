@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/pkg/errors"
+	"github.com/fossas/fossa-cli/errors"
 )
 
 const BuildsAPI = "/api/cli/%s/latest_build"

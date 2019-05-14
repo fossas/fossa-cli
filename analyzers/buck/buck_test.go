@@ -3,10 +3,10 @@ package buck_test
 import (
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/analyzers/buck"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )

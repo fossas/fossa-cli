@@ -6,8 +6,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/pkg/errors"
-
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/exec"
 )
 

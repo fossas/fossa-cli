@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/apex/log"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/analyzers"
@@ -12,6 +11,7 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/module"
 )
 

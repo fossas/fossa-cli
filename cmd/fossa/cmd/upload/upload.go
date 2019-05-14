@@ -27,7 +27,6 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/api/fossa"
@@ -35,6 +34,7 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/errors"
 )
 
 // Command-specific flags for `fossa upload`.

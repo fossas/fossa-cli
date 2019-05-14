@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"regexp"
 
-	"github.com/pkg/errors"
+	"github.com/fossas/fossa-cli/errors"
 )
 
 const IssuesAPI = "/api/cli/%s/issues"

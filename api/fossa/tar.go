@@ -15,8 +15,8 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-	"github.com/pkg/errors"
 
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
 )
 
