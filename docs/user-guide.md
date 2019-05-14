@@ -1,7 +1,27 @@
 # User Guide
 
 Fossa is most commonly used to analyze a project and extract its full dependency graph, which can then be uploaded to fossa.com using an API key. This page explains how to configure this workflow as well as the other features of the FOSSA CLI. If you are looking for a guided walk-through with information along the way refer to [How it Works](how-it-works.md#how-it-works)
-## 1. Configuring a Project
+
+## 1. Installation
+
+The following commands will execute scripts to fetch and install the latest [GitHub Releases](https://github.com/fossas/fossa-cli/releases) on the corresponding operating system.
+
+### MacOS (Darwin) or Linux amd64:
+```bash
+curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
+```
+
+### Windows with Powershell:
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install.ps1'))
+```
+
+Add `C:\ProgramData\fossa-cli` to your path by modifying your `profile.ps1` file or temporarily with the following command:
+```powershell
+$env:Path += ";C:\ProgramData\fossa-cli"
+```
+
+## 2. Configuring a Project
 
 Configuration can be achieved through a configuration file, `fossa.yml`(config-file.md#fossayml), or directly with arguments and flags to the [`fossa`](#fossa) command. The FOSSA CLI was built to create accurate configuration files by running [`fossa init`](#fossa-init) and only require manual configuration for complex builds or to tweak personal preferences.
 
@@ -38,7 +58,7 @@ Modules can be provided by including an argument such as `fossa analyze <module_
 - `nodejs:.,rubygem:./docs`
 - `go:./cmd/fossa`
 
-## 2. Analyzing a Project
+## 3. Analyzing a Project
 
 1. Verify that analysis succeeds by running [`fossa analyze -o`](#fossa-analyze) without error. This command will output analysis to stdout instead of uploading.
 2. Obtain a `FOSSA_API_KEY`. Refer to the [FOSSA.com manual](https://docs.fossa.com/docs/api-reference#section-api-tokens) for instructions.
@@ -125,7 +145,7 @@ go+github.com/golang/dep$06d527172446499363c465968a132d7aa528e550
 mvn+org.apache.hadoop:hadoop-core$2.6.0-mr1-cdh5.5.0
 ```
 
-## CLI Reference
+## 4. CLI Reference
 
 All flags should be passed to the invoked sub-command. Global flags are currently NOT supported.
 
