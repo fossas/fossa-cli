@@ -62,7 +62,8 @@ func SetContext(c *cli.Context) error {
 	case vcs.None:
 		r, err = vcs.NewNoRepository(dir)
 	default:
-		log.Warnf("VCS type %s lacks complete support. Falling back to treat project as not using VCS.", vcsType)
+		log.Warnf("FOSSA is unable to extract VCS context from your %s project, which means you will not "+
+			"be able to take advantage of VCS history information on fossa.com, but a scan will run.", vcsType)
 		r, err = vcs.NewNoRepository(dir)
 	}
 

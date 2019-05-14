@@ -63,21 +63,3 @@ func Nearest(dirname string) (VCS, string, error) {
 	}
 	return vcs, dir, err
 }
-
-// GetRepository returns the location of the repository containing dirname,
-// ErrNoNearestVCS if none is found, or errors.ErrNotImplemented if an
-// unsupported VCS is found.
-func GetRepository(dirname string) (string, error) {
-	vcs, dir, err := Nearest(dirname)
-	if err != nil {
-		return "", err
-	}
-	switch vcs {
-	case Git, Subversion, Mercurial, None:
-		return dir, nil
-	case Bazaar:
-		fallthrough
-	default:
-		return "", errors.ErrNotImplemented
-	}
-}
