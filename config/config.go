@@ -11,8 +11,6 @@
 package config
 
 import (
-	"fmt"
-
 	"github.com/apex/log"
 	"github.com/urfave/cli"
 
@@ -59,10 +57,14 @@ func SetContext(c *cli.Context) error {
 		r, err = vcs.NewGitRepository(dir)
 	case vcs.Subversion:
 		r, err = vcs.NewSubversionRepository(dir)
+	case vcs.Mercurial:
+		r, err = vcs.NewMercurialRepository(dir)
 	case vcs.None:
 		r, err = vcs.NewNoRepository(dir)
 	default:
-		err = fmt.Errorf("VCS type %s is not supported", vcsType)
+		log.Warnf("FOSSA is unable to extract VCS context from your %s project, which means you will not "+
+			"be able to take advantage of VCS history information on fossa.com, but a scan will run.", vcsType)
+		r, err = vcs.NewNoRepository(dir)
 	}
 
 	if err != nil {

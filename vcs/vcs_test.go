@@ -10,27 +10,37 @@ import (
 	"github.com/fossas/fossa-cli/vcs"
 )
 
-func TestGetRepositoryAtRoot(t *testing.T) {
+func TestNearestAtRoot(t *testing.T) {
 	wd, _ := os.Getwd()
-	dir, err := vcs.GetRepository("..")
+	v, dir, err := vcs.Nearest("..")
 	assert.NoError(t, err)
+	assert.Equal(t, vcs.Git, v)
 	assert.Equal(t, filepath.Join(wd, ".."), dir)
 }
 
-func TestGetRepositoryBelowRoot(t *testing.T) {
+func TestNearestBelowRoot(t *testing.T) {
 	wd, _ := os.Getwd()
-	dir, err := vcs.GetRepository("testdata")
+	v, dir, err := vcs.Nearest("testdata")
 	assert.NoError(t, err)
+	assert.Equal(t, vcs.Git, v)
 	assert.Equal(t, filepath.Join(wd, ".."), dir)
 }
 
-func TestGetRepositorySubversion(t *testing.T) {
-	dir, err := vcs.GetRepository(filepath.Join("testdata", "subversion", "nested", "directory"))
+func TestNearestSubversion(t *testing.T) {
+	v, dir, err := vcs.Nearest(filepath.Join("testdata", "subversion", "nested", "directory"))
 	assert.NoError(t, err)
+	assert.Equal(t, vcs.Subversion, v)
 	assert.NotEmpty(t, dir)
 }
 
-func TestGetRepositoryWithoutVCSReturnsErrNoNearestVCS(t *testing.T) {
-	_, err := vcs.GetRepository("/")
+func TestNearestMercurial(t *testing.T) {
+	v, dir, err := vcs.Nearest(filepath.Join("testdata", "mercurial"))
+	assert.NoError(t, err)
+	assert.Equal(t, vcs.Mercurial, v)
+	assert.NotEmpty(t, dir)
+}
+
+func TestNearestWithoutVCSReturnsErrNoNearestVCS(t *testing.T) {
+	_, _, err := vcs.Nearest("/")
 	assert.Equal(t, err, vcs.ErrNoNearestVCS)
 }
