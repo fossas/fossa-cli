@@ -18,12 +18,9 @@ func TestNewSubversionRepository(t *testing.T) {
 	repo, err := NewSubversionRepository(dir)
 	assert.NoError(t, err)
 
-	var project string
-	assert.NotPanics(t, func() {
-		project = repo.Project()
-	})
-
+	project := repo.Project()
 	assert.Equal(t, "file:///tmp/demo", project)
+
 	head := repo.Head()
 	assert.Equal(t, "trunk", head.Branch)
 	assert.Equal(t, "0", head.RevisionID)

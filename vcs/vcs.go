@@ -73,9 +73,9 @@ func GetRepository(dirname string) (string, error) {
 		return "", err
 	}
 	switch vcs {
-	case Git, Subversion, None:
+	case Git, Subversion, Mercurial, None:
 		return dir, nil
-	case Mercurial, Bazaar:
+	case Bazaar:
 		fallthrough
 	default:
 		return "", errors.ErrNotImplemented

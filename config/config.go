@@ -11,8 +11,6 @@
 package config
 
 import (
-	"fmt"
-
 	"github.com/apex/log"
 	"github.com/urfave/cli"
 
@@ -59,10 +57,13 @@ func SetContext(c *cli.Context) error {
 		r, err = vcs.NewGitRepository(dir)
 	case vcs.Subversion:
 		r, err = vcs.NewSubversionRepository(dir)
+	case vcs.Mercurial:
+		r, err = vcs.NewMercurialRepository(dir)
 	case vcs.None:
 		r, err = vcs.NewNoRepository(dir)
 	default:
-		err = fmt.Errorf("VCS type %s is not supported", vcsType)
+		log.Warnf("VCS type %s lacks complete support. Falling back to treat project as not using VCS.", vcsType)
+		r, err = vcs.NewNoRepository(dir)
 	}
 
 	if err != nil {
