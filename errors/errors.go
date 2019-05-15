@@ -7,15 +7,17 @@ var (
 	ErrNotImplemented = errors.New("not yet implemented")
 )
 
+// Error is the fossa implementation of errors for providing user-friendly information.
 type Error struct {
+	ExitCode        int
 	Cause           error
-	Common          bool
+	Type            string
 	Message         string
 	Troubleshooting string
 }
 
 func (e *Error) Error() string {
-	return `Error: ` + e.Message + `
+	return `Error: ` + e.Cause.Error() + `
 TROUBLESHOOTING:
 
 ` + e.Troubleshooting + `
@@ -52,7 +54,6 @@ func WrapError(cause error, err Error) Error {
 	case *Error:
 		return Error{
 			Cause:           e,
-			Common:          err.Common,
 			Message:         err.Message,
 			Troubleshooting: err.Troubleshooting,
 		}

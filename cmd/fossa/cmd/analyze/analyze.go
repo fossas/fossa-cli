@@ -12,6 +12,7 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -35,6 +36,21 @@ func Run(ctx *cli.Context) error {
 	err := setup.SetContext(ctx)
 	if err != nil {
 		log.Fatalf("Could not initialize: %s", err.Error())
+	}
+
+	err = fossa.SetAPIKey(config.APIKey())
+	if err != nil && !ctx.Bool(ShowOutput) {
+		switch err {
+		case fossa.ErrMissingAPIKey:
+			return &errors.Error{
+				Cause:           err,
+				Type:            "user",
+				Message:         "add a FOSSA API KEY",
+				Troubleshooting: "go to fossa.com",
+			}
+		default:
+			return err
+		}
 	}
 
 	modules, err := config.Modules()
