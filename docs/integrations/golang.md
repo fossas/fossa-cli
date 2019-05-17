@@ -80,8 +80,8 @@ Predefined build tags:
 
 #### `strategy: <string>`
 
-Manually specify the golang package manager being used. This should be untouched unless fossa is incorrectly attempting to analyze the wrong strategy. If this option is set, it is recommended [lockfile](#LockfilePath:-<string>) and [manifest](#ManifestPath:-<string>) be set as well. A list of supported strategies is as follows:
-- ```manifest:gomodules, manifest:dep, manifest:gdm, manifest:glide, manifest:godep, manifest:govendor, manifest:vndr, manifest:gopath-vcs```
+Manually specify the golang package manager being used. If this option is set, it is recommended [lockfile](#LockfilePath:-<string>) and [manifest](#ManifestPath:-<string>) be set as well. A list of supported strategies is as follows:
+- ```manifest:gomodules, manifest:dep, manifest:gdm, manifest:glide, manifest:godep, manifest:govendor, manifest:vndr, gopath-vcs```
 
 #### `lockfile: <string>`
 
@@ -140,7 +140,7 @@ Golang discovery runs `go list ./...` and takes all executable packages (those w
 Analysis happens in 3 steps:
 
 1. Use `go list <target>` to determine the imports of the specified package.
-2. Determine the projects package manager if it has not been specified by searching for the following in order - `go.mod`, `Godeps/Godeps.json`, `vendor/vendor.conf`, `Gopkg.toml`, `vendor.conf`, `glide.yaml`, `Godeps`.
+2. Determine the project's package manager if it has not been specified by searching for the following in order - `go.mod`, `Godeps/Godeps.json`, `vendor/vendor.conf`, `Gopkg.toml`, `vendor.conf`, `glide.yaml`, `Godeps`.
 3. Match each package import to a dependency from the manifest to obtain revision information.
 
 > note: If a revision is not found for an import, Analysis will fail. Either fix the import error or enable [Allow Unresolved](#allow-unresolved:-<bool>)
