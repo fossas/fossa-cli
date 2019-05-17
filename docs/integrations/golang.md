@@ -80,8 +80,8 @@ Predefined build tags:
 
 #### `strategy: <string>`
 
-Manually specify the golang package manager being used. This should be untouched unless fossa is incorrectly attempting to analyze the wrong strategy. If this option is set, it is recommended [lockfile](#LockfilePath:-<string>) and [manifest](#ManifestPath:-<string>) be set as well. A list of supported strategies is as follows:
-- ```gomodules, dep, gdm, glide, godep, govendorvndr, gopath-vcs```
+Manually specify the golang package manager being used. If this option is set, it is recommended [lockfile](#LockfilePath:-<string>) and [manifest](#ManifestPath:-<string>) be set as well. A list of supported strategies is as follows:
+- ```manifest:gomodules, manifest:dep, manifest:gdm, manifest:glide, manifest:godep, manifest:govendor, manifest:vndr, gopath-vcs```
 
 #### `lockfile: <string>`
 
@@ -131,12 +131,16 @@ Allows reading vendor lockfiles of other projects.
 
 If set, allow reading vendor lockfiles of projects whose import path's prefix matches. Multiple space-delimited prefixes can be specified.
 
+## Discovery
+
+Golang discovery runs `go list ./...` and takes all executable packages (those with package `main`) by default. To include the rest if you are trying to analyze a library without a `main` package run `fossa init --include-all`.
+
 ## Analysis
 
 Analysis happens in 3 steps:
 
 1. Use `go list <target>` to determine the imports of the specified package.
-2. Read all manifests in the project folder and store dependency information.
+2. Determine the project's package manager if it has not been specified by searching for the following in order - `go.mod`, `Godeps/Godeps.json`, `vendor/vendor.conf`, `Gopkg.toml`, `vendor.conf`, `glide.yaml`, `Godeps`.
 3. Match each package import to a dependency from the manifest to obtain revision information.
 
 > note: If a revision is not found for an import, Analysis will fail. Either fix the import error or enable [Allow Unresolved](#allow-unresolved:-<bool>)
@@ -144,7 +148,6 @@ Analysis happens in 3 steps:
 Step (3) is the most complex part of analysis. Not all import paths have revisions directly associated with them. It is possible to import a package called `github.com/author-name/project-name/package-folder/package` and depending on the tool, this import path may not have a revision associated with it. Instead, the revision is associated with the imported _project_: in this case, that would be `github.com/author-name/project-name`. 
 
 In order to resolve the project of an import path, we check whether any of its prefixes have revisions in the Go project's manifests. If so, we assume that project contains the package we're importing and use its revision.
-
 
 ## Known limitations
 
@@ -159,6 +162,27 @@ In order to resolve the project of an import path, we check whether any of its p
 
 ### Q: Why are all dependencies listed in go.mod not found in the discovered dependency graph?
 
-Fossa-cli finds all dependencies being used with `go list` and then finds their revision by parsing `go.mod`. Gomodules installs all transitive dependencies for a dependency, including the packages which are unused in the first party code. This results in many transitive dependencies listed in `go.mod` never actually being utilized. 
+The FOSSA CLI finds all dependencies being used with `go list` and then finds their revision by parsing `go.mod`. Gomodules installs all transitive dependencies for a dependency, including the packages which are unused in the first party code. This results in many transitive dependencies listed in `go.mod` never actually being utilized. 
 
 Example: You need package `foo` from source `company/repository`. `go.mod` will import all packages including `company/repository/bar` and its transitive dependencies. `company/repository/bar`'s dependencies will go unused in your project and will not be picked up by `fossa-cli` but will appear in `go.mod`.
+
+### Q: I am in the process of updating to a new package manager, how can I obtain a scan for the old package manager?
+
+The FOSSA CLI finds what package manager is being used as specified by the fallback strategy listed in [Analysis](#analysis) Step 2. If the package manager you are migrating to is earlier in the list you will need to set the correct strategy, lockfile, and manifest in your configuration file.
+
+Example: You are migrating to `gomodules` but have not fully converted, as result fossa fails whenever it tries to find dependencies. You are however using `dep` and would like to make sure that those dependencies are detected. Add the following to the module in your configuration file:
+
+```yaml
+analyze:
+  modules:
+  - name: github.com/fossas/fossa-cli/cmd/fossa
+    type: go
+    target: github.com/fossas/fossa-cli/cmd/fossa
+    path: .
+    options:
+      strategy: manifest:dep
+      lockfile: Gopkg.lock
+      manifest: Gopkg.toml
+```
+
+> note: this example is actually how to do this for the FOSSA CLI repository itself.
