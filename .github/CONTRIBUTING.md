@@ -5,7 +5,7 @@ Head over to our issue tracker and find one labelled ["good first issue"](https:
 
 ## Adding language integrations
 
-See [Adding New Languages](docs/integrations/adding-new-languages.md).
+See [Adding New Languages](/docs/integrations/adding-new-languages.md).
 
 ## Running tests
 
