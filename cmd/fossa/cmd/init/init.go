@@ -88,7 +88,7 @@ func Do(includeAll bool, options map[string]interface{}) ([]module.Module, error
 }
 
 // FilterSuspiciousModules removes modules from known paths to prevent vendored third-party,
-// test, or other modules that do not likely belong to the first party project from being analyzed.
+// test, or other modules that likely do not belong to the first party project being analyzed.
 func FilterSuspiciousModules(modules []module.Module) []module.Module {
 	var filtered []module.Module
 	suspicious := regexp.MustCompile(`(docs?[/\\]|[Tt]est|examples?|vendor[/\\]|node_modules[/\\]|.srclib-cache[/\\]|spec[/\\]|Godeps[/\\]|.git[/\\]|bower_components[/\\]|third[_-]party[/\\]|tmp[/\\]|Carthage[/\\]Checkouts[/\\])`)
