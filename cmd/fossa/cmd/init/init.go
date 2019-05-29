@@ -83,9 +83,16 @@ func Do(includeAll bool, options map[string]interface{}) ([]module.Module, error
 	if includeAll {
 		return discovered, nil
 	}
+
+	return FilterSuspiciousModules(discovered), nil
+}
+
+// FilterSuspiciousModules removes modules from known paths to prevent vendored third-party,
+// test, or other modules that do not likely belong to the first party project from being analyzed.
+func FilterSuspiciousModules(modules []module.Module) []module.Module {
 	var filtered []module.Module
-	suspicious := regexp.MustCompile("(docs?/|[Tt]est|examples?|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/|third[_-]party/|tmp/|Carthage/Checkouts/)")
-	for _, d := range discovered {
+	suspicious := regexp.MustCompile(`(docs?[/\\]|[Tt]est|examples?|vendor[/\\]|node_modules[/\\]|.srclib-cache[/\\]|spec[/\\]|Godeps[/\\]|.git[/\\]|bower_components[/\\]|third[_-]party[/\\]|tmp[/\\]|Carthage[/\\]Checkouts[/\\])`)
+	for _, d := range modules {
 		log.Debugf("Discovered: %#v", d)
 
 		// Match name regexp.
@@ -103,5 +110,5 @@ func Do(includeAll bool, options map[string]interface{}) ([]module.Module, error
 
 		filtered = append(filtered, d)
 	}
-	return filtered, nil
+	return filtered
 }
