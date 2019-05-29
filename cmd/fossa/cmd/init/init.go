@@ -79,13 +79,20 @@ func Do(includeAll bool, options map[string]interface{}) ([]module.Module, error
 
 	// TODO: Check whether modules were previously ignored.
 
-	// Filter noisy modules (docs, examples, etc.).
 	if includeAll {
 		return discovered, nil
 	}
+
+	// Filter noisy modules (docs, examples, etc.).
+	return FilterSuspiciousModules(discovered), nil
+}
+
+// FilterSuspiciousModules removes modules from known paths to prevent vendored third-party,
+// test, or other modules that likely do not belong to the first party project being analyzed.
+func FilterSuspiciousModules(modules []module.Module) []module.Module {
 	var filtered []module.Module
-	suspicious := regexp.MustCompile("(docs?/|[Tt]est|examples?|vendor/|node_modules/|.srclib-cache/|spec/|Godeps/|.git/|bower_components/|third[_-]party/|tmp/|Carthage/Checkouts/)")
-	for _, d := range discovered {
+	suspicious := regexp.MustCompile(`docs?[/\\]|[Tt]est|examples?|vendor[/\\]|node_modules[/\\]|.srclib-cache[/\\]|spec[/\\]|Godeps[/\\]|.git[/\\]|bower_components[/\\]|third[_-]party[/\\]|tmp[/\\]|Carthage[/\\]Checkouts[/\\]`)
+	for _, d := range modules {
 		log.Debugf("Discovered: %#v", d)
 
 		// Match name regexp.
@@ -103,5 +110,5 @@ func Do(includeAll bool, options map[string]interface{}) ([]module.Module, error
 
 		filtered = append(filtered, d)
 	}
-	return filtered, nil
+	return filtered
 }
