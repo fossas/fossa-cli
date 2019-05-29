@@ -8,16 +8,19 @@ import (
 	"github.com/fossas/fossa-cli/exec"
 )
 
-func Cmd(cmd string, args ...string) (string, error) {
-	out, _, err := exec.Run(exec.Cmd{
-		Name: "buck",
-		Argv: append([]string{cmd}, args...),
-	})
+// NewCmd creates a function that executes the chosen buck executable.
+func NewCmd(name string) func(string, ...string) (string, error) {
+	return func(cmd string, args ...string) (string, error) {
+		out, _, err := exec.Run(exec.Cmd{
+			Name: name,
+			Argv: append([]string{cmd}, args...),
+		})
 
-	if err != nil {
-		return out, errors.Wrapf(err, "Could not run `buck %s %+v` within the current directory", cmd, args)
+		if err != nil {
+			return out, errors.Wrapf(err, "Could not run `%s %s %+v` within the current directory", name, cmd, args)
+		}
+		return out, nil
 	}
-	return out, nil
 }
 
 func cmdAudit(command func(string, ...string) (string, error), cmd string, argv ...string) (AuditOutput, error) {

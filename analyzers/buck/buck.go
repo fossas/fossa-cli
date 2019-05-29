@@ -30,6 +30,7 @@ import (
 	"gopkg.in/go-ini/ini.v1"
 
 	"github.com/fossas/fossa-cli/buildtools/buck"
+	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
@@ -45,10 +46,15 @@ type Analyzer struct {
 
 // New constructs a new Buck analyzer from a module.
 func New(module module.Module) (*Analyzer, error) {
+	buckCmd, _, err := exec.Which("--version", os.Getenv("FOSSA_BUCK_CMD"), "./buckw", "buck")
+	if err != nil {
+		return nil, err
+	}
+
 	analyzer := Analyzer{
 		Module: module,
 		Upload: true,
-		Setup:  buck.New(module.BuildTarget),
+		Setup:  buck.New(module.BuildTarget, buckCmd),
 	}
 	return &analyzer, nil
 }
@@ -75,7 +81,12 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 // Discover is used to operate Discovery with a custom `buck` command.
 func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) {
-	return DiscoverWithCommand(dir, opts, buck.Cmd)
+	buckCmd, _, err := exec.Which("--version", os.Getenv("FOSSA_BUCK_CMD"), "./buckw", "buck")
+	if err != nil {
+		return nil, err
+	}
+
+	return DiscoverWithCommand(dir, opts, buck.NewCmd(buckCmd))
 }
 
 // DiscoverWithCommand finds a Buck project by first looking for a ".buckconfig" file and then a "BUCK" file.
@@ -87,6 +98,7 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 func DiscoverWithCommand(dir string, opts map[string]interface{}, buckCommand func(string, ...string) (string, error)) ([]module.Module, error) {
 	var moduleList []module.Module
 	buckConfig, err := files.Exists(dir, ".buckconfig")
+
 	if err == nil && buckConfig {
 		file, err := ini.Load(path.Join(dir, ".buckconfig"))
 		if err != nil {
