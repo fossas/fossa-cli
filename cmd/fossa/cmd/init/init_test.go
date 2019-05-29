@@ -16,6 +16,7 @@ func TestModuleFiltering(t *testing.T) {
 	goNotExecutable := module.Module{IsExecutable: false, Type: pkg.Go}
 	goExecutable := module.Module{IsExecutable: true, Type: pkg.Go}
 	unfiltered := []module.Module{node, nodeWindows, temp, goNotExecutable, goExecutable}
+
 	filtered := initc.FilterSuspiciousModules(unfiltered)
 	assert.NotContains(t, filtered, node)
 	assert.NotContains(t, filtered, nodeWindows)
