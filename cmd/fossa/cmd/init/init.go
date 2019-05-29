@@ -79,11 +79,11 @@ func Do(includeAll bool, options map[string]interface{}) ([]module.Module, error
 
 	// TODO: Check whether modules were previously ignored.
 
-	// Filter noisy modules (docs, examples, etc.).
 	if includeAll {
 		return discovered, nil
 	}
 
+	// Filter noisy modules (docs, examples, etc.).
 	return FilterSuspiciousModules(discovered), nil
 }
 
