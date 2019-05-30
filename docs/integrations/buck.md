@@ -35,7 +35,8 @@ analyze:
 ## Analysis
 
 Buck projects are uploaded with all of their source code broken into dependencies for license analysis by FOSSA. This project involves a few steps:
+1. Determine the correct buck command to run by trying to execute `FOSSA_BUCK_CMD`, `./buckw`, and `buck`.
 1. Run `buck audit input <target> --json` to retrieve a list of all dependencies.
-2. Upload these dependencies and maintain references to their uploaded locator.
-3. Create a dependency graph by recursively running `buck audit dependencies <target>` on each dependency and add it to the graph.
-4. Upload the dependency graph to FOSSA which will match the dependency locators to the raw upload and analysis of each dependency.
+1. Upload these dependencies and maintain references to their uploaded locator.
+1. Create a dependency graph by recursively running `buck audit dependencies <target>` on each dependency and add it to the graph.
+1. Upload the dependency graph to FOSSA which will match the dependency locators to the raw upload and analysis of each dependency.

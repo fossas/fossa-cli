@@ -31,10 +31,10 @@ type Setup struct {
 }
 
 // New creates a new Buck instance that calls the buck build tool directly.
-func New(target string) Buck {
+func New(target, binary string) Buck {
 	return Setup{
 		Target: target,
-		Cmd:    Cmd,
+		Cmd:    NewCmd(binary),
 	}
 }
 
