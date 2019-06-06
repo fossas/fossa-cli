@@ -38,6 +38,16 @@ type SignedURL struct {
 	SignedURL string
 }
 
+// UploadTarballDependency uploads the directory specified to be treated on FOSSA as a dependency.
+func UploadTarballDependency(dir string, upload, prebuilt bool) (Locator, error) {
+	return UploadTarball(dir, true, prebuilt, upload)
+}
+
+// UploadTarballProject uploads the directory specified to be treated on FOSSA as a project.
+func UploadTarballProject(dir string, prebuilt bool) (Locator, error) {
+	return UploadTarball(dir, false, prebuilt, true)
+}
+
 // UploadTarball archives, compresses, and uploads a specified directory. It
 // uses the directory name as the project name and the MD5 of the uploaded
 // tarball as the revision name. It returns the locator of the uploaded tarball.
@@ -54,15 +64,7 @@ type SignedURL struct {
 // Since this will be running within CI machines, this is probably not a good
 // idea. (See https://circleci.com/docs/2.0/configuration-reference/#resource_class
 // for an example of our memory constraints.)
-func UploadTarballDependency(dir string, upload bool) (Locator, error) {
-	return UploadTarball(dir, true, upload)
-}
-
-func UploadTarballProject(dir string) (Locator, error) {
-	return UploadTarball(dir, false, true)
-}
-
-func UploadTarball(dir string, dependency bool, upload bool) (Locator, error) {
+func UploadTarball(dir string, dependency, prebuilt, upload bool) (Locator, error) {
 	p, err := filepath.Abs(dir)
 	name := filepath.Base(p)
 	if err != nil {
@@ -79,7 +81,7 @@ func UploadTarball(dir string, dependency bool, upload bool) (Locator, error) {
 		return Locator{}, err
 	}
 
-	return tarballUpload(name, dependency, upload, tarball, hash)
+	return tarballUpload(name, dependency, prebuilt, upload, tarball, hash)
 }
 
 // CreateTarball archives and compresses a directory's contents to a temporary
@@ -185,7 +187,8 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 }
 
 // UploadTarballDependencyFiles generates and uploads a tarball from the provided list of files to
-// FOSSA. The tarball's contents are marked as a component (as opposed to a project).
+// FOSSA. The tarball's contents are marked as a component (as opposed to a project). These dependencies
+// are determined to be prebuilt by default and will add the `prebuilt` parameter to the final request.
 func UploadTarballDependencyFiles(dir string, fileList []string, name string, upload bool) (Locator, error) {
 	absFiles := make([]string, len(fileList))
 	for i, file := range fileList {
@@ -203,7 +206,7 @@ func UploadTarballDependencyFiles(dir string, fileList []string, name string, up
 		return Locator{}, err
 	}
 
-	return tarballUpload(name, true, upload, tarball, hash)
+	return tarballUpload(name, true, true, upload, tarball, hash)
 }
 
 // CreateTarballFromFiles archives and compresses a list of files to a temporary
@@ -284,8 +287,10 @@ func CreateTarballFromFiles(files []string, name string) (*os.File, []byte, erro
 }
 
 // Upload the supplied tarball to the given endpoint.
-// Note: "name" should not have any "/"s to ensure core can parse it.
-func tarballUpload(name string, dependency, upload bool, tarball *os.File, hash []byte) (Locator, error) {
+// Note: "name" should not have any "/"s to ensure core can parse it. prebuilt ensures that
+// FOSSA will not attempt to run srclib and will scan directories which would usually be
+// ignored such as `vendor` for licenses.
+func tarballUpload(name string, dependency, prebuilt, upload bool, tarball *os.File, hash []byte) (Locator, error) {
 	info, err := tarball.Stat()
 	if err != nil {
 		return Locator{}, err
@@ -363,12 +368,16 @@ func tarballUpload(name string, dependency, upload bool, tarball *os.File, hash 
 		return Locator{}, err
 	}
 
-	dependencyParameter := url.Values{}
+	parameters := url.Values{}
 	if dependency {
-		dependencyParameter.Add("dependency", "true")
-
+		parameters.Add("dependency", "true")
 	}
-	_, _, err = Post(ComponentsBuildAPI+"?"+dependencyParameter.Encode(), data)
+
+	if prebuilt {
+		parameters.Add("prebuilt", "true")
+	}
+
+	_, _, err = Post(ComponentsBuildAPI+"?"+parameters.Encode(), data)
 	if err != nil {
 		return Locator{}, err
 	}
