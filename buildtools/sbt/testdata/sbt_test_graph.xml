@@ -1,0 +1,31 @@
+<graphml xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd" xmlns:y="http://www.yworks.com/xml/graphml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://graphml.graphdrawing.org/xmlns">
+        <key for="node" id="d0" yfiles.type="nodegraphics"/>
+        <graph id="Graph" edgedefault="undirected">
+          <node id="project:main:0.0.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>project:main:0.0.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="dep:one:1.0.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>dep:one:1.0.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="dep:two:2.0.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>dep:two:2.0.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="dep:three:3.0.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>dep:three:3.0.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="dep:four:4.0.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>dep:four:4.0.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node><node id="dep:five:5.0.0"><data key="d0">
+                                           <y:ShapeNode>
+                                             <y:NodeLabel>dep:five:5.0.0</y:NodeLabel>
+                                           </y:ShapeNode>
+                                         </data></node>
+          <edge source="project:main:0.0.0" target="dep:one:1.0.0"/><edge source="project:main:0.0.0" target="dep:two:2.0.0"/><edge source="dep:one:1.0.0" target="dep:three:3.0.0"/><edge source="dep:three:3.0.0" target="dep:four:4.0.0"/><edge source="dep:two:2.0.0" target="dep:three:3.0.0"/><edge source="dep:two:2.0.0" target="dep:five:5.0.0"/>
+        </graph>
+      </graphml>

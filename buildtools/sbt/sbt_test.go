@@ -1,16 +1,73 @@
 package sbt_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
 
-	"github.com/fossas/fossa-cli/files"
-
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/buildtools/sbt"
+	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/pkg"
 )
+
+/*
+	├─┬ dep:one:1.0.0
+	| └─┬ dep:three:3.0.0
+  	|   └── dep:four:4.0.0
+	└─┬ dep:two:2.0.0
+	  ├─┬ dep:three:3.0.0
+	  │ └── dep:four:4.0.0
+	  └── dep:five:5.0.0
+*/
+
+func TestParseDependencyTree(t *testing.T) {
+	var graph sbt.GraphML
+	err := files.ReadXML(&graph, filepath.Join("testdata", "sbt_test_graph.xml"))
+	assert.NoError(t, err)
+
+	evicted, err := ioutil.ReadFile(filepath.Join("testdata", "sbt_test_evicted"))
+	assert.NoError(t, err)
+
+	imports, transitive, err := sbt.ParseDependencyGraph(graph.Graph, string(evicted))
+	assert.NoError(t, err)
+
+	for dep, imports := range transitive {
+		fmt.Println(dep, imports)
+	}
+
+	assert.Equal(t, 2, len(imports))
+	assertImport(t, imports, "dep:one", "1.0.0")
+	assertImport(t, imports, "dep:two", "2.0.0")
+
+	assert.Equal(t, 5, len(transitive))
+
+	packageOne := findPackage(transitive, "dep:one", "1.0.0")
+	assert.NotEmpty(t, packageOne)
+	assert.Equal(t, 1, len(packageOne.Imports))
+	assertImport(t, packageOne.Imports, "dep:three", "3.0.0")
+
+	packageTwo := findPackage(transitive, "dep:two", "2.0.0")
+	assert.NotEmpty(t, packageTwo)
+	assert.Equal(t, 2, len(packageTwo.Imports))
+	assertImport(t, packageTwo.Imports, "dep:three", "3.0.0")
+	assertImport(t, packageTwo.Imports, "dep:five", "5.0.0")
+
+	packageThree := findPackage(transitive, "dep:three", "3.0.0")
+	assert.NotEmpty(t, packageThree)
+	assert.Equal(t, 1, len(packageThree.Imports))
+	assertImport(t, packageThree.Imports, "dep:four", "4.0.0")
+
+	packageFour := findPackage(transitive, "dep:four", "4.0.0")
+	assert.NotEmpty(t, packageFour)
+	assert.Equal(t, 0, len(packageFour.Imports))
+
+	packageFive := findPackage(transitive, "dep:five", "5.0.0")
+	assert.NotEmpty(t, packageFive)
+	assert.Equal(t, 0, len(packageFive.Imports))
+}
 
 func TestSanityCheckParseDependencyTree(t *testing.T) {
 	var graph sbt.GraphML
@@ -89,4 +146,24 @@ func TestFilterLines(t *testing.T) {
 		actual := sbt.FilterLine(line)
 		assert.True(t, actual, line)
 	}
+}
+func findPackage(packages map[pkg.ID]pkg.Package, name, revision string) pkg.Package {
+	for id := range packages {
+		if id.Name == name && id.Revision == revision {
+			return packages[id]
+		}
+	}
+	return pkg.Package{}
+}
+
+func assertImport(t *testing.T, imports pkg.Imports, name, revision string) {
+	for _, importedProj := range imports {
+		if importedProj.Resolved.Name == name {
+			if importedProj.Resolved.Revision == revision {
+				return
+			}
+			assert.Fail(t, "found "+name+"@"+importedProj.Resolved.Revision+" instead of "+revision)
+		}
+	}
+	assert.Fail(t, "missing "+name+"@"+revision)
 }
