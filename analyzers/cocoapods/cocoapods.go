@@ -36,7 +36,7 @@ func New(m module.Module) (*Analyzer, error) {
 	// Set Cocoapods context variables
 	podCmd, podVersion, err := exec.Which("--version", os.Getenv("COCOAPODS_BINARY"), "pod")
 	if err != nil {
-		return nil, fmt.Errorf("could not find Cocoapods binary (try setting $COCOAPODS_BINARY): %s", err.Error())
+		log.Debugf("could not find Cocoapods binary (try setting $COCOAPODS_BINARY): %s", err.Error())
 	}
 
 	// Parse and validate options.

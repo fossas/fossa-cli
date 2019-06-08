@@ -84,7 +84,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			return err
 		}
 
-		if !info.IsDir() && (info.Name() == "requirements.txt" || info.Name() == "setup.py") {
+		if !info.IsDir() && (info.Name() == "requirements.txt") {
 			moduleDir := filepath.Dir(filename)
 			_, ok := modules[moduleDir]
 			if ok {
