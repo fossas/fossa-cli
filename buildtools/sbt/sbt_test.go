@@ -1,7 +1,6 @@
 package sbt_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -33,10 +32,6 @@ func TestParseDependencyTree(t *testing.T) {
 
 	imports, transitive, err := sbt.ParseDependencyGraph(graph.Graph, string(evicted))
 	assert.NoError(t, err)
-
-	for dep, imports := range transitive {
-		fmt.Println(dep, imports)
-	}
 
 	assert.Equal(t, 2, len(imports))
 	assertImport(t, imports, "dep:one", "1.0.0")
