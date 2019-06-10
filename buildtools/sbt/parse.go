@@ -46,6 +46,11 @@ func ParseDependencyGraph(graph Graph, evicted string) (pkg.Imports, pkg.Deps, e
 			deps[source] = pkg.Imports{}
 		}
 
+		_, ok = deps[target]
+		if !ok {
+			deps[target] = pkg.Imports{}
+		}
+
 		replacement, ok := replacements[target]
 		if ok {
 			target = replacement
