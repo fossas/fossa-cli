@@ -38,6 +38,16 @@ type SignedURL struct {
 	SignedURL string
 }
 
+// UploadTarballDependency uploads the directory specified to be treated on FOSSA as a dependency.
+func UploadTarballDependency(dir string, upload, rawLicenseScan bool) (Locator, error) {
+	return UploadTarball(dir, true, rawLicenseScan, upload)
+}
+
+// UploadTarballProject uploads the directory specified to be treated on FOSSA as a project.
+func UploadTarballProject(dir string, rawLicenseScan bool) (Locator, error) {
+	return UploadTarball(dir, false, rawLicenseScan, true)
+}
+
 // UploadTarball archives, compresses, and uploads a specified directory. It
 // uses the directory name as the project name and the MD5 of the uploaded
 // tarball as the revision name. It returns the locator of the uploaded tarball.
@@ -54,15 +64,7 @@ type SignedURL struct {
 // Since this will be running within CI machines, this is probably not a good
 // idea. (See https://circleci.com/docs/2.0/configuration-reference/#resource_class
 // for an example of our memory constraints.)
-func UploadTarballDependency(dir string, upload bool) (Locator, error) {
-	return UploadTarball(dir, true, upload)
-}
-
-func UploadTarballProject(dir string) (Locator, error) {
-	return UploadTarball(dir, false, true)
-}
-
-func UploadTarball(dir string, dependency bool, upload bool) (Locator, error) {
+func UploadTarball(dir string, dependency, rawLicenseScan, upload bool) (Locator, error) {
 	p, err := filepath.Abs(dir)
 	name := filepath.Base(p)
 	if err != nil {
@@ -79,7 +81,7 @@ func UploadTarball(dir string, dependency bool, upload bool) (Locator, error) {
 		return Locator{}, err
 	}
 
-	return tarballUpload(name, dependency, upload, tarball, hash)
+	return tarballUpload(name, dependency, rawLicenseScan, upload, tarball, hash)
 }
 
 // CreateTarball archives and compresses a directory's contents to a temporary
@@ -184,8 +186,9 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 	return tmp, h.Sum(nil), nil
 }
 
-// UploadTarballDependencyFiles generates and uploads a tarball from the provided list of files to
-// FOSSA. The tarball's contents are marked as a component (as opposed to a project).
+// UploadTarballDependencyFiles generates and uploads a tarball from the provided list of files to FOSSA.
+// The tarball's contents are marked as a component (as opposed to a project). The `rawLicenseScan` query parameter
+// is automatically added to ensure that FOSSA does not try to discover more dependencies from the uploaded files.
 func UploadTarballDependencyFiles(dir string, fileList []string, name string, upload bool) (Locator, error) {
 	absFiles := make([]string, len(fileList))
 	for i, file := range fileList {
@@ -203,7 +206,7 @@ func UploadTarballDependencyFiles(dir string, fileList []string, name string, up
 		return Locator{}, err
 	}
 
-	return tarballUpload(name, true, upload, tarball, hash)
+	return tarballUpload(name, true, true, upload, tarball, hash)
 }
 
 // CreateTarballFromFiles archives and compresses a list of files to a temporary
@@ -284,8 +287,10 @@ func CreateTarballFromFiles(files []string, name string) (*os.File, []byte, erro
 }
 
 // Upload the supplied tarball to the given endpoint.
-// Note: "name" should not have any "/"s to ensure core can parse it.
-func tarballUpload(name string, dependency, upload bool, tarball *os.File, hash []byte) (Locator, error) {
+// Note: "name" should not have any "/"s to ensure core can parse it. Setting rawLicenseScan ensures
+// that FOSSA will not attempt to find dependencies in the uploaded files and that a full license scan
+// will be run on directories which are normally ignored, such as `vendor` or `node_modules`.
+func tarballUpload(name string, dependency, rawLicenseScan, upload bool, tarball *os.File, hash []byte) (Locator, error) {
 	info, err := tarball.Stat()
 	if err != nil {
 		return Locator{}, err
@@ -363,12 +368,16 @@ func tarballUpload(name string, dependency, upload bool, tarball *os.File, hash 
 		return Locator{}, err
 	}
 
-	dependencyParameter := url.Values{}
+	parameters := url.Values{}
 	if dependency {
-		dependencyParameter.Add("dependency", "true")
-
+		parameters.Add("dependency", "true")
 	}
-	_, _, err = Post(ComponentsBuildAPI+"?"+dependencyParameter.Encode(), data)
+
+	if rawLicenseScan {
+		parameters.Add("rawLicenseScan", "true")
+	}
+
+	_, _, err = Post(ComponentsBuildAPI+"?"+parameters.Encode(), data)
 	if err != nil {
 		return Locator{}, err
 	}

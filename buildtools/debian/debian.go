@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/apex/log"
+
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
@@ -77,7 +78,7 @@ func uploadDeps(dependencies map[string]string, directory string, upload bool) m
 		go func(dep string) {
 			defer wg.Done()
 
-			revision, err := fossa.UploadTarballDependency(filepath.Join(directory, dep), upload)
+			revision, err := fossa.UploadTarballDependency(filepath.Join(directory, dep), upload, true)
 			if err != nil {
 				log.Debugf("Error uploading %v: %+v", dep, err)
 			} else {
