@@ -39,13 +39,13 @@ type SignedURL struct {
 }
 
 // UploadTarballDependency uploads the directory specified to be treated on FOSSA as a dependency.
-func UploadTarballDependency(dir string, upload, prebuilt bool) (Locator, error) {
-	return UploadTarball(dir, true, prebuilt, upload)
+func UploadTarballDependency(dir string, upload, rawLicenseScan bool) (Locator, error) {
+	return UploadTarball(dir, true, rawLicenseScan, upload)
 }
 
 // UploadTarballProject uploads the directory specified to be treated on FOSSA as a project.
-func UploadTarballProject(dir string, prebuilt bool) (Locator, error) {
-	return UploadTarball(dir, false, prebuilt, true)
+func UploadTarballProject(dir string, rawLicenseScan bool) (Locator, error) {
+	return UploadTarball(dir, false, rawLicenseScan, true)
 }
 
 // UploadTarball archives, compresses, and uploads a specified directory. It
@@ -64,7 +64,7 @@ func UploadTarballProject(dir string, prebuilt bool) (Locator, error) {
 // Since this will be running within CI machines, this is probably not a good
 // idea. (See https://circleci.com/docs/2.0/configuration-reference/#resource_class
 // for an example of our memory constraints.)
-func UploadTarball(dir string, dependency, prebuilt, upload bool) (Locator, error) {
+func UploadTarball(dir string, dependency, rawLicenseScan, upload bool) (Locator, error) {
 	p, err := filepath.Abs(dir)
 	name := filepath.Base(p)
 	if err != nil {
@@ -81,7 +81,7 @@ func UploadTarball(dir string, dependency, prebuilt, upload bool) (Locator, erro
 		return Locator{}, err
 	}
 
-	return tarballUpload(name, dependency, prebuilt, upload, tarball, hash)
+	return tarballUpload(name, dependency, rawLicenseScan, upload, tarball, hash)
 }
 
 // CreateTarball archives and compresses a directory's contents to a temporary
@@ -186,9 +186,9 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 	return tmp, h.Sum(nil), nil
 }
 
-// UploadTarballDependencyFiles generates and uploads a tarball from the provided list of files to
-// FOSSA. The tarball's contents are marked as a component (as opposed to a project). These dependencies
-// are determined to be prebuilt by default and will add the `prebuilt` parameter to the final request.
+// UploadTarballDependencyFiles generates and uploads a tarball from the provided list of files to FOSSA.
+// The tarball's contents are marked as a component (as opposed to a project). The `rawLicenseScan` query parameter
+// is automatically added to ensure that FOSSA does not try to discover more dependencies from the uploaded files.
 func UploadTarballDependencyFiles(dir string, fileList []string, name string, upload bool) (Locator, error) {
 	absFiles := make([]string, len(fileList))
 	for i, file := range fileList {
@@ -287,10 +287,10 @@ func CreateTarballFromFiles(files []string, name string) (*os.File, []byte, erro
 }
 
 // Upload the supplied tarball to the given endpoint.
-// Note: "name" should not have any "/"s to ensure core can parse it. prebuilt ensures that
-// FOSSA will not attempt to run srclib and will scan directories which would usually be
-// ignored such as `vendor` for licenses.
-func tarballUpload(name string, dependency, prebuilt, upload bool, tarball *os.File, hash []byte) (Locator, error) {
+// Note: "name" should not have any "/"s to ensure core can parse it. Setting rawLicenseScan ensures
+// that FOSSA will not attempt to find dependencies in the uploaded files and that a full license scan
+// will be run on directories which are normally ignored, such as `vendor` or `node_modules`.
+func tarballUpload(name string, dependency, rawLicenseScan, upload bool, tarball *os.File, hash []byte) (Locator, error) {
 	info, err := tarball.Stat()
 	if err != nil {
 		return Locator{}, err
@@ -373,8 +373,8 @@ func tarballUpload(name string, dependency, prebuilt, upload bool, tarball *os.F
 		parameters.Add("dependency", "true")
 	}
 
-	if prebuilt {
-		parameters.Add("prebuilt", "true")
+	if rawLicenseScan {
+		parameters.Add("rawLicenseScan", "true")
 	}
 
 	_, _, err = Post(ComponentsBuildAPI+"?"+parameters.Encode(), data)
