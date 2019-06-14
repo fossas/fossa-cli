@@ -44,7 +44,7 @@ After analysis succeeds, run again without the output command to upload results.
 ```bash
 FOSSA_API_KEY=YOUR_API_KEY_HERE fossa analyze
 ```
-[`fossa analyze`](user-guide.md/#fossa-analyze) will upload your build results to [FOSSA.com]([FOSSA.com](https://fossa.com)) by defult where the project is scanned for licensing and security issues.
+[`fossa analyze`](user-guide.md/#fossa-analyze) will upload your build results to [FOSSA.com]([FOSSA.com](https://fossa.com)) by default where the project is scanned for licensing and security issues.
 
 ### Step 4. Testing
 
