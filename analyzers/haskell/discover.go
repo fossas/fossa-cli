@@ -1,13 +1,15 @@
 package haskell
 
 import (
-	"fmt"
-	"github.com/apex/log"
-	"github.com/fossas/fossa-cli/module"
-	"github.com/fossas/fossa-cli/pkg"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/apex/log"
+
+	"github.com/fossas/fossa-cli/errors"
+	"github.com/fossas/fossa-cli/module"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
 func NewModule(moduleName string, relativeDir string, strategy Strategy) module.Module {
@@ -54,7 +56,7 @@ func Discover(baseDir string, options map[string]interface{}) ([]module.Module, 
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("could not find Haskell package manifests: %s", err.Error())
+		return nil, errors.Wrap(err, "could not find Haskell package manifests")
 	}
 
 	// Prune .cabal files where parent projects are present
@@ -62,6 +64,8 @@ func Discover(baseDir string, options map[string]interface{}) ([]module.Module, 
 		for projectPath := range projects {
 			// TODO: parse cabal.project and stack.yaml instead of using their paths?
 			rel, err := filepath.Rel(projectPath, cabalFilePath)
+			// filepath.Rel will produce a path containing ".." when the cabal
+			// file isn't in a subdirectory of the project
 			if err == nil && !strings.Contains(rel, "..") {
 				delete(cabalFiles, cabalFilePath)
 				break
