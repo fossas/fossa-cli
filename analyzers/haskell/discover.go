@@ -39,7 +39,7 @@ func Discover(baseDir string, options map[string]interface{}) ([]module.Module, 
 			return nil
 		}
 
-		moduleName     := filepath.Base(path)
+		moduleName := filepath.Base(path)
 		relativeDir, _ := filepath.Rel(baseDir, filepath.Dir(path))
 
 		if info.Name() == "cabal.project" {

@@ -1,17 +1,18 @@
-
 package haskell
 
 import (
-	"github.com/fossas/fossa-cli/analyzers/haskell/analyzer"
+	"github.com/mitchellh/mapstructure"
+
+	"github.com/fossas/fossa-cli/buildtools/cabal"
+	"github.com/fossas/fossa-cli/buildtools/stack"
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
-	"github.com/mitchellh/mapstructure"
 )
 
 type Analyzer struct {
 	Module    module.Module
-	AnalyzeFn func(module.Module)(graph.Deps, error)
+	AnalyzeFn func(module.Module) (graph.Deps, error)
 }
 
 func New(m module.Module) (*Analyzer, error) {
@@ -24,13 +25,13 @@ func New(m module.Module) (*Analyzer, error) {
 
 	if options.Strategy == CabalInstall {
 		return &Analyzer{
-			Module:  m,
-			AnalyzeFn: analyzer.AnalyzeCabal,
+			Module:    m,
+			AnalyzeFn: cabal.GetDeps,
 		}, nil
 	} else if options.Strategy == Stack {
 		return &Analyzer{
-			Module:  m,
-			AnalyzeFn: analyzer.AnalyzeStack,
+			Module:    m,
+			AnalyzeFn: stack.GetDeps,
 		}, nil
 	}
 

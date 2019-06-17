@@ -1,11 +1,75 @@
 package stack
 
 import (
-	"github.com/fossas/fossa-cli/exec"
-	"github.com/fossas/fossa-cli/pkg"
 	"strconv"
 	"strings"
+
+	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/graph"
+	"github.com/fossas/fossa-cli/module"
+	"github.com/fossas/fossa-cli/pkg"
 )
+
+// ----- Dep graph retrieval
+
+func GetDeps(m module.Module) (graph.Deps, error) {
+	stackAllDeps, err := GetStackDependencies(m.Dir, nil)
+	if err != nil {
+		return graph.Deps{}, err
+	}
+
+	ghcPkgDeps, err := GetGhcPkgDepMap()
+	if err != nil {
+		return graph.Deps{}, err
+	}
+
+	depth := int(1)
+	stackImmediateDeps, err := GetStackDependencies(m.Dir, &depth)
+	if err != nil {
+		return graph.Deps{}, err
+	}
+
+	return GetDepsPure(stackAllDeps, stackImmediateDeps, ghcPkgDeps), nil
+}
+
+func GetDepsPure(stackAllDeps []Dep, stackImmediateDeps []Dep, depMap GhcPkgDeps) graph.Deps {
+	// Our direct dependencies
+	var depGraph = make(map[pkg.ID]pkg.Package)
+
+	// Build out the full graph
+	for _, stackDep := range stackAllDeps {
+		pkgID := DepToPkgId(stackDep)
+
+		var imports []pkg.Import
+
+		for _, ghcPkgDep := range depMap[DepToCanonical(stackDep)] {
+			imports = append(imports, pkg.Import{
+				Resolved: DepToPkgId(DepFromCanonical(ghcPkgDep)),
+			})
+		}
+
+		depGraph[pkgID] = pkg.Package{
+			ID:      pkgID,
+			Imports: imports,
+		}
+	}
+
+	var directImports []pkg.Import
+
+	// Build our direct dependencies
+	for _, stackDep := range stackImmediateDeps {
+		pkgID := DepToPkgId(stackDep)
+
+		directImports = append(directImports, pkg.Import{
+			Resolved: pkgID,
+		})
+	}
+
+	return graph.Deps{
+		Direct:     directImports,
+		Transitive: depGraph,
+	}
+}
 
 // ----- Types
 
@@ -17,8 +81,8 @@ type Dep struct {
 
 func DepToPkgId(dep Dep) pkg.ID {
 	return pkg.ID{
-		Type: pkg.Haskell,
-		Name: dep.Name,
+		Type:     pkg.Haskell,
+		Name:     dep.Name,
 		Revision: dep.Version,
 	}
 }
@@ -36,14 +100,13 @@ func DepToCanonical(dep Dep) Canonical {
 func DepFromCanonical(canonical Canonical) Dep {
 	ix := strings.LastIndex(canonical.Identifier, "-")
 	return Dep{
-		Name: canonical.Identifier[:ix],
+		Name:    canonical.Identifier[:ix],
 		Version: canonical.Identifier[ix+1:],
 	}
 }
 
 // A mapping of ghc-pkg packages to their dependencies
 type GhcPkgDeps = map[Canonical][]Canonical
-
 
 // ----- Command output parsing
 
@@ -62,7 +125,7 @@ func ParseStackDependencies(output string) []Dep {
 			continue
 		}
 
-		var name    = dep[0]
+		var name = dep[0]
 		var version = dep[1]
 
 		deps = append(deps, Dep{
@@ -92,8 +155,8 @@ func ParseGhcPkgDepMap(output string) GhcPkgDeps {
 			continue // The first and last lines are "digraph {" and "}", so they won't have a dep
 		}
 
-		from := Canonical{Identifier:split[0]}
-		to := Canonical{Identifier:split[1]}
+		from := Canonical{Identifier: split[0]}
+		to := Canonical{Identifier: split[1]}
 
 		cur := deps[from]
 		cur = append(cur, to)
@@ -116,9 +179,8 @@ func GetStackDependencies(dir string, depth *int) ([]Dep, error) {
 	stdout, _, err := exec.Run(exec.Cmd{
 		Name: "stack",
 		Argv: args,
-		Dir: dir,
+		Dir:  dir,
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +193,6 @@ func GetGhcPkgDepMap() (GhcPkgDeps, error) {
 		Name: "stack",
 		Argv: []string{"exec", "--", "ghc-pkg", "dot"},
 	})
-
 	if err != nil {
 		return nil, err
 	}
