@@ -2,20 +2,34 @@
 
 ## Support
 
-Haskell support in FOSSA CLI depends on one of following tools existing in your environment:
+Haskell support in FOSSA CLI depends on one of following tools existing in your
+environment:
 
-- cabal-install (version 2.0 or newer)
-- stack
+- cabal-install (aka `cabal`), version 2.0 or newer
+- `stack`
+
+cabal-install is recommended.
 
 ## Configuration
 
 ### Automatic 
 
-Run `fossa init` which detects all cabal (via `cabal.project` or `*.cabal` files) and stack projects. Refer to [Discovery](#Discovery) for more information on the auto-configuration logic.
+Run `fossa init`, which detects:
+ 
+- cabal projects, via `cabal.project` and `*.cabal`
+- stack projects, via `stack.yaml`.
+
+Refer to [Discovery](#Discovery) for more information on the auto-configuration
+logic.
 
 ### Manual
 
-Add a module with `type: haskell`, and `target`+`path` set to the directory containing the top-level project (usually the directory containing a`cabal.project` or `stack.yaml`). Additionally, configure a strategy (either `cabal-install` or `stack`). See example below.
+Add a module with `type: haskell`, and `target`+`path` set to the directory
+containing the top-level project (usually the directory containing a
+`cabal.project` or `stack.yaml`).
+
+Additionally, configure the relevant strategy (either `cabal-install` or
+`stack`). See example below.
 
 ```yaml
 analyze:
@@ -30,9 +44,9 @@ analyze:
 
 ## Options
 
-| Option                         | Type   | Name                         | Description                                                                              |
-| ------------------------------ | :----: | ---------------------------- | ---------------------------------------------------------------------------------------- |
-| `strategy`                     | string | [Strategy](#strategy-string) | Used to specify the build tool used for this project (either `cabal-install` or `stack`) |
+| Option     | Type   | Name                         | Description                                                                              |
+| ---------- | :----: | ---------------------------- | ---------------------------------------------------------------------------------------- |
+| `strategy` | string | [Strategy](#strategy-string) | Used to specify the build tool used for this project (either `cabal-install` or `stack`) |
 
 
 #### `strategy: <string>` 
@@ -42,18 +56,31 @@ Used to specify the build tool used for this project. Can be one of:
 - `cabal-install`
 - `stack`
 
+## Discovery
+
+Haskell discovery traverses the filetree, looking for `cabal.project`,
+`stack.yaml`, and `*.cabal` files.
+
+Because cabal and stack projects necessarily generate `*.cabal` files, we
+remove `*.cabal` entries in a deduplication pass: `*.cabal` files with a project
+file in the current or any parent directory won't be included in the final output.
+
 ## Analysis
 
-Analysis differs based on the build tool
+Analysis differs for each of the build tools.
 
 ### cabal-install
 
-Projects defined in cabal.project and standalone cabal packages are analyzed the same way.
+Projects defined in `cabal.project` and standalone `*.cabal` packages are
+analyzed the same way.
 
-1. A solver plan (from `cabal new-build`) is generated if it doesn't already exist via `cabal new-build --dry-run`
+1. A solver plan (from `cabal new-build`) is generated if it doesn't already
+exist via `cabal v2-build --dry-run`
+
 2. The solver plan is analyzed and its dependency graph extracted (from `dist-newstyle/cache/plan.json`)
 
-> note: analysis will fail if a solver plan doesn't exist and isn't able to be generated. Ensure that `cabal new-build` has been or can be run from the project directory
+> note: analysis will fail if a solver plan doesn't exist and isn't able to be
+generated. It's best to build the project before running `fossa analyze`
 
 ### stack
 
@@ -65,4 +92,5 @@ The stack analyzer builds out the dependency graph for a project using:
 
 ## Known limitations
 
-- The stack analyzer won't hydrate the edges of the dependency graph unless dependencies have been installed -- usually via `stack build` or similar
+- The stack analyzer won't hydrate the edges of the dependency graph unless
+dependencies have been installed -- usually via `stack build` or similar

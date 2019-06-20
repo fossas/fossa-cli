@@ -63,7 +63,7 @@ func GetSolverPlan(dir string) (Plan, error) {
 	if exists, _ := files.Exists(cabalPlanPath); !exists {
 		_, _, err := exec.Run(exec.Cmd{
 			Name: "cabal",
-			Argv: []string{"new-build", "--dry-run"},
+			Argv: []string{"v2-build", "--dry-run"},
 			Dir:  dir,
 		})
 		if err != nil {
@@ -76,7 +76,7 @@ func GetSolverPlan(dir string) (Plan, error) {
 		return Plan{}, errors.New("couldn't find or generate cabal solver plan")
 	}
 
-	// Parse cabal new-build's build plan
+	// Parse cabal v2-build's build plan
 	var rawPlan map[string]interface{}
 	var plan Plan
 
