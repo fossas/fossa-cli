@@ -134,7 +134,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	switch a.Options.Strategy {
 	case "pom-file":
-		return maven.GraphFromTarget(a.Module.BuildTarget)
+		return maven.PomFileGraph(a.Module.BuildTarget, a.Module.Dir)
 	case "maven-tree":
 		return a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
 	default:
@@ -163,6 +163,6 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 			return deps, nil
 		}
 
-		return maven.GraphFromTarget(a.Module.BuildTarget)
+		return maven.PomFileGraph(a.Module.BuildTarget, a.Module.Dir)
 	}
 }

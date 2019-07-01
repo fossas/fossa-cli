@@ -49,9 +49,9 @@ func (d Dependency) ID() string {
 	return d.GroupId + ":" + d.ArtifactId
 }
 
-// GraphFromTarget returns simply the list of dependencies listed within the manifest file.
-func GraphFromTarget(buildTarget string) (graph.Deps, error) {
-	pom, err := ResolveManifestFromBuildTarget(buildTarget)
+// PomFileGraph returns simply the list of dependencies listed within the manifest file.
+func PomFileGraph(target, dir string) (graph.Deps, error) {
+	pom, err := ResolveManifestFromTarget(target, dir)
 	if err != nil {
 		return graph.Deps{}, err
 	}
@@ -75,25 +75,22 @@ func GraphFromTarget(buildTarget string) (graph.Deps, error) {
 	return deps, nil
 }
 
-// ResolveManifestFromBuildTarget tries to determine what buildTarget is supposed to be and then reads the POM
-// manifest file pointed to by buildTarget if it is a path to such a file or module.
-func ResolveManifestFromBuildTarget(buildTarget string) (*Manifest, error) {
-	var pomFile string
-	stat, err := os.Stat(buildTarget)
+// ResolveManifestFromTarget tries to determine what target is supposed to be and then reads the POM
+// manifest file pointed to by target if it is a path to such a file or module.
+func ResolveManifestFromTarget(target, dir string) (*Manifest, error) {
+	pomFile := filepath.Join(dir, target)
+	stat, err := os.Stat(pomFile)
 	if err != nil {
-		// buildTarget is not a path.
-		if strings.Count(buildTarget, ":") == 1 {
+		// target is not a path.
+		if strings.Count(target, ":") == 1 {
 			// This is likely a module ID.
-			return nil, errors.Errorf("cannot identify POM file for module %q", buildTarget)
+			return nil, errors.Errorf("cannot identify POM file for module %q", target)
 		}
-		return nil, errors.Errorf("manifest file for %q cannot be read", buildTarget)
+		return nil, errors.Wrapf(err, "manifest file for %q cannot be read", target)
 	}
 	if stat.IsDir() {
 		// We have the directory and will assume it uses the standard name for the manifest file.
-		pomFile = filepath.Join(buildTarget, "pom.xml")
-	} else {
-		// We have the manifest file but still need its directory path.
-		pomFile = buildTarget
+		pomFile = filepath.Join(target, "pom.xml")
 	}
 
 	var pom Manifest
