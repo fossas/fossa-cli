@@ -74,6 +74,11 @@ func dependenciesRun(ctx *cli.Context) error {
 		}
 	}
 
+	if len(revisionsByFetcher) == 0 {
+		fmt.Printf("\nNo dependencies were found for project %s", locator)
+		return nil
+	}
+
 	// Sort the dependency lists alphabetically by Project Title.
 	for fetcher, depList := range revisionsByFetcher {
 		sort.Slice(depList[:], func(i, j int) bool {

@@ -82,6 +82,11 @@ func licensesRun(ctx *cli.Context) (err error) {
 		}
 	}
 
+	if len(revisionsByLicense) == 0 {
+		fmt.Printf("\nNo licenses were found for project %s", locator)
+		return nil
+	}
+
 	// Sort the dependency lists alphabetically by Project Title.
 	for license, depList := range revisionsByLicense {
 		sort.Slice(depList[:], func(i, j int) bool {
