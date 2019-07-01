@@ -36,7 +36,7 @@ func TestModules(t *testing.T) {
 	pomWithModules := filepath.Join(testdataDir, "nested", "pom.xml")
 	mods2, err := maven.Modules(pomWithModules, testdataDir, make(map[string]bool))
 	assert.NoError(t, err)
-	assert.Len(t, mods2, 2)
+	assert.Len(t, mods2, 3)
 	for _, mod := range mods2 {
 		exists, err := files.Exists(mod.Dir, mod.Target)
 		assert.NoError(t, err)
@@ -47,7 +47,7 @@ func TestModules(t *testing.T) {
 	pomWithModules2 := filepath.Join(testdataDir, "pom-minimal.xml")
 	mods3, err := maven.Modules(pomWithModules2, testdataDir, make(map[string]bool))
 	assert.NoError(t, err)
-	assert.Len(t, mods3, 3)
+	assert.Len(t, mods3, 4)
 	for _, mod := range mods3 {
 		exists, err := files.Exists(mod.Dir, mod.Target)
 		assert.NoError(t, err)

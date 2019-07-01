@@ -12,7 +12,7 @@ func TestDiscover(t *testing.T) {
 	modules, err := maven.Discover("testdata", nil)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 3, len(modules))
+	assert.Equal(t, 4, len(modules))
 
 	p1 := modules[0]
 	assert.Equal(t, "Project 1 Sample", p1.Name)
@@ -28,4 +28,9 @@ func TestDiscover(t *testing.T) {
 	assert.Equal(t, "Other Project", p3.Name)
 	assert.Equal(t, "pom-other.xml", p3.BuildTarget)
 	assert.Equal(t, "testdata/nested", p3.Dir)
+
+	p4 := modules[3]
+	assert.Equal(t, "Deep Nested Project", p4.Name)
+	assert.Equal(t, "deep-nested/pom.xml", p4.BuildTarget)
+	assert.Equal(t, "testdata/nested", p4.Dir)
 }

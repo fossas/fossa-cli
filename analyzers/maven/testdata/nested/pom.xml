@@ -14,6 +14,7 @@
  </parent>
  <modules>
   <module>pom-other.xml</module>
+  <module>deep-nested</module>
  </modules>
  <description>Other project</description>
  <properties>

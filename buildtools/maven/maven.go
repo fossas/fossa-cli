@@ -131,7 +131,7 @@ func (m *Maven) tryDependencyCommands(subGoal, dir, buildTarget string) (stdout 
 	if err != nil {
 		// Now we try to identify the groupId:artifactId identifier for the module and specify the path to
 		// the manifest file directly.
-		pom, err2 := ResolveManifestFromBuildTarget(buildTarget)
+		pom, err2 := ResolveManifestFromTarget(buildTarget, dir)
 		if err2 != nil {
 			// Using buildTarget as a module ID or as a path to a manifest did not work.
 			// Return just the error from running the mvn goal the first time.

@@ -10,9 +10,10 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-func TestGraphFromTarget(t *testing.T) {
+func TestPomFileGraph(t *testing.T) {
 	// This test needs just the Dependencies field of a Manifest to be translated to a graph.Deps.
-	projectDir := testdataDir
+	projectDir := testdataDir + "/nested"
+	projectTarget := "deep-nested/pom.xml"
 
 	id1 := pkg.ID{Type: pkg.Maven, Name: "com.google.code.g:g", Revision: "2.7"}
 	id2 := pkg.ID{Type: pkg.Maven, Name: "javax.annotation:jsr250-api", Revision: "1.0.2"}
@@ -29,26 +30,26 @@ func TestGraphFromTarget(t *testing.T) {
 		id3: {ID: id3},
 	}
 
-	got, err := maven.GraphFromTarget(projectDir)
+	got, err := maven.PomFileGraph(projectTarget, projectDir)
 	assert.NoError(t, err)
 	assert.Equal(t, wantDirect, got.Direct)
 	assert.Equal(t, wantTransitive, got.Transitive)
 }
 
-func TestResolveManifestFromBuildTarget(t *testing.T) {
+func TestResolveManifestFromTarget(t *testing.T) {
 	// A directory path.
-	pom, err := maven.ResolveManifestFromBuildTarget(testdataDir)
+	pom, err := maven.ResolveManifestFromTarget(testdataDir, ".")
 	if assert.NoError(t, err) {
 		assert.Equal(t, "com.domain.name:stuff", pom.GroupID+":"+pom.ArtifactID)
 	}
 
 	// A POM file path.
-	pom2, err := maven.ResolveManifestFromBuildTarget(filepath.Join(testdataDir, "nested", "pom.xml"))
+	pom2, err := maven.ResolveManifestFromTarget(filepath.Join(testdataDir, "nested", "pom.xml"), ".")
 	if assert.NoError(t, err) {
 		assert.Equal(t, "com.someone.code.a:gson-extras", pom2.GroupID+":"+pom2.ArtifactID)
 	}
 
 	// A project identifier.
-	_, err3 := maven.ResolveManifestFromBuildTarget("something:else")
+	_, err3 := maven.ResolveManifestFromTarget("something:else", ".")
 	assert.Error(t, err3)
 }
