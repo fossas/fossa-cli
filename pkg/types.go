@@ -31,6 +31,7 @@ const (
 	OkBuck                // OkBuck (https://github.com/uber/okbuck)
 	Python                // Pip (https://pip.pypa.io), Pipenv (https://pipenv.readthedocs.io/en/latest/)
 	Ruby                  // Bundler (https://bundler.io)
+	Rust                  // Cargo (https://github.com/rust-lang/cargo)
 	Scala                 // SBT (https://www.scala-sbt.org)
 	Raw                   // Unsupported languages
 )
@@ -53,6 +54,7 @@ var AllTypes = []Type{
 	OkBuck,
 	Python,
 	Ruby,
+	Rust,
 	Scala,
 	Raw,
 }
@@ -181,6 +183,12 @@ func ParseType(key string) (Type, error) {
 	case "ruby":
 		return Ruby, nil
 
+	// Rust aliases
+	case "cargo":
+		fallthrough
+	case "rust":
+		return Rust, nil
+
 	// Scala aliases
 	case "scala":
 		fallthrough
@@ -248,6 +256,8 @@ func (t Type) String() string {
 		return "pip"
 	case Ruby:
 		return "gem"
+	case Rust:
+		return "cargo"
 	case Scala:
 		return "sbt"
 	case Raw:
