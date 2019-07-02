@@ -12,6 +12,7 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/debian"
 	"github.com/fossas/fossa-cli/analyzers/golang"
 	"github.com/fossas/fossa-cli/analyzers/gradle"
+	"github.com/fossas/fossa-cli/analyzers/haskell"
 	"github.com/fossas/fossa-cli/analyzers/maven"
 	"github.com/fossas/fossa-cli/analyzers/nodejs"
 	"github.com/fossas/fossa-cli/analyzers/nuget"
@@ -61,6 +62,8 @@ func New(m module.Module) (Analyzer, error) {
 		return golang.New(m)
 	case pkg.Gradle:
 		return gradle.New(m)
+	case pkg.Haskell:
+		return haskell.New(m)
 	case pkg.Maven:
 		return maven.New(m)
 	case pkg.NodeJS:

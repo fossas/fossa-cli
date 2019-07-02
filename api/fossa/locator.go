@@ -156,6 +156,8 @@ func LocatorOf(id pkg.ID) Locator {
 		fetcher = "mvn"
 	case pkg.Scala:
 		fetcher = "mvn"
+	case pkg.Haskell:
+		fetcher = "hackage"
 	}
 
 	return Locator{
