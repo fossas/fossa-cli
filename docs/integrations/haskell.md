@@ -17,7 +17,7 @@ cabal-install is recommended.
 Run `fossa init`, which detects:
  
 - cabal projects, via `cabal.project` and `*.cabal`
-- stack projects, via `stack.yaml`.
+- stack projects, via `stack.yaml`
 
 Refer to [Discovery](#Discovery) for more information on the auto-configuration
 logic.
@@ -61,9 +61,9 @@ Used to specify the build tool used for this project. Can be one of:
 Haskell discovery traverses the filetree, looking for `cabal.project`,
 `stack.yaml`, and `*.cabal` files.
 
-Because cabal and stack projects necessarily generate `*.cabal` files, we
-remove `*.cabal` entries in a deduplication pass: `*.cabal` files with a project
-file in the current or any parent directory won't be included in the final output.
+Because cabal and stack projects point to individual `*.cabal` files, we remove
+`*.cabal` entries in a deduplication pass: `*.cabal` files with a project file
+in the current or any parent directory won't be included in the final output.
 
 ## Analysis
 
@@ -90,7 +90,15 @@ The stack analyzer builds out the dependency graph for a project using:
 2. The list of direct dependencies via `stack ls dependencies --depth 1`
 3. The global dependency graph from ghc-pkg with `stack exec -- ghc-pkg dot`
 
-## Known limitations
+## FAQ
 
-- The stack analyzer won't hydrate the edges of the dependency graph unless
-dependencies have been installed -- usually via `stack build` or similar
+### Q: Why isn't my stack project showing all of its dependencies?
+
+Make sure to build your project first, then run `fossa analyze`. This ensures
+the dependencies are available for analysis
+
+### Q: Why are my projects appearing as dependencies of themselves?
+
+This is a side effect of the way cabal (the library) structures
+library+executable projects. You can safely ignore those references, and
+they won't affect the output of analysis.

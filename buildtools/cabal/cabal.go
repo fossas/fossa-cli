@@ -1,17 +1,60 @@
 package cabal
 
 import (
+	"path/filepath"
+
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/mitchellh/mapstructure"
-	"path/filepath"
 )
 
-const PlanRelPath = "dist-newstyle/cache/plan.json"
+const planRelPath = "dist-newstyle/cache/plan.json"
+
+// ----- Dep graph retrieval
+
+func GetDeps(m module.Module) (graph.Deps, error) {
+	plan, err := getSolverPlan(m.Dir)
+	if err != nil {
+		return graph.Deps{}, err
+	}
+
+	return GetDepsPure(plan), nil
+}
+
+func GetDepsPure(plan Plan) graph.Deps {
+	// Index a list of install plans by their IDs
+	// this is used when building out the dependency graph
+	var installPlans = make(map[string]InstallPlan)
+	for _, p := range plan.InstallPlans {
+		installPlans[p.Id] = p
+	}
+
+	var dependencyGraph = make(map[pkg.ID]pkg.Package)
+	var directDependencies []pkg.Import
+
+	// Build the entire dependency graph, keeping track of our direct
+	// dependencies
+	for _, p := range plan.InstallPlans {
+		var builtPackage = installPlanToPackage(installPlans, p)
+
+		if isDirectDependency(p) {
+			directDependencies = append(directDependencies, builtPackage.Imports...)
+		}
+
+		dependencyGraph[builtPackage.ID] = builtPackage
+	}
+
+	return graph.Deps{
+		Direct:     directDependencies,
+		Transitive: dependencyGraph,
+	}
+}
+
 
 // ----- Types
 
@@ -37,7 +80,7 @@ type InstallPlan struct {
 	Style string `mapstructure:"style"` // Only exists for packages with type `configured`
 }
 
-func InstallPlanToID(plan InstallPlan) pkg.ID {
+func installPlanToID(plan InstallPlan) pkg.ID {
 	return pkg.ID{
 		Type:     pkg.Haskell,
 		Name:     plan.Name,
@@ -45,7 +88,7 @@ func InstallPlanToID(plan InstallPlan) pkg.ID {
 	}
 }
 
-func IsDirectDependency(plan InstallPlan) bool {
+func isDirectDependency(plan InstallPlan) bool {
 	// See documentation on InstallPlan
 	return plan.Type == "configured" && plan.Style == "local"
 }
@@ -56,8 +99,8 @@ type Component struct {
 
 // ----- Command invocation
 
-func GetSolverPlan(dir string) (Plan, error) {
-	cabalPlanPath := filepath.Join(dir, PlanRelPath)
+func getSolverPlan(dir string) (Plan, error) {
+	cabalPlanPath := filepath.Join(dir, planRelPath)
 
 	// If plan.json doesn't exist, generate it
 	if exists, _ := files.Exists(cabalPlanPath); !exists {
@@ -88,59 +131,16 @@ func GetSolverPlan(dir string) (Plan, error) {
 	}
 
 	return plan, nil
-
 }
 
-// TODO --------------------------
-
-func GetDeps(m module.Module) (graph.Deps, error) {
-	plan, err := GetSolverPlan(m.Dir)
-	if err != nil {
-		return graph.Deps{}, err
-	}
-
-	return GetDepsPure(plan), nil
-}
-
-func GetDepsPure(plan Plan) graph.Deps {
-	// Index a list of install plans by their IDs
-	// this is used when building out the dependency graph
-	var installPlans = make(map[string]InstallPlan)
-	for _, p := range plan.InstallPlans {
-		installPlans[p.Id] = p
-	}
-
-	var dependencyGraph = make(map[pkg.ID]pkg.Package)
-	var directDependencies []pkg.Import
-
-	// Build the entire dependency graph, keeping track of our direct
-	// dependencies
-	for _, p := range plan.InstallPlans {
-		var builtPackage = InstallPlanToPackage(installPlans, p)
-
-		if IsDirectDependency(p) {
-			directDependencies = append(directDependencies, builtPackage.Imports...)
-		}
-
-		dependencyGraph[builtPackage.ID] = builtPackage
-	}
-
-	deps := graph.Deps{
-		Direct:     directDependencies,
-		Transitive: dependencyGraph,
-	}
-
-	return deps
-}
-
-func InstallPlanToPackage(installPlans map[string]InstallPlan, plan InstallPlan) pkg.Package {
+func installPlanToPackage(installPlans map[string]InstallPlan, plan InstallPlan) pkg.Package {
 	var imports []pkg.Import
 
 	for _, depId := range plan.Depends {
 		dep := installPlans[depId]
 
 		imports = append(imports, pkg.Import{
-			Resolved: InstallPlanToID(dep),
+			Resolved: installPlanToID(dep),
 		})
 	}
 
@@ -149,13 +149,13 @@ func InstallPlanToPackage(installPlans map[string]InstallPlan, plan InstallPlan)
 			dep := installPlans[depId]
 
 			imports = append(imports, pkg.Import{
-				Resolved: InstallPlanToID(dep),
+				Resolved: installPlanToID(dep),
 			})
 		}
 	}
 
 	return pkg.Package{
-		ID:      InstallPlanToID(plan),
+		ID:      installPlanToID(plan),
 		Imports: imports,
 	}
 }

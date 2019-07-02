@@ -13,7 +13,7 @@ import (
 // ----- Dep graph retrieval
 
 func GetDeps(m module.Module) (graph.Deps, error) {
-	stackAllDeps, err := GetStackDependencies(m.Dir, nil)
+	stackAllDeps, err := GetStackDependencies(m.Dir, 0)
 	if err != nil {
 		return graph.Deps{}, err
 	}
@@ -23,8 +23,7 @@ func GetDeps(m module.Module) (graph.Deps, error) {
 		return graph.Deps{}, err
 	}
 
-	depth := int(1)
-	stackImmediateDeps, err := GetStackDependencies(m.Dir, &depth)
+	stackImmediateDeps, err := GetStackDependencies(m.Dir, 1)
 	if err != nil {
 		return graph.Deps{}, err
 	}
@@ -168,12 +167,11 @@ func ParseGhcPkgDepMap(output string) GhcPkgDeps {
 
 // ----- Command invocation
 
-// TODO: trying to emulate Optional with *int.. maybe not a good idea?
-func GetStackDependencies(dir string, depth *int) ([]Dep, error) {
+func GetStackDependencies(dir string, depth int) ([]Dep, error) {
 	args := []string{"ls", "dependencies"}
 
-	if depth != nil {
-		args = append(args, "--depth", strconv.Itoa(*depth))
+	if depth != 0 {
+		args = append(args, "--depth", strconv.Itoa(depth))
 	}
 
 	stdout, _, err := exec.Run(exec.Cmd{
