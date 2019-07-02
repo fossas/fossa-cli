@@ -15,16 +15,17 @@ import (
 
 // A Manifest represents a POM manifest file.
 type Manifest struct {
-	Project      xml.Name     `xml:"project"`
-	Parent       Parent       `xml:"parent"`
-	Modules      []string     `xml:"modules>module"`
-	ArtifactID   string       `xml:"artifactId"`
-	GroupID      string       `xml:"groupId"`
-	Version      string       `xml:"version"`
-	Description  string       `xml:"description"`
-	Name         string       `xml:"name"`
-	URL          string       `xml:"url"`
-	Dependencies []Dependency `xml:"dependencies>dependency"`
+	Project              xml.Name     `xml:"project"`
+	Parent               Parent       `xml:"parent"`
+	Modules              []string     `xml:"modules>module"`
+	ArtifactID           string       `xml:"artifactId"`
+	GroupID              string       `xml:"groupId"`
+	Version              string       `xml:"version"`
+	Description          string       `xml:"description"`
+	Name                 string       `xml:"name"`
+	URL                  string       `xml:"url"`
+	Dependencies         []Dependency `xml:"dependencies>dependency"`
+	DependencyManagement []Dependency `xml:"dependencyManagement>dependencies>dependency"`
 }
 
 type Parent struct {
@@ -55,13 +56,20 @@ func PomFileGraph(target, dir string) (graph.Deps, error) {
 	if err != nil {
 		return graph.Deps{}, err
 	}
+
+	// Aggregate `dependencies` and `dependencyManagement` fields.
+	dependencyList := pom.Dependencies
+	for _, dep := range pom.DependencyManagement {
+		dependencyList = append(dependencyList, dep)
+	}
+
 	deps := graph.Deps{
-		Direct:     depsListToImports(pom.Dependencies),
+		Direct:     depsListToImports(dependencyList),
 		Transitive: make(map[pkg.ID]pkg.Package),
 	}
 
 	// From just a POM file we don't know what really depends on what, so list all imports in the graph.
-	for _, dep := range pom.Dependencies {
+	for _, dep := range dependencyList {
 		pack := pkg.Package{
 			ID: pkg.ID{
 				Type:     pkg.Maven,

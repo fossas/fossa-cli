@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+ <dependencyManagement>
+  <dependencies>
+   <dependency>
+    <groupId>junit</groupId>
+    <artifactId>junit</artifactId>
+    <version>3.8.2</version>
+    <scope>test</scope>
+   </dependency>
+  </dependencies>
+ </dependencyManagement>
+</project>
