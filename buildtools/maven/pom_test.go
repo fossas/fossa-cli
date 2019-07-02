@@ -11,11 +11,11 @@ import (
 	"github.com/fossas/fossa-cli/testing/helpers"
 )
 
-func testPomFileGraph(t *testing.T) {
+func TestPomFileGraph(t *testing.T) {
 	// This test needs just the Dependencies field of a Manifest to be translated to a graph.Deps.
 
 	projectDir := filepath.Join(testPoms, "nested")
-	projectTarget := filepath.Join(projectDir, "deep-nested", "pom.xml")
+	projectTarget := filepath.Join("deep-nested", "pom.xml")
 
 	id1 := pkg.ID{Type: pkg.Maven, Name: "com.google.code.g:g", Revision: "2.7"}
 	id2 := pkg.ID{Type: pkg.Maven, Name: "javax.annotation:jsr250-api", Revision: "1.0.2"}
