@@ -17,9 +17,6 @@
   <a href="https://golangci.com/r/github.com/fossas/fossa-cli">
     <img src="https://golangci.com/badges/github.com/fossas/fossa-cli.svg">
   </a>
-  <a href="http://slack.fossa.io/">
-    <img src="https://slack.fossa.io/badge.svg">
-  </a>
   <a href="https://codecov.io/gh/fossas/fossa-cli">
     <img src="https://codecov.io/gh/fossas/fossa-cli/branch/master/graph/badge.svg" />
   </a>
@@ -184,8 +181,6 @@ License data is provided by [https://fossa.com](https://fossa.com)'s 500GB open 
 ## Development
 
 View our [Contribution Guidelines](.github/CONTRIBUTING.md) to get started.
-
-Join our public [Slack Channel](https://slack.fossa.io).
 
 ## License
 
