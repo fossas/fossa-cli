@@ -58,10 +58,7 @@ func PomFileGraph(target, dir string) (graph.Deps, error) {
 	}
 
 	// Aggregate `dependencies` and `dependencyManagement` fields.
-	dependencyList := pom.Dependencies
-	for _, dep := range pom.DependencyManagement {
-		dependencyList = append(dependencyList, dep)
-	}
+	dependencyList := append(pom.Dependencies, pom.DependencyManagement...)
 
 	deps := graph.Deps{
 		Direct:     depsListToImports(dependencyList),

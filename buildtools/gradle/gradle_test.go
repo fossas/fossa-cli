@@ -8,6 +8,7 @@ import (
 
 	"github.com/fossas/fossa-cli/buildtools/gradle"
 	"github.com/fossas/fossa-cli/pkg"
+	"github.com/fossas/fossa-cli/testing/helpers"
 )
 
 /*
@@ -27,9 +28,9 @@ func TestAllDependencies(t *testing.T) {
 		data, err := ioutil.ReadFile(file)
 		assert.NoError(t, err)
 		if file == dos {
-			assertDosFile(t, data)
+			helpers.AssertDosFile(t, data)
 		} else if file == unix {
-			assertUnixFile(t, data)
+			helpers.AssertUnixFile(t, data)
 		}
 
 		g := MockGradle(t, file)
@@ -148,30 +149,6 @@ func MockGradle(t *testing.T, file string) gradle.ShellCommand {
 		Cmd: func(string, string, int, ...string) (string, error) {
 			return string(fileContents), nil
 		},
-	}
-}
-
-func assertDosFile(t *testing.T, file []byte) {
-	fixture := string(file)
-	for i := range fixture {
-		if i == 0 {
-			continue
-		}
-		if fixture[i] == '\n' {
-			assert.Equal(t, uint8('\r'), fixture[i-1])
-		}
-	}
-}
-
-func assertUnixFile(t *testing.T, file []byte) {
-	fixture := string(file)
-	for i := range fixture {
-		if i == 0 {
-			continue
-		}
-		if fixture[i] == '\n' {
-			assert.NotEqual(t, uint8('\r'), fixture[i-1])
-		}
 	}
 }
 
