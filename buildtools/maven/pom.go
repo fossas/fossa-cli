@@ -58,7 +58,7 @@ func PomFileGraph(target, dir string) (graph.Deps, error) {
 	}
 
 	// Aggregate `dependencies` and `dependencyManagement` fields.
-	dependencyList := append(pom.Dependencies, pom.DependencyManagement...)
+	dependencyList := combineDependencies(pom.Dependencies, pom.DependencyManagement)
 
 	deps := graph.Deps{
 		Direct:     depsListToImports(dependencyList),
@@ -103,4 +103,19 @@ func ResolveManifestFromTarget(target, dir string) (*Manifest, error) {
 		return nil, err
 	}
 	return &pom, nil
+}
+
+// combineDependencies combines and dedupes two lists of Dependencies.
+func combineDependencies(listOne, listTwo []Dependency) []Dependency {
+	mergedList := listOne
+	listOneMap := make(map[Dependency]bool)
+	for _, dep := range listOne {
+		listOneMap[dep] = true
+	}
+	for _, dep := range listTwo {
+		if _, exists := listOneMap[dep]; !exists {
+			mergedList = append(mergedList, dep)
+		}
+	}
+	return mergedList
 }

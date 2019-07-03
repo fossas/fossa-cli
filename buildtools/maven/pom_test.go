@@ -46,6 +46,7 @@ func TestPomFileDependencyManagement(t *testing.T) {
 
 	assert.Len(t, got.Transitive, 1)
 	packageOne := helpers.PackageInTransitiveGraph(got.Transitive, "junit:junit", "3.8.2")
+	assert.NotEmpty(t, packageOne)
 	assert.Len(t, packageOne.Imports, 0)
 }
 func TestResolveManifestFromTarget(t *testing.T) {
