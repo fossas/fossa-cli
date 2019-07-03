@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+ <modelVersion>4.0.0</modelVersion>
+ <groupId>com.domain.name</groupId>
+ <artifactId>stuff</artifactId>
+ <packaging>jar</packaging>
+ <version>1.0-SNAPSHOT</version>
+ <name>Project 1 Sample</name>
+ <description>A sample project</description>
+</project>
