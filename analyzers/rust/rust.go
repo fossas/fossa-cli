@@ -5,7 +5,6 @@
 package rust
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/fossas/fossa-cli/buildtools/cargo"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
@@ -61,7 +61,10 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				"path": path,
 				"name": moduleName,
 			}).Debug("found Rust module")
-			relPath, _ := filepath.Rel(dir, path)
+			relPath, err := filepath.Rel(dir, path)
+			if err != nil {
+				return errors.Wrap(err, "error discovering rust modules")
+			}
 			modules = append(modules, module.Module{
 				Name:        moduleName,
 				Type:        pkg.Rust,
@@ -69,13 +72,12 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				Dir:         filepath.Dir(relPath),
 			})
 		}
-
 		return nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("Could not find Rust package manifests: %s", err.Error())
 	}
+
 	return modules, nil
 }
 
@@ -86,7 +88,7 @@ func (a *Analyzer) Clean() error {
 }
 
 func (a *Analyzer) Build() error {
-	return errors.New("Build not implemented for Rust")
+	return errors.New("Build is not implemented for Rust")
 }
 
 func (a *Analyzer) IsBuilt() (bool, error) {
@@ -94,16 +96,14 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	// Fallbacks
-	// 1. Try to run `cargo tree` if it exists.
-	// 2. Read Cargo.lock with Cargo.toml for direct deps.
-	// 3. Read Cargo.lock for all deps.
-	// TODO 4. Read only Cargo.tomls. Not sure how to implement this
-	// without file tree traversal.
 	switch a.Options.Strategy {
 	case "manifest":
+		// TODO: Add for filetree scanning.
 		fallthrough
-		// return cargo.ManifestDependencies()
+	case "cargo-tree":
+		// TODO: Check for `cargo-tree` command and parse output.
+		// This will give the most accurate results.
+		fallthrough
 	case "lockfile":
 		fallthrough
 	default:
