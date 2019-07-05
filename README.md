@@ -77,24 +77,26 @@ If you have questions please refer to the [FAQ](docs/faq.md#frequently-asked-que
 If you are interested in learning more about FOSSA you can visit our homepage at fossa.com and look at our [online documentation](https://docs.fossa.com/docs).
 
 ## Supported Environments
-| Environment                                  | Package Managers                                                                                                             |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Android                                      | [Gradle](docs/integrations/gradle.md#gradle)                                                                                 |
-| [Debian](docs/integrations/debian.md#debian)  | Dpkg                                                                                                                         |
-| [Golang](docs/integrations/golang.md#go)     | Dep, Gomodules, Vndr, GDM, Glide, Godep, Govendor                                                                            |
-| Groovy                                       | [Gradle](docs/integrations/gradle.md#gradle)                                                                                 |
-| Java                                         | [Gradle](docs/integrations/gradle.md#gradle), [Maven](docs/integrations/maven.md#maven), [Ant](docs/integrations/ant.md#ant--ivy) |
-| Javascript                                   | [nodejs & npm](docs/integrations/nodejs.md#nodejs)                                                                          |
-| Kotlin                                       | [Gradle](docs/integrations/gradle.md#gradle)                                                                                 |
-| Monorepo tooling                             | [okbuck](docs/integrations/okbuck.md#okbuck), [Buck](docs/integrations/buck.md#buck)                                         |
-| [.NET](docs/integrations/nuget.md#nuget-net)     | NuGet, Paket                                                                                                                 |
-| Objective-C                                  | [Cocoapods](docs/integrations/cocoapods.md#cocoapods), [Carthage](docs/integrations/carthage.md#carthage)                    |
-| PHP                                          | [Composer](docs/integrations/composer.md#composer)                                                                           |
-| [Python](docs/integrations/python.md#python) | Pip, Pipenv, requirements.txt                                                                                                |
-| [Ruby](docs/integrations/ruby.md#ruby)       | Bundler                                                                                                                      |
-| Scala                                        | [SBT](docs/integrations/sbt.md#sbt)                                                                                          |
-| Swift                                        | [Cocoapods](docs/integrations/cocoapods.md#cocoapods), [Carthage](docs/integrations/carthage.md#carthage)                    |
-| C, C++                                       | [Archive Uploader](docs/integrations/archive.md#archive)                                                                              |
+| Environment                                     | Package Managers                                                                                                                  |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Android                                         | [Gradle](docs/integrations/gradle.md#gradle)                                                                                      |
+| [Debian](docs/integrations/debian.md#debian)    | Dpkg                                                                                                                              |
+| [Golang](docs/integrations/golang.md#go)        | Dep, Gomodules, Vndr, GDM, Glide, Godep, Govendor                                                                                 |
+| Groovy                                          | [Gradle](docs/integrations/gradle.md#gradle)                                                                                      |
+| [Haskell](docs/integrations/haskell.md#haskell) | Cabal and Stack                                                                                                                   |
+| Java                                            | [Gradle](docs/integrations/gradle.md#gradle), [Maven](docs/integrations/maven.md#maven), [Ant](docs/integrations/ant.md#ant--ivy) |
+| Javascript                                      | [nodejs & npm](docs/integrations/nodejs.md#nodejs)                                                                                |
+| Kotlin                                          | [Gradle](docs/integrations/gradle.md#gradle)                                                                                      |
+| Monorepo tooling                                | [okbuck](docs/integrations/okbuck.md#okbuck), [Buck](docs/integrations/buck.md#buck)                                              |
+| [.NET](docs/integrations/nuget.md#nuget-net)    | NuGet, Paket                                                                                                                      |
+| Objective-C                                     | [Cocoapods](docs/integrations/cocoapods.md#cocoapods), [Carthage](docs/integrations/carthage.md#carthage)                         |
+| PHP                                             | [Composer](docs/integrations/composer.md#composer)                                                                                |
+| [Python](docs/integrations/python.md#python)    | Pip, Pipenv, requirements.txt                                                                                                     |
+| [Ruby](docs/integrations/ruby.md#ruby)          | Bundler                                                                                                                           |
+| [Rust](docs/integrations/rust.md#rust)          | Cargo                                                                                                                             |
+| Scala                                           | [SBT](docs/integrations/sbt.md#sbt)                                                                                               |
+| Swift                                           | [Cocoapods](docs/integrations/cocoapods.md#cocoapods), [Carthage](docs/integrations/carthage.md#carthage)                         |
+| C, C++                                          | [Archive Uploader](docs/integrations/archive.md#archive)                                                                          |
 
 If your development environment is not supported, check out the [archive](docs/integrations/archive.md#archive) uploader which allows direct license scanning of source code files.
 

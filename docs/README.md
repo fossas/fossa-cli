@@ -63,5 +63,6 @@ This document is a walk-through of getting started with the FOSSA CLI and is aim
   - [okbuck](integrsations/okbuck.md#okbuck)
   - [python](integrations/python.md#python)
   - [ruby](integrations/ruby.md#ruby)
+  - [rust](integrations/rust.md#rust)
   - [scala](integrations/sbt.md#sbt)
   
