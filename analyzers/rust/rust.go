@@ -27,7 +27,6 @@ type Analyzer struct {
 
 type Options struct {
 	Strategy     string `mapstructure:"strategy"`
-	LockfilePath string `mapstructure:"cargo-lock"`
 }
 
 func New(m module.Module) (*Analyzer, error) {
