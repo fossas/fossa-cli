@@ -5,7 +5,6 @@
 package rust
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -26,7 +25,7 @@ type Analyzer struct {
 }
 
 type Options struct {
-	Strategy     string `mapstructure:"strategy"`
+	Strategy string `mapstructure:"strategy"`
 }
 
 func New(m module.Module) (*Analyzer, error) {
@@ -74,7 +73,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Could not find Rust package manifests: %s", err.Error())
+		return nil, errors.Wrap(err, "Could not find Rust package manifests:")
 	}
 
 	return modules, nil
