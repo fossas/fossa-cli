@@ -1,9 +1,10 @@
 package cargo
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/apex/log"
 
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
@@ -12,13 +13,13 @@ import (
 )
 
 type manifest struct {
-	Workspace         Workspace
+	Workspace         workspace
 	Dependencies      map[string]interface{} `toml:"dependencies"`
 	BuildDependencies map[string]interface{} `toml:"build-dependencies"`
 	Package           Package
 }
 
-type Workspace struct {
+type workspace struct {
 	Members []string
 }
 
@@ -27,7 +28,7 @@ type lockfile struct {
 	Packages []Package `toml:"package"`
 }
 
-// Project is a single imported repository within a dep project.
+// Package is a single imported repository within a dep project.
 type Package struct {
 	Name         string
 	Dependencies []string
@@ -42,7 +43,7 @@ func LockfileDependencies(lockfilePath string, dir string) (graph.Deps, error) {
 	var lock lockfile
 	err := files.ReadTOML(&lock, lockfilePath)
 	if err != nil {
-		return graph.Deps{}, errors.Wrap(err, "No lockfile Gopkg.lock found")
+		return graph.Deps{}, errors.Wrap(err, "No lockfile Cargo.lock found")
 	}
 
 	IDMap := make(map[string]pkg.ID)
@@ -76,29 +77,29 @@ func LockfileDependencies(lockfilePath string, dir string) (graph.Deps, error) {
 	var man manifest
 	err = files.ReadTOML(&man, filepath.Join(dir, "Cargo.toml"))
 	if err != nil {
-		return graph.Deps{}, errors.Wrap(err, "No lockfile Gopkg.lock found")
+		log.Warnf("Manifest file `Cargo.toml` was not found in directory: %s. Direct dependencies may be incorrect.", dir)
 	}
 	manifests = append(manifests, man)
-	for _, list := range man.Workspace.Members {
-		subMan := manifest{}
-		subFile := filepath.Join(dir, list, "Cargo.toml")
-		err = files.ReadTOML(&subMan, subFile)
-		manifests = append(manifests, subMan)
+
+	for _, member := range man.Workspace.Members {
+		memberManifest := manifest{}
+		memberFile := filepath.Join(dir, member, "Cargo.toml")
+		err = files.ReadTOML(&memberManifest, memberFile)
+		manifests = append(manifests, memberManifest)
 	}
 
 	imports := []pkg.Import{}
-	for _, mani := range manifests {
-		for mDep := range mani.Dependencies {
+	for _, manifest := range manifests {
+		for dep := range manifest.Dependencies {
 			imports = append(imports, pkg.Import{
-				Target:   mDep,
-				Resolved: IDMap[mDep],
+				Target:   dep,
+				Resolved: IDMap[dep],
 			})
 		}
-		for mBDep := range mani.BuildDependencies {
-			fmt.Println(mBDep)
+		for dep := range manifest.BuildDependencies {
 			imports = append(imports, pkg.Import{
-				Target:   mBDep,
-				Resolved: IDMap[mBDep],
+				Target:   dep,
+				Resolved: IDMap[dep],
 			})
 		}
 	}
@@ -106,5 +107,5 @@ func LockfileDependencies(lockfilePath string, dir string) (graph.Deps, error) {
 	return graph.Deps{
 		Direct:     imports,
 		Transitive: transitiveDependenices,
-	}, errors.New("stupid")
+	}, nil
 }
