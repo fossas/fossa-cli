@@ -48,3 +48,13 @@ func TestLockfileNoManifest(t *testing.T) {
 	one := helpers.PackageInTransitiveGraph(graph.Transitive, "one", "1.0.0")
 	assert.Len(t, one.Imports, 0)
 }
+
+func TestMissingManifest(t *testing.T) {
+	graph, err := cargo.LockfileDependencies("testdata/missing-manifest/Cargo.lock", "testdata/missing-manifest")
+	assert.NoError(t, err)
+	assert.Len(t, graph.Direct, 0)
+	assert.Len(t, graph.Transitive, 1)
+
+	one := helpers.PackageInTransitiveGraph(graph.Transitive, "one", "1.0.0")
+	assert.Len(t, one.Imports, 0)
+}

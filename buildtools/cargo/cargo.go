@@ -77,7 +77,7 @@ func LockfileDependencies(lockfilePath string, dir string) (graph.Deps, error) {
 	var man manifest
 	err = files.ReadTOML(&man, filepath.Join(dir, "Cargo.toml"))
 	if err != nil {
-		log.Warnf("Manifest file `Cargo.toml` was not found in directory: %s. Direct dependencies may be incorrect.", dir)
+		log.Warnf("manifest file `Cargo.toml` was not found in directory: %s. direct dependencies may be incorrect. error: %+v", dir, err)
 	}
 	manifests = append(manifests, man)
 
@@ -85,6 +85,10 @@ func LockfileDependencies(lockfilePath string, dir string) (graph.Deps, error) {
 		memberManifest := manifest{}
 		memberFile := filepath.Join(dir, member, "Cargo.toml")
 		err = files.ReadTOML(&memberManifest, memberFile)
+		if err != nil {
+			log.Warnf("member manifest file `%s` was not able to be read. direct dependencies may be incorrect. error: %+v", memberFile, err)
+			continue
+		}
 		manifests = append(manifests, memberManifest)
 	}
 
