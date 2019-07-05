@@ -1,3 +1,2 @@
 [workspace]
-members = ["pyapp", "pyembed", "pyoxidizer"]
-exclude = ["third_party/rust-cpython"]
+members = ["subOne"]
