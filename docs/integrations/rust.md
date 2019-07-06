@@ -8,7 +8,7 @@ Rust support relies on the presence of the `Cargo.lock` and `Cargo.toml` files.
 
 ### Automatic
 
-Run `fossa init` to detect all python directories that contain `Cargo.lock`.
+Run `fossa init` to detect all directories that contain `Cargo.lock`.
 
 ### Manual
 
@@ -27,6 +27,6 @@ analyze:
 
 Rust analysis is a simple three step process:
 
-1. Parse `Cargo.lock` and retrieve information about the full dependency tree and each dependencies resolved version.
+1. Parse `Cargo.lock` and retrieve information about the full dependency tree and each dependency's resolved version.
 2. Read the [root crate](https://doc.rust-lang.org/cargo/reference/manifest.html#the-workspace-section)'s `Cargo.toml` and detect if any "member" crates exist.
-3. Parse all `Cargo.toml` files to retrieve information about which dependencies the user declared.
+3. Parse all `Cargo.toml` files to retrieve information about which dependencies are declared.
