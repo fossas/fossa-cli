@@ -53,18 +53,16 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 		}
 
 		if !info.IsDir() && info.Name() == "Cargo.lock" {
-			moduleName := filepath.Base(path)
-
 			log.WithFields(log.Fields{
 				"path": path,
-				"name": moduleName,
+				"name": path,
 			}).Debug("found Rust module")
 			relPath, err := filepath.Rel(dir, path)
 			if err != nil {
 				return errors.Wrap(err, "error discovering rust modules")
 			}
 			modules = append(modules, module.Module{
-				Name:        moduleName,
+				Name:        path,
 				Type:        pkg.Rust,
 				BuildTarget: filepath.Dir(relPath),
 				Dir:         filepath.Dir(relPath),

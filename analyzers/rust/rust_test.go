@@ -17,7 +17,7 @@ func TestDiscovery(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, modules, 1)
 	expected := module.Module{
-		Name:        "Cargo.lock",
+		Name:        "testdata/Cargo.lock",
 		Type:        pkg.Rust,
 		Dir:         ".",
 		BuildTarget: ".",

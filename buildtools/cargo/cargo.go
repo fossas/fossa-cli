@@ -23,7 +23,6 @@ type workspace struct {
 	Members []string
 }
 
-// lockfile contains the Projects in a dep lockfile and a corresponding map for retrieving project data.
 type lockfile struct {
 	Packages []Package `toml:"package"`
 }

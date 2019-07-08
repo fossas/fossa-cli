@@ -12,13 +12,13 @@ Run `fossa init` to detect all directories that contain `Cargo.lock`.
 
 ### Manual
 
-Add a module with `type: rust`, and `target` and `dir` set to the directory where `Cargo.lock` is.
+Add a module with `type: cargo`, and `target` and `dir` set to the directory where `Cargo.lock` is.
 
 ```yaml
 analyze:
   modules:
     - name: cargo-project
-      type: rust
+      type: cargo
       target: rust/root
       dir:  rust/root
 ```
