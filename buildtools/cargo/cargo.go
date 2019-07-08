@@ -40,7 +40,7 @@ type Package struct {
 // in the manifest file as direct dependencies and determines the version from the lockfile.
 func LockfileDependencies(lockfilePath string, dir string) (graph.Deps, error) {
 	var lock lockfile
-	err := files.ReadTOML(&lock, lockfilePath)
+	err := files.ReadTOML(&lock, filepath.Join(dir, lockfilePath))
 	if err != nil {
 		return graph.Deps{}, errors.Wrap(err, "No lockfile Cargo.lock found")
 	}

@@ -11,7 +11,7 @@ import (
 
 // Test that we can analyze a Cargo.lock and that direct deps are found in Cargo.toml files.
 func TestLockfileWithManifest(t *testing.T) {
-	graph, err := cargo.LockfileDependencies("testdata/Cargo.lock", "testdata")
+	graph, err := cargo.LockfileDependencies("Cargo.lock", "testdata")
 	assert.NoError(t, err)
 	assert.Len(t, graph.Direct, 2)
 	assert.Len(t, graph.Transitive, 5)
