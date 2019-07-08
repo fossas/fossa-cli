@@ -140,7 +140,7 @@ func ReadLocator(locator string) Locator {
 
 // LocatorOf returns the locator of a pkg.ID.
 func LocatorOf(id pkg.ID) Locator {
-	// TODO: maybe this should panic?
+	// TODO: maybe this should panic
 	if id.Type == pkg.Invalid {
 		log.Warnf("Unrecognized locator")
 		return Locator{}

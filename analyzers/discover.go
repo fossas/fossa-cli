@@ -19,6 +19,7 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/php"
 	"github.com/fossas/fossa-cli/analyzers/python"
 	"github.com/fossas/fossa-cli/analyzers/ruby"
+	"github.com/fossas/fossa-cli/analyzers/rust"
 	"github.com/fossas/fossa-cli/analyzers/scala"
 	"github.com/fossas/fossa-cli/module"
 )
@@ -44,6 +45,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 		okbuck.Discover,
 		python.Discover,
 		ruby.Discover,
+		rust.Discover,
 		scala.Discover,
 	}
 

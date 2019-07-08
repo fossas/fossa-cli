@@ -12,7 +12,7 @@ Python support relies on the presence of one of the following:
 
 ### Automatic
 
-Run `fossa init` to detect all python directories that contain `requirements.txt` or `setup.py`.
+Run `fossa init` to detect all python directories that contain `requirements.txt`.
 
 ### Manual
 
@@ -33,8 +33,8 @@ analyze:
 
 ## Options
 
-| Option         |  Type  | Name                                         | Common Use Case                           |
-| -------------- | :----: | -------------------------------------------- | ----------------------------------------- |
+| Option         |  Type  | Name                                      | Common Use Case                           |
+| -------------- | :----: | ----------------------------------------- | ----------------------------------------- |
 | `strategy`     | string | [Strategy](#strategy-string)              | Specify a Python analysis strategy.       |
 | `requirements` | string | [Requirements Path](#requirements-string) | Specify a custom `requirements.txt` file. |
 <!--- In code but currently unused

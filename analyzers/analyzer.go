@@ -20,6 +20,7 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/php"
 	"github.com/fossas/fossa-cli/analyzers/python"
 	"github.com/fossas/fossa-cli/analyzers/ruby"
+	"github.com/fossas/fossa-cli/analyzers/rust"
 	"github.com/fossas/fossa-cli/analyzers/scala"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
@@ -76,6 +77,8 @@ func New(m module.Module) (Analyzer, error) {
 		return python.New(m)
 	case pkg.Ruby:
 		return ruby.New(m)
+	case pkg.Rust:
+		return rust.New(m)
 	case pkg.Scala:
 		return scala.New(m)
 	case pkg.Buck:
