@@ -40,7 +40,7 @@ func TestLockfileWithManifest(t *testing.T) {
 }
 
 func TestLockfileNoManifest(t *testing.T) {
-	graph, err := cargo.LockfileDependencies("testdata/no-manifests/Cargo.lock", "testdata/no-manifests")
+	graph, err := cargo.LockfileDependencies("Cargo.lock", "testdata/no-manifests")
 	assert.NoError(t, err)
 	assert.Len(t, graph.Direct, 0)
 	assert.Len(t, graph.Transitive, 1)
@@ -50,7 +50,7 @@ func TestLockfileNoManifest(t *testing.T) {
 }
 
 func TestMissingManifest(t *testing.T) {
-	graph, err := cargo.LockfileDependencies("testdata/missing-manifest/Cargo.lock", "testdata/missing-manifest")
+	graph, err := cargo.LockfileDependencies("Cargo.lock", "testdata/missing-manifest")
 	assert.NoError(t, err)
 	assert.Len(t, graph.Direct, 0)
 	assert.Len(t, graph.Transitive, 1)
