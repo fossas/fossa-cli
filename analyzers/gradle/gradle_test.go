@@ -79,11 +79,19 @@ func TestGradleDependenciesCustomConfigurations(t *testing.T) {
 }
 
 func TestGradleDiscovery(t *testing.T) {
-	modules, err := gradle.DiscoverWithCommand("testdata", make(map[string]interface{}), mockCommand("testdata/gradle-tasks-all"))
+	modules, err := gradle.DiscoverWithCommand("testdata/discover-groovy", make(map[string]interface{}), mockCommand("testdata/discover-groovy/gradle-tasks-all"))
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(modules))
-	assert.True(t, moduleExists("testdata/grpc-netty", modules))
-	assert.True(t, moduleExists("testdata/grpc-xds", modules))
+	assert.True(t, moduleExists("discover-groovy/grpc-netty", modules))
+	assert.True(t, moduleExists("discover-groovy/grpc-xds", modules))
+}
+
+func TestGradleKotlinDiscovery(t *testing.T) {
+	modules, err := gradle.DiscoverWithCommand("testdata/discover-kotlin", make(map[string]interface{}), mockCommand("testdata/discover-kotlin/gradle-tasks-all"))
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(modules))
+	assert.True(t, moduleExists("discover-kotlin/grpc-netty", modules))
+	assert.True(t, moduleExists("discover-kotlin/grpc-xds", modules))
 }
 
 func mockCommand(mockOutput string) func(string, string, int, ...string) (string, error) {
