@@ -16,7 +16,7 @@ Run `fossa init` to walk the file tree and detect all directories which contain 
 
 ### Manual
 
-Add a module with `type: gem`, and `target` and `path` set to the root of the Python project.
+Add a module with `type: gem`, and `target` and `path` set to the root of the Ruby project.
 
 ```yaml
 analyze:
