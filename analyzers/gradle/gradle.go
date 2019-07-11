@@ -175,7 +175,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	return parseModuleV2(a)
 }
 
-var defaultConfigurations = []string{"compile", "api", "implementation", "compileDependenciesMetadata", "apiDependenciesMetadata", "implementationDependenciesMetadata"}
+var defaultConfigurations = []string{"runtimeClasspath", "compileDependenciesMetadata", "apiDependenciesMetadata", "implementationDependenciesMetadata"}
 
 func parseModuleV1(a *Analyzer) (graph.Deps, error) {
 	var configurations []string

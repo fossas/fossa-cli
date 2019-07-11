@@ -77,11 +77,11 @@ This options tells Fossa to scan for all sub projects of the specified module. T
 
 This option takes a comma delimited list of configurations to include in the dependency scan. Fossa includes a few configurations by default but allows the user to specify any specific configurations they are interested in.
 
-The default list of configurations is: `compile, api, implementation, compileDependenciesMetadata, apiDependenciesMetadata, implementationDependenciesMetadata`
+The default list of configurations is: `runtimeClasspath, compileDependenciesMetadata, apiDependenciesMetadata, implementationDependenciesMetadata`
 
 Example:
 ```yaml
-    configuration: implementation,implementationTest,customConfiguration
+    configuration: runtimeClasspath,testRuntimeClasspath,customConfiguration
 ```
 
 #### `all-configurations: <bool>`
