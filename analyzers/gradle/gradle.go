@@ -17,7 +17,6 @@ import (
 
 	"github.com/fossas/fossa-cli/buildtools/gradle"
 	"github.com/fossas/fossa-cli/config"
-	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -94,11 +93,11 @@ func DiscoverWithCommand(dir string, userOptions map[string]interface{}, command
 		}
 
 		if info.IsDir() {
-			ok, err := files.Exists(path, "build.gradle")
+			buildScripts, err := filepath.Glob(filepath.Join(dir, "build.gradle*"))
 			if err != nil {
 				return err
 			}
-			if !ok {
+			if len(buildScripts) == 0 {
 				return nil
 			}
 
