@@ -64,7 +64,7 @@ func File() string {
 //
 // TODO: does this need to be synchronised?
 func Handler(entry *log.Entry) error {
-	// If in debug mode is set, add caller.
+	// If in debug mode, add caller.
 	if level == log.DebugLevel {
 		entry.Fields["callers"] = []string{}
 		callerDepth := 20
