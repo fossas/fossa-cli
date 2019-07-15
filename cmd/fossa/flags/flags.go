@@ -73,15 +73,15 @@ func WithGlobalFlags(f []cli.Flag) []cli.Flag {
 }
 
 var (
-	Global        = []cli.Flag{ConfigF, NoAnsiF, DebugF, DebugCallersF}
+	Global        = []cli.Flag{ConfigF, NoAnsiF, DebugF, DebugLimitedF}
 	Config        = "config"
 	ConfigF       = cli.StringFlag{Name: Short(Config), Usage: "path to config file (default: '.fossa.{yml,yaml}')"}
 	NoAnsi        = "no-ansi"
 	NoAnsiF       = cli.BoolFlag{Name: NoAnsi, Usage: "do not use interactive mode (ANSI codes)"}
 	Debug         = "debug"
 	DebugF        = cli.BoolFlag{Name: Debug, Usage: "print debug information to stderr"}
-	DebugCallers  = "debug-callers"
-	DebugCallersF = cli.BoolFlag{Name: DebugCallers, Usage: "print debug information with full call stack to stderr"}
+	DebugLimited  = "debug-limited"
+	DebugLimitedF = cli.BoolFlag{Name: DebugLimited, Usage: "print limited debug information to stderr"}
 )
 
 func WithOptions(f []cli.Flag) []cli.Flag {

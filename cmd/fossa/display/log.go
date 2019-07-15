@@ -24,9 +24,9 @@ func SetInteractive(interactive bool) {
 	color.NoColor = !useANSI
 }
 
-// SetDebugCallers ensures that the caller logs are included in debug output.
-func SetDebugCallers(setCallers bool) {
-	callers = setCallers
+// SetLimited ensures that limited caller logs are added when requested.
+func SetLimited(limit bool) {
+	limited = limit
 }
 
 // SetDebug turns debug logging to STDERR on or off.
@@ -64,11 +64,16 @@ func File() string {
 //
 // TODO: does this need to be synchronised?
 func Handler(entry *log.Entry) error {
-	// If in debug caller mode is set, add caller.
-	if level == log.DebugLevel && callers {
+	// If in debug mode is set, add caller.
+	if level == log.DebugLevel {
 		entry.Fields["callers"] = []string{}
+		callerDepth := 20
+		if limited {
+			callerDepth = 6
+		}
+
 		// See https://golang.org/pkg/runtime/#Frames
-		pcs := make([]uintptr, 20)
+		pcs := make([]uintptr, callerDepth)
 		n := runtime.Callers(0, pcs)
 		pcs = pcs[:n]
 		frames := runtime.CallersFrames(pcs)
