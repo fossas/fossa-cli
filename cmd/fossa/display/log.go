@@ -24,6 +24,11 @@ func SetInteractive(interactive bool) {
 	color.NoColor = !useANSI
 }
 
+// SetDebugCallers ensures that the caller logs are included in debug output.
+func SetDebugCallers(setCallers bool) {
+	callers = setCallers
+}
+
 // SetDebug turns debug logging to STDERR on or off.
 //
 // The log file always writes debug-level entries.
@@ -59,8 +64,8 @@ func File() string {
 //
 // TODO: does this need to be synchronised?
 func Handler(entry *log.Entry) error {
-	// If in debug mode, add caller.
-	if level == log.DebugLevel {
+	// If in debug caller mode is set, add caller.
+	if level == log.DebugLevel && callers {
 		entry.Fields["callers"] = []string{}
 		// See https://golang.org/pkg/runtime/#Frames
 		pcs := make([]uintptr, 20)

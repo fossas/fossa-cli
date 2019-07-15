@@ -37,7 +37,12 @@ func Interactive() bool {
 
 // Debug is true if the user has requested debug-level logging.
 func Debug() bool {
-	return BoolFlag(flags.Debug)
+	return BoolFlag(flags.Debug) || BoolFlag(flags.DebugCallers)
+}
+
+// DebugCallers is true if the user has requested debug-level logging with full caller output.
+func DebugCallers() bool {
+	return BoolFlag(flags.DebugCallers)
 }
 
 // Filepath is the configuration file path.

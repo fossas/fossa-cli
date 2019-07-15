@@ -20,6 +20,7 @@ func SetContext(ctx *cli.Context) error {
 	// Set up logging.
 	display.SetInteractive(config.Interactive())
 	display.SetDebug(config.Debug())
+	display.SetDebugCallers(config.DebugCallers())
 
 	// Set up API.
 	err = fossa.SetEndpoint(config.Endpoint())
