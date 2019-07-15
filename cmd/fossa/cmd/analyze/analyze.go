@@ -39,18 +39,8 @@ func Run(ctx *cli.Context) error {
 	}
 
 	err = fossa.SetAPIKey(config.APIKey())
-	if err != nil && !ctx.Bool(ShowOutput) {
-		switch err {
-		case fossa.ErrMissingAPIKey:
-			return &errors.Error{
-				Cause:           err,
-				Type:            "user",
-				Message:         "add a FOSSA API KEY",
-				Troubleshooting: "go to fossa.com",
-			}
-		default:
-			return err
-		}
+	if err != nil {
+		return errors.UnknownError(err)
 	}
 
 	modules, err := config.Modules()

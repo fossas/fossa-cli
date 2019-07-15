@@ -10,15 +10,20 @@ import (
 )
 
 var (
-	ErrMissingAPIKey = errors.New("missing FOSSA API key")
-	serverURL        *url.URL
-	apiKey           string
+	serverURL          *url.URL
+	apiKey             string
+	missingAPIKeyError = &errors.Error{
+		Cause:           errors.New("missing API Key"),
+		Type:            "user",
+		Troubleshooting: "follow the link for instructions to add an API KEY",
+		Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/user-guide.md/#3-analyzing-a-project",
+	}
 )
 
 func SetEndpoint(endpoint string) error {
 	u, err := url.Parse(endpoint)
 	if err != nil {
-		return err
+		return errors.UnknownError(err)
 	}
 	serverURL = u
 	return nil
@@ -26,7 +31,8 @@ func SetEndpoint(endpoint string) error {
 
 func SetAPIKey(key string) error {
 	if key == "" {
-		return ErrMissingAPIKey
+		return errors.UnknownError(errors.New("Deepest error"))
+		// return missingAPIKeyError
 	}
 	apiKey = key
 	return nil
@@ -36,7 +42,7 @@ func SetAPIKey(key string) error {
 func Get(endpoint string) (res string, statusCode int, err error) {
 	u, err := serverURL.Parse(endpoint)
 	if err != nil {
-		return "", 0, err
+		return "", 0, errors.UnknownError(err)
 	}
 	return api.Get(u, apiKey, nil)
 }

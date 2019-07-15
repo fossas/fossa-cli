@@ -1,40 +1,52 @@
 package errors
 
-import "github.com/pkg/errors"
+import (
+	"fmt"
+
+	"github.com/pkg/errors"
+)
 
 // General errors.
 var (
 	ErrNotImplemented = errors.New("not yet implemented")
 )
 
+func UnknownError(err error) error {
+	return &Error{
+		Cause: err,
+		Type:  "unknown",
+	}
+}
+
 // Error is the fossa implementation of errors for providing user-friendly information.
 type Error struct {
 	ExitCode        int
-	Cause           error
-	Type            string
+	Cause           error  // Base error.
+	Type            string // Type helps us tell the user to log an issue, go to docs, etc.
 	Message         string
 	Troubleshooting string
+	Link            string // Link to documentation or reference information.
 }
 
 func (e *Error) Error() string {
-	return `Error: ` + e.Cause.Error() + `
-TROUBLESHOOTING:
+	var troubleshooting, link, message string
 
-` + e.Troubleshooting + `
+	if e.Troubleshooting != "" {
+		troubleshooting = fmt.Sprintf("\nTROUBLESHOOTING: %s", e.Troubleshooting)
+	}
 
-Please try troubleshooting before filing a bug. If none of the suggestions work,
-you can file a bug at <https://github.com/fossas/fossa-cli/issues/new>.
+	if e.Link != "" {
+		link = fmt.Sprintf("\nLINK: %s", e.Link)
+	}
 
-For additional support send an email to support@fossa.com with as much information
-as possible, screenshots are greatly appreciated!
+	switch e.Type {
+	case "user":
+		message = ""
+	default:
+		message = defaultMessage
+	}
 
-CREATING AN ISSUE:
-
-Before creating an issue, please search GitHub issues for similar problems. When
-creating the issue, please attach the debug log located at:
-
-  /tmp/fossa-cli-debug-log
-`
+	return e.Cause.Error() + troubleshooting + link + message
 }
 
 func Errorf(format string, args ...interface{}) error {
