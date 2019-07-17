@@ -127,7 +127,7 @@ func Do(modules []module.Module, upload bool) (analyzed []module.Module, err err
 		}
 		deps, err := analyzer.Analyze()
 		if err != nil {
-			log.Fatalf("Could not analyze: %s", err.Error())
+			return analyzed, errors.Wrapf(err, "error analyzing module `%s` in directory `%s`", m.Name, m.Dir)
 		}
 		m.Imports = deps.Direct
 		m.Deps = deps.Transitive

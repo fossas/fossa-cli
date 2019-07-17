@@ -23,8 +23,8 @@ type Error struct {
 	ExitCode        int
 	Cause           error  // Base error.
 	Type            string // Type helps us tell the user to log an issue, go to docs, etc.
-	Message         string
-	Troubleshooting string
+	Message         string // Help message for the user, creating a ticket, opening an issue, etc.
+	Troubleshooting string // Simple solution or debugging instructions.
 	Link            string // Link to documentation or reference information.
 }
 

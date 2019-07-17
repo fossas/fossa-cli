@@ -2,10 +2,12 @@ package pip
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/apex/log"
 
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 )
@@ -54,7 +56,13 @@ func (p *Pip) List() ([]Requirement, error) {
 func FromFile(filename string) ([]Requirement, error) {
 	contents, err := files.Read(filename)
 	if err != nil {
-		return nil, err
+		return nil, &errors.Error{
+			Cause:           err,
+			Type:            "user",
+			Message:         "Get the file?",
+			Troubleshooting: fmt.Sprintf("Ensure that `%s` exists", filename),
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/python.md#analysis",
+		}
 	}
 
 	var reqs []Requirement
