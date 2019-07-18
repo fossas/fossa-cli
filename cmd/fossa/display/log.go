@@ -24,23 +24,22 @@ func SetInteractive(interactive bool) {
 	color.NoColor = !useANSI
 }
 
-// SetLimited ensures that limited caller logs are added when requested.
-func SetLimited(limit bool) {
-	limited = limit
-}
-
 // SetDebug turns debug logging to STDERR on or off.
 //
 // The log file always writes debug-level entries.
-func SetDebug(debug bool) {
+func SetDebug(debug bool, setVerbose bool) {
 	// This sets the `level` variable rather than calling `log.SetLevel`, because
 	// calling `log.SetLevel` filters entries by level _before_ they reach the
 	// handler. This is not desirable, because we always want our handler to see
 	// debug entries so they can be written to the log file.
+	level = log.InfoLevel
 	if debug {
 		level = log.DebugLevel
-	} else {
-		level = log.InfoLevel
+	}
+
+	verbose = false
+	if setVerbose {
+		verbose = true
 	}
 }
 
@@ -67,9 +66,9 @@ func Handler(entry *log.Entry) error {
 	// If in debug mode, add caller.
 	if level == log.DebugLevel {
 		entry.Fields["callers"] = []string{}
-		callerDepth := 20
-		if limited {
-			callerDepth = 6
+		callerDepth := 6
+		if verbose {
+			callerDepth = 20
 		}
 
 		// See https://golang.org/pkg/runtime/#Frames
