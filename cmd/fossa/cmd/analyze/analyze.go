@@ -12,7 +12,6 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
-	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -37,8 +36,6 @@ func Run(ctx *cli.Context) error {
 	if err != nil {
 		log.Fatalf("Could not initialize: %s", err.Error())
 	}
-
-	fossa.SetAPIKey(config.APIKey())
 
 	modules, err := config.Modules()
 	if err != nil {
@@ -124,7 +121,7 @@ func Do(modules []module.Module, upload bool) (analyzed []module.Module, err err
 		}
 		deps, err := analyzer.Analyze()
 		if err != nil {
-			return analyzed, errors.Wrapf(err, "error analyzing module `%s` in directory `%s`", m.Name, m.Dir)
+			log.Fatalf("Could not analyze: %s", err.Error())
 		}
 		m.Imports = deps.Direct
 		m.Deps = deps.Transitive
