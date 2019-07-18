@@ -11,10 +11,12 @@ var (
 	ErrNotImplemented = errors.New("not yet implemented")
 )
 
-func UnknownError(err error) error {
+// UnknownError creates a simple fossa error using an existing error and additional context.
+func UnknownError(err error, message string) *Error {
 	return &Error{
-		Cause: err,
-		Type:  "unknown",
+		Cause:   err,
+		Type:    "unknown",
+		Message: message,
 	}
 }
 

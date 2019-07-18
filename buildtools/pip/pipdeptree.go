@@ -19,27 +19,27 @@ type DepTree struct {
 	Dependencies []DepTree
 }
 
-func (p *Pip) DepTree() ([]DepTree, error) {
+func (p *Pip) DepTree() ([]DepTree, *errors.Error) {
 	// Write helper to disk.
 	src, err := bindata.Asset("bindata/pipdeptree.py")
 	if err != nil {
-		return nil, errors.Wrap(err, "could not read `pipdeptree` helper")
+		return nil, errors.UnknownError(err, "could not run `pipdeptree` helper")
 	}
 
 	pipdeptreeFile, err := ioutil.TempFile("", "fossa-cli-pipdeptree-")
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create temp file to write `pipdeptree` helper")
+		return nil, errors.UnknownError(err, "could not create temp file to write `pipdeptree` helper")
 	}
 	defer pipdeptreeFile.Close()
 	defer os.Remove(pipdeptreeFile.Name())
 
 	n, err := pipdeptreeFile.Write(src)
 	if len(src) != n || err != nil {
-		return nil, errors.Wrap(err, "could not write `pipdeptree` helper")
+		return nil, errors.UnknownError(err, "could not write `pipdeptree` helper")
 	}
 	err = pipdeptreeFile.Sync()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not flush `pipdeptree` helper to storage")
+		return nil, errors.UnknownError(err, "could not flush `pipdeptree` helper to storage")
 	}
 
 	// Run helper.
@@ -48,14 +48,14 @@ func (p *Pip) DepTree() ([]DepTree, error) {
 		Argv: []string{pipdeptreeFile.Name(), "--local-only", "--json-tree"},
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "could not run `pipdeptree`")
+		return nil, errors.UnknownError(err, "could not run `pipdeptree`")
 	}
 
 	// Parse output.
 	var parsed []DepTree
 	err = json.Unmarshal([]byte(out), &parsed)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not parse `pipdeptree` output")
+		return nil, errors.UnknownError(err, "could not parse `pipdeptree` output")
 	}
 
 	return parsed, nil
