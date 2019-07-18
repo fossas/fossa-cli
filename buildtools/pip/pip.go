@@ -69,7 +69,7 @@ func FromFile(filename string) ([]Requirement, *errors.Error) {
 	if err != nil {
 		return nil, &errors.Error{
 			Cause:           err,
-			Type:            "user",
+			Type:            "unknown",
 			Troubleshooting: fmt.Sprintf("Ensure that `%s` exists", filename),
 			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/python.md#analysis",
 		}

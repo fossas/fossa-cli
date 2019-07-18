@@ -3,6 +3,7 @@ package errors
 import (
 	"fmt"
 
+	"github.com/fatih/color"
 	"github.com/pkg/errors"
 )
 
@@ -14,9 +15,8 @@ var (
 // UnknownError creates a simple fossa error using an existing error and additional context.
 func UnknownError(err error, message string) *Error {
 	return &Error{
-		Cause:   err,
-		Type:    "unknown",
-		Message: message,
+		Cause: err,
+		Type:  "unknown",
 	}
 }
 
@@ -25,30 +25,39 @@ type Error struct {
 	ExitCode        int
 	Cause           error  // Base error.
 	Type            string // Type helps us tell the user to log an issue, go to docs, etc.
-	Message         string // Help message for the user, creating a ticket, opening an issue, etc.
+	Message         string // Help message for the user, contact support, opening an issue, etc.
 	Troubleshooting string // Simple solution or debugging instructions.
 	Link            string // Link to documentation or reference information.
 }
 
 func (e *Error) Error() string {
-	var troubleshooting, link, message string
+	var code, troubleshooting, link, message string
+
+	if e.ExitCode != 0 {
+		code = fmt.Sprintf("\n%s: %d", color.BlueString("EXIT CODE"), e.ExitCode)
+	}
 
 	if e.Troubleshooting != "" {
-		troubleshooting = fmt.Sprintf("\nTROUBLESHOOTING: %s", e.Troubleshooting)
+		troubleshooting = fmt.Sprintf("\n%s: %s", color.MagentaString("TROUBLESHOOTING"), e.Troubleshooting)
 	}
 
 	if e.Link != "" {
-		link = fmt.Sprintf("\nLINK: %s", e.Link)
+		link = fmt.Sprintf("\n%s: %s", color.GreenString("LINK"), e.Link)
 	}
 
-	switch e.Type {
-	case "user":
-		message = ""
-	default:
-		message = defaultMessage
+	if message == "" {
+		switch e.Type {
+		case "user":
+		case "shell":
+			fallthrough
+		case "unknown":
+			fallthrough
+		default:
+			message = ReportBugMessage
+		}
 	}
 
-	return e.Cause.Error() + troubleshooting + link + message
+	return e.Cause.Error() + code + troubleshooting + link + message
 }
 
 func Errorf(format string, args ...interface{}) error {

@@ -168,6 +168,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:abf08734a6527df70ed361d7c369fb580e6840d8f7a6012e5f609fdfd93b4e48"
+  name = "github.com/mitchellh/go-wordwrap"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "9e67c67572bc5dd02aef930e2b0ae3c02a4b5a5c"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:645110e089152bd0f4a011a2648fbb0e4df5977be73ca605781157ac297f50c4"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
@@ -479,6 +487,7 @@
     "github.com/fatih/color",
     "github.com/gnewton/jargo",
     "github.com/mattn/go-isatty",
+    "github.com/mitchellh/go-wordwrap",
     "github.com/mitchellh/mapstructure",
     "github.com/pkg/errors",
     "github.com/remeh/sizedwaitgroup",
