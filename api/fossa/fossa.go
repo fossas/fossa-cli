@@ -6,18 +6,11 @@ import (
 	"net/url"
 
 	"github.com/fossas/fossa-cli/api"
-	"github.com/fossas/fossa-cli/errors"
 )
 
 var (
-	serverURL          *url.URL
-	apiKey             string
-	missingAPIKeyError = &errors.Error{
-		Cause:           errors.New("missing API Key"),
-		Type:            "user",
-		Troubleshooting: "follow the link for instructions to add an API KEY",
-		Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/user-guide.md/#3-analyzing-a-project",
-	}
+	serverURL *url.URL
+	apiKey    string
 )
 
 func SetEndpoint(endpoint string) error {

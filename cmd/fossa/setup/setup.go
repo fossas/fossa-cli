@@ -26,6 +26,7 @@ func SetContext(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	fossa.SetAPIKey(config.APIKey())
 
 	return nil
 }
