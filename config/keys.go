@@ -26,6 +26,7 @@ var (
 	filename string
 )
 
+// Version outputs the installed FOSSA CLI version.
 func Version() int {
 	return file.GetVersion()
 }
@@ -38,6 +39,11 @@ func Interactive() bool {
 // Debug is true if the user has requested debug-level logging.
 func Debug() bool {
 	return BoolFlag(flags.Debug)
+}
+
+// Verbose is true if the user has requested verbose output.
+func Verbose() bool {
+	return BoolFlag(flags.Verbose)
 }
 
 // Filepath is the configuration file path.

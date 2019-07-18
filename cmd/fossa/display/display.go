@@ -15,6 +15,7 @@ var (
 	s       *spinner.Spinner
 	useANSI bool
 	level   log.Level
+	verbose bool
 )
 
 func init() {
