@@ -12,11 +12,19 @@ var (
 	ErrNotImplemented = errors.New("not yet implemented")
 )
 
+type Type = int
+
+const (
+	User Type = iota
+	Exec
+	Unknown
+)
+
 // UnknownError creates a simple fossa error using an existing error and additional context.
 func UnknownError(err error, message string) *Error {
 	return &Error{
 		Cause: err,
-		Type:  "unknown",
+		Type:  Unknown,
 	}
 }
 
@@ -24,7 +32,7 @@ func UnknownError(err error, message string) *Error {
 type Error struct {
 	ExitCode        int
 	Cause           error  // Base error.
-	Type            string // Type helps us tell the user to log an issue, go to docs, etc.
+	Type            Type   // Type helps us tell the user to log an issue, go to docs, etc.
 	Message         string // Help message for the user, contact support, opening an issue, etc.
 	Troubleshooting string // Simple solution or debugging instructions.
 	Link            string // Link to documentation or reference information.
@@ -45,12 +53,13 @@ func (e *Error) Error() string {
 		link = fmt.Sprintf("\n%s: %s", color.GreenString("LINK"), e.Link)
 	}
 
+	message = e.Message
 	if message == "" {
 		switch e.Type {
-		case "user":
-		case "shell":
+		case User:
+		case Exec:
 			fallthrough
-		case "unknown":
+		case Unknown:
 			fallthrough
 		default:
 			message = ReportBugMessage

@@ -45,7 +45,7 @@ func (p *Pip) List() ([]Requirement, *errors.Error) {
 	if err != nil {
 		return nil, &errors.Error{
 			Cause:           err,
-			Type:            "shell",
+			Type:            errors.Exec,
 			Troubleshooting: fmt.Sprintf("Ensure that %s is installed, if it is then try to run %s list --format=json", p.Cmd, p.Cmd),
 			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/python.md#strategy-string",
 		}
@@ -55,8 +55,8 @@ func (p *Pip) List() ([]Requirement, *errors.Error) {
 	if err != nil {
 		return nil, &errors.Error{
 			Cause:           err,
-			Type:            "shell",
-			Troubleshooting: fmt.Sprintf("the following output from the command %s list --format=json could not be un-marshalled:\n%s\ntry running the command on your own and checking for any errors", p.Cmd, string(stdout)),
+			Type:            errors.Unknown,
+			Troubleshooting: fmt.Sprintf("The following output from the command %s list --format=json could not be un-marshalled:\n%s\ntry running the command on your own and checking for any errors", p.Cmd, string(stdout)),
 			Link:            "https://pip.pypa.io/en/stable/reference/pip_list",
 		}
 	}
@@ -69,8 +69,8 @@ func FromFile(filename string) ([]Requirement, *errors.Error) {
 	if err != nil {
 		return nil, &errors.Error{
 			Cause:           err,
-			Type:            "unknown",
-			Troubleshooting: fmt.Sprintf("Ensure that `%s` exists", filename),
+			Type:            errors.User,
+			Troubleshooting: fmt.Sprintf("Ensure that `%s` exists.", filename),
 			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/python.md#analysis",
 		}
 	}
