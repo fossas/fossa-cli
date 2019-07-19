@@ -174,10 +174,16 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	return parseModuleV2(a)
 }
 
-var defaultConfigurations = []string{"compile", "api", "implementation", "compileDependenciesMetadata", "apiDependenciesMetadata", "implementationDependenciesMetadata"}
+// Groups of configurations to pull dependencies from. Later configuration
+// groups in this list are used as fallbacks when dependencies aren't found for
+// the current group.
+var defaultConfigurationGroups = [][]string{
+	{"compileClasspath", "runtimeClasspath"},
+	{"compile", "api", "implementation", "compileDependenciesMetadata", "apiDependenciesMetadata", "implementationDependenciesMetadata"},
+}
 
 func parseModuleV1(a *Analyzer) (graph.Deps, error) {
-	var configurations []string
+	var configurationGroups [][]string
 	var depsByConfig map[string]graph.Deps
 	var err error
 	targets := strings.Split(a.Module.BuildTarget, ":")
@@ -208,29 +214,38 @@ func parseModuleV1(a *Analyzer) (graph.Deps, error) {
 	}
 
 	if a.Options.Configuration != "" {
-		configurations = strings.Split(a.Options.Configuration, ",")
+		configurationGroups = [][]string{strings.Split(a.Options.Configuration, ",")}
 	} else if len(targets) > 1 && targets[1] != "" {
-		configurations = strings.Split(targets[1], ",")
+		configurationGroups = [][]string{strings.Split(targets[1], ",")}
 	} else if a.Options.AllConfigurations {
+		var configurations []string
 		for config := range depsByConfig {
 			configurations = append(configurations, config)
 		}
+		configurationGroups = [][]string{configurations}
 	} else {
-		configurations = defaultConfigurations
+		configurationGroups = defaultConfigurationGroups
 	}
 
 	merged := graph.Deps{
 		Direct:     nil,
 		Transitive: make(map[pkg.ID]pkg.Package),
 	}
-	for _, config := range configurations {
-		merged = mergeGraphs(merged, depsByConfig[config])
+
+	for _, group := range configurationGroups {
+		for _, config := range group {
+			merged = mergeGraphs(merged, depsByConfig[config])
+		}
+
+		if len(merged.Direct) > 0 {
+			break
+		}
 	}
 	return merged, nil
 }
 
 func parseModuleV2(a *Analyzer) (graph.Deps, error) {
-	var configurations []string
+	var configurationGroups [][]string
 	var depsByConfig map[string]graph.Deps
 	var err error
 
@@ -260,21 +275,29 @@ func parseModuleV2(a *Analyzer) (graph.Deps, error) {
 	}
 
 	if a.Options.Configuration != "" {
-		configurations = strings.Split(a.Options.Configuration, ",")
+		configurationGroups = [][]string{strings.Split(a.Options.Configuration, ",")}
 	} else if a.Options.AllConfigurations {
+		var configurations []string
 		for config := range depsByConfig {
 			configurations = append(configurations, config)
 		}
+		configurationGroups = [][]string{configurations}
 	} else {
-		configurations = defaultConfigurations
+		configurationGroups = defaultConfigurationGroups
 	}
 
 	merged := graph.Deps{
 		Direct:     nil,
 		Transitive: make(map[pkg.ID]pkg.Package),
 	}
-	for _, config := range configurations {
-		merged = mergeGraphs(merged, depsByConfig[config])
+	for _, group := range configurationGroups {
+		for _, config := range group {
+			merged = mergeGraphs(merged, depsByConfig[config])
+		}
+
+		if len(merged.Direct) > 0 {
+			break
+		}
 	}
 	return merged, nil
 }

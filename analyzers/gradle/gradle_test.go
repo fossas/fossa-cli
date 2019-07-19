@@ -12,24 +12,16 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-var DepAPIID = pkg.ID{Type: pkg.Maven, Name: "API", Revision: "1"}
-var DepImplmentationID = pkg.ID{Type: pkg.Maven, Name: "Implementation", Revision: "2"}
-var DepCompileID = pkg.ID{Type: pkg.Maven, Name: "Compile", Revision: "3"}
+var DepRuntimeClasspathID = pkg.ID{Type: pkg.Maven, Name: "Implementation", Revision: "2"}
 var DepCustomID = pkg.ID{Type: pkg.Maven, Name: "Custom", Revision: "4"}
-var ImportsAPI = []pkg.Import{pkg.Import{Resolved: DepAPIID}}
-var ImportsImplementation = []pkg.Import{pkg.Import{Resolved: DepImplmentationID}}
-var ImportsCompile = []pkg.Import{pkg.Import{Resolved: DepCompileID}}
+var ImportsRuntimeClasspath = []pkg.Import{pkg.Import{Resolved: DepRuntimeClasspathID}}
 var ImportsCustom = []pkg.Import{pkg.Import{Resolved: DepCustomID}}
-var DependenciesAPI = map[pkg.ID]pkg.Package{DepAPIID: pkg.Package{ID: DepAPIID}}
-var DependenciesImplementation = map[pkg.ID]pkg.Package{DepImplmentationID: pkg.Package{ID: DepImplmentationID}}
-var DependenciesCompile = map[pkg.ID]pkg.Package{DepCompileID: pkg.Package{ID: DepCompileID}}
+var DependenciesRuntimeClasspath = map[pkg.ID]pkg.Package{DepRuntimeClasspathID: pkg.Package{ID: DepRuntimeClasspathID}}
 var DependenciesCustom = map[pkg.ID]pkg.Package{DepCustomID: pkg.Package{ID: DepCustomID}}
 
 var testMap = map[string]graph.Deps{
-	"api":            graph.Deps{Direct: ImportsAPI, Transitive: DependenciesAPI},
-	"implementation": graph.Deps{Direct: ImportsImplementation, Transitive: DependenciesImplementation},
-	"compile":        graph.Deps{Direct: ImportsCompile, Transitive: DependenciesCompile},
-	"custom":         graph.Deps{Direct: ImportsCustom, Transitive: DependenciesCustom},
+	"runtimeClasspath": graph.Deps{Direct: ImportsRuntimeClasspath, Transitive: DependenciesRuntimeClasspath},
+	"custom":           graph.Deps{Direct: ImportsCustom, Transitive: DependenciesCustom},
 }
 
 func TestGradleDependencies(t *testing.T) {
@@ -37,10 +29,8 @@ func TestGradleDependencies(t *testing.T) {
 	a := gradle.Analyzer{Input: mock}
 	graph, err := a.Analyze()
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(graph.Transitive))
-	assert.Equal(t, graph.Transitive[DepAPIID].ID, DepAPIID)
-	assert.Equal(t, graph.Transitive[DepImplmentationID].ID, DepImplmentationID)
-	assert.Equal(t, graph.Transitive[DepCompileID].ID, DepCompileID)
+	assert.Equal(t, 1, len(graph.Transitive))
+	assert.Equal(t, graph.Transitive[DepRuntimeClasspathID].ID, DepRuntimeClasspathID)
 	assert.Empty(t, graph.Transitive[DepCustomID].ID)
 }
 
@@ -54,10 +44,8 @@ func TestGradleDependenciesAllConfigurations(t *testing.T) {
 	}
 	graph, err := a.Analyze()
 	assert.NoError(t, err)
-	assert.Equal(t, 4, len(graph.Transitive))
-	assert.Equal(t, graph.Transitive[DepAPIID].ID, DepAPIID)
-	assert.Equal(t, graph.Transitive[DepImplmentationID].ID, DepImplmentationID)
-	assert.Equal(t, graph.Transitive[DepCompileID].ID, DepCompileID)
+	assert.Equal(t, 2, len(graph.Transitive))
+	assert.Equal(t, graph.Transitive[DepRuntimeClasspathID].ID, DepRuntimeClasspathID)
 	assert.Equal(t, graph.Transitive[DepCustomID].ID, DepCustomID)
 }
 
@@ -71,10 +59,8 @@ func TestGradleDependenciesCustomConfigurations(t *testing.T) {
 	}
 	graph, err := a.Analyze()
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(graph.Transitive))
-	assert.Empty(t, graph.Transitive[DepAPIID].ID)
-	assert.Empty(t, graph.Transitive[DepImplmentationID].ID)
-	assert.Equal(t, graph.Transitive[DepCompileID].ID, DepCompileID)
+	assert.Equal(t, 1, len(graph.Transitive))
+	assert.Empty(t, graph.Transitive[DepRuntimeClasspathID].ID)
 	assert.Equal(t, graph.Transitive[DepCustomID].ID, DepCustomID)
 }
 
