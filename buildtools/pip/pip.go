@@ -62,6 +62,7 @@ func FromFile(filename string) ([]Requirement, error) {
 		// Remove all line comments and whitespace.
 		commentSplit := strings.Split(line, "#")
 		trimmed := strings.TrimSpace(commentSplit[0])
+		trimmed = strings.ReplaceAll(trimmed, " ", "")
 		if strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, "-") || trimmed == "" {
 			continue
 		}

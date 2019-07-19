@@ -6,5 +6,5 @@ latest
 latestExtra[security]
 notEqualOp>=3.0.0
 tilde~=2.0.0
-comment-version===2.0.0 #comment
+comment-version === 2.0.0 #comment
 comment #comment
