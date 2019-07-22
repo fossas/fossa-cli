@@ -17,7 +17,7 @@ jobs:
       # gets better performance. The trade-off is that the CircleCI image is
       # cached but the FOSSA CLI image has build tools baked into it (but also
       # is correspondingly larger).
-      - image: circleci/golang@sha256:9b66b9c98a7d819c7878ad1708220118155df22e0d51fc1ed37b0eca0613b5d9
+      - image: circleci/golang:1
     steps:
       - checkout
       - run:
@@ -118,7 +118,7 @@ jobs:
   installer-test:
     <<: *defaults
     docker:
-      - image: circleci/golang@sha256:9b66b9c98a7d819c7878ad1708220118155df22e0d51fc1ed37b0eca0613b5d9    
+      - image: circleci/golang:1
     steps:
       - run:
           name: Make folders

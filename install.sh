@@ -49,7 +49,6 @@ execute() {
   hash_sha256_verify "${tmpdir}/${TARBALL}" "${tmpdir}/${CHECKSUM}"
   srcdir="${tmpdir}"
   (cd "${tmpdir}" && untar "${TARBALL}")
-  install -d -m 775 "${BINDIR}"
   for binexe in "fossa" ; do
     if [ "$OS" = "windows" ]; then
       binexe="${binexe}.exe"
