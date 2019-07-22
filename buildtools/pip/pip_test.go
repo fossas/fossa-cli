@@ -10,7 +10,7 @@ import (
 
 func TestFromFile(t *testing.T) {
 	reqs, err := pip.FromFile("testdata/requirements.txt")
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, 8, len(reqs))
 	assert.Contains(t, reqs, pip.Requirement{Name: "simple", Revision: "1.0.0", Operator: "=="})
 	assert.Contains(t, reqs, pip.Requirement{Name: "extra", Revision: "2.0.0", Operator: "=="})

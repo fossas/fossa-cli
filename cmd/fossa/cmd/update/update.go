@@ -5,13 +5,13 @@ import (
 
 	"github.com/apex/log"
 	"github.com/blang/semver"
-	"github.com/pkg/errors"
 	"github.com/rhysd/go-github-selfupdate/selfupdate"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/version"
+	"github.com/fossas/fossa-cli/errors"
 )
 
 const updateEndpoint = "fossas/fossa-cli"

@@ -2,9 +2,9 @@ package v1
 
 import (
 	"github.com/apex/log"
-	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )

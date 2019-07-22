@@ -5,9 +5,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/fossas/fossa-cli/buildtools"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/pkg"
 )

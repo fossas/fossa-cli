@@ -3,8 +3,7 @@ package fossa
 import (
 	"encoding/json"
 
-	"github.com/pkg/errors"
-
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )

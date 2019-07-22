@@ -2,10 +2,12 @@ package pip
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/apex/log"
 
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 )
@@ -35,26 +37,42 @@ func (p *Pip) Install(requirementsFilename string) error {
 	return err
 }
 
-func (p *Pip) List() ([]Requirement, error) {
+func (p *Pip) List() ([]Requirement, *errors.Error) {
 	stdout, _, err := exec.Run(exec.Cmd{
 		Name: p.Cmd,
 		Argv: []string{"list", "--format=json"},
 	})
 	if err != nil {
-		return nil, err
+		return nil, &errors.Error{
+			Cause:           err,
+			Type:            errors.Exec,
+			Troubleshooting: fmt.Sprintf("Ensure that %s is installed, if it is then try to run %s list --format=json", p.Cmd, p.Cmd),
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/python.md#strategy-string",
+		}
 	}
 	var reqs []Requirement
 	err = json.Unmarshal([]byte(stdout), &reqs)
 	if err != nil {
-		return nil, err
+		return nil, &errors.Error{
+			Cause:           err,
+			Type:            errors.Unknown,
+			Troubleshooting: fmt.Sprintf("The following output from the command %s list --format=json could not be un-marshalled:\n%s\ntry running the command on your own and checking for any errors", p.Cmd, string(stdout)),
+			Link:            "https://pip.pypa.io/en/stable/reference/pip_list",
+		}
 	}
 	return reqs, nil
 }
 
-func FromFile(filename string) ([]Requirement, error) {
+// FromFile reads a list of dependencies from the supplied `requirements.txt` formatted file.
+func FromFile(filename string) ([]Requirement, *errors.Error) {
 	contents, err := files.Read(filename)
 	if err != nil {
-		return nil, err
+		return nil, &errors.Error{
+			Cause:           err,
+			Type:            errors.User,
+			Troubleshooting: fmt.Sprintf("Ensure that `%s` exists.", filename),
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/python.md#analysis",
+		}
 	}
 
 	var reqs []Requirement

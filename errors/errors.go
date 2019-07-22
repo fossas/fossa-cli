@@ -1,38 +1,76 @@
 package errors
 
-import "github.com/pkg/errors"
+import (
+	"fmt"
+
+	"github.com/fatih/color"
+	"github.com/pkg/errors"
+)
 
 // General errors.
 var (
 	ErrNotImplemented = errors.New("not yet implemented")
 )
 
+type Type = int
+
+const (
+	User Type = iota
+	Exec
+	Unknown
+)
+
+// UnknownError creates a simple fossa error using an existing error and additional context.
+func UnknownError(err error, message string) *Error {
+	return &Error{
+		Cause: err,
+		Type:  Unknown,
+	}
+}
+
+// Error is the fossa implementation of errors for providing user-friendly information.
 type Error struct {
-	Cause           error
-	Common          bool
-	Message         string
-	Troubleshooting string
+	ExitCode        int
+	Cause           error  // Base error.
+	Type            Type   // Type helps us tell the user to log an issue, go to docs, etc.
+	Message         string // Help message for the user, contact support, opening an issue, etc.
+	Troubleshooting string // Simple solution or debugging instructions.
+	Link            string // Link to documentation or reference information.
 }
 
 func (e *Error) Error() string {
-	return `Error: ` + e.Message + `
-TROUBLESHOOTING:
+	var code, troubleshooting, link, message string
 
-` + e.Troubleshooting + `
+	if e.ExitCode != 0 {
+		code = fmt.Sprintf("\n%s: %d", color.BlueString("EXIT CODE"), e.ExitCode)
+	}
 
-Please try troubleshooting before filing a bug. If none of the suggestions work,
-you can file a bug at <https://github.com/fossas/fossa-cli/issues/new>.
+	if e.Troubleshooting != "" {
+		troubleshooting = fmt.Sprintf("\n%s: %s", color.MagentaString("TROUBLESHOOTING"), e.Troubleshooting)
+	}
 
-For additional support send an email to support@fossa.com with as much information
-as possible, screenshots are greatly appreciated!
+	if e.Link != "" {
+		link = fmt.Sprintf("\n%s: %s", color.GreenString("LINK"), e.Link)
+	}
 
-CREATING AN ISSUE:
+	message = e.Message
+	if message == "" {
+		switch e.Type {
+		case User:
+		case Exec:
+			fallthrough
+		case Unknown:
+			fallthrough
+		default:
+			message = ReportBugMessage
+		}
+	}
 
-Before creating an issue, please search GitHub issues for similar problems. When
-creating the issue, please attach the debug log located at:
+	return e.Cause.Error() + code + troubleshooting + link + message
+}
 
-  /tmp/fossa-cli-debug-log
-`
+func Errorf(format string, args ...interface{}) error {
+	return errors.Errorf(format, args...)
 }
 
 func Wrap(cause error, msg string) error {
@@ -48,7 +86,6 @@ func WrapError(cause error, err Error) Error {
 	case *Error:
 		return Error{
 			Cause:           e,
-			Common:          err.Common,
 			Message:         err.Message,
 			Troubleshooting: err.Troubleshooting,
 		}

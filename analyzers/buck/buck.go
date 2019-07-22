@@ -26,10 +26,10 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-	"github.com/pkg/errors"
 	"gopkg.in/go-ini/ini.v1"
 
 	"github.com/fossas/fossa-cli/buildtools/buck"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"

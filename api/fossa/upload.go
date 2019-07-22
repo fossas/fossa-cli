@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"net/url"
 
-	"github.com/pkg/errors"
-
 	"github.com/apex/log"
+
 	"github.com/fossas/fossa-cli/cmd/fossa/version"
+	"github.com/fossas/fossa-cli/errors"
 )
 
 // Errors related to preconditions.
