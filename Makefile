@@ -128,8 +128,8 @@ install.sh: $(GODOWNLOADER)
 	# 3. Try `sudo install` when `install` fails.
 	godownloader --repo=fossas/fossa-cli \
 		| sed 's/\.\/bin/\/usr\/local\/bin/' \
-		| sed 's/install -d/install -d -m 775 2> \/dev\/null/' \
-		| sed 's/install "$${srcdir}\/$${binexe}" "$${BINDIR}\/"/install "$${srcdir}\/$${binexe}" "$${BINDIR}\/" 2> \/dev\/null || sudo install "$${srcdir}\/$${binexe}" "$${BINDIR}\/"/' \
+		| sed 's/install -d/install -d -m 775' \
+		| sed 's/install "$${srcdir}\/$${binexe}" "$${BINDIR}\/"/install "$${srcdir}\/$${binexe}" 2> \/dev\/null/ "$${BINDIR}\/" 2> \/dev\/null || sudo install "$${srcdir}\/$${binexe}" "$${BINDIR}\/"/' \
 		> install.sh
 
 .PHONY: release
