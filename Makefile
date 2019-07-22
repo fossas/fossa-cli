@@ -124,11 +124,11 @@ ci-integration-test: $(GO_JUNIT_REPORT)
 # Release tasks.
 install.sh: $(GODOWNLOADER)
 	# 1. Set default installation location to /usr/local/bin.
-	# 2. Use default permissions for /usr/local/bin.
+	# 2. Create /usr/local/bin if it does not exist and use default permissions for /usr/local/bin.
 	# 3. Try `sudo install` when `install` fails.
 	godownloader --repo=fossas/fossa-cli \
 		| sed 's/\.\/bin/\/usr\/local\/bin/' \
-		| sed 's/install -d/install -d -m 775/' \
+		| sed 's/install -d/install -d -m 775 2> \/dev\/null/' \
 		| sed 's/install "$${srcdir}\/$${binexe}" "$${BINDIR}\/"/install "$${srcdir}\/$${binexe}" "$${BINDIR}\/" 2> \/dev\/null || sudo install "$${srcdir}\/$${binexe}" "$${BINDIR}\/"/' \
 		> install.sh
 
