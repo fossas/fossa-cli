@@ -52,7 +52,9 @@ execute() {
   (cd "${tmpdir}" && untar "${TARBALL}")
   echo before folder
   install -d -m 775 "${BINDIR}/" 2> /dev/null
+  echo after folder
   for binexe in "fossa" ; do
+    echo loop
     if [ "$OS" = "windows" ]; then
       binexe="${binexe}.exe"
     fi
