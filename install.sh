@@ -50,13 +50,17 @@ execute() {
   hash_sha256_verify "${tmpdir}/${TARBALL}" "${tmpdir}/${CHECKSUM}"
   srcdir="${tmpdir}"
   (cd "${tmpdir}" && untar "${TARBALL}")
-  install -d -m 775 "${BINDIR}" 2> /dev/null
+  echo before folder
+  install -d -m 775 "${BINDIR}/" 2> /dev/null
   for binexe in "fossa" ; do
     if [ "$OS" = "windows" ]; then
       binexe="${binexe}.exe"
     fi
+    echo before install
     install "${srcdir}/${binexe}" "${BINDIR}/" 2> /dev/null || sudo install "${srcdir}/${binexe}" "${BINDIR}/"
+    echo after install
     log_info "installed ${BINDIR}/${binexe}"
+    echo after log
   done
 }
 is_supported_platform() {
