@@ -65,7 +65,7 @@ func ModGraph(filename string) (graph.Deps, error) {
 		modFile = "go.mod"
 	}
 
-	mod, err := files.Read(filename)
+	mod, err := files.Read(modFile)
 	if err != nil {
 		return graph.Deps{}, err
 	}
@@ -134,7 +134,7 @@ func SumGraph(filename string) (graph.Deps, error) {
 		sumFile = "go.sum"
 	}
 
-	sum, err := files.Read(filename)
+	sum, err := files.Read(sumFile)
 	if err != nil {
 		return graph.Deps{}, nil
 	}
