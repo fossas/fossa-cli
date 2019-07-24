@@ -1,13 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/urfave/cli"
 
 	"github.com/apex/log"
-	"github.com/fossas/fossa-cli/config"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
