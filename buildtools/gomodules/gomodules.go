@@ -60,6 +60,11 @@ func New(dir string) (Resolver, error) {
 // ModGraph returns the dependencies found in a `go.mod` file.
 // We cannot resolve a graph so we make all dependencies direct.
 func ModGraph(filename string) (graph.Deps, error) {
+	modFile := filename
+	if modFile == "" {
+		modFile = "go.mod"
+	}
+
 	mod, err := files.Read(filename)
 	if err != nil {
 		return graph.Deps{}, err
@@ -124,6 +129,11 @@ func ModGraph(filename string) (graph.Deps, error) {
 // includes dependencies which are not used and this may be inaccurate.
 // https://github.com/golang/go/wiki/Modules#is-gosum-a-lock-file-why-does-gosum-include-information-for-module-versions-i-am-no-longer-using
 func SumGraph(filename string) (graph.Deps, error) {
+	sumFile := filename
+	if sumFile == "" {
+		sumFile = "go.sum"
+	}
+
 	sum, err := files.Read(filename)
 	if err != nil {
 		return graph.Deps{}, nil

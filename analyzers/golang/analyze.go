@@ -25,7 +25,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	switch a.Options.Strategy {
 	case "lockfile:gomodules":
-		return gomodules.ModGraph("go.mod")
+		return gomodules.ModGraph("")
 	}
 
 	// Get Go project.
