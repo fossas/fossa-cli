@@ -86,3 +86,21 @@ func TestGoModGraph(t *testing.T) {
 	assert.NotEmpty(t, packageE)
 	assert.Empty(t, packageE.Imports)
 }
+
+func TestSumGraph(t *testing.T) {
+	depGraph, err := gomodules.SumGraph("testdata/go.sum")
+	assert.NoError(t, err)
+
+	assert.Len(t, depGraph.Direct, 2)
+	helpers.AssertPackageImport(t, depGraph.Direct, "repo/name/A", "v1.0.0")
+	helpers.AssertPackageImport(t, depGraph.Direct, "repo/name/B", "12345")
+
+	assert.Len(t, depGraph.Transitive, 2)
+	packageA := helpers.PackageInTransitiveGraph(depGraph.Transitive, "repo/name/A", "v1.0.0")
+	assert.NotEmpty(t, packageA)
+	assert.Empty(t, packageA.Imports)
+
+	packageD := helpers.PackageInTransitiveGraph(depGraph.Transitive, "repo/name/B", "12345")
+	assert.NotEmpty(t, packageD)
+	assert.Empty(t, packageD.Imports)
+}

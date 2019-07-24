@@ -113,9 +113,41 @@ func ModGraph(filename string) (graph.Deps, error) {
 			Target:   ID.Name,
 			Resolved: ID,
 		})
-		depGraph.Transitive[ID] = pkg.Package{
-			ID: ID,
+		depGraph.Transitive[ID] = pkg.Package{ID: ID}
+	}
+
+	return depGraph, nil
+}
+
+// SumGraph returns the dependencies found in a `go.sum` file. We cannot
+// resolve a graph so we make all dependencies direct. Note `go.sum`
+// includes dependencies which are not used and this may be inaccurate.
+// https://github.com/golang/go/wiki/Modules#is-gosum-a-lock-file-why-does-gosum-include-information-for-module-versions-i-am-no-longer-using
+func SumGraph(filename string) (graph.Deps, error) {
+	sum, err := files.Read(filename)
+	if err != nil {
+		return graph.Deps{}, nil
+	}
+
+	depGraph := graph.Deps{
+		Transitive: make(map[pkg.ID]pkg.Package),
+	}
+	for _, line := range strings.Split(string(sum), "\n") {
+		splitLine := strings.Split(line, " ")
+		if len(splitLine) < 2 || strings.Contains(splitLine[1], "go.mod") {
+			continue
 		}
+
+		ID := pkg.ID{
+			Type:     pkg.Go,
+			Name:     splitLine[0],
+			Revision: extractRevision(splitLine[1]),
+		}
+		depGraph.Transitive[ID] = pkg.Package{ID: ID}
+		depGraph.Direct = append(depGraph.Direct, pkg.Import{
+			Target:   ID.Name,
+			Resolved: ID,
+		})
 	}
 
 	return depGraph, nil
