@@ -9,6 +9,8 @@ import (
 	"github.com/fossas/fossa-cli/buildtools"
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -53,6 +55,70 @@ func New(dir string) (Resolver, error) {
 		return Resolver{}, errors.Wrap(err, "Could not parse json")
 	}
 	return resolver, nil
+}
+
+// ModGraph returns the dependencies found in a `go.mod` file.
+// We cannot resolve a graph so we make all dependencies direct.
+func ModGraph(filename string) (graph.Deps, error) {
+	mod, err := files.Read(filename)
+	if err != nil {
+		return graph.Deps{}, err
+	}
+
+	revisionMap := make(map[string]pkg.ID)
+	currentBlock := ""
+	for _, line := range strings.Split(string(mod), "\n") {
+		trimLine := strings.TrimSpace(line)
+		splitLine := strings.Split(trimLine, " ")
+
+		if len(splitLine) < 1 {
+			continue
+		}
+		// Check for the end of a block or the begginning.
+		// Split after finding a block to handle one line blocks.
+		switch splitLine[0] {
+		case ")":
+			currentBlock = ""
+			continue
+		case "require":
+			currentBlock = "require"
+			splitLine = splitLine[1:]
+		case "replace":
+			currentBlock = "replace"
+			splitLine = splitLine[1:]
+		}
+
+		if currentBlock == "require" && len(splitLine) > 1 {
+			revisionMap[splitLine[0]] = pkg.ID{
+				Type:     pkg.Go,
+				Name:     splitLine[0],
+				Revision: extractRevision(splitLine[1]),
+			}
+		}
+
+		if currentBlock == "replace" && len(splitLine) > 3 {
+			revisionMap[splitLine[0]] = pkg.ID{
+				Type:     pkg.Go,
+				Name:     splitLine[2],
+				Revision: extractRevision(splitLine[3]),
+			}
+		}
+	}
+
+	depGraph := graph.Deps{
+		Transitive: make(map[pkg.ID]pkg.Package),
+	}
+	for _, ID := range revisionMap {
+		depGraph.Direct = append(depGraph.Direct, pkg.Import{
+			Target:   ID.Name,
+			Resolved: ID,
+		})
+		depGraph.Transitive[ID] = pkg.Package{
+			ID: ID,
+		}
+	}
+
+	return depGraph, nil
 }
 
 // Mock creates a golang.Resolver using any string input.
@@ -121,8 +187,9 @@ func goModuleList(path string) (string, error) {
 // return it as this means version is v0.0.0.
 func extractRevision(version string) string {
 	split := strings.Split(version, "-")
-	if len(split) < 3 {
-		return strings.TrimSuffix(version, "+incompatible")
+	resolved := version
+	if len(split) > 2 {
+		resolved = split[2]
 	}
-	return split[2]
+	return strings.TrimSuffix(resolved, "+incompatible")
 }

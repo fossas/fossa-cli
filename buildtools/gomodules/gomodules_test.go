@@ -9,6 +9,7 @@ import (
 
 	"github.com/fossas/fossa-cli/buildtools"
 	"github.com/fossas/fossa-cli/buildtools/gomodules"
+	"github.com/fossas/fossa-cli/testing/helpers"
 )
 
 func TestResolver(t *testing.T) {
@@ -51,4 +52,37 @@ func TestResolver(t *testing.T) {
 
 	revision, err = resolver.Resolve("test/failure")
 	assert.Equal(t, buildtools.ErrNoRevisionForPackage, err)
+}
+
+func TestGoModGraph(t *testing.T) {
+	depGraph, err := gomodules.ModGraph("testdata/go.mod")
+	assert.NoError(t, err)
+
+	assert.Len(t, depGraph.Direct, 5)
+	helpers.AssertPackageImport(t, depGraph.Direct, "repo/name/A", "v1.0.0")
+	helpers.AssertPackageImport(t, depGraph.Direct, "alias/repo/B", "v0.1.0")
+	helpers.AssertPackageImport(t, depGraph.Direct, "alias/repo/C", "000000000003")
+	helpers.AssertPackageImport(t, depGraph.Direct, "repo/name/D", "v4.0.0")
+	helpers.AssertPackageImport(t, depGraph.Direct, "alias/repo/E", "000000000005")
+
+	assert.Len(t, depGraph.Transitive, 5)
+	packageA := helpers.PackageInTransitiveGraph(depGraph.Transitive, "repo/name/A", "v1.0.0")
+	assert.NotEmpty(t, packageA)
+	assert.Empty(t, packageA.Imports)
+
+	packageB := helpers.PackageInTransitiveGraph(depGraph.Transitive, "alias/repo/B", "v0.1.0")
+	assert.NotEmpty(t, packageB)
+	assert.Empty(t, packageB.Imports)
+
+	packageC := helpers.PackageInTransitiveGraph(depGraph.Transitive, "alias/repo/C", "000000000003")
+	assert.NotEmpty(t, packageC)
+	assert.Empty(t, packageC.Imports)
+
+	packageD := helpers.PackageInTransitiveGraph(depGraph.Transitive, "repo/name/D", "v4.0.0")
+	assert.NotEmpty(t, packageD)
+	assert.Empty(t, packageD.Imports)
+
+	packageE := helpers.PackageInTransitiveGraph(depGraph.Transitive, "alias/repo/E", "000000000005")
+	assert.NotEmpty(t, packageE)
+	assert.Empty(t, packageE.Imports)
 }
