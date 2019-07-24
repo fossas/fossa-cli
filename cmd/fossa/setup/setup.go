@@ -2,15 +2,14 @@
 package setup
 
 import (
-	"github.com/urfave/cli"
-
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/config"
+	"github.com/urfave/cli"
 )
 
 // SetContext initializes all application-level packages.
-func SetContext(ctx *cli.Context) error {
+func SetContext(ctx *cli.Context, setAPIKey bool) error {
 	// Set up configuration.
 	err := config.SetContext(ctx)
 	if err != nil {
@@ -26,7 +25,13 @@ func SetContext(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fossa.SetAPIKey(config.APIKey())
+
+	if setAPIKey {
+		err = fossa.SetAPIKey(config.APIKey())
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

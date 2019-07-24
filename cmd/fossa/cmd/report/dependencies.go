@@ -40,7 +40,7 @@ var dependenciesCmd = cli.Command{
 }
 
 func dependenciesRun(ctx *cli.Context) error {
-	err := setup.SetContext(ctx)
+	err := setup.SetContext(ctx, true)
 	if err != nil {
 		log.Fatalf("Could not initialize: %s", err.Error())
 	}

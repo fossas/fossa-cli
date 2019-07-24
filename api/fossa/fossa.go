@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	"github.com/fossas/fossa-cli/api"
+	"github.com/fossas/fossa-cli/errors"
 )
 
 var (
@@ -22,8 +23,17 @@ func SetEndpoint(endpoint string) error {
 	return nil
 }
 
-func SetAPIKey(key string) {
+func SetAPIKey(key string) *errors.Error {
+	if key == "" {
+		return &errors.Error{
+			// Cause:           errors.New("temp"),
+			Type:            errors.User,
+			Troubleshooting: "A FOSSA API key is needed to run this command.",
+			Message:         errors.NoAPIKeyMessage,
+		}
+	}
 	apiKey = key
+	return nil
 }
 
 // Get makes an authenticated GET request to a FOSSA API endpoint.

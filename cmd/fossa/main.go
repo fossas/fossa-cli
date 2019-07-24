@@ -59,14 +59,9 @@ func main() {
 }
 
 func Run(ctx *cli.Context) error {
-	err := setup.SetContext(ctx)
+	err := setup.SetContext(ctx, true)
 	if err != nil {
 		return err
-	}
-
-	if config.APIKey() == "" && !ctx.Bool(analyze.ShowOutput) {
-		fmt.Printf("Incorrect Usage. FOSSA_API_KEY must be set as an environment variable or provided in .fossa.yml\n\n")
-		log.Fatalf("No API KEY provided")
 	}
 
 	err = initc.Run(ctx)

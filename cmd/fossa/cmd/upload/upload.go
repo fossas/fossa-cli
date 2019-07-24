@@ -125,7 +125,7 @@ func getInput(ctx *cli.Context, usingLocators bool) ([]fossa.SourceUnit, error) 
 
 // Run executes the upload command.
 func Run(ctx *cli.Context) error {
-	err := setup.SetContext(ctx)
+	err := setup.SetContext(ctx, true)
 	if err != nil {
 		return errors.Wrap(err, "could not initialize")
 	}
