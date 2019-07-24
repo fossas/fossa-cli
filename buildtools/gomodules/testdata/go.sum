@@ -1,0 +1,5 @@
+repo/name/A v1.0.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
+repo/name/A v1.0.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+repo/name/B v0.0.0-20160126235308-12345 h1:VKtxabqXZkF25pY9ekfRL6a582T4P37/31XEstQ5p58=
+repo/name/B v0.0.0-20160126235308-12345/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
+WeirdLine
