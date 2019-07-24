@@ -34,7 +34,7 @@ var _ cli.ActionFunc = Run
 func Run(ctx *cli.Context) error {
 	err := setup.SetContext(ctx, true)
 	if err != nil {
-		log.Fatalf("Could not initialize module %s", err)
+		log.Fatalf("Could not initialize %s", err)
 	}
 
 	modules, err := config.Modules()
