@@ -23,11 +23,6 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	m := a.Module
 	log.Debugf("%#v", m)
 
-	switch a.Options.Strategy {
-	case "lockfile:gomodules":
-		return gomodules.ModGraph("")
-	}
-
 	// Get Go project.
 	project, err := a.Project(m.BuildTarget)
 	if err != nil {
