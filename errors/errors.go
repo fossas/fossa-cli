@@ -39,7 +39,11 @@ type Error struct {
 }
 
 func (e *Error) Error() string {
-	var code, troubleshooting, link, message string
+	var err, code, troubleshooting, link, message string
+
+	if e.Cause != nil {
+		err = e.Cause.Error()
+	}
 
 	if e.ExitCode != 0 {
 		code = fmt.Sprintf("\n%s: %d", color.BlueString("EXIT CODE"), e.ExitCode)
@@ -66,7 +70,7 @@ func (e *Error) Error() string {
 		}
 	}
 
-	return e.Cause.Error() + code + troubleshooting + link + message
+	return err + code + troubleshooting + link + message
 }
 
 func Errorf(format string, args ...interface{}) error {
