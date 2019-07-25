@@ -63,12 +63,17 @@ func TestManifestGraph(t *testing.T) {
 	depGraph, err := dep.ManifestGraph("testdata/Gopkg.toml")
 	assert.NoError(t, err)
 
-	assert.Len(t, depGraph.Direct, 3)
+	assert.Len(t, depGraph.Direct, 4)
+	helpers.AssertPackageImport(t, depGraph.Direct, "cat/fossa", "v3.0.0")
 	helpers.AssertPackageImport(t, depGraph.Direct, "repo/name/A", "v1.0.0")
 	helpers.AssertPackageImport(t, depGraph.Direct, "repo/name/B", "v2.0.0")
 	helpers.AssertPackageImport(t, depGraph.Direct, "repo/name/C", "12345")
 
-	assert.Len(t, depGraph.Transitive, 3)
+	assert.Len(t, depGraph.Transitive, 4)
+	packageCat := helpers.PackageInTransitiveGraph(depGraph.Transitive, "cat/fossa", "v3.0.0")
+	assert.NotEmpty(t, packageCat)
+	assert.Empty(t, packageCat.Imports)
+
 	packageA := helpers.PackageInTransitiveGraph(depGraph.Transitive, "repo/name/A", "v1.0.0")
 	assert.NotEmpty(t, packageA)
 	assert.Empty(t, packageA.Imports)

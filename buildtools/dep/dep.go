@@ -156,7 +156,7 @@ func ManifestGraph(filepath string) (graph.Deps, error) {
 
 	}
 
-	return graph.Deps{}, nil
+	return depGraph, nil
 }
 
 // readLockfile returns a lockfile object using the provided filepath.
