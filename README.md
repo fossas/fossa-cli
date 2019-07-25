@@ -8,6 +8,9 @@
   <a href="https://app.fossa.io/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli?ref=badge_shield" alt="FOSSA Status">
     <img src="https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffossas%2Ffossa-cli.svg?type=shield"/>
   </a>
+  <a href="https://github.com/fossas/fossa-cli/releases" alt="Github Downloads">
+    <img src="https://img.shields.io/github/downloads/fossas/fossa-cli/total.svg"/>
+  </a>
   <a href="https://circleci.com/gh/fossas/fossa-cli" alt="CircleCI Tests">
     <img src="https://circleci.com/gh/fossas/fossa-cli.svg?style=shield&circle-token=f55f707e21ac39a80127d3372a1a1452ec94f4f7"/>
   </a>
