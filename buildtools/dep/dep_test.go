@@ -58,3 +58,26 @@ func TestLockfileGraph(t *testing.T) {
 	assert.NotEmpty(t, packageC)
 	assert.Empty(t, packageC.Imports)
 }
+
+func TestManifestGraph(t *testing.T) {
+	depGraph, err := dep.ManifestGraph("testdata/Gopkg.toml")
+	assert.NoError(t, err)
+
+	assert.Len(t, depGraph.Direct, 3)
+	helpers.AssertPackageImport(t, depGraph.Direct, "repo/name/A", "v1.0.0")
+	helpers.AssertPackageImport(t, depGraph.Direct, "repo/name/B", "v2.0.0")
+	helpers.AssertPackageImport(t, depGraph.Direct, "repo/name/C", "12345")
+
+	assert.Len(t, depGraph.Transitive, 3)
+	packageA := helpers.PackageInTransitiveGraph(depGraph.Transitive, "repo/name/A", "v1.0.0")
+	assert.NotEmpty(t, packageA)
+	assert.Empty(t, packageA.Imports)
+
+	packageB := helpers.PackageInTransitiveGraph(depGraph.Transitive, "repo/name/B", "v2.0.0")
+	assert.NotEmpty(t, packageB)
+	assert.Empty(t, packageB.Imports)
+
+	packageC := helpers.PackageInTransitiveGraph(depGraph.Transitive, "repo/name/C", "12345")
+	assert.NotEmpty(t, packageC)
+	assert.Empty(t, packageC.Imports)
+}

@@ -20,7 +20,8 @@ type Resolver struct {
 
 // manifest contains the ignored packages in a dep toml file. manifest implements golang.Resolver.
 type manifest struct {
-	Ignored []string
+	Ignored    []string
+	Constraint []Project
 }
 
 // lockfile contains the Projects in a dep lockfile and a corresponding map for retrieving project data.
@@ -121,6 +122,41 @@ func LockfileGraph(filepath string) (graph.Deps, error) {
 	}
 
 	return depGraph, nil
+}
+
+// ManifestGraph reads a dep manifest and creates a dependency graph.
+func ManifestGraph(filepath string) (graph.Deps, error) {
+	file := filepath
+	if file == "" {
+		file = "Gopkg.toml"
+	}
+
+	man, err := readManifest(file)
+	if err != nil {
+		return graph.Deps{}, err
+	}
+
+	depGraph := graph.Deps{Transitive: make(map[pkg.ID]pkg.Package)}
+	for _, project := range man.Constraint {
+		version := project.Version
+		if version == "" {
+			version = project.Revision
+		}
+
+		ID := pkg.ID{
+			Type:     pkg.Go,
+			Name:     project.Name,
+			Revision: version,
+		}
+		depGraph.Direct = append(depGraph.Direct, pkg.Import{
+			Target:   ID.Name,
+			Resolved: ID,
+		})
+		depGraph.Transitive[ID] = pkg.Package{ID: ID}
+
+	}
+
+	return graph.Deps{}, nil
 }
 
 // readLockfile returns a lockfile object using the provided filepath.

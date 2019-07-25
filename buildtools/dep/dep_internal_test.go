@@ -69,6 +69,10 @@ func TestReadManifest(t *testing.T) {
 			"cat/puma",
 			"cat/big/*",
 		},
+		Constraint: []Project{Project{
+			Name:    "cat/fossa",
+			Version: "0.3.0",
+		}},
 	}
 
 	assert.Equal(t, err, nil)
