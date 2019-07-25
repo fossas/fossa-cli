@@ -30,7 +30,7 @@ func TestIsIgnored(t *testing.T) {
 
 func TestReadLockfile(t *testing.T) {
 	// Reading a valid lockfile returns expected data.
-	lock, err := readLockfile("testdata/Gopkg.lock")
+	lock, err := readLockfile("testdata/Ignore.lock")
 	expectedLockfile := lockfile{
 		Projects: []Project{
 			Project{
@@ -63,7 +63,7 @@ func TestReadLockfile(t *testing.T) {
 
 func TestReadManifest(t *testing.T) {
 	// Reading a valid manifest returns expected data.
-	man, err := readManifest("testdata/Gopkg.toml")
+	man, err := readManifest("testdata/Ignore.toml")
 	expectedManifest := manifest{
 		Ignored: []string{
 			"cat/puma",

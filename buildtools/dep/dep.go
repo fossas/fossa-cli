@@ -8,6 +8,7 @@ import (
 	"github.com/fossas/fossa-cli/buildtools"
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -88,10 +89,43 @@ func New(lockfilePath string, manifestPath string) (Resolver, error) {
 	return resolver, nil
 }
 
+// LockfileGraph reads a dep lockfile and creates a dependency graph.
+func LockfileGraph(filepath string) (graph.Deps, error) {
+	file := filepath
+	if file == "" {
+		file = "Gopkg.lock"
+	}
+
+	lockfile, err := readLockfile(file)
+	if err != nil {
+		return graph.Deps{}, err
+	}
+
+	depGraph := graph.Deps{Transitive: make(map[pkg.ID]pkg.Package)}
+	for _, project := range lockfile.Projects {
+		version := project.Version
+		if version == "" {
+			version = project.Revision
+		}
+
+		ID := pkg.ID{
+			Type:     pkg.Go,
+			Name:     project.Name,
+			Revision: version,
+		}
+		depGraph.Direct = append(depGraph.Direct, pkg.Import{
+			Target:   ID.Name,
+			Resolved: ID,
+		})
+		depGraph.Transitive[ID] = pkg.Package{ID: ID}
+	}
+
+	return depGraph, nil
+}
+
 // readLockfile returns a lockfile object using the provided filepath.
 func readLockfile(filepath string) (lockfile, error) {
 	var lock lockfile
-
 	err := files.ReadTOML(&lock, filepath)
 	if err != nil {
 		return lockfile{}, errors.Wrap(err, "No lockfile Gopkg.lock found")
