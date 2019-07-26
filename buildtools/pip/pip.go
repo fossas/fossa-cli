@@ -29,12 +29,18 @@ func (r Requirement) String() string {
 	return r.Name + r.Operator + r.Revision
 }
 
-func (p *Pip) Install(requirementsFilename string) error {
+func (p *Pip) Install(requirementsFilename string) *errors.Error {
 	_, _, err := exec.Run(exec.Cmd{
 		Name: p.Cmd,
 		Argv: []string{"install", "-r", requirementsFilename},
 	})
-	return err
+
+	return &errors.Error{
+		Cause:           err,
+		Type:            errors.Exec,
+		Troubleshooting: fmt.Sprintf("Fossa could not run `%s install -r %s`. Try running this command and ensure that %s is installed in your environment.", p.Cmd, requirementsFilename, p.Cmd),
+		Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/python.md#strategy-string",
+	}
 }
 
 func (p *Pip) List() ([]Requirement, *errors.Error) {
@@ -50,13 +56,14 @@ func (p *Pip) List() ([]Requirement, *errors.Error) {
 			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/python.md#strategy-string",
 		}
 	}
+
 	var reqs []Requirement
 	err = json.Unmarshal([]byte(stdout), &reqs)
 	if err != nil {
 		return nil, &errors.Error{
 			Cause:           err,
 			Type:            errors.Unknown,
-			Troubleshooting: fmt.Sprintf("The following output from the command %s list --format=json could not be un-marshalled:\n%s\ntry running the command on your own and checking for any errors", p.Cmd, string(stdout)),
+			Troubleshooting: fmt.Sprintf("The following output from the command %s list --format=json could not be un-marshalled into JSON:\n%s\ntry running the command on your own and check for any errors", p.Cmd, string(stdout)),
 			Link:            "https://pip.pypa.io/en/stable/reference/pip_list",
 		}
 	}

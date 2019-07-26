@@ -2,6 +2,7 @@ package pipenv
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/exec"
@@ -62,7 +63,12 @@ func GraphJSON(dirname string) (string, *errors.Error) {
 		Dir:  dirname,
 	})
 	if err != nil {
-		return "", errors.UnknownError(err, "Could not run `pipenv graph --json-tree` within the current directory")
+		return "", &errors.Error{
+			Cause:           err,
+			Type:            errors.Exec,
+			Troubleshooting: fmt.Sprintf("Fossa could not run `pipenv graph --json-tree` within the directory `%s`. Try running this command and ensure that Pipenv is installed correctly.", dirname),
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/python.md#strategy-string",
+		}
 	}
 	return out, nil
 }
@@ -71,7 +77,12 @@ func getDependencies(graphJSON string) ([]dependency, *errors.Error) {
 	var depList []dependency
 	err := json.Unmarshal([]byte(graphJSON), &depList)
 	if err != nil {
-		return nil, errors.UnknownError(err, "Could not unmarshal JSON into dependency list")
+		return nil, &errors.Error{
+			Cause:           err,
+			Type:            errors.Unknown,
+			Troubleshooting: fmt.Sprintf("The following output could not be un-marshalled into JSON:\n%s\ntry running the command on your own and check for any errors", string(graphJSON)),
+			Link:            "https://pip.pypa.io/en/stable/reference/pip_list",
+		}
 	}
 	return depList, nil
 }
