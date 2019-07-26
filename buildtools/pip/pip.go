@@ -87,7 +87,7 @@ func (p *Pip) List() ([]Requirement, *errors.Error) {
 	var reqs []Requirement
 	for _, listReq := range listReqs {
 		reqs = append(reqs, Requirement{
-			Name: listReq.Name,
+			Name:        listReq.Name,
 			Constraints: []Constraint{{Revision: listReq.Revision}},
 		})
 	}
@@ -119,17 +119,17 @@ func FromSetupPy(filename string) ([]Requirement, *errors.Error) {
 	openBracket := strings.Index(contents, "[")
 	if openBracket == -1 {
 		return nil, &errors.Error{
-			Type: errors.Exec,
+			Type:    errors.Exec,
 			Message: "Failed to parse setup.py: expected to find '[' after \"" + requiresField + "\"",
 		}
 	}
 
-	contents = contents[openBracket + 1:]
+	contents = contents[openBracket+1:]
 
 	endBracket := strings.Index(contents, "]")
 	if endBracket == -1 {
 		return nil, &errors.Error{
-			Type: errors.Exec,
+			Type:    errors.Exec,
 			Message: "Failed to parse setup.py: expected to find ']' after \"" + requiresField + "\"",
 		}
 	}
@@ -142,7 +142,7 @@ func FromSetupPy(filename string) ([]Requirement, *errors.Error) {
 			break
 		}
 
-		contents = contents[openQuote + 1:]
+		contents = contents[openQuote+1:]
 		closeQuote := strings.Index(contents, "'")
 		if closeQuote == -1 {
 			// NB: silently failing here instead of throwing an error
@@ -150,7 +150,7 @@ func FromSetupPy(filename string) ([]Requirement, *errors.Error) {
 		}
 
 		depString := contents[:closeQuote]
-		contents = contents[closeQuote + 1:]
+		contents = contents[closeQuote+1:]
 
 		reqs = append(reqs, parseRequirement(depString))
 	}
@@ -214,7 +214,7 @@ func parseRequirement(raw string) Requirement {
 	}
 
 	return Requirement{
-		Name: name,
+		Name:        name,
 		Constraints: constraints,
 	}
 }
