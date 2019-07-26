@@ -13,7 +13,8 @@ func FromRequirements(reqs []pip.Requirement) []pkg.Import {
 			Resolved: pkg.ID{
 				Type:     pkg.Python,
 				Name:     req.Name,
-				Revision: req.Revision,
+				// TODO: the backend isn't equipped to handle version ranges
+				Revision: req.Constraints[0].Revision,
 			},
 		})
 	}

@@ -84,7 +84,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			return err
 		}
 
-		if !info.IsDir() && (info.Name() == "requirements.txt") {
+		if !info.IsDir() && (info.Name() == "requirements.txt" || info.Name() == "setup.py") {
 			moduleDir := filepath.Dir(filename)
 			_, ok := modules[moduleDir]
 			if ok {
@@ -163,15 +163,29 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	case "requirements":
 		fallthrough
 	default:
-		reqs, err := pip.FromFile(a.requirementsFile(a.Module))
-		if err != nil {
-			return graph.Deps{}, err
+		requirementsPath := a.requirementsFile(a.Module)
+		reqs, err := pip.FromFile(requirementsPath)
+		if err == nil {
+			return requirementsToDeps(reqs), nil
 		}
-		imports := FromRequirements(reqs)
-		return graph.Deps{
-			Direct:     imports,
-			Transitive: fromImports(imports),
-		}, nil
+
+		setupPyPath := filepath.Join(a.Module.Dir, "setup.py")
+		reqs, setupErr := pip.FromSetupPy(setupPyPath)
+		if setupErr == nil {
+			return requirementsToDeps(reqs), nil
+		}
+
+		err.Troubleshooting = err.Troubleshooting + " OR " + setupErr.Troubleshooting
+
+		return graph.Deps{}, err
+	}
+}
+
+func requirementsToDeps(reqs []pip.Requirement) graph.Deps {
+	imports := FromRequirements(reqs)
+	return graph.Deps{
+		Direct:     imports,
+		Transitive: fromImports(imports),
 	}
 }
 
