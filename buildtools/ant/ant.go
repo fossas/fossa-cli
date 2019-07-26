@@ -4,7 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"encoding/xml"
-	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,14 +15,15 @@ import (
 	"github.com/gnewton/jargo"
 
 	"github.com/fossas/fossa-cli/buildtools/maven"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-func Graph(dir string) (graph.Deps, error) {
+func Graph(dir string) (graph.Deps, *errors.Error) {
 	jarFilePaths, err := doublestar.Glob(filepath.Join(dir, "*.jar"))
 	if err != nil {
-		return graph.Deps{}, err
+		return graph.Deps{}, errors.UnknownError(err, fmt.Sprintf("jar files could not be found in the directory `%s`", dir))
 	}
 
 	log.Debugf("Running Ant analysis: %#v", jarFilePaths)
@@ -51,7 +52,7 @@ func Graph(dir string) (graph.Deps, error) {
 }
 
 // locatorFromJar resolves a locator from a .jar file by inspecting its contents.
-func locatorFromJar(path string) (pkg.ID, error) {
+func locatorFromJar(path string) (pkg.ID, *errors.Error) {
 	log.Debugf("processing locator from Jar: %s", path)
 
 	info, err := jargo.GetJarInfo(path)
@@ -104,7 +105,11 @@ func locatorFromJar(path string) (pkg.ID, error) {
 	}
 
 	if parsedProjectName == "" {
-		return pkg.ID{}, errors.New("unable to parse jar file")
+		return pkg.ID{}, &errors.Error{
+			Type:            errors.Unknown,
+			Troubleshooting: fmt.Sprintf("The following jar was unable to be parsed into a maven coordinates `%s`. Ensure that the jar either contains a pom file, a META-INF file, or the name itself can be used to construct the coordinates.", path),
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/ant.md#analysis",
+		}
 	}
 
 	return pkg.ID{
@@ -114,29 +119,29 @@ func locatorFromJar(path string) (pkg.ID, error) {
 	}, nil
 }
 
-func getPOMFromJar(path string) (maven.Manifest, error) {
+func getPOMFromJar(path string) (maven.Manifest, *errors.Error) {
 	var pomFile maven.Manifest
 
 	log.Debugf(path)
 	if path == "" {
-		return pomFile, errors.New("invalid POM path specified")
+		return pomFile, errors.UnknownError(nil, "Empty path specified for jar.")
 	}
-
+	// https: //github.com/fossas/fossa-cli/blob/master/docs/integrations/ant.md#ant--ivy
 	jarFile, err := os.Open(path)
 	if err != nil {
-		return pomFile, err
+		return pomFile, errors.UnknownError(err, fmt.Sprintf("The jar `%s` was unable to be opened. Try opening it yourself and ensuring that it can be read.", path))
 	}
 
 	defer jarFile.Close()
 
 	zfi, err := jarFile.Stat()
 	if err != nil {
-		return pomFile, err
+		return pomFile, errors.UnknownError(err, fmt.Sprintf("Fileinfo for the jar `%s` was unable to be obtained. Try opening it yourself and ensuring that it can be read.", path))
 	}
 
 	zr, err := zip.NewReader(jarFile, zfi.Size())
 	if err != nil {
-		return pomFile, err
+		return pomFile, errors.UnknownError(err, fmt.Sprintf("The jar `%s` was unable to be obtained. Try opening it yourself and ensuring that it can be read.", path))
 	}
 
 	for _, f := range zr.File {
@@ -144,7 +149,7 @@ func getPOMFromJar(path string) (maven.Manifest, error) {
 		if f.Name == path {
 			rc, err := f.Open()
 			if err != nil {
-				return pomFile, err
+				return pomFile, errors.UnknownError(err, fmt.Sprintf("The jar `%s` was unable to be opened. Try opening it yourself and ensuring that it can be read.", path))
 			}
 			defer rc.Close()
 
@@ -152,12 +157,12 @@ func getPOMFromJar(path string) (maven.Manifest, error) {
 			decoder := xml.NewDecoder(reader)
 
 			if err := decoder.Decode(&pomFile); err != nil {
-				return pomFile, err
+				return pomFile, errors.UnknownError(err, fmt.Sprintf("An xml formatted pom file could not be obtained from the jar file `%s`. Try unpacking the jar and inspect it for a pom file.", path))
 			}
 
 			return pomFile, nil
 		}
 	}
 
-	return pomFile, errors.New("unable to parse POM from Jar")
+	return pomFile, errors.UnknownError(nil, fmt.Sprintf("Unable to parse POM from jar `%s`.", path))
 }

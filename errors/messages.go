@@ -1,7 +1,9 @@
 package errors
 
-import "github.com/fatih/color"
-import "github.com/mitchellh/go-wordwrap"
+import (
+	"github.com/fatih/color"
+	"github.com/mitchellh/go-wordwrap"
+)
 
 const width = 78
 
