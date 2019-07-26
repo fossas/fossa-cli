@@ -153,7 +153,6 @@ func ManifestGraph(filepath string) (graph.Deps, error) {
 			Resolved: ID,
 		})
 		depGraph.Transitive[ID] = pkg.Package{ID: ID}
-
 	}
 
 	return depGraph, nil
