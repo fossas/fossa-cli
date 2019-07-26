@@ -12,7 +12,7 @@ import (
 )
 
 func TestResolve(t *testing.T) {
-	resolver, err := dep.New("testdata/ignore.lock", "testdata/Ignore.toml")
+	resolver, err := dep.New("testdata/Ignore.lock", "testdata/Ignore.toml")
 	assert.Equal(t, err, nil)
 
 	// Test that cat/house is not included in the manifest.
