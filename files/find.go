@@ -27,7 +27,7 @@ func WalkUp(startdir string, walker WalkUpFunc) (string, error) {
 		return "", err
 	}
 
-	for ; dir != "/"; dir = filepath.Dir(dir) {
+	for ; dir != filepath.Dir(dir); dir = filepath.Dir(dir) {
 		err := walker(dir)
 		if err == ErrStopWalk {
 			return dir, nil
