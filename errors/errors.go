@@ -8,17 +8,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-// General errors.
-var (
-	ErrNotImplemented = errors.New("not yet implemented")
-)
-
 type Type = int
 
 const (
 	User Type = iota
 	Exec
 	Unknown
+	NotImplemented
 )
 
 // UnknownError creates a simple fossa error using an existing error and additional context.
@@ -27,6 +23,13 @@ func UnknownError(err error, message string) *Error {
 		Cause:           err,
 		Type:            Unknown,
 		Troubleshooting: message,
+	}
+}
+
+// NotImplemented should be used to signify that a code path is not yet implemented.
+func NotImplementedError() *Error {
+	return &Error{
+		Type: NotImplemented,
 	}
 }
 
@@ -67,6 +70,8 @@ func (e *Error) Error() string {
 			fallthrough
 		case Unknown:
 			fallthrough
+		case NotImplemented:
+			message = NotImplementedMessage
 		default:
 			message = ReportBugMessage
 		}

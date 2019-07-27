@@ -31,3 +31,5 @@ var NoAPIKeyMessage = `
     
     ` + color.HiBlueString("$endpoint/account/settings/integrations/api_tokens") + `
 `
+
+var NotImplementedMessage = `This code path has not yet been implemented.`
