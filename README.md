@@ -43,8 +43,7 @@ The following commands will execute scripts to fetch and install the latest [Git
 
 ### Install with Homebrew (MacOS or Linux):
 ```bash
-brew tap fossas/tap
-brew install fossa
+brew install fossas/tap/fossa
 ```
 
 ### MacOS (Darwin) or Linux amd64:
