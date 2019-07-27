@@ -10,7 +10,7 @@ import (
 )
 
 // SetContext initializes all application-level packages.
-func SetContext(ctx *cli.Context, setAPIKey bool) error {
+func SetContext(ctx *cli.Context, requiresAPIKey bool) error {
 	// Set up configuration.
 	err := config.SetContext(ctx)
 	if err != nil {
@@ -27,7 +27,7 @@ func SetContext(ctx *cli.Context, setAPIKey bool) error {
 		return err
 	}
 
-	if setAPIKey {
+	if requiresAPIKey {
 		apiError := fossa.SetAPIKey(config.APIKey())
 		if apiError != nil {
 			return apiError
