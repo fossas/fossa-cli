@@ -18,3 +18,16 @@ archive:
       format: zip
 release:
   prerelease: true
+brews:
+  -
+    name: fossa
+    description: "Fast, portable and reliable dependency analysis for any codebase. Supports license & vulnerability scanning for large monoliths. Language-agnostic; integrates with 20+ build systems."
+    homepage: "https://fossa.com"
+
+    github:
+      owner: fossas
+      name: homebrew-tap
+
+    commit_author:
+      name: fossabot
+      email: engineering@fossa.com

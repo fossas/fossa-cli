@@ -41,6 +41,11 @@
 
 The following commands will execute scripts to fetch and install the latest [GitHub Releases](https://github.com/fossas/fossa-cli/releases) on the corresponding operating system.
 
+### Install with Homebrew (MacOS or Linux):
+```bash
+brew install fossas/tap/fossa
+```
+
 ### MacOS (Darwin) or Linux amd64:
 ```bash
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
