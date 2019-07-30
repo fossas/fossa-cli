@@ -1,6 +1,7 @@
 package bundler
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -57,10 +58,15 @@ var requirementsRegex = regexp.MustCompile(`^( *?)(\S+?)(?:\!?|( \((.*?)\)\!?)?)
 // implementing parsing logic.
 type VersionSpecifier string
 
-func FromLockfile(filename string) (Lockfile, error) {
+func FromLockfile(filename string) (Lockfile, *errors.Error) {
 	contents, err := files.Read(filename)
 	if err != nil {
-		return Lockfile{}, errors.Wrap(err, "could not read Gemfile.lock")
+		return Lockfile{}, &errors.Error{
+			Cause:           err,
+			Type:            errors.User,
+			Troubleshooting: fmt.Sprintf("Ensure that `%s` exists.", filename),
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/ruby.md#analysis",
+		}
 	}
 
 	var lockfile Lockfile
