@@ -95,7 +95,7 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 // 	b. No aliases, run `buck targets //` to find all local targets.
 // 2. "BUCK" file is found.
 // 	a. Run `buck targets <directory>:` to find all local targets.
-func DiscoverWithCommand(dir string, opts map[string]interface{}, buckCommand func(string, ...string) (string, error)) ([]module.Module, error) {
+func DiscoverWithCommand(dir string, opts map[string]interface{}, buckCommand func(string, ...string) (string, *errors.Error)) ([]module.Module, error) {
 	var moduleList []module.Module
 	buckConfig, err := files.Exists(dir, ".buckconfig")
 

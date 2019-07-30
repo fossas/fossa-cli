@@ -97,7 +97,7 @@ type Lockfile struct {
 }
 
 func FromLockfile(filename string) (Lockfile, error) {
-	return Lockfile{}, errors.ErrNotImplemented
+	return Lockfile{}, errors.NotImplementedError()
 }
 
 // TODO: add support for NODE_PATH and GLOBAL_FOLDERS.
