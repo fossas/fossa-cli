@@ -21,13 +21,13 @@ type AuditOutput struct {
 
 // Buck defines an interface for all Buck tool implementations.
 type Buck interface {
-	Deps(bool) (graph.Deps, error)
+	Deps(bool) (graph.Deps, *errors.Error)
 }
 
 // Cmd implements Buck and defines how to retrieve buck output.
 type Setup struct {
 	Target string
-	Cmd    func(string, ...string) (string, error)
+	Cmd    func(string, ...string) (string, *errors.Error)
 }
 
 // New creates a new Buck instance that calls the buck build tool directly.
@@ -40,7 +40,7 @@ func New(target, binary string) Buck {
 
 // Deps finds and uploads the dependencies of a Buck target using the supplied command and
 // returns the dependency graph.
-func (b Setup) Deps(upload bool) (graph.Deps, error) {
+func (b Setup) Deps(upload bool) (graph.Deps, *errors.Error) {
 	locatorMap, err := uploadDeps(b, upload)
 	if err != nil {
 		return graph.Deps{}, nil
@@ -62,10 +62,10 @@ func (b Setup) Deps(upload bool) (graph.Deps, error) {
 	}, nil
 }
 
-func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, error) {
+func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, *errors.Error) {
 	locatorMap := make(map[string]fossa.Locator)
 	depList := AuditOutput{}
-	var err error
+	var err *errors.Error
 	if targetIsWildcard(b.Target) {
 		depList, err = allSubprojectDeps(b)
 		if err != nil {
@@ -80,7 +80,7 @@ func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, error) {
 
 	rootDir, err := b.Cmd("root")
 	if err != nil {
-		return locatorMap, errors.Wrap(err, "Cannot get buck root")
+		return locatorMap, err
 	}
 	rootDir = strings.TrimSpace(rootDir)
 
@@ -108,7 +108,7 @@ func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, error) {
 
 // allSubprojectDeps takes a target such as //third-party/... and determines
 // the full list of dependencies specified by its targets.
-func allSubprojectDeps(b Setup) (AuditOutput, error) {
+func allSubprojectDeps(b Setup) (AuditOutput, *errors.Error) {
 	allInputs := AuditOutput{OutputMapping: make(map[string][]string)}
 
 	targets, err := cmdTargets(b.Cmd, b.Target)
@@ -141,17 +141,17 @@ func allSubprojectDeps(b Setup) (AuditOutput, error) {
 		}
 	}
 
-	return allInputs, err
+	return allInputs, nil
 }
 
-func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Package, error) {
+func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Package, *errors.Error) {
 	transitiveDeps := make(map[pkg.ID]pkg.Package)
 
 	var allDependencies []string
 	if targetIsWildcard(b.Target) {
 		// We do not need to check for the transitive graph because we assume the given
 		// target returns all build rules underneath it, flattening the dependency graph.
-		var err error
+		var err *errors.Error
 		allDependencies, err = cmdTargets(b.Cmd, b.Target)
 		if err != nil {
 			return transitiveDeps, err
@@ -205,11 +205,11 @@ func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Pack
 	return transitiveDeps, nil
 }
 
-func directDeps(b Setup, locatorMap map[string]fossa.Locator) ([]pkg.Import, error) {
+func directDeps(b Setup, locatorMap map[string]fossa.Locator) ([]pkg.Import, *errors.Error) {
 	imports := []pkg.Import{}
 	var directDeps []string
 	if targetIsWildcard(b.Target) {
-		var err error
+		var err *errors.Error
 		directDeps, err = cmdTargets(b.Cmd, b.Target)
 		if err != nil {
 			return imports, err
