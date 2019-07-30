@@ -3,14 +3,16 @@ package dep_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/fossas/fossa-cli/buildtools"
 	"github.com/fossas/fossa-cli/buildtools/dep"
 	"github.com/fossas/fossa-cli/pkg"
-	"github.com/stretchr/testify/assert"
+	"github.com/fossas/fossa-cli/testing/helpers"
 )
 
 func TestResolve(t *testing.T) {
-	resolver, err := dep.New("testdata/Gopkg.lock", "testdata/Gopkg.toml")
+	resolver, err := dep.New("testdata/Ignore.lock", "testdata/Ignore.toml")
 	assert.Equal(t, err, nil)
 
 	// Test that cat/house is not included in the manifest.
@@ -32,4 +34,55 @@ func TestResolve(t *testing.T) {
 	revision, err = resolver.Resolve("cat/fossa")
 	assert.Equal(t, err, nil)
 	assert.Equal(t, revision.Target, "v0.3.0")
+}
+
+func TestLockfileGraph(t *testing.T) {
+	depGraph, err := dep.LockfileGraph("testdata/Gopkg.lock")
+	assert.NoError(t, err)
+
+	assert.Len(t, depGraph.Direct, 3)
+	helpers.AssertPackageImport(t, depGraph.Direct, "repo/name/A", "v1.0.0")
+	helpers.AssertPackageImport(t, depGraph.Direct, "repo/name/B", "v2.0.0")
+	helpers.AssertPackageImport(t, depGraph.Direct, "repo/name/C", "12345")
+
+	assert.Len(t, depGraph.Transitive, 3)
+	packageA := helpers.PackageInTransitiveGraph(depGraph.Transitive, "repo/name/A", "v1.0.0")
+	assert.NotEmpty(t, packageA)
+	assert.Empty(t, packageA.Imports)
+
+	packageB := helpers.PackageInTransitiveGraph(depGraph.Transitive, "repo/name/B", "v2.0.0")
+	assert.NotEmpty(t, packageB)
+	assert.Empty(t, packageB.Imports)
+
+	packageC := helpers.PackageInTransitiveGraph(depGraph.Transitive, "repo/name/C", "12345")
+	assert.NotEmpty(t, packageC)
+	assert.Empty(t, packageC.Imports)
+}
+
+func TestManifestGraph(t *testing.T) {
+	depGraph, err := dep.ManifestGraph("testdata/Gopkg.toml")
+	assert.NoError(t, err)
+
+	assert.Len(t, depGraph.Direct, 4)
+	helpers.AssertPackageImport(t, depGraph.Direct, "cat/fossa", "v3.0.0")
+	helpers.AssertPackageImport(t, depGraph.Direct, "repo/name/A", "v1.0.0")
+	helpers.AssertPackageImport(t, depGraph.Direct, "repo/name/B", "v2.0.0")
+	helpers.AssertPackageImport(t, depGraph.Direct, "repo/name/C", "12345")
+
+	assert.Len(t, depGraph.Transitive, 4)
+	packageCat := helpers.PackageInTransitiveGraph(depGraph.Transitive, "cat/fossa", "v3.0.0")
+	assert.NotEmpty(t, packageCat)
+	assert.Empty(t, packageCat.Imports)
+
+	packageA := helpers.PackageInTransitiveGraph(depGraph.Transitive, "repo/name/A", "v1.0.0")
+	assert.NotEmpty(t, packageA)
+	assert.Empty(t, packageA.Imports)
+
+	packageB := helpers.PackageInTransitiveGraph(depGraph.Transitive, "repo/name/B", "v2.0.0")
+	assert.NotEmpty(t, packageB)
+	assert.Empty(t, packageB.Imports)
+
+	packageC := helpers.PackageInTransitiveGraph(depGraph.Transitive, "repo/name/C", "12345")
+	assert.NotEmpty(t, packageC)
+	assert.Empty(t, packageC.Imports)
 }

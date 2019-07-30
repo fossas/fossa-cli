@@ -2,4 +2,17 @@ ignored = ["cat/puma", "cat/big/*"]
 
 [[constraint]]
   name = "cat/fossa"
-  version = "0.3.0"
+  version = "v3.0.0"
+
+[[constraint]]
+  name = "repo/name/A"
+  version = "v1.0.0"
+
+[[constraint]]
+  name = "repo/name/B"
+  version = "v2.0.0"
+  revision = "12345"
+
+[[constraint]]
+  name = "repo/name/C"
+  revision = "12345"

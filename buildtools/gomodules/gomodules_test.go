@@ -100,7 +100,7 @@ func TestSumGraph(t *testing.T) {
 	assert.NotEmpty(t, packageA)
 	assert.Empty(t, packageA.Imports)
 
-	packageD := helpers.PackageInTransitiveGraph(depGraph.Transitive, "repo/name/B", "12345")
-	assert.NotEmpty(t, packageD)
-	assert.Empty(t, packageD.Imports)
+	packageB := helpers.PackageInTransitiveGraph(depGraph.Transitive, "repo/name/B", "12345")
+	assert.NotEmpty(t, packageB)
+	assert.Empty(t, packageB.Imports)
 }
