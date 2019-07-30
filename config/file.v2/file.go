@@ -20,5 +20,5 @@ type File struct {
 }
 
 func New(data []byte) (File, error) {
-	return File{}, errors.ErrNotImplemented
+	return File{}, errors.NotImplementedError()
 }
