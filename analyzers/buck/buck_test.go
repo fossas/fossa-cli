@@ -23,7 +23,7 @@ func TestDiscoveryAliasConfig(t *testing.T) {
 func TestDiscoveryEmptyAliasConfig(t *testing.T) {
 	dir := "testdata/buckconfig/EmptyAlias"
 	modules, err := buck.DiscoverWithCommand(dir, make(map[string]interface{}), mockBuck)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, len(modules), 2)
 	assert.Contains(t, modules, testModule("//test:one", "//test:one", dir))
 	assert.Contains(t, modules, testModule("//test:two", "//test:two", dir))
@@ -32,7 +32,7 @@ func TestDiscoveryEmptyAliasConfig(t *testing.T) {
 func TestDiscoveryBlankConfig(t *testing.T) {
 	dir := "testdata/buckconfig/Blank"
 	modules, err := buck.DiscoverWithCommand(dir, make(map[string]interface{}), mockBuck)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, len(modules), 2)
 	assert.Contains(t, modules, testModule("//test:one", "//test:one", dir))
 	assert.Contains(t, modules, testModule("//test:two", "//test:two", dir))
@@ -41,7 +41,7 @@ func TestDiscoveryBlankConfig(t *testing.T) {
 func TestDiscoveryBUCKFile(t *testing.T) {
 	dir := "testdata/BUCK"
 	modules, err := buck.DiscoverWithCommand(dir, make(map[string]interface{}), mockBuck)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, len(modules), 2)
 	assert.Contains(t, modules, testModule("//test:one", "//test:one", dir))
 	assert.Contains(t, modules, testModule("//test:two", "//test:two", dir))
@@ -56,13 +56,13 @@ func testModule(name, target, dir string) module.Module {
 	}
 }
 
-func mockBuck(cmd string, args ...string) (string, error) {
+func mockBuck(cmd string, args ...string) (string, *errors.Error) {
 	switch cmd {
 	case "root":
 		return "", nil
 	case "targets":
 		return "//test:one\n//test:two", nil
 	default:
-		return "", errors.New("Cannot identify the test command")
+		return "", errors.UnknownError(nil, "Cannot identify the test command")
 	}
 }

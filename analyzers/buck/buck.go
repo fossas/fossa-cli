@@ -113,9 +113,9 @@ func DiscoverWithCommand(dir string, opts map[string]interface{}, buckCommand fu
 			return moduleList, nil
 		}
 
-		out, err := buckCommand("targets", "//")
-		if err != nil {
-			return nil, err
+		out, buckErr := buckCommand("targets", "//")
+		if buckErr != nil {
+			return nil, buckErr
 		}
 
 		buckTargetList := strings.Split(strings.TrimSpace(out), "\n")
@@ -132,16 +132,16 @@ func DiscoverWithCommand(dir string, opts map[string]interface{}, buckCommand fu
 			return nil, errors.Errorf("Cannot get working directory: %s", err)
 		}
 
-		buckRoot, err := buckCommand("root")
-		if err != nil {
-			return nil, err
+		buckRoot, buckErr := buckCommand("root")
+		if buckErr != nil {
+			return nil, buckErr
 		}
 
 		// Condition the current directory to the format of "parent/child:" from the root directory.
 		buckDirectory := strings.TrimPrefix(wd, strings.TrimSpace(buckRoot)+"/")
-		out, err := buckCommand("targets", buckDirectory+":")
-		if err != nil {
-			return nil, err
+		out, buckErr := buckCommand("targets", buckDirectory+":")
+		if buckErr != nil {
+			return nil, buckErr
 		}
 
 		targets := strings.Split(out, "\n")

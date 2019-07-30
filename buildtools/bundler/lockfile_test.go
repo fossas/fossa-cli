@@ -12,7 +12,7 @@ import (
 // TODO: we should make sure this is exactly correct, using a struct fixture.
 func TestLockfileParsing(t *testing.T) {
 	l, err := bundler.FromLockfile(filepath.Join("testdata", "Gemfile.lock"))
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 
 	testSections(t, l.Git)
 	testSections(t, l.Path)
@@ -24,7 +24,7 @@ func TestLockfileParsing(t *testing.T) {
 
 func TestBadLockfileParsing(t *testing.T) {
 	l, err := bundler.FromLockfile(filepath.Join("testdata", "BadGemfile.lock"))
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Empty(t, l.Dependencies)
 	t.Logf("%#v", l)
 }

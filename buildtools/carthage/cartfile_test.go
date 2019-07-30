@@ -14,10 +14,10 @@ import (
 
 func TestCartfileParsing(t *testing.T) {
 	carthagePackage, err := carthage.FromResolvedCartfile("TestProject", filepath.Join("testdata", "testproject"))
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 
-	data, err := json.Marshal(carthagePackage)
-	assert.NoError(t, err)
+	data, jsonErr := json.Marshal(carthagePackage)
+	assert.NoError(t, jsonErr)
 	fmt.Printf("Imports: %s", string(data))
 
 	deps := make(map[pkg.ID]pkg.Package)
@@ -53,5 +53,5 @@ func TestCartfileParsing(t *testing.T) {
 
 func TestNoPanicOnEmptyFile(t *testing.T) {
 	_, err := carthage.FromResolvedCartfile("TestProject", filepath.Join("testdata", "testempty"))
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 }
