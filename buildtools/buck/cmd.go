@@ -18,7 +18,7 @@ func NewCmd(name string) func(string, ...string) (string, *errors.Error) {
 		})
 
 		if err != nil {
-			return out, &errors.Error{
+			return "", &errors.Error{
 				Cause:           err,
 				Type:            errors.Exec,
 				Troubleshooting: fmt.Sprintf("Fossa could not run `%s %s %+v` within the current directory. Try running this command and ensure that %s is installed in your environment.\nstdout: %s\nstderr: %s", name, cmd, args, name, out, stderr),
