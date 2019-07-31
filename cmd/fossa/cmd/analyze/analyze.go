@@ -119,9 +119,9 @@ func Do(modules []module.Module, upload bool) (analyzed []module.Module, err err
 		if !built {
 			log.Warnf("Module does not appear to be built")
 		}
-		deps, err := analyzer.Analyze()
-		if err != nil {
-			log.Fatalf("Could not analyze: %s", err.Error())
+		deps, analyzeErr := analyzer.Analyze()
+		if analyzeErr != nil {
+			log.Fatalf("Could not analyze: %s", analyzeErr.Error())
 		}
 		m.Imports = deps.Direct
 		m.Deps = deps.Transitive
