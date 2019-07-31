@@ -45,6 +45,9 @@ type Error struct {
 
 func (e *Error) Error() string {
 	var err, code, troubleshooting, link, message string
+	if e == nil {
+		return typeNilError
+	}
 
 	if e.Cause != nil {
 		err = e.Cause.Error()

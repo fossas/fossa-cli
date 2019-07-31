@@ -33,3 +33,5 @@ var NoAPIKeyMessage = `
 `
 
 var NotImplementedMessage = `This code path has not yet been implemented.`
+
+var typeNilError = `fossa had difficulty reading this error message. Please report this as a bug.` + ReportBugMessage
