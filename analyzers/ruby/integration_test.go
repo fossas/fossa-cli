@@ -40,7 +40,7 @@ func TestRubyIntegration(t *testing.T) {
 			assert.NoError(t, err)
 
 			deps, analyzeErr := analyzer.Analyze()
-			assert.NoError(t, analyzeErr)
+			assert.Nil(t, analyzeErr)
 			assert.NotEmpty(t, deps.Direct)
 			assert.NotEmpty(t, deps.Transitive)
 		})
