@@ -5,6 +5,7 @@
 [INFO] --------------------------------[ jar ]---------------------------------
 [INFO] 
 [INFO] --- maven-dependency-plugin:2.8:tree (default-cli) @ jmh-introduction ---
+[WARNING] The artifact org.mapstruct:mapstruct-jdk8:jar:1.3.0.Final has been relocated to org.mapstruct:mapstruct:jar:1.3.0.Final
 [INFO] de.frank:jmh-introduction:jar:1-SNAPSHOT
 [INFO] +- dep:one:jar:1.0.0:provided
 [INFO] \- dep:two:jar:2.0.0:compile
