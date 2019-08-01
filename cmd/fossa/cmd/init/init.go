@@ -27,11 +27,10 @@ var Cmd = cli.Command{
 	Name:   "init",
 	Usage:  "Initialize a .fossa.yml configuration file",
 	Action: Run,
-	Flags: flags.WithGlobalFlags(flags.WithOptions([]cli.Flag{
-		// cli.BoolFlag{Name: Update, Usage: "update an existing configuration file"},
+	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithOptions([]cli.Flag{
 		cli.BoolFlag{Name: IncludeAll, Usage: "include suspicious modules (e.g. `docs`, `test` or `example` in name)"},
 		cli.StringSliceFlag{Name: Type, Usage: "the module types to check for"},
-	})),
+	}))),
 }
 
 var _ cli.ActionFunc = Run
