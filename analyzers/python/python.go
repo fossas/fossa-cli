@@ -160,24 +160,22 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	case "pipenv":
 		depGraph, err := a.Pipenv.Deps()
 		return depGraph, err
+	case "setuptools":
+		setupPyPath := filepath.Join(a.Module.Dir, "setup.py")
+		reqs, err := pip.FromSetupPy(setupPyPath)
+		if err != nil {
+			return graph.Deps{}, err
+		}
+		return requirementsToDeps(reqs), nil
 	case "requirements":
 		fallthrough
 	default:
 		requirementsPath := a.requirementsFile(a.Module)
 		reqs, err := pip.FromFile(requirementsPath)
-		if err == nil {
-			return requirementsToDeps(reqs), nil
+		if err != nil {
+			return graph.Deps{}, err
 		}
-
-		setupPyPath := filepath.Join(a.Module.Dir, "setup.py")
-		reqs, setupErr := pip.FromSetupPy(setupPyPath)
-		if setupErr == nil {
-			return requirementsToDeps(reqs), nil
-		}
-
-		err.Troubleshooting = err.Troubleshooting + " OR " + setupErr.Troubleshooting
-
-		return graph.Deps{}, err
+		return requirementsToDeps(reqs), nil
 	}
 }
 
