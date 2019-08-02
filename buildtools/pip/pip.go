@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/apex/log"
 
@@ -12,21 +13,37 @@ import (
 	"github.com/fossas/fossa-cli/files"
 )
 
-// TODO: add a Python sidecar that evaluates `setup.py`.
-
 type Pip struct {
 	Cmd       string
 	PythonCmd string
 }
 
-type Requirement struct {
+// Structure for deserializing the output of `pip list`
+type listRequirement struct {
 	Name     string `json:"name"`
 	Revision string `json:"version"`
+}
+
+type Requirement struct {
+	Name        string
+	Constraints []Constraint
+}
+
+type Constraint struct {
+	Revision string
 	Operator string
 }
 
+func (c Constraint) String() string {
+	return c.Operator + c.Revision
+}
+
 func (r Requirement) String() string {
-	return r.Name + r.Operator + r.Revision
+	var constraintStrings []string
+	for _, constraint := range r.Constraints {
+		constraintStrings = append(constraintStrings, constraint.String())
+	}
+	return r.Name + strings.Join(constraintStrings, ",")
 }
 
 func (p *Pip) Install(requirementsFilename string) *errors.Error {
@@ -56,9 +73,8 @@ func (p *Pip) List() ([]Requirement, *errors.Error) {
 			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/python.md#strategy-string",
 		}
 	}
-
-	var reqs []Requirement
-	err = json.Unmarshal([]byte(stdout), &reqs)
+	var listReqs []listRequirement
+	err = json.Unmarshal([]byte(stdout), &listReqs)
 	if err != nil {
 		return nil, &errors.Error{
 			Cause:           err,
@@ -67,6 +83,78 @@ func (p *Pip) List() ([]Requirement, *errors.Error) {
 			Link:            "https://pip.pypa.io/en/stable/reference/pip_list",
 		}
 	}
+
+	var reqs []Requirement
+	for _, listReq := range listReqs {
+		reqs = append(reqs, Requirement{
+			Name:        listReq.Name,
+			Constraints: []Constraint{{Revision: listReq.Revision}},
+		})
+	}
+	return reqs, nil
+}
+
+const requiresField = "install_requires"
+
+func FromSetupPy(filename string) ([]Requirement, *errors.Error) {
+	raw, err := files.Read(filename)
+	if err != nil {
+		return nil, &errors.Error{
+			Cause:           err,
+			Type:            errors.User,
+			Troubleshooting: fmt.Sprintf("Ensure that `%s` exists.", filename),
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/python.md#analysis",
+		}
+	}
+
+	contents := string(raw)
+
+	reqStart := strings.Index(contents, requiresField)
+	if reqStart == -1 {
+		return nil, nil
+	}
+
+	contents = contents[(reqStart + len(requiresField)):]
+
+	openBracket := strings.Index(contents, "[")
+	if openBracket == -1 {
+		return nil, &errors.Error{
+			Type:    errors.Exec,
+			Message: "Failed to parse setup.py: expected to find '[' after \"" + requiresField + "\"",
+		}
+	}
+
+	contents = contents[openBracket+1:]
+
+	endBracket := strings.Index(contents, "]")
+	if endBracket == -1 {
+		return nil, &errors.Error{
+			Type:    errors.Exec,
+			Message: "Failed to parse setup.py: expected to find ']' after \"" + requiresField + "\"",
+		}
+	}
+
+	var reqs []Requirement
+	for {
+		endBracket := strings.Index(contents, "]")
+		openQuote := strings.Index(contents, "'")
+		if openQuote == -1 || openQuote > endBracket {
+			break
+		}
+
+		contents = contents[openQuote+1:]
+		closeQuote := strings.Index(contents, "'")
+		if closeQuote == -1 {
+			// NB: silently failing here instead of throwing an error
+			break
+		}
+
+		depString := contents[:closeQuote]
+		contents = contents[closeQuote+1:]
+
+		reqs = append(reqs, parseRequirement(depString))
+	}
+
 	return reqs, nil
 }
 
@@ -87,36 +175,62 @@ func FromFile(filename string) ([]Requirement, *errors.Error) {
 		// Remove all line comments and whitespace.
 		commentSplit := strings.Split(line, "#")
 		trimmed := strings.TrimSpace(commentSplit[0])
-		trimmed = strings.ReplaceAll(trimmed, " ", "")
 		if strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, "-") || trimmed == "" {
 			continue
 		}
 
 		log.WithField("line", line).Debug("parsing line")
-		// See https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format
-		// and https://pip.pypa.io/en/stable/reference/pip_install/#pip-install-examples
-		matched := false
-		operators := []string{"===", "<=", ">=", "==", ">", "<", "!=", "~="}
-		for _, op := range operators {
-			sections := strings.Split(trimmed, op)
-			if len(sections) == 2 {
-				reqs = append(reqs, Requirement{
-					Name:     checkForExtra(sections[0]),
-					Revision: sections[1],
-					Operator: op,
-				})
-				matched = true
-				break
-			}
-		}
-		if !matched {
-			reqs = append(reqs, Requirement{
-				Name: checkForExtra(trimmed),
-			})
-		}
+		req := parseRequirement(trimmed)
+		req.Name = checkForExtra(req.Name)
+		reqs = append(reqs, req)
 	}
 
 	return reqs, nil
+}
+
+func parseRequirement(raw string) Requirement {
+	// See https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format
+	// and https://pip.pypa.io/en/stable/reference/pip_install/#pip-install-examples
+	trimmed := strings.ReplaceAll(raw, " ", "")
+
+	constraintsStart := -1
+	for ix, char := range trimmed {
+		// operators start with these characters
+		if char == '~' || char == '=' || char == '>' || char == '<' || char == '!' {
+			constraintsStart = ix
+			break
+		}
+	}
+
+	name := trimmed
+	var constraints []Constraint
+
+	if constraintsStart != -1 {
+		name = trimmed[:constraintsStart]
+		constraintsRaw := strings.Split(trimmed[constraintsStart:], ",")
+		for _, constraintRaw := range constraintsRaw {
+			constraints = append(constraints, parseConstraint(constraintRaw))
+		}
+	}
+
+	return Requirement{
+		Name:        name,
+		Constraints: constraints,
+	}
+}
+
+func parseConstraint(raw string) Constraint {
+	for ix, char := range raw {
+		if unicode.IsDigit(char) {
+			return Constraint{
+				Revision: raw[ix:],
+				Operator: raw[:ix],
+			}
+		}
+	}
+	return Constraint{
+		Revision: raw,
+	}
 }
 
 // https://www.python.org/dev/peps/pep-0508/#extras

@@ -8,12 +8,17 @@ import (
 func FromRequirements(reqs []pip.Requirement) []pkg.Import {
 	var imports []pkg.Import
 	for _, req := range reqs {
+		var revision string
+		// TODO: the backend isn't equipped to handle version ranges
+		if len(req.Constraints) > 0 {
+			revision = req.Constraints[0].Revision
+		}
 		imports = append(imports, pkg.Import{
 			Target: req.String(),
 			Resolved: pkg.ID{
-				Type:     pkg.Python,
-				Name:     req.Name,
-				Revision: req.Revision,
+				Type: pkg.Python,
+				Name: req.Name,
+				Revision: revision,
 			},
 		})
 	}
