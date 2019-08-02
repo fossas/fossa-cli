@@ -81,12 +81,22 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 // Discover is used to operate Discovery with a custom `buck` command.
 func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) {
-	buckCmd, _, err := exec.Which("--version", os.Getenv("FOSSA_BUCK_CMD"), "./buckw", "buck")
-	if err != nil {
-		return nil, err
+	buckConfig, _ := files.Exists(dir, ".buckconfig")
+	buckFile, _ := files.Exists(dir, "BUCK")
+	if buckConfig || buckFile {
+		buckCmd, _, err := exec.Which("--version", os.Getenv("FOSSA_BUCK_CMD"), "./buckw", "buck")
+		if err != nil {
+			return nil, &errors.Error{
+				Cause:           err,
+				Type:            errors.User,
+				Troubleshooting: "buck files were detected but the buck binary was not able to be found. Install buck or set `$FOSSA_BUCK_CMD`",
+				Link:            "https://buck.build/setup/getting_started.html",
+			}
+		}
+		return DiscoverWithCommand(dir, opts, buck.NewCmd(buckCmd))
 	}
 
-	return DiscoverWithCommand(dir, opts, buck.NewCmd(buckCmd))
+	return nil, nil
 }
 
 // DiscoverWithCommand finds a Buck project by first looking for a ".buckconfig" file and then a "BUCK" file.
