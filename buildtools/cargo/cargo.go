@@ -1,6 +1,7 @@
 package cargo
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -38,11 +39,17 @@ type Package struct {
 // LockfileDependencies uses a lockfile and the associated manifest file to create a dependency
 // graph. This method approximates the direct dependencies by selecting all dependencies
 // in the manifest file as direct dependencies and determines the version from the lockfile.
-func LockfileDependencies(lockfilePath string, dir string) (graph.Deps, error) {
+func LockfileDependencies(lockfilePath string, dir string) (graph.Deps, *errors.Error) {
+	lockfileLocation := filepath.Join(dir, lockfilePath)
 	var lock lockfile
-	err := files.ReadTOML(&lock, filepath.Join(dir, lockfilePath))
+	err := files.ReadTOML(&lock, lockfileLocation)
 	if err != nil {
-		return graph.Deps{}, errors.Wrap(err, "No lockfile Cargo.lock found")
+		return graph.Deps{}, &errors.Error{
+			Cause:           err,
+			Type:            errors.User,
+			Troubleshooting: fmt.Sprintf("Ensure that `%s` exists.", lockfileLocation),
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/rust.md#analysis",
+		}
 	}
 
 	IDMap := make(map[string]pkg.ID)

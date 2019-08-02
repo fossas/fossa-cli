@@ -140,9 +140,9 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 	if !filepath.IsAbs(bowerComponentsDir) {
 		bowerComponentsDir = filepath.Join(a.Module.Dir, config.Directory)
 	}
-	isBuilt, err := files.ExistsFolder(bowerComponentsDir)
-	if err != nil {
-		return false, err
+	isBuilt, fileErr := files.ExistsFolder(bowerComponentsDir)
+	if fileErr != nil {
+		return false, fileErr
 	}
 
 	log.WithField("isBuilt", isBuilt).Debug("done checking Bower build")

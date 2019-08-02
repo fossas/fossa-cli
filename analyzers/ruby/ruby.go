@@ -9,10 +9,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/apex/log"
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/buildtools/bundler"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
@@ -172,7 +173,6 @@ func (a *Analyzer) bundlerListLockfileAnalyzerStrategy(lockfilePath string) (gra
 	}
 
 	deps, err := a.lockfileAnalyzerStrategy(lockfilePath)
-
 	if err == nil {
 		return deps, err
 	}
@@ -198,7 +198,7 @@ func (a *Analyzer) bundlerListAnalyzerStrategy() (graph.Deps, error) {
 	}, nil
 }
 
-func (a *Analyzer) lockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, error) {
+func (a *Analyzer) lockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, *errors.Error) {
 	lockfile, err := bundler.FromLockfile(lockfilePath)
 	if err != nil {
 		return graph.Deps{}, err

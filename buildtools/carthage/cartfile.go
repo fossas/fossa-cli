@@ -8,6 +8,7 @@ import (
 	"github.com/apex/log"
 	"github.com/rveen/ogdl"
 
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -27,30 +28,35 @@ type Requirement struct {
 }
 
 // Attempt to construct a Package from a dep given the parent directory
-func (r Requirement) Package(dir string) (Package, error) {
+func (r Requirement) Package(dir string) (Package, *errors.Error) {
 	log.Debugf("Attempting to build Cartfile with dep %#v", r.CheckoutName)
 	var resolvedCartfile Package
 
 	requirementDirectory := filepath.Join(dir, "Carthage/Checkouts", r.CheckoutName)
 
-	log.Debugf("Checking for Cartfile.resolved at: %#v", requirementDirectory)
-	hasResolvedCartfile, err := files.Exists(filepath.Join(requirementDirectory, "Cartfile.resolved"))
-
+	cartfilePath := filepath.Join(filepath.Join(requirementDirectory, "Cartfile.resolved"))
+	hasResolvedCartfile, err := files.Exists(cartfilePath)
 	if err != nil {
-		log.Debugf("Error checking for resolved cartfile: %#v, %#v", requirementDirectory, err.Error())
-		return resolvedCartfile, err
+		return Package{}, &errors.Error{
+			Cause:           err,
+			Type:            errors.User,
+			Troubleshooting: fmt.Sprintf("There was an error trying to confirm that the specified Cartfile.resolved file: `%s` exists which is specified does not exist. Ensure that this file exists or specify it in your configuration file.", cartfilePath),
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/carthage.md#analysis",
+		}
 	}
 
 	if !hasResolvedCartfile {
-		log.Debugf("Cartfile.resolved missing in: %#v, exiting.", requirementDirectory)
-		return resolvedCartfile, fmt.Errorf("Cartfile.resolved missing in: %#v", requirementDirectory)
+		return resolvedCartfile, &errors.Error{
+			Type:            errors.User,
+			Troubleshooting: fmt.Sprintf("It appears that the file `%s` which is specified does not exist. Ensure that this file exists or specify it in your configuration file.", cartfilePath),
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/carthage.md#analysis",
+		}
 	}
 
 	// get current Cartfile.resolved
 	resolvedCartfile, cartfileErr := FromResolvedCartfile(r.CheckoutName, requirementDirectory)
 	if cartfileErr != nil {
-		log.Debugf("Error parsing Cartfile.resolved at %#v: %#v", requirementDirectory, err.Error())
-		return resolvedCartfile, cartfileErr
+		return Package{}, cartfileErr
 	}
 
 	return resolvedCartfile, nil
@@ -85,7 +91,7 @@ _
 		jspahrsummers/xcconfigs
 			0.9
 */
-func FromResolvedCartfile(projectName string, dir string) (Package, error) {
+func FromResolvedCartfile(projectName string, dir string) (Package, *errors.Error) {
 	cartfilePath := filepath.Join(dir, "Cartfile.resolved")
 	checkoutsDir := filepath.Join(dir, "Carthage/Checkouts")
 	log.Debugf("Parsing Cartfile.resolved at %#v", cartfilePath)

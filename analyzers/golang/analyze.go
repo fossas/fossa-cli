@@ -93,7 +93,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	// Resolve revisions by traversing the local $GOPATH and calling the package's
 	// VCS.
 	case "gopath-vcs":
-		return graph.Deps{}, errors.ErrNotImplemented
+		return graph.Deps{}, errors.NotImplementedError()
 
 	// Read revisions from an auto-detected tool manifest.
 	default:

@@ -26,7 +26,7 @@ func TestCustomGemfileLockPath(t *testing.T) {
 		"strategy": "lockfile",
 	}
 	analyzer, err := ruby.New(gemModule)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 
 	customModule := m
 	customModule.Options = map[string]interface{}{
@@ -34,13 +34,13 @@ func TestCustomGemfileLockPath(t *testing.T) {
 		"gemfile-lock-path": filepath.Join("testdata", "CustomGemfile.lock"),
 	}
 	customLockfileAnalyzer, err := ruby.New(customModule)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 
 	analyzed, err := analyzer.Analyze()
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 
 	analyzedCustom, err := customLockfileAnalyzer.Analyze()
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 
 	assert.NotEqual(t, analyzed, analyzedCustom)
 }
@@ -70,20 +70,20 @@ func TestFallbackOnMissingBundler(t *testing.T) {
 	}
 
 	lockfileBasedAnalyzer, lockfileBasedAnalyzerErr := ruby.New(gemModuleUsingLockfile)
-	assert.NoError(t, lockfileBasedAnalyzerErr)
+	assert.Nil(t, lockfileBasedAnalyzerErr)
 
 	fallbackBasedAnalyzer, fallbackBasedAnalyzerErr := ruby.New(gemModuleUsingFallbackToLockfile)
-	assert.NoError(t, fallbackBasedAnalyzerErr)
+	assert.Nil(t, fallbackBasedAnalyzerErr)
 
 	fallbackBasedAnalyzer.Bundler = bundler.Bundler{
 		Cmd: "doesntWork",
 	}
 
 	lockfileBasedAnalyze, lockfileBasedAnalyzerErr := lockfileBasedAnalyzer.Analyze()
-	assert.NoError(t, lockfileBasedAnalyzerErr)
+	assert.Nil(t, lockfileBasedAnalyzerErr)
 
 	fallbackBasedAnalyze, fallbackBasedAnalyzerErr := fallbackBasedAnalyzer.Analyze()
-	assert.NoError(t, fallbackBasedAnalyzerErr)
+	assert.Nil(t, fallbackBasedAnalyzerErr)
 
 	// ensure that the arrays are actually populated and we aren't comparing equivalent empty results
 	assert.NotEmpty(t, fallbackBasedAnalyze.Direct)

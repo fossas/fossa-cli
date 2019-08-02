@@ -66,7 +66,11 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		return graph.Deps{}, errors.New("unable to resolve library directory, try specifying it using the `modules.options.libdir` property in `.fossa.yml`")
 	}
 
-	return ant.Graph(libdir)
+	deps, graphErr := ant.Graph(libdir)
+	if graphErr != nil {
+		return graph.Deps{}, graphErr
+	}
+	return deps, nil
 }
 
 // IsBuilt always returns true for Ant builds.

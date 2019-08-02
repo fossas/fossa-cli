@@ -1,7 +1,9 @@
 package errors
 
-import "github.com/fatih/color"
-import "github.com/mitchellh/go-wordwrap"
+import (
+	"github.com/fatih/color"
+	"github.com/mitchellh/go-wordwrap"
+)
 
 const width = 78
 
@@ -29,3 +31,7 @@ var NoAPIKeyMessage = `
     
     ` + color.HiBlueString("$endpoint/account/settings/integrations/api_tokens") + `
 `
+
+var NotImplementedMessage = `This code path has not yet been implemented.`
+
+var typeNilError = `fossa had difficulty reading this error message. Please report this as a bug.` + ReportBugMessage

@@ -12,7 +12,7 @@ import (
 // Test that we can analyze a Cargo.lock and that direct deps are found in Cargo.toml files.
 func TestLockfileWithManifest(t *testing.T) {
 	graph, err := cargo.LockfileDependencies("Cargo.lock", "testdata")
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Len(t, graph.Direct, 2)
 	assert.Len(t, graph.Transitive, 5)
 
@@ -41,7 +41,7 @@ func TestLockfileWithManifest(t *testing.T) {
 
 func TestLockfileNoManifest(t *testing.T) {
 	graph, err := cargo.LockfileDependencies("Cargo.lock", "testdata/no-manifests")
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Len(t, graph.Direct, 0)
 	assert.Len(t, graph.Transitive, 1)
 
@@ -51,7 +51,7 @@ func TestLockfileNoManifest(t *testing.T) {
 
 func TestMissingManifest(t *testing.T) {
 	graph, err := cargo.LockfileDependencies("Cargo.lock", "testdata/missing-manifest")
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Len(t, graph.Direct, 0)
 	assert.Len(t, graph.Transitive, 1)
 

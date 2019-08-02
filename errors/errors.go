@@ -4,12 +4,8 @@ import (
 	"fmt"
 
 	"github.com/fatih/color"
+	"github.com/mitchellh/go-wordwrap"
 	"github.com/pkg/errors"
-)
-
-// General errors.
-var (
-	ErrNotImplemented = errors.New("not yet implemented")
 )
 
 type Type = int
@@ -18,13 +14,22 @@ const (
 	User Type = iota
 	Exec
 	Unknown
+	NotImplemented
 )
 
 // UnknownError creates a simple fossa error using an existing error and additional context.
 func UnknownError(err error, message string) *Error {
 	return &Error{
-		Cause: err,
-		Type:  Unknown,
+		Cause:           err,
+		Type:            Unknown,
+		Troubleshooting: message,
+	}
+}
+
+// NotImplemented should be used to signify that a code path is not yet implemented.
+func NotImplementedError() *Error {
+	return &Error{
+		Type: NotImplemented,
 	}
 }
 
@@ -40,6 +45,9 @@ type Error struct {
 
 func (e *Error) Error() string {
 	var err, code, troubleshooting, link, message string
+	if e == nil {
+		return typeNilError
+	}
 
 	if e.Cause != nil {
 		err = e.Cause.Error()
@@ -50,7 +58,7 @@ func (e *Error) Error() string {
 	}
 
 	if e.Troubleshooting != "" {
-		troubleshooting = fmt.Sprintf("\n%s: %s", color.MagentaString("TROUBLESHOOTING"), e.Troubleshooting)
+		troubleshooting = wordwrap.WrapString(fmt.Sprintf("\n%s: %s", color.MagentaString("TROUBLESHOOTING"), e.Troubleshooting), width)
 	}
 
 	if e.Link != "" {
@@ -65,6 +73,8 @@ func (e *Error) Error() string {
 			fallthrough
 		case Unknown:
 			fallthrough
+		case NotImplemented:
+			message = NotImplementedMessage
 		default:
 			message = ReportBugMessage
 		}

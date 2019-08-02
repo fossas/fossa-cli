@@ -10,6 +10,7 @@ import (
 
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/buildtools/buck"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -18,21 +19,21 @@ func TestDirectDeps(t *testing.T) {
 	testEnv := Mock()
 
 	direct, err := testEnv.Deps(false)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, 1, len(direct.Direct))
 	assertImport(t, direct.Direct, "test-two")
 
 	transitive, err := testEnv.Deps(false)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, 2, len(transitive.Transitive))
 
-	packageTwo, err := findPackage(transitive.Transitive, "test-two")
-	assert.NoError(t, err)
+	packageTwo, pkgErr := findPackage(transitive.Transitive, "test-two")
+	assert.Nil(t, pkgErr)
 	assert.Equal(t, 1, len(packageTwo.Imports))
 	assertImport(t, packageTwo.Imports, "test-three")
 
-	packageThree, err := findPackage(transitive.Transitive, "test-three")
-	assert.NoError(t, err)
+	packageThree, pkgErr := findPackage(transitive.Transitive, "test-three")
+	assert.Nil(t, pkgErr)
 	assert.Equal(t, 0, len(packageThree.Imports))
 }
 
@@ -41,28 +42,28 @@ func TestDepsAllSubprojects(t *testing.T) {
 	testBuck := mockSubProjects()
 
 	direct, err := testBuck.Deps(false)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, 3, len(direct.Direct))
 	assertImport(t, direct.Direct, "test-one")
 	assertImport(t, direct.Direct, "test-two")
 	assertImport(t, direct.Direct, "test-three")
 
 	transitive, err := testBuck.Deps(false)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, 3, len(transitive.Transitive))
 
-	packageOne, err := findPackage(transitive.Transitive, "test-one")
-	assert.NoError(t, err)
+	packageOne, pkgErr := findPackage(transitive.Transitive, "test-one")
+	assert.Nil(t, pkgErr)
 	assert.Equal(t, 1, len(packageOne.Imports))
 	assertImport(t, packageOne.Imports, "test-two")
 
-	packageTwo, err := findPackage(transitive.Transitive, "test-two")
-	assert.NoError(t, err)
+	packageTwo, pkgErr := findPackage(transitive.Transitive, "test-two")
+	assert.Nil(t, pkgErr)
 	assert.Equal(t, 1, len(packageTwo.Imports))
 	assertImport(t, packageTwo.Imports, "test-three")
 
-	packageThree, err := findPackage(transitive.Transitive, "test-three")
-	assert.NoError(t, err)
+	packageThree, pkgErr := findPackage(transitive.Transitive, "test-three")
+	assert.Nil(t, pkgErr)
 	assert.Equal(t, 0, len(packageThree.Imports))
 }
 
@@ -70,10 +71,16 @@ func TestDepsAllSubprojects(t *testing.T) {
 func Mock() buck.Setup {
 	return buck.Setup{
 		Target: "//buck/test:one",
-		Cmd: func(cmd string, args ...string) (string, error) {
+		Cmd: func(cmd string, args ...string) (string, *errors.Error) {
 			switch cmd {
 			case "root":
-				return os.Getwd()
+				root, err := os.Getwd()
+				if err != nil {
+					return "", &errors.Error{
+						Cause: err,
+					}
+				}
+				return root, nil
 			case "audit":
 				switch args[0] {
 				case "input":
@@ -105,10 +112,16 @@ func Mock() buck.Setup {
 func mockSubProjects() buck.Setup {
 	return buck.Setup{
 		Target: "//buck/allprojects/...",
-		Cmd: func(cmd string, args ...string) (string, error) {
+		Cmd: func(cmd string, args ...string) (string, *errors.Error) {
 			switch cmd {
 			case "root":
-				return os.Getwd()
+				root, err := os.Getwd()
+				if err != nil {
+					return "", &errors.Error{
+						Cause: err,
+					}
+				}
+				return root, nil
 			case "audit":
 				switch args[0] {
 				case "input":
@@ -136,10 +149,12 @@ func mockSubProjects() buck.Setup {
 	}
 }
 
-func testFile(file string) (string, error) {
+func testFile(file string) (string, *errors.Error) {
 	contents, err := ioutil.ReadFile(file)
 	if err != nil {
-		return "", err
+		return "", &errors.Error{
+			Cause: err,
+		}
 	}
 	return string(contents), nil
 }

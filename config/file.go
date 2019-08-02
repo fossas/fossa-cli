@@ -165,7 +165,7 @@ func WriteFile(modules []module.Module) error {
 }
 
 func UpdateFile(modules []module.Module) error {
-	return errors.ErrNotImplemented
+	return errors.NotImplementedError()
 }
 
 func ExistsFile() (bool, error) {

@@ -23,7 +23,12 @@ func (p *Pip) DepTree() ([]DepTree, *errors.Error) {
 	// Write helper to disk.
 	src, err := bindata.Asset("bindata/pipdeptree.py")
 	if err != nil {
-		return nil, errors.UnknownError(err, "could not run `pipdeptree` helper")
+		return nil, &errors.Error{
+			Cause:           err,
+			Type:            errors.Exec,
+			Troubleshooting: "Fossa could not run the pipdeptree helper. Try following the link and attempting to run the python script",
+			Link:            "https://github.com/naiquevin/pipdeptree",
+		}
 	}
 
 	pipdeptreeFile, err := ioutil.TempFile("", "fossa-cli-pipdeptree-")
