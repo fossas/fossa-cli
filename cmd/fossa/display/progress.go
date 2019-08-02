@@ -10,7 +10,7 @@ func InProgress(message string) {
 		s.Suffix = " " + message
 		s.Restart()
 	} else {
-		log.Infof(message)
+		log.Info(message)
 	}
 }
 
