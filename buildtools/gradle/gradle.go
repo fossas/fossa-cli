@@ -160,7 +160,7 @@ func (s ShellCommand) DependencyTasks() ([]string, error) {
 //go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package gradle/' > readtree_generated.go"
 
 func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency, error) {
-	r := regexp.MustCompile("^([ `+\\\\|-]+)([^ `+\\\\|-].+)$")
+	r := regexp.MustCompile(`^((?:[ |\|]{1,1}    )*(?:[\\+|\\]{1,1}--- ))(.*)$`)
 	splitReg := regexp.MustCompile("\r?\n")
 	// Skip non-dependency lines.
 	var filteredLines []string
