@@ -1,0 +1,9 @@
+Retrieving repository/path/revision/full-name-revison.pom from registry
+ [project ]
+ [one "1.0.0"]
+   [three "3.0.0" :exclusions [[org.slf4j/jcl-over-slf4j]]]
+     [organization/four "4.0.0"]
+ [organization/two "2.0.0" :exclusions [[org.clojure/clojure]]]
+   [three "3.0.0" :exclusions [[org.slf4j/jcl-over-slf4j]]]
+     [organization/four "4.0.0"]
+   [five "5.0.0"]

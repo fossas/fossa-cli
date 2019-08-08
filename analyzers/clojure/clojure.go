@@ -1,7 +1,6 @@
 package clojure
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -18,7 +17,7 @@ import (
 type Analyzer struct {
 	Module  module.Module
 	Options Options
-	Lein    leiningen.Input
+	Lein    leiningen.Output
 }
 
 type Options struct {
@@ -45,7 +44,7 @@ func New(m module.Module) (*Analyzer, error) {
 	analyzer := Analyzer{
 		Module:  m,
 		Options: options,
-		Lein:    leiningen.NewInput(cmd, m.Dir),
+		Lein:    leiningen.ShellOutput(cmd, m.Dir),
 	}
 	return &analyzer, nil
 
@@ -105,13 +104,13 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	if err == nil && len(dependencies.Direct) > 0 {
 		return dependencies, nil
 	}
-	log.Warnf("Falling back to file parsing %s", err)
-	fmt.Println("\n\ninbetween errors\n\n")
+	// log.Warnf("Falling back to file parsing %s", err)
+	// fmt.Println("\n\ninbetween errors\n\n")
 
 	// 3. Parse `project.clj` as best as we can.
 	dependenciesFile, fileError := leiningen.ProjectFile(a.Module.Dir, a.Module.BuildTarget)
 	if fileError == nil && len(dependenciesFile.Direct) > 0 {
-		return dependencies, nil
+		return dependenciesFile, nil
 	}
 
 	//combine troubleshooting errors
