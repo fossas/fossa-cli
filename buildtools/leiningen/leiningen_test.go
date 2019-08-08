@@ -11,7 +11,7 @@ import (
 	"github.com/fossas/fossa-cli/testing/helpers"
 )
 
-func TestDependencies(t *testing.T) {
+func TestShellDependencies(t *testing.T) {
 	shell := leiningen.Shell{
 		Cmd: func(...string) (string, *errors.Error) {
 			file, err := ioutil.ReadFile("testdata/leindepstree.txt")
@@ -57,4 +57,25 @@ func TestDependencies(t *testing.T) {
 	packageFive := helpers.PackageInTransitiveGraph(deps.Transitive, "five:five", "5.0.0")
 	assert.NotEmpty(t, packageFive)
 	assert.Equal(t, 0, len(packageFive.Imports))
+}
+
+func TestFileDependencies(t *testing.T) {
+	deps, err := leiningen.ProjectFile("testdata", "test.clj")
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(deps.Direct))
+	helpers.AssertPackageImport(t, deps.Direct, "one:one", "1.0.0")
+	helpers.AssertPackageImport(t, deps.Direct, "organization:two", "2.0.0")
+	helpers.AssertPackageImport(t, deps.Direct, "three:three", "3.0.0")
+
+	packageOne := helpers.PackageInTransitiveGraph(deps.Transitive, "one:one", "1.0.0")
+	assert.NotEmpty(t, packageOne)
+	assert.Empty(t, packageOne.Imports)
+
+	packageTwo := helpers.PackageInTransitiveGraph(deps.Transitive, "organization:two", "2.0.0")
+	assert.NotEmpty(t, packageTwo)
+	assert.Empty(t, packageTwo.Imports)
+
+	packageThree := helpers.PackageInTransitiveGraph(deps.Transitive, "three:three", "3.0.0")
+	assert.NotEmpty(t, packageThree)
+	assert.Empty(t, packageThree.Imports)
 }

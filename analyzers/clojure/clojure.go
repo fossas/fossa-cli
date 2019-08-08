@@ -100,10 +100,10 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	// 1. Check for a set strategy.
 
 	// 2. Use the lein command to find a dependency graph.
-	dependencies, err := a.Lein.DependencyGraph(a.Module.BuildTarget)
-	if err == nil && len(dependencies.Direct) > 0 {
-		return dependencies, nil
-	}
+	// dependencies, err := a.Lein.DependencyGraph(a.Module.BuildTarget)
+	// if err == nil && len(dependencies.Direct) > 0 {
+	// 	return dependencies, nil
+	// }
 	// log.Warnf("Falling back to file parsing %s", err)
 	// fmt.Println("\n\ninbetween errors\n\n")
 
@@ -114,5 +114,5 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	}
 
 	//combine troubleshooting errors
-	return graph.Deps{}, err
+	return graph.Deps{}, fileError
 }

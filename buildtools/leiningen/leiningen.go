@@ -88,16 +88,34 @@ func (s Shell) DependencyGraph(target string) (graph.Deps, *errors.Error) {
 		filteredLines = append(filteredLines, line)
 	}
 
-	nameFinder := regexp.MustCompile(`\[[^ ]* `)
 	spaceFinder := regexp.MustCompile(` *`)
-	revisionFinder := regexp.MustCompile(`".*"`)
 	imports, deps, readErr := ReadDependencyTree(filteredLines, func(line string) (int, Dependency, error) {
 		log.WithField("line", line).Debug("parsing output line")
-		var groupID, artifactID, revision string
 		var depth int
 
-		// Find dependency name after leading bracket and trim bracket and space.
-		name := nameFinder.FindStringSubmatch(line)
+		// Count leading spaces.
+		spaces := spaceFinder.FindStringSubmatch(line)
+		if len(spaces) != 0 {
+			depth = (len(spaces[0]) / 2) + 1
+		}
+
+		return depth, dependencyFromLine(line), nil
+	})
+	if readErr != nil {
+		return graph.Deps{}, nil
+	}
+
+	return graphFromDependencies(imports, deps), nil
+}
+
+func dependencyFromLine(line string) Dependency {
+	var groupID, artifactID, revision string
+	nameFinder := regexp.MustCompile(`\[[^ ]* `)
+	revisionFinder := regexp.MustCompile(`".*"`)
+
+	// Find dependency name after leading bracket and trim bracket and space.
+	name := nameFinder.FindStringSubmatch(line)
+	if len(name) > 0 {
 		nameClean := strings.TrimSpace(strings.ReplaceAll(name[0], "[", ""))
 		depSplit := strings.Split(nameClean, "/")
 		if len(depSplit) != 0 {
@@ -107,34 +125,58 @@ func (s Shell) DependencyGraph(target string) (graph.Deps, *errors.Error) {
 				artifactID = depSplit[1]
 			}
 		}
-
-		// Count leading spaces.
-		spaces := spaceFinder.FindStringSubmatch(line)
-		if len(spaces) != 0 {
-			depth = (len(spaces[0]) / 2) + 1
-		}
-
-		// Find revision in quotations and trim quotations.
-		revisionSplit := revisionFinder.FindAllString(line, 1)
-		if len(revisionSplit) != 0 {
-			revision = strings.ReplaceAll(revisionSplit[0], `"`, "")
-		}
-
-		return depth, Dependency{GroupID: groupID, ArtifactID: artifactID, Version: revision}, nil
-	})
-	if readErr != nil {
-		return graph.Deps{}, nil
 	}
 
-	return graphFromDependencies(imports, deps), nil
+	// Find revision in quotations and trim quotations.
+	revisionSplit := revisionFinder.FindAllString(line, 1)
+	if len(revisionSplit) != 0 {
+		revision = strings.ReplaceAll(revisionSplit[0], `"`, "")
+	}
+
+	return Dependency{GroupID: groupID, ArtifactID: artifactID, Version: revision}
 }
 
 func ProjectFile(dir, file string) (graph.Deps, error) {
-	fmt.Println(file)
-	project, err := files.Read(filepath.Join(dir, file))
-	fmt.Println(string(project), err)
+	depGraph := graph.Deps{
+		Transitive: make(map[pkg.ID]pkg.Package),
+	}
+	depBlock := false
 
-	return graph.Deps{}, nil
+	project, _ := files.Read(filepath.Join(dir, file))
+	for _, line := range strings.Split(string(project), "\n") {
+		conditionedLine := strings.TrimSpace(line)
+		if conditionedLine == "" {
+			continue
+		} else if strings.Contains(conditionedLine, ":dependencies") {
+			depBlock = true
+			conditionedLine = strings.ReplaceAll(conditionedLine, ":dependencies", "")
+		} else if strings.HasPrefix(conditionedLine, ":exclusions") {
+			continue
+		} else if strings.Contains(conditionedLine, ":exclusions") {
+		} else if strings.Contains(conditionedLine, ":") {
+			depBlock = false
+			continue
+		} else if strings.Contains(conditionedLine, ";") {
+			continue
+		}
+
+		if depBlock {
+			dep := dependencyFromLine(conditionedLine)
+			pkgID := pkg.ID{
+				Type:     pkg.Maven,
+				Name:     dep.id(),
+				Revision: dep.Version,
+			}
+
+			depGraph.Direct = append(depGraph.Direct, pkg.Import{
+				Target:   dep.id(),
+				Resolved: pkgID,
+			})
+			depGraph.Transitive[pkgID] = pkg.Package{ID: pkgID}
+		}
+	}
+
+	return depGraph, nil
 }
 
 func graphFromDependencies(direct []Dependency, transitive map[Dependency][]Dependency) graph.Deps {
