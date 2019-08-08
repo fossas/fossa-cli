@@ -8,6 +8,7 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/bower"
 	"github.com/fossas/fossa-cli/analyzers/buck"
 	"github.com/fossas/fossa-cli/analyzers/carthage"
+	"github.com/fossas/fossa-cli/analyzers/clojure"
 	"github.com/fossas/fossa-cli/analyzers/cocoapods"
 	"github.com/fossas/fossa-cli/analyzers/debian"
 	"github.com/fossas/fossa-cli/analyzers/golang"
@@ -53,6 +54,8 @@ func New(m module.Module) (Analyzer, error) {
 		return bower.New(m)
 	case pkg.Carthage:
 		return carthage.New(m)
+	case pkg.Clojure:
+		return clojure.New(m)
 	case pkg.Cocoapods:
 		return cocoapods.New(m)
 	case pkg.Composer:
