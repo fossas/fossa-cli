@@ -118,7 +118,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	// 3. Parse `project.clj` as best as we can.
 	// https://github.com/technomancy/leiningen/blob/master/sample.project.clj
 	dependencies, err = leiningen.ProjectFileDependencies(a.Module.Dir, a.Module.BuildTarget)
-	if err == nil && len(dependencies.Direct) > 0 {
+	if err == nil {
 		return dependencies, nil
 	}
 

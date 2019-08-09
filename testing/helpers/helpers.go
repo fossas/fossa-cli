@@ -1,10 +1,12 @@
 package helpers
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -59,4 +61,20 @@ func AssertPackageImport(t *testing.T, imports pkg.Imports, name, revision strin
 		}
 	}
 	assert.Fail(t, "missing "+name+"@"+revision)
+}
+
+func AssertModuleExists(t *testing.T, modules []module.Module, modType pkg.Type, name, directory, target string) {
+	for _, module := range modules {
+		if module.Type == modType {
+			if module.Name == name {
+				if module.BuildTarget == target {
+					if module.Dir == directory {
+						return
+					}
+				}
+			}
+		}
+
+	}
+	assert.Fail(t, fmt.Sprintf("missing module `name: %s, type: %s, dir: %s, target: %s, in modules: %s", name, modType, directory, target, modules))
 }
