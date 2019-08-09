@@ -21,7 +21,7 @@ type Analyzer struct {
 }
 
 type Options struct {
-	Cmd      string `mapstructure:"cmd"`
+	LeinCmd  string `mapstructure:"lein"`
 	Strategy string `mapstructure:"strategy"`
 }
 
@@ -34,9 +34,9 @@ func New(m module.Module) (*Analyzer, error) {
 		return nil, err
 	}
 
-	cmd := options.Cmd
-	if cmd == "" {
-		cmd, err = leiningen.ValidBinary(m.Dir)
+	lein := options.LeinCmd
+	if lein == "" {
+		lein, err = leiningen.ValidBinary(m.Dir)
 		if err != nil {
 			log.Warnf("A clojure project has been found at %s, but `lein` could not be found. Ensure that `lein` can be run or set the `FOSSA_LEIN_CMD` environment variable. Associated error: %+v", m.Dir, err)
 		}
@@ -45,7 +45,7 @@ func New(m module.Module) (*Analyzer, error) {
 	analyzer := Analyzer{
 		Module:  m,
 		Options: options,
-		Lein:    leiningen.ShellOutput(cmd, m.Dir),
+		Lein:    leiningen.ShellOutput(lein, m.Dir),
 	}
 	return &analyzer, nil
 
@@ -65,7 +65,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			}).Debug("found Clojure module")
 			relPath, err := filepath.Rel(dir, path)
 			if err != nil {
-				return errors.Wrap(err, "error discovering rust modules")
+				return errors.Wrap(err, "error discovering clojure modules")
 			}
 			modules = append(modules, module.Module{
 				Name:        path,

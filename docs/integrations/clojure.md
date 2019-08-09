@@ -5,7 +5,7 @@
 Clojure support relies on the presence of one of the following:
 
 - A `project.clj` file.
-- `lein`, in order to retrieve a list of installed dependencies.
+- `lein` in order to retrieve a list of installed dependencies.
 
 ## Configuration
 
@@ -32,15 +32,20 @@ analyze:
 
 ## Options
 
-| Option         |  Type  | Name                                      | Common Use Case                           |
-| -------------- | :----: | ----------------------------------------- | ----------------------------------------- |
-| `strategy`     | string | [Strategy](#strategy-string)              | Specify a Clojure analysis strategy.       |
+| Option     |  Type  | Name                         | Common Use Case                      |
+| ---------- | :----: | ---------------------------- | ------------------------------------ |
+| `strategy` | string | [Strategy](#strategy-string) | Specify a Clojure analysis strategy. |
+| `lein`     | string | [Lein](#lein-string)         | Specify the Leiningen command to use |
 
 #### `strategy: <string>`
 
 Manually specify the Clojure analysis strategy to be used. Supported options:
 - `project.clj`: Parse `project.clj` to find all dependencies used.
 - `lein`: Run `lein deps :tree` to find an accurate dependency graph.
+
+#### `lein: <string>`
+
+Manually specify the Leiningen command to run for analysis.
 
 ## Analysis
 

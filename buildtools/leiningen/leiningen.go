@@ -16,7 +16,7 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-// Input models any
+// Output is intended to supply a dependency graph from lein output.
 type Output interface {
 	DependencyGraph(string) (graph.Deps, *errors.Error)
 }
@@ -62,7 +62,7 @@ func ShellOutput(binary, dir string) Output {
 	}
 }
 
-// ValidBinary attempts to run a list of `lein` commands and returns the most preferred.
+// ValidBinary attempts to execute a list of `lein` commands and returns the most preferred.
 func ValidBinary(dir string) (string, error) {
 	lein, _, err := exec.Which("--version", os.Getenv("FOSSA_LEIN_CMD"), "lein")
 	return lein, err
@@ -71,7 +71,7 @@ func ValidBinary(dir string) (string, error) {
 //go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package leiningen/' > readtree_generated.go"
 
 // DependencyGraph uses a Shell's Cmd to generate leiningen formatted output which is
-// massaged into a dependency graph.
+// converted to a dependency graph.
 func (s Shell) DependencyGraph(target string) (graph.Deps, *errors.Error) {
 	out, err := s.Cmd("deps", ":tree")
 	if err != nil {
@@ -90,10 +90,10 @@ func (s Shell) DependencyGraph(target string) (graph.Deps, *errors.Error) {
 	spaceFinder := regexp.MustCompile(` *`)
 	imports, deps, readErr := ReadDependencyTree(filteredLines, func(line string) (int, Dependency, error) {
 		log.WithField("line", line).Debug("parsing output line")
-		var depth int
 
 		// Count leading spaces.
 		spaces := spaceFinder.FindStringSubmatch(line)
+		depth := 0
 		if len(spaces) != 0 {
 			depth = (len(spaces[0]) / 2) + 1
 		}
@@ -107,6 +107,7 @@ func (s Shell) DependencyGraph(target string) (graph.Deps, *errors.Error) {
 	return graphFromDependencies(imports, deps), nil
 }
 
+// Refer to the testdata project file to understand the complex parsing logic.
 func dependencyFromLine(line string) Dependency {
 	var groupID, artifactID, revision string
 	lineClean := strings.NewReplacer("\"", "", "[", "", "]", "").Replace(line)
@@ -164,7 +165,7 @@ func ProjectFileDependencies(dir, file string) (graph.Deps, *errors.Error) {
 			continue
 		}
 
-		// Check for a continuing dependencies block. Test dep four for reference.
+		// Check for a continuing dependencies block.
 		if dependenciesBlock && initialBrackets < 2 {
 			dep := dependencyFromLine(trimLine)
 			pkgID := pkg.ID{
@@ -204,7 +205,7 @@ func graphFromDependencies(direct []Dependency, transitive map[Dependency][]Depe
 				Name:     parent.id(),
 				Revision: parent.Version,
 			},
-			Imports: make([]pkg.Import, 0, len(children)),
+			Imports: []pkg.Import{},
 		}
 		for _, child := range children {
 			dep.Imports = append(dep.Imports, pkg.Import{

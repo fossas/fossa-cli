@@ -63,6 +63,8 @@ func AssertPackageImport(t *testing.T, imports pkg.Imports, name, revision strin
 	assert.Fail(t, "missing "+name+"@"+revision)
 }
 
+// AssertModuleExists searches a list of modules and determines if the specified module exists.
+// This is most often used for testing Discover methods.
 func AssertModuleExists(t *testing.T, modules []module.Module, modType pkg.Type, name, directory, target string) {
 	for _, module := range modules {
 		if module.Type == modType {
@@ -74,7 +76,6 @@ func AssertModuleExists(t *testing.T, modules []module.Module, modType pkg.Type,
 				}
 			}
 		}
-
 	}
 	assert.Fail(t, fmt.Sprintf("missing module `name: %s, type: %s, dir: %s, target: %s, in modules: %v", name, modType, directory, target, modules))
 }
