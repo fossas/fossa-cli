@@ -21,7 +21,8 @@ type Analyzer struct {
 }
 
 type Options struct {
-	Cmd string `mapstructure:"cmd"`
+	Cmd      string `mapstructure:"cmd"`
+	Strategy string `mapstructure:"strategy"`
 }
 
 func New(m module.Module) (*Analyzer, error) {
@@ -98,21 +99,28 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Debugf("Running Clojure analysis: %#v", a.Module)
 
 	// 1. Check for a set strategy.
-
-	// 2. Use the lein command to find a dependency graph.
-	// dependencies, err := a.Lein.DependencyGraph(a.Module.BuildTarget)
-	// if err == nil && len(dependencies.Direct) > 0 {
-	// 	return dependencies, nil
-	// }
-	// log.Warnf("Falling back to file parsing %s", err)
-	// fmt.Println("\n\ninbetween errors\n\n")
-
-	// 3. Parse `project.clj` as best as we can.
-	dependenciesFile, fileError := leiningen.ProjectFileDependencies(a.Module.Dir, a.Module.BuildTarget)
-	if fileError == nil && len(dependenciesFile.Direct) > 0 {
-		return dependenciesFile, nil
+	switch a.Options.Strategy {
+	case "lein":
+		return a.Lein.DependencyGraph(a.Module.BuildTarget)
+	case "project.clj":
+		return leiningen.ProjectFileDependencies(a.Module.Dir, a.Module.BuildTarget)
 	}
 
-	//combine troubleshooting errors
-	return graph.Deps{}, fileError
+	// 2. Use the lein command to find a dependency graph.
+	// https://cljdoc.org/d/leiningen/leiningen/2.9.1/api/leiningen.deps
+	dependencies, err := a.Lein.DependencyGraph(a.Module.BuildTarget)
+	if err == nil && len(dependencies.Direct) > 0 {
+		return dependencies, nil
+	}
+	log.Warnf("FALLING BACK to parse clojure project file.\nLeiningen analysis could not be run, address the following error for more accurate results:\n%s", err.Troubleshooting)
+	log.Debug(err.Error())
+
+	// 3. Parse `project.clj` as best as we can.
+	// https://github.com/technomancy/leiningen/blob/master/sample.project.clj
+	dependencies, err = leiningen.ProjectFileDependencies(a.Module.Dir, a.Module.BuildTarget)
+	if err == nil && len(dependencies.Direct) > 0 {
+		return dependencies, nil
+	}
+
+	return graph.Deps{}, err
 }

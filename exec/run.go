@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
+
 	"github.com/fossas/fossa-cli/errors"
 )
 

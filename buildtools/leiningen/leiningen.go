@@ -50,11 +50,10 @@ func ShellOutput(binary, dir string) Output {
 
 			stdout, stderr, err := exec.Run(cmd)
 			if stderr != "" || err != nil {
-				fmt.Println("error")
 				return stdout, &errors.Error{
 					Cause:           err,
 					Type:            errors.Exec,
-					Troubleshooting: fmt.Sprintf("Ensure that %s is installed correctly, if it is then try to run %s %s.\nstdout: %s\nstderr:%s", binary, binary, args, stdout, stderr),
+					Troubleshooting: fmt.Sprintf("Ensure that %s is installed correctly and that `%s %v` can be run in the directory `%s`", binary, binary, args, dir),
 				}
 			}
 
@@ -102,7 +101,7 @@ func (s Shell) DependencyGraph(target string) (graph.Deps, *errors.Error) {
 		return depth, dependencyFromLine(line), nil
 	})
 	if readErr != nil {
-		return graph.Deps{}, nil
+		return graph.Deps{}, errors.UnknownError(readErr, fmt.Sprintf("Error parsing leiningen output:\n%s", out))
 	}
 
 	return graphFromDependencies(imports, deps), nil
@@ -110,37 +109,30 @@ func (s Shell) DependencyGraph(target string) (graph.Deps, *errors.Error) {
 
 func dependencyFromLine(line string) Dependency {
 	var groupID, artifactID, revision string
-	nameFinder := regexp.MustCompile(`\[[^ ]* `)
-	revisionFinder := regexp.MustCompile(`".*"`)
-
-	// Find dependency name after leading bracket and trim bracket and space.
-	name := nameFinder.FindStringSubmatch(line)
-	if len(name) > 0 {
-		nameClean := strings.TrimSpace(strings.ReplaceAll(name[0], "[", ""))
-		depSplit := strings.Split(nameClean, "/")
-		if len(depSplit) != 0 {
-			groupID = depSplit[0]
-			artifactID = depSplit[0]
-			if len(depSplit) > 1 {
-				artifactID = depSplit[1]
-			}
+	lineClean := strings.NewReplacer("\"", "", "[", "", "]", "").Replace(line)
+	lineClean = strings.TrimSpace(lineClean)
+	splitLine := strings.Split(lineClean, " ")
+	if len(splitLine) > 0 {
+		depSplit := strings.Split(splitLine[0], "/")
+		groupID = depSplit[0]
+		artifactID = depSplit[0]
+		if len(depSplit) > 1 {
+			artifactID = depSplit[1]
 		}
 	}
 
-	// Find revision in quotations and trim quotations.
-	revisionSplit := revisionFinder.FindAllString(line, 1)
-	if len(revisionSplit) != 0 {
-		revision = strings.ReplaceAll(revisionSplit[0], `"`, "")
+	if len(splitLine) > 1 {
+		revision = splitLine[1]
 	}
 
 	return Dependency{GroupID: groupID, ArtifactID: artifactID, Version: revision}
 }
 
 // ProjectFileDependencies returns the dependencies listed in a clojure project file.
-func ProjectFileDependencies(dir, file string) (graph.Deps, error) {
-	depGraph := graph.Deps{Transitive: make(map[pkg.ID]pkg.Package)}
+func ProjectFileDependencies(dir, file string) (graph.Deps, *errors.Error) {
+	var brackets, initialBrackets int
 	dependenciesBlock := false
-	brackets := 0
+	depGraph := graph.Deps{Transitive: make(map[pkg.ID]pkg.Package)}
 
 	projectFile := filepath.Join(dir, file)
 	project, err := files.Read(projectFile)
@@ -153,22 +145,29 @@ func ProjectFileDependencies(dir, file string) (graph.Deps, error) {
 	}
 
 	for _, line := range strings.Split(string(project), "\n") {
-		// 1. Check for empty line and comments.
+		initialBrackets = brackets
+		brackets = brackets + strings.Count(line, "[") - strings.Count(line, "]")
+
+		fmt.Println(line, initialBrackets, brackets)
+		// 1. Check for empty line, end of block, and comment prefix.
 		// 2. Check for start of dependencies block.
 		// 3. Check for end of the dependencies block.
 		trimLine := strings.TrimSpace(line)
-		if trimLine == "" || strings.Contains(trimLine, ";") {
+		if trimLine == "" || trimLine == "]" || trimLine == ")" || strings.HasPrefix(trimLine, ";") {
 			continue
-		} else if strings.Contains(trimLine, ":dependencies") {
+		} else if strings.HasPrefix(trimLine, ":dependencies") {
 			dependenciesBlock = true
 			trimLine = strings.ReplaceAll(trimLine, ":dependencies", "")
-		} else if strings.Contains(trimLine, ":") && !strings.Contains(trimLine, ":exclusions") {
-			dependenciesBlock = false
+		} else if strings.HasPrefix(trimLine, ":") {
+			if brackets < 1 {
+				dependenciesBlock = false
+			}
 			continue
 		}
 
 		// Check for a continuing dependencies block. Test dep four for reference.
-		if dependenciesBlock && brackets < 2 {
+		if dependenciesBlock && initialBrackets < 2 {
+			fmt.Println(trimLine, initialBrackets)
 			dep := dependencyFromLine(trimLine)
 			pkgID := pkg.ID{
 				Type:     pkg.Maven,
@@ -182,7 +181,6 @@ func ProjectFileDependencies(dir, file string) (graph.Deps, error) {
 			})
 			depGraph.Transitive[pkgID] = pkg.Package{ID: pkgID}
 		}
-		brackets = brackets + strings.Count(line, "[") - strings.Count(line, "]")
 	}
 
 	return depGraph, nil

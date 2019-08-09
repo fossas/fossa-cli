@@ -50,7 +50,7 @@ func (e *Error) Error() string {
 	}
 
 	if e.Cause != nil {
-		err = e.Cause.Error()
+		err = fmt.Sprintf("%s: %s", color.RedString("ERROR"), e.Cause.Error())
 	}
 
 	if e.ExitCode != 0 {

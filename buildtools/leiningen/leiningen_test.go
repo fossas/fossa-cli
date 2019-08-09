@@ -60,13 +60,14 @@ func TestShellDependencies(t *testing.T) {
 }
 
 func TestFileDependencies(t *testing.T) {
-	deps, err := leiningen.ProjectFile("testdata", "test.clj")
+	deps, err := leiningen.ProjectFileDependencies("testdata", "test.clj")
 	assert.Nil(t, err)
-	assert.Equal(t, 4, len(deps.Direct))
+	assert.Equal(t, 5, len(deps.Direct))
 	helpers.AssertPackageImport(t, deps.Direct, "one:one", "1.0.0")
 	helpers.AssertPackageImport(t, deps.Direct, "organization:two", "2.0.0")
 	helpers.AssertPackageImport(t, deps.Direct, "three:three", "3.0.0")
 	helpers.AssertPackageImport(t, deps.Direct, "four:four", "4.0.0")
+	helpers.AssertPackageImport(t, deps.Direct, "org.site.com:five", "5.0.0")
 
 	packageOne := helpers.PackageInTransitiveGraph(deps.Transitive, "one:one", "1.0.0")
 	assert.NotEmpty(t, packageOne)
@@ -83,4 +84,8 @@ func TestFileDependencies(t *testing.T) {
 	packageFour := helpers.PackageInTransitiveGraph(deps.Transitive, "four:four", "4.0.0")
 	assert.NotEmpty(t, packageFour)
 	assert.Empty(t, packageFour.Imports)
+
+	packageFive := helpers.PackageInTransitiveGraph(deps.Transitive, "org.site.com:five", "5.0.0")
+	assert.NotEmpty(t, packageFive)
+	assert.Empty(t, packageFive.Imports)
 }
