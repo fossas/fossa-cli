@@ -15,6 +15,11 @@
                  [three "3.0.0"
                   :exclusions [org.clojure/clojure]]
                  ;; needed for new
+                 [four "4.0.0" :exclusions [[org.clojure/clojure]
+                                            [org.clojure/tools.reader]
+                                            [crypto-random]
+                                            [crypto-equality]]]
+
   :pedantic? :abort
   ;; checkout-deps don't work with :eval-in :leiningen
   :profiles {:dev {:resource-paths ["leiningen-core/dev-resources"]

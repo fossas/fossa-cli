@@ -108,7 +108,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	// fmt.Println("\n\ninbetween errors\n\n")
 
 	// 3. Parse `project.clj` as best as we can.
-	dependenciesFile, fileError := leiningen.ProjectFile(a.Module.Dir, a.Module.BuildTarget)
+	dependenciesFile, fileError := leiningen.ProjectFileDependencies(a.Module.Dir, a.Module.BuildTarget)
 	if fileError == nil && len(dependenciesFile.Direct) > 0 {
 		return dependenciesFile, nil
 	}

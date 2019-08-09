@@ -136,32 +136,40 @@ func dependencyFromLine(line string) Dependency {
 	return Dependency{GroupID: groupID, ArtifactID: artifactID, Version: revision}
 }
 
-func ProjectFile(dir, file string) (graph.Deps, error) {
-	depGraph := graph.Deps{
-		Transitive: make(map[pkg.ID]pkg.Package),
-	}
-	depBlock := false
+// ProjectFileDependencies returns the dependencies listed in a clojure project file.
+func ProjectFileDependencies(dir, file string) (graph.Deps, error) {
+	depGraph := graph.Deps{Transitive: make(map[pkg.ID]pkg.Package)}
+	dependenciesBlock := false
+	brackets := 0
 
-	project, _ := files.Read(filepath.Join(dir, file))
+	projectFile := filepath.Join(dir, file)
+	project, err := files.Read(projectFile)
+	if err != nil {
+		return graph.Deps{}, &errors.Error{
+			Cause:           err,
+			Type:            errors.Unknown,
+			Troubleshooting: fmt.Sprintf("Clojure project file: `%s` could not be read. Ensure that it exists or remove the module if you do not believe it should be analyzed.", projectFile),
+		}
+	}
+
 	for _, line := range strings.Split(string(project), "\n") {
-		conditionedLine := strings.TrimSpace(line)
-		if conditionedLine == "" {
+		// 1. Check for empty line and comments.
+		// 2. Check for start of dependencies block.
+		// 3. Check for end of the dependencies block.
+		trimLine := strings.TrimSpace(line)
+		if trimLine == "" || strings.Contains(trimLine, ";") {
 			continue
-		} else if strings.Contains(conditionedLine, ":dependencies") {
-			depBlock = true
-			conditionedLine = strings.ReplaceAll(conditionedLine, ":dependencies", "")
-		} else if strings.HasPrefix(conditionedLine, ":exclusions") {
-			continue
-		} else if strings.Contains(conditionedLine, ":exclusions") {
-		} else if strings.Contains(conditionedLine, ":") {
-			depBlock = false
-			continue
-		} else if strings.Contains(conditionedLine, ";") {
+		} else if strings.Contains(trimLine, ":dependencies") {
+			dependenciesBlock = true
+			trimLine = strings.ReplaceAll(trimLine, ":dependencies", "")
+		} else if strings.Contains(trimLine, ":") && !strings.Contains(trimLine, ":exclusions") {
+			dependenciesBlock = false
 			continue
 		}
 
-		if depBlock {
-			dep := dependencyFromLine(conditionedLine)
+		// Check for a continuing dependencies block. Test dep four for reference.
+		if dependenciesBlock && brackets < 2 {
+			dep := dependencyFromLine(trimLine)
 			pkgID := pkg.ID{
 				Type:     pkg.Maven,
 				Name:     dep.id(),
@@ -174,6 +182,7 @@ func ProjectFile(dir, file string) (graph.Deps, error) {
 			})
 			depGraph.Transitive[pkgID] = pkg.Package{ID: pkgID}
 		}
+		brackets = brackets + strings.Count(line, "[") - strings.Count(line, "]")
 	}
 
 	return depGraph, nil
