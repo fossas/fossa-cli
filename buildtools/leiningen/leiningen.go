@@ -148,7 +148,6 @@ func ProjectFileDependencies(dir, file string) (graph.Deps, *errors.Error) {
 		initialBrackets = brackets
 		brackets = brackets + strings.Count(line, "[") - strings.Count(line, "]")
 
-		fmt.Println(line, initialBrackets, brackets)
 		// 1. Check for empty line, end of block, and comment prefix.
 		// 2. Check for start of dependencies block.
 		// 3. Check for end of the dependencies block.
@@ -167,7 +166,6 @@ func ProjectFileDependencies(dir, file string) (graph.Deps, *errors.Error) {
 
 		// Check for a continuing dependencies block. Test dep four for reference.
 		if dependenciesBlock && initialBrackets < 2 {
-			fmt.Println(trimLine, initialBrackets)
 			dep := dependencyFromLine(trimLine)
 			pkgID := pkg.ID{
 				Type:     pkg.Maven,
