@@ -76,5 +76,5 @@ func AssertModuleExists(t *testing.T, modules []module.Module, modType pkg.Type,
 		}
 
 	}
-	assert.Fail(t, fmt.Sprintf("missing module `name: %s, type: %s, dir: %s, target: %s, in modules: %s", name, modType, directory, target, modules))
+	assert.Fail(t, fmt.Sprintf("missing module `name: %s, type: %s, dir: %s, target: %s, in modules: %v", name, modType, directory, target, modules))
 }

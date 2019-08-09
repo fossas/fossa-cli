@@ -51,6 +51,7 @@ This document is a walk-through of getting started with the FOSSA CLI and is aim
   - [bower](integrations/bower.md#bower)
   - [buck](integrations/buck.md#buck)
   - [carthage](integrations/carthage.md#carthage)
+  - [clojure](integrations/clojure.md#clojure)
   - [cocoapods](integrations/cocoapods.md#cocoapods)
   - [composer](integrations/composer.md#composer)
   - [debian](integrations/debian.md#debian)
