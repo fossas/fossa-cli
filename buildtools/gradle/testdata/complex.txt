@@ -9,6 +9,12 @@ Existing tags in registry: {"name":"somebody/something-something","tags":["lates
 Project :something-something
 ------------------------------------------------------------
 
+-api (n)
+No dependencies
+
+-runtime (n)
+\--- org.jetbrains.kotlin:kotlin-stdlib:1.3.30 (n)
+
 annotationProcessor - Annotation processors and their dependencies for source set 'main'.
 \--- org.projectlombok:lombok:1.16.16
 
