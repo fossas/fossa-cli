@@ -88,6 +88,7 @@ If you are interested in learning more about FOSSA you can visit our homepage at
 | Environment                                     | Package Managers                                                                                                                  |
 | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | Android                                         | [Gradle](docs/integrations/gradle.md#gradle)                                                                                      |
+| [Clojure](docs/integrations/clojure.md#clojure) | Leiningen                                                                                                                         |
 | [Debian](docs/integrations/debian.md#debian)    | Dpkg                                                                                                                              |
 | [Golang](docs/integrations/golang.md#go)        | Dep, Gomodules, Vndr, GDM, Glide, Godep, Govendor                                                                                 |
 | Groovy                                          | [Gradle](docs/integrations/gradle.md#gradle)                                                                                      |

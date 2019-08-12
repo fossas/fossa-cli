@@ -7,6 +7,7 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/bower"
 	"github.com/fossas/fossa-cli/analyzers/buck"
 	"github.com/fossas/fossa-cli/analyzers/carthage"
+	"github.com/fossas/fossa-cli/analyzers/clojure"
 	"github.com/fossas/fossa-cli/analyzers/cocoapods"
 	"github.com/fossas/fossa-cli/analyzers/debian"
 	"github.com/fossas/fossa-cli/analyzers/golang"
@@ -34,6 +35,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 		buck.Discover,
 		carthage.Discover,
 		cocoapods.Discover,
+		clojure.Discover,
 		debian.Discover,
 		php.Discover,
 		golang.Discover,

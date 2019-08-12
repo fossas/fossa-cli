@@ -50,7 +50,7 @@ func (e *Error) Error() string {
 	}
 
 	if e.Cause != nil {
-		err = e.Cause.Error()
+		err = fmt.Sprintf("%s: %s", color.RedString("ERROR"), e.Cause.Error())
 	}
 
 	if e.ExitCode != 0 {
@@ -68,13 +68,13 @@ func (e *Error) Error() string {
 	message = e.Message
 	if message == "" {
 		switch e.Type {
+		case NotImplemented:
+			message = NotImplementedMessage
 		case User:
 		case Exec:
 			fallthrough
 		case Unknown:
 			fallthrough
-		case NotImplemented:
-			message = NotImplementedMessage
 		default:
 			message = ReportBugMessage
 		}

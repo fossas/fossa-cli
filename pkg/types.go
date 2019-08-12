@@ -18,6 +18,7 @@ const (
 	Bower                 // Bower (https://bower.io)
 	Buck                  // Buck (https://buckbuild.com)
 	Carthage              // Carthage (https://github.com/Carthage/Carthage)
+	Clojure               // Clojure (https://clojure.org)
 	Cocoapods             // Cocoapods (https://cocoapods.org)
 	Composer              // Composer (https://getcomposer.org)
 	Debian                // Debian (https://manpages.debian.org/stretch/dpkg/dpkg.1.en.html)
@@ -42,6 +43,7 @@ var AllTypes = []Type{
 	Bower,
 	Buck,
 	Carthage,
+	Clojure,
 	Cocoapods,
 	Composer,
 	Debian,
@@ -82,6 +84,12 @@ func ParseType(key string) (Type, error) {
 		fallthrough
 	case "cart":
 		return Carthage, nil
+
+		// Clojure aliases
+	case "clojure":
+		fallthrough
+	case "leiningen":
+		return Clojure, nil
 
 	// Cocoapods aliases
 	case "ios":
@@ -230,6 +238,8 @@ func (t Type) String() string {
 		return "buck"
 	case Carthage:
 		return "cart"
+	case Clojure:
+		return "clojure"
 	case Cocoapods:
 		return "pod"
 	case Composer:
