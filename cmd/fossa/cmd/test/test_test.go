@@ -81,5 +81,6 @@ func testSetup(endpoint, apiKey string) *cli.Context {
 
 	flagSet := &flag.FlagSet{}
 	flagSet.String("endpoint", endpoint, "")
+	flagSet.Int("timeout", 20, "")
 	return cli.NewContext(&cli.App{}, flagSet, &cli.Context{})
 }
