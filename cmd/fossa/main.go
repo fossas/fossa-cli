@@ -39,6 +39,7 @@ var App = cli.App{
 		report.Cmd,
 		test.Cmd,
 		update.Cmd,
+		analyze.NewCmd,
 	},
 }
 

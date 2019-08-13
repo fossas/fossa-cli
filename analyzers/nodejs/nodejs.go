@@ -31,6 +31,112 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
+var NodeAnalyzer = module.AnalyzerV2{
+	DiscoverFunc: NewDiscover,
+	Strategies: module.Strategies{
+		Named: map[module.StrategyName]module.Strategy{
+			"yarn":               AnalyzeYarnCmd,
+			"npm":                AnalyzeNpmCmd,
+			"yarn.lock":          AnalyzeYarnLock,
+			"package-lock.json":  AnalyzeNpmLock,
+			"node_modules":       AnalyzeNodeModules,
+			"node_modules_local": AnalyzeNodeModulesLocal,
+			"package.json":       AnalyzePackageJson,
+		},
+		Optimal: []module.StrategyName{"yarn", "npm", "yarn.lock", "package-lock.json"},
+		SortedNames: []module.StrategyName{
+			"yarn",
+			"yarn.lock",
+			"npm",
+			"package-lock.json",
+			"node_modules",
+			"node_modules_local",
+			"package.json",
+		},
+		AlwaysRun: []module.DiscoveredStrategy{
+			{
+				Name:      "yarn",
+				RelTarget: "package.json",
+			},
+			{
+				Name:      "npm",
+				RelTarget: "package.json",
+			},
+		},
+	},
+}
+
+func NewDiscover(dir module.Filepath) (map[module.Filepath][]module.DiscoveredStrategy, *errors.Error) {
+	log.WithField("dir", dir).Debug("discovering modules")
+	modules := make(map[module.Filepath][]module.DiscoveredStrategy)
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
+			return err
+		}
+
+		if info.IsDir() && info.Name() == "node_modules" {
+			moduleDir := filepath.Dir(path)
+			current := modules[moduleDir]
+			current = append(current,
+				module.DiscoveredStrategy{
+					Name:      "node_modules",
+					RelTarget: "node_modules",
+				},
+				module.DiscoveredStrategy{
+					Name:      "node_modules_local",
+					RelTarget: "node_modules",
+				},
+			)
+			modules[moduleDir] = current
+		}
+
+		// Don't descend into **/node_modules and **/bower_components
+		if info.IsDir() && (info.Name() == "node_modules" || info.Name() == "bower_components") {
+			log.Debugf("Skipping directory: %s", info.Name())
+			return filepath.SkipDir
+		}
+
+		if !info.IsDir() && info.Name() == "package.json" {
+			moduleDir := filepath.Dir(path)
+			current := modules[moduleDir]
+			current = append(current, module.DiscoveredStrategy{
+				Name:      "package.json",
+				RelTarget: "package.json",
+			})
+			modules[moduleDir] = current
+		}
+
+		if !info.IsDir() && info.Name() == "yarn.lock" {
+			moduleDir := filepath.Dir(path)
+			current := modules[moduleDir]
+			current = append(current, module.DiscoveredStrategy{
+				Name:      "yarn.lock",
+				RelTarget: "yarn.lock",
+			})
+			modules[moduleDir] = current
+		}
+
+		if !info.IsDir() && info.Name() == "package-lock.json" {
+			moduleDir := filepath.Dir(path)
+			current := modules[moduleDir]
+			current = append(current, module.DiscoveredStrategy{
+				Name:      "package-lock.json",
+				RelTarget: "package-lock.json",
+			})
+			modules[moduleDir] = current
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, errors.UnknownError(err, "could not find NodeJS projects")
+	}
+
+	return modules, nil
+}
+
 type Analyzer struct {
 	NodeVersion string
 
@@ -210,6 +316,103 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 
 	log.Debugf("Done checking Node.js build: %#v", hasNodeModules)
 	return hasNodeModules, nil
+}
+
+// path is path to package.json
+func AnalyzeYarnCmd(_ module.Filepath) (graph.Deps, *errors.Error) {
+	// TODO
+	return graph.Deps{}, errors.NotImplementedError()
+}
+
+// path is path to package.json
+func AnalyzeNpmCmd(path module.Filepath) (graph.Deps, *errors.Error) {
+	// TODO: mockability?
+	npmcli, err := npm.New()
+	if err != nil {
+		// TODO: better error
+		return graph.Deps{}, errors.UnknownError(err, "Couldn't find NPM")
+	}
+
+	if !npmcli.Exists() {
+		// TODO: better error
+		return graph.Deps{}, errors.UnknownError(err, "Couldn't find NPM")
+	}
+
+	dir := filepath.Dir(path) // TODO: pass in the module path as well?
+	pkgs, err := npmcli.List(dir)
+	if err != nil {
+		// TODO: better error
+		return graph.Deps{}, errors.UnknownError(err, "Couldn't scan with npm cli")
+	}
+
+	// TODO: we should move this functionality in to the buildtool, and have it
+	// return `pkg.Package`s.
+	// Set direct dependencies.
+	var imports []pkg.Import
+	for name, dep := range pkgs.Dependencies {
+		imports = append(imports, pkg.Import{
+			Target: dep.From,
+			Resolved: pkg.ID{
+				Type:     pkg.NodeJS,
+				Name:     name,
+				Revision: dep.Version,
+				Location: dep.Resolved,
+			},
+		})
+	}
+
+	// Set transitive dependencies.
+	deps := make(map[pkg.ID]pkg.Package)
+	recurseDeps(deps, pkgs)
+
+	log.Debugf("Done running Nodejs analysis: %#v", deps)
+
+	return graph.Deps{
+		Direct:     imports,
+		Transitive: deps,
+	}, nil
+}
+
+// path is path to yarn.lock
+func AnalyzeYarnLock(path module.Filepath) (graph.Deps, *errors.Error) {
+	dir := filepath.Dir(path) // TODO: pass in the module path as well?
+
+	deps, err := yarn.FromProject(filepath.Join(dir, "package.json"), filepath.Join(path))
+	if err != nil {
+		return graph.Deps{}, errors.UnknownError(err, "Couldn't scan yarn.lock")
+	}
+
+	return deps, nil
+}
+
+func AnalyzeNpmLock(_ module.Filepath) (graph.Deps, *errors.Error) {
+	// TODO
+	return graph.Deps{}, errors.NotImplementedError()
+}
+
+// path is path to node_modules
+func AnalyzeNodeModules(path module.Filepath) (graph.Deps, *errors.Error) {
+	// TODO: this seems to introduce an infinite loop
+	return graph.Deps{}, errors.NotImplementedError()
+	/*dir := filepath.Dir(path) // TODO: pass in the module path as well?
+	deps, err := npm.FromNodeModules(dir, "package.json")
+	if err != nil {
+		return graph.Deps{}, errors.UnknownError(err, "Couldn't scan node_modules")
+	}
+
+	return deps, nil*/
+}
+
+// path is path to node_modules
+func AnalyzeNodeModulesLocal(_ module.Filepath) (graph.Deps, *errors.Error) {
+	// TODO
+	return graph.Deps{}, errors.NotImplementedError()
+}
+
+// path is path to package.json
+func AnalyzePackageJson(_ module.Filepath) (graph.Deps, *errors.Error) {
+	// TODO
+	return graph.Deps{}, errors.NotImplementedError()
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
