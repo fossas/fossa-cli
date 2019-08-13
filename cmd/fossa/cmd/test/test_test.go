@@ -47,6 +47,7 @@ func TestSuccessfullTest(t *testing.T) {
 	defer ts.Close()
 
 	context := testSetup(ts.URL, "1")
+	test.PollRequestDelay = 2 * time.Second
 	err := test.Run(context)
 	assert.NoError(t, err)
 }
@@ -68,14 +69,12 @@ func testCustomTestServer(t *testing.T, server *mockServer) *httptest.Server {
 }
 
 func testSetup(endpoint, apiKey string) *cli.Context {
-	test.PollRequestDelay = 2 * time.Second
 	apiErr := fossa.SetAPIKey(apiKey)
 	if apiErr != nil {
 		log.Fatalf("Could not set api key: %s", apiErr)
 	}
 
 	flagSet := &flag.FlagSet{}
-	flagSet.Int("timeout", 100, "")
 	flagSet.String("endpoint", endpoint, "")
 	return cli.NewContext(&cli.App{}, flagSet, &cli.Context{})
 }
