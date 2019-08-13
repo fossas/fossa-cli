@@ -45,6 +45,6 @@ func (gr *GitRepository) Project() string {
 	if err == nil && origin != nil {
 		return origin.Config().URLs[0]
 	}
-	log.Warnf("Git was found but the remote could not be found. Using directory name instead: %s", err.Error())
+	log.Warnf("Git was found but the remote could not be found, using directory name instead. error: %s", err.Error())
 	return filepath.Base(gr.dir)
 }
