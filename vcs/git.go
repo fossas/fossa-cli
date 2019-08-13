@@ -1,8 +1,10 @@
 package vcs
 
 import (
+	"path/filepath"
 	"strings"
 
+	"github.com/apex/log"
 	"gopkg.in/src-d/go-git.v4"
 
 	"github.com/fossas/fossa-cli/errors"
@@ -43,5 +45,6 @@ func (gr *GitRepository) Project() string {
 	if err == nil && origin != nil {
 		return origin.Config().URLs[0]
 	}
-	return ""
+	log.Warnf("Git was found but the remote could not be found. Using directory name instead: %s", err.Error())
+	return filepath.Base(gr.dir)
 }
