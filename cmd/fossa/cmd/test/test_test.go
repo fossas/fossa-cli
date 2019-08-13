@@ -27,7 +27,7 @@ type mockServer struct {
 }
 
 // TestSuccessfullTest tests the `fossa test` test command and ensures that it properly
-// handles all responses.
+// handles all responses in the path to a success.
 func TestSuccessfullTest(t *testing.T) {
 	if testing.Short() {
 		return
