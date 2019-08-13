@@ -25,6 +25,12 @@ type mockServer struct {
 	Responses []interface{}
 }
 
+func (server *mockServer) nextResponse() interface{} {
+	resp := server.Responses[0]
+	server.Responses = server.Responses[1:]
+	return resp
+}
+
 // TestSuccessfullTest tests the `fossa test` test command and ensures that it properly
 // handles all responses in the path to a success.
 func TestSuccessfullTest(t *testing.T) {
@@ -55,8 +61,7 @@ func TestSuccessfullTest(t *testing.T) {
 // testCustomTestServer dequeues the first item in server.Responses, marshals it, and responds with it.
 func testCustomTestServer(t *testing.T, server *mockServer) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp := server.Responses[0]
-		server.Responses = server.Responses[1:]
+		resp := server.nextResponse()
 		response, err := json.Marshal(resp)
 		if err != nil {
 			t.Fatalf("Failed to unmarshal JSON: %s", err)
