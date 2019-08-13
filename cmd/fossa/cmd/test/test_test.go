@@ -3,7 +3,6 @@ package test_test
 import (
 	"encoding/json"
 	"flag"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -18,8 +17,6 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/test"
 )
 
-var orgID = rand.Intn(1000)
-
 // taskStatus is a struct that imitates the anonymous struct within fossa.Build
 type taskStatus struct {
 	Status string
@@ -31,12 +28,11 @@ type mockServer struct {
 
 // TestSuccessfullTest tests the `fossa test` test command and ensures that it properly
 // handles all responses.
-func testSuccessfullTest(t *testing.T) {
+func TestSuccessfullTest(t *testing.T) {
 	if testing.Short() {
 		return
 	}
 
-	fossa.SetAPIKey("1")
 	testLocator := fossa.Locator{Fetcher: "custom", Project: "tesRun", Revision: "123"}
 	serverTest := mockServer{
 		Responses: []interface{}{
@@ -51,9 +47,8 @@ func testSuccessfullTest(t *testing.T) {
 	}
 	ts := testCustomTestServer(t, testLocator, &serverTest)
 	defer ts.Close()
-	context := testContext(testLocator, ts.URL, "1")
 
-	test.PollRequestDelay = 2 * time.Second
+	context := testSetup(testLocator, ts.URL, "1")
 	err := test.Run(context)
 	assert.NoError(t, err)
 }
@@ -71,11 +66,16 @@ func testCustomTestServer(t *testing.T, locator fossa.Locator, server *mockServe
 		if err != nil {
 			t.Fatalf("Failed to write response: %s", err)
 		}
-		return
 	}))
 }
 
-func testContext(locator fossa.Locator, endpoint, apiKey string) *cli.Context {
+func testSetup(locator fossa.Locator, endpoint, apiKey string) *cli.Context {
+	test.PollRequestDelay = 2 * time.Second
+	apiErr := fossa.SetAPIKey(apiKey)
+	if apiErr != nil {
+		log.Fatalf("Could not set api key: %s", apiErr)
+	}
+
 	flagSet := &flag.FlagSet{}
 	flagSet.Int("timeout", 100, "")
 	rev, err := strconv.Atoi(locator.Revision)
