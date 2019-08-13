@@ -39,7 +39,7 @@ const (
 	JSON           = "json"
 )
 
-const pollRequestDelay = 8 * time.Second
+var PollRequestDelay = 8 * time.Second
 
 var Cmd = cli.Command{
 	Name:   "test",
@@ -128,7 +128,7 @@ func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, erro
 		default:
 			build, err := fossa.GetLatestBuild(locator)
 			if _, ok := err.(api.TimeoutError); ok {
-				time.Sleep(pollRequestDelay)
+				time.Sleep(PollRequestDelay)
 				continue
 			}
 			if err != nil {
@@ -143,7 +143,7 @@ func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, erro
 			case "FAILED":
 				return build, fmt.Errorf("failed to analyze build #%d: %s (visit FOSSA or contact support@fossa.com)", build.ID, build.Error)
 			case "CREATED", "ASSIGNED", "RUNNING":
-				time.Sleep(pollRequestDelay)
+				time.Sleep(PollRequestDelay)
 			default:
 				return fossa.Build{}, fmt.Errorf("unknown task status: %s", build.Task.Status)
 			}
@@ -160,7 +160,7 @@ func CheckIssues(locator fossa.Locator, stop <-chan time.Time) (fossa.Issues, er
 		default:
 			issues, err := fossa.GetIssues(locator)
 			if _, ok := err.(api.TimeoutError); ok {
-				time.Sleep(pollRequestDelay)
+				time.Sleep(PollRequestDelay)
 				continue
 			}
 			if err != nil {
@@ -168,7 +168,7 @@ func CheckIssues(locator fossa.Locator, stop <-chan time.Time) (fossa.Issues, er
 			}
 			switch issues.Status {
 			case "WAITING":
-				time.Sleep(pollRequestDelay)
+				time.Sleep(PollRequestDelay)
 			case "SCANNED":
 				return issues, nil
 			default:

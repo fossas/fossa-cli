@@ -24,7 +24,7 @@ func SetEndpoint(endpoint string) error {
 }
 
 func SetAPIKey(key string) *errors.Error {
-	if key == "" {
+	if key == "" && apiKey == "" {
 		return &errors.Error{
 			Type:            errors.User,
 			Troubleshooting: "A FOSSA API key is needed to run this command.",
