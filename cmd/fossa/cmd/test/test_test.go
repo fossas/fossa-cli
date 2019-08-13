@@ -5,7 +5,6 @@ import (
 	"flag"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 	"time"
 
@@ -33,7 +32,6 @@ func TestSuccessfullTest(t *testing.T) {
 		return
 	}
 
-	testLocator := fossa.Locator{Fetcher: "custom", Project: "tesRun", Revision: "123"}
 	serverTest := mockServer{
 		Responses: []interface{}{
 			fossa.Organization{OrganizationID: 1},
@@ -45,16 +43,16 @@ func TestSuccessfullTest(t *testing.T) {
 			fossa.Issues{Status: "SCANNED"},
 		},
 	}
-	ts := testCustomTestServer(t, testLocator, &serverTest)
+	ts := testCustomTestServer(t, &serverTest)
 	defer ts.Close()
 
-	context := testSetup(testLocator, ts.URL, "1")
+	context := testSetup(ts.URL, "1")
 	err := test.Run(context)
 	assert.NoError(t, err)
 }
 
 // testCustomTestServer dequeues the first item in server.Responses, marshals it, and responds with it.
-func testCustomTestServer(t *testing.T, locator fossa.Locator, server *mockServer) *httptest.Server {
+func testCustomTestServer(t *testing.T, server *mockServer) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := server.Responses[0]
 		server.Responses = server.Responses[1:]
@@ -69,7 +67,7 @@ func testCustomTestServer(t *testing.T, locator fossa.Locator, server *mockServe
 	}))
 }
 
-func testSetup(locator fossa.Locator, endpoint, apiKey string) *cli.Context {
+func testSetup(endpoint, apiKey string) *cli.Context {
 	test.PollRequestDelay = 2 * time.Second
 	apiErr := fossa.SetAPIKey(apiKey)
 	if apiErr != nil {
@@ -78,13 +76,6 @@ func testSetup(locator fossa.Locator, endpoint, apiKey string) *cli.Context {
 
 	flagSet := &flag.FlagSet{}
 	flagSet.Int("timeout", 100, "")
-	rev, err := strconv.Atoi(locator.Revision)
-	if err != nil {
-		log.Warn(err.Error())
-	}
-	flagSet.Int("revision", rev, "")
-	flagSet.String("fetcher", locator.Fetcher, "")
-	flagSet.String("project", locator.Project, "")
 	flagSet.String("endpoint", endpoint, "")
 	return cli.NewContext(&cli.App{}, flagSet, &cli.Context{})
 }
