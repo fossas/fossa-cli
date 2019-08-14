@@ -53,16 +53,6 @@ var NodeAnalyzer = module.AnalyzerV2{
 			"node_modules_local",
 			"package.json",
 		},
-		AlwaysRun: []module.DiscoveredStrategy{
-			{
-				Name:      "yarn",
-				RelTarget: "package.json",
-			},
-			{
-				Name:      "npm",
-				RelTarget: "package.json",
-			},
-		},
 	},
 }
 
@@ -75,10 +65,15 @@ func NewDiscover(dir module.Filepath) (map[module.Filepath][]module.DiscoveredSt
 			return err
 		}
 
-		if info.IsDir() && info.Name() == "node_modules" {
+		addStrategies := func (strategies ...module.DiscoveredStrategy) {
 			moduleDir := filepath.Dir(path)
 			current := modules[moduleDir]
-			current = append(current,
+			current = append(current, strategies...)
+			modules[moduleDir] = current
+		}
+
+		if info.IsDir() && info.Name() == "node_modules" {
+			addStrategies(
 				module.DiscoveredStrategy{
 					Name:      "node_modules",
 					RelTarget: "node_modules",
@@ -88,7 +83,6 @@ func NewDiscover(dir module.Filepath) (map[module.Filepath][]module.DiscoveredSt
 					RelTarget: "node_modules",
 				},
 			)
-			modules[moduleDir] = current
 		}
 
 		// Don't descend into **/node_modules and **/bower_components
@@ -98,33 +92,37 @@ func NewDiscover(dir module.Filepath) (map[module.Filepath][]module.DiscoveredSt
 		}
 
 		if !info.IsDir() && info.Name() == "package.json" {
-			moduleDir := filepath.Dir(path)
-			current := modules[moduleDir]
-			current = append(current, module.DiscoveredStrategy{
+			// TODO: add `npm` strategy as well?
+			addStrategies(module.DiscoveredStrategy{
 				Name:      "package.json",
 				RelTarget: "package.json",
 			})
-			modules[moduleDir] = current
 		}
 
 		if !info.IsDir() && info.Name() == "yarn.lock" {
-			moduleDir := filepath.Dir(path)
-			current := modules[moduleDir]
-			current = append(current, module.DiscoveredStrategy{
-				Name:      "yarn.lock",
-				RelTarget: "yarn.lock",
-			})
-			modules[moduleDir] = current
+			addStrategies(
+				module.DiscoveredStrategy{
+					Name:      "yarn.lock",
+					RelTarget: "yarn.lock",
+				},
+				module.DiscoveredStrategy{
+					Name:      "yarn",
+					RelTarget: "yarn.lock",
+				},
+			)
 		}
 
 		if !info.IsDir() && info.Name() == "package-lock.json" {
-			moduleDir := filepath.Dir(path)
-			current := modules[moduleDir]
-			current = append(current, module.DiscoveredStrategy{
-				Name:      "package-lock.json",
-				RelTarget: "package-lock.json",
-			})
-			modules[moduleDir] = current
+			addStrategies(
+				module.DiscoveredStrategy{
+					Name:      "package-lock.json",
+					RelTarget: "package-lock.json",
+				},
+				module.DiscoveredStrategy{
+					Name:      "npm",
+					RelTarget: "package-lock.json",
+				},
+			)
 		}
 
 		return nil

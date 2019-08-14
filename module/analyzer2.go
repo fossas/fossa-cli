@@ -37,8 +37,6 @@ type Strategies struct {
 	SortedNames []StrategyName
 	// The set of optimal strategies. This will be used for warnings
 	Optimal []StrategyName
-	// Strategies to always run
-	AlwaysRun []DiscoveredStrategy
 }
 
 type TaggedGraph struct {
@@ -49,14 +47,14 @@ type TaggedGraph struct {
 func (a AnalyzerV2) AnalyzeV2() (map[Filepath][]TaggedGraph, *errors.Error) {
 	strategies, err := a.DiscoverFunc(".") // TODO: hardcoded "."
 	if err != nil {
-		return nil, err // TODO
+		return nil, err // TODO: this happens when discovery fails. should probably ignore the error or warn
 	}
 
 	modules := make(map[Filepath][]TaggedGraph)
 	for folder := range strategies {
 		scanned, err := a.scanModule(folder, strategies[folder])
 		if err != nil {
-			return nil, err // TODO
+			return nil, err // TODO: this happens when an individual strategy fails
 		}
 
 		modules[folder] = scanned
@@ -67,37 +65,38 @@ func (a AnalyzerV2) AnalyzeV2() (map[Filepath][]TaggedGraph, *errors.Error) {
 
 func (a AnalyzerV2) scanModule(folder Filepath, strategies []DiscoveredStrategy) ([]TaggedGraph, *errors.Error) {
 
-	// Add always-run strategies to the discovered ones
-	for _, strategy := range a.Strategies.AlwaysRun {
-		strategies = append(strategies, strategy)
-	}
-
-	// Index strategies by their name
-	// TODO: should this just be map[StrategyName]DiscoveredStrategy?
-	// we'll have to ignore duplicates somehow if not here
-	strategiesByType := make(map[StrategyName][]DiscoveredStrategy)
+	// NB: we may have discovered overlapping strategies for the same module
+	// For example: if we find package.json and node_modules, we're going to
+	// discover two `npm ls` strategies
+	//
+	// We arbitrarily choose one DiscoveredStrategy per strategy type
+	strategiesByType := make(map[StrategyName]DiscoveredStrategy)
 
 	for _, strategy := range strategies {
-		current := strategiesByType[strategy.Name]
-		strategiesByType[strategy.Name] = append(current, strategy)
+		strategiesByType[strategy.Name] = strategy
 	}
+
+	// TODO: strategy name validation / sanity check
 
 	var results []TaggedGraph
 	for _, name := range a.Strategies.SortedNames {
-		for _, discovered := range strategiesByType[name] {
-			result, err := a.Strategies.Named[name](filepath.Join(folder, discovered.RelTarget))
-			if err != nil {
-				// TODO: this err is when an individual strategy fails
-				continue
-			}
-
-			results = append(results, TaggedGraph{
-				Tags: map[string]string{
-					"target": discovered.RelTarget, // TODO: other tags?
-				},
-				Graph: result,
-			})
+		discovered, ok := strategiesByType[name]
+		if !ok {
+			continue
 		}
+
+		result, err := a.Strategies.Named[name](filepath.Join(folder, discovered.RelTarget))
+		if err != nil {
+			// TODO: this err is when an individual strategy fails
+			continue
+		}
+
+		results = append(results, TaggedGraph{
+			Tags: map[string]string{
+				"target": discovered.RelTarget, // TODO: other tags?
+			},
+			Graph: result,
+		})
 	}
 
 	// TODO: warning about optimal strategies

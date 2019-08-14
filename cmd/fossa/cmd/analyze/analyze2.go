@@ -34,9 +34,11 @@ func NewRun(ctx *cli.Context) error {
 	}
 
 	// TODO: modules from config
+	// TODO: when loading modules from config, make sure that strategies exist
+	// TODO: write out discovered modules config if flag is set
 	res, ourErr := nodejs.NodeAnalyzer.AnalyzeV2()
 	if ourErr != nil {
-		log.Fatalf("Culd not analyze modules: %s", ourErr.Error())
+		log.Fatalf("Could not analyze modules: %s", ourErr.Error())
 	}
 
 	modules := module.ToModules(res)
