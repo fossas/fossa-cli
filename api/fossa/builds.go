@@ -20,11 +20,15 @@ type Build struct {
 
 // GetLatestBuild loads the most recent build for a revision
 // or returns an error if the revision does not exist, or the revision has no builds.
-func GetLatestBuild(locator Locator) (Build, error) {
+func GetLatestBuild(locator Locator) (Build, *errors.Error) {
 	var build Build
 	_, err := GetJSON(fmt.Sprintf(BuildsAPI, url.PathEscape(locator.OrgString())), &build)
 	if err != nil {
-		return Build{}, errors.Wrap(err, "could not get Build from API")
+		return Build{}, &errors.Error{
+			Cause:           err,
+			Type:            errors.Unknown,
+			Troubleshooting: "Could not get latest build from API. Ensure that you have already analyzed your project by checking to see if it exists on fossa.com.",
+		}
 	}
 
 	return build, nil

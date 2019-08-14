@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/apex/log"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/api"
@@ -57,12 +56,12 @@ var _ cli.ActionFunc = Run
 func Run(ctx *cli.Context) error {
 	err := setup.SetContext(ctx, true)
 	if err != nil {
-		log.Fatalf("Could not initialize: %s", err.Error())
+		return errors.UnknownError(err, "")
 	}
 
-	issues, err := Do(time.After(time.Duration(ctx.Int(Timeout)) * time.Second))
-	if err != nil {
-		log.Fatalf("Could not test revision: %s", err.Error())
+	issues, fErr := Do(time.After(time.Duration(ctx.Int(Timeout)) * time.Second))
+	if fErr != nil {
+		return fErr.WrapCause("Could not test revision")
 	}
 
 	if issues.Count == 0 {
@@ -74,13 +73,13 @@ func Run(ctx *cli.Context) error {
 	if ctx.Bool(JSON) {
 		json, err := json.Marshal(issues)
 		if err != nil {
-			return err
+			return errors.UnknownError(err, "")
 		}
 		output = string(json)
 	} else {
 		output, err = display.TemplateFormatTabs(defaultTestTemplate, issues, 12, 10, 5)
 		if err != nil {
-			return err
+			return errors.UnknownError(err, "")
 		}
 	}
 	fmt.Println(output)
@@ -91,13 +90,16 @@ func Run(ctx *cli.Context) error {
 	return nil
 }
 
-func Do(stop <-chan time.Time) (fossa.Issues, error) {
+func Do(stop <-chan time.Time) (fossa.Issues, *errors.Error) {
 	defer display.ClearProgress()
 	display.InProgress("Waiting for analysis to complete...")
 
 	revision := config.Revision()
 	if revision == "" {
-		return fossa.Issues{}, errors.New("could not detect current revision (please set with --revision)")
+		return fossa.Issues{}, &errors.Error{
+			Troubleshooting: "A revision could not be detected. Try setting revision using the --revision flag.",
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/user-guide.md/#fossa-test",
+		}
 	}
 
 	project := fossa.Locator{
@@ -108,31 +110,37 @@ func Do(stop <-chan time.Time) (fossa.Issues, error) {
 
 	_, err := CheckBuild(project, stop)
 	if err != nil {
-		log.Fatalf("Could not load build: %s", err.Error())
+		return fossa.Issues{}, err.WrapCause("Could not load build:")
 	}
 
 	issues, err := CheckIssues(project, stop)
 	if err != nil {
-		log.Fatalf("Could not load issues: %s", err.Error())
+		return fossa.Issues{}, err.WrapCause("Could not load issues:")
 	}
 
 	display.ClearProgress()
 	return issues, nil
 }
 
-func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, error) {
+// CheckBuild polls the latest_build endpoint until the most recently uploaded build has succeeded.
+func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, *errors.Error) {
 	for {
 		select {
 		case <-stop:
-			return fossa.Build{}, errors.New("timed out while waiting for build")
+			return fossa.Build{}, &errors.Error{
+				Cause:           errors.New("timed out while checking for build"),
+				Type:            errors.Unknown,
+				Troubleshooting: "The most likely reason for a timeout is that your project is still being analyzed on fossa.com. If your project is exceptionally large and analysis takes longer than the default timeout you can modify it with the `timeout` flag.",
+				Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/user-guide.md/#fossa-test",
+			}
 		default:
 			build, err := fossa.GetLatestBuild(locator)
-			if _, ok := err.(api.TimeoutError); ok {
+			if _, ok := err.Cause.(api.TimeoutError); ok {
 				time.Sleep(pollRequestDelay)
 				continue
 			}
 			if err != nil {
-				return fossa.Build{}, errors.Wrap(err, "error while loading build")
+				return fossa.Build{}, err
 			}
 
 			display.InProgress(fmt.Sprintf("Project status is %s. Waiting for FOSSA scan results...", build.Task.Status))
@@ -141,30 +149,39 @@ func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, erro
 			case "SUCCEEDED":
 				return build, nil
 			case "FAILED":
-				return build, fmt.Errorf("failed to analyze build #%d: %s (visit FOSSA or contact support@fossa.com)", build.ID, build.Error)
+				return build, &errors.Error{
+					Cause:           fmt.Errorf("FOSSA failed to analyze build with ID #%d: %s", build.ID, build.Error),
+					Type:            errors.Unknown,
+					Troubleshooting: "Look at the build logs for this build on app.fossa.com on the `Activity` page associated with this project to diagnose the root cause of this issue.",
+				}
+
 			case "CREATED", "ASSIGNED", "RUNNING":
 				time.Sleep(pollRequestDelay)
 			default:
-				return fossa.Build{}, fmt.Errorf("unknown task status: %s", build.Task.Status)
+				return fossa.Build{}, errors.UnknownError(errors.Errorf("unknown task status while waiting for FOSSA to analyze build: %s", build.Task.Status), "")
 			}
 		}
 	}
 }
 
 // CheckIssues polls the issues endpoint until an issue scan has been run on the latest project revision.
-func CheckIssues(locator fossa.Locator, stop <-chan time.Time) (fossa.Issues, error) {
+func CheckIssues(locator fossa.Locator, stop <-chan time.Time) (fossa.Issues, *errors.Error) {
 	for {
 		select {
 		case <-stop:
-			return fossa.Issues{}, errors.New("timed out while waiting for scan")
+			return fossa.Issues{}, &errors.Error{
+				Cause:           errors.New("timed out while waiting for issues"),
+				Troubleshooting: "The most likely reason for a timeout is that your project has not had an issue scan run on fossa.com. If this is not the case and this issue persists you can increase the timeout with the `timeout` flag.",
+				Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/user-guide.md/#fossa-test",
+			}
 		default:
 			issues, err := fossa.GetIssues(locator)
-			if _, ok := err.(api.TimeoutError); ok {
+			if _, ok := err.Cause.(api.TimeoutError); ok {
 				time.Sleep(pollRequestDelay)
 				continue
 			}
 			if err != nil {
-				return fossa.Issues{}, errors.Wrap(err, "error while loading issues")
+				return fossa.Issues{}, err
 			}
 			switch issues.Status {
 			case "WAITING":
@@ -172,7 +189,7 @@ func CheckIssues(locator fossa.Locator, stop <-chan time.Time) (fossa.Issues, er
 			case "SCANNED":
 				return issues, nil
 			default:
-				return issues, fmt.Errorf("unknown task status: %s", issues.Status)
+				return issues, errors.UnknownError(errors.Errorf("unknown task status while loading issues: %s", issues.Status), "")
 			}
 		}
 	}
