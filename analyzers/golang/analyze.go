@@ -1,6 +1,8 @@
 package golang
 
 import (
+	"path/filepath"
+
 	"github.com/apex/log"
 
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
@@ -13,6 +15,7 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/govendor"
 	"github.com/fossas/fossa-cli/buildtools/vndr"
 	"github.com/fossas/fossa-cli/errors"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -20,9 +23,78 @@ import (
 // Analyze builds a dependency graph using go list and then looks up revisions
 // using tool-specific lockfiles.
 func (a *Analyzer) Analyze() (graph.Deps, error) {
+
+	// 1. Check for a set strategy.
+	switch a.Options.Strategy {
+	case "gomodules":
+		depGraph, err := gomodules.ModGraph("")
+		if len(depGraph.Direct) > 0 && err == nil {
+			return depGraph, nil
+		}
+		return gomodules.SumGraph("")
+	case "dep":
+		depGraph, err := dep.LockfileGraph("")
+		if len(depGraph.Direct) > 0 && err == nil {
+			return depGraph, nil
+		}
+		return dep.ManifestGraph("")
+	case "list":
+		return ListLockfileResolution(a)
+	}
+
+	// 2. Run `go list` and resolve using the lockfile.
+	depGraph, err := ListLockfileResolution(a)
+	if returnGraph(a.Module.Dir, err, len(depGraph.Direct)) {
+		return depGraph, nil
+	}
+
+	// 3. Check for gomodules.
+	if exists, err := files.Exists(filepath.Join(a.Module.Dir, "go.mod")); exists && err == nil {
+		depGraph, err := gomodules.ModGraph("")
+		if returnGraph(filepath.Join(a.Module.Dir, "go.mod"), err, len(depGraph.Direct)) {
+			return depGraph, nil
+		}
+	}
+	if exists, err := files.Exists(filepath.Join(a.Module.Dir, "go.sum")); exists && err == nil {
+		depGraph, err := gomodules.SumGraph("")
+		if returnGraph(filepath.Join(a.Module.Dir, "go.sum"), err, len(depGraph.Direct)) {
+			return depGraph, nil
+		}
+	}
+
+	// 4. Check for Dep.
+	if exists, err := files.Exists(filepath.Join(a.Module.Dir, "Gopkg.lock")); exists && err == nil {
+		depGraph, err := dep.LockfileGraph("")
+		if returnGraph(filepath.Join(a.Module.Dir, "Gopkg.lock"), err, len(depGraph.Direct)) {
+			return depGraph, nil
+		}
+	}
+	if exists, err := files.Exists(filepath.Join(a.Module.Dir, "Gopkg.toml")); exists && err == nil {
+		depGraph, err := dep.ManifestGraph("")
+		if returnGraph(filepath.Join(a.Module.Dir, "Gopkg.toml"), err, len(depGraph.Direct)) {
+			return depGraph, nil
+		}
+	}
+
+	return graph.Deps{}, err
+}
+
+func returnGraph(file string, err error, dependencyCount int) bool {
+	if err != nil {
+		log.Warnf("Error reading dependencies from `%s`: %s", file, err)
+		return false
+	}
+
+	if dependencyCount == 0 {
+		log.Warnf("No dependencies were found in `%s`", file)
+		return false
+	}
+	return true
+}
+
+func ListLockfileResolution(a *Analyzer) (graph.Deps, error) {
 	m := a.Module
 	log.Debugf("%#v", m)
-
 	// Get Go project.
 	project, err := a.Project(m.BuildTarget)
 	if err != nil {
@@ -89,11 +161,6 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		if err != nil {
 			return graph.Deps{}, err
 		}
-
-	// Resolve revisions by traversing the local $GOPATH and calling the package's
-	// VCS.
-	case "gopath-vcs":
-		return graph.Deps{}, errors.NotImplementedError()
 
 	// Read revisions from an auto-detected tool manifest.
 	default:
