@@ -81,7 +81,10 @@ Predefined build tags:
 #### `strategy: <string>`
 
 Manually specify the golang package manager being used. If this option is set, it is recommended [lockfile](#LockfilePath:-<string>) and [manifest](#ManifestPath:-<string>) be set as well. A list of supported strategies is as follows:
-- ```manifest:gomodules, manifest:dep, manifest:gdm, manifest:glide, manifest:godep, manifest:govendor, manifest:vndr, gopath-vcs```
+- ```list, gomodules, dep```
+- `list`: Run `go list` and compare the results to the lockfile.
+- `gomodules`: Parse `go.mod` and `go.sum` to find dependencies.
+- `dep`: Parse `Gopkg.lock` and `Gopkg.toml` to find dependencies.
 
 #### `lockfile: <string>`
 
