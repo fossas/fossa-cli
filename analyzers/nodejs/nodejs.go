@@ -317,13 +317,12 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 }
 
 // path is path to package.json
-func AnalyzeYarnCmd(_ module.Filepath) (graph.Deps, *errors.Error) {
+func AnalyzeYarnCmd(dir module.Filepath, target module.Filepath) (graph.Deps, *errors.Error) {
 	// TODO
 	return graph.Deps{}, errors.NotImplementedError()
 }
 
-// path is path to package.json
-func AnalyzeNpmCmd(path module.Filepath) (graph.Deps, *errors.Error) {
+func AnalyzeNpmCmd(dir module.Filepath, _ module.Filepath) (graph.Deps, *errors.Error) {
 	// TODO: mockability?
 	npmcli, err := npm.New()
 	if err != nil {
@@ -336,7 +335,6 @@ func AnalyzeNpmCmd(path module.Filepath) (graph.Deps, *errors.Error) {
 		return graph.Deps{}, errors.UnknownError(err, "Couldn't find NPM")
 	}
 
-	dir := filepath.Dir(path) // TODO: pass in the module path as well?
 	pkgs, err := npmcli.List(dir)
 	if err != nil {
 		// TODO: better error
@@ -371,11 +369,9 @@ func AnalyzeNpmCmd(path module.Filepath) (graph.Deps, *errors.Error) {
 	}, nil
 }
 
-// path is path to yarn.lock
-func AnalyzeYarnLock(path module.Filepath) (graph.Deps, *errors.Error) {
-	dir := filepath.Dir(path) // TODO: pass in the module path as well?
-
-	deps, err := yarn.FromProject(filepath.Join(dir, "package.json"), filepath.Join(path))
+// target is yarn.lock
+func AnalyzeYarnLock(dir module.Filepath, target module.Filepath) (graph.Deps, *errors.Error) {
+	deps, err := yarn.FromProject(filepath.Join(dir, "package.json"), filepath.Join(target))
 	if err != nil {
 		return graph.Deps{}, errors.UnknownError(err, "Couldn't scan yarn.lock")
 	}
@@ -383,13 +379,13 @@ func AnalyzeYarnLock(path module.Filepath) (graph.Deps, *errors.Error) {
 	return deps, nil
 }
 
-func AnalyzeNpmLock(_ module.Filepath) (graph.Deps, *errors.Error) {
+func AnalyzeNpmLock(dir module.Filepath, target module.Filepath) (graph.Deps, *errors.Error) {
 	// TODO
 	return graph.Deps{}, errors.NotImplementedError()
 }
 
-// path is path to node_modules
-func AnalyzeNodeModules(path module.Filepath) (graph.Deps, *errors.Error) {
+// target is node_modules
+func AnalyzeNodeModules(dir module.Filepath, target module.Filepath) (graph.Deps, *errors.Error) {
 	// TODO: this seems to introduce an infinite loop
 	return graph.Deps{}, errors.NotImplementedError()
 	/*dir := filepath.Dir(path) // TODO: pass in the module path as well?
@@ -401,14 +397,14 @@ func AnalyzeNodeModules(path module.Filepath) (graph.Deps, *errors.Error) {
 	return deps, nil*/
 }
 
-// path is path to node_modules
-func AnalyzeNodeModulesLocal(_ module.Filepath) (graph.Deps, *errors.Error) {
+// target is node_modules
+func AnalyzeNodeModulesLocal(dir module.Filepath, target module.Filepath) (graph.Deps, *errors.Error) {
 	// TODO
 	return graph.Deps{}, errors.NotImplementedError()
 }
 
-// path is path to package.json
-func AnalyzePackageJson(_ module.Filepath) (graph.Deps, *errors.Error) {
+// target is package.json
+func AnalyzePackageJson(dir module.Filepath, target module.Filepath) (graph.Deps, *errors.Error) {
 	// TODO
 	return graph.Deps{}, errors.NotImplementedError()
 }

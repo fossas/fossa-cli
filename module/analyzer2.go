@@ -19,13 +19,19 @@ type DiscoverFuncV2 func(Filepath) (map[Filepath][]DiscoveredStrategy, *errors.E
 
 type Filepath = string
 type StrategyName = string
-type Strategy func(Filepath) (graph.Deps, *errors.Error)
+// A strategy produces a dependency graph, with two paths relative to the root
+// as arguments:
+//
+// - The directory of the module. This is usually the parent directory of the
+//   "target"
+// - The "target" -- usually the file (or directory) that caused the invocation
+//   of this strategy
+type Strategy func(dir Filepath, target Filepath) (graph.Deps, *errors.Error)
 
 type DiscoveredStrategy struct {
 	Name StrategyName
-	// The relative filepath from the 'module' root to the file that triggered the analysis
-	// Often the same as the file being analyzed by this strategy
-	// Will be used to 'tag' the resulting dependency graph
+	// The relative filepath from the 'module' root to the target of this
+	// strategy. See the documentation for Strategy.
 	RelTarget Filepath
 }
 
@@ -85,7 +91,7 @@ func (a AnalyzerV2) scanModule(folder Filepath, strategies []DiscoveredStrategy)
 			continue
 		}
 
-		result, err := a.Strategies.Named[name](filepath.Join(folder, discovered.RelTarget))
+		result, err := a.Strategies.Named[name](folder, filepath.Join(folder, discovered.RelTarget))
 		if err != nil {
 			// TODO: this err is when an individual strategy fails
 			continue
