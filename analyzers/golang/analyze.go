@@ -39,7 +39,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		}
 		return dep.ManifestGraph("")
 	case "list":
-		return ListResolution(a)
+		return ListLockfileResolution(a)
 	}
 
 	// 2. Run `go list` and resolve using the lockfile.
