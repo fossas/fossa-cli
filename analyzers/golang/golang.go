@@ -58,6 +58,7 @@ type Options struct {
 	AllowDeepVendor           bool     `mapstructure:"allow-deep-vendor"`            // Allows nested vendored dependencies to be resolved using ancestor lockfiles farther than their direct parent.
 	AllowExternalVendor       bool     `mapstructure:"allow-external-vendor"`        // Allows reading vendor lockfiles of other projects.
 	AllowExternalVendorPrefix string   `mapstructure:"allow-external-vendor-prefix"` // If set, allow reading vendor lockfiles of projects whose import path's prefix matches. Multiple space-delimited prefixes can be specified.
+	ModulesVendor             bool     `mapstructure:"modules-vendor"`               // Allows gomodules projects that rely on vendor directories to work.
 	SkipImportTracing         bool     `mapstructure:"skip-tracing"`                 // Skips dependency tracing.
 	SkipProject               bool     `mapstructure:"skip-project"`                 // Skips project detection.
 }
@@ -125,7 +126,7 @@ func (a *Analyzer) Build() error {
 func (a *Analyzer) IsBuilt() (bool, error) {
 	m := a.Module
 	log.Debugf("%#v", m)
-	pkg, err := a.Go.ListOne(m.BuildTarget, nil)
+	pkg, err := a.Go.ListOne(m.BuildTarget, nil, a.Options.ModulesVendor)
 	if err != nil {
 		return false, err
 	}
