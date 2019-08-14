@@ -8,7 +8,6 @@ import (
 
 	"github.com/urfave/cli"
 
-	"github.com/fossas/fossa-cli/api"
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
@@ -135,10 +134,6 @@ func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, *err
 			}
 		default:
 			build, err := fossa.GetLatestBuild(locator)
-			if _, ok := err.Cause.(api.TimeoutError); ok {
-				time.Sleep(pollRequestDelay)
-				continue
-			}
 			if err != nil {
 				return fossa.Build{}, err
 			}
@@ -176,10 +171,6 @@ func CheckIssues(locator fossa.Locator, stop <-chan time.Time) (fossa.Issues, *e
 			}
 		default:
 			issues, err := fossa.GetIssues(locator)
-			if _, ok := err.Cause.(api.TimeoutError); ok {
-				time.Sleep(pollRequestDelay)
-				continue
-			}
 			if err != nil {
 				return fossa.Issues{}, err
 			}
