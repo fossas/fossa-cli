@@ -33,14 +33,20 @@ func NewRun(ctx *cli.Context) error {
 		return err
 	}
 
-	// TODO: modules from config
-	// TODO: when loading modules from config, make sure that strategies exist
-	// TODO: write out discovered modules config if flag is set
+	// TODO: config
+	// This will require:
+	// - writing discovered strategies out to config (when a flag is set)
+	//   use the DiscoverFunc on each analyzer to do this
+	// - reading modules from config && bypassing discovery when a config file is present
+	//   when bypassing: use AnalyzerV2.ScanModule(folder, strategies)
+	// - incorporating vcs discovery and other configuration from v1
+
 	res, ourErr := nodejs.NodeAnalyzer.AnalyzeV2()
 	if ourErr != nil {
 		log.Fatalf("Could not analyze modules: %s", ourErr.Error())
 	}
 
+	// TODO: remove the below -- it's all adapter/legacy code
 	modules := module.ToModules(res)
 
 	if len(modules) == 0 {

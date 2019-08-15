@@ -18,13 +18,12 @@ var NodeAnalyzer = module.AnalyzerV2{
 	DiscoverFunc: NewDiscover,
 	Strategies: module.Strategies{
 		Named: map[module.StrategyName]module.Strategy{
-			"yarn":               AnalyzeYarnCmd,
-			"npm":                AnalyzeNpmCmd,
-			"yarn.lock":          AnalyzeYarnLock,
-			"package-lock.json":  AnalyzeNpmLock,
-			"node_modules":       AnalyzeNodeModules,
-			"node_modules_local": AnalyzeNodeModulesLocal,
-			"package.json":       AnalyzePackageJson,
+			"yarn":              AnalyzeYarnCmd,
+			"npm":               AnalyzeNpmCmd,
+			"yarn.lock":         AnalyzeYarnLock,
+			"package-lock.json": AnalyzeNpmLock,
+			"node_modules":      AnalyzeNodeModules,
+			"package.json":      AnalyzePackageJson,
 		},
 		Optimal: []module.StrategyName{"yarn", "npm", "yarn.lock", "package-lock.json"},
 		SortedNames: []module.StrategyName{
@@ -33,39 +32,32 @@ var NodeAnalyzer = module.AnalyzerV2{
 			"npm",
 			"package-lock.json",
 			"node_modules",
-			"node_modules_local",
 			"package.json",
 		},
 	},
 }
 
-func NewDiscover(dir module.Filepath) (map[module.Filepath][]module.DiscoveredStrategy, *errors.Error) {
+func NewDiscover(dir module.Filepath) (map[module.Filepath]module.DiscoveredStrategies, *errors.Error) {
 	log.WithField("dir", dir).Debug("discovering modules")
-	modules := make(map[module.Filepath][]module.DiscoveredStrategy)
+	modules := make(map[module.Filepath]module.DiscoveredStrategies)
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
 			return err
 		}
 
-		addStrategies := func (strategies ...module.DiscoveredStrategy) {
+		addStrategy := func(name module.StrategyName) {
 			moduleDir := filepath.Dir(path)
-			current := modules[moduleDir]
-			current = append(current, strategies...)
+			current, ok := modules[moduleDir]
+			if !ok {
+				current = make(module.DiscoveredStrategies)
+			}
+			current[name] = info.Name()
 			modules[moduleDir] = current
 		}
 
 		if info.IsDir() && info.Name() == "node_modules" {
-			addStrategies(
-				module.DiscoveredStrategy{
-					Name:      "node_modules",
-					RelTarget: "node_modules",
-				},
-				module.DiscoveredStrategy{
-					Name:      "node_modules_local",
-					RelTarget: "node_modules",
-				},
-			)
+			addStrategy("node_modules")
 		}
 
 		// Don't descend into **/node_modules and **/bower_components
@@ -75,37 +67,18 @@ func NewDiscover(dir module.Filepath) (map[module.Filepath][]module.DiscoveredSt
 		}
 
 		if !info.IsDir() && info.Name() == "package.json" {
-			// TODO: add `npm` strategy as well?
-			addStrategies(module.DiscoveredStrategy{
-				Name:      "package.json",
-				RelTarget: "package.json",
-			})
+			addStrategy("package.json")
+			addStrategy("npm")
 		}
 
 		if !info.IsDir() && info.Name() == "yarn.lock" {
-			addStrategies(
-				module.DiscoveredStrategy{
-					Name:      "yarn.lock",
-					RelTarget: "yarn.lock",
-				},
-				module.DiscoveredStrategy{
-					Name:      "yarn",
-					RelTarget: "yarn.lock",
-				},
-			)
+			addStrategy("yarn.lock")
+			addStrategy("yarn")
 		}
 
 		if !info.IsDir() && info.Name() == "package-lock.json" {
-			addStrategies(
-				module.DiscoveredStrategy{
-					Name:      "package-lock.json",
-					RelTarget: "package-lock.json",
-				},
-				module.DiscoveredStrategy{
-					Name:      "npm",
-					RelTarget: "package-lock.json",
-				},
-			)
+			addStrategy("package-lock.json")
+			addStrategy("npm")
 		}
 
 		return nil
@@ -199,15 +172,8 @@ func AnalyzeNodeModules(dir module.Filepath, target module.Filepath) (graph.Deps
 	return deps, nil*/
 }
 
-// target is node_modules
-func AnalyzeNodeModulesLocal(dir module.Filepath, target module.Filepath) (graph.Deps, *errors.Error) {
-	// TODO
-	return graph.Deps{}, errors.NotImplementedError()
-}
-
 // target is package.json
 func AnalyzePackageJson(dir module.Filepath, target module.Filepath) (graph.Deps, *errors.Error) {
 	// TODO
 	return graph.Deps{}, errors.NotImplementedError()
 }
-

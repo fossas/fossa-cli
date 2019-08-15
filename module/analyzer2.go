@@ -15,10 +15,17 @@ type AnalyzerV2 struct {
 
 // A discoverfunc takes a root directory to scan and produces a map of
 // relative filepaths to discovered strategies
-type DiscoverFuncV2 func(Filepath) (map[Filepath][]DiscoveredStrategy, *errors.Error) // Map from 'module' roots to discovered strategies
+//
+// NB: we may discover overlapping strategies for the same module
+// For example: if we find package.json and node_modules, we're going to
+// discover two `npm ls` strategies
+//
+// We arbitrarily choose one file to use as the target of that strategy
+type DiscoverFuncV2 func(Filepath) (map[Filepath]DiscoveredStrategies, *errors.Error) // Map from 'module' roots to discovered strategies
 
 type Filepath = string
 type StrategyName = string
+
 // A strategy produces a dependency graph, with two paths relative to the root
 // as arguments:
 //
@@ -27,13 +34,6 @@ type StrategyName = string
 // - The "target" -- usually the file (or directory) that caused the invocation
 //   of this strategy
 type Strategy func(dir Filepath, target Filepath) (graph.Deps, *errors.Error)
-
-type DiscoveredStrategy struct {
-	Name StrategyName
-	// The relative filepath from the 'module' root to the target of this
-	// strategy. See the documentation for Strategy.
-	RelTarget Filepath
-}
 
 type Strategies struct {
 	// Map of strategy names to functions
@@ -45,9 +45,13 @@ type Strategies struct {
 	Optimal []StrategyName
 }
 
+// The filepath is the relative filepath from the root of the module
+type DiscoveredStrategies = map[StrategyName]Filepath
+
 type TaggedGraph struct {
-	Tags  map[string]string // TODO: concrete tags
-	Graph graph.Deps
+	Strategy StrategyName
+	File     Filepath
+	Graph    graph.Deps
 }
 
 func (a AnalyzerV2) AnalyzeV2() (map[Filepath][]TaggedGraph, *errors.Error) {
@@ -58,7 +62,7 @@ func (a AnalyzerV2) AnalyzeV2() (map[Filepath][]TaggedGraph, *errors.Error) {
 
 	modules := make(map[Filepath][]TaggedGraph)
 	for folder := range strategies {
-		scanned, err := a.scanModule(folder, strategies[folder])
+		scanned, err := a.ScanModule(folder, strategies[folder])
 		if err != nil {
 			return nil, err // TODO: this happens when an individual strategy fails
 		}
@@ -69,39 +73,25 @@ func (a AnalyzerV2) AnalyzeV2() (map[Filepath][]TaggedGraph, *errors.Error) {
 	return modules, nil
 }
 
-func (a AnalyzerV2) scanModule(folder Filepath, strategies []DiscoveredStrategy) ([]TaggedGraph, *errors.Error) {
-
-	// NB: we may have discovered overlapping strategies for the same module
-	// For example: if we find package.json and node_modules, we're going to
-	// discover two `npm ls` strategies
-	//
-	// We arbitrarily choose one DiscoveredStrategy per strategy type
-	strategiesByType := make(map[StrategyName]DiscoveredStrategy)
-
-	for _, strategy := range strategies {
-		strategiesByType[strategy.Name] = strategy
-	}
-
+func (a AnalyzerV2) ScanModule(folder Filepath, strategies DiscoveredStrategies) ([]TaggedGraph, *errors.Error) {
 	// TODO: strategy name validation / sanity check
 
 	var results []TaggedGraph
 	for _, name := range a.Strategies.SortedNames {
-		discovered, ok := strategiesByType[name]
+		discovered, ok := strategies[name]
 		if !ok {
 			continue
 		}
 
-		result, err := a.Strategies.Named[name](folder, filepath.Join(folder, discovered.RelTarget))
+		result, err := a.Strategies.Named[name](folder, filepath.Join(folder, strategies[name]))
 		if err != nil {
 			// TODO: this err is when an individual strategy fails
 			continue
 		}
 
 		results = append(results, TaggedGraph{
-			Tags: map[string]string{
-				"target": discovered.RelTarget, // TODO: other tags?
-			},
-			Graph: result,
+			Strategy: discovered,
+			Graph:    result,
 		})
 	}
 
