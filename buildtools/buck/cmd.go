@@ -38,7 +38,7 @@ func cmdAudit(command func(string, ...string) (string, *errors.Error), cmd strin
 	}
 
 	jsonError := json.Unmarshal([]byte(out), &output.OutputMapping)
-	if err != nil {
+	if jsonError != nil {
 		return output, &errors.Error{
 			Cause:           jsonError,
 			Type:            errors.Unknown,

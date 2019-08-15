@@ -55,9 +55,9 @@ func New(m module.Module) (*Analyzer, error) {
 		return nil, err
 	}
 
-	b, err := bower.New(bowerCmd, m.Dir)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not set up Bower")
+	b, cmdErr := bower.New(bowerCmd, m.Dir)
+	if cmdErr != nil {
+		return nil, errors.Wrap(cmdErr, "could not set up Bower")
 	}
 
 	analyzer := Analyzer{

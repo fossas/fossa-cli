@@ -1,7 +1,6 @@
 package nodejs_test
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -123,11 +122,4 @@ var projects = []fixtures.Project{
 		Commit:        "bc02256fa2c03632e657248483c55a752e63e724",
 		ModuleOptions: map[string]interface{}{"allow-npm-err": true},
 	},
-}
-
-func cleanUp(dir string) {
-	err := os.RemoveAll(dir)
-	if err != nil {
-		panic(err)
-	}
 }
