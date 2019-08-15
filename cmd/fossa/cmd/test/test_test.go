@@ -26,6 +26,9 @@ type mockServer struct {
 }
 
 func (server *mockServer) nextResponse() interface{} {
+	if len(server.Responses) == 0 {
+		return nil
+	}
 	resp := server.Responses[0]
 	server.Responses = server.Responses[1:]
 	return resp
