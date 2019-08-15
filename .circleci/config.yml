@@ -161,7 +161,7 @@ workflows:
       - integration-test
       - end-to-end-test
       - installer-test
-      - release:
+      - approve-release:
           type: approval
           requires:
             - unit-test
@@ -171,3 +171,6 @@ workflows:
           filters:
             branches:
               only: master
+      - release:
+          requires:
+            - approve-release
