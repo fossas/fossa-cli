@@ -15,6 +15,7 @@ import (
 )
 
 var NodeAnalyzer = module.AnalyzerV2{
+	Name: "nodejs",
 	DiscoverFunc: NewDiscover,
 	Strategies: module.Strategies{
 		Named: map[module.StrategyName]module.Strategy{

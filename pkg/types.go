@@ -13,7 +13,7 @@ type Type int
 
 // Supported package types.
 const (
-	Invalid   Type = iota // Placeholder
+	_         Type = iota // Placeholder
 	Ant                   // Apache Ant (https://ant.apache.org)
 	Bower                 // Bower (https://bower.io)
 	Buck                  // Buck (https://buckbuild.com)
@@ -36,30 +36,6 @@ const (
 	Scala                 // SBT (https://www.scala-sbt.org)
 	Raw                   // Unsupported languages
 )
-
-// AllTypes enumerates all package types.
-var AllTypes = []Type{
-	Ant,
-	Bower,
-	Buck,
-	Carthage,
-	Clojure,
-	Cocoapods,
-	Composer,
-	Debian,
-	Go,
-	Gradle,
-	Haskell,
-	Maven,
-	NodeJS,
-	NuGet,
-	OkBuck,
-	Python,
-	Ruby,
-	Rust,
-	Scala,
-	Raw,
-}
 
 // ParseType returns the canonical package type given a string key.
 // TODO: if we got rid of aliases, we could use `go generate` with https://github.com/alvaroloes/enumer.

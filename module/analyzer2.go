@@ -5,12 +5,18 @@ import (
 
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/graph"
-	"github.com/fossas/fossa-cli/pkg"
 )
 
 type AnalyzerV2 struct {
+	Name         string
 	DiscoverFunc DiscoverFuncV2
 	Strategies   Strategies
+}
+
+// The completed analysis by an analyzer
+type Analysis struct {
+	AnalyzerName string
+	Graphs       []TaggedGraph
 }
 
 // A discoverfunc takes a root directory to scan and produces a map of
@@ -50,32 +56,13 @@ type DiscoveredStrategies = map[StrategyName]Filepath
 
 type TaggedGraph struct {
 	Strategy StrategyName
+	// The file that led to this analysis, most often the file
+	// analyzed by the relevant strategy
 	File     Filepath
 	Graph    graph.Deps
 }
 
-func (a AnalyzerV2) AnalyzeV2() (map[Filepath][]TaggedGraph, *errors.Error) {
-	strategies, err := a.DiscoverFunc(".") // TODO: hardcoded "."
-	if err != nil {
-		return nil, err // TODO: this happens when discovery fails. should probably ignore the error or warn
-	}
-
-	modules := make(map[Filepath][]TaggedGraph)
-	for folder := range strategies {
-		scanned, err := a.ScanModule(folder, strategies[folder])
-		if err != nil {
-			return nil, err // TODO: this happens when an individual strategy fails
-		}
-
-		modules[folder] = scanned
-	}
-
-	return modules, nil
-}
-
 func (a AnalyzerV2) ScanModule(folder Filepath, strategies DiscoveredStrategies) ([]TaggedGraph, *errors.Error) {
-	// TODO: strategy name validation / sanity check
-
 	var results []TaggedGraph
 	for _, name := range a.Strategies.SortedNames {
 		discovered, ok := strategies[name]
@@ -97,34 +84,4 @@ func (a AnalyzerV2) ScanModule(folder Filepath, strategies DiscoveredStrategies)
 
 	// TODO: warning about optimal strategies
 	return results, nil
-}
-
-// TODO: remove this -- temporary shim
-func ToModules(analyzed map[Filepath][]TaggedGraph) []Module {
-	var modules []Module
-
-	for path := range analyzed {
-		graphs := analyzed[path]
-
-		// NB: this removes other graphs
-		elected := graph.Deps{}
-		if len(graphs) > 0 {
-			// NB: this eliminates tags
-			elected = graphs[0].Graph
-		}
-
-		modules = append(modules, Module{
-			Name:         "NAME",
-			Type:         pkg.NodeJS, // TODO?
-			IsExecutable: false,
-			Ignore:       false,
-			BuildTarget:  "BUILDTARGET",
-			Dir:          path,
-			Options:      nil,
-			Imports:      elected.Direct,
-			Deps:         elected.Transitive,
-		})
-	}
-
-	return modules
 }

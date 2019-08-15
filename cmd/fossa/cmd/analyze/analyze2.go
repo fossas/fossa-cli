@@ -5,10 +5,9 @@ import (
 
 	"github.com/apex/log"
 	"github.com/urfave/cli"
+	"gopkg.in/yaml.v2"
 
 	"github.com/fossas/fossa-cli/analyzers/nodejs"
-	"github.com/fossas/fossa-cli/api/fossa"
-	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/module"
@@ -25,6 +24,10 @@ var NewCmd = cli.Command{
 	}))),
 }
 
+var Analyzers = []module.AnalyzerV2{
+	nodejs.NodeAnalyzer,
+}
+
 // TODO: progress indicators, parallelism, ...
 func NewRun(ctx *cli.Context) error {
 	err := setup.SetContext(ctx, !ctx.Bool(ShowOutput))
@@ -39,45 +42,44 @@ func NewRun(ctx *cli.Context) error {
 	//   use the DiscoverFunc on each analyzer to do this
 	// - reading modules from config && bypassing discovery when a config file is present
 	//   when bypassing: use AnalyzerV2.ScanModule(folder, strategies)
+	//   when reading: sanity-check strategy names
 	// - incorporating vcs discovery and other configuration from v1
 
-	res, ourErr := nodejs.NodeAnalyzer.AnalyzeV2()
-	if ourErr != nil {
-		log.Fatalf("Could not analyze modules: %s", ourErr.Error())
-	}
+	res := NewDo()
 
 	// TODO: remove the below -- it's all adapter/legacy code
-	modules := module.ToModules(res)
 
-	if len(modules) == 0 {
-		log.Fatal("No modules found.") // TODO
-	}
+	marshalled, _ := yaml.Marshal(res)
+	fmt.Println(string(marshalled))
 
-	log.Debugf("analyzed: %#v", modules)
-	normalized, err := fossa.Normalize(modules)
+	// TODO: normalize, show output (flag), upload
+	return nil
+}
 
-	if err != nil {
-		log.Fatalf("Could not normalize output: %s", err.Error())
-		return err
-	}
+func NewDo() map[module.Filepath][]module.Analysis {
+	results := make(map[module.Filepath][]module.Analysis)
 
-	if ctx.Bool(ShowOutput) {
-		if tmplFile := ctx.String(flags.Template); tmplFile != "" {
-			output, err := display.TemplateFile(tmplFile, normalized)
-			fmt.Println(output)
-			if err != nil {
-				log.Fatalf("Could not parse template data: %s", err.Error())
-			}
-		} else {
-			_, err := display.JSON(normalized)
-			if err != nil {
-				log.Fatalf("Could not serialize to JSON: %s", err.Error())
-			}
+	for _, analyzer := range Analyzers {
+		modules, err := analyzer.DiscoverFunc(".") // TODO: hardcoded "."
+		if err != nil {
+			log.Debugf("%s: Module discovery failed: %s", analyzer.Name, err.Error())
+			continue
 		}
 
-		return nil
+		for modulePath, strategies := range modules {
+			scanned, err := analyzer.ScanModule(modulePath, strategies)
+			if err != nil {
+				// TODO: use better errors
+				log.Errorf("%s: Module scanning at %s failed: %s", analyzer.Name, modulePath, err.Error())
+				// continue scanning other modules
+			}
+
+			results[modulePath] = append(results[modulePath], module.Analysis{
+				AnalyzerName: analyzer.Name,
+				Graphs:       scanned,
+			})
+		}
 	}
 
-	// TODO: upload analysis
-	return nil
+	return results
 }
