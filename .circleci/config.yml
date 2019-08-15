@@ -137,8 +137,28 @@ jobs:
             cp $(which fossa) $ARTIFACTS
       - store_artifacts:
           path: /tmp/artifacts
-  # TODO(leo): set up automated releases.
-  # release:
+  release:
+    <<: *defaults
+    docker:
+      - image: circleci/golang:1
+    steps:
+      - run:
+          name: Make folders
+          command: mkdir -p $ARTIFACTS
+      - run:
+          name: Install CLI
+          command: |
+            curl https://raw.githubusercontent.com/fossas/fossa-cli/$CIRCLE_SHA1/install.sh | bash
+      - run:
+          name: Run FOSSA help
+          command: |
+            fossa help > $ARTIFACTS/fossa-installer-help-stdout 2> $ARTIFACTS/fossa-installer-help-stderr
+      - run:
+          name: Save artifacts
+          command: |
+            cp $(which fossa) $ARTIFACTS
+      - store_artifacts:
+          path: /tmp/artifacts
 workflows:
   version: 2
   tests:
@@ -147,3 +167,10 @@ workflows:
       - integration-test
       - end-to-end-test
       - installer-test
+      - release:
+          type: approval
+          requires:
+            - unit-test
+            - integration-test
+            - end-to-end-test
+            - installer-test
