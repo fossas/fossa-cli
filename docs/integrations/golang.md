@@ -39,13 +39,14 @@ analyze:
 
 ## Options
 
-| Option                         |   Type   | Name                                                                    | Common Use Case                              |
-| ------------------------------ | :------: | ----------------------------------------------------------------------- | -------------------------------------------- |
-| `tags`                         | []string | [Tags](#tags-string)                                               | Project utilizes go build tags.              |
+| Option                         |   Type   | Name                                                                 | Common Use Case                              |
+| ------------------------------ | :------: | -------------------------------------------------------------------- | -------------------------------------------- |
+| `tags`                         | []string | [Tags](#tags-string)                                                 | Project utilizes go build tags.              |
 | `all-tags`                     |   bool   | [All Tags](#all-tags-bool)                                           | Make sure all OS and Arch tags are caught.   |
 | `strategy`                     |  string  | [Strategy](#strategy-string)                                         | Specify a go package manager.                |
 | `lockfile`                     |  string  | [Lockfile Path](#lockfilepath-string)                                | Specify a custom lockfile.                   |
 | `manifest`                     |  string  | [Manifest Path](#manifestpath-string)                                | Specify a custom manifest file.              |
+| `modules-vendor`               |   bool   | [Modules Vendor](#modules-vendor-bool)                               | Set if you using gomodules and vendoring.    |
 | `allow-unresolved`             |   bool   | [Allow Unresolved](#allow-unresolved-bool)                           | Dependency revision is not in lockfile.      |
 | `allow-unresolved-prefix`      |  string  | [Allow Unresolved Prefix](#allow-unresolved-prefix-string)           | Allow a specific unresolved package.         |
 | `allow-nested-vendor`          |   bool   | [Allow Nested Vendor](#allow-nested-vendor-bool)                     | Project's parent holds the desired lockfile. |
@@ -104,7 +105,11 @@ Example:
 ```yaml
     manifest: config/customManifest.toml
 ```
-#### `allow-unresolved: <bool>`            
+#### `modules-vendor: <bool>`
+
+If your project is using gomodules and relying on a vendor directory you can set this flag to ensure that go can find your dependencies. Relevant information here: https://github.com/golang/go/wiki/Modules#how-do-i-use-vendoring-with-modules-is-vendoring-going-away.
+
+#### `allow-unresolved: <bool>`
 
 If analysis finds any dependencies from `go list` that do not have a revision specified in a lockfile, analysis will fail by default. If it is acceptable to skip these packages during analysis and upload an incomplete dependency graph set `allow-unresolved: true`. This problem is usually a result of the underlying project having build issues. 
 

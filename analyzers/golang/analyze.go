@@ -179,7 +179,7 @@ func ListLockfileResolution(a *Analyzer) (graph.Deps, error) {
 	for _, buildTag := range a.BuildTags {
 		// Use `go list` to get imports and deps of module.
 		flags := []string{"-tags", buildTag}
-		main, err := a.Go.ListOne(m.BuildTarget, flags)
+		main, err := a.Go.ListOne(m.BuildTarget, flags, a.Options.ModulesVendor)
 		if err != nil {
 			return graph.Deps{}, err
 		}
@@ -190,7 +190,7 @@ func ListLockfileResolution(a *Analyzer) (graph.Deps, error) {
 		}
 
 		log.Debugf("Go main package: %#v", main)
-		deps, err := a.Go.List(main.Deps, flags)
+		deps, err := a.Go.List(main.Deps, flags, a.Options.ModulesVendor)
 		if err != nil {
 			return graph.Deps{}, err
 		}

@@ -56,8 +56,8 @@ type GoListPackageError struct {
 }
 
 // ListOne runs List for a single package.
-func (g *Go) ListOne(pkg string, flags []string) (Package, error) {
-	pkgs, err := g.List([]string{pkg}, flags)
+func (g *Go) ListOne(pkg string, flags []string, vendor bool) (Package, error) {
+	pkgs, err := g.List([]string{pkg}, flags, vendor)
 	if err != nil {
 		return Package{}, err
 	}
@@ -68,10 +68,13 @@ func (g *Go) ListOne(pkg string, flags []string) (Package, error) {
 }
 
 // List runs `go list` to return information about packages.
-func (g *Go) List(pkgs, flags []string) ([]Package, error) {
+func (g *Go) List(pkgs, flags []string, vendor bool) ([]Package, error) {
 	// Run `go list -json $PKG` and unmarshal output.
 	var output []GoListOutput
 	argv := append(flags, pkgs...)
+	if vendor {
+		argv = append([]string{"-mod=vendor"}, argv...)
+	}
 	stdout, stderr, err := exec.Run(exec.Cmd{
 		Name: g.Cmd,
 		Argv: append([]string{"list", "-json"}, argv...),
