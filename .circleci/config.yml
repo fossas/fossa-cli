@@ -152,7 +152,7 @@ jobs:
       - run:
           name: Install and run goreleaser
           command: |
-            curl -sL https://git.io/goreleaser | bash
+            curl -sL https://git.io/goreleaser | GOVERSION=`go version` bash -s -- --rm-dist
 workflows:
   version: 2
   tests:
