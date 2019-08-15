@@ -6,6 +6,7 @@ BIN=$(shell go env GOPATH)/bin
 DEP=$(BIN)/dep
 GO_BINDATA=$(BIN)/go-bindata
 GENNY=$(BIN)/genny
+GOLANGCI_LINT=$(BIN)/golangci-lint
 
 ## Test tools.
 GO_JUNIT_REPORT=$(BIN)/go-junit-report
@@ -30,6 +31,9 @@ $(GO_BINDATA):
 
 $(GENNY):
 	go get -u -v github.com/cheekybits/genny
+
+$(GOLANGCI_LINT):
+	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
 
 $(GO_JUNIT_REPORT):
 	go get -u -v github.com/jstemmer/go-junit-report
@@ -85,6 +89,10 @@ dev-osx: docker-$(IMAGE)
 	docker run --rm -it \
 		-v $$GOPATH/src/github.com/fossas/fossa-cli:/home/fossa/go/src/github.com/fossas/fossa-cli \
 		fossa/fossa-cli:$(IMAGE) /bin/bash
+
+.PHONY: lint
+lint: $(GOLANGCI_LINT)
+	golangci-lint run
 
 .PHONY: vendor
 vendor: $(DEP)
