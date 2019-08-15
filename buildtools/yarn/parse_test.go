@@ -112,7 +112,7 @@ func TestRevisionsResolvingNotToSuffix(t *testing.T) {
 }
 
 func AssertDeps(t *testing.T, transitiveDeps map[pkg.ID]pkg.Package, name, revision string) {
-	for pkgID, _ := range transitiveDeps {
+	for pkgID := range transitiveDeps {
 		if pkgID.Name == name && pkgID.Revision == revision {
 			return
 		}
