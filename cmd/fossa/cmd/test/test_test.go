@@ -14,6 +14,7 @@ import (
 
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/test"
+	"github.com/fossas/fossa-cli/errors"
 )
 
 // taskStatus is a struct that imitates the anonymous struct within fossa.Build
@@ -25,13 +26,13 @@ type mockServer struct {
 	Responses []interface{}
 }
 
-func (server *mockServer) nextResponse() interface{} {
+func (server *mockServer) nextResponse() (interface{}, error) {
 	if len(server.Responses) == 0 {
-		return nil
+		return nil, errors.New("no more responses left")
 	}
 	resp := server.Responses[0]
 	server.Responses = server.Responses[1:]
-	return resp
+	return resp, nil
 }
 
 // TestSuccessfullTest tests the `fossa test` test command and ensures that it properly
@@ -64,7 +65,8 @@ func TestSuccessfullTest(t *testing.T) {
 // testCustomTestServer dequeues the first item in server.Responses, marshals it, and responds with it.
 func testCustomTestServer(t *testing.T, server *mockServer) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp := server.nextResponse()
+		resp, err := server.nextResponse()
+		assert.Nil(t, err)
 		response, err := json.Marshal(resp)
 		if err != nil {
 			t.Fatalf("Failed to unmarshal JSON: %s", err)
