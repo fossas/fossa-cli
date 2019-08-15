@@ -2,6 +2,9 @@ package module
 
 import (
 	"path/filepath"
+	"strings"
+
+	"github.com/apex/log"
 
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/graph"
@@ -64,6 +67,9 @@ type TaggedGraph struct {
 
 func (a AnalyzerV2) ScanModule(folder Filepath, strategies DiscoveredStrategies) ([]TaggedGraph, *errors.Error) {
 	var results []TaggedGraph
+	var optimalTroubleshooting []string
+	var allTroubleshooting []string
+
 	for _, name := range a.Strategies.SortedNames {
 		discovered, ok := strategies[name]
 		if !ok {
@@ -72,7 +78,11 @@ func (a AnalyzerV2) ScanModule(folder Filepath, strategies DiscoveredStrategies)
 
 		result, err := a.Strategies.Named[name](folder, filepath.Join(folder, strategies[name]))
 		if err != nil {
-			// TODO: this err is when an individual strategy fails
+			if find(name, a.Strategies.Optimal) {
+				optimalTroubleshooting = append(optimalTroubleshooting, err.Troubleshooting)
+			}
+			allTroubleshooting = append(allTroubleshooting, err.Troubleshooting)
+			log.Debugf(`%s: Error when running "%s" strategy on %s: %s`, a.Name, name, folder, err.Error())
 			continue
 		}
 
@@ -82,6 +92,37 @@ func (a AnalyzerV2) ScanModule(folder Filepath, strategies DiscoveredStrategies)
 		})
 	}
 
-	// TODO: warning about optimal strategies
+	var troubleshooting string
+	if len(optimalTroubleshooting) > 0 {
+		// TODO: we need a better method for this, maybe in the errors package -- to combine a bunch of errors into a useful one
+		troubleshooting = strings.Join(optimalTroubleshooting, " OR ")
+	} else {
+		troubleshooting = strings.Join(allTroubleshooting, " OR ")
+	}
+
+	if len(results) == 0 {
+		return nil, &errors.Error{
+			// TODO: link
+			Type: errors.Unknown,
+			Message: "All strategies failed",
+			Troubleshooting: troubleshooting,
+		}
+	}
+
+	if !find(results[0].Strategy, a.Strategies.Optimal) && len(optimalTroubleshooting) > 0 {
+		// TODO: better messages
+		log.Warnf("Failed to run optimal strategies. This may produce worse or incomplete dependency graphs")
+		log.Warnf("TROUBLESHOOTING: %s", strings.Join(optimalTroubleshooting, " OR "))
+	}
+
 	return results, nil
+}
+
+func find(elem string, elems []string) bool {
+	for _, e := range elems {
+		if e == elem {
+			return true
+		}
+	}
+	return false
 }
