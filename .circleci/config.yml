@@ -147,6 +147,7 @@ jobs:
       - run:
           name: Tag branch for release 
           command: |
+            [[ $CLI_RELEASE_TAG == v* ]]
             git tag $CLI_RELEASE_TAG
       - run:
           name: Install and run goreleaser
@@ -170,5 +171,3 @@ workflows:
           filters:
             branches:
               only: master
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*
