@@ -139,26 +139,19 @@ jobs:
           path: /tmp/artifacts
   release:
     <<: *defaults
+    working_directory: /go/src/github.com/fossas/fossa-cli
     docker:
       - image: circleci/golang:1
     steps:
+      - checkout
       - run:
-          name: Make folders
-          command: mkdir -p $ARTIFACTS
-      - run:
-          name: Install CLI
+          name: Tag branch for release 
           command: |
-            curl https://raw.githubusercontent.com/fossas/fossa-cli/$CIRCLE_SHA1/install.sh | bash
+            git tag $CLI_RELEASE_TAG
       - run:
-          name: Run FOSSA help
+          name: Install and run goreleaser
           command: |
-            fossa help > $ARTIFACTS/fossa-installer-help-stdout 2> $ARTIFACTS/fossa-installer-help-stderr
-      - run:
-          name: Save artifacts
-          command: |
-            cp $(which fossa) $ARTIFACTS
-      - store_artifacts:
-          path: /tmp/artifacts
+            curl -sL https://git.io/goreleaser | bash
 workflows:
   version: 2
   tests:
@@ -174,3 +167,8 @@ workflows:
             - integration-test
             - end-to-end-test
             - installer-test
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /v[0-9]+(\.[0-9]+)*
