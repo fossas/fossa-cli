@@ -74,7 +74,7 @@ func Run(ctx *cli.Context) error {
 	if ctx.Bool(JSON) {
 		json, err := json.Marshal(issues)
 		if err != nil {
-			return err
+			log.Fatalf("Unable to display results in JSON format: ", err.Error())
 		}
 		output = string(json)
 	} else {
@@ -126,7 +126,10 @@ func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, erro
 		case <-stop:
 			return fossa.Build{}, errors.New("timed out while waiting for build")
 		default:
-			build, err := fossa.GetLatestBuild(locator)
+			build, status_code, err := fossa.GetLatestBuild(locator)
+			if status_code == 500 {
+				return fossa.Build{}, errors.New("Revision: " + locator.Revision + " not found for project: " + locator.Project)
+			}
 			if _, ok := err.(api.TimeoutError); ok {
 				time.Sleep(pollRequestDelay)
 				continue

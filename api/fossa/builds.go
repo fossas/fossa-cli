@@ -20,12 +20,12 @@ type Build struct {
 
 // GetLatestBuild loads the most recent build for a revision
 // or returns an error if the revision does not exist, or the revision has no builds.
-func GetLatestBuild(locator Locator) (Build, error) {
+func GetLatestBuild(locator Locator) (Build, int, error) {
 	var build Build
-	_, err := GetJSON(fmt.Sprintf(BuildsAPI, url.PathEscape(locator.OrgString())), &build)
+	status_code, err := GetJSON(fmt.Sprintf(BuildsAPI, url.PathEscape(locator.OrgString())), &build)
 	if err != nil {
-		return Build{}, errors.Wrap(err, "could not get Build from API")
+		return Build{}, status_code, errors.Wrap(err, "could not get Build from API")
 	}
 
-	return build, nil
+	return build, status_code, nil
 }
