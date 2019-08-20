@@ -114,3 +114,14 @@ func TestRunRetry(t *testing.T) {
 	// opposed to the 4 seconds it would take without the timeout.
 	assert.True(t, end.Sub(start) > 6*time.Second)
 }
+
+func TestRunCaptureStderr(t *testing.T) {
+	command := exec.Cmd{
+		Name: "pwd",
+		Argv: []string{"--invalid-flag"},
+	}
+	stdout, stderr, err := exec.Run(command)
+	assert.Error(t, err)
+	assert.Empty(t, stdout)
+	assert.NotEmpty(t, stderr)
+}
