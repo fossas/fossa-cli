@@ -21,7 +21,7 @@ type AuditOutput struct {
 
 // Buck defines an interface for all Buck tool implementations.
 type Buck interface {
-	Deps(bool) (graph.Deps, *errors.Error)
+	Deps(bool) (graph.Deps, error)
 }
 
 // Cmd implements Buck and defines how to retrieve buck output.
@@ -40,7 +40,7 @@ func New(target, binary string) Buck {
 
 // Deps finds and uploads the dependencies of a Buck target using the supplied command and
 // returns the dependency graph.
-func (b Setup) Deps(upload bool) (graph.Deps, *errors.Error) {
+func (b Setup) Deps(upload bool) (graph.Deps, error) {
 	locatorMap, err := uploadDeps(b, upload)
 	if err != nil {
 		return graph.Deps{}, nil
@@ -69,12 +69,12 @@ func uploadDeps(b Setup, upload bool) (map[string]fossa.Locator, *errors.Error) 
 	if targetIsWildcard(b.Target) {
 		depList, err = allSubprojectDeps(b)
 		if err != nil {
-			return locatorMap, err
+			log.Warnf("error finding all subproject dependencies: %s", err.Error())
 		}
 	} else {
 		depList, err = cmdAudit(b.Cmd, "input", b.Target)
 		if err != nil {
-			return locatorMap, err
+			log.Warnf("error finding dependencies for target %s: %s", b.Target, err.Error())
 		}
 	}
 
@@ -113,7 +113,7 @@ func allSubprojectDeps(b Setup) (AuditOutput, *errors.Error) {
 
 	targets, err := cmdTargets(b.Cmd, b.Target)
 	if err != nil {
-		return allInputs, err
+		log.Warnf("error finding targets for %s:d %s", b.Target, err.Error())
 	}
 
 	targetInputLists := make(chan AuditOutput, len(targets))
@@ -154,12 +154,12 @@ func depGraph(b Setup, locatorMap map[string]fossa.Locator) (map[pkg.ID]pkg.Pack
 		var err *errors.Error
 		allDependencies, err = cmdTargets(b.Cmd, b.Target)
 		if err != nil {
-			return transitiveDeps, err
+			log.Warnf("error finding targets for %s:d %s", b.Target, err.Error())
 		}
 	} else {
 		depList, err := cmdAudit(b.Cmd, "dependencies", b.Target, "--transitive")
 		if err != nil {
-			return transitiveDeps, err
+			log.Warnf("error finding dependencies for target %s: %s", b.Target, err.Error())
 		}
 		allDependencies = depList.OutputMapping[b.Target]
 	}
@@ -212,12 +212,12 @@ func directDeps(b Setup, locatorMap map[string]fossa.Locator) ([]pkg.Import, *er
 		var err *errors.Error
 		directDeps, err = cmdTargets(b.Cmd, b.Target)
 		if err != nil {
-			return imports, err
+			log.Warnf("error finding targets for %s:d %s", b.Target, err.Error())
 		}
 	} else {
 		deps, err := cmdAudit(b.Cmd, "dependencies", b.Target)
 		if err != nil {
-			return imports, err
+			log.Warnf("error finding dependencies for target %s: %s", b.Target, err.Error())
 		}
 		directDeps = deps.OutputMapping[b.Target]
 	}
