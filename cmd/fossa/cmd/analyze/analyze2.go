@@ -1,16 +1,16 @@
 package analyze
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/fossas/fossa-cli/api/fossa"
 
 	"github.com/apex/log"
-	"github.com/urfave/cli"
-	"gopkg.in/yaml.v2"
-
 	"github.com/fossas/fossa-cli/analyzers/nodejs"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/module"
+	"github.com/urfave/cli"
 )
 
 var NewCmd = cli.Command{
@@ -47,9 +47,9 @@ func NewRun(ctx *cli.Context) error {
 
 	res := NewDo()
 
-	// TODO: remove the below -- it's all adapter/legacy code
+	// TODO: remove the below -- just for demo / dev purposes
 
-	marshalled, _ := yaml.Marshal(res)
+	marshalled, _ := json.Marshal(fossa.ApiFormatModules(res))
 	fmt.Println(string(marshalled))
 
 	// TODO: normalize, show output (flag), upload

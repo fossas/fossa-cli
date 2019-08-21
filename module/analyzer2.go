@@ -61,8 +61,8 @@ type TaggedGraph struct {
 	Strategy StrategyName
 	// The file that led to this analysis, most often the file
 	// analyzed by the relevant strategy
-	File     Filepath
-	Graph    graph.Deps
+	File  Filepath
+	Graph graph.Deps
 }
 
 func (a AnalyzerV2) ScanModule(folder Filepath, strategies DiscoveredStrategies) ([]TaggedGraph, *errors.Error) {
@@ -76,7 +76,9 @@ func (a AnalyzerV2) ScanModule(folder Filepath, strategies DiscoveredStrategies)
 			continue
 		}
 
-		result, err := a.Strategies.Named[name](folder, filepath.Join(folder, strategies[name]))
+		targetFile := filepath.Join(folder, strategies[name])
+
+		result, err := a.Strategies.Named[name](folder, targetFile)
 		if err != nil {
 			if find(name, a.Strategies.Optimal) {
 				optimalTroubleshooting = append(optimalTroubleshooting, err.Troubleshooting)
@@ -87,6 +89,7 @@ func (a AnalyzerV2) ScanModule(folder Filepath, strategies DiscoveredStrategies)
 		}
 
 		results = append(results, TaggedGraph{
+			File:     targetFile,
 			Strategy: discovered,
 			Graph:    result,
 		})
@@ -103,8 +106,8 @@ func (a AnalyzerV2) ScanModule(folder Filepath, strategies DiscoveredStrategies)
 	if len(results) == 0 {
 		return nil, &errors.Error{
 			// TODO: link
-			Type: errors.Unknown,
-			Message: "All strategies failed",
+			Type:            errors.Unknown,
+			Message:         "All strategies failed",
 			Troubleshooting: troubleshooting,
 		}
 	}
