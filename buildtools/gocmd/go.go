@@ -4,6 +4,7 @@ package gocmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/fossas/fossa-cli/errors"
@@ -75,18 +76,32 @@ func (g *Go) List(pkgs, flags []string, vendor bool) ([]Package, error) {
 	if vendor {
 		argv = append([]string{"-mod=vendor"}, argv...)
 	}
-	stdout, stderr, err := exec.Run(exec.Cmd{
+	cmd := exec.Cmd{
 		Name: g.Cmd,
 		Argv: append([]string{"list", "-json"}, argv...),
 		Dir:  g.Dir,
-	})
+	}
+	stdout, stderr, err := exec.Run(cmd)
 	if err != nil && stdout == "" {
 		if strings.Contains(stderr, "build constraints exclude all Go files") {
 			// TODO: add better documentation around this error, and rename it to be
 			// more useful.
 			return nil, errors.New("bad OS/architecture target")
 		}
-		return nil, errors.Errorf("could not run go list: %s (%s)", strings.TrimSpace(stderr), err)
+		msg := fmt.Sprintf(
+			"Fossa could not run command %v in directory %s. "+
+				"Ensure that Go is installed and try running this command on "+
+				"your own.\nstderr: %s",
+			append([]string{cmd.Name}, cmd.Argv...),
+			cmd.Dir,
+			strings.TrimSpace(stderr),
+		)
+		return nil, &errors.Error{
+			Cause:           err,
+			Type:            errors.Exec,
+			Troubleshooting: msg,
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/golang.md#analysis",
+		}
 	}
 	// The output for each package is valid JSON, but the output overall is not
 	// valid JSON until we massage it a bit.

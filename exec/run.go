@@ -131,10 +131,10 @@ func toEnv(env map[string]string) []string {
 
 // BuildExec translates FOSSA exec structures into standard library exec
 // commands.
-func BuildExec(cmd Cmd) (*exec.Cmd, bytes.Buffer) {
-	var stderr bytes.Buffer
+func BuildExec(cmd Cmd) (*exec.Cmd, *bytes.Buffer) {
+	stderr := new(bytes.Buffer)
 	xc := exec.Command(cmd.Name, cmd.Argv...)
-	xc.Stderr = &stderr
+	xc.Stderr = stderr
 
 	if cmd.Dir != "" {
 		xc.Dir = cmd.Dir
