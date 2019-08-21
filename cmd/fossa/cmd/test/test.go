@@ -72,7 +72,11 @@ func Run(ctx *cli.Context) error {
 	if ctx.Bool(JSON) {
 		json, err := json.Marshal(issues)
 		if err != nil {
-			return errors.UnknownError(err, "")
+			return &errors.Error{
+				Cause:           err,
+				Type:            errors.Unknown,
+				Troubleshooting: fmt.Sprintf("The following issues could not be marshalled into JSON:\n%+v", issues),
+			}
 		}
 		output = string(json)
 	} else {
