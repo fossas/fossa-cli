@@ -58,7 +58,7 @@ var requirementsRegex = regexp.MustCompile(`^( *?)(\S+?)(?:\!?|( \((.*?)\)\!?)?)
 // implementing parsing logic.
 type VersionSpecifier string
 
-func FromLockfile(filename string) (Lockfile, *errors.Error) {
+func FromLockfile(filename string) (Lockfile, error) {
 	contents, err := files.Read(filename)
 	if err != nil {
 		return Lockfile{}, &errors.Error{

@@ -19,7 +19,7 @@ type Gem struct {
 	Revision string
 }
 
-func (b *Bundler) List() ([]Gem, *errors.Error) {
+func (b *Bundler) List() ([]Gem, error) {
 	stdout, stderr, err := exec.Run(exec.Cmd{
 		Name: b.Cmd,
 		Argv: []string{"list"},
@@ -47,7 +47,7 @@ func (b *Bundler) List() ([]Gem, *errors.Error) {
 	return gems, nil
 }
 
-func (b *Bundler) Install(flags ...string) *errors.Error {
+func (b *Bundler) Install(flags ...string) error {
 	if flags == nil {
 		flags = []string{"--frozen", "--deployment"}
 	}
