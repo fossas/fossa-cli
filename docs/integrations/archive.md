@@ -17,7 +17,6 @@ analyze:
   modules:
     - name: your-custom-project
       type: raw
-      path: .
       target: ./<directory-or-file>
 ```
 
@@ -27,3 +26,7 @@ Archive analysis is done entirely by the FOSSA backend and the FOSSA-CLI's only 
 1. A tarball is created from all files located in the `target`.
 2. FOSSA-CLI asks FOSSA for a secure S3 endpoint to upload the created tarball.
 3. The tarball is uploaded and FOSSA begins analyzing each file individually.
+
+### Notes
+
+FOSSA treats raw modules by default as folders without dependencies and runs a license scan on each file. If you would like to run full server side FOSSA analysis you can run `fossa analyze --server-scan` which will treat the uploaded folder as its own independent project which may contain dependencies.

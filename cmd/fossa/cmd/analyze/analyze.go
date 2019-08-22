@@ -17,6 +17,7 @@ import (
 )
 
 var ShowOutput = "output"
+var ServerScan = "server-scan"
 
 var Cmd = cli.Command{
 	Name:      "analyze",
@@ -25,6 +26,7 @@ var Cmd = cli.Command{
 	ArgsUsage: "MODULE",
 	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithOptions([]cli.Flag{
 		cli.BoolFlag{Name: "show-output, output, o", Usage: "print results to stdout instead of uploading to FOSSA"},
+		cli.BoolFlag{Name: ServerScan, Usage: "run a server side dependency scan instead of a raw license scan (only raw modules)"},
 		flags.TemplateF,
 	}))),
 }
@@ -45,10 +47,16 @@ func Run(ctx *cli.Context) error {
 		log.Fatal("No modules specified.")
 	}
 
-	analyzed, err := Do(modules, !ctx.Bool(ShowOutput))
+	rawModuleLicenseScan := !ctx.Bool(ServerScan)
+	analyzed, err := Do(modules, !ctx.Bool(ShowOutput), rawModuleLicenseScan)
 	if err != nil {
 		log.Fatalf("Could not analyze modules: %s", err.Error())
 		return err
+	}
+
+	// Return if we only analyzed a raw module because we do not need to insert it into a dependency graph.
+	if !rawModuleLicenseScan && len(analyzed) == 0 {
+		return nil
 	}
 
 	log.Debugf("analyzed: %#v", analyzed)
@@ -78,7 +86,10 @@ func Run(ctx *cli.Context) error {
 	return uploadAnalysis(normalized)
 }
 
-func Do(modules []module.Module, upload bool) (analyzed []module.Module, err error) {
+// Do runs the analysis function for all modules and also handles raw module uploads. `rawModuleLicenseScan` determines whether
+// FOSSA core should only run a complete license scan or it should treat the upload as an independent project and attempt
+// to find dependencies.
+func Do(modules []module.Module, upload, rawModuleLicenseScan bool) (analyzed []module.Module, err error) {
 	defer display.ClearProgress()
 	for i, m := range modules {
 		display.InProgress(fmt.Sprintf("Analyzing module (%d/%d): %s", i+1, len(modules), m.Name))
@@ -88,10 +99,17 @@ func Do(modules []module.Module, upload bool) (analyzed []module.Module, err err
 		// TODO: maybe this should target a third-party folder, rather than a single
 		// folder? Maybe "third-party folder" should be a separate module type?
 		if m.Type == pkg.Raw {
-			locator, err := fossa.UploadTarballDependency(m.BuildTarget, upload, true)
+			locator, err := fossa.UploadTarball(m.BuildTarget, rawModuleLicenseScan, rawModuleLicenseScan, upload)
 			if err != nil {
 				log.Warnf("Could not upload raw module: %s", err.Error())
 			}
+
+			// If the scan is not a raw license scan then we should not attempt to create a dependency graph.
+			if !rawModuleLicenseScan {
+				fmt.Printf("\nReport for raw module: %s", locator.ReportURL())
+				continue
+			}
+
 			id := pkg.ID{
 				Type:     pkg.Raw,
 				Name:     locator.Project,

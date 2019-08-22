@@ -214,15 +214,16 @@ Analyzes the project for a list of its dependencies, optionally uploading the re
 FOSSA_API_KEY=YOUR_API_KEY fossa analyze
 ```
 
-| Flag         | Short | Description                                                                  |
-| ------------ | ----- | ---------------------------------------------------------------------------- |
-| `--config`   | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.     |
-| `--project`  | `-p`  | Configuration value for [project](/docs/config-file.md/#project-optional).   |
-| `--revision` | `-r`  | Configuration value for [revision](/docs/config-file.md/#revision-optional). |
-| `--endpoint` | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional). |
-| `--output`   | `-o`  | Output `fossa analyze` results to stdout.                                    |
-| `--debug`    |       | Print debugging information to stderr.                                       |
-| `--help`     | `-h`  | Print a help message.                                                        |
+| Flag            | Short | Description                                                                  |
+| --------------- | ----- | ---------------------------------------------------------------------------- |
+| `--config`      | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.     |
+| `--project`     | `-p`  | Configuration value for [project](/docs/config-file.md/#project-optional).   |
+| `--revision`    | `-r`  | Configuration value for [revision](/docs/config-file.md/#revision-optional). |
+| `--endpoint`    | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional). |
+| `--output`      | `-o`  | Output `fossa analyze` results to stdout.                                    |
+| `--server-scan` |       | Run a server side dependency scan on raw modules.                            |
+| `--debug`       |       | Print debugging information to stderr.                                       |
+| `--help`        | `-h`  | Print a help message.                                                        |
 
 ### `fossa test`
 Checks whether the project has licensing issues, as configured by its policy within FOSSA. If there are issues, it prints them on `stdout` and exits with code 1. If there are not issues, it exits with code 0. Fossa test can be used to fail a CI pipeline job.
