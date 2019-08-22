@@ -17,7 +17,7 @@ archive:
     - goos: windows
       format: zip
 release:
-  prerelease: true
+  prerelease: false
 brews:
   -
     name: fossa
