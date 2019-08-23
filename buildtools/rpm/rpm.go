@@ -2,9 +2,12 @@ package rpm
 
 import (
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/apex/log"
+	"github.com/remeh/sizedwaitgroup"
 
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/exec"
@@ -105,30 +108,37 @@ func (s Shell) SystemPackages() (graph.Deps, error) {
 		dependencies = append(dependencies, dependencyFromOutput(line))
 	}
 
+	wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
+	mapLock := sync.RWMutex{}
 	depGraph := graph.Deps{
 		Transitive: map[pkg.ID]pkg.Package{},
 	}
-
-	//TODO: Concurrency
-	for _, dep := range dependencies {
-		// 1. Try to upload the copyright files in the system license directory. 70% are usually here.
-		locator, err := fossa.UploadTarballDependency(filepath.Join(s.LicenseDirectory, dep.name), s.Upload, true)
-		if err != nil {
-			// 2. Upload the RPM declared license if the copyright files do not exist. This is normally always present.
-			locator, err = fossa.UploadTarballString(dep.name, dep.license, true, true, s.Upload)
+	for _, d := range dependencies {
+		wg.Add()
+		go func(dep dependency) {
+			defer wg.Done()
+			// 1. Try to upload the copyright files in the system license directory. 70% are usually here.
+			locator, err := fossa.UploadTarballDependency(filepath.Join(s.LicenseDirectory, dep.name), s.Upload, true)
 			if err != nil {
-				log.Warnf("Error uploading %v: %+v", locator, err)
+				// 2. Upload the RPM declared license if the copyright files do not exist. This is normally always present.
+				locator, err = fossa.UploadTarballString(dep.name, dep.license, true, true, s.Upload)
+				if err != nil {
+					log.Warnf("Error uploading %v: %+v", locator, err)
+				}
 			}
-		}
 
-		depID := pkg.ID{
-			Type:     pkg.Raw,
-			Name:     locator.Project,
-			Revision: locator.Revision,
-		}
-		depGraph.Transitive[depID] = pkg.Package{ID: depID}
-		depGraph.Direct = append(depGraph.Direct, pkg.Import{Target: locator.Project, Resolved: depID})
+			depID := pkg.ID{
+				Type:     pkg.Raw,
+				Name:     locator.Project,
+				Revision: locator.Revision,
+			}
+			mapLock.Lock()
+			depGraph.Transitive[depID] = pkg.Package{ID: depID}
+			depGraph.Direct = append(depGraph.Direct, pkg.Import{Target: locator.Project, Resolved: depID})
+			mapLock.Unlock()
+		}(d)
 	}
+	wg.Wait()
 
 	return depGraph, nil
 }
