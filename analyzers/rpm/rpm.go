@@ -10,7 +10,7 @@ import (
 
 type Analyzer struct {
 	Module  module.Module
-	Cmd     rpm.Cmd
+	RPM     rpm.Shell
 	Options Options
 }
 type Options struct {
@@ -33,7 +33,7 @@ func New(m module.Module) (*Analyzer, error) {
 		Module: m,
 
 		Options: options,
-		Cmd:     rpm.New(),
+		RPM:     rpm.ShellOutput(),
 	}, nil
 }
 
@@ -52,7 +52,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 // Analyze for RPM takes a user specified rpm package and uploads all transitive dependencies.
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	if a.Module.BuildTarget == "." || a.Options.Strategy == "system" {
-		return a.Cmd.SystemPackages()
+		return a.RPM.SystemPackages()
 	}
-	return a.Cmd.SinglePackage(a.Module.BuildTarget)
+	return a.RPM.SinglePackage(a.Module.BuildTarget)
 }
