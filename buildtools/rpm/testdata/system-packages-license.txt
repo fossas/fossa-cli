@@ -1,2 +1,0 @@
-dep-one,1.0.0,GPLv2+
-dep-two,2.0.0,LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL

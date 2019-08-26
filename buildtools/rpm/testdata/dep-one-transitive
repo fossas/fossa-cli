@@ -1,0 +1,5 @@
+warning: EmptyEpsilon-2018.02.15-1.fc28.src.rpm: Header V4 RSA/SHA1 Signature, key ID 7f858107: NOKEY
+dep-two
+dep-three >= 1.0.0
+rpmlib(CompressedFileNames) <= 3.0.4-1
+rpmlib(FileDigests) <= 4.6.0-1

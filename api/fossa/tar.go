@@ -141,10 +141,6 @@ func CreateTarballFromString(filename, str string) (*os.File, []byte, error) {
 	// undefined, but safe in practice.
 	// See https://github.com/golang/go/issues/20705.
 
-	if err != nil {
-		return nil, nil, err
-	}
-
 	// Clean up and flush writers.
 	err = t.Flush()
 	if err != nil {

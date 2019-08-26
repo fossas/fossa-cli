@@ -1,6 +1,38 @@
 package rpm
 
+// RPM Analysis analyzes system level RPMs
+// and single RPMs, butlicense information
+// is obtained the same way for both.
+//
+// License Information can be obtained in two different ways.
+// 1. The output of running rpm with `--queryformat %{name},%{version},%{license}\n`
+// 	returns the license information that the maintainer of
+// 	each package has set (Declared License).
+// 2. Installed packages store their copyright information in
+// 	a licenses directory, usually at `usr/share/licenses`.
+// 	This information is significantly more accurate as it
+//	includes full license files. This method is preferred
+//	to finding declared license information.
+//
+// System Level: Attempt to analyze all installed RPM packages.
+// 1. Run `rpm -qa --queryformat %{name},%{version},%{license}\n`
+// 	To return information about every installed RPM.
+// 2. Find the correct license for each dependency.
+// 3. Upload the license and retrieve its fossa locator.
+// 4. Associate these locators with the project and construct the graph.
+//
+// Single Package:
+// 1. Run `yum install RPM` to install the dependency. This is
+// 	not mandatory but will provide better license information.
+// 2. Run `rpm -qR RPM` get the dependency's required dependencies.
+// 3. Recursively run steps 1 and 2 until all dependencies have been installed.
+// 4. Find the correct license for each dependency.
+// 5. Upload license information for each dependency and save the locator.
+// 6. Construct the dependency graph using the saved locators which are stored
+//	in a map that has a reference to their dependency name.
+
 import (
+	"fmt"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -10,6 +42,7 @@ import (
 	"github.com/remeh/sizedwaitgroup"
 
 	"github.com/fossas/fossa-cli/api/fossa"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
@@ -21,13 +54,15 @@ const licenseDirectory = "/usr/share/licenses"
 type Shell struct {
 	LicenseDirectory string
 	Upload           bool
-	Cmd              func(...string) (string, error)
+	RPM              func(...string) (string, string, error)
+	Yum              func(...string) (string, string, error)
 }
 
 type dependency struct {
-	name     string
-	revision string
-	license  string
+	name         string
+	revision     string
+	license      string
+	dependencies []dependency
 }
 
 // ShellOutput creates a Shell which shells out to rpm to generate values to return.
@@ -35,69 +70,186 @@ func ShellOutput() Shell {
 	return Shell{
 		LicenseDirectory: licenseDirectory,
 		Upload:           true,
-		Cmd: func(argv ...string) (string, error) {
-			out, _, _ := exec.Run(exec.Cmd{
-				Name: "rpm",
-				Argv: argv,
-			})
-			return out, nil
+		RPM: func(argv ...string) (string, string, error) {
+			out, stdout, err := exec.Run(exec.Cmd{Name: "rpm", Argv: argv})
+			return out, stdout, err
+		},
+		Yum: func(argv ...string) (string, string, error) {
+			out, stdout, err := exec.Run(exec.Cmd{Name: "rpm", Argv: argv})
+			return out, stdout, err
 		},
 	}
 }
 
-func (s Shell) allPackagesCmd() (string, error) {
-	output, err := s.Cmd("-qa", "--queryformat", "%{name},%{version},%{license}\n")
+func (s Shell) allPackagesRPM() (string, *errors.Error) {
+	arguments := []string{"-qa", "--queryformat", "%{name},%{version},%{license}\n"}
+	stdout, stderr, err := s.RPM(arguments...)
 	if err != nil {
-		return "", err
+		return "", &errors.Error{
+			Cause:           err,
+			Type:            errors.Exec,
+			Troubleshooting: fmt.Sprintf("The command rpm %+v could not be run and information about the systems dependencies could not be retrieved. Try running this command on your own and ensure that RPM is installed before filing a bug.\nstderr: %s\nstdout: %s", arguments, stderr, stdout),
+			Link:            "link about qa command",
+		}
 	}
-	return output, nil
+	return stdout, nil
 }
 
-func (s Shell) singlePackageCmd(target string) (string, error) {
-	output, err := s.Cmd("-q", "--queryformat", "%{name},%{version},%{license}\n", target)
+func (s Shell) singlePackageRPM(target string) (string, *errors.Error) {
+	arguments := append([]string{"-q", "--queryformat", "%{name},%{version},%{license}\n"}, target)
+	stdout, stderr, err := s.RPM(arguments...)
 	if err != nil {
-		return "", err
+		return "", &errors.Error{
+			Cause:           err,
+			Type:            errors.Exec,
+			Troubleshooting: fmt.Sprintf("The command rpm %+v could not be run and information about %s could not be retrieved. Try running this command on your own, if that fails try to first install %s.\nstderr: %s\nstdout: %s", arguments, target, target, stderr, stdout),
+			Link:            "link about -q command",
+		}
 	}
-	return output, nil
+	return stdout, nil
+
+}
+
+func (s Shell) transitiveDepsRPM(target string) (string, *errors.Error) {
+	arguments := append([]string{"-qR"}, target)
+	stdout, stderr, err := s.RPM(arguments...)
+	if err != nil {
+		return "", &errors.Error{
+			Cause:           err,
+			Type:            errors.Exec,
+			Troubleshooting: fmt.Sprintf("The command rpm %+v could not be run and information about %s's dependencies could not be retrieved. Try running this command on your own, if that fails try to first install %s.\nstderr: %s\nstdout: %s", arguments, target, target, stderr, stdout),
+			Link:            "link about -q command",
+		}
+	}
+	return stdout, nil
+}
+
+func (s Shell) yumInstall(target string) *errors.Error {
+	arguments := append([]string{"install"}, target)
+	stdout, stderr, err := s.Yum(arguments...)
+	if err != nil {
+		return &errors.Error{
+			Cause:           err,
+			Type:            errors.Exec,
+			Troubleshooting: fmt.Sprintf("The command yum %+v could not be run and %s could not be installed.\nstderr: %s\nstdout: %s", arguments, target, stderr, stdout),
+			Link:            "link about yum install",
+			Message:         "This may not cause any issues but could prevent accurate dependency and license information from being found. If you believe this dependency does not need to be installed and accurate information has been found please ignore this error.",
+		}
+	}
+	return nil
+}
+
+// Parse rpm output for package names. Packages can be listed
+// multiple times, so we store the information in a map so that
+// we do not need to dedupe a list at the end.
+func parseTransitive(output string) []string {
+	uniqueDependencies := make(map[string]bool)
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		dep := strings.Split(line, " ")[0]
+		depName := strings.Split(dep, "(")[0]
+		if depName == "" || strings.Contains(depName, "warning") {
+			continue
+		}
+		if depName == "rpmlib" {
+			depName = "rpm"
+		}
+		uniqueDependencies[depName] = true
+	}
+
+	dependencies := make([]string, 0, len(uniqueDependencies))
+	for key := range uniqueDependencies {
+		dependencies = append(dependencies, key)
+	}
+
+	return dependencies
+}
+
+// Recursively attempt to install dependencies.
+func recursiveInstall(target string, s Shell) (map[string][]string, error) {
+	err := s.yumInstall(target)
+	if err != nil {
+		log.Warn(err.Error())
+	}
+
+	output, err := s.transitiveDepsRPM(target)
+	if err != nil {
+		return map[string][]string{}, err
+	}
+
+	deps := make(map[string][]string)
+	deps[target] = parseTransitive(output)
+	for _, dep := range deps[target] {
+		transitiveDependencies, err := recursiveInstall(dep, s)
+		if err != nil {
+			return map[string][]string{}, err
+		}
+
+		for transitiveDep, transitiveList := range transitiveDependencies {
+			deps[transitiveDep] = transitiveList
+		}
+	}
+
+	return deps, nil
 }
 
 // SinglePackage uploads license information pertaining to a single dependency and its dependencies.
+// This function maintains a dependencyMap which references dependency names to their transitive
+// dependencies and an IDMap which references a dependency to its fossa ID.
 func (s Shell) SinglePackage(target string) (graph.Deps, error) {
-	output, err := s.singlePackageCmd(target)
+	depMap, err := recursiveInstall(target, s)
 	if err != nil {
 		return graph.Deps{}, err
 	}
-	dep := dependencyFromOutput(output)
 
-	locator, err := fossa.UploadTarballString(dep.name, dep.license, true, true, s.Upload)
-	// TODO: Return a nice error
-	if err != nil {
-		log.Debugf("Error uploading %v: %+v", locator, err)
+	IDMap := make(map[string]pkg.ID)
+	for dep := range depMap {
+		// Retrieve version and license guess for each dependency.
+		output, err := s.singlePackageRPM(dep)
+		if err != nil {
+			return graph.Deps{}, err
+		}
+
+		parsedDependency := dependencyFromOutput(output)
+		locator, err := findAndUploadLicense(parsedDependency, s.LicenseDirectory, s.Upload)
+		if err != nil {
+			return graph.Deps{}, err
+		}
+
+		IDMap[dep] = pkg.ID{
+			Type:     pkg.Raw,
+			Name:     locator.Project,
+			Revision: locator.Revision,
+		}
 	}
 
 	depGraph := graph.Deps{
+		Direct:     []pkg.Import{pkg.Import{Target: target, Resolved: IDMap[target]}},
 		Transitive: make(map[pkg.ID]pkg.Package),
-		Direct:     []pkg.Import{},
 	}
-	depID := pkg.ID{
-		Type:     pkg.Raw,
-		Name:     locator.Project,
-		Revision: locator.Revision,
-	}
-	depGraph.Direct = append(depGraph.Direct, pkg.Import{
-		Target:   dep.name,
-		Resolved: depID,
-	})
 
-	depGraph.Transitive[depID] = pkg.Package{
-		ID: depID,
+	for _, id := range IDMap {
+		imports := []pkg.Import{}
+
+		for _, dep := range depMap[id.Name] {
+			imports = append(imports, pkg.Import{
+				Target:   dep,
+				Resolved: IDMap[dep],
+			})
+		}
+
+		depGraph.Transitive[id] = pkg.Package{
+			ID:      id,
+			Imports: imports,
+		}
 	}
+
 	return depGraph, nil
 }
 
 // SystemPackages uploads license information for all system level dependencies.
 func (s Shell) SystemPackages() (graph.Deps, error) {
-	output, err := s.allPackagesCmd()
+	output, err := s.allPackagesRPM()
 	if err != nil {
 		return graph.Deps{}, err
 	}
@@ -117,14 +269,10 @@ func (s Shell) SystemPackages() (graph.Deps, error) {
 		wg.Add()
 		go func(dep dependency) {
 			defer wg.Done()
-			// 1. Try to upload the copyright files in the system license directory. 70% are usually here.
-			locator, err := fossa.UploadTarballDependency(filepath.Join(s.LicenseDirectory, dep.name), s.Upload, true)
+
+			locator, err := findAndUploadLicense(dep, s.LicenseDirectory, s.Upload)
 			if err != nil {
-				// 2. Upload the RPM declared license if the copyright files do not exist. This is normally always present.
-				locator, err = fossa.UploadTarballString(dep.name, dep.license, true, true, s.Upload)
-				if err != nil {
-					log.Warnf("Error uploading %v: %+v", locator, err)
-				}
+				log.Warn(err.Error())
 			}
 
 			depID := pkg.ID{
@@ -132,6 +280,7 @@ func (s Shell) SystemPackages() (graph.Deps, error) {
 				Name:     locator.Project,
 				Revision: locator.Revision,
 			}
+
 			mapLock.Lock()
 			depGraph.Transitive[depID] = pkg.Package{ID: depID}
 			depGraph.Direct = append(depGraph.Direct, pkg.Import{Target: locator.Project, Resolved: depID})
@@ -141,6 +290,26 @@ func (s Shell) SystemPackages() (graph.Deps, error) {
 	wg.Wait()
 
 	return depGraph, nil
+}
+
+func findAndUploadLicense(dep dependency, licenseDir string, upload bool) (fossa.Locator, *errors.Error) {
+	// 1. Try to upload the copyright files in the system license directory. 70% are usually here.
+	locator, err := fossa.UploadTarballDependency(filepath.Join(licenseDir, dep.name), upload, true)
+	if err != nil {
+		// 2. Upload the RPM declared license if the copyright files do not exist. This is normally always present.
+		var uploadErr error
+		locator, uploadErr = fossa.UploadTarballString(dep.name, dep.license, true, true, upload)
+		if uploadErr != nil {
+			return fossa.Locator{}, &errors.Error{
+				Cause:           uploadErr,
+				Type:            errors.Unknown,
+				Troubleshooting: fmt.Sprintf("There was a problem uploading license information for %s. Ensure that you have a working network connection and that you can reach app.fossa.com.", dep.name),
+			}
+		}
+		log.Warnf("license files for dependency %s could not be found in %s and uploaded. The declared license will be used: %s", dep.name, licenseDir, err.Error())
+	}
+
+	return locator, nil
 }
 
 // Parse dependency from output format dep-name,version,license.
@@ -156,5 +325,6 @@ func dependencyFromOutput(line string) dependency {
 	if len(splitLine) > 2 {
 		newDep.license = splitLine[2]
 	}
+
 	return newDep
 }
