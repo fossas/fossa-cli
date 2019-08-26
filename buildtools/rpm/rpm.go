@@ -59,10 +59,9 @@ type Shell struct {
 }
 
 type dependency struct {
-	name         string
-	revision     string
-	license      string
-	dependencies []dependency
+	name     string
+	revision string
+	license  string
 }
 
 // ShellOutput creates a Shell which shells out to rpm to generate values to return.
