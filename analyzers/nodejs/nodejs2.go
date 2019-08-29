@@ -14,26 +14,37 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
+const (
+	AnalyzerName        = "nodejs"
+
+	YarnStrategy        = "yarn"
+	NpmStrategy         = "npm"
+	YarnLockStrategy    = "yarn.lock"
+	NpmLockStrategy     = "package-lock.json"
+	NodeModulesStrategy = "node_modules"
+	PackageJsonStrategy = "package.json"
+)
+
 var NodeAnalyzer = module.AnalyzerV2{
-	Name: "nodejs",
+	Name: AnalyzerName,
 	DiscoverFunc: NewDiscover,
 	Strategies: module.Strategies{
 		Named: map[module.StrategyName]module.Strategy{
-			"yarn":              AnalyzeYarnCmd,
-			"npm":               AnalyzeNpmCmd,
-			"yarn.lock":         AnalyzeYarnLock,
-			"package-lock.json": AnalyzeNpmLock,
-			"node_modules":      AnalyzeNodeModules,
-			"package.json":      AnalyzePackageJson,
+			YarnStrategy:        AnalyzeYarnCmd,
+			NpmStrategy:         AnalyzeNpmCmd,
+			YarnLockStrategy:    AnalyzeYarnLock,
+			NpmLockStrategy:     AnalyzeNpmLock,
+			NodeModulesStrategy: AnalyzeNodeModules,
+			PackageJsonStrategy: AnalyzePackageJson,
 		},
-		Optimal: []module.StrategyName{"yarn", "npm", "yarn.lock", "package-lock.json"},
+		Optimal: []module.StrategyName{YarnStrategy, NpmStrategy, YarnLockStrategy, NpmLockStrategy},
 		SortedNames: []module.StrategyName{
-			"yarn",
-			"yarn.lock",
-			"npm",
-			"package-lock.json",
-			"node_modules",
-			"package.json",
+			YarnStrategy,
+			NpmStrategy,
+			YarnLockStrategy,
+			NpmLockStrategy,
+			NodeModulesStrategy,
+			PackageJsonStrategy,
 		},
 	},
 }
@@ -58,7 +69,7 @@ func NewDiscover(dir module.Filepath) (map[module.Filepath]module.DiscoveredStra
 		}
 
 		if info.IsDir() && info.Name() == "node_modules" {
-			addStrategy("node_modules")
+			addStrategy(NodeModulesStrategy)
 		}
 
 		// Don't descend into **/node_modules and **/bower_components
@@ -68,18 +79,18 @@ func NewDiscover(dir module.Filepath) (map[module.Filepath]module.DiscoveredStra
 		}
 
 		if !info.IsDir() && info.Name() == "package.json" {
-			addStrategy("package.json")
-			addStrategy("npm")
+			addStrategy(PackageJsonStrategy)
+			addStrategy(NpmStrategy)
 		}
 
 		if !info.IsDir() && info.Name() == "yarn.lock" {
-			addStrategy("yarn.lock")
-			addStrategy("yarn")
+			addStrategy(YarnLockStrategy)
+			addStrategy(YarnStrategy)
 		}
 
 		if !info.IsDir() && info.Name() == "package-lock.json" {
-			addStrategy("package-lock.json")
-			addStrategy("npm")
+			addStrategy(NpmLockStrategy)
+			addStrategy(NpmStrategy)
 		}
 
 		return nil

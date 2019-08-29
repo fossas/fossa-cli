@@ -30,7 +30,7 @@ type Analysis struct {
 // discover two `npm ls` strategies
 //
 // We arbitrarily choose one file to use as the target of that strategy
-type DiscoverFuncV2 func(Filepath) (map[Filepath]DiscoveredStrategies, *errors.Error) // Map from 'module' roots to discovered strategies
+type DiscoverFuncV2 func(dir Filepath) (map[Filepath]DiscoveredStrategies, *errors.Error) // Map from 'module' roots to discovered strategies
 
 type Filepath = string
 type StrategyName = string
