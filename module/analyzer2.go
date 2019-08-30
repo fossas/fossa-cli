@@ -2,7 +2,9 @@ package module
 
 import (
 	"path/filepath"
+	"sort"
 	"strings"
+	"sync"
 
 	"github.com/apex/log"
 
@@ -15,6 +17,8 @@ type AnalyzerV2 struct {
 	DiscoverFunc DiscoverFuncV2
 	Strategies   Strategies
 }
+
+type AnalyzerV2Output map[Filepath][]Analysis
 
 // The completed analysis by an analyzer
 type Analysis struct {
@@ -65,58 +69,88 @@ type TaggedGraph struct {
 	Graph graph.Deps
 }
 
-func (a AnalyzerV2) ScanModule(folder Filepath, strategies DiscoveredStrategies) ([]TaggedGraph, *errors.Error) {
-	var results []TaggedGraph
-	var optimalTroubleshooting []string
-	var allTroubleshooting []string
+func (a AnalyzerV2) ScanModule(startJob func()error, endJob func(), folder Filepath, strategies DiscoveredStrategies) ([]TaggedGraph, *errors.Error) {
+	var wg sync.WaitGroup
 
-	for _, name := range a.Strategies.SortedNames {
-		discovered, ok := strategies[name]
-		if !ok {
-			continue
-		}
+	graphs := make(chan TaggedGraph)
+	allErrs := make(chan *errors.Error, len(strategies))
+	optimalErrs := make(chan *errors.Error, len(strategies))
 
-		targetFile := filepath.Join(folder, strategies[name])
+	for name, relPath := range strategies {
+		wg.Add(1)
+		go func(name StrategyName, relPath Filepath) {
+			defer wg.Done()
 
-		result, err := a.Strategies.Named[name](folder, targetFile)
-		if err != nil {
-			if find(name, a.Strategies.Optimal) {
-				optimalTroubleshooting = append(optimalTroubleshooting, err.Troubleshooting)
+			if err := startJob(); err != nil {
+				// TODO: better errors
+				log.Debugf("%s: Failed to acquire semaphore for strategy \"%s\": %s", a.Name, name, err.Error())
+				return
 			}
-			allTroubleshooting = append(allTroubleshooting, err.Troubleshooting)
-			log.Debugf(`%s: Error when running "%s" strategy on %s: %s`, a.Name, name, folder, err.Error())
-			continue
-		}
 
-		results = append(results, TaggedGraph{
-			File:     targetFile,
-			Strategy: discovered,
-			Graph:    result,
-		})
+			defer endJob()
+
+			result, err := a.Strategies.Named[name](folder, filepath.Join(folder, relPath))
+			if err != nil {
+				if find(name, a.Strategies.Optimal) {
+					optimalErrs <- err
+				}
+				allErrs <- err
+				return
+			}
+
+			graphs <- TaggedGraph{
+				Strategy: name,
+				File:     filepath.Join(folder, relPath),
+				Graph:    result,
+			}
+		}(name, relPath) // TODO: break out into its own function?
 	}
 
-	var troubleshooting string
-	if len(optimalTroubleshooting) > 0 {
-		// TODO: we need a better method for this, maybe in the errors package -- to combine a bunch of errors into a useful one
-		troubleshooting = strings.Join(optimalTroubleshooting, " OR ")
-	} else {
-		troubleshooting = strings.Join(allTroubleshooting, " OR ")
+	go func() {
+		wg.Wait()
+		close(graphs)
+		close(allErrs)
+		close(optimalErrs)
+	}()
+
+	var results []TaggedGraph
+
+	for graph := range graphs {
+		results = append(results, graph)
 	}
+
+	sort.Slice(results, func(i, j int) bool {
+		// TODO: this has explosive complexity
+		return find(results[i].Strategy, a.Strategies.Optimal)
+	})
 
 	if len(results) == 0 {
+		var troubleshooting []string
+		for allErr := range allErrs {
+			troubleshooting = append(troubleshooting, allErr.Troubleshooting)
+		}
+
 		return nil, &errors.Error{
 			// TODO: link
 			Type:            errors.Unknown,
 			Message:         "All strategies failed",
-			Troubleshooting: troubleshooting,
+			Troubleshooting: strings.Join(troubleshooting, " OR "),
 		}
 	}
 
-	if !find(results[0].Strategy, a.Strategies.Optimal) && len(optimalTroubleshooting) > 0 {
+	if !find(results[0].Strategy, a.Strategies.Optimal) && len(optimalErrs) > 0 {
+		var troubleshooting []string
+		for optimalErr := range optimalErrs {
+			troubleshooting = append(troubleshooting, optimalErr.Troubleshooting)
+		}
+
 		// TODO: better messages
 		log.Warnf("Failed to run optimal strategies. This may produce worse or incomplete dependency graphs")
-		log.Warnf("TROUBLESHOOTING: %s", strings.Join(optimalTroubleshooting, " OR "))
+		log.Warnf("TROUBLESHOOTING: %s", strings.Join(troubleshooting, " OR "))
 	}
+
+
+	// TODO(parallel): error reporting
 
 	return results, nil
 }
