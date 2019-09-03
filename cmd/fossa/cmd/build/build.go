@@ -65,7 +65,7 @@ func Do(m module.Module, clean, force bool) error {
 		return err
 	}
 	if clean {
-		err := analyzer.Clean()
+		err = analyzer.Clean()
 		if err != nil {
 			return errors.Wrap(err, "could not clean module build")
 		}
