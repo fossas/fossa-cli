@@ -17,6 +17,7 @@ GODOWNLOADER=$(BIN)/godownloader
 ## Configurations.
 IMAGE?=buildtools
 GORELEASER_FLAGS?=--rm-dist
+GCFLAGS:=-gcflags 'all=-trimpath=${GOPATH}'
 LDFLAGS:=-ldflags '-extldflags "-static" -X github.com/fossas/fossa-cli/cmd/fossa/version.version=$(shell git rev-parse --abbrev-ref HEAD) -X github.com/fossas/fossa-cli/cmd/fossa/version.commit=$(shell git rev-parse HEAD) -X "github.com/fossas/fossa-cli/cmd/fossa/version.goversion=$(shell go version)" -X github.com/fossas/fossa-cli/cmd/fossa/version.buildType=development'
 
 all: build
@@ -53,7 +54,7 @@ build: $(BIN)/fossa
 $(BIN)/fossa: $(GO_BINDATA) $(GENNY) $(DEP) $(shell find . -name *.go)
 	dep check
 	go generate ./...
-	go build -o $@ $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
+	go build -o $@ $(GCFLAGS) $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
 
 # Building various Docker images.
 .PHONY:
