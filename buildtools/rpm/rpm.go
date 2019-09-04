@@ -74,7 +74,7 @@ func ShellOutput() Shell {
 			return out, stdout, err
 		},
 		Yum: func(argv ...string) (string, string, error) {
-			out, stdout, err := exec.Run(exec.Cmd{Name: "rpm", Argv: argv})
+			out, stdout, err := exec.Run(exec.Cmd{Name: "yum", Argv: argv})
 			return out, stdout, err
 		},
 	}
@@ -88,7 +88,7 @@ func (s Shell) allPackagesRPM() (string, *errors.Error) {
 			Cause:           err,
 			Type:            errors.Exec,
 			Troubleshooting: fmt.Sprintf("The command rpm %+v could not be run and information about the systems dependencies could not be retrieved. Try running this command on your own and ensure that RPM is installed before filing a bug.\nstderr: %s\nstdout: %s", arguments, stderr, stdout),
-			Link:            "link about qa command",
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/rpm.md#rpm",
 		}
 	}
 	return stdout, nil
@@ -102,7 +102,7 @@ func (s Shell) singlePackageRPM(target string) (string, *errors.Error) {
 			Cause:           err,
 			Type:            errors.Exec,
 			Troubleshooting: fmt.Sprintf("The command rpm %+v could not be run and information about %s could not be retrieved. Try running this command on your own, if that fails try to first install %s.\nstderr: %s\nstdout: %s", arguments, target, target, stderr, stdout),
-			Link:            "link about -q command",
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/rpm.md#rpm",
 		}
 	}
 	return stdout, nil
@@ -117,7 +117,7 @@ func (s Shell) transitiveDepsRPM(target string) (string, *errors.Error) {
 			Cause:           err,
 			Type:            errors.Exec,
 			Troubleshooting: fmt.Sprintf("The command rpm %+v could not be run and information about %s's dependencies could not be retrieved. Try running this command on your own, if that fails try to first install %s.\nstderr: %s\nstdout: %s", arguments, target, target, stderr, stdout),
-			Link:            "link about -q command",
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/rpm.md#rpm",
 		}
 	}
 	return stdout, nil
@@ -131,7 +131,7 @@ func (s Shell) yumInstall(target string) *errors.Error {
 			Cause:           err,
 			Type:            errors.Exec,
 			Troubleshooting: fmt.Sprintf("The command yum %+v could not be run and %s could not be installed.\nstderr: %s\nstdout: %s", arguments, target, stderr, stdout),
-			Link:            "link about yum install",
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/rpm.md#rpm",
 			Message:         "This may not cause any issues but could prevent accurate dependency and license information from being found. If you believe this dependency does not need to be installed and accurate information has been found please ignore this error.",
 		}
 	}
