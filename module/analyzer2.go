@@ -8,6 +8,7 @@ import (
 
 	"github.com/apex/log"
 
+	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/graph"
 )
@@ -69,7 +70,7 @@ type TaggedGraph struct {
 	Graph graph.Deps
 }
 
-func (a AnalyzerV2) ScanModule(startJob func()error, endJob func(), folder Filepath, strategies DiscoveredStrategies) ([]TaggedGraph, *errors.Error) {
+func (a AnalyzerV2) ScanModule(startJob func() error, endJob func(), progress display.ProgressTracker, folder Filepath, strategies DiscoveredStrategies) ([]TaggedGraph, *errors.Error) {
 	var wg sync.WaitGroup
 
 	graphs := make(chan TaggedGraph)
@@ -77,9 +78,11 @@ func (a AnalyzerV2) ScanModule(startJob func()error, endJob func(), folder Filep
 	optimalErrs := make(chan *errors.Error, len(strategies))
 
 	for name, relPath := range strategies {
+		progress.AddTasks(1)
 		wg.Add(1)
 		go func(name StrategyName, relPath Filepath) {
 			defer wg.Done()
+			defer progress.AddCompleted(1)
 
 			if err := startJob(); err != nil {
 				// TODO: better errors
@@ -148,7 +151,6 @@ func (a AnalyzerV2) ScanModule(startJob func()error, endJob func(), folder Filep
 		log.Warnf("Failed to run optimal strategies. This may produce worse or incomplete dependency graphs")
 		log.Warnf("TROUBLESHOOTING: %s", strings.Join(troubleshooting, " OR "))
 	}
-
 
 	// TODO(parallel): error reporting
 

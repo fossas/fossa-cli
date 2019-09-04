@@ -13,6 +13,7 @@ import (
 
 	"github.com/fossas/fossa-cli/analyzers/nodejs"
 	"github.com/fossas/fossa-cli/api/fossa"
+	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/module"
@@ -72,6 +73,9 @@ func NewRun(ctx *cli.Context) error {
 }
 
 func NewDo(jobs int) module.AnalyzerV2Output {
+	disp := display.StartDisplay()
+	defer disp.Stop()
+
 	ctx := context.Background()
 	sem := semaphore.NewWeighted(int64(jobs))
 	var wg sync.WaitGroup
@@ -92,7 +96,8 @@ func NewDo(jobs int) module.AnalyzerV2Output {
 			defer wg.Done()
 
 			// TODO: pass out an error here?
-			results := runAnalyzer(startJob, endJob, ".", analyzer)
+			progress := disp.StartProcess(analyzer.Name)
+			results := runAnalyzer(startJob, endJob, progress, ".", analyzer)
 			if results != nil {
 				analysisOutput <- results
 			}
@@ -116,13 +121,15 @@ func NewDo(jobs int) module.AnalyzerV2Output {
 	return results
 }
 
-func runAnalyzer(startJob func()error, endJob func(), dir module.Filepath, analyzer module.AnalyzerV2) module.AnalyzerV2Output {
+func runAnalyzer(startJob func() error, endJob func(), progress display.ProgressTracker, dir module.Filepath, analyzer module.AnalyzerV2) module.AnalyzerV2Output {
 	// Run discovery job
 	if err := startJob(); err != nil {
 		// TODO: better errors
 		log.Debugf("%s: Failed to acquire semaphore for discovery: %s", analyzer.Name, err.Error())
 		return nil
 	}
+
+	progress.Begin("Discovery")
 
 	modules, err := analyzer.DiscoverFunc(dir)
 	endJob()
@@ -135,6 +142,7 @@ func runAnalyzer(startJob func()error, endJob func(), dir module.Filepath, analy
 
 	// TODO: is there a case where DiscoverFunc can panic and we never release the semaphore?
 
+	progress.Begin("Analysis")
 	var wg sync.WaitGroup
 	// TODO: is map thread-safe when used between threads, when there's unique key access? might be easier than this mess
 	moduleOutputs := make(chan analyzedModule)
@@ -143,7 +151,7 @@ func runAnalyzer(startJob func()error, endJob func(), dir module.Filepath, analy
 		wg.Add(1)
 		go func(moduleDir module.Filepath, strategies module.DiscoveredStrategies) {
 			defer wg.Done()
-			graphs, err := analyzer.ScanModule(startJob, endJob, moduleDir, strategies)
+			graphs, err := analyzer.ScanModule(startJob, endJob, progress, moduleDir, strategies)
 			if err != nil {
 				// TODO: use better errors
 				log.Errorf("%s: Module scanning at %s failed: %s", analyzer.Name, moduleDir, err.Error())
@@ -171,6 +179,8 @@ func runAnalyzer(startJob func()error, endJob func(), dir module.Filepath, analy
 		})
 	}
 
+	progress.End()
+
 	return results
 }
 
@@ -178,4 +188,3 @@ type analyzedModule struct {
 	ModuleDir module.Filepath
 	Graphs    []module.TaggedGraph
 }
-
