@@ -92,7 +92,7 @@ func NewDo(jobs int) module.AnalyzerV2Output {
 
 	for _, analyzer := range Analyzers {
 		wg.Add(1)
-		go func() {
+		go func(analyzer module.AnalyzerV2) {
 			defer wg.Done()
 
 			// TODO: pass out an error here?
@@ -102,7 +102,7 @@ func NewDo(jobs int) module.AnalyzerV2Output {
 				analysisOutput <- results
 			}
 
-		}()
+		}(analyzer)
 	}
 
 	go func() {
