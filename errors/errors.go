@@ -65,7 +65,7 @@ func (e *Error) Error() string {
 		link = fmt.Sprintf("\n%s: %s", color.GreenString("LINK"), e.Link)
 	}
 
-	message = e.Message
+	message = "\n" + e.Message
 	if message == "" {
 		switch e.Type {
 		case NotImplemented:

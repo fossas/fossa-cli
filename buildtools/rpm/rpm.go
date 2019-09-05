@@ -124,7 +124,7 @@ func (s Shell) transitiveDepsRPM(target string) (string, *errors.Error) {
 }
 
 func (s Shell) yumInstall(target string) *errors.Error {
-	arguments := append([]string{"install"}, target)
+	arguments := []string{"install", target, "-y"}
 	stdout, stderr, err := s.Yum(arguments...)
 	if err != nil {
 		return &errors.Error{
@@ -132,7 +132,7 @@ func (s Shell) yumInstall(target string) *errors.Error {
 			Type:            errors.Exec,
 			Troubleshooting: fmt.Sprintf("The command yum %+v could not be run and %s could not be installed.\nstderr: %s\nstdout: %s", arguments, target, stderr, stdout),
 			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/rpm.md#rpm",
-			Message:         "This may not cause any issues but could prevent accurate dependency and license information from being found. If you believe this dependency does not need to be installed and accurate information has been found please ignore this error.",
+			Message:         fmt.Sprintf("This may not cause any issues but could prevent accurate dependency and license information from being found. If you believe that %s does not need to be installed and accurate information has been found please ignore this error.", target),
 		}
 	}
 	return nil
@@ -165,7 +165,7 @@ func parseTransitive(output string) []string {
 }
 
 // Recursively attempt to install dependencies.
-func recursiveInstall(target string, s Shell) (map[string][]string, error) {
+func recursiveInstall(target string, s Shell) map[string][]string {
 	err := s.yumInstall(target)
 	if err != nil {
 		log.Warn(err.Error())
@@ -173,15 +173,16 @@ func recursiveInstall(target string, s Shell) (map[string][]string, error) {
 
 	output, err := s.transitiveDepsRPM(target)
 	if err != nil {
-		return map[string][]string{}, err
+		log.Warn(err.Error())
+		return map[string][]string{}
 	}
 
 	deps := make(map[string][]string)
 	deps[target] = parseTransitive(output)
 	for _, dep := range deps[target] {
-		transitiveDependencies, err := recursiveInstall(dep, s)
+		transitiveDependencies := recursiveInstall(dep, s)
 		if err != nil {
-			return map[string][]string{}, err
+			return map[string][]string{}
 		}
 
 		for transitiveDep, transitiveList := range transitiveDependencies {
@@ -189,19 +190,15 @@ func recursiveInstall(target string, s Shell) (map[string][]string, error) {
 		}
 	}
 
-	return deps, nil
+	return deps
 }
 
 // SinglePackage uploads license information pertaining to a single dependency and its dependencies.
 // This function maintains a dependencyMap which references dependency names to their transitive
 // dependencies and an IDMap which references a dependency to its fossa ID.
 func (s Shell) SinglePackage(target string) (graph.Deps, error) {
-	depMap, err := recursiveInstall(target, s)
-	if err != nil {
-		return graph.Deps{}, err
-	}
-
 	IDMap := make(map[string]pkg.ID)
+	depMap := recursiveInstall(target, s)
 	for dep := range depMap {
 		// Retrieve version and license guess for each dependency.
 		output, err := s.singlePackageRPM(dep)
