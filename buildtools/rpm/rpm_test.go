@@ -59,9 +59,12 @@ func TestRPMSinglePackage(t *testing.T) {
 	assert.NotEmpty(t, depThreeFromOutput)
 	assert.Empty(t, depThreeFromOutput.Imports)
 
+	// dep-two is listed in dep-four transitive graph. This tests the analyzers ability to stop recursing when rpm
+	// displays packages which rely on each other.
 	depFourFromFile := helpers.PackageInTransitiveGraph(graph.Transitive, "dep-four", "86af1dc5f79d4ba51c6c1e4ad9a344ec")
 	assert.NotEmpty(t, depFourFromFile)
-	assert.Len(t, depFourFromFile.Imports, 1)
+	assert.Len(t, depFourFromFile.Imports, 2)
+	helpers.AssertPackageImport(t, depFourFromFile.Imports, "dep-two", "d5ecbbf9beaa2aa16372f29d3c94107a")
 	helpers.AssertPackageImport(t, depFourFromFile.Imports, "dep-five", "2c0960a66b92a552f1b64ddf47baa715")
 
 	depFiveFromOutput := helpers.PackageInTransitiveGraph(graph.Transitive, "dep-five", "2c0960a66b92a552f1b64ddf47baa715")
