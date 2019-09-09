@@ -186,9 +186,9 @@ func parseTransitive(output string) []string {
 }
 
 // Recursively attempt to install dependencies. If the dependency has already been found then it is skipped.
-func recursiveInstall(target string, s Shell, dependencyImports map[string][]string) map[string][]string {
+func recursiveInstall(target string, s Shell, dependencyImports map[string][]string) {
 	if _, ok := dependencyImports[target]; ok {
-		return dependencyImports
+		return
 	}
 
 	err := s.yumInstall(target)
@@ -203,20 +203,15 @@ func recursiveInstall(target string, s Shell, dependencyImports map[string][]str
 		if err != nil {
 			log.Warn(err.Error())
 			dependencyImports[target] = []string{}
-			return dependencyImports
+			return
 		}
 		fullDependencyList = fullDependencyList + output
 	}
 
 	dependencyImports[target] = parseTransitive(fullDependencyList)
 	for _, dep := range dependencyImports[target] {
-		transitiveDependencies := recursiveInstall(dep, s, dependencyImports)
-		for transitiveDep, depList := range transitiveDependencies {
-			dependencyImports[transitiveDep] = depList
-		}
+		recursiveInstall(dep, s, dependencyImports)
 	}
-
-	return dependencyImports
 }
 
 // SinglePackage uploads license information pertaining to a single dependency and its dependencies.
@@ -224,30 +219,42 @@ func recursiveInstall(target string, s Shell, dependencyImports map[string][]str
 // dependencies and an IDMap which references a dependency to its fossa ID.
 func (s Shell) SinglePackage(target string) (graph.Deps, error) {
 	IDMap := make(map[string]pkg.ID)
-	depMap := recursiveInstall(target, s, make(map[string][]string))
-	for dep := range depMap {
-		// Retrieve version and license guess for each dependency.
-		providers := s.providers(dep)
-		if len(providers) == 0 {
-			providers = []string{dep}
-		}
-		output, err := s.singlePackageRPM(providers[0])
-		if err != nil {
-			log.Warn(err.Error())
-		}
+	depMap := make(map[string][]string)
+	recursiveInstall(target, s, depMap)
 
-		parsedDependency := dependencyFromOutput(output)
-		locator, err := findAndUploadLicense(parsedDependency, s.LicenseDirectory, s.Upload)
-		if err != nil {
-			log.Warn(err.Error())
-		}
+	wg := sizedwaitgroup.New(runtime.GOMAXPROCS(0))
+	mapLock := sync.RWMutex{}
+	// Retrieve version and license guess for each dependency.
+	for d := range depMap {
+		wg.Add()
+		go func(dep string) {
+			defer wg.Done()
 
-		IDMap[dep] = pkg.ID{
-			Type:     pkg.Raw,
-			Name:     locator.Project,
-			Revision: locator.Revision,
-		}
+			providers := s.providers(dep)
+			if len(providers) == 0 {
+				providers = []string{dep}
+			}
+			output, err := s.singlePackageRPM(providers[0])
+			if err != nil {
+				log.Warn(err.Error())
+			}
+
+			parsedDependency := dependencyFromOutput(output)
+			locator, err := findAndUploadLicense(parsedDependency, s.LicenseDirectory, s.Upload)
+			if err != nil {
+				log.Warn(err.Error())
+			}
+
+			mapLock.Lock()
+			IDMap[dep] = pkg.ID{
+				Type:     pkg.Raw,
+				Name:     locator.Project,
+				Revision: locator.Revision,
+			}
+			mapLock.Unlock()
+		}(d)
 	}
+	wg.Wait()
 
 	depGraph := graph.Deps{
 		Direct:     []pkg.Import{pkg.Import{Target: target, Resolved: IDMap[target]}},
