@@ -91,6 +91,9 @@ func mockSingleRPM() rpm.Shell {
 		RPM: func(args ...string) (string, string, error) {
 			switch args[0] {
 			case "-q":
+				if args[1] == "--whatprovides" {
+					return "", "", nil
+				}
 				switch args[len(args)-1] {
 				case "dep-one":
 					return stringFile("testdata/licenses/dep-one-license")

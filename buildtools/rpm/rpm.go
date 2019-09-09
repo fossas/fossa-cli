@@ -95,7 +95,7 @@ func (s Shell) allPackagesRPM() (string, *errors.Error) {
 }
 
 func (s Shell) singlePackageRPM(target string) (string, *errors.Error) {
-	arguments := append([]string{"-q", "--queryformat", "%{name},%{version},%{license}\n"}, target)
+	arguments := []string{"-q", "--queryformat", "%{name},%{version},%{license}\n", target}
 	stdout, stderr, err := s.RPM(arguments...)
 	if err != nil {
 		return "", &errors.Error{
@@ -106,11 +106,32 @@ func (s Shell) singlePackageRPM(target string) (string, *errors.Error) {
 		}
 	}
 	return stdout, nil
+}
 
+func (s Shell) providers(target string) []string {
+	arguments := []string{"-q", "--whatprovides", target}
+	stdout, _, err := s.RPM(arguments...)
+	if err != nil {
+		return []string{}
+	}
+	providers := []string{}
+	lines := strings.Split(stdout, "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "no package provides") || line == "" || strings.Contains(line, "not installed") {
+			continue
+		}
+		providers = append(providers, line)
+	}
+
+	if len(providers) == 0 {
+		providers = []string{target}
+	}
+
+	return providers
 }
 
 func (s Shell) transitiveDepsRPM(target string) (string, *errors.Error) {
-	arguments := append([]string{"-qR"}, target)
+	arguments := []string{"-qR", target}
 	stdout, stderr, err := s.RPM(arguments...)
 	if err != nil {
 		return "", &errors.Error{
@@ -164,33 +185,38 @@ func parseTransitive(output string) []string {
 	return dependencies
 }
 
-// Recursively attempt to install dependencies.
-func recursiveInstall(target string, s Shell) map[string][]string {
+// Recursively attempt to install dependencies. If the dependency has already been found then it is skipped.
+func recursiveInstall(target string, s Shell, dependencyImports map[string][]string) map[string][]string {
+	if _, ok := dependencyImports[target]; ok {
+		return dependencyImports
+	}
+
 	err := s.yumInstall(target)
 	if err != nil {
 		log.Warn(err.Error())
 	}
 
-	output, err := s.transitiveDepsRPM(target)
-	if err != nil {
-		log.Warn(err.Error())
-		return map[string][]string{}
-	}
-
-	deps := make(map[string][]string)
-	deps[target] = parseTransitive(output)
-	for _, dep := range deps[target] {
-		transitiveDependencies := recursiveInstall(dep, s)
+	fullDependencyList := ""
+	providers := s.providers(target)
+	for _, provider := range providers {
+		output, err := s.transitiveDepsRPM(provider)
 		if err != nil {
-			return map[string][]string{}
+			log.Warn(err.Error())
+			dependencyImports[target] = []string{}
+			return dependencyImports
 		}
+		fullDependencyList = fullDependencyList + output
+	}
 
-		for transitiveDep, transitiveList := range transitiveDependencies {
-			deps[transitiveDep] = transitiveList
+	dependencyImports[target] = parseTransitive(fullDependencyList)
+	for _, dep := range dependencyImports[target] {
+		transitiveDependencies := recursiveInstall(dep, s, dependencyImports)
+		for transitiveDep, depList := range transitiveDependencies {
+			dependencyImports[transitiveDep] = depList
 		}
 	}
 
-	return deps
+	return dependencyImports
 }
 
 // SinglePackage uploads license information pertaining to a single dependency and its dependencies.
@@ -198,18 +224,22 @@ func recursiveInstall(target string, s Shell) map[string][]string {
 // dependencies and an IDMap which references a dependency to its fossa ID.
 func (s Shell) SinglePackage(target string) (graph.Deps, error) {
 	IDMap := make(map[string]pkg.ID)
-	depMap := recursiveInstall(target, s)
+	depMap := recursiveInstall(target, s, make(map[string][]string))
 	for dep := range depMap {
 		// Retrieve version and license guess for each dependency.
-		output, err := s.singlePackageRPM(dep)
+		providers := s.providers(dep)
+		if len(providers) == 0 {
+			providers = []string{dep}
+		}
+		output, err := s.singlePackageRPM(providers[0])
 		if err != nil {
-			return graph.Deps{}, err
+			log.Warn(err.Error())
 		}
 
 		parsedDependency := dependencyFromOutput(output)
 		locator, err := findAndUploadLicense(parsedDependency, s.LicenseDirectory, s.Upload)
 		if err != nil {
-			return graph.Deps{}, err
+			log.Warn(err.Error())
 		}
 
 		IDMap[dep] = pkg.ID{
@@ -296,7 +326,7 @@ func findAndUploadLicense(dep dependency, licenseDir string, upload bool) (fossa
 		var uploadErr error
 		locator, uploadErr = fossa.UploadTarballString(dep.name, dep.license, true, true, upload)
 		if uploadErr != nil {
-			return fossa.Locator{}, &errors.Error{
+			return locator, &errors.Error{
 				Cause:           uploadErr,
 				Type:            errors.Unknown,
 				Troubleshooting: fmt.Sprintf("There was a problem uploading license information for %s. Ensure that you have a working network connection and that you can reach app.fossa.com.", dep.name),
