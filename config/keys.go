@@ -161,7 +161,7 @@ func Modules() ([]module.Module, error) {
 		// Validate arguments.
 		if ctx.NArg() != 1 {
 			return nil, &errors.Error{
-				Cause:           errors.New("must specify exactly 1 module in arguments"),
+				Cause:           errors.New(fmt.Sprintf("must specify exactly 1 module in arguments: %s", args)),
 				Troubleshooting: fmt.Sprintf("Confirm that you are running the correct command and are attempting to manually specify modules in arguments. If you are, ensure that you are correctly specifying one module in the format of <package_type>:<target>. Arguments currently specified `%s`", args),
 				Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/user-guide.md/#argument-configuration",
 			}
