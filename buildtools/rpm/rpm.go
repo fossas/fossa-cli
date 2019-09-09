@@ -339,7 +339,7 @@ func findAndUploadLicense(dep dependency, licenseDir string, upload bool) (fossa
 				Troubleshooting: fmt.Sprintf("There was a problem uploading license information for %s. Ensure that you have a working network connection and that you can reach app.fossa.com.", dep.name),
 			}
 		}
-		log.Warnf("license files for dependency %s could not be found in %s and uploaded. The declared license will be used: %s", dep.name, licenseDir, err.Error())
+		log.Warnf("license files for `%s` could not be found in `%s`. The declared license `%s` will be used: %s", dep.name, licenseDir, dep.license, err.Error())
 	}
 
 	return locator, nil
