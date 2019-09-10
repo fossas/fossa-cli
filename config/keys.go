@@ -1,7 +1,7 @@
 package config
 
 import (
-	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -11,6 +11,7 @@ import (
 	"github.com/mattn/go-isatty"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -159,7 +160,12 @@ func Modules() ([]module.Module, error) {
 	if args.Present() {
 		// Validate arguments.
 		if ctx.NArg() != 1 {
-			return nil, errors.New("must specify exactly 1 module")
+			return nil, &errors.Error{
+				Cause:           errors.New(fmt.Sprintf("must specify exactly 1 module in arguments: %s", args)),
+				Troubleshooting: fmt.Sprintf("Ensure that you are specifying only one module in the arguments, currently specified `%s`", args),
+				Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/user-guide.md/#argument-configuration",
+				Message:         errors.ArgumentModuleMessage,
+			}
 		}
 
 		// Parse module.
@@ -169,7 +175,12 @@ func Modules() ([]module.Module, error) {
 		name := strings.Join(sections[1:], ":")
 		mtype, err := pkg.ParseType(typename)
 		if err != nil {
-			return nil, err
+			return nil, &errors.Error{
+				Cause:           err,
+				Troubleshooting: fmt.Sprintf("Ensure that you are specifying a valid package type. Arguments supplied `%s`", args),
+				Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/user-guide.md/#argument-configuration",
+				Message:         errors.ArgumentModuleMessage,
+			}
 		}
 
 		// Note that these parsed modules do not have any options set yet.

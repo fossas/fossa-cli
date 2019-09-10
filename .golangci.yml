@@ -1,0 +1,13 @@
+run:
+  skip-files:
+    - ".*_generated\\.go$"
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  misspell:
+    locale: US
+  govet:
+    # report about shadowed variables
+    check-shadowing: true

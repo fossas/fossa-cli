@@ -137,8 +137,22 @@ jobs:
             cp $(which fossa) $ARTIFACTS
       - store_artifacts:
           path: /tmp/artifacts
-  # TODO(leo): set up automated releases.
-  # release:
+  release:
+    <<: *defaults
+    working_directory: /go/src/github.com/fossas/fossa-cli
+    docker:
+      - image: circleci/golang:1
+    steps:
+      - checkout
+      - run:
+          name: Tag branch for release 
+          command: |
+            [[ $CLI_RELEASE_TAG == v* ]]
+            git tag $CLI_RELEASE_TAG
+      - run:
+          name: Install and run goreleaser
+          command: |
+            curl -sL https://git.io/goreleaser | GOVERSION=`go version` bash -s -- --rm-dist
 workflows:
   version: 2
   tests:
@@ -147,3 +161,16 @@ workflows:
       - integration-test
       - end-to-end-test
       - installer-test
+      - approve-release:
+          type: approval
+          requires:
+            - unit-test
+            - integration-test
+            - end-to-end-test
+            - installer-test
+          filters:
+            branches:
+              only: master
+      - release:
+          requires:
+            - approve-release

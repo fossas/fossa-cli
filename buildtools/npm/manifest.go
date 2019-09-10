@@ -45,9 +45,6 @@ func PackageFromManifest(pathElems ...string) (pkg.Package, error) {
 	}
 
 	nodeModuleDirectory := filepath.Join(filepath.Dir(filePath), "node_modules")
-	if err != nil {
-		return pkg.Package{}, err
-	}
 
 	err = resolveDirectDependencyVersions(&manifestAsPackage, nodeModuleDirectory)
 	if err != nil {

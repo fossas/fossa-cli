@@ -97,13 +97,13 @@ func LockfileGraph(filepath string) (graph.Deps, error) {
 		file = "Gopkg.lock"
 	}
 
-	lockfile, err := readLockfile(file)
+	lock, err := readLockfile(file)
 	if err != nil {
 		return graph.Deps{}, err
 	}
 
 	depGraph := graph.Deps{Transitive: make(map[pkg.ID]pkg.Package)}
-	for _, project := range lockfile.Projects {
+	for _, project := range lock.Projects {
 		version := project.Version
 		if version == "" {
 			version = project.Revision

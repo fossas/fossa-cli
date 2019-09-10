@@ -37,7 +37,7 @@ const (
 	JSON           = "json"
 )
 
-const pollRequestDelay = 8 * time.Second
+var PollRequestDelay = 8 * time.Second
 
 var Cmd = cli.Command{
 	Name:   "test",
@@ -155,7 +155,7 @@ func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, *err
 				}
 
 			case "CREATED", "ASSIGNED", "RUNNING":
-				time.Sleep(pollRequestDelay)
+				time.Sleep(PollRequestDelay)
 			default:
 				return fossa.Build{}, errors.UnknownError(errors.Errorf("unknown task status while waiting for FOSSA to analyze build: %s", build.Task.Status), "")
 			}
@@ -178,9 +178,10 @@ func CheckIssues(locator fossa.Locator, stop <-chan time.Time) (fossa.Issues, *e
 			if err != nil {
 				return fossa.Issues{}, err
 			}
+      
 			switch issues.Status {
 			case "WAITING":
-				time.Sleep(pollRequestDelay)
+				time.Sleep(PollRequestDelay)
 			case "SCANNED":
 				return issues, nil
 			default:

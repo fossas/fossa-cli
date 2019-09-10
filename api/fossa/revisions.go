@@ -28,6 +28,8 @@ type Revision struct {
 	Project  *Project
 	Meta     []RevisionMeta
 	Issues   []Issue
+	Version  string
+	Hash     string
 }
 
 // A RevisionMeta holds metadata about a FOSSA API revision.

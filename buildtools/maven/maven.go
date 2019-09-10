@@ -157,7 +157,7 @@ func (m *Maven) tryDependencyCommands(subGoal, dir, buildTarget string) (stdout 
 
 func ParseDependencyTree(stdin string) (graph.Deps, error) {
 	var filteredLines []string
-	start := regexp.MustCompile("^\\[INFO\\] --- .*? ---$")
+	start := regexp.MustCompile(`^\[INFO\] --- .*? ---$`)
 	started := false
 	r := regexp.MustCompile("^\\[INFO\\] ([ `+\\\\|-]*)([^ `+\\\\|-].+)$")
 	splitReg := regexp.MustCompile("\r?\n")

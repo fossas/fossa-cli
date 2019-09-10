@@ -15,6 +15,7 @@ import (
 	"github.com/fossas/fossa-cli/buildtools/bundler"
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -120,9 +121,14 @@ func (a *Analyzer) Build() error {
 }
 
 func (a *Analyzer) IsBuilt() (bool, error) {
-	_, err := a.Bundler.List()
-	if err != nil {
-		return false, err
+	ok, err := files.Exists(a.lockfilePath())
+	if err != nil || !ok {
+		return false, &errors.Error{
+			Cause:           err,
+			Type:            errors.Unknown,
+			Troubleshooting: "Your ruby project may not be built, which will result in less accurate results. Generate a Gemfile.lock file by running `bundle install`",
+			Link:            "https://bundler.io/v1.3/rationale.html",
+		}
 	}
 	return true, nil
 }
@@ -198,7 +204,7 @@ func (a *Analyzer) bundlerListAnalyzerStrategy() (graph.Deps, error) {
 	}, nil
 }
 
-func (a *Analyzer) lockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, *errors.Error) {
+func (a *Analyzer) lockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, error) {
 	lockfile, err := bundler.FromLockfile(lockfilePath)
 	if err != nil {
 		return graph.Deps{}, err
