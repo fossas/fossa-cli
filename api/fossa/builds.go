@@ -28,7 +28,7 @@ func GetLatestBuild(locator Locator) (Build, *errors.Error) {
 			ExitCode:        statusCode,
 			Cause:           err,
 			Type:            errors.Unknown,
-			Troubleshooting: "Could not get latest build from API. Ensure that you have already analyzed your project by checking to see if it exists on fossa.com.",
+			Troubleshooting: fmt.Sprintf("Could not get latest build for project `%s` revision: `%s` from API. Ensure that you have already analyzed your project by checking to see if it exists on fossa.com.", locator.Project, locator.Revision),
 		}
 	}
 

@@ -46,7 +46,7 @@ func GetIssues(locator Locator) (Issues, *errors.Error) {
 		return Issues{}, &errors.Error{
 			Cause:           err,
 			Type:            errors.Unknown,
-			Troubleshooting: "Could not get Issues from API. Ensure that you have already analyzed your project by checking to see if it exists on fossa.com.",
+			Troubleshooting: fmt.Sprintf("Could not get Issues for project `%s` revision `%s` from API. Ensure that you have already analyzed your project by checking to see if it exists on fossa.com.", locator.Project, locator.Revision),
 		}
 	}
 

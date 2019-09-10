@@ -151,7 +151,7 @@ func CheckBuild(locator fossa.Locator, stop <-chan time.Time) (fossa.Build, *err
 				return build, &errors.Error{
 					Cause:           fmt.Errorf("FOSSA failed to analyze build with ID #%d: %s", build.ID, build.Error),
 					Type:            errors.Unknown,
-					Troubleshooting: "Look at the build logs for this build on app.fossa.com on the `Activity` page associated with this project to diagnose the root cause of this issue.",
+					Troubleshooting: "Look at the logs for this build on app.fossa.com on the `Activity` page associated with this project to diagnose the root cause of this issue.",
 				}
 
 			case "CREATED", "ASSIGNED", "RUNNING":
