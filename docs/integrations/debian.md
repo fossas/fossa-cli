@@ -21,7 +21,6 @@ analyze:
   - name: fossa
     type: debian
     target: apt
-*   path: .
 ```
 
 ## Analysis
