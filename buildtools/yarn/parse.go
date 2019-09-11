@@ -135,7 +135,6 @@ func (l yarnLockfile) resolveDepGraph(unresolvedDirectDeps map[string]string, de
 		depGraph[pkgID] = pkg.Package{
 			ID:       pkgID,
 			Imports:  imports,
-			Strategy: "yarn-lockfile",
 		}
 
 		// recurse for the n-2 direct deps

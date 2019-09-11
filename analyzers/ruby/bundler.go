@@ -19,7 +19,6 @@ func FromGems(gems []bundler.Gem) ([]pkg.Import, map[pkg.ID]pkg.Package) {
 		})
 		graph[id] = pkg.Package{
 			ID:       id,
-			Strategy: "bundler-list",
 		}
 	}
 	return imports, graph
