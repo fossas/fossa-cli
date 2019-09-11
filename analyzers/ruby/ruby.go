@@ -24,9 +24,6 @@ import (
 // TODO: add a Ruby sidecar that evaluates `Gemfile` and `*.gemspec`.
 
 type Analyzer struct {
-	RubyCmd     string
-	RubyVersion string
-
 	BundlerCmd     string
 	BundlerVersion string
 
@@ -51,19 +48,11 @@ func New(m module.Module) (*Analyzer, error) {
 	}
 	log.WithField("options", options).Debug("parsed analyzer options")
 
-	// Construct analyzer.
-	rubyCmd, rubyVersion, err := exec.Which("--version", os.Getenv("FOSSA_RUBY_CMD"), "ruby")
-	if err != nil {
-		log.Warnf("Could not resolve Ruby")
-	}
 	bundlerCmd, bundlerVersion, err := exec.Which("--version", os.Getenv("FOSSA_BUNDLER_CMD"), "bundler", "bundle")
 	if err != nil {
 		log.Warnf("Could not resolve Bundler")
 	}
 	return &Analyzer{
-		RubyCmd:     rubyCmd,
-		RubyVersion: rubyVersion,
-
 		BundlerCmd:     bundlerCmd,
 		BundlerVersion: bundlerVersion,
 
