@@ -33,7 +33,7 @@ var NewCmd = cli.Command{
 		cli.IntFlag{Name: JobsFlag, Usage: "number of simultaneous jobs to run during analysis"},
 		flags.TemplateF,
 	}))),
-	//Hidden: true, // TODO: uncomment when merging
+	Hidden: true,
 }
 
 var Analyzers = []module.AnalyzerV2{
