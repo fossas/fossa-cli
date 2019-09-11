@@ -37,7 +37,7 @@ func Do(c *cli.Context) {
 		log.Fatalf("Unable to update: %s", err.Error())
 	}
 	if !ok {
-		log.Fatalf("No updates available")
+		log.Info("No updates available")
 	}
 
 	version, err := Update()
