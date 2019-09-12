@@ -38,6 +38,7 @@ func Do(c *cli.Context) {
 	}
 	if !ok {
 		log.Info("No updates available")
+		return
 	}
 
 	version, err := Update()
