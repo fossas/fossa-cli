@@ -140,8 +140,13 @@ func ReadLocator(locator string) Locator {
 
 // LocatorOf returns the locator of a pkg.ID.
 func LocatorOf(id pkg.ID) Locator {
-	// Normalize locator fetchers.
 	fetcher := id.Type.String()
+	if fetcher == "" {
+		log.Warnf("Unrecognized locator")
+		return Locator{}
+	}
+
+	// Normalize locator fetchers.
 	switch id.Type {
 	case pkg.Composer:
 		fetcher = "comp"
