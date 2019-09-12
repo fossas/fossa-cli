@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
@@ -155,9 +154,14 @@ func addToGraph(graph map[pkg.ID]pkg.Package, lookup map[string]pkg.ID, sections
 		for _, spec := range section.Specs {
 			var imports []pkg.Import
 			for _, dep := range spec.Dependencies {
+				id, ok := lookup[dep.Name]
+				if !ok {
+					log.Warnf("Remote was unable to be found for dependency `%s`", dep.Name)
+					continue
+				}
 				imports = append(imports, pkg.Import{
 					Target:   dep.String(),
-					Resolved: lookup[dep.Name],
+					Resolved: id,
 				})
 			}
 

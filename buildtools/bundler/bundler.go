@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/graph"
@@ -38,7 +37,7 @@ func (b *Bundler) ListLockfileGraph(lockfilePath string) (graph.Deps, error) {
 
 	gems, err := b.List()
 	if err != nil {
-		return graph.Deps{}, nil
+		return graph.Deps{}, err
 	}
 
 	imports, deps := FilteredLockfile(gems, lockfile)
