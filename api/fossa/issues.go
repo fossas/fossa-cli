@@ -39,11 +39,15 @@ type Rule struct {
 }
 
 // GetIssues loads the issues for a project.
-func GetIssues(locator Locator) (Issues, error) {
+func GetIssues(locator Locator) (Issues, *errors.Error) {
 	var issues Issues
 	_, err := GetJSON(fmt.Sprintf(IssuesAPI, url.PathEscape(locator.OrgString())), &issues)
 	if err != nil {
-		return Issues{}, errors.Wrap(err, "could not get Issues from API")
+		return Issues{}, &errors.Error{
+			Cause:           err,
+			Type:            errors.Unknown,
+			Troubleshooting: fmt.Sprintf("Could not get Issues for project `%s` revision `%s` from API. Ensure that you have already analyzed your project by checking to see if it exists on fossa.com.", locator.Project, locator.Revision),
+		}
 	}
 
 	issues.normalize()

@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/buildtools/pipenv"
-	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -72,7 +71,7 @@ func TestTransitiveDeps(t *testing.T) {
 // Mock constructs a pipenv.Cmd using mock build tool output.
 func Mock(file []byte, err error) pipenv.Cmd {
 	return pipenv.Cmd{
-		Graph: func(string) (string, *errors.Error) {
+		Graph: func(string) (string, error) {
 			return string(file), nil
 		},
 	}
