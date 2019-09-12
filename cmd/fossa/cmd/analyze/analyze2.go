@@ -12,6 +12,7 @@ import (
 	"golang.org/x/sync/semaphore"
 
 	"github.com/fossas/fossa-cli/analyzers/nodejs"
+	"github.com/fossas/fossa-cli/analyzers/ruby"
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
@@ -38,6 +39,7 @@ var NewCmd = cli.Command{
 
 var Analyzers = []module.AnalyzerV2{
 	nodejs.NodeAnalyzer,
+	ruby.RubyAnalyzer,
 }
 
 // TODO: progress indicators, ...

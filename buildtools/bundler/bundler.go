@@ -58,19 +58,15 @@ func (b *Bundler) ListGraph() (graph.Deps, error) {
 }
 
 func graphFromGems(gems []Gem) graph.Deps {
-	depGraph := graph.Deps{Direct: []pkg.Import{}}
+	depGraph := graph.Deps{Transitive: make(map[pkg.ID]pkg.Package)}
 	for _, gem := range gems {
 		id := pkg.ID{
 			Type:     pkg.Ruby,
 			Name:     gem.Name,
 			Revision: gem.Revision,
 		}
-		depGraph.Direct = append(depGraph.Direct, pkg.Import{
-			Resolved: id,
-		})
-		depGraph.Transitive[id] = pkg.Package{
-			ID: id,
-		}
+		depGraph.Direct = append(depGraph.Direct, pkg.Import{Resolved: id})
+		depGraph.Transitive[id] = pkg.Package{ID: id}
 	}
 
 	return depGraph
