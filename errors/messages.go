@@ -28,8 +28,9 @@ var NoAPIKeyMessage = `
     ` + color.HiGreenString("FOSSA_API_KEY=<YOUR_API_KEY_HERE> $command") + `
 
 ` + wordwrap.WrapString("You can create an API key for your FOSSA account at:", width) + `
+    
+    ` + color.HiBlueString("app.fossa.com/account/settings/integrations/api_tokens") + `
 
-    ` + color.HiBlueString("$endpoint/account/settings/integrations/api_tokens") + `
 `
 
 var NotImplementedMessage = `This code path has not yet been implemented.`

@@ -12,13 +12,13 @@ import (
 
 // Pipenv defines the interface for all pipenv tool implementations.
 type Pipenv interface {
-	Deps() (graph.Deps, *errors.Error)
+	Deps() (graph.Deps, error)
 }
 
 // Cmd implements Pipenv by parsing command output.
 type Cmd struct {
 	Dir   string
-	Graph func(dir string) (string, *errors.Error)
+	Graph func(dir string) (string, error)
 }
 
 // dependency is used to unmarshal the output from `pipenv graph --json-tree`.
@@ -38,7 +38,7 @@ func New(dirname string) Pipenv {
 }
 
 // Deps returns the dependencies of a pipenv project.
-func (p Cmd) Deps() (graph.Deps, *errors.Error) {
+func (p Cmd) Deps() (graph.Deps, error) {
 	depGraph := graph.Deps{}
 	rawJSON, err := p.Graph(p.Dir)
 	if err != nil {
@@ -56,7 +56,7 @@ func (p Cmd) Deps() (graph.Deps, *errors.Error) {
 }
 
 // GraphJSON returns the output from `pipenv graph --json-tree`.
-func GraphJSON(dirname string) (string, *errors.Error) {
+func GraphJSON(dirname string) (string, error) {
 	out, _, err := exec.Run(exec.Cmd{
 		Name: "pipenv",
 		Argv: []string{"graph", "--json-tree"},
@@ -73,7 +73,7 @@ func GraphJSON(dirname string) (string, *errors.Error) {
 	return out, nil
 }
 
-func getDependencies(graphJSON string) ([]dependency, *errors.Error) {
+func getDependencies(graphJSON string) ([]dependency, error) {
 	var depList []dependency
 	err := json.Unmarshal([]byte(graphJSON), &depList)
 	if err != nil {

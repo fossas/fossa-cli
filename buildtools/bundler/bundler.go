@@ -65,6 +65,7 @@ func graphFromGems(gems []Gem) graph.Deps {
 			Name:     gem.Name,
 			Revision: gem.Revision,
 		}
+    
 		depGraph.Direct = append(depGraph.Direct, pkg.Import{Resolved: id})
 		depGraph.Transitive[id] = pkg.Package{ID: id}
 	}

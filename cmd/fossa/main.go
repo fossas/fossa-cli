@@ -1,15 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/urfave/cli"
-
-	"github.com/apex/log"
-
-	"github.com/fossas/fossa-cli/cmd/fossa/flags"
-	"github.com/fossas/fossa-cli/cmd/fossa/setup"
-	"github.com/fossas/fossa-cli/cmd/fossa/version"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/analyze"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/build"
@@ -18,6 +13,9 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/test"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/update"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/upload"
+	"github.com/fossas/fossa-cli/cmd/fossa/flags"
+	"github.com/fossas/fossa-cli/cmd/fossa/setup"
+	"github.com/fossas/fossa-cli/cmd/fossa/version"
 )
 
 var App = cli.App{
@@ -50,8 +48,7 @@ func main() {
 		case *cli.ExitError:
 			os.Exit(e.ExitCode())
 		default:
-			// TODO: port all log.Fatal to instead return an error.
-			log.Errorf(err.Error())
+			fmt.Println(err.Error())
 			os.Exit(1)
 		}
 	}

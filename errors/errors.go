@@ -95,15 +95,11 @@ func Wrapf(cause error, format string, args ...interface{}) error {
 	return errors.Wrapf(cause, format, args...)
 }
 
-func WrapError(cause error, err Error) Error {
-	switch e := cause.(type) {
-	case *Error:
-		return Error{
-			Cause:           e,
-			Message:         err.Message,
-			Troubleshooting: err.Troubleshooting,
-		}
-	default:
+func (err *Error) WrapCause(msg string) *Error {
+	if err.Cause == nil {
+		err.Cause = errors.New(msg)
+	} else {
+		err.Cause = Wrap(err.Cause, msg)
 	}
 	return err
 }
