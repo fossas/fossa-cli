@@ -249,6 +249,6 @@ func (t Type) String() string {
 	case Raw:
 		return "archive"
 	default:
-		panic(t)
+		return ""
 	}
 }

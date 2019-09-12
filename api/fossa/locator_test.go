@@ -37,6 +37,11 @@ func TestLocatorFetcher(t *testing.T) {
 	}
 }
 
+func TestLocatorInvalidFetcher(t *testing.T) {
+	assert.Equal(t, fossa.Locator{}, fossa.LocatorOf(pkg.ID{Type: 0}).Fetcher)
+	assert.Equal(t, fossa.Locator{}, fossa.LocatorOf(pkg.ID{Type: 10101010}).Fetcher)
+}
+
 func TestStringGit(t *testing.T) {
 	ssh := fossa.Locator{
 		Fetcher:  "git",
