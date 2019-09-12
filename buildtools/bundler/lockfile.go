@@ -6,9 +6,10 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
+	"github.com/fossas/fossa-cli/graph"
+	"github.com/fossas/fossa-cli/pkg"
 )
 
 type Lockfile struct {
@@ -58,6 +59,20 @@ var requirementsRegex = regexp.MustCompile(`^( *?)(\S+?)(?:\!?|( \((.*?)\)\!?)?)
 // implementing parsing logic.
 type VersionSpecifier string
 
+func LockfileGraph(filename string) (graph.Deps, error) {
+	lockfile, err := FromLockfile(filename)
+	if err != nil {
+		return graph.Deps{}, err
+	}
+
+	imports, deps := GraphFromLockfile(lockfile)
+
+	return graph.Deps{
+		Direct:     imports,
+		Transitive: deps,
+	}, nil
+}
+
 func FromLockfile(filename string) (Lockfile, error) {
 	contents, err := files.Read(filename)
 	if err != nil {
@@ -90,6 +105,101 @@ func FromLockfile(filename string) (Lockfile, error) {
 	}
 
 	return lockfile, nil
+}
+
+func GraphFromLockfile(lockfile Lockfile) ([]pkg.Import, map[pkg.ID]pkg.Package) {
+	// Construct a map of all dependencies.
+	nameToID := make(map[string]pkg.ID)
+
+	addSpecs(nameToID, lockfile.Git)
+	addSpecs(nameToID, lockfile.Path)
+	addSpecs(nameToID, lockfile.Gem)
+
+	// Build the dependency graph.
+	graph := make(map[pkg.ID]pkg.Package)
+
+	addToGraph(graph, nameToID, lockfile.Git)
+	addToGraph(graph, nameToID, lockfile.Path)
+	addToGraph(graph, nameToID, lockfile.Gem)
+
+	var imports []pkg.Import
+	for _, dep := range lockfile.Dependencies {
+		imports = append(imports, pkg.Import{
+			Target:   dep.String(),
+			Resolved: nameToID[dep.Name],
+		})
+	}
+
+	return imports, graph
+}
+func addSpecs(lookup map[string]pkg.ID, sections []Section) {
+	for _, section := range sections {
+		for _, spec := range section.Specs {
+			location := section.Remote
+			if section.Type == "GIT" {
+				location = section.Remote + "@" + section.Revision
+			}
+			lookup[spec.Name] = pkg.ID{
+				Type:     pkg.Ruby,
+				Name:     spec.Name,
+				Revision: spec.Version,
+				Location: location,
+			}
+		}
+	}
+}
+
+func addToGraph(graph map[pkg.ID]pkg.Package, lookup map[string]pkg.ID, sections []Section) {
+	for _, section := range sections {
+		for _, spec := range section.Specs {
+			var imports []pkg.Import
+			for _, dep := range spec.Dependencies {
+				id, ok := lookup[dep.Name]
+				if !ok {
+					log.Warnf("Remote was unable to be found for dependency `%s`", dep.Name)
+					continue
+				}
+				imports = append(imports, pkg.Import{
+					Target:   dep.String(),
+					Resolved: id,
+				})
+			}
+
+			id := lookup[spec.Name]
+			graph[id] = pkg.Package{
+				ID:      id,
+				Imports: imports,
+			}
+		}
+	}
+}
+
+func FilteredLockfile(gems []Gem, lockfile Lockfile) ([]pkg.Import, map[pkg.ID]pkg.Package) {
+	// Construct set of allowed gems.
+	gemSet := make(map[string]bool)
+	for _, gem := range gems {
+		gemSet[gem.Name] = true
+	}
+
+	// Filter lockfile results.
+	imports, graph := GraphFromLockfile(lockfile)
+
+	var filteredImports []pkg.Import
+	filteredGraph := make(map[pkg.ID]pkg.Package)
+
+	for _, dep := range imports {
+		if _, ok := gemSet[dep.Resolved.Name]; ok {
+			filteredImports = append(filteredImports, dep)
+		}
+	}
+
+	for id, pkg := range graph {
+		if _, ok := gemSet[id.Name]; ok {
+			filteredGraph[id] = pkg
+		}
+	}
+
+	return filteredImports, filteredGraph
 }
 
 func ParseSpecSection(section string) Section {
