@@ -1,5 +1,7 @@
 builds:
   - main: ./cmd/fossa/
+    env:
+      - CGO_ENABLED=0
     binary: fossa
     goos:
       - windows
