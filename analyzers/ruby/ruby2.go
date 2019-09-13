@@ -71,7 +71,7 @@ func NewDiscover(dir module.Filepath) (map[module.Filepath]module.DiscoveredStra
 	})
 
 	if err != nil {
-		return nil, errors.UnknownError(err, "could not find NodeJS projects")
+		return nil, errors.UnknownError(err, "could not find Ruby projects")
 	}
 
 	return modules, nil
@@ -80,11 +80,12 @@ func NewDiscover(dir module.Filepath) (map[module.Filepath]module.DiscoveredStra
 func analyzeBundlerListLockfile(dir module.Filepath, target module.Filepath) (graph.Deps, *errors.Error) {
 	bundlerCmd, err := bundler.New()
 	if err != nil {
-		return graph.Deps{}, errors.UnknownError(err, "")
+		return graph.Deps{}, err
 	}
+
 	depGraph, err := bundlerCmd.ListLockfileGraph(filepath.Join(dir, "Gemfile.lock"))
 	if err != nil {
-		return graph.Deps{}, errors.UnknownError(err, "")
+		return graph.Deps{}, err
 	}
 
 	return depGraph, nil
@@ -93,11 +94,12 @@ func analyzeBundlerListLockfile(dir module.Filepath, target module.Filepath) (gr
 func analyzeBundlerList(dir module.Filepath, target module.Filepath) (graph.Deps, *errors.Error) {
 	bundlerCmd, err := bundler.New()
 	if err != nil {
-		return graph.Deps{}, errors.UnknownError(err, "")
+		return graph.Deps{}, err
 	}
+
 	depGraph, err := bundlerCmd.ListGraph()
 	if err != nil {
-		return graph.Deps{}, errors.UnknownError(err, "")
+		return graph.Deps{}, err
 	}
 
 	return depGraph, nil

@@ -59,7 +59,7 @@ var requirementsRegex = regexp.MustCompile(`^( *?)(\S+?)(?:\!?|( \((.*?)\)\!?)?)
 // implementing parsing logic.
 type VersionSpecifier string
 
-func LockfileGraph(filename string) (graph.Deps, error) {
+func LockfileGraph(filename string) (graph.Deps, *errors.Error) {
 	lockfile, err := FromLockfile(filename)
 	if err != nil {
 		return graph.Deps{}, err
@@ -73,7 +73,7 @@ func LockfileGraph(filename string) (graph.Deps, error) {
 	}, nil
 }
 
-func FromLockfile(filename string) (Lockfile, error) {
+func FromLockfile(filename string) (Lockfile, *errors.Error) {
 	contents, err := files.Read(filename)
 	if err != nil {
 		return Lockfile{}, &errors.Error{

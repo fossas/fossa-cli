@@ -125,9 +125,17 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	switch strategy {
 	case "list":
-		return a.bundlerListAnalyzerStrategy()
+		depGraph, err := a.bundlerListAnalyzerStrategy()
+		if err != nil {
+			return graph.Deps{}, err
+		}
+		return depGraph, nil
 	case "lockfile":
-		return a.lockfileAnalyzerStrategy(lockfilePath)
+		depGraph, err := a.lockfileAnalyzerStrategy(lockfilePath)
+		if err != nil {
+			return graph.Deps{}, err
+		}
+		return depGraph, nil
 	case "list-lockfile":
 		fallthrough
 	default:
@@ -136,16 +144,21 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 			return depGraph, nil
 		}
 
-		deps, err := a.lockfileAnalyzerStrategy(lockfilePath)
+		depGraph, err = a.lockfileAnalyzerStrategy(lockfilePath)
 		if err == nil {
-			return deps, err
+			return depGraph, nil
 		}
 
-		return a.bundlerListAnalyzerStrategy()
+		depGraph, err = a.bundlerListAnalyzerStrategy()
+		if err != nil {
+			return graph.Deps{}, err
+		}
+
+		return depGraph, nil
 	}
 }
 
-func (a *Analyzer) bundlerListAnalyzerStrategy() (graph.Deps, error) {
+func (a *Analyzer) bundlerListAnalyzerStrategy() (graph.Deps, *errors.Error) {
 	depGraph, err := a.Bundler.ListGraph()
 	if err != nil {
 		return graph.Deps{}, err
@@ -154,7 +167,7 @@ func (a *Analyzer) bundlerListAnalyzerStrategy() (graph.Deps, error) {
 	return depGraph, nil
 }
 
-func (a *Analyzer) lockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, error) {
+func (a *Analyzer) lockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, *errors.Error) {
 	depGraph, err := bundler.LockfileGraph(lockfilePath)
 	if err != nil {
 		return graph.Deps{}, err
