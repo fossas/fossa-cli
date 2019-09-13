@@ -20,6 +20,7 @@ import (
 	"github.com/fossas/fossa-cli/analyzers/okbuck"
 	"github.com/fossas/fossa-cli/analyzers/php"
 	"github.com/fossas/fossa-cli/analyzers/python"
+	"github.com/fossas/fossa-cli/analyzers/rpm"
 	"github.com/fossas/fossa-cli/analyzers/ruby"
 	"github.com/fossas/fossa-cli/analyzers/rust"
 	"github.com/fossas/fossa-cli/analyzers/scala"
@@ -78,6 +79,8 @@ func New(m module.Module) (Analyzer, error) {
 		return okbuck.New(m)
 	case pkg.Python:
 		return python.New(m)
+	case pkg.RPM:
+		return rpm.New(m)
 	case pkg.Ruby:
 		return ruby.New(m)
 	case pkg.Rust:

@@ -84,6 +84,80 @@ func UploadTarball(dir string, dependency, rawLicenseScan, upload bool) (Locator
 	return tarballUpload(name, dependency, rawLicenseScan, upload, tarball, hash)
 }
 
+// UploadTarballString uploads a string and uses the provided package to name it.
+func UploadTarballString(name, s string, dependency, rawLicenseScan, upload bool) (Locator, error) {
+	tarball, hash, err := CreateTarballFromString(name, s)
+	if err != nil {
+		return Locator{}, err
+	}
+
+	return tarballUpload(name, dependency, rawLicenseScan, upload, tarball, hash)
+}
+
+// CreateTarball archives and compresses a directory's contents to a temporary
+// file while simultaneously computing its MD5 hash. The caller is responsible
+// for closing the file handle.
+func CreateTarballFromString(filename, str string) (*os.File, []byte, error) {
+	tmp, err := ioutil.TempFile("", "fossa-tar-"+filename+"-")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	h := md5.New()
+
+	g := gzip.NewWriter(tmp)
+	defer g.Close()
+
+	t := tar.NewWriter(g)
+	defer t.Close()
+
+	_, err = io.WriteString(h, str)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	header := &tar.Header{
+		Name: filename,
+		Size: int64(len(str)),
+	}
+
+	err = t.WriteHeader(header)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	s := strings.NewReader(str)
+
+	log.Debugf("Archiving: %#v", s)
+	_, err = io.Copy(t, s)
+	if err != nil {
+		return nil, nil, err
+	}
+	_, err = io.Copy(h, s)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Close again to force a disk flush. Closing an *os.File twice is
+	// undefined, but safe in practice.
+	// See https://github.com/golang/go/issues/20705.
+
+	// Clean up and flush writers.
+	err = t.Flush()
+	if err != nil {
+		return nil, nil, err
+	}
+	err = g.Flush()
+	if err != nil {
+		return nil, nil, err
+	}
+	err = tmp.Sync()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return tmp, h.Sum(nil), nil
+}
+
 // CreateTarball archives and compresses a directory's contents to a temporary
 // file while simultaneously computing its MD5 hash. The caller is responsible
 // for closing the file handle.
