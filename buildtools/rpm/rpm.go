@@ -54,8 +54,8 @@ const licenseDirectory = "/usr/share/licenses"
 type Shell struct {
 	LicenseDirectory string
 	Upload           bool
-	RPM              func(...string) (string, string, error)
-	Yum              func(...string) (string, string, error)
+	RPM              func(argv ...string) (stdout string, stderr string, err error)
+	Yum              func(argv ...string) (stdout string, stderr string, err error)
 }
 
 type dependency struct {

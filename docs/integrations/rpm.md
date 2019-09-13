@@ -14,7 +14,7 @@ It is beneficial if `yum` is installed as the FOSSA CLI will leverage `yum` in o
 
 ### Manual
 
-Add a module with `type: debian` and populate the `name:` field with your desired module name. The `target` value depends on your preferred analysis method:
+Add a module with `type: rpm` and populate the `name:` field with your desired module name. The `target` value depends on your preferred analysis method:
 
 1. System Level Analysis:
 In order to analyze all RPM packages installed on your system, set `target: .` to tell FOSSA CLI that all RPMs should be scanned.
@@ -28,6 +28,8 @@ analyze:
 
 2. Individual Package Analysis:
 If you have a single RPM you would like to analyze, set `target:` to the name of the installed RPM you wish to scan, or the location of the RPM you wish to scan. Both examples are outlined below:
+
+> Note: Individual RPM analysis will attempt to install any dependency RPMs which are not already installed in the environment. For this reason we recommend running RPM analysis inside of a container.
 
 Installed RPM:
 ```yaml
@@ -55,7 +57,7 @@ System Level Analysis:
 1. Find and upload the best license for each dependency.
 
 Individual Package Analysis:
-1. If the package is not installed, run `yum install <target>` to install it.
+1. WARNING: If the package is not installed, run `yum install <target>` to install it. This may result in additional RPMs being installed in your environment.
 1. Find transitive dependencies by running `rpm -qr <target>`.
 1. Repeat steps 1 & 2 for each transitive dependency found.
 1. Find and upload the best license for each dependency.
