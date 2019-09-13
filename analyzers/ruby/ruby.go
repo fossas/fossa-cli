@@ -14,7 +14,7 @@ import (
 
 	"github.com/fossas/fossa-cli/buildtools/bundler"
 	"github.com/fossas/fossa-cli/errors"
-	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -23,12 +23,6 @@ import (
 // TODO: add a Ruby sidecar that evaluates `Gemfile` and `*.gemspec`.
 
 type Analyzer struct {
-	RubyCmd     string
-	RubyVersion string
-
-	BundlerCmd     string
-	BundlerVersion string
-
 	Bundler bundler.Bundler
 	Module  module.Module
 	Options Options
@@ -50,25 +44,13 @@ func New(m module.Module) (*Analyzer, error) {
 	}
 	log.WithField("options", options).Debug("parsed analyzer options")
 
-	// Construct analyzer.
-	rubyCmd, rubyVersion, err := exec.Which("--version", os.Getenv("FOSSA_RUBY_CMD"), "ruby")
-	if err != nil {
-		log.Warnf("Could not resolve Ruby")
-	}
-	bundlerCmd, bundlerVersion, err := exec.Which("--version", os.Getenv("FOSSA_BUNDLER_CMD"), "bundler", "bundle")
+	bundler, err := bundler.New()
 	if err != nil {
 		log.Warnf("Could not resolve Bundler")
 	}
+
 	return &Analyzer{
-		RubyCmd:     rubyCmd,
-		RubyVersion: rubyVersion,
-
-		BundlerCmd:     bundlerCmd,
-		BundlerVersion: bundlerVersion,
-
-		Bundler: bundler.Bundler{
-			Cmd: bundlerCmd,
-		},
+		Bundler: bundler,
 		Module:  m,
 		Options: options,
 	}, nil
@@ -120,9 +102,14 @@ func (a *Analyzer) Build() error {
 }
 
 func (a *Analyzer) IsBuilt() (bool, error) {
-	_, err := a.Bundler.List()
-	if err != nil {
-		return false, err
+	ok, err := files.Exists(a.lockfilePath())
+	if err != nil || !ok {
+		return false, &errors.Error{
+			Cause:           err,
+			Type:            errors.Unknown,
+			Troubleshooting: "Your ruby project may not be built, which will result in less accurate results. Generate a Gemfile.lock file by running `bundle install`",
+			Link:            "https://bundler.io/v1.3/rationale.html",
+		}
 	}
 	return true, nil
 }
@@ -144,72 +131,36 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	case "list-lockfile":
 		fallthrough
 	default:
-		return a.bundlerListLockfileAnalyzerStrategy(lockfilePath)
-	}
-}
-
-func (a *Analyzer) bundlerListLockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, error) {
-	lockfile, err := bundler.FromLockfile(lockfilePath)
-	if err != nil {
-		if a.Options.Strategy != "" {
-			return graph.Deps{}, err
+		depGraph, err := a.Bundler.ListLockfileGraph(lockfilePath)
+		if err == nil {
+			return depGraph, nil
 		}
 
-		return a.lockfileAnalyzerStrategy(lockfilePath)
+		deps, err := a.lockfileAnalyzerStrategy(lockfilePath)
+		if err == nil {
+			return deps, err
+		}
+
+		return a.bundlerListAnalyzerStrategy()
 	}
-
-	gems, err := a.Bundler.List()
-	if err == nil {
-		imports, deps := FilteredLockfile(gems, lockfile)
-
-		return graph.Deps{
-			Direct:     imports,
-			Transitive: deps,
-		}, nil
-	}
-
-	if a.Options.Strategy != "" {
-		return graph.Deps{}, err
-	}
-
-	deps, err := a.lockfileAnalyzerStrategy(lockfilePath)
-	if err == nil {
-		return deps, err
-	}
-
-	if a.Options.Strategy != "" {
-		return graph.Deps{}, err
-	}
-
-	return a.bundlerListAnalyzerStrategy()
 }
 
 func (a *Analyzer) bundlerListAnalyzerStrategy() (graph.Deps, error) {
-	gems, err := a.Bundler.List()
+	depGraph, err := a.Bundler.ListGraph()
 	if err != nil {
 		return graph.Deps{}, err
 	}
 
-	imports, deps := FromGems(gems)
-
-	return graph.Deps{
-		Direct:     imports,
-		Transitive: deps,
-	}, nil
+	return depGraph, nil
 }
 
-func (a *Analyzer) lockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, *errors.Error) {
-	lockfile, err := bundler.FromLockfile(lockfilePath)
+func (a *Analyzer) lockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, error) {
+	depGraph, err := bundler.LockfileGraph(lockfilePath)
 	if err != nil {
 		return graph.Deps{}, err
 	}
 
-	imports, deps := FromLockfile(lockfile)
-
-	return graph.Deps{
-		Direct:     imports,
-		Transitive: deps,
-	}, nil
+	return depGraph, nil
 }
 
 func (a *Analyzer) lockfilePath() string {

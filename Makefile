@@ -6,6 +6,7 @@ BIN=$(shell go env GOPATH)/bin
 DEP=$(BIN)/dep
 GO_BINDATA=$(BIN)/go-bindata
 GENNY=$(BIN)/genny
+GOLANGCI_LINT=$(BIN)/golangci-lint
 
 ## Test tools.
 GO_JUNIT_REPORT=$(BIN)/go-junit-report
@@ -17,6 +18,7 @@ GODOWNLOADER=$(BIN)/godownloader
 ## Configurations.
 IMAGE?=buildtools
 GORELEASER_FLAGS?=--rm-dist
+GCFLAGS:=-gcflags 'all=-trimpath=${GOPATH}'
 LDFLAGS:=-ldflags '-extldflags "-static" -X github.com/fossas/fossa-cli/cmd/fossa/version.version=$(shell git rev-parse --abbrev-ref HEAD) -X github.com/fossas/fossa-cli/cmd/fossa/version.commit=$(shell git rev-parse HEAD) -X "github.com/fossas/fossa-cli/cmd/fossa/version.goversion=$(shell go version)" -X github.com/fossas/fossa-cli/cmd/fossa/version.buildType=development'
 
 all: build
@@ -30,6 +32,9 @@ $(GO_BINDATA):
 
 $(GENNY):
 	go get -u -v github.com/cheekybits/genny
+
+$(GOLANGCI_LINT):
+	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
 
 $(GO_JUNIT_REPORT):
 	go get -u -v github.com/jstemmer/go-junit-report
@@ -53,7 +58,7 @@ build: $(BIN)/fossa
 $(BIN)/fossa: $(GO_BINDATA) $(GENNY) $(DEP) $(shell find . -name *.go)
 	dep check
 	go generate ./...
-	go build -o $@ $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
+	go build -o $@ $(GCFLAGS) $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
 
 # Building various Docker images.
 .PHONY:
@@ -85,6 +90,10 @@ dev-osx: docker-$(IMAGE)
 	docker run --rm -it \
 		-v $$GOPATH/src/github.com/fossas/fossa-cli:/home/fossa/go/src/github.com/fossas/fossa-cli \
 		fossa/fossa-cli:$(IMAGE) /bin/bash
+
+.PHONY: lint
+lint: $(GOLANGCI_LINT)
+	golangci-lint run
 
 .PHONY: vendor
 vendor: $(DEP)

@@ -137,9 +137,9 @@ func (a *Analyzer) Build() error {
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Debugf("Running Carthage analysis: %#v", a.Module)
-	cartfileResolvedExists, err := files.Exists(filepath.Join(a.Module.Dir, "Cartfile.resolved"))
-	if !cartfileResolvedExists || err != nil {
-		return graph.Deps{}, fmt.Errorf("The file Cartfile.resolved could not be found in the directory: %s, Carthage analysis requires the existence of a Cartfile.resolved file in order to determine information about the dependencies used to build your project.", a.Module.Dir)
+	cartfileResolvedExists, fileErr := files.Exists(filepath.Join(a.Module.Dir, "Cartfile.resolved"))
+	if !cartfileResolvedExists || fileErr != nil {
+		return graph.Deps{}, fmt.Errorf("the file Cartfile.resolved could not be found in the directory: %s, Carthage analysis requires the existence of a Cartfile.resolved file in order to determine information about the dependencies used to build your project", a.Module.Dir)
 	}
 
 	resolvedCartfile, err := carthage.FromResolvedCartfile("ROOT", a.Module.Dir)

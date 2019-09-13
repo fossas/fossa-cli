@@ -39,7 +39,7 @@ type Package struct {
 // LockfileDependencies uses a lockfile and the associated manifest file to create a dependency
 // graph. This method approximates the direct dependencies by selecting all dependencies
 // in the manifest file as direct dependencies and determines the version from the lockfile.
-func LockfileDependencies(lockfilePath string, dir string) (graph.Deps, *errors.Error) {
+func LockfileDependencies(lockfilePath string, dir string) (graph.Deps, error) {
 	lockfileLocation := filepath.Join(dir, lockfilePath)
 	var lock lockfile
 	err := files.ReadTOML(&lock, lockfileLocation)
