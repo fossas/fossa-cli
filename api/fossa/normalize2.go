@@ -90,7 +90,11 @@ func ApiFormatPackage(allDeps map[pkg.ID]pkg.Package, pkg pkg.Package) ApiDep {
 
 	for _, pkgImport := range pkg.Imports {
 		// TODO: do we ever deal with unresolved imports here?
-		deeper = append(deeper, ApiFormatPackage(allDeps, allDeps[pkgImport.Resolved]))
+		dep, ok := allDeps[pkgImport.Resolved]
+		if !ok {
+			continue
+		}
+		deeper = append(deeper, ApiFormatPackage(allDeps, dep))
 	}
 
 	return ApiDep{

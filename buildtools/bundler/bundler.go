@@ -21,15 +21,20 @@ type Gem struct {
 	Revision string
 }
 
-func New() (Bundler, error) {
+func New() (Bundler, *errors.Error) {
 	bundlerCmd, _, err := exec.Which("--version", os.Getenv("FOSSA_BUNDLER_CMD"), "bundler", "bundle")
 	if err != nil {
-		return Bundler{}, err
+		return Bundler{}, &errors.Error{
+			Cause:           err,
+			Type:            errors.Exec,
+			Troubleshooting: "FOSSA uses bundler to analyze Ruby projects but was unable to find the command. Ensure that `bundle` is accessibly in the environment you are running the FOSSA CLI in. If you are using a custom bundle command set the environment variable FOSSA_BUNDLER_CMD to its location.",
+			Link:            "bundler.io/man/bundle-list.1.html",
+		}
 	}
 	return Bundler{Cmd: bundlerCmd}, nil
 }
 
-func (b *Bundler) ListLockfileGraph(lockfilePath string) (graph.Deps, error) {
+func (b *Bundler) ListLockfileGraph(lockfilePath string) (graph.Deps, *errors.Error) {
 	lockfile, err := FromLockfile(lockfilePath)
 	if err != nil {
 		return graph.Deps{}, err
@@ -48,7 +53,7 @@ func (b *Bundler) ListLockfileGraph(lockfilePath string) (graph.Deps, error) {
 	}, nil
 }
 
-func (b *Bundler) ListGraph() (graph.Deps, error) {
+func (b *Bundler) ListGraph() (graph.Deps, *errors.Error) {
 	gems, err := b.List()
 	if err != nil {
 		return graph.Deps{}, err
@@ -58,25 +63,22 @@ func (b *Bundler) ListGraph() (graph.Deps, error) {
 }
 
 func graphFromGems(gems []Gem) graph.Deps {
-	depGraph := graph.Deps{Direct: []pkg.Import{}}
+	depGraph := graph.Deps{Transitive: make(map[pkg.ID]pkg.Package)}
 	for _, gem := range gems {
 		id := pkg.ID{
 			Type:     pkg.Ruby,
 			Name:     gem.Name,
 			Revision: gem.Revision,
 		}
-		depGraph.Direct = append(depGraph.Direct, pkg.Import{
-			Resolved: id,
-		})
-		depGraph.Transitive[id] = pkg.Package{
-			ID: id,
-		}
+
+		depGraph.Direct = append(depGraph.Direct, pkg.Import{Resolved: id})
+		depGraph.Transitive[id] = pkg.Package{ID: id}
 	}
 
 	return depGraph
 }
 
-func (b *Bundler) List() ([]Gem, error) {
+func (b *Bundler) List() ([]Gem, *errors.Error) {
 	stdout, stderr, err := exec.Run(exec.Cmd{
 		Name: b.Cmd,
 		Argv: []string{"list"},

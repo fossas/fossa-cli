@@ -14,7 +14,6 @@ import (
 
 	"github.com/fossas/fossa-cli/buildtools/bundler"
 	"github.com/fossas/fossa-cli/errors"
-	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -102,15 +101,6 @@ func (a *Analyzer) Build() error {
 }
 
 func (a *Analyzer) IsBuilt() (bool, error) {
-	ok, err := files.Exists(a.lockfilePath())
-	if err != nil || !ok {
-		return false, &errors.Error{
-			Cause:           err,
-			Type:            errors.Unknown,
-			Troubleshooting: "Your ruby project may not be built, which will result in less accurate results. Generate a Gemfile.lock file by running `bundle install`",
-			Link:            "https://bundler.io/v1.3/rationale.html",
-		}
-	}
 	return true, nil
 }
 
@@ -125,9 +115,17 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	switch strategy {
 	case "list":
-		return a.bundlerListAnalyzerStrategy()
+		depGraph, err := a.bundlerListAnalyzerStrategy()
+		if err != nil {
+			return graph.Deps{}, err
+		}
+		return depGraph, nil
 	case "lockfile":
-		return a.lockfileAnalyzerStrategy(lockfilePath)
+		depGraph, err := a.lockfileAnalyzerStrategy(lockfilePath)
+		if err != nil {
+			return graph.Deps{}, err
+		}
+		return depGraph, nil
 	case "list-lockfile":
 		fallthrough
 	default:
@@ -136,16 +134,21 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 			return depGraph, nil
 		}
 
-		deps, err := a.lockfileAnalyzerStrategy(lockfilePath)
+		depGraph, err = a.lockfileAnalyzerStrategy(lockfilePath)
 		if err == nil {
-			return deps, err
+			return depGraph, nil
 		}
 
-		return a.bundlerListAnalyzerStrategy()
+		depGraph, err = a.bundlerListAnalyzerStrategy()
+		if err != nil {
+			return graph.Deps{}, err
+		}
+
+		return depGraph, nil
 	}
 }
 
-func (a *Analyzer) bundlerListAnalyzerStrategy() (graph.Deps, error) {
+func (a *Analyzer) bundlerListAnalyzerStrategy() (graph.Deps, *errors.Error) {
 	depGraph, err := a.Bundler.ListGraph()
 	if err != nil {
 		return graph.Deps{}, err
@@ -154,7 +157,7 @@ func (a *Analyzer) bundlerListAnalyzerStrategy() (graph.Deps, error) {
 	return depGraph, nil
 }
 
-func (a *Analyzer) lockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, error) {
+func (a *Analyzer) lockfileAnalyzerStrategy(lockfilePath string) (graph.Deps, *errors.Error) {
 	depGraph, err := bundler.LockfileGraph(lockfilePath)
 	if err != nil {
 		return graph.Deps{}, err
