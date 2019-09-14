@@ -41,6 +41,11 @@ type Deps map[ID]Package
 type Package struct {
 	ID ID
 
+	Spec     string `json:",omitempty"`
+	License  string `json:",omitempty"`
+	Resolved bool   `json:",omitempty"`
+	Direct   bool   `json:",omitempty"`
+
 	Imports []Import
 }
 

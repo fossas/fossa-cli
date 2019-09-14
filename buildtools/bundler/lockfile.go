@@ -109,7 +109,7 @@ func FromLockfile(filename string) (Lockfile, *errors.Error) {
 
 func GraphFromLockfile(lockfile Lockfile) ([]pkg.Import, map[pkg.ID]pkg.Package) {
 	// Construct a map of all dependencies.
-	nameToID := make(map[string]pkg.ID)
+	nameToID := make(map[string]pkg.Package)
 
 	addSpecs(nameToID, lockfile.Git)
 	addSpecs(nameToID, lockfile.Path)
@@ -126,50 +126,55 @@ func GraphFromLockfile(lockfile Lockfile) ([]pkg.Import, map[pkg.ID]pkg.Package)
 	for _, dep := range lockfile.Dependencies {
 		imports = append(imports, pkg.Import{
 			Target:   dep.String(),
-			Resolved: nameToID[dep.Name],
+			Resolved: nameToID[dep.Name].ID,
 		})
 	}
 
 	return imports, graph
 }
-func addSpecs(lookup map[string]pkg.ID, sections []Section) {
+func addSpecs(lookup map[string]pkg.Package, sections []Section) {
 	for _, section := range sections {
 		for _, spec := range section.Specs {
 			location := section.Remote
+			// typed := pkg.Ruby
 			if section.Type == "GIT" {
 				location = section.Remote + "@" + section.Revision
+				// typed = pkg.Git
+				// name := modified github project.
+				// // Change name as well
 			}
-			lookup[spec.Name] = pkg.ID{
-				Type:     pkg.Ruby,
-				Name:     spec.Name,
-				Revision: spec.Version,
-				Location: location,
+			lookup[spec.Name] = pkg.Package{
+				ID: pkg.ID{
+					Type:     pkg.Ruby,
+					Name:     spec.Name,
+					Revision: spec.Version,
+					Location: location,
+				},
+				Resolved: true,
 			}
 		}
 	}
 }
 
-func addToGraph(graph map[pkg.ID]pkg.Package, lookup map[string]pkg.ID, sections []Section) {
+func addToGraph(graph map[pkg.ID]pkg.Package, lookup map[string]pkg.Package, sections []Section) {
 	for _, section := range sections {
 		for _, spec := range section.Specs {
 			var imports []pkg.Import
 			for _, dep := range spec.Dependencies {
-				id, ok := lookup[dep.Name]
+				depPkg, ok := lookup[dep.Name]
 				if !ok {
 					log.Warnf("Remote was unable to be found for dependency `%s`", dep.Name)
 					continue
 				}
 				imports = append(imports, pkg.Import{
 					Target:   dep.String(),
-					Resolved: id,
+					Resolved: depPkg.ID,
 				})
 			}
 
-			id := lookup[spec.Name]
-			graph[id] = pkg.Package{
-				ID:      id,
-				Imports: imports,
-			}
+			specPkg := lookup[spec.Name]
+			specPkg.Imports = imports
+			graph[specPkg.ID] = specPkg
 		}
 	}
 }
