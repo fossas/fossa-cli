@@ -23,7 +23,7 @@ type Gem struct {
 
 func New() (Bundler, *errors.Error) {
 	bundlerCmd, _, err := exec.Which("--version", os.Getenv("FOSSA_BUNDLER_CMD"), "bundler", "bundle")
-	if err == nil {
+	if err != nil {
 		return Bundler{}, &errors.Error{
 			Cause:           err,
 			Type:            errors.Exec,

@@ -31,11 +31,13 @@ const (
 	NuGet                 // NuGet (https://www.nuget.org)
 	OkBuck                // OkBuck (https://github.com/uber/okbuck)
 	Python                // Pip (https://pip.pypa.io), Pipenv (https://pipenv.readthedocs.io/en/latest/)
+	RPM                   // RPM https://rpm.org/
 	Ruby                  // Bundler (https://bundler.io)
 	Rust                  // Cargo (https://github.com/rust-lang/cargo)
 	Scala                 // SBT (https://www.scala-sbt.org)
 	Raw                   // Unsupported languages
 )
+
 
 // ParseType returns the canonical package type given a string key.
 // TODO: if we got rid of aliases, we could use `go generate` with https://github.com/alvaroloes/enumer.
@@ -155,6 +157,10 @@ func ParseType(key string) (Type, error) {
 	case "pipenv":
 		return Python, nil
 
+	// RPM aliases:
+	case "rpm":
+		return RPM, nil
+
 	// Ruby aliases
 	case "bundler":
 		fallthrough
@@ -240,6 +246,8 @@ func (t Type) String() string {
 		return "okbuck"
 	case Python:
 		return "pip"
+	case RPM:
+		return "rpm"
 	case Ruby:
 		return "gem"
 	case Rust:
@@ -249,6 +257,6 @@ func (t Type) String() string {
 	case Raw:
 		return "archive"
 	default:
-		panic(t)
+		return ""
 	}
 }
