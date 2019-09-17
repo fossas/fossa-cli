@@ -14,11 +14,11 @@ import (
 )
 
 const (
-	AnalyzerName            = "python"
+	AnalyzerName = "python"
 
 	SetupPyStrategy         = "setuptools"
 	PipStrategy             = "pip"
-	PipEnvStrategy          = "pipenv"
+	PipenvStrategy          = "pipenv"
 	PipDepTreeStrategy      = "deptree"
 	RequirementsTxtStrategy = "requirements"
 )
@@ -26,16 +26,16 @@ const (
 var PythonAnalyzer = module.AnalyzerV2{
 	Name:         AnalyzerName,
 	DiscoverFunc: NewDiscover,
-	Strategies:   module.Strategies{
+	Strategies: module.Strategies{
 		Named: map[module.StrategyName]module.Strategy{
-			SetupPyStrategy: AnalyzeSetupPy,
-			PipStrategy: AnalyzePip,
-			PipEnvStrategy: AnalyzePipEnv,
-			PipDepTreeStrategy: AnalyzePipDepTree,
+			SetupPyStrategy:         AnalyzeSetupPy,
+			PipStrategy:             AnalyzePip,
+			PipenvStrategy:          AnalyzePipenv,
+			PipDepTreeStrategy:      AnalyzePipDepTree,
 			RequirementsTxtStrategy: AnalyzeRequirementsTxt,
 		},
-		SortedNames: []module.StrategyName{PipEnvStrategy, PipDepTreeStrategy, PipStrategy, RequirementsTxtStrategy, SetupPyStrategy},
-		Optimal:     []module.StrategyName{PipEnvStrategy, PipDepTreeStrategy, PipStrategy},
+		SortedNames: []module.StrategyName{PipenvStrategy, PipDepTreeStrategy, PipStrategy, RequirementsTxtStrategy, SetupPyStrategy},
+		Optimal:     []module.StrategyName{PipenvStrategy},
 	},
 }
 
@@ -60,15 +60,17 @@ func NewDiscover(dir module.Filepath) (map[module.Filepath]module.DiscoveredStra
 		if !info.IsDir() && info.Name() == "setup.py" {
 			addStrategy(SetupPyStrategy)
 			addStrategy(PipStrategy)
-			addStrategy(PipEnvStrategy)
 			addStrategy(PipDepTreeStrategy)
 		}
 
 		if !info.IsDir() && info.Name() == "requirements.txt" {
 			addStrategy(RequirementsTxtStrategy)
 			addStrategy(PipStrategy)
-			addStrategy(PipEnvStrategy)
 			addStrategy(PipDepTreeStrategy)
+		}
+
+		if !info.IsDir() && info.Name() == "Pipfile.lock" {
+			addStrategy(PipenvStrategy)
 		}
 
 		return nil
@@ -102,7 +104,7 @@ func AnalyzePip(dir module.Filepath, target module.Filepath) (graph.Deps, *error
 	}, nil
 }
 
-func AnalyzePipEnv(dir module.Filepath, target module.Filepath) (graph.Deps, *errors.Error) {
+func AnalyzePipenv(dir module.Filepath, target module.Filepath) (graph.Deps, *errors.Error) {
 	penv := pipenv.New(dir)
 	depGraph, err := penv.Deps()
 	return depGraph, errors.UnknownError(err, "Couldn't analyze with pipenv")

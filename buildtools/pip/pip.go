@@ -32,7 +32,7 @@ func New() Pip {
 
 	return Pip{
 		PythonCmd: pythonCmd,
-		Cmd: pipCmd,
+		Cmd:       pipCmd,
 	}
 }
 
