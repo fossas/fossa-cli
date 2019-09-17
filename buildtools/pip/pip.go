@@ -3,6 +3,7 @@ package pip
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"unicode"
 
@@ -16,6 +17,23 @@ import (
 type Pip struct {
 	Cmd       string
 	PythonCmd string
+}
+
+func New() Pip {
+	// Construct analyzer.
+	pythonCmd, _, err := exec.Which("--version", os.Getenv("FOSSA_PYTHON_CMD"), "python", "python3", "python2.7")
+	if err != nil {
+		log.Warn("`python` command not detected")
+	}
+	pipCmd, _, err := exec.Which("--version", os.Getenv("FOSSA_PIP_CMD"), "pip3", "pip")
+	if err != nil {
+		log.Warn("`pip` command not detected")
+	}
+
+	return Pip{
+		PythonCmd: pythonCmd,
+		Cmd: pipCmd,
+	}
 }
 
 // Structure for deserializing the output of `pip list`
@@ -60,10 +78,11 @@ func (p *Pip) Install(requirementsFilename string) *errors.Error {
 	}
 }
 
-func (p *Pip) List() ([]Requirement, *errors.Error) {
+func (p *Pip) List(dir string) ([]Requirement, *errors.Error) {
 	stdout, _, err := exec.Run(exec.Cmd{
 		Name: p.Cmd,
 		Argv: []string{"list", "--format=json"},
+		Dir:  dir,
 	})
 	if err != nil {
 		return nil, &errors.Error{

@@ -138,7 +138,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	switch a.Options.Strategy {
 	case "deptree":
-		tree, err := a.Pip.DepTree()
+		tree, err := a.Pip.DepTree(".")
 		if err != nil {
 			return graph.Deps{}, err
 		}
@@ -148,7 +148,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 			Transitive: deps,
 		}, nil
 	case "pip":
-		reqs, err := a.Pip.List()
+		reqs, err := a.Pip.List(".")
 		if err != nil {
 			return graph.Deps{}, err
 		}
