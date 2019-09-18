@@ -23,13 +23,22 @@ type License struct {
 
 // A Revision holds the FOSSA API response for the revision API.
 type Revision struct {
-	Locator  *Locator `json:"loc"`
-	Licenses []License
-	Project  *Project
-	Meta     []RevisionMeta
-	Issues   []Issue
-	Version  string
-	Hash     string
+	Locator        *Locator `json:"loc"`
+	Licenses       []License
+	Project        *Project
+	DependencyLock DependencyLock `json:"DependencyLock"`
+	Meta           []RevisionMeta
+	Issues         []Issue
+	Version        string
+	Hash           string
+}
+
+type DependencyLock struct {
+	PathsTo PathsTo `json:"paths_to"`
+}
+
+type PathsTo struct {
+	Paths [][]string `json:"paths"`
 }
 
 // A RevisionMeta holds metadata about a FOSSA API revision.
