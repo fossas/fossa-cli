@@ -19,7 +19,7 @@ type DepTree struct {
 	Dependencies []DepTree
 }
 
-func (p *Pip) DepTree() ([]DepTree, *errors.Error) {
+func (p *Pip) DepTree(dir string) ([]DepTree, *errors.Error) {
 	// Write helper to disk.
 	src, err := bindata.Asset("bindata/pipdeptree.py")
 	if err != nil {
@@ -51,6 +51,7 @@ func (p *Pip) DepTree() ([]DepTree, *errors.Error) {
 	out, _, err := exec.Run(exec.Cmd{
 		Name: p.PythonCmd,
 		Argv: []string{pipdeptreeFile.Name(), "--local-only", "--json-tree"},
+		Dir:  dir,
 	})
 	if err != nil {
 		return nil, errors.UnknownError(err, "could not run `pipdeptree`")
