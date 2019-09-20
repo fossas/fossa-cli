@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/fossas/fossa-cli/buildtools/rpm"
+	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/testing/helpers"
 	"github.com/stretchr/testify/assert"
 )
@@ -99,7 +100,8 @@ func mockSingleRPM() rpm.Shell {
 				}
 				switch args[len(args)-1] {
 				case "dep-one":
-					return stringFile("testdata/licenses/dep-one-license")
+					stdout, stderr, err := stringFile("testdata/licenses/dep-one-license")
+					return stdout, stderr, errors.Wrap(err, "error should not cause a failure")
 				case "dep-two":
 					return stringFile("testdata/licenses/dep-two-license")
 				case "dep-three":
@@ -115,7 +117,8 @@ func mockSingleRPM() rpm.Shell {
 			case "-qR":
 				switch args[1] {
 				case "dep-one":
-					return stringFile("testdata/dep-one-transitive")
+					stdout, stderr, err := stringFile("testdata/dep-one-transitive")
+					return stdout, stderr, errors.Wrap(err, "error should not cause a failure")
 				case "dep-two":
 					return stringFile("testdata/dep-two-transitive")
 				case "dep-four":

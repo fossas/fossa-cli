@@ -98,7 +98,7 @@ func (s Shell) singlePackageRPM(target string) (string, *errors.Error) {
 	arguments := []string{"-q", "--queryformat", "%{name},%{version},%{license}\n", target}
 	stdout, stderr, err := s.RPM(arguments...)
 	if err != nil {
-		return "", &errors.Error{
+		return stdout, &errors.Error{
 			Cause:           err,
 			Type:            errors.Exec,
 			Troubleshooting: fmt.Sprintf("The command rpm %+v could not be run and information about %s could not be retrieved. Try running this command on your own, if that fails try to first install %s.\nstderr: %s\nstdout: %s", arguments, target, target, stderr, stdout),
@@ -112,7 +112,7 @@ func (s Shell) providers(target string) []string {
 	arguments := []string{"-q", "--whatprovides", target}
 	stdout, _, err := s.RPM(arguments...)
 	if err != nil {
-		return []string{}
+		return []string{target}
 	}
 	providers := []string{}
 	lines := strings.Split(stdout, "\n")
@@ -134,7 +134,7 @@ func (s Shell) transitiveDepsRPM(target string) (string, *errors.Error) {
 	arguments := []string{"-qR", target}
 	stdout, stderr, err := s.RPM(arguments...)
 	if err != nil {
-		return "", &errors.Error{
+		return stdout, &errors.Error{
 			Cause:           err,
 			Type:            errors.Exec,
 			Troubleshooting: fmt.Sprintf("The command rpm %+v could not be run and information about %s's dependencies could not be retrieved. Try running this command on your own, if that fails try to first install %s.\nstderr: %s\nstdout: %s", arguments, target, target, stderr, stdout),
@@ -145,7 +145,7 @@ func (s Shell) transitiveDepsRPM(target string) (string, *errors.Error) {
 }
 
 func (s Shell) yumInstall(target string) *errors.Error {
-	arguments := []string{"install", target, "-y"}
+	arguments := []string{"install", target, "-y", "--skip-broken"}
 	stdout, stderr, err := s.Yum(arguments...)
 	if err != nil {
 		return &errors.Error{
@@ -200,7 +200,7 @@ func recursiveInstall(target string, s Shell, dependencyImports map[string][]str
 	providers := s.providers(target)
 	for _, provider := range providers {
 		output, err := s.transitiveDepsRPM(provider)
-		if err != nil {
+		if err != nil && output == "" {
 			log.Warn(err.Error())
 			dependencyImports[target] = []string{}
 			return
@@ -234,6 +234,7 @@ func (s Shell) SinglePackage(target string) (graph.Deps, error) {
 			if len(providers) == 0 {
 				providers = []string{dep}
 			}
+
 			output, err := s.singlePackageRPM(providers[0])
 			if err != nil {
 				log.Warn(err.Error())
