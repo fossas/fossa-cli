@@ -1,0 +1,33 @@
+*** Skipping the build of codegen and compilation of proto files because skipCodegen=true
+
+------------------------------------------------------------
+All tasks runnable from root project
+------------------------------------------------------------
+
+App Engine Standard environment tasks
+-------------------------------------
+grpc-gae-interop-testing-jdk8:appengineDeploy - Deploy an App Engine application
+grpc-gae-interop-testing-jdk8:explodeWar - Explode a war into a directory
+
+Application tasks
+-----------------
+grpc-benchmarks:run - Runs this project as a JVM application
+grpc-interop-testing:run - Runs this project as a JVM application
+
+Build tasks
+-----------
+assemble - Assembles the outputs of this project.
+grpc-netty-shaded:testShadowClasses - Assembles test shadow classes.
+grpc-gae-interop-testing-jdk8:war - Generates a war archive with all the compiled classes, the web-app content and the libraries.
+
+Help tasks
+----------
+grpc-bom:buildEnvironment - Displays all buildscript dependencies declared in project ':grpc-bom'.
+grpc-context:buildEnvironment - Displays all buildscript dependencies declared in project ':grpc-context'.
+grpc-netty:dependencies - Displays all dependencies declared in project ':grpc-netty'.
+grpc-xds:dependencies - Displays all dependencies declared in project ':grpc-xds'.
+dependencyInsight - Displays the insight into a specific dependency in root project 'grpc'.
+
+Publishing tasks
+----------------
+grpc-all:generateMetadataFileForMavenPublication - Generates the Gradle metadata file for publication 'maven'.
