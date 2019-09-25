@@ -8,7 +8,10 @@ module Effect.Exec
 
 import Prologue
 
+import           Control.Exception
 import qualified Data.ByteString.Lazy as BL
+import           Data.ByteString.Lazy.Optics
+import           Optics
 import           Path.IO
 import           Polysemy
 import           System.Exit
@@ -21,7 +24,9 @@ execToIO :: Member (Embed IO) r => InterpreterFor Exec r
 execToIO = interpret $ \case
   Exec dir cmd args -> do
     absolute <- makeAbsolute dir
-    readProcess (setWorkingDir (toFilePath absolute) (proc cmd args))
+    embed @IO $
+      readProcess (setWorkingDir (toFilePath absolute) (proc cmd args))
+        `catch` (\(e :: IOException) -> pure (ExitFailure (-1), "", show e ^. packedChars)) -- TODO: better error?
 {-# INLINE execToIO #-}
 
 makeSem ''Exec
