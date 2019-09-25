@@ -17,6 +17,7 @@ import Prologue hiding (empty, parent)
 import qualified Data.IntMap as IM
 import qualified Data.IntSet as IS
 import qualified Data.Sequence as S
+import           Optics
 
 -- | The empty graph
 empty :: Graph
@@ -65,6 +66,24 @@ graphDeps = _graphDeps
 -- The returned 'IntMap' represents dependency relationships from Parent -> [Child]
 graphAssocs :: Graph -> IM.IntMap [Int]
 graphAssocs = _graphAssocs
+
+-- Graph is a semigroup: dependencies can be combined, with offsets applied to
+-- the assocs and direct deps of the second graph
+instance Semigroup Graph where
+  Graph deps1 assocs1 direct1 <> Graph deps2 assocs2 direct2 =
+    Graph (deps1 <> deps2) -- combine deps
+          (IM.unionWith (++) assocs1 offsetAssocs2) -- offset the assocs entries
+          (direct1 <> IS.map (+offset) direct2) -- offset the direct entries
+    where
+    offsetAssocs2 = assocs2
+                  & IM.toList -- [(key, [value])]
+                  & over (mapped % _1) (+offset) -- offset keys
+                  & over (mapped % _2 % mapped) (+offset) -- offset list of values
+                  & IM.fromList
+    offset = length deps1
+
+instance Monoid Graph where
+  mempty = empty
 
 instance FromJSON DepType -- use the generic instance
 instance ToJSON DepType -- use the generic instance
