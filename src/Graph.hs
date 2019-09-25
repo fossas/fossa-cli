@@ -12,12 +12,11 @@ module Graph
   , Dependency(..)
   ) where
 
-import           Data.Aeson ((.:), (.=), FromJSON, ToJSON, object, parseJSON, toJSON, withObject)
+import Prologue hiding (empty, parent)
+
 import qualified Data.IntMap as IM
 import qualified Data.IntSet as IS
 import qualified Data.Sequence as S
-import           Data.Text (Text)
-import           GHC.Generics (Generic)
 
 -- | The empty graph
 empty :: Graph

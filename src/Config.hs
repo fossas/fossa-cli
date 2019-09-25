@@ -6,14 +6,10 @@ module Config
   , loadConfig
   ) where
 
-import           Data.Traversable
-import           Data.Aeson
-import           Data.Map (Map)
+import Prologue
+
 import qualified Data.Map as M
-import           Data.Text (Text)
 import qualified Data.Yaml as Yaml
-import           GHC.Generics (Generic)
-import           Path
 import           Polysemy
 import           Polysemy.Error
 
@@ -47,7 +43,7 @@ loadConfig strategiesByName dir = do
                 Success a -> pure $ ConfiguredStrategy strat a
 
 data ConfiguredStrategy where
-  ConfiguredStrategy :: (FromJSON options, ToJSON options) => !(Strategy options) -> !options -> ConfiguredStrategy
+  ConfiguredStrategy :: (FromJSON options, ToJSON options) => Strategy options -> options -> ConfiguredStrategy
 
 instance ToJSON ConfiguredStrategy where
   toJSON (ConfiguredStrategy strategy options) = object ["name" .= strategyName strategy, "options" .= options]

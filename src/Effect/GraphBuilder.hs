@@ -12,9 +12,11 @@ module Effect.GraphBuilder
   )
   where
 
+import Prologue hiding (parent)
+
 import qualified Graph as G
-import Polysemy
-import Polysemy.State
+import           Polysemy
+import           Polysemy.State
 
 data GraphBuilder m a where
   AddNode   :: G.Dependency -> GraphBuilder m G.DepRef

@@ -5,20 +5,10 @@ module MyLib
   ( app
   ) where
 
-import           Data.Aeson
-import           Data.Aeson.Types
-import           Data.Char (toLower)
-import qualified Data.ByteString.Char8 as BS
-import qualified Data.ByteString.Lazy as BL
-import           Data.Function
-import           Data.Maybe
-import           Data.Monoid (Last)
-import           Data.Text (Text)
-import qualified Data.Text as T
+import Prologue
+
 import           Data.Map (Map)
 import qualified Data.Map as M
-import           GHC.Generics (Generic)
-import           Path
 import           Path.IO
 import           Polysemy
 import           Polysemy.Error

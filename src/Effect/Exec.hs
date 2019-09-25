@@ -6,8 +6,9 @@ module Effect.Exec
   , execToIO
   ) where
 
+import Prologue
+
 import qualified Data.ByteString.Lazy as BL
-import           Path
 import           Path.IO
 import           Polysemy
 import           System.Exit

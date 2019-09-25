@@ -4,7 +4,7 @@ module Strategy
   , SomeStrategy(..)
   ) where
 
-import           Data.Aeson
+import Prologue
 
 import Graph
 

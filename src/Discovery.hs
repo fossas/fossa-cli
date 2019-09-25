@@ -4,9 +4,7 @@ module Discovery
   , filterDirname
   ) where
 
-import Data.Typeable
-import GHC.Generics
-import Path
+import Prologue
 
 data DiscoverErr =
     ConfigParseFailed String

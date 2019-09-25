@@ -3,8 +3,7 @@ module Strategy.Gradle
   (
   ) where
 
-import Data.Text (Text)
-import GHC.Generics (Generic)
+import Prologue
 
 data GradleOpts = GradleOpts
   { gradleOptsCmd               :: Text

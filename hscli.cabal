@@ -8,6 +8,7 @@ common lang
   build-depends:      base ^>=4.12
   default-language:   Haskell2010
   default-extensions:
+    NoImplicitPrelude
     BangPatterns
     DataKinds
     DeriveGeneric
@@ -17,6 +18,7 @@ common lang
     GADTs
     GeneralizedNewtypeDeriving
     LambdaCase
+    MonadFailDesugaring
     MultiParamTypeClasses
     MultiWayIf
     NamedFieldPuns
@@ -27,16 +29,15 @@ common lang
     RankNTypes
     RecordWildCards
     ScopedTypeVariables
+    StrictData
     TypeApplications
     TypeFamilies
     TypeOperators
     UndecidableInstances
 
   ghc-options:
-    -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
-    -Wmissing-home-modules
-
--- TODO: -Wmissing-import-lists -Wmissing-export-lists
+    -Wall -Wincomplete-uni-patterns -Wcompat -Wincomplete-record-updates
+    -Wmissing-home-modules -Wmissing-export-lists -Wredundant-constraints
 
 library
   import:          lang
@@ -50,6 +51,7 @@ library
     Effect.ReadFS
     Graph
     MyLib
+    Prologue
     Strategy
     Strategy.Gradle
     Strategy.Npm

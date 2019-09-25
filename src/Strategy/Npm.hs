@@ -5,17 +5,14 @@ module Strategy.Npm
   , configure
   ) where
 
-import           Control.Monad
-import           Data.Aeson
+import Prologue
+
 import           Data.ByteString.Lazy.Optics
-import           Data.Foldable hiding (find, fold)
 import           Data.Function ((&))
 import           Data.Map (Map)
 import qualified Data.Map as M
 import           Data.Text (Text)
-import           GHC.Generics
 import           Optics
-import           Path
 import           Polysemy
 import           Polysemy.Error
 import           System.Exit
@@ -29,7 +26,7 @@ import qualified Graph as G
 import           Strategy
 
 data NpmOpts = NpmOpts
-  { npmOptsDir :: !(Path Rel Dir)
+  { npmOptsDir :: Path Rel Dir
   } deriving Show
 
 instance FromJSON NpmOpts where
@@ -42,7 +39,6 @@ discover :: (Member (Embed IO) r, Member ReadFS r) => Path Abs Dir -> Sem r [Con
 discover basedir = do
   paths <- embed $ find (fileName /~? "node_modules") (fileName ==? "package.json") (toFilePath basedir)
   files <- embed @IO $ traverse (stripProperPrefix basedir <=< parseAbsFile) paths
-  embed (print files)
   pure $ map (configure . parent) files
 
 strategy :: Strategy NpmOpts
