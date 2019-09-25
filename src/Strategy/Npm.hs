@@ -15,6 +15,7 @@ import           Data.Text (Text)
 import           Optics
 import           Polysemy
 import           Polysemy.Error
+import           Polysemy.Output
 import           System.Exit
 import           System.FilePath.Find
 
@@ -34,11 +35,11 @@ instance FromJSON NpmOpts where
 instance ToJSON NpmOpts where
   toJSON NpmOpts{..} = object ["dir" .= npmOptsDir]
 
-discover :: (Member (Embed IO) r) => Path Abs Dir -> Sem r [ConfiguredStrategy]
+discover :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover basedir = do
   paths <- embed $ find (fileName /~? "node_modules") (fileName ==? "package.json") (toFilePath basedir)
   files <- embed @IO $ traverse (stripProperPrefix basedir <=< parseAbsFile) paths
-  pure $ map (configure . parent) files
+  traverse_ (output . configure . parent) files
 
 strategy :: Strategy NpmOpts
 strategy = Strategy
