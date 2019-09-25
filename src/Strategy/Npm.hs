@@ -21,7 +21,6 @@ import           System.FilePath.Find
 import           Config
 import           Effect.Exec
 import           Effect.GraphBuilder
-import           Effect.ReadFS
 import qualified Graph as G
 import           Strategy
 
@@ -35,7 +34,7 @@ instance FromJSON NpmOpts where
 instance ToJSON NpmOpts where
   toJSON NpmOpts{..} = object ["dir" .= npmOptsDir]
 
-discover :: (Member (Embed IO) r, Member ReadFS r) => Path Abs Dir -> Sem r [ConfiguredStrategy]
+discover :: (Member (Embed IO) r) => Path Abs Dir -> Sem r [ConfiguredStrategy]
 discover basedir = do
   paths <- embed $ find (fileName /~? "node_modules") (fileName ==? "package.json") (toFilePath basedir)
   files <- embed @IO $ traverse (stripProperPrefix basedir <=< parseAbsFile) paths
