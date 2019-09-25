@@ -52,18 +52,6 @@ data ConfiguredStrategy where
 instance ToJSON ConfiguredStrategy where
   toJSON (ConfiguredStrategy strategy options) = object ["name" .= strategyName strategy, "options" .= options]
 
-{-
-instance FromJSON ConfiguredStrategy where
-  parseJSON = withObject "ConfiguredStrategy" $ \obj -> do
-    name    <- obj .: "name"
-    options <- obj .: "options"
-    case M.lookup name strategiesByName of
-      Nothing -> fail ("Couldn't find strategy with name " <> T.unpack name)
-      Just (SomeStrategy strat) -> case fromJSON options of
-        Error e   -> fail e
-        Success a -> pure $ ConfiguredStrategy strat a
--}
-
 data Config = Config
   { configStrategies :: [ConfigStrategy]
   } deriving (Generic)

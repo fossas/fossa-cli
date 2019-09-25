@@ -7,12 +7,14 @@ module Strategy.Npm
 
 import           Control.Monad
 import           Data.Aeson
+import           Data.ByteString.Lazy.Optics
 import           Data.Foldable hiding (find, fold)
 import           Data.Function ((&))
 import           Data.Map (Map)
 import qualified Data.Map as M
 import           Data.Text (Text)
 import           GHC.Generics
+import           Optics
 import           Path
 import           Polysemy
 import           Polysemy.Error
@@ -38,8 +40,9 @@ instance ToJSON NpmOpts where
 
 discover :: (Member (Embed IO) r, Member ReadFS r) => Path Abs Dir -> Sem r [ConfiguredStrategy]
 discover basedir = do
-  paths <- embed $ find always (fileName ==? "package.json") (toFilePath basedir)
+  paths <- embed $ find (fileName /~? "node_modules") (fileName ==? "package.json") (toFilePath basedir)
   files <- embed @IO $ traverse (stripProperPrefix basedir <=< parseAbsFile) paths
+  embed (print files)
   pure $ map (configure . parent) files
 
 strategy :: Strategy NpmOpts
@@ -55,8 +58,8 @@ strategy = Strategy
 
 analyze :: Members '[Exec, Error String, GraphBuilder] r => NpmOpts -> Sem r ()
 analyze NpmOpts{..} = do
-  (exitcode, stdout, _) <- exec npmOptsDir "npm" ["ls", "--json", "--production"]
-  when (exitcode /= ExitSuccess) (throw @String "NPM returned an error code")
+  (exitcode, stdout, stderr) <- exec npmOptsDir "npm" ["ls", "--json", "--production"]
+  when (exitcode /= ExitSuccess) (throw @String $ "NPM returned an error: " <> stderr ^. unpackedChars)
   case eitherDecode stdout of
     Left err -> throw err -- TODO: better error
     Right a -> buildGraph a
@@ -84,7 +87,7 @@ configure :: Path Rel Dir -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . NpmOpts
 
 data NpmOutput = NpmOutput
-  { outputVersion      :: Text
+  { outputVersion      :: Maybe Text
   , outputFrom         :: Maybe Text
   , outputResolved     :: Maybe Text
   , outputDependencies :: Map Text NpmOutput
@@ -92,7 +95,7 @@ data NpmOutput = NpmOutput
 
 instance FromJSON NpmOutput where
   parseJSON = withObject "NpmOutput" $ \obj ->
-    NpmOutput <$> obj .:  "version"
+    NpmOutput <$> obj .:? "version"
               <*> obj .:? "from"
               <*> obj .:? "resolved"
               <*> obj .:? "dependencies" .!= M.empty

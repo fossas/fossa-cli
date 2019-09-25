@@ -39,7 +39,7 @@ addDirect dep graph = graph { _graphDirect = IS.insert (unDepRef dep) (_graphDir
 data Dependency = Dependency
   { dependencyType      :: DepType
   , dependencyName      :: Text
-  , dependencyVersion   :: Text -- TODO: constraints
+  , dependencyVersion   :: Maybe Text -- TODO: constraints
   , dependencyLocations :: [Text]
   } deriving (Eq, Ord, Show, Generic)
 
