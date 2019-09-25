@@ -1,0 +1,79 @@
+cabal-version:      3.0
+name:               hscli
+version:            0.1.0.0
+build-type:         Simple
+extra-source-files: CHANGELOG.md
+
+common lang
+  build-depends:      base ^>=4.12
+  default-language:   Haskell2010
+  default-extensions:
+    BangPatterns
+    DataKinds
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    LambdaCase
+    MultiParamTypeClasses
+    MultiWayIf
+    NamedFieldPuns
+    NumericUnderscores
+    OverloadedLabels
+    OverloadedStrings
+    PolyKinds
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+    UndecidableInstances
+
+  ghc-options:
+    -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
+    -Wmissing-home-modules
+
+-- TODO: -Wmissing-import-lists -Wmissing-export-lists
+
+library
+  import:          lang
+
+  -- cabal-fmt: expand src
+  exposed-modules:
+    Config
+    Discovery
+    Effect.Exec
+    Effect.ReadFS
+    Graph
+    MyLib
+    Strategy
+    Strategy.Gradle
+    Strategy.Npm
+
+  build-depends:
+    , aeson          ^>=1.4.5
+    , bytestring     ^>=0.10.8
+    , containers     ^>=0.6.0
+    , filemanip      ^>=0.3.6
+    , path           ^>=0.6.1
+    , path-io        ^>=1.5.0
+    , polysemy       ^>=1.2.1
+    , text           ^>=1.2.3
+    , typed-process  ^>=0.2.6
+    , yaml           ^>=0.11.1
+
+  hs-source-dirs:  src
+
+executable hscli
+  import:         lang
+  main-is:        Main.hs
+  hs-source-dirs: app
+  build-depends:  hscli
+  ghc-options:
+    -flate-specialise -fspecialize-aggressively -O -threaded
+    -with-rtsopts=-N
+
+-- when profiling: -fprof-auto "-with-rtsopts=-N -p -s -h"
