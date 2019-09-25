@@ -52,7 +52,7 @@ strategies = [SomeStrategy Npm.strategy]
 app :: IO ()
 app = do
   setCurrentDir [absdir|/Users/connor/.go/src/github.com/fossas/fossa-cli/|]
-  !discovered <- discovery & readFSToIO
+  discovered <- discovery & readFSToIO
                           & errorToIOFinal @DiscoverErr
                           & embedToFinal @IO
                           & runFinal
@@ -60,4 +60,4 @@ app = do
     Left err -> print err
     --Right a -> print (length a)
     --Right a -> traverse (\(ConfiguredStrategy strat opt) -> print (encode opt)) a *> pure ()
-    Right a -> print =<< traverse (\(ConfiguredStrategy strat opt) -> strategyAnalyze strat opt) a -- $ map(\(ConfiguredStrategy strat opt) -> BS.pack (strategyName strat) <> BL.toStrict (encode opt)) a
+    Right a -> print =<< traverse (\(ConfiguredStrategy strat opt) -> strategyAnalyze strat opt) a

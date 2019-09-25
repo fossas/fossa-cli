@@ -46,6 +46,7 @@ library
     Config
     Discovery
     Effect.Exec
+    Effect.GraphBuilder
     Effect.ReadFS
     Graph
     MyLib
