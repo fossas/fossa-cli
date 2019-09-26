@@ -14,4 +14,4 @@ data Strategy options = Strategy
   }
 
 data SomeStrategy where
-  SomeStrategy :: (FromJSON options, ToJSON options) => !(Strategy options) -> SomeStrategy
+  SomeStrategy :: (FromJSON options, ToJSON options) => Strategy options -> SomeStrategy

@@ -22,15 +22,6 @@ discovery = do
   dir <- getCurrentDir
   void $ sequence [Npm.discover dir, loadConfig strategiesByName dir]
 
--- TODO: newtypes?
-type ModuleType = String
-type StrategyName = String
-
-moduleTypes :: Map ModuleType [StrategyName]
-moduleTypes = M.fromList
-  [ ("nodejs", ["nodejs-npm"])
-  ]
-
 strategiesByName :: Map String SomeStrategy
 strategiesByName = M.fromList (map (\strategy@(SomeStrategy Strategy{strategyName}) -> (strategyName, strategy)) strategies)
 

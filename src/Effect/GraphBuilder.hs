@@ -28,26 +28,31 @@ makeSem ''GraphBuilder
 -- | Run a GraphBuilder computation, returning both the graph and the result
 runGraphBuilder :: Sem (GraphBuilder ': r) a -> Sem r (G.Graph, a)
 runGraphBuilder = runState G.empty . graphBuilderToState
+{-# INLINE runGraphBuilder #-}
 
 -- | Discard the result from a GraphBuilder computation, returning the graph
 evalGraphBuilder :: Sem (GraphBuilder ': r) a -> Sem r G.Graph
 evalGraphBuilder = fmap fst . runGraphBuilder
+{-# INLINE evalGraphBuilder #-}
 
 -- | Run a GraphBuilder computation, returning both the graph and the result
 -- This can be significanty faster than 'runGraphBuilder'
 runGraphBuilderIO :: Member (Embed IO) r => Sem (GraphBuilder ': r) a -> Sem r (G.Graph, a)
 runGraphBuilderIO = stateToIO G.empty . graphBuilderToState
+{-# INLINE runGraphBuilderIO #-}
 
 -- | Discard the result from a GraphBuilder computation, returning the graph
 -- This can be significantly faster than evalGraphBuilder
 evalGraphBuilderIO :: Member (Embed IO) r => Sem (GraphBuilder ': r) a -> Sem r G.Graph
 evalGraphBuilderIO = fmap fst . runGraphBuilderIO
+{-# INLINE evalGraphBuilderIO #-}
 
 graphBuilderToState :: Sem (GraphBuilder ': r) a -> Sem (State G.Graph ': r) a
 graphBuilderToState = reinterpret $ \case
   AddNode dep -> state (G.addNode dep)
   AddEdge parent child -> modify (G.addEdge parent child)
   AddDirect ref -> modify (G.addDirect ref)
+{-# INLINE graphBuilderToState #-}
 
 state :: Member (State s) r => (s -> (a,s)) -> Sem r a
 state f = do
