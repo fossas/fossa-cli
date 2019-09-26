@@ -52,8 +52,6 @@ func main() {
 		}
 	}()
 
-	defer display.SyncFile()
-
 	err := App.Run(os.Args)
 	if err != nil {
 		switch e := err.(type) {
