@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/apex/log"
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/analyze"
@@ -13,6 +14,7 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/test"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/update"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/upload"
+	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/cmd/fossa/version"
@@ -42,6 +44,16 @@ var App = cli.App{
 }
 
 func main() {
+	// Write the temp log file to disk after the command finishes.
+	defer func() {
+		err := display.SyncFile()
+		if err != nil {
+			log.Warnf("error writing to the log file: %s", err.Error())
+		}
+	}()
+
+	defer display.SyncFile()
+
 	err := App.Run(os.Args)
 	if err != nil {
 		switch e := err.(type) {
