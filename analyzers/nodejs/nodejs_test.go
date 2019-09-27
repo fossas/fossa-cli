@@ -148,6 +148,8 @@ var chaiDirectDep = pkg.Import{
 var npmChaiFixtures = []string{
 	filepath.Join("testdata", "chai", "installed"),
 	filepath.Join("testdata", "chai", "installed-lockfile"),
+	filepath.Join("testdata", "chai", "installed-yarn-lockfile"),
+	filepath.Join("testdata", "chai", "installed-shrinkwrap"),
 	filepath.Join("testdata", "chai", "dev-deps"),
 }
 
@@ -212,6 +214,7 @@ func testUsingNodeModuleFallback(t *testing.T, buildTarget string) {
 
 	chaiProject := analysisResults.Transitive[chaiDirectDep.Resolved]
 	assert.NotNil(t, chaiProject)
+	assert.Equal(t, len(chaiProject.Imports), 6)
 	assertImport(t, chaiProject.Imports, "assertion-error", "1.1.0")
 	assertImport(t, chaiProject.Imports, "check-error", "1.0.2")
 	assertImport(t, chaiProject.Imports, "get-func-name", "2.0.0")

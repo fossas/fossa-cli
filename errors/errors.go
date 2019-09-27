@@ -107,3 +107,7 @@ func (err *Error) WrapCause(msg string) *Error {
 func New(msg string) error {
 	return errors.New(msg)
 }
+
+func Newf(msg string, args ...interface{}) error {
+	return errors.New(fmt.Sprintf(msg, args...))
+}

@@ -135,7 +135,31 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				BuildTarget: filepath.Dir(path),
 				Dir:         filepath.Dir(path),
 			})
+		} else if !info.IsDir() {
+			for _, filename := range npm.PossibleLockfileFilenames {
+				if info.Name() == filename {
+					name := filepath.Base(filepath.Dir(path))
+					// Parse from project name from `package-lock.json` or `npm-shrinkwrap.json` if possible
+					if lockfile, err := npm.FindAndReadLockfile(path); err == nil && lockfile.Name != "" {
+						name = lockfile.Name
+					}
+
+					log.Debugf("Found NodeJS project: %s (%s)", path, name)
+					path, err = filepath.Rel(dir, path)
+					if err != nil {
+						panic(err)
+					}
+					modules = append(modules, module.Module{
+						Name:        name,
+						Type:        pkg.NodeJS,
+						BuildTarget: filepath.Dir(path),
+						Dir:         filepath.Dir(path),
+					})
+					break
+				}
+			}
 		}
+
 		return nil
 	})
 
@@ -251,16 +275,24 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		log.Debug("Using fallback of node_modules")
 	}
 
-	deps, err := npm.FromNodeModules(a.Module.BuildTarget, "package.json")
+	deps, err := npm.FromNodeModules(a.Module.BuildTarget)
 	if err == nil {
 		return deps, nil
 	}
 
 	log.Warnf("Could not determine deps from node_modules")
-	log.Debug("Using fallback of lockfile check")
+	log.Debug("Using fallback of yarn lockfile check")
 
 	// currently only support yarn.lock
-	return yarn.FromProject(filepath.Join(a.Module.BuildTarget, "package.json"), filepath.Join(a.Module.BuildTarget, "yarn.lock"))
+	deps, err = yarn.FromProject(filepath.Join(a.Module.BuildTarget, "package.json"), filepath.Join(a.Module.BuildTarget, "yarn.lock"))
+	if err == nil {
+		return deps, nil
+	}
+
+	log.Warnf("Could not determine deps from yarn lockfile")
+	log.Debug("Using fallback of npm packages lockfile check")
+
+	return npm.FromLockfile(a.Module.BuildTarget)
 }
 
 // fixLegacyBuildTarget ensures that legacy behavior stays intact but users are warned if it is implemented.
