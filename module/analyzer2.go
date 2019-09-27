@@ -1,6 +1,7 @@
 package module
 
 import (
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -57,6 +58,20 @@ type Strategies struct {
 	SortedNames []StrategyName
 	// The set of optimal strategies. This will be used for warnings
 	Optimal []StrategyName
+}
+
+// FilepathStrategies maps strategies to the filepath they were found in.
+type FilepathStrategies map[Filepath]DiscoveredStrategies
+
+// AddStrategy adds a strategy with filepath to the FilepathStrategies.
+func (fileStrategies FilepathStrategies) AddStrategy(info os.FileInfo, path string, name StrategyName) {
+	moduleDir := filepath.Dir(path)
+	current, ok := fileStrategies[moduleDir]
+	if !ok {
+		current = make(DiscoveredStrategies)
+	}
+	current[name] = info.Name()
+	fileStrategies[moduleDir] = current
 }
 
 // The filepath is the relative filepath from the root of the module
