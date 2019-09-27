@@ -3,7 +3,6 @@
 
 module Config
   ( ConfiguredStrategy(..)
-  , ConfigErr(..)
   , loadConfig
   ) where
 
@@ -15,19 +14,14 @@ import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
 
+import           Effect.ErrorTrace
 import           Effect.ReadFS
 import           Strategy
-
-data ConfigErr =
-    ConfigParseFailed String
-  | UnknownStrategyName String
-  | StrategyOptionsParseFailed String String -- name of strategy, err
-  deriving (Eq, Ord, Show, Generic, Typeable)
 
 configPath :: Path Rel File
 configPath = [relfile|.strategies.yml|]
 
-loadConfig :: Members '[Error ConfigErr, Output ConfiguredStrategy, ReadFS] r => Map String SomeStrategy -> Path Abs Dir -> Sem r ()
+loadConfig :: Members '[Error CLIErr, Output ConfiguredStrategy, ReadFS] r => Map String SomeStrategy -> Path Abs Dir -> Sem r ()
 loadConfig strategiesByName dir = do
   exists <- doesFileExist (dir </> configPath)
   when exists $ do

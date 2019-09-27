@@ -8,16 +8,21 @@ module MyLib
 import Prologue
 
 import           Control.Concurrent
-import           Control.Concurrent.Async
 import           Control.Concurrent.STM.TMChan
+import           Control.Monad.IO.Class
 import           Control.Monad.STM
 import           Path.IO
 import           Polysemy
+import           Polysemy.Async
 import           Polysemy.Error
+import           Polysemy.Input
 import           Polysemy.Output
+import           Polysemy.Trace
 
 import Config
 import Discovery
+import Effect.ErrorTrace
+import Effect.Exec
 import Effect.ReadFS
 import Strategy
 
@@ -25,24 +30,42 @@ app :: IO ()
 app = do
   setCurrentDir [absdir|/Users/connor/.go/src/github.com/fossas/fossa-cli/|]
 
+  -- TODO: actual work queue abstraction
   work <- newTMChanIO
   capabilities <- getNumCapabilities
-  workThreads <- replicateM capabilities (async (worker work))
 
-  _ <- discovery & readFSToIO
-                 & errorToIOFinal @ConfigErr
-                 & runOutputSem (embed . atomically . writeTMChan work)
-                 & embedToFinal @IO
-                 & runFinal
+  let readWork :: MonadIO m => m (Maybe ConfiguredStrategy)
+      readWork = liftIO $ atomically $ readTMChan work
 
-  -- close work queue and wait for workers to finish
-  atomically $ closeTMChan work
-  for_ workThreads wait -- TODO: exceptions
-  pure ()
+      writeWork :: MonadIO m => ConfiguredStrategy -> m ()
+      writeWork = liftIO . atomically . writeTMChan work
 
-worker :: TMChan ConfiguredStrategy -> IO ()
-worker work = do
-  maybeItem <- atomically $ readTMChan work
+  void . runFinal
+       . embedToFinal @IO
+       . asyncToIOFinal
+       . runOutputSem @CLIErr (\err -> embed $ putStrLn $ "Traced error: " <> show err)
+       . readFSToIO
+       . execToIO
+       . traceToIO -- temporary
+       . errorTraceToOutput $ do
+
+    workThreads <- replicateM capabilities $ do
+      let worker' = runInputSem readWork $ worker
+      async worker'
+
+    _ <- discovery & runOutputSem writeWork
+
+    -- close work queue and wait for workers to finish
+    embed $ atomically $ closeTMChan work
+    for_ workThreads await -- TODO: exceptions
+    pure ()
+
+worker :: Members '[Embed IO, ErrorTrace, Exec, Input (Maybe ConfiguredStrategy), Trace] r => Sem r ()
+worker = do
+  maybeItem <- input @(Maybe ConfiguredStrategy)
   for_ maybeItem $ \(ConfiguredStrategy strat opt) -> do
-    print =<< strategyAnalyze strat opt
-    worker work
+    result <- runError @CLIErr $ strategyAnalyze strat opt
+    case result of
+      Left err -> traceErr err
+      Right a -> trace $ show a
+    worker

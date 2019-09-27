@@ -20,6 +20,7 @@ import           System.Exit
 import           System.FilePath.Find
 
 import           Config
+import           Effect.ErrorTrace
 import           Effect.Exec
 import           Effect.GraphBuilder
 import qualified Graph as G
@@ -35,6 +36,7 @@ instance FromJSON NpmOpts where
 instance ToJSON NpmOpts where
   toJSON NpmOpts{..} = object ["dir" .= npmOptsDir]
 
+-- TODO: swap out Embed IO for a FSWalk effect
 discover :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover basedir = do
   paths <- embed $ find (fileName /~? "node_modules") (fileName ==? "package.json") (toFilePath basedir)
@@ -46,18 +48,15 @@ strategy = Strategy
   { strategyName = "nodejs-npm"
   , strategyAnalyze = \opts -> analyze opts
                              & evalGraphBuilderIO
-                             & errorToIOFinal @String
                              & execToIO
-                             & embedToFinal @IO
-                             & runFinal
   }
 
-analyze :: Members '[Exec, Error String, GraphBuilder] r => NpmOpts -> Sem r ()
+analyze :: Members '[Exec, Error CLIErr, GraphBuilder] r => NpmOpts -> Sem r ()
 analyze NpmOpts{..} = do
   (exitcode, stdout, stderr) <- exec npmOptsDir "npm" ["ls", "--json", "--production"]
-  when (exitcode /= ExitSuccess) (throw @String $ "NPM returned an error: " <> stderr ^. unpackedChars)
+  when (exitcode /= ExitSuccess) (throw $ StrategyFailed $ "NPM returned an error: " <> stderr ^. unpackedChars)
   case eitherDecode stdout of
-    Left err -> throw err -- TODO: better error
+    Left err -> throw $ StrategyFailed err -- TODO: better error
     Right a -> buildGraph a
 
 buildGraph :: Member GraphBuilder r => NpmOutput -> Sem r ()

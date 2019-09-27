@@ -5,7 +5,7 @@ module Prologue
 
 import Prelude as X
 
-import Debug.Trace as X
+import Debug.Trace as X (traceShow, traceShowId)
 
 import Control.Applicative as X
 import Control.Monad as X

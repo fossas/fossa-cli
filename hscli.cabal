@@ -10,6 +10,7 @@ common lang
   default-extensions:
     NoImplicitPrelude
     BangPatterns
+    ConstraintKinds
     DataKinds
     DeriveGeneric
     FlexibleContexts
@@ -47,6 +48,7 @@ library
   exposed-modules:
     Config
     Discovery
+    Effect.ErrorTrace
     Effect.Exec
     Effect.GraphBuilder
     Effect.ReadFS
@@ -56,6 +58,7 @@ library
     Strategy
     Strategy.Gradle
     Strategy.Npm
+    Types
 
   build-depends:
     , aeson          ^>=1.4.5

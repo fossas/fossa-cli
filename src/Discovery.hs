@@ -15,12 +15,22 @@ import           Strategy
 import qualified Strategy.Npm as Npm
 
 import Config
+import Effect.ErrorTrace
 import Effect.ReadFS
 
-discovery :: Members '[Embed IO, Error ConfigErr, Output ConfiguredStrategy, ReadFS] r => Sem r ()
+type DiscoverMems r = Members '[Embed IO, Error CLIErr, Output ConfiguredStrategy, ReadFS] r
+
+discoverFuncs :: DiscoverMems r => [Path Abs Dir -> Sem r ()]
+discoverFuncs = [Npm.discover, loadConfig strategiesByName]
+
+discovery :: Members '[Embed IO, ErrorTrace, Output ConfiguredStrategy, ReadFS] r => Sem r ()
 discovery = do
   dir <- getCurrentDir
-  void $ sequence [Npm.discover dir, loadConfig strategiesByName dir]
+  for_ discoverFuncs $ \discover -> do
+    result <- runError @CLIErr $ (discover dir)
+    case result of
+      Left err -> traceErr err
+      Right _ -> pure ()
 
 strategiesByName :: Map String SomeStrategy
 strategiesByName = M.fromList (map (\strategy@(SomeStrategy Strategy{strategyName}) -> (strategyName, strategy)) strategies)
