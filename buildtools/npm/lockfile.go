@@ -59,7 +59,6 @@ func retrieveTransitiveInformation(deps Dependencies) (DependencyMap, DeepDepIds
 		}
 
 		// save IDs of dependencies that are required by this dependency
-		// NOTE: this implies that direct deps that are also deep deps aren't considered direct
 		depMap[id] = []pkg.ID{}
 		for depName, version := range info.Requires {
 			depId := pkg.ID{
@@ -98,6 +97,7 @@ func FromLockfile(path string) (graph.Deps, error) {
 
 	for id, depIds := range depMap {
 		// this ID is a direct dependency if it's not a deep dependency
+		// NOTE: this implies that direct deps that are also deep deps aren't considered direct
 		if _, ok := deepDepIds[id]; !ok {
 			directDeps = append(directDeps, pkg.Import{
 				Target:   id.Name,
