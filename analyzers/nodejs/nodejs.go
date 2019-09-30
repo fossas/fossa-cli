@@ -120,7 +120,8 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 		if !info.IsDir() && info.Name() == "package.json" {
 			name := filepath.Base(filepath.Dir(path))
 			// Parse from project name from `package.json` if possible
-			if manifest, err := npm.FromManifest(path, "package.json"); err == nil && manifest.Name != "" {
+			var manifest npm.Manifest
+			if manifest, err = npm.FromManifest(path, "package.json"); err == nil && manifest.Name != "" {
 				name = manifest.Name
 			}
 
@@ -140,7 +141,8 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				if info.Name() == filename {
 					name := filepath.Base(filepath.Dir(path))
 					// Parse from project name from `package-lock.json` or `npm-shrinkwrap.json` if possible
-					if lockfile, err := npm.FindAndReadLockfile(path); err == nil && lockfile.Name != "" {
+					var lockfile npm.Lockfile
+					if lockfile, err = npm.FindAndReadLockfile(path); err == nil && lockfile.Name != "" {
 						name = lockfile.Name
 					}
 
