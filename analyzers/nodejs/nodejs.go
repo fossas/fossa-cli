@@ -117,48 +117,30 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			return filepath.SkipDir
 		}
 
-		if !info.IsDir() && info.Name() == "package.json" {
-			name := filepath.Base(filepath.Dir(path))
-			// Parse from project name from `package.json` if possible
-			var manifest npm.Manifest
-			if manifest, err = npm.FromManifest(path, "package.json"); err == nil && manifest.Name != "" {
-				name = manifest.Name
-			}
+		if info.IsDir() {
+			return nil
+		}
 
-			log.Debugf("Found NodeJS project: %s (%s)", path, name)
-			path, err = filepath.Rel(dir, path)
-			if err != nil {
-				panic(err)
-			}
-			modules = append(modules, module.Module{
-				Name:        name,
-				Type:        pkg.NodeJS,
-				BuildTarget: filepath.Dir(path),
-				Dir:         filepath.Dir(path),
-			})
-		} else if !info.IsDir() {
-			for _, filename := range npm.PossibleLockfileFilenames {
-				if info.Name() == filename {
-					name := filepath.Base(filepath.Dir(path))
-					// Parse from project name from `package-lock.json` or `npm-shrinkwrap.json` if possible
-					var lockfile npm.Lockfile
-					if lockfile, err = npm.FindAndReadLockfile(path); err == nil && lockfile.Name != "" {
-						name = lockfile.Name
-					}
+		filesToCheckFor := append([]string{"package.json"}, npm.PossibleLockfileFilenames...)
 
-					log.Debugf("Found NodeJS project: %s (%s)", path, name)
-					path, err = filepath.Rel(dir, path)
-					if err != nil {
-						panic(err)
-					}
-					modules = append(modules, module.Module{
-						Name:        name,
-						Type:        pkg.NodeJS,
-						BuildTarget: filepath.Dir(path),
-						Dir:         filepath.Dir(path),
-					})
-					break
+		for _, filename := range filesToCheckFor {
+			if info.Name() == filename {
+				name := filepath.Base(filepath.Dir(path))
+
+				log.Debugf("Found NodeJS project: %s (%s)", path, name)
+				path, err = filepath.Rel(dir, path)
+				if err != nil {
+					return errors.Errorf("relative file path unable to be found from directory: %s and filepath: %s: %s", dir, path, err.Error())
 				}
+
+				modules = append(modules, module.Module{
+					Name:        name,
+					Type:        pkg.NodeJS,
+					BuildTarget: filepath.Dir(path),
+					Dir:         filepath.Dir(path),
+				})
+
+				break
 			}
 		}
 
@@ -294,7 +276,18 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Warnf("Could not determine deps from yarn lockfile")
 	log.Debug("Using fallback of npm packages lockfile check")
 
-	return npm.FromLockfile(a.Module.BuildTarget)
+	deps, err = npm.FromLockfile(a.Module.BuildTarget)
+	if err == nil {
+		return deps, nil
+	}
+
+	log.Warnf("Could not determine deps from packages lockfile")
+
+	return deps, &errors.Error{
+		Cause:           err,
+		Type:            errors.User,
+		Troubleshooting: "Could not find dependencies in node project. Make sure that your project's root dir has a package.json & node_modules/, yarn.lock, package-lock.json, or npm-shrinkwrap.lock",
+	}
 }
 
 // fixLegacyBuildTarget ensures that legacy behavior stays intact but users are warned if it is implemented.

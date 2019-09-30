@@ -9,7 +9,7 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-var PossibleLockfileFilenames = [...]string{"npm-shrinkwrap.json", "package-lock.json"}
+var PossibleLockfileFilenames = []string{"npm-shrinkwrap.json", "package-lock.json"}
 
 type Lockfile struct {
 	Name         string
@@ -20,7 +20,7 @@ type Lockfile struct {
 type DependencyLockEntry struct {
 	Version      string
 	Requires     map[string]string
-	Dependencies map[string]*DependencyLockEntry
+	Dependencies Dependencies
 }
 
 type Dependencies map[string]*DependencyLockEntry
@@ -28,7 +28,7 @@ type DependencyMap map[pkg.ID][]pkg.ID
 type DeepDepIdsSet map[pkg.ID]bool
 
 // FindAndReadLockfile checks the root of the node project at the given path for lockfiles, then returns the parsed
-// contents if one is found
+// contents if one is found.
 func FindAndReadLockfile(path string) (Lockfile, error) {
 	var lockfile Lockfile
 
@@ -42,12 +42,12 @@ func FindAndReadLockfile(path string) (Lockfile, error) {
 		}
 	}
 
-	return lockfile, errors.Newf("none of %v found at root of node project", PossibleLockfileFilenames)
+	return lockfile, errors.Errorf("none of %v found at root of node project", PossibleLockfileFilenames)
 }
 
-// scanLockfileForDependencyInfo recursively scans a lockfile to construct a map of package IDs to their requirements
-// as well as a set of the package IDs that have been required by other dependencies somewhere else in the file
-func scanLockfileForDependencyInfo(deps Dependencies) (DependencyMap, DeepDepIdsSet) {
+// retrieveTransitiveInformation recursively scans a lockfile to construct a map of package IDs to their requirements
+// as well as a set of the package IDs that have been required by other dependencies somewhere else in the file.
+func retrieveTransitiveInformation(deps Dependencies) (DependencyMap, DeepDepIdsSet) {
 	depMap := DependencyMap{}
 	deepDepIds := DeepDepIdsSet{}
 
@@ -59,6 +59,7 @@ func scanLockfileForDependencyInfo(deps Dependencies) (DependencyMap, DeepDepIds
 		}
 
 		// save IDs of dependencies that are required by this dependency
+		// NOTE: this implies that direct deps that are also deep deps aren't considered direct
 		depMap[id] = []pkg.ID{}
 		for depName, version := range info.Requires {
 			depId := pkg.ID{
@@ -71,7 +72,7 @@ func scanLockfileForDependencyInfo(deps Dependencies) (DependencyMap, DeepDepIds
 		}
 
 		// recurse if this dependency has its own "dependencies" map
-		innerDepMap, moreDeepDepIds := scanLockfileForDependencyInfo(info.Dependencies)
+		innerDepMap, moreDeepDepIds := retrieveTransitiveInformation(info.Dependencies)
 		for k, v := range innerDepMap {
 			depMap[k] = v
 		}
@@ -83,14 +84,14 @@ func scanLockfileForDependencyInfo(deps Dependencies) (DependencyMap, DeepDepIds
 	return depMap, deepDepIds
 }
 
-// FromLockfile generates the dep graph based on the lockfile provided at the supplied path
+// FromLockfile generates the dep graph based on the lockfile provided at the supplied path.
 func FromLockfile(path string) (graph.Deps, error) {
 	lockfile, err := FindAndReadLockfile(path)
 	if err != nil {
 		return graph.Deps{}, err
 	}
 
-	depMap, deepDepIds := scanLockfileForDependencyInfo(lockfile.Dependencies)
+	depMap, deepDepIds := retrieveTransitiveInformation(lockfile.Dependencies)
 
 	directDeps := pkg.Imports{}
 	transitiveDeps := map[pkg.ID]pkg.Package{}
