@@ -60,23 +60,16 @@ analyze NpmOpts{..} = do
     Right a -> buildGraph a
 
 buildGraph :: Member GraphBuilder r => NpmOutput -> Sem r ()
-buildGraph top = do
-  topLevel <- M.traverseWithKey buildNode (outputDependencies top)
-  traverse_ addDirect topLevel
-
+buildGraph top = unfold direct getDeps toDependency
   where
-
-  buildNode :: Member GraphBuilder r => Text -> NpmOutput -> Sem r G.DepRef
-  buildNode nodeName nodeOutput = do
-    children <- M.traverseWithKey buildNode (outputDependencies nodeOutput)
-    parentRef <- addNode $ G.Dependency
-      { dependencyType = G.NodeJSType
-      , dependencyName = nodeName
-      , dependencyVersion = outputVersion nodeOutput
-      , dependencyLocations = []
-      }
-    traverse_ (addEdge parentRef) children
-    pure parentRef
+  direct = M.toList $ outputDependencies top
+  getDeps (_,nodeOutput) = M.toList $ outputDependencies nodeOutput
+  toDependency (nodeName, nodeOutput) =
+    G.Dependency { dependencyType = G.NodeJSType
+                 , dependencyName = nodeName
+                 , dependencyVersion = outputVersion nodeOutput
+                 , dependencyLocations = []
+                 }
 
 configure :: Path Rel Dir -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . NpmOpts

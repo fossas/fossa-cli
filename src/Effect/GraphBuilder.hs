@@ -9,6 +9,9 @@ module Effect.GraphBuilder
   , runGraphBuilderIO
   , evalGraphBuilder
   , evalGraphBuilderIO
+
+  -- Utility functions
+  , unfold
   )
   where
 
@@ -42,7 +45,7 @@ runGraphBuilderIO = stateToIO G.empty . graphBuilderToState
 {-# INLINE runGraphBuilderIO #-}
 
 -- | Discard the result from a GraphBuilder computation, returning the graph
--- This can be significantly faster than evalGraphBuilder
+-- This can be significantly faster than 'evalGraphBuilder'
 evalGraphBuilderIO :: Member (Embed IO) r => Sem (GraphBuilder ': r) a -> Sem r G.Graph
 evalGraphBuilderIO = fmap fst . runGraphBuilderIO
 {-# INLINE evalGraphBuilderIO #-}
@@ -53,6 +56,29 @@ graphBuilderToState = reinterpret $ \case
   AddEdge parent child -> modify (G.addEdge parent child)
   AddDirect ref -> modify (G.addDirect ref)
 {-# INLINE graphBuilderToState #-}
+
+-- | @unfold direct getDeps toDependency@ unfolds a graph, given:
+--
+-- - The @direct@ dependencies in the graph
+--
+-- - A way to @getDeps@ for a dependency
+--
+-- - A way to convert a dependency @toDependency@
+unfold :: Member GraphBuilder r => [dep] -> (dep -> [dep]) -> (dep -> G.Dependency) -> Sem r ()
+unfold direct getDeps toDependency = do
+  topLevel <- traverse buildNode direct
+  traverse_ addDirect topLevel
+
+  where
+
+  -- buildNode :: dep -> Sem r ()
+  buildNode dep = do
+    children <- traverse buildNode (getDeps dep)
+    parentRef <- addNode (toDependency dep)
+    traverse_ (addEdge parentRef) children
+    pure parentRef
+
+-- TODO: unfoldOrd -- unfold, but deduplicating and eliminating cycles via Ord
 
 state :: Member (State s) r => (s -> (a,s)) -> Sem r a
 state f = do
