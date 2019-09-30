@@ -27,7 +27,9 @@ analyze:
 Analysis for nodejs projects is executed a number of ways starting with the most accurate method and falling back to the least likely method to succeed as ordered:
 1. Parse output from `npm ls --json --production` - Runs if `npm` exists on the system and provides an accurate list of all dependencies needed to build the production project.
 2. Parse `package.json` - Runs if `package.json` can be successfully parsed into a dependency graph.
-3. Parse `yarn.lock` - Final strategy which detects dependencies based on the yarn lockfile.
+3. Parse `yarn.lock` - Detects dependencies based on the yarn lockfile.
+4. Parse `npm-shrinkwrap.json` - Detects dependencies based on the lockfile.
+5. Parse `package-lock.json` - Detects dependencies based on the lockfile.
 
 ## Known limitations
 
