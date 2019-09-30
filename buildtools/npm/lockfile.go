@@ -9,7 +9,7 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-var PossibleLockfileFilenames = [...]string{"package-lock.json", "npm-shrinkwrap.json"}
+var PossibleLockfileFilenames = [...]string{"npm-shrinkwrap.json", "package-lock.json"}
 
 type Lockfile struct {
 	Name         string
