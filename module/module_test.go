@@ -52,10 +52,10 @@ func TestOptimalAndSortedStrategies(t *testing.T) {
 	progress := disp.StartProcess(test.Name)
 
 	strategiesToScan := map[string]string{
-		"one":     "file-one",
+		"four":    "file-four",
 		"two":     "file-two",
 		"three":   "file-three",
-		"four":    "file-four",
+		"one":     "file-one",
 		"unknown": "unknown",
 	}
 
