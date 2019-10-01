@@ -121,7 +121,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			return nil
 		}
 
-		filesToCheckFor := append([]string{"package.json"}, npm.PossibleLockfileFilenames...)
+		filesToCheckFor := append([]string{"package.json", "yarn.lock"}, npm.PossibleLockfileFilenames...)
 
 		for _, filename := range filesToCheckFor {
 			if info.Name() == filename {
