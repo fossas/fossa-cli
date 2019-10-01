@@ -6,9 +6,7 @@ module Effect.GraphBuilder
   , addEdge
   , addDirect
   , runGraphBuilder
-  , runGraphBuilderIO
   , evalGraphBuilder
-  , evalGraphBuilderIO
 
   -- Utility functions
   , unfold
@@ -30,32 +28,16 @@ makeSem ''GraphBuilder
 
 -- | Run a GraphBuilder computation, returning both the graph and the result
 runGraphBuilder :: Sem (GraphBuilder ': r) a -> Sem r (G.Graph, a)
-runGraphBuilder = runState G.empty . graphBuilderToState
+runGraphBuilder = runState G.empty . reinterpret (\case
+  AddNode dep -> state (G.addNode dep)
+  AddEdge parent child -> modify (G.addEdge parent child)
+  AddDirect ref -> modify (G.addDirect ref))
 {-# INLINE runGraphBuilder #-}
 
 -- | Discard the result from a GraphBuilder computation, returning the graph
 evalGraphBuilder :: Sem (GraphBuilder ': r) a -> Sem r G.Graph
 evalGraphBuilder = fmap fst . runGraphBuilder
 {-# INLINE evalGraphBuilder #-}
-
--- | Run a GraphBuilder computation, returning both the graph and the result
--- This can be significanty faster than 'runGraphBuilder'
-runGraphBuilderIO :: Member (Embed IO) r => Sem (GraphBuilder ': r) a -> Sem r (G.Graph, a)
-runGraphBuilderIO = stateToIO G.empty . graphBuilderToState
-{-# INLINE runGraphBuilderIO #-}
-
--- | Discard the result from a GraphBuilder computation, returning the graph
--- This can be significantly faster than 'evalGraphBuilder'
-evalGraphBuilderIO :: Member (Embed IO) r => Sem (GraphBuilder ': r) a -> Sem r G.Graph
-evalGraphBuilderIO = fmap fst . runGraphBuilderIO
-{-# INLINE evalGraphBuilderIO #-}
-
-graphBuilderToState :: Sem (GraphBuilder ': r) a -> Sem (State G.Graph ': r) a
-graphBuilderToState = reinterpret $ \case
-  AddNode dep -> state (G.addNode dep)
-  AddEdge parent child -> modify (G.addEdge parent child)
-  AddDirect ref -> modify (G.addDirect ref)
-{-# INLINE graphBuilderToState #-}
 
 -- | @unfold direct getDeps toDependency@ unfolds a graph, given:
 --
@@ -64,8 +46,8 @@ graphBuilderToState = reinterpret $ \case
 -- - A way to @getDeps@ for a dependency
 --
 -- - A way to convert a dependency @toDependency@
-unfold :: Member GraphBuilder r => [dep] -> (dep -> [dep]) -> (dep -> G.Dependency) -> Sem r ()
-unfold direct getDeps toDependency = do
+unfold :: [dep] -> (dep -> [dep]) -> (dep -> G.Dependency) -> G.Graph
+unfold direct getDeps toDependency = run . evalGraphBuilder $ do
   topLevel <- traverse buildNode direct
   traverse_ addDirect topLevel
 

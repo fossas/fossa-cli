@@ -8,7 +8,6 @@ module Strategy.Npm
 import Prologue
 
 import           Data.ByteString.Lazy.Optics
-import           Data.Function ((&))
 import           Data.Map (Map)
 import qualified Data.Map as M
 import           Data.Text (Text)
@@ -46,20 +45,18 @@ discover basedir = do
 strategy :: Strategy NpmOpts
 strategy = Strategy
   { strategyName = "nodejs-npm"
-  , strategyAnalyze = \opts -> analyze opts
-                             & evalGraphBuilderIO
-                             & execToIO
+  , strategyAnalyze = analyze
   }
 
-analyze :: Members '[Exec, Error CLIErr, GraphBuilder] r => NpmOpts -> Sem r ()
+analyze :: Members '[Exec, Error CLIErr] r => NpmOpts -> Sem r G.Graph
 analyze NpmOpts{..} = do
   (exitcode, stdout, stderr) <- exec npmOptsDir "npm" ["ls", "--json", "--production"]
   when (exitcode /= ExitSuccess) (throw $ StrategyFailed $ "NPM returned an error: " <> stderr ^. unpackedChars)
   case eitherDecode stdout of
     Left err -> throw $ StrategyFailed err -- TODO: better error
-    Right a -> buildGraph a
+    Right a -> pure $ buildGraph a
 
-buildGraph :: Member GraphBuilder r => NpmOutput -> Sem r ()
+buildGraph :: NpmOutput -> G.Graph
 buildGraph top = unfold direct getDeps toDependency
   where
   direct = M.toList $ outputDependencies top
