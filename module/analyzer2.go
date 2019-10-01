@@ -92,19 +92,23 @@ func (a AnalyzerV2) ScanModule(startJob func() error, endJob func(), progress di
 
 			defer endJob()
 
-			result, err := a.Strategies.Named[name](folder, filepath.Join(folder, relPath))
-			if err != nil {
-				if find(name, a.Strategies.Optimal) {
-					optimalErrs <- err
+			if strategy, ok := a.Strategies.Named[name]; ok {
+				result, err := strategy(folder, filepath.Join(folder, relPath))
+				if err != nil {
+					if find(name, a.Strategies.Optimal) {
+						optimalErrs <- err
+					}
+					allErrs <- err
+					return
 				}
-				allErrs <- err
-				return
-			}
 
-			graphs <- TaggedGraph{
-				Strategy: name,
-				File:     filepath.Join(folder, relPath),
-				Graph:    result,
+				graphs <- TaggedGraph{
+					Strategy: name,
+					File:     filepath.Join(folder, relPath),
+					Graph:    result,
+				}
+			} else {
+				log.Warnf("an unrecognized strategy was attempted to be scanned `%s`", name)
 			}
 		}(name, relPath) // TODO: break out into its own function?
 	}
