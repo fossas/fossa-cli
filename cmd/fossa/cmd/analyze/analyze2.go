@@ -11,8 +11,8 @@ import (
 	"github.com/urfave/cli"
 	"golang.org/x/sync/semaphore"
 
-	"github.com/fossas/fossa-cli/analyzers/nodejs"
 	"github.com/fossas/fossa-cli/analyzers/python"
+	"github.com/fossas/fossa-cli/analyzers/gradle"
 	"github.com/fossas/fossa-cli/analyzers/ruby"
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
@@ -42,6 +42,7 @@ var Analyzers = []module.AnalyzerV2{
 	nodejs.NodeAnalyzer,
 	python.PythonAnalyzer,
 	ruby.RubyAnalyzer,
+	gradle.GradleAnalyzer,
 }
 
 // TODO: progress indicators, ...

@@ -1,0 +1,28 @@
+*** Skipping the build of codegen and compilation of proto files because skipCodegen=true
+:project-one:dependencies
+
+------------------------------------------------------------
+Project :project-one - gRPC: Nett
+------------------------------------------------------------
+
+one - Configuration for archive artifacts.
+\--- dep:one:1.0.0
+
+two - The Checkstyle libraries to be used for this project.
+\--- dep:two:2.0.0
+     +--- dep:three:3.0.0
+
+three - Configuration for default artifacts.
++--- project :project-two
+|    +--- dep:one:1.0.0
+|    \--- dep:five:5.0.0
+|         \--- dep:one:1.0.0
+\--- dep:four:4.0.0
+
+(*) - dependencies omitted (listed previously)
+
+BUILD SUCCESSFUL
+
+Total time: 4.394 secs
+
+This build could be faster, please consider using the Gradle Daemon: https://docs.gradle.org/2.13/userguide/gradle_daemon.html

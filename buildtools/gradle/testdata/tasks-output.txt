@@ -4,10 +4,10 @@ All tasks runnable from root project
 
 Build tasks
 -----------
-dependencies-proj:assemble - Assembles the outputs of this project.
-dependencies-proj:build - Assembles and tests this project.
-dependencies-proj:buildNeeded - Assembles and tests this project and all projects it depends on.
-dependencies-proj:classes - Assembles main classes.
+project-one:assemble - Assembles the outputs of this project.
+project-one:build - Assembles and tests this project.
+project-one:buildNeeded - Assembles and tests this project and all projects it depends on.
+project-one:classes - Assembles main classes.
 
 Build Setup tasks
 -----------------
@@ -16,30 +16,31 @@ wrapper - Generates Gradle wrapper files. [incubating]
 
 Help tasks
 ----------
-buildEnvironment - Displays all buildscript dependencies declared in root project 'dependencies-proj'.
-dependencies-proj:buildEnvironment - Displays all buildscript dependencies declared in project ':dependencies-proj'.
-components - Displays the components produced by root project 'dependencies-proj'. [incubating]
-dependencies-proj:components - Displays the components produced by project ':dependencies-proj'. [incubating]
-dependencies - Displays all dependencies declared in root project 'dependencies-proj'.
-dependencies-proj:dependencies - Displays all dependencies declared in project ':dependencies-proj'.
-dependencyInsight - Displays the insight into a specific dependency in root project 'dependencies-proj'.
-dependencies-proj:dependencyInsight - Displays the insight into a specific dependency in project ':dependencies-proj'.
-dependentComponents - Displays the dependent components of components in root project 'dependencies-proj'. [incubating]
-dependencies-proj:dependentComponents - Displays the dependent components of components in project ':dependencies-proj'. [incubating]
+buildEnvironment - Displays all buildscript dependencies declared in root project 'project-one'.
+project-one:buildEnvironment - Displays all buildscript dependencies declared in project ':dependencies-proj'.
+components - Displays the components produced by root project 'project-one'. [incubating]
+project-one:components - Displays the components produced by project ':dependencies-proj'. [incubating]
+dependencies - Displays all dependencies declared in root project 'project-one'.
+project-one:dependencies - Displays all dependencies declared in project ':dependencies-proj'.
+project-two:dependencies - Displays all dependencies declared in project ':dependencies-proj'.
+dependencyInsight - Displays the insight into a specific dependency in root project 'project-one'.
+project-one:dependencyInsight - Displays the insight into a specific dependency in project ':dependencies-proj'.
+dependentComponents - Displays the dependent components of components in root project 'project-one'. [incubating]
+project-one:dependentComponents - Displays the dependent components of components in project ':dependencies-proj'. [incubating]
 help - Displays a help message.
-dependencies-proj:help - Displays a help message.
-model - Displays the configuration model of root project 'dependencies-proj'. [incubating]
-dependencies-proj:model - Displays the configuration model of project ':dependencies-proj'. [incubating]
-projects - Displays the sub-projects of root project 'dependencies-proj'.
-dependencies-proj:projects - Displays the sub-projects of project ':dependencies-proj'.
-properties - Displays the properties of root project 'dependencies-proj'.
-dependencies-proj:properties - Displays the properties of project ':dependencies-proj'.
-tasks - Displays the tasks runnable from root project 'dependencies-proj' (some of the displayed tasks may belong to subprojects).
-dependencies-proj:tasks - Displays the tasks runnable from project ':dependencies-proj'.
+project-one:help - Displays a help message.
+model - Displays the configuration model of root project 'project-one'. [incubating]
+project-one:model - Displays the configuration model of project ':dependencies-proj'. [incubating]
+projects - Displays the sub-projects of root project 'project-one'.
+project-one:projects - Displays the sub-projects of project ':dependencies-proj'.
+properties - Displays the properties of root project 'project-one'.
+project-one:properties - Displays the properties of project ':dependencies-proj'.
+tasks - Displays the tasks runnable from root project 'project-one' (some of the displayed tasks may belong to subprojects).
+project-one:tasks - Displays the tasks runnable from project ':dependencies-proj'.
 
 Verification tasks
 ------------------
-dependencies-proj:check - Runs all checks.
-dependencies-proj:ktlint - Check Kotlin code style.
-dependencies-proj:test - Runs the unit tests.
+project-one:check - Runs all checks.
+project-one:ktlint - Check Kotlin code style.
+project-one:test - Runs the unit tests.
 

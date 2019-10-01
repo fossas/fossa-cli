@@ -1,0 +1,30 @@
+*** Skipping the build of codegen and compilation of proto files because skipCodegen=true
+:project-two:dependencies
+
+------------------------------------------------------------
+Project :project-two - gRPC: Nett
+------------------------------------------------------------
+
+unknown-configuration
+No dependencies
+
+three - Configuration for default artifacts.
+\--- project :project-one
+     +--- dep:two:2.0.0
+     |    +--- dep:three:3.0.0
+     \--- dep:one:1.0.0
+
+four - Dependencies for source set 'main'.
+\--- dep:five:5.0.0
+     \--- dep:one:1.0.0
+
+five - The Jacoco agent to use to get coverage data.
+\--- dep:one:1.0.0
+
+(*) - dependencies omitted (listed previously)
+
+BUILD SUCCESSFUL
+
+Total time: 4.394 secs
+
+This build could be faster, please consider using the Gradle Daemon: https://docs.gradle.org/2.13/userguide/gradle_daemon.html

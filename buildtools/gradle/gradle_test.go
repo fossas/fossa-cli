@@ -132,13 +132,99 @@ func TestParseDependencies(t *testing.T) {
 	assert.Contains(t, deps, expectProject2)
 }
 
+func TestDeps(t *testing.T) {
+	firstDeps, err := ioutil.ReadFile("testdata/project-one")
+	assert.NoError(t, err)
+	secondDeps, err := ioutil.ReadFile("testdata/project-two")
+	assert.NoError(t, err)
+	tasks, err := ioutil.ReadFile("testdata/tasks-output.txt")
+	assert.NoError(t, err)
+	mockCommand := gradle.ShellCommand{
+		Cmd: func(_ string, _ string, _ int, args ...string) (string, error) {
+			switch args[0] {
+			case "tasks":
+				return string(tasks), nil
+			case "project-one:dependencies":
+				return string(firstDeps), nil
+			case "project-two:dependencies":
+				return string(secondDeps), nil
+			default:
+				return "", nil
+			}
+		},
+	}
+
+	deps, depError := gradle.DepsWithCommand(mockCommand, "", "")
+	assert.Nil(t, depError)
+
+	assert.Len(t, deps.Direct, 6)
+	helpers.AssertPackageImport(t, deps.Direct, "project-one", "")
+	helpers.AssertPackageImport(t, deps.Direct, "project-two", "")
+	helpers.AssertPackageImport(t, deps.Direct, "dep:one", "1.0.0")
+	helpers.AssertPackageImport(t, deps.Direct, "dep:two", "2.0.0")
+	helpers.AssertPackageImport(t, deps.Direct, "dep:four", "4.0.0")
+	helpers.AssertPackageImport(t, deps.Direct, "dep:five", "5.0.0")
+
+	assert.Len(t, deps.Transitive, 7)
+
+	projectOne := helpers.PackageInTransitiveGraph(deps.Transitive, "project-one", "")
+	assert.Len(t, projectOne.Usage, 1)
+	assert.Contains(t, projectOne.Usage, "three")
+	assert.Len(t, projectOne.Imports, 4)
+	helpers.AssertPackageImport(t, projectOne.Imports, "dep:one", "1.0.0")
+	helpers.AssertPackageImport(t, projectOne.Imports, "dep:two", "2.0.0")
+	helpers.AssertPackageImport(t, projectOne.Imports, "dep:four", "4.0.0")
+	helpers.AssertPackageImport(t, projectOne.Imports, "project-two", "")
+
+	projectTwo := helpers.PackageInTransitiveGraph(deps.Transitive, "project-two", "")
+	assert.Len(t, projectTwo.Usage, 1)
+	assert.Contains(t, projectTwo.Usage, "three")
+	assert.Len(t, projectTwo.Imports, 3)
+	helpers.AssertPackageImport(t, projectTwo.Imports, "dep:one", "1.0.0")
+	helpers.AssertPackageImport(t, projectTwo.Imports, "dep:five", "5.0.0")
+	helpers.AssertPackageImport(t, projectTwo.Imports, "project-one", "")
+
+	depOne := helpers.PackageInTransitiveGraph(deps.Transitive, "dep:one", "1.0.0")
+	assert.Len(t, depOne.Usage, 4)
+	assert.Contains(t, depOne.Usage, "one")
+	assert.Contains(t, depOne.Usage, "three")
+	assert.Contains(t, depOne.Usage, "four")
+	assert.Contains(t, depOne.Usage, "five")
+	assert.Len(t, depOne.Imports, 0)
+
+	depTwo := helpers.PackageInTransitiveGraph(deps.Transitive, "dep:two", "2.0.0")
+	assert.Len(t, depTwo.Usage, 2)
+	assert.Contains(t, depTwo.Usage, "two")
+	assert.Contains(t, depTwo.Usage, "three")
+	assert.Len(t, depTwo.Imports, 1)
+	helpers.AssertPackageImport(t, depTwo.Imports, "dep:three", "3.0.0")
+
+	depThree := helpers.PackageInTransitiveGraph(deps.Transitive, "dep:three", "3.0.0")
+	assert.Len(t, depThree.Usage, 2)
+	assert.Contains(t, depThree.Usage, "two")
+	assert.Contains(t, depThree.Usage, "three")
+	assert.Len(t, depThree.Imports, 0)
+
+	depFour := helpers.PackageInTransitiveGraph(deps.Transitive, "dep:four", "4.0.0")
+	assert.Len(t, depFour.Usage, 1)
+	assert.Contains(t, depFour.Usage, "three")
+	assert.Len(t, depFour.Imports, 0)
+
+	depFive := helpers.PackageInTransitiveGraph(deps.Transitive, "dep:five", "5.0.0")
+	assert.Len(t, depFive.Usage, 2)
+	assert.Contains(t, depFive.Usage, "three")
+	assert.Contains(t, depFive.Usage, "four")
+	assert.Len(t, depFive.Imports, 1)
+	helpers.AssertPackageImport(t, depFive.Imports, "dep:one", "1.0.0")
+}
+
 func TestShellCommand_DependencyTasks(t *testing.T) {
 	// We should be able to identify the projects by running "gradle tasks" even if a project has the
 	// word "dependencies" in it.
 	cmd := MockGradle(t, "testdata/tasks-output.txt")
 	projects, err := cmd.DependencyTasks()
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"dependencies-proj"}, projects)
+	assert.Equal(t, []string{"project-one", "project-two"}, projects)
 }
 
 func MockGradle(t *testing.T, file string) gradle.ShellCommand {

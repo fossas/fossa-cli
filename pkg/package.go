@@ -41,6 +41,8 @@ type Deps map[ID]Package
 type Package struct {
 	ID ID
 
+	Usage map[string]bool
+
 	Imports []Import
 }
 
