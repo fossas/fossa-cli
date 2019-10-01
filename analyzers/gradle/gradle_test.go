@@ -64,7 +64,7 @@ func TestGradleDependenciesCustomConfigurations(t *testing.T) {
 	assert.Equal(t, graph.Transitive[DepCustomID].ID, DepCustomID)
 }
 
-func TestGradleDiscovery(t *testing.T) {
+func TestGradleDiscoverGroovy(t *testing.T) {
 	modules, err := gradle.DiscoverWithCommand("testdata/discover-groovy", make(map[string]interface{}), mockCommand("testdata/discover-groovy/gradle-tasks-all"))
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(modules))
@@ -72,7 +72,7 @@ func TestGradleDiscovery(t *testing.T) {
 	assert.True(t, moduleExists("discover-groovy/grpc-xds", modules))
 }
 
-func TestGradleKotlinDiscovery(t *testing.T) {
+func TestGradleDiscoverKotlin(t *testing.T) {
 	modules, err := gradle.DiscoverWithCommand("testdata/discover-kotlin", make(map[string]interface{}), mockCommand("testdata/discover-kotlin/gradle-tasks-all"))
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(modules))
@@ -92,6 +92,13 @@ func TestGradleNewDiscovery(t *testing.T) {
 			"dependencies": "discover-kotlin",
 		},
 	})
+
+func TestGradleDiscoverNested(t *testing.T) {
+	modules, err := gradle.DiscoverWithCommand("testdata/discover-nested", make(map[string]interface{}), mockCommand("testdata/discover-nested/nested/gradle-tasks-all"))
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(modules))
+	assert.True(t, moduleExists("nested/grpc-netty", modules))
+	assert.True(t, moduleExists("nested/grpc-xds", modules))
 }
 
 func mockCommand(mockOutput string) func(string, string, int, ...string) (string, error) {

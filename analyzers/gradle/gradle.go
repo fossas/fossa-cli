@@ -93,7 +93,7 @@ func DiscoverWithCommand(dir string, userOptions map[string]interface{}, command
 		}
 
 		if info.IsDir() {
-			buildScripts, err := filepath.Glob(filepath.Join(dir, "build.gradle*"))
+			buildScripts, err := filepath.Glob(filepath.Join(path, "build.gradle*"))
 			if err != nil {
 				return err
 			}

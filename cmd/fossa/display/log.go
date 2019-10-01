@@ -53,6 +53,11 @@ func SetFile(filename string) error {
 	return nil
 }
 
+// SyncFile syncs the FOSSA log file and writes all progress to disk.
+func SyncFile() error {
+	return file.Sync()
+}
+
 // File returns the log file name.
 func File() string {
 	return file.Name()
@@ -133,10 +138,6 @@ func Handler(entry *log.Entry) error {
 	}
 	data = append(data, byte('\n'))
 	_, err = file.Write(data)
-	if err != nil {
-		return err
-	}
-	err = file.Sync()
 	if err != nil {
 		return err
 	}
