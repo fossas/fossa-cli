@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/buildtools/npm"
+	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
@@ -40,8 +41,12 @@ func TestFromManifest(t *testing.T) {
 }
 
 func TestFromNodeModules(t *testing.T) {
-	testFromNodeModulesByFixture(t, "flattened_node_modules")
-	testFromNodeModulesByFixture(t, "nested_node_modules")
+	testByFixture(t, npm.FromNodeModules, "flattened_node_modules")
+	testByFixture(t, npm.FromNodeModules, "nested_node_modules")
+}
+
+func TestFromLockfile(t *testing.T) {
+	testByFixture(t, npm.FromLockfile, "only_package_lock")
 }
 
 /*
@@ -56,8 +61,8 @@ func TestFromNodeModules(t *testing.T) {
 	└── type-detect@3.0.0
 */
 
-func testFromNodeModulesByFixture(t *testing.T, fixture string) {
-	depGraph, err := npm.FromNodeModules("testdata", fixture, "package.json")
+func testByFixture(t *testing.T, f func(string) (graph.Deps, error), fixture string) {
+	depGraph, err := f(filepath.Join("testdata", fixture))
 	assert.NoError(t, err)
 
 	assert.Len(t, depGraph.Direct, 2)
@@ -76,6 +81,7 @@ func testFromNodeModulesByFixture(t *testing.T, fixture string) {
 
 	// ensure project that is both a transitive and direct dep have correct versions based on where they live
 	assert.Contains(t, depGraph.Transitive, typeDetectTransitiveDepKey)
+	assert.Contains(t, depGraph.Transitive, typeDetectDirectDep.Resolved)
 
 	chaiProject := depGraph.Transitive[chaiDirectDep.Resolved]
 	assert.Equal(t, chaiDirectDep.Resolved, chaiProject.ID)

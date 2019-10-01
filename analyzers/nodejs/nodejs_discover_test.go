@@ -13,8 +13,8 @@ import (
 /* Nested Module Order
     └─┬ nested-modules
       └─┬ module-1
-	  ├── module-2
-	  └── module-3
+        ├── module-2
+        └── module-3
 */
 func TestNestedModules(t *testing.T) {
 	modules, err := nodejs.Discover("testdata/nested-modules", make(map[string]interface{}))
@@ -27,15 +27,26 @@ func TestNestedModules(t *testing.T) {
 }
 
 /* Ignored Module Order
-	└─┬ ignored-modules
-  	  ├── node_modules
-  	  └── bower_components
+    └─┬ ignored-modules
+      ├── node_modules
+      └── bower_components
 */
 func TestNodeModulesAndBowerIgnored(t *testing.T) {
 	modules, err := nodejs.Discover("testdata/ignored-modules", make(map[string]interface{}))
 	assert.NoError(t, err)
 	assert.Equal(t, len(modules), 1)
 	assert.Contains(t, modules, newModule("ignored-modules", "."))
+}
+
+/* With Only a package-lock.json
+    └─┬ only-package-lock
+      └── package-lock.json
+*/
+func TestModuleWithOnlyLockfile(t *testing.T) {
+	modules, err := nodejs.Discover("testdata/only-package-lock", make(map[string]interface{}))
+	assert.NoError(t, err)
+	assert.Equal(t, len(modules), 1)
+	assert.Contains(t, modules, newModule("only-package-lock", "."))
 }
 
 func newModule(name, location string) module.Module {

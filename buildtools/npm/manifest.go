@@ -55,8 +55,8 @@ func PackageFromManifest(pathElems ...string) (pkg.Package, error) {
 }
 
 // FromNodeModules generates the dep graph based on the manifest provided at the supplied path
-func FromNodeModules(pathElems ...string) (graph.Deps, error) {
-	manifestPath := filepath.Join(pathElems...)
+func FromNodeModules(path string) (graph.Deps, error) {
+	manifestPath := filepath.Join(path, "package.json")
 	exists, err := files.Exists(manifestPath)
 	if err != nil {
 		return graph.Deps{}, err
@@ -84,17 +84,6 @@ func FromNodeModules(pathElems ...string) (graph.Deps, error) {
 		Direct:     rootPackage.Imports,
 		Transitive: transitiveDeps,
 	}, nil
-}
-
-type Lockfile struct {
-	Dependencies map[string]struct {
-		Version  string
-		Requires map[string]string
-	}
-}
-
-func FromLockfile(filename string) (Lockfile, error) {
-	return Lockfile{}, errors.NotImplementedError()
 }
 
 // TODO: add support for NODE_PATH and GLOBAL_FOLDERS.
@@ -129,7 +118,7 @@ func convertManifestToPkg(manifest Manifest) pkg.Package {
 
 	var imports pkg.Imports
 	for depName, version := range manifest.Dependencies {
-		id := pkg.ID{
+		depID := pkg.ID{
 			Type:     pkg.NodeJS,
 			Name:     depName,
 			Revision: version,
@@ -137,7 +126,7 @@ func convertManifestToPkg(manifest Manifest) pkg.Package {
 
 		depImport := pkg.Import{
 			Target:   depName,
-			Resolved: id,
+			Resolved: depID,
 		}
 		imports = append(imports, depImport)
 	}

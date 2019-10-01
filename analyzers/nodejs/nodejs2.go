@@ -176,7 +176,7 @@ func AnalyzeNodeModules(dir module.Filepath, target module.Filepath) (graph.Deps
 	// TODO: this seems to introduce an infinite loop
 	return graph.Deps{}, errors.NotImplementedError()
 	/*dir := filepath.Dir(path) // TODO: pass in the module path as well?
-	deps, err := npm.FromNodeModules(dir, "package.json")
+	deps, err := npm.FromNodeModules(dir)
 	if err != nil {
 		return graph.Deps{}, errors.UnknownError(err, "Couldn't scan node_modules")
 	}

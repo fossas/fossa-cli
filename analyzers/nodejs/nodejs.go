@@ -117,25 +117,33 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			return filepath.SkipDir
 		}
 
-		if !info.IsDir() && info.Name() == "package.json" {
-			name := filepath.Base(filepath.Dir(path))
-			// Parse from project name from `package.json` if possible
-			if manifest, err := npm.FromManifest(path, "package.json"); err == nil && manifest.Name != "" {
-				name = manifest.Name
-			}
-
-			log.Debugf("Found NodeJS project: %s (%s)", path, name)
-			path, err = filepath.Rel(dir, path)
-			if err != nil {
-				panic(err)
-			}
-			modules = append(modules, module.Module{
-				Name:        name,
-				Type:        pkg.NodeJS,
-				BuildTarget: filepath.Dir(path),
-				Dir:         filepath.Dir(path),
-			})
+		if info.IsDir() {
+			return nil
 		}
+
+		filesToCheckFor := append([]string{"package.json", "yarn.lock"}, npm.PossibleLockfileFilenames...)
+
+		for _, filename := range filesToCheckFor {
+			if info.Name() == filename {
+				name := filepath.Base(filepath.Dir(path))
+
+				log.Debugf("Found NodeJS project: %s (%s)", path, name)
+				path, err = filepath.Rel(dir, path)
+				if err != nil {
+					return errors.Errorf("relative file path unable to be found from directory: %s and filepath: %s: %s", dir, path, err.Error())
+				}
+
+				modules = append(modules, module.Module{
+					Name:        name,
+					Type:        pkg.NodeJS,
+					BuildTarget: filepath.Dir(path),
+					Dir:         filepath.Dir(path),
+				})
+
+				break
+			}
+		}
+
 		return nil
 	})
 
@@ -251,16 +259,35 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		log.Debug("Using fallback of node_modules")
 	}
 
-	deps, err := npm.FromNodeModules(a.Module.BuildTarget, "package.json")
+	deps, err := npm.FromNodeModules(a.Module.BuildTarget)
 	if err == nil {
 		return deps, nil
 	}
 
 	log.Warnf("Could not determine deps from node_modules")
-	log.Debug("Using fallback of lockfile check")
+	log.Debug("Using fallback of yarn lockfile check")
 
 	// currently only support yarn.lock
-	return yarn.FromProject(filepath.Join(a.Module.BuildTarget, "package.json"), filepath.Join(a.Module.BuildTarget, "yarn.lock"))
+	deps, err = yarn.FromProject(filepath.Join(a.Module.BuildTarget, "package.json"), filepath.Join(a.Module.BuildTarget, "yarn.lock"))
+	if err == nil {
+		return deps, nil
+	}
+
+	log.Warnf("Could not determine deps from yarn lockfile")
+	log.Debug("Using fallback of npm packages lockfile check")
+
+	deps, err = npm.FromLockfile(a.Module.BuildTarget)
+	if err == nil {
+		return deps, nil
+	}
+
+	log.Warnf("Could not determine deps from packages lockfile")
+
+	return deps, &errors.Error{
+		Cause:           err,
+		Type:            errors.User,
+		Troubleshooting: "Could not find dependencies in node project. Make sure that your project's root dir has a package.json & node_modules/, yarn.lock, package-lock.json, or npm-shrinkwrap.lock",
+	}
 }
 
 // fixLegacyBuildTarget ensures that legacy behavior stays intact but users are warned if it is implemented.
