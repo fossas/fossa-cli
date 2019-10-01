@@ -51,9 +51,13 @@ func NewDiscover(dir module.Filepath) (map[module.Filepath]module.DiscoveredStra
 		}
 
 		if info.IsDir() {
-			buildScripts, err := filepath.Glob(filepath.Join(dir, "build.gradle*"))
-			if err != nil || len(buildScripts) == 0 {
+			buildScripts, err := filepath.Glob(filepath.Join(path, "build.gradle*"))
+			if err != nil {
 				return err
+			}
+
+			if len(buildScripts) == 0 {
+				return nil
 			}
 
 			modules.AddStrategy(info, path, DependenciesCmd)

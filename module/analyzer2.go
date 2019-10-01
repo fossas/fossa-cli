@@ -65,13 +65,12 @@ type FilepathStrategies map[Filepath]DiscoveredStrategies
 
 // AddStrategy adds a strategy with filepath to the FilepathStrategies.
 func (fileStrategies FilepathStrategies) AddStrategy(info os.FileInfo, path string, name StrategyName) {
-	moduleDir := filepath.Dir(path)
-	current, ok := fileStrategies[moduleDir]
+	current, ok := fileStrategies[path]
 	if !ok {
 		current = make(DiscoveredStrategies)
 	}
 	current[name] = info.Name()
-	fileStrategies[moduleDir] = current
+	fileStrategies[path] = current
 }
 
 // The filepath is the relative filepath from the root of the module

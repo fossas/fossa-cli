@@ -80,6 +80,20 @@ func TestGradleKotlinDiscovery(t *testing.T) {
 	assert.True(t, moduleExists("discover-kotlin/grpc-xds", modules))
 }
 
+func TestGradleNewDiscovery(t *testing.T) {
+	modules, err := gradle.NewDiscover("testdata")
+	assert.Nil(t, err)
+	assert.Len(t, modules, 2)
+	assert.Equal(t, modules, map[string]map[string]string{
+		"testdata/discover-groovy": map[string]string{
+			"dependencies": "discover-groovy",
+		},
+		"testdata/discover-kotlin": map[string]string{
+			"dependencies": "discover-kotlin",
+		},
+	})
+}
+
 func mockCommand(mockOutput string) func(string, string, int, ...string) (string, error) {
 	return func(string, string, int, ...string) (string, error) {
 		output, err := ioutil.ReadFile(mockOutput)
