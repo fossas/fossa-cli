@@ -47,8 +47,28 @@ analyze BasicFileOpts{..} = do
 
 type Parser = Parsec Void Text
 
+-- TODO: paths, urls
+-- https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format
 requirementsTxtParser :: Parser [Req]
-requirementsTxtParser = requirementParser `sepBy` newline
+requirementsTxtParser = concat <$> ((line `sepBy` eol) <* eof)
+  where
+  isEndLine :: Char -> Bool
+  isEndLine '\n' = True
+  isEndLine '\r' = True
+  isEndLine _    = False
+
+  -- ignore content until the end of the line
+  ignored :: Parser ()
+  ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
+
+  comment :: Parser ()
+  comment = char '#' *> ignored
+
+  -- TODO: we can case split / sum-type this for better analysis
+  line = [] <$ char '-' <* ignored -- pip options
+     <|> [] <$ comment
+     <|> (pure <$> requirementParser <* optional comment)
+     <|> pure [] -- empty line
 
 configure :: Path Rel File -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicFileOpts

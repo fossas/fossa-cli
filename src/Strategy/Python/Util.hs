@@ -69,16 +69,17 @@ test :: IO ()
 test = traverse_ (parseTest requirementParser)
   [ "A", "A.B-C_D", "aa", "name", "name<=1", "name>=3", "name>=3,<2", "name@http://foo.com", "name [fred,bar] @ http://foo.com ; python_version=='2.7'", "name[quux, strange];python_version<'2.7' and platform_version=='2'", "name; os_name=='a' or os_name=='b'", "name; os_name=='a' and os_name=='b' or os_name=='c'", "name; os_name=='a' and (os_name=='b' or os_name=='c')", "name; os_name=='a' or os_name=='b' and os_name=='c'", "name; (os_name=='a' or os_name=='b') and os_name=='c'" ]
 
+-- grammar extracted from https://www.python.org/dev/peps/pep-0508/
 requirementParser :: Parser Req
 requirementParser = specification
   where
   oneOfS = asum . map string
 
-  whitespace = takeWhileP (Just "whitespace") isSpace :: Parser Text
+  whitespace = takeWhileP (Just "whitespace") (\c -> c == ' ' || c == '\t') :: Parser Text
   whitespace1 = label "whitespace1" $ takeWhile1P (Just "whitespace1") isSpace :: Parser Text
   letterOrDigit = label "letterOrDigit" $ satisfy (\c -> isLetter c || isDigit c)
 
-  version_cmp = label "version_cmp" $ whitespace *> (Operator <$> oneOfS ["<=", "<", "!=", "==", ">=", ">", "~=", "==="])
+  version_cmp = label "version_cmp" $ whitespace *> (Operator <$> oneOfS ["<=", "<", "!=", "===", "==", ">=", ">", "~="])
 
   version = label "version" $ whitespace *> some (letterOrDigit <|> oneOf ['-', '_', '.', '*', '+', '!'])
   version_one = label "version_one" $ Version <$> version_cmp <*> (T.pack <$> version) <* whitespace
