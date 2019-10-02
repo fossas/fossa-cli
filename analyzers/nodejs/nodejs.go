@@ -202,22 +202,35 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 	log.Debugf("Checking Node.js build: %#v", a.Module)
 
 	manifest, err := npm.FromManifest(a.Module.BuildTarget, "package.json")
-	if err != nil {
-		return false, errors.Wrap(err, "could not parse package manifest to check build")
+	if err == nil {
+		if len(manifest.Dependencies) == 0 {
+			log.Debug("Done checking Node.js build: project has package.json with no dependencies")
+			return true, nil
+		}
+
+		var hasNodeModules bool
+		hasNodeModules, err = files.ExistsFolder(a.Module.Dir, "node_modules")
+		if err != nil {
+			return false, err
+		}
+
+		if hasNodeModules {
+			log.Debug("Done checking Node.js build: project has package.json with node_modules/")
+			return true, nil
+		}
 	}
 
-	if len(manifest.Dependencies) == 0 {
-		log.Debugf("Done checking Node.js build: project has no dependencies")
+	_, err = npm.FindAndReadLockfile(a.Module.BuildTarget)
+	if err == nil {
+		log.Debug("Done checking Node.js build: project has a valid lockfile")
 		return true, nil
 	}
 
-	hasNodeModules, err := files.ExistsFolder(a.Module.Dir, "node_modules")
-	if err != nil {
-		return false, err
+	return false, &errors.Error{
+		Cause:           err,
+		Type:            errors.User,
+		Troubleshooting: "Could not find dependencies in node project. Make sure that your project's root dir has a package.json & node_modules/, yarn.lock, package-lock.json, or npm-shrinkwrap.lock",
 	}
-
-	log.Debugf("Done checking Node.js build: %#v", hasNodeModules)
-	return hasNodeModules, nil
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
@@ -226,7 +239,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	// if npm as a tool does not exist, skip this
 	if a.NPM.Exists() {
 		pkgs, err := a.NPM.List(a.Module.BuildTarget)
-		if err == nil {
+		if err != nil && len(pkgs.Dependencies) > 0 {
 			// TODO: we should move this functionality in to the buildtool, and have it
 			// return `pkg.Package`s.
 			// Set direct dependencies.
@@ -253,9 +266,12 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 				Direct:     imports,
 				Transitive: deps,
 			}, nil
+		} else if err != nil {
+			log.Warnf("NPM had non-zero exit code: %s", err.Error())
+		} else {
+			log.Warnf("Could not determine deps from npm ls")
 		}
 
-		log.Warnf("NPM had non-zero exit code: %s", err.Error())
 		log.Debug("Using fallback of node_modules")
 	}
 
