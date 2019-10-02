@@ -47,7 +47,7 @@ analyze BasicFileOpts{..} = do
 
 type Parser = Parsec Void Text
 
--- TODO: paths, urls
+-- TODO: urls
 -- https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format
 requirementsTxtParser :: Parser [Req]
 requirementsTxtParser = concat <$> ((line `sepBy` eol) <* eof)
@@ -66,6 +66,8 @@ requirementsTxtParser = concat <$> ((line `sepBy` eol) <* eof)
 
   -- TODO: we can case split / sum-type this for better analysis
   line = [] <$ char '-' <* ignored -- pip options
+     <|> [] <$ char '.' <* ignored -- relative path
+     <|> [] <$ char '/' <* ignored -- absolute path
      <|> [] <$ comment
      <|> (pure <$> requirementParser <* optional comment)
      <|> pure [] -- empty line
