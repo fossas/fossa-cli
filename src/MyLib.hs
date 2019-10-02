@@ -29,6 +29,7 @@ import Strategy
 app :: IO ()
 app = do
   setCurrentDir [absdir|/Users/connor/.go/src/github.com/fossas/fossa-cli/|]
+  --setCurrentDir [absdir|/Users/connor/Desktop/tmp3|]
 
   -- TODO: actual work queue abstraction
   work <- newTMChanIO
@@ -60,7 +61,7 @@ app = do
     for_ workThreads await -- TODO: exceptions
     pure ()
 
-worker :: Members '[Embed IO, ErrorTrace, Exec, Input (Maybe ConfiguredStrategy), Trace] r => Sem r ()
+worker :: Members '[Embed IO, ErrorTrace, Exec, ReadFS, Input (Maybe ConfiguredStrategy), Trace] r => Sem r ()
 worker = do
   maybeItem <- input @(Maybe ConfiguredStrategy)
   for_ maybeItem $ \(ConfiguredStrategy strat opt) -> do

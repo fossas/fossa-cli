@@ -12,9 +12,10 @@ import Polysemy.Error
 
 import Effect.ErrorTrace
 import Effect.Exec
+import Effect.ReadFS
 import Graph
 
-type StrategyMems r = Members '[Embed IO, Exec, Error CLIErr] r
+type StrategyMems r = Members '[Embed IO, Exec, Error CLIErr, ReadFS] r
 
 data Strategy options = Strategy
   { strategyName    :: String

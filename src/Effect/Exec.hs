@@ -4,6 +4,7 @@ module Effect.Exec
   ( Exec(..)
   , exec
   , execToIO
+  , module System.Exit
   ) where
 
 import Prologue
@@ -14,7 +15,7 @@ import           Data.ByteString.Lazy.Optics
 import           Optics
 import           Path.IO
 import           Polysemy
-import           System.Exit
+import           System.Exit (ExitCode(..))
 import           System.Process.Typed
 
 data Exec m a where

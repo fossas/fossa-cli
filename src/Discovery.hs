@@ -1,7 +1,5 @@
 module Discovery
-  ( filterFilename
-  , filterDirname
-  , discovery
+  ( discovery
   ) where
 
 import Prologue
@@ -13,15 +11,18 @@ import           Polysemy.Error
 import           Polysemy.Output
 import           Strategy
 import qualified Strategy.Npm as Npm
+import qualified Strategy.Python.Pipenv as Pipenv
+import qualified Strategy.Python.PipList as PipList
+import qualified Strategy.Python.ReqTxt as ReqTxt
+import qualified Strategy.Python.SetupPy as SetupPy
 
 import Config
+import Discovery.Types
 import Effect.ErrorTrace
 import Effect.ReadFS
 
-type DiscoverMems r = Members '[Embed IO, Error CLIErr, Output ConfiguredStrategy, ReadFS] r
-
-discoverFuncs :: DiscoverMems r => [Path Abs Dir -> Sem r ()]
-discoverFuncs = [Npm.discover, loadConfig strategiesByName]
+discoverFuncs :: DiscoverEffs r => [Path Abs Dir -> Sem r ()]
+discoverFuncs = [{-Npm.discover, PipList.discover, Pipenv.discover, SetupPy.discover, -} ReqTxt.discover, loadConfig strategiesByName]
 
 discovery :: Members '[Embed IO, ErrorTrace, Output ConfiguredStrategy, ReadFS] r => Sem r ()
 discovery = do
@@ -37,10 +38,3 @@ strategiesByName = M.fromList (map (\strategy@(SomeStrategy Strategy{strategyNam
 
 strategies :: [SomeStrategy]
 strategies = [SomeStrategy Npm.strategy]
-
-
-filterFilename :: String -> [Path b File] -> [Path b File]
-filterFilename name = filter ((== name) . toFilePath . filename)
-
-filterDirname :: String -> [Path b Dir] -> [Path b Dir]
-filterDirname name = filter ((== name) . toFilePath . dirname)

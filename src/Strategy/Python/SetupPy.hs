@@ -1,0 +1,76 @@
+
+module Strategy.Python.SetupPy
+  ( SetupPyOpts(..)
+
+  , discover
+  , strategy
+  , analyze
+  , configure
+  )
+  where
+
+import Prologue hiding ((<?>), many, some)
+
+import           Data.Char
+import qualified Data.Text as T
+import           Polysemy
+import           Polysemy.Error
+import           Polysemy.Output
+import           Text.Megaparsec
+import           Text.Megaparsec.Char
+
+import           Config
+import qualified Graph as G
+import           Discovery.Walk
+import           Effect.ReadFS
+import           Strategy
+import           Strategy.Python.Util
+import           Types
+
+discover :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover = walk $ \_ _ files -> do
+  case find (\f -> fileName f == "setup.py") files of
+    Nothing -> walkContinue
+    Just file  -> do
+      output (configure file)
+      walkContinue
+
+data SetupPyOpts = SetupPyOpts
+  { setupPyOptsFile :: Path Rel File
+  } deriving Show
+
+instance FromJSON SetupPyOpts where
+  parseJSON = withObject "SetupPyOpts" $ \obj ->
+    SetupPyOpts <$> obj .: "file"
+
+instance ToJSON SetupPyOpts where
+  toJSON SetupPyOpts{..} = object ["file" .= setupPyOptsFile]
+
+strategy :: Strategy SetupPyOpts
+strategy = Strategy
+  { strategyName = "python-piplist"
+  , strategyAnalyze = analyze
+  }
+
+analyze :: Members '[Error CLIErr, ReadFS] r => SetupPyOpts -> Sem r G.Graph
+analyze SetupPyOpts{..} = do
+  contents <- readContentsText setupPyOptsFile
+  let noWhitespace = T.filter (not . isSpace) contents
+  case runParser installRequiresParser "source" noWhitespace of
+    Left err -> throw $ StrategyFailed $ "failed to parse setup.py " <> show err -- TODO: better error
+    Right a -> pure $ buildGraph a
+
+type Parser = Parsec Void Text
+
+installRequiresParser :: Parser [Req]
+installRequiresParser = prefix *> entries <* end
+  where
+  prefix  = skipManyTill anySingle (string "install_requires=[")
+  entries = between quote quote requirementParser `sepBy` char ','
+  end     = char ']'
+
+  quote   = char '\''
+
+
+configure :: Path Rel File -> ConfiguredStrategy
+configure = ConfiguredStrategy strategy . SetupPyOpts

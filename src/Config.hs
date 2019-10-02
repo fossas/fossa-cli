@@ -25,7 +25,7 @@ loadConfig :: Members '[Error CLIErr, Output ConfiguredStrategy, ReadFS] r => Ma
 loadConfig strategiesByName dir = do
   exists <- doesFileExist (dir </> configPath)
   when exists $ do
-    contents <- readContents configPath
+    contents <- readContentsBS configPath
 
     -- code is disgusting, but it's using three different failure types:
     -- - Either ParseException (yaml)

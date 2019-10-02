@@ -46,7 +46,8 @@ data Dependency = Dependency
 
 -- | A Dependency type. This corresponds to a "fetcher" on the backend
 data DepType =
-  NodeJSType -- ^ NPM registry (or similar)
+    NodeJSType -- ^ NPM registry (or similar)
+  | PipType    -- ^ Pip registry
   deriving (Eq, Ord, Show, Generic)
 
 -- | Opaque reference to a dependency in the graph. Used for adding edges to the graph (See: 'addEdge')

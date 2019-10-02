@@ -48,6 +48,8 @@ library
   exposed-modules:
     Config
     Discovery
+    Discovery.Types
+    Discovery.Walk
     Effect.ErrorTrace
     Effect.Exec
     Effect.GraphBuilder
@@ -58,6 +60,11 @@ library
     Strategy
     Strategy.Gradle
     Strategy.Npm
+    Strategy.Python.PipList
+    Strategy.Python.Pipenv
+    Strategy.Python.ReqTxt
+    Strategy.Python.SetupPy
+    Strategy.Python.Util
     Types
 
   build-depends:
@@ -66,6 +73,8 @@ library
     , bytestring     ^>=0.10.8
     , containers     ^>=0.6.0
     , filemanip      ^>=0.3.6
+    , megaparsec     ^>=7.0.5
+    , modern-uri     ^>=0.3.1
     , optics         ^>=0.1
     , path           ^>=0.6.1
     , path-io        ^>=1.5.0
