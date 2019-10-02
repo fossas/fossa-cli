@@ -12,7 +12,7 @@ module Strategy.Python.Util
 
 import Prologue hiding (many, some)
 
-import           Data.Char
+import qualified Data.Char as C
 import qualified Data.Text as T
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
@@ -74,10 +74,11 @@ requirementParser :: Parser Req
 requirementParser = specification
   where
   oneOfS = asum . map string
+  isSpace c = c == ' ' || c == '\t'
 
-  whitespace = takeWhileP (Just "whitespace") (\c -> c == ' ' || c == '\t') :: Parser Text
+  whitespace = takeWhileP (Just "whitespace") isSpace :: Parser Text
   whitespace1 = label "whitespace1" $ takeWhile1P (Just "whitespace1") isSpace :: Parser Text
-  letterOrDigit = label "letterOrDigit" $ satisfy (\c -> isLetter c || isDigit c)
+  letterOrDigit = label "letterOrDigit" $ satisfy (\c -> C.isLetter c || C.isDigit c)
 
   version_cmp = label "version_cmp" $ whitespace *> (Operator <$> oneOfS ["<=", "<", "!=", "===", "==", ">=", ">", "~="])
 
@@ -93,7 +94,7 @@ requirementParser = specification
           <|> MarkerNotIn <$ whitespace <* string "not" <* whitespace1 <* string "in"
   python_str_c :: Parser Char
   python_str_c = label "python_str_c" $
-                 satisfy isSpace <|> satisfy isLetter <|> satisfy isDigit
+                 satisfy isSpace <|> satisfy C.isLetter <|> satisfy C.isDigit
              <|> oneOf ("().{}-_*#:;,/?[]!~`@$%^&=+|<>" :: String)
 
   dquote :: Parser Char

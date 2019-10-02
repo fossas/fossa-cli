@@ -7,6 +7,7 @@ import Prologue
 import qualified Data.Map as M
 import           Path.IO
 import           Polysemy
+import           Polysemy.Async
 import           Polysemy.Error
 import           Polysemy.Output
 import           Strategy
@@ -22,9 +23,9 @@ import Effect.ErrorTrace
 import Effect.ReadFS
 
 discoverFuncs :: DiscoverEffs r => [Path Abs Dir -> Sem r ()]
-discoverFuncs = [{-Npm.discover, PipList.discover, Pipenv.discover, SetupPy.discover, -} ReqTxt.discover, loadConfig strategiesByName]
+discoverFuncs = [Npm.discover, PipList.discover, Pipenv.discover, SetupPy.discover, ReqTxt.discover, loadConfig strategiesByName]
 
-discovery :: Members '[Embed IO, ErrorTrace, Output ConfiguredStrategy, ReadFS] r => Sem r ()
+discovery :: Members '[Embed IO, Async, ErrorTrace, Output ConfiguredStrategy, ReadFS] r => Sem r ()
 discovery = do
   dir <- getCurrentDir
   for_ discoverFuncs $ \discover -> do
