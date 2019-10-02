@@ -1,8 +1,6 @@
 
 module Strategy.Python.Pipenv
-  ( PipenvOpts(..)
-
-  , discover
+  ( discover
   , strategy
   , analyze
   , configure
@@ -18,6 +16,7 @@ import           Polysemy.Output
 
 import           Config
 import qualified Graph as G
+import           Discovery.Core
 import           Discovery.Walk
 import           Effect.Exec
 import           Effect.GraphBuilder
@@ -32,26 +31,15 @@ discover = walk $ \dir _ files -> do
       output (configure dir)
       walkContinue
 
-data PipenvOpts = PipenvOpts
-  { pipenvOptsDir :: Path Rel Dir
-  } deriving Show
-
-instance FromJSON PipenvOpts where
-  parseJSON = withObject "PipenvOpts" $ \obj ->
-    PipenvOpts <$> obj .: "dir"
-
-instance ToJSON PipenvOpts where
-  toJSON PipenvOpts{..} = object ["dir" .= pipenvOptsDir]
-
-strategy :: Strategy PipenvOpts
+strategy :: Strategy BasicDirOpts
 strategy = Strategy
-  { strategyName = "python-piplist"
+  { strategyName = "python-pipenv"
   , strategyAnalyze = analyze
   }
 
-analyze :: Members '[Exec, Error CLIErr] r => PipenvOpts -> Sem r G.Graph
-analyze PipenvOpts{..} = do
-  (exitcode, stdout, stderr) <- exec pipenvOptsDir "pipenv" ["graph", "--json-tree"]
+analyze :: Members '[Exec, Error CLIErr] r => BasicDirOpts -> Sem r G.Graph
+analyze BasicDirOpts{..} = do
+  (exitcode, stdout, stderr) <- exec targetDir "pipenv" ["graph", "--json-tree"]
   when (exitcode /= ExitSuccess) (throw $ StrategyFailed $ "pipenv returned an error: " <> BL8.unpack stderr)
   case eitherDecode stdout of
     Left err -> throw $ StrategyFailed err -- TODO: better error
@@ -70,7 +58,7 @@ buildGraph xs = unfold xs getDeps toDependency
                  }
 
 configure :: Path Rel Dir -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . PipenvOpts
+configure = ConfiguredStrategy strategy . BasicDirOpts
 
 data PipenvDep = PipenvDep
   { depName         :: Text

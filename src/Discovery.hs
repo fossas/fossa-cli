@@ -17,7 +17,7 @@ import qualified Strategy.Python.ReqTxt as ReqTxt
 import qualified Strategy.Python.SetupPy as SetupPy
 
 import Config
-import Discovery.Types
+import Discovery.Core
 import Effect.ErrorTrace
 import Effect.ReadFS
 

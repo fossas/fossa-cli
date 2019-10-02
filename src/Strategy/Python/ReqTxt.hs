@@ -1,8 +1,6 @@
 
 module Strategy.Python.ReqTxt
-  ( ReqTxtOpts(..)
-
-  , discover
+  ( discover
   , strategy
   , analyze
   , configure
@@ -19,6 +17,7 @@ import           Text.Megaparsec.Char
 
 import           Config
 import qualified Graph as G
+import           Discovery.Core
 import           Discovery.Walk
 import           Effect.ReadFS
 import           Strategy
@@ -33,26 +32,15 @@ discover = walk $ \_ _ files -> do
       output (configure file)
       walkContinue
 
-data ReqTxtOpts = ReqTxtOpts
-  { reqTxtOptsFile :: Path Rel File
-  } deriving Show
-
-instance FromJSON ReqTxtOpts where
-  parseJSON = withObject "ReqTxtOpts" $ \obj ->
-    ReqTxtOpts <$> obj .: "file"
-
-instance ToJSON ReqTxtOpts where
-  toJSON ReqTxtOpts{..} = object ["file" .= reqTxtOptsFile]
-
-strategy :: Strategy ReqTxtOpts
+strategy :: Strategy BasicFileOpts
 strategy = Strategy
-  { strategyName = "python-piplist"
+  { strategyName = "python-requirements"
   , strategyAnalyze = analyze
   }
 
-analyze :: Members '[Error CLIErr, ReadFS, Embed IO] r => ReqTxtOpts -> Sem r G.Graph
-analyze ReqTxtOpts{..} = do
-  contents <- readContentsText reqTxtOptsFile
+analyze :: Members '[Error CLIErr, ReadFS, Embed IO] r => BasicFileOpts -> Sem r G.Graph
+analyze BasicFileOpts{..} = do
+  contents <- readContentsText targetFile
   case runParser requirementsTxtParser "source" contents of
     Left err -> throw $ StrategyFailed $ "failed to parse requirements.txt " <> show err -- TODO: better error
     Right a -> pure $ buildGraph a
@@ -63,4 +51,4 @@ requirementsTxtParser :: Parser [Req]
 requirementsTxtParser = requirementParser `sepBy` newline
 
 configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . ReqTxtOpts
+configure = ConfiguredStrategy strategy . BasicFileOpts

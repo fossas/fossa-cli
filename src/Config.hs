@@ -14,6 +14,7 @@ import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
 
+import           Discovery.Core
 import           Effect.ErrorTrace
 import           Effect.ReadFS
 import           Strategy
@@ -40,12 +41,6 @@ loadConfig strategiesByName dir = do
             Just (SomeStrategy strat) -> case fromJSON configStrategyOptions of
               Error err -> throw (StrategyOptionsParseFailed configStrategyName err)
               Success a -> output @ConfiguredStrategy (ConfiguredStrategy strat a)
-
-data ConfiguredStrategy where
-  ConfiguredStrategy :: (FromJSON options, ToJSON options) => Strategy options -> options -> ConfiguredStrategy
-
-instance ToJSON ConfiguredStrategy where
-  toJSON (ConfiguredStrategy strategy options) = object ["name" .= strategyName strategy, "options" .= options]
 
 data Config = Config
   { configStrategies :: [ConfigStrategy]

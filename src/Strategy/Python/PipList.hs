@@ -1,8 +1,6 @@
 
 module Strategy.Python.PipList
-  ( PipListOpts(..)
-
-  , discover
+  ( discover
   , strategy
   , analyze
   , configure
@@ -18,6 +16,7 @@ import           Polysemy.Output
 
 import           Config
 import qualified Graph as G
+import           Discovery.Core
 import           Discovery.Walk
 import           Effect.Exec
 import           Effect.GraphBuilder
@@ -32,27 +31,16 @@ discover = walk $ \dir _ files -> do
       output (configure dir)
       walkContinue
 
-data PipListOpts = PipListOpts
-  { pipListOptsDir :: Path Rel Dir
-  } deriving Show
-
-instance FromJSON PipListOpts where
-  parseJSON = withObject "PipListOpts" $ \obj ->
-    PipListOpts <$> obj .: "dir"
-
-instance ToJSON PipListOpts where
-  toJSON PipListOpts{..} = object ["dir" .= pipListOptsDir]
-
-strategy :: Strategy PipListOpts
+strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "python-piplist"
   , strategyAnalyze = analyze
   }
 
 -- TODO: pip effect
-analyze :: Members '[Exec, Error CLIErr] r => PipListOpts -> Sem r G.Graph
-analyze PipListOpts{..} = do
-  (exitcode, stdout, stderr) <- exec pipListOptsDir "pip3" ["list", "--format=json"]
+analyze :: Members '[Exec, Error CLIErr] r => BasicDirOpts -> Sem r G.Graph
+analyze BasicDirOpts{..} = do
+  (exitcode, stdout, stderr) <- exec targetDir "pip3" ["list", "--format=json"]
   when (exitcode /= ExitSuccess) (throw $ StrategyFailed $ "`pip list` returned an error: " <> BL8.unpack stderr)
   case eitherDecode stdout of
     Left err -> throw $ StrategyFailed err -- TODO: better error
@@ -69,7 +57,7 @@ buildGraph xs = unfold xs (const []) toDependency
                  }
 
 configure :: Path Rel Dir -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . PipListOpts
+configure = ConfiguredStrategy strategy . BasicDirOpts
 
 data PipListDep = PipListDep
   { depName    :: Text

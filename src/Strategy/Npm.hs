@@ -16,22 +16,13 @@ import           Polysemy.Error
 import           Polysemy.Output
 
 import           Config
+import           Discovery.Core
 import           Discovery.Walk
 import           Effect.ErrorTrace
 import           Effect.Exec
 import           Effect.GraphBuilder
 import qualified Graph as G
 import           Strategy
-
-data NpmOpts = NpmOpts
-  { npmOptsDir :: Path Rel Dir
-  } deriving Show
-
-instance FromJSON NpmOpts where
-  parseJSON = withObject "NpmOpts" $ \obj -> NpmOpts <$> obj .: "dir"
-
-instance ToJSON NpmOpts where
-  toJSON NpmOpts{..} = object ["dir" .= npmOptsDir]
 
 discover :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover = walk $ \dir subdirs files -> do
@@ -41,15 +32,15 @@ discover = walk $ \dir subdirs files -> do
 
   walkSkipNamed ["node_modules"] subdirs
 
-strategy :: Strategy NpmOpts
+strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "nodejs-npm"
   , strategyAnalyze = analyze
   }
 
-analyze :: Members '[Exec, Error CLIErr] r => NpmOpts -> Sem r G.Graph
-analyze NpmOpts{..} = do
-  (exitcode, stdout, stderr) <- exec npmOptsDir "npm" ["ls", "--json", "--production"]
+analyze :: Members '[Exec, Error CLIErr] r => BasicDirOpts -> Sem r G.Graph
+analyze BasicDirOpts{..} = do
+  (exitcode, stdout, stderr) <- exec targetDir "npm" ["ls", "--json", "--production"]
   when (exitcode /= ExitSuccess) (throw $ StrategyFailed $ "NPM returned an error: " <> BL8.unpack stderr)
   case eitherDecode stdout of
     Left err -> throw $ StrategyFailed err -- TODO: better error
@@ -68,7 +59,7 @@ buildGraph top = unfold direct getDeps toDependency
                  }
 
 configure :: Path Rel Dir -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . NpmOpts
+configure = ConfiguredStrategy strategy . BasicDirOpts
 
 data NpmOutput = NpmOutput
   { outputVersion      :: Maybe Text

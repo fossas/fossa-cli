@@ -48,7 +48,7 @@ library
   exposed-modules:
     Config
     Discovery
-    Discovery.Types
+    Discovery.Core
     Discovery.Walk
     Effect.ErrorTrace
     Effect.Exec
