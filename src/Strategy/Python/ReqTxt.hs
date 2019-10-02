@@ -38,7 +38,7 @@ strategy = Strategy
   , strategyAnalyze = analyze
   }
 
-analyze :: Members '[Error CLIErr, ReadFS, Embed IO] r => BasicFileOpts -> Sem r G.Graph
+analyze :: Members '[Error CLIErr, ReadFS] r => BasicFileOpts -> Sem r G.Graph
 analyze BasicFileOpts{..} = do
   contents <- readContentsText targetFile
   case runParser requirementsTxtParser "source" contents of
@@ -47,7 +47,6 @@ analyze BasicFileOpts{..} = do
 
 type Parser = Parsec Void Text
 
--- TODO: urls
 -- https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format
 requirementsTxtParser :: Parser [Req]
 requirementsTxtParser = concat <$> ((line `sepBy` eol) <* eof)
@@ -68,9 +67,12 @@ requirementsTxtParser = concat <$> ((line `sepBy` eol) <* eof)
   line = [] <$ char '-' <* ignored -- pip options
      <|> [] <$ char '.' <* ignored -- relative path
      <|> [] <$ char '/' <* ignored -- absolute path
+     <|> [] <$ oneOfS ["http:", "https:", "git+", "hg+", "svn+", "bzr+"] <* ignored -- URLs
      <|> [] <$ comment
      <|> (pure <$> requirementParser <* optional comment)
      <|> pure [] -- empty line
+
+  oneOfS = asum . map string
 
 configure :: Path Rel File -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicFileOpts
