@@ -239,7 +239,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	// if npm as a tool does not exist, skip this
 	if a.NPM.Exists() {
 		pkgs, err := a.NPM.List(a.Module.BuildTarget)
-		if err != nil && len(pkgs.Dependencies) > 0 {
+		if err == nil && len(pkgs.Dependencies) > 0 {
 			// TODO: we should move this functionality in to the buildtool, and have it
 			// return `pkg.Package`s.
 			// Set direct dependencies.

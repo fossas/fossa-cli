@@ -25,8 +25,9 @@ import (
 // in the transitive dependency list contains the correct dependency imports.
 func TestNDepsTransitiveImports(t *testing.T) {
 	m := module.Module{
-		Dir:  filepath.Join("testdata", "transitive-deps"),
-		Type: pkg.NodeJS,
+		Type:        pkg.NodeJS,
+		Dir:         filepath.Join("testdata", "transitive-deps"),
+		BuildTarget: filepath.Join("testdata", "transitive-deps"),
 	}
 
 	a, err := analyzers.New(m)
@@ -70,8 +71,9 @@ func TestNDepsTransitiveImports(t *testing.T) {
 // `dependencies`.
 func TestNoDependencies(t *testing.T) {
 	m := module.Module{
-		Dir:  filepath.Join("testdata", "empty"),
-		Type: pkg.NodeJS,
+		Type:        pkg.NodeJS,
+		Dir:         filepath.Join("testdata", "empty"),
+		BuildTarget: filepath.Join("testdata", "empty"),
 	}
 
 	a, err := analyzers.New(m)
