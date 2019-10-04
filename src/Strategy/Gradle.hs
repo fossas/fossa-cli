@@ -14,12 +14,10 @@ import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
 
-import           Config
 import           Discovery.Walk
 import           Effect.Exec
 import           Effect.ReadFS
 import qualified Graph as G
-import           Strategy
 import           Types
 
 import Path.IO (WalkAction)
@@ -85,6 +83,7 @@ strategy :: Strategy GradleOpts
 strategy = Strategy
   { strategyName = "gradle-cli"
   , strategyAnalyze = analyze
+  , strategyModule = gradleOptsDir
   }
 
 analyze :: Members '[Exec, Error CLIErr] r => GradleOpts -> Sem r G.Graph

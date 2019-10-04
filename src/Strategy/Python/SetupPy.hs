@@ -1,4 +1,3 @@
-
 module Strategy.Python.SetupPy
   ( discover
   , strategy
@@ -17,17 +16,20 @@ import           Polysemy.Output
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 
-import           Config
 import qualified Graph as G
-import           Discovery.Core
 import           Discovery.Walk
 import           Effect.ReadFS
-import           Strategy
 import           Strategy.Python.Util
 import           Types
 
-discover :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover = walk $ \_ _ files -> do
+discover :: Discover
+discover = Discover
+  { discoverName = "setup.py"
+  , discoverFunc = discover'
+  }
+
+discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "setup.py") files of
     Nothing -> walkContinue
     Just file  -> do
@@ -38,6 +40,7 @@ strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "python-setuppy"
   , strategyAnalyze = analyze
+  , strategyModule = parent . targetFile
   }
 
 analyze :: Members '[Error CLIErr, ReadFS] r => BasicFileOpts -> Sem r G.Graph

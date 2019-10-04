@@ -14,17 +14,20 @@ import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
 
-import           Config
 import qualified Graph as G
-import           Discovery.Core
 import           Discovery.Walk
 import           Effect.Exec
 import           Effect.GraphBuilder
-import           Strategy
 import           Types
 
-discover :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover = walk $ \dir _ files -> do
+discover :: Discover
+discover = Discover
+  { discoverName = "piplist"
+  , discoverFunc = discover'
+  }
+
+discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' = walk $ \dir _ files -> do
   case find (\f -> fileName f `elem` ["setup.py", "requirements.txt"]) files of
     Nothing -> walkContinue
     Just _  -> do
@@ -35,6 +38,7 @@ strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "python-piplist"
   , strategyAnalyze = analyze
+  , strategyModule = targetDir
   }
 
 -- TODO: pip effect

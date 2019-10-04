@@ -14,17 +14,20 @@ import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
 
-import           Config
 import qualified Graph as G
-import           Discovery.Core
 import           Discovery.Walk
 import           Effect.Exec
 import           Effect.GraphBuilder
-import           Strategy
 import           Types
 
-discover :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover = walk $ \dir _ files -> do
+discover :: Discover
+discover = Discover
+  { discoverName = "pipenv"
+  , discoverFunc = discover'
+  }
+
+discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' = walk $ \dir _ files -> do
   case find (\f -> fileName f == "Pipfile.lock") files of
     Nothing -> walkContinue
     Just _  -> do
@@ -35,6 +38,7 @@ strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "python-pipenv"
   , strategyAnalyze = analyze
+  , strategyModule = targetDir
   }
 
 analyze :: Members '[Exec, Error CLIErr] r => BasicDirOpts -> Sem r G.Graph

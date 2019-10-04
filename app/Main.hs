@@ -3,7 +3,7 @@ module Main (main) where
 
 import Prelude
 
-import MyLib (app)
+import App (appMain)
 
 main :: IO ()
-main = app
+main = appMain

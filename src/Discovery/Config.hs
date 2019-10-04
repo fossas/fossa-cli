@@ -1,7 +1,7 @@
 
 {-# language QuasiQuotes #-}
 
-module Config
+module Discovery.Config
   ( ConfiguredStrategy(..)
   , loadConfig
   ) where
@@ -14,16 +14,21 @@ import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
 
-import           Discovery.Core
-import           Effect.ErrorTrace
-import           Effect.ReadFS
-import           Strategy
+import Effect.ErrorTrace
+import Effect.ReadFS
+import Types
 
 configPath :: Path Rel File
 configPath = [relfile|.strategies.yml|]
 
-loadConfig :: Members '[Error CLIErr, Output ConfiguredStrategy, ReadFS] r => Map String SomeStrategy -> Path Abs Dir -> Sem r ()
-loadConfig strategiesByName dir = do
+loadConfig :: [StrategyGroup] -> Discover
+loadConfig groups = Discover
+  { discoverName = "config"
+  , discoverFunc = loadConfig' groups
+  }
+
+loadConfig' :: forall r. Members '[Error CLIErr, Output ConfiguredStrategy, ReadFS] r => [StrategyGroup] -> Path Abs Dir -> Sem r ()
+loadConfig' strategies dir = do
   exists <- doesFileExist (dir </> configPath)
   when exists $ do
     contents <- readContentsBS configPath
@@ -40,7 +45,11 @@ loadConfig strategiesByName dir = do
             Nothing -> throw (UnknownStrategyName configStrategyName)
             Just (SomeStrategy strat) -> case fromJSON configStrategyOptions of
               Error err -> throw (StrategyOptionsParseFailed configStrategyName err)
-              Success a -> output @ConfiguredStrategy (ConfiguredStrategy strat a)
+              Success a -> output (ConfiguredStrategy strat a)
+  where
+  strategiesByName :: Map String SomeStrategy
+  strategiesByName = M.fromList (map (\strategy@(SomeStrategy Strategy{strategyName}) -> (strategyName, strategy)) (groupStrategies =<< strategies))
+
 
 data Config = Config
   { configStrategies :: [ConfigStrategy]

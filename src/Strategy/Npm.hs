@@ -15,17 +15,21 @@ import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
 
-import           Config
-import           Discovery.Core
 import           Discovery.Walk
 import           Effect.ErrorTrace
 import           Effect.Exec
 import           Effect.GraphBuilder
 import qualified Graph as G
-import           Strategy
+import           Types
 
-discover :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover = walk $ \dir subdirs files -> do
+discover :: Discover
+discover = Discover
+  { discoverName = "npm-list"
+  , discoverFunc = discover'
+  }
+
+discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' = walk $ \dir subdirs files -> do
   for_ files $ \f -> do
     when (fileName f == "package.json") $
       output (configure dir)
@@ -36,6 +40,7 @@ strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "nodejs-npm"
   , strategyAnalyze = analyze
+  , strategyModule = targetDir
   }
 
 analyze :: Members '[Exec, Error CLIErr] r => BasicDirOpts -> Sem r G.Graph

@@ -46,18 +46,17 @@ library
 
   -- cabal-fmt: expand src
   exposed-modules:
-    Config
+    App
+    Control.Parallel
     Discovery
-    Discovery.Core
+    Discovery.Config
     Discovery.Walk
     Effect.ErrorTrace
     Effect.Exec
     Effect.GraphBuilder
     Effect.ReadFS
     Graph
-    MyLib
     Prologue
-    Strategy
     Strategy.Gradle
     Strategy.Npm
     Strategy.Python.PipList
