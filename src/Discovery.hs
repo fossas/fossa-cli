@@ -3,8 +3,6 @@ module Discovery
   , strategyGroups
   ) where
 
-import Prologue
-
 import qualified Strategy.Npm as Npm
 import qualified Strategy.Python.Pipenv as Pipenv
 import qualified Strategy.Python.PipList as PipList

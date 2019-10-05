@@ -34,7 +34,7 @@ discover' = walk $ \dir subdirs files -> do
     when (fileName f == "package.json") $
       output (configure dir)
 
-  walkSkipNamed ["node_modules"] subdirs
+  walkSkipNamed ["node_modules/"] subdirs
 
 strategy :: Strategy BasicDirOpts
 strategy = Strategy

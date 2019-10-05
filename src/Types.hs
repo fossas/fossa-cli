@@ -28,21 +28,25 @@ import Graph
 
 ---------- Errors
 
+-- | Errors that can be produced by 'Discover' and 'Strategy'
 data CLIErr =
     -- Configuration errors
-    ConfigParseFailed String
-  | UnknownStrategyName String
-  | StrategyOptionsParseFailed String String -- name of strategy, err
+    ConfigParseFailed String -- ^ Configuration parsing failed
+  | UnknownStrategyName String -- ^ An unknown strategy name was found in the configuration file
+  | StrategyOptionsParseFailed String String -- ^ name of strategy, err.
 
     -- Strategy execution errors
     -- TODO: new-cli-error-style reporting
-  | StrategyFailed String -- name of strategy, err
+  | StrategyFailed String
   deriving (Eq, Ord, Show, Generic, Typeable)
 
 ---------- Discovery
 
+-- | The effects available for use in 'Discover'
 type DiscoverEffs r = Members '[Embed IO, Error CLIErr, Exec, ReadFS, Output ConfiguredStrategy] r
 
+-- | Discover functions produce 'ConfiguredStrategy's, given a base directory
+-- to search
 data Discover = Discover
   { discoverName :: String
   , discoverFunc :: forall r. DiscoverEffs r => Path Abs Dir -> Sem r ()
@@ -51,34 +55,48 @@ data Discover = Discover
 
 ---------- Strategies
 
+-- | The effects available for use in 'Strategy'
 type StrategyEffs r = Members '[Embed IO, Error CLIErr, Exec, ReadFS] r
 
+-- | Strategies produce dependency graphs
+--
+-- @options@ must have 'ToJSON' and 'FromJSON' instances -- these are used to
+-- serialize\/deserialize a strategy's options to/from disk
 data Strategy options = Strategy
-  { strategyName    :: String
+  { strategyName    :: String -- ^ e.g., "python-pipenv"
   , strategyAnalyze :: forall r. StrategyEffs r => options -> Sem r Graph
-  , strategyModule  :: options -> Path Rel Dir
+  , strategyModule  :: options -> Path Rel Dir -- ^ Determine the module directory for grouping with other strategies
   }
 
+-- | 'Strategy' outputs are grouped and sorted based on the provided @StrategyGroup@s
+--
+-- For example, @"python"@ is a @StrategyGroup@ that has pipenv, piplist, ... as strategies
 data StrategyGroup = StrategyGroup
-  { groupName       :: String
+  { groupName       :: String -- ^ e.g., "python"
   , groupStrategies :: [SomeStrategy]
   }
 
+-- | An arbitrary 'Strategy', suitable for use in lists, map values, ...
+-- Used to construct 'StrategyGroup's
 data SomeStrategy where
   SomeStrategy :: (FromJSON options, ToJSON options) => Strategy options -> SomeStrategy
 
 ---------- Configured Strategies
+
+-- | A strategy paired with its options. Produced by 'Discover' functions
 data ConfiguredStrategy where
   ConfiguredStrategy :: (FromJSON options, ToJSON options) => Strategy options -> options -> ConfiguredStrategy
 
 instance ToJSON ConfiguredStrategy where
   toJSON (ConfiguredStrategy strategy options) = object ["name" .= strategyName strategy, "options" .= options]
 
+---------- Basic Opts
+
+-- | A basic set of options, containing just a target directory
 data BasicDirOpts = BasicDirOpts
   { targetDir :: Path Rel Dir
   } deriving (Eq, Ord, Show, Generic)
 
----------- Basic Opts
 instance FromJSON BasicDirOpts where
   parseJSON = withObject "BasicDirOpts" $ \obj ->
     BasicDirOpts <$> obj .: "dir"
@@ -86,6 +104,7 @@ instance FromJSON BasicDirOpts where
 instance ToJSON BasicDirOpts where
   toJSON BasicDirOpts{..} = object ["dir" .= targetDir]
 
+-- | A basic set of options, containing just a target file
 data BasicFileOpts = BasicFileOpts
   { targetFile :: Path Rel File
   } deriving (Eq, Ord, Show, Generic)

@@ -44,8 +44,15 @@ appMain = void
 
   runAction :: Members '[Embed IO, Exec, ReadFS, Trace] r => Path Abs Dir -> (Action -> Sem r ()) -> Action -> Sem r ()
   runAction basedir enqueue = \case
-    ADiscover Discover{..} -> discoverFunc basedir & ignoreErrs & runOutputSem @ConfiguredStrategy (enqueue . AStrategy)
-    AStrategy (ConfiguredStrategy Strategy{..} opts)-> ignoreErrs $ strategyAnalyze opts >>= trace . show
+    ADiscover Discover{..} -> do
+      trace $ "Starting discovery: " <> discoverName
+      discoverFunc basedir & ignoreErrs & runOutputSem @ConfiguredStrategy (enqueue . AStrategy)
+      trace $ "Finished discovery: " <> discoverName
+
+    AStrategy (ConfiguredStrategy Strategy{..} opts)-> do
+      trace $ "Starting analysis: " <> strategyName <> " " <> show (strategyModule opts)
+      ignoreErrs $ strategyAnalyze opts >>= trace . show
+      trace $ "Finished analysis: " <> strategyName <> " " <> show (strategyModule opts)
 
   -- TODO: diagnostics/warning tracing
   ignoreErrs :: Sem (Error CLIErr ': r) () -> Sem r ()

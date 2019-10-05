@@ -1,10 +1,9 @@
 
-{-# language QuasiQuotes #-}
-{-# language TemplateHaskell #-}
-
 module Strategy.Gradle
   (
   ) where
+
+{-
 
 import Prologue
 
@@ -52,7 +51,6 @@ makeSem ''Gradle
 gradleToIO :: Member (Embed IO) r => InterpreterFor Gradle r
 gradleToIO = undefined
 
-{-
 gradle :: (Member Exec r, Member ReadFS r) => Path b Dir -> [String] -> Sem r (ExitCode, BL8.ByteString, BL8.ByteString)
 gradle dir args = do
   wrappers <- filterM doesFileExist
@@ -62,7 +60,6 @@ gradle dir args = do
 
   gradlewExists <- doesFileExist (dir </> [relfile|gradlew|])
   undefined
--}
 
 discover :: forall r. Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover = gradleToIO . walk (\dir subdirs files -> do
@@ -94,3 +91,5 @@ analyze GradleOpts{..} = do
 
 configure :: Path Rel Dir -> Text -> ConfiguredStrategy
 configure path project = ConfiguredStrategy strategy (GradleOpts path project)
+
+-}

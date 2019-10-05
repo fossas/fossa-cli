@@ -22,6 +22,7 @@ walkContinue = pure $ WalkExclude []
 walkSkipAll :: Applicative m => [Path Rel Dir] -> m (WalkAction Rel)
 walkSkipAll = pure . WalkExclude . map dirname
 
+-- TODO: this is brittle: strings must end with a `/`
 walkSkipNamed :: Applicative m => [String] -> [Path Rel Dir] -> m (WalkAction Rel)
 walkSkipNamed dirnames = walkSkipAll . filter (\d -> dirName d `elem` dirnames)
 

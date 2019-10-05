@@ -22,12 +22,21 @@ data Progress = Progress
   , pCompleted :: Int
   } deriving (Eq, Ord, Show, Generic)
 
+-- | Run arbitrary actions in parallel, given:
+--
+-- - @numThreads@ - The number of worker threads to run
+-- - @initial@ - The initial list of actions
+-- - @runAction@ - A function that runs an action, which can itself enqueue more actions
+--   via the @enqueue@ function provided as an argument
+-- - A function that can be used to report 'Progress'
+--
+-- All tasks will complete before this returns.
+--
+-- __NOTE: Be careful to handle effects that modify control flow -- e.g. 'Error' -- inside of @runAction@__
+--
+-- Failing to do so can cause worker threads to crash, leading to a runtime exception when all workers crash.
 runActions :: forall r action
-            . Members
-           '[ Embed IO
-            , Async
-            , Resource
-            ] r
+            . Members '[Embed IO, Async, Resource] r
            => Int -- number of threads
            -> [action] -- initial actions
            -> ((action -> Sem r ()) -> action -> Sem r ()) -- given an action to enqueue more actions, run an action
