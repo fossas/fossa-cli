@@ -31,10 +31,6 @@ data Progress = Progress
 -- - A function that can be used to report 'Progress'
 --
 -- All tasks will complete before this returns.
---
--- __NOTE: Be careful to handle effects that modify control flow -- e.g. 'Error' -- inside of @runAction@__
---
--- Failing to do so can cause worker threads to crash, leading to a runtime exception when all workers crash.
 runActions :: forall r action
             . Members '[Embed IO, Async, Resource] r
            => Int -- number of threads
@@ -53,16 +49,17 @@ runActions numThreads initial runAction reportProgress = do
   let enqueue action = embed $ atomically $ modifyTVar (stQueued state) (action:)
 
   if numThreads > 1
-    then replicateM_ numThreads (async (worker (runAction enqueue) state))
+    then do
+      replicateM_ numThreads (async (worker (runAction enqueue) state))
+
+      -- wait for queued and running tasks to end
+      embed $ atomically $ do
+        queued  <- readTVar (stQueued state)
+        check (length queued == 0)
+        running <- readTVar (stRunning state)
+        check (running == 0)
+
     else worker (runAction enqueue) state
-
-  -- wait for queued and running tasks to end
-
-  _ <- embed $ atomically $ do
-    queued  <- readTVar (stQueued state)
-    check (length queued == 0)
-    running <- readTVar (stRunning state)
-    check (running == 0)
 
   pure ()
 
@@ -103,8 +100,7 @@ worker runAction st@State{..} = loop
         writeTVar stQueued xs
         addRunning
         pure $ do
-          (runAction x) `finally` complete
-          loop
+          (runAction x) `finally` (complete *> loop)
 
   addRunning :: STM ()
   addRunning = modifyTVar stRunning (+1)
