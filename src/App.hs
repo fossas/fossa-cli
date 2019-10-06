@@ -1,72 +1,40 @@
 
-{-# language QuasiQuotes #-} -- TODO: remove
-
 module App
   ( appMain
   ) where
 
 import Prologue
 
-import Control.Concurrent
+import Data.Maybe (fromMaybe)
+import Options.Applicative
 import Path.IO
-import Polysemy
-import Polysemy.Async
-import Polysemy.Error
-import Polysemy.Output
-import Polysemy.Resource
-import Polysemy.Trace
 
-import           Control.Parallel
-import           Discovery
-import           Effect.ErrorTrace
-import           Effect.Exec
-import           Effect.ReadFS
-import           Types
+import App.Scan (scanMain)
 
 appMain :: IO ()
-appMain = void
-        . runFinal
-        . embedToFinal @IO
-        . resourceToIOFinal
-        . asyncToIOFinal
-        . execToIO
-        . readFSToIO
-        . traceToIO $ do
+appMain = do
+  options <- execParser opts
 
-  embed @IO $ setCurrentDir [absdir|/Users/connor/.go/src/github.com/fossas/fossa-cli/|]
+  currentDir <- getCurrentDir
 
-  basedir <- getCurrentDir
-  capabilities <- embed $ getNumCapabilities
+  case options of
+    ScanCmd basedir -> scanMain (fromMaybe currentDir basedir)
 
-  runActions capabilities (map ADiscover discoverFuncs) (runAction basedir) updateProgress
+data CommandOpts = ScanCmd (Maybe (Path Abs Dir)) -- basedir for scanning
+  deriving Show
 
-  where
+opts :: ParserInfo CommandOpts
+opts = info (commands <**> helper)
+  ( fullDesc <> header "hscli - fossa-cli, but functional")
 
-  runAction :: Members '[Embed IO, Exec, ReadFS, Trace] r => Path Abs Dir -> (Action -> Sem r ()) -> Action -> Sem r ()
-  runAction basedir enqueue = \case
-    ADiscover Discover{..} -> do
-      trace $ "Starting discovery: " <> discoverName
-      discoverFunc basedir & ignoreErrs & runOutputSem @ConfiguredStrategy (enqueue . AStrategy)
-      trace $ "Finished discovery: " <> discoverName
+commands :: Parser CommandOpts
+commands = hsubparser
+  ( command "scan" scanCmd
+  -- <> command "other" -- etc
+  )
 
-    AStrategy (ConfiguredStrategy Strategy{..} opts)-> do
-      trace $ "Starting analysis: " <> strategyName <> " " <> show (strategyModule opts)
-      ignoreErrs $ strategyAnalyze opts >>= trace . show
-      trace $ "Finished analysis: " <> strategyName <> " " <> show (strategyModule opts)
-
-  -- TODO: diagnostics/warning tracing
-  ignoreErrs :: Sem (Error CLIErr ': r) () -> Sem r ()
-  ignoreErrs act = either (const ()) id <$> runError act
-
-  updateProgress :: Member Trace r => Progress -> Sem r ()
-  updateProgress Progress{..} =
-    trace ( "Queued: "
-         <> show pQueued
-         <> ", Running: "
-         <> show pRunning
-         <> ", Completed: "
-         <> show pCompleted)
-
-data Action =
-    ADiscover Discover
-  | AStrategy ConfiguredStrategy
+scanCmd :: ParserInfo CommandOpts
+scanCmd = info
+  (ScanCmd <$>
+    (optional $ option (maybeReader parseAbsDir) $ long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning"))
+  (progDesc "Scan for dependencies")
