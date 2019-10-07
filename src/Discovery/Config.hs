@@ -14,7 +14,7 @@ import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
 
-import Effect.ErrorTrace
+import Diagnostics
 import Effect.ReadFS
 import Types
 

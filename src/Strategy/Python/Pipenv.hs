@@ -9,15 +9,15 @@ module Strategy.Python.Pipenv
 
 import Prologue
 
-import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
 
-import qualified Graph as G
+import           Diagnostics
 import           Discovery.Walk
 import           Effect.Exec
 import           Effect.GraphBuilder
+import qualified Graph as G
 import           Types
 
 discover :: Discover
@@ -43,8 +43,7 @@ strategy = Strategy
 
 analyze :: Members '[Exec, Error CLIErr] r => BasicDirOpts -> Sem r G.Graph
 analyze BasicDirOpts{..} = do
-  (exitcode, stdout, stderr) <- exec targetDir "pipenv" ["graph", "--json-tree"]
-  when (exitcode /= ExitSuccess) (throw $ StrategyFailed $ "pipenv returned an error: " <> BL8.unpack stderr)
+  stdout <- exec targetDir "pipenv" ["graph", "--json-tree"]
   case eitherDecode stdout of
     Left err -> throw $ StrategyFailed err -- TODO: better error
     Right a -> pure $ buildGraph a

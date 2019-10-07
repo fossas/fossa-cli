@@ -16,9 +16,10 @@ import           Polysemy.Output
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 
-import qualified Graph as G
+import           Diagnostics
 import           Discovery.Walk
 import           Effect.ReadFS
+import qualified Graph as G
 import           Strategy.Python.Util
 import           Types
 

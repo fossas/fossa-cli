@@ -1,9 +1,7 @@
 {-# language TemplateHaskell #-}
 
 module Types
-  ( CLIErr(..)
-
-  , DiscoverEffs
+  ( DiscoverEffs
   , Discover(..)
   , StrategyEffs
   , Strategy(..)
@@ -24,21 +22,8 @@ import Polysemy.Output
 
 import Effect.Exec
 import Effect.ReadFS
+import Diagnostics
 import Graph
-
----------- Errors
-
--- | Errors that can be produced by 'Discover' and 'Strategy'
-data CLIErr =
-    -- Configuration errors
-    ConfigParseFailed String -- ^ Configuration parsing failed
-  | UnknownStrategyName String -- ^ An unknown strategy name was found in the configuration file
-  | StrategyOptionsParseFailed String String -- ^ name of strategy, err.
-
-    -- Strategy execution errors
-    -- TODO: new-cli-error-style reporting
-  | StrategyFailed String
-  deriving (Eq, Ord, Show, Generic, Typeable)
 
 ---------- Discovery
 

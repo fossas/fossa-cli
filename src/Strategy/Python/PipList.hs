@@ -9,15 +9,15 @@ module Strategy.Python.PipList
 
 import Prologue
 
-import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
 
-import qualified Graph as G
+import           Diagnostics
 import           Discovery.Walk
 import           Effect.Exec
 import           Effect.GraphBuilder
+import qualified Graph as G
 import           Types
 
 discover :: Discover
@@ -44,8 +44,7 @@ strategy = Strategy
 -- TODO: pip effect
 analyze :: Members '[Exec, Error CLIErr] r => BasicDirOpts -> Sem r G.Graph
 analyze BasicDirOpts{..} = do
-  (exitcode, stdout, stderr) <- exec targetDir "pip3" ["list", "--format=json"]
-  when (exitcode /= ExitSuccess) (throw $ StrategyFailed $ "`pip list` returned an error: " <> BL8.unpack stderr)
+  stdout <- exec targetDir "pip3" ["list", "--format=json"]
   case eitherDecode stdout of
     Left err -> throw $ StrategyFailed err -- TODO: better error
     Right a -> pure $ buildGraph a

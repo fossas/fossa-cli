@@ -49,10 +49,10 @@ library
     App
     App.Scan
     Control.Parallel
+    Diagnostics
     Discovery
     Discovery.Config
     Discovery.Walk
-    Effect.ErrorTrace
     Effect.Exec
     Effect.GraphBuilder
     Effect.ReadFS

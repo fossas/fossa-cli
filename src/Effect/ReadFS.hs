@@ -13,11 +13,15 @@ module Effect.ReadFS
 
 import Prologue
 
+import           Control.Exception
 import qualified Data.ByteString as BS
-import qualified Data.Text.IO as TIO
+import           Data.Text.Encoding (decodeUtf8)
 import           Path (Dir, File, Path, toFilePath)
 import qualified Path.IO as PIO
 import           Polysemy
+import           Polysemy.Error hiding (catch)
+
+import Diagnostics
 
 data ReadFS m a where
   ReadContentsBS   :: Path b File -> ReadFS m ByteString
@@ -27,10 +31,16 @@ data ReadFS m a where
 
 makeSem ''ReadFS
 
-readFSToIO :: Member (Embed IO) r => InterpreterFor ReadFS r
+readFSToIO :: Members '[Embed IO, Error CLIErr] r => InterpreterFor ReadFS r
 readFSToIO = interpret $ \case
-  ReadContentsBS file -> embed $ BS.readFile (toFilePath file)
-  ReadContentsText file -> embed $ TIO.readFile (toFilePath file)
+  ReadContentsBS file -> fromEitherM $
+    (Right <$> BS.readFile (toFilePath file))
+    `catch`
+    (\(e :: IOException) -> pure (Left (FileReadError (show e))))
+  ReadContentsText file -> fromEitherM $
+    (Right . decodeUtf8 <$> BS.readFile (toFilePath file))
+    `catch`
+    (\(e :: IOException) -> pure (Left (FileReadError (show e))))
   DoesFileExist file -> PIO.doesFileExist file
   DoesDirExist dir -> PIO.doesDirExist dir
 {-# INLINE readFSToIO #-}

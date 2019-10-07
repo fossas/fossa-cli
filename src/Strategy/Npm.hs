@@ -15,8 +15,8 @@ import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
 
+import           Diagnostics
 import           Discovery.Walk
-import           Effect.ErrorTrace
 import           Effect.Exec
 import           Effect.GraphBuilder
 import qualified Graph as G
@@ -45,11 +45,15 @@ strategy = Strategy
 
 analyze :: Members '[Exec, Error CLIErr] r => BasicDirOpts -> Sem r G.Graph
 analyze BasicDirOpts{..} = do
-  (exitcode, stdout, stderr) <- exec targetDir "npm" ["ls", "--json", "--production"]
-  when (exitcode /= ExitSuccess) (throw $ StrategyFailed $ "NPM returned an error: " <> BL8.unpack stderr)
+  -- NPM is dumb and presents a non-zero exit code when there are _any_ issues.
+  -- We ignore the exit code and instead check if NPM gave us something `outputInvalid`
+  (_, stdout, stderr) <- tryExec targetDir "npm" ["ls", "--json", "--production"]
+
   case eitherDecode stdout of
     Left err -> throw $ StrategyFailed err -- TODO: better error
-    Right a -> pure $ buildGraph a
+    Right a -> do
+      when (fromMaybe False (outputInvalid a)) $ throw $ StrategyFailed $ "NPM returned an error: " <> BL8.unpack stderr
+      pure $ buildGraph a
 
 buildGraph :: NpmOutput -> G.Graph
 buildGraph top = unfold direct getDeps toDependency
@@ -67,7 +71,8 @@ configure :: Path Rel Dir -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicDirOpts
 
 data NpmOutput = NpmOutput
-  { outputVersion      :: Maybe Text
+  { outputInvalid      :: Maybe Bool
+  , outputVersion      :: Maybe Text
   , outputFrom         :: Maybe Text
   , outputResolved     :: Maybe Text
   , outputDependencies :: Map Text NpmOutput
@@ -75,7 +80,8 @@ data NpmOutput = NpmOutput
 
 instance FromJSON NpmOutput where
   parseJSON = withObject "NpmOutput" $ \obj ->
-    NpmOutput <$> obj .:? "version"
+    NpmOutput <$> obj .:? "invalid"
+              <*> obj .:? "version"
               <*> obj .:? "from"
               <*> obj .:? "resolved"
               <*> obj .:? "dependencies" .!= M.empty

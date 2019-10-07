@@ -17,6 +17,7 @@ import Data.Function as X ((&))
 import Data.Functor as X (void)
 import Data.List as X (isPrefixOf, isSuffixOf)
 import Data.Map as X (Map)
+import Data.Maybe as X (fromMaybe)
 import Data.Text as X (Text)
 import Data.Traversable as X
 import Data.Void as X
