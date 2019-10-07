@@ -47,7 +47,7 @@ analyze :: Members '[Exec, Error CLIErr] r => BasicDirOpts -> Sem r G.Graph
 analyze BasicDirOpts{..} = do
   -- NPM is dumb and presents a non-zero exit code when there are _any_ issues.
   -- We ignore the exit code and instead check if NPM gave us something `outputInvalid`
-  (_, stdout, stderr) <- tryExec targetDir "npm" ["ls", "--json", "--production"]
+  (_, stdout, stderr) <- exec targetDir "npm" ["ls", "--json", "--production"]
 
   case eitherDecode stdout of
     Left err -> throw $ CommandParseError "npm" err
