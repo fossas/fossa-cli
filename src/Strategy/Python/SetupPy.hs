@@ -49,7 +49,7 @@ analyze BasicFileOpts{..} = do
   contents <- readContentsText targetFile
   let noWhitespace = T.filter (not . isSpace) contents
   case runParser installRequiresParser "source" noWhitespace of
-    Left err -> throw $ StrategyFailed $ "failed to parse setup.py " <> show err -- TODO: better error
+    Left err -> throw $ FileParseError (toFilePath targetFile) $ show err
     Right a -> pure $ buildGraph a
 
 type Parser = Parsec Void Text

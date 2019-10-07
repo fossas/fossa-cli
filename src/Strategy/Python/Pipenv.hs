@@ -45,7 +45,7 @@ analyze :: Members '[Exec, Error CLIErr] r => BasicDirOpts -> Sem r G.Graph
 analyze BasicDirOpts{..} = do
   stdout <- exec targetDir "pipenv" ["graph", "--json-tree"]
   case eitherDecode stdout of
-    Left err -> throw $ StrategyFailed err -- TODO: better error
+    Left err -> throw $ CommandParseError "pipenv" err
     Right a -> pure $ buildGraph a
 
 buildGraph :: [PipenvDep] -> G.Graph

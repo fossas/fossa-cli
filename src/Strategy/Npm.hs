@@ -50,9 +50,9 @@ analyze BasicDirOpts{..} = do
   (_, stdout, stderr) <- tryExec targetDir "npm" ["ls", "--json", "--production"]
 
   case eitherDecode stdout of
-    Left err -> throw $ StrategyFailed err -- TODO: better error
+    Left err -> throw $ CommandParseError "npm" err
     Right a -> do
-      when (fromMaybe False (outputInvalid a)) $ throw $ StrategyFailed $ "NPM returned an error: " <> BL8.unpack stderr
+      when (fromMaybe False (outputInvalid a)) $ throw $ CommandFailed "npm" $ BL8.unpack stderr
       pure $ buildGraph a
 
 buildGraph :: NpmOutput -> G.Graph

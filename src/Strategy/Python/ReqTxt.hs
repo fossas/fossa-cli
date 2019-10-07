@@ -47,7 +47,7 @@ analyze :: Members '[Error CLIErr, ReadFS] r => BasicFileOpts -> Sem r G.Graph
 analyze BasicFileOpts{..} = do
   contents <- readContentsText targetFile
   case runParser requirementsTxtParser "source" contents of
-    Left err -> throw $ StrategyFailed $ "failed to parse requirements.txt " <> show err -- TODO: better error
+    Left err -> throw $ FileParseError (toFilePath targetFile) $ show err
     Right a -> pure $ buildGraph a
 
 type Parser = Parsec Void Text

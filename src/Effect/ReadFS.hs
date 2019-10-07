@@ -36,11 +36,11 @@ readFSToIO = interpret $ \case
   ReadContentsBS file -> fromEitherM $
     (Right <$> BS.readFile (toFilePath file))
     `catch`
-    (\(e :: IOException) -> pure (Left (FileReadError (show e))))
+    (\(e :: IOException) -> pure (Left (FileReadError (toFilePath file) (show e))))
   ReadContentsText file -> fromEitherM $
     (Right . decodeUtf8 <$> BS.readFile (toFilePath file))
     `catch`
-    (\(e :: IOException) -> pure (Left (FileReadError (show e))))
+    (\(e :: IOException) -> pure (Left (FileReadError (toFilePath file) (show e))))
   DoesFileExist file -> PIO.doesFileExist file
   DoesDirExist dir -> PIO.doesDirExist dir
 {-# INLINE readFSToIO #-}

@@ -16,7 +16,8 @@ data CLIErr =
 
     -- Strategy execution errors
     -- TODO: new-cli-error-style reporting
-  | StrategyFailed String
-  | CommandFailed String String -- command, stderr
-  | FileReadError String
+  | CommandFailed String String -- ^ Command execution failed, usually from a non-zero exit. command, stderr
+  | CommandParseError String String -- ^ Command output couldn't be parsed. TODO: ask user to help with this. command, err
+  | FileReadError FilePath String -- ^ A file couldn't be read. file, err
+  | FileParseError FilePath String -- ^ A file's contents couldn't be parsed. TODO: ask user to help with this. file, err
   deriving (Eq, Ord, Show, Generic, Typeable)
