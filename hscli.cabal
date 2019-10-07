@@ -80,11 +80,14 @@ library
     , path                  ^>=0.6.1
     , path-io               ^>=1.5.0
     , polysemy              ^>=1.2.1
+    , polysemy-plugin
     , stm                   ^>=2.5.0
     , stm-chans             ^>=3.0.0
     , text                  ^>=1.2.3
     , typed-process         ^>=0.2.6
     , yaml                  ^>=0.11.1
+
+  ghc-options: -fplugin=Polysemy.Plugin
 
   hs-source-dirs:  src
 

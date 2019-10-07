@@ -50,6 +50,8 @@ runAction basedir enqueue = \case
       Right () -> trace $ "Finished discovery: " <> discoverName
       Left err -> trace $ "ERROR in discovery: " <> discoverName <> " " <> show err
 
+    trace ""
+
   AStrategy (ConfiguredStrategy Strategy{..} opts)-> do
     result <- strategyAnalyze opts
       & readFSToIO
@@ -59,6 +61,8 @@ runAction basedir enqueue = \case
     case result of
       Right graph -> trace $ "Finished analysis: " <> strategyName <> " " <> show (strategyModule opts) <> ": " <> show graph
       Left err -> trace $ "ERROR in strategy: " <> strategyName <> " " <> show (strategyModule opts) <> ": " <> show err
+
+    trace ""
 
 updateProgress :: Member Trace r => Progress -> Sem r ()
 updateProgress Progress{..} =
