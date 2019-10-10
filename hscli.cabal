@@ -41,8 +41,30 @@ common lang
     -Wincomplete-record-updates -Wmissing-home-modules
     -Wmissing-export-lists -Wredundant-constraints
 
+common deps
+  build-depends:
+    , aeson                 ^>=1.4.5
+    , async                 ^>=2.2.2
+    , bytestring            ^>=0.10.8
+    , containers            ^>=0.6.0
+    , filemanip             ^>=0.3.6
+    , megaparsec            ^>=7.0.5
+    , modern-uri            ^>=0.3.1
+    , optics                ^>=0.1
+    , optparse-applicative  ^>=0.15.1
+    , path                  ^>=0.6.1
+    , path-io               ^>=1.5.0
+    , polysemy              ^>=1.2.1
+    , polysemy-plugin
+    , stm                   ^>=2.5.0
+    , stm-chans             ^>=3.0.0
+    , text                  ^>=1.2.3
+    , typed-process         ^>=0.2.6
+    , yaml                  ^>=0.11.1
+
 library
   import:          lang
+  import:          deps
 
   -- cabal-fmt: expand src
   exposed-modules:
@@ -67,28 +89,7 @@ library
     Strategy.Python.Util
     Types
 
-  build-depends:
-    , aeson                 ^>=1.4.5
-    , async                 ^>=2.2.2
-    , bytestring            ^>=0.10.8
-    , containers            ^>=0.6.0
-    , filemanip             ^>=0.3.6
-    , megaparsec            ^>=7.0.5
-    , modern-uri            ^>=0.3.1
-    , optics                ^>=0.1
-    , optparse-applicative  ^>=0.15.1
-    , path                  ^>=0.6.1
-    , path-io               ^>=1.5.0
-    , polysemy              ^>=1.2.1
-    , polysemy-plugin
-    , stm                   ^>=2.5.0
-    , stm-chans             ^>=3.0.0
-    , text                  ^>=1.2.3
-    , typed-process         ^>=0.2.6
-    , yaml                  ^>=0.11.1
-
-  ghc-options: -fplugin=Polysemy.Plugin
-
+  ghc-options:     -fplugin=Polysemy.Plugin
   hs-source-dirs:  src
 
 executable hscli
@@ -100,4 +101,17 @@ executable hscli
     -flate-specialise -fspecialize-aggressively -O -threaded
     -with-rtsopts=-N
 
--- when profiling: -fprof-auto "-with-rtsopts=-N -p -s -h"
+test-suite test
+  import:             lang
+  import:             deps
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     test
+  main-is:            test.hs
+
+  -- cabal-fmt: expand test
+  other-modules:      Python.RequirementsTest
+  build-tool-depends: tasty-discover:tasty-discover ^>=4.2.1
+  build-depends:
+    , hscli
+    , tasty        ^>=1.2.3
+    , tasty-hspec  ^>=1.1.5.1
