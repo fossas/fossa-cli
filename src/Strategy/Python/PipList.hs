@@ -9,6 +9,7 @@ module Strategy.Python.PipList
 
 import Prologue
 
+import qualified Data.Map.Strict as M
 import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
@@ -56,6 +57,7 @@ buildGraph xs = unfold xs (const []) toDependency
                  , dependencyName = depName
                  , dependencyVersion = Just depVersion
                  , dependencyLocations = []
+                 , dependencyTags = M.empty
                  }
 
 configure :: Path Rel Dir -> ConfiguredStrategy

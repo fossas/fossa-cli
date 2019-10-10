@@ -27,16 +27,16 @@ data GraphBuilder m a where
 makeSem ''GraphBuilder
 
 -- | Run a GraphBuilder computation, returning both the graph and the result
-runGraphBuilder :: Sem (GraphBuilder ': r) a -> Sem r (G.Graph, a)
-runGraphBuilder = runState G.empty . reinterpret (\case
+runGraphBuilder :: G.Graph -> Sem (GraphBuilder ': r) a -> Sem r (G.Graph, a)
+runGraphBuilder initial = runState initial . reinterpret (\case
   AddNode dep -> state (G.addNode dep)
   AddEdge parent child -> modify (G.addEdge parent child)
   AddDirect ref -> modify (G.addDirect ref))
 {-# INLINE runGraphBuilder #-}
 
 -- | Discard the result from a GraphBuilder computation, returning the graph
-evalGraphBuilder :: Sem (GraphBuilder ': r) a -> Sem r G.Graph
-evalGraphBuilder = fmap fst . runGraphBuilder
+evalGraphBuilder :: G.Graph -> Sem (GraphBuilder ': r) a -> Sem r G.Graph
+evalGraphBuilder initial = fmap fst . runGraphBuilder initial
 {-# INLINE evalGraphBuilder #-}
 
 -- | @unfold direct getDeps toDependency@ unfolds a graph, given:
@@ -47,7 +47,7 @@ evalGraphBuilder = fmap fst . runGraphBuilder
 --
 -- - A way to convert a dependency @toDependency@
 unfold :: [dep] -> (dep -> [dep]) -> (dep -> G.Dependency) -> G.Graph
-unfold direct getDeps toDependency = run . evalGraphBuilder $ do
+unfold direct getDeps toDependency = run . evalGraphBuilder G.empty $ do
   topLevel <- traverse buildNode direct
   traverse_ addDirect topLevel
 
@@ -55,12 +55,10 @@ unfold direct getDeps toDependency = run . evalGraphBuilder $ do
 
   -- buildNode :: dep -> Sem r ()
   buildNode dep = do
-    children <- traverse buildNode (getDeps dep)
     parentRef <- addNode (toDependency dep)
+    children <- traverse buildNode (getDeps dep)
     traverse_ (addEdge parentRef) children
     pure parentRef
-
--- TODO: unfoldOrd -- unfold, but deduplicating and eliminating cycles via Ord
 
 state :: Member (State s) r => (s -> (a,s)) -> Sem r a
 state f = do

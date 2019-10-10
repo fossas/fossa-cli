@@ -8,7 +8,7 @@ module Discovery.Config
 
 import Prologue
 
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import qualified Data.Yaml as Yaml
 import           Polysemy
 import           Polysemy.Error

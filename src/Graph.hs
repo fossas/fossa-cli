@@ -42,6 +42,7 @@ data Dependency = Dependency
   , dependencyName      :: Text
   , dependencyVersion   :: Maybe Text -- TODO: constraints
   , dependencyLocations :: [Text]
+  , dependencyTags      :: Map Text [Text]
   } deriving (Eq, Ord, Show, Generic)
 
 -- | A Dependency type. This corresponds to a "fetcher" on the backend
@@ -79,7 +80,7 @@ graphDirect = _graphDirect
 instance Semigroup Graph where
   Graph deps1 assocs1 direct1 <> Graph deps2 assocs2 direct2 =
     Graph (deps1 <> deps2) -- combine deps
-          (IM.unionWith (<>) assocs1 offsetAssocs2) -- offset the assocs entries
+          (IM.union assocs1 offsetAssocs2) -- offset the assocs entries
           (direct1 <> IS.map (+offset) direct2) -- offset the direct entries
     where
     offsetAssocs2 = assocs2
@@ -101,6 +102,7 @@ instance FromJSON Dependency where
                <*> obj .: "name"
                <*> obj .: "version"
                <*> obj .: "locations"
+               <*> obj .: "tags"
 
 instance ToJSON Dependency where
   toJSON Dependency{..} = object
@@ -108,6 +110,7 @@ instance ToJSON Dependency where
     , "name"      .= dependencyName
     , "version"   .= dependencyVersion
     , "locations" .= dependencyLocations
+    , "tags"      .= dependencyTags
     ]
 
 instance ToJSON Graph where

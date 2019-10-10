@@ -8,8 +8,7 @@ module Strategy.Npm
 import Prologue
 
 import qualified Data.ByteString.Lazy.Char8 as BL8
-import           Data.Map (Map)
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import           Data.Text (Text)
 import           Polysemy
 import           Polysemy.Error
@@ -65,6 +64,7 @@ buildGraph top = unfold direct getDeps toDependency
                  , dependencyName = nodeName
                  , dependencyVersion = outputVersion nodeOutput
                  , dependencyLocations = []
+                 , dependencyTags = M.empty -- TODO
                  }
 
 configure :: Path Rel Dir -> ConfiguredStrategy

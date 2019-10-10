@@ -13,6 +13,7 @@ module Strategy.Python.Util
 import Prologue hiding (many, some)
 
 import qualified Data.Char as C
+import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
@@ -29,6 +30,7 @@ buildGraph xs = unfold xs (const []) toDependency
                  , dependencyName = depName req
                  , dependencyVersion = depVersion req
                  , dependencyLocations = []
+                 , dependencyTags = M.empty -- TODO
                  }
 
   depName (NameReq nm _ _ _) = nm
