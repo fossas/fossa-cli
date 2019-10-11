@@ -56,6 +56,7 @@ common deps
     , path-io               ^>=1.5.0
     , polysemy              ^>=1.2.1
     , polysemy-plugin
+    , pretty-simple         ^>=3.1.0
     , stm                   ^>=2.5.0
     , stm-chans             ^>=3.0.0
     , text                  ^>=1.2.3
@@ -110,7 +111,9 @@ test-suite test
 
   -- cabal-fmt: expand test
   other-modules:
+    GraphUtil
     Python.PipListTest
+    Python.PipenvTest
     Python.RequirementsTest
 
   build-tool-depends: tasty-discover:tasty-discover ^>=4.2.1

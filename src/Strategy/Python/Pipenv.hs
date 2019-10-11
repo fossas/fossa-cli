@@ -4,6 +4,13 @@ module Strategy.Python.Pipenv
   , strategy
   , analyze
   , configure
+
+  , PipenvGraphDep(..)
+  , PipfileLock(..)
+  , PipfileMeta(..)
+  , PipfileSource(..)
+  , PipfileDep(..)
+  , buildGraph
   )
   where
 
@@ -54,15 +61,17 @@ analyze BasicFileOpts{..} = do
 
   case eitherDecodeStrict contents of
     Left err -> throw $ FileParseError (toFilePath targetFile) $ show err
+    Right pipfileLock -> do
+      maybePipenvDeps <- pipenvGraph (parent targetFile)
+      pure (buildGraph pipfileLock maybePipenvDeps)
 
-    Right a -> do
-      let (nodesByName, graph) = buildNodes a
-
-      maybePipenvGraph <- pipenvGraph (parent targetFile)
-
-      case maybePipenvGraph of
-        Just pGraph -> pure $ buildEdges nodesByName pGraph graph
-        Nothing     -> pure $ graph
+buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> G.Graph
+buildGraph lock Nothing =
+  let (nodesByName, graph) = buildNodes lock
+   in foldr (\dep graph' -> G.addDirect dep graph') graph nodesByName
+buildGraph lock (Just deps) =
+  let (nodesByName, graph) = buildNodes lock
+   in buildEdges nodesByName deps graph
 
 -- TODO: don't add direct here?
 buildNodes :: PipfileLock -> (Map Text G.DepRef, G.Graph)
@@ -100,15 +109,21 @@ buildNodes PipfileLock{..} = run . runState M.empty . evalGraphBuilder G.empty $
               Just source -> [sourceUrl source]
       , dependencyTags = M.singleton "environment" [env]
       }
-    addDirect ref
     modify (M.insert depName ref)
     pure ref
 
 buildEdges :: Map Text G.DepRef -> [PipenvGraphDep] -> G.Graph -> G.Graph
 buildEdges depNameToRef pipenvDeps graph = run . evalGraphBuilder graph $ do
   traverse_ mkEdges pipenvDeps
+  traverse_ mkDirect pipenvDeps -- add top level deps as "direct"
 
   where
+
+  mkDirect :: Member GraphBuilder r => PipenvGraphDep -> Sem r ()
+  mkDirect dep = do
+    case M.lookup (depName dep) depNameToRef of
+      Just ref -> addDirect ref
+      Nothing -> pure ()
 
   mkEdges :: Member GraphBuilder r => PipenvGraphDep -> Sem r ()
   mkEdges parentDep = do

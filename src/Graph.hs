@@ -52,7 +52,7 @@ data DepType =
   deriving (Eq, Ord, Show, Generic)
 
 -- | Opaque reference to a dependency in the graph. Used for adding edges to the graph (See: 'addEdge')
-newtype DepRef = DepRef { unDepRef :: Int }
+newtype DepRef = DepRef { unDepRef :: Int } deriving (Eq, Ord, Show, Generic)
 
 -- | A Graph of dependencies. See 'empty', 'addNode', and 'addEdge'
 data Graph = Graph

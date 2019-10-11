@@ -6,7 +6,6 @@ module Python.PipListTest
   ) where
 
 import Prologue
-import Test.Tasty.Hspec
 
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map.Strict as M
@@ -20,6 +19,8 @@ import           Effect.GraphBuilder
 import qualified Graph as G
 import           Strategy.Python.PipList
 import           Types
+
+import Test.Tasty.Hspec
 
 expected :: G.Graph
 expected = run . evalGraphBuilder G.empty $ do
