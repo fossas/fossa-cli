@@ -4,6 +4,9 @@ module Strategy.Python.PipList
   , strategy
   , analyze
   , configure
+
+  , PipListDep(..)
+  , buildGraph
   )
   where
 

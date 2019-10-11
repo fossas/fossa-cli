@@ -4,14 +4,13 @@ module Python.RequirementsTest
   ) where
 
 import Prelude
+import Test.Tasty.Hspec
 
 import Data.Foldable
 import Data.Text (Text)
 import Text.Megaparsec
 
 import Strategy.Python.Util (requirementParser)
-
-import Test.Tasty.Hspec
 
 spec_parser :: Spec
 spec_parser = do
