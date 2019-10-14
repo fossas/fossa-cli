@@ -1,3 +1,5 @@
+{-# language QuasiQuotes #-}
+
 module Strategy.Npm
   ( discover
   , strategy
@@ -7,14 +9,12 @@ module Strategy.Npm
 
 import Prologue
 
-import qualified Data.ByteString.Lazy.Char8 as BL8
 import qualified Data.Map.Strict as M
 import           Data.Text (Text)
 import           Polysemy
-import           Polysemy.Error
+import           Polysemy.Input
 import           Polysemy.Output
 
-import           Diagnostics
 import           Discovery.Walk
 import           Effect.Exec
 import           Effect.GraphBuilder
@@ -38,21 +38,18 @@ discover' = walk $ \dir subdirs files -> do
 strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "nodejs-npm"
-  , strategyAnalyze = analyze
+  , strategyAnalyze = \opts -> analyze & execInputJson (targetDir opts) npmListCmd
   , strategyModule = targetDir
   }
 
-analyze :: Members '[Exec, Error CLIErr] r => BasicDirOpts -> Sem r G.Graph
-analyze BasicDirOpts{..} = do
-  -- NPM is dumb and presents a non-zero exit code when there are _any_ issues.
-  -- We ignore the exit code and instead check if NPM gave us something `outputInvalid`
-  (_, stdout, stderr) <- exec targetDir "npm" ["ls", "--json", "--production"]
+npmListCmd :: Command
+npmListCmd = Command
+  { cmdNames = [[relfile|npm|]]
+  , cmdArgs = ["ls", "--json", "--production"]
+  }
 
-  case eitherDecode stdout of
-    Left err -> throw $ CommandParseError "npm" err
-    Right a -> do
-      when (fromMaybe False (outputInvalid a)) $ throw $ CommandFailed "npm" $ BL8.unpack stderr
-      pure $ buildGraph a
+analyze :: Member (Input NpmOutput) r => Sem r G.Graph
+analyze = buildGraph <$> input
 
 buildGraph :: NpmOutput -> G.Graph
 buildGraph top = unfold direct getDeps toDependency

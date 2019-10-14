@@ -1,9 +1,14 @@
 
+{-# language QuasiQuotes #-}
+
 module Strategy.Python.Pipenv
   ( discover
-  , strategy
-  , analyze
-  , configure
+  , strategyWithCmd
+  , strategyNoCmd
+  , analyzeWithCmd
+  , analyzeNoCmd
+  , configureWithCmd
+  , configureNoCmd
 
   , PipenvGraphDep(..)
   , PipfileLock(..)
@@ -19,11 +24,10 @@ import Prologue
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import           Polysemy
-import           Polysemy.Error
+import           Polysemy.Input
 import           Polysemy.State
 import           Polysemy.Output
 
-import           Diagnostics
 import           Discovery.Walk
 import           Effect.Exec
 import           Effect.GraphBuilder
@@ -42,28 +46,43 @@ discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Pipfile.lock") files of
     Nothing -> walkContinue
     Just file -> do
-      output (configure file)
+      output (configureWithCmd file)
+      output (configureNoCmd file)
       walkContinue
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
+pipenvGraphCmd :: Command
+pipenvGraphCmd = Command
+  { cmdNames = [[relfile|pipenv|]]
+  , cmdArgs = ["graph", "--json-tree"]
+  }
+
+strategyWithCmd :: Strategy BasicFileOpts
+strategyWithCmd = Strategy
   { strategyName = "python-pipenv"
-  , strategyAnalyze = analyze
+  , strategyAnalyze = \opts -> analyzeWithCmd
+      & fileInputJson @PipfileLock (targetFile opts)
+      & execInputJson @[PipenvGraphDep] (parent (targetFile opts)) pipenvGraphCmd
   , strategyModule = parent . targetFile
   }
 
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts
+strategyNoCmd :: Strategy BasicFileOpts
+strategyNoCmd = Strategy
+  { strategyName = "python-pipfile"
+  , strategyAnalyze = \opts -> analyzeNoCmd & fileInputJson (targetFile opts)
+  , strategyModule = parent . targetFile
+  }
 
-analyze :: Members '[Exec, ReadFS, Error CLIErr] r => BasicFileOpts -> Sem r G.Graph
-analyze BasicFileOpts{..} = do
-  contents <- readContentsBS targetFile
+configureWithCmd :: Path Rel File -> ConfiguredStrategy
+configureWithCmd = ConfiguredStrategy strategyWithCmd . BasicFileOpts
 
-  case eitherDecodeStrict contents of
-    Left err -> throw $ FileParseError (toFilePath targetFile) $ show err
-    Right pipfileLock -> do
-      maybePipenvDeps <- pipenvGraph (parent targetFile)
-      pure (buildGraph pipfileLock maybePipenvDeps)
+configureNoCmd :: Path Rel File -> ConfiguredStrategy
+configureNoCmd = ConfiguredStrategy strategyNoCmd . BasicFileOpts
+
+analyzeWithCmd :: Members '[Input PipfileLock, Input [PipenvGraphDep]] r => Sem r G.Graph
+analyzeWithCmd = buildGraph <$> input <*> (Just <$> input)
+
+analyzeNoCmd :: Member (Input PipfileLock) r => Sem r G.Graph
+analyzeNoCmd = buildGraph <$> input <*> pure Nothing
 
 buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> G.Graph
 buildGraph lock Nothing =
@@ -180,14 +199,6 @@ instance FromJSON PipfileSource where
                   <*> obj .: "url"
 
 ---------- pipenv graph
-
-pipenvGraph :: Member Exec r => Path Rel Dir -> Sem r (Maybe [PipenvGraphDep])
-pipenvGraph dir = do
-  (exitcode, stdout, _) <- exec dir "pipenv" ["graph", "--json-tree"]
-  case (exitcode, eitherDecode stdout) of
-    (ExitFailure _, _) -> pure Nothing -- TODO: warning?
-    (_,        Left _) -> pure Nothing -- TODO: warning?
-    (ExitSuccess, Right a) -> pure (Just a)
 
 data PipenvGraphDep = PipenvGraphDep
   { depName         :: Text

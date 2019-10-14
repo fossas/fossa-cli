@@ -21,9 +21,10 @@ strategyGroups =
       [ SomeStrategy Npm.strategy
       ]
   , StrategyGroup "python"
-      [ SomeStrategy PipList.strategy
-      , SomeStrategy Pipenv.strategy
-      , SomeStrategy SetupPy.strategy
+      [ SomeStrategy Pipenv.strategyWithCmd
+      , SomeStrategy Pipenv.strategyNoCmd
       , SomeStrategy ReqTxt.strategy
+      , SomeStrategy SetupPy.strategy
+      , SomeStrategy PipList.strategy
       ]
   ]

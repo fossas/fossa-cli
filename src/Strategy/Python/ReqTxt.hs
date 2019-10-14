@@ -10,12 +10,11 @@ module Strategy.Python.ReqTxt
 import Prologue hiding ((<?>), many, some)
 
 import           Polysemy
-import           Polysemy.Error
+import           Polysemy.Input
 import           Polysemy.Output
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 
-import           Diagnostics
 import           Discovery.Walk
 import           Effect.ReadFS
 import qualified Graph as G
@@ -39,16 +38,12 @@ discover' = walk $ \_ _ files -> do
 strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "python-requirements"
-  , strategyAnalyze = analyze
+  , strategyAnalyze = \opts -> analyze & fileInputParser requirementsTxtParser (targetFile opts)
   , strategyModule = parent . targetFile
   }
 
-analyze :: Members '[Error CLIErr, ReadFS] r => BasicFileOpts -> Sem r G.Graph
-analyze BasicFileOpts{..} = do
-  contents <- readContentsText targetFile
-  case runParser requirementsTxtParser "source" contents of
-    Left err -> throw $ FileParseError (toFilePath targetFile) $ show err
-    Right a -> pure $ buildGraph a
+analyze :: Member (Input [Req]) r => Sem r G.Graph
+analyze = buildGraph <$> input
 
 type Parser = Parsec Void Text
 

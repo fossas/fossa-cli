@@ -2,23 +2,17 @@
 
 module Python.PipListTest
   ( spec_analyze
-  , spec_buildGraph
   ) where
 
 import Prologue
 
-import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map.Strict as M
-import           Data.String.QQ
 import           Polysemy
-import           Polysemy.Error
+import           Polysemy.Input
 
-import           Diagnostics
-import           Effect.Exec
 import           Effect.GraphBuilder
 import qualified Graph as G
 import           Strategy.Python.PipList
-import           Types
 
 import Test.Tasty.Hspec
 
@@ -39,33 +33,21 @@ expected = run . evalGraphBuilder G.empty $ do
   addDirect ref1
   addDirect ref2
 
-pipListOutput :: BL.ByteString
-pipListOutput = [s|
-  [{"name": "pkgOne", "version": "1.0.0"}, {"name": "pkgTwo", "version": "2.0.0"}]
-|]
-
-mockExec :: InterpreterFor Exec r
-mockExec = interpret $ \case
-  Exec _ "pip3" ("list":_) -> pure (ExitSuccess, pipListOutput, "")
-  Exec dir cmd args -> error $ "Unexpected exec: dir:" <> show dir <> ", cmd:" <> show cmd <> ", args:" <> show args
+pipListOutput :: [PipListDep]
+pipListOutput =
+  [ PipListDep { depName = "pkgOne"
+                , depVersion = "1.0.0"
+                }
+  , PipListDep { depName = "pkgTwo"
+                , depVersion = "2.0.0"
+                }
+  ]
 
 spec_analyze :: Spec
 spec_analyze =
   describe "analyze" $ do
     it "produces the expected output" $ do
-      let result = analyze (BasicDirOpts [reldir|nulldir|])
-            & mockExec
-            & runError @CLIErr
+      let result = analyze
+            & runInputConst @[PipListDep] pipListOutput
             & run
-      result `shouldBe` (Right expected)
-
-spec_buildGraph :: Spec
-spec_buildGraph =
-  describe "buildGraph" $ do
-    it "produces the expected output" $ do
-      let result =
-            buildGraph [ PipListDep "pkgOne" "1.0.0"
-                       , PipListDep "pkgTwo" "2.0.0"
-                       ]
-
       result `shouldBe` expected

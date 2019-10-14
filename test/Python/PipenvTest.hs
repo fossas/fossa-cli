@@ -1,12 +1,12 @@
-{-# language QuasiQuotes #-}
-
 module Python.PipenvTest
-  ( spec_buildGraph
+  ( spec_analyze
   ) where
 
 import Prologue
 
 import qualified Data.Map.Strict as M
+import           Polysemy
+import           Polysemy.Input
 
 import qualified Graph as G
 import           Strategy.Python.Pipenv
@@ -85,19 +85,25 @@ depThree = G.Dependency
   , dependencyTags = M.fromList [("environment", ["production"])]
   }
 
-spec_buildGraph :: Spec
-spec_buildGraph = do
-  describe "buildGraph" $ do
-    it "should set all dependencies as direct when pipenv was unsuccessful" $ do
-      let result = buildGraph pipfileLock Nothing
-
-      expectDeps [depOne, depTwo, depThree] result
-      expectDirect [depOne, depTwo, depThree] result
-      expectEdges [] result
-
+spec_analyze :: Spec
+spec_analyze = do
+  describe "analyzeWithCmd" $ do
     it "should use pipenv output for edges and tags" $ do
-      let result = buildGraph pipfileLock (Just pipenvOutput)
+      let result = analyzeWithCmd
+            & runInputConst @PipfileLock pipfileLock
+            & runInputConst @[PipenvGraphDep] pipenvOutput
+            & run
 
       expectDeps [depOne, depTwo, depThree] result
       expectDirect [depOne, depTwo] result
       expectEdges [(depTwo, depThree)] result
+
+  describe "analyzeNoCmd" $ do
+    it "should set all dependencies as direct" $ do
+      let result = analyzeNoCmd
+            & runInputConst @PipfileLock pipfileLock
+            & run
+
+      expectDeps [depOne, depTwo, depThree] result
+      expectDirect [depOne, depTwo, depThree] result
+      expectEdges [] result

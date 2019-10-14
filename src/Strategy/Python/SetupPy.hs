@@ -8,15 +8,12 @@ module Strategy.Python.SetupPy
 
 import Prologue hiding ((<?>), many, some)
 
-import           Data.Char
-import qualified Data.Text as T
 import           Polysemy
-import           Polysemy.Error
+import           Polysemy.Input
 import           Polysemy.Output
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 
-import           Diagnostics
 import           Discovery.Walk
 import           Effect.ReadFS
 import qualified Graph as G
@@ -40,17 +37,13 @@ discover' = walk $ \_ _ files -> do
 strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "python-setuppy"
-  , strategyAnalyze = analyze
+  , strategyAnalyze = \opts ->
+      analyze & fileInputParser installRequiresParser (targetFile opts)
   , strategyModule = parent . targetFile
   }
 
-analyze :: Members '[Error CLIErr, ReadFS] r => BasicFileOpts -> Sem r G.Graph
-analyze BasicFileOpts{..} = do
-  contents <- readContentsText targetFile
-  let noWhitespace = T.filter (not . isSpace) contents
-  case runParser installRequiresParser "source" noWhitespace of
-    Left err -> throw $ FileParseError (toFilePath targetFile) $ show err
-    Right a -> pure $ buildGraph a
+analyze :: Member (Input [Req]) r => Sem r G.Graph
+analyze = buildGraph <$> input
 
 type Parser = Parsec Void Text
 
@@ -58,7 +51,7 @@ installRequiresParser :: Parser [Req]
 installRequiresParser = prefix *> entries <* end
   where
   prefix  = skipManyTill anySingle (string "install_requires=[")
-  entries = between quote quote requirementParser `sepBy` char ','
+  entries = (between quote quote requirementParser) `sepBy` (char ',')
   end     = char ']'
 
   quote   = char '\''

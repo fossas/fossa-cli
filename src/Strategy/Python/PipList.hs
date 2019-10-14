@@ -1,4 +1,6 @@
 
+{-# language QuasiQuotes #-}
+
 module Strategy.Python.PipList
   ( discover
   , strategy
@@ -14,10 +16,9 @@ import Prologue
 
 import qualified Data.Map.Strict as M
 import           Polysemy
-import           Polysemy.Error
+import           Polysemy.Input
 import           Polysemy.Output
 
-import           Diagnostics
 import           Discovery.Walk
 import           Effect.Exec
 import           Effect.GraphBuilder
@@ -38,19 +39,23 @@ discover' = walk $ \dir _ files -> do
       output (configure dir)
       walkContinue
 
+pipListCmd :: Command
+pipListCmd = Command
+  { cmdNames = [ [relfile|pip3|]
+               , [relfile|pip|]
+               ]
+  , cmdArgs = ["list", "--format=json"]
+  }
+
 strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "python-piplist"
-  , strategyAnalyze = analyze
+  , strategyAnalyze = \opts -> analyze & execInputJson (targetDir opts) pipListCmd
   , strategyModule = targetDir
   }
 
-analyze :: Members '[Exec, Error CLIErr] r => BasicDirOpts -> Sem r G.Graph
-analyze BasicDirOpts{..} = do
-  stdout <- execThrow targetDir "pip3" ["list", "--format=json"]
-  case eitherDecode stdout of
-    Left err -> throw $ CommandParseError "pip" err
-    Right a -> pure $ buildGraph a
+analyze :: Member (Input [PipListDep]) r => Sem r G.Graph
+analyze = buildGraph <$> input
 
 buildGraph :: [PipListDep] -> G.Graph
 buildGraph xs = unfold xs (const []) toDependency

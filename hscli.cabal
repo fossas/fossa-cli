@@ -119,6 +119,5 @@ test-suite test
   build-tool-depends: tasty-discover:tasty-discover ^>=4.2.1
   build-depends:
     , hscli
-    , string-qq    ^>=0.0.4
     , tasty        ^>=1.2.3
     , tasty-hspec  ^>=1.1.5.1
