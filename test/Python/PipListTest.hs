@@ -18,13 +18,13 @@ expected :: G.Graph
 expected = run . evalGraphBuilder G.empty $ do
   ref1 <- addNode (G.Dependency { dependencyType = G.PipType
                         , dependencyName = "pkgOne"
-                        , dependencyVersion = Just "1.0.0"
+                        , dependencyVersion = Just (G.CEq "1.0.0")
                         , dependencyLocations = []
                         , dependencyTags = M.empty
                         })
   ref2 <- addNode (G.Dependency { dependencyType = G.PipType
                         , dependencyName = "pkgTwo"
-                        , dependencyVersion = Just "2.0.0"
+                        , dependencyVersion = Just (G.CEq "2.0.0")
                         , dependencyLocations = []
                         , dependencyTags = M.empty
                         })

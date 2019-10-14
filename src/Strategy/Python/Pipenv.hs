@@ -119,7 +119,7 @@ buildNodes PipfileLock{..} = run . runState M.empty . evalGraphBuilder G.empty $
     ref <- addNode $ G.Dependency
       { dependencyType = G.PipType
       , dependencyName = depName
-      , dependencyVersion = Just (T.drop 2 fileDepVersion) -- fileDepVersion starts with "=="
+      , dependencyVersion = Just (G.CEq (T.drop 2 fileDepVersion)) -- fileDepVersion starts with "=="
       , dependencyLocations =
           case fileDepIndex of
             Nothing -> []

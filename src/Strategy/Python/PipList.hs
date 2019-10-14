@@ -63,7 +63,7 @@ buildGraph xs = unfold xs (const []) toDependency
   toDependency PipListDep{..} =
     G.Dependency { dependencyType = G.PipType
                  , dependencyName = depName
-                 , dependencyVersion = Just depVersion
+                 , dependencyVersion = Just (G.CEq depVersion)
                  , dependencyLocations = []
                  , dependencyTags = M.empty
                  }

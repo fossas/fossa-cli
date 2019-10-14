@@ -1,5 +1,6 @@
 module Graph
-  ( DepRef()
+  ( VerConstraint(..)
+  , DepRef()
   , DepType(..)
   , Graph()
   , empty
@@ -40,7 +41,7 @@ addDirect dep graph = graph { _graphDirect = IS.insert (unDepRef dep) (_graphDir
 data Dependency = Dependency
   { dependencyType      :: DepType
   , dependencyName      :: Text
-  , dependencyVersion   :: Maybe Text -- TODO: constraints
+  , dependencyVersion   :: Maybe VerConstraint
   , dependencyLocations :: [Text]
   , dependencyTags      :: Map Text [Text]
   } deriving (Eq, Ord, Show, Generic)
@@ -49,6 +50,19 @@ data Dependency = Dependency
 data DepType =
     NodeJSType -- ^ NPM registry (or similar)
   | PipType    -- ^ Pip registry
+  deriving (Eq, Ord, Show, Generic)
+
+data VerConstraint =
+    CEq Text -- ^ equal to, e.g., @CEq "2.0.0"@
+  | CURI Text -- ^ An exact version, at some URI
+  | CCompatible Text -- ^ compatible range. e.g., "~=" in python, "^>=" in haskell
+  | CAnd VerConstraint VerConstraint -- ^ Both constraints need to be satisfied, e.g., @CAnd (CGreaterOrEq "1.0.0") (CLessThan "2.0.0")@
+  | COr  VerConstraint VerConstraint -- ^ At least one constraint needs to be satisfied
+  | CLess Text -- ^ less than
+  | CLessOrEq Text -- ^ less than or equal to
+  | CGreater Text -- ^ greater than
+  | CGreaterOrEq Text -- ^ greater than or equal to
+  | CNot Text -- ^ not this version
   deriving (Eq, Ord, Show, Generic)
 
 -- | Opaque reference to a dependency in the graph. Used for adding edges to the graph (See: 'addEdge')
@@ -112,6 +126,12 @@ instance ToJSON Dependency where
     , "locations" .= dependencyLocations
     , "tags"      .= dependencyTags
     ]
+
+instance FromJSON VerConstraint where
+  parseJSON = undefined -- TODO
+
+instance ToJSON VerConstraint where
+  toJSON = undefined -- TODO
 
 instance ToJSON Graph where
   toJSON Graph{..} = object

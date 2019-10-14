@@ -59,7 +59,7 @@ buildGraph top = unfold direct getDeps toDependency
   toDependency (nodeName, nodeOutput) =
     G.Dependency { dependencyType = G.NodeJSType
                  , dependencyName = nodeName
-                 , dependencyVersion = outputVersion nodeOutput
+                 , dependencyVersion = G.CEq <$> outputVersion nodeOutput
                  , dependencyLocations = []
                  , dependencyTags = M.empty -- TODO
                  }

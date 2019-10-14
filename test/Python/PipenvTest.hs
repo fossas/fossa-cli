@@ -62,7 +62,7 @@ depOne :: G.Dependency
 depOne = G.Dependency
   { dependencyType = G.PipType
   , dependencyName = "pkgOne"
-  , dependencyVersion = Just "1.0.0"
+  , dependencyVersion = Just (G.CEq "1.0.0")
   , dependencyLocations = []
   , dependencyTags = M.fromList [("environment", ["development"])]
   }
@@ -71,7 +71,7 @@ depTwo :: G.Dependency
 depTwo = G.Dependency
   { dependencyType = G.PipType
   , dependencyName = "pkgTwo"
-  , dependencyVersion = Just "2.0.0"
+  , dependencyVersion = Just (G.CEq "2.0.0")
   , dependencyLocations = ["https://my-package-index/"]
   , dependencyTags = M.fromList [("environment", ["production"])]
   }
@@ -80,7 +80,7 @@ depThree :: G.Dependency
 depThree = G.Dependency
   { dependencyType = G.PipType
   , dependencyName = "pkgThree"
-  , dependencyVersion = Just "3.0.0"
+  , dependencyVersion = Just (G.CEq "3.0.0")
   , dependencyLocations = []
   , dependencyTags = M.fromList [("environment", ["production"])]
   }

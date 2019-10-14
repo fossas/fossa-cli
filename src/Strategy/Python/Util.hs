@@ -36,8 +36,22 @@ buildGraph xs = unfold xs (const []) toDependency
   depName (NameReq nm _ _ _) = nm
   depName (UrlReq nm _ _ _) = nm
 
-  depVersion (NameReq _ _ (Just (x:_)) _) = Just (versionVersion x) -- TODO: lol. this mirrors current cli
-  depVersion _ = Nothing
+  depVersion (NameReq _ _ versions _) = toConstraint <$> versions
+  depVersion (UrlReq _ _ uri _) = Just (G.CURI (T.pack (show uri))) -- TODO: is (show uri) what we want?
+
+toConstraint :: [Version] -> G.VerConstraint
+toConstraint = foldr1 G.CAnd . map (\(Version op ver) -> opToConstraint op ver)
+  where
+
+  opToConstraint = \case
+    OpCompatible -> G.CCompatible
+    OpEq -> G.CEq
+    OpNot -> G.CNot
+    OpLtEq -> G.CLessOrEq
+    OpGtEq -> G.CGreaterOrEq
+    OpLt -> G.CLess
+    OpGt -> G.CGreater
+    OpArbitrary -> G.CEq
 
 type Parser = Parsec Void Text
 
@@ -58,7 +72,15 @@ data MarkerOp =
   | MarkerOperator Operator
   deriving (Eq, Ord, Show, Generic)
 
-newtype Operator = Operator Text -- TODO: actual sum type
+data Operator =
+    OpCompatible -- ^ @~=@; equivalent to `>= V.N, == V.*`
+  | OpEq  -- ^ @==@
+  | OpNot -- ^ @!=@
+  | OpLtEq -- ^ @<=@
+  | OpGtEq -- ^ @>=@
+  | OpLt -- ^ @<@
+  | OpGt -- ^ @>@
+  | OpArbitrary -- ^ @===@
   deriving (Eq, Ord, Show, Generic)
 
 data Req =
@@ -77,7 +99,17 @@ requirementParser = specification
   whitespace1 = label "whitespace1" $ takeWhile1P (Just "whitespace1") isSpace :: Parser Text
   letterOrDigit = label "letterOrDigit" $ satisfy (\c -> C.isLetter c || C.isDigit c)
 
-  version_cmp = label "version_cmp" $ whitespace *> (Operator <$> oneOfS ["<=", "<", "!=", "===", "==", ">=", ">", "~="])
+  version_cmp = label "version_cmp" $ whitespace *> version_operator
+
+  version_operator = label "version_operator" $
+        OpCompatible <$ string "~="
+    <|> OpLtEq       <$ string "<="
+    <|> OpGtEq       <$ string ">="
+    <|> OpNot        <$ string "!="
+    <|> OpArbitrary  <$ string "==="
+    <|> OpEq         <$ string "=="
+    <|> OpLt         <$ string "<"
+    <|> OpGt         <$ string ">"
 
   version = label "version" $ whitespace *> some (letterOrDigit <|> oneOf ['-', '_', '.', '*', '+', '!'])
   version_one = label "version_one" $ Version <$> version_cmp <*> (T.pack <$> version) <* whitespace
