@@ -30,7 +30,7 @@ buildGraph xs = unfold xs (const []) toDependency
                  , dependencyName = depName req
                  , dependencyVersion = depVersion req
                  , dependencyLocations = []
-                 , dependencyTags = M.empty -- TODO
+                 , dependencyTags = maybe M.empty toTags (depMarker req)
                  }
 
   depName (NameReq nm _ _ _) = nm
@@ -38,6 +38,22 @@ buildGraph xs = unfold xs (const []) toDependency
 
   depVersion (NameReq _ _ versions _) = toConstraint <$> versions
   depVersion (UrlReq _ _ uri _) = Just (G.CURI (URI.render uri))
+
+  depMarker (NameReq _ _ _ marker) = marker
+  depMarker (UrlReq _ _ _ marker) = marker
+
+-- we pull out tags naively. we don't respect and/or semantics, and ignore operators
+-- TODO: more useful tagging? in particular: only pull out sys_platform?
+toTags :: Marker -> M.Map Text [Text]
+toTags = M.fromListWith (++) . map (\(a,b) -> (a, [b])) . go
+  where
+  go (MarkerAnd a b) = go a ++ go b
+  go (MarkerOr a b) = go a ++ go b
+  go (MarkerExpr lhs op rhs) =
+    case op of
+      MarkerIn    -> [(lhs, rhs)]
+      MarkerNotIn -> [(lhs, "not (" <> rhs <> ")")]
+      MarkerOperator _ -> [(lhs, rhs)]
 
 toConstraint :: [Version] -> G.VerConstraint
 toConstraint = foldr1 G.CAnd . map (\(Version op ver) -> opToConstraint op ver)
