@@ -39,8 +39,8 @@ loadConfig' strategies dir = do
     -- - Result (aeson)
     case Yaml.decodeEither' contents of
       Left err -> throw (ConfigParseFailed (Yaml.prettyPrintParseException err))
-      Right Config{configStrategies} -> do
-        for_ configStrategies $ \ConfigStrategy{..} -> do
+      Right Config{configStrategies} ->
+        for_ configStrategies $ \ConfigStrategy{..} ->
           case M.lookup configStrategyName strategiesByName of
             Nothing -> throw (UnknownStrategyName configStrategyName)
             Just (SomeStrategy strat) -> case fromJSON configStrategyOptions of
@@ -51,7 +51,7 @@ loadConfig' strategies dir = do
   strategiesByName = M.fromList (map (\strategy@(SomeStrategy Strategy{strategyName}) -> (strategyName, strategy)) (groupStrategies =<< strategies))
 
 
-data Config = Config
+newtype Config = Config
   { configStrategies :: [ConfigStrategy]
   } deriving (Generic)
 

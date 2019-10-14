@@ -29,7 +29,7 @@ discover = Discover
 
 discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
 discover' = walk $ \dir subdirs files -> do
-  for_ files $ \f -> do
+  for_ files $ \f ->
     when (fileName f == "package.json") $
       output (configure dir)
 

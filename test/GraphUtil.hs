@@ -21,8 +21,8 @@ expectEdges edges graph = traverse_ expectEdge edges *> (length assocs `shouldBe
   where
   expectEdge (dep1, dep2) = flip shouldSatisfy (not . null) $
     [ () | (parentRef, children) <- IM.toList assocs
-         , childRef              <- IS.toList children
          , S.index deps parentRef == dep1
+         , childRef              <- IS.toList children
          , S.index deps childRef  == dep2
          ]
   deps   = G.graphDeps graph

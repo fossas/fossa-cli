@@ -20,7 +20,7 @@ appMain = do
   case options of
     ScanCmd basedir -> scanMain (fromMaybe currentDir basedir)
 
-data CommandOpts = ScanCmd (Maybe (Path Abs Dir)) -- basedir for scanning
+newtype CommandOpts = ScanCmd (Maybe (Path Abs Dir)) -- basedir for scanning
   deriving Show
 
 opts :: ParserInfo CommandOpts
@@ -36,5 +36,5 @@ commands = hsubparser
 scanCmd :: ParserInfo CommandOpts
 scanCmd = info
   (ScanCmd <$>
-    (optional $ option (maybeReader parseAbsDir) $ long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning"))
+    optional (option (maybeReader parseAbsDir) $ long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning"))
   (progDesc "Scan for dependencies")

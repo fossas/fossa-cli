@@ -87,7 +87,7 @@ depThree = G.Dependency
 
 spec_analyze :: Spec
 spec_analyze = do
-  describe "analyzeWithCmd" $ do
+  describe "analyzeWithCmd" $
     it "should use pipenv output for edges and tags" $ do
       let result = analyzeWithCmd
             & runInputConst @PipfileLock pipfileLock
@@ -98,7 +98,7 @@ spec_analyze = do
       expectDirect [depOne, depTwo] result
       expectEdges [(depTwo, depThree)] result
 
-  describe "analyzeNoCmd" $ do
+  describe "analyzeNoCmd" $
     it "should set all dependencies as direct" $ do
       let result = analyzeNoCmd
             & runInputConst @PipfileLock pipfileLock

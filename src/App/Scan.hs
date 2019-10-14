@@ -32,7 +32,7 @@ scanMain basedir = runFinal
 scan :: Members '[Final IO, Embed IO, Resource, Async, Trace] r => Path Abs Dir -> Sem r ()
 scan basedir = do
   setCurrentDir basedir
-  capabilities <- embed $ getNumCapabilities
+  capabilities <- embed getNumCapabilities
 
   runActions capabilities (map ADiscover discoverFuncs) (runAction basedir) updateProgress
 

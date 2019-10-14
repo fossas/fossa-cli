@@ -1,5 +1,3 @@
-{-# language QuasiQuotes #-}
-
 module Python.PipListTest
   ( spec_analyze
   ) where
@@ -45,7 +43,7 @@ pipListOutput =
 
 spec_analyze :: Spec
 spec_analyze =
-  describe "analyze" $ do
+  describe "analyze" $
     it "produces the expected output" $ do
       let result = analyze
             & runInputConst @[PipListDep] pipListOutput

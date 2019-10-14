@@ -58,7 +58,7 @@ data MarkerOp =
   | MarkerOperator Operator
   deriving (Eq, Ord, Show, Generic)
 
-data Operator = Operator Text -- TODO: actual sum type
+newtype Operator = Operator Text -- TODO: actual sum type
   deriving (Eq, Ord, Show, Generic)
 
 data Req =
@@ -124,7 +124,7 @@ requirementParser = specification
               try (MarkerOr <$> marker_and <* whitespace <* string "or" <*> marker_and)
           <|> marker_and
 
-  marker = label "marker" $ marker_or
+  marker = label "marker" marker_or
   quoted_marker = label "quoted_marker" $ char ';' *> whitespace *> marker
 
   identifier_end = label "identifier_end" $

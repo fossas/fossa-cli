@@ -28,7 +28,7 @@ discover = Discover
   }
 
 discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files -> do
+discover' = walk $ \_ _ files ->
   case find (\f -> fileName f == "requirements.txt") files of
     Nothing -> walkContinue
     Just file  -> do

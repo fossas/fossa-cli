@@ -1,5 +1,3 @@
-{-# language TemplateHaskell #-}
-
 module Diagnostics
   ( CLIErr(..)
   ) where

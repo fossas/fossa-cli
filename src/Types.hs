@@ -1,5 +1,3 @@
-{-# language TemplateHaskell #-}
-
 module Types
   ( DiscoverEffs
   , Discover(..)
@@ -78,7 +76,7 @@ instance ToJSON ConfiguredStrategy where
 ---------- Basic Opts
 
 -- | A basic set of options, containing just a target directory
-data BasicDirOpts = BasicDirOpts
+newtype BasicDirOpts = BasicDirOpts
   { targetDir :: Path Rel Dir
   } deriving (Eq, Ord, Show, Generic)
 
@@ -90,7 +88,7 @@ instance ToJSON BasicDirOpts where
   toJSON BasicDirOpts{..} = object ["dir" .= targetDir]
 
 -- | A basic set of options, containing just a target file
-data BasicFileOpts = BasicFileOpts
+newtype BasicFileOpts = BasicFileOpts
   { targetFile :: Path Rel File
   } deriving (Eq, Ord, Show, Generic)
 

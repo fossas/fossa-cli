@@ -42,7 +42,7 @@ discover = Discover
   }
 
 discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files -> do
+discover' = walk $ \_ _ files ->
   case find (\f -> fileName f == "Pipfile.lock") files of
     Nothing -> walkContinue
     Just file -> do
@@ -87,7 +87,7 @@ analyzeNoCmd = buildGraph <$> input <*> pure Nothing
 buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> G.Graph
 buildGraph lock Nothing =
   let (nodesByName, graph) = buildNodes lock
-   in foldr (\dep graph' -> G.addDirect dep graph') graph nodesByName
+   in foldr G.addDirect graph nodesByName
 buildGraph lock (Just deps) =
   let (nodesByName, graph) = buildNodes lock
    in buildEdges nodesByName deps graph
@@ -139,13 +139,13 @@ buildEdges depNameToRef pipenvDeps graph = run . evalGraphBuilder graph $ do
   where
 
   mkDirect :: Member GraphBuilder r => PipenvGraphDep -> Sem r ()
-  mkDirect dep = do
+  mkDirect dep =
     case M.lookup (depName dep) depNameToRef of
       Just ref -> addDirect ref
       Nothing -> pure ()
 
   mkEdges :: Member GraphBuilder r => PipenvGraphDep -> Sem r ()
-  mkEdges parentDep = do
+  mkEdges parentDep =
     forM_ (depDependencies parentDep) $ \childDep -> do
       let maybeParentRef = M.lookup (depName parentDep) depNameToRef
           maybeChildRef = M.lookup (depName childDep) depNameToRef
@@ -164,7 +164,7 @@ data PipfileLock = PipfileLock
   , fileDevelop :: Map Text PipfileDep
   } deriving (Eq, Ord, Show, Generic)
 
-data PipfileMeta = PipfileMeta
+newtype PipfileMeta = PipfileMeta
   { fileSources :: [PipfileSource]
   } deriving (Eq, Ord, Show, Generic)
 
@@ -208,7 +208,7 @@ data PipenvGraphDep = PipenvGraphDep
   } deriving (Eq, Ord, Show, Generic)
 
 instance FromJSON PipenvGraphDep where
-  parseJSON = withObject "PipenvGraphDep" $ \obj -> do
+  parseJSON = withObject "PipenvGraphDep" $ \obj ->
     PipenvGraphDep <$> obj .: "package_name"
                    <*> obj .: "installed_version"
                    <*> obj .: "required_version"

@@ -75,7 +75,9 @@ execToIO :: Member (Embed IO) r => InterpreterFor Exec r
 execToIO = interpret $ \case
   Exec dir cmd -> do
     absolute <- makeAbsolute dir
-    embed $ asum (map (\cmdName -> readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName (cmdArgs cmd)))) (map fromRelFile (cmdNames cmd)))
+    let runCmd :: String -> IO (ExitCode, BL.ByteString, BL.ByteString)
+        runCmd cmdName = readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName (cmdArgs cmd)))
+    embed $ asum (map (runCmd . fromRelFile) (cmdNames cmd))
       `catch` (\(e :: IOException) -> pure (ExitFailure (-1), "", show e ^. packedChars)) -- TODO: better error?
 {-# INLINE execToIO #-}
 

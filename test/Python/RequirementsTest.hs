@@ -13,9 +13,9 @@ import Text.Megaparsec
 import Strategy.Python.Util (requirementParser)
 
 spec_parser :: Spec
-spec_parser = do
-  describe "requirementParser" $ do
-    it "can parse the edge case examples" $ do
+spec_parser =
+  describe "requirementParser" $
+    it "can parse the edge case examples" $
       traverse_ (parseTest requirementParser) examples
 
 examples :: [Text]

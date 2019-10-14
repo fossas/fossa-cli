@@ -55,7 +55,7 @@ runActions numThreads initial runAction reportProgress = do
       -- wait for queued and running tasks to end
       embed $ atomically $ do
         queued  <- readTVar (stQueued state)
-        check (length queued == 0)
+        check (null queued)
         running <- readTVar (stRunning state)
         check (running == 0)
 
@@ -99,8 +99,7 @@ worker runAction st@State{..} = loop
       (x:xs) -> do
         writeTVar stQueued xs
         addRunning
-        pure $ do
-          (runAction x) `finally` (complete *> loop)
+        pure $ runAction x `finally` (complete *> loop)
 
   addRunning :: STM ()
   addRunning = modifyTVar stRunning (+1)
