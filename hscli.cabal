@@ -114,7 +114,9 @@ test-suite test
     GraphUtil
     Python.PipListTest
     Python.PipenvTest
+    Python.ReqTxtTest
     Python.RequirementsTest
+    Python.SetupPyTest
 
   build-tool-depends: tasty-discover:tasty-discover ^>=4.2.1
   build-depends:

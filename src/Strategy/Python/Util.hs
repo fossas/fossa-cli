@@ -37,7 +37,7 @@ buildGraph xs = unfold xs (const []) toDependency
   depName (UrlReq nm _ _ _) = nm
 
   depVersion (NameReq _ _ versions _) = toConstraint <$> versions
-  depVersion (UrlReq _ _ uri _) = Just (G.CURI (T.pack (show uri))) -- TODO: is (show uri) what we want?
+  depVersion (UrlReq _ _ uri _) = Just (G.CURI (URI.render uri))
 
 toConstraint :: [Version] -> G.VerConstraint
 toConstraint = foldr1 G.CAnd . map (\(Version op ver) -> opToConstraint op ver)
@@ -85,7 +85,7 @@ data Operator =
 
 data Req =
     NameReq Text (Maybe [Text]) (Maybe [Version]) (Maybe Marker) -- name, extras, ...
-  | UrlReq Text (Maybe [Text]) URI.URI (Maybe Marker) -- name extras, ...
+  | UrlReq Text (Maybe [Text]) URI.URI (Maybe Marker) -- name, extras, ...
   deriving (Eq, Ord, Show, Generic)
 
 -- grammar extracted from https://www.python.org/dev/peps/pep-0508/
