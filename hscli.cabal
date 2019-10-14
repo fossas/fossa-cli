@@ -82,7 +82,7 @@ library
     Graph
     Prologue
     Strategy.Gradle
-    Strategy.Npm
+    Strategy.NpmList
     Strategy.Python.PipList
     Strategy.Python.Pipenv
     Strategy.Python.ReqTxt

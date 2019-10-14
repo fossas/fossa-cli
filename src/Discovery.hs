@@ -3,7 +3,7 @@ module Discovery
   , strategyGroups
   ) where
 
-import qualified Strategy.Npm as Npm
+import qualified Strategy.NpmList as NpmList
 import qualified Strategy.Python.Pipenv as Pipenv
 import qualified Strategy.Python.PipList as PipList
 import qualified Strategy.Python.ReqTxt as ReqTxt
@@ -13,12 +13,12 @@ import qualified Discovery.Config as Config
 import           Types
 
 discoverFuncs :: [Discover]
-discoverFuncs = [Npm.discover, PipList.discover, Pipenv.discover, SetupPy.discover, ReqTxt.discover, Config.loadConfig strategyGroups]
+discoverFuncs = [NpmList.discover, PipList.discover, Pipenv.discover, SetupPy.discover, ReqTxt.discover, Config.loadConfig strategyGroups]
 
 strategyGroups :: [StrategyGroup]
 strategyGroups =
   [ StrategyGroup "nodejs"
-      [ SomeStrategy Npm.strategy
+      [ SomeStrategy NpmList.strategy
       ]
   , StrategyGroup "python"
       [ SomeStrategy Pipenv.strategyWithCmd

@@ -1,6 +1,6 @@
 {-# language QuasiQuotes #-}
 
-module Strategy.Npm
+module Strategy.NpmList
   ( discover
   , strategy
   , analyze
