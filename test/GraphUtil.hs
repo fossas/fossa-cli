@@ -13,9 +13,11 @@ import qualified Data.Sequence as S
 
 import qualified Graph as G
 
+-- | Expect the given dependencies to be the deps in the graph
 expectDeps :: [G.Dependency] -> G.Graph -> Expectation
 expectDeps deps graph = toList (G.graphDeps graph) `shouldMatchList` deps
 
+-- | Expect only the given edges between @[(parent,child)]@ dependencies to be present in the graph
 expectEdges :: [(G.Dependency, G.Dependency)] -> G.Graph -> Expectation
 expectEdges edges graph = traverse_ expectEdge edges *> (length assocs `shouldBe` length edges)
   where
@@ -28,6 +30,7 @@ expectEdges edges graph = traverse_ expectEdge edges *> (length assocs `shouldBe
   deps   = G.graphDeps graph
   assocs = G.graphAssocs graph
 
+-- | Expect the given dependencies to be the direct deps in the graph
 expectDirect :: [G.Dependency] -> G.Graph -> Expectation
 expectDirect expected graph = map (S.index deps) (IS.toList direct) `shouldMatchList` expected
   where
