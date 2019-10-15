@@ -6,6 +6,8 @@ module App.Scan
 import Prologue
 
 import Control.Concurrent
+import Data.List (findIndex, sortBy)
+import Data.Ord
 import qualified Data.Map.Strict as M
 import Path.IO
 import Polysemy
@@ -56,7 +58,7 @@ grouping groups = toProjects . mkMap
   toProject :: ((StrategyGroupName, Path Rel Dir), [CompletedStrategy]) -> Project
   toProject ((_, dir), completed) = Project
     { projectPath = dir
-    , projectStrategies = map toProjectStrategy completed
+    , projectStrategies = map toProjectStrategy (sortBy (comparing (ixInGroup . completedName)) completed)
     }
 
   toProjectStrategy :: CompletedStrategy -> ProjectStrategy
@@ -75,6 +77,12 @@ grouping groups = toProjects . mkMap
     case M.lookup completedName groupsByStrategy of
       Just name -> name
       Nothing -> completedName -- use the strategy name as a group name if a group doesn't exist
+
+  ixInGroup :: StrategyName -> Int
+  ixInGroup stratName = fromMaybe 0 (findIndex (\(SomeStrategy strat) -> strategyName strat == stratName) =<< pure . groupStrategies =<< (`M.lookup` groupsByName) =<< M.lookup stratName groupsByStrategy)
+
+  groupsByName :: Map StrategyGroupName StrategyGroup
+  groupsByName = M.fromList [(groupName group, group) | group <- groups]
 
   groupsByStrategy :: Map StrategyName StrategyGroupName
   groupsByStrategy = M.fromList
