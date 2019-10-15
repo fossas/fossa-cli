@@ -9,6 +9,7 @@ module App.Scan.Project
 import Prologue
 
 import qualified Data.Map as M
+import qualified Data.Sequence as S
 import Data.List (findIndex, sortOn)
 
 import Graph (Graph)
@@ -16,7 +17,7 @@ import Types
 
 data Project = Project
   { projectPath       :: Path Rel Dir
-  , projectStrategies :: [ProjectStrategy]
+  , projectStrategies :: S.Seq ProjectStrategy
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -30,16 +31,16 @@ data ProjectStrategy = ProjectStrategy
 type StrategyName = String
 type StrategyGroupName = String
 
-mkProjects :: [StrategyGroup] -> [CompletedStrategy] -> [Project]
+mkProjects :: [StrategyGroup] -> S.Seq CompletedStrategy -> [Project]
 mkProjects groups = toProjects . grouping
   where
-  toProjects :: Map (StrategyGroupName, Path Rel Dir) [CompletedStrategy] -> [Project]
-  toProjects = map toProject . M.toList
+  toProjects :: Map (StrategyGroupName, Path Rel Dir) (S.Seq CompletedStrategy) -> [Project]
+  toProjects = fmap toProject . M.toList
 
-  toProject :: ((StrategyGroupName, Path Rel Dir), [CompletedStrategy]) -> Project
+  toProject :: ((StrategyGroupName, Path Rel Dir), S.Seq CompletedStrategy) -> Project
   toProject ((_, dir), completed) = Project
     { projectPath = dir
-    , projectStrategies = map toProjectStrategy (sortOn (ixInGroup . completedName) completed)
+    , projectStrategies = fmap toProjectStrategy (S.sortOn (ixInGroup . completedName) completed)
     }
 
   toProjectStrategy :: CompletedStrategy -> ProjectStrategy
@@ -50,29 +51,26 @@ mkProjects groups = toProjects . grouping
                     , projStrategyComplete = completedComplete
                     }
 
-  grouping :: [CompletedStrategy] -> Map (StrategyGroupName, Path Rel Dir) [CompletedStrategy]
-  grouping completed = M.fromListWith (++)
-    [((groupName, moduleDir), [complete])
-      | complete <- completed
-      , let groupName = completedToGroup complete
-      , let moduleDir = completedModule complete
-      ]
+  grouping :: S.Seq CompletedStrategy -> Map (StrategyGroupName, Path Rel Dir) (S.Seq CompletedStrategy)
+  grouping completed = M.fromListWith (<>) $ toList $ do
+    complete <- completed
+    let groupName = completedToGroup complete
+        moduleDir = completedModule complete
+
+    pure ((groupName, moduleDir), S.singleton complete)
 
   completedToGroup :: CompletedStrategy -> StrategyGroupName
   completedToGroup CompletedStrategy{completedName} =
-    case M.lookup completedName groupsByStrategy of
-      Just name -> name
-      Nothing -> completedName -- use the strategy name as a group name if a group doesn't exist
+    -- use the strategy name as a group name if a group doesn't exist
+    fromMaybe completedName (M.lookup completedName groupsByStrategy)
 
   ixInGroup :: StrategyName -> Int
   ixInGroup stratName = fromMaybe 0 $ do -- Maybe monad
     groupName <- M.lookup stratName groupsByStrategy
     group     <- M.lookup groupName groupsByName
 
-    ix <- findIndex (\(SomeStrategy strat) -> strategyName strat == stratName)
-                    (groupStrategies group)
-
-    pure ix
+    findIndex (\(SomeStrategy strat) -> strategyName strat == stratName)
+              (groupStrategies group)
 
   groupsByName :: Map StrategyGroupName StrategyGroup
   groupsByName = M.fromList [(groupName group, group) | group <- groups]

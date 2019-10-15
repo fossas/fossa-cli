@@ -6,6 +6,7 @@ module App.Scan
 import Prologue
 
 import Control.Concurrent
+import qualified Data.Sequence as S
 import Path.IO
 import Polysemy
 import Polysemy.Async
@@ -37,13 +38,10 @@ scan basedir = do
   capabilities <- embed getNumCapabilities
 
   (results, ()) <- runActions capabilities (map ADiscover discoverFuncs) (runAction basedir) updateProgress
-    & outputListIO
+    & outputToIOMonoid (S.singleton)
 
   let projects = mkProjects strategyGroups results
   embed (pPrint projects)
-
-outputListIO :: Member (Embed IO) r => Sem (Output o ': r) a -> Sem r ([o], a)
-outputListIO = outputToIOMonoidAssocR (:[])
 
 runAction :: Members '[Final IO, Embed IO, Trace, Output CompletedStrategy] r => Path Abs Dir -> (Action -> Sem r ()) -> Action -> Sem r ()
 runAction basedir enqueue = \case
