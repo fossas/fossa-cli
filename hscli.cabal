@@ -71,6 +71,7 @@ library
   exposed-modules:
     App
     App.Scan
+    App.Scan.Project
     Control.Parallel
     Diagnostics
     Discovery
