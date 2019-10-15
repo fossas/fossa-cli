@@ -42,19 +42,18 @@ scan basedir = do
   (results, ()) <- runActions capabilities (map ADiscover discoverFuncs) (runAction basedir) updateProgress
     & outputToIOMonoidAssocR (:[])
 
-  let grouped = grouping strategyGroups results
-  embed (pPrint grouped)
+  let projects = mkProjects strategyGroups results
+  embed (pPrint projects)
 
 type StrategyName = String
 type StrategyGroupName = String
 
-grouping :: [StrategyGroup] -> [CompletedStrategy] -> [Project]
-grouping groups = toProjects . mkMap
+mkProjects :: [StrategyGroup] -> [CompletedStrategy] -> [Project]
+mkProjects groups = toProjects . grouping
   where
   toProjects :: Map (StrategyGroupName, Path Rel Dir) [CompletedStrategy] -> [Project]
   toProjects = map toProject . M.toList
 
-  -- TODO: sort completed strategies
   toProject :: ((StrategyGroupName, Path Rel Dir), [CompletedStrategy]) -> Project
   toProject ((_, dir), completed) = Project
     { projectPath = dir
@@ -69,17 +68,29 @@ grouping groups = toProjects . mkMap
                     , projStrategyComplete = completedComplete
                     }
 
-  mkMap :: [CompletedStrategy] -> Map (StrategyGroupName, Path Rel Dir) [CompletedStrategy]
-  mkMap = foldr (\complete -> M.insertWith (++) (completedToGroup complete, completedModule complete) [complete]) M.empty
+  grouping :: [CompletedStrategy] -> Map (StrategyGroupName, Path Rel Dir) [CompletedStrategy]
+  grouping completed = M.fromListWith (++)
+    [((groupName, moduleDir), [complete])
+      | complete <- completed
+      , let groupName = completedToGroup complete
+      , let moduleDir = completedModule complete
+      ]
 
   completedToGroup :: CompletedStrategy -> StrategyGroupName
-  completedToGroup CompletedStrategy{..} =
+  completedToGroup CompletedStrategy{completedName} =
     case M.lookup completedName groupsByStrategy of
       Just name -> name
       Nothing -> completedName -- use the strategy name as a group name if a group doesn't exist
 
   ixInGroup :: StrategyName -> Int
-  ixInGroup stratName = fromMaybe 0 (findIndex (\(SomeStrategy strat) -> strategyName strat == stratName) =<< pure . groupStrategies =<< (`M.lookup` groupsByName) =<< M.lookup stratName groupsByStrategy)
+  ixInGroup stratName = fromMaybe 0 $ do -- Maybe monad
+    groupName <- M.lookup stratName groupsByStrategy
+    group     <- M.lookup groupName groupsByName
+
+    ix <- findIndex (\(SomeStrategy strat) -> strategyName strat == stratName)
+                    (groupStrategies group)
+
+    pure ix
 
   groupsByName :: Map StrategyGroupName StrategyGroup
   groupsByName = M.fromList [(groupName group, group) | group <- groups]
