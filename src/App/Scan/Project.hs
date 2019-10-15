@@ -10,7 +10,7 @@ import Prologue
 
 import qualified Data.Map as M
 import qualified Data.Sequence as S
-import Data.List (findIndex, sortOn)
+import Data.List (findIndex)
 
 import Graph (Graph)
 import Types
@@ -81,3 +81,18 @@ mkProjects groups = toProjects . grouping
                             , SomeStrategy strat <- strategies
                             , let stratName = strategyName strat
                             ]
+
+instance ToJSON Project where
+  toJSON Project{..} = object
+    [ "path"       .= projectPath
+    , "strategies" .= projectStrategies
+    ]
+
+-- TODO: path?
+instance ToJSON ProjectStrategy where
+  toJSON ProjectStrategy{..} = object
+    [ "name"     .= projStrategyName
+    , "graph"    .= projStrategyGraph
+    , "optimal"  .= projStrategyOptimal
+    , "complete" .= projStrategyComplete
+    ]

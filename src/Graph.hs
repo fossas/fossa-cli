@@ -131,7 +131,25 @@ instance FromJSON VerConstraint where
   parseJSON = undefined -- TODO
 
 instance ToJSON VerConstraint where
-  toJSON = undefined -- TODO
+  toJSON constraint = let (name, value) = toValue constraint
+                       in object [ "type"  .= name
+                                 , "value" .= value
+                                 ]
+
+    where
+
+    toValue :: VerConstraint -> (Text, Value)
+    toValue = \case
+      CEq text -> ("EQUAL", toJSON text)
+      CURI text -> ("URI", toJSON text)
+      CCompatible text -> ("COMPATIBLE", toJSON text)
+      CAnd a b -> ("AND", toJSON [toJSON a, toJSON b])
+      COr a b -> ("OR", toJSON [toJSON a, toJSON b])
+      CLess text -> ("LESSTHAN", toJSON text)
+      CLessOrEq text -> ("LESSTHANOREQUAL", toJSON text)
+      CGreater text -> ("GREATERTHAN", toJSON text)
+      CGreaterOrEq text -> ("GREATEROREQUAL", toJSON text)
+      CNot text -> ("NOT", toJSON text)
 
 instance ToJSON Graph where
   toJSON Graph{..} = object

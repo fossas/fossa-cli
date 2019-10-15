@@ -14,7 +14,6 @@ import Polysemy.Error
 import Polysemy.Output
 import Polysemy.Resource
 import Polysemy.Trace
-import Text.Pretty.Simple (pPrint)
 
 import App.Scan.Project (mkProjects)
 import Control.Parallel
@@ -41,7 +40,7 @@ scan basedir = do
     & outputToIOMonoid (S.singleton)
 
   let projects = mkProjects strategyGroups results
-  embed (pPrint projects)
+  embed (encodeFile "analysis.json" projects)
 
 runAction :: Members '[Final IO, Embed IO, Trace, Output CompletedStrategy] r => Path Abs Dir -> (Action -> Sem r ()) -> Action -> Sem r ()
 runAction basedir enqueue = \case

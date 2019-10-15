@@ -48,8 +48,16 @@ data Discover = Discover
 data Optimal = Optimal | NotOptimal
   deriving (Eq, Ord, Show, Generic)
 
+instance ToJSON Optimal where
+  toJSON Optimal    = toJSON True
+  toJSON NotOptimal = toJSON False
+
 data Complete = Complete | NotComplete
   deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON Complete where
+  toJSON Complete    = toJSON True
+  toJSON NotComplete = toJSON False
 
 -- | The effects available for use in 'Strategy'
 type StrategyEffs r = Members '[Embed IO, Error CLIErr, Exec, ReadFS] r
