@@ -52,6 +52,8 @@ strategy = Strategy
   { strategyName = "python-piplist"
   , strategyAnalyze = \opts -> analyze & execInputJson (targetDir opts) pipListCmd
   , strategyModule = targetDir
+  , strategyComplete = False
+  , strategyOptimal = False
   }
 
 analyze :: Member (Input [PipListDep]) r => Sem r G.Graph

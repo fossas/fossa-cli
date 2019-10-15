@@ -35,11 +35,14 @@ discover' = walk $ \dir subdirs files -> do
 
   walkSkipNamed ["node_modules/"] subdirs
 
+-- TODO: allow command failure
 strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "nodejs-npm"
   , strategyAnalyze = \opts -> analyze & execInputJson (targetDir opts) npmListCmd
   , strategyModule = targetDir
+  , strategyOptimal = True
+  , strategyComplete = True
   }
 
 npmListCmd :: Command

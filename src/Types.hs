@@ -8,6 +8,8 @@ module Types
   , ConfiguredStrategy(..)
   , SomeStrategy(..)
 
+  , CompletedStrategy(..)
+
   , BasicDirOpts(..)
   , BasicFileOpts(..)
   ) where
@@ -38,6 +40,8 @@ data Discover = Discover
 
 ---------- Strategies
 
+-- TODO: determine strategy completeness during scan?
+
 -- | The effects available for use in 'Strategy'
 type StrategyEffs r = Members '[Embed IO, Error CLIErr, Exec, ReadFS] r
 
@@ -46,9 +50,11 @@ type StrategyEffs r = Members '[Embed IO, Error CLIErr, Exec, ReadFS] r
 -- @options@ must have 'ToJSON' and 'FromJSON' instances -- these are used to
 -- serialize\/deserialize a strategy's options to/from disk
 data Strategy options = Strategy
-  { strategyName    :: String -- ^ e.g., "python-pipenv"
-  , strategyAnalyze :: forall r. StrategyEffs r => options -> Sem r Graph
-  , strategyModule  :: options -> Path Rel Dir -- ^ Determine the module directory for grouping with other strategies
+  { strategyName     :: String -- ^ e.g., "python-pipenv"
+  , strategyAnalyze  :: forall r. StrategyEffs r => options -> Sem r Graph
+  , strategyModule   :: options -> Path Rel Dir -- ^ Determine the module directory for grouping with other strategies
+  , strategyOptimal  :: Bool -- ^ Whether this strategy is considered "optimal" -- i.e., best case analysis for a given project. Notably, this __does not__ imply "complete".
+  , strategyComplete :: Bool -- ^ Whether this strategy produces graphs that contain all dependencies for a given project. When @False@, the backend will run a hasGraph-like analysis to produce the missing dependencies and graph edges
   }
 
 -- | 'Strategy' outputs are grouped and sorted based on the provided @StrategyGroup@s
@@ -72,6 +78,18 @@ data ConfiguredStrategy where
 
 instance ToJSON ConfiguredStrategy where
   toJSON (ConfiguredStrategy strategy options) = object ["name" .= strategyName strategy, "options" .= options]
+
+---------- Completed Strategies
+
+-- | Completed strategy output. See 'Strategy' for additional information about
+-- these fields.
+data CompletedStrategy = CompletedStrategy
+  { completedName     :: String
+  , completedModule   :: Path Rel Dir
+  , completedGraph    :: Graph
+  , completedOptimal  :: Bool
+  , completedComplete :: Bool
+  } deriving (Eq, Ord, Show, Generic)
 
 ---------- Basic Opts
 

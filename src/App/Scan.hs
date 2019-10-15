@@ -52,15 +52,15 @@ runAction basedir enqueue = \case
 
     trace ""
 
-  AStrategy (ConfiguredStrategy Strategy{..} opts)-> do
-    result <- strategyAnalyze opts
+  AStrategy (ConfiguredStrategy strat opts) -> do
+    result <- strategyAnalyze strat opts
       & readFSToIO
       & execToIO
       & errorToIOFinal @CLIErr
 
     case result of
-      Right graph -> trace $ "Finished analysis: " <> strategyName <> " " <> show (strategyModule opts) <> ": " <> show graph
-      Left err -> trace $ "ERROR in strategy: " <> strategyName <> " " <> show (strategyModule opts) <> ": " <> show err
+      Right graph -> trace $ "Finished analysis: " <> strategyName strat <> " " <> show (strategyModule strat opts) <> ": " <> show graph
+      Left err -> trace $ "ERROR in strategy: " <> strategyName strat <> " " <> show (strategyModule strat opts) <> ": " <> show err
 
     trace ""
 
