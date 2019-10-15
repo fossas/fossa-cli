@@ -40,8 +40,8 @@ strategy = Strategy
   , strategyAnalyze = \opts ->
       analyze & fileInputParser installRequiresParser (targetFile opts)
   , strategyModule = parent . targetFile
-  , strategyComplete = False
-  , strategyOptimal = False
+  , strategyOptimal = NotOptimal
+  , strategyComplete = NotComplete
   }
 
 analyze :: Member (Input [Req]) r => Sem r G.Graph

@@ -41,8 +41,8 @@ strategy = Strategy
   { strategyName = "nodejs-npm"
   , strategyAnalyze = \opts -> analyze & execInputJson (targetDir opts) npmListCmd
   , strategyModule = targetDir
-  , strategyOptimal = True
-  , strategyComplete = True
+  , strategyOptimal = Optimal
+  , strategyComplete = Complete
   }
 
 npmListCmd :: Command

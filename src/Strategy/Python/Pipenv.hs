@@ -63,8 +63,8 @@ strategyWithCmd = Strategy
       & fileInputJson @PipfileLock (targetFile opts)
       & execInputJson @[PipenvGraphDep] (parent (targetFile opts)) pipenvGraphCmd
   , strategyModule = parent . targetFile
-  , strategyComplete = True
-  , strategyOptimal = True
+  , strategyOptimal = Optimal
+  , strategyComplete = Complete
   }
 
 strategyNoCmd :: Strategy BasicFileOpts
@@ -72,8 +72,8 @@ strategyNoCmd = Strategy
   { strategyName = "python-pipfile"
   , strategyAnalyze = \opts -> analyzeNoCmd & fileInputJson (targetFile opts)
   , strategyModule = parent . targetFile
-  , strategyComplete = True
-  , strategyOptimal = True
+  , strategyOptimal = Optimal
+  , strategyComplete = Complete
   }
 
 configureWithCmd :: Path Rel File -> ConfiguredStrategy

@@ -5,6 +5,9 @@ module Types
   , Strategy(..)
   , StrategyGroup(..)
 
+  , Optimal(..)
+  , Complete(..)
+
   , ConfiguredStrategy(..)
   , SomeStrategy(..)
 
@@ -42,6 +45,12 @@ data Discover = Discover
 
 -- TODO: determine strategy completeness during scan?
 
+data Optimal = Optimal | NotOptimal
+  deriving (Eq, Ord, Show, Generic)
+
+data Complete = Complete | NotComplete
+  deriving (Eq, Ord, Show, Generic)
+
 -- | The effects available for use in 'Strategy'
 type StrategyEffs r = Members '[Embed IO, Error CLIErr, Exec, ReadFS] r
 
@@ -53,8 +62,8 @@ data Strategy options = Strategy
   { strategyName     :: String -- ^ e.g., "python-pipenv"
   , strategyAnalyze  :: forall r. StrategyEffs r => options -> Sem r Graph
   , strategyModule   :: options -> Path Rel Dir -- ^ Determine the module directory for grouping with other strategies
-  , strategyOptimal  :: Bool -- ^ Whether this strategy is considered "optimal" -- i.e., best case analysis for a given project. Notably, this __does not__ imply "complete".
-  , strategyComplete :: Bool -- ^ Whether this strategy produces graphs that contain all dependencies for a given project. When @False@, the backend will run a hasGraph-like analysis to produce the missing dependencies and graph edges
+  , strategyOptimal  :: Optimal -- ^ Whether this strategy is considered "optimal" -- i.e., best case analysis for a given project. Notably, this __does not__ imply "complete".
+  , strategyComplete :: Complete -- ^ Whether this strategy produces graphs that contain all dependencies for a given project. When @NotComplete@, the backend will run a hasGraph-like analysis to produce the missing dependencies and graph edges
   }
 
 -- | 'Strategy' outputs are grouped and sorted based on the provided @StrategyGroup@s
@@ -87,8 +96,8 @@ data CompletedStrategy = CompletedStrategy
   { completedName     :: String
   , completedModule   :: Path Rel Dir
   , completedGraph    :: Graph
-  , completedOptimal  :: Bool
-  , completedComplete :: Bool
+  , completedOptimal  :: Optimal
+  , completedComplete :: Complete
   } deriving (Eq, Ord, Show, Generic)
 
 ---------- Basic Opts

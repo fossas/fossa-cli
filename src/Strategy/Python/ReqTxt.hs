@@ -40,8 +40,8 @@ strategy = Strategy
   { strategyName = "python-requirements"
   , strategyAnalyze = \opts -> analyze & fileInputParser requirementsTxtParser (targetFile opts)
   , strategyModule = parent . targetFile
-  , strategyComplete = False
-  , strategyOptimal = True
+  , strategyOptimal = Optimal
+  , strategyComplete = NotComplete
   }
 
 analyze :: Member (Input [Req]) r => Sem r G.Graph

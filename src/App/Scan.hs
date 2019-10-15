@@ -6,6 +6,7 @@ module App.Scan
 import Prologue
 
 import Control.Concurrent
+import qualified Data.Map.Strict as M
 import Path.IO
 import Polysemy
 import Polysemy.Async
@@ -13,12 +14,14 @@ import Polysemy.Error
 import Polysemy.Output
 import Polysemy.Resource
 import Polysemy.Trace
+import Text.Pretty.Simple (pPrint)
 
 import Control.Parallel
 import Diagnostics
 import Discovery
 import Effect.Exec
 import Effect.ReadFS
+import Graph (Graph)
 import Types
 
 scanMain :: Path Abs Dir -> IO ()
@@ -34,9 +37,66 @@ scan basedir = do
   setCurrentDir basedir
   capabilities <- embed getNumCapabilities
 
-  runActions capabilities (map ADiscover discoverFuncs) (runAction basedir) updateProgress
+  (results, ()) <- runActions capabilities (map ADiscover discoverFuncs) (runAction basedir) updateProgress
+    & outputToIOMonoidAssocR (:[])
 
-runAction :: Members '[Final IO, Embed IO, Trace] r => Path Abs Dir -> (Action -> Sem r ()) -> Action -> Sem r ()
+  let grouped = grouping strategyGroups results
+  embed (pPrint grouped)
+
+type StrategyName = String
+type StrategyGroupName = String
+
+grouping :: [StrategyGroup] -> [CompletedStrategy] -> [Project]
+grouping groups = toProjects . mkMap
+  where
+  toProjects :: Map (StrategyGroupName, Path Rel Dir) [CompletedStrategy] -> [Project]
+  toProjects = map toProject . M.toList
+
+  -- TODO: sort completed strategies
+  toProject :: ((StrategyGroupName, Path Rel Dir), [CompletedStrategy]) -> Project
+  toProject ((_, dir), completed) = Project
+    { projectPath = dir
+    , projectStrategies = map toProjectStrategy completed
+    }
+
+  toProjectStrategy :: CompletedStrategy -> ProjectStrategy
+  toProjectStrategy CompletedStrategy{..} =
+    ProjectStrategy { projStrategyName = completedName
+                    , projStrategyGraph = completedGraph
+                    , projStrategyOptimal = completedOptimal
+                    , projStrategyComplete = completedComplete
+                    }
+
+  mkMap :: [CompletedStrategy] -> Map (StrategyGroupName, Path Rel Dir) [CompletedStrategy]
+  mkMap = foldr (\complete -> M.insertWith (++) (completedToGroup complete, completedModule complete) [complete]) M.empty
+
+  completedToGroup :: CompletedStrategy -> StrategyGroupName
+  completedToGroup CompletedStrategy{..} =
+    case M.lookup completedName groupsByStrategy of
+      Just name -> name
+      Nothing -> completedName -- use the strategy name as a group name if a group doesn't exist
+
+  groupsByStrategy :: Map StrategyName StrategyGroupName
+  groupsByStrategy = M.fromList
+    [(stratName, groupName) | StrategyGroup groupName strategies <- groups
+                            , SomeStrategy strat <- strategies
+                            , let stratName = strategyName strat
+                            ]
+
+data Project = Project
+  { projectPath       :: Path Rel Dir
+  , projectStrategies :: [ProjectStrategy]
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+data ProjectStrategy = ProjectStrategy
+  { projStrategyName     :: String
+  , projStrategyGraph    :: Graph
+  , projStrategyOptimal  :: Optimal
+  , projStrategyComplete :: Complete
+  } deriving (Eq, Ord, Show, Generic)
+
+runAction :: Members '[Final IO, Embed IO, Trace, Output CompletedStrategy] r => Path Abs Dir -> (Action -> Sem r ()) -> Action -> Sem r ()
 runAction basedir enqueue = \case
   ADiscover Discover{..} -> do
     trace $ "Starting discovery: " <> discoverName
@@ -52,15 +112,17 @@ runAction basedir enqueue = \case
 
     trace ""
 
-  AStrategy (ConfiguredStrategy strat opts) -> do
-    result <- strategyAnalyze strat opts
+  AStrategy (ConfiguredStrategy Strategy{..} opts) -> do
+    result <- strategyAnalyze opts
       & readFSToIO
       & execToIO
       & errorToIOFinal @CLIErr
 
     case result of
-      Right graph -> trace $ "Finished analysis: " <> strategyName strat <> " " <> show (strategyModule strat opts) <> ": " <> show graph
-      Left err -> trace $ "ERROR in strategy: " <> strategyName strat <> " " <> show (strategyModule strat opts) <> ": " <> show err
+      Right graph -> do
+        trace $ "Finished analysis: " <> strategyName <> " " <> show (strategyModule opts) <> ": " <> show graph
+        output (CompletedStrategy strategyName (strategyModule opts) graph strategyOptimal strategyComplete)
+      Left err -> trace $ "ERROR in strategy: " <> strategyName <> " " <> show (strategyModule opts) <> ": " <> show err
 
     trace ""
 
