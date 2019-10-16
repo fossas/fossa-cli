@@ -13,7 +13,7 @@ import qualified Discovery.Config as Config
 import           Types
 
 discoverFuncs :: [Discover]
-discoverFuncs = [NpmList.discover, PipList.discover, Pipenv.discover, SetupPy.discover, ReqTxt.discover, Config.loadConfig strategyGroups]
+discoverFuncs = [{-NpmList.discover,-} PipList.discover, Pipenv.discover, SetupPy.discover, ReqTxt.discover, Config.loadConfig strategyGroups]
 
 strategyGroups :: [StrategyGroup]
 strategyGroups =
