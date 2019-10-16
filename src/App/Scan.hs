@@ -62,7 +62,7 @@ runAction basedir enqueue = \case
         logDebug $ pretty (show err) <> line
 
   AStrategy (ConfiguredStrategy Strategy{..} opts) -> do
-    let prettyName = fill 20 (annotate (color Cyan) (pretty strategyName <> " "))
+    let prettyName = annotate (color Cyan) (pretty strategyName)
         prettyPath = pretty (toFilePath (strategyModule opts))
 
     result <- strategyAnalyze opts
@@ -72,11 +72,11 @@ runAction basedir enqueue = \case
 
     case result of
       Right graph -> do
-        logInfo $ prettyName <> prettyPath <> " " <> annotate (color Green) "Analyzed"
+        logInfo $ prettyPath <> " " <> prettyName <> " " <> annotate (color Green) "Analyzed"
         logDebug (pretty (show graph))
         output (CompletedStrategy strategyName (strategyModule opts) graph strategyOptimal strategyComplete)
       Left err -> do
-        logWarn $ prettyName <> prettyPath <> " " <> annotate (color Yellow) "Analysis failed"
+        logWarn $ prettyPath <> " " <> prettyName <> " " <> annotate (color Yellow) "Analysis failed"
         logDebug $ pretty (show err) <> line
 
 updateProgress :: Member Logger r => Progress -> Sem r ()
