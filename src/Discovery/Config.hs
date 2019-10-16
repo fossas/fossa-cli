@@ -8,6 +8,8 @@ module Discovery.Config
 
 import Prologue
 
+import           Data.Aeson (Result(Error))
+import qualified Data.Text as T
 import qualified Data.Map.Strict as M
 import qualified Data.Yaml as Yaml
 import           Polysemy
@@ -38,16 +40,16 @@ loadConfig' strategies dir = do
     -- - Maybe
     -- - Result (aeson)
     case Yaml.decodeEither' contents of
-      Left err -> throw (ConfigParseFailed (Yaml.prettyPrintParseException err))
+      Left err -> throw (ConfigParseFailed (T.pack (Yaml.prettyPrintParseException err)))
       Right Config{configStrategies} ->
         for_ configStrategies $ \ConfigStrategy{..} ->
           case M.lookup configStrategyName strategiesByName of
             Nothing -> throw (UnknownStrategyName configStrategyName)
             Just (SomeStrategy strat) -> case fromJSON configStrategyOptions of
-              Error err -> throw (StrategyOptionsParseFailed configStrategyName err)
+              Error err -> throw (StrategyOptionsParseFailed configStrategyName (T.pack err))
               Success a -> output (ConfiguredStrategy strat a)
   where
-  strategiesByName :: Map String SomeStrategy
+  strategiesByName :: Map Text SomeStrategy
   strategiesByName = M.fromList (map (\strategy@(SomeStrategy Strategy{strategyName}) -> (strategyName, strategy)) (groupStrategies =<< strategies))
 
 
@@ -65,6 +67,6 @@ instance FromJSON ConfigStrategy where
                            .!= object [] -- default to empty object
 
 data ConfigStrategy = ConfigStrategy
-  { configStrategyName    :: String
+  { configStrategyName    :: Text
   , configStrategyOptions :: Value
   } deriving (Show, Generic)

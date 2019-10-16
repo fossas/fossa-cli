@@ -22,14 +22,14 @@ data Project = Project
   deriving (Eq, Ord, Show, Generic)
 
 data ProjectStrategy = ProjectStrategy
-  { projStrategyName     :: String
+  { projStrategyName     :: Text
   , projStrategyGraph    :: Graph
   , projStrategyOptimal  :: Optimal
   , projStrategyComplete :: Complete
   } deriving (Eq, Ord, Show, Generic)
 
-type StrategyName = String
-type StrategyGroupName = String
+type StrategyName = Text
+type StrategyGroupName = Text
 
 mkProjects :: [StrategyGroup] -> S.Seq CompletedStrategy -> [Project]
 mkProjects groups = toProjects . grouping

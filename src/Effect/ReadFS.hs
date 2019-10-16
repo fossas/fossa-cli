@@ -18,6 +18,7 @@ import Prologue
 
 import           Control.Exception hiding (throw)
 import qualified Data.ByteString as BS
+import qualified Data.Text as T
 import           Data.Text.Encoding (decodeUtf8)
 import           Path (Dir, File, Path, toFilePath)
 import qualified Path.IO as PIO
@@ -45,7 +46,7 @@ fileInputParser parser file = interpret $ \case
 
     contents <- readContentsText file
     case runParser parser path contents of
-      Left err -> throw (FileParseError path (show err))
+      Left err -> throw (FileParseError path (T.pack (show err)))
       Right a -> pure a
 {-# INLINE fileInputParser #-}
 
@@ -54,7 +55,7 @@ fileInputJson file = interpret $ \case
   Input -> do
     contents <- readContentsBS file
     case eitherDecodeStrict contents of
-      Left err -> throw (FileParseError (toFilePath file) err)
+      Left err -> throw (FileParseError (toFilePath file) (T.pack err))
       Right a -> pure a
 {-# INLINE fileInputJson #-}
 
@@ -63,11 +64,11 @@ readFSToIO = interpret $ \case
   ReadContentsBS file -> fromEitherM $
     (Right <$> BS.readFile (toFilePath file))
     `catch`
-    (\(e :: IOException) -> pure (Left (FileReadError (toFilePath file) (show e))))
+    (\(e :: IOException) -> pure (Left (FileReadError (toFilePath file) (T.pack (show e)))))
   ReadContentsText file -> fromEitherM $
     (Right . decodeUtf8 <$> BS.readFile (toFilePath file))
     `catch`
-    (\(e :: IOException) -> pure (Left (FileReadError (toFilePath file) (show e))))
+    (\(e :: IOException) -> pure (Left (FileReadError (toFilePath file) (T.pack (show e)))))
   DoesFileExist file -> PIO.doesFileExist file
   DoesDirExist dir -> PIO.doesDirExist dir
 {-# INLINE readFSToIO #-}

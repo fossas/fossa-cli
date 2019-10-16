@@ -13,13 +13,15 @@ import Polysemy.Async
 import Polysemy.Error
 import Polysemy.Output
 import Polysemy.Resource
-import Polysemy.Trace
 
 import App.Scan.Project (mkProjects)
 import Control.Parallel
+import Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc.Render.Terminal
 import Diagnostics
 import Discovery
 import Effect.Exec
+import Effect.Logger
 import Effect.ReadFS
 import Types
 
@@ -28,10 +30,10 @@ scanMain basedir = runFinal
         . embedToFinal @IO
         . resourceToIOFinal
         . asyncToIOFinal
-        . traceToIO
+        . loggerToIO Info
         $ scan basedir
 
-scan :: Members '[Final IO, Embed IO, Resource, Async, Trace] r => Path Abs Dir -> Sem r ()
+scan :: Members '[Final IO, Embed IO, Resource, Async, Logger] r => Path Abs Dir -> Sem r ()
 scan basedir = do
   setCurrentDir basedir
   capabilities <- embed getNumCapabilities
@@ -42,10 +44,11 @@ scan basedir = do
   let projects = mkProjects strategyGroups results
   embed (encodeFile "analysis.json" projects)
 
-runAction :: Members '[Final IO, Embed IO, Trace, Output CompletedStrategy] r => Path Abs Dir -> (Action -> Sem r ()) -> Action -> Sem r ()
+runAction :: Members '[Final IO, Embed IO, Logger, Output CompletedStrategy] r => Path Abs Dir -> (Action -> Sem r ()) -> Action -> Sem r ()
 runAction basedir enqueue = \case
   ADiscover Discover{..} -> do
-    trace $ "Starting discovery: " <> discoverName
+    let prettyName = fill 20 (annotate (colorDull Cyan) (pretty discoverName <> " "))
+
     result <- discoverFunc basedir
       & readFSToIO
       & execToIO
@@ -53,12 +56,15 @@ runAction basedir enqueue = \case
       & runOutputSem @ConfiguredStrategy (enqueue . AStrategy)
 
     case result of
-      Right () -> trace $ "Finished discovery: " <> discoverName
-      Left err -> trace $ "ERROR in discovery: " <> discoverName <> " " <> show err
-
-    trace ""
+      Right () -> logDebug $ prettyName <> annotate (color Green) "Finished discovery"
+      Left err -> do
+        logWarn $ prettyName <> annotate (color Red) "Discovery failed"
+        logDebug $ pretty (show err) <> line
 
   AStrategy (ConfiguredStrategy Strategy{..} opts) -> do
+    let prettyName = fill 20 (annotate (color Cyan) (pretty strategyName <> " "))
+        prettyPath = pretty (toFilePath (strategyModule opts))
+
     result <- strategyAnalyze opts
       & readFSToIO
       & execToIO
@@ -66,20 +72,23 @@ runAction basedir enqueue = \case
 
     case result of
       Right graph -> do
-        trace $ "Finished analysis: " <> strategyName <> " " <> show (strategyModule opts) <> ": " <> show graph
+        logInfo $ prettyName <> prettyPath <> " " <> annotate (color Green) "Analyzed"
+        logDebug (pretty (show graph))
         output (CompletedStrategy strategyName (strategyModule opts) graph strategyOptimal strategyComplete)
-      Left err -> trace $ "ERROR in strategy: " <> strategyName <> " " <> show (strategyModule opts) <> ": " <> show err
+      Left err -> do
+        logWarn $ prettyName <> prettyPath <> " " <> annotate (color Yellow) "Analysis failed"
+        logDebug $ pretty (show err) <> line
 
-    trace ""
-
-updateProgress :: Member Trace r => Progress -> Sem r ()
+updateProgress :: Member Logger r => Progress -> Sem r ()
 updateProgress Progress{..} =
-  trace ( "Queued: "
-        <> show pQueued
-        <> ", Running: "
-        <> show pRunning
-        <> ", Completed: "
-        <> show pCompleted)
+  logSticky ( "[ "
+            <> annotate (color Cyan) (pretty pQueued)
+            <> " Waiting / "
+            <> annotate (color Yellow) (pretty pRunning)
+            <> " Running / "
+            <> annotate (color Green) (pretty pCompleted)
+            <> " Completed"
+            <> " ]" )
 
 data Action =
     ADiscover Discover

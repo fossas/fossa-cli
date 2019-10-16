@@ -3,13 +3,13 @@ module Prologue
   ( module X
   ) where
 
-import Prelude as X
+import Prelude as X hiding (log)
 
 import Debug.Trace as X (traceShow, traceShowId)
 
 import Control.Applicative as X
 import Control.Monad as X
-import Data.Aeson as X
+import Data.Aeson as X hiding (Error)
 import Data.Bifunctor as X
 import Data.ByteString as X (ByteString)
 import Data.Foldable as X

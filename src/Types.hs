@@ -36,7 +36,7 @@ type DiscoverEffs r = Members '[Embed IO, Error CLIErr, Exec, ReadFS, Output Con
 -- | Discover functions produce 'ConfiguredStrategy's, given a base directory
 -- to search
 data Discover = Discover
-  { discoverName :: String
+  { discoverName :: Text
   , discoverFunc :: forall r. DiscoverEffs r => Path Abs Dir -> Sem r ()
   }
 
@@ -67,7 +67,7 @@ type StrategyEffs r = Members '[Embed IO, Error CLIErr, Exec, ReadFS] r
 -- @options@ must have 'ToJSON' and 'FromJSON' instances -- these are used to
 -- serialize\/deserialize a strategy's options to/from disk
 data Strategy options = Strategy
-  { strategyName     :: String -- ^ e.g., "python-pipenv"
+  { strategyName     :: Text -- ^ e.g., "python-pipenv"
   , strategyAnalyze  :: forall r. StrategyEffs r => options -> Sem r Graph
   , strategyModule   :: options -> Path Rel Dir -- ^ Determine the module directory for grouping with other strategies
   , strategyOptimal  :: Optimal -- ^ Whether this strategy is considered "optimal" -- i.e., best case analysis for a given project. Notably, this __does not__ imply "complete".
@@ -78,7 +78,7 @@ data Strategy options = Strategy
 --
 -- For example, @"python"@ is a @StrategyGroup@ that has pipenv, piplist, ... as strategies
 data StrategyGroup = StrategyGroup
-  { groupName       :: String -- ^ e.g., "python"
+  { groupName       :: Text -- ^ e.g., "python"
   , groupStrategies :: [SomeStrategy]
   }
 
@@ -101,7 +101,7 @@ instance ToJSON ConfiguredStrategy where
 -- | Completed strategy output. See 'Strategy' for additional information about
 -- these fields.
 data CompletedStrategy = CompletedStrategy
-  { completedName     :: String
+  { completedName     :: Text
   , completedModule   :: Path Rel Dir
   , completedGraph    :: Graph
   , completedOptimal  :: Optimal

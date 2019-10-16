@@ -18,8 +18,10 @@ import Prologue
 import           Control.Exception hiding (throw)
 import qualified Data.ByteString.Lazy as BL
 import           Data.ByteString.Lazy.Optics
+import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import           Data.Text.Lazy.Encoding (decodeUtf8)
+import           Data.Text.Optics
 import           Optics
 import           Path.IO
 import           Polysemy
@@ -51,7 +53,7 @@ execInputParser parser dir cmd = interpret $ \case
   Input -> do
     stdout <- execThrow dir cmd
     case runParser parser "" (TL.toStrict (decodeUtf8 stdout)) of
-      Left err -> throw (CommandParseError "" (show err)) -- TODO: command name
+      Left err -> throw (CommandParseError "" (T.pack (show err))) -- TODO: command name
       Right a -> pure a
 {-# INLINE execInputParser #-}
 
@@ -60,7 +62,7 @@ execInputJson dir cmd = interpret $ \case
   Input -> do
     stdout <- execThrow dir cmd
     case eitherDecode stdout of
-      Left err -> throw (CommandParseError "" (show err)) -- TODO: command name
+      Left err -> throw (CommandParseError "" (T.pack (show err))) -- TODO: command name
       Right a -> pure a
 {-# INLINE execInputJson #-}
 
@@ -68,7 +70,7 @@ execInputJson dir cmd = interpret $ \case
 execThrow :: Members '[Exec, Error CLIErr] r => Path Rel Dir -> Command -> Sem r BL.ByteString
 execThrow dir cmd = do
   (exitcode, stdout, stderr) <- exec dir cmd
-  when (exitcode /= ExitSuccess) $ throw (CommandFailed "" (stderr ^. unpackedChars)) -- TODO: command name
+  when (exitcode /= ExitSuccess) $ throw (CommandFailed "" (stderr ^. unpackedChars % re unpacked)) -- TODO: command name
   pure stdout
 
 execToIO :: Member (Embed IO) r => InterpreterFor Exec r
