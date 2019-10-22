@@ -5,6 +5,7 @@ module Effect.Exec
   , exec
   , execThrow
   , Command(..)
+  , AllowErr(..)
 
   , execInputParser
   , execInputJson
@@ -16,12 +17,12 @@ module Effect.Exec
 import Prologue
 
 import           Control.Exception hiding (throw)
+import           Control.Monad.Except (ExceptT(..), runExceptT)
 import qualified Data.ByteString.Lazy as BL
 import           Data.ByteString.Lazy.Optics
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import           Data.Text.Lazy.Encoding (decodeUtf8)
-import           Data.Text.Optics
 import           Optics
 import           Path.IO
 import           Polysemy
@@ -34,52 +35,82 @@ import           Text.Megaparsec (Parsec, runParser)
 import Diagnostics
 
 data Command = Command
-  { cmdNames :: [Path Rel File] -- ^ Possible command names. E.g., @[[relfile|pip|], [relfile|pip3|]]@. This may also include things like @[relfile|gradlew|]@
-  , cmdArgs  :: [String]
-  }
+  { cmdNames    :: [Path Rel File] -- ^ Possible command names. E.g., @[[relfile|pip|], [relfile|pip3|]]@. This may also include things like @[relfile|gradlew|]@
+  , cmdBaseArgs :: [String] -- ^ Base arguments for the command. Additional arguments can be passed when running commands (e.g., 'exec')
+  , cmdAllowErr :: AllowErr -- ^ Error (i.e. non-zero exit code) tolerance policy for running commands. This is helpful for commands like @npm@, that nonsensically return non-zero exit codes when a command succeeds
+  } deriving (Eq, Ord, Show, Generic)
+
+data CmdFailure = CmdFailure
+  { cmdFailureName   :: String
+  , cmdFailureExit   :: ExitCode
+  , cmdFailureStderr :: Stderr
+  } deriving (Eq, Ord, Show, Generic)
+
+data AllowErr =
+    Never -- ^ never ignore non-zero exit (return 'CLIErr')
+  | NonEmptyStdout -- ^ when `stdout` is non-empty, ignore non-zero exit
+  | Always -- ^ always ignore non-zero exit
+    deriving (Eq, Ord, Show, Generic)
+
+type Stdout = BL.ByteString
+type Stderr = BL.ByteString
 
 data Exec m a where
-  Exec :: Path Rel Dir -> Command -> Exec m (ExitCode, BL.ByteString, BL.ByteString) -- stdout, stderr
+  -- | Exec runs a command and returns either:
+  -- - stdout when any of the 'cmdNames' succeed
+  -- - failure descriptions for all of the commands we tried
+  Exec :: Path Rel Dir -> Command -> [String] -> Exec m (Either [CmdFailure] Stdout)
 
 makeSem_ ''Exec
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
-exec :: Member Exec r => Path Rel Dir -> Command -> Sem r (ExitCode, BL.ByteString, BL.ByteString)
+exec :: Member Exec r => Path Rel Dir -> Command -> [String] -> Sem r (Either [CmdFailure] Stdout)
 
 type Parser = Parsec Void Text
 
-execInputParser :: Members '[Exec, Error CLIErr] r => Parser a -> Path Rel Dir -> Command -> InterpreterFor (Input a) r
-execInputParser parser dir cmd = interpret $ \case
+execInputParser :: Members '[Exec, Error CLIErr] r => Parser a -> Path Rel Dir -> Command -> [String] -> InterpreterFor (Input a) r
+execInputParser parser dir cmd args = interpret $ \case
   Input -> do
-    stdout <- execThrow dir cmd
+    stdout <- execThrow dir cmd args
     case runParser parser "" (TL.toStrict (decodeUtf8 stdout)) of
       Left err -> throw (CommandParseError "" (T.pack (show err))) -- TODO: command name
       Right a -> pure a
 {-# INLINE execInputParser #-}
 
-execInputJson :: (FromJSON a, Members '[Exec, Error CLIErr] r) => Path Rel Dir -> Command -> InterpreterFor (Input a) r
-execInputJson dir cmd = interpret $ \case
+execInputJson :: (FromJSON a, Members '[Exec, Error CLIErr] r) => Path Rel Dir -> Command -> [String] -> InterpreterFor (Input a) r
+execInputJson dir cmd args = interpret $ \case
   Input -> do
-    stdout <- execThrow dir cmd
+    stdout <- execThrow dir cmd args
     case eitherDecode stdout of
       Left err -> throw (CommandParseError "" (T.pack (show err))) -- TODO: command name
       Right a -> pure a
 {-# INLINE execInputJson #-}
 
 -- | A variant of 'exec' that throws a 'CLIErr' when the command returns a non-zero exit code
-execThrow :: Members '[Exec, Error CLIErr] r => Path Rel Dir -> Command -> Sem r BL.ByteString
-execThrow dir cmd = do
-  (exitcode, stdout, stderr) <- exec dir cmd
-  when (exitcode /= ExitSuccess) $ throw (CommandFailed "" (stderr ^. unpackedChars % re unpacked)) -- TODO: command name
-  pure stdout
+execThrow :: Members '[Exec, Error CLIErr] r => Path Rel Dir -> Command -> [String] -> Sem r BL.ByteString
+execThrow dir cmd args = do
+  result <- exec dir cmd args
+  case result of
+    Left failures -> throw (CommandFailed "" (T.pack (show failures))) -- TODO: better error
+    Right stdout -> pure stdout
+{-# INLINE execThrow #-}
 
 execToIO :: Member (Embed IO) r => InterpreterFor Exec r
 execToIO = interpret $ \case
-  Exec dir cmd -> do
+  Exec dir cmd args -> do
     absolute <- makeAbsolute dir
-    let runCmd :: String -> IO (ExitCode, BL.ByteString, BL.ByteString)
-        runCmd cmdName = readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName (cmdArgs cmd)))
-    embed $ asum (map (runCmd . fromRelFile) (cmdNames cmd))
-      `catch` (\(e :: IOException) -> pure (ExitFailure (-1), "", show e ^. packedChars)) -- TODO: better error?
+    -- TODO: disgusting/unreadable
+    let runCmd :: String -> ExceptT [CmdFailure] IO BL.ByteString
+        runCmd cmdName = ExceptT $ flip catch (\(e :: IOException) -> pure (Left [CmdFailure cmdName (ExitFailure (-1)) (show e ^. packedChars)])) $ do
+          (exitcode, stdout, stderr) <- readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName (cmdBaseArgs cmd <> args)))
+          case (exitcode, cmdAllowErr cmd) of
+            (ExitSuccess, _) -> pure (Right stdout)
+            (_, Never) -> pure (Left [CmdFailure cmdName exitcode stderr])
+            (_, NonEmptyStdout) ->
+              if BL.null stdout
+                then pure (Left [CmdFailure cmdName exitcode stderr])
+                else pure (Right stdout)
+            (_, Always) -> pure (Right stdout)
+    embed $ runExceptT $ asum (map (\name -> runCmd (fromRelFile name)) (cmdNames cmd))
 {-# INLINE execToIO #-}
 

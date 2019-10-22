@@ -44,13 +44,14 @@ pipListCmd = Command
   { cmdNames = [ [relfile|pip3|]
                , [relfile|pip|]
                ]
-  , cmdArgs = ["list", "--format=json"]
+  , cmdBaseArgs = ["list", "--format=json"]
+  , cmdAllowErr = Never
   }
 
 strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "python-piplist"
-  , strategyAnalyze = \opts -> analyze & execInputJson (targetDir opts) pipListCmd
+  , strategyAnalyze = \opts -> analyze & execInputJson (targetDir opts) pipListCmd []
   , strategyModule = targetDir
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete

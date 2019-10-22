@@ -50,6 +50,7 @@ common deps
     , filemanip                    ^>=0.3.6
     , megaparsec                   ^>=7.0.5
     , modern-uri                   ^>=0.3.1
+    , mtl                          ^>=2.2.2
     , optics                       ^>=0.1
     , optparse-applicative         ^>=0.15.1
     , path                         ^>=0.6.1

@@ -53,7 +53,8 @@ discover' = walk $ \_ _ files ->
 pipenvGraphCmd :: Command
 pipenvGraphCmd = Command
   { cmdNames = [[relfile|pipenv|]]
-  , cmdArgs = ["graph", "--json-tree"]
+  , cmdBaseArgs = ["graph", "--json-tree"]
+  , cmdAllowErr = Never
   }
 
 strategyWithCmd :: Strategy BasicFileOpts
@@ -61,7 +62,7 @@ strategyWithCmd = Strategy
   { strategyName = "python-pipenv"
   , strategyAnalyze = \opts -> analyzeWithCmd
       & fileInputJson @PipfileLock (targetFile opts)
-      & execInputJson @[PipenvGraphDep] (parent (targetFile opts)) pipenvGraphCmd
+      & execInputJson @[PipenvGraphDep] (parent (targetFile opts)) pipenvGraphCmd []
   , strategyModule = parent . targetFile
   , strategyOptimal = Optimal
   , strategyComplete = Complete

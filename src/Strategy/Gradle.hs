@@ -1,18 +1,22 @@
 
+{-# language QuasiQuotes #-}
+
 module Strategy.Gradle
   (
   ) where
 
-{-
-
-import Prologue
+import Prologue hiding (many)
 
 import qualified Data.ByteString.Lazy.Char8 as BL8
+import           Data.Char (isLetter)
 import qualified Data.Text as T
 import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
+import           Text.Megaparsec
+import           Text.Megaparsec.Char
 
+import           Diagnostics
 import           Discovery.Walk
 import           Effect.Exec
 import           Effect.ReadFS
@@ -22,8 +26,8 @@ import           Types
 import Path.IO (WalkAction)
 
 data GradleOpts = GradleOpts
-  { gradleOptsDir               :: Path Rel Dir
-  , gradleOptsProject           :: Text
+  { gradleOptsDir      :: Path Rel Dir
+  , gradleOptsProjects :: [Text]
   --, gradleOptsCmd               :: Text
   --, gradleOptsTask              :: Text
   --, gradleOptsOnline            :: Bool
@@ -41,55 +45,59 @@ instance FromJSON GradleOpts where
                <*> obj .: "project"
 
 instance ToJSON GradleOpts where
-  toJSON GradleOpts{..} = object ["dir" .= gradleOptsDir, "project" .= gradleOptsProject]
+  toJSON GradleOpts{..} = object ["dir" .= gradleOptsDir, "projects" .= gradleOptsProjects]
 
-data Gradle m a where
-  GradleProjects :: Path Rel Dir -> Gradle m [String]
+gradleTasksCmd :: Command
+gradleTasksCmd = Command
+  { cmdNames = [[relfile|gradlew|], [relfile|gradlew.bat|], [relfile|gradle|]]
+  , cmdBaseArgs = ["tasks", "--all"]
+  , cmdAllowErr = Never
+  }
 
-makeSem ''Gradle
+type Parser = Parsec Void Text
 
-gradleToIO :: Member (Embed IO) r => InterpreterFor Gradle r
-gradleToIO = undefined
+data GradleTasksOutput
 
-gradle :: (Member Exec r, Member ReadFS r) => Path b Dir -> [String] -> Sem r (ExitCode, BL8.ByteString, BL8.ByteString)
-gradle dir args = do
-  wrappers <- filterM doesFileExist
-                [ dir </> [relfile|gradlew|]
-                , dir </> [relfile|gradlew.bat|]
-                ]
+gradleDepTasksParser :: Parser [Text]
+gradleDepTasksParser = [] <$ eof
+                   <|> ((:) <$> try parseLine <*> gradleDepTasksParser)
+                   <|> (ignoreLine *> gradleDepTasksParser)
+  where
+  -- TODO: what are the valid characters for project names?
+  parseLine = takeWhile1P Nothing (\c -> isLetter c || c == '-') <* chunk ":dependencies " <* ignoreLine
+  ignoreLine = takeWhileP Nothing (\c -> c /= '\n' && c /= 'r') *> optional eol
 
-  gradlewExists <- doesFileExist (dir </> [relfile|gradlew|])
-  undefined
-
-discover :: forall r. Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover = gradleToIO . walk (\dir subdirs files -> do
+discover :: forall r. Members '[Embed IO, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover = walk $ \dir subdirs files -> do
     let buildscripts = filter (\f -> "build.gradle" `isPrefixOf` fileName f) files
 
     if null buildscripts
       then walkContinue
       else do
-        projects <- gradleProjects dir
+        projects <- undefined dir :: Sem r [Text]
         if null projects
           then walkContinue
           else do
-            traverse_ (output . configure dir . T.pack) projects
+            output (configure dir projects)
             walkSkipAll subdirs
-  )
 
 strategy :: Strategy GradleOpts
 strategy = Strategy
   { strategyName = "gradle-cli"
   , strategyAnalyze = analyze
   , strategyModule = gradleOptsDir
+  , strategyOptimal = Optimal
+  , strategyComplete = Complete
   }
 
 analyze :: Members '[Exec, Error CLIErr] r => GradleOpts -> Sem r G.Graph
 analyze GradleOpts{..} = do
+  undefined
+{-
   (exitcode, stdout, stderr) <- exec gradleOptsDir "gradle" [T.unpack gradleOptsProject <> ":dependencies", "--offline", "--quiet"]
   when (exitcode /= ExitSuccess) (throw $ StrategyFailed $ "Gradle returned an error: " <> BL8.unpack stderr)
   undefined
-
-configure :: Path Rel Dir -> Text -> ConfiguredStrategy
-configure path project = ConfiguredStrategy strategy (GradleOpts path project)
-
 -}
+
+configure :: Path Rel Dir -> [Text] -> ConfiguredStrategy
+configure dir projects = ConfiguredStrategy strategy (GradleOpts dir projects)
