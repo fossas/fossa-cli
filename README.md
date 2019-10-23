@@ -17,3 +17,15 @@ $ cabal run hscli -- scan -d path/to/basedir/
 ```
 
 This will place `analysis.json` at `path/to/basedir/analysis.json`
+
+## Testing
+
+Configure the project to enable tests (this will rebuild dependencies the first time):
+```sh
+cabal configure --enable-tests
+```
+
+Run the tests:
+```
+cabal test
+```
