@@ -31,6 +31,7 @@ type Revision struct {
 	Issues         []Issue
 	Version        string
 	Hash           string
+	DownloadURL    string
 }
 
 type DependencyLock struct {
