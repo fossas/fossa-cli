@@ -5,9 +5,9 @@ module App
 
 import Prologue
 
-import Data.Maybe (fromMaybe)
 import Options.Applicative
 import Path.IO
+import System.Exit (die)
 
 import App.Scan (scanMain)
 
@@ -18,10 +18,24 @@ appMain = do
   currentDir <- getCurrentDir
 
   case options of
-    ScanCmd basedir -> scanMain (fromMaybe currentDir basedir)
+    ScanCmd basedir ->
+      case basedir of
+        Nothing -> scanMain currentDir
+        Just dir -> do
+          resolved <- validateDir dir
+          scanMain resolved
 
-newtype CommandOpts = ScanCmd (Maybe (Path Abs Dir)) -- basedir for scanning
+newtype CommandOpts = ScanCmd (Maybe (FilePath)) -- basedir for scanning
   deriving Show
+
+validateDir :: FilePath -> IO (Path Abs Dir)
+validateDir dir = do
+  absolute <- resolveDir' dir
+  exists <- doesDirExist absolute
+
+  when (not exists) (die $ "ERROR: Directory " <> show absolute <> " does not exist")
+
+  pure absolute
 
 opts :: ParserInfo CommandOpts
 opts = info (commands <**> helper)
@@ -36,5 +50,5 @@ commands = hsubparser
 scanCmd :: ParserInfo CommandOpts
 scanCmd = info
   (ScanCmd <$>
-    optional (option (maybeReader parseAbsDir) $ long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning"))
+    optional (strOption $ long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning"))
   (progDesc "Scan for dependencies")
