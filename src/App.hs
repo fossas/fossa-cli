@@ -25,7 +25,7 @@ appMain = do
           resolved <- validateDir dir
           scanMain resolved
 
-newtype CommandOpts = ScanCmd (Maybe (FilePath)) -- basedir for scanning
+newtype CommandOpts = ScanCmd (Maybe FilePath) -- basedir for scanning
   deriving Show
 
 validateDir :: FilePath -> IO (Path Abs Dir)
@@ -33,7 +33,7 @@ validateDir dir = do
   absolute <- resolveDir' dir
   exists <- doesDirExist absolute
 
-  when (not exists) (die $ "ERROR: Directory " <> show absolute <> " does not exist")
+  unless exists (die $ "ERROR: Directory " <> show absolute <> " does not exist")
 
   pure absolute
 
