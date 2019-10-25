@@ -3,7 +3,7 @@ version: 2
 jobs:
   unit-test:
     docker:
-      - image: fpco/stack-build:lts
+      - image: haskell:8.6
     steps:
       - checkout
       - run:
