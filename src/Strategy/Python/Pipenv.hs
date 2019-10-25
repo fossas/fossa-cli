@@ -1,6 +1,3 @@
-
-{-# language QuasiQuotes #-}
-
 module Strategy.Python.Pipenv
   ( discover
   , strategyWithCmd
@@ -52,7 +49,7 @@ discover' = walk $ \_ _ files ->
 
 pipenvGraphCmd :: Command
 pipenvGraphCmd = Command
-  { cmdNames = [[relfile|pipenv|]]
+  { cmdNames = ["pipenv"]
   , cmdBaseArgs = ["graph", "--json-tree"]
   , cmdAllowErr = Never
   }

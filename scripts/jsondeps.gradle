@@ -1,0 +1,63 @@
+// A gradle init script to add a `jsonDeps` task.
+// This task outputs project dependency trees as JSON.
+//
+// The resulting JSON output is an array of the top-level dependencies.
+//
+// Dependencies have a "type", either "project" or "package"
+//
+// "project" dependencies look like: `{ "type": "project", "name": ":project-name" }`
+// "package" dependencies look like: `{ "type": "package", "name": "group:module", "version": "1.0", "dependencies": [] }`
+//
+// Semantically:
+//
+// type Name = Text
+// type Version = Text
+//
+// data Dependency =
+//     Project Name -- first-party (sub)projects
+//   | Package Name Version [Dependency]
+
+allprojects {
+    task jsonDeps {
+        doLast {
+            def toJSON
+            toJSON = { resolvedDep ->
+                // TODO: moduleArtifacts never returns null; can it return empty set? it seems to only return a single module or project
+                def artifact = resolvedDep.moduleArtifacts.iterator().next()
+                def id = artifact.id.componentIdentifier
+
+                def json = "{"
+                if (id instanceof ProjectComponentIdentifier) {
+                    json += "\"type\":\"project\",\"name\":\"${id.projectPath}\"" // also: can use projectName if we don't want the leading colon
+                } else if (id instanceof ModuleComponentIdentifier) {
+                    json += "\"type\":\"package\",\"name\":\"${id.group}:${id.module}\",\"version\":\"${id.version}\","
+                    def childResults = []
+                    if (!resolvedDep.children.isEmpty()) {
+                        resolvedDep.children.each { childResolvedDep ->
+                            def result = toJSON childResolvedDep
+                            childResults << result
+                        }
+                    }
+                    json += "\"dependencies\":["
+                    json += childResults.join(",")
+                    json += "]"
+                }
+
+                json += "}"
+
+                return json
+            }
+
+            def results = []
+            try {
+                project.configurations.compile.resolvedConfiguration.firstLevelModuleDependencies.each { dep ->
+                    def result = toJSON dep
+                    results << result
+                }
+            } catch (Exception ignored) {}
+
+            def combined = results.join(",")
+            println "JSONDEPS_${project.name}_[${combined}]"
+        }
+    }
+}

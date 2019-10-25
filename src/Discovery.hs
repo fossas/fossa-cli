@@ -3,6 +3,7 @@ module Discovery
   , strategyGroups
   ) where
 
+import qualified Strategy.Gradle as Gradle
 import qualified Strategy.NpmList as NpmList
 import qualified Strategy.Python.Pipenv as Pipenv
 import qualified Strategy.Python.PipList as PipList
@@ -13,11 +14,14 @@ import qualified Discovery.Config as Config
 import           Types
 
 discoverFuncs :: [Discover]
-discoverFuncs = [{-NpmList.discover,-} PipList.discover, Pipenv.discover, SetupPy.discover, ReqTxt.discover, Config.loadConfig strategyGroups]
+discoverFuncs = [Gradle.discover, NpmList.discover, PipList.discover, Pipenv.discover, SetupPy.discover, ReqTxt.discover, Config.loadConfig strategyGroups]
 
 strategyGroups :: [StrategyGroup]
 strategyGroups =
-  [ StrategyGroup "nodejs"
+  [ StrategyGroup "gradle"
+      [ SomeStrategy Gradle.strategy
+      ]
+  , StrategyGroup "nodejs"
       [ SomeStrategy NpmList.strategy
       ]
   , StrategyGroup "python"

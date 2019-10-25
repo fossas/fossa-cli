@@ -15,6 +15,8 @@ module Effect.Logger
 
   , ignoreLogger
   , loggerToIO
+  , module Data.Text.Prettyprint.Doc
+  , module Data.Text.Prettyprint.Doc.Render.Terminal
   ) where
 
 import Prologue
@@ -64,6 +66,7 @@ ignoreLogger = interpret $ \case
   LogSticky _ -> pure ()
 {-# INLINE ignoreLogger #-}
 
+-- TODO: block until log has been flushed
 -- | A thread-safe interpreter for the Logger effect
 loggerToIO :: Member (Embed IO) r => Severity -> InterpreterFor Logger r
 loggerToIO minSeverity act = do

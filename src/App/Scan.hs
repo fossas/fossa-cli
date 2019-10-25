@@ -13,6 +13,7 @@ import Polysemy.Async
 import Polysemy.Error
 import Polysemy.Output
 import Polysemy.Resource
+import System.Exit (die)
 
 import App.Scan.Project (mkProjects)
 import Control.Parallel
@@ -22,16 +23,20 @@ import Diagnostics
 import Discovery
 import Effect.Exec
 import Effect.Logger
-import Effect.ReadFS
+import Effect.ReadFS hiding (doesDirExist)
 import Types
 
 scanMain :: Path Abs Dir -> IO ()
-scanMain basedir = runFinal
-        . embedToFinal @IO
-        . resourceToIOFinal
-        . asyncToIOFinal
-        . loggerToIO Info
-        $ scan basedir
+scanMain basedir = do
+  exists <- doesDirExist basedir
+  unless exists (die $ "ERROR: " <> show basedir <> " does not exist")
+
+  scan basedir
+    & loggerToIO Info
+    & asyncToIOFinal
+    & resourceToIOFinal
+    & embedToFinal @IO
+    & runFinal
 
 scan :: Members '[Final IO, Embed IO, Resource, Async, Logger] r => Path Abs Dir -> Sem r ()
 scan basedir = do
@@ -39,12 +44,12 @@ scan basedir = do
   capabilities <- embed getNumCapabilities
 
   (results, ()) <- runActions capabilities (map ADiscover discoverFuncs) (runAction basedir) updateProgress
-    & outputToIOMonoid (S.singleton)
+    & outputToIOMonoid S.singleton
 
   let projects = mkProjects strategyGroups results
   embed (encodeFile "analysis.json" projects)
 
-runAction :: Members '[Final IO, Embed IO, Logger, Output CompletedStrategy] r => Path Abs Dir -> (Action -> Sem r ()) -> Action -> Sem r ()
+runAction :: Members '[Final IO, Embed IO, Resource, Logger, Output CompletedStrategy] r => Path Abs Dir -> (Action -> Sem r ()) -> Action -> Sem r ()
 runAction basedir enqueue = \case
   ADiscover Discover{..} -> do
     let prettyName = fill 20 (annotate (colorDull Cyan) (pretty discoverName <> " "))

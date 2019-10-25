@@ -1,6 +1,3 @@
-
-{-# language QuasiQuotes #-}
-
 module Strategy.Python.PipList
   ( discover
   , strategy
@@ -41,9 +38,7 @@ discover' = walk $ \dir _ files ->
 
 pipListCmd :: Command
 pipListCmd = Command
-  { cmdNames = [ [relfile|pip3|]
-               , [relfile|pip|]
-               ]
+  { cmdNames = ["pip3", "pip"]
   , cmdBaseArgs = ["list", "--format=json"]
   , cmdAllowErr = Never
   }

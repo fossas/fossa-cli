@@ -1,5 +1,3 @@
-{-# language QuasiQuotes #-}
-
 module Strategy.NpmList
   ( discover
   , strategy
@@ -46,7 +44,7 @@ strategy = Strategy
 
 npmListCmd :: Command
 npmListCmd = Command
-  { cmdNames = [[relfile|npm|]]
+  { cmdNames = ["npm"]
   , cmdBaseArgs = ["ls", "--json", "--production"]
   , cmdAllowErr = NonEmptyStdout
   }

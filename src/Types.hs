@@ -22,8 +22,10 @@ import Prologue
 import Polysemy
 import Polysemy.Error
 import Polysemy.Output
+import Polysemy.Resource
 
 import Effect.Exec
+import Effect.Logger
 import Effect.ReadFS
 import Diagnostics
 import Graph
@@ -31,7 +33,7 @@ import Graph
 ---------- Discovery
 
 -- | The effects available for use in 'Discover'
-type DiscoverEffs r = Members '[Embed IO, Error CLIErr, Exec, ReadFS, Output ConfiguredStrategy] r
+type DiscoverEffs r = Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, ReadFS, Output ConfiguredStrategy] r
 
 -- | Discover functions produce 'ConfiguredStrategy's, given a base directory
 -- to search
@@ -60,7 +62,7 @@ instance ToJSON Complete where
   toJSON NotComplete = toJSON False
 
 -- | The effects available for use in 'Strategy'
-type StrategyEffs r = Members '[Embed IO, Error CLIErr, Exec, ReadFS] r
+type StrategyEffs r = Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, ReadFS] r
 
 -- | Strategies produce dependency graphs
 --

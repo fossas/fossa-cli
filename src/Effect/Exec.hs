@@ -35,7 +35,7 @@ import           Text.Megaparsec (Parsec, runParser)
 import Diagnostics
 
 data Command = Command
-  { cmdNames    :: [Path Rel File] -- ^ Possible command names. E.g., @[[relfile|pip|], [relfile|pip3|]]@. This may also include things like @[relfile|gradlew|]@
+  { cmdNames    :: [String] -- ^ Possible command names. E.g., "pip", "pip3", "./gradlew".
   , cmdBaseArgs :: [String] -- ^ Base arguments for the command. Additional arguments can be passed when running commands (e.g., 'exec')
   , cmdAllowErr :: AllowErr -- ^ Error (i.e. non-zero exit code) tolerance policy for running commands. This is helpful for commands like @npm@, that nonsensically return non-zero exit codes when a command succeeds
   } deriving (Eq, Ord, Show, Generic)
@@ -101,7 +101,7 @@ execToIO = interpret $ \case
     absolute <- makeAbsolute dir
     -- TODO: disgusting/unreadable
     let runCmd :: String -> ExceptT [CmdFailure] IO BL.ByteString
-        runCmd cmdName = ExceptT $ flip catch (\(e :: IOException) -> pure (Left [CmdFailure cmdName (ExitFailure (-1)) (show e ^. packedChars)])) $ do
+        runCmd cmdName = ExceptT $ handle (\(e :: IOException) -> pure (Left [CmdFailure cmdName (ExitFailure (-1)) (show e ^. packedChars)])) $ do
           (exitcode, stdout, stderr) <- readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName (cmdBaseArgs cmd <> args)))
           case (exitcode, cmdAllowErr cmd) of
             (ExitSuccess, _) -> pure (Right stdout)
@@ -111,6 +111,6 @@ execToIO = interpret $ \case
                 then pure (Left [CmdFailure cmdName exitcode stderr])
                 else pure (Right stdout)
             (_, Always) -> pure (Right stdout)
-    embed $ runExceptT $ asum (map (\name -> runCmd (fromRelFile name)) (cmdNames cmd))
+    embed $ runExceptT $ asum (map runCmd (cmdNames cmd))
 {-# INLINE execToIO #-}
 

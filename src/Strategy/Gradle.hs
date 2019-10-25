@@ -1,103 +1,132 @@
 
-{-# language QuasiQuotes #-}
+{-# language TemplateHaskell #-}
 
 module Strategy.Gradle
-  (
+  ( discover
+  , strategy
   ) where
 
-import Prologue hiding (many)
+import Prologue hiding (json, many)
 
-import qualified Data.ByteString.Lazy.Char8 as BL8
-import           Data.Char (isLetter)
+import           Data.Aeson.Types (Parser, unexpected)
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BL
+import           Data.FileEmbed (embedFile)
+import qualified Data.Map.Strict as M
+import           Data.Maybe (mapMaybe)
 import qualified Data.Text as T
+import           Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import           Path.IO (createTempDir, getTempDir, removeDirRecur)
 import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
-import           Text.Megaparsec
-import           Text.Megaparsec.Char
+import           Polysemy.Resource
+import qualified System.FilePath as FP
 
 import           Diagnostics
 import           Discovery.Walk
 import           Effect.Exec
-import           Effect.ReadFS
+import           Effect.GraphBuilder
 import qualified Graph as G
 import           Types
 
-import Path.IO (WalkAction)
-
-data GradleOpts = GradleOpts
-  { gradleOptsDir      :: Path Rel Dir
-  , gradleOptsProjects :: [Text]
-  --, gradleOptsCmd               :: Text
-  --, gradleOptsTask              :: Text
-  --, gradleOptsOnline            :: Bool
-  --, gradleOptsAllSubmodules     :: Bool
-  --, gradleOptsAllConfigurations :: Bool
-  --, gradleOptsTimeout           :: Text -- TODO: Duration
-  --, gradleOptsRetries           :: Int
-  --, gradleOptsProject           :: Text
-  --, gradleOptsConfiguration     :: Text
-  } deriving (Show, Generic)
-
-instance FromJSON GradleOpts where
-  parseJSON = withObject "GradleOpts" $ \obj ->
-    GradleOpts <$> obj .: "dir"
-               <*> obj .: "project"
-
-instance ToJSON GradleOpts where
-  toJSON GradleOpts{..} = object ["dir" .= gradleOptsDir, "projects" .= gradleOptsProjects]
-
 gradleTasksCmd :: Command
 gradleTasksCmd = Command
-  { cmdNames = [[relfile|gradlew|], [relfile|gradlew.bat|], [relfile|gradle|]]
-  , cmdBaseArgs = ["tasks", "--all"]
+  { cmdNames = ["./gradlew", "gradlew.bat", "gradle"]
+  , cmdBaseArgs = ["tasks"]
   , cmdAllowErr = Never
   }
 
-type Parser = Parsec Void Text
+gradleJsonDepsCmd :: Command
+gradleJsonDepsCmd = Command
+  { cmdNames = ["./gradlew", "gradlew.bat", "gradle"]
+  , cmdBaseArgs = ["jsonDeps", "-I"]
+  , cmdAllowErr = Never
+  }
 
-data GradleTasksOutput
+discover :: Discover
+discover = Discover
+  { discoverName = "gradle"
+  , discoverFunc = discover'
+  }
 
-gradleDepTasksParser :: Parser [Text]
-gradleDepTasksParser = [] <$ eof
-                   <|> ((:) <$> try parseLine <*> gradleDepTasksParser)
-                   <|> (ignoreLine *> gradleDepTasksParser)
-  where
-  -- TODO: what are the valid characters for project names?
-  parseLine = takeWhile1P Nothing (\c -> isLetter c || c == '-') <* chunk ":dependencies " <* ignoreLine
-  ignoreLine = takeWhileP Nothing (\c -> c /= '\n' && c /= 'r') *> optional eol
-
-discover :: forall r. Members '[Embed IO, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover = walk $ \dir subdirs files -> do
+discover' :: forall r. Members '[Embed IO, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
+discover' = walk $ \dir subdirs files -> do
     let buildscripts = filter (\f -> "build.gradle" `isPrefixOf` fileName f) files
 
     if null buildscripts
       then walkContinue
       else do
-        projects <- undefined dir :: Sem r [Text]
-        if null projects
-          then walkContinue
-          else do
-            output (configure dir projects)
+        res <- exec dir gradleTasksCmd []
+        case res of
+          Left _ -> walkContinue
+          Right _ -> do
+            output (configure dir)
             walkSkipAll subdirs
 
-strategy :: Strategy GradleOpts
+strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "gradle-cli"
   , strategyAnalyze = analyze
-  , strategyModule = gradleOptsDir
+  , strategyModule = targetDir
   , strategyOptimal = Optimal
   , strategyComplete = Complete
   }
 
-analyze :: Members '[Exec, Error CLIErr] r => GradleOpts -> Sem r G.Graph
-analyze GradleOpts{..} = do
-  undefined
-{-
-  (exitcode, stdout, stderr) <- exec gradleOptsDir "gradle" [T.unpack gradleOptsProject <> ":dependencies", "--offline", "--quiet"]
-  when (exitcode /= ExitSuccess) (throw $ StrategyFailed $ "Gradle returned an error: " <> BL8.unpack stderr)
-  undefined
--}
+initScript :: ByteString
+initScript = $(embedFile "scripts/jsondeps.gradle")
 
-configure :: Path Rel Dir -> [Text] -> ConfiguredStrategy
-configure dir projects = ConfiguredStrategy strategy (GradleOpts dir projects)
+analyze :: Members '[Embed IO, Resource, Exec, Error CLIErr] r => BasicDirOpts -> Sem r G.Graph
+analyze BasicDirOpts{..} =
+  bracket (embed (getTempDir >>= \tmp -> createTempDir tmp "fossa-gradle"))
+          (embed . removeDirRecur)
+          act
+
+  where
+
+  act tmpDir = do
+    let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
+    embed (BS.writeFile initScriptFilepath initScript)
+    stdout <- execThrow targetDir gradleJsonDepsCmd [initScriptFilepath]
+    embed (print initScriptFilepath)
+
+    let text = decodeUtf8 $ BL.toStrict stdout
+        textLines :: [Text]
+        textLines = T.lines text
+        -- jsonDeps lines look like:
+        -- JSONDEPS_:project-path_[{"type":"package", ...}, ...]
+        jsonDepsLines :: [Text]
+        jsonDepsLines = mapMaybe (T.stripPrefix "JSONDEPS_") textLines
+
+        packagePathsWithJson :: [(Text,Text)]
+        packagePathsWithJson = map (\line -> let (x,y) = T.breakOn "_" line in (x, T.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
+
+        packagePathsWithDecoded :: [(Text, [JsonDep])]
+        packagePathsWithDecoded = [(name, deps) | (name, json) <- packagePathsWithJson
+                                                  , Just deps <- [decodeStrict (encodeUtf8 json)]]
+
+        packagesToOutput :: Map Text [JsonDep]
+        packagesToOutput = M.fromList packagePathsWithDecoded
+
+    embed (print packagesToOutput)
+    pure G.empty
+
+buildGraph :: Map Text [JsonDep] -> G.Graph
+buildGraph mapping = run . evalGraphBuilder G.empty $ do
+  undefined
+
+data JsonDep =
+    ProjectDep Text -- name
+  | PackageDep Text Text [JsonDep] -- name version deps
+  deriving (Eq, Ord, Show, Generic)
+
+instance FromJSON JsonDep where
+  parseJSON = withObject "JsonDep" $ \obj -> do
+    ty <- obj .: "type" :: Parser Text
+    case ty of
+      "project" -> ProjectDep <$> obj .: "name"
+      "package" -> PackageDep <$> obj .: "name" <*> obj .: "version" <*> obj .: "dependencies"
+      _         -> unexpected (String ty)
+
+configure :: Path Rel Dir -> ConfiguredStrategy
+configure = ConfiguredStrategy strategy . BasicDirOpts

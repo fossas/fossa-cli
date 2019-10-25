@@ -46,9 +46,11 @@ data Dependency = Dependency
   , dependencyTags      :: Map Text [Text]
   } deriving (Eq, Ord, Show, Generic)
 
+-- TODO: first-party subproject as a type feels wrong..
 -- | A Dependency type. This corresponds to a "fetcher" on the backend
 data DepType =
-    NodeJSType -- ^ NPM registry (or similar)
+    SubprojectType -- ^ A first-party subproject
+  | NodeJSType -- ^ NPM registry (or similar)
   | PipType    -- ^ Pip registry
   deriving (Eq, Ord, Show, Generic)
 
