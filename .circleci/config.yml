@@ -2,11 +2,13 @@ version: 2
 
 jobs:
   unit-test:
+    docker:
+      - image: fpco/stack-build:lts
     steps:
       - checkout
       - run:
-        name: Run unit tests
-        command: cabal test
+          name: Run unit tests
+          command: cabal test
 
 workflows:
   version: 2
