@@ -21,9 +21,9 @@ module Effect.Logger
 
 import Prologue
 
-import Control.Concurrent.Async
-import Control.Concurrent.STM (atomically)
-import Control.Concurrent.STM.TQueue
+import Control.Concurrent.Async (async, wait)
+import Control.Concurrent.STM (atomically, newTVarIO, readTVar, writeTVar)
+import Control.Concurrent.STM.TQueue (newTQueueIO, readTQueue, writeTQueue)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Text.Prettyprint.Doc
@@ -66,36 +66,49 @@ ignoreLogger = interpret $ \case
   LogSticky _ -> pure ()
 {-# INLINE ignoreLogger #-}
 
--- TODO: block until log has been flushed
 -- | A thread-safe interpreter for the Logger effect
 loggerToIO :: Member (Embed IO) r => Severity -> InterpreterFor Logger r
 loggerToIO minSeverity act = do
   queue <- embed (hSetBuffering stdout NoBuffering *> newTQueueIO @(Logger Void ()))
+  cancelVar <- embed (newTVarIO False)
 
   let loop :: Text -> IO ()
       loop sticky = do
-        msg <- atomically $ readTQueue queue
+        maybeMsg <- atomically $ do
+          canceled <- readTVar cancelVar
+          if canceled
+            then pure Nothing
+            else Just <$> readTQueue queue
 
-        let stickyLen   = T.length sticky
-            clearSticky = TIO.putStr (T.replicate stickyLen "\b" <> T.replicate stickyLen " " <> T.replicate stickyLen "\b")
-        case msg of
-          Log sev doc -> do
-            when (sev >= minSeverity) $ do
-              clearSticky
-              printIt $ doc <> line
-              TIO.putStr sticky
-            loop sticky
-          LogSticky doc -> do
-            clearSticky
-            let rendered = renderIt doc
-            TIO.putStr rendered
-            loop rendered
+        case maybeMsg of
+          Nothing -> pure () -- exit
+          Just msg -> do
+            let stickyLen   = T.length sticky
+                clearSticky = TIO.putStr (T.replicate stickyLen "\b" <> T.replicate stickyLen " " <> T.replicate stickyLen "\b")
+            case msg of
+              Log sev doc -> do
+                when (sev >= minSeverity) $ do
+                  clearSticky
+                  printIt $ doc <> line
+                  TIO.putStr sticky
+                loop sticky
+              LogSticky doc -> do
+                clearSticky
+                let rendered = renderIt doc
+                TIO.putStr rendered
+                loop rendered
 
-  _ <- embed $ async $ loop ""
+  tid <- embed $ async $ loop ""
 
-  interpret (\case
+  result <- interpret (\case
     Log sev text -> embed $ atomically $ writeTQueue queue (Log sev text)
     LogSticky text -> embed $ atomically $ writeTQueue queue (LogSticky text)) act
+
+  -- wait for log queue to flush, or async logging task to end
+  embed $ atomically $ writeTVar cancelVar True
+  embed $ void (wait tid)
+
+  pure result
 {-# INLINE loggerToIO #-}
 
 printIt :: Doc AnsiStyle -> IO ()
