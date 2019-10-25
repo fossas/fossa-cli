@@ -19,7 +19,7 @@ expectDeps deps graph = toList (G.graphDeps graph) `shouldMatchList` deps
 
 -- | Expect only the given edges between @[(parent,child)]@ dependencies to be present in the graph
 expectEdges :: [(G.Dependency, G.Dependency)] -> G.Graph -> Expectation
-expectEdges edges graph = traverse_ expectEdge edges *> (length assocs `shouldBe` length edges)
+expectEdges edges graph = traverse_ expectEdge edges *> (length (concatMap IS.toList assocs) `shouldBe` length edges)
   where
   expectEdge (dep1, dep2) = flip shouldSatisfy (not . null) $
     [ () | (parentRef, children) <- IM.toList assocs

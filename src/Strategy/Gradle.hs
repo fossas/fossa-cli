@@ -4,6 +4,9 @@
 module Strategy.Gradle
   ( discover
   , strategy
+
+  , buildGraph
+  , JsonDep(..)
   ) where
 
 import Prologue hiding (json, many)

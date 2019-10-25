@@ -117,6 +117,7 @@ test-suite test
 
   -- cabal-fmt: expand test
   other-modules:
+    Gradle.GradleTest
     GraphUtil
     Python.PipListTest
     Python.PipenvTest
