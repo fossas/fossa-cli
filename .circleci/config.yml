@@ -1,0 +1,18 @@
+version: 2
+
+jobs:
+  unit-test:
+    pre:
+      - cabal install codecov-haskell
+      - cabal configure --enable-tests --enable-library-coverage
+      - cabal build
+    override:
+      - cabal test
+    post:
+      - codecov-haskell [options] [test-suite-names]
+
+workflows:
+  version: 2
+  tests:
+    jobs:
+      - unit-test
