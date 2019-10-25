@@ -82,24 +82,23 @@ data BundleShowDep = BundleShowDep
 
 type Parser = Parsec Void Text
 
-ignored :: Parser ()
-ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
-
-ignoredLine :: Parser [BundleShowDep]
-ignoredLine = do
-  ignored
-  pure $ []
-
-isEndLine :: Char -> Bool
-isEndLine '\n' = True
-isEndLine '\r' = True
-isEndLine _    = False
 
 bundleShowParser :: Parser [BundleShowDep]
 bundleShowParser = concat <$> ((line <|> ignoredLine) `sepBy` eol) <* eof
   where
+  isEndLine :: Char -> Bool
+  isEndLine '\n' = True
+  isEndLine '\r' = True
+  isEndLine _    = False
 
   -- ignore content until the end of the line
+  ignored :: Parser ()
+  ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
+
+  ignoredLine :: Parser [BundleShowDep]
+  ignoredLine = do
+    ignored
+    pure $ []
 
   findDep :: Parser Text
   findDep = takeWhileP (Just "dep") (\a -> a /= ' ')
@@ -110,12 +109,9 @@ bundleShowParser = concat <$> ((line <|> ignoredLine) `sepBy` eol) <* eof
   -- TODO: we can case split / sum-type this for better analysis
   line :: Parser [BundleShowDep]
   line = do
-    chunk "  * "
+    _ <- chunk "  * "
     dep <- findDep
-    chunk " ("
+    _ <- chunk " ("
     version <- findVersion
-    char ')'
+    _ <- char ')'
     pure $ [BundleShowDep dep version]
-
-
-  -- oneOfS = asum . map string
