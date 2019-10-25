@@ -1,6 +1,5 @@
 version: 2
 
-
 jobs:
   unit-test:
     pre:
@@ -15,5 +14,5 @@ jobs:
 workflows:
   version: 2
   tests:
-    jobs:
+    steps:
       - unit-test
