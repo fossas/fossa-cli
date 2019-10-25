@@ -26,6 +26,7 @@ import           Polysemy
 import           Polysemy.Error hiding (catch)
 import           Polysemy.Input
 import           Text.Megaparsec (Parsec, runParser)
+import           Text.Megaparsec.Error (errorBundlePretty)
 
 import Diagnostics
 
@@ -46,7 +47,7 @@ fileInputParser parser file = interpret $ \case
 
     contents <- readContentsText file
     case runParser parser path contents of
-      Left err -> throw (FileParseError path (T.pack (show err)))
+      Left err -> throw (FileParseError path (T.pack (errorBundlePretty err)))
       Right a -> pure a
 {-# INLINE fileInputParser #-}
 

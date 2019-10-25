@@ -31,6 +31,7 @@ import           Polysemy.Error hiding (catch)
 import           System.Exit (ExitCode(..))
 import           System.Process.Typed
 import           Text.Megaparsec (Parsec, runParser)
+import           Text.Megaparsec.Error (errorBundlePretty)
 
 import Diagnostics
 
@@ -73,7 +74,7 @@ execInputParser parser dir cmd args = interpret $ \case
   Input -> do
     stdout <- execThrow dir cmd args
     case runParser parser "" (TL.toStrict (decodeUtf8 stdout)) of
-      Left err -> throw (CommandParseError "" (T.pack (show err))) -- TODO: command name
+      Left err -> throw (CommandParseError "" (T.pack (errorBundlePretty err))) -- TODO: command name
       Right a -> pure a
 {-# INLINE execInputParser #-}
 
