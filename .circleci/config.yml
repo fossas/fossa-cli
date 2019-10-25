@@ -8,7 +8,7 @@ jobs:
       - checkout
       - run:
           name: Run unit tests
-          command: cabal-install test
+          command: cabal v2-test
 
 workflows:
   version: 2
