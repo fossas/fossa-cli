@@ -22,8 +22,8 @@ module Effect.Logger
 import Prologue
 
 import Control.Concurrent.Async (async, wait)
-import Control.Concurrent.STM (atomically, newTVarIO, readTVar, writeTVar)
-import Control.Concurrent.STM.TQueue (newTQueueIO, readTQueue, writeTQueue)
+import Control.Concurrent.STM (atomically, check, newTVarIO, readTVar, writeTVar)
+import Control.Concurrent.STM.TQueue (newTQueueIO, tryReadTQueue, writeTQueue)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Text.Prettyprint.Doc
@@ -75,10 +75,13 @@ loggerToIO minSeverity act = do
   let loop :: Text -> IO ()
       loop sticky = do
         maybeMsg <- atomically $ do
-          canceled <- readTVar cancelVar
-          if canceled
-            then pure Nothing
-            else Just <$> readTQueue queue
+          msg <- tryReadTQueue queue
+          case msg of
+            Just a -> pure (Just a)
+            Nothing -> do
+              canceled <- readTVar cancelVar
+              check canceled
+              pure Nothing
 
         case maybeMsg of
           Nothing -> pure () -- exit
