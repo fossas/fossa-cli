@@ -88,7 +88,6 @@ analyze BasicDirOpts{..} =
     let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
     embed (BS.writeFile initScriptFilepath initScript)
     stdout <- execThrow targetDir gradleJsonDepsCmd [initScriptFilepath]
-    embed (print initScriptFilepath)
 
     let text = decodeUtf8 $ BL.toStrict stdout
         textLines :: [Text]
@@ -108,12 +107,51 @@ analyze BasicDirOpts{..} =
         packagesToOutput :: Map Text [JsonDep]
         packagesToOutput = M.fromList packagePathsWithDecoded
 
-    embed (print packagesToOutput)
-    pure G.empty
+    buildGraph packagesToOutput
+      & evalGraphBuilder G.empty
 
-buildGraph :: Map Text [JsonDep] -> G.Graph
-buildGraph mapping = run . evalGraphBuilder G.empty $ do
-  undefined
+buildGraph :: (Member (Error CLIErr) r, Member GraphBuilder r) => Map Text [JsonDep] -> Sem r ()
+buildGraph mapping = do
+  mappingWithRefs <- M.traverseWithKey addShallowProject mapping
+  traverse_ (\(ref,_) -> addDirect ref) (M.elems mappingWithRefs)
+  traverse_ (addProject mappingWithRefs) mappingWithRefs
+
+  where
+  projectToDep name = G.Dependency
+    { dependencyType = G.SubprojectType
+    , dependencyName = name
+    , dependencyVersion = Nothing
+    , dependencyLocations = []
+    , dependencyTags = M.empty
+    }
+
+  addShallowProject :: Member GraphBuilder r => Text -> [JsonDep] -> Sem r (G.DepRef, [JsonDep])
+  addShallowProject projName projDeps = do
+    ref <- addNode (projectToDep projName)
+    pure (ref, projDeps)
+
+  addProject :: (Member (Error CLIErr) r, Member GraphBuilder r) => Map Text (G.DepRef, [JsonDep]) -> (G.DepRef, [JsonDep]) -> Sem r ()
+  addProject projectToRef (projRef, projDeps) = do
+    children <- traverse (addJsonDep projectToRef) projDeps
+    traverse_ (addEdge projRef) children
+
+  addJsonDep :: (Member (Error CLIErr) r, Member GraphBuilder r) => Map Text (G.DepRef, [JsonDep]) -> JsonDep -> Sem r G.DepRef
+  addJsonDep projectToRef = \case
+    ProjectDep name ->
+      case M.lookup name projectToRef of
+        Nothing -> throw (CommandParseError "" ("couldn't find project " <> name <> " when building graph")) -- TODO: better error or failure mode
+        Just (ref, _) -> pure ref
+    PackageDep name version deps -> do
+      children <- traverse (addJsonDep projectToRef) deps
+      ref <- addNode $ G.Dependency
+        { dependencyType = G.MavenType
+        , dependencyName = name
+        , dependencyVersion = Just (G.CEq version)
+        , dependencyLocations = []
+        , dependencyTags = M.empty
+        }
+      traverse_ (addEdge ref) children
+      pure ref
 
 data JsonDep =
     ProjectDep Text -- name

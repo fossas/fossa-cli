@@ -50,6 +50,7 @@ data Dependency = Dependency
 -- | A Dependency type. This corresponds to a "fetcher" on the backend
 data DepType =
     SubprojectType -- ^ A first-party subproject
+  | MavenType -- ^ Maven registry
   | NodeJSType -- ^ NPM registry (or similar)
   | PipType    -- ^ Pip registry
   deriving (Eq, Ord, Show, Generic)

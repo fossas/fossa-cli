@@ -28,7 +28,7 @@ allprojects {
 
                 def json = "{"
                 if (id instanceof ProjectComponentIdentifier) {
-                    json += "\"type\":\"project\",\"name\":\"${id.projectPath}\"" // also: can use projectName if we don't want the leading colon
+                    json += "\"type\":\"project\",\"name\":\"${id.projectPath}\""
                 } else if (id instanceof ModuleComponentIdentifier) {
                     json += "\"type\":\"package\",\"name\":\"${id.group}:${id.module}\",\"version\":\"${id.version}\","
                     def childResults = []
@@ -57,7 +57,7 @@ allprojects {
             } catch (Exception ignored) {}
 
             def combined = results.join(",")
-            println "JSONDEPS_${project.name}_[${combined}]"
+            println "JSONDEPS_${project.path}_[${combined}]"
         }
     }
 }
