@@ -7,6 +7,9 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Update cabal
+          command: cabal update
+      - run:
           name: Run unit tests
           command: cabal v2-test
 
