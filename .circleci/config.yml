@@ -9,7 +9,7 @@ jobs:
       - run:
           name: Update cabal
           command: cabal update
-      -run:
+      - run:
           name: download codecov
           command: |
             cabal install codecov-haskell
