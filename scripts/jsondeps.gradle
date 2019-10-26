@@ -1,7 +1,8 @@
 // A gradle init script to add a `jsonDeps` task.
 // This task outputs project dependency trees as JSON.
 //
-// The resulting JSON output is an array of the top-level dependencies.
+// The resulting JSON output is a map of configuration names to an array of
+// top-level dependencies.
 //
 // Dependencies have a "type", either "project" or "package"
 //
@@ -10,8 +11,11 @@
 //
 // Semantically:
 //
+// type ConfigurationName = Text
 // type Name = Text
 // type Version = Text
+//
+// type Output = Map ConfigurationName [Dependency]
 //
 // data Dependency =
 //     Project Name -- first-party (sub)projects
