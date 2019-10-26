@@ -96,7 +96,7 @@ analyze BasicDirOpts{..} =
         textLines :: [Text]
         textLines = T.lines text
         -- jsonDeps lines look like:
-        -- JSONDEPS_:project-path_[{"type":"package", ...}, ...]
+        -- JSONDEPS_:project-path_{"configName":[{"type":"package", ...}, ...], ...}
         jsonDepsLines :: [Text]
         jsonDepsLines = mapMaybe (T.stripPrefix "JSONDEPS_") textLines
 
@@ -105,7 +105,8 @@ analyze BasicDirOpts{..} =
 
         packagePathsWithDecoded :: [(Text, [JsonDep])]
         packagePathsWithDecoded = [(name, deps) | (name, json) <- packagePathsWithJson
-                                                  , Just deps <- [decodeStrict (encodeUtf8 json)]]
+                                                , Just configs <- [decodeStrict (encodeUtf8 json) :: Maybe (Map Text [JsonDep])] -- TODO: warnings here?
+                                                , Just deps <- [M.lookup "default" configs]] -- TODO: use more than default?
 
         packagesToOutput :: Map Text [JsonDep]
         packagesToOutput = M.fromList packagePathsWithDecoded

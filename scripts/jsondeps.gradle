@@ -20,21 +20,21 @@
 allprojects {
     task jsonDeps {
         doLast {
-            def toJSON
-            toJSON = { resolvedDep ->
-                // TODO: moduleArtifacts never returns null; can it return empty set? it seems to only return a single module or project
-                def artifact = resolvedDep.moduleArtifacts.iterator().next()
+            def depToJSON
+            depToJSON = { resolvedDep ->
+                def artifact = resolvedDep.moduleArtifacts.iterator().next() // TODO: moduleArtifacts never returns null; can it return empty set? it seems to only return a single module or project
                 def id = artifact.id.componentIdentifier
-
                 def json = "{"
                 if (id instanceof ProjectComponentIdentifier) {
-                    json += "\"type\":\"project\",\"name\":\"${id.projectPath}\""
+                    // Minor problem here: we don't get the specific configuration used for the subproject.
+                    // The default is the configuration named "default"
+                    json += "\"type\":\"project\",\"name\":\"${id.projectPath}\"" 
                 } else if (id instanceof ModuleComponentIdentifier) {
                     json += "\"type\":\"package\",\"name\":\"${id.group}:${id.module}\",\"version\":\"${id.version}\","
                     def childResults = []
                     if (!resolvedDep.children.isEmpty()) {
                         resolvedDep.children.each { childResolvedDep ->
-                            def result = toJSON childResolvedDep
+                            def result = depToJSON childResolvedDep
                             childResults << result
                         }
                     }
@@ -48,16 +48,30 @@ allprojects {
                 return json
             }
 
-            def results = []
-            try {
-                project.configurations.compile.resolvedConfiguration.firstLevelModuleDependencies.each { dep ->
-                    def result = toJSON dep
-                    results << result
+            def configToKeyValue = { config ->
+                def jsonDeps = []
+                config.resolvedConfiguration.firstLevelModuleDependencies.each { dep ->
+                    def result = depToJSON dep
+                    jsonDeps << result
                 }
-            } catch (Exception ignored) {}
+                def combined = jsonDeps.join(",")
+                return "\"${config.name}\":[${combined}]"
+            }
 
-            def combined = results.join(",")
-            println "JSONDEPS_${project.path}_[${combined}]"
+            def projectToJSON = { project ->
+                def jsonConfigs = []
+                project.configurations.each { config ->
+                    try {
+                        def result = configToKeyValue config
+                        jsonConfigs << result
+                    } catch (Exception ignored) {}
+                }
+                def combined = jsonConfigs.join(",")
+                return "{${combined}}"
+            }
+
+            def result = projectToJSON project
+            println "JSONDEPS_${project.path}_${result}"
         }
     }
 }
