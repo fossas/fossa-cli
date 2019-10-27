@@ -45,6 +45,8 @@ allprojects {
                     json += "\"dependencies\":["
                     json += childResults.join(",")
                     json += "]"
+                } else {
+                    return null; // TODO: binary dependencies in the filetree
                 }
 
                 json += "}"
@@ -56,7 +58,9 @@ allprojects {
                 def jsonDeps = []
                 config.resolvedConfiguration.firstLevelModuleDependencies.each { dep ->
                     def result = depToJSON dep
-                    jsonDeps << result
+                    if (result != null) {
+                        jsonDeps << result
+                    }
                 }
                 def combined = jsonDeps.join(",")
                 return "\"${config.name}\":[${combined}]"
