@@ -5,6 +5,7 @@ module Discovery
 
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.NpmList as NpmList
+import qualified Strategy.Node.YarnLock as YarnLock
 import qualified Strategy.Python.Pipenv as Pipenv
 import qualified Strategy.Python.PipList as PipList
 import qualified Strategy.Python.ReqTxt as ReqTxt
@@ -15,7 +16,7 @@ import qualified Discovery.Config as Config
 import           Types
 
 discoverFuncs :: [Discover]
-discoverFuncs = [Gradle.discover, NpmList.discover, PipList.discover, Pipenv.discover, SetupPy.discover, ReqTxt.discover, BundleShow.discover, Config.loadConfig strategyGroups]
+discoverFuncs = [Gradle.discover, NpmList.discover, YarnLock.discover, PipList.discover, Pipenv.discover, SetupPy.discover, ReqTxt.discover, BundleShow.discover, Config.loadConfig strategyGroups]
 
 strategyGroups :: [StrategyGroup]
 strategyGroups =
@@ -23,7 +24,8 @@ strategyGroups =
       [ SomeStrategy Gradle.strategy
       ]
   , StrategyGroup "nodejs"
-      [ SomeStrategy NpmList.strategy
+      [ SomeStrategy YarnLock.strategy
+      , SomeStrategy NpmList.strategy
       ]
   , StrategyGroup "python"
       [ SomeStrategy Pipenv.strategyWithCmd
