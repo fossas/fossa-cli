@@ -10,17 +10,8 @@ jobs:
           name: Update cabal
           command: cabal update
       - run:
-          name: download codecov
-          command: |
-            cabal install codecov-haskell
-            cabal configure --enable-tests --enable-library-coverage
-      - run:
           name: Run unit tests
           command: cabal v2-test
-      - run:
-          name: Upload codecov
-          command: codecov-haskell
-
 workflows:
   version: 2
   tests:
