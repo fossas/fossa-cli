@@ -1,0 +1,19 @@
+version: 2
+
+jobs:
+  unit-test:
+    docker:
+      - image: haskell:8.6
+    steps:
+      - checkout
+      - run:
+          name: Update cabal
+          command: cabal update
+      - run:
+          name: Run unit tests
+          command: cabal v2-test
+workflows:
+  version: 2
+  tests:
+    jobs:
+      - unit-test
