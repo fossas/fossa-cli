@@ -6,12 +6,22 @@ jobs:
       - image: haskell:8.6
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - cabal-cache-{{ arch }}
       - run:
           name: Update cabal
-          command: cabal update
+          command: cabal v2-update
       - run:
-          name: Run unit tests
-          command: cabal v2-test
+          name: Build
+          command: cabal v2-build --enable-tests
+      - run:
+          name: Run tests
+          command: cabal v2-test --enable-tests
+      - save_cache:
+          key: cabal-cache-{{ arch }}
+          paths:
+            - "~/.cabal/store"
 workflows:
   version: 2
   tests:
