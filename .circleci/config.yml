@@ -8,7 +8,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - cabal-cache-{{ arch }}
+            - cabal-cache-{{ arch }}-{{ checksum "hscli.cabal" }}
       - run:
           name: Update cabal
           command: cabal v2-update
@@ -19,7 +19,7 @@ jobs:
           name: Run tests
           command: cabal v2-test --enable-tests
       - save_cache:
-          key: cabal-cache-{{ arch }}
+          key: cabal-cache-{{ arch }}-{{ checksum "hscli.cabal" }}
           paths:
             - "~/.cabal/store"
 workflows:
