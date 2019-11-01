@@ -46,8 +46,12 @@ scan basedir = do
   (results, ()) <- runActions capabilities (map ADiscover discoverFuncs) (runAction basedir) updateProgress
     & outputToIOMonoid S.singleton
 
+  logSticky "[ Combining Analyses ]"
+
   let projects = mkProjects strategyGroups results
   embed (encodeFile "analysis.json" projects)
+
+  logSticky ""
 
 runAction :: Members '[Final IO, Embed IO, Resource, Logger, Output CompletedStrategy] r => Path Abs Dir -> (Action -> Sem r ()) -> Action -> Sem r ()
 runAction basedir enqueue = \case
