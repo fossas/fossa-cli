@@ -43,7 +43,15 @@ data Severity =
   | Error
   deriving (Eq, Ord, Show, Generic)
 
-makeSem ''Logger
+makeSem_ ''Logger
+
+-- | Log a message with the given severity
+log :: Member Logger r => Severity -> Doc AnsiStyle -> Sem r ()
+
+-- | Log a "sticky" line -- a log line that sticks to the bottom of the terminal until cleared or overwritten by other sticky line.
+--
+-- NOTE: The 'Doc' must not contain newlines
+logSticky :: Member Logger r => Doc AnsiStyle -> Sem r ()
 
 logTrace :: Member Logger r => Doc AnsiStyle -> Sem r ()
 logTrace = log Trace
@@ -60,14 +68,14 @@ logWarn = log Warn
 logError :: Member Logger r => Doc AnsiStyle -> Sem r ()
 logError = log Error
 
-ignoreLogger :: InterpreterFor Logger r
+ignoreLogger :: Sem (Logger ': r) a -> Sem r a
 ignoreLogger = interpret $ \case
   Log _ _ -> pure ()
   LogSticky _ -> pure ()
 {-# INLINE ignoreLogger #-}
 
 -- | A thread-safe interpreter for the Logger effect
-loggerToIO :: Member (Embed IO) r => Severity -> InterpreterFor Logger r
+loggerToIO :: Member (Embed IO) r => Severity -> Sem (Logger ': r) a -> Sem r a
 loggerToIO minSeverity act = do
   queue <- embed (hSetBuffering stdout NoBuffering *> newTQueueIO @(Logger Void ()))
   cancelVar <- embed (newTVarIO False)

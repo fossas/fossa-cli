@@ -69,7 +69,8 @@ exec :: Member Exec r => Path Rel Dir -> Command -> [String] -> Sem r (Either [C
 
 type Parser = Parsec Void Text
 
-execInputParser :: Members '[Exec, Error CLIErr] r => Parser a -> Path Rel Dir -> Command -> [String] -> InterpreterFor (Input a) r
+-- | Interpret an 'Input' effect by parsing stdout of a command
+execInputParser :: Members '[Exec, Error CLIErr] r => Parser i -> Path Rel Dir -> Command -> [String] -> Sem (Input i ': r) a -> Sem r a
 execInputParser parser dir cmd args = interpret $ \case
   Input -> do
     stdout <- execThrow dir cmd args
@@ -78,7 +79,8 @@ execInputParser parser dir cmd args = interpret $ \case
       Right a -> pure a
 {-# INLINE execInputParser #-}
 
-execInputJson :: (FromJSON a, Members '[Exec, Error CLIErr] r) => Path Rel Dir -> Command -> [String] -> InterpreterFor (Input a) r
+-- | Interpret an 'Input' effect by parsing JSON stdout of a command
+execInputJson :: (FromJSON i, Members '[Exec, Error CLIErr] r) => Path Rel Dir -> Command -> [String] -> Sem (Input i ': r) a -> Sem r a
 execInputJson dir cmd args = interpret $ \case
   Input -> do
     stdout <- execThrow dir cmd args
@@ -96,7 +98,7 @@ execThrow dir cmd args = do
     Right stdout -> pure stdout
 {-# INLINE execThrow #-}
 
-execToIO :: Member (Embed IO) r => InterpreterFor Exec r
+execToIO :: Member (Embed IO) r => Sem (Exec ': r) a -> Sem r a
 execToIO = interpret $ \case
   Exec dir cmd args -> do
     absolute <- makeAbsolute dir

@@ -36,11 +36,24 @@ data ReadFS m a where
   DoesFileExist    :: Path b File -> ReadFS m Bool
   DoesDirExist     :: Path b Dir  -> ReadFS m Bool
 
-makeSem ''ReadFS
+makeSem_ ''ReadFS
+
+-- | Read file contents into a strict 'ByteString'
+readContentsBS :: Member ReadFS r => Path b File -> Sem r ByteString
+
+-- | Read file contents into a strict 'Text'
+readContentsText :: Member ReadFS r => Path b File -> Sem r Text
+
+-- | Check whether a file exists
+doesFileExist :: Member ReadFS r => Path b File -> Sem r Bool
+
+-- | Check whether a directory exists
+doesDirExist :: Member ReadFS r => Path b Dir -> Sem r Bool
 
 type Parser = Parsec Void Text
 
-fileInputParser :: Members '[ReadFS, Error CLIErr] r => Parser a -> Path b File -> InterpreterFor (Input a) r
+-- | Interpret an 'Input' effect by parsing contents from a file
+fileInputParser :: Members '[ReadFS, Error CLIErr] r => Parser i -> Path b File -> Sem (Input i ': r) a -> Sem r a
 fileInputParser parser file = interpret $ \case
   Input -> do
     let path = toFilePath file
@@ -51,7 +64,8 @@ fileInputParser parser file = interpret $ \case
       Right a -> pure a
 {-# INLINE fileInputParser #-}
 
-fileInputJson :: (FromJSON a, Members '[ReadFS, Error CLIErr] r) => Path b File -> InterpreterFor (Input a) r
+-- | Interpret an 'Input' effect by parsing JSON contents from a file
+fileInputJson :: (FromJSON i, Members '[ReadFS, Error CLIErr] r) => Path b File -> Sem (Input i ': r) a -> Sem r a
 fileInputJson file = interpret $ \case
   Input -> do
     contents <- readContentsBS file
@@ -60,7 +74,7 @@ fileInputJson file = interpret $ \case
       Right a -> pure a
 {-# INLINE fileInputJson #-}
 
-readFSToIO :: Members '[Embed IO, Error CLIErr] r => InterpreterFor ReadFS r
+readFSToIO :: Members '[Embed IO, Error CLIErr] r => Sem (ReadFS ': r) a -> Sem r a
 readFSToIO = interpret $ \case
   ReadContentsBS file -> fromEitherM $
     (Right <$> BS.readFile (toFilePath file))

@@ -24,7 +24,16 @@ data GraphBuilder m a where
   AddEdge   :: G.DepRef -> G.DepRef -> GraphBuilder m ()
   AddDirect :: G.DepRef -> GraphBuilder m ()
 
-makeSem ''GraphBuilder
+makeSem_ ''GraphBuilder
+
+-- | Add a node to the graph. See 'G.addNode'
+addNode :: Member GraphBuilder r => G.Dependency -> Sem r G.DepRef
+
+-- | @addEdge parent child@ adds an edge to the graph between parent and child nodes. See 'G.addEdge'
+addEdge :: Member GraphBuilder r => G.DepRef -> G.DepRef -> Sem r ()
+
+-- | Add a direct dependency to the graph. See 'G.addDirect'
+addDirect :: Member GraphBuilder r => G.DepRef -> Sem r ()
 
 -- | Run a GraphBuilder computation, returning both the graph and the result
 runGraphBuilder :: G.Graph -> Sem (GraphBuilder ': r) a -> Sem r (G.Graph, a)
