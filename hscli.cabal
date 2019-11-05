@@ -58,7 +58,6 @@ common deps
     , path                         ^>=0.6.1
     , path-io                      ^>=1.6.0
     , polysemy                     ^>=1.2.1
-    , polysemy-plugin              ^>=0.2.3
     , prettyprinter                ^>=1.4.0
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , stm                          ^>=2.5.0
@@ -100,7 +99,6 @@ library
     Strategy.Ruby.BundleShow
     Types
 
-  ghc-options:     -fplugin=Polysemy.Plugin
   hs-source-dirs:  src
 
 executable hscli

@@ -81,8 +81,8 @@ initScript = $(embedFile "scripts/jsondeps.gradle")
 
 analyze :: Members '[Embed IO, Resource, Exec, Error CLIErr] r => BasicDirOpts -> Sem r G.Graph
 analyze BasicDirOpts{..} =
-  bracket (embed (getTempDir >>= \tmp -> createTempDir tmp "fossa-gradle"))
-          (embed . removeDirRecur)
+  bracket (embed @IO (getTempDir >>= \tmp -> createTempDir tmp "fossa-gradle"))
+          (embed @IO . removeDirRecur)
           act
 
   where

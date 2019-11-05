@@ -36,7 +36,7 @@ discover' = walk $ \dir subdirs files -> do
 strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "nodejs-npm"
-  , strategyAnalyze = \opts -> analyze & execInputJson (targetDir opts) npmListCmd []
+  , strategyAnalyze = \opts -> analyze & execInputJson @NpmOutput (targetDir opts) npmListCmd []
   , strategyModule = targetDir
   , strategyOptimal = Optimal
   , strategyComplete = Complete

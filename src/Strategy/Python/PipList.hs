@@ -46,7 +46,7 @@ pipListCmd = Command
 strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "python-piplist"
-  , strategyAnalyze = \opts -> analyze & execInputJson (targetDir opts) pipListCmd []
+  , strategyAnalyze = \opts -> analyze & execInputJson @[PipListDep] (targetDir opts) pipListCmd []
   , strategyModule = targetDir
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete

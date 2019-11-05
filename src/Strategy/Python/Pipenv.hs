@@ -68,7 +68,7 @@ strategyWithCmd = Strategy
 strategyNoCmd :: Strategy BasicFileOpts
 strategyNoCmd = Strategy
   { strategyName = "python-pipfile"
-  , strategyAnalyze = \opts -> analyzeNoCmd & fileInputJson (targetFile opts)
+  , strategyAnalyze = \opts -> analyzeNoCmd & fileInputJson @PipfileLock (targetFile opts)
   , strategyModule = parent . targetFile
   , strategyOptimal = Optimal
   , strategyComplete = Complete
