@@ -58,7 +58,7 @@ common deps
     , path                         ^>=0.6.1
     , path-io                      ^>=1.6.0
     , polysemy                     ^>=1.2.1
-    , prettyprinter                ^>=1.4.0
+    , prettyprinter                ^>=1.5.1
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
