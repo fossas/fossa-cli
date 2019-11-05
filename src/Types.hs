@@ -45,7 +45,7 @@ data Discover = Discover
 
 ---------- Strategies
 
--- TODO: determine strategy completeness during scan?
+-- FUTURE: determine strategy completeness during scan?
 
 data Optimal = Optimal | NotOptimal
   deriving (Eq, Ord, Show, Generic)

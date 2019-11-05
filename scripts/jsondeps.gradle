@@ -26,7 +26,7 @@ allprojects {
         doLast {
             def depToJSON
             depToJSON = { resolvedDep ->
-                def artifact = resolvedDep.moduleArtifacts.iterator().next() // TODO: moduleArtifacts never returns null; can it return empty set? it seems to only return a single module or project
+                def artifact = resolvedDep.moduleArtifacts.iterator().next() // moduleArtifacts never returns null; can it return empty set? it seems to only return a single module or project
                 def id = artifact.id.componentIdentifier
                 def json = "{"
                 if (id instanceof ProjectComponentIdentifier) {
@@ -46,7 +46,7 @@ allprojects {
                     json += childResults.join(",")
                     json += "]"
                 } else {
-                    return null; // TODO: binary dependencies in the filetree
+                    return null; // FUTURE: binary dependencies in the filetree
                 }
 
                 json += "}"

@@ -88,7 +88,6 @@ instance ToJSON Project where
     , "strategies" .= projectStrategies
     ]
 
--- TODO: path?
 instance ToJSON ProjectStrategy where
   toJSON ProjectStrategy{..} = object
     [ "name"     .= projStrategyName

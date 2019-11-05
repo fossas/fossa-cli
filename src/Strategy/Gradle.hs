@@ -105,8 +105,8 @@ analyze BasicDirOpts{..} =
 
         packagePathsWithDecoded :: [(Text, [JsonDep])]
         packagePathsWithDecoded = [(name, deps) | (name, json) <- packagePathsWithJson
-                                                , Just configs <- [decodeStrict (encodeUtf8 json) :: Maybe (Map Text [JsonDep])] -- TODO: warnings here?
-                                                , Just deps <- [M.lookup "default" configs]] -- TODO: use more than default?
+                                                , Just configs <- [decodeStrict (encodeUtf8 json) :: Maybe (Map Text [JsonDep])]
+                                                , Just deps <- [M.lookup "default" configs]] -- FUTURE: use more than default?
 
         packagesToOutput :: Map Text [JsonDep]
         packagesToOutput = M.fromList packagePathsWithDecoded

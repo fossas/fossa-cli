@@ -103,7 +103,6 @@ bundleShowParser = concat <$> ((line <|> ignoredLine) `sepBy` eol) <* eof
   findVersion :: Parser Text
   findVersion = takeWhileP (Just "version") (/= ')')
 
-  -- TODO: we can case split / sum-type this for better analysis
   line :: Parser [BundleShowDep]
   line = do
     _ <- chunk "  * "

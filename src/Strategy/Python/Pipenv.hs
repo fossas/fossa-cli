@@ -94,7 +94,6 @@ buildGraph lock (Just deps) =
   let (nodesByName, graph) = buildNodes lock
    in buildEdges nodesByName deps graph
 
--- TODO: don't add direct here?
 buildNodes :: PipfileLock -> (Map Text G.DepRef, G.Graph)
 buildNodes PipfileLock{..} = run . runState M.empty . evalGraphBuilder G.empty $ do
   let indexBy :: Ord k => (v -> k) -> [v] -> Map k v

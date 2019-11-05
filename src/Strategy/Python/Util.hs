@@ -43,7 +43,7 @@ buildGraph xs = unfold xs (const []) toDependency
   depMarker (UrlReq _ _ _ marker) = marker
 
 -- we pull out tags naively. we don't respect and/or semantics, and ignore operators
--- TODO: more useful tagging? in particular: only pull out sys_platform?
+-- FUTURE: more useful tagging? in particular: only pull out sys_platform?
 toTags :: Marker -> M.Map Text [Text]
 toTags = M.fromListWith (++) . map (\(a,b) -> (a, [b])) . go
   where

@@ -46,7 +46,6 @@ data Dependency = Dependency
   , dependencyTags      :: Map Text [Text]
   } deriving (Eq, Ord, Show, Generic)
 
--- TODO: first-party subproject as a type feels wrong..
 -- | A Dependency type. This corresponds to a "fetcher" on the backend
 data DepType =
     SubprojectType -- ^ A first-party subproject
@@ -115,14 +114,6 @@ instance Monoid Graph where
 instance FromJSON DepType -- use the generic instance
 instance ToJSON DepType -- use the generic instance
 
-instance FromJSON Dependency where
-  parseJSON = withObject "Dependency" $ \obj ->
-    Dependency <$> obj .: "type"
-               <*> obj .: "name"
-               <*> obj .: "version"
-               <*> obj .: "locations"
-               <*> obj .: "tags"
-
 instance ToJSON Dependency where
   toJSON Dependency{..} = object
     [ "type"      .= dependencyType
@@ -131,9 +122,6 @@ instance ToJSON Dependency where
     , "locations" .= dependencyLocations
     , "tags"      .= dependencyTags
     ]
-
-instance FromJSON VerConstraint where
-  parseJSON = undefined -- TODO
 
 instance ToJSON VerConstraint where
   toJSON constraint = let (name, value) = toValue constraint
@@ -162,9 +150,3 @@ instance ToJSON Graph where
     , "assocs" .= _graphAssocs
     , "direct" .= _graphDirect
     ]
-
-instance FromJSON Graph where
-  parseJSON = withObject "Graph" $ \obj ->
-    Graph <$> obj .: "deps"
-          <*> obj .: "assocs"
-          <*> obj .: "direct"

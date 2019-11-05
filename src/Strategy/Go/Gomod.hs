@@ -48,7 +48,7 @@ strategy = Strategy
   , strategyAnalyze = \opts ->
       analyze & fileInputParser gomodParser (targetFile opts)
   , strategyModule = parent . targetFile
-  , strategyOptimal = NotOptimal -- TODO
+  , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete
   }
 

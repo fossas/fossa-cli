@@ -62,7 +62,7 @@ buildGraph top = unfold direct getDeps toDependency
                  , dependencyName = nodeName
                  , dependencyVersion = G.CEq <$> outputVersion nodeOutput
                  , dependencyLocations = []
-                 , dependencyTags = M.empty -- TODO
+                 , dependencyTags = M.empty
                  }
 
 configure :: Path Rel Dir -> ConfiguredStrategy

@@ -65,7 +65,7 @@ requirementsTxtParser = concat <$> ((line `sepBy` eol) <* eof)
   comment :: Parser ()
   comment = char '#' *> ignored
 
-  -- TODO: we can case split / sum-type this for better analysis
+  -- FUTURE: we can case split / sum-type this for better analysis
   line = [] <$ char '-' <* ignored -- pip options
      <|> [] <$ char '.' <* ignored -- relative path
      <|> [] <$ char '/' <* ignored -- absolute path
