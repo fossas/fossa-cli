@@ -9,7 +9,7 @@ module Strategy.Gradle
   , JsonDep(..)
   ) where
 
-import Prologue hiding (json, many)
+import Prologue hiding (json)
 
 import           Data.Aeson.Types (Parser, unexpected)
 import qualified Data.ByteString as BS

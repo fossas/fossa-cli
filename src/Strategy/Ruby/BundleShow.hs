@@ -13,7 +13,7 @@ module Strategy.Ruby.BundleShow
   )
   where
 
-import Prologue hiding (many)
+import Prologue
 
 import qualified Data.Map.Strict as M
 import           Polysemy

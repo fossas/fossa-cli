@@ -5,7 +5,7 @@ module Strategy.Node.YarnLock
   , configure
   ) where
 
-import Prologue hiding (many, some)
+import Prologue
 
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as M

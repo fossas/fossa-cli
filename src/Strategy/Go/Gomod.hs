@@ -11,7 +11,7 @@ module Strategy.Go.Gomod
   )
   where
 
-import Prologue hiding ((<?>), many, some)
+import Prologue hiding ((<?>))
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T

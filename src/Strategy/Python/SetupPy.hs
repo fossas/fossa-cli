@@ -6,7 +6,7 @@ module Strategy.Python.SetupPy
   )
   where
 
-import Prologue hiding ((<?>), many, some)
+import Prologue
 
 import           Polysemy
 import           Polysemy.Input

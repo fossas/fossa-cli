@@ -10,7 +10,7 @@ module Strategy.Python.Util
   , Req(..)
   ) where
 
-import Prologue hiding (many, some)
+import Prologue
 
 import qualified Data.Char as C
 import qualified Data.Map.Strict as M

@@ -7,7 +7,7 @@ import Prelude as X hiding (log)
 
 import Debug.Trace as X (traceM, traceShow, traceShowId)
 
-import Control.Applicative as X
+import Control.Applicative as X hiding (many, some)
 import Control.Monad as X
 import Data.Aeson as X hiding (Error)
 import Data.Bifunctor as X
