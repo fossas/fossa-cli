@@ -3,6 +3,8 @@ module Strategy.Go.GoList
   , strategy
   , analyze
   , configure
+
+  , Require(..)
   )
   where
 
@@ -77,10 +79,13 @@ analyze BasicDirOpts{..} = do
 buildGraph :: [Require] -> G.Graph
 buildGraph requires = unfold requires (const []) toDependency
   where
+  toVersion :: Text -> Text
+  toVersion = last . T.splitOn "-"
+
   toDependency require = G.Dependency
     { dependencyType = G.GoType
     , dependencyName = reqPackage require
-    , dependencyVersion = Just (G.CEq (reqVersion require))
+    , dependencyVersion = Just (G.CEq (toVersion (reqVersion require)))
     , dependencyLocations = []
     , dependencyTags = M.empty
     }

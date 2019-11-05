@@ -120,6 +120,7 @@ test-suite test
 
   -- cabal-fmt: expand test
   other-modules:
+    Go.GoListTest
     Go.GomodTest
     Gradle.GradleTest
     GraphUtil

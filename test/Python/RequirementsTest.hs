@@ -4,7 +4,6 @@ module Python.RequirementsTest
   ) where
 
 import Prelude
-import Test.Tasty.Hspec
 
 import Data.Foldable
 import Data.Text (Text)
@@ -12,11 +11,14 @@ import Text.Megaparsec
 
 import Strategy.Python.Util (requirementParser)
 
+import Test.Hspec.Megaparsec
+import Test.Tasty.Hspec
+
 spec_parser :: Spec
 spec_parser =
   describe "requirementParser" $
     it "can parse the edge case examples" $
-      traverse_ (parseTest requirementParser) examples
+      traverse_ (\input -> runParser requirementParser "" `shouldSucceedOn` input) examples
 
 examples :: [Text]
 examples =
