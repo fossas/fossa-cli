@@ -63,6 +63,7 @@ common deps
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
     , text                         ^>=1.2.3
+    , tomland                      ^>=1.2.0
     , typed-process                ^>=0.2.6
     , yaml                         ^>=0.11.1
     , yarn-lock                    ^>=0.6.1
@@ -89,6 +90,7 @@ library
     Prologue
     Strategy.Go.GoList
     Strategy.Go.Gomod
+    Strategy.Go.GopkgToml
     Strategy.Gradle
     Strategy.Node.YarnLock
     Strategy.NpmList
