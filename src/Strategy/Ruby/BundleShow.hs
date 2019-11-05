@@ -1,6 +1,3 @@
-
-{-# language QuasiQuotes #-}
-
 module Strategy.Ruby.BundleShow
   ( discover
   , strategy
@@ -98,13 +95,13 @@ bundleShowParser = concat <$> ((line <|> ignoredLine) `sepBy` eol) <* eof
   ignoredLine :: Parser [BundleShowDep]
   ignoredLine = do
     ignored
-    pure $ []
+    pure []
 
   findDep :: Parser Text
-  findDep = takeWhileP (Just "dep") (\a -> a /= ' ')
+  findDep = takeWhileP (Just "dep") (/= ' ')
 
   findVersion :: Parser Text
-  findVersion = takeWhileP (Just "version") (\a -> a /= ')')
+  findVersion = takeWhileP (Just "version") (/= ')')
 
   -- TODO: we can case split / sum-type this for better analysis
   line :: Parser [BundleShowDep]
@@ -114,4 +111,4 @@ bundleShowParser = concat <$> ((line <|> ignoredLine) `sepBy` eol) <* eof
     _ <- chunk " ("
     version <- findVersion
     _ <- char ')'
-    pure $ [BundleShowDep dep version]
+    pure [BundleShowDep dep version]
