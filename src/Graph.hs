@@ -54,6 +54,7 @@ data DepType =
   | MavenType -- ^ Maven registry
   | NodeJSType -- ^ NPM registry (or similar)
   | PipType    -- ^ Pip registry
+  | GoType -- ^ Go dependency
   deriving (Eq, Ord, Show, Generic)
 
 data VerConstraint =
