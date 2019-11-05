@@ -3,6 +3,8 @@ module Discovery
   , strategyGroups
   ) where
 
+import qualified Strategy.Go.GoList as GoList
+import qualified Strategy.Go.Gomod as Gomod
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.NpmList as NpmList
 import qualified Strategy.Node.YarnLock as YarnLock
@@ -16,7 +18,7 @@ import qualified Discovery.Config as Config
 import           Types
 
 discoverFuncs :: [Discover]
-discoverFuncs = [Gradle.discover, NpmList.discover, YarnLock.discover, PipList.discover, Pipenv.discover, SetupPy.discover, ReqTxt.discover, BundleShow.discover, Config.loadConfig strategyGroups]
+discoverFuncs = [GoList.discover, Gomod.discover, Gradle.discover, NpmList.discover, YarnLock.discover, PipList.discover, Pipenv.discover, SetupPy.discover, ReqTxt.discover, BundleShow.discover, Config.loadConfig strategyGroups]
 
 strategyGroups :: [StrategyGroup]
 strategyGroups =
@@ -36,5 +38,9 @@ strategyGroups =
       ]
   , StrategyGroup "ruby"
       [ SomeStrategy BundleShow.strategy
+      ]
+  , StrategyGroup "golang"
+      [ SomeStrategy GoList.strategy
+      , SomeStrategy Gomod.strategy
       ]
   ]

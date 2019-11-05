@@ -87,6 +87,7 @@ library
     Effect.ReadFS
     Graph
     Prologue
+    Strategy.Go.GoList
     Strategy.Go.Gomod
     Strategy.Gradle
     Strategy.Node.YarnLock

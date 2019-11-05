@@ -159,7 +159,7 @@ gomodParser = do
 
   -- package name, e.g., golang.org/x/text
   packageName :: Parser Text
-  packageName = T.pack <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/'))
+  packageName = T.pack <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-'))
 
   -- semver, e.g.:
   --   v0.0.0-20190101000000-abcdefabcdef
