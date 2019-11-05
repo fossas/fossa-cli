@@ -1,0 +1,9 @@
+module github.com/my/package
+
+require (
+    github.com/pkg/one v1.0.0
+    github.com/pkg/two/v2 v2.0.0
+    github.com/pkg/three/v3 v3.0.0
+)
+
+replace github.com/pkg/two/v2 => github.com/pkg/overridden overridden

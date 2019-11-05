@@ -3,6 +3,11 @@ module Strategy.Go.Gomod
   , strategy
   , analyze
   , configure
+
+  , Gomod(..)
+  , Statement(..)
+  , Require(..)
+  , gomodParser
   )
   where
 
@@ -75,6 +80,7 @@ type Parser = Parsec Void Text
 
 gomodParser :: Parser Gomod
 gomodParser = do
+  _ <- sc
   _ <- lexeme (chunk "module")
   name <- packageName
   statements <- many statement
@@ -159,7 +165,7 @@ gomodParser = do
   --   v0.0.0-20190101000000-abcdefabcdef
   --   v1.2.3
   semver :: Parser Text
-  semver = T.pack <$ char 'v' <*> lexeme (some (alphaNumChar <|> oneOf ['.', '-', '+']))
+  semver = T.pack <$> lexeme (some (alphaNumChar <|> oneOf ['.', '-', '+']))
 
   -- singleton list. semantically more meaningful than 'pure'
   singleton :: a -> [a]

@@ -119,6 +119,7 @@ test-suite test
 
   -- cabal-fmt: expand test
   other-modules:
+    Go.GomodTest
     Gradle.GradleTest
     GraphUtil
     Python.PipListTest
@@ -131,5 +132,6 @@ test-suite test
   build-tool-depends: tasty-discover:tasty-discover ^>=4.2.1
   build-depends:
     , hscli
-    , tasty        ^>=1.2.3
-    , tasty-hspec  ^>=1.1.5.1
+    , hspec-megaparsec  ^>=2.0.1
+    , tasty             ^>=1.2.3
+    , tasty-hspec       ^>=1.1.5.1
