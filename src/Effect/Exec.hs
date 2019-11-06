@@ -14,6 +14,7 @@ module Effect.Exec
   , execInputJson
 
   , execToIO
+  , execConst
   , module System.Exit
   ) where
 
@@ -109,12 +110,23 @@ execThrow dir cmd args = do
     Right stdout -> pure stdout
 {-# INLINE execThrow #-}
 
+-- | Interpret an Exec effect by running commands
 execToIO :: Member (Embed IO) r => Sem (Exec ': r) a -> Sem r a
 execToIO = interpret $ \case
   Exec dir cmd args -> do
     absolute <- makeAbsolute dir
     -- TODO: disgusting/unreadable
-    let runCmd :: String -> ExceptT [CmdFailure] IO BL.ByteString
+    -- We use `ExceptT [CmdFailure] IO Stdout` here because it has the Alternative instance we want.
+    --
+    -- In particular: when all of the commands fail, we want to have descriptions of all of the
+    -- CmdFailures, so we can produce better error messages.
+    --
+    -- A Command can have many `cmdNames`. ["./gradlew", "gradle"] is one such example.
+    -- Each of them will be attempted successively until one succeeds
+    --
+    -- This is the behavior of `asum` with ExceptT: it'll run all of the ExceptT actions in the list, combining
+    -- errors. When it finds a successful result, it'll return that instead of the accumulated errors
+    let runCmd :: String -> ExceptT [CmdFailure] IO Stdout
         runCmd cmdName = ExceptT $ handle (\(e :: IOException) -> pure (Left [CmdFailure cmdName (ExitFailure (-1)) (show e ^. packedChars)])) $ do
           (exitcode, stdout, stderr) <- readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName (cmdBaseArgs cmd <> args)))
           case (exitcode, cmdAllowErr cmd) of
@@ -128,3 +140,8 @@ execToIO = interpret $ \case
     embed $ runExceptT $ asum (map runCmd (cmdNames cmd))
 {-# INLINE execToIO #-}
 
+-- | Interpret an Exec effect by providing a mock return value
+execConst :: Either [CmdFailure] Stdout -> Sem (Exec ': r) a -> Sem r a
+execConst out = interpret $ \case
+  Exec _ _ _ -> pure out
+{-# INLINE execConst #-}
