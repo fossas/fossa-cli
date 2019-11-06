@@ -88,14 +88,26 @@ analyze BasicFileOpts{..} = do
 buildGraph :: Gopkg -> G.Graph
 buildGraph gopkg = unfold direct (const []) toDependency
   where
-  direct = undefined
-  toDependency = undefined
-    --G.Dependency { dependencyType = G.GemType
-                 --, dependencyName = depName
-                 --, dependencyVersion = Just (G.CEq depVersion)
-                 --, dependencyLocations = []
-                 --, dependencyTags = M.empty
-                 --}
+  direct = M.toList (resolve gopkg)
+
+  toDependency (name, version) =
+    G.Dependency { dependencyType = G.GoType
+                 , dependencyName = name
+                 , dependencyVersion = G.CEq <$> version
+                 , dependencyLocations = []
+                 , dependencyTags = M.empty
+                 }
+
+-- TODO: handling version constraints
+resolve :: Gopkg -> Map Text (Maybe Text) -- Map Package (Maybe Version)
+resolve gopkg = overridden
+  where
+  overridden = foldr inserting constraints (pkgOverrides gopkg)
+  constraints = foldr inserting M.empty (pkgConstraints gopkg)
+
+  inserting :: PkgConstraint -> Map Text (Maybe Text) -> Map Text (Maybe Text)
+  inserting PkgConstraint{..} =
+    M.insert constraintName (constraintVersion <|> constraintBranch <|> constraintRevision)
 
 configure :: Path Rel File -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicFileOpts
