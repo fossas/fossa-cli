@@ -7,6 +7,9 @@ module Effect.Exec
   , Command(..)
   , AllowErr(..)
 
+  , execParser
+  , execJson
+
   , execInputParser
   , execInputJson
 
@@ -69,24 +72,32 @@ exec :: Member Exec r => Path Rel Dir -> Command -> [String] -> Sem r (Either [C
 
 type Parser = Parsec Void Text
 
+-- | Parse the stdout of a command
+execParser :: Members '[Exec, Error CLIErr] r => Parser a -> Path Rel Dir -> Command -> [String] -> Sem r a
+execParser parser dir cmd args = do
+  stdout <- execThrow dir cmd args
+  case runParser parser "" (TL.toStrict (decodeUtf8 stdout)) of
+    Left err -> throw (CommandParseError "" (T.pack (errorBundlePretty err))) -- TODO: command name
+    Right a -> pure a
+
+-- | Parse the JSON stdout of a command
+execJson :: (FromJSON a, Members '[Exec, Error CLIErr] r) => Path Rel Dir -> Command -> [String] -> Sem r a
+execJson dir cmd args = do
+  stdout <- execThrow dir cmd args
+  case eitherDecode stdout of
+    Left err -> throw (CommandParseError "" (T.pack (show err))) -- TODO: command name
+    Right a -> pure a
+
 -- | Interpret an 'Input' effect by parsing stdout of a command
 execInputParser :: Members '[Exec, Error CLIErr] r => Parser i -> Path Rel Dir -> Command -> [String] -> Sem (Input i ': r) a -> Sem r a
 execInputParser parser dir cmd args = interpret $ \case
-  Input -> do
-    stdout <- execThrow dir cmd args
-    case runParser parser "" (TL.toStrict (decodeUtf8 stdout)) of
-      Left err -> throw (CommandParseError "" (T.pack (errorBundlePretty err))) -- TODO: command name
-      Right a -> pure a
+  Input -> execParser parser dir cmd args
 {-# INLINE execInputParser #-}
 
 -- | Interpret an 'Input' effect by parsing JSON stdout of a command
 execInputJson :: (FromJSON i, Members '[Exec, Error CLIErr] r) => Path Rel Dir -> Command -> [String] -> Sem (Input i ': r) a -> Sem r a
 execInputJson dir cmd args = interpret $ \case
-  Input -> do
-    stdout <- execThrow dir cmd args
-    case eitherDecode stdout of
-      Left err -> throw (CommandParseError "" (T.pack (show err))) -- TODO: command name
-      Right a -> pure a
+  Input -> execJson dir cmd args
 {-# INLINE execInputJson #-}
 
 -- | A variant of 'exec' that throws a 'CLIErr' when the command returns a non-zero exit code

@@ -10,6 +10,9 @@ module Effect.ReadFS
   , doesFileExist
   , doesDirExist
 
+  , readContentsParser
+  , readContentsJson
+
   , fileInputParser
   , fileInputJson
   ) where
@@ -52,26 +55,32 @@ doesDirExist :: Member ReadFS r => Path b Dir -> Sem r Bool
 
 type Parser = Parsec Void Text
 
--- | Interpret an 'Input' effect by parsing contents from a file
+-- | Read from a file, parsing its contents
+readContentsParser :: Members '[ReadFS, Error CLIErr] r => Parser a -> Path b File -> Sem r a
+readContentsParser parser file = do
+  contents <- readContentsText file
+  case runParser parser (toFilePath file) contents of
+    Left err -> throw (FileParseError (toFilePath file) (T.pack (errorBundlePretty err)))
+    Right a -> pure a
+
+-- | Read JSON from a file
+readContentsJson :: (FromJSON a, Members '[ReadFS, Error CLIErr] r) => Path b File -> Sem r a
+readContentsJson file = do
+  contents <- readContentsBS file
+  case eitherDecodeStrict contents of
+    Left err -> throw (FileParseError (toFilePath file) (T.pack err))
+    Right a -> pure a
+
+-- | Interpret an 'Input' effect by parsing file contents
 fileInputParser :: Members '[ReadFS, Error CLIErr] r => Parser i -> Path b File -> Sem (Input i ': r) a -> Sem r a
 fileInputParser parser file = interpret $ \case
-  Input -> do
-    let path = toFilePath file
-
-    contents <- readContentsText file
-    case runParser parser path contents of
-      Left err -> throw (FileParseError path (T.pack (errorBundlePretty err)))
-      Right a -> pure a
+  Input -> readContentsParser parser file
 {-# INLINE fileInputParser #-}
 
--- | Interpret an 'Input' effect by parsing JSON contents from a file
+-- | Interpret an 'Input' effect by parsing JSON file contents
 fileInputJson :: (FromJSON i, Members '[ReadFS, Error CLIErr] r) => Path b File -> Sem (Input i ': r) a -> Sem r a
 fileInputJson file = interpret $ \case
-  Input -> do
-    contents <- readContentsBS file
-    case eitherDecodeStrict contents of
-      Left err -> throw (FileParseError (toFilePath file) (T.pack err))
-      Right a -> pure a
+  Input -> readContentsJson file
 {-# INLINE fileInputJson #-}
 
 readFSToIO :: Members '[Embed IO, Error CLIErr] r => Sem (ReadFS ': r) a -> Sem r a
