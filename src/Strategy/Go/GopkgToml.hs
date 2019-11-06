@@ -8,16 +8,14 @@ module Strategy.Go.GopkgToml
   )
   where
 
-import Prologue
+import Prologue hiding ((.=))
 
 import qualified Data.Map.Strict as M
-import qualified Data.Text as T
+import           Data.Maybe (maybeToList)
 import           Polysemy
 import           Polysemy.Error
-import           Polysemy.Input
 import           Polysemy.Output
-import           Text.Megaparsec
-import           Text.Megaparsec.Char
+import           Toml (TomlCodec, (.=))
 import qualified Toml
 
 import           Diagnostics
@@ -50,17 +48,18 @@ strategy = Strategy
   , strategyComplete = NotComplete
   }
 
-gopkgCodec :: Toml.TomlCodec Gopkg
+gopkgCodec :: TomlCodec Gopkg
 gopkgCodec = Gopkg
-  <$> Toml.list constraintCodec "constraint" Toml..= pkgConstraints
-  <*> Toml.list constraintCodec "override" Toml..= pkgOverrides
+  <$> Toml.list constraintCodec "constraint" .= pkgConstraints
+  <*> Toml.list constraintCodec "override" .= pkgOverrides
 
-constraintCodec :: Toml.TomlCodec PkgConstraint
+constraintCodec :: TomlCodec PkgConstraint
 constraintCodec = PkgConstraint
-  <$> Toml.text "name" Toml..= constraintName
-  <*> Toml.dioptional (Toml.text "version") Toml..= constraintVersion
-  <*> Toml.dioptional (Toml.text "branch") Toml..= constraintBranch
-  <*> Toml.dioptional (Toml.text "revision") Toml..= constraintRevision
+  <$> Toml.text "name" .= constraintName
+  <*> Toml.dioptional (Toml.text "source") .= constraintSource
+  <*> Toml.dioptional (Toml.text "version") .= constraintVersion
+  <*> Toml.dioptional (Toml.text "branch") .= constraintBranch
+  <*> Toml.dioptional (Toml.text "revision") .= constraintRevision
 
 data Gopkg = Gopkg
   { pkgConstraints :: [PkgConstraint]
@@ -69,6 +68,7 @@ data Gopkg = Gopkg
 
 data PkgConstraint = PkgConstraint
   { constraintName     :: Text
+  , constraintSource   :: Maybe Text
   , constraintVersion  :: Maybe Text
   , constraintBranch   :: Maybe Text
   , constraintRevision :: Maybe Text
@@ -90,24 +90,23 @@ buildGraph gopkg = unfold direct (const []) toDependency
   where
   direct = M.toList (resolve gopkg)
 
-  toDependency (name, version) =
+  toDependency (name, PkgConstraint{..}) =
     G.Dependency { dependencyType = G.GoType
                  , dependencyName = name
-                 , dependencyVersion = G.CEq <$> version
-                 , dependencyLocations = []
+                 , dependencyVersion = G.CEq <$> (constraintVersion <|> constraintBranch <|> constraintRevision)
+                 , dependencyLocations = maybeToList constraintSource
                  , dependencyTags = M.empty
                  }
 
 -- TODO: handling version constraints
-resolve :: Gopkg -> Map Text (Maybe Text) -- Map Package (Maybe Version)
+resolve :: Gopkg -> Map Text PkgConstraint -- Map Package (Maybe Version)
 resolve gopkg = overridden
   where
   overridden = foldr inserting constraints (pkgOverrides gopkg)
   constraints = foldr inserting M.empty (pkgConstraints gopkg)
 
-  inserting :: PkgConstraint -> Map Text (Maybe Text) -> Map Text (Maybe Text)
-  inserting PkgConstraint{..} =
-    M.insert constraintName (constraintVersion <|> constraintBranch <|> constraintRevision)
+  inserting :: PkgConstraint -> Map Text PkgConstraint -> Map Text PkgConstraint
+  inserting constraint = M.insert (constraintName constraint) constraint
 
 configure :: Path Rel File -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicFileOpts

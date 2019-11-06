@@ -13,7 +13,6 @@ import           Polysemy.Input
 import           Effect.GraphBuilder
 import qualified Graph as G
 import           Strategy.Go.Gomod
-import           Strategy.Python.Util
 import           Text.Megaparsec
 
 import Test.Hspec.Megaparsec
