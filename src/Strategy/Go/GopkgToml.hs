@@ -4,6 +4,9 @@ module Strategy.Go.GopkgToml
   , analyze
   , configure
 
+  , Gopkg(..)
+  , PkgConstraint(..)
+
   , buildGraph
   )
   where
@@ -73,9 +76,6 @@ data PkgConstraint = PkgConstraint
   , constraintBranch   :: Maybe Text
   , constraintRevision :: Maybe Text
   }
-  deriving (Eq, Ord, Show, Generic)
-
-data PkgOverride = PkgOverride
   deriving (Eq, Ord, Show, Generic)
 
 analyze :: Members '[ReadFS, Error CLIErr] r => BasicFileOpts -> Sem r G.Graph

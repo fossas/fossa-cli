@@ -143,5 +143,5 @@ execToIO = interpret $ \case
 -- | Interpret an Exec effect by providing a mock return value
 execConst :: Either [CmdFailure] Stdout -> Sem (Exec ': r) a -> Sem r a
 execConst out = interpret $ \case
-  Exec _ _ _ -> pure out
+  Exec{} -> pure out
 {-# INLINE execConst #-}

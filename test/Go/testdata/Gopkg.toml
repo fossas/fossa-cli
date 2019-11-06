@@ -1,0 +1,20 @@
+[[constraint]]
+  name = "cat/fossa"
+  source = "https://someotherlocation/"
+  version = "v3.0.0"
+
+[[constraint]]
+  name = "repo/name/A"
+  version = "v1.0.0"
+
+[[constraint]]
+  name = "repo/name/B"
+  revision = "12345"
+
+[[constraint]]
+  name = "repo/name/C"
+  branch = "branchname"
+
+[[override]]
+  name = "repo/name/B"
+  branch = "overridebranch"
