@@ -5,6 +5,7 @@ module Discovery
 
 import qualified Strategy.Go.GoList as GoList
 import qualified Strategy.Go.Gomod as Gomod
+import qualified Strategy.Go.GopkgLock as GopkgLock
 import qualified Strategy.Go.GopkgToml as GopkgToml
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.NpmList as NpmList
@@ -23,6 +24,7 @@ discoverFuncs =
   [ GoList.discover
   , Gomod.discover
   , GopkgToml.discover
+  , GopkgLock.discover
 
   , Gradle.discover
 
@@ -61,6 +63,7 @@ strategyGroups =
   , StrategyGroup "golang"
       [ SomeStrategy GoList.strategy
       , SomeStrategy Gomod.strategy
+      , SomeStrategy GopkgLock.strategy
       , SomeStrategy GopkgToml.strategy
       ]
   ]

@@ -90,6 +90,7 @@ library
     Prologue
     Strategy.Go.GoList
     Strategy.Go.Gomod
+    Strategy.Go.GopkgLock
     Strategy.Go.GopkgToml
     Strategy.Gradle
     Strategy.Node.YarnLock
@@ -124,6 +125,7 @@ test-suite test
   other-modules:
     Go.GoListTest
     Go.GomodTest
+    Go.GopkgLockTest
     Go.GopkgTomlTest
     Gradle.GradleTest
     GraphUtil

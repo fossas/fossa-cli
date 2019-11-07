@@ -87,7 +87,6 @@ gomodParser = do
   eof
 
   let statements' = concat statements
-  traceM (show statements')
 
   pure (toGomod name statements')
   where
