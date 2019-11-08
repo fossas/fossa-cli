@@ -17,6 +17,7 @@ const (
 	Ant                   // Apache Ant (https://ant.apache.org)
 	Bower                 // Bower (https://bower.io)
 	Buck                  // Buck (https://buckbuild.com)
+	Bazel                 // Bazel (https://bazel.build/)
 	Carthage              // Carthage (https://github.com/Carthage/Carthage)
 	Clojure               // Clojure (https://clojure.org)
 	Cocoapods             // Cocoapods (https://cocoapods.org)
@@ -56,6 +57,10 @@ func ParseType(key string) (Type, error) {
 	// Buck aliases
 	case "buck":
 		return Buck, nil
+
+	// Bazel aliases
+	case "bazel":
+		return Bazel, nil
 
 	// Carthage aliases
 	case "carthage":
@@ -218,6 +223,8 @@ func (t Type) String() string {
 		return "bower"
 	case Buck:
 		return "buck"
+	case Bazel:
+		return "bazel"
 	case Carthage:
 		return "cart"
 	case Clojure:
