@@ -3,10 +3,11 @@ package bazel_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/fossas/fossa-cli/analyzers/bazel"
 	"github.com/fossas/fossa-cli/pkg"
 	"github.com/fossas/fossa-cli/testing/helpers"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestDiscovery(t *testing.T) {

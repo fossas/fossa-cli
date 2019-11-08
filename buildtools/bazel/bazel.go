@@ -1,14 +1,14 @@
 package bazel
 
 import (
-	"fmt"
+	"path/filepath"
+	"strings"
+
 	"github.com/apex/log"
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/pkg"
-	"path/filepath"
-	"strings"
 )
 
 func Deps(file string) (graph.Deps, error) {
@@ -21,7 +21,6 @@ func Deps(file string) (graph.Deps, error) {
 	for _, line := range strings.Split(string(buildFile), "\n") {
 		trimLine := strings.TrimSpace(line)
 		if strings.HasPrefix(trimLine, "dbx_thirdparty_cc_library") {
-			fmt.Println(filepath.Dir(file))
 			loc, err := fossa.UploadTarballDependency(filepath.Dir(file), true, true)
 			if err != nil {
 				log.Debugf("error found trying to upload c++ dependency %s: %s", file, err.Error())
@@ -75,7 +74,6 @@ func Deps(file string) (graph.Deps, error) {
 		}
 	}
 
-	fmt.Println(id)
 	if id.Type == 0 {
 		log.Debugf("Unable to find dependency information for file %s", file)
 		return graph.Deps{}, nil
