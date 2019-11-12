@@ -4,6 +4,7 @@ import (
 	"github.com/apex/log"
 
 	"github.com/fossas/fossa-cli/analyzers/ant"
+	"github.com/fossas/fossa-cli/analyzers/bazel"
 	"github.com/fossas/fossa-cli/analyzers/bower"
 	"github.com/fossas/fossa-cli/analyzers/buck"
 	"github.com/fossas/fossa-cli/analyzers/carthage"
@@ -32,6 +33,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	discoverFuncs := []discoverFunc{
 		ant.Discover,
 		bower.Discover,
+		bazel.Discover,
 		buck.Discover,
 		carthage.Discover,
 		cocoapods.Discover,
