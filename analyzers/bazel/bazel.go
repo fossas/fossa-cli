@@ -59,7 +59,11 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 				"path": path,
 				"name": moduleName,
 			}).Debug("constructing Bazel module")
-			relPath, _ := filepath.Rel(dir, path)
+			relPath, err := filepath.Rel(dir, path)
+			if err != nil {
+				return err
+			}
+
 			modules = append(modules, module.Module{
 				Name:        moduleName,
 				Type:        pkg.Bazel,

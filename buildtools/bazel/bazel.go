@@ -50,19 +50,19 @@ func Deps(file string, upload bool) (graph.Deps, error) {
 		}
 
 		if strings.HasPrefix(trimLine, "name") {
-			id.Name = strings.TrimSuffix(strings.Trim(trimLine, `name = "`), `",`)
+			id.Name = strings.TrimSuffix(strings.TrimPrefix(trimLine, `name = "`), `",`)
 		}
 
 		if strings.HasPrefix(trimLine, "pip_version") {
-			id.Revision = strings.TrimSuffix(strings.Trim(trimLine, `pip_version = "`), `",`)
+			id.Revision = strings.TrimSuffix(strings.TrimPrefix(trimLine, `pip_version = "`), `",`)
 		}
 
 		if strings.HasPrefix(trimLine, "version") {
-			id.Revision = strings.TrimSuffix(strings.Trim(trimLine, `version = "`), `",`)
+			id.Revision = strings.TrimSuffix(strings.TrimPrefix(trimLine, `version = "`), `",`)
 		}
 
 		if strings.HasPrefix(trimLine, "npm_req") {
-			npmReq := strings.TrimSuffix(strings.Trim(trimLine, `npm_req = "`), `",`)
+			npmReq := strings.TrimSuffix(strings.TrimPrefix(trimLine, `npm_req = "`), `",`)
 			npmSpec := strings.Split(npmReq, "@")
 			if len(npmSpec) > 0 {
 				id.Name = npmSpec[0]
