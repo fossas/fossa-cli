@@ -21,6 +21,7 @@ import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Diagnostics
 import Discovery
+import Effect.Error
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS hiding (doesDirExist)
@@ -61,6 +62,7 @@ runAction basedir enqueue = \case
     result <- discoverFunc basedir
       & readFSToIO
       & execToIO
+      & fromExceptionSemVia UncaughtException
       & errorToIOFinal @CLIErr
       & runOutputSem @ConfiguredStrategy (enqueue . AStrategy)
 
@@ -77,6 +79,7 @@ runAction basedir enqueue = \case
     result <- strategyAnalyze opts
       & readFSToIO
       & execToIO
+      & fromExceptionSemVia UncaughtException
       & errorToIOFinal @CLIErr
 
     case result of

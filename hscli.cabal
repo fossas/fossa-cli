@@ -83,6 +83,7 @@ library
     Discovery
     Discovery.Config
     Discovery.Walk
+    Effect.Error
     Effect.Exec
     Effect.GraphBuilder
     Effect.Logger
