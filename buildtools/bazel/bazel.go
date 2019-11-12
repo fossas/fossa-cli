@@ -11,7 +11,7 @@ import (
 	"github.com/fossas/fossa-cli/pkg"
 )
 
-func Deps(file string) (graph.Deps, error) {
+func Deps(file string, upload bool) (graph.Deps, error) {
 	buildFile, err := files.Read(file)
 	if err != nil {
 		return graph.Deps{}, err
@@ -21,7 +21,7 @@ func Deps(file string) (graph.Deps, error) {
 	for _, line := range strings.Split(string(buildFile), "\n") {
 		trimLine := strings.TrimSpace(line)
 		if strings.HasPrefix(trimLine, "dbx_thirdparty_cc_library") {
-			loc, err := fossa.UploadTarballDependency(filepath.Dir(file), true, true)
+			loc, err := fossa.UploadTarballDependency(filepath.Dir(file), upload, true)
 			if err != nil {
 				log.Debugf("error found trying to upload c++ dependency %s: %s", file, err.Error())
 				break

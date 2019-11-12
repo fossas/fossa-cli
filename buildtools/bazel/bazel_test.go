@@ -11,7 +11,7 @@ import (
 )
 
 func TestPythonDeps(t *testing.T) {
-	graph, err := bazel.Deps("testdata/python/BUILD")
+	graph, err := bazel.Deps("testdata/python/BUILD", false)
 	assert.NoError(t, err)
 	helpers.AssertPackageImport(t, graph.Direct, "dep-one", "1.1.1")
 
@@ -22,7 +22,7 @@ func TestPythonDeps(t *testing.T) {
 }
 
 func TestRustDeps(t *testing.T) {
-	graph, err := bazel.Deps("testdata/rust/BUILD.bazel")
+	graph, err := bazel.Deps("testdata/rust/BUILD.bazel", false)
 	assert.NoError(t, err)
 	helpers.AssertPackageImport(t, graph.Direct, "dep-one", "1.1.1")
 
@@ -33,7 +33,7 @@ func TestRustDeps(t *testing.T) {
 }
 
 func TestNPMDeps(t *testing.T) {
-	graph, err := bazel.Deps("testdata/npm/BUILD")
+	graph, err := bazel.Deps("testdata/npm/BUILD", false)
 	assert.NoError(t, err)
 	helpers.AssertPackageImport(t, graph.Direct, "dep-one", "1.1.1")
 
@@ -44,7 +44,7 @@ func TestNPMDeps(t *testing.T) {
 }
 
 func TestGoDeps(t *testing.T) {
-	graph, err := bazel.Deps("testdata/go/BUILD")
+	graph, err := bazel.Deps("testdata/go/BUILD", false)
 	assert.NoError(t, err)
 	helpers.AssertPackageImport(t, graph.Direct, "dep-one", "")
 
@@ -55,7 +55,7 @@ func TestGoDeps(t *testing.T) {
 }
 
 func TestCPlusPlusDeps(t *testing.T) {
-	graph, err := bazel.Deps("testdata/c++/BUILD")
+	graph, err := bazel.Deps("testdata/c++/BUILD", false)
 	assert.NoError(t, err)
 	helpers.AssertPackageImport(t, graph.Direct, "c++", "c96385546c3e60884a729ce36f2bc33a")
 

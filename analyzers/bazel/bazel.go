@@ -41,7 +41,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 
 // Analyze analyzes a bazel build target and its dependencies.
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	return bazel.Deps(filepath.Join(a.Module.Dir, a.Module.BuildTarget))
+	return bazel.Deps(filepath.Join(a.Module.Dir, a.Module.BuildTarget), true)
 }
 
 // Discover is used to operate Discovery with a custom `bazel` command.
