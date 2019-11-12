@@ -46,7 +46,7 @@ strategy = Strategy
   { strategyName = "golang-gopkglock"
   , strategyAnalyze = analyze
   , strategyModule = parent . targetFile
-  , strategyOptimal = NotOptimal
+  , strategyOptimal = Optimal
   , strategyComplete = NotComplete
   }
 

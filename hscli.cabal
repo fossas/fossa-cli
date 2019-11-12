@@ -9,6 +9,7 @@ common lang
   default-language:   Haskell2010
   default-extensions:
     NoImplicitPrelude
+    AllowAmbiguousTypes
     BangPatterns
     ConstraintKinds
     DataKinds
