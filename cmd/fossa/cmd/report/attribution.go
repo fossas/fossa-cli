@@ -51,9 +51,7 @@ Attribution for project %s, revision %s
 Direct Dependencies
 %s
 Deep Dependencies
-%s
-Licenses
-%s`, attrReport.Project.Name, attrReport.Project.Revision, renderDepListToString(attrReport.DirectDependencies), renderDepListToString(attrReport.DeepDependencies), renderLicensesToString(attrReport.Licenses))
+%s`, attrReport.Project.Name, attrReport.Project.Revision, renderDepListToString(attrReport.DirectDependencies), renderDepListToString(attrReport.DeepDependencies))
 
 	return nil
 }
