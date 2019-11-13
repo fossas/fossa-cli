@@ -54,7 +54,7 @@ func GetReport(locator Locator) (AttributionReport, error) {
 	params.Add("includeDownloadUrl", "true")
 
 	url := fmt.Sprintf(reportAPI, url.PathEscape(locator.OrgString())) + "?" + params.Encode()
-
 	_, err := GetJSON(url, &report)
+
 	return report, err
 }

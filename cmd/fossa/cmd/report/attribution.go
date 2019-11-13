@@ -95,6 +95,7 @@ func convertSliceOfStringsToBullets(strs []string) string {
 			bulletted = append(bulletted, fmt.Sprintf("*%s", str))
 		}
 	}
+
 	return strings.Join(bulletted, "\n")
 }
 
@@ -103,6 +104,7 @@ func renderDepLicensesToString(licenses []fossa.AttributionDependencyLicense) st
 	for _, lic := range licenses {
 		lics = append(lics, lic.Name)
 	}
+
 	return convertSliceOfStringsToBullets(lics)
 }
 
