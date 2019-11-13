@@ -75,7 +75,9 @@ spec_buildGraph = do
   describe "buildGraph" $ do
     it "should produce an empty graph for empty input" $ do
       let result = runIt $ buildGraph M.empty
-      result `shouldBe` Right G.empty
+      case result of
+        Left err -> expectationFailure ("buildGraph failed: " <> show err)
+        Right graph -> graph `shouldBe` G.empty
 
     it "should fail when there are unresolved projects" $ do
       let result = runIt $ buildGraph (M.fromList [(":myproject", [ProjectDep ":missingproject"])])

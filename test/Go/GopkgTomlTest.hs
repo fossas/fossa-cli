@@ -118,7 +118,9 @@ spec_analyze = do
             & runError @CLIErr
             & run
 
-      result `shouldBe` Right expected
+      case result of
+        Left err -> expectationFailure ("analyze failed: " <> show err)
+        Right graph -> graph `shouldBe` expected
 
 spec_buildGraph :: Spec
 spec_buildGraph = do

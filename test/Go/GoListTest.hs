@@ -57,7 +57,9 @@ spec_analyze = do
               & mockExec outputTrivial
               & runError @CLIErr
               & run
-      result `shouldBe` (Right expected)
+      case result of
+        Left err -> expectationFailure ("analyze failed: " <> show err)
+        Right graph -> graph `shouldBe` expected
 
     it "can handle complex inputs" $ do
       let result =
