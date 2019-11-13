@@ -121,6 +121,5 @@ func MakeAPIRequest(method string, endpoint *url.URL, APIKey string, body []byte
 	if apiError.Error != "" && err == nil {
 		return res, response.StatusCode, errors.New(apiError.Error)
 	}
-
 	return res, response.StatusCode, nil
 }
