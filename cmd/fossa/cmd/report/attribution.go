@@ -105,12 +105,3 @@ func renderDepLicensesToString(licenses []fossa.AttributionDependencyLicense) st
 
 	return convertSliceOfStringsToBullets(lics)
 }
-
-func renderLicensesToString(licenses map[string]string) string {
-	keys := make([]string, 0, len(licenses))
-	for k := range licenses {
-		keys = append(keys, k)
-	}
-
-	return convertSliceOfStringsToBullets(keys)
-}
