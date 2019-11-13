@@ -16,6 +16,7 @@ import Polysemy.Resource
 import System.Exit (die)
 
 import App.Scan.Project (mkProjects)
+import App.Scan.ProjectInference (InferredProject(..), inferProject)
 import Control.Parallel
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
@@ -51,6 +52,11 @@ scan basedir = do
 
   let projects = mkProjects strategyGroups results
   embed (encodeFile "analysis.json" projects)
+
+  inferred <- inferProject basedir
+  logInfo ""
+  logInfo ("Inferred project name: `" <> pretty (inferredName inferred) <> "`")
+  logInfo ("Inferred revision: `" <> pretty (inferredRevision inferred) <> "`")
 
   logSticky ""
 
