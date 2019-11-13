@@ -1,3 +1,4 @@
+{-# language QuasiQuotes #-}
 module App.Scan.ProjectInference
   ( inferProject
   , InferredProject(..)
@@ -5,8 +6,12 @@ module App.Scan.ProjectInference
 
 import Prologue
 
+import qualified Data.ByteString.Lazy as BL
 import qualified Data.HashMap.Strict as HM
+import           Data.Maybe (mapMaybe)
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
+import           Data.Text.Lazy.Encoding (decodeUtf8)
 import           Data.Time.Clock.POSIX (getPOSIXTime)
 import           Path.IO (getTempDir)
 import           Polysemy
@@ -16,24 +21,54 @@ import           Text.GitConfig.Parser (Section(..), parseConfig)
 import           Text.Megaparsec (errorBundlePretty)
 
 import Diagnostics
+import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
 
 inferProject :: Members '[Embed IO, Logger] r => Path Abs Dir -> Sem r InferredProject
 inferProject current = do
-  -- gitInferred :: Either (CLIErr (Either GitInferenceError InferredProject))
-  gitInferred <- inferGit current & readFSToIO & runError @GitInferenceError & runError @CLIErr
+  -- gitInferred :: Either CLIErr (Either InferenceError InferredProject)
+  gitInferred <- inferGit current & readFSToIO & runError @InferenceError & runError @CLIErr
+  -- svnInferred :: Either CLIErr InferredProject
+  svnInferred <- inferSVN & execToIO & runError @CLIErr
 
-  case gitInferred of
-    Left err -> do
-      logWarn ("Project inference: unexpected error. Defaulting to directory name. error: " <> viaShow err)
+  case (gitInferred, svnInferred) of
+    -- we found a git project
+    (Right (Right project), _) -> pure project
+    -- we found an svn project
+    (_, Right project)         -> pure project
+
+    _ -> do
+      logWarn ("Project inference: couldn't find VCS root. Defaulting to directory name.")
       inferDefault current
 
-    Right (Left err) -> do
-      logWarn ("Project inference: couldn't find VCS root. Defaulting to directory name. error: " <> viaShow err)
-      inferDefault current
+currentDir :: Path Rel Dir
+currentDir = [reldir|.|]
 
-    Right (Right project) -> pure project
+svnCommand :: Command
+svnCommand = Command
+  { cmdNames = ["svn"]
+  , cmdBaseArgs = ["info"]
+  , cmdAllowErr = Never
+  }
+
+inferSVN :: Members '[Exec, Error CLIErr] r => Sem r InferredProject
+inferSVN = do
+  output <- execThrow currentDir svnCommand []
+  let props = toProps output
+  case (,) <$> lookup "Repository Root" props <*> lookup "Revision" props of
+    Just (name, rev) -> pure (InferredProject name rev)
+    Nothing -> throw (CommandParseError "svn" "Invalid output (missing Repository Root or Revision)")
+
+  where
+  toProps :: BL.ByteString -> [(Text, Text)]
+  toProps bs = mapMaybe toProp (T.lines (TL.toStrict (decodeUtf8 bs)))
+
+  toProp :: Text -> Maybe (Text, Text)
+  toProp propLine =
+    case T.splitOn ": " propLine of
+      [key, val] -> Just (key, val)
+      _ -> Nothing
 
 -- | Infer a default project name from the directory, and a default
 -- revision from the current time. Writes `.fossa.revision` to the system
@@ -51,7 +86,7 @@ inferDefault dir = do
 
 findGitDir :: Member ReadFS r => Path Abs Dir -> Sem r (Maybe (Path Abs Dir))
 findGitDir dir = do
-  let Just relGit = parseRelDir ".git"
+  let relGit = [reldir|.git|]
 
   exists <- doesDirExist (dir </> relGit)
   if exists
@@ -62,20 +97,20 @@ findGitDir dir = do
         then findGitDir parentDir
         else pure Nothing
 
-inferGit :: Members '[ReadFS, Error GitInferenceError] r => Path Abs Dir -> Sem r InferredProject
-inferGit currentDir = do
-  foundGitDir <- findGitDir currentDir
+inferGit :: Members '[ReadFS, Error InferenceError] r => Path Abs Dir -> Sem r InferredProject
+inferGit dir = do
+  foundGitDir <- findGitDir dir
 
   case foundGitDir of
     Nothing -> throw MissingGitDir
-    Just dir -> do
-      name     <- parseGitProjectName dir
-      revision <- parseGitProjectRevision dir
+    Just gitDir -> do
+      name     <- parseGitProjectName gitDir
+      revision <- parseGitProjectRevision gitDir
       pure (InferredProject name revision)
 
-parseGitProjectName :: Members '[ReadFS, Error GitInferenceError] r => Path Abs Dir -> Sem r Text
+parseGitProjectName :: Members '[ReadFS, Error InferenceError] r => Path Abs Dir -> Sem r Text
 parseGitProjectName dir = do
-  let Just relConfig = parseRelFile "config"
+  let relConfig = [relfile|config|]
 
   exists <- doesFileExist (dir </> relConfig)
 
@@ -100,9 +135,9 @@ parseGitProjectName dir = do
   isOrigin (Section ["remote", "origin"] _) = True
   isOrigin _ = False
 
-parseGitProjectRevision :: Members '[ReadFS, Error GitInferenceError] r => Path Abs Dir -> Sem r Text
+parseGitProjectRevision :: Members '[ReadFS, Error InferenceError] r => Path Abs Dir -> Sem r Text
 parseGitProjectRevision dir = do
-  let Just relHead = parseRelFile "HEAD"
+  let relHead = [relfile|HEAD|]
 
   headExists <- doesFileExist (dir </> relHead)
 
@@ -123,7 +158,7 @@ parseGitProjectRevision dir = do
 removeNewlines :: Text -> Text
 removeNewlines = T.replace "\r" "" . T.replace "\n" ""
 
-data GitInferenceError =
+data InferenceError =
     InvalidRemote
   | GitConfigParse Text
   | MissingGitConfig
