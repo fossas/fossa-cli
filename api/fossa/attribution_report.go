@@ -51,6 +51,7 @@ func GetReport(locator Locator) (AttributionReport, error) {
 
 	params.Add("includeDeepDependencies", "true")
 	params.Add("includeHashAndVersionData", "true")
+	params.Add("includeDownloadUrl", "true")
 
 	url := fmt.Sprintf(reportAPI, url.PathEscape(locator.OrgString())) + "?" + params.Encode()
 
