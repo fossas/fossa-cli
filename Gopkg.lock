@@ -160,6 +160,14 @@
   version = "v0.0.4"
 
 [[projects]]
+  digest = "1:8b9352f5af622f234923139000732eb2fb32574949fa84d60a21c70e5dd7d3e6"
+  name = "github.com/mattn/go-runewidth"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f93a0d58d5fd95e53f82782d07bb0c79d23e1290"
+  version = "v0.0.6"
+
+[[projects]]
   digest = "1:78bbb1ba5b7c3f2ed0ea1eab57bdd3859aec7e177811563edc41198a760b06af"
   name = "github.com/mitchellh/go-homedir"
   packages = ["."]
@@ -182,6 +190,14 @@
   pruneopts = "UT"
   revision = "fa473d140ef3c6adf42d6b391fe76707f1f243c8"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:92d7d39e59a95a53f8e99d36cd9f4e8f685165337366a4075517d5b50451050f"
+  name = "github.com/olekukonko/tablewriter"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "b2a28affd3a5017cf1465a8bcbe17af38ce53a3c"
+  version = "v0.0.2"
 
 [[projects]]
   digest = "1:b2ee62e09bec113cf086d2ce0769efcc7bf79481aba8373fd8f7884e94df3462"
@@ -497,6 +513,7 @@
     "github.com/mattn/go-isatty",
     "github.com/mitchellh/go-wordwrap",
     "github.com/mitchellh/mapstructure",
+    "github.com/olekukonko/tablewriter",
     "github.com/pkg/errors",
     "github.com/remeh/sizedwaitgroup",
     "github.com/rhysd/go-github-selfupdate/selfupdate",

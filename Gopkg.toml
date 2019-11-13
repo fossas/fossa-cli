@@ -73,3 +73,7 @@
 [[constraint]]
   branch = "master"
   name = "golang.org/x/sync"
+
+[[constraint]]
+  name = "github.com/olekukonko/tablewriter"
+  version = "0.0.2"
