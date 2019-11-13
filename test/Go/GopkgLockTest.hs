@@ -13,6 +13,7 @@ import           Polysemy
 import           Polysemy.Error
 
 import           Diagnostics (CLIErr)
+import           Effect.Exec
 import           Effect.GraphBuilder
 import           Effect.ReadFS
 import qualified Graph as G
@@ -83,6 +84,7 @@ spec_analyze = do
     it "should produce expected output" $ do
       let result = analyze (BasicFileOpts testfile)
             & mockReadFSText contents
+            & execConst (Left [])
             & runError @CLIErr
             & run
 
