@@ -16,6 +16,7 @@ type AttributionReportRow struct {
 	Package         string
 	Source          string
 	Version         string
+	IsGolang        bool
 	Hash            string
 	Authors         []string
 	Description     string

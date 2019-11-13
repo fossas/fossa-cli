@@ -67,7 +67,13 @@ func renderDepListToString(reportRows []fossa.AttributionReportRow) string {
 	table.SetRowLine(true)
 
 	for _, row := range reportRows {
-		rowString := []string{row.Package, row.Source, row.Version, row.Hash, convertSliceOfStringsToBullets(row.Authors), row.Description, renderDepLicensesToString(row.Licenses), renderDepLicensesToString(row.OtherLicenses), row.ProjectURL, convertSliceOfStringsToBullets(row.Notes), row.DownloadURL}
+		source := row.Source
+		if source == "git" && row.IsGolang {
+			source = "go"
+		}
+
+		rowString := []string{row.Package, source, row.Version, row.Hash, convertSliceOfStringsToBullets(row.Authors), row.Description, renderDepLicensesToString(row.Licenses), renderDepLicensesToString(row.OtherLicenses), row.ProjectURL, convertSliceOfStringsToBullets(row.Notes), row.DownloadURL}
+
 		table.Append(rowString)
 	}
 	table.Render()
