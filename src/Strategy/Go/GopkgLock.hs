@@ -22,9 +22,11 @@ import qualified Toml
 
 import           Diagnostics
 import           Discovery.Walk
+import           Effect.Exec
 import           Effect.ReadFS
 import           Effect.GraphBuilder
 import qualified Graph as G
+import           Strategy.Go.Transitive (fillInTransitive)
 import           Types
 
 discover :: Discover
@@ -70,12 +72,15 @@ data Project = Project
   , projectRevision :: Text
   } deriving (Eq, Ord, Show, Generic)
 
-analyze :: Members '[ReadFS, Error CLIErr] r => BasicFileOpts -> Sem r G.Graph
+analyze :: Members '[Exec, ReadFS, Error CLIErr] r => BasicFileOpts -> Sem r G.Graph
 analyze BasicFileOpts{..} = do
   contents <- readContentsText targetFile
   case Toml.decode golockCodec contents of
     Left err -> throw @CLIErr (FileParseError (fromRelFile targetFile) (Toml.prettyException err))
-    Right golock -> pure (buildGraph (lockProjects golock))
+    Right golock -> do
+      let graph = buildGraph (lockProjects golock)
+      fillInTransitive (parent targetFile) graph
+        `catch` (\(_ :: CLIErr) -> pure graph)
 
 buildGraph :: [Project] -> G.Graph
 buildGraph projects = unfold projects (const []) toDependency

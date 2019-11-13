@@ -24,6 +24,7 @@ import           Discovery.Walk
 import           Effect.Exec
 import           Effect.GraphBuilder
 import qualified Graph as G
+import           Strategy.Go.Transitive (fillInTransitive)
 import           Types
 
 discover :: Discover
@@ -74,7 +75,9 @@ analyze BasicDirOpts{..} = do
           [package, version] -> Just (Require package version)
           _ -> Nothing
 
-  pure (buildGraph requires)
+  let graph = buildGraph requires
+  fillInTransitive targetDir graph
+    `catch` (\(_ :: CLIErr) -> pure graph)
 
 buildGraph :: [Require] -> G.Graph
 buildGraph requires = unfold requires (const []) toDependency

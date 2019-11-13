@@ -23,9 +23,11 @@ import qualified Toml
 
 import           Diagnostics
 import           Discovery.Walk
+import           Effect.Exec
 import           Effect.ReadFS
 import           Effect.GraphBuilder
 import qualified Graph as G
+import           Strategy.Go.Transitive (fillInTransitive)
 import           Types
 
 discover :: Discover
@@ -78,12 +80,15 @@ data PkgConstraint = PkgConstraint
   }
   deriving (Eq, Ord, Show, Generic)
 
-analyze :: Members '[ReadFS, Error CLIErr] r => BasicFileOpts -> Sem r G.Graph
+analyze :: Members '[ReadFS, Exec, Error CLIErr] r => BasicFileOpts -> Sem r G.Graph
 analyze BasicFileOpts{..} = do
   contents <- readContentsText targetFile
   case Toml.decode gopkgCodec contents of
     Left err -> throw @CLIErr (FileParseError (fromRelFile targetFile) (Toml.prettyException err))
-    Right gopkg -> pure (buildGraph gopkg)
+    Right gopkg -> do
+      let graph = buildGraph gopkg
+      fillInTransitive (parent targetFile) graph
+        `catch` (\(_ :: CLIErr) -> pure graph)
 
 buildGraph :: Gopkg -> G.Graph
 buildGraph gopkg = unfold direct (const []) toDependency

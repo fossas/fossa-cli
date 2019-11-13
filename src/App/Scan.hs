@@ -62,7 +62,7 @@ runAction basedir enqueue = \case
     result <- discoverFunc basedir
       & readFSToIO
       & execToIO
-      & fromExceptionSemVia UncaughtException
+      -- & fromExceptionSemVia UncaughtException
       & errorToIOFinal @CLIErr
       & runOutputSem @ConfiguredStrategy (enqueue . AStrategy)
 
@@ -79,7 +79,7 @@ runAction basedir enqueue = \case
     result <- strategyAnalyze opts
       & readFSToIO
       & execToIO
-      & fromExceptionSemVia UncaughtException
+      -- & fromExceptionSemVia UncaughtException
       & errorToIOFinal @CLIErr
 
     case result of
