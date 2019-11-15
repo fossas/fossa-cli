@@ -1,5 +1,6 @@
 module Effect.Error
-  ( fromExceptionSemVia
+  ( fromExceptionSem
+  , fromExceptionSemVia
   )
   where
 
@@ -12,6 +13,9 @@ import Polysemy.Error
 import Polysemy.Final
 
 -- TODO: taken from polysemy until they update
+fromExceptionSem :: forall e r a. (X.Exception e, Member (Error e) r, Member (Final IO) r) => Sem r a -> Sem r a
+fromExceptionSem = fromExceptionSemVia @e id
+
 fromExceptionSemVia
     :: ( X.Exception exc
        , Member (Error err) r

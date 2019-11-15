@@ -6,6 +6,7 @@ module App.Scan
 import Prologue
 
 import Control.Concurrent
+import Control.Exception (SomeException)
 import qualified Data.Sequence as S
 import Path.IO
 import Polysemy
@@ -68,15 +69,19 @@ runAction basedir enqueue = \case
     result <- discoverFunc basedir
       & readFSToIO
       & execToIO
-      -- & fromExceptionSemVia UncaughtException
       & errorToIOFinal @CLIErr
+      & fromExceptionSem @SomeException
+      & errorToIOFinal @SomeException
       & runOutputSem @ConfiguredStrategy (enqueue . AStrategy)
 
     case result of
-      Right () -> logDebug $ prettyName <> annotate (color Green) "Finished discovery"
-      Left err -> do
+      Left someException -> do
+        logWarn $ prettyName <> annotate (color Red) "Discovery failed with uncaught SomeException"
+        logWarn $ pretty (show someException) <> line
+      Right (Left err) -> do
         logWarn $ prettyName <> annotate (color Red) "Discovery failed"
         logDebug $ pretty (show err) <> line
+      Right (Right ()) -> logDebug $ prettyName <> annotate (color Green) "Finished discovery"
 
   AStrategy (ConfiguredStrategy Strategy{..} opts) -> do
     let prettyName = annotate (color Cyan) (pretty strategyName)
@@ -85,17 +90,21 @@ runAction basedir enqueue = \case
     result <- strategyAnalyze opts
       & readFSToIO
       & execToIO
-      -- & fromExceptionSemVia UncaughtException
       & errorToIOFinal @CLIErr
+      & fromExceptionSem @SomeException
+      & errorToIOFinal @SomeException
 
     case result of
-      Right graph -> do
+      Left someException -> do
+        logWarn $ prettyPath <> " " <> prettyName <> " " <> annotate (color Yellow) "Analysis failed with uncaught SomeException"
+        logDebug $ pretty (show someException) <> line
+      Right (Left err) -> do
+        logWarn $ prettyPath <> " " <> prettyName <> " " <> annotate (color Yellow) "Analysis failed"
+        logDebug $ pretty (show err) <> line
+      Right (Right graph) -> do
         logInfo $ prettyPath <> " " <> prettyName <> " " <> annotate (color Green) "Analyzed"
         logDebug (pretty (show graph))
         output (CompletedStrategy strategyName (strategyModule opts) graph strategyOptimal strategyComplete)
-      Left err -> do
-        logWarn $ prettyPath <> " " <> prettyName <> " " <> annotate (color Yellow) "Analysis failed"
-        logDebug $ pretty (show err) <> line
 
 updateProgress :: Member Logger r => Progress -> Sem r ()
 updateProgress Progress{..} =

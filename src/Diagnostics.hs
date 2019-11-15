@@ -20,6 +20,4 @@ data CLIErr =
   | CommandParseError Text Text -- ^ Command output couldn't be parsed. TODO: ask user to help with this. command, err
   | FileReadError FilePath Text -- ^ A file couldn't be read. file, err
   | FileParseError FilePath Text -- ^ A file's contents couldn't be parsed. TODO: ask user to help with this. file, err
-
-  | UncaughtException SomeException
-  deriving (Show, Generic, Typeable)
+  deriving (Eq, Ord, Show, Generic, Typeable)
