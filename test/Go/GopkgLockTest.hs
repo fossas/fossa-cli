@@ -12,7 +12,7 @@ import qualified Data.Text.IO as TIO
 import           Polysemy
 import           Polysemy.Error
 
-import           Diagnostics (CLIErr)
+import           Diagnostics
 import           Effect.Exec
 import           Effect.GraphBuilder
 import           Effect.ReadFS
@@ -85,6 +85,8 @@ spec_analyze = do
       let result = analyze (BasicFileOpts testfile)
             & mockReadFSText contents
             & execConst (Left [])
+            & execErrToCLIErr
+            & readFSErrToCLIErr
             & runError @CLIErr
             & run
 

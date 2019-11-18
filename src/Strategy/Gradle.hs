@@ -79,7 +79,7 @@ strategy = Strategy
 initScript :: ByteString
 initScript = $(embedFile "scripts/jsondeps.gradle")
 
-analyze :: Members '[Embed IO, Resource, Exec, Error CLIErr] r => BasicDirOpts -> Sem r G.Graph
+analyze :: Members '[Embed IO, Resource, Exec, Error ExecErr] r => BasicDirOpts -> Sem r G.Graph
 analyze BasicDirOpts{..} =
   bracket (embed @IO (getTempDir >>= \tmp -> createTempDir tmp "fossa-gradle"))
           (embed @IO . removeDirRecur)
@@ -114,7 +114,7 @@ analyze BasicDirOpts{..} =
     buildGraph packagesToOutput
       & evalGraphBuilder G.empty
 
-buildGraph :: (Member (Error CLIErr) r, Member GraphBuilder r) => Map Text [JsonDep] -> Sem r ()
+buildGraph :: (Member (Error ExecErr) r, Member GraphBuilder r) => Map Text [JsonDep] -> Sem r ()
 buildGraph mapping = do
   mappingWithRefs <- M.traverseWithKey addShallowProject mapping
   traverse_ (\(ref,_) -> addDirect ref) (M.elems mappingWithRefs)
@@ -134,12 +134,12 @@ buildGraph mapping = do
     ref <- addNode (projectToDep projName)
     pure (ref, projDeps)
 
-  addProject :: (Member (Error CLIErr) r, Member GraphBuilder r) => Map Text (G.DepRef, [JsonDep]) -> (G.DepRef, [JsonDep]) -> Sem r ()
+  addProject :: (Member (Error ExecErr) r, Member GraphBuilder r) => Map Text (G.DepRef, [JsonDep]) -> (G.DepRef, [JsonDep]) -> Sem r ()
   addProject projectToRef (projRef, projDeps) = do
     children <- traverse (addJsonDep projectToRef) projDeps
     traverse_ (addEdge projRef) children
 
-  addJsonDep :: (Member (Error CLIErr) r, Member GraphBuilder r) => Map Text (G.DepRef, [JsonDep]) -> JsonDep -> Sem r G.DepRef
+  addJsonDep :: (Member (Error ExecErr) r, Member GraphBuilder r) => Map Text (G.DepRef, [JsonDep]) -> JsonDep -> Sem r G.DepRef
   addJsonDep projectToRef = \case
     ProjectDep name ->
       case M.lookup name projectToRef of

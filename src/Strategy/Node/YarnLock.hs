@@ -47,7 +47,7 @@ strategy = Strategy
   , strategyComplete = Complete
   }
 
-analyze :: Members '[Error CLIErr, ReadFS] r => Path Rel File -> Sem r G.Graph
+analyze :: Members '[Error ReadFSErr, ReadFS] r => Path Rel File -> Sem r G.Graph
 analyze lockfile = do
     let path = fromRelFile lockfile
 

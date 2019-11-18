@@ -78,7 +78,7 @@ decodeMany = decodeWith parser fromJSON
 graphToDepMap :: G.Graph -> Map Text G.DepRef
 graphToDepMap = S.foldrWithIndex (\ix dep acc -> M.insert (G.dependencyName dep) (G.DepRef ix) acc) M.empty . G.graphDeps
 
-fillInTransitive :: Members '[Error CLIErr, Exec] r => Path Rel Dir -> G.Graph -> Sem r G.Graph
+fillInTransitive :: Members '[Error ExecErr, Exec] r => Path Rel Dir -> G.Graph -> Sem r G.Graph
 fillInTransitive dir graph = evalGraphBuilder graph $ runState depMap $ do -- TODO: void????
   goListOutput <- execThrow dir goListCmd []
   case decodeMany goListOutput of

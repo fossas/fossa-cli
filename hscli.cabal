@@ -45,6 +45,7 @@ common lang
 common deps
   build-depends:
     , aeson                        ^>=1.4.5
+    , algebraic-graphs             ^>=0.4
     , async                        ^>=2.2.2
     , attoparsec                   ^>=0.13.2.3
     , bytestring                   ^>=0.10.8

@@ -12,7 +12,7 @@ import qualified Data.Text.IO as TIO
 import           Polysemy
 import           Polysemy.Error
 
-import           Diagnostics (CLIErr)
+import           Diagnostics
 import           Effect.Exec
 import           Effect.GraphBuilder
 import           Effect.ReadFS
@@ -116,6 +116,8 @@ spec_analyze = do
     it "should produce expected output" $ do
       let result = analyze (BasicFileOpts testfile)
             & mockReadFSText contents
+            & execErrToCLIErr
+            & readFSErrToCLIErr
             & runError @CLIErr
             & execConst (Left [])
             & run

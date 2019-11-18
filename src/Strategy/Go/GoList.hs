@@ -62,7 +62,7 @@ golistCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: Members '[Error CLIErr, Exec] r => BasicDirOpts -> Sem r G.Graph
+analyze :: Members '[Error ExecErr, Exec] r => BasicDirOpts -> Sem r G.Graph
 analyze BasicDirOpts{..} = do
   stdout <- execThrow targetDir golistCmd []
 
@@ -77,7 +77,7 @@ analyze BasicDirOpts{..} = do
 
   let graph = buildGraph requires
   fillInTransitive targetDir graph
-    `catch` (\(_ :: CLIErr) -> pure graph)
+    `catch` (\(_ :: ExecErr) -> pure graph)
 
 buildGraph :: [Require] -> G.Graph
 buildGraph requires = unfold requires (const []) toDependency

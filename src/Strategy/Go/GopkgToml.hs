@@ -80,15 +80,15 @@ data PkgConstraint = PkgConstraint
   }
   deriving (Eq, Ord, Show, Generic)
 
-analyze :: Members '[ReadFS, Exec, Error CLIErr] r => BasicFileOpts -> Sem r G.Graph
+analyze :: Members '[ReadFS, Exec, Error ReadFSErr, Error ExecErr] r => BasicFileOpts -> Sem r G.Graph
 analyze BasicFileOpts{..} = do
   contents <- readContentsText targetFile
   case Toml.decode gopkgCodec contents of
-    Left err -> throw @CLIErr (FileParseError (fromRelFile targetFile) (Toml.prettyException err))
+    Left err -> throw (FileParseError (fromRelFile targetFile) (Toml.prettyException err))
     Right gopkg -> do
       let graph = buildGraph gopkg
       fillInTransitive (parent targetFile) graph
-        `catch` (\(_ :: CLIErr) -> pure graph)
+        `catch` (\(_ :: ExecErr) -> pure graph)
 
 buildGraph :: Gopkg -> G.Graph
 buildGraph gopkg = unfold direct (const []) toDependency

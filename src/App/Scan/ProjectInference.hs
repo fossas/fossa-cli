@@ -28,9 +28,9 @@ import Effect.ReadFS
 inferProject :: Members '[Embed IO, Logger] r => Path Abs Dir -> Sem r InferredProject
 inferProject current = do
   -- gitInferred :: Either CLIErr (Either InferenceError InferredProject)
-  gitInferred <- inferGit current & readFSToIO & runError @InferenceError & runError @CLIErr
+  gitInferred <- inferGit current & readFSToIO & mapError @ReadFSErr CLIErrReadFS & runError @InferenceError & runError @CLIErr
   -- svnInferred :: Either CLIErr InferredProject
-  svnInferred <- inferSVN & execToIO & runError @CLIErr
+  svnInferred <- inferSVN & execToIO & mapError @ExecErr CLIErrExec & runError @CLIErr
 
   case (gitInferred, svnInferred) of
     -- we found a git project
@@ -52,7 +52,7 @@ svnCommand = Command
   , cmdAllowErr = Never
   }
 
-inferSVN :: Members '[Exec, Error CLIErr] r => Sem r InferredProject
+inferSVN :: Members '[Exec, Error ExecErr] r => Sem r InferredProject
 inferSVN = do
   output <- execThrow currentDir svnCommand []
   let props = toProps output

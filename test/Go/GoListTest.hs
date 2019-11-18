@@ -55,7 +55,7 @@ spec_analyze = do
       let result =
             analyze (BasicDirOpts testdir)
               & mockExec outputTrivial
-              & runError @CLIErr
+              & runError @ExecErr
               & run
       case result of
         Left err -> expectationFailure ("analyze failed: " <> show err)
@@ -65,7 +65,7 @@ spec_analyze = do
       let result =
             analyze (BasicDirOpts testdir)
               & mockExec outputComplex
-              & runError @CLIErr
+              & runError @ExecErr
               & run
 
       case result of

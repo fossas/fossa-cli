@@ -70,7 +70,7 @@ gradleOutput = M.fromList
 
 spec_buildGraph :: Spec
 spec_buildGraph = do
-  let runIt = run . runError @CLIErr . evalGraphBuilder G.empty
+  let runIt = run . runError @ExecErr . evalGraphBuilder G.empty
 
   describe "buildGraph" $ do
     it "should produce an empty graph for empty input" $ do
