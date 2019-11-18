@@ -5,8 +5,3 @@ source-repository-package
     location: https://github.com/fossas/yarn-lock.git
     -- the dont-ignore-cabal branch
     tag: 948662902785c074bd22ab6139e04e820a50e21f
-
-source-repository-package
-    type: git
-    location: https://github.com/fossas/git-config.git
-    tag: 174580255ac4217c377b257527be95791d96ff6f
