@@ -282,6 +282,10 @@ func NormalizeDependencies(imports []Dependency, deps map[Dependency][]Dependenc
 	// Set direct dependencies.
 	var i []pkg.Import
 	for _, dep := range imports {
+		if dep.IsProject {
+			continue
+		}
+
 		i = append(i, pkg.Import{
 			Target: dep.RequestedVersion,
 			Resolved: pkg.ID{
@@ -295,6 +299,10 @@ func NormalizeDependencies(imports []Dependency, deps map[Dependency][]Dependenc
 	// Set transitive dependencies.
 	d := make(map[pkg.ID]pkg.Package)
 	for parent, children := range deps {
+		if parent.IsProject {
+			continue
+		}
+
 		id := pkg.ID{
 			Type:     pkg.Gradle,
 			Name:     parent.Name,

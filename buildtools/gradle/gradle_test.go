@@ -37,17 +37,12 @@ func TestAllDependencies(t *testing.T) {
 		assert.NoError(t, err)
 
 		direct := graph["test"].Direct
-		assert.Equal(t, 3, len(direct))
-		helpers.AssertPackageImport(t, direct, "core", "")
+		assert.Equal(t, 2, len(direct))
 		helpers.AssertPackageImport(t, direct, "dep:one", "1.0")
 		helpers.AssertPackageImport(t, direct, "dep:two", "2.0")
 
 		transitive := graph["test"].Transitive
-		assert.Equal(t, 6, len(transitive))
-
-		packageProject := helpers.PackageInTransitiveGraph(transitive, "core", "")
-		assert.NotEmpty(t, packageProject)
-		assert.Equal(t, 0, len(packageProject.Imports))
+		assert.Equal(t, 5, len(transitive))
 
 		packageOne := helpers.PackageInTransitiveGraph(transitive, "dep:one", "1.0")
 		assert.NotEmpty(t, packageOne)
