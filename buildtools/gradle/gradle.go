@@ -1,6 +1,7 @@
 package gradle
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -237,11 +238,16 @@ func Cmd(command string, timeout string, retries int, taskArgs ...string) (strin
 	}
 
 	stdout, stderr, err := exec.Run(tempcmd)
-	if stderr != "" {
-		return stdout, errors.Errorf("%s", stderr)
+	if err != nil {
+		return stdout, &errors.Error{
+			Cause:           err,
+			Type:            errors.Exec,
+			Troubleshooting: fmt.Sprintf("Fossa could not run `%s %s` within the current directory. Try running this command and ensure that gradle is installed in your environment.\nstdout: %s\nstderr: %s", command, taskArgs, stdout, stderr),
+			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/gradle.md#gradle",
+		}
 	}
 
-	return stdout, err
+	return stdout, nil
 }
 
 // ValidBinary finds the best possible gradle command to run for
