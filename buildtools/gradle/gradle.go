@@ -238,7 +238,7 @@ func Cmd(command string, timeout string, retries int, taskArgs ...string) (strin
 	}
 
 	stdout, stderr, err := exec.Run(tempcmd)
-	if err != nil {
+	if err != nil && stderr != "" {
 		return stdout, &errors.Error{
 			Cause:           err,
 			Type:            errors.Exec,
