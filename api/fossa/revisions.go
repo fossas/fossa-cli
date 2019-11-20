@@ -68,6 +68,7 @@ func GetRevisionDependencies(locator Locator, licenseText bool) ([]Revision, err
 	if licenseText {
 		licenseParams.Add("include_license_text", "true")
 		licenseParams.Add("generate_attribution", "true")
+		licenseParams.Add("includeDownloadUrl", "true")
 	}
 
 	url := fmt.Sprintf(RevisionsDependenciesAPI, url.PathEscape(locator.OrgString())) + "?" + licenseParams.Encode()
