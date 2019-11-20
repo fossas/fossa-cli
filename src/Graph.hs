@@ -12,7 +12,6 @@ module Graph
   , graphDirect
 
   , Dependency(..)
-  , DepRef(..) -- FIXME: THIS NEEDS TO BE UNEXPORTED
   ) where
 
 import Prologue hiding (empty, parent)

@@ -1,20 +1,20 @@
 module Strategy.Go.GopkgToml
   ( discover
   , strategy
-  , analyze
+  --, analyze
   , configure
 
   , Gopkg(..)
   , PkgConstraint(..)
 
+  , analyze
   , buildGraph
   )
   where
 
-import Prologue hiding ((.=))
+import Prologue hiding ((.=), empty)
 
 import qualified Data.Map.Strict as M
-import           Data.Maybe (maybeToList)
 import           Polysemy
 import           Polysemy.Error
 import           Polysemy.Output
@@ -23,11 +23,13 @@ import qualified Toml
 
 import           Diagnostics
 import           Discovery.Walk
+import qualified Effect.Error as E
 import           Effect.Exec
+import           Effect.Graphing
 import           Effect.ReadFS
-import           Effect.GraphBuilder
 import qualified Graph as G
 import           Strategy.Go.Transitive (fillInTransitive)
+import           Strategy.Go.Types
 import           Types
 
 discover :: Discover
@@ -81,27 +83,32 @@ data PkgConstraint = PkgConstraint
   deriving (Eq, Ord, Show, Generic)
 
 analyze :: Members '[ReadFS, Exec, Error ReadFSErr, Error ExecErr] r => BasicFileOpts -> Sem r G.Graph
-analyze BasicFileOpts{..} = do
+analyze BasicFileOpts{..} = graphingGolang $ do
   contents <- readContentsText targetFile
   case Toml.decode gopkgCodec contents of
     Left err -> throw (FileParseError (fromRelFile targetFile) (Toml.prettyException err))
     Right gopkg -> do
-      let graph = buildGraph gopkg
-      fillInTransitive (parent targetFile) graph
-        `catch` (\(_ :: ExecErr) -> pure graph)
+      buildGraph gopkg
 
-buildGraph :: Gopkg -> G.Graph
-buildGraph gopkg = unfold direct (const []) toDependency
+      -- TODO: logging/etc
+      _ <- E.try @ExecErr (fillInTransitive (parent targetFile))
+      pure ()
+
+buildGraph :: Member (Graphing GolangPackage) r => Gopkg -> Sem r ()
+buildGraph = void . M.traverseWithKey go . resolve
   where
-  direct = M.toList (resolve gopkg)
+  go :: Member (Graphing GolangPackage) r => Text -> PkgConstraint -> Sem r ()
+  go name PkgConstraint{..} = do
+    let pkg = mkGolangPackage name
 
-  toDependency (name, PkgConstraint{..}) =
-    G.Dependency { dependencyType = G.GoType
-                 , dependencyName = name
-                 , dependencyVersion = G.CEq <$> (constraintVersion <|> constraintBranch <|> constraintRevision)
-                 , dependencyLocations = maybeToList constraintSource
-                 , dependencyTags = M.empty
-                 }
+    direct pkg
+
+    -- label version when it exists
+    traverse_ (label pkg . mkGolangVersion)
+              (constraintVersion <|> constraintBranch <|> constraintRevision)
+
+    -- label location when it exists
+    traverse_ (label pkg . GolangLabelLocation) constraintSource
 
 -- TODO: handling version constraints
 resolve :: Gopkg -> Map Text PkgConstraint -- Map Package (Maybe Version)

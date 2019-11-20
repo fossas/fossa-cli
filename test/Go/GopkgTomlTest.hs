@@ -18,6 +18,7 @@ import           Effect.GraphBuilder
 import           Effect.ReadFS
 import qualified Graph as G
 import           Strategy.Go.GopkgToml
+import           Strategy.Go.Types (graphingGolang)
 import           Types (BasicFileOpts(..))
 
 import Test.Tasty.Hspec
@@ -130,6 +131,6 @@ spec_buildGraph :: Spec
 spec_buildGraph = do
   describe "buildGraph" $
     it "should produce expected output" $ do
-      let result = buildGraph gopkg
+      let result = buildGraph gopkg & graphingGolang & run
 
       result `shouldBe` expected

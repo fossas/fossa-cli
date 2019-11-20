@@ -1,6 +1,6 @@
 module Go.GomodTest
-  ( spec_analyze
-  , spec_parse
+  ( spec_gomodBuildGraph
+  , spec_gomodParse
   ) where
 
 import Prologue
@@ -8,12 +8,12 @@ import Prologue
 import qualified Data.Map.Strict as M
 import qualified Data.Text.IO as TIO
 import           Polysemy
-import           Polysemy.Input
+import           Text.Megaparsec
 
 import           Effect.GraphBuilder
 import qualified Graph as G
 import           Strategy.Go.Gomod
-import           Text.Megaparsec
+import           Strategy.Go.Types (graphingGolang)
 
 import Test.Hspec.Megaparsec
 import Test.Tasty.Hspec
@@ -56,18 +56,16 @@ expected = run . evalGraphBuilder G.empty $ do
   addDirect ref2
   addDirect ref3
 
-spec_analyze :: Spec
-spec_analyze =
-  describe "analyze" $
+spec_gomodBuildGraph :: Spec
+spec_gomodBuildGraph =
+  describe "buildGraph" $
     it "should produce expected output" $ do
-      let result = analyze
-            & runInputConst @Gomod gomod
-            & run
+      let result = buildGraph gomod & graphingGolang & run
 
       result `shouldBe` expected
 
-spec_parse :: Spec
-spec_parse = do
+spec_gomodParse :: Spec
+spec_gomodParse = do
   trivialInput <- runIO (TIO.readFile "test/Go/testdata/go.mod.trivial")
   edgecaseInput <- runIO (TIO.readFile "test/Go/testdata/go.mod.edgecases")
 
