@@ -65,6 +65,8 @@ const RevisionsDependenciesAPI = "/api/revisions/%s/dependencies"
 func GetRevisionDependencies(locator Locator, licenseText bool) ([]Revision, error) {
 	var revisions []Revision
 	licenseParams := url.Values{}
+	licenseParams.Add("includeDownloadUrl", "true")
+
 	if licenseText {
 		licenseParams.Add("include_license_text", "true")
 		licenseParams.Add("generate_attribution", "true")
