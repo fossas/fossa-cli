@@ -1,6 +1,7 @@
 package report
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -52,7 +53,15 @@ func generateReport(ctx *cli.Context) error {
 		return errors.Wrapf(err, "Unable to build report for for project %s:", locator)
 	}
 
-	fmt.Printf(attributionTemplate, attrReport.Project.Name, attrReport.Project.Revision, renderDepListToString(attrReport.DirectDependencies), renderDepListToString(attrReport.DeepDependencies))
+	if ctx.Bool(JSON) {
+		output, err := json.Marshal(attrReport)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(output))
+	} else {
+		fmt.Printf(attributionTemplate, attrReport.Project.Name, attrReport.Project.Revision, renderDepListToString(attrReport.DirectDependencies), renderDepListToString(attrReport.DeepDependencies))
+	}
 
 	return nil
 }
