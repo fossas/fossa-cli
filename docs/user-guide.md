@@ -270,7 +270,6 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --project=PROJECT_NAME --revision=S
 | `--help`     | `-h`  | Print a help message.                                                                         |
 
 ### `fossa report`
-
 Report accesses the scanned report on FOSSA.com using the existing configuration file and outputs information directly to the command line. Report offers two different commands:
 
 #### `fossa report licenses` 
@@ -279,7 +278,10 @@ Outputs detailed information about the licenses and corresponding dependencies u
 #### `fossa report dependencies`
 Outputs detailed information about the dependencies that are being used by the current project.
 
-> Note: `fossa report` requires an API Key to be set. 
+#### `fossa report attribution`
+Outputs an attribution report for the project that includes information about the dependencies used and their licenses.
+
+> Note: `fossa report` requires an API Key with full access to be set.
 
 #### Example
 ```bash
