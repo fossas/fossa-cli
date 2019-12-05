@@ -39,7 +39,7 @@ inferProject current = do
     (_, Right project)         -> pure project
 
     _ -> do
-      logWarn ("Project inference: couldn't find VCS root. Defaulting to directory name.")
+      logWarn "Project inference: couldn't find VCS root. Defaulting to directory name."
       inferDefault current
 
 currentDir :: Path Rel Dir
@@ -79,7 +79,7 @@ inferDefault dir = do
   time <- embed (floor <$> getPOSIXTime :: IO Int)
 
   tmp <- getTempDir
-  embed (writeFile ((fromAbsDir tmp) FP.</> ".fossa.revision") (show time))
+  embed (writeFile (fromAbsDir tmp FP.</> ".fossa.revision") (show time))
 
   pure (InferredProject (T.pack name) (T.pack (show time)))
 
@@ -114,7 +114,7 @@ parseGitProjectName dir = do
 
   exists <- doesFileExist (dir </> relConfig)
 
-  when (not exists) (throw MissingGitConfig)
+  unless exists (throw MissingGitConfig)
 
   contents <- readContentsText (dir </> relConfig)
 
@@ -122,10 +122,10 @@ parseGitProjectName dir = do
     Left err -> throw (GitConfigParse (T.pack (errorBundlePretty err)))
 
     Right config -> do
-      let maybeSection = find (isOrigin) config
+      let maybeSection = find isOrigin config
       case maybeSection of
         Nothing -> throw InvalidRemote
-        Just (Section _ properties) -> do
+        Just (Section _ properties) ->
           case HM.lookup "url" properties of
             Just url -> pure url
             Nothing -> throw InvalidRemote
@@ -141,7 +141,7 @@ parseGitProjectRevision dir = do
 
   headExists <- doesFileExist (dir </> relHead)
 
-  when (not headExists) (throw MissingGitHead)
+  unless headExists (throw MissingGitHead)
 
   contents <- removeNewlines . T.drop 5 <$> readContentsText (dir </> relHead)
 
@@ -149,7 +149,7 @@ parseGitProjectRevision dir = do
     Just path -> do
       branchExists <- doesFileExist (dir </> path)
 
-      when (not branchExists) (throw (MissingBranch contents))
+      unless branchExists (throw (MissingBranch contents))
 
       removeNewlines <$> readContentsText (dir </> path)
 
