@@ -24,11 +24,12 @@ import Polysemy.Error
 import Polysemy.Output
 import Polysemy.Resource
 
+import DepTypes
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
 import Diagnostics
-import Graph
+import Graphing
 
 ---------- Discovery
 
@@ -70,7 +71,7 @@ type StrategyEffs r = Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, 
 -- serialize\/deserialize a strategy's options to/from disk
 data Strategy options = Strategy
   { strategyName     :: Text -- ^ e.g., "python-pipenv"
-  , strategyAnalyze  :: forall r. StrategyEffs r => options -> Sem r Graph
+  , strategyAnalyze  :: forall r. StrategyEffs r => options -> Sem r (Graphing Dependency)
   , strategyModule   :: options -> Path Rel Dir -- ^ Determine the module directory for grouping with other strategies
   , strategyOptimal  :: Optimal -- ^ Whether this strategy is considered "optimal" -- i.e., best case analysis for a given project. Notably, this __does not__ imply "complete".
   , strategyComplete :: Complete -- ^ Whether this strategy produces graphs that contain all dependencies for a given project. When @NotComplete@, the backend will run a hasGraph-like analysis to produce the missing dependencies and graph edges
@@ -105,7 +106,7 @@ instance ToJSON ConfiguredStrategy where
 data CompletedStrategy = CompletedStrategy
   { completedName     :: Text
   , completedModule   :: Path Rel Dir
-  , completedGraph    :: Graph
+  , completedGraph    :: Graphing Dependency
   , completedOptimal  :: Optimal
   , completedComplete :: Complete
   } deriving (Eq, Ord, Show, Generic)

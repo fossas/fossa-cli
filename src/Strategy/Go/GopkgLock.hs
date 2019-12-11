@@ -12,22 +12,23 @@ module Strategy.Go.GopkgLock
 
 import Prologue hiding ((.=))
 
-import           Polysemy
-import           Polysemy.Error
-import           Polysemy.Output
-import           Toml (TomlCodec, (.=))
+import Polysemy
+import Polysemy.Error
+import Polysemy.Output
+import Toml (TomlCodec, (.=))
 import qualified Toml
 
-import           Diagnostics
-import           Discovery.Walk
+import DepTypes
+import Diagnostics
+import Discovery.Walk
 import qualified Effect.Error as E
-import           Effect.Exec
-import           Effect.Graphing
-import           Effect.ReadFS
-import qualified Graph as G
-import           Strategy.Go.Transitive (fillInTransitive)
-import           Strategy.Go.Types
-import           Types
+import Effect.Exec
+import Effect.LabeledGrapher
+import Effect.ReadFS
+import Graphing (Graphing)
+import Strategy.Go.Transitive (fillInTransitive)
+import Strategy.Go.Types
+import Types
 
 discover :: Discover
 discover = Discover
@@ -72,7 +73,7 @@ data Project = Project
   , projectRevision :: Text
   } deriving (Eq, Ord, Show, Generic)
 
-analyze :: Members '[Exec, ReadFS, Error ReadFSErr, Error ExecErr] r => BasicFileOpts -> Sem r G.Graph
+analyze :: Members '[Exec, ReadFS, Error ReadFSErr, Error ExecErr] r => BasicFileOpts -> Sem r (Graphing Dependency)
 analyze BasicFileOpts{..} = graphingGolang $ do
   contents <- readContentsText targetFile
   case Toml.decode golockCodec contents of
@@ -84,10 +85,10 @@ analyze BasicFileOpts{..} = graphingGolang $ do
       _ <- E.try @ExecErr (fillInTransitive (parent targetFile))
       pure ()
 
-buildGraph :: Member (Graphing GolangPackage) r => [Project] -> Sem r ()
+buildGraph :: Member (LabeledGrapher GolangPackage) r => [Project] -> Sem r ()
 buildGraph = void . traverse_ go
   where
-  go :: Member (Graphing GolangPackage) r => Project -> Sem r ()
+  go :: Member (LabeledGrapher GolangPackage) r => Project -> Sem r ()
   go Project{..} = do
     let pkg = mkGolangPackage projectName
 

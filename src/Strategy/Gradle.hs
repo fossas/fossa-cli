@@ -1,4 +1,3 @@
-
 {-# language TemplateHaskell #-}
 
 module Strategy.Gradle
@@ -11,27 +10,28 @@ module Strategy.Gradle
 
 import Prologue hiding (json)
 
-import           Data.Aeson.Types (Parser, unexpected)
+import Data.Aeson.Types (Parser, unexpected)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
-import           Data.FileEmbed (embedFile)
+import Data.FileEmbed (embedFile)
 import qualified Data.Map.Strict as M
-import           Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
-import           Data.Text.Encoding (decodeUtf8, encodeUtf8)
-import           Path.IO (createTempDir, getTempDir, removeDirRecur)
-import           Polysemy
-import           Polysemy.Error
-import           Polysemy.Output
-import           Polysemy.Resource
+import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import Path.IO (createTempDir, getTempDir, removeDirRecur)
+import Polysemy
+import Polysemy.Error
+import Polysemy.Output
+import Polysemy.Resource
 import qualified System.FilePath as FP
 
-import           Diagnostics
-import           Discovery.Walk
-import           Effect.Exec
-import           Effect.GraphBuilder
-import qualified Graph as G
-import           Types
+import DepTypes
+import Diagnostics
+import Discovery.Walk
+import Effect.Exec
+import Effect.Grapher
+import Graphing (Graphing)
+import Types
 
 gradleTasksCmd :: Command
 gradleTasksCmd = Command
@@ -79,7 +79,7 @@ strategy = Strategy
 initScript :: ByteString
 initScript = $(embedFile "scripts/jsondeps.gradle")
 
-analyze :: Members '[Embed IO, Resource, Exec, Error ExecErr] r => BasicDirOpts -> Sem r G.Graph
+analyze :: Members '[Embed IO, Resource, Exec, Error ExecErr] r => BasicDirOpts -> Sem r (Graphing Dependency)
 analyze BasicDirOpts{..} =
   bracket (embed @IO (getTempDir >>= \tmp -> createTempDir tmp "fossa-gradle"))
           (embed @IO . removeDirRecur)
@@ -111,51 +111,48 @@ analyze BasicDirOpts{..} =
         packagesToOutput :: Map Text [JsonDep]
         packagesToOutput = M.fromList packagePathsWithDecoded
 
-    buildGraph packagesToOutput
-      & evalGraphBuilder G.empty
+    pure (buildGraph packagesToOutput)
 
-buildGraph :: (Member (Error ExecErr) r, Member GraphBuilder r) => Map Text [JsonDep] -> Sem r ()
-buildGraph mapping = do
-  mappingWithRefs <- M.traverseWithKey addShallowProject mapping
-  traverse_ (\(ref,_) -> addDirect ref) (M.elems mappingWithRefs)
-  traverse_ (addProject mappingWithRefs) mappingWithRefs
-
+-- TODO: use LabeledGraphing to add labels for environments
+buildGraph :: Map Text [JsonDep] -> Graphing Dependency
+buildGraph mapping = run . evalGrapher $ M.traverseWithKey addProject mapping
   where
-  projectToDep name = G.Dependency
-    { dependencyType = G.SubprojectType
+  -- add top-level projects from the output
+  addProject :: Member (Grapher Dependency) r => Text -> [JsonDep] -> Sem r ()
+  addProject projName projDeps = do
+    let projAsDep = projectToDep projName
+    direct projAsDep
+    for_ projDeps $ \dep -> do
+      edge projAsDep (jsonDepToDep dep)
+      mkRecursiveEdges dep
+
+  -- build edges between deps, recursively
+  mkRecursiveEdges :: Member (Grapher Dependency) r => JsonDep -> Sem r ()
+  mkRecursiveEdges (ProjectDep _) = pure ()
+  mkRecursiveEdges jsondep@(PackageDep _ _ deps) = do
+    let packageAsDep = jsonDepToDep jsondep
+    for_ deps $ \child -> do
+      edge packageAsDep (jsonDepToDep child)
+      mkRecursiveEdges child
+
+  jsonDepToDep :: JsonDep -> Dependency
+  jsonDepToDep (ProjectDep name) = projectToDep name
+  jsonDepToDep (PackageDep name version _) =
+    Dependency
+      { dependencyType = MavenType
+      , dependencyName = name
+      , dependencyVersion = Just (CEq version)
+      , dependencyLocations = []
+      , dependencyTags = M.empty
+      }
+
+  projectToDep name = Dependency
+    { dependencyType = SubprojectType
     , dependencyName = name
     , dependencyVersion = Nothing
     , dependencyLocations = []
     , dependencyTags = M.empty
     }
-
-  addShallowProject :: Member GraphBuilder r => Text -> [JsonDep] -> Sem r (G.DepRef, [JsonDep])
-  addShallowProject projName projDeps = do
-    ref <- addNode (projectToDep projName)
-    pure (ref, projDeps)
-
-  addProject :: (Member (Error ExecErr) r, Member GraphBuilder r) => Map Text (G.DepRef, [JsonDep]) -> (G.DepRef, [JsonDep]) -> Sem r ()
-  addProject projectToRef (projRef, projDeps) = do
-    children <- traverse (addJsonDep projectToRef) projDeps
-    traverse_ (addEdge projRef) children
-
-  addJsonDep :: (Member (Error ExecErr) r, Member GraphBuilder r) => Map Text (G.DepRef, [JsonDep]) -> JsonDep -> Sem r G.DepRef
-  addJsonDep projectToRef = \case
-    ProjectDep name ->
-      case M.lookup name projectToRef of
-        Nothing -> throw (CommandParseError "" ("couldn't find project " <> name <> " when building graph")) -- TODO: better error or failure mode
-        Just (ref, _) -> pure ref
-    PackageDep name version deps -> do
-      children <- traverse (addJsonDep projectToRef) deps
-      ref <- addNode $ G.Dependency
-        { dependencyType = G.MavenType
-        , dependencyName = name
-        , dependencyVersion = Just (G.CEq version)
-        , dependencyLocations = []
-        , dependencyTags = M.empty
-        }
-      traverse_ (addEdge ref) children
-      pure ref
 
 data JsonDep =
     ProjectDep Text -- name

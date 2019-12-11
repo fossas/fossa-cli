@@ -17,7 +17,7 @@ import           Polysemy.Error
 
 import           Diagnostics
 import           Effect.Exec
-import           Effect.Graphing
+import           Effect.LabeledGrapher
 import           Strategy.Go.Types
 
 goListCmd :: Command
@@ -71,11 +71,10 @@ decodeMany = eitherDecodeWith parser (iparse parseJSON)
     (objects :: [Value]) <- many json <* skipSpace <* A.endOfInput
     pure (Array (V.fromList objects))
 
-
-graphTransitive :: Member (Graphing GolangPackage) r => [Package] -> Sem r ()
+graphTransitive :: Member (LabeledGrapher GolangPackage) r => [Package] -> Sem r ()
 graphTransitive = void . traverse_ go
   where
-  go :: Member (Graphing GolangPackage) r => Package -> Sem r ()
+  go :: Member (LabeledGrapher GolangPackage) r => Package -> Sem r ()
   go package = unless (packageSystem package == Just True) $ do
     let -- when a gomod field is present, use that for the package import path
         -- otherwise use the top-level package import path
@@ -93,7 +92,7 @@ graphTransitive = void . traverse_ go
       Just ver -> label pkg (mkGolangVersion ver)
 
 
-fillInTransitive :: Members '[Error ExecErr, Exec, Graphing GolangPackage] r => Path Rel Dir -> Sem r ()
+fillInTransitive :: Members '[Error ExecErr, Exec, LabeledGrapher GolangPackage] r => Path Rel Dir -> Sem r ()
 fillInTransitive dir = do
   goListOutput <- execThrow dir goListCmd []
   case decodeMany goListOutput of

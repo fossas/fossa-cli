@@ -8,16 +8,16 @@ module Strategy.NpmList
 import Prologue
 
 import qualified Data.Map.Strict as M
-import           Data.Text (Text)
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
+import Data.Text (Text)
+import Polysemy
+import Polysemy.Input
+import Polysemy.Output
 
-import           Discovery.Walk
-import           Effect.Exec
-import           Effect.GraphBuilder
-import qualified Graph as G
-import           Types
+import DepTypes
+import Discovery.Walk
+import Effect.Exec
+import Graphing (Graphing, unfold)
+import Types
 
 discover :: Discover
 discover = Discover
@@ -49,21 +49,21 @@ npmListCmd = Command
   , cmdAllowErr = NonEmptyStdout
   }
 
-analyze :: Member (Input NpmOutput) r => Sem r G.Graph
+analyze :: Member (Input NpmOutput) r => Sem r (Graphing Dependency)
 analyze = buildGraph <$> input
 
-buildGraph :: NpmOutput -> G.Graph
+buildGraph :: NpmOutput -> Graphing Dependency
 buildGraph top = unfold direct getDeps toDependency
   where
   direct = M.toList $ outputDependencies top
   getDeps (_,nodeOutput) = M.toList $ outputDependencies nodeOutput
   toDependency (nodeName, nodeOutput) =
-    G.Dependency { dependencyType = G.NodeJSType
-                 , dependencyName = nodeName
-                 , dependencyVersion = G.CEq <$> outputVersion nodeOutput
-                 , dependencyLocations = []
-                 , dependencyTags = M.empty
-                 }
+    Dependency { dependencyType = NodeJSType
+               , dependencyName = nodeName
+               , dependencyVersion = CEq <$> outputVersion nodeOutput
+               , dependencyLocations = []
+               , dependencyTags = M.empty
+               }
 
 configure :: Path Rel Dir -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicDirOpts

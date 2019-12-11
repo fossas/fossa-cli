@@ -11,22 +11,23 @@ module Strategy.Go.GoList
 import Prologue hiding ((<?>))
 
 import qualified Data.ByteString.Lazy as BL
-import           Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
-import           Data.Text.Encoding (decodeUtf8)
-import           Polysemy
-import           Polysemy.Error
-import           Polysemy.Output
+import Data.Text.Encoding (decodeUtf8)
+import Polysemy
+import Polysemy.Error
+import Polysemy.Output
 
-import           Diagnostics
-import           Discovery.Walk
+import DepTypes
+import Diagnostics
+import Discovery.Walk
 import qualified Effect.Error as E
-import           Effect.Exec
-import           Effect.Graphing
-import qualified Graph as G
-import           Strategy.Go.Transitive (fillInTransitive)
-import           Strategy.Go.Types
-import           Types
+import Effect.Exec
+import Effect.LabeledGrapher
+import Graphing (Graphing)
+import Strategy.Go.Transitive (fillInTransitive)
+import Strategy.Go.Types
+import Types
 
 discover :: Discover
 discover = Discover
@@ -63,7 +64,7 @@ golistCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: Members '[Error ExecErr, Exec] r => BasicDirOpts -> Sem r G.Graph
+analyze :: Members '[Error ExecErr, Exec] r => BasicDirOpts -> Sem r (Graphing Dependency)
 analyze BasicDirOpts{..} = graphingGolang $ do
   stdout <- execThrow targetDir golistCmd []
 
@@ -82,11 +83,11 @@ analyze BasicDirOpts{..} = graphingGolang $ do
   _ <- E.try @ExecErr (fillInTransitive targetDir)
   pure ()
 
-buildGraph :: Member (Graphing GolangPackage) r => [Require] -> Sem r ()
+buildGraph :: Member (LabeledGrapher GolangPackage) r => [Require] -> Sem r ()
 buildGraph = traverse_ go
   where
 
-  go :: Member (Graphing GolangPackage) r => Require -> Sem r ()
+  go :: Member (LabeledGrapher GolangPackage) r => Require -> Sem r ()
   go Require{..} = do
     let pkg = mkGolangPackage reqPackage
     direct pkg

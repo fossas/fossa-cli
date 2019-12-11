@@ -12,7 +12,8 @@ import qualified Data.Map as M
 import qualified Data.Sequence as S
 import Data.List (findIndex)
 
-import Graph (Graph)
+import App.Scan.Graph (Graph)
+import App.Scan.GraphMangler (graphingToGraph)
 import Types
 
 data Project = Project
@@ -46,7 +47,7 @@ mkProjects groups = toProjects . grouping
   toProjectStrategy :: CompletedStrategy -> ProjectStrategy
   toProjectStrategy CompletedStrategy{..} =
     ProjectStrategy { projStrategyName = completedName
-                    , projStrategyGraph = completedGraph
+                    , projStrategyGraph = graphingToGraph completedGraph
                     , projStrategyOptimal = completedOptimal
                     , projStrategyComplete = completedComplete
                     }

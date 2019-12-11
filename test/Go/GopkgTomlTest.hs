@@ -9,17 +9,18 @@ import Prologue
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text.IO as TIO
-import           Polysemy
-import           Polysemy.Error
+import Polysemy
+import Polysemy.Error
 
-import           Diagnostics
-import           Effect.Exec
-import           Effect.GraphBuilder
-import           Effect.ReadFS
-import qualified Graph as G
-import           Strategy.Go.GopkgToml
-import           Strategy.Go.Types (graphingGolang)
-import           Types (BasicFileOpts(..))
+import DepTypes
+import Diagnostics
+import Effect.Exec
+import Effect.Grapher
+import Effect.ReadFS
+import Graphing (Graphing)
+import Strategy.Go.GopkgToml
+import Strategy.Go.Types (graphingGolang)
+import Types (BasicFileOpts(..))
 
 import Test.Tasty.Hspec
 
@@ -66,40 +67,36 @@ gopkg = Gopkg
     ]
   }
 
-expected :: G.Graph
-expected = run . evalGraphBuilder G.empty $ do
-  ref1 <- addNode (G.Dependency
-                        { dependencyType = G.GoType
-                        , dependencyName = "cat/fossa"
-                        , dependencyVersion = Just (G.CEq "v3.0.0")
-                        , dependencyLocations = ["https://someotherlocation/"]
-                        , dependencyTags = M.empty
-                        })
-  ref2 <- addNode (G.Dependency
-                        { dependencyType = G.GoType
-                        , dependencyName = "repo/name/A"
-                        , dependencyVersion = Just (G.CEq "v1.0.0")
-                        , dependencyLocations = []
-                        , dependencyTags = M.empty
-                        })
-  ref3 <- addNode (G.Dependency
-                        { dependencyType = G.GoType
-                        , dependencyName = "repo/name/B"
-                        , dependencyVersion = Just (G.CEq "overridebranch")
-                        , dependencyLocations = []
-                        , dependencyTags = M.empty
-                        })
-  ref4 <- addNode (G.Dependency
-                        { dependencyType = G.GoType
-                        , dependencyName = "repo/name/C"
-                        , dependencyVersion = Just (G.CEq "branchname")
-                        , dependencyLocations = []
-                        , dependencyTags = M.empty
-                        })
-  addDirect ref1
-  addDirect ref2
-  addDirect ref3
-  addDirect ref4
+expected :: Graphing Dependency
+expected = run . evalGrapher $ do
+  direct $ Dependency
+             { dependencyType = GoType
+             , dependencyName = "cat/fossa"
+             , dependencyVersion = Just (CEq "v3.0.0")
+             , dependencyLocations = ["https://someotherlocation/"]
+             , dependencyTags = M.empty
+             }
+  direct $ Dependency
+             { dependencyType = GoType
+             , dependencyName = "repo/name/A"
+             , dependencyVersion = Just (CEq "v1.0.0")
+             , dependencyLocations = []
+             , dependencyTags = M.empty
+             }
+  direct $ Dependency
+             { dependencyType = GoType
+             , dependencyName = "repo/name/B"
+             , dependencyVersion = Just (CEq "overridebranch")
+             , dependencyLocations = []
+             , dependencyTags = M.empty
+             }
+  direct $ Dependency
+             { dependencyType = GoType
+             , dependencyName = "repo/name/C"
+             , dependencyVersion = Just (CEq "branchname")
+             , dependencyLocations = []
+             , dependencyTags = M.empty
+             }
 
 mockReadFSText :: Text -> Sem (ReadFS ': r) a -> Sem r a
 mockReadFSText contents = interpret $ \case

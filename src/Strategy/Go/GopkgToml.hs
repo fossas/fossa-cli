@@ -15,22 +15,23 @@ module Strategy.Go.GopkgToml
 import Prologue hiding ((.=), empty)
 
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Error
-import           Polysemy.Output
-import           Toml (TomlCodec, (.=))
+import Polysemy
+import Polysemy.Error
+import Polysemy.Output
+import Toml (TomlCodec, (.=))
 import qualified Toml
 
-import           Diagnostics
-import           Discovery.Walk
+import DepTypes
+import Diagnostics
+import Discovery.Walk
 import qualified Effect.Error as E
-import           Effect.Exec
-import           Effect.Graphing
-import           Effect.ReadFS
-import qualified Graph as G
-import           Strategy.Go.Transitive (fillInTransitive)
-import           Strategy.Go.Types
-import           Types
+import Effect.Exec
+import Effect.LabeledGrapher
+import Effect.ReadFS
+import Graphing (Graphing)
+import Strategy.Go.Transitive (fillInTransitive)
+import Strategy.Go.Types
+import Types
 
 discover :: Discover
 discover = Discover
@@ -82,7 +83,7 @@ data PkgConstraint = PkgConstraint
   }
   deriving (Eq, Ord, Show, Generic)
 
-analyze :: Members '[ReadFS, Exec, Error ReadFSErr, Error ExecErr] r => BasicFileOpts -> Sem r G.Graph
+analyze :: Members '[ReadFS, Exec, Error ReadFSErr, Error ExecErr] r => BasicFileOpts -> Sem r (Graphing Dependency)
 analyze BasicFileOpts{..} = graphingGolang $ do
   contents <- readContentsText targetFile
   case Toml.decode gopkgCodec contents of
@@ -94,10 +95,10 @@ analyze BasicFileOpts{..} = graphingGolang $ do
       _ <- E.try @ExecErr (fillInTransitive (parent targetFile))
       pure ()
 
-buildGraph :: Member (Graphing GolangPackage) r => Gopkg -> Sem r ()
+buildGraph :: Member (LabeledGrapher GolangPackage) r => Gopkg -> Sem r ()
 buildGraph = void . M.traverseWithKey go . resolve
   where
-  go :: Member (Graphing GolangPackage) r => Text -> PkgConstraint -> Sem r ()
+  go :: Member (LabeledGrapher GolangPackage) r => Text -> PkgConstraint -> Sem r ()
   go name PkgConstraint{..} = do
     let pkg = mkGolangPackage name
 

@@ -12,15 +12,15 @@ module Strategy.Python.PipList
 import Prologue
 
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
+import Polysemy
+import Polysemy.Input
+import Polysemy.Output
 
-import           Discovery.Walk
-import           Effect.Exec
-import           Effect.GraphBuilder
-import qualified Graph as G
-import           Types
+import DepTypes
+import Discovery.Walk
+import Effect.Exec
+import Graphing
+import Types
 
 discover :: Discover
 discover = Discover
@@ -52,19 +52,19 @@ strategy = Strategy
   , strategyComplete = NotComplete
   }
 
-analyze :: Member (Input [PipListDep]) r => Sem r G.Graph
+analyze :: Member (Input [PipListDep]) r => Sem r (Graphing Dependency)
 analyze = buildGraph <$> input
 
-buildGraph :: [PipListDep] -> G.Graph
+buildGraph :: [PipListDep] -> Graphing Dependency
 buildGraph xs = unfold xs (const []) toDependency
   where
   toDependency PipListDep{..} =
-    G.Dependency { dependencyType = G.PipType
-                 , dependencyName = depName
-                 , dependencyVersion = Just (G.CEq depVersion)
-                 , dependencyLocations = []
-                 , dependencyTags = M.empty
-                 }
+    Dependency { dependencyType = PipType
+               , dependencyName = depName
+               , dependencyVersion = Just (CEq depVersion)
+               , dependencyLocations = []
+               , dependencyTags = M.empty
+               }
 
 configure :: Path Rel Dir -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicDirOpts

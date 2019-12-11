@@ -9,17 +9,18 @@ module Strategy.Python.ReqTxt
 
 import Prologue
 
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
-import           Text.Megaparsec
-import           Text.Megaparsec.Char
+import Polysemy
+import Polysemy.Input
+import Polysemy.Output
+import Text.Megaparsec
+import Text.Megaparsec.Char
 
-import           Discovery.Walk
-import           Effect.ReadFS
-import qualified Graph as G
-import           Strategy.Python.Util
-import           Types
+import Discovery.Walk
+import DepTypes
+import Graphing
+import Effect.ReadFS
+import Strategy.Python.Util
+import Types
 
 discover :: Discover
 discover = Discover
@@ -44,7 +45,7 @@ strategy = Strategy
   , strategyComplete = NotComplete
   }
 
-analyze :: Member (Input [Req]) r => Sem r G.Graph
+analyze :: Member (Input [Req]) r => Sem r (Graphing Dependency)
 analyze = buildGraph <$> input
 
 type Parser = Parsec Void Text

@@ -20,17 +20,17 @@ import Prologue
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.State
-import           Polysemy.Output
+import Polysemy
+import Polysemy.Input
+import Polysemy.Output
 
-import           Discovery.Walk
-import           Effect.Exec
-import           Effect.GraphBuilder
-import           Effect.ReadFS
-import qualified Graph as G
-import           Types
+import Discovery.Walk
+import DepTypes
+import qualified Graphing as G
+import Effect.Exec
+import Effect.LabeledGrapher
+import Effect.ReadFS
+import Types
 
 discover :: Discover
 discover = Discover
@@ -80,81 +80,92 @@ configureWithCmd = ConfiguredStrategy strategyWithCmd . BasicFileOpts
 configureNoCmd :: Path Rel File -> ConfiguredStrategy
 configureNoCmd = ConfiguredStrategy strategyNoCmd . BasicFileOpts
 
-analyzeWithCmd :: Members '[Input PipfileLock, Input [PipenvGraphDep]] r => Sem r G.Graph
+analyzeWithCmd :: Members '[Input PipfileLock, Input [PipenvGraphDep]] r => Sem r (G.Graphing Dependency)
 analyzeWithCmd = buildGraph <$> input <*> (Just <$> input)
 
-analyzeNoCmd :: Member (Input PipfileLock) r => Sem r G.Graph
+analyzeNoCmd :: Member (Input PipfileLock) r => Sem r (G.Graphing Dependency)
 analyzeNoCmd = buildGraph <$> input <*> pure Nothing
 
-buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> G.Graph
-buildGraph lock Nothing =
-  let (nodesByName, graph) = buildNodes lock
-   in foldr G.addDirect graph nodesByName
-buildGraph lock (Just deps) =
-  let (nodesByName, graph) = buildNodes lock
-   in buildEdges nodesByName deps graph
+buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> G.Graphing Dependency
+buildGraph lock maybeDeps = run . withLabeling toDependency $ do
+  buildNodes lock
+  case maybeDeps of
+    Just deps -> buildEdges deps
+    Nothing -> pure ()
 
-buildNodes :: PipfileLock -> (Map Text G.DepRef, G.Graph)
-buildNodes PipfileLock{..} = run . runState M.empty . evalGraphBuilder G.empty $ do
+  where
+  toDependency :: PipPkg -> Set PipLabel -> Dependency
+  toDependency pkg = foldr applyLabel start
+    where
+    applyLabel :: PipLabel -> Dependency -> Dependency
+    applyLabel (PipSource loc) dep = dep { dependencyLocations = loc : dependencyLocations dep }
+    applyLabel (PipEnvironment env) dep = dep { dependencyTags = M.insertWith (<>) "environment" [env] (dependencyTags dep) }
+
+    start = Dependency
+      { dependencyType = PipType
+      , dependencyName = pipPkgName pkg
+      , dependencyVersion = Just (CEq (pipPkgVersion pkg))
+      , dependencyLocations = []
+      , dependencyTags = M.empty
+      }
+
+data PipPkg = PipPkg
+  { pipPkgName    :: Text
+  , pipPkgVersion :: Text
+  } deriving (Eq, Ord, Show, Generic)
+
+type instance PkgLabel PipPkg = PipLabel
+
+data PipLabel =
+    PipSource Text -- location
+  | PipEnvironment Text -- production, development
+  deriving (Eq, Ord, Show, Generic)
+
+buildNodes :: Member (LabeledGrapher PipPkg) r => PipfileLock -> Sem r ()
+buildNodes PipfileLock{..} = do
   let indexBy :: Ord k => (v -> k) -> [v] -> Map k v
       indexBy ix = M.fromList . map (\v -> (ix v, v))
 
       sourcesMap = indexBy sourceName (fileSources fileMeta)
 
-  -- NB: the order here is important: production refs will take priority over
-  -- development refs in the output graph
-  -- alternative approach: try to dedupe dev and prod dependencies?
-  _ <- M.traverseWithKey (mkNode sourcesMap "development") fileDevelop
-  _ <- M.traverseWithKey (mkNode sourcesMap "production") fileDefault
+  _ <- M.traverseWithKey (addWithLabel "development" sourcesMap) fileDevelop
+  _ <- M.traverseWithKey (addWithLabel "production" sourcesMap) fileDefault
   pure ()
 
   where
 
-  mkNode :: Members '[GraphBuilder, State (Map Text G.DepRef)] r
-         => Map Text PipfileSource
-         -> Text -- env name: production, develop
-         -> Text -- dep name
-         -> PipfileDep
-         -> Sem r G.DepRef
-  mkNode sourcesMap env depName PipfileDep{..} = do
-    ref <- addNode $ G.Dependency
-      { dependencyType = G.PipType
-      , dependencyName = depName
-      , dependencyVersion = Just (G.CEq (T.drop 2 fileDepVersion)) -- fileDepVersion starts with "=="
-      , dependencyLocations =
-          case fileDepIndex of
-            Nothing -> []
-            Just index -> case M.lookup index sourcesMap of
-              Nothing -> []
-              Just source -> [sourceUrl source]
-      , dependencyTags = M.singleton "environment" [env]
-      }
-    modify (M.insert depName ref)
-    pure ref
+  addWithLabel :: Member (LabeledGrapher PipPkg) r
+               => Text -- env name: production, development
+               -> Map Text PipfileSource
+               -> Text -- dep name
+               -> PipfileDep
+               -> Sem r ()
+  addWithLabel env sourcesMap depName dep = do
+    let pkg = PipPkg depName (T.drop 2 (fileDepVersion dep))
+    -- TODO: reachable instead of direct
+    direct pkg
+    label pkg (PipEnvironment env)
 
-buildEdges :: Map Text G.DepRef -> [PipenvGraphDep] -> G.Graph -> G.Graph
-buildEdges depNameToRef pipenvDeps graph = run . evalGraphBuilder graph $ do
+    -- add label for source when it exists
+    for_ (fileDepIndex dep) $ \index ->
+      case M.lookup index sourcesMap of
+        Just source -> label pkg (PipSource (sourceUrl source))
+        Nothing -> pure ()
+
+buildEdges :: Member (LabeledGrapher PipPkg) r => [PipenvGraphDep] -> Sem r ()
+buildEdges pipenvDeps = do
+  traverse_ (direct . mkPkg) pipenvDeps
   traverse_ mkEdges pipenvDeps
-  traverse_ mkDirect pipenvDeps -- add top level deps as "direct"
 
   where
 
-  mkDirect :: Member GraphBuilder r => PipenvGraphDep -> Sem r ()
-  mkDirect dep =
-    case M.lookup (depName dep) depNameToRef of
-      Just ref -> addDirect ref
-      Nothing -> pure ()
+  mkPkg :: PipenvGraphDep -> PipPkg
+  mkPkg dep = PipPkg (depName dep) (depInstalled dep)
 
-  mkEdges :: Member GraphBuilder r => PipenvGraphDep -> Sem r ()
+  mkEdges :: Member (LabeledGrapher PipPkg) r => PipenvGraphDep -> Sem r ()
   mkEdges parentDep =
     forM_ (depDependencies parentDep) $ \childDep -> do
-      let maybeParentRef = M.lookup (depName parentDep) depNameToRef
-          maybeChildRef = M.lookup (depName childDep) depNameToRef
-
-      case (maybeParentRef, maybeChildRef) of
-        (Just parentRef, Just childDepRef) -> addEdge parentRef childDepRef
-        _ -> pure ()
-
+      edge (mkPkg parentDep) (mkPkg childDep)
       mkEdges childDep
 
 ---------- Pipfile.lock

@@ -12,14 +12,15 @@ import qualified Data.Text.IO as TIO
 import           Polysemy
 import           Polysemy.Error
 
-import           Diagnostics
-import           Effect.Exec
-import           Effect.GraphBuilder
-import           Effect.ReadFS
-import qualified Graph as G
-import           Strategy.Go.GopkgLock
-import           Strategy.Go.Types (graphingGolang)
-import           Types (BasicFileOpts(..))
+import DepTypes
+import Diagnostics
+import Effect.Exec
+import Effect.Grapher
+import Effect.ReadFS
+import Graphing (Graphing)
+import Strategy.Go.GopkgLock
+import Strategy.Go.Types (graphingGolang)
+import Types (BasicFileOpts(..))
 
 import Test.Tasty.Hspec
 
@@ -42,32 +43,29 @@ projects =
       }
   ]
 
-expected :: G.Graph
-expected = run . evalGraphBuilder G.empty $ do
-  ref1 <- addNode (G.Dependency
-                        { dependencyType = G.GoType
-                        , dependencyName = "repo/name/A"
-                        , dependencyVersion = Just (G.CEq "3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005")
-                        , dependencyLocations = []
-                        , dependencyTags = M.empty
-                        })
-  ref2 <- addNode (G.Dependency
-                        { dependencyType = G.GoType
-                        , dependencyName = "repo/name/B"
-                        , dependencyVersion = Just (G.CEq "12345")
-                        , dependencyLocations = []
-                        , dependencyTags = M.empty
-                        })
-  ref3 <- addNode (G.Dependency
-                        { dependencyType = G.GoType
-                        , dependencyName = "repo/name/C"
-                        , dependencyVersion = Just (G.CEq "12345")
-                        , dependencyLocations = ["https://someotherlocation/"]
-                        , dependencyTags = M.empty
-                        })
-  addDirect ref1
-  addDirect ref2
-  addDirect ref3
+expected :: Graphing Dependency
+expected = run . evalGrapher $ do
+  direct $ Dependency
+             { dependencyType = GoType
+             , dependencyName = "repo/name/A"
+             , dependencyVersion = Just (CEq "3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005")
+             , dependencyLocations = []
+             , dependencyTags = M.empty
+             }
+  direct $ Dependency
+             { dependencyType = GoType
+             , dependencyName = "repo/name/B"
+             , dependencyVersion = Just (CEq "12345")
+             , dependencyLocations = []
+             , dependencyTags = M.empty
+             }
+  direct $ Dependency
+             { dependencyType = GoType
+             , dependencyName = "repo/name/C"
+             , dependencyVersion = Just (CEq "12345")
+             , dependencyLocations = ["https://someotherlocation/"]
+             , dependencyTags = M.empty
+             }
 
 mockReadFSText :: Text -> Sem (ReadFS ': r) a -> Sem r a
 mockReadFSText contents = interpret $ \case

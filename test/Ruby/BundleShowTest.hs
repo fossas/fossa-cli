@@ -5,42 +5,43 @@ module Ruby.BundleShowTest
 import Prologue
 
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Input
+import Polysemy
+import Polysemy.Input
 import qualified Data.Text.IO as TIO
-import           Text.Megaparsec
+import Text.Megaparsec
 
-import           Effect.GraphBuilder
-import qualified Graph as G
-import           Strategy.Ruby.BundleShow
+import DepTypes
+import Effect.Grapher
+import Graphing (Graphing)
+import Strategy.Ruby.BundleShow
 
 import Test.Tasty.Hspec
 
-expected :: G.Graph
-expected = run . evalGraphBuilder G.empty $ do
-  ref1 <- addNode (G.Dependency { dependencyType = G.GemType
-                        , dependencyName = "pkgOne"
-                        , dependencyVersion = Just (G.CEq "1.0.0")
-                        , dependencyLocations = []
-                        , dependencyTags = M.empty
-                        })
-  ref2 <- addNode (G.Dependency { dependencyType = G.GemType
-                        , dependencyName = "pkgTwo"
-                        , dependencyVersion = Just (G.CEq "2.0.0")
-                        , dependencyLocations = []
-                        , dependencyTags = M.empty
-                        })
-  addDirect ref1
-  addDirect ref2
+expected :: Graphing Dependency
+expected = run . evalGrapher $ do
+  direct $ Dependency { dependencyType = GemType
+                      , dependencyName = "pkgOne"
+                      , dependencyVersion = Just (CEq "1.0.0")
+                      , dependencyLocations = []
+                      , dependencyTags = M.empty
+                      }
+  direct $ Dependency { dependencyType = GemType
+                      , dependencyName = "pkgTwo"
+                      , dependencyVersion = Just (CEq "2.0.0")
+                      , dependencyLocations = []
+                      , dependencyTags = M.empty
+                      }
 
 bundleShowOutput :: [BundleShowDep]
 bundleShowOutput =
-  [ BundleShowDep { depName = "pkgOne"
-                , depVersion = "1.0.0"
-                }
-  , BundleShowDep { depName = "pkgTwo"
-                , depVersion = "2.0.0"
-                }
+  [ BundleShowDep
+    { depName = "pkgOne"
+    , depVersion = "1.0.0"
+    }
+  , BundleShowDep
+    { depName = "pkgTwo"
+    , depVersion = "2.0.0"
+    }
   ]
 
 spec_analyze :: Spec

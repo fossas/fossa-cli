@@ -19,11 +19,11 @@ import           Polysemy.Output
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 
-import           Discovery.Walk
-import           Effect.Exec
-import           Effect.GraphBuilder
-import qualified Graph as G
-import           Types
+import DepTypes
+import Discovery.Walk
+import Effect.Exec
+import Graphing
+import Types
 
 discover :: Discover
 discover = Discover
@@ -55,19 +55,19 @@ strategy = Strategy
   , strategyComplete = NotComplete
   }
 
-analyze :: Member (Input [BundleShowDep]) r => Sem r G.Graph
+analyze :: Member (Input [BundleShowDep]) r => Sem r (Graphing Dependency)
 analyze = buildGraph <$> input
 
-buildGraph :: [BundleShowDep] -> G.Graph
+buildGraph :: [BundleShowDep] -> Graphing Dependency
 buildGraph xs = unfold xs (const []) toDependency
   where
   toDependency BundleShowDep{..} =
-    G.Dependency { dependencyType = G.GemType
-                 , dependencyName = depName
-                 , dependencyVersion = Just (G.CEq depVersion)
-                 , dependencyLocations = []
-                 , dependencyTags = M.empty
-                 }
+    Dependency { dependencyType = GemType
+               , dependencyName = depName
+               , dependencyVersion = Just (CEq depVersion)
+               , dependencyLocations = []
+               , dependencyTags = M.empty
+               }
 
 configure :: Path Rel Dir -> ConfiguredStrategy
 configure = ConfiguredStrategy strategy . BasicDirOpts

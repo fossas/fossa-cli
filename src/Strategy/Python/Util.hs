@@ -19,25 +19,25 @@ import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.URI as URI
 
-import           Effect.GraphBuilder (unfold)
-import qualified Graph as G
+import DepTypes
+import Graphing
 
-buildGraph :: [Req] -> G.Graph
+buildGraph :: [Req] -> Graphing Dependency
 buildGraph xs = unfold xs (const []) toDependency
   where
   toDependency req =
-    G.Dependency { dependencyType = G.PipType
-                 , dependencyName = depName req
-                 , dependencyVersion = depVersion req
-                 , dependencyLocations = []
-                 , dependencyTags = maybe M.empty toTags (depMarker req)
-                 }
+    Dependency { dependencyType = PipType
+               , dependencyName = depName req
+               , dependencyVersion = depVersion req
+               , dependencyLocations = []
+               , dependencyTags = maybe M.empty toTags (depMarker req)
+               }
 
   depName (NameReq nm _ _ _) = nm
   depName (UrlReq nm _ _ _) = nm
 
   depVersion (NameReq _ _ versions _) = toConstraint <$> versions
-  depVersion (UrlReq _ _ uri _) = Just (G.CURI (URI.render uri))
+  depVersion (UrlReq _ _ uri _) = Just (CURI (URI.render uri))
 
   depMarker (NameReq _ _ _ marker) = marker
   depMarker (UrlReq _ _ _ marker) = marker
@@ -55,19 +55,19 @@ toTags = M.fromListWith (++) . map (\(a,b) -> (a, [b])) . go
       MarkerNotIn -> [(lhs, "not (" <> rhs <> ")")]
       MarkerOperator _ -> [(lhs, rhs)]
 
-toConstraint :: [Version] -> G.VerConstraint
-toConstraint = foldr1 G.CAnd . map (\(Version op ver) -> opToConstraint op ver)
+toConstraint :: [Version] -> VerConstraint
+toConstraint = foldr1 CAnd . map (\(Version op ver) -> opToConstraint op ver)
   where
 
   opToConstraint = \case
-    OpCompatible -> G.CCompatible
-    OpEq -> G.CEq
-    OpNot -> G.CNot
-    OpLtEq -> G.CLessOrEq
-    OpGtEq -> G.CGreaterOrEq
-    OpLt -> G.CLess
-    OpGt -> G.CGreater
-    OpArbitrary -> G.CEq
+    OpCompatible -> CCompatible
+    OpEq -> CEq
+    OpNot -> CNot
+    OpLtEq -> CLessOrEq
+    OpGtEq -> CGreaterOrEq
+    OpLt -> CLess
+    OpGt -> CGreater
+    OpArbitrary -> CEq
 
 type Parser = Parsec Void Text
 

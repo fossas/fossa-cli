@@ -10,10 +10,11 @@ import qualified Data.Text.IO as TIO
 import           Polysemy
 import           Text.Megaparsec
 
-import           Effect.GraphBuilder
-import qualified Graph as G
-import           Strategy.Go.Gomod
-import           Strategy.Go.Types (graphingGolang)
+import DepTypes
+import Effect.Grapher
+import Graphing (Graphing)
+import Strategy.Go.Gomod
+import Strategy.Go.Types (graphingGolang)
 
 import Test.Hspec.Megaparsec
 import Test.Tasty.Hspec
@@ -29,32 +30,29 @@ gomod = Gomod
   , modExcludes = []
   }
 
-expected :: G.Graph
-expected = run . evalGraphBuilder G.empty $ do
-  ref1 <- addNode (G.Dependency
-                        { dependencyType = G.GoType
-                        , dependencyName = "github.com/pkg/one"
-                        , dependencyVersion = Just (G.CEq "v1.0.0")
-                        , dependencyLocations = []
-                        , dependencyTags = M.empty
-                        })
-  ref2 <- addNode (G.Dependency
-                        { dependencyType = G.GoType
-                        , dependencyName = "github.com/pkg/overridden"
-                        , dependencyVersion = Just (G.CEq "overridden")
-                        , dependencyLocations = []
-                        , dependencyTags = M.empty
-                        })
-  ref3 <- addNode (G.Dependency
-                        { dependencyType = G.GoType
-                        , dependencyName = "github.com/pkg/three/v3"
-                        , dependencyVersion = Just (G.CEq "v3.0.0")
-                        , dependencyLocations = []
-                        , dependencyTags = M.empty
-                        })
-  addDirect ref1
-  addDirect ref2
-  addDirect ref3
+expected :: Graphing Dependency
+expected = run . evalGrapher $ do
+  direct $ Dependency
+             { dependencyType = GoType
+             , dependencyName = "github.com/pkg/one"
+             , dependencyVersion = Just (CEq "v1.0.0")
+             , dependencyLocations = []
+             , dependencyTags = M.empty
+             }
+  direct $ Dependency
+             { dependencyType = GoType
+             , dependencyName = "github.com/pkg/overridden"
+             , dependencyVersion = Just (CEq "overridden")
+             , dependencyLocations = []
+             , dependencyTags = M.empty
+             }
+  direct $ Dependency
+             { dependencyType = GoType
+             , dependencyName = "github.com/pkg/three/v3"
+             , dependencyVersion = Just (CEq "v3.0.0")
+             , dependencyLocations = []
+             , dependencyTags = M.empty
+             }
 
 spec_gomodBuildGraph :: Spec
 spec_gomodBuildGraph =

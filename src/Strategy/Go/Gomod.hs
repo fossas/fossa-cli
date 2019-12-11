@@ -16,23 +16,24 @@ import Prologue hiding ((<?>))
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import           Polysemy
-import           Polysemy.Error
-import           Polysemy.Output
-import           Text.Megaparsec hiding (label)
-import           Text.Megaparsec.Char
+import Polysemy
+import Polysemy.Error
+import Polysemy.Output
+import Text.Megaparsec hiding (label)
+import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
-import           Diagnostics
-import           Discovery.Walk
+import DepTypes
+import Diagnostics
+import Discovery.Walk
 import qualified Effect.Error as E
-import           Effect.Exec
-import           Effect.Graphing
-import           Effect.ReadFS
-import qualified Graph as G
-import           Strategy.Go.Transitive
-import           Strategy.Go.Types
-import           Types
+import Effect.Exec
+import Effect.LabeledGrapher
+import Effect.ReadFS
+import Graphing (Graphing)
+import Strategy.Go.Transitive
+import Strategy.Go.Types
+import Types
 
 discover :: Discover
 discover = Discover
@@ -195,7 +196,7 @@ resolve gomod = map resolveReplace (modRequires gomod)
   where
   resolveReplace require = fromMaybe require (M.lookup (reqPackage require) (modReplaces gomod))
 
-analyze :: Members '[Error ReadFSErr, Error ExecErr, ReadFS, Exec] r => BasicFileOpts -> Sem r G.Graph
+analyze :: Members '[Error ReadFSErr, Error ExecErr, ReadFS, Exec] r => BasicFileOpts -> Sem r (Graphing Dependency)
 analyze BasicFileOpts{..} = graphingGolang $ do
   gomod <- readContentsParser gomodParser targetFile
 
@@ -205,11 +206,11 @@ analyze BasicFileOpts{..} = graphingGolang $ do
   _ <- E.try @ExecErr (fillInTransitive (parent targetFile))
   pure ()
 
-buildGraph :: Member (Graphing GolangPackage) r => Gomod -> Sem r ()
+buildGraph :: Member (LabeledGrapher GolangPackage) r => Gomod -> Sem r ()
 buildGraph = traverse_ go . resolve
   where
 
-  go :: Member (Graphing GolangPackage) r => Require -> Sem r ()
+  go :: Member (LabeledGrapher GolangPackage) r => Require -> Sem r ()
   go Require{..} = do
     let pkg = mkGolangPackage reqPackage
 
