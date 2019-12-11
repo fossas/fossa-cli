@@ -57,11 +57,11 @@ analyze lockfile = do
       Right a -> pure (buildGraph a)
 
 buildGraph :: YL.Lockfile -> Graphing Dependency
-buildGraph lockfile = run . evalGrapher $ do
-  traverse add (map (\(keys, pkg) -> (NE.head keys, pkg)) (MKM.toList lockfile))
+buildGraph lockfile = run . evalGrapher $
+  traverse (add . first NE.head) (MKM.toList lockfile)
   where
   add :: Member (Grapher Dependency) r => (YL.PackageKey, YL.Package) -> Sem r ()
-  add parentPkg@(_, package) = do
+  add parentPkg@(_, package) =
     for_ (YL.dependencies package) $ \childKey -> do
       let childPkg = (childKey, MKM.at lockfile childKey)
       edge (toDependency parentPkg) (toDependency childPkg)

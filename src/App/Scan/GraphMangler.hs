@@ -18,10 +18,8 @@ import Graphing (Graphing(..))
 
 graphingToGraph :: Graphing Dependency -> G.Graph
 graphingToGraph graphing = run . evalGraphBuilder G.empty $ do
-  --(amap, lbls, directs, _) <- runGraphing (raiseUnder act)
-
-  let depAmap = (graphingAdjacent graphing)
-      depDirect = (S.toList (graphingDirect graphing))
+  let depAmap = graphingAdjacent graphing
+      depDirect = S.toList (graphingDirect graphing)
 
       nodes = dfs depDirect depAmap
 

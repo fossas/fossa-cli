@@ -40,4 +40,4 @@ label dep lbl gr = gr { labeledLabels = labels' }
 unlabel :: (Ord ty, Ord ty') => (ty -> Set (PkgLabel ty) -> ty') -> LabeledGraphing ty -> G.Graphing ty'
 unlabel f lgr = G.gmap (\ty -> f ty (findLabels ty)) (labeledGraphing lgr)
   where
-  findLabels ty = (fromMaybe S.empty (M.lookup ty (labeledLabels lgr)))
+  findLabels ty = fromMaybe S.empty (M.lookup ty (labeledLabels lgr))
