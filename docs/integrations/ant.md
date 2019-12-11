@@ -30,24 +30,24 @@ analyze:
       target: {path-to-build.xml}
 ```
 
-If you have a complex Ant build that stores libraries in multiple locations, you can either specify multiple modules with custom `libdir` locations or upload raw dependency signatures directly to FOSSA. This can be done using the `libdir` option.
+If you have a complex Ant build that stores libraries in multiple locations, you can either specify multiple modules with custom `lib-directory` locations or upload raw dependency signatures directly to FOSSA. This can be done using the `lib-directory` option.
 
 ## Options
 
-| Option   |  Type  | Name                        | Common Use Case                            |
-| -------- | :----: | --------------------------- | ------------------------------------------ |
-| `libdir` | string | [LibDir](#libdir-string) | Specify the path to the ant lib directory. |
+| Option          |  Type  | Name                                   | Common Use Case                            |
+| --------------- | :----: | -------------------------------------- | ------------------------------------------ |
+| `lib-directory` | string | [Lib Directory](#lib-directory-string) | Specify the path to the ant lib directory. |
 
 
-#### `libdir: <string>` 
+#### `lib-directory: <string>`
 
-`libdir` refers to the directory where all the JAR libraries used in a production build are stored.  These directories can be difficult to automatically infer without running a build, you will often have to specify them yourself in configuration.
+`lib-directory` refers to the directory where all the JAR libraries used in a production build are stored.  These directories can be difficult to automatically infer without running a build, you will often have to specify them yourself in configuration.
 
 Default: `lib`
 
 ## Analysis
 
-Analysis starts from the specified `libdir` and collects all `.jar` files. Dependency locators containing the project name and revision are created for each jar using the following process:
+Analysis starts from the specified `lib-directory` and collects all `.jar` files. Dependency locators containing the project name and revision are created for each jar using the following process:
 1. Attempt to find a pom file within the jar to obtain dependency information.
 2. Search for a Manifest file within `META-INF` to obtain dependency information.
 3. Fallback to using the name of the `jar` to obtain dependency information.
