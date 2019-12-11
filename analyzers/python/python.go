@@ -96,7 +96,11 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				"path": filename,
 				"name": moduleName,
 			}).Debug("constructing Python module")
-			relPath, _ := filepath.Rel(dir, filename)
+			relPath, err := filepath.Rel(dir, filename)
+			if err != nil {
+				return nil
+			}
+
 			modules[moduleDir] = module.Module{
 				Name:        moduleName,
 				Type:        pkg.Python,
@@ -120,7 +124,11 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				"path": filename,
 				"name": moduleName,
 			}).Debug("constructing Python module")
-			relPath, _ := filepath.Rel(dir, filename)
+			relPath, err := filepath.Rel(dir, filename)
+			if err != nil {
+				return nil
+			}
+
 			modules[moduleDir] = module.Module{
 				Name:        moduleName,
 				Type:        pkg.Python,
