@@ -198,7 +198,6 @@ fossa init --overwrite
 
 | Flag            | Short | Description                                   |
 | --------------- | ----- | --------------------------------------------- |
-| `--overwrite`   | `-O`  | Overwrite the file `.fossa.yml` if it exists. |
 | `--include-all` |       | Include all modules.                          |
 | `--debug`       |       | Print debugging information to stderr.        |
 | `--help`        | `-h`  | Print a help message.                         |

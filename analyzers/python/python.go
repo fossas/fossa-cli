@@ -84,6 +84,32 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 			return err
 		}
 
+		if !info.IsDir() && (info.Name() == "Pipfile.lock" || info.Name() == "Pipfile") {
+			moduleDir := filepath.Dir(filename)
+			if modules[moduleDir].Options["strategy"] == "pipenv" {
+				return nil
+			}
+
+			moduleName := filepath.Base(moduleDir)
+
+			log.WithFields(log.Fields{
+				"path": filename,
+				"name": moduleName,
+			}).Debug("constructing Python module")
+			relPath, err := filepath.Rel(dir, filename)
+			if err != nil {
+				return nil
+			}
+
+			modules[moduleDir] = module.Module{
+				Name:        moduleName,
+				Type:        pkg.Python,
+				BuildTarget: filepath.Dir(relPath),
+				Dir:         filepath.Dir(relPath),
+				Options:     map[string]interface{}{"strategy": "pipenv"},
+			}
+		}
+
 		if !info.IsDir() && (info.Name() == "requirements.txt" || info.Name() == "setup.py") {
 			moduleDir := filepath.Dir(filename)
 			_, ok := modules[moduleDir]
@@ -98,7 +124,11 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				"path": filename,
 				"name": moduleName,
 			}).Debug("constructing Python module")
-			relPath, _ := filepath.Rel(dir, filename)
+			relPath, err := filepath.Rel(dir, filename)
+			if err != nil {
+				return nil
+			}
+
 			modules[moduleDir] = module.Module{
 				Name:        moduleName,
 				Type:        pkg.Python,
