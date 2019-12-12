@@ -114,6 +114,7 @@ library
     Strategy.Go.Types
     Strategy.Gradle
     Strategy.Node.NpmLock
+    Strategy.Node.PackageJson
     Strategy.Node.YarnLock
     Strategy.NpmList
     Strategy.Python.PipList
@@ -152,6 +153,7 @@ test-suite test
     Gradle.GradleTest
     GraphUtil
     Node.NpmLockTest
+    Node.PackageJsonTest
     Python.PipListTest
     Python.PipenvTest
     Python.ReqTxtTest

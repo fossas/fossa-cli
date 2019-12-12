@@ -11,6 +11,7 @@ import qualified Strategy.Go.GlideLock as GlideLock
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.NpmList as NpmList
 import qualified Strategy.Node.NpmLock as NpmLock
+import qualified Strategy.Node.PackageJson as PackageJson
 import qualified Strategy.Node.YarnLock as YarnLock
 import qualified Strategy.Python.Pipenv as Pipenv
 import qualified Strategy.Python.PipList as PipList
@@ -34,6 +35,7 @@ discoverFuncs =
   , NpmLock.discover
   , NpmList.discover
   , YarnLock.discover
+  , PackageJson.discover
 
   , PipList.discover
   , Pipenv.discover
@@ -54,6 +56,7 @@ strategyGroups =
       [ SomeStrategy YarnLock.strategy
       , SomeStrategy NpmLock.strategy
       , SomeStrategy NpmList.strategy
+      , SomeStrategy PackageJson.strategy
       ]
   , StrategyGroup "python"
       [ SomeStrategy Pipenv.strategyWithCmd
