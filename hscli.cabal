@@ -33,6 +33,7 @@ common lang
     RecordWildCards
     ScopedTypeVariables
     StrictData
+    TupleSections
     TypeApplications
     TypeFamilies
     TypeOperators
@@ -112,6 +113,7 @@ library
     Strategy.Go.Transitive
     Strategy.Go.Types
     Strategy.Gradle
+    Strategy.Node.NpmLock
     Strategy.Node.YarnLock
     Strategy.NpmList
     Strategy.Python.PipList
@@ -149,6 +151,7 @@ test-suite test
     Go.GlideLockTest
     Gradle.GradleTest
     GraphUtil
+    Node.NpmLockTest
     Python.PipListTest
     Python.PipenvTest
     Python.ReqTxtTest

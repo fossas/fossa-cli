@@ -10,6 +10,7 @@ import qualified Strategy.Go.GopkgToml as GopkgToml
 import qualified Strategy.Go.GlideLock as GlideLock
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.NpmList as NpmList
+import qualified Strategy.Node.NpmLock as NpmLock
 import qualified Strategy.Node.YarnLock as YarnLock
 import qualified Strategy.Python.Pipenv as Pipenv
 import qualified Strategy.Python.PipList as PipList
@@ -30,6 +31,7 @@ discoverFuncs =
 
   , Gradle.discover
 
+  , NpmLock.discover
   , NpmList.discover
   , YarnLock.discover
 
@@ -50,6 +52,7 @@ strategyGroups =
       ]
   , StrategyGroup "nodejs"
       [ SomeStrategy YarnLock.strategy
+      , SomeStrategy NpmLock.strategy
       , SomeStrategy NpmList.strategy
       ]
   , StrategyGroup "python"
