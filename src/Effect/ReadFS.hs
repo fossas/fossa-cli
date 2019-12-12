@@ -74,7 +74,7 @@ readContentsJson file = do
     Left err -> throw (FileParseError (toFilePath file) (T.pack err))
     Right a -> pure a
 
--- | Read JSON from a file
+-- | Read YAML from a file
 readContentsYaml ::  (FromJSON a, Members '[ReadFS, Error ReadFSErr] r) => Path b File -> Sem r a
 readContentsYaml file = do
   contents <- readContentsBS file
