@@ -1,5 +1,11 @@
 {-# language TemplateHaskell #-}
 
+-- | LabeledGrapher is a thin State wrapper effect around 'L.LabeledGraphing'
+--
+-- It defines @direct@, @edge@, and @label@ combinators analagous to 'L.direct',
+-- 'L.edge', and 'L.label' from 'L.LabeledGraphing'
+--
+-- See also: 'withLabeling', which captures a common pattern when building graphs
 module Effect.LabeledGrapher
   ( LabeledGrapher(..)
   , direct
@@ -39,5 +45,8 @@ runLabeledGrapher = runState L.empty . reinterpret
       Edge parent child -> modify (L.edge parent child)
       Label ty lbl -> modify (L.label ty lbl))
 
+-- | A convenience function for a very common pattern: building a graph in a
+-- LabeledGrapher context, and immediately transforming the result into a
+-- 'G.Graphing'
 withLabeling :: (Ord ty, Ord (L.PkgLabel ty), Ord res) => (ty -> Set (L.PkgLabel ty) -> res) -> Sem (LabeledGrapher ty ': r) a -> Sem r (G.Graphing res)
 withLabeling f = fmap (L.unlabel f) . evalLabeledGrapher
