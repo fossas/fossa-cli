@@ -108,6 +108,7 @@ library
     Strategy.Go.Gomod
     Strategy.Go.GopkgLock
     Strategy.Go.GopkgToml
+    Strategy.Go.GlideLock
     Strategy.Go.Transitive
     Strategy.Go.Types
     Strategy.Gradle
@@ -145,6 +146,7 @@ test-suite test
     Go.GomodTest
     Go.GopkgLockTest
     Go.GopkgTomlTest
+    Go.GlideLockTest
     Gradle.GradleTest
     GraphUtil
     Python.PipListTest

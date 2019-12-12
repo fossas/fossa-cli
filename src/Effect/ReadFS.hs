@@ -12,9 +12,11 @@ module Effect.ReadFS
 
   , readContentsParser
   , readContentsJson
+  , readContentsYaml
 
   , fileInputParser
   , fileInputJson
+  , fileInputYaml
   ) where
 
 import Prologue
@@ -23,6 +25,7 @@ import           Control.Exception hiding (throw)
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import           Data.Text.Encoding (decodeUtf8)
+import           Data.Yaml (decodeEither', prettyPrintParseException)
 import           Path (Dir, File, Path, toFilePath)
 import qualified Path.IO as PIO
 import           Polysemy
@@ -71,6 +74,14 @@ readContentsJson file = do
     Left err -> throw (FileParseError (toFilePath file) (T.pack err))
     Right a -> pure a
 
+-- | Read JSON from a file
+readContentsYaml ::  (FromJSON a, Members '[ReadFS, Error ReadFSErr] r) => Path b File -> Sem r a
+readContentsYaml file = do
+  contents <- readContentsBS file
+  case decodeEither' contents of
+    Left err -> throw (FileParseError (toFilePath file) (T.pack$ prettyPrintParseException err))
+    Right a -> pure a
+
 -- | Interpret an 'Input' effect by parsing file contents
 fileInputParser :: Members '[ReadFS, Error ReadFSErr] r => Parser i -> Path b File -> Sem (Input i ': r) a -> Sem r a
 fileInputParser parser file = interpret $ \case
@@ -82,6 +93,12 @@ fileInputJson :: (FromJSON i, Members '[ReadFS, Error ReadFSErr] r) => Path b Fi
 fileInputJson file = interpret $ \case
   Input -> readContentsJson file
 {-# INLINE fileInputJson #-}
+
+-- | Interpret an 'Input' effect by parsing YAML file contents
+fileInputYaml :: (FromJSON i, Members '[ReadFS, Error ReadFSErr] r) => Path b File -> Sem (Input i ': r) a -> Sem r a
+fileInputYaml file = interpret $ \case
+  Input -> readContentsYaml file
+{-# INLINE fileInputYaml #-}
 
 readFSToIO :: Members '[Embed IO, Error ReadFSErr] r => Sem (ReadFS ': r) a -> Sem r a
 readFSToIO = interpret $ \case

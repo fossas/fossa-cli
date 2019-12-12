@@ -7,6 +7,7 @@ import qualified Strategy.Go.GoList as GoList
 import qualified Strategy.Go.Gomod as Gomod
 import qualified Strategy.Go.GopkgLock as GopkgLock
 import qualified Strategy.Go.GopkgToml as GopkgToml
+import qualified Strategy.Go.GlideLock as GlideLock
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.NpmList as NpmList
 import qualified Strategy.Node.YarnLock as YarnLock
@@ -25,6 +26,7 @@ discoverFuncs =
   , Gomod.discover
   , GopkgToml.discover
   , GopkgLock.discover
+  , GlideLock.discover
 
   , Gradle.discover
 
@@ -65,5 +67,6 @@ strategyGroups =
       , SomeStrategy Gomod.strategy
       , SomeStrategy GopkgLock.strategy
       , SomeStrategy GopkgToml.strategy
+      , SomeStrategy GlideLock.strategy
       ]
   ]
