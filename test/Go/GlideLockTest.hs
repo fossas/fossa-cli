@@ -62,9 +62,7 @@ spec_analyze = do
           & run
 
     it "produces the expected output" $ do
-      let result = analyze
-            & runInputConst @GlideLockfile glideLockfile
-            & run
+      let result = runIt glideLockfile
       result `shouldBe` expected
 
     it "works end to end" $ do
