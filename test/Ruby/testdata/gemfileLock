@@ -1,0 +1,25 @@
+GIT
+  remote: temp
+  revision: 12345
+  branch: branch
+  specs:
+    dep-one (1.0.0)
+      dep-three (>= 2.3, < 4.0.0)
+      dep-two (>= 2.3, < 4.0.0)
+
+GEM
+  remote: remote
+  specs:
+    dep-two (2.0.0)
+      dep-three (>= 2.0.2, < 5.0)
+    dep-three (3.0.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  dep-one (~> 0.8.13)
+  dep-two (>= 4.2.1, < 5.0.0)
+
+BUNDLED WITH
+   1.17.2L.nonIndented scn (L.indentBlock scn p)

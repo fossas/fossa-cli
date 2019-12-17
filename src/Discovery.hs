@@ -19,11 +19,13 @@ import qualified Strategy.Python.PipList as PipList
 import qualified Strategy.Python.ReqTxt as ReqTxt
 import qualified Strategy.Python.SetupPy as SetupPy
 import qualified Strategy.Ruby.BundleShow as BundleShow
+import qualified Strategy.Ruby.GemfileLock as GemfileLock
 
 import qualified Discovery.Config as Config
 import           Types
 
 discoverFuncs :: [Discover]
+
 discoverFuncs =
   [ GoList.discover
   , Gomod.discover
@@ -46,6 +48,7 @@ discoverFuncs =
   , ReqTxt.discover
 
   , BundleShow.discover
+  , GemfileLock.discover
 
   , Config.loadConfig strategyGroups
   ]
@@ -73,6 +76,7 @@ strategyGroups =
       ]
   , StrategyGroup "ruby"
       [ SomeStrategy BundleShow.strategy
+      , SomeStrategy GemfileLock.strategy
       ]
   , StrategyGroup "golang"
       [ SomeStrategy GoList.strategy

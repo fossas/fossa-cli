@@ -125,6 +125,7 @@ library
     Strategy.Python.SetupPy
     Strategy.Python.Util
     Strategy.Ruby.BundleShow
+    Strategy.Ruby.GemfileLock
     Types
 
   hs-source-dirs:  src
@@ -162,6 +163,7 @@ test-suite test
     Python.RequirementsTest
     Python.SetupPyTest
     Ruby.BundleShowTest
+    Ruby.GemfileLockTest
 
   build-tool-depends: tasty-discover:tasty-discover ^>=4.2.1
   build-depends:
