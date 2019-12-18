@@ -133,6 +133,12 @@ func FilterLine(line string) bool {
 		strings.HasPrefix(infoMsg, "Updating ") ||
 		strings.HasPrefix(infoMsg, "Done ") ||
 		strings.HasPrefix(infoMsg, "downloading ") ||
+		strings.HasPrefix(infoMsg, `Welcome to the build`) ||
+		infoMsg == `           __    __` ||
+		infoMsg == `     _____/ /_  / /_` ||
+		infoMsg == `    / ___/ __ \/ __/` ||
+		infoMsg == `   (__  ) /_/ / /_` ||
+		infoMsg == `  /____/_.___/\__/` ||
 		strings.HasPrefix(strings.TrimSpace(infoMsg), "[SUCCESSFUL ]"))
 }
 
