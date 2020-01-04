@@ -8,5 +8,3 @@ cmd/fossa/fossa
 analyzers/gradle/testdata/discover-groovy/.gradle
 analyzers/gradle/testdata/discover-groovy/.project
 analyzers/gradle/testdata/discover-groovy/.settings
-analyzers/gradle/testdata/discover-kotlin/.gradle
-analyzers/gradle/testdata/discover-nested/nested/.gradle
