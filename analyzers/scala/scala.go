@@ -79,8 +79,17 @@ func New(m module.Module) (*Analyzer, error) {
 func Discover(dir string, options map[string]interface{}) ([]module.Module, error) {
 	log.WithField("dir", dir).Debug("discovering modules")
 
+	// Construct SBT instance (for listing projects).
+	sbtCmd, _, err := exec.WhichArgs([]string{"-no-colors", "about"}, os.Getenv("SBT_BINARY"), "sbt")
+	if err != nil {
+		return nil, nil
+	}
+	sbt := sbt.SBT{
+		Bin: sbtCmd,
+	}
+
 	var modules []module.Module
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		log.WithField("path", path).Debug("discovering modules")
 
 		if err != nil {
@@ -98,16 +107,6 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 				return nil
 			}
 			log.Debug("Path has build.sbt")
-
-			// Construct SBT instance (for listing projects).
-			sbtCmd, _, err := exec.WhichArgs([]string{"-no-colors", "about"}, os.Getenv("SBT_BINARY"), "sbt")
-			if err != nil {
-				return nil
-			}
-
-			sbt := sbt.SBT{
-				Bin: sbtCmd,
-			}
 
 			dir := filepath.Dir(path)
 			projects, err := sbt.Projects(dir)

@@ -12,13 +12,11 @@ func Which(arg string, cmds ...string) (cmd string, output string, err error) {
 }
 
 // WhichArgs is `Which` but passes multiple arguments to each candidate.
-// The default timeout is set to 5 minutes to kill hanging commands.
 func WhichArgs(argv []string, cmds ...string) (cmd string, output string, err error) {
 	return WhichWithResolver(cmds, func(cmd string) (string, bool, error) {
 		stdout, stderr, err := Run(Cmd{
-			Name:    cmd,
-			Argv:    argv,
-			Timeout: "5m",
+			Name: cmd,
+			Argv: argv,
 		})
 		if err != nil {
 			return "", false, err
