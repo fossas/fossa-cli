@@ -126,9 +126,9 @@ gomodParser = do
   replaceStatements :: Parser [Statement]
   replaceStatements = block "replace" singleReplace
 
-  -- parse the body of a single replace (wihtout the leading "replace" lexeme)
+  -- parse the body of a single replace (without the leading "replace" lexeme)
   singleReplace :: Parser Statement
-  singleReplace = ReplaceStatement <$> packageName <* lexeme (chunk "=>") <*> packageName <*> semver
+  singleReplace = ReplaceStatement <$> packageName <* optional semver <* lexeme (chunk "=>") <*> packageName <*> semver
 
   -- top-level exclude statements
   -- e.g.:
@@ -161,7 +161,7 @@ gomodParser = do
 
   -- package name, e.g., golang.org/x/text
   packageName :: Parser Text
-  packageName = T.pack <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-'))
+  packageName = T.pack <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_'))
 
   -- semver, e.g.:
   --   v0.0.0-20190101000000-abcdefabcdef
