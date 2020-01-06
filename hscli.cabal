@@ -75,7 +75,7 @@ common deps
     , unordered-containers         ^>=0.2.10
     , vector                       ^>=0.12.0.3
     , yaml                         ^>=0.11.1
-    , yarn-lock                    ^>=0.6.1
+    , yarn-lock                    ^>=0.6.2
 
 library
   import:          lang
@@ -105,11 +105,11 @@ library
     Graphing
     LabeledGraphing
     Prologue
+    Strategy.Go.GlideLock
     Strategy.Go.GoList
     Strategy.Go.Gomod
     Strategy.Go.GopkgLock
     Strategy.Go.GopkgToml
-    Strategy.Go.GlideLock
     Strategy.Go.Transitive
     Strategy.Go.Types
     Strategy.Gradle
@@ -139,7 +139,7 @@ executable hscli
     -flate-specialise -fspecialize-aggressively -O -threaded
     -with-rtsopts=-N
 
-test-suite test
+test-suite tests
   import:             lang
   import:             deps
   type:               exitcode-stdio-1.0
@@ -148,13 +148,14 @@ test-suite test
 
   -- cabal-fmt: expand test
   other-modules:
+    Go.GlideLockTest
     Go.GoListTest
     Go.GomodTest
     Go.GopkgLockTest
     Go.GopkgTomlTest
-    Go.GlideLockTest
     Gradle.GradleTest
     GraphUtil
+    Maven.MavenTest
     Node.NpmLockTest
     Node.PackageJsonTest
     Python.PipListTest

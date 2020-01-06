@@ -76,7 +76,9 @@ buildGraph lockfile = run . evalGrapher $
                , dependencyLocations =
                    case YL.remote package of
                      YL.FileLocal _ _ -> [] -- FUTURE: upload this for analysis?
+                     YL.FileLocalNoIntegrity _ -> [] -- FUTURE: upload this for analysis?
                      YL.FileRemote url _ -> [url]
+                     YL.FileRemoteNoIntegrity url -> [url]
                      YL.GitRemote url rev -> [url <> "@" <> rev]
                , dependencyTags = M.empty
                }
