@@ -119,6 +119,7 @@ library
     Strategy.Node.YarnLock
     Strategy.NpmList
     Strategy.NuGet.ProjectAssetsJson
+    Strategy.NuGet.ProjectJson
     Strategy.Python.PipList
     Strategy.Python.Pipenv
     Strategy.Python.ReqTxt
@@ -159,6 +160,7 @@ test-suite tests
     Node.NpmLockTest
     Node.PackageJsonTest
     NuGet.ProjectAssetsJsonTest
+    NuGet.ProjectJsonTest
     Python.PipListTest
     Python.PipenvTest
     Python.ReqTxtTest
