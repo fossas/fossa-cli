@@ -50,6 +50,7 @@ func Discover(dir string, options map[string]interface{}) ([]module.Module, erro
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.WithError(err).WithField("path", path).Debug("error while walking for discovery")
+			return err
 		}
 
 		if !info.IsDir() && info.Name() == "Cargo.lock" {
