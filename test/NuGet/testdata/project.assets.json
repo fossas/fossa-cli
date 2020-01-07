@@ -1,0 +1,21 @@
+{
+      "version" : 1,
+      "targets" : {
+            ".NETFramework,Version=v4.0": {
+                  "one/1.0.0": {
+                        "type": "package",
+                        "dependencies": {
+                              "three": "3.0.0"
+                        }
+                  },
+                  "two/2.0.0": {
+                        "type": "package"
+                  }
+            },
+            ".NETFramework,Version=v4.0/Win32": {
+                  "four/4.0.0": {
+                        "type": "dependency"
+                  }
+            }
+      }
+}

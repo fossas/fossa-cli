@@ -20,6 +20,7 @@ data DepType =
   | GemType    -- ^ Gem registry
   | MavenType -- ^ Maven registry
   | NodeJSType -- ^ NPM registry (or similar)
+  | NuGetType -- ^ Nuget registry
   | PipType    -- ^ Pip registry
   | GoType -- ^ Go dependency
   deriving (Eq, Ord, Show, Generic)

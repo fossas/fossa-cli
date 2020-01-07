@@ -14,6 +14,7 @@ import qualified Strategy.NpmList as NpmList
 import qualified Strategy.Node.NpmLock as NpmLock
 import qualified Strategy.Node.PackageJson as PackageJson
 import qualified Strategy.Node.YarnLock as YarnLock
+import qualified Strategy.NuGet.ProjectAssetsJson as ProjectAssetsJson
 import qualified Strategy.Python.Pipenv as Pipenv
 import qualified Strategy.Python.PipList as PipList
 import qualified Strategy.Python.ReqTxt as ReqTxt
@@ -42,6 +43,8 @@ discoverFuncs =
   , YarnLock.discover
   , PackageJson.discover
 
+  , ProjectAssetsJson.discover
+
   , PipList.discover
   , Pipenv.discover
   , SetupPy.discover
@@ -55,7 +58,10 @@ discoverFuncs =
 
 strategyGroups :: [StrategyGroup]
 strategyGroups =
-  [ StrategyGroup "gradle"
+  [ StrategyGroup "dotnet"
+    [ SomeStrategy ProjectAssetsJson.strategy
+    ]
+  , StrategyGroup "gradle"
       [ SomeStrategy Gradle.strategy
       ]
   , StrategyGroup "maven"
