@@ -11,6 +11,7 @@ import Prologue
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
+import           Data.Maybe
 import           Polysemy
 import           Polysemy.Input
 import           Polysemy.Output
@@ -33,7 +34,7 @@ discover' = walk $ \_ subdirs files -> do
     Just file -> output (configure file)
     Nothing -> pure ()
 
-  walkSkipNamed ["node_modules/"] subdirs
+  walkContinue
 
 strategy :: Strategy BasicFileOpts
 strategy = Strategy
@@ -46,42 +47,46 @@ strategy = Strategy
   }
 
 data ProjectAssetsJson = ProjectAssetsJson
-  { targets     :: M.Map Text (M.Map Text NugetDep)
+  { targets     :: M.Map Text (M.Map Text DependencyInfo)
   } deriving Show
 
 instance FromJSON ProjectAssetsJson where
   parseJSON = withObject "ProjectAssetsJson" $ \obj ->
     ProjectAssetsJson <$> obj .: "targets"
 
-data NugetDep = NugetDep
+data DependencyInfo = DependencyInfo
   { depType    :: Text
-  , deepDeps   :: Maybe (M.Map Text Text)
+  , deepDeps   :: M.Map Text Text
   } deriving Show
    
-data CompleteNugetDep = CompleteNugetDep
-  { depName            :: Text
-  , depVersion         :: Text
-  , completeDepType    :: Text
-  , completeDeepDeps   :: Maybe (M.Map Text Text)
-  } deriving Show
-
-instance FromJSON NugetDep where
+instance FromJSON DependencyInfo where
   parseJSON = withObject "Dependency" $ \obj ->
-    NugetDep <$> obj .: "type"
-             <*> obj .:? "dependencies"
+    DependencyInfo <$> obj .: "type"
+             <*> obj .:? "dependencies" .!= M.empty
 
 analyze :: Member (Input ProjectAssetsJson) r => Sem r (Graphing Dependency)
 analyze = buildGraph <$> input
 
+data NuGetDep = NuGetDep
+  { depName            :: Text
+  , depVersion         :: Text
+  , completeDepType    :: Text
+  , completeDeepDeps   :: M.Map Text Text
+  } deriving Show
+
 buildGraph :: ProjectAssetsJson -> Graphing Dependency
 buildGraph project = unfold direct deepList toDependency
     where
-    direct = concat $ (\(_,a) -> ((\(x,y) -> CompleteNugetDep (head $ T.splitOn "/" x) (last $ T.splitOn "/" x) (depType y) (deepDeps y)) <$> (M.toList a))) <$> (M.toList (targets project))
-    deepList nugetDep = (\(x,y) -> CompleteNugetDep x y "" Nothing) <$>
-      case completeDeepDeps nugetDep of 
-        Nothing -> []
-        Just dependencies -> M.toList dependencies
-    toDependency CompleteNugetDep{..} =
+    direct :: [NuGetDep] 
+    direct = concatMap (mapMaybe convertDep . M.toList) (M.elems (targets project))
+                    
+    convertDep :: (Text, DependencyInfo) -> Maybe NuGetDep
+    convertDep (depString, dep) = case T.splitOn "/" depString of
+                  [name, ver] -> Just $ NuGetDep name ver (depType dep) (deepDeps dep) 
+                  _ -> Nothing
+
+    deepList nugetDep = (\(x,y) -> NuGetDep x y "" M.empty) <$> (M.toList $ completeDeepDeps nugetDep)
+    toDependency NuGetDep{..} =
       Dependency { dependencyType = NuGetType
                , dependencyName = depName
                , dependencyVersion = Just (CEq depVersion)

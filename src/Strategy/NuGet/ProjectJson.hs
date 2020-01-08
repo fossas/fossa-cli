@@ -34,7 +34,7 @@ discover' = walk $ \_ subdirs files -> do
     Just file -> output (configure file)
     Nothing -> pure ()
 
-  walkSkipNamed ["node_modules/"] subdirs
+  walkContinue
 
 strategy :: Strategy BasicFileOpts
 strategy = Strategy
@@ -47,52 +47,51 @@ strategy = Strategy
   }
 
 data ProjectJson = ProjectJson
-  { dependencies     :: Map Text NuGetDependency
+  { dependencies     :: Map Text DependencyInfo
+  } deriving Show
+
+data DependencyInfo = DependencyInfo
+  { depVersion    :: Text
+  , depType       :: Maybe Text
   } deriving Show
 
 instance FromJSON ProjectJson where
   parseJSON = withObject "ProjectJson" $ \obj ->
     ProjectJson <$> obj .: "dependencies"
 
-data NuGetDependency = NuGetDependency
-  { depVersion    :: Text
-  , depType       :: Maybe Text
-  } deriving Show
-
-instance FromJSON NuGetDependency where
+instance FromJSON DependencyInfo where
   parseJSON val = parseJSONObject val <|> parseJSONText val
     where
-    parseJSONObject :: Value -> Parser NuGetDependency
-    parseJSONObject = withObject "Dependency" $ \obj ->
-        NuGetDependency <$> obj .: "version"
+    parseJSONObject :: Value -> Parser DependencyInfo
+    parseJSONObject = withObject "DependencyInfo" $ \obj ->
+        DependencyInfo <$> obj .: "version"
                         <*> obj .:? "type"
             
-    parseJSONText :: Value -> Parser NuGetDependency
-    parseJSONText = withText "NuGetDependencyCustom" $ \text ->
-        pure $ NuGetDependency text Nothing
-
+    parseJSONText :: Value -> Parser DependencyInfo
+    parseJSONText = withText "DependencyVersion" $ \text ->
+        pure $ DependencyInfo text Nothing
 
 analyze :: Member (Input ProjectJson) r => Sem r (Graphing Dependency)
 analyze = buildGraph <$> input
 
-data CompleteNugetDep = CompleteNugetDep
-  { depName            :: Text
-  , depVersions        :: Text
-  , completeDepType    :: Maybe Text
+data NuGetDependency = NuGetDependency
+  { name            :: Text
+  , version         :: Text
+  , dependencyType  :: Maybe Text
   } deriving Show
 
 buildGraph :: ProjectJson -> Graphing Dependency
 buildGraph project = unfold direct (const []) toDependency
     where
-    direct = (\(name, dep) -> CompleteNugetDep name (depVersion dep) (depType dep)) <$> M.toList (dependencies project)
-    toDependency CompleteNugetDep{..} =
+    direct = (\(name, dep) -> NuGetDependency name (depVersion dep) (depType dep)) <$> M.toList (dependencies project)
+    toDependency NuGetDependency{..} =
       Dependency { dependencyType = NuGetType
-               , dependencyName = depName
-               , dependencyVersion = case T.find('*' ==) depVersions of
-                  Just '*' -> Just (CCompatible depVersions)
-                  _ -> Just (CEq depVersions)
+               , dependencyName = name
+               , dependencyVersion = case T.find ('*' ==) version of
+                  Just '*' -> Just (CCompatible version)
+                  _ -> Just (CEq version)
                , dependencyLocations = []
-               , dependencyTags = case completeDepType of
+               , dependencyTags = case dependencyType of
                   Nothing -> M.empty
                   Just depType -> M.insert "type" [depType]  M.empty
                }
