@@ -8,7 +8,8 @@ module Strategy.Go.Types
   )
   where
 
-import Prologue hiding (parent)
+import qualified Prelude as Unsafe
+import           Prologue hiding (parent)
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -59,8 +60,8 @@ golangPackageToDependency pkg = foldr applyLabel start
 
 -- replace "v0.0.0-20191212000000-abcdef+incompatible" with "abcdef"
 fixVersion :: Text -> Text
-fixVersion = last . T.splitOn "-" . T.replace "+incompatible" ""
+fixVersion = Unsafe.last . T.splitOn "-" . T.replace "+incompatible" ""
 
 -- replace "github.com/A/B/vendor/github.com/X/Y" with "github.com/X/Y"
 unvendor :: Text -> Text
-unvendor = last . T.splitOn "/vendor/"
+unvendor = Unsafe.last . T.splitOn "/vendor/"

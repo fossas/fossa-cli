@@ -3,7 +3,9 @@ module Prologue
   ( module X
   ) where
 
-import Prelude as X hiding (log)
+-- 'log' conflicts with our logging effect
+-- the others are partial functions
+import Prelude as X hiding ((!!), foldl1, foldr1, head, init, last, log, maximum, minimum, tail)
 
 import Debug.Trace as X (traceM, traceShow, traceShowId)
 
