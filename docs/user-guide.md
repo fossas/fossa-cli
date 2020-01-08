@@ -272,6 +272,9 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa upload --project=PROJECT_NAME --revision=S
 
 Report accesses the scanned report on FOSSA.com using the existing configuration file and outputs information directly to the command line. Report offers two different commands:
 
+#### `fossa report attribution`
+Outputs an attribution report for the project that includes information about the dependencies used and their licenses.
+
 #### `fossa report licenses` 
 Outputs detailed information about the licenses and corresponding dependencies used by the project. An example of this can be found in the [Notice file](./Notice) for the FOSSA CLI.
 
