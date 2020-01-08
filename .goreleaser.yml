@@ -14,8 +14,8 @@ builds:
       -X github.com/fossas/fossa-cli/cmd/fossa/version.commit={{.Commit}}
       -X "github.com/fossas/fossa-cli/cmd/fossa/version.goversion={{.Env.GOVERSION}}"
       -X github.com/fossas/fossa-cli/cmd/fossa/version.buildType=release
-archive:
-  format_overrides:
+archives:
+  - format_overrides:
     - goos: windows
       format: zip
 release:
