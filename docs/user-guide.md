@@ -196,11 +196,11 @@ By default, `fossa init` filters modules that are suspected to be development, t
 fossa init --overwrite
 ```
 
-| Flag            | Short | Description                                   |
-| --------------- | ----- | --------------------------------------------- |
-| `--include-all` |       | Include all modules.                          |
-| `--debug`       |       | Print debugging information to stderr.        |
-| `--help`        | `-h`  | Print a help message.                         |
+| Flag            | Short | Description                            |
+| --------------- | ----- | -------------------------------------- |
+| `--include-all` |       | Include all modules.                   |
+| `--debug`       |       | Print debugging information to stderr. |
+| `--help`        | `-h`  | Print a help message.                  |
 
 ### `fossa analyze`
 
@@ -220,6 +220,7 @@ FOSSA_API_KEY=YOUR_API_KEY fossa analyze
 | `--revision`    | `-r`  | Configuration value for [revision](/docs/config-file.md/#revision-optional). |
 | `--endpoint`    | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional). |
 | `--output`      | `-o`  | Output `fossa analyze` results to stdout.                                    |
+| `--team`        | `-T`  | Connect this project with the specified existing team in FOSSA.              |
 | `--server-scan` |       | Run a server side dependency scan on raw modules.                            |
 | `--debug`       |       | Print debugging information to stderr.                                       |
 | `--help`        | `-h`  | Print a help message.                                                        |
@@ -227,7 +228,7 @@ FOSSA_API_KEY=YOUR_API_KEY fossa analyze
 ### `fossa test`
 Checks whether the project has licensing issues, as configured by its policy within FOSSA. If there are issues, it prints them on `stdout` and exits with code 1. If there are not issues, it exits with code 0. Fossa test can be used to fail a CI pipeline job.
 
-> Note: Report always requires an API Key to be set. 
+> Note: Report always requires an API Key to be set. A push-only API key can be used for `fossa test`, but issues will not be displayed if the test results in a failure.
 
 #### Example
 ```bash
