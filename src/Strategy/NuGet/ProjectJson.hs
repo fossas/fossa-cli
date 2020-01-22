@@ -29,7 +29,7 @@ discover = Discover
   }
 
 discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ subdirs files -> do
+discover' = walk $ \_ _ files -> do
   case find (\f -> fileName f == "project.json") files of
     Just file -> output (configure file)
     Nothing -> pure ()

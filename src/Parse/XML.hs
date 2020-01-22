@@ -16,7 +16,7 @@ module Parse.XML
 
 import Prelude
 
-import Control.Applicative (optional, Alternative)
+import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus)
 import Control.Monad.Fail (MonadFail)
 import qualified Data.Text as T
