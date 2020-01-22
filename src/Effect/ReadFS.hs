@@ -13,10 +13,12 @@ module Effect.ReadFS
   , readContentsParser
   , readContentsJson
   , readContentsYaml
+  , readContentsXML
 
   , fileInputParser
   , fileInputJson
   , fileInputYaml
+  , fileInputXML
   ) where
 
 import Prologue
@@ -26,6 +28,7 @@ import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import           Data.Text.Encoding (decodeUtf8)
 import           Data.Yaml (decodeEither', prettyPrintParseException)
+import qualified Text.XML.Light as XML
 import           Path (Dir, File, Path, toFilePath)
 import qualified Path.IO as PIO
 import           Polysemy
@@ -82,6 +85,14 @@ readContentsYaml file = do
     Left err -> throw (FileParseError (toFilePath file) (T.pack$ prettyPrintParseException err))
     Right a -> pure a
 
+-- | Read XML from a file
+readContentsXML ::  Members '[ReadFS, Error ReadFSErr] r => Path b File -> (XML.Element -> Maybe a) -> Sem r a
+readContentsXML file xmlParser = do
+  contents <- readContentsBS file
+  case xmlParser =<< XML.parseXMLDoc contents of
+    Nothing -> throw (FileParseError (toFilePath file) "this file was unable to be parsed as xml")
+    Just parse -> pure parse
+
 -- | Interpret an 'Input' effect by parsing file contents
 fileInputParser :: Members '[ReadFS, Error ReadFSErr] r => Parser i -> Path b File -> Sem (Input i ': r) a -> Sem r a
 fileInputParser parser file = interpret $ \case
@@ -99,6 +110,12 @@ fileInputYaml :: (FromJSON i, Members '[ReadFS, Error ReadFSErr] r) => Path b Fi
 fileInputYaml file = interpret $ \case
   Input -> readContentsYaml file
 {-# INLINE fileInputYaml #-}
+
+-- | Interpret an 'Input' effect by parsing XML contents
+fileInputXML :: Members '[ReadFS, Error ReadFSErr] r =>  Path b File -> (XML.Element -> Maybe i) -> Sem (Input i ': r) a -> Sem r a
+fileInputXML file parser = interpret $ \case
+  Input -> readContentsXML file parser
+{-# INLINE fileInputXML #-}
 
 readFSToIO :: Members '[Embed IO, Error ReadFSErr] r => Sem (ReadFS ': r) a -> Sem r a
 readFSToIO = interpret $ \case

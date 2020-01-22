@@ -73,6 +73,7 @@ common deps
     , typed-process                ^>=0.2.6
     , unordered-containers         ^>=0.2.10
     , vector                       ^>=0.12.0.3
+    , xml                          ^>=1.3.14
     , yaml                         ^>=0.11.1
     , yarn-lock                    ^>=0.6.2
 
@@ -118,6 +119,9 @@ library
     Strategy.Node.PackageJson
     Strategy.Node.YarnLock
     Strategy.NpmList
+    Strategy.NuGet.Nuspec
+    Strategy.NuGet.PackageReference
+    Strategy.NuGet.PackagesConfig
     Strategy.NuGet.ProjectAssetsJson
     Strategy.NuGet.ProjectJson
     Strategy.Python.PipList
@@ -159,6 +163,9 @@ test-suite tests
     Maven.MavenTest
     Node.NpmLockTest
     Node.PackageJsonTest
+    NuGet.NuspecTest
+    NuGet.PackageReferenceTest
+    NuGet.PackagesConfigTest
     NuGet.ProjectAssetsJsonTest
     NuGet.ProjectJsonTest
     Python.PipListTest
