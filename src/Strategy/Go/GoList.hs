@@ -68,7 +68,7 @@ analyze :: Members '[Error ExecErr, Exec] r => BasicDirOpts -> Sem r (Graphing D
 analyze BasicDirOpts{..} = graphingGolang $ do
   stdout <- execThrow targetDir golistCmd []
 
-  let gomodLines = drop 1 (T.lines (decodeUtf8 (BL.toStrict stdout))) -- the first line is our package
+  let gomodLines = drop 1 . T.lines . T.filter (/= '\r') . decodeUtf8 . BL.toStrict $ stdout -- the first line is our package
       requires = mapMaybe toRequire gomodLines
 
       toRequire :: Text -> Maybe Require

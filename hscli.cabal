@@ -1,8 +1,10 @@
-cabal-version:      2.2
+cabal-version:      2.4
 name:               hscli
 version:            0.1.0.0
 build-type:         Simple
-extra-source-files: CHANGELOG.md
+extra-source-files:
+  scripts/*.jar
+  scripts/*.gradle
 
 common lang
   build-depends:      base ^>=4.12

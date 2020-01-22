@@ -94,7 +94,7 @@ analyze BasicDirOpts{..} =
 
     let text = decodeUtf8 $ BL.toStrict stdout
         textLines :: [Text]
-        textLines = T.lines text
+        textLines = T.lines (T.filter (/= '\r') text)
         -- jsonDeps lines look like:
         -- JSONDEPS_:project-path_{"configName":[{"type":"package", ...}, ...], ...}
         jsonDepsLines :: [Text]
