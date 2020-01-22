@@ -3,26 +3,25 @@ module Strategy.NuGet.PackageReference
   , strategy
   , buildGraph
   , analyze
-  , parsePackageReference
 
-  , ItemGroup(..)
   , PackageReference(..)
+  , ItemGroup(..)
+  , Package(..)
   ) where
 
 import Prologue
 
 import qualified Data.Map.Strict as M
-import qualified Data.Text as T
 import qualified Data.List as L
 import           Polysemy
 import           Polysemy.Input
 import           Polysemy.Output
-import qualified Text.XML.Light as XML
 
 import           DepTypes
 import           Discovery.Walk
 import           Effect.ReadFS
 import           Graphing (Graphing, unfold)
+import           Parse.XML
 import           Types
 
 discover :: Discover
@@ -46,60 +45,47 @@ discover' = walk $ \_ _ files -> do
 strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "nuget-packagereference"
-  , strategyAnalyze = \opts -> analyze & fileInputXML (targetFile opts) parsePackageReference
+  , strategyAnalyze = \opts -> analyze & fileInputXML @PackageReference (targetFile opts)
   , strategyModule = parent . targetFile
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete
   }
 
-analyze :: Member (Input [ItemGroup]) r => Sem r (Graphing Dependency)
+analyze :: Member (Input PackageReference) r => Sem r (Graphing Dependency)
 analyze = buildGraph <$> input
 
-data ItemGroup = ItemGroup
-  { dependencies        :: [PackageReference]
+newtype PackageReference = PackageReference
+  { groups :: [ItemGroup]
   } deriving (Eq, Ord, Show, Generic)
 
-data PackageReference = PackageReference
-  { depID        :: String
-  , depVersion   :: Maybe String
+newtype ItemGroup = ItemGroup
+  { dependencies :: [Package]
   } deriving (Eq, Ord, Show, Generic)
 
-parsePackageReference :: XML.Element -> Maybe [ItemGroup]
-parsePackageReference project = do
-  guard (XML.qName (XML.elName project) == "Project")
-  traverse parseItemGroup $ childrenByName "ItemGroup" project
-  where
+data Package = Package
+  { depID      :: Text
+  , depVersion :: Maybe Text
+  } deriving (Eq, Ord, Show, Generic)
 
-  parseItemGroup :: XML.Element -> Maybe ItemGroup
-  parseItemGroup el = fmap ItemGroup $ traverse parsePackage $ childrenByName "PackageReference" el 
+instance FromXML PackageReference where
+  parseElement el = PackageReference <$> children "ItemGroup" el
 
-  parsePackage :: XML.Element -> Maybe PackageReference
-  parsePackage el = do
-    include <- attrByName "Include" el
-    let version = stringByName "Version" el
+instance FromXML ItemGroup where
+  parseElement el = ItemGroup <$> children "PackageReference" el
 
-    pure (PackageReference include version)
+instance FromXML Package where
+  parseElement el =
+    Package <$> attr "Include" el
+            <*> optional (child "Version" el)
 
-  stringByName :: String -> XML.Element -> Maybe String
-  stringByName name = fmap XML.strContent . childByName name
-
-  attrByName :: String -> XML.Element -> Maybe String
-  attrByName name element = XML.findAttrBy (\elName -> XML.qName elName == name) element 
-
-  childByName :: String -> XML.Element -> Maybe XML.Element
-  childByName name = XML.filterChildName (\elName -> XML.qName elName == name)
-
-  childrenByName :: String -> XML.Element -> [XML.Element]
-  childrenByName name = XML.filterChildrenName (\elName -> XML.qName elName == name)
-
-buildGraph :: [ItemGroup] -> Graphing Dependency
+buildGraph :: PackageReference -> Graphing Dependency
 buildGraph project = unfold direct (const []) toDependency
     where
-    direct = concatMap (\x -> dependencies x) project
-    toDependency PackageReference{..} =
+    direct = concatMap dependencies (groups project)
+    toDependency Package{..} =
       Dependency { dependencyType = NuGetType
-               , dependencyName = T.pack depID
-               , dependencyVersion =  fmap (CEq . T.pack) depVersion
+               , dependencyName = depID
+               , dependencyVersion =  fmap CEq depVersion
                , dependencyLocations = []
                , dependencyTags = M.empty
                }

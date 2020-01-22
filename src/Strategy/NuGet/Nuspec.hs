@@ -3,8 +3,8 @@ module Strategy.NuGet.Nuspec
   , strategy
   , buildGraph
   , analyze
-  , parseNuspec
 
+  , Nuspec(..)
   , Group(..)
   , NuGetDependency(..)
   ) where
@@ -12,17 +12,16 @@ module Strategy.NuGet.Nuspec
 import Prologue
 
 import qualified Data.Map.Strict as M
-import qualified Data.Text as T
 import qualified Data.List as L
 import           Polysemy
 import           Polysemy.Input
 import           Polysemy.Output
-import qualified Text.XML.Light as XML
 
 import           DepTypes
 import           Discovery.Walk
 import           Effect.ReadFS
 import           Graphing (Graphing, unfold)
+import           Parse.XML
 import           Types
 
 discover :: Discover
@@ -42,60 +41,50 @@ discover' = walk $ \_ _ files -> do
 strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "nuget-nuspec"
-  , strategyAnalyze = \opts -> analyze & fileInputXML (targetFile opts) parseNuspec
+  , strategyAnalyze = \opts -> analyze & fileInputXML @Nuspec (targetFile opts)
   , strategyModule = parent . targetFile
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete
   }
 
-analyze :: Member (Input [Group]) r => Sem r (Graphing Dependency)
+analyze :: Member (Input Nuspec) r => Sem r (Graphing Dependency)
 analyze = buildGraph <$> input
 
-data Group = Group
+newtype Nuspec = Nuspec
+  { groups :: [Group]
+  } deriving (Eq, Ord, Show, Generic)
+
+newtype Group = Group
   { dependencies  :: [NuGetDependency]
   } deriving (Eq, Ord, Show, Generic)
 
 data NuGetDependency = NuGetDependency
-  { depID        :: String
-  , depVersion   :: String
+  { depID      :: Text
+  , depVersion :: Text
   } deriving (Eq, Ord, Show, Generic)
 
-parseNuspec :: XML.Element -> Maybe [Group]
-parseNuspec nuspec = do
-  guard (XML.qName (XML.elName nuspec) == "package")
-  parseGroups =<< childByName "metadata" nuspec
-  where
+instance FromXML Nuspec where
+  parseElement el = do
+    metadata     <- child "metadata" el
+    dependencies <- child "dependencies" metadata
+    Nuspec <$> children "group" dependencies
 
-  parseGroups :: XML.Element -> Maybe [Group]
-  parseGroups el = traverse parseGroup . childrenByName "group" =<< childByName "dependencies" el
+instance FromXML Group where
+  parseElement el = Group <$> children "dependency" el
 
-  parseGroup :: XML.Element -> Maybe Group
-  parseGroup el = fmap Group $ traverse parseDependency $ childrenByName "dependency" el
+instance FromXML NuGetDependency where
+  parseElement el =
+    NuGetDependency <$> attr "id" el
+                    <*> attr "version" el
 
-  parseDependency :: XML.Element -> Maybe NuGetDependency
-  parseDependency el = do
-    depIds  <- attrByName "id" el
-    version <- attrByName "version" el
-
-    pure (NuGetDependency depIds version)
-
-  attrByName :: String -> XML.Element -> Maybe String
-  attrByName name element = XML.findAttrBy (\elName -> XML.qName elName == name) element 
-
-  childByName :: String -> XML.Element -> Maybe XML.Element
-  childByName name = XML.filterChildName (\elName -> XML.qName elName == name)
-
-  childrenByName :: String -> XML.Element -> [XML.Element]
-  childrenByName name = XML.filterChildrenName (\elName -> XML.qName elName == name)
-
-buildGraph :: [Group] -> Graphing Dependency
+buildGraph :: Nuspec -> Graphing Dependency
 buildGraph project = unfold direct (const []) toDependency
     where
-    direct = concatMap (\x -> dependencies x) project
+    direct = concatMap dependencies (groups project)
     toDependency NuGetDependency{..} =
       Dependency { dependencyType = NuGetType
-               , dependencyName = T.pack depID
-               , dependencyVersion = Just (CEq $ T.pack depVersion)
+               , dependencyName = depID
+               , dependencyVersion = Just (CEq depVersion)
                , dependencyLocations = []
                , dependencyTags = M.empty
                }

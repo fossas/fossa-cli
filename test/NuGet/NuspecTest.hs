@@ -7,14 +7,15 @@ module NuGet.NuspecTest
 import Prologue
 
 import qualified Data.Map.Strict as M
-import qualified Data.ByteString.Lazy as BL
-import qualified Text.XML.Light as XML
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import DepTypes
 import GraphUtil
-import Strategy.NuGet.Nuspec
-import Test.Tasty.Hspec
+import Parse.XML
 import Polysemy
 import Polysemy.Input
+import Strategy.NuGet.Nuspec
+import Test.Tasty.Hspec
 
 dependencyOne :: Dependency
 dependencyOne = Dependency { dependencyType = NuGetType
@@ -39,6 +40,10 @@ dependencyThree = Dependency { dependencyType = NuGetType
                         , dependencyLocations = []
                         , dependencyTags = M.empty
                         }
+
+nuspec :: Nuspec
+nuspec = Nuspec groupList
+
 groupList :: [Group]
 groupList = [Group [depOne, depTwo], Group [depThree]]
 
@@ -53,16 +58,16 @@ depThree = NuGetDependency "three" "3.0.0"
 
 spec_analyze :: Spec
 spec_analyze = do
-  nuspecFile <- runIO (BL.readFile "test/NuGet/testdata/test.nuspec")
+  nuspecFile <- runIO (TIO.readFile "test/NuGet/testdata/test.nuspec")
 
   describe "nuspec analyzer" $ do
     it "reads a file and constructs an accurate graph" $ do
-      case parseNuspec =<< XML.parseXMLDoc nuspecFile of
-        Just groups -> groups `shouldContain` groupList
-        Nothing -> expectationFailure "could not parse nuspec file"
+      case parseXML nuspecFile of
+        Right project -> (groups project) `shouldContain` groupList
+        Left err -> expectationFailure (T.unpack ("could not parse nuspec file: " <> xmlErrorPretty err))
 
     it "constructs an accurate graph" $ do
-          let graph = analyze & runInputConst @[Group] groupList & run
+          let graph = analyze & runInputConst nuspec & run
           expectDeps [dependencyOne, dependencyTwo, dependencyThree] graph
           expectDirect [dependencyOne, dependencyTwo, dependencyThree] graph
           expectEdges [] graph

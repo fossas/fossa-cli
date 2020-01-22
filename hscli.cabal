@@ -104,6 +104,7 @@ library
     Effect.ReadFS
     Graphing
     LabeledGraphing
+    Parse.XML
     Prologue
     Strategy.Go.GlideLock
     Strategy.Go.GoList

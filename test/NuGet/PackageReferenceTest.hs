@@ -7,13 +7,14 @@ module NuGet.PackageReferenceTest
 import Prologue
 
 import qualified Data.Map.Strict as M
-import qualified Data.ByteString.Lazy as BL
-import qualified Text.XML.Light as XML
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import DepTypes
 import GraphUtil
-import Strategy.NuGet.PackageReference
+import Parse.XML
 import Polysemy
 import Polysemy.Input
+import Strategy.NuGet.PackageReference
 import Test.Tasty.Hspec
 
 dependencyOne :: Dependency
@@ -48,33 +49,36 @@ dependencyFour = Dependency { dependencyType = NuGetType
                             , dependencyTags = M.empty
                             }
 
+packageReference :: PackageReference
+packageReference = PackageReference itemGroupList
+
 itemGroupList :: [ItemGroup]
 itemGroupList = [ItemGroup [refOne, refTwo], ItemGroup [refThree, refFour]]
 
-refOne :: PackageReference
-refOne = PackageReference "one" $ Just "1.0.0"
+refOne :: Package
+refOne = Package "one" $ Just "1.0.0"
 
-refTwo :: PackageReference
-refTwo = PackageReference "two" $ Just "2.0.0"
+refTwo :: Package
+refTwo = Package "two" $ Just "2.0.0"
 
-refThree :: PackageReference
-refThree = PackageReference "three" $ Just "3.0.0"
+refThree :: Package
+refThree = Package "three" $ Just "3.0.0"
 
-refFour :: PackageReference
-refFour = PackageReference "four" Nothing
+refFour :: Package
+refFour = Package "four" Nothing
 
 spec_analyze :: Spec
 spec_analyze = do
-  refFile <- runIO (BL.readFile "test/NuGet/testdata/test.csproj")
+  refFile <- runIO (TIO.readFile "test/NuGet/testdata/test.csproj")
 
   describe "Package Reference parser" $ do
     it "reads a file and constructs an accurate list of item groups" $ do
-      case parsePackageReference =<< XML.parseXMLDoc refFile of
-        Just groups -> groups `shouldContain` itemGroupList
-        Nothing -> expectationFailure "could not parse package reference file"
+      case parseXML refFile of
+        Right project -> (groups project) `shouldContain` itemGroupList
+        Left err -> expectationFailure (T.unpack ("could not parse package reference file" <> xmlErrorPretty err))
 
     it "constructs an accurate graph" $ do
-          let graph = analyze & runInputConst @[ItemGroup] itemGroupList & run
+          let graph = analyze & runInputConst @PackageReference packageReference & run
           expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
           expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
           expectEdges [] graph

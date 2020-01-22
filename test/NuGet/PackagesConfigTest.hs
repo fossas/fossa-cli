@@ -1,5 +1,3 @@
-{-# language TemplateHaskell #-}
-
 module NuGet.PackagesConfigTest
   ( spec_analyze
   ) where
@@ -7,14 +5,15 @@ module NuGet.PackagesConfigTest
 import Prologue
 
 import qualified Data.Map.Strict as M
-import qualified Data.ByteString.Lazy as BL
-import qualified Text.XML.Light as XML
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import DepTypes
 import GraphUtil
 import Strategy.NuGet.PackagesConfig
-import Test.Tasty.Hspec
+import Parse.XML
 import Polysemy
 import Polysemy.Input
+import Test.Tasty.Hspec
 
 dependencyOne :: Dependency
 dependencyOne = Dependency { dependencyType = NuGetType
@@ -32,21 +31,24 @@ dependencyTwo = Dependency { dependencyType = NuGetType
                         , dependencyTags = M.empty
                         }
 
+packagesConfig :: PackagesConfig
+packagesConfig = PackagesConfig depList
+
 depList :: [NuGetDependency]
 depList = [NuGetDependency "one" "1.0.0", NuGetDependency "two" "2.0.0"]
 
 spec_analyze :: Spec
 spec_analyze = do
-  nuspecFile <- runIO (BL.readFile "test/NuGet/testdata/packages.config")
+  nuspecFile <- runIO (TIO.readFile "test/NuGet/testdata/packages.config")
 
   describe "packages.config analyzer" $ do
     it "reads a file and constructs an accurate graph" $ do
-      case parsePackagesConfig =<< XML.parseXMLDoc nuspecFile of
-        Just deps -> deps `shouldContain` depList
-        Nothing -> expectationFailure "could not parse packages.config file"
+      case parseXML nuspecFile of
+        Right project -> (deps project) `shouldContain` depList
+        Left err -> expectationFailure (T.unpack ("could not parse packages.config file" <> xmlErrorPretty err))
 
     it "constructs an accurate graph" $ do
-          let graph = analyze & runInputConst @[NuGetDependency] depList & run
+          let graph = analyze & runInputConst @PackagesConfig packagesConfig & run
           expectDeps [dependencyOne, dependencyTwo] graph
           expectDirect [dependencyOne, dependencyTwo] graph
           expectEdges [] graph
