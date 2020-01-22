@@ -2,6 +2,7 @@ package analyze
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/apex/log"
 	"github.com/urfave/cli"
@@ -12,6 +13,7 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -33,7 +35,68 @@ var Cmd = cli.Command{
 
 var _ cli.ActionFunc = Run
 
+var timeout = "timeout"
+var success = "success"
+var panic = "panic"
+
+// This function runs v2 analysis and uploads the results for comparison.
+// The default timeout for this function is 1 minute and the completion channel is
+// used to timeout analysis if it is slower.
+func v2Analysis(completion chan string) {
+	defer func() {
+		if r := recover(); r != nil {
+			completion <- panic
+		}
+	}()
+
+	_, _, err := exec.Run(exec.Cmd{
+		Name:    "spectrometer",
+		Argv:    []string{"scan"},
+		Timeout: "1m",
+		Retries: 0,
+	})
+
+	if strings.Contains(err.Error(), "operation timed out running") {
+		completion <- timeout
+		return
+	}
+
+	// Example upload functionality
+	/*
+		err := uploadV2ComparisonResults(stdout, stderr, err, ctx, config)
+		if err != nil{
+			completion <- uploadFailure
+		}
+	*/
+
+	completion <- success
+}
+
 func Run(ctx *cli.Context) error {
+	// TODO: Change this channel from a string to a better type to upload.
+	// We need to also include an error field for panics and timeouts.
+	v2Completion := make(chan string, 1)
+	go v2Analysis(v2Completion)
+
+	// This defer handles v2 error modes and ensures that it never
+	// runs longer than v1.
+	defer func() {
+		select {
+		case result := <-v2Completion:
+			switch result {
+			case success:
+				// upload results with comparison data with the
+				// results of the analyzed modules.
+			case timeout:
+				// handle a timeout with context.
+			case panic:
+				// handle a panic with context.
+			}
+		default:
+			// send a message that signals v1 was faster than v2.
+		}
+	}()
+
 	err := setup.SetContext(ctx, !ctx.Bool(ShowOutput))
 	if err != nil {
 		log.Fatalf("Could not initialize %s", err)
