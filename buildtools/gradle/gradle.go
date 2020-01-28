@@ -242,7 +242,7 @@ func Cmd(command string, timeout string, retries int, taskArgs ...string) (strin
 		return stdout, &errors.Error{
 			Cause:           err,
 			Type:            errors.Exec,
-			Troubleshooting: fmt.Sprintf("Fossa could not run `%s %s` within the current directory. Try running this command and ensure that gradle is installed in your environment.\nstdout: %s\nstderr: %s", command, taskArgs, stdout, stderr),
+			Troubleshooting: fmt.Sprintf("Fossa could not run `%s %s` within the current directory. Try running this command and ensure that gradle is installed in your environment.\nstdout: %s\nstderr: %s", command, strings.Join(taskArgs, " "), stdout, stderr),
 			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/gradle.md#gradle",
 		}
 	}

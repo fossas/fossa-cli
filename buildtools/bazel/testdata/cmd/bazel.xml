@@ -1,0 +1,29 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<query version="2">
+      <rule class="go_library" location="/Users/zachlavallee/Programming/BuildTools/bazel/kops/test/sigs.k8s.io/controller-tools/cmd/controller-gen/BUILD.bazel:3:1" name="//test/github.com/organization/project/package-one:go_default_library">
+            <string name="name" value="go_default_library"/>
+            <list name="visibility">
+                  <label value="//visibility:private"/>
+            </list>
+            <string name="generator_name" value="go_default_library"/>
+            <string name="importpath" value="sigs.k8s.io/controller-tools/cmd/controller-gen"/>
+            <string name="importmap" value="k8s.io/kops/test/sigs.k8s.io/controller-tools/cmd/controller-gen"/>
+            <rule-input name="@io_bazel_rules_nogo//:nogo"/>
+      </rule>
+      <rule class="rust_library" location="/Users/zachlavallee/Programming/BuildTools/bazel/kops/test/sigs.k8s.io/controller-tools/pkg/webhook/BUILD.bazel:3:1" name="//test/github.com/organization/project/package-two:go_default_library">
+            <string name="name" value="package-two"/>
+            <string name="version" value="2.0.0"/>
+      </rule>
+      <rule class="dbx_npm_library" location="/Users/zachlavallee/Programming/BuildTools/bazel/kops/test/sigs.k8s.io/controller-tools/pkg/webhook/BUILD.bazel:3:1" name="//test/github.com/organization/project/package-two:go_default_library">
+            <string name="name" value="package-three"/>
+            <string name="npm_req" value="package-three@3.0.0"/>
+      </rule>
+      <rule class="dbx_npm_library" location="/Users/zachlavallee/Programming/BuildTools/bazel/kops/test/sigs.k8s.io/controller-tools/pkg/webhook/BUILD.bazel:3:1" name="//test/github.com/organization/project/package-two:go_default_library">
+            <string name="name" value="package-four"/>
+            <string name="npm_req" value="@package/four@4.0.0"/>
+      </rule>
+      <rule class="dbx_py_pypi_piplib" location="/Users/zachlavallee/Programming/BuildTools/bazel/kops/test/sigs.k8s.io/controller-tools/pkg/webhook/BUILD.bazel:3:1" name="//test/github.com/organization/project/package-two:go_default_library">
+            <string name="name" value="package-five"/>
+            <string name="pip_version" value="5.0.0"/>
+      </rule>
+</query>

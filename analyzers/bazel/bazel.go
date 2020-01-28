@@ -8,6 +8,7 @@ import (
 	"github.com/apex/log"
 
 	"github.com/fossas/fossa-cli/buildtools/bazel"
+	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -16,12 +17,20 @@ import (
 // Analyzer defines a Buck analyzer.
 type Analyzer struct {
 	Module module.Module
+	Shell  bazel.Shell
 }
 
 // New constructs a new Buck analyzer from a module.
 func New(module module.Module) (*Analyzer, error) {
-	analyzer := Analyzer{Module: module}
-	return &analyzer, nil
+	cmd, _, err := exec.Which("--version", os.Getenv("FOSSA_BAZEL"), "bazel")
+	if err != nil {
+		return nil, err
+	}
+
+	return &Analyzer{
+		Module: module,
+		Shell:  bazel.ShellOutput(cmd, module.Dir),
+	}, nil
 }
 
 // Clean is not implemented.
@@ -41,7 +50,8 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 
 // Analyze analyzes a bazel build target and its dependencies.
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	return bazel.Deps(filepath.Join(a.Module.Dir, a.Module.BuildTarget), true)
+	// return bazel.Deps(filepath.Join(a.Module.Dir, a.Module.BuildTarget), true)
+	return a.Shell.Command(a.Module.BuildTarget, true)
 }
 
 // Discover is used to operate Discovery with a custom `bazel` command.
@@ -53,7 +63,8 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 			return err
 		}
 
-		if !info.IsDir() && (info.Name() == "BUILD" || info.Name() == "BUILD.bazel") {
+		// if !info.IsDir() && (info.Name() == "BUILD" || info.Name() == "BUILD.bazel") {
+		if !info.IsDir() && info.Name() == "WORKSPACE" {
 			moduleName := filepath.Base(path)
 
 			log.WithFields(log.Fields{
