@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/apex/log"
 
 	"github.com/fossas/fossa-cli/buildtools/bazel"
 	"github.com/fossas/fossa-cli/exec"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/graph"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
@@ -29,7 +31,7 @@ func New(module module.Module) (*Analyzer, error) {
 
 	return &Analyzer{
 		Module: module,
-		Shell:  bazel.ShellOutput(cmd, module.Dir),
+		Shell:  bazel.ExecutableShell(cmd, module.Dir),
 	}, nil
 }
 
@@ -50,8 +52,7 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 
 // Analyze analyzes a bazel build target and its dependencies.
 func (a *Analyzer) Analyze() (graph.Deps, error) {
-	// return bazel.Deps(filepath.Join(a.Module.Dir, a.Module.BuildTarget), true)
-	return a.Shell.Command(a.Module.BuildTarget, true)
+	return a.Shell.TargetDependencies(a.Module.BuildTarget, true)
 }
 
 // Discover is used to operate Discovery with a custom `bazel` command.
@@ -63,7 +64,6 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 			return err
 		}
 
-		// if !info.IsDir() && (info.Name() == "BUILD" || info.Name() == "BUILD.bazel") {
 		if !info.IsDir() && info.Name() == "WORKSPACE" {
 			moduleName := filepath.Base(path)
 
@@ -76,12 +76,23 @@ func Discover(dir string, opts map[string]interface{}) ([]module.Module, error) 
 				return err
 			}
 
-			modules = append(modules, module.Module{
-				Name:        moduleName,
-				Type:        pkg.Bazel,
-				BuildTarget: moduleName,
-				Dir:         filepath.Dir(relPath),
-			})
+			baseDir := strings.TrimSuffix(path, "WORKSPACE")
+			vendorDirectories := []string{"vendor", "third_party"}
+			for _, venDir := range vendorDirectories {
+				fileCheck, err := files.ExistsFolder(filepath.Join(baseDir, venDir))
+				if err != nil {
+					return err
+				}
+
+				if fileCheck {
+					modules = append(modules, module.Module{
+						Name:        moduleName,
+						Type:        pkg.Bazel,
+						BuildTarget: venDir + "/...",
+						Dir:         filepath.Dir(relPath),
+					})
+				}
+			}
 		}
 
 		return nil

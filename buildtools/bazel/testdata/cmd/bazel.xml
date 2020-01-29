@@ -26,4 +26,8 @@
             <string name="name" value="package-five"/>
             <string name="pip_version" value="5.0.0"/>
       </rule>
+      <rule class="dbx_npm_library" location="/Users/zachlavallee/Programming/BuildTools/bazel/kops/test/sigs.k8s.io/controller-tools/pkg/webhook/BUILD.bazel:3:1" name="//test/github.com/organization/project/package-two:go_default_library">
+            <string name="name" value="package-six"/>
+            <string name="npm_req" value="@package-six"/>
+      </rule>
 </query>

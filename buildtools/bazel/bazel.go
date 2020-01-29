@@ -19,12 +19,13 @@ type Shell struct {
 }
 
 // ShellOutput creates a Shell which shells out to the supplied binary to generate values to return.
-func ShellOutput(binary, dir string) Shell {
+func ExecutableShell(binary, dir string) Shell {
 	return Shell{
 		Cmd: func(args ...string) (string, *errors.Error) {
 			cmd := exec.Cmd{
 				Name: binary,
 				Argv: args,
+				Dir:  dir,
 			}
 
 			stdout, stderr, err := exec.Run(cmd)
@@ -42,7 +43,7 @@ func ShellOutput(binary, dir string) Shell {
 }
 
 // Command returns a dependency graph using the output of a bazel query.
-func (s Shell) Command(target string, upload bool) (graph.Deps, error) {
+func (s Shell) TargetDependencies(target string, upload bool) (graph.Deps, error) {
 	queryString := "deps(" + target + ")"
 	output, err := s.Cmd("query", queryString, "--output", "xml")
 	if err != nil {
@@ -149,23 +150,29 @@ func goNameFromRule(ruleName string, target string) string {
 	if len(nameSplit) > 0 {
 		return nameSplit[0]
 	}
+
 	return ""
 }
 
 // Handle the npm_req field formats. Name and version are separated by "@" and "@" can be present in the name.
 func npmReqFromString(req string) (string, string) {
-	npmSpec := strings.Split(req, "@")
+	prefixAt := false
+	requirement := req
+	if requirement[0] == '@' {
+		requirement = strings.TrimPrefix(requirement, "@")
+		prefixAt = true
+	}
 
 	name, version := "", ""
-	switch len(npmSpec) {
-	case 3: // Handle requirements in the format "types/react-router-dom@1.0.0"
-		name = "@" + npmSpec[0] + npmSpec[1]
-		version = npmSpec[2]
-	case 2:
+	npmSpec := strings.Split(requirement, "@")
+	if len(npmSpec) > 1 {
 		version = npmSpec[1]
-		fallthrough
-	case 1:
+	}
+	if len(npmSpec) > 0 {
 		name = npmSpec[0]
+	}
+	if prefixAt {
+		name = "@" + name
 	}
 
 	return name, version

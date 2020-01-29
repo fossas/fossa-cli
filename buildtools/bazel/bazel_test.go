@@ -1,7 +1,6 @@
 package bazel_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,23 +17,24 @@ func TestBazelCommand(t *testing.T) {
 		Cmd: func(...string) (string, *errors.Error) {
 			file, err := files.Read("testdata/cmd/bazel.xml")
 			if err != nil {
-				fmt.Println(err)
+				t.Fatal("could not read the test file")
 			}
 			return string(file), nil
 		},
 	}
 
-	graph, err := shell.Command("//test/...", false)
+	graph, err := shell.TargetDependencies("//test/...", false)
 	assert.NoError(t, err)
 
-	assert.Len(t, graph.Direct, 5)
+	assert.Len(t, graph.Direct, 6)
 	helpers.AssertPackageImport(t, graph.Direct, "github.com/organization/project/package-one", "")
 	helpers.AssertPackageImport(t, graph.Direct, "package-two", "2.0.0")
 	helpers.AssertPackageImport(t, graph.Direct, "package-three", "3.0.0")
 	helpers.AssertPackageImport(t, graph.Direct, "@package/four", "4.0.0")
 	helpers.AssertPackageImport(t, graph.Direct, "package-five", "5.0.0")
+	helpers.AssertPackageImport(t, graph.Direct, "@package-six", "")
 
-	assert.Len(t, graph.Transitive, 5)
+	assert.Len(t, graph.Transitive, 6)
 	packageOne := helpers.PackageInTransitiveGraph(graph.Transitive, "github.com/organization/project/package-one", "")
 	assert.NotEmpty(t, packageOne)
 	assert.Equal(t, pkg.Go, packageOne.ID.Type)
@@ -59,4 +59,9 @@ func TestBazelCommand(t *testing.T) {
 	assert.NotEmpty(t, packageFive)
 	assert.Equal(t, pkg.Python, packageFive.ID.Type)
 	assert.Len(t, packageFive.Imports, 0)
+
+	packageSix := helpers.PackageInTransitiveGraph(graph.Transitive, "@package-six", "")
+	assert.NotEmpty(t, packageSix)
+	assert.Equal(t, pkg.NodeJS, packageSix.ID.Type)
+	assert.Len(t, packageSix.Imports, 0)
 }
