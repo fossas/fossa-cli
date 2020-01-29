@@ -49,11 +49,11 @@ func ShellOutput(binary, dir string) Output {
 			}
 
 			stdout, stderr, err := exec.Run(cmd)
-			if stderr != "" || err != nil {
+			if err != nil {
 				return stdout, &errors.Error{
 					Cause:           err,
 					Type:            errors.Exec,
-					Troubleshooting: fmt.Sprintf("Ensure that %s is installed correctly and that `%s %s` can be run in the directory `%s`", binary, binary, strings.Join(args, " "), dir),
+					Troubleshooting: fmt.Sprintf("Ensure that %s is installed correctly and that `%s %s` can be run in the directory `%s`.\nstdout: %s\nstderr: %s", binary, binary, strings.Join(args, " "), dir, stdout, stderr),
 				}
 			}
 
