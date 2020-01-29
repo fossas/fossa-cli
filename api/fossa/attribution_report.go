@@ -26,6 +26,7 @@ type AttributionReportRow struct {
 	DependencyPaths []string
 	Notes           []string
 	DownloadURL     string
+	Title           string
 }
 
 // AttributionReportProject is the project for which the report is being made
