@@ -113,7 +113,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	if err == nil && len(dependencies.Direct) > 0 {
 		return dependencies, nil
 	}
-	log.Warnf("FALLING BACK to parse clojure project file.\nLeiningen analysis could not be run, address the following error for more accurate results:\n%s", err.Troubleshooting)
+	log.Warnf("FALLING BACK to parse clojure project files which will result in less accurate results.\nAddress the following error from Leiningen to improve the analysis results:\n%s", err.Troubleshooting)
 	log.Debug(err.Error())
 
 	// 3. Parse `project.clj` as best as we can.
