@@ -146,6 +146,7 @@ func packagesFromOutput(commandOutput string, target string, upload bool) ([]pkg
 func goNameFromRule(ruleName string, target string) string {
 	trimmedTarget := strings.TrimSuffix(target, "...")
 	trimmedRuleName := strings.TrimPrefix(ruleName, trimmedTarget)
+	trimmedRuleName = strings.TrimPrefix(ruleName, "//"+trimmedTarget)
 	nameSplit := strings.Split(trimmedRuleName, ":")
 	if len(nameSplit) > 0 {
 		return nameSplit[0]
