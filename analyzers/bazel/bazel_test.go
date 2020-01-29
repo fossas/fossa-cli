@@ -13,7 +13,6 @@ import (
 func TestDiscovery(t *testing.T) {
 	modules, err := bazel.Discover(".", make(map[string]interface{}))
 	assert.NoError(t, err)
-	assert.Len(t, modules, 2)
-	helpers.AssertModuleExists(t, modules, pkg.Bazel, "BUILD", "testdata", "BUILD")
-	helpers.AssertModuleExists(t, modules, pkg.Bazel, "BUILD.bazel", "testdata", "BUILD.bazel")
+	assert.Len(t, modules, 1)
+	helpers.AssertModuleExists(t, modules, pkg.Bazel, "WORKSPACE", "testdata", "vendor/...")
 }

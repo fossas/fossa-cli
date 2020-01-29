@@ -6,61 +6,67 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fossas/fossa-cli/buildtools/bazel"
+	"github.com/fossas/fossa-cli/errors"
+	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/pkg"
 	"github.com/fossas/fossa-cli/testing/helpers"
 )
 
-func TestPythonDeps(t *testing.T) {
-	graph, err := bazel.Deps("testdata/python/BUILD", false)
+func TestBazelCommand(t *testing.T) {
+	shell := bazel.Shell{
+		Cmd: func(...string) (string, *errors.Error) {
+			file, err := files.Read("testdata/cmd/bazel.xml")
+			if err != nil {
+				t.Fatal("could not read the test file")
+			}
+			return string(file), nil
+		},
+	}
+
+	// Test rule with double slash prefix.
+	graph, err := shell.TargetDependencies("//test/...", false)
 	assert.NoError(t, err)
-	helpers.AssertPackageImport(t, graph.Direct, "dep-one", "1.1.1")
+	assert.Len(t, graph.Direct, 6)
 
-	testPackage := helpers.PackageInTransitiveGraph(graph.Transitive, "dep-one", "1.1.1")
-	assert.NotEmpty(t, testPackage)
-	assert.Equal(t, pkg.Python, testPackage.ID.Type)
-	assert.Len(t, testPackage.Imports, 0)
-}
-
-func TestRustDeps(t *testing.T) {
-	graph, err := bazel.Deps("testdata/rust/BUILD.bazel", false)
+	graph, err = shell.TargetDependencies("test/...", false)
 	assert.NoError(t, err)
-	helpers.AssertPackageImport(t, graph.Direct, "dep-one", "1.1.1")
 
-	testPackage := helpers.PackageInTransitiveGraph(graph.Transitive, "dep-one", "1.1.1")
-	assert.NotEmpty(t, testPackage)
-	assert.Equal(t, pkg.Rust, testPackage.ID.Type)
-	assert.Len(t, testPackage.Imports, 0)
-}
+	assert.Len(t, graph.Direct, 6)
+	helpers.AssertPackageImport(t, graph.Direct, "github.com/organization/project/package-one", "")
+	helpers.AssertPackageImport(t, graph.Direct, "package-two", "2.0.0")
+	helpers.AssertPackageImport(t, graph.Direct, "package-three", "3.0.0")
+	helpers.AssertPackageImport(t, graph.Direct, "@package/four", "4.0.0")
+	helpers.AssertPackageImport(t, graph.Direct, "package-five", "5.0.0")
+	helpers.AssertPackageImport(t, graph.Direct, "@package-six", "")
 
-func TestNPMDeps(t *testing.T) {
-	graph, err := bazel.Deps("testdata/npm/BUILD", false)
-	assert.NoError(t, err)
-	helpers.AssertPackageImport(t, graph.Direct, "dep-one", "1.1.1")
+	assert.Len(t, graph.Transitive, 6)
+	packageOne := helpers.PackageInTransitiveGraph(graph.Transitive, "github.com/organization/project/package-one", "")
+	assert.NotEmpty(t, packageOne)
+	assert.Equal(t, pkg.Go, packageOne.ID.Type)
+	assert.Len(t, packageOne.Imports, 0)
 
-	testPackage := helpers.PackageInTransitiveGraph(graph.Transitive, "dep-one", "1.1.1")
-	assert.NotEmpty(t, testPackage)
-	assert.Equal(t, pkg.NodeJS, testPackage.ID.Type)
-	assert.Len(t, testPackage.Imports, 0)
-}
+	packageTwo := helpers.PackageInTransitiveGraph(graph.Transitive, "package-two", "2.0.0")
+	assert.NotEmpty(t, packageTwo)
+	assert.Equal(t, pkg.Rust, packageTwo.ID.Type)
+	assert.Len(t, packageTwo.Imports, 0)
 
-func TestGoDeps(t *testing.T) {
-	graph, err := bazel.Deps("testdata/go/BUILD", false)
-	assert.NoError(t, err)
-	helpers.AssertPackageImport(t, graph.Direct, "dep-one", "")
+	packageThree := helpers.PackageInTransitiveGraph(graph.Transitive, "package-three", "3.0.0")
+	assert.NotEmpty(t, packageThree)
+	assert.Equal(t, pkg.NodeJS, packageThree.ID.Type)
+	assert.Len(t, packageThree.Imports, 0)
 
-	testPackage := helpers.PackageInTransitiveGraph(graph.Transitive, "dep-one", "")
-	assert.NotEmpty(t, testPackage)
-	assert.Equal(t, pkg.Go, testPackage.ID.Type)
-	assert.Len(t, testPackage.Imports, 0)
-}
+	packageFour := helpers.PackageInTransitiveGraph(graph.Transitive, "@package/four", "4.0.0")
+	assert.NotEmpty(t, packageFour)
+	assert.Equal(t, pkg.NodeJS, packageFour.ID.Type)
+	assert.Len(t, packageFour.Imports, 0)
 
-func TestCPlusPlusDeps(t *testing.T) {
-	graph, err := bazel.Deps("testdata/c++/BUILD", false)
-	assert.NoError(t, err)
-	helpers.AssertPackageImport(t, graph.Direct, "c++", "c96385546c3e60884a729ce36f2bc33a")
+	packageFive := helpers.PackageInTransitiveGraph(graph.Transitive, "package-five", "5.0.0")
+	assert.NotEmpty(t, packageFive)
+	assert.Equal(t, pkg.Python, packageFive.ID.Type)
+	assert.Len(t, packageFive.Imports, 0)
 
-	testPackage := helpers.PackageInTransitiveGraph(graph.Transitive, "c++", "c96385546c3e60884a729ce36f2bc33a")
-	assert.NotEmpty(t, testPackage)
-	assert.Equal(t, pkg.Raw, testPackage.ID.Type)
-	assert.Len(t, testPackage.Imports, 0)
+	packageSix := helpers.PackageInTransitiveGraph(graph.Transitive, "@package-six", "")
+	assert.NotEmpty(t, packageSix)
+	assert.Equal(t, pkg.NodeJS, packageSix.ID.Type)
+	assert.Len(t, packageSix.Imports, 0)
 }

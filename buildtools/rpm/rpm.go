@@ -87,7 +87,7 @@ func (s Shell) allPackagesRPM() (string, *errors.Error) {
 		return "", &errors.Error{
 			Cause:           err,
 			Type:            errors.Exec,
-			Troubleshooting: fmt.Sprintf("The command rpm %+v could not be run and information about the systems dependencies could not be retrieved. Try running this command on your own and ensure that RPM is installed before filing a bug.\nstderr: %s\nstdout: %s", arguments, stderr, stdout),
+			Troubleshooting: fmt.Sprintf("The command `rpm %s` could not be run and information about the systems dependencies could not be retrieved. Try running this command on your own and ensure that RPM is installed before filing a bug.\nstderr: %s\nstdout: %s", strings.Join(arguments, " "), stderr, stdout),
 			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/rpm.md#rpm",
 		}
 	}
@@ -101,7 +101,7 @@ func (s Shell) singlePackageRPM(target string) (string, *errors.Error) {
 		return stdout, &errors.Error{
 			Cause:           err,
 			Type:            errors.Exec,
-			Troubleshooting: fmt.Sprintf("The command rpm %+v could not be run and information about %s could not be retrieved. Try running this command on your own, if that fails try to first install %s.\nstderr: %s\nstdout: %s", arguments, target, target, stderr, stdout),
+			Troubleshooting: fmt.Sprintf("The command `rpm %s` could not be run and information about %s could not be retrieved. Try running this command on your own, if that fails try to first install %s.\nstderr: %s\nstdout: %s", strings.Join(arguments, " "), target, target, stderr, stdout),
 			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/rpm.md#rpm",
 		}
 	}
@@ -137,7 +137,7 @@ func (s Shell) transitiveDepsRPM(target string) (string, *errors.Error) {
 		return stdout, &errors.Error{
 			Cause:           err,
 			Type:            errors.Exec,
-			Troubleshooting: fmt.Sprintf("The command rpm %+v could not be run and information about %s's dependencies could not be retrieved. Try running this command on your own, if that fails try to first install %s.\nstderr: %s\nstdout: %s", arguments, target, target, stderr, stdout),
+			Troubleshooting: fmt.Sprintf("The command `rpm %s` could not be run and information about %s's dependencies could not be retrieved. Try running this command on your own, if that fails try to first install %s.\nstderr: %s\nstdout: %s", strings.Join(arguments, " "), target, target, stderr, stdout),
 			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/rpm.md#rpm",
 		}
 	}
@@ -151,7 +151,7 @@ func (s Shell) yumInstall(target string) *errors.Error {
 		return &errors.Error{
 			Cause:           err,
 			Type:            errors.Exec,
-			Troubleshooting: fmt.Sprintf("The command yum %+v could not be run and %s could not be installed.\nstderr: %s\nstdout: %s", arguments, target, stderr, stdout),
+			Troubleshooting: fmt.Sprintf("The command `yum %s` could not be run and %s could not be installed.\nstderr: %s\nstdout: %s", strings.Join(arguments, " "), target, stderr, stdout),
 			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/rpm.md#rpm",
 			Message:         fmt.Sprintf("This may not cause any issues but could prevent accurate dependency and license information from being found. If you believe that %s does not need to be installed and accurate information has been found please ignore this error.", target),
 		}
