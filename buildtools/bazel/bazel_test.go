@@ -23,7 +23,12 @@ func TestBazelCommand(t *testing.T) {
 		},
 	}
 
+	// Test rule with double slash prefix.
 	graph, err := shell.TargetDependencies("//test/...", false)
+	assert.NoError(t, err)
+	assert.Len(t, graph.Direct, 6)
+
+	graph, err = shell.TargetDependencies("test/...", false)
 	assert.NoError(t, err)
 
 	assert.Len(t, graph.Direct, 6)
