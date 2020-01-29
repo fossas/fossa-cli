@@ -5,6 +5,7 @@
 [INFO] --------------------------------[ jar ]---------------------------------
 [INFO] 
 [INFO] --- maven-dependency-plugin:2.8:tree (default-cli) @ fossa ---
+Downloading: http://somewhere.com
 [INFO] fossa:test:jar:1-SNAPSHOT
 [INFO] +- dep:one:jar:1.0.0:compile
 [INFO] ------------------------------------------------------------------------
