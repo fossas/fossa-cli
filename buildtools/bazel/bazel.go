@@ -18,7 +18,7 @@ type Shell struct {
 	Cmd func(...string) (string, *errors.Error)
 }
 
-// ShellOutput creates a Shell which shells out to the supplied binary to generate values to return.
+// ExecutableShell creates a Shell which shells out to the supplied binary to generate values to return.
 func ExecutableShell(binary, dir string) Shell {
 	return Shell{
 		Cmd: func(args ...string) (string, *errors.Error) {
@@ -42,7 +42,7 @@ func ExecutableShell(binary, dir string) Shell {
 	}
 }
 
-// Command returns a dependency graph using the output of a bazel query.
+// TargetDependencies returns a dependency graph corresponding to a bazel target.
 func (s Shell) TargetDependencies(target string, upload bool) (graph.Deps, error) {
 	queryString := "deps(" + target + ")"
 	output, err := s.Cmd("query", queryString, "--output", "xml")
