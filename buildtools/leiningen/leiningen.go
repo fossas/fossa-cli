@@ -53,7 +53,7 @@ func ShellOutput(binary, dir string) Output {
 				return stdout, &errors.Error{
 					Cause:           err,
 					Type:            errors.Exec,
-					Troubleshooting: fmt.Sprintf("Ensure that %s is installed correctly and that `%s %s` can be run in the directory `%s`.\nstdout: %s\nstderr: %", binary, binary, strings.Join(args, " "), dir, stdout, stderr),
+					Troubleshooting: fmt.Sprintf("Ensure that %s is installed correctly and that `%s %s` can be run in the directory `%s`.\nstdout: %s\nstderr: %s", binary, binary, strings.Join(args, " "), dir, stdout, stderr),
 				}
 			}
 
