@@ -51,6 +51,11 @@ brew install fossas/tap/fossa
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
 ```
 
+This command will install the FOSSA CLI into `usr/local/bin`. If you do not have permissions to access this folder you may specify the directory you would like by modifying to command to:
+```bash
+curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash -s -- -b <custom directory>
+```
+
 ### Windows with Powershell:
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install.ps1'))
