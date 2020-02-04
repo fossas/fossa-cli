@@ -7,6 +7,7 @@ import Prologue
 
 import Control.Concurrent
 import Control.Exception (SomeException)
+import Data.Bool (bool)
 import qualified Data.Sequence as S
 import Path.IO
 import Polysemy
@@ -29,13 +30,13 @@ import Effect.Logger
 import Effect.ReadFS hiding (doesDirExist)
 import Types
 
-scanMain :: Path Abs Dir -> IO ()
-scanMain basedir = do
+scanMain :: Path Abs Dir -> Bool -> IO ()
+scanMain basedir debug = do
   exists <- doesDirExist basedir
   unless exists (die $ "ERROR: " <> show basedir <> " does not exist")
 
   scan basedir
-    & loggerToIO Info
+    & loggerToIO (bool Info Debug debug)
     & asyncToIOFinal
     & resourceToIOFinal
     & embedToFinal @IO

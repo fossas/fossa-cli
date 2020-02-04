@@ -18,14 +18,14 @@ appMain = do
   currentDir <- getCurrentDir
 
   case options of
-    ScanCmd basedir ->
+    ScanCmd basedir debug ->
       case basedir of
-        Nothing -> scanMain currentDir
+        Nothing -> scanMain currentDir debug
         Just dir -> do
           resolved <- validateDir dir
-          scanMain resolved
+          scanMain resolved debug
 
-newtype CommandOpts = ScanCmd (Maybe FilePath) -- basedir for scanning
+data CommandOpts = ScanCmd (Maybe FilePath) Bool -- basedir for scanning, debug logging
   deriving Show
 
 validateDir :: FilePath -> IO (Path Abs Dir)
@@ -49,6 +49,7 @@ commands = hsubparser
 
 scanCmd :: ParserInfo CommandOpts
 scanCmd = info
-  (ScanCmd <$>
-    optional (strOption $ long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning"))
+  (ScanCmd <$> optional (strOption $ long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning")
+           <*> (fromMaybe False <$> optional (switch $ long "debug" <> help "Enable debug logging"))
+  )
   (progDesc "Scan for dependencies")
