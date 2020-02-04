@@ -30,7 +30,7 @@ inferProject current = do
   -- gitInferred :: Either CLIErr (Either InferenceError InferredProject)
   gitInferred <- inferGit current & readFSToIO & mapError @ReadFSErr CLIErrReadFS & runError @InferenceError & runError @CLIErr
   -- svnInferred :: Either CLIErr InferredProject
-  svnInferred <- inferSVN & execToIO & mapError @ExecErr CLIErrExec & runError @CLIErr
+  svnInferred <- inferSVN current & execToIO & mapError @ExecErr CLIErrExec & runError @CLIErr
 
   case (gitInferred, svnInferred) of
     -- we found a git project
@@ -42,9 +42,6 @@ inferProject current = do
       logWarn "Project inference: couldn't find VCS root. Defaulting to directory name."
       inferDefault current
 
-currentDir :: Path Rel Dir
-currentDir = [reldir|.|]
-
 svnCommand :: Command
 svnCommand = Command
   { cmdNames = ["svn"]
@@ -52,9 +49,9 @@ svnCommand = Command
   , cmdAllowErr = Never
   }
 
-inferSVN :: Members '[Exec, Error ExecErr] r => Sem r InferredProject
-inferSVN = do
-  output <- execThrow currentDir svnCommand []
+inferSVN :: Members '[Exec, Error ExecErr] r => Path b Dir -> Sem r InferredProject
+inferSVN dir = do
+  output <- execThrow dir svnCommand []
   let props = toProps output
   case (,) <$> lookup "Repository Root" props <*> lookup "Revision" props of
     Just (name, rev) -> pure (InferredProject name rev)
@@ -97,7 +94,7 @@ findGitDir dir = do
         then findGitDir parentDir
         else pure Nothing
 
-inferGit :: Members '[ReadFS, Error InferenceError] r => Path Abs Dir -> Sem r InferredProject
+inferGit :: Members '[ReadFS, Error ReadFSErr, Error InferenceError] r => Path Abs Dir -> Sem r InferredProject
 inferGit dir = do
   foundGitDir <- findGitDir dir
 
@@ -108,7 +105,7 @@ inferGit dir = do
       revision <- parseGitProjectRevision gitDir
       pure (InferredProject name revision)
 
-parseGitProjectName :: Members '[ReadFS, Error InferenceError] r => Path Abs Dir -> Sem r Text
+parseGitProjectName :: Members '[ReadFS, Error ReadFSErr, Error InferenceError] r => Path Abs Dir -> Sem r Text
 parseGitProjectName dir = do
   let relConfig = [relfile|config|]
 
@@ -135,7 +132,7 @@ parseGitProjectName dir = do
   isOrigin (Section ["remote", "origin"] _) = True
   isOrigin _ = False
 
-parseGitProjectRevision :: Members '[ReadFS, Error InferenceError] r => Path Abs Dir -> Sem r Text
+parseGitProjectRevision :: Members '[ReadFS, Error ReadFSErr, Error InferenceError] r => Path Abs Dir -> Sem r Text
 parseGitProjectRevision dir = do
   let relHead = [relfile|HEAD|]
 

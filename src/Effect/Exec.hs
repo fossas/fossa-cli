@@ -64,17 +64,17 @@ data Exec m a where
   -- | Exec runs a command and returns either:
   -- - stdout when any of the 'cmdNames' succeed
   -- - failure descriptions for all of the commands we tried
-  Exec :: Path Rel Dir -> Command -> [String] -> Exec m (Either [CmdFailure] Stdout)
+  Exec :: Path x Dir -> Command -> [String] -> Exec m (Either [CmdFailure] Stdout)
 
 makeSem_ ''Exec
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
-exec :: Member Exec r => Path Rel Dir -> Command -> [String] -> Sem r (Either [CmdFailure] Stdout)
+exec :: Member Exec r => Path x Dir -> Command -> [String] -> Sem r (Either [CmdFailure] Stdout)
 
 type Parser = Parsec Void Text
 
 -- | Parse the stdout of a command
-execParser :: Members '[Exec, Error ExecErr] r => Parser a -> Path Rel Dir -> Command -> [String] -> Sem r a
+execParser :: Members '[Exec, Error ExecErr] r => Parser a -> Path x Dir -> Command -> [String] -> Sem r a
 execParser parser dir cmd args = do
   stdout <- execThrow dir cmd args
   case runParser parser "" (TL.toStrict (decodeUtf8 stdout)) of
@@ -82,7 +82,7 @@ execParser parser dir cmd args = do
     Right a -> pure a
 
 -- | Parse the JSON stdout of a command
-execJson :: (FromJSON a, Members '[Exec, Error ExecErr] r) => Path Rel Dir -> Command -> [String] -> Sem r a
+execJson :: (FromJSON a, Members '[Exec, Error ExecErr] r) => Path x Dir -> Command -> [String] -> Sem r a
 execJson dir cmd args = do
   stdout <- execThrow dir cmd args
   case eitherDecode stdout of
@@ -90,19 +90,19 @@ execJson dir cmd args = do
     Right a -> pure a
 
 -- | Interpret an 'Input' effect by parsing stdout of a command
-execInputParser :: Members '[Exec, Error ExecErr] r => Parser i -> Path Rel Dir -> Command -> [String] -> Sem (Input i ': r) a -> Sem r a
+execInputParser :: Members '[Exec, Error ExecErr] r => Parser i -> Path x Dir -> Command -> [String] -> Sem (Input i ': r) a -> Sem r a
 execInputParser parser dir cmd args = interpret $ \case
   Input -> execParser parser dir cmd args
 {-# INLINE execInputParser #-}
 
 -- | Interpret an 'Input' effect by parsing JSON stdout of a command
-execInputJson :: (FromJSON i, Members '[Exec, Error ExecErr] r) => Path Rel Dir -> Command -> [String] -> Sem (Input i ': r) a -> Sem r a
+execInputJson :: (FromJSON i, Members '[Exec, Error ExecErr] r) => Path x Dir -> Command -> [String] -> Sem (Input i ': r) a -> Sem r a
 execInputJson dir cmd args = interpret $ \case
   Input -> execJson dir cmd args
 {-# INLINE execInputJson #-}
 
 -- | A variant of 'exec' that throws a 'ExecErr' when the command returns a non-zero exit code
-execThrow :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> Command -> [String] -> Sem r BL.ByteString
+execThrow :: Members '[Exec, Error ExecErr] r => Path x Dir -> Command -> [String] -> Sem r BL.ByteString
 execThrow dir cmd args = do
   result <- exec dir cmd args
   case result of

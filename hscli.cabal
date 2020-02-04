@@ -108,6 +108,7 @@ library
     LabeledGraphing
     Parse.XML
     Prologue
+    Strategy.Carthage
     Strategy.Go.GlideLock
     Strategy.Go.GoList
     Strategy.Go.Gomod
@@ -156,6 +157,7 @@ test-suite tests
 
   -- cabal-fmt: expand test
   other-modules:
+    Carthage.CarthageTest
     Go.GlideLockTest
     Go.GoListTest
     Go.GomodTest

@@ -29,7 +29,7 @@ loadConfig groups = Discover
   , discoverFunc = loadConfig' groups
   }
 
-loadConfig' :: forall r. Members '[Error CLIErr, Output ConfiguredStrategy, ReadFS] r => [StrategyGroup] -> Path Abs Dir -> Sem r ()
+loadConfig' :: forall r. Members '[Error CLIErr, Output ConfiguredStrategy, ReadFS, Error ReadFSErr] r => [StrategyGroup] -> Path Abs Dir -> Sem r ()
 loadConfig' strategies dir = do
   exists <- doesFileExist (dir </> configPath)
   when exists $ do

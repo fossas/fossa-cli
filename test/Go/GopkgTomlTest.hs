@@ -100,7 +100,7 @@ expected = run . evalGrapher $ do
 
 mockReadFSText :: Text -> Sem (ReadFS ': r) a -> Sem r a
 mockReadFSText contents = interpret $ \case
-  ReadContentsText _ -> pure contents
+  ReadContentsText' _ -> pure (Right contents)
   _ -> error "unexpected ReadFS method. Expecting ReadContentsText"
 
 testfile :: Path Rel File
