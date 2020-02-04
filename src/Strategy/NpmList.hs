@@ -8,7 +8,6 @@ module Strategy.NpmList
 import Prologue
 
 import qualified Data.Map.Strict as M
-import Data.Text (Text)
 import Polysemy
 import Polysemy.Input
 import Polysemy.Output

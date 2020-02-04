@@ -37,7 +37,6 @@ import qualified Data.Text as T
 import           Data.Text.Encoding (decodeUtf8)
 import           Data.Yaml (decodeEither', prettyPrintParseException)
 import           Parse.XML (FromXML, parseXML, xmlErrorPretty)
-import           Path (Dir, File, Path, toFilePath)
 import qualified Path.IO as PIO
 import           Polysemy
 import           Polysemy.Error hiding (catch)

@@ -7,7 +7,7 @@ extra-source-files:
   scripts/*.gradle
 
 common lang
-  build-depends:      base ^>=4.12
+  build-depends:      base >=4.12 && <4.14
   default-language:   Haskell2010
   default-extensions:
     NoImplicitPrelude
@@ -23,7 +23,6 @@ common lang
     GeneralizedNewtypeDeriving
     InstanceSigs
     LambdaCase
-    MonadFailDesugaring
     MultiParamTypeClasses
     MultiWayIf
     NamedFieldPuns
@@ -49,7 +48,7 @@ common lang
 common deps
   build-depends:
     , aeson                        ^>=1.4.5
-    , algebraic-graphs             ^>=0.4
+    , algebraic-graphs             ^>=0.5
     , async                        ^>=2.2.2
     , attoparsec                   ^>=0.13.2.3
     , bytestring                   ^>=0.10.8
@@ -57,7 +56,7 @@ common deps
     , file-embed                   ^>=0.0.11
     , filepath                     ^>=1.4.2.1
     , git-config                   ^>=0.1.2
-    , megaparsec                   ^>=8
+    , megaparsec                   ^>=8.0
     , modern-uri                   ^>=0.3.1
     , mtl                          ^>=2.2.2
     , optics                       ^>=0.2
@@ -65,7 +64,7 @@ common deps
     , path                         ^>=0.7
     , path-io                      ^>=1.6.0
     , polysemy                     ^>=1.2.1
-    , prettyprinter                ^>=1.5.1
+    , prettyprinter                ^>=1.6
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0

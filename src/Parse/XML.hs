@@ -18,7 +18,6 @@ import Prelude
 
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus)
-import Control.Monad.Fail (MonadFail)
 import qualified Data.Text as T
 import Polysemy
 import Polysemy.Error
