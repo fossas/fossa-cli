@@ -65,12 +65,16 @@ func locatorFromJar(path string) (pkg.ID, *errors.Error) {
 			}
 		}
 
-		pomFile, err := getPOMFromJar(pomFilePath)
+		pomFile, err := getPOMFromJar(path, pomFilePath)
 		if err == nil {
 			log.Debugf("resolving locator from pom: %s", pomFilePath)
+			groupID := pomFile.GroupID
+			if groupID == "" {
+				groupID = pomFile.Parent.GroupID
+			}
 			return pkg.ID{
 				Type:     pkg.Maven,
-				Name:     pomFile.GroupID + ":" + pomFile.ArtifactID,
+				Name:     groupID + ":" + pomFile.ArtifactID,
 				Revision: pomFile.Version,
 			}, nil
 		} else {
@@ -119,7 +123,7 @@ func locatorFromJar(path string) (pkg.ID, *errors.Error) {
 	}, nil
 }
 
-func getPOMFromJar(path string) (maven.Manifest, *errors.Error) {
+func getPOMFromJar(path, pomPath string) (maven.Manifest, *errors.Error) {
 	var pomFile maven.Manifest
 
 	log.Debugf(path)
@@ -146,7 +150,7 @@ func getPOMFromJar(path string) (maven.Manifest, *errors.Error) {
 
 	for _, f := range zr.File {
 		// decode a single pom.xml directly from jar
-		if f.Name == path {
+		if f.Name == pomPath {
 			rc, err := f.Open()
 			if err != nil {
 				return pomFile, errors.UnknownError(err, fmt.Sprintf("The jar `%s` was unable to be opened. Try opening it yourself and ensuring that it can be read.", path))

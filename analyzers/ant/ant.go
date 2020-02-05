@@ -25,7 +25,7 @@ type Options struct {
 	LibDirectory string `mapstructure:"lib-directory"`
 }
 
-// Initialize collects metadata on Java and Ant binaries.
+// New collects metadata on Java and Ant binaries.
 func New(m module.Module) (*Analyzer, error) {
 	log.Debugf("Initializing Ant builder...")
 
