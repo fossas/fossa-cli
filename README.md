@@ -5,7 +5,7 @@ Use [ghcup](https://gitlab.haskell.org/haskell/ghcup) to install the `cabal` cli
 
 ```sh
 $ ghcup install-cabal
-$ ghcup install 8.6
+$ ghcup install 8.8
 ```
 
 In the base directory, run `cabal build`
