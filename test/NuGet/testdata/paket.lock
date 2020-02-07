@@ -1,0 +1,23 @@
+REDIRECTS: ON
+STRATEGY: MAX
+NUGET
+  remote: nuget.com
+    one (1.0.0)
+      two (>1.0.0)
+    two (2.0.0)
+
+HTTP
+  remote: custom-site.com
+    three (3.0.0)
+      
+GROUP TEST
+NUGET
+  remote: nuget-v2.com
+     four (4.0.0)
+       five (>1.0.0)
+     five (5.0.0)
+     two (2.0.0)
+
+GITHUB
+  remote: github.com
+    six (6.0.0)

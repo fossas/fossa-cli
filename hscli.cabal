@@ -125,6 +125,7 @@ library
     Strategy.NuGet.Nuspec
     Strategy.NuGet.PackageReference
     Strategy.NuGet.PackagesConfig
+    Strategy.NuGet.Paket
     Strategy.NuGet.ProjectAssetsJson
     Strategy.NuGet.ProjectJson
     Strategy.Python.PipList
@@ -170,6 +171,7 @@ test-suite tests
     NuGet.NuspecTest
     NuGet.PackageReferenceTest
     NuGet.PackagesConfigTest
+    NuGet.PaketTest
     NuGet.ProjectAssetsJsonTest
     NuGet.ProjectJsonTest
     Python.PipListTest
