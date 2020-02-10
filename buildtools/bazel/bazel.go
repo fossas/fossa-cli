@@ -92,6 +92,7 @@ func packagesFromOutput(commandOutput string, target string, upload bool) ([]pkg
 		}
 	}
 
+	cLibraries := map[string]bool{}
 	packages := []pkg.ID{}
 	for _, rule := range query.Rules {
 		pack := pkg.ID{}
@@ -99,13 +100,21 @@ func packagesFromOutput(commandOutput string, target string, upload bool) ([]pkg
 		case "go_library":
 			fallthrough
 		case "dbx_go_library":
+			if strings.Contains(rule.Name, "dropbox") {
+				continue
+			}
 			pack.Type = pkg.Go
 			pack.Name = goNameFromRule(rule.Name, target)
+		case "_npm_library_internal":
+			fallthrough
 		case "dbx_npm_library":
 			pack.Type = pkg.NodeJS
 			requirement := valueFromKey(rule.Values, "npm_req")
 			pack.Name, pack.Revision = npmReqFromString(requirement)
-		case "py_library":
+		case "py_library": //py_library dependencies appear to all be unknown or custom dependencies.
+			continue
+		case "dbx_py_pypi_piplib_internal":
+			fallthrough
 		case "dbx_py_pypi_piplib":
 			pack.Type = pkg.Python
 			pack.Name = valueFromKey(rule.Values, "name")
@@ -118,12 +127,17 @@ func packagesFromOutput(commandOutput string, target string, upload bool) ([]pkg
 			fallthrough
 		case "dbx_thirdparty_cc_library":
 			splitLocation := strings.Split(rule.Location, ":")
-			if len(splitLocation) != 0 {
+			if len(splitLocation) < 1 {
 				log.Debugf("cc library %s was unable to be uploaded because FOSSA was unable to find a directory for the library. rule: %+v", rule.Name, rule)
 				continue
 			}
 
 			trimmed := strings.TrimSuffix(strings.TrimSuffix(splitLocation[0], "BUILD"), "BUILD.bazel")
+			if _, ok := cLibraries[trimmed]; ok || strings.Contains(trimmed, ".cache") {
+				continue
+			}
+			cLibraries[trimmed] = true
+
 			loc, err := fossa.UploadTarballDependency(trimmed, upload, true)
 			if err != nil {
 				log.Debugf("cc library %s was unable to be uploaded. rule: %+v. error: %s", rule.Name, rule, err.Error())
@@ -145,7 +159,8 @@ func packagesFromOutput(commandOutput string, target string, upload bool) ([]pkg
 
 func goNameFromRule(ruleName string, target string) string {
 	trimmedTarget := strings.TrimSuffix(target, "...")
-	trimmedRuleName := strings.TrimPrefix(ruleName, trimmedTarget)
+	trimmedRuleName := strings.TrimPrefix(ruleName, "//go/src/")
+	trimmedRuleName = strings.TrimPrefix(trimmedRuleName, trimmedTarget)
 	trimmedRuleName = strings.TrimPrefix(trimmedRuleName, "//"+trimmedTarget)
 	nameSplit := strings.Split(trimmedRuleName, ":")
 	if len(nameSplit) > 0 {
