@@ -20,9 +20,10 @@ name: Build & Test
 on: [push]
 
 jobs:
-  build-ubuntu:
-    name: build-ubuntu
+  build-linux:
+    name: build-linux
     runs-on: ubuntu-latest
+    container: quay.io/fossa/haskell-static-alpine
 
     steps:
     - uses: actions/checkout@v2
@@ -31,19 +32,7 @@ jobs:
       name: Cache cabal store
       with:
         path: ~/.cabal/store
-        key: ubuntu-cabal-store
-
-    - name: Install ghcup
-      run: |
-        mkdir -p ~/.ghcup/bin && curl https://gitlab.haskell.org/haskell/ghcup/raw/master/ghcup > ~/.ghcup/bin/ghcup && chmod +x ~/.ghcup/bin/ghcup
-        echo "::add-path::$HOME/.ghcup/bin"
-        echo "::add-path::$HOME/.cabal/bin"
-
-    - name: Install ghc/cabal
-      run: |
-        ghcup install 8.8.2
-        ghcup set 8.8.2
-        ghcup install-cabal
+        key: ${{ runner.os }}-cabal-store
 
     - name: Install dependencies
       run: |
@@ -67,43 +56,6 @@ jobs:
       with:
         name: hscli-linux
         path: dist-newstyle/build/x86_64-linux/ghc-8.8.2/hscli-0.1.0.0/x/hscli/opt/build/hscli/hscli
-
-# build-linux:
-#   name: build-linux
-#   runs-on: ubuntu-latest
-#   container: quay.io/fossa/haskell-static-alpine
-
-#   steps:
-#   - uses: actions/checkout@v2
-
-#   - uses: actions/cache@v1
-#     name: Cache cabal store
-#     with:
-#       path: ~/.cabal/store
-#       key: ${{ runner.os }}-cabal-store
-
-#   - name: Install dependencies
-#     run: |
-#       cabal update
-#       cabal configure --project-file=cabal.project.ci -O2 --enable-tests
-#       cabal build --project-file=cabal.project.ci --only-dependencies
-
-#   - name: Build
-#     run: |
-#       cabal build --project-file=cabal.project.ci
-
-#   - name: Run tests
-#     run: |
-#       cabal test --project-file=cabal.project.ci
-
-#   - name: Strip binary
-#     run: |
-#       strip dist-newstyle/build/x86_64-linux/ghc-8.8.2/hscli-0.1.0.0/x/hscli/opt/build/hscli/hscli
-
-#   - uses: actions/upload-artifact@v1
-#     with:
-#       name: hscli-linux
-#       path: dist-newstyle/build/x86_64-linux/ghc-8.8.2/hscli-0.1.0.0/x/hscli/opt/build/hscli/hscli
 
   build-macos:
     name: build-macos
