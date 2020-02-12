@@ -1,0 +1,39 @@
+PODS:
+  - one (1.0.0):
+    - two (= 3.2.1)
+    - three (= 3.2.1)
+  - two (2.0.0)
+  - three (3.0.0)
+    - four (= 2.3.3)
+  - four (4.0.0):
+
+DEPENDENCIES:
+  - one (> 4.4)
+  - three (from `Submodules/subproject/.podspec`)
+
+SPEC REPOS:
+  https://github.com/cocoapods/specs.git:
+    - AFNetworking
+    - Appirater
+
+EXTERNAL SOURCES:
+  ChatSecure-Push-iOS:
+    :path: Submodules/ChatSecure-Push-iOS/ChatSecure-Push-iOS.podspec
+  ChatSecureCore:
+    :path: ChatSecureCore.podspec
+
+CHECKOUT OPTIONS:
+  Mantle:
+    :commit: 9aadbd27b1cc161dca884ec0cef198fa56e83d11
+    :git: https://github.com/ChatSecure/Mantle.git
+  ParkedTextField:
+    :commit: a3800e3
+    :git: https://github.com/gmertk/ParkedTextField.git
+
+SPEC CHECKSUMS:
+  AFNetworking: b6f891fdfaed196b46c7a83cf209e09697b94057
+  Alamofire: ae5c501addb7afdbb13687d7f2f722c78734c2d3
+
+PODFILE CHECKSUM: b141f51290d05663f08b633a34ffb15eee02707b
+
+COCOAPODS: 1.7.5

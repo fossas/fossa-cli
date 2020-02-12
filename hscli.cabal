@@ -107,6 +107,8 @@ library
     LabeledGraphing
     Parse.XML
     Prologue
+    Strategy.Cocoapods.Podfile
+    Strategy.Cocoapods.PodfileLock
     Strategy.Carthage
     Strategy.Go.GlideLock
     Strategy.Go.GoList
@@ -161,6 +163,8 @@ test-suite tests
 
   -- cabal-fmt: expand test
   other-modules:
+    Cocoapods.PodfileTest
+    Cocoapods.PodfileLockTest
     Carthage.CarthageTest
     Go.GlideLockTest
     Go.GoListTest

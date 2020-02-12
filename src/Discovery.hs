@@ -3,6 +3,8 @@ module Discovery
   , strategyGroups
   ) where
 
+import qualified Strategy.Cocoapods.Podfile as Podfile
+import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Go.GoList as GoList
 import qualified Strategy.Go.Gomod as Gomod
@@ -31,7 +33,10 @@ import           Types
 
 discoverFuncs :: [Discover]
 discoverFuncs =
-  [ GoList.discover
+  [ Podfile.discover
+  , PodfileLock.discover
+
+  , GoList.discover
   , Gomod.discover
   , GopkgToml.discover
   , GopkgLock.discover
@@ -67,7 +72,11 @@ discoverFuncs =
 
 strategyGroups :: [StrategyGroup]
 strategyGroups =
-  [ StrategyGroup "dotnet"
+  [ StrategyGroup "cocoapods"
+      [ SomeStrategy Podfile.strategy
+      , SomeStrategy PodfileLock.strategy
+      ]
+  , StrategyGroup "dotnet"
       [ SomeStrategy PackagesConfig.strategy
       , SomeStrategy PackageReference.strategy
       , SomeStrategy ProjectAssetsJson.strategy

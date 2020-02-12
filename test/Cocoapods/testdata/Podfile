@@ -1,0 +1,34 @@
+# Disable CocoaPods deterministic UUIDs as Pods are not checked in
+ENV["COCOAPODS_DISABLE_DETERMINISTIC_UUIDS"] = "true"
+
+# Disable Bitcode for all targets http://stackoverflow.com/a/32685434/805882
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['ENABLE_BITCODE'] = 'NO'
+      config.build_settings['CLANG_WARN_DOCUMENTATION_COMMENTS'] = 'NO'
+      config.build_settings['CLANG_WARN_STRICT_PROTOTYPES'] = 'NO'
+      if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 8.0
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '8.0'
+      end
+    end
+  end
+end
+
+platform :ios, "9.0"
+
+use_modular_headers!
+inhibit_all_warnings!
+
+source 'test.repo'
+
+abstract_target 'ChatSecureCorePods' do
+  # User Interface
+  pod "one", '1.0.0'
+  pod 'two', '2.0.0', :source => 'custom.repo'
+  # pod 'ParkedTextField', '~> 0.3.1'
+  pod 'four', :git => 'fossa/spectrometer', :commit => '12345' # Swift 4.2
+
+  pod 'three', '3.0.0', :path => 'internal/path'
+
+end
