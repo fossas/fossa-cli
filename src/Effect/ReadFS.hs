@@ -9,6 +9,14 @@ module Effect.ReadFS
   -- * Reading raw file contents
   , readContentsBS
   , readContentsText
+
+  -- * Resolving relative filepaths
+  , resolveFile
+  , resolveFile'
+  , resolveDir
+  , resolveDir'
+
+  -- * Checking whether files exist
   , doesFileExist
   , doesDirExist
 
@@ -31,7 +39,7 @@ module Effect.ReadFS
 
 import Prologue
 
-import           Control.Exception hiding (throw)
+import qualified Control.Exception as E
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import           Data.Text.Encoding (decodeUtf8)
@@ -39,7 +47,7 @@ import           Data.Yaml (decodeEither', prettyPrintParseException)
 import           Parse.XML (FromXML, parseXML, xmlErrorPretty)
 import qualified Path.IO as PIO
 import           Polysemy
-import           Polysemy.Error hiding (catch)
+import           Polysemy.Error
 import           Polysemy.Input
 import           Text.Megaparsec (Parsec, runParser)
 import           Text.Megaparsec.Error (errorBundlePretty)
@@ -51,6 +59,8 @@ data ReadFS m a where
   ReadContentsText' :: Path b File -> ReadFS m (Either ReadFSErr Text)
   DoesFileExist     :: Path b File -> ReadFS m Bool
   DoesDirExist      :: Path b Dir  -> ReadFS m Bool
+  ResolveFile'      :: Path Abs Dir -> Text -> ReadFS m (Either ReadFSErr (Path Abs File))
+  ResolveDir'       :: Path Abs Dir -> Text -> ReadFS m (Either ReadFSErr (Path Abs Dir))
 
 makeSem_ ''ReadFS
 
@@ -67,6 +77,20 @@ readContentsText' :: Member ReadFS r => Path b File -> Sem r (Either ReadFSErr T
 -- | Read file contents into a strict 'Text'
 readContentsText :: Members '[ReadFS, Error ReadFSErr] r => Path b File -> Sem r Text
 readContentsText = fromEither <=< readContentsText'
+
+-- | Resolve a relative filepath to a file
+resolveFile' :: Member ReadFS r => Path Abs Dir -> Text -> Sem r (Either ReadFSErr (Path Abs File))
+
+-- | Resolve a relative filepath to a file
+resolveFile :: Members '[ReadFS, Error ReadFSErr] r => Path Abs Dir -> Text -> Sem r (Path Abs File)
+resolveFile dir path = fromEither =<< resolveFile' dir path
+
+-- | Resolve a relative filepath to a directory
+resolveDir' :: Member ReadFS r => Path Abs Dir -> Text -> Sem r (Either ReadFSErr (Path Abs Dir))
+
+-- | Resolve a relative filepath to a directory
+resolveDir :: Members '[ReadFS, Error ReadFSErr] r => Path Abs Dir -> Text -> Sem r (Path Abs Dir)
+resolveDir dir path = fromEither =<< resolveDir' dir path
 
 -- | Check whether a file exists
 doesFileExist :: Member ReadFS r => Path b File -> Sem r Bool
@@ -148,16 +172,25 @@ fileInputXML file = interpret $ \case
   Input -> readContentsXML file
 {-# INLINE fileInputXML #-}
 
-readFSToIO :: Members '[Embed IO, Error ReadFSErr] r => Sem (ReadFS ': r) a -> Sem r a
+readFSToIO :: Members '[Embed IO] r => Sem (ReadFS ': r) a -> Sem r a
 readFSToIO = interpret $ \case
   ReadContentsBS' file -> embed $
     (Right <$> BS.readFile (toFilePath file))
-    `catch`
-    (\(e :: IOException) -> pure (Left (FileReadError (toFilePath file) (T.pack (show e)))))
+    `E.catch`
+    (\(e :: E.IOException) -> pure (Left (FileReadError (toFilePath file) (T.pack (show e)))))
   ReadContentsText' file -> embed $
     (Right . decodeUtf8 <$> BS.readFile (toFilePath file))
-    `catch`
-    (\(e :: IOException) -> pure (Left (FileReadError (toFilePath file) (T.pack (show e)))))
+    `E.catch`
+    (\(e :: E.IOException) -> pure (Left (FileReadError (toFilePath file) (T.pack (show e)))))
+  ResolveFile' dir path -> embed $
+    (Right <$> PIO.resolveFile dir (T.unpack path))
+    `E.catch`
+    (\(e :: E.IOException) -> pure (Left (ResolveError (T.pack (show e)))))
+  ResolveDir' dir path -> embed $
+    (Right <$> PIO.resolveDir dir (T.unpack path))
+    `E.catch`
+    (\(e :: E.IOException) -> pure (Left (ResolveError (T.pack (show e)))))
+  -- NB: these never throw
   DoesFileExist file -> PIO.doesFileExist file
   DoesDirExist dir -> PIO.doesDirExist dir
 {-# INLINE readFSToIO #-}

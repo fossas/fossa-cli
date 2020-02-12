@@ -32,6 +32,7 @@ data ExecErr =
 data ReadFSErr =
     FileReadError FilePath Text -- ^ A file couldn't be read. file, err
   | FileParseError FilePath Text -- ^ A file's contents couldn't be parsed. TODO: ask user to help with this. file, err
+  | ResolveError Text -- ^ An IOException was thrown when resolving a file/directory
   deriving (Eq, Ord, Show, Generic, Typeable)
 
 execErrToCLIErr :: Member (Error CLIErr) r => Sem (Error ExecErr ': r) a -> Sem r a

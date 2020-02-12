@@ -96,7 +96,6 @@ library
     DepTypes
     Diagnostics
     Discovery
-    Discovery.Config
     Discovery.Walk
     Effect.Error
     Effect.Exec
@@ -117,8 +116,12 @@ library
     Strategy.Go.Transitive
     Strategy.Go.Types
     Strategy.Gradle
-    Strategy.Maven
     Strategy.Maven.Plugin
+    Strategy.Maven.PluginStrategy
+    Strategy.Maven.Pom
+    Strategy.Maven.Pom.Closure
+    Strategy.Maven.Pom.PomFile
+    Strategy.Maven.Pom.Resolver
     Strategy.Node.NpmLock
     Strategy.Node.PackageJson
     Strategy.Node.YarnLock
@@ -166,7 +169,7 @@ test-suite tests
     Go.GopkgTomlTest
     Gradle.GradleTest
     GraphUtil
-    Maven.MavenTest
+    Maven.PluginStrategyTest
     Node.NpmLockTest
     Node.PackageJsonTest
     NuGet.NuspecTest

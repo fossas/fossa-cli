@@ -1,4 +1,4 @@
-module Maven.MavenTest
+module Maven.PluginStrategyTest
   ( spec_mavenBuildGraph
   ) where
 
@@ -7,8 +7,8 @@ import Prologue
 import qualified Data.Map.Strict as M
 
 import DepTypes
-import Strategy.Maven
 import Strategy.Maven.Plugin
+import Strategy.Maven.PluginStrategy
 
 import GraphUtil
 import Test.Tasty.Hspec

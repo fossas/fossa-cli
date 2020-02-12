@@ -10,7 +10,8 @@ import qualified Strategy.Go.GopkgLock as GopkgLock
 import qualified Strategy.Go.GopkgToml as GopkgToml
 import qualified Strategy.Go.GlideLock as GlideLock
 import qualified Strategy.Gradle as Gradle
-import qualified Strategy.Maven as Maven
+import qualified Strategy.Maven.Pom as MavenPom
+import qualified Strategy.Maven.PluginStrategy as MavenPlugin
 import qualified Strategy.NpmList as NpmList
 import qualified Strategy.Node.NpmLock as NpmLock
 import qualified Strategy.Node.PackageJson as PackageJson
@@ -26,8 +27,6 @@ import qualified Strategy.Python.ReqTxt as ReqTxt
 import qualified Strategy.Python.SetupPy as SetupPy
 import qualified Strategy.Ruby.BundleShow as BundleShow
 import qualified Strategy.Ruby.GemfileLock as GemfileLock
-
-import qualified Discovery.Config as Config
 import           Types
 
 discoverFuncs :: [Discover]
@@ -40,7 +39,8 @@ discoverFuncs =
 
   , Gradle.discover
 
-  , Maven.discover
+  , MavenPlugin.discover
+  , MavenPom.discover
 
   , PackageJson.discover
   , NpmLock.discover
@@ -62,9 +62,8 @@ discoverFuncs =
   , GemfileLock.discover
 
   , Carthage.discover
-
-  , Config.loadConfig strategyGroups
   ]
+
 
 strategyGroups :: [StrategyGroup]
 strategyGroups =
@@ -79,7 +78,8 @@ strategyGroups =
       [ SomeStrategy Gradle.strategy
       ]
   , StrategyGroup "maven"
-      [ SomeStrategy Maven.strategy
+      [ SomeStrategy MavenPlugin.strategy
+      , SomeStrategy MavenPom.strategy
       ]
   , StrategyGroup "nodejs"
       [ SomeStrategy YarnLock.strategy
