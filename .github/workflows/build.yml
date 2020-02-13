@@ -37,7 +37,7 @@ jobs:
     - name: Install dependencies
       run: |
         cabal update
-        cabal configure --project-file=cabal.project.ci -O2 --enable-tests
+        cabal configure --project-file=cabal.project.ci -O2 --enable-tests --enable-executable-static
         cabal build --project-file=cabal.project.ci --only-dependencies
 
     - name: Build
@@ -146,7 +146,7 @@ jobs:
     - name: Install dependencies
       run: |
         cabal update
-        cabal configure --project-file=cabal.project.ci -O2 --enable-tests
+        cabal configure --project-file=cabal.project.ci -O2 --enable-tests --enable-executable-static
         cabal build --project-file=cabal.project.ci --only-dependencies
 
     - name: Build
