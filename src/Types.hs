@@ -12,6 +12,12 @@ module Types
   , SomeStrategy(..)
 
   , CompletedStrategy(..)
+  
+  , CompletedLicenseScan(..)
+
+  , LicenseResult(..)
+  , License(..)
+  , LicenseType(..)
 
   , BasicDirOpts(..)
   , BasicFileOpts(..)
@@ -71,6 +77,7 @@ type StrategyEffs r = Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, 
 data Strategy options = Strategy
   { strategyName     :: Text -- ^ e.g., "python-pipenv"
   , strategyAnalyze  :: forall r. StrategyEffs r => options -> Sem r (Graphing Dependency)
+  , strategyLicense  :: forall r. StrategyEffs r => options -> Sem r [LicenseResult]
   , strategyModule   :: options -> Path Rel Dir -- ^ Determine the module directory for grouping with other strategies
   , strategyOptimal  :: Optimal -- ^ Whether this strategy is considered "optimal" -- i.e., best case analysis for a given project. Notably, this __does not__ imply "complete".
   , strategyComplete :: Complete -- ^ Whether this strategy produces graphs that contain all dependencies for a given project. When @NotComplete@, the backend will run a hasGraph-like analysis to produce the missing dependencies and graph edges
@@ -118,3 +125,62 @@ newtype BasicDirOpts = BasicDirOpts
 newtype BasicFileOpts = BasicFileOpts
   { targetFile :: Path Rel File
   } deriving (Eq, Ord, Show, Generic)
+
+instance FromJSON BasicFileOpts where
+  parseJSON = withObject "BasicFileOpts" $ \obj ->
+    BasicFileOpts <$> obj .: "file"
+
+instance ToJSON BasicFileOpts where
+  toJSON BasicFileOpts{..} = object ["file" .= targetFile]
+
+---------- License
+
+data LicenseResult = LicenseResult
+  { licenseFile   :: Path Rel File
+  , licensesFound :: [License]
+  } deriving (Eq, Ord, Show, Generic)
+
+data License = License
+  { licenseType :: LicenseType
+  , value       :: Text
+  } deriving (Eq, Ord, Show, Generic)
+
+data LicenseType =
+          LicenseURL
+        | LicenseFile
+        | LicenseSPDX
+        | UnknownType
+          deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON License where
+    toJSON License{..} = object
+      [ "type"   .=  textType licenseType
+      , "value"  .=  value
+      ]
+      
+      where
+        textType :: LicenseType -> Text
+        textType = \case
+          LicenseURL  -> "url"
+          LicenseFile -> "file"
+          LicenseSPDX -> "spdx"
+          UnknownType -> "unknown"
+
+instance ToJSON LicenseResult where
+    toJSON LicenseResult{..} = object
+      [ "filepath"  .=  licenseFile
+      , "licenses"  .=  licensesFound
+      ]
+
+---------- Completed License Scan
+
+data CompletedLicenseScan = CompletedLicenseScan
+  { completedLicenseName     :: Text
+  , completedLicenses        :: [LicenseResult]
+  } deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON CompletedLicenseScan where
+    toJSON CompletedLicenseScan{..} = object
+      [ "name"            .=  completedLicenseName
+      , "licenseResults"  .=  completedLicenses
+      ]

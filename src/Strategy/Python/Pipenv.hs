@@ -60,6 +60,7 @@ strategyWithCmd = Strategy
   , strategyAnalyze = \opts -> analyzeWithCmd
       & fileInputJson @PipfileLock (targetFile opts)
       & execInputJson @[PipenvGraphDep] (parent (targetFile opts)) pipenvGraphCmd []
+  , strategyLicense = const (pure [])
   , strategyModule = parent . targetFile
   , strategyOptimal = Optimal
   , strategyComplete = Complete
@@ -69,6 +70,7 @@ strategyNoCmd :: Strategy BasicFileOpts
 strategyNoCmd = Strategy
   { strategyName = "python-pipfile"
   , strategyAnalyze = \opts -> analyzeNoCmd & fileInputJson @PipfileLock (targetFile opts)
+  , strategyLicense = const (pure [])
   , strategyModule = parent . targetFile
   , strategyOptimal = Optimal
   , strategyComplete = Complete

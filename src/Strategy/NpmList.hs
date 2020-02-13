@@ -36,6 +36,7 @@ strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "nodejs-npm"
   , strategyAnalyze = \opts -> analyze & execInputJson @NpmOutput (targetDir opts) npmListCmd []
+  , strategyLicense = const (pure [])
   , strategyModule = targetDir
   , strategyOptimal = Optimal
   , strategyComplete = Complete

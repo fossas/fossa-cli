@@ -40,6 +40,7 @@ strategy = Strategy
   { strategyName = "python-setuppy"
   , strategyAnalyze = \opts ->
       analyze & fileInputParser installRequiresParser (targetFile opts)
+  , strategyLicense = const (pure [])
   , strategyModule = parent . targetFile
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete

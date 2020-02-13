@@ -41,6 +41,7 @@ strategy = Strategy
   { strategyName = "nuget-projectjson"
   , strategyAnalyze = \opts -> analyze
       & fileInputJson @ProjectJson (targetFile opts)
+  , strategyLicense = const (pure [])
   , strategyModule = parent . targetFile
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete

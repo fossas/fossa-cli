@@ -42,6 +42,7 @@ strategy = Strategy
   { strategyName = "nodejs-packagelock"
   , strategyAnalyze = \opts -> analyze
       & fileInputJson @NpmPackageJson (targetFile opts)
+  , strategyLicense = const (pure [])
   , strategyModule = parent . targetFile
   , strategyOptimal = Optimal
   , strategyComplete = Complete

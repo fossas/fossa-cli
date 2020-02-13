@@ -43,6 +43,7 @@ strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "podfile"
   , strategyAnalyze = \opts -> analyze & fileInputParser parsePodfile (targetFile opts)
+  , strategyLicense = const (pure [])
   , strategyModule = parent . targetFile
   , strategyOptimal = Optimal
   , strategyComplete = Complete

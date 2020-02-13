@@ -38,7 +38,6 @@ instance FromXML XML.Element where
 
 instance FromXML T.Text where
   parseElement = content
-
 instance FromXML v => FromXML (M.Map T.Text v) where
   parseElement el = M.fromList <$> traverse mkSingle (XML.elChildren el)
     where

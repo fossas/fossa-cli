@@ -39,6 +39,7 @@ strategy = Strategy
   { strategyName = "nodejs-packagejson"
   , strategyAnalyze = \opts -> analyze
       & fileInputJson @PackageJson (targetFile opts)
+  , strategyLicense = const (pure [])
   , strategyModule = parent. targetFile
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete

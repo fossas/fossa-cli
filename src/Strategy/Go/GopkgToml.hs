@@ -51,6 +51,7 @@ strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "golang-gopkgtoml"
   , strategyAnalyze = analyze
+  , strategyLicense = const (pure [])
   , strategyModule = parent . targetFile
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete

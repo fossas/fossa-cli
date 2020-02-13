@@ -40,6 +40,7 @@ strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "python-requirements"
   , strategyAnalyze = \opts -> analyze & fileInputParser requirementsTxtParser (targetFile opts)
+  , strategyLicense = const (pure [])
   , strategyModule = parent . targetFile
   , strategyOptimal = Optimal
   , strategyComplete = NotComplete

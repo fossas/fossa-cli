@@ -42,6 +42,7 @@ strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "nodejs-yarnlock"
   , strategyAnalyze = analyze . targetFile
+  , strategyLicense = const (pure [])
   , strategyModule = parent . targetFile
   , strategyOptimal = Optimal
   , strategyComplete = Complete

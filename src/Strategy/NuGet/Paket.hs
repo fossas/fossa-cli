@@ -47,6 +47,7 @@ strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "paket"
   , strategyAnalyze = \opts -> analyze & fileInputParser findSections (targetFile opts)
+  , strategyLicense = const (pure [])
   , strategyModule = parent . targetFile
   , strategyOptimal = Optimal
   , strategyComplete = Complete

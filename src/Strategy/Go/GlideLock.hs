@@ -43,6 +43,7 @@ strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "golang-glidelock"
   , strategyAnalyze = \opts -> analyze & fileInputYaml @GlideLockfile (targetFile opts)
+  , strategyLicense = const (pure [])
   , strategyModule = parent . targetFile
   , strategyOptimal = Optimal
   , strategyComplete = NotComplete

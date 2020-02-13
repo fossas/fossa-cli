@@ -31,6 +31,7 @@ strategy :: Strategy MavenStrategyOpts
 strategy = Strategy
   { strategyName = "maven-pom"
   , strategyAnalyze = pure . strategyGraph
+  , strategyLicense = const (pure [])
   , strategyModule = parent . strategyPath
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete

@@ -54,6 +54,7 @@ strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "maven-cli"
   , strategyAnalyze = analyze
+  , strategyLicense = const (pure [])
   , strategyModule = targetDir
   , strategyOptimal = Optimal
   , strategyComplete = Complete

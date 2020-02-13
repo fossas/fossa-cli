@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>package.with.nuspec.file</id>
+    <version>1.2.3</version>
+    <license type="file">LICENSE.txt</license>
+  </metadata>
+</package>

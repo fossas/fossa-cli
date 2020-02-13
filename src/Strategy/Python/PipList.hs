@@ -47,6 +47,7 @@ strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "python-piplist"
   , strategyAnalyze = \opts -> analyze & execInputJson @[PipListDep] (targetDir opts) pipListCmd []
+  , strategyLicense = const (pure [])
   , strategyModule = targetDir
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete

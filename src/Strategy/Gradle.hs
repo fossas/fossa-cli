@@ -71,6 +71,7 @@ strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "gradle-cli"
   , strategyAnalyze = analyze
+  , strategyLicense = const (pure [])
   , strategyModule = targetDir
   , strategyOptimal = Optimal
   , strategyComplete = Complete

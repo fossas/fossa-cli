@@ -40,6 +40,7 @@ strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "nuget-packagesconfig"
   , strategyAnalyze = \opts -> analyze & fileInputXML @PackagesConfig (targetFile opts)
+  , strategyLicense = const (pure [])
   , strategyModule = parent . targetFile
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete

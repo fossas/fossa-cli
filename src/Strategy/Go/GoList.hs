@@ -47,6 +47,7 @@ strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "golang-golist"
   , strategyAnalyze = analyze
+  , strategyLicense = const (pure [])
   , strategyModule = targetDir
   , strategyOptimal = Optimal
   , strategyComplete = NotComplete

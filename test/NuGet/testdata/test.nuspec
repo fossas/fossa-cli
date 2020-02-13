@@ -3,6 +3,8 @@
   <metadata minClientVersion="2.12">
     <id>NUnit</id>
     <title>NUnit</title>
+    <licenseUrl>https://licence.location.com/LICENSE.md</licenseUrl>
+    <license type="file">license-file</license>
     <version>$version$</version>
     <dependencies>
       <group targetFramework="testone" />

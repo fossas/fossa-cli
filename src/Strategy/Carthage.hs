@@ -46,6 +46,7 @@ strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "carthage"
   , strategyAnalyze = fmap (G.gmap toDependency) . analyze
+  , strategyLicense = const (pure [])
   , strategyModule = parent . targetFile
   , strategyOptimal = Optimal
   , strategyComplete = Complete

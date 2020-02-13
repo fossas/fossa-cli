@@ -53,6 +53,7 @@ strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "golang-gomod"
   , strategyAnalyze = analyze
+  , strategyLicense = const (pure [])
   , strategyModule = parent . targetFile
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete

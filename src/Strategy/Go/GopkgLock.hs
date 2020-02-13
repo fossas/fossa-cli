@@ -48,6 +48,7 @@ strategy :: Strategy BasicFileOpts
 strategy = Strategy
   { strategyName = "golang-gopkglock"
   , strategyAnalyze = analyze
+  , strategyLicense = const (pure [])
   , strategyModule = parent . targetFile
   , strategyOptimal = Optimal
   , strategyComplete = NotComplete

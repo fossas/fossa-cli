@@ -92,6 +92,8 @@ library
     App.Scan.GraphMangler
     App.Scan.Project
     App.Scan.ProjectInference
+    AppLicense
+    AppLicense.Scan
     Control.Parallel
     DepTypes
     Diagnostics
@@ -134,8 +136,8 @@ library
     Strategy.NuGet.Paket
     Strategy.NuGet.ProjectAssetsJson
     Strategy.NuGet.ProjectJson
-    Strategy.Python.PipList
     Strategy.Python.Pipenv
+    Strategy.Python.PipList
     Strategy.Python.ReqTxt
     Strategy.Python.SetupPy
     Strategy.Python.Util
@@ -149,6 +151,15 @@ executable hscli
   import:         lang
   main-is:        Main.hs
   hs-source-dirs: app
+  build-depends:  hscli
+  ghc-options:
+    -flate-specialise -fspecialize-aggressively -O -threaded
+    -with-rtsopts=-N
+
+executable pathfinder
+  import:         lang
+  main-is:        Main.hs
+  hs-source-dirs: licenseApp
   build-depends:  hscli
   ghc-options:
     -flate-specialise -fspecialize-aggressively -O -threaded
@@ -182,8 +193,8 @@ test-suite tests
     NuGet.PaketTest
     NuGet.ProjectAssetsJsonTest
     NuGet.ProjectJsonTest
-    Python.PipListTest
     Python.PipenvTest
+    Python.PipListTest
     Python.ReqTxtTest
     Python.RequirementsTest
     Python.SetupPyTest

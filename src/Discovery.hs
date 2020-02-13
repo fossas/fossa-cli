@@ -1,5 +1,6 @@
 module Discovery
   ( discoverFuncs
+  , licenseDiscoverFuncs
   , strategyGroups
   ) where
 
@@ -30,6 +31,9 @@ import qualified Strategy.Python.SetupPy as SetupPy
 import qualified Strategy.Ruby.BundleShow as BundleShow
 import qualified Strategy.Ruby.GemfileLock as GemfileLock
 import           Types
+
+licenseDiscoverFuncs :: [Discover]
+licenseDiscoverFuncs = [ Nuspec.discover ]
 
 discoverFuncs :: [Discover]
 discoverFuncs =

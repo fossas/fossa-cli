@@ -50,6 +50,7 @@ strategy :: Strategy BasicDirOpts
 strategy = Strategy
   { strategyName = "ruby-bundleshow"
   , strategyAnalyze = \opts -> analyze & execInputParser bundleShowParser (targetDir opts) bundleShowCmd []
+  , strategyLicense = const (pure [])
   , strategyModule = targetDir
   , strategyOptimal = NotOptimal
   , strategyComplete = NotComplete
