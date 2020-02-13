@@ -1,3 +1,14 @@
+## Installation
+
+### MacOS (Darwin) or Linux amd64:
+```bash
+curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
+```
+
+### Windows with Powershell:
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/spectrometer/master/install.ps1'))
+```
 
 ## Building
 
