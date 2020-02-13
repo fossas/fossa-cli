@@ -3,6 +3,7 @@ module Strategy.NuGet.Nuspec
   , strategy
   , buildGraph
   , analyze
+  , findLicenses
 
   , Nuspec(..)
   , Group(..)
@@ -61,9 +62,7 @@ nuspecLicenses nuspec = url ++ licenseField
             url = case licenseUrl nuspec of
               Just location -> [License LicenseURL location]
               Nothing -> []
-            licenseField = case license nuspec of
-              Just field -> [License (parseLicenseType $ typeField field) (licenseValue field)]
-              Nothing -> []
+            licenseField = foldr (\a b -> b ++ [License (parseLicenseType $ typeField a) (licenseValue a)]) [] (license nuspec)
 
 parseLicenseType :: Text -> LicenseType
 parseLicenseType rawType = case T.unpack rawType of 
@@ -76,7 +75,7 @@ analyze = buildGraph <$> input
 
 data Nuspec = Nuspec
   { groups        :: [Group]
-  , license       :: Maybe NuspecLicense
+  , license       :: [NuspecLicense]
   , licenseUrl    :: Maybe Text
   } deriving (Eq, Ord, Show, Generic)
 
@@ -98,12 +97,12 @@ instance FromXML Nuspec where
   parseElement el = do
     metadata     <- child "metadata" el
     Nuspec <$> optional (child "dependencies" metadata >>= children "group") `defaultsTo` []
-           <*> optional (child "license" metadata)
+           <*> children "license" metadata
            <*> optional (child "licenseUrl" metadata)
 
 instance FromXML NuspecLicense where
   parseElement el =
-    NuspecLicense <$> attr "type" el
+    NuspecLicense <$> optional (attr "type" el) `defaultsTo` ""
                   <*> content el
 
 instance FromXML Group where

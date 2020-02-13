@@ -40,14 +40,12 @@ parse_args() {
 # network, either nothing will happen or will syntax error
 # out preventing half-done work
 execute() {
-  log_info "in execute ${TARBALL_URL}, ${tmpdir}"
   tmpdir=$(mktmpdir)
   log_debug "downloading files into ${tmpdir}"
   http_download "${tmpdir}/${TARBALL}" "${TARBALL_URL}"
   # http_download "${tmpdir}/${CHECKSUM}" "${CHECKSUM_URL}"
   # hash_sha256_verify "${tmpdir}/${TARBALL}" "${tmpdir}/${CHECKSUM}"
   srcdir="${tmpdir}"
-  log_info "unzipping now ${TARBALL}"
   (cd "${tmpdir}" && unzip "${TARBALL}")
   install -d -m 775 "${BINDIR}" 2> /dev/null || install -d "${BINDIR}"
   for binexe in "hscli" ; do
@@ -268,10 +266,8 @@ http_download_wget() {
   fi
 }
 http_download() {
-  log_info "downloading it"
   log_debug "http_download $2"
   if is_command curl; then
-    log_info "curling"
     http_download_curl "$@"
     return
   elif is_command wget; then
@@ -381,8 +377,5 @@ TARBALL=${NAME}.${FORMAT}
 TARBALL_URL=${GITHUB_DOWNLOAD}/${TAG}/${TARBALL}
 CHECKSUM=${PROJECT_NAME}_${VERSION}_checksums.txt
 CHECKSUM_URL=${GITHUB_DOWNLOAD}/${TAG}/${CHECKSUM}
-
-log_info "here"
-
 
 execute 

@@ -14,6 +14,7 @@ import GraphUtil
 import Parse.XML
 import Polysemy
 import Polysemy.Input
+import Types
 import Strategy.NuGet.Nuspec
 import Test.Tasty.Hspec
 
@@ -42,7 +43,10 @@ dependencyThree = Dependency { dependencyType = NuGetType
                         }
 
 nuspec :: Nuspec
-nuspec = Nuspec groupList Nothing Nothing
+nuspec = Nuspec groupList nuspecLicenses (Just "test.com")
+
+nuspecLicenses :: [NuspecLicense]
+nuspecLicenses = [NuspecLicense "expression" "", NuspecLicense "" "BSD-2-Clause", NuspecLicense "expression" "  ", NuspecLicense "file" "", NuspecLicense "file" "doesnt-exist.txt", NuspecLicense "expression" "Foo"]
 
 groupList :: [Group]
 groupList = [Group [depOne, depTwo], Group [depThree]]
@@ -58,24 +62,33 @@ depThree = NuGetDependency "three" "3.0.0"
 
 spec_analyze :: Spec
 spec_analyze = do
-  nuspecFile <- runIO (TIO.readFile "test/NuGet/testdata/test.nuspec")
-  nuspecLicenseFile <- runIO (TIO.readFile "test/NuGet/testdata/license.nuspec")
+  dependenciesAndLicense <- runIO (TIO.readFile "test/NuGet/testdata/nuspec/test.nuspec")
+  singleLicense <- runIO (TIO.readFile "test/NuGet/testdata/nuspec/license.nuspec")
+  multipleLicenses <- runIO (TIO.readFile "test/NuGet/testdata/nuspec/multiple-licenses.nuspec")
 
   describe "nuspec analyzer" $ do
     it "reads a file and constructs an accurate graph" $ do
-      case parseXML nuspecFile of
+      case parseXML dependenciesAndLicense of
         Right project -> do
           (groups project) `shouldContain` groupList
-          (license project) `shouldBe` (Just $ NuspecLicense "file" "license-file")
+          (license project) `shouldMatchList` [NuspecLicense "file" "license-file"]
           (licenseUrl project) `shouldBe` (Just "https://licence.location.com/LICENSE.md")
         Left err -> expectationFailure (T.unpack ("could not parse nuspec file: " <> xmlErrorPretty err))
 
     it "reads a file and extracts the correct license" $ do
-      case parseXML nuspecLicenseFile of
+      case parseXML singleLicense of
+        Right project -> do
+          (groups project) `shouldBe` [] 
+          (license project) `shouldMatchList` [NuspecLicense "file" "LICENSE.txt"]
+          (licenseUrl project) `shouldBe` Nothing
+        Left err -> expectationFailure (T.unpack ("could not parse nuspec file: " <> xmlErrorPretty err))
+
+    it "reads a file with multiple licenses" $ do
+      case parseXML multipleLicenses of
         Right project -> do
           (groups project) `shouldBe` []
-          (license project) `shouldBe` (Just $ NuspecLicense "file" "LICENSE.txt")
-          (licenseUrl project) `shouldBe` Nothing
+          (license project) `shouldMatchList` nuspecLicenses
+          (licenseUrl project) `shouldBe` (Just "test.com")
         Left err -> expectationFailure (T.unpack ("could not parse nuspec file: " <> xmlErrorPretty err))
 
     it "constructs an accurate graph" $ do
@@ -83,3 +96,7 @@ spec_analyze = do
           expectDeps [dependencyOne, dependencyTwo, dependencyThree] graph
           expectDirect [dependencyOne, dependencyTwo, dependencyThree] graph
           expectEdges [] graph
+
+    it "constructs an accurate list of licenses" $ do
+          let licenses = findLicenses $(mkRelFile " ") & runInputConst nuspec & run
+          (foldr (\a b -> b ++ (licensesFound a)) [] licenses) `shouldMatchList` [License LicenseSPDX "Foo", License UnknownType "BSD-2-Clause", License LicenseSPDX "", License LicenseSPDX "  ", License LicenseFile "", License LicenseFile "doesnt-exist.txt", License LicenseURL "test.com"]

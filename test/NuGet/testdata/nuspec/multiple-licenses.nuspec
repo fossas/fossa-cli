@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>package.with.nuspec.file</id>
+    <dependencies></dependencies>
+    <version>1.2.3</version>
+    <licenseUrl>test.com</licenseUrl>
+    <license>BSD-2-Clause</license>
+    <license type="expression"></license>
+    <license type="expression">  </license>
+    <license type="file"></license>
+    <license type="file">doesnt-exist.txt</license>
+    <license type="expression">Foo</license>
+  </metadata>
+</package>
