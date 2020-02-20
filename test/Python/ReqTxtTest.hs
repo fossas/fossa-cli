@@ -7,14 +7,11 @@ module Python.ReqTxtTest
 import Prologue
 
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Input
-import           Text.URI.QQ (uri)
+import Text.URI.QQ (uri)
 
 import DepTypes
 import Effect.Grapher
 import Graphing (Graphing)
-import Strategy.Python.ReqTxt
 import Strategy.Python.Util
 
 import Test.Tasty.Hspec
@@ -55,8 +52,6 @@ spec_analyze :: Spec
 spec_analyze =
   describe "analyze" $
     it "should produce expected output" $ do
-      let result = analyze
-            & runInputConst @[Req] setupPyInput
-            & run
+      let result = buildGraph setupPyInput
 
       result `shouldBe` expected

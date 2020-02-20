@@ -1,8 +1,6 @@
 module Strategy.Go.GlideLock
   ( discover
-  , strategy
   , analyze
-  , configure
 
   , GlideLockfile(..)
   , GlideDep(..)
@@ -13,44 +11,44 @@ module Strategy.Go.GlideLock
 
 import Prologue hiding ((.=))
 
+import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
+import DepTypes
+import Discovery.Walk
+import Effect.ReadFS
+import Graphing (Graphing, unfold)
+import Types
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.ReadFS
-import           Graphing (Graphing, unfold)
-import           Types
-
-discover :: Discover
-discover = Discover
-  { discoverName = "gopkglock"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files ->
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "glide.lock") files of
-    Nothing -> walkContinue
-    Just file  -> do
-      output (configure file)
-      walkContinue
+    Nothing -> pure ()
+    Just file -> runSimpleStrategy "golang-glidelock" GolangGroup $ analyze file
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "golang-glidelock"
-  , strategyAnalyze = \opts -> analyze & fileInputYaml @GlideLockfile (targetFile opts)
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = NotComplete
+  walkContinue
+
+analyze ::
+  ( Has ReadFS sig m
+  , Has (Error ReadFSErr) sig m
+  )
+  => Path Rel File -> m ProjectClosure
+analyze file = mkProjectClosure file <$> readContentsYaml @GlideLockfile file
+
+mkProjectClosure :: Path Rel File -> GlideLockfile -> ProjectClosure
+mkProjectClosure file lock = ProjectClosure
+  { closureStrategyGroup = GolangGroup
+  , closureStrategyName  = "golang-glidelock"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
-
-analyze :: Member (Input GlideLockfile) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph lock
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = NotComplete
+    }
 
 buildGraph :: GlideLockfile -> Graphing Dependency
 buildGraph lockfile = unfold direct (const []) toDependency
@@ -63,9 +61,6 @@ buildGraph lockfile = unfold direct (const []) toDependency
                , dependencyLocations = []
                , dependencyTags = M.empty
                }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts
 
 data GlideLockfile = GlideLockfile
   { hash    :: Integer

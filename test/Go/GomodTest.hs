@@ -5,10 +5,10 @@ module Go.GomodTest
 
 import Prologue
 
+import Control.Algebra
 import qualified Data.Map.Strict as M
 import qualified Data.Text.IO as TIO
-import           Polysemy
-import           Text.Megaparsec
+import Text.Megaparsec
 
 import DepTypes
 import Effect.Grapher

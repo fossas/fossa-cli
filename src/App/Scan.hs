@@ -1,59 +1,102 @@
 
 module App.Scan
   ( scanMain
+  , ScanCmdOpts(..)
   ) where
 
 import Prologue
 
+import Control.Carrier.Error.Either
+import Control.Effect.Exception as Exc
+import Control.Carrier.Output.IO
 import Control.Concurrent
-import Control.Exception (SomeException)
-import Data.Bool (bool)
 import qualified Data.Sequence as S
 import Path.IO
-import Polysemy
-import Polysemy.Async
-import Polysemy.Error
-import Polysemy.Output
-import Polysemy.Resource
+import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
 import System.Exit (die)
 
 import App.Scan.Project (mkProjects)
 import App.Scan.ProjectInference (InferredProject(..), inferProject)
-import Control.Parallel
+import Control.Carrier.TaskPool
+import Control.Carrier.Threaded
+import qualified Data.ByteString.Lazy as BL
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
-import Diagnostics
-import Discovery
-import Effect.Error
-import Effect.Exec
 import Effect.Logger
-import Effect.ReadFS hiding (doesDirExist)
+import qualified Strategy.Carthage as Carthage
+import qualified Strategy.Cocoapods.Podfile as Podfile
+import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
+import qualified Strategy.Go.GoList as GoList
+import qualified Strategy.Go.Gomod as Gomod
+import qualified Strategy.Go.GopkgLock as GopkgLock
+import qualified Strategy.Go.GopkgToml as GopkgToml
+import qualified Strategy.Go.GlideLock as GlideLock
+import qualified Strategy.Gradle as Gradle
+import qualified Strategy.Maven.Pom as MavenPom
+import qualified Strategy.Maven.PluginStrategy as MavenPlugin
+import qualified Strategy.Node.NpmList as NpmList
+import qualified Strategy.Node.NpmLock as NpmLock
+import qualified Strategy.Node.PackageJson as PackageJson
+import qualified Strategy.Node.YarnLock as YarnLock
+import qualified Strategy.NuGet.PackagesConfig as PackagesConfig
+import qualified Strategy.NuGet.PackageReference as PackageReference
+import qualified Strategy.NuGet.ProjectAssetsJson as ProjectAssetsJson
+import qualified Strategy.NuGet.ProjectJson as ProjectJson
+import qualified Strategy.NuGet.Nuspec as Nuspec
+import qualified Strategy.Python.Pipenv as Pipenv
+import qualified Strategy.Python.PipList as PipList
+import qualified Strategy.Python.ReqTxt as ReqTxt
+import qualified Strategy.Python.SetupPy as SetupPy
+import qualified Strategy.Ruby.BundleShow as BundleShow
+import qualified Strategy.Ruby.GemfileLock as GemfileLock
 import Types
 
-scanMain :: Path Abs Dir -> Bool -> IO ()
-scanMain basedir debug = do
-  exists <- doesDirExist basedir
-  unless exists (die $ "ERROR: " <> show basedir <> " does not exist")
+data ScanCmdOpts = ScanCmdOpts
+  { cmdBasedir :: FilePath
+  , cmdDebug   :: Bool
+  , cmdOutFile :: Maybe FilePath
+  } deriving (Eq, Ord, Show, Generic)
 
-  scan basedir
-    & loggerToIO (bool Info Debug debug)
-    & asyncToIOFinal
-    & resourceToIOFinal
-    & embedToFinal @IO
-    & runFinal
+scanMain :: ScanCmdOpts -> IO ()
+scanMain ScanCmdOpts{..} = do
+  hSetBuffering stdout NoBuffering
+  hSetBuffering stderr NoBuffering
+  basedir <- validateDir cmdBasedir
 
-scan :: Members '[Final IO, Embed IO, Resource, Async, Logger] r => Path Abs Dir -> Sem r ()
-scan basedir = do
+  scan basedir cmdOutFile
+    & withLogger (bool SevInfo SevDebug cmdDebug)
+    & runThreaded
+
+validateDir :: FilePath -> IO (Path Abs Dir)
+validateDir dir = do
+  absolute <- resolveDir' dir
+  exists <- doesDirExist absolute
+
+  unless exists (die $ "ERROR: Directory " <> show absolute <> " does not exist")
+
+  pure absolute
+
+scan ::
+  ( Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has Threaded sig m
+  , MonadIO m
+  , Effect sig
+  )
+  => Path Abs Dir -> Maybe FilePath -> m ()
+scan basedir outFile = do
   setCurrentDir basedir
-  capabilities <- embed getNumCapabilities
+  capabilities <- liftIO getNumCapabilities
 
-  (results, ()) <- runActions capabilities (map ADiscover discoverFuncs) (runAction basedir) updateProgress
-    & outputToIOMonoid S.singleton
+  (closures,()) <- runOutput @ProjectClosure $
+    withTaskPool capabilities updateProgress (traverse_ ($ basedir) discoverFuncs)
 
   logSticky "[ Combining Analyses ]"
 
-  let projects = mkProjects strategyGroups results
-  embed (encodeFile "analysis.json" projects)
+  let projects = mkProjects (S.fromList closures)
+  liftIO $ case outFile of
+    Nothing -> BL.putStr (encode projects)
+    Just path -> liftIO (encodeFile path projects)
 
   inferred <- inferProject basedir
   logInfo ""
@@ -62,56 +105,45 @@ scan basedir = do
 
   logSticky ""
 
-runAction :: Members '[Final IO, Embed IO, Resource, Logger, Output CompletedStrategy] r => Path Abs Dir -> (Action -> Sem r ()) -> Action -> Sem r ()
-runAction basedir enqueue = \case
-  ADiscover Discover{..} -> do
-    let prettyName = fill 20 (annotate (colorDull Cyan) (pretty discoverName <> " "))
+discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
+discoverFuncs =
+  [ GoList.discover
+  , Gomod.discover
+  , GopkgToml.discover
+  , GopkgLock.discover
+  , GlideLock.discover
 
-    result <- discoverFunc basedir
-      & readFSToIO
-      & readFSErrToCLIErr
-      & execToIO
-      & execErrToCLIErr
-      & errorToIOFinal @CLIErr
-      & fromExceptionSem @SomeException
-      & errorToIOFinal @SomeException
-      & runOutputSem @ConfiguredStrategy (enqueue . AStrategy)
+  , Gradle.discover
 
-    case result of
-      Left someException -> do
-        logWarn $ prettyName <> annotate (color Red) "Discovery failed with uncaught SomeException"
-        logWarn $ pretty (show someException) <> line
-      Right (Left err) -> do
-        logWarn $ prettyName <> annotate (color Red) "Discovery failed"
-        logDebug $ pretty (show err) <> line
-      Right (Right ()) -> logDebug $ prettyName <> annotate (color Green) "Finished discovery"
+  , MavenPlugin.discover
+  , MavenPom.discover
 
-  AStrategy (ConfiguredStrategy Strategy{..} opts) -> do
-    let prettyName = annotate (color Cyan) (pretty strategyName)
-        prettyPath = pretty (toFilePath (strategyModule opts))
+  , PackageJson.discover
+  , NpmLock.discover
+  , NpmList.discover
+  , YarnLock.discover
 
-    result <- strategyAnalyze opts
-      & readFSToIO
-      & readFSErrToCLIErr
-      & execToIO
-      & execErrToCLIErr
-      & errorToIOFinal @CLIErr
-      & fromExceptionSem @SomeException
-      & errorToIOFinal @SomeException
+  , PackagesConfig.discover
+  , PackageReference.discover
+  , ProjectAssetsJson.discover
+  , ProjectJson.discover
+  , Nuspec.discover
 
-    case result of
-      Left someException -> do
-        logWarn $ prettyPath <> " " <> prettyName <> " " <> annotate (color Yellow) "Analysis failed with uncaught SomeException"
-        logDebug $ pretty (show someException) <> line
-      Right (Left err) -> do
-        logWarn $ prettyPath <> " " <> prettyName <> " " <> annotate (color Yellow) "Analysis failed"
-        logDebug $ pretty (show err) <> line
-      Right (Right graph) -> do
-        logInfo $ prettyPath <> " " <> prettyName <> " " <> annotate (color Green) "Analyzed"
-        logDebug (pretty (show graph))
-        output (CompletedStrategy strategyName (strategyModule opts) graph strategyOptimal strategyComplete)
+  , PipList.discover
+  , Pipenv.discover
+  , SetupPy.discover
+  , ReqTxt.discover
 
-updateProgress :: Member Logger r => Progress -> Sem r ()
+  , BundleShow.discover
+  , GemfileLock.discover
+
+  , Carthage.discover
+
+  , Podfile.discover
+  , PodfileLock.discover
+  ]
+
+updateProgress :: Has Logger sig m => Progress -> m ()
 updateProgress Progress{..} =
   logSticky ( "[ "
             <> annotate (color Cyan) (pretty pQueued)
@@ -121,7 +153,3 @@ updateProgress Progress{..} =
             <> annotate (color Green) (pretty pCompleted)
             <> " Completed"
             <> " ]" )
-
-data Action =
-    ADiscover Discover
-  | AStrategy ConfiguredStrategy

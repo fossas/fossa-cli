@@ -1,53 +1,46 @@
 module Strategy.Python.SetupPy
   ( discover
-  , strategy
   , analyze
-  , configure
   )
   where
 
 import Prologue
 
-import Polysemy
-import Polysemy.Input
-import Polysemy.Output
+import Control.Carrier.Error.Either
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
 import Discovery.Walk
-import DepTypes
-import Graphing
 import Effect.ReadFS
 import Strategy.Python.Util
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "setup.py"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files ->
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "setup.py") files of
-    Nothing -> walkContinue
-    Just file  -> do
-      output (configure file)
-      walkContinue
+    Nothing -> pure ()
+    Just file -> runSimpleStrategy "python-setuppy" PythonGroup $
+      analyze file
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "python-setuppy"
-  , strategyAnalyze = \opts ->
-      analyze & fileInputParser installRequiresParser (targetFile opts)
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . targetFile
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
+  walkContinue
+
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze file = mkProjectClosure file <$> readContentsParser installRequiresParser file
+
+mkProjectClosure :: Path Rel File -> [Req] -> ProjectClosure
+mkProjectClosure file reqs = ProjectClosure
+  { closureStrategyGroup = PythonGroup
+  , closureStrategyName  = "python-setuppy"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
-
-analyze :: Member (Input [Req]) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph reqs
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 type Parser = Parsec Void Text
 
@@ -59,7 +52,3 @@ installRequiresParser = prefix *> entries <* end
   end     = char ']'
 
   quote   = char '\''
-
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

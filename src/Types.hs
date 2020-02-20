@@ -1,57 +1,88 @@
 module Types
-  ( DiscoverEffs
-  , Discover(..)
-  , StrategyEffs
-  , Strategy(..)
-  , StrategyGroup(..)
+  ( StrategyGroup(..)
+
+  , ProjectClosure(..)
 
   , Optimal(..)
   , Complete(..)
 
-  , ConfiguredStrategy(..)
-  , SomeStrategy(..)
-
-  , CompletedStrategy(..)
-  
-  , CompletedLicenseScan(..)
+  , ProjectDependencies(..)
 
   , LicenseResult(..)
   , License(..)
   , LicenseType(..)
 
-  , BasicDirOpts(..)
-  , BasicFileOpts(..)
+  , HasDiscover
+  , runStrategy
+  , runSimpleStrategy
   ) where
 
 import Prologue
 
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
-import Polysemy.Resource
-
+import Control.Algebra
+import Control.Carrier.Error.Either
+import Control.Carrier.TaskPool
+import Control.Effect.Exception
+import Control.Effect.Output
 import DepTypes
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
-import Diagnostics
 import Graphing
 
 ---------- Discovery
 
--- | The effects available for use in 'Discover'
-type DiscoverEffs r = Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, Error ExecErr, ReadFS, Error ReadFSErr, Output ConfiguredStrategy] r
+runSimpleStrategy ::
+  ( Has (Lift IO) sig m
+  , Has TaskPool sig m
+  , Has (Output ProjectClosure) sig m
+  )
+  => Text -> StrategyGroup -> TaskC m ProjectClosure -> m ()
+runSimpleStrategy _ _ act = forkTask $ do
+  let runIt = runError @ReadFSErr
+            . runError @ExecErr
+            . runReadFSIO
+            . runExecIO
 
--- | Discover functions produce 'ConfiguredStrategy's, given a base directory
--- to search
-data Discover = Discover
-  { discoverName :: Text
-  , discoverFunc :: forall r. DiscoverEffs r => Path Abs Dir -> Sem r ()
-  }
+  mask $ \restore -> do
+    (res :: Either SomeException a) <- try (restore (runIt act))
+    case res of
+      Left _ -> pure () -- TODO
+      Right (Left _) -> pure () -- TODO
+      Right (Right (Left _)) -> pure () -- TODO
+      Right (Right (Right a)) -> output a
 
----------- Strategies
+runStrategy ::
+  ( Has (Lift IO) sig m
+  , Has TaskPool sig m
+  )
+  => Text -> StrategyGroup -> TaskC m () -> m ()
+runStrategy _ _ act = forkTask $ do
+  let runIt = runError @ReadFSErr
+            . runError @ExecErr
+            . runReadFSIO
+            . runExecIO
 
--- FUTURE: determine strategy completeness during scan?
+  mask $ \restore -> do
+    (res :: Either SomeException a) <- try (restore (runIt act))
+    case res of
+      Left _ -> pure () -- TODO
+      Right (Left _) -> pure () -- TODO
+      Right (Right (Left _)) -> pure () -- TODO
+      Right (Right (Right ())) -> pure ()
+
+type TaskC m a = ExecIOC (ReadFSIOC (ErrorC ExecErr (ErrorC ReadFSErr m))) a
+
+type HasDiscover sig m =
+  ( Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has TaskPool sig m
+  , Has (Output ProjectClosure) sig m
+  , MonadIO m
+  , Effect sig
+  )
+
+---------- Project Closures
 
 data Optimal = Optimal | NotOptimal
   deriving (Eq, Ord, Show, Generic)
@@ -67,74 +98,33 @@ instance ToJSON Complete where
   toJSON Complete    = toJSON True
   toJSON NotComplete = toJSON False
 
--- | The effects available for use in 'Strategy'
-type StrategyEffs r = Members '[Embed IO, Resource, Logger, Error CLIErr, Exec, Error ExecErr, ReadFS, Error ReadFSErr] r
-
--- | Strategies produce dependency graphs
---
--- @options@ must have 'ToJSON' and 'FromJSON' instances -- these are used to
--- serialize\/deserialize a strategy's options to/from disk
-data Strategy options = Strategy
-  { strategyName     :: Text -- ^ e.g., "python-pipenv"
-  , strategyAnalyze  :: forall r. StrategyEffs r => options -> Sem r (Graphing Dependency)
-  , strategyLicense  :: forall r. StrategyEffs r => options -> Sem r [LicenseResult]
-  , strategyModule   :: options -> Path Rel Dir -- ^ Determine the module directory for grouping with other strategies
-  , strategyOptimal  :: Optimal -- ^ Whether this strategy is considered "optimal" -- i.e., best case analysis for a given project. Notably, this __does not__ imply "complete".
-  , strategyComplete :: Complete -- ^ Whether this strategy produces graphs that contain all dependencies for a given project. When @NotComplete@, the backend will run a hasGraph-like analysis to produce the missing dependencies and graph edges
-  }
-
--- | 'Strategy' outputs are grouped and sorted based on the provided @StrategyGroup@s
---
--- For example, @"python"@ is a @StrategyGroup@ that has pipenv, piplist, ... as strategies
-data StrategyGroup = StrategyGroup
-  { groupName       :: Text -- ^ e.g., "python"
-  , groupStrategies :: [SomeStrategy]
-  }
-
--- | An arbitrary 'Strategy', suitable for use in lists, map values, ...
--- Used to construct 'StrategyGroup's
-data SomeStrategy where
-  SomeStrategy :: Strategy options -> SomeStrategy
-
----------- Configured Strategies
-
--- | A strategy paired with its options. Produced by 'Discover' functions
-data ConfiguredStrategy where
-  ConfiguredStrategy :: Strategy options -> options -> ConfiguredStrategy
-
----------- Completed Strategies
-
--- | Completed strategy output. See 'Strategy' for additional information about
--- these fields.
-data CompletedStrategy = CompletedStrategy
-  { completedName     :: Text
-  , completedModule   :: Path Rel Dir
-  , completedGraph    :: Graphing Dependency
-  , completedOptimal  :: Optimal
-  , completedComplete :: Complete
+data ProjectClosure = ProjectClosure
+  { closureStrategyGroup :: StrategyGroup
+  , closureStrategyName  :: Text -- ^ e.g., "python-pipenv". This is temporary: ProjectClosures will eventually combine several strategies into one
+  , closureModuleDir     :: Path Rel Dir -- ^ the relative module directory (for grouping with other strategies)
+  , closureDependencies  :: ProjectDependencies
+  , closureLicenses      :: [LicenseResult]
   } deriving (Eq, Ord, Show, Generic)
 
----------- Basic Opts
-
--- | A basic set of options, containing just a target directory
-newtype BasicDirOpts = BasicDirOpts
-  { targetDir :: Path Rel Dir
+data ProjectDependencies = ProjectDependencies
+  { dependenciesGraph    :: Graphing Dependency
+  , dependenciesOptimal  :: Optimal -- ^ Whether this dependency graph is considered "optimal" -- i.e., best case analysis for this given project. Notably, this __does not__ imply "complete".
+  , dependenciesComplete :: Complete -- ^ Whether this dependency graph contains all dependencies for a given project. When @NotComplete@, the backend will run a hasGraph-like analysis to produce the missing dependencies and graph edges
   } deriving (Eq, Ord, Show, Generic)
 
--- | A basic set of options, containing just a target file
-newtype BasicFileOpts = BasicFileOpts
-  { targetFile :: Path Rel File
-  } deriving (Eq, Ord, Show, Generic)
+data StrategyGroup =
+    CarthageGroup
+  | DotnetGroup
+  | GolangGroup
+  | GradleGroup
+  | MavenGroup
+  | NodejsGroup
+  | PythonGroup
+  | RubyGroup
+  | CocoapodsGroup
+  deriving (Eq, Ord, Show, Generic)
 
-instance FromJSON BasicFileOpts where
-  parseJSON = withObject "BasicFileOpts" $ \obj ->
-    BasicFileOpts <$> obj .: "file"
-
-instance ToJSON BasicFileOpts where
-  toJSON BasicFileOpts{..} = object ["file" .= targetFile]
-
----------- License
-
+-- FIXME: we also need to annotate dep graphs with Path Rel File -- merge these somehow?
 data LicenseResult = LicenseResult
   { licenseFile   :: Path Rel File
   , licensesFound :: [License]
@@ -170,17 +160,4 @@ instance ToJSON LicenseResult where
     toJSON LicenseResult{..} = object
       [ "filepath"  .=  licenseFile
       , "licenses"  .=  licensesFound
-      ]
-
----------- Completed License Scan
-
-data CompletedLicenseScan = CompletedLicenseScan
-  { completedLicenseName     :: Text
-  , completedLicenses        :: [LicenseResult]
-  } deriving (Eq, Ord, Show, Generic)
-
-instance ToJSON CompletedLicenseScan where
-    toJSON CompletedLicenseScan{..} = object
-      [ "name"            .=  completedLicenseName
-      , "licenseResults"  .=  completedLicenses
       ]

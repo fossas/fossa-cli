@@ -5,8 +5,6 @@ module NuGet.PaketTest
 import Prologue
 
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Input
 import qualified Data.Text.IO as TIO
 import           Text.Megaparsec
 
@@ -91,9 +89,8 @@ spec_analyze :: T.Spec
 spec_analyze = do
   T.describe "paket lock analyzer" $
     T.it "produces the expected output" $ do
-      let graph = analyze
-            & runInputConst @[Section] paketLockSections
-            & run
+      let graph = buildGraph paketLockSections
+
       expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFour, dependencyFive, dependencySix] graph
       expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour, dependencyFive, dependencySix] graph
       expectEdges [ (dependencyOne, dependencyTwo)

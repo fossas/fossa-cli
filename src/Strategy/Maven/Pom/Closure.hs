@@ -6,36 +6,36 @@ module Strategy.Maven.Pom.Closure
 import Prologue
 
 import qualified Algebra.Graph.AdjacencyMap as AM
+import Control.Algebra
+import Control.Carrier.State.Strict
 import qualified Path.IO as PIO
 import qualified Data.Set as S
 import qualified Data.Map.Strict as M
 import Data.Maybe (mapMaybe)
-import Polysemy
-import Polysemy.Output
 
 import Discovery.Walk
 import Effect.ReadFS
 import Strategy.Maven.Pom.PomFile
 import Strategy.Maven.Pom.Resolver
 
-findProjects :: Members '[Embed IO, ReadFS] r => Path Abs Dir -> Sem r [MavenProjectClosure]
+findProjects :: (Has ReadFS sig m, MonadIO m, Effect sig) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects basedir = do
   pomFiles <- findPomFiles basedir
   globalClosure <- buildGlobalClosure pomFiles
   pure (buildProjectClosures basedir globalClosure)
 
-findPomFiles :: Member (Embed IO) r => Path Abs Dir -> Sem r [Path Abs File]
+findPomFiles :: (Has ReadFS sig m, MonadIO m, Effect sig) => Path Abs Dir -> m [Path Abs File]
 findPomFiles dir = do
-  (relPaths,_) <- runOutputList @(Path Rel File) $
+  relPaths <- execState @[Path Rel File] [] $
     flip walk dir $ \_ _ files -> do
       case find ((== "pom.xml") . fileName) files of
-        Just file -> output file
+        Just file -> modify @[Path Rel File] (file:)
         Nothing -> pure ()
 
       walkContinue
 
   -- FIXME: exceptions
-  traverse (embed @IO . PIO.makeAbsolute) relPaths
+  traverse (liftIO . PIO.makeAbsolute) relPaths
 
 buildProjectClosures :: Path Abs Dir -> GlobalClosure -> [MavenProjectClosure]
 buildProjectClosures basedir global = closures

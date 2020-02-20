@@ -1,9 +1,8 @@
 module Strategy.NuGet.Paket
   ( discover
-  , strategy
   , analyze
-  , configure
   , findSections
+  , buildGraph
 
   , PaketDep(..)
   , Section(..)
@@ -12,52 +11,48 @@ module Strategy.NuGet.Paket
 
 import Prologue
 
+import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Char as C
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.LabeledGrapher
-import           Effect.ReadFS
-import           Graphing (Graphing)
-import           Types
-import           Text.Megaparsec hiding (label)
-import           Text.Megaparsec.Char
+import DepTypes
+import Discovery.Walk
+import Effect.LabeledGrapher
+import Effect.ReadFS
+import Graphing (Graphing)
+import Types
+import Text.Megaparsec hiding (label)
+import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
 type Parser = Parsec Void Text
 
-discover :: Discover
-discover = Discover
-  { discoverName = "paket"
-  , discoverFunc = discover'
-  }
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
+  case find (\f -> fileName f == "paket.lock") files of
+    Nothing -> pure ()
+    Just file -> runSimpleStrategy "paket-paketlock" DotnetGroup $ analyze file
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files -> do
-  for_ files $ \f ->
-    when (fileName f == "paket.lock") $ output (configure f)
   walkContinue
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "paket"
-  , strategyAnalyze = \opts -> analyze & fileInputParser findSections (targetFile opts)
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze file = mkProjectClosure file <$> readContentsParser findSections file
+
+mkProjectClosure :: Path Rel File -> [Section] -> ProjectClosure
+mkProjectClosure file sections = ProjectClosure
+  { closureStrategyGroup = DotnetGroup
+  , closureStrategyName  = "paket-paketlock"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts
-
-analyze :: Member (Input [Section]) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph sections
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 newtype PaketPkg = PaketPkg { pkgName :: Text }
   deriving (Eq, Ord, Show, Generic)
@@ -94,15 +89,15 @@ buildGraph :: [Section] -> Graphing Dependency
 buildGraph sections = run . withLabeling toDependency $
       traverse_ (addSection "MAIN") sections
       where
-            addSection :: Member (LabeledGrapher PaketPkg) r => Text -> Section -> Sem r ()
+            addSection :: Has (LabeledGrapher PaketPkg) sig m => Text -> Section -> m ()
             addSection group (StandardSection location remotes) = traverse_ (addRemote group location) remotes
             addSection _ (GroupSection group gSections) = traverse_ (addSection group) gSections
             addSection _ (UnknownSection _) = pure ()
 
-            addRemote :: Member (LabeledGrapher PaketPkg) r => Text -> Text -> Remote -> Sem r ()
+            addRemote :: Has (LabeledGrapher PaketPkg) sig m => Text -> Text -> Remote -> m ()
             addRemote group loc remote = traverse_ (addSpec (DepLocation loc) (PaketRemote $ location remote) (GroupName group)) (dependencies remote) 
 
-            addSpec :: Member (LabeledGrapher PaketPkg) r => PaketLabel -> PaketLabel -> PaketLabel -> PaketDep -> Sem r ()
+            addSpec :: Has (LabeledGrapher PaketPkg) sig m => PaketLabel -> PaketLabel -> PaketLabel -> PaketDep -> m ()
             addSpec loc remote group dep = do
               -- add edges, labels, and direct deps
               let pkg = PaketPkg (name dep)

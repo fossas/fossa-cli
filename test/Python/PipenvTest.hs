@@ -5,8 +5,6 @@ module Python.PipenvTest
 import Prologue
 
 import qualified Data.Map.Strict as M
-import Polysemy
-import Polysemy.Input
 
 import DepTypes
 import Strategy.Python.Pipenv
@@ -93,10 +91,7 @@ spec_analyze = do
   describe "analyzeWithCmd" $
     -- FIXME: graphing needs to be refactored to include "reachable" alongside "direct"
     xit "should use pipenv output for edges and tags" $ do
-      let result = analyzeWithCmd
-            & runInputConst @PipfileLock pipfileLock
-            & runInputConst @[PipenvGraphDep] pipenvOutput
-            & run
+      let result = buildGraph pipfileLock (Just pipenvOutput)
 
       expectDeps [depOne, depTwo, depThree] result
       expectDirect [depOne, depTwo] result
@@ -104,9 +99,7 @@ spec_analyze = do
 
   describe "analyzeNoCmd" $
     it "should set all dependencies as direct" $ do
-      let result = analyzeNoCmd
-            & runInputConst @PipfileLock pipfileLock
-            & run
+      let result = buildGraph pipfileLock Nothing
 
       expectDeps [depOne, depTwo, depThree] result
       expectDirect [depOne, depTwo, depThree] result

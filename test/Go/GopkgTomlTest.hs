@@ -9,18 +9,13 @@ import Prologue
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text.IO as TIO
-import Polysemy
-import Polysemy.Error
 
 import DepTypes
-import Diagnostics
-import Effect.Exec
 import Effect.Grapher
-import Effect.ReadFS
 import Graphing (Graphing)
 import Strategy.Go.GopkgToml
 import Strategy.Go.Types (graphingGolang)
-import Types (BasicFileOpts(..))
+import qualified Toml
 
 import Test.Tasty.Hspec
 
@@ -98,31 +93,17 @@ expected = run . evalGrapher $ do
              , dependencyTags = M.empty
              }
 
-mockReadFSText :: Text -> Sem (ReadFS ': r) a -> Sem r a
-mockReadFSText contents = interpret $ \case
-  ReadContentsText' _ -> pure (Right contents)
-  _ -> error "unexpected ReadFS method. Expecting ReadContentsText"
-
-testfile :: Path Rel File
-testfile = $(mkRelFile "nonexistentfile")
-
 spec_analyze :: Spec
 spec_analyze = do
   contents <- runIO (TIO.readFile "test/Go/testdata/Gopkg.toml")
 
   describe "analyze" $
     it "should produce expected output" $ do
-      let result = analyze (BasicFileOpts testfile)
-            & mockReadFSText contents
-            & execErrToCLIErr
-            & readFSErrToCLIErr
-            & runError @CLIErr
-            & execConst (Left [])
-            & run
-
-      case result of
-        Left err -> expectationFailure ("analyze failed: " <> show err)
-        Right graph -> graph `shouldBe` expected
+      case Toml.decode gopkgCodec contents of
+        Left err -> expectationFailure ("decode failed: " <> show err)
+        Right pkg -> do
+          let result = buildGraph pkg & graphingGolang & run
+          result `shouldBe` expected
 
 spec_buildGraph :: Spec
 spec_buildGraph = do

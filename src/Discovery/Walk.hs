@@ -12,9 +12,8 @@ module Discovery.Walk
 import Prologue
 
 import Path.IO
-import Polysemy
 
-type FileWalk r = Path Rel Dir -> [Path Rel Dir] -> [Path Rel File] -> Sem r (WalkAction Rel)
+type FileWalk m = Path Rel Dir -> [Path Rel Dir] -> [Path Rel File] -> m (WalkAction Rel)
 
 walkContinue :: Applicative m => m (WalkAction b)
 walkContinue = pure $ WalkExclude []
@@ -26,7 +25,7 @@ walkSkipAll = pure . WalkExclude . map dirname
 walkSkipNamed :: Applicative m => [String] -> [Path Rel Dir] -> m (WalkAction Rel)
 walkSkipNamed dirnames = walkSkipAll . filter (\d -> dirName d `elem` dirnames)
 
-walk :: Member (Embed IO) r => FileWalk r -> Path Abs Dir -> Sem r ()
+walk :: MonadIO m => FileWalk m -> Path Abs Dir -> m ()
 walk f = walkDirRel (\dir subdirs files -> f dir (map (dir </>) subdirs) (map (dir </>) files))
 
 dirName :: Path a Dir -> String

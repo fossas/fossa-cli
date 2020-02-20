@@ -12,9 +12,6 @@ import qualified Data.Text.IO as TIO
 import DepTypes
 import GraphUtil
 import Parse.XML
-import Polysemy
-import Polysemy.Input
-import Types
 import Strategy.NuGet.Nuspec
 import Test.Tasty.Hspec
 
@@ -43,10 +40,10 @@ dependencyThree = Dependency { dependencyType = NuGetType
                         }
 
 nuspec :: Nuspec
-nuspec = Nuspec groupList nuspecLicenses (Just "test.com")
+nuspec = Nuspec groupList licenses (Just "test.com")
 
-nuspecLicenses :: [NuspecLicense]
-nuspecLicenses = [NuspecLicense "expression" "", NuspecLicense "" "BSD-2-Clause", NuspecLicense "expression" "  ", NuspecLicense "file" "", NuspecLicense "file" "doesnt-exist.txt", NuspecLicense "expression" "Foo"]
+licenses :: [NuspecLicense]
+licenses = [NuspecLicense "expression" "", NuspecLicense "" "BSD-2-Clause", NuspecLicense "expression" "  ", NuspecLicense "file" "", NuspecLicense "file" "doesnt-exist.txt", NuspecLicense "expression" "Foo"]
 
 groupList :: [Group]
 groupList = [Group [depOne, depTwo], Group [depThree]]
@@ -87,16 +84,12 @@ spec_analyze = do
       case parseXML multipleLicenses of
         Right project -> do
           (groups project) `shouldBe` []
-          (license project) `shouldMatchList` nuspecLicenses
+          (license project) `shouldMatchList` licenses
           (licenseUrl project) `shouldBe` (Just "test.com")
         Left err -> expectationFailure (T.unpack ("could not parse nuspec file: " <> xmlErrorPretty err))
 
     it "constructs an accurate graph" $ do
-          let graph = analyze & runInputConst nuspec & run
+          let graph = buildGraph nuspec
           expectDeps [dependencyOne, dependencyTwo, dependencyThree] graph
           expectDirect [dependencyOne, dependencyTwo, dependencyThree] graph
           expectEdges [] graph
-
-    it "constructs an accurate list of licenses" $ do
-          let licenses = findLicenses $(mkRelFile " ") & runInputConst nuspec & run
-          (foldr (\a b -> b ++ (licensesFound a)) [] licenses) `shouldMatchList` [License LicenseSPDX "Foo", License UnknownType "BSD-2-Clause", License LicenseSPDX "", License LicenseSPDX "  ", License LicenseFile "", License LicenseFile "doesnt-exist.txt", License LicenseURL "test.com"]

@@ -8,8 +8,6 @@ import Prologue
 
 import qualified Data.Map.Strict as M
 import qualified Data.ByteString as BS
-import           Polysemy
-import           Polysemy.Input
 
 import DepTypes
 import GraphUtil
@@ -50,7 +48,7 @@ spec_analyze = do
     it "reads a file and constructs an accurate graph" $ do
       case eitherDecodeStrict testFile of
         Right res -> do
-              let graph = analyze & runInputConst @ProjectJson res & run
+              let graph = buildGraph res
               expectDeps [dependencyOne, dependencyTwo, dependencyThree] graph
               expectDirect [dependencyOne, dependencyTwo, dependencyThree] graph
               expectEdges [] graph

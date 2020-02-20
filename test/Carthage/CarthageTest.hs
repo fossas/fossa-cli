@@ -5,31 +5,25 @@ module Carthage.CarthageTest
 
 import Prologue
 
-import Diagnostics
+import Control.Carrier.Error.Either
 import Effect.ReadFS
 import qualified Graphing as G
 import GraphUtil
-import Polysemy
-import Polysemy.Error
 import Strategy.Carthage
-import Types (BasicFileOpts(..))
 
 import Test.Tasty.Hspec
 
-testProjectEmpty :: BasicFileOpts
-testProjectEmpty = BasicFileOpts $(mkRelFile "test/Carthage/testdata/testempty/Cartfile.resolved")
+testProjectEmpty :: Path Rel File
+testProjectEmpty = $(mkRelFile "test/Carthage/testdata/testempty/Cartfile.resolved")
 
-testProjectComplex :: BasicFileOpts
-testProjectComplex = BasicFileOpts $(mkRelFile "test/Carthage/testdata/testproject/Cartfile.resolved")
+testProjectComplex :: Path Rel File
+testProjectComplex = $(mkRelFile "test/Carthage/testdata/testproject/Cartfile.resolved")
 
 spec_analyze :: Spec
 spec_analyze = do
   let runIt f = analyze f
-        & readFSToIO
+        & runReadFSIO
         & runError @ReadFSErr
-        -- & errorToIOFinal @ReadFSErr
-        & embedToFinal @IO
-        & runFinal
 
   emptyResult <- runIO $ runIt testProjectEmpty
   complexResult <- runIO $ runIt testProjectComplex

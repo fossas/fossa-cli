@@ -1,5 +1,4 @@
-{-# language TemplateHaskell #-}
-
+-- | Legacy/deprecated GraphBuilder interface. Kept for compatibility with old code
 module App.Scan.GraphBuilder
   ( GraphBuilder(..)
   , addNode
@@ -12,42 +11,50 @@ module App.Scan.GraphBuilder
 
 import Prologue hiding (parent)
 
-import Polysemy
-import Polysemy.State
-
+import Control.Algebra
+import Control.Carrier.State.Strict
 import qualified App.Scan.Graph as G
 import DepTypes
 
-data GraphBuilder m a where
-  AddNode   :: Dependency -> GraphBuilder m G.DepRef
-  AddEdge   :: G.DepRef -> G.DepRef -> GraphBuilder m ()
-  AddDirect :: G.DepRef -> GraphBuilder m ()
+data GraphBuilder m k
+  = AddNode Dependency (G.DepRef -> m k)
+  | AddEdge G.DepRef G.DepRef (m k)
+  | AddDirect G.DepRef (m k)
+  deriving Generic1
 
-makeSem_ ''GraphBuilder
+instance HFunctor GraphBuilder
+instance Effect GraphBuilder
 
 -- | Add a node to the graph. See 'G.addNode'
-addNode :: Member GraphBuilder r => Dependency -> Sem r G.DepRef
+addNode :: Has GraphBuilder sig m => Dependency -> m G.DepRef
+addNode node = send (AddNode node pure)
 
 -- | @addEdge parent child@ adds an edge to the graph between parent and child nodes. See 'G.addEdge'
-addEdge :: Member GraphBuilder r => G.DepRef -> G.DepRef -> Sem r ()
+addEdge :: Has GraphBuilder sig m => G.DepRef -> G.DepRef -> m ()
+addEdge parent child = send (AddEdge parent child (pure ()))
 
 -- | Add a direct dependency to the graph. See 'G.addDirect'
-addDirect :: Member GraphBuilder r => G.DepRef -> Sem r ()
+addDirect :: Has GraphBuilder sig m => G.DepRef -> m ()
+addDirect direct = send (AddDirect direct (pure ()))
 
--- | Run a GraphBuilder computation, returning both the graph and the result
-runGraphBuilder :: G.Graph -> Sem (GraphBuilder ': r) a -> Sem r (G.Graph, a)
-runGraphBuilder initial = runState initial . reinterpret (\case
-  AddNode dep -> state (G.addNode dep)
-  AddEdge parent child -> modify (G.addEdge parent child)
-  AddDirect ref -> modify (G.addDirect ref))
-{-# INLINE runGraphBuilder #-}
+runGraphBuilder :: G.Graph -> GraphBuilderC m a -> m (G.Graph, a)
+runGraphBuilder start = runState start . coerce
 
--- | Discard the result from a GraphBuilder computation, returning the graph
-evalGraphBuilder :: G.Graph -> Sem (GraphBuilder ': r) a -> Sem r G.Graph
-evalGraphBuilder initial = fmap fst . runGraphBuilder initial
-{-# INLINE evalGraphBuilder #-}
+evalGraphBuilder :: Functor m => G.Graph -> GraphBuilderC m a -> m G.Graph
+evalGraphBuilder start = execState start . runGraphBuilderC
 
-state :: Member (State s) r => (s -> (a,s)) -> Sem r a
+newtype GraphBuilderC m a = GraphBuilderC { runGraphBuilderC :: StateC G.Graph m a }
+ deriving (Functor, Applicative, Monad, MonadIO)
+
+instance (Algebra sig m, Effect sig) => Algebra (GraphBuilder :+: sig) (GraphBuilderC m) where
+  alg (R other) = alg (R (handleCoercible other))
+
+  alg (L act) = case act of
+    AddNode dep k -> GraphBuilderC (state (G.addNode dep)) >>= k
+    AddEdge parent child k -> GraphBuilderC (modify (G.addEdge parent child)) *> k
+    AddDirect dep k -> GraphBuilderC (modify (G.addDirect dep)) *> k
+
+state :: Has (State s) sig m => (s -> (a,s)) -> m a
 state f = do
   before <- get
   let (result, after) = f before

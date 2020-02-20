@@ -1,46 +1,25 @@
-module Strategy.NpmList
+module Strategy.Node.NpmList
   ( discover
-  , strategy
   , analyze
-  , configure
   ) where
 
 import Prologue
 
+import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
-import Polysemy
-import Polysemy.Input
-import Polysemy.Output
-
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
 import Graphing (Graphing, unfold)
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "npm-list"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \dir subdirs files -> do
-  for_ files $ \f ->
-    when (fileName f == "package.json") $
-      output (configure dir)
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \dir subdirs files -> do
+  case find (\f -> fileName f == "package.json") files of
+    Nothing -> pure ()
+    Just _ -> runSimpleStrategy "nodejs-npmlist" NodejsGroup $ analyze dir
 
   walkSkipNamed ["node_modules/"] subdirs
-
-strategy :: Strategy BasicDirOpts
-strategy = Strategy
-  { strategyName = "nodejs-npm"
-  , strategyAnalyze = \opts -> analyze & execInputJson @NpmOutput (targetDir opts) npmListCmd []
-  , strategyLicense = const (pure [])
-  , strategyModule = targetDir
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
-  }
 
 npmListCmd :: Command
 npmListCmd = Command
@@ -49,8 +28,23 @@ npmListCmd = Command
   , cmdAllowErr = NonEmptyStdout
   }
 
-analyze :: Member (Input NpmOutput) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ProjectClosure
+analyze dir = mkProjectClosure dir <$> execJson @NpmOutput dir npmListCmd []
+
+mkProjectClosure :: Path Rel Dir -> NpmOutput -> ProjectClosure
+mkProjectClosure dir npmOutput = ProjectClosure
+  { closureStrategyGroup = NodejsGroup
+  , closureStrategyName  = "nodejs-npmlist"
+  , closureModuleDir     = dir
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph npmOutput
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 buildGraph :: NpmOutput -> Graphing Dependency
 buildGraph top = unfold direct getDeps toDependency
@@ -64,9 +58,6 @@ buildGraph top = unfold direct getDeps toDependency
                , dependencyLocations = []
                , dependencyTags = M.empty
                }
-
-configure :: Path Rel Dir -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicDirOpts
 
 data NpmOutput = NpmOutput
   { outputInvalid      :: Maybe Bool

@@ -1,8 +1,6 @@
 module Strategy.Go.GoList
   ( discover
-  , strategy
   , analyze
-  , configure
 
   , Require(..)
   )
@@ -10,18 +8,13 @@ module Strategy.Go.GoList
 
 import Prologue hiding ((<?>))
 
+import Control.Carrier.Error.Either
 import qualified Data.ByteString.Lazy as BL
 import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
-
 import DepTypes
-import Diagnostics
 import Discovery.Walk
-import qualified Effect.Error as E
 import Effect.Exec
 import Effect.LabeledGrapher
 import Graphing (Graphing)
@@ -29,29 +22,13 @@ import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "golist"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \dir _ files ->
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "go.mod") files of
-    Nothing -> walkContinue
-    Just _  -> do
-      output (configure dir)
-      walkContinue
+    Nothing -> pure ()
+    Just file  -> runSimpleStrategy "golang-golist" GolangGroup $ analyze (parent file)
 
-strategy :: Strategy BasicDirOpts
-strategy = Strategy
-  { strategyName = "golang-golist"
-  , strategyAnalyze = analyze
-  , strategyLicense = const (pure [])
-  , strategyModule = targetDir
-  , strategyOptimal = Optimal
-  , strategyComplete = NotComplete
-  }
+  walkContinue
 
 data Require = Require
   { reqPackage :: Text
@@ -65,9 +42,14 @@ golistCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: Members '[Error ExecErr, Exec] r => BasicDirOpts -> Sem r (Graphing Dependency)
-analyze BasicDirOpts{..} = graphingGolang $ do
-  stdout <- execThrow targetDir golistCmd []
+analyze ::
+  ( Has Exec sig m
+  , Has (Error ExecErr) sig m
+  , Effect sig
+  )
+  => Path Rel Dir -> m ProjectClosure
+analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do
+  stdout <- execThrow dir golistCmd []
 
   let gomodLines = drop 1 . T.lines . T.filter (/= '\r') . decodeUtf8 . BL.toStrict $ stdout -- the first line is our package
       requires = mapMaybe toRequire gomodLines
@@ -80,19 +62,34 @@ analyze BasicDirOpts{..} = graphingGolang $ do
 
   buildGraph requires
 
-  -- TODO: logging/etc
-  _ <- E.try @ExecErr (fillInTransitive targetDir)
+  -- TODO: diagnostics?
+  _ <- try @ExecErr (fillInTransitive dir)
   pure ()
 
-buildGraph :: Member (LabeledGrapher GolangPackage) r => [Require] -> Sem r ()
+try :: Has (Error e) sig m => m a -> m (Either e a)
+try act = (Right <$> act) `catchError` (pure . Left)
+
+mkProjectClosure :: Path Rel Dir -> Graphing Dependency -> ProjectClosure
+mkProjectClosure dir graph = ProjectClosure
+  { closureStrategyGroup = GolangGroup
+  , closureStrategyName  = "golang-golist"
+  , closureModuleDir     = dir
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = graph
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = NotComplete
+    }
+
+buildGraph :: Has (LabeledGrapher GolangPackage) sig m => [Require] -> m ()
 buildGraph = traverse_ go
   where
 
-  go :: Member (LabeledGrapher GolangPackage) r => Require -> Sem r ()
+  go :: Has (LabeledGrapher GolangPackage) sig m => Require -> m ()
   go Require{..} = do
     let pkg = mkGolangPackage reqPackage
     direct pkg
     label pkg (mkGolangVersion reqVersion)
-
-configure :: Path Rel Dir -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicDirOpts

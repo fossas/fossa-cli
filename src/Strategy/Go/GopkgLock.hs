@@ -1,58 +1,37 @@
 module Strategy.Go.GopkgLock
   ( discover
-  , strategy
   , analyze
-  , configure
 
+  , GoLock(..)
   , Project(..)
 
   , buildGraph
+  , golockCodec
   )
   where
 
 import Prologue hiding ((.=))
 
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
-import Toml (TomlCodec, (.=))
-import qualified Toml
-
+import Control.Carrier.Error.Either
 import DepTypes
-import Diagnostics
 import Discovery.Walk
-import qualified Effect.Error as E
 import Effect.Exec
 import Effect.LabeledGrapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
+import qualified Toml
+import Toml (TomlCodec, (.=))
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "gopkglock"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files ->
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Gopkg.lock") files of
-    Nothing -> walkContinue
-    Just file  -> do
-      output (configure file)
-      walkContinue
+    Nothing -> pure ()
+    Just file -> runSimpleStrategy "golang-gopkglock" GolangGroup $ analyze file
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "golang-gopkglock"
-  , strategyAnalyze = analyze
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = NotComplete
-  }
+  walkContinue
 
 golockCodec :: TomlCodec GoLock
 golockCodec = GoLock
@@ -74,22 +53,43 @@ data Project = Project
   , projectRevision :: Text
   } deriving (Eq, Ord, Show, Generic)
 
-analyze :: Members '[Exec, ReadFS, Error ReadFSErr, Error ExecErr] r => BasicFileOpts -> Sem r (Graphing Dependency)
-analyze BasicFileOpts{..} = graphingGolang $ do
-  contents <- readContentsText targetFile
+analyze ::
+  ( Has ReadFS sig m
+  , Has (Error ReadFSErr) sig m
+  , Has Exec sig m
+  , Effect sig
+  )
+  => Path Rel File -> m ProjectClosure
+analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
+  contents <- readContentsText file
   case Toml.decode golockCodec contents of
-    Left err -> throw (FileParseError (fromRelFile targetFile) (Toml.prettyException err))
+    Left err -> throwError (FileParseError (fromRelFile file) (Toml.prettyException err))
     Right golock -> do
       buildGraph (lockProjects golock)
 
-      -- TODO: logging/etc
-      _ <- E.try @ExecErr (fillInTransitive (parent targetFile))
+      -- TODO: diagnostics?
+      _ <- runError @ExecErr (fillInTransitive (parent file))
       pure ()
 
-buildGraph :: Member (LabeledGrapher GolangPackage) r => [Project] -> Sem r ()
+mkProjectClosure :: Path Rel File -> Graphing Dependency -> ProjectClosure
+mkProjectClosure file graph = ProjectClosure
+  { closureStrategyGroup = GolangGroup
+  , closureStrategyName  = "golang-gopkglock"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = graph
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = NotComplete
+    }
+
+buildGraph :: Has (LabeledGrapher GolangPackage) sig m => [Project] -> m ()
 buildGraph = void . traverse_ go
   where
-  go :: Member (LabeledGrapher GolangPackage) r => Project -> Sem r ()
+  go :: Has (LabeledGrapher GolangPackage) sig m => Project -> m ()
   go Project{..} = do
     let pkg = mkGolangPackage projectName
 
@@ -98,6 +98,3 @@ buildGraph = void . traverse_ go
 
     -- label location when it exists
     traverse_ (label pkg . GolangLabelLocation) projectSource
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

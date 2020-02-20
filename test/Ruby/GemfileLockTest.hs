@@ -5,10 +5,8 @@ module Ruby.GemfileLockTest
 import Prologue
 
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Input
 import qualified Data.Text.IO as TIO
-import           Text.Megaparsec
+import Text.Megaparsec
 
 import DepTypes
 import Strategy.Ruby.GemfileLock
@@ -74,9 +72,8 @@ spec_analyze = do
 
   T.describe "gemfile lock analyzer" $
     T.it "produces the expected output" $ do
-      let graph = analyze
-            & runInputConst @[Section] gemfileLockSection
-            & run
+      let graph = buildGraph gemfileLockSection
+
       expectDeps [dependencyOne, dependencyTwo, dependencyThree] graph
       expectDirect [dependencyOne, dependencyTwo] graph
       expectEdges [ (dependencyOne, dependencyTwo)

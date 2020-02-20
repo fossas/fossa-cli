@@ -5,8 +5,6 @@ module Ruby.BundleShowTest
 import Prologue
 
 import qualified Data.Map.Strict as M
-import Polysemy
-import Polysemy.Input
 import qualified Data.Text.IO as TIO
 import Text.Megaparsec
 
@@ -52,9 +50,7 @@ spec_analyze = do
 
   describe "bundle show analyzer" $
     it "produces the expected output" $ do
-      let result = analyze
-            & runInputConst @[BundleShowDep] bundleShowOutput
-            & run
+      let result = buildGraph bundleShowOutput
       result `shouldBe` expected
 
   describe "bundle show parser" $ do

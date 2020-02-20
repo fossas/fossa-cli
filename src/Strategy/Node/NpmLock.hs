@@ -2,7 +2,6 @@ module Strategy.Node.NpmLock
   ( discover
   , analyze
   , buildGraph
-  , strategy
 
   , NpmPackageJson(..)
   , NpmDep(..)
@@ -11,45 +10,22 @@ module Strategy.Node.NpmLock
 
 import Prologue
 
+import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
+import DepTypes
+import Discovery.Walk
+import Effect.LabeledGrapher
+import Effect.ReadFS
+import Graphing (Graphing)
+import Types
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.LabeledGrapher
-import           Effect.ReadFS
-import           Graphing (Graphing)
-import           Types
-
-discover :: Discover
-discover = Discover
-  { discoverName = "npm-packagelock"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ subdirs files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "package-lock.json") files of
-    Just file -> output (configure file)
     Nothing -> pure ()
+    Just file -> runSimpleStrategy "npm-packagelock" NodejsGroup $ analyze file
 
   walkSkipNamed ["node_modules/"] subdirs
-
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "nodejs-packagelock"
-  , strategyAnalyze = \opts -> analyze
-      & fileInputJson @NpmPackageJson (targetFile opts)
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
-  }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts
 
 data NpmPackageJson = NpmPackageJson
   { packageName         :: Text
@@ -79,8 +55,23 @@ instance FromJSON NpmDep where
            <*> obj .:? "requires"
            <*> obj .:? "dependencies"
 
-analyze :: Member (Input NpmPackageJson) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze file = mkProjectClosure file <$> readContentsJson @NpmPackageJson file
+
+mkProjectClosure :: Path Rel File -> NpmPackageJson -> ProjectClosure
+mkProjectClosure file lock = ProjectClosure
+  { closureStrategyGroup = NodejsGroup
+  , closureStrategyName  = "nodejs-packagelock"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph lock
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 data NpmPackage = NpmPackage
   { pkgName    :: Text
@@ -99,10 +90,10 @@ buildGraph packageJson = run . withLabeling toDependency $ do
   pure ()
 
   where
-  addDirect :: Member (LabeledGrapher NpmPackage) r => Text -> NpmDep -> Sem r ()
+  addDirect :: Has (LabeledGrapher NpmPackage) sig m => Text -> NpmDep -> m ()
   addDirect name NpmDep{depVersion} = direct (NpmPackage name depVersion)
 
-  addDep :: Member (LabeledGrapher NpmPackage) r => Text -> NpmDep -> Sem r ()
+  addDep :: Has (LabeledGrapher NpmPackage) sig m => Text -> NpmDep -> m ()
   addDep name NpmDep{..} = do
     let pkg = NpmPackage name depVersion
 

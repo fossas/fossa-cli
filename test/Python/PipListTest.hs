@@ -5,8 +5,6 @@ module Python.PipListTest
 import Prologue
 
 import qualified Data.Map.Strict as M
-import Polysemy
-import Polysemy.Input
 
 import DepTypes
 import Effect.Grapher
@@ -46,7 +44,5 @@ spec_analyze :: Spec
 spec_analyze =
   describe "analyze" $
     it "produces the expected output" $ do
-      let result = analyze
-            & runInputConst @[PipListDep] pipListOutput
-            & run
+      let result = buildGraph pipListOutput
       result `shouldBe` expected

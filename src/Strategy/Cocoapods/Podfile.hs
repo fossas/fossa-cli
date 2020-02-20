@@ -1,8 +1,7 @@
 module Strategy.Cocoapods.Podfile
   ( discover
-  , strategy
   , analyze
-  , configure
+  , buildGraph
   , parsePodfile
 
   , Pod (..)
@@ -12,48 +11,44 @@ module Strategy.Cocoapods.Podfile
 
 import Prologue
 
+import Control.Effect.Error
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.ReadFS
-import           Graphing (Graphing, unfold)
-import           Types
-import           Text.Megaparsec hiding (label)
-import           Text.Megaparsec.Char
+import DepTypes
+import Discovery.Walk
+import Effect.ReadFS
+import Graphing (Graphing, unfold)
+import Types
+import Text.Megaparsec hiding (label)
+import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
-discover :: Discover
-discover = Discover
-  { discoverName = "podfile"
-  , discoverFunc = discover'
-  }
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
+  case find (\f -> fileName f == "Podfile") files of
+    Nothing -> pure ()
+    Just file -> runSimpleStrategy "cocoapods-podfile" CocoapodsGroup $ analyze file
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files -> do
-  for_ files $ \f ->
-    when (fileName f == "Podfile") $ output (configure f)
   walkContinue
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "podfile"
-  , strategyAnalyze = \opts -> analyze & fileInputParser parsePodfile (targetFile opts)
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze file = mkProjectClosure file <$> readContentsParser parsePodfile file
+
+mkProjectClosure :: Path Rel File -> Podfile -> ProjectClosure
+mkProjectClosure file podfile = ProjectClosure
+  { closureStrategyGroup = CocoapodsGroup
+  , closureStrategyName  = "cocoapods-podfilelock"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts
-
-analyze :: Member (Input Podfile) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph podfile
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 buildGraph :: Podfile -> Graphing Dependency
 buildGraph podfile = unfold direct (const []) toDependency

@@ -1,8 +1,6 @@
 module Strategy.Python.PipList
   ( discover
-  , strategy
   , analyze
-  , configure
 
   , PipListDep(..)
   , buildGraph
@@ -11,10 +9,9 @@ module Strategy.Python.PipList
 
 import Prologue
 
+import Control.Carrier.Lift
+import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
-import Polysemy
-import Polysemy.Input
-import Polysemy.Output
 
 import DepTypes
 import Discovery.Walk
@@ -22,19 +19,13 @@ import Effect.Exec
 import Graphing
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "piplist"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \dir _ files ->
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \dir _ files -> do
   case find (\f -> fileName f `elem` ["setup.py", "requirements.txt"]) files of
-    Nothing -> walkContinue
-    Just _  -> do
-      output (configure dir)
-      walkContinue
+    Nothing -> pure ()
+    Just _ -> runSimpleStrategy "python-piplist" PythonGroup $ analyze dir
+
+  walkContinue
 
 pipListCmd :: Command
 pipListCmd = Command
@@ -43,18 +34,23 @@ pipListCmd = Command
   , cmdAllowErr = Never
   }
 
-strategy :: Strategy BasicDirOpts
-strategy = Strategy
-  { strategyName = "python-piplist"
-  , strategyAnalyze = \opts -> analyze & execInputJson @[PipListDep] (targetDir opts) pipListCmd []
-  , strategyLicense = const (pure [])
-  , strategyModule = targetDir
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
+analyze :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ProjectClosure
+analyze dir = mkProjectClosure dir <$> execJson @[PipListDep] dir pipListCmd []
 
-analyze :: Member (Input [PipListDep]) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+mkProjectClosure :: Path Rel Dir -> [PipListDep] -> ProjectClosure
+mkProjectClosure dir deps = ProjectClosure
+  { closureStrategyGroup = PythonGroup
+  , closureStrategyName  = "python-piplist"
+  , closureModuleDir     = dir
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph deps
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 buildGraph :: [PipListDep] -> Graphing Dependency
 buildGraph xs = unfold xs (const []) toDependency
@@ -66,9 +62,6 @@ buildGraph xs = unfold xs (const []) toDependency
                , dependencyLocations = []
                , dependencyTags = M.empty
                }
-
-configure :: Path Rel Dir -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicDirOpts
 
 data PipListDep = PipListDep
   { depName    :: Text

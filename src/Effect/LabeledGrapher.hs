@@ -1,5 +1,3 @@
-{-# language TemplateHaskell #-}
-
 -- | LabeledGrapher is a thin State wrapper effect around 'L.LabeledGraphing'
 --
 -- It defines @direct@, @edge@, and @label@ combinators analagous to 'L.direct',
@@ -12,41 +10,57 @@ module Effect.LabeledGrapher
   , edge
   , label
 
-  , evalLabeledGrapher
+  , LabeledGrapherC(..)
   , runLabeledGrapher
+  , evalLabeledGrapher
   , withLabeling
 
   -- re-exports
   , L.PkgLabel
+  , module X
   ) where
 
 import Prologue hiding (parent)
 
-import Polysemy
-import Polysemy.State
+import Control.Algebra as X
+import Control.Carrier.State.Strict
 
 import qualified Graphing as G
 import qualified LabeledGraphing as L
 
-data LabeledGrapher ty m a where
-  Direct :: ty -> LabeledGrapher ty m ()
-  Edge :: ty -> ty -> LabeledGrapher ty m ()
-  Label :: ty -> L.PkgLabel ty -> LabeledGrapher ty m ()
+data LabeledGrapher ty m k
+  = Direct ty (m k)
+  | Edge ty ty (m k)
+  | Label ty (L.PkgLabel ty) (m k)
+  deriving (Generic1)
 
-makeSem ''LabeledGrapher
+instance HFunctor (LabeledGrapher ty)
+instance Effect (LabeledGrapher ty)
 
-evalLabeledGrapher :: (Ord ty, Ord (L.PkgLabel ty)) => Sem (LabeledGrapher ty ': r) a -> Sem r (L.LabeledGraphing ty)
-evalLabeledGrapher = fmap fst . runLabeledGrapher
+direct :: Has (LabeledGrapher ty) sig m => ty -> m ()
+direct ty = send (Direct ty (pure ()))
 
-runLabeledGrapher :: (Ord ty, Ord (L.PkgLabel ty)) => Sem (LabeledGrapher ty ': r) a -> Sem r (L.LabeledGraphing ty, a)
-runLabeledGrapher = runState L.empty . reinterpret
-  (\case
-      Direct ty -> modify (L.direct ty)
-      Edge parent child -> modify (L.edge parent child)
-      Label ty lbl -> modify (L.label ty lbl))
+edge :: Has (LabeledGrapher ty) sig m => ty -> ty -> m ()
+edge parent child = send (Edge parent child (pure ()))
 
--- | A convenience function for a very common pattern: building a graph in a
--- LabeledGrapher context, and immediately transforming the result into a
--- 'G.Graphing'
-withLabeling :: (Ord ty, Ord (L.PkgLabel ty), Ord res) => (ty -> Set (L.PkgLabel ty) -> res) -> Sem (LabeledGrapher ty ': r) a -> Sem r (G.Graphing res)
+label :: Has (LabeledGrapher ty) sig m => ty -> (L.PkgLabel ty) -> m ()
+label ty lbl = send (Label ty lbl (pure ()))
+
+runLabeledGrapher :: LabeledGrapherC ty m a -> m (L.LabeledGraphing ty, a)
+runLabeledGrapher = runState L.empty . runLabeledGrapherC
+
+evalLabeledGrapher :: Functor m => LabeledGrapherC ty m a -> m (L.LabeledGraphing ty)
+evalLabeledGrapher = execState L.empty . runLabeledGrapherC
+
+newtype LabeledGrapherC ty m a = LabeledGrapherC { runLabeledGrapherC :: StateC (L.LabeledGraphing ty) m a }
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+instance (Algebra sig m, Effect sig, Ord ty, Ord (L.PkgLabel ty)) => Algebra (LabeledGrapher ty :+: sig) (LabeledGrapherC ty m) where
+  alg (L act) = case act of
+    Direct ty k -> LabeledGrapherC (modify (L.direct ty)) *> k
+    Edge parent child k -> LabeledGrapherC (modify (L.edge parent child)) *> k
+    Label ty lbl k -> LabeledGrapherC (modify (L.label ty lbl)) *> k
+  alg (R other) = LabeledGrapherC (alg (R (handleCoercible other)))
+
+withLabeling :: (Functor m, Ord ty, Ord res) => (ty -> Set (L.PkgLabel ty) -> res) -> LabeledGrapherC ty m a -> m (G.Graphing res)
 withLabeling f = fmap (L.unlabel f) . evalLabeledGrapher

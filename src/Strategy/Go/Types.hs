@@ -13,7 +13,6 @@ import           Prologue hiding (parent)
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import           Polysemy
 
 import DepTypes
 import Effect.LabeledGrapher
@@ -38,7 +37,7 @@ mkGolangVersion :: Text -> PkgLabel GolangPackage
 mkGolangVersion = GolangLabelVersion . fixVersion
 
 -- | Monomorphic interpreter for @LabeledGrapher GolangPackage@ into a @Graphing Dependency@
-graphingGolang :: Sem (LabeledGrapher GolangPackage ': r) a -> Sem r (Graphing Dependency)
+graphingGolang :: Functor m => LabeledGrapherC GolangPackage m a -> m (Graphing Dependency)
 graphingGolang = withLabeling golangPackageToDependency
 
 golangPackageToDependency :: GolangPackage -> Set GolangLabel -> Dependency

@@ -5,20 +5,19 @@ module Strategy.Go.Transitive
 
 import Prologue hiding (empty)
 
-import           Control.Applicative (many)
+import Control.Algebra
+import Control.Applicative (many)
+import Control.Effect.Error
 import qualified Data.Attoparsec.ByteString as A
-import           Data.Aeson.Internal (formatError, iparse)
-import           Data.Aeson.Parser
+import Data.Aeson.Internal (formatError, iparse)
+import Data.Aeson.Parser
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
 import qualified Data.Vector as V
-import           Polysemy
-import           Polysemy.Error
 
-import           Diagnostics
-import           Effect.Exec
-import           Effect.LabeledGrapher
-import           Strategy.Go.Types
+import Effect.Exec
+import Effect.LabeledGrapher
+import Strategy.Go.Types
 
 goListCmd :: Command
 goListCmd = Command
@@ -71,10 +70,10 @@ decodeMany = eitherDecodeWith parser (iparse parseJSON)
     (objects :: [Value]) <- many json <* skipSpace <* A.endOfInput
     pure (Array (V.fromList objects))
 
-graphTransitive :: Member (LabeledGrapher GolangPackage) r => [Package] -> Sem r ()
+graphTransitive :: Has (LabeledGrapher GolangPackage) sig m => [Package] -> m ()
 graphTransitive = void . traverse_ go
   where
-  go :: Member (LabeledGrapher GolangPackage) r => Package -> Sem r ()
+  go :: Has (LabeledGrapher GolangPackage) sig m => Package -> m ()
   go package = unless (packageSystem package == Just True) $ do
     let -- when a gomod field is present, use that for the package import path
         -- otherwise use the top-level package import path
@@ -92,9 +91,14 @@ graphTransitive = void . traverse_ go
       Just ver -> label pkg (mkGolangVersion ver)
 
 
-fillInTransitive :: Members '[Error ExecErr, Exec, LabeledGrapher GolangPackage] r => Path Rel Dir -> Sem r ()
+fillInTransitive ::
+  ( Has (LabeledGrapher GolangPackage) sig m
+  , Has Exec sig m
+  , Has (Error ExecErr) sig m
+  )
+  => Path Rel Dir -> m ()
 fillInTransitive dir = do
   goListOutput <- execThrow dir goListCmd []
   case decodeMany goListOutput of
-    Left (path, err) -> throw (CommandParseError "go list -json all" (T.pack (formatError path err)))
+    Left (path, err) -> throwError (CommandParseError "go list -json all" (T.pack (formatError path err)))
     Right (packages :: [Package]) -> graphTransitive packages

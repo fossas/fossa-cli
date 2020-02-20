@@ -11,8 +11,6 @@ import DepTypes
 import GraphUtil
 import Strategy.NuGet.PackagesConfig
 import Parse.XML
-import Polysemy
-import Polysemy.Input
 import Test.Tasty.Hspec
 
 dependencyOne :: Dependency
@@ -48,7 +46,7 @@ spec_analyze = do
         Left err -> expectationFailure (T.unpack ("could not parse packages.config file" <> xmlErrorPretty err))
 
     it "constructs an accurate graph" $ do
-          let graph = analyze & runInputConst @PackagesConfig packagesConfig & run
+          let graph = buildGraph packagesConfig
           expectDeps [dependencyOne, dependencyTwo] graph
           expectDirect [dependencyOne, dependencyTwo] graph
           expectEdges [] graph

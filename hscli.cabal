@@ -56,6 +56,8 @@ common deps
     , containers                   ^>=0.6.0
     , file-embed                   ^>=0.0.11
     , filepath                     ^>=1.4.2.1
+    , fused-effects                ^>=1.0.0.1
+    , fused-effects-exceptions     ^>=1.0.0.0
     , git-config                   ^>=0.1.2
     , megaparsec                   ^>=8.0
     , modern-uri                   ^>=0.3.1
@@ -64,7 +66,6 @@ common deps
     , optparse-applicative         ^>=0.15.1
     , path                         ^>=0.7
     , path-io                      ^>=1.6.0
-    , polysemy                     ^>=1.2.1
     , prettyprinter                ^>=1.6
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , stm                          ^>=2.5.0
@@ -94,12 +95,14 @@ library
     App.Scan.ProjectInference
     AppLicense
     AppLicense.Scan
-    Control.Parallel
+    Control.Carrier.Output.IO
+    Control.Carrier.TaskPool
+    Control.Carrier.Threaded
+    Control.Effect.Output
+    Control.Effect.TaskPool
+    Control.Effect.Threaded
     DepTypes
-    Diagnostics
-    Discovery
     Discovery.Walk
-    Effect.Error
     Effect.Exec
     Effect.Grapher
     Effect.LabeledGrapher
@@ -109,9 +112,9 @@ library
     LabeledGraphing
     Parse.XML
     Prologue
+    Strategy.Carthage
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
-    Strategy.Carthage
     Strategy.Go.GlideLock
     Strategy.Go.GoList
     Strategy.Go.Gomod
@@ -126,18 +129,18 @@ library
     Strategy.Maven.Pom.Closure
     Strategy.Maven.Pom.PomFile
     Strategy.Maven.Pom.Resolver
+    Strategy.Node.NpmList
     Strategy.Node.NpmLock
     Strategy.Node.PackageJson
     Strategy.Node.YarnLock
-    Strategy.NpmList
     Strategy.NuGet.Nuspec
     Strategy.NuGet.PackageReference
     Strategy.NuGet.PackagesConfig
     Strategy.NuGet.Paket
     Strategy.NuGet.ProjectAssetsJson
     Strategy.NuGet.ProjectJson
-    Strategy.Python.Pipenv
     Strategy.Python.PipList
+    Strategy.Python.Pipenv
     Strategy.Python.ReqTxt
     Strategy.Python.SetupPy
     Strategy.Python.Util
@@ -152,9 +155,7 @@ executable hscli
   main-is:        Main.hs
   hs-source-dirs: app
   build-depends:  hscli
-  ghc-options:
-    -flate-specialise -fspecialize-aggressively -O -threaded
-    -with-rtsopts=-N
+  ghc-options:    -threaded -with-rtsopts=-N
 
 executable pathfinder
   import:         lang
@@ -174,9 +175,9 @@ test-suite tests
 
   -- cabal-fmt: expand test
   other-modules:
-    Cocoapods.PodfileTest
-    Cocoapods.PodfileLockTest
     Carthage.CarthageTest
+    Cocoapods.PodfileLockTest
+    Cocoapods.PodfileTest
     Go.GlideLockTest
     Go.GoListTest
     Go.GomodTest
@@ -193,8 +194,8 @@ test-suite tests
     NuGet.PaketTest
     NuGet.ProjectAssetsJsonTest
     NuGet.ProjectJsonTest
-    Python.PipenvTest
     Python.PipListTest
+    Python.PipenvTest
     Python.ReqTxtTest
     Python.RequirementsTest
     Python.SetupPyTest

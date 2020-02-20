@@ -1,8 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
+
 module Strategy.Carthage
   ( discover
   , analyze
-  , strategy
   , ResolvedEntry(..)
   , EntryType(..)
   ) where
@@ -10,17 +10,14 @@ module Strategy.Carthage
 import qualified Prelude as Unsafe
 import Prologue
 
+import Control.Carrier.Error.Either
 import Data.Char (isSpace)
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
-import Diagnostics
 import Discovery.Walk
 import DepTypes
 import Effect.Grapher
@@ -28,35 +25,39 @@ import Effect.ReadFS
 import qualified Graphing as G
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "carthage"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ subdirs files ->
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ subdirs files ->
   case find (\f -> fileName f == "Cartfile.resolved") files of
     Nothing -> walkContinue
     Just file -> do
-      output (configure file)
+      runSimpleStrategy "carthage-lock" CarthageGroup $ fmap (mkProjectClosure file) (analyze file)
       walkSkipAll subdirs
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "carthage"
-  , strategyAnalyze = fmap (G.gmap toDependency) . analyze
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
+mkProjectClosure :: Path Rel File -> G.Graphing ResolvedEntry -> ProjectClosure
+mkProjectClosure file graph = ProjectClosure
+  { closureStrategyGroup = CarthageGroup
+  , closureStrategyName  = "carthage-lock"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = G.gmap toDependency graph
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 relCheckoutsDir :: Path Rel File -> Path Rel Dir
 relCheckoutsDir file = parent file </> $(mkRelDir "Carthage/Checkouts")
 
-analyze :: Members '[ReadFS, Error ReadFSErr] r => BasicFileOpts -> Sem r (G.Graphing ResolvedEntry)
-analyze (BasicFileOpts topPath) = evalGrapher $ do
+analyze ::
+  ( Has ReadFS sig m
+  , Has (Error ReadFSErr) sig m
+  , Effect sig
+  )
+  => Path Rel File -> m (G.Graphing ResolvedEntry)
+analyze topPath = evalGrapher $ do
   -- We only care about top-level resolved cartfile errors
   topEntries <- fromEither =<< analyzeSingle topPath
 
@@ -66,9 +67,12 @@ analyze (BasicFileOpts topPath) = evalGrapher $ do
 
   where
 
-  analyzeSingle :: Members '[ReadFS, Grapher ResolvedEntry] r
-                => Path Rel File
-                -> Sem r (Either ReadFSErr [ResolvedEntry])
+  analyzeSingle ::
+    ( Has ReadFS sig m
+    , Has (Grapher ResolvedEntry) sig m
+    , Effect sig
+    )
+    => Path Rel File -> m (Either ReadFSErr [ResolvedEntry])
   analyzeSingle path = do
     maybeEntries :: Either ReadFSErr [ResolvedEntry] <- readContentsParser' resolvedCartfileParser path
 
@@ -76,10 +80,12 @@ analyze (BasicFileOpts topPath) = evalGrapher $ do
       traverse_ (descend (relCheckoutsDir path)) entries
       pure entries
 
-  descend :: Members '[ReadFS, Grapher ResolvedEntry] r
-          => Path Rel Dir -- Checkouts directory
-          -> ResolvedEntry
-          -> Sem r ()
+  descend ::
+    ( Has ReadFS sig m
+    , Has (Grapher ResolvedEntry) sig m
+    , Effect sig
+    )
+    => Path Rel Dir {- checkouts directory -} -> ResolvedEntry -> m ()
   descend checkoutsDir entry = do
     let checkoutName = T.unpack $ entryToCheckoutName entry
 
@@ -163,6 +169,3 @@ data ResolvedEntry = ResolvedEntry
 
 data EntryType = GithubType | GitType | BinaryType
   deriving (Eq, Ord, Show, Generic)
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

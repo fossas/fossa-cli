@@ -1,30 +1,25 @@
 module Strategy.Go.GopkgToml
   ( discover
-  , strategy
-  --, analyze
-  , configure
 
   , Gopkg(..)
   , PkgConstraint(..)
 
   , analyze
   , buildGraph
+
+  , gopkgCodec
   )
   where
 
 import Prologue hiding ((.=), empty)
 
+import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
 import Toml (TomlCodec, (.=))
 import qualified Toml
 
 import DepTypes
-import Diagnostics
 import Discovery.Walk
-import qualified Effect.Error as E
 import Effect.Exec
 import Effect.LabeledGrapher
 import Effect.ReadFS
@@ -33,29 +28,13 @@ import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "gopkgtoml"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files ->
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Gopkg.toml") files of
-    Nothing -> walkContinue
-    Just file  -> do
-      output (configure file)
-      walkContinue
+    Nothing -> pure ()
+    Just file -> runSimpleStrategy "golang-gopkgtoml" GolangGroup $ analyze file
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "golang-gopkgtoml"
-  , strategyAnalyze = analyze
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . targetFile
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
+  walkContinue
 
 gopkgCodec :: TomlCodec Gopkg
 gopkgCodec = Gopkg
@@ -84,22 +63,43 @@ data PkgConstraint = PkgConstraint
   }
   deriving (Eq, Ord, Show, Generic)
 
-analyze :: Members '[ReadFS, Exec, Error ReadFSErr, Error ExecErr] r => BasicFileOpts -> Sem r (Graphing Dependency)
-analyze BasicFileOpts{..} = graphingGolang $ do
-  contents <- readContentsText targetFile
+analyze ::
+  ( Has ReadFS sig m
+  , Has (Error ReadFSErr) sig m
+  , Has Exec sig m
+  , Effect sig
+  )
+  => Path Rel File -> m ProjectClosure
+analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
+  contents <- readContentsText file
   case Toml.decode gopkgCodec contents of
-    Left err -> throw (FileParseError (fromRelFile targetFile) (Toml.prettyException err))
+    Left err -> throwError (FileParseError (fromRelFile file) (Toml.prettyException err))
     Right gopkg -> do
       buildGraph gopkg
 
-      -- TODO: logging/etc
-      _ <- E.try @ExecErr (fillInTransitive (parent targetFile))
+      -- TODO: diagnostics?
+      _ <- runError @ExecErr (fillInTransitive (parent file))
       pure ()
 
-buildGraph :: Member (LabeledGrapher GolangPackage) r => Gopkg -> Sem r ()
+mkProjectClosure :: Path Rel File -> Graphing Dependency -> ProjectClosure
+mkProjectClosure file graph = ProjectClosure
+  { closureStrategyGroup = GolangGroup
+  , closureStrategyName  = "golang-gopkgtoml"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = graph
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = NotComplete
+    }
+
+buildGraph :: Has (LabeledGrapher GolangPackage) sig m => Gopkg -> m ()
 buildGraph = void . M.traverseWithKey go . resolve
   where
-  go :: Member (LabeledGrapher GolangPackage) r => Text -> PkgConstraint -> Sem r ()
+  go :: Has (LabeledGrapher GolangPackage) sig m => Text -> PkgConstraint -> m ()
   go name PkgConstraint{..} = do
     let pkg = mkGolangPackage name
 
@@ -121,6 +121,3 @@ resolve gopkg = overridden
 
   inserting :: PkgConstraint -> Map Text PkgConstraint -> Map Text PkgConstraint
   inserting constraint = M.insert (constraintName constraint) constraint
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

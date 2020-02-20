@@ -1,7 +1,6 @@
-{-# language TemplateHaskell #-}
-
 module Effect.Exec
   ( Exec(..)
+  , ExecErr(..)
   , exec
   , execThrow
   , Command(..)
@@ -10,34 +9,29 @@ module Effect.Exec
   , execParser
   , execJson
 
-  , execInputParser
-  , execInputJson
-
-  , execToIO
-  , execConst
+  , ExecIOC(..)
+  , runExecIO
   , module System.Exit
+  , module X
   ) where
 
 import Prologue
 
-import           Control.Exception hiding (throw)
-import           Control.Monad.Except (ExceptT(..), runExceptT)
+import Control.Algebra as X
+import Control.Carrier.Error.Either
+import qualified Control.Exception as Exc
+import Control.Monad.Except (ExceptT(..), runExceptT)
 import qualified Data.ByteString.Lazy as BL
-import           Data.ByteString.Lazy.Optics
+import Data.ByteString.Lazy.Optics
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
-import           Data.Text.Lazy.Encoding (decodeUtf8)
-import           Optics
-import           Path.IO
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Error hiding (catch)
-import           System.Exit (ExitCode(..))
-import           System.Process.Typed
-import           Text.Megaparsec (Parsec, runParser)
-import           Text.Megaparsec.Error (errorBundlePretty)
-
-import Diagnostics
+import Data.Text.Lazy.Encoding (decodeUtf8)
+import Optics
+import Path.IO
+import System.Exit (ExitCode(..))
+import System.Process.Typed
+import Text.Megaparsec (Parsec, runParser)
+import Text.Megaparsec.Error (errorBundlePretty)
 
 data Command = Command
   { cmdNames    :: [String] -- ^ Possible command names. E.g., "pip", "pip3", "./gradlew".
@@ -60,60 +54,65 @@ data AllowErr =
 type Stdout = BL.ByteString
 type Stderr = BL.ByteString
 
-data Exec m a where
+data Exec m k
   -- | Exec runs a command and returns either:
   -- - stdout when any of the 'cmdNames' succeed
   -- - failure descriptions for all of the commands we tried
-  Exec :: Path x Dir -> Command -> [String] -> Exec m (Either [CmdFailure] Stdout)
+  = forall x. Exec (Path x Dir) Command [String] (Either [CmdFailure] Stdout -> m k)
 
-makeSem_ ''Exec
+-- TODO: include info about CmdFailures as appropriate
+data ExecErr =
+    CommandFailed Text Text -- ^ Command execution failed, usually from a non-zero exit. command, stderr
+  | CommandParseError Text Text -- ^ Command output couldn't be parsed. command, err
+  deriving (Eq, Ord, Show, Generic, Typeable)
+
+instance HFunctor Exec where
+  hmap f (Exec dir cmd args k) = Exec dir cmd args (f . k)
+
+instance Effect Exec where
+  thread ctx handle (Exec dir cmd args k) = Exec dir cmd args (handle . (<$ ctx) . k)
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
-exec :: Member Exec r => Path x Dir -> Command -> [String] -> Sem r (Either [CmdFailure] Stdout)
+exec :: Has Exec sig m => Path x Dir -> Command -> [String] -> m (Either [CmdFailure] Stdout)
+exec dir cmd args = send (Exec dir cmd args pure)
 
 type Parser = Parsec Void Text
 
 -- | Parse the stdout of a command
-execParser :: Members '[Exec, Error ExecErr] r => Parser a -> Path x Dir -> Command -> [String] -> Sem r a
+execParser :: (Has Exec sig m, Has (Error ExecErr) sig m) => Parser a -> Path x Dir -> Command -> [String] -> m a
 execParser parser dir cmd args = do
   stdout <- execThrow dir cmd args
   case runParser parser "" (TL.toStrict (decodeUtf8 stdout)) of
-    Left err -> throw (CommandParseError "" (T.pack (errorBundlePretty err))) -- TODO: command name
+    Left err -> throwError (CommandParseError "" (T.pack (errorBundlePretty err))) -- TODO: command name
     Right a -> pure a
 
 -- | Parse the JSON stdout of a command
-execJson :: (FromJSON a, Members '[Exec, Error ExecErr] r) => Path x Dir -> Command -> [String] -> Sem r a
+execJson :: (FromJSON a, Has Exec sig m, Has (Error ExecErr) sig m) => Path x Dir -> Command -> [String] -> m a
 execJson dir cmd args = do
   stdout <- execThrow dir cmd args
   case eitherDecode stdout of
-    Left err -> throw (CommandParseError "" (T.pack (show err))) -- TODO: command name
+    Left err -> throwError (CommandParseError "" (T.pack (show err))) -- TODO: command name
     Right a -> pure a
 
--- | Interpret an 'Input' effect by parsing stdout of a command
-execInputParser :: Members '[Exec, Error ExecErr] r => Parser i -> Path x Dir -> Command -> [String] -> Sem (Input i ': r) a -> Sem r a
-execInputParser parser dir cmd args = interpret $ \case
-  Input -> execParser parser dir cmd args
-{-# INLINE execInputParser #-}
-
--- | Interpret an 'Input' effect by parsing JSON stdout of a command
-execInputJson :: (FromJSON i, Members '[Exec, Error ExecErr] r) => Path x Dir -> Command -> [String] -> Sem (Input i ': r) a -> Sem r a
-execInputJson dir cmd args = interpret $ \case
-  Input -> execJson dir cmd args
-{-# INLINE execInputJson #-}
-
 -- | A variant of 'exec' that throws a 'ExecErr' when the command returns a non-zero exit code
-execThrow :: Members '[Exec, Error ExecErr] r => Path x Dir -> Command -> [String] -> Sem r BL.ByteString
+execThrow :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path x Dir -> Command -> [String] -> m BL.ByteString
 execThrow dir cmd args = do
   result <- exec dir cmd args
   case result of
-    Left failures -> throw (CommandFailed "" (T.pack (show failures))) -- TODO: better error
+    Left failures -> throwError (CommandFailed "" (T.pack (show failures))) -- TODO: better error
     Right stdout -> pure stdout
 {-# INLINE execThrow #-}
 
--- | Interpret an Exec effect by running commands
-execToIO :: Member (Embed IO) r => Sem (Exec ': r) a -> Sem r a
-execToIO = interpret $ \case
-  Exec dir cmd args -> do
+runExecIO :: ExecIOC m a -> m a
+runExecIO = runExecIOC
+
+newtype ExecIOC m a = ExecIOC { runExecIOC :: m a }
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+instance (Algebra sig m, MonadIO m) => Algebra (Exec :+: sig) (ExecIOC m) where
+  alg (R other) = ExecIOC (alg (handleCoercible other))
+
+  alg (L (Exec dir cmd args k)) = (k =<<) . ExecIOC $ liftIO $ do
     absolute <- makeAbsolute dir
     -- TODO: disgusting/unreadable
     -- We use `ExceptT [CmdFailure] IO Stdout` here because it has the Alternative instance we want.
@@ -127,7 +126,7 @@ execToIO = interpret $ \case
     -- This is the behavior of `asum` with ExceptT: it'll run all of the ExceptT actions in the list, combining
     -- errors. When it finds a successful result, it'll return that instead of the accumulated errors
     let runCmd :: String -> ExceptT [CmdFailure] IO Stdout
-        runCmd cmdName = ExceptT $ handle (\(e :: IOException) -> pure (Left [CmdFailure cmdName (ExitFailure (-1)) (show e ^. packedChars)])) $ do
+        runCmd cmdName = ExceptT $ Exc.handle (\(e :: Exc.IOException) -> pure (Left [CmdFailure cmdName (ExitFailure (-1)) (show e ^. packedChars)])) $ do
           (exitcode, stdout, stderr) <- readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName (cmdBaseArgs cmd <> args)))
           case (exitcode, cmdAllowErr cmd) of
             (ExitSuccess, _) -> pure (Right stdout)
@@ -137,11 +136,5 @@ execToIO = interpret $ \case
                 then pure (Left [CmdFailure cmdName exitcode stderr])
                 else pure (Right stdout)
             (_, Always) -> pure (Right stdout)
-    embed $ runExceptT $ asum (map runCmd (cmdNames cmd))
-{-# INLINE execToIO #-}
-
--- | Interpret an Exec effect by providing a mock return value
-execConst :: Either [CmdFailure] Stdout -> Sem (Exec ': r) a -> Sem r a
-execConst out = interpret $ \case
-  Exec{} -> pure out
-{-# INLINE execConst #-}
+    res <- runExceptT $ asum (map runCmd (cmdNames cmd))
+    pure res

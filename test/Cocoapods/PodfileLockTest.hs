@@ -5,8 +5,6 @@ module Cocoapods.PodfileLockTest
 import Prologue
 
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Input
 import qualified Data.Text.IO as TIO
 import           Text.Megaparsec
 
@@ -58,9 +56,8 @@ spec_analyze :: T.Spec
 spec_analyze = do
   T.describe "podfile lock analyzer" $
     T.it "produces the expected output" $ do
-      let graph = analyze
-            & runInputConst @[Section] [podSection, dependencySection]
-            & run
+      let graph = buildGraph [podSection, dependencySection]
+
       expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
       expectDirect [dependencyOne, dependencyThree] graph
       expectEdges [ (dependencyOne, dependencyTwo)

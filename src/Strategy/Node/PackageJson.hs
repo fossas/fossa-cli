@@ -1,6 +1,5 @@
 module Strategy.Node.PackageJson
   ( discover
-  , strategy
   , buildGraph
 
   , PackageJson(..)
@@ -8,42 +7,22 @@ module Strategy.Node.PackageJson
 
 import Prologue
 
+import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
+import DepTypes
+import Discovery.Walk
+import Effect.LabeledGrapher
+import Effect.ReadFS
+import Graphing (Graphing)
+import Types
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.LabeledGrapher
-import           Effect.ReadFS
-import           Graphing (Graphing)
-import           Types
-
-discover :: Discover
-discover = Discover
-  { discoverName = "packagejson"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ subdirs files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "package.json") files of
-    Just file -> output (configure file)
     Nothing -> pure ()
+    Just file -> runSimpleStrategy "nodejs-packagejson" NodejsGroup $ analyze file
 
   walkSkipNamed ["node_modules/"] subdirs
-
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "nodejs-packagejson"
-  , strategyAnalyze = \opts -> analyze
-      & fileInputJson @PackageJson (targetFile opts)
-  , strategyLicense = const (pure [])
-  , strategyModule = parent. targetFile
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
 
 data PackageJson = PackageJson
   { packageDeps    :: Map Text Text
@@ -55,8 +34,23 @@ instance FromJSON PackageJson where
     PackageJson <$> obj .:? "dependencies"    .!= M.empty
                 <*> obj .:? "devDependencies" .!= M.empty
 
-analyze :: Member (Input PackageJson) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze file = mkProjectClosure file <$> readContentsJson @PackageJson file
+
+mkProjectClosure :: Path Rel File -> PackageJson -> ProjectClosure
+mkProjectClosure file package = ProjectClosure
+  { closureStrategyGroup = NodejsGroup
+  , closureStrategyName  = "nodejs-packagejson"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph package
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 -- TODO: decode version constraints
 data NodePackage = NodePackage
@@ -77,7 +71,7 @@ buildGraph PackageJson{..} = run . withLabeling toDependency $ do
 
   where
 
-  addDep :: Member (LabeledGrapher NodePackage) r => Text -> Text -> Text -> Sem r ()
+  addDep :: Has (LabeledGrapher NodePackage) sig m => Text -> Text -> Text -> m ()
   addDep env name constraint = do
     let pkg = NodePackage name constraint
     direct pkg
@@ -98,6 +92,3 @@ buildGraph PackageJson{..} = run . withLabeling toDependency $ do
     , dependencyLocations = []
     , dependencyTags = M.empty
     }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

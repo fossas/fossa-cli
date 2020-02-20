@@ -5,8 +5,6 @@ module Cocoapods.PodfileTest
 import Prologue
 
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Input
 import qualified Data.Text.IO as TIO
 import           Text.Megaparsec
 
@@ -70,9 +68,8 @@ spec_analyze :: T.Spec
 spec_analyze = do
   T.describe "podfile analyzer" $
     T.it "produces the expected output" $ do
-      let graph = analyze
-            & runInputConst @Podfile testPodfile
-            & run
+      let graph = buildGraph testPodfile
+
       expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
       expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
       expectEdges [] graph

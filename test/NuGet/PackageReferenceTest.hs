@@ -12,8 +12,6 @@ import qualified Data.Text.IO as TIO
 import DepTypes
 import GraphUtil
 import Parse.XML
-import Polysemy
-import Polysemy.Input
 import Strategy.NuGet.PackageReference
 import Test.Tasty.Hspec
 
@@ -78,7 +76,7 @@ spec_analyze = do
         Left err -> expectationFailure (T.unpack ("could not parse package reference file" <> xmlErrorPretty err))
 
     it "constructs an accurate graph" $ do
-          let graph = analyze & runInputConst @PackageReference packageReference & run
+          let graph = buildGraph packageReference
           expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
           expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
           expectEdges [] graph

@@ -1,53 +1,49 @@
 
 module Strategy.Python.ReqTxt
   ( discover
-  , strategy
   , analyze
-  , configure
   )
   where
 
 import Prologue
 
-import Polysemy
-import Polysemy.Input
-import Polysemy.Output
+import Control.Carrier.Error.Either
+import Data.List (isInfixOf)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
 import Discovery.Walk
-import DepTypes
-import Graphing
 import Effect.ReadFS
 import Strategy.Python.Util
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "requirements.txt"
-  , discoverFunc = discover'
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
+  let txtFiles = filter (\f -> "req" `isInfixOf` fileName f
+                            && ".txt" `isSuffixOf` fileName f) files
+
+  for_ txtFiles $ \file ->
+    runSimpleStrategy "python-requirements" PythonGroup $ analyze file
+
+  walkContinue
+
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze file = mkProjectClosure file <$> readContentsParser requirementsTxtParser file
+
+mkProjectClosure :: Path Rel File -> [Req] -> ProjectClosure
+mkProjectClosure file reqs = ProjectClosure
+  { closureStrategyGroup = PythonGroup
+  , closureStrategyName  = "python-requirements"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files ->
-  case find (\f -> fileName f == "requirements.txt") files of
-    Nothing -> walkContinue
-    Just file  -> do
-      output (configure file)
-      walkContinue
-
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "python-requirements"
-  , strategyAnalyze = \opts -> analyze & fileInputParser requirementsTxtParser (targetFile opts)
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = NotComplete
-  }
-
-analyze :: Member (Input [Req]) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph reqs
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 type Parser = Parsec Void Text
 
@@ -77,6 +73,3 @@ requirementsTxtParser = concat <$> ((line `sepBy` eol) <* eof)
      <|> pure [] -- empty line
 
   oneOfS = asum . map string
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

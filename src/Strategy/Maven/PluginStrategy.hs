@@ -1,71 +1,60 @@
 module Strategy.Maven.PluginStrategy
   ( discover
-  , strategy
   , analyze
   , buildGraph
   ) where
 
 import Prologue
 
+import Control.Carrier.Error.Either
+import Control.Effect.Exception
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Error
-import           Polysemy.Output
-import           Polysemy.Resource
+import DepTypes
+import Discovery.Walk
+import Effect.Exec
+import Effect.Grapher hiding (Edge)
+import Effect.ReadFS
+import Graphing (Graphing)
+import Strategy.Maven.Plugin
+import Types
 
-import           DepTypes
-import           Diagnostics
-import           Discovery.Walk
-import           Effect.Exec
-import           Effect.Grapher hiding (Edge)
-import           Effect.ReadFS
-import           Graphing (Graphing)
-import           Strategy.Maven.Plugin
-import           Types
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ subdirs files -> do
+  case find (\f -> fileName f == "pom.xml") files of
+    Nothing -> walkContinue
+    Just file -> do
+      runSimpleStrategy "maven-cli" MavenGroup $ analyze (parent file)
+      walkSkipAll subdirs
 
-discover :: Discover
-discover = Discover
-  { discoverName = "maven"
-  , discoverFunc = discover'
+analyze ::
+  ( Has (Lift IO) sig m
+  , Has ReadFS sig m
+  , Has (Error ReadFSErr) sig m
+  , Has Exec sig m
+  , Has (Error ExecErr) sig m
+  , MonadIO m
+  )
+  => Path Rel Dir -> m ProjectClosure
+analyze dir = withUnpackedPlugin $ \filepath -> do
+  installPlugin dir filepath
+  execPlugin dir
+  pluginOutput <- parsePluginOutput dir
+  pure (mkProjectClosure dir pluginOutput)
+
+mkProjectClosure :: Path Rel Dir -> PluginOutput -> ProjectClosure
+mkProjectClosure dir pluginOutput = ProjectClosure
+  { closureStrategyGroup = MavenGroup
+  , closureStrategyName  = "maven-cli"
+  , closureModuleDir     = dir
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
-
-mavenValidateCmd :: Command
-mavenValidateCmd = Command
-  { cmdNames = ["mvn"]
-  , cmdBaseArgs = ["validate"]
-  , cmdAllowErr = Never
-  }
-
-discover' :: forall r. Members '[Embed IO, Exec, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \dir subdirs files -> do
-  let buildscripts = filter (\f -> fileName f == "pom.xml") files
-
-  if null buildscripts
-    then walkContinue
-    else do
-      res <- exec dir mavenValidateCmd []
-      case res of
-        Left _ -> walkContinue
-        Right _ -> do
-          output (configure dir)
-          walkSkipAll subdirs
-
-strategy :: Strategy BasicDirOpts
-strategy = Strategy
-  { strategyName = "maven-cli"
-  , strategyAnalyze = analyze
-  , strategyLicense = const (pure [])
-  , strategyModule = targetDir
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
-  }
-
-analyze :: Members '[Embed IO, Resource, Exec, Error ExecErr, ReadFS, Error ReadFSErr] r => BasicDirOpts -> Sem r (Graphing Dependency)
-analyze BasicDirOpts{..} = withUnpackedPlugin $ \filepath -> do
-  installPlugin targetDir filepath
-  execPlugin targetDir
-  pluginOutput <- parsePluginOutput targetDir
-  pure (buildGraph pluginOutput)
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph pluginOutput
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 buildGraph :: PluginOutput -> Graphing Dependency
 buildGraph PluginOutput{..} = run $ evalGrapher $ do
@@ -90,7 +79,7 @@ buildGraph PluginOutput{..} = run $ evalGrapher $ do
       [("optional", ["true"]) | artifactOptional]
     }
 
-  visitEdge :: Member (Grapher Dependency) r => Map Int Dependency -> Edge -> Sem r ()
+  visitEdge :: Has (Grapher Dependency) sig m => Map Int Dependency -> Edge -> m ()
   visitEdge refsByNumeric Edge{..} = do
     let refs = do
           parentRef <- M.lookup edgeFrom refsByNumeric
@@ -101,6 +90,3 @@ buildGraph PluginOutput{..} = run $ evalGrapher $ do
 
   indexBy :: Ord k => (v -> k) -> [v] -> Map k v
   indexBy f = M.fromList . map (\v -> (f v, v))
-
-configure :: Path Rel Dir -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicDirOpts

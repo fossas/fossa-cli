@@ -1,22 +1,17 @@
 module Strategy.Maven.Pom
   ( discover
-  , strategy
   ) where
 
 import Prologue
 
 import qualified Algebra.Graph.AdjacencyMap as AM
+import Control.Carrier.Error.Either
+import Control.Effect.Output
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Text as T
-import           Polysemy
-import           Polysemy.Error
-import           Polysemy.Output
-
-import Diagnostics
 import DepTypes
 import Effect.LabeledGrapher
-import Effect.ReadFS
 import qualified Graphing as G
 import Strategy.Maven.Pom.Closure
 import Strategy.Maven.Pom.PomFile
@@ -27,33 +22,25 @@ data MavenStrategyOpts = MavenStrategyOpts
   , strategyGraph :: G.Graphing Dependency
   } deriving (Eq, Ord, Show, Generic)
 
-strategy :: Strategy MavenStrategyOpts
-strategy = Strategy
-  { strategyName = "maven-pom"
-  , strategyAnalyze = pure . strategyGraph
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . strategyPath
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover dir = runStrategy "maven-pom" MavenGroup $ do
+  (mvnClosures :: [MavenProjectClosure]) <- findProjects dir
+  traverse_ (output . mkProjectClosure) mvnClosures
+
+mkProjectClosure :: MavenProjectClosure -> ProjectClosure
+mkProjectClosure mvnClosure = ProjectClosure
+  { closureStrategyGroup = MavenGroup
+  , closureStrategyName  = "maven-pom"
+  , closureModuleDir     = parent (closurePath mvnClosure)
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
-
-discover :: Discover
-discover = Discover
-  { discoverName = "maven-pom"
-  , discoverFunc = discover'
-  }
-
-discover' :: forall r. Members '[Embed IO, ReadFS, Error ReadFSErr, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' dir = do
-  projectClosures <- findProjects dir
-
-  let projects :: [(Path Rel File, G.Graphing Dependency)]
-      projects = map (\closure -> (closurePath closure, buildProjectGraph closure)) projectClosures
-
-  traverse_ (output . configure) projects
-
-configure :: (Path Rel File, G.Graphing Dependency) -> ConfiguredStrategy
-configure (file,graph) = ConfiguredStrategy strategy (MavenStrategyOpts file graph)
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildProjectGraph mvnClosure
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 type Version = Text
 data MavenPackage = MavenPackage Group Artifact (Maybe Version)
@@ -95,7 +82,7 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
   direct (coordToPackage (closureRootCoord closure))
   go (closureRootCoord closure) (closureRootPom closure)
   where
-  go :: Member (LabeledGrapher MavenPackage) r => MavenCoordinate -> Pom -> Sem r ()
+  go :: Has (LabeledGrapher MavenPackage) sig m => MavenCoordinate -> Pom -> m ()
   go coord incompletePom = do
     _ <- M.traverseWithKey addDep deps
     for_ childPoms $ \(childCoord,childPom) -> do
@@ -115,7 +102,7 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
     deps :: Map (Group,Artifact) MvnDepBody
     deps = reifyDeps completePom
 
-    addDep :: Member (LabeledGrapher MavenPackage) r => (Group,Artifact) -> MvnDepBody -> Sem r ()
+    addDep :: Has (LabeledGrapher MavenPackage) sig m => (Group,Artifact) -> MvnDepBody -> m ()
     addDep (group,artifact) body = do
       let interpolatedVersion = naiveInterpolate (pomProperties completePom) <$> depVersion body
           depPackage = MavenPackage group artifact interpolatedVersion
@@ -135,8 +122,7 @@ reifyDeps pom = M.mapWithKey overlayDepManagement (pomDependencies pom)
   overlayDepManagement :: (Group,Artifact) -> MvnDepBody -> MvnDepBody
   overlayDepManagement key body = maybe body (body <>) (M.lookup key (pomDependencyManagement pom))
 
--- TODO: make toppom's dependencies direct rather than toppom?
--- naively interpolate properties into a Text. This only interpolates Text that
+-- Naively interpolate properties into a Text. This only interpolates Text that
 -- starts with "${" and ends with "}", e.g.,
 --     "${myproperty}"
 -- will interpolate the value of "myproperty", but

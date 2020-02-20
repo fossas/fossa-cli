@@ -13,15 +13,14 @@ module Strategy.Maven.Plugin
 
 import Prologue
 
+import Control.Algebra
+import Control.Effect.Error
+import Control.Effect.Exception
 import qualified Data.ByteString as BS
-import           Data.FileEmbed (embedFile)
-import           Path.IO (createTempDir, getTempDir, removeDirRecur)
-import           Polysemy
-import           Polysemy.Error
-import           Polysemy.Resource
+import Data.FileEmbed (embedFile)
+import Path.IO (createTempDir, getTempDir, removeDirRecur)
 import qualified System.FilePath as FP
 
-import Diagnostics
 import Effect.Exec
 import Effect.ReadFS
 
@@ -37,32 +36,36 @@ pluginVersion = "3.3.0"
 pluginJar :: ByteString
 pluginJar = $(embedFile "scripts/depgraph-maven-plugin-3.3.0.jar")
 
-withUnpackedPlugin :: Members '[Embed IO, Resource] r => (FP.FilePath -> Sem r a) -> Sem r a
+withUnpackedPlugin ::
+  ( Has (Lift IO) sig m
+  , MonadIO m
+  )
+  => (FP.FilePath -> m a) -> m a
 withUnpackedPlugin act =
-  bracket (embed @IO (getTempDir >>= \tmp -> createTempDir tmp "fossa-maven"))
-          (embed @IO . removeDirRecur)
+  bracket (liftIO (getTempDir >>= \tmp -> createTempDir tmp "fossa-maven"))
+          (liftIO . removeDirRecur)
           go
 
   where
 
   go tmpDir = do
     let pluginJarFilepath = fromAbsDir tmpDir FP.</> "plugin.jar"
-    embed (BS.writeFile pluginJarFilepath pluginJar)
+    liftIO (BS.writeFile pluginJarFilepath pluginJar)
 
     act pluginJarFilepath
 
-installPlugin :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> FP.FilePath -> Sem r ()
+installPlugin :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> FP.FilePath -> m ()
 installPlugin dir path = void $ execThrow dir mavenInstallPluginCmd
   [ "-Dfile=" <> path
   ]
 
-execPlugin :: Members '[Exec, Error ExecErr] r => Path Rel Dir -> Sem r ()
+execPlugin :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ()
 execPlugin dir = void $ execThrow dir mavenPluginDependenciesCmd []
 
 outputFile :: Path Rel File
 outputFile = $(mkRelFile "target/dependency-graph.json")
 
-parsePluginOutput :: Members '[ReadFS, Error ReadFSErr] r => Path Rel Dir -> Sem r PluginOutput
+parsePluginOutput :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel Dir -> m PluginOutput
 parsePluginOutput dir = readContentsJson (dir </> outputFile)
 
 mavenInstallPluginCmd :: Command

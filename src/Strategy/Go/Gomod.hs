@@ -1,8 +1,6 @@
 module Strategy.Go.Gomod
   ( discover
-  , strategy
   , analyze
-  , configure
   , buildGraph
 
   , Gomod(..)
@@ -14,19 +12,15 @@ module Strategy.Go.Gomod
 
 import Prologue hiding ((<?>))
 
+import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
 import Text.Megaparsec hiding (label)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import DepTypes
-import Diagnostics
 import Discovery.Walk
-import qualified Effect.Error as E
 import Effect.Exec
 import Effect.LabeledGrapher
 import Effect.ReadFS
@@ -35,29 +29,13 @@ import Strategy.Go.Transitive
 import Strategy.Go.Types
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "gomod"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files ->
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "go.mod") files of
-    Nothing -> walkContinue
-    Just file  -> do
-      output (configure file)
-      walkContinue
+    Nothing -> pure ()
+    Just file -> runSimpleStrategy "golang-gomod" GolangGroup $ analyze file
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "golang-gomod"
-  , strategyAnalyze = analyze
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . targetFile
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
+  walkContinue
 
 data Statement =
     RequireStatement Text Text -- ^ package, version
@@ -197,26 +175,44 @@ resolve gomod = map resolveReplace (modRequires gomod)
   where
   resolveReplace require = fromMaybe require (M.lookup (reqPackage require) (modReplaces gomod))
 
-analyze :: Members '[Error ReadFSErr, Error ExecErr, ReadFS, Exec] r => BasicFileOpts -> Sem r (Graphing Dependency)
-analyze BasicFileOpts{..} = graphingGolang $ do
-  gomod <- readContentsParser gomodParser targetFile
+analyze ::
+  ( Has ReadFS sig m
+  , Has (Error ReadFSErr) sig m
+  , Has Exec sig m
+  , Effect sig
+  )
+  => Path Rel File -> m ProjectClosure
+analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
+  gomod <- readContentsParser gomodParser file
 
   buildGraph gomod
 
-  -- TODO: logging/etc
-  _ <- E.try @ExecErr (fillInTransitive (parent targetFile))
+  -- TODO: diagnostics?
+  _ <- runError @ExecErr (fillInTransitive (parent file))
   pure ()
 
-buildGraph :: Member (LabeledGrapher GolangPackage) r => Gomod -> Sem r ()
+mkProjectClosure :: Path Rel File -> Graphing Dependency -> ProjectClosure
+mkProjectClosure file graph = ProjectClosure
+  { closureStrategyGroup = GolangGroup
+  , closureStrategyName  = "golang-gomod"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = graph
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
+
+buildGraph :: Has (LabeledGrapher GolangPackage) sig m => Gomod -> m ()
 buildGraph = traverse_ go . resolve
   where
 
-  go :: Member (LabeledGrapher GolangPackage) r => Require -> Sem r ()
+  go :: Has (LabeledGrapher GolangPackage) sig m => Require -> m ()
   go Require{..} = do
     let pkg = mkGolangPackage reqPackage
 
     direct pkg
     label pkg (mkGolangVersion reqVersion)
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

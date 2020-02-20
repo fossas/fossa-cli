@@ -1,9 +1,8 @@
 
 module Strategy.Cocoapods.PodfileLock
   ( discover
-  , strategy
   , analyze
-  , configure
+  , buildGraph
   , findSections
 
   , Dep (..)
@@ -13,50 +12,46 @@ module Strategy.Cocoapods.PodfileLock
 
 import Prologue
 
+import Control.Effect.Error
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Char as C
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.LabeledGrapher
-import           Effect.ReadFS
-import           Graphing (Graphing)
-import           Types
-import           Text.Megaparsec hiding (label)
-import           Text.Megaparsec.Char
+import DepTypes
+import Discovery.Walk
+import Effect.LabeledGrapher
+import Effect.ReadFS
+import Graphing (Graphing)
+import Types
+import Text.Megaparsec hiding (label)
+import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
-discover :: Discover
-discover = Discover
-  { discoverName = "podfilelock"
-  , discoverFunc = discover'
-  }
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
+  case find (\f -> fileName f == "Podfile.lock") files of
+    Nothing -> pure ()
+    Just file -> runSimpleStrategy "cocoapods-podfilelock" CocoapodsGroup $ analyze file
 
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files -> do
-  for_ files $ \f ->
-    when (fileName f == "Podfile.lock") $ output (configure f)
   walkContinue
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "podfile-lock"
-  , strategyAnalyze = \opts -> analyze & fileInputParser findSections (targetFile opts)
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze file = mkProjectClosure file <$> readContentsParser findSections file
+
+mkProjectClosure :: Path Rel File -> [Section] -> ProjectClosure
+mkProjectClosure file sections = ProjectClosure
+  { closureStrategyGroup = CocoapodsGroup
+  , closureStrategyName  = "cocoapods-podfilelock"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts
-
-analyze :: Member (Input [Section]) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph sections
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 newtype PodfilePkg = PodfilePkg { pkgName :: Text }
   deriving (Eq, Ord, Show, Generic)
@@ -87,12 +82,12 @@ buildGraph :: [Section] -> Graphing Dependency
 buildGraph sections = run . withLabeling toDependency $
   traverse_ addSection sections
   where
-  addSection :: Member (LabeledGrapher PodfilePkg) r => Section -> Sem r ()
+  addSection :: Has (LabeledGrapher PodfilePkg) sig m => Section -> m ()
   addSection (DependencySection deps) = traverse_ (direct . PodfilePkg . depName) deps
   addSection (PodSection pods) = traverse_ addSpec pods
   addSection _ = pure ()
 
-  addSpec :: Member (LabeledGrapher PodfilePkg) r => Pod -> Sem r ()
+  addSpec :: Has (LabeledGrapher PodfilePkg) sig m => Pod -> m ()
   addSpec pod = do
     let pkg = PodfilePkg (name pod)
     -- add edges between spec and specdeps

@@ -1,6 +1,5 @@
 module Strategy.NuGet.ProjectAssetsJson
   ( discover
-  , strategy
   , buildGraph
   , analyze
 
@@ -9,43 +8,24 @@ module Strategy.NuGet.ProjectAssetsJson
 
 import Prologue
 
+import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import           Data.Maybe
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
+import Data.Maybe
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.ReadFS
-import           Graphing (Graphing, unfold)
-import           Types
+import DepTypes
+import Discovery.Walk
+import Effect.ReadFS
+import Graphing (Graphing, unfold)
+import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "projectassetsjson"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "project.assets.json") files of
-    Just file -> output (configure file)
     Nothing -> pure ()
+    Just file -> runSimpleStrategy "nuget-projectassetsjson" DotnetGroup $ analyze file
 
   walkContinue
-
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "nuget-projectassetsjson"
-  , strategyAnalyze = \opts -> analyze
-      & fileInputJson @ProjectAssetsJson (targetFile opts)
-  , strategyLicense = const (pure [])
-  , strategyModule = parent. targetFile
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
 
 data ProjectAssetsJson = ProjectAssetsJson
   { targets     :: M.Map Text (M.Map Text DependencyInfo)
@@ -65,8 +45,23 @@ instance FromJSON DependencyInfo where
     DependencyInfo <$> obj .: "type"
              <*> obj .:? "dependencies" .!= M.empty
 
-analyze :: Member (Input ProjectAssetsJson) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze file = mkProjectClosure file <$> readContentsJson @ProjectAssetsJson file
+
+mkProjectClosure :: Path Rel File -> ProjectAssetsJson -> ProjectClosure
+mkProjectClosure file projectAssetsJson = ProjectClosure
+  { closureStrategyGroup = DotnetGroup
+  , closureStrategyName  = "nuget-projectassetsjson"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph projectAssetsJson
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 data NuGetDep = NuGetDep
   { depName            :: Text
@@ -94,6 +89,3 @@ buildGraph project = unfold direct deepList toDependency
                , dependencyLocations = []
                , dependencyTags = M.empty
                }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

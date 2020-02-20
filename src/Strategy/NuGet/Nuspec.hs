@@ -1,60 +1,55 @@
 module Strategy.NuGet.Nuspec
   ( discover
-  , strategy
   , buildGraph
   , analyze
-  , findLicenses
 
   , Nuspec(..)
   , Group(..)
   , NuGetDependency(..)
   , NuspecLicense(..)
+
+  , mkProjectClosure
   ) where
 
 import Prologue
 
+import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
 import qualified Data.List as L
+
+import DepTypes
 import qualified Data.Text as T
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
+import Discovery.Walk
+import Effect.ReadFS
+import Graphing (Graphing, unfold)
+import Parse.XML
+import Types
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.ReadFS
-import           Graphing (Graphing, unfold)
-import           Parse.XML
-import           Types
-
-discover :: Discover
-discover = Discover
-  { discoverName = "nuspec"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files -> do
-  case find (L.isSuffixOf ".nuspec" . fileName) files of
-    Just file -> output (configure file)
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
+  case find (\f -> L.isSuffixOf ".nuspec" (fileName f)) files of
     Nothing -> pure ()
+    Just file -> runSimpleStrategy "nuget-nuspec" DotnetGroup $ analyze file
 
   walkContinue
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "nuget-nuspec"
-  , strategyAnalyze = \opts -> analyze & fileInputXML @Nuspec (targetFile opts)
-  , strategyLicense = \opts -> findLicenses (targetFile opts) & fileInputXML @Nuspec (targetFile opts)
-  , strategyModule = parent . targetFile
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze file = mkProjectClosure file <$> readContentsXML @Nuspec file
 
-findLicenses :: Member (Input Nuspec) r => Path Rel File -> Sem r [LicenseResult]
-findLicenses file = do
-  nuspec :: Nuspec <- input
-  pure [LicenseResult file (nuspecLicenses nuspec)]
+mkProjectClosure :: Path Rel File -> Nuspec -> ProjectClosure
+mkProjectClosure file nuspec = ProjectClosure
+  { closureStrategyGroup = DotnetGroup
+  , closureStrategyName  = "nuget-nuspec"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = [LicenseResult file (nuspecLicenses nuspec)]
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph nuspec
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 nuspecLicenses :: Nuspec -> [License]
 nuspecLicenses nuspec = url ++ licenseField
@@ -69,9 +64,6 @@ parseLicenseType rawType = case T.unpack rawType of
                             "expression" -> LicenseSPDX
                             "file" -> LicenseFile
                             _ -> UnknownType
-
-analyze :: Member (Input Nuspec) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
 
 data Nuspec = Nuspec
   { groups        :: [Group]
@@ -124,6 +116,3 @@ buildGraph project = unfold direct (const []) toDependency
                  , dependencyLocations = []
                  , dependencyTags = M.empty
                  }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

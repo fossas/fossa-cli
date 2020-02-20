@@ -1,6 +1,5 @@
 module Strategy.NuGet.PackagesConfig
   ( discover
-  , strategy
   , buildGraph
   , analyze
 
@@ -10,41 +9,22 @@ module Strategy.NuGet.PackagesConfig
 
 import Prologue
 
+import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
+import DepTypes
+import Discovery.Walk
+import Effect.ReadFS
+import Graphing (Graphing, unfold)
+import Parse.XML
+import Types
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.ReadFS
-import           Graphing (Graphing, unfold)
-import           Parse.XML
-import           Types
-
-discover :: Discover
-discover = Discover
-  { discoverName = "packagesconfig"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> (fileName f) == "packages.config") files of
-    Just file -> output (configure file)
     Nothing -> pure ()
+    Just file -> runSimpleStrategy "nuget-packagesconfig" DotnetGroup $ analyze file
 
   walkContinue
-
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "nuget-packagesconfig"
-  , strategyAnalyze = \opts -> analyze & fileInputXML @PackagesConfig (targetFile opts)
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . targetFile
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
 
 instance FromXML PackagesConfig where
   parseElement el = PackagesConfig <$> children "package" el
@@ -58,8 +38,23 @@ newtype PackagesConfig = PackagesConfig
   { deps :: [NuGetDependency]
   } deriving (Eq, Ord, Show, Generic)
 
-analyze :: Member (Input PackagesConfig) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze file = mkProjectClosure file <$> readContentsXML file
+
+mkProjectClosure :: Path Rel File -> PackagesConfig -> ProjectClosure
+mkProjectClosure file config = ProjectClosure
+  { closureStrategyGroup = DotnetGroup
+  , closureStrategyName  = "nuget-packagesconfig"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph config
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 data NuGetDependency = NuGetDependency
   { depID      :: Text
@@ -76,6 +71,3 @@ buildGraph config = unfold (deps config) (const []) toDependency
                , dependencyLocations = []
                , dependencyTags = M.empty
                }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

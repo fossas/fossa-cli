@@ -1,8 +1,6 @@
 module Strategy.Ruby.BundleShow
   ( discover
-  , strategy
   , analyze
-  , configure
 
   , BundleShowDep(..)
   , buildGraph
@@ -12,12 +10,10 @@ module Strategy.Ruby.BundleShow
 
 import Prologue
 
+import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
-import           Text.Megaparsec
-import           Text.Megaparsec.Char
+import Text.Megaparsec
+import Text.Megaparsec.Char
 
 import DepTypes
 import Discovery.Walk
@@ -25,19 +21,13 @@ import Effect.Exec
 import Graphing
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "bundleshow"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \dir _ files ->
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \dir _ files -> do
   case find (\f -> fileName f `elem` ["Gemfile", "Gemfile.lock"]) files of
-    Nothing -> walkContinue
-    Just _  -> do
-      output (configure dir)
-      walkContinue
+    Nothing -> pure ()
+    Just _  -> runSimpleStrategy "ruby-bundleshow" RubyGroup $ analyze dir
+
+  walkContinue
 
 bundleShowCmd :: Command
 bundleShowCmd = Command
@@ -46,18 +36,23 @@ bundleShowCmd = Command
   , cmdAllowErr = Never
   }
 
-strategy :: Strategy BasicDirOpts
-strategy = Strategy
-  { strategyName = "ruby-bundleshow"
-  , strategyAnalyze = \opts -> analyze & execInputParser bundleShowParser (targetDir opts) bundleShowCmd []
-  , strategyLicense = const (pure [])
-  , strategyModule = targetDir
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
+analyze :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ProjectClosure
+analyze dir = mkProjectClosure dir <$> execParser bundleShowParser dir bundleShowCmd []
 
-analyze :: Member (Input [BundleShowDep]) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+mkProjectClosure :: Path Rel Dir -> [BundleShowDep] -> ProjectClosure
+mkProjectClosure dir deps = ProjectClosure
+  { closureStrategyGroup = RubyGroup
+  , closureStrategyName  = "ruby-bundleshow"
+  , closureModuleDir     = dir
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph deps
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 buildGraph :: [BundleShowDep] -> Graphing Dependency
 buildGraph xs = unfold xs (const []) toDependency
@@ -70,16 +65,12 @@ buildGraph xs = unfold xs (const []) toDependency
                , dependencyTags = M.empty
                }
 
-configure :: Path Rel Dir -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicDirOpts
-
 data BundleShowDep = BundleShowDep
   { depName    :: Text
   , depVersion :: Text
   } deriving (Eq, Ord, Show, Generic)
 
 type Parser = Parsec Void Text
-
 
 bundleShowParser :: Parser [BundleShowDep]
 bundleShowParser = concat <$> ((line <|> ignoredLine) `sepBy` eol) <* eof

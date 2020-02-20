@@ -6,14 +6,13 @@ import Prologue
 
 import qualified Data.Map.Strict as M
 import qualified Data.ByteString as BS
-import           Data.Yaml
-import           Polysemy
-import           Polysemy.Input
+import Data.Yaml
 
-import           DepTypes
-import           Effect.Grapher
-import           Graphing (Graphing)
-import           Strategy.Go.GlideLock
+import Control.Algebra
+import DepTypes
+import Effect.Grapher
+import Graphing (Graphing)
+import Strategy.Go.GlideLock
 
 import Test.Tasty.Hspec
 
@@ -57,15 +56,11 @@ spec_analyze = do
   testFile <- runIO (BS.readFile "test/Go/testdata/glide.lock")
 
   describe "glide lock analyzer" $ do
-    let runIt inp = analyze
-          & runInputConst @GlideLockfile inp
-          & run
-
     it "produces the expected output" $ do
-      let result = runIt glideLockfile
+      let result = buildGraph glideLockfile
       result `shouldBe` expected
 
     it "works end to end" $ do
       case decodeEither' testFile of
-        Right res -> runIt res `shouldBe` expected
+        Right res -> buildGraph res `shouldBe` expected
         Left _ -> expectationFailure "failed to parse"

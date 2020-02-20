@@ -1,11 +1,6 @@
 module Strategy.Python.Pipenv
   ( discover
-  , strategyWithCmd
-  , strategyNoCmd
-  , analyzeWithCmd
-  , analyzeNoCmd
-  , configureWithCmd
-  , configureNoCmd
+  , analyze
 
   , PipenvGraphDep(..)
   , PipfileLock(..)
@@ -18,34 +13,25 @@ module Strategy.Python.Pipenv
 
 import Prologue
 
+import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import Polysemy
-import Polysemy.Input
-import Polysemy.Output
 
 import Discovery.Walk
 import DepTypes
-import qualified Graphing as G
+import Graphing (Graphing)
 import Effect.Exec
 import Effect.LabeledGrapher
 import Effect.ReadFS
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "pipenv"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files ->
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Pipfile.lock") files of
-    Nothing -> walkContinue
-    Just file -> do
-      output (configureWithCmd file)
-      output (configureNoCmd file)
-      walkContinue
+    Nothing -> pure ()
+    Just file -> runSimpleStrategy "python-pipenv" PythonGroup $ analyze file
+
+  walkContinue
 
 pipenvGraphCmd :: Command
 pipenvGraphCmd = Command
@@ -54,41 +40,39 @@ pipenvGraphCmd = Command
   , cmdAllowErr = Never
   }
 
-strategyWithCmd :: Strategy BasicFileOpts
-strategyWithCmd = Strategy
-  { strategyName = "python-pipenv"
-  , strategyAnalyze = \opts -> analyzeWithCmd
-      & fileInputJson @PipfileLock (targetFile opts)
-      & execInputJson @[PipenvGraphDep] (parent (targetFile opts)) pipenvGraphCmd []
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
+analyze ::
+  ( Has ReadFS sig m
+  , Has Exec sig m
+  , Has (Error ReadFSErr) sig m
+  , Effect sig
+  )
+  => Path Rel File -> m ProjectClosure
+analyze lockfile = do
+  lock <- readContentsJson lockfile
+  -- TODO: diagnostics?
+  maybeDeps <- runError @ExecErr (execJson (parent lockfile) pipenvGraphCmd [])
+
+  pure (mkProjectClosure lockfile lock (eitherToMaybe maybeDeps))
+
+mkProjectClosure :: Path Rel File -> PipfileLock -> Maybe [PipenvGraphDep] -> ProjectClosure
+mkProjectClosure file lockfile maybeDeps = ProjectClosure
+  { closureStrategyGroup = PythonGroup
+  , closureStrategyName  = "python-pipenv"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
   }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph lockfile maybeDeps
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
-strategyNoCmd :: Strategy BasicFileOpts
-strategyNoCmd = Strategy
-  { strategyName = "python-pipfile"
-  , strategyAnalyze = \opts -> analyzeNoCmd & fileInputJson @PipfileLock (targetFile opts)
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
-  }
+eitherToMaybe :: Either a b -> Maybe b
+eitherToMaybe = either (const Nothing) Just
 
-configureWithCmd :: Path Rel File -> ConfiguredStrategy
-configureWithCmd = ConfiguredStrategy strategyWithCmd . BasicFileOpts
-
-configureNoCmd :: Path Rel File -> ConfiguredStrategy
-configureNoCmd = ConfiguredStrategy strategyNoCmd . BasicFileOpts
-
-analyzeWithCmd :: Members '[Input PipfileLock, Input [PipenvGraphDep]] r => Sem r (G.Graphing Dependency)
-analyzeWithCmd = buildGraph <$> input <*> (Just <$> input)
-
-analyzeNoCmd :: Member (Input PipfileLock) r => Sem r (G.Graphing Dependency)
-analyzeNoCmd = buildGraph <$> input <*> pure Nothing
-
-buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> G.Graphing Dependency
+buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> Graphing Dependency
 buildGraph lock maybeDeps = run . withLabeling toDependency $ do
   buildNodes lock
   case maybeDeps of
@@ -123,7 +107,7 @@ data PipLabel =
   | PipEnvironment Text -- production, development
   deriving (Eq, Ord, Show, Generic)
 
-buildNodes :: Member (LabeledGrapher PipPkg) r => PipfileLock -> Sem r ()
+buildNodes :: forall sig m. Has (LabeledGrapher PipPkg) sig m => PipfileLock -> m ()
 buildNodes PipfileLock{..} = do
   let indexBy :: Ord k => (v -> k) -> [v] -> Map k v
       indexBy ix = M.fromList . map (\v -> (ix v, v))
@@ -136,12 +120,11 @@ buildNodes PipfileLock{..} = do
 
   where
 
-  addWithLabel :: Member (LabeledGrapher PipPkg) r
-               => Text -- env name: production, development
+  addWithLabel :: Text -- env name: production, development
                -> Map Text PipfileSource
                -> Text -- dep name
                -> PipfileDep
-               -> Sem r ()
+               -> m ()
   addWithLabel env sourcesMap depName dep = do
     let pkg = PipPkg depName (T.drop 2 (fileDepVersion dep))
     -- TODO: reachable instead of direct
@@ -154,7 +137,7 @@ buildNodes PipfileLock{..} = do
         Just source -> label pkg (PipSource (sourceUrl source))
         Nothing -> pure ()
 
-buildEdges :: Member (LabeledGrapher PipPkg) r => [PipenvGraphDep] -> Sem r ()
+buildEdges :: Has (LabeledGrapher PipPkg) sig m => [PipenvGraphDep] -> m ()
 buildEdges pipenvDeps = do
   traverse_ (direct . mkPkg) pipenvDeps
   traverse_ mkEdges pipenvDeps
@@ -164,7 +147,7 @@ buildEdges pipenvDeps = do
   mkPkg :: PipenvGraphDep -> PipPkg
   mkPkg dep = PipPkg (depName dep) (depInstalled dep)
 
-  mkEdges :: Member (LabeledGrapher PipPkg) r => PipenvGraphDep -> Sem r ()
+  mkEdges :: Has (LabeledGrapher PipPkg) sig m => PipenvGraphDep -> m ()
   mkEdges parentDep =
     forM_ (depDependencies parentDep) $ \childDep -> do
       edge (mkPkg parentDep) (mkPkg childDep)

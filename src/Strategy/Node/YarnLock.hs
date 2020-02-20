@@ -1,67 +1,61 @@
 module Strategy.Node.YarnLock
   ( discover
-  , strategy
   , analyze
-  , configure
   ) where
 
 import Prologue
 
+import Control.Carrier.Error.Either
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as M
 import qualified Data.MultiKeyedMap as MKM
-import Polysemy
-import Polysemy.Error
-import Polysemy.Output
 import qualified Yarn.Lock as YL
 import qualified Yarn.Lock.Types as YL
 
 import DepTypes
-import Diagnostics
 import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "yarn-lock"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ subdirs files -> do
-  for_ files $ \f ->
-    when (fileName f == "yarn.lock") $
-      output (configure f)
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ subdirs files -> do
+  case find (\f -> fileName f == "yarn.lock") files of
+    Nothing -> pure ()
+    Just file -> runSimpleStrategy "nodejs-yarnlock" NodejsGroup $ analyze file
 
   walkSkipNamed ["node_modules/"] subdirs
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "nodejs-yarnlock"
-  , strategyAnalyze = analyze . targetFile
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . targetFile
-  , strategyOptimal = Optimal
-  , strategyComplete = Complete
-  }
-
-analyze :: Members '[Error ReadFSErr, ReadFS] r => Path Rel File -> Sem r (Graphing Dependency)
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
 analyze lockfile = do
-    let path = fromRelFile lockfile
+  let path = fromRelFile lockfile
 
-    contents <- readContentsText lockfile
-    case YL.parse path contents of
-      Left err -> throw (FileParseError path (YL.prettyLockfileError err))
-      Right a -> pure (buildGraph a)
+  contents <- readContentsText lockfile
+  case YL.parse path contents of
+    Left err -> throwError (FileParseError path (YL.prettyLockfileError err))
+    Right a -> pure (mkProjectClosure lockfile a)
+
+mkProjectClosure :: Path Rel File -> YL.Lockfile -> ProjectClosure
+mkProjectClosure file lock = ProjectClosure
+  { closureStrategyGroup = NodejsGroup
+  , closureStrategyName  = "nodejs-yarnlock"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph lock
+    , dependenciesOptimal  = Optimal
+    , dependenciesComplete = Complete
+    }
 
 buildGraph :: YL.Lockfile -> Graphing Dependency
 buildGraph lockfile = run . evalGrapher $
   traverse (add . first NE.head) (MKM.toList lockfile)
   where
-  add :: Member (Grapher Dependency) r => (YL.PackageKey, YL.Package) -> Sem r ()
+  add :: Has (Grapher Dependency) sig m => (YL.PackageKey, YL.Package) -> m ()
   add parentPkg@(_, package) =
     for_ (YL.dependencies package) $ \childKey -> do
       let childPkg = (childKey, MKM.at lockfile childKey)
@@ -83,6 +77,3 @@ buildGraph lockfile = run . evalGrapher $
                      YL.GitRemote url rev -> [url <> "@" <> rev]
                , dependencyTags = M.empty
                }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

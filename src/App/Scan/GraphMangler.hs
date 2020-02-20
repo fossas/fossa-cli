@@ -7,9 +7,9 @@ import Prologue hiding (parent)
 import Algebra.Graph.AdjacencyMap (AdjacencyMap)
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Algebra.Graph.ToGraph (dfs)
+import Control.Algebra
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
-import Polysemy
 
 import App.Scan.GraphBuilder
 import qualified App.Scan.Graph as G
@@ -32,17 +32,17 @@ graphingToGraph graphing = run . evalGraphBuilder G.empty $ do
   where
 
   -- add a node with GraphBuilder
-  addingNode :: Member GraphBuilder r' => Dependency -> Sem r' (Dependency, G.DepRef)
+  addingNode :: Has GraphBuilder sig m => Dependency -> m (Dependency, G.DepRef)
   addingNode k = do
     ref <- addNode k
     pure (k, ref)
 
   -- visit a node, adding edges between it and all of its dependencies
-  visitNode :: Member GraphBuilder r' => Map Dependency G.DepRef -> AdjacencyMap Dependency -> Dependency -> Sem r' ()
+  visitNode :: Has GraphBuilder sig m => Map Dependency G.DepRef -> AdjacencyMap Dependency -> Dependency -> m ()
   visitNode refs amap node = traverse_ (visitEdge refs node) (S.toList $ AM.postSet node amap)
 
   -- visit an edge by adding it to the graph
-  visitEdge :: Member GraphBuilder r' => Map Dependency G.DepRef -> Dependency -> Dependency -> Sem r' ()
+  visitEdge :: Has GraphBuilder sig m => Map Dependency G.DepRef -> Dependency -> Dependency -> m ()
   visitEdge refs parent child = do
     let edgeRefs = do
           parentRef <- M.lookup parent refs

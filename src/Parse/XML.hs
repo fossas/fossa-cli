@@ -19,15 +19,14 @@ module Parse.XML
 
 import Prelude
 
-import Control.Applicative (Alternative)
-import Control.Monad (MonadPlus)
+import Control.Algebra
+import Control.Carrier.Error.Either
+import Control.Carrier.NonDet.Church
+import Control.Carrier.Reader
+import Data.Functor.Identity (Identity)
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Data.Maybe (fromMaybe)
-import Polysemy
-import Polysemy.Error
-import Polysemy.NonDet
-import Polysemy.Reader
 import qualified Text.XML.Light as XML
 
 class FromXML a where
@@ -47,26 +46,24 @@ instance FromXML v => FromXML (M.Map T.Text v) where
       value <- parseElement e
       pure (key, value)
 
--- NonDet and Fail are required for Alternative/MonadFail/MonadPlus instances.
--- We interpret in terms of `Error`, where non-throwing branches are returned.
-newtype Parser a = Parser { unParser :: Sem '[Reader ParsePath, NonDet, Error ParseError] a }
-  deriving (Functor, Applicative, Alternative, Monad, MonadPlus)
+newtype Parser a = Parser { unParser :: ReaderC ParsePath (ErrorC ParseError Identity) a }
+  deriving (Functor, Applicative, Monad)
+
+instance Alternative Parser where
+  ma <|> mb = Parser $ (unParser ma `catchError` (\(_ :: ParseError) -> unParser mb))
+  empty = Parser $ ask >>= \path -> throwError (UnknownError path "Parser.empty")
 
 instance MonadFail Parser where
-  fail msg = Parser $ ask >>= \path -> throw (UnknownError (Just path) msg)
+  fail msg = Parser $ ask >>= \path -> throwError (UnknownError path msg)
 
 runParser :: String -> Parser a -> Either ParseError a
-runParser rootName = run
-  . runError
-  . nonDetToError (UnknownError Nothing "NonDet.empty")
-  . runReader [rootName]
-  . unParser
+runParser rootName = run . runError . runReader [rootName] . unParser
 
 data ParseError =
     ParseElementMissing ParsePath String
   | ParseAttrMissing ParsePath String
   | ParseXMLDocFailed
-  | UnknownError (Maybe ParsePath) String
+  | UnknownError ParsePath String
   deriving (Eq, Ord, Show)
 
 xmlErrorPretty :: ParseError -> T.Text
@@ -75,7 +72,7 @@ xmlErrorPretty (ParseElementMissing path childName) =
 xmlErrorPretty (ParseAttrMissing path attrName) =
   "Missing attribute at " <> renderPath path <> "; attrName: " <> T.pack attrName
 xmlErrorPretty (UnknownError path err) =
-  "UnknownError at " <> renderPath (fromMaybe [] path) <> "; err: " <> T.pack err
+  "UnknownError at " <> renderPath path <> "; err: " <> T.pack err
 xmlErrorPretty ParseXMLDocFailed = "parseXMLDoc failed"
 
 renderPath :: ParsePath -> T.Text
@@ -93,13 +90,13 @@ parseXML inp =
 attr :: String -> XML.Element -> Parser T.Text
 attr attrName el =
   case XML.findAttrBy (\elName -> XML.qName elName == attrName) el of
-    Nothing -> Parser $ ask >>= \path -> throw (ParseAttrMissing path attrName)
+    Nothing -> Parser $ ask >>= \path -> throwError (ParseAttrMissing path attrName)
     Just a  -> pure (T.pack a)
 
 child :: FromXML a => String -> XML.Element -> Parser a
 child childName el =
   case XML.filterChildName (\elName -> XML.qName elName == childName) el of
-    Nothing -> Parser $ ask >>= \path -> throw (ParseElementMissing path childName)
+    Nothing -> Parser $ ask >>= \path -> throwError (ParseElementMissing path childName)
     Just a  -> subparse childName a
 
 children :: FromXML a => String -> XML.Element -> Parser [a]

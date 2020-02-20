@@ -1,6 +1,5 @@
 module Strategy.NuGet.PackageReference
   ( discover
-  , strategy
   , buildGraph
   , analyze
 
@@ -11,30 +10,22 @@ module Strategy.NuGet.PackageReference
 
 import Prologue
 
+import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
 import qualified Data.List as L
-import           Polysemy
-import           Polysemy.Input
-import           Polysemy.Output
 
-import           DepTypes
-import           Discovery.Walk
-import           Effect.ReadFS
-import           Graphing (Graphing, unfold)
-import           Parse.XML
-import           Types
+import DepTypes
+import Discovery.Walk
+import Effect.ReadFS
+import Graphing (Graphing, unfold)
+import Parse.XML
+import Types
 
-discover :: Discover
-discover = Discover
-  { discoverName = "packagereference"
-  , discoverFunc = discover'
-  }
-
-discover' :: Members '[Embed IO, Output ConfiguredStrategy] r => Path Abs Dir -> Sem r ()
-discover' = walk $ \_ _ files -> do
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover = walk $ \_ _ files -> do
   case find isPackageRefFile files of
-    Just file -> output (configure file)
     Nothing -> pure ()
+    Just file -> runSimpleStrategy "nuget-packagereference" DotnetGroup $ analyze file
 
   walkContinue
  
@@ -42,18 +33,23 @@ discover' = walk $ \_ _ files -> do
       isPackageRefFile :: Path Rel File -> Bool
       isPackageRefFile file = any (\x -> L.isSuffixOf x (fileName file)) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
 
-strategy :: Strategy BasicFileOpts
-strategy = Strategy
-  { strategyName = "nuget-packagereference"
-  , strategyAnalyze = \opts -> analyze & fileInputXML @PackageReference (targetFile opts)
-  , strategyLicense = const (pure [])
-  , strategyModule = parent . targetFile
-  , strategyOptimal = NotOptimal
-  , strategyComplete = NotComplete
-  }
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze file = mkProjectClosure file <$> readContentsXML @PackageReference file
 
-analyze :: Member (Input PackageReference) r => Sem r (Graphing Dependency)
-analyze = buildGraph <$> input
+mkProjectClosure :: Path Rel File -> PackageReference -> ProjectClosure
+mkProjectClosure file package = ProjectClosure
+  { closureStrategyGroup = DotnetGroup
+  , closureStrategyName  = "nuget-packagereference"
+  , closureModuleDir     = parent file
+  , closureDependencies  = dependencies
+  , closureLicenses      = []
+  }
+  where
+  dependencies = ProjectDependencies
+    { dependenciesGraph    = buildGraph package
+    , dependenciesOptimal  = NotOptimal
+    , dependenciesComplete = NotComplete
+    }
 
 newtype PackageReference = PackageReference
   { groups :: [ItemGroup]
@@ -90,6 +86,3 @@ buildGraph project = unfold direct (const []) toDependency
                , dependencyLocations = []
                , dependencyTags = M.empty
                }
-
-configure :: Path Rel File -> ConfiguredStrategy
-configure = ConfiguredStrategy strategy . BasicFileOpts

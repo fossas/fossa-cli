@@ -129,7 +129,7 @@ requirementParser = specification
 
   version = label "version" $ whitespace *> some (letterOrDigit <|> oneOf ['-', '_', '.', '*', '+', '!'])
   version_one = label "version_one" $ Version <$> version_cmp <*> (T.pack <$> version) <* whitespace
-  version_many = label "version_many" $ version_one `sepBy` (whitespace *> char ',')
+  version_many = label "version_many" $ version_one `sepBy1` (whitespace *> char ',')
   versionspec = label "versionspec" $ between (char '(') (char ')') version_many <|> version_many
   urlspec = label "urlspec" $ char '@' *> whitespace *> URI.parser
 

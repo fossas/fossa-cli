@@ -8,22 +8,30 @@ import Prologue
 
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map.Strict as M
-import           Polysemy
-import           Polysemy.Error
 
 import DepTypes
-import Diagnostics
+import Control.Algebra
+import Control.Carrier.Error.Either
+import Control.Carrier.Reader
 import Effect.Exec
 import Effect.Grapher
 import Graphing (Graphing(..))
 import Strategy.Go.GoList
-import Types (BasicDirOpts(..))
+import Types
 
 import Test.Tasty.Hspec
 
-mockExec :: BL.ByteString -> Sem (Exec ': r) a -> Sem r a
-mockExec stdout = interpret $ \case
-  Exec _ _ _ -> pure (Right stdout)
+runConstExec :: BL.ByteString -> ConstExecC m a -> m a
+runConstExec output = runReader output . runConstExecC
+
+newtype ConstExecC m a = ConstExecC { runConstExecC :: ReaderC (BL.ByteString) m a }
+  deriving (Functor, Applicative, Monad)
+
+instance Algebra sig m => Algebra (Exec :+: sig) (ConstExecC m) where
+  alg (L (Exec _ _ _ k)) = do
+    output <- ConstExecC ask
+    k (Right output)
+  alg (R other) = ConstExecC (alg (R (handleCoercible other)))
 
 expected :: Graphing Dependency
 expected = run . evalGrapher $ do
@@ -51,21 +59,21 @@ spec_analyze = do
   describe "golist analyze" $ do
     it "produces the expected output" $ do
       let result =
-            analyze (BasicDirOpts testdir)
-              & mockExec outputTrivial
+            analyze testdir
+              & runConstExec outputTrivial
               & runError @ExecErr
               & run
       case result of
         Left err -> expectationFailure ("analyze failed: " <> show err)
-        Right graph -> graph `shouldBe` expected
+        Right closure -> dependenciesGraph (closureDependencies closure) `shouldBe` expected
 
     it "can handle complex inputs" $ do
       let result =
-            analyze (BasicDirOpts testdir)
-              & mockExec outputComplex
+            analyze testdir
+              & runConstExec outputComplex
               & runError @ExecErr
               & run
 
       case result of
           Left err -> fail $ "failed to build graph" <> show err
-          Right graph -> length (graphingDirect graph) `shouldBe` 12
+          Right closure -> length (graphingDirect (dependenciesGraph (closureDependencies closure))) `shouldBe` 12
