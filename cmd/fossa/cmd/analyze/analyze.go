@@ -1,8 +1,13 @@
 package analyze
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
+	"time"
 
 	"github.com/apex/log"
 	"github.com/urfave/cli"
@@ -39,70 +44,143 @@ var timeout = "timeout"
 var success = "success"
 var panic = "panic"
 
+type spectrometerOutput struct {
+	Status  string
+	Stdout  string
+	Stderr  string
+	Runtime time.Duration
+	Error   error
+}
+
+type comparisonData struct {
+	Project      string
+	Spectrometer spectrometerOutput
+	CliAnalysis  []fossa.SourceUnit
+	Modules      []strippedModule
+	Runtime      time.Duration
+	CliError     error
+	Message      string
+}
+
+type strippedModule struct {
+	Name        string
+	Type        pkg.Type
+	BuildTarget string
+	Dir         string
+	Options     map[string]interface{}
+}
+
 // This function runs v2 analysis and uploads the results for comparison.
 // The default timeout for this function is 1 minute and the completion channel is
 // used to timeout analysis if it is slower.
-func v2Analysis(completion chan string) {
+func v2Analysis(completion chan spectrometerOutput) {
 	defer func() {
 		if r := recover(); r != nil {
-			completion <- panic
+			completion <- spectrometerOutput{
+				Status: panic,
+			}
 		}
 	}()
 
-	_, _, err := exec.Run(exec.Cmd{
-		Name:    "spectrometer",
+	start := time.Now()
+	stdout, stderr, err := exec.Run(exec.Cmd{
+		Name:    "hscli",
 		Argv:    []string{"scan"},
 		Timeout: "1m",
 		Retries: 0,
 	})
 
-	if strings.Contains(err.Error(), "operation timed out running") {
-		completion <- timeout
+	if err != nil {
+		if strings.Contains(err.Error(), "operation timed out running") {
+			completion <- spectrometerOutput{
+				Status: timeout,
+			}
+			return
+		}
+	}
+
+	completion <- spectrometerOutput{
+		Status:  success,
+		Stdout:  stdout,
+		Stderr:  stderr,
+		Runtime: time.Since(start),
+	}
+}
+
+func uploadComparisonData(data comparisonData) {
+	output, err := json.Marshal(data)
+	if err != nil {
 		return
 	}
 
-	// Example upload functionality
-	/*
-		err := uploadV2ComparisonResults(stdout, stderr, err, ctx, config)
-		if err != nil{
-			completion <- uploadFailure
-		}
-	*/
+	u, err := url.Parse("http://localhost:3000/results")
+	if err != nil {
+		return
+	}
+	var defaultClient = http.Client{
+		Timeout: 60 * time.Second,
+		Transport: &http.Transport{
+			DisableKeepAlives: true,
+			Proxy:             http.ProxyFromEnvironment,
+		},
+	}
 
-	completion <- success
+	req, _ := http.NewRequest("POST", u.String(), bytes.NewReader(output))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	defaultClient.Do(req)
 }
 
 func Run(ctx *cli.Context) error {
-	// TODO: Change this channel from a string to a better type to upload.
-	// We need to also include an error field for panics and timeouts.
-	v2Completion := make(chan string, 1)
+	startTime := time.Now()
+	v2Completion := make(chan spectrometerOutput, 1)
 	go v2Analysis(v2Completion)
 
-	// This defer handles v2 error modes and ensures that it never
-	// runs longer than v1.
+	var err error
+	normalized := []fossa.SourceUnit{}
+	modules := []module.Module{}
 	defer func() {
+		var message string
+		var spectrometerResult spectrometerOutput
+
 		select {
 		case result := <-v2Completion:
-			switch result {
-			case success:
-				// upload results with comparison data with the
-				// results of the analyzed modules.
-			case timeout:
-				// handle a timeout with context.
-			case panic:
-				// handle a panic with context.
-			}
-		default:
-			// send a message that signals v1 was faster than v2.
+			spectrometerResult = result
+		case <-time.After(5 * time.Second):
+			message = "cli v1 was faster than spectrometer and forced spectrometer to exit"
 		}
+
+		comparison := comparisonData{
+			Project:      config.Project(),
+			Spectrometer: spectrometerResult,
+			CliAnalysis:  normalized,
+			Runtime:      time.Since(startTime),
+			CliError:     err,
+			Message:      message,
+		}
+
+		for _, module := range modules {
+			comparison.Modules = append(comparison.Modules, strippedModule{
+				Name:        module.Name,
+				Type:        module.Type,
+				BuildTarget: module.BuildTarget,
+				Dir:         module.Dir,
+				Options:     module.Options,
+			})
+
+		}
+
+		uploadComparisonData(comparison)
 	}()
 
-	err := setup.SetContext(ctx, !ctx.Bool(ShowOutput))
+	err = setup.SetContext(ctx, !ctx.Bool(ShowOutput))
 	if err != nil {
 		log.Fatalf("Could not initialize %s", err)
 	}
 
-	modules, err := config.Modules()
+	modules, err = config.Modules()
 	if err != nil {
 		log.Fatalf("Could not parse modules: %s", err.Error())
 	}
@@ -123,7 +201,7 @@ func Run(ctx *cli.Context) error {
 	}
 
 	log.Debugf("analyzed: %#v", analyzed)
-	normalized, err := fossa.Normalize(analyzed)
+	normalized, err = fossa.Normalize(analyzed)
 	if err != nil {
 		log.Fatalf("Could not normalize output: %s", err.Error())
 		return err
