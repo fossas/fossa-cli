@@ -125,12 +125,15 @@ func uploadComparisonData(data comparisonData) {
 		},
 	}
 
-	req, _ := http.NewRequest("POST", u.String(), bytes.NewReader(output))
+	req, err := http.NewRequest("POST", u.String(), bytes.NewReader(output))
 	if err != nil {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	defaultClient.Do(req)
+	_, err = defaultClient.Do(req)
+	if err != nil {
+		return
+	}
 }
 
 func Run(ctx *cli.Context) error {
