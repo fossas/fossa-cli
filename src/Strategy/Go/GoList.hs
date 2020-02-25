@@ -23,12 +23,12 @@ import Strategy.Go.Types
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
+discover = walk $ \_ subdirs files -> do
   case find (\f -> fileName f == "go.mod") files of
     Nothing -> pure ()
     Just file  -> runSimpleStrategy "golang-golist" GolangGroup $ analyze (parent file)
 
-  walkContinue
+  walkSkipNamed ["vendor/"] subdirs
 
 data Require = Require
   { reqPackage :: Text
