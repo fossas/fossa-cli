@@ -13,14 +13,12 @@ import (
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/fossas/fossa-cli/buildtools/dotnet"
-	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/files"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
 
 type Analyzer struct {
-	dotNET  dotnet.DotNET
 	Module  module.Module
 	Options Options
 }
@@ -31,24 +29,15 @@ type Options struct {
 
 func New(m module.Module) (*Analyzer, error) {
 	log.WithField("options", m.Options).Debug("constructing analyzer")
-	// Set Bower context variables
-	dotnetCmd, dotnetVersion, err := exec.Which("--version", os.Getenv("DOTNET_BINARY"), "dotnet")
-	if err != nil {
-		log.Warn("Cannot find .NET binary")
-	}
 
 	// Decode options
 	var options Options
-	err = mapstructure.Decode(m.Options, &options)
+	err := mapstructure.Decode(m.Options, &options)
 	if err != nil {
 		return nil, err
 	}
 
 	analyzer := Analyzer{
-		dotNET: dotnet.DotNET{
-			Version: dotnetVersion,
-			Cmd:     dotnetCmd,
-		},
 		Module:  m,
 		Options: options,
 	}
@@ -133,9 +122,9 @@ func (a *Analyzer) Clean() error {
 }
 
 func (a *Analyzer) Build() error {
-	return a.dotNET.Build(Dir(a.Module))
+	return nil
 }
 
 func (a *Analyzer) IsBuilt() (bool, error) {
-	return files.Exists(Dir(a.Module), "obj", "project.assets.json")
+	return true, nil
 }

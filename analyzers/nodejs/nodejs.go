@@ -34,8 +34,7 @@ import (
 type Analyzer struct {
 	NodeVersion string
 
-	NPM  npm.NPM
-	Yarn yarn.YarnTool
+	NPM npm.NPM
 
 	Module  module.Module
 	Options Options
@@ -81,16 +80,10 @@ func New(m module.Module) (*Analyzer, error) {
 		log.Warn("Could not initialize npm tooling")
 	}
 
-	yarnTool, err := yarn.New()
-	if err != nil {
-		log.Warn("Could not initialze yarn tooling")
-	}
-
 	analyzer := Analyzer{
 		NodeVersion: nodeVersion,
 
-		NPM:  npmTool,
-		Yarn: yarnTool,
+		NPM: npmTool,
 
 		Module:  m,
 		Options: options,
@@ -165,72 +158,21 @@ func (a *Analyzer) Clean() error {
 func (a *Analyzer) Build() error {
 	log.Debugf("Running Node.js build: %#v", a.Module)
 
-	// Prefer Yarn where possible.
-	if ok, err := files.Exists(a.Module.Dir, "yarn.lock"); err == nil && ok && a.Yarn.Exists() {
-		err := a.Yarn.Install(a.Module.Dir)
-		if err != nil {
-			return errors.Wrap(err, "could not run `yarn` build")
-		}
-	} else {
-		if !a.NPM.Exists() {
-			return errors.New("attempting to build using npm without npm tooling")
-		}
+	if !a.NPM.Exists() {
+		return errors.New("attempting to build using npm without npm tooling")
+	}
 
-		err := a.NPM.Install(a.Module.Dir)
-		if err != nil {
-			return errors.Wrap(err, "could not run `npm` build")
-		}
+	err := a.NPM.Install(a.Module.Dir)
+	if err != nil {
+		return errors.Wrap(err, "could not run `npm` build")
 	}
 
 	log.Debug("Done running Node.js build.")
 	return nil
 }
 
-// IsBuilt returns true if a project has a manifest and either has no
-// dependencies or has a `node_modules` folder.
-//
-// Note that there could be very strange builds where this will produce false
-// negatives (e.g. `node_modules` exists in a parent folder). There can also
-// exist builds where this will produce false positives (e.g. `node_modules`
-// folder does not include the correct dependencies). We also don't take
-// $NODE_PATH into account during resolution.
-//
-// TODO: with significantly more effort, we can eliminate both of these
-// situations.
 func (a *Analyzer) IsBuilt() (bool, error) {
-	a.Module.BuildTarget = fixLegacyBuildTarget(a.Module.BuildTarget)
-	log.Debugf("Checking Node.js build: %#v", a.Module)
-
-	manifest, err := npm.FromManifest(a.Module.BuildTarget, "package.json")
-	if err == nil {
-		if len(manifest.Dependencies) == 0 {
-			log.Debug("Done checking Node.js build: project has package.json with no dependencies")
-			return true, nil
-		}
-
-		var hasNodeModules bool
-		hasNodeModules, err = files.ExistsFolder(a.Module.Dir, "node_modules")
-		if err != nil {
-			return false, err
-		}
-
-		if hasNodeModules {
-			log.Debug("Done checking Node.js build: project has package.json with node_modules/")
-			return true, nil
-		}
-	}
-
-	_, err = npm.FindAndReadLockfile(a.Module.BuildTarget)
-	if err == nil {
-		log.Debug("Done checking Node.js build: project has a valid lockfile")
-		return true, nil
-	}
-
-	return false, &errors.Error{
-		Cause:           err,
-		Type:            errors.User,
-		Troubleshooting: "Could not find dependencies in node project. Make sure that your project's root dir has a package.json & node_modules/, yarn.lock, package-lock.json, or npm-shrinkwrap.lock",
-	}
+	return true, nil
 }
 
 func (a *Analyzer) Analyze() (graph.Deps, error) {
