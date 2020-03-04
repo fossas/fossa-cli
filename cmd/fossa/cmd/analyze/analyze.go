@@ -68,6 +68,13 @@ type strippedModule struct {
 	BuildTarget string
 	Dir         string
 	Options     map[string]interface{}
+	Source      fossa.SourceUnit
+}
+
+// Check that the server can be hit and that it validates the run.
+// The server has the ability to be a killswitch.
+func authorizedComparison() (bool, int) {
+	return true, 1
 }
 
 // This function runs v2 analysis and uploads the results for comparison.
@@ -139,11 +146,16 @@ func uploadComparisonData(data comparisonData) {
 func Run(ctx *cli.Context) error {
 	startTime := time.Now()
 	v2Completion := make(chan spectrometerOutput, 1)
-	go v2Analysis(v2Completion)
+
+	authorized, _ := authorizedComparison()
+	if authorized && !ctx.Bool(ShowOutput) {
+		go v2Analysis(v2Completion)
+	}
 
 	var err error
 	normalized := []fossa.SourceUnit{}
 	modules := []module.Module{}
+
 	defer func() {
 		var message string
 		var spectrometerResult spectrometerOutput
@@ -153,6 +165,10 @@ func Run(ctx *cli.Context) error {
 			spectrometerResult = result
 		case <-time.After(5 * time.Second):
 			message = "cli v1 was faster than spectrometer and forced spectrometer to exit"
+		}
+
+		if ctx.Bool(ShowOutput) {
+			displaySourceunits(normalized, ctx)
 		}
 
 		comparison := comparisonData{
@@ -165,14 +181,15 @@ func Run(ctx *cli.Context) error {
 		}
 
 		for _, module := range modules {
+			sourceUnit, _ := fossa.SourceUnitFromModule(module)
 			comparison.Modules = append(comparison.Modules, strippedModule{
 				Name:        module.Name,
 				Type:        module.Type,
 				BuildTarget: module.BuildTarget,
 				Dir:         module.Dir,
 				Options:     module.Options,
+				Source:      sourceUnit,
 			})
-
 		}
 
 		uploadComparisonData(comparison)
@@ -210,24 +227,28 @@ func Run(ctx *cli.Context) error {
 		return err
 	}
 
+	// Return early and handle the print in the defer after the CLI v2 timeout.
 	if ctx.Bool(ShowOutput) {
-		if tmplFile := ctx.String(flags.Template); tmplFile != "" {
-			output, err := display.TemplateFile(tmplFile, normalized)
-			fmt.Println(output)
-			if err != nil {
-				log.Fatalf("Could not parse template data: %s", err.Error())
-			}
-		} else {
-			_, err := display.JSON(normalized)
-			if err != nil {
-				log.Fatalf("Could not serialize to JSON: %s", err.Error())
-			}
-		}
-
 		return nil
 	}
 
 	return uploadAnalysis(normalized)
+}
+
+func displaySourceunits(sourceUnits []fossa.SourceUnit, ctx *cli.Context) {
+	if tmplFile := ctx.String(flags.Template); tmplFile != "" {
+		output, err := display.TemplateFile(tmplFile, sourceUnits)
+		fmt.Println(output)
+		if err != nil {
+			log.Fatalf("Could not parse template data: %s", err.Error())
+		}
+	} else {
+		_, err := display.JSON(sourceUnits)
+		if err != nil {
+			log.Fatalf("Could not serialize to JSON: %s", err.Error())
+		}
+	}
+
 }
 
 // Do runs the analysis function for all modules and also handles raw module uploads. `rawModuleLicenseScan` determines whether
