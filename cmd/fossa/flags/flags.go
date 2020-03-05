@@ -45,7 +45,7 @@ func WithAPIFlags(f []cli.Flag) []cli.Flag {
 }
 
 var (
-	API             = []cli.Flag{EndpointF, TitleF, FetcherF, ProjectF, RevisionF, BranchF, ProjectURLF, JIRAProjectKeyF, LinkF, TeamF}
+	API             = []cli.Flag{EndpointF, TitleF, FetcherF, ProjectF, RevisionF, BranchF, ProjectURLF, JIRAProjectKeyF, LinkF, TeamF, PolicyF}
 	Endpoint        = "endpoint"
 	EndpointF       = cli.StringFlag{Name: Short(Endpoint), Usage: "the FOSSA server endpoint (default: 'https://app.fossa.com')"}
 	Title           = "title"
@@ -66,6 +66,8 @@ var (
 	LinkF           = cli.StringFlag{Name: ShortUpper(Link), Usage: "a link to attach to the current build"}
 	Team            = "team"
 	TeamF           = cli.StringFlag{Name: ShortUpper(Team), Usage: "this repository's team inside your organization"}
+	Policy          = "policy"
+	PolicyF         = cli.StringFlag{Name: Policy, Usage: "the policy to assign to this project in FOSSA"}
 )
 
 func WithGlobalFlags(f []cli.Flag) []cli.Flag {

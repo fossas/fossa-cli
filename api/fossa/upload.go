@@ -30,6 +30,7 @@ type UploadOptions struct {
 	JIRAProjectKey string
 	Link           string
 	Team           string
+	Policy         string
 }
 
 // Upload uploads a project's analysis.
@@ -76,6 +77,9 @@ func Upload(title string, locator Locator, options UploadOptions, data []SourceU
 	}
 	if options.Team != "" {
 		q.Add("team", options.Team)
+	}
+	if options.Policy != "" {
+		q.Add("policy", options.Policy)
 	}
 
 	endpoint, err := url.Parse("/api/builds/custom?" + q.Encode())
