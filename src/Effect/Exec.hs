@@ -66,6 +66,8 @@ data ExecErr =
   | CommandParseError Text Text -- ^ Command output couldn't be parsed. command, err
   deriving (Eq, Ord, Show, Generic, Typeable)
 
+instance Exc.Exception ExecErr
+
 instance HFunctor Exec where
   hmap f (Exec dir cmd args k) = Exec dir cmd args (f . k)
 

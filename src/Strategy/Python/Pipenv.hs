@@ -46,7 +46,7 @@ analyze ::
   , Has (Error ReadFSErr) sig m
   , Effect sig
   )
-  => Path Rel File -> m ProjectClosure
+  => Path Rel File -> m ProjectClosureBody
 analyze lockfile = do
   lock <- readContentsJson lockfile
   -- TODO: diagnostics?
@@ -54,13 +54,11 @@ analyze lockfile = do
 
   pure (mkProjectClosure lockfile lock (eitherToMaybe maybeDeps))
 
-mkProjectClosure :: Path Rel File -> PipfileLock -> Maybe [PipenvGraphDep] -> ProjectClosure
-mkProjectClosure file lockfile maybeDeps = ProjectClosure
-  { closureStrategyGroup = PythonGroup
-  , closureStrategyName  = "python-pipenv"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel File -> PipfileLock -> Maybe [PipenvGraphDep] -> ProjectClosureBody
+mkProjectClosure file lockfile maybeDeps = ProjectClosureBody
+  { bodyModuleDir    = parent file
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies

@@ -38,16 +38,14 @@ newtype PackagesConfig = PackagesConfig
   { deps :: [NuGetDependency]
   } deriving (Eq, Ord, Show, Generic)
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsXML file
 
-mkProjectClosure :: Path Rel File -> PackagesConfig -> ProjectClosure
-mkProjectClosure file config = ProjectClosure
-  { closureStrategyGroup = DotnetGroup
-  , closureStrategyName  = "nuget-packagesconfig"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel File -> PackagesConfig -> ProjectClosureBody
+mkProjectClosure file config = ProjectClosureBody
+  { bodyModuleDir    = parent file
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies

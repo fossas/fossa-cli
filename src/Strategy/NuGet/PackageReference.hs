@@ -33,16 +33,14 @@ discover = walk $ \_ _ files -> do
       isPackageRefFile :: Path Rel File -> Bool
       isPackageRefFile file = any (\x -> L.isSuffixOf x (fileName file)) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsXML @PackageReference file
 
-mkProjectClosure :: Path Rel File -> PackageReference -> ProjectClosure
-mkProjectClosure file package = ProjectClosure
-  { closureStrategyGroup = DotnetGroup
-  , closureStrategyName  = "nuget-packagereference"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel File -> PackageReference -> ProjectClosureBody
+mkProjectClosure file package = ProjectClosureBody
+  { bodyModuleDir    = parent file
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies

@@ -65,7 +65,7 @@ spec_analyze = do
               & run
       case result of
         Left err -> expectationFailure ("analyze failed: " <> show err)
-        Right closure -> dependenciesGraph (closureDependencies closure) `shouldBe` expected
+        Right body -> dependenciesGraph (bodyDependencies body) `shouldBe` expected
 
     it "can handle complex inputs" $ do
       let result =
@@ -76,4 +76,4 @@ spec_analyze = do
 
       case result of
           Left err -> fail $ "failed to build graph" <> show err
-          Right closure -> length (graphingDirect (dependenciesGraph (closureDependencies closure))) `shouldBe` 12
+          Right body -> length (graphingDirect (dependenciesGraph (bodyDependencies body))) `shouldBe` 12

@@ -69,7 +69,7 @@ instance ToJSON VerConstraint where
       CAnd a b -> ("AND", toJSON [toJSON a, toJSON b])
       COr a b -> ("OR", toJSON [toJSON a, toJSON b])
       CLess text -> ("LESSTHAN", toJSON text)
-      CLessOrEq text -> ("LESSTHANOREQUAL", toJSON text)
+      CLessOrEq text -> ("LESSOREQUAL", toJSON text)
       CGreater text -> ("GREATERTHAN", toJSON text)
       CGreaterOrEq text -> ("GREATEROREQUAL", toJSON text)
       CNot text -> ("NOT", toJSON text)

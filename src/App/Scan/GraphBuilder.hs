@@ -53,10 +53,3 @@ instance (Algebra sig m, Effect sig) => Algebra (GraphBuilder :+: sig) (GraphBui
     AddNode dep k -> GraphBuilderC (state (G.addNode dep)) >>= k
     AddEdge parent child k -> GraphBuilderC (modify (G.addEdge parent child)) *> k
     AddDirect dep k -> GraphBuilderC (modify (G.addDirect dep)) *> k
-
-state :: Has (State s) sig m => (s -> (a,s)) -> m a
-state f = do
-  before <- get
-  let (result, after) = f before
-  result <$ put after
-

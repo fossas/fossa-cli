@@ -12,7 +12,6 @@ import Control.Algebra
 import Control.Carrier.Error.Either
 import Control.Carrier.State.Strict
 import qualified Data.Map.Strict as M
-import qualified Data.Text as T
 
 import Effect.ReadFS
 import Strategy.Maven.Pom.PomFile
@@ -112,7 +111,7 @@ resolvePath cur txt = do
       checkFile file = do
         exists <- doesFileExist file
         unless exists $
-          throwError (ResolveError $ "resolvePath: resolved file does not exist: " <> T.pack (show file))
+          throwError (FileReadError (show file) "resolvePath: resolved file does not exist: ")
         pure file
 
   resolveToFile `catchError` (\(_ :: ReadFSErr) -> resolveToDir)

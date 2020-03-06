@@ -33,16 +33,14 @@ discover = walk $ \_ _ files -> do
 
   walkContinue
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsXML @Nuspec file
 
-mkProjectClosure :: Path Rel File -> Nuspec -> ProjectClosure
-mkProjectClosure file nuspec = ProjectClosure
-  { closureStrategyGroup = DotnetGroup
-  , closureStrategyName  = "nuget-nuspec"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = [LicenseResult file (nuspecLicenses nuspec)]
+mkProjectClosure :: Path Rel File -> Nuspec -> ProjectClosureBody
+mkProjectClosure file nuspec = ProjectClosureBody
+  { bodyModuleDir    = parent file
+  , bodyDependencies = dependencies
+  , bodyLicenses     = [LicenseResult file (nuspecLicenses nuspec)]
   }
   where
   dependencies = ProjectDependencies

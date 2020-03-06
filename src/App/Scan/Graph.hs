@@ -49,8 +49,8 @@ empty :: Graph
 empty = Graph S.empty IM.empty IS.empty
 
 -- | Add a new dependency node to the graph. The returned 'DepRef' can be used to 'addEdge's
-addNode :: Dependency -> Graph -> (DepRef, Graph)
-addNode dep graph = (DepRef (length curDeps), graph { _graphDeps = curDeps S.|> dep })
+addNode :: Dependency -> Graph -> (Graph, DepRef)
+addNode dep graph = (graph { _graphDeps = curDeps S.|> dep }, DepRef (length curDeps))
   where
   curDeps = _graphDeps graph
 

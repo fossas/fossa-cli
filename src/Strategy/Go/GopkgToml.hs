@@ -20,11 +20,9 @@ import qualified Toml
 
 import DepTypes
 import Discovery.Walk
-import Effect.Exec
 import Effect.LabeledGrapher
 import Effect.ReadFS
 import Graphing (Graphing)
-import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
 import Types
 
@@ -66,10 +64,9 @@ data PkgConstraint = PkgConstraint
 analyze ::
   ( Has ReadFS sig m
   , Has (Error ReadFSErr) sig m
-  , Has Exec sig m
   , Effect sig
   )
-  => Path Rel File -> m ProjectClosure
+  => Path Rel File -> m ProjectClosureBody
 analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
   contents <- readContentsText file
   case Toml.decode gopkgCodec contents of
@@ -78,16 +75,14 @@ analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
       buildGraph gopkg
 
       -- TODO: diagnostics?
-      _ <- runError @ExecErr (fillInTransitive (parent file))
+      -- _ <- runError @ExecErr (fillInTransitive (parent file))
       pure ()
 
-mkProjectClosure :: Path Rel File -> Graphing Dependency -> ProjectClosure
-mkProjectClosure file graph = ProjectClosure
-  { closureStrategyGroup = GolangGroup
-  , closureStrategyName  = "golang-gopkgtoml"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel File -> Graphing Dependency -> ProjectClosureBody
+mkProjectClosure file graph = ProjectClosureBody
+  { bodyModuleDir     = parent file
+  , bodyDependencies  = dependencies
+  , bodyLicenses      = []
   }
   where
   dependencies = ProjectDependencies

@@ -69,7 +69,7 @@ spec_analyze = do
   T.describe "podfile lock parser" $
     T.it "parses error messages into an empty list" $
       case runParser findSections "" podLockFile of
-        Left _ -> T.expectationFailure "failed to parse"
+        Left err -> T.expectationFailure ("failed to parse: " <> errorBundlePretty err)
         Right result -> do
-            result `T.shouldContain` [podSection]
-            result `T.shouldContain` [dependencySection]
+          result `T.shouldContain` [podSection]
+          result `T.shouldContain` [dependencySection]

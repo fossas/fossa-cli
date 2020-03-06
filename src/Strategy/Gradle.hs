@@ -53,7 +53,7 @@ analyze ::
   , Has (Error ExecErr) sig m
   , MonadIO m
   )
-  => Path Rel Dir -> m ProjectClosure
+  => Path Rel Dir -> m ProjectClosureBody
 analyze dir =
   bracket (liftIO (getTempDir >>= \tmp -> createTempDir tmp "fossa-gradle"))
           (liftIO . removeDirRecur)
@@ -87,13 +87,11 @@ analyze dir =
 
     pure (mkProjectClosure dir packagesToOutput)
 
-mkProjectClosure :: Path Rel Dir -> Map Text [JsonDep] -> ProjectClosure
-mkProjectClosure dir deps = ProjectClosure
-  { closureStrategyGroup = GradleGroup
-  , closureStrategyName  = "gradle-cli"
-  , closureModuleDir     = dir
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel Dir -> Map Text [JsonDep] -> ProjectClosureBody
+mkProjectClosure dir deps = ProjectClosureBody
+  { bodyModuleDir    = dir
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies

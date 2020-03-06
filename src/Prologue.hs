@@ -13,6 +13,7 @@ import Debug.Trace as X (traceM, traceShow, traceShowId)
 import Control.Applicative as X hiding (many, some)
 import Control.Monad as X
 import Control.Monad.IO.Class as X
+import Control.Monad.Trans as X
 import Control.Effect.Error
 import Data.Aeson as X hiding (Error)
 import Data.Bifunctor as X

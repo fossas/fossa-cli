@@ -22,7 +22,9 @@ import Control.Carrier.Threaded
 import qualified Data.ByteString.Lazy as BL
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
+import Effect.Exec (ExecErr(..))
 import Effect.Logger
+import Effect.ReadFS (ReadFSErr(..))
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods.Podfile as Podfile
 import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
@@ -44,7 +46,6 @@ import qualified Strategy.NuGet.ProjectAssetsJson as ProjectAssetsJson
 import qualified Strategy.NuGet.ProjectJson as ProjectJson
 import qualified Strategy.NuGet.Nuspec as Nuspec
 import qualified Strategy.Python.Pipenv as Pipenv
-import qualified Strategy.Python.PipList as PipList
 import qualified Strategy.Python.ReqTxt as ReqTxt
 import qualified Strategy.Python.SetupPy as SetupPy
 import qualified Strategy.Ruby.BundleShow as BundleShow
@@ -88,15 +89,15 @@ scan basedir outFile = do
   setCurrentDir basedir
   capabilities <- liftIO getNumCapabilities
 
-  (closures,()) <- runOutput @ProjectClosure $
+  (closures,(failures,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
     withTaskPool capabilities updateProgress (traverse_ ($ basedir) discoverFuncs)
 
   logSticky "[ Combining Analyses ]"
 
-  let projects = mkProjects (S.fromList closures)
+  let result = buildResult closures failures
   liftIO $ case outFile of
-    Nothing -> BL.putStr (encode projects)
-    Just path -> liftIO (encodeFile path projects)
+    Nothing -> BL.putStr (encode result)
+    Just path -> liftIO (encodeFile path result)
 
   inferred <- inferProject basedir
   logInfo ""
@@ -104,6 +105,60 @@ scan basedir outFile = do
   logInfo ("Inferred revision: `" <> pretty (inferredRevision inferred) <> "`")
 
   logSticky ""
+
+buildResult :: [ProjectClosure] -> [ProjectFailure] -> Value
+buildResult closures failures = object
+  [ "projects" .= mkProjects (S.fromList closures)
+  , "failures" .= map renderFailure failures
+  ]
+
+renderFailure :: ProjectFailure -> Value
+renderFailure failure = object
+  [ "name" .= projectFailureName failure
+  , "cause" .= renderCause (projectFailureCause failure)
+  ]
+
+renderCause :: SomeException -> Value
+renderCause e = fromMaybe renderSomeException $
+      renderReadFSErr <$> fromException e
+  <|> renderExecErr   <$> fromException e
+  where
+  renderSomeException = object
+    [ "type" .= ("unknown" :: Text)
+    , "err"  .= show e
+    ]
+
+  renderReadFSErr :: ReadFSErr -> Value
+  renderReadFSErr = \case
+    FileReadError path err -> object
+      [ "type" .= ("file_read_error" :: Text)
+      , "path" .= path
+      , "err"  .= err
+      ]
+    FileParseError path err -> object
+      [ "type" .= ("file_parse_error" :: Text)
+      , "path" .= path
+      , "err"  .= err
+      ]
+    ResolveError base path err -> object
+      [ "type" .= ("file_resolve_error" :: Text)
+      , "base" .= base
+      , "path" .= path
+      , "err"  .= err
+      ]
+
+  renderExecErr :: ExecErr -> Value
+  renderExecErr = \case
+    CommandFailed cmd outerr -> object
+      [ "type"   .= ("command_execution_error" :: Text)
+      , "cmd"    .= cmd
+      , "stderr" .= outerr
+      ]
+    CommandParseError cmd err -> object
+      [ "type" .= ("command_parse_error" :: Text)
+      , "cmd"  .= cmd
+      , "err"  .= err
+      ]
 
 discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
 discoverFuncs =
@@ -129,7 +184,6 @@ discoverFuncs =
   , ProjectJson.discover
   , Nuspec.discover
 
-  , PipList.discover
   , Pipenv.discover
   , SetupPy.discover
   , ReqTxt.discover

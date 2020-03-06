@@ -116,8 +116,8 @@ data Edge = Edge
 
 instance FromJSON PluginOutput where
   parseJSON = withObject "PluginOutput" $ \obj ->
-    PluginOutput <$> obj .: "artifacts"
-                 <*> obj .: "dependencies"
+    PluginOutput <$> obj .:? "artifacts"    .!= []
+                 <*> obj .:? "dependencies" .!= []
 
 instance FromJSON Artifact where
   parseJSON = withObject "Artifact" $ \obj ->

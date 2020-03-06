@@ -24,16 +24,14 @@ discover = walk $ \_ _ files -> do
 
   walkContinue
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser installRequiresParser file
 
-mkProjectClosure :: Path Rel File -> [Req] -> ProjectClosure
-mkProjectClosure file reqs = ProjectClosure
-  { closureStrategyGroup = PythonGroup
-  , closureStrategyName  = "python-setuppy"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel File -> [Req] -> ProjectClosureBody
+mkProjectClosure file reqs = ProjectClosureBody
+  { bodyModuleDir    = parent file
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies

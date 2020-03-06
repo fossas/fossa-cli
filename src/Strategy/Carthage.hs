@@ -33,13 +33,11 @@ discover = walk $ \_ subdirs files ->
       runSimpleStrategy "carthage-lock" CarthageGroup $ fmap (mkProjectClosure file) (analyze file)
       walkSkipAll subdirs
 
-mkProjectClosure :: Path Rel File -> G.Graphing ResolvedEntry -> ProjectClosure
-mkProjectClosure file graph = ProjectClosure
-  { closureStrategyGroup = CarthageGroup
-  , closureStrategyName  = "carthage-lock"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel File -> G.Graphing ResolvedEntry -> ProjectClosureBody
+mkProjectClosure file graph = ProjectClosureBody
+  { bodyModuleDir    = parent file
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies

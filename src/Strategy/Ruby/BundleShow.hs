@@ -36,16 +36,14 @@ bundleShowCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ProjectClosure
+analyze :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ProjectClosureBody
 analyze dir = mkProjectClosure dir <$> execParser bundleShowParser dir bundleShowCmd []
 
-mkProjectClosure :: Path Rel Dir -> [BundleShowDep] -> ProjectClosure
-mkProjectClosure dir deps = ProjectClosure
-  { closureStrategyGroup = RubyGroup
-  , closureStrategyName  = "ruby-bundleshow"
-  , closureModuleDir     = dir
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel Dir -> [BundleShowDep] -> ProjectClosureBody
+mkProjectClosure dir deps = ProjectClosureBody
+  { bodyModuleDir    = dir
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies

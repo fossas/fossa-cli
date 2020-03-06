@@ -32,16 +32,14 @@ discover = walk $ \_ _ files -> do
 
   walkContinue
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser parsePodfile file
 
-mkProjectClosure :: Path Rel File -> Podfile -> ProjectClosure
-mkProjectClosure file podfile = ProjectClosure
-  { closureStrategyGroup = CocoapodsGroup
-  , closureStrategyName  = "cocoapods-podfilelock"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel File -> Podfile -> ProjectClosureBody
+mkProjectClosure file podfile = ProjectClosureBody
+  { bodyModuleDir    = parent file
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies

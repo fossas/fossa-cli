@@ -34,16 +34,14 @@ instance FromJSON PackageJson where
     PackageJson <$> obj .:? "dependencies"    .!= M.empty
                 <*> obj .:? "devDependencies" .!= M.empty
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsJson @PackageJson file
 
-mkProjectClosure :: Path Rel File -> PackageJson -> ProjectClosure
-mkProjectClosure file package = ProjectClosure
-  { closureStrategyGroup = NodejsGroup
-  , closureStrategyName  = "nodejs-packagejson"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel File -> PackageJson -> ProjectClosureBody
+mkProjectClosure file package = ProjectClosureBody
+  { bodyModuleDir    = parent file
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies

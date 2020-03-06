@@ -52,16 +52,14 @@ instance FromJSON DependencyInfo where
     parseJSONText = withText "DependencyVersion" $ \text ->
         pure $ DependencyInfo text Nothing
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsJson @ProjectJson file
 
-mkProjectClosure :: Path Rel File -> ProjectJson -> ProjectClosure
-mkProjectClosure file projectJson = ProjectClosure
-  { closureStrategyGroup = DotnetGroup
-  , closureStrategyName  = "nuget-projectjson"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel File -> ProjectJson -> ProjectClosureBody
+mkProjectClosure file projectJson = ProjectClosureBody
+  { bodyModuleDir    = parent file
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies

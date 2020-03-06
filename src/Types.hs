@@ -2,6 +2,8 @@ module Types
   ( StrategyGroup(..)
 
   , ProjectClosure(..)
+  , ProjectClosureBody(..)
+  , ProjectFailure(..)
 
   , Optimal(..)
   , Complete(..)
@@ -23,7 +25,7 @@ import Control.Algebra
 import Control.Carrier.Error.Either
 import Control.Carrier.TaskPool
 import Control.Effect.Exception
-import Control.Effect.Output
+import Control.Carrier.Output.IO
 import DepTypes
 import Effect.Exec
 import Effect.Logger
@@ -36,48 +38,44 @@ runSimpleStrategy ::
   ( Has (Lift IO) sig m
   , Has TaskPool sig m
   , Has (Output ProjectClosure) sig m
+  , Has (Output ProjectFailure) sig m
+  , MonadIO m
+  , Effect sig
   )
-  => Text -> StrategyGroup -> TaskC m ProjectClosure -> m ()
-runSimpleStrategy _ _ act = forkTask $ do
-  let runIt = runError @ReadFSErr
-            . runError @ExecErr
-            . runReadFSIO
-            . runExecIO
-
-  mask $ \restore -> do
-    (res :: Either SomeException a) <- try (restore (runIt act))
-    case res of
-      Left _ -> pure () -- TODO
-      Right (Left _) -> pure () -- TODO
-      Right (Right (Left _)) -> pure () -- TODO
-      Right (Right (Right a)) -> output a
+  => Text -> StrategyGroup -> TaskC m ProjectClosureBody -> m ()
+runSimpleStrategy name strategyGroup act = runStrategy name strategyGroup (lift act >>= output)
 
 runStrategy ::
   ( Has (Lift IO) sig m
   , Has TaskPool sig m
+  , Has (Output ProjectClosure) sig m
+  , Has (Output ProjectFailure) sig m
+  , MonadIO m
   )
-  => Text -> StrategyGroup -> TaskC m () -> m ()
-runStrategy _ _ act = forkTask $ do
+  => Text -> StrategyGroup -> OutputC ProjectClosureBody (TaskC m) () -> m ()
+runStrategy name strategyGroup act = forkTask $ do
   let runIt = runError @ReadFSErr
             . runError @ExecErr
             . runReadFSIO
             . runExecIO
+            . runOutput @ProjectClosureBody
 
   mask $ \restore -> do
     (res :: Either SomeException a) <- try (restore (runIt act))
     case res of
-      Left _ -> pure () -- TODO
-      Right (Left _) -> pure () -- TODO
-      Right (Right (Left _)) -> pure () -- TODO
-      Right (Right (Right ())) -> pure ()
+      Left exc -> output (ProjectFailure strategyGroup name exc)
+      Right (Left exc) -> output (ProjectFailure strategyGroup name (SomeException exc))
+      Right (Right (Left exc)) -> output (ProjectFailure strategyGroup name (SomeException exc))
+      Right (Right (Right (bodies,()))) -> traverse_ (output . toProjectClosure strategyGroup name) bodies
 
-type TaskC m a = ExecIOC (ReadFSIOC (ErrorC ExecErr (ErrorC ReadFSErr m))) a
+type TaskC m = (ExecIOC (ReadFSIOC (ErrorC ExecErr (ErrorC ReadFSErr m))))
 
 type HasDiscover sig m =
   ( Has (Lift IO) sig m
   , Has Logger sig m
   , Has TaskPool sig m
   , Has (Output ProjectClosure) sig m
+  , Has (Output ProjectFailure) sig m
   , MonadIO m
   , Effect sig
   )
@@ -97,6 +95,27 @@ data Complete = Complete | NotComplete
 instance ToJSON Complete where
   toJSON Complete    = toJSON True
   toJSON NotComplete = toJSON False
+
+data ProjectFailure = ProjectFailure
+  { projectFailureGroup :: StrategyGroup
+  , projectFailureName  :: Text
+  , projectFailureCause :: SomeException
+  } deriving (Show, Generic)
+
+toProjectClosure :: StrategyGroup -> Text -> ProjectClosureBody -> ProjectClosure
+toProjectClosure strategyGroup name body = ProjectClosure
+  { closureStrategyGroup = strategyGroup
+  , closureStrategyName = name
+  , closureModuleDir = bodyModuleDir body
+  , closureDependencies = bodyDependencies body
+  , closureLicenses = bodyLicenses body
+  }
+
+data ProjectClosureBody = ProjectClosureBody
+  { bodyModuleDir    :: Path Rel Dir
+  , bodyDependencies :: ProjectDependencies
+  , bodyLicenses     :: [LicenseResult]
+  } deriving (Eq, Ord, Show, Generic)
 
 data ProjectClosure = ProjectClosure
   { closureStrategyGroup :: StrategyGroup

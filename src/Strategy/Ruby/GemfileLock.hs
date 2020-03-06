@@ -61,16 +61,14 @@ newtype DirectDep = DirectDep
       { directName :: Text
       } deriving (Eq, Ord, Show, Generic)
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser @[Section] findSections file
 
-mkProjectClosure :: Path Rel File -> [Section] -> ProjectClosure
-mkProjectClosure file sections = ProjectClosure
-  { closureStrategyGroup = RubyGroup
-  , closureStrategyName  = "ruby-gemfilelock"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel File -> [Section] -> ProjectClosureBody
+mkProjectClosure file sections = ProjectClosureBody
+  { bodyModuleDir    = parent file
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies
@@ -137,13 +135,13 @@ buildGraph sections = run . withLabeling toDependency $
 type Parser = Parsec Void Text
 
 findSections :: Parser [Section]
-findSections = many (try gitSectionParser <|> try gemSectionParser <|> try pathSectionParser <|> try dependenciesSectionParser <|> emptySection) <* eof
+findSections = manyTill (try gitSectionParser <|> try gemSectionParser <|> try pathSectionParser <|> try dependenciesSectionParser <|> unknownSection) eof
 
-emptySection :: Parser Section
-emptySection = do 
-      emptyLine <- restOfLine
-      _ <- eol
-      pure $ UnknownSection emptyLine
+unknownSection :: Parser Section
+unknownSection = do
+  scn
+  line <- restOfLine
+  pure $ UnknownSection line
       
 restOfLine :: Parser Text
 restOfLine = takeWhileP (Just "ignored") (not . isEndLine)
@@ -173,70 +171,66 @@ gemSectionParser = mkSectionParser "GEM" $ \propertyMap -> do
   pure $ GemSection remote specs
 
 mkSectionParser :: Text -> (Map Text RawField -> Either Text Section) -> Parser Section
-mkSectionParser sectionName toSection = L.nonIndented scn (L.indentBlock scn p)
-      where
-         p = do
-            _ <- chunk sectionName
-            pure $ L.IndentMany Nothing propertiesToSection (try propertyParser <|> specPropertyParser)
+mkSectionParser sectionName toSection = L.nonIndented scn $ L.indentBlock scn $ do
+  _ <- chunk sectionName
+  pure $ L.IndentMany Nothing propertiesToSection (try propertyParser <|> specPropertyParser)
 
-         propertiesToSection :: [(Text, RawField)] -> Parser Section
-         propertiesToSection properties =
-            let propertyMap = M.fromList properties
-                result :: Either Text Section
-                result = toSection propertyMap
+  where
+    propertiesToSection :: [(Text, RawField)] -> Parser Section
+    propertiesToSection properties =
+      let propertyMap = M.fromList properties
+          result :: Either Text Section
+          result = toSection propertyMap
 
-            in case result of
-                  Right x -> pure x
-                  Left y -> fail $ T.unpack $ "could not parse " <> sectionName <> " section: " <> y
+      in case result of
+            Right x -> pure x
+            Left y -> fail $ T.unpack $ "could not parse " <> sectionName <> " section: " <> y
 
 eitherToMaybe :: Either a b -> Maybe b
 eitherToMaybe (Right a) = Just a
 eitherToMaybe (Left _) = Nothing
 
 lookupRawText :: Text -> Map Text RawField -> Either Text Text
-lookupRawText key m = let value = M.lookup key m
-                  in
-                  case value of
-                        Just (RawText val) -> Right val
-                        _ -> Left $ "a value for " <> key <> " was unable to be found in the map"
+lookupRawText key m = case M.lookup key m of
+  Just (RawText val) -> Right val
+  _ -> Left $ "a value for " <> key <> " was unable to be found in the map"
 
 lookupRawSpecs :: Text -> Map Text RawField -> Either Text [Spec]
-lookupRawSpecs key m = let value = M.lookup key m
-                  in
-                  case value of
-                        Just (RawSpecs val) -> Right val
-                        _ -> Left $ "a value for " <> key <> " was unable to be found in the map"
+lookupRawSpecs key m = case M.lookup key m of
+  Just (RawSpecs val) -> Right val
+  _ -> Left $ "a value for " <> key <> " was unable to be found in the map"
 
-data RawField = RawText Text
-                | RawSpecs [Spec]
-                deriving (Eq, Ord, Show, Generic)
+data RawField
+  = RawText Text
+  | RawSpecs [Spec]
+  deriving (Eq, Ord, Show, Generic)
 
 propertyParser :: Parser (Text, RawField)
 propertyParser = do
-      remote <- findFieldName
-      _ <- chunk ":"
-      value <- textValue
-      pure (remote, value)
+  remote <- findFieldName
+  _ <- chunk ":"
+  value <- textValue
+  pure (remote, value)
 
-      where 
-            findFieldName :: Parser Text
-            findFieldName = takeWhileP (Just "field name") (/= ':')
+  where
+    findFieldName :: Parser Text
+    findFieldName = takeWhileP (Just "field name") (/= ':')
 
-            textValue :: Parser RawField
-            textValue = do
-                  _ <- chunk " "
-                  RawText <$> restOfLine
+    textValue :: Parser RawField
+    textValue = do
+          _ <- chunk " "
+          RawText <$> restOfLine
 
 specPropertyParser :: Parser (Text, RawField)
-specPropertyParser = L.indentBlock scn p
-      where 
-      p = do
-            remote <- findFieldName
-            _ <- chunk ":"
-            pure $ L.IndentMany Nothing (\a -> pure (remote, RawSpecs a)) specParser
-            
-      findFieldName :: Parser Text
-      findFieldName = takeWhileP (Just "field name") (/= ':')
+specPropertyParser = L.indentBlock scn $ do
+  remote <- findFieldName
+  _ <- chunk ":"
+  pure $ L.IndentMany Nothing (\a -> pure (remote, RawSpecs a)) specParser
+
+  where
+
+    findFieldName :: Parser Text
+    findFieldName = takeWhileP (Just "field name") (/= ':')
 
 isEndLine :: Char -> Bool
 isEndLine '\n' = True
@@ -278,11 +272,9 @@ findVersion = do
 
 
 dependenciesSectionParser :: Parser Section
-dependenciesSectionParser = L.nonIndented scn (L.indentBlock scn p)
-                  where
-                        p = do
-                              _ <- chunk "DEPENDENCIES"
-                              pure $ L.IndentMany Nothing (\deps -> pure $ DependencySection deps) findDependency
+dependenciesSectionParser = L.nonIndented scn $ L.indentBlock scn $ do
+  _ <- chunk "DEPENDENCIES"
+  pure $ L.IndentMany Nothing (\deps -> pure $ DependencySection deps) findDependency
 
 findDependency :: Parser DirectDep
 findDependency = do

@@ -28,20 +28,14 @@ discover = walk $ \_ _ files -> do
 
   walkContinue
 
-analyze ::
-  ( Has ReadFS sig m
-  , Has (Error ReadFSErr) sig m
-  )
-  => Path Rel File -> m ProjectClosure
+analyze :: ( Has ReadFS sig m , Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsYaml @GlideLockfile file
 
-mkProjectClosure :: Path Rel File -> GlideLockfile -> ProjectClosure
-mkProjectClosure file lock = ProjectClosure
-  { closureStrategyGroup = GolangGroup
-  , closureStrategyName  = "golang-glidelock"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel File -> GlideLockfile -> ProjectClosureBody
+mkProjectClosure file lock = ProjectClosureBody
+  { bodyModuleDir    = parent file
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies

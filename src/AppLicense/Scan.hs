@@ -46,7 +46,7 @@ scan basedir = do
   setCurrentDir basedir
   capabilities <- liftIO getNumCapabilities
 
-  (closures,()) <- runOutput @ProjectClosure $
+  (closures,(_,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
     withTaskPool capabilities updateProgress (traverse_ ($ basedir) discoverFuncs)
 
   logSticky "[ Combining Analyses ]"

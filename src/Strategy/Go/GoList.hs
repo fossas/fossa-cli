@@ -18,7 +18,6 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.LabeledGrapher
 import Graphing (Graphing)
-import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
 import Types
 
@@ -47,7 +46,7 @@ analyze ::
   , Has (Error ExecErr) sig m
   , Effect sig
   )
-  => Path Rel Dir -> m ProjectClosure
+  => Path Rel Dir -> m ProjectClosureBody
 analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do
   stdout <- execThrow dir golistCmd []
 
@@ -63,19 +62,14 @@ analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do
   buildGraph requires
 
   -- TODO: diagnostics?
-  _ <- try @ExecErr (fillInTransitive dir)
+  -- _ <- try @ExecErr (fillInTransitive dir)
   pure ()
 
-try :: Has (Error e) sig m => m a -> m (Either e a)
-try act = (Right <$> act) `catchError` (pure . Left)
-
-mkProjectClosure :: Path Rel Dir -> Graphing Dependency -> ProjectClosure
-mkProjectClosure dir graph = ProjectClosure
-  { closureStrategyGroup = GolangGroup
-  , closureStrategyName  = "golang-golist"
-  , closureModuleDir     = dir
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel Dir -> Graphing Dependency -> ProjectClosureBody
+mkProjectClosure dir graph = ProjectClosureBody
+  { bodyModuleDir    = dir
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies

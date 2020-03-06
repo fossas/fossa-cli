@@ -28,16 +28,14 @@ npmListCmd = Command
   , cmdAllowErr = NonEmptyStdout
   }
 
-analyze :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ProjectClosure
+analyze :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ProjectClosureBody
 analyze dir = mkProjectClosure dir <$> execJson @NpmOutput dir npmListCmd []
 
-mkProjectClosure :: Path Rel Dir -> NpmOutput -> ProjectClosure
-mkProjectClosure dir npmOutput = ProjectClosure
-  { closureStrategyGroup = NodejsGroup
-  , closureStrategyName  = "nodejs-npmlist"
-  , closureModuleDir     = dir
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel Dir -> NpmOutput -> ProjectClosureBody
+mkProjectClosure dir npmOutput = ProjectClosureBody
+  { bodyModuleDir     = dir
+  , bodyDependencies  = dependencies
+  , bodyLicenses      = []
   }
   where
   dependencies = ProjectDependencies

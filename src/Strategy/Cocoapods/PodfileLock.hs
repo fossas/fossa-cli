@@ -35,16 +35,14 @@ discover = walk $ \_ _ files -> do
 
   walkContinue
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser findSections file
 
-mkProjectClosure :: Path Rel File -> [Section] -> ProjectClosure
-mkProjectClosure file sections = ProjectClosure
-  { closureStrategyGroup = CocoapodsGroup
-  , closureStrategyName  = "cocoapods-podfilelock"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel File -> [Section] -> ProjectClosureBody
+mkProjectClosure file sections = ProjectClosureBody
+  { bodyModuleDir    = parent file
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies
@@ -127,13 +125,13 @@ data Remote = Remote
      } deriving (Eq, Ord, Show, Generic)
 
 findSections :: Parser [Section]
-findSections = many (try podSectionParser <|> try dependenciesSectionParser <|> try specRepoParser <|> try externalSourcesParser <|> try checkoutOptionsParser <|> try emptySection) <* eof
+findSections = manyTill (try podSectionParser <|> try dependenciesSectionParser <|> try specRepoParser <|> try externalSourcesParser <|> try checkoutOptionsParser <|> unknownSection) eof
 
-emptySection :: Parser Section
-emptySection = do 
-      emptyLine <- restOfLine
-      _ <- eol
-      pure $ UnknownSection emptyLine
+unknownSection :: Parser Section
+unknownSection = do
+  scn
+  line <- restOfLine
+  pure $ UnknownSection line
 
 podSectionParser :: Parser Section
 podSectionParser = sectionParser "PODS:" PodSection podParser
@@ -151,61 +149,49 @@ checkoutOptionsParser :: Parser Section
 checkoutOptionsParser = sectionParser "CHECKOUT OPTIONS:" CheckoutOptions externalDepsParser
 
 sectionParser :: Text -> ([a] -> Section) -> Parser a -> Parser Section
-sectionParser section lambda parser = L.nonIndented scn (L.indentBlock scn p)
-      where
-        p = do
-          _ <- chunk section
-          return (L.IndentMany Nothing (pure . lambda) parser)
+sectionParser sectionName lambda parser = nonIndented $ indentBlock $ do
+  _ <- chunk sectionName
+  return (L.IndentMany Nothing (pure . lambda) parser)
 
 externalDepsParser :: Parser SourceDep
-externalDepsParser = L.indentBlock scn p
-      where
-        p = do
-          depName <- lexeme (takeWhileP (Just "external dep parser") (/= ':'))
-          _ <- restOfLine
-          return (L.IndentMany Nothing (\exDeps -> pure $ SourceDep depName $ M.fromList exDeps) tagParser)
+externalDepsParser = indentBlock $ do
+  depName <- lexeme (takeWhileP (Just "external dep parser") (/= ':'))
+  _ <- restOfLine
+  return (L.IndentMany Nothing (\exDeps -> pure $ SourceDep depName $ M.fromList exDeps) tagParser)
 
 tagParser :: Parser (Text, Text)
 tagParser = do
-      _ <- chunk ":"
-      tag <- lexeme (takeWhileP (Just "tag parser") (/= ':'))
-      _ <- chunk ": "
-      value <- restOfLine
-      pure (tag, value)
+  _ <- chunk ":"
+  tag <- lexeme (takeWhileP (Just "tag parser") (/= ':'))
+  _ <- chunk ": "
+  value <- restOfLine
+  pure (tag, value)
 
 remoteParser :: Parser Remote
-remoteParser = L.indentBlock scn p
-    where 
-      p = do
-        location <- restOfLine
-        pure (L.IndentMany Nothing (\deps -> pure $ Remote (T.dropWhileEnd (==':') location) deps) depParser)
+remoteParser = indentBlock $ do
+  location <- restOfLine
+  pure (L.IndentMany Nothing (\deps -> pure $ Remote (T.dropWhileEnd (==':') location) deps) depParser)
 
 podParser :: Parser Pod
-podParser = L.indentBlock scn p
-    where 
-      p = do
-        _ <- chunk "- "
-        name <- findDep
-        version <- findVersion
-        _ <- restOfLine
-        pure (L.IndentMany Nothing (\deps -> pure $ Pod name version deps) depParser)
+podParser = indentBlock $ do
+  _ <- chunk "- "
+  name <- findDep
+  version <- findVersion
+  _ <- restOfLine
+  pure (L.IndentMany Nothing (\deps -> pure $ Pod name version deps) depParser)
 
 depParser :: Parser Dep
 depParser = do
-      _ <- chunk "- "
-      name <- findDep
-      _ <- restOfLine
-      pure $ Dep name
+  _ <- chunk "- "
+  name <- findDep
+  _ <- restOfLine
+  pure $ Dep name
 
 findDep :: Parser Text
 findDep = lexeme (takeWhile1P (Just "dep") (not . C.isSpace))
 
 findVersion :: Parser Text
-findVersion = do
-      _ <- char '('
-      result <- lexeme (takeWhileP (Just "version") (/= ')'))
-      _ <- char ')'
-      pure result
+findVersion = between (char '(') (char ')') (lexeme (takeWhileP (Just "version") (/= ')')))
 
 restOfLine :: Parser Text
 restOfLine = takeWhileP (Just "ignored") (not . isEndLine)
@@ -214,6 +200,12 @@ isEndLine :: Char -> Bool
 isEndLine '\n' = True
 isEndLine '\r' = True
 isEndLine _    = False
+
+nonIndented :: Parser a -> Parser a
+nonIndented = L.nonIndented scn
+
+indentBlock :: Parser (L.IndentOpt Parser a b) -> Parser a
+indentBlock = L.indentBlock scn
 
 scn :: Parser ()
 scn =  L.space space1 empty empty

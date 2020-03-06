@@ -56,7 +56,7 @@ common deps
     , containers                   ^>=0.6.0
     , file-embed                   ^>=0.0.11
     , filepath                     ^>=1.4.2.1
-    , fused-effects                ^>=1.0.0.1
+    , fused-effects                ^>=1.0.2.0
     , fused-effects-exceptions     ^>=1.0.0.0
     , git-config                   ^>=0.1.2
     , megaparsec                   ^>=8.0

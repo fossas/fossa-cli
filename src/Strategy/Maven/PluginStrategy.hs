@@ -34,20 +34,18 @@ analyze ::
   , Has (Error ExecErr) sig m
   , MonadIO m
   )
-  => Path Rel Dir -> m ProjectClosure
+  => Path Rel Dir -> m ProjectClosureBody
 analyze dir = withUnpackedPlugin $ \filepath -> do
   installPlugin dir filepath
   execPlugin dir
   pluginOutput <- parsePluginOutput dir
   pure (mkProjectClosure dir pluginOutput)
 
-mkProjectClosure :: Path Rel Dir -> PluginOutput -> ProjectClosure
-mkProjectClosure dir pluginOutput = ProjectClosure
-  { closureStrategyGroup = MavenGroup
-  , closureStrategyName  = "maven-cli"
-  , closureModuleDir     = dir
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel Dir -> PluginOutput -> ProjectClosureBody
+mkProjectClosure dir pluginOutput = ProjectClosureBody
+  { bodyModuleDir    = dir
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies

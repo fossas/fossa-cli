@@ -27,7 +27,7 @@ discover = walk $ \_ subdirs files -> do
 
   walkSkipNamed ["node_modules/"] subdirs
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze lockfile = do
   let path = fromRelFile lockfile
 
@@ -36,13 +36,11 @@ analyze lockfile = do
     Left err -> throwError (FileParseError path (YL.prettyLockfileError err))
     Right a -> pure (mkProjectClosure lockfile a)
 
-mkProjectClosure :: Path Rel File -> YL.Lockfile -> ProjectClosure
-mkProjectClosure file lock = ProjectClosure
-  { closureStrategyGroup = NodejsGroup
-  , closureStrategyName  = "nodejs-yarnlock"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel File -> YL.Lockfile -> ProjectClosureBody
+mkProjectClosure file lock = ProjectClosureBody
+  { bodyModuleDir    = parent file
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies

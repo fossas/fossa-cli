@@ -34,16 +34,14 @@ pipListCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ProjectClosure
+analyze :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ProjectClosureBody
 analyze dir = mkProjectClosure dir <$> execJson @[PipListDep] dir pipListCmd []
 
-mkProjectClosure :: Path Rel Dir -> [PipListDep] -> ProjectClosure
-mkProjectClosure dir deps = ProjectClosure
-  { closureStrategyGroup = PythonGroup
-  , closureStrategyName  = "python-piplist"
-  , closureModuleDir     = dir
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel Dir -> [PipListDep] -> ProjectClosureBody
+mkProjectClosure dir deps = ProjectClosureBody
+  { bodyModuleDir    = dir
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies

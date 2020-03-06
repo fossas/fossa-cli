@@ -55,16 +55,14 @@ instance FromJSON NpmDep where
            <*> obj .:? "requires"
            <*> obj .:? "dependencies"
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosure
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsJson @NpmPackageJson file
 
-mkProjectClosure :: Path Rel File -> NpmPackageJson -> ProjectClosure
-mkProjectClosure file lock = ProjectClosure
-  { closureStrategyGroup = NodejsGroup
-  , closureStrategyName  = "nodejs-packagelock"
-  , closureModuleDir     = parent file
-  , closureDependencies  = dependencies
-  , closureLicenses      = []
+mkProjectClosure :: Path Rel File -> NpmPackageJson -> ProjectClosureBody
+mkProjectClosure file lock = ProjectClosureBody
+  { bodyModuleDir    = parent file
+  , bodyDependencies = dependencies
+  , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies
