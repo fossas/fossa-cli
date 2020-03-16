@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,9 +42,10 @@ var Cmd = cli.Command{
 
 var _ cli.ActionFunc = Run
 
-var timeout = "timeout"
-var success = "success"
-var panic = "panic"
+const timeout = "timeout"
+const success = "success"
+const panic = "panic"
+const comparisonEndpoint = "http://localhost:3000"
 
 type spectrometerOutput struct {
 	Status  string
@@ -69,12 +72,6 @@ type strippedModule struct {
 	Dir         string
 	Options     map[string]interface{}
 	Source      fossa.SourceUnit
-}
-
-// Check that the server can be hit and that it validates the run.
-// The server has the ability to be a killswitch.
-func authorizedComparison() (bool, int) {
-	return true, 1
 }
 
 // This function runs v2 analysis and uploads the results for comparison.
@@ -114,13 +111,34 @@ func v2Analysis(completion chan spectrometerOutput) {
 	}
 }
 
+// Check that the server exists and that it validates the run.
+// The server has the ability to be a killswitch and set the timeout.
+func authorizedComparison() (bool, int) {
+	resp, err := http.Get(comparisonEndpoint + "/authorized")
+	if err != nil || resp.StatusCode != 200 {
+		return false, 0
+	}
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false, 0
+	}
+
+	i, err := strconv.Atoi(string(bodyBytes))
+	if err != nil {
+		return false, 0
+	}
+
+	return true, i
+}
+
 func uploadComparisonData(data comparisonData) {
 	output, err := json.Marshal(data)
 	if err != nil {
 		return
 	}
 
-	u, err := url.Parse("http://localhost:3000/results")
+	u, err := url.Parse(comparisonEndpoint + "/results")
 	if err != nil {
 		return
 	}
@@ -147,7 +165,7 @@ func Run(ctx *cli.Context) error {
 	startTime := time.Now()
 	v2Completion := make(chan spectrometerOutput, 1)
 
-	authorized, _ := authorizedComparison()
+	authorized, timeout := authorizedComparison()
 	if authorized && !ctx.Bool(ShowOutput) {
 		go v2Analysis(v2Completion)
 	}
@@ -157,42 +175,44 @@ func Run(ctx *cli.Context) error {
 	modules := []module.Module{}
 
 	defer func() {
-		var message string
-		var spectrometerResult spectrometerOutput
+		if authorized {
+			var message string
+			var spectrometerResult spectrometerOutput
 
-		select {
-		case result := <-v2Completion:
-			spectrometerResult = result
-		case <-time.After(5 * time.Second):
-			message = "cli v1 was faster than spectrometer and forced spectrometer to exit"
+			select {
+			case result := <-v2Completion:
+				spectrometerResult = result
+			case <-time.After(time.Duration(timeout) * time.Second):
+				message = "cli v1 was faster than spectrometer and forced spectrometer to exit"
+			}
+
+			if ctx.Bool(ShowOutput) {
+				displaySourceunits(normalized, ctx)
+			}
+
+			comparison := comparisonData{
+				Project:      config.Project(),
+				Spectrometer: spectrometerResult,
+				CliAnalysis:  normalized,
+				Runtime:      time.Since(startTime),
+				CliError:     err,
+				Message:      message,
+			}
+
+			for _, module := range modules {
+				sourceUnit, _ := fossa.SourceUnitFromModule(module)
+				comparison.Modules = append(comparison.Modules, strippedModule{
+					Name:        module.Name,
+					Type:        module.Type,
+					BuildTarget: module.BuildTarget,
+					Dir:         module.Dir,
+					Options:     module.Options,
+					Source:      sourceUnit,
+				})
+			}
+
+			uploadComparisonData(comparison)
 		}
-
-		if ctx.Bool(ShowOutput) {
-			displaySourceunits(normalized, ctx)
-		}
-
-		comparison := comparisonData{
-			Project:      config.Project(),
-			Spectrometer: spectrometerResult,
-			CliAnalysis:  normalized,
-			Runtime:      time.Since(startTime),
-			CliError:     err,
-			Message:      message,
-		}
-
-		for _, module := range modules {
-			sourceUnit, _ := fossa.SourceUnitFromModule(module)
-			comparison.Modules = append(comparison.Modules, strippedModule{
-				Name:        module.Name,
-				Type:        module.Type,
-				BuildTarget: module.BuildTarget,
-				Dir:         module.Dir,
-				Options:     module.Options,
-				Source:      sourceUnit,
-			})
-		}
-
-		uploadComparisonData(comparison)
 	}()
 
 	err = setup.SetContext(ctx, !ctx.Bool(ShowOutput))
