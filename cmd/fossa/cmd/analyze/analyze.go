@@ -114,7 +114,7 @@ func v2Analysis(completion chan spectrometerOutput) {
 // Check that the server exists and that it validates the run.
 // The server has the ability to be a killswitch and set the timeout.
 func authorizedComparison() (bool, int) {
-	resp, err := http.Get(comparisonEndpoint + "/authorized")
+	resp, err := http.Get(comparisonEndpoint + "/authorize")
 	if err != nil || resp.StatusCode != 200 {
 		return false, 0
 	}
@@ -186,10 +186,6 @@ func Run(ctx *cli.Context) error {
 				message = "cli v1 was faster than spectrometer and forced spectrometer to exit"
 			}
 
-			if ctx.Bool(ShowOutput) {
-				displaySourceunits(normalized, ctx)
-			}
-
 			comparison := comparisonData{
 				Project:      config.Project(),
 				Spectrometer: spectrometerResult,
@@ -212,6 +208,10 @@ func Run(ctx *cli.Context) error {
 			}
 
 			uploadComparisonData(comparison)
+		}
+
+		if ctx.Bool(ShowOutput) {
+			displaySourceunits(normalized, ctx)
 		}
 	}()
 
