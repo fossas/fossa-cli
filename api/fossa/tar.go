@@ -201,10 +201,13 @@ func CreateTarball(dir string) (*os.File, []byte, error) {
 		if err != nil {
 			return err
 		}
-		header.Name, err = filepath.Rel(filepath.Dir(dir), filename)
+		relpath, err := filepath.Rel(filepath.Dir(dir), filename)
 		if err != nil {
 			return err
 		}
+		// golang's archive/tar package doesn't stop us from using the wrong file separators.
+		// we need to manually convert them.
+		header.Name = filepath.ToSlash(relpath)
 
 		err = t.WriteHeader(header)
 		if err != nil {
