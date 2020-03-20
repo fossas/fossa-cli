@@ -33,6 +33,7 @@ type File interface {
 	JIRAProjectKey() string
 	Link() string
 	Team() string
+	Policy() string
 
 	Modules() []module.Module
 }
@@ -80,6 +81,10 @@ func (_ NoFile) Link() string {
 }
 
 func (_ NoFile) Team() string {
+	return ""
+}
+
+func (_ NoFile) Policy() string {
 	return ""
 }
 

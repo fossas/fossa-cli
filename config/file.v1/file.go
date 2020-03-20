@@ -32,6 +32,7 @@ type CLIProperties struct {
 	JIRAProjectKey string `yaml:"jira_project_key,omitempty"` // Only used with custom fetcher
 	Link           string `yaml:"link,omitempty"`
 	Team           string `yaml:"team,omitempty"`
+	Policy         string `yaml:"policy,omitempty"`
 }
 
 type AnalyzeProperties struct {
@@ -140,7 +141,11 @@ func (file File) Link() string {
 }
 
 func (file File) Team() string {
-	return file.CLI.Link
+	return file.CLI.Team
+}
+
+func (file File) Policy() string {
+	return file.CLI.Policy
 }
 
 func (file File) Revision() string {

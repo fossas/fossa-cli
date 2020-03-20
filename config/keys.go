@@ -115,6 +115,10 @@ func Team() string {
 	return TryStrings(StringFlag(flags.Team), file.Team(), "")
 }
 
+func Policy() string {
+	return TryStrings(StringFlag(flags.Policy), file.Policy(), "")
+}
+
 /**** Analysis configuration keys ****/
 
 func Options() (map[string]interface{}, error) {
