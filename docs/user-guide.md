@@ -277,7 +277,7 @@ Report accesses the scanned report on FOSSA.com using the existing configuration
 Outputs an attribution report for the project that includes information about the dependencies used and their licenses.
 
 #### `fossa report licenses` 
-Outputs detailed information about the licenses and corresponding dependencies used by the project. An example of this can be found in the [Notice file](./Notice) for the FOSSA CLI.
+Outputs detailed information about the licenses and corresponding dependencies used by the project. An example of this can be found in the [Notice file](../NOTICE) for the FOSSA CLI.
 
 #### `fossa report dependencies`
 Outputs detailed information about the dependencies that are being used by the current project.

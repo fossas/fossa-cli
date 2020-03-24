@@ -102,7 +102,7 @@ If you are interested in learning more about FOSSA you can visit our homepage at
 | Javascript                                      | [nodejs & npm](docs/integrations/nodejs.md#nodejs)                                                                                |
 | Kotlin                                          | [Gradle](docs/integrations/gradle.md#gradle)                                                                                      |
 | Monorepo tooling                                | [okbuck](docs/integrations/okbuck.md#okbuck), [Buck](docs/integrations/buck.md#buck)                                              |
-| [.NET](docs/integrations/nuget.md#nuget-net)    | NuGet, Paket                                                                                                                      |
+| [.NET](docs/integrations/dotnet.md#net)         | NuGet, Paket                                                                                                                      |
 | Objective-C                                     | [Cocoapods](docs/integrations/cocoapods.md#cocoapods), [Carthage](docs/integrations/carthage.md#carthage)                         |
 | PHP                                             | [Composer](docs/integrations/composer.md#composer)                                                                                |
 | [Python](docs/integrations/python.md#python)    | Pip, Pipenv, requirements.txt                                                                                                     |
