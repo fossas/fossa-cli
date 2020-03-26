@@ -45,7 +45,7 @@ var _ cli.ActionFunc = Run
 const timeout = "timeout"
 const success = "success"
 const panic = "panic"
-const comparisonEndpoint = "http://localhost:3000"
+const comparisonEndpoint = "https://comparator.prod-us-west-2.cluster.fossa.io"
 
 type spectrometerOutput struct {
 	Status  string
@@ -165,9 +165,13 @@ func Run(ctx *cli.Context) error {
 	startTime := time.Now()
 	v2Completion := make(chan spectrometerOutput, 1)
 
-	authorized, timeout := authorizedComparison()
-	if authorized && !ctx.Bool(ShowOutput) {
-		go v2Analysis(v2Completion)
+	var timeout int
+	authorized := false
+	if !ctx.Bool(ShowOutput) {
+		authorized, timeout = authorizedComparison()
+		if authorized {
+			go v2Analysis(v2Completion)
+		}
 	}
 
 	var err error
