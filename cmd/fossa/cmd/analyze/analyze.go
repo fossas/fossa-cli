@@ -200,7 +200,11 @@ func Run(ctx *cli.Context) error {
 			}
 
 			for _, module := range modules {
-				sourceUnit, _ := fossa.SourceUnitFromModule(module)
+				sourceUnit, err := fossa.SourceUnitFromModule(module)
+				if err != nil {
+					continue
+				}
+
 				comparison.Modules = append(comparison.Modules, strippedModule{
 					Name:        module.Name,
 					Type:        module.Type,
