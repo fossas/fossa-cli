@@ -200,8 +200,8 @@ func Run(ctx *cli.Context) error {
 			}
 
 			for _, module := range modules {
-				sourceUnit, err := fossa.SourceUnitFromModule(module)
-				if err != nil {
+				sourceUnit, srcErr := fossa.SourceUnitFromModule(module)
+				if srcErr != nil {
 					continue
 				}
 
