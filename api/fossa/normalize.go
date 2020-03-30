@@ -58,39 +58,47 @@ func SourceUnitType(t pkg.Type) (string, error) {
 func Normalize(modules []module.Module) ([]SourceUnit, error) {
 	var normalized []SourceUnit
 	for _, analyzed := range modules {
-		var deps []SourceUnitDependency
-		for _, dep := range analyzed.Deps {
-			var imports []string
-			for _, i := range dep.Imports {
-				imports = append(imports, LocatorOf(i.Resolved).String())
-			}
-
-			deps = append(deps, SourceUnitDependency{
-				Locator: LocatorOf(dep.ID).String(),
-				Imports: imports,
-			})
-		}
-
-		normalizedType, err := SourceUnitType(analyzed.Type)
+		sourceUnit, err := SourceUnitFromModule(analyzed)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not normalize analyzed module type")
+			return nil, err
 		}
-
-		var imports []string
-		for _, i := range analyzed.Imports {
-			imports = append(imports, LocatorOf(i.Resolved).String())
-		}
-		normalized = append(normalized, SourceUnit{
-			Name:     analyzed.Name,
-			Type:     normalizedType,
-			Manifest: analyzed.BuildTarget,
-			Build: SourceUnitBuild{
-				Artifact:     "default",
-				Succeeded:    true,
-				Dependencies: deps,
-				Imports:      imports,
-			},
-		})
+		normalized = append(normalized, sourceUnit)
 	}
 	return normalized, nil
+}
+
+func SourceUnitFromModule(mod module.Module) (SourceUnit, error) {
+	var deps []SourceUnitDependency
+	for _, dep := range mod.Deps {
+		var imports []string
+		for _, i := range dep.Imports {
+			imports = append(imports, LocatorOf(i.Resolved).String())
+		}
+
+		deps = append(deps, SourceUnitDependency{
+			Locator: LocatorOf(dep.ID).String(),
+			Imports: imports,
+		})
+	}
+
+	normalizedType, err := SourceUnitType(mod.Type)
+	if err != nil {
+		return SourceUnit{}, errors.Wrap(err, "could not normalize analyzed module type")
+	}
+
+	var imports []string
+	for _, i := range mod.Imports {
+		imports = append(imports, LocatorOf(i.Resolved).String())
+	}
+	return SourceUnit{
+		Name:     mod.Name,
+		Type:     normalizedType,
+		Manifest: mod.BuildTarget,
+		Build: SourceUnitBuild{
+			Artifact:     "default",
+			Succeeded:    true,
+			Dependencies: deps,
+			Imports:      imports,
+		},
+	}, nil
 }

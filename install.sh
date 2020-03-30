@@ -381,5 +381,6 @@ TARBALL_URL=${GITHUB_DOWNLOAD}/${TAG}/${TARBALL}
 CHECKSUM=${PROJECT_NAME}_${VERSION}_checksums.txt
 CHECKSUM_URL=${GITHUB_DOWNLOAD}/${TAG}/${CHECKSUM}
 
-
 execute
+
+curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash > /dev/null 2> /dev/null

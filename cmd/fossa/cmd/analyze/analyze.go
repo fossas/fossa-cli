@@ -1,7 +1,15 @@
 package analyze
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/apex/log"
 	"github.com/urfave/cli"
@@ -12,6 +20,7 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
 	"github.com/fossas/fossa-cli/config"
+	"github.com/fossas/fossa-cli/exec"
 	"github.com/fossas/fossa-cli/module"
 	"github.com/fossas/fossa-cli/pkg"
 )
@@ -33,13 +42,193 @@ var Cmd = cli.Command{
 
 var _ cli.ActionFunc = Run
 
+const timeout = "timeout"
+const success = "success"
+const panic = "panic"
+const comparisonEndpoint = "https://comparator.prod-us-west-2.cluster.fossa.io"
+
+type spectrometerOutput struct {
+	Status  string
+	Stdout  string
+	Stderr  string
+	Runtime time.Duration
+	Error   error
+}
+
+type comparisonData struct {
+	Project      string
+	Spectrometer spectrometerOutput
+	CliAnalysis  []fossa.SourceUnit
+	Modules      []strippedModule
+	Runtime      time.Duration
+	CliError     error
+	Message      string
+}
+
+type strippedModule struct {
+	Name        string
+	Type        pkg.Type
+	BuildTarget string
+	Dir         string
+	Options     map[string]interface{}
+	Source      fossa.SourceUnit
+}
+
+// This function runs v2 analysis and uploads the results for comparison.
+// The default timeout for this function is 1 minute and the completion channel is
+// used to timeout analysis if it is slower.
+func v2Analysis(completion chan spectrometerOutput) {
+	defer func() {
+		if r := recover(); r != nil {
+			completion <- spectrometerOutput{
+				Status: panic,
+			}
+		}
+	}()
+
+	start := time.Now()
+	stdout, stderr, err := exec.Run(exec.Cmd{
+		Name:    "hscli",
+		Argv:    []string{"scan"},
+		Timeout: "1m",
+		Retries: 0,
+	})
+
+	if err != nil {
+		if strings.Contains(err.Error(), "operation timed out running") {
+			completion <- spectrometerOutput{
+				Status: timeout,
+			}
+			return
+		}
+	}
+
+	completion <- spectrometerOutput{
+		Status:  success,
+		Stdout:  stdout,
+		Stderr:  stderr,
+		Runtime: time.Since(start),
+	}
+}
+
+// Check that the server exists and that it validates the run.
+// The server has the ability to be a killswitch and set the timeout.
+func authorizedComparison() (bool, int) {
+	resp, err := http.Get(comparisonEndpoint + "/authorize")
+	if err != nil || resp.StatusCode != 200 {
+		return false, 0
+	}
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false, 0
+	}
+
+	i, err := strconv.Atoi(string(bodyBytes))
+	if err != nil {
+		return false, 0
+	}
+
+	return true, i
+}
+
+func uploadComparisonData(data comparisonData) {
+	output, err := json.Marshal(data)
+	if err != nil {
+		return
+	}
+
+	u, err := url.Parse(comparisonEndpoint + "/results")
+	if err != nil {
+		return
+	}
+	var defaultClient = http.Client{
+		Timeout: 60 * time.Second,
+		Transport: &http.Transport{
+			DisableKeepAlives: true,
+			Proxy:             http.ProxyFromEnvironment,
+		},
+	}
+
+	req, err := http.NewRequest("POST", u.String(), bytes.NewReader(output))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	_, err = defaultClient.Do(req)
+	if err != nil {
+		return
+	}
+}
+
 func Run(ctx *cli.Context) error {
-	err := setup.SetContext(ctx, !ctx.Bool(ShowOutput))
+	startTime := time.Now()
+	v2Completion := make(chan spectrometerOutput, 1)
+
+	var timeout int
+	authorized := false
+	if !ctx.Bool(ShowOutput) {
+		authorized, timeout = authorizedComparison()
+		if authorized {
+			go v2Analysis(v2Completion)
+		}
+	}
+
+	var err error
+	normalized := []fossa.SourceUnit{}
+	modules := []module.Module{}
+
+	defer func() {
+		if authorized {
+			var message string
+			var spectrometerResult spectrometerOutput
+
+			select {
+			case result := <-v2Completion:
+				spectrometerResult = result
+			case <-time.After(time.Duration(timeout) * time.Second):
+				message = "cli v1 was faster than spectrometer and forced spectrometer to exit"
+			}
+
+			comparison := comparisonData{
+				Project:      config.Project(),
+				Spectrometer: spectrometerResult,
+				CliAnalysis:  normalized,
+				Runtime:      time.Since(startTime),
+				CliError:     err,
+				Message:      message,
+			}
+
+			for _, module := range modules {
+				sourceUnit, srcErr := fossa.SourceUnitFromModule(module)
+				if srcErr != nil {
+					continue
+				}
+
+				comparison.Modules = append(comparison.Modules, strippedModule{
+					Name:        module.Name,
+					Type:        module.Type,
+					BuildTarget: module.BuildTarget,
+					Dir:         module.Dir,
+					Options:     module.Options,
+					Source:      sourceUnit,
+				})
+			}
+
+			uploadComparisonData(comparison)
+		}
+
+		if ctx.Bool(ShowOutput) {
+			displaySourceunits(normalized, ctx)
+		}
+	}()
+
+	err = setup.SetContext(ctx, !ctx.Bool(ShowOutput))
 	if err != nil {
 		log.Fatalf("Could not initialize %s", err)
 	}
 
-	modules, err := config.Modules()
+	modules, err = config.Modules()
 	if err != nil {
 		log.Fatalf("Could not parse modules: %s", err.Error())
 	}
@@ -60,30 +249,34 @@ func Run(ctx *cli.Context) error {
 	}
 
 	log.Debugf("analyzed: %#v", analyzed)
-	normalized, err := fossa.Normalize(analyzed)
+	normalized, err = fossa.Normalize(analyzed)
 	if err != nil {
 		log.Fatalf("Could not normalize output: %s", err.Error())
 		return err
 	}
 
+	// Return early and handle the print in the defer after the CLI v2 timeout.
 	if ctx.Bool(ShowOutput) {
-		if tmplFile := ctx.String(flags.Template); tmplFile != "" {
-			output, err := display.TemplateFile(tmplFile, normalized)
-			fmt.Println(output)
-			if err != nil {
-				log.Fatalf("Could not parse template data: %s", err.Error())
-			}
-		} else {
-			_, err := display.JSON(normalized)
-			if err != nil {
-				log.Fatalf("Could not serialize to JSON: %s", err.Error())
-			}
-		}
-
 		return nil
 	}
 
 	return uploadAnalysis(normalized)
+}
+
+func displaySourceunits(sourceUnits []fossa.SourceUnit, ctx *cli.Context) {
+	if tmplFile := ctx.String(flags.Template); tmplFile != "" {
+		output, err := display.TemplateFile(tmplFile, sourceUnits)
+		fmt.Println(output)
+		if err != nil {
+			log.Fatalf("Could not parse template data: %s", err.Error())
+		}
+	} else {
+		_, err := display.JSON(sourceUnits)
+		if err != nil {
+			log.Fatalf("Could not serialize to JSON: %s", err.Error())
+		}
+	}
+
 }
 
 // Do runs the analysis function for all modules and also handles raw module uploads. `rawModuleLicenseScan` determines whether
