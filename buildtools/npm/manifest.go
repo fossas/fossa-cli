@@ -10,9 +10,10 @@ import (
 )
 
 type Manifest struct {
-	Name         string
-	Version      string
-	Dependencies map[string]string
+	Name            string
+	Version         string
+	Dependencies    map[string]string
+	DevDependencies map[string]string
 }
 
 // FromManifest creates a manifest from the filepath provided
@@ -30,7 +31,7 @@ func FromManifest(pathElems ...string) (Manifest, error) {
 }
 
 // PackageFromManifest generates a package definition for the provided manifest in the supplied directory. Performs revision resolution
-func PackageFromManifest(pathElems ...string) (pkg.Package, error) {
+func PackageFromManifest(devDeps bool, pathElems ...string) (pkg.Package, error) {
 	filePath := filepath.Join(pathElems...)
 	manifest, err := FromManifest(filePath)
 	if err != nil {
@@ -55,7 +56,7 @@ func PackageFromManifest(pathElems ...string) (pkg.Package, error) {
 }
 
 // FromNodeModules generates the dep graph based on the manifest provided at the supplied path
-func FromNodeModules(path string) (graph.Deps, error) {
+func FromNodeModules(path string, devDeps bool) (graph.Deps, error) {
 	manifestPath := filepath.Join(path, "package.json")
 	exists, err := files.Exists(manifestPath)
 	if err != nil {
@@ -64,14 +65,14 @@ func FromNodeModules(path string) (graph.Deps, error) {
 		return graph.Deps{}, errors.New("no package.json at root of node project")
 	}
 
-	rootPackage, err := PackageFromManifest(manifestPath)
+	rootPackage, err := PackageFromManifest(devDeps, manifestPath)
 	if err != nil {
 		return graph.Deps{}, err
 	}
 
 	transitiveDeps := make(map[pkg.ID]pkg.Package)
 
-	err = fromModulesHelper(manifestPath, transitiveDeps)
+	err = fromModulesHelper(manifestPath, transitiveDeps, devDeps)
 
 	// The root package also get's bundled in, but it is not a dep of itself, so remove it
 	delete(transitiveDeps, rootPackage.ID)
@@ -131,6 +132,20 @@ func convertManifestToPkg(manifest Manifest) pkg.Package {
 		imports = append(imports, depImport)
 	}
 
+	for depName, version := range manifest.DevDependencies {
+		depID := pkg.ID{
+			Type:     pkg.NodeJS,
+			Name:     depName,
+			Revision: version,
+		}
+
+		depImport := pkg.Import{
+			Target:   depName,
+			Resolved: depID,
+		}
+		imports = append(imports, depImport)
+	}
+
 	return pkg.Package{
 		ID:      id,
 		Imports: imports,
@@ -145,10 +160,10 @@ func convertManifestToPkg(manifest Manifest) pkg.Package {
 		3b. create a package for that dependency and add it to the accumulator
 		3c. recurse to 1 using the path to the dependency
 */
-func fromModulesHelper(pathToModule string, moduleProjects map[pkg.ID]pkg.Package) error {
+func fromModulesHelper(pathToModule string, moduleProjects map[pkg.ID]pkg.Package, devDeps bool) error {
 	currentDir := filepath.Dir(pathToModule)
 
-	currentModule, err := PackageFromManifest(pathToModule)
+	currentModule, err := PackageFromManifest(devDeps, pathToModule)
 	if err != nil {
 		return err
 	}
@@ -162,14 +177,14 @@ func fromModulesHelper(pathToModule string, moduleProjects map[pkg.ID]pkg.Packag
 			return err
 		}
 
-		modulePackage, err := PackageFromManifest(pathToDepModule) //, "package.json")
+		modulePackage, err := PackageFromManifest(devDeps, pathToDepModule) //, "package.json")
 		if err != nil {
 			return err
 		}
 
 		moduleProjects[modulePackage.ID] = modulePackage
 
-		err = fromModulesHelper(pathToDepModule, moduleProjects)
+		err = fromModulesHelper(pathToDepModule, moduleProjects, devDeps)
 		if err != nil {
 			return err
 		}
