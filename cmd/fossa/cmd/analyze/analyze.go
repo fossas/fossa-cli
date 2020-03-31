@@ -284,11 +284,8 @@ func displaySourceunits(sourceUnits []fossa.SourceUnit, ctx *cli.Context) {
 // Do runs the analysis function for all modules and also handles raw module uploads. `rawModuleLicenseScan` determines whether
 // FOSSA core should only run a complete license scan or it should treat the upload as an independent project and attempt
 // to find dependencies.
-func Do(modules []module.Module, upload, rawModuleLicenseScan, devDeps bool) ([]module.Module, error) {
+func Do(modules []module.Module, upload, rawModuleLicenseScan, devDeps bool) (analyzed []module.Module, err error) {
 	defer display.ClearProgress()
-
-	analyzed := []module.Module{}
-	var err error
 	for i, m := range modules {
 		display.InProgress(fmt.Sprintf("Analyzing module (%d/%d): %s", i+1, len(modules), m.Name))
 
