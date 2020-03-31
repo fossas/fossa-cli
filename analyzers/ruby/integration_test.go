@@ -36,7 +36,7 @@ func TestRubyIntegration(t *testing.T) {
 				BuildTarget: filepath.Join(rubyAnalyzerFixtureDir, proj.Name),
 			}
 
-			analyzer, err := analyzers.New(module)
+			analyzer, err := analyzers.New(module, false)
 			assert.NoError(t, err)
 
 			deps, analyzeErr := analyzer.Analyze()

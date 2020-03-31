@@ -17,7 +17,7 @@ func TestDiscover(t *testing.T) {
 	module, err := php.Discover("testdata", nil)
 	assert.NoError(t, err)
 
-	a, err := analyzers.New(module[0])
+	a, err := analyzers.New(module[0], false)
 	assert.NoError(t, err)
 	assert.IsType(t, &php.Analyzer{}, a)
 }

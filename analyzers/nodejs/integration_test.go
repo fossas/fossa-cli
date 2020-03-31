@@ -39,7 +39,7 @@ func TestNodejsIntegration(t *testing.T) {
 				BuildTarget: filepath.Join(nodeAnalyzerFixtureDir, proj.Name),
 			}
 
-			analyzer, err := analyzers.New(module)
+			analyzer, err := analyzers.New(module, false)
 			assert.NoError(t, err)
 
 			deps, err := analyzer.Analyze()
