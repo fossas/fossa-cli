@@ -245,7 +245,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	// currently only support yarn.lock
 	deps, err = yarn.FromProject(filepath.Join(a.Module.BuildTarget, "package.json"), filepath.Join(a.Module.BuildTarget, "yarn.lock"))
-	if err == nil {
+	if err == nil && len(deps.Direct) > 0 {
 		return deps, nil
 	}
 
