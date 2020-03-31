@@ -36,7 +36,7 @@ var Cmd = cli.Command{
 	ArgsUsage: "MODULE",
 	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithOptions([]cli.Flag{
 		cli.BoolFlag{Name: "show-output, output, o", Usage: "print results to stdout instead of uploading to FOSSA"},
-		cli.BoolFlag{Name: DevDependencies, Usage: "Include development dependencies. CAUTION: valid only for node analysis."},
+		cli.BoolFlag{Name: DevDependencies, Usage: "Include development dependencies. CAUTION: valid only for nodejs analysis."},
 		cli.BoolFlag{Name: ServerScan, Usage: "run a server side dependency scan instead of a raw license scan (only raw modules)"},
 		flags.TemplateF,
 	}))),
