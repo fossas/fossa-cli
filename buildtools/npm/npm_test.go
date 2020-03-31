@@ -32,7 +32,7 @@ var typeDetectDirectDep = pkg.Import{
 }
 
 func TestFromManifest(t *testing.T) {
-	pkg, err := npm.PackageFromManifest(filepath.Join("testdata", "nested_node_modules"), "package.json")
+	pkg, err := npm.PackageFromManifest(false, filepath.Join("testdata", "nested_node_modules"), "package.json")
 	assert.NoError(t, err)
 
 	assert.Len(t, pkg.Imports, 2)
@@ -61,8 +61,8 @@ func TestFromLockfile(t *testing.T) {
 	└── type-detect@3.0.0
 */
 
-func testByFixture(t *testing.T, f func(string) (graph.Deps, error), fixture string) {
-	depGraph, err := f(filepath.Join("testdata", fixture))
+func testByFixture(t *testing.T, f func(string, bool) (graph.Deps, error), fixture string) {
+	depGraph, err := f(filepath.Join("testdata", fixture), false)
 	assert.NoError(t, err)
 
 	assert.Len(t, depGraph.Direct, 2)

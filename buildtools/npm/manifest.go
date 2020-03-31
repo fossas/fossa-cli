@@ -38,7 +38,7 @@ func PackageFromManifest(devDeps bool, pathElems ...string) (pkg.Package, error)
 		return pkg.Package{}, err
 	}
 
-	manifestAsPackage := convertManifestToPkg(manifest)
+	manifestAsPackage := convertManifestToPkg(manifest, devDeps)
 
 	// attempt to resolve revisions if node_modules folder exists and package any imports
 	if len(manifestAsPackage.Imports) == 0 {
@@ -110,7 +110,7 @@ func modulePath(startingDir string, moduleName string) (string, error) {
 }
 
 // convertManifestToPkg converts a given manifest to a package. Does not resolve unresolved imports
-func convertManifestToPkg(manifest Manifest) pkg.Package {
+func convertManifestToPkg(manifest Manifest, devDeps bool) pkg.Package {
 	id := pkg.ID{
 		Type:     pkg.NodeJS,
 		Name:     manifest.Name,
@@ -132,18 +132,20 @@ func convertManifestToPkg(manifest Manifest) pkg.Package {
 		imports = append(imports, depImport)
 	}
 
-	for depName, version := range manifest.DevDependencies {
-		depID := pkg.ID{
-			Type:     pkg.NodeJS,
-			Name:     depName,
-			Revision: version,
-		}
+	if devDeps {
+		for depName, version := range manifest.DevDependencies {
+			depID := pkg.ID{
+				Type:     pkg.NodeJS,
+				Name:     depName,
+				Revision: version,
+			}
 
-		depImport := pkg.Import{
-			Target:   depName,
-			Resolved: depID,
+			depImport := pkg.Import{
+				Target:   depName,
+				Resolved: depID,
+			}
+			imports = append(imports, depImport)
 		}
-		imports = append(imports, depImport)
 	}
 
 	return pkg.Package{

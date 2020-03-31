@@ -14,7 +14,6 @@
 package nodejs
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -200,14 +199,13 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		return npmListToGraph(output)
 
 	case "npm-lockfile":
-		deps, err := npm.FromLockfile(a.Module.BuildTarget)
+		deps, err := npm.FromLockfile(a.Module.BuildTarget, a.DevDeps)
 		if err != nil {
 			return graph.Deps{}, err
 		}
 		return deps, nil
 
 	case "package.json":
-		fmt.Println("had the strategy")
 		deps, err := npm.FromNodeModules(a.Module.BuildTarget, a.DevDeps)
 		if err != nil {
 			return graph.Deps{}, err
@@ -265,7 +263,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Warnf("Could not determine deps from yarn lockfile")
 	log.Debug("Using fallback of npm packages lockfile check")
 
-	deps, err = npm.FromLockfile(a.Module.BuildTarget)
+	deps, err = npm.FromLockfile(a.Module.BuildTarget, a.DevDeps)
 	if err == nil {
 		return deps, nil
 	}
