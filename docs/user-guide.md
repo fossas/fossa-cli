@@ -222,6 +222,7 @@ FOSSA_API_KEY=YOUR_API_KEY fossa analyze
 | `--output`      | `-o`  | Output `fossa analyze` results to stdout.                                    |
 | `--team`        | `-T`  | Connect this project with the specified existing team in FOSSA.              |
 | `--server-scan` |       | Run a server side dependency scan on raw modules.                            |
+| `--dev`         |       | Include development dependencies. CAUTION: valid only for nodejs projects.   |
 | `--debug`       |       | Print debugging information to stderr.                                       |
 | `--help`        | `-h`  | Print a help message.                                                        |
 

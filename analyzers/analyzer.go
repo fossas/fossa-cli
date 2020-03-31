@@ -48,7 +48,7 @@ type Analyzer interface {
 }
 
 // New returns the analyzer for any given package type.
-func New(m module.Module) (Analyzer, error) {
+func New(m module.Module, devDeps bool) (Analyzer, error) {
 	switch m.Type {
 	case pkg.Ant:
 		return ant.New(m)
@@ -75,7 +75,7 @@ func New(m module.Module) (Analyzer, error) {
 	case pkg.Maven:
 		return maven.New(m)
 	case pkg.NodeJS:
-		return nodejs.New(m)
+		return nodejs.New(m, devDeps)
 	case pkg.NuGet:
 		return nuget.New(m)
 	case pkg.OkBuck:

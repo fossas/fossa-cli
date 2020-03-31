@@ -47,7 +47,7 @@ func TestPythonIntegration(t *testing.T) {
 				BuildTarget: projDir,
 			}
 
-			analyzer, err := analyzers.New(module)
+			analyzer, err := analyzers.New(module, false)
 			assert.NoError(t, err)
 
 			deps, err := analyzer.Analyze()

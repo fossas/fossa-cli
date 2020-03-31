@@ -11,7 +11,6 @@ import (
 	"github.com/urfave/cli"
 	"golang.org/x/sync/semaphore"
 
-	"github.com/fossas/fossa-cli/analyzers/nodejs"
 	"github.com/fossas/fossa-cli/analyzers/python"
 	"github.com/fossas/fossa-cli/analyzers/ruby"
 	"github.com/fossas/fossa-cli/api/fossa"
@@ -39,7 +38,6 @@ var NewCmd = cli.Command{
 }
 
 var Analyzers = []module.AnalyzerV2{
-	nodejs.NodeAnalyzer,
 	python.PythonAnalyzer,
 	ruby.RubyAnalyzer,
 }

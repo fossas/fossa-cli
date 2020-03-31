@@ -19,7 +19,7 @@ type YarnTool interface {
 	// Exists returns true if yarn is available
 	Exists() bool
 	// List returns a dependency graph.
-	List(target string) (graph.Deps, error)
+	List(target string, devDependencies bool) (graph.Deps, error)
 }
 
 type SystemYarn struct {
@@ -64,13 +64,18 @@ type Child struct {
 	Children []Child
 }
 
-func (y SystemYarn) List(dir string) (graph.Deps, error) {
-	stdout, _, err := exec.Run(exec.Cmd{
+func (y SystemYarn) List(dir string, devDependencies bool) (graph.Deps, error) {
+	listCmd := exec.Cmd{
 		Name:    y.Cmd,
 		Argv:    []string{"list", "--json"},
 		Dir:     dir,
 		WithEnv: map[string]string{"NODE_ENV": "production"},
-	})
+	}
+	if !devDependencies {
+		listCmd.WithEnv = map[string]string{"NODE_ENV": "production"}
+	}
+
+	stdout, _, err := exec.Run(listCmd)
 	if err != nil {
 		return graph.Deps{}, err
 	}
