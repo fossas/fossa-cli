@@ -30,7 +30,7 @@ func TestNDepsTransitiveImports(t *testing.T) {
 		BuildTarget: filepath.Join("testdata", "transitive-deps"),
 	}
 
-	a, err := analyzers.New(m)
+	a, err := analyzers.New(m, false)
 	assert.NoError(t, err)
 
 	a.(*nodejs.Analyzer).NPM = MockNPM{
@@ -76,7 +76,7 @@ func TestNoDependencies(t *testing.T) {
 		BuildTarget: filepath.Join("testdata", "empty"),
 	}
 
-	a, err := analyzers.New(m)
+	a, err := analyzers.New(m, false)
 	assert.NoError(t, err)
 
 	a.(*nodejs.Analyzer).NPM = MockNPM{
@@ -108,7 +108,7 @@ func TestDuplicateDependencies(t *testing.T) {
 		Type:        pkg.NodeJS,
 	}
 
-	a, err := analyzers.New(m)
+	a, err := analyzers.New(m, false)
 	assert.NoError(t, err)
 
 	a.(*nodejs.Analyzer).NPM = MockNPM{
@@ -173,7 +173,7 @@ func testAnalyzeWithNpmLs(t *testing.T, buildTarget string) {
 		Options:     map[string]interface{}{},
 	}
 
-	analyzer, err := nodejs.New(nodeModule)
+	analyzer, err := nodejs.New(nodeModule, false)
 	assert.NoError(t, err)
 
 	analyzer.NPM = MockNPM{
@@ -206,7 +206,7 @@ func testUsingNodeModuleFallback(t *testing.T, buildTarget string) {
 		Options:     map[string]interface{}{},
 	}
 
-	analyzer, err := nodejs.New(nodeModule)
+	analyzer, err := nodejs.New(nodeModule, false)
 	assert.NoError(t, err)
 
 	analyzer.NPM = MockNPMFailure{}
@@ -235,7 +235,7 @@ func TestUsingYarnLockfileFallback(t *testing.T) {
 		Options:     map[string]interface{}{},
 	}
 
-	analyzer, err := nodejs.New(nodeModule)
+	analyzer, err := nodejs.New(nodeModule, false)
 	assert.NoError(t, err)
 
 	analyzer.NPM = MockNPMFailure{}
