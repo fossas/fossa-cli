@@ -34,7 +34,8 @@ import (
 type Analyzer struct {
 	NodeVersion string
 
-	NPM npm.NPM
+	NPM  npm.NPM
+	Yarn yarn.YarnTool
 
 	Module  module.Module
 	Options Options
@@ -80,10 +81,16 @@ func New(m module.Module) (*Analyzer, error) {
 		log.Warn("Could not initialize npm tooling")
 	}
 
+	yarnTool, err := yarn.New()
+	if err != nil {
+		log.Debugf("could not get yarn", err)
+	}
+
 	analyzer := Analyzer{
 		NodeVersion: nodeVersion,
 
-		NPM: npmTool,
+		NPM:  npmTool,
+		Yarn: yarnTool,
 
 		Module:  m,
 		Options: options,
@@ -206,7 +213,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		}
 
 	case "yarn-list":
-		return graph.Deps{}, nil
+		return a.Yarn.List(a.Module.BuildTarget)
 	}
 
 	// if npm as a tool does not exist, skip this
@@ -230,6 +237,11 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	log.Warnf("Could not determine deps from node_modules")
 	log.Debug("Using fallback of yarn lockfile check")
+
+	deps, err = a.Yarn.List(a.Module.BuildTarget)
+	if err == nil && len(deps.Direct) > 0 {
+		return deps, nil
+	}
 
 	// currently only support yarn.lock
 	deps, err = yarn.FromProject(filepath.Join(a.Module.BuildTarget, "package.json"), filepath.Join(a.Module.BuildTarget, "yarn.lock"))
