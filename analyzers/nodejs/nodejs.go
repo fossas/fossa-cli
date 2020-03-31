@@ -178,36 +178,42 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 func (a *Analyzer) Analyze() (graph.Deps, error) {
 	a.Module.BuildTarget = fixLegacyBuildTarget(a.Module.BuildTarget)
 	log.Debugf("Running Nodejs analysis: %#v", a.Module)
+
+	switch a.Options.Strategy {
+	case "npm-list":
+		output, err := a.NPM.List(a.Module.BuildTarget)
+		if err != nil {
+			return graph.Deps{}, err
+		}
+		return npmListToGraph(output)
+
+	case "npm-lockfile":
+		deps, err := npm.FromLockfile(a.Module.BuildTarget)
+		if err == nil {
+			return deps, nil
+		}
+
+	case "package.json":
+		deps, err := npm.FromNodeModules(a.Module.BuildTarget)
+		if err == nil {
+			return deps, nil
+		}
+
+	case "yarn.lock":
+		deps, err := yarn.FromProject(filepath.Join(a.Module.BuildTarget, "package.json"), filepath.Join(a.Module.BuildTarget, "yarn.lock"))
+		if err == nil {
+			return deps, nil
+		}
+
+	case "yarn-list":
+		return graph.Deps{}, nil
+	}
+
 	// if npm as a tool does not exist, skip this
 	if a.NPM.Exists() {
-		pkgs, err := a.NPM.List(a.Module.BuildTarget)
-		if err == nil && len(pkgs.Dependencies) > 0 {
-			// TODO: we should move this functionality in to the buildtool, and have it
-			// return `pkg.Package`s.
-			// Set direct dependencies.
-			var imports []pkg.Import
-			for name, dep := range pkgs.Dependencies {
-				imports = append(imports, pkg.Import{
-					Target: dep.From,
-					Resolved: pkg.ID{
-						Type:     pkg.NodeJS,
-						Name:     name,
-						Revision: dep.Version,
-						Location: dep.Resolved,
-					},
-				})
-			}
-
-			// Set transitive dependencies.
-			deps := make(map[pkg.ID]pkg.Package)
-			recurseDeps(deps, pkgs)
-
-			log.Debugf("Done running Nodejs analysis: %#v", deps)
-
-			return graph.Deps{
-				Direct:     imports,
-				Transitive: deps,
-			}, nil
+		output, err := a.NPM.List(a.Module.BuildTarget)
+		if err == nil && len(output.Dependencies) > 0 {
+			return npmListToGraph(output)
 		} else if err != nil {
 			log.Warnf("NPM had non-zero exit code: %s", err.Error())
 		} else {
@@ -246,6 +252,33 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		Type:            errors.User,
 		Troubleshooting: "Could not find dependencies in node project. Make sure that your project's root dir has a package.json & node_modules/, yarn.lock, package-lock.json, or npm-shrinkwrap.lock",
 	}
+}
+
+func npmListToGraph(output npm.Output) (graph.Deps, error) {
+	var imports []pkg.Import
+	for name, dep := range output.Dependencies {
+		imports = append(imports, pkg.Import{
+			Target: dep.From,
+			Resolved: pkg.ID{
+				Type:     pkg.NodeJS,
+				Name:     name,
+				Revision: dep.Version,
+				Location: dep.Resolved,
+			},
+		})
+	}
+
+	// Set transitive dependencies.
+	deps := make(map[pkg.ID]pkg.Package)
+	recurseDeps(deps, output)
+
+	log.Debugf("Done running Nodejs analysis: %#v", deps)
+
+	return graph.Deps{
+		Direct:     imports,
+		Transitive: deps,
+	}, nil
+
 }
 
 // fixLegacyBuildTarget ensures that legacy behavior stays intact but users are warned if it is implemented.
