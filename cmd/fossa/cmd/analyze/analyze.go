@@ -27,6 +27,7 @@ import (
 
 var ShowOutput = "output"
 var ServerScan = "server-scan"
+var DevDependencies = "dev"
 
 var Cmd = cli.Command{
 	Name:      "analyze",
@@ -35,6 +36,7 @@ var Cmd = cli.Command{
 	ArgsUsage: "MODULE",
 	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithOptions([]cli.Flag{
 		cli.BoolFlag{Name: "show-output, output, o", Usage: "print results to stdout instead of uploading to FOSSA"},
+		cli.BoolFlag{Name: DevDependencies, Usage: "Include development dependencies. CAUTION: valid only for node analysis."},
 		cli.BoolFlag{Name: ServerScan, Usage: "run a server side dependency scan instead of a raw license scan (only raw modules)"},
 		flags.TemplateF,
 	}))),
@@ -237,7 +239,7 @@ func Run(ctx *cli.Context) error {
 	}
 
 	rawModuleLicenseScan := !ctx.Bool(ServerScan)
-	analyzed, err := Do(modules, !ctx.Bool(ShowOutput), rawModuleLicenseScan)
+	analyzed, err := Do(modules, !ctx.Bool(ShowOutput), rawModuleLicenseScan, ctx.Bool(DevDependencies))
 	if err != nil {
 		log.Fatalf("Could not analyze modules: %s", err.Error())
 		return err
@@ -282,7 +284,7 @@ func displaySourceunits(sourceUnits []fossa.SourceUnit, ctx *cli.Context) {
 // Do runs the analysis function for all modules and also handles raw module uploads. `rawModuleLicenseScan` determines whether
 // FOSSA core should only run a complete license scan or it should treat the upload as an independent project and attempt
 // to find dependencies.
-func Do(modules []module.Module, upload, rawModuleLicenseScan bool) (analyzed []module.Module, err error) {
+func Do(modules []module.Module, upload, rawModuleLicenseScan, devDeps bool) (analyzed []module.Module, err error) {
 	defer display.ClearProgress()
 	for i, m := range modules {
 		display.InProgress(fmt.Sprintf("Analyzing module (%d/%d): %s", i+1, len(modules), m.Name))
@@ -317,7 +319,7 @@ func Do(modules []module.Module, upload, rawModuleLicenseScan bool) (analyzed []
 			continue
 		}
 
-		analyzer, err := analyzers.New(m)
+		analyzer, err := analyzers.New(m, devDeps)
 		if err != nil {
 			analyzed = append(analyzed, m)
 			log.Warnf("Could not load analyzer: %s", err.Error())

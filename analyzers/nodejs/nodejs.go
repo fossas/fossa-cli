@@ -39,6 +39,8 @@ type Analyzer struct {
 
 	Module  module.Module
 	Options Options
+
+	DevDeps bool
 }
 
 // Options contains options for the `Analyzer`.
@@ -62,7 +64,7 @@ type Options struct {
 }
 
 // New configures Node, NPM, and Yarn commands.
-func New(m module.Module) (*Analyzer, error) {
+func New(m module.Module, devDeps bool) (*Analyzer, error) {
 	log.WithField("options", m.Options).Debug("constructing analyzer")
 
 	_, nodeVersion, nodeErr := exec.Which("-v", os.Getenv("FOSSA_NODE_CMD"), "node", "nodejs")
@@ -94,6 +96,8 @@ func New(m module.Module) (*Analyzer, error) {
 
 		Module:  m,
 		Options: options,
+
+		DevDeps: devDeps,
 	}
 
 	log.Debugf("Initialized Node.js analyzer: %#v", analyzer)
@@ -188,7 +192,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 	switch a.Options.Strategy {
 	case "npm-list":
-		output, err := a.NPM.List(a.Module.BuildTarget)
+		output, err := a.NPM.List(a.Module.BuildTarget, a.DevDeps)
 		if err != nil {
 			return graph.Deps{}, err
 		}
@@ -213,12 +217,12 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		}
 
 	case "yarn-list":
-		return a.Yarn.List(a.Module.BuildTarget)
+		return a.Yarn.List(a.Module.BuildTarget, a.DevDeps)
 	}
 
 	// if npm as a tool does not exist, skip this
 	if a.NPM.Exists() {
-		output, err := a.NPM.List(a.Module.BuildTarget)
+		output, err := a.NPM.List(a.Module.BuildTarget, a.DevDeps)
 		if err == nil && len(output.Dependencies) > 0 {
 			return npmListToGraph(output)
 		} else if err != nil {
@@ -238,7 +242,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	log.Warnf("Could not determine deps from node_modules")
 	log.Debug("Using fallback of yarn lockfile check")
 
-	deps, err = a.Yarn.List(a.Module.BuildTarget)
+	deps, err = a.Yarn.List(a.Module.BuildTarget, a.DevDeps)
 	if err == nil && len(deps.Direct) > 0 {
 		return deps, nil
 	}
