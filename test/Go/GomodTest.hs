@@ -37,6 +37,7 @@ expected = run . evalGrapher $ do
              , dependencyName = "github.com/pkg/one"
              , dependencyVersion = Just (CEq "v1.0.0")
              , dependencyLocations = []
+             , dependencyEnvironments = []
              , dependencyTags = M.empty
              }
   direct $ Dependency
@@ -44,6 +45,7 @@ expected = run . evalGrapher $ do
              , dependencyName = "github.com/pkg/overridden"
              , dependencyVersion = Just (CEq "overridden")
              , dependencyLocations = []
+             , dependencyEnvironments = []
              , dependencyTags = M.empty
              }
   direct $ Dependency
@@ -51,6 +53,7 @@ expected = run . evalGrapher $ do
              , dependencyName = "github.com/pkg/three/v3"
              , dependencyVersion = Just (CEq "v3.0.0")
              , dependencyLocations = []
+             , dependencyEnvironments = []
              , dependencyTags = M.empty
              }
 

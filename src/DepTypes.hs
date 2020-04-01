@@ -1,18 +1,30 @@
 module DepTypes
   ( Dependency(..)
+  , DepEnvironment(..)
   , DepType(..)
   , VerConstraint(..)
   ) where
 
 import Prologue
 
+-- FIXME: this needs a smart constructor with empty tags/environments/etc.
+-- We've historically relied on the compile error for making sure we fill all
+-- of these fields. Tests should be used to ensure this instead.
 data Dependency = Dependency
-  { dependencyType      :: DepType
-  , dependencyName      :: Text
-  , dependencyVersion   :: Maybe VerConstraint
-  , dependencyLocations :: [Text]
-  , dependencyTags      :: Map Text [Text]
+  { dependencyType         :: DepType
+  , dependencyName         :: Text
+  , dependencyVersion      :: Maybe VerConstraint
+  , dependencyLocations    :: [Text]
+  , dependencyEnvironments :: [DepEnvironment] -- FIXME: this should be a Set
+  , dependencyTags         :: Map Text [Text]
   } deriving (Eq, Ord, Show, Generic)
+
+data DepEnvironment =
+    EnvProduction
+  | EnvDevelopment
+  | EnvTesting
+  | EnvOther Text -- ^ Other environments -- specifically for things like gradle configurations
+  deriving (Eq, Ord, Show, Generic)
 
 -- | A Dependency type. This corresponds to a "fetcher" on the backend
 data DepType =

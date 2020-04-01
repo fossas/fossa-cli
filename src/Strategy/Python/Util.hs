@@ -30,6 +30,7 @@ buildGraph xs = unfold xs (const []) toDependency
                , dependencyName = depName req
                , dependencyVersion = depVersion req
                , dependencyLocations = []
+               , dependencyEnvironments = []
                , dependencyTags = maybe M.empty toTags (depMarker req)
                }
 

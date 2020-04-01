@@ -49,8 +49,7 @@ data MavenPackage = MavenPackage Group Artifact (Maybe Version)
 type instance PkgLabel MavenPackage = MavenLabel
 
 data MavenLabel =
-    MavenLabelClassifier Text
-  | MavenLabelScope Text
+    MavenLabelScope Text
   | MavenLabelOptional Text
   deriving (Eq, Ord, Show, Generic)
 
@@ -63,13 +62,16 @@ toDependency (MavenPackage group artifact version) = foldr applyLabel start
     , dependencyName = group <> ":" <> artifact
     , dependencyVersion = CEq <$> version
     , dependencyLocations = []
+    , dependencyEnvironments = []
     , dependencyTags = M.empty
     }
 
   applyLabel :: MavenLabel -> Dependency -> Dependency
   applyLabel lbl dep = case lbl of
-    MavenLabelClassifier classifier -> addTag "classifier" classifier dep
-    MavenLabelScope scope -> addTag "scope" scope dep
+    MavenLabelScope scope ->
+      if scope == "test"
+        then dep { dependencyEnvironments = EnvTesting : dependencyEnvironments dep }
+        else addTag "scope" scope dep
     MavenLabelOptional opt -> addTag "optional" opt dep
 
   -- TODO: reuse this in other strategies
@@ -104,10 +106,17 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
 
     addDep :: Has (LabeledGrapher MavenPackage) sig m => (Group,Artifact) -> MvnDepBody -> m ()
     addDep (group,artifact) body = do
-      let interpolatedVersion = naiveInterpolate (pomProperties completePom) <$> depVersion body
+      let interpolatedVersion = classify . naiveInterpolate (pomProperties completePom) <$> depVersion body
+          -- maven classifiers are appended to the end of versions, e.g., 3.0.0 with a classifier
+          -- of "sources" would result in "3.0.0-sources"
+          classify version = case depClassifier body of
+            Nothing -> version
+            Just classifier -> version <> "-" <> classifier
           depPackage = MavenPackage group artifact interpolatedVersion
 
       edge (coordToPackage coord) depPackage
+      traverse_ (label depPackage . MavenLabelScope) (depScope body)
+      traverse_ (label depPackage . MavenLabelOptional) (depOptional body)
 
     childPoms :: [(MavenCoordinate,Pom)]
     childPoms = [(childCoord,pom) | childCoord <- S.toList (AM.postSet coord (closureGraph closure))

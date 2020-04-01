@@ -19,6 +19,7 @@ projectOne = Dependency
   , dependencyName = ":projectOne"
   , dependencyVersion = Nothing
   , dependencyLocations = []
+  , dependencyEnvironments = []
   , dependencyTags = M.empty
   }
 
@@ -28,6 +29,7 @@ projectTwo = Dependency
   , dependencyName = ":projectTwo"
   , dependencyVersion = Nothing
   , dependencyLocations = []
+  , dependencyEnvironments = []
   , dependencyTags = M.empty
   }
 
@@ -37,6 +39,7 @@ projectThree = Dependency
   , dependencyName = ":projectThree"
   , dependencyVersion = Nothing
   , dependencyLocations = []
+  , dependencyEnvironments = []
   , dependencyTags = M.empty
   }
 
@@ -46,6 +49,7 @@ packageOne = Dependency
   , dependencyName = "mygroup:packageOne"
   , dependencyVersion = Just (CEq "1.0.0")
   , dependencyLocations = []
+  , dependencyEnvironments = []
   , dependencyTags = M.empty
   }
 
@@ -55,6 +59,7 @@ packageTwo = Dependency
   , dependencyName = "mygroup:packageTwo"
   , dependencyVersion = Just (CEq "2.0.0")
   , dependencyLocations = []
+  , dependencyEnvironments = []
   , dependencyTags = M.empty
   }
 

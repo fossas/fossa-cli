@@ -54,6 +54,7 @@ buildGraph top = unfold direct getDeps toDependency
                , dependencyName = nodeName
                , dependencyVersion = CEq <$> outputVersion nodeOutput
                , dependencyLocations = []
+               , dependencyEnvironments = []
                , dependencyTags = M.empty
                }
 

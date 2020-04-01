@@ -130,6 +130,7 @@ buildGraph mapping = run . evalGrapher $ M.traverseWithKey addProject mapping
       , dependencyName = name
       , dependencyVersion = Just (CEq version)
       , dependencyLocations = []
+      , dependencyEnvironments = []
       , dependencyTags = M.empty
       }
 
@@ -138,6 +139,7 @@ buildGraph mapping = run . evalGrapher $ M.traverseWithKey addProject mapping
     , dependencyName = name
     , dependencyVersion = Nothing
     , dependencyLocations = []
+    , dependencyEnvironments = []
     , dependencyTags = M.empty
     }
 

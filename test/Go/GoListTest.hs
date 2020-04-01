@@ -39,12 +39,14 @@ expected = run . evalGrapher $ do
                       , dependencyName = "github.com/pkg/one"
                       , dependencyVersion = Just (CEq "commithash")
                       , dependencyLocations = []
+                      , dependencyEnvironments = []
                       , dependencyTags = M.empty
                       }
   direct $ Dependency { dependencyType = GoType
                       , dependencyName = "github.com/pkg/two"
                       , dependencyVersion = Just (CEq "v2.0.0")
                       , dependencyLocations = []
+                      , dependencyEnvironments = []
                       , dependencyTags = M.empty
                       }
 

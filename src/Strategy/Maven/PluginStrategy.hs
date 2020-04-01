@@ -72,6 +72,7 @@ buildGraph PluginOutput{..} = run $ evalGrapher $ do
     , dependencyName = artifactGroupId <> ":" <> artifactArtifactId
     , dependencyVersion = Just (CEq artifactVersion)
     , dependencyLocations = []
+    , dependencyEnvironments = if "test" `elem` artifactScopes then [EnvTesting] else []
     , dependencyTags = M.fromList $
       ("scopes", artifactScopes) :
       [("optional", ["true"]) | artifactOptional]

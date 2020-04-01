@@ -58,18 +58,18 @@ data NodePackage = NodePackage
 
 type instance PkgLabel NodePackage = NodePackageLabel
 
-newtype NodePackageLabel = NodePackageEnv Text
+newtype NodePackageLabel = NodePackageEnv DepEnvironment
   deriving (Eq, Ord, Show, Generic)
 
 buildGraph :: PackageJson -> Graphing Dependency
 buildGraph PackageJson{..} = run . withLabeling toDependency $ do
-  _ <- M.traverseWithKey (addDep "production") packageDeps
-  _ <- M.traverseWithKey (addDep "development") packageDevDeps
+  _ <- M.traverseWithKey (addDep EnvProduction) packageDeps
+  _ <- M.traverseWithKey (addDep EnvDevelopment) packageDevDeps
   pure ()
 
   where
 
-  addDep :: Has (LabeledGrapher NodePackage) sig m => Text -> Text -> Text -> m ()
+  addDep :: Has (LabeledGrapher NodePackage) sig m => DepEnvironment -> Text -> Text -> m ()
   addDep env name constraint = do
     let pkg = NodePackage name constraint
     direct pkg
@@ -80,7 +80,7 @@ buildGraph PackageJson{..} = run . withLabeling toDependency $ do
 
   addLabel :: NodePackageLabel -> Dependency -> Dependency
   addLabel (NodePackageEnv env) dep =
-    dep { dependencyTags = M.insertWith (++) "environment" [env] (dependencyTags dep) }
+    dep { dependencyEnvironments = env : dependencyEnvironments dep }
 
   start :: NodePackage -> Dependency
   start NodePackage{..} = Dependency
@@ -88,5 +88,6 @@ buildGraph PackageJson{..} = run . withLabeling toDependency $ do
     , dependencyName = pkgName
     , dependencyVersion = Just (CCompatible pkgConstraint)
     , dependencyLocations = []
+    , dependencyEnvironments = []
     , dependencyTags = M.empty
     }

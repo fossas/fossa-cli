@@ -19,6 +19,7 @@ dependencyOne = Dependency { dependencyType = NuGetType
                            , dependencyName = "one"
                            , dependencyVersion = Just (CEq "1.0.0")
                            , dependencyLocations = ["nuget.com"]
+                           , dependencyEnvironments = []
                            , dependencyTags = M.fromList [("location", ["NUGET"]), ("group", ["MAIN"])]
                            }
 
@@ -27,6 +28,7 @@ dependencyTwo = Dependency { dependencyType = NuGetType
                            , dependencyName = "two"
                            , dependencyVersion = Just (CEq "2.0.0")
                            , dependencyLocations = ["nuget-v2.com", "nuget.com"]
+                           , dependencyEnvironments = []
                            , dependencyTags = M.fromList [("location", ["NUGET"]), ("group", ["MAIN", "TEST"])]
                            }
 
@@ -35,6 +37,7 @@ dependencyThree = Dependency { dependencyType = NuGetType
                              , dependencyName = "three"
                              , dependencyVersion = Just (CEq "3.0.0")
                              , dependencyLocations = ["custom-site.com"]
+                             , dependencyEnvironments = []
                              , dependencyTags = M.fromList [("location", ["HTTP"]), ("group", ["MAIN"])]
                              }
 
@@ -43,6 +46,7 @@ dependencyFour = Dependency { dependencyType = NuGetType
                             , dependencyName = "four"
                             , dependencyVersion = Just (CEq "4.0.0")
                             , dependencyLocations = ["nuget-v2.com"]
+                            , dependencyEnvironments = []
                             , dependencyTags = M.fromList [("location", ["NUGET"]), ("group", ["TEST"])]
                             }
 
@@ -51,6 +55,7 @@ dependencyFive = Dependency { dependencyType = NuGetType
                             , dependencyName = "five"
                             , dependencyVersion = Just (CEq "5.0.0")
                             , dependencyLocations = ["nuget-v2.com"]
+                            , dependencyEnvironments = []
                             , dependencyTags = M.fromList [("location", ["NUGET"]), ("group", ["TEST"])]
                             }
 
@@ -59,6 +64,7 @@ dependencySix = Dependency { dependencyType = NuGetType
                            , dependencyName = "six"
                            , dependencyVersion = Just (CEq "6.0.0")
                            , dependencyLocations = ["github.com"]
+                           , dependencyEnvironments = []
                            , dependencyTags = M.fromList [("location", ["GITHUB"]), ("group", ["TEST"])]
                            }
 

@@ -1,14 +1,12 @@
 {
       "version": "1",
-      "compilationOptions": {
-            "test": true
-      },
+      "compilationOptions": {},
       "dependencies": {
             "one": "1.0.0",
             "two": "2.*",
             "three": {
                   "version": "3.0.0",
-                  "type": "test"
+                  "type": "sometype"
             }
       },
       "code": [

@@ -23,6 +23,7 @@ expected = run . evalGrapher $ do
                , dependencyName = "github.com/pkg/one"
                , dependencyVersion = Just (CEq "100")
                , dependencyLocations = []
+               , dependencyEnvironments = []
                , dependencyTags = M.empty
                }
   direct $ Dependency
@@ -30,6 +31,7 @@ expected = run . evalGrapher $ do
                , dependencyName = "github.com/pkg/three/v3"
                , dependencyVersion = Just (CEq "300")
                , dependencyLocations = []
+               , dependencyEnvironments = []
                , dependencyTags = M.empty
                }
 

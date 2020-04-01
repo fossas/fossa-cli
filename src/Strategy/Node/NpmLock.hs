@@ -78,7 +78,7 @@ data NpmPackage = NpmPackage
 
 type instance PkgLabel NpmPackage = NpmPackageLabel
 
-data NpmPackageLabel = NpmPackageEnv Text | NpmPackageLocation Text
+data NpmPackageLabel = NpmPackageEnv DepEnvironment | NpmPackageLocation Text
   deriving (Eq, Ord, Show, Generic)
 
 buildGraph :: NpmPackageJson -> Graphing Dependency
@@ -96,8 +96,8 @@ buildGraph packageJson = run . withLabeling toDependency $ do
     let pkg = NpmPackage name depVersion
 
     case depDev of
-      Just True -> label pkg (NpmPackageEnv "development")
-      _         -> label pkg (NpmPackageEnv "production")
+      Just True -> label pkg (NpmPackageEnv EnvDevelopment)
+      _         -> label pkg (NpmPackageEnv EnvProduction)
 
     traverse_ (label pkg . NpmPackageLocation) depResolved
 
@@ -117,7 +117,7 @@ buildGraph packageJson = run . withLabeling toDependency $ do
   toDependency pkg = foldr addLabel (start pkg)
 
   addLabel :: NpmPackageLabel -> Dependency -> Dependency
-  addLabel (NpmPackageEnv env) dep = dep { dependencyTags = M.insertWith (++) "environment" [env] (dependencyTags dep) }
+  addLabel (NpmPackageEnv env) dep = dep { dependencyEnvironments = env : dependencyEnvironments dep }
   addLabel (NpmPackageLocation loc) dep = dep { dependencyLocations = loc : dependencyLocations dep }
 
   start :: NpmPackage -> Dependency
@@ -126,5 +126,6 @@ buildGraph packageJson = run . withLabeling toDependency $ do
     , dependencyName = pkgName
     , dependencyVersion = Just $ CEq pkgVersion
     , dependencyLocations = []
+    , dependencyEnvironments = []
     , dependencyTags = M.empty
     }

@@ -24,7 +24,8 @@ packageOne = Dependency
   , dependencyName = "packageOne"
   , dependencyVersion = Just (CCompatible "^1.0.0")
   , dependencyLocations = []
-  , dependencyTags = M.fromList [("environment", ["production"])]
+  , dependencyEnvironments = [EnvProduction]
+  , dependencyTags = M.empty
   }
 
 packageTwo :: Dependency
@@ -33,7 +34,8 @@ packageTwo = Dependency
   , dependencyName = "packageTwo"
   , dependencyVersion = Just (CCompatible "^2.0.0")
   , dependencyLocations = []
-  , dependencyTags = M.fromList [("environment", ["development"])]
+  , dependencyEnvironments = [EnvDevelopment]
+  , dependencyTags = M.empty
   }
 
 spec_packageJsonBuildGraph :: Spec

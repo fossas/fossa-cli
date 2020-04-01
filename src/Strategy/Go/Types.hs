@@ -50,6 +50,7 @@ golangPackageToDependency pkg = foldr applyLabel start
     , dependencyName = goImportPath pkg
     , dependencyVersion = Nothing
     , dependencyLocations = []
+    , dependencyEnvironments = []
     , dependencyTags = M.empty
     }
 

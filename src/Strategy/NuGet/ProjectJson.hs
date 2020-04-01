@@ -85,6 +85,7 @@ buildGraph project = unfold direct (const []) toDependency
                   Just '*' -> Just (CCompatible version)
                   _ -> Just (CEq version)
                , dependencyLocations = []
+               , dependencyEnvironments = []
                , dependencyTags = case dependencyType of
                   Nothing -> M.empty
                   Just depType -> M.insert "type" [depType]  M.empty

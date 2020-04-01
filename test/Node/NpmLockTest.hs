@@ -48,7 +48,8 @@ packageOne = Dependency
   , dependencyName = "packageOne"
   , dependencyVersion = Just (CEq "1.0.0")
   , dependencyLocations = ["https://example.com/one.tgz"]
-  , dependencyTags = M.fromList [("environment", ["production"])]
+  , dependencyEnvironments = [EnvProduction]
+  , dependencyTags = M.empty
   }
 
 packageTwo :: Dependency
@@ -57,7 +58,8 @@ packageTwo = Dependency
   , dependencyName = "packageTwo"
   , dependencyVersion = Just (CEq "2.0.0")
   , dependencyLocations = ["https://example.com/two.tgz"]
-  , dependencyTags = M.fromList [("environment", ["development"])]
+  , dependencyEnvironments = [EnvDevelopment]
+  , dependencyTags = M.empty
   }
 
 packageThree :: Dependency
@@ -66,7 +68,8 @@ packageThree = Dependency
   , dependencyName = "packageThree"
   , dependencyVersion = Just (CEq "3.0.0")
   , dependencyLocations = []
-  , dependencyTags = M.fromList [("environment", ["development"])]
+  , dependencyEnvironments = [EnvDevelopment]
+  , dependencyTags = M.empty
   }
 
 spec_npmLockBuildGraph :: Spec

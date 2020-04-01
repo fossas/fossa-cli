@@ -61,6 +61,7 @@ buildGraph podfile = unfold direct (const []) toDependency
                  , dependencyLocations = case M.lookup SourceProperty properties of 
                                             Just repo -> [repo]
                                             _ -> [source podfile]
+                 , dependencyEnvironments = []
                  , dependencyTags = M.empty
                  }
 

@@ -83,13 +83,14 @@ buildGraph lock maybeDeps = run . withLabeling toDependency $ do
     where
     applyLabel :: PipLabel -> Dependency -> Dependency
     applyLabel (PipSource loc) dep = dep { dependencyLocations = loc : dependencyLocations dep }
-    applyLabel (PipEnvironment env) dep = dep { dependencyTags = M.insertWith (<>) "environment" [env] (dependencyTags dep) }
+    applyLabel (PipEnvironment env) dep = dep { dependencyEnvironments = env : dependencyEnvironments dep }
 
     start = Dependency
       { dependencyType = PipType
       , dependencyName = pipPkgName pkg
       , dependencyVersion = Just (CEq (pipPkgVersion pkg))
       , dependencyLocations = []
+      , dependencyEnvironments = []
       , dependencyTags = M.empty
       }
 
@@ -102,7 +103,7 @@ type instance PkgLabel PipPkg = PipLabel
 
 data PipLabel =
     PipSource Text -- location
-  | PipEnvironment Text -- production, development
+  | PipEnvironment DepEnvironment
   deriving (Eq, Ord, Show, Generic)
 
 buildNodes :: forall sig m. Has (LabeledGrapher PipPkg) sig m => PipfileLock -> m ()
@@ -112,18 +113,18 @@ buildNodes PipfileLock{..} = do
 
       sourcesMap = indexBy sourceName (fileSources fileMeta)
 
-  _ <- M.traverseWithKey (addWithLabel "development" sourcesMap) fileDevelop
-  _ <- M.traverseWithKey (addWithLabel "production" sourcesMap) fileDefault
+  _ <- M.traverseWithKey (addWithEnv EnvDevelopment sourcesMap) fileDevelop
+  _ <- M.traverseWithKey (addWithEnv EnvProduction sourcesMap) fileDefault
   pure ()
 
   where
 
-  addWithLabel :: Text -- env name: production, development
+  addWithEnv :: DepEnvironment
                -> Map Text PipfileSource
                -> Text -- dep name
                -> PipfileDep
                -> m ()
-  addWithLabel env sourcesMap depName dep = do
+  addWithEnv env sourcesMap depName dep = do
     let pkg = PipPkg depName (T.drop 2 (fileDepVersion dep))
     -- TODO: reachable instead of direct
     direct pkg

@@ -21,12 +21,14 @@ expected = run . evalGrapher $ do
                       , dependencyName = "pkgOne"
                       , dependencyVersion = Just (CEq "1.0.0")
                       , dependencyLocations = []
+                      , dependencyEnvironments = []
                       , dependencyTags = M.empty
                       }
   direct $ Dependency { dependencyType = GemType
                       , dependencyName = "pkgTwo"
                       , dependencyVersion = Just (CEq "2.0.0")
                       , dependencyLocations = []
+                      , dependencyEnvironments = []
                       , dependencyTags = M.empty
                       }
 

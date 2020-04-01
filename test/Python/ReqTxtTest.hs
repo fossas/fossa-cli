@@ -33,18 +33,21 @@ expected = run . evalGrapher $ do
                           Just (CAnd (CGreaterOrEq "1.0.0")
                                      (CLess "2.0.0"))
                       , dependencyLocations = []
+                      , dependencyEnvironments = []
                       , dependencyTags = M.empty
                       }
   direct $ Dependency { dependencyType = PipType
                       , dependencyName = "pkgTwo"
                       , dependencyVersion = Nothing
                       , dependencyLocations = []
+                      , dependencyEnvironments = []
                       , dependencyTags = M.empty
                       }
   direct $ Dependency { dependencyType = PipType
                       , dependencyName = "pkgThree"
                       , dependencyVersion = Just (CURI "https://example.com/")
                       , dependencyLocations = []
+                      , dependencyEnvironments = []
                       , dependencyTags = M.empty
                       }
 

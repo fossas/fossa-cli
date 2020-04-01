@@ -19,6 +19,7 @@ packageOne = Dependency
   , dependencyName = "mygroup:packageOne"
   , dependencyVersion = Just (CEq "1.0.0")
   , dependencyLocations = []
+  , dependencyEnvironments = [EnvTesting]
   , dependencyTags = M.fromList [("scopes", ["compile", "test"])]
   }
 
@@ -28,6 +29,7 @@ packageTwo = Dependency
   , dependencyName = "mygroup:packageTwo"
   , dependencyVersion = Just (CEq "2.0.0")
   , dependencyLocations = []
+  , dependencyEnvironments = []
   , dependencyTags = M.fromList [("scopes", ["compile"]), ("optional", ["true"])]
   }
 

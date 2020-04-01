@@ -60,6 +60,7 @@ buildGraph xs = unfold xs (const []) toDependency
                , dependencyName = depName
                , dependencyVersion = Just (CEq depVersion)
                , dependencyLocations = []
+               , dependencyEnvironments = []
                , dependencyTags = M.empty
                }
 

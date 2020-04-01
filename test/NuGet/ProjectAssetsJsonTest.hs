@@ -21,6 +21,7 @@ dependencyOne = Dependency { dependencyType = NuGetType
                         , dependencyName = "one"
                         , dependencyVersion = Just (CEq "1.0.0")
                         , dependencyLocations = []
+                        , dependencyEnvironments = []
                         , dependencyTags = M.empty
                         }
 
@@ -29,6 +30,7 @@ dependencyTwo = Dependency { dependencyType = NuGetType
                         , dependencyName = "two"
                         , dependencyVersion = Just (CEq "2.0.0")
                         , dependencyLocations = []
+                        , dependencyEnvironments = []
                         , dependencyTags = M.empty
                         }
 
@@ -37,6 +39,7 @@ dependencyThree = Dependency { dependencyType = NuGetType
                         , dependencyName = "three"
                         , dependencyVersion = Just (CEq "3.0.0")
                         , dependencyLocations = []
+                        , dependencyEnvironments = []
                         , dependencyTags = M.empty
                         }
 
@@ -45,6 +48,7 @@ dependencyFour = Dependency { dependencyType = NuGetType
                         , dependencyName = "four"
                         , dependencyVersion = Just (CEq "4.0.0")
                         , dependencyLocations = []
+                        , dependencyEnvironments = []
                         , dependencyTags = M.empty
                         }
 

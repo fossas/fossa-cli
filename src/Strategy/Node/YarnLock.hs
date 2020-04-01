@@ -73,5 +73,6 @@ buildGraph lockfile = run . evalGrapher $
                      YL.FileRemote url _ -> [url]
                      YL.FileRemoteNoIntegrity url -> [url]
                      YL.GitRemote url rev -> [url <> "@" <> rev]
+               , dependencyEnvironments = []
                , dependencyTags = M.empty
                }

@@ -98,6 +98,7 @@ toDependency pkg = foldr applyLabel start
     , dependencyName = pkgName pkg
     , dependencyVersion = Nothing
     , dependencyLocations = []
+    , dependencyEnvironments = []
     , dependencyTags = M.empty
     }
 

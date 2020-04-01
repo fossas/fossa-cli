@@ -62,7 +62,8 @@ depOne = Dependency
   , dependencyName = "pkgOne"
   , dependencyVersion = Just (CEq "1.0.0")
   , dependencyLocations = []
-  , dependencyTags = M.fromList [("environment", ["development"])]
+  , dependencyEnvironments = [EnvDevelopment]
+  , dependencyTags = M.empty
   }
 
 depTwo :: Dependency
@@ -71,7 +72,8 @@ depTwo = Dependency
   , dependencyName = "pkgTwo"
   , dependencyVersion = Just (CEq "2.0.0")
   , dependencyLocations = ["https://my-package-index/"]
-  , dependencyTags = M.fromList [("environment", ["production"])]
+  , dependencyEnvironments = [EnvProduction]
+  , dependencyTags = M.empty
   }
 
 depThree :: Dependency
@@ -80,7 +82,8 @@ depThree = Dependency
   , dependencyName = "pkgThree"
   , dependencyVersion = Just (CEq "3.0.0")
   , dependencyLocations = []
-  , dependencyTags = M.fromList [("environment", ["production"])]
+  , dependencyEnvironments = [EnvProduction]
+  , dependencyTags = M.empty
   }
 
 xit :: String -> Expectation -> SpecWith (Arg Expectation)

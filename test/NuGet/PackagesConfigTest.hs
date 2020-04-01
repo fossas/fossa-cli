@@ -18,6 +18,7 @@ dependencyOne = Dependency { dependencyType = NuGetType
                         , dependencyName = "one"
                         , dependencyVersion = Just (CEq "1.0.0")
                         , dependencyLocations = []
+                        , dependencyEnvironments = []
                         , dependencyTags = M.empty
                         }
 
@@ -26,6 +27,7 @@ dependencyTwo = Dependency { dependencyType = NuGetType
                         , dependencyName = "two"
                         , dependencyVersion = Just (CEq "2.0.0")
                         , dependencyLocations = []
+                        , dependencyEnvironments = []
                         , dependencyTags = M.empty
                         }
 

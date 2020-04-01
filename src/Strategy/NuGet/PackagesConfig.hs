@@ -67,5 +67,6 @@ buildGraph config = unfold (deps config) (const []) toDependency
                , dependencyName = depID
                , dependencyVersion = Just (CEq depVersion)
                , dependencyLocations = []
+               , dependencyEnvironments = []
                , dependencyTags = M.empty
                }

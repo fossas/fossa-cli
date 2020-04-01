@@ -69,6 +69,7 @@ expected = run . evalGrapher $ do
              , dependencyName = "cat/fossa"
              , dependencyVersion = Just (CEq "v3.0.0")
              , dependencyLocations = ["https://someotherlocation/"]
+             , dependencyEnvironments = []
              , dependencyTags = M.empty
              }
   direct $ Dependency
@@ -76,6 +77,7 @@ expected = run . evalGrapher $ do
              , dependencyName = "repo/name/A"
              , dependencyVersion = Just (CEq "v1.0.0")
              , dependencyLocations = []
+             , dependencyEnvironments = []
              , dependencyTags = M.empty
              }
   direct $ Dependency
@@ -83,6 +85,7 @@ expected = run . evalGrapher $ do
              , dependencyName = "repo/name/B"
              , dependencyVersion = Just (CEq "overridebranch")
              , dependencyLocations = []
+             , dependencyEnvironments = []
              , dependencyTags = M.empty
              }
   direct $ Dependency
@@ -90,6 +93,7 @@ expected = run . evalGrapher $ do
              , dependencyName = "repo/name/C"
              , dependencyVersion = Just (CEq "branchname")
              , dependencyLocations = []
+             , dependencyEnvironments = []
              , dependencyTags = M.empty
              }
 

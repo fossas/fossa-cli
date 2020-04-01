@@ -53,6 +53,7 @@ buildGraph lockfile = unfold direct (const []) toDependency
                , dependencyName = depName
                , dependencyVersion = Just (CEq $ T.pack (show depVersion))
                , dependencyLocations = []
+               , dependencyEnvironments = []
                , dependencyTags = M.empty
                }
 

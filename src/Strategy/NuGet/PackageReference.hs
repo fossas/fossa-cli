@@ -82,5 +82,6 @@ buildGraph project = unfold direct (const []) toDependency
                , dependencyName = depID
                , dependencyVersion =  fmap CEq depVersion
                , dependencyLocations = []
+               , dependencyEnvironments = []
                , dependencyTags = M.empty
                }
