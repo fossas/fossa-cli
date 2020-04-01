@@ -164,22 +164,24 @@ func uploadComparisonData(data comparisonData) {
 }
 
 func Run(ctx *cli.Context) error {
-	startTime := time.Now()
-	v2Completion := make(chan spectrometerOutput, 1)
+	err := setup.SetContext(ctx, !ctx.Bool(ShowOutput))
+	if err != nil {
+		log.Fatalf("Could not initialize %s", err)
+	}
 
 	var timeout int
 	authorized := false
-	if !ctx.Bool(ShowOutput) {
+	v2Completion := make(chan spectrometerOutput, 1)
+	if !ctx.Bool(ShowOutput) && config.Endpoint() == config.DefaultEndpoint {
 		authorized, timeout = authorizedComparison()
 		if authorized {
 			go v2Analysis(v2Completion)
 		}
 	}
 
-	var err error
+	startTime := time.Now()
 	normalized := []fossa.SourceUnit{}
 	modules := []module.Module{}
-
 	defer func() {
 		if authorized {
 			var message string
@@ -224,11 +226,6 @@ func Run(ctx *cli.Context) error {
 			displaySourceunits(normalized, ctx)
 		}
 	}()
-
-	err = setup.SetContext(ctx, !ctx.Bool(ShowOutput))
-	if err != nil {
-		log.Fatalf("Could not initialize %s", err)
-	}
 
 	modules, err = config.Modules()
 	if err != nil {
