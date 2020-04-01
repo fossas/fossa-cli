@@ -59,9 +59,11 @@ func APIKey() string {
 	return TryStrings(file.APIKey(), os.Getenv("FOSSA_API_KEY"))
 }
 
+const DefaultEndpoint = "https://app.fossa.com"
+
 // Endpoint is the desired FOSSA backend endpoint.
 func Endpoint() string {
-	return TryStrings(StringFlag(flags.Endpoint), file.Server(), "https://app.fossa.com")
+	return TryStrings(StringFlag(flags.Endpoint), file.Server(), DefaultEndpoint)
 }
 
 /**** Project configuration keys ****/
