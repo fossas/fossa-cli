@@ -21,7 +21,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import DepTypes
 import Discovery.Walk
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Strategy.Go.Types
@@ -201,11 +201,11 @@ mkProjectClosure file graph = ProjectClosureBody
     , dependenciesComplete = NotComplete
     }
 
-buildGraph :: Has (LabeledGrapher GolangPackage) sig m => Gomod -> m ()
+buildGraph :: Has GolangGrapher sig m => Gomod -> m ()
 buildGraph = traverse_ go . resolve
   where
 
-  go :: Has (LabeledGrapher GolangPackage) sig m => Require -> m ()
+  go :: Has GolangGrapher sig m => Require -> m ()
   go Require{..} = do
     let pkg = mkGolangPackage reqPackage
 

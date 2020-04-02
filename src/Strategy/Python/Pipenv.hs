@@ -21,7 +21,7 @@ import Discovery.Walk
 import DepTypes
 import Graphing (Graphing)
 import Effect.Exec
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Effect.ReadFS
 import Types
 
@@ -99,14 +99,14 @@ data PipPkg = PipPkg
   , pipPkgVersion :: Text
   } deriving (Eq, Ord, Show, Generic)
 
-type instance PkgLabel PipPkg = PipLabel
+type PipGrapher = LabeledGrapher PipPkg PipLabel
 
 data PipLabel =
     PipSource Text -- location
   | PipEnvironment DepEnvironment
   deriving (Eq, Ord, Show, Generic)
 
-buildNodes :: forall sig m. Has (LabeledGrapher PipPkg) sig m => PipfileLock -> m ()
+buildNodes :: forall sig m. Has PipGrapher sig m => PipfileLock -> m ()
 buildNodes PipfileLock{..} = do
   let indexBy :: Ord k => (v -> k) -> [v] -> Map k v
       indexBy ix = M.fromList . map (\v -> (ix v, v))
@@ -136,7 +136,7 @@ buildNodes PipfileLock{..} = do
         Just source -> label pkg (PipSource (sourceUrl source))
         Nothing -> pure ()
 
-buildEdges :: Has (LabeledGrapher PipPkg) sig m => [PipenvGraphDep] -> m ()
+buildEdges :: Has PipGrapher sig m => [PipenvGraphDep] -> m ()
 buildEdges pipenvDeps = do
   traverse_ (direct . mkPkg) pipenvDeps
   traverse_ mkEdges pipenvDeps
@@ -146,7 +146,7 @@ buildEdges pipenvDeps = do
   mkPkg :: PipenvGraphDep -> PipPkg
   mkPkg dep = PipPkg (depName dep) (depInstalled dep)
 
-  mkEdges :: Has (LabeledGrapher PipPkg) sig m => PipenvGraphDep -> m ()
+  mkEdges :: Has PipGrapher sig m => PipenvGraphDep -> m ()
   mkEdges parentDep =
     forM_ (depDependencies parentDep) $ \childDep -> do
       edge (mkPkg parentDep) (mkPkg childDep)

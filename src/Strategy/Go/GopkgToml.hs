@@ -20,7 +20,7 @@ import qualified Toml
 
 import DepTypes
 import Discovery.Walk
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Strategy.Go.Types
@@ -91,10 +91,10 @@ mkProjectClosure file graph = ProjectClosureBody
     , dependenciesComplete = NotComplete
     }
 
-buildGraph :: Has (LabeledGrapher GolangPackage) sig m => Gopkg -> m ()
+buildGraph :: Has GolangGrapher sig m => Gopkg -> m ()
 buildGraph = void . M.traverseWithKey go . resolve
   where
-  go :: Has (LabeledGrapher GolangPackage) sig m => Text -> PkgConstraint -> m ()
+  go :: Has GolangGrapher sig m => Text -> PkgConstraint -> m ()
   go name PkgConstraint{..} = do
     let pkg = mkGolangPackage name
 

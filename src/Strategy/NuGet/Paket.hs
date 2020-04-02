@@ -18,7 +18,7 @@ import qualified Data.Char as C
 
 import DepTypes
 import Discovery.Walk
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Types
@@ -55,7 +55,7 @@ mkProjectClosure file sections = ProjectClosureBody
 newtype PaketPkg = PaketPkg { pkgName :: Text }
   deriving (Eq, Ord, Show, Generic)
 
-type instance PkgLabel PaketPkg = PaketLabel
+type PaketGrapher = LabeledGrapher PaketPkg PaketLabel
 
 data PaketLabel =
     PaketVersion Text
@@ -88,15 +88,15 @@ buildGraph :: [Section] -> Graphing Dependency
 buildGraph sections = run . withLabeling toDependency $
       traverse_ (addSection "MAIN") sections
       where
-            addSection :: Has (LabeledGrapher PaketPkg) sig m => Text -> Section -> m ()
+            addSection :: Has PaketGrapher sig m => Text -> Section -> m ()
             addSection group (StandardSection location remotes) = traverse_ (addRemote group location) remotes
             addSection _ (GroupSection group gSections) = traverse_ (addSection group) gSections
             addSection _ (UnknownSection _) = pure ()
 
-            addRemote :: Has (LabeledGrapher PaketPkg) sig m => Text -> Text -> Remote -> m ()
+            addRemote :: Has PaketGrapher sig m => Text -> Text -> Remote -> m ()
             addRemote group loc remote = traverse_ (addSpec (DepLocation loc) (PaketRemote $ location remote) (GroupName group)) (dependencies remote) 
 
-            addSpec :: Has (LabeledGrapher PaketPkg) sig m => PaketLabel -> PaketLabel -> PaketLabel -> PaketDep -> m ()
+            addSpec :: Has PaketGrapher sig m => PaketLabel -> PaketLabel -> PaketLabel -> PaketDep -> m ()
             addSpec loc remote group dep = do
               -- add edges, labels, and direct deps
               let pkg = PaketPkg (name dep)

@@ -16,7 +16,7 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 
 import Effect.Exec
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Strategy.Go.Types
 
 goListCmd :: Command
@@ -70,10 +70,10 @@ decodeMany = eitherDecodeWith parser (iparse parseJSON)
     (objects :: [Value]) <- many json <* skipSpace <* A.endOfInput
     pure (Array (V.fromList objects))
 
-graphTransitive :: Has (LabeledGrapher GolangPackage) sig m => [Package] -> m ()
+graphTransitive :: Has GolangGrapher sig m => [Package] -> m ()
 graphTransitive = void . traverse_ go
   where
-  go :: Has (LabeledGrapher GolangPackage) sig m => Package -> m ()
+  go :: Has GolangGrapher sig m => Package -> m ()
   go package = unless (packageSystem package == Just True) $ do
     let -- when a gomod field is present, use that for the package import path
         -- otherwise use the top-level package import path
@@ -92,7 +92,7 @@ graphTransitive = void . traverse_ go
 
 
 fillInTransitive ::
-  ( Has (LabeledGrapher GolangPackage) sig m
+  ( Has GolangGrapher sig m
   , Has Exec sig m
   , Has (Error ExecErr) sig m
   )

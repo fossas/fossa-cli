@@ -11,7 +11,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Text as T
 import DepTypes
-import Effect.LabeledGrapher
+import Effect.Grapher
 import qualified Graphing as G
 import Strategy.Maven.Pom.Closure
 import Strategy.Maven.Pom.PomFile
@@ -46,7 +46,7 @@ type Version = Text
 data MavenPackage = MavenPackage Group Artifact (Maybe Version)
   deriving (Eq, Ord, Show, Generic)
 
-type instance PkgLabel MavenPackage = MavenLabel
+type MavenGrapher = LabeledGrapher MavenPackage MavenLabel
 
 data MavenLabel =
     MavenLabelScope Text
@@ -84,7 +84,7 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
   direct (coordToPackage (closureRootCoord closure))
   go (closureRootCoord closure) (closureRootPom closure)
   where
-  go :: Has (LabeledGrapher MavenPackage) sig m => MavenCoordinate -> Pom -> m ()
+  go :: Has MavenGrapher sig m => MavenCoordinate -> Pom -> m ()
   go coord incompletePom = do
     _ <- M.traverseWithKey addDep deps
     for_ childPoms $ \(childCoord,childPom) -> do
@@ -104,7 +104,7 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
     deps :: Map (Group,Artifact) MvnDepBody
     deps = reifyDeps completePom
 
-    addDep :: Has (LabeledGrapher MavenPackage) sig m => (Group,Artifact) -> MvnDepBody -> m ()
+    addDep :: Has MavenGrapher sig m => (Group,Artifact) -> MvnDepBody -> m ()
     addDep (group,artifact) body = do
       let interpolatedVersion = classify . naiveInterpolate (pomProperties completePom) <$> depVersion body
           -- maven classifiers are appended to the end of versions, e.g., 3.0.0 with a classifier

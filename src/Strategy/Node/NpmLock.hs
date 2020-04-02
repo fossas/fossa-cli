@@ -14,7 +14,7 @@ import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
 import DepTypes
 import Discovery.Walk
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Types
@@ -76,7 +76,7 @@ data NpmPackage = NpmPackage
   , pkgVersion :: Text
   } deriving (Eq, Ord, Show, Generic)
 
-type instance PkgLabel NpmPackage = NpmPackageLabel
+type NpmGrapher = LabeledGrapher NpmPackage NpmPackageLabel
 
 data NpmPackageLabel = NpmPackageEnv DepEnvironment | NpmPackageLocation Text
   deriving (Eq, Ord, Show, Generic)
@@ -88,10 +88,10 @@ buildGraph packageJson = run . withLabeling toDependency $ do
   pure ()
 
   where
-  addDirect :: Has (LabeledGrapher NpmPackage) sig m => Text -> NpmDep -> m ()
+  addDirect :: Has NpmGrapher sig m => Text -> NpmDep -> m ()
   addDirect name NpmDep{depVersion} = direct (NpmPackage name depVersion)
 
-  addDep :: Has (LabeledGrapher NpmPackage) sig m => Text -> NpmDep -> m ()
+  addDep :: Has NpmGrapher sig m => Text -> NpmDep -> m ()
   addDep name NpmDep{..} = do
     let pkg = NpmPackage name depVersion
 

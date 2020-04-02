@@ -105,11 +105,9 @@ library
     Discovery.Walk
     Effect.Exec
     Effect.Grapher
-    Effect.LabeledGrapher
     Effect.Logger
     Effect.ReadFS
     Graphing
-    LabeledGraphing
     Parse.XML
     Prologue
     Strategy.Carthage

@@ -1,6 +1,7 @@
 module Strategy.Go.Types
   ( GolangPackage -- don't export GolangPackage; export the smart constructor instead
   , mkGolangPackage
+  , GolangGrapher
   , GolangLabel(GolangLabelLocation) -- don't export GolangLabelVersion; export the smart constructor instead
   , mkGolangVersion
 
@@ -15,7 +16,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
 import DepTypes
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Graphing
 
 -- | A golang package is uniquely identified by its import path
@@ -25,7 +26,7 @@ newtype GolangPackage = GolangPackage { goImportPath :: Text } deriving (Eq, Ord
 mkGolangPackage :: Text -> GolangPackage
 mkGolangPackage = GolangPackage . unvendor
 
-type instance PkgLabel GolangPackage = GolangLabel
+type GolangGrapher = LabeledGrapher GolangPackage GolangLabel
 
 data GolangLabel =
     GolangLabelVersion Text
@@ -33,11 +34,11 @@ data GolangLabel =
   deriving (Eq, Ord, Show, Generic)
 
 -- | Smart constructor for GolangLabelVersion. Applies 'fixVersion' to the value
-mkGolangVersion :: Text -> PkgLabel GolangPackage
+mkGolangVersion :: Text -> GolangLabel
 mkGolangVersion = GolangLabelVersion . fixVersion
 
 -- | Monomorphic interpreter for @LabeledGrapher GolangPackage@ into a @Graphing Dependency@
-graphingGolang :: Functor m => LabeledGrapherC GolangPackage m a -> m (Graphing Dependency)
+graphingGolang :: Monad m => LabeledGrapherC GolangPackage GolangLabel m a -> m (Graphing Dependency)
 graphingGolang = withLabeling golangPackageToDependency
 
 golangPackageToDependency :: GolangPackage -> Set GolangLabel -> Dependency

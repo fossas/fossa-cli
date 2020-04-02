@@ -11,7 +11,7 @@ import Control.Carrier.Error.Either
 import qualified Data.Map.Strict as M
 import DepTypes
 import Discovery.Walk
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Types
@@ -56,7 +56,7 @@ data NodePackage = NodePackage
   , pkgConstraint :: Text
   } deriving (Eq, Ord, Show, Generic)
 
-type instance PkgLabel NodePackage = NodePackageLabel
+type NodeGrapher = LabeledGrapher NodePackage NodePackageLabel
 
 newtype NodePackageLabel = NodePackageEnv DepEnvironment
   deriving (Eq, Ord, Show, Generic)
@@ -69,7 +69,7 @@ buildGraph PackageJson{..} = run . withLabeling toDependency $ do
 
   where
 
-  addDep :: Has (LabeledGrapher NodePackage) sig m => DepEnvironment -> Text -> Text -> m ()
+  addDep :: Has NodeGrapher sig m => DepEnvironment -> Text -> Text -> m ()
   addDep env name constraint = do
     let pkg = NodePackage name constraint
     direct pkg

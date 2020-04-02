@@ -16,7 +16,7 @@ import Data.Text.Encoding (decodeUtf8)
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Graphing (Graphing)
 import Strategy.Go.Types
 import Types
@@ -78,11 +78,11 @@ mkProjectClosure dir graph = ProjectClosureBody
     , dependenciesComplete = NotComplete
     }
 
-buildGraph :: Has (LabeledGrapher GolangPackage) sig m => [Require] -> m ()
+buildGraph :: Has GolangGrapher sig m => [Require] -> m ()
 buildGraph = traverse_ go
   where
 
-  go :: Has (LabeledGrapher GolangPackage) sig m => Require -> m ()
+  go :: Has GolangGrapher sig m => Require -> m ()
   go Require{..} = do
     let pkg = mkGolangPackage reqPackage
     direct pkg

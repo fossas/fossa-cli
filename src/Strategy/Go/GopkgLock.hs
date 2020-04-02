@@ -15,7 +15,7 @@ import Prologue hiding ((.=))
 import Control.Carrier.Error.Either
 import DepTypes
 import Discovery.Walk
-import Effect.LabeledGrapher
+import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Strategy.Go.Types
@@ -81,10 +81,10 @@ mkProjectClosure file graph = ProjectClosureBody
     , dependenciesComplete = NotComplete
     }
 
-buildGraph :: Has (LabeledGrapher GolangPackage) sig m => [Project] -> m ()
+buildGraph :: Has GolangGrapher sig m => [Project] -> m ()
 buildGraph = void . traverse_ go
   where
-  go :: Has (LabeledGrapher GolangPackage) sig m => Project -> m ()
+  go :: Has GolangGrapher sig m => Project -> m ()
   go Project{..} = do
     let pkg = mkGolangPackage projectName
 
