@@ -84,7 +84,7 @@ func retrieveTransitiveInformation(deps Dependencies) (DependencyMap, DeepDepIds
 }
 
 // FromLockfile generates the dep graph based on the lockfile provided at the supplied path.
-func FromLockfile(path string) (graph.Deps, error) {
+func FromLockfile(path string, devDeps bool) (graph.Deps, error) {
 	lockfile, err := FindAndReadLockfile(path)
 	if err != nil {
 		return graph.Deps{}, err

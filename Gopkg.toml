@@ -77,3 +77,7 @@
 [[constraint]]
   name = "github.com/olekukonko/tablewriter"
   version = "0.0.2"
+
+[[constraint]]
+  name = "github.com/Masterminds/semver"
+  version = "3.0.3"

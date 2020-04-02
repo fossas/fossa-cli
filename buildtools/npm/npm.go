@@ -14,7 +14,7 @@ type Options struct {
 }
 
 type NPM interface {
-	List(dir string) (Output, error)
+	List(dir string, devDeps bool) (Output, error)
 	Clean(dir string) error
 	Install(dir string) error
 	Exists() bool
@@ -36,12 +36,17 @@ func (n SystemNPM) Exists() bool {
 	return n.Cmd != ""
 }
 
-func (n SystemNPM) List(dir string) (Output, error) {
-	stdout, _, err := exec.Run(exec.Cmd{
+func (n SystemNPM) List(dir string, devDeps bool) (Output, error) {
+	listCmd := exec.Cmd{
 		Name: n.Cmd,
-		Argv: []string{"ls", "--json", "--production"},
 		Dir:  dir,
-	})
+		Argv: []string{"ls", "--json"},
+	}
+	if !devDeps {
+		listCmd.Argv = []string{"ls", "--json", "--production"}
+	}
+
+	stdout, _, err := exec.Run(listCmd)
 	log.Debugf("err: %#v", err)
 	log.Debugf("AllowErr: %#v", n.AllowErr)
 	if err != nil && !n.AllowErr {

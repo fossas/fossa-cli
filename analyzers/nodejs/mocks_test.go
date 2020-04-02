@@ -11,7 +11,7 @@ type MockNPM struct {
 	JSONFilename string
 }
 
-func (n MockNPM) List(_ string) (npm.Output, error) {
+func (n MockNPM) List(_ string, _ bool) (npm.Output, error) {
 	var output npm.Output
 	err := files.ReadJSON(&output, n.JSONFilename)
 	if err != nil {
@@ -35,7 +35,7 @@ func (n MockNPM) Exists() bool {
 
 type MockNPMFailure struct{}
 
-func (n MockNPMFailure) List(_ string) (npm.Output, error) {
+func (n MockNPMFailure) List(_ string, _ bool) (npm.Output, error) {
 	return npm.Output{}, errors.New("expected failure for npm list")
 }
 

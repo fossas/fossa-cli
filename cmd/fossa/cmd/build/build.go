@@ -60,7 +60,7 @@ func Run(ctx *cli.Context) error {
 }
 
 func Do(m module.Module, clean, force bool) error {
-	analyzer, err := analyzers.New(m)
+	analyzer, err := analyzers.New(m, false)
 	if err != nil {
 		return err
 	}
