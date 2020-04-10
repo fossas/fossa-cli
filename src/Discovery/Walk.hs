@@ -1,32 +1,43 @@
 module Discovery.Walk
-  ( walk
+  ( -- * Walking the filetree
+    walk
+  , WalkStep(..)
 
   , dirName
   , fileName
-
-  , walkContinue
-  , walkSkipAll
-  , walkSkipNamed
   ) where
 
 import Prologue
 
 import Path.IO
 
-type FileWalk m = Path Rel Dir -> [Path Rel Dir] -> [Path Rel File] -> m (WalkAction Rel)
+data WalkStep
+  = WalkContinue -- ^ Continue walking subdirectories
+  | WalkSkipSome [Path Rel Dir] -- ^ Skip some subdirectories
+  | WalkSkipAll -- ^ Skip all subdirectories
+  | WalkStop -- ^ Stop walking the filetree entirely
+  deriving (Eq, Ord, Show, Generic)
 
-walkContinue :: Applicative m => m (WalkAction b)
-walkContinue = pure $ WalkExclude []
-
-walkSkipAll :: Applicative m => [Path Rel Dir] -> m (WalkAction Rel)
-walkSkipAll = pure . WalkExclude . map dirname
-
--- TODO: this is brittle: strings must end with a `/`
-walkSkipNamed :: Applicative m => [String] -> [Path Rel Dir] -> m (WalkAction Rel)
-walkSkipNamed dirnames = walkSkipAll . filter (\d -> dirName d `elem` dirnames)
-
-walk :: MonadIO m => FileWalk m -> Path Abs Dir -> m ()
-walk f = walkDirRel (\dir subdirs files -> f dir (map (dir </>) subdirs) (map (dir </>) files))
+-- | Walk the filetree, rooted at an absolute directory. The passed-in function
+-- takes the @currentdir@ @subdirs@ and @files@, and produces a WalkStep
+-- describing what to do next.
+--
+-- You can inspect the names of files and directories with 'dirName' and
+-- 'fileName'
+walk
+  :: MonadIO m
+  => (Path Rel Dir -> [Path Rel Dir] -> [Path Rel File] -> m WalkStep)
+  -> Path Abs Dir
+  -> m ()
+walk f = walkDirRel $ \dir subdirs files -> do
+  -- normally, subdirs and files are _relative to dir_. We want them to be
+  -- relative to the filetree walk
+  step <- f dir (map (dir </>) subdirs) (map (dir </>) files)
+  case step of
+    WalkContinue -> pure (WalkExclude [])
+    WalkSkipSome dirs -> pure (WalkExclude dirs)
+    WalkSkipAll -> pure (WalkExclude subdirs)
+    WalkStop -> pure WalkFinish
 
 dirName :: Path a Dir -> String
 dirName = toFilePath . dirname

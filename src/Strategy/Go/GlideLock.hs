@@ -27,7 +27,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-glidelock" GolangGroup $ analyze file
 
-  walkContinue
+  pure WalkContinue
 
 analyze :: ( Has ReadFS sig m , Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsYaml @GlideLockfile file

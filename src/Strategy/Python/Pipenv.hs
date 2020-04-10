@@ -31,7 +31,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "python-pipenv" PythonGroup $ analyze file
 
-  walkContinue
+  pure WalkContinue
 
 pipenvGraphCmd :: Command
 pipenvGraphCmd = Command

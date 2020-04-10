@@ -1,3 +1,5 @@
+{-# language TemplateHaskell #-}
+
 module Strategy.Go.GopkgToml
   ( discover
 
@@ -27,12 +29,12 @@ import Strategy.Go.Types
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ subdirs files -> do
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Gopkg.toml") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-gopkgtoml" GolangGroup $ analyze file
 
-  walkSkipNamed ["vendor/"] subdirs
+  pure $ WalkSkipSome [$(mkRelDir "vendor")]
 
 gopkgCodec :: TomlCodec Gopkg
 gopkgCodec = Gopkg

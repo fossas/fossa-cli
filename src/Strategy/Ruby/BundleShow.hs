@@ -28,7 +28,7 @@ discover = walk $ \dir _ files -> do
     Nothing -> pure ()
     Just _  -> runSimpleStrategy "ruby-bundleshow" RubyGroup $ analyze dir
 
-  walkContinue
+  pure WalkContinue
 
 bundleShowCmd :: Command
 bundleShowCmd = Command

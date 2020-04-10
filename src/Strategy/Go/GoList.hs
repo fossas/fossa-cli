@@ -1,3 +1,5 @@
+{-# language TemplateHaskell #-}
+
 module Strategy.Go.GoList
   ( discover
   , analyze
@@ -22,12 +24,12 @@ import Strategy.Go.Types
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ subdirs files -> do
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "go.mod") files of
     Nothing -> pure ()
     Just file  -> runSimpleStrategy "golang-golist" GolangGroup $ analyze (parent file)
 
-  walkSkipNamed ["vendor/"] subdirs
+  pure $ WalkSkipSome [$(mkRelDir "vendor")]
 
 data Require = Require
   { reqPackage :: Text

@@ -1,3 +1,5 @@
+{-# language TemplateHaskell #-}
+
 module Strategy.Node.NpmList
   ( discover
   , analyze
@@ -14,12 +16,12 @@ import Graphing (Graphing, unfold)
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \dir subdirs files -> do
+discover = walk $ \dir _ files -> do
   case find (\f -> fileName f == "package.json") files of
     Nothing -> pure ()
     Just _ -> runSimpleStrategy "nodejs-npmlist" NodejsGroup $ analyze dir
 
-  walkSkipNamed ["node_modules/"] subdirs
+  pure (WalkSkipSome [$(mkRelDir "node_modules")])
 
 npmListCmd :: Command
 npmListCmd = Command

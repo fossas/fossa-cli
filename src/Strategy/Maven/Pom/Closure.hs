@@ -32,7 +32,7 @@ findPomFiles dir = do
         Just file -> modify @[Path Rel File] (file:)
         Nothing -> pure ()
 
-      walkContinue
+      pure WalkContinue
 
   -- FIXME: exceptions
   traverse (liftIO . PIO.makeAbsolute) relPaths

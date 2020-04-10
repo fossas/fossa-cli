@@ -22,7 +22,7 @@ discover = walk $ \_ _ files -> do
     Just file -> runSimpleStrategy "python-setuppy" PythonGroup $
       analyze file
 
-  walkContinue
+  pure WalkContinue
 
 analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser installRequiresParser file

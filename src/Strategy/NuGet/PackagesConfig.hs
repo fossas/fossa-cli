@@ -25,7 +25,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nuget-packagesconfig" DotnetGroup $ analyze file
 
-  walkContinue
+  pure WalkContinue
 
 instance FromXML PackagesConfig where
   parseElement el = PackagesConfig <$> children "package" el

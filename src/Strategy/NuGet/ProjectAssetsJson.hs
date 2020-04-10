@@ -25,7 +25,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nuget-projectassetsjson" DotnetGroup $ analyze file
 
-  walkContinue
+  pure WalkContinue
 
 data ProjectAssetsJson = ProjectAssetsJson
   { targets     :: M.Map Text (M.Map Text DependencyInfo)

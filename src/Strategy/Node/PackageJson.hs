@@ -1,3 +1,5 @@
+{-# language TemplateHaskell #-}
+
 module Strategy.Node.PackageJson
   ( discover
   , buildGraph
@@ -17,12 +19,12 @@ import Graphing (Graphing)
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ subdirs files -> do
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "package.json") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nodejs-packagejson" NodejsGroup $ analyze file
 
-  walkSkipNamed ["node_modules/"] subdirs
+  pure (WalkSkipSome [$(mkRelDir "node_modules")])
 
 data PackageJson = PackageJson
   { packageDeps    :: Map Text Text

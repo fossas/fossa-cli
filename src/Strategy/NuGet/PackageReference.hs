@@ -28,7 +28,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nuget-packagereference" DotnetGroup $ analyze file
 
-  walkContinue
+  pure WalkContinue
  
   where 
       isPackageRefFile :: Path Rel File -> Bool

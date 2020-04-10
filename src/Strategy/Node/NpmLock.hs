@@ -1,3 +1,5 @@
+{-# language TemplateHaskell #-}
+
 module Strategy.Node.NpmLock
   ( discover
   , analyze
@@ -20,12 +22,12 @@ import Graphing (Graphing)
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ subdirs files -> do
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "package-lock.json") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "npm-packagelock" NodejsGroup $ analyze file
 
-  walkSkipNamed ["node_modules/"] subdirs
+  pure (WalkSkipSome [$(mkRelDir "node_modules")])
 
 data NpmPackageJson = NpmPackageJson
   { packageName         :: Text

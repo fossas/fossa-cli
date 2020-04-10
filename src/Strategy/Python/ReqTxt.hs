@@ -25,7 +25,7 @@ discover = walk $ \_ _ files -> do
   for_ txtFiles $ \file ->
     runSimpleStrategy "python-requirements" PythonGroup $ analyze file
 
-  walkContinue
+  pure WalkContinue
 
 analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser requirementsTxtParser file

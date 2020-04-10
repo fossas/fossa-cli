@@ -19,12 +19,12 @@ import Strategy.Maven.Plugin
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ subdirs files -> do
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "pom.xml") files of
-    Nothing -> walkContinue
+    Nothing -> pure WalkContinue
     Just file -> do
       runSimpleStrategy "maven-cli" MavenGroup $ analyze (parent file)
-      walkSkipAll subdirs
+      pure WalkSkipAll
 
 analyze ::
   ( Has (Lift IO) sig m

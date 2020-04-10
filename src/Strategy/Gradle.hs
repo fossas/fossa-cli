@@ -37,12 +37,12 @@ gradleJsonDepsCmd = Command
   }
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ subdirs files -> do
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "build.gradle") files of
-    Nothing -> walkContinue
+    Nothing -> pure WalkContinue
     Just file -> do
       runSimpleStrategy "gradle-cli" GradleGroup $ analyze (parent file)
-      walkSkipAll subdirs
+      pure WalkSkipAll
 
 initScript :: ByteString
 initScript = $(embedFile "scripts/jsondeps.gradle")

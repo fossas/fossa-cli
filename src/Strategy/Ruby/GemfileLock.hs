@@ -33,7 +33,7 @@ discover = walk $ \_ _ files -> do
     when (fileName f == "Gemfile.lock") $
       runSimpleStrategy "ruby-gemfilelock" RubyGroup $ analyze f
 
-  walkContinue
+  pure WalkContinue
 
 type Remote = Text
 type Revision = Text

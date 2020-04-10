@@ -1,3 +1,5 @@
+{-# language TemplateHaskell #-}
+
 module Strategy.Go.GopkgLock
   ( discover
   , analyze
@@ -24,12 +26,12 @@ import Toml (TomlCodec, (.=))
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ subdirs files -> do
+discover = walk $ \_ _ files -> do
   case find (\f -> fileName f == "Gopkg.lock") files of
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-gopkglock" GolangGroup $ analyze file
 
-  walkSkipNamed ["vendor/"] subdirs
+  pure $ WalkSkipSome [$(mkRelDir "vendor")]
 
 golockCodec :: TomlCodec GoLock
 golockCodec = GoLock
