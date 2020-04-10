@@ -17,7 +17,8 @@ import qualified Data.List as L
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
-import Graphing (Graphing, unfold)
+import Graphing (Graphing)
+import qualified Graphing
 import Parse.XML
 import Types
 
@@ -74,7 +75,7 @@ instance FromXML Package where
             <*> optional (child "Version" el)
 
 buildGraph :: PackageReference -> Graphing Dependency
-buildGraph project = unfold direct (const []) toDependency
+buildGraph project = Graphing.fromList (map toDependency direct)
     where
     direct = concatMap dependencies (groups project)
     toDependency Package{..} =

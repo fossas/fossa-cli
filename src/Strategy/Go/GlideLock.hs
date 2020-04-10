@@ -17,7 +17,8 @@ import qualified Data.Text as T
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
-import Graphing (Graphing, unfold)
+import Graphing (Graphing)
+import qualified Graphing
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -45,7 +46,7 @@ mkProjectClosure file lock = ProjectClosureBody
     }
 
 buildGraph :: GlideLockfile -> Graphing Dependency
-buildGraph lockfile = unfold direct (const []) toDependency
+buildGraph lockfile = Graphing.fromList (map toDependency direct)
   where
   direct = imports lockfile
   toDependency GlideDep{..}  =

@@ -18,7 +18,8 @@ import qualified Data.Text as T
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
-import Graphing (Graphing, unfold)
+import Graphing (Graphing)
+import qualified Graphing
 import Types
 import Text.Megaparsec hiding (label)
 import Text.Megaparsec.Char
@@ -49,7 +50,7 @@ mkProjectClosure file podfile = ProjectClosureBody
     }
 
 buildGraph :: Podfile -> Graphing Dependency
-buildGraph podfile = unfold direct (const []) toDependency
+buildGraph podfile = Graphing.fromList (map toDependency direct)
     where
     direct = pods podfile
     toDependency Pod{..} =

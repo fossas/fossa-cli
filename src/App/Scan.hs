@@ -10,12 +10,12 @@ import Control.Carrier.Error.Either
 import Control.Effect.Exception as Exc
 import Control.Carrier.Output.IO
 import Control.Concurrent
-import qualified Data.Sequence as S
 import Path.IO
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
 import System.Exit (die)
 
-import App.Scan.Project (mkProjects)
+import App.Scan.FossaV1 (uploadAnalysis, FossaError(..), UploadResponse(..))
+import App.Scan.Project (Project, mkProjects)
 import App.Scan.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
 import Control.Carrier.Threaded
@@ -25,6 +25,7 @@ import Data.Text.Prettyprint.Doc.Render.Terminal
 import Effect.Exec (ExecErr(..))
 import Effect.Logger
 import Effect.ReadFS (ReadFSErr(..))
+import qualified Srclib.Converter as Srclib
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods.Podfile as Podfile
 import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
@@ -56,6 +57,7 @@ data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
   , cmdDebug   :: Bool
   , cmdOutFile :: Maybe FilePath
+  , cmdApiKey  :: Maybe Text
   } deriving (Eq, Ord, Show, Generic)
 
 scanMain :: ScanCmdOpts -> IO ()
@@ -64,7 +66,7 @@ scanMain ScanCmdOpts{..} = do
   hSetBuffering stderr NoBuffering
   basedir <- validateDir cmdBasedir
 
-  scan basedir cmdOutFile
+  scan basedir cmdOutFile cmdApiKey
     & withLogger (bool SevInfo SevDebug cmdDebug)
     & runThreaded
 
@@ -84,8 +86,11 @@ scan ::
   , MonadIO m
   , Effect sig
   )
-  => Path Abs Dir -> Maybe FilePath -> m ()
-scan basedir outFile = do
+  => Path Abs Dir
+  -> Maybe FilePath
+  -> Maybe Text -- ^ API key for fossa core. when present, we'll upload results
+  -> m ()
+scan basedir outFile fossaApiKey = do
   setCurrentDir basedir
   capabilities <- liftIO getNumCapabilities
 
@@ -94,7 +99,8 @@ scan basedir outFile = do
 
   logSticky "[ Combining Analyses ]"
 
-  let result = buildResult closures failures
+  let projects = mkProjects closures
+      result = buildResult projects failures
   liftIO $ case outFile of
     Nothing -> BL.putStr (encode result)
     Just path -> liftIO (encodeFile path result)
@@ -106,10 +112,24 @@ scan basedir outFile = do
 
   logSticky ""
 
-buildResult :: [ProjectClosure] -> [ProjectFailure] -> Value
-buildResult closures failures = object
-  [ "projects" .= mkProjects (S.fromList closures)
+  for_ fossaApiKey $ \key -> do
+    maybeResp <- liftIO $ uploadAnalysis key (inferredName inferred) (inferredRevision inferred) projects
+    case maybeResp of
+      Left InvalidProjectOrRevision -> logError "FOSSA error: Invalid project or revision"
+      Left NoPermission -> logError "FOSSA error: No permission to upload"
+      Left (JsonDeserializeError msg) -> logError $ "FOSSA error: Couldn't deserialize API response: " <> pretty msg
+      Left (OtherError exc) -> do
+        logError "FOSSA error: other unknown error. See debug log for details"
+        logDebug (viaShow exc)
+      Right resp -> do
+        logInfo $ "FOSSA locator: " <> viaShow (uploadLocator resp)
+        traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
+
+buildResult :: [Project] -> [ProjectFailure] -> Value
+buildResult projects failures = object
+  [ "projects" .= projects
   , "failures" .= map renderFailure failures
+  , "sourceUnits" .= fromMaybe [] (traverse Srclib.toSourceUnit projects)
   ]
 
 renderFailure :: ProjectFailure -> Value

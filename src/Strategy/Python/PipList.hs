@@ -16,7 +16,8 @@ import qualified Data.Map.Strict as M
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
-import Graphing
+import Graphing (Graphing)
+import qualified Graphing
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -51,7 +52,7 @@ mkProjectClosure dir deps = ProjectClosureBody
     }
 
 buildGraph :: [PipListDep] -> Graphing Dependency
-buildGraph xs = unfold xs (const []) toDependency
+buildGraph = Graphing.fromList . map toDependency
   where
   toDependency PipListDep{..} =
     Dependency { dependencyType = PipType

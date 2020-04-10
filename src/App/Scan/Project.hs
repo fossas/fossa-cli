@@ -9,38 +9,39 @@ module App.Scan.Project
 import Prologue
 
 import qualified Data.Map as M
-import qualified Data.Sequence as S
 import Data.Function (on)
+import Data.List (sortBy)
 import Data.Ord
 
-import App.Scan.Graph (Graph)
 import App.Scan.GraphMangler (graphingToGraph)
+import DepTypes
+import Graphing
 import Types
 
 data Project = Project
   { projectPath       :: Path Rel Dir
-  , projectStrategies :: S.Seq ProjectStrategy
+  , projectStrategies :: [ProjectStrategy]
   }
   deriving (Eq, Ord, Show, Generic)
 
 data ProjectStrategy = ProjectStrategy
   { projStrategyName     :: Text
-  , projStrategyGraph    :: Graph
+  , projStrategyGraph    :: Graphing Dependency
   , projStrategyOptimal  :: Optimal
   , projStrategyComplete :: Complete
   } deriving (Eq, Ord, Show, Generic)
 
-mkProjects :: S.Seq ProjectClosure -> [Project]
+mkProjects :: [ProjectClosure] -> [Project]
 mkProjects = toProjects . grouping
   where
-  toProjects :: Map (StrategyGroup, Path Rel Dir) (S.Seq ProjectClosure) -> [Project]
+  toProjects :: Map (StrategyGroup, Path Rel Dir) [ProjectClosure] -> [Project]
   toProjects = fmap toProject . M.toList
 
-  toProject :: ((StrategyGroup, Path Rel Dir), S.Seq ProjectClosure) -> Project
+  toProject :: ((StrategyGroup, Path Rel Dir), [ProjectClosure]) -> Project
   toProject ((_, dir), closures) = Project
     { projectPath = dir
     , projectStrategies = fmap toProjectStrategy $
-        S.sortBy (comparator `on` closureDependencies) closures
+        sortBy (comparator `on` closureDependencies) closures
     }
 
   comparator :: ProjectDependencies -> ProjectDependencies -> Ordering
@@ -49,18 +50,18 @@ mkProjects = toProjects . grouping
   toProjectStrategy :: ProjectClosure -> ProjectStrategy
   toProjectStrategy ProjectClosure{..} =
     ProjectStrategy { projStrategyName = closureStrategyName
-                    , projStrategyGraph = graphingToGraph (dependenciesGraph closureDependencies)
+                    , projStrategyGraph = dependenciesGraph closureDependencies
                     , projStrategyOptimal = dependenciesOptimal closureDependencies
                     , projStrategyComplete = dependenciesComplete closureDependencies
                     }
 
-  grouping :: S.Seq ProjectClosure -> Map (StrategyGroup, Path Rel Dir) (S.Seq ProjectClosure)
+  grouping :: [ProjectClosure] -> Map (StrategyGroup, Path Rel Dir) [ProjectClosure]
   grouping closures = M.fromListWith (<>) $ toList $ do
     closure <- closures
     let strategyGroup = closureStrategyGroup closure
         moduleDir = closureModuleDir closure
 
-    pure ((strategyGroup, moduleDir), S.singleton closure)
+    pure ((strategyGroup, moduleDir), [closure])
 
 instance ToJSON Project where
   toJSON Project{..} = object
@@ -71,7 +72,7 @@ instance ToJSON Project where
 instance ToJSON ProjectStrategy where
   toJSON ProjectStrategy{..} = object
     [ "name"     .= projStrategyName
-    , "graph"    .= projStrategyGraph
+    , "graph"    .= graphingToGraph projStrategyGraph
     , "optimal"  .= projStrategyOptimal
     , "complete" .= projStrategyComplete
     ]

@@ -14,7 +14,8 @@ import qualified Data.Map.Strict as M
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
-import Graphing (Graphing, unfold)
+import Graphing (Graphing)
+import qualified Graphing
 import Parse.XML
 import Types
 
@@ -60,7 +61,7 @@ data NuGetDependency = NuGetDependency
   } deriving (Eq, Ord, Show, Generic)
 
 buildGraph :: PackagesConfig -> Graphing Dependency
-buildGraph config = unfold (deps config) (const []) toDependency
+buildGraph = Graphing.fromList . map toDependency . deps
     where
     toDependency NuGetDependency{..} =
       Dependency { dependencyType = NuGetType

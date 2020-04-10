@@ -16,7 +16,8 @@ import Data.Aeson.Types
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
-import Graphing (Graphing, unfold)
+import Graphing (Graphing)
+import qualified Graphing
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -75,7 +76,7 @@ data NuGetDependency = NuGetDependency
   } deriving Show
 
 buildGraph :: ProjectJson -> Graphing Dependency
-buildGraph project = unfold direct (const []) toDependency
+buildGraph project = Graphing.fromList (map toDependency direct)
     where
     direct = (\(name, dep) -> NuGetDependency name (depVersion dep) (depType dep)) <$> M.toList (dependencies project)
     toDependency NuGetDependency{..} =

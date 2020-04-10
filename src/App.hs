@@ -21,8 +21,9 @@ commands = hsubparser scanCommand
 scanCommand :: Mod CommandFields (IO ())
 scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan for projects and their dependencies"))
   where
-  scanOptsParser = ScanCmdOpts <$> basedirOpt <*> debugOpt <*> outputOpt
+  scanOptsParser = ScanCmdOpts <$> basedirOpt <*> debugOpt <*> outputOpt <*> uploadOpt
 
   basedirOpt = strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning" <> value ".")
   debugOpt = switch (long "debug" <> help "Enable debug logging")
   outputOpt = optional (strOption (long "outfile" <> short 'o' <> metavar "FILE" <> help "Output results to a file (default: stdout). Relative paths are relative to the scan root."))
+  uploadOpt = optional (strOption (long "upload" <> metavar "APIKEY" <> help "Upload results to Fossa"))

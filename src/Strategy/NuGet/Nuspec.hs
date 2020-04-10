@@ -21,7 +21,8 @@ import DepTypes
 import qualified Data.Text as T
 import Discovery.Walk
 import Effect.ReadFS
-import Graphing (Graphing, unfold)
+import Graphing (Graphing)
+import qualified Graphing
 import Parse.XML
 import Types
 
@@ -104,7 +105,7 @@ instance FromXML NuGetDependency where
                     <*> attr "version" el
 
 buildGraph :: Nuspec -> Graphing Dependency
-buildGraph project = unfold direct (const []) toDependency
+buildGraph project = Graphing.fromList (map toDependency direct)
     where
     direct = concatMap dependencies (groups project)
     toDependency NuGetDependency{..} =

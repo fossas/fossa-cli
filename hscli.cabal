@@ -59,6 +59,8 @@ common deps
     , fused-effects                ^>=1.0.2.0
     , fused-effects-exceptions     ^>=1.0.0.0
     , git-config                   ^>=0.1.2
+    , http-client                  ^>=0.6.4.1
+    , http-types                   ^>=0.12.3
     , megaparsec                   ^>=8.0
     , modern-uri                   ^>=0.3.1
     , mtl                          ^>=2.2.2
@@ -68,6 +70,7 @@ common deps
     , path-io                      ^>=1.6.0
     , prettyprinter                ^>=1.6
     , prettyprinter-ansi-terminal  ^>=1.1.1
+    , req                          ^>=3.1.0
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
     , text                         ^>=1.2.3
@@ -88,6 +91,7 @@ library
   exposed-modules:
     App
     App.Scan
+    App.Scan.FossaV1
     App.Scan.Graph
     App.Scan.GraphBuilder
     App.Scan.GraphMangler
@@ -110,6 +114,8 @@ library
     Graphing
     Parse.XML
     Prologue
+    Srclib.Converter
+    Srclib.Types
     Strategy.Carthage
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock

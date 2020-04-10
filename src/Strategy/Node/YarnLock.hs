@@ -64,7 +64,7 @@ buildGraph lockfile = run . evalGrapher $
                , dependencyName =
                    case YL.name key of
                      YL.SimplePackageKey name -> name
-                     YL.ScopedPackageKey scope name -> scope <> "/" <> name
+                     YL.ScopedPackageKey scope name -> "@" <> scope <> "/" <> name
                , dependencyVersion = Just (CEq (YL.version package))
                , dependencyLocations =
                    case YL.remote package of
