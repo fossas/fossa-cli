@@ -20,7 +20,6 @@ analyze:
       type: go
       target: github.com/fossas/fossa-cli/cmd/fossa
       path: cmd/fossa
-*     ignore: false
 *     options:
         <option>: <value>
 ```
@@ -107,11 +106,6 @@ Build target for the specified module. Target will be used differently depending
 
 #### `path:`
 Path to the root of the project folder or path to the location of the lockfile. Path will be used differently depending on which `type` is selected.
-
-#### `ignore:` (Optional)
-If set to `true` this module will be skipped.
-
-Default: `false`
 
 #### `option:` (Optional)
 Most options are unique to the type of module being analyzed. Refer to the [supported environments' pages](../README.md#Supported-Environments) for documentation on the full list of options available.
