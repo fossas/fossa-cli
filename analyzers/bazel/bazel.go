@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/apex/log"
+	"github.com/mitchellh/mapstructure"
 
 	"github.com/fossas/fossa-cli/buildtools/bazel"
 	"github.com/fossas/fossa-cli/exec"
@@ -20,18 +21,32 @@ import (
 type Analyzer struct {
 	Module module.Module
 	Shell  bazel.Shell
+
+	Options Options
+}
+
+type Options struct {
+	Strategy string `mapstructure:"strategy"`
 }
 
 // New constructs a new Buck analyzer from a module.
-func New(module module.Module) (*Analyzer, error) {
+func New(m module.Module) (*Analyzer, error) {
 	cmd, _, err := exec.Which("--version", os.Getenv("FOSSA_BAZEL"), "bazel")
 	if err != nil {
 		return nil, err
 	}
 
+	var options Options
+	err = mapstructure.Decode(m.Options, &options)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Analyzer{
-		Module: module,
-		Shell:  bazel.ExecutableShell(cmd, module.Dir),
+		Module: m,
+		Shell:  bazel.ExecutableShell(cmd, m.Dir),
+
+		Options: options,
 	}, nil
 }
 
@@ -52,6 +67,10 @@ func (a *Analyzer) IsBuilt() (bool, error) {
 
 // Analyze analyzes a bazel build target and its dependencies.
 func (a *Analyzer) Analyze() (graph.Deps, error) {
+	if a.Options.Strategy == "go-bazel" {
+		return bazel.GoBazelDependencies(filepath.Join(a.Module.Dir, a.Module.BuildTarget))
+	}
+
 	return a.Shell.TargetDependencies(a.Module.BuildTarget, true)
 }
 

@@ -26,7 +26,27 @@ analyze:
     - name:   WORKSPACE
       type:   bazel
       target: vendor/...
+      dir:    project-dir
+```
+
+## Options
+
+| Option     |  Type  | Name                         | Common Use Case                     |
+| ---------- | :----: | ---------------------------- | ----------------------------------- |
+| `strategy` | string | [Strategy](#strategy-string) | Specify a bazel analysis strategy. |
+
+#### `strategy: <string>`
+
+`go-bazel` is currently the only supported custom strategy for analyzing bazel files that contain references to multiple go repositories. This strategy must be manually specified as it will not be automatically discovered. The following is an example configuration file where `repos.bzl` is the file you wish to analyze located inside of the directory `project-dir`:
+```yaml
+analyze:
+  modules:
+    - name:   go-bazel-file
+      type:   bazel
+      target: repos.bzl
       dir:   project-dir
+      options:
+        strategy: go-bazel
 ```
 
 ## Analysis
