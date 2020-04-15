@@ -17,7 +17,7 @@ runOutput act = do
   pure (outputs, res)
 
 newtype OutputC o m a = OutputC { runOutputC :: ReaderC (IORef [o]) m a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
+  deriving (Functor, Applicative, Monad, MonadIO, MonadFail, MonadTrans)
 
 instance (Algebra sig m, MonadIO m) => Algebra (Output o :+: sig) (OutputC o m) where
   alg (L (Output o k)) = do

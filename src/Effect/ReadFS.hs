@@ -175,7 +175,7 @@ runReadFSIO :: ReadFSIOC m a -> m a
 runReadFSIO = coerce
 
 newtype ReadFSIOC m a = ReadFSIOC { runReadFSIOC :: m a }
-  deriving (Functor, Applicative, Monad, MonadIO)
+  deriving (Functor, Applicative, Monad, MonadIO, MonadFail)
 
 instance (Algebra sig m, MonadIO m) => Algebra (ReadFS :+: sig) (ReadFSIOC m) where
   alg (L act) = case act of

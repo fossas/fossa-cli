@@ -126,6 +126,7 @@ library
     Strategy.Go.GopkgToml
     Strategy.Go.Transitive
     Strategy.Go.Types
+    Strategy.Googlesource.RepoManifest
     Strategy.Gradle
     Strategy.Maven.Plugin
     Strategy.Maven.PluginStrategy
@@ -187,6 +188,7 @@ test-suite tests
     Go.GomodTest
     Go.GopkgLockTest
     Go.GopkgTomlTest
+    Googlesource.RepoManifestTest
     Gradle.GradleTest
     GraphUtil
     Maven.PluginStrategyTest

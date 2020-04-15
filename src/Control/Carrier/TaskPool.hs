@@ -99,7 +99,7 @@ data Progress = Progress
   } deriving (Eq, Ord, Show, Generic)
 
 newtype TaskPoolC m a = TaskPoolC { runTaskPoolC :: ReaderC (TVar [m ()]) m a }
-  deriving (Functor, Applicative, Monad, MonadIO)
+  deriving (Functor, Applicative, Monad, MonadIO, MonadFail)
 
 instance (Algebra sig m, MonadIO m) => Algebra (TaskPool :+: sig) (TaskPoolC m) where
   alg (L (ForkTask m k)) = do

@@ -67,7 +67,7 @@ isProdDep Dependency{dependencyEnvironments} =
 
 -- core can't handle subprojects
 isSupportedType :: Dependency -> Bool
-isSupportedType Dependency{dependencyType} = dependencyType /= SubprojectType
+isSupportedType Dependency{dependencyType} = dependencyType /= SubprojectType && dependencyType /= GooglesourceType
 
 toLocator :: Dependency -> Locator
 toLocator dep = Locator
@@ -92,6 +92,7 @@ verConstraintToRevision = \case
 depTypeToFetcher :: DepType -> Text
 depTypeToFetcher = \case
   SubprojectType -> "mvn" -- FIXME. I knew SubprojectType would come back to bite us.
+  GooglesourceType -> "git" -- FIXME. Yet another thing that's coming back to bite us
   GemType -> "gem"
   MavenType -> "mvn"
   NodeJSType -> "npm"

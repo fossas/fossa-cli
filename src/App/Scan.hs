@@ -34,6 +34,7 @@ import qualified Strategy.Go.Gomod as Gomod
 import qualified Strategy.Go.GopkgLock as GopkgLock
 import qualified Strategy.Go.GopkgToml as GopkgToml
 import qualified Strategy.Go.GlideLock as GlideLock
+import qualified Strategy.Googlesource.RepoManifest as GooglesourceRepoManifest
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.Maven.Pom as MavenPom
 import qualified Strategy.Maven.PluginStrategy as MavenPlugin
@@ -187,6 +188,8 @@ discoverFuncs =
   , GopkgToml.discover
   , GopkgLock.discover
   , GlideLock.discover
+
+  , GooglesourceRepoManifest.discover
 
   , Gradle.discover
 

@@ -23,6 +23,7 @@ import Prologue
 
 import Control.Algebra
 import Control.Carrier.Error.Either
+import Control.Carrier.Fail.Either
 import Control.Carrier.TaskPool
 import Control.Effect.Exception
 import Control.Carrier.Output.IO
@@ -56,6 +57,7 @@ runStrategy ::
 runStrategy name strategyGroup act = forkTask $ do
   let runIt = runError @ReadFSErr
             . runError @ExecErr
+            . runFail
             . runReadFSIO
             . runExecIO
             . runOutput @ProjectClosureBody
@@ -66,9 +68,10 @@ runStrategy name strategyGroup act = forkTask $ do
       Left exc -> output (ProjectFailure strategyGroup name exc)
       Right (Left exc) -> output (ProjectFailure strategyGroup name (SomeException exc))
       Right (Right (Left exc)) -> output (ProjectFailure strategyGroup name (SomeException exc))
-      Right (Right (Right (bodies,()))) -> traverse_ (output . toProjectClosure strategyGroup name) bodies
+      Right (Right (Right (Left failmsg))) -> output (ProjectFailure strategyGroup name (SomeException (userError failmsg)))
+      Right (Right (Right (Right (bodies,())))) -> traverse_ (output . toProjectClosure strategyGroup name) bodies
 
-type TaskC m = (ExecIOC (ReadFSIOC (ErrorC ExecErr (ErrorC ReadFSErr m))))
+type TaskC m = ExecIOC (ReadFSIOC (FailC (ErrorC ExecErr (ErrorC ReadFSErr m))))
 
 type HasDiscover sig m =
   ( Has (Lift IO) sig m
@@ -135,6 +138,7 @@ data StrategyGroup =
     CarthageGroup
   | DotnetGroup
   | GolangGroup
+  | GooglesourceGroup
   | GradleGroup
   | MavenGroup
   | NodejsGroup

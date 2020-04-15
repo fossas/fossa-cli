@@ -109,7 +109,7 @@ runExecIO :: ExecIOC m a -> m a
 runExecIO = runExecIOC
 
 newtype ExecIOC m a = ExecIOC { runExecIOC :: m a }
-  deriving (Functor, Applicative, Monad, MonadIO)
+  deriving (Functor, Applicative, Monad, MonadIO, MonadFail)
 
 instance (Algebra sig m, MonadIO m) => Algebra (Exec :+: sig) (ExecIOC m) where
   alg (R other) = ExecIOC (alg (handleCoercible other))
