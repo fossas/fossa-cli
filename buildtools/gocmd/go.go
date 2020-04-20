@@ -75,6 +75,8 @@ func (g *Go) List(pkgs, flags []string, vendor bool) ([]Package, error) {
 	argv := append(flags, pkgs...)
 	if vendor {
 		argv = append([]string{"-mod=vendor"}, argv...)
+	} else {
+		argv = append([]string{"-mod=readonly"}, argv...)
 	}
 	cmd := exec.Cmd{
 		Name: g.Cmd,
