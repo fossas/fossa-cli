@@ -5,6 +5,8 @@ package gocmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/fossas/fossa-cli/errors"
@@ -75,6 +77,8 @@ func (g *Go) List(pkgs, flags []string, vendor bool) ([]Package, error) {
 	argv := append(flags, pkgs...)
 	if vendor {
 		argv = append([]string{"-mod=vendor"}, argv...)
+	} else if _, err := os.Stat(filepath.Join(g.Dir, "go.mod")); err == nil {
+		argv = append([]string{"-mod=readonly"}, argv...)
 	}
 	cmd := exec.Cmd{
 		Name: g.Cmd,
