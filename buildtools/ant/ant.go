@@ -72,10 +72,14 @@ func locatorFromJar(path string) (pkg.ID, *errors.Error) {
 			if groupID == "" {
 				groupID = pomFile.Parent.GroupID
 			}
+			version := pomFile.Version
+			if version == "" {
+				version = pomFile.Parent.Version
+			}
 			return pkg.ID{
 				Type:     pkg.Maven,
 				Name:     groupID + ":" + pomFile.ArtifactID,
-				Revision: pomFile.Version,
+				Revision: version,
 			}, nil
 		} else {
 			log.Debugf("%s", err)
