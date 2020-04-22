@@ -90,8 +90,8 @@ func v2Analysis(completion chan spectrometerOutput) {
 
 	start := time.Now()
 	stdout, stderr, err := exec.Run(exec.Cmd{
-		Name:    "hscli",
-		Argv:    []string{"scan"},
+		Name:    "fossa2",
+		Argv:    []string{"analyze", "--output"},
 		Timeout: "1m",
 		Retries: 0,
 	})
