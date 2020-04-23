@@ -19,7 +19,7 @@ type Resolver struct {
 	pathMap map[string]pkg.Import
 }
 
-// module is used to unmarshal `go list -m -json all`.
+// module is used to unmarshal `go list -m -mod=readonly -json all`.
 type module struct {
 	Path    string
 	Version string
@@ -168,7 +168,7 @@ func Mock(modules string) (Resolver, error) {
 	return parseModuleJSON(modules)
 }
 
-// parseModuleJSON returns a golang.Resolver from the output of `go list -m -json all`.
+// parseModuleJSON returns a golang.Resolver from the output of `go list -m -mod=readonly -json all`.
 // Replaced modules are handled in place and added to the pathMap.
 func parseModuleJSON(moduleJSON string) (Resolver, error) {
 	resolver := Resolver{}
@@ -214,11 +214,11 @@ func goModuleList(path string) (string, error) {
 	}
 	stdout, stderr, err := exec.Run(exec.Cmd{
 		Name: cmd,
-		Argv: []string{"list", "-m", "-json", "all"},
+		Argv: []string{"list", "-m", "-mod=readonly", "-json", "all"},
 		Dir:  path,
 	})
 	if err != nil {
-		return "", errors.Errorf("Could not run `go list -m -json all` within path %s: %s (%s)", path, strings.TrimSpace(stderr), err)
+		return "", errors.Errorf("Could not run `go list -m -mod=readonly -json all` within path %s: %s (%s)", path, strings.TrimSpace(stderr), err)
 	}
 
 	return stdout, nil
