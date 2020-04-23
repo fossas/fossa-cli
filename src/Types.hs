@@ -149,7 +149,7 @@ data StrategyGroup =
 
 -- FIXME: we also need to annotate dep graphs with Path Rel File -- merge these somehow?
 data LicenseResult = LicenseResult
-  { licenseFile   :: Path Rel File
+  { licenseFile   :: FilePath
   , licensesFound :: [License]
   } deriving (Eq, Ord, Show, Generic)
 

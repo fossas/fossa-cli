@@ -6,6 +6,7 @@ module Strategy.Maven.Pom.PomFile
   , RawPom(..)
   , MavenCoordinate(..)
   , MvnDepBody(..)
+  , PomLicense(..)
 
   , Group
   , Artifact
@@ -30,7 +31,8 @@ validatePom raw = do
 
       dependencyManagement = rawDepsToDeps (rawPomDependencyManagement raw)
       dependencies = rawDepsToDeps (rawPomDependencies raw)
-  pure (Pom coord parentCoord properties dependencyManagement dependencies)
+      licenses = rawPomLicenses raw
+  pure (Pom coord parentCoord properties dependencyManagement dependencies licenses)
 
 rawDepsToDeps :: [RawDependency] -> Map (Group, Artifact) MvnDepBody
 rawDepsToDeps = M.fromList . map (\dep -> (depToKey dep, depToBody dep))
@@ -76,6 +78,7 @@ data Pom = Pom
   , pomProperties           :: Map Text Text
   , pomDependencyManagement :: Map (Group, Artifact) MvnDepBody
   , pomDependencies         :: Map (Group, Artifact) MvnDepBody
+  , pomLicenses             :: [PomLicense]
   } deriving (Eq, Ord, Show, Generic)
 
 data MavenCoordinate = MavenCoordinate
@@ -105,6 +108,7 @@ instance Semigroup Pom where
     , pomProperties = M.union (pomProperties childPom) (pomProperties parentPom)
     , pomDependencyManagement = M.unionWith (<>) (pomDependencyManagement childPom) (pomDependencyManagement parentPom)
     , pomDependencies = M.unionWith (<>) (pomDependencies childPom) (pomDependencies parentPom)
+    , pomLicenses = pomLicenses childPom
     }
 
 
@@ -129,6 +133,7 @@ data RawPom = RawPom
   , rawPomModules              :: [Text]
   , rawPomDependencyManagement :: [RawDependency]
   , rawPomDependencies         :: [RawDependency]
+  , rawPomLicenses             :: [PomLicense]
   } deriving (Eq, Ord, Show, Generic)
 
 data RawParent = RawParent
@@ -147,6 +152,11 @@ data RawDependency = RawDependency
   , rawDependencyOptional   :: Maybe Text
   } deriving (Eq, Ord, Show, Generic)
 
+data PomLicense = PomLicense
+  { pomLicenseName :: Maybe Text
+  , pomLicenseUrl :: Maybe Text
+  } deriving (Eq, Ord, Show, Generic)
+
 instance FromXML RawPom where
   parseElement el =
     RawPom <$> optional (child "parent" el)
@@ -157,6 +167,7 @@ instance FromXML RawPom where
            <*> optional (child "modules" el >>= children "module") `defaultsTo` []
            <*> optional (child "dependencyManagement" el >>= children "dependency") `defaultsTo` []
            <*> optional (child "dependencies" el >>= children "dependency") `defaultsTo` []
+           <*> optional (child "licenses" el >>= children "license") `defaultsTo` []
 
 instance FromXML RawParent where
   -- TODO: move this documentation
@@ -177,3 +188,8 @@ instance FromXML RawDependency where
                   <*> optional (child "classifier" el)
                   <*> optional (child "scope" el)
                   <*> optional (child "optional" el)
+
+instance FromXML PomLicense where
+  parseElement el =
+    PomLicense <$> optional (child "name" el)
+               <*> optional (child "url" el)

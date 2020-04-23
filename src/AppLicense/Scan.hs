@@ -20,6 +20,7 @@ import Control.Carrier.Threaded
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Effect.Logger
+import qualified Strategy.Maven.Pom as MavenPom
 import qualified Strategy.NuGet.Nuspec as Nuspec
 import Types
 
@@ -59,6 +60,7 @@ scan basedir = do
 discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
 discoverFuncs =
   [ Nuspec.discover
+  , MavenPom.discover
   ]
 
 data ProjectLicenseScan = ProjectLicenseScan

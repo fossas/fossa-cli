@@ -41,7 +41,7 @@ mkProjectClosure :: Path Rel File -> Nuspec -> ProjectClosureBody
 mkProjectClosure file nuspec = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies
-  , bodyLicenses     = [LicenseResult file (nuspecLicenses nuspec)]
+  , bodyLicenses     = [LicenseResult (toFilePath file) (nuspecLicenses nuspec)]
   }
   where
   dependencies = ProjectDependencies

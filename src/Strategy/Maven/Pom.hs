@@ -8,6 +8,7 @@ import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Carrier.Error.Either
 import Control.Effect.Output
 import qualified Data.Map.Strict as M
+import Data.Maybe (catMaybes)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import DepTypes
@@ -33,7 +34,7 @@ mkProjectClosure mvnClosure = ProjectClosure
   , closureStrategyName  = "maven-pom"
   , closureModuleDir     = parent (closurePath mvnClosure)
   , closureDependencies  = dependencies
-  , closureLicenses      = []
+  , closureLicenses      = licenses
   }
   where
   dependencies = ProjectDependencies
@@ -41,6 +42,22 @@ mkProjectClosure mvnClosure = ProjectClosure
     , dependenciesOptimal  = NotOptimal
     , dependenciesComplete = NotComplete
     }
+
+  licenses :: [LicenseResult]
+  licenses = do
+    (abspath,pom) <- M.elems (closurePoms mvnClosure)
+    let path = toFilePath abspath
+
+    let validated = catMaybes (map validateLicense (pomLicenses pom))
+
+    pure (LicenseResult path validated)
+
+  -- we prefer URLs over SPDX because name isn't guaranteed to be an SPDX expression
+  validateLicense :: PomLicense -> Maybe License
+  validateLicense license = licenseAsUrl <|> licenseAsSpdx
+    where
+      licenseAsUrl = License LicenseURL <$> pomLicenseUrl license
+      licenseAsSpdx = License LicenseSPDX <$> pomLicenseName license
 
 type Version = Text
 data MavenPackage = MavenPackage Group Artifact (Maybe Version)
