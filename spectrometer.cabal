@@ -1,5 +1,5 @@
 cabal-version:      2.4
-name:               hscli
+name:               spectrometer
 version:            0.1.0.0
 license:            MPL-2.0
 build-type:         Simple
@@ -89,16 +89,17 @@ library
 
   -- cabal-fmt: expand src
   exposed-modules:
-    App
-    App.Scan
-    App.Scan.FossaV1
-    App.Scan.Graph
-    App.Scan.GraphBuilder
-    App.Scan.GraphMangler
-    App.Scan.Project
-    App.Scan.ProjectInference
-    AppLicense
-    AppLicense.Scan
+    App.Fossa.Analyze
+    App.Fossa.Analyze.Graph
+    App.Fossa.Analyze.GraphBuilder
+    App.Fossa.Analyze.GraphMangler
+    App.Fossa.Analyze.Project
+    App.Fossa.FossaAPIV1
+    App.Fossa.Main
+    App.Fossa.ProjectInference
+    App.Fossa.Test
+    App.Pathfinder.Main
+    App.Pathfinder.Scan
     Control.Carrier.Output.IO
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
@@ -155,21 +156,19 @@ library
 
   hs-source-dirs:  src
 
-executable hscli
+executable fossa
   import:         lang
   main-is:        Main.hs
-  hs-source-dirs: app
-  build-depends:  hscli
+  hs-source-dirs: app/fossa
+  build-depends:  spectrometer
   ghc-options:    -threaded -with-rtsopts=-N
 
 executable pathfinder
   import:         lang
   main-is:        Main.hs
-  hs-source-dirs: licenseApp
-  build-depends:  hscli
-  ghc-options:
-    -flate-specialise -fspecialize-aggressively -O -threaded
-    -with-rtsopts=-N
+  hs-source-dirs: app/pathfinder
+  build-depends:  spectrometer
+  ghc-options:    -threaded -with-rtsopts=-N
 
 test-suite tests
   import:             lang
@@ -210,7 +209,7 @@ test-suite tests
 
   build-tool-depends: tasty-discover:tasty-discover ^>=4.2.1
   build-depends:
-    , hscli
     , hspec-megaparsec  ^>=2.1
+    , spectrometer
     , tasty             ^>=1.2.3
     , tasty-hspec       ^>=1.1.5.1

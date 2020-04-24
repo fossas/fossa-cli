@@ -1,5 +1,5 @@
 
-module AppLicense.Scan
+module App.Pathfinder.Scan
   ( scanMain
   ) where
 

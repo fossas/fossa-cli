@@ -1,7 +1,7 @@
 
-module App.Scan
-  ( scanMain
-  , ScanCmdOpts(..)
+module App.Fossa.Analyze
+  ( analyzeMain
+  , ScanDestination(..)
   ) where
 
 import Prologue
@@ -11,12 +11,10 @@ import Control.Effect.Exception as Exc
 import Control.Carrier.Output.IO
 import Control.Concurrent
 import Path.IO
-import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
-import System.Exit (die)
 
-import App.Scan.FossaV1 (uploadAnalysis, FossaError(..), UploadResponse(..))
-import App.Scan.Project (Project, mkProjects)
-import App.Scan.ProjectInference (InferredProject(..), inferProject)
+import App.Fossa.FossaAPIV1 (ProjectRevision(..), ProjectMetadata, fossaReq, uploadAnalysis, FossaError(..), UploadResponse(..))
+import App.Fossa.Analyze.Project (Project, mkProjects)
+import App.Fossa.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
 import Control.Carrier.Threaded
 import qualified Data.ByteString.Lazy as BL
@@ -25,6 +23,7 @@ import Data.Text.Prettyprint.Doc.Render.Terminal
 import Effect.Exec (ExecErr(..))
 import Effect.Logger
 import Effect.ReadFS (ReadFSErr(..))
+import Network.HTTP.Req
 import qualified Srclib.Converter as Srclib
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods.Podfile as Podfile
@@ -34,7 +33,6 @@ import qualified Strategy.Go.Gomod as Gomod
 import qualified Strategy.Go.GopkgLock as GopkgLock
 import qualified Strategy.Go.GopkgToml as GopkgToml
 import qualified Strategy.Go.GlideLock as GlideLock
-import qualified Strategy.Googlesource.RepoManifest as GooglesourceRepoManifest
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.Maven.Pom as MavenPom
 import qualified Strategy.Maven.PluginStrategy as MavenPlugin
@@ -54,33 +52,17 @@ import qualified Strategy.Ruby.BundleShow as BundleShow
 import qualified Strategy.Ruby.GemfileLock as GemfileLock
 import Types
 
-data ScanCmdOpts = ScanCmdOpts
-  { cmdBasedir :: FilePath
-  , cmdDebug   :: Bool
-  , cmdOutFile :: Maybe FilePath
-  , cmdApiKey  :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+data ScanDestination
+  = UploadScan (Url 'Https) Text ProjectMetadata -- ^ upload to fossa with provided api key and base url
+  | OutputStdout
+  deriving (Eq, Ord, Show, Generic)
+ 
+analyzeMain :: Severity -> ScanDestination -> Maybe Text -> Maybe Text -> IO ()
+analyzeMain logSeverity destination name revision = do
+  basedir <- getCurrentDir
+  runThreaded $ withLogger logSeverity $ analyze basedir destination name revision
 
-scanMain :: ScanCmdOpts -> IO ()
-scanMain ScanCmdOpts{..} = do
-  hSetBuffering stdout NoBuffering
-  hSetBuffering stderr NoBuffering
-  basedir <- validateDir cmdBasedir
-
-  scan basedir cmdOutFile cmdApiKey
-    & withLogger (bool SevInfo SevDebug cmdDebug)
-    & runThreaded
-
-validateDir :: FilePath -> IO (Path Abs Dir)
-validateDir dir = do
-  absolute <- resolveDir' dir
-  exists <- doesDirExist absolute
-
-  unless exists (die $ "ERROR: Directory " <> show absolute <> " does not exist")
-
-  pure absolute
-
-scan ::
+analyze ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
   , Has Threaded sig m
@@ -88,43 +70,45 @@ scan ::
   , Effect sig
   )
   => Path Abs Dir
-  -> Maybe FilePath
-  -> Maybe Text -- ^ API key for fossa core. when present, we'll upload results
+  -> ScanDestination
+  -> Maybe Text -- ^ cli override for name
+  -> Maybe Text -- ^ cli override for revision
   -> m ()
-scan basedir outFile fossaApiKey = do
+analyze basedir destination overrideName overrideRevision = do
   setCurrentDir basedir
   capabilities <- liftIO getNumCapabilities
 
   (closures,(failures,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
     withTaskPool capabilities updateProgress (traverse_ ($ basedir) discoverFuncs)
 
-  logSticky "[ Combining Analyses ]"
+  logSticky ""
 
   let projects = mkProjects closures
       result = buildResult projects failures
-  liftIO $ case outFile of
-    Nothing -> BL.putStr (encode result)
-    Just path -> liftIO (encodeFile path result)
+ 
+  case destination of
+    OutputStdout -> liftIO $ BL.putStr (encode result)
+    UploadScan baseurl apiKey metadata -> do
+      inferred <- inferProject basedir
+      let revision = ProjectRevision
+            (fromMaybe (inferredName inferred) overrideName)
+            (fromMaybe (inferredRevision inferred) overrideRevision)
 
-  inferred <- inferProject basedir
-  logInfo ""
-  logInfo ("Inferred project name: `" <> pretty (inferredName inferred) <> "`")
-  logInfo ("Inferred revision: `" <> pretty (inferredRevision inferred) <> "`")
-
-  logSticky ""
-
-  for_ fossaApiKey $ \key -> do
-    maybeResp <- liftIO $ uploadAnalysis key (inferredName inferred) (inferredRevision inferred) projects
-    case maybeResp of
-      Left InvalidProjectOrRevision -> logError "FOSSA error: Invalid project or revision"
-      Left NoPermission -> logError "FOSSA error: No permission to upload"
-      Left (JsonDeserializeError msg) -> logError $ "FOSSA error: Couldn't deserialize API response: " <> pretty msg
-      Left (OtherError exc) -> do
-        logError "FOSSA error: other unknown error. See debug log for details"
-        logDebug (viaShow exc)
-      Right resp -> do
-        logInfo $ "FOSSA locator: " <> viaShow (uploadLocator resp)
-        traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
+      logInfo ""
+      logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
+      logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
+     
+      maybeResp <- fossaReq $ uploadAnalysis baseurl apiKey revision metadata projects
+      case maybeResp of
+        Left (InvalidProjectOrRevision _) -> logError "FOSSA error: Invalid project or revision"
+        Left (NoPermission _) -> logError "FOSSA error: No permission to upload"
+        Left (JsonDeserializeError msg) -> logError $ "FOSSA error: Couldn't deserialize API response: " <> pretty msg
+        Left (OtherError exc) -> do
+          logError "FOSSA error: other unknown error. See debug log for details"
+          logDebug (viaShow exc)
+        Right resp -> do
+          logInfo $ "FOSSA locator: " <> viaShow (uploadLocator resp)
+          traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
 
 buildResult :: [Project] -> [ProjectFailure] -> Value
 buildResult projects failures = object
@@ -188,8 +172,6 @@ discoverFuncs =
   , GopkgToml.discover
   , GopkgLock.discover
   , GlideLock.discover
-
-  , GooglesourceRepoManifest.discover
 
   , Gradle.discover
 

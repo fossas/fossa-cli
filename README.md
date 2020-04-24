@@ -17,6 +17,7 @@ Use [ghcup](https://gitlab.haskell.org/haskell/ghcup) to install the `cabal` cli
 ```sh
 $ ghcup install-cabal
 $ ghcup install 8.8
+$ ghcup set 8.8
 ```
 
 In the base directory, run `cabal build`
@@ -24,14 +25,14 @@ In the base directory, run `cabal build`
 ## Running
 
 ```sh
-$ cabal run hscli -- scan -d path/to/basedir/
+$ cabal run fossa -- analyze -d path/to/basedir/ -o
 ```
 
-This will place `analysis.json` at `path/to/basedir/analysis.json`
+This will produce analysis results on stdout
 
 ## Testing
 
-Configure the project to enable tests (this will rebuild dependencies the first time):
+Configure the project to enable tests
 ```sh
 cabal configure --enable-tests
 ```

@@ -27,6 +27,8 @@ import Control.Carrier.Reader
 import Control.Concurrent.Async (async, wait)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TMQueue (TMQueue, closeTMQueue, newTMQueueIO, readTMQueue, writeTMQueue)
+import Control.Effect.Exception
+import Control.Effect.Lift
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Text.Prettyprint.Doc as X
@@ -78,21 +80,21 @@ logWarn = log SevWarn
 logError :: Has Logger sig m => Doc AnsiStyle -> m ()
 logError = log SevError
 
-withLogger :: MonadIO m => Severity -> LoggerC m a -> m a
+withLogger :: Has (Lift IO) sig m => Severity -> LoggerC m a -> m a
 withLogger minSeverity (LoggerC act) = do
-  isTerminal <- liftIO $ hIsTerminalDevice stderr
+  isTerminal <- sendIO $ hIsTerminalDevice stderr
   let logger = bool rawLogger termLogger isTerminal
-  queue <- liftIO (hSetBuffering stderr NoBuffering *> newTMQueueIO @LogMsg)
+  queue <- sendIO (hSetBuffering stderr NoBuffering *> newTMQueueIO @LogMsg)
 
-  tid <- liftIO $ async $ logger minSeverity queue
+  let mkLogger = sendIO $ async $ logger minSeverity queue
 
-  res <- runReader queue act
+      flushLogger tid = sendIO $ do
+        atomically $ closeTMQueue queue
+        void (wait tid)
 
-  liftIO $ do
-    atomically $ closeTMQueue queue
-    void (wait tid)
-
-  pure res
+  bracket mkLogger
+          flushLogger
+          (\_ -> runReader queue act)
 
 rawLogger :: Severity -> TMQueue LogMsg -> IO ()
 rawLogger minSeverity queue = go

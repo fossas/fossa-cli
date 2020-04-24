@@ -38,8 +38,6 @@ data Locator = Locator
   , locatorRevision :: Maybe Text
   } deriving (Eq, Ord, Show, Generic)
 
-
--- TODO: "NormalizeGitURL", if/when we get git locators
 renderLocator :: Locator -> Text
 renderLocator Locator{..} =
   locatorFetcher <> "+" <> locatorProject <> "$" <> fromMaybe "" locatorRevision

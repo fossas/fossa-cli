@@ -1,5 +1,5 @@
 
-module AppLicense
+module App.Pathfinder.Main
   ( appMain
   ) where
 
@@ -9,7 +9,7 @@ import Options.Applicative
 import Path.IO
 import System.Exit (die)
 
-import AppLicense.Scan (scanMain)
+import App.Pathfinder.Scan (scanMain)
 
 appMain :: IO ()
 appMain = do

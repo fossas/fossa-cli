@@ -17,6 +17,8 @@ module Types
   , HasDiscover
   , runStrategy
   , runSimpleStrategy
+
+  , module DepTypes
   ) where
 
 import Prologue

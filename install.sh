@@ -48,7 +48,7 @@ execute() {
   srcdir="${tmpdir}"
   (cd "${tmpdir}" && unzip "${TARBALL}")
   install -d -m 775 "${BINDIR}" 2> /dev/null || install -d "${BINDIR}"
-  for binexe in "hscli" ; do
+  for binexe in "fossa2" ; do
     if [ "$OS" = "windows" ]; then
       binexe="${binexe}.exe"
     fi
@@ -339,7 +339,7 @@ End of functions from https://github.com/client9/shlib
 ------------------------------------------------------------------------
 EOF
 
-PROJECT_NAME="hscli"
+PROJECT_NAME="fossa2"
 OWNER=fossas
 REPO="spectrometer"
 BINARY=fossa

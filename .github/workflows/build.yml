@@ -8,7 +8,7 @@
 #
 # NOTE: executable paths are hardcoded, but they will change if any of the
 # following are changed:
-# - hscli version (in cabal file)
+# - spectrometer version (in cabal file)
 # - ghc version
 # - optimization level
 #
@@ -32,7 +32,7 @@ jobs:
       name: Cache ~/.cabal/store
       with:
         path: ~/.cabal/store
-        key: ${{ hashFiles ('hscli.cabal') }}-${{ runner.os }}-cabal-store
+        key: ${{ hashFiles ('spectrometer.cabal') }}-${{ runner.os }}-cabal-store
 
     - name: Install dependencies
       run: |
@@ -48,23 +48,20 @@ jobs:
       run: |
         cabal test --project-file=cabal.project.ci
 
-    - name: Strip binary
+    - name: Strip binaries
       run: |
-        strip dist-newstyle/build/x86_64-linux/ghc-8.8.2/hscli-0.1.0.0/x/hscli/opt/build/hscli/hscli
+        strip dist-newstyle/build/x86_64-linux/ghc-8.8.2/spectrometer-0.1.0.0/x/fossa/opt/build/fossa/fossa
+        strip dist-newstyle/build/x86_64-linux/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
 
     - uses: actions/upload-artifact@v1
       with:
-        name: hscli-linux
-        path: dist-newstyle/build/x86_64-linux/ghc-8.8.2/hscli-0.1.0.0/x/hscli/opt/build/hscli/hscli
-
-    - name: Strip pathfinder binary
-      run: |
-        strip dist-newstyle/build/x86_64-linux/ghc-8.8.2/hscli-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
+        name: fossa2-linux
+        path: dist-newstyle/build/x86_64-linux/ghc-8.8.2/spectrometer-0.1.0.0/x/fossa/opt/build/fossa/fossa
 
     - uses: actions/upload-artifact@v1
       with:
         name: pathfinder-linux
-        path: dist-newstyle/build/x86_64-linux/ghc-8.8.2/hscli-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
+        path: dist-newstyle/build/x86_64-linux/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
 
   build-macos:
     name: build-macos
@@ -78,7 +75,7 @@ jobs:
       id: cache-store
       with:
         path: ~/.cabal/store
-        key: ${{ hashFiles ('hscli.cabal') }}-${{ runner.os }}-cabal-store
+        key: ${{ hashFiles ('spectrometer.cabal') }}-${{ runner.os }}-cabal-store
 
     - name: Install ghcup
       run: |
@@ -106,23 +103,20 @@ jobs:
       run: |
         cabal test --project-file=cabal.project.ci
 
-    - name: Strip binary
+    - name: Strip binaries
       run: |
-        strip dist-newstyle/build/x86_64-osx/ghc-8.8.2/hscli-0.1.0.0/x/hscli/opt/build/hscli/hscli
+        strip dist-newstyle/build/x86_64-osx/ghc-8.8.2/spectrometer-0.1.0.0/x/fossa/opt/build/fossa/fossa
+        strip dist-newstyle/build/x86_64-osx/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
 
     - uses: actions/upload-artifact@v1
       with:
-        name: hscli-osx
-        path: dist-newstyle/build/x86_64-osx/ghc-8.8.2/hscli-0.1.0.0/x/hscli/opt/build/hscli/hscli
-
-    - name: Strip pathfinder binary
-      run: |
-        strip dist-newstyle/build/x86_64-osx/ghc-8.8.2/hscli-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
+        name: fossa2-osx
+        path: dist-newstyle/build/x86_64-osx/ghc-8.8.2/spectrometer-0.1.0.0/x/fossa/opt/build/fossa/fossa
 
     - uses: actions/upload-artifact@v1
       with:
         name: pathfinder-osx
-        path: dist-newstyle/build/x86_64-osx/ghc-8.8.2/hscli-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
+        path: dist-newstyle/build/x86_64-osx/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
 
   build-windows:
     name: build-windows
@@ -136,7 +130,7 @@ jobs:
       id: cache-store
       with:
         path: ~/AppData/Roaming/cabal/store
-        key: ${{ hashFiles ('**\hscli.cabal') }}-${{ runner.os }}-cabal-store
+        key: ${{ hashFiles ('**\spectrometer.cabal') }}-${{ runner.os }}-cabal-store
 
     - name: Install ghc/cabal
       run: |
@@ -157,20 +151,17 @@ jobs:
       run: |
         cabal test --project-file=cabal.project.ci
 
-    - name: Strip binary
+    - name: Strip binaries
       run: |
-        strip dist-newstyle/build/x86_64-windows/ghc-8.8.2/hscli-0.1.0.0/x/hscli/opt/build/hscli/hscli.exe
+        strip dist-newstyle/build/x86_64-windows/ghc-8.8.2/spectrometer-0.1.0.0/x/fossa/opt/build/fossa/fossa.exe
+        strip dist-newstyle/build/x86_64-windows/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder.exe
 
     - uses: actions/upload-artifact@v1
       with:
-        name: hscli-windows.exe
-        path: dist-newstyle/build/x86_64-windows/ghc-8.8.2/hscli-0.1.0.0/x/hscli/opt/build/hscli/hscli.exe
-
-    - name: Strip pathfinder binary
-      run: |
-        strip dist-newstyle/build/x86_64-windows/ghc-8.8.2/hscli-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder.exe
+        name: fossa2-windows.exe
+        path: dist-newstyle/build/x86_64-windows/ghc-8.8.2/spectrometer-0.1.0.0/x/fossa/opt/build/fossa/fossa.exe
 
     - uses: actions/upload-artifact@v1
       with:
         name: pathfinder-windows.exe
-        path: dist-newstyle/build/x86_64-windows/ghc-8.8.2/hscli-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder.exe
+        path: dist-newstyle/build/x86_64-windows/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder.exe

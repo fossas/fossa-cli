@@ -1,4 +1,4 @@
 packages: .
 
-package hscli
+package spectrometer
   ghc-options: -Werror

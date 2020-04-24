@@ -1,5 +1,5 @@
 
-module App.Scan.Project
+module App.Fossa.Analyze.Project
   ( Project(..)
   , ProjectStrategy(..)
 
@@ -13,7 +13,7 @@ import Data.Function (on)
 import Data.List (sortBy)
 import Data.Ord
 
-import App.Scan.GraphMangler (graphingToGraph)
+import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import DepTypes
 import Graphing
 import Types

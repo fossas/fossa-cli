@@ -5,7 +5,7 @@ module Srclib.Converter
 import Prelude
 
 import qualified Algebra.Graph.AdjacencyMap as AM
-import App.Scan.Project
+import App.Fossa.Analyze.Project
 import Control.Applicative ((<|>))
 import Data.Text (Text)
 import qualified Data.Text as Text
