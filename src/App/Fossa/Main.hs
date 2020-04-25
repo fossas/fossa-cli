@@ -9,13 +9,13 @@ import App.Fossa.Analyze (analyzeMain, ScanDestination(..))
 import App.Fossa.FossaAPIV1 (ProjectMetadata(..))
 import App.Fossa.Test (testMain)
 import Effect.Logger
-import Network.HTTP.Req (useURI, https, Url, Scheme(..))
+import Network.HTTP.Req (https, Url, Scheme(..))
 import Options.Applicative
 import Path.IO (resolveDir', doesDirExist, setCurrentDir)
 import System.Environment (lookupEnv)
 import System.Exit (die)
 import qualified Data.Text as T
-import Text.URI (mkURI)
+import OptionExtensions
 
 appMain :: IO ()
 appMain = do
@@ -61,15 +61,6 @@ opts =
     <*> optional (strOption (long "revision" <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> comm
     <**> helper
-
-urlOption :: Mod OptionFields (Url scheme) -> Parser (Url scheme)
-urlOption = option parseUrl
-  where
-    parseUrl :: ReadM (Url scheme)
-    parseUrl = maybeReader (\s -> mkURI (T.pack s) >>= useURI >>= \res ->
-                               case res of
-                                 Left (url,_) -> pure $ coerce url
-                                 Right (url,_) -> pure $ coerce url)
 
 comm :: Parser Command
 comm = hsubparser

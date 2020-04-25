@@ -52,6 +52,7 @@ jobs:
       run: |
         strip dist-newstyle/build/x86_64-linux/ghc-8.8.2/spectrometer-0.1.0.0/x/fossa/opt/build/fossa/fossa
         strip dist-newstyle/build/x86_64-linux/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
+        strip dist-newstyle/build/x86_64-linux/ghc-8.8.2/spectrometer-0.1.0.0/x/vpscli/opt/build/vpscli/vpscli
 
     - uses: actions/upload-artifact@v1
       with:
@@ -62,6 +63,11 @@ jobs:
       with:
         name: pathfinder-linux
         path: dist-newstyle/build/x86_64-linux/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
+
+    - uses: actions/upload-artifact@v1
+      with:
+        name: vpscli-linux
+        path: dist-newstyle/build/x86_64-linux/ghc-8.8.2/spectrometer-0.1.0.0/x/vpscli/opt/build/vpscli/vpscli
 
   build-macos:
     name: build-macos
@@ -107,6 +113,7 @@ jobs:
       run: |
         strip dist-newstyle/build/x86_64-osx/ghc-8.8.2/spectrometer-0.1.0.0/x/fossa/opt/build/fossa/fossa
         strip dist-newstyle/build/x86_64-osx/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
+        strip dist-newstyle/build/x86_64-osx/ghc-8.8.2/spectrometer-0.1.0.0/x/vpscli/opt/build/vpscli/vpscli
 
     - uses: actions/upload-artifact@v1
       with:
@@ -117,6 +124,11 @@ jobs:
       with:
         name: pathfinder-osx
         path: dist-newstyle/build/x86_64-osx/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
+
+    - uses: actions/upload-artifact@v1
+      with:
+        name: vpscli-osx
+        path: dist-newstyle/build/x86_64-osx/ghc-8.8.2/spectrometer-0.1.0.0/x/vpscli/opt/build/vpscli/vpscli
 
   build-windows:
     name: build-windows
@@ -155,6 +167,7 @@ jobs:
       run: |
         strip dist-newstyle/build/x86_64-windows/ghc-8.8.2/spectrometer-0.1.0.0/x/fossa/opt/build/fossa/fossa.exe
         strip dist-newstyle/build/x86_64-windows/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder.exe
+        strip dist-newstyle/build/x86_64-windows/ghc-8.8.2/spectrometer-0.1.0.0/x/vpscli/opt/build/vpscli/vpscli.exe
 
     - uses: actions/upload-artifact@v1
       with:
@@ -165,3 +178,8 @@ jobs:
       with:
         name: pathfinder-windows.exe
         path: dist-newstyle/build/x86_64-windows/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder.exe
+
+    - uses: actions/upload-artifact@v1
+      with:
+        name: vpscli-windows.exe
+        path: dist-newstyle/build/x86_64-windows/ghc-8.8.2/spectrometer-0.1.0.0/x/vpscli/opt/build/vpscli/vpscli.exe

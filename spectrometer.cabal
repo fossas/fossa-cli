@@ -100,6 +100,11 @@ library
     App.Fossa.Test
     App.Pathfinder.Main
     App.Pathfinder.Scan
+    App.VPSScan.Main
+    App.VPSScan.Scan
+    App.VPSScan.Scan.RunIPR
+    App.VPSScan.Scan.RunSherlock
+    App.VPSScan.Scan.ScotlandYard
     Control.Carrier.Output.IO
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
@@ -113,6 +118,7 @@ library
     Effect.Logger
     Effect.ReadFS
     Graphing
+    OptionExtensions
     Parse.XML
     Prologue
     Srclib.Converter
@@ -167,6 +173,13 @@ executable pathfinder
   import:         lang
   main-is:        Main.hs
   hs-source-dirs: app/pathfinder
+  build-depends:  spectrometer
+  ghc-options:    -threaded -with-rtsopts=-N
+
+executable vpscli
+  import:         lang
+  main-is:        Main.hs
+  hs-source-dirs: app/vpscli
   build-depends:  spectrometer
   ghc-options:    -threaded -with-rtsopts=-N
 
