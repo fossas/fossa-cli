@@ -6,10 +6,9 @@ import Prologue
 
 import Options.Applicative
 
-import App.VPSScan.Scan (VPSOpts(..), ScanCmdOpts(..), scanMain)
-import qualified App.VPSScan.Scan.RunSherlock as RunSherlock
+import App.VPSScan.Scan (ScanCmdOpts(..), scanMain)
+import App.VPSScan.Types
 import qualified App.VPSScan.Scan.RunIPR as RunIPR
-import qualified App.VPSScan.Scan.ScotlandYard as ScotlandYard
 import OptionExtensions
 
 appMain :: IO ()
@@ -23,10 +22,14 @@ commands = hsubparser scanCommand
 
 
 vpsOpts :: Parser VPSOpts
-vpsOpts = VPSOpts <$> runSherlockOpts <*> runIPROpts <*> syOpts
+vpsOpts = VPSOpts <$> runSherlockOpts <*> runIPROpts <*> syOpts <*> organizationIDOpt <*> projectIDOpt <*> revisionIDOpt
+            where
+              organizationIDOpt = option auto (long "organization" <> metavar "orgID" <> help "Organization ID")
+              projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
+              revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Revision ID")
 
-runSherlockOpts :: Parser (RunSherlock.SherlockOpts)
-runSherlockOpts = RunSherlock.SherlockOpts
+runSherlockOpts :: Parser SherlockOpts
+runSherlockOpts = SherlockOpts
                   <$> sherlockCmdPathOpt
                   <*> sherlockUrlOpt
                   <*> sherlockClientTokenOpt
@@ -47,19 +50,14 @@ runIPROpts = RunIPR.IPROpts
                     nomosCmdPathOpt = strOption (long "nomossa" <> metavar "STRING" <> help "Path to the nomossa executable")
                     pathfinderCmdPathOpt = strOption (long "pathfinder" <> metavar "STRING" <> help "Path to the pathfinder executable")
 
-syOpts :: Parser ScotlandYard.ScotlandYardOpts
-syOpts = ScotlandYard.ScotlandYardOpts
+-- org IDs are ints. project and revision IDs are strings
+syOpts :: Parser ScotlandYardOpts
+syOpts = ScotlandYardOpts
                      <$> scotlandYardUrlOpt
                      <*> scotlandYardPort
-                     <*> organizationIDOpt
-                     <*> projectIDOpt
-                     <*> revisionIDOpt
                   where
                     scotlandYardUrlOpt = urlOption (long "scotland-yard-url" <> metavar "STRING" <> help "URL for Scotland Yard service")
-                    scotlandYardPort = option auto (long "scotland-yard-port" <> metavar "Port" <> help "Port for Scotland yard service" <> value 8080)
-                    organizationIDOpt = strOption (long "organization" <> metavar "STRING" <> help "Organization ID")
-                    projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
-                    revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Revision ID")
+                    scotlandYardPort = option auto (long "scotland-yard-port" <> metavar "Port" <> help "Port for Scotland yard service" <> value 8675)
 
 scanCommand :: Mod CommandFields (IO ())
 scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan for projects and their dependencies"))
@@ -67,5 +65,4 @@ scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan
   scanOptsParser = ScanCmdOpts
                    <$> basedirOpt
                    <*> vpsOpts
-
   basedirOpt = strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning" <> value ".")
