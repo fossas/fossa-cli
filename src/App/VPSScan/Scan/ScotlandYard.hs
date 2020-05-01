@@ -55,14 +55,14 @@ createScan VPSOpts{..} = do
 postIprResults :: ToJSON a => VPSOpts -> Text -> a -> HTTP ()
 postIprResults VPSOpts{..} scanId value = do
   let ScotlandYardOpts{..} = vpsScotlandYard
-  _ <- req POST (scanDataEndpoint scotlandYardUrl projectID scanId) (ReqBodyJson value) ignoreResponse $ port scotlandYardPort
+  _ <- req POST (scanDataEndpoint scotlandYardUrl projectID scanId) (ReqBodyJson value) ignoreResponse $ (port scotlandYardPort <> header "Content-Type" "application/json")
   pure ()
 
 ----- scotland yard effect
 
 data ScotlandYard m k
   = CreateScotlandYardScan VPSOpts (Either HttpException ScanResponse -> m k) -- TODO: add Scotland yard error type
-  | UploadIPRResults VPSOpts Text Array (Either HttpException () -> m k) -- TODO: add scotland yard error type
+  | UploadIPRResults VPSOpts Text Value (Either HttpException () -> m k) -- TODO: add scotland yard error type
   deriving Generic1
 
 instance HFunctor ScotlandYard
@@ -71,7 +71,7 @@ instance Effect ScotlandYard
 createScotlandYardScan :: Has ScotlandYard sig m => VPSOpts -> m (Either HttpException ScanResponse)
 createScotlandYardScan vpsOpts = send (CreateScotlandYardScan vpsOpts pure)
 
-uploadIPRResults :: Has ScotlandYard sig m => VPSOpts -> Text -> Array -> m (Either HttpException ())
+uploadIPRResults :: Has ScotlandYard sig m => VPSOpts -> Text -> Value -> m (Either HttpException ())
 uploadIPRResults vpsOpts scanId value = send (UploadIPRResults vpsOpts scanId value pure)
 
 ----- scotland yard production interpreter

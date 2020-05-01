@@ -25,7 +25,7 @@ data IPROpts = IPROpts
 iprCmdArgs :: Path Abs Dir -> IPROpts -> [String]
 iprCmdArgs baseDir IPROpts{..} = ["-target", toFilePath baseDir, "-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath]
 
-extractNonEmptyFiles :: Value -> Maybe Array
+extractNonEmptyFiles :: Value -> Maybe Value
 extractNonEmptyFiles (Object obj) = do
   files <- HM.lookup "Files" obj
   filesAsArray <- case files of
@@ -40,7 +40,7 @@ extractNonEmptyFiles (Object obj) = do
           _ -> False
       hasLicenses _ = False
 
-  pure filtered
+  Just $ object ["Files" .= filtered]
 extractNonEmptyFiles _ = Nothing
 
 ----- ipr effect
@@ -51,13 +51,13 @@ data IPRError
   deriving (Eq, Ord, Show, Generic)
 
 data IPR m k
-  = ExecIPR (Path Abs Dir) IPROpts (Either IPRError Array -> m k)
+  = ExecIPR (Path Abs Dir) IPROpts (Either IPRError Value -> m k)
   deriving Generic1
 
 instance HFunctor IPR
 instance Effect IPR
 
-execIPR :: Has IPR sig m => Path Abs Dir -> IPROpts -> m (Either IPRError Array)
+execIPR :: Has IPR sig m => Path Abs Dir -> IPROpts -> m (Either IPRError Value)
 execIPR basedir iprOpts = send (ExecIPR basedir iprOpts pure)
 
 ----- production ipr interpreter
