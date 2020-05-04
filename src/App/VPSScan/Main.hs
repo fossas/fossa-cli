@@ -54,10 +54,8 @@ runIPROpts = RunIPR.IPROpts
 syOpts :: Parser ScotlandYardOpts
 syOpts = ScotlandYardOpts
                      <$> scotlandYardUrlOpt
-                     <*> scotlandYardPort
                   where
                     scotlandYardUrlOpt = urlOption (long "scotland-yard-url" <> metavar "STRING" <> help "URL for Scotland Yard service")
-                    scotlandYardPort = option auto (long "scotland-yard-port" <> metavar "Port" <> help "Port for Scotland yard service" <> value 8675)
 
 scanCommand :: Mod CommandFields (IO ())
 scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan for projects and their dependencies"))

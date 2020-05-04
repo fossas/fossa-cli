@@ -15,16 +15,16 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Text.IO (hPutStrLn)
 import Effect.Logger
-import Network.HTTP.Req
 import Path.IO
 import System.IO (stderr)
 import System.Exit (exitSuccess, exitFailure)
+import OptionExtensions
 
 pollDelaySeconds :: Int
 pollDelaySeconds = 8
 
 testMain
-  :: Url 'Https -- ^ api base url
+  :: UrlOption -- ^ api base url
   -> Text -- ^ api key
   -> Severity
   -> Int -- ^ timeout (seconds)
@@ -133,7 +133,7 @@ renderTestError TestBuildFailed = "The build failed. Check the FOSSA webapp for 
 
 waitForBuild
   :: (Has (Error TestError) sig m, MonadIO m, Has Logger sig m)
-  => Url 'Https
+  => UrlOption
   -> Text -- ^ api key
   -> Fossa.ProjectRevision
   -> m ()
@@ -152,7 +152,7 @@ waitForBuild baseurl key revision = do
 
 waitForIssues
   :: (Has (Error TestError) sig m, MonadIO m, Has Logger sig m)
-  => Url 'Https
+  => UrlOption
   -> Text -- ^ api key
   -> Fossa.ProjectRevision
   -> m Fossa.Issues

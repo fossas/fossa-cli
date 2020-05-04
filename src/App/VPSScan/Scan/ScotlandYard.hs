@@ -16,6 +16,7 @@ import Control.Algebra
 import Control.Carrier.Error.Either
 import Network.HTTP.Req
 import App.VPSScan.Types
+import OptionExtensions (UrlOption(..))
 
 newtype HTTP a = HTTP { unHTTP :: ErrorC HttpException IO a }
   deriving (Functor, Applicative, Monad, MonadIO)
@@ -46,7 +47,7 @@ createScan :: VPSOpts -> HTTP ScanResponse
 createScan VPSOpts{..} = do
   let body = object ["organizationId" .= organizationID, "revisionId" .= revisionID, "projectId" .= projectID]
       ScotlandYardOpts{..} = vpsScotlandYard
-  resp <- req POST (createScanEndpoint scotlandYardUrl projectID) (ReqBodyJson body) jsonResponse (port scotlandYardPort <> header "Content-Type" "application/json")
+  resp <- req POST (createScanEndpoint (urlOptionUrl scotlandYardUrl) projectID) (ReqBodyJson body) jsonResponse (urlOptionOptions scotlandYardUrl <> header "Content-Type" "application/json")
   pure (responseBody resp)
 
 -- Given the results from a run of IPR, a scan ID and a URL for Scotland Yard,
@@ -55,7 +56,7 @@ createScan VPSOpts{..} = do
 postIprResults :: ToJSON a => VPSOpts -> Text -> a -> HTTP ()
 postIprResults VPSOpts{..} scanId value = do
   let ScotlandYardOpts{..} = vpsScotlandYard
-  _ <- req POST (scanDataEndpoint scotlandYardUrl projectID scanId) (ReqBodyJson value) ignoreResponse $ (port scotlandYardPort <> header "Content-Type" "application/json")
+  _ <- req POST (scanDataEndpoint (urlOptionUrl scotlandYardUrl) projectID scanId) (ReqBodyJson value) ignoreResponse (urlOptionOptions scotlandYardUrl <> header "Content-Type" "application/json")
   pure ()
 
 ----- scotland yard effect

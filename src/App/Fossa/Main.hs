@@ -9,13 +9,13 @@ import App.Fossa.Analyze (analyzeMain, ScanDestination(..))
 import App.Fossa.FossaAPIV1 (ProjectMetadata(..))
 import App.Fossa.Test (testMain)
 import Effect.Logger
-import Network.HTTP.Req (https, Url, Scheme(..))
 import Options.Applicative
 import Path.IO (resolveDir', doesDirExist, setCurrentDir)
 import System.Environment (lookupEnv)
 import System.Exit (die)
 import qualified Data.Text as T
 import OptionExtensions
+import Network.HTTP.Req (https)
 
 appMain :: IO ()
 appMain = do
@@ -25,7 +25,7 @@ appMain = do
   maybeApiKey <- fmap T.pack <$> lookupEnv "FOSSA_API_KEY"
 
   basedir <- validateDir optBasedir
- 
+
   setCurrentDir basedir
 
   case optCommand of
@@ -56,11 +56,14 @@ opts =
   CmdOptions
     <$> switch (long "debug" <> help "Enable debug logging")
     <*> strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Set the base directory for scanning (default: current directory)" <> value ".")
-    <*> urlOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL" <> value (https "app.fossa.com"))
+    <*> urlOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL" <> value urlOpts)
     <*> optional (strOption (long "project" <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
     <*> optional (strOption (long "revision" <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> comm
     <**> helper
+    where
+      baseUrl = https "app.fossa.com"
+      urlOpts = UrlOption baseUrl mempty
 
 comm :: Parser Command
 comm = hsubparser
@@ -101,7 +104,7 @@ testOpts =
 data CmdOptions = CmdOptions
   { optDebug   :: Bool
   , optBasedir :: FilePath
-  , optBaseUrl :: Url 'Https
+  , optBaseUrl :: UrlOption
   , optProjectName :: Maybe Text
   , optProjectRevision :: Maybe Text
   , optCommand :: Command

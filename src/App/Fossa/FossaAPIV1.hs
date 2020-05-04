@@ -33,6 +33,7 @@ import Prologue
 import Srclib.Converter (toSourceUnit)
 import Srclib.Types
 import Data.Maybe (catMaybes)
+import OptionExtensions
 
 newtype FossaReq a = FossaReq { unFossaReq :: ErrorC FossaError IO a }
   deriving (Functor, Applicative, Monad, MonadIO)
@@ -90,7 +91,7 @@ data ProjectMetadata = ProjectMetadata
   } deriving (Eq, Ord, Show, Generic)
 
 uploadAnalysis
-  :: Url 'Https -- ^ base url
+  :: UrlOption -- ^ base url
   -> Text -- ^ api key
   -> ProjectRevision
   -> ProjectMetadata
@@ -105,11 +106,11 @@ uploadAnalysis baseurl key ProjectRevision{..} metadata projects = do
           <> "title" =: fromMaybe projectName (projectTitle metadata)
           <> header "Authorization" ("token " <> encodeUtf8 key)
           <> mkMetadataOpts metadata
-  resp <- req POST (uploadUrl baseurl) (ReqBodyJson sourceUnits) jsonResponse opts
+  resp <- req POST (uploadUrl $ urlOptionUrl baseurl) (ReqBodyJson sourceUnits) jsonResponse (urlOptionOptions baseurl <> opts)
   pure (responseBody resp)
 
 mkMetadataOpts :: ProjectMetadata -> Option scheme
-mkMetadataOpts ProjectMetadata{..} = mconcat $ catMaybes $
+mkMetadataOpts ProjectMetadata{..} = mconcat $ catMaybes 
   [ ("branch" =:) <$> projectBranch
   , ("projectURL" =:) <$> projectUrl
   , ("jiraProjectKey" =:) <$> projectJiraKey
@@ -195,14 +196,15 @@ instance FromJSON BuildStatus where
     other -> pure $ StatusUnknown other
 
 getLatestBuild
-  :: Url 'Https
+  :: UrlOption
   -> Text -- ^ api key
   -> ProjectRevision
   -> FossaReq Build
 getLatestBuild baseurl key ProjectRevision{..} = do
-  let opts = header "Authorization" ("token " <> encodeUtf8 key)
-  Organization orgId <- responseBody <$> req GET (organizationEndpoint baseurl) NoReqBody jsonResponse opts
-  response <- req GET (buildsEndpoint baseurl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
+  let url = urlOptionUrl baseurl
+      opts = urlOptionOptions baseurl <> header "Authorization" ("token " <> encodeUtf8 key)
+  Organization orgId <- responseBody <$> req GET (organizationEndpoint url) NoReqBody jsonResponse opts
+  response <- req GET (buildsEndpoint url orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
 ----------
@@ -211,13 +213,14 @@ issuesEndpoint :: Int -> Locator -> Url 'Https
 issuesEndpoint orgId locator = https "app.fossa.com" /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "issues"
 
 getIssues
-  :: Url 'Https
+  :: UrlOption
   -> Text -- ^ api key
   -> ProjectRevision
   -> FossaReq Issues
 getIssues baseurl key ProjectRevision{..} = do
-  let opts = header "Authorization" ("token " <> encodeUtf8 key)
-  Organization orgId <- responseBody <$> req GET (organizationEndpoint baseurl) NoReqBody jsonResponse opts
+  let opts = urlOptionOptions baseurl <> header "Authorization" ("token " <> encodeUtf8 key)
+      url = urlOptionUrl baseurl
+  Organization orgId <- responseBody <$> req GET (organizationEndpoint url) NoReqBody jsonResponse opts
   response <- req GET (issuesEndpoint orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
@@ -297,11 +300,13 @@ instance FromJSON Organization where
 organizationEndpoint :: Url scheme -> Url scheme
 organizationEndpoint baseurl = baseurl /: "api" /: "cli" /: "organization"
 
+-- TODO: Is this used anywhere?
 getOrganizationId
-  :: Url 'Https
+  :: UrlOption
   -> Text -- ^ api key
   -> FossaReq Issues
 getOrganizationId baseurl key = do
-  let opts = header "Authorization" ("token " <> encodeUtf8 key)
-  response <- req GET (organizationEndpoint baseurl) NoReqBody jsonResponse opts
+  let opts = urlOptionOptions baseurl <> header "Authorization" ("token " <> encodeUtf8 key)
+      url = urlOptionUrl baseurl
+  response <- req GET (organizationEndpoint url) NoReqBody jsonResponse opts
   pure (responseBody response)

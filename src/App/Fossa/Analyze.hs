@@ -23,7 +23,6 @@ import Data.Text.Prettyprint.Doc.Render.Terminal
 import Effect.Exec (ExecErr(..))
 import Effect.Logger
 import Effect.ReadFS (ReadFSErr(..))
-import Network.HTTP.Req
 import qualified Srclib.Converter as Srclib
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Cocoapods.Podfile as Podfile
@@ -51,11 +50,12 @@ import qualified Strategy.Python.SetupPy as SetupPy
 import qualified Strategy.Ruby.BundleShow as BundleShow
 import qualified Strategy.Ruby.GemfileLock as GemfileLock
 import Types
+import OptionExtensions
 
 data ScanDestination
-  = UploadScan (Url 'Https) Text ProjectMetadata -- ^ upload to fossa with provided api key and base url
+  = UploadScan UrlOption Text ProjectMetadata -- ^ upload to fossa with provided api key and base url
   | OutputStdout
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Generic)
  
 analyzeMain :: Severity -> ScanDestination -> Maybe Text -> Maybe Text -> IO ()
 analyzeMain logSeverity destination name revision = do

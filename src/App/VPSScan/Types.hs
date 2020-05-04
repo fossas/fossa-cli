@@ -5,13 +5,11 @@ ScotlandYardOpts(..))
 where
 
 import Prologue
-import Network.HTTP.Req
 import qualified App.VPSScan.Scan.RunIPR as RunIPR
+import OptionExtensions (UrlOption)
 
 data ScotlandYardOpts = ScotlandYardOpts
-  { scotlandYardUrl :: Url 'Https
-  , scotlandYardPort :: Int
-  } deriving (Eq, Ord, Show, Generic)
+  { scotlandYardUrl :: UrlOption } deriving Generic
 
 data SherlockOpts = SherlockOpts
   { sherlockCmdPath :: String
@@ -27,4 +25,4 @@ data VPSOpts = VPSOpts
   , organizationID :: Int
   , projectID :: Text
   , revisionID :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving Generic
