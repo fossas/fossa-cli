@@ -7,9 +7,10 @@ module App.VPSScan.Scan
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Carrier.Trace.Printing
 import Path.IO
 import System.Exit (exitFailure, die)
+import Control.Concurrent.Async (concurrently)
+import Control.Carrier.Trace.Printing
 
 import Network.HTTP.Req (HttpException)
 
@@ -26,7 +27,7 @@ data ScanCmdOpts = ScanCmdOpts
 scanMain :: ScanCmdOpts -> IO ()
 scanMain opts@ScanCmdOpts{..} = do
   basedir <- validateDir cmdBasedir
-  result <- runError @VPSError $ runScotlandYard $ runSherlock $ runIPR $ runTrace $ vpsScan basedir opts
+  result <- runError @VPSError $ runScotlandYard $ runTrace $ runIPR $ runSherlock $ vpsScan basedir opts
   case result of
     Left err -> do
       print err
@@ -44,10 +45,9 @@ data VPSError
 
 vpsScan ::
   ( Has ScotlandYard sig m
-  , Has IPR sig m
-  , Has Sherlock sig m
   , Has (Error VPSError) sig m
   , Has Trace sig m
+  , MonadIO m
   ) => Path Abs Dir -> ScanCmdOpts -> m ()
 vpsScan basedir ScanCmdOpts{..} = do
   let vpsOpts@VPSOpts{..} = scanVpsOpts
@@ -56,16 +56,39 @@ vpsScan basedir ScanCmdOpts{..} = do
 
   trace $ "Running scan on directory " ++ show basedir
   trace $ "Scan ID from Scotland yard is " ++ show scanId
-  trace "Starting IPR scan"
+  trace "[All] Running IPR and Sherlock scans in parallel"
+  trace "[Sherlock] Starting Sherlock scan"
+  trace "[IPR] Starting IPR scan"
+  (iprResult, sherlockResult) <- liftIO $ concurrently
+                (runError @VPSError $ runIPR $ runScotlandYard $ runTrace $ runIPRScan basedir scanId vpsOpts)
+                (runError @VPSError $ runSherlock $ runTrace $ runSherlockScan basedir scanId vpsOpts)
+  case (iprResult, sherlockResult) of
+    (Right _, Right _) -> trace "[All] Scans complete"
+    (Left err, _) -> throwError err
+    (_, Left err) -> throwError err
 
+runSherlockScan ::
+  ( Has Sherlock sig m
+  , Has (Error VPSError) sig m
+  , Has Trace sig m
+  ) => Path Abs Dir -> Text -> VPSOpts -> m ()
+runSherlockScan basedir scanId vpsOpts = do
+  tagError SherlockFailed =<< execSherlock basedir scanId vpsOpts
+  trace "[Sherlock] Sherlock scan complete"
+
+runIPRScan ::
+  ( Has ScotlandYard sig m
+  , Has IPR sig m
+  , Has (Error VPSError) sig m
+  , Has Trace sig m
+  ) => Path Abs Dir ->  Text -> VPSOpts -> m ()
+runIPRScan basedir scanId vpsOpts@VPSOpts{..} = do
   iprResult <- tagError IPRFailed =<< execIPR basedir vpsIpr
-  trace "IPR scan completed. Posting results to Scotland Yard"
+  trace "[IPR] IPR scan completed. Posting results to Scotland Yard"
 
   tagError Couldn'tUpload =<< uploadIPRResults vpsOpts scanId iprResult
-  trace "Running Sherlock scan"
-
-  tagError SherlockFailed =<< execSherlock basedir scanId vpsOpts
-  trace "Scan complete"
+  trace "[IPR] Post to Scotland Yard complete"
+  trace "[IPR] IPR scan complete"
 
 tagError :: Has (Error e') sig m => (e -> e') -> Either e a -> m a
 tagError f (Left e) = throwError (f e)
