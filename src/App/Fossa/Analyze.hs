@@ -32,6 +32,7 @@ import qualified Strategy.Go.Gomod as Gomod
 import qualified Strategy.Go.GopkgLock as GopkgLock
 import qualified Strategy.Go.GopkgToml as GopkgToml
 import qualified Strategy.Go.GlideLock as GlideLock
+import qualified Strategy.Googlesource.RepoManifest as RepoManifest
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.Maven.Pom as MavenPom
 import qualified Strategy.Maven.PluginStrategy as MavenPlugin
@@ -192,6 +193,8 @@ discoverFuncs =
   , Pipenv.discover
   , SetupPy.discover
   , ReqTxt.discover
+
+  , RepoManifest.discover
 
   , BundleShow.discover
   , GemfileLock.discover
