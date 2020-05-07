@@ -1,1 +1,8 @@
-cradle: {cabal: {component: "lib:spectrometer"}}
+cradle:
+  cabal:
+    - path: "."
+      component: "lib:spectrometer"
+    - path: "./src"
+      component: "lib:spectrometer"
+    - path: "./test"
+      component: "test:tests"
