@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <remote name="aosp" fetch=".." />
+  <remote fetch="https://android.othersource.com" name="othersource" revision="google/android-6.0.1_r74" />
+  <default revision="refs/tags/android-10.0.0_r29"
+           remote="aosp"
+           sync-j="4" />
+
+  <project path="art" name="platform/art" groups="pdk" remote="aosp"/>
+  <project path="bionic" name="platform/bionic" groups="pdk" revision="57b7d1574276f5e7f895c884df29f45859da74b6" />
+  <project path="bootable/recovery" name="platform/bootable/recovery" groups="pdk" remote="othersource" />
+  <project path="cts" name="platform/cts" groups="cts,pdk-cw-fs,pdk-fs" remote="othersource" revision="1111"/>
+  <project path="dalvik" name="platform/dalvik" groups="pdk-cw-fs,pdk-fs" />
+</manifest>

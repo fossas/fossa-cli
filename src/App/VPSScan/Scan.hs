@@ -11,6 +11,7 @@ import Path.IO
 import System.Exit (exitFailure, die)
 import Control.Concurrent.Async (concurrently)
 import Control.Carrier.Trace.Printing
+import Effect.ErrorUtils (tagError)
 
 import Network.HTTP.Req (HttpException)
 
@@ -89,10 +90,6 @@ runIPRScan basedir scanId vpsOpts@VPSOpts{..} = do
   tagError Couldn'tUpload =<< uploadIPRResults vpsOpts scanId iprResult
   trace "[IPR] Post to Scotland Yard complete"
   trace "[IPR] IPR scan complete"
-
-tagError :: Has (Error e') sig m => (e -> e') -> Either e a -> m a
-tagError f (Left e) = throwError (f e)
-tagError _ (Right a) = pure a
 
 validateDir :: FilePath -> IO (Path Abs Dir)
 validateDir dir = do
