@@ -19,7 +19,7 @@ import Network.HTTP.Req (https)
 
 appMain :: IO ()
 appMain = do
-  CmdOptions{..} <- customExecParser (prefs showHelpOnError) (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
+  CmdOptions{..} <- customExecParser (prefs (showHelpOnError <> subparserInline)) (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
   let logSeverity = bool SevInfo SevDebug optDebug
 
   maybeApiKey <- fmap T.pack <$> lookupEnv "FOSSA_API_KEY"
