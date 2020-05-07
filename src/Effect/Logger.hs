@@ -16,6 +16,7 @@ module Effect.Logger
   , logInfo
   , logWarn
   , logError
+  , logStdout
 
   , module X
   ) where
@@ -33,7 +34,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Text.Prettyprint.Doc as X
 import Data.Text.Prettyprint.Doc.Render.Terminal as X
-import System.IO (hIsTerminalDevice, hSetBuffering, BufferMode(NoBuffering), stderr, stderr)
+import System.IO (hIsTerminalDevice, hSetBuffering, BufferMode(NoBuffering), stdout, stderr)
 
 data Logger m k
   = Log LogMsg (m k)
@@ -42,6 +43,7 @@ data Logger m k
 data LogMsg
   = LogNormal Severity (Doc AnsiStyle)
   | LogSticky (Doc AnsiStyle)
+  | LogStdout (Doc AnsiStyle)
   deriving (Show, Generic)
 
 instance HFunctor Logger
@@ -56,6 +58,10 @@ log severity logLine = send (Log (LogNormal severity logLine) (pure ()))
 -- NOTE: The 'Doc' must not contain newlines
 logSticky :: Has Logger sig m => Doc AnsiStyle -> m ()
 logSticky logLine = send (Log (LogSticky logLine) (pure ()))
+
+-- | Log a line to stdout. Usually, you want to use 'log', 'logInfo', ..., instead
+logStdout :: Has Logger sig m => Doc AnsiStyle -> m ()
+logStdout logLine = send (Log (LogStdout logLine) (pure ()))
 
 data Severity =
     SevTrace
@@ -84,7 +90,7 @@ withLogger :: Has (Lift IO) sig m => Severity -> LoggerC m a -> m a
 withLogger minSeverity (LoggerC act) = do
   isTerminal <- sendIO $ hIsTerminalDevice stderr
   let logger = bool rawLogger termLogger isTerminal
-  queue <- sendIO (hSetBuffering stderr NoBuffering *> newTMQueueIO @LogMsg)
+  queue <- sendIO (hSetBuffering stdout NoBuffering *> hSetBuffering stderr NoBuffering *> newTMQueueIO @LogMsg)
 
   let mkLogger = sendIO $ async $ logger minSeverity queue
 
@@ -109,6 +115,9 @@ rawLogger minSeverity queue = go
       Just (LogSticky logLine) -> do
         printIt (unAnnotate logLine <> line)
         go
+      Just (LogStdout logLine) -> do
+        TIO.putStrLn (renderIt logLine)
+        go
 
 termLogger :: Severity -> TMQueue LogMsg -> IO ()
 termLogger minSeverity queue = go ""
@@ -132,7 +141,11 @@ termLogger minSeverity queue = go ""
             let rendered = renderIt logLine
             TIO.hPutStr stderr rendered
             go rendered
-
+          LogStdout logLine -> do
+            clearSticky
+            TIO.hPutStr stdout $ renderIt $ logLine <> line
+            TIO.hPutStr stderr sticky
+            go sticky
 
 newtype LoggerC m a = LoggerC { runLoggerC :: ReaderC (TMQueue LogMsg) m a }
   deriving (Functor, Applicative, Monad, MonadIO)

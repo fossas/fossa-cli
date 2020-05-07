@@ -17,7 +17,7 @@ import App.Fossa.Analyze.Project (Project, mkProjects)
 import App.Fossa.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
 import Control.Carrier.Threaded
-import qualified Data.ByteString.Lazy as BL
+import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Effect.Exec (ExecErr(..))
@@ -88,7 +88,7 @@ analyze basedir destination overrideName overrideRevision = do
       result = buildResult projects failures
  
   case destination of
-    OutputStdout -> liftIO $ BL.putStr (encode result)
+    OutputStdout -> logStdout $ pretty (decodeUtf8 (encode result))
     UploadScan baseurl apiKey metadata -> do
       inferred <- inferProject basedir
       let revision = ProjectRevision
