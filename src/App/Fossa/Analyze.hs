@@ -105,8 +105,8 @@ analyze basedir destination overrideName overrideRevision = do
         Left (NoPermission _) -> logError "FOSSA error: No permission to upload"
         Left (JsonDeserializeError msg) -> logError $ "FOSSA error: Couldn't deserialize API response: " <> pretty msg
         Left (OtherError exc) -> do
-          logError "FOSSA error: other unknown error. See debug log for details"
-          logDebug (viaShow exc)
+          logError "Error when uploading to FOSSA:"
+          logError (viaShow exc)
         Right resp -> do
           logInfo $ "FOSSA locator: " <> viaShow (uploadLocator resp)
           traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
