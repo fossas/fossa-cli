@@ -1,185 +1,138 @@
-# Build, test, and upload artifacts for linux/macos/windows
+# Build, test, and (sometimes) create a release
 #
 # Linux builds are done under our haskell-static-alpine image (see: fossas/haskell-static-alpine)
-# macOS builds use ghcup to install ghc/cabal
-# windows builds use choco to install ghc/cabal
+# macOS/windows builds use github's setup-haskell action
 #
 # Binaries on each platform are stripped. This removes debug symbols.
-#
-# NOTE: executable paths are hardcoded, but they will change if any of the
-# following are changed:
-# - spectrometer version (in cabal file)
-# - ghc version
-# - optimization level
-#
-# cabal doesn't offer a programmatic way to access binary locations, and the artifact upload action doesn't offer filepath globbing.
-#
-# "Where are my build products?"
-# https://www.haskell.org/cabal/users-guide/nix-local-build.html#where-are-my-build-products
-name: Build & Test
-on: [push]
+name: Build
+on: push
 
 jobs:
-  build-linux:
-    name: build-linux
+
+  build-all:
+    name: ${{ matrix.os }}-build
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      # TODO: remove me
+      fail-fast: false
+      matrix:
+        os: ['windows-latest', 'ubuntu-latest', 'macos-latest']
+        include:
+
+          - os: ubuntu-latest
+            container: quay.io/fossa/haskell-static-alpine
+            project-file: cabal.project.ci.linux
+
+          - os: macos-latest
+            project-file: cabal.project.ci.macos
+
+          - os: windows-latest
+            project-file: cabal.project.ci.windows
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install bash (alpine)
+      if: ${{ contains(matrix.os, 'ubuntu') }}
+      shell: sh
+      run: |
+        apk add bash
+
+    - uses: actions/cache@v1
+      name: Cache cabal store
+      with:
+        path: ~/.cabal/store
+        key: ${{ runner.os }}-v4-cabal-store
+
+    - uses: actions/setup-haskell@v1.1
+      name: Setup ghc/cabal (non-alpine)
+      if: ${{ !contains(matrix.os, 'ubuntu') }}
+      with:
+        ghc-version: '8.8.2'
+
+    - name: Install dependencies
+      run: |
+        cabal update
+        cabal build --project-file=${{ matrix.project-file }} --only-dependencies
+
+    - name: Build
+      run: |
+        cabal build --project-file=${{ matrix.project-file }}
+
+    - name: Run tests
+      run: |
+        cabal test --project-file=${{ matrix.project-file }}
+
+    - name: Find and move binaries (windows)
+      if: ${{ contains(matrix.os, 'windows') }}
+      run: |
+        mkdir release
+        find . -type f -path '*/fossa2/fossa2.exe' -exec mv {} release \;
+        find . -type f -path '*/pathfinder/pathfinder.exe' -exec mv {} release \;
+        find . -type f -path '*/vpscli/vpscli.exe' -exec mv {} release \;
+
+    - name: Find and move binaries (non-windows)
+      if: ${{ !contains(matrix.os, 'windows') }}
+      run: |
+        mkdir release
+        find . -type f -path '*/fossa2/fossa2' -exec mv {} release \;
+        find . -type f -path '*/pathfinder/pathfinder' -exec mv {} release \;
+        find . -type f -path '*/vpscli/vpscli' -exec mv {} release \;
+
+    - name: Strip binaries
+      run: |
+        strip release/*
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: ${{ runner.os }}-binaries
+        path: release
+
+  create-release:
+    name: create-release
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
-    container: quay.io/fossa/haskell-static-alpine
+    needs: ['build-all']
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/download-artifact@v2
 
-    - uses: actions/cache@v1
-      name: Cache ~/.cabal/store
+    - name: Get version
+      id: get-version
+      # note that this strips the 'v' prefix from the tag
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/v/}
+
+    # This uses names compatible with our install script
+    - name: Bundle binaries
+      run: |
+        mkdir release
+
+        ls -R
+
+        chmod +x Linux-binaries/*
+        zip -j release/fossa2_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/fossa2
+        zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/pathfinder
+        zip -j release/vpscli_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/vpscli
+
+        chmod +x macOS-binaries/*
+        zip -j release/fossa2_${{ steps.get-version.outputs.VERSION }}_osx_amd64.zip macOS-binaries/fossa2
+        zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_osx_amd64.zip macOS-binaries/pathfinder
+        zip -j release/vpscli_${{ steps.get-version.outputs.VERSION }}_osx_amd64.zip macOS-binaries/vpscli
+
+        chmod +x Windows-binaries/*
+        zip -j release/fossa2_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/fossa2.exe
+        zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/pathfinder.exe
+        zip -j release/vpscli_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/vpscli.exe
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
       with:
-        path: ~/.cabal/store
-        key: ${{ hashFiles ('spectrometer.cabal') }}-${{ runner.os }}-cabal-store
-
-    - name: Install dependencies
-      run: |
-        cabal update
-        cabal configure --project-file=cabal.project.ci -O2 --enable-tests --enable-executable-static
-        cabal build --project-file=cabal.project.ci --only-dependencies
-
-    - name: Build
-      run: |
-        cabal build --project-file=cabal.project.ci
-
-    - name: Run tests
-      run: |
-        cabal test --project-file=cabal.project.ci
-
-    - name: Strip binaries
-      run: |
-        strip dist-newstyle/build/x86_64-linux/ghc-8.8.2/spectrometer-0.1.0.0/x/fossa/opt/build/fossa/fossa
-        strip dist-newstyle/build/x86_64-linux/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
-        strip dist-newstyle/build/x86_64-linux/ghc-8.8.2/spectrometer-0.1.0.0/x/vpscli/opt/build/vpscli/vpscli
-
-    - uses: actions/upload-artifact@v1
-      with:
-        name: fossa2-linux
-        path: dist-newstyle/build/x86_64-linux/ghc-8.8.2/spectrometer-0.1.0.0/x/fossa/opt/build/fossa/fossa
-
-    - uses: actions/upload-artifact@v1
-      with:
-        name: pathfinder-linux
-        path: dist-newstyle/build/x86_64-linux/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
-
-    - uses: actions/upload-artifact@v1
-      with:
-        name: vpscli-linux
-        path: dist-newstyle/build/x86_64-linux/ghc-8.8.2/spectrometer-0.1.0.0/x/vpscli/opt/build/vpscli/vpscli
-
-  build-macos:
-    name: build-macos
-    runs-on: macos-latest
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - uses: actions/cache@v1
-      name: Cache ~/.cabal/store
-      id: cache-store
-      with:
-        path: ~/.cabal/store
-        key: ${{ hashFiles ('spectrometer.cabal') }}-${{ runner.os }}-cabal-store
-
-    - name: Install ghcup
-      run: |
-        mkdir -p ~/.ghcup/bin && curl https://gitlab.haskell.org/haskell/ghcup/raw/master/ghcup > ~/.ghcup/bin/ghcup && chmod +x ~/.ghcup/bin/ghcup
-        echo "::add-path::$HOME/.ghcup/bin"
-        echo "::add-path::$HOME/.cabal/bin"
-
-    - name: Install ghc/cabal
-      run: |
-        ghcup install 8.8.2
-        ghcup set 8.8.2
-        ghcup install-cabal
-
-    - name: Install dependencies
-      run: |
-        cabal update
-        cabal configure --project-file=cabal.project.ci -O2 --enable-tests
-        cabal build --project-file=cabal.project.ci --only-dependencies
-
-    - name: Build
-      run: |
-        cabal build --project-file=cabal.project.ci
-
-    - name: Run tests
-      run: |
-        cabal test --project-file=cabal.project.ci
-
-    - name: Strip binaries
-      run: |
-        strip dist-newstyle/build/x86_64-osx/ghc-8.8.2/spectrometer-0.1.0.0/x/fossa/opt/build/fossa/fossa
-        strip dist-newstyle/build/x86_64-osx/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
-        strip dist-newstyle/build/x86_64-osx/ghc-8.8.2/spectrometer-0.1.0.0/x/vpscli/opt/build/vpscli/vpscli
-
-    - uses: actions/upload-artifact@v1
-      with:
-        name: fossa2-osx
-        path: dist-newstyle/build/x86_64-osx/ghc-8.8.2/spectrometer-0.1.0.0/x/fossa/opt/build/fossa/fossa
-
-    - uses: actions/upload-artifact@v1
-      with:
-        name: pathfinder-osx
-        path: dist-newstyle/build/x86_64-osx/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder
-
-    - uses: actions/upload-artifact@v1
-      with:
-        name: vpscli-osx
-        path: dist-newstyle/build/x86_64-osx/ghc-8.8.2/spectrometer-0.1.0.0/x/vpscli/opt/build/vpscli/vpscli
-
-  build-windows:
-    name: build-windows
-    runs-on: windows-latest
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - uses: actions/cache@v1
-      name: Cache ~/.cabal/store
-      id: cache-store
-      with:
-        path: ~/AppData/Roaming/cabal/store
-        key: ${{ hashFiles ('**\spectrometer.cabal') }}-${{ runner.os }}-cabal-store
-
-    - name: Install ghc/cabal
-      run: |
-        choco install ghc --version=8.8.2
-        echo '::add-path::C:\ProgramData\chocolatey\lib\ghc\tools\ghc-8.8.2\bin'
-
-    - name: Install dependencies
-      run: |
-        cabal update
-        cabal configure --project-file=cabal.project.ci -O2 --enable-tests --enable-executable-static
-        cabal build --project-file=cabal.project.ci --only-dependencies
-
-    - name: Build
-      run: |
-        cabal build --project-file=cabal.project.ci
-
-    - name: Run tests
-      run: |
-        cabal test --project-file=cabal.project.ci
-
-    - name: Strip binaries
-      run: |
-        strip dist-newstyle/build/x86_64-windows/ghc-8.8.2/spectrometer-0.1.0.0/x/fossa/opt/build/fossa/fossa.exe
-        strip dist-newstyle/build/x86_64-windows/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder.exe
-        strip dist-newstyle/build/x86_64-windows/ghc-8.8.2/spectrometer-0.1.0.0/x/vpscli/opt/build/vpscli/vpscli.exe
-
-    - uses: actions/upload-artifact@v1
-      with:
-        name: fossa2-windows.exe
-        path: dist-newstyle/build/x86_64-windows/ghc-8.8.2/spectrometer-0.1.0.0/x/fossa/opt/build/fossa/fossa.exe
-
-    - uses: actions/upload-artifact@v1
-      with:
-        name: pathfinder-windows.exe
-        path: dist-newstyle/build/x86_64-windows/ghc-8.8.2/spectrometer-0.1.0.0/x/pathfinder/opt/build/pathfinder/pathfinder.exe
-
-    - uses: actions/upload-artifact@v1
-      with:
-        name: vpscli-windows.exe
-        path: dist-newstyle/build/x86_64-windows/ghc-8.8.2/spectrometer-0.1.0.0/x/vpscli/opt/build/vpscli/vpscli.exe
+        files: release/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
