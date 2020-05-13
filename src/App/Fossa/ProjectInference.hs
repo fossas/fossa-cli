@@ -25,7 +25,7 @@ import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
 
-inferProject :: (Has Logger sig m, MonadIO m, Effect sig) => Path Abs Dir -> m InferredProject
+inferProject :: (Has Logger sig m, MonadIO m) => Path Abs Dir -> m InferredProject
 inferProject current = do
   gitInferred <- inferGit current & runReadFSIO & runError @ReadFSErr & runError @InferenceError
   svnInferred <- inferSVN current & runExecIO & runError @ExecErr & runError @InferenceError

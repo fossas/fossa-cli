@@ -18,13 +18,13 @@ import Effect.ReadFS
 import Strategy.Maven.Pom.PomFile
 import Strategy.Maven.Pom.Resolver
 
-findProjects :: (Has ReadFS sig m, MonadIO m, Effect sig) => Path Abs Dir -> m [MavenProjectClosure]
+findProjects :: (Has ReadFS sig m, MonadIO m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects basedir = do
   pomFiles <- findPomFiles basedir
   globalClosure <- buildGlobalClosure pomFiles
   pure (buildProjectClosures basedir globalClosure)
 
-findPomFiles :: (Has ReadFS sig m, MonadIO m, Effect sig) => Path Abs Dir -> m [Path Abs File]
+findPomFiles :: (Has ReadFS sig m, MonadIO m) => Path Abs Dir -> m [Path Abs File]
 findPomFiles dir = do
   relPaths <- execState @[Path Rel File] [] $
     flip walk dir $ \_ _ files -> do

@@ -14,7 +14,7 @@ import Control.Carrier.Threaded
 import Control.Concurrent.STM
 import Prologue
 
-withTaskPool :: (Has (Lift IO) sig m, Has Threaded sig m, MonadIO m)
+withTaskPool :: (Has (Lift IO) sig m, MonadIO m)
   => Int -- number of workers
   -> (Progress -> m ()) -- get progress updates
   -> TaskPoolC m a
@@ -101,12 +101,13 @@ data Progress = Progress
 newtype TaskPoolC m a = TaskPoolC { runTaskPoolC :: ReaderC (TVar [m ()]) m a }
   deriving (Functor, Applicative, Monad, MonadIO, MonadFail)
 
-instance (Algebra sig m, MonadIO m) => Algebra (TaskPool :+: sig) (TaskPoolC m) where
-  alg (L (ForkTask m k)) = do
-    var <- TaskPoolC ask
-    liftIO $ atomically $ modifyTVar' var (runReader var (runTaskPoolC (void m)):)
-    k
-  alg (R other) = TaskPoolC (alg (R (handleCoercible other)))
+instance forall sig m. (Algebra sig m, MonadIO m) => Algebra (TaskPool :+: sig) (TaskPoolC m) where
+  alg hdl sig ctx = TaskPoolC $ case sig of
+    L (ForkTask m) -> do
+      var <- ask @(TVar [m ()])
+      liftIO $ atomically $ modifyTVar' var (runReader var (runTaskPoolC (void (hdl (m <$ ctx)))):)
+      pure ctx
+    R other -> alg (runTaskPoolC . hdl) (R other) ctx
 
 data State m = State
   { stQueued    :: TVar [m ()]

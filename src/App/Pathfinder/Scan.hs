@@ -16,7 +16,6 @@ import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
 import System.Exit (die)
 
 import Control.Carrier.TaskPool
-import Control.Carrier.Threaded
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Effect.Logger
@@ -33,14 +32,11 @@ scanMain basedir debug = do
 
   scan basedir
     & withLogger (bool SevInfo SevDebug debug)
-    & runThreaded
 
 scan ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
-  , Has Threaded sig m
   , MonadIO m
-  , Effect sig
   )
   => Path Abs Dir -> m ()
 scan basedir = do

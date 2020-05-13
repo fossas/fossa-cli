@@ -36,9 +36,8 @@ import Data.Text.Prettyprint.Doc as X
 import Data.Text.Prettyprint.Doc.Render.Terminal as X
 import System.IO (hIsTerminalDevice, hSetBuffering, BufferMode(NoBuffering), stdout, stderr)
 
-data Logger m k
-  = Log LogMsg (m k)
-  deriving (Generic1)
+data Logger m k where
+  Log :: LogMsg -> Logger m ()
 
 data LogMsg
   = LogNormal Severity (Doc AnsiStyle)
@@ -46,22 +45,19 @@ data LogMsg
   | LogStdout (Doc AnsiStyle)
   deriving (Show, Generic)
 
-instance HFunctor Logger
-instance Effect Logger
-
 -- | Log a message with the given severity
 log :: Has Logger sig m => Severity -> Doc AnsiStyle -> m ()
-log severity logLine = send (Log (LogNormal severity logLine) (pure ()))
+log severity logLine = send (Log (LogNormal severity logLine))
 
 -- | Log a "sticky" line -- a log line that sticks to the bottom of the terminal until cleared or overwritten by other sticky line.
 --
 -- NOTE: The 'Doc' must not contain newlines
 logSticky :: Has Logger sig m => Doc AnsiStyle -> m ()
-logSticky logLine = send (Log (LogSticky logLine) (pure ()))
+logSticky logLine = send (Log (LogSticky logLine))
 
 -- | Log a line to stdout. Usually, you want to use 'log', 'logInfo', ..., instead
 logStdout :: Has Logger sig m => Doc AnsiStyle -> m ()
-logStdout logLine = send (Log (LogStdout logLine) (pure ()))
+logStdout logLine = send (Log (LogStdout logLine))
 
 data Severity =
     SevTrace
@@ -151,12 +147,12 @@ newtype LoggerC m a = LoggerC { runLoggerC :: ReaderC (TMQueue LogMsg) m a }
   deriving (Functor, Applicative, Monad, MonadIO)
 
 instance (Algebra sig m, MonadIO m) => Algebra (Logger :+: sig) (LoggerC m) where
-  alg (L (Log msg k)) = do
-    queue <- LoggerC ask
-    liftIO $ atomically $ writeTMQueue queue msg
-    k
-   
-  alg (R other) = LoggerC (alg (R (handleCoercible other)))
+  alg hdl sig ctx = LoggerC $ case sig of
+    L (Log msg) -> do
+      queue <- ask
+      liftIO $ atomically $ writeTMQueue queue msg
+      pure ctx
+    R other -> alg (runLoggerC . hdl) (R other) ctx
 
 newtype IgnoreLoggerC m a = IgnoreLoggerC { runIgnoreLoggerC :: m a }
   deriving (Functor, Applicative, Monad, MonadIO)
@@ -164,9 +160,10 @@ newtype IgnoreLoggerC m a = IgnoreLoggerC { runIgnoreLoggerC :: m a }
 ignoreLogger :: IgnoreLoggerC m a -> m a
 ignoreLogger = runIgnoreLoggerC
 
-instance (Algebra sig m, Effect sig) => Algebra (Logger :+: sig) (IgnoreLoggerC m) where
-  alg (L (Log _ k)) = k
-  alg (R other) = IgnoreLoggerC (alg (handleCoercible other))
+instance Algebra sig m => Algebra (Logger :+: sig) (IgnoreLoggerC m) where
+  alg hdl sig ctx = IgnoreLoggerC $ case sig of
+    L (Log _) -> pure ctx
+    R other -> alg (runIgnoreLoggerC . hdl) other ctx
 
 printIt :: Doc AnsiStyle -> IO ()
 printIt = renderIO stderr . layoutPretty defaultLayoutOptions

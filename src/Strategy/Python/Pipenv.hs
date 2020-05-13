@@ -44,7 +44,6 @@ analyze ::
   ( Has ReadFS sig m
   , Has Exec sig m
   , Has (Error ReadFSErr) sig m
-  , Effect sig
   )
   => Path Rel File -> m ProjectClosureBody
 analyze lockfile = do

@@ -46,7 +46,6 @@ golistCmd = Command
 analyze ::
   ( Has Exec sig m
   , Has (Error ExecErr) sig m
-  , Effect sig
   )
   => Path Rel Dir -> m ProjectClosureBody
 analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do

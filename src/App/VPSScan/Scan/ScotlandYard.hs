@@ -61,19 +61,15 @@ postIprResults VPSOpts{..} scanId value = do
 
 ----- scotland yard effect
 
-data ScotlandYard m k
-  = CreateScotlandYardScan VPSOpts (Either HttpException ScanResponse -> m k) -- TODO: add Scotland yard error type
-  | UploadIPRResults VPSOpts Text Value (Either HttpException () -> m k) -- TODO: add scotland yard error type
-  deriving Generic1
-
-instance HFunctor ScotlandYard
-instance Effect ScotlandYard
+data ScotlandYard m k where
+  CreateScotlandYardScan :: VPSOpts -> ScotlandYard m (Either HttpException ScanResponse)
+  UploadIPRResults :: VPSOpts -> Text -> Value -> ScotlandYard m (Either HttpException ())
 
 createScotlandYardScan :: Has ScotlandYard sig m => VPSOpts -> m (Either HttpException ScanResponse)
-createScotlandYardScan vpsOpts = send (CreateScotlandYardScan vpsOpts pure)
+createScotlandYardScan vpsOpts = send (CreateScotlandYardScan vpsOpts)
 
 uploadIPRResults :: Has ScotlandYard sig m => VPSOpts -> Text -> Value -> m (Either HttpException ())
-uploadIPRResults vpsOpts scanId value = send (UploadIPRResults vpsOpts scanId value pure)
+uploadIPRResults vpsOpts scanId value = send (UploadIPRResults vpsOpts scanId value)
 
 ----- scotland yard production interpreter
 
@@ -81,6 +77,7 @@ newtype ScotlandYardC m a = ScotlandYardC { runScotlandYard :: m a }
   deriving (Functor, Applicative, Monad, MonadIO)
 
 instance (Algebra sig m, MonadIO m) => Algebra (ScotlandYard :+: sig) (ScotlandYardC m) where
-  alg (R other) = ScotlandYardC (alg (handleCoercible other))
-  alg (L (CreateScotlandYardScan vpsOpts k)) = (k =<<) . ScotlandYardC $ runHTTP $ createScan vpsOpts
-  alg (L (UploadIPRResults vpsOpts scanId value k)) = (k =<<) . ScotlandYardC $ runHTTP $ postIprResults vpsOpts scanId value
+  alg hdl sig ctx = ScotlandYardC $ case sig of
+    R other -> alg (runScotlandYard . hdl) other ctx
+    L (CreateScotlandYardScan vpsOpts) -> (<$ ctx) <$> runHTTP (createScan vpsOpts)
+    L (UploadIPRResults vpsOpts scanId value) -> (<$ ctx) <$> runHTTP (postIprResults vpsOpts scanId value)

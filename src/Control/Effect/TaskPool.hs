@@ -5,16 +5,9 @@ module Control.Effect.TaskPool
   ) where
 
 import Control.Algebra as X
-import Prelude
 
-data TaskPool m k
-  = forall a. ForkTask (m a) (m k)
+data TaskPool m k where
+  ForkTask :: m a -> TaskPool m ()
 
 forkTask :: Has TaskPool sig m => m a -> m ()
-forkTask act = send (ForkTask act (pure ()))
-
-instance HFunctor TaskPool where
-  hmap f (ForkTask m k) = ForkTask (f m) (f k)
-
-instance Effect TaskPool where
-  thread ctx handler (ForkTask m k) = ForkTask (handler (m <$ ctx)) (handler (k <$ ctx))
+forkTask act = send (ForkTask act)

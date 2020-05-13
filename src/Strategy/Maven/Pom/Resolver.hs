@@ -21,7 +21,7 @@ data GlobalClosure = GlobalClosure
   , globalPoms  :: Map MavenCoordinate (Path Abs File, Pom)
   } deriving (Eq, Ord, Show, Generic)
 
-buildGlobalClosure :: (Has ReadFS sig m, Effect sig) => [Path Abs File] -> m GlobalClosure
+buildGlobalClosure :: Has ReadFS sig m => [Path Abs File] -> m GlobalClosure
 buildGlobalClosure files = do
   (loadResults,()) <- runState @LoadResults M.empty $ traverse_ recursiveLoadPom files
 
@@ -59,7 +59,7 @@ indexBy f = M.fromList . map (\v -> (f v, v))
 type LoadResults = Map (Path Abs File) (Either ReadFSErr RawPom)
 
 -- Recursively load a pom and its adjacent poms (parent, submodules)
-recursiveLoadPom :: forall sig m. (Has ReadFS sig m, Has (State LoadResults) sig m, Effect sig) => Path Abs File -> m ()
+recursiveLoadPom :: forall sig m. (Has ReadFS sig m, Has (State LoadResults) sig m) => Path Abs File -> m ()
 recursiveLoadPom path = do
   results <- get @LoadResults
 

@@ -43,7 +43,6 @@ runSimpleStrategy ::
   , Has (Output ProjectClosure) sig m
   , Has (Output ProjectFailure) sig m
   , MonadIO m
-  , Effect sig
   )
   => Text -> StrategyGroup -> TaskC m ProjectClosureBody -> m ()
 runSimpleStrategy name strategyGroup act = runStrategy name strategyGroup (lift act >>= output)
@@ -82,7 +81,6 @@ type HasDiscover sig m =
   , Has (Output ProjectClosure) sig m
   , Has (Output ProjectFailure) sig m
   , MonadIO m
-  , Effect sig
   )
 
 ---------- Project Closures

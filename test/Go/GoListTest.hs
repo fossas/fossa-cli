@@ -28,10 +28,11 @@ newtype ConstExecC m a = ConstExecC { runConstExecC :: ReaderC (BL.ByteString) m
   deriving (Functor, Applicative, Monad)
 
 instance Algebra sig m => Algebra (Exec :+: sig) (ConstExecC m) where
-  alg (L (Exec _ _ _ k)) = do
-    output <- ConstExecC ask
-    k (Right output)
-  alg (R other) = ConstExecC (alg (R (handleCoercible other)))
+  alg hdl sig ctx = ConstExecC $ case sig of
+    R other -> alg (runConstExecC . hdl) (R other) ctx
+    L (Exec _ _ _) -> do
+      output <- ask
+      pure (Right output <$ ctx)
 
 expected :: Graphing Dependency
 expected = run . evalGrapher $ do

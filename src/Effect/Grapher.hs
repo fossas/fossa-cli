@@ -3,44 +3,39 @@
 -- It defines @direct@ and @edge@ combinators analagous to 'G.direct' and
 -- 'G.edge' from 'G.Graphing'
 module Effect.Grapher
-  ( Grapher(..)
-  , direct
-  , edge
+  ( Grapher (..),
+    direct,
+    edge,
+    evalGrapher,
+    runGrapher,
 
-  , evalGrapher
-  , runGrapher
+    -- * Labeling
+    LabeledGrapher,
+    LabeledGrapherC,
+    label,
+    withLabeling,
 
-  -- * Labeling
-  , LabeledGrapher
-  , LabeledGrapherC
-  , label
-  , withLabeling
-
-  -- * Re-exports
-  , module X
-  ) where
-
-import Prologue hiding (parent)
+    -- * Re-exports
+    module X,
+  )
+where
 
 import Control.Algebra as X
 import Control.Carrier.State.Strict
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import Prologue hiding (parent)
 import qualified Graphing as G
 
-data Grapher ty m k
-  = Direct ty (m k)
-  | Edge ty ty (m k)
-  deriving (Generic1)
-
-instance HFunctor (Grapher ty)
-instance Effect (Grapher ty)
+data Grapher ty m k where
+  Direct :: ty -> Grapher ty m ()
+  Edge :: ty -> ty -> Grapher ty m ()
 
 direct :: Has (Grapher ty) sig m => ty -> m ()
-direct ty = send (Direct ty (pure ()))
+direct ty = send (Direct ty)
 
 edge :: Has (Grapher ty) sig m => ty -> ty -> m ()
-edge parent child = send (Edge parent child (pure ()))
+edge parent child = send (Edge parent child)
 
 runGrapher :: GrapherC ty m a -> m (G.Graphing ty, a)
 runGrapher = runState G.empty . runGrapherC
@@ -48,14 +43,14 @@ runGrapher = runState G.empty . runGrapherC
 evalGrapher :: Functor m => GrapherC ty m a -> m (G.Graphing ty)
 evalGrapher = execState G.empty . runGrapherC
 
-newtype GrapherC ty m a = GrapherC { runGrapherC :: StateC (G.Graphing ty) m a }
+newtype GrapherC ty m a = GrapherC {runGrapherC :: StateC (G.Graphing ty) m a}
   deriving (Functor, Applicative, Monad, MonadIO)
 
-instance (Algebra sig m, Effect sig, Ord ty) => Algebra (Grapher ty :+: sig) (GrapherC ty m) where
-  alg (L act) = case act of
-    Direct ty k -> GrapherC (modify (G.direct ty)) *> k
-    Edge parent child k -> GrapherC (modify (G.edge parent child)) *> k
-  alg (R other) = GrapherC (alg (R (handleCoercible other)))
+instance (Algebra sig m, Ord ty) => Algebra (Grapher ty :+: sig) (GrapherC ty m) where
+  alg hdl sig ctx = GrapherC $ case sig of
+    L (Direct ty) -> modify (G.direct ty) *> pure ctx
+    L (Edge parent child) -> modify (G.edge parent child) *> pure ctx
+    R other -> alg (runGrapherC . hdl) (R other) ctx
 
 ----- Labeling
 
@@ -105,7 +100,7 @@ insertLabel ty lbl = M.insertWith (<>) ty (S.singleton lbl)
 -- | An interpreter for @LabeledGrapher@. See existing strategies for examples
 withLabeling :: (Monad m, Ord ty, Ord res) => (ty -> Set lbl -> res) -> LabeledGrapherC ty lbl m a -> m (G.Graphing res)
 withLabeling f act = do
-  (graph,(labels,_)) <- runGrapher . runState M.empty $ act
+  (graph, (labels, _)) <- runGrapher . runState M.empty $ act
   pure (unlabel f labels graph)
 
 -- | Transform a @Graphing ty@ into a @Graphing ty'@, given a function that

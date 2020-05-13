@@ -16,7 +16,6 @@ import App.Fossa.FossaAPIV1 (ProjectRevision(..), ProjectMetadata, fossaReq, upl
 import App.Fossa.Analyze.Project (Project, mkProjects)
 import App.Fossa.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
-import Control.Carrier.Threaded
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
@@ -62,14 +61,12 @@ data ScanDestination
 analyzeMain :: Severity -> ScanDestination -> Maybe Text -> Maybe Text -> IO ()
 analyzeMain logSeverity destination name revision = do
   basedir <- getCurrentDir
-  runThreaded $ withLogger logSeverity $ analyze basedir destination name revision
+  withLogger logSeverity $ analyze basedir destination name revision
 
 analyze ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
-  , Has Threaded sig m
   , MonadIO m
-  , Effect sig
   )
   => Path Abs Dir
   -> ScanDestination

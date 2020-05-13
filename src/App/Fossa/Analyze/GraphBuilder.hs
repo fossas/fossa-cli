@@ -16,26 +16,22 @@ import Control.Carrier.State.Strict
 import qualified App.Fossa.Analyze.Graph as G
 import DepTypes
 
-data GraphBuilder m k
-  = AddNode Dependency (G.DepRef -> m k)
-  | AddEdge G.DepRef G.DepRef (m k)
-  | AddDirect G.DepRef (m k)
-  deriving Generic1
-
-instance HFunctor GraphBuilder
-instance Effect GraphBuilder
+data GraphBuilder m k where
+  AddNode :: Dependency -> GraphBuilder m G.DepRef
+  AddEdge :: G.DepRef -> G.DepRef -> GraphBuilder m ()
+  AddDirect :: G.DepRef -> GraphBuilder m ()
 
 -- | Add a node to the graph. See 'G.addNode'
 addNode :: Has GraphBuilder sig m => Dependency -> m G.DepRef
-addNode node = send (AddNode node pure)
+addNode node = send (AddNode node)
 
 -- | @addEdge parent child@ adds an edge to the graph between parent and child nodes. See 'G.addEdge'
 addEdge :: Has GraphBuilder sig m => G.DepRef -> G.DepRef -> m ()
-addEdge parent child = send (AddEdge parent child (pure ()))
+addEdge parent child = send (AddEdge parent child)
 
 -- | Add a direct dependency to the graph. See 'G.addDirect'
 addDirect :: Has GraphBuilder sig m => G.DepRef -> m ()
-addDirect direct = send (AddDirect direct (pure ()))
+addDirect direct = send (AddDirect direct)
 
 runGraphBuilder :: G.Graph -> GraphBuilderC m a -> m (G.Graph, a)
 runGraphBuilder start = runState start . coerce
@@ -46,10 +42,9 @@ evalGraphBuilder start = execState start . runGraphBuilderC
 newtype GraphBuilderC m a = GraphBuilderC { runGraphBuilderC :: StateC G.Graph m a }
  deriving (Functor, Applicative, Monad, MonadIO)
 
-instance (Algebra sig m, Effect sig) => Algebra (GraphBuilder :+: sig) (GraphBuilderC m) where
-  alg (R other) = alg (R (handleCoercible other))
-
-  alg (L act) = case act of
-    AddNode dep k -> GraphBuilderC (state (G.addNode dep)) >>= k
-    AddEdge parent child k -> GraphBuilderC (modify (G.addEdge parent child)) *> k
-    AddDirect dep k -> GraphBuilderC (modify (G.addDirect dep)) *> k
+instance Algebra sig m => Algebra (GraphBuilder :+: sig) (GraphBuilderC m) where
+  alg hdl sig ctx = GraphBuilderC $ case sig of
+    R other -> alg (runGraphBuilderC . hdl) (R other) ctx
+    L (AddNode dep) -> (<$ ctx) <$> state (G.addNode dep)
+    L (AddEdge parent child) -> (<$ ctx) <$> modify (G.addEdge parent child)
+    L (AddDirect dep) -> (<$ ctx) <$> modify (G.addDirect dep)

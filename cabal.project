@@ -1,1 +1,13 @@
 packages: .
+
+-- fused-effects
+source-repository-package
+    type: git
+    location: https://github.com/fused-effects/fused-effects.git
+    tag: 11498a404dd2d6c3f0eb361704b6d7c1623c0406
+
+-- fused-effects-exceptions
+source-repository-package
+    type: git
+    location: https://github.com/cnr/fused-effects-exceptions.git
+    tag: e8dc78e00da50f99c427a8b324e367eaf8ad0555

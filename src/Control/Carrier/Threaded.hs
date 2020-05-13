@@ -1,31 +1,33 @@
 module Control.Carrier.Threaded
-  ( ThreadedC
-  , runThreaded
-  , module X
-  ) where
+  ( fork,
+    kill,
+    wait,
+    Handle (..),
+  )
+where
 
 import Control.Carrier.Lift
 import qualified Control.Concurrent as Conc
 import qualified Control.Concurrent.Async as Async
 import Control.Concurrent.STM
 import Control.Effect.Exception
-import Control.Effect.Threaded as X
 import Control.Monad.IO.Class
 import Data.Functor (void)
 import Prelude
 
-runThreaded :: ThreadedC m a -> m a
-runThreaded = runThreadedC
+data Handle = Handle
+  { handleTid :: Conc.ThreadId,
+    handleWait :: STM (Either SomeException ())
+  }
 
-newtype ThreadedC m a = ThreadedC { runThreadedC :: m a }
-  deriving (Functor, Applicative, Monad, MonadIO)
+fork :: Has (Lift IO) sig m => m a -> m Handle
+fork m = liftWith @IO $ \hdl ctx -> do
+  var <- newEmptyTMVarIO
+  tid <- mask $ \restore -> Conc.forkIO $ try (void (restore (hdl (m <$ ctx)))) >>= atomically . putTMVar var
+  pure (Handle tid (readTMVar var) <$ ctx)
 
-instance (Has (Lift IO) sig m, MonadIO m) => Algebra (Threaded :+: sig) (ThreadedC m) where
-  alg (L (Fork m k)) = liftWith @IO (\ctx runIt -> do
-                                        var <- newEmptyTMVarIO
-                                        tid <- mask $ \restore -> Conc.forkIO $ try (void (restore (runIt (m <$ ctx)))) >>= atomically . putTMVar var
-                                        pure (Handle tid (readTMVar var) <$ ctx)
-                                        ) >>= k
-  alg (L (Kill h k)) = liftIO (throwTo (handleTid h) Async.AsyncCancelled) *> k
-  alg (L (Wait h k)) = liftIO (atomically (handleWait h)) *> k
-  alg (R other) = ThreadedC (alg (handleCoercible other))
+kill :: Has (Lift IO) sig m => Handle -> m ()
+kill h = liftWith @IO $ \_ ctx -> liftIO (throwTo (handleTid h) Async.AsyncCancelled) *> pure ctx
+
+wait :: Has (Lift IO) sig m => Handle -> m ()
+wait h = liftWith @IO $ \_ ctx -> liftIO (atomically (handleWait h)) *> pure ctx

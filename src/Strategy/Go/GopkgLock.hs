@@ -56,7 +56,6 @@ data Project = Project
 analyze ::
   ( Has ReadFS sig m
   , Has (Error ReadFSErr) sig m
-  , Effect sig
   )
   => Path Rel File -> m ProjectClosureBody
 analyze file = fmap (mkProjectClosure file) . graphingGolang $ do

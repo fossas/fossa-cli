@@ -1,26 +1,23 @@
 module Effect.Exec
-  ( Exec(..)
-  , ExecErr(..)
-  , exec
-  , execThrow
-  , Command(..)
-  , AllowErr(..)
-
-  , execParser
-  , execJson
-
-  , ExecIOC(..)
-  , runExecIO
-  , module System.Exit
-  , module X
-  ) where
-
-import Prologue
+  ( Exec (..),
+    ExecErr (..),
+    exec,
+    execThrow,
+    Command (..),
+    AllowErr (..),
+    execParser,
+    execJson,
+    ExecIOC (..),
+    runExecIO,
+    module System.Exit,
+    module X,
+  )
+where
 
 import Control.Algebra as X
 import Control.Carrier.Error.Either
 import qualified Control.Exception as Exc
-import Control.Monad.Except (ExceptT(..), runExceptT)
+import Control.Monad.Except (ExceptT (..), runExceptT)
 import qualified Data.ByteString.Lazy as BL
 import Data.ByteString.Lazy.Optics
 import qualified Data.Text as T
@@ -28,55 +25,61 @@ import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Optics
 import Path.IO
-import System.Exit (ExitCode(..))
+import Prologue
+import System.Exit (ExitCode (..))
 import System.Process.Typed
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 
 data Command = Command
-  { cmdNames    :: [String] -- ^ Possible command names. E.g., "pip", "pip3", "./gradlew".
-  , cmdBaseArgs :: [String] -- ^ Base arguments for the command. Additional arguments can be passed when running commands (e.g., 'exec')
-  , cmdAllowErr :: AllowErr -- ^ Error (i.e. non-zero exit code) tolerance policy for running commands. This is helpful for commands like @npm@, that nonsensically return non-zero exit codes when a command succeeds
-  } deriving (Eq, Ord, Show, Generic)
+  { -- | Possible command names. E.g., "pip", "pip3", "./gradlew".
+    cmdNames :: [String],
+    -- | Base arguments for the command. Additional arguments can be passed when running commands (e.g., 'exec')
+    cmdBaseArgs :: [String],
+    -- | Error (i.e. non-zero exit code) tolerance policy for running commands. This is helpful for commands like @npm@, that nonsensically return non-zero exit codes when a command succeeds
+    cmdAllowErr :: AllowErr
+  }
+  deriving (Eq, Ord, Show, Generic)
 
 data CmdFailure = CmdFailure
-  { cmdFailureName   :: String
-  , cmdFailureExit   :: ExitCode
-  , cmdFailureStderr :: Stderr
-  } deriving (Eq, Ord, Show, Generic)
+  { cmdFailureName :: String,
+    cmdFailureExit :: ExitCode,
+    cmdFailureStderr :: Stderr
+  }
+  deriving (Eq, Ord, Show, Generic)
 
-data AllowErr =
-    Never -- ^ never ignore non-zero exit (return 'ExecErr')
-  | NonEmptyStdout -- ^ when `stdout` is non-empty, ignore non-zero exit
-  | Always -- ^ always ignore non-zero exit
-    deriving (Eq, Ord, Show, Generic)
+data AllowErr
+  = -- | never ignore non-zero exit (return 'ExecErr')
+    Never
+  | -- | when `stdout` is non-empty, ignore non-zero exit
+    NonEmptyStdout
+  | -- | always ignore non-zero exit
+    Always
+  deriving (Eq, Ord, Show, Generic)
 
 type Stdout = BL.ByteString
 type Stderr = BL.ByteString
 
-data Exec m k
+data Exec m k where
   -- | Exec runs a command and returns either:
   -- - stdout when any of the 'cmdNames' succeed
   -- - failure descriptions for all of the commands we tried
-  = forall x. Exec (Path x Dir) Command [String] (Either [CmdFailure] Stdout -> m k)
+
+  Exec :: Path x Dir -> Command -> [String] -> Exec m (Either [CmdFailure] Stdout)
 
 -- TODO: include info about CmdFailures as appropriate
-data ExecErr =
-    CommandFailed Text Text -- ^ Command execution failed, usually from a non-zero exit. command, stderr
-  | CommandParseError Text Text -- ^ Command output couldn't be parsed. command, err
+data ExecErr
+  = -- | Command execution failed, usually from a non-zero exit. command, stderr
+    CommandFailed Text Text
+  | -- | Command output couldn't be parsed. command, err
+    CommandParseError Text Text
   deriving (Eq, Ord, Show, Generic, Typeable)
 
 instance Exc.Exception ExecErr
 
-instance HFunctor Exec where
-  hmap f (Exec dir cmd args k) = Exec dir cmd args (f . k)
-
-instance Effect Exec where
-  thread ctx handle (Exec dir cmd args k) = Exec dir cmd args (handle . (<$ ctx) . k)
-
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
 exec :: Has Exec sig m => Path x Dir -> Command -> [String] -> m (Either [CmdFailure] Stdout)
-exec dir cmd args = send (Exec dir cmd args pure)
+exec dir cmd args = send (Exec dir cmd args)
 
 type Parser = Parsec Void Text
 
@@ -108,35 +111,35 @@ execThrow dir cmd args = do
 runExecIO :: ExecIOC m a -> m a
 runExecIO = runExecIOC
 
-newtype ExecIOC m a = ExecIOC { runExecIOC :: m a }
+newtype ExecIOC m a = ExecIOC {runExecIOC :: m a}
   deriving (Functor, Applicative, Monad, MonadIO, MonadFail)
 
 instance (Algebra sig m, MonadIO m) => Algebra (Exec :+: sig) (ExecIOC m) where
-  alg (R other) = ExecIOC (alg (handleCoercible other))
-
-  alg (L (Exec dir cmd args k)) = (k =<<) . ExecIOC $ liftIO $ do
-    absolute <- makeAbsolute dir
-    -- TODO: disgusting/unreadable
-    -- We use `ExceptT [CmdFailure] IO Stdout` here because it has the Alternative instance we want.
-    --
-    -- In particular: when all of the commands fail, we want to have descriptions of all of the
-    -- CmdFailures, so we can produce better error messages.
-    --
-    -- A Command can have many `cmdNames`. ["./gradlew", "gradle"] is one such example.
-    -- Each of them will be attempted successively until one succeeds
-    --
-    -- This is the behavior of `asum` with ExceptT: it'll run all of the ExceptT actions in the list, combining
-    -- errors. When it finds a successful result, it'll return that instead of the accumulated errors
-    let runCmd :: String -> ExceptT [CmdFailure] IO Stdout
-        runCmd cmdName = ExceptT $ Exc.handle (\(e :: Exc.IOException) -> pure (Left [CmdFailure cmdName (ExitFailure (-1)) (show e ^. packedChars)])) $ do
-          (exitcode, stdout, stderr) <- readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName (cmdBaseArgs cmd <> args)))
-          case (exitcode, cmdAllowErr cmd) of
-            (ExitSuccess, _) -> pure (Right stdout)
-            (_, Never) -> pure (Left [CmdFailure cmdName exitcode stderr])
-            (_, NonEmptyStdout) ->
-              if BL.null stdout
-                then pure (Left [CmdFailure cmdName exitcode stderr])
-                else pure (Right stdout)
-            (_, Always) -> pure (Right stdout)
-    res <- runExceptT $ asum (map runCmd (cmdNames cmd))
-    pure res
+  alg hdl sig ctx = ExecIOC $ case sig of
+    R other -> alg (runExecIOC . hdl) other ctx
+    L (Exec dir cmd args) -> liftIO $ do
+      absolute <- makeAbsolute dir
+      -- TODO: disgusting/unreadable
+      -- We use `ExceptT [CmdFailure] IO Stdout` here because it has the Alternative instance we want.
+      --
+      -- In particular: when all of the commands fail, we want to have descriptions of all of the
+      -- CmdFailures, so we can produce better error messages.
+      --
+      -- A Command can have many `cmdNames`. ["./gradlew", "gradle"] is one such example.
+      -- Each of them will be attempted successively until one succeeds
+      --
+      -- This is the behavior of `asum` with ExceptT: it'll run all of the ExceptT actions in the list, combining
+      -- errors. When it finds a successful result, it'll return that instead of the accumulated errors
+      let runCmd :: String -> ExceptT [CmdFailure] IO Stdout
+          runCmd cmdName = ExceptT $ Exc.handle (\(e :: Exc.IOException) -> pure (Left [CmdFailure cmdName (ExitFailure (-1)) (show e ^. packedChars)])) $ do
+            (exitcode, stdout, stderr) <- readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName (cmdBaseArgs cmd <> args)))
+            case (exitcode, cmdAllowErr cmd) of
+              (ExitSuccess, _) -> pure (Right stdout)
+              (_, Never) -> pure (Left [CmdFailure cmdName exitcode stderr])
+              (_, NonEmptyStdout) ->
+                if BL.null stdout
+                  then pure (Left [CmdFailure cmdName exitcode stderr])
+                  else pure (Right stdout)
+              (_, Always) -> pure (Right stdout)
+      res <- runExceptT $ asum (map runCmd (cmdNames cmd))
+      pure (res <$ ctx)

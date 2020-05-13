@@ -52,7 +52,6 @@ relCheckoutsDir file = parent file </> $(mkRelDir "Carthage/Checkouts")
 analyze ::
   ( Has ReadFS sig m
   , Has (Error ReadFSErr) sig m
-  , Effect sig
   )
   => Path Rel File -> m (G.Graphing ResolvedEntry)
 analyze topPath = evalGrapher $ do
@@ -68,7 +67,6 @@ analyze topPath = evalGrapher $ do
   analyzeSingle ::
     ( Has ReadFS sig m
     , Has (Grapher ResolvedEntry) sig m
-    , Effect sig
     )
     => Path Rel File -> m (Either ReadFSErr [ResolvedEntry])
   analyzeSingle path = do
@@ -81,7 +79,6 @@ analyze topPath = evalGrapher $ do
   descend ::
     ( Has ReadFS sig m
     , Has (Grapher ResolvedEntry) sig m
-    , Effect sig
     )
     => Path Rel Dir {- checkouts directory -} -> ResolvedEntry -> m ()
   descend checkoutsDir entry = do

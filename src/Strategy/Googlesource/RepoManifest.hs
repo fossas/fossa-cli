@@ -47,14 +47,14 @@ discover = walk $ \_ _ files ->
         pure WalkSkipAll
       else pure WalkContinue
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m, Effect sig) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel File -> m ProjectClosureBody
 analyze file = do
   validatedProjects <- runError @ManifestGitConfigError $ nestedValidatedProjects (parent file) file
   case validatedProjects of
     Left err -> fail $ show err
     Right projects -> pure $ mkProjectClosure file projects
 
-nestedValidatedProjects :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m, Effect sig, MonadFail m) => Path Rel Dir -> Path Rel File -> m [ValidatedProject]
+nestedValidatedProjects :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m, MonadFail m) => Path Rel Dir -> Path Rel File -> m [ValidatedProject]
 nestedValidatedProjects rootDir file = do
   manifest <- readContentsXML @RepoManifest file
   manifestWithFixedRemotes <- fixRelativeRemotes manifest rootDir
@@ -109,7 +109,7 @@ fixRemote rootDir remote = do
 -- </manifest>
 -- If you see that, you need to look for `manifests/default.xml`, where the manifests directory will
 -- be a sibling to the original manifest you were parsing.
-validatedProjectsFromIncludes :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m, Effect sig, MonadFail m) => RepoManifest -> Path Rel Dir -> Path Rel Dir -> m [ValidatedProject]
+validatedProjectsFromIncludes :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m, MonadFail m) => RepoManifest -> Path Rel Dir -> Path Rel Dir -> m [ValidatedProject]
 validatedProjectsFromIncludes manifest parentDir rootDir = do
     let manifestIncludeFiles :: [Text]
         manifestIncludeFiles = map includeName $ manifestIncludes manifest

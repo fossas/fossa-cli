@@ -20,7 +20,9 @@ newtype OutputC o m a = OutputC { runOutputC :: ReaderC (IORef [o]) m a }
   deriving (Functor, Applicative, Monad, MonadIO, MonadFail, MonadTrans)
 
 instance (Algebra sig m, MonadIO m) => Algebra (Output o :+: sig) (OutputC o m) where
-  alg (L (Output o k)) = do
-    ref <- OutputC ask
-    liftIO (atomicModifyIORef' ref (\xs -> ((o:xs),()))) *> k
-  alg (R other) = OutputC (alg (R (handleCoercible other)))
+  alg hdl sig ctx = OutputC $ case sig of
+    L (Output o) -> do
+      ref <- ask
+      liftIO (atomicModifyIORef' ref (\xs -> ((o:xs),())))
+      pure ctx
+    R other -> alg (runOutputC . hdl) (R other) ctx

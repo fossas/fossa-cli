@@ -113,7 +113,6 @@ library
     Control.Carrier.Threaded
     Control.Effect.Output
     Control.Effect.TaskPool
-    Control.Effect.Threaded
     DepTypes
     Discovery.Walk
     Effect.ErrorUtils
