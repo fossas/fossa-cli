@@ -60,6 +60,7 @@ common deps
     , fused-effects                ^>=1.0.2.0
     , fused-effects-exceptions     ^>=1.0.0.0
     , git-config                   ^>=0.1.2
+    , hedn                         ^>=0.3.0.1
     , http-client                  ^>=0.6.4.1
     , http-types                   ^>=0.12.3
     , megaparsec                   ^>=8.0
@@ -127,6 +128,7 @@ library
     Srclib.Converter
     Srclib.Types
     Strategy.Carthage
+    Strategy.Clojure
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
     Strategy.Go.GlideLock
@@ -165,7 +167,7 @@ library
 
   hs-source-dirs:  src
 
-executable fossa
+executable fossa2
   import:         lang
   main-is:        Main.hs
   hs-source-dirs: app/fossa
@@ -196,6 +198,7 @@ test-suite tests
   -- cabal-fmt: expand test
   other-modules:
     Carthage.CarthageTest
+    Clojure.ClojureTest
     Cocoapods.PodfileLockTest
     Cocoapods.PodfileTest
     Go.GlideLockTest

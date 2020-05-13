@@ -47,30 +47,27 @@ jobs:
       run: |
         apk add bash
 
-    - uses: actions/cache@v1
-      name: Cache cabal store
-      with:
-        path: ~/.cabal/store
-        key: ${{ runner.os }}-v4-cabal-store
-
     - uses: actions/setup-haskell@v1.1
+      id: setup-haskell
       name: Setup ghc/cabal (non-alpine)
       if: ${{ !contains(matrix.os, 'ubuntu') }}
       with:
         ghc-version: '8.8.2'
 
-    - name: Install dependencies
-      run: |
-        cabal update
-        cabal build --project-file=${{ matrix.project-file }} --only-dependencies
+    - uses: actions/cache@v1
+      name: Cache cabal store
+      with:
+        path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
+        key: ${{ runner.os }}-v5-cabal-store
 
     - name: Build
       run: |
-        cabal build --project-file=${{ matrix.project-file }}
+        cabal update
+        cabal build --project-file=${{ matrix.project-file }} all
 
     - name: Run tests
       run: |
-        cabal test --project-file=${{ matrix.project-file }}
+        cabal test --project-file=${{ matrix.project-file }} all
 
     - name: Find and move binaries (windows)
       if: ${{ contains(matrix.os, 'windows') }}

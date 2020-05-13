@@ -1,0 +1,7 @@
+{[clojure-complete "0.2.5" :exclusions [[org.clojure/clojure]]] nil,
+ [koan-engine "0.2.5"] {[fresh "1.0.2"] nil},
+ [lein-koan "0.1.5" :scope "test"] nil,
+ [nrepl "0.6.0" :exclusions [[org.clojure/clojure]]] nil,
+ [org.clojure/clojure "1.10.0"]
+ {[org.clojure/core.specs.alpha "0.2.44"] nil,
+  [org.clojure/spec.alpha "0.2.176"] nil}}

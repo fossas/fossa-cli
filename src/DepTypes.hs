@@ -1,11 +1,15 @@
 module DepTypes
   ( Dependency(..)
+  , insertEnvironment
+  , insertTag
+  , insertLocation
   , DepEnvironment(..)
   , DepType(..)
   , VerConstraint(..)
   ) where
 
 import Prologue
+import qualified Data.Map.Strict as M
 
 -- FIXME: this needs a smart constructor with empty tags/environments/etc.
 -- We've historically relied on the compile error for making sure we fill all
@@ -18,6 +22,15 @@ data Dependency = Dependency
   , dependencyEnvironments :: [DepEnvironment] -- FIXME: this should be a Set
   , dependencyTags         :: Map Text [Text]
   } deriving (Eq, Ord, Show, Generic)
+
+insertEnvironment :: DepEnvironment -> Dependency -> Dependency
+insertEnvironment env dep = dep { dependencyEnvironments = env : dependencyEnvironments dep }
+
+insertTag :: Text -> Text -> Dependency -> Dependency
+insertTag key value dep = dep { dependencyTags = M.insertWith (++) key [value] (dependencyTags dep) }
+
+insertLocation :: Text -> Dependency -> Dependency
+insertLocation loc dep = dep { dependencyLocations = loc : dependencyLocations dep }
 
 data DepEnvironment =
     EnvProduction
