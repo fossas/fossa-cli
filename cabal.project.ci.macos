@@ -1,3 +1,6 @@
+tests: True
+optimization: 2
+
 packages: .
 
 package spectrometer

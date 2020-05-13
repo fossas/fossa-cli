@@ -1,0 +1,9 @@
+executable-static: True
+split-sections: True
+tests: True
+optimization: 2
+
+packages: .
+
+package spectrometer
+  ghc-options: -Werror

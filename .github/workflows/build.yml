@@ -10,7 +10,7 @@ on: push
 jobs:
 
   build-all:
-    name: ${{ matrix.os }}-build
+    name: ${{ matrix.os-name }}-build
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
 
@@ -26,13 +26,16 @@ jobs:
         include:
 
           - os: ubuntu-latest
+            os-name: Linux
             container: quay.io/fossa/haskell-static-alpine
             project-file: cabal.project.ci.linux
 
           - os: macos-latest
+            os-name: macOS
             project-file: cabal.project.ci.macos
 
           - os: windows-latest
+            os-name: Windows
             project-file: cabal.project.ci.windows
 
     steps:
