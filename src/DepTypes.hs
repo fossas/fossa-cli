@@ -50,6 +50,7 @@ data DepType =
   | PipType    -- ^ Pip registry
   | PodType    -- ^ Cocoapods registry
   | GoType -- ^ Go dependency
+  | CargoType -- ^ Rust Cargo Dependency
   -- TODO: does this break the "location" abstraction?
   | CarthageType -- ^ A Carthage dependency -- effectively a "git" dependency. Name is repo path and version is tag/branch/hash
   deriving (Eq, Ord, Show, Generic)

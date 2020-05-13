@@ -126,6 +126,7 @@ library
     Prologue
     Srclib.Converter
     Srclib.Types
+    Strategy.Cargo
     Strategy.Carthage
     Strategy.Clojure
     Strategy.Cocoapods.Podfile
@@ -196,6 +197,7 @@ test-suite tests
 
   -- cabal-fmt: expand test
   other-modules:
+    Cargo.MetadataTest
     Carthage.CarthageTest
     Clojure.ClojureTest
     Cocoapods.PodfileLockTest

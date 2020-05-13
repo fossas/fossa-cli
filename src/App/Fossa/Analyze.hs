@@ -23,6 +23,7 @@ import Effect.Exec (ExecErr(..))
 import Effect.Logger
 import Effect.ReadFS (ReadFSErr(..))
 import qualified Srclib.Converter as Srclib
+import qualified Strategy.Cargo as Cargo
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Clojure as Clojure
 import qualified Strategy.Cocoapods.Podfile as Podfile
@@ -203,6 +204,8 @@ discoverFuncs =
   , PodfileLock.discover
 
   , Clojure.discover
+  
+  , Cargo.discover
   ]
 
 updateProgress :: Has Logger sig m => Progress -> m ()

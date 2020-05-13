@@ -1,0 +1,42 @@
+{
+    "packages": [],
+    "workspace_members": [
+        "jfmt 1.0.0 (path+file:///path/to/jfmt.rs)"
+    ],
+    "resolve": {
+        "nodes": [
+            {
+                "id": "ansi_term 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+                "deps": []
+            },
+            {
+                "id": "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
+                "deps": [
+                    {
+                        "pkg": "ansi_term 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+                        "dep_kinds": [
+                            {
+                                "kind": null,
+                                "target": "cfg(not(windows))"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "id": "jfmt 1.0.0 (path+file:///path/to/jfmt.rs)",
+                "deps": [
+                    {
+                        "pkg": "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
+                        "dep_kinds": [
+                            {
+                                "kind": null,
+                                "target": null
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}

@@ -101,3 +101,4 @@ depTypeToFetcher = \case
   PodType -> "pod"
   GoType -> "go"
   CarthageType -> "cart"
+  CargoType -> "cargo"
