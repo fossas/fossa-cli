@@ -22,7 +22,7 @@ appMain = do
   CmdOptions{..} <- customExecParser (prefs (showHelpOnError <> subparserInline)) (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
   let logSeverity = bool SevInfo SevDebug optDebug
 
-  maybeApiKey <- fmap T.pack <$> lookupEnv "FOSSA_API_KEY"
+  maybeApiKey <- checkAPIKey optAPIKey
 
   basedir <- validateDir optBasedir
 
@@ -40,6 +40,11 @@ appMain = do
       case maybeApiKey of
         Nothing -> die "A FOSSA API key is required to run this command"
         Just key -> testMain optBaseUrl key logSeverity testTimeout optProjectName optProjectRevision
+
+-- | Try to fetch FOSSA_API_KEY from env if not supplied from cmdline
+checkAPIKey :: Maybe Text -> IO (Maybe Text)
+checkAPIKey Nothing = fmap T.pack <$> lookupEnv "FOSSA_API_KEY"
+checkAPIKey key = return key
 
 -- | Validate that a filepath points to a directory and the directory exists
 validateDir :: FilePath -> IO (Path Abs Dir)
@@ -59,6 +64,7 @@ opts =
     <*> urlOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL" <> value urlOpts)
     <*> optional (strOption (long "project" <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
     <*> optional (strOption (long "revision" <> help "this repository's current revision hash (default: VCS hash HEAD)"))
+    <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authenticaion key (default: FOSSA_API_KEY from env)"))
     <*> comm
     <**> helper
     where
@@ -107,6 +113,7 @@ data CmdOptions = CmdOptions
   , optBaseUrl :: UrlOption
   , optProjectName :: Maybe Text
   , optProjectRevision :: Maybe Text
+  , optAPIKey :: Maybe Text
   , optCommand :: Command
   }
 
