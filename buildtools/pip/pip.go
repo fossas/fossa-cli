@@ -156,13 +156,16 @@ func FromSetupPy(filename string) ([]Requirement, *errors.Error) {
 	var reqs []Requirement
 	for {
 		endBracket := strings.Index(contents, "]")
-		openQuote := strings.Index(contents, "'")
+		// python strings can be double-quoted, and often are
+		openQuote := strings.IndexAny(contents, "'\"")
 		if openQuote == -1 || openQuote > endBracket {
 			break
 		}
+		// Which quote are we matching, ' or "?
+		openQuoteChar := contents[openQuote]
 
 		contents = contents[openQuote+1:]
-		closeQuote := strings.Index(contents, "'")
+		closeQuote := strings.Index(contents, string(openQuoteChar))
 		if closeQuote == -1 {
 			// NB: silently failing here instead of throwing an error
 			break
