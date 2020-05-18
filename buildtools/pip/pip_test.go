@@ -31,4 +31,5 @@ func TestFromSetupPy(t *testing.T) {
 	assert.Contains(t, reqs, pip.Requirement{Name: "gteq", Constraints: []pip.Constraint{{Revision: "2.0.0", Operator: ">="}}})
 	assert.Contains(t, reqs, pip.Requirement{Name: "sameline", Constraints: []pip.Constraint{{Revision: "1.0.0", Operator: "=="}}})
 	assert.Contains(t, reqs, pip.Requirement{Name: "latest", Constraints: nil})
+	assert.Contains(t, reqs, pip.Requirement{Name: "with-double-quotes", Constraints: nil})
 }
