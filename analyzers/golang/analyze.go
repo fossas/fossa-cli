@@ -48,30 +48,33 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		return depGraph, nil
 	}
 
+	// Get project directory to search for lockfiles.
+	project, err := a.Project(a.Module.BuildTarget)
+
 	// 3. Check for gomodules.
-	if exists, err := files.Exists(filepath.Join(a.Module.Dir, "go.mod")); exists && err == nil {
+	if exists, err := files.Exists(filepath.Join(project.Dir, "go.mod")); exists && err == nil {
 		depGraph, err := gomodules.ModGraph("")
-		if returnGraph(filepath.Join(a.Module.Dir, "go.mod"), err, len(depGraph.Direct)) {
+		if returnGraph(filepath.Join(project.Dir, "go.mod"), err, len(depGraph.Direct)) {
 			return depGraph, nil
 		}
 	}
-	if exists, err := files.Exists(filepath.Join(a.Module.Dir, "go.sum")); exists && err == nil {
+	if exists, err := files.Exists(filepath.Join(project.Dir, "go.sum")); exists && err == nil {
 		depGraph, err := gomodules.SumGraph("")
-		if returnGraph(filepath.Join(a.Module.Dir, "go.sum"), err, len(depGraph.Direct)) {
+		if returnGraph(filepath.Join(project.Dir, "go.sum"), err, len(depGraph.Direct)) {
 			return depGraph, nil
 		}
 	}
 
 	// 4. Check for Dep.
-	if exists, err := files.Exists(filepath.Join(a.Module.Dir, "Gopkg.lock")); exists && err == nil {
+	if exists, err := files.Exists(filepath.Join(project.Dir, "Gopkg.lock")); exists && err == nil {
 		depGraph, err := dep.LockfileGraph("")
-		if returnGraph(filepath.Join(a.Module.Dir, "Gopkg.lock"), err, len(depGraph.Direct)) {
+		if returnGraph(filepath.Join(project.Dir, "Gopkg.lock"), err, len(depGraph.Direct)) {
 			return depGraph, nil
 		}
 	}
-	if exists, err := files.Exists(filepath.Join(a.Module.Dir, "Gopkg.toml")); exists && err == nil {
+	if exists, err := files.Exists(filepath.Join(project.Dir, "Gopkg.toml")); exists && err == nil {
 		depGraph, err := dep.ManifestGraph("")
-		if returnGraph(filepath.Join(a.Module.Dir, "Gopkg.toml"), err, len(depGraph.Direct)) {
+		if returnGraph(filepath.Join(project.Dir, "Gopkg.toml"), err, len(depGraph.Direct)) {
 			return depGraph, nil
 		}
 	}
@@ -94,7 +97,7 @@ func returnGraph(file string, err error, dependencyCount int) bool {
 
 func ListLockfileResolution(a *Analyzer) (graph.Deps, error) {
 	m := a.Module
-	log.Debugf("%#v", m)
+	log.Debugf("ListLockfileResolution module: %#v", m)
 	// Get Go project.
 	project, err := a.Project(m.BuildTarget)
 	if err != nil {
