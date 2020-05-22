@@ -33,13 +33,21 @@ extractNonEmptyFiles (Object obj) = do
     Array filesArray -> Just filesArray
     _ -> Nothing
 
-  let filtered = V.filter hasLicenses filesAsArray
+  let filtered = V.filter hasLicensesOrCopyrights filesAsArray
       hasLicenses :: Value -> Bool
       hasLicenses (Object file) =
         case HM.lookup "LicenseExpressions" file of
           Just (Object expressions) -> not (HM.null expressions)
           _ -> False
       hasLicenses _ = False
+      hasCopyrights :: Value -> Bool
+      hasCopyrights (Object file) =
+        case HM.lookup "Copyrights" file of
+          Just (Object expressions) -> not (HM.null expressions)
+          _ -> False
+      hasCopyrights _ = False
+      hasLicensesOrCopyrights :: Value -> Bool
+      hasLicensesOrCopyrights value = hasLicenses value || hasCopyrights value
 
   Just $ object ["Files" .= filtered]
 extractNonEmptyFiles _ = Nothing
