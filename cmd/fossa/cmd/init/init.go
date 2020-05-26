@@ -90,7 +90,7 @@ func Do(includeAll bool, options map[string]interface{}) ([]module.Module, error
 // test, or other modules that likely do not belong to the first party project being analyzed.
 func FilterSuspiciousModules(modules []module.Module) []module.Module {
 	var filtered []module.Module
-	suspicious := regexp.MustCompile(`docs?[/\\]|[Tt]est|examples?|vendor[/\\]|node_modules[/\\]|.srclib-cache[/\\]|spec[/\\]|Godeps[/\\]|.git[/\\]|bower_components[/\\]|third[_-]party[/\\]|tmp[/\\]|Carthage[/\\]Checkouts[/\\]`)
+	suspicious := regexp.MustCompile(`docs?[/\\]|[Tt]est|examples?|vendor[/\\]|site-packages[/\\]|node_modules[/\\]|.srclib-cache[/\\]|spec[/\\]|Godeps[/\\]|.git[/\\]|bower_components[/\\]|third[_-]party[/\\]|tmp[/\\]|Carthage[/\\]Checkouts[/\\]`)
 	for _, d := range modules {
 		log.Debugf("Discovered: %#v", d)
 
