@@ -75,7 +75,6 @@ analyze ::
   -> Maybe Text -- ^ cli override for revision
   -> m ()
 analyze basedir destination overrideName overrideRevision = do
-  setCurrentDir basedir
   capabilities <- liftIO getNumCapabilities
 
   (closures,(failures,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
