@@ -20,9 +20,8 @@ opts = info (commands <**> helper) (fullDesc <> header "vpscli -- FOSSA Vendored
 commands :: Parser (IO ())
 commands = hsubparser scanCommand
 
-
 vpsOpts :: Parser VPSOpts
-vpsOpts = VPSOpts <$> runSherlockOpts <*> runIPROpts <*> syOpts <*> organizationIDOpt <*> projectIDOpt <*> revisionIDOpt
+vpsOpts = VPSOpts <$> runSherlockOpts <*> optional runIPROpts <*> syOpts <*> organizationIDOpt <*> projectIDOpt <*> revisionIDOpt
             where
               organizationIDOpt = option auto (long "organization" <> metavar "orgID" <> help "Organization ID")
               projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
@@ -40,13 +39,16 @@ runSherlockOpts = SherlockOpts
                     sherlockClientTokenOpt = strOption(long "client-token" <> metavar "STRING" <> help "Client token for authentication to Sherlock")
                     sherlockClientIDOpt = strOption(long "client-id" <> metavar "STRING" <> help "Client ID for authentication to Sherlock")
 
+-- If all three of these options are provided, then we run an IPR scan
+-- If none of them are provided, then we skip the IPR scan
+-- Providing just some of the arguments will result in an error
 runIPROpts :: Parser RunIPR.IPROpts
 runIPROpts = RunIPR.IPROpts
                   <$> iprCmdPathOpt
                   <*> nomosCmdPathOpt
                   <*> pathfinderCmdPathOpt
                 where
-                    iprCmdPathOpt = strOption (long "ipr" <> metavar "STRING" <> help "Path to the IPR executable")
+                    iprCmdPathOpt =  strOption (long "ipr" <> metavar "STRING" <> help "Path to the IPR executable")
                     nomosCmdPathOpt = strOption (long "nomossa" <> metavar "STRING" <> help "Path to the nomossa executable")
                     pathfinderCmdPathOpt = strOption (long "pathfinder" <> metavar "STRING" <> help "Path to the pathfinder executable")
 

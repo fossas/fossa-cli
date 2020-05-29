@@ -20,7 +20,7 @@ data SherlockOpts = SherlockOpts
 
 data VPSOpts = VPSOpts
   { vpsSherlock :: SherlockOpts
-  , vpsIpr :: RunIPR.IPROpts
+  , vpsIpr :: Maybe RunIPR.IPROpts
   , vpsScotlandYard :: ScotlandYardOpts
   , organizationID :: Int
   , projectID :: Text

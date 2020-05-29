@@ -59,7 +59,10 @@ vpsScan basedir ScanCmdOpts{..} = do
   trace $ "Scan ID from Scotland yard is " ++ show scanId
   trace "[All] Running IPR and Sherlock scans in parallel"
   trace "[Sherlock] Starting Sherlock scan"
-  trace "[IPR] Starting IPR scan"
+  case vpsIpr of
+    Just _ -> trace "[IPR] Starting IPR scan"
+    Nothing -> trace "[IPR] IPR scan disabled"
+
   (iprResult, sherlockResult) <- liftIO $ concurrently
                 (runError @VPSError $ runIPR $ runScotlandYard $ runTrace $ runIPRScan basedir scanId vpsOpts)
                 (runError @VPSError $ runSherlock $ runTrace $ runSherlockScan basedir scanId vpsOpts)
@@ -83,13 +86,18 @@ runIPRScan ::
   , Has (Error VPSError) sig m
   , Has Trace sig m
   ) => Path Abs Dir ->  Text -> VPSOpts -> m ()
-runIPRScan basedir scanId vpsOpts@VPSOpts{..} = do
-  iprResult <- tagError IPRFailed =<< execIPR basedir vpsIpr
-  trace "[IPR] IPR scan completed. Posting results to Scotland Yard"
+runIPRScan basedir scanId vpsOpts@VPSOpts{..} =
+  case vpsIpr of
+    Just iprOpts -> do
+      iprResult <- tagError IPRFailed =<< execIPR basedir iprOpts
+      trace "[IPR] IPR scan completed. Posting results to Scotland Yard"
 
-  tagError Couldn'tUpload =<< uploadIPRResults vpsOpts scanId iprResult
-  trace "[IPR] Post to Scotland Yard complete"
-  trace "[IPR] IPR scan complete"
+      tagError Couldn'tUpload =<< uploadIPRResults vpsOpts scanId iprResult
+      trace "[IPR] Post to Scotland Yard complete"
+      trace "[IPR] IPR scan complete"
+    Nothing ->
+      trace "[IPR] IPR Scan disabled"
+
 
 validateDir :: FilePath -> IO (Path Abs Dir)
 validateDir dir = do

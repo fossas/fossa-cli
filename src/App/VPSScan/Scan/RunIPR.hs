@@ -79,11 +79,11 @@ instance (Algebra sig m, MonadIO m) => Algebra (IPR :+: sig) (IPRC m) where
 
       maybeValue <- runError @ExecErr $ runExecIO $ execJson basedir iprCommand $ iprCmdArgs basedir opts
       let result = case maybeValue of
-            Left err -> (Left (IPRCommandFailed (T.pack (show err))))
+            Left err -> Left (IPRCommandFailed (T.pack (show err)))
             Right value -> do
               let maybeExtracted = extractNonEmptyFiles value
               case maybeExtracted of
-                Nothing -> (Left NoFilesEntryInOutput)
-                Just extracted -> (Right extracted)
+                Nothing -> Left NoFilesEntryInOutput
+                Just extracted -> Right extracted
 
       pure (result <$ ctx)
