@@ -1,6 +1,6 @@
 {-# language TemplateHaskell #-}
-module Carthage.CarthageTest
-  ( spec_analyze
+module Carthage.CarthageSpec
+  ( spec
   ) where
 
 import Prologue
@@ -11,7 +11,7 @@ import qualified Graphing as G
 import GraphUtil
 import Strategy.Carthage
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
 testProjectEmpty :: Path Rel File
 testProjectEmpty = $(mkRelFile "test/Carthage/testdata/testempty/Cartfile.resolved")
@@ -19,8 +19,8 @@ testProjectEmpty = $(mkRelFile "test/Carthage/testdata/testempty/Cartfile.resolv
 testProjectComplex :: Path Rel File
 testProjectComplex = $(mkRelFile "test/Carthage/testdata/testproject/Cartfile.resolved")
 
-spec_analyze :: Spec
-spec_analyze = do
+spec :: Spec
+spec = do
   let runIt f = analyze f
         & runReadFSIO
         & runError @ReadFSErr

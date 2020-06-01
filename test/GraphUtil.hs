@@ -5,7 +5,7 @@ module GraphUtil
   ) where
 
 import Prologue
-import Test.Tasty.Hspec
+import Test.Hspec
 
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Algebra.Graph.ToGraph (vertexSet)

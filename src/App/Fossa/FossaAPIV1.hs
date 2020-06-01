@@ -250,6 +250,7 @@ renderIssueType = \case
 
 data Issue = Issue
   { issueId :: Int
+  , issuePriorityString :: Maybe Text -- we only use this field for `fossa test --json`
   , issueResolved :: Bool
   , issueRevisionId :: Text
   , issueType :: IssueType
@@ -266,13 +267,31 @@ instance FromJSON Issues where
            <*> obj .: "issues"
            <*> obj .: "status"
 
+instance ToJSON Issues where
+  toJSON Issues{..} = object
+    [ "count" .= issuesCount
+    , "issues" .= issuesIssues
+    , "status" .= issuesStatus
+    ]
+
 instance FromJSON Issue where
   parseJSON = withObject "Issue" $ \obj ->
     Issue <$> obj .: "id"
+           <*> obj .:? "priorityString"
            <*> obj .: "resolved"
            <*> obj .: "revisionId"
            <*> obj .: "type"
            <*> obj .:? "rule"
+
+instance ToJSON Issue where
+  toJSON Issue{..} = object
+    [ "id" .= issueId
+    , "priorityString" .= issuePriorityString
+    , "resolved" .= issueResolved
+    , "revisionId" .= issueRevisionId
+    , "type" .= issueType
+    , "rule" .= issueRule
+    ]
 
 instance FromJSON IssueType where
   parseJSON = withText "IssueType" $ \case
@@ -283,9 +302,21 @@ instance FromJSON IssueType where
     "outdated_dependency" -> pure IssueOutdatedDependency
     other -> pure (IssueOther other)
 
+instance ToJSON IssueType where
+  toJSON = String . \case
+    IssuePolicyConflict -> "policy_conflict"
+    IssuePolicyFlag -> "policy_flag"
+    IssueVulnerability -> "vulnerability"
+    IssueUnlicensedDependency -> "unlicensed_dependency"
+    IssueOutdatedDependency -> "outdated_dependency"
+    IssueOther text -> text
+
 instance FromJSON IssueRule where
   parseJSON = withObject "IssueRule" $ \obj ->
     IssueRule <$> obj .:? "licenseId"
+
+instance ToJSON IssueRule where
+  toJSON IssueRule{..} = object ["licenseId" .= ruleLicenseId]
 
 ----------
 

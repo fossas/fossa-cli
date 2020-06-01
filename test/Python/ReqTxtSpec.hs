@@ -1,7 +1,7 @@
 {-# language QuasiQuotes #-}
 
-module Python.ReqTxtTest
-  ( spec_analyze
+module Python.ReqTxtSpec
+  ( spec
   ) where
 
 import Prologue
@@ -14,7 +14,7 @@ import Effect.Grapher
 import Graphing (Graphing)
 import Strategy.Python.Util
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
 setupPyInput :: [Req]
 setupPyInput =
@@ -51,8 +51,8 @@ expected = run . evalGrapher $ do
                       , dependencyTags = M.empty
                       }
 
-spec_analyze :: Spec
-spec_analyze =
+spec :: Spec
+spec =
   describe "analyze" $
     it "should produce expected output" $ do
       let result = buildGraph setupPyInput

@@ -1,6 +1,5 @@
-module Cargo.MetadataTest
-  ( spec_parse
-  , spec_graph
+module Cargo.MetadataSpec
+  ( spec
   ) where
 
 import Prologue
@@ -14,8 +13,7 @@ import Graphing
 import GraphUtil
 import Strategy.Cargo
 
-import qualified Test.Tasty.Hspec as Test
-
+import qualified Test.Hspec as Test
 
 expectedMetadata :: CargoMetadata
 expectedMetadata = CargoMetadata [] [jfmtId] $ Resolve expectedResolveNodes
@@ -59,8 +57,8 @@ jfmtNode = ResolveNode jfmtId [NodeDependency clapId [nullKind]]
 nullKind :: NodeDepKind
 nullKind = NodeDepKind Nothing Nothing
 
-spec_parse :: Test.Spec
-spec_parse = 
+spec :: Test.Spec
+spec = do
   Test.describe "cargo metadata parser" $ do
     metaBytes <- Test.runIO $ BL.readFile "test/Cargo/testdata/expected-metadata.json"
     Test.it "should properly construct a resolution tree" $ 
@@ -68,8 +66,6 @@ spec_parse =
         Left err -> Test.expectationFailure $ "failed to parse: " ++ err
         Right result -> result `Test.shouldBe` expectedMetadata
 
-spec_graph :: Test.Spec
-spec_graph = 
   Test.describe "cargo metadata graph" $ do
     let graph = pruneUnreachable $ buildGraph expectedMetadata
 

@@ -1,6 +1,5 @@
-module Go.GomodTest
-  ( spec_gomodBuildGraph
-  , spec_gomodParse
+module Go.GomodSpec
+  ( spec
   ) where
 
 import Prologue
@@ -17,7 +16,7 @@ import Strategy.Go.Gomod
 import Strategy.Go.Types (graphingGolang)
 
 import Test.Hspec.Megaparsec
-import Test.Tasty.Hspec
+import Test.Hspec
 
 gomod :: Gomod
 gomod = Gomod
@@ -57,16 +56,21 @@ expected = run . evalGrapher $ do
              , dependencyTags = M.empty
              }
 
-spec_gomodBuildGraph :: Spec
-spec_gomodBuildGraph =
+spec :: Spec
+spec = do
+  spec_buildGraph
+  spec_parse
+ 
+spec_buildGraph :: Spec
+spec_buildGraph =
   describe "buildGraph" $
     it "should produce expected output" $ do
       let result = buildGraph gomod & graphingGolang & run
 
       result `shouldBe` expected
 
-spec_gomodParse :: Spec
-spec_gomodParse = do
+spec_parse :: Spec
+spec_parse = do
   trivialInput <- runIO (TIO.readFile "test/Go/testdata/go.mod.trivial")
   edgecaseInput <- runIO (TIO.readFile "test/Go/testdata/go.mod.edgecases")
 

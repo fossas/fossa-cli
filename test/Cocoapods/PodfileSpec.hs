@@ -1,5 +1,5 @@
-module Cocoapods.PodfileTest
-  ( spec_analyze
+module Cocoapods.PodfileSpec
+  ( spec
   ) where
 
 import Prologue
@@ -12,7 +12,7 @@ import DepTypes
 import Strategy.Cocoapods.Podfile
 import GraphUtil
 
-import qualified Test.Tasty.Hspec as T
+import qualified Test.Hspec as T
 
 dependencyOne :: Dependency
 dependencyOne = Dependency { dependencyType = PodType
@@ -68,8 +68,8 @@ testPods = [podOne, podTwo, podThree, podFour]
 testPodfile :: Podfile
 testPodfile = Podfile testPods "test.repo"
 
-spec_analyze :: T.Spec
-spec_analyze = do
+spec :: T.Spec
+spec = do
   T.describe "podfile analyzer" $
     T.it "produces the expected output" $ do
       let graph = buildGraph testPodfile

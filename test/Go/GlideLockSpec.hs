@@ -1,5 +1,5 @@
-module Go.GlideLockTest
-  ( spec_analyze
+module Go.GlideLockSpec
+  ( spec
   ) where
 
 import Prologue
@@ -14,7 +14,7 @@ import Effect.Grapher
 import Graphing (Graphing)
 import Strategy.Go.GlideLock
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
 expected :: Graphing Dependency
 expected = run . evalGrapher $ do
@@ -53,8 +53,8 @@ glideLockfile =
   ]
   }
 
-spec_analyze :: Spec
-spec_analyze = do
+spec :: Spec
+spec = do
   testFile <- runIO (BS.readFile "test/Go/testdata/glide.lock")
 
   describe "glide lock analyzer" $ do

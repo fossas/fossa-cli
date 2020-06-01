@@ -1,5 +1,5 @@
-module Ruby.BundleShowTest
-  ( spec_analyze
+module Ruby.BundleShowSpec
+  ( spec
   ) where
 
 import Prologue
@@ -13,7 +13,7 @@ import Effect.Grapher
 import Graphing (Graphing)
 import Strategy.Ruby.BundleShow
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
 expected :: Graphing Dependency
 expected = run . evalGrapher $ do
@@ -44,8 +44,8 @@ bundleShowOutput =
     }
   ]
 
-spec_analyze :: Spec
-spec_analyze = do
+spec :: Spec
+spec = do
   contents <- runIO (TIO.readFile "test/Ruby/testdata/bundleShow")
   complexShow <- runIO (TIO.readFile "test/Ruby/testdata/bundleShowComplex")
   emptyShow <- runIO (TIO.readFile "test/Ruby/testdata/bundleShowEmpty")

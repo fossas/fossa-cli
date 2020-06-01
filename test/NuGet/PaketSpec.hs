@@ -1,5 +1,5 @@
-module NuGet.PaketTest
-  ( spec_analyze
+module NuGet.PaketSpec
+  ( spec
   ) where
 
 import Prologue
@@ -12,7 +12,7 @@ import DepTypes
 import Strategy.NuGet.Paket
 import GraphUtil
 
-import qualified Test.Tasty.Hspec as T
+import qualified Test.Hspec as T
 
 dependencyOne :: Dependency
 dependencyOne = Dependency { dependencyType = NuGetType
@@ -91,8 +91,8 @@ groupSection = GroupSection "TEST" [ StandardSection "NUGET" [nugetGroupRemote],
 paketLockSections :: [Section]
 paketLockSections = [nugetSection, httpSection, groupSection]
 
-spec_analyze :: T.Spec
-spec_analyze = do
+spec :: T.Spec
+spec = do
   T.describe "paket lock analyzer" $
     T.it "produces the expected output" $ do
       let graph = buildGraph paketLockSections

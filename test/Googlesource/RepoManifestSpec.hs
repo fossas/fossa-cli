@@ -1,8 +1,8 @@
 {-# language TemplateHaskell #-}
 {-# language QuasiQuotes #-}
 
-module Googlesource.RepoManifestTest
-  ( spec_analyze
+module Googlesource.RepoManifestSpec
+  ( spec
   ) where
 
 import Prologue
@@ -14,7 +14,7 @@ import GraphUtil
 import DepTypes
 import Parse.XML
 import Strategy.Googlesource.RepoManifest
-import Test.Tasty.Hspec
+import Test.Hspec
 import Text.URI.QQ
 import Effect.ReadFS
 import Control.Carrier.Error.Either
@@ -174,8 +174,8 @@ validatedProjectFive = ValidatedProject { validatedProjectName = "platform/dalvi
 validatedProjectList :: [ValidatedProject]
 validatedProjectList = [validatedProjectOne, validatedProjectTwo, validatedProjectThree, validatedProjectFour, validatedProjectFive]
 
-spec_analyze :: Spec
-spec_analyze = do
+spec :: Spec
+spec = do
   let runIt = runIO . runFail . runError @ReadFSErr . runError @ManifestGitConfigError . runReadFSIO
   basicManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest.xml")
   noDefaultRemoteManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-remote.xml")

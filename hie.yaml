@@ -5,4 +5,4 @@ cradle:
     - path: "./src"
       component: "lib:spectrometer"
     - path: "./test"
-      component: "test:tests"
+      component: "test:unit-tests"

@@ -1,6 +1,7 @@
 
 module App.Fossa.Test
   ( testMain
+  , TestOutputType(..)
   ) where
 
 import Prologue
@@ -19,19 +20,26 @@ import Path.IO
 import System.IO (stderr)
 import System.Exit (exitSuccess, exitFailure)
 import OptionExtensions
+import qualified Data.Aeson as Aeson
+import Data.Text.Lazy.Encoding (decodeUtf8)
 
 pollDelaySeconds :: Int
 pollDelaySeconds = 8
+
+data TestOutputType
+  = TestOutputPretty -- ^ pretty output format for issues
+  | TestOutputJson -- ^ use json output for issues
 
 testMain
   :: UrlOption -- ^ api base url
   -> Text -- ^ api key
   -> Severity
   -> Int -- ^ timeout (seconds)
+  -> TestOutputType
   -> Maybe Text -- ^ cli override for name
   -> Maybe Text -- ^ cli override for revision
   -> IO ()
-testMain baseurl apiKey logSeverity timeoutSeconds overrideName overrideRevision= do
+testMain baseurl apiKey logSeverity timeoutSeconds outputType overrideName overrideRevision= do
   basedir <- getCurrentDir
 
   void $ timeout timeoutSeconds $ withLogger logSeverity $ do
@@ -56,7 +64,9 @@ testMain baseurl apiKey logSeverity timeoutSeconds overrideName overrideRevision
       if null (Fossa.issuesIssues issues)
         then logInfo "Test passed! 0 issues found"
         else do
-          logError (renderedIssues issues)
+          case outputType of
+            TestOutputPretty -> logError (renderedIssues issues)
+            TestOutputJson -> logStdout . pretty . decodeUtf8 . Aeson.encode $ issues
           liftIO exitFailure
 
     case result of

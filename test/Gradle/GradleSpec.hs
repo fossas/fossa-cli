@@ -1,5 +1,5 @@
-module Gradle.GradleTest
-  ( spec_buildGraph
+module Gradle.GradleSpec
+  ( spec
   ) where
 
 import Prologue hiding (empty)
@@ -11,7 +11,7 @@ import Graphing (Graphing, empty)
 import Strategy.Gradle (JsonDep(..), buildGraph)
 
 import GraphUtil
-import Test.Tasty.Hspec
+import Test.Hspec
 
 projectOne :: Dependency
 projectOne = Dependency
@@ -70,8 +70,8 @@ gradleOutput = M.fromList
   , (":projectThree", [PackageDep "mygroup:packageTwo" "2.0.0" []])
   ]
 
-spec_buildGraph :: Spec
-spec_buildGraph = do
+spec :: Spec
+spec = do
   describe "buildGraph" $ do
     it "should produce an empty graph for empty input" $ do
       let graph = buildGraph M.empty

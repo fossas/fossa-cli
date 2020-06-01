@@ -1,5 +1,5 @@
-module Cocoapods.PodfileLockTest
-  ( spec_analyze
+module Cocoapods.PodfileLockSpec
+  ( spec
   ) where
 
 import Prologue
@@ -12,7 +12,7 @@ import DepTypes
 import Strategy.Cocoapods.PodfileLock
 import GraphUtil
 
-import qualified Test.Tasty.Hspec as T
+import qualified Test.Hspec as T
 
 dependencyOne :: Dependency
 dependencyOne = Dependency { dependencyType = PodType
@@ -56,8 +56,8 @@ podSection = PodSection [Pod "one" "1.0.0" [Dep "two", Dep "three"], Pod "two" "
 dependencySection :: Section
 dependencySection = DependencySection [Dep "one", Dep "three"]
 
-spec_analyze :: T.Spec
-spec_analyze = do
+spec :: T.Spec
+spec = do
   T.describe "podfile lock analyzer" $
     T.it "produces the expected output" $ do
       let graph = buildGraph [podSection, dependencySection]

@@ -1,43 +1,41 @@
-
 module App.Fossa.Main
-  ( appMain
-  ) where
+  ( appMain,
+  )
+where
 
-import Prologue
-
-import App.Fossa.Analyze (analyzeMain, ScanDestination(..))
-import App.Fossa.FossaAPIV1 (ProjectMetadata(..))
-import App.Fossa.Test (testMain)
+import App.Fossa.Analyze (ScanDestination (..), analyzeMain)
+import App.Fossa.FossaAPIV1 (ProjectMetadata (..))
+import App.Fossa.Test (TestOutputType (..), testMain)
+import qualified Data.Text as T
+import Network.HTTP.Req (https)
+import OptionExtensions
 import Effect.Logger
 import Options.Applicative
-import Path.IO (resolveDir', doesDirExist, setCurrentDir)
+import Path.IO (doesDirExist, resolveDir', setCurrentDir)
+import Prologue
 import System.Environment (lookupEnv)
 import System.Exit (die)
-import qualified Data.Text as T
-import OptionExtensions
-import Network.HTTP.Req (https)
 
 appMain :: IO ()
 appMain = do
-  CmdOptions{..} <- customExecParser (prefs (showHelpOnError <> subparserInline)) (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
+  CmdOptions {..} <- customExecParser (prefs (showHelpOnError <> subparserInline)) (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
   let logSeverity = bool SevInfo SevDebug optDebug
 
   maybeApiKey <- checkAPIKey optAPIKey
 
   case optCommand of
-    AnalyzeCommand AnalyzeOptions{..} -> do
+    AnalyzeCommand AnalyzeOptions {..} -> do
       changeDir analyzeBaseDir
       if analyzeOutput
         then analyzeMain logSeverity OutputStdout optProjectName optProjectRevision
         else case maybeApiKey of
           Nothing -> die "A FOSSA API key is required to run this command"
           Just key -> analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) optProjectName optProjectRevision
-
-    TestCommand TestOptions{..} -> do
+    TestCommand TestOptions {..} -> do
       changeDir testBaseDir
       case maybeApiKey of
         Nothing -> die "A FOSSA API key is required to run this command"
-        Just key -> testMain optBaseUrl key logSeverity testTimeout optProjectName optProjectRevision
+        Just key -> testMain optBaseUrl key logSeverity testTimeout testOutputType optProjectName optProjectRevision
 
 changeDir :: FilePath -> IO ()
 changeDir path = validateDir path >>= setCurrentDir
@@ -70,23 +68,26 @@ opts =
     <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authenticaion key (default: FOSSA_API_KEY from env)"))
     <*> comm
     <**> helper
-    where
-      baseUrl = https "app.fossa.com"
-      urlOpts = UrlOption baseUrl mempty
+  where
+    baseUrl = https "app.fossa.com"
+    urlOpts = UrlOption baseUrl mempty
 
 comm :: Parser Command
-comm = hsubparser
-  ( command "analyze"
-    ( info
-        (AnalyzeCommand <$> analyzeOpts)
-        (progDesc "Scan for projects and their dependencies")
+comm =
+  hsubparser
+    ( command
+        "analyze"
+        ( info
+            (AnalyzeCommand <$> analyzeOpts)
+            (progDesc "Scan for projects and their dependencies")
+        )
+        <> command
+          "test"
+          ( info
+              (TestCommand <$> testOpts)
+              (progDesc "Check for issues from FOSSA and exit non-zero when issues are found")
+          )
     )
-  <> command "test"
-    ( info
-        (TestCommand <$> testOpts)
-        (progDesc "Check for issues from FOSSA and exit non-zero when issues are found")
-    )
-  )
 
 analyzeOpts :: Parser AnalyzeOptions
 analyzeOpts =
@@ -110,15 +111,16 @@ testOpts :: Parser TestOptions
 testOpts =
   TestOptions
     <$> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
+    <*> flag TestOutputPretty TestOutputJson (long "json" <> help "Output issues as json")
     <*> baseDirArg
 
 data CmdOptions = CmdOptions
-  { optDebug   :: Bool
-  , optBaseUrl :: UrlOption
-  , optProjectName :: Maybe Text
-  , optProjectRevision :: Maybe Text
-  , optAPIKey :: Maybe Text
-  , optCommand :: Command
+  { optDebug :: Bool,
+    optBaseUrl :: UrlOption,
+    optProjectName :: Maybe Text,
+    optProjectRevision :: Maybe Text,
+    optAPIKey :: Maybe Text,
+    optCommand :: Command
   }
 
 data Command
@@ -126,12 +128,13 @@ data Command
   | TestCommand TestOptions
 
 data AnalyzeOptions = AnalyzeOptions
-  { analyzeOutput :: Bool
-  , analyzeMetadata :: ProjectMetadata
-  , analyzeBaseDir :: FilePath
+  { analyzeOutput :: Bool,
+    analyzeMetadata :: ProjectMetadata,
+    analyzeBaseDir :: FilePath
   }
 
 data TestOptions = TestOptions
-  { testTimeout :: Int
-  , testBaseDir :: FilePath
+  { testTimeout :: Int,
+    testOutputType :: TestOutputType,
+    testBaseDir :: FilePath
   }

@@ -1,5 +1,5 @@
-module Node.PackageJsonTest
-  ( spec_packageJsonBuildGraph
+module Node.PackageJsonSpec
+  ( spec
   ) where
 
 import Prologue
@@ -10,7 +10,7 @@ import DepTypes
 import Strategy.Node.PackageJson
 
 import GraphUtil
-import Test.Tasty.Hspec
+import Test.Hspec
 
 mockInput :: PackageJson
 mockInput = PackageJson
@@ -38,8 +38,8 @@ packageTwo = Dependency
   , dependencyTags = M.empty
   }
 
-spec_packageJsonBuildGraph :: Spec
-spec_packageJsonBuildGraph = do
+spec :: Spec
+spec = do
   describe "buildGraph" $ do
     it "should produce expected output" $ do
       let graph = buildGraph mockInput

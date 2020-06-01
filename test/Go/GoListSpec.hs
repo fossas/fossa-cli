@@ -1,7 +1,7 @@
 {-# language TemplateHaskell #-}
 
-module Go.GoListTest
-  ( spec_analyze
+module Go.GoListSpec
+  ( spec
   ) where
 
 import Prologue
@@ -19,7 +19,7 @@ import Graphing (Graphing(..))
 import Strategy.Go.GoList
 import Types
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
 runConstExec :: BL.ByteString -> ConstExecC m a -> m a
 runConstExec output = runReader output . runConstExecC
@@ -54,8 +54,8 @@ expected = run . evalGrapher $ do
 testdir :: Path Rel Dir
 testdir = $(mkRelDir ".")
 
-spec_analyze :: Spec
-spec_analyze = do
+spec :: Spec
+spec = do
   outputTrivial <- runIO (BL.readFile "test/Go/testdata/golist-stdout.trivial")
   outputComplex <- runIO (BL.readFile "test/Go/testdata/golist-stdout.complex")
 

@@ -1,5 +1,5 @@
-module NuGet.PackagesConfigTest
-  ( spec_analyze
+module NuGet.PackagesConfigSpec
+  ( spec
   ) where
 
 import Prologue
@@ -11,7 +11,7 @@ import DepTypes
 import GraphUtil
 import Strategy.NuGet.PackagesConfig
 import Parse.XML
-import Test.Tasty.Hspec
+import Test.Hspec
 
 dependencyOne :: Dependency
 dependencyOne = Dependency { dependencyType = NuGetType
@@ -37,8 +37,8 @@ packagesConfig = PackagesConfig depList
 depList :: [NuGetDependency]
 depList = [NuGetDependency "one" "1.0.0", NuGetDependency "two" "2.0.0"]
 
-spec_analyze :: Spec
-spec_analyze = do
+spec :: Spec
+spec = do
   nuspecFile <- runIO (TIO.readFile "test/NuGet/testdata/packages.config")
 
   describe "packages.config analyzer" $ do

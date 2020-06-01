@@ -1,5 +1,5 @@
-module Maven.PluginStrategyTest
-  ( spec_mavenBuildGraph
+module Maven.PluginStrategySpec
+  ( spec
   ) where
 
 import Prologue
@@ -11,7 +11,7 @@ import Strategy.Maven.Plugin
 import Strategy.Maven.PluginStrategy
 
 import GraphUtil
-import Test.Tasty.Hspec
+import Test.Hspec
 
 packageOne :: Dependency
 packageOne = Dependency
@@ -61,8 +61,8 @@ mavenOutput = PluginOutput
     ]
   }
 
-spec_mavenBuildGraph :: Spec
-spec_mavenBuildGraph = do
+spec :: Spec
+spec = do
   describe "buildGraph" $ do
     it "should produce expected output" $ do
       let graph = buildGraph mavenOutput

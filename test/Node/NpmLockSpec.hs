@@ -1,5 +1,5 @@
-module Node.NpmLockTest
-  ( spec_npmLockBuildGraph
+module Node.NpmLockSpec
+  ( spec
   ) where
 
 import Prologue
@@ -10,7 +10,7 @@ import DepTypes
 import Strategy.Node.NpmLock
 
 import GraphUtil
-import Test.Tasty.Hspec
+import Test.Hspec
 
 mockInput :: NpmPackageJson
 mockInput = NpmPackageJson
@@ -72,8 +72,8 @@ packageThree = Dependency
   , dependencyTags = M.empty
   }
 
-spec_npmLockBuildGraph :: Spec
-spec_npmLockBuildGraph = do
+spec :: Spec
+spec = do
   describe "buildGraph" $ do
     it "should produce expected output" $ do
       let graph = buildGraph mockInput

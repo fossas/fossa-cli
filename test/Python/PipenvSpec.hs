@@ -1,5 +1,5 @@
-module Python.PipenvTest
-  ( spec_analyze
+module Python.PipenvSpec
+  ( spec
   ) where
 
 import Prologue
@@ -10,7 +10,7 @@ import DepTypes
 import Strategy.Python.Pipenv
 
 import GraphUtil
-import Test.Tasty.Hspec hiding (xit)
+import Test.Hspec hiding (xit)
 
 pipfileLock :: PipfileLock
 pipfileLock = PipfileLock
@@ -89,8 +89,8 @@ depThree = Dependency
 xit :: String -> Expectation -> SpecWith (Arg Expectation)
 xit _ _ = it "is an ignored test" $ () `shouldBe` ()
 
-spec_analyze :: Spec
-spec_analyze = do
+spec :: Spec
+spec = do
   describe "analyzeWithCmd" $
     -- FIXME: graphing needs to be refactored to include "reachable" alongside "direct"
     xit "should use pipenv output for edges and tags" $ do

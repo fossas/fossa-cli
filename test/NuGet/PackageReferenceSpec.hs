@@ -1,7 +1,7 @@
 {-# language TemplateHaskell #-}
 
-module NuGet.PackageReferenceTest
-  ( spec_analyze
+module NuGet.PackageReferenceSpec
+  ( spec
   ) where
 
 import Prologue
@@ -13,7 +13,7 @@ import DepTypes
 import GraphUtil
 import Parse.XML
 import Strategy.NuGet.PackageReference
-import Test.Tasty.Hspec
+import Test.Hspec
 
 dependencyOne :: Dependency
 dependencyOne = Dependency { dependencyType = NuGetType
@@ -69,8 +69,8 @@ refThree = Package "three" $ Just "3.0.0"
 refFour :: Package
 refFour = Package "four" Nothing
 
-spec_analyze :: Spec
-spec_analyze = do
+spec :: Spec
+spec = do
   refFile <- runIO (TIO.readFile "test/NuGet/testdata/test.csproj")
 
   describe "Package Reference parser" $ do

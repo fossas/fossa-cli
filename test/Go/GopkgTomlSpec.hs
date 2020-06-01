@@ -1,8 +1,7 @@
 {-# language TemplateHaskell #-}
 
-module Go.GopkgTomlTest
-  ( spec_analyze
-  , spec_buildGraph
+module Go.GopkgTomlSpec
+  ( spec
   ) where
 
 import Prologue
@@ -17,7 +16,7 @@ import Strategy.Go.GopkgToml
 import Strategy.Go.Types (graphingGolang)
 import qualified Toml
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
 gopkg :: Gopkg
 gopkg = Gopkg
@@ -97,8 +96,8 @@ expected = run . evalGrapher $ do
              , dependencyTags = M.empty
              }
 
-spec_analyze :: Spec
-spec_analyze = do
+spec :: Spec
+spec = do
   contents <- runIO (TIO.readFile "test/Go/testdata/Gopkg.toml")
 
   describe "analyze" $
@@ -109,8 +108,6 @@ spec_analyze = do
           let result = buildGraph pkg & graphingGolang & run
           result `shouldBe` expected
 
-spec_buildGraph :: Spec
-spec_buildGraph = do
   describe "buildGraph" $
     it "should produce expected output" $ do
       let result = buildGraph gopkg & graphingGolang & run

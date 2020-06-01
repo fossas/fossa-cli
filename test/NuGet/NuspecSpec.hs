@@ -1,7 +1,7 @@
 {-# language TemplateHaskell #-}
 
-module NuGet.NuspecTest
-  ( spec_analyze
+module NuGet.NuspecSpec
+  ( spec
   ) where
 
 import Prologue
@@ -13,7 +13,7 @@ import DepTypes
 import GraphUtil
 import Parse.XML
 import Strategy.NuGet.Nuspec
-import Test.Tasty.Hspec
+import Test.Hspec
 
 dependencyOne :: Dependency
 dependencyOne = Dependency { dependencyType = NuGetType
@@ -60,8 +60,8 @@ depTwo = NuGetDependency "two" "2.0.0"
 depThree :: NuGetDependency
 depThree = NuGetDependency "three" "3.0.0"
 
-spec_analyze :: Spec
-spec_analyze = do
+spec :: Spec
+spec = do
   dependenciesAndLicense <- runIO (TIO.readFile "test/NuGet/testdata/nuspec/test.nuspec")
   singleLicense <- runIO (TIO.readFile "test/NuGet/testdata/nuspec/license.nuspec")
   multipleLicenses <- runIO (TIO.readFile "test/NuGet/testdata/nuspec/multiple-licenses.nuspec")

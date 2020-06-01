@@ -1,5 +1,5 @@
-module Python.PipListTest
-  ( spec_analyze
+module Python.PipListSpec
+  ( spec
   ) where
 
 import Prologue
@@ -11,7 +11,7 @@ import Effect.Grapher
 import Graphing (Graphing)
 import Strategy.Python.PipList
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
 expected :: Graphing Dependency
 expected = run . evalGrapher $ do
@@ -42,8 +42,8 @@ pipListOutput =
     }
   ]
 
-spec_analyze :: Spec
-spec_analyze =
+spec :: Spec
+spec =
   describe "analyze" $
     it "produces the expected output" $ do
       let result = buildGraph pipListOutput

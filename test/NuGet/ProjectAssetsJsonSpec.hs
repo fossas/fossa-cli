@@ -1,7 +1,7 @@
 {-# language TemplateHaskell #-}
 
-module NuGet.ProjectAssetsJsonTest
-  ( spec_analyze
+module NuGet.ProjectAssetsJsonSpec
+  ( spec
   ) where
 
 import Prologue
@@ -14,7 +14,7 @@ import GraphUtil
 
 import Strategy.NuGet.ProjectAssetsJson
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
 dependencyOne :: Dependency
 dependencyOne = Dependency { dependencyType = NuGetType
@@ -52,8 +52,8 @@ dependencyFour = Dependency { dependencyType = NuGetType
                         , dependencyTags = M.empty
                         }
 
-spec_analyze :: Spec
-spec_analyze = do
+spec :: Spec
+spec = do
   testFile <- runIO (BS.readFile "test/NuGet/testdata/project.assets.json")
 
   describe "project.assets.json analyzer" $ do

@@ -1,5 +1,5 @@
-module Clojure.ClojureTest
-  ( spec_buildGraph,
+module Clojure.ClojureSpec
+  ( spec,
   )
 where
 
@@ -10,10 +10,10 @@ import DepTypes
 import GraphUtil
 import Prologue
 import Strategy.Clojure
-import Test.Tasty.Hspec
+import Test.Hspec
 
-spec_buildGraph :: Spec
-spec_buildGraph = do
+spec :: Spec
+spec = do
   describe "clojure analyzer" $ do
     stdout <- runIO $ TIO.readFile "test/Clojure/testdata/lein-deps-stdout.txt"
     it "should work for an example output" $ do

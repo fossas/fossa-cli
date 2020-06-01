@@ -1,8 +1,7 @@
 {-# language TemplateHaskell #-}
 
-module Go.GopkgLockTest
-  ( spec_analyze
-  , spec_buildGraph
+module Go.GopkgLockSpec
+  ( spec
   ) where
 
 import Prologue
@@ -17,7 +16,7 @@ import Graphing (Graphing)
 import Strategy.Go.GopkgLock
 import Strategy.Go.Types (graphingGolang)
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
 projects :: [Project]
 projects =
@@ -65,8 +64,8 @@ expected = run . evalGrapher $ do
              , dependencyTags = M.empty
              }
 
-spec_analyze :: Spec
-spec_analyze = do
+spec :: Spec
+spec = do
   contents <- runIO (TIO.readFile "test/Go/testdata/Gopkg.lock")
 
   describe "analyze" $
@@ -77,8 +76,6 @@ spec_analyze = do
           let result = buildGraph (lockProjects golock) & graphingGolang & run
           result `shouldBe` expected
 
-spec_buildGraph :: Spec
-spec_buildGraph = do
   describe "buildGraph" $
     it "should produce expected output" $ do
       let result = buildGraph projects & graphingGolang & run

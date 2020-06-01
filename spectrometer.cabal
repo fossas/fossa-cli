@@ -188,7 +188,7 @@ executable vpscli
   build-depends:  spectrometer
   ghc-options:    -threaded -with-rtsopts=-N
 
-test-suite tests
+test-suite unit-tests
   import:             lang
   import:             deps
   type:               exitcode-stdio-1.0
@@ -197,39 +197,41 @@ test-suite tests
 
   -- cabal-fmt: expand test
   other-modules:
-    Cargo.MetadataTest
-    Carthage.CarthageTest
-    Clojure.ClojureTest
-    Cocoapods.PodfileLockTest
-    Cocoapods.PodfileTest
-    Go.GlideLockTest
-    Go.GoListTest
-    Go.GomodTest
-    Go.GopkgLockTest
-    Go.GopkgTomlTest
-    Googlesource.RepoManifestTest
-    Gradle.GradleTest
+    App.Fossa.FossaAPIV1Spec
+    Cargo.MetadataSpec
+    Carthage.CarthageSpec
+    Clojure.ClojureSpec
+    Cocoapods.PodfileLockSpec
+    Cocoapods.PodfileSpec
+    Go.GlideLockSpec
+    Go.GoListSpec
+    Go.GomodSpec
+    Go.GopkgLockSpec
+    Go.GopkgTomlSpec
+    Googlesource.RepoManifestSpec
+    Gradle.GradleSpec
     GraphUtil
-    Maven.PluginStrategyTest
-    Node.NpmLockTest
-    Node.PackageJsonTest
-    NuGet.NuspecTest
-    NuGet.PackageReferenceTest
-    NuGet.PackagesConfigTest
-    NuGet.PaketTest
-    NuGet.ProjectAssetsJsonTest
-    NuGet.ProjectJsonTest
-    Python.PipListTest
-    Python.PipenvTest
-    Python.ReqTxtTest
-    Python.RequirementsTest
-    Python.SetupPyTest
-    Ruby.BundleShowTest
-    Ruby.GemfileLockTest
+    Maven.PluginStrategySpec
+    Node.NpmLockSpec
+    Node.PackageJsonSpec
+    NuGet.NuspecSpec
+    NuGet.PackageReferenceSpec
+    NuGet.PackagesConfigSpec
+    NuGet.PaketSpec
+    NuGet.ProjectAssetsJsonSpec
+    NuGet.ProjectJsonSpec
+    Python.PipListSpec
+    Python.PipenvSpec
+    Python.ReqTxtSpec
+    Python.RequirementsSpec
+    Python.SetupPySpec
+    Ruby.BundleShowSpec
+    Ruby.GemfileLockSpec
 
-  build-tool-depends: tasty-discover:tasty-discover ^>=4.2.1
+  build-tool-depends: hspec-discover:hspec-discover ^>=2.7.1
   build-depends:
+    , hedgehog          ^>=1.0.2
+    , hspec             ^>=2.7.1
+    , hspec-hedgehog    ^>=0.0.1.2
     , hspec-megaparsec  ^>=2.1
     , spectrometer
-    , tasty             ^>=1.2.3
-    , tasty-hspec       ^>=1.1.5.1

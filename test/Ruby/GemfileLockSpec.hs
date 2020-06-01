@@ -1,5 +1,5 @@
-module Ruby.GemfileLockTest
-  ( spec_analyze
+module Ruby.GemfileLockSpec
+  ( spec
   ) where
 
 import Prologue
@@ -12,7 +12,7 @@ import DepTypes
 import Strategy.Ruby.GemfileLock
 import GraphUtil
 
-import qualified Test.Tasty.Hspec as T
+import qualified Test.Hspec as T
 
 dependencyOne :: Dependency
 dependencyOne = Dependency { dependencyType = GemType
@@ -69,8 +69,8 @@ dependencySection = DependencySection [ DirectDep { directName = "dep-one" }
 gemfileLockSection :: [Section]
 gemfileLockSection = [gitSection , gemSection, dependencySection]
 
-spec_analyze :: T.Spec
-spec_analyze = do
+spec :: T.Spec
+spec = do
   gemfileLock <- T.runIO (TIO.readFile "test/Ruby/testdata/gemfileLock")
 
   T.describe "gemfile lock analyzer" $
