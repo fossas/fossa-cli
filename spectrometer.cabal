@@ -211,6 +211,7 @@ test-suite unit-tests
     Googlesource.RepoManifestSpec
     Gradle.GradleSpec
     GraphUtil
+    GraphingSpec
     Maven.PluginStrategySpec
     Node.NpmLockSpec
     Node.PackageJsonSpec

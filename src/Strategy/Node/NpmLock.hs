@@ -70,7 +70,7 @@ mkProjectClosure file lock = ProjectClosureBody
   dependencies = ProjectDependencies
     { dependenciesGraph    = buildGraph lock
     , dependenciesOptimal  = Optimal
-    , dependenciesComplete = Complete
+    , dependenciesComplete = NotComplete
     }
 
 data NpmPackage = NpmPackage
