@@ -73,7 +73,7 @@ jobs:
       if: ${{ contains(matrix.os, 'windows') }}
       run: |
         mkdir release
-        find . -type f -path '*/fossa2/fossa2.exe' -exec mv {} release \;
+        find . -type f -path '*/fossa/fossa.exe' -exec mv {} release \;
         find . -type f -path '*/pathfinder/pathfinder.exe' -exec mv {} release \;
         find . -type f -path '*/vpscli/vpscli.exe' -exec mv {} release \;
 
@@ -81,7 +81,7 @@ jobs:
       if: ${{ !contains(matrix.os, 'windows') }}
       run: |
         mkdir release
-        find . -type f -path '*/fossa2/fossa2' -exec mv {} release \;
+        find . -type f -path '*/fossa/fossa' -exec mv {} release \;
         find . -type f -path '*/pathfinder/pathfinder' -exec mv {} release \;
         find . -type f -path '*/vpscli/vpscli' -exec mv {} release \;
 
@@ -116,17 +116,17 @@ jobs:
         ls -R
 
         chmod +x Linux-binaries/*
-        zip -j release/fossa2_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/fossa2
+        zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/fossa
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/pathfinder
         zip -j release/vpscli_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/vpscli
 
         chmod +x macOS-binaries/*
-        zip -j release/fossa2_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/fossa2
+        zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/fossa
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/pathfinder
         zip -j release/vpscli_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/vpscli
 
         chmod +x Windows-binaries/*
-        zip -j release/fossa2_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/fossa2.exe
+        zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/fossa.exe
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/pathfinder.exe
         zip -j release/vpscli_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/vpscli.exe
 

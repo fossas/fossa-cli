@@ -7,7 +7,7 @@ languages/managers.
 
 ```sh
 export FOSSA_API_KEY=your-key-goes-here
-me@mydesk:~/myproject$ fossa2 analyze
+me@mydesk:~/myproject$ fossa analyze
 ```
 
 If you do not have an API key, please check the [FOSSA Documentation](https://docs.fossa.com/docs/api-reference)
@@ -17,7 +17,7 @@ for instructions on creating API tokens.
 
 1. [Installation](#installation)
 2. [Basic Usage](#basic-usage)
-3. [Supported Strategies](#supported-languages)
+3. [Supported Languages](#supported-languages)
 4. [Contributing](#contributing)
 
 ## Installation
@@ -40,11 +40,12 @@ easier.
 
 The tool requires little-to-no configuration to run on its own.
 
+### Analysis
 ```sh
 export FOSSA_API_KEY=your-key-goes-here
-fossa2 analyze
+fossa analyze
 # OR
-fossa2 analyze --fossa-api-key your-key-goes-here
+fossa analyze --fossa-api-key your-key-goes-here
 ```
 
 **NOTE:** *If leaked, your FOSSA API key can grant an attacker access to your FOSSA projects, and should be kept secret.  For this reason, we recommend the API key with the environment variable, especially in a shared environment like a CI/CD server.*
@@ -53,16 +54,25 @@ By default, the program will analyze the current working directory.  If you need
 to run in a different directory, you can simply pass that directory as an argument.
 
 ```sh
-fossa2 analyze /path/to/project
+fossa analyze /path/to/project
 ```
 
 The `--output` flag tells the analyzer not to connect to a FOSSA server,
 instead printing out the analysis result to the console.
 
 ```sh
-fossa2 analyze --output
+fossa analyze --output
 # OR
-fossa2 analyze -o
+fossa analyze -o
+```
+
+### Testing
+
+The fossa cli provides the ability to check if your project has passed its license scan after running analysis. This can be useful if you wish to block a CI pipeline on successful scan results.
+
+Running the following command from the same directory as analysis and with the same API key will fail if the license scan is failing.
+```sh
+fossa test
 ```
 
 ## Supported Languages
@@ -88,7 +98,7 @@ In the base directory, run `cabal build`
 ### Running
 
 ```sh
-$ cabal run fossa2 -- analyze -o path/to/basedir/
+$ cabal run fossa -- analyze -o path/to/basedir/
 ```
 
 This will produce analysis results on stdout
@@ -104,3 +114,9 @@ Run the tests:
 ```
 cabal test
 ```
+
+### Issue Reporting
+
+Issues with the FOSSA CLI itself should be filed through the [Github issue's page](https://github.com/fossas/spectrometer/issues/new). However, if the issue you are seeing is related to the results you see on the FOSSA dashboard, you should contact support@fossa.com.
+
+When filing an issue please record any information required to reproduce the issue you are experiencing so that the development team can help you as quickly as possible. Pictures and detailed information about your project are greatly appreciated!
