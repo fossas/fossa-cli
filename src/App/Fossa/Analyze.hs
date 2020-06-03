@@ -28,6 +28,7 @@ import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Clojure as Clojure
 import qualified Strategy.Cocoapods.Podfile as Podfile
 import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
+import qualified Strategy.Erlang.Rebar3Tree as Rebar3Tree
 import qualified Strategy.Go.GoList as GoList
 import qualified Strategy.Go.Gomod as Gomod
 import qualified Strategy.Go.GopkgLock as GopkgLock
@@ -166,7 +167,9 @@ renderCause e = fromMaybe renderSomeException $
 
 discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
 discoverFuncs =
-  [ GoList.discover
+  [ Rebar3Tree.discover
+
+  , GoList.discover
   , Gomod.discover
   , GopkgToml.discover
   , GopkgLock.discover

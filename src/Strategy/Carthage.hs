@@ -96,7 +96,7 @@ analyze topPath = evalGrapher $ do
 entryToCheckoutName :: ResolvedEntry -> Text
 entryToCheckoutName entry =
   case resolvedType entry of
-    GitType -> resolvedName entry
+    GitEntry -> resolvedName entry
     -- this is safe because T.splitOn always returns a non-empty list
     GithubType -> Unsafe.last . T.splitOn "/" $ resolvedName entry
     BinaryType -> resolvedName entry
@@ -104,7 +104,7 @@ entryToCheckoutName entry =
 entryToDepName :: ResolvedEntry -> Text
 entryToDepName entry =
   case resolvedType entry of
-    GitType -> resolvedName entry
+    GitEntry -> resolvedName entry
     GithubType -> "https://github.com/" <> resolvedName entry
     BinaryType -> resolvedName entry
 
@@ -130,7 +130,7 @@ parseSingleEntry :: Parser ResolvedEntry
 parseSingleEntry = L.nonIndented scn $ do
   entryType <- lexeme $ choice
     [ GithubType <$ chunk "github"
-    , GitType    <$ chunk "git"
+    , GitEntry    <$ chunk "git"
     , BinaryType <$ chunk "binary"
     ]
 
@@ -163,5 +163,5 @@ data ResolvedEntry = ResolvedEntry
   , resolvedVersion :: Text
   } deriving (Eq, Ord, Show, Generic)
 
-data EntryType = GithubType | GitType | BinaryType
+data EntryType = GithubType | GitEntry | BinaryType
   deriving (Eq, Ord, Show, Generic)

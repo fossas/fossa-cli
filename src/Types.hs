@@ -137,6 +137,7 @@ data ProjectDependencies = ProjectDependencies
 data StrategyGroup =
     CarthageGroup
   | DotnetGroup
+  | ErlangGroup
   | GolangGroup
   | GooglesourceGroup
   | GradleGroup

@@ -1,0 +1,5 @@
+   ├─ one─1.0.0 (https://github.com/dep/one)
+   │  ├─ two─2.0.0 (hex package)
+   │  │  └─ three─3.0.0 (hex package)
+   │  └─ four─4.0.0 (https://github.com/dep/four)
+   └─ five─5.0.0 (hex package)

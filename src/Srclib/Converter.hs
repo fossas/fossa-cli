@@ -93,7 +93,9 @@ depTypeToFetcher :: DepType -> Text
 depTypeToFetcher = \case
   SubprojectType -> "mvn" -- FIXME. I knew SubprojectType would come back to bite us.
   GooglesourceType -> "git" -- FIXME. Yet another thing that's coming back to bite us
+  GitType -> "git"
   GemType -> "gem"
+  HexType -> "hex"
   MavenType -> "mvn"
   NodeJSType -> "npm"
   NuGetType -> "nuget"
