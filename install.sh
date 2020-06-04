@@ -48,7 +48,7 @@ execute() {
   srcdir="${tmpdir}"
   (cd "${tmpdir}" && unzip "${TARBALL}")
   install -d -m 775 "${BINDIR}" 2> /dev/null || install -d "${BINDIR}"
-  for binexe in "fossa2" ; do
+  for binexe in "fossa" ; do
     if [ "$OS" = "windows" ]; then
       binexe="${binexe}.exe"
     fi
@@ -339,7 +339,7 @@ End of functions from https://github.com/client9/shlib
 ------------------------------------------------------------------------
 EOF
 
-PROJECT_NAME="fossa2"
+PROJECT_NAME="fossa"
 OWNER=fossas
 REPO="spectrometer"
 BINARY=fossa
@@ -378,4 +378,4 @@ TARBALL_URL=${GITHUB_DOWNLOAD}/${TAG}/${TARBALL}
 CHECKSUM=${PROJECT_NAME}_${VERSION}_checksums.txt
 CHECKSUM_URL=${GITHUB_DOWNLOAD}/${TAG}/${CHECKSUM}
 
-execute 
+execute
