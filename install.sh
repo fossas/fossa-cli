@@ -46,7 +46,7 @@ execute() {
   # http_download "${tmpdir}/${CHECKSUM}" "${CHECKSUM_URL}"
   # hash_sha256_verify "${tmpdir}/${TARBALL}" "${tmpdir}/${CHECKSUM}"
   srcdir="${tmpdir}"
-  (cd "${tmpdir}" && unzip "${TARBALL}")
+  (cd "${tmpdir}" && unzip -o "${TARBALL}")
   install -d -m 775 "${BINDIR}" 2> /dev/null || install -d "${BINDIR}"
   for binexe in "fossa" ; do
     if [ "$OS" = "windows" ]; then
