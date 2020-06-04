@@ -7,7 +7,7 @@ languages/managers.
 
 ```sh
 export FOSSA_API_KEY=your-key-goes-here
-me@mydesk:~/myproject$ fossa analyze
+fossa analyze
 ```
 
 If you do not have an API key, please check the [FOSSA Documentation](https://docs.fossa.com/docs/api-reference)
