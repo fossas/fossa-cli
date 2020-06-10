@@ -4,6 +4,7 @@ module App.Fossa.FossaAPIV1
   , ProjectRevision(..)
   , ProjectMetadata(..)
   , FossaError(..)
+  , FossaReq(..)
   , fossaReq
 
   , getLatestBuild
@@ -18,9 +19,11 @@ module App.Fossa.FossaAPIV1
   , IssueRule(..)
 
   , getOrganizationId
+  , getAttribution
   ) where
 
 import App.Fossa.Analyze.Project
+import qualified App.Fossa.Report.Attribution as Attr
 import Control.Carrier.Error.Either
 import Data.List (isInfixOf)
 import qualified Data.Text as T
@@ -317,6 +320,27 @@ instance FromJSON IssueRule where
 
 instance ToJSON IssueRule where
   toJSON IssueRule{..} = object ["licenseId" .= ruleLicenseId]
+
+---------------
+
+attributionEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
+attributionEndpoint baseurl orgId locator = baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution" /: "json"
+
+getAttribution
+  :: UrlOption
+  -> Text -- ^ api key
+  -> ProjectRevision
+  -> FossaReq Attr.Attribution
+getAttribution baseurl key ProjectRevision{..} = do
+  let opts = urlOptionOptions baseurl 
+        <> header "Authorization" ("token " <> encodeUtf8 key)
+        <> "includeDeepDependencies" =: True
+        <> "includeHashAndVersionData" =: True
+        <> "includeDownloadUrl" =: True
+      url = urlOptionUrl baseurl
+  Organization orgId <- responseBody <$> req GET (organizationEndpoint url) NoReqBody jsonResponse opts
+  response <- req GET (attributionEndpoint url orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
+  pure (responseBody response)
 
 ----------
 

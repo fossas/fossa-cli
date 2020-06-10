@@ -5,6 +5,7 @@ where
 
 import App.Fossa.Analyze (ScanDestination (..), analyzeMain)
 import App.Fossa.FossaAPIV1 (ProjectMetadata (..))
+import App.Fossa.Report (ReportType (..), reportMain)
 import App.Fossa.Test (TestOutputType (..), testMain)
 import qualified Data.Text as T
 import Network.HTTP.Req (https)
@@ -28,14 +29,25 @@ appMain = do
       changeDir analyzeBaseDir
       if analyzeOutput
         then analyzeMain logSeverity OutputStdout optProjectName optProjectRevision
-        else case maybeApiKey of
-          Nothing -> die "A FOSSA API key is required to run this command"
-          Just key -> analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) optProjectName optProjectRevision
+        else do
+          key <- requireKey maybeApiKey
+          analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) optProjectName optProjectRevision
     TestCommand TestOptions {..} -> do
       changeDir testBaseDir
-      case maybeApiKey of
-        Nothing -> die "A FOSSA API key is required to run this command"
-        Just key -> testMain optBaseUrl key logSeverity testTimeout testOutputType optProjectName optProjectRevision
+      key <- requireKey maybeApiKey
+      testMain optBaseUrl key logSeverity testTimeout testOutputType optProjectName optProjectRevision
+    InitCommand ->
+      withLogger logSeverity $ logWarn "This command has been deprecated and is no longer needed.  It has no effect and may be safely removed."
+    ReportCommand ReportOptions {..} -> do
+      unless reportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"
+      changeDir reportBaseDir
+      key <- requireKey maybeApiKey
+      reportMain optBaseUrl key logSeverity reportTimeout reportType optProjectName optProjectRevision
+      
+
+requireKey :: Maybe Text -> IO Text
+requireKey (Just key) = pure key
+requireKey Nothing = die "A FOSSA API key is required to run this command"
 
 changeDir :: FilePath -> IO ()
 changeDir path = validateDir path >>= setCurrentDir
@@ -87,6 +99,18 @@ comm =
               (TestCommand <$> testOpts)
               (progDesc "Check for issues from FOSSA and exit non-zero when issues are found")
           )
+        <> command
+          "report"
+          ( info
+              (ReportCommand <$> reportOpts)
+              (progDesc "Access various reports from FOSSA and print to stdout")
+          )
+        <> command
+          "init"
+          ( info
+              (pure InitCommand)
+              (progDesc "Deprecated, has no effect.")
+          )
     )
 
 analyzeOpts :: Parser AnalyzeOptions
@@ -107,6 +131,19 @@ metadataOpts =
     <*> optional (strOption (long "team" <> help "this repository's team inside your organization"))
     <*> optional (strOption (long "policy" <> help "the policy to assign to this project in FOSSA"))
 
+reportOpts :: Parser ReportOptions
+reportOpts =
+  ReportOptions
+    <$> switch (long "json" <> help "Output the report in JSON format (Currently required).")
+    <*> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
+    <*> reportCmd
+    <*> baseDirArg
+
+reportCmd :: Parser ReportType
+reportCmd = 
+  hsubparser $
+    command "attribution" (info (pure AttributionReport) $ progDesc "Generate attribution report" )
+
 testOpts :: Parser TestOptions
 testOpts =
   TestOptions
@@ -126,6 +163,15 @@ data CmdOptions = CmdOptions
 data Command
   = AnalyzeCommand AnalyzeOptions
   | TestCommand TestOptions
+  | ReportCommand ReportOptions
+  | InitCommand
+
+data ReportOptions = ReportOptions
+  { reportJsonOutput :: Bool,
+    reportTimeout :: Int,
+    reportType :: ReportType,
+    reportBaseDir :: FilePath
+  }
 
 data AnalyzeOptions = AnalyzeOptions
   { analyzeOutput :: Bool,

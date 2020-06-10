@@ -99,6 +99,8 @@ library
     App.Fossa.FossaAPIV1
     App.Fossa.Main
     App.Fossa.ProjectInference
+    App.Fossa.Report
+    App.Fossa.Report.Attribution
     App.Fossa.Test
     App.Pathfinder.Main
     App.Pathfinder.Scan
@@ -199,6 +201,7 @@ test-suite unit-tests
   -- cabal-fmt: expand test
   other-modules:
     App.Fossa.FossaAPIV1Spec
+    App.Fossa.Report.AttributionSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec
