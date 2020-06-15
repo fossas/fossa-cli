@@ -75,15 +75,17 @@ func WithGlobalFlags(f []cli.Flag) []cli.Flag {
 }
 
 var (
-	Global   = []cli.Flag{ConfigF, NoAnsiF, DebugF, VerboseF}
-	Config   = "config"
-	ConfigF  = cli.StringFlag{Name: Short(Config), Usage: "path to config file (default: '.fossa.{yml,yaml}')"}
-	NoAnsi   = "no-ansi"
-	NoAnsiF  = cli.BoolFlag{Name: NoAnsi, Usage: "do not use interactive mode (ANSI codes)"}
-	Debug    = "debug"
-	DebugF   = cli.BoolFlag{Name: Debug, Usage: "print debug information to stderr"}
-	Verbose  = "verbose"
-	VerboseF = cli.BoolFlag{Name: Verbose, Usage: "print limited debug information to stderr"}
+	Global    = []cli.Flag{ConfigF, InsecureF, NoAnsiF, DebugF, VerboseF}
+	Config    = "config"
+	ConfigF   = cli.StringFlag{Name: Short(Config), Usage: "path to config file (default: '.fossa.{yml,yaml}')"}
+	Insecure  = "insecure"
+	InsecureF = cli.BoolFlag{Name: Insecure, Usage: "do not verify TLS certificate authenticity"}
+	NoAnsi    = "no-ansi"
+	NoAnsiF   = cli.BoolFlag{Name: NoAnsi, Usage: "do not use interactive mode (ANSI codes)"}
+	Debug     = "debug"
+	DebugF    = cli.BoolFlag{Name: Debug, Usage: "print debug information to stderr"}
+	Verbose   = "verbose"
+	VerboseF  = cli.BoolFlag{Name: Verbose, Usage: "print limited debug information to stderr"}
 )
 
 func WithOptions(f []cli.Flag) []cli.Flag {

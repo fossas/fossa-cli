@@ -4,6 +4,7 @@ package setup
 import (
 	"github.com/urfave/cli"
 
+	"github.com/fossas/fossa-cli/api"
 	"github.com/fossas/fossa-cli/api/fossa"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/config"
@@ -33,6 +34,9 @@ func SetContext(ctx *cli.Context, requiresAPIKey bool) error {
 			return apiError
 		}
 	}
+
+	// Set up API HTTP Internals.
+	api.SetInsecureTLS(config.Insecure())
 
 	return nil
 }
