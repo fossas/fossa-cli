@@ -8,12 +8,13 @@ import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Carrier.Error.Either
 import Control.Effect.Output
 import qualified Data.Map.Strict as M
-import Data.Maybe (catMaybes)
+import Data.Maybe (mapMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import DepTypes
 import Effect.Grapher
 import qualified Graphing as G
+import qualified Path.IO as Path
 import Strategy.Maven.Pom.Closure
 import Strategy.Maven.Pom.PomFile
 import Types
@@ -26,10 +27,10 @@ data MavenStrategyOpts = MavenStrategyOpts
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover dir = runStrategy "maven-pom" MavenGroup $ do
   (mvnClosures :: [MavenProjectClosure]) <- findProjects dir
-  traverse_ (output . mkProjectClosure) mvnClosures
+  traverse_ (output . mkProjectClosure dir) mvnClosures
 
-mkProjectClosure :: MavenProjectClosure -> ProjectClosure
-mkProjectClosure mvnClosure = ProjectClosure
+mkProjectClosure :: Path Abs Dir -> MavenProjectClosure -> ProjectClosure
+mkProjectClosure basedir mvnClosure = ProjectClosure
   { closureStrategyGroup = MavenGroup
   , closureStrategyName  = "maven-pom"
   , closureModuleDir     = parent (closurePath mvnClosure)
@@ -46,11 +47,12 @@ mkProjectClosure mvnClosure = ProjectClosure
   licenses :: [LicenseResult]
   licenses = do
     (abspath,pom) <- M.elems (closurePoms mvnClosure)
-    let path = toFilePath abspath
-
-    let validated = catMaybes (map validateLicense (pomLicenses pom))
-
-    pure (LicenseResult path validated)
+    case Path.makeRelative basedir abspath of
+      Nothing -> []
+      Just relpath ->
+        let path = toFilePath relpath
+            validated = mapMaybe validateLicense (pomLicenses pom)
+         in pure (LicenseResult path validated)
 
   -- we prefer URLs over SPDX because name isn't guaranteed to be an SPDX expression
   validateLicense :: PomLicense -> Maybe License
