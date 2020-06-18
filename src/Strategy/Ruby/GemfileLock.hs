@@ -13,7 +13,7 @@ module Strategy.Ruby.GemfileLock
 
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Char as C
@@ -61,7 +61,7 @@ newtype DirectDep = DirectDep
       { directName :: Text
       } deriving (Eq, Ord, Show, Generic)
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser @[Section] findSections file
 
 mkProjectClosure :: Path Rel File -> [Section] -> ProjectClosureBody

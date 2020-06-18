@@ -14,7 +14,7 @@ module Strategy.Go.GopkgLock
 
 import Prologue hiding ((.=))
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import DepTypes
 import Discovery.Walk
 import Effect.Grapher
@@ -55,13 +55,13 @@ data Project = Project
 
 analyze ::
   ( Has ReadFS sig m
-  , Has (Error ReadFSErr) sig m
+  , Has Diagnostics sig m
   )
   => Path Rel File -> m ProjectClosureBody
 analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
   contents <- readContentsText file
   case Toml.decode golockCodec contents of
-    Left err -> throwError (FileParseError (fromRelFile file) (Toml.prettyException err))
+    Left err -> fatal (FileParseError (fromRelFile file) (Toml.prettyException err))
     Right golock -> do
       buildGraph (lockProjects golock)
 

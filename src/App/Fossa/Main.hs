@@ -1,3 +1,5 @@
+{-# language QuasiQuotes #-}
+
 module App.Fossa.Main
   ( appMain,
   )
@@ -8,7 +10,6 @@ import App.Fossa.FossaAPIV1 (ProjectMetadata (..))
 import App.Fossa.Report (ReportType (..), reportMain)
 import App.Fossa.Test (TestOutputType (..), testMain)
 import qualified Data.Text as T
-import Network.HTTP.Req (https)
 import OptionExtensions
 import Effect.Logger
 import Options.Applicative
@@ -16,6 +17,8 @@ import Path.IO (doesDirExist, resolveDir', setCurrentDir)
 import Prologue
 import System.Environment (lookupEnv)
 import System.Exit (die)
+import Text.URI (URI)
+import Text.URI.QQ (uri)
 
 appMain :: IO ()
 appMain = do
@@ -28,10 +31,10 @@ appMain = do
     AnalyzeCommand AnalyzeOptions {..} -> do
       changeDir analyzeBaseDir
       if analyzeOutput
-        then analyzeMain logSeverity OutputStdout optProjectName optProjectRevision
+        then analyzeMain logSeverity OutputStdout optProjectName optProjectRevision analyzeBranch
         else do
           key <- requireKey maybeApiKey
-          analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) optProjectName optProjectRevision
+          analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) optProjectName optProjectRevision analyzeBranch
     TestCommand TestOptions {..} -> do
       changeDir testBaseDir
       key <- requireKey maybeApiKey
@@ -74,15 +77,12 @@ opts :: Parser CmdOptions
 opts =
   CmdOptions
     <$> switch (long "debug" <> help "Enable debug logging")
-    <*> urlOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL" <> value urlOpts)
+    <*> uriOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL" <> value [uri|https://app.fossa.com|])
     <*> optional (strOption (long "project" <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
     <*> optional (strOption (long "revision" <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authenticaion key (default: FOSSA_API_KEY from env)"))
     <*> comm
     <**> helper
-  where
-    baseUrl = https "app.fossa.com"
-    urlOpts = UrlOption baseUrl mempty
 
 comm :: Parser Command
 comm =
@@ -117,6 +117,7 @@ analyzeOpts :: Parser AnalyzeOptions
 analyzeOpts =
   AnalyzeOptions
     <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
+    <*> optional (strOption (long "branch" <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> baseDirArg
 
@@ -124,7 +125,6 @@ metadataOpts :: Parser ProjectMetadata
 metadataOpts =
   ProjectMetadata
     <$> optional (strOption (long "title" <> help "the title of the FOSSA project. (default: the project name)"))
-    <*> optional (strOption (long "branch" <> help "this repository's current branch (default: current VCS branch)"))
     <*> optional (strOption (long "project-url" <> help "this repository's home page"))
     <*> optional (strOption (long "jira-project-key" <> help "this repository's JIRA project key"))
     <*> optional (strOption (long "link" <> help "a link to attach to the current build"))
@@ -153,7 +153,7 @@ testOpts =
 
 data CmdOptions = CmdOptions
   { optDebug :: Bool,
-    optBaseUrl :: UrlOption,
+    optBaseUrl :: URI,
     optProjectName :: Maybe Text,
     optProjectRevision :: Maybe Text,
     optAPIKey :: Maybe Text,
@@ -175,6 +175,7 @@ data ReportOptions = ReportOptions
 
 data AnalyzeOptions = AnalyzeOptions
   { analyzeOutput :: Bool,
+    analyzeBranch :: Maybe Text,
     analyzeMetadata :: ProjectMetadata,
     analyzeBaseDir :: FilePath
   }

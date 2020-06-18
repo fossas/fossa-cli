@@ -16,7 +16,6 @@ import Prologue hiding (empty, parent)
 import qualified Data.IntMap as IM
 import qualified Data.IntSet as IS
 import qualified Data.Sequence as S
-import           Optics
 
 import DepTypes
 
@@ -71,8 +70,7 @@ instance Semigroup Graph where
     where
     offsetAssocs2 = assocs2
                   & IM.toList -- [(key, IntSet)]
-                  & over (mapped % _1) (+offset) -- offset keys
-                  & over (mapped % _2) (IS.map (+offset)) -- offset set of values
+                  & map (bimap (+offset) (IS.map (+offset)))
                   & IM.fromList
     offset = length deps1
 

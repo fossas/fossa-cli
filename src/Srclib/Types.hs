@@ -5,9 +5,11 @@ module Srclib.Types
   , SourceUnitDependency(..)
   , Locator(..)
   , renderLocator
+  , parseLocator
   ) where
 
 import Prologue
+import qualified Data.Text as T
 
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
@@ -41,6 +43,13 @@ data Locator = Locator
 renderLocator :: Locator -> Text
 renderLocator Locator{..} =
   locatorFetcher <> "+" <> locatorProject <> "$" <> fromMaybe "" locatorRevision
+
+parseLocator :: Text -> Locator
+parseLocator raw = Locator fetcher project (if T.null revision then Nothing else Just revision)
+  where
+    (fetcher,xs) = T.breakOn "+" raw
+    (project,xs') = T.breakOn "$" (T.drop 1 xs)
+    revision = T.drop 1 xs'
 
 instance ToJSON SourceUnit where
   toJSON SourceUnit{..} = object

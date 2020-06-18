@@ -11,6 +11,7 @@ import Prologue hiding (json)
 
 import Data.Aeson.Types (Parser, unexpected)
 import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import Control.Effect.Exception
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
@@ -29,10 +30,10 @@ import Effect.Grapher
 import Graphing (Graphing)
 import Types
 
-gradleJsonDepsCmd :: Command
-gradleJsonDepsCmd = Command
-  { cmdNames = ["./gradlew", "gradlew.bat", "gradle"]
-  , cmdBaseArgs = ["jsonDeps", "-I"]
+gradleJsonDepsCmd :: String -> FP.FilePath -> Command
+gradleJsonDepsCmd baseCmd initScriptFilepath = Command
+  { cmdName = baseCmd -- ["./gradlew", "gradlew.bat", "gradle"]
+  , cmdArgs = ["jsonDeps", "-I", initScriptFilepath]
   , cmdAllowErr = Never
   }
 
@@ -50,7 +51,7 @@ initScript = $(embedFile "scripts/jsondeps.gradle")
 analyze ::
   ( Has (Lift IO) sig m
   , Has Exec sig m
-  , Has (Error ExecErr) sig m
+  , Has Diagnostics sig m
   , MonadIO m
   )
   => Path Rel Dir -> m ProjectClosureBody
@@ -64,7 +65,9 @@ analyze dir =
   act tmpDir = do
     let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
     liftIO (BS.writeFile initScriptFilepath initScript)
-    stdout <- execThrow dir gradleJsonDepsCmd [initScriptFilepath]
+    stdout <- execThrow dir (gradleJsonDepsCmd "./gradlew" initScriptFilepath)
+                <||> execThrow dir (gradleJsonDepsCmd "gradlew.bat" initScriptFilepath)
+                <||> execThrow dir (gradleJsonDepsCmd "gradle" initScriptFilepath)
 
     let text = decodeUtf8 $ BL.toStrict stdout
         textLines :: [Text]

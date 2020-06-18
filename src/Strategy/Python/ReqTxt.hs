@@ -7,7 +7,7 @@ module Strategy.Python.ReqTxt
 
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import Data.List (isInfixOf)
 import Text.Megaparsec
 import Text.Megaparsec.Char
@@ -27,7 +27,7 @@ discover = walk $ \_ _ files -> do
 
   pure WalkContinue
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser requirementsTxtParser file
 
 mkProjectClosure :: Path Rel File -> [Req] -> ProjectClosureBody

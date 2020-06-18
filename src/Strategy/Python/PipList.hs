@@ -9,8 +9,7 @@ module Strategy.Python.PipList
 
 import Prologue
 
-import Control.Carrier.Lift
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 
 import DepTypes
@@ -28,15 +27,18 @@ discover = walk $ \dir _ files -> do
 
   pure WalkContinue
 
-pipListCmd :: Command
-pipListCmd = Command
-  { cmdNames = ["pip3", "pip"]
-  , cmdBaseArgs = ["list", "--format=json"]
+pipListCmd :: String -> Command
+pipListCmd baseCmd = Command
+  { cmdName = baseCmd
+  , cmdArgs = ["list", "--format=json"]
   , cmdAllowErr = Never
   }
 
-analyze :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ProjectClosureBody
-analyze dir = mkProjectClosure dir <$> execJson @[PipListDep] dir pipListCmd []
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Rel Dir -> m ProjectClosureBody
+analyze dir = do
+  deps <- execJson @[PipListDep] dir (pipListCmd "pip3")
+            <||> execJson @[PipListDep] dir (pipListCmd "pip")
+  pure (mkProjectClosure dir deps)
 
 mkProjectClosure :: Path Rel Dir -> [PipListDep] -> ProjectClosureBody
 mkProjectClosure dir deps = ProjectClosureBody

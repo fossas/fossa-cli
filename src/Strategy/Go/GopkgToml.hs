@@ -15,7 +15,7 @@ module Strategy.Go.GopkgToml
 
 import Prologue hiding ((.=), empty)
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import Toml (TomlCodec, (.=))
 import qualified Toml
@@ -65,13 +65,13 @@ data PkgConstraint = PkgConstraint
 
 analyze ::
   ( Has ReadFS sig m
-  , Has (Error ReadFSErr) sig m
+  , Has Diagnostics sig m
   )
   => Path Rel File -> m ProjectClosureBody
 analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
   contents <- readContentsText file
   case Toml.decode gopkgCodec contents of
-    Left err -> throwError (FileParseError (fromRelFile file) (Toml.prettyException err))
+    Left err -> fatal (FileParseError (fromRelFile file) (Toml.prettyException err))
     Right gopkg -> do
       buildGraph gopkg
 

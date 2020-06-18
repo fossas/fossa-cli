@@ -17,7 +17,7 @@ module Strategy.Clojure
   )
 where
 
-import Control.Effect.Error
+import Control.Effect.Diagnostics
 import qualified Data.EDN as EDN
 import Data.EDN.Class.Parser (Parser)
 import qualified Data.Map.Strict as M
@@ -35,8 +35,8 @@ import Types
 leinDepsCmd :: Command
 leinDepsCmd =
   Command
-    { cmdNames = ["lein"],
-      cmdBaseArgs = ["deps", ":tree-data"],
+    { cmdName = "lein",
+      cmdArgs = ["deps", ":tree-data"],
       cmdAllowErr = Never
     }
 
@@ -61,14 +61,14 @@ mkProjectClosure dir deps =
       bodyLicenses = []
     }
 
-analyze :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel File -> m (Graphing Dependency)
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Rel File -> m (Graphing Dependency)
 analyze file = do
-  stdoutBL <- execThrow (parent file) leinDepsCmd []
+  stdoutBL <- execThrow (parent file) leinDepsCmd
   let stdoutTL = decodeUtf8 stdoutBL
       stdout = TL.toStrict stdoutTL
 
   case EDN.decodeText "lein deps :tree-data" stdout of
-    Left err -> throwError (CommandParseError "lein deps :tree-data" (T.pack err))
+    Left err -> fatal (CommandParseError leinDepsCmd (T.pack err))
     Right deps -> pure (buildGraph deps)
 
 -- node type for our LabeledGrapher

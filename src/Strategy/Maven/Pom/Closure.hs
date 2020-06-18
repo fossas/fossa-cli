@@ -8,6 +8,7 @@ import Prologue
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Algebra
 import Control.Carrier.State.Strict
+import Control.Effect.Diagnostics
 import qualified Path.IO as PIO
 import qualified Data.Set as S
 import qualified Data.Map.Strict as M
@@ -18,7 +19,7 @@ import Effect.ReadFS
 import Strategy.Maven.Pom.PomFile
 import Strategy.Maven.Pom.Resolver
 
-findProjects :: (Has ReadFS sig m, MonadIO m) => Path Abs Dir -> m [MavenProjectClosure]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, MonadIO m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects basedir = do
   pomFiles <- findPomFiles basedir
   globalClosure <- buildGlobalClosure pomFiles

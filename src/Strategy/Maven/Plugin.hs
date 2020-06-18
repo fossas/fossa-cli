@@ -14,7 +14,7 @@ module Strategy.Maven.Plugin
 import Prologue
 
 import Control.Algebra
-import Control.Effect.Error
+import Control.Effect.Diagnostics
 import Control.Effect.Exception
 import qualified Data.ByteString as BS
 import Data.FileEmbed (embedFile)
@@ -54,37 +54,36 @@ withUnpackedPlugin act =
 
     act pluginJarFilepath
 
-installPlugin :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> FP.FilePath -> m ()
-installPlugin dir path = void $ execThrow dir mavenInstallPluginCmd
-  [ "-Dfile=" <> path
-  ]
+installPlugin :: (Has Exec sig m, Has Diagnostics sig m) => Path Rel Dir -> FP.FilePath -> m ()
+installPlugin dir path = void $ execThrow dir (mavenInstallPluginCmd path)
 
-execPlugin :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ()
-execPlugin dir = void $ execThrow dir mavenPluginDependenciesCmd []
+execPlugin :: (Has Exec sig m, Has Diagnostics sig m) => Path Rel Dir -> m ()
+execPlugin dir = void $ execThrow dir mavenPluginDependenciesCmd
 
 outputFile :: Path Rel File
 outputFile = $(mkRelFile "target/dependency-graph.json")
 
-parsePluginOutput :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel Dir -> m PluginOutput
+parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel Dir -> m PluginOutput
 parsePluginOutput dir = readContentsJson (dir </> outputFile)
 
-mavenInstallPluginCmd :: Command
-mavenInstallPluginCmd = Command
-  { cmdNames = ["mvn"]
-  , cmdBaseArgs =
+mavenInstallPluginCmd :: FP.FilePath -> Command
+mavenInstallPluginCmd pluginFilePath = Command
+  { cmdName = "mvn"
+  , cmdArgs =
     [ "install:install-file"
     , "-DgroupId=" <> pluginGroup
     , "-DartifactId=" <> pluginArtifact
     , "-Dversion=" <> pluginVersion
     , "-Dpackaging=jar"
+    , "-Dfile=" <> pluginFilePath
     ]
   , cmdAllowErr = Never
   }
 
 mavenPluginDependenciesCmd :: Command
 mavenPluginDependenciesCmd = Command
-  { cmdNames = ["mvn"]
-  , cmdBaseArgs =
+  { cmdName = "mvn"
+  , cmdArgs =
     [ pluginGroup <> ":" <> pluginArtifact <> ":" <> pluginVersion <> ":aggregate"
     , "-DgraphFormat=json"
     , "-DmergeScopes"

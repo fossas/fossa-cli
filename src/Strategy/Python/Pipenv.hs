@@ -13,7 +13,7 @@ module Strategy.Python.Pipenv
 
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
@@ -35,23 +35,22 @@ discover = walk $ \_ _ files -> do
 
 pipenvGraphCmd :: Command
 pipenvGraphCmd = Command
-  { cmdNames = ["pipenv"]
-  , cmdBaseArgs = ["graph", "--json-tree"]
+  { cmdName = "pipenv"
+  , cmdArgs = ["graph", "--json-tree"]
   , cmdAllowErr = Never
   }
 
 analyze ::
   ( Has ReadFS sig m
   , Has Exec sig m
-  , Has (Error ReadFSErr) sig m
+  , Has Diagnostics sig m
   )
   => Path Rel File -> m ProjectClosureBody
 analyze lockfile = do
   lock <- readContentsJson lockfile
-  -- TODO: diagnostics?
-  maybeDeps <- runError @ExecErr (execJson (parent lockfile) pipenvGraphCmd [])
+  maybeDeps <- recover (execJson (parent lockfile) pipenvGraphCmd)
 
-  pure (mkProjectClosure lockfile lock (eitherToMaybe maybeDeps))
+  pure (mkProjectClosure lockfile lock maybeDeps)
 
 mkProjectClosure :: Path Rel File -> PipfileLock -> Maybe [PipenvGraphDep] -> ProjectClosureBody
 mkProjectClosure file lockfile maybeDeps = ProjectClosureBody
@@ -65,9 +64,6 @@ mkProjectClosure file lockfile maybeDeps = ProjectClosureBody
     , dependenciesOptimal  = Optimal
     , dependenciesComplete = Complete
     }
-
-eitherToMaybe :: Either a b -> Maybe b
-eitherToMaybe = either (const Nothing) Just
 
 buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> Graphing Dependency
 buildGraph lock maybeDeps = run . withLabeling toDependency $ do

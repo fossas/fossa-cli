@@ -8,7 +8,7 @@ module Strategy.NuGet.ProjectJson
 
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Data.Aeson.Types
@@ -53,7 +53,7 @@ instance FromJSON DependencyInfo where
     parseJSONText = withText "DependencyVersion" $ \text ->
         pure $ DependencyInfo text Nothing
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsJson @ProjectJson file
 
 mkProjectClosure :: Path Rel File -> ProjectJson -> ProjectClosureBody

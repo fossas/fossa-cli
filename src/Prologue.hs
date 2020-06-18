@@ -1,7 +1,7 @@
 
 module Prologue
   ( module X
-  , fromEither
+  , SomeBase(..)
   ) where
 
 -- 'log' conflicts with our logging effect
@@ -14,7 +14,6 @@ import Control.Applicative as X hiding (many, some)
 import Control.Monad as X
 import Control.Monad.IO.Class as X
 import Control.Monad.Trans as X
-import Control.Effect.Error
 import Data.Aeson as X hiding (Error)
 import Data.Bifunctor as X
 import Data.Bool as X
@@ -35,5 +34,9 @@ import Path as X
 import Data.Typeable as X (Typeable)
 import GHC.Generics as X (Generic, Generic1)
 
-fromEither :: Has (Error e) sig m => Either e a -> m a
-fromEither = either throwError pure
+-- TODO: stolen from path-0.8.0. We're waiting on path-io to bump version bounds
+-- so we can use it. Until then, we define it ourselves.
+data SomeBase t
+  = Abs (Path Abs t)
+  | Rel (Path Rel t)
+  deriving (Eq, Ord, Show, Generic)

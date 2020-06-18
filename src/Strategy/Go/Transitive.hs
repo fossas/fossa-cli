@@ -7,7 +7,7 @@ import Prologue hiding (empty)
 
 import Control.Algebra
 import Control.Applicative (many)
-import Control.Effect.Error
+import Control.Effect.Diagnostics
 import qualified Data.Attoparsec.ByteString as A
 import Data.Aeson.Internal (formatError, iparse)
 import Data.Aeson.Parser
@@ -21,8 +21,8 @@ import Strategy.Go.Types
 
 goListCmd :: Command
 goListCmd = Command
-  { cmdNames = ["go"]
-  , cmdBaseArgs = ["list", "-json", "all"]
+  { cmdName = "go"
+  , cmdArgs = ["list", "-json", "all"]
   , cmdAllowErr = NonEmptyStdout
   }
 
@@ -94,11 +94,11 @@ graphTransitive = void . traverse_ go
 fillInTransitive ::
   ( Has GolangGrapher sig m
   , Has Exec sig m
-  , Has (Error ExecErr) sig m
+  , Has Diagnostics sig m
   )
   => Path Rel Dir -> m ()
 fillInTransitive dir = do
-  goListOutput <- execThrow dir goListCmd []
+  goListOutput <- execThrow dir goListCmd
   case decodeMany goListOutput of
-    Left (path, err) -> throwError (CommandParseError "go list -json all" (T.pack (formatError path err)))
+    Left (path, err) -> fatal (CommandParseError goListCmd (T.pack (formatError path err)))
     Right (packages :: [Package]) -> graphTransitive packages

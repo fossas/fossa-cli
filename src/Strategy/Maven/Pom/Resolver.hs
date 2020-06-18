@@ -9,7 +9,7 @@ import Prologue
 
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Algebra
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import Control.Carrier.State.Strict
 import qualified Data.Map.Strict as M
 
@@ -21,22 +21,17 @@ data GlobalClosure = GlobalClosure
   , globalPoms  :: Map MavenCoordinate (Path Abs File, Pom)
   } deriving (Eq, Ord, Show, Generic)
 
-buildGlobalClosure :: Has ReadFS sig m => [Path Abs File] -> m GlobalClosure
+buildGlobalClosure :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m GlobalClosure
 buildGlobalClosure files = do
   (loadResults,()) <- runState @LoadResults M.empty $ traverse_ recursiveLoadPom files
 
   -- TODO: diagnostics/warnings?
   let validated :: Map (Path Abs File) Pom
-      validated = M.mapMaybe (validatePom <=< eitherToMaybe) loadResults
+      validated = M.mapMaybe (validatePom =<<) loadResults
 
   pure (buildClosure validated)
 
   where
-
-  eitherToMaybe :: Either a b -> Maybe b
-  eitherToMaybe (Left _) = Nothing
-  eitherToMaybe (Right b) = Just b
-
   -- notably, we're not building edges based on <relativePath> from poms.
   --
   -- From the docs:
@@ -56,10 +51,10 @@ buildGlobalClosure files = do
 indexBy :: Ord k => (v -> k) -> [v] -> Map k v
 indexBy f = M.fromList . map (\v -> (f v, v))
 
-type LoadResults = Map (Path Abs File) (Either ReadFSErr RawPom)
+type LoadResults = Map (Path Abs File) (Maybe RawPom)
 
 -- Recursively load a pom and its adjacent poms (parent, submodules)
-recursiveLoadPom :: forall sig m. (Has ReadFS sig m, Has (State LoadResults) sig m) => Path Abs File -> m ()
+recursiveLoadPom :: forall sig m. (Has ReadFS sig m, Has (State LoadResults) sig m, Has Diagnostics sig m) => Path Abs File -> m ()
 recursiveLoadPom path = do
   results <- get @LoadResults
 
@@ -67,7 +62,7 @@ recursiveLoadPom path = do
     -- don't re-inspect this same path
     Just _ -> pure ()
     Nothing -> do
-      (res :: Either ReadFSErr RawPom) <- runError (readContentsXML path)
+      (res :: Maybe RawPom) <- recover (readContentsXML path)
       modify @LoadResults (M.insert path res)
       traverse_ loadAdjacent res
 
@@ -88,14 +83,13 @@ recursiveLoadPom path = do
 
   recurseRelative :: Text {- relative filepath -} -> m ()
   recurseRelative rel = do
-    (resolvedPath :: Either ReadFSErr (Path Abs File)) <- runError (resolvePath (parent path) rel)
-    -- TODO: diagnostics/warnings?
+    (resolvedPath :: Maybe (Path Abs File)) <- recover (resolvePath (parent path) rel)
     traverse_ recursiveLoadPom resolvedPath
 
 -- resolve a Filepath (in Text) that may either point to a directory or an exact
 -- pom file. when it's a directory, we default to pointing at the "pom.xml" in
 -- that directory.
-resolvePath :: forall sig m. (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Abs Dir -> Text -> m (Path Abs File)
+resolvePath :: forall sig m. (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)
 resolvePath cur txt = do
   let resolveToFile :: m (Path Abs File)
       resolveToFile = do
@@ -111,7 +105,7 @@ resolvePath cur txt = do
       checkFile file = do
         exists <- doesFileExist file
         unless exists $
-          throwError (FileReadError (show file) "resolvePath: resolved file does not exist: ")
+          fatal (FileReadError (show file) "resolvePath: resolved file does not exist: ")
         pure file
 
-  resolveToFile `catchError` (\(_ :: ReadFSErr) -> resolveToDir)
+  resolveToFile <||> resolveToDir

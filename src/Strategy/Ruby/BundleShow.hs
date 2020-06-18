@@ -10,7 +10,7 @@ module Strategy.Ruby.BundleShow
 
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import Text.Megaparsec
 import Text.Megaparsec.Char
@@ -32,13 +32,13 @@ discover = walk $ \dir _ files -> do
 
 bundleShowCmd :: Command
 bundleShowCmd = Command
-  { cmdNames = ["bundle"]
-  , cmdBaseArgs = ["show"]
+  { cmdName = "bundle"
+  , cmdArgs = ["show"]
   , cmdAllowErr = Never
   }
 
-analyze :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ProjectClosureBody
-analyze dir = mkProjectClosure dir <$> execParser bundleShowParser dir bundleShowCmd []
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Rel Dir -> m ProjectClosureBody
+analyze dir = mkProjectClosure dir <$> execParser bundleShowParser dir bundleShowCmd
 
 mkProjectClosure :: Path Rel Dir -> [BundleShowDep] -> ProjectClosureBody
 mkProjectClosure dir deps = ProjectClosureBody

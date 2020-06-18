@@ -1,24 +1,12 @@
-module OptionExtensions
-  (urlOption, UrlOption(..))
-where
+module OptionExtensions (uriOption) where
 
-import Prologue
 import Options.Applicative
+import Prologue
 import qualified Data.Text as T
-import Network.HTTP.Req (Url, useURI, Scheme( Https ), Option)
-import Text.URI (mkURI)
+import Text.URI (URI, mkURI)
 
-data UrlOption = UrlOption
-  { urlOptionUrl :: Url 'Https
-  , urlOptionOptions :: Option 'Https
-  }
-  deriving Generic
-
-urlOption :: Mod OptionFields UrlOption -> Parser UrlOption
-urlOption = option parseUrl
+uriOption :: Mod OptionFields URI -> Parser URI
+uriOption = option parseUri
   where
-    parseUrl :: ReadM UrlOption
-    parseUrl = maybeReader (\s -> mkURI (T.pack s) >>= useURI >>=
-                              \case
-                                 Left (url, opts) -> pure (UrlOption (coerce url) opts)
-                                 Right (url, opts) -> pure (UrlOption (coerce url) opts))
+    parseUri :: ReadM URI
+    parseUri = maybeReader (mkURI . T.pack)

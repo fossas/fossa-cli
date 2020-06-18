@@ -10,7 +10,7 @@ module Strategy.Carthage
 import qualified Prelude as Unsafe
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import Data.Char (isSpace)
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -51,12 +51,13 @@ relCheckoutsDir file = parent file </> $(mkRelDir "Carthage/Checkouts")
 
 analyze ::
   ( Has ReadFS sig m
-  , Has (Error ReadFSErr) sig m
+  , Has Diagnostics sig m
   )
   => Path Rel File -> m (G.Graphing ResolvedEntry)
 analyze topPath = evalGrapher $ do
-  -- We only care about top-level resolved cartfile errors
-  topEntries <- fromEither =<< analyzeSingle topPath
+  -- We only care about top-level resolved cartfile errors, so we don't
+  -- 'recover' here, but we do below in 'descend'
+  topEntries <- analyzeSingle topPath
 
   for_ topEntries $ \entry -> do
     direct entry
@@ -66,18 +67,18 @@ analyze topPath = evalGrapher $ do
 
   analyzeSingle ::
     ( Has ReadFS sig m
+    , Has Diagnostics sig m
     , Has (Grapher ResolvedEntry) sig m
     )
-    => Path Rel File -> m (Either ReadFSErr [ResolvedEntry])
+    => Path Rel File -> m [ResolvedEntry]
   analyzeSingle path = do
-    maybeEntries :: Either ReadFSErr [ResolvedEntry] <- readContentsParser' resolvedCartfileParser path
-
-    for maybeEntries $ \entries -> do
-      traverse_ (descend (relCheckoutsDir path)) entries
-      pure entries
+    entries <- readContentsParser @[ResolvedEntry] resolvedCartfileParser path
+    traverse_ (descend (relCheckoutsDir path)) entries
+    pure entries
 
   descend ::
     ( Has ReadFS sig m
+    , Has Diagnostics sig m
     , Has (Grapher ResolvedEntry) sig m
     )
     => Path Rel Dir {- checkouts directory -} -> ResolvedEntry -> m ()
@@ -90,7 +91,7 @@ analyze topPath = evalGrapher $ do
         let checkoutPath :: Path Rel Dir
             checkoutPath = checkoutsDir </> path
 
-        deeper <- analyzeSingle (checkoutPath </> $(mkRelFile "Cartfile.resolved"))
+        deeper <- recover $ analyzeSingle (checkoutPath </> $(mkRelFile "Cartfile.resolved"))
         traverse_ (traverse_ (edge entry)) deeper
 
 entryToCheckoutName :: ResolvedEntry -> Text

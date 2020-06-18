@@ -10,7 +10,7 @@ module Strategy.Go.GoList
 
 import Prologue hiding ((<?>))
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.ByteString.Lazy as BL
 import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
@@ -38,18 +38,18 @@ data Require = Require
 
 golistCmd :: Command
 golistCmd = Command
-  { cmdNames = ["go"]
-  , cmdBaseArgs = ["list", "-m", "all"]
+  { cmdName = "go"
+  , cmdArgs = ["list", "-m", "all"]
   , cmdAllowErr = Never
   }
 
 analyze ::
   ( Has Exec sig m
-  , Has (Error ExecErr) sig m
+  , Has Diagnostics sig m
   )
   => Path Rel Dir -> m ProjectClosureBody
 analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do
-  stdout <- execThrow dir golistCmd []
+  stdout <- execThrow dir golistCmd
 
   let gomodLines = drop 1 . T.lines . T.filter (/= '\r') . decodeUtf8 . BL.toStrict $ stdout -- the first line is our package
       requires = mapMaybe toRequire gomodLines

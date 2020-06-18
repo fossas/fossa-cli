@@ -13,7 +13,7 @@ module Strategy.Cargo
 
 import Prologue
 
-import Control.Effect.Error
+import Control.Effect.Diagnostics
 import Data.Aeson.Types
 import qualified Data.Map.Strict as M
 import Discovery.Walk
@@ -126,15 +126,15 @@ discover = walk $ \dir _ files ->
 
 cargoGenLockfileCmd :: Command
 cargoGenLockfileCmd = Command
-  { cmdNames = ["cargo"]
-  , cmdBaseArgs = ["generate-lockfile"]
+  { cmdName = "cargo"
+  , cmdArgs = ["generate-lockfile"]
   , cmdAllowErr = Never
   }
 
 cargoMetadataCmd :: Command
 cargoMetadataCmd = Command
-  { cmdNames = ["cargo"]
-  , cmdBaseArgs = ["metadata"]
+  { cmdName = "cargo"
+  , cmdArgs = ["metadata"]
   , cmdAllowErr = Never
   }
 
@@ -151,11 +151,11 @@ mkProjectClosure dir graph = ProjectClosureBody
     , dependenciesComplete = Complete
     }
 
-analyze :: (Has Exec sig m, Has (Error ExecErr) sig m)
+analyze :: (Has Exec sig m, Has Diagnostics sig m)
   => Path Rel Dir -> m (Graphing Dependency)
 analyze manifestDir = do
-  _ <- execThrow manifestDir cargoGenLockfileCmd []
-  meta <- execJson @CargoMetadata manifestDir cargoMetadataCmd []
+  _ <- execThrow manifestDir cargoGenLockfileCmd
+  meta <- execJson @CargoMetadata manifestDir cargoMetadataCmd
   --
   pure $ buildGraph meta
 

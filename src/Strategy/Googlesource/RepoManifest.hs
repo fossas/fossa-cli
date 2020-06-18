@@ -18,23 +18,28 @@ module Strategy.Googlesource.RepoManifest
   , mkProjectClosure
   ) where
 
-import Prologue
+import Prelude
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
+import Control.Applicative ((<|>), optional)
+import Control.Monad (unless)
 import DepTypes
+import Data.Text (Text)
+import Data.Text.Prettyprint.Doc (pretty)
+import Data.Foldable (find)
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing, unfold)
 import Parse.XML
+import Path
 import Types
 import Text.URI
 import Text.GitConfig.Parser (Section(..), parseConfig)
 import qualified Data.HashMap.Strict as HM
 import Text.Megaparsec (errorBundlePretty)
-import Effect.ErrorUtils (tagError)
 
 -- We're looking for a file called "manifest.xml" in a directory called ".repo"
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -47,24 +52,20 @@ discover = walk $ \_ _ files ->
         pure WalkSkipAll
       else pure WalkContinue
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, MonadFail m) => Path Rel File -> m ProjectClosureBody
-analyze file = do
-  validatedProjects <- runError @ManifestGitConfigError $ nestedValidatedProjects (parent file) file
-  case validatedProjects of
-    Left err -> fail $ show err
-    Right projects -> pure $ mkProjectClosure file projects
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel File -> m ProjectClosureBody
+analyze file = mkProjectClosure file <$> nestedValidatedProjects (parent file) file
 
-nestedValidatedProjects :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m, MonadFail m) => Path Rel Dir -> Path Rel File -> m [ValidatedProject]
+nestedValidatedProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel Dir -> Path Rel File -> m [ValidatedProject]
 nestedValidatedProjects rootDir file = do
   manifest <- readContentsXML @RepoManifest file
   manifestWithFixedRemotes <- fixRelativeRemotes manifest rootDir
   validatedIncludedProjects <- validatedProjectsFromIncludes manifestWithFixedRemotes (parent file) rootDir
   let validatedDirectProjects = validateProjects manifestWithFixedRemotes
   case validatedDirectProjects of
-    Nothing -> fail "Error creating validated projects"
+    Nothing -> fatalText "Error creating validated projects"
     Just ps -> pure $ ps ++ validatedIncludedProjects
 
-fixRelativeRemotes :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m) => RepoManifest -> Path Rel Dir -> m RepoManifest
+fixRelativeRemotes :: (Has ReadFS sig m, Has Diagnostics sig m) => RepoManifest -> Path Rel Dir -> m RepoManifest
 fixRelativeRemotes manifest rootDir = do
   let remotes = manifestRemotes manifest
   fixedRemotes <- traverse (fixRemote rootDir) remotes
@@ -74,12 +75,12 @@ maybeToEither :: e -> Maybe a -> Either e a
 maybeToEither e Nothing = Left e
 maybeToEither _ (Just a) = Right a
 
-fixRemote :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m) => Path Rel Dir -> ManifestRemote -> m ManifestRemote
+fixRemote :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel Dir -> ManifestRemote -> m ManifestRemote
 fixRemote rootDir remote = do
   let configFile = rootDir </> $(mkRelFile "manifests.git/config")
 
   exists <- doesFileExist configFile
-  unless exists (throwError $ MissingGitConfig $ T.pack $ show configFile)
+  unless exists (fatal $ MissingGitConfig $ T.pack $ show configFile)
 
   contents <- readContentsText configFile
   config <- tagError (GitConfigParse . T.pack . errorBundlePretty) (parseConfig contents)
@@ -109,7 +110,7 @@ fixRemote rootDir remote = do
 -- </manifest>
 -- If you see that, you need to look for `manifests/default.xml`, where the manifests directory will
 -- be a sibling to the original manifest you were parsing.
-validatedProjectsFromIncludes :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m, Has (Error ManifestGitConfigError) sig m, MonadFail m) => RepoManifest -> Path Rel Dir -> Path Rel Dir -> m [ValidatedProject]
+validatedProjectsFromIncludes :: (Has ReadFS sig m, Has Diagnostics sig m) => RepoManifest -> Path Rel Dir -> Path Rel Dir -> m [ValidatedProject]
 validatedProjectsFromIncludes manifest parentDir rootDir = do
     let manifestIncludeFiles :: [Text]
         manifestIncludeFiles = map includeName $ manifestIncludes manifest
@@ -118,7 +119,7 @@ validatedProjectsFromIncludes manifest parentDir rootDir = do
         manifestFiles :: Maybe [Path Rel File]
         manifestFiles = traverse pathRelativeToManifestDir manifestIncludeFiles
     case manifestFiles of
-      Nothing -> fail "Error"
+      Nothing -> fatalText "Error"
       (Just (fs :: [Path Rel File])) -> concat <$> traverse (nestedValidatedProjects rootDir) fs
 
 mkProjectClosure :: Path Rel File -> [ValidatedProject] -> ProjectClosureBody
@@ -143,34 +144,34 @@ data RepoManifest = RepoManifest
   , manifestRemotes  :: [ManifestRemote]
   , manifestProjects :: [ManifestProject]
   , manifestIncludes :: [ManifestInclude]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data ManifestRemote = ManifestRemote
   { remoteName     :: Text
   , remoteFetch    :: Text
   , remoteRevision :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data ManifestDefault = ManifestDefault
   { defaultRemote   :: Maybe Text
   , defaultRevision :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data ManifestProject = ManifestProject
   { projectName     :: Text
   , projectPath     :: Maybe Text
   , projectRemote   :: Maybe Text
   , projectRevision :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
-data ManifestInclude = ManifestInclude { includeName :: Text } deriving (Eq, Ord, Show, Generic)
+data ManifestInclude = ManifestInclude { includeName :: Text } deriving (Eq, Ord, Show)
 
 data ValidatedProject = ValidatedProject
   { validatedProjectName     :: Text
   , validatedProjectPath     :: Text
   , validatedProjectUrl      :: URI
   , validatedProjectRevision :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 -- If a project does not have a path, then use its name for the path
 projectPathOrName :: ManifestProject -> Text
@@ -264,8 +265,10 @@ data ManifestGitConfigError =
     InvalidRemote Text
   | GitConfigParse Text
   | MissingGitConfig Text
-  | MissingGitHead
-  | InvalidBranchName Text
-  | MissingBranch Text
-  | MissingGitDir
-  deriving (Eq, Ord, Show, Generic, Typeable)
+  deriving (Eq, Ord, Show)
+
+instance ToDiagnostic ManifestGitConfigError where
+  renderDiagnostic = \case
+    InvalidRemote remote -> "An invalid remote was encountered when parsing manifest files: " <> pretty remote
+    GitConfigParse err -> "An error occurred when parsing a git config: " <> pretty err
+    MissingGitConfig path -> "A git config was missing: " <> pretty path

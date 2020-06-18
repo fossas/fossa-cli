@@ -17,8 +17,7 @@ import Strategy.Googlesource.RepoManifest
 import Test.Hspec
 import Text.URI.QQ
 import Effect.ReadFS
-import Control.Carrier.Error.Either
-import Control.Carrier.Fail.Either
+import Control.Carrier.Diagnostics
 
 -- <remote name="aosp" fetch="https://android.googlesource.com" />
 remoteOne :: ManifestRemote
@@ -176,7 +175,7 @@ validatedProjectList = [validatedProjectOne, validatedProjectTwo, validatedProje
 
 spec :: Spec
 spec = do
-  let runIt = runIO . runFail . runError @ReadFSErr . runError @ManifestGitConfigError . runReadFSIO
+  let runIt = runIO . runDiagnostics . runReadFSIO
   basicManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest.xml")
   noDefaultRemoteManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-remote.xml")
   noDefaultRevisionManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-revision.xml")
@@ -240,10 +239,8 @@ spec = do
 
     let withResult result f =
           case result of
-            Left err -> expectationFailure $ "could not parse nested manifest: " ++ show err
-            Right (Left _) -> expectationFailure "could not parse nested manifest, second level"
-            Right (Right (Left _)) -> expectationFailure "could not parse nested manifest, third level"
-            Right (Right (Right res)) -> f res
+            Left err -> expectationFailure $ "could not parse nested manifest: " ++ show (renderFailureBundle err)
+            Right res -> f (resultValue res)
 
     describe "for a manifest with an include tag" $ do
       projectsForManifestWithIncludes <- runIt $ nestedValidatedProjects $(mkRelDir "test/Googlesource/testdata") $(mkRelFile "test/Googlesource/testdata/manifest-with-include.xml")

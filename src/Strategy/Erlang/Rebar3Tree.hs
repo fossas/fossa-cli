@@ -10,7 +10,7 @@ module Strategy.Erlang.Rebar3Tree
 
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Text.Megaparsec
@@ -32,13 +32,13 @@ discover = walk $ \dir _ files -> do
 
 rebar3TreeCmd :: Command
 rebar3TreeCmd = Command
-  { cmdNames = ["rebar3"]
-  , cmdBaseArgs = ["tree", "-v"]
+  { cmdName = "rebar3"
+  , cmdArgs = ["tree", "-v"]
   , cmdAllowErr = Never
   }
 
-analyze :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path Rel Dir -> m ProjectClosureBody
-analyze dir = mkProjectClosure dir <$> execParser rebar3TreeParser dir rebar3TreeCmd []
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Rel Dir -> m ProjectClosureBody
+analyze dir = mkProjectClosure dir <$> execParser rebar3TreeParser dir rebar3TreeCmd
 
 mkProjectClosure :: Path Rel Dir -> [Rebar3Dep] -> ProjectClosureBody
 mkProjectClosure dir deps = ProjectClosureBody

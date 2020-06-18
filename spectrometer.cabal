@@ -66,7 +66,6 @@ common deps
     , megaparsec                   ^>=8.0
     , modern-uri                   ^>=0.3.1
     , mtl                          ^>=2.2.2
-    , optics                       ^>=0.2
     , optparse-applicative         ^>=0.15.1
     , path                         ^>=0.7
     , path-io                      ^>=1.6.0
@@ -110,14 +109,15 @@ library
     App.VPSScan.Scan.RunSherlock
     App.VPSScan.Scan.ScotlandYard
     App.VPSScan.Types
+    Control.Carrier.Diagnostics
     Control.Carrier.Output.IO
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
+    Control.Effect.Diagnostics
     Control.Effect.Output
     Control.Effect.TaskPool
     DepTypes
     Discovery.Walk
-    Effect.ErrorUtils
     Effect.Exec
     Effect.Grapher
     Effect.Logger

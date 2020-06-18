@@ -14,7 +14,7 @@ module Strategy.Go.Gomod
 
 import Prologue hiding ((<?>))
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Text.Megaparsec hiding (label)
@@ -177,7 +177,7 @@ resolve gomod = map resolveReplace (modRequires gomod)
 
 analyze ::
   ( Has ReadFS sig m
-  , Has (Error ReadFSErr) sig m
+  , Has Diagnostics sig m
   )
   => Path Rel File -> m ProjectClosureBody
 analyze file = fmap (mkProjectClosure file) . graphingGolang $ do

@@ -7,22 +7,23 @@ module App.Fossa.Analyze
 import Prologue
 
 import Control.Carrier.Error.Either
-import Control.Effect.Exception as Exc
+import Control.Effect.Lift (Lift)
+import qualified Control.Carrier.Diagnostics as Diag
 import Control.Carrier.Output.IO
 import Control.Concurrent
 import Path.IO
 
-import App.Fossa.FossaAPIV1 (ProjectRevision(..), ProjectMetadata, fossaReq, uploadAnalysis, FossaError(..), UploadResponse(..))
+import App.Fossa.FossaAPIV1 (ProjectRevision(..), ProjectMetadata, uploadAnalysis, UploadResponse(..))
 import App.Fossa.Analyze.Project (Project, mkProjects)
 import App.Fossa.ProjectInference (InferredProject(..), inferProject)
 import Control.Carrier.TaskPool
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
-import Effect.Exec (ExecErr(..))
 import Effect.Logger
-import Effect.ReadFS (ReadFSErr(..))
+import Network.HTTP.Types (urlEncode)
 import qualified Srclib.Converter as Srclib
+import Srclib.Types (Locator(..), parseLocator)
 import qualified Strategy.Cargo as Cargo
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Clojure as Clojure
@@ -52,18 +53,20 @@ import qualified Strategy.Python.ReqTxt as ReqTxt
 import qualified Strategy.Python.SetupPy as SetupPy
 import qualified Strategy.Ruby.BundleShow as BundleShow
 import qualified Strategy.Ruby.GemfileLock as GemfileLock
+import Text.URI (URI)
+import qualified Text.URI as URI
 import Types
-import OptionExtensions
+import qualified Data.Text.Encoding as TE
 
 data ScanDestination
-  = UploadScan UrlOption Text ProjectMetadata -- ^ upload to fossa with provided api key and base url
+  = UploadScan URI Text ProjectMetadata -- ^ upload to fossa with provided api key and base url
   | OutputStdout
   deriving (Generic)
  
-analyzeMain :: Severity -> ScanDestination -> Maybe Text -> Maybe Text -> IO ()
-analyzeMain logSeverity destination name revision = do
+analyzeMain :: Severity -> ScanDestination -> Maybe Text -> Maybe Text -> Maybe Text -> IO ()
+analyzeMain logSeverity destination name revision branch = do
   basedir <- getCurrentDir
-  withLogger logSeverity $ analyze basedir destination name revision
+  withLogger logSeverity $ analyze basedir destination name revision branch
 
 analyze ::
   ( Has (Lift IO) sig m
@@ -74,12 +77,15 @@ analyze ::
   -> ScanDestination
   -> Maybe Text -- ^ cli override for name
   -> Maybe Text -- ^ cli override for revision
+  -> Maybe Text -- ^ cli override for branch
   -> m ()
-analyze basedir destination overrideName overrideRevision = do
+analyze basedir destination overrideName overrideRevision overrideBranch = do
   capabilities <- liftIO getNumCapabilities
 
   (closures,(failures,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
     withTaskPool capabilities updateProgress (traverse_ ($ basedir) discoverFuncs)
+
+  traverse_ (logDebug . Diag.renderFailureBundle . projectFailureCause) failures
 
   logSticky ""
 
@@ -93,22 +99,38 @@ analyze basedir destination overrideName overrideRevision = do
       let revision = ProjectRevision
             (fromMaybe (inferredName inferred) overrideName)
             (fromMaybe (inferredRevision inferred) overrideRevision)
+            (fromMaybe (inferredBranch inferred) overrideBranch)
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
-     
-      maybeResp <- fossaReq $ uploadAnalysis baseurl apiKey revision metadata projects
-      case maybeResp of
-        Left (InvalidProjectOrRevision _) -> logError "FOSSA error: Invalid project or revision"
-        Left (NoPermission _) -> logError "FOSSA error: No permission to upload"
-        Left (JsonDeserializeError msg) -> logError $ "FOSSA error: Couldn't deserialize API response: " <> pretty msg
-        Left (OtherError exc) -> do
-          logError "Error when uploading to FOSSA:"
-          logError (viaShow exc)
-        Right resp -> do
-          logInfo $ "FOSSA locator: " <> viaShow (uploadLocator resp)
+      logInfo ("Using branch: `" <> pretty (projectBranch revision) <> "`")
+
+      uploadResult <- Diag.runDiagnostics $ uploadAnalysis baseurl apiKey revision metadata projects
+      case uploadResult of
+        Left failure -> logError (Diag.renderFailureBundle failure)
+        Right success -> do
+          let resp = Diag.resultValue success
+          logInfo $ vsep
+            [ "============================================================"
+            , ""
+            , "    View FOSSA Report:"
+            , "    " <> pretty (fossaProjectUrl baseurl (uploadLocator resp) (projectBranch revision))
+            , ""
+            , "============================================================"
+            ]
           traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
+
+fossaProjectUrl :: URI -> Text -> Text -> Text
+fossaProjectUrl baseUrl rawLocator branch = URI.render baseUrl <> "projects/" <> encodedProject <> "/refs/branch/" <> branch <> "/" <> encodedRevision
+  where
+    Locator{locatorFetcher, locatorProject, locatorRevision} = parseLocator rawLocator
+
+    underBS :: (ByteString -> ByteString) -> Text -> Text
+    underBS f = TE.decodeUtf8 . f . TE.encodeUtf8
+
+    encodedProject = underBS (urlEncode True) (locatorFetcher <> "+" <> locatorProject)
+    encodedRevision = underBS (urlEncode True) (fromMaybe "" locatorRevision)
 
 buildResult :: [Project] -> [ProjectFailure] -> Value
 buildResult projects failures = object
@@ -120,50 +142,8 @@ buildResult projects failures = object
 renderFailure :: ProjectFailure -> Value
 renderFailure failure = object
   [ "name" .= projectFailureName failure
-  , "cause" .= renderCause (projectFailureCause failure)
+  , "cause" .= show (Diag.renderFailureBundle (projectFailureCause failure))
   ]
-
-renderCause :: SomeException -> Value
-renderCause e = fromMaybe renderSomeException $
-      renderReadFSErr <$> fromException e
-  <|> renderExecErr   <$> fromException e
-  where
-  renderSomeException = object
-    [ "type" .= ("unknown" :: Text)
-    , "err"  .= show e
-    ]
-
-  renderReadFSErr :: ReadFSErr -> Value
-  renderReadFSErr = \case
-    FileReadError path err -> object
-      [ "type" .= ("file_read_error" :: Text)
-      , "path" .= path
-      , "err"  .= err
-      ]
-    FileParseError path err -> object
-      [ "type" .= ("file_parse_error" :: Text)
-      , "path" .= path
-      , "err"  .= err
-      ]
-    ResolveError base path err -> object
-      [ "type" .= ("file_resolve_error" :: Text)
-      , "base" .= base
-      , "path" .= path
-      , "err"  .= err
-      ]
-
-  renderExecErr :: ExecErr -> Value
-  renderExecErr = \case
-    CommandFailed cmd outerr -> object
-      [ "type"   .= ("command_execution_error" :: Text)
-      , "cmd"    .= cmd
-      , "stderr" .= outerr
-      ]
-    CommandParseError cmd err -> object
-      [ "type" .= ("command_parse_error" :: Text)
-      , "cmd"  .= cmd
-      , "err"  .= err
-      ]
 
 discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
 discoverFuncs =

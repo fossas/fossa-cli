@@ -11,7 +11,7 @@ module Strategy.NuGet.Paket
 
 import Prologue
 
-import Control.Carrier.Error.Either
+import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Char as C
@@ -36,7 +36,7 @@ discover = walk $ \_ _ files -> do
 
   pure WalkContinue
 
-analyze :: (Has ReadFS sig m, Has (Error ReadFSErr) sig m) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser findSections file
 
 mkProjectClosure :: Path Rel File -> [Section] -> ProjectClosureBody

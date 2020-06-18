@@ -144,7 +144,7 @@ termLogger minSeverity queue = go ""
             go sticky
 
 newtype LoggerC m a = LoggerC { runLoggerC :: ReaderC (TMQueue LogMsg) m a }
-  deriving (Functor, Applicative, Monad, MonadIO)
+  deriving (Functor, Applicative, Alternative, Monad, MonadIO)
 
 instance (Algebra sig m, MonadIO m) => Algebra (Logger :+: sig) (LoggerC m) where
   alg hdl sig ctx = LoggerC $ case sig of

@@ -1,14 +1,13 @@
-{-# language QuasiQuotes #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module App.Fossa.ProjectInference
-  ( inferProject
-  , InferredProject(..)
-  ) where
-
-import Prologue
+  ( inferProject,
+    InferredProject (..),
+  )
+where
 
 import Control.Algebra
-import Control.Carrier.Error.Either
+import Control.Carrier.Diagnostics
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.HashMap.Strict as HM
 import Data.Maybe (mapMaybe)
@@ -16,54 +15,68 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Time.Clock.POSIX (getPOSIXTime)
-import Path.IO (getTempDir)
-import qualified System.FilePath.Posix as FP
-import Text.GitConfig.Parser (Section(..), parseConfig)
-import Text.Megaparsec (errorBundlePretty)
-
 import Effect.Exec
 import Effect.Logger
+import Path.IO (getTempDir)
+import Prologue
+import qualified System.FilePath.Posix as FP
+import Text.GitConfig.Parser (Section (..), parseConfig)
+import Text.Megaparsec (errorBundlePretty)
 import Effect.ReadFS
 
 inferProject :: (Has Logger sig m, MonadIO m) => Path Abs Dir -> m InferredProject
 inferProject current = do
-  gitInferred <- inferGit current & runReadFSIO & runError @ReadFSErr & runError @InferenceError
-  svnInferred <- inferSVN current & runExecIO & runError @ExecErr & runError @InferenceError
+  result <- runDiagnostics $ runReadFSIO $ runExecIO $ (inferGit current <||> inferSVN current)
 
-  case (gitInferred, svnInferred) of
-    -- we found a git project
-    (Right (Right project), _) -> pure project
-    -- we found an svn project
-    (_, Right (Right project))         -> pure project
-
-    _ -> do
+  case result of
+    Right inferred -> pure (resultValue inferred)
+    Left failure -> do
       logWarn "Project inference: couldn't find VCS root. Defaulting to directory name."
+      logDebug (renderFailureBundle failure)
       inferDefault current
 
 svnCommand :: Command
 svnCommand = Command
-  { cmdNames = ["svn"]
-  , cmdBaseArgs = ["info"]
+  { cmdName = "svn"
+  , cmdArgs = ["info"]
   , cmdAllowErr = Never
   }
 
-inferSVN :: (Has Exec sig m, Has (Error ExecErr) sig m) => Path b Dir -> m InferredProject
+inferSVN :: (Has Exec sig m, Has Diagnostics sig m) => Path b Dir -> m InferredProject
 inferSVN dir = do
-  output <- execThrow dir svnCommand []
+  output <- execThrow dir svnCommand
   let props = toProps output
-  case (,) <$> lookup "Repository Root" props <*> lookup "Revision" props of
-    Just (name, rev) -> pure (InferredProject name rev)
-    Nothing -> throwError (CommandParseError "svn" "Invalid output (missing Repository Root or Revision)")
 
-  where
-  toProps :: BL.ByteString -> [(Text, Text)]
-  toProps bs = mapMaybe toProp (T.lines (TL.toStrict (decodeUtf8 bs)))
 
-  toProp :: Text -> Maybe (Text, Text)
-  toProp propLine =
-    case T.splitOn ": " propLine of
-      [key, val] -> Just (key, val)
-      _ -> Nothing
+  let maybeProject = do
+        root <- lookup "Repository Root" props
+        revision <- lookup "Revision" props
+        url <- lookup "URL" props
+        relUrl <- lookup "Relative URL" props
+
+        let rootRelativeToUrl = dropPrefix url root
+
+        -- we need to trim off: the caret, the root (as relative to the url), and one of "/branches/" or "/"
+        let trimmedRelative =
+              dropPrefix "branches/"
+              . dropPrefix "/"
+              . dropPrefix rootRelativeToUrl
+              . dropPrefix "^" $ relUrl
+
+        pure $ InferredProject root revision (if T.null trimmedRelative then "trunk" else trimmedRelative)
+
+  case maybeProject of
+    Nothing -> fatal (CommandParseError svnCommand "Invalid output (missing Repository Root or Revision)")
+    Just project -> pure project
+
+    where
+      toProps :: BL.ByteString -> [(Text, Text)]
+      toProps bs = mapMaybe toProp (T.lines (TL.toStrict (decodeUtf8 bs)))
+      toProp :: Text -> Maybe (Text, Text)
+      toProp propLine =
+        case T.splitOn ": " propLine of
+          [key, val] -> Just (key, val)
+          _ -> Nothing
 
 -- | Infer a default project name from the directory, and a default
 -- revision from the current time. Writes `.fossa.revision` to the system
@@ -76,8 +89,11 @@ inferDefault dir = liftIO $ do
   tmp <- getTempDir
   writeFile (fromAbsDir tmp FP.</> ".fossa.revision") (show time)
 
-  pure (InferredProject (T.pack name) (T.pack (show time)))
+  pure (InferredProject (T.pack name) (T.pack (show time)) "master")
 
+-- like Text.stripPrefix, but with a non-Maybe result (defaults to the original text)
+dropPrefix :: Text -> Text -> Text
+dropPrefix pre txt = fromMaybe txt (T.stripPrefix pre txt)
 
 findGitDir :: Has ReadFS sig m => Path Abs Dir -> m (Maybe (Path Abs Dir))
 findGitDir dir = do
@@ -94,23 +110,21 @@ findGitDir dir = do
 
 inferGit ::
   ( Has ReadFS sig m
-  , Has (Error ReadFSErr) sig m
-  , Has (Error InferenceError) sig m
+  , Has Diagnostics sig m
   ) => Path Abs Dir -> m InferredProject
 inferGit dir = do
   foundGitDir <- findGitDir dir
 
   case foundGitDir of
-    Nothing -> throwError MissingGitDir
+    Nothing -> fatal MissingGitDir
     Just gitDir -> do
-      name     <- parseGitProjectName gitDir
-      revision <- parseGitProjectRevision gitDir
-      pure (InferredProject name revision)
+      name <- parseGitProjectName gitDir
+      (branch, revision) <- parseGitProjectRevision gitDir
+      pure (InferredProject name revision branch)
 
 parseGitProjectName ::
   ( Has ReadFS sig m
-  , Has (Error ReadFSErr) sig m
-  , Has (Error InferenceError) sig m
+  , Has Diagnostics sig m
   )
   => Path Abs Dir -> m Text
 parseGitProjectName dir = do
@@ -118,57 +132,55 @@ parseGitProjectName dir = do
 
   exists <- doesFileExist (dir </> relConfig)
 
-  unless exists (throwError MissingGitConfig)
+  unless exists (fatal MissingGitConfig)
 
   contents <- readContentsText (dir </> relConfig)
 
   case parseConfig contents of
-    Left err -> throwError (GitConfigParse (T.pack (errorBundlePretty err)))
-
+    Left err -> fatal (GitConfigParse (T.pack (errorBundlePretty err)))
     Right config -> do
       let maybeSection = find isOrigin config
       case maybeSection of
-        Nothing -> throwError InvalidRemote
+        Nothing -> fatal InvalidRemote
         Just (Section _ properties) ->
           case HM.lookup "url" properties of
             Just url -> pure url
-            Nothing -> throwError InvalidRemote
-
+            Nothing -> fatal InvalidRemote
   where
-  isOrigin :: Section -> Bool
-  isOrigin (Section ["remote", "origin"] _) = True
-  isOrigin _ = False
+    isOrigin :: Section -> Bool
+    isOrigin (Section ["remote", "origin"] _) = True
+    isOrigin _ = False
 
 parseGitProjectRevision ::
   ( Has ReadFS sig m
-  , Has (Error ReadFSErr) sig m
-  , Has (Error InferenceError) sig m
+  , Has Diagnostics sig m
   )
-  => Path Abs Dir -> m Text
+  => Path Abs Dir -> m (Text, Text) -- branch, revision
 parseGitProjectRevision dir = do
   let relHead = [relfile|HEAD|]
 
   headExists <- doesFileExist (dir </> relHead)
 
-  unless headExists (throwError MissingGitHead)
+  unless headExists (fatal MissingGitHead)
 
-  contents <- removeNewlines . T.drop 5 <$> readContentsText (dir </> relHead)
+  rawPath <- removeNewlines . dropPrefix "ref: " <$> readContentsText (dir </> relHead)
 
-  case parseRelFile (T.unpack contents) of
+  case parseRelFile (T.unpack rawPath) of
+    Nothing -> fatal (InvalidBranchName rawPath)
     Just path -> do
       branchExists <- doesFileExist (dir </> path)
 
-      unless branchExists (throwError (MissingBranch contents))
+      unless branchExists (fatal (MissingBranch rawPath))
 
-      removeNewlines <$> readContentsText (dir </> path)
-
-    Nothing -> throwError (InvalidBranchName contents)
+      revision <- removeNewlines <$> readContentsText (dir </> path)
+      let branch = dropPrefix "refs/heads/" rawPath
+      pure (branch, revision)
 
 removeNewlines :: Text -> Text
 removeNewlines = T.replace "\r" "" . T.replace "\n" ""
 
-data InferenceError =
-    InvalidRemote
+data InferenceError
+  = InvalidRemote
   | GitConfigParse Text
   | MissingGitConfig
   | MissingGitHead
@@ -177,8 +189,19 @@ data InferenceError =
   | MissingGitDir
   deriving (Eq, Ord, Show, Generic, Typeable)
 
+instance ToDiagnostic InferenceError where
+  renderDiagnostic = \case
+    InvalidRemote -> "Missing 'origin' git remote"
+    GitConfigParse err -> "An error occurred when parsing the git config: " <> pretty err
+    MissingGitConfig -> "Missing .git/config file"
+    MissingGitHead -> "Missing .git/HEAD file"
+    InvalidBranchName branch -> "Invalid branch name: " <> pretty branch
+    MissingBranch branch -> "Missing ref file for current branch: " <> pretty branch
+    MissingGitDir -> "Could not find .git directory in the current or any parent directory"
 
 data InferredProject = InferredProject
-  { inferredName     :: Text
-  , inferredRevision :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  { inferredName :: Text,
+    inferredRevision :: Text,
+    inferredBranch :: Text
+  }
+  deriving (Eq, Ord, Show, Generic)
