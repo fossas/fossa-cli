@@ -104,3 +104,4 @@ depTypeToFetcher = \case
   GoType -> "go"
   CarthageType -> "cart"
   CargoType -> "cargo"
+  RPMType -> "rpm"

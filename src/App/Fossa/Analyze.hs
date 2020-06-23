@@ -51,6 +51,7 @@ import qualified Strategy.NuGet.Nuspec as Nuspec
 import qualified Strategy.Python.Pipenv as Pipenv
 import qualified Strategy.Python.ReqTxt as ReqTxt
 import qualified Strategy.Python.SetupPy as SetupPy
+import qualified Strategy.RPM as RPM
 import qualified Strategy.Ruby.BundleShow as BundleShow
 import qualified Strategy.Ruby.GemfileLock as GemfileLock
 import Text.URI (URI)
@@ -188,6 +189,8 @@ discoverFuncs =
   , Clojure.discover
   
   , Cargo.discover
+
+  , RPM.discover
   ]
 
 updateProgress :: Has Logger sig m => Progress -> m ()

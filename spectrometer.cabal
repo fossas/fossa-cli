@@ -164,6 +164,7 @@ library
     Strategy.Python.ReqTxt
     Strategy.Python.SetupPy
     Strategy.Python.Util
+    Strategy.RPM
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Types
@@ -231,6 +232,7 @@ test-suite unit-tests
     Python.ReqTxtSpec
     Python.RequirementsSpec
     Python.SetupPySpec
+    RPM.SpecFileSpec
     Ruby.BundleShowSpec
     Ruby.GemfileLockSpec
 
