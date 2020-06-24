@@ -30,7 +30,7 @@ analyze:
 
 #### `strategy: <string>`
 
-Manually specify the .NET analysis strategy to be used. Supported options are as follows and the individual behavior is listed in the Analysis section further down:
+Manually specify the nodejs analysis strategy to be used. Supported options are as follows and the individual behavior is listed in the Analysis section further down:
 - `npm-list`
 - `npm-lockfile`
 - `package.json`
