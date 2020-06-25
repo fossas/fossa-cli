@@ -29,9 +29,8 @@ findPomFiles :: (Has ReadFS sig m, MonadIO m) => Path Abs Dir -> m [Path Abs Fil
 findPomFiles dir = do
   relPaths <- execState @[Path Rel File] [] $
     flip walk dir $ \_ _ files -> do
-      case find ((== "pom.xml") . fileName) files of
-        Just file -> modify @[Path Rel File] (file:)
-        Nothing -> pure ()
+      let poms = filter (\file -> "pom.xml" `isSuffixOf` fileName file || ".pom" `isSuffixOf` fileName file) files
+      traverse_ (modify . (:)) poms
 
       pure WalkContinue
 
