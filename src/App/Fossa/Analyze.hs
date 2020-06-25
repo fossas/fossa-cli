@@ -13,9 +13,10 @@ import Control.Carrier.Output.IO
 import Control.Concurrent
 import Path.IO
 
-import App.Fossa.FossaAPIV1 (ProjectRevision(..), ProjectMetadata, uploadAnalysis, UploadResponse(..))
+import App.Fossa.CliTypes
+import App.Fossa.FossaAPIV1 (ProjectMetadata, uploadAnalysis, UploadResponse(..))
 import App.Fossa.Analyze.Project (Project, mkProjects)
-import App.Fossa.ProjectInference (InferredProject(..), inferProject)
+import App.Fossa.ProjectInference (mergeOverride, inferProject)
 import Control.Carrier.TaskPool
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
@@ -60,14 +61,14 @@ import Types
 import qualified Data.Text.Encoding as TE
 
 data ScanDestination
-  = UploadScan URI Text ProjectMetadata -- ^ upload to fossa with provided api key and base url
+  = UploadScan URI ApiKey ProjectMetadata -- ^ upload to fossa with provided api key and base url
   | OutputStdout
   deriving (Generic)
  
-analyzeMain :: Severity -> ScanDestination -> Maybe Text -> Maybe Text -> Maybe Text -> IO ()
-analyzeMain logSeverity destination name revision branch = do
+analyzeMain :: Severity -> ScanDestination -> OverrideProject -> IO ()
+analyzeMain logSeverity destination project = do
   basedir <- getCurrentDir
-  withLogger logSeverity $ analyze basedir destination name revision branch
+  withLogger logSeverity $ analyze basedir destination project
 
 analyze ::
   ( Has (Lift IO) sig m
@@ -76,11 +77,9 @@ analyze ::
   )
   => Path Abs Dir
   -> ScanDestination
-  -> Maybe Text -- ^ cli override for name
-  -> Maybe Text -- ^ cli override for revision
-  -> Maybe Text -- ^ cli override for branch
+  -> OverrideProject
   -> m ()
-analyze basedir destination overrideName overrideRevision overrideBranch = do
+analyze basedir destination override = do
   capabilities <- liftIO getNumCapabilities
 
   (closures,(failures,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
@@ -96,11 +95,7 @@ analyze basedir destination overrideName overrideRevision overrideBranch = do
   case destination of
     OutputStdout -> logStdout $ pretty (decodeUtf8 (encode result))
     UploadScan baseurl apiKey metadata -> do
-      inferred <- inferProject basedir
-      let revision = ProjectRevision
-            (fromMaybe (inferredName inferred) overrideName)
-            (fromMaybe (inferredRevision inferred) overrideRevision)
-            (fromMaybe (inferredBranch inferred) overrideBranch)
+      revision <- mergeOverride override <$> inferProject basedir
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")

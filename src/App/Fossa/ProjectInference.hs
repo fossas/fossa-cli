@@ -2,10 +2,12 @@
 
 module App.Fossa.ProjectInference
   ( inferProject,
+    mergeOverride,
     InferredProject (..),
   )
 where
 
+import App.Fossa.CliTypes
 import Control.Algebra
 import Control.Carrier.Diagnostics
 import qualified Data.ByteString.Lazy as BL
@@ -24,9 +26,16 @@ import Text.GitConfig.Parser (Section (..), parseConfig)
 import Text.Megaparsec (errorBundlePretty)
 import Effect.ReadFS
 
+mergeOverride :: OverrideProject -> InferredProject -> ProjectRevision
+mergeOverride OverrideProject {..} InferredProject {..} = ProjectRevision name revision branch
+  where
+    name = fromMaybe inferredName overrideName
+    revision = fromMaybe inferredRevision overrideRevision
+    branch = fromMaybe inferredBranch overrideBranch
+
 inferProject :: (Has Logger sig m, MonadIO m) => Path Abs Dir -> m InferredProject
 inferProject current = do
-  result <- runDiagnostics $ runReadFSIO $ runExecIO $ (inferGit current <||> inferSVN current)
+  result <- runDiagnostics $ runReadFSIO $ runExecIO (inferGit current <||> inferSVN current)
 
   case result of
     Right inferred -> pure (resultValue inferred)

@@ -7,11 +7,14 @@ module App.Fossa.Test
 import Prologue
 import qualified Prelude as Unsafe
 
+import App.Fossa.API.BuildWait
+import App.Fossa.CliTypes
 import qualified App.Fossa.FossaAPIV1 as Fossa
 import App.Fossa.ProjectInference
 import Control.Carrier.Diagnostics
 import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Async as Async
+import Data.Functor (($>))
 import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Text.IO (hPutStrLn)
@@ -23,42 +26,35 @@ import Text.URI (URI)
 import qualified Data.Aeson as Aeson
 import Data.Text.Lazy.Encoding (decodeUtf8)
 
-pollDelaySeconds :: Int
-pollDelaySeconds = 8
-
 data TestOutputType
   = TestOutputPretty -- ^ pretty output format for issues
   | TestOutputJson -- ^ use json output for issues
 
 testMain
   :: URI -- ^ api base url
-  -> Text -- ^ api key
+  -> ApiKey -- ^ api key
   -> Severity
   -> Int -- ^ timeout (seconds)
   -> TestOutputType
-  -> Maybe Text -- ^ cli override for name
-  -> Maybe Text -- ^ cli override for revision
+  -> OverrideProject
   -> IO ()
-testMain baseurl apiKey logSeverity timeoutSeconds outputType overrideName overrideRevision = do
+testMain baseurl apiKey logSeverity timeoutSeconds outputType override = do
   basedir <- getCurrentDir
 
   void $ timeout timeoutSeconds $ withLogger logSeverity $ do
     result <- runDiagnostics $ do
-      inferred <- inferProject basedir
- 
-      let projectName = fromMaybe (inferredName inferred) overrideName
-          projectRevision = fromMaybe (inferredRevision inferred) overrideRevision
+      revision <- mergeOverride override <$> inferProject basedir
 
       logInfo ""
-      logInfo ("Using project name: `" <> pretty projectName <> "`")
-      logInfo ("Using revision: `" <> pretty projectRevision <> "`")
+      logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
+      logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForBuild baseurl apiKey projectName projectRevision
+      waitForBuild baseurl apiKey revision
 
       logSticky "[ Waiting for issue scan completion... ]"
-      issues <- waitForIssues baseurl apiKey projectName projectRevision
+      issues <- waitForIssues baseurl apiKey revision
       logSticky ""
 
       if null (Fossa.issuesIssues issues)
@@ -132,47 +128,8 @@ renderedIssues issues = rendered
           | length xs <= ix = Nothing
           | otherwise = Just (xs Unsafe.!! ix)
 
-data TestError = TestBuildFailed -- ^ we encountered the FAILED status on a build
-  deriving (Show, Generic)
-
-instance ToDiagnostic TestError where
-  renderDiagnostic TestBuildFailed = "The build failed. Check the FOSSA webapp for more details."
-
-waitForBuild
-  :: (Has Diagnostics sig m, MonadIO m, Has Logger sig m)
-  => URI
-  -> Text -- ^ api key
-  -> Text -- ^ project name
-  -> Text -- ^ project revision
-  -> m ()
-waitForBuild baseurl key projectName projectRevision = do
-  build <- Fossa.getLatestBuild baseurl key projectName projectRevision
- 
-  case Fossa.buildTaskStatus (Fossa.buildTask build) of
-    Fossa.StatusSucceeded -> pure ()
-    Fossa.StatusFailed -> fatal TestBuildFailed
-    otherStatus -> do
-      logSticky $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
-      liftIO $ threadDelay (pollDelaySeconds * 1_000_000)
-      waitForBuild baseurl key projectName projectRevision
-
-waitForIssues
-  :: (Has Diagnostics sig m, MonadIO m, Has Logger sig m)
-  => URI
-  -> Text -- ^ api key
-  -> Text -- ^ project name
-  -> Text -- ^ project revision
-  -> m Fossa.Issues
-waitForIssues baseurl key projectName projectRevision = do
-  issues <- Fossa.getIssues baseurl key projectName projectRevision
-  case Fossa.issuesStatus issues of
-    "WAITING" -> do
-      liftIO $ threadDelay (pollDelaySeconds * 1_000_000)
-      waitForIssues baseurl key projectName projectRevision
-    _ -> pure issues
-
 timeout
   :: Int -- ^ number of seconds before timeout
   -> IO a
   -> IO (Maybe a)
-timeout seconds act = either id id <$> Async.race (Just <$> act) (threadDelay (seconds * 1_000_000) *> pure Nothing)
+timeout seconds act = either id id <$> Async.race (Just <$> act) (threadDelay (seconds * 1_000_000) $> Nothing)

@@ -1,1 +1,1 @@
-- arguments: [-XTypeApplications]
+- arguments: [-XTypeApplications, -XNumericUnderscores]
