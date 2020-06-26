@@ -33,14 +33,14 @@ analyze ::
   , Has Diagnostics sig m
   , MonadIO m
   )
-  => Path Rel Dir -> m ProjectClosureBody
+  => Path Abs Dir -> m ProjectClosureBody
 analyze dir = withUnpackedPlugin $ \filepath -> do
   installPlugin dir filepath
   execPlugin dir
   pluginOutput <- parsePluginOutput dir
   pure (mkProjectClosure dir pluginOutput)
 
-mkProjectClosure :: Path Rel Dir -> PluginOutput -> ProjectClosureBody
+mkProjectClosure :: Path Abs Dir -> PluginOutput -> ProjectClosureBody
 mkProjectClosure dir pluginOutput = ProjectClosureBody
   { bodyModuleDir    = dir
   , bodyDependencies = dependencies

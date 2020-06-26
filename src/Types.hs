@@ -27,6 +27,7 @@ import Control.Algebra
 import Control.Carrier.TaskPool
 import Control.Carrier.Diagnostics
 import Control.Effect.Exception
+import Control.Effect.Finally
 import Control.Carrier.Output.IO
 import DepTypes
 import Effect.Exec
@@ -73,6 +74,7 @@ type TaskC m = ExecIOC (ReadFSIOC (DiagnosticsC m))
 
 type HasDiscover sig m =
   ( Has (Lift IO) sig m
+  , Has Finally sig m
   , Has Logger sig m
   , Has TaskPool sig m
   , Has (Output ProjectClosure) sig m
@@ -112,7 +114,7 @@ toProjectClosure strategyGroup name body = ProjectClosure
   }
 
 data ProjectClosureBody = ProjectClosureBody
-  { bodyModuleDir    :: Path Rel Dir
+  { bodyModuleDir    :: Path Abs Dir
   , bodyDependencies :: ProjectDependencies
   , bodyLicenses     :: [LicenseResult]
   } deriving (Eq, Ord, Show, Generic)
@@ -120,7 +122,7 @@ data ProjectClosureBody = ProjectClosureBody
 data ProjectClosure = ProjectClosure
   { closureStrategyGroup :: StrategyGroup
   , closureStrategyName  :: Text -- ^ e.g., "python-pipenv". This is temporary: ProjectClosures will eventually combine several strategies into one
-  , closureModuleDir     :: Path Rel Dir -- ^ the relative module directory (for grouping with other strategies)
+  , closureModuleDir     :: Path Abs Dir -- ^ the absolute module directory (for grouping with other strategies)
   , closureDependencies  :: ProjectDependencies
   , closureLicenses      :: [LicenseResult]
   } deriving (Eq, Ord, Show, Generic)
@@ -146,6 +148,7 @@ data StrategyGroup =
   | ClojureGroup
   | RustGroup
   | RPMGroup
+  | ArchiveGroup
   deriving (Eq, Ord, Show, Generic)
 
 -- FIXME: we also need to annotate dep graphs with Path Rel File -- merge these somehow?

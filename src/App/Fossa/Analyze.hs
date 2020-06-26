@@ -17,6 +17,7 @@ import App.Fossa.CliTypes
 import App.Fossa.FossaAPIV1 (ProjectMetadata, uploadAnalysis, UploadResponse(..))
 import App.Fossa.Analyze.Project (Project, mkProjects)
 import App.Fossa.ProjectInference (mergeOverride, inferProject)
+import Control.Carrier.Finally
 import Control.Carrier.TaskPool
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
@@ -25,6 +26,7 @@ import Effect.Logger
 import Network.HTTP.Types (urlEncode)
 import qualified Srclib.Converter as Srclib
 import Srclib.Types (Locator(..), parseLocator)
+import qualified Strategy.Archive as Archive
 import qualified Strategy.Cargo as Cargo
 import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Clojure as Clojure
@@ -65,10 +67,10 @@ data ScanDestination
   | OutputStdout
   deriving (Generic)
  
-analyzeMain :: Severity -> ScanDestination -> OverrideProject -> IO ()
-analyzeMain logSeverity destination project = do
+analyzeMain :: Severity -> ScanDestination -> OverrideProject -> Bool -> IO ()
+analyzeMain logSeverity destination project unpackArchives = do
   basedir <- getCurrentDir
-  withLogger logSeverity $ analyze basedir destination project
+  withLogger logSeverity $ analyze basedir destination project unpackArchives
 
 analyze ::
   ( Has (Lift IO) sig m
@@ -78,12 +80,16 @@ analyze ::
   => Path Abs Dir
   -> ScanDestination
   -> OverrideProject
+  -> Bool -- ^ whether to unpack archives
   -> m ()
-analyze basedir destination override = do
+analyze basedir destination override unpackArchives = runFinally $ do
   capabilities <- liftIO getNumCapabilities
 
   (closures,(failures,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
-    withTaskPool capabilities updateProgress (traverse_ ($ basedir) discoverFuncs)
+    withTaskPool capabilities updateProgress $ do
+      if unpackArchives
+        then discoverWithArchives basedir
+        else discover basedir
 
   traverse_ (logDebug . Diag.renderFailureBundle . projectFailureCause) failures
 
@@ -102,7 +108,7 @@ analyze basedir destination override = do
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
       logInfo ("Using branch: `" <> pretty (projectBranch revision) <> "`")
 
-      uploadResult <- Diag.runDiagnostics $ uploadAnalysis baseurl apiKey revision metadata projects
+      uploadResult <- Diag.runDiagnostics $ uploadAnalysis basedir baseurl apiKey revision metadata projects
       case uploadResult of
         Left failure -> logError (Diag.renderFailureBundle failure)
         Right success -> do
@@ -140,6 +146,12 @@ renderFailure failure = object
   [ "name" .= projectFailureName failure
   , "cause" .= show (Diag.renderFailureBundle (projectFailureCause failure))
   ]
+
+discover :: HasDiscover sig m => Path Abs Dir -> m ()
+discover dir = traverse_ ($ dir) discoverFuncs
+
+discoverWithArchives :: HasDiscover sig m => Path Abs Dir -> m ()
+discoverWithArchives dir = traverse_ ($ dir) (Archive.discover discoverWithArchives : discoverFuncs)
 
 discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
 discoverFuncs =

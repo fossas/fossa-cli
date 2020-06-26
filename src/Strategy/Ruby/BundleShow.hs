@@ -37,10 +37,10 @@ bundleShowCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Rel Dir -> m ProjectClosureBody
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ProjectClosureBody
 analyze dir = mkProjectClosure dir <$> execParser bundleShowParser dir bundleShowCmd
 
-mkProjectClosure :: Path Rel Dir -> [BundleShowDep] -> ProjectClosureBody
+mkProjectClosure :: Path Abs Dir -> [BundleShowDep] -> ProjectClosureBody
 mkProjectClosure dir deps = ProjectClosureBody
   { bodyModuleDir    = dir
   , bodyDependencies = dependencies

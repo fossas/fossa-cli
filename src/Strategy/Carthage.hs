@@ -33,7 +33,7 @@ discover = walk $ \_ _ files ->
       runSimpleStrategy "carthage-lock" CarthageGroup $ fmap (mkProjectClosure file) (analyze file)
       pure WalkSkipAll
 
-mkProjectClosure :: Path Rel File -> G.Graphing ResolvedEntry -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> G.Graphing ResolvedEntry -> ProjectClosureBody
 mkProjectClosure file graph = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies
@@ -46,14 +46,14 @@ mkProjectClosure file graph = ProjectClosureBody
     , dependenciesComplete = Complete
     }
 
-relCheckoutsDir :: Path Rel File -> Path Rel Dir
+relCheckoutsDir :: Path Abs File -> Path Abs Dir
 relCheckoutsDir file = parent file </> $(mkRelDir "Carthage/Checkouts")
 
 analyze ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   )
-  => Path Rel File -> m (G.Graphing ResolvedEntry)
+  => Path Abs File -> m (G.Graphing ResolvedEntry)
 analyze topPath = evalGrapher $ do
   -- We only care about top-level resolved cartfile errors, so we don't
   -- 'recover' here, but we do below in 'descend'
@@ -70,7 +70,7 @@ analyze topPath = evalGrapher $ do
     , Has Diagnostics sig m
     , Has (Grapher ResolvedEntry) sig m
     )
-    => Path Rel File -> m [ResolvedEntry]
+    => Path Abs File -> m [ResolvedEntry]
   analyzeSingle path = do
     entries <- readContentsParser @[ResolvedEntry] resolvedCartfileParser path
     traverse_ (descend (relCheckoutsDir path)) entries
@@ -81,14 +81,14 @@ analyze topPath = evalGrapher $ do
     , Has Diagnostics sig m
     , Has (Grapher ResolvedEntry) sig m
     )
-    => Path Rel Dir {- checkouts directory -} -> ResolvedEntry -> m ()
+    => Path Abs Dir {- checkouts directory -} -> ResolvedEntry -> m ()
   descend checkoutsDir entry = do
     let checkoutName = T.unpack $ entryToCheckoutName entry
 
     case parseRelDir checkoutName of
       Nothing -> pure ()
       Just path -> do
-        let checkoutPath :: Path Rel Dir
+        let checkoutPath :: Path Abs Dir
             checkoutPath = checkoutsDir </> path
 
         deeper <- recover $ analyzeSingle (checkoutPath </> $(mkRelFile "Cartfile.resolved"))

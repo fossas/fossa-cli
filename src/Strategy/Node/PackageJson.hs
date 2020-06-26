@@ -36,10 +36,10 @@ instance FromJSON PackageJson where
     PackageJson <$> obj .:? "dependencies"    .!= M.empty
                 <*> obj .:? "devDependencies" .!= M.empty
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsJson @PackageJson file
 
-mkProjectClosure :: Path Rel File -> PackageJson -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> PackageJson -> ProjectClosureBody
 mkProjectClosure file package = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies

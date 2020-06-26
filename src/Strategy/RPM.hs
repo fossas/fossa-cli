@@ -52,12 +52,12 @@ discover = walk $ \dir _ files ->
       analzyeFile specFile = runSimpleStrategy "rpm-spec" RPMGroup $ fmap (mkProjectClosure dir) (analyze specFile)
    in traverse_ analzyeFile specs >> pure WalkSkipAll
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel File -> m (Graphing Dependency)
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze specFile = do
   specFileText <- readContentsText specFile
   pure . buildGraph $ getSpecDeps specFileText
 
-mkProjectClosure :: Path Rel Dir -> Graphing Dependency -> ProjectClosureBody
+mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody
 mkProjectClosure dir graph =
   ProjectClosureBody
     { bodyModuleDir = dir,

@@ -48,7 +48,7 @@ discover = walk $ \dir _ files -> do
       runSimpleStrategy "clojure-lein" ClojureGroup $ mkProjectClosure dir <$> analyze file
       pure WalkSkipAll
 
-mkProjectClosure :: Path Rel Dir -> Graphing Dependency -> ProjectClosureBody
+mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody
 mkProjectClosure dir deps =
   ProjectClosureBody
     { bodyModuleDir = dir,
@@ -61,7 +61,7 @@ mkProjectClosure dir deps =
       bodyLicenses = []
     }
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Rel File -> m (Graphing Dependency)
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = do
   stdoutBL <- execThrow (parent file) leinDepsCmd
   let stdoutTL = decodeUtf8 stdoutBL

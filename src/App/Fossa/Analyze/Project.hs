@@ -19,7 +19,7 @@ import Graphing
 import Types
 
 data Project = Project
-  { projectPath       :: Path Rel Dir
+  { projectPath       :: Path Abs Dir
   , projectStrategies :: [ProjectStrategy]
   }
   deriving (Eq, Ord, Show, Generic)
@@ -34,10 +34,10 @@ data ProjectStrategy = ProjectStrategy
 mkProjects :: [ProjectClosure] -> [Project]
 mkProjects = toProjects . grouping
   where
-  toProjects :: Map (StrategyGroup, Path Rel Dir) [ProjectClosure] -> [Project]
+  toProjects :: Map (StrategyGroup, Path Abs Dir) [ProjectClosure] -> [Project]
   toProjects = fmap toProject . M.toList
 
-  toProject :: ((StrategyGroup, Path Rel Dir), [ProjectClosure]) -> Project
+  toProject :: ((StrategyGroup, Path Abs Dir), [ProjectClosure]) -> Project
   toProject ((_, dir), closures) = Project
     { projectPath = dir
     , projectStrategies = fmap toProjectStrategy $
@@ -55,7 +55,7 @@ mkProjects = toProjects . grouping
                     , projStrategyComplete = dependenciesComplete closureDependencies
                     }
 
-  grouping :: [ProjectClosure] -> Map (StrategyGroup, Path Rel Dir) [ProjectClosure]
+  grouping :: [ProjectClosure] -> Map (StrategyGroup, Path Abs Dir) [ProjectClosure]
   grouping closures = M.fromListWith (<>) $ toList $ do
     closure <- closures
     let strategyGroup = closureStrategyGroup closure

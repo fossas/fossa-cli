@@ -47,7 +47,7 @@ analyze ::
   ( Has Exec sig m
   , Has Diagnostics sig m
   )
-  => Path Rel Dir -> m ProjectClosureBody
+  => Path Abs Dir -> m ProjectClosureBody
 analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do
   stdout <- execThrow dir golistCmd
 
@@ -66,7 +66,7 @@ analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do
   -- _ <- try @ExecErr (fillInTransitive dir)
   pure ()
 
-mkProjectClosure :: Path Rel Dir -> Graphing Dependency -> ProjectClosureBody
+mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody
 mkProjectClosure dir graph = ProjectClosureBody
   { bodyModuleDir    = dir
   , bodyDependencies = dependencies

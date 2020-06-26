@@ -57,10 +57,10 @@ instance FromJSON NpmDep where
            <*> obj .:? "requires"
            <*> obj .:? "dependencies"
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsJson @NpmPackageJson file
 
-mkProjectClosure :: Path Rel File -> NpmPackageJson -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> NpmPackageJson -> ProjectClosureBody
 mkProjectClosure file lock = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies

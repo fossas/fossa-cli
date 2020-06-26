@@ -34,13 +34,13 @@ pipListCmd baseCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Rel Dir -> m ProjectClosureBody
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ProjectClosureBody
 analyze dir = do
   deps <- execJson @[PipListDep] dir (pipListCmd "pip3")
             <||> execJson @[PipListDep] dir (pipListCmd "pip")
   pure (mkProjectClosure dir deps)
 
-mkProjectClosure :: Path Rel Dir -> [PipListDep] -> ProjectClosureBody
+mkProjectClosure :: Path Abs Dir -> [PipListDep] -> ProjectClosureBody
 mkProjectClosure dir deps = ProjectClosureBody
   { bodyModuleDir    = dir
   , bodyDependencies = dependencies

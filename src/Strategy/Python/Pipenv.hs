@@ -45,14 +45,14 @@ analyze ::
   , Has Exec sig m
   , Has Diagnostics sig m
   )
-  => Path Rel File -> m ProjectClosureBody
+  => Path Abs File -> m ProjectClosureBody
 analyze lockfile = do
   lock <- readContentsJson lockfile
   maybeDeps <- recover (execJson (parent lockfile) pipenvGraphCmd)
 
   pure (mkProjectClosure lockfile lock maybeDeps)
 
-mkProjectClosure :: Path Rel File -> PipfileLock -> Maybe [PipenvGraphDep] -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> PipfileLock -> Maybe [PipenvGraphDep] -> ProjectClosureBody
 mkProjectClosure file lockfile maybeDeps = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies

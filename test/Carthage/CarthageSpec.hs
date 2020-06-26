@@ -10,6 +10,7 @@ import Effect.ReadFS
 import qualified Graphing as G
 import GraphUtil
 import Strategy.Carthage
+import Path.IO (makeAbsolute)
 
 import Test.Hspec
 
@@ -25,8 +26,8 @@ spec = do
         & runReadFSIO
         & runDiagnostics
 
-  emptyResult <- runIO $ runIt testProjectEmpty
-  complexResult <- runIO $ runIt testProjectComplex
+  emptyResult <- runIO $ runIt =<< makeAbsolute testProjectEmpty
+  complexResult <- runIO $ runIt =<< makeAbsolute testProjectComplex
 
   describe "carthage analyze" $ do
     it "should work for empty projects" $ do

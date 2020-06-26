@@ -37,10 +37,10 @@ rebar3TreeCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Rel Dir -> m ProjectClosureBody
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ProjectClosureBody
 analyze dir = mkProjectClosure dir <$> execParser rebar3TreeParser dir rebar3TreeCmd
 
-mkProjectClosure :: Path Rel Dir -> [Rebar3Dep] -> ProjectClosureBody
+mkProjectClosure :: Path Abs Dir -> [Rebar3Dep] -> ProjectClosureBody
 mkProjectClosure dir deps = ProjectClosureBody
   { bodyModuleDir    = dir
   , bodyDependencies = dependencies

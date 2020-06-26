@@ -30,10 +30,10 @@ npmListCmd = Command
   , cmdAllowErr = NonEmptyStdout
   }
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Rel Dir -> m ProjectClosureBody
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ProjectClosureBody
 analyze dir = mkProjectClosure dir <$> execJson @NpmOutput dir npmListCmd
 
-mkProjectClosure :: Path Rel Dir -> NpmOutput -> ProjectClosureBody
+mkProjectClosure :: Path Abs Dir -> NpmOutput -> ProjectClosureBody
 mkProjectClosure dir npmOutput = ProjectClosureBody
   { bodyModuleDir     = dir
   , bodyDependencies  = dependencies

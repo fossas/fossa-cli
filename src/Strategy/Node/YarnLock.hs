@@ -29,16 +29,16 @@ discover = walk $ \_ _ files -> do
 
   pure (WalkSkipSome [$(mkRelDir "node_modules")])
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze lockfile = do
-  let path = fromRelFile lockfile
+  let path = fromAbsFile lockfile
 
   contents <- readContentsText lockfile
   case YL.parse path contents of
     Left err -> fatal (FileParseError path (YL.prettyLockfileError err))
     Right a -> pure (mkProjectClosure lockfile a)
 
-mkProjectClosure :: Path Rel File -> YL.Lockfile -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> YL.Lockfile -> ProjectClosureBody
 mkProjectClosure file lock = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies

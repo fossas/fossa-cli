@@ -67,11 +67,11 @@ analyze ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   )
-  => Path Rel File -> m ProjectClosureBody
+  => Path Abs File -> m ProjectClosureBody
 analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
   contents <- readContentsText file
   case Toml.decode gopkgCodec contents of
-    Left err -> fatal (FileParseError (fromRelFile file) (Toml.prettyException err))
+    Left err -> fatal (FileParseError (fromAbsFile file) (Toml.prettyException err))
     Right gopkg -> do
       buildGraph gopkg
 
@@ -79,7 +79,7 @@ analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
       -- _ <- runError @ExecErr (fillInTransitive (parent file))
       pure ()
 
-mkProjectClosure :: Path Rel File -> Graphing Dependency -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> Graphing Dependency -> ProjectClosureBody
 mkProjectClosure file graph = ProjectClosureBody
   { bodyModuleDir     = parent file
   , bodyDependencies  = dependencies

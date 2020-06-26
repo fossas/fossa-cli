@@ -41,11 +41,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Install bash (alpine)
+    - name: Install bash & xz & bzip2 (alpine)
       if: ${{ contains(matrix.os, 'ubuntu') }}
       shell: sh
       run: |
-        apk add bash
+        apk add bash xz-dev bzip2-dev bzip2-static
 
     - uses: actions/setup-haskell@v1.1
       id: setup-haskell

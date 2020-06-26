@@ -29,10 +29,10 @@ discover = walk $ \_ _ files -> do
 
   pure WalkContinue
 
-analyze :: ( Has ReadFS sig m , Has Diagnostics sig m) => Path Rel File -> m ProjectClosureBody
+analyze :: ( Has ReadFS sig m , Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsYaml @GlideLockfile file
 
-mkProjectClosure :: Path Rel File -> GlideLockfile -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> GlideLockfile -> ProjectClosureBody
 mkProjectClosure file lock = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies

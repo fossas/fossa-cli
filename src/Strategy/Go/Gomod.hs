@@ -179,7 +179,7 @@ analyze ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   )
-  => Path Rel File -> m ProjectClosureBody
+  => Path Abs File -> m ProjectClosureBody
 analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
   gomod <- readContentsParser gomodParser file
 
@@ -189,7 +189,7 @@ analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
   -- _ <- runError @ExecErr (fillInTransitive (parent file))
   pure ()
 
-mkProjectClosure :: Path Rel File -> Graphing Dependency -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> Graphing Dependency -> ProjectClosureBody
 mkProjectClosure file graph = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies

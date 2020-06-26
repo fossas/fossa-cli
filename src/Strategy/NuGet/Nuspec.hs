@@ -34,10 +34,10 @@ discover = walk $ \_ _ files -> do
 
   pure WalkContinue
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsXML @Nuspec file
 
-mkProjectClosure :: Path Rel File -> Nuspec -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> Nuspec -> ProjectClosureBody
 mkProjectClosure file nuspec = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies

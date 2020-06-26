@@ -17,6 +17,7 @@ import Effect.Exec
 import Effect.Grapher
 import Graphing (Graphing(..))
 import Strategy.Go.GoList
+import Path.IO (getCurrentDir)
 import Types
 
 import Test.Hspec
@@ -51,13 +52,11 @@ expected = run . evalGrapher $ do
                       , dependencyTags = M.empty
                       }
 
-testdir :: Path Rel Dir
-testdir = $(mkRelDir ".")
-
 spec :: Spec
 spec = do
   outputTrivial <- runIO (BL.readFile "test/Go/testdata/golist-stdout.trivial")
   outputComplex <- runIO (BL.readFile "test/Go/testdata/golist-stdout.complex")
+  testdir <- runIO getCurrentDir
 
   describe "golist analyze" $ do
     it "produces the expected output" $ do

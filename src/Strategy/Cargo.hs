@@ -138,7 +138,7 @@ cargoMetadataCmd = Command
   , cmdAllowErr = Never
   }
 
-mkProjectClosure :: Path Rel Dir ->  Graphing Dependency -> ProjectClosureBody
+mkProjectClosure :: Path Abs Dir ->  Graphing Dependency -> ProjectClosureBody
 mkProjectClosure dir graph = ProjectClosureBody
   { bodyModuleDir    = dir
   , bodyDependencies = dependencies
@@ -152,7 +152,7 @@ mkProjectClosure dir graph = ProjectClosureBody
     }
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m)
-  => Path Rel Dir -> m (Graphing Dependency)
+  => Path Abs Dir -> m (Graphing Dependency)
 analyze manifestDir = do
   _ <- execThrow manifestDir cargoGenLockfileCmd
   meta <- execJson @CargoMetadata manifestDir cargoMetadataCmd

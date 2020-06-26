@@ -8,6 +8,7 @@ import Prologue
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
 import Control.Carrier.Error.Either
+import Control.Carrier.Finally
 import Control.Effect.Exception as Exc
 import Control.Carrier.Output.IO
 import Control.Concurrent
@@ -39,7 +40,7 @@ scan ::
   , MonadIO m
   )
   => Path Abs Dir -> m ()
-scan basedir = do
+scan basedir = runFinally $ do
   setCurrentDir basedir
   capabilities <- liftIO getNumCapabilities
 

@@ -52,10 +52,10 @@ discover = walk $ \_ _ files ->
         pure WalkSkipAll
       else pure WalkContinue
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> nestedValidatedProjects (parent file) file
 
-nestedValidatedProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel Dir -> Path Rel File -> m [ValidatedProject]
+nestedValidatedProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m [ValidatedProject]
 nestedValidatedProjects rootDir file = do
   manifest <- readContentsXML @RepoManifest file
   manifestWithFixedRemotes <- fixRelativeRemotes manifest rootDir
@@ -65,7 +65,7 @@ nestedValidatedProjects rootDir file = do
     Nothing -> fatalText "Error creating validated projects"
     Just ps -> pure $ ps ++ validatedIncludedProjects
 
-fixRelativeRemotes :: (Has ReadFS sig m, Has Diagnostics sig m) => RepoManifest -> Path Rel Dir -> m RepoManifest
+fixRelativeRemotes :: (Has ReadFS sig m, Has Diagnostics sig m) => RepoManifest -> Path Abs Dir -> m RepoManifest
 fixRelativeRemotes manifest rootDir = do
   let remotes = manifestRemotes manifest
   fixedRemotes <- traverse (fixRemote rootDir) remotes
@@ -75,7 +75,7 @@ maybeToEither :: e -> Maybe a -> Either e a
 maybeToEither e Nothing = Left e
 maybeToEither _ (Just a) = Right a
 
-fixRemote :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel Dir -> ManifestRemote -> m ManifestRemote
+fixRemote :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> ManifestRemote -> m ManifestRemote
 fixRemote rootDir remote = do
   let configFile = rootDir </> $(mkRelFile "manifests.git/config")
 
@@ -110,19 +110,19 @@ fixRemote rootDir remote = do
 -- </manifest>
 -- If you see that, you need to look for `manifests/default.xml`, where the manifests directory will
 -- be a sibling to the original manifest you were parsing.
-validatedProjectsFromIncludes :: (Has ReadFS sig m, Has Diagnostics sig m) => RepoManifest -> Path Rel Dir -> Path Rel Dir -> m [ValidatedProject]
+validatedProjectsFromIncludes :: (Has ReadFS sig m, Has Diagnostics sig m) => RepoManifest -> Path Abs Dir -> Path Abs Dir -> m [ValidatedProject]
 validatedProjectsFromIncludes manifest parentDir rootDir = do
     let manifestIncludeFiles :: [Text]
         manifestIncludeFiles = map includeName $ manifestIncludes manifest
-        pathRelativeToManifestDir :: Text -> Maybe (Path Rel File)
+        pathRelativeToManifestDir :: Text -> Maybe (Path Abs File)
         pathRelativeToManifestDir file = (parentDir </>) <$> parseRelFile ("manifests/" ++ T.unpack file)
-        manifestFiles :: Maybe [Path Rel File]
+        manifestFiles :: Maybe [Path Abs File]
         manifestFiles = traverse pathRelativeToManifestDir manifestIncludeFiles
     case manifestFiles of
       Nothing -> fatalText "Error"
-      (Just (fs :: [Path Rel File])) -> concat <$> traverse (nestedValidatedProjects rootDir) fs
+      (Just (fs :: [Path Abs File])) -> concat <$> traverse (nestedValidatedProjects rootDir) fs
 
-mkProjectClosure :: Path Rel File -> [ValidatedProject] -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> [ValidatedProject] -> ProjectClosureBody
 mkProjectClosure file projects = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies

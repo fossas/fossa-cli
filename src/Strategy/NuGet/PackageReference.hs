@@ -31,13 +31,13 @@ discover = walk $ \_ _ files -> do
   pure WalkContinue
  
   where 
-      isPackageRefFile :: Path Rel File -> Bool
+      isPackageRefFile :: Path b File -> Bool
       isPackageRefFile file = any (\x -> L.isSuffixOf x (fileName file)) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel File -> m ProjectClosureBody
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsXML @PackageReference file
 
-mkProjectClosure :: Path Rel File -> PackageReference -> ProjectClosureBody
+mkProjectClosure :: Path Abs File -> PackageReference -> ProjectClosureBody
 mkProjectClosure file package = ProjectClosureBody
   { bodyModuleDir    = parent file
   , bodyDependencies = dependencies

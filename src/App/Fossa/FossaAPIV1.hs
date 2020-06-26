@@ -25,8 +25,8 @@ import App.Fossa.Analyze.Project
 import qualified App.Fossa.Report.Attribution as Attr
 import Control.Effect.Diagnostics
 import Data.Coerce (coerce)
-import Data.List (isInfixOf)
 import Data.Maybe (catMaybes, fromMaybe)
+import Data.List (isInfixOf, stripPrefix)
 import Data.Text (Text)
 import Data.Aeson
 import Prelude
@@ -113,16 +113,24 @@ data ProjectMetadata = ProjectMetadata
 
 uploadAnalysis
   :: (Has Diagnostics sig m, MonadIO m)
-  => URI -- ^ base url
+  => Path Abs Dir -- ^ root directory for analysis
+  -> URI -- ^ base url
   -> ApiKey -- ^ api key
   -> ProjectRevision
   -> ProjectMetadata
   -> [Project]
   -> m UploadResponse
-uploadAnalysis baseUri key ProjectRevision{..} metadata projects = fossaReq $ do
+uploadAnalysis rootDir baseUri key ProjectRevision{..} metadata projects = fossaReq $ do
   (baseUrl, baseOptions) <- parseUri baseUri
 
-  let filteredProjects = filter (isProductionPath . projectPath) projects
+  -- For each of the projects, we need to strip the root directory path from the prefix of the project path.
+  -- We don't want parent directories of the scan root affecting "production path" filtering -- e.g., if we're
+  -- running in a directory called "tmp", we still want results.
+  let rootPath = fromAbsDir rootDir
+      dropPrefix :: String -> String -> String
+      dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
+      filteredProjects = filter (isProductionPath . dropPrefix rootPath . fromAbsDir . projectPath) projects
+     
       sourceUnits = fromMaybe [] $ traverse toSourceUnit filteredProjects
       opts = "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "v" =: cliVersion
@@ -153,10 +161,8 @@ mangleError err = case err of
   JsonHttpException msg -> JsonDeserializeError msg
   _ -> OtherError err
 
--- we specifically want Rel paths here: parent directories shouldn't affect path
--- filtering
-isProductionPath :: Path Rel fd -> Bool
-isProductionPath path = not $ any (`isInfixOf` toFilePath path)
+isProductionPath :: FilePath -> Bool
+isProductionPath path = not $ any (`isInfixOf` path)
   [ "doc/"
   , "docs/"
   , "test/"
@@ -171,7 +177,6 @@ isProductionPath path = not $ any (`isInfixOf` toFilePath path)
   , "bower_components/"
   , "third_party/"
   , "third-party/"
-  , "tmp/"
   , "Carthage/"
   , "Checkouts/"
   ]

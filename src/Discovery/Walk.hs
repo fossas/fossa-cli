@@ -13,7 +13,7 @@ import Path.IO
 
 data WalkStep
   = WalkContinue -- ^ Continue walking subdirectories
-  | WalkSkipSome [Path Rel Dir] -- ^ Skip some subdirectories
+  | WalkSkipSome [Path Abs Dir] -- ^ Skip some subdirectories
   | WalkSkipAll -- ^ Skip all subdirectories
   | WalkStop -- ^ Stop walking the filetree entirely
   deriving (Eq, Ord, Show, Generic)
@@ -26,13 +26,13 @@ data WalkStep
 -- 'fileName'
 walk
   :: MonadIO m
-  => (Path Rel Dir -> [Path Rel Dir] -> [Path Rel File] -> m WalkStep)
+  => (Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m WalkStep)
   -> Path Abs Dir
   -> m ()
-walk f = walkDirRel $ \dir subdirs files -> do
+walk f = walkDir $ \dir subdirs files -> do
   -- normally, subdirs and files are _relative to dir_. We want them to be
   -- relative to the filetree walk
-  step <- f dir (map (dir </>) subdirs) (map (dir </>) files)
+  step <- f dir subdirs files
   case step of
     WalkContinue -> pure (WalkExclude [])
     WalkSkipSome dirs -> pure (WalkExclude dirs)

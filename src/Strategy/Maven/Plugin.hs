@@ -54,16 +54,16 @@ withUnpackedPlugin act =
 
     act pluginJarFilepath
 
-installPlugin :: (Has Exec sig m, Has Diagnostics sig m) => Path Rel Dir -> FP.FilePath -> m ()
+installPlugin :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> FP.FilePath -> m ()
 installPlugin dir path = void $ execThrow dir (mavenInstallPluginCmd path)
 
-execPlugin :: (Has Exec sig m, Has Diagnostics sig m) => Path Rel Dir -> m ()
+execPlugin :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ()
 execPlugin dir = void $ execThrow dir mavenPluginDependenciesCmd
 
 outputFile :: Path Rel File
 outputFile = $(mkRelFile "target/dependency-graph.json")
 
-parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Rel Dir -> m PluginOutput
+parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m PluginOutput
 parsePluginOutput dir = readContentsJson (dir </> outputFile)
 
 mavenInstallPluginCmd :: FP.FilePath -> Command
