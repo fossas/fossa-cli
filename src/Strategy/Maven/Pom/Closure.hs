@@ -6,6 +6,7 @@ module Strategy.Maven.Pom.Closure
 import Prologue
 
 import qualified Algebra.Graph.AdjacencyMap as AM
+import qualified Algebra.Graph.AdjacencyMap.Algorithm as AM
 import Control.Algebra
 import Control.Carrier.State.Strict
 import Control.Effect.Diagnostics
@@ -43,13 +44,21 @@ buildProjectClosures basedir global = closures
   closures = map (\(path, (coord, pom)) -> toClosure path coord pom) (M.toList projectRoots)
 
   toClosure :: Path Rel File -> MavenCoordinate -> Pom -> MavenProjectClosure
-  toClosure path coord pom = MavenProjectClosure path coord pom (globalGraph global) (globalPoms global)
+  toClosure path coord pom = MavenProjectClosure path coord pom reachableGraph reachablePomMap
+    where
+      reachableGraph = AM.induce (`S.member` reachablePoms) $ globalGraph global
+      reachablePomMap = M.filterWithKey (\k _ -> S.member k reachablePoms) $ globalPoms global
+      reachablePoms = bidirectionalReachable coord (globalGraph global)
 
   projectRoots :: Map (Path Rel File) (MavenCoordinate, Pom)
   projectRoots = determineProjectRoots basedir global graphRoots
 
   graphRoots :: [MavenCoordinate]
   graphRoots = sourceVertices (globalGraph global)
+
+-- Find reachable nodes both below (children, grandchildren, ...) and above (parents, grandparents) the node
+bidirectionalReachable :: Ord a => a -> AM.AdjacencyMap a -> S.Set a
+bidirectionalReachable node gr = S.fromList $ AM.reachable node gr ++ AM.reachable node (AM.transpose gr)
 
 sourceVertices :: Ord a => AM.AdjacencyMap a -> [a]
 sourceVertices graph = [v | v <- AM.vertexList graph, S.null (AM.preSet v graph)]
