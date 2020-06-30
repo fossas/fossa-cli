@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
@@ -385,8 +384,12 @@ func fetchGitContibutors() map[string]string {
 	// the format arg produces newline-separated lines of: <author-email> :: <commit date>
 	// We use commit date since some people backdate authorship
 	// dates are always YYYY-MM-DD format.
-	cmd := exec.Command("git", "log", "--since", fmtSince, "--format=%ae :: %cd")
-	output, err := cmd.Output()
+	cmd := exec.Cmd{
+		Name:    "git",
+		Argv:    []string{"log", "--since", fmtSince, "--format=%ae :: %cd"},
+		Timeout: "10s",
+	}
+	output, _, err := exec.Run(cmd)
 	if err != nil {
 		log.Debugf("Failed to run 'git log': %s", err.Error())
 		return nil
