@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -259,7 +261,14 @@ func Run(ctx *cli.Context) error {
 		return nil
 	}
 
-	return uploadAnalysis(normalized)
+	locator, err := uploadAnalysis(normalized)
+	if err != nil {
+		return err
+	}
+
+	contributors := fetchGitContibutors()
+	fossa.UploadContributors(contributors, locator)
+	return nil
 }
 
 func displaySourceunits(sourceUnits []fossa.SourceUnit, ctx *cli.Context) {
@@ -342,7 +351,7 @@ func Do(modules []module.Module, upload, rawModuleLicenseScan, devDeps bool) (an
 	return analyzed, err
 }
 
-func uploadAnalysis(normalized []fossa.SourceUnit) error {
+func uploadAnalysis(normalized []fossa.SourceUnit) (fossa.Locator, error) {
 	display.InProgress("Uploading analysis...")
 	locator, err := fossa.Upload(
 		config.Title(),
@@ -363,8 +372,49 @@ func uploadAnalysis(normalized []fossa.SourceUnit) error {
 	display.ClearProgress()
 	if err != nil {
 		log.Fatalf("Error during upload: %s", err.Error())
-		return err
+		return fossa.Locator{}, err
 	}
 	fmt.Println(locator.ReportURL())
-	return nil
+	return locator, nil
+}
+
+func fetchGitContibutors() map[string]string {
+	year, month, day := time.Now().UTC().AddDate(0, 0, -90).Date()
+	fmtSince := fmt.Sprintf("%d-%d-%d", year, month, day)
+
+	// the format arg produces newline-separated lines of: <author-email> :: <commit date>
+	// We use commit date since some people backdate authorship
+	// dates are always YYYY-MM-DD format.
+	cmd := exec.Command("git", "log", "--since", fmtSince, "--format=%ae :: %cd")
+	output, err := cmd.Output()
+	if err != nil {
+		log.Debugf("Failed to run 'git log': %s", err.Error())
+		return nil
+	}
+
+	contribList := string(output)
+
+	contributorDates := make(map[string]string)
+	for _, line := range strings.Split(contribList, "\n") {
+		items := strings.Split(line, "::")
+		if len(items) != 2 {
+			// We control the output format, but there may be an empty line
+			continue
+		}
+
+		email := items[0]
+		date := items[1]
+
+		if oldDate := contributorDates[email]; oldDate != "" {
+			// Only the newest date is relevant for current contributions
+			dates := []string{date, oldDate}
+			sort.Strings(dates)
+			latest := dates[1]
+			contributorDates[email] = latest
+		} else {
+			contributorDates[email] = date
+		}
+	}
+
+	return contributorDates
 }
