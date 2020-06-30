@@ -387,10 +387,10 @@ func fetchGitContibutors() map[string]string {
 
 	// the format arg produces newline-separated lines of: <author-email> :: <commit date>
 	// We use commit date since some people backdate authorship
-	// dates are always YYYY-MM-DD format.
+	// dates are forced into YYYY-MM-DD format.
 	cmd := exec.Cmd{
 		Name:    "git",
-		Argv:    []string{"log", "--since", fmtSince, "--format=%ae :: %cd"},
+		Argv:    []string{"log", "--since", fmtSince, "--format=%ae :: %cd", "--date=short"},
 		Timeout: "10s",
 	}
 	output, _, err := exec.Run(cmd)
