@@ -1,0 +1,41 @@
+============================================
+PLATFORM_VERSION_CODENAME=REL
+PLATFORM_VERSION=10
+TARGET_PRODUCT=aosp_coral
+TARGET_BUILD_VARIANT=userdebug
+TARGET_BUILD_TYPE=release
+TARGET_ARCH=arm64
+TARGET_ARCH_VARIANT=armv8-a
+TARGET_CPU_VARIANT=generic
+TARGET_2ND_ARCH=arm
+TARGET_2ND_ARCH_VARIANT=armv8-a
+TARGET_2ND_CPU_VARIANT=generic
+HOST_ARCH=x86_64
+HOST_2ND_ARCH=x86
+HOST_OS=linux
+HOST_OS_EXTRA=Linux-4.15.0-1060-aws-x86_64-Ubuntu-18.04.4-LTS
+HOST_CROSS_OS=windows
+HOST_CROSS_ARCH=x86
+HOST_CROSS_2ND_ARCH=x86_64
+HOST_BUILD_TYPE=release
+BUILD_ID=QQ1D.200205.002
+OUT_DIR=out
+PRODUCT_SOONG_NAMESPACES=hardware/google/av hardware/google/interfaces hardware/google/pixel device/google/coral hardware/qcom/sm8150 hardware/qcom/sm8150/display vendor/google/airbrush/floral vendor/google/biometrics/face vendor/google/camera vendor/google/darwinn vendor/qcom/sm8150 vendor/qcom/sm8150/codeaurora/telephony/ims vendor/qcom/sm8150/proprietary/qcril-data-hal/qdp vendor/qcom/sm8150/proprietary/qcril-data-hal/util vendor/qcom/sm8150/proprietary/qcril-data-hal/datamodule vendor/qcom/sm8150/proprietary/qcril-hal vendor/google/interfaces
+============================================
+ninja: no work to do.
+ninja: no work to do.
+No need to regenerate ninja file
+No need to regenerate ninja file
+No need to regenerate ninja file
+Starting ninja...
+out/target/product/coral/obj/STATIC_LIBRARIES/libgptutils_intermediates/gpt-utils.o: #deps 2, deps mtime 1583962189 (VALID)
+    device/google/coral/gpt-utils/gpt-utils.cpp
+    external/libcxx/include/stdio.h
+    external/libcxx/include/__config
+
+out/target/product/coral/obj/APPS/Settings_intermediates/package.apk: #deps 0, deps mtime 1583991062 (VALID)
+
+out/target/product/coral/obj/JAVA_LIBRARIES/wifi-service_intermediates/dexpreopt.zip: #deps 2, deps mtime 1583991124 (VALID)
+    out/soong/host/linux-x86/bin/dex2oatd
+    out/soong/host/linux-x86/bin/profman
+    out/soong/host/linux-x86/bin/soong_zip

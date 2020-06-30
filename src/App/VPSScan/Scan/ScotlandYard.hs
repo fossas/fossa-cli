@@ -11,35 +11,10 @@ import App.VPSScan.Types
 import Control.Effect.Diagnostics
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
-import Data.Coerce (coerce)
 import Data.Text (Text)
-import Data.Text.Prettyprint.Doc (viaShow)
 import Network.HTTP.Req
-import Text.URI (URI)
-import qualified Text.URI as URI
 import Prelude
-
-newtype HTTP m a = HTTP {unHTTP :: m a}
-  deriving (Functor, Applicative, Monad, MonadIO, Algebra sig)
-
-data HTTPRequestFailed = HTTPRequestFailed HttpException
-  deriving (Show)
-
-instance ToDiagnostic HTTPRequestFailed where
-  renderDiagnostic (HTTPRequestFailed exc) = "An HTTP request failed: " <> viaShow exc
-
-runHTTP :: HTTP m a -> m a
-runHTTP = unHTTP
-
--- parse a URI for use as a (base) Url, along with some default Options (e.g., port)
-parseUri :: Has Diagnostics sig m => URI -> m (Url 'Https, Option 'Https)
-parseUri uri = case useURI uri of
-  Nothing -> fatalText ("Invalid URL: " <> URI.render uri)
-  Just (Left (url, options)) -> pure (coerce url, coerce options)
-  Just (Right (url, options)) -> pure (url, options)
-
-instance (MonadIO m, Has Diagnostics sig m) => MonadHttp (HTTP m) where
-  handleHttpException = HTTP . fatal . HTTPRequestFailed
+import App.Util (parseUri)
 
 -- /projects/{projectID}/scans
 createScanEndpoint :: Url 'Https -> Text -> Url 'Https

@@ -112,11 +112,13 @@ library
     App.Fossa.Test
     App.Pathfinder.Main
     App.Pathfinder.Scan
+    App.Util
     App.VPSScan.Main
     App.VPSScan.Scan
     App.VPSScan.Scan.RunIPR
     App.VPSScan.Scan.RunSherlock
     App.VPSScan.Scan.ScotlandYard
+    App.VPSScan.NinjaGraph
     App.VPSScan.Types
     Control.Carrier.Diagnostics
     Control.Carrier.Finally
@@ -217,6 +219,7 @@ test-suite unit-tests
   other-modules:
     App.Fossa.FossaAPIV1Spec
     App.Fossa.Report.AttributionSpec
+    App.VPSScan.NinjaGraphSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec

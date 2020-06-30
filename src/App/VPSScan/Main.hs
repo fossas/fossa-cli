@@ -7,6 +7,7 @@ import Prologue
 import Options.Applicative
 
 import App.VPSScan.Scan (ScanCmdOpts(..), scanMain)
+import App.VPSScan.NinjaGraph (NinjaGraphCmdOpts(..), ninjaGraphMain)
 import App.VPSScan.Types
 import qualified App.VPSScan.Scan.RunIPR as RunIPR
 import OptionExtensions
@@ -18,7 +19,7 @@ opts :: ParserInfo (IO ())
 opts = info (commands <**> helper) (fullDesc <> header "vpscli -- FOSSA Vendored Package Scan CLI")
 
 commands :: Parser (IO ())
-commands = hsubparser scanCommand
+commands = hsubparser $ scanCommand <> ninjaGraphCommand
 
 vpsOpts :: Parser VPSOpts
 vpsOpts = VPSOpts <$> runSherlockOpts <*> optional runIPROpts <*> syOpts <*> organizationIDOpt <*> projectIDOpt <*> revisionIDOpt
@@ -26,6 +27,13 @@ vpsOpts = VPSOpts <$> runSherlockOpts <*> optional runIPROpts <*> syOpts <*> org
               organizationIDOpt = option auto (long "organization" <> metavar "orgID" <> help "Organization ID")
               projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
               revisionIDOpt = strOption (long "revision" <> metavar "String" <> help "Revision ID")
+
+ninjaGraphOpts :: Parser NinjaGraphOpts
+ninjaGraphOpts = NinjaGraphOpts <$> ninjaDepsOpt <*> lunchTargetOpt <*> scotlandYardUrlOpt
+                 where
+                   ninjaDepsOpt = optional $ strOption (long "ninjadeps" <> metavar "STRING")
+                   lunchTargetOpt = optional $ strOption (long "lunchtarget" <> metavar "STRING" <> help "build target name to pass to lunch. If you are running in an environment with envsetup and lunch already configured, then you don't need to pass this in")
+                   scotlandYardUrlOpt = uriOption (long "scotland-yard-url" <> metavar "STRING" <> help "URL for Scotland Yard service")
 
 runSherlockOpts :: Parser SherlockOpts
 runSherlockOpts = SherlockOpts
@@ -59,10 +67,19 @@ syOpts = ScotlandYardOpts
                   where
                     scotlandYardUrlOpt = uriOption (long "scotland-yard-url" <> metavar "STRING" <> help "URL for Scotland Yard service")
 
+basedirOpt :: Parser FilePath
+basedirOpt = strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning" <> value ".")
+
 scanCommand :: Mod CommandFields (IO ())
 scanCommand = command "scan" (info (scanMain <$> scanOptsParser) (progDesc "Scan for projects and their dependencies"))
   where
   scanOptsParser = ScanCmdOpts
                    <$> basedirOpt
                    <*> vpsOpts
-  basedirOpt = strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning" <> value ".")
+
+ninjaGraphCommand :: Mod CommandFields (IO ())
+ninjaGraphCommand = command "ninja-graph" (info (ninjaGraphMain <$> ninjaGraphOptsParser) (progDesc "Get a dependency graph for a ninja build"))
+  where
+    ninjaGraphOptsParser = NinjaGraphCmdOpts
+                          <$> basedirOpt
+                          <*> ninjaGraphOpts

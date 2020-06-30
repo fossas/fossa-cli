@@ -7,9 +7,9 @@ import Prologue
 
 import Options.Applicative
 import Path.IO
-import System.Exit (die)
 
 import App.Pathfinder.Scan (scanMain)
+import App.Util (validateDir)
 
 appMain :: IO ()
 appMain = do
@@ -27,15 +27,6 @@ appMain = do
 
 data CommandOpts = LicenseScan (Maybe FilePath) Bool
   deriving Show
-
-validateDir :: FilePath -> IO (Path Abs Dir)
-validateDir dir = do
-  absolute <- resolveDir' dir
-  exists <- doesDirExist absolute
-
-  unless exists (die $ "ERROR: Directory " <> show absolute <> " does not exist")
-
-  pure absolute
 
 opts :: ParserInfo CommandOpts
 opts = info (commands <**> helper)

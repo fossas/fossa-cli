@@ -10,11 +10,12 @@ import App.Fossa.CliTypes
 import App.Fossa.FossaAPIV1 (ProjectMetadata (..))
 import App.Fossa.Report (ReportType (..), reportMain)
 import App.Fossa.Test (TestOutputType (..), testMain)
+import App.Util (validateDir)
 import qualified Data.Text as T
 import Effect.Logger
 import OptionExtensions
 import Options.Applicative
-import Path.IO (doesDirExist, resolveDir', setCurrentDir)
+import Path.IO (setCurrentDir)
 import Prologue
 import System.Environment (lookupEnv)
 import System.Exit (die)
@@ -75,16 +76,6 @@ checkAPIKey :: Maybe Text -> IO (Maybe ApiKey)
 checkAPIKey key = case key of
   Just key' -> pure . Just $ ApiKey key'
   Nothing -> ApiKey . T.pack <$$> lookupEnv "FOSSA_API_KEY"
-
--- | Validate that a filepath points to a directory and the directory exists
-validateDir :: FilePath -> IO (Path Abs Dir)
-validateDir dir = do
-  absolute <- resolveDir' dir
-  exists <- doesDirExist absolute
-
-  unless exists (die $ "ERROR: Directory " <> show absolute <> " does not exist")
-
-  pure absolute
 
 baseDirArg :: Parser String
 baseDirArg = argument str (metavar "DIR" <> help "Set the base directory for scanning (default: current directory)" <> value ".")
@@ -157,7 +148,7 @@ reportOpts =
     <*> baseDirArg
 
 reportCmd :: Parser ReportType
-reportCmd = 
+reportCmd =
   hsubparser $
     command "attribution" (info (pure AttributionReport) $ progDesc "Generate attribution report" )
 
