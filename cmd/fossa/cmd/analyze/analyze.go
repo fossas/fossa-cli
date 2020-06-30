@@ -316,7 +316,7 @@ func Do(modules []module.Module, upload, rawModuleLicenseScan, devDeps bool) (an
 				Name:     locator.Project,
 				Revision: locator.Revision,
 			}
-			m.Imports = []pkg.Import{pkg.Import{Resolved: id}}
+			m.Imports = []pkg.Import{{Resolved: id}}
 			m.Deps = make(map[pkg.ID]pkg.Package)
 			m.Deps[id] = pkg.Package{
 				ID: id,
