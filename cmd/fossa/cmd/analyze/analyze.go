@@ -265,8 +265,12 @@ func Run(ctx *cli.Context) error {
 		return err
 	}
 
+	// At this point, we should allow failures to be logged, but not fail the process.
+	// Both of the functions below log failures and return safely.
 	contributors := fetchGitContibutors()
-	fossa.UploadContributors(contributors, locator)
+	if contributors != nil {
+		fossa.UploadContributors(contributors, locator)
+	}
 	return nil
 }
 
