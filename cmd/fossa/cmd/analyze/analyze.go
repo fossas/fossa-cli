@@ -1,6 +1,7 @@
 package analyze
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -382,8 +383,7 @@ func uploadAnalysis(normalized []fossa.SourceUnit) (fossa.Locator, error) {
 }
 
 func fetchGitContibutors() map[string]string {
-	year, month, day := time.Now().UTC().AddDate(0, 0, -90).Date()
-	fmtSince := fmt.Sprintf("%d-%d-%d", year, month, day)
+	fmtSince := time.Now().UTC().AddDate(0, 0, -90).Format("2006-01-02")
 
 	// the format arg produces newline-separated lines of: <author-email> :: <commit date>
 	// We use commit date since some people backdate authorship
@@ -393,17 +393,17 @@ func fetchGitContibutors() map[string]string {
 		Argv:    []string{"log", "--since", fmtSince, "--format=%ae :: %cd", "--date=short"},
 		Timeout: "10s",
 	}
+
 	output, _, err := exec.Run(cmd)
 	if err != nil {
 		log.Debugf("Failed to run 'git log': %s", err.Error())
 		return nil
 	}
 
-	contribList := string(output)
-
 	contributorDates := make(map[string]string)
-	for _, line := range strings.Split(contribList, "\n") {
-		items := strings.Split(line, "::")
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		items := strings.Split(scanner.Text(), "::")
 		if len(items) != 2 {
 			// We control the output format, but there may be an empty line
 			continue
@@ -421,6 +421,11 @@ func fetchGitContibutors() map[string]string {
 		} else {
 			contributorDates[email] = date
 		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Debugf("Error while scanning output: %s", err)
+		return nil
 	}
 
 	return contributorDates
