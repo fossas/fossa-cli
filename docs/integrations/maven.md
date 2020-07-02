@@ -55,4 +55,4 @@ tree from Maven in the format that running the `dependency:tree` goal outputs.
 
 ## Analysis
 
-Fossa analyzes a Maven project by parsing the output from `maven dependency:tree` into a dependency graph.
+Fossa analyzes a Maven project by parsing the output from `mvn dependency:tree` into a dependency graph.
