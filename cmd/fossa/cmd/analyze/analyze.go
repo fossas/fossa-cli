@@ -1,12 +1,14 @@
 package analyze
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -259,7 +261,18 @@ func Run(ctx *cli.Context) error {
 		return nil
 	}
 
-	return uploadAnalysis(normalized)
+	locator, err := uploadAnalysis(normalized)
+	if err != nil {
+		return err
+	}
+
+	// At this point, we should allow failures to be logged, but not fail the process.
+	// Both of the functions below log failures and return safely.
+	contributors := fetchGitContibutors()
+	if contributors != nil {
+		fossa.UploadContributors(contributors, locator)
+	}
+	return nil
 }
 
 func displaySourceunits(sourceUnits []fossa.SourceUnit, ctx *cli.Context) {
@@ -307,7 +320,7 @@ func Do(modules []module.Module, upload, rawModuleLicenseScan, devDeps bool) (an
 				Name:     locator.Project,
 				Revision: locator.Revision,
 			}
-			m.Imports = []pkg.Import{pkg.Import{Resolved: id}}
+			m.Imports = []pkg.Import{{Resolved: id}}
 			m.Deps = make(map[pkg.ID]pkg.Package)
 			m.Deps[id] = pkg.Package{
 				ID: id,
@@ -342,7 +355,7 @@ func Do(modules []module.Module, upload, rawModuleLicenseScan, devDeps bool) (an
 	return analyzed, err
 }
 
-func uploadAnalysis(normalized []fossa.SourceUnit) error {
+func uploadAnalysis(normalized []fossa.SourceUnit) (fossa.Locator, error) {
 	display.InProgress("Uploading analysis...")
 	locator, err := fossa.Upload(
 		config.Title(),
@@ -363,8 +376,57 @@ func uploadAnalysis(normalized []fossa.SourceUnit) error {
 	display.ClearProgress()
 	if err != nil {
 		log.Fatalf("Error during upload: %s", err.Error())
-		return err
+		return fossa.Locator{}, err
 	}
 	fmt.Println(locator.ReportURL())
-	return nil
+	return locator, nil
+}
+
+func fetchGitContibutors() map[string]string {
+	fmtSince := time.Now().UTC().AddDate(0, 0, -90).Format("2006-01-02")
+
+	// the format arg produces newline-separated lines of: <author-email> :: <commit date>
+	// We use commit date since some people backdate authorship
+	// dates are forced into YYYY-MM-DD format.
+	cmd := exec.Cmd{
+		Name:    "git",
+		Argv:    []string{"log", "--since", fmtSince, "--format=%ae :: %cd", "--date=short"},
+		Timeout: "10s",
+	}
+
+	output, _, err := exec.Run(cmd)
+	if err != nil {
+		log.Debugf("Failed to run 'git log': %s", err.Error())
+		return nil
+	}
+
+	contributorDates := make(map[string]string)
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		items := strings.Split(scanner.Text(), "::")
+		if len(items) != 2 {
+			// We control the output format, but there may be an empty line
+			continue
+		}
+
+		email := items[0]
+		date := items[1]
+
+		if oldDate := contributorDates[email]; oldDate != "" {
+			// Only the newest date is relevant for current contributions
+			dates := []string{date, oldDate}
+			sort.Strings(dates)
+			latest := dates[1]
+			contributorDates[email] = latest
+		} else {
+			contributorDates[email] = date
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Debugf("Error while scanning output: %s", err)
+		return nil
+	}
+
+	return contributorDates
 }

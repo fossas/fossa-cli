@@ -116,3 +116,26 @@ func Upload(title string, locator Locator, options UploadOptions, data []SourceU
 
 	return ReadLocator(unmarshalled.Locator), nil
 }
+
+// UploadContributors posts contributor data to the project decribed by locator
+func UploadContributors(data map[string]string, locator Locator) {
+	payload, err := json.Marshal(data)
+	if err != nil {
+		log.Debugf("Failed to marshal contributor map: %s", err)
+		return
+	}
+	q := url.Values{}
+	q.Add("locator", locator.String())
+	endpoint, err := url.Parse("api/contributors?" + q.Encode())
+	if err != nil {
+		log.Debugf("Failed to generate contributor URL: %s", err)
+		return
+	}
+	body, statusCode, err := Post(endpoint.String(), payload)
+	if err != nil {
+		log.Debugf("Failed to POST contributor data: %s", err)
+	} else if statusCode != 200 {
+		log.Debugf("FOSSA reported an issue while uploading contributor data: %s", body)
+	}
+	return
+}
