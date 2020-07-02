@@ -11,14 +11,16 @@ import Effect.Exec
 import Prologue
 
 execSherlock :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> VPSOpts -> m ()
-execSherlock basedir scanId vpsOpts = void $ execThrow basedir (sherlockCommand scanId vpsOpts)
+execSherlock basedir scanId vpsOpts = void $ execThrow basedir (sherlockCommand basedir scanId vpsOpts)
 
-sherlockCommand :: Text -> VPSOpts -> Command
-sherlockCommand scanId VPSOpts {..} =
+sherlockCommand :: Path Abs Dir -> Text -> VPSOpts -> Command
+sherlockCommand basedir scanId VPSOpts {..} =
   Command
     { cmdName = sherlockCmdPath,
       cmdArgs =
-        [ "--scan-id",
+        [ "scan",
+          fromAbsDir basedir,
+          "--scan-id",
           T.unpack scanId,
           "--sherlock-api-secret-key",
           sherlockClientToken,
