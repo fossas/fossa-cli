@@ -19,6 +19,7 @@ import System.Process.Typed as PROC
 import System.Exit (exitFailure)
 import Data.Text.Prettyprint.Doc (pretty)
 import Network.HTTP.Req
+import qualified System.FilePath as FP
 
 import App.VPSScan.Types
 import App.Util (validateDir, parseUri)
@@ -74,7 +75,7 @@ getNinjaDeps baseDir opts@NinjaGraphOpts{..} =
 
 scanNinjaDeps :: (Has Diagnostics sig m) => NinjaGraphOpts -> ByteString -> m [DepsTarget]
 scanNinjaDeps NinjaGraphOpts{..} ninjaDepsContents =
-  addInputsToNinjaDeps <$> ninjaDeps
+  map correctedTarget <$> ninjaDeps
   where
     ninjaDeps = parseNinjaDeps ninjaDepsContents
 
@@ -107,15 +108,48 @@ generateNinjaDeps baseDir NinjaGraphOpts{..} = do
       Nothing -> "cd " ++ show baseDir ++ " && NINJA_ARGS=\"-t deps\" make"
       Just lunch ->  "cd " ++ show baseDir ++ " && source ./build/envsetup.sh && lunch " ++ T.unpack lunch ++ " && NINJA_ARGS=\"-t deps\" make"
 
-addInputsToNinjaDeps :: [DepsTarget] -> [DepsTarget]
-addInputsToNinjaDeps = map addInputToTarget
+correctedTarget :: DepsTarget -> DepsTarget
+correctedTarget target@DepsTarget { targetDependencies = [] } =
+  target
+correctedTarget target@DepsTarget { targetDependencies = [singleDep] } =
+  target { targetDependencies = [], targetInputs = [singleDep] }
+correctedTarget target@DepsTarget { targetDependencies = (firstDep : remainingDeps) } =
+  fromMaybe (target { targetInputs = [firstDep], targetDependencies = remainingDeps }) (correctTargetWithLeadingTxtDeps target)
 
--- If there are any dependencies, then make inputs the first dependency
-addInputToTarget :: DepsTarget -> DepsTarget
-addInputToTarget target =
-  case targetDependencies target of
-    [] -> target
-    (firstDep : remainingDeps) -> target { targetDependencies = remainingDeps, targetInputs = [firstDep] }
+-- There are cases where the first N dependencies are .txt files and do not match the basename
+-- of the target, and the N+1th dependency is a non-.txt file and matches the basename of
+-- the target. In this case, the N+1th dependency is the correct input file
+-- E.g., in this case we want the input to be "system/bpf/bpfloader/BpfLoader.cpp":
+-- out/soong/.intermediates/system/bpf/bpfloader/bpfloader/android_arm64_armv8-a_core/obj/system/bpf/bpfloader/BpfLoader.o: #deps 3, deps mtime 1583962500 (VALID)
+--     external/compiler-rt/lib/cfi/cfi_blacklist.txt
+--     build/soong/cc/config/integer_overflow_blacklist.txt
+--     system/bpf/bpfloader/BpfLoader.cpp
+--     bionic/libc/include/arpa/inet.h
+correctTargetWithLeadingTxtDeps :: DepsTarget -> Maybe DepsTarget
+correctTargetWithLeadingTxtDeps target =
+  case (leadingTxtDeps, restOfDeps) of
+    ([], _) -> Nothing
+    (_, []) -> Nothing
+    (_, firstNonTxtDep : remainingDeps) ->
+      if firstNonTxtDepBasename == targetBasenameWithoutExt then
+        Just corrected
+      else
+        Nothing
+      where
+        (firstNonTxtDepBasename, _) = splitBasenameExt $ dependencyPath firstNonTxtDep
+        corrected = target { targetDependencies = leadingTxtDeps ++ remainingDeps, targetInputs = [firstNonTxtDep]}
+  where
+    splitBasenameExt :: Text -> (String, String)
+    splitBasenameExt = FP.splitExtension . FP.takeFileName . T.unpack
+
+    depsPathIsTxtAndBasenameDoesNotMatch :: String -> DepsDependency -> Bool
+    depsPathIsTxtAndBasenameDoesNotMatch targetBasename dep =
+      depExt == ".txt" && depBasename /= targetBasename
+      where
+        (depBasename, depExt) = splitBasenameExt $ dependencyPath dep
+
+    (targetBasenameWithoutExt, _) = splitBasenameExt $ targetPath target
+    (leadingTxtDeps, restOfDeps) = span (depsPathIsTxtAndBasenameDoesNotMatch targetBasenameWithoutExt) $ targetDependencies target
 
 parseNinjaDeps :: (Has Diagnostics sig m) => ByteString -> m [DepsTarget]
 parseNinjaDeps ninjaDepsLines =
