@@ -66,12 +66,25 @@ cliVersion = "spectrometer"
 uploadUrl :: Url scheme -> Url scheme
 uploadUrl baseurl = baseurl /: "api" /: "builds" /: "custom"
 
--- FIXME: we only want to include organizationId for "archive" and "custom"
--- TODO: need to normalize "git" projects
--- render a locator for use in fossa API urls
+-- | This renders an organization + locator into a path piece for the fossa API
 renderLocatorUrl :: Int -> Locator -> Text
 renderLocatorUrl orgId Locator{..} =
-  locatorFetcher <> "+" <> T.pack (show orgId) <> "/" <> locatorProject <> "$" <> fromMaybe "" locatorRevision
+  locatorFetcher <> "+" <> T.pack (show orgId) <> "/" <> normalizeGitProjectName locatorProject <> "$" <> fromMaybe "" locatorRevision
+
+-- | The fossa backend treats http git locators in a specific way for the issues and builds endpoints.
+-- This normalizes a project name to conform to what the API expects
+normalizeGitProjectName :: Text -> Text
+normalizeGitProjectName project
+  | "http" `T.isPrefixOf` project = dropPrefix "http://" . dropPrefix "https://" . dropSuffix ".git" $ project
+  | otherwise = project
+    where
+      -- like Text.stripPrefix, but with a non-Maybe result (defaults to the original text)
+      dropPrefix :: Text -> Text -> Text
+      dropPrefix pre txt = fromMaybe txt (T.stripPrefix pre txt)
+
+      -- like Text.stripSuffix, but with a non-Maybe result (defaults to the original text)
+      dropSuffix :: Text -> Text -> Text
+      dropSuffix suf txt = fromMaybe txt (T.stripSuffix suf txt)
 
 apiHeader :: ApiKey -> Option scheme
 apiHeader key = header "Authorization" ("token " <> encodeUtf8 (unApiKey key))
