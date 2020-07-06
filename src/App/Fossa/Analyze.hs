@@ -148,10 +148,13 @@ renderFailure failure = object
   ]
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover dir = traverse_ ($ dir) discoverFuncs
+discover dir = traverse_ (forkTask . apply dir) discoverFuncs
 
 discoverWithArchives :: HasDiscover sig m => Path Abs Dir -> m ()
-discoverWithArchives dir = traverse_ ($ dir) (Archive.discover discoverWithArchives : discoverFuncs)
+discoverWithArchives dir = traverse_ (forkTask . apply dir) (Archive.discover discoverWithArchives : discoverFuncs)
+
+apply :: a -> (a -> b) -> b
+apply x f = f x
 
 discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
 discoverFuncs =

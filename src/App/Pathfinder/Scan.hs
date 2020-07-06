@@ -45,7 +45,7 @@ scan basedir = runFinally $ do
   capabilities <- liftIO getNumCapabilities
 
   (closures,(_,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
-    withTaskPool capabilities updateProgress (traverse_ ($ basedir) discoverFuncs)
+    withTaskPool capabilities updateProgress (traverse_ (forkTask . apply basedir) discoverFuncs)
 
   logSticky "[ Combining Analyses ]"
 
@@ -53,6 +53,9 @@ scan basedir = runFinally $ do
   liftIO (BL.putStr (encode projects))
 
   logSticky ""
+
+apply :: a -> (a -> b) -> b
+apply x f = f x
 
 discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
 discoverFuncs =
