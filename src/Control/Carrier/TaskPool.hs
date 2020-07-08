@@ -13,20 +13,22 @@ import Control.Carrier.Reader
 import Control.Carrier.Threaded
 import Control.Concurrent.STM
 import Prologue
+import Control.Effect.Lift (sendIO)
 
-withTaskPool :: (Has (Lift IO) sig m, MonadIO m)
+withTaskPool :: Has (Lift IO) sig m
   => Int -- number of workers
   -> (Progress -> m ()) -- get progress updates
   -> TaskPoolC m a
   -> m ()
 withTaskPool numWorkers reportProgress act = do
-  state <- liftIO $
+  state <- sendIO $
     State <$> newTVarIO []
           <*> newTVarIO 0
           <*> newTVarIO 0
+          <*> newEmptyTMVarIO
 
-  let enqueue action = liftIO $ atomically $ modifyTVar (stQueued state) (action:)
-  liftIO $ (enqueue (void (runTaskPool (stQueued state) act)))
+  let enqueue action = sendIO $ atomically $ modifyTVar (stQueued state) (action:)
+  sendIO $ (enqueue (void (runTaskPool (stQueued state) act)))
 
   let mkThreads = do
         workerHandles <- replicateM numWorkers (fork (worker state))
@@ -35,19 +37,24 @@ withTaskPool numWorkers reportProgress act = do
 
   let cleanup handles = traverse_ kill handles
 
-  let waitForCompletion _ = liftIO $ atomically $ do
-        queued  <- readTVar (stQueued state)
-        check (null queued)
-        running <- readTVar (stRunning state)
-        check (running == 0)
+  let waitForCompletion _ = join $ sendIO $ atomically $ do
+        maybeErr <- tryReadTMVar $ stError state
+        case maybeErr of
+          Just err -> pure $ throwIO err
+          Nothing -> do
+            queued  <- readTVar (stQueued state)
+            check (null queued)
+            running <- readTVar (stRunning state)
+            check (running == 0)
+            pure $ pure ()
 
   bracket mkThreads cleanup waitForCompletion
 
-updateProgress :: MonadIO m => (Progress -> m ()) -> State any -> m ()
+updateProgress :: Has (Lift IO) sig m => (Progress -> m ()) -> State any -> m ()
 updateProgress f st@State{..} = do
   loop (Progress 0 0 0)
   where
-  loop prev = join $ liftIO $ atomically $ stopWhenDone st $ do
+  loop prev = join $ sendIO $ atomically $ stopWhenDone st $ do
     running <- readTVar stRunning
     queued <- length <$> readTVar stQueued
     completed <- readTVar stCompleted
@@ -69,25 +76,31 @@ stopWhenDone State{..} act = do
         else act
     _ -> act
 
-worker :: (MonadIO m, Has (Lift IO) sig m) => State m -> m ()
+worker :: (Has (Lift IO) sig m) => State m -> m ()
 worker st@State{..} = loop
   where
 
-  loop = join $ liftIO $ atomically $ stopWhenDone st $ do
+  loop = join $ sendIO $ atomically $ stopWhenDone st $ do
     queued <- readTVar stQueued
     case queued of
       [] -> retry
       (x:xs) -> do
         writeTVar stQueued xs
         addRunning
-        -- FIXME: async exceptions should kill execution
-        pure $ x `finally` (complete *> loop)
+        pure $
+          mask $ \restore -> do
+            res <- try $ restore x
+            case res of
+              Left err -> do
+                _ <- sendIO $ atomically $ tryPutTMVar stError err
+                pure ()
+              Right () -> complete *> loop
 
   addRunning :: STM ()
   addRunning = modifyTVar stRunning (+1)
 
-  complete :: MonadIO m => m ()
-  complete = liftIO $ atomically $ modifyTVar stRunning (subtract 1) *> modifyTVar stCompleted (+1)
+  complete :: Has (Lift IO) sig m => m ()
+  complete = sendIO $ atomically $ modifyTVar stRunning (subtract 1) *> modifyTVar stCompleted (+1)
 
 runTaskPool :: TVar [m ()] -> TaskPoolC m a -> m a
 runTaskPool var = runReader var . runTaskPoolC
@@ -101,11 +114,11 @@ data Progress = Progress
 newtype TaskPoolC m a = TaskPoolC { runTaskPoolC :: ReaderC (TVar [m ()]) m a }
   deriving (Functor, Applicative, Monad, MonadIO, MonadFail)
 
-instance forall sig m. (Algebra sig m, MonadIO m) => Algebra (TaskPool :+: sig) (TaskPoolC m) where
+instance (Has (Lift IO) sig m, Algebra sig m) => Algebra (TaskPool :+: sig) (TaskPoolC m) where
   alg hdl sig ctx = TaskPoolC $ case sig of
     L (ForkTask m) -> do
       var <- ask @(TVar [m ()])
-      liftIO $ atomically $ modifyTVar' var (runReader var (runTaskPoolC (void (hdl (m <$ ctx)))):)
+      sendIO $ atomically $ modifyTVar' var (runReader var (runTaskPoolC (void (hdl (m <$ ctx)))):)
       pure ctx
     R other -> alg (runTaskPoolC . hdl) (R other) ctx
 
@@ -113,4 +126,5 @@ data State m = State
   { stQueued    :: TVar [m ()]
   , stRunning   :: TVar Int
   , stCompleted :: TVar Int
+  , stError     :: TMVar SomeException
   }
