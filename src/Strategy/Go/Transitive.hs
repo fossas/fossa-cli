@@ -96,7 +96,7 @@ fillInTransitive ::
   , Has Exec sig m
   , Has Diagnostics sig m
   )
-  => Path Rel Dir -> m ()
+  => Path x Dir -> m ()
 fillInTransitive dir = do
   goListOutput <- execThrow dir goListCmd
   case decodeMany goListOutput of

@@ -20,6 +20,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Graphing (Graphing)
+import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
 import Types
 
@@ -62,8 +63,7 @@ analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do
 
   buildGraph requires
 
-  -- TODO: diagnostics?
-  -- _ <- try @ExecErr (fillInTransitive dir)
+  _ <- recover (fillInTransitive dir)
   pure ()
 
 mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody

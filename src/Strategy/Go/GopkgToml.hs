@@ -22,9 +22,11 @@ import qualified Toml
 
 import DepTypes
 import Discovery.Walk
+import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
+import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
 import Types
 
@@ -65,6 +67,7 @@ data PkgConstraint = PkgConstraint
 
 analyze ::
   ( Has ReadFS sig m
+  , Has Exec sig m
   , Has Diagnostics sig m
   )
   => Path Abs File -> m ProjectClosureBody
@@ -75,8 +78,7 @@ analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
     Right gopkg -> do
       buildGraph gopkg
 
-      -- TODO: diagnostics?
-      -- _ <- runError @ExecErr (fillInTransitive (parent file))
+      _ <- recover (fillInTransitive (parent file))
       pure ()
 
 mkProjectClosure :: Path Abs File -> Graphing Dependency -> ProjectClosureBody
