@@ -49,6 +49,7 @@ data CmdFailure = CmdFailure
     cmdFailureargs :: [String],
     cmdFailureDir :: FilePath,
     cmdFailureExit :: ExitCode,
+    cmdFailureStdout :: Stdout,
     cmdFailureStderr :: Stderr
   }
   deriving (Eq, Ord, Show)
@@ -72,18 +73,16 @@ data Exec m k where
   -- - a description of the command failure
   Exec :: Path x Dir -> Command -> Exec m (Either CmdFailure Stdout)
 
--- TODO: include info about CmdFailures as appropriate
 data ExecErr
-  = -- | Command execution failed, usually from a non-zero exit. command, stderr
-    CommandFailed Command Text
+  = -- | Command execution failed, usually from a non-zero exit
+    CommandFailed CmdFailure
   | -- | Command output couldn't be parsed. command, err
     CommandParseError Command Text
   deriving (Eq, Ord, Show)
 
--- TODO
 instance ToDiagnostic ExecErr where
   renderDiagnostic = \case
-    CommandFailed cmd err -> "Command execution failed. command: " <> viaShow cmd <> " . error: " <> pretty err
+    CommandFailed err -> "Command execution failed: " <> viaShow err
     CommandParseError cmd err -> "Failed to parse command output. command: " <> viaShow cmd <> " . error: " <> pretty err
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
@@ -97,7 +96,7 @@ execParser :: (Has Exec sig m, Has Diagnostics sig m) => Parser a -> Path x Dir 
 execParser parser dir cmd = do
   stdout <- execThrow dir cmd
   case runParser parser "" (TL.toStrict (decodeUtf8 stdout)) of
-    Left err -> fatal (CommandParseError cmd (T.pack (errorBundlePretty err))) -- TODO: command name
+    Left err -> fatal (CommandParseError cmd (T.pack (errorBundlePretty err)))
     Right a -> pure a
 
 -- | Parse the JSON stdout of a command
@@ -105,7 +104,7 @@ execJson :: (FromJSON a, Has Exec sig m, Has Diagnostics sig m) => Path x Dir ->
 execJson dir cmd = do
   stdout <- execThrow dir cmd
   case eitherDecode stdout of
-    Left err -> fatal (CommandParseError cmd (T.pack (show err))) -- TODO: command name
+    Left err -> fatal (CommandParseError cmd (T.pack (show err)))
     Right a -> pure a
 
 -- | A variant of 'exec' that throws a 'ExecErr' when the command returns a non-zero exit code
@@ -113,7 +112,7 @@ execThrow :: (Has Exec sig m, Has Diagnostics sig m) => Path x Dir -> Command ->
 execThrow dir cmd = do
   result <- exec dir cmd
   case result of
-    Left failures -> fatal (CommandFailed cmd (T.pack (show failures))) -- TODO: better error
+    Left failure -> fatal (CommandFailed failure)
     Right stdout -> pure stdout
 
 runExecIO :: ExecIOC m a -> m a
@@ -130,7 +129,7 @@ instance (Algebra sig m, MonadIO m) => Algebra (Exec :+: sig) (ExecIOC m) where
 
       (exitcode, stdout, stderr) <- readProcess (setWorkingDir (fromAbsDir absolute) (proc (cmdName cmd) (cmdArgs cmd)))
 
-      let failure = CmdFailure (cmdName cmd) (cmdArgs cmd) (fromAbsDir absolute) exitcode stderr
+      let failure = CmdFailure (cmdName cmd) (cmdArgs cmd) (fromAbsDir absolute) exitcode stdout stderr
 
       let result = case (exitcode, cmdAllowErr cmd) of
             (ExitSuccess, _) -> Right stdout
