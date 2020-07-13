@@ -7,7 +7,7 @@ module App.Fossa.ProjectInference
   )
 where
 
-import App.Fossa.CliTypes
+import App.Types
 import Control.Algebra
 import Control.Carrier.Diagnostics
 import qualified Data.ByteString.Lazy as BL

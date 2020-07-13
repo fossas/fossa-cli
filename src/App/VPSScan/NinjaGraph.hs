@@ -22,6 +22,7 @@ import Network.HTTP.Req
 import qualified System.FilePath as FP
 
 import App.VPSScan.Types
+import App.Types (BaseDir (..))
 import App.Util (validateDir, parseUri)
 
 -- end of copy-paste
@@ -49,7 +50,7 @@ data NinjaParseState = Starting | Parsing | Complete | Error
 ninjaGraphMain :: NinjaGraphCmdOpts -> IO ()
 ninjaGraphMain NinjaGraphCmdOpts{..} = do
   dir <- validateDir ninjaCmdBasedir
-  result <- runDiagnostics $ getAndParseNinjaDeps dir ninjaCmdNinjaGraphOpts
+  result <- runDiagnostics $ getAndParseNinjaDeps (unBaseDir dir) ninjaCmdNinjaGraphOpts
   case result of
     Left failure -> do
       print $ renderFailureBundle failure

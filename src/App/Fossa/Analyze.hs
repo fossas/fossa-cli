@@ -1,4 +1,3 @@
-
 module App.Fossa.Analyze
   ( analyzeMain
   , ScanDestination(..)
@@ -11,12 +10,11 @@ import Control.Effect.Lift (Lift)
 import qualified Control.Carrier.Diagnostics as Diag
 import Control.Carrier.Output.IO
 import Control.Concurrent
-import Path.IO
 
-import App.Fossa.CliTypes
-import App.Fossa.FossaAPIV1 (ProjectMetadata, uploadAnalysis, UploadResponse(..))
 import App.Fossa.Analyze.Project (Project, mkProjects)
+import App.Fossa.FossaAPIV1 (ProjectMetadata, uploadAnalysis, UploadResponse(..))
 import App.Fossa.ProjectInference (mergeOverride, inferProject)
+import App.Types
 import Control.Carrier.Finally
 import Control.Carrier.TaskPool
 import Data.Text.Lazy.Encoding (decodeUtf8)
@@ -67,17 +65,16 @@ data ScanDestination
   | OutputStdout
   deriving (Generic)
  
-analyzeMain :: Severity -> ScanDestination -> OverrideProject -> Bool -> IO ()
-analyzeMain logSeverity destination project unpackArchives = do
-  basedir <- getCurrentDir
-  withLogger logSeverity $ analyze basedir destination project unpackArchives
+analyzeMain :: BaseDir -> Severity -> ScanDestination -> OverrideProject -> Bool -> IO ()
+analyzeMain basedir logSeverity destination project unpackArchives = withLogger logSeverity $
+  analyze basedir destination project unpackArchives
 
 analyze ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
   , MonadIO m
   )
-  => Path Abs Dir
+  => BaseDir
   -> ScanDestination
   -> OverrideProject
   -> Bool -- ^ whether to unpack archives
@@ -86,10 +83,10 @@ analyze basedir destination override unpackArchives = runFinally $ do
   capabilities <- liftIO getNumCapabilities
 
   (closures,(failures,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
-    withTaskPool capabilities updateProgress $ do
+    withTaskPool capabilities updateProgress $
       if unpackArchives
-        then discoverWithArchives basedir
-        else discover basedir
+        then discoverWithArchives $ unBaseDir basedir
+        else discover $ unBaseDir basedir
 
   traverse_ (logDebug . Diag.renderFailureBundle . projectFailureCause) failures
 
@@ -101,7 +98,7 @@ analyze basedir destination override unpackArchives = runFinally $ do
   case destination of
     OutputStdout -> logStdout $ pretty (decodeUtf8 (encode result))
     UploadScan baseurl apiKey metadata -> do
-      revision <- mergeOverride override <$> inferProject basedir
+      revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")

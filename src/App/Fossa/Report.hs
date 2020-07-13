@@ -5,7 +5,7 @@ module App.Fossa.Report
 
 import Prologue
 
-import App.Fossa.CliTypes
+import App.Types
 import App.Fossa.API.BuildWait
 import qualified App.Fossa.FossaAPIV1 as Fossa
 import App.Fossa.ProjectInference
@@ -15,7 +15,6 @@ import qualified Control.Concurrent.Async as Async
 import Data.Functor (($>))
 import Data.Text.IO (hPutStrLn)
 import Effect.Logger
-import Path.IO
 import System.IO (stderr)
 import System.Exit (exitSuccess, exitFailure)
 import Text.URI (URI)
@@ -30,15 +29,14 @@ reportName r = case r of
 
 reportMain ::
   URI -- ^ api base url
+  -> BaseDir
   -> ApiKey -- ^ api key
   -> Severity
   -> Int -- ^ timeout (seconds)
   -> ReportType
   -> OverrideProject
   -> IO ()
-reportMain baseUri apiKey logSeverity timeoutSeconds reportType override = do
-  basedir <- getCurrentDir
-
+reportMain baseUri basedir apiKey logSeverity timeoutSeconds reportType override = do
   -- TODO: refactor this code duplicate from `fossa test`
   {-
   Most of this module (almost everything below this line) has been copied
@@ -51,10 +49,9 @@ reportMain baseUri apiKey logSeverity timeoutSeconds reportType override = do
   * Timeout over `IO a` (easy to move, but where do we move it?)
   * CLI command refactoring as laid out in https://github.com/fossas/issues/issues/129
   -}
-  
   void $ timeout timeoutSeconds $ withLogger logSeverity $ do
     result <- runDiagnostics $ do
-      revision <- mergeOverride override <$> inferProject basedir
+      revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")

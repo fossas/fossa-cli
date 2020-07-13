@@ -16,6 +16,7 @@ import App.VPSScan.Types
 import App.VPSScan.Scan.RunSherlock
 import App.VPSScan.Scan.ScotlandYard
 import App.VPSScan.Scan.RunIPR
+import App.Types (BaseDir (..))
 import App.Util (validateDir)
 
 data ScanCmdOpts = ScanCmdOpts
@@ -26,7 +27,7 @@ data ScanCmdOpts = ScanCmdOpts
 scanMain :: ScanCmdOpts -> IO ()
 scanMain opts@ScanCmdOpts{..} = do
   basedir <- validateDir cmdBasedir
-  result <- runDiagnostics $ runTrace $ vpsScan basedir opts
+  result <- runDiagnostics $ runTrace $ vpsScan (unBaseDir basedir) opts
   case result of
     Left failure -> do
       print $ renderFailureBundle failure

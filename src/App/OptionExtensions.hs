@@ -1,8 +1,9 @@
-module OptionExtensions (uriOption) where
+module App.OptionExtensions (uriOption) where
 
-import Options.Applicative
 import Prologue
+
 import qualified Data.Text as T
+import Options.Applicative
 import Text.URI (URI, mkURI)
 
 uriOption :: Mod OptionFields URI -> Parser URI

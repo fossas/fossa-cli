@@ -6,16 +6,15 @@ module App.Fossa.Main
 where
 
 import App.Fossa.Analyze (ScanDestination (..), analyzeMain)
-import App.Fossa.CliTypes
 import App.Fossa.FossaAPIV1 (ProjectMetadata (..))
 import App.Fossa.Report (ReportType (..), reportMain)
 import App.Fossa.Test (TestOutputType (..), testMain)
+import App.OptionExtensions
+import App.Types
 import App.Util (validateDir)
 import qualified Data.Text as T
 import Effect.Logger
-import OptionExtensions
 import Options.Applicative
-import Path.IO (setCurrentDir)
 import Prologue
 import System.Environment (lookupEnv)
 import System.Exit (die)
@@ -37,34 +36,31 @@ appMain = do
   --
   case optCommand of
     AnalyzeCommand AnalyzeOptions {..} -> do
-      changeDir analyzeBaseDir
+      baseDir <- validateDir analyzeBaseDir
       let analyzeOverride = override {overrideBranch = analyzeBranch}
       if analyzeOutput
-        then analyzeMain logSeverity OutputStdout analyzeOverride analyzeUnpackArchives
+        then analyzeMain baseDir logSeverity OutputStdout analyzeOverride analyzeUnpackArchives
         else do
           key <- requireKey maybeApiKey
-          analyzeMain logSeverity (UploadScan optBaseUrl key analyzeMetadata) analyzeOverride analyzeUnpackArchives
+          analyzeMain baseDir logSeverity (UploadScan optBaseUrl key analyzeMetadata) analyzeOverride analyzeUnpackArchives
     --
     TestCommand TestOptions {..} -> do
-      changeDir testBaseDir
+      baseDir <- validateDir testBaseDir
       key <- requireKey maybeApiKey
-      testMain optBaseUrl key logSeverity testTimeout testOutputType override
+      testMain optBaseUrl baseDir key logSeverity testTimeout testOutputType override
     --
     InitCommand ->
       withLogger logSeverity $ logWarn "This command has been deprecated and is no longer needed.  It has no effect and may be safely removed."
     --
     ReportCommand ReportOptions {..} -> do
       unless reportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"
-      changeDir reportBaseDir
+      baseDir <- validateDir reportBaseDir
       key <- requireKey maybeApiKey
-      reportMain optBaseUrl key logSeverity reportTimeout reportType override
+      reportMain optBaseUrl baseDir key logSeverity reportTimeout reportType override
 
 requireKey :: Maybe ApiKey -> IO ApiKey
 requireKey (Just key) = pure key
 requireKey Nothing = die "A FOSSA API key is required to run this command"
-
-changeDir :: FilePath -> IO ()
-changeDir path = validateDir path >>= setCurrentDir
 
 infixl 4 <$$>
 

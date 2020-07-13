@@ -9,6 +9,7 @@ import Options.Applicative
 import Path.IO
 
 import App.Pathfinder.Scan (scanMain)
+import App.Types (BaseDir (..))
 import App.Util (validateDir)
 
 appMain :: IO ()
@@ -23,7 +24,7 @@ appMain = do
         Nothing -> scanMain currentDir debug
         Just dir -> do
           resolved <- validateDir dir
-          scanMain resolved debug
+          scanMain (unBaseDir resolved) debug
 
 data CommandOpts = LicenseScan (Maybe FilePath) Bool
   deriving Show

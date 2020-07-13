@@ -8,7 +8,7 @@ import Prologue
 import qualified Prelude as Unsafe
 
 import App.Fossa.API.BuildWait
-import App.Fossa.CliTypes
+import App.Types
 import qualified App.Fossa.FossaAPIV1 as Fossa
 import App.Fossa.ProjectInference
 import Control.Carrier.Diagnostics
@@ -19,7 +19,6 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Text.IO (hPutStrLn)
 import Effect.Logger
-import Path.IO
 import System.IO (stderr)
 import System.Exit (exitSuccess, exitFailure)
 import Text.URI (URI)
@@ -32,18 +31,17 @@ data TestOutputType
 
 testMain
   :: URI -- ^ api base url
+  -> BaseDir
   -> ApiKey -- ^ api key
   -> Severity
   -> Int -- ^ timeout (seconds)
   -> TestOutputType
   -> OverrideProject
   -> IO ()
-testMain baseurl apiKey logSeverity timeoutSeconds outputType override = do
-  basedir <- getCurrentDir
-
+testMain baseurl basedir apiKey logSeverity timeoutSeconds outputType override = do
   void $ timeout timeoutSeconds $ withLogger logSeverity $ do
     result <- runDiagnostics $ do
-      revision <- mergeOverride override <$> inferProject basedir
+      revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")

@@ -20,7 +20,7 @@ module App.Fossa.FossaAPIV1
   , getAttribution
   ) where
 
-import App.Fossa.CliTypes
+import App.Types
 import App.Fossa.Analyze.Project
 import qualified App.Fossa.Report.Attribution as Attr
 import Control.Effect.Diagnostics
@@ -126,7 +126,7 @@ data ProjectMetadata = ProjectMetadata
 
 uploadAnalysis
   :: (Has Diagnostics sig m, MonadIO m)
-  => Path Abs Dir -- ^ root directory for analysis
+  => BaseDir -- ^ root directory for analysis
   -> URI -- ^ base url
   -> ApiKey -- ^ api key
   -> ProjectRevision
@@ -139,7 +139,7 @@ uploadAnalysis rootDir baseUri key ProjectRevision{..} metadata projects = fossa
   -- For each of the projects, we need to strip the root directory path from the prefix of the project path.
   -- We don't want parent directories of the scan root affecting "production path" filtering -- e.g., if we're
   -- running in a directory called "tmp", we still want results.
-  let rootPath = fromAbsDir rootDir
+  let rootPath = fromAbsDir $ unBaseDir rootDir
       dropPrefix :: String -> String -> String
       dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
       filteredProjects = filter (isProductionPath . dropPrefix rootPath . fromAbsDir . projectPath) projects

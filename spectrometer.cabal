@@ -103,15 +103,16 @@ library
     App.Fossa.Analyze.GraphMangler
     App.Fossa.Analyze.Project
     App.Fossa.API.BuildWait
-    App.Fossa.CliTypes
     App.Fossa.FossaAPIV1
     App.Fossa.Main
     App.Fossa.ProjectInference
     App.Fossa.Report
     App.Fossa.Report.Attribution
     App.Fossa.Test
+    App.OptionExtensions
     App.Pathfinder.Main
     App.Pathfinder.Scan
+    App.Types
     App.Util
     App.VPSScan.Main
     App.VPSScan.Scan
@@ -137,7 +138,6 @@ library
     Effect.Logger
     Effect.ReadFS
     Graphing
-    OptionExtensions
     Parse.XML
     Prologue
     Srclib.Converter

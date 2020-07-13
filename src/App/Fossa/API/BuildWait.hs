@@ -5,7 +5,7 @@ module App.Fossa.API.BuildWait (
 
 import Prologue
 
-import App.Fossa.CliTypes
+import App.Types
 import qualified App.Fossa.FossaAPIV1 as Fossa
 import Control.Carrier.Diagnostics
 import Control.Concurrent (threadDelay)

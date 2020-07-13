@@ -6,11 +6,11 @@ import Prologue
 
 import Options.Applicative
 
+import App.OptionExtensions
 import App.VPSScan.Scan (ScanCmdOpts(..), scanMain)
 import App.VPSScan.NinjaGraph (NinjaGraphCmdOpts(..), ninjaGraphMain)
 import App.VPSScan.Types
 import qualified App.VPSScan.Scan.RunIPR as RunIPR
-import OptionExtensions
 
 appMain :: IO ()
 appMain = join (customExecParser (prefs showHelpOnEmpty) opts)

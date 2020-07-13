@@ -1,5 +1,6 @@
-module App.Fossa.CliTypes
+module App.Types
   ( ApiKey (..),
+    BaseDir (..),
     OverrideProject (..),
     ProjectRevision (..)
   )
@@ -8,6 +9,7 @@ where
 import Prologue
 
 newtype ApiKey = ApiKey {unApiKey :: Text} deriving (Eq, Ord, Show)
+newtype BaseDir = BaseDir {unBaseDir :: Path Abs Dir} deriving (Eq, Ord, Show)
 
 data OverrideProject = OverrideProject
   { overrideName :: Maybe Text,
