@@ -21,7 +21,7 @@ discover = walk $ \dir _ files -> do
     Nothing -> pure ()
     Just _ -> runSimpleStrategy "nodejs-npmlist" NodejsGroup $ analyze dir
 
-  pure (WalkSkipSome [$(mkRelDir "node_modules")])
+  pure $ WalkSkipSome ["node_modules"]
 
 npmListCmd :: Command
 npmListCmd = Command

@@ -30,7 +30,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file  -> runSimpleStrategy "golang-golist" GolangGroup $ analyze (parent file)
 
-  pure $ WalkSkipSome [$(mkRelDir "vendor")]
+  pure $ WalkSkipSome ["vendor"]
 
 data Require = Require
   { reqPackage :: Text

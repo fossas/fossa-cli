@@ -21,10 +21,10 @@ module App.Fossa.FossaAPIV1
   ) where
 
 import App.Types
+import App.Util (parseUri)
 import App.Fossa.Analyze.Project
 import qualified App.Fossa.Report.Attribution as Attr
 import Control.Effect.Diagnostics
-import Data.Coerce (coerce)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.List (isInfixOf, stripPrefix)
 import Data.Text (Text)
@@ -48,13 +48,6 @@ newtype FossaReq m a = FossaReq { unFossaReq :: m a }
 
 instance (MonadIO m, Has Diagnostics sig m) => MonadHttp (FossaReq m) where
   handleHttpException = FossaReq . fatal . mangleError
-
--- parse a URI for use as a (base) Url, along with some default Options (e.g., port)
-parseUri :: Has Diagnostics sig m => URI -> m (Url 'Https, Option 'Https)
-parseUri uri = case useURI uri of
-  Nothing -> fatalText ("Invalid URL: " <> URI.render uri)
-  Just (Left (url, options)) -> pure (coerce url, coerce options)
-  Just (Right (url, options)) -> pure (url, options)
 
 fossaReq :: FossaReq m a -> m a
 fossaReq = unFossaReq

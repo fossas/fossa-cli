@@ -33,7 +33,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-gopkglock" GolangGroup $ analyze file
 
-  pure $ WalkSkipSome [$(mkRelDir "vendor")]
+  pure $ WalkSkipSome ["vendor"]
 
 golockCodec :: TomlCodec GoLock
 golockCodec = GoLock
@@ -62,14 +62,10 @@ analyze ::
   )
   => Path Abs File -> m ProjectClosureBody
 analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
-  contents <- readContentsText file
-  case Toml.decode golockCodec contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (Toml.prettyException err))
-    Right golock -> do
-      buildGraph (lockProjects golock)
-
-      _ <- recover (fillInTransitive (parent file))
-      pure ()
+  golock <- readContentsToml golockCodec file
+  buildGraph (lockProjects golock)
+  _ <- recover (fillInTransitive (parent file))
+  pure ()
 
 mkProjectClosure :: Path Abs File -> Graphing Dependency -> ProjectClosureBody
 mkProjectClosure file graph = ProjectClosureBody

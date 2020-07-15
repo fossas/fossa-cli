@@ -24,7 +24,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nodejs-packagejson" NodejsGroup $ analyze file
 
-  pure (WalkSkipSome [$(mkRelDir "node_modules")])
+  pure $ WalkSkipSome ["node_modules"]
 
 data PackageJson = PackageJson
   { packageDeps    :: Map Text Text

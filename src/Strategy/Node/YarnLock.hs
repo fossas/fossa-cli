@@ -27,7 +27,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "nodejs-yarnlock" NodejsGroup $ analyze file
 
-  pure (WalkSkipSome [$(mkRelDir "node_modules")])
+  pure (WalkSkipSome ["node_modules"])
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze lockfile = do

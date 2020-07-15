@@ -27,7 +27,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "npm-packagelock" NodejsGroup $ analyze file
 
-  pure (WalkSkipSome [$(mkRelDir "node_modules")])
+  pure $ WalkSkipSome ["node_modules"]
 
 data NpmPackageJson = NpmPackageJson
   { packageName         :: Text

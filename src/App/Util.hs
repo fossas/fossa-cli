@@ -11,6 +11,7 @@ import qualified Path.IO as P
 import System.Exit (die)
 import Text.URI (URI, render)
 import Network.HTTP.Req
+import qualified Unsafe.Coerce as Unsafe
 
 -- | Validate that a filepath points to a directory and the directory exists
 validateDir :: FilePath -> IO BaseDir
@@ -25,5 +26,8 @@ validateDir dir = do
 parseUri :: Has Diagnostics sig m => URI -> m (Url 'Https, Option 'Https)
 parseUri uri = case useURI uri of
   Nothing -> fatalText ("Invalid URL: " <> render uri)
-  Just (Left (url, options)) -> pure (coerce url, coerce options)
+  -- Url is "type role Url nominal" in the scheme (Http/Https), so we have to
+  -- unsafeCoerce @Url 'Http@ into @Url 'Https@. Options isn't nominal in the
+  -- scheme, so we can coerce as usual.
+  Just (Left (url, options)) -> pure (Unsafe.unsafeCoerce url, coerce options)
   Just (Right (url, options)) -> pure (url, options)

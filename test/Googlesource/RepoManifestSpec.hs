@@ -18,6 +18,7 @@ import Test.Hspec
 import Text.URI.QQ
 import Effect.ReadFS
 import Control.Carrier.Diagnostics
+import Path.IO (getCurrentDir)
 
 -- <remote name="aosp" fetch="https://android.googlesource.com" />
 remoteOne :: ManifestRemote
@@ -176,6 +177,7 @@ validatedProjectList = [validatedProjectOne, validatedProjectTwo, validatedProje
 spec :: Spec
 spec = do
   let runIt = runIO . runDiagnostics . runReadFSIO
+  currentDir <- runIO $ getCurrentDir
   basicManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest.xml")
   noDefaultRemoteManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-remote.xml")
   noDefaultRevisionManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-revision.xml")
@@ -243,16 +245,16 @@ spec = do
             Right res -> f (resultValue res)
 
     describe "for a manifest with an include tag" $ do
-      projectsForManifestWithIncludes <- runIt $ nestedValidatedProjects $(mkRelDir "test/Googlesource/testdata") $(mkRelFile "test/Googlesource/testdata/manifest-with-include.xml")
+      projectsForManifestWithIncludes <- runIt $ nestedValidatedProjects (currentDir </> $(mkRelDir "test/Googlesource/testdata")) (currentDir </> $(mkRelFile "test/Googlesource/testdata/manifest-with-include.xml"))
       it "reads both files and gets the dependencies from the included file" $
         withResult projectsForManifestWithIncludes (`shouldMatchList` validatedProjectList)
 
     describe "for a manifest with a relative remote and no include" $ do
-      projectsForManifestWithRelativeRemoteNoInclude <- runIt $ nestedValidatedProjects $(mkRelDir "test/Googlesource/testdata/manifest-with-relative-remote-url") $(mkRelFile "test/Googlesource/testdata/manifest-with-relative-remote-url/manifest-without-include.xml")
+      projectsForManifestWithRelativeRemoteNoInclude <- runIt $ nestedValidatedProjects (currentDir </> $(mkRelDir "test/Googlesource/testdata/manifest-with-relative-remote-url")) (currentDir </> $(mkRelFile "test/Googlesource/testdata/manifest-with-relative-remote-url/manifest-without-include.xml"))
       it "gets the remote from the git config" $
         withResult projectsForManifestWithRelativeRemoteNoInclude (`shouldMatchList` validatedProjectList)
 
     describe "for a manifest with a relative remote and an include" $ do
-      projectsForManifestWithRelativeRemoteWithInclude <- runIt $ nestedValidatedProjects $(mkRelDir "test/Googlesource/testdata/manifest-with-relative-remote-url") $(mkRelFile "test/Googlesource/testdata/manifest-with-relative-remote-url/manifest-without-include.xml")
+      projectsForManifestWithRelativeRemoteWithInclude <- runIt $ nestedValidatedProjects (currentDir </> $(mkRelDir "test/Googlesource/testdata/manifest-with-relative-remote-url")) (currentDir </> $(mkRelFile "test/Googlesource/testdata/manifest-with-relative-remote-url/manifest-without-include.xml"))
       it "gets the remote from the git config" $
         withResult projectsForManifestWithRelativeRemoteWithInclude (`shouldMatchList` validatedProjectList)

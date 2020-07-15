@@ -33,10 +33,3 @@ import Path as X
 
 import Data.Typeable as X (Typeable)
 import GHC.Generics as X (Generic, Generic1)
-
--- TODO: stolen from path-0.8.0. We're waiting on path-io to bump version bounds
--- so we can use it. Until then, we define it ourselves.
-data SomeBase t
-  = Abs (Path Abs t)
-  | Rel (Path Rel t)
-  deriving (Eq, Ord, Show, Generic)

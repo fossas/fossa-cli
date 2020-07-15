@@ -37,7 +37,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-gomod" GolangGroup $ analyze file
 
-  pure $ WalkSkipSome [$(mkRelDir "vendor")]
+  pure $ WalkSkipSome ["vendor"]
 
 data Statement =
     RequireStatement Text Text -- ^ package, version

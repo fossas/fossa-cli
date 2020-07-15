@@ -21,6 +21,7 @@ module Effect.ReadFS
     -- * Parsing file contents
     readContentsParser,
     readContentsJson,
+    readContentsToml,
     readContentsYaml,
     readContentsXML,
     module X,
@@ -47,6 +48,7 @@ import Path
 import qualified Path.IO as PIO
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
+import qualified Toml
 import Prelude
 
 data ReadFS m k where
@@ -128,6 +130,13 @@ readContentsJson file = do
   contents <- readContentsBS file
   case eitherDecodeStrict contents of
     Left err -> fatal (FileParseError (toFilePath file) (T.pack err))
+    Right a -> pure a
+
+readContentsToml :: (Has ReadFS sig m, Has Diagnostics sig m) => Toml.TomlCodec a -> Path b File -> m a
+readContentsToml codec file = do
+  contents <- readContentsText file
+  case Toml.decode codec contents of
+    Left err -> fatal (FileParseError (toFilePath file) (Toml.prettyTomlDecodeErrors err))
     Right a -> pure a
 
 -- | Read YAML from a file

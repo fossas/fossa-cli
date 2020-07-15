@@ -36,7 +36,7 @@ discover = walk $ \_ _ files -> do
     Nothing -> pure ()
     Just file -> runSimpleStrategy "golang-gopkgtoml" GolangGroup $ analyze file
 
-  pure $ WalkSkipSome [$(mkRelDir "vendor")]
+  pure $ WalkSkipSome ["vendor"]
 
 gopkgCodec :: TomlCodec Gopkg
 gopkgCodec = Gopkg
@@ -72,14 +72,11 @@ analyze ::
   )
   => Path Abs File -> m ProjectClosureBody
 analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
-  contents <- readContentsText file
-  case Toml.decode gopkgCodec contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (Toml.prettyException err))
-    Right gopkg -> do
-      buildGraph gopkg
+  gopkg <- readContentsToml gopkgCodec file
+  buildGraph gopkg
 
-      _ <- recover (fillInTransitive (parent file))
-      pure ()
+  _ <- recover (fillInTransitive (parent file))
+  pure ()
 
 mkProjectClosure :: Path Abs File -> Graphing Dependency -> ProjectClosureBody
 mkProjectClosure file graph = ProjectClosureBody
