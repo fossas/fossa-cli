@@ -12,7 +12,7 @@ import Control.Carrier.Output.IO
 import Control.Concurrent
 
 import App.Fossa.Analyze.Project (Project, mkProjects)
-import App.Fossa.FossaAPIV1 (ProjectMetadata, uploadAnalysis, UploadResponse(..))
+import App.Fossa.FossaAPIV1 (ProjectMetadata, uploadAnalysis, UploadResponse(..), uploadContributors)
 import App.Fossa.ProjectInference (mergeOverride, inferProject)
 import App.Types
 import Control.Carrier.Finally
@@ -20,6 +20,7 @@ import Control.Carrier.TaskPool
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
+import Effect.Exec
 import Effect.Logger
 import Network.HTTP.Types (urlEncode)
 import qualified Srclib.Converter as Srclib
@@ -59,6 +60,7 @@ import Text.URI (URI)
 import qualified Text.URI as URI
 import Types
 import qualified Data.Text.Encoding as TE
+import VCS.Git (fetchGitContributors)
 
 data ScanDestination
   = UploadScan URI ApiKey ProjectMetadata -- ^ upload to fossa with provided api key and base url
@@ -119,6 +121,26 @@ analyze basedir destination override unpackArchives = runFinally $ do
             , "============================================================"
             ]
           traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
+
+          contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors (unBaseDir basedir) baseurl apiKey $ uploadLocator resp
+          case contribResult of
+            Left failure -> logDebug (Diag.renderFailureBundle failure)
+            Right _ -> pure ()
+
+tryUploadContributors ::
+  ( Has Diag.Diagnostics sig m,
+    Has Exec sig m,
+    MonadIO m
+  ) =>
+  Path x Dir ->
+  URI ->
+  ApiKey ->
+  -- | Locator
+  Text ->
+  m ()
+tryUploadContributors baseDir baseUrl apiKey locator = do
+  contributors <- fetchGitContributors baseDir
+  uploadContributors baseUrl apiKey locator contributors
 
 fossaProjectUrl :: URI -> Text -> Text -> Text
 fossaProjectUrl baseUrl rawLocator branch = URI.render baseUrl <> "projects/" <> encodedProject <> "/refs/branch/" <> branch <> "/" <> encodedRevision

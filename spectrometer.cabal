@@ -184,6 +184,7 @@ library
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Types
+    VCS.Git
 
   hs-source-dirs:  src
 

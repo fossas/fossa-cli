@@ -1,9 +1,11 @@
 module App.Fossa.FossaAPIV1
   ( uploadAnalysis
+  , uploadContributors
   , UploadResponse(..)
   , ProjectMetadata(..)
   , FossaError(..)
   , FossaReq(..)
+  , Contributors(..)
   , fossaReq
 
   , getLatestBuild
@@ -27,6 +29,7 @@ import qualified App.Fossa.Report.Attribution as Attr
 import Control.Effect.Diagnostics
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.List (isInfixOf, stripPrefix)
+import Data.Map (Map)
 import Data.Text (Text)
 import Data.Aeson
 import Prelude
@@ -395,3 +398,23 @@ instance FromJSON Organization where
 
 organizationEndpoint :: Url scheme -> Url scheme
 organizationEndpoint baseurl = baseurl /: "api" /: "cli" /: "organization"
+
+----------
+
+newtype Contributors = Contributors 
+  {unContributors :: Map Text Text}
+  deriving (Eq, Ord, Show, ToJSON)
+
+contributorsEndpoint :: Url scheme -> Url scheme
+contributorsEndpoint baseurl = baseurl /: "api" /: "organization"
+
+uploadContributors :: (Has Diagnostics sig m, MonadIO m) => URI -> ApiKey -> Text -> Contributors -> m ()
+uploadContributors baseUri apiKey locator contributors = fossaReq $ do
+  (baseUrl, baseOptions) <- parseUri baseUri
+
+  let opts = baseOptions
+        <> apiHeader apiKey
+        <> "locator" =: locator
+
+  _ <- req POST (contributorsEndpoint baseUrl) (ReqBodyJson contributors) ignoreResponse opts
+  pure ()
