@@ -42,6 +42,15 @@ data Graphing ty = Graphing
   , graphingAdjacent :: AdjacencyMap ty
   } deriving (Eq, Ord, Show, Generic)
 
+instance Ord ty => Semigroup (Graphing ty) where
+  graphing <> graphing' =
+    Graphing
+      (graphingDirect graphing `S.union` graphingDirect graphing')
+      (graphingAdjacent graphing `AM.overlay` graphingAdjacent graphing')
+
+instance Ord ty => Monoid (Graphing ty) where
+  mempty = Graphing S.empty AM.empty
+
 -- | Transform a Graphing by applying a function to each of its vertices.
 --
 -- Graphing isn't a lawful 'Functor', so we don't provide an instance.

@@ -9,36 +9,48 @@ import Prologue
 
 import Control.Effect.Diagnostics
 import Data.List (isInfixOf)
-import Text.Megaparsec
-import Text.Megaparsec.Char
-
+import Data.Maybe (catMaybes)
 import Discovery.Walk
 import Effect.ReadFS
+import Graphing (Graphing)
 import Strategy.Python.Util
+import Text.Megaparsec
+import Text.Megaparsec.Char
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
+discover = walk $ \dir _ files -> do
   let txtFiles = filter (\f -> "req" `isInfixOf` fileName f
                             && ".txt" `isSuffixOf` fileName f) files
 
-  for_ txtFiles $ \file ->
-    runSimpleStrategy "python-requirements" PythonGroup $ analyze file
+  runSimpleStrategy "python-requirements" PythonGroup $ analyze dir txtFiles
 
   pure WalkContinue
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsParser requirementsTxtParser file
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> [Path Abs File] -> m ProjectClosureBody
+analyze projectDir files = do
+  results <- traverse (recover . analyzeSingle) files
+  let successful = catMaybes results
 
-mkProjectClosure :: Path Abs File -> [Req] -> ProjectClosureBody
-mkProjectClosure file reqs = ProjectClosureBody
-  { bodyModuleDir    = parent file
+  when (null successful) $ fatalText "Analysis failed for all discovered *req*.txt files"
+
+  let graphing :: Graphing Dependency
+      graphing = mconcat successful
+
+  pure (mkProjectClosure projectDir graphing)
+
+analyzeSingle :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyzeSingle file = buildGraph <$> readContentsParser requirementsTxtParser file
+
+mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody
+mkProjectClosure dir graph = ProjectClosureBody
+  { bodyModuleDir    = dir
   , bodyDependencies = dependencies
   , bodyLicenses     = []
   }
   where
   dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph reqs
+    { dependenciesGraph    = graph
     , dependenciesOptimal  = NotOptimal
     , dependenciesComplete = NotComplete
     }
