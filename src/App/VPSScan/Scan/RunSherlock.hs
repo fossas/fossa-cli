@@ -33,7 +33,9 @@ sherlockCommand basedir scanId VPSOpts {..} =
           "--project-id",
           T.unpack projectID,
           "--revision-id",
-          T.unpack revisionID
+          T.unpack revisionID,
+          "--filter-expressions",
+          show filterExpressions
         ],
       cmdAllowErr = Never
     }

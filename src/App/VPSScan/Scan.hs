@@ -87,7 +87,7 @@ runIPRScan ::
 runIPRScan basedir scanId vpsOpts@VPSOpts{..} =
   case vpsIpr of
     Just iprOpts -> do
-      iprResult <- execIPR basedir iprOpts
+      iprResult <- execIPR basedir filterExpressions iprOpts
       trace "[IPR] IPR scan completed. Posting results to Scotland Yard"
 
       context "uploading scan results" $ uploadIPRResults vpsOpts scanId iprResult
