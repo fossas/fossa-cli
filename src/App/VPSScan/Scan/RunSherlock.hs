@@ -19,9 +19,9 @@ sherlockCommand basedir scanId VPSOpts {..} =
     { cmdName = sherlockCmdPath,
       cmdArgs =
         [ "scan",
-          fromAbsDir basedir,
+          T.pack (fromAbsDir basedir),
           "--scan-id",
-          T.unpack scanId,
+          scanId,
           "--sherlock-api-secret-key",
           sherlockClientToken,
           "--sherlock-api-client-id",
@@ -29,13 +29,13 @@ sherlockCommand basedir scanId VPSOpts {..} =
           "--sherlock-api-host",
           sherlockUrl,
           "--organization-id",
-          show organizationID,
+          T.pack (show organizationID),
           "--project-id",
-          T.unpack projectID,
+          projectID,
           "--revision-id",
-          T.unpack revisionID,
+          revisionID,
           "--filter-expressions",
-          show filterExpressions
+          T.pack (show filterExpressions)
         ],
       cmdAllowErr = Never
     }

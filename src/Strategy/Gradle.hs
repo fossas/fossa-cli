@@ -30,10 +30,10 @@ import Effect.Grapher
 import Graphing (Graphing)
 import Types
 
-gradleJsonDepsCmd :: String -> FP.FilePath -> Command
+gradleJsonDepsCmd :: Text -> FP.FilePath -> Command
 gradleJsonDepsCmd baseCmd initScriptFilepath = Command
-  { cmdName = baseCmd -- ["./gradlew", "gradlew.bat", "gradle"]
-  , cmdArgs = ["jsonDeps", "-I", initScriptFilepath]
+  { cmdName = baseCmd
+  , cmdArgs = ["jsonDeps", "-I", T.pack initScriptFilepath]
   , cmdAllowErr = Never
   }
 

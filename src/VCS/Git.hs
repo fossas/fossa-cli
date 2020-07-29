@@ -24,7 +24,7 @@ gitLogCmd now =
       cmdAllowErr = Never
     }
   where
-    sinceArg = iso8601Show $ utctDay wayBack
+    sinceArg = T.pack . iso8601Show $ utctDay wayBack
     delta = nominalDay * (-90)
     wayBack = addUTCTime delta now
 

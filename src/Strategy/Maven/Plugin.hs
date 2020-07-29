@@ -18,19 +18,20 @@ import Control.Effect.Diagnostics
 import Control.Effect.Exception
 import qualified Data.ByteString as BS
 import Data.FileEmbed (embedFile)
+import qualified Data.Text as T
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
 import qualified System.FilePath as FP
 
 import Effect.Exec
 import Effect.ReadFS
 
-pluginGroup :: String
+pluginGroup :: Text
 pluginGroup = "com.github.ferstl"
 
-pluginArtifact :: String
+pluginArtifact :: Text
 pluginArtifact = "depgraph-maven-plugin"
 
-pluginVersion :: String
+pluginVersion :: Text
 pluginVersion = "3.3.0"
 
 pluginJar :: ByteString
@@ -75,7 +76,7 @@ mavenInstallPluginCmd pluginFilePath = Command
     , "-DartifactId=" <> pluginArtifact
     , "-Dversion=" <> pluginVersion
     , "-Dpackaging=jar"
-    , "-Dfile=" <> pluginFilePath
+    , "-Dfile=" <> T.pack pluginFilePath
     ]
   , cmdAllowErr = Never
   }

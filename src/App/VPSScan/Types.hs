@@ -22,10 +22,10 @@ data ScotlandYardOpts = ScotlandYardOpts
   deriving (Generic)
 
 data SherlockOpts = SherlockOpts
-  { sherlockCmdPath :: String,
-    sherlockUrl :: String,
-    sherlockClientToken :: String,
-    sherlockClientID :: String
+  { sherlockCmdPath :: Text,
+    sherlockUrl :: Text,
+    sherlockClientToken :: Text,
+    sherlockClientID :: Text
   }
   deriving (Eq, Ord, Show, Generic)
 

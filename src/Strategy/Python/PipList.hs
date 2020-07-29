@@ -27,7 +27,7 @@ discover = walk $ \dir _ files -> do
 
   pure WalkContinue
 
-pipListCmd :: String -> Command
+pipListCmd :: Text -> Command
 pipListCmd baseCmd = Command
   { cmdName = baseCmd
   , cmdArgs = ["list", "--format=json"]

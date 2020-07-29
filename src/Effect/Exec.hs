@@ -36,17 +36,17 @@ import Prelude
 
 data Command = Command
   { -- | Command name to use. E.g., "pip", "pip3", "./gradlew".
-    cmdName :: String,
+    cmdName :: Text,
     -- | Arguments for the command
-    cmdArgs :: [String],
+    cmdArgs :: [Text],
     -- | Error (i.e. non-zero exit code) tolerance policy for running commands. This is helpful for commands like @npm@, that nonsensically return non-zero exit codes when a command succeeds
     cmdAllowErr :: AllowErr
   }
   deriving (Eq, Ord, Show)
 
 data CmdFailure = CmdFailure
-  { cmdFailureName :: String,
-    cmdFailureargs :: [String],
+  { cmdFailureName :: Text,
+    cmdFailureargs :: [Text],
     cmdFailureDir :: FilePath,
     cmdFailureExit :: ExitCode,
     cmdFailureStdout :: Stdout,
@@ -127,7 +127,9 @@ instance (Algebra sig m, MonadIO m) => Algebra (Exec :+: sig) (ExecIOC m) where
     L (Exec dir cmd) -> liftIO $ do
       absolute <- makeAbsolute dir
 
-      (exitcode, stdout, stderr) <- readProcess (setWorkingDir (fromAbsDir absolute) (proc (cmdName cmd) (cmdArgs cmd)))
+      let cmdName' = T.unpack $ cmdName cmd
+          cmdArgs' = map T.unpack $ cmdArgs cmd
+      (exitcode, stdout, stderr) <- readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs'))
 
       let failure = CmdFailure (cmdName cmd) (cmdArgs cmd) (fromAbsDir absolute) exitcode stdout stderr
 

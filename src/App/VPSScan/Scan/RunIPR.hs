@@ -14,13 +14,15 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.Vector as V
 import Effect.Exec
 import Data.Aeson
+import Data.Text (Text)
+import qualified Data.Text as T
 import Path
 import Prelude
 
 data IPROpts = IPROpts
-  { iprCmdPath :: String,
-    nomosCmdPath :: String,
-    pathfinderCmdPath :: String
+  { iprCmdPath :: Text,
+    nomosCmdPath :: Text,
+    pathfinderCmdPath :: Text
   }
   deriving (Eq, Ord, Show)
 
@@ -63,17 +65,16 @@ instance Show FilterExpressions where
 
 execIPR :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> FilterExpressions -> IPROpts -> m Value
 execIPR basedir filterExpressions iprOpts = do
-  let filters = show filterExpressions
-  value <- execJson basedir (iprCommand filters iprOpts)
+  value <- execJson basedir (iprCommand filterExpressions iprOpts)
   let maybeExtracted = extractNonEmptyFiles value
   case maybeExtracted of
     Nothing -> fatal NoFilesEntryInOutput
     Just extracted -> pure extracted
 
-iprCommand :: String -> IPROpts -> Command
+iprCommand :: FilterExpressions -> IPROpts -> Command
 iprCommand filterExpressions IPROpts {..} =
   Command
     { cmdName = iprCmdPath,
-      cmdArgs = ["-target", ".", "-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath, "-filter-expressions", filterExpressions],
+      cmdArgs = ["-target", ".", "-nomossa", nomosCmdPath, "-pathfinder", pathfinderCmdPath, "-filter-expressions", T.pack (show filterExpressions)],
       cmdAllowErr = Never
     }
