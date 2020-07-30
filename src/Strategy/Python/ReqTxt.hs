@@ -23,7 +23,8 @@ discover = walk $ \dir _ files -> do
   let txtFiles = filter (\f -> "req" `isInfixOf` fileName f
                             && ".txt" `isSuffixOf` fileName f) files
 
-  runSimpleStrategy "python-requirements" PythonGroup $ analyze dir txtFiles
+  unless (null txtFiles) $
+    runSimpleStrategy "python-requirements" PythonGroup $ analyze dir txtFiles
 
   pure WalkContinue
 
