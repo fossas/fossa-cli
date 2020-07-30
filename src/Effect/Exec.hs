@@ -17,6 +17,7 @@ where
 import Control.Applicative (Alternative)
 import Control.Algebra as X
 import Control.Effect.Diagnostics
+import Control.Exception (IOException, try)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Data.ByteString.Lazy as BL
 import Data.Aeson
@@ -33,6 +34,8 @@ import System.Process.Typed
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Prelude
+import Data.Bifunctor (first)
+import Data.String (fromString)
 
 data Command = Command
   { -- | Command name to use. E.g., "pip", "pip3", "./gradlew".
@@ -129,17 +132,29 @@ instance (Algebra sig m, MonadIO m) => Algebra (Exec :+: sig) (ExecIOC m) where
 
       let cmdName' = T.unpack $ cmdName cmd
           cmdArgs' = map T.unpack $ cmdArgs cmd
-      (exitcode, stdout, stderr) <- readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs'))
 
-      let failure = CmdFailure (cmdName cmd) (cmdArgs cmd) (fromAbsDir absolute) exitcode stdout stderr
+          mkFailure :: ExitCode -> Stdout -> Stderr -> CmdFailure
+          mkFailure = CmdFailure (cmdName cmd) (cmdArgs cmd) (fromAbsDir absolute)
 
-      let result = case (exitcode, cmdAllowErr cmd) of
-            (ExitSuccess, _) -> Right stdout
-            (_, Never) -> Left failure
-            (_, NonEmptyStdout) ->
-              if BL.null stdout
-                then Left failure
-                else Right stdout
-            (_, Always) -> Right stdout
+          ioExceptionToCmdFailure :: IOException -> CmdFailure
+          ioExceptionToCmdFailure = mkFailure (ExitFailure 1) "" . fromString . show
+
+      processResult <- try $ readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs'))
+
+      -- apply business logic for considering whether exitcode + stderr constitutes a "failure"
+      let mangleResult :: (ExitCode, Stdout, Stderr) -> Either CmdFailure Stdout
+          mangleResult (exitcode, stdout, stderr) =
+            case (exitcode, cmdAllowErr cmd) of
+                  (ExitSuccess, _) -> Right stdout
+                  (_, Never) -> Left $ mkFailure exitcode stdout stderr
+                  (_, NonEmptyStdout) ->
+                    if BL.null stdout
+                      then Left $ mkFailure exitcode stdout stderr
+                      else Right stdout
+                  (_, Always) -> Right stdout
+
+
+      let result :: Either CmdFailure Stdout
+          result = first ioExceptionToCmdFailure processResult >>= mangleResult
 
       pure (result <$ ctx)
