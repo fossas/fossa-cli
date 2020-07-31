@@ -22,7 +22,7 @@ commands :: Parser (IO ())
 commands = hsubparser $ scanCommand <> ninjaGraphCommand
 
 vpsOpts :: Parser VPSOpts
-vpsOpts = VPSOpts <$> runSherlockOpts <*> optional runIPROpts <*> syOpts <*> organizationIDOpt <*> projectIDOpt <*> revisionIDOpt <*> filterOpt
+vpsOpts = VPSOpts <$> runSherlockOpts <*> optional runIPROpts <*> fossaOpts <*> organizationIDOpt <*> projectIDOpt <*> revisionIDOpt <*> filterOpt
             where
               organizationIDOpt = option auto (long "organization" <> metavar "orgID" <> help "Organization ID")
               projectIDOpt = strOption (long "project" <> metavar "String" <> help "Project ID")
@@ -61,11 +61,12 @@ runIPROpts = RunIPR.IPROpts
                     pathfinderCmdPathOpt = strOption (long "pathfinder" <> metavar "STRING" <> help "Path to the pathfinder executable")
 
 -- org IDs are ints. project and revision IDs are strings
-syOpts :: Parser ScotlandYardOpts
-syOpts = ScotlandYardOpts
-                     <$> scotlandYardUrlOpt
+fossaOpts :: Parser FossaOpts
+fossaOpts = FossaOpts
+                     <$> urlOpt <*> apiKeyOpt
                   where
-                    scotlandYardUrlOpt = uriOption (long "scotland-yard-url" <> metavar "STRING" <> help "URL for Scotland Yard service")
+                    urlOpt = uriOption (long "fossa-url" <> metavar "STRING" <> help "URL for FOSSA service")
+                    apiKeyOpt =  strOption (long "fossa-api-key" <> metavar "STRING" <> help "API key for FOSSA service")
 
 basedirOpt :: Parser FilePath
 basedirOpt = strOption (long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning" <> value ".")

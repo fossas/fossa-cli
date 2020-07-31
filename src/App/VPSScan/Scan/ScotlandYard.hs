@@ -15,10 +15,18 @@ import Data.Text (Text)
 import Network.HTTP.Req
 import Prelude
 import App.Util (parseUri)
+import Data.Text.Encoding
+
+-- Prefix for Core's reverse proxy to SY
+coreProxyPrefix :: Url 'Https -> Url 'Https
+coreProxyPrefix baseurl = baseurl /: "api" /: "proxy" /: "scotland-yard"
+
+authHeader :: Text -> Option scheme
+authHeader apiKey = header "Authorization" (encodeUtf8 ("Bearer " <> apiKey))
 
 -- /projects/{projectID}/scans
 createScanEndpoint :: Url 'Https -> Text -> Url 'Https
-createScanEndpoint baseurl projectId = baseurl /: "projects" /: projectId /: "scans"
+createScanEndpoint baseurl projectId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans"
 
 -- /projects/{projectID}/scans/{scanID}/discovered_licenses
 scanDataEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
@@ -35,11 +43,11 @@ instance FromJSON ScanResponse where
 
 createScotlandYardScan :: (MonadIO m, Has Diagnostics sig m) => VPSOpts -> m ScanResponse
 createScotlandYardScan VPSOpts {..} = runHTTP $ do
-  let body = object ["organizationId" .= organizationID, "revisionId" .= revisionID, "projectId" .= projectID]
-      ScotlandYardOpts {..} = vpsScotlandYard
+  let body = object ["organizationId" .= organizationID, "revisionId" .= revisionID, "projectId" .= projectID]; FossaOpts {..} = fossaInstance
+  let auth = authHeader fossaApiKey
 
-  (baseUrl, baseOptions) <- parseUri scotlandYardUrl
-  resp <- req POST (createScanEndpoint baseUrl projectID) (ReqBodyJson body) jsonResponse (baseOptions <> header "Content-Type" "application/json")
+  (baseUrl, baseOptions) <- parseUri fossaUrl
+  resp <- req POST (createScanEndpoint baseUrl projectID) (ReqBodyJson body) jsonResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
   pure (responseBody resp)
 
 -- Given the results from a run of IPR, a scan ID and a URL for Scotland Yard,
@@ -47,9 +55,10 @@ createScotlandYardScan VPSOpts {..} = runHTTP $ do
 -- POST /scans/{scanID}/discovered_licenses
 uploadIPRResults :: (ToJSON a, MonadIO m, Has Diagnostics sig m) => VPSOpts -> Text -> a -> m ()
 uploadIPRResults VPSOpts {..} scanId value = runHTTP $ do
-  let ScotlandYardOpts {..} = vpsScotlandYard
+  let FossaOpts {..} = fossaInstance
+  let auth = authHeader fossaApiKey
 
-  (baseUrl, baseOptions) <- parseUri scotlandYardUrl
+  (baseUrl, baseOptions) <- parseUri fossaUrl
 
-  _ <- req POST (scanDataEndpoint baseUrl projectID scanId) (ReqBodyJson value) ignoreResponse (baseOptions <> header "Content-Type" "application/json")
+  _ <- req POST (scanDataEndpoint baseUrl projectID scanId) (ReqBodyJson value) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
   pure ()
