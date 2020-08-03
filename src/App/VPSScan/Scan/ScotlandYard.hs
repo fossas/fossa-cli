@@ -30,7 +30,7 @@ createScanEndpoint baseurl projectId = coreProxyPrefix baseurl /: "projects" /: 
 
 -- /projects/{projectID}/scans/{scanID}/discovered_licenses
 scanDataEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
-scanDataEndpoint baseurl projectId scanId = baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses"
+scanDataEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses"
 
 data ScanResponse = ScanResponse
   { responseScanId :: Text
