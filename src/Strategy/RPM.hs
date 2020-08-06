@@ -84,7 +84,7 @@ toDependency pkg =
       }
 
 buildGraph :: Dependencies -> Graphing Dependency
-buildGraph Dependencies {..} = G.gmap toDependency $ G.fromList depBuildRequires
+buildGraph Dependencies {..} = G.gmap toDependency $ G.fromList depRuntimeRequires
 
 buildConstraint :: Text -> Maybe VerConstraint
 buildConstraint tail = constraint
