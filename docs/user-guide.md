@@ -186,14 +186,14 @@ Makes a best-effort attempt at inferring the correct configuration from current 
 
 > Note: if a configuration file exists, `fossa init` will **not** overwrite it.
 
-If there are no modules defined in the configuration, it will scan the working directory for code modules to analyze.  You can pass the `--overwrite` to overwrite any existing modules in configuration.
+If there are no modules defined in the configuration, it will scan the working directory for code modules to analyze.
 
 By default, `fossa init` filters modules that are suspected to be development, test, or dependency. The filter removes all modules that have any of the following in their filepath: `docs, test, examples, third-party, vendor, tmp,node_modules, .srclib-cache, spec, Godeps, .git, bower_components,  Carthage, and Checkouts`. Filtering can be disabled by passing the `--include-all` flag.
 
 #### Example
 ```bash
 # Creates the .fossa.yml file in the current directory.
-fossa init --overwrite
+fossa init
 ```
 
 | Flag            | Short | Description                            |
