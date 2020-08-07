@@ -243,7 +243,7 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa test --timeout 600
 | `--project`         | `-p`  | Configuration value for [project](/docs/config-file.md/#project-optional).        |
 | `--revision`        | `-r`  | Configuration value for [revision](/docs/config-file.md/#revision-optional).      |
 | `--endpoint`        | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional).      |
-| `--timeout`         | `-t`  | The amount of seconds to wait for an issue scan to complete. Default: 10 minutes. |
+| `--timeout`         |       | The amount of seconds to wait for an issue scan to complete. Default: 10 minutes. |
 | `--debug`           |       | Print debugging information to stderr.                                            |
 | `--help`            | `-h`  | Print a help message.                                                             |
 | `--suppress-issues` |       | Don't exit on stderr if issues are found.                                         |
