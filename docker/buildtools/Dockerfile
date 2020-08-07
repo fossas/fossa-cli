@@ -5,7 +5,7 @@ FROM fossa/fossa-cli:base
 
 # Workaround for add-apt-repository (see
 # https://github.com/oerdnj/deb.sury.org/issues/56).
-ENV LC_ALL=C.UTF-8 DEBIAN_FRONTEND=noninteractive 
+ENV LC_ALL=C.UTF-8 DEBIAN_FRONTEND=noninteractive
 
 # Install build tool and fixture requirements.
 RUN sudo apt-get update && \
@@ -82,8 +82,7 @@ RUN curl https://getcomposer.org/installer | sudo php -- --install-dir=/usr/loca
     sudo chown -R fossa:fossa $HOME/.composer
 
 # Install NuGet.
-RUN sudo apt-key adv --keyserver packages.microsoft.com --recv-keys EB3E94ADBE1229CF && \
-    sudo apt-key adv --keyserver packages.microsoft.com --recv-keys 52E16F86FEE04B979B07E28DB02C46DF417A0893 && \
-    sudo sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/microsoft-ubuntu-bionic-prod bionic main" > /etc/apt/sources.list.d/dotnetdev.list' && \
+RUN wget https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && \
+    sudo dpkg -i packages-microsoft-prod.deb && \
     sudo apt-get update && \
-    sudo apt-get install -y dotnet-sdk-2.1
+    sudo apt-get install -y dotnet-sdk-3.1
