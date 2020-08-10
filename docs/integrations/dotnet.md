@@ -16,7 +16,7 @@ analyze:
     - name: NugetModule
       type: nuget
       target: MyProject/Manifest.csproj
-      dir: MyProject
+      path: MyProject
       options:
         strategy: package-reference
 ```

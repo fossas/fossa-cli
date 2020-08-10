@@ -22,7 +22,7 @@ analyze:
   modules:
     - name: your-composer-project
       type: composer
-      dir: composer.json
+      path: composer.json
       target: directory/composer.json
 ```
 

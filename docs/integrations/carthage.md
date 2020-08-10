@@ -23,7 +23,7 @@ analyze:
     - name: carthage-project
       type: cart
       target: python/project
-      dir:  python/project
+      path:  python/project
 ```
 
 ## Analysis
