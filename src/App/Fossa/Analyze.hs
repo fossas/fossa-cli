@@ -57,6 +57,7 @@ import qualified Strategy.Python.SetupPy as SetupPy
 import qualified Strategy.RPM as RPM
 import qualified Strategy.Ruby.BundleShow as BundleShow
 import qualified Strategy.Ruby.GemfileLock as GemfileLock
+import qualified Strategy.Scala as Scala
 import Text.URI (URI)
 import qualified Text.URI as URI
 import Types
@@ -222,6 +223,8 @@ discoverFuncs =
   , Cargo.discover
 
   , RPM.discover
+
+  , Scala.discover
   ]
 
 updateProgress :: Has Logger sig m => Progress -> m ()

@@ -1,5 +1,6 @@
 module Strategy.Maven.Pom
   ( discover
+  , mkProjectClosure
   ) where
 
 import Prologue

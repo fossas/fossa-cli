@@ -183,6 +183,7 @@ library
     Strategy.RPM
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
+    Strategy.Scala
     Types
     VCS.Git
 

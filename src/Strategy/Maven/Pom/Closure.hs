@@ -1,6 +1,7 @@
 module Strategy.Maven.Pom.Closure
   ( findProjects
   , MavenProjectClosure(..)
+  , buildProjectClosures
   ) where
 
 import Prologue

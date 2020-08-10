@@ -13,13 +13,14 @@ import qualified Data.Set as Set
 import DepTypes
 import Graphing (Graphing)
 import qualified Graphing
+import Path (toFilePath)
 import Srclib.Types
 
 toSourceUnit :: Project -> Maybe SourceUnit
 toSourceUnit Project{..} = do
   bestStrategy <- safeHead projectStrategies
 
-  let renderedPath = Text.pack (show projectPath) <> "/" <> projStrategyName bestStrategy
+  let renderedPath = Text.pack (toFilePath projectPath) <> "/" <> projStrategyName bestStrategy
 
       graph :: Graphing Dependency
       graph = projStrategyGraph bestStrategy
