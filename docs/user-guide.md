@@ -227,7 +227,7 @@ FOSSA_API_KEY=YOUR_API_KEY fossa analyze
 | `--help`        | `-h`  | Print a help message.                                                        |
 
 ### `fossa test`
-Checks whether the project has licensing issues, as configured by its policy within FOSSA. If there are issues, it prints them on `stdout` and exits with code 1. If there are not issues, it exits with code 0. Fossa test can be used to fail a CI pipeline job.
+Checks whether the project has licensing issues, as configured by its policy within FOSSA. If there are issues, it prints them on `stdout` and, unless the `--suppress-issues` flag is given, exits with code 1. If there are not issues, it exits with code 0. Fossa test can be used to fail a CI pipeline job.
 
 > Note: Report always requires an API Key to be set. A push-only API key can be used for `fossa test`, but issues will not be displayed if the test results in a failure.
 
@@ -243,10 +243,10 @@ FOSSA_API_KEY=YOUR_API_KEY_HERE fossa test --timeout 600
 | `--project`         | `-p`  | Configuration value for [project](/docs/config-file.md/#project-optional).        |
 | `--revision`        | `-r`  | Configuration value for [revision](/docs/config-file.md/#revision-optional).      |
 | `--endpoint`        | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional).      |
-| `--timeout`         |       | The amount of seconds to wait for an issue scan to complete. Default: 10 minutes. |
+| `--timeout`         |       | The number of seconds to wait for an issue scan to complete. Default: 10 minutes. |
 | `--debug`           |       | Print debugging information to stderr.                                            |
 | `--help`            | `-h`  | Print a help message.                                                             |
-| `--suppress-issues` |       | Don't exit on stderr if issues are found.                                         |
+| `--suppress-issues` |       | Don't exit with code 1 if issues are found.                                       |
 
 ### `fossa upload`
 

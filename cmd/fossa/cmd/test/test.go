@@ -45,7 +45,7 @@ var Cmd = cli.Command{
 	Action: Run,
 	Flags: flags.WithGlobalFlags(flags.WithAPIFlags([]cli.Flag{
 		cli.IntFlag{Name: Timeout, Value: 10 * 60, Usage: "duration to wait for build completion (in seconds)"},
-		cli.BoolFlag{Name: SuppressIssues, Usage: "don't exit on stderr if issues are found"},
+		cli.BoolFlag{Name: SuppressIssues, Usage: "don't exit with code 1 if issues are found"},
 		cli.BoolFlag{Name: JSON, Usage: "format failed issues as JSON"},
 	})),
 }
@@ -178,7 +178,7 @@ func CheckIssues(locator fossa.Locator, stop <-chan time.Time) (fossa.Issues, *e
 			if err != nil {
 				return fossa.Issues{}, err
 			}
-      
+
 			switch issues.Status {
 			case "WAITING":
 				time.Sleep(PollRequestDelay)
