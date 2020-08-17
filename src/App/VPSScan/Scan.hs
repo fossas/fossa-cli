@@ -13,11 +13,14 @@ import Control.Concurrent.Async (concurrently)
 import Control.Carrier.Trace.Printing
 
 import App.VPSScan.Types
-import App.VPSScan.Scan.RunSherlock
 import App.VPSScan.Scan.ScotlandYard
+import App.VPSScan.Scan.RunSherlock
 import App.VPSScan.Scan.RunIPR
+import App.VPSScan.Scan.Core
+import App.VPSScan.EmbeddedBinary
 import App.Types (BaseDir (..))
 import App.Util (validateDir)
+import Data.Text (unpack)
 
 data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
@@ -43,21 +46,38 @@ vpsScan ::
   ) => Path Abs Dir -> ScanCmdOpts -> m ()
 vpsScan basedir ScanCmdOpts{..} = do
   let vpsOpts@VPSOpts{..} = scanVpsOpts
-  response <- context "creating scan ID" $ createScotlandYardScan vpsOpts
+  
+  -- Build the revision
+  projectRevision <- buildRevision userProvidedRevision
+
+  -- Get Sherlock info
+  trace "[Sherlock] Retrieving Sherlock information from FOSSA"
+  SherlockInfo{..} <- getSherlockInfo fossa
+  let locator = createLocator projectName sherlockOrgId
+  let revisionLocator = createRevisionLocator projectName sherlockOrgId projectRevision
+  trace $ unpack $ "[All] Creating project with locator '" <> unLocator revisionLocator <> "'"
+
+  -- Create scan in Core
+  trace "[All] Creating project in FOSSA"
+  _ <- context "creating project in FOSSA" $ createCoreProject projectName projectRevision fossa
+
+  -- Create scan in SY
+  trace $ "[All] Creating scan in Scotland Yard"
+  let syOpts = ScotlandYardOpts locator projectRevision sherlockOrgId vpsOpts
+  response <- context "creating scan ID" $ createScotlandYardScan syOpts
   let scanId = responseScanId response
 
-  trace $ "Running scan on directory " ++ show basedir
-  trace $ "Scan ID from Scotland yard is " ++ show scanId
+  -- Run IPR and Sherlock CLIs concurrently
+  trace $ "[All] Running scan on directory " ++ show basedir
+  trace $ unpack $ "[All] Scan ID is " <> scanId
   trace "[All] Running IPR and Sherlock scans in parallel"
   trace "[Sherlock] Starting Sherlock scan"
-  case vpsIpr of
-    Just _ -> trace "[IPR] Starting IPR scan"
-    Nothing -> trace "[IPR] IPR scan disabled"
 
+  let sherlockOpts = SherlockOpts basedir scanId sherlockClientToken sherlockClientId sherlockUrl sherlockOrgId locator projectRevision vpsOpts
   let runIt = runDiagnostics . runExecIO . runTrace
   (iprResult, sherlockResult) <- liftIO $ concurrently
-                (runIt $ runIPRScan basedir scanId vpsOpts)
-                (runIt $ runSherlockScan basedir scanId vpsOpts)
+                (runIt $ withUnpackedIPRClis $ \iprBinaryPaths -> runIPRScan basedir scanId iprBinaryPaths syOpts vpsOpts)
+                (runIt $ withUnpackedSherlockCli $ \sherlockBinaryPath -> runSherlockScan sherlockBinaryPath sherlockOpts)
   case (iprResult, sherlockResult) of
     (Right _, Right _) -> trace "[All] Scans complete"
     (Left iprFailure, _) -> do
@@ -69,13 +89,17 @@ vpsScan basedir ScanCmdOpts{..} = do
       trace (show $ renderFailureBundle sherlockFailure)
       liftIO exitFailure
 
+  trace $ "[All] Completing scan in FOSSA"
+  _ <- context "completing project in FOSSA" $ completeCoreProject (unLocator revisionLocator) fossa
+  trace $ "[All] Project is ready to view in FOSSA (Sherlock forensics may still be pending)"
+
 runSherlockScan ::
   ( Has Exec sig m
   , Has Diagnostics sig m
   , Has Trace sig m
-  ) => Path Abs Dir -> Text -> VPSOpts -> m ()
-runSherlockScan basedir scanId vpsOpts = do
-  execSherlock basedir scanId vpsOpts
+  ) => Path Abs File -> SherlockOpts -> m ()
+runSherlockScan binaryPath sherlockOpts = do
+  execSherlock binaryPath sherlockOpts
   trace "[Sherlock] Sherlock scan complete"
 
 runIPRScan ::
@@ -83,15 +107,14 @@ runIPRScan ::
   , Has Trace sig m
   , Has Exec sig m
   , MonadIO m
-  ) => Path Abs Dir ->  Text -> VPSOpts -> m ()
-runIPRScan basedir scanId vpsOpts@VPSOpts{..} =
-  case vpsIpr of
-    Just iprOpts -> do
-      iprResult <- execIPR basedir filterExpressions iprOpts
-      trace "[IPR] IPR scan completed. Posting results to Scotland Yard"
+  ) => Path Abs Dir -> Text -> IPRBinaryPaths -> ScotlandYardOpts -> VPSOpts -> m ()
+runIPRScan basedir scanId iprPaths syOpts vpsOpts =
+  if skipIprScan vpsOpts then
+    trace "[IPR] IPR scan disabled"
+  else do
+    iprResult <- execIPR iprPaths $ IPROpts basedir vpsOpts
+    trace "[IPR] IPR scan completed. Posting results to Scotland Yard"
 
-      context "uploading scan results" $ uploadIPRResults vpsOpts scanId iprResult
-      trace "[IPR] Post to Scotland Yard complete"
-      trace "[IPR] IPR scan complete"
-    Nothing ->
-      trace "[IPR] IPR Scan disabled"
+    context "uploading scan results" $ uploadIPRResults scanId iprResult syOpts
+    trace "[IPR] Post to Scotland Yard complete"
+    trace "[IPR] IPR scan complete"

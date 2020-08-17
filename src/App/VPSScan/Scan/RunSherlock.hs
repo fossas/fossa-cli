@@ -1,43 +1,48 @@
 module App.VPSScan.Scan.RunSherlock
-  ( execSherlock,
+  ( execSherlock
+  , SherlockOpts(..)
   )
 where
 
 import App.VPSScan.Types
+import App.VPSScan.Scan.Core
 import Control.Carrier.Error.Either
 import Control.Effect.Diagnostics
 import qualified Data.Text as T
 import Effect.Exec
 import Prologue
 
-execSherlock :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> VPSOpts -> m ()
-execSherlock basedir scanId vpsOpts = void $ execThrow basedir (sherlockCommand basedir scanId vpsOpts)
+data SherlockOpts = SherlockOpts
+  { scanDir :: Path Abs Dir
+  , scanId :: Text
+  , clientToken :: Text
+  , clientId :: Text
+  , sherlockUrl :: Text
+  , organizationId :: Int
+  , projectId :: Locator
+  , revisionId :: Text
+  , sherlockVpsOpts :: VPSOpts
+  } deriving (Generic)
 
-sherlockCommand :: Path Abs Dir -> Text -> VPSOpts -> Command
-sherlockCommand basedir scanId VPSOpts {..} =
+execSherlock :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> SherlockOpts -> m ()
+execSherlock binaryPath sherlockOpts = void $ execThrow (scanDir sherlockOpts) (sherlockCommand binaryPath sherlockOpts)
+
+sherlockCommand :: Path Abs File -> SherlockOpts -> Command
+sherlockCommand binaryPath SherlockOpts{..} = do
+  let VPSOpts{..} = sherlockVpsOpts
+
   Command
-    { cmdName = sherlockCmdPath,
+    { cmdName = T.pack $ fromAbsFile binaryPath,
       cmdArgs =
-        [ "scan",
-          T.pack (fromAbsDir basedir),
-          "--scan-id",
-          scanId,
-          "--sherlock-api-secret-key",
-          sherlockClientToken,
-          "--sherlock-api-client-id",
-          sherlockClientID,
-          "--sherlock-api-host",
-          sherlockUrl,
-          "--organization-id",
-          T.pack (show organizationID),
-          "--project-id",
-          projectID,
-          "--revision-id",
-          revisionID,
-          "--filter-expressions",
-          T.pack (show filterExpressions)
+        [ "scan", T.pack $ fromAbsDir scanDir,
+          "--scan-id", scanId,
+          "--sherlock-api-secret-key", clientToken,
+          "--sherlock-api-client-id", clientId,
+          "--sherlock-api-host", sherlockUrl,
+          "--organization-id", T.pack $ show organizationId,
+          "--project-id", unLocator projectId,
+          "--revision-id", revisionId,
+          "--filter-expressions", unFilterExpressions filterBlob
         ],
       cmdAllowErr = Never
     }
-  where
-    SherlockOpts {..} = vpsSherlock

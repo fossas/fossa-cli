@@ -6,6 +6,7 @@ build-type:         Simple
 extra-source-files:
   scripts/*.jar
   scripts/*.gradle
+  vendor/*
 
 common lang
   build-depends:      base >=4.12 && <4.15
@@ -79,6 +80,7 @@ common deps
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
     , tar                          ^>=0.5.1.1
+    , template-haskell             ^>=2.15
     , text                         ^>=1.2.3
     , time                         ^>=1.9.3
     , tomland                      ^>=1.3.0.0
@@ -120,7 +122,9 @@ library
     App.VPSScan.Scan.RunIPR
     App.VPSScan.Scan.RunSherlock
     App.VPSScan.Scan.ScotlandYard
+    App.VPSScan.Scan.Core
     App.VPSScan.Types
+    App.VPSScan.EmbeddedBinary
     Control.Carrier.Diagnostics
     Control.Carrier.Finally
     Control.Carrier.Output.IO
@@ -132,6 +136,7 @@ library
     Control.Effect.Path
     Control.Effect.TaskPool
     DepTypes
+    Data.FileEmbed.Extra
     Discovery.Walk
     Effect.Exec
     Effect.Grapher
@@ -263,3 +268,4 @@ test-suite unit-tests
     , hspec-hedgehog    ^>=0.0.1.2
     , hspec-megaparsec  ^>=2.1
     , spectrometer
+ 

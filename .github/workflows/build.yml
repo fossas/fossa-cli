@@ -41,11 +41,16 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Install bash & xz & bzip2 (alpine)
+    - name: Install alpine binary dependencies
       if: ${{ contains(matrix.os, 'ubuntu') }}
       shell: sh
       run: |
-        apk add bash xz-dev bzip2-dev bzip2-static
+        apk add bash xz-dev bzip2-dev bzip2-static upx curl jq
+
+    - name: Install MacOS binary dependencies
+      if: ${{ contains(matrix.os, 'macos') }}
+      run: |
+        brew install upx jq
 
     - uses: actions/setup-haskell@v1.1
       id: setup-haskell
@@ -62,6 +67,11 @@ jobs:
 
     - name: Build
       run: |
+        mkdir vendor
+        touch vendor/nomossa
+        touch vendor/pathfinder
+        touch vendor/sherlock-cli
+        touch vendor/ramjet-cli-ipr
         cabal update
         cabal build --project-file=${{ matrix.project-file }} all
 
@@ -75,15 +85,31 @@ jobs:
         mkdir release
         find . -type f -path '*/fossa/fossa.exe' -exec mv {} release \;
         find . -type f -path '*/pathfinder/pathfinder.exe' -exec mv {} release \;
-        find . -type f -path '*/vpscli/vpscli.exe' -exec mv {} release \;
-
+  
     - name: Find and move binaries (non-windows)
       if: ${{ !contains(matrix.os, 'windows') }}
       run: |
         mkdir release
         find . -type f -path '*/fossa/fossa' -exec mv {} release \;
         find . -type f -path '*/pathfinder/pathfinder' -exec mv {} release \;
+
+    - name: Update vendored binaries
+      if: ${{ !contains(matrix.os, 'windows') }}
+      run: ./vendor_download.sh
+      env:
+        GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
+
+    - name: Rebuild with new vendored binaries
+      if: ${{ !contains(matrix.os, 'windows') }}
+      run: |
+        echo '' >> src/App/VPSScan/EmbeddedBinary.hs
+        cabal build --project-file=${{ matrix.project-file }} all
+
+    - name: Find and move vpscli
+      if: ${{ !contains(matrix.os, 'windows') }}
+      run: |
         find . -type f -path '*/vpscli/vpscli' -exec mv {} release \;
+        ls -lh release/
 
     - name: Strip binaries
       run: |
@@ -128,7 +154,6 @@ jobs:
         chmod +x Windows-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/fossa.exe
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/pathfinder.exe
-        zip -j release/vpscli_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/vpscli.exe
 
     - name: Release
       uses: softprops/action-gh-release@v1

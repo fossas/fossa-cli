@@ -7,3 +7,6 @@ dist-newstyle/
 # profiling
 *.prof
 *.hp
+
+# vendor directory
+vendor

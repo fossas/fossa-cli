@@ -1,7 +1,7 @@
 module App.VPSScan.Types
 ( VPSOpts(..)
-, SherlockOpts(..)
 , FossaOpts(..)
+, FilterExpressions(..)
 , DepsTarget(..)
 , DepsDependency(..)
 , NinjaGraphOpts(..)
@@ -10,38 +10,30 @@ module App.VPSScan.Types
 , HTTPRequestFailed(..)
 ) where
 
-import qualified App.VPSScan.Scan.RunIPR as RunIPR
 import Control.Carrier.Diagnostics
 import Prologue
 import Text.URI (URI)
 import Network.HTTP.Req
 import Data.Text.Prettyprint.Doc (viaShow)
 
+newtype FilterExpressions = FilterExpressions { unFilterExpressions :: Text }
+
 data FossaOpts = FossaOpts
-  {fossaUrl :: URI, fossaApiKey :: Text}
+  { fossaUrl :: URI
+  , fossaApiKey :: Text
+  }
   deriving (Generic)
 
-data SherlockOpts = SherlockOpts
-  { sherlockCmdPath :: Text,
-    sherlockUrl :: Text,
-    sherlockClientToken :: Text,
-    sherlockClientID :: Text
-  }
-  deriving (Eq, Ord, Show, Generic)
-
 data VPSOpts = VPSOpts
-  { vpsSherlock :: SherlockOpts
-  , vpsIpr :: Maybe RunIPR.IPROpts
-  , fossaInstance :: FossaOpts
-  , organizationID :: Int
-  , projectID :: Text
-  , revisionID :: Text
-  , filterExpressions :: RunIPR.FilterExpressions
+  { fossa :: FossaOpts
+  , projectName :: Text
+  , userProvidedRevision :: Maybe Text
+  , skipIprScan :: Bool
+  , filterBlob :: FilterExpressions
   } deriving (Generic)
 
 data DepsTarget = DepsTarget
-  {
-    targetPath :: Text
+  { targetPath :: Text
   , targetDependencies :: [DepsDependency]
   , targetInputs :: [DepsDependency]
   , targetComponentName :: Maybe Text
