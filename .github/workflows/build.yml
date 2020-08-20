@@ -27,16 +27,20 @@ jobs:
 
           - os: ubuntu-latest
             os-name: Linux
-            container: quay.io/fossa/haskell-static-alpine
+            container: quay.io/fossa/haskell-static-alpine:ghc-8.10
             project-file: cabal.project.ci.linux
+            # note: the real version is the one bundled in the docker image
+            ghc: '8.10'
 
           - os: macos-latest
             os-name: macOS
             project-file: cabal.project.ci.macos
+            ghc: '8.10.1'
 
           - os: windows-latest
             os-name: Windows
             project-file: cabal.project.ci.windows
+            ghc: '8.10.1'
 
     steps:
     - uses: actions/checkout@v2
@@ -57,13 +61,17 @@ jobs:
       name: Setup ghc/cabal (non-alpine)
       if: ${{ !contains(matrix.os, 'ubuntu') }}
       with:
-        ghc-version: '8.8.2'
+        ghc-version: ${{ matrix.ghc }}
 
     - uses: actions/cache@v1
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
-        key: ${{ runner.os }}-v5-cabal-store
+        key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('**/*.cabal') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
+          ${{ runner.os }}-${{ matrix.ghc }}-
+          ${{ runner.os }}-
 
     - name: Build
       run: |

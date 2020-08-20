@@ -6,13 +6,12 @@ import Prologue
 
 import qualified Data.Text.IO as TIO
 import qualified Data.Text as T
-import Data.List
+import qualified Data.List as List
 import App.VPSScan.NinjaGraph
 import App.VPSScan.Types
 import Data.Text.Encoding
 import Test.Hspec
 import Control.Carrier.Diagnostics
-import Text.URI (emptyURI)
 
 
 -- out/target/product/coral/obj/STATIC_LIBRARIES/libgptutils_intermediates/gpt-utils.o: #deps 2, deps mtime 1583962189 (VALID)
@@ -126,26 +125,22 @@ spec :: Spec
 spec = do
   smallNinjaDeps <- runIO (TIO.readFile "test/App/VPSScan/testdata/small-ninja-deps")
   weirdNinjaDeps <- runIO (TIO.readFile "test/App/VPSScan/testdata/ninja-deps-with-weird-targets")
-  let ninjaGraphOpts = NinjaGraphOpts { ninjaGraphNinjaPath  = Nothing
-                                  , lunchTarget = Nothing
-                                  , depsGraphScotlandYardUrl = emptyURI
-                                  }
 
   describe "scanNinjaDeps for a standard ninja deps file" $
     it "parses a small ninja deps file and generates a dependency graph" $ do
-      eitherScanned <- runDiagnostics $ scanNinjaDeps ninjaGraphOpts (encodeUtf8 smallNinjaDeps)
+      eitherScanned <- runDiagnostics $ scanNinjaDeps (encodeUtf8 smallNinjaDeps)
       case eitherScanned of
         Left _ -> expectationFailure (T.unpack "could not parse ninja deps")
         Right scanned -> resultValue scanned `shouldMatchList` smallNinjaDepsTargets
 
   describe "scanNinjaDeps for a ninja deps file with weird targets" $ do
     it "finds the correct input for a target where the first dependency is a txt file" $ do
-      eitherScanned <- runDiagnostics $ scanNinjaDeps ninjaGraphOpts (encodeUtf8 weirdNinjaDeps)
+      eitherScanned <- runDiagnostics $ scanNinjaDeps (encodeUtf8 weirdNinjaDeps)
       case eitherScanned of
         Left _ -> expectationFailure (T.unpack "could not parse ninja deps")
-        Right scanned -> head (resultValue scanned) `shouldBe` targetWithFirstLevelWeirdnessFix
+        Right scanned -> List.head (resultValue scanned) `shouldBe` targetWithFirstLevelWeirdnessFix
     it "finds the correct input for a target where the first and second dependencies are txt files" $ do
-      eitherScanned <- runDiagnostics $ scanNinjaDeps ninjaGraphOpts (encodeUtf8 weirdNinjaDeps)
+      eitherScanned <- runDiagnostics $ scanNinjaDeps (encodeUtf8 weirdNinjaDeps)
       case eitherScanned of
         Left _ -> expectationFailure (T.unpack "could not parse ninja deps")
-        Right scanned -> (resultValue scanned !! 1) `shouldBe` targetWithSecondLevelWeirdnessFix
+        Right scanned -> (resultValue scanned List.!! 1) `shouldBe` targetWithSecondLevelWeirdnessFix

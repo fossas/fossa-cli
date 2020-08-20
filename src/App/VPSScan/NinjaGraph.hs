@@ -61,7 +61,7 @@ ninjaGraphMain NinjaGraphCmdOpts{..} = do
 getAndParseNinjaDeps :: (Has Diagnostics sig m, MonadIO m) => Path Abs Dir -> NinjaGraphOpts -> m ()
 getAndParseNinjaDeps dir ninjaGraphOpts = do
   ninjaDepsContents <- runTrace $ runReadFSIO $ runExecIO $ getNinjaDeps dir ninjaGraphOpts
-  graph <- scanNinjaDeps ninjaGraphOpts ninjaDepsContents
+  graph <- scanNinjaDeps ninjaDepsContents
   _ <- runHTTP $ postDepsGraphResults ninjaGraphOpts graph
   pure ()
 
@@ -74,9 +74,8 @@ getNinjaDeps baseDir opts@NinjaGraphOpts{..} =
     Nothing -> BL.toStrict <$> generateNinjaDeps baseDir opts
     Just ninjaPath -> readNinjaDepsFile ninjaPath
 
-scanNinjaDeps :: (Has Diagnostics sig m) => NinjaGraphOpts -> ByteString -> m [DepsTarget]
-scanNinjaDeps NinjaGraphOpts{..} ninjaDepsContents =
-  map correctedTarget <$> ninjaDeps
+scanNinjaDeps :: (Has Diagnostics sig m) => ByteString -> m [DepsTarget]
+scanNinjaDeps ninjaDepsContents = map correctedTarget <$> ninjaDeps
   where
     ninjaDeps = parseNinjaDeps ninjaDepsContents
 
