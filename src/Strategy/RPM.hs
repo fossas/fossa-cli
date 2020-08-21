@@ -48,9 +48,9 @@ data Dependencies
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \dir _ files ->
-  let specs = find (\f -> ".spec" `isSuffixOf` fileName f) files
-      analzyeFile specFile = runSimpleStrategy "rpm-spec" RPMGroup $ fmap (mkProjectClosure dir) (analyze specFile)
-   in traverse_ analzyeFile specs >> pure WalkSkipAll
+  let specs = filter (\f -> ".spec" `isSuffixOf` fileName f) files
+      analyzeFile specFile = runSimpleStrategy "rpm-spec" RPMGroup $ fmap (mkProjectClosure dir) (analyze specFile)
+   in traverse_ analyzeFile specs >> pure WalkContinue
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze specFile = do
