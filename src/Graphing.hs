@@ -14,6 +14,7 @@ module Graphing
 
   -- * Manipulating a Graphing
   , gmap
+  , gtraverse
   , filter
   , pruneUnreachable
   , stripRoot
@@ -59,6 +60,22 @@ gmap f gr = gr { graphingDirect = direct', graphingAdjacent = adjacent' }
   where
   direct' = S.map f (graphingDirect gr)
   adjacent' = AM.gmap f (graphingAdjacent gr)
+
+-- | Map each element of the Graphing to an action, evaluate the actions, and
+-- collect the results.
+--
+-- Graphing isn't a lawful 'Traversable', so we don't provide an instance.
+gtraverse :: (Ord b, Applicative f) => (a -> f b) -> Graphing a -> f (Graphing b)
+gtraverse f Graphing{..} = Graphing <$> newSet <*> newAdjacent
+  where
+    -- newSet :: f (Set b)
+    newSet = fmap S.fromList . traverse f . S.toList $ graphingDirect
+
+    -- newAdjacent :: f (AM.AdjacencyMap b)
+    newAdjacent = fmap mkAdjacencyMap . traverse (\(a,xs) -> (,) <$> f a <*> traverse f xs) . AM.adjacencyList $ graphingAdjacent
+
+    -- mkAdjacencyMap :: Ord c => [(c,[c])] -> AM.AdjacencyMap c
+    mkAdjacencyMap = AM.fromAdjacencySets . fmap (fmap S.fromList)
 
 -- | Filter Graphing elements
 filter :: (ty -> Bool) -> Graphing ty -> Graphing ty

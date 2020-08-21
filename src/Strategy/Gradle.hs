@@ -98,7 +98,7 @@ mkProjectClosure dir deps = ProjectClosureBody
 
 -- TODO: use LabeledGraphing to add labels for environments
 buildGraph :: Map Text [JsonDep] -> Graphing Dependency
-buildGraph mapping = run . evalGrapher $ M.traverseWithKey addProject mapping
+buildGraph projectsAndDeps = run . evalGrapher $ M.traverseWithKey addProject projectsAndDeps
   where
   -- add top-level projects from the output
   addProject :: Has (Grapher Dependency) sig m => Text -> [JsonDep] -> m ()

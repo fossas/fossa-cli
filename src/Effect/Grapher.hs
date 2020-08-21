@@ -15,15 +15,25 @@ module Effect.Grapher
     label,
     withLabeling,
 
+    -- * Mapping
+    MappedGrapher,
+    MappedGrapherC,
+    mapping,
+    withMapping,
+    MappingError(..),
+
     -- * Re-exports
     module X,
   )
 where
 
 import Control.Algebra as X
+import Control.Carrier.Diagnostics
 import Control.Carrier.State.Strict
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import qualified Data.Text as T
+import Prettyprinter (pretty)
 import Prologue hiding (parent)
 import qualified Graphing as G
 
@@ -109,3 +119,71 @@ unlabel :: (Ord ty, Ord ty') => (ty -> Set lbl -> ty') -> Labels ty lbl -> G.Gra
 unlabel f labels = G.gmap (\ty -> f ty (findLabels ty))
   where
     findLabels ty = fromMaybe S.empty (M.lookup ty labels)
+
+----- Mapping
+
+-- | An extension of 'Grapher' that tracks an associated value for each node in
+-- the graph. It is expected that each node in the graph /must/ have an
+-- associated value.
+--
+-- For example, cabal.plan uses opaque @UnitID@s to reference packages:
+--
+-- > newtype UnitId = UnitId { unUnitId :: Text }
+-- >   deriving (Eq, Ord, Show)
+--
+-- This is the type we use to build edges and mark direct dependencies.
+--
+-- We also want to associate package contents with a UnitId
+--
+-- > data CabalPackage = CabalPackage
+-- >   { cabalPackageName :: Text
+-- >   , cabalPackageVersion :: Text
+-- >   , ...
+-- >   }
+--
+-- We can eventually use these associations to construct the final nodes in our
+-- graph.
+--
+-- One way to use this, forcing better type inference, is to create a type
+-- synonym:
+--
+-- > type CabalGrapher = MappedGrapher UnitId HaskellPackage
+--
+-- and now we can use our newly-minted "CabalGrapher" effect when describing our
+-- dependency graph:
+--
+-- > doTheThing :: Has CabalGrapher sig m => ...
+--
+-- This allows us to use 'direct' and 'edge' like before, but also gives us a
+-- third primitive, 'mapping'.
+--
+-- > mapping :: Has CabalGrapher sig m => UnitId -> CabalPackage -> m ()
+
+type MappedGrapher ty val = State (Map ty val) :+: Grapher ty
+
+type MappedGrapherC ty val m a = StateC (Map ty val) (GrapherC ty m) a
+
+-- | Associate a key with a given value
+mapping :: (Ord ty, Has (MappedGrapher ty val) sig m) => ty -> val -> m ()
+mapping ty val = modify (M.insert ty val)
+
+withMapping :: (Monad m, Ord ty, Ord res, Show ty) => (ty -> val -> res) -> MappedGrapherC ty val m a -> m (Either MappingError (G.Graphing res))
+withMapping f act = do
+  (graph, (labels, _)) <- runGrapher . runState M.empty $ act
+  let -- result :: Either MappingError (G.Graphing res)
+      result = G.gtraverse replaceVal graph
+
+      -- replaceVal :: ty -> Either MappingError res
+      replaceVal key =
+        case M.lookup key labels of
+          Nothing -> Left . MissingKey . T.pack $ show key
+          Just value -> Right $ f key value
+
+  pure result
+
+-- | Errors that may occur when using 'withMapping'
+data MappingError = MissingKey Text -- ^ A key did not have an associated value
+  deriving (Eq, Ord, Show)
+
+instance ToDiagnostic MappingError where
+  renderDiagnostic (MissingKey key) = "Missing associated value for key: " <> pretty key
