@@ -1,52 +1,65 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.VPSScan.EmbeddedBinary 
-  ( withUnpackedSherlockCli
-  , withUnpackedIPRClis
-  , IPRBinaryPaths(..)
+  ( BinaryPaths(..)
+  , extractEmbeddedBinaries
+  , cleanupExtractedBinaries
   ) where
 
 import Prelude hiding (writeFile)
-import Control.Effect.Exception
 import Control.Monad.IO.Class
 import Data.ByteString (writeFile, ByteString)
 import Path
 import Path.IO
 import Data.FileEmbed.Extra
 
-withUnpackedSherlockCli :: (Has (Lift IO) sig m, MonadIO m) => (Path Abs File -> m a) -> m a
-withUnpackedSherlockCli act =
-  bracket (liftIO getTempDir >>= \tmp -> createTempDir tmp "fossa-vpscli-vendor-sherlock")
-          (liftIO . removeDirRecur)
-          go
-  where
-    go tmpDir = do
-      let binaryPath = tmpDir </> $(mkRelFile "sherlock-cli")
-      liftIO (writeFile (fromAbsFile binaryPath) embeddedBinarySherlockCli)
-      liftIO (makeExecutable binaryPath)
-      act binaryPath
-
-data IPRBinaryPaths = IPRBinaryPaths
-  { ramjetBinaryPath :: Path Abs File
+data BinaryPaths = BinaryPaths
+  { binaryPathContainer :: Path Abs Dir
+  , ramjetBinaryPath :: Path Abs File
   , nomosBinaryPath :: Path Abs File
   , pathfinderBinaryPath :: Path Abs File
+  , sherlockBinaryPath :: Path Abs File
   }
 
-withUnpackedIPRClis :: (Has (Lift IO) sig m, MonadIO m) => (IPRBinaryPaths -> m a) -> m a
-withUnpackedIPRClis act = 
-  bracket (liftIO getTempDir >>= \tmp -> createTempDir tmp "fossa-vpscli-vendor-ipr")
-          (liftIO . removeDirRecur)
-          go
-  where
-    go tmpDir = do
-      let paths = IPRBinaryPaths (tmpDir </> $(mkRelFile "ramjet-cli-ipr")) (tmpDir </> $(mkRelFile "nomossa")) (tmpDir </> $(mkRelFile "pathfinder"))
-      liftIO (writeFile (fromAbsFile $ ramjetBinaryPath paths) embeddedBinaryRamjetCli)
-      liftIO (writeFile (fromAbsFile $ nomosBinaryPath paths) embeddedBinaryNomossa)
-      liftIO (writeFile (fromAbsFile $ pathfinderBinaryPath paths) embeddedBinaryPathfinder)
-      liftIO (makeExecutable (ramjetBinaryPath paths))
-      liftIO (makeExecutable (nomosBinaryPath paths))
-      liftIO (makeExecutable (pathfinderBinaryPath paths))
-      act paths
+cleanupExtractedBinaries :: (MonadIO m) => BinaryPaths -> m ()
+cleanupExtractedBinaries BinaryPaths{..} = do
+  removeDirRecur binaryPathContainer
+  pure ()
+
+extractEmbeddedBinaries :: (MonadIO m) => m BinaryPaths
+extractEmbeddedBinaries = do
+  container <- extractDir
+
+  -- Determine paths to which we should write the binaries
+  ramjetBinaryPath <- extractedPath $(mkRelFile "ramjet-cli-ipr")
+  nomosBinaryPath <- extractedPath $(mkRelFile "nomossa")
+  pathfinderBinaryPath <- extractedPath $(mkRelFile "pathfinder")
+  sherlockBinaryPath <- extractedPath $(mkRelFile "sherlock-cli")
+
+  -- Write the binaries
+  liftIO $ writeExecutable ramjetBinaryPath embeddedBinaryRamjetCli
+  liftIO $ writeExecutable nomosBinaryPath embeddedBinaryNomossa
+  liftIO $ writeExecutable pathfinderBinaryPath embeddedBinaryPathfinder
+  liftIO $ writeExecutable sherlockBinaryPath embeddedBinarySherlockCli
+
+  -- Return the paths
+  pure (BinaryPaths container ramjetBinaryPath nomosBinaryPath pathfinderBinaryPath sherlockBinaryPath)
+
+writeExecutable :: Path Abs File -> ByteString -> IO ()
+writeExecutable path content = do
+  ensureDir $ parent path
+  writeFile (fromAbsFile path) content
+  makeExecutable path
+
+extractedPath :: MonadIO m => Path Rel File -> m (Path Abs File)
+extractedPath name = do
+  dir <- extractDir
+  pure (dir </> name)
+
+extractDir :: MonadIO m => m (Path Abs Dir)
+extractDir = do
+  wd <- liftIO getCurrentDir
+  pure (wd </> $(mkRelDir ".vendor"))
 
 makeExecutable :: Path Abs File -> IO ()
 makeExecutable path = do

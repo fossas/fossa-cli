@@ -57,7 +57,7 @@ data IPROpts = IPROpts
   , iprVpsOpts :: VPSOpts
   } deriving (Generic)
 
-execIPR :: (Has Exec sig m, Has Diagnostics sig m) => IPRBinaryPaths -> IPROpts -> m Value
+execIPR :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> IPROpts -> m Value
 execIPR iprPaths iprOpts = do
   value <- execJson (scanDir iprOpts) (iprCommand iprPaths iprOpts)
   let maybeExtracted = extractNonEmptyFiles value
@@ -65,8 +65,8 @@ execIPR iprPaths iprOpts = do
     Nothing -> fatal NoFilesEntryInOutput
     Just extracted -> pure extracted
 
-iprCommand :: IPRBinaryPaths -> IPROpts -> Command
-iprCommand IPRBinaryPaths{..} IPROpts{..} = do
+iprCommand :: BinaryPaths -> IPROpts -> Command
+iprCommand BinaryPaths{..} IPROpts{..} = do
   let VPSOpts{..} = iprVpsOpts
   Command
     { cmdName = T.pack $ fromAbsFile ramjetBinaryPath,

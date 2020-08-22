@@ -21,6 +21,7 @@ import App.VPSScan.EmbeddedBinary
 import App.Types (BaseDir (..))
 import App.Util (validateDir)
 import Data.Text (unpack)
+import Control.Effect.Exception (bracket)
 
 data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
@@ -30,7 +31,7 @@ data ScanCmdOpts = ScanCmdOpts
 scanMain :: ScanCmdOpts -> IO ()
 scanMain opts@ScanCmdOpts{..} = do
   basedir <- validateDir cmdBasedir
-  result <- runDiagnostics $ runTrace $ vpsScan (unBaseDir basedir) opts
+  result <- runDiagnostics $ runTrace $ bracket extractEmbeddedBinaries cleanupExtractedBinaries $ vpsScan (unBaseDir basedir) opts
   case result of
     Left failure -> do
       print $ renderFailureBundle failure
@@ -43,8 +44,8 @@ vpsScan ::
   ( Has Diagnostics sig m
   , Has Trace sig m
   , MonadIO m
-  ) => Path Abs Dir -> ScanCmdOpts -> m ()
-vpsScan basedir ScanCmdOpts{..} = do
+  ) => Path Abs Dir -> ScanCmdOpts -> BinaryPaths -> m ()
+vpsScan basedir ScanCmdOpts{..} binaryPaths = do
   let vpsOpts@VPSOpts{..} = scanVpsOpts
   
   -- Build the revision
@@ -76,8 +77,9 @@ vpsScan basedir ScanCmdOpts{..} = do
   let sherlockOpts = SherlockOpts basedir scanId sherlockClientToken sherlockClientId sherlockUrl sherlockOrgId locator projectRevision vpsOpts
   let runIt = runDiagnostics . runExecIO . runTrace
   (iprResult, sherlockResult) <- liftIO $ concurrently
-                (runIt $ withUnpackedIPRClis $ \iprBinaryPaths -> runIPRScan basedir scanId iprBinaryPaths syOpts vpsOpts)
-                (runIt $ withUnpackedSherlockCli $ \sherlockBinaryPath -> runSherlockScan sherlockBinaryPath sherlockOpts)
+                (runIt $ runIPRScan basedir scanId binaryPaths syOpts vpsOpts)
+                (runIt $ runSherlockScan binaryPaths sherlockOpts)
+
   case (iprResult, sherlockResult) of
     (Right _, Right _) -> trace "[All] Scans complete"
     (Left iprFailure, _) -> do
@@ -97,9 +99,9 @@ runSherlockScan ::
   ( Has Exec sig m
   , Has Diagnostics sig m
   , Has Trace sig m
-  ) => Path Abs File -> SherlockOpts -> m ()
-runSherlockScan binaryPath sherlockOpts = do
-  execSherlock binaryPath sherlockOpts
+  ) => BinaryPaths -> SherlockOpts -> m ()
+runSherlockScan binaryPaths sherlockOpts = do
+  execSherlock binaryPaths sherlockOpts
   trace "[Sherlock] Sherlock scan complete"
 
 runIPRScan ::
@@ -107,12 +109,12 @@ runIPRScan ::
   , Has Trace sig m
   , Has Exec sig m
   , MonadIO m
-  ) => Path Abs Dir -> Text -> IPRBinaryPaths -> ScotlandYardOpts -> VPSOpts -> m ()
-runIPRScan basedir scanId iprPaths syOpts vpsOpts =
+  ) => Path Abs Dir -> Text -> BinaryPaths -> ScotlandYardOpts -> VPSOpts -> m ()
+runIPRScan basedir scanId binaryPaths syOpts vpsOpts =
   if skipIprScan vpsOpts then
     trace "[IPR] IPR scan disabled"
   else do
-    iprResult <- execIPR iprPaths $ IPROpts basedir vpsOpts
+    iprResult <- execIPR binaryPaths $ IPROpts basedir vpsOpts
     trace "[IPR] IPR scan completed. Posting results to Scotland Yard"
 
     context "uploading scan results" $ uploadIPRResults scanId iprResult syOpts

@@ -6,6 +6,7 @@ where
 
 import App.VPSScan.Types
 import App.VPSScan.Scan.Core
+import App.VPSScan.EmbeddedBinary
 import Control.Carrier.Error.Either
 import Control.Effect.Diagnostics
 import qualified Data.Text as T
@@ -24,15 +25,15 @@ data SherlockOpts = SherlockOpts
   , sherlockVpsOpts :: VPSOpts
   } deriving (Generic)
 
-execSherlock :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> SherlockOpts -> m ()
-execSherlock binaryPath sherlockOpts = void $ execThrow (scanDir sherlockOpts) (sherlockCommand binaryPath sherlockOpts)
+execSherlock :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> SherlockOpts -> m ()
+execSherlock binaryPaths sherlockOpts = void $ execThrow (scanDir sherlockOpts) (sherlockCommand binaryPaths sherlockOpts)
 
-sherlockCommand :: Path Abs File -> SherlockOpts -> Command
-sherlockCommand binaryPath SherlockOpts{..} = do
+sherlockCommand :: BinaryPaths -> SherlockOpts -> Command
+sherlockCommand BinaryPaths{..} SherlockOpts{..} = do
   let VPSOpts{..} = sherlockVpsOpts
 
   Command
-    { cmdName = T.pack $ fromAbsFile binaryPath,
+    { cmdName = T.pack $ fromAbsFile sherlockBinaryPath,
       cmdArgs =
         [ "scan", T.pack $ fromAbsDir scanDir,
           "--scan-id", scanId,
