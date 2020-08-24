@@ -11,4 +11,4 @@ package spectrometer
 source-repository-package
   type: git
   location: https://github.com/fossas/yarn-lock.git
-  tag: master
+  tag: 1ac8875f73eaf76237d506e900f944a34ad3c0fb
