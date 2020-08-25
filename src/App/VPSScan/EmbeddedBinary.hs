@@ -58,8 +58,8 @@ extractedPath name = do
 
 extractDir :: MonadIO m => m (Path Abs Dir)
 extractDir = do
-  wd <- liftIO getCurrentDir
-  pure (wd </> $(mkRelDir ".vendor"))
+  wd <- liftIO getTempDir
+  pure (wd </> $(mkRelDir "vpscli-vendor"))
 
 makeExecutable :: Path Abs File -> IO ()
 makeExecutable path = do
