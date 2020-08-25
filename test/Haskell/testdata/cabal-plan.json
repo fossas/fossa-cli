@@ -1,0 +1,83 @@
+{
+    "install-plan": [
+        {
+            "type": "configured",
+            "id": "aeson-1.5.2.0-abcd",
+            "pkg-name": "aeson",
+            "pkg-version": "1.5.2.0",
+            "style": "global",
+            "depends": [
+                "base-4.13.0.0",
+                "deepdep-nonsense-tag"
+            ]
+        },
+        {
+            "type": "configured",
+            "id": "deepdep-nonsense-tag",
+            "pkg-name": "deepdep",
+            "pkg-version": "3.2.1.0",
+            "style": "global",
+            "depends": [
+                "base-4.13.0.0"
+            ]
+        },
+        {
+            "type": "pre-existing",
+            "id": "base-4.13.0.0",
+            "pkg-name": "base",
+            "pkg-version": "4.13.0.0",
+            "depends": [
+                "rts"
+            ]
+        },
+        {
+            "type": "configured",
+            "id": "with-components-1.0.2.3-efgh",
+            "pkg-name": "with-components",
+            "pkg-version": "1.0.2.3",
+            "style": "global",
+            "components": {
+                "this can be anything": {
+                    "depends": [
+                        "base-4.13.0.0"
+                    ]
+                },
+                "SeRiOuSlY aNyThInG": {
+                    "depends": [
+                        "rts"
+                    ]
+                }
+            }
+        },
+        {
+            "type": "pre-existing",
+            "id": "rts",
+            "pkg-name": "rts",
+            "pkg-version": "1.0",
+            "depends": []
+        },
+        {
+            "type": "configured",
+            "id": "spectrometer-0.1.0.0-inplace",
+            "pkg-name": "spectrometer",
+            "pkg-version": "0.1.0.0",
+            "style": "local",
+            "depends": [
+                "aeson-1.5.2.0-abcd",
+                "base-4.13.0.0",
+                "with-components-1.0.2.3-efgh"
+            ]
+        },
+        {
+            "type": "configured",
+            "id": "spectrometer-0.1.0.0-inplace-fossa",
+            "pkg-name": "spectrometer",
+            "pkg-version": "0.1.0.0",
+            "style": "local",
+            "depends": [
+                "base-4.13.0.0",
+                "spectrometer-0.1.0.0-inplace"
+            ]
+        }
+    ]
+}

@@ -106,3 +106,4 @@ depTypeToFetcher = \case
   CarthageType -> "cart"
   CargoType -> "cargo"
   RPMType -> "rpm"
+  HaskellType -> "haskell"

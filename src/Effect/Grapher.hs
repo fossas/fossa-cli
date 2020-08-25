@@ -182,7 +182,7 @@ withMapping f act = do
   pure result
 
 -- | Errors that may occur when using 'withMapping'
-data MappingError = MissingKey Text -- ^ A key did not have an associated value
+newtype MappingError = MissingKey Text -- ^ A key did not have an associated value
   deriving (Eq, Ord, Show)
 
 instance ToDiagnostic MappingError where
