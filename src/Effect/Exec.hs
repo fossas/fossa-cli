@@ -4,6 +4,7 @@ module Effect.Exec
     exec,
     execThrow,
     Command (..),
+    CmdFailure (..),
     AllowErr (..),
     execParser,
     execJson,
@@ -19,8 +20,10 @@ import Control.Algebra as X
 import Control.Effect.Diagnostics
 import Control.Exception (IOException, try)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import qualified Data.ByteString.Lazy as BL
 import Data.Aeson
+import Data.Bifunctor (first)
+import qualified Data.ByteString.Lazy as BL
+import Data.String (fromString)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
@@ -34,8 +37,6 @@ import System.Process.Typed
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Prelude
-import Data.Bifunctor (first)
-import Data.String (fromString)
 
 data Command = Command
   { -- | Command name to use. E.g., "pip", "pip3", "./gradlew".
@@ -145,14 +146,13 @@ instance (Algebra sig m, MonadIO m) => Algebra (Exec :+: sig) (ExecIOC m) where
       let mangleResult :: (ExitCode, Stdout, Stderr) -> Either CmdFailure Stdout
           mangleResult (exitcode, stdout, stderr) =
             case (exitcode, cmdAllowErr cmd) of
-                  (ExitSuccess, _) -> Right stdout
-                  (_, Never) -> Left $ mkFailure exitcode stdout stderr
-                  (_, NonEmptyStdout) ->
-                    if BL.null stdout
-                      then Left $ mkFailure exitcode stdout stderr
-                      else Right stdout
-                  (_, Always) -> Right stdout
-
+              (ExitSuccess, _) -> Right stdout
+              (_, Never) -> Left $ mkFailure exitcode stdout stderr
+              (_, NonEmptyStdout) ->
+                if BL.null stdout
+                  then Left $ mkFailure exitcode stdout stderr
+                  else Right stdout
+              (_, Always) -> Right stdout
 
       let result :: Either CmdFailure Stdout
           result = first ioExceptionToCmdFailure processResult >>= mangleResult

@@ -44,7 +44,7 @@ runSimpleStrategy ::
   , Has (Output ProjectFailure) sig m
   , MonadIO m
   )
-  => Text -> StrategyGroup -> TaskC m ProjectClosureBody -> m ()
+  => Text -> StrategyGroup -> DiagnosticsC m ProjectClosureBody -> m ()
 runSimpleStrategy name strategyGroup act = runStrategy name strategyGroup (lift act >>= output)
 
 runStrategy ::
@@ -54,11 +54,9 @@ runStrategy ::
   , Has (Output ProjectFailure) sig m
   , MonadIO m
   )
-  => Text -> StrategyGroup -> OutputC ProjectClosureBody (TaskC m) () -> m ()
+  => Text -> StrategyGroup -> OutputC ProjectClosureBody (DiagnosticsC m) () -> m ()
 runStrategy name strategyGroup act = forkTask $ do
   let runIt = runDiagnostics
-            . runReadFSIO
-            . runExecIO
             . runOutput @ProjectClosureBody
 
   mask $ \restore -> do
@@ -70,8 +68,6 @@ runStrategy name strategyGroup act = forkTask $ do
         let (bodies, ()) = resultValue result
          in traverse_ (output . toProjectClosure strategyGroup name) bodies -- TODO: warnings
 
-type TaskC m = ExecIOC (ReadFSIOC (DiagnosticsC m))
-
 type HasDiscover sig m =
   ( Has (Lift IO) sig m
   , Has Finally sig m
@@ -79,6 +75,8 @@ type HasDiscover sig m =
   , Has TaskPool sig m
   , Has (Output ProjectClosure) sig m
   , Has (Output ProjectFailure) sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
   , MonadIO m
   )
 

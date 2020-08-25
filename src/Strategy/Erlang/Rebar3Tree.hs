@@ -25,10 +25,10 @@ import Types
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \dir _ files -> do
   case find (\f -> (fileName f) == "rebar.config") files of
-    Nothing -> pure ()
-    Just _  -> runSimpleStrategy "erlang-rebar3tree" ErlangGroup $ analyze dir
-
-  pure WalkContinue
+    Nothing -> pure WalkContinue
+    Just _  -> do
+      runSimpleStrategy "erlang-rebar3tree" ErlangGroup $ analyze dir
+      pure WalkSkipAll
 
 rebar3TreeCmd :: Command
 rebar3TreeCmd = Command

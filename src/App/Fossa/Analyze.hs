@@ -22,6 +22,7 @@ import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Effect.Exec
 import Effect.Logger
+import Effect.ReadFS
 import Network.HTTP.Types (urlEncode)
 import qualified Srclib.Converter as Srclib
 import Srclib.Types (Locator(..), parseLocator)
@@ -86,7 +87,7 @@ analyze ::
 analyze basedir destination override unpackArchives = runFinally $ do
   capabilities <- liftIO getNumCapabilities
 
-  (closures,(failures,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
+  (closures,(failures,())) <- runOutput @ProjectClosure . runOutput @ProjectFailure . runExecIO . runReadFSIO $
     withTaskPool capabilities updateProgress $
       if unpackArchives
         then discoverWithArchives $ unBaseDir basedir

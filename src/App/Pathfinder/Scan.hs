@@ -12,14 +12,16 @@ import Control.Carrier.Finally
 import Control.Effect.Exception as Exc
 import Control.Carrier.Output.IO
 import Control.Concurrent
-import Path.IO
+import qualified Path.IO as PIO
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
 import System.Exit (die)
 
 import Control.Carrier.TaskPool
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
+import Effect.Exec
 import Effect.Logger
+import Effect.ReadFS
 import qualified Strategy.Maven.Pom as MavenPom
 import qualified Strategy.NuGet.Nuspec as Nuspec
 import Types
@@ -28,7 +30,7 @@ scanMain :: Path Abs Dir -> Bool -> IO ()
 scanMain basedir debug = do
   hSetBuffering stdout NoBuffering
   hSetBuffering stderr NoBuffering
-  exists <- doesDirExist basedir
+  exists <- PIO.doesDirExist basedir
   unless exists (die $ "ERROR: " <> show basedir <> " does not exist")
 
   scan basedir
@@ -41,10 +43,10 @@ scan ::
   )
   => Path Abs Dir -> m ()
 scan basedir = runFinally $ do
-  setCurrentDir basedir
+  PIO.setCurrentDir basedir
   capabilities <- liftIO getNumCapabilities
 
-  (closures,(_,())) <- runOutput @ProjectClosure $ runOutput @ProjectFailure $
+  (closures,(_,())) <- runOutput @ProjectClosure . runOutput @ProjectFailure . runExecIO . runReadFSIO $
     withTaskPool capabilities updateProgress (traverse_ (forkTask . apply basedir) discoverFuncs)
 
   logSticky "[ Combining Analyses ]"
