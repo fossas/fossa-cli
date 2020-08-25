@@ -11,6 +11,7 @@ import qualified Data.Map as M
 import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
+import Data.Text.Extra (splitOnceOn)
 import Data.Time
 import Data.Time.Format.ISO8601 (iso8601Show)
 import Effect.Exec
@@ -50,10 +51,3 @@ fetchGitContributors basedir = do
       let (email, textDate) = splitOnceOn "|" entry
       date <- parseTimeM True defaultTimeLocale "%Y-%-m-%-d" $ T.unpack textDate
       Just (email, date)
-
-splitOnceOn :: Text -> Text -> (Text, Text)
-splitOnceOn needle haystack = (head, strippedTail)
-  where
-    len = T.length needle
-    (head, tail) = T.breakOn needle haystack
-    strippedTail = T.drop len tail

@@ -136,6 +136,7 @@ library
     Control.Effect.Path
     Control.Effect.TaskPool
     Data.FileEmbed.Extra
+    Data.Text.Extra
     DepTypes
     Discovery.Walk
     Effect.Exec
@@ -234,6 +235,7 @@ test-suite unit-tests
     Cocoapods.PodfileSpec
     Effect.ExecSpec
     Erlang.Rebar3TreeSpec
+    Extra.TextSpec
     Go.GlideLockSpec
     Go.GoListSpec
     Go.GomodSpec

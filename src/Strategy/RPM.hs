@@ -15,6 +15,7 @@ import Control.Effect.Diagnostics
 import qualified Data.Map.Strict as M
 import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
+import Data.Text.Extra (splitOnceOn)
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
@@ -99,13 +100,6 @@ buildConstraint tail = constraint
       "=" -> Just $ CEq version
       "==" -> Just $ CEq version
       _ -> Nothing
-
-splitOnceOn :: Text -> Text -> (Text, Text)
-splitOnceOn needle haystack = (head, strippedTail)
-  where
-    len = T.length needle
-    (head, tail) = T.breakOn needle haystack
-    strippedTail = T.drop len tail
 
 getTypeFromLine :: Text -> Maybe RequiresType
 getTypeFromLine line = safeReq
