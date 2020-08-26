@@ -2,14 +2,10 @@ module Python.PipenvSpec
   ( spec
   ) where
 
-import Prologue
-
 import qualified Data.Map.Strict as M
-
 import DepTypes
-import Strategy.Python.Pipenv
-
 import GraphUtil
+import Strategy.Python.Pipenv
 import Test.Hspec hiding (xit)
 
 pipfileLock :: PipfileLock

@@ -1,11 +1,12 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.VPSScan.Scan
   ( scanMain
   , ScanCmdOpts(..)
   , VPSOpts(..)
   ) where
 
-import Prologue
-
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Carrier.Diagnostics
 import Effect.Exec
 import System.Exit (exitFailure)
@@ -22,11 +23,13 @@ import App.Types (BaseDir (..))
 import App.Util (validateDir)
 import Data.Text (unpack)
 import Control.Effect.Exception (bracket)
+import Path
+import Data.Text (Text)
 
 data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
   , scanVpsOpts :: VPSOpts
-  } deriving Generic
+  }
 
 scanMain :: ScanCmdOpts -> IO ()
 scanMain opts@ScanCmdOpts{..} = do
@@ -43,7 +46,7 @@ scanMain opts@ScanCmdOpts{..} = do
 vpsScan ::
   ( Has Diagnostics sig m
   , Has Trace sig m
-  , MonadIO m
+  , Has (Lift IO) sig m
   ) => Path Abs Dir -> ScanCmdOpts -> BinaryPaths -> m ()
 vpsScan basedir ScanCmdOpts{..} binaryPaths = do
   let vpsOpts@VPSOpts{..} = scanVpsOpts
@@ -76,7 +79,7 @@ vpsScan basedir ScanCmdOpts{..} binaryPaths = do
 
   let sherlockOpts = SherlockOpts basedir scanId sherlockClientToken sherlockClientId sherlockUrl sherlockOrgId locator projectRevision vpsOpts
   let runIt = runDiagnostics . runExecIO . runTrace
-  (iprResult, sherlockResult) <- liftIO $ concurrently
+  (iprResult, sherlockResult) <- sendIO $ concurrently
                 (runIt $ runIPRScan basedir scanId binaryPaths syOpts vpsOpts)
                 (runIt $ runSherlockScan binaryPaths sherlockOpts)
 
@@ -85,11 +88,11 @@ vpsScan basedir ScanCmdOpts{..} binaryPaths = do
     (Left iprFailure, _) -> do
       trace "[IPR] Failed to scan"
       trace (show $ renderFailureBundle iprFailure)
-      liftIO exitFailure
+      sendIO exitFailure
     (_, Left sherlockFailure) -> do
       trace "[Sherlock] Failed to scan"
       trace (show $ renderFailureBundle sherlockFailure)
-      liftIO exitFailure
+      sendIO exitFailure
 
   trace $ "[All] Completing scan in FOSSA"
   _ <- context "completing project in FOSSA" $ completeCoreProject (unLocator revisionLocator) fossa
@@ -108,7 +111,7 @@ runIPRScan ::
   ( Has Diagnostics sig m
   , Has Trace sig m
   , Has Exec sig m
-  , MonadIO m
+  , Has (Lift IO) sig m
   ) => Path Abs Dir -> Text -> BinaryPaths -> ScotlandYardOpts -> VPSOpts -> m ()
 runIPRScan basedir scanId binaryPaths syOpts vpsOpts =
   if skipIprScan vpsOpts then

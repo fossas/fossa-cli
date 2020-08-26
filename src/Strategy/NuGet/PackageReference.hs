@@ -1,3 +1,6 @@
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
+
 module Strategy.NuGet.PackageReference
   ( discover
   , buildGraph
@@ -8,18 +11,19 @@ module Strategy.NuGet.PackageReference
   , Package(..)
   ) where
 
-import Prologue
-
+import Control.Applicative (optional)
 import Control.Effect.Diagnostics
-import qualified Data.Map.Strict as M
+import Data.Foldable (find)
 import qualified Data.List as L
-
+import qualified Data.Map.Strict as M
+import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
 import qualified Graphing
 import Parse.XML
+import Path
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -52,16 +56,16 @@ mkProjectClosure file package = ProjectClosureBody
 
 newtype PackageReference = PackageReference
   { groups :: [ItemGroup]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 newtype ItemGroup = ItemGroup
   { dependencies :: [Package]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data Package = Package
   { depID      :: Text
   , depVersion :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromXML PackageReference where
   parseElement el = PackageReference <$> children "ItemGroup" el

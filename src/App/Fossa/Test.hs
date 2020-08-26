@@ -1,29 +1,31 @@
+{-# LANGUAGE NumericUnderscores #-}
 
 module App.Fossa.Test
   ( testMain
   , TestOutputType(..)
   ) where
 
-import Prologue
-import qualified Prelude as Unsafe
-
 import App.Fossa.API.BuildWait
-import App.Types
 import qualified App.Fossa.FossaAPIV1 as Fossa
 import App.Fossa.ProjectInference
+import App.Types
 import Control.Carrier.Diagnostics
 import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Async as Async
-import Data.Functor (($>))
-import qualified Data.Map as M
+import Control.Effect.Lift (sendIO)
+import qualified Data.Aeson as Aeson
+import Data.Functor (void, ($>))
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as M
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.IO (hPutStrLn)
-import Effect.Logger
-import System.IO (stderr)
-import System.Exit (exitSuccess, exitFailure)
-import Text.URI (URI)
-import qualified Data.Aeson as Aeson
 import Data.Text.Lazy.Encoding (decodeUtf8)
+import Effect.Logger
+import System.Exit (exitFailure, exitSuccess)
+import System.IO (stderr)
+import Text.URI (URI)
 
 data TestOutputType
   = TestOutputPretty -- ^ pretty output format for issues
@@ -61,13 +63,13 @@ testMain baseurl basedir apiKey logSeverity timeoutSeconds outputType override =
           case outputType of
             TestOutputPretty -> logError (renderedIssues issues)
             TestOutputJson -> logStdout . pretty . decodeUtf8 . Aeson.encode $ issues
-          liftIO exitFailure
+          sendIO exitFailure
 
     case result of
       Left failure -> do
         logError $ renderFailureBundle failure
-        liftIO exitFailure
-      Right _ -> liftIO exitSuccess
+        sendIO exitFailure
+      Right _ -> sendIO exitSuccess
 
   -- we call exitSuccess/exitFailure in each branch above. the only way we get
   -- here is if we time out
@@ -124,7 +126,7 @@ renderedIssues issues = rendered
         (!?) :: [a] -> Int -> Maybe a
         xs !? ix
           | length xs <= ix = Nothing
-          | otherwise = Just (xs Unsafe.!! ix)
+          | otherwise = Just (xs !! ix)
 
 timeout
   :: Int -- ^ number of seconds before timeout

@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Strategy.NuGet.PackagesConfig
   ( discover
   , buildGraph
@@ -7,16 +9,17 @@ module Strategy.NuGet.PackagesConfig
   , NuGetDependency(..)
   ) where
 
-import Prologue
-
 import Control.Effect.Diagnostics
+import Data.Foldable (find)
 import qualified Data.Map.Strict as M
+import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
 import qualified Graphing
 import Parse.XML
+import Path
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -37,7 +40,7 @@ instance FromXML NuGetDependency where
 
 newtype PackagesConfig = PackagesConfig
   { deps :: [NuGetDependency]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsXML file
@@ -58,7 +61,7 @@ mkProjectClosure file config = ProjectClosureBody
 data NuGetDependency = NuGetDependency
   { depID      :: Text
   , depVersion :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 buildGraph :: PackagesConfig -> Graphing Dependency
 buildGraph = Graphing.fromList . map toDependency . deps

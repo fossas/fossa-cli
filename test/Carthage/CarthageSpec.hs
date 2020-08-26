@@ -1,17 +1,18 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module Carthage.CarthageSpec
   ( spec
   ) where
 
-import Prologue
-
 import Control.Carrier.Diagnostics
+import Data.Function ((&))
 import Effect.ReadFS
-import qualified Graphing as G
 import GraphUtil
-import Strategy.Carthage
+import qualified Graphing as G
+import Path
 import Path.IO (makeAbsolute)
-
+import Strategy.Carthage
 import Test.Hspec
 
 testProjectEmpty :: Path Rel File

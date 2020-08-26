@@ -1,3 +1,6 @@
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Strategy.Python.Pipenv
   ( discover
   , analyze
@@ -11,18 +14,21 @@ module Strategy.Python.Pipenv
   )
   where
 
-import Prologue
-
 import Control.Effect.Diagnostics
+import Data.Aeson
+import Data.Foldable (find, for_, traverse_)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
+import Data.Set (Set)
+import Data.Text (Text)
 import qualified Data.Text as T
-
-import Discovery.Walk
 import DepTypes
-import Graphing (Graphing)
+import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
+import Graphing (Graphing)
+import Path
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -92,14 +98,14 @@ buildGraph lock maybeDeps = run . withLabeling toDependency $ do
 data PipPkg = PipPkg
   { pipPkgName    :: Text
   , pipPkgVersion :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 type PipGrapher = LabeledGrapher PipPkg PipLabel
 
 data PipLabel =
     PipSource Text -- location
   | PipEnvironment DepEnvironment
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 buildNodes :: forall sig m. Has PipGrapher sig m => PipfileLock -> m ()
 buildNodes PipfileLock{..} = do
@@ -143,7 +149,7 @@ buildEdges pipenvDeps = do
 
   mkEdges :: Has PipGrapher sig m => PipenvGraphDep -> m ()
   mkEdges parentDep =
-    forM_ (depDependencies parentDep) $ \childDep -> do
+    for_ (depDependencies parentDep) $ \childDep -> do
       edge (mkPkg parentDep) (mkPkg childDep)
       mkEdges childDep
 
@@ -153,21 +159,21 @@ data PipfileLock = PipfileLock
   { fileMeta    :: PipfileMeta
   , fileDefault :: Map Text PipfileDep
   , fileDevelop :: Map Text PipfileDep
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 newtype PipfileMeta = PipfileMeta
   { fileSources :: [PipfileSource]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data PipfileSource = PipfileSource
   { sourceName :: Text
   , sourceUrl  :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data PipfileDep = PipfileDep
   { fileDepVersion :: Text
   , fileDepIndex   :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromJSON PipfileLock where
   parseJSON = withObject "PipfileLock" $ \obj ->
@@ -196,7 +202,7 @@ data PipenvGraphDep = PipenvGraphDep
   , depInstalled    :: Text
   , depRequired     :: Text
   , depDependencies :: [PipenvGraphDep]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromJSON PipenvGraphDep where
   parseJSON = withObject "PipenvGraphDep" $ \obj ->

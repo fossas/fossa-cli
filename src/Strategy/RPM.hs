@@ -1,3 +1,6 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module Strategy.RPM
   ( buildGraph,
     discover,
@@ -10,10 +13,12 @@ module Strategy.RPM
   )
 where
 
-import Control.Effect.Error
 import Control.Effect.Diagnostics
+import Data.Foldable (traverse_)
+import Data.List (isSuffixOf)
 import qualified Data.Map.Strict as M
 import Data.Maybe (mapMaybe)
+import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Extra (splitOnceOn)
 import DepTypes
@@ -21,31 +26,31 @@ import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
 import qualified Graphing as G
-import Prologue
+import Path
 import Types
 
 newtype SpecFileLabel
   = RequiresType DepEnvironment
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 data RPMDependency
   = RPMDependency
       { rpmDepName :: Text,
         rpmConstraint :: Maybe VerConstraint
       }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 data RequiresType
   = BuildRequires RPMDependency
   | RuntimeRequires RPMDependency
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 data Dependencies
   = Dependencies
       { depBuildRequires :: [RPMDependency],
         depRuntimeRequires :: [RPMDependency]
       }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \dir _ files ->
@@ -88,9 +93,9 @@ buildGraph :: Dependencies -> Graphing Dependency
 buildGraph Dependencies {..} = G.gmap toDependency $ G.fromList depRuntimeRequires
 
 buildConstraint :: Text -> Maybe VerConstraint
-buildConstraint tail = constraint
+buildConstraint raw = constraint
   where
-    (comparatorStr, rawVersion) = splitOnceOn " " $ T.strip tail
+    (comparatorStr, rawVersion) = splitOnceOn " " $ T.strip raw
     version = T.strip rawVersion
     constraint = case T.strip comparatorStr of
       "<=" -> Just $ CLessOrEq version

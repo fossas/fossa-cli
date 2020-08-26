@@ -1,26 +1,29 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Go.GoListSpec
   ( spec
   ) where
 
-import Prologue
-
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.Map.Strict as M
-
-import DepTypes
 import Control.Algebra
 import Control.Carrier.Diagnostics
 import Control.Carrier.Reader
+import qualified Data.ByteString.Lazy as BL
+import Data.Function ((&))
+import qualified Data.Map.Strict as M
+import DepTypes
 import Effect.Exec
 import Effect.Grapher
-import Graphing (Graphing(..))
-import Strategy.Go.GoList
+import Graphing (Graphing (..))
 import Path.IO (getCurrentDir)
-import Types
-
+import Strategy.Go.GoList
 import Test.Hspec
+import Types
 
 runConstExec :: BL.ByteString -> ConstExecC m a -> m a
 runConstExec output = runReader output . runConstExecC

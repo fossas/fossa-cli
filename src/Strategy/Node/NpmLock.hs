@@ -1,4 +1,7 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Strategy.Node.NpmLock
   ( discover
@@ -10,15 +13,20 @@ module Strategy.Node.NpmLock
   )
   where
 
-import Prologue
-
 import Control.Effect.Diagnostics
+import Data.Aeson
+import Data.Foldable (find, traverse_)
+import Data.Functor (void)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
+import Data.Set (Set)
+import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
+import Path
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -33,7 +41,7 @@ data NpmPackageJson = NpmPackageJson
   { packageName         :: Text
   , packageVersion      :: Text
   , packageDependencies :: Map Text NpmDep
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data NpmDep = NpmDep
   { depVersion      :: Text
@@ -41,7 +49,7 @@ data NpmDep = NpmDep
   , depResolved     :: Maybe Text
   , depRequires     :: Maybe (Map Text Text) -- ^ name to version spec
   , depDependencies :: Maybe (Map Text NpmDep)
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromJSON NpmPackageJson where
   parseJSON = withObject "NpmPackageJson" $ \obj ->
@@ -76,12 +84,12 @@ mkProjectClosure file lock = ProjectClosureBody
 data NpmPackage = NpmPackage
   { pkgName    :: Text
   , pkgVersion :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 type NpmGrapher = LabeledGrapher NpmPackage NpmPackageLabel
 
 data NpmPackageLabel = NpmPackageEnv DepEnvironment | NpmPackageLocation Text
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 buildGraph :: NpmPackageJson -> Graphing Dependency
 buildGraph packageJson = run . withLabeling toDependency $ do

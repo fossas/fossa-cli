@@ -2,15 +2,13 @@ module Gradle.GradleSpec
   ( spec
   ) where
 
-import Prologue hiding (empty)
-
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
-
+import Data.Text (Text)
 import DepTypes
-import Graphing (Graphing, empty)
-import Strategy.Gradle (JsonDep(..), buildGraph)
-
 import GraphUtil
+import Graphing (Graphing, empty)
+import Strategy.Gradle (JsonDep (..), buildGraph)
 import Test.Hspec
 
 projectOne :: Dependency

@@ -2,8 +2,6 @@ module Python.PipListSpec
   ( spec
   ) where
 
-import Prologue
-
 import qualified Data.Map.Strict as M
 
 import DepTypes

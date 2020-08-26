@@ -1,3 +1,9 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 module App.Fossa.FossaAPIV1
   ( uploadAnalysis
   , uploadContributors
@@ -22,18 +28,18 @@ module App.Fossa.FossaAPIV1
   , getAttribution
   ) where
 
-import App.Types
-import App.Util (parseUri)
 import App.Fossa.Analyze.Project
 import qualified App.Fossa.Report.Attribution as Attr
+import App.Types
+import App.Util (parseUri)
 import Control.Effect.Diagnostics
-import Data.Maybe (catMaybes, fromMaybe)
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Monad.IO.Class (MonadIO (..))
+import Data.Aeson
 import Data.List (isInfixOf, stripPrefix)
 import Data.Map (Map)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
-import Data.Aeson
-import Prelude
-import Control.Monad.IO.Class (MonadIO)
 import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8)
 import Effect.Logger
@@ -47,9 +53,12 @@ import Text.URI (URI)
 import qualified Text.URI as URI
 
 newtype FossaReq m a = FossaReq { unFossaReq :: m a }
-  deriving (Functor, Applicative, Monad, MonadIO, Algebra sig)
+  deriving (Functor, Applicative, Monad, Algebra sig)
 
-instance (MonadIO m, Has Diagnostics sig m) => MonadHttp (FossaReq m) where
+instance Has (Lift IO) sig m => MonadIO (FossaReq m) where
+  liftIO = sendIO
+
+instance (Has (Lift IO) sig m, Has Diagnostics sig m) => MonadHttp (FossaReq m) where
   handleHttpException = FossaReq . fatal . mangleError
 
 fossaReq :: FossaReq m a -> m a
@@ -121,7 +130,7 @@ data ProjectMetadata = ProjectMetadata
   } deriving (Eq, Ord, Show)
 
 uploadAnalysis
-  :: (Has Diagnostics sig m, MonadIO m)
+  :: (Has (Lift IO) sig m, Has Diagnostics sig m)
   => BaseDir -- ^ root directory for analysis
   -> URI -- ^ base url
   -> ApiKey -- ^ api key
@@ -234,7 +243,7 @@ instance FromJSON BuildStatus where
     other -> pure $ StatusUnknown other
 
 getLatestBuild
-  :: (Has Diagnostics sig m, MonadIO m)
+  :: (Has (Lift IO) sig m, Has Diagnostics sig m)
   => URI
   -> ApiKey -- ^ api key
   -> ProjectRevision
@@ -255,7 +264,7 @@ issuesEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
 issuesEndpoint baseUrl orgId locator = baseUrl /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "issues"
 
 getIssues
-  :: (Has Diagnostics sig m, MonadIO m)
+  :: (Has (Lift IO) sig m, Has Diagnostics sig m)
   => URI
   -> ApiKey -- ^ api key
   -> ProjectRevision
@@ -369,7 +378,7 @@ attributionEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
 attributionEndpoint baseurl orgId locator = baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution" /: "json"
 
 getAttribution
-  :: (Has Diagnostics sig m, MonadIO m)
+  :: (Has (Lift IO) sig m, Has Diagnostics sig m)
   => URI
   -> ApiKey -- ^ api key
   -> ProjectRevision
@@ -408,7 +417,7 @@ newtype Contributors = Contributors
 contributorsEndpoint :: Url scheme -> Url scheme
 contributorsEndpoint baseurl = baseurl /: "api" /: "organization"
 
-uploadContributors :: (Has Diagnostics sig m, MonadIO m) => URI -> ApiKey -> Text -> Contributors -> m ()
+uploadContributors :: (Has (Lift IO) sig m, Has Diagnostics sig m) => URI -> ApiKey -> Text -> Contributors -> m ()
 uploadContributors baseUri apiKey locator contributors = fossaReq $ do
   (baseUrl, baseOptions) <- parseUri baseUri
 

@@ -1,4 +1,5 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Go.GoList
   ( discover
@@ -8,11 +9,11 @@ module Strategy.Go.GoList
   )
   where
 
-import Prologue hiding ((<?>))
-
 import Control.Effect.Diagnostics
 import qualified Data.ByteString.Lazy as BL
+import Data.Foldable (find, traverse_)
 import Data.Maybe (mapMaybe)
+import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
 import DepTypes
@@ -20,6 +21,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Graphing (Graphing)
+import Path
 import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
 import Types
@@ -35,7 +37,7 @@ discover = walk $ \_ _ files -> do
 data Require = Require
   { reqPackage :: Text
   , reqVersion :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 golistCmd :: Command
 golistCmd = Command

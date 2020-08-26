@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Strategy.Maven.Pom
   ( discover,
     analyze,
@@ -6,27 +8,32 @@ module Strategy.Maven.Pom
 where
 
 import qualified Algebra.Graph.AdjacencyMap as AM
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics
 import Control.Effect.Output
+import Control.Monad.IO.Class (MonadIO)
+import Data.Foldable (for_, traverse_)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
-import Data.Maybe (mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Set (Set)
 import qualified Data.Set as S
+import Data.Text (Text)
 import qualified Data.Text as T
 import DepTypes
 import Effect.Grapher
 import Effect.ReadFS
 import qualified Graphing as G
-import Prologue
+import Path
 import qualified Path.IO as Path
 import Strategy.Maven.Pom.Closure
 import Strategy.Maven.Pom.PomFile
 import Types
 
 data MavenStrategyOpts = MavenStrategyOpts
-  { strategyPath :: Path Rel File,
-    strategyGraph :: G.Graphing Dependency
-  }
-  deriving (Eq, Ord, Show, Generic)
+  { strategyPath  :: Path Rel File
+  , strategyGraph :: G.Graphing Dependency
+  } deriving (Eq, Ord, Show)
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = runStrategy "maven-pom" MavenGroup . analyze
@@ -80,14 +87,14 @@ mkProjectClosure basedir mvnClosure =
 type Version = Text
 
 data MavenPackage = MavenPackage Group Artifact (Maybe Version)
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 type MavenGrapher = LabeledGrapher MavenPackage MavenLabel
 
 data MavenLabel
   = MavenLabelScope Text
   | MavenLabelOptional Text
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 toDependency :: MavenPackage -> Set MavenLabel -> Dependency
 toDependency (MavenPackage group artifact version) = foldr applyLabel start

@@ -1,4 +1,5 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Go.Gomod
   ( discover
@@ -12,23 +13,26 @@ module Strategy.Go.Gomod
   )
   where
 
-import Prologue hiding ((<?>))
-
 import Control.Effect.Diagnostics
+import Data.Foldable (find, traverse_)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
 import qualified Data.Text as T
-import Text.Megaparsec hiding (label)
-import Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as L
-
+import Data.Void (Void)
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
+import Path
 import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
+import Text.Megaparsec hiding (label)
+import Text.Megaparsec.Char
+import qualified Text.Megaparsec.Char.Lexer as L
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -44,7 +48,7 @@ data Statement =
   | ReplaceStatement Text Text Text -- ^ old, new, newVersion
   | ExcludeStatement Text Text -- ^ package, version
   | GoVersionStatement Text
-    deriving (Eq, Ord, Show, Generic)
+    deriving (Eq, Ord, Show)
 
 type PackageName = Text
 
@@ -53,12 +57,12 @@ data Gomod = Gomod
   , modRequires :: [Require]
   , modReplaces :: Map PackageName Require
   , modExcludes :: [Require]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data Require = Require
   { reqPackage :: PackageName
   , reqVersion :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 type Parser = Parsec Void Text
 

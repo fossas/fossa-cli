@@ -1,3 +1,7 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module DepTypes
   ( Dependency(..)
   , insertEnvironment
@@ -8,8 +12,11 @@ module DepTypes
   , VerConstraint(..)
   ) where
 
-import Prologue
+import Data.Aeson
+import Data.Map.Strict (Map)
+import Data.Text (Text)
 import qualified Data.Map.Strict as M
+import GHC.Generics (Generic)
 
 -- FIXME: this needs a smart constructor with empty tags/environments/etc.
 -- We've historically relied on the compile error for making sure we fill all
@@ -21,7 +28,7 @@ data Dependency = Dependency
   , dependencyLocations    :: [Text]
   , dependencyEnvironments :: [DepEnvironment] -- FIXME: this should be a Set
   , dependencyTags         :: Map Text [Text]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 insertEnvironment :: DepEnvironment -> Dependency -> Dependency
 insertEnvironment env dep = dep { dependencyEnvironments = env : dependencyEnvironments dep }
@@ -37,7 +44,7 @@ data DepEnvironment =
   | EnvDevelopment
   | EnvTesting
   | EnvOther Text -- ^ Other environments -- specifically for things like gradle configurations
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 -- | A Dependency type. This corresponds to a "fetcher" on the backend
 data DepType =
@@ -70,7 +77,7 @@ data VerConstraint =
   | CGreater Text -- ^ greater than
   | CGreaterOrEq Text -- ^ greater than or equal to
   | CNot Text -- ^ not this version
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 instance FromJSON DepType -- use the generic instance
 instance ToJSON DepType -- use the generic instance

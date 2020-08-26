@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module App.VPSScan.Scan.RunIPR
   ( execIPR
@@ -18,7 +18,6 @@ import Path
 import Prelude
 import App.VPSScan.Types
 import App.VPSScan.EmbeddedBinary
-import GHC.Generics (Generic)
 
 extractNonEmptyFiles :: Value -> Maybe Value
 extractNonEmptyFiles (Object obj) = do
@@ -55,7 +54,7 @@ instance ToDiagnostic IPRError where
 data IPROpts = IPROpts
   { scanDir :: Path Abs Dir
   , iprVpsOpts :: VPSOpts
-  } deriving (Generic)
+  }
 
 execIPR :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> IPROpts -> m Value
 execIPR iprPaths iprOpts = do

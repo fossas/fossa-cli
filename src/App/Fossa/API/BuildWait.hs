@@ -1,12 +1,13 @@
+{-# LANGUAGE NumericUnderscores #-}
+
 module App.Fossa.API.BuildWait (
     waitForBuild,
     waitForIssues
 ) where
 
-import Prologue
-
 import App.Types
 import qualified App.Fossa.FossaAPIV1 as Fossa
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Carrier.Diagnostics
 import Control.Concurrent (threadDelay)
 import Effect.Logger
@@ -16,13 +17,13 @@ pollDelaySeconds :: Int
 pollDelaySeconds = 8
 
 data WaitError = BuildFailed -- ^ we encountered the FAILED status on a build
-  deriving (Show, Generic)
+  deriving (Eq, Ord, Show)
 
 instance ToDiagnostic WaitError where
   renderDiagnostic BuildFailed = "The build failed. Check the FOSSA webapp for more details."
 
 waitForBuild
-  :: (Has Diagnostics sig m, MonadIO m, Has Logger sig m)
+  :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m)
   => URI
   -> ApiKey -- ^ api key
   -> ProjectRevision
@@ -35,11 +36,11 @@ waitForBuild baseurl key revision = do
     Fossa.StatusFailed -> fatal BuildFailed
     otherStatus -> do
       logSticky $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
-      liftIO $ threadDelay (pollDelaySeconds * 1_000_000)
+      sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
       waitForBuild baseurl key revision
 
 waitForIssues
-  :: (Has Diagnostics sig m, MonadIO m, Has Logger sig m)
+  :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m)
   => URI
   -> ApiKey -- ^ api key
   -> ProjectRevision
@@ -48,6 +49,6 @@ waitForIssues baseurl key revision = do
   issues <- Fossa.getIssues baseurl key revision
   case Fossa.issuesStatus issues of
     "WAITING" -> do
-      liftIO $ threadDelay (pollDelaySeconds * 1_000_000)
+      sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
       waitForIssues baseurl key revision
     _ -> pure issues

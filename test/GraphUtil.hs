@@ -4,15 +4,13 @@ module GraphUtil
   , expectEdges
   ) where
 
-import Prologue
-import Test.Hspec
-
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Algebra.Graph.ToGraph (vertexSet)
-
+import Data.Foldable (toList, traverse_)
 import Graphing
+import Test.Hspec
 
--- TODO; expectReachable instead?
+-- TODO: expectReachable instead?
 -- | Expect the given dependencies to be the deps in the graph
 expectDeps :: (Ord a, Show a) => [a] -> Graphing a -> Expectation
 expectDeps deps graph = toList (vertexSet (graphingAdjacent graph)) `shouldMatchList` deps

@@ -1,4 +1,7 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Strategy.Haskell.Cabal
   ( discover,
@@ -14,17 +17,23 @@ module Strategy.Haskell.Cabal
 where
 
 import Control.Effect.Diagnostics
+import Control.Monad (when)
 import Data.Aeson.Types
+import Data.Foldable (for_)
+import Data.List (isSuffixOf)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
+import Data.Set (Set)
 import qualified Data.Set as S
+import Data.Text (Text)
 import qualified Data.Text as T
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
-import qualified Graphing as G
 import Graphing (Graphing)
-import Prologue
+import qualified Graphing as G
+import Path
 import Types
 
 newtype BuildPlan = BuildPlan {installPlans :: [InstallPlan]} deriving (Eq, Ord, Show)

@@ -6,7 +6,8 @@ module App.Types
   )
 where
 
-import Prologue
+import Data.Text (Text)
+import Path
 
 newtype ApiKey = ApiKey {unApiKey :: Text} deriving (Eq, Ord, Show)
 newtype BaseDir = BaseDir {unBaseDir :: Path Abs Dir} deriving (Eq, Ord, Show)

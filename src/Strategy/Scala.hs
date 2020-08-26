@@ -12,17 +12,19 @@ module Strategy.Scala
 where
 
 import qualified Algebra.Graph.AdjacencyMap as AM
+import Control.Effect.Diagnostics
 import Control.Effect.Output
+import Data.Foldable (find, traverse_)
 import qualified Data.Map.Strict as M
 import Data.Maybe (catMaybes)
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Discovery.Walk
-import Control.Effect.Diagnostics
 import Effect.Exec
 import Effect.ReadFS
-import Prologue
+import Path
 import Strategy.Maven.Pom (mkProjectClosure)
 import Strategy.Maven.Pom.Closure (buildProjectClosures)
 import Strategy.Maven.Pom.PomFile (MavenCoordinate (..), Pom (..))

@@ -2,8 +2,6 @@ module Erlang.Rebar3TreeSpec
   ( spec
   ) where
 
-import Prologue
-
 import qualified Data.Map.Strict as M
 import qualified Data.Text.IO as TIO
 import Text.Megaparsec
@@ -113,5 +111,5 @@ spec = do
   describe "rebar3 tree parser" $ do
     it "parses ideal rebar3 tree output" $ do
       case runParser rebar3TreeParser "" contents of
-        Left failCode -> traceM $ show failCode
+        Left failCode -> expectationFailure $ show failCode
         Right result -> result `shouldMatchList` [depOne, depFive]

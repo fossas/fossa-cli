@@ -2,14 +2,10 @@ module Node.PackageJsonSpec
   ( spec
   ) where
 
-import Prologue
-
 import qualified Data.Map.Strict as M
-
 import DepTypes
-import Strategy.Node.PackageJson
-
 import GraphUtil
+import Strategy.Node.PackageJson
 import Test.Hspec
 
 mockInput :: PackageJson

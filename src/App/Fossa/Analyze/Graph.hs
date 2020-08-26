@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.Analyze.Graph
   ( Graph()
   , DepRef()
@@ -11,8 +13,9 @@ module App.Fossa.Analyze.Graph
   , graphDirect
   ) where
 
-import Prologue hiding (empty, parent)
-
+import Data.Aeson
+import Data.Bifunctor (bimap)
+import Data.Function ((&))
 import qualified Data.IntMap as IM
 import qualified Data.IntSet as IS
 import qualified Data.Sequence as S
@@ -20,14 +23,14 @@ import qualified Data.Sequence as S
 import DepTypes
 
 -- | Opaque reference to a dependency in the graph. Used for adding edges to the graph (See: 'addEdge')
-newtype DepRef = DepRef { unDepRef :: Int } deriving (Eq, Ord, Show, Generic)
+newtype DepRef = DepRef { unDepRef :: Int } deriving (Eq, Ord, Show)
 
 -- | A Graph of dependencies. See 'empty', 'addNode', and 'addEdge'
 data Graph = Graph
   { _graphDeps   :: S.Seq Dependency
   , _graphAssocs :: IM.IntMap IS.IntSet -- references dependencies by their position in the _graphDeps Seq
   , _graphDirect :: IS.IntSet
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 -- | Retrieve the nodes of the dependency graph
 graphDeps :: Graph -> S.Seq Dependency

@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Strategy.Archive.RPM
   ( extractRpm
   )

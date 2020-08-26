@@ -1,4 +1,5 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Go.GopkgLock
   ( discover
@@ -12,19 +13,21 @@ module Strategy.Go.GopkgLock
   )
   where
 
-import Prologue hiding ((.=))
-
 import Control.Effect.Diagnostics
+import Data.Foldable (find, traverse_)
+import Data.Functor (void)
+import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
+import Path
 import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
-import qualified Toml
 import Toml (TomlCodec, (.=))
+import qualified Toml
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -47,13 +50,13 @@ projectCodec = Project
 
 newtype GoLock = GoLock
   { lockProjects :: [Project]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data Project = Project
   { projectName     :: Text
   , projectSource   :: Maybe Text
   , projectRevision :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 analyze ::
   ( Has ReadFS sig m

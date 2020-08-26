@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Srclib.Types
   ( SourceUnit(..)
   , SourceUnitType(..)
@@ -8,7 +10,9 @@ module Srclib.Types
   , parseLocator
   ) where
 
-import Prologue
+import Data.Aeson
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
 import qualified Data.Text as T
 
 data SourceUnit = SourceUnit
@@ -16,29 +20,29 @@ data SourceUnit = SourceUnit
   , sourceUnitType :: SourceUnitType
   , sourceUnitManifest :: Text -- ^ path to manifest file
   , sourceUnitBuild :: SourceUnitBuild
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data SourceUnitType = SourceUnitTypeDummyCLI
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 data SourceUnitBuild = SourceUnitBuild
   { buildArtifact :: Text -- ^ always "default"
   , buildSucceeded :: Bool -- ^ always true
   , buildImports :: [Locator]
   , buildDependencies :: [SourceUnitDependency]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data SourceUnitDependency = SourceUnitDependency
   { sourceDepLocator :: Locator
   , sourceDepImports :: [Locator] -- omitempty
   -- , sourceDepData :: Aeson.Value
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data Locator = Locator
   { locatorFetcher :: Text
   , locatorProject :: Text
   , locatorRevision :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 renderLocator :: Locator -> Text
 renderLocator Locator{..} =

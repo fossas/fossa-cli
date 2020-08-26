@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Strategy.Cocoapods.Podfile
   ( discover
   , analyze
@@ -9,21 +11,24 @@ module Strategy.Cocoapods.Podfile
   , PropertyType (..)
   ) where
 
-import Prologue
-
 import Control.Effect.Diagnostics
+import Data.Foldable (find)
+import Data.Functor (void)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
+import Data.Text (Text)
 import qualified Data.Text as T
-
+import Data.Void (Void)
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
 import qualified Graphing
-import Types
+import Path
 import Text.Megaparsec hiding (label)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
+import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
@@ -72,20 +77,20 @@ data Pod = Pod
      { name      :: Text
      , version   :: Maybe Text
      , properties :: Map PropertyType Text
-     } deriving (Eq, Ord, Show, Generic)
+     } deriving (Eq, Ord, Show)
 
 data PropertyType = GitProperty | CommitProperty | SourceProperty | PathProperty
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 data Podfile = Podfile
       { pods :: [Pod]
       , source :: Text
-      } deriving (Eq, Ord, Show, Generic)
+      } deriving (Eq, Ord, Show)
 
 data Line =
       PodLine Pod
       | SourceLine Text
-      deriving (Eq, Ord, Show, Generic)
+      deriving (Eq, Ord, Show)
 
 parsePodfile :: Parser Podfile
 parsePodfile = linesToPodfile (Podfile [] "") . concat <$> ((try podParser <|> findSource <|> ignoredLine) `sepBy` eol) <* eof

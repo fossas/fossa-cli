@@ -1,3 +1,6 @@
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE GADTs #-}
+
 module Control.Effect.Output
   ( Output(..)
   , output
@@ -5,8 +8,9 @@ module Control.Effect.Output
   ) where
 
 import Control.Algebra as X
+import Data.Kind (Type)
 
-data Output o m k where
+data Output o (m :: Type -> Type) k where
   Output :: o -> Output o m ()
 
 output :: Has (Output o) sig m => o -> m ()

@@ -9,18 +9,16 @@ module Strategy.Go.Types
   )
   where
 
-import qualified Prelude as Unsafe
-import           Prologue hiding (parent)
-
 import qualified Data.Map.Strict as M
+import Data.Set (Set)
+import Data.Text (Text)
 import qualified Data.Text as T
-
 import DepTypes
 import Effect.Grapher
 import Graphing
 
 -- | A golang package is uniquely identified by its import path
-newtype GolangPackage = GolangPackage { goImportPath :: Text } deriving (Eq, Ord, Show, Generic)
+newtype GolangPackage = GolangPackage { goImportPath :: Text } deriving (Eq, Ord, Show)
 
 -- | Smart constructor for @GolangPackage@. Applies 'unvendor' to the value
 mkGolangPackage :: Text -> GolangPackage
@@ -31,7 +29,7 @@ type GolangGrapher = LabeledGrapher GolangPackage GolangLabel
 data GolangLabel =
     GolangLabelVersion Text
   | GolangLabelLocation Text
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 -- | Smart constructor for GolangLabelVersion. Applies 'fixVersion' to the value
 mkGolangVersion :: Text -> GolangLabel
@@ -61,8 +59,8 @@ golangPackageToDependency pkg = foldr applyLabel start
 
 -- replace "v0.0.0-20191212000000-abcdef+incompatible" with "abcdef"
 fixVersion :: Text -> Text
-fixVersion = Unsafe.last . T.splitOn "-" . T.replace "+incompatible" ""
+fixVersion = last . T.splitOn "-" . T.replace "+incompatible" ""
 
 -- replace "github.com/A/B/vendor/github.com/X/Y" with "github.com/X/Y"
 unvendor :: Text -> Text
-unvendor = Unsafe.last . T.splitOn "/vendor/"
+unvendor = last . T.splitOn "/vendor/"

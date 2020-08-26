@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Strategy.Carthage
   ( discover
@@ -7,22 +8,23 @@ module Strategy.Carthage
   , EntryType(..)
   ) where
 
-import qualified Prelude as Unsafe
-import Prologue
-
 import Control.Effect.Diagnostics
 import Data.Char (isSpace)
+import Data.Foldable (find, for_, traverse_)
+import Data.Functor (void)
 import qualified Data.Map.Strict as M
+import Data.Text (Text)
 import qualified Data.Text as T
-import Text.Megaparsec
-import Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as L
-
-import Discovery.Walk
+import Data.Void (Void)
 import DepTypes
+import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
 import qualified Graphing as G
+import Path
+import Text.Megaparsec
+import Text.Megaparsec.Char
+import qualified Text.Megaparsec.Char.Lexer as L
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -99,7 +101,7 @@ entryToCheckoutName entry =
   case resolvedType entry of
     GitEntry -> resolvedName entry
     -- this is safe because T.splitOn always returns a non-empty list
-    GithubType -> Unsafe.last . T.splitOn "/" $ resolvedName entry
+    GithubType -> last . T.splitOn "/" $ resolvedName entry
     BinaryType -> resolvedName entry
 
 entryToDepName :: ResolvedEntry -> Text
@@ -162,7 +164,7 @@ data ResolvedEntry = ResolvedEntry
   { resolvedType    :: EntryType
   , resolvedName    :: Text
   , resolvedVersion :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data EntryType = GithubType | GitEntry | BinaryType
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)

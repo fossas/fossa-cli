@@ -1,3 +1,5 @@
+{-# LANGUAGE GADTs #-}
+
 module Control.Effect.Finally
   ( -- * Finally effect
     Finally (..),

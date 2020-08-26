@@ -3,14 +3,12 @@ module App.Pathfinder.Main
   ( appMain
   ) where
 
-import Prologue
-
-import Options.Applicative
-import Path.IO
-
 import App.Pathfinder.Scan (scanMain)
 import App.Types (BaseDir (..))
 import App.Util (validateDir)
+import Data.Maybe (fromMaybe)
+import Options.Applicative
+import Path.IO
 
 appMain :: IO ()
 appMain = do

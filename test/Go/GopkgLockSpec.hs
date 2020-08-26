@@ -1,22 +1,19 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Go.GopkgLockSpec
   ( spec
   ) where
 
-import Prologue
-
+import Data.Function ((&))
 import qualified Data.Map.Strict as M
 import qualified Data.Text.IO as TIO
-import qualified Toml
-
 import DepTypes
 import Effect.Grapher
 import Graphing (Graphing)
 import Strategy.Go.GopkgLock
 import Strategy.Go.Types (graphingGolang)
-
 import Test.Hspec
+import qualified Toml
 
 projects :: [Project]
 projects =

@@ -1,3 +1,6 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.Report.Attribution
   ( Attribution (..),
     Dependency (..),
@@ -8,7 +11,9 @@ module App.Fossa.Report.Attribution
   )
 where
 
-import Prologue
+import Data.Aeson
+import Data.Text (Text)
+import Data.Map.Strict (Map)
 
 newtype LicenseName
   = LicenseName {rawName :: Text}

@@ -1,29 +1,37 @@
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
 
 module App.Pathfinder.Scan
   ( scanMain
   ) where
 
-import Prologue
-
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.Text as T
 import Control.Carrier.Error.Either
 import Control.Carrier.Finally
-import Control.Effect.Exception as Exc
 import Control.Carrier.Output.IO
-import Control.Concurrent
-import qualified Path.IO as PIO
-import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout, stderr)
-import System.Exit (die)
-
 import Control.Carrier.TaskPool
+import Control.Concurrent
+import Control.Effect.Exception as Exc
+import Control.Effect.Lift (sendIO)
+import Control.Monad (unless)
+import Control.Monad.IO.Class (MonadIO)
+import Data.Aeson
+import Data.Bool (bool)
+import qualified Data.ByteString.Lazy as BL
+import Data.Foldable (traverse_)
+import Data.Function ((&))
+import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
+import Path
+import qualified Path.IO as PIO
 import qualified Strategy.Maven.Pom as MavenPom
 import qualified Strategy.NuGet.Nuspec as Nuspec
+import System.Exit (die)
+import System.IO (BufferMode (NoBuffering), hSetBuffering, stderr, stdout)
 import Types
 
 scanMain :: Path Abs Dir -> Bool -> IO ()
@@ -43,8 +51,8 @@ scan ::
   )
   => Path Abs Dir -> m ()
 scan basedir = runFinally $ do
-  PIO.setCurrentDir basedir
-  capabilities <- liftIO getNumCapabilities
+  sendIO $ PIO.setCurrentDir basedir
+  capabilities <- sendIO getNumCapabilities
 
   (closures,(_,())) <- runOutput @ProjectClosure . runOutput @ProjectFailure . runExecIO . runReadFSIO $
     withTaskPool capabilities updateProgress (traverse_ (forkTask . apply basedir) discoverFuncs)
@@ -52,7 +60,7 @@ scan basedir = runFinally $ do
   logSticky "[ Combining Analyses ]"
 
   let projects = mkLicenseScans closures
-  liftIO (BL.putStr (encode projects))
+  sendIO (BL.putStr (encode projects))
 
   logSticky ""
 
@@ -69,7 +77,7 @@ data ProjectLicenseScan = ProjectLicenseScan
   { licenseStrategyType :: Text
   , licenseStrategyName :: Text
   , discoveredLicenses  :: [LicenseResult]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance ToJSON ProjectLicenseScan where
   toJSON ProjectLicenseScan{..} = object
@@ -81,7 +89,7 @@ instance ToJSON ProjectLicenseScan where
 data CompletedLicenseScan = CompletedLicenseScan
   { completedLicenseName     :: Text
   , completedLicenses        :: [LicenseResult]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance ToJSON CompletedLicenseScan where
     toJSON CompletedLicenseScan{..} = object

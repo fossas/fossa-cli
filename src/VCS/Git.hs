@@ -6,16 +6,18 @@ where
 
 import App.Fossa.FossaAPIV1 (Contributors (..))
 import qualified Control.Carrier.Diagnostics as Diag
+import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString.Lazy (toStrict)
 import qualified Data.Map as M
 import Data.Maybe (mapMaybe)
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import Data.Text.Extra (splitOnceOn)
 import Data.Time
 import Data.Time.Format.ISO8601 (iso8601Show)
 import Effect.Exec
-import Prologue
+import Path
 
 gitLogCmd :: UTCTime -> Command
 gitLogCmd now =
@@ -32,12 +34,12 @@ gitLogCmd now =
 fetchGitContributors ::
   ( Has Diag.Diagnostics sig m,
     Has Exec sig m,
-    MonadIO m
+    Has (Lift IO) sig m
   ) =>
   Path x Dir ->
   m Contributors
 fetchGitContributors basedir = do
-  now <- liftIO getCurrentTime
+  now <- sendIO getCurrentTime
   rawContrib <- execThrow basedir $ gitLogCmd now
   textContrib <- Diag.fromEitherShow . TE.decodeUtf8' $ toStrict rawContrib
   pure . Contributors

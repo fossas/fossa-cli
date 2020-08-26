@@ -2,8 +2,6 @@ module App.VPSScan.NinjaGraphSpec
   ( spec
   ) where
 
-import Prologue
-
 import qualified Data.Text.IO as TIO
 import qualified Data.Text as T
 import qualified Data.List as List

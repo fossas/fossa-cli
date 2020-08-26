@@ -1,3 +1,6 @@
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
+
 module Strategy.Python.PipList
   ( discover
   , analyze
@@ -7,16 +10,17 @@ module Strategy.Python.PipList
   )
   where
 
-import Prologue
-
 import Control.Effect.Diagnostics
+import Data.Aeson
+import Data.Foldable (find)
 import qualified Data.Map.Strict as M
-
+import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
 import Graphing (Graphing)
 import qualified Graphing
+import Path
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -68,7 +72,7 @@ buildGraph = Graphing.fromList . map toDependency
 data PipListDep = PipListDep
   { depName    :: Text
   , depVersion :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromJSON PipListDep where
   parseJSON = withObject "PipListDep" $ \obj ->

@@ -1,4 +1,5 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Go.GopkgToml
   ( discover
@@ -13,21 +14,24 @@ module Strategy.Go.GopkgToml
   )
   where
 
-import Prologue hiding ((.=), empty)
-
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics
+import Data.Foldable (find, traverse_)
+import Data.Functor (void)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
-import Toml (TomlCodec, (.=))
-import qualified Toml
-
+import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
+import Path
 import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
+import Toml (TomlCodec, (.=))
+import qualified Toml
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -54,7 +58,7 @@ constraintCodec = PkgConstraint
 data Gopkg = Gopkg
   { pkgConstraints :: [PkgConstraint]
   , pkgOverrides   :: [PkgConstraint]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data PkgConstraint = PkgConstraint
   { constraintName     :: Text
@@ -63,7 +67,7 @@ data PkgConstraint = PkgConstraint
   , constraintBranch   :: Maybe Text
   , constraintRevision :: Maybe Text
   }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 analyze ::
   ( Has ReadFS sig m

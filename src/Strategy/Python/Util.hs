@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 
 module Strategy.Python.Util
   ( requirementParser
@@ -10,18 +11,19 @@ module Strategy.Python.Util
   , Req(..)
   ) where
 
-import Prologue
-
+import Control.Monad (join)
 import qualified Data.Char as C
+import Data.Foldable (asum)
 import qualified Data.Map.Strict as M
+import Data.Text (Text)
+import Data.Void (Void)
 import qualified Data.Text as T
-import           Text.Megaparsec
-import           Text.Megaparsec.Char
-import qualified Text.URI as URI
-
 import DepTypes
 import Graphing (Graphing)
 import qualified Graphing
+import Text.Megaparsec
+import Text.Megaparsec.Char
+import qualified Text.URI as URI
 
 buildGraph :: [Req] -> Graphing Dependency
 buildGraph = Graphing.fromList . map toDependency
@@ -76,19 +78,19 @@ type Parser = Parsec Void Text
 data Version = Version
   { versionOperator :: Operator
   , versionVersion  :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data Marker =
     MarkerAnd  Marker Marker
   | MarkerOr   Marker Marker
   | MarkerExpr Text MarkerOp Text -- marker_var marker_op marker_var
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 data MarkerOp =
     MarkerIn
   | MarkerNotIn
   | MarkerOperator Operator
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 data Operator =
     OpCompatible -- ^ @~=@; equivalent to `>= V.N, == V.*`
@@ -99,12 +101,12 @@ data Operator =
   | OpLt -- ^ @<@
   | OpGt -- ^ @>@
   | OpArbitrary -- ^ @===@
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 data Req =
     NameReq Text (Maybe [Text]) (Maybe [Version]) (Maybe Marker) -- name, extras, ...
   | UrlReq Text (Maybe [Text]) URI.URI (Maybe Marker) -- name, extras, ...
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 -- grammar extracted from https://www.python.org/dev/peps/pep-0508/
 requirementParser :: Parser Req

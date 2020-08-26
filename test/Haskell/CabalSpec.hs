@@ -1,15 +1,17 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Haskell.CabalSpec
   ( spec,
   )
 where
 
 import Control.Carrier.Diagnostics
+import Data.Aeson
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Set as S
 import DepTypes
 import GraphUtil
 import Graphing
-import Prologue
 import Strategy.Haskell.Cabal
 import qualified Test.Hspec as Test
 

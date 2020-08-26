@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeApplications #-}
 
 module Strategy.Ruby.GemfileLock
   ( discover
@@ -11,21 +12,27 @@ module Strategy.Ruby.GemfileLock
   , Section(..)
   ) where
 
-import Prologue
-
 import Control.Effect.Diagnostics
-import qualified Data.Map.Strict as M
-import qualified Data.Text as T
+import Control.Monad (when)
 import qualified Data.Char as C
+import Data.Foldable (for_, traverse_)
+import Data.Functor (void)
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as M
+import Data.Set (Set)
+import Data.Text (Text)
+import qualified Data.Text as T
+import Data.Void (Void)
 import DepTypes
 import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
-import Types
+import Path
 import Text.Megaparsec hiding (label)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
+import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do
@@ -45,21 +52,21 @@ data Section =
       | PathSection Remote [Spec]
       | DependencySection [DirectDep]
       | UnknownSection Text
-        deriving (Eq, Ord, Show, Generic)
+        deriving (Eq, Ord, Show)
 
 data Spec = Spec
       { specVersion :: Text
       , specName :: Text
       , specDeps :: [SpecDep]
-      } deriving (Eq, Ord, Show, Generic)
+      } deriving (Eq, Ord, Show)
 
 newtype SpecDep = SpecDep
       { depName :: Text
-      } deriving (Eq, Ord, Show, Generic)
+      } deriving (Eq, Ord, Show)
 
 newtype DirectDep = DirectDep
       { directName :: Text
-      } deriving (Eq, Ord, Show, Generic)
+      } deriving (Eq, Ord, Show)
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
 analyze file = mkProjectClosure file <$> readContentsParser @[Section] findSections file
@@ -78,7 +85,7 @@ mkProjectClosure file sections = ProjectClosureBody
     }
 
 data GemfilePkg = GemfilePkg { pkgName :: Text }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 type GemfileGrapher = LabeledGrapher GemfilePkg GemfileLabel
 
@@ -86,7 +93,7 @@ data GemfileLabel =
     GemfileVersion Text
   | GitRemote Text (Maybe Text) -- ^ repo url, revision
   | OtherRemote Text -- ^ url
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 toDependency :: GemfilePkg -> Set GemfileLabel -> Dependency
 toDependency pkg = foldr applyLabel start
@@ -204,7 +211,7 @@ lookupRawSpecs key m = case M.lookup key m of
 data RawField
   = RawText Text
   | RawSpecs [Spec]
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 propertyParser :: Parser (Text, RawField)
 propertyParser = do

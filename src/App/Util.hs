@@ -1,16 +1,19 @@
-module App.Util
-( validateDir
-, parseUri
-) where
+{-# LANGUAGE DataKinds #-}
 
-import Prologue
+module App.Util
+  ( validateDir,
+    parseUri,
+  )
+where
 
 import App.Types
 import Control.Carrier.Diagnostics
+import Control.Monad (unless)
+import Data.Coerce (coerce)
+import Network.HTTP.Req
 import qualified Path.IO as P
 import System.Exit (die)
 import Text.URI (URI, render)
-import Network.HTTP.Req
 import qualified Unsafe.Coerce as Unsafe
 
 -- | Validate that a filepath points to a directory and the directory exists

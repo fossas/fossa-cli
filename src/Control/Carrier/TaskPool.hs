@@ -1,3 +1,14 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 module Control.Carrier.TaskPool
   ( withTaskPool
   , TaskPoolC
@@ -7,13 +18,16 @@ module Control.Carrier.TaskPool
   , module X
   ) where
 
+import Control.Monad (replicateM, join)
 import Control.Effect.Exception
 import Control.Effect.TaskPool as X
 import Control.Carrier.Reader
 import Control.Carrier.Threaded
 import Control.Concurrent.STM
-import Prologue
 import Control.Effect.Lift (sendIO)
+import Control.Monad.IO.Class (MonadIO)
+import Data.Foldable (traverse_)
+import Data.Functor (void)
 
 withTaskPool :: Has (Lift IO) sig m
   => Int -- number of workers
@@ -109,7 +123,7 @@ data Progress = Progress
   { pRunning   :: Int
   , pQueued    :: Int
   , pCompleted :: Int
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 newtype TaskPoolC m a = TaskPoolC { runTaskPoolC :: ReaderC (TVar [m ()]) m a }
   deriving (Functor, Applicative, Monad, MonadIO, MonadFail)

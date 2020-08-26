@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# language TemplateHaskell #-}
 
 module Strategy.Maven.Plugin
@@ -11,19 +12,22 @@ module Strategy.Maven.Plugin
   , Edge(..)
   ) where
 
-import Prologue
-
 import Control.Algebra
 import Control.Effect.Diagnostics
 import Control.Effect.Exception
+import Control.Effect.Lift (sendIO)
+import Data.Aeson
+import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import Data.FileEmbed (embedFile)
+import Data.Functor (void)
+import Data.Text (Text)
 import qualified Data.Text as T
-import Path.IO (createTempDir, getTempDir, removeDirRecur)
-import qualified System.FilePath as FP
-
 import Effect.Exec
 import Effect.ReadFS
+import Path
+import Path.IO (createTempDir, getTempDir, removeDirRecur)
+import qualified System.FilePath as FP
 
 pluginGroup :: Text
 pluginGroup = "com.github.ferstl"
@@ -39,19 +43,18 @@ pluginJar = $(embedFile "scripts/depgraph-maven-plugin-3.3.0.jar")
 
 withUnpackedPlugin ::
   ( Has (Lift IO) sig m
-  , MonadIO m
   )
   => (FP.FilePath -> m a) -> m a
 withUnpackedPlugin act =
-  bracket (liftIO (getTempDir >>= \tmp -> createTempDir tmp "fossa-maven"))
-          (liftIO . removeDirRecur)
+  bracket (sendIO (getTempDir >>= \tmp -> createTempDir tmp "fossa-maven"))
+          (sendIO . removeDirRecur)
           go
 
   where
 
   go tmpDir = do
     let pluginJarFilepath = fromAbsDir tmpDir FP.</> "plugin.jar"
-    liftIO (BS.writeFile pluginJarFilepath pluginJar)
+    sendIO (BS.writeFile pluginJarFilepath pluginJar)
 
     act pluginJarFilepath
 
@@ -96,7 +99,7 @@ mavenPluginDependenciesCmd = Command
 data PluginOutput = PluginOutput
   { outArtifacts :: [Artifact]
   , outEdges     :: [Edge]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 -- NOTE: artifact numeric IDs are 1-indexed, whereas edge numeric references are 0-indexed.
 -- the json parser for artifacts converts them to be 0-indexed.
@@ -107,12 +110,12 @@ data Artifact = Artifact
   , artifactVersion    :: Text
   , artifactOptional   :: Bool
   , artifactScopes     :: [Text]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data Edge = Edge
   { edgeFrom :: Int
   , edgeTo   :: Int
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromJSON PluginOutput where
   parseJSON = withObject "PluginOutput" $ \obj ->

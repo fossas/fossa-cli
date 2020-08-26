@@ -1,25 +1,31 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# language TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Strategy.Maven.Pom.Resolver
   ( GlobalClosure(..)
   , buildGlobalClosure
   ) where
 
-import Prologue
-
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Algebra
-import Control.Effect.Diagnostics
 import Control.Carrier.State.Strict
+import Control.Effect.Diagnostics
+import Control.Monad (unless)
+import Data.Foldable (traverse_)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
-
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
 import Effect.ReadFS
+import Path
 import Strategy.Maven.Pom.PomFile
 
 data GlobalClosure = GlobalClosure
   { globalGraph :: AM.AdjacencyMap MavenCoordinate
   , globalPoms  :: Map MavenCoordinate (Path Abs File, Pom)
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 buildGlobalClosure :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m GlobalClosure
 buildGlobalClosure files = do

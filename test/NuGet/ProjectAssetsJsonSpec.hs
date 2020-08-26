@@ -1,19 +1,15 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module NuGet.ProjectAssetsJsonSpec
   ( spec
   ) where
 
-import Prologue
-
-import qualified Data.Map.Strict as M
+import Data.Aeson
 import qualified Data.ByteString as BS
-
+import qualified Data.Map.Strict as M
 import DepTypes
 import GraphUtil
-
 import Strategy.NuGet.ProjectAssetsJson
-
 import Test.Hspec
 
 dependencyOne :: Dependency

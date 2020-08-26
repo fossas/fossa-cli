@@ -1,3 +1,6 @@
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
+
 module Strategy.NuGet.ProjectJson
   ( discover
   , buildGraph
@@ -6,18 +9,20 @@ module Strategy.NuGet.ProjectJson
   , ProjectJson(..)
   ) where
 
-import Prologue
-
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics
-import qualified Data.Map.Strict as M
-import qualified Data.Text as T
 import Data.Aeson.Types
-
+import Data.Foldable (find)
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as M
+import Data.Text (Text)
+import qualified Data.Text as T
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
 import qualified Graphing
+import Path
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()

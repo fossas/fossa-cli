@@ -2,12 +2,12 @@ module App.Fossa.Analyze.GraphMangler
   ( graphingToGraph
   ) where
 
-import Prologue hiding (parent)
-
 import Algebra.Graph.AdjacencyMap (AdjacencyMap)
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Algebra.Graph.ToGraph (dfs)
 import Control.Algebra
+import Data.Foldable (traverse_)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 

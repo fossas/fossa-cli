@@ -1,22 +1,31 @@
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
+
 module App.Fossa.Analyze
   ( analyzeMain
   , ScanDestination(..)
   ) where
 
-import Prologue
-
-import Control.Carrier.Error.Either
-import Control.Effect.Lift (Lift)
-import qualified Control.Carrier.Diagnostics as Diag
-import Control.Carrier.Output.IO
-import Control.Concurrent
-
 import App.Fossa.Analyze.Project (Project, mkProjects)
-import App.Fossa.FossaAPIV1 (ProjectMetadata, uploadAnalysis, UploadResponse(..), uploadContributors)
-import App.Fossa.ProjectInference (mergeOverride, inferProject)
+import App.Fossa.FossaAPIV1 (ProjectMetadata, UploadResponse (..), uploadAnalysis, uploadContributors)
+import App.Fossa.ProjectInference (inferProject, mergeOverride)
 import App.Types
+import qualified Control.Carrier.Diagnostics as Diag
+import Control.Carrier.Error.Either
 import Control.Carrier.Finally
+import Control.Carrier.Output.IO
 import Control.Carrier.TaskPool
+import Control.Concurrent
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Monad.IO.Class (MonadIO)
+import Data.Aeson ((.=))
+import qualified Data.Aeson as Aeson
+import Data.ByteString (ByteString)
+import Data.Foldable (traverse_)
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
+import qualified Data.Text.Encoding as TE
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
@@ -24,8 +33,9 @@ import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
 import Network.HTTP.Types (urlEncode)
+import Path
 import qualified Srclib.Converter as Srclib
-import Srclib.Types (Locator(..), parseLocator)
+import Srclib.Types (Locator (..), parseLocator)
 import qualified Strategy.Archive as Archive
 import qualified Strategy.Cargo as Cargo
 import qualified Strategy.Carthage as Carthage
@@ -33,26 +43,26 @@ import qualified Strategy.Clojure as Clojure
 import qualified Strategy.Cocoapods.Podfile as Podfile
 import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
 import qualified Strategy.Erlang.Rebar3Tree as Rebar3Tree
+import qualified Strategy.Go.GlideLock as GlideLock
 import qualified Strategy.Go.GoList as GoList
 import qualified Strategy.Go.Gomod as Gomod
 import qualified Strategy.Go.GopkgLock as GopkgLock
 import qualified Strategy.Go.GopkgToml as GopkgToml
-import qualified Strategy.Go.GlideLock as GlideLock
 import qualified Strategy.Googlesource.RepoManifest as RepoManifest
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.Haskell.Cabal as Cabal
-import qualified Strategy.Maven.Pom as MavenPom
 import qualified Strategy.Maven.PluginStrategy as MavenPlugin
+import qualified Strategy.Maven.Pom as MavenPom
 import qualified Strategy.Node.NpmList as NpmList
 import qualified Strategy.Node.NpmLock as NpmLock
 import qualified Strategy.Node.PackageJson as PackageJson
 import qualified Strategy.Node.YarnLock as YarnLock
-import qualified Strategy.NuGet.PackagesConfig as PackagesConfig
+import qualified Strategy.NuGet.Nuspec as Nuspec
 import qualified Strategy.NuGet.PackageReference as PackageReference
+import qualified Strategy.NuGet.PackagesConfig as PackagesConfig
 import qualified Strategy.NuGet.Paket as Paket
 import qualified Strategy.NuGet.ProjectAssetsJson as ProjectAssetsJson
 import qualified Strategy.NuGet.ProjectJson as ProjectJson
-import qualified Strategy.NuGet.Nuspec as Nuspec
 import qualified Strategy.Python.Pipenv as Pipenv
 import qualified Strategy.Python.ReqTxt as ReqTxt
 import qualified Strategy.Python.SetupPy as SetupPy
@@ -63,14 +73,12 @@ import qualified Strategy.Scala as Scala
 import Text.URI (URI)
 import qualified Text.URI as URI
 import Types
-import qualified Data.Text.Encoding as TE
 import VCS.Git (fetchGitContributors)
 
 data ScanDestination
   = UploadScan URI ApiKey ProjectMetadata -- ^ upload to fossa with provided api key and base url
   | OutputStdout
-  deriving (Generic)
- 
+
 analyzeMain :: BaseDir -> Severity -> ScanDestination -> OverrideProject -> Bool -> IO ()
 analyzeMain basedir logSeverity destination project unpackArchives = withLogger logSeverity $
   analyze basedir destination project unpackArchives
@@ -86,7 +94,7 @@ analyze ::
   -> Bool -- ^ whether to unpack archives
   -> m ()
 analyze basedir destination override unpackArchives = runFinally $ do
-  capabilities <- liftIO getNumCapabilities
+  capabilities <- sendIO getNumCapabilities
 
   (closures,(failures,())) <- runOutput @ProjectClosure . runOutput @ProjectFailure . runExecIO . runReadFSIO $
     withTaskPool capabilities updateProgress $
@@ -102,7 +110,7 @@ analyze basedir destination override unpackArchives = runFinally $ do
       result = buildResult projects failures
  
   case destination of
-    OutputStdout -> logStdout $ pretty (decodeUtf8 (encode result))
+    OutputStdout -> logStdout $ pretty (decodeUtf8 (Aeson.encode result))
     UploadScan baseurl apiKey metadata -> do
       revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
 
@@ -134,7 +142,7 @@ analyze basedir destination override unpackArchives = runFinally $ do
 tryUploadContributors ::
   ( Has Diag.Diagnostics sig m,
     Has Exec sig m,
-    MonadIO m
+    Has (Lift IO) sig m
   ) =>
   Path x Dir ->
   URI ->
@@ -157,15 +165,15 @@ fossaProjectUrl baseUrl rawLocator branch = URI.render baseUrl <> "projects/" <>
     encodedProject = underBS (urlEncode True) (locatorFetcher <> "+" <> locatorProject)
     encodedRevision = underBS (urlEncode True) (fromMaybe "" locatorRevision)
 
-buildResult :: [Project] -> [ProjectFailure] -> Value
-buildResult projects failures = object
+buildResult :: [Project] -> [ProjectFailure] -> Aeson.Value
+buildResult projects failures = Aeson.object
   [ "projects" .= projects
   , "failures" .= map renderFailure failures
   , "sourceUnits" .= fromMaybe [] (traverse Srclib.toSourceUnit projects)
   ]
 
-renderFailure :: ProjectFailure -> Value
-renderFailure failure = object
+renderFailure :: ProjectFailure -> Aeson.Value
+renderFailure failure = Aeson.object
   [ "name" .= projectFailureName failure
   , "cause" .= show (Diag.renderFailureBundle (projectFailureCause failure))
   ]

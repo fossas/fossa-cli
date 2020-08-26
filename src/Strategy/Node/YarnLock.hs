@@ -5,21 +5,21 @@ module Strategy.Node.YarnLock
   , analyze
   ) where
 
-import Prologue
-
 import Control.Effect.Diagnostics
+import Data.Bifunctor (first)
+import Data.Foldable (find, for_)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as M
 import qualified Data.MultiKeyedMap as MKM
-import qualified Yarn.Lock as YL
-import qualified Yarn.Lock.Types as YL
-
 import DepTypes
 import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
+import Path
 import Types
+import qualified Yarn.Lock as YL
+import qualified Yarn.Lock.Types as YL
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
 discover = walk $ \_ _ files -> do

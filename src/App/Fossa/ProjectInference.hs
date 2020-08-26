@@ -1,4 +1,6 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.ProjectInference
   ( inferProject,
@@ -10,21 +12,25 @@ where
 import App.Types
 import Control.Algebra
 import Control.Carrier.Diagnostics
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Monad (unless)
 import qualified Data.ByteString.Lazy as BL
+import Data.Foldable (find)
 import qualified Data.HashMap.Strict as HM
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, fromMaybe)
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Effect.Exec
 import Effect.Logger
+import Effect.ReadFS
+import Path
 import Path.IO (getTempDir)
-import Prologue
 import qualified System.FilePath.Posix as FP
 import Text.GitConfig.Parser (Section (..), parseConfig)
 import Text.Megaparsec (errorBundlePretty)
-import Effect.ReadFS
 
 mergeOverride :: OverrideProject -> InferredProject -> ProjectRevision
 mergeOverride OverrideProject {..} InferredProject {..} = ProjectRevision name revision branch
@@ -33,7 +39,7 @@ mergeOverride OverrideProject {..} InferredProject {..} = ProjectRevision name r
     revision = fromMaybe inferredRevision overrideRevision
     branch = fromMaybe inferredBranch overrideBranch
 
-inferProject :: (Has Logger sig m, MonadIO m) => Path Abs Dir -> m InferredProject
+inferProject :: (Has Logger sig m, Has (Lift IO) sig m) => Path Abs Dir -> m InferredProject
 inferProject current = do
   result <- runDiagnostics $ runReadFSIO $ runExecIO (inferGit current <||> inferSVN current)
 
@@ -90,8 +96,8 @@ inferSVN dir = do
 -- | Infer a default project name from the directory, and a default
 -- revision from the current time. Writes `.fossa.revision` to the system
 -- temp directory for use by `fossa test`
-inferDefault :: MonadIO m => Path b Dir -> m InferredProject
-inferDefault dir = liftIO $ do
+inferDefault :: Has (Lift IO) sig m => Path b Dir -> m InferredProject
+inferDefault dir = sendIO $ do
   let name = FP.dropTrailingPathSeparator (fromRelDir (dirname dir))
   time <- floor <$> getPOSIXTime :: IO Int
 
@@ -196,7 +202,7 @@ data InferenceError
   | InvalidBranchName Text
   | MissingBranch Text
   | MissingGitDir
-  deriving (Eq, Ord, Show, Generic, Typeable)
+  deriving (Eq, Ord, Show)
 
 instance ToDiagnostic InferenceError where
   renderDiagnostic = \case
@@ -213,4 +219,4 @@ data InferredProject = InferredProject
     inferredRevision :: Text,
     inferredBranch :: Text
   }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)

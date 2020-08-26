@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Strategy.Ruby.BundleShow
   ( discover
   , analyze
@@ -8,18 +10,19 @@ module Strategy.Ruby.BundleShow
   )
   where
 
-import Prologue
-
 import Control.Effect.Diagnostics
+import Data.Foldable (find)
 import qualified Data.Map.Strict as M
-import Text.Megaparsec
-import Text.Megaparsec.Char
-
+import Data.Text (Text)
+import Data.Void (Void)
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
 import Graphing (Graphing)
 import qualified Graphing
+import Path
+import Text.Megaparsec
+import Text.Megaparsec.Char
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -68,7 +71,7 @@ buildGraph = Graphing.fromList . map toDependency
 data BundleShowDep = BundleShowDep
   { depName    :: Text
   , depVersion :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 type Parser = Parsec Void Text
 

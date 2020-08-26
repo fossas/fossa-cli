@@ -1,3 +1,12 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 module Effect.Logger
   ( Logger(..)
   , LogMsg(..)
@@ -21,29 +30,35 @@ module Effect.Logger
   , module X
   ) where
 
-import Prologue
-
 import Control.Algebra as X
+import Control.Applicative (Alternative)
 import Control.Carrier.Reader
 import Control.Concurrent.Async (async, wait)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TMQueue (TMQueue, closeTMQueue, newTMQueueIO, readTMQueue, writeTMQueue)
 import Control.Effect.Exception
-import Control.Effect.Lift
+import Control.Effect.Lift (sendIO)
+import Control.Monad (when)
+import Control.Monad.IO.Class (MonadIO)
+import Data.Bool (bool)
+import Data.Functor (void)
+import Data.Kind (Type)
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Text.Prettyprint.Doc as X
 import Data.Text.Prettyprint.Doc.Render.Terminal as X
+import Prelude hiding (log)
 import System.IO (hIsTerminalDevice, hSetBuffering, BufferMode(NoBuffering), stdout, stderr)
 
-data Logger m k where
+data Logger (m :: Type -> Type) k where
   Log :: LogMsg -> Logger m ()
 
 data LogMsg
   = LogNormal Severity (Doc AnsiStyle)
   | LogSticky (Doc AnsiStyle)
   | LogStdout (Doc AnsiStyle)
-  deriving (Show, Generic)
+  deriving Show
 
 -- | Log a message with the given severity
 log :: Has Logger sig m => Severity -> Doc AnsiStyle -> m ()
@@ -65,7 +80,7 @@ data Severity =
   | SevInfo
   | SevWarn
   | SevError
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 logTrace :: Has Logger sig m => Doc AnsiStyle -> m ()
 logTrace = log SevTrace
@@ -146,11 +161,11 @@ termLogger minSeverity queue = go ""
 newtype LoggerC m a = LoggerC { runLoggerC :: ReaderC (TMQueue LogMsg) m a }
   deriving (Functor, Applicative, Alternative, Monad, MonadIO)
 
-instance (Algebra sig m, MonadIO m) => Algebra (Logger :+: sig) (LoggerC m) where
+instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (Logger :+: sig) (LoggerC m) where
   alg hdl sig ctx = LoggerC $ case sig of
     L (Log msg) -> do
       queue <- ask
-      liftIO $ atomically $ writeTMQueue queue msg
+      sendIO $ atomically $ writeTMQueue queue msg
       pure ctx
     R other -> alg (runLoggerC . hdl) (R other) ctx
 

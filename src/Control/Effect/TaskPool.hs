@@ -1,3 +1,5 @@
+{-# LANGUAGE GADTs #-}
+
 module Control.Effect.TaskPool
   ( TaskPool(..)
   , forkTask

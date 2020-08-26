@@ -2,15 +2,11 @@ module Maven.PluginStrategySpec
   ( spec
   ) where
 
-import Prologue
-
 import qualified Data.Map.Strict as M
-
 import DepTypes
+import GraphUtil
 import Strategy.Maven.Plugin
 import Strategy.Maven.PluginStrategy
-
-import GraphUtil
 import Test.Hspec
 
 packageOne :: Dependency

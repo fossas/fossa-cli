@@ -4,16 +4,17 @@ module Strategy.Python.SetupPy
   )
   where
 
-import Prologue
-
 import Control.Effect.Diagnostics
+import Data.Foldable (find)
+import Data.Text (Text)
+import Data.Void (Void)
+import Discovery.Walk
+import Effect.ReadFS
+import Path
+import Strategy.Python.Util
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-
-import Discovery.Walk
-import Effect.ReadFS
-import Strategy.Python.Util
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()

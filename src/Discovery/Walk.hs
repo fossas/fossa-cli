@@ -12,7 +12,6 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Path
 import Path.IO
-import Prelude
 
 data WalkStep
   = -- | Continue walking subdirectories

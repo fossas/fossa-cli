@@ -2,17 +2,13 @@ module Cocoapods.PodfileLockSpec
   ( spec
   ) where
 
-import Prologue
-
 import qualified Data.Map.Strict as M
 import qualified Data.Text.IO as TIO
-import           Text.Megaparsec
-
 import DepTypes
-import Strategy.Cocoapods.PodfileLock
 import GraphUtil
-
+import Strategy.Cocoapods.PodfileLock
 import qualified Test.Hspec as T
+import Text.Megaparsec
 
 dependencyOne :: Dependency
 dependencyOne = Dependency { dependencyType = PodType

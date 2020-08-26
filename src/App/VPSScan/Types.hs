@@ -1,3 +1,7 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 module App.VPSScan.Types
 ( VPSOpts(..)
 , FossaOpts(..)
@@ -10,9 +14,12 @@ module App.VPSScan.Types
 , HTTPRequestFailed(..)
 ) where
 
+import Control.Monad.IO.Class (MonadIO(..))
 import Control.Carrier.Diagnostics
-import Prologue
+import Control.Effect.Lift (Lift, sendIO)
 import Text.URI (URI)
+import Data.Text (Text)
+import Data.Aeson
 import Network.HTTP.Req
 import Data.Text.Prettyprint.Doc (viaShow)
 
@@ -22,7 +29,6 @@ data FossaOpts = FossaOpts
   { fossaUrl :: URI
   , fossaApiKey :: Text
   }
-  deriving (Generic)
 
 data VPSOpts = VPSOpts
   { fossa :: FossaOpts
@@ -30,14 +36,14 @@ data VPSOpts = VPSOpts
   , userProvidedRevision :: Maybe Text
   , skipIprScan :: Bool
   , filterBlob :: FilterExpressions
-  } deriving (Generic)
+  }
 
 data DepsTarget = DepsTarget
   { targetPath :: Text
   , targetDependencies :: [DepsDependency]
   , targetInputs :: [DepsDependency]
   , targetComponentName :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance ToJSON DepsTarget where
   toJSON DepsTarget{..} = object
@@ -51,7 +57,7 @@ data DepsDependency = DepsDependency
   { dependencyPath :: Text
   , dependencyComponentName :: Maybe Text
   , hasDependencies :: Bool
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance ToJSON DepsDependency where
   toJSON DepsDependency{..} = object
@@ -64,10 +70,13 @@ data NinjaGraphOpts = NinjaGraphOpts
   { ninjaGraphNinjaPath :: Maybe FilePath
   , lunchTarget :: Maybe Text
   , depsGraphScotlandYardUrl :: URI
-  } deriving Generic
+  }
 
 newtype HTTP m a = HTTP {unHTTP :: m a}
-  deriving (Functor, Applicative, Monad, MonadIO, Algebra sig)
+  deriving (Functor, Applicative, Monad, Algebra sig)
+
+instance Has (Lift IO) sig m => MonadIO (HTTP m) where
+  liftIO = sendIO
 
 data HTTPRequestFailed = HTTPRequestFailed HttpException
   deriving (Show)
@@ -75,7 +84,7 @@ data HTTPRequestFailed = HTTPRequestFailed HttpException
 instance ToDiagnostic HTTPRequestFailed where
   renderDiagnostic (HTTPRequestFailed exc) = "An HTTP request failed: " <> viaShow exc
 
-instance (MonadIO m, Has Diagnostics sig m) => MonadHttp (HTTP m) where
+instance (Has (Lift IO) sig m, Has Diagnostics sig m) => MonadHttp (HTTP m) where
   handleHttpException = HTTP . fatal . HTTPRequestFailed
 
 runHTTP :: HTTP m a -> m a

@@ -2,8 +2,6 @@ module Go.GlideLockSpec
   ( spec
   ) where
 
-import Prologue
-
 import qualified Data.Map.Strict as M
 import qualified Data.ByteString as BS
 import Data.Yaml

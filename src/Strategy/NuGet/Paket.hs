@@ -9,22 +9,26 @@ module Strategy.NuGet.Paket
   , Remote(..)
   ) where
 
-import Prologue
-
 import Control.Effect.Diagnostics
-import qualified Data.Map.Strict as M
-import qualified Data.Text as T
+import Control.Monad (guard)
 import qualified Data.Char as C
-
+import Data.Foldable (find, traverse_)
+import Data.Functor (void)
+import qualified Data.Map.Strict as M
+import Data.Set (Set)
+import Data.Text (Text)
+import qualified Data.Text as T
+import Data.Void (Void)
 import DepTypes
 import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
-import Types
+import Path
 import Text.Megaparsec hiding (label)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
+import Types
 
 type Parser = Parsec Void Text
 
@@ -53,7 +57,7 @@ mkProjectClosure file sections = ProjectClosureBody
     }
 
 newtype PaketPkg = PaketPkg { pkgName :: Text }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 type PaketGrapher = LabeledGrapher PaketPkg PaketLabel
 
@@ -62,7 +66,7 @@ data PaketLabel =
   | PaketRemote Text
   | GroupName Text
   | DepLocation Text
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 toDependency :: PaketPkg -> Set PaketLabel -> Dependency
 toDependency pkg = foldr applyLabel start
@@ -94,14 +98,14 @@ buildGraph sections = run . withLabeling toDependency $
             addSection _ (UnknownSection _) = pure ()
 
             addRemote :: Has PaketGrapher sig m => Text -> Text -> Remote -> m ()
-            addRemote group loc remote = traverse_ (addSpec (DepLocation loc) (PaketRemote $ location remote) (GroupName group)) (dependencies remote) 
+            addRemote group loc remote = traverse_ (addSpec (DepLocation loc) (PaketRemote $ remoteLocation remote) (GroupName group)) (remoteDependencies remote)
 
             addSpec :: Has PaketGrapher sig m => PaketLabel -> PaketLabel -> PaketLabel -> PaketDep -> m ()
             addSpec loc remote group dep = do
               -- add edges, labels, and direct deps
-              let pkg = PaketPkg (name dep)
+              let pkg = PaketPkg (depName dep)
               traverse_ (edge pkg . PaketPkg) (transitive dep)
-              label pkg (PaketVersion (version dep))
+              label pkg (PaketVersion (depVersion dep))
               label pkg remote
               label pkg group
               label pkg loc
@@ -114,23 +118,23 @@ data Section =
        StandardSection Location [Remote]
       | UnknownSection Text
       | GroupSection Name [Section]
-      deriving (Eq, Ord, Show, Generic)
+      deriving (Eq, Ord, Show)
 
 data Remote = Remote
-     { location      :: Text
-     , dependencies  :: [PaketDep]
-     } deriving (Eq, Ord, Show, Generic)
+     { remoteLocation :: Text
+     , remoteDependencies  :: [PaketDep]
+     } deriving (Eq, Ord, Show)
 
 data PaketDep = PaketDep
-     { name       :: Text
-     , version    :: Text
+     { depName    :: Text
+     , depVersion    :: Text
      , transitive :: [Text]
-     } deriving (Eq, Ord, Show, Generic)
+     } deriving (Eq, Ord, Show)
 
 data Group = Group
      { groupName    :: Text
      , groupSections :: [Section]
-     } deriving (Eq, Ord, Show, Generic)
+     } deriving (Eq, Ord, Show)
 
 
 findSections :: Parser [Section]

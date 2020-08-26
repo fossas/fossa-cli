@@ -12,35 +12,8 @@ common lang
   build-depends:      base >=4.12 && <4.15
   default-language:   Haskell2010
   default-extensions:
-    NoImplicitPrelude
-    AllowAmbiguousTypes
-    BangPatterns
-    ConstraintKinds
-    DataKinds
-    DeriveGeneric
-    FlexibleContexts
-    FlexibleInstances
-    FunctionalDependencies
-    GADTs
-    GeneralizedNewtypeDeriving
-    InstanceSigs
-    LambdaCase
-    MultiParamTypeClasses
-    MultiWayIf
-    NamedFieldPuns
-    NumericUnderscores
-    OverloadedLabels
     OverloadedStrings
-    PolyKinds
-    RankNTypes
-    RecordWildCards
-    ScopedTypeVariables
     StrictData
-    TupleSections
-    TypeApplications
-    TypeFamilies
-    TypeOperators
-    UndecidableInstances
 
   ghc-options:
     -Wall -Wincomplete-uni-patterns -Wcompat
@@ -145,7 +118,6 @@ library
     Effect.ReadFS
     Graphing
     Parse.XML
-    Prologue
     Srclib.Converter
     Srclib.Types
     Strategy.Archive

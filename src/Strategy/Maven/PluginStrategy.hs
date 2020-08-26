@@ -1,13 +1,15 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Strategy.Maven.PluginStrategy
   ( discover
   , analyze
   , buildGraph
   ) where
 
-import Prologue
-
-import Control.Effect.Lift
 import Control.Effect.Diagnostics
+import Control.Effect.Lift
+import Data.Foldable (find, traverse_)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import DepTypes
 import Discovery.Walk
@@ -15,6 +17,7 @@ import Effect.Exec
 import Effect.Grapher hiding (Edge)
 import Effect.ReadFS
 import Graphing (Graphing)
+import Path
 import Strategy.Maven.Plugin
 import Types
 
@@ -31,7 +34,6 @@ analyze ::
   , Has ReadFS sig m
   , Has Exec sig m
   , Has Diagnostics sig m
-  , MonadIO m
   )
   => Path Abs Dir -> m ProjectClosureBody
 analyze dir = withUnpackedPlugin $ \filepath -> do

@@ -1,24 +1,27 @@
+{-# LANGUAGE NumericUnderscores #-}
+
 module App.Fossa.Report
   ( reportMain
   , ReportType (..)
   ) where
 
-import Prologue
-
-import App.Types
 import App.Fossa.API.BuildWait
 import qualified App.Fossa.FossaAPIV1 as Fossa
 import App.Fossa.ProjectInference
-import Control.Concurrent (threadDelay)
+import App.Types
 import Control.Carrier.Diagnostics
+import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Async as Async
-import Data.Functor (($>))
+import Control.Effect.Lift (sendIO)
+import qualified Data.Aeson as Aeson
+import Data.Functor (void, ($>))
+import Data.Text (Text)
 import Data.Text.IO (hPutStrLn)
-import Effect.Logger
-import System.IO (stderr)
-import System.Exit (exitSuccess, exitFailure)
-import Text.URI (URI)
 import Data.Text.Lazy.Encoding (decodeUtf8)
+import Effect.Logger
+import System.Exit (exitFailure, exitSuccess)
+import System.IO (stderr)
+import Text.URI (URI)
 
 data ReportType =
     AttributionReport
@@ -71,13 +74,13 @@ reportMain baseUri basedir apiKey logSeverity timeoutSeconds reportType override
           Fossa.getAttribution baseUri apiKey revision
       logSticky ""
         
-      logStdout . pretty . decodeUtf8 $ encode jsonValue
+      logStdout . pretty . decodeUtf8 $ Aeson.encode jsonValue
 
     case result of
       Left err -> do
         logError $ renderFailureBundle err
-        liftIO exitFailure
-      Right _ -> liftIO exitSuccess
+        sendIO exitFailure
+      Right _ -> sendIO exitSuccess
 
   hPutStrLn stderr "Timed out while waiting for build/issues scan"
   exitFailure

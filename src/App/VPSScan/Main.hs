@@ -2,14 +2,12 @@ module App.VPSScan.Main
   ( appMain
   ) where
 
-import Prologue
-
-import Options.Applicative
-
 import App.OptionExtensions
 import App.VPSScan.Scan (ScanCmdOpts(..), scanMain)
 import App.VPSScan.NinjaGraph (NinjaGraphCmdOpts(..), ninjaGraphMain)
 import App.VPSScan.Types
+import Control.Monad (join)
+import Options.Applicative
 
 appMain :: IO ()
 appMain = join (customExecParser (prefs showHelpOnEmpty) opts)

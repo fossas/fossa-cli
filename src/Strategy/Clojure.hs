@@ -17,10 +17,15 @@ module Strategy.Clojure
   )
 where
 
+import Control.Applicative (optional)
 import Control.Effect.Diagnostics
 import qualified Data.EDN as EDN
 import Data.EDN.Class.Parser (Parser)
+import Data.Foldable (find, traverse_)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
+import Data.Set (Set)
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
@@ -29,7 +34,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Graphing (Graphing)
-import Prologue
+import Path
 import Types
 
 leinDepsCmd :: Command
@@ -76,11 +81,11 @@ data ClojureNode = ClojureNode
   { nodeName :: Text,
     nodeVersion :: Text
   }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 -- label type for our LabeledGrapher
 data ClojureLabel = ScopeLabel Text
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 buildGraph :: Deps -> Graphing Dependency
 buildGraph deps = run . withLabeling toDependency $ do
@@ -159,7 +164,7 @@ ednVecToMap = go M.empty
 data Deps = Deps
   { depsTree :: Map ClojureDep (Maybe Deps)
   }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 -- | A single dependency in the lein deps output
 data ClojureDep = ClojureDep
@@ -167,4 +172,4 @@ data ClojureDep = ClojureDep
     depVersion :: Text,
     depScope :: Maybe Text
   }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)

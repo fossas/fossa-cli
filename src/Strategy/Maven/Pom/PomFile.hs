@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Strategy.Maven.Pom.PomFile
   -- TODO: sort
   ( Pom(..)
@@ -14,10 +16,10 @@ module Strategy.Maven.Pom.PomFile
   , validatePom
   ) where
 
-import Prologue
-
+import Control.Applicative ((<|>), optional)
+import Data.Text (Text)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
-
 import Parse.XML
 
 ----- Validating POM files
@@ -79,20 +81,20 @@ data Pom = Pom
   , pomDependencyManagement :: Map (Group, Artifact) MvnDepBody
   , pomDependencies         :: Map (Group, Artifact) MvnDepBody
   , pomLicenses             :: [PomLicense]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data MavenCoordinate = MavenCoordinate
   { coordGroup    :: Text
   , coordArtifact :: Text
   , coordVersion  :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data MvnDepBody = MvnDepBody
   { depVersion    :: Maybe Text
   , depClassifier :: Maybe Text
   , depScope      :: Maybe Text
   , depOptional   :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance Semigroup Pom where
   -- left-biased, similar to M.union
@@ -134,14 +136,14 @@ data RawPom = RawPom
   , rawPomDependencyManagement :: [RawDependency]
   , rawPomDependencies         :: [RawDependency]
   , rawPomLicenses             :: [PomLicense]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data RawParent = RawParent
   { rawParentGroup        :: Text
   , rawParentArtifact     :: Text
   , rawParentVersion      :: Text
   , rawParentRelativePath :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data RawDependency = RawDependency
   { rawDependencyGroup      :: Text
@@ -150,12 +152,12 @@ data RawDependency = RawDependency
   , rawDependencyClassifier :: Maybe Text
   , rawDependencyScope      :: Maybe Text
   , rawDependencyOptional   :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data PomLicense = PomLicense
   { pomLicenseName :: Maybe Text
   , pomLicenseUrl :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromXML RawPom where
   parseElement el =

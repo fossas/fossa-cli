@@ -1,10 +1,8 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module NuGet.NuspecSpec
   ( spec
   ) where
-
-import Prologue
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T

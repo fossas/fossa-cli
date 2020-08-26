@@ -1,3 +1,7 @@
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
+
 -- | A graph augmented with a set of "direct" vertices
 --
 -- Graphings can be built with the 'direct' and 'edge' primitives.
@@ -24,12 +28,12 @@ module Graphing
   , unfold
   ) where
 
-import Prologue hiding (empty, filter, parent)
-
-import           Algebra.Graph.AdjacencyMap (AdjacencyMap)
+import Algebra.Graph.AdjacencyMap (AdjacencyMap)
 import qualified Algebra.Graph.AdjacencyMap as AM
 import qualified Algebra.Graph.AdjacencyMap.Algorithm as AMA
+import Data.Set (Set)
 import qualified Data.Set as S
+import Prelude hiding (filter)
 
 -- | A @Graphing ty@ is a graph of nodes with type @ty@.
 --
@@ -41,7 +45,7 @@ import qualified Data.Set as S
 data Graphing ty = Graphing
   { graphingDirect   :: Set ty
   , graphingAdjacent :: AdjacencyMap ty
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance Ord ty => Semigroup (Graphing ty) where
   graphing <> graphing' =

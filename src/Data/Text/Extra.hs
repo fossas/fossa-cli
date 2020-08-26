@@ -8,15 +8,15 @@ import Data.Text (Text)
 import qualified Data.Text as T
 
 splitOnceOn :: Text -> Text -> (Text, Text)
-splitOnceOn needle haystack = (head, strippedTail)
+splitOnceOn needle haystack = (first, strippedRemaining)
   where
     len = T.length needle
-    (head, tail) = T.breakOn needle haystack
-    strippedTail = T.drop len tail
+    (first, remaining) = T.breakOn needle haystack
+    strippedRemaining = T.drop len remaining
 
 splitOnceOnEnd :: Text -> Text -> (Text, Text)
-splitOnceOnEnd needle haystack = (strippedHead, tail)
+splitOnceOnEnd needle haystack = (strippedInitial, end)
   where
     len = T.length needle
-    (head, tail) = T.breakOnEnd needle haystack
-    strippedHead = T.dropEnd len head
+    (initial, end) = T.breakOnEnd needle haystack
+    strippedInitial = T.dropEnd len initial

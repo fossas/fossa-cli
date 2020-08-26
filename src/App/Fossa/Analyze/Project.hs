@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Analyze.Project
   ( Project(..)
@@ -6,30 +7,32 @@ module App.Fossa.Analyze.Project
   , mkProjects
   ) where
 
-import Prologue
-
-import qualified Data.Map as M
+import App.Fossa.Analyze.GraphMangler (graphingToGraph)
+import Data.Aeson
+import Data.Foldable (toList)
 import Data.Function (on)
 import Data.List (sortBy)
+import Data.Map (Map)
+import qualified Data.Map.Strict as M
 import Data.Ord
-
-import App.Fossa.Analyze.GraphMangler (graphingToGraph)
+import Data.Text (Text)
 import DepTypes
 import Graphing
+import Path
 import Types
 
 data Project = Project
   { projectPath       :: Path Abs Dir
   , projectStrategies :: [ProjectStrategy]
   }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 data ProjectStrategy = ProjectStrategy
   { projStrategyName     :: Text
   , projStrategyGraph    :: Graphing Dependency
   , projStrategyOptimal  :: Optimal
   , projStrategyComplete :: Complete
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 mkProjects :: [ProjectClosure] -> [Project]
 mkProjects = toProjects . grouping

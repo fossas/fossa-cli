@@ -1,5 +1,9 @@
-{-# language TemplateHaskell #-}
+{-# language LambdaCase #-}
 {-# language QuasiQuotes #-}
+{-# language RecordWildCards #-}
+{-# language ScopedTypeVariables #-}
+{-# language TemplateHaskell #-}
+{-# language TypeApplications #-}
 
 module Strategy.Googlesource.RepoManifest
   ( discover

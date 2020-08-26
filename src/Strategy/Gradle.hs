@@ -1,4 +1,4 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Gradle
   ( discover
@@ -7,27 +7,31 @@ module Strategy.Gradle
   , JsonDep(..)
   ) where
 
-import Prologue hiding (json)
-
-import Data.Aeson.Types (Parser, unexpected)
 import Control.Carrier.Error.Either
 import Control.Effect.Diagnostics
 import Control.Effect.Exception
+import Control.Effect.Lift (sendIO)
 import Control.Effect.Path (withSystemTempDir)
+import Data.Aeson
+import Data.Aeson.Types (Parser, unexpected)
+import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import Data.FileEmbed (embedFile)
+import Data.Foldable (find, for_)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Maybe (mapMaybe)
+import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
-import qualified System.FilePath as FP
-
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Graphing (Graphing)
+import Path
+import qualified System.FilePath as FP
 import Types
 
 gradleJsonDepsCmd :: Text -> FP.FilePath -> Command
@@ -52,12 +56,11 @@ analyze ::
   ( Has (Lift IO) sig m
   , Has Exec sig m
   , Has Diagnostics sig m
-  , MonadIO m
   )
   => Path Abs Dir -> m ProjectClosureBody
 analyze dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
   let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
-  liftIO (BS.writeFile initScriptFilepath initScript)
+  sendIO (BS.writeFile initScriptFilepath initScript)
   stdout <- execThrow dir (gradleJsonDepsCmd "./gradlew" initScriptFilepath)
               <||> execThrow dir (gradleJsonDepsCmd "gradlew.bat" initScriptFilepath)
               <||> execThrow dir (gradleJsonDepsCmd "gradle" initScriptFilepath)
@@ -74,8 +77,8 @@ analyze dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
       packagePathsWithJson = map (\line -> let (x,y) = T.breakOn "_" line in (x, T.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
 
       packagePathsWithDecoded :: [(Text, [JsonDep])]
-      packagePathsWithDecoded = [(name, deps) | (name, json) <- packagePathsWithJson
-                                              , Just configs <- [decodeStrict (encodeUtf8 json) :: Maybe (Map Text [JsonDep])]
+      packagePathsWithDecoded = [(name, deps) | (name, outJson) <- packagePathsWithJson
+                                              , Just configs <- [decodeStrict (encodeUtf8 outJson) :: Maybe (Map Text [JsonDep])]
                                               , Just deps <- [M.lookup "default" configs]] -- FUTURE: use more than default?
 
       packagesToOutput :: Map Text [JsonDep]
@@ -142,7 +145,7 @@ buildGraph projectsAndDeps = run . evalGrapher $ M.traverseWithKey addProject pr
 data JsonDep =
     ProjectDep Text -- name
   | PackageDep Text Text [JsonDep] -- name version deps
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 instance FromJSON JsonDep where
   parseJSON = withObject "JsonDep" $ \obj -> do

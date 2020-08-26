@@ -2,21 +2,18 @@ module Go.GomodSpec
   ( spec
   ) where
 
-import Prologue
-
 import Control.Algebra
+import Data.Function ((&))
 import qualified Data.Map.Strict as M
 import qualified Data.Text.IO as TIO
-import Text.Megaparsec
-
 import DepTypes
 import Effect.Grapher
 import Graphing (Graphing)
 import Strategy.Go.Gomod
 import Strategy.Go.Types (graphingGolang)
-
-import Test.Hspec.Megaparsec
 import Test.Hspec
+import Test.Hspec.Megaparsec
+import Text.Megaparsec
 
 gomod :: Gomod
 gomod = Gomod

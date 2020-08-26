@@ -1,4 +1,6 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Strategy.Node.PackageJson
   ( discover
@@ -7,15 +9,19 @@ module Strategy.Node.PackageJson
   , PackageJson(..)
   ) where
 
-import Prologue
-
 import Control.Effect.Diagnostics
+import Data.Aeson
+import Data.Foldable (find)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
+import Data.Set (Set)
+import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
+import Path
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -29,7 +35,7 @@ discover = walk $ \_ _ files -> do
 data PackageJson = PackageJson
   { packageDeps    :: Map Text Text
   , packageDevDeps :: Map Text Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromJSON PackageJson where
   parseJSON = withObject "PackageJson" $ \obj ->
@@ -56,12 +62,12 @@ mkProjectClosure file package = ProjectClosureBody
 data NodePackage = NodePackage
   { pkgName       :: Text
   , pkgConstraint :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 type NodeGrapher = LabeledGrapher NodePackage NodePackageLabel
 
 newtype NodePackageLabel = NodePackageEnv DepEnvironment
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 buildGraph :: PackageJson -> Graphing Dependency
 buildGraph PackageJson{..} = run . withLabeling toDependency $ do

@@ -8,7 +8,6 @@ import qualified Data.Map.Strict as M
 import qualified Data.Text.IO as TIO
 import DepTypes
 import GraphUtil
-import Prologue
 import Strategy.Clojure
 import Test.Hspec
 

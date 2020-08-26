@@ -4,10 +4,10 @@ module RPM.SpecFileSpec
 where
 
 import Data.Maybe (listToMaybe)
+import Data.Text (Text)
 import qualified Data.Text.IO as TIO
 import DepTypes
 import GraphUtil
-import Prologue
 import Strategy.RPM
 import qualified Test.Hspec as Test
 

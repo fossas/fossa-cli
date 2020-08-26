@@ -1,3 +1,6 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module App.VPSScan.Scan.Core
   ( coreAuthHeader
   , createCoreProject
@@ -17,8 +20,8 @@ import Data.Text (pack, Text)
 import Prelude
 import Network.HTTP.Req
 import Data.Text.Encoding (encodeUtf8)
-import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Effect.Diagnostics
+import Control.Effect.Lift (Lift, sendIO)
 import Data.Aeson
 import Data.Time.Clock.POSIX (getPOSIXTime)
 
@@ -38,10 +41,10 @@ instance FromJSON SherlockInfo where
 coreAuthHeader :: Text -> Option scheme
 coreAuthHeader apiKey = header "Authorization" (encodeUtf8 ("Bearer " <> apiKey))
 
-buildRevision :: (MonadIO m) => Maybe Text -> m Text
+buildRevision :: Has (Lift IO) sig m => Maybe Text -> m Text
 buildRevision (Just userProvidedRevision) = pure (userProvidedRevision)
 buildRevision Nothing = do
-  posixTime <- liftIO getPOSIXTime
+  posixTime <- sendIO getPOSIXTime
   pure (pack $ show $ (floor $ toRational posixTime :: Int))
 
 newtype Locator = Locator { unLocator :: Text }
@@ -66,7 +69,7 @@ createProjectEndpoint baseurl = baseurl /: "api" /: "vendored-package-scan" /: "
 completeProjectEndpoint :: Url 'Https -> Url 'Https
 completeProjectEndpoint baseurl = baseurl /: "api" /: "vendored-package-scan" /: "ci" /: "complete"
 
-createCoreProject :: (MonadIO m, Has Diagnostics sig m) => Text -> Text -> FossaOpts -> m ()
+createCoreProject :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> Text -> FossaOpts -> m ()
 createCoreProject name revision FossaOpts{..} = runHTTP $ do
   let auth = coreAuthHeader fossaApiKey
   let body = object ["name" .= name, "revision" .= revision]
@@ -75,7 +78,7 @@ createCoreProject name revision FossaOpts{..} = runHTTP $ do
   _ <- req POST (createProjectEndpoint baseUrl) (ReqBodyJson body) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
   pure ()
 
-completeCoreProject :: (MonadIO m, Has Diagnostics sig m) => Text -> FossaOpts -> m ()
+completeCoreProject :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> FossaOpts -> m ()
 completeCoreProject locator FossaOpts{..} = runHTTP $ do
   let auth = coreAuthHeader fossaApiKey
   let body = object ["locator" .= locator]
@@ -84,7 +87,7 @@ completeCoreProject locator FossaOpts{..} = runHTTP $ do
   _ <- req POST (completeProjectEndpoint baseUrl) (ReqBodyJson body) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
   pure ()
 
-getSherlockInfo :: (MonadIO m, Has Diagnostics sig m) => FossaOpts -> m SherlockInfo
+getSherlockInfo :: (Has (Lift IO) sig m, Has Diagnostics sig m) => FossaOpts -> m SherlockInfo
 getSherlockInfo FossaOpts{..} = runHTTP $ do
   let auth = coreAuthHeader fossaApiKey
 

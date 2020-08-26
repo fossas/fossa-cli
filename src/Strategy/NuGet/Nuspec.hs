@@ -1,3 +1,6 @@
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
+
 module Strategy.NuGet.Nuspec
   ( discover
   , buildGraph
@@ -11,19 +14,20 @@ module Strategy.NuGet.Nuspec
   , mkProjectClosure
   ) where
 
-import Prologue
-
+import Control.Applicative (optional)
 import Control.Effect.Diagnostics
-import qualified Data.Map.Strict as M
+import Data.Foldable (find)
 import qualified Data.List as L
-
-import DepTypes
+import qualified Data.Map.Strict as M
+import Data.Text (Text)
 import qualified Data.Text as T
+import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
 import qualified Graphing
 import Parse.XML
+import Path
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -56,7 +60,7 @@ nuspecLicenses nuspec = url ++ licenseField
             url = case licenseUrl nuspec of
               Just location -> [License LicenseURL location]
               Nothing -> []
-            licenseField = foldr (\a b -> b ++ [License (parseLicenseType $ typeField a) (licenseValue a)]) [] (license nuspec)
+            licenseField = foldr (\a b -> b ++ [License (parseLicenseType $ nuspecLicenseType a) (nuspecLicenseValue a)]) [] (license nuspec)
 
 parseLicenseType :: Text -> LicenseType
 parseLicenseType rawType = case T.unpack rawType of 
@@ -68,21 +72,21 @@ data Nuspec = Nuspec
   { groups        :: [Group]
   , license       :: [NuspecLicense]
   , licenseUrl    :: Maybe Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data NuspecLicense = NuspecLicense
-  { typeField    :: Text
-  , licenseValue :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  { nuspecLicenseType  :: Text
+  , nuspecLicenseValue :: Text
+  } deriving (Eq, Ord, Show)
 
 newtype Group = Group
   { dependencies  :: [NuGetDependency]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 data NuGetDependency = NuGetDependency
   { depID      :: Text
   , depVersion :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromXML Nuspec where
   parseElement el = do

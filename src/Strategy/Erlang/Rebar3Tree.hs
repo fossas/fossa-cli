@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Strategy.Erlang.Rebar3Tree
   ( discover
   , analyze
@@ -8,18 +10,19 @@ module Strategy.Erlang.Rebar3Tree
   )
   where
 
-import Prologue
-
 import Control.Effect.Diagnostics
+import Data.Foldable (find)
 import qualified Data.Map.Strict as M
+import Data.Text (Text)
 import qualified Data.Text as T
-import Text.Megaparsec
-import Text.Megaparsec.Char
-
+import Data.Void (Void)
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
 import Graphing (Graphing, unfold)
+import Path
+import Text.Megaparsec
+import Text.Megaparsec.Char
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -70,7 +73,7 @@ data Rebar3Dep = Rebar3Dep
   , depVersion  :: Text
   , depLocation :: Text
   , subDeps     :: [Rebar3Dep]
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 type Parser = Parsec Void Text
 

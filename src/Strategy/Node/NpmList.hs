@@ -1,18 +1,22 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Strategy.Node.NpmList
   ( discover
   , analyze
   ) where
 
-import Prologue
-
 import Control.Effect.Diagnostics
+import Data.Aeson
+import Data.Foldable (find)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
+import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
 import Graphing (Graphing, unfold)
+import Path
 import Types
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
@@ -66,7 +70,7 @@ data NpmOutput = NpmOutput
   , outputFrom         :: Maybe Text
   , outputResolved     :: Maybe Text
   , outputDependencies :: Map Text NpmOutput
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show)
 
 instance FromJSON NpmOutput where
   parseJSON = withObject "NpmOutput" $ \obj ->

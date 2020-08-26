@@ -2,8 +2,6 @@ module NuGet.PackagesConfigSpec
   ( spec
   ) where
 
-import Prologue
-
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO

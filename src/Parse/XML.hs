@@ -1,3 +1,8 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 -- | This modules provides marshalling facilities from XML to datatypes
 --
 -- It's modeled closely after Aeson's @FromJSON@, with a couple of differences.

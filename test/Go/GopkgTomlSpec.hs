@@ -1,22 +1,19 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Go.GopkgTomlSpec
   ( spec
   ) where
 
-import Prologue
-
+import Data.Function ((&))
 import qualified Data.Map.Strict as M
 import qualified Data.Text.IO as TIO
-
 import DepTypes
 import Effect.Grapher
 import Graphing (Graphing)
 import Strategy.Go.GopkgToml
 import Strategy.Go.Types (graphingGolang)
-import qualified Toml
-
 import Test.Hspec
+import qualified Toml
 
 gopkg :: Gopkg
 gopkg = Gopkg

@@ -1,24 +1,23 @@
-{-# language TemplateHaskell #-}
-{-# language QuasiQuotes #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Googlesource.RepoManifestSpec
   ( spec
   ) where
 
-import Prologue
-
+import Control.Carrier.Diagnostics
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import GraphUtil
 import DepTypes
+import Effect.ReadFS
+import GraphUtil
 import Parse.XML
+import Path
+import Path.IO (getCurrentDir)
 import Strategy.Googlesource.RepoManifest
 import Test.Hspec
 import Text.URI.QQ
-import Effect.ReadFS
-import Control.Carrier.Diagnostics
-import Path.IO (getCurrentDir)
 
 -- <remote name="aosp" fetch="https://android.googlesource.com" />
 remoteOne :: ManifestRemote

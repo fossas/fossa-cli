@@ -2,17 +2,13 @@ module Ruby.GemfileLockSpec
   ( spec
   ) where
 
-import Prologue
-
 import qualified Data.Map.Strict as M
 import qualified Data.Text.IO as TIO
-import Text.Megaparsec
-
 import DepTypes
-import Strategy.Ruby.GemfileLock
 import GraphUtil
-
+import Strategy.Ruby.GemfileLock
 import qualified Test.Hspec as T
+import Text.Megaparsec
 
 dependencyOne :: Dependency
 dependencyOne = Dependency { dependencyType = GemType
