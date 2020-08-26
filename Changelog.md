@@ -2,6 +2,7 @@
 
 - Fixes bug where the rebar3 strategy would incorrectly find dependencies as top-level projects ([#119](https://github.com/fossas/spectrometer/pull/119))
 - Fixes various issues in the setup.py parser ([#119](https://github.com/fossas/spectrometer/pull/119))
+- Adds an analyzer for haskell projects using cabal-install ([#122](https://github.com/fossas/spectrometer/pull/122))
 
 # v2.2.1
 
