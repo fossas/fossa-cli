@@ -166,7 +166,7 @@ buildGraph plan = do
 toDependency :: InstallPlan -> Dependency
 toDependency plan =
   Dependency
-    { dependencyType = HaskellType,
+    { dependencyType = HackageType,
       dependencyName = planName plan,
       dependencyVersion = Just $ CEq $ planVersion plan,
       dependencyLocations = [],

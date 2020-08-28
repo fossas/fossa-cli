@@ -51,6 +51,7 @@ import qualified Strategy.Go.GopkgToml as GopkgToml
 import qualified Strategy.Googlesource.RepoManifest as RepoManifest
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.Haskell.Cabal as Cabal
+import qualified Strategy.Haskell.Stack as Stack
 import qualified Strategy.Maven.PluginStrategy as MavenPlugin
 import qualified Strategy.Maven.Pom as MavenPom
 import qualified Strategy.Node.NpmList as NpmList
@@ -237,6 +238,8 @@ discoverFuncs =
   , Scala.discover
 
   , Cabal.discover
+
+  , Stack.discover
   ]
 
 updateProgress :: Has Logger sig m => Progress -> m ()

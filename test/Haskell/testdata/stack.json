@@ -1,0 +1,35 @@
+[
+    {
+        "location": {
+            "type": "hackage"
+        },
+        "name": "remote",
+        "version": "remote-ver",
+        "dependencies": [
+            "deep"
+        ]
+    },
+    {
+        "location": {
+            "type": "project package"
+        },
+        "name": "local",
+        "version": "local-ver",
+        "dependencies": [
+            "remote",
+            "builtin"
+        ]
+    },
+    {
+        "location": {
+            "type": "hackage"
+        },
+        "name": "deep",
+        "version": "deep-ver",
+        "dependencies": []
+    },
+    {
+        "name": "builtin",
+        "version": "builtin-ver"
+    }
+]
