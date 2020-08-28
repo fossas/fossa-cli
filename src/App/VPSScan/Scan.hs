@@ -25,6 +25,7 @@ import Data.Text (unpack)
 import Control.Effect.Exception (bracket)
 import Path
 import Data.Text (Text)
+import Data.Aeson
 
 data ScanCmdOpts = ScanCmdOpts
   { cmdBasedir :: FilePath
@@ -114,12 +115,13 @@ runIPRScan ::
   , Has (Lift IO) sig m
   ) => Path Abs Dir -> Text -> BinaryPaths -> ScotlandYardOpts -> VPSOpts -> m ()
 runIPRScan basedir scanId binaryPaths syOpts vpsOpts =
-  if skipIprScan vpsOpts then
-    trace "[IPR] IPR scan disabled"
+  if skipIprScan vpsOpts then do
+    trace "[IPR] IPR scan disabled. Uploading an empty IPR set"
+    context "uploading empty scan results" $ uploadIPRResults scanId (object ["Files" .= ()]) syOpts
+    trace "[IPR] Post to Scotland Yard complete"
   else do
     iprResult <- execIPR binaryPaths $ IPROpts basedir vpsOpts
     trace "[IPR] IPR scan completed. Posting results to Scotland Yard"
-
     context "uploading scan results" $ uploadIPRResults scanId iprResult syOpts
     trace "[IPR] Post to Scotland Yard complete"
     trace "[IPR] IPR scan complete"
