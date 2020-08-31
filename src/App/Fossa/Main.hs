@@ -87,11 +87,11 @@ opts =
     <*> optional (strOption (long "project" <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
     <*> optional (strOption (long "revision" <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authenticaion key (default: FOSSA_API_KEY from env)"))
-    <*> comm
+    <*> (commands <|> hiddenCommands)
     <**> helper
 
-comm :: Parser Command
-comm =
+commands :: Parser Command
+commands =
   hsubparser
     ( command
         "analyze"
@@ -111,6 +111,12 @@ comm =
               (ReportCommand <$> reportOpts)
               (progDesc "Access various reports from FOSSA and print to stdout")
           )
+    )
+
+hiddenCommands :: Parser Command
+hiddenCommands =
+  hsubparser
+    ( internal
         <> command
           "init"
           ( info
