@@ -42,6 +42,7 @@ import qualified Strategy.Carthage as Carthage
 import qualified Strategy.Clojure as Clojure
 import qualified Strategy.Cocoapods.Podfile as Podfile
 import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
+import qualified Strategy.Composer as Composer
 import qualified Strategy.Erlang.Rebar3Tree as Rebar3Tree
 import qualified Strategy.Go.GlideLock as GlideLock
 import qualified Strategy.Go.GoList as GoList
@@ -228,6 +229,8 @@ discoverFuncs =
 
   , Podfile.discover
   , PodfileLock.discover
+
+  , Composer.discover
 
   , Clojure.discover
   

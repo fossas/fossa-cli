@@ -49,6 +49,7 @@ data DepEnvironment =
 -- | A Dependency type. This corresponds to a "fetcher" on the backend
 data DepType =
     SubprojectType -- ^ A first-party subproject
+  | ComposerType -- ^ Dependency found from the composer fetcher.  
   | GitType -- ^ Repository in Github
   | GemType    -- ^ Gem registry
   | GooglesourceType  -- ^ android.googlesource.com

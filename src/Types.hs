@@ -148,6 +148,7 @@ data StrategyGroup =
   | GradleGroup
   | MavenGroup
   | NodejsGroup
+  | PHPGroup
   | PythonGroup
   | RubyGroup
   | CocoapodsGroup

@@ -127,6 +127,7 @@ library
     Strategy.Clojure
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
+    Strategy.Composer
     Strategy.Erlang.Rebar3Tree
     Strategy.Go.GlideLock
     Strategy.Go.GoList
@@ -207,6 +208,7 @@ test-suite unit-tests
     Clojure.ClojureSpec
     Cocoapods.PodfileLockSpec
     Cocoapods.PodfileSpec
+    Composer.ComposerLockSpec
     Effect.ExecSpec
     Erlang.Rebar3TreeSpec
     Extra.TextSpec
