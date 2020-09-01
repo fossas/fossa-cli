@@ -11,6 +11,7 @@ import Prelude
 import qualified Algebra.Graph.AdjacencyMap as AM
 import App.Fossa.Analyze.Project
 import Control.Applicative ((<|>))
+import qualified Data.List.NonEmpty as NE
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Set as Set
@@ -20,45 +21,41 @@ import qualified Graphing
 import Path (toFilePath)
 import Srclib.Types
 
-toSourceUnit :: Project -> Maybe SourceUnit
-toSourceUnit Project{..} = do
-  bestStrategy <- safeHead projectStrategies
-
-  let renderedPath = Text.pack (toFilePath projectPath) <> "/" <> projStrategyName bestStrategy
-
-      graph :: Graphing Dependency
-      graph = projStrategyGraph bestStrategy
-
-      filteredGraph :: Graphing Dependency
-      filteredGraph = Graphing.filter (\d -> isProdDep d && isSupportedType d) graph
-
-      locatorGraph :: Graphing Locator
-      locatorGraph = Graphing.gmap toLocator filteredGraph
-
-      locatorAdjacent :: AM.AdjacencyMap Locator
-      locatorAdjacent = Graphing.graphingAdjacent locatorGraph
-
-      deps :: [SourceUnitDependency]
-      deps = map (mkSourceUnitDependency locatorAdjacent) (AM.vertexList locatorAdjacent)
-
-      imports :: [Locator]
-      imports = Set.toList $ Graphing.graphingDirect locatorGraph
-
-  pure $ SourceUnit
-    { sourceUnitName = renderedPath
-    , sourceUnitType = SourceUnitTypeDummyCLI
-    , sourceUnitManifest = renderedPath
-    , sourceUnitBuild = SourceUnitBuild
-      { buildArtifact = "default"
-      , buildSucceeded = True
-      , buildImports = imports
-      , buildDependencies = deps
-      }
+toSourceUnit :: Project -> SourceUnit
+toSourceUnit Project {..} =
+  SourceUnit
+    { sourceUnitName = renderedPath,
+      sourceUnitType = SourceUnitTypeDummyCLI,
+      sourceUnitManifest = renderedPath,
+      sourceUnitBuild =
+        SourceUnitBuild
+          { buildArtifact = "default",
+            buildSucceeded = True,
+            buildImports = imports,
+            buildDependencies = deps
+          }
     }
   where
-    safeHead :: [a] -> Maybe a
-    safeHead (x:_) = Just x
-    safeHead _ = Nothing
+    bestStrategy = NE.head projectStrategies
+    renderedPath = Text.pack (toFilePath projectPath) <> "/" <> projStrategyName bestStrategy
+
+    graph :: Graphing Dependency
+    graph = projStrategyGraph bestStrategy
+
+    filteredGraph :: Graphing Dependency
+    filteredGraph = Graphing.filter (\d -> isProdDep d && isSupportedType d) graph
+
+    locatorGraph :: Graphing Locator
+    locatorGraph = Graphing.gmap toLocator filteredGraph
+
+    locatorAdjacent :: AM.AdjacencyMap Locator
+    locatorAdjacent = Graphing.graphingAdjacent locatorGraph
+
+    deps :: [SourceUnitDependency]
+    deps = map (mkSourceUnitDependency locatorAdjacent) (AM.vertexList locatorAdjacent)
+
+    imports :: [Locator]
+    imports = Set.toList $ Graphing.graphingDirect locatorGraph
 
 mkSourceUnitDependency :: AM.AdjacencyMap Locator -> Locator -> SourceUnitDependency
 mkSourceUnitDependency gr locator = SourceUnitDependency

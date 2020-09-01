@@ -7,7 +7,7 @@ module App.Fossa.Analyze
   , ScanDestination(..)
   ) where
 
-import App.Fossa.Analyze.Project (Project, mkProjects)
+import App.Fossa.Analyze.Project (BestStrategy(..), Project(..), mkProjects)
 import App.Fossa.FossaAPIV1 (ProjectMetadata, UploadResponse (..), uploadAnalysis, uploadContributors)
 import App.Fossa.ProjectInference (inferProject, mergeOverride)
 import App.Types
@@ -110,7 +110,9 @@ analyze basedir destination override unpackArchives = runFinally $ do
 
   let projects = mkProjects closures
       result = buildResult projects failures
- 
+
+  traverse_ (logInfo . ("Found " <>) . pretty . BestStrategy) projects
+
   case destination of
     OutputStdout -> logStdout $ pretty (decodeUtf8 (Aeson.encode result))
     UploadScan baseurl apiKey metadata -> do
@@ -171,7 +173,7 @@ buildResult :: [Project] -> [ProjectFailure] -> Aeson.Value
 buildResult projects failures = Aeson.object
   [ "projects" .= projects
   , "failures" .= map renderFailure failures
-  , "sourceUnits" .= fromMaybe [] (traverse Srclib.toSourceUnit projects)
+  , "sourceUnits" .= map Srclib.toSourceUnit projects
   ]
 
 renderFailure :: ProjectFailure -> Aeson.Value

@@ -13,6 +13,7 @@ module Graphing
   ( -- * Graphing type
     Graphing(..)
   , empty
+  , size
   , direct
   , edge
 
@@ -91,6 +92,10 @@ filter f gr = gr { graphingDirect = direct', graphingAdjacent = adjacent' }
 -- | The empty Graphing
 empty :: Graphing ty
 empty = Graphing S.empty AM.empty
+
+-- | Determines the number of nodes in the graph ("reachable" or not)
+size :: Graphing ty -> Int
+size = AM.vertexCount . graphingAdjacent
 
 -- | Strip all items from the direct set, promote their immediate children to direct items
 stripRoot :: Ord ty => Graphing ty -> Graphing ty
