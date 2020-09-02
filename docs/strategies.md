@@ -4,6 +4,7 @@ We support dependency analysis for the following languages/ecosystems:
 
 - [golang](strategies/golang.md) (gomodules, dep, glide)
 - [gradle](strategies/gradle.md)
+- [iOS](strategies/ios.md) (Carthage, Cocoapods)
 - [maven](strategies/maven.md)
 - [nodejs](strategies/nodejs.md) (yarn, npmcli)
 - [python](strategies/python.md) (pipenv, setuptools)
