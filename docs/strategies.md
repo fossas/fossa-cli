@@ -14,3 +14,4 @@ We support dependency analysis for the following languages/ecosystems:
 - [rpm](strategies/rpm.md) (spec files)
 - [ruby](strategies/ruby.md) (bundler)
 - [rust](strategies/rust.md) (cargo)
+- [sbt](strategies/sbt.md) (sbt)

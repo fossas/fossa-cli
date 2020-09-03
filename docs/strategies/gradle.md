@@ -1,22 +1,24 @@
 # Gradle Analysis
 
-When using gradle, users specify dependencies and plugins with a groovy DSL.
-This makes accurate dependency analysis particularly difficult: groovy projects
-tend to contain several (sub)projects with their own buildscripts, and plugins
-that add dependencies of their own.
+When using gradle, users specify dependencies and plugins with a groovy DSL. This makes accurate dependency analysis particularly difficult: gradle projects tend to contain several (sub)projects with their own buildscripts, and plugins that add dependencies of their own.
 
 To accurately determine the entire project/dependency structure, we use an
-external script.
+initscript to inject our own `jsonDeps` task.
 
 | Strategy   | Direct Deps | Deep Deps | Edges | Tags |
 | ---        | ---         | ---       | ---   | ---  |
 | initscript | ✅          | ✅        | ✅    |      |
 
+## Requirements
+
+Gradle project analysis requires at least one of:
+
+- A project that uses gradle wrappers (`gradlew`/`gradlew.bat`)
+- A locally-installed gradle
+
 ## Project Discovery
 
-find `build.gradle*` files, and run `gradle tasks` in those directories. When
-`gradle tasks` succeeds, skip all subdirectories. `gradle tasks` ensures that we
-have a valid gradle project to analyze.
+Directories that contain a gradle buildscript, e.g., `build.gradle` or `build.gradle.kts`, are treated as gradle projects. Gradle buildscripts in a project's subdirectories are ignored.
 
 ## Analysis
 

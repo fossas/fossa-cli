@@ -12,13 +12,13 @@ into maintenance mode, with the notable exception of dep. As such, golang
 analysis in spectrometer primarily targets Golang 1.11+ modules and dep. Support
 for Glide is also included, because it's still commonly used.
 
-| Strategy                             | Direct Deps | Deep Deps | Edges | Tags |
-| ---                                  | ---         | ---       | ---   | ---  |
-| [golist][gomodules] (golang modules) | ✅          | ✅        | 🔶    |      |
-| [gomod][gomodules] (golang modules)  | ✅          | ❌        | 🔶    |      |
-| [gopkglock][godep] (dep)             | ✅          | ✅        | 🔶    |      |
-| [gopkgtoml][godep] (dep)             | ✅          | 🔶        | 🔶    |      |
-| [glide][glide]                       | ✅          | ✅        | ❌    |      |
+| Strategy                             | Direct Deps | Deep Deps | Edges |
+| ---                                  | ---         | ---       | ---   |
+| [golist][gomodules] (golang modules) | ✅          | ✅        | 🔶    |
+| [gomod][gomodules] (golang modules)  | ✅          | ❌        | 🔶    |
+| [gopkglock][godep] (dep)             | ✅          | ✅        | 🔶    |
+| [gopkgtoml][godep] (dep)             | ✅          | 🔶        | 🔶    |
+| [glide][glide]                       | ✅          | ✅        | ❌    |
 
 [gomodules]: golang/gomodules.md
 [godep]: golang/godep.md
