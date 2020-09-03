@@ -1,8 +1,14 @@
-# Unreleased
+# v2.3.0
 
+- Adds a user guide
 - Fixes bug where the rebar3 strategy would incorrectly find dependencies as top-level projects ([#119](https://github.com/fossas/spectrometer/pull/119))
 - Fixes various issues in the setup.py parser ([#119](https://github.com/fossas/spectrometer/pull/119))
 - Adds an analyzer for haskell projects using cabal-install ([#122](https://github.com/fossas/spectrometer/pull/122))
+- Adds an analyzer for PHP projects via composer ([#121](https://github.com/fossas/spectrometer/pull/121))
+
+# v2.2.4
+
+- Adds analyzer for scala via `sbt` ([#54](https://github.com/fossas/spectrometer/pull/54))
 
 # v2.2.1
 
