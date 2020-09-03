@@ -2,6 +2,8 @@
 
 We support dependency analysis for the following languages/ecosystems:
 
+- [clojure](strategies/golang.md) (lein)
+- [erlang](strategies/erlang.md) (rebar3)
 - [golang](strategies/golang.md) (gomodules, dep, glide)
 - [gradle](strategies/gradle.md)
 - [haskell](strategies/haskell.md) (cabal, stack)
