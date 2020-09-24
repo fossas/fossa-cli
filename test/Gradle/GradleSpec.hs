@@ -8,7 +8,7 @@ import Data.Text (Text)
 import DepTypes
 import GraphUtil
 import Graphing (Graphing, empty)
-import Strategy.Gradle (JsonDep (..), buildGraph)
+import Strategy.Gradle (JsonDep (..), buildGraph, PackageName(..), ConfigName(..))
 import Test.Hspec
 
 projectOne :: Dependency
@@ -17,7 +17,7 @@ projectOne = Dependency
   , dependencyName = ":projectOne"
   , dependencyVersion = Nothing
   , dependencyLocations = []
-  , dependencyEnvironments = []
+  , dependencyEnvironments = [EnvOther "config"]
   , dependencyTags = M.empty
   }
 
@@ -27,7 +27,7 @@ projectTwo = Dependency
   , dependencyName = ":projectTwo"
   , dependencyVersion = Nothing
   , dependencyLocations = []
-  , dependencyEnvironments = []
+  , dependencyEnvironments = [EnvDevelopment, EnvOther "config"]
   , dependencyTags = M.empty
   }
 
@@ -37,7 +37,7 @@ projectThree = Dependency
   , dependencyName = ":projectThree"
   , dependencyVersion = Nothing
   , dependencyLocations = []
-  , dependencyEnvironments = []
+  , dependencyEnvironments = [EnvDevelopment, EnvTesting]
   , dependencyTags = M.empty
   }
 
@@ -47,7 +47,7 @@ packageOne = Dependency
   , dependencyName = "mygroup:packageOne"
   , dependencyVersion = Just (CEq "1.0.0")
   , dependencyLocations = []
-  , dependencyEnvironments = []
+  , dependencyEnvironments = [EnvDevelopment]
   , dependencyTags = M.empty
   }
 
@@ -57,16 +57,19 @@ packageTwo = Dependency
   , dependencyName = "mygroup:packageTwo"
   , dependencyVersion = Just (CEq "2.0.0")
   , dependencyLocations = []
-  , dependencyEnvironments = []
+  , dependencyEnvironments = [EnvTesting]
   , dependencyTags = M.empty
   }
 
-gradleOutput :: Map Text [JsonDep]
+gradleOutput :: Map (Text, Text) [JsonDep]
 gradleOutput = M.fromList
-  [ (":projectOne", [ProjectDep ":projectTwo"])
-  , (":projectTwo", [ProjectDep ":projectThree", PackageDep "mygroup:packageOne" "1.0.0" []])
-  , (":projectThree", [PackageDep "mygroup:packageTwo" "2.0.0" []])
+  [ ((":projectOne", "config"), [ProjectDep ":projectTwo"])
+  , ((":projectTwo", "compileOnly"), [ProjectDep ":projectThree", PackageDep "mygroup:packageOne" "1.0.0" []])
+  , ((":projectThree", "testCompileOnly"), [PackageDep "mygroup:packageTwo" "2.0.0" []])
   ]
+
+wrapKeys :: (Text, Text) -> (PackageName, ConfigName)
+wrapKeys (a, b) = (PackageName a, ConfigName b)
 
 spec :: Spec
 spec = do
@@ -76,7 +79,7 @@ spec = do
       graph `shouldBe` (empty :: Graphing Dependency)
 
     it "should produce expected output" $ do
-      let graph = buildGraph gradleOutput
+      let graph = buildGraph $ M.mapKeys wrapKeys gradleOutput
       expectDeps [projectOne, projectTwo, projectThree, packageOne, packageTwo] graph
       expectDirect [projectOne, projectTwo, projectThree] graph
       expectEdges [ (projectOne, projectTwo)

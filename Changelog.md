@@ -1,3 +1,7 @@
+# v2.3.1
+
+- Gradle: Accept and tag all build configuration names. ([#134](https://github.com/fossas/spectrometer/pull/134))
+
 # v2.3.0
 
 - Adds a user guide
