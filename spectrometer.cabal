@@ -52,6 +52,7 @@ common deps
     , prettyprinter                >=1.6      && <1.8
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , req                          >=3.4      && <3.6
+    , split                        ^>=0.2.3.4
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
     , tar                          ^>=0.5.1.1

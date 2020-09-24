@@ -26,11 +26,13 @@ vpsOpts = VPSOpts <$> fossaOpts <*> projectNameOpt <*> projectRevision <*> skipI
     skipIprScanOpt = switch (long "skip-ipr-scan" <> help "If specified, the scan directory will not be scanned for intellectual property rights information")
 
 ninjaGraphOpts :: Parser NinjaGraphOpts
-ninjaGraphOpts = NinjaGraphOpts <$> ninjaDepsOpt <*> lunchTargetOpt <*> scotlandYardUrlOpt
+ninjaGraphOpts = NinjaGraphOpts <$> fossaOpts <*> ninjaDepsOpt <*> lunchTargetOpt <*> scanIdOpt <*> projectNameOpt <*> buildNameOpt
   where
     ninjaDepsOpt = optional $ strOption (long "ninjadeps" <> metavar "STRING")
-    lunchTargetOpt = optional $ strOption (long "lunchtarget" <> metavar "STRING" <> help "build target name to pass to lunch. If you are running in an environment with envsetup and lunch already configured, then you don't need to pass this in")
-    scotlandYardUrlOpt = uriOption (long "scotland-yard-url" <> metavar "STRING" <> help "URL for Scotland Yard service")
+    lunchTargetOpt = optional $ strOption (long "lunchtarget" <> metavar "STRING" <> help "Build target name to pass to lunch. If you are running in an environment with envsetup and lunch already configured, then you don't need to pass this in")
+    scanIdOpt = strOption (long "scan-id" <> metavar "STRING" <> help "The scan ID that this build applies to")
+    buildNameOpt = strOption (long "build-name" <> metavar "STRING" <> help "Human readable name of this build. This will be shown on the FOSSA website.")
+    projectNameOpt = strOption (long "project-name" <> metavar "STRING" <> help "The name of the project that this scan is part of")
 
 fossaOpts :: Parser FossaOpts
 fossaOpts = FossaOpts <$> urlOpt <*> apiKeyOpt
