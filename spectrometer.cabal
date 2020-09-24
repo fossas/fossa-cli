@@ -131,6 +131,7 @@ library
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer
+    Strategy.Erlang.ConfigParser
     Strategy.Erlang.Rebar3Tree
     Strategy.Go.GlideLock
     Strategy.Go.GoList
@@ -213,6 +214,7 @@ test-suite unit-tests
     Cocoapods.PodfileSpec
     Composer.ComposerLockSpec
     Effect.ExecSpec
+    Erlang.ConfigParserSpec
     Erlang.Rebar3TreeSpec
     Extra.TextSpec
     Go.GlideLockSpec
