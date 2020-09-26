@@ -14,10 +14,10 @@ module Strategy.RPM
 where
 
 import Control.Effect.Diagnostics
-import Data.Foldable (traverse_)
+import Control.Monad (unless, when)
 import Data.List (isSuffixOf)
 import qualified Data.Map.Strict as M
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, catMaybes)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Extra (splitOnceOn)
@@ -53,14 +53,27 @@ data Dependencies
   deriving (Eq, Ord, Show)
 
 discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \dir _ files ->
+discover = walk $ \dir _ files -> do
   let specs = filter (\f -> ".spec" `isSuffixOf` fileName f) files
-      analyzeFile specFile = runSimpleStrategy "rpm-spec" RPMGroup $ fmap (mkProjectClosure dir) (analyze specFile)
-   in traverse_ analyzeFile specs >> pure WalkContinue
+  
+  unless (null specs) $ runSimpleStrategy "rpm-spec" RPMGroup $ fmap (mkProjectClosure dir) (analyze specs)
+  pure WalkContinue
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze specFile = do
-  specFileText <- readContentsText specFile
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m (Graphing Dependency)
+analyze specFiles = do
+  results <- traverse (recover . analyzeSingle) specFiles
+  let successful = catMaybes results
+
+  when (null successful) $ fatalText "Analysis failed for all discovered *.spec files"
+
+  let graphing :: Graphing Dependency
+      graphing = mconcat successful
+
+  pure graphing
+
+analyzeSingle :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyzeSingle file = do 
+  specFileText <- readContentsText file
   pure . buildGraph $ getSpecDeps specFileText
 
 mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody

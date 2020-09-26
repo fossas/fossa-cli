@@ -1,5 +1,6 @@
 # v2.3.1
 
+- RPM: Merge spec file results in the analyzer. ([#138](https://github.com/fossas/spectrometer/pull/138))
 - Gradle: Accept and tag all build configuration names. ([#134](https://github.com/fossas/spectrometer/pull/134))
 
 # v2.3.0
