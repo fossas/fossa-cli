@@ -15,9 +15,6 @@ import Text.Megaparsec
 parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Expectation
 parseMatch parser input expected = parse parser "" input `shouldParse` expected
 
-atom :: Text -> ErlValue
-atom = ErlAtom . AtomText
-
 spec :: Spec
 spec = do
   describe "Erlang config parser" $ do
@@ -104,19 +101,20 @@ spec = do
 
     it "should parse everything at once" $
       parse parseConfig "stresstest.config" oneWithEverything `shouldParse` 
-        [ErlTuple [
-          atom "rawAtom",
-          atom "quotedAtom",
-          ErlString "Regular String",
-          ErlString "Escaped \" String",
-          ErlInt 1234, -- Literal
-          ErlFloat 3.14159,
-          ErlInt 120, -- '$x'
-          ErlInt 35338, -- 'wes' in base 33
-          ErlArray [atom "arr1"],
-          ErlArray [ErlTuple [atom "key", ErlString "value"]],
-          ErlTuple [atom "number", ErlInt 5678] -- Literal
-        ]]
+        ConfigValues 
+          [ErlTuple [
+            atom "rawAtom",
+            atom "quotedAtom",
+            ErlString "Regular String",
+            ErlString "Escaped \" String",
+            ErlInt 1234, -- Literal
+            ErlFloat 3.14159,
+            ErlInt 120, -- '$x'
+            ErlInt 35338, -- 'wes' in base 33
+            ErlArray [atom "arr1"],
+            ErlArray [ErlTuple [atom "key", ErlString "value"]],
+            ErlTuple [atom "number", ErlInt 5678] -- Literal
+          ]]
 
   describe "radix parser" $
     it "should parse number strings correctly" $ do

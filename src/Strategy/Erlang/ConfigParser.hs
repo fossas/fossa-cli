@@ -13,8 +13,10 @@ module Strategy.Erlang.ConfigParser
     parseCharNum,
     parseIntLiteral,
     parseFloatLiteral,
+    atom,
     AtomText (..),
     ErlValue (..),
+    ConfigValues (..),
     intLiteralInBase,
     alphaNumToInt,
   )
@@ -34,6 +36,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 type Parser = Parsec Void Text
 
 newtype AtomText = AtomText {unAtomText :: Text} deriving (Eq, Ord, Show, ToJSON)
+newtype ConfigValues = ConfigValues {unConfigValues :: [ErlValue]} deriving (Eq, Ord, Show)
 
 data ErlValue
   = ErlAtom AtomText
@@ -57,8 +60,11 @@ instance ToJSON ErlValue where
 alphaNumSeq :: [Char]
 alphaNumSeq = ['0' .. '9'] <> ['A' .. 'Z']
 
-parseConfig :: Parser [ErlValue]
-parseConfig = scn *> parseTuple `endBy1` symbol "."
+atom :: Text -> ErlValue
+atom = ErlAtom . AtomText
+
+parseConfig :: Parser ConfigValues
+parseConfig = ConfigValues <$ scn <*> parseTuple `endBy1` symbol "."
 
 parseErlValue :: Parser ErlValue
 parseErlValue = parseErlArray <|> parseTuple <|> parseNumber <|> parseErlString <|> parseAtom
