@@ -31,6 +31,8 @@ analyze:
       path: path-to-build.gradle
       target: subproject
       type: gradle
+       options:
+          online: true
 ```
 
 ## Options
@@ -67,7 +69,7 @@ Specify the amount of times to retry running the gradle command after it fails t
 
 #### `online: <bool>`
 
-When set to true, this option will remove the `--offline` flag from the command `gradle <project>:dependencies --quiet --offline` used to find the dependencies of the specified project.
+When set to true, this option will remove the `--offline` flag from the command `gradle <project>:dependencies --quiet --offline` used to find the dependencies of the specified project. Specify this in the .fossa.yml file under options. See above for example
 
 #### `all-submodules: <bool>`
 
