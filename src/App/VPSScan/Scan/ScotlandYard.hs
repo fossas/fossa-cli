@@ -17,7 +17,10 @@ import Control.Monad.IO.Class
 import Control.Effect.Lift
 import App.VPSScan.Types
 import Data.Foldable (traverse_)
-import Data.List.Split
+import qualified Data.HashMap.Strict as HM
+import Data.Maybe (fromMaybe)
+import qualified Data.Vector as V
+import qualified Data.ByteString.Lazy as BS
 import Effect.Logger
 import GHC.Conc.Sync (getNumCapabilities)
 import App.VPSScan.Scan.Core
@@ -47,9 +50,13 @@ coreProxyPrefix baseurl = baseurl /: "api" /: "proxy" /: "scotland-yard"
 createScanEndpoint :: Url 'Https -> Text -> Url 'Https
 createScanEndpoint baseurl projectId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans"
 
--- /projects/{projectID}/scans/{scanID}/discovered_licenses
-scanDataEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
-scanDataEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses"
+-- /projects/{projectID}/scans/{scanID}/discovered_licenses/partial
+uploadIPRChunkEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
+uploadIPRChunkEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses" /: "partial"
+
+-- /projects/{projectID}/scans/{scanID}/discovered_licenses/complete
+uploadIPRCompleteEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
+uploadIPRCompleteEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses" /: "complete"
 
 data ScanResponse = ScanResponse
   { responseScanId :: Text
@@ -82,17 +89,27 @@ createScotlandYardScan ScotlandYardOpts {..} = runHTTP $ do
   pure (responseBody resp)
 
 -- Given the results from a run of IPR, a scan ID and a URL for Scotland Yard,
--- post the IPR result to the "Upload Scan Data" endpoint on Scotland Yard
--- POST /scans/{scanID}/discovered_licenses
-uploadIPRResults :: (ToJSON a, Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> a -> ScotlandYardOpts -> m ()
+-- post the IPR result in chunks of ~ 1 MB to the "Upload IPR Data" endpoint on Scotland Yard.
+-- once all of the chunks are complete, PUT to the "upload IPR data complete" endpoint,
+uploadIPRResults :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> Value -> ScotlandYardOpts -> m ()
 uploadIPRResults scanId value ScotlandYardOpts {..} = runHTTP $ do
   let VPSOpts{..} = syVpsOpts
       FossaOpts{..} = fossa
       auth = coreAuthHeader fossaApiKey
       locator = unLocator projectId
-
   (baseUrl, baseOptions) <- parseUri fossaUrl
-  _ <- req POST (scanDataEndpoint baseUrl locator scanId) (ReqBodyJson value) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
+  let url = uploadIPRChunkEndpoint baseUrl locator scanId
+      authenticatedHttpOptions = baseOptions <> header "Content-Type" "application/json" <> auth
+      chunkedJSON = fromMaybe [] (chunkJSON value "Files" (1024 * 1024))
+
+  capabilities <- liftIO getNumCapabilities
+  _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadIPRChunk url authenticatedHttpOptions) chunkedJSON
+  _ <- req PUT (uploadIPRCompleteEndpoint baseUrl locator scanId) (ReqBodyJson $ object []) ignoreResponse authenticatedHttpOptions
+  pure ()
+
+uploadIPRChunk :: (Has (Lift IO) sig m) => Url 'Https -> Option 'Https -> Value -> m ()
+uploadIPRChunk url httpOptions jsonChunk = do
+  _ <- sendIO $ runDiagnostics $ runHTTP $ req POST url (ReqBodyJson jsonChunk) ignoreResponse httpOptions
   pure ()
 
 -- /projects/{projectID}/scans/{scanID}/build-graphs
@@ -107,7 +124,7 @@ uploadBuildGraphChunkEndpoint baseurl projectId scanId buildGraphId = coreProxyP
 uploadBuildGraphCompleteEndpoint :: Url 'Https -> Text -> Text -> Text ->  Url 'Https
 uploadBuildGraphCompleteEndpoint baseurl projectId scanId buildGraphId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "build-graphs" /: buildGraphId /: "rules" /: "complete"
 
--- create the build graph in SY, upload it in chunks and then complete it.
+-- create the build graph in SY, upload it in chunks of ~ 1 MB and then complete it.
 uploadBuildGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ScotlandYardNinjaOpts -> [DepsTarget] -> m ()
 uploadBuildGraph syOpts@ScotlandYardNinjaOpts {..} targets = runHTTP $ do
   let NinjaGraphOpts{..} = syNinjaOpts
@@ -123,7 +140,7 @@ uploadBuildGraph syOpts@ScotlandYardNinjaOpts {..} targets = runHTTP $ do
 
   -- split the build graph data into chunks and upload it
   let chunkUrl = uploadBuildGraphChunkEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)
-      chunkedTargets = chunksOf 10 targets
+      chunkedTargets = chunkedBySize targets (1024 * 1024)
   capabilities <- liftIO getNumCapabilities
   _ <- liftIO $ withLogger SevTrace $ withTaskPool capabilities updateProgress $ traverse_ (forkTask . uploadBuildGraphChunk chunkUrl authenticatedHttpOptions) chunkedTargets
 
@@ -154,3 +171,34 @@ updateProgress Progress{..} =
             <> annotate (color Green) (pretty pCompleted)
             <> " Completed"
             <> " ]" )
+
+chunkJSON :: Value -> Text -> Int -> Maybe [Value]
+chunkJSON (Object obj) key chunkSize = do
+  a <- HM.lookup key obj
+  arr <- case a of
+    Array aa -> Just aa
+    _ -> Nothing
+  let chunker :: [Value] -> Value
+      chunker v = object [key .= v]
+      chunked = chunkedBySize (V.toList arr) chunkSize
+  Just $ map chunker chunked
+
+chunkJSON _ _ _ = Nothing
+
+-- chunk a list of Values by their size, trying to keep each chunk of values
+-- under maxByteSize. This is not guaranteed if one of the elements in the list is
+-- greater than maxByteSize.
+chunkedBySize :: (ToJSON a) => [a] -> Int -> [[a]]
+chunkedBySize d maxByteSize =
+  foldr (addToList maxByteSize) [[]] d
+  where
+    addToList :: (ToJSON a) => Int -> a -> [[a]] -> [[a]]
+    addToList maxLength ele (first:rest) =
+      if (fromIntegral $ currentLength + newLength) > maxLength then
+        [ele]:first:rest
+      else
+        (ele:first):rest
+      where
+        currentLength = sum $ map (BS.length . encode) first
+        newLength = BS.length $ encode ele
+    addToList _ ele [] = [[ele]]

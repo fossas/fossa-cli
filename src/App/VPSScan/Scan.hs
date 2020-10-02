@@ -21,10 +21,9 @@ import App.VPSScan.Scan.Core
 import App.VPSScan.EmbeddedBinary
 import App.Types (BaseDir (..))
 import App.Util (validateDir)
-import Data.Text (unpack)
+import Data.Text (unpack, Text)
 import Control.Effect.Exception (bracket)
 import Path
-import Data.Text (Text)
 import Data.Aeson
 
 data ScanCmdOpts = ScanCmdOpts
@@ -51,7 +50,7 @@ vpsScan ::
   ) => Path Abs Dir -> ScanCmdOpts -> BinaryPaths -> m ()
 vpsScan basedir ScanCmdOpts{..} binaryPaths = do
   let vpsOpts@VPSOpts{..} = scanVpsOpts
-  
+
   -- Build the revision
   projectRevision <- buildRevision userProvidedRevision
 
@@ -67,7 +66,7 @@ vpsScan basedir ScanCmdOpts{..} binaryPaths = do
   _ <- context "creating project in FOSSA" $ createCoreProject projectName projectRevision fossa
 
   -- Create scan in SY
-  trace $ "[All] Creating scan in Scotland Yard"
+  trace "[All] Creating scan in Scotland Yard"
   let syOpts = ScotlandYardOpts locator projectRevision sherlockOrgId vpsOpts
   response <- context "creating scan ID" $ createScotlandYardScan syOpts
   let scanId = responseScanId response
@@ -95,9 +94,9 @@ vpsScan basedir ScanCmdOpts{..} binaryPaths = do
       trace (show $ renderFailureBundle sherlockFailure)
       sendIO exitFailure
 
-  trace $ "[All] Completing scan in FOSSA"
+  trace "[All] Completing scan in FOSSA"
   _ <- context "completing project in FOSSA" $ completeCoreProject (unLocator revisionLocator) fossa
-  trace $ "[All] Project is ready to view in FOSSA (Sherlock forensics may still be pending)"
+  trace "[All] Project is ready to view in FOSSA (Sherlock forensics may still be pending)"
 
 runSherlockScan ::
   ( Has Exec sig m
@@ -123,5 +122,6 @@ runIPRScan basedir scanId binaryPaths syOpts vpsOpts =
     iprResult <- execIPR binaryPaths $ IPROpts basedir vpsOpts
     trace "[IPR] IPR scan completed. Posting results to Scotland Yard"
     context "uploading scan results" $ uploadIPRResults scanId iprResult syOpts
+    trace ""
     trace "[IPR] Post to Scotland Yard complete"
     trace "[IPR] IPR scan complete"
