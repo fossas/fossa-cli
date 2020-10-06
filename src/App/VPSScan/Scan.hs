@@ -49,17 +49,21 @@ vpsScan ::
   , Has (Lift IO) sig m
   ) => Path Abs Dir -> ScanCmdOpts -> BinaryPaths -> m ()
 vpsScan basedir ScanCmdOpts{..} binaryPaths = do
-  let vpsOpts@VPSOpts{..} = scanVpsOpts
-
   -- Build the revision
-  projectRevision <- buildRevision userProvidedRevision
+  projectRevision <- buildRevision (userProvidedRevision scanVpsOpts)
 
   -- Get Sherlock info
   trace "[Sherlock] Retrieving Sherlock information from FOSSA"
-  SherlockInfo{..} <- getSherlockInfo fossa
-  let locator = createLocator projectName sherlockOrgId
-  let revisionLocator = createRevisionLocator projectName sherlockOrgId projectRevision
-  trace $ unpack $ "[All] Creating project with locator '" <> unLocator revisionLocator <> "'"
+  SherlockInfo{..} <- getSherlockInfo (fossa scanVpsOpts)
+
+  -- Build locator info
+  let locator = createLocator (projectName scanVpsOpts) sherlockOrgId
+  let revisionLocator = createRevisionLocator (projectName scanVpsOpts) sherlockOrgId projectRevision
+
+  -- Update vpsOpts with overriding scan filter blob. 
+  -- Previous uses of `vpsOpts` do not deconstruct the object due to this not yet being overridden.
+  (vpsOpts@VPSOpts{..}, areFiltersOverridden) <- overrideScanFilters scanVpsOpts locator
+  trace $ unpack $ "[All] Creating project with locator '" <> unRevisionLocator revisionLocator <> "'"
 
   -- Create scan in Core
   trace "[All] Creating project in FOSSA"
@@ -95,7 +99,8 @@ vpsScan basedir ScanCmdOpts{..} binaryPaths = do
       sendIO exitFailure
 
   trace "[All] Completing scan in FOSSA"
-  _ <- context "completing project in FOSSA" $ completeCoreProject (unLocator revisionLocator) fossa
+  _ <- context "completing project in FOSSA" $ completeCoreProject revisionLocator fossa
+  _ <- context "updating scan file filter" $ updateScanFileFilter areFiltersOverridden locator fileFilter fossa
   trace "[All] Project is ready to view in FOSSA (Sherlock forensics may still be pending)"
 
 runSherlockScan ::
@@ -125,3 +130,9 @@ runIPRScan basedir scanId binaryPaths syOpts vpsOpts =
     trace ""
     trace "[IPR] Post to Scotland Yard complete"
     trace "[IPR] IPR scan complete"
+
+updateScanFileFilter :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Trace sig m) => Bool -> Locator -> FilterExpressions -> FossaOpts -> m ()
+updateScanFileFilter False locator filterBlob fossa = storeUpdatedScanFilters locator filterBlob fossa
+updateScanFileFilter True _ _ _ = do
+  trace "[All] Scan file filter was set by FOSSA server, skipping update"
+  pure ()

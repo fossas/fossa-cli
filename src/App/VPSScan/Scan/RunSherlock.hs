@@ -47,7 +47,7 @@ sherlockCommand BinaryPaths{..} SherlockOpts{..} = do
           "--organization-id", T.pack $ show organizationId,
           "--project-id", unLocator projectId,
           "--revision-id", revisionId,
-          "--filter-expressions", unFilterExpressions filterBlob
+          "--filter-expressions", encodeFilterExpressions fileFilter
         ],
       cmdAllowErr = Never
     }

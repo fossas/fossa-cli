@@ -73,7 +73,7 @@ iprCommand BinaryPaths{..} IPROpts{..} = do
         "-target", ".",
         "-nomossa", T.pack $ fromAbsFile nomosBinaryPath,
         "-pathfinder", T.pack $ fromAbsFile pathfinderBinaryPath,
-        "-filter-expressions", unFilterExpressions filterBlob
+        "-filter-expressions", encodeFilterExpressions fileFilter
       ],
       cmdAllowErr = Never
     }

@@ -10,6 +10,7 @@ module App.VPSScan.Types
 , DepsDependency(..)
 , NinjaGraphOpts(..)
 , runHTTP
+, encodeFilterExpressions
 , HTTP(..)
 , HTTPRequestFailed(..)
 ) where
@@ -22,8 +23,19 @@ import Data.Text (Text)
 import Data.Aeson
 import Network.HTTP.Req
 import Data.Text.Prettyprint.Doc (viaShow)
+import qualified Data.ByteString.Lazy as BSL
+import Data.Text.Encoding (decodeUtf8)
 
-newtype FilterExpressions = FilterExpressions { unFilterExpressions :: Text }
+newtype FilterExpressions = FilterExpressions { unFilterExpressions :: [Text] }
+
+encodeFilterExpressions :: FilterExpressions -> Text
+encodeFilterExpressions filters = decodeUtf8 $ BSL.toStrict $ encode (unFilterExpressions filters)
+
+instance FromJSON FilterExpressions where
+  parseJSON = withObject "CoreFilterExpressions" $ \obj -> FilterExpressions <$> obj .: "filters"
+
+instance ToJSON FilterExpressions where
+  toJSON (FilterExpressions filters) = object ["filters" .= filters]
 
 data FossaOpts = FossaOpts
   { fossaUrl :: URI
@@ -35,7 +47,7 @@ data VPSOpts = VPSOpts
   , projectName :: Text
   , userProvidedRevision :: Maybe Text
   , skipIprScan :: Bool
-  , filterBlob :: FilterExpressions
+  , fileFilter :: FilterExpressions
   }
 
 data DepsTarget = DepsTarget
