@@ -190,15 +190,15 @@ chunkJSON _ _ _ = Nothing
 -- greater than maxByteSize.
 chunkedBySize :: (ToJSON a) => [a] -> Int -> [[a]]
 chunkedBySize d maxByteSize =
-  foldr (addToList maxByteSize) [[]] d
+    chunked
   where
-    addToList :: (ToJSON a) => Int -> a -> [[a]] -> [[a]]
-    addToList maxLength ele (first:rest) =
-      if (fromIntegral $ currentLength + newLength) > maxLength then
-        [ele]:first:rest
+    (_, chunked) = foldr (addToList maxByteSize) (0, [[]]) d
+    addToList :: (ToJSON a) => Int -> a -> (Int, [[a]]) -> (Int, [[a]])
+    addToList maxLength ele (currentLength, (first:rest)) =
+      if (currentLength + newLength) > maxLength then
+        (newLength, [ele]:first:rest)
       else
-        (ele:first):rest
+        (newLength + currentLength, (ele:first):rest)
       where
-        currentLength = sum $ map (BS.length . encode) first
-        newLength = BS.length $ encode ele
-    addToList _ ele [] = [[ele]]
+        newLength = fromIntegral $ BS.length $ encode ele
+    addToList _ ele (n, []) = (n, [[ele]])
