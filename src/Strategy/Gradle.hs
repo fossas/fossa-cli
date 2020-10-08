@@ -122,13 +122,25 @@ parseProjects outBL = if S.null subprojects then S.singleton "" else subprojects
 -- >>> parseSubproject "+--- Project ':foo'"
 -- Just ":foo"
 --
--- >>> parseSubproject "    +--- Project ':bar'"
--- Just ":bar"
+-- >>> parseSubproject "    +--- Project ':foo'"
+-- Just ":foo"
+--
+-- >>> parseSubproject "\\--- Project ':foo'"
+-- Just ":foo"
+--
+-- >>> parseSubproject "|   +--- Project ':foo'"
+-- Just ":foo"
+--
+-- >>> parseSubproject "anyprefix +--- Project ':foo'"
+-- Just ":foo'
 --
 -- >>> parseSubproject "anything else"
 -- Nothing
 parseSubproject :: Text -> Maybe Text
-parseSubproject line = T.takeWhile (/= '\'') <$> T.stripPrefix "+--- Project '" (T.strip line)
+parseSubproject line =
+  case T.breakOnEnd "--- Project '" (T.strip line) of
+    ("", _) -> Nothing -- no match
+    (_, rest) -> Just $ T.takeWhile (/= '\'') rest
 
 mkProject :: GradleProject -> DiscoveredProject
 mkProject project =
