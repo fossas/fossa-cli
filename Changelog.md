@@ -1,3 +1,12 @@
+# v2.3.2
+
+- Adds `fossa list-targets` to list "analysis-targets" (projects and subprojects) available for analysis ([#140](https://github.com/fossas/spectrometer/pull/140))
+- Adds `--filter TARGET` option to `fossa analyze` ([#140](https://github.com/fossas/spectrometer/pull/140))
+- Merges the dependencies of `*req*.txt` and `setup.py` files we find ([#140](https://github.com/fossas/spectrometer/pull/140))
+- Improves maven project discovery ([#140](https://github.com/fossas/spectrometer/pull/140))
+- Fixes gradle wrapper integration ([#140](https://github.com/fossas/spectrometer/pull/140))
+- Adds support for "detached HEAD" state in git and svn ([#141](https://github.com/fossas/spectrometer/pull/141))
+
 # v2.3.1
 
 - RPM: Merge spec file results in the analyzer. ([#138](https://github.com/fossas/spectrometer/pull/138))

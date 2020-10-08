@@ -10,6 +10,7 @@ import Control.Carrier.Finally
 import Control.Carrier.Output.IO
 import Control.Carrier.TaskPool
 import Control.Concurrent
+import qualified Control.Carrier.Diagnostics as Diag
 import Control.Effect.Exception as Exc
 import Control.Effect.Lift (sendIO)
 import Control.Monad (unless)
@@ -17,18 +18,16 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Bool (bool)
 import qualified Data.ByteString.Lazy as BL
-import Data.Foldable (traverse_)
 import Data.Function ((&))
 import Data.Text (Text)
-import qualified Data.Text as T
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
-import Effect.Exec
+import Discovery.Projects (withDiscoveredProjects)
 import Effect.Logger
 import Effect.ReadFS
 import Path
 import qualified Path.IO as PIO
-import qualified Strategy.Maven.Pom as MavenPom
+import qualified Strategy.Maven as Maven
 import qualified Strategy.NuGet.Nuspec as Nuspec
 import System.Exit (die)
 import System.IO (BufferMode (NoBuffering), hSetBuffering, stderr, stdout)
@@ -44,6 +43,14 @@ scanMain basedir debug = do
   scan basedir
     & withLogger (bool SevInfo SevDebug debug)
 
+runLicenseAnalysis ::
+  (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectLicenseScan) sig m) =>
+  DiscoveredProject ->
+  m ()
+runLicenseAnalysis project = do
+  licenseResult <- sendIO . Diag.runDiagnosticsIO $ projectLicenses project
+  Diag.withResult SevWarn licenseResult (output . mkLicenseScan project)
+
 scan ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
@@ -54,24 +61,29 @@ scan basedir = runFinally $ do
   sendIO $ PIO.setCurrentDir basedir
   capabilities <- sendIO getNumCapabilities
 
-  (closures,(_,())) <- runOutput @ProjectClosure . runOutput @ProjectFailure . runExecIO . runReadFSIO $
-    withTaskPool capabilities updateProgress (traverse_ (forkTask . apply basedir) discoverFuncs)
+  (projectResults, ()) <-
+    runOutput @ProjectLicenseScan
+      . runReadFSIO
+      . runFinally
+      . withTaskPool capabilities updateProgress
+      $ withDiscoveredProjects discoverFuncs False basedir runLicenseAnalysis
 
   logSticky "[ Combining Analyses ]"
 
-  let projects = mkLicenseScans closures
-  sendIO (BL.putStr (encode projects))
+  sendIO (BL.putStr (encode projectResults))
 
   logSticky ""
 
-apply :: a -> (a -> b) -> b
-apply x f = f x
 
-discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
-discoverFuncs =
-  [ Nuspec.discover
-  , MavenPom.discover
-  ]
+discoverFuncs ::
+  ( Has (Lift IO) sig m,
+    MonadIO m,
+    Has ReadFS sig m,
+    Has Diag.Diagnostics sig m
+  ) =>
+  -- | Discover functions
+  [Path Abs Dir -> m [DiscoveredProject]]
+discoverFuncs = [Maven.discover, Nuspec.discover]
 
 data ProjectLicenseScan = ProjectLicenseScan
   { licenseStrategyType :: Text
@@ -97,15 +109,13 @@ instance ToJSON CompletedLicenseScan where
       , "licenseResults"  .=  completedLicenses
       ]
 
-mkLicenseScans :: [ProjectClosure] -> [ProjectLicenseScan]
-mkLicenseScans seqScans = toProjectScan <$> seqScans
-  where
-    toProjectScan :: ProjectClosure -> ProjectLicenseScan
-    toProjectScan closure =
-      ProjectLicenseScan { licenseStrategyType = T.pack (show (closureStrategyGroup closure))
-                         , licenseStrategyName = closureStrategyName closure
-                         , discoveredLicenses  = closureLicenses closure
-                         }
+mkLicenseScan :: DiscoveredProject -> [LicenseResult] -> ProjectLicenseScan
+mkLicenseScan project licenses =
+  ProjectLicenseScan
+    { licenseStrategyType = projectType project,
+      licenseStrategyName = projectType project,
+      discoveredLicenses = licenses
+    }
 
 updateProgress :: Has Logger sig m => Progress -> m ()
 updateProgress Progress{..} =

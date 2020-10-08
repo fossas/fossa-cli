@@ -82,6 +82,7 @@ library
     App.Fossa.Analyze.GraphMangler
     App.Fossa.Analyze.Project
     App.Fossa.FossaAPIV1
+    App.Fossa.ListTargets
     App.Fossa.Main
     App.Fossa.ProjectInference
     App.Fossa.Report
@@ -111,9 +112,14 @@ library
     Control.Effect.Output
     Control.Effect.Path
     Control.Effect.TaskPool
+    Control.Exception.Extra
     Data.FileEmbed.Extra
     Data.Text.Extra
     DepTypes
+    Discovery.Archive
+    Discovery.Archive.RPM
+    Discovery.Filters
+    Discovery.Projects
     Discovery.Walk
     Effect.Exec
     Effect.Grapher
@@ -123,16 +129,16 @@ library
     Parse.XML
     Srclib.Converter
     Srclib.Types
-    Strategy.Archive
-    Strategy.Archive.RPM
+    Strategy.Bundler
     Strategy.Cargo
     Strategy.Carthage
-    Strategy.Clojure
+    Strategy.Cocoapods
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer
     Strategy.Erlang.ConfigParser
     Strategy.Erlang.Rebar3Tree
+    Strategy.Glide
     Strategy.Go.GlideLock
     Strategy.Go.GoList
     Strategy.Go.Gomod
@@ -140,10 +146,14 @@ library
     Strategy.Go.GopkgToml
     Strategy.Go.Transitive
     Strategy.Go.Types
+    Strategy.Godep
+    Strategy.Gomodules
     Strategy.Googlesource.RepoManifest
     Strategy.Gradle
     Strategy.Haskell.Cabal
     Strategy.Haskell.Stack
+    Strategy.Leiningen
+    Strategy.Maven
     Strategy.Maven.Plugin
     Strategy.Maven.PluginStrategy
     Strategy.Maven.Pom
@@ -154,21 +164,24 @@ library
     Strategy.Node.NpmLock
     Strategy.Node.PackageJson
     Strategy.Node.YarnLock
+    Strategy.Npm
     Strategy.NuGet.Nuspec
     Strategy.NuGet.PackageReference
     Strategy.NuGet.PackagesConfig
     Strategy.NuGet.Paket
     Strategy.NuGet.ProjectAssetsJson
     Strategy.NuGet.ProjectJson
-    Strategy.Python.PipList
     Strategy.Python.Pipenv
     Strategy.Python.ReqTxt
     Strategy.Python.SetupPy
+    Strategy.Python.Setuptools
     Strategy.Python.Util
     Strategy.RPM
+    Strategy.Rebar3
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Strategy.Scala
+    Strategy.Yarn
     Types
     VCS.Git
 
@@ -213,6 +226,7 @@ test-suite unit-tests
     Cocoapods.PodfileLockSpec
     Cocoapods.PodfileSpec
     Composer.ComposerLockSpec
+    Discovery.FiltersSpec
     Effect.ExecSpec
     Erlang.ConfigParserSpec
     Erlang.Rebar3TreeSpec
@@ -237,7 +251,6 @@ test-suite unit-tests
     NuGet.PaketSpec
     NuGet.ProjectAssetsJsonSpec
     NuGet.ProjectJsonSpec
-    Python.PipListSpec
     Python.PipenvSpec
     Python.ReqTxtSpec
     Python.RequirementsSpec

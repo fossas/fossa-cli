@@ -1,8 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.Cocoapods.Podfile
-  ( discover
-  , analyze
+  ( analyze'
   , buildGraph
   , parsePodfile
 
@@ -12,7 +11,6 @@ module Strategy.Cocoapods.Podfile
   ) where
 
 import Control.Effect.Diagnostics
-import Data.Foldable (find)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
@@ -20,7 +18,6 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
 import DepTypes
-import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
 import qualified Graphing
@@ -28,31 +25,9 @@ import Path
 import Text.Megaparsec hiding (label)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import Types
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "Podfile") files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "cocoapods-podfile" CocoapodsGroup $ analyze file
-
-  pure WalkContinue
-
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsParser parsePodfile file
-
-mkProjectClosure :: Path Abs File -> Podfile -> ProjectClosureBody
-mkProjectClosure file podfile = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph podfile
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = Complete
-    }
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> readContentsParser parsePodfile file
 
 buildGraph :: Podfile -> Graphing Dependency
 buildGraph podfile = Graphing.fromList (map toDependency direct)
@@ -64,7 +39,7 @@ buildGraph podfile = Graphing.fromList (map toDependency direct)
                  , dependencyVersion = case version of
                                             Nothing -> Nothing
                                             Just ver -> Just (CEq ver)
-                 , dependencyLocations = case M.lookup SourceProperty properties of 
+                 , dependencyLocations = case M.lookup SourceProperty properties of
                                             Just repo -> [repo]
                                             _ -> [source podfile]
                  , dependencyEnvironments = []
@@ -116,10 +91,10 @@ podParser = do
   properties <- many property
   _ <- restOfLine
   pure [PodLine $ Pod name version (M.fromList properties)]
-            
+
 comma :: Parser ()
 comma = () <$ symbol ","
-          
+
 property :: Parser (PropertyType, Text)
 property = do
   comma
@@ -132,19 +107,19 @@ property = do
   _ <- symbol "=>"
   value <- stringLiteral
   pure (propertyType, value)
-            
+
 symbol :: Text -> Parser Text
 symbol = lexeme . chunk
-          
+
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
-          
+
 stringLiteral :: Parser Text
 stringLiteral = T.pack <$> go
   where
   go = (char '"'  *> manyTill L.charLiteral (char '"'))
    <|> (char '\'' *> manyTill L.charLiteral (char '\''))
-             
+
 sc :: Parser ()
 sc =  L.space (void $ some (char ' ')) (L.skipLineComment "#") empty
 

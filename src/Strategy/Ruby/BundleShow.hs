@@ -1,8 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.Ruby.BundleShow
-  ( discover
-  , analyze
+  ( analyze'
 
   , BundleShowDep(..)
   , buildGraph
@@ -11,27 +10,16 @@ module Strategy.Ruby.BundleShow
   where
 
 import Control.Effect.Diagnostics
-import Data.Foldable (find)
 import qualified Data.Map.Strict as M
 import Data.Text (Text)
 import Data.Void (Void)
 import DepTypes
-import Discovery.Walk
 import Effect.Exec
 import Graphing (Graphing)
 import qualified Graphing
 import Path
 import Text.Megaparsec
 import Text.Megaparsec.Char
-import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \dir _ files -> do
-  case find (\f -> fileName f `elem` ["Gemfile", "Gemfile.lock"]) files of
-    Nothing -> pure ()
-    Just _  -> runSimpleStrategy "ruby-bundleshow" RubyGroup $ analyze dir
-
-  pure WalkContinue
 
 bundleShowCmd :: Command
 bundleShowCmd = Command
@@ -40,21 +28,8 @@ bundleShowCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ProjectClosureBody
-analyze dir = mkProjectClosure dir <$> execParser bundleShowParser dir bundleShowCmd
-
-mkProjectClosure :: Path Abs Dir -> [BundleShowDep] -> ProjectClosureBody
-mkProjectClosure dir deps = ProjectClosureBody
-  { bodyModuleDir    = dir
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph deps
-    , dependenciesOptimal  = NotOptimal
-    , dependenciesComplete = NotComplete
-    }
+analyze' :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
+analyze' dir = buildGraph <$> execParser bundleShowParser dir bundleShowCmd
 
 buildGraph :: [BundleShowDep] -> Graphing Dependency
 buildGraph = Graphing.fromList . map toDependency

@@ -12,9 +12,8 @@ module Strategy.Scala
 where
 
 import qualified Algebra.Graph.AdjacencyMap as AM
-import Control.Effect.Diagnostics
-import Control.Effect.Output
-import Data.Foldable (find, traverse_)
+import Control.Carrier.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
 import qualified Data.Map.Strict as M
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
@@ -23,25 +22,37 @@ import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Discovery.Walk
 import Effect.Exec
+import Effect.Logger hiding (group)
 import Effect.ReadFS
 import Path
-import Strategy.Maven.Pom (mkProjectClosure)
-import Strategy.Maven.Pom.Closure (buildProjectClosures)
+import Strategy.Maven (mkProject)
+import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures)
 import Strategy.Maven.Pom.PomFile (MavenCoordinate (..), Pom (..))
 import Strategy.Maven.Pom.Resolver (GlobalClosure (..), buildGlobalClosure)
 import Types
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover basedir =
-  walk
-    ( \_ _ files ->
-        case find (\f -> fileName f == "build.sbt") files of
-          Nothing -> pure WalkContinue
-          Just file -> do
-            runStrategy "scala-sbt" ScalaGroup (analyze basedir file)
-            pure WalkSkipAll
-    )
-    basedir
+discover :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, MonadIO m) => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map (mkProject dir) <$> findProjects dir
+
+pathToText :: Path ar fd -> Text
+pathToText = T.pack . toFilePath
+
+findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, MonadIO m) => Path Abs Dir -> m [MavenProjectClosure]
+findProjects = walk' $ \dir _ files -> do
+  case findFileNamed "build.sbt" files of
+    Nothing -> pure ([], WalkContinue)
+    Just _ -> do
+
+      projectsRes <-
+        runDiagnostics
+          . context ("getting sbt projects rooted at " <> pathToText dir)
+          $ genPoms dir
+
+      case projectsRes of
+        Left err -> do
+          logWarn $ renderFailureBundle err
+          pure ([], WalkContinue)
+        Right projects -> pure (resultValue projects, WalkSkipAll)
 
 makePomCmd :: Command
 makePomCmd =
@@ -51,17 +62,9 @@ makePomCmd =
       cmdAllowErr = Never
     }
 
-analyze ::
-  ( Has Exec sig m,
-    Has Diagnostics sig m,
-    Has ReadFS sig m,
-    Has (Output ProjectClosure) sig m
-  ) =>
-  Path Abs Dir ->
-  Path Abs File ->
-  m ()
-analyze basedir file = do
-  stdoutBL <- execThrow (parent file) makePomCmd
+genPoms :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
+genPoms projectDir = do
+  stdoutBL <- execThrow projectDir makePomCmd
 
   -- stdout for "sbt makePom" looks something like:
   --
@@ -108,6 +111,6 @@ analyze basedir file = do
                     deps
               ]
           globalClosure' = globalClosure {globalGraph = AM.overlay pomEdges (globalGraph globalClosure)}
-          projects = buildProjectClosures basedir globalClosure'
+          projects = buildProjectClosures projectDir globalClosure'
 
-      traverse_ (output . mkProjectClosure basedir) projects
+      pure projects

@@ -5,7 +5,7 @@ module Googlesource.RepoManifestSpec
   ( spec
   ) where
 
-import Control.Carrier.Diagnostics
+import Control.Carrier.Diagnostics hiding (withResult)
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO

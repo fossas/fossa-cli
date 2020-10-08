@@ -3,7 +3,6 @@
 
 module Strategy.Python.Pipenv
   ( discover
-  , analyze
 
   , PipenvGraphDep(..)
   , PipfileLock(..)
@@ -15,8 +14,9 @@ module Strategy.Python.Pipenv
   where
 
 import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
-import Data.Foldable (find, for_, traverse_)
+import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
@@ -31,13 +31,40 @@ import Graphing (Graphing)
 import Path
 import Types
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "Pipfile.lock") files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "python-pipenv" PythonGroup $ analyze file
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
-  pure WalkContinue
+findProjects :: MonadIO m => Path Abs Dir -> m [PipenvProject]
+findProjects = walk' $ \_ _ files -> do
+  case findFileNamed "Pipfile.lock" files of
+    Nothing -> pure ([], WalkContinue)
+    Just file -> pure ([PipenvProject file], WalkContinue)
+
+getDeps ::
+  ( Has ReadFS sig m
+  , Has Exec sig m
+  , Has Diagnostics sig m
+  )
+  => PipenvProject -> m (Graphing Dependency)
+getDeps project = do
+  lock <- readContentsJson (pipenvLockfile project)
+  maybeDeps <- recover $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
+
+  pure (buildGraph lock maybeDeps)
+
+mkProject :: PipenvProject -> DiscoveredProject
+mkProject project = DiscoveredProject
+  { projectType = "pipenv"
+  , projectBuildTargets = mempty
+  , projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps project
+  , projectPath = parent $ pipenvLockfile project
+  , projectLicenses = pure []
+  }
+
+data PipenvProject = PipenvProject
+  { pipenvLockfile :: Path Abs File
+  }
+  deriving (Eq, Ord, Show)
 
 pipenvGraphCmd :: Command
 pipenvGraphCmd = Command
@@ -45,31 +72,6 @@ pipenvGraphCmd = Command
   , cmdArgs = ["graph", "--json-tree"]
   , cmdAllowErr = Never
   }
-
-analyze ::
-  ( Has ReadFS sig m
-  , Has Exec sig m
-  , Has Diagnostics sig m
-  )
-  => Path Abs File -> m ProjectClosureBody
-analyze lockfile = do
-  lock <- readContentsJson lockfile
-  maybeDeps <- recover (execJson (parent lockfile) pipenvGraphCmd)
-
-  pure (mkProjectClosure lockfile lock maybeDeps)
-
-mkProjectClosure :: Path Abs File -> PipfileLock -> Maybe [PipenvGraphDep] -> ProjectClosureBody
-mkProjectClosure file lockfile maybeDeps = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph lockfile maybeDeps
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = Complete
-    }
 
 buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> Graphing Dependency
 buildGraph lock maybeDeps = run . withLabeling toDependency $ do

@@ -2,8 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Go.GoList
-  ( discover
-  , analyze
+  ( analyze'
 
   , Require(..)
   )
@@ -11,28 +10,18 @@ module Strategy.Go.GoList
 
 import Control.Effect.Diagnostics
 import qualified Data.ByteString.Lazy as BL
-import Data.Foldable (find, traverse_)
+import Data.Foldable (traverse_)
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
 import DepTypes
-import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Graphing (Graphing)
 import Path
 import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
-import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "go.mod") files of
-    Nothing -> pure ()
-    Just file  -> runSimpleStrategy "golang-golist" GolangGroup $ analyze (parent file)
-
-  pure $ WalkSkipSome ["vendor"]
 
 data Require = Require
   { reqPackage :: Text
@@ -46,12 +35,12 @@ golistCmd = Command
   , cmdAllowErr = Never
   }
 
-analyze ::
+analyze' ::
   ( Has Exec sig m
   , Has Diagnostics sig m
   )
-  => Path Abs Dir -> m ProjectClosureBody
-analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do
+  => Path Abs Dir -> m (Graphing Dependency)
+analyze' dir = graphingGolang $ do
   stdout <- execThrow dir golistCmd
 
   let gomodLines = drop 1 . T.lines . T.filter (/= '\r') . decodeUtf8 . BL.toStrict $ stdout -- the first line is our package
@@ -67,19 +56,6 @@ analyze dir = fmap (mkProjectClosure dir) . graphingGolang $ do
 
   _ <- recover (fillInTransitive dir)
   pure ()
-
-mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody
-mkProjectClosure dir graph = ProjectClosureBody
-  { bodyModuleDir    = dir
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = graph
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = NotComplete
-    }
 
 buildGraph :: Has GolangGrapher sig m => [Require] -> m ()
 buildGraph = traverse_ go

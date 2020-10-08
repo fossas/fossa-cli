@@ -1,55 +1,31 @@
 {-# language TemplateHaskell #-}
 
 module Strategy.Node.YarnLock
-  ( discover
-  , analyze
+  ( analyze'
   ) where
 
 import Control.Effect.Diagnostics
 import Data.Bifunctor (first)
-import Data.Foldable (find, for_)
+import Data.Foldable (for_)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as M
 import qualified Data.MultiKeyedMap as MKM
 import DepTypes
-import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Path
-import Types
 import qualified Yarn.Lock as YL
 import qualified Yarn.Lock.Types as YL
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "yarn.lock") files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "nodejs-yarnlock" NodejsGroup $ analyze file
-
-  pure (WalkSkipSome ["node_modules"])
-
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze lockfile = do
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' lockfile = do
   let path = fromAbsFile lockfile
 
   contents <- readContentsText lockfile
   case YL.parse path contents of
     Left err -> fatal (FileParseError path (YL.prettyLockfileError err))
-    Right a -> pure (mkProjectClosure lockfile a)
-
-mkProjectClosure :: Path Abs File -> YL.Lockfile -> ProjectClosureBody
-mkProjectClosure file lock = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph lock
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = Complete
-    }
+    Right parsed -> pure (buildGraph parsed)
 
 buildGraph :: YL.Lockfile -> Graphing Dependency
 buildGraph lockfile = run . evalGrapher $

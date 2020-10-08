@@ -11,7 +11,7 @@ module Strategy.Maven.Pom.Resolver
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Algebra
 import Control.Carrier.State.Strict
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics hiding (fromMaybe)
 import Control.Monad (unless)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)

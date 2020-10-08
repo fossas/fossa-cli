@@ -1,8 +1,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.Ruby.GemfileLock
-  ( discover
-  , analyze
+  ( analyze'
   , findSections
   , buildGraph
 
@@ -13,9 +12,8 @@ module Strategy.Ruby.GemfileLock
   ) where
 
 import Control.Effect.Diagnostics
-import Control.Monad (when)
 import qualified Data.Char as C
-import Data.Foldable (for_, traverse_)
+import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
@@ -24,7 +22,6 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
 import DepTypes
-import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
@@ -32,15 +29,6 @@ import Path
 import Text.Megaparsec hiding (label)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  for_ files $ \f ->
-    when (fileName f == "Gemfile.lock") $
-      runSimpleStrategy "ruby-gemfilelock" RubyGroup $ analyze f
-
-  pure WalkContinue
 
 type Remote = Text
 type Revision = Text
@@ -68,21 +56,8 @@ newtype DirectDep = DirectDep
       { directName :: Text
       } deriving (Eq, Ord, Show)
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsParser @[Section] findSections file
-
-mkProjectClosure :: Path Abs File -> [Section] -> ProjectClosureBody
-mkProjectClosure file sections = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph sections
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = Complete
-    }
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> readContentsParser @[Section] findSections file
 
 data GemfilePkg = GemfilePkg { pkgName :: Text }
   deriving (Eq, Ord, Show)

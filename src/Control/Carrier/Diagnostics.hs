@@ -1,8 +1,9 @@
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -19,6 +20,10 @@ module Control.Carrier.Diagnostics
     renderSomeDiagnostic,
     ResultBundle (..),
 
+    -- * Helpers
+    runDiagnosticsIO,
+    withResult,
+
     -- * Re-exports
     module X,
   )
@@ -28,12 +33,14 @@ import Control.Carrier.Error.Either
 import Control.Carrier.Reader
 import Control.Carrier.Writer.Church
 import Control.Effect.Diagnostics as X
+import Control.Effect.Lift (Lift)
+import Control.Exception (SomeException)
+import Control.Exception.Extra (safeCatch)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Monoid (Endo (..))
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
-import Prelude
+import Effect.Logger
 
 newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ReaderC [Text] (ErrorC SomeDiagnostic (WriterC (Endo [SomeDiagnostic]) m)) a}
   deriving (Functor, Applicative, Monad, MonadIO)
@@ -95,3 +102,12 @@ instance Algebra sig m => Algebra (Diagnostics :+: sig) (DiagnosticsC m) where
 
 renderSomeDiagnostic :: SomeDiagnostic -> Doc AnsiStyle
 renderSomeDiagnostic (SomeDiagnostic stack cause) = renderDiagnostic cause <> line <> align (indent 2 (vsep (map (pretty . ("when " <>)) stack)))
+
+-- | Run the DiagnosticsC carrier, also catching IO exceptions
+runDiagnosticsIO :: Has (Lift IO) sig m => DiagnosticsC m a -> m (Either FailureBundle (ResultBundle a))
+runDiagnosticsIO act = runDiagnostics $ act `safeCatch` (\(e :: SomeException) -> fatal e)
+
+-- | Use the result of a Diagnostics computation, logging an error on failure
+withResult :: Has Logger sig m => Severity -> Either FailureBundle (ResultBundle a) -> (a -> m ()) -> m ()
+withResult sev (Left e) _ = Effect.Logger.log sev $ renderFailureBundle e
+withResult _ (Right res) f = f $ resultValue res

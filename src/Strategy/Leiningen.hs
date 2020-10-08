@@ -9,7 +9,7 @@
 -- >  [org.clojure/clojure "1.10.0"]
 -- >  {[org.clojure/core.specs.alpha "0.2.44"] nil,
 -- >   [org.clojure/spec.alpha "0.2.176"] nil}}
-module Strategy.Clojure
+module Strategy.Leiningen
   ( discover,
     buildGraph,
     Deps (..),
@@ -19,9 +19,10 @@ where
 
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
 import qualified Data.EDN as EDN
 import Data.EDN.Class.Parser (Parser)
-import Data.Foldable (find, traverse_)
+import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
@@ -45,26 +46,39 @@ leinDepsCmd =
       cmdAllowErr = Never
     }
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \dir _ files -> do
-  case find (\f -> fileName f == "project.clj") files of
-    Nothing -> pure WalkContinue
-    Just file -> do
-      runSimpleStrategy "clojure-lein" ClojureGroup $ mkProjectClosure dir <$> analyze file
-      pure WalkSkipAll
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
-mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody
-mkProjectClosure dir deps =
-  ProjectClosureBody
-    { bodyModuleDir = dir,
-      bodyDependencies =
-        ProjectDependencies
-          { dependenciesGraph = deps,
-            dependenciesComplete = Complete,
-            dependenciesOptimal = Optimal
-          },
-      bodyLicenses = []
+findProjects :: MonadIO m => Path Abs Dir -> m [LeiningenProject]
+findProjects = walk' $ \dir _ files -> do
+  case findFileNamed "project.clj" files of
+    Nothing -> pure ([], WalkContinue)
+    Just projectClj -> do
+      let project =
+            LeiningenProject
+              { leinDir = dir,
+                leinProjectClj = projectClj
+              }
+
+      pure ([project], WalkContinue)
+
+mkProject :: LeiningenProject -> DiscoveredProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "leiningen",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runExecIO $ getDeps project,
+      projectPath = leinDir project,
+      projectLicenses = pure []
     }
+
+getDeps :: (Has Exec sig m, Has Diagnostics sig m) => LeiningenProject -> m (Graphing Dependency)
+getDeps = analyze . leinProjectClj
+
+data LeiningenProject = LeiningenProject
+  { leinDir :: Path Abs Dir
+  , leinProjectClj :: Path Abs File
+  } deriving (Eq, Ord, Show)
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = do

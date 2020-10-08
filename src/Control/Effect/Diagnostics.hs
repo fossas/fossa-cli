@@ -16,8 +16,11 @@ module Control.Effect.Diagnostics
     fatalText,
     fromEither,
     fromEitherShow,
+    fromMaybe,
+    fromMaybeText,
     tagError,
     (<||>),
+    combineSuccessful,
 
     -- * ToDiagnostic typeclass
     ToDiagnostic (..),
@@ -28,8 +31,11 @@ where
 
 import Control.Algebra as X
 import Control.Exception (SomeException (..))
-import qualified Data.Text as T
+import qualified Data.List.NonEmpty as NE
+import Data.Maybe (catMaybes)
+import Data.Semigroup (sconcat)
 import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
 import Prelude
@@ -65,6 +71,14 @@ fromEither = either fatal pure
 fromEitherShow :: (Show err, Has Diagnostics sig m) => Either err a -> m a
 fromEitherShow = either (fatal . T.pack . show) pure
 
+-- | Lift a Maybe result into Diagnostics, with the given diagnostic thrown for @Nothing@
+fromMaybe :: (ToDiagnostic err, Has Diagnostics sig m) => err -> Maybe a -> m a
+fromMaybe msg = maybe (fatal msg) pure
+
+-- | Lift a Maybe result into Diagnostics, with a Text error message for @Nothing@
+fromMaybeText :: Has Diagnostics sig m => Text -> Maybe a -> m a
+fromMaybeText = fromMaybe
+
 -- | Lift an Either result into the Diagnostics effect, given a function from the error type to another type that implements 'ToDiagnostic'
 tagError :: (ToDiagnostic e', Has Diagnostics sig m) => (e -> e') -> Either e a -> m a
 tagError f (Left e) = fatal (f e)
@@ -79,6 +93,15 @@ infixl 3 <||>
   case maybeA of
     Nothing -> mb
     Just a -> pure a
+
+-- | Run a list of actions, combining the successful ones. If all actions fail, 'fatalText' is invoked with the provided @Text@ message.
+combineSuccessful :: (Semigroup a, Has Diagnostics sig m) => Text -> [m a] -> m a
+combineSuccessful msg actions = do
+  results <- traverse recover actions
+  let successful = NE.nonEmpty $ catMaybes results
+  case successful of
+    Nothing -> fatalText msg
+    Just xs -> pure (sconcat xs)
 
 -- | A class of diagnostic types that can be rendered in a user-friendly way
 class ToDiagnostic a where

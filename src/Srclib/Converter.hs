@@ -11,7 +11,6 @@ import Prelude
 import qualified Algebra.Graph.AdjacencyMap as AM
 import App.Fossa.Analyze.Project
 import Control.Applicative ((<|>))
-import qualified Data.List.NonEmpty as NE
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Set as Set
@@ -21,12 +20,12 @@ import qualified Graphing
 import Path (toFilePath)
 import Srclib.Types
 
-toSourceUnit :: Project -> SourceUnit
-toSourceUnit Project {..} =
+toSourceUnit :: ProjectResult -> SourceUnit
+toSourceUnit ProjectResult{..} =
   SourceUnit
     { sourceUnitName = renderedPath,
       sourceUnitType = SourceUnitTypeDummyCLI,
-      sourceUnitManifest = renderedPath,
+      sourceUnitManifest = renderedPath, -- TODO: use a real value here instead of renderedPath?
       sourceUnitBuild =
         SourceUnitBuild
           { buildArtifact = "default",
@@ -36,14 +35,10 @@ toSourceUnit Project {..} =
           }
     }
   where
-    bestStrategy = NE.head projectStrategies
-    renderedPath = Text.pack (toFilePath projectPath) <> "/" <> projStrategyName bestStrategy
-
-    graph :: Graphing Dependency
-    graph = projStrategyGraph bestStrategy
+    renderedPath = Text.pack (toFilePath projectResultPath) <> "||" <> projectResultType
 
     filteredGraph :: Graphing Dependency
-    filteredGraph = Graphing.filter (\d -> shouldPublishDep d && isSupportedType d) graph
+    filteredGraph = Graphing.filter (\d -> shouldPublishDep d && isSupportedType d) projectResultGraph
 
     locatorGraph :: Graphing Locator
     locatorGraph = Graphing.gmap toLocator filteredGraph

@@ -2,8 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Go.GopkgLock
-  ( discover
-  , analyze
+  ( analyze'
 
   , GoLock(..)
   , Project(..)
@@ -14,11 +13,10 @@ module Strategy.Go.GopkgLock
   where
 
 import Control.Effect.Diagnostics
-import Data.Foldable (find, traverse_)
+import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Text (Text)
 import DepTypes
-import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
@@ -28,15 +26,6 @@ import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
 import Toml (TomlCodec, (.=))
 import qualified Toml
-import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "Gopkg.lock") files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "golang-gopkglock" GolangGroup $ analyze file
-
-  pure $ WalkSkipSome ["vendor"]
 
 golockCodec :: TomlCodec GoLock
 golockCodec = GoLock
@@ -58,30 +47,17 @@ data Project = Project
   , projectRevision :: Text
   } deriving (Eq, Ord, Show)
 
-analyze ::
+analyze' ::
   ( Has ReadFS sig m
   , Has Exec sig m
   , Has Diagnostics sig m
   )
-  => Path Abs File -> m ProjectClosureBody
-analyze file = fmap (mkProjectClosure file) . graphingGolang $ do
+  => Path Abs File -> m (Graphing Dependency)
+analyze' file = graphingGolang $ do
   golock <- readContentsToml golockCodec file
   buildGraph (lockProjects golock)
   _ <- recover (fillInTransitive (parent file))
   pure ()
-
-mkProjectClosure :: Path Abs File -> Graphing Dependency -> ProjectClosureBody
-mkProjectClosure file graph = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = graph
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = NotComplete
-    }
 
 buildGraph :: Has GolangGrapher sig m => [Project] -> m ()
 buildGraph = void . traverse_ go

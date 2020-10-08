@@ -1,6 +1,5 @@
 module Strategy.NuGet.Paket
   ( discover
-  , analyze
   , findSections
   , buildGraph
 
@@ -11,8 +10,9 @@ module Strategy.NuGet.Paket
 
 import Control.Effect.Diagnostics
 import Control.Monad (guard)
+import Control.Monad.IO.Class (MonadIO)
 import qualified Data.Char as C
-import Data.Foldable (find, traverse_)
+import Data.Foldable (traverse_)
 import Data.Functor (void)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
@@ -32,29 +32,35 @@ import Types
 
 type Parser = Parsec Void Text
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "paket.lock") files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "paket-paketlock" DotnetGroup $ analyze file
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
-  pure WalkContinue
+findProjects :: MonadIO m => Path Abs Dir -> m [PaketProject]
+findProjects = walk' $ \_ _ files -> do
+  case findFileNamed "paket.lock" files of
+    Nothing -> pure ([], WalkContinue)
+    Just file -> pure ([PaketProject file], WalkContinue)
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsParser findSections file
-
-mkProjectClosure :: Path Abs File -> [Section] -> ProjectClosureBody
-mkProjectClosure file sections = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
+data PaketProject = PaketProject
+  { paketLock :: Path Abs File
   }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph sections
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = Complete
+  deriving (Eq, Ord, Show)
+
+mkProject :: PaketProject -> DiscoveredProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "paket",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectPath = parent $ paketLock project,
+      projectLicenses = pure []
     }
+
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PaketProject -> m (Graphing Dependency)
+getDeps = analyze' . paketLock
+
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> readContentsParser findSections file
 
 newtype PaketPkg = PaketPkg { pkgName :: Text }
   deriving (Eq, Ord, Show)
@@ -87,7 +93,7 @@ toDependency pkg = foldr applyLabel start
   applyLabel (GroupName name) dep = dep { dependencyTags = M.insertWith (++) "group" [name] (dependencyTags dep) }
   applyLabel (DepLocation loc) dep = dep { dependencyTags = M.insertWith (++) "location" [loc] (dependencyTags dep) }
   applyLabel (PaketRemote repo) dep = dep { dependencyLocations = repo : dependencyLocations dep }
-  
+
 buildGraph :: [Section] -> Graphing Dependency
 buildGraph sections = run . withLabeling toDependency $
       traverse_ (addSection "MAIN") sections
@@ -148,7 +154,7 @@ groupSection = do
           pure $ GroupSection name sections
 
 unknownSection :: Parser Section
-unknownSection = do 
+unknownSection = do
       emptyLine <- restOfLine
       guard $ not $ "GROUP" `T.isPrefixOf` emptyLine
       _ <- eol
@@ -171,7 +177,7 @@ specParser = L.indentBlock scn $ do
         version <- findVersion
         _ <- restOfLine
         pure $ L.IndentMany Nothing (\a -> pure $ PaketDep name version a) specsParser
-      
+
 specsParser :: Parser Text
 specsParser = findDep <* restOfLine
 

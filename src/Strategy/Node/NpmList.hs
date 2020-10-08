@@ -2,30 +2,18 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Strategy.Node.NpmList
-  ( discover
-  , analyze
+  ( analyze'
   ) where
 
 import Control.Effect.Diagnostics
 import Data.Aeson
-import Data.Foldable (find)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Text (Text)
 import DepTypes
-import Discovery.Walk
 import Effect.Exec
 import Graphing (Graphing, unfold)
 import Path
-import Types
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \dir _ files -> do
-  case find (\f -> fileName f == "package.json") files of
-    Nothing -> pure ()
-    Just _ -> runSimpleStrategy "nodejs-npmlist" NodejsGroup $ analyze dir
-
-  pure $ WalkSkipSome ["node_modules"]
 
 npmListCmd :: Command
 npmListCmd = Command
@@ -34,21 +22,8 @@ npmListCmd = Command
   , cmdAllowErr = NonEmptyStdout
   }
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ProjectClosureBody
-analyze dir = mkProjectClosure dir <$> execJson @NpmOutput dir npmListCmd
-
-mkProjectClosure :: Path Abs Dir -> NpmOutput -> ProjectClosureBody
-mkProjectClosure dir npmOutput = ProjectClosureBody
-  { bodyModuleDir     = dir
-  , bodyDependencies  = dependencies
-  , bodyLicenses      = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph npmOutput
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = Complete
-    }
+analyze' :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
+analyze' dir = buildGraph <$> execJson @NpmOutput dir npmListCmd
 
 buildGraph :: NpmOutput -> Graphing Dependency
 buildGraph top = unfold direct getDeps toDependency

@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Strategy.Archive
+module Discovery.Archive
   ( discover,
   )
 where
@@ -8,50 +8,38 @@ where
 import qualified Codec.Archive.Tar as Tar
 import qualified Codec.Archive.Zip as Zip
 import qualified Codec.Compression.GZip as GZip
-import Control.Carrier.Diagnostics (FailureBundle (..), SomeDiagnostic (..))
-import Control.Effect.Exception (SomeException, mask, try)
 import Control.Effect.Finally
 import Control.Effect.Lift
-import Control.Effect.Output (output)
-import Control.Effect.TaskPool (forkTask)
+import Control.Effect.TaskPool (TaskPool, forkTask)
+import Control.Monad.IO.Class (MonadIO)
 import qualified Data.ByteString.Lazy as BL
 import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
+import Discovery.Archive.RPM (extractRpm)
 import Discovery.Walk
 import Path
 import qualified Path.IO as PIO
-import Strategy.Archive.RPM (extractRpm)
-import Types
 import Prelude hiding (zip)
 
--- Given a discover function to run over unarchived contents, discover projects
-discover :: HasDiscover sig m => (Path Abs Dir -> m ()) -> Path Abs Dir -> m ()
+-- Given a function to run over unarchived contents, unpack archives
+discover :: (Has (Lift IO) sig m, MonadIO m, Has Finally sig m, Has TaskPool sig m) => (Path Abs Dir -> m ()) -> Path Abs Dir -> m ()
 discover go = walk $ \_ _ files -> do
   let tars = filter (\file -> ".tar" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkArchiveDiscover $ withArchive tar file go) tars
+  traverse_ (\file -> forkTask $ withArchive tar file go) tars
 
   let tarGzs = filter (\file -> ".tar.gz" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkArchiveDiscover $ withArchive tarGz file go) tarGzs
+  traverse_ (\file -> forkTask $ withArchive tarGz file go) tarGzs
 
   let zips = filter (\file -> ".zip" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkArchiveDiscover $ withArchive zip file go) zips
+  traverse_ (\file -> forkTask $ withArchive zip file go) zips
 
   let jars = filter (\file -> ".jar" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkArchiveDiscover $ withArchive zip file go) jars
+  traverse_ (\file -> forkTask $ withArchive zip file go) jars
 
   let rpms = filter (\file -> ".rpm" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkArchiveDiscover $ withArchive extractRpm file go) rpms
+  traverse_ (\file -> forkTask $ withArchive extractRpm file go) rpms
 
   pure WalkContinue
-
--- | Fork discovery of archive contents as a new task, catching exceptions
-forkArchiveDiscover :: HasDiscover sig m => m () -> m ()
-forkArchiveDiscover go = forkTask $ do
-  mask $ \restore -> do
-    (res :: Either SomeException a) <- try (restore go)
-    case res of
-      Left exc -> output (ProjectFailure ArchiveGroup "archive" (FailureBundle [] (SomeDiagnostic [] exc)))
-      Right () -> pure ()
 
 -- | Extract an archive to a temporary directory, and run the provided callback
 -- on the temporary directory. Archive contents are removed when the callback
@@ -77,7 +65,6 @@ mkTempDir name = do
   dir <- sendIO $ PIO.createTempDir systemTmpDir name
   onExit . sendIO . PIO.removeDirRecur $ dir
   pure dir
-
 
 ---------- Tar files
 

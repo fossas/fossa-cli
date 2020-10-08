@@ -2,7 +2,6 @@
 
 module Strategy.Composer
   ( discover,
-    analyze,
     buildGraph,
     ComposerLock (..),
     CompDep (..),
@@ -10,12 +9,13 @@ module Strategy.Composer
   )
 where
 
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics hiding (fromMaybe)
+import Control.Monad.IO.Class (MonadIO)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
 import Data.Aeson.Types
-import Data.Foldable (find, traverse_)
+import Data.Foldable (traverse_)
 import Data.Text (Text)
 import Data.Maybe (fromMaybe)
 import DepTypes
@@ -26,13 +26,39 @@ import Graphing (Graphing)
 import Path
 import Types
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "composer.lock") files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "php-composerlock" PHPGroup $ analyze file
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
-  pure WalkContinue
+findProjects :: MonadIO m => Path Abs Dir -> m [ComposerProject]
+findProjects = walk' $ \dir _ files -> do
+  case findFileNamed "composer.lock" files of
+    Nothing -> pure ([], WalkContinue)
+    Just lock -> do
+      let project =
+            ComposerProject
+              { composerDir = dir,
+                composerLock = lock
+              }
+
+      pure ([project], WalkContinue)
+
+mkProject :: ComposerProject -> DiscoveredProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "composer",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectPath = composerDir project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ComposerProject -> m (Graphing Dependency)
+getDeps project = buildGraph <$> readContentsJson @ComposerLock (composerLock project)
+
+data ComposerProject = ComposerProject
+  { composerDir :: Path Abs Dir
+  , composerLock :: Path Abs File
+  } deriving (Eq, Ord, Show)
 
 data ComposerLock = ComposerLock
   { lockPackages :: [CompDep],
@@ -76,24 +102,6 @@ instance FromJSON Source where
       <*> obj .: "url"
       <*> obj .: "reference"
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsJson @ComposerLock file
-
-mkProjectClosure :: Path Abs File -> ComposerLock -> ProjectClosureBody
-mkProjectClosure file lock =
-  ProjectClosureBody
-    { bodyModuleDir = parent file,
-      bodyDependencies = dependencies,
-      bodyLicenses = []
-    }
-  where
-    dependencies =
-      ProjectDependencies
-        { dependenciesGraph = buildGraph lock,
-          dependenciesOptimal = Optimal,
-          dependenciesComplete = Complete
-        }
-
 newtype CompPkg = CompPkg {pkgName :: Text}
   deriving (Eq, Ord, Show)
 
@@ -105,9 +113,9 @@ data CompLabel
   deriving (Eq, Ord, Show)
 
 buildGraph :: ComposerLock -> Graphing Dependency
-buildGraph composerLock = run . withLabeling toDependency $ do
-  traverse_ (addDeps EnvProduction) $ lockPackages composerLock
-  traverse_ (addDeps EnvDevelopment) $ lockPackagesDev composerLock
+buildGraph lock = run . withLabeling toDependency $ do
+  traverse_ (addDeps EnvProduction) $ lockPackages lock
+  traverse_ (addDeps EnvDevelopment) $ lockPackagesDev lock
   where
     addDeps :: Has CompGrapher sig m => DepEnvironment -> CompDep -> m ()
     addDeps env dep = do
@@ -121,7 +129,7 @@ buildGraph composerLock = run . withLabeling toDependency $ do
     addEdge pkg name _ = edge pkg (CompPkg name)
 
     toDependency :: CompPkg -> Set CompLabel -> Dependency
-    toDependency pkg = foldr addLabel $ 
+    toDependency pkg = foldr addLabel $
       Dependency
         { dependencyType = ComposerType,
           dependencyName = pkgName pkg,

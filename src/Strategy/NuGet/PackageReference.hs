@@ -4,7 +4,6 @@
 module Strategy.NuGet.PackageReference
   ( discover
   , buildGraph
-  , analyze
 
   , PackageReference(..)
   , ItemGroup(..)
@@ -13,6 +12,7 @@ module Strategy.NuGet.PackageReference
 
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (find)
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
@@ -26,33 +26,38 @@ import Parse.XML
 import Path
 import Types
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
+isPackageRefFile :: Path b File -> Bool
+isPackageRefFile file = any (\x -> L.isSuffixOf x (fileName file)) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
+
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [PackageReferenceProject]
+findProjects = walk' $ \_ _ files -> do
   case find isPackageRefFile files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "nuget-packagereference" DotnetGroup $ analyze file
+    Nothing -> pure ([], WalkContinue)
+    Just file -> pure ([PackageReferenceProject file], WalkContinue)
 
-  pure WalkContinue
- 
-  where 
-      isPackageRefFile :: Path b File -> Bool
-      isPackageRefFile file = any (\x -> L.isSuffixOf x (fileName file)) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
-
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsXML @PackageReference file
-
-mkProjectClosure :: Path Abs File -> PackageReference -> ProjectClosureBody
-mkProjectClosure file package = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
+data PackageReferenceProject = PackageReferenceProject
+  { packageReferenceFile :: Path Abs File
   }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph package
-    , dependenciesOptimal  = NotOptimal
-    , dependenciesComplete = NotComplete
+  deriving (Eq, Ord, Show)
+
+mkProject :: PackageReferenceProject -> DiscoveredProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "packagereference",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectPath = parent $ packageReferenceFile project,
+      projectLicenses = pure []
     }
+
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PackageReferenceProject -> m (Graphing Dependency)
+getDeps = analyze' . packageReferenceFile
+
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> readContentsXML @PackageReference file
 
 newtype PackageReference = PackageReference
   { groups :: [ItemGroup]

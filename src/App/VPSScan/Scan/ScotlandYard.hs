@@ -12,7 +12,7 @@ module App.VPSScan.Scan.ScotlandYard
 where
 
 import Control.Carrier.TaskPool
-import Control.Carrier.Diagnostics
+import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Monad.IO.Class
 import Control.Effect.Lift
 import App.VPSScan.Types

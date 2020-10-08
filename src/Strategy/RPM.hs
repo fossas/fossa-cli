@@ -14,7 +14,8 @@ module Strategy.RPM
 where
 
 import Control.Effect.Diagnostics
-import Control.Monad (unless, when)
+import Control.Monad (when)
+import Control.Monad.IO.Class (MonadIO)
 import Data.List (isSuffixOf)
 import qualified Data.Map.Strict as M
 import Data.Maybe (mapMaybe, catMaybes)
@@ -52,12 +53,35 @@ data Dependencies
       }
   deriving (Eq, Ord, Show)
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \dir _ files -> do
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [RpmProject]
+findProjects = walk' $ \dir _ files -> do
   let specs = filter (\f -> ".spec" `isSuffixOf` fileName f) files
-  
-  unless (null specs) $ runSimpleStrategy "rpm-spec" RPMGroup $ fmap (mkProjectClosure dir) (analyze specs)
-  pure WalkContinue
+
+  case specs of
+    [] -> pure ([], WalkContinue)
+    _ -> pure ([RpmProject dir specs], WalkContinue)
+
+data RpmProject = RpmProject
+  { rpmDir :: Path Abs Dir
+  , rpmFiles :: [Path Abs File]
+  }
+  deriving (Eq, Ord, Show)
+
+mkProject :: RpmProject -> DiscoveredProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "rpm",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectPath = rpmDir project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RpmProject -> m (Graphing Dependency)
+getDeps = analyze . rpmFiles
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m (Graphing Dependency)
 analyze specFiles = do
@@ -75,21 +99,6 @@ analyzeSingle :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m
 analyzeSingle file = do 
   specFileText <- readContentsText file
   pure . buildGraph $ getSpecDeps specFileText
-
-mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody
-mkProjectClosure dir graph =
-  ProjectClosureBody
-    { bodyModuleDir = dir,
-      bodyDependencies = dependencies,
-      bodyLicenses = []
-    }
-  where
-    dependencies =
-      ProjectDependencies
-        { dependenciesGraph = graph,
-          dependenciesOptimal = Optimal,
-          dependenciesComplete = NotComplete
-        }
 
 toDependency :: RPMDependency -> Dependency
 toDependency pkg =

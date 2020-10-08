@@ -18,6 +18,7 @@ where
 
 import Control.Effect.Diagnostics
 import Control.Monad (when)
+import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson.Types
 import Data.Foldable (for_)
 import Data.List (isSuffixOf)
@@ -119,28 +120,36 @@ isCabalFile file = isDotCabal || isCabalDotProject
     isDotCabal = ".cabal" `isSuffixOf` name
     isCabalDotProject = "cabal.project" == name
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \dir _ files ->
-  if any isCabalFile files
-    then do
-      runSimpleStrategy "haskell-cabal" HaskellGroup $ fmap (mkProjectClosure dir) (analyze dir)
-      pure WalkSkipAll
-    else pure WalkContinue
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
-mkProjectClosure :: Path Abs Dir -> Graphing Dependency -> ProjectClosureBody
-mkProjectClosure dir graph =
-  ProjectClosureBody
-    { bodyModuleDir = dir,
-      bodyDependencies = dependencies,
-      bodyLicenses = []
+findProjects :: MonadIO m => Path Abs Dir -> m [CabalProject]
+findProjects = walk' $ \dir _ files -> do
+  let project =
+        CabalProject
+          { cabalDir = dir
+          }
+
+  if any isCabalFile files
+    then pure ([project], WalkSkipAll)
+    else pure ([], WalkContinue)
+
+mkProject :: CabalProject -> DiscoveredProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "cabal",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps project,
+      projectPath = cabalDir project,
+      projectLicenses = pure []
     }
-  where
-    dependencies =
-      ProjectDependencies
-        { dependenciesGraph = graph,
-          dependenciesOptimal = Optimal,
-          dependenciesComplete = Complete
-        }
+
+getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CabalProject -> m (Graphing Dependency)
+getDeps = analyze . cabalDir
+
+data CabalProject = CabalProject
+  { cabalDir :: Path Abs Dir
+  } deriving (Eq, Ord, Show)
 
 doGraph :: Has (MappedGrapher PlanId InstallPlan) sig m => InstallPlan -> m ()
 doGraph plan = do

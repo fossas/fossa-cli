@@ -36,7 +36,7 @@ module Effect.Grapher
 where
 
 import Control.Algebra as X
-import Control.Carrier.Diagnostics
+import Control.Carrier.Diagnostics (ToDiagnostic(..))
 import Control.Carrier.State.Strict
 import Control.Monad.IO.Class (MonadIO)
 import Data.Kind (Type)

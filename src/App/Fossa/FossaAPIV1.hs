@@ -32,7 +32,7 @@ import App.Fossa.Analyze.Project
 import qualified App.Fossa.Report.Attribution as Attr
 import App.Types
 import App.Util (parseUri)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson
@@ -136,7 +136,7 @@ uploadAnalysis
   -> ApiKey -- ^ api key
   -> ProjectRevision
   -> ProjectMetadata
-  -> [Project]
+  -> [ProjectResult]
   -> m UploadResponse
 uploadAnalysis rootDir baseUri key ProjectRevision{..} metadata projects = fossaReq $ do
   (baseUrl, baseOptions) <- parseUri baseUri
@@ -147,8 +147,8 @@ uploadAnalysis rootDir baseUri key ProjectRevision{..} metadata projects = fossa
   let rootPath = fromAbsDir $ unBaseDir rootDir
       dropPrefix :: String -> String -> String
       dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
-      filteredProjects = filter (isProductionPath . dropPrefix rootPath . fromAbsDir . projectPath) projects
-     
+      filteredProjects = filter (isProductionPath . dropPrefix rootPath . fromAbsDir . projectResultPath) projects
+
       sourceUnits = map toSourceUnit filteredProjects
       opts = "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "v" =: cliVersion

@@ -13,8 +13,9 @@ module Strategy.Cargo
   where
 
 import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson.Types
-import Data.Foldable (find, for_, traverse_)
+import Data.Foldable (for_, traverse_)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
 import qualified Data.Text as T
@@ -25,7 +26,7 @@ import Graphing (Graphing, stripRoot)
 import Path
 import Types
 
-newtype CargoLabel = 
+newtype CargoLabel =
   CargoDepKind DepEnvironment
   deriving (Eq, Ord, Show)
 
@@ -67,7 +68,7 @@ data ResolveNode = ResolveNode
   } deriving (Eq, Ord, Show)
 
 newtype Resolve = Resolve
-  { resolvedNodes :: [ResolveNode] 
+  { resolvedNodes :: [ResolveNode]
   } deriving (Eq, Ord, Show)
 
 data CargoMetadata = CargoMetadata
@@ -103,7 +104,7 @@ instance FromJSON NodeDependency where
                    <*> obj .: "dep_kinds"
 
 instance FromJSON ResolveNode where
-  parseJSON = withObject "ResolveNode" $ \obj -> 
+  parseJSON = withObject "ResolveNode" $ \obj ->
     ResolveNode <$> (obj .: "id" >>= parsePkgId)
                 <*> obj .: "deps"
 
@@ -117,13 +118,39 @@ instance FromJSON CargoMetadata where
                   <*> (obj .: "workspace_members" >>= traverse parsePkgId)
                   <*> obj .: "resolve"
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \dir _ files ->
-  case find (\f -> fileName f == "Cargo.toml") files of
-    Nothing -> pure WalkContinue
-    Just _ -> do
-      runSimpleStrategy "rust-cargo" RustGroup $ fmap (mkProjectClosure dir) (analyze dir)
-      pure WalkSkipAll
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [CargoProject]
+findProjects = walk' $ \dir _ files -> do
+  case findFileNamed "Cargo.toml" files of
+    Nothing -> pure ([], WalkContinue)
+    Just toml -> do
+      let project =
+            CargoProject
+              { cargoToml = toml,
+                cargoDir = dir
+              }
+
+      pure ([project], WalkSkipAll)
+
+data CargoProject = CargoProject
+  { cargoDir :: Path Abs Dir,
+    cargoToml :: Path Abs File
+  } deriving (Eq, Ord, Show)
+
+mkProject :: CargoProject -> DiscoveredProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "cargo",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runExecIO $ getDeps project,
+      projectPath = cargoDir project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has Exec sig m, Has Diagnostics sig m) => CargoProject -> m (Graphing Dependency)
+getDeps = analyze . cargoDir
 
 cargoGenLockfileCmd :: Command
 cargoGenLockfileCmd = Command
@@ -139,19 +166,6 @@ cargoMetadataCmd = Command
   , cmdAllowErr = Never
   }
 
-mkProjectClosure :: Path Abs Dir ->  Graphing Dependency -> ProjectClosureBody
-mkProjectClosure dir graph = ProjectClosureBody
-  { bodyModuleDir    = dir
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = graph
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = Complete
-    }
-
 analyze :: (Has Exec sig m, Has Diagnostics sig m)
   => Path Abs Dir -> m (Graphing Dependency)
 analyze manifestDir = do
@@ -161,8 +175,8 @@ analyze manifestDir = do
   pure $ buildGraph meta
 
 toDependency :: PackageId -> Set CargoLabel -> Dependency
-toDependency pkg = foldr applyLabel Dependency 
-  { dependencyType = CargoType 
+toDependency pkg = foldr applyLabel Dependency
+  { dependencyType = CargoType
   , dependencyName = pkgIdName pkg
   , dependencyVersion = Just $ CEq $ pkgIdVersion pkg
   , dependencyLocations = []
@@ -199,7 +213,7 @@ buildGraph meta = stripRoot $ run . withLabeling toDependency $ do
   traverse_ addEdge $ resolvedNodes $ metadataResolve meta
 
 parsePkgId :: T.Text -> Parser PackageId
-parsePkgId t = 
+parsePkgId t =
   case T.splitOn " " t of
     [a,b,c] -> pure $ PackageId a b c
     _ -> fail "malformed Package ID"

@@ -9,7 +9,7 @@ import App.Fossa.API.BuildWait
 import qualified App.Fossa.FossaAPIV1 as Fossa
 import App.Fossa.ProjectInference
 import App.Types
-import Control.Carrier.Diagnostics
+import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Async as Async
 import Control.Effect.Lift (sendIO)

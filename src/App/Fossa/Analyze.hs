@@ -1,64 +1,63 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
 module App.Fossa.Analyze
   ( analyzeMain
   , ScanDestination(..)
+  , discoverFuncs
   ) where
 
-import App.Fossa.Analyze.Project (BestStrategy(..), Project(..), mkProjects)
+import App.Fossa.Analyze.GraphMangler (graphingToGraph)
+import App.Fossa.Analyze.Project (ProjectResult(..), mkResult)
 import App.Fossa.FossaAPIV1 (ProjectMetadata, UploadResponse (..), uploadAnalysis, uploadContributors)
 import App.Fossa.ProjectInference (inferProject, mergeOverride)
 import App.Types
 import qualified Control.Carrier.Diagnostics as Diag
-import Control.Carrier.Error.Either
-import Control.Carrier.Finally
 import Control.Carrier.Output.IO
+import Control.Carrier.Finally
 import Control.Carrier.TaskPool
 import Control.Concurrent
-import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Exception
+import Control.Effect.Lift (sendIO)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
+import Data.Set (Set)
 import Data.Text (Text)
 import qualified Data.Text.Encoding as TE
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
+import Discovery.Filters
+import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
 import Network.HTTP.Types (urlEncode)
 import Path
+import Path.IO (makeRelative)
 import qualified Srclib.Converter as Srclib
 import Srclib.Types (Locator (..), parseLocator)
-import qualified Strategy.Archive as Archive
+import qualified Strategy.Bundler as Bundler
 import qualified Strategy.Cargo as Cargo
 import qualified Strategy.Carthage as Carthage
-import qualified Strategy.Clojure as Clojure
-import qualified Strategy.Cocoapods.Podfile as Podfile
-import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
+import qualified Strategy.Cocoapods as Cocoapods
 import qualified Strategy.Composer as Composer
-import qualified Strategy.Erlang.Rebar3Tree as Rebar3Tree
-import qualified Strategy.Go.GlideLock as GlideLock
-import qualified Strategy.Go.GoList as GoList
-import qualified Strategy.Go.Gomod as Gomod
-import qualified Strategy.Go.GopkgLock as GopkgLock
-import qualified Strategy.Go.GopkgToml as GopkgToml
+import qualified Strategy.Glide as Glide
+import qualified Strategy.Gomodules as Gomodules
+import qualified Strategy.Godep as Godep
 import qualified Strategy.Googlesource.RepoManifest as RepoManifest
 import qualified Strategy.Gradle as Gradle
 import qualified Strategy.Haskell.Cabal as Cabal
 import qualified Strategy.Haskell.Stack as Stack
-import qualified Strategy.Maven.PluginStrategy as MavenPlugin
-import qualified Strategy.Maven.Pom as MavenPom
-import qualified Strategy.Node.NpmList as NpmList
-import qualified Strategy.Node.NpmLock as NpmLock
-import qualified Strategy.Node.PackageJson as PackageJson
-import qualified Strategy.Node.YarnLock as YarnLock
+import qualified Strategy.Leiningen as Leiningen
+import qualified Strategy.Maven as Maven
+import qualified Strategy.Npm as Npm
 import qualified Strategy.NuGet.Nuspec as Nuspec
 import qualified Strategy.NuGet.PackageReference as PackageReference
 import qualified Strategy.NuGet.PackagesConfig as PackagesConfig
@@ -66,12 +65,11 @@ import qualified Strategy.NuGet.Paket as Paket
 import qualified Strategy.NuGet.ProjectAssetsJson as ProjectAssetsJson
 import qualified Strategy.NuGet.ProjectJson as ProjectJson
 import qualified Strategy.Python.Pipenv as Pipenv
-import qualified Strategy.Python.ReqTxt as ReqTxt
-import qualified Strategy.Python.SetupPy as SetupPy
+import qualified Strategy.Python.Setuptools as Setuptools
+import qualified Strategy.Rebar3 as Rebar3
 import qualified Strategy.RPM as RPM
-import qualified Strategy.Ruby.BundleShow as BundleShow
-import qualified Strategy.Ruby.GemfileLock as GemfileLock
 import qualified Strategy.Scala as Scala
+import qualified Strategy.Yarn as Yarn
 import Text.URI (URI)
 import qualified Text.URI as URI
 import Types
@@ -81,9 +79,73 @@ data ScanDestination
   = UploadScan URI ApiKey ProjectMetadata -- ^ upload to fossa with provided api key and base url
   | OutputStdout
 
-analyzeMain :: BaseDir -> Severity -> ScanDestination -> OverrideProject -> Bool -> IO ()
-analyzeMain basedir logSeverity destination project unpackArchives = withLogger logSeverity $
-  analyze basedir destination project unpackArchives
+analyzeMain :: BaseDir -> Severity -> ScanDestination -> OverrideProject -> Bool -> [BuildTargetFilter] -> IO ()
+analyzeMain basedir logSeverity destination project unpackArchives filters = withLogger logSeverity $
+  analyze basedir destination project unpackArchives filters
+
+discoverFuncs ::
+  ( Has (Lift IO) sig m,
+    MonadIO m,
+    Has ReadFS sig m,
+    Has Exec sig m,
+    Has Logger sig m,
+    Has Diag.Diagnostics sig m
+  ) =>
+  -- | Discover functions
+  [Path Abs Dir -> m [DiscoveredProject]]
+discoverFuncs =
+  [ Bundler.discover,
+    Cargo.discover,
+    Carthage.discover,
+    Cocoapods.discover,
+    Gradle.discover,
+    Rebar3.discover,
+    Gomodules.discover,
+    Godep.discover,
+    Setuptools.discover,
+    Maven.discover,
+    Leiningen.discover,
+    Composer.discover,
+    Cabal.discover,
+    Stack.discover,
+    Yarn.discover,
+    Npm.discover,
+    Scala.discover,
+    RPM.discover,
+    RepoManifest.discover,
+    Nuspec.discover,
+    PackageReference.discover,
+    PackagesConfig.discover,
+    Paket.discover,
+    ProjectAssetsJson.discover,
+    ProjectJson.discover,
+    Glide.discover,
+    Pipenv.discover
+  ]
+
+runDependencyAnalysis ::
+  (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>
+  -- | Analysis base directory
+  BaseDir ->
+  [BuildTargetFilter] ->
+  DiscoveredProject ->
+  m ()
+runDependencyAnalysis (BaseDir basedir) filters project = do
+  case applyFiltersToProject basedir filters project of
+    Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
+    Just targets -> do
+      logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
+      graphResult <- sendIO . Diag.runDiagnosticsIO $ projectDependencyGraph project targets
+      Diag.withResult SevWarn graphResult (output . mkResult project)
+
+applyFiltersToProject :: Path Abs Dir -> [BuildTargetFilter] -> DiscoveredProject -> Maybe (Set BuildTarget)
+applyFiltersToProject basedir filters DiscoveredProject{..} =
+  case makeRelative basedir projectPath of
+    -- FIXME: this is required for --unpack-archives to continue to work.
+    -- archives are not unpacked relative to the scan basedir, so "makeRelative"
+    -- will always fail
+    Nothing -> Just projectBuildTargets
+    Just rel -> applyFilters filters projectType rel projectBuildTargets
 
 analyze ::
   ( Has (Lift IO) sig m
@@ -94,27 +156,23 @@ analyze ::
   -> ScanDestination
   -> OverrideProject
   -> Bool -- ^ whether to unpack archives
+  -> [BuildTargetFilter]
   -> m ()
-analyze basedir destination override unpackArchives = runFinally $ do
+analyze basedir destination override unpackArchives filters = do
   capabilities <- sendIO getNumCapabilities
 
-  (closures,(failures,())) <- runOutput @ProjectClosure . runOutput @ProjectFailure . runExecIO . runReadFSIO $
-    withTaskPool capabilities updateProgress $
-      if unpackArchives
-        then discoverWithArchives $ unBaseDir basedir
-        else discover $ unBaseDir basedir
-
-  traverse_ (logDebug . Diag.renderFailureBundle . projectFailureCause) failures
+  (projectResults, ()) <-
+    runOutput @ProjectResult
+      . runExecIO
+      . runReadFSIO
+      . runFinally
+      . withTaskPool capabilities updateProgress
+      $ withDiscoveredProjects discoverFuncs unpackArchives (unBaseDir basedir) (runDependencyAnalysis basedir filters)
 
   logSticky ""
 
-  let projects = mkProjects closures
-      result = buildResult projects failures
-
-  traverse_ (logInfo . ("Found " <>) . pretty . BestStrategy) projects
-
   case destination of
-    OutputStdout -> logStdout $ pretty (decodeUtf8 (Aeson.encode result))
+    OutputStdout -> logStdout $ pretty (decodeUtf8 (Aeson.encode (buildResult projectResults)))
     UploadScan baseurl apiKey metadata -> do
       revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
 
@@ -124,7 +182,7 @@ analyze basedir destination override unpackArchives = runFinally $ do
       let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
       logInfo ("Using branch: `" <> pretty branchText <> "`")
 
-      uploadResult <- Diag.runDiagnostics $ uploadAnalysis basedir baseurl apiKey revision metadata projects
+      uploadResult <- Diag.runDiagnostics $ uploadAnalysis basedir baseurl apiKey revision metadata projectResults
       case uploadResult of
         Left failure -> logError (Diag.renderFailureBundle failure)
         Right success -> do
@@ -178,82 +236,17 @@ fossaProjectUrl baseUrl rawLocator revision = URI.render baseUrl <> "projects/" 
       branch <- projectBranch revision
       Just $ "/refs/branch/" <> urlEncode' branch <> "/" <> encodedRevision
 
-buildResult :: [Project] -> [ProjectFailure] -> Aeson.Value
-buildResult projects failures = Aeson.object
-  [ "projects" .= projects
-  , "failures" .= map renderFailure failures
+buildResult :: [ProjectResult] -> Aeson.Value
+buildResult projects = Aeson.object
+  [ "projects" .= map buildProject projects
   , "sourceUnits" .= map Srclib.toSourceUnit projects
   ]
 
-renderFailure :: ProjectFailure -> Aeson.Value
-renderFailure failure = Aeson.object
-  [ "name" .= projectFailureName failure
-  , "cause" .= show (Diag.renderFailureBundle (projectFailureCause failure))
-  ]
-
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover dir = traverse_ (forkTask . apply dir) discoverFuncs
-
-discoverWithArchives :: HasDiscover sig m => Path Abs Dir -> m ()
-discoverWithArchives dir = traverse_ (forkTask . apply dir) (Archive.discover discoverWithArchives : discoverFuncs)
-
-apply :: a -> (a -> b) -> b
-apply x f = f x
-
-discoverFuncs :: HasDiscover sig m => [Path Abs Dir -> m ()]
-discoverFuncs =
-  [ Rebar3Tree.discover
-
-  , GoList.discover
-  , Gomod.discover
-  , GopkgToml.discover
-  , GopkgLock.discover
-  , GlideLock.discover
-
-  , Gradle.discover
-
-  , MavenPlugin.discover
-  , MavenPom.discover
-
-  , PackageJson.discover
-  , NpmLock.discover
-  , NpmList.discover
-  , YarnLock.discover
-
-  , PackagesConfig.discover
-  , PackageReference.discover
-  , ProjectAssetsJson.discover
-  , ProjectJson.discover
-  , Nuspec.discover
-  , Paket.discover
-
-  , Pipenv.discover
-  , SetupPy.discover
-  , ReqTxt.discover
-
-  , RepoManifest.discover
-
-  , BundleShow.discover
-  , GemfileLock.discover
-
-  , Carthage.discover
-
-  , Podfile.discover
-  , PodfileLock.discover
-
-  , Composer.discover
-
-  , Clojure.discover
-  
-  , Cargo.discover
-
-  , RPM.discover
-
-  , Scala.discover
-
-  , Cabal.discover
-
-  , Stack.discover
+buildProject :: ProjectResult -> Aeson.Value
+buildProject project = Aeson.object
+  [ "path" .= projectResultPath project
+  , "type" .= projectResultType project
+  , "graph" .= graphingToGraph (projectResultGraph project)
   ]
 
 updateProgress :: Has Logger sig m => Progress -> m ()

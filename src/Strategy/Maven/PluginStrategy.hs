@@ -1,59 +1,35 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.Maven.PluginStrategy
-  ( discover
-  , analyze
+  ( analyze'
   , buildGraph
   ) where
 
 import Control.Effect.Diagnostics
 import Control.Effect.Lift
-import Data.Foldable (find, traverse_)
+import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import DepTypes
-import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher hiding (Edge)
 import Effect.ReadFS
 import Graphing (Graphing)
 import Path
 import Strategy.Maven.Plugin
-import Types
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
-  case find (\f -> fileName f == "pom.xml") files of
-    Nothing -> pure WalkContinue
-    Just file -> do
-      runSimpleStrategy "maven-cli" MavenGroup $ analyze (parent file)
-      pure WalkSkipAll
-
-analyze ::
+analyze' ::
   ( Has (Lift IO) sig m
   , Has ReadFS sig m
   , Has Exec sig m
   , Has Diagnostics sig m
   )
-  => Path Abs Dir -> m ProjectClosureBody
-analyze dir = withUnpackedPlugin $ \filepath -> do
+  => Path Abs Dir -> m (Graphing Dependency)
+analyze' dir = withUnpackedPlugin $ \filepath -> do
   installPlugin dir filepath
   execPlugin dir
   pluginOutput <- parsePluginOutput dir
-  pure (mkProjectClosure dir pluginOutput)
-
-mkProjectClosure :: Path Abs Dir -> PluginOutput -> ProjectClosureBody
-mkProjectClosure dir pluginOutput = ProjectClosureBody
-  { bodyModuleDir    = dir
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph pluginOutput
-    , dependenciesOptimal  = Optimal
-    , dependenciesComplete = Complete
-    }
+  pure (buildGraph pluginOutput)
 
 buildGraph :: PluginOutput -> Graphing Dependency
 buildGraph PluginOutput{..} = run $ evalGrapher $ do

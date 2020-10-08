@@ -12,8 +12,9 @@ module Strategy.Haskell.Stack
 where
 
 import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson.Types
-import Data.Foldable (for_, find)
+import Data.Foldable (for_)
 import qualified Data.Map.Strict as M
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -58,13 +59,36 @@ parseLocationType txt
   | txt `elem` ["project package", "archive"] = pure Local
   | otherwise = fail $ "Bad location type: " ++ T.unpack txt
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \dir _ files ->
-  case find (\f -> fileName f == "stack.yaml") files of
-    Nothing -> pure WalkContinue
-    Just _ -> do
-      runSimpleStrategy "haskell-stack" HaskellGroup $ fmap (mkProjectClosure dir) (analyze dir)
-      pure WalkSkipAll
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [StackProject]
+findProjects = walk' $ \dir _ files -> do
+  let project =
+        StackProject
+          { stackDir = dir
+          }
+
+  case findFileNamed "stack.yaml" files of
+    Nothing -> pure ([], WalkContinue)
+    Just _ -> pure ([project], WalkSkipAll)
+
+mkProject :: StackProject -> DiscoveredProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "stack",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runExecIO $ getDeps project,
+      projectPath = stackDir project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has Exec sig m, Has Diagnostics sig m) => StackProject -> m (G.Graphing Dependency)
+getDeps = analyze . stackDir
+
+data StackProject = StackProject
+  { stackDir :: Path Abs Dir
+  } deriving (Eq, Ord, Show)
 
 stackJSONDepsCmd :: Command
 stackJSONDepsCmd =
@@ -73,21 +97,6 @@ stackJSONDepsCmd =
       cmdArgs = ["ls", "dependencies", "json"],
       cmdAllowErr = Never
     }
-
-mkProjectClosure :: Path Abs Dir -> G.Graphing Dependency -> ProjectClosureBody
-mkProjectClosure dir graph =
-  ProjectClosureBody
-    { bodyModuleDir = dir,
-      bodyDependencies = dependencies,
-      bodyLicenses = []
-    }
-  where
-    dependencies =
-      ProjectDependencies
-        { dependenciesGraph = graph,
-          dependenciesOptimal = Optimal,
-          dependenciesComplete = Complete
-        }
 
 doGraph :: Has (MappedGrapher PackageName StackDep) sig m => StackDep -> m ()
 doGraph dep = do

@@ -14,7 +14,7 @@ import App.Util (validateDir)
 import App.VPSScan.Types
 import App.VPSScan.Scan.Core
 import App.VPSScan.Scan.ScotlandYard
-import Control.Carrier.Diagnostics
+import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Carrier.Trace.Printing
 import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString (ByteString)

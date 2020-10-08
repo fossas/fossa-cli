@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Strategy.Archive.RPM
+module Discovery.Archive.RPM
   ( extractRpm
   )
 where

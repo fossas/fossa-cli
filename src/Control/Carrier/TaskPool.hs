@@ -26,6 +26,7 @@ import Control.Carrier.Threaded
 import Control.Concurrent.STM
 import Control.Effect.Lift (sendIO)
 import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Trans (MonadTrans(..))
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 
@@ -127,6 +128,9 @@ data Progress = Progress
 
 newtype TaskPoolC m a = TaskPoolC { runTaskPoolC :: ReaderC (TVar [m ()]) m a }
   deriving (Functor, Applicative, Monad, MonadIO, MonadFail)
+
+instance MonadTrans TaskPoolC where
+  lift = TaskPoolC . lift
 
 instance (Has (Lift IO) sig m, Algebra sig m) => Algebra (TaskPool :+: sig) (TaskPoolC m) where
   alg hdl sig ctx = TaskPoolC $ case sig of

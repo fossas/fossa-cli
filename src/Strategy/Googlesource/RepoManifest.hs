@@ -8,7 +8,6 @@
 module Strategy.Googlesource.RepoManifest
   ( discover
   , buildGraph
-  , analyze
   , validateProject
   , validateProjects
   , nestedValidatedProjects
@@ -19,7 +18,6 @@ module Strategy.Googlesource.RepoManifest
   , ManifestProject(..)
   , ValidatedProject(..)
 
-  , mkProjectClosure
   ) where
 
 import Prelude
@@ -30,6 +28,7 @@ import qualified Data.Text as T
 
 import Control.Applicative ((<|>), optional)
 import Control.Monad (unless)
+import Control.Monad.IO.Class (MonadIO)
 import DepTypes
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc (pretty)
@@ -45,19 +44,39 @@ import Text.GitConfig.Parser (Section(..), parseConfig)
 import qualified Data.HashMap.Strict as HM
 import Text.Megaparsec (errorBundlePretty)
 
--- We're looking for a file called "manifest.xml" in a directory called ".repo"
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files ->
-  case find (\f -> "manifest.xml" == fileName f) files of
-    Nothing -> pure WalkContinue
-    Just file ->
-      if dirname (parent file) == $(mkRelDir ".repo") then do
-        runSimpleStrategy "googlesource-repomanifest" GooglesourceGroup $ analyze file
-        pure WalkSkipAll
-      else pure WalkContinue
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> nestedValidatedProjects (parent file) file
+-- We're looking for a file called "manifest.xml" in a directory called ".repo"
+findProjects :: MonadIO m => Path Abs Dir -> m [RepoManifestProject]
+findProjects = walk' $ \_ _ files -> do
+  case find (\f -> "manifest.xml" == fileName f) files of
+    Nothing -> pure ([], WalkContinue)
+    Just file ->
+      if dirname (parent file) == $(mkRelDir ".repo")
+        then pure ([RepoManifestProject file], WalkSkipAll)
+        else pure ([], WalkContinue)
+
+data RepoManifestProject = RepoManifestProject
+  { repoManifestXml :: Path Abs File
+  }
+  deriving (Eq, Ord, Show)
+
+mkProject :: RepoManifestProject -> DiscoveredProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "repomanifest",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectPath = parent $ repoManifestXml project,
+      projectLicenses = pure []
+    }
+
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RepoManifestProject -> m (Graphing Dependency)
+getDeps = analyze' . repoManifestXml
+
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> nestedValidatedProjects (parent file) file
 
 nestedValidatedProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m [ValidatedProject]
 nestedValidatedProjects rootDir file = do
@@ -125,19 +144,6 @@ validatedProjectsFromIncludes manifest parentDir rootDir = do
     case manifestFiles of
       Nothing -> fatalText "Error"
       (Just (fs :: [Path Abs File])) -> concat <$> traverse (nestedValidatedProjects rootDir) fs
-
-mkProjectClosure :: Path Abs File -> [ValidatedProject] -> ProjectClosureBody
-mkProjectClosure file projects = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = []
-  }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph projects
-    , dependenciesOptimal  = NotOptimal
-    , dependenciesComplete = NotComplete
-    }
 
 -- DTD for the Repo manifest.xml file: https://gerrit.googlesource.com/git-repo/+/master/docs/manifest-format.md
 -- Note that the DTD is only "roughly adhered to" according to the documentation. For example, the DTD says that

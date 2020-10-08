@@ -23,7 +23,6 @@ import Graphing (Graphing (..))
 import Path.IO (getCurrentDir)
 import Strategy.Go.GoList
 import Test.Hspec
-import Types
 
 runConstExec :: BL.ByteString -> ConstExecC m a -> m a
 runConstExec output = runReader output . runConstExecC
@@ -64,21 +63,21 @@ spec = do
   describe "golist analyze" $ do
     it "produces the expected output" $ do
       let result =
-            analyze testdir
+            analyze' testdir
               & runConstExec outputTrivial
               & runDiagnostics
               & run
       case result of
         Left err -> expectationFailure ("analyze failed: " <> show (renderFailureBundle err))
-        Right body -> dependenciesGraph (bodyDependencies (resultValue body)) `shouldBe` expected
+        Right graph -> resultValue graph `shouldBe` expected
 
     it "can handle complex inputs" $ do
       let result =
-            analyze testdir
+            analyze' testdir
               & runConstExec outputComplex
               & runDiagnostics
               & run
 
       case result of
           Left err -> fail $ "failed to build graph" <> show (renderFailureBundle err)
-          Right body -> length (graphingDirect (dependenciesGraph (bodyDependencies (resultValue body)))) `shouldBe` 12
+          Right graph -> length (graphingDirect (resultValue graph)) `shouldBe` 12

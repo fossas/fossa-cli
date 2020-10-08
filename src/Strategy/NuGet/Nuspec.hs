@@ -4,18 +4,16 @@
 module Strategy.NuGet.Nuspec
   ( discover
   , buildGraph
-  , analyze
 
   , Nuspec(..)
   , Group(..)
   , NuGetDependency(..)
   , NuspecLicense(..)
-
-  , mkProjectClosure
   ) where
 
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics
+import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (find)
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
@@ -30,29 +28,40 @@ import Parse.XML
 import Path
 import Types
 
-discover :: HasDiscover sig m => Path Abs Dir -> m ()
-discover = walk $ \_ _ files -> do
+discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover dir = map mkProject <$> findProjects dir
+
+findProjects :: MonadIO m => Path Abs Dir -> m [NuspecProject]
+findProjects = walk' $ \_ _ files -> do
   case find (\f -> L.isSuffixOf ".nuspec" (fileName f)) files of
-    Nothing -> pure ()
-    Just file -> runSimpleStrategy "nuget-nuspec" DotnetGroup $ analyze file
+    Nothing -> pure ([], WalkContinue)
+    Just file -> pure ([NuspecProject file], WalkContinue)
 
-  pure WalkContinue
-
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ProjectClosureBody
-analyze file = mkProjectClosure file <$> readContentsXML @Nuspec file
-
-mkProjectClosure :: Path Abs File -> Nuspec -> ProjectClosureBody
-mkProjectClosure file nuspec = ProjectClosureBody
-  { bodyModuleDir    = parent file
-  , bodyDependencies = dependencies
-  , bodyLicenses     = [LicenseResult (toFilePath file) (nuspecLicenses nuspec)]
+data NuspecProject = NuspecProject
+  { nuspecFile :: Path Abs File
   }
-  where
-  dependencies = ProjectDependencies
-    { dependenciesGraph    = buildGraph nuspec
-    , dependenciesOptimal  = NotOptimal
-    , dependenciesComplete = NotComplete
+  deriving (Eq, Ord, Show)
+
+mkProject :: NuspecProject -> DiscoveredProject
+mkProject project =
+  DiscoveredProject
+    { projectType = "nuspec",
+      projectBuildTargets = mempty,
+      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectPath = parent $ nuspecFile project,
+      projectLicenses = runReadFSIO $ analyzeLicenses (nuspecFile project)
     }
+
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuspecProject -> m (Graphing Dependency)
+getDeps = analyze' . nuspecFile
+
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' file = buildGraph <$> readContentsXML @Nuspec file
+
+analyzeLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m [LicenseResult]
+analyzeLicenses file = do
+  nuspec <- readContentsXML @Nuspec file
+  pure [LicenseResult (toFilePath file) (nuspecLicenses nuspec)]
 
 nuspecLicenses :: Nuspec -> [License]
 nuspecLicenses nuspec = url ++ licenseField
