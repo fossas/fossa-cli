@@ -11,6 +11,7 @@ where
 
 import App.Types
 import Control.Algebra
+import Control.Applicative ((<|>))
 import Control.Carrier.Diagnostics
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad (unless)
@@ -37,7 +38,7 @@ mergeOverride OverrideProject {..} InferredProject {..} = ProjectRevision name r
   where
     name = fromMaybe inferredName overrideName
     revision = fromMaybe inferredRevision overrideRevision
-    branch = fromMaybe inferredBranch overrideBranch
+    branch = overrideBranch <|> inferredBranch
 
 inferProject :: (Has Logger sig m, Has (Lift IO) sig m) => Path Abs Dir -> m InferredProject
 inferProject current = do
@@ -78,7 +79,7 @@ inferSVN dir = do
               . dropPrefix rootRelativeToUrl
               . dropPrefix "^" $ relUrl
 
-        pure $ InferredProject root revision (if T.null trimmedRelative then "trunk" else trimmedRelative)
+        pure . InferredProject root revision $ if T.null trimmedRelative then Nothing else Just trimmedRelative
 
   case maybeProject of
     Nothing -> fatal (CommandParseError svnCommand "Invalid output (missing Repository Root or Revision)")
@@ -104,7 +105,7 @@ inferDefault dir = sendIO $ do
   tmp <- getTempDir
   writeFile (fromAbsDir tmp FP.</> ".fossa.revision") (show time)
 
-  pure (InferredProject (T.pack name) (T.pack (show time)) "master")
+  pure (InferredProject (T.pack name) (T.pack (show time)) Nothing)
 
 -- like Text.stripPrefix, but with a non-Maybe result (defaults to the original text)
 dropPrefix :: Text -> Text -> Text
@@ -170,7 +171,7 @@ parseGitProjectRevision ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   )
-  => Path Abs Dir -> m (Text, Text) -- branch, revision
+  => Path Abs Dir -> m (Maybe Text, Text) -- branch, revision
 parseGitProjectRevision dir = do
   let relHead = [relfile|HEAD|]
 
@@ -178,18 +179,23 @@ parseGitProjectRevision dir = do
 
   unless headExists (fatal MissingGitHead)
 
-  rawPath <- removeNewlines . dropPrefix "ref: " <$> readContentsText (dir </> relHead)
+  headText <- readContentsText (dir </> relHead)
 
-  case parseRelFile (T.unpack rawPath) of
-    Nothing -> fatal (InvalidBranchName rawPath)
-    Just path -> do
-      branchExists <- doesFileExist (dir </> path)
+  if "ref: " `T.isPrefixOf` headText
+    then do
+      let rawPath = removeNewlines . dropPrefix "ref: " $ headText
 
-      unless branchExists (fatal (MissingBranch rawPath))
+      case parseRelFile (T.unpack rawPath) of
+        Nothing -> fatal (InvalidBranchName rawPath)
+        Just path -> do
+          branchExists <- doesFileExist (dir </> path)
 
-      revision <- removeNewlines <$> readContentsText (dir </> path)
-      let branch = dropPrefix "refs/heads/" rawPath
-      pure (branch, revision)
+          unless branchExists (fatal (MissingBranch rawPath))
+
+          revision <- removeNewlines <$> readContentsText (dir </> path)
+          let branch = dropPrefix "refs/heads/" rawPath
+          pure (Just branch, revision)
+    else pure (Nothing, T.strip headText)
 
 removeNewlines :: Text -> Text
 removeNewlines = T.replace "\r" "" . T.replace "\n" ""
@@ -217,6 +223,6 @@ instance ToDiagnostic InferenceError where
 data InferredProject = InferredProject
   { inferredName :: Text,
     inferredRevision :: Text,
-    inferredBranch :: Text
+    inferredBranch :: Maybe Text
   }
   deriving (Eq, Ord, Show)

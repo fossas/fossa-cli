@@ -21,5 +21,5 @@ data OverrideProject = OverrideProject
 data ProjectRevision = ProjectRevision
   { projectName :: Text
   , projectRevision :: Text
-  , projectBranch :: Text
+  , projectBranch :: Maybe Text
   } deriving (Eq, Ord, Show)

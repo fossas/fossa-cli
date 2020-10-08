@@ -154,9 +154,10 @@ uploadAnalysis rootDir baseUri key ProjectRevision{..} metadata projects = fossa
           <> "v" =: cliVersion
           <> "managedBuild" =: True
           <> "title" =: fromMaybe projectName (projectTitle metadata)
-          <> "branch" =: projectBranch
           <> apiHeader key
           <> mkMetadataOpts metadata
+          -- Don't include branch if it doesn't exist, core may not handle empty string properly.
+          <> maybe mempty ("branch" =:) projectBranch
   resp <- req POST (uploadUrl baseUrl) (ReqBodyJson sourceUnits) jsonResponse (baseOptions <> opts)
   pure (responseBody resp)
 
