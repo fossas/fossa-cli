@@ -319,7 +319,7 @@ newtype IssueRule = IssueRule
 instance FromJSON Issues where
   parseJSON = withObject "Issues" $ \obj ->
     Issues <$> obj .: "count"
-           <*> obj .: "issues"
+           <*> obj .:? "issues" .!= []
            <*> obj .: "status"
 
 instance ToJSON Issues where

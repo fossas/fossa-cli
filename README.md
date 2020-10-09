@@ -1,5 +1,7 @@
 # Spectrometer
 
+[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B1%2Fgithub.com%2Ffossas%2Fspectrometer.svg?type=shield)](https://app.fossa.com/projects/custom%2B1%2Fgithub.com%2Ffossas%2Fspectrometer?ref=badge_shield)
+
 Spectrometer is a minimal-configuration dependency analysis tool. It supports a wide array of languages and buildtools.
 
 Spectrometer extracts dependency graphs from your projects and reports them to [FOSSA](https://fossa.com) for license scanning, vulnerability scanning, and more.
