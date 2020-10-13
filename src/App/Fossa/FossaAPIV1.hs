@@ -416,7 +416,7 @@ newtype Contributors = Contributors
   deriving (Eq, Ord, Show, ToJSON)
 
 contributorsEndpoint :: Url scheme -> Url scheme
-contributorsEndpoint baseurl = baseurl /: "api" /: "organization"
+contributorsEndpoint baseurl = baseurl /: "api" /: "contributors"
 
 uploadContributors :: (Has (Lift IO) sig m, Has Diagnostics sig m) => URI -> ApiKey -> Text -> Contributors -> m ()
 uploadContributors baseUri apiKey locator contributors = fossaReq $ do
