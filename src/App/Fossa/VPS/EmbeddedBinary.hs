@@ -1,13 +1,16 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.VPSScan.EmbeddedBinary 
+module App.Fossa.VPS.EmbeddedBinary 
   ( BinaryPaths(..)
   , extractEmbeddedBinaries
   , cleanupExtractedBinaries
+  , withEmbeddedBinaries
   ) where
 
 import Prelude hiding (writeFile)
+import Control.Effect.Exception (bracket)
+import Control.Effect.Lift ( Has, Lift )
 import Control.Monad.IO.Class
 import Data.ByteString (writeFile, ByteString)
 import Path
@@ -21,6 +24,9 @@ data BinaryPaths = BinaryPaths
   , pathfinderBinaryPath :: Path Abs File
   , sherlockBinaryPath :: Path Abs File
   }
+
+withEmbeddedBinaries :: (Has (Lift IO) sig m, MonadIO m) => (BinaryPaths -> m c) -> m c
+withEmbeddedBinaries = bracket extractEmbeddedBinaries cleanupExtractedBinaries
 
 cleanupExtractedBinaries :: (MonadIO m) => BinaryPaths -> m ()
 cleanupExtractedBinaries BinaryPaths{..} = do

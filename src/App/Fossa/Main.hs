@@ -11,10 +11,15 @@ import App.Fossa.FossaAPIV1 (ProjectMetadata (..))
 import App.Fossa.ListTargets (listTargetsMain)
 import App.Fossa.Report (ReportType (..), reportMain)
 import App.Fossa.Test (TestOutputType (..), testMain)
+import App.Fossa.VPS.NinjaGraph
+import App.Fossa.VPS.Scan
+    ( scanMain,
+      SkipIPRScan(..) )
+import App.Fossa.VPS.Types ( FilterExpressions(..) )
 import App.OptionExtensions
 import App.Types
 import App.Util (validateDir)
-import Control.Monad (unless)
+import Control.Monad (when, unless)
 import Data.Bifunctor (first)
 import Data.Bool (bool)
 import Data.Text (Text)
@@ -24,9 +29,14 @@ import Effect.Logger
 import Options.Applicative
 import System.Environment (lookupEnv)
 import System.Exit (die)
+import qualified System.Info as SysInfo
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI)
 import Text.URI.QQ (uri)
+
+
+windowsOsName :: String
+windowsOsName = "mingw32"
 
 appMain :: IO ()
 appMain = do
@@ -64,10 +74,21 @@ appMain = do
       baseDir <- validateDir reportBaseDir
       key <- requireKey maybeApiKey
       reportMain optBaseUrl baseDir key logSeverity reportTimeout reportType override
-
+    
     ListTargetsCommand dir -> do
       baseDir <- validateDir dir
       listTargetsMain baseDir
+
+    VPSCommand VPSOptions {..} -> do
+      when (SysInfo.os == windowsOsName) $ die "VPS functionality is not supported on Windows"
+      apikey <- requireKey maybeApiKey
+      case vpsCommand of
+        VPSAnalyzeCommand VPSAnalyzeOptions {..} -> do
+          baseDir <- validateDir vpsAnalyzeBaseDir
+          scanMain optBaseUrl baseDir apikey logSeverity override vpsFileFilter (SkipIPRScan skipIprScan)
+        NinjaGraphCommand ninjaGraphOptions -> do
+          ninjaGraphMain optBaseUrl apikey logSeverity override ninjaGraphOptions
+          
 
 requireKey :: Maybe ApiKey -> IO ApiKey
 requireKey (Just key) = pure key
@@ -91,7 +112,7 @@ opts :: Parser CmdOptions
 opts =
   CmdOptions
     <$> switch (long "debug" <> help "Enable debug logging")
-    <*> uriOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL" <> value [uri|https://app.fossa.com|])
+    <*> uriOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL (default: https://app.fossa.com)" <> value [uri|https://app.fossa.com|])
     <*> optional (strOption (long "project" <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
     <*> optional (strOption (long "revision" <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authenticaion key (default: FOSSA_API_KEY from env)"))
@@ -124,6 +145,12 @@ commands =
           ( info
               (ListTargetsCommand <$> baseDirArg)
               (progDesc "List available analysis-targets in a directory (projects and subprojects)")
+          )
+        <> command
+          "vps"
+          ( info
+              (VPSCommand <$> vpsOpts)
+              (progDesc "Run in Vendored Package Scan mode")
           )
     )
 
@@ -185,6 +212,39 @@ testOpts =
     <*> flag TestOutputPretty TestOutputJson (long "json" <> help "Output issues as json")
     <*> baseDirArg
 
+vpsOpts :: Parser VPSOptions
+vpsOpts = VPSOptions <$> skipIprScanOpt <*> fileFilterOpt <*> vpsCommands
+  where
+    skipIprScanOpt = switch (long "skip-ipr-scan" <> help "If specified, the scan directory will not be scanned for intellectual property rights information")
+    fileFilterOpt = FilterExpressions <$> jsonOption (long "ignore-file-regex" <> short 'i' <> metavar "REGEXPS" <> help "JSON encoded array of regular expressions used to filter scanned paths" <> value [])
+
+vpsAnalyzeOpts :: Parser VPSAnalyzeOptions
+vpsAnalyzeOpts = VPSAnalyzeOptions <$> baseDirArg
+
+ninjaGraphOpts :: Parser NinjaGraphCLIOptions
+ninjaGraphOpts = NinjaGraphCLIOptions <$> baseDirArg <*> ninjaDepsOpt <*> lunchTargetOpt <*> scanIdOpt <*> buildNameOpt
+  where
+    ninjaDepsOpt = optional $ strOption (long "ninjadeps" <> metavar "STRING")
+    lunchTargetOpt = optional $ strOption (long "lunchtarget" <> metavar "STRING" <> help "Build target name to pass to lunch. If you are running in an environment with envsetup and lunch already configured, then you don't need to pass this in")
+    scanIdOpt = strOption (long "scan-id" <> metavar "STRING" <> help "The scan ID that this build applies to")
+    buildNameOpt = strOption (long "build-name" <> metavar "STRING" <> help "Human readable name of this build. This will be shown on the FOSSA website.")
+
+vpsCommands :: Parser VPSCommand
+vpsCommands =
+  hsubparser
+    (
+      command "analyze"
+        (info (VPSAnalyzeCommand <$> vpsAnalyzeOpts) $
+          progDesc "Scan for projects and their vendored dependencies"
+        )
+    <>
+      command "ninja-graph"
+        (info (NinjaGraphCommand <$> ninjaGraphOpts) $
+          progDesc "Get a dependency graph for a ninja build"
+        )
+    )
+
+
 data CmdOptions = CmdOptions
   { optDebug :: Bool,
     optBaseUrl :: URI,
@@ -198,8 +258,13 @@ data Command
   = AnalyzeCommand AnalyzeOptions
   | TestCommand TestOptions
   | ReportCommand ReportOptions
+  | VPSCommand VPSOptions
   | InitCommand
   | ListTargetsCommand FilePath
+
+data VPSCommand
+  = VPSAnalyzeCommand VPSAnalyzeOptions
+  | NinjaGraphCommand NinjaGraphCLIOptions
 
 data ReportOptions = ReportOptions
   { reportJsonOutput :: Bool,
@@ -222,3 +287,12 @@ data TestOptions = TestOptions
     testOutputType :: TestOutputType,
     testBaseDir :: FilePath
   }
+
+data VPSOptions = VPSOptions
+  { skipIprScan :: Bool,
+    vpsFileFilter :: FilterExpressions,
+    vpsCommand :: VPSCommand
+  }
+
+newtype VPSAnalyzeOptions = VPSAnalyzeOptions
+  { vpsAnalyzeBaseDir :: FilePath }

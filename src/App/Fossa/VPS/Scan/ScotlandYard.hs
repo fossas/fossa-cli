@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module App.VPSScan.Scan.ScotlandYard
+module App.Fossa.VPS.Scan.ScotlandYard
   ( createScotlandYardScan
   , uploadIPRResults
   , uploadBuildGraph
@@ -15,7 +15,7 @@ import Control.Carrier.TaskPool
 import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Monad.IO.Class
 import Control.Effect.Lift
-import App.VPSScan.Types
+import App.Fossa.VPS.Types
 import Data.Foldable (traverse_)
 import qualified Data.HashMap.Strict as HM
 import Data.Maybe (fromMaybe)
@@ -23,7 +23,7 @@ import qualified Data.Vector as V
 import qualified Data.ByteString.Lazy as BS
 import Effect.Logger
 import GHC.Conc.Sync (getNumCapabilities)
-import App.VPSScan.Scan.Core
+import App.Fossa.VPS.Scan.Core
 import Data.Aeson
 import Data.Text (Text)
 import Network.HTTP.Req

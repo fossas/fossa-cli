@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module App.VPSScan.Scan.Core
+module App.Fossa.VPS.Scan.Core
   ( coreAuthHeader
   , createCoreProject
   , completeCoreProject
@@ -17,9 +17,9 @@ module App.VPSScan.Scan.Core
   )
 where
 
-import App.VPSScan.Types
+import App.Fossa.VPS.Types
 import App.Util (parseUri)
-import Data.Text (unpack, pack, Text)
+import Data.Text (pack, Text)
 import Prelude
 import Network.HTTP.Req
 import Control.Carrier.Trace.Printing
@@ -28,6 +28,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Data.Aeson
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Data.Text.Encoding
+import Effect.Logger
 
 data SherlockInfo = SherlockInfo
   { sherlockUrl :: Text
@@ -46,15 +47,15 @@ coreAuthHeader :: Text -> Option scheme
 coreAuthHeader apiKey = header "Authorization" (encodeUtf8 ("Bearer " <> apiKey))
 
 buildRevision :: Has (Lift IO) sig m => Maybe Text -> m Text
-buildRevision (Just userProvidedRevision) = pure (userProvidedRevision)
+buildRevision (Just userProvidedRevision) = pure userProvidedRevision
 buildRevision Nothing = do
   posixTime <- sendIO getPOSIXTime
-  pure (pack $ show $ (floor $ toRational posixTime :: Int))
+  pure (pack $ show (floor $ toRational posixTime :: Int))
 
 newtype Locator = Locator { unLocator :: Text }
 
 createLocator :: Text -> Int -> Locator
-createLocator projectName organizationId = Locator $ "custom+" <> (pack $ show organizationId) <> "/" <> projectName
+createLocator projectName organizationId = Locator $ "custom+" <> pack (show organizationId) <> "/" <> projectName
 
 newtype RevisionLocator = RevisionLocator { unRevisionLocator :: Text }
 
@@ -77,8 +78,12 @@ completeProjectEndpoint baseurl = baseurl /: "api" /: "vendored-package-scan" /:
 
 -- /api/vendored-package-scan/project-scan-filters/:locator
 projectScanFiltersEndpoint :: Url 'Https -> Locator -> Url 'Https
-projectScanFiltersEndpoint baseurl locator = baseurl /: "api" /: "vendored-package-scan" /: "project-scan-filters" /: (unLocator locator)
+projectScanFiltersEndpoint baseurl locator = baseurl /: "api" /: "vendored-package-scan" /: "project-scan-filters" /: unLocator locator
 
+{-
+  FIXME: Every function below this line is using a data structure designed for the CLI.
+  This tightly couples us to our CLI API, and is very tedious to change with the merge of `vpscli` and `fossa` exe's.
+-}
 createCoreProject :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> Text -> FossaOpts -> m ()
 createCoreProject name revision FossaOpts{..} = runHTTP $ do
   let auth = coreAuthHeader fossaApiKey
@@ -91,7 +96,7 @@ createCoreProject name revision FossaOpts{..} = runHTTP $ do
 completeCoreProject :: (Has (Lift IO) sig m, Has Diagnostics sig m) => RevisionLocator -> FossaOpts -> m ()
 completeCoreProject locator FossaOpts{..} = runHTTP $ do
   let auth = coreAuthHeader fossaApiKey
-  let body = object ["locator" .= (unRevisionLocator locator)]
+  let body = object ["locator" .= unRevisionLocator locator]
 
   (baseUrl, baseOptions) <- parseUri fossaUrl
   _ <- req POST (completeProjectEndpoint baseUrl) (ReqBodyJson body) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
@@ -113,24 +118,24 @@ getProjectScanFilters FossaOpts{..} locator = runHTTP $ do
   resp <- req GET (projectScanFiltersEndpoint baseUrl locator) NoReqBody jsonResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
   pure (responseBody resp)
 
-overrideScanFilters :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Trace sig m) => VPSOpts -> Locator -> m (VPSOpts, Bool)
+overrideScanFilters :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m) => VPSOpts -> Locator -> m (VPSOpts, Bool)
 overrideScanFilters vpsOpts@VPSOpts { fileFilter = (FilterExpressions []) } locator = do
   let VPSOpts{..} = vpsOpts
-  trace "[All] Fetching scan file filter from FOSSA"
+  logDebug "[All] Fetching scan file filter from FOSSA"
   overrideFilters <- getProjectScanFilters fossa locator
-  trace $ unpack $ "[All] Using scan file filter: " <> encodeFilterExpressions overrideFilters
+  logDebug $ pretty $ "[All] Using scan file filter: " <> encodeFilterExpressions overrideFilters
   pure (vpsOpts{fileFilter = overrideFilters}, True)
 overrideScanFilters vpsOpts _ = do
-  trace "[All] Scan file filters provided locally"
+  logDebug "[All] Scan file filters provided locally"
   pure (vpsOpts, False)
   
-storeUpdatedScanFilters :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Trace sig m) => Locator -> FilterExpressions -> FossaOpts -> m ()
+storeUpdatedScanFilters :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m) => Locator -> FilterExpressions -> FossaOpts -> m ()
 storeUpdatedScanFilters _ (FilterExpressions []) _ = do
-  trace "[All] No scan file filter was set, skipping update"
+  logDebug "[All] No scan file filter was set, skipping update"
   pure ()
 storeUpdatedScanFilters locator filters FossaOpts{..} = runHTTP $ do
   let auth = coreAuthHeader fossaApiKey
-  trace "[All] Updating FOSSA with new scan file filter for this project"
+  logDebug "[All] Updating FOSSA with new scan file filter for this project"
   (baseUrl, baseOptions) <- parseUri fossaUrl
   _ <- req POST (projectScanFiltersEndpoint baseUrl locator) (ReqBodyJson filters) ignoreResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
   pure ()  

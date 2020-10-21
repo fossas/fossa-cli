@@ -1,14 +1,14 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.VPSScan.Scan.RunSherlock
+module App.Fossa.VPS.Scan.RunSherlock
   ( execSherlock
   , SherlockOpts(..)
   )
 where
 
-import App.VPSScan.Types
-import App.VPSScan.Scan.Core
-import App.VPSScan.EmbeddedBinary
+import App.Fossa.VPS.Types
+import App.Fossa.VPS.Scan.Core
+import App.Fossa.VPS.EmbeddedBinary
 import Control.Carrier.Error.Either
 import Control.Effect.Diagnostics
 import Data.Functor (void)

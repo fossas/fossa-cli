@@ -10,11 +10,14 @@
 module Effect.Logger
   ( Logger(..)
   , LogMsg(..)
+  , LogQueue
   , Severity(..)
 
   , LoggerC(..)
   , IgnoreLoggerC(..)
   , withLogger
+  , withLogQueue
+  , runLogger
   , ignoreLogger
 
   , log
@@ -97,8 +100,13 @@ logWarn = log SevWarn
 logError :: Has Logger sig m => Doc AnsiStyle -> m ()
 logError = log SevError
 
+newtype LogQueue = LogQueue (TMQueue LogMsg)
+
 withLogger :: Has (Lift IO) sig m => Severity -> LoggerC m a -> m a
-withLogger minSeverity (LoggerC act) = do
+withLogger sev f = withLogQueue sev $ \qu -> runLogger qu f
+
+withLogQueue :: Has (Lift IO) sig m => Severity -> (LogQueue -> m a) -> m a
+withLogQueue minSeverity f = do
   isTerminal <- sendIO $ hIsTerminalDevice stderr
   let logger = bool rawLogger termLogger isTerminal
   queue <- sendIO (hSetBuffering stdout NoBuffering *> hSetBuffering stderr NoBuffering *> newTMQueueIO @LogMsg)
@@ -111,7 +119,10 @@ withLogger minSeverity (LoggerC act) = do
 
   bracket mkLogger
           flushLogger
-          (\_ -> runReader queue act)
+          (\_ -> f (LogQueue queue))
+
+runLogger :: LogQueue -> LoggerC m a -> m a
+runLogger (LogQueue queue) = runReader queue . runLoggerC
 
 rawLogger :: Severity -> TMQueue LogMsg -> IO ()
 rawLogger minSeverity queue = go

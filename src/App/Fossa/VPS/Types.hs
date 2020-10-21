@@ -2,17 +2,18 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module App.VPSScan.Types
-( VPSOpts(..)
-, FossaOpts(..)
-, FilterExpressions(..)
+module App.Fossa.VPS.Types
+( FilterExpressions(..)
 , DepsTarget(..)
 , DepsDependency(..)
-, NinjaGraphOpts(..)
 , runHTTP
 , encodeFilterExpressions
 , HTTP(..)
 , HTTPRequestFailed(..)
+, VPSOpts (..)
+, PartialVPSOpts (..)
+, FossaOpts (..)
+, NinjaGraphOpts (..)
 ) where
 
 import Control.Monad.IO.Class (MonadIO(..))
@@ -37,18 +38,28 @@ instance FromJSON FilterExpressions where
 instance ToJSON FilterExpressions where
   toJSON (FilterExpressions filters) = object ["filters" .= filters]
 
+-- FIXME: replace these with non-CLI types
+-- VPSOpts in particular is used as a God type, and is very unwieldy in the merged CLI form.
 data FossaOpts = FossaOpts
   { fossaUrl :: URI
   , fossaApiKey :: Text
   }
 
+data PartialVPSOpts
+  = PartialVPSOpts
+    { fossaOpts :: FossaOpts,
+      partSkipIprScan :: Bool,
+      partFileFilter :: FilterExpressions
+    }
+
 data VPSOpts = VPSOpts
   { fossa :: FossaOpts
-  , projectName :: Text
-  , userProvidedRevision :: Maybe Text
+  , vpsProjectName :: Text
+  , userProvidedRevision :: Maybe Text  -- FIXME: Since we can now infer a revision, we should rename this field.
   , skipIprScan :: Bool
   , fileFilter :: FilterExpressions
   }
+-- end FIXME
 
 data DepsTarget = DepsTarget
   { targetPath :: Text
@@ -93,8 +104,7 @@ newtype HTTP m a = HTTP {unHTTP :: m a}
 instance Has (Lift IO) sig m => MonadIO (HTTP m) where
   liftIO = sendIO
 
-data HTTPRequestFailed = HTTPRequestFailed HttpException
-  deriving (Show)
+newtype HTTPRequestFailed = HTTPRequestFailed HttpException deriving (Show)
 
 instance ToDiagnostic HTTPRequestFailed where
   renderDiagnostic (HTTPRequestFailed exc) = "An HTTP request failed: " <> viaShow exc

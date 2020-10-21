@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.VPSScan.Scan.RunIPR
+module App.Fossa.VPS.Scan.RunIPR
   ( execIPR
   , IPRError (..)
   , IPROpts (..)
@@ -16,8 +16,8 @@ import Data.Aeson
 import qualified Data.Text as T
 import Path
 import Prelude
-import App.VPSScan.Types
-import App.VPSScan.EmbeddedBinary
+import App.Fossa.VPS.Types
+import App.Fossa.VPS.EmbeddedBinary
 
 extractNonEmptyFiles :: Value -> Maybe Value
 extractNonEmptyFiles (Object obj) = do

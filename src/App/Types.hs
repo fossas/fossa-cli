@@ -1,8 +1,9 @@
 module App.Types
   ( ApiKey (..),
     BaseDir (..),
+    NinjaGraphCLIOptions (..),
     OverrideProject (..),
-    ProjectRevision (..)
+    ProjectRevision (..),
   )
 where
 
@@ -23,3 +24,11 @@ data ProjectRevision = ProjectRevision
   , projectRevision :: Text
   , projectBranch :: Maybe Text
   } deriving (Eq, Ord, Show)
+
+data NinjaGraphCLIOptions = NinjaGraphCLIOptions
+  { ninjaBaseDir :: FilePath,
+    ninjaDepsFile :: Maybe FilePath,
+    ninjaLunchTarget :: Maybe Text,
+    ninjaScanId :: Text,
+    ninjaBuildName :: Text
+  }

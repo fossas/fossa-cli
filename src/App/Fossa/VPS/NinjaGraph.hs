@@ -2,20 +2,20 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module App.VPSScan.NinjaGraph
+module App.Fossa.VPS.NinjaGraph
 (
   ninjaGraphMain
 , NinjaGraphCmdOpts(..)
 , scanNinjaDeps
 ) where
 
-import App.Types (BaseDir (..))
+import App.Fossa.VPS.Types
+import App.Fossa.VPS.Scan.Core
+import App.Fossa.VPS.Scan.ScotlandYard
+import App.Fossa.ProjectInference
+import App.Types (ApiKey (..), BaseDir (..), NinjaGraphCLIOptions (..), OverrideProject (..), ProjectRevision (..))
 import App.Util (validateDir)
-import App.VPSScan.Types
-import App.VPSScan.Scan.Core
-import App.VPSScan.Scan.ScotlandYard
 import Control.Carrier.Diagnostics hiding (fromMaybe)
-import Control.Carrier.Trace.Printing
 import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
@@ -24,13 +24,14 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
-import Data.Text.Prettyprint.Doc (pretty)
 import Effect.Exec
+import Effect.Logger hiding (line)
 import Effect.ReadFS
 import Path
 import System.Exit (exitFailure)
 import qualified System.FilePath as FP
 import System.Process.Typed as PROC
+import Text.URI (URI)
 
 data NinjaGraphCmdOpts = NinjaGraphCmdOpts
   { ninjaCmdBasedir :: FilePath
@@ -52,18 +53,28 @@ instance ToDiagnostic NinjaGraphError where
 
 data NinjaParseState = Starting | Parsing | Complete | Error
 
-ninjaGraphMain :: NinjaGraphCmdOpts -> IO ()
-ninjaGraphMain NinjaGraphCmdOpts{..} = do
-  dir <- validateDir ninjaCmdBasedir
-  result <- runTrace . runDiagnostics $ getAndParseNinjaDeps (unBaseDir dir) ninjaCmdNinjaGraphOpts
+ninjaGraphMain :: URI -> ApiKey -> Severity -> OverrideProject -> NinjaGraphCLIOptions -> IO ()
+ninjaGraphMain baseuri (ApiKey apikey) logSeverity overrideProject NinjaGraphCLIOptions{..} = do
+  basedir <- validateDir ninjaBaseDir
+
+  withLogger logSeverity $ do
+    ProjectRevision {..} <- mergeOverride overrideProject <$> inferProject (unBaseDir basedir)
+    let fossaOpts = FossaOpts baseuri apikey
+        ninjaGraphOpts = NinjaGraphOpts fossaOpts ninjaDepsFile ninjaLunchTarget ninjaScanId projectName ninjaBuildName
+
+    ninjaGraphInner basedir ninjaGraphOpts
+
+ninjaGraphInner :: (Has Logger sig m, Has (Lift IO) sig m) => BaseDir -> NinjaGraphOpts -> m ()
+ninjaGraphInner (BaseDir basedir) ninjaGraphOpts = do
+  result <- runDiagnostics $ getAndParseNinjaDeps basedir ninjaGraphOpts
   case result of
     Left failure -> do
-      print $ renderFailureBundle failure
-      exitFailure
+      sendIO . print $ renderFailureBundle failure
+      sendIO exitFailure
     Right _ -> pure ()
 
 
-getAndParseNinjaDeps :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Trace sig m) => Path Abs Dir -> NinjaGraphOpts -> m ()
+getAndParseNinjaDeps :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> NinjaGraphOpts -> m ()
 getAndParseNinjaDeps dir ninjaGraphOpts@NinjaGraphOpts{..} = do
   ninjaDepsContents <- runReadFSIO . runExecIO $ getNinjaDeps dir ninjaGraphOpts
   graph <- scanNinjaDeps ninjaDepsContents
@@ -76,7 +87,7 @@ getAndParseNinjaDeps dir ninjaGraphOpts@NinjaGraphOpts{..} = do
 -- If the path to an already generated ninja_deps file was passed in (with the --ninjadeps arg), then
 -- read that file to get the ninja deps. Otherwise, generate it with
 -- NINJA_ARGS="-t deps" make
-getNinjaDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Trace sig m, Has (Lift IO) sig m) => Path Abs Dir -> NinjaGraphOpts -> m ByteString
+getNinjaDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Lift IO) sig m) => Path Abs Dir -> NinjaGraphOpts -> m ByteString
 getNinjaDeps baseDir opts@NinjaGraphOpts{..} =
   case ninjaGraphNinjaPath of
     Nothing -> BL.toStrict <$> generateNinjaDeps baseDir opts
@@ -87,15 +98,15 @@ scanNinjaDeps ninjaDepsContents = map correctedTarget <$> ninjaDeps
   where
     ninjaDeps = parseNinjaDeps ninjaDepsContents
 
-readNinjaDepsFile :: (Has Trace sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => FilePath -> m ByteString
+readNinjaDepsFile :: (Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => FilePath -> m ByteString
 readNinjaDepsFile ninjaPath = do
-  trace $ "reading ninja deps from " ++ ninjaPath
+  logDebug . pretty $ "reading ninja deps from " ++ ninjaPath
   path <- sendIO $ parseAbsFile ninjaPath
   readContentsBS path
 
-generateNinjaDeps :: (Has Trace sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> NinjaGraphOpts -> m BL.ByteString
+generateNinjaDeps :: (Has Logger sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> NinjaGraphOpts -> m BL.ByteString
 generateNinjaDeps baseDir NinjaGraphOpts{..} = do
-  trace $ "Generating ninja deps with this command: " ++ commandString
+  logDebug . pretty $ "Generating ninja deps with this command: " ++ commandString
   (exitcode, stdout, stderr) <- sendIO $ PROC.readProcess (setWorkingDir (fromAbsDir baseDir) (PROC.shell commandString))
   case (exitcode, stdout, stderr) of
     (ExitSuccess, _, _) -> pure stdout

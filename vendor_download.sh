@@ -6,6 +6,7 @@
 # Requires binary dependencies in $PATH:
 #   jq              Parse and manipulate json structures.
 #   curl            Download data over HTTP(s)
+#   upx             Compress binaries (optional)
 #
 
 set -e
@@ -16,6 +17,7 @@ if [ -z "$GITHUB_TOKEN" ]; then
 fi
 
 rm -f vendor/*
+mkdir -p vendor
 
 ASSET_POSTFIX=""
 PATHFINDER_PATH=""
@@ -63,7 +65,7 @@ echo "Marking binaries executable"
 chmod +x vendor/*
 
 echo "Compressing binaries"
-upx vendor/*
+upx vendor/* || echo "WARN: 'upx' command not found, binaries will not be compressed"
 
 echo "Vendored binaries are ready for use"
 ls -lh vendor/

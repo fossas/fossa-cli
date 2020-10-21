@@ -93,15 +93,14 @@ library
     App.Pathfinder.Scan
     App.Types
     App.Util
-    App.VPSScan.EmbeddedBinary
-    App.VPSScan.Main
-    App.VPSScan.NinjaGraph
-    App.VPSScan.Scan
-    App.VPSScan.Scan.Core
-    App.VPSScan.Scan.RunIPR
-    App.VPSScan.Scan.RunSherlock
-    App.VPSScan.Scan.ScotlandYard
-    App.VPSScan.Types
+    App.Fossa.VPS.EmbeddedBinary
+    App.Fossa.VPS.NinjaGraph
+    App.Fossa.VPS.Scan
+    App.Fossa.VPS.Scan.Core
+    App.Fossa.VPS.Scan.RunIPR
+    App.Fossa.VPS.Scan.RunSherlock
+    App.Fossa.VPS.Scan.ScotlandYard
+    App.Fossa.VPS.Types
     Control.Carrier.Diagnostics
     Control.Carrier.Finally
     Control.Carrier.Output.IO
@@ -201,13 +200,6 @@ executable pathfinder
   build-depends:  spectrometer
   ghc-options:    -threaded -with-rtsopts=-N
 
-executable vpscli
-  import:         lang
-  main-is:        Main.hs
-  hs-source-dirs: app/vpscli
-  build-depends:  spectrometer
-  ghc-options:    -threaded -with-rtsopts=-N
-
 test-suite unit-tests
   import:             lang
   import:             deps
@@ -219,7 +211,7 @@ test-suite unit-tests
   other-modules:
     App.Fossa.FossaAPIV1Spec
     App.Fossa.Report.AttributionSpec
-    App.VPSScan.NinjaGraphSpec
+    App.Fossa.VPS.NinjaGraphSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec

@@ -1,12 +1,12 @@
-module App.VPSScan.NinjaGraphSpec
+module App.Fossa.VPS.NinjaGraphSpec
   ( spec
   ) where
 
 import qualified Data.Text.IO as TIO
 import qualified Data.Text as T
 import qualified Data.List as List
-import App.VPSScan.NinjaGraph
-import App.VPSScan.Types
+import App.Fossa.VPS.NinjaGraph
+import App.Fossa.VPS.Types
 import Data.Text.Encoding
 import Test.Hspec
 import Control.Carrier.Diagnostics
@@ -121,8 +121,8 @@ targetWithSecondLevelWeirdnessFix = DepsTarget { targetPath = "out/soong/.interm
                                                }
 spec :: Spec
 spec = do
-  smallNinjaDeps <- runIO (TIO.readFile "test/App/VPSScan/testdata/small-ninja-deps")
-  weirdNinjaDeps <- runIO (TIO.readFile "test/App/VPSScan/testdata/ninja-deps-with-weird-targets")
+  smallNinjaDeps <- runIO (TIO.readFile "test/App/Fossa/VPS/testdata/small-ninja-deps")
+  weirdNinjaDeps <- runIO (TIO.readFile "test/App/Fossa/VPS/testdata/ninja-deps-with-weird-targets")
 
   describe "scanNinjaDeps for a standard ninja deps file" $
     it "parses a small ninja deps file and generates a dependency graph" $ do
