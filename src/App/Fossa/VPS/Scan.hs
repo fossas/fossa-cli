@@ -18,21 +18,20 @@ import App.Fossa.VPS.Scan.RunSherlock
 import App.Fossa.VPS.Scan.ScotlandYard
 import App.Fossa.VPS.Types
 import App.Fossa.ProjectInference
-import App.Types (BaseDir (..), ApiKey (..), OverrideProject (..), ProjectRevision (..))
+import App.Types (BaseDir (..), ApiKey (..), OverrideProject (..), ProjectRevision (..), UploadInfo (..), ProjectMetadata (..))
 import Data.Aeson
 import Data.Text (Text)
 import Effect.Logger
 import Path
-import Text.URI (URI)
 
 newtype SkipIPRScan = SkipIPRScan {unSkipIPRScan :: Bool}
 
-scanMain :: URI -> BaseDir -> ApiKey -> Severity -> OverrideProject -> FilterExpressions -> SkipIPRScan ->  IO ()
-scanMain baseuri basedir apikey logSeverity overrideProject fileFilters skipIprScan = do
-  let fossaOpts = FossaOpts baseuri $ unApiKey apikey
+scanMain :: BaseDir -> Severity -> UploadInfo -> OverrideProject -> FilterExpressions -> SkipIPRScan ->  IO ()
+scanMain basedir logSeverity UploadInfo {..} overrideProject fileFilters skipIprScan = do
+  let fossaOpts = FossaOpts uploadUri $ unApiKey uploadApiKey
       partVpsOpts = PartialVPSOpts fossaOpts (unSkipIPRScan skipIprScan) fileFilters
 
-  result <- runDiagnostics $ withEmbeddedBinaries $ vpsScan basedir logSeverity overrideProject partVpsOpts
+  result <- runDiagnostics $ withEmbeddedBinaries $ vpsScan basedir logSeverity overrideProject uploadMetadata partVpsOpts
   case result of
     Left failure -> do
       print $ renderFailureBundle failure
@@ -44,8 +43,8 @@ scanMain baseuri basedir apikey logSeverity overrideProject fileFilters skipIprS
 vpsScan ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
-  ) => BaseDir -> Severity -> OverrideProject -> PartialVPSOpts -> BinaryPaths -> m ()
-vpsScan (BaseDir basedir) logSeverity overrideProject partVpsOpts binaryPaths = withLogQueue logSeverity $ \queue -> runLogger queue $ do
+  ) => BaseDir -> Severity -> OverrideProject -> ProjectMetadata -> PartialVPSOpts -> BinaryPaths -> m ()
+vpsScan (BaseDir basedir) logSeverity overrideProject projectMetadata partVpsOpts binaryPaths = withLogQueue logSeverity $ \queue -> runLogger queue $ do
   -- Build the revision
   ProjectRevision {..} <- mergeOverride overrideProject <$> inferProject basedir
 
@@ -68,7 +67,7 @@ vpsScan (BaseDir basedir) logSeverity overrideProject partVpsOpts binaryPaths = 
 
   -- Create scan in Core
   logDebug "[All] Creating project in FOSSA"
-  _ <- context "creating project in FOSSA" $ createCoreProject vpsProjectName projectRevision fossa
+  _ <- context "creating project in FOSSA" $ createCoreProject vpsProjectName projectRevision projectMetadata fossa
 
   -- Create scan in SY
   logDebug "[All] Creating scan in Scotland Yard"

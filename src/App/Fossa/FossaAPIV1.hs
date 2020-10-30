@@ -8,7 +8,7 @@ module App.Fossa.FossaAPIV1
   ( uploadAnalysis
   , uploadContributors
   , UploadResponse(..)
-  , ProjectMetadata(..)
+  , mkMetadataOpts
   , FossaError(..)
   , FossaReq(..)
   , Contributors(..)
@@ -120,15 +120,6 @@ instance ToDiagnostic FossaError where
     OtherError err -> "An unknown error occurred when accessing the FOSSA API: " <> viaShow err
     BadURI uri -> "Invalid FOSSA URL: " <> pretty (URI.render uri)
 
-data ProjectMetadata = ProjectMetadata
-  { projectTitle :: Maybe Text
-  , projectUrl :: Maybe Text
-  , projectJiraKey :: Maybe Text
-  , projectLink :: Maybe Text
-  , projectTeam :: Maybe Text
-  , projectPolicy :: Maybe Text
-  } deriving (Eq, Ord, Show)
-
 uploadAnalysis
   :: (Has (Lift IO) sig m, Has Diagnostics sig m)
   => BaseDir -- ^ root directory for analysis
@@ -153,7 +144,6 @@ uploadAnalysis rootDir baseUri key ProjectRevision{..} metadata projects = fossa
       opts = "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "v" =: cliVersion
           <> "managedBuild" =: True
-          <> "title" =: fromMaybe projectName (projectTitle metadata)
           <> apiHeader key
           <> mkMetadataOpts metadata
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
@@ -168,6 +158,7 @@ mkMetadataOpts ProjectMetadata{..} = mconcat $ catMaybes
   , ("link" =:) <$> projectLink
   , ("team" =:) <$> projectTeam
   , ("policy" =:) <$> projectPolicy
+  , ("title" =:) <$> projectTitle
   ]
 
 mangleError :: HttpException -> FossaError

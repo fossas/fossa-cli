@@ -40,7 +40,7 @@ instance ToJSON FilterExpressions where
 
 -- FIXME: replace these with non-CLI types
 -- VPSOpts in particular is used as a God type, and is very unwieldy in the merged CLI form.
-data FossaOpts = FossaOpts
+data FossaOpts = FossaOpts  -- FIXME: remove this type, use App.Types.UploadInfo instead.
   { fossaUrl :: URI
   , fossaApiKey :: Text
   }
@@ -53,7 +53,7 @@ data PartialVPSOpts
     }
 
 data VPSOpts = VPSOpts
-  { fossa :: FossaOpts
+  { fossa :: FossaOpts  -- FIXME: remove this field, keep upload info separate.
   , vpsProjectName :: Text
   , userProvidedRevision :: Maybe Text  -- FIXME: Since we can now infer a revision, we should rename this field.
   , skipIprScan :: Bool

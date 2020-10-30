@@ -11,7 +11,7 @@ module App.Fossa.Analyze
 
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult(..), mkResult)
-import App.Fossa.FossaAPIV1 (ProjectMetadata, UploadResponse (..), uploadAnalysis, uploadContributors)
+import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContributors)
 import App.Fossa.ProjectInference (inferProject, mergeOverride)
 import App.Types
 import qualified Control.Carrier.Diagnostics as Diag
@@ -76,7 +76,7 @@ import Types
 import VCS.Git (fetchGitContributors)
 
 data ScanDestination
-  = UploadScan URI ApiKey ProjectMetadata -- ^ upload to fossa with provided api key and base url
+  = UploadScan UploadInfo -- ^ upload to fossa with provided api key and base url
   | OutputStdout
 
 analyzeMain :: BaseDir -> Severity -> ScanDestination -> OverrideProject -> Bool -> [BuildTargetFilter] -> IO ()
@@ -173,7 +173,7 @@ analyze basedir destination override unpackArchives filters = do
 
   case destination of
     OutputStdout -> logStdout $ pretty (decodeUtf8 (Aeson.encode (buildResult projectResults)))
-    UploadScan baseurl apiKey metadata -> do
+    UploadScan UploadInfo {..} -> do
       revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
 
       logInfo ""
@@ -182,7 +182,7 @@ analyze basedir destination override unpackArchives filters = do
       let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
       logInfo ("Using branch: `" <> pretty branchText <> "`")
 
-      uploadResult <- Diag.runDiagnostics $ uploadAnalysis basedir baseurl apiKey revision metadata projectResults
+      uploadResult <- Diag.runDiagnostics $ uploadAnalysis basedir uploadUri uploadApiKey revision uploadMetadata projectResults
       case uploadResult of
         Left failure -> logError (Diag.renderFailureBundle failure)
         Right success -> do
@@ -191,13 +191,13 @@ analyze basedir destination override unpackArchives filters = do
             [ "============================================================"
             , ""
             , "    View FOSSA Report:"
-            , "    " <> pretty (fossaProjectUrl baseurl (uploadLocator resp) revision)
+            , "    " <> pretty (fossaProjectUrl uploadUri (uploadLocator resp) revision)
             , ""
             , "============================================================"
             ]
           traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
 
-          contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors (unBaseDir basedir) baseurl apiKey $ uploadLocator resp
+          contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors (unBaseDir basedir) uploadUri uploadApiKey $ uploadLocator resp
           case contribResult of
             Left failure -> logDebug (Diag.renderFailureBundle failure)
             Right _ -> pure ()
