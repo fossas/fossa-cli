@@ -1,3 +1,11 @@
+# v2.4
+
+- Integrates `vpscli scan` as `fossa vps analyze` ([#148](https://github.com/fossas/spectrometer/pull/148))
+- Removes `vpscli` binary ([#148](https://github.com/fossas/spectrometer/pull/148))
+- Adds support for `--team` and other metadata flags to vps analysis ([#149](https://github.com/fossas/spectrometer/pull/149))
+- Adds `fossa vps test` command, analogous to `fossa test` for vps projects ([#150](https://github.com/fossas/spectrometer/pull/150))
+- Adds `fossa vps report` command, analogous to `fossa report` for vps projects ([#150](https://github.com/fossas/spectrometer/pull/150))
+
 # v2.3.2
 
 - Adds `fossa list-targets` to list "analysis-targets" (projects and subprojects) available for analysis ([#140](https://github.com/fossas/spectrometer/pull/140))

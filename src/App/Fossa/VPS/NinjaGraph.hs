@@ -13,7 +13,7 @@ import App.Fossa.VPS.Types
 import App.Fossa.VPS.Scan.Core
 import App.Fossa.VPS.Scan.ScotlandYard
 import App.Fossa.ProjectInference
-import App.Types (ApiKey (..), BaseDir (..), NinjaGraphCLIOptions (..), OverrideProject (..), ProjectRevision (..))
+import App.Types (BaseDir (..), NinjaGraphCLIOptions (..), OverrideProject (..), ProjectRevision (..))
 import App.Util (validateDir)
 import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
@@ -31,7 +31,7 @@ import Path
 import System.Exit (exitFailure)
 import qualified System.FilePath as FP
 import System.Process.Typed as PROC
-import Text.URI (URI)
+import Fossa.API.Types (ApiOpts)
 
 data NinjaGraphCmdOpts = NinjaGraphCmdOpts
   { ninjaCmdBasedir :: FilePath
@@ -53,20 +53,19 @@ instance ToDiagnostic NinjaGraphError where
 
 data NinjaParseState = Starting | Parsing | Complete | Error
 
-ninjaGraphMain :: URI -> ApiKey -> Severity -> OverrideProject -> NinjaGraphCLIOptions -> IO ()
-ninjaGraphMain baseuri (ApiKey apikey) logSeverity overrideProject NinjaGraphCLIOptions{..} = do
+ninjaGraphMain :: ApiOpts -> Severity -> OverrideProject -> NinjaGraphCLIOptions -> IO ()
+ninjaGraphMain apiOpts logSeverity overrideProject NinjaGraphCLIOptions{..} = do
   basedir <- validateDir ninjaBaseDir
 
   withLogger logSeverity $ do
     ProjectRevision {..} <- mergeOverride overrideProject <$> inferProject (unBaseDir basedir)
-    let fossaOpts = FossaOpts baseuri apikey
-        ninjaGraphOpts = NinjaGraphOpts fossaOpts ninjaDepsFile ninjaLunchTarget ninjaScanId projectName ninjaBuildName
+    let ninjaGraphOpts = NinjaGraphOpts apiOpts ninjaDepsFile ninjaLunchTarget ninjaScanId projectName ninjaBuildName
 
-    ninjaGraphInner basedir ninjaGraphOpts
+    ninjaGraphInner basedir apiOpts ninjaGraphOpts
 
-ninjaGraphInner :: (Has Logger sig m, Has (Lift IO) sig m) => BaseDir -> NinjaGraphOpts -> m ()
-ninjaGraphInner (BaseDir basedir) ninjaGraphOpts = do
-  result <- runDiagnostics $ getAndParseNinjaDeps basedir ninjaGraphOpts
+ninjaGraphInner :: (Has Logger sig m, Has (Lift IO) sig m) => BaseDir -> ApiOpts -> NinjaGraphOpts -> m ()
+ninjaGraphInner (BaseDir basedir) apiOpts ninjaGraphOpts = do
+  result <- runDiagnostics $ getAndParseNinjaDeps basedir apiOpts ninjaGraphOpts
   case result of
     Left failure -> do
       sendIO . print $ renderFailureBundle failure
@@ -74,14 +73,14 @@ ninjaGraphInner (BaseDir basedir) ninjaGraphOpts = do
     Right _ -> pure ()
 
 
-getAndParseNinjaDeps :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> NinjaGraphOpts -> m ()
-getAndParseNinjaDeps dir ninjaGraphOpts@NinjaGraphOpts{..} = do
+getAndParseNinjaDeps :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> NinjaGraphOpts -> m ()
+getAndParseNinjaDeps dir apiOpts ninjaGraphOpts@NinjaGraphOpts{..} = do
   ninjaDepsContents <- runReadFSIO . runExecIO $ getNinjaDeps dir ninjaGraphOpts
   graph <- scanNinjaDeps ninjaDepsContents
   SherlockInfo{..} <- getSherlockInfo ninjaFossaOpts
   let locator = createLocator ninjaProjectName sherlockOrgId
       syOpts = ScotlandYardNinjaOpts locator sherlockOrgId ninjaGraphOpts
-  _ <- uploadBuildGraph syOpts graph
+  _ <- uploadBuildGraph apiOpts syOpts graph
   pure ()
 
 -- If the path to an already generated ninja_deps file was passed in (with the --ninjadeps arg), then

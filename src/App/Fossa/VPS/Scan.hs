@@ -18,20 +18,20 @@ import App.Fossa.VPS.Scan.RunSherlock
 import App.Fossa.VPS.Scan.ScotlandYard
 import App.Fossa.VPS.Types
 import App.Fossa.ProjectInference
-import App.Types (BaseDir (..), ApiKey (..), OverrideProject (..), ProjectRevision (..), UploadInfo (..), ProjectMetadata (..))
+import App.Types (BaseDir (..), OverrideProject (..), ProjectRevision (..), ProjectMetadata (..))
 import Data.Aeson
+import Data.Flag (Flag, fromFlag)
 import Data.Text (Text)
 import Effect.Logger
 import Path
+import Fossa.API.Types (ApiOpts(..))
 
-newtype SkipIPRScan = SkipIPRScan {unSkipIPRScan :: Bool}
+-- | SkipIPRScan bool flag
+data SkipIPRScan = SkipIPRScan
 
-scanMain :: BaseDir -> Severity -> UploadInfo -> OverrideProject -> FilterExpressions -> SkipIPRScan ->  IO ()
-scanMain basedir logSeverity UploadInfo {..} overrideProject fileFilters skipIprScan = do
-  let fossaOpts = FossaOpts uploadUri $ unApiKey uploadApiKey
-      partVpsOpts = PartialVPSOpts fossaOpts (unSkipIPRScan skipIprScan) fileFilters
-
-  result <- runDiagnostics $ withEmbeddedBinaries $ vpsScan basedir logSeverity overrideProject uploadMetadata partVpsOpts
+scanMain :: BaseDir -> ApiOpts -> ProjectMetadata -> Severity -> OverrideProject -> FilterExpressions -> Flag SkipIPRScan ->  IO ()
+scanMain basedir apiOpts metadata logSeverity overrideProject fileFilters skipIprScan = do
+  result <- runDiagnostics $ withEmbeddedBinaries $ vpsScan basedir logSeverity overrideProject skipIprScan fileFilters apiOpts metadata
   case result of
     Left failure -> do
       print $ renderFailureBundle failure
@@ -43,37 +43,36 @@ scanMain basedir logSeverity UploadInfo {..} overrideProject fileFilters skipIpr
 vpsScan ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
-  ) => BaseDir -> Severity -> OverrideProject -> ProjectMetadata -> PartialVPSOpts -> BinaryPaths -> m ()
-vpsScan (BaseDir basedir) logSeverity overrideProject projectMetadata partVpsOpts binaryPaths = withLogQueue logSeverity $ \queue -> runLogger queue $ do
+  ) => BaseDir -> Severity -> OverrideProject -> Flag SkipIPRScan -> FilterExpressions -> ApiOpts -> ProjectMetadata -> BinaryPaths -> m ()
+vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag fileFilters apiOpts metadata binaryPaths = withLogQueue logSeverity $ \queue -> runLogger queue $ do
   -- Build the revision
   ProjectRevision {..} <- mergeOverride overrideProject <$> inferProject basedir
 
   -- Get Sherlock info
   logDebug "[Sherlock] Retrieving Sherlock information from FOSSA"
-  SherlockInfo{..} <- getSherlockInfo (fossaOpts partVpsOpts)
+  SherlockInfo{..} <- getSherlockInfo apiOpts
 
   -- Build locator info
   let locator = createLocator projectName sherlockOrgId
   let revisionLocator = createRevisionLocator projectName sherlockOrgId projectRevision
 
   -- FIXME: use better type here
-  let PartialVPSOpts {..} = partVpsOpts
-  let vpsOpts = VPSOpts fossaOpts projectName (Just projectRevision) partSkipIprScan partFileFilter
+  let vpsOpts = VPSOpts projectName (Just projectRevision) (fromFlag SkipIPRScan skipIprFlag) fileFilters
 
   -- Update vpsOpts with overriding scan filter blob. 
   -- Previous uses of `vpsOpts` do not deconstruct the object due to this not yet being overridden.
-  (vpsOpts'@VPSOpts{..}, areFiltersOverridden) <- overrideScanFilters vpsOpts locator
+  (vpsOpts'@VPSOpts{..}, areFiltersOverridden) <- overrideScanFilters apiOpts vpsOpts locator
   logDebug $ pretty $ "[All] Creating project with locator '" <> unRevisionLocator revisionLocator <> "'"
 
   -- Create scan in Core
   logDebug "[All] Creating project in FOSSA"
-  _ <- context "creating project in FOSSA" $ createCoreProject vpsProjectName projectRevision projectMetadata fossa
+  _ <- context "creating project in FOSSA" $ createCoreProject vpsProjectName projectRevision metadata apiOpts
 
   -- Create scan in SY
   logDebug "[All] Creating scan in Scotland Yard"
   let syOpts = ScotlandYardOpts locator projectRevision sherlockOrgId vpsOpts'
-  response <- context "creating scan ID" $ createScotlandYardScan syOpts
-  let scanId = responseScanId response
+  response <- context "creating scan ID" $ createScotlandYardScan apiOpts syOpts
+  let scanId = createScanResponseId response
 
   -- Run IPR and Sherlock CLIs concurrently
   logDebug . pretty $ "[All] Running scan on directory " ++ show basedir
@@ -84,7 +83,7 @@ vpsScan (BaseDir basedir) logSeverity overrideProject projectMetadata partVpsOpt
   let sherlockOpts = SherlockOpts basedir scanId sherlockClientToken sherlockClientId sherlockUrl sherlockOrgId locator projectRevision vpsOpts'
   let runIt = runLogger queue . runDiagnostics . runExecIO
   (iprResult, sherlockResult) <- sendIO $ concurrently
-                (runIt $ runIPRScan basedir scanId binaryPaths syOpts vpsOpts')
+                (runIt $ runIPRScan basedir apiOpts scanId binaryPaths syOpts vpsOpts')
                 (runIt $ runSherlockScan binaryPaths sherlockOpts)
 
   case (iprResult, sherlockResult) of
@@ -99,8 +98,8 @@ vpsScan (BaseDir basedir) logSeverity overrideProject projectMetadata partVpsOpt
       sendIO exitFailure
 
   logDebug "[All] Completing scan in FOSSA"
-  _ <- context "completing project in FOSSA" $ completeCoreProject revisionLocator fossa
-  _ <- context "updating scan file filter" $ updateScanFileFilter areFiltersOverridden locator fileFilter fossa
+  _ <- context "completing project in FOSSA" $ completeCoreProject revisionLocator apiOpts
+  _ <- context "updating scan file filter" $ updateScanFileFilter areFiltersOverridden locator fileFilter apiOpts
   logDebug "[All] Project is ready to view in FOSSA (Sherlock forensics may still be pending)"
 
 runSherlockScan ::
@@ -117,21 +116,21 @@ runIPRScan ::
   , Has Logger sig m
   , Has Exec sig m
   , Has (Lift IO) sig m
-  ) => Path Abs Dir -> Text -> BinaryPaths -> ScotlandYardOpts -> VPSOpts -> m ()
-runIPRScan basedir scanId binaryPaths syOpts vpsOpts =
+  ) => Path Abs Dir -> ApiOpts -> Text -> BinaryPaths -> ScotlandYardOpts -> VPSOpts -> m ()
+runIPRScan basedir apiOpts scanId binaryPaths syOpts vpsOpts =
   if skipIprScan vpsOpts then do
     logDebug "[IPR] IPR scan disabled. Uploading an empty IPR set"
-    context "uploading empty scan results" $ uploadIPRResults scanId (object ["Files" .= ()]) syOpts
+    context "uploading empty scan results" $ uploadIPRResults apiOpts scanId (object ["Files" .= ()]) syOpts
     logDebug "[IPR] Post to Scotland Yard complete"
   else do
     iprResult <- execIPR binaryPaths $ IPROpts basedir vpsOpts
     logDebug "[IPR] IPR scan completed. Posting results to Scotland Yard"
-    context "uploading scan results" $ uploadIPRResults scanId iprResult syOpts
+    context "uploading scan results" $ uploadIPRResults apiOpts scanId iprResult syOpts
     logDebug ""
     logDebug "[IPR] Post to Scotland Yard complete"
     logDebug "[IPR] IPR scan complete"
 
-updateScanFileFilter :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m) => Bool -> Locator -> FilterExpressions -> FossaOpts -> m ()
+updateScanFileFilter :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m) => Bool -> Locator -> FilterExpressions -> ApiOpts -> m ()
 updateScanFileFilter False locator filterBlob fossa = storeUpdatedScanFilters locator filterBlob fossa
 updateScanFileFilter True _ _ _ = do
   logDebug "[All] Scan file filter was set by FOSSA server, skipping update"

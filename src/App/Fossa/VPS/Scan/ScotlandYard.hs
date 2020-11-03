@@ -5,6 +5,9 @@ module App.Fossa.VPS.Scan.ScotlandYard
   ( createScotlandYardScan
   , uploadIPRResults
   , uploadBuildGraph
+  , getScan
+  , getLatestScan
+  , CreateScanResponse (..)
   , ScanResponse (..)
   , ScotlandYardOpts (..)
   , ScotlandYardNinjaOpts (..)
@@ -27,7 +30,7 @@ import App.Fossa.VPS.Scan.Core
 import Data.Aeson
 import Data.Text (Text)
 import Network.HTTP.Req
-import App.Util (parseUri)
+import Fossa.API.Types (ApiOpts, useApiOpts)
 
 data ScotlandYardOpts = ScotlandYardOpts
   { projectId :: Locator
@@ -58,14 +61,32 @@ uploadIPRChunkEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "pr
 uploadIPRCompleteEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
 uploadIPRCompleteEndpoint baseurl projectId scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "discovered_licenses" /: "complete"
 
+getScanEndpoint :: Url 'Https -> Locator -> Text -> Url 'Https
+getScanEndpoint baseurl (Locator projectId) scanId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId
+
+getLatestScanEndpoint :: Url 'Https -> Locator -> Url 'Https
+getLatestScanEndpoint baseurl (Locator projectId) = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: "latest"
+
+data CreateScanResponse = CreateScanResponse
+  { createScanResponseId :: Text
+  } deriving (Eq, Ord, Show)
+
 data ScanResponse = ScanResponse
   { responseScanId :: Text
+  , responseScanStatus :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
+instance FromJSON CreateScanResponse where
+  parseJSON = withObject "CreateScanResponse" $ \obj ->
+    CreateScanResponse
+      <$> obj .: "scanId"
+
 instance FromJSON ScanResponse where
   parseJSON = withObject "ScanResponse" $ \obj ->
-    ScanResponse <$> obj .: "scanId"
+    ScanResponse
+      <$> obj .: "id"
+      <*> obj .:? "status"
 
 data CreateBuildGraphResponse = CreateBuildGraphResponse
   { responseBuildGraphId :: Text
@@ -76,30 +97,41 @@ instance FromJSON CreateBuildGraphResponse where
   parseJSON = withObject "CreateBuildGraphResponse" $ \obj ->
     CreateBuildGraphResponse <$> obj .: "id"
 
-createScotlandYardScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ScotlandYardOpts -> m ScanResponse
-createScotlandYardScan ScotlandYardOpts {..} = runHTTP $ do
-  let VPSOpts{..} = syVpsOpts
-      FossaOpts{..} = fossa
-      body = object ["revisionId" .= projectRevision, "organizationId" .= organizationId]
-      auth = coreAuthHeader fossaApiKey
+createScotlandYardScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> ScotlandYardOpts -> m CreateScanResponse
+createScotlandYardScan apiOpts ScotlandYardOpts {..} = runHTTP $ do
+  let body = object ["revisionId" .= projectRevision, "organizationId" .= organizationId]
       locator = unLocator projectId
 
-  (baseUrl, baseOptions) <- parseUri fossaUrl
-  resp <- req POST (createScanEndpoint baseUrl locator) (ReqBodyJson body) jsonResponse (baseOptions <> header "Content-Type" "application/json" <> auth)
+  (baseUrl, baseOptions) <- useApiOpts apiOpts
+  resp <- req POST (createScanEndpoint baseUrl locator) (ReqBodyJson body) jsonResponse (baseOptions <> header "Content-Type" "application/json" )
+  pure (responseBody resp)
+
+getLatestScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Locator -> Text -> m ScanResponse
+getLatestScan apiOpts locator revisionId = runHTTP $ do
+  (baseUrl, baseOptions) <- useApiOpts apiOpts
+  let opts = baseOptions
+        <> header "Content-Type" "application/json"
+        <> "revisionID" =: revisionId
+  resp <- req GET (getLatestScanEndpoint baseUrl locator) NoReqBody jsonResponse opts
+  pure (responseBody resp)
+
+getScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Locator -> Text -> m ScanResponse
+getScan apiOpts locator scanId = runHTTP $ do
+  (baseUrl, baseOptions) <- useApiOpts apiOpts
+  let opts = baseOptions
+        <> header "Content-Type" "application/json"
+  resp <- req GET (getScanEndpoint baseUrl locator scanId) NoReqBody jsonResponse opts
   pure (responseBody resp)
 
 -- Given the results from a run of IPR, a scan ID and a URL for Scotland Yard,
 -- post the IPR result in chunks of ~ 1 MB to the "Upload IPR Data" endpoint on Scotland Yard.
 -- once all of the chunks are complete, PUT to the "upload IPR data complete" endpoint,
-uploadIPRResults :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> Value -> ScotlandYardOpts -> m ()
-uploadIPRResults scanId value ScotlandYardOpts {..} = runHTTP $ do
-  let VPSOpts{..} = syVpsOpts
-      FossaOpts{..} = fossa
-      auth = coreAuthHeader fossaApiKey
-      locator = unLocator projectId
-  (baseUrl, baseOptions) <- parseUri fossaUrl
-  let url = uploadIPRChunkEndpoint baseUrl locator scanId
-      authenticatedHttpOptions = baseOptions <> header "Content-Type" "application/json" <> auth
+uploadIPRResults :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Text -> Value -> ScotlandYardOpts -> m ()
+uploadIPRResults apiOpts scanId value ScotlandYardOpts {..} = runHTTP $ do
+  (baseUrl, baseOptions) <- useApiOpts apiOpts
+  let locator = unLocator projectId
+      url = uploadIPRChunkEndpoint baseUrl locator scanId
+      authenticatedHttpOptions = baseOptions <> header "Content-Type" "application/json"
       chunkedJSON = fromMaybe [] (chunkJSON value "Files" (1024 * 1024))
 
   capabilities <- liftIO getNumCapabilities
@@ -125,14 +157,12 @@ uploadBuildGraphCompleteEndpoint :: Url 'Https -> Text -> Text -> Text ->  Url '
 uploadBuildGraphCompleteEndpoint baseurl projectId scanId buildGraphId = coreProxyPrefix baseurl /: "projects" /: projectId /: "scans" /: scanId /: "build-graphs" /: buildGraphId /: "rules" /: "complete"
 
 -- create the build graph in SY, upload it in chunks of ~ 1 MB and then complete it.
-uploadBuildGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ScotlandYardNinjaOpts -> [DepsTarget] -> m ()
-uploadBuildGraph syOpts@ScotlandYardNinjaOpts {..} targets = runHTTP $ do
+uploadBuildGraph :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> ScotlandYardNinjaOpts -> [DepsTarget] -> m ()
+uploadBuildGraph apiOpts syOpts@ScotlandYardNinjaOpts {..} targets = runHTTP $ do
   let NinjaGraphOpts{..} = syNinjaOpts
-      FossaOpts{..} = ninjaFossaOpts
-      auth = coreAuthHeader fossaApiKey
       locator = unLocator syNinjaProjectId
-  (baseUrl, baseOptions) <- parseUri fossaUrl
-  let authenticatedHttpOptions = baseOptions <> header "Content-Type" "application/json" <> auth
+  (baseUrl, baseOptions) <- useApiOpts apiOpts
+  let authenticatedHttpOptions = baseOptions <> header "Content-Type" "application/json"
 
   -- create the build graph and save its ID
   let createUrl = createBuildGraphEndpoint baseUrl locator scanId

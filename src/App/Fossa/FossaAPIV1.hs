@@ -25,13 +25,16 @@ module App.Fossa.FossaAPIV1
   , renderIssueType
   , IssueRule(..)
 
+  , Organization(..)
+  , getOrganization
+
   , getAttribution
+  , getAttributionRaw
   ) where
 
 import App.Fossa.Analyze.Project
 import qualified App.Fossa.Report.Attribution as Attr
 import App.Types
-import App.Util (parseUri)
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class (MonadIO (..))
@@ -41,7 +44,6 @@ import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Text.Encoding (encodeUtf8)
 import Effect.Logger
 import qualified Network.HTTP.Client as HTTP
 import Network.HTTP.Req
@@ -51,6 +53,7 @@ import Srclib.Converter (toSourceUnit)
 import Srclib.Types
 import Text.URI (URI)
 import qualified Text.URI as URI
+import Fossa.API.Types (ApiOpts, useApiOpts)
 
 newtype FossaReq m a = FossaReq { unFossaReq :: m a }
   deriving (Functor, Applicative, Monad, Algebra sig)
@@ -91,9 +94,6 @@ normalizeGitProjectName project
       dropSuffix :: Text -> Text -> Text
       dropSuffix suf txt = fromMaybe txt (T.stripSuffix suf txt)
 
-apiHeader :: ApiKey -> Option scheme
-apiHeader key = header "Authorization" ("token " <> encodeUtf8 (unApiKey key))
-
 data UploadResponse = UploadResponse
   { uploadLocator :: Text
   , uploadError   :: Maybe Text
@@ -123,14 +123,13 @@ instance ToDiagnostic FossaError where
 uploadAnalysis
   :: (Has (Lift IO) sig m, Has Diagnostics sig m)
   => BaseDir -- ^ root directory for analysis
-  -> URI -- ^ base url
-  -> ApiKey -- ^ api key
+  -> ApiOpts
   -> ProjectRevision
   -> ProjectMetadata
   -> [ProjectResult]
   -> m UploadResponse
-uploadAnalysis rootDir baseUri key ProjectRevision{..} metadata projects = fossaReq $ do
-  (baseUrl, baseOptions) <- parseUri baseUri
+uploadAnalysis rootDir apiOpts ProjectRevision{..} metadata projects = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   -- For each of the projects, we need to strip the root directory path from the prefix of the project path.
   -- We don't want parent directories of the scan root affecting "production path" filtering -- e.g., if we're
@@ -144,11 +143,10 @@ uploadAnalysis rootDir baseUri key ProjectRevision{..} metadata projects = fossa
       opts = "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "v" =: cliVersion
           <> "managedBuild" =: True
-          <> apiHeader key
           <> mkMetadataOpts metadata
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
-  resp <- req POST (uploadUrl baseUrl) (ReqBodyJson sourceUnits) jsonResponse (baseOptions <> opts)
+  resp <- req POST (uploadUrl baseUrl) (ReqBodyJson sourceUnits) jsonResponse (baseOpts <> opts)
   pure (responseBody resp)
 
 mkMetadataOpts :: ProjectMetadata -> Option scheme
@@ -236,18 +234,15 @@ instance FromJSON BuildStatus where
 
 getLatestBuild
   :: (Has (Lift IO) sig m, Has Diagnostics sig m)
-  => URI
-  -> ApiKey -- ^ api key
+  => ApiOpts
   -> ProjectRevision
   -> m Build
-getLatestBuild baseUri key ProjectRevision {..} = fossaReq $ do
-  (baseUrl, baseOptions) <- parseUri baseUri
+getLatestBuild apiOpts ProjectRevision {..} = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = baseOptions <> apiHeader key
-
-  Organization orgId <- responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse opts
+  Organization orgId <- getOrganization apiOpts
  
-  response <- req GET (buildsEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
+  response <- req GET (buildsEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
 
 ----------
@@ -257,17 +252,14 @@ issuesEndpoint baseUrl orgId locator = baseUrl /: "api" /: "cli" /: renderLocato
 
 getIssues
   :: (Has (Lift IO) sig m, Has Diagnostics sig m)
-  => URI
-  -> ApiKey -- ^ api key
+  => ApiOpts
   -> ProjectRevision
   -> m Issues
-getIssues baseUri key ProjectRevision{..} = fossaReq $ do
-  (baseUrl, baseOptions) <- parseUri baseUri
+getIssues apiOpts ProjectRevision{..} = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
  
-  let opts = baseOptions <> apiHeader key
-
-  Organization orgId <- responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse opts
-  response <- req GET (issuesEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
+  Organization orgId <- getOrganization apiOpts
+  response <- req GET (issuesEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
 
 data Issues = Issues
@@ -325,7 +317,8 @@ instance FromJSON Issue where
     Issue <$> obj .: "id"
            <*> obj .:? "priorityString"
            <*> obj .: "resolved"
-           <*> obj .: "revisionId"
+           -- VPS issues don't have a revisionId
+           <*> obj .:? "revisionId" .!= "unknown project"
            <*> obj .: "type"
            <*> obj .:? "rule"
 
@@ -371,19 +364,33 @@ attributionEndpoint baseurl orgId locator = baseurl /: "api" /: "revisions" /: r
 
 getAttribution
   :: (Has (Lift IO) sig m, Has Diagnostics sig m)
-  => URI
-  -> ApiKey -- ^ api key
+  => ApiOpts
   -> ProjectRevision
   -> m Attr.Attribution
-getAttribution baseUri key ProjectRevision{..} = fossaReq $ do
-  (baseUrl, baseOptions) <- parseUri baseUri
+getAttribution apiOpts ProjectRevision{..} = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = baseOptions
-        <> apiHeader key
+  let opts = baseOpts
         <> "includeDeepDependencies" =: True
         <> "includeHashAndVersionData" =: True
         <> "includeDownloadUrl" =: True
-  Organization orgId <- responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse opts
+  Organization orgId <- getOrganization apiOpts
+  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
+  pure (responseBody response)
+
+getAttributionRaw
+  :: (Has (Lift IO) sig m, Has Diagnostics sig m)
+  => ApiOpts
+  -> ProjectRevision
+  -> m Value
+getAttributionRaw apiOpts ProjectRevision{..} = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts = baseOpts
+        <> "includeDeepDependencies" =: True
+        <> "includeHashAndVersionData" =: True
+        <> "includeDownloadUrl" =: True
+  Organization orgId <- getOrganization apiOpts
   response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
@@ -400,6 +407,11 @@ instance FromJSON Organization where
 organizationEndpoint :: Url scheme -> Url scheme
 organizationEndpoint baseurl = baseurl /: "api" /: "cli" /: "organization"
 
+getOrganization :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> m Organization
+getOrganization apiOpts = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse baseOpts
+
 ----------
 
 newtype Contributors = Contributors 
@@ -409,12 +421,11 @@ newtype Contributors = Contributors
 contributorsEndpoint :: Url scheme -> Url scheme
 contributorsEndpoint baseurl = baseurl /: "api" /: "contributors"
 
-uploadContributors :: (Has (Lift IO) sig m, Has Diagnostics sig m) => URI -> ApiKey -> Text -> Contributors -> m ()
-uploadContributors baseUri apiKey locator contributors = fossaReq $ do
-  (baseUrl, baseOptions) <- parseUri baseUri
+uploadContributors :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Text -> Contributors -> m ()
+uploadContributors apiOpts locator contributors = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = baseOptions
-        <> apiHeader apiKey
+  let opts = baseOpts
         <> "locator" =: locator
 
   _ <- req POST (contributorsEndpoint baseUrl) (ReqBodyJson contributors) ignoreResponse opts

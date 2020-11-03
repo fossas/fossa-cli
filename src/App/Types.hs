@@ -1,26 +1,16 @@
 module App.Types
-  ( ApiKey (..),
-    BaseDir (..),
+  ( BaseDir (..),
     NinjaGraphCLIOptions (..),
     OverrideProject (..),
     ProjectMetadata (..),
     ProjectRevision (..),
-    UploadInfo (..),
   )
 where
 
 import Data.Text (Text)
-import Text.URI
 import Path
 
-newtype ApiKey = ApiKey {unApiKey :: Text} deriving (Eq, Ord, Show)
 newtype BaseDir = BaseDir {unBaseDir :: Path Abs Dir} deriving (Eq, Ord, Show)
-
-data UploadInfo = UploadInfo
-  { uploadUri :: URI,
-    uploadApiKey :: ApiKey,
-    uploadMetadata :: ProjectMetadata
-  }
 
 data OverrideProject = OverrideProject
   { overrideName :: Maybe Text,

@@ -11,17 +11,15 @@ module App.Fossa.VPS.Types
 , HTTP(..)
 , HTTPRequestFailed(..)
 , VPSOpts (..)
-, PartialVPSOpts (..)
-, FossaOpts (..)
 , NinjaGraphOpts (..)
 ) where
 
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Carrier.Diagnostics
 import Control.Effect.Lift (Lift, sendIO)
-import Text.URI (URI)
 import Data.Text (Text)
 import Data.Aeson
+import Fossa.API.Types (ApiOpts)
 import Network.HTTP.Req
 import Data.Text.Prettyprint.Doc (viaShow)
 import qualified Data.ByteString.Lazy as BSL
@@ -40,21 +38,8 @@ instance ToJSON FilterExpressions where
 
 -- FIXME: replace these with non-CLI types
 -- VPSOpts in particular is used as a God type, and is very unwieldy in the merged CLI form.
-data FossaOpts = FossaOpts  -- FIXME: remove this type, use App.Types.UploadInfo instead.
-  { fossaUrl :: URI
-  , fossaApiKey :: Text
-  }
-
-data PartialVPSOpts
-  = PartialVPSOpts
-    { fossaOpts :: FossaOpts,
-      partSkipIprScan :: Bool,
-      partFileFilter :: FilterExpressions
-    }
-
 data VPSOpts = VPSOpts
-  { fossa :: FossaOpts  -- FIXME: remove this field, keep upload info separate.
-  , vpsProjectName :: Text
+  { vpsProjectName :: Text
   , userProvidedRevision :: Maybe Text  -- FIXME: Since we can now infer a revision, we should rename this field.
   , skipIprScan :: Bool
   , fileFilter :: FilterExpressions
@@ -90,7 +75,7 @@ instance ToJSON DepsDependency where
     ]
 
 data NinjaGraphOpts = NinjaGraphOpts
-  { ninjaFossaOpts :: FossaOpts
+  { ninjaFossaOpts :: ApiOpts
   , ninjaGraphNinjaPath :: Maybe FilePath
   , lunchTarget :: Maybe Text
   , scanId :: Text

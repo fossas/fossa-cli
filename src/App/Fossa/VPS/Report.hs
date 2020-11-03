@@ -1,6 +1,6 @@
 {-# LANGUAGE NumericUnderscores #-}
 
-module App.Fossa.Report
+module App.Fossa.VPS.Report
   ( reportMain
   , ReportType (..)
   ) where
@@ -20,6 +20,8 @@ import Effect.Logger
 import Fossa.API.Types (ApiOpts)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
+import qualified App.Fossa.VPS.Scan.Core as VPSCore
+import qualified App.Fossa.VPS.Scan.ScotlandYard as ScotlandYard
 
 data ReportType =
     AttributionReport
@@ -53,13 +55,16 @@ reportMain basedir apiOpts logSeverity timeoutSeconds reportType override = do
     result <- runDiagnostics $ do
       revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
 
-      logInfo ""
-      logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
-      logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
+      logSticky "[ Getting latest scan ID ]"
 
-      logSticky "[ Waiting for build completion... ]"
+      Fossa.Organization orgId <- Fossa.getOrganization apiOpts
+      let locator = VPSCore.createLocator (projectName revision) orgId
 
-      waitForBuild apiOpts revision
+      scan <- ScotlandYard.getLatestScan apiOpts locator (projectRevision revision)
+
+      logSticky "[ Waiting for component scan... ]"
+
+      waitForSherlockScan apiOpts locator (ScotlandYard.responseScanId scan)
 
       logSticky "[ Waiting for issue scan completion... ]"
       _ <- waitForIssues apiOpts revision
@@ -68,7 +73,7 @@ reportMain basedir apiOpts logSeverity timeoutSeconds reportType override = do
       logSticky $ "[ Fetching " <> pretty (reportName reportType) <> " report... ]"
       jsonValue <- case reportType of
         AttributionReport ->
-          Fossa.getAttribution apiOpts revision
+          Fossa.getAttributionRaw apiOpts revision
       logSticky ""
         
       logStdout . pretty . decodeUtf8 $ Aeson.encode jsonValue

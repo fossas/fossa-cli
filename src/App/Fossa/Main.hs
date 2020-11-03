@@ -1,30 +1,32 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Main
   ( appMain,
   )
 where
 
-import App.Fossa.Analyze (ScanDestination (..), analyzeMain)
+import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), analyzeMain)
 import App.Fossa.ListTargets (listTargetsMain)
-import App.Fossa.Report (ReportType (..), reportMain)
-import App.Fossa.Test (TestOutputType (..), testMain)
+import qualified App.Fossa.Report as Report
+import qualified App.Fossa.Test as Test
 import App.Fossa.VPS.NinjaGraph
-import App.Fossa.VPS.Scan
-    ( scanMain,
-      SkipIPRScan(..) )
-import App.Fossa.VPS.Types ( FilterExpressions(..) )
+import qualified App.Fossa.VPS.Report as VPSReport
+import App.Fossa.VPS.Scan (SkipIPRScan (..), scanMain)
+import qualified App.Fossa.VPS.Test as VPSTest
+import App.Fossa.VPS.Types (FilterExpressions (..))
 import App.OptionExtensions
 import App.Types
 import App.Util (validateDir)
-import Control.Monad (when, unless)
+import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.Bool (bool)
+import Data.Flag (Flag, flagOpt)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Discovery.Filters (BuildTargetFilter(..), filterParser)
+import Discovery.Filters (BuildTargetFilter (..), filterParser)
 import Effect.Logger
+import Fossa.API.Types (ApiKey(..), ApiOpts(..))
 import Options.Applicative
 import System.Environment (lookupEnv)
 import System.Exit (die)
@@ -32,7 +34,6 @@ import qualified System.Info as SysInfo
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI)
 import Text.URI.QQ (uri)
-
 
 windowsOsName :: String
 windowsOsName = "mingw32"
@@ -58,37 +59,46 @@ appMain = do
         then analyzeMain baseDir logSeverity OutputStdout analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
         else do
           key <- requireKey maybeApiKey
-          analyzeMain baseDir logSeverity (UploadScan $ UploadInfo optBaseUrl key analyzeMetadata) analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
-
+          let apiOpts = ApiOpts optBaseUrl key
+          analyzeMain baseDir logSeverity (UploadScan apiOpts analyzeMetadata) analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
+    --
     TestCommand TestOptions {..} -> do
       baseDir <- validateDir testBaseDir
       key <- requireKey maybeApiKey
-      testMain optBaseUrl baseDir key logSeverity testTimeout testOutputType override
-
+      let apiOpts = ApiOpts optBaseUrl key
+      Test.testMain baseDir apiOpts logSeverity testTimeout testOutputType override
+    --
     InitCommand ->
       withLogger logSeverity $ logWarn "This command has been deprecated and is no longer needed.  It has no effect and may be safely removed."
-
+    --
     ReportCommand ReportOptions {..} -> do
       unless reportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"
       baseDir <- validateDir reportBaseDir
       key <- requireKey maybeApiKey
-      reportMain optBaseUrl baseDir key logSeverity reportTimeout reportType override
-    
+      let apiOpts = ApiOpts optBaseUrl key
+      Report.reportMain baseDir apiOpts logSeverity reportTimeout reportType override
+    --
     ListTargetsCommand dir -> do
       baseDir <- validateDir dir
       listTargetsMain baseDir
-
+    --
     VPSCommand VPSOptions {..} -> do
       when (SysInfo.os == windowsOsName) $ die "VPS functionality is not supported on Windows"
       apikey <- requireKey maybeApiKey
+      let apiOpts = ApiOpts optBaseUrl apikey
       case vpsCommand of
         VPSAnalyzeCommand VPSAnalyzeOptions {..} -> do
           baseDir <- validateDir vpsAnalyzeBaseDir
-          let uploadInfo = UploadInfo optBaseUrl apikey vpsAnalyzeMeta
-          scanMain baseDir logSeverity uploadInfo override vpsFileFilter (SkipIPRScan skipIprScan)
+          scanMain baseDir apiOpts vpsAnalyzeMeta logSeverity override vpsFileFilter skipIprScan
         NinjaGraphCommand ninjaGraphOptions -> do
-          ninjaGraphMain optBaseUrl apikey logSeverity override ninjaGraphOptions
-          
+          ninjaGraphMain apiOpts logSeverity override ninjaGraphOptions
+        VPSTestCommand VPSTestOptions {..} -> do
+          baseDir <- validateDir vpsTestBaseDir
+          VPSTest.testMain baseDir apiOpts logSeverity vpsTestTimeout vpsTestOutputType override
+        VPSReportCommand VPSReportOptions {..} -> do
+          unless vpsReportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"
+          baseDir <- validateDir vpsReportBaseDir
+          VPSReport.reportMain baseDir apiOpts logSeverity vpsReportTimeout vpsReportType override
 
 requireKey :: Maybe ApiKey -> IO ApiKey
 requireKey (Just key) = pure key
@@ -170,7 +180,7 @@ analyzeOpts :: Parser AnalyzeOptions
 analyzeOpts =
   AnalyzeOptions
     <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
-    <*> switch (long "unpack-archives" <> help "Recursively unpack and analyze discovered archives")
+    <*> flagOpt UnpackArchives (long "unpack-archives" <> help "Recursively unpack and analyze discovered archives")
     <*> optional (strOption (long "branch" <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> many filterOpt
@@ -200,26 +210,48 @@ reportOpts =
     <*> reportCmd
     <*> baseDirArg
 
-reportCmd :: Parser ReportType
+-- FIXME: make report type a positional argument, rather than a subcommand
+reportCmd :: Parser Report.ReportType
 reportCmd =
   hsubparser $
-    command "attribution" (info (pure AttributionReport) $ progDesc "Generate attribution report" )
+    command "attribution" (info (pure Report.AttributionReport) $ progDesc "Generate attribution report")
 
 testOpts :: Parser TestOptions
 testOpts =
   TestOptions
     <$> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
-    <*> flag TestOutputPretty TestOutputJson (long "json" <> help "Output issues as json")
+    <*> flag Test.TestOutputPretty Test.TestOutputJson (long "json" <> help "Output issues as json")
     <*> baseDirArg
 
 vpsOpts :: Parser VPSOptions
 vpsOpts = VPSOptions <$> skipIprScanOpt <*> fileFilterOpt <*> vpsCommands
   where
-    skipIprScanOpt = switch (long "skip-ipr-scan" <> help "If specified, the scan directory will not be scanned for intellectual property rights information")
+    skipIprScanOpt = flagOpt SkipIPRScan (long "skip-ipr-scan" <> help "If specified, the scan directory will not be scanned for intellectual property rights information")
     fileFilterOpt = FilterExpressions <$> jsonOption (long "ignore-file-regex" <> short 'i' <> metavar "REGEXPS" <> help "JSON encoded array of regular expressions used to filter scanned paths" <> value [])
 
 vpsAnalyzeOpts :: Parser VPSAnalyzeOptions
 vpsAnalyzeOpts = VPSAnalyzeOptions <$> baseDirArg <*> metadataOpts
+
+vpsReportOpts :: Parser VPSReportOptions
+vpsReportOpts =
+  VPSReportOptions
+    <$> switch (long "json" <> help "Output the report in JSON format (Currently required).")
+    <*> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
+    <*> vpsReportCmd
+    <*> baseDirArg
+
+-- FIXME: make report type a positional argument, rather than a subcommand
+vpsReportCmd :: Parser VPSReport.ReportType
+vpsReportCmd =
+  hsubparser $
+    command "attribution" (info (pure VPSReport.AttributionReport) $ progDesc "Generate attribution report")
+
+vpsTestOpts :: Parser VPSTestOptions
+vpsTestOpts =
+  VPSTestOptions
+    <$> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
+    <*> flag VPSTest.TestOutputPretty VPSTest.TestOutputJson (long "json" <> help "Output issues as json")
+    <*> baseDirArg
 
 ninjaGraphOpts :: Parser NinjaGraphCLIOptions
 ninjaGraphOpts = NinjaGraphCLIOptions <$> baseDirArg <*> ninjaDepsOpt <*> lunchTargetOpt <*> scanIdOpt <*> buildNameOpt
@@ -232,18 +264,28 @@ ninjaGraphOpts = NinjaGraphCLIOptions <$> baseDirArg <*> ninjaDepsOpt <*> lunchT
 vpsCommands :: Parser VPSCommand
 vpsCommands =
   hsubparser
-    (
-      command "analyze"
-        (info (VPSAnalyzeCommand <$> vpsAnalyzeOpts) $
-          progDesc "Scan for projects and their vendored dependencies"
+    ( command
+        "analyze"
+        ( info (VPSAnalyzeCommand <$> vpsAnalyzeOpts) $
+            progDesc "Scan for projects and their vendored dependencies"
         )
-    <>
-      command "ninja-graph"
-        (info (NinjaGraphCommand <$> ninjaGraphOpts) $
-          progDesc "Get a dependency graph for a ninja build"
-        )
+        <> command
+          "ninja-graph"
+          ( info (NinjaGraphCommand <$> ninjaGraphOpts) $
+              progDesc "Get a dependency graph for a ninja build"
+          )
+        <> command
+          "test"
+          ( info (VPSTestCommand <$> vpsTestOpts) $
+              progDesc "Check for issues from FOSSA and exit non-zero when issues are found"
+          )
+        <> command
+          "report"
+          ( info
+              (VPSReportCommand <$> vpsReportOpts)
+              (progDesc "Access various reports from FOSSA and print to stdout")
+          )
     )
-
 
 data CmdOptions = CmdOptions
   { optDebug :: Bool,
@@ -265,17 +307,26 @@ data Command
 data VPSCommand
   = VPSAnalyzeCommand VPSAnalyzeOptions
   | NinjaGraphCommand NinjaGraphCLIOptions
+  | VPSTestCommand VPSTestOptions
+  | VPSReportCommand VPSReportOptions
+
+data VPSReportOptions = VPSReportOptions
+  { vpsReportJsonOutput :: Bool,
+    vpsReportTimeout :: Int,
+    vpsReportType :: VPSReport.ReportType,
+    vpsReportBaseDir :: FilePath
+  }
 
 data ReportOptions = ReportOptions
   { reportJsonOutput :: Bool,
     reportTimeout :: Int,
-    reportType :: ReportType,
+    reportType :: Report.ReportType,
     reportBaseDir :: FilePath
   }
 
 data AnalyzeOptions = AnalyzeOptions
   { analyzeOutput :: Bool,
-    analyzeUnpackArchives :: Bool,
+    analyzeUnpackArchives :: Flag UnpackArchives,
     analyzeBranch :: Maybe Text,
     analyzeMetadata :: ProjectMetadata,
     analyzeBuildTargetFilters :: [BuildTargetFilter],
@@ -284,12 +335,12 @@ data AnalyzeOptions = AnalyzeOptions
 
 data TestOptions = TestOptions
   { testTimeout :: Int,
-    testOutputType :: TestOutputType,
+    testOutputType :: Test.TestOutputType,
     testBaseDir :: FilePath
   }
 
 data VPSOptions = VPSOptions
-  { skipIprScan :: Bool,
+  { skipIprScan :: Flag SkipIPRScan,
     vpsFileFilter :: FilterExpressions,
     vpsCommand :: VPSCommand
   }
@@ -297,4 +348,10 @@ data VPSOptions = VPSOptions
 data VPSAnalyzeOptions = VPSAnalyzeOptions
   { vpsAnalyzeBaseDir :: FilePath,
     vpsAnalyzeMeta :: ProjectMetadata
+  }
+
+data VPSTestOptions = VPSTestOptions
+  { vpsTestTimeout :: Int,
+    vpsTestOutputType :: VPSTest.TestOutputType,
+    vpsTestBaseDir :: FilePath
   }

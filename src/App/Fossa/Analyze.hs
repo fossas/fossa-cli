@@ -6,6 +6,7 @@
 module App.Fossa.Analyze
   ( analyzeMain
   , ScanDestination(..)
+  , UnpackArchives(..)
   , discoverFuncs
   ) where
 
@@ -25,6 +26,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
+import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
@@ -38,6 +40,7 @@ import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
+import Fossa.API.Types (ApiOpts(..))
 import Network.HTTP.Types (urlEncode)
 import Path
 import Path.IO (makeRelative)
@@ -76,10 +79,13 @@ import Types
 import VCS.Git (fetchGitContributors)
 
 data ScanDestination
-  = UploadScan UploadInfo -- ^ upload to fossa with provided api key and base url
+  = UploadScan ApiOpts ProjectMetadata -- ^ upload to fossa with provided api key and base url
   | OutputStdout
 
-analyzeMain :: BaseDir -> Severity -> ScanDestination -> OverrideProject -> Bool -> [BuildTargetFilter] -> IO ()
+-- | UnpackArchives bool flag
+data UnpackArchives = UnpackArchives
+
+analyzeMain :: BaseDir -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> [BuildTargetFilter] -> IO ()
 analyzeMain basedir logSeverity destination project unpackArchives filters = withLogger logSeverity $
   analyze basedir destination project unpackArchives filters
 
@@ -155,7 +161,7 @@ analyze ::
   => BaseDir
   -> ScanDestination
   -> OverrideProject
-  -> Bool -- ^ whether to unpack archives
+  -> Flag UnpackArchives
   -> [BuildTargetFilter]
   -> m ()
 analyze basedir destination override unpackArchives filters = do
@@ -167,13 +173,13 @@ analyze basedir destination override unpackArchives filters = do
       . runReadFSIO
       . runFinally
       . withTaskPool capabilities updateProgress
-      $ withDiscoveredProjects discoverFuncs unpackArchives (unBaseDir basedir) (runDependencyAnalysis basedir filters)
+      $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) (unBaseDir basedir) (runDependencyAnalysis basedir filters)
 
   logSticky ""
 
   case destination of
     OutputStdout -> logStdout $ pretty (decodeUtf8 (Aeson.encode (buildResult projectResults)))
-    UploadScan UploadInfo {..} -> do
+    UploadScan apiOpts metadata -> do
       revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
 
       logInfo ""
@@ -182,7 +188,7 @@ analyze basedir destination override unpackArchives filters = do
       let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
       logInfo ("Using branch: `" <> pretty branchText <> "`")
 
-      uploadResult <- Diag.runDiagnostics $ uploadAnalysis basedir uploadUri uploadApiKey revision uploadMetadata projectResults
+      uploadResult <- Diag.runDiagnostics $ uploadAnalysis basedir apiOpts revision metadata projectResults
       case uploadResult of
         Left failure -> logError (Diag.renderFailureBundle failure)
         Right success -> do
@@ -191,13 +197,13 @@ analyze basedir destination override unpackArchives filters = do
             [ "============================================================"
             , ""
             , "    View FOSSA Report:"
-            , "    " <> pretty (fossaProjectUrl uploadUri (uploadLocator resp) revision)
+            , "    " <> pretty (fossaProjectUrl (apiOptsUri apiOpts) (uploadLocator resp) revision)
             , ""
             , "============================================================"
             ]
           traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
 
-          contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors (unBaseDir basedir) uploadUri uploadApiKey $ uploadLocator resp
+          contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors (unBaseDir basedir) apiOpts (uploadLocator resp)
           case contribResult of
             Left failure -> logDebug (Diag.renderFailureBundle failure)
             Right _ -> pure ()
@@ -208,14 +214,13 @@ tryUploadContributors ::
     Has (Lift IO) sig m
   ) =>
   Path x Dir ->
-  URI ->
-  ApiKey ->
+  ApiOpts ->
   -- | Locator
   Text ->
   m ()
-tryUploadContributors baseDir baseUrl apiKey locator = do
+tryUploadContributors baseDir apiOpts locator = do
   contributors <- fetchGitContributors baseDir
-  uploadContributors baseUrl apiKey locator contributors
+  uploadContributors apiOpts locator contributors
 
 -- This url can have a two forms (Core may allow more, but we don't care here):
 --    https://<fossa host>/projects/<project>/
