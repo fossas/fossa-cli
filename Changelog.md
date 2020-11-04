@@ -5,6 +5,7 @@
 - Adds support for `--team` and other metadata flags to vps analysis ([#149](https://github.com/fossas/spectrometer/pull/149))
 - Adds `fossa vps test` command, analogous to `fossa test` for vps projects ([#150](https://github.com/fossas/spectrometer/pull/150))
 - Adds `fossa vps report` command, analogous to `fossa report` for vps projects ([#150](https://github.com/fossas/spectrometer/pull/150))
+- Adds support for unpacking of gzipped RPMs ([#154](https://github.com/fossas/spectrometer/pull/154))
 
 # v2.3.2
 
