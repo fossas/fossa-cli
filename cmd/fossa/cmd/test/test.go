@@ -26,7 +26,7 @@ Detailed issue data cannot be read. This could be related to using a push-only A
 ========================================================================
 Dependency	Revision	{{if or (eq $type "Flagged by Policy") (eq $type "Denied by Policy") -}} License {{- end}}
 {{- range $i, $issue := $issues}}
-{{$issue.Name}}	{{$issue.Revision}}	{{$issue.Rule.License }}
+{{$issue.Name}}	{{$issue.Revision}}
 {{- end}}
 {{end}}
 `

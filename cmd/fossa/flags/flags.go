@@ -49,7 +49,7 @@ var (
 	Endpoint        = "endpoint"
 	EndpointF       = cli.StringFlag{Name: Short(Endpoint), Usage: "the FOSSA server endpoint (default: 'https://app.fossa.com')"}
 	Title           = "title"
-	TitleF          = cli.StringFlag{Name: Short(Title), Usage: "the title of the FOSSA project. (default: the project name)"}
+	TitleF          = cli.StringFlag{Name: Short(Title), Usage: "the title of the FOSSA project, valid ONLY on project creation (default: the project name)"}
 	Fetcher         = "fetcher"
 	FetcherF        = cli.StringFlag{Name: Short(Fetcher), Usage: "type of fetcher to use for fossa. (default: 'custom')"}
 	Project         = "project"
@@ -65,9 +65,9 @@ var (
 	Link            = "link"
 	LinkF           = cli.StringFlag{Name: ShortUpper(Link), Usage: "a link to attach to the current build"}
 	Team            = "team"
-	TeamF           = cli.StringFlag{Name: ShortUpper(Team), Usage: "this repository's team inside your organization"}
+	TeamF           = cli.StringFlag{Name: ShortUpper(Team), Usage: "this repository's team inside your organization, valid ONLY on project creation"}
 	Policy          = "policy"
-	PolicyF         = cli.StringFlag{Name: Policy, Usage: "the policy to assign to this project in FOSSA"}
+	PolicyF         = cli.StringFlag{Name: Policy, Usage: "the policy to assign to this project in FOSSA, valid ONLY on project creation"}
 )
 
 func WithGlobalFlags(f []cli.Flag) []cli.Flag {
