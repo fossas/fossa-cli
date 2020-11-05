@@ -156,13 +156,14 @@ func (m *Maven) tryDependencyCommands(subGoal, dir, buildTarget string) (stdout 
 //go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package maven/' > readtree_generated.go"
 
 func ParseDependencyTree(stdin string) (graph.Deps, error) {
+	var modules [][]string
 	var filteredLines []string
 	start := regexp.MustCompile(`^\[INFO\] --- .*? ---$`)
 	started := false
 	r := regexp.MustCompile("^\\[INFO\\] ([ `+\\\\|-]*)([^ `+\\\\|-].+)$")
 	splitReg := regexp.MustCompile("\r?\n")
 	for _, line := range splitReg.Split(stdin, -1) {
-		if line == "[INFO] " || line == "[INFO] ------------------------------------------------------------------------" {
+		if line == "[INFO]" || line == "[INFO] " || line == "[INFO] ------------------------------------------------------------------------" {
 			started = false
 		}
 		if strings.HasPrefix(line, "[INFO] Downloading ") || strings.HasPrefix(line, "[WARNING]") {
@@ -171,6 +172,14 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 		if strings.HasPrefix(line, "Download") {
 			continue
 		}
+
+		if strings.Contains(line, "--------<") && len(filteredLines) > 0 {
+			filteredLines = filteredLines[1:]
+			modules = append(modules, filteredLines)
+			filteredLines = []string{}
+			started = false
+		}
+
 		if started {
 			filteredLines = append(filteredLines, line)
 		}
@@ -179,39 +188,56 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 		}
 	}
 
-	// Remove first line, which is just the direct dependency.
-	if len(filteredLines) == 0 {
-		return graph.Deps{}, errors.New("error parsing lines")
-	}
 	filteredLines = filteredLines[1:]
+	modules = append(modules, filteredLines)
 
 	depRegex := regexp.MustCompile("([^:]+):([^:]+):([^:]*):([^:]+)")
-	imports, deps, err := ReadDependencyTree(filteredLines, func(line string) (int, Dependency, error) {
-		log.WithField("line", line).Debug("parsing output line")
-		matches := r.FindStringSubmatch(line)
-		depth := len(matches[1])
-		if depth%3 != 0 {
-			// Sanity check
-			log.WithField("depth", depth).Fatal("bad depth")
-		}
-		level := depth / 3
-		depMatches := depRegex.FindStringSubmatch(matches[2])
-		revision := depMatches[4]
-		failed := false
-		if strings.HasSuffix(revision, " FAILED") {
-			revision = strings.TrimSuffix(revision, " FAILED")
-			failed = true
+
+	totalImports := make(map[Dependency]int)
+	depGraph := make(map[Dependency][]Dependency)
+
+	for _, moduleLines := range modules {
+		imports, deps, err := ReadDependencyTree(moduleLines, func(line string) (int, Dependency, error) {
+			log.WithField("line", line).Debug("parsing output line")
+			matches := r.FindStringSubmatch(line)
+			depth := len(matches[1])
+			if depth%3 != 0 {
+				// Sanity check
+				log.WithField("depth", depth).Fatal("bad depth")
+			}
+			level := depth / 3
+			depMatches := depRegex.FindStringSubmatch(matches[2])
+			revision := depMatches[4]
+			failed := false
+			if strings.HasSuffix(revision, " FAILED") {
+				revision = strings.TrimSuffix(revision, " FAILED")
+				failed = true
+			}
+
+			dep := Dependency{GroupId: depMatches[1], ArtifactId: depMatches[2], Version: revision, Failed: failed}
+			return level, dep, nil
+		})
+		if err != nil {
+			return graph.Deps{}, err
 		}
 
-		dep := Dependency{GroupId: depMatches[1], ArtifactId: depMatches[2], Version: revision, Failed: failed}
-		return level, dep, nil
-	})
-	if err != nil {
-		return graph.Deps{}, err
+		for _, imp := range imports {
+			totalImports[imp] = 0
+		}
+
+		for dep, tree := range deps {
+			depGraph[dep] = tree
+		}
 	}
+
+	importList := []Dependency{}
+	for i := range totalImports {
+		importList = append(importList, i)
+	}
+
 	return graph.Deps{
-		Direct:     depsListToImports(imports),
-		Transitive: depsMapToPkgGraph(deps),
+		Direct:     depsListToImports(importList),
+		Transitive: depsMapToPkgGraph(depGraph),
 	}, nil
 }
 
