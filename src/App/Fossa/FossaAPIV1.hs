@@ -143,21 +143,24 @@ uploadAnalysis rootDir apiOpts ProjectRevision{..} metadata projects = fossaReq 
       opts = "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "v" =: cliVersion
           <> "managedBuild" =: True
-          <> mkMetadataOpts metadata
+          <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
   resp <- req POST (uploadUrl baseUrl) (ReqBodyJson sourceUnits) jsonResponse (baseOpts <> opts)
   pure (responseBody resp)
 
-mkMetadataOpts :: ProjectMetadata -> Option scheme
-mkMetadataOpts ProjectMetadata{..} = mconcat $ catMaybes 
-  [ ("projectURL" =:) <$> projectUrl
-  , ("jiraProjectKey" =:) <$> projectJiraKey
-  , ("link" =:) <$> projectLink
-  , ("team" =:) <$> projectTeam
-  , ("policy" =:) <$> projectPolicy
-  , ("title" =:) <$> projectTitle
-  ]
+mkMetadataOpts :: ProjectMetadata -> Text -> Option scheme
+mkMetadataOpts ProjectMetadata{..} projectName = mconcat $ catMaybes maybes
+  where
+    title = Just $ fromMaybe projectName projectTitle
+    maybes = 
+      [ ("projectURL" =:) <$> projectUrl
+      , ("jiraProjectKey" =:) <$> projectJiraKey
+      , ("link" =:) <$> projectLink
+      , ("team" =:) <$> projectTeam
+      , ("policy" =:) <$> projectPolicy
+      , ("title" =:) <$> title
+      ]
 
 mangleError :: HttpException -> FossaError
 mangleError err = case err of

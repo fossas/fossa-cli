@@ -84,7 +84,7 @@ projectScanFiltersEndpoint baseurl locator = baseurl /: "api" /: "vendored-packa
 -}
 createCoreProject :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> Text -> ProjectMetadata -> ApiOpts -> m ()
 createCoreProject name revision metadata apiOpts = runHTTP $ do
-  let metaOpts = mkMetadataOpts metadata
+  let metaOpts = mkMetadataOpts metadata name
   let body = object ["name" .= name, "revision" .= revision]
 
   (baseUrl, baseOptions) <- useApiOpts apiOpts
