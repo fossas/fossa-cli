@@ -194,7 +194,7 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 	depRegex := regexp.MustCompile("([^:]+):([^:]+):([^:]*):([^:]+)")
 
 	totalImports := make(map[Dependency]int)
-	depGraph := make(map[Dependency][]Dependency)
+	depGraphMap := make(map[Dependency]map[Dependency]int)
 
 	for _, moduleLines := range modules {
 		imports, deps, err := ReadDependencyTree(moduleLines, func(line string) (int, Dependency, error) {
@@ -226,7 +226,12 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 		}
 
 		for dep, tree := range deps {
-			depGraph[dep] = tree
+			if depGraphMap[dep] == nil {
+				depGraphMap[dep] = make(map[Dependency]int)
+			}
+			for _, d := range tree {
+				depGraphMap[dep][d] = 0
+			}
 		}
 	}
 
@@ -235,9 +240,20 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 		importList = append(importList, i)
 	}
 
+	depGraphList := make(map[Dependency][]Dependency)
+	for root, depMap := range depGraphMap {
+		// depList ensures all dependencies are included in the resulting
+		// graph even if they have 0 length depMaps.
+		depList := []Dependency{}
+		for dep := range depMap {
+			depList = append(depList, dep)
+		}
+		depGraphList[root] = depList
+	}
+
 	return graph.Deps{
 		Direct:     depsListToImports(importList),
-		Transitive: depsMapToPkgGraph(depGraph),
+		Transitive: depsMapToPkgGraph(depGraphList),
 	}, nil
 }
 
