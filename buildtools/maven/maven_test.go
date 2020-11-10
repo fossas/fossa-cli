@@ -100,6 +100,18 @@ func TestParseDependencyTreeUnix(t *testing.T) {
 	assert.NotEmpty(t, deps.Transitive)
 }
 
+func TestParseComplexTreeTest(t *testing.T) {
+	// Check that the file is still Unix formatted.
+	data, err := ioutil.ReadFile(filepath.Join("testdata", "test.out"))
+	assert.NoError(t, err)
+
+	fixture := string(data)
+	deps, err := maven.ParseDependencyTree(fixture)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, deps.Direct)
+	assert.NotEmpty(t, deps.Transitive)
+}
+
 /*
 	├── dep:one:1.0.0
 	└─┬ dep:two:2.0.0

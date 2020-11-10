@@ -1,0 +1,334 @@
+[INFO] Inspecting build with total of 13 modules...
+[INFO] Installing Nexus Staging features:
+[INFO]   ... total of 13 executions of maven-deploy-plugin replaced with nexus-staging-maven-plugin
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO]
+[INFO] biojava                                                            [pom]
+[INFO] biojava-core                                                       [jar]
+[INFO] biojava-alignment                                                  [jar]
+[INFO] biojava-structure                                                  [jar]
+[INFO] biojava-structure-gui                                              [jar]
+[INFO] biojava-genome                                                     [jar]
+[INFO] biojava-modfinder                                                  [jar]
+[INFO] biojava-ws                                                         [jar]
+[INFO] biojava-protein-disorder                                           [jar]
+[INFO] biojava-aa-prop                                                    [jar]
+[INFO] biojava-survival                                                   [jar]
+[INFO] biojava-ontology                                                   [jar]
+[INFO] biojava-integrationtest                                            [jar]
+[INFO]
+[INFO] ----------------------< org.biojava:biojava-core >----------------------
+[INFO] Building biojava-core 5.3.1-SNAPSHOT                              [2/13]
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-dependency-plugin:3.1.1:tree (default-cli) @ biojava-core ---
+[INFO] org.biojava:biojava-core:jar:5.3.1-SNAPSHOT
+[INFO] +- junit:junit:jar:4.12:test
+[INFO] |  \- org.hamcrest:hamcrest-core:jar:1.3:test
+[INFO] +- org.slf4j:slf4j-api:jar:1.7.25:compile
+[INFO] +- org.apache.logging.log4j:log4j-slf4j-impl:jar:2.6.2:runtime
+[INFO] +- org.apache.logging.log4j:log4j-api:jar:2.6.2:runtime
+[INFO] \- org.apache.logging.log4j:log4j-core:jar:2.6.2:runtime
+[INFO]
+[INFO] -------------------< org.biojava:biojava-alignment >--------------------
+[INFO] Building biojava-alignment 5.3.1-SNAPSHOT                         [3/13]
+[INFO] --------------------------------[ jar ]---------------------------------
+[WARNING] The POM for org.biojava.thirdparty:forester:jar:1.038 is invalid, transitive dependencies (if any) will not be available, enable debug logging for more details
+[INFO]
+[INFO] --- maven-dependency-plugin:3.1.1:tree (default-cli) @ biojava-alignment ---
+[INFO] org.biojava:biojava-alignment:jar:5.3.1-SNAPSHOT
+[INFO] +- junit:junit:jar:4.12:test
+[INFO] |  \- org.hamcrest:hamcrest-core:jar:1.3:test
+[INFO] +- org.biojava:biojava-core:jar:5.3.1-SNAPSHOT:compile
+[INFO] +- org.biojava.thirdparty:forester:jar:1.038:compile
+[INFO] +- org.slf4j:slf4j-api:jar:1.7.25:compile
+[INFO] +- org.apache.logging.log4j:log4j-slf4j-impl:jar:2.6.2:runtime
+[INFO] +- org.apache.logging.log4j:log4j-api:jar:2.6.2:runtime
+[INFO] \- org.apache.logging.log4j:log4j-core:jar:2.6.2:runtime
+[INFO]
+[INFO] -------------------< org.biojava:biojava-structure >--------------------
+[INFO] Building biojava-structure 5.3.1-SNAPSHOT                         [4/13]
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-dependency-plugin:3.1.1:tree (default-cli) @ biojava-structure ---
+[INFO] org.biojava:biojava-structure:jar:5.3.1-SNAPSHOT
+[INFO] +- org.rcsb:ciftools-java:jar:0.5.4:compile
+[INFO] |  +- javax.annotation:javax.annotation-api:jar:1.3.2:compile
+[INFO] |  \- com.google.code.gson:gson:jar:2.8.5:compile
+[INFO] +- org.rcsb:mmtf-api:jar:1.0.9:compile
+[INFO] +- org.rcsb:mmtf-serialization:jar:1.0.9:compile
+[INFO] |  \- org.msgpack:jackson-dataformat-msgpack:jar:0.8.18:compile
+[INFO] |     +- org.msgpack:msgpack-core:jar:0.8.18:compile
+[INFO] |     \- com.fasterxml.jackson.core:jackson-databind:jar:2.9.9.3:compile
+[INFO] |        +- com.fasterxml.jackson.core:jackson-annotations:jar:2.9.0:compile
+[INFO] |        \- com.fasterxml.jackson.core:jackson-core:jar:2.9.9:compile
+[INFO] +- org.rcsb:mmtf-codec:jar:1.0.9:compile
+[INFO] |  \- commons-lang:commons-lang:jar:2.4:compile
+[INFO] +- org.biojava:biojava-alignment:jar:5.3.1-SNAPSHOT:compile
+[INFO] |  \- org.biojava.thirdparty:forester:jar:1.038:compile
+[INFO] +- org.biojava:biojava-core:jar:5.3.1-SNAPSHOT:compile
+[INFO] +- java3d:vecmath:jar:1.3.1:compile
+[INFO] +- org.jgrapht:jgrapht-core:jar:1.1.0:compile
+[INFO] +- javax.xml.bind:jaxb-api:jar:2.3.0:compile
+[INFO] +- com.sun.xml.bind:jaxb-core:jar:2.3.0:compile
+[INFO] +- com.sun.xml.bind:jaxb-impl:jar:2.3.0:compile
+[INFO] +- javax.activation:activation:jar:1.1.1:compile
+[INFO] +- org.slf4j:slf4j-api:jar:1.7.25:compile
+[INFO] +- org.apache.logging.log4j:log4j-slf4j-impl:jar:2.6.2:runtime
+[INFO] +- org.apache.logging.log4j:log4j-api:jar:2.6.2:runtime
+[INFO] +- org.apache.logging.log4j:log4j-core:jar:2.6.2:runtime
+[INFO] +- junit:junit:jar:4.12:test
+[INFO] |  \- org.hamcrest:hamcrest-core:jar:1.3:test
+[INFO] \- xmlunit:xmlunit:jar:1.6:test
+[INFO]
+[INFO] -----------------< org.biojava:biojava-structure-gui >------------------
+[INFO] Building biojava-structure-gui 5.3.1-SNAPSHOT                     [5/13]
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-dependency-plugin:3.1.1:tree (default-cli) @ biojava-structure-gui ---
+[INFO] org.biojava:biojava-structure-gui:jar:5.3.1-SNAPSHOT
+[INFO] +- junit:junit:jar:4.12:test
+[INFO] |  \- org.hamcrest:hamcrest-core:jar:1.3:test
+[INFO] +- org.biojava:biojava-structure:jar:5.3.1-SNAPSHOT:compile
+[INFO] |  +- org.rcsb:ciftools-java:jar:0.5.4:compile
+[INFO] |  |  +- javax.annotation:javax.annotation-api:jar:1.3.2:compile
+[INFO] |  |  \- com.google.code.gson:gson:jar:2.8.5:compile
+[INFO] |  +- org.rcsb:mmtf-api:jar:1.0.9:compile
+[INFO] |  +- org.rcsb:mmtf-serialization:jar:1.0.9:compile
+[INFO] |  |  \- org.msgpack:jackson-dataformat-msgpack:jar:0.8.18:compile
+[INFO] |  |     +- org.msgpack:msgpack-core:jar:0.8.18:compile
+[INFO] |  |     \- com.fasterxml.jackson.core:jackson-databind:jar:2.9.9.3:compile
+[INFO] |  |        +- com.fasterxml.jackson.core:jackson-annotations:jar:2.9.0:compile
+[INFO] |  |        \- com.fasterxml.jackson.core:jackson-core:jar:2.9.9:compile
+[INFO] |  +- org.rcsb:mmtf-codec:jar:1.0.9:compile
+[INFO] |  |  \- commons-lang:commons-lang:jar:2.4:compile
+[INFO] |  +- org.biojava:biojava-alignment:jar:5.3.1-SNAPSHOT:compile
+[INFO] |  |  \- org.biojava.thirdparty:forester:jar:1.038:compile
+[INFO] |  +- java3d:vecmath:jar:1.3.1:compile
+[INFO] |  +- org.jgrapht:jgrapht-core:jar:1.1.0:compile
+[INFO] |  +- javax.xml.bind:jaxb-api:jar:2.3.0:compile
+[INFO] |  +- com.sun.xml.bind:jaxb-core:jar:2.3.0:compile
+[INFO] |  +- com.sun.xml.bind:jaxb-impl:jar:2.3.0:compile
+[INFO] |  \- javax.activation:activation:jar:1.1.1:compile
+[INFO] +- org.biojava:biojava-core:jar:5.3.1-SNAPSHOT:compile
+[INFO] +- net.sourceforge.jmol:jmol:jar:14.29.17:compile
+[INFO] +- org.slf4j:slf4j-api:jar:1.7.25:compile
+[INFO] +- org.apache.logging.log4j:log4j-slf4j-impl:jar:2.6.2:runtime
+[INFO] +- org.apache.logging.log4j:log4j-api:jar:2.6.2:runtime
+[INFO] +- org.apache.logging.log4j:log4j-core:jar:2.6.2:runtime
+[INFO] \- org.biojava:jcolorbrewer:jar:5.2:compile
+[INFO]
+[INFO] ---------------------< org.biojava:biojava-genome >---------------------
+[INFO] Building biojava-genome 5.3.1-SNAPSHOT                            [6/13]
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-dependency-plugin:3.1.1:tree (default-cli) @ biojava-genome ---
+[INFO] org.biojava:biojava-genome:jar:5.3.1-SNAPSHOT
+[INFO] +- com.google.guava:guava:jar:28.1-jre:compile
+[INFO] |  +- com.google.guava:failureaccess:jar:1.0.1:compile
+[INFO] |  +- com.google.guava:listenablefuture:jar:9999.0-empty-to-avoid-conflict-with-guava:compile
+[INFO] |  +- com.google.code.findbugs:jsr305:jar:3.0.2:compile
+[INFO] |  +- org.checkerframework:checker-qual:jar:2.8.1:compile
+[INFO] |  +- com.google.errorprone:error_prone_annotations:jar:2.3.2:compile
+[INFO] |  +- com.google.j2objc:j2objc-annotations:jar:1.3:compile
+[INFO] |  \- org.codehaus.mojo:animal-sniffer-annotations:jar:1.18:compile
+[INFO] +- junit:junit:jar:4.12:test
+[INFO] |  \- org.hamcrest:hamcrest-core:jar:1.3:test
+[INFO] +- org.biojava:biojava-core:jar:5.3.1-SNAPSHOT:compile
+[INFO] +- org.biojava:biojava-alignment:jar:5.3.1-SNAPSHOT:compile
+[INFO] |  \- org.biojava.thirdparty:forester:jar:1.038:compile
+[INFO] +- junit-addons:junit-addons:jar:1.4:test
+[INFO] +- org.slf4j:slf4j-api:jar:1.7.25:compile
+[INFO] +- org.apache.logging.log4j:log4j-slf4j-impl:jar:2.6.2:runtime
+[INFO] +- org.apache.logging.log4j:log4j-api:jar:2.6.2:runtime
+[INFO] \- org.apache.logging.log4j:log4j-core:jar:2.6.2:runtime
+[INFO]
+[INFO] -------------------< org.biojava:biojava-modfinder >--------------------
+[INFO] Building biojava-modfinder 5.3.1-SNAPSHOT                         [7/13]
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-dependency-plugin:3.1.1:tree (default-cli) @ biojava-modfinder ---
+[INFO] org.biojava:biojava-modfinder:jar:5.3.1-SNAPSHOT
+[INFO] +- junit:junit:jar:4.12:test
+[INFO] |  \- org.hamcrest:hamcrest-core:jar:1.3:test
+[INFO] +- org.biojava:biojava-structure:jar:5.3.1-SNAPSHOT:compile
+[INFO] |  +- org.rcsb:ciftools-java:jar:0.5.4:compile
+[INFO] |  |  +- javax.annotation:javax.annotation-api:jar:1.3.2:compile
+[INFO] |  |  \- com.google.code.gson:gson:jar:2.8.5:compile
+[INFO] |  +- org.rcsb:mmtf-api:jar:1.0.9:compile
+[INFO] |  +- org.rcsb:mmtf-serialization:jar:1.0.9:compile
+[INFO] |  |  \- org.msgpack:jackson-dataformat-msgpack:jar:0.8.18:compile
+[INFO] |  |     +- org.msgpack:msgpack-core:jar:0.8.18:compile
+[INFO] |  |     \- com.fasterxml.jackson.core:jackson-databind:jar:2.9.9.3:compile
+[INFO] |  |        +- com.fasterxml.jackson.core:jackson-annotations:jar:2.9.0:compile
+[INFO] |  |        \- com.fasterxml.jackson.core:jackson-core:jar:2.9.9:compile
+[INFO] |  +- org.rcsb:mmtf-codec:jar:1.0.9:compile
+[INFO] |  |  \- commons-lang:commons-lang:jar:2.4:compile
+[INFO] |  +- org.biojava:biojava-alignment:jar:5.3.1-SNAPSHOT:compile
+[INFO] |  |  \- org.biojava.thirdparty:forester:jar:1.038:compile
+[INFO] |  +- org.biojava:biojava-core:jar:5.3.1-SNAPSHOT:compile
+[INFO] |  +- java3d:vecmath:jar:1.3.1:compile
+[INFO] |  +- org.jgrapht:jgrapht-core:jar:1.1.0:compile
+[INFO] |  +- javax.xml.bind:jaxb-api:jar:2.3.0:compile
+[INFO] |  +- com.sun.xml.bind:jaxb-core:jar:2.3.0:compile
+[INFO] |  +- com.sun.xml.bind:jaxb-impl:jar:2.3.0:compile
+[INFO] |  \- javax.activation:activation:jar:1.1.1:compile
+[INFO] +- org.slf4j:slf4j-api:jar:1.7.25:compile
+[INFO] +- org.apache.logging.log4j:log4j-slf4j-impl:jar:2.6.2:runtime
+[INFO] +- org.apache.logging.log4j:log4j-api:jar:2.6.2:runtime
+[INFO] \- org.apache.logging.log4j:log4j-core:jar:2.6.2:runtime
+[INFO]
+[INFO] -----------------------< org.biojava:biojava-ws >-----------------------
+[INFO] Building biojava-ws 5.3.1-SNAPSHOT                                [8/13]
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-dependency-plugin:3.1.1:tree (default-cli) @ biojava-ws ---
+[INFO] org.biojava:biojava-ws:jar:5.3.1-SNAPSHOT
+[INFO] +- org.biojava:biojava-core:jar:5.3.1-SNAPSHOT:compile
+[INFO] +- junit:junit:jar:4.12:test
+[INFO] |  \- org.hamcrest:hamcrest-core:jar:1.3:test
+[INFO] +- net.sf.json-lib:json-lib:jar:jdk15:2.4:compile
+[INFO] |  +- commons-beanutils:commons-beanutils:jar:1.8.0:compile
+[INFO] |  +- commons-collections:commons-collections:jar:3.2.1:compile
+[INFO] |  +- commons-lang:commons-lang:jar:2.5:compile
+[INFO] |  +- commons-logging:commons-logging:jar:1.1.1:compile
+[INFO] |  \- net.sf.ezmorph:ezmorph:jar:1.0.6:compile
+[INFO] +- org.slf4j:slf4j-api:jar:1.7.25:compile
+[INFO] +- org.apache.logging.log4j:log4j-slf4j-impl:jar:2.6.2:runtime
+[INFO] +- org.apache.logging.log4j:log4j-api:jar:2.6.2:runtime
+[INFO] \- org.apache.logging.log4j:log4j-core:jar:2.6.2:runtime
+[INFO]
+[INFO] ----------------< org.biojava:biojava-protein-disorder >----------------
+[INFO] Building biojava-protein-disorder 5.3.1-SNAPSHOT                  [9/13]
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-dependency-plugin:3.1.1:tree (default-cli) @ biojava-protein-disorder ---
+[INFO] org.biojava:biojava-protein-disorder:jar:5.3.1-SNAPSHOT
+[INFO] +- junit:junit:jar:4.12:test
+[INFO] |  \- org.hamcrest:hamcrest-core:jar:1.3:test
+[INFO] +- org.biojava:biojava-core:jar:5.3.1-SNAPSHOT:compile
+[INFO] +- org.slf4j:slf4j-api:jar:1.7.25:compile
+[INFO] +- org.apache.logging.log4j:log4j-slf4j-impl:jar:2.6.2:runtime
+[INFO] +- org.apache.logging.log4j:log4j-api:jar:2.6.2:runtime
+[INFO] +- org.apache.logging.log4j:log4j-core:jar:2.6.2:runtime
+[INFO] \- javax.xml.bind:jaxb-api:jar:2.3.0:compile
+[INFO]
+[INFO] --------------------< org.biojava:biojava-aa-prop >---------------------
+[INFO] Building biojava-aa-prop 5.3.1-SNAPSHOT                          [10/13]
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-dependency-plugin:3.1.1:tree (default-cli) @ biojava-aa-prop ---
+[INFO] org.biojava:biojava-aa-prop:jar:5.3.1-SNAPSHOT
+[INFO] +- org.biojava:biojava-core:jar:5.3.1-SNAPSHOT:compile
+[INFO] +- org.biojava:biojava-structure:jar:5.3.1-SNAPSHOT:compile
+[INFO] |  +- org.rcsb:ciftools-java:jar:0.5.4:compile
+[INFO] |  |  +- javax.annotation:javax.annotation-api:jar:1.3.2:compile
+[INFO] |  |  \- com.google.code.gson:gson:jar:2.8.5:compile
+[INFO] |  +- org.rcsb:mmtf-api:jar:1.0.9:compile
+[INFO] |  +- org.rcsb:mmtf-serialization:jar:1.0.9:compile
+[INFO] |  |  \- org.msgpack:jackson-dataformat-msgpack:jar:0.8.18:compile
+[INFO] |  |     +- org.msgpack:msgpack-core:jar:0.8.18:compile
+[INFO] |  |     \- com.fasterxml.jackson.core:jackson-databind:jar:2.9.9.3:compile
+[INFO] |  |        +- com.fasterxml.jackson.core:jackson-annotations:jar:2.9.0:compile
+[INFO] |  |        \- com.fasterxml.jackson.core:jackson-core:jar:2.9.9:compile
+[INFO] |  +- org.rcsb:mmtf-codec:jar:1.0.9:compile
+[INFO] |  |  \- commons-lang:commons-lang:jar:2.4:compile
+[INFO] |  +- org.biojava:biojava-alignment:jar:5.3.1-SNAPSHOT:compile
+[INFO] |  |  \- org.biojava.thirdparty:forester:jar:1.038:compile
+[INFO] |  +- java3d:vecmath:jar:1.3.1:compile
+[INFO] |  +- org.jgrapht:jgrapht-core:jar:1.1.0:compile
+[INFO] |  +- javax.xml.bind:jaxb-api:jar:2.3.0:compile
+[INFO] |  +- com.sun.xml.bind:jaxb-core:jar:2.3.0:compile
+[INFO] |  +- com.sun.xml.bind:jaxb-impl:jar:2.3.0:compile
+[INFO] |  \- javax.activation:activation:jar:1.1.1:compile
+[INFO] +- org.slf4j:slf4j-api:jar:1.7.25:compile
+[INFO] +- org.apache.logging.log4j:log4j-slf4j-impl:jar:2.6.2:runtime
+[INFO] +- org.apache.logging.log4j:log4j-api:jar:2.6.2:runtime
+[INFO] +- org.apache.logging.log4j:log4j-core:jar:2.6.2:runtime
+[INFO] \- junit:junit:jar:4.12:test
+[INFO]    \- org.hamcrest:hamcrest-core:jar:1.3:test
+[INFO]
+[INFO] --------------------< org.biojava:biojava-survival >--------------------
+[INFO] Building biojava-survival 5.3.1-SNAPSHOT                         [11/13]
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-dependency-plugin:3.1.1:tree (default-cli) @ biojava-survival ---
+[INFO] org.biojava:biojava-survival:jar:5.3.1-SNAPSHOT
+[INFO] +- junit:junit:jar:4.12:test
+[INFO] |  \- org.hamcrest:hamcrest-core:jar:1.3:test
+[INFO] +- org.apache.commons:commons-math:jar:2.2:compile
+[INFO] +- org.slf4j:slf4j-api:jar:1.7.25:compile
+[INFO] +- org.apache.logging.log4j:log4j-slf4j-impl:jar:2.6.2:runtime
+[INFO] +- org.apache.logging.log4j:log4j-api:jar:2.6.2:runtime
+[INFO] \- org.apache.logging.log4j:log4j-core:jar:2.6.2:runtime
+[INFO]
+[INFO] --------------------< org.biojava:biojava-ontology >--------------------
+[INFO] Building biojava-ontology 5.3.1-SNAPSHOT                         [12/13]
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-dependency-plugin:3.1.1:tree (default-cli) @ biojava-ontology ---
+[INFO] org.biojava:biojava-ontology:jar:5.3.1-SNAPSHOT
+[INFO] +- junit:junit:jar:4.12:test
+[INFO] |  \- org.hamcrest:hamcrest-core:jar:1.3:test
+[INFO] +- org.slf4j:slf4j-api:jar:1.7.25:compile
+[INFO] +- org.apache.logging.log4j:log4j-slf4j-impl:jar:2.6.2:runtime
+[INFO] +- org.apache.logging.log4j:log4j-api:jar:2.6.2:runtime
+[INFO] \- org.apache.logging.log4j:log4j-core:jar:2.6.2:runtime
+[INFO]
+[INFO] ----------------< org.biojava:biojava-integrationtest >-----------------
+[INFO] Building biojava-integrationtest 5.3.1-SNAPSHOT                  [13/13]
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-dependency-plugin:3.1.1:tree (default-cli) @ biojava-integrationtest ---
+[INFO] org.biojava:biojava-integrationtest:jar:5.3.1-SNAPSHOT
+[INFO] +- junit:junit:jar:4.12:test
+[INFO] |  \- org.hamcrest:hamcrest-core:jar:1.3:test
+[INFO] +- org.biojava:biojava-structure:jar:5.3.1-SNAPSHOT:compile
+[INFO] |  +- org.rcsb:ciftools-java:jar:0.5.4:compile
+[INFO] |  |  +- javax.annotation:javax.annotation-api:jar:1.3.2:compile
+[INFO] |  |  \- com.google.code.gson:gson:jar:2.8.5:compile
+[INFO] |  +- org.rcsb:mmtf-api:jar:1.0.9:compile
+[INFO] |  +- org.rcsb:mmtf-serialization:jar:1.0.9:compile
+[INFO] |  |  \- org.msgpack:jackson-dataformat-msgpack:jar:0.8.18:compile
+[INFO] |  |     +- org.msgpack:msgpack-core:jar:0.8.18:compile
+[INFO] |  |     \- com.fasterxml.jackson.core:jackson-databind:jar:2.9.9.3:compile
+[INFO] |  |        +- com.fasterxml.jackson.core:jackson-annotations:jar:2.9.0:compile
+[INFO] |  |        \- com.fasterxml.jackson.core:jackson-core:jar:2.9.9:compile
+[INFO] |  +- org.rcsb:mmtf-codec:jar:1.0.9:compile
+[INFO] |  |  \- commons-lang:commons-lang:jar:2.4:compile
+[INFO] |  +- org.biojava:biojava-alignment:jar:5.3.1-SNAPSHOT:compile
+[INFO] |  |  \- org.biojava.thirdparty:forester:jar:1.038:compile
+[INFO] |  +- org.biojava:biojava-core:jar:5.3.1-SNAPSHOT:compile
+[INFO] |  +- java3d:vecmath:jar:1.3.1:compile
+[INFO] |  +- org.jgrapht:jgrapht-core:jar:1.1.0:compile
+[INFO] |  +- javax.xml.bind:jaxb-api:jar:2.3.0:compile
+[INFO] |  +- com.sun.xml.bind:jaxb-core:jar:2.3.0:compile
+[INFO] |  +- com.sun.xml.bind:jaxb-impl:jar:2.3.0:compile
+[INFO] |  \- javax.activation:activation:jar:1.1.1:compile
+[INFO] +- org.slf4j:slf4j-api:jar:1.7.25:compile
+[INFO] +- org.apache.logging.log4j:log4j-slf4j-impl:jar:2.6.2:runtime
+[INFO] +- org.apache.logging.log4j:log4j-api:jar:2.6.2:runtime
+[INFO] \- org.apache.logging.log4j:log4j-core:jar:2.6.2:runtime
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary:
+[INFO]
+[INFO] biojava 5.3.1-SNAPSHOT ............................. SUCCESS [  0.463 s]
+[INFO] biojava-core ....................................... SUCCESS [  0.030 s]
+[INFO] biojava-alignment .................................. SUCCESS [  0.023 s]
+[INFO] biojava-structure .................................. SUCCESS [  0.057 s]
+[INFO] biojava-structure-gui .............................. SUCCESS [  0.019 s]
+[INFO] biojava-genome ..................................... SUCCESS [  0.031 s]
+[INFO] biojava-modfinder .................................. SUCCESS [  0.018 s]
+[INFO] biojava-ws ......................................... SUCCESS [  0.016 s]
+[INFO] biojava-protein-disorder ........................... SUCCESS [  0.008 s]
+[INFO] biojava-aa-prop .................................... SUCCESS [  0.024 s]
+[INFO] biojava-survival ................................... SUCCESS [  0.010 s]
+[INFO] biojava-ontology ................................... SUCCESS [  0.006 s]
+[INFO] biojava-integrationtest 5.3.1-SNAPSHOT ............. SUCCESS [  0.020 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 1.386 s
+[INFO] Finished at: 2020-11-05T12:49:52-08:00
+[INFO] ------------------------------------------------------------------------
