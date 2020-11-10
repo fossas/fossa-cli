@@ -87,20 +87,6 @@ jobs:
       run: |
         cabal test --project-file=${{ matrix.project-file }} all
 
-    - name: Find and move binaries (windows)
-      if: ${{ contains(matrix.os, 'windows') }}
-      run: |
-        mkdir release
-        find . -type f -path '*/fossa/fossa.exe' -exec cp {} release \;
-        find . -type f -path '*/pathfinder/pathfinder.exe' -exec cp {} release \;
-  
-    - name: Find and move binaries (non-windows)
-      if: ${{ !contains(matrix.os, 'windows') }}
-      run: |
-        mkdir release
-        find . -type f -path '*/fossa/fossa' -exec cp {} release \;
-        find . -type f -path '*/pathfinder/pathfinder' -exec cp {} release \;
-
     - name: Update vendored binaries
       if: ${{ !contains(matrix.os, 'windows') }}
       run: ./vendor_download.sh
@@ -112,6 +98,20 @@ jobs:
       run: |
         echo '' >> src/App/Fossa/VPS/EmbeddedBinary.hs
         cabal build --project-file=${{ matrix.project-file }} all
+
+    - name: Find and move binaries (windows)
+      if: ${{ contains(matrix.os, 'windows') }}
+      run: |
+        mkdir release
+        find . -type f -path '*/fossa/fossa.exe' -exec cp {} release \;
+        find . -type f -path '*/pathfinder/pathfinder.exe' -exec cp {} release \;
+
+    - name: Find and move binaries (non-windows)
+      if: ${{ !contains(matrix.os, 'windows') }}
+      run: |
+        mkdir release
+        find . -type f -path '*/fossa/fossa' -exec cp {} release \;
+        find . -type f -path '*/pathfinder/pathfinder' -exec cp {} release \;
 
     - name: Strip binaries
       run: |
