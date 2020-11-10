@@ -14,14 +14,14 @@ In addition, SBT requires the following plugin to be installed:
 
 Automatic: Run `fossa init` to detect all directories with a `build.sbt` file at their root. fossa runs `sbt projects` at these directories roots and creates a module for each sbt project with configuration set to `compile` by default.
 
-Manual: Add an `sbt` module with the path to the `build.sbt` file in your project. Set target to `<project>:<configuration>` where project is the desired sbt project and configuration is the configuration analysis is desired for.
+Manual: Add an `sbt` module with the path to the directory where a `build.sbt` file is located in your project. Set target to `<project>:<configuration>` where project is the desired sbt project and configuration is the configuration analysis is desired for.
 
 ```yaml
 analyze:
   modules:
     - name: your-sbt-project
       type: sbt
-      path: build.sbt
+      path: .
       target: <project>:<configuration>
 ```
 
