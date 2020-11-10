@@ -161,6 +161,7 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 	start := regexp.MustCompile(`^\[INFO\] --- .*? ---$`)
 	started := false
 	r := regexp.MustCompile("^\\[INFO\\] ([ `+\\\\|-]*)([^ `+\\\\|-].+)$")
+	moduleBreak := regexp.MustCompile("^\\[INFO\\] -+<.+>-+")
 	splitReg := regexp.MustCompile("\r?\n")
 	for _, line := range splitReg.Split(stdin, -1) {
 		if line == "[INFO]" || line == "[INFO] " || line == "[INFO] ------------------------------------------------------------------------" {
@@ -173,7 +174,7 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 			continue
 		}
 
-		if strings.Contains(line, "--------<") && len(filteredLines) > 0 {
+		if moduleBreak.MatchString(line) && len(filteredLines) > 0 {
 			filteredLines = filteredLines[1:]
 			modules = append(modules, filteredLines)
 			filteredLines = []string{}
@@ -193,8 +194,8 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 
 	depRegex := regexp.MustCompile("([^:]+):([^:]+):([^:]*):([^:]+)")
 
-	totalImports := make(map[Dependency]int)
-	depGraphMap := make(map[Dependency]map[Dependency]int)
+	totalImports := make(map[Dependency]bool)
+	depGraphMap := make(map[Dependency]map[Dependency]bool)
 
 	for _, moduleLines := range modules {
 		imports, deps, err := ReadDependencyTree(moduleLines, func(line string) (int, Dependency, error) {
@@ -222,15 +223,15 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 		}
 
 		for _, imp := range imports {
-			totalImports[imp] = 0
+			totalImports[imp] = true
 		}
 
 		for dep, tree := range deps {
 			if depGraphMap[dep] == nil {
-				depGraphMap[dep] = make(map[Dependency]int)
+				depGraphMap[dep] = make(map[Dependency]bool)
 			}
 			for _, d := range tree {
-				depGraphMap[dep][d] = 0
+				depGraphMap[dep][d] = true
 			}
 		}
 	}
