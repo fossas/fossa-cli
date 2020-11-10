@@ -163,6 +163,8 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 	r := regexp.MustCompile("^\\[INFO\\] ([ `+\\\\|-]*)([^ `+\\\\|-].+)$")
 	moduleBreak := regexp.MustCompile("^\\[INFO\\] -+<.+>-+")
 	splitReg := regexp.MustCompile("\r?\n")
+
+	// This loop is parsing maven output and separating each individual module.
 	for _, line := range splitReg.Split(stdin, -1) {
 		if line == "[INFO]" || line == "[INFO] " || line == "[INFO] ------------------------------------------------------------------------" {
 			started = false
@@ -222,10 +224,13 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 			return graph.Deps{}, err
 		}
 
+		// The following two loops simultaneously aggregate and dedupe the data returned
+		// from the parser ReadDependencyTree. totalImports ensures that dependencies are
+		// not counted twice while depGraphMap ensures that each dependency's transitive deps
+		// are aggregated and deduped.
 		for _, imp := range imports {
 			totalImports[imp] = true
 		}
-
 		for dep, tree := range deps {
 			if depGraphMap[dep] == nil {
 				depGraphMap[dep] = make(map[Dependency]bool)
@@ -236,6 +241,8 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 		}
 	}
 
+	// importList and depGraphList are reformatting the aggregated results
+	// so that they can be converted into a proper graph.Deps.
 	importList := []Dependency{}
 	for i := range totalImports {
 		importList = append(importList, i)
