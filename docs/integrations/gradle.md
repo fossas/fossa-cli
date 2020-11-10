@@ -31,9 +31,11 @@ analyze:
       path: path-to-build.gradle
       target: subproject
       type: gradle
+      options:
+        online: true
 ```
 
-## Options
+## Configuration Options
 
   | Option               |  Type  | Name                                           | Common Use Case                                                            |
   | -------------------- | :----: | ---------------------------------------------- | -------------------------------------------------------------------------- |
@@ -45,7 +47,6 @@ analyze:
   | `all-submodules`     |  bool  | [All Submodules](#all-submodules-bool)         | Running `fossa analyze gradle:.` and you want to analyze all sub-projects. |
   | `configuration`      | string | [Configuration](#configuration-string)         | Comma separated list of configurations to analyze.                         |
   | `all-configurations` |  bool  | [All Configurations](#all-configurations-bool) | Analyze all configurations for the gradle project.                         |
-
 
 
 #### `cmd: <string>` 
@@ -67,7 +68,7 @@ Specify the amount of times to retry running the gradle command after it fails t
 
 #### `online: <bool>`
 
-When set to true, this option will remove the `--offline` flag from the command `gradle <project>:dependencies --quiet --offline` used to find the dependencies of the specified project.
+When set to true, this option will remove the `--offline` flag from the command `gradle <project>:dependencies --quiet --offline` used to find the dependencies of the specified project. Specify this in the .fossa.yml file under options. See above for example.
 
 #### `all-submodules: <bool>`
 
