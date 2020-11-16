@@ -168,17 +168,8 @@ Combination of [`fossa init`](#fossa-init) and [`fossa analyze`](#fossa-analyze)
 # Creates a config file, runs an analysis, and uploads the results.
 FOSSA_API_KEY=YOUR_API_KEY fossa
 ```
-  
-| Flag         | Short | Description                                                                  |
-| ------------ | ----- | ---------------------------------------------------------------------------- |
-| `--config`   | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.     |
-| `--project`  | `-p`  | Configuration value for [project](/docs/config-file.md/#project-optional).   |
-| `--revision` | `-r`  | Configuration value for [revision](/docs/config-file.md/#revision-optional). |
-| `--endpoint` | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional). |
-| `--output`   | `-o`  | Output `fossa analyze` results to stdout.                                    |
-| `--debug`    |       | Print debugging information to stderr.                                       |
-| `--version ` | `-v`  | Print the currently installed FOSSA CLI version.                             |
-| `--help`     | `-h`  | Print a help message.                                                        |
+
+All flags for `fossa init` and `fossa analyze` are valid for `fossa`.
 
 ### `fossa init`
 
@@ -213,18 +204,22 @@ Analyzes the project for a list of its dependencies, optionally uploading the re
 FOSSA_API_KEY=YOUR_API_KEY fossa analyze
 ```
 
-| Flag            | Short | Description                                                                  |
-| --------------- | ----- | ---------------------------------------------------------------------------- |
-| `--config`      | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.     |
-| `--project`     | `-p`  | Configuration value for [project](/docs/config-file.md/#project-optional).   |
-| `--revision`    | `-r`  | Configuration value for [revision](/docs/config-file.md/#revision-optional). |
-| `--endpoint`    | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional). |
-| `--output`      | `-o`  | Output `fossa analyze` results to stdout.                                    |
-| `--team`        | `-T`  | Connect this project with the specified existing team in FOSSA.              |
-| `--server-scan` |       | Run a server side dependency scan on raw modules.                            |
-| `--dev`         |       | Include development dependencies. CAUTION: valid only for nodejs projects.   |
-| `--debug`       |       | Print debugging information to stderr.                                       |
-| `--help`        | `-h`  | Print a help message.                                                        |
+| Flag            | Short | Description                                                                           |
+| --------------- | ----- | ------------------------------------------------------------------------------------- |
+| `--config`      | `-c`  | Path to a [configuration file](/docs/config-file.md) including filename.              |
+| `--project`     | `-p`  | Configuration value for [project](/docs/config-file.md/#project-optional).            |
+| `--revision`    | `-r`  | Configuration value for [revision](/docs/config-file.md/#revision-optional).          |
+| `--endpoint`    | `-e`  | Configuration value for [endpoint](/docs/config-file.md/#endpoint-optional).          |
+| `--output`      | `-o`  | Output `fossa analyze` results to stdout.                                             |
+| `--server-scan` |       | Run a server side dependency scan on raw modules.                                     |
+| `--dev`         |       | Include development dependencies. CAUTION: valid only for nodejs projects.            |
+| `--debug`       |       | Print debugging information to stderr.                                                |
+| `--help`        | `-h`  | Print a help message.                                                                 |
+| `--team`        | `-T`  | Connect the project with the specified team in FOSSA. Applies only to new projects.   |
+| `--policy`      |       | Connect the project with the specified policy in FOSSA. Applies only to new projects. |
+| `--title`       | `-t`  | Set the title that appears in the FOSSA UI. Applies only to new projects.             |
+
+> NOTE: The title, policy, and team flags only affect a project the first time it is uploaded. Any subsequent times that `fossa analyze` is run the flags will be ignored. This feature was created to allow users to associate a project with their team on first upload, but prevents the CLI from modifying changes made in the UI.
 
 ### `fossa test`
 Checks whether the project has licensing issues, as configured by its policy within FOSSA. If there are issues, it prints them on `stdout` and, unless the `--suppress-issues` flag is given, exits with code 1. If there are not issues, it exits with code 0. Fossa test can be used to fail a CI pipeline job.

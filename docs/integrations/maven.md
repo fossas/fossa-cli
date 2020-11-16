@@ -26,6 +26,8 @@ analyze:
       type: mvn
       path: .
       target: pom.xml
+      options:
+        cmd: "mvn dependency:tree"
 ```
 
 ## Options
