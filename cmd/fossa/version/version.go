@@ -42,6 +42,11 @@ func ShortString() string {
 	return version
 }
 
+// Version returns the version string as-is, even if empty.
+func Version() string {
+	return version
+}
+
 // Semver returns the build's parsed release version.
 func Semver() (semver.Version, error) {
 	if IsDevelopment() {

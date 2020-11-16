@@ -57,7 +57,7 @@ func Upload(title string, locator Locator, options UploadOptions, data []SourceU
 
 	q := url.Values{}
 	q.Add("locator", locator.String())
-	q.Add("v", version.ShortString())
+	q.Add("cliVersion", version.Version())
 	if locator.Fetcher == "custom" {
 		q.Add("managedBuild", "true")
 		q.Add("title", title)
