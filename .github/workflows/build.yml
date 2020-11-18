@@ -56,6 +56,10 @@ jobs:
       run: |
         brew install upx jq
 
+    - name: Allow insecure actions commands for setup-haskell add-env
+      run: |
+        echo "ACTIONS_ALLOW_UNSECURE_COMMANDS=true" >> $GITHUB_ENV
+
     - uses: actions/setup-haskell@v1.1
       id: setup-haskell
       name: Setup ghc/cabal (non-alpine)
