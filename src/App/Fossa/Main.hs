@@ -18,6 +18,7 @@ import App.Fossa.VPS.Types (FilterExpressions (..))
 import App.OptionExtensions
 import App.Types
 import App.Util (validateDir)
+import App.Version (fullVersionDescription)
 import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.Bool (bool)
@@ -127,6 +128,7 @@ opts =
     <*> optional (strOption (long "revision" <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authenticaion key (default: FOSSA_API_KEY from env)"))
     <*> (commands <|> hiddenCommands)
+    <**> infoOption (T.unpack fullVersionDescription) (long "version" <> short 'V' <> help "show version text")
     <**> helper
 
 commands :: Parser Command

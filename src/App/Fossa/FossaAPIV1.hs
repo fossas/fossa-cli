@@ -54,6 +54,7 @@ import Srclib.Types
 import Text.URI (URI)
 import qualified Text.URI as URI
 import Fossa.API.Types (ApiOpts, useApiOpts)
+import App.Version (versionNumber)
 
 newtype FossaReq m a = FossaReq { unFossaReq :: m a }
   deriving (Functor, Applicative, Monad, Algebra sig)
@@ -67,9 +68,9 @@ instance (Has (Lift IO) sig m, Has Diagnostics sig m) => MonadHttp (FossaReq m) 
 fossaReq :: FossaReq m a -> m a
 fossaReq = unFossaReq
 
--- TODO: git commit?
+-- Don't send any version if one doesn't exist
 cliVersion :: Text
-cliVersion = "spectrometer"
+cliVersion = fromMaybe "" versionNumber
 
 uploadUrl :: Url scheme -> Url scheme
 uploadUrl baseurl = baseurl /: "api" /: "builds" /: "custom"
@@ -141,7 +142,7 @@ uploadAnalysis rootDir apiOpts ProjectRevision{..} metadata projects = fossaReq 
 
       sourceUnits = map toSourceUnit filteredProjects
       opts = "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
-          <> "v" =: cliVersion
+          <> "cliVersion" =: cliVersion
           <> "managedBuild" =: True
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
