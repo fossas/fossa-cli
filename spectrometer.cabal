@@ -246,6 +246,7 @@ test-suite unit-tests
     Haskell.CabalSpec
     Haskell.StackSpec
     Maven.PluginStrategySpec
+    Maven.PomStrategySpec
     Node.NpmLockSpec
     Node.PackageJsonSpec
     Node.YarnLockSpec
