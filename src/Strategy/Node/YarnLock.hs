@@ -2,6 +2,7 @@
 
 module Strategy.Node.YarnLock
   ( analyze'
+  , buildGraph
   ) where
 
 import Control.Effect.Diagnostics

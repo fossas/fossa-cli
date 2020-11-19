@@ -248,6 +248,7 @@ test-suite unit-tests
     Maven.PluginStrategySpec
     Node.NpmLockSpec
     Node.PackageJsonSpec
+    Node.YarnLockSpec
     NuGet.NuspecSpec
     NuGet.PackageReferenceSpec
     NuGet.PackagesConfigSpec
