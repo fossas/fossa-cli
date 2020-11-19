@@ -40,12 +40,12 @@ type SignedURL struct {
 
 // UploadTarballDependency uploads the directory specified to be treated on FOSSA as a dependency.
 func UploadTarballDependency(dir string, upload, rawLicenseScan bool) (Locator, error) {
-	return UploadTarball(dir, true, rawLicenseScan, upload)
+	return UploadTarball("", dir, true, rawLicenseScan, upload)
 }
 
 // UploadTarballProject uploads the directory specified to be treated on FOSSA as a project.
 func UploadTarballProject(dir string, rawLicenseScan bool) (Locator, error) {
-	return UploadTarball(dir, false, rawLicenseScan, true)
+	return UploadTarball("", dir, false, rawLicenseScan, true)
 }
 
 // UploadTarball archives, compresses, and uploads a specified directory. It
@@ -64,9 +64,11 @@ func UploadTarballProject(dir string, rawLicenseScan bool) (Locator, error) {
 // Since this will be running within CI machines, this is probably not a good
 // idea. (See https://circleci.com/docs/2.0/configuration-reference/#resource_class
 // for an example of our memory constraints.)
-func UploadTarball(dir string, dependency, rawLicenseScan, upload bool) (Locator, error) {
+func UploadTarball(name string, dir string, dependency, rawLicenseScan, upload bool) (Locator, error) {
 	p, err := filepath.Abs(dir)
-	name := filepath.Base(p)
+	if name == "" {
+		name = filepath.Base(p)
+	}
 	if err != nil {
 		return Locator{}, err
 	}
