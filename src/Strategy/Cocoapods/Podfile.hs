@@ -36,9 +36,7 @@ buildGraph podfile = Graphing.fromList (map toDependency direct)
     toDependency Pod{..} =
       Dependency { dependencyType = PodType
                  , dependencyName = name
-                 , dependencyVersion = case version of
-                                            Nothing -> Nothing
-                                            Just ver -> Just (CEq ver)
+                 , dependencyVersion = CEq <$> version
                  , dependencyLocations = case M.lookup SourceProperty properties of
                                             Just repo -> [repo]
                                             _ -> [source podfile]

@@ -7,6 +7,8 @@ import DepTypes
 import GraphUtil
 import Strategy.Python.Pipenv
 import Test.Hspec hiding (xit)
+import Data.Aeson (eitherDecodeStrict)
+import qualified Data.ByteString as BS
 
 pipfileLock :: PipfileLock
 pipfileLock = PipfileLock
@@ -17,16 +19,19 @@ pipfileLock = PipfileLock
     ]
 
   , fileDefault = M.fromList
-    [ ("pkgTwo", PipfileDep { fileDepVersion = "==2.0.0"
+    [ ("pkgTwo", PipfileDep { fileDepVersion = Just "==2.0.0"
                             , fileDepIndex = Just "package-index"
                             })
-    , ("pkgThree", PipfileDep { fileDepVersion = "==3.0.0"
+    , ("pkgThree", PipfileDep { fileDepVersion = Just "==3.0.0"
+                              , fileDepIndex = Nothing
+                              })
+    , ("pkgFour", PipfileDep { fileDepVersion = Nothing
                               , fileDepIndex = Nothing
                               })
     ]
 
   , fileDevelop = M.fromList
-    [ ("pkgOne", PipfileDep { fileDepVersion = "==1.0.0"
+    [ ("pkgOne", PipfileDep { fileDepVersion = Just "==1.0.0"
                             , fileDepIndex = Nothing
                             })
     ]
@@ -81,12 +86,24 @@ depThree = Dependency
   , dependencyEnvironments = [EnvProduction]
   , dependencyTags = M.empty
   }
+  
+depFour :: Dependency
+depFour = Dependency
+  { dependencyType = PipType
+  , dependencyName = "pkgFour"
+  , dependencyVersion = Nothing
+  , dependencyLocations = []
+  , dependencyEnvironments = [EnvProduction]
+  , dependencyTags = M.empty
+  }
 
 xit :: String -> Expectation -> SpecWith (Arg Expectation)
 xit _ _ = it "is an ignored test" $ () `shouldBe` ()
 
 spec :: Spec
 spec = do
+  pipLockFile <- runIO (BS.readFile "test/Python/testdata/Pipfile.lock")
+
   describe "analyzeWithCmd" $
     -- FIXME: graphing needs to be refactored to include "reachable" alongside "direct"
     xit "should use pipenv output for edges and tags" $ do
@@ -100,6 +117,16 @@ spec = do
     it "should set all dependencies as direct" $ do
       let result = buildGraph pipfileLock Nothing
 
-      expectDeps [depOne, depTwo, depThree] result
-      expectDirect [depOne, depTwo, depThree] result
+      expectDeps [depOne, depTwo, depThree, depFour] result
+      expectDirect [depOne, depTwo, depThree, depFour] result
       expectEdges [] result
+
+  describe "analyzeNoCmdFromFile" $
+    it "should set all dependencies as direct" $ do
+      case eitherDecodeStrict pipLockFile of
+        Right res -> do
+          let result = buildGraph res Nothing
+          expectDeps [depOne, depTwo, depThree, depFour] result
+          expectDirect [depOne, depTwo, depThree, depFour] result
+          expectEdges [] result
+        Left _ -> expectationFailure "failed to parse"

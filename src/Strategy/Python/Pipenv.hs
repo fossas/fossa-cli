@@ -91,7 +91,7 @@ buildGraph lock maybeDeps = run . withLabeling toDependency $ do
     start = Dependency
       { dependencyType = PipType
       , dependencyName = pipPkgName pkg
-      , dependencyVersion = Just (CEq (pipPkgVersion pkg))
+      , dependencyVersion = CEq <$> pipPkgVersion pkg
       , dependencyLocations = []
       , dependencyEnvironments = []
       , dependencyTags = M.empty
@@ -99,7 +99,7 @@ buildGraph lock maybeDeps = run . withLabeling toDependency $ do
 
 data PipPkg = PipPkg
   { pipPkgName    :: Text
-  , pipPkgVersion :: Text
+  , pipPkgVersion :: Maybe Text
   } deriving (Eq, Ord, Show)
 
 type PipGrapher = LabeledGrapher PipPkg PipLabel
@@ -128,7 +128,7 @@ buildNodes PipfileLock{..} = do
                -> PipfileDep
                -> m ()
   addWithEnv env sourcesMap depName dep = do
-    let pkg = PipPkg depName (T.drop 2 (fileDepVersion dep))
+    let pkg = PipPkg depName (T.drop 2 <$> fileDepVersion dep)
     -- TODO: reachable instead of direct
     direct pkg
     label pkg (PipEnvironment env)
@@ -147,7 +147,7 @@ buildEdges pipenvDeps = do
   where
 
   mkPkg :: PipenvGraphDep -> PipPkg
-  mkPkg dep = PipPkg (depName dep) (depInstalled dep)
+  mkPkg dep = PipPkg (depName dep) $ Just (depInstalled dep)
 
   mkEdges :: Has PipGrapher sig m => PipenvGraphDep -> m ()
   mkEdges parentDep =
@@ -173,7 +173,7 @@ data PipfileSource = PipfileSource
   } deriving (Eq, Ord, Show)
 
 data PipfileDep = PipfileDep
-  { fileDepVersion :: Text
+  { fileDepVersion :: Maybe Text
   , fileDepIndex   :: Maybe Text
   } deriving (Eq, Ord, Show)
 
@@ -185,7 +185,7 @@ instance FromJSON PipfileLock where
 
 instance FromJSON PipfileDep where
   parseJSON = withObject "PipfileDep" $ \obj ->
-    PipfileDep <$> obj .:  "version"
+    PipfileDep <$> obj .:? "version"
                <*> obj .:? "index"
 
 instance FromJSON PipfileMeta where
