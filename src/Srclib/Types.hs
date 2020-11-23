@@ -2,7 +2,6 @@
 
 module Srclib.Types
   ( SourceUnit(..)
-  , SourceUnitType(..)
   , SourceUnitBuild(..)
   , SourceUnitDependency(..)
   , Locator(..)
@@ -17,13 +16,10 @@ import qualified Data.Text as T
 
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
-  , sourceUnitType :: SourceUnitType
+  , sourceUnitType :: Text
   , sourceUnitManifest :: Text -- ^ path to manifest file
   , sourceUnitBuild :: SourceUnitBuild
   } deriving (Eq, Ord, Show)
-
-data SourceUnitType = SourceUnitTypeDummyCLI
-  deriving (Eq, Ord, Show)
 
 data SourceUnitBuild = SourceUnitBuild
   { buildArtifact :: Text -- ^ always "default"
@@ -76,9 +72,6 @@ instance ToJSON SourceUnitDependency where
     [ "locator" .= sourceDepLocator
     , "imports" .= sourceDepImports
     ]
-
-instance ToJSON SourceUnitType where
-  toJSON SourceUnitTypeDummyCLI = "dummy-cli"
 
 instance ToJSON Locator where
   -- render as text
