@@ -221,7 +221,6 @@ test-suite unit-tests
   other-modules:
     App.Fossa.FossaAPIV1Spec
     App.Fossa.Report.AttributionSpec
-    App.Fossa.VersionSpec
     App.Fossa.VPS.NinjaGraphSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
