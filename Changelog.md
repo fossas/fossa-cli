@@ -1,3 +1,11 @@
+# v2.4.4
+
+- Improves maven pom `${property}` interpolation ([#158](https://github.com/fossas/spectrometer/pull/158))
+
+# v2.4.3
+
+- Adds `--version` flag ([#157](https://github.com/fossas/spectrometer/pull/157))
+
 # v2.4
 
 - Integrates `vpscli scan` as `fossa vps analyze` ([#148](https://github.com/fossas/spectrometer/pull/148))
