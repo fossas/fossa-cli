@@ -20,17 +20,14 @@ rm -f vendor/*
 mkdir -p vendor
 
 ASSET_POSTFIX=""
-PATHFINDER_PATH=""
 case "$(uname -s)" in
 # case "Linux" in
   Darwin)
     ASSET_POSTFIX="darwin"
-    PATHFINDER_PATH=$(find . -type f -path '*osx/*/pathfinder/pathfinder' | xargs echo -n)
     ;;
 
   Linux)
     ASSET_POSTFIX="linux"
-    PATHFINDER_PATH=$(find . -type f -path '*linux/*/pathfinder/pathfinder' | xargs echo -n)
     ;;
   
   *)
@@ -39,19 +36,10 @@ case "$(uname -s)" in
     ;;
 esac
 
-if [ -z PATHFINDER_PATH ]; then
-  echo "Pathfinder not located. Please build the project and try again."
-  exit 1
-fi
-
-PATHFINDER_OUTPUT="vendor/pathfinder"
-echo "Copying '$PATHFINDER_PATH' to '$PATHFINDER_OUTPUT'"
-cp $PATHFINDER_PATH $PATHFINDER_OUTPUT
-
 TAG="latest"
 echo "Downloading asset information from latest tag for architecture '$ASSET_POSTFIX'"
 
-FILTER=".name == \"ramjet-cli-ipr-$ASSET_POSTFIX\" or .name == \"sherlock-cli-$ASSET_POSTFIX\" or .name == \"nomossa-$ASSET_POSTFIX\""
+FILTER=".name == \"wiggins-$ASSET_POSTFIX\""
 curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.v3.raw" -s api.github.com/repos/fossas/basis/releases/latest | jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" | while read ASSET; do
   URL="$(echo $ASSET | jq -c -r '.url')"
   NAME="$(echo $ASSET | jq -c -r '.name')"

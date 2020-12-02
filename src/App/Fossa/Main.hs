@@ -12,7 +12,7 @@ import qualified App.Fossa.Report as Report
 import qualified App.Fossa.Test as Test
 import App.Fossa.VPS.NinjaGraph
 import qualified App.Fossa.VPS.Report as VPSReport
-import App.Fossa.VPS.Scan (SkipIPRScan (..), scanMain)
+import App.Fossa.VPS.Scan (LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
 import qualified App.Fossa.VPS.Test as VPSTest
 import App.Fossa.VPS.Types (FilterExpressions (..))
 import App.OptionExtensions
@@ -90,7 +90,7 @@ appMain = do
       case vpsCommand of
         VPSAnalyzeCommand VPSAnalyzeOptions {..} -> do
           baseDir <- validateDir vpsAnalyzeBaseDir
-          scanMain baseDir apiOpts vpsAnalyzeMeta logSeverity override vpsFileFilter skipIprScan
+          scanMain baseDir apiOpts vpsAnalyzeMeta logSeverity override vpsFileFilter skipIprScan licenseOnlyScan
         NinjaGraphCommand ninjaGraphOptions -> do
           ninjaGraphMain apiOpts logSeverity override ninjaGraphOptions
         VPSTestCommand VPSTestOptions {..} -> do
@@ -226,9 +226,10 @@ testOpts =
     <*> baseDirArg
 
 vpsOpts :: Parser VPSOptions
-vpsOpts = VPSOptions <$> skipIprScanOpt <*> fileFilterOpt <*> vpsCommands
+vpsOpts = VPSOptions <$> skipIprScanOpt <*> licenseOnlyScanOpt <*> fileFilterOpt <*> vpsCommands
   where
     skipIprScanOpt = flagOpt SkipIPRScan (long "skip-ipr-scan" <> help "If specified, the scan directory will not be scanned for intellectual property rights information")
+    licenseOnlyScanOpt = flagOpt LicenseOnlyScan (long "license-only" <> help "If specified, the scan directory will not be scanned for vendored dependencies")
     fileFilterOpt = FilterExpressions <$> jsonOption (long "ignore-file-regex" <> short 'i' <> metavar "REGEXPS" <> help "JSON encoded array of regular expressions used to filter scanned paths" <> value [])
 
 vpsAnalyzeOpts :: Parser VPSAnalyzeOptions
@@ -343,6 +344,7 @@ data TestOptions = TestOptions
 
 data VPSOptions = VPSOptions
   { skipIprScan :: Flag SkipIPRScan,
+    licenseOnlyScan :: Flag LicenseOnlyScan,
     vpsFileFilter :: FilterExpressions,
     vpsCommand :: VPSCommand
   }

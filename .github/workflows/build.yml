@@ -76,32 +76,29 @@ jobs:
           ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
           ${{ runner.os }}-${{ matrix.ghc }}-
           ${{ runner.os }}-
+  
+    - name: Update vendored binaries
+      if: ${{ !contains(matrix.os, 'windows') }}
+      run: |
+        mkdir vendor
+        ./vendor_download.sh
+      env:
+        GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
+
+    - name: Touch vendor placeholders
+      if: ${{ contains(matrix.os, 'windows') }}
+      run: |
+        mkdir vendor
+        touch vendor/wiggins
 
     - name: Build
       run: |
-        mkdir vendor
-        touch vendor/nomossa
-        touch vendor/pathfinder
-        touch vendor/sherlock-cli
-        touch vendor/ramjet-cli-ipr
         cabal update
         cabal build --project-file=${{ matrix.project-file }} all
 
     - name: Run tests
       run: |
         cabal test --project-file=${{ matrix.project-file }} all
-
-    - name: Update vendored binaries
-      if: ${{ !contains(matrix.os, 'windows') }}
-      run: ./vendor_download.sh
-      env:
-        GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
-
-    - name: Rebuild with new vendored binaries
-      if: ${{ !contains(matrix.os, 'windows') }}
-      run: |
-        echo '' >> src/App/Fossa/VPS/EmbeddedBinary.hs
-        cabal build --project-file=${{ matrix.project-file }} all
 
     - name: Find and move binaries (windows)
       if: ${{ contains(matrix.os, 'windows') }}

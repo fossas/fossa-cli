@@ -97,8 +97,7 @@ library
     App.Fossa.VPS.Report
     App.Fossa.VPS.Scan
     App.Fossa.VPS.Scan.Core
-    App.Fossa.VPS.Scan.RunIPR
-    App.Fossa.VPS.Scan.RunSherlock
+    App.Fossa.VPS.Scan.RunWiggins
     App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Test
     App.Fossa.VPS.Types
