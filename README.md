@@ -66,6 +66,12 @@ Add `C:\ProgramData\fossa-cli` to your path by modifying your `profile.ps1` file
 $env:Path += ";C:\ProgramData\fossa-cli"
 ``` 
 
+Make to sure to have your [FOSSA API Key](https://docs.fossa.com/docs/api-reference) set as an environment variable
+
+```powershell
+$env:FOSSA_API_KEY = "YOUR_API_KEY_HERE"
+``` 
+
 ## Quick Start
 
 Run `fossa` and provide a [FOSSA API Key](https://docs.fossa.com/docs/api-reference) to create a local [configuration file](docs/config-file.md#fossayml) and analyze the project. The project information will be uploaded and a link to a rich, hosted report on [fossa.com](https://fossa.com) will be output:
