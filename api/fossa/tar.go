@@ -16,6 +16,7 @@ import (
 
 	"github.com/apex/log"
 
+	"github.com/fossas/fossa-cli/config"
 	"github.com/fossas/fossa-cli/errors"
 	"github.com/fossas/fossa-cli/files"
 )
@@ -454,6 +455,10 @@ func tarballUpload(name string, dependency, rawLicenseScan, upload bool, tarball
 
 	if rawLicenseScan {
 		parameters.Add("rawLicenseScan", "true")
+	}
+
+	if team := config.Team(); team != "" {
+		parameters.Add("team", team)
 	}
 
 	_, _, err = Post(ComponentsBuildAPI+"?"+parameters.Encode(), data)
