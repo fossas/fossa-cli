@@ -1,3 +1,13 @@
+# v2.4.6
+
+- Update Wiggins CLI plugin to version `2020-12-11-5d581ea`
+
+# v2.4.5
+
+- Update `fossa vps analyze` to use a new VPS project scanning engine: 
+  - Improve scan performance
+  - Support "License Only" scans, where the project is scanned for licenses but is not inspected for vendored dependencies.
+
 # v2.4.4
 
 - Improves maven pom `${property}` interpolation ([#158](https://github.com/fossas/spectrometer/pull/158))
