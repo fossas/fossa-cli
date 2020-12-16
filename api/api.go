@@ -3,6 +3,7 @@ package api
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -26,6 +27,14 @@ var defaultClient = http.Client{
 		DisableKeepAlives: true,
 		Proxy:             http.ProxyFromEnvironment,
 	},
+}
+
+var (
+	insecureTLS bool = false
+)
+
+func SetInsecureTLS(insecureTLSflag bool) {
+	insecureTLS = insecureTLSflag
 }
 
 // Get is a convenience method for MakeAPIRequest.
@@ -98,6 +107,15 @@ func MakeAPIRequest(method string, endpoint *url.URL, APIKey string, body []byte
 	req.Close = true
 	req.Header.Set("Authorization", "token "+APIKey)
 	req.Header.Set("Content-Type", "application/json")
+
+	// Set new TLS Config here
+	if insecureTLS {
+		defaultClient.Transport = &http.Transport{
+			DisableKeepAlives: true,
+			Proxy:             http.ProxyFromEnvironment,
+			TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
+		}
+	}
 
 	// Send request.
 	response, err := defaultClient.Do(req)

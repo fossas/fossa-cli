@@ -32,6 +32,11 @@ func Version() int {
 	return file.GetVersion()
 }
 
+// Insecure is true if the user wants to skip TLS Certificate authenticity checks
+func Insecure() bool {
+	return BoolFlag(flags.Insecure)
+}
+
 // Interactive is true if the user desires interactive output.
 func Interactive() bool {
 	return isatty.IsTerminal(os.Stderr.Fd()) && !BoolFlag(flags.NoAnsi)
