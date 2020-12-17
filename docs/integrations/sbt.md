@@ -32,3 +32,6 @@ Analysis parses the output of `sbt -no-colors <project>/<configuration>:dependen
 ## Known Limitations
 
 - Currently fossa can only analyze a project if the user has `net.virtual-void.sbt-dependency-graph` installed. 
+- To use SBT 1.3.x you will need to add `ThisBuild / useCoursier := false` to your `build.sbt`, because coursier was [made the default](https://www.scala-sbt.org/1.x/docs/sbt-1.3-Release-Notes.html#Library+management+with+Coursier) and [does not pull license info](https://github.com/coursier/coursier/issues/1790).
+- You cannot use SBT 1.4.x presently as the `net.virtual-void.sbt-dependency-graph` plugin has been [insourced](https://www.scala-sbt.org/1.x/docs/sbt-1.4-Release-Notes.html#sbt-dependency-graph+is+in-sourced).
+- For initialisation to work robustly you may need to disable any configuration which writes output `onLoad`
