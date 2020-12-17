@@ -53,13 +53,19 @@ testMain basedir apiOpts logSeverity timeoutSeconds outputType override = do
       logSticky "[ Waiting for issue scan completion... ]"
       issues <- waitForIssues apiOpts revision
       logSticky ""
+      logInfo ""
 
-      if null (Fossa.issuesIssues issues)
-        then logInfo "Test passed! 0 issues found"
-        else do
-          case outputType of
-            TestOutputPretty -> logError (renderedIssues issues)
-            TestOutputJson -> logStdout . pretty . decodeUtf8 . Aeson.encode $ issues
+      case Fossa.issuesCount issues of
+        0 -> logInfo "Test passed! 0 issues found"
+        n -> do
+          logError $ "Test failed. Number of issues found: " <> pretty n
+          if null (Fossa.issuesIssues issues)
+            then logError "Check the webapp for more details, or use a full-access API key (currently using a push-only API key)"
+            else
+              case outputType of
+                TestOutputPretty -> logError (renderedIssues issues)
+                TestOutputJson -> logStdout . pretty . decodeUtf8 . Aeson.encode $ issues
+
           sendIO exitFailure
 
     case result of
