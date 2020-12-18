@@ -8,6 +8,7 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/analyze"
+	"github.com/fossas/fossa-cli/cmd/fossa/cmd/archive"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/build"
 	initc "github.com/fossas/fossa-cli/cmd/fossa/cmd/init"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/report"
@@ -39,6 +40,7 @@ var App = cli.App{
 		report.Cmd,
 		test.Cmd,
 		update.Cmd,
+		archive.Cmd,
 		analyze.NewCmd,
 	},
 }
