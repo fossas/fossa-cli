@@ -35,7 +35,7 @@ expected = run . evalGrapher $ do
 
 glideLockfile :: GlideLockfile
 glideLockfile = 
-  GlideLockfile { hash = 123
+  GlideLockfile { hash = "123"
   , updated = "now"
   , imports = 
     [ GlideDep 

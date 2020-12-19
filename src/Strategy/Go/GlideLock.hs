@@ -39,7 +39,7 @@ buildGraph lockfile = Graphing.fromList (map toDependency direct)
                }
 
 data GlideLockfile = GlideLockfile
-  { hash    :: Integer
+  { hash    :: Text
   , updated :: Text
   , imports :: [GlideDep]
   } deriving (Eq, Ord, Show)
