@@ -18,7 +18,7 @@ discover dir = map mkProject <$> findProjects dir
 findProjects :: MonadIO m => Path Abs Dir -> m [YarnProject]
 findProjects = walk' $ \dir _ files -> do
   case findFileNamed "yarn.lock" files of
-    Nothing -> pure ([], WalkContinue)
+    Nothing -> pure ([], WalkSkipSome ["node_modules"])
     Just lock -> do
       let project =
             YarnProject
@@ -26,7 +26,7 @@ findProjects = walk' $ \dir _ files -> do
             , yarnLock = lock
             }
 
-      pure ([project], WalkSkipAll)
+      pure ([project], WalkSkipSome ["node_modules"])
 
 mkProject :: YarnProject -> DiscoveredProject
 mkProject project =

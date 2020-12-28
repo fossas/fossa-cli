@@ -28,6 +28,7 @@ import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
+import Data.List (isInfixOf, stripPrefix)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Text (Text)
@@ -176,9 +177,10 @@ analyze basedir destination override unpackArchives filters = do
       $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) (unBaseDir basedir) (runDependencyAnalysis basedir filters)
 
   logSticky ""
+  let filteredProjects = filterProjects basedir projectResults
 
   case destination of
-    OutputStdout -> logStdout $ pretty (decodeUtf8 (Aeson.encode (buildResult projectResults)))
+    OutputStdout -> logStdout $ pretty (decodeUtf8 (Aeson.encode (buildResult filteredProjects)))
     UploadScan apiOpts metadata -> do
       revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
 
@@ -188,7 +190,7 @@ analyze basedir destination override unpackArchives filters = do
       let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
       logInfo ("Using branch: `" <> pretty branchText <> "`")
 
-      uploadResult <- Diag.runDiagnostics $ uploadAnalysis basedir apiOpts revision metadata projectResults
+      uploadResult <- Diag.runDiagnostics $ uploadAnalysis apiOpts revision metadata filteredProjects
       case uploadResult of
         Left failure -> logError (Diag.renderFailureBundle failure)
         Right success -> do
@@ -208,6 +210,36 @@ analyze basedir destination override unpackArchives filters = do
             Left failure -> logDebug (Diag.renderFailureBundle failure)
             Right _ -> pure ()
 
+-- For each of the projects, we need to strip the root directory path from the prefix of the project path.
+-- We don't want parent directories of the scan root affecting "production path" filtering -- e.g., if we're
+-- running in a directory called "tmp", we still want results.
+filterProjects :: BaseDir -> [ProjectResult] -> [ProjectResult]
+filterProjects rootDir projects = filter (isProductionPath . dropPrefix rootPath . fromAbsDir . projectResultPath) projects 
+  where 
+    rootPath = fromAbsDir $ unBaseDir rootDir
+    dropPrefix :: String -> String -> String
+    dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
+
+isProductionPath :: FilePath -> Bool
+isProductionPath path = not $ any (`isInfixOf` path)
+  [ "doc/"
+  , "docs/"
+  , "test/"
+  , "example/"
+  , "examples/"
+  , "vendor/"
+  , "node_modules/"
+  , ".srclib-cache/"
+  , "spec/"
+  , "Godeps/"
+  , ".git/"
+  , "bower_components/"
+  , "third_party/"
+  , "third-party/"
+  , "Carthage/"
+  , "Checkouts/"
+  ]
+  
 tryUploadContributors ::
   ( Has Diag.Diagnostics sig m,
     Has Exec sig m,

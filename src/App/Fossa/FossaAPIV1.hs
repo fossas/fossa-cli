@@ -39,7 +39,6 @@ import Control.Effect.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson
-import Data.List (isInfixOf, stripPrefix)
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
@@ -48,7 +47,6 @@ import Effect.Logger
 import qualified Network.HTTP.Client as HTTP
 import Network.HTTP.Req
 import qualified Network.HTTP.Types as HTTP
-import Path
 import Srclib.Converter (toSourceUnit)
 import Srclib.Types
 import Text.URI (URI)
@@ -123,24 +121,15 @@ instance ToDiagnostic FossaError where
 
 uploadAnalysis
   :: (Has (Lift IO) sig m, Has Diagnostics sig m)
-  => BaseDir -- ^ root directory for analysis
-  -> ApiOpts
+  => ApiOpts
   -> ProjectRevision
   -> ProjectMetadata
   -> [ProjectResult]
   -> m UploadResponse
-uploadAnalysis rootDir apiOpts ProjectRevision{..} metadata projects = fossaReq $ do
+uploadAnalysis apiOpts ProjectRevision{..} metadata projects = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  -- For each of the projects, we need to strip the root directory path from the prefix of the project path.
-  -- We don't want parent directories of the scan root affecting "production path" filtering -- e.g., if we're
-  -- running in a directory called "tmp", we still want results.
-  let rootPath = fromAbsDir $ unBaseDir rootDir
-      dropPrefix :: String -> String -> String
-      dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
-      filteredProjects = filter (isProductionPath . dropPrefix rootPath . fromAbsDir . projectResultPath) projects
-
-      sourceUnits = map toSourceUnit filteredProjects
+  let sourceUnits = map toSourceUnit projects
       opts = "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "cliVersion" =: cliVersion
           <> "managedBuild" =: True
@@ -172,26 +161,6 @@ mangleError err = case err of
       _                 -> OtherError err
   JsonHttpException msg -> JsonDeserializeError msg
   _ -> OtherError err
-
-isProductionPath :: FilePath -> Bool
-isProductionPath path = not $ any (`isInfixOf` path)
-  [ "doc/"
-  , "docs/"
-  , "test/"
-  , "example/"
-  , "examples/"
-  , "vendor/"
-  , "node_modules/"
-  , ".srclib-cache/"
-  , "spec/"
-  , "Godeps/"
-  , ".git/"
-  , "bower_components/"
-  , "third_party/"
-  , "third-party/"
-  , "Carthage/"
-  , "Checkouts/"
-  ]
 
 -----
 

@@ -15,7 +15,7 @@ where
 
 import Control.Carrier.Writer.Church
 import Control.Monad.Trans
-import Control.Carrier.Lift
+import Control.Carrier.Lift ( runM, LiftC )
 import Data.Foldable (find)
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
@@ -54,7 +54,7 @@ walk f = walkDir $ \dir subdirs files -> do
     WalkSkipSome dirs ->
       -- we normalize the passed in [Text] as relative directories for more reliable comparisons
       let parsedDirs = mapMaybe (parseRelDir . T.unpack) dirs
-       in pure . WalkExclude . filter (not . (`elem` parsedDirs) . dirname) $ subdirs
+       in pure . WalkExclude . filter ((`elem` parsedDirs) . dirname) $ subdirs
     WalkSkipAll -> pure $ WalkExclude subdirs
     WalkStop -> pure WalkFinish
 

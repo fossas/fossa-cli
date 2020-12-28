@@ -22,7 +22,7 @@ discover dir = map mkProject <$> findProjects dir
 findProjects :: MonadIO m => Path Abs Dir -> m [NpmProject]
 findProjects = walk' $ \dir _ files -> do
   case findFileNamed "package.json" files of
-    Nothing -> pure ([], WalkContinue)
+    Nothing -> pure ([], WalkSkipSome ["node_modules"])
     Just packageJson -> do
       let packageLock = findFileNamed "package-lock.json" files
 
@@ -33,7 +33,7 @@ findProjects = walk' $ \dir _ files -> do
                 npmPackageLock = packageLock
               }
 
-      pure ([project], WalkSkipAll)
+      pure ([project], WalkSkipSome ["node_modules"])
 
 data NpmProject = NpmProject
   { npmDir :: Path Abs Dir,
