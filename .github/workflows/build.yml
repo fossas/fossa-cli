@@ -35,12 +35,12 @@ jobs:
           - os: macos-latest
             os-name: macOS
             project-file: cabal.project.ci.macos
-            ghc: '8.10.1'
+            ghc: '8.10.3'
 
           - os: windows-latest
             os-name: Windows
             project-file: cabal.project.ci.windows
-            ghc: '8.10.1'
+            ghc: '8.10.3'
 
     steps:
     - uses: actions/checkout@v2
@@ -56,18 +56,14 @@ jobs:
       run: |
         brew install upx jq
 
-    - name: Allow insecure actions commands for setup-haskell add-env
-      run: |
-        echo "ACTIONS_ALLOW_UNSECURE_COMMANDS=true" >> $GITHUB_ENV
-
-    - uses: actions/setup-haskell@v1.1
+    - uses: haskell/actions/setup@v1
       id: setup-haskell
       name: Setup ghc/cabal (non-alpine)
       if: ${{ !contains(matrix.os, 'ubuntu') }}
       with:
         ghc-version: ${{ matrix.ghc }}
 
-    - uses: actions/cache@v1
+    - uses: actions/cache@v2
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
