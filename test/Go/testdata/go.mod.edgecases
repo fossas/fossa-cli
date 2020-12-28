@@ -20,6 +20,8 @@ replace repo/B => alias/repo/B v0.1.0
 replace (
 	repo/C => alias/repo/C v0.0.0-20180207000608-000000000003
 	repo/E => alias/repo/E v0.0.0-20170808103936-000000000005+incompatible
+    foo v0 => ../foo
+    bar => /foo/bar/baz
     repo/F_underscore v1.0.0 => repo/F_underscore v2.0.0
 )
 

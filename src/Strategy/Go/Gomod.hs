@@ -13,7 +13,9 @@ module Strategy.Go.Gomod
   where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
+import Data.Char (isSpace)
 import Data.Foldable (traverse_)
+import Data.Functor (void)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
@@ -35,6 +37,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 data Statement =
     RequireStatement Text Text -- ^ package, version
   | ReplaceStatement Text Text Text -- ^ old, new, newVersion
+  | LocalReplaceStatement Text Text -- ^ old, dir (local "submodule" dependency -- dir can be a resolvable string (e.g., "../foo") or an actual directory (e.g., "/foo" or "foo/"))
   | ExcludeStatement Text Text -- ^ package, version
   | GoVersionStatement Text
     deriving (Eq, Ord, Show)
@@ -45,6 +48,7 @@ data Gomod = Gomod
   { modName     :: PackageName
   , modRequires :: [Require]
   , modReplaces :: Map PackageName Require
+  , modLocalReplaces :: Map PackageName Text
   , modExcludes :: [Require]
   } deriving (Eq, Ord, Show)
 
@@ -57,10 +61,11 @@ type Parser = Parsec Void Text
 
 gomodParser :: Parser Gomod
 gomodParser = do
-  _ <- sc
+  _ <- scn
   _ <- lexeme (chunk "module")
   name <- packageName
-  statements <- many statement
+  _ <- scn
+  statements <- many (statement <* scn)
   eof
 
   let statements' = concat statements
@@ -98,11 +103,14 @@ gomodParser = do
   --       golang.org/x/text => golang.org/x/text v3.0.0
   --   )
   replaceStatements :: Parser [Statement]
-  replaceStatements = block "replace" singleReplace
+  replaceStatements = block "replace" (try singleReplace <|> singleLocalReplace)
 
   -- parse the body of a single replace (without the leading "replace" lexeme)
   singleReplace :: Parser Statement
   singleReplace = ReplaceStatement <$> packageName <* optional semver <* lexeme (chunk "=>") <*> packageName <*> semver
+
+  singleLocalReplace :: Parser Statement
+  singleLocalReplace = LocalReplaceStatement <$> packageName <* optional semver <* lexeme (chunk "=>") <*> anyToken
 
   -- top-level exclude statements
   -- e.g.:
@@ -131,7 +139,7 @@ gomodParser = do
   --   )
   block prefix parseSingle = do
     _ <- lexeme (chunk prefix)
-    parens (many parseSingle) <|> (singleton <$> parseSingle)
+    parens (many (parseSingle <* scn)) <|> (singleton <$> parseSingle)
 
   -- package name, e.g., golang.org/x/text
   packageName :: Parser Text
@@ -149,25 +157,39 @@ gomodParser = do
 
   -- lexer combinators
   parens = between (symbol "(") (symbol ")")
-  symbol = L.symbol sc
+  symbol = L.symbol scn
   lexeme = L.lexeme sc
 
-  -- space consumer (for use with Text.Megaparsec.Char.Lexer combinators)
+  anyToken :: Parser Text
+  anyToken = lexeme (takeWhile1P (Just "any token") (not . isSpace))
+
+  -- space consumer WITHOUT newlines (for use with Text.Megaparsec.Char.Lexer combinators)
   sc :: Parser ()
-  sc = L.space space1 (L.skipLineComment "//") (L.skipBlockComment "/*" "*/")
+  sc = L.space (void $ some (char ' ' <|> char '\t')) (L.skipLineComment "//") (L.skipBlockComment "/*" "*/")
+
+  -- space consumer with newlines
+  scn :: Parser ()
+  scn = L.space space1 (L.skipLineComment "//") (L.skipBlockComment "/*" "*/")
 
 toGomod :: Text -> [Statement] -> Gomod
-toGomod name = foldr apply (Gomod name [] M.empty [])
+toGomod name = foldr apply (Gomod name [] M.empty M.empty [])
   where
   apply (RequireStatement package version) gomod = gomod { modRequires = Require package version : modRequires gomod }
   apply (ReplaceStatement old new newVersion) gomod = gomod { modReplaces = M.insert old (Require new newVersion) (modReplaces gomod) }
+  apply (LocalReplaceStatement old path) gomod = gomod { modLocalReplaces = M.insert old path (modLocalReplaces gomod) }
   apply (ExcludeStatement package version) gomod = gomod { modExcludes = Require package version : modExcludes gomod }
   apply _ gomod = gomod
 
 -- lookup modRequires and replace them with modReplaces as appropriate, producing the resolved list of requires
 resolve :: Gomod -> [Require]
-resolve gomod = map resolveReplace (modRequires gomod)
+resolve gomod = map resolveReplace . filter nonLocalPackage $ modRequires gomod
   where
+  -- nonLocalPackage determines whether the package name is used in a "local
+  -- replace" statement -- i.e., a replace statement pointing to a filepath as a
+  -- local module
+  nonLocalPackage :: Require -> Bool
+  nonLocalPackage = not . (`elem` M.keys (modLocalReplaces gomod)) . reqPackage
+
   resolveReplace require = fromMaybe require (M.lookup (reqPackage require) (modReplaces gomod))
 
 analyze' ::

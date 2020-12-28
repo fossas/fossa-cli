@@ -23,6 +23,7 @@ gomod = Gomod
                   , Require "github.com/pkg/three/v3" "v3.0.0"
                   ]
   , modReplaces = M.fromList [("github.com/pkg/two/v2", Require "github.com/pkg/overridden" "overridden")]
+  , modLocalReplaces = M.empty
   , modExcludes = []
   }
 
@@ -91,6 +92,10 @@ spec_parse = do
                             , ("repo/C", Require "alias/repo/C" "v0.0.0-20180207000608-000000000003")
                             , ("repo/E", Require "alias/repo/E" "v0.0.0-20170808103936-000000000005+incompatible")
                             , ("repo/F_underscore", Require "repo/F_underscore" "v2.0.0")
+                            ]
+                        , modLocalReplaces = M.fromList
+                            [ ("foo", "../foo")
+                            , ("bar", "/foo/bar/baz")
                             ]
                         , modExcludes = [ Require "repo/B" "v0.9.0"
                                         , Require "repo/C" "v1.0.0"
