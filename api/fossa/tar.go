@@ -40,12 +40,12 @@ type SignedURL struct {
 
 // UploadTarballDependency uploads the directory specified to be treated on FOSSA as a dependency.
 func UploadTarballDependency(dir string, upload, rawLicenseScan bool) (Locator, error) {
-	return UploadTarball("", dir, true, rawLicenseScan, upload)
+	return UploadTarball("", "", dir, true, rawLicenseScan, upload, UploadOptions{})
 }
 
 // UploadTarballProject uploads the directory specified to be treated on FOSSA as a project.
-func UploadTarballProject(dir string, rawLicenseScan bool) (Locator, error) {
-	return UploadTarball("", dir, false, rawLicenseScan, true)
+func UploadTarballProject(name, revision, dir string, rawLicenseScan bool, options UploadOptions) (Locator, error) {
+	return UploadTarball(name, revision, dir, false, rawLicenseScan, true, options)
 }
 
 // UploadTarball archives, compresses, and uploads a specified directory. It
@@ -64,7 +64,7 @@ func UploadTarballProject(dir string, rawLicenseScan bool) (Locator, error) {
 // Since this will be running within CI machines, this is probably not a good
 // idea. (See https://circleci.com/docs/2.0/configuration-reference/#resource_class
 // for an example of our memory constraints.)
-func UploadTarball(name string, dir string, dependency, rawLicenseScan, upload bool) (Locator, error) {
+func UploadTarball(name, revision, dir string, dependency, rawLicenseScan, upload bool, uploadOptions UploadOptions) (Locator, error) {
 	p, err := filepath.Abs(dir)
 	if name == "" {
 		name = filepath.Base(p)
@@ -83,7 +83,7 @@ func UploadTarball(name string, dir string, dependency, rawLicenseScan, upload b
 		return Locator{}, err
 	}
 
-	return tarballUpload(name, dependency, rawLicenseScan, upload, tarball, hash)
+	return tarballUpload(name, revision, dependency, rawLicenseScan, upload, tarball, hash, uploadOptions)
 }
 
 // UploadTarballString uploads a string and uses the provided package to name it.
@@ -93,7 +93,7 @@ func UploadTarballString(name, s string, dependency, rawLicenseScan, upload bool
 		return Locator{}, err
 	}
 
-	return tarballUpload(name, dependency, rawLicenseScan, upload, tarball, hash)
+	return tarballUpload(name, "", dependency, rawLicenseScan, upload, tarball, hash, UploadOptions{})
 }
 
 // CreateTarball archives and compresses a directory's contents to a temporary
@@ -285,7 +285,7 @@ func UploadTarballDependencyFiles(dir string, fileList []string, name string, up
 		return Locator{}, err
 	}
 
-	return tarballUpload(name, true, true, upload, tarball, hash)
+	return tarballUpload(name, "", true, true, upload, tarball, hash, UploadOptions{})
 }
 
 // CreateTarballFromFiles archives and compresses a list of files to a temporary
@@ -369,13 +369,14 @@ func CreateTarballFromFiles(files []string, name string) (*os.File, []byte, erro
 // Note: "name" should not have any "/"s to ensure core can parse it. Setting rawLicenseScan ensures
 // that FOSSA will not attempt to find dependencies in the uploaded files and that a full license scan
 // will be run on directories which are normally ignored, such as `vendor` or `node_modules`.
-func tarballUpload(name string, dependency, rawLicenseScan, upload bool, tarball *os.File, hash []byte) (Locator, error) {
+func tarballUpload(name, revision string, dependency, rawLicenseScan, upload bool, tarball *os.File, hash []byte, uploadOptions UploadOptions) (Locator, error) {
 	info, err := tarball.Stat()
 	if err != nil {
 		return Locator{}, err
 	}
-
-	revision := hex.EncodeToString(hash)
+	if revision == "" {
+		revision = hex.EncodeToString(hash)
+	}
 
 	if !upload {
 		return Locator{
@@ -439,7 +440,7 @@ func tarballUpload(name string, dependency, rawLicenseScan, upload bool, tarball
 	// Queue the component build.
 	build := ComponentSpec{
 		Archives: []Component{
-			Component{PackageSpec: name, Revision: revision},
+			{PackageSpec: name, Revision: revision},
 		},
 	}
 	data, err := json.Marshal(build)
@@ -451,9 +452,20 @@ func tarballUpload(name string, dependency, rawLicenseScan, upload bool, tarball
 	if dependency {
 		parameters.Add("dependency", "true")
 	}
-
 	if rawLicenseScan {
 		parameters.Add("rawLicenseScan", "true")
+	}
+	if uploadOptions.Branch != "" {
+		parameters.Add("branch", uploadOptions.Branch)
+	}
+	if uploadOptions.JIRAProjectKey != "" {
+		parameters.Add("jiraProjectKey", uploadOptions.JIRAProjectKey)
+	}
+	if uploadOptions.Team != "" {
+		parameters.Add("team", uploadOptions.Team)
+	}
+	if uploadOptions.Policy != "" {
+		parameters.Add("policy", uploadOptions.Policy)
 	}
 
 	_, _, err = Post(ComponentsBuildAPI+"?"+parameters.Encode(), data)
