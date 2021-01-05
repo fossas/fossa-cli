@@ -27,8 +27,9 @@ import Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
 import Data.Flag (Flag, fromFlag)
-import Data.Foldable (traverse_)
+import Data.Foldable (traverse_, for_)
 import Data.List (isInfixOf, stripPrefix)
+import qualified Data.List.NonEmpty as NE
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Text (Text)
@@ -74,6 +75,7 @@ import qualified Strategy.Rebar3 as Rebar3
 import qualified Strategy.RPM as RPM
 import qualified Strategy.Scala as Scala
 import qualified Strategy.Yarn as Yarn
+import System.Exit (exitFailure)
 import Text.URI (URI)
 import qualified Text.URI as URI
 import Types
@@ -179,42 +181,69 @@ analyze basedir destination override unpackArchives filters = do
   logSticky ""
   let filteredProjects = filterProjects basedir projectResults
 
-  case destination of
-    OutputStdout -> logStdout $ pretty (decodeUtf8 (Aeson.encode (buildResult filteredProjects)))
-    UploadScan apiOpts metadata -> do
-      revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
+  case checkForEmptyUpload projectResults filteredProjects of
+    NoneDiscovered -> logError "No projects were discovered" >> sendIO exitFailure
+    FilteredAll count -> do
+      logError ("Filtered out all " <> pretty count <> " projects due to directory name")
+      for_ projectResults $ \project -> logDebug ("Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project))
+      sendIO exitFailure
+    FoundSome someProjects -> case destination of
+      OutputStdout -> logStdout . pretty . decodeUtf8 . Aeson.encode . buildResult $ NE.toList someProjects
+      UploadScan apiOpts metadata -> do
+        revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
 
-      logInfo ""
-      logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
-      logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
-      let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
-      logInfo ("Using branch: `" <> pretty branchText <> "`")
+        logInfo ""
+        logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
+        logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
+        let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
+        logInfo ("Using branch: `" <> pretty branchText <> "`")
 
-      uploadResult <- Diag.runDiagnostics $ uploadAnalysis apiOpts revision metadata filteredProjects
-      case uploadResult of
-        Left failure -> logError (Diag.renderFailureBundle failure)
-        Right success -> do
-          let resp = Diag.resultValue success
-          logInfo $ vsep
-            [ "============================================================"
-            , ""
-            , "    View FOSSA Report:"
-            , "    " <> pretty (fossaProjectUrl (apiOptsUri apiOpts) (uploadLocator resp) revision)
-            , ""
-            , "============================================================"
-            ]
-          traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
+        uploadResult <- Diag.runDiagnostics $ uploadAnalysis apiOpts revision metadata someProjects
+        case uploadResult of
+          Left failure -> logError (Diag.renderFailureBundle failure)
+          Right success -> do
+            let resp = Diag.resultValue success
+            logInfo $ vsep
+              [ "============================================================"
+              , ""
+              , "    View FOSSA Report:"
+              , "    " <> pretty (fossaProjectUrl (apiOptsUri apiOpts) (uploadLocator resp) revision)
+              , ""
+              , "============================================================"
+              ]
+            traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
 
-          contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors (unBaseDir basedir) apiOpts (uploadLocator resp)
-          case contribResult of
-            Left failure -> logDebug (Diag.renderFailureBundle failure)
-            Right _ -> pure ()
+            contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors (unBaseDir basedir) apiOpts (uploadLocator resp)
+            case contribResult of
+              Left failure -> logDebug (Diag.renderFailureBundle failure)
+              Right _ -> pure ()
+
+data CountedResult
+  = NoneDiscovered
+  | FilteredAll Int
+  | FoundSome (NE.NonEmpty ProjectResult)
+
+-- | Return some state of the projects found, since we can't upload empty result arrays.  
+-- We accept a list of all projects analyzed, and the list after filtering.  We assume 
+-- that the smaller list is the latter, and re.
+checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> CountedResult
+checkForEmptyUpload xs ys
+  | xlen == 0 && ylen == 0 = NoneDiscovered
+  | xlen == 0 || ylen == 0 = FilteredAll filterCount
+  -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
+  | otherwise              = FoundSome $ NE.fromList filtered
+  where 
+    xlen = length xs
+    ylen = length ys
+    filterCount = abs $ xlen - ylen
+    -- | Return the smaller list, since filtering cannot add projects
+    filtered = if xlen > ylen then ys else xs
 
 -- For each of the projects, we need to strip the root directory path from the prefix of the project path.
 -- We don't want parent directories of the scan root affecting "production path" filtering -- e.g., if we're
 -- running in a directory called "tmp", we still want results.
 filterProjects :: BaseDir -> [ProjectResult] -> [ProjectResult]
-filterProjects rootDir projects = filter (isProductionPath . dropPrefix rootPath . fromAbsDir . projectResultPath) projects 
+filterProjects rootDir = filter (isProductionPath . dropPrefix rootPath . fromAbsDir . projectResultPath) 
   where 
     rootPath = fromAbsDir $ unBaseDir rootDir
     dropPrefix :: String -> String -> String

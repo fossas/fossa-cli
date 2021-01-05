@@ -39,6 +39,7 @@ import Control.Effect.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson
+import qualified Data.List.NonEmpty as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
@@ -124,12 +125,12 @@ uploadAnalysis
   => ApiOpts
   -> ProjectRevision
   -> ProjectMetadata
-  -> [ProjectResult]
+  -> NE.NonEmpty ProjectResult
   -> m UploadResponse
 uploadAnalysis apiOpts ProjectRevision{..} metadata projects = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let sourceUnits = map toSourceUnit projects
+  let sourceUnits = map toSourceUnit $ NE.toList projects
       opts = "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "cliVersion" =: cliVersion
           <> "managedBuild" =: True
