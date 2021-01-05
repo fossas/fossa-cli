@@ -18,9 +18,7 @@ var Cmd = cli.Command{
 	Usage:     "Archive Upload",
 	Action:    Run,
 	ArgsUsage: "MODULE",
-	Flags: flags.WithGlobalFlags(flags.WithAPIFlags(flags.WithOptions([]cli.Flag{
-		flags.TemplateF,
-	}))),
+	Flags:     flags.WithGlobalFlags(flags.WithAPIFlags([]cli.Flag{})),
 }
 
 var _ cli.ActionFunc = Run
