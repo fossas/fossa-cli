@@ -1,3 +1,11 @@
+# v2.4.7
+
+- Fixes an issue where `fossa test` would always succeed for push-only API keys ([#170](https://github.com/fossas/spectrometer/pull/170))
+- Fixes an issue with glide.lock parser ([#175](https://github.com/fossas/spectrometer/pull/175))
+- Fixes an issue where subdirectories were erroneously ignored ([#174](https://github.com/fossas/spectrometer/pull/174))
+- Fixes an issue where dependency graphs would be filtered out if they had no direct dependencies ([#172](https://github.com/fossas/spectrometer/pull/172))
+- Adds multi-module project support to gomodules static analysis ([#171](https://github.com/fossas/spectrometer/pull/171))
+
 # v2.4.6
 
 - Update Wiggins CLI plugin to version `2020-12-11-5d581ea`
