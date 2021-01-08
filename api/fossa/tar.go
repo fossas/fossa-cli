@@ -468,10 +468,10 @@ func tarballUpload(name, revision string, dependency, rawLicenseScan, upload boo
 		parameters.Add("policy", uploadOptions.Policy)
 	}
 	if uploadOptions.ReleaseGroup != "" {
-		q.Add("releaseGroup", uploadOptions.ReleaseGroup)
+		parameters.Add("releaseGroup", uploadOptions.ReleaseGroup)
 	}
 	if uploadOptions.ReleaseGroupVersion != "" {
-		q.Add("releaseGroupVersion", uploadOptions.ReleaseGroupVersion)
+		parameters.Add("releaseGroupVersion", uploadOptions.ReleaseGroupVersion)
 	}
 
 	_, _, err = Post(ComponentsBuildAPI+"?"+parameters.Encode(), data)
