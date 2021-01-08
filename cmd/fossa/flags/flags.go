@@ -45,29 +45,33 @@ func WithAPIFlags(f []cli.Flag) []cli.Flag {
 }
 
 var (
-	API             = []cli.Flag{EndpointF, TitleF, FetcherF, ProjectF, RevisionF, BranchF, ProjectURLF, JIRAProjectKeyF, LinkF, TeamF, PolicyF}
-	Endpoint        = "endpoint"
-	EndpointF       = cli.StringFlag{Name: Short(Endpoint), Usage: "the FOSSA server endpoint (default: 'https://app.fossa.com')"}
-	Title           = "title"
-	TitleF          = cli.StringFlag{Name: Short(Title), Usage: "the title of the FOSSA project (applies only to new projects) (default: the project name)"}
-	Fetcher         = "fetcher"
-	FetcherF        = cli.StringFlag{Name: Short(Fetcher), Usage: "type of fetcher to use for fossa. (default: 'custom')"}
-	Project         = "project"
-	ProjectF        = cli.StringFlag{Name: Short(Project), Usage: "this repository's URL or VCS endpoint (default: VCS remote 'origin')"}
-	Revision        = "revision"
-	RevisionF       = cli.StringFlag{Name: Short(Revision), Usage: "this repository's current revision hash (default: VCS hash HEAD)"}
-	Branch          = "branch"
-	BranchF         = cli.StringFlag{Name: Short(Branch), Usage: "this repository's current branch (default: current VCS branch)"}
-	ProjectURL      = "project-url"
-	ProjectURLF     = cli.StringFlag{Name: ShortUpper(ProjectURL), Usage: "this repository's home page"}
-	JIRAProjectKey  = "jira-project-key"
-	JIRAProjectKeyF = cli.StringFlag{Name: Short(JIRAProjectKey), Usage: "this repository's JIRA project key"}
-	Link            = "link"
-	LinkF           = cli.StringFlag{Name: ShortUpper(Link), Usage: "a link to attach to the current build"}
-	Team            = "team"
-	TeamF           = cli.StringFlag{Name: ShortUpper(Team), Usage: "this repository's team inside your organization (applies only to new projects)"}
-	Policy          = "policy"
-	PolicyF         = cli.StringFlag{Name: Policy, Usage: "the policy to assign to this project in FOSSA, (applies only to new projects)"}
+	API                  = []cli.Flag{EndpointF, TitleF, FetcherF, ProjectF, RevisionF, BranchF, ProjectURLF, JIRAProjectKeyF, LinkF, TeamF, PolicyF, ReleaseGroupF, ReleaseGroupVersionF}
+	Endpoint             = "endpoint"
+	EndpointF            = cli.StringFlag{Name: Short(Endpoint), Usage: "the FOSSA server endpoint (default: 'https://app.fossa.com')"}
+	Title                = "title"
+	TitleF               = cli.StringFlag{Name: Short(Title), Usage: "the title of the FOSSA project (applies only to new projects) (default: the project name)"}
+	Fetcher              = "fetcher"
+	FetcherF             = cli.StringFlag{Name: Short(Fetcher), Usage: "type of fetcher to use for fossa. (default: 'custom')"}
+	Project              = "project"
+	ProjectF             = cli.StringFlag{Name: Short(Project), Usage: "this repository's URL or VCS endpoint (default: VCS remote 'origin')"}
+	Revision             = "revision"
+	RevisionF            = cli.StringFlag{Name: Short(Revision), Usage: "this repository's current revision hash (default: VCS hash HEAD)"}
+	Branch               = "branch"
+	BranchF              = cli.StringFlag{Name: Short(Branch), Usage: "this repository's current branch (default: current VCS branch)"}
+	ProjectURL           = "project-url"
+	ProjectURLF          = cli.StringFlag{Name: ShortUpper(ProjectURL), Usage: "this repository's home page"}
+	JIRAProjectKey       = "jira-project-key"
+	JIRAProjectKeyF      = cli.StringFlag{Name: Short(JIRAProjectKey), Usage: "this repository's JIRA project key"}
+	Link                 = "link"
+	LinkF                = cli.StringFlag{Name: ShortUpper(Link), Usage: "a link to attach to the current build"}
+	Team                 = "team"
+	TeamF                = cli.StringFlag{Name: ShortUpper(Team), Usage: "this repository's team inside your organization (applies only to new projects)"}
+	Policy               = "policy"
+	PolicyF              = cli.StringFlag{Name: Policy, Usage: "the policy to assign to this project in FOSSA (applies only to new projects)"}
+	ReleaseGroup         = "release-group"
+	ReleaseGroupF        = cli.StringFlag{Name: ReleaseGroup, Usage: "the name of the release group to connect this project to"}
+	ReleaseGroupVersion  = "release-group-version"
+	ReleaseGroupVersionF = cli.StringFlag{Name: ReleaseGroupVersion, Usage: "the version of the release group to connect this project to"}
 )
 
 func WithGlobalFlags(f []cli.Flag) []cli.Flag {

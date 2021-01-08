@@ -8,13 +8,13 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/analyze"
-	"github.com/fossas/fossa-cli/cmd/fossa/cmd/archive"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/build"
 	initc "github.com/fossas/fossa-cli/cmd/fossa/cmd/init"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/report"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/test"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/update"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/upload"
+	"github.com/fossas/fossa-cli/cmd/fossa/cmd/upload_project"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
@@ -40,7 +40,7 @@ var App = cli.App{
 		report.Cmd,
 		test.Cmd,
 		update.Cmd,
-		archive.Cmd,
+		upload_project.Cmd,
 		analyze.NewCmd,
 	},
 }

@@ -34,6 +34,8 @@ type File interface {
 	Link() string
 	Team() string
 	Policy() string
+	ReleaseGroup() string
+	ReleaseGroupVersion() string
 
 	Modules() []module.Module
 }
@@ -85,6 +87,14 @@ func (_ NoFile) Team() string {
 }
 
 func (_ NoFile) Policy() string {
+	return ""
+}
+
+func (_ NoFile) ReleaseGroup() string {
+	return ""
+}
+
+func (_ NoFile) ReleaseGroupVersion() string {
 	return ""
 }
 

@@ -1,4 +1,4 @@
-package archive
+package upload_project
 
 import (
 	"fmt"
@@ -14,8 +14,8 @@ import (
 )
 
 var Cmd = cli.Command{
-	Name:      "archive",
-	Usage:     "Archive Upload",
+	Name:      "upload-project",
+	Usage:     "Uploads source code to fossa for server side scanning",
 	Action:    Run,
 	ArgsUsage: "MODULE",
 	Flags:     flags.WithGlobalFlags(flags.WithAPIFlags([]cli.Flag{})),
@@ -37,17 +37,19 @@ func Run(ctx *cli.Context) error {
 	defer display.ClearProgress()
 
 	dir := dirs.Get(0)
-	display.InProgress(fmt.Sprintf("Archive uploading directory: %s", dir))
+	display.InProgress(fmt.Sprintf("Uploading directory: %s", dir))
 
 	locator, err := fossa.UploadTarballProject(config.Project(), config.Revision(), dir, true, fossa.UploadOptions{
-		Branch:         config.Branch(),
-		JIRAProjectKey: config.JIRAProjectKey(),
-		Team:           config.Team(),
-		Policy:         config.Policy(),
+		Branch:              config.Branch(),
+		JIRAProjectKey:      config.JIRAProjectKey(),
+		Team:                config.Team(),
+		Policy:              config.Policy(),
+		ReleaseGroup:        config.ReleaseGroup(),
+		ReleaseGroupVersion: config.ReleaseGroupVersion(),
 	})
 
 	if err != nil {
-		log.Warnf("Could not archive upload `%s` with error: %s", dir, err.Error())
+		log.Warnf("Could not upload project `%s` with error: %s", dir, err.Error())
 		return err
 	}
 

@@ -25,12 +25,14 @@ var (
 
 // UploadOptions are optional keys that provide extra metadata for an upload.
 type UploadOptions struct {
-	Branch         string
-	ProjectURL     string
-	JIRAProjectKey string
-	Link           string
-	Team           string
-	Policy         string
+	Branch              string
+	ProjectURL          string
+	JIRAProjectKey      string
+	Link                string
+	Team                string
+	Policy              string
+	ReleaseGroup        string
+	ReleaseGroupVersion string
 }
 
 // Upload uploads a project's analysis.
@@ -80,6 +82,12 @@ func Upload(title string, locator Locator, options UploadOptions, data []SourceU
 	}
 	if options.Policy != "" {
 		q.Add("policy", options.Policy)
+	}
+	if options.ReleaseGroup != "" {
+		q.Add("releaseGroup", options.ReleaseGroup)
+	}
+	if options.ReleaseGroupVersion != "" {
+		q.Add("releaseGroupVersion", options.ReleaseGroupVersion)
 	}
 
 	endpoint, err := url.Parse("/api/builds/custom?" + q.Encode())

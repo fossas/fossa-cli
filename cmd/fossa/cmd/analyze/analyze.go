@@ -365,12 +365,14 @@ func uploadAnalysis(normalized []fossa.SourceUnit) (fossa.Locator, error) {
 			Revision: config.Revision(),
 		},
 		fossa.UploadOptions{
-			Branch:         config.Branch(),
-			ProjectURL:     config.ProjectURL(),
-			JIRAProjectKey: config.JIRAProjectKey(),
-			Link:           config.Link(),
-			Team:           config.Team(),
-			Policy:         config.Policy(),
+			Branch:              config.Branch(),
+			ProjectURL:          config.ProjectURL(),
+			JIRAProjectKey:      config.JIRAProjectKey(),
+			Link:                config.Link(),
+			Team:                config.Team(),
+			Policy:              config.Policy(),
+			ReleaseGroup:        config.ReleaseGroup(),
+			ReleaseGroupVersion: config.ReleaseGroupVersion(),
 		},
 		normalized)
 	display.ClearProgress()
