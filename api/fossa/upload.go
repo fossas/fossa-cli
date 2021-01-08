@@ -87,7 +87,7 @@ func Upload(title string, locator Locator, options UploadOptions, data []SourceU
 		q.Add("releaseGroup", options.ReleaseGroup)
 	}
 	if options.ReleaseGroupVersion != "" {
-		q.Add("releaseGroupVersion", options.ReleaseGroupVersion)
+		q.Add("releaseGroupRelease", options.ReleaseGroupVersion)
 	}
 
 	endpoint, err := url.Parse("/api/builds/custom?" + q.Encode())
