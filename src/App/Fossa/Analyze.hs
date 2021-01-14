@@ -8,6 +8,7 @@ module App.Fossa.Analyze
   , ScanDestination(..)
   , UnpackArchives(..)
   , discoverFuncs
+  , fossaProjectUrl
   ) where
 
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)

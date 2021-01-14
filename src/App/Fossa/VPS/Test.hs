@@ -1,5 +1,3 @@
-{-# LANGUAGE NumericUnderscores #-}
-
 module App.Fossa.VPS.Test
   ( testMain,
     TestOutputType (..),
@@ -19,7 +17,7 @@ import Data.Text.IO (hPutStrLn)
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Exec
 import Effect.Logger
-import Fossa.API.Types (ApiOpts)
+import Fossa.API.Types (ApiOpts, Issues (..))
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
 
@@ -62,11 +60,11 @@ testMain basedir apiOpts logSeverity timeoutSeconds outputType override = do
       issues <- waitForIssues apiOpts revision
       logSticky ""
 
-      case Fossa.issuesCount issues of
+      case issuesCount issues of
         0 -> logInfo "Test passed! 0 issues found"
         n -> do
           logError $ "Test failed. Number of issues found: " <> pretty n
-          if null (Fossa.issuesIssues issues)
+          if null (issuesIssues issues)
             then logError "Check the webapp for more details, or use a full-access API key (currently using a push-only API key)"
             else
               case outputType of

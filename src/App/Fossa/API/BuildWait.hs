@@ -19,7 +19,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Data.Functor (($>))
 import Data.Text (Text)
 import Effect.Logger
-import Fossa.API.Types (ApiOpts)
+import Fossa.API.Types (ApiOpts, Issues (..))
 
 pollDelaySeconds :: Int
 pollDelaySeconds = 8
@@ -53,10 +53,10 @@ waitForIssues ::
   (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) =>
   ApiOpts ->
   ProjectRevision ->
-  m Fossa.Issues
+  m Issues
 waitForIssues apiOpts revision = do
   issues <- Fossa.getIssues apiOpts revision
-  case Fossa.issuesStatus issues of
+  case issuesStatus issues of
     "WAITING" -> do
       sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
       waitForIssues apiOpts revision

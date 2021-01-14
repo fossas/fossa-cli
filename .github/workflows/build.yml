@@ -86,6 +86,7 @@ jobs:
       run: |
         mkdir vendor
         touch vendor/wiggins
+        touch vendor/syft
 
     - name: Build
       run: |

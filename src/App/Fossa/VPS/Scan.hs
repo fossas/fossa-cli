@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module App.Fossa.VPS.Scan
   ( scanMain,
     SkipIPRScan (..),
@@ -11,7 +9,7 @@ import Control.Carrier.Diagnostics
 import Effect.Exec
 import System.Exit (exitFailure)
 
-import App.Fossa.VPS.EmbeddedBinary
+import App.Fossa.EmbeddedBinary
 import App.Fossa.VPS.Scan.RunWiggins
 import App.Fossa.VPS.Types
 import App.Types (BaseDir (..), OverrideProject (..), ProjectMetadata (..))
@@ -27,8 +25,8 @@ data SkipIPRScan = SkipIPRScan
 data LicenseOnlyScan = LicenseOnlyScan
 
 scanMain :: BaseDir -> ApiOpts -> ProjectMetadata -> Severity -> OverrideProject -> FilterExpressions -> Flag SkipIPRScan -> Flag LicenseOnlyScan ->  IO ()
-scanMain basedir apiOpts metadata logSeverity overrideProject fileFilters skipIprScan licenseOnlyScan = do
-  result <- runDiagnostics $ withEmbeddedBinaries $ vpsScan basedir logSeverity overrideProject skipIprScan licenseOnlyScan fileFilters apiOpts metadata
+scanMain basedir apiOpts metadata logSeverity overrideProject fileFilters skipIprFlag licenseOnlyScan = do
+  result <- runDiagnostics $ withWigginsBinary $ vpsScan basedir logSeverity overrideProject skipIprFlag licenseOnlyScan fileFilters apiOpts metadata
   case result of
     Left failure -> do
       print $ renderFailureBundle failure

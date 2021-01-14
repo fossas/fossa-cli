@@ -1,6 +1,6 @@
-module App.Fossa.FossaAPIV1Spec (spec) where
+module Fossa.API.TypesSpec (spec) where
 
-import App.Fossa.FossaAPIV1 (Issue (..), IssueRule (..), IssueType (..), Issues (..))
+import Fossa.API.Types (Issue (..), IssueRule (..), IssueType (..), Issues (..))
 import Data.Aeson (FromJSON, ToJSON, fromJSON, toJSON)
 import Data.Text (Text)
 import qualified Hedgehog.Gen as Gen

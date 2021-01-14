@@ -7,6 +7,10 @@ module App.Fossa.Main
 where
 
 import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), analyzeMain)
+import App.Fossa.Container (imageTextArg, ImageText (..))
+import qualified App.Fossa.Container.Analyze as ContainerAnalyze
+import qualified App.Fossa.Container.Test as ContainerTest
+import qualified App.Fossa.EmbeddedBinary as Embed
 import App.Fossa.ListTargets (listTargetsMain)
 import qualified App.Fossa.Report as Report
 import qualified App.Fossa.Test as Test
@@ -23,6 +27,7 @@ import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.Bool (bool)
 import Data.Flag (Flag, flagOpt)
+import Data.Foldable (for_)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Discovery.Filters (BuildTargetFilter (..), filterParser)
@@ -84,7 +89,7 @@ appMain = do
       listTargetsMain baseDir
     --
     VPSCommand VPSOptions {..} -> do
-      when (SysInfo.os == windowsOsName) $ die "VPS functionality is not supported on Windows"
+      dieOnWindows "Vendored Package Scanning (VPS)"
       apikey <- requireKey maybeApiKey
       let apiOpts = ApiOpts optBaseUrl apikey
       case vpsCommand of
@@ -100,6 +105,30 @@ appMain = do
           unless vpsReportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"
           baseDir <- validateDir vpsReportBaseDir
           VPSReport.reportMain baseDir apiOpts logSeverity vpsReportTimeout vpsReportType override
+    --
+    ContainerCommand ContainerOptions {..} -> do
+      die "Fatal: Container scanning is not available yet" >> pure ()
+      dieOnWindows "container scanning"
+      case containerCommand of
+        ContainerAnalyze ContainerAnalyzeOptions {..} ->
+          if containerAnalyzeOutput
+            then ContainerAnalyze.analyzeMain OutputStdout logSeverity override containerAnalyzeImage
+            else do
+              apikey <- requireKey maybeApiKey
+              let apiOpts = ApiOpts optBaseUrl apikey
+              ContainerAnalyze.analyzeMain (UploadScan apiOpts containerMetadata) logSeverity override containerAnalyzeImage
+        ContainerTest ContainerTestOptions {..} -> do
+          apikey <- requireKey maybeApiKey
+          let apiOpts = ApiOpts optBaseUrl apikey
+          ContainerTest.testMain apiOpts logSeverity containerTestTimeout containerTestOutputType override containerTestImage
+    --
+    DumpBinsCommand dir -> do
+      basedir <- validateDir dir
+      for_ Embed.allBins $ Embed.dumpEmbeddedBinary $ unBaseDir basedir
+
+
+dieOnWindows :: String -> IO ()
+dieOnWindows op = when (SysInfo.os == windowsOsName) $ die $ "Operation is not supported on Windows: " <> op
 
 requireKey :: Maybe ApiKey -> IO ApiKey
 requireKey (Just key) = pure key
@@ -164,7 +193,7 @@ commands =
               (VPSCommand <$> vpsOpts)
               (progDesc "Run in Vendored Package Scan mode")
           )
-    )
+          )
 
 hiddenCommands :: Parser Command
 hiddenCommands =
@@ -176,6 +205,18 @@ hiddenCommands =
               (pure InitCommand)
               (progDesc "Deprecated, has no effect.")
           )
+        <> command
+          "dump-binaries"
+          ( info
+              (DumpBinsCommand <$> baseDirArg)
+              (progDesc "Output all embedded binaries to specified path")
+          )
+        <> command
+          "container"
+          ( info
+              (ContainerCommand <$> containerOpts)
+              (progDesc "Run in Container Scan mode")
+    )
     )
 
 analyzeOpts :: Parser AnalyzeOptions
@@ -290,6 +331,38 @@ vpsCommands =
           )
     )
 
+containerOpts :: Parser ContainerOptions
+containerOpts = ContainerOptions <$> containerCommands
+
+containerCommands :: Parser ContainerCommand
+containerCommands =
+  hsubparser 
+    ( command
+        "analyze"
+        ( info (ContainerAnalyze <$> containerAnalyzeOpts) $
+            progDesc "Scan an image for vulnerabilities"
+        )
+        <> command
+          "test"
+          ( info (ContainerTest <$> containerTestOpts) $
+              progDesc "Check for issues from FOSSA and exit non-zero when issues are found"
+          )
+    )
+
+containerAnalyzeOpts :: Parser ContainerAnalyzeOptions
+containerAnalyzeOpts =
+  ContainerAnalyzeOptions
+    <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
+    <*> metadataOpts
+    <*> imageTextArg
+
+containerTestOpts :: Parser ContainerTestOptions
+containerTestOpts =
+  ContainerTestOptions
+    <$> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
+    <*> flag ContainerTest.TestOutputPretty ContainerTest.TestOutputJson (long "json" <> help "Output issues as json")
+    <*> imageTextArg
+
 data CmdOptions = CmdOptions
   { optDebug :: Bool,
     optBaseUrl :: URI,
@@ -304,8 +377,10 @@ data Command
   | TestCommand TestOptions
   | ReportCommand ReportOptions
   | VPSCommand VPSOptions
-  | InitCommand
+  | ContainerCommand ContainerOptions
   | ListTargetsCommand FilePath
+  | InitCommand
+  | DumpBinsCommand FilePath
 
 data VPSCommand
   = VPSAnalyzeCommand VPSAnalyzeOptions
@@ -358,4 +433,23 @@ data VPSTestOptions = VPSTestOptions
   { vpsTestTimeout :: Int,
     vpsTestOutputType :: VPSTest.TestOutputType,
     vpsTestBaseDir :: FilePath
+  }
+
+newtype ContainerOptions = ContainerOptions
+  { containerCommand :: ContainerCommand }
+
+data ContainerCommand
+  = ContainerAnalyze ContainerAnalyzeOptions
+  | ContainerTest ContainerTestOptions
+
+data ContainerAnalyzeOptions = ContainerAnalyzeOptions
+  { containerAnalyzeOutput :: Bool,
+    containerMetadata :: ProjectMetadata,
+    containerAnalyzeImage :: ImageText
+  }
+
+data ContainerTestOptions = ContainerTestOptions
+  { containerTestTimeout :: Int,
+    containerTestOutputType:: ContainerTest.TestOutputType,
+    containerTestImage :: ImageText
   }
