@@ -14,6 +14,7 @@ import (
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/test"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/update"
 	"github.com/fossas/fossa-cli/cmd/fossa/cmd/upload"
+	"github.com/fossas/fossa-cli/cmd/fossa/cmd/upload_project"
 	"github.com/fossas/fossa-cli/cmd/fossa/display"
 	"github.com/fossas/fossa-cli/cmd/fossa/flags"
 	"github.com/fossas/fossa-cli/cmd/fossa/setup"
@@ -39,6 +40,7 @@ var App = cli.App{
 		report.Cmd,
 		test.Cmd,
 		update.Cmd,
+		upload_project.Cmd,
 		analyze.NewCmd,
 	},
 }

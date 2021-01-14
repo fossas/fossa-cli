@@ -21,18 +21,20 @@ type File struct {
 
 type CLIProperties struct {
 	// Upload configuration.
-	APIKey         string `yaml:"api_key,omitempty"`
-	Server         string `yaml:"server,omitempty"`
-	Fetcher        string `yaml:"fetcher,omitempty"` // Defaults to custom
-	Project        string `yaml:"project,omitempty"`
-	Title          string `yaml:"title,omitempty"`
-	Revision       string `yaml:"revision,omitempty"`
-	Branch         string `yaml:"branch,omitempty"`           // Only used with custom fetcher
-	ProjectURL     string `yaml:"project_url,omitempty"`      // Only used with custom fetcher
-	JIRAProjectKey string `yaml:"jira_project_key,omitempty"` // Only used with custom fetcher
-	Link           string `yaml:"link,omitempty"`
-	Team           string `yaml:"team,omitempty"`
-	Policy         string `yaml:"policy,omitempty"`
+	APIKey              string `yaml:"api_key,omitempty"`
+	Server              string `yaml:"server,omitempty"`
+	Fetcher             string `yaml:"fetcher,omitempty"` // Defaults to custom
+	Project             string `yaml:"project,omitempty"`
+	Title               string `yaml:"title,omitempty"`
+	Revision            string `yaml:"revision,omitempty"`
+	Branch              string `yaml:"branch,omitempty"`           // Only used with custom fetcher
+	ProjectURL          string `yaml:"project_url,omitempty"`      // Only used with custom fetcher
+	JIRAProjectKey      string `yaml:"jira_project_key,omitempty"` // Only used with custom fetcher
+	Link                string `yaml:"link,omitempty"`
+	Team                string `yaml:"team,omitempty"`
+	Policy              string `yaml:"policy,omitempty"`
+	ReleaseGroup        string `yaml:"release_group,omitempty"`
+	ReleaseGroupVersion string `yaml:"release_group_version,omitempty"`
 }
 
 type AnalyzeProperties struct {
@@ -146,6 +148,14 @@ func (file File) Team() string {
 
 func (file File) Policy() string {
 	return file.CLI.Policy
+}
+
+func (file File) ReleaseGroup() string {
+	return file.CLI.ReleaseGroup
+}
+
+func (file File) ReleaseGroupVersion() string {
+	return file.CLI.ReleaseGroupVersion
 }
 
 func (file File) Revision() string {

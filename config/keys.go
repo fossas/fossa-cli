@@ -121,6 +121,14 @@ func Policy() string {
 	return TryStrings(StringFlag(flags.Policy), file.Policy(), "")
 }
 
+func ReleaseGroup() string {
+	return TryStrings(StringFlag(flags.ReleaseGroup), file.ReleaseGroup(), "")
+}
+
+func ReleaseGroupVersion() string {
+	return TryStrings(StringFlag(flags.ReleaseGroupVersion), file.ReleaseGroupVersion(), "")
+}
+
 /**** Analysis configuration keys ****/
 
 func Options() (map[string]interface{}, error) {

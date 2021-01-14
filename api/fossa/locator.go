@@ -61,9 +61,20 @@ func (l Locator) URL() string {
 	if branch == "" {
 		branch = "master"
 	}
+
+	project := l.Project
+
+	if l.Fetcher == "archive" {
+		orgID, err := GetOrganizationID()
+		if err != nil {
+			log.Warnf("Could not get OrganizationID while constructing locator")
+		}
+		project = orgID + "/" + project
+	}
+
 	url, err := url.Parse(
 		"/projects/" +
-			url.PathEscape(l.Fetcher+"+"+l.Project) +
+			url.PathEscape(l.Fetcher+"+"+project) +
 			"/refs/branch/" +
 			url.PathEscape(branch) +
 			"/" +
