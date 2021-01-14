@@ -37,15 +37,27 @@ type Component struct {
 type SignedURL struct {
 	SignedURL string
 }
+type UploadTarballOptions struct {
+	Name           string
+	Revision       string
+	Directory      string
+	IsDependency   bool
+	RawLicenseScan bool
+	Upload         bool
+	UploadOptions  UploadOptions
+}
 
 // UploadTarballDependency uploads the directory specified to be treated on FOSSA as a dependency.
 func UploadTarballDependency(dir string, upload, rawLicenseScan bool) (Locator, error) {
-	return UploadTarball("", "", dir, true, rawLicenseScan, upload, UploadOptions{})
-}
-
-// UploadTarballProject uploads the directory specified to be treated on FOSSA as a project.
-func UploadTarballProject(name, revision, dir string, rawLicenseScan bool, options UploadOptions) (Locator, error) {
-	return UploadTarball(name, revision, dir, false, rawLicenseScan, true, options)
+	return UploadTarball(UploadTarballOptions{
+		Name:           "",
+		Revision:       "",
+		Directory:      dir,
+		IsDependency:   true,
+		RawLicenseScan: rawLicenseScan,
+		Upload:         upload,
+		UploadOptions:  UploadOptions{},
+	})
 }
 
 // UploadTarball archives, compresses, and uploads a specified directory. It
@@ -64,10 +76,11 @@ func UploadTarballProject(name, revision, dir string, rawLicenseScan bool, optio
 // Since this will be running within CI machines, this is probably not a good
 // idea. (See https://circleci.com/docs/2.0/configuration-reference/#resource_class
 // for an example of our memory constraints.)
-func UploadTarball(name, revision, dir string, dependency, rawLicenseScan, upload bool, uploadOptions UploadOptions) (Locator, error) {
-	p, err := filepath.Abs(dir)
-	if name == "" {
-		name = filepath.Base(p)
+// func UploadTarball(name, revision, dir string, dependency, rawLicenseScan, upload bool, uploadOptions UploadOptions) (Locator, error) {
+func UploadTarball(options UploadTarballOptions) (Locator, error) {
+	p, err := filepath.Abs(options.Directory)
+	if options.Name == "" {
+		options.Name = filepath.Base(p)
 	}
 	if err != nil {
 		return Locator{}, err
@@ -83,7 +96,7 @@ func UploadTarball(name, revision, dir string, dependency, rawLicenseScan, uploa
 		return Locator{}, err
 	}
 
-	return tarballUpload(name, revision, dependency, rawLicenseScan, upload, tarball, hash, uploadOptions)
+	return tarballUpload(options, tarball, hash)
 }
 
 // UploadTarballString uploads a string and uses the provided package to name it.
@@ -93,7 +106,14 @@ func UploadTarballString(name, s string, dependency, rawLicenseScan, upload bool
 		return Locator{}, err
 	}
 
-	return tarballUpload(name, "", dependency, rawLicenseScan, upload, tarball, hash, UploadOptions{})
+	return tarballUpload(UploadTarballOptions{
+		Name:           name,
+		Revision:       "",
+		IsDependency:   dependency,
+		RawLicenseScan: rawLicenseScan,
+		Upload:         upload,
+		UploadOptions:  UploadOptions{},
+	}, tarball, hash)
 }
 
 // CreateTarball archives and compresses a directory's contents to a temporary
@@ -285,7 +305,14 @@ func UploadTarballDependencyFiles(dir string, fileList []string, name string, up
 		return Locator{}, err
 	}
 
-	return tarballUpload(name, "", true, true, upload, tarball, hash, UploadOptions{})
+	return tarballUpload(UploadTarballOptions{
+		Name:           name,
+		Revision:       "",
+		IsDependency:   true,
+		RawLicenseScan: true,
+		Upload:         upload,
+		UploadOptions:  UploadOptions{},
+	}, tarball, hash)
 }
 
 // CreateTarballFromFiles archives and compresses a list of files to a temporary
@@ -369,26 +396,26 @@ func CreateTarballFromFiles(files []string, name string) (*os.File, []byte, erro
 // Note: "name" should not have any "/"s to ensure core can parse it. Setting rawLicenseScan ensures
 // that FOSSA will not attempt to find dependencies in the uploaded files and that a full license scan
 // will be run on directories which are normally ignored, such as `vendor` or `node_modules`.
-func tarballUpload(name, revision string, dependency, rawLicenseScan, upload bool, tarball *os.File, hash []byte, uploadOptions UploadOptions) (Locator, error) {
+func tarballUpload(options UploadTarballOptions, tarball *os.File, hash []byte) (Locator, error) {
 	info, err := tarball.Stat()
 	if err != nil {
 		return Locator{}, err
 	}
-	if revision == "" {
-		revision = hex.EncodeToString(hash)
+	if options.Revision == "" {
+		options.Revision = hex.EncodeToString(hash)
 	}
 
-	if !upload {
+	if !options.Upload {
 		return Locator{
 			Fetcher:  "archive",
-			Project:  name,
-			Revision: revision,
+			Project:  options.Name,
+			Revision: options.Revision,
 		}, nil
 	}
 
 	q := url.Values{}
-	q.Add("packageSpec", name)
-	q.Add("revision", revision)
+	q.Add("packageSpec", options.Name)
+	q.Add("revision", options.Revision)
 
 	// Get signed URL for uploading.
 	var signed SignedURL
@@ -440,7 +467,7 @@ func tarballUpload(name, revision string, dependency, rawLicenseScan, upload boo
 	// Queue the component build.
 	build := ComponentSpec{
 		Archives: []Component{
-			{PackageSpec: name, Revision: revision},
+			Component{PackageSpec: options.Name, Revision: options.Revision},
 		},
 	}
 	data, err := json.Marshal(build)
@@ -449,29 +476,29 @@ func tarballUpload(name, revision string, dependency, rawLicenseScan, upload boo
 	}
 
 	parameters := url.Values{}
-	if dependency {
+	if options.IsDependency {
 		parameters.Add("dependency", "true")
 	}
-	if rawLicenseScan {
+	if options.RawLicenseScan {
 		parameters.Add("rawLicenseScan", "true")
 	}
-	if uploadOptions.Branch != "" {
-		parameters.Add("branch", uploadOptions.Branch)
+	if options.UploadOptions.Branch != "" {
+		parameters.Add("branch", options.UploadOptions.Branch)
 	}
-	if uploadOptions.JIRAProjectKey != "" {
-		parameters.Add("jiraProjectKey", uploadOptions.JIRAProjectKey)
+	if options.UploadOptions.JIRAProjectKey != "" {
+		parameters.Add("jiraProjectKey", options.UploadOptions.JIRAProjectKey)
 	}
-	if uploadOptions.Team != "" {
-		parameters.Add("team", uploadOptions.Team)
+	if options.UploadOptions.Team != "" {
+		parameters.Add("team", options.UploadOptions.Team)
 	}
-	if uploadOptions.Policy != "" {
-		parameters.Add("policy", uploadOptions.Policy)
+	if options.UploadOptions.Policy != "" {
+		parameters.Add("policy", options.UploadOptions.Policy)
 	}
-	if uploadOptions.ReleaseGroup != "" {
-		parameters.Add("releaseGroup", uploadOptions.ReleaseGroup)
+	if options.UploadOptions.ReleaseGroup != "" {
+		parameters.Add("releaseGroup", options.UploadOptions.ReleaseGroup)
 	}
-	if uploadOptions.ReleaseGroupVersion != "" {
-		parameters.Add("releaseGroupRelease", uploadOptions.ReleaseGroupVersion)
+	if options.UploadOptions.ReleaseGroupVersion != "" {
+		parameters.Add("releaseGroupRelease", options.UploadOptions.ReleaseGroupVersion)
 	}
 
 	_, _, err = Post(ComponentsBuildAPI+"?"+parameters.Encode(), data)
@@ -481,7 +508,7 @@ func tarballUpload(name, revision string, dependency, rawLicenseScan, upload boo
 
 	return Locator{
 		Fetcher:  "archive",
-		Project:  name,
-		Revision: revision,
+		Project:  options.Name,
+		Revision: options.Revision,
 	}, nil
 }

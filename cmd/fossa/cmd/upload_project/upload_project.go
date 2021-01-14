@@ -15,7 +15,7 @@ import (
 
 var Cmd = cli.Command{
 	Name:      "upload-project",
-	Usage:     "Uploads source code to fossa for server side scanning",
+	Usage:     "Uploads source code to FOSSA that will be treated as a single project",
 	Action:    Run,
 	ArgsUsage: "MODULE",
 	Flags:     flags.WithGlobalFlags(flags.WithAPIFlags([]cli.Flag{})),
@@ -39,13 +39,21 @@ func Run(ctx *cli.Context) error {
 	dir := dirs.Get(0)
 	display.InProgress(fmt.Sprintf("Uploading directory: %s", dir))
 
-	locator, err := fossa.UploadTarballProject(config.Project(), config.Revision(), dir, true, fossa.UploadOptions{
-		Branch:              config.Branch(),
-		JIRAProjectKey:      config.JIRAProjectKey(),
-		Team:                config.Team(),
-		Policy:              config.Policy(),
-		ReleaseGroup:        config.ReleaseGroup(),
-		ReleaseGroupVersion: config.ReleaseGroupVersion(),
+	locator, err := fossa.UploadTarball(fossa.UploadTarballOptions{
+		Name:           config.Project(),
+		Revision:       config.Revision(),
+		Directory:      dir,
+		RawLicenseScan: true,
+		IsDependency:   false,
+		Upload:         true,
+		UploadOptions: fossa.UploadOptions{
+			Branch:              config.Branch(),
+			JIRAProjectKey:      config.JIRAProjectKey(),
+			Team:                config.Team(),
+			Policy:              config.Policy(),
+			ReleaseGroup:        config.ReleaseGroup(),
+			ReleaseGroupVersion: config.ReleaseGroupVersion(),
+		},
 	})
 
 	if err != nil {
