@@ -66,10 +66,9 @@ type Child struct {
 
 func (y SystemYarn) List(dir string, devDependencies bool) (graph.Deps, error) {
 	listCmd := exec.Cmd{
-		Name:    y.Cmd,
-		Argv:    []string{"list", "--json"},
-		Dir:     dir,
-		WithEnv: map[string]string{"NODE_ENV": "production"},
+		Name: y.Cmd,
+		Argv: []string{"list", "--json"},
+		Dir:  dir,
 	}
 	if !devDependencies {
 		listCmd.WithEnv = map[string]string{"NODE_ENV": "production"}
