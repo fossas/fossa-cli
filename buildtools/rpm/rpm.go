@@ -151,7 +151,7 @@ func (s Shell) yumInstall(target string) *errors.Error {
 		return &errors.Error{
 			Cause:           err,
 			Type:            errors.Exec,
-			Troubleshooting: fmt.Sprintf("The command `yum %s` could not be run and %s could not be installed.\nstderr: %s\nstdout: %s", strings.Join(arguments, " "), target, stderr, stdout),
+			Troubleshooting: fmt.Sprintf("The command `yum %s` could not be run and %s could not be installed. Ensure you are runnning analysis in an environment where the specified RPM can be installed. \nstderr: %s\nstdout: %s", strings.Join(arguments, " "), target, stderr, stdout),
 			Link:            "https://github.com/fossas/fossa-cli/blob/master/docs/integrations/rpm.md#rpm",
 			Message:         fmt.Sprintf("This may not cause any issues but could prevent accurate dependency and license information from being found. If you believe that %s does not need to be installed and accurate information has been found please ignore this error.", target),
 		}

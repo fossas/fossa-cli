@@ -26,7 +26,7 @@ brews:
     description: "Fast, portable and reliable dependency analysis for any codebase. Supports license & vulnerability scanning for large monoliths. Language-agnostic; integrates with 20+ build systems."
     homepage: "https://fossa.com"
 
-    github:
+    tap:
       owner: fossas
       name: homebrew-tap
 
