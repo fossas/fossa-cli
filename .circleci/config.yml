@@ -145,7 +145,7 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Tag branch for release 
+          name: Tag branch for release
           command: |
             [[ $CLI_RELEASE_TAG == v* ]]
             git tag $CLI_RELEASE_TAG
