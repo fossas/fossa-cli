@@ -305,13 +305,13 @@ func Do(modules []module.Module, upload, rawModuleLicenseScan, devDeps bool) (an
 		// folder? Maybe "third-party folder" should be a separate module type?
 		if m.Type == pkg.Raw {
 			locator, err := fossa.UploadTarball(fossa.UploadTarballOptions{
-				Name:           m.Name,
-				Revision:       "",
-				Directory:      m.BuildTarget,
-				IsDependency:   rawModuleLicenseScan,
-				RawLicenseScan: rawModuleLicenseScan,
-				Upload:         upload,
-				UploadOptions:  fossa.UploadOptions{},
+				Name:            m.Name,
+				Revision:        "",
+				Directory:       m.BuildTarget,
+				IsDependency:    rawModuleLicenseScan,
+				LicenseScanOnly: rawModuleLicenseScan,
+				Upload:          upload,
+				UploadOptions:   fossa.UploadOptions{},
 			})
 			if err != nil {
 				log.Warnf("Could not upload raw module: %s", err.Error())

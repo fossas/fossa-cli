@@ -140,6 +140,7 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	default:
 		if a.Options.Command != "" {
 			output, _, err := exec.Shell(exec.Cmd{
+				Dir:     a.Module.Dir,
 				Command: a.Options.Command,
 			})
 			if err != nil {

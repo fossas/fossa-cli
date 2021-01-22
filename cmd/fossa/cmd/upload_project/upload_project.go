@@ -40,12 +40,12 @@ func Run(ctx *cli.Context) error {
 	display.InProgress(fmt.Sprintf("Uploading directory: %s", dir))
 
 	locator, err := fossa.UploadTarball(fossa.UploadTarballOptions{
-		Name:           config.Project(),
-		Revision:       config.Revision(),
-		Directory:      dir,
-		RawLicenseScan: true,
-		IsDependency:   false,
-		Upload:         true,
+		Name:            config.Project(),
+		Revision:        config.Revision(),
+		Directory:       dir,
+		LicenseScanOnly: false,
+		IsDependency:    false,
+		Upload:          true,
 		UploadOptions: fossa.UploadOptions{
 			Branch:              config.Branch(),
 			JIRAProjectKey:      config.JIRAProjectKey(),
