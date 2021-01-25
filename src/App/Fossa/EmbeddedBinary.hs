@@ -10,6 +10,7 @@ module App.Fossa.EmbeddedBinary
     BinaryPaths,
     withWigginsBinary,
     withSyftBinary,
+    withCLIv1Binary,
     allBins,
     PackagedBinary (..)
   )
@@ -27,6 +28,7 @@ import Prelude hiding (writeFile)
 data PackagedBinary
   = Syft
   | Wiggins
+  | CLIv1
   deriving (Show, Eq, Enum, Bounded)
 
 allBins :: [PackagedBinary]
@@ -56,6 +58,15 @@ withWigginsBinary ::
   (BinaryPaths -> m c) ->
   m c
 withWigginsBinary = withEmbeddedBinary Wiggins
+
+withCLIv1Binary ::
+  ( Has (Lift IO) sig m,
+    MonadIO m
+  ) =>
+  (BinaryPaths -> m c) ->
+  m c
+withCLIv1Binary = withEmbeddedBinary CLIv1
+
 
 withEmbeddedBinary ::
   ( Has (Lift IO) sig m,
@@ -87,6 +98,7 @@ writeBinary :: (Has (Lift IO) sig m) => Path Abs File -> PackagedBinary -> m ()
 writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
   Syft -> embeddedBinarySyft
   Wiggins -> embeddedBinaryWiggins
+  CLIv1 -> embeddedBinaryCLIv1
 
 writeExecutable :: Path Abs File -> ByteString -> IO ()
 writeExecutable path content = do
@@ -98,6 +110,7 @@ extractedPath :: PackagedBinary -> Path Rel File
 extractedPath bin = case bin of
   Syft -> $(mkRelFile "syft")
   Wiggins -> $(mkRelFile "wiggins")
+  CLIv1 -> $(mkRelFile "cliv1")
 
 extractDir :: MonadIO m => m (Path Abs Dir)
 extractDir = do
@@ -118,3 +131,6 @@ embeddedBinaryWiggins = $(embedFileIfExists "vendor/wiggins")
 
 embeddedBinarySyft :: ByteString
 embeddedBinarySyft = $(embedFileIfExists "vendor/syft")
+
+embeddedBinaryCLIv1 :: ByteString
+embeddedBinaryCLIv1 = $(embedFileIfExists "vendor/cliv1")

@@ -10,6 +10,7 @@ import App.Fossa.Analyze (ScanDestination (..), UnpackArchives (..), analyzeMain
 import App.Fossa.Container (imageTextArg, ImageText (..))
 import qualified App.Fossa.Container.Analyze as ContainerAnalyze
 import qualified App.Fossa.Container.Test as ContainerTest
+import App.Fossa.Compatibility (argumentParser, Argument, compatibilityMain)
 import qualified App.Fossa.EmbeddedBinary as Embed
 import App.Fossa.ListTargets (listTargetsMain)
 import qualified App.Fossa.Report as Report
@@ -122,6 +123,9 @@ appMain = do
           let apiOpts = ApiOpts optBaseUrl apikey
           ContainerTest.testMain apiOpts logSeverity containerTestTimeout containerTestOutputType override containerTestImage
     --
+    CompatibilityCommand args -> do
+      compatibilityMain args
+    --
     DumpBinsCommand dir -> do
       basedir <- validateDir dir
       for_ Embed.allBins $ Embed.dumpEmbeddedBinary $ unBaseDir basedir
@@ -216,7 +220,13 @@ hiddenCommands =
           ( info
               (ContainerCommand <$> containerOpts)
               (progDesc "Run in Container Scan mode")
-    )
+          )
+        <> command
+          "compatibility"
+          ( info
+              (CompatibilityCommand <$> compatibilityOpts)
+              (progDesc "Run fossa cli v1 analyze. Supply arguments as \"fossa compatibility -- --project test\"")
+          )
     )
 
 analyzeOpts :: Parser AnalyzeOptions
@@ -363,6 +373,10 @@ containerTestOpts =
     <*> flag ContainerTest.TestOutputPretty ContainerTest.TestOutputJson (long "json" <> help "Output issues as json")
     <*> imageTextArg
 
+compatibilityOpts :: Parser [Argument]
+compatibilityOpts =
+    many argumentParser
+
 data CmdOptions = CmdOptions
   { optDebug :: Bool,
     optBaseUrl :: URI,
@@ -378,6 +392,7 @@ data Command
   | ReportCommand ReportOptions
   | VPSCommand VPSOptions
   | ContainerCommand ContainerOptions
+  | CompatibilityCommand [Argument]
   | ListTargetsCommand FilePath
   | InitCommand
   | DumpBinsCommand FilePath

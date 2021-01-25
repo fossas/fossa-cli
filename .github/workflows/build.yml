@@ -87,6 +87,7 @@ jobs:
         mkdir vendor
         touch vendor/wiggins
         touch vendor/syft
+        touch vendor/cliv1
 
     - name: Build
       run: |
