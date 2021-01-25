@@ -38,25 +38,25 @@ type SignedURL struct {
 	SignedURL string
 }
 type UploadTarballOptions struct {
-	Name           string
-	Revision       string
-	Directory      string
-	IsDependency   bool
-	RawLicenseScan bool
-	Upload         bool
-	UploadOptions  UploadOptions
+	Name            string
+	Revision        string
+	Directory       string
+	IsDependency    bool
+	LicenseScanOnly bool
+	Upload          bool
+	UploadOptions   UploadOptions
 }
 
 // UploadTarballDependency uploads the directory specified to be treated on FOSSA as a dependency.
 func UploadTarballDependency(dir string, upload, rawLicenseScan bool) (Locator, error) {
 	return UploadTarball(UploadTarballOptions{
-		Name:           "",
-		Revision:       "",
-		Directory:      dir,
-		IsDependency:   true,
-		RawLicenseScan: rawLicenseScan,
-		Upload:         upload,
-		UploadOptions:  UploadOptions{},
+		Name:            "",
+		Revision:        "",
+		Directory:       dir,
+		IsDependency:    true,
+		LicenseScanOnly: rawLicenseScan,
+		Upload:          upload,
+		UploadOptions:   UploadOptions{},
 	})
 }
 
@@ -107,12 +107,12 @@ func UploadTarballString(name, s string, dependency, rawLicenseScan, upload bool
 	}
 
 	return tarballUpload(UploadTarballOptions{
-		Name:           name,
-		Revision:       "",
-		IsDependency:   dependency,
-		RawLicenseScan: rawLicenseScan,
-		Upload:         upload,
-		UploadOptions:  UploadOptions{},
+		Name:            name,
+		Revision:        "",
+		IsDependency:    dependency,
+		LicenseScanOnly: rawLicenseScan,
+		Upload:          upload,
+		UploadOptions:   UploadOptions{},
 	}, tarball, hash)
 }
 
@@ -306,12 +306,12 @@ func UploadTarballDependencyFiles(dir string, fileList []string, name string, up
 	}
 
 	return tarballUpload(UploadTarballOptions{
-		Name:           name,
-		Revision:       "",
-		IsDependency:   true,
-		RawLicenseScan: true,
-		Upload:         upload,
-		UploadOptions:  UploadOptions{},
+		Name:            name,
+		Revision:        "",
+		IsDependency:    true,
+		LicenseScanOnly: true,
+		Upload:          upload,
+		UploadOptions:   UploadOptions{},
 	}, tarball, hash)
 }
 
@@ -479,7 +479,7 @@ func tarballUpload(options UploadTarballOptions, tarball *os.File, hash []byte) 
 	if options.IsDependency {
 		parameters.Add("dependency", "true")
 	}
-	if options.RawLicenseScan {
+	if options.LicenseScanOnly {
 		parameters.Add("rawLicenseScan", "true")
 	}
 	if options.UploadOptions.Branch != "" {
