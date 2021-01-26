@@ -1,5 +1,8 @@
 module Strategy.Python.Setuptools
   ( discover,
+    findProjects,
+    getDeps,
+    mkProject,
   )
 where
 

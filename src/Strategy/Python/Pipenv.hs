@@ -3,6 +3,9 @@
 
 module Strategy.Python.Pipenv
   ( discover
+  , findProjects
+  , getDeps
+  , mkProject
 
   , PipenvGraphDep(..)
   , PipfileLock(..)
@@ -61,7 +64,7 @@ mkProject project = DiscoveredProject
   , projectLicenses = pure []
   }
 
-data PipenvProject = PipenvProject
+newtype PipenvProject = PipenvProject
   { pipenvLockfile :: Path Abs File
   }
   deriving (Eq, Ord, Show)

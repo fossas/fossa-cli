@@ -1,5 +1,8 @@
 module Strategy.Rebar3
   ( discover,
+    findProjects,
+    getDeps,
+    mkProject,
   )
 where
 
@@ -22,7 +25,7 @@ findProjects = walk' $ \dir _ files -> do
     Nothing -> pure ([], WalkContinue)
     Just _ -> pure ([RebarProject dir], WalkSkipAll)
 
-data RebarProject = RebarProject
+newtype RebarProject = RebarProject
   { rebarDir :: Path Abs Dir
   }
   deriving (Eq, Ord, Show)

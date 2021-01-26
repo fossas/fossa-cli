@@ -3,6 +3,9 @@
 
 module Strategy.NuGet.ProjectAssetsJson
   ( discover
+  , findProjects
+  , getDeps
+  , mkProject
   , buildGraph
 
   , ProjectAssetsJson(..)
@@ -31,7 +34,7 @@ findProjects = walk' $ \_ _ files -> do
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([ProjectAssetsJsonProject file], WalkContinue)
 
-data ProjectAssetsJsonProject = ProjectAssetsJsonProject
+newtype ProjectAssetsJsonProject = ProjectAssetsJsonProject
   { projectAssetsJsonFile :: Path Abs File
   }
   deriving (Eq, Ord, Show)
@@ -52,7 +55,7 @@ getDeps = analyze' . projectAssetsJsonFile
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze' file = buildGraph <$> readContentsJson @ProjectAssetsJson file
 
-data ProjectAssetsJson = ProjectAssetsJson
+newtype ProjectAssetsJson = ProjectAssetsJson
   { targets     :: M.Map Text (M.Map Text DependencyInfo)
   } deriving Show
 
@@ -88,7 +91,7 @@ buildGraph project = unfold direct deepList toDependency
                   [name, ver] -> Just $ NuGetDep name ver (depType dep) (deepDeps dep)
                   _ -> Nothing
 
-    deepList nugetDep = (\(x,y) -> NuGetDep x y "" M.empty) <$> (M.toList $ completeDeepDeps nugetDep)
+    deepList nugetDep = (\(x,y) -> NuGetDep x y "" M.empty) <$> M.toList (completeDeepDeps nugetDep)
     toDependency NuGetDep{..} =
       Dependency { dependencyType = NuGetType
                , dependencyName = depName

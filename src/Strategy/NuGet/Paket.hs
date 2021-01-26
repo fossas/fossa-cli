@@ -1,5 +1,8 @@
 module Strategy.NuGet.Paket
   ( discover
+  , findProjects
+  , getDeps
+  , mkProject
   , findSections
   , buildGraph
 
@@ -41,7 +44,7 @@ findProjects = walk' $ \_ _ files -> do
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([PaketProject file], WalkContinue)
 
-data PaketProject = PaketProject
+newtype PaketProject = PaketProject
   { paketLock :: Path Abs File
   }
   deriving (Eq, Ord, Show)
@@ -163,20 +166,20 @@ unknownSection = do
 standardSectionParser :: Parser Section
 standardSectionParser = L.nonIndented scn $ L.indentBlock scn $ do
           location <- chunk "HTTP" <|> "GITHUB" <|> "NUGET"
-          return $ L.IndentMany Nothing (\remotes -> pure $ StandardSection location remotes) remoteParser
+          return $ L.IndentMany Nothing (pure . StandardSection location) remoteParser
 
 remoteParser :: Parser Remote
 remoteParser = L.indentBlock scn $ do
       _ <- chunk "remote:"
       value <- textValue
-      pure $ L.IndentMany Nothing (\specs -> pure $ Remote value specs) specParser
+      pure $ L.IndentMany Nothing (pure . Remote value) specParser
 
 specParser :: Parser PaketDep
 specParser = L.indentBlock scn $ do
         name <- findDep
         version <- findVersion
         _ <- restOfLine
-        pure $ L.IndentMany Nothing (\a -> pure $ PaketDep name version a) specsParser
+        pure $ L.IndentMany Nothing (pure . PaketDep name version) specsParser
 
 specsParser :: Parser Text
 specsParser = findDep <* restOfLine

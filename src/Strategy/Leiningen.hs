@@ -12,8 +12,12 @@
 module Strategy.Leiningen
   ( discover,
     buildGraph,
+    findProjects,
+    getDeps,
+    mkProject,
     Deps (..),
     ClojureDep (..),
+    LeiningenProject (..),
   )
 where
 
@@ -23,6 +27,7 @@ import Control.Monad.IO.Class (MonadIO)
 import qualified Data.EDN as EDN
 import Data.EDN.Class.Parser (Parser)
 import Data.Foldable (traverse_)
+import Data.Functor (($>))
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
@@ -98,7 +103,7 @@ data ClojureNode = ClojureNode
   deriving (Eq, Ord, Show)
 
 -- label type for our LabeledGrapher
-data ClojureLabel = ScopeLabel Text
+newtype ClojureLabel = ScopeLabel Text
   deriving (Eq, Ord, Show)
 
 buildGraph :: Deps -> Graphing Dependency
@@ -112,7 +117,7 @@ topLevelNodes = map toClojureNode . M.keys . depsTree
 
 -- recursively build edges and add labels to dependencies we encounter
 buildEdges :: Has (LabeledGrapher ClojureNode ClojureLabel) sig m => Deps -> m ()
-buildEdges deps = M.traverseWithKey single (depsTree deps) *> pure ()
+buildEdges deps = M.traverseWithKey single (depsTree deps) $> ()
   where
     single :: Has (LabeledGrapher ClojureNode ClojureLabel) sig m => ClojureDep -> Maybe Deps -> m ()
     single dep maybeDeeper = do
@@ -175,7 +180,7 @@ ednVecToMap = go M.empty
         go (M.insert key value m) (V.drop 2 vec)
 
 -- | The FromEDN type for lein deps output
-data Deps = Deps
+newtype Deps = Deps
   { depsTree :: Map ClojureDep (Maybe Deps)
   }
   deriving (Eq, Ord, Show)

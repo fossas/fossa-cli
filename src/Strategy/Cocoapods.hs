@@ -1,5 +1,8 @@
 module Strategy.Cocoapods
   ( discover,
+    findProjects,
+    getDeps,
+    mkProject,
   )
 where
 

@@ -1,5 +1,8 @@
 module Strategy.Bundler
   ( discover,
+    findProjects,
+    mkProject,
+    getDeps,
   )
 where
 

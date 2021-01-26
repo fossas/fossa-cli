@@ -3,6 +3,9 @@
 
 module Strategy.NuGet.ProjectJson
   ( discover
+  , findProjects
+  , getDeps
+  , mkProject
   , buildGraph
 
   , ProjectJson(..)
@@ -33,7 +36,7 @@ findProjects = walk' $ \_ _ files -> do
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([ProjectJsonProject file], WalkContinue)
 
-data ProjectJsonProject = ProjectJsonProject
+newtype ProjectJsonProject = ProjectJsonProject
   { projectJsonFile :: Path Abs File
   }
   deriving (Eq, Ord, Show)
@@ -54,7 +57,7 @@ getDeps = analyze' . projectJsonFile
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze' file = buildGraph <$> readContentsJson @ProjectJson file
 
-data ProjectJson = ProjectJson
+newtype ProjectJson = ProjectJson
   { dependencies     :: Map Text DependencyInfo
   } deriving Show
 

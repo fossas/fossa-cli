@@ -3,6 +3,9 @@
 
 module Strategy.NuGet.PackageReference
   ( discover
+  , findProjects
+  , getDeps
+  , mkProject
   , buildGraph
 
   , PackageReference(..)
@@ -27,7 +30,7 @@ import Path
 import Types
 
 isPackageRefFile :: Path b File -> Bool
-isPackageRefFile file = any (\x -> L.isSuffixOf x (fileName file)) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
+isPackageRefFile file = any (\x -> x `L.isSuffixOf` fileName file) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
 
 discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
 discover dir = map mkProject <$> findProjects dir
@@ -38,7 +41,7 @@ findProjects = walk' $ \_ _ files -> do
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([PackageReferenceProject file], WalkContinue)
 
-data PackageReferenceProject = PackageReferenceProject
+newtype PackageReferenceProject = PackageReferenceProject
   { packageReferenceFile :: Path Abs File
   }
   deriving (Eq, Ord, Show)

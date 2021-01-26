@@ -3,6 +3,9 @@
 
 module Strategy.Carthage
   ( discover
+  , findProjects
+  , getDeps
+  , mkProject
   , analyze
   , ResolvedEntry(..)
   , EntryType(..)

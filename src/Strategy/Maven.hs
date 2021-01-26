@@ -3,6 +3,7 @@
 module Strategy.Maven
   ( discover,
     mkProject,
+    getDeps,
   )
 where
 

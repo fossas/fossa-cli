@@ -9,6 +9,9 @@ module Strategy.Cargo
   , Resolve(..)
   , ResolveNode(..)
   , buildGraph
+  , getDeps
+  , mkProject
+  , findProjects
   )
   where
 

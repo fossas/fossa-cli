@@ -8,6 +8,7 @@
 -- multi-project closures.
 module Strategy.Scala
   ( discover,
+    findProjects,
   )
 where
 
@@ -15,7 +16,7 @@ import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Carrier.Diagnostics
 import Control.Monad.IO.Class (MonadIO)
 import qualified Data.Map.Strict as M
-import Data.Maybe (catMaybes)
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
@@ -79,14 +80,14 @@ genPoms projectDir = do
       stdoutLines = T.lines stdout
       --
       pomLines :: [Text]
-      pomLines = catMaybes $ map (T.stripPrefix "[info] Wrote ") stdoutLines
+      pomLines = mapMaybe (T.stripPrefix "[info] Wrote ") stdoutLines
       --
       pomLocations :: Maybe [Path Abs File]
       pomLocations = traverse (parseAbsFile . T.unpack) pomLines
 
   case pomLocations of
     Nothing -> fatalText ("Could not parse pom paths from:\n" <> T.unlines pomLines)
-    Just [] -> fatalText ("No sbt projects found")
+    Just [] -> fatalText "No sbt projects found"
     Just paths -> do
       globalClosure <- buildGlobalClosure paths
 

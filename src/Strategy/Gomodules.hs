@@ -1,5 +1,8 @@
 module Strategy.Gomodules
   ( discover,
+    findProjects,
+    getDeps,
+    mkProject,
   )
 where
 
