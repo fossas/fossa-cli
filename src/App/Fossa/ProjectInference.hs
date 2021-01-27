@@ -1,10 +1,12 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.ProjectInference
   ( inferProject,
     mergeOverride,
+    readCachedRevision,
     InferredProject (..),
   )
 where
@@ -32,6 +34,9 @@ import Path.IO (getTempDir)
 import qualified System.FilePath.Posix as FP
 import Text.GitConfig.Parser (Section (..), parseConfig)
 import Text.Megaparsec (errorBundlePretty)
+
+revisionFileName :: Path Rel File
+revisionFileName = $(mkRelFile ".fossa.revision")
 
 mergeOverride :: OverrideProject -> InferredProject -> ProjectRevision
 mergeOverride OverrideProject {..} InferredProject {..} = ProjectRevision name revision branch
@@ -94,6 +99,12 @@ inferSVN dir = do
           [key, val] -> Just (key, val)
           _ -> Nothing
 
+readCachedRevision :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => m Text
+readCachedRevision = do
+  tmp <- sendIO getTempDir
+  readContentsText $ tmp </> revisionFileName
+
+
 -- | Infer a default project name from the directory, and a default
 -- revision from the current time. Writes `.fossa.revision` to the system
 -- temp directory for use by `fossa test`
@@ -103,7 +114,7 @@ inferDefault dir = sendIO $ do
   time <- floor <$> getPOSIXTime :: IO Int
 
   tmp <- getTempDir
-  writeFile (fromAbsDir tmp FP.</> ".fossa.revision") (show time)
+  writeFile (fromAbsFile $ tmp </> revisionFileName) (show time)
 
   pure (InferredProject (T.pack name) (T.pack (show time)) Nothing)
 

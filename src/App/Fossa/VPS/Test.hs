@@ -17,6 +17,7 @@ import Data.Text.IO (hPutStrLn)
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Exec
 import Effect.Logger
+import Effect.ReadFS
 import Fossa.API.Types (ApiOpts, Issues (..))
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
@@ -38,8 +39,9 @@ testMain ::
   IO ()
 testMain basedir apiOpts logSeverity timeoutSeconds outputType override = do
   _ <- timeout timeoutSeconds . withLogger logSeverity . runExecIO $ do
-    result <- runDiagnostics $ do
-      revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
+    result <- runDiagnostics . runReadFSIO $ do
+      override' <- updateOverrideRevision override <$> readCachedRevision 
+      revision <- mergeOverride override' <$> inferProject (unBaseDir basedir)
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")

@@ -4,6 +4,8 @@ module App.Types
     OverrideProject (..),
     ProjectMetadata (..),
     ProjectRevision (..),
+
+    updateOverrideRevision,
   )
 where
 
@@ -17,6 +19,9 @@ data OverrideProject = OverrideProject
     overrideRevision :: Maybe Text,
     overrideBranch :: Maybe Text
   }
+
+updateOverrideRevision :: OverrideProject -> Text -> OverrideProject
+updateOverrideRevision o r = o { overrideRevision = Just r }
 
 data ProjectMetadata = ProjectMetadata
   { projectTitle :: Maybe Text

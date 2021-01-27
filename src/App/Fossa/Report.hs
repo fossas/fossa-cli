@@ -17,6 +17,7 @@ import Data.Text (Text)
 import Data.Text.IO (hPutStrLn)
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Logger
+import Effect.ReadFS
 import Fossa.API.Types (ApiOpts)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
@@ -50,8 +51,9 @@ reportMain basedir apiOpts logSeverity timeoutSeconds reportType override = do
   * CLI command refactoring as laid out in https://github.com/fossas/issues/issues/129
   -}
   void $ timeout timeoutSeconds $ withLogger logSeverity $ do
-    result <- runDiagnostics $ do
-      revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
+    result <- runDiagnostics . runReadFSIO $ do
+      override' <- updateOverrideRevision override <$> readCachedRevision
+      revision <- mergeOverride override' <$> inferProject (unBaseDir basedir)
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
