@@ -3,19 +3,18 @@ module Python.RequirementsSpec
   )
 where
 
-import Data.Foldable
+import Data.Foldable ( traverse_ )
 import Data.Text (Text)
-import Strategy.Python.Util (requirementParser)
+import Strategy.Python.Util (requirementParser, buildGraph)
+import Strategy.Python.ReqTxt (requirementsTxtParser)
 import Test.Hspec.Megaparsec
 import Text.Megaparsec
 import Prelude
-import Test.Hspec
-
-spec :: Spec
-spec =
-  describe "requirementParser"
-    $ it "can parse the edge case examples"
-    $ traverse_ (\input -> runParser requirementParser "" `shouldSucceedOn` input) examples
+import DepTypes
+import qualified Data.Map.Strict as M
+import qualified Data.Text.IO as TIO
+import qualified Test.Hspec as T
+import GraphUtil (expectDeps)
 
 examples :: [Text]
 examples =
@@ -35,3 +34,57 @@ examples =
     "name; os_name=='a' or os_name=='b' and os_name=='c'",
     "name; (os_name=='a' or os_name=='b') and os_name=='c'"
   ]
+
+depOne :: Dependency
+depOne = Dependency { dependencyType = PipType
+                        , dependencyName = "one"
+                        , dependencyVersion = Just (CEq "1.0")
+                        , dependencyLocations = []
+                        , dependencyEnvironments = []
+                        , dependencyTags = M.empty
+                        }
+
+depTwo :: Dependency
+depTwo = Dependency { dependencyType = PipType
+                        , dependencyName = "two"
+                        , dependencyVersion = Just (CLessOrEq "2.0.0")
+                        , dependencyLocations = []
+                        , dependencyEnvironments = []
+                        , dependencyTags = M.empty
+                        }
+
+depThree :: Dependency
+depThree = Dependency { dependencyType = PipType
+                        , dependencyName = "three"
+                        , dependencyVersion = Just (CEq "3.0.0")
+                        , dependencyLocations = []
+                        , dependencyEnvironments = []
+                        , dependencyTags = M.empty
+                        }
+
+depFour :: Dependency
+depFour = Dependency { dependencyType = PipType
+                        , dependencyName = "four"
+                        , dependencyVersion = Just (CEq "4.0.0")
+                        , dependencyLocations = []
+                        , dependencyEnvironments = []
+                        , dependencyTags = M.empty
+                        }
+
+spec :: T.Spec
+spec = do
+  T.describe "requirementParser"
+    $ T.it "can parse the edge case examples"
+    $ traverse_ (\input -> runParser requirementParser "" `shouldSucceedOn` input) examples
+  
+  requirementsTextFile <- T.runIO (TIO.readFile "test/Python/testdata/req.txt")
+  T.describe "req file" $
+    T.it "can parse" $
+      case runParser requirementsTxtParser "" requirementsTextFile of 
+        Left r -> do
+          T.expectationFailure $ "failed to parse: error:" ++ show r
+        Right res -> do
+          let result = buildGraph res 
+          expectDeps [depOne, depTwo, depThree, depFour] result
+
+          

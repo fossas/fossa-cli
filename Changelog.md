@@ -1,3 +1,10 @@
+# v2.4.9
+- Fix a bug with `requirements.txt` parsing line extensions ([#183](https://github.com/fossas/spectrometer/pull/183))
+- Fix a bug where we didn't read the cached fossa revision for projects without VCS ([#182](https://github.com/fossas/spectrometer/pull/182))
+- Fix a bug with project URL output when no branch is supplied in instances where VCS does not exist ([#181](https://github.com/fossas/spectrometer/pull/181))
+# v2.4.8
+- Introduce a new hidden `fossa compatibility` command which runs fossa v1 `fossa analyze` and allows users to access the archive uploader([#179]https://github.com/fossas/spectrometer/pull/179)
+
 # v2.4.7
 
 - Fixes an issue where `fossa test` would always succeed for push-only API keys ([#170](https://github.com/fossas/spectrometer/pull/170))
