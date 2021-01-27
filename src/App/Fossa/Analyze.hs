@@ -284,24 +284,22 @@ tryUploadContributors baseDir apiOpts locator = do
   contributors <- fetchGitContributors baseDir
   uploadContributors apiOpts locator contributors
 
--- This url can have a two forms (Core may allow more, but we don't care here):
---    https://<fossa host>/projects/<project>/
---    https://<fossa host>/projects/<project>/refs/branch/<branch>/<revision>
 fossaProjectUrl :: URI -> Text -> ProjectRevision -> Text
 fossaProjectUrl baseUrl rawLocator revision = URI.render baseUrl <> "projects/" <> encodedProject <> buildSelector
   where
-    Locator{locatorFetcher, locatorProject, locatorRevision} = parseLocator rawLocator
+    Locator{locatorFetcher, locatorProject} = parseLocator rawLocator
 
     underBS :: (ByteString -> ByteString) -> Text -> Text
     underBS f = TE.decodeUtf8 . f . TE.encodeUtf8
     urlEncode' = underBS (urlEncode True)
 
     encodedProject = urlEncode' (locatorFetcher <> "+" <> locatorProject)
-    encodedRevision = urlEncode' (fromMaybe "" locatorRevision)
-    -- | buildSelector is empty string unless we have a real branch to work with.
-    buildSelector = fromMaybe "" $ do
-      branch <- projectBranch revision
-      Just $ "/refs/branch/" <> urlEncode' branch <> "/" <> encodedRevision
+    encodedRevision = urlEncode' $ projectRevision revision
+    -- We default to master because core does, and we need a branch to allow us to 
+    -- create links directly to builds.  If this changes, then a core change should
+    -- be made allowing a link to a known revision on an unknown default branch.
+    encodedBranch = urlEncode' . fromMaybe "master" $ projectBranch revision
+    buildSelector = "/refs/branch/" <> encodedBranch <> "/" <> encodedRevision
 
 buildResult :: [ProjectResult] -> Aeson.Value
 buildResult projects = Aeson.object
