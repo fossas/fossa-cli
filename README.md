@@ -46,7 +46,7 @@ The following commands will execute scripts to fetch and install the latest [Git
 brew install fossas/tap/fossa
 ```
 
-### MacOS (Darwin) or Linux amd64:
+### MacOS (Darwin) or Linux amd64/arm64:
 ```bash
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
 ```
