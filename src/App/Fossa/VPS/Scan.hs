@@ -17,6 +17,7 @@ import Data.Flag (Flag, fromFlag)
 import Effect.Logger
 import Fossa.API.Types (ApiOpts(..))
 import App.Fossa.ProjectInference
+import Data.Text
 
 -- | SkipIPRScan bool flag
 data SkipIPRScan = SkipIPRScan
@@ -42,11 +43,12 @@ vpsScan ::
 vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag licenseOnlyScan fileFilters apiOpts metadata binaryPaths = withLogger logSeverity $ do
   projectRevision <- mergeOverride overrideProject <$> inferProject basedir
   let scanType = ScanType (fromFlag SkipIPRScan skipIprFlag) (fromFlag LicenseOnlyScan licenseOnlyScan)
-  let wigginsOpts = generateWigginsOpts basedir logSeverity projectRevision scanType fileFilters apiOpts metadata
+  let wigginsOpts = generateWigginsScanOpts basedir logSeverity projectRevision scanType fileFilters apiOpts metadata
 
-  logDebug "Running VPS plugin scan"
-  runExecIO $ runWiggins binaryPaths wigginsOpts
+  logInfo "Running VPS plugin scan"
+  stdout <- runExecIO $ runWiggins binaryPaths wigginsOpts
+  logInfo $ pretty stdout
 
-runWiggins :: ( Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m ()
+runWiggins :: ( Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
 runWiggins binaryPaths opts = do
   execWiggins binaryPaths opts

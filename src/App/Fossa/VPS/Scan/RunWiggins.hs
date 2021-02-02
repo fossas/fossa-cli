@@ -2,7 +2,8 @@
 
 module App.Fossa.VPS.Scan.RunWiggins
   ( execWiggins
-  , generateWigginsOpts
+  , generateWigginsScanOpts
+  , generateWigginsAOSPNoticeOpts
   , WigginsOpts(..)
   , ScanType(..)
   )
@@ -12,7 +13,6 @@ import App.Fossa.VPS.Types
 import App.Fossa.EmbeddedBinary
 import Control.Carrier.Error.Either
 import Control.Effect.Diagnostics
-import Data.Functor (void)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Effect.Exec
@@ -21,6 +21,8 @@ import Effect.Logger
 import Fossa.API.Types
 import App.Types
 import Text.URI
+import qualified Data.ByteString.Lazy as BL
+import Data.Text.Encoding
 
 data ScanType = ScanType
   { scanSkipIpr :: Bool
@@ -32,12 +34,24 @@ data WigginsOpts = WigginsOpts
   , spectrometerArgs :: [Text]
   }
 
-generateWigginsOpts :: Path Abs Dir -> Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> WigginsOpts
-generateWigginsOpts scanDir logSeverity projectRevision scanType fileFilters apiOpts metadata =
-  WigginsOpts scanDir (generateSpectrometerArgs logSeverity projectRevision scanType fileFilters apiOpts metadata)
+generateWigginsScanOpts :: Path Abs Dir -> Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> WigginsOpts
+generateWigginsScanOpts scanDir logSeverity projectRevision scanType fileFilters apiOpts metadata =
+  WigginsOpts scanDir $ generateSpectrometerScanArgs logSeverity projectRevision scanType fileFilters apiOpts metadata
 
-generateSpectrometerArgs :: Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> [Text]
-generateSpectrometerArgs logSeverity ProjectRevision{..} ScanType{..} fileFilters ApiOpts{..} ProjectMetadata{..} =
+generateWigginsAOSPNoticeOpts :: Path Abs Dir -> Severity -> FilterExpressions -> Bool -> WigginsOpts
+generateWigginsAOSPNoticeOpts scanDir logSeverity fileFilters enableWrite =
+  WigginsOpts scanDir $ generateSpectrometerAOSPNoticeArgs logSeverity fileFilters enableWrite
+
+generateSpectrometerAOSPNoticeArgs :: Severity -> FilterExpressions -> Bool -> [Text]
+generateSpectrometerAOSPNoticeArgs logSeverity fileFilters enableWrite =
+  ["aosp-notice-files"]
+      ++ optBool "-write" enableWrite
+      ++ optBool "-debug" (logSeverity == SevDebug)
+      ++ optFilterExpressions fileFilters
+      ++ ["."]
+
+generateSpectrometerScanArgs :: Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> [Text]
+generateSpectrometerScanArgs logSeverity ProjectRevision{..} ScanType{..} fileFilters ApiOpts{..} ProjectMetadata{..} =
     "analyze"
       : ["-endpoint", render apiOptsUri, "-fossa-api-key", unApiKey apiOptsApiKey]
       ++ ["-name", projectName, "-revision", projectRevision]
@@ -65,8 +79,8 @@ optMaybeText :: Text -> Maybe Text -> [Text]
 optMaybeText _ Nothing = []
 optMaybeText flag (Just value) = [flag, value]
 
-execWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m ()
-execWiggins binaryPaths opts = void $ execThrow (scanDir opts) (wigginsCommand binaryPaths opts)
+execWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
+execWiggins binaryPaths opts = decodeUtf8 . BL.toStrict <$> execThrow (scanDir opts) (wigginsCommand binaryPaths opts)
 
 wigginsCommand :: BinaryPaths -> WigginsOpts -> Command
 wigginsCommand bin WigginsOpts{..} = do

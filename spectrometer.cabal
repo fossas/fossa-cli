@@ -101,6 +101,7 @@ library
     App.Fossa.VPS.NinjaGraph
     App.Fossa.VPS.Report
     App.Fossa.VPS.Scan
+    App.Fossa.VPS.AOSPNotice
     App.Fossa.VPS.Scan.Core
     App.Fossa.VPS.Scan.RunWiggins
     App.Fossa.VPS.Scan.ScotlandYard

@@ -18,6 +18,7 @@ import qualified App.Fossa.Test as Test
 import App.Fossa.VPS.NinjaGraph
 import qualified App.Fossa.VPS.Report as VPSReport
 import App.Fossa.VPS.Scan (LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
+import App.Fossa.VPS.AOSPNotice (WriteEnabled (..), aospNoticeMain)
 import qualified App.Fossa.VPS.Test as VPSTest
 import App.Fossa.VPS.Types (FilterExpressions (..))
 import App.OptionExtensions
@@ -106,6 +107,10 @@ appMain = do
           unless vpsReportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"
           baseDir <- validateDir vpsReportBaseDir
           VPSReport.reportMain baseDir apiOpts logSeverity vpsReportTimeout vpsReportType override
+        VPSAOSPNoticeCommand VPSAOSPNoticeOptions {..} -> do
+          baseDir <- validateDir vpsAOSPNoticeBaseDir
+          aospNoticeMain baseDir logSeverity vpsFileFilter vpsAOSPNoticeWriteEnabled
+
     --
     ContainerCommand ContainerOptions {..} -> do
       die "Fatal: Container scanning is not available yet" >> pure ()
@@ -294,6 +299,12 @@ vpsReportOpts =
     <*> vpsReportCmd
     <*> baseDirArg
 
+vpsAospNoticeOpts :: Parser VPSAOSPNoticeOptions
+vpsAospNoticeOpts =
+  VPSAOSPNoticeOptions
+    <$> baseDirArg
+    <*> flagOpt WriteEnabled (long "write" <> help "Enable writing NOTICE files to disk instead of logging them.")
+
 -- FIXME: make report type a positional argument, rather than a subcommand
 vpsReportCmd :: Parser VPSReport.ReportType
 vpsReportCmd =
@@ -338,6 +349,12 @@ vpsCommands =
           ( info
               (VPSReportCommand <$> vpsReportOpts)
               (progDesc "Access various reports from FOSSA and print to stdout")
+          )
+        <> command
+          "aosp-notice-file"
+          ( info
+              (VPSAOSPNoticeCommand <$> vpsAospNoticeOpts)
+              (progDesc "Generate notice files for AOSP make and blueprint targets")    
           )
     )
 
@@ -399,6 +416,7 @@ data Command
 
 data VPSCommand
   = VPSAnalyzeCommand VPSAnalyzeOptions
+  | VPSAOSPNoticeCommand VPSAOSPNoticeOptions
   | NinjaGraphCommand NinjaGraphCLIOptions
   | VPSTestCommand VPSTestOptions
   | VPSReportCommand VPSReportOptions
@@ -442,6 +460,11 @@ data VPSOptions = VPSOptions
 data VPSAnalyzeOptions = VPSAnalyzeOptions
   { vpsAnalyzeBaseDir :: FilePath,
     vpsAnalyzeMeta :: ProjectMetadata
+  }
+
+data VPSAOSPNoticeOptions = VPSAOSPNoticeOptions
+  { vpsAOSPNoticeBaseDir :: FilePath,
+    vpsAOSPNoticeWriteEnabled :: Flag WriteEnabled
   }
 
 data VPSTestOptions = VPSTestOptions
