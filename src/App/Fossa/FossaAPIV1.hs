@@ -230,7 +230,7 @@ getLatestBuild
 getLatestBuild apiOpts ProjectRevision {..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  Organization orgId <- getOrganization apiOpts
+  Organization orgId _ <- getOrganization apiOpts
  
   response <- req GET (buildsEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
@@ -248,7 +248,7 @@ getIssues
 getIssues apiOpts ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
  
-  Organization orgId <- getOrganization apiOpts
+  Organization orgId _ <- getOrganization apiOpts
   response <- req GET (issuesEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
 
@@ -269,7 +269,7 @@ getAttribution apiOpts ProjectRevision{..} = fossaReq $ do
         <> "includeDeepDependencies" =: True
         <> "includeHashAndVersionData" =: True
         <> "includeDownloadUrl" =: True
-  Organization orgId <- getOrganization apiOpts
+  Organization orgId _ <- getOrganization apiOpts
   response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
@@ -285,19 +285,21 @@ getAttributionRaw apiOpts ProjectRevision{..} = fossaReq $ do
         <> "includeDeepDependencies" =: True
         <> "includeHashAndVersionData" =: True
         <> "includeDownloadUrl" =: True
-  Organization orgId <- getOrganization apiOpts
+  Organization orgId _ <- getOrganization apiOpts
   response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
 ----------
 
-newtype Organization = Organization
-  { organizationId :: Int
+data Organization = Organization
+  { organizationId :: Int,
+    orgUsesSAML :: Bool
   } deriving (Eq, Ord, Show)
 
 instance FromJSON Organization where
   parseJSON = withObject "Organization" $ \obj ->
     Organization <$> obj .: "organizationId"
+                 <*> obj .: "usesSAML"
 
 organizationEndpoint :: Url scheme -> Url scheme
 organizationEndpoint baseurl = baseurl /: "api" /: "cli" /: "organization"

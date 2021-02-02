@@ -15,12 +15,16 @@ module Control.Carrier.Diagnostics
 
     -- * Diagnostic results
     FailureBundle (..),
+    ResultBundle (..),
     renderFailureBundle,
     renderWarnings,
     renderSomeDiagnostic,
-    ResultBundle (..),
 
     -- * Helpers
+    logDiagnostic,
+    logErrorBundle,
+    logResultWarnings,
+    logWithExit_,
     runDiagnosticsIO,
     withResult,
 
@@ -33,14 +37,16 @@ import Control.Carrier.Error.Either
 import Control.Carrier.Reader
 import Control.Carrier.Writer.Church
 import Control.Effect.Diagnostics as X
-import Control.Effect.Lift (Lift)
+import Control.Effect.Lift (sendIO, Lift)
 import Control.Exception (SomeException)
 import Control.Exception.Extra (safeCatch)
 import Control.Monad.IO.Class (MonadIO)
+import Data.Functor (($>))
 import Data.Monoid (Endo (..))
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Effect.Logger
+import System.Exit (exitFailure)
 
 newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ReaderC [Text] (ErrorC SomeDiagnostic (WriterC (Endo [SomeDiagnostic]) m)) a}
   deriving (Functor, Applicative, Monad, MonadIO)
@@ -75,6 +81,26 @@ renderFailureBundle FailureBundle {..} =
 renderWarnings :: [SomeDiagnostic] -> Doc AnsiStyle
 renderWarnings = align . vsep . map renderSomeDiagnostic
 
+logResultWarnings :: Has Logger sig m => ResultBundle a -> m a
+logResultWarnings ResultBundle {..} = logWarn (renderWarnings resultWarnings) $> resultValue
+
+logErrorBundle :: Has Logger sig m => FailureBundle -> m ()
+logErrorBundle = logError . renderFailureBundle
+
+-- | Run a Diagnostic effect into a logger, using the default error/warning renderers.
+logDiagnostic :: Has Logger sig m => DiagnosticsC m a -> m (Maybe a)
+logDiagnostic diag = do
+  result <- runDiagnostics diag
+  case result of
+    Left failure -> logErrorBundle failure >> pure Nothing
+    Right success -> Just <$> logResultWarnings success
+
+-- | Run a void Diagnostic effect into a logger, using the default error/warning renderers.
+-- | Exits with non-zero if the result is a failure.
+-- | Useful for setting up diagnostics from CLI entry points.
+logWithExit_ :: (Has (Lift IO) sig m, Has Logger sig m) => DiagnosticsC m () -> m ()
+logWithExit_ diag = logDiagnostic diag >>= maybe (sendIO exitFailure) pure
+  
 runDiagnostics :: Applicative m => DiagnosticsC m a -> m (Either FailureBundle (ResultBundle a))
 runDiagnostics = fmap bundle . runWriter (\w a -> pure (appEndo w [], a)) . runError @SomeDiagnostic . runReader [] . runDiagnosticsC
   where

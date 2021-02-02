@@ -88,11 +88,7 @@ infixl 3 <||>
 
 -- | Analagous to @Alternative@'s @<|>@. Tries both actions and chooses the result that succeeds, invoking 'recover' semantics for errors.
 (<||>) :: Has Diagnostics sig m => m a -> m a -> m a
-(<||>) ma mb = do
-  maybeA <- recover $ ma
-  case maybeA of
-    Nothing -> mb
-    Just a -> pure a
+(<||>) ma mb = recover ma >>= maybe mb pure
 
 -- | Run a list of actions, combining the successful ones. If all actions fail, 'fatalText' is invoked with the provided @Text@ message.
 combineSuccessful :: (Semigroup a, Has Diagnostics sig m) => Text -> [m a] -> m a

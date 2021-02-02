@@ -49,7 +49,7 @@ testMain basedir apiOpts logSeverity timeoutSeconds outputType override = do
 
       logSticky "[ Getting latest scan ID ]"
 
-      Fossa.Organization orgId <- Fossa.getOrganization apiOpts
+      Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts
       let locator = VPSCore.createLocator (projectName revision) orgId
 
       scan <- ScotlandYard.getLatestScan apiOpts locator (projectRevision revision)

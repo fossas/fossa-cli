@@ -81,6 +81,8 @@ import Text.URI (URI)
 import qualified Text.URI as URI
 import Types
 import VCS.Git (fetchGitContributors)
+import Data.Functor (void)
+import App.Fossa.API.BuildLink (getFossaBuildUrl)
 
 data ScanDestination
   = UploadScan ApiOpts ProjectMetadata -- ^ upload to fossa with provided api key and base url
@@ -90,7 +92,7 @@ data ScanDestination
 data UnpackArchives = UnpackArchives
 
 analyzeMain :: BaseDir -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> [BuildTargetFilter] -> IO ()
-analyzeMain basedir logSeverity destination project unpackArchives filters = withLogger logSeverity $
+analyzeMain basedir logSeverity destination project unpackArchives filters = withLogger logSeverity . Diag.logWithExit_ $
   analyze basedir destination project unpackArchives filters
 
 discoverFuncs ::
@@ -160,6 +162,7 @@ applyFiltersToProject basedir filters DiscoveredProject{..} =
 analyze ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
+  , Has Diag.Diagnostics sig m
   , MonadIO m
   )
   => BaseDir
@@ -199,25 +202,19 @@ analyze basedir destination override unpackArchives filters = do
         let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
         logInfo ("Using branch: `" <> pretty branchText <> "`")
 
-        uploadResult <- Diag.runDiagnostics $ uploadAnalysis apiOpts revision metadata someProjects
-        case uploadResult of
-          Left failure -> logError (Diag.renderFailureBundle failure)
-          Right success -> do
-            let resp = Diag.resultValue success
-            logInfo $ vsep
-              [ "============================================================"
-              , ""
-              , "    View FOSSA Report:"
-              , "    " <> pretty (fossaProjectUrl (apiOptsUri apiOpts) (uploadLocator resp) revision)
-              , ""
-              , "============================================================"
-              ]
-            traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
-
-            contribResult <- Diag.runDiagnostics $ runExecIO $ tryUploadContributors (unBaseDir basedir) apiOpts (uploadLocator resp)
-            case contribResult of
-              Left failure -> logDebug (Diag.renderFailureBundle failure)
-              Right _ -> pure ()
+        uploadResult <- uploadAnalysis apiOpts revision metadata someProjects
+        buildUrl <- getFossaBuildUrl revision apiOpts . parseLocator $ uploadLocator uploadResult
+        logInfo $ vsep
+          [ "============================================================"
+          , ""
+          , "    View FOSSA Report:"
+          , "    " <> pretty buildUrl
+          , ""
+          , "============================================================"
+          ]
+        traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError uploadResult)
+        -- Warn on contributor errors, never fail
+        void . Diag.recover . runExecIO $ tryUploadContributors (unBaseDir basedir) apiOpts (uploadLocator uploadResult)
 
 data CountedResult
   = NoneDiscovered

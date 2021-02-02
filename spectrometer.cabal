@@ -79,6 +79,7 @@ library
 
   -- cabal-fmt: expand src
   exposed-modules:
+    App.Fossa.API.BuildLink
     App.Fossa.API.BuildWait
     App.Fossa.Analyze
     App.Fossa.Analyze.Graph
@@ -222,6 +223,7 @@ test-suite unit-tests
 
   -- cabal-fmt: expand test
   other-modules:
+    App.Fossa.API.BuildLinkSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.VPS.NinjaGraphSpec
     Cargo.MetadataSpec
