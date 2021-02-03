@@ -4,7 +4,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.ProjectInference
-  ( inferProject,
+  ( inferProjectFromVCS,
+    inferProjectCached,
+    inferProjectDefault,
+    saveRevision,
     mergeOverride,
     readCachedRevision,
     InferredProject (..),
@@ -34,6 +37,7 @@ import Path.IO (getTempDir)
 import qualified System.FilePath.Posix as FP
 import Text.GitConfig.Parser (Section (..), parseConfig)
 import Text.Megaparsec (errorBundlePretty)
+import qualified Data.Text.IO as TIO
 
 revisionFileName :: Path Rel File
 revisionFileName = $(mkRelFile ".fossa.revision")
@@ -45,16 +49,27 @@ mergeOverride OverrideProject {..} InferredProject {..} = ProjectRevision name r
     revision = fromMaybe inferredRevision overrideRevision
     branch = overrideBranch <|> inferredBranch
 
-inferProject :: (Has Logger sig m, Has (Lift IO) sig m) => Path Abs Dir -> m InferredProject
-inferProject current = do
-  result <- runDiagnostics $ runReadFSIO $ runExecIO (inferGit current <||> inferSVN current)
+-- TODO: pass ReadFS and Exec constraints upward
+inferProjectFromVCS :: (Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> m InferredProject
+inferProjectFromVCS current = runReadFSIO $ runExecIO (inferGit current <||> inferSVN current)
 
-  case result of
-    Right inferred -> pure (resultValue inferred)
-    Left failure -> do
-      logWarn "Project inference: couldn't find VCS root. Defaulting to directory name."
-      logDebug (renderFailureBundle failure)
-      inferDefault current
+-- | Similar to 'inferProjectDefault', but uses a saved revision
+inferProjectCached :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path b Dir -> m InferredProject
+inferProjectCached dir = do
+  project <- inferProjectDefault dir
+  rev <- readCachedRevision
+  pure project { inferredRevision = rev }
+
+-- | Infer a default project name from the directory, and a default
+-- revision from the current time. Writes `.fossa.revision` to the system
+-- temp directory for use by `fossa test`
+inferProjectDefault :: Has (Lift IO) sig m => Path b Dir -> m InferredProject
+inferProjectDefault dir = sendIO $ do
+  let name = FP.dropTrailingPathSeparator (fromRelDir (dirname dir))
+  time <- floor <$> getPOSIXTime :: IO Int
+
+  pure (InferredProject (T.pack name) (T.pack (show time)) Nothing)
+
 
 svnCommand :: Command
 svnCommand = Command
@@ -99,24 +114,15 @@ inferSVN dir = do
           [key, val] -> Just (key, val)
           _ -> Nothing
 
+saveRevision :: Has (Lift IO) sig m => ProjectRevision -> m ()
+saveRevision project = do
+  tmp <- sendIO getTempDir
+  sendIO $ TIO.writeFile (fromAbsFile $ tmp </> revisionFileName) (projectRevision project)
+
 readCachedRevision :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => m Text
 readCachedRevision = do
   tmp <- sendIO getTempDir
   readContentsText $ tmp </> revisionFileName
-
-
--- | Infer a default project name from the directory, and a default
--- revision from the current time. Writes `.fossa.revision` to the system
--- temp directory for use by `fossa test`
-inferDefault :: Has (Lift IO) sig m => Path b Dir -> m InferredProject
-inferDefault dir = sendIO $ do
-  let name = FP.dropTrailingPathSeparator (fromRelDir (dirname dir))
-  time <- floor <$> getPOSIXTime :: IO Int
-
-  tmp <- getTempDir
-  writeFile (fromAbsFile $ tmp </> revisionFileName) (show time)
-
-  pure (InferredProject (T.pack name) (T.pack (show time)) Nothing)
 
 -- like Text.stripPrefix, but with a non-Maybe result (defaults to the original text)
 dropPrefix :: Text -> Text -> Text

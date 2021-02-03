@@ -28,7 +28,6 @@ import Effect.Exec
 import Effect.Logger hiding (line)
 import Effect.ReadFS
 import Path
-import System.Exit (exitFailure)
 import qualified System.FilePath as FP
 import System.Process.Typed as PROC
 import Fossa.API.Types (ApiOpts)
@@ -55,22 +54,16 @@ data NinjaParseState = Starting | Parsing | Complete | Error
 
 ninjaGraphMain :: ApiOpts -> Severity -> OverrideProject -> NinjaGraphCLIOptions -> IO ()
 ninjaGraphMain apiOpts logSeverity overrideProject NinjaGraphCLIOptions{..} = do
-  basedir <- validateDir ninjaBaseDir
+  BaseDir basedir <- validateDir ninjaBaseDir
 
-  withLogger logSeverity $ do
-    ProjectRevision {..} <- mergeOverride overrideProject <$> inferProject (unBaseDir basedir)
+  withLogger logSeverity . logWithExit_ $ do
+    ProjectRevision {..} <- mergeOverride overrideProject <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
     let ninjaGraphOpts = NinjaGraphOpts apiOpts ninjaDepsFile ninjaLunchTarget ninjaScanId projectName ninjaBuildName
 
     ninjaGraphInner basedir apiOpts ninjaGraphOpts
 
-ninjaGraphInner :: (Has Logger sig m, Has (Lift IO) sig m) => BaseDir -> ApiOpts -> NinjaGraphOpts -> m ()
-ninjaGraphInner (BaseDir basedir) apiOpts ninjaGraphOpts = do
-  result <- runDiagnostics $ getAndParseNinjaDeps basedir apiOpts ninjaGraphOpts
-  case result of
-    Left failure -> do
-      sendIO . print $ renderFailureBundle failure
-      sendIO exitFailure
-    Right _ -> pure ()
+ninjaGraphInner :: (Has Logger sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> ApiOpts -> NinjaGraphOpts -> m ()
+ninjaGraphInner basedir apiOpts ninjaGraphOpts = getAndParseNinjaDeps basedir apiOpts ninjaGraphOpts
 
 
 getAndParseNinjaDeps :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> NinjaGraphOpts -> m ()

@@ -82,7 +82,7 @@ renderWarnings :: [SomeDiagnostic] -> Doc AnsiStyle
 renderWarnings = align . vsep . map renderSomeDiagnostic
 
 logResultWarnings :: Has Logger sig m => ResultBundle a -> m a
-logResultWarnings ResultBundle {..} = logWarn (renderWarnings resultWarnings) $> resultValue
+logResultWarnings ResultBundle {..} = logDebug (renderWarnings resultWarnings) $> resultValue
 
 logErrorBundle :: Has Logger sig m => FailureBundle -> m ()
 logErrorBundle = logError . renderFailureBundle

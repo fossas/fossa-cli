@@ -14,7 +14,7 @@ module App.Fossa.Analyze
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult(..), mkResult)
 import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContributors)
-import App.Fossa.ProjectInference (inferProject, mergeOverride)
+import App.Fossa.ProjectInference (inferProjectFromVCS, inferProjectDefault, mergeOverride, saveRevision)
 import App.Types
 import qualified Control.Carrier.Diagnostics as Diag
 import Control.Carrier.Output.IO
@@ -83,6 +83,7 @@ import Types
 import VCS.Git (fetchGitContributors)
 import Data.Functor (void)
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
+import Control.Effect.Diagnostics ((<||>))
 
 data ScanDestination
   = UploadScan ApiOpts ProjectMetadata -- ^ upload to fossa with provided api key and base url
@@ -171,7 +172,7 @@ analyze ::
   -> Flag UnpackArchives
   -> [BuildTargetFilter]
   -> m ()
-analyze basedir destination override unpackArchives filters = do
+analyze (BaseDir basedir) destination override unpackArchives filters = do
   capabilities <- sendIO getNumCapabilities
 
   (projectResults, ()) <-
@@ -180,10 +181,10 @@ analyze basedir destination override unpackArchives filters = do
       . runReadFSIO
       . runFinally
       . withTaskPool capabilities updateProgress
-      $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) (unBaseDir basedir) (runDependencyAnalysis basedir filters)
+      $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
 
   logSticky ""
-  let filteredProjects = filterProjects basedir projectResults
+  let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
   case checkForEmptyUpload projectResults filteredProjects of
     NoneDiscovered -> logError "No projects were discovered" >> sendIO exitFailure
@@ -194,7 +195,8 @@ analyze basedir destination override unpackArchives filters = do
     FoundSome someProjects -> case destination of
       OutputStdout -> logStdout . pretty . decodeUtf8 . Aeson.encode . buildResult $ NE.toList someProjects
       UploadScan apiOpts metadata -> do
-        revision <- mergeOverride override <$> inferProject (unBaseDir basedir)
+        revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
+        saveRevision revision
 
         logInfo ""
         logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
@@ -214,7 +216,7 @@ analyze basedir destination override unpackArchives filters = do
           ]
         traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError uploadResult)
         -- Warn on contributor errors, never fail
-        void . Diag.recover . runExecIO $ tryUploadContributors (unBaseDir basedir) apiOpts (uploadLocator uploadResult)
+        void . Diag.recover . runExecIO $ tryUploadContributors basedir apiOpts (uploadLocator uploadResult)
 
 data CountedResult
   = NoneDiscovered

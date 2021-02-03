@@ -37,7 +37,7 @@ reportMain ::
   -> ReportType
   -> OverrideProject
   -> IO ()
-reportMain basedir apiOpts logSeverity timeoutSeconds reportType override = do
+reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType override = do
   -- TODO: refactor this code duplicate from `fossa test`
   {-
   Most of this module (almost everything below this line) has been copied
@@ -53,7 +53,7 @@ reportMain basedir apiOpts logSeverity timeoutSeconds reportType override = do
   void $ timeout timeoutSeconds $ withLogger logSeverity $ do
     result <- runDiagnostics . runReadFSIO $ do
       override' <- updateOverrideRevision override <$> readCachedRevision
-      revision <- mergeOverride override' <$> inferProject (unBaseDir basedir)
+      revision <- mergeOverride override' <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
