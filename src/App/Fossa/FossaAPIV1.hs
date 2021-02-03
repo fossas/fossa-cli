@@ -299,7 +299,7 @@ data Organization = Organization
 instance FromJSON Organization where
   parseJSON = withObject "Organization" $ \obj ->
     Organization <$> obj .: "organizationId"
-                 <*> obj .: "usesSAML"
+                 <*> obj .:? "usesSAML" .!= False
 
 organizationEndpoint :: Url scheme -> Url scheme
 organizationEndpoint baseurl = baseurl /: "api" /: "cli" /: "organization"
