@@ -10,11 +10,16 @@ builds:
     goarch:
       - amd64
       - arm64
+      - mips64le
     ignore:
       - goos: windows
         goarch: arm64
       - goos: darwin
         goarch: arm64
+      - goos: windows
+        goarch: mips64le
+      - goos: darwin
+        goarch: mips64le
     ldflags: -extldflags "-static" -s -w
       -X github.com/fossas/fossa-cli/cmd/fossa/version.version={{.Version}}
       -X github.com/fossas/fossa-cli/cmd/fossa/version.commit={{.Commit}}
