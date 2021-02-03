@@ -40,8 +40,7 @@ testMain ::
 testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
   _ <- timeout timeoutSeconds . withLogger logSeverity . runExecIO $ do
     result <- runDiagnostics . runReadFSIO $ do
-      override' <- updateOverrideRevision override <$> readCachedRevision 
-      revision <- mergeOverride override' <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
+      revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
