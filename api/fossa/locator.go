@@ -3,6 +3,7 @@ package fossa
 import (
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/apex/log"
@@ -64,12 +65,13 @@ func (l Locator) URL() string {
 
 	project := l.Project
 
+	org, err := GetOrganization()
+	if err != nil {
+		log.Warnf("Could not get Organization info while constructing locator")
+	}
+
 	if l.Fetcher == "archive" {
-		orgID, err := GetOrganizationID()
-		if err != nil {
-			log.Warnf("Could not get OrganizationID while constructing locator")
-		}
-		project = orgID + "/" + project
+		project = strconv.Itoa(org.OrganizationID) + "/" + project
 	}
 
 	url, err := url.Parse(
@@ -82,7 +84,24 @@ func (l Locator) URL() string {
 	if err != nil {
 		log.Fatalf("Invalid FOSSA URL: %s", err.Error())
 	}
+
+	if org.UsesSAML {
+		url = SamlURL(*url, org)
+	}
+
 	return server.ResolveReference(url).String()
+}
+
+// SamlURL constructs a SAML redirect URL for a given FOSSA URL
+func SamlURL(uri url.URL, org Organization) *url.URL {
+	samlBase, err := url.Parse("/account/saml/" + strconv.Itoa(org.OrganizationID))
+	if err != nil {
+		log.Fatalf("Invalid SAML URL construction: %s", err.Error())
+	}
+	q := make(url.Values)  // Empty query builder
+	q.Add("next", uri.EscapedPath())
+	samlBase.RawQuery = q.Encode()
+	return samlBase
 }
 
 // ReportURL provides a formatted URL.
