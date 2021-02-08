@@ -4,7 +4,8 @@ module App.Fossa.Container.Analyze
   )
 where
 
-import App.Fossa.Analyze (ScanDestination (..), fossaProjectUrl)
+import App.Fossa.Analyze (ScanDestination (..))
+import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Container (ImageText (..), runSyft, toContainerScan, extractRevision)
 import App.Fossa.FossaAPIV1 (uploadContainerScan)
 import App.Types (OverrideProject (..), ProjectRevision (..))
@@ -14,7 +15,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Logger
-import Fossa.API.Types (ApiOpts (..))
+import Srclib.Types (parseLocator)
 
 analyzeMain :: ScanDestination -> Severity -> OverrideProject -> ImageText -> IO ()
 analyzeMain scanDestination logSeverity override image = withLogger logSeverity $ do
@@ -44,7 +45,8 @@ analyze scanDestination override image = do
       logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
       locator <- uploadContainerScan apiOpts projectMeta containerScan
       logInfo "Container Analysis successfully uploaded!"
+      buildUrl <- getFossaBuildUrl revision apiOpts $ parseLocator locator
       logInfo "View FOSSA Report:"
-      logInfo ("  " <> pretty (fossaProjectUrl (apiOptsUri apiOpts) locator revision))
+      logInfo ("  " <> pretty buildUrl)
       pure ()
 

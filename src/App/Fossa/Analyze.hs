@@ -1,4 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -8,7 +7,6 @@ module App.Fossa.Analyze
   , ScanDestination(..)
   , UnpackArchives(..)
   , discoverFuncs
-  , fossaProjectUrl
   ) where
 
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
@@ -26,7 +24,6 @@ import Control.Effect.Lift (sendIO)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
-import Data.ByteString (ByteString)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_, for_)
 import Data.List (isInfixOf, stripPrefix)
@@ -34,7 +31,6 @@ import qualified Data.List.NonEmpty as NE
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Text (Text)
-import qualified Data.Text.Encoding as TE
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
@@ -44,11 +40,10 @@ import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
 import Fossa.API.Types (ApiOpts(..))
-import Network.HTTP.Types (urlEncode)
 import Path
 import Path.IO (makeRelative)
 import qualified Srclib.Converter as Srclib
-import Srclib.Types (Locator (..), parseLocator)
+import Srclib.Types (parseLocator)
 import qualified Strategy.Bundler as Bundler
 import qualified Strategy.Cargo as Cargo
 import qualified Strategy.Carthage as Carthage
@@ -77,8 +72,6 @@ import qualified Strategy.RPM as RPM
 import qualified Strategy.Scala as Scala
 import qualified Strategy.Yarn as Yarn
 import System.Exit (exitFailure)
-import Text.URI (URI)
-import qualified Text.URI as URI
 import Types
 import VCS.Git (fetchGitContributors)
 import Data.Functor (void)
@@ -282,23 +275,6 @@ tryUploadContributors ::
 tryUploadContributors baseDir apiOpts locator = do
   contributors <- fetchGitContributors baseDir
   uploadContributors apiOpts locator contributors
-
-fossaProjectUrl :: URI -> Text -> ProjectRevision -> Text
-fossaProjectUrl baseUrl rawLocator revision = URI.render baseUrl <> "projects/" <> encodedProject <> buildSelector
-  where
-    Locator{locatorFetcher, locatorProject} = parseLocator rawLocator
-
-    underBS :: (ByteString -> ByteString) -> Text -> Text
-    underBS f = TE.decodeUtf8 . f . TE.encodeUtf8
-    urlEncode' = underBS (urlEncode True)
-
-    encodedProject = urlEncode' (locatorFetcher <> "+" <> locatorProject)
-    encodedRevision = urlEncode' $ projectRevision revision
-    -- We default to master because core does, and we need a branch to allow us to 
-    -- create links directly to builds.  If this changes, then a core change should
-    -- be made allowing a link to a known revision on an unknown default branch.
-    encodedBranch = urlEncode' . fromMaybe "master" $ projectBranch revision
-    buildSelector = "/refs/branch/" <> encodedBranch <> "/" <> encodedRevision
 
 buildResult :: [ProjectResult] -> Aeson.Value
 buildResult projects = Aeson.object
