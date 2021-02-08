@@ -478,7 +478,7 @@ func tarballUpload(options UploadTarballOptions, tarball *os.File, hash []byte) 
 
 	parameters := url.Values{}
 	if options.Title != "" {
-		parameters.Add("title", options.UploadOptions.Team)
+		parameters.Add("title", options.Title)
 	}
 	if options.IsDependency {
 		parameters.Add("dependency", "true")
