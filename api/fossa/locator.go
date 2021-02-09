@@ -96,7 +96,7 @@ func (l Locator) URL() string {
 func SamlURL(uri url.URL, org Organization) *url.URL {
 	samlBase, err := url.Parse("/account/saml/" + strconv.Itoa(org.OrganizationID))
 	if err != nil {
-		log.Fatalf("Invalid SAML URL construction: %s", err.Error())
+		log.Warnf("Invalid SAML URL construction: %s", err.Error())
 	}
 	q := make(url.Values)  // Empty query builder
 	q.Add("next", uri.EscapedPath())
