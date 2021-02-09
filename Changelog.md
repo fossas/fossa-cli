@@ -1,3 +1,6 @@
+# v2.5.0
+- Add container analysis toolchain
+
 # v2.4.11
 
 - Fixes for a couple of issues that caused analysis failures during upload ([#187](https://github.com/fossas/spectrometer/pull/187)/[#188](https://github.com/fossas/spectrometer/pull/188))
