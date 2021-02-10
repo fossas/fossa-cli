@@ -43,6 +43,7 @@ func Run(ctx *cli.Context) error {
 		Name:            config.Project(),
 		Revision:        config.Revision(),
 		Directory:       dir,
+		Title:           config.Title(),
 		LicenseScanOnly: false,
 		IsDependency:    false,
 		Upload:          true,
