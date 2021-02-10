@@ -57,6 +57,34 @@ func New(dir string) (Resolver, error) {
 	return resolver, nil
 }
 
+// Return the "module path" from a go.mod file
+//
+// A file containing:
+//
+//     module example.com/foo
+//
+// Returns "example.com/foo"
+func ModulePath(modFile string) (string, error) {
+	mod, err := files.Read(modFile)
+	if err != nil {
+		return "", err
+	}
+
+	for _, line := range strings.Split(string(mod), "\n") {
+		trimLine := strings.TrimSpace(line)
+		splitLine := strings.Split(trimLine, " ")
+
+		if len(splitLine) < 2 {
+			continue
+		}
+
+		if splitLine[0] == "module" {
+			return splitLine[1], nil
+		}
+	}
+	return "", errors.New("no \"module\" directive found in go.mod")
+}
+
 // ModGraph returns the dependencies found in a `go.mod` file.
 // We cannot resolve a graph so we make all dependencies direct.
 func ModGraph(filename string) (graph.Deps, error) {

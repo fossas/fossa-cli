@@ -54,6 +54,13 @@ func TestResolver(t *testing.T) {
 	assert.Equal(t, buildtools.ErrNoRevisionForPackage, err)
 }
 
+func TestModulePath(t *testing.T) {
+	modPath, err := gomodules.ModulePath("testdata/go.mod")
+	assert.NoError(t, err)
+
+	assert.Equal(t, "test/package", modPath)
+}
+
 func TestGoModGraph(t *testing.T) {
 	depGraph, err := gomodules.ModGraph("testdata/go.mod")
 	assert.NoError(t, err)

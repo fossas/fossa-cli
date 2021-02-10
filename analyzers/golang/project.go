@@ -1,9 +1,12 @@
 package golang
 
 import (
+	"path/filepath"
+
 	"github.com/apex/log"
 
 	"github.com/fossas/fossa-cli/analyzers/golang/resolver"
+	"github.com/fossas/fossa-cli/buildtools/gomodules"
 	"github.com/fossas/fossa-cli/vcs"
 )
 
@@ -73,16 +76,29 @@ func (a *Analyzer) Project(pkg string) (Project, error) {
 		return Project{}, err
 	}
 
-	// Find the nearest VCS repository.
-	_, repoRoot, err := vcs.Nearest(dir)
-	if err != nil {
-		return Project{}, err
-	}
+	var repoRoot string
+	var importPrefix string
+	if tool == "gomodules" {
+		// Gomodules forms its own "GOPATH root", so we use that for the project,
+		// instead of determining one from VCS + system GOPATH
+		repoRoot = dir
+		importPrefix, err = gomodules.ModulePath(filepath.Join(manifestDir, "go.mod"))
 
-	// Compute the project import path prefix.
-	importPrefix, err := ImportPath(repoRoot)
-	if err != nil {
-		return Project{}, err
+		if err != nil {
+			return Project{}, err
+		}
+	} else {
+		// Find the nearest VCS repository.
+		_, repoRoot, err = vcs.Nearest(dir)
+		if err != nil {
+			return Project{}, err
+		}
+
+		// Compute the project import path prefix.
+		importPrefix, err = ImportPath(repoRoot)
+		if err != nil {
+			return Project{}, err
+		}
 	}
 
 	// Cache the computed project.
