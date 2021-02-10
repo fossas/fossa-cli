@@ -169,3 +169,16 @@ func TestURL(t *testing.T) {
 	expected := "https://app.fossa.com/projects/git+git@github.com:fossas%2Ffossa-cli.git/refs/branch/master/SHAVALUE"
 	assert.Equal(t, stringified, expected)
 }
+
+func TestSamlURL(t *testing.T) {
+	fossa.MockOrgID = "3000"
+	fossa.MockOrgSAML = true
+	git := fossa.Locator{
+		Fetcher: "git",
+		Project: "git@github.com:fossas/spectrometer.git",
+		Revision: "64b49c2cfcb48fa9b3c188990bd31dc5ffa00126",
+	}
+	stringified := git.URL()
+	expected := "https://app.fossa.com/account/saml/3000?next=%2Fprojects%2Fgit%2Bgit%40github.com%3Afossas%252Fspectrometer.git%2Frefs%2Fbranch%2Fmaster%2F64b49c2cfcb48fa9b3c188990bd31dc5ffa00126"
+	assert.Equal(t, expected, stringified)
+}
