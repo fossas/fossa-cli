@@ -108,7 +108,7 @@ jobs:
       - run:
           name: Run FOSSA license check
           command: |
-            fossa test --debug > $ARTIFACTS/fossa-test-stdout 2> $ARTIFACTS/fossa-test-stderr
+            fossa test --timeout 1500 --debug > $ARTIFACTS/fossa-test-stdout 2> $ARTIFACTS/fossa-test-stderr
       - run:
           name: Save artifacts
           command: |
