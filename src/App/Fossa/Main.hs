@@ -163,7 +163,7 @@ opts =
     <*> uriOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL (default: https://app.fossa.com)" <> value [uri|https://app.fossa.com|])
     <*> optional (strOption (long "project" <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
     <*> optional (strOption (long "revision" <> help "this repository's current revision hash (default: VCS hash HEAD)"))
-    <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authenticaion key (default: FOSSA_API_KEY from env)"))
+    <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
     <*> (commands <|> hiddenCommands)
     <**> infoOption (T.unpack fullVersionDescription) (long "version" <> short 'V' <> help "show version text")
     <**> helper
