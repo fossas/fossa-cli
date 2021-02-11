@@ -166,7 +166,6 @@ workflows:
           requires:
             - unit-test
             - integration-test
-            - end-to-end-test
             - installer-test
           filters:
             branches:
