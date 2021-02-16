@@ -20,7 +20,7 @@ setupPyInput =
                                    , Version OpLt   "2.0.0"
                                    ]) Nothing
   , NameReq "pkgTwo" Nothing Nothing Nothing
-  , UrlReq "pkgThree" Nothing [uri|https://example.com/|] Nothing
+  , UrlReq "pkgThree" Nothing [uri|https://example.com|] Nothing
   ]
 
 expected :: Graphing Dependency
@@ -43,7 +43,7 @@ expected = run . evalGrapher $ do
                       }
   direct $ Dependency { dependencyType = PipType
                       , dependencyName = "pkgThree"
-                      , dependencyVersion = Just (CURI "https://example.com/")
+                      , dependencyVersion = Just (CURI "https://example.com")
                       , dependencyLocations = []
                       , dependencyEnvironments = []
                       , dependencyTags = M.empty
