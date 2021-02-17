@@ -46,9 +46,16 @@ import Text.URI.QQ (uri)
 windowsOsName :: String
 windowsOsName = "mingw32"
 
+mainPrefs :: ParserPrefs
+mainPrefs = prefs $ mconcat 
+  [ helpShowGlobals,
+    showHelpOnError,
+    subparserInline 
+  ]
+
 appMain :: IO ()
 appMain = do
-  CmdOptions {..} <- customExecParser (prefs (showHelpOnError <> subparserInline)) (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
+  CmdOptions {..} <- customExecParser mainPrefs (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
   let logSeverity = bool SevInfo SevDebug optDebug
 
   maybeApiKey <- checkAPIKey optAPIKey
@@ -166,7 +173,6 @@ opts =
     <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
     <*> (commands <|> hiddenCommands)
     <**> infoOption (T.unpack fullVersionDescription) (long "version" <> short 'V' <> help "show version text")
-    <**> helper
 
 commands :: Parser Command
 commands =
@@ -211,7 +217,7 @@ commands =
 
 hiddenCommands :: Parser Command
 hiddenCommands =
-  hsubparser
+  subparser
     ( internal
         <> command
           "init"
