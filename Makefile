@@ -1,3 +1,5 @@
+BIN=$(shell go env GOPATH)/bin
+
 ## Build tools.
 GO_BINDATA=$(BIN)/go-bindata
 GENNY=$(BIN)/genny

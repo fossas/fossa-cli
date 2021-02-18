@@ -51,7 +51,6 @@ jobs:
           name: Remove Go build tools
           command: |
             rm $(which go)
-            rm $(which dep)
       - run:
           name: Run unit tests
           command: |
