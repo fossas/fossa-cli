@@ -1,9 +1,6 @@
-# Makefile variables.
-SHELL=/bin/bash -o pipefail
 BIN=$(shell go env GOPATH)/bin
 
 ## Build tools.
-DEP=$(BIN)/dep
 GO_BINDATA=$(BIN)/go-bindata
 GENNY=$(BIN)/genny
 GOLANGCI_LINT=$(BIN)/golangci-lint
@@ -24,9 +21,6 @@ LDFLAGS:=-ldflags '-extldflags "-static" -X github.com/fossas/fossa-cli/cmd/foss
 all: build
 
 # Installing tools.
-$(DEP):
-	curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-
 $(GO_BINDATA):
 	go get -u -v github.com/go-bindata/go-bindata/...
 
@@ -39,24 +33,22 @@ $(GOLANGCI_LINT):
 $(GO_JUNIT_REPORT):
 	go get -u -v github.com/jstemmer/go-junit-report
 
-$(GORELEASER): $(DEP)
+$(GORELEASER):
 	go get -d github.com/goreleaser/goreleaser
 	cd $$GOPATH/src/github.com/goreleaser/goreleaser
-	dep ensure -vendor-only
 	go install github.com/goreleaser/goreleaser
 
-$(GODOWNLOADER): $(DEP)
+$(GODOWNLOADER):
 	mkdir -p $$GOPATH/src/github.com/goreleaser
 	cd $$GOPATH/src/github.com/goreleaser && git clone https://github.com/goreleaser/godownloader
-	cd $$GOPATH/src/github.com/goreleaser/godownloader && dep ensure
 	go install github.com/goreleaser/godownloader
 
 # Building the CLI.
 .PHONY: build
 build: $(BIN)/fossa
 
-$(BIN)/fossa: $(GO_BINDATA) $(GENNY) $(DEP) $(shell find . -name *.go)
-	dep check
+$(BIN)/fossa: $(GO_BINDATA) $(GENNY) $(shell find . -name *.go)
+	go mod download
 	go generate ./...
 	go build -o $@ $(GCFLAGS) $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
 
@@ -94,10 +86,6 @@ dev-osx: docker-$(IMAGE)
 .PHONY: lint
 lint: $(GOLANGCI_LINT)
 	golangci-lint run
-
-.PHONY: vendor
-vendor: $(DEP)
-	$< ensure -v
 
 .PHONY: clean
 clean:

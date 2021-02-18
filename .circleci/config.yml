@@ -36,14 +36,14 @@ jobs:
             # by taking the latest cache.
             # See https://circleci.com/docs/2.0/caching/#restoring-cache and
             # https://discuss.circleci.com/t/circle-2-0-caching-is-too-limited-to-be-very-useful/11694/12.
-            - v5-{{ checksum "Gopkg.lock" }}-{{ .Branch }}-{{ .Revision }}
-            - v5-{{ checksum "Gopkg.lock" }}-{{ .Branch }}
-            - v5-{{ checksum "Gopkg.lock" }}
+            - v5-{{ checksum "go.mod" }}-{{ .Branch }}-{{ .Revision }}
+            - v5-{{ checksum "go.mod" }}-{{ .Branch }}
+            - v5-{{ checksum "go.mod" }}
       - run:
           name: Compile CLI
           command: make
       - save_cache:
-          key: v5-{{ checksum "Gopkg.lock" }}-{{ .Branch }}-{{ .Revision }}
+          key: v5-{{ checksum "go.mod" }}-{{ .Branch }}-{{ .Revision }}
           paths:
             - ~/.cache/go-build
             - /go/bin
@@ -51,7 +51,6 @@ jobs:
           name: Remove Go build tools
           command: |
             rm $(which go)
-            rm $(which dep)
       - run:
           name: Run unit tests
           command: |
