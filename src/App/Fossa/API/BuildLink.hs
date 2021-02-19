@@ -2,7 +2,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.API.BuildLink
-  ( getFossaBuildUrl,
+  ( getBuildURLWithOrg,
+    getFossaBuildUrl,
     samlUrlPath,
   )
 where
@@ -20,7 +21,7 @@ import Srclib.Types (Locator (..))
 import qualified Text.URI as URI
 
 fossaProjectUrlPath :: Locator -> ProjectRevision -> Text
-fossaProjectUrlPath Locator {..} ProjectRevision {..} = "projects/" <> encodedProject <> buildSelector
+fossaProjectUrlPath Locator {..} ProjectRevision {..} = "/projects/" <> encodedProject <> buildSelector
   where
     encodedProject = urlEncode' (locatorFetcher <> "+" <> locatorProject)
     encodedRevision = urlEncode' $ fromMaybe projectRevision locatorRevision
@@ -33,17 +34,20 @@ fossaProjectUrlPath Locator {..} ProjectRevision {..} = "projects/" <> encodedPr
 getFossaBuildUrl :: (Has Diagnostics sig m, Has (Lift IO) sig m) => ProjectRevision -> ApiOpts -> Locator -> m Text
 getFossaBuildUrl revision apiopts locator = do
   maybeOrg <- recover $ getOrganization apiopts
+  pure $ getBuildURLWithOrg maybeOrg revision apiopts locator
 
+getBuildURLWithOrg :: Maybe Organization -> ProjectRevision -> ApiOpts -> Locator -> Text
+getBuildURLWithOrg maybeOrg revision apiopts locator = do
   let baseURI = apiOptsUri apiopts
       relUriPath = case maybeOrg of
         Just org | orgUsesSAML org -> samlUrlPath org locator revision
         _ -> fossaProjectUrlPath locator revision
-  pure (URI.render baseURI <> relUriPath)
+  URI.render baseURI <> relUriPath
 
 samlUrlPath :: Organization -> Locator -> ProjectRevision -> Text
-samlUrlPath Organization {organizationId} locator revision = "account/saml/" <> showT organizationId <> "?" <> opts
+samlUrlPath Organization {organizationId} locator revision = "/account/saml/" <> showT organizationId <> "?" <> opts
   where
-    opts = "next=%2F" <> urlEncode' redirectPath
+    opts = "next=" <> urlEncode' redirectPath
     redirectPath = fossaProjectUrlPath locator revision
 
 urlEncode' :: Text -> Text

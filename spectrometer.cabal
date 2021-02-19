@@ -46,7 +46,7 @@ common deps
     , http-types                   ^>=0.12.3
     , lzma-conduit                 ^>=1.2.1
     , megaparsec                   ^>=8.0
-    , modern-uri                   ^>=0.3.1
+    , modern-uri                   ^>=0.3.4
     , mtl                          ^>=2.2.2
     , optparse-applicative         >=0.15     && <0.17
     , path                         ^>=0.8

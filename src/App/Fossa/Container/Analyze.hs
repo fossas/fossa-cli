@@ -7,12 +7,13 @@ where
 import App.Fossa.Analyze (ScanDestination (..))
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Container (ImageText (..), runSyft, toContainerScan, extractRevision)
-import App.Fossa.FossaAPIV1 (uploadContainerScan)
+import App.Fossa.FossaAPIV1 (UploadResponse(uploadError, uploadLocator), uploadContainerScan)
 import App.Types (OverrideProject (..), ProjectRevision (..))
 import Control.Carrier.Diagnostics
 import Control.Effect.Lift (Lift)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
+import Data.Foldable (traverse_)
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Logger
 import Srclib.Types (parseLocator)
@@ -43,10 +44,12 @@ analyze scanDestination override image = do
       let revision = extractRevision override containerScan
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
-      locator <- uploadContainerScan apiOpts projectMeta containerScan
-      logInfo "Container Analysis successfully uploaded!"
-      buildUrl <- getFossaBuildUrl revision apiOpts $ parseLocator locator
+
+      resp <- uploadContainerScan apiOpts projectMeta containerScan
+
+      buildUrl <- getFossaBuildUrl revision apiOpts . parseLocator $ uploadLocator resp
       logInfo "View FOSSA Report:"
       logInfo ("  " <> pretty buildUrl)
-      pure ()
+      -- Report non-critical errors
+      traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
 
