@@ -10,7 +10,6 @@ module Strategy.Composer
 where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
-import Control.Monad.IO.Class (MonadIO)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
@@ -26,10 +25,10 @@ import Graphing (Graphing)
 import Path
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [ComposerProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [ComposerProject]
 findProjects = walk' $ \dir _ files -> do
   case findFileNamed "composer.lock" files of
     Nothing -> pure ([], WalkContinue)
@@ -42,12 +41,12 @@ findProjects = walk' $ \dir _ files -> do
 
       pure ([project], WalkContinue)
 
-mkProject :: ComposerProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => ComposerProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "composer",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = composerDir project,
       projectLicenses = pure []
     }

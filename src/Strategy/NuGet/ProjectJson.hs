@@ -13,7 +13,6 @@ module Strategy.NuGet.ProjectJson
 
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics
-import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson.Types
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
@@ -27,10 +26,10 @@ import qualified Graphing
 import Path
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [ProjectJsonProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [ProjectJsonProject]
 findProjects = walk' $ \_ _ files -> do
   case findFileNamed "project.json" files of
     Nothing -> pure ([], WalkContinue)
@@ -41,12 +40,12 @@ newtype ProjectJsonProject = ProjectJsonProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: ProjectJsonProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => ProjectJsonProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "projectjson",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = parent $ projectJsonFile project,
       projectLicenses = pure []
     }

@@ -20,13 +20,13 @@ common lang
     -Wincomplete-record-updates -Wmissing-home-modules
     -Wmissing-export-lists -Wredundant-constraints
 
+-- TODO: base16-bytestring isn't a direct dep, but we need to add version bounds because cpio-conduit fails to compile with a newer version. Remove the dependency on base16-bytestring once we fix or bump cpio-conduit
 common deps
   build-depends:
     , aeson                        ^>=1.5.2.0
     , algebraic-graphs             ^>=0.5
     , async                        ^>=2.2.2
     , attoparsec                   ^>=0.13.2.3
-    -- TODO: This fixes a bug in cpio-conduit that prevents it from compiling. Remove this once we fix or bump cpio-conduit
     , base16-bytestring            ^>=0.1.1.7
     , bytestring                   ^>=0.10.8
     , codec-rpm                    ^>=0.2.2
@@ -63,6 +63,7 @@ common deps
     , th-lift-instances            ^>=0.1.17
     , time                         >=1.9      && <1.11
     , tomland                      ^>=1.3.0.0
+    , transformers
     , typed-process                ^>=0.2.6
     , unordered-containers         ^>=0.2.10
     , vector                       ^>=0.12.0.3
@@ -114,15 +115,21 @@ library
     App.Util
     App.Version
     App.Version.TH
+    Control.Carrier.AtomicState
     Control.Carrier.Diagnostics
     Control.Carrier.Finally
     Control.Carrier.Output.IO
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
+    Control.Effect.AtomicState
     Control.Effect.Diagnostics
     Control.Effect.Finally
     Control.Effect.Output
     Control.Effect.Path
+    Control.Effect.Record
+    Control.Effect.Record.TH
+    Control.Effect.Replay
+    Control.Effect.Replay.TH
     Control.Effect.TaskPool
     Control.Exception.Extra
     Data.FileEmbed.Extra

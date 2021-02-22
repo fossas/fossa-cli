@@ -6,7 +6,6 @@ where
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import qualified Control.Effect.Diagnostics as Diag
-import Control.Monad.IO.Class
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
@@ -16,10 +15,10 @@ import qualified Strategy.Go.GopkgLock as GopkgLock
 import qualified Strategy.Go.GopkgToml as GopkgToml
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [GodepProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [GodepProject]
 findProjects = walk' $ \dir _ files -> do
   let gopkgToml = findFileNamed "Gopkg.toml" files
   let gopkgLock = findFileNamed "Gopkg.lock" files
@@ -41,12 +40,12 @@ data GodepProject = GodepProject
     godepLock :: Maybe (Path Abs File)
   }
 
-mkProject :: GodepProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => GodepProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "godep",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = godepDir project,
       projectLicenses = pure []
     }

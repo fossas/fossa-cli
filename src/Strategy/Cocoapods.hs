@@ -9,7 +9,6 @@ where
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import qualified Control.Effect.Diagnostics as Diag
-import Control.Monad.IO.Class
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing
@@ -18,10 +17,10 @@ import qualified Strategy.Cocoapods.Podfile as Podfile
 import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [CocoapodsProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CocoapodsProject]
 findProjects = walk' $ \dir _ files -> do
   let podfile = findFileNamed "Podfile" files
   let podfileLock = findFileNamed "Podfile.lock" files
@@ -44,12 +43,12 @@ data CocoapodsProject = CocoapodsProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: CocoapodsProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => CocoapodsProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "cocoapods",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = cocoapodsDir project,
       projectLicenses = pure []
     }

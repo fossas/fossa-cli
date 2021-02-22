@@ -13,7 +13,7 @@ import Path
 import Types
 import qualified Data.Set as S
 
-mkResult :: DiscoveredProject -> Graphing Dependency -> ProjectResult
+mkResult :: DiscoveredProject n -> Graphing Dependency -> ProjectResult
 mkResult project graph = ProjectResult
   { projectResultType = projectType project
   , projectResultPath = projectPath project

@@ -1,10 +1,22 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -28,6 +40,10 @@ module Effect.ReadFS
     doesFileExist,
     doesDirExist,
 
+    -- * Listing a directory
+    listDir,
+    listDir',
+
     -- * Parsing file contents
     readContentsParser,
     readContentsJson,
@@ -42,6 +58,10 @@ import Control.Algebra as X
 import Control.Applicative (Alternative)
 import Control.Effect.Diagnostics
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Record
+import Control.Effect.Record.TH (deriveRecordable)
+import Control.Effect.Replay
+import Control.Effect.Replay.TH (deriveReplayable)
 import qualified Control.Exception as E
 import Control.Monad ((<=<))
 import Control.Monad.IO.Class
@@ -55,6 +75,7 @@ import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc (pretty)
 import Data.Void (Void)
 import Data.Yaml (decodeEither', prettyPrintParseException)
+import GHC.Generics (Generic)
 import Parse.XML (FromXML, parseXML, xmlErrorPretty)
 import Path
 import qualified Path.IO as PIO
@@ -69,6 +90,7 @@ data ReadFS (m :: Type -> Type) k where
   DoesDirExist :: Path x Dir -> ReadFS m Bool
   ResolveFile' :: Path Abs Dir -> Text -> ReadFS m (Either ReadFSErr (Path Abs File))
   ResolveDir' :: Path Abs Dir -> Text -> ReadFS m (Either ReadFSErr (Path Abs Dir))
+  ListDir :: Path Abs Dir -> ReadFS m (Either ReadFSErr ([Path Abs Dir], [Path Abs File]))
 
 data ReadFSErr
   = -- | A file couldn't be read. file, err
@@ -77,13 +99,23 @@ data ReadFSErr
     FileParseError FilePath Text
   | -- | An IOException was thrown when resolving a file/directory
     ResolveError FilePath FilePath Text
-  deriving (Eq, Ord, Show)
+  | -- | An IOException was thrown when listing a directory
+    ListDirError FilePath Text
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ReadFSErr
+instance RecordableValue ReadFSErr
+instance FromJSON ReadFSErr
+instance ReplayableValue ReadFSErr
+$(deriveRecordable ''ReadFS)
+$(deriveReplayable ''ReadFS)
 
 instance ToDiagnostic ReadFSErr where
   renderDiagnostic = \case
     FileReadError path err -> "Error reading file " <> pretty path <> " : " <> pretty err
     FileParseError path err -> "Error parsing file " <> pretty path <> " : " <> pretty err
     ResolveError base rel err -> "Error resolving a relative file. base: " <> pretty base <> " . relative: " <> pretty rel <> " . error: " <> pretty err
+    ListDirError dir err -> "Error listing directory contents at " <> pretty dir <> " : " <> pretty err
 
 -- | Read file contents into a strict 'ByteString'
 readContentsBS' :: Has ReadFS sig m => Path b File -> m (Either ReadFSErr ByteString)
@@ -124,6 +156,12 @@ doesFileExist path = send (DoesFileExist path)
 -- | Check whether a directory exists
 doesDirExist :: Has ReadFS sig m => Path b Dir -> m Bool
 doesDirExist path = send (DoesDirExist path)
+
+listDir' :: Has ReadFS sig m => Path Abs Dir -> m (Either ReadFSErr ([Path Abs Dir], [Path Abs File]))
+listDir' = send . ListDir
+
+listDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m ([Path Abs Dir], [Path Abs File])
+listDir dir = fromEither =<< listDir' dir
 
 type Parser = Parsec Void Text
 
@@ -183,6 +221,9 @@ instance Has (Lift IO) sig m => Algebra (ReadFS :+: sig) (ReadFSIOC m) where
         pure (res <$ ctx)
       L (ResolveDir' dir path) -> do
         res <- catchingIO (PIO.resolveDir dir (T.unpack path)) (ResolveError (toFilePath dir) (T.unpack path))
+        pure (res <$ ctx)
+      L (ListDir dir) -> do
+        res <- catchingIO (PIO.listDir dir) (ListDirError (toFilePath dir))
         pure (res <$ ctx)
       -- NB: these never throw
       L (DoesFileExist file) -> (<$ ctx) <$> sendIO (PIO.doesFileExist file)

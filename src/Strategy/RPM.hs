@@ -15,7 +15,6 @@ where
 
 import Control.Effect.Diagnostics
 import Control.Monad (when)
-import Control.Monad.IO.Class (MonadIO)
 import Data.List (isSuffixOf)
 import qualified Data.Map.Strict as M
 import Data.Maybe (mapMaybe, catMaybes)
@@ -53,10 +52,10 @@ data Dependencies
       }
   deriving (Eq, Ord, Show)
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [RpmProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [RpmProject]
 findProjects = walk' $ \dir _ files -> do
   let specs = filter (\f -> ".spec" `isSuffixOf` fileName f) files
 
@@ -70,12 +69,12 @@ data RpmProject = RpmProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: RpmProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => RpmProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "rpm",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = rpmDir project,
       projectLicenses = pure []
     }

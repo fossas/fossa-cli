@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.ListTargets
@@ -18,13 +19,16 @@ import Effect.ReadFS
 import Path (toFilePath)
 import Path.IO (makeRelative)
 import Types (BuildTarget (..), DiscoveredProject (..))
+import qualified Control.Carrier.Diagnostics as Diag
+
+type DummyM = ReadFSIOC (ExecIOC (Diag.DiagnosticsC IO))
 
 listTargetsMain :: BaseDir -> IO ()
 listTargetsMain (BaseDir basedir) = do
   capabilities <- getNumCapabilities
 
   withLogger SevInfo . runFinally . withTaskPool capabilities updateProgress . runReadFSIO . runExecIO $ do
-    withDiscoveredProjects discoverFuncs False basedir $ \project -> do
+    withDiscoveredProjects discoverFuncs False basedir $ \(project :: DiscoveredProject DummyM) -> do
       let maybeRel = makeRelative basedir (projectPath project)
 
       case maybeRel of

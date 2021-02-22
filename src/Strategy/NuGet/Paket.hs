@@ -13,7 +13,6 @@ module Strategy.NuGet.Paket
 
 import Control.Effect.Diagnostics
 import Control.Monad (guard)
-import Control.Monad.IO.Class (MonadIO)
 import qualified Data.Char as C
 import Data.Foldable (traverse_)
 import Data.Functor (void)
@@ -35,10 +34,10 @@ import Types
 
 type Parser = Parsec Void Text
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [PaketProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PaketProject]
 findProjects = walk' $ \_ _ files -> do
   case findFileNamed "paket.lock" files of
     Nothing -> pure ([], WalkContinue)
@@ -49,12 +48,12 @@ newtype PaketProject = PaketProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: PaketProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => PaketProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "paket",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = parent $ paketLock project,
       projectLicenses = pure []
     }

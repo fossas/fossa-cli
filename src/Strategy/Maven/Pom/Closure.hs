@@ -11,7 +11,6 @@ import qualified Algebra.Graph.AdjacencyMap.Algorithm as AM
 import Control.Algebra
 import Control.Carrier.State.Strict
 import Control.Effect.Diagnostics
-import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
 import Data.Map.Strict (Map)
@@ -26,13 +25,13 @@ import qualified Path.IO as PIO
 import Strategy.Maven.Pom.PomFile
 import Strategy.Maven.Pom.Resolver
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, MonadIO m) => Path Abs Dir -> m [MavenProjectClosure]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects basedir = do
   pomFiles <- findPomFiles basedir
   globalClosure <- buildGlobalClosure pomFiles
   pure (buildProjectClosures basedir globalClosure)
 
-findPomFiles :: (Has ReadFS sig m, MonadIO m) => Path Abs Dir -> m [Path Abs File]
+findPomFiles :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Path Abs File]
 findPomFiles dir = execState @[Path Abs File] [] $
   flip walk dir $ \_ _ files -> do
     let poms = filter (\file -> "pom.xml" `isSuffixOf` fileName file || ".pom" `isSuffixOf` fileName file) files

@@ -7,7 +7,6 @@ module Strategy.Rebar3
 where
 
 import Control.Effect.Diagnostics (Diagnostics)
-import Control.Monad.IO.Class
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
@@ -16,10 +15,10 @@ import Path
 import qualified Strategy.Erlang.Rebar3Tree as Rebar3Tree
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [RebarProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [RebarProject]
 findProjects = walk' $ \dir _ files -> do
   case findFileNamed "rebar.config" files of
     Nothing -> pure ([], WalkContinue)
@@ -30,12 +29,12 @@ newtype RebarProject = RebarProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: RebarProject -> DiscoveredProject
+mkProject :: (Has Exec sig n, Has ReadFS sig n, Has Diagnostics sig n) => RebarProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "rebar3",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = rebarDir project,
       projectLicenses = pure []
     }

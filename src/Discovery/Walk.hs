@@ -14,14 +14,18 @@ module Discovery.Walk
 where
 
 import Control.Carrier.Writer.Church
+import Control.Effect.Diagnostics
 import Control.Monad.Trans
-import Control.Carrier.Lift ( runM, LiftC )
+import Control.Monad.Trans.Maybe
 import Data.Foldable (find)
+import Data.Functor (void)
+import Data.List ((\\))
 import Data.Maybe (mapMaybe)
+import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
+import Effect.ReadFS
 import Path
-import Path.IO
 
 data WalkStep
   = -- | Continue walking subdirectories
@@ -41,7 +45,7 @@ data WalkStep
 -- You can inspect the names of files and directories with 'dirName' and
 -- 'fileName'
 walk ::
-  MonadIO m =>
+  (Has ReadFS sig m, Has Diagnostics sig m) =>
   (Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m WalkStep) ->
   Path Abs Dir ->
   m ()
@@ -59,23 +63,69 @@ walk f = walkDir $ \dir subdirs files -> do
     WalkStop -> pure WalkFinish
 
 walk' ::
-  forall m o.
-  (MonadIO m, Monoid o) =>
+  forall o sig m.
+  (Has ReadFS sig m, Has Diagnostics sig m, Monoid o) =>
   (Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m (o, WalkStep)) ->
   Path Abs Dir ->
   m o
-walk' f base = runM $ do
+walk' f base = do
   foo <- runWriter (\w a -> pure (w, a)) $ walk mangled base
   pure (fst foo)
-    where
-      mangled :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> WriterC o (LiftC m) WalkStep
-      mangled dir subdirs files = do
-        (res, step) <- lift $ lift $ f dir subdirs files
-        tell res
-        pure step
+  where
+    mangled :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> WriterC o m WalkStep
+    mangled dir subdirs files = do
+      (res, step) <- lift $ f dir subdirs files
+      tell res
+      pure step
 
 fileName :: Path a File -> String
 fileName = toFilePath . filename
 
 findFileNamed :: String -> [Path a File] -> Maybe (Path a File)
-findFileNamed name files = find (\f -> fileName f == name) files
+findFileNamed name = find (\f -> fileName f == name)
+
+-------------- Stolen from path-io; adapted to our own ReadFS effect
+
+walkDir ::
+  (Has ReadFS sig m, Has Diagnostics sig m) =>
+  -- | Handler (@dir -> subdirs -> files -> 'WalkAction'@)
+  (Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m (WalkAction Abs)) ->
+  -- | Directory where traversal begins
+  Path Abs Dir ->
+  m ()
+walkDir handler topdir =
+  void $
+    --makeAbsolute topdir >>= walkAvoidLoop S.empty
+    walkAvoidLoop S.empty topdir
+  where
+    walkAvoidLoop traversed curdir = do
+      mRes <- checkLoop traversed curdir
+      case mRes of
+        Nothing -> return $ Just ()
+        Just traversed' -> walktree traversed' curdir
+    walktree traversed curdir = do
+      (subdirs, files) <- listDir curdir
+      action <- handler curdir subdirs files
+      case action of
+        WalkFinish -> return Nothing
+        WalkExclude xdirs ->
+          case subdirs \\ xdirs of
+            [] -> return $ Just ()
+            ds ->
+              runMaybeT $
+                mapM_
+                  (MaybeT . walkAvoidLoop traversed)
+                  ds
+    checkLoop traversed dir = do
+      return $
+        if S.member dir traversed
+          then Nothing
+          else Just (S.insert dir traversed)
+
+data WalkAction b
+  = -- | Finish the entire walk altogether
+    WalkFinish
+  | -- | List of sub-directories to exclude from
+    -- descending
+    WalkExclude [Path b Dir]
+  deriving (Eq, Show)

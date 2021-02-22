@@ -9,7 +9,6 @@ where
 import Control.Carrier.Output.IO
 import Control.Effect.Diagnostics (Diagnostics)
 import qualified Control.Effect.Diagnostics as Diag
-import Control.Monad.IO.Class
 import Data.List (isInfixOf, isSuffixOf)
 import Discovery.Walk
 import Effect.ReadFS
@@ -19,10 +18,10 @@ import qualified Strategy.Python.ReqTxt as ReqTxt
 import qualified Strategy.Python.SetupPy as SetupPy
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [SetuptoolsProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [SetuptoolsProject]
 findProjects = walk' $ \dir _ files -> do
   let reqTxtFiles =
         filter
@@ -61,12 +60,12 @@ data SetuptoolsProject = SetuptoolsProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: SetuptoolsProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => SetuptoolsProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "setuptools",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = setuptoolsDir project,
       projectLicenses = pure []
     }

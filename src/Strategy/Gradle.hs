@@ -14,7 +14,6 @@ import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Path (withSystemTempDir)
-import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Aeson.Types (Parser, unexpected)
 import Data.ByteString (ByteString)
@@ -36,6 +35,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.Logger (Logger, logWarn)
+import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
 import Path
 import qualified System.FilePath as FP
@@ -55,18 +55,23 @@ gradleJsonDepsCmd baseCmd initScriptFilepath targets = Command
 
 discover ::
   ( Has (Lift IO) sig m,
-    MonadIO m,
+    Has ReadFS sig m,
+    Has Diagnostics sig m,
     Has Exec sig m,
-    Has Logger sig m
+    Has Logger sig m,
+
+    Has (Lift IO) rsig run,
+    Has Exec rsig run,
+    Has Diagnostics rsig run
   ) =>
   Path Abs Dir ->
-  m [DiscoveredProject]
+  m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
 pathToText :: Path ar fd -> Text
 pathToText = T.pack . toFilePath
 
-findProjects :: (Has Exec sig m, Has Logger sig m, MonadIO m) => Path Abs Dir -> m [GradleProject]
+findProjects :: (Has Exec sig m, Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [GradleProject]
 findProjects = walk' $ \dir _ files -> do
   case find (\f -> "build.gradle" `isPrefixOf` fileName f) files of
     Nothing -> pure ([], WalkContinue)
@@ -142,12 +147,12 @@ parseSubproject line =
     ("", _) -> Nothing -- no match
     (_, rest) -> Just $ T.takeWhile (/= '\'') rest
 
-mkProject :: GradleProject -> DiscoveredProject
+mkProject :: (Has Exec sig n, Has (Lift IO) sig n, Has Diagnostics sig n) => GradleProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "gradle",
       projectBuildTargets = S.map BuildTarget $ gradleProjects project,
-      projectDependencyGraph = runExecIO . getDeps project,
+      projectDependencyGraph = getDeps project,
       projectPath = gradleDir project,
       projectLicenses = pure []
     }

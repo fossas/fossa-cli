@@ -37,10 +37,10 @@ import Control.Carrier.Error.Either
 import Control.Carrier.Reader
 import Control.Carrier.Writer.Church
 import Control.Effect.Diagnostics as X
-import Control.Effect.Lift (sendIO, Lift)
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception (SomeException)
 import Control.Exception.Extra (safeCatch)
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Trans
 import Data.Functor (($>))
 import Data.Monoid (Endo (..))
 import Data.Text (Text)
@@ -50,6 +50,9 @@ import System.Exit (exitFailure)
 
 newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ReaderC [Text] (ErrorC SomeDiagnostic (WriterC (Endo [SomeDiagnostic]) m)) a}
   deriving (Functor, Applicative, Monad, MonadIO)
+
+instance MonadTrans DiagnosticsC where
+  lift = DiagnosticsC . lift . lift . lift
 
 data FailureBundle = FailureBundle
   { failureWarnings :: [SomeDiagnostic],

@@ -12,7 +12,6 @@ module Strategy.NuGet.PackagesConfig
   ) where
 
 import Control.Effect.Diagnostics
-import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (find)
 import qualified Data.Map.Strict as M
 import Data.Text (Text)
@@ -25,10 +24,10 @@ import Parse.XML
 import Path
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [PackagesConfigProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PackagesConfigProject]
 findProjects = walk' $ \_ _ files -> do
   case find (\f -> fileName f == "packages.config") files of
     Nothing -> pure ([], WalkContinue)
@@ -39,12 +38,12 @@ newtype PackagesConfigProject = PackagesConfigProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: PackagesConfigProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => PackagesConfigProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "packagesconfig",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = parent $ packagesConfigFile project,
       projectLicenses = pure []
     }

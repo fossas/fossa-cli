@@ -3,7 +3,6 @@ module Strategy.Yarn
   ) where
 
 import Control.Effect.Diagnostics
-import Control.Monad.IO.Class (MonadIO)
 import Discovery.Walk
 import Effect.ReadFS
 import qualified Graphing as G
@@ -12,10 +11,10 @@ import Types
 import Prelude
 import qualified Strategy.Node.YarnLock as YarnLock
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [YarnProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [YarnProject]
 findProjects = walk' $ \dir _ files -> do
   case findFileNamed "yarn.lock" files of
     Nothing -> pure ([], WalkSkipSome ["node_modules"])
@@ -28,12 +27,12 @@ findProjects = walk' $ \dir _ files -> do
 
       pure ([project], WalkSkipSome ["node_modules"])
 
-mkProject :: YarnProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => YarnProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "yarn",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = yarnDir project,
       projectLicenses = pure []
     }

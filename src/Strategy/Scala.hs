@@ -14,7 +14,7 @@ where
 
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Carrier.Diagnostics
-import Control.Monad.IO.Class (MonadIO)
+import Control.Effect.Lift
 import qualified Data.Map.Strict as M
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
@@ -32,18 +32,28 @@ import Strategy.Maven.Pom.PomFile (MavenCoordinate (..), Pom (..))
 import Strategy.Maven.Pom.Resolver (GlobalClosure (..), buildGlobalClosure)
 import Types
 
-discover :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, MonadIO m) => Path Abs Dir -> m [DiscoveredProject]
+discover ::
+  ( Has Exec sig m,
+    Has ReadFS sig m,
+    Has Logger sig m,
+    Has Diagnostics sig m,
+    Has (Lift IO) rsig run,
+    Has Diagnostics rsig run,
+    Has Exec rsig run,
+    Has ReadFS rsig run
+  ) =>
+  Path Abs Dir ->
+  m [DiscoveredProject run]
 discover dir = map (mkProject dir) <$> findProjects dir
 
 pathToText :: Path ar fd -> Text
 pathToText = T.pack . toFilePath
 
-findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, MonadIO m) => Path Abs Dir -> m [MavenProjectClosure]
+findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects = walk' $ \dir _ files -> do
   case findFileNamed "build.sbt" files of
     Nothing -> pure ([], WalkContinue)
     Just _ -> do
-
       projectsRes <-
         runDiagnostics
           . context ("getting sbt projects rooted at " <> pathToText dir)

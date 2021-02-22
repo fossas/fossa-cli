@@ -15,7 +15,6 @@ module Strategy.NuGet.PackageReference
 
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics
-import Control.Monad.IO.Class (MonadIO)
 import Data.Foldable (find)
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
@@ -32,10 +31,10 @@ import Types
 isPackageRefFile :: Path b File -> Bool
 isPackageRefFile file = any (\x -> x `L.isSuffixOf` fileName file) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [PackageReferenceProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PackageReferenceProject]
 findProjects = walk' $ \_ _ files -> do
   case find isPackageRefFile files of
     Nothing -> pure ([], WalkContinue)
@@ -46,12 +45,12 @@ newtype PackageReferenceProject = PackageReferenceProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: PackageReferenceProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => PackageReferenceProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "packagereference",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = parent $ packageReferenceFile project,
       projectLicenses = pure []
     }

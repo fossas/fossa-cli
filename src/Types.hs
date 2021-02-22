@@ -15,7 +15,6 @@ module Types
   , module DepTypes
   ) where
 
-import Control.Carrier.Diagnostics
 import Data.Aeson
 import Data.Set (Set)
 import Data.Text (Text)
@@ -24,12 +23,14 @@ import Graphing
 import Path
 
 -- TODO: results should be within a graph of build targets && eliminate SubprojectType
-data DiscoveredProject = DiscoveredProject
+-- | A project found during project discovery, parameterized by the monad
+-- used to perform dependency analysis
+data DiscoveredProject m = DiscoveredProject
   { projectType :: Text,
     projectPath :: Path Abs Dir,
     projectBuildTargets :: Set BuildTarget,
-    projectDependencyGraph :: Set BuildTarget -> DiagnosticsC IO (Graphing Dependency),
-    projectLicenses :: DiagnosticsC IO [LicenseResult]
+    projectDependencyGraph :: Set BuildTarget -> m (Graphing Dependency),
+    projectLicenses :: m [LicenseResult]
   }
 
 newtype BuildTarget = BuildTarget { unBuildTarget :: Text }

@@ -11,7 +11,6 @@ import qualified Codec.Compression.GZip as GZip
 import Control.Effect.Finally
 import Control.Effect.Lift
 import Control.Effect.TaskPool (TaskPool, forkTask)
-import Control.Monad.IO.Class (MonadIO)
 import qualified Data.ByteString.Lazy as BL
 import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
@@ -20,9 +19,11 @@ import Discovery.Walk
 import Path
 import qualified Path.IO as PIO
 import Prelude hiding (zip)
+import Control.Carrier.Diagnostics
+import Effect.ReadFS (ReadFS)
 
 -- Given a function to run over unarchived contents, unpack archives
-discover :: (Has (Lift IO) sig m, MonadIO m, Has Finally sig m, Has TaskPool sig m) => (Path Abs Dir -> m ()) -> Path Abs Dir -> m ()
+discover :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has TaskPool sig m) => (Path Abs Dir -> m ()) -> Path Abs Dir -> m ()
 discover go = walk $ \_ _ files -> do
   let tars = filter (\file -> ".tar" `isSuffixOf` fileName file) files
   traverse_ (\file -> forkTask $ withArchive tar file go) tars

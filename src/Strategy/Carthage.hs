@@ -12,7 +12,6 @@ module Strategy.Carthage
   ) where
 
 import Control.Effect.Diagnostics
-import Control.Monad.IO.Class (MonadIO)
 import Data.Char (isSpace)
 import Data.Foldable (for_, traverse_)
 import Data.Functor (void)
@@ -32,10 +31,10 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [CarthageProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CarthageProject]
 findProjects = walk' $ \dir _ files -> do
   case findFileNamed "Cartfile.resolved" files of
     Nothing -> pure ([], WalkContinue)
@@ -54,12 +53,12 @@ data CarthageProject = CarthageProject
   , carthageLock :: Path Abs File
   } deriving (Eq, Ord, Show)
 
-mkProject :: CarthageProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => CarthageProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "carthage",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = carthageDir project,
       projectLicenses = pure []
     }

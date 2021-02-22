@@ -7,7 +7,6 @@ module Strategy.Gomodules
 where
 
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
-import Control.Monad.IO.Class
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
@@ -17,10 +16,10 @@ import qualified Strategy.Go.GoList as GoList
 import qualified Strategy.Go.Gomod as Gomod
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [GomodulesProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [GomodulesProject]
 findProjects = walk' $ \dir _ files -> do
   case findFileNamed "go.mod" files of
     Nothing -> pure ([], WalkSkipSome ["vendor"])
@@ -31,12 +30,12 @@ data GomodulesProject = GomodulesProject
     gomodulesDir :: Path Abs Dir
   }
 
-mkProject :: GomodulesProject -> DiscoveredProject
+mkProject :: (Has Exec sig n, Has ReadFS sig n, Has Diagnostics sig n) => GomodulesProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "gomod",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runExecIO . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = gomodulesDir project,
       projectLicenses = pure []
     }

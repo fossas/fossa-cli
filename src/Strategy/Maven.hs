@@ -23,21 +23,26 @@ discover ::
   ( MonadIO m,
     Has (Lift IO) sig m,
     Has Diagnostics sig m,
-    Has ReadFS sig m
+    Has ReadFS sig m,
+    Has Exec rsig run,
+    Has ReadFS rsig run,
+    Has Diagnostics rsig run,
+    Has (Lift IO) rsig run
   ) =>
   Path Abs Dir ->
-  m [DiscoveredProject]
+  m [DiscoveredProject run]
 discover dir = map (mkProject dir) <$> PomClosure.findProjects dir
 
 mkProject ::
+  (Has ReadFS sig n, Has Exec sig n, Has (Lift IO) sig n, Has Diagnostics sig n) =>
   -- | basedir; required for licenses
-  Path Abs Dir -> PomClosure.MavenProjectClosure -> DiscoveredProject
+  Path Abs Dir -> PomClosure.MavenProjectClosure -> DiscoveredProject n
 mkProject basedir closure = 
   DiscoveredProject
     { projectType = "maven",
       projectPath = parent $ PomClosure.closurePath closure,
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runReadFSIO . runExecIO $ getDeps closure,
+      projectDependencyGraph = const $ getDeps closure,
       projectLicenses = pure $ Pom.getLicenses basedir closure
     }
 

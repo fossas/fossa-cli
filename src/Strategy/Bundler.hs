@@ -8,7 +8,6 @@ where
 
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import qualified Control.Effect.Diagnostics as Diag
-import Control.Monad.IO.Class
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
@@ -18,10 +17,10 @@ import qualified Strategy.Ruby.BundleShow as BundleShow
 import qualified Strategy.Ruby.GemfileLock as GemfileLock
 import Types
 
-discover :: MonadIO m => Path Abs Dir -> m [DiscoveredProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = map mkProject <$> findProjects dir
 
-findProjects :: MonadIO m => Path Abs Dir -> m [BundlerProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [BundlerProject]
 findProjects = walk' $ \dir _ files -> do
   let maybeGemfile = findFileNamed "Gemfile" files
   let gemfileLock = findFileNamed "Gemfile.lock" files
@@ -45,12 +44,12 @@ data BundlerProject = BundlerProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: BundlerProject -> DiscoveredProject
+mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => BundlerProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "bundler",
       projectBuildTargets = mempty,
-      projectDependencyGraph = const . runExecIO . runReadFSIO $ getDeps project,
+      projectDependencyGraph = const $ getDeps project,
       projectPath = bundlerDir project,
       projectLicenses = pure []
     }

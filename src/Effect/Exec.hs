@@ -1,9 +1,12 @@
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -28,6 +31,10 @@ import Control.Algebra as X
 import Control.Applicative (Alternative)
 import Control.Effect.Diagnostics
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Record
+import Control.Effect.Record.TH (deriveRecordable)
+import Control.Effect.Replay
+import Control.Effect.Replay.TH (deriveReplayable)
 import Control.Exception (IOException, try)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
@@ -41,6 +48,7 @@ import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc (pretty, viaShow)
 import Data.Void (Void)
+import GHC.Generics (Generic)
 import Path
 import Path.IO
 import System.Exit (ExitCode (..))
@@ -56,17 +64,41 @@ data Command = Command
     -- | Error (i.e. non-zero exit code) tolerance policy for running commands. This is helpful for commands like @npm@, that nonsensically return non-zero exit codes when a command succeeds
     cmdAllowErr :: AllowErr
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON Command
+instance RecordableValue Command
 
 data CmdFailure = CmdFailure
   { cmdFailureName :: Text,
-    cmdFailureargs :: [Text],
+    cmdFailureArgs :: [Text],
     cmdFailureDir :: FilePath,
     cmdFailureExit :: ExitCode,
     cmdFailureStdout :: Stdout,
     cmdFailureStderr :: Stderr
   }
   deriving (Eq, Ord, Show)
+
+instance ToJSON CmdFailure where
+  toJSON CmdFailure{..} = object
+    [ "cmdFailureName" .= cmdFailureName
+    , "cmdFailureArgs" .= cmdFailureArgs
+    , "cmdFailureDir" .= cmdFailureDir
+    , "cmdFailureExit" .= toRecordedValue cmdFailureExit
+    , "cmdFailureStdout" .= toRecordedValue cmdFailureStdout
+    , "cmdFailureStderr" .= toRecordedValue cmdFailureStderr
+    ]
+instance RecordableValue CmdFailure
+
+instance FromJSON CmdFailure where
+  parseJSON = withObject "CmdFailure" $ \obj ->
+    CmdFailure <$> obj .: "cmdFailureName"
+               <*> obj .: "cmdFailureArgs"
+               <*> obj .: "cmdFailureDir"
+               <*> (obj .: "cmdFailureExit" >>= fromRecordedValue)
+               <*> (obj .: "cmdFailureStdout" >>= fromRecordedValue)
+               <*> (obj .: "cmdFailureStderr" >>= fromRecordedValue)
+instance ReplayableValue CmdFailure
 
 data AllowErr
   = -- | never ignore non-zero exit (return 'ExecErr')
@@ -75,7 +107,10 @@ data AllowErr
     NonEmptyStdout
   | -- | always ignore non-zero exit
     Always
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON AllowErr
+instance RecordableValue AllowErr
 
 type Stdout = BL.ByteString
 
@@ -88,12 +123,15 @@ data Exec (m :: Type -> Type) k where
   -- - a description of the command failure
   Exec :: Path x Dir -> Command -> Exec m (Either CmdFailure Stdout)
 
+$(deriveRecordable ''Exec)
+$(deriveReplayable ''Exec)
+
 data ExecErr
   = -- | Command execution failed, usually from a non-zero exit
     CommandFailed CmdFailure
   | -- | Command output couldn't be parsed. command, err
     CommandParseError Command Text
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
 
 instance ToDiagnostic ExecErr where
   renderDiagnostic = \case

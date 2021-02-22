@@ -1,3 +1,4 @@
+{-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -32,6 +33,7 @@ import qualified Strategy.NuGet.Nuspec as Nuspec
 import System.Exit (die)
 import System.IO (BufferMode (NoBuffering), hSetBuffering, stderr, stdout)
 import Types
+import Effect.Exec
 
 scanMain :: Path Abs Dir -> Bool -> IO ()
 scanMain basedir debug = do
@@ -45,10 +47,10 @@ scanMain basedir debug = do
 
 runLicenseAnalysis ::
   (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectLicenseScan) sig m) =>
-  DiscoveredProject ->
+  DiscoveredProject (ReadFSIOC (ExecIOC (Diag.DiagnosticsC IO))) ->
   m ()
 runLicenseAnalysis project = do
-  licenseResult <- sendIO . Diag.runDiagnosticsIO $ projectLicenses project
+  licenseResult <- sendIO . Diag.runDiagnosticsIO . runExecIO . runReadFSIO $ projectLicenses project
   Diag.withResult SevWarn licenseResult (output . mkLicenseScan project)
 
 scan ::
@@ -76,13 +78,17 @@ scan basedir = runFinally $ do
 
 
 discoverFuncs ::
-  ( Has (Lift IO) sig m,
+  ( Has Diag.Diagnostics sig m,
+    Has (Lift IO) sig m,
     MonadIO m,
     Has ReadFS sig m,
-    Has Diag.Diagnostics sig m
+    Has ReadFS rsig run,
+    Has Exec rsig run,
+    Has Diag.Diagnostics rsig run,
+    Has (Lift IO) rsig run
   ) =>
   -- | Discover functions
-  [Path Abs Dir -> m [DiscoveredProject]]
+  [Path Abs Dir -> m [DiscoveredProject run]]
 discoverFuncs = [Maven.discover, Nuspec.discover]
 
 data ProjectLicenseScan = ProjectLicenseScan
@@ -109,7 +115,7 @@ instance ToJSON CompletedLicenseScan where
       , "licenseResults"  .=  completedLicenses
       ]
 
-mkLicenseScan :: DiscoveredProject -> [LicenseResult] -> ProjectLicenseScan
+mkLicenseScan :: DiscoveredProject n -> [LicenseResult] -> ProjectLicenseScan
 mkLicenseScan project licenses =
   ProjectLicenseScan
     { licenseStrategyType = projectType project,
