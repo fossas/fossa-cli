@@ -14,41 +14,43 @@ import Control.Effect.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Data.Text.Extra (showT, underBS)
+import Data.Text.Extra (showT)
 import Fossa.API.Types (ApiOpts (..))
-import Network.HTTP.Types (urlEncode)
 import Srclib.Types (Locator (..))
 import qualified Text.URI as URI
+import Text.URI.Builder
 
-fossaProjectUrlPath :: Locator -> ProjectRevision -> Text
-fossaProjectUrlPath Locator {..} ProjectRevision {..} = "/projects/" <> encodedProject <> buildSelector
+fossaProjectUrlPath :: Locator -> ProjectRevision -> [PathComponent]
+fossaProjectUrlPath Locator {..} ProjectRevision {..} = map PathComponent components
   where
-    encodedProject = urlEncode' (locatorFetcher <> "+" <> locatorProject)
-    encodedRevision = urlEncode' $ fromMaybe projectRevision locatorRevision
+    components = ["projects", project, "refs", "branch", branch, revision]
+    project = locatorFetcher <> "+" <> locatorProject
+    revision = fromMaybe projectRevision locatorRevision
     -- We default to master because core does, and we need a branch to allow us to
     -- create links directly to builds.  If this changes, then a core change should
     -- be made allowing a link to a known revision on an unknown default branch.
-    encodedBranch = urlEncode' $ fromMaybe "master" projectBranch
-    buildSelector = "/refs/branch/" <> encodedBranch <> "/" <> encodedRevision
+    branch = fromMaybe "master" projectBranch
 
 getFossaBuildUrl :: (Has Diagnostics sig m, Has (Lift IO) sig m) => ProjectRevision -> ApiOpts -> Locator -> m Text
 getFossaBuildUrl revision apiopts locator = do
   maybeOrg <- recover $ getOrganization apiopts
-  pure $ getBuildURLWithOrg maybeOrg revision apiopts locator
+  getBuildURLWithOrg maybeOrg revision apiopts locator
 
-getBuildURLWithOrg :: Maybe Organization -> ProjectRevision -> ApiOpts -> Locator -> Text
+getBuildURLWithOrg :: Has Diagnostics sig m => Maybe Organization -> ProjectRevision -> ApiOpts -> Locator -> m Text
 getBuildURLWithOrg maybeOrg revision apiopts locator = do
   let baseURI = apiOptsUri apiopts
-      relUriPath = case maybeOrg of
-        Just org | orgUsesSAML org -> samlUrlPath org locator revision
-        _ -> fossaProjectUrlPath locator revision
-  URI.render baseURI <> relUriPath
+      projectPath = fossaProjectUrlPath locator revision
 
-samlUrlPath :: Organization -> Locator -> ProjectRevision -> Text
-samlUrlPath Organization {organizationId} locator revision = "/account/saml/" <> showT organizationId <> "?" <> opts
-  where
-    opts = "next=" <> urlEncode' redirectPath
-    redirectPath = fossaProjectUrlPath locator revision
+  (path, query) <- case maybeOrg of
+    Just org | orgUsesSAML org -> samlUrlPair org projectPath
+    _ -> pure (projectPath, [])
+  finaluri <- setPath path (TrailingSlash False) baseURI >>= setQuery query
+  pure $ URI.render finaluri
 
-urlEncode' :: Text -> Text
-urlEncode' = underBS (urlEncode True)
+samlUrlPair :: Has Diagnostics sig m => Organization -> [PathComponent] -> m ([PathComponent], [Query])
+samlUrlPair org path = do
+  pathtext <- renderPath path (TrailingSlash False)
+  pure (samlUrlPath org, [Pair "next" pathtext])
+
+samlUrlPath :: Organization -> [PathComponent]
+samlUrlPath Organization {organizationId} = map PathComponent ["account", "saml", showT organizationId]

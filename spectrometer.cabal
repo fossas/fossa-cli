@@ -203,6 +203,7 @@ library
     Strategy.Ruby.GemfileLock
     Strategy.Scala
     Strategy.Yarn
+    Text.URI.Builder
     Types
     VCS.Git
 
