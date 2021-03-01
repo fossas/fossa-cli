@@ -28,7 +28,7 @@ import App.Version (fullVersionDescription)
 import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.Bool (bool)
-import Data.Flag (Flag, flagOpt)
+import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Foldable (for_)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -98,14 +98,15 @@ appMain = do
       listTargetsMain baseDir
     --
     VPSCommand VPSOptions {..} -> do
-      dieOnWindows "Vendored Package Scanning (VPS)"
       apikey <- requireKey maybeApiKey
       let apiOpts = ApiOpts optBaseUrl apikey
       case vpsCommand of
         VPSAnalyzeCommand VPSAnalyzeOptions {..} -> do
+          when (SysInfo.os == windowsOsName) $ unless (fromFlag SkipIPRScan skipIprScan) $ die "Windows VPS scans require skipping IPR.  Please try `fossa vps analyze --skip-ipr-scan DIR`"
           baseDir <- validateDir vpsAnalyzeBaseDir
           scanMain baseDir apiOpts vpsAnalyzeMeta logSeverity override vpsFileFilter skipIprScan licenseOnlyScan
         NinjaGraphCommand ninjaGraphOptions -> do
+          dieOnWindows "Vendored Package Scanning (VPS)"
           ninjaGraphMain apiOpts logSeverity override ninjaGraphOptions
         VPSTestCommand VPSTestOptions {..} -> do
           baseDir <- validateDir vpsTestBaseDir
@@ -115,6 +116,7 @@ appMain = do
           baseDir <- validateDir vpsReportBaseDir
           VPSReport.reportMain baseDir apiOpts logSeverity vpsReportTimeout vpsReportType override
         VPSAOSPNoticeCommand VPSAOSPNoticeOptions {..} -> do
+          dieOnWindows "Vendored Package Scanning (VPS)"
           baseDir <- validateDir vpsAOSPNoticeBaseDir
           aospNoticeMain baseDir logSeverity vpsFileFilter vpsAOSPNoticeWriteEnabled
 
