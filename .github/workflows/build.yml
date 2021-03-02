@@ -74,20 +74,11 @@ jobs:
           ${{ runner.os }}-
   
     - name: Update vendored binaries
-      if: ${{ !contains(matrix.os, 'windows') }}
       run: |
         mkdir vendor
         ./vendor_download.sh
       env:
         GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
-
-    - name: Touch vendor placeholders
-      if: ${{ contains(matrix.os, 'windows') }}
-      run: |
-        mkdir vendor
-        touch vendor/wiggins
-        touch vendor/syft
-        touch vendor/cliv1
 
     - name: Build
       run: |
