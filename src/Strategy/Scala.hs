@@ -62,7 +62,7 @@ findProjects = walk' $ \dir _ files -> do
       case projectsRes of
         Left err -> do
           logWarn $ renderFailureBundle err
-          pure ([], WalkContinue)
+          pure ([], WalkSkipAll)
         Right projects -> pure (resultValue projects, WalkSkipAll)
 
 makePomCmd :: Command

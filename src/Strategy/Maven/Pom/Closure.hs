@@ -37,7 +37,7 @@ findPomFiles dir = execState @[Path Abs File] [] $
     let poms = filter (\file -> "pom.xml" `isSuffixOf` fileName file || ".pom" `isSuffixOf` fileName file) files
     traverse_ (modify . (:)) poms
 
-    pure WalkContinue
+    pure (WalkSkipSome ["target"])
 
 buildProjectClosures :: Path Abs Dir -> GlobalClosure -> [MavenProjectClosure]
 buildProjectClosures basedir global = closures
