@@ -12,6 +12,7 @@ module App.Fossa.VPS.Types
 , HTTPRequestFailed(..)
 , VPSOpts (..)
 , NinjaGraphOpts (..)
+, NinjaScanID (..)
 ) where
 
 import Control.Monad.IO.Class (MonadIO(..))
@@ -24,6 +25,8 @@ import Network.HTTP.Req
 import Data.Text.Prettyprint.Doc (viaShow)
 import qualified Data.ByteString.Lazy as BSL
 import Data.Text.Encoding (decodeUtf8)
+
+newtype NinjaScanID = NinjaScanID { unNinjaScanID :: Text }
 
 newtype FilterExpressions = FilterExpressions { unFilterExpressions :: [Text] }
 

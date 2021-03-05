@@ -18,9 +18,9 @@ import qualified App.Fossa.Test as Test
 import App.Fossa.VPS.NinjaGraph
 import qualified App.Fossa.VPS.Report as VPSReport
 import App.Fossa.VPS.Scan (LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
-import App.Fossa.VPS.AOSPNotice (WriteEnabled (..), aospNoticeMain)
+import App.Fossa.VPS.AOSPNotice (aospNoticeMain)
 import qualified App.Fossa.VPS.Test as VPSTest
-import App.Fossa.VPS.Types (FilterExpressions (..))
+import App.Fossa.VPS.Types (FilterExpressions (..), NinjaScanID (..))
 import App.OptionExtensions
 import App.Types
 import App.Util (validateDir)
@@ -106,7 +106,7 @@ appMain = do
           baseDir <- validateDir vpsAnalyzeBaseDir
           scanMain baseDir apiOpts vpsAnalyzeMeta logSeverity override vpsFileFilter skipIprScan licenseOnlyScan
         NinjaGraphCommand ninjaGraphOptions -> do
-          dieOnWindows "Vendored Package Scanning (VPS)"
+          _ <- die "This command is no longer supported"
           ninjaGraphMain apiOpts logSeverity override ninjaGraphOptions
         VPSTestCommand VPSTestOptions {..} -> do
           baseDir <- validateDir vpsTestBaseDir
@@ -118,7 +118,7 @@ appMain = do
         VPSAOSPNoticeCommand VPSAOSPNoticeOptions {..} -> do
           dieOnWindows "Vendored Package Scanning (VPS)"
           baseDir <- validateDir vpsAOSPNoticeBaseDir
-          aospNoticeMain baseDir logSeverity vpsFileFilter vpsAOSPNoticeWriteEnabled
+          aospNoticeMain baseDir logSeverity override (NinjaScanID vpsNinjaScanID) apiOpts
 
     --
     ContainerCommand ContainerOptions {..} -> do
@@ -310,7 +310,8 @@ vpsAospNoticeOpts :: Parser VPSAOSPNoticeOptions
 vpsAospNoticeOpts =
   VPSAOSPNoticeOptions
     <$> baseDirArg
-    <*> flagOpt WriteEnabled (long "write" <> help "Enable writing NOTICE files to disk instead of logging them.")
+    <*> strOption (long "scan-id" <> help "ID of the scan to which notice content should be added. Reported by `analyze` upon completion.")
+    <*> metadataOpts
 
 -- FIXME: make report type a positional argument, rather than a subcommand
 vpsReportCmd :: Parser VPSReport.ReportType
@@ -361,7 +362,7 @@ vpsCommands =
           "aosp-notice-file"
           ( info
               (VPSAOSPNoticeCommand <$> vpsAospNoticeOpts)
-              (progDesc "Generate notice files for AOSP make and blueprint targets")    
+              (progDesc "Upload information required to generate NOTICE files for this build to FOSSA")
           )
     )
 
@@ -471,7 +472,8 @@ data VPSAnalyzeOptions = VPSAnalyzeOptions
 
 data VPSAOSPNoticeOptions = VPSAOSPNoticeOptions
   { vpsAOSPNoticeBaseDir :: FilePath,
-    vpsAOSPNoticeWriteEnabled :: Flag WriteEnabled
+    vpsNinjaScanID :: Text,
+    vpsNinjaScanMeta :: ProjectMetadata
   }
 
 data VPSTestOptions = VPSTestOptions

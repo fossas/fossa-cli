@@ -1,6 +1,5 @@
 module App.Fossa.VPS.AOSPNotice
   ( aospNoticeMain,
-    WriteEnabled(..)
   ) where
 
 import Control.Effect.Lift (sendIO, Lift)
@@ -11,17 +10,18 @@ import System.Exit (exitFailure)
 import App.Fossa.EmbeddedBinary
 import App.Fossa.VPS.Scan.RunWiggins
 import App.Fossa.VPS.Types
-import App.Types (BaseDir (..))
-import Data.Flag (Flag, fromFlag)
+import App.Types (BaseDir (..), OverrideProject)
 import Effect.Logger
-import Data.Text (Text)
+import Data.Text (Text, isSuffixOf)
+import App.Fossa.ProjectInference
+import Fossa.API.Types (ApiOpts(..))
+import Path (Path, Abs, Dir, toFilePath)
+import qualified Data.Text as T
+import Path.IO (listDirRecurRel)
 
--- | WriteEnabled bool flag
-data WriteEnabled = WriteEnabled
-
-aospNoticeMain :: BaseDir -> Severity -> FilterExpressions -> Flag WriteEnabled ->  IO ()
-aospNoticeMain basedir logSeverity fileFilters writeEnabled = withLogger logSeverity $ do
-  result <- runDiagnostics $ withWigginsBinary $ aospNoticeGenerate basedir logSeverity writeEnabled fileFilters
+aospNoticeMain :: BaseDir -> Severity -> OverrideProject -> NinjaScanID -> ApiOpts -> IO ()
+aospNoticeMain (BaseDir basedir) logSeverity overrideProject ninjaScanId apiOpts = withLogger logSeverity $ do
+  result <- runDiagnostics $ withWigginsBinary $ aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId apiOpts
   case result of
     Left failure -> do
       logError $ renderFailureBundle failure
@@ -34,9 +34,13 @@ aospNoticeGenerate ::
   ( Has Diagnostics sig m
   , Has Logger sig m
   , Has (Lift IO) sig m
-  ) => BaseDir -> Severity -> Flag WriteEnabled -> FilterExpressions -> BinaryPaths -> m ()
-aospNoticeGenerate (BaseDir basedir) logSeverity writeEnabled fileFilters binaryPaths =  do
-  let wigginsOpts = generateWigginsAOSPNoticeOpts basedir logSeverity fileFilters (fromFlag WriteEnabled writeEnabled)
+  ) => Path Abs Dir -> Severity -> OverrideProject -> NinjaScanID -> ApiOpts -> BinaryPaths -> m ()
+aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId apiOpts binaryPaths = do
+  projectRevision <- mergeOverride overrideProject <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
+
+  (_, files) <- sendIO $ listDirRecurRel basedir
+  let ninjaInputFiles = NinjaInputFiles $ filter (".ninja" `isSuffixOf`) $ map (T.pack . toFilePath) files
+  let wigginsOpts = generateWigginsAOSPNoticeOpts basedir logSeverity apiOpts projectRevision ninjaScanId ninjaInputFiles
 
   logInfo "Running VPS plugin: generating AOSP notice files"
   stdout <- runExecIO $ runWiggins binaryPaths wigginsOpts

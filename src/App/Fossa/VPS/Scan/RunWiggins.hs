@@ -6,6 +6,7 @@ module App.Fossa.VPS.Scan.RunWiggins
   , generateWigginsAOSPNoticeOpts
   , WigginsOpts(..)
   , ScanType(..)
+  , NinjaInputFiles(..)
   )
 where
 
@@ -24,6 +25,8 @@ import Text.URI
 import qualified Data.ByteString.Lazy as BL
 import Data.Text.Encoding
 
+newtype NinjaInputFiles = NinjaInputFiles { unNinjaInputFiles :: [Text] }
+
 data ScanType = ScanType
   { scanSkipIpr :: Bool
   , scanLicenseOnly :: Bool
@@ -38,17 +41,19 @@ generateWigginsScanOpts :: Path Abs Dir -> Severity -> ProjectRevision -> ScanTy
 generateWigginsScanOpts scanDir logSeverity projectRevision scanType fileFilters apiOpts metadata =
   WigginsOpts scanDir $ generateSpectrometerScanArgs logSeverity projectRevision scanType fileFilters apiOpts metadata
 
-generateWigginsAOSPNoticeOpts :: Path Abs Dir -> Severity -> FilterExpressions -> Bool -> WigginsOpts
-generateWigginsAOSPNoticeOpts scanDir logSeverity fileFilters enableWrite =
-  WigginsOpts scanDir $ generateSpectrometerAOSPNoticeArgs logSeverity fileFilters enableWrite
+generateWigginsAOSPNoticeOpts :: Path Abs Dir -> Severity -> ApiOpts -> ProjectRevision -> NinjaScanID -> NinjaInputFiles -> WigginsOpts
+generateWigginsAOSPNoticeOpts scanDir logSeverity apiOpts projectRevision ninjaScanId ninjaInputFiles =
+  WigginsOpts scanDir $ generateSpectrometerAOSPNoticeArgs logSeverity apiOpts projectRevision ninjaScanId ninjaInputFiles
 
-generateSpectrometerAOSPNoticeArgs :: Severity -> FilterExpressions -> Bool -> [Text]
-generateSpectrometerAOSPNoticeArgs logSeverity fileFilters enableWrite =
+generateSpectrometerAOSPNoticeArgs :: Severity -> ApiOpts -> ProjectRevision -> NinjaScanID -> NinjaInputFiles -> [Text]
+generateSpectrometerAOSPNoticeArgs logSeverity ApiOpts{..} ProjectRevision{..} ninjaScanId ninjaInputFiles =
   ["aosp-notice-files"]
-      ++ optBool "-write" enableWrite
       ++ optBool "-debug" (logSeverity == SevDebug)
-      ++ optFilterExpressions fileFilters
+      ++ ["-endpoint", render apiOptsUri, "-fossa-api-key", unApiKey apiOptsApiKey]
+      ++ ["-scan-id", unNinjaScanID ninjaScanId]
+      ++ ["-name", projectName]
       ++ ["."]
+      ++ unNinjaInputFiles ninjaInputFiles
 
 generateSpectrometerScanArgs :: Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> [Text]
 generateSpectrometerScanArgs logSeverity ProjectRevision{..} ScanType{..} fileFilters ApiOpts{..} ProjectMetadata{..} =
