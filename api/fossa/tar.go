@@ -495,6 +495,9 @@ func tarballUpload(options UploadTarballOptions, tarball *os.File, hash []byte) 
 	if options.UploadOptions.Team != "" {
 		parameters.Add("team", options.UploadOptions.Team)
 	}
+	if options.UploadOptions.ProjectURL != "" {
+		parameters.Add("projectURL", options.UploadOptions.ProjectURL)
+	}
 	if options.UploadOptions.Policy != "" {
 		parameters.Add("policy", options.UploadOptions.Policy)
 	}
