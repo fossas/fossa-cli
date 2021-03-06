@@ -52,6 +52,7 @@ func Run(ctx *cli.Context) error {
 			JIRAProjectKey:      config.JIRAProjectKey(),
 			Team:                config.Team(),
 			Policy:              config.Policy(),
+			ProjectURL:          config.ProjectURL(),
 			ReleaseGroup:        config.ReleaseGroup(),
 			ReleaseGroupVersion: config.ReleaseGroupVersion(),
 		},
