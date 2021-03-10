@@ -189,7 +189,7 @@ instance Has (Lift IO) sig m => Algebra (Exec :+: sig) (ExecIOC m) where
           ioExceptionToCmdFailure :: IOException -> CmdFailure
           ioExceptionToCmdFailure = mkFailure (ExitFailure 1) "" . fromString . show
 
-      processResult <- try $ readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs'))
+      processResult <- try $ readProcess (setStdin closed (setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs')))
 
       -- apply business logic for considering whether exitcode + stderr constitutes a "failure"
       let mangleResult :: (ExitCode, Stdout, Stderr) -> Either CmdFailure Stdout
