@@ -1,3 +1,6 @@
+# v2.5.4
+- Fix an issue that could prevent scala analysis from terminating ([#206](https://github.com/fossas/spectrometer/pull/187))
+
 # v2.5.0
 - Add container analysis toolchain
 
