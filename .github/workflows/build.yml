@@ -63,6 +63,12 @@ jobs:
       with:
         ghc-version: ${{ matrix.ghc }}
 
+    - name: Debugging information
+      run: |
+        ghc --version || echo "no ghc"
+        cabal --version || echo "no cabal"
+        ghcup --version || echo "no ghcup"
+
     - uses: actions/cache@v2
       name: Cache cabal store
       with:
@@ -72,7 +78,7 @@ jobs:
           ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
           ${{ runner.os }}-${{ matrix.ghc }}-
           ${{ runner.os }}-
-  
+
     - name: Update vendored binaries
       run: |
         mkdir vendor

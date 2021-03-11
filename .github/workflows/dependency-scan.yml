@@ -9,6 +9,12 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Debugging information
+        run: |
+          ghc --version || echo "no ghc"
+          cabal --version || echo "no cabal"
+          ghcup --version || echo "no ghcup"
+
       - name: Update cabal cache for spectrometer run
         run: |
           cabal update
@@ -17,7 +23,14 @@ jobs:
         run: |
           curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
 
-      - name: Run dependency scan
+      - name: Use Spectrometer's GHC and Cabal
+        run: |
+          ghcup install ghc 8.10.4
+          ghcup set ghc 8.10.4
+          ghcup install cabal 3.4.0.0
+          ghcup set cabal 3.4.0.0
+
+      - name: Run dependency scan on Spectrometer
         env:
           FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
         run: |

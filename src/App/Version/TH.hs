@@ -6,22 +6,26 @@ module App.Version.TH
 where
 
 import Control.Carrier.Diagnostics (resultValue, runDiagnostics)
-import Control.Effect.Diagnostics
-  ( Diagnostics,
-    fromEitherShow,
-  )
+import Control.Effect.Diagnostics (Diagnostics, fromEitherShow)
 import qualified Data.ByteString.Lazy as BSL
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.Text.Encoding as TE
 import qualified Data.Text as T
-import Data.Versions
+import qualified Data.Text.Encoding as TE
+import Data.Versions (errorBundlePretty, semver)
 import Effect.Exec
-import GitHash
+  ( AllowErr (Always),
+    Command (..),
+    Exec,
+    Has,
+    exec,
+    runExecIO,
+  )
+import GitHash (giHash, tGitInfoCwd)
 import Instances.TH.Lift ()
-import Language.Haskell.TH
-import Path
-
+import Language.Haskell.TH (TExpQ)
+import Language.Haskell.TH.Syntax (reportWarning, runIO)
+import Path (Dir, Rel, mkRelDir)
 
 gitTagPointCommand :: Text -> Command
 gitTagPointCommand commit =
@@ -72,4 +76,4 @@ validateSingleTag tag = do
 
   case semver normalized of
     Left err -> reportWarning (errorBundlePretty err) >> [||Nothing||]
-    Right _ -> [|| Just normalized ||]
+    Right _ -> [||Just normalized||]

@@ -7,12 +7,12 @@ module App.Version
   )
 where
 
-import App.Version.TH
+import App.Version.TH (getCurrentTag)
 import Data.Text (Text)
 import qualified Data.Text as T
-import GitHash
-import System.Info
 import Data.Version (showVersion)
+import GitHash (GitInfo, giBranch, giDirty, giHash, tGitInfoCwd)
+import System.Info (compilerName, compilerVersion)
 
 versionNumber :: Maybe Text
 versionNumber = $$(getCurrentTag)
