@@ -5,7 +5,6 @@ module Strategy.Composer
     buildGraph,
     ComposerLock (..),
     CompDep (..),
-    Source (..),
   )
 where
 
@@ -68,17 +67,9 @@ data ComposerLock = ComposerLock
 data CompDep = CompDep
   { depName :: Text,
     depVersion :: Text,
-    depSource :: Source,
     -- | name to version spec
     depRequire :: Maybe (Map Text Text),
     depRequireDev :: Maybe (Map Text Text)
-  }
-  deriving (Eq, Ord, Show)
-
-data Source = Source
-  { sourceType :: Text,
-    sourceUrl :: Text,
-    sourceReference :: Text
   }
   deriving (Eq, Ord, Show)
 
@@ -91,15 +82,8 @@ instance FromJSON CompDep where
   parseJSON = withObject "CompDep" $ \obj ->
     CompDep <$> obj .: "name"
       <*> obj .: "version"
-      <*> obj .: "source"
       <*> obj .:? "require"
       <*> obj .:? "require-dev"
-
-instance FromJSON Source where
-  parseJSON = withObject "Source" $ \obj ->
-    Source <$> obj .: "type"
-      <*> obj .: "url"
-      <*> obj .: "reference"
 
 newtype CompPkg = CompPkg {pkgName :: Text}
   deriving (Eq, Ord, Show)

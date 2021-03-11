@@ -48,6 +48,10 @@
                 "url": "https://github.com/composer/four",
                 "reference": "4"
             }
+        },
+        {
+            "name": "sourceless",
+            "version": "5.0.0"
         }
     ],
     "packages-dev": [

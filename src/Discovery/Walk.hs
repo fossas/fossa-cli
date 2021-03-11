@@ -62,6 +62,7 @@ walk f = walkDir $ \dir subdirs files -> do
     WalkSkipAll -> pure $ WalkExclude subdirs
     WalkStop -> pure WalkFinish
 
+-- Like @walk@, but collects the output of @f@ in a monoid.
 walk' ::
   forall o sig m.
   (Has ReadFS sig m, Has Diagnostics sig m, Monoid o) =>

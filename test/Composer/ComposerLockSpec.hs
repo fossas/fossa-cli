@@ -66,6 +66,17 @@ dependencyFive =
       dependencyTags = M.empty
     }
 
+dependencySourceless :: Dependency
+dependencySourceless =
+  Dependency
+    { dependencyType = ComposerType,
+      dependencyName = "sourceless",
+      dependencyVersion = Just (CEq "5.0.0"),
+      dependencyLocations = [],
+      dependencyEnvironments = [EnvProduction],
+      dependencyTags = M.empty
+    }
+
 spec :: Spec
 spec = do
   testFile <- runIO (BS.readFile "test/Composer/testdata/composer.lock")
@@ -74,7 +85,7 @@ spec = do
       case eitherDecodeStrict testFile of
         Right res -> do
           let graph = buildGraph res
-          expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFour, dependencyFive] graph
-          expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour, dependencyFive] graph
+          expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFour, dependencyFive, dependencySourceless] graph
+          expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour, dependencyFive, dependencySourceless] graph
           expectEdges [(dependencyOne, dependencyTwo), (dependencyOne, dependencyTwo), (dependencyTwo, dependencyFour)] graph
         Left err -> expectationFailure $ show err
