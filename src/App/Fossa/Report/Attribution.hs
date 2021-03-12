@@ -14,6 +14,7 @@ where
 import Data.Aeson
 import Data.Text (Text)
 import Data.Map.Strict (Map)
+import Data.Maybe (catMaybes)
 
 newtype LicenseName
   = LicenseName {rawName :: Text}
@@ -45,7 +46,7 @@ data Dependency
         depOtherLicenses :: [License],
         depProjectUrl :: Maybe Text,
         depDependencyPaths :: [Text],
-        depNotes :: Maybe [Text],
+        depNotes :: [Text],
         depDownloadUrl :: Maybe Text,
         depTitle :: Text
       }
@@ -90,13 +91,13 @@ instance FromJSON Dependency where
       <*> obj .:? "version"
       <*> obj .:? "isGolang"
       <*> obj .:? "hash"
-      <*> obj .: "authors"
+      <*> (catMaybes <$> obj .: "authors")
       <*> obj .:? "description"
       <*> obj .:? "licenses"
       <*> obj .: "otherLicenses"
       <*> obj .:? "projectUrl"
       <*> obj .: "dependencyPaths"
-      <*> obj .:? "notes"
+      <*> (catMaybes <$> obj .: "notes")
       <*> obj .:? "downloadUrl"
       <*> obj .: "title"
 

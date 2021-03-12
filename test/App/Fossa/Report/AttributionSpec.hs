@@ -39,7 +39,7 @@ genDependency =
     <*> Gen.list defaultRange genLicense
     <*> Gen.maybe arbitraryText
     <*> Gen.list defaultRange arbitraryText
-    <*> Gen.maybe (Gen.list defaultRange arbitraryText)
+    <*> Gen.list defaultRange arbitraryText
     <*> Gen.maybe arbitraryText
     <*> arbitraryText
 
