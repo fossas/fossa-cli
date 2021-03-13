@@ -30,6 +30,7 @@ type Output struct {
 	From         string
 	Resolved     string
 	Dependencies map[string]Output
+	PeerMissing  bool
 }
 
 func (n SystemNPM) Exists() bool {

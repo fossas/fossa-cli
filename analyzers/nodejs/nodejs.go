@@ -280,6 +280,9 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 func npmListToGraph(output npm.Output) (graph.Deps, error) {
 	var imports []pkg.Import
 	for name, dep := range output.Dependencies {
+		if dep.PeerMissing {
+			continue
+		}
 		imports = append(imports, pkg.Import{
 			Target: dep.From,
 			Resolved: pkg.ID{
@@ -321,6 +324,9 @@ func fixLegacyBuildTarget(target string) string {
 // implementation)
 func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p npm.Output) {
 	for name, dep := range p.Dependencies {
+		if dep.PeerMissing {
+			continue
+		}
 		// Construct ID.
 		id := pkg.ID{
 			Type:     pkg.NodeJS,
@@ -334,6 +340,9 @@ func recurseDeps(pkgMap map[pkg.ID]pkg.Package, p npm.Output) {
 		// Set direct imports.
 		var imports []pkg.Import
 		for name, i := range dep.Dependencies {
+			if i.PeerMissing {
+				continue
+			}
 			imports = append(imports, pkg.Import{
 				Target: i.From,
 				Resolved: pkg.ID{
