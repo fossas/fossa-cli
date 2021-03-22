@@ -29,7 +29,7 @@ analyze:
     - name:   buckproject
       type:   buck
       target: //programs:buck
-      dir:   .
+      path:   .
 ```
 
 ## Analysis

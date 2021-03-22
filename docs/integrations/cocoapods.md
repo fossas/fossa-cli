@@ -22,7 +22,7 @@ analyze:
     - name: cocoa-repo
       type: pod
       target: .
-      dir:  .
+      path:  .
 ```
 
 ## Analysis

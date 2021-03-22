@@ -20,7 +20,7 @@ analyze:
     - name: okbuck
       type: okbuck
       target: //...
-      dir:   .
+      path:   .
       options:
             classpath: //app:bin_prodRelease
 ```

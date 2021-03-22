@@ -25,7 +25,7 @@ analyze:
     - name: test/clojure
       type: clojure
       target: project.clj
-      dir:  clojure/project
+      path:  clojure/project
       options:
         strategy: lein
 ```
