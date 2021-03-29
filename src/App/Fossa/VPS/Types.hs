@@ -13,6 +13,7 @@ module App.Fossa.VPS.Types
 , VPSOpts (..)
 , NinjaGraphOpts (..)
 , NinjaScanID (..)
+, NinjaFilePaths (..)
 ) where
 
 import Control.Monad.IO.Class (MonadIO(..))
@@ -25,8 +26,11 @@ import Network.HTTP.Req
 import Data.Text.Prettyprint.Doc (viaShow)
 import qualified Data.ByteString.Lazy as BSL
 import Data.Text.Encoding (decodeUtf8)
+import Path
 
 newtype NinjaScanID = NinjaScanID { unNinjaScanID :: Text }
+
+newtype NinjaFilePaths = NinjaFilePaths { unNinjaFilePaths :: [Path Abs File] }
 
 newtype FilterExpressions = FilterExpressions { unFilterExpressions :: [Text] }
 

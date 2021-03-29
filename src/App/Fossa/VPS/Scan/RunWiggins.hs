@@ -6,11 +6,14 @@ module App.Fossa.VPS.Scan.RunWiggins
   , generateWigginsAOSPNoticeOpts
   , WigginsOpts(..)
   , ScanType(..)
-  , NinjaInputFiles(..)
   )
 where
 
 import App.Fossa.VPS.Types
+    ( FilterExpressions (FilterExpressions),
+      NinjaFilePaths (unNinjaFilePaths),
+      NinjaScanID (unNinjaScanID),
+      encodeFilterExpressions )
 import App.Fossa.EmbeddedBinary
 import Control.Carrier.Error.Either
 import Control.Effect.Diagnostics
@@ -23,9 +26,7 @@ import Fossa.API.Types
 import App.Types
 import Text.URI
 import qualified Data.ByteString.Lazy as BL
-import Data.Text.Encoding
-
-newtype NinjaInputFiles = NinjaInputFiles { unNinjaInputFiles :: [Text] }
+import Data.Text.Encoding ( decodeUtf8 )
 
 data ScanType = ScanType
   { scanSkipIpr :: Bool
@@ -41,11 +42,11 @@ generateWigginsScanOpts :: Path Abs Dir -> Severity -> ProjectRevision -> ScanTy
 generateWigginsScanOpts scanDir logSeverity projectRevision scanType fileFilters apiOpts metadata =
   WigginsOpts scanDir $ generateSpectrometerScanArgs logSeverity projectRevision scanType fileFilters apiOpts metadata
 
-generateWigginsAOSPNoticeOpts :: Path Abs Dir -> Severity -> ApiOpts -> ProjectRevision -> NinjaScanID -> NinjaInputFiles -> WigginsOpts
+generateWigginsAOSPNoticeOpts :: Path Abs Dir -> Severity -> ApiOpts -> ProjectRevision -> NinjaScanID -> NinjaFilePaths -> WigginsOpts
 generateWigginsAOSPNoticeOpts scanDir logSeverity apiOpts projectRevision ninjaScanId ninjaInputFiles =
   WigginsOpts scanDir $ generateSpectrometerAOSPNoticeArgs logSeverity apiOpts projectRevision ninjaScanId ninjaInputFiles
 
-generateSpectrometerAOSPNoticeArgs :: Severity -> ApiOpts -> ProjectRevision -> NinjaScanID -> NinjaInputFiles -> [Text]
+generateSpectrometerAOSPNoticeArgs :: Severity -> ApiOpts -> ProjectRevision -> NinjaScanID -> NinjaFilePaths -> [Text]
 generateSpectrometerAOSPNoticeArgs logSeverity ApiOpts{..} ProjectRevision{..} ninjaScanId ninjaInputFiles =
   ["aosp-notice-files"]
       ++ optBool "-debug" (logSeverity == SevDebug)
@@ -53,7 +54,7 @@ generateSpectrometerAOSPNoticeArgs logSeverity ApiOpts{..} ProjectRevision{..} n
       ++ ["-scan-id", unNinjaScanID ninjaScanId]
       ++ ["-name", projectName]
       ++ ["."]
-      ++ unNinjaInputFiles ninjaInputFiles
+      ++ (T.pack . toFilePath <$> unNinjaFilePaths ninjaInputFiles)
 
 generateSpectrometerScanArgs :: Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> [Text]
 generateSpectrometerScanArgs logSeverity ProjectRevision{..} ScanType{..} fileFilters ApiOpts{..} ProjectMetadata{..} =

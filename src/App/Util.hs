@@ -1,7 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 
 module App.Util
-  ( validateDir,
+  ( validateDir
+  , validateFile
   )
 where
 
@@ -9,6 +10,7 @@ import App.Types
 import Control.Monad (unless)
 import qualified Path.IO as P
 import System.Exit (die)
+import Path ( Path, Abs, File )
 
 -- | Validate that a filepath points to a directory and the directory exists
 validateDir :: FilePath -> IO BaseDir
@@ -18,3 +20,11 @@ validateDir dir = do
 
   unless exists (die $ "ERROR: Directory " <> show absolute <> " does not exist")
   pure $ BaseDir absolute
+
+-- | Validate that a filepath points to a file and the file exists
+validateFile :: FilePath -> IO (Path Abs File)
+validateFile file = do
+  absolute <- P.resolveFile' file
+  exists <- P.doesFileExist absolute
+  unless exists (die $ "ERROR: File " <> show absolute <> " does not exist")
+  pure absolute

@@ -20,10 +20,10 @@ import qualified App.Fossa.VPS.Report as VPSReport
 import App.Fossa.VPS.Scan (LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
 import App.Fossa.VPS.AOSPNotice (aospNoticeMain)
 import qualified App.Fossa.VPS.Test as VPSTest
-import App.Fossa.VPS.Types (FilterExpressions (..), NinjaScanID (..))
+import App.Fossa.VPS.Types (FilterExpressions (..), NinjaScanID (..), NinjaFilePaths (..))
 import App.OptionExtensions
 import App.Types
-import App.Util (validateDir)
+import App.Util (validateDir, validateFile)
 import App.Version (fullVersionDescription)
 import Control.Monad (unless, when)
 import Data.Bifunctor (first)
@@ -42,6 +42,7 @@ import qualified System.Info as SysInfo
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI)
 import Text.URI.QQ (uri)
+import Path
 
 windowsOsName :: String
 windowsOsName = "mingw32"
@@ -118,7 +119,8 @@ appMain = do
         VPSAOSPNoticeCommand VPSAOSPNoticeOptions {..} -> do
           dieOnWindows "Vendored Package Scanning (VPS)"
           baseDir <- validateDir vpsAOSPNoticeBaseDir
-          aospNoticeMain baseDir logSeverity override (NinjaScanID vpsNinjaScanID) apiOpts
+          ninjaPaths <- parseCommaSeparatedFileArg vpsNinjaFileList
+          aospNoticeMain baseDir logSeverity override (NinjaScanID vpsNinjaScanID) (NinjaFilePaths ninjaPaths) apiOpts
 
     --
     ContainerCommand ContainerOptions {..} -> do
@@ -148,6 +150,10 @@ appMain = do
 
 dieOnWindows :: String -> IO ()
 dieOnWindows op = when (SysInfo.os == windowsOsName) $ die $ "Operation is not supported on Windows: " <> op
+
+
+parseCommaSeparatedFileArg :: Text -> IO [Path Abs File]
+parseCommaSeparatedFileArg arg = sequence (validateFile . T.unpack <$> T.splitOn "," arg)
 
 requireKey :: Maybe ApiKey -> IO ApiKey
 requireKey (Just key) = pure key
@@ -313,6 +319,7 @@ vpsAospNoticeOpts =
   VPSAOSPNoticeOptions
     <$> baseDirArg
     <*> strOption (long "scan-id" <> help "ID of the scan to which notice content should be added. Reported by `analyze` upon completion.")
+    <*> strOption (long "ninja-files" <> help "A comma-separated list of ninja files to parse for build graph information.")
     <*> metadataOpts
 
 -- FIXME: make report type a positional argument, rather than a subcommand
@@ -500,6 +507,7 @@ data VPSAnalyzeOptions = VPSAnalyzeOptions
 data VPSAOSPNoticeOptions = VPSAOSPNoticeOptions
   { vpsAOSPNoticeBaseDir :: FilePath,
     vpsNinjaScanID :: Text,
+    vpsNinjaFileList :: Text,
     vpsNinjaScanMeta :: ProjectMetadata
   }
 
