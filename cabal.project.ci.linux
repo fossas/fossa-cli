@@ -15,3 +15,8 @@ source-repository-package
   type: git
   location: https://github.com/fossas/yarn-lock.git
   tag: 1ac8875f73eaf76237d506e900f944a34ad3c0fb
+
+source-repository-package
+  type: git
+  location: https://github.com/fossas/semver.git
+  tag: 7bc42dd298e0d98e119486ceab4f74042d46b004

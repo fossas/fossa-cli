@@ -1,61 +1,113 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
 
+-- | This module parses go.mod files, used by Go Modules. Go modules were
+-- introduced in Go 1.11, and are now on by default in Go 1.16.
+--
+-- For documentation, see https://golang.org/ref/mod.
 module Strategy.Go.Gomod
-  ( analyze'
-  , buildGraph
-
-  , Gomod(..)
-  , Statement(..)
-  , Require(..)
-  , gomodParser
+  ( analyze',
+    buildGraph,
+    Gomod (..),
+    Statement (..),
+    Require (..),
+    PackageName,
+    PackageVersion (..),
+    gomodParser,
   )
-  where
+where
 
-import Control.Effect.Diagnostics hiding (fromMaybe)
+import Control.Algebra (Has)
+import Control.Effect.Diagnostics (Diagnostics, recover)
 import Data.Char (isSpace)
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
+import qualified Data.SemVer as SemVer
+import Data.SemVer.Internal (Identifier (..), Version (..))
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
-import DepTypes
-import Effect.Exec
-import Effect.Grapher
-import Effect.ReadFS
+import DepTypes (Dependency)
+import Effect.Exec (Exec)
+import Effect.Grapher (direct, label)
+import Effect.ReadFS (ReadFS, readContentsParser)
 import Graphing (Graphing)
-import Path
+import Path (Abs, File, Path, parent)
 import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
-import Text.Megaparsec hiding (label)
-import Text.Megaparsec.Char
+  ( GolangGrapher,
+    GolangLabel (..),
+    graphingGolang,
+    mkGolangPackage,
+  )
+import Text.Megaparsec
+  ( MonadParsec (eof, takeWhile1P, try),
+    Parsec,
+    between,
+    chunk,
+    count,
+    many,
+    oneOf,
+    optional,
+    parse,
+    some,
+    (<|>),
+  )
+import Text.Megaparsec.Char (alphaNumChar, char, numberChar, space1)
 import qualified Text.Megaparsec.Char.Lexer as L
 
-data Statement =
-    RequireStatement Text Text -- ^ package, version
-  | ReplaceStatement Text Text Text -- ^ old, new, newVersion
-  | LocalReplaceStatement Text Text -- ^ old, dir (local "submodule" dependency -- dir can be a resolvable string (e.g., "../foo") or an actual directory (e.g., "/foo" or "foo/"))
-  | ExcludeStatement Text Text -- ^ package, version
+-- For the file's grammar, see https://golang.org/ref/mod#go-mod-file-grammar.
+--
+-- TODO: handle retract statements
+data Statement
+  = -- | package, version
+    RequireStatement PackageName PackageVersion
+  | -- | old, new, newVersion
+    ReplaceStatement PackageName PackageName PackageVersion
+  | -- | old, dir (local "submodule" dependency -- dir can be a resolvable string (e.g., "../foo") or an actual directory (e.g., "/foo" or "foo/"))
+    LocalReplaceStatement PackageName Text
+  | -- | package, version
+    ExcludeStatement PackageName PackageVersion
   | GoVersionStatement Text
-    deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show)
 
 type PackageName = Text
 
+-- See https://golang.org/ref/mod#go-mod-file-ident. Reproduced below:
+--
+-- > Versions in go.mod files may be canonical or non-canonical.
+-- >
+-- > A canonical version starts with the letter v, followed by a semantic
+-- > version following the Semantic Versioning 2.0.0 specification. See Versions
+-- > for more information.
+--
+-- Regarding pseudo-versions, see https://golang.org/ref/mod#pseudo-versions.
+--
+-- > A pseudo-version is a specially formatted pre-release version that encodes
+-- > information about a specific revision in a version control repository. For
+-- > example, v0.0.0-20191109021931-daa7c04131f5 is a pseudo-version.
+data PackageVersion
+  = NonCanonical Text -- Something like "master"
+  | Pseudo Text
+  | Semantic Version
+  deriving (Eq, Ord, Show)
+
 data Gomod = Gomod
-  { modName     :: PackageName
-  , modRequires :: [Require]
-  , modReplaces :: Map PackageName Require
-  , modLocalReplaces :: Map PackageName Text
-  , modExcludes :: [Require]
-  } deriving (Eq, Ord, Show)
+  { modName :: PackageName,
+    modRequires :: [Require],
+    modReplaces :: Map PackageName Require,
+    modLocalReplaces :: Map PackageName Text,
+    modExcludes :: [Require]
+  }
+  deriving (Eq, Ord, Show)
 
 data Require = Require
-  { reqPackage :: PackageName
-  , reqVersion :: Text
-  } deriving (Eq, Ord, Show)
+  { reqPackage :: PackageName,
+    reqVersion :: PackageVersion
+  }
+  deriving (Eq, Ord, Show)
 
 type Parser = Parsec Void Text
 
@@ -72,132 +124,215 @@ gomodParser = do
 
   pure (toGomod name statements')
   where
-  statement = (singleton <$> goVersionStatement) -- singleton wraps the Parser Statement into a Parser [Statement]
-          <|> requireStatements
-          <|> replaceStatements
-          <|> excludeStatements
+    statement =
+      (singleton <$> goVersionStatement) -- singleton wraps the Parser Statement into a Parser [Statement]
+        <|> requireStatements
+        <|> replaceStatements
+        <|> excludeStatements
 
-  -- top-level go version statement
-  -- e.g., go 1.12
-  goVersionStatement :: Parser Statement
-  goVersionStatement = GoVersionStatement <$ lexeme (chunk "go") <*> semver
+    -- top-level go version statement
+    -- e.g., go 1.12
+    goVersionStatement :: Parser Statement
+    goVersionStatement = GoVersionStatement <$ lexeme (chunk "go") <*> goVersion
 
-  -- top-level require statements
-  -- e.g.:
-  --   require golang.org/x/text v1.0.0
-  --   require (
-  --       golang.org/x/text v1.0.0
-  --       golang.org/x/sync v2.0.0
-  --   )
-  requireStatements :: Parser [Statement]
-  requireStatements = block "require" singleRequire
+    -- top-level require statements
+    -- e.g.:
+    --   require golang.org/x/text v1.0.0
+    --   require (
+    --       golang.org/x/text v1.0.0
+    --       golang.org/x/sync v2.0.0
+    --   )
+    requireStatements :: Parser [Statement]
+    requireStatements = block "require" singleRequire
 
-  -- parse the body of a single require (without the leading "require" lexeme)
-  singleRequire = RequireStatement <$> packageName <*> semver
+    -- parse the body of a single require (without the leading "require" lexeme)
+    singleRequire = RequireStatement <$> packageName <*> version
 
-  -- top-level replace statements
-  -- e.g.:
-  --   replace golang.org/x/text => golang.org/x/text v3.0.0
-  --   replace (
-  --       golang.org/x/sync => golang.org/x/sync v15.0.0
-  --       golang.org/x/text => golang.org/x/text v3.0.0
-  --   )
-  replaceStatements :: Parser [Statement]
-  replaceStatements = block "replace" (try singleReplace <|> singleLocalReplace)
+    -- top-level replace statements
+    -- e.g.:
+    --   replace golang.org/x/text => golang.org/x/text v3.0.0
+    --   replace (
+    --       golang.org/x/sync => golang.org/x/sync v15.0.0
+    --       golang.org/x/text => golang.org/x/text v3.0.0
+    --   )
+    replaceStatements :: Parser [Statement]
+    replaceStatements = block "replace" (try singleReplace <|> singleLocalReplace)
 
-  -- parse the body of a single replace (without the leading "replace" lexeme)
-  singleReplace :: Parser Statement
-  singleReplace = ReplaceStatement <$> packageName <* optional semver <* lexeme (chunk "=>") <*> packageName <*> semver
+    -- parse the body of a single replace (without the leading "replace" lexeme)
+    singleReplace :: Parser Statement
+    singleReplace = ReplaceStatement <$> packageName <* optional version <* lexeme (chunk "=>") <*> packageName <*> version
 
-  singleLocalReplace :: Parser Statement
-  singleLocalReplace = LocalReplaceStatement <$> packageName <* optional semver <* lexeme (chunk "=>") <*> anyToken
+    -- We parse "local" replaces differently from normal replaces because we
+    -- don't want to upload local file paths as a version to the backend.
+    singleLocalReplace :: Parser Statement
+    singleLocalReplace = LocalReplaceStatement <$> packageName <* optional version <* lexeme (chunk "=>") <*> anyToken
 
-  -- top-level exclude statements
-  -- e.g.:
-  --   exclude golang.org/x/text v3.0.0
-  --   exclude (
-  --       golang.org/x/text v3.0.0
-  --       golang.org/x/sync v15.0.0
-  --   )
-  excludeStatements :: Parser [Statement]
-  excludeStatements = block "exclude" singleExclude
+    -- top-level exclude statements
+    -- e.g.:
+    --   exclude golang.org/x/text v3.0.0
+    --   exclude (
+    --       golang.org/x/text v3.0.0
+    --       golang.org/x/sync v15.0.0
+    --   )
+    excludeStatements :: Parser [Statement]
+    excludeStatements = block "exclude" singleExclude
 
-  -- parse the body of a single exclude (without the leading "exclude" lexeme)
-  singleExclude :: Parser Statement
-  singleExclude = ExcludeStatement <$> packageName <*> semver
+    -- parse the body of a single exclude (without the leading "exclude" lexeme)
+    singleExclude :: Parser Statement
+    singleExclude = ExcludeStatement <$> packageName <*> version
 
-  -- helper combinator to parse things like:
-  --
-  --   prefix <singleparse>
-  --
-  -- or
-  --
-  --   prefix (
-  --       <singleparse>
-  --       <singleparse>
-  --       <singleparse>
-  --   )
-  block prefix parseSingle = do
-    _ <- lexeme (chunk prefix)
-    parens (many (parseSingle <* scn)) <|> (singleton <$> parseSingle)
+    -- helper combinator to parse things like:
+    --
+    --   prefix <singleparse>
+    --
+    -- or
+    --
+    --   prefix (
+    --       <singleparse>
+    --       <singleparse>
+    --       <singleparse>
+    --   )
+    block prefix parseSingle = do
+      _ <- lexeme (chunk prefix)
+      parens (many (parseSingle <* scn)) <|> (singleton <$> parseSingle)
 
-  -- package name, e.g., golang.org/x/text
-  packageName :: Parser Text
-  packageName = T.pack <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_'))
+    -- package name, e.g., golang.org/x/text
+    packageName :: Parser PackageName
+    packageName = T.pack <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_'))
 
-  -- semver, e.g.:
-  --   v0.0.0-20190101000000-abcdefabcdef
-  --   v1.2.3
-  semver :: Parser Text
-  semver = T.pack <$> lexeme (some (alphaNumChar <|> oneOf ['.', '-', '+']))
+    -- Version parses version strings and distinguishes between non-canonical
+    -- versions, semantic versions, and pseudo-versions.
+    --
+    -- We first attempt to parse the version as semantic. On success, we
+    -- determine whether the semantic version is a pseudo-version (which
+    -- requires special formatting for the backend).
+    --
+    -- On failure, we treat the version string as a non-canonical version as
+    -- long as it's composed of legal characters.
+    --
+    -- For how Go modules use versions, see https://golang.org/ref/mod#versions.
+    -- For the semantic version spec, see https://semver.org/.
+    version :: Parser PackageVersion
+    version = parseSemOrPseudo <|> parseNonCanonical
+      where
+        -- Helpers.
+        semVerText = T.pack <$> lexeme (some (alphaNumChar <|> oneOf ['.', '-', '+', '_', '/']))
 
-  -- singleton list. semantically more meaningful than 'pure'
-  singleton :: a -> [a]
-  singleton = pure
+        mapLeft _ (Right r) = r
+        mapLeft f (Left l) = f l
 
-  -- lexer combinators
-  parens = between (symbol "(") (symbol ")")
-  symbol = L.symbol scn
-  lexeme = L.lexeme sc
+        -- Non-canonical versions can be made of any valid string of characters.
+        parseNonCanonical = NonCanonical <$> semVerText
 
-  anyToken :: Parser Text
-  anyToken = lexeme (takeWhile1P (Just "any token") (not . isSpace))
+        -- Pseudo-versions are also valid semantic versions. We first determine
+        -- whether a version is properly semantic, and then determine whether it
+        -- could also be a pseudo-version.
+        parseSemOrPseudo = do
+          -- Go modules adds a leading "v". See
+          -- https://golang.org/ref/mod#versions.
+          --
+          -- > Each version starts with the letter v, followed by a semantic
+          -- > version.
+          _ <- char 'v'
+          raw <- semVerText
 
-  -- space consumer WITHOUT newlines (for use with Text.Megaparsec.Char.Lexer combinators)
-  sc :: Parser ()
-  sc = L.space (void $ some (char ' ' <|> char '\t')) (L.skipLineComment "//") (L.skipBlockComment "/*" "*/")
+          -- Once we have the version text, we then try to parse the version
+          -- text as a semver using SemVer.fromText.
+          pure $ case SemVer.fromText raw of
+            Right semver -> case reverse $ _versionRelease semver of
+              -- See https://golang.org/ref/mod#pseudo-versions for the forms
+              -- of pseudo-versions, reproduced below:
+              --
+              -- - Form 1 (no tagged version): vX.0.0-yyyymmddhhmmss-abcdefabcdef
+              -- - Form 2 (pre-release version): vX.Y.Z-pre.0.yyyymmddhhmmss-abcdefabcdef
+              -- - Form 3 (tagged version): vX.Y.(Z+1)-0.yyyymmddhhmmss-abcdefabcdef
+              --
+              -- Pseudo-versions always have a trailing "pseudo" pre-release
+              -- identifier, so we reverse the pre-release identifier list to
+              -- match on the end of the list. If the original tagged version
+              -- has a pre-release identifier, then the pseudo-version will
+              -- separate the original identifier and the "pseudo" identifier
+              -- with a numeric identifier section equal to 0.
+              --
+              -- If a semantic version matches a possible pseudo-version form,
+              -- we then check whether the pre-release identifiers are formatted
+              -- as if the version is a pseudo-version. If the parse fails, then
+              -- we treat this version as a normal semantic version.
+              [IText preReleaseId] -> mapLeft (const $ Semantic semver) $ parsePseudoPreRelease preReleaseId
+              (IText preReleaseId) : (INum 0) : _ -> mapLeft (const $ Semantic semver) $ parsePseudoPreRelease preReleaseId
+              -- If the semantic version's pre-release identifiers are not of a
+              -- pseudo-version form, it cannot possibly be a pseudo-version.
+              _ -> Semantic semver
+            Left _ -> NonCanonical raw
 
-  -- space consumer with newlines
-  scn :: Parser ()
-  scn = L.space space1 (L.skipLineComment "//") (L.skipBlockComment "/*" "*/")
+        -- Here, we run a sub-parser to determine whether the "pseudo"
+        -- pre-release identifier is correctly formatted. This is always of the
+        -- form "yyyymmddhhmmss-abcdefabcdef" - a timestamp, and then a commit
+        -- hash.
+        --
+        -- For the backend's sake, we want to upload the commit hash (which
+        -- identifies the version of the dependency).
+        --
+        -- See https://golang.org/ref/mod#pseudo-versions for more details.
+        parsePseudoPreRelease = parse parser ""
+          where
+            parser :: Parser PackageVersion
+            parser = Pseudo <$ count 14 numberChar <* char '-' <*> (T.pack <$> count 12 alphaNumChar) <* eof
+
+    -- goVersion, e.g.:
+    --   v0.0.0-20190101000000-abcdefabcdef
+    --   v1.2.3
+    goVersion :: Parser Text
+    goVersion = T.pack <$> lexeme (some (alphaNumChar <|> oneOf ['.', '-', '+']))
+
+    -- singleton list. semantically more meaningful than 'pure'
+    singleton :: a -> [a]
+    singleton = pure
+
+    -- lexer combinators
+    parens = between (symbol "(") (symbol ")")
+    symbol = L.symbol scn
+    lexeme = L.lexeme sc
+
+    anyToken :: Parser Text
+    anyToken = lexeme (takeWhile1P (Just "any token") (not . isSpace))
+
+    -- space consumer WITHOUT newlines (for use with Text.Megaparsec.Char.Lexer combinators)
+    sc :: Parser ()
+    sc = L.space (void $ some (char ' ' <|> char '\t')) (L.skipLineComment "//") (L.skipBlockComment "/*" "*/")
+
+    -- space consumer with newlines
+    scn :: Parser ()
+    scn = L.space space1 (L.skipLineComment "//") (L.skipBlockComment "/*" "*/")
 
 toGomod :: Text -> [Statement] -> Gomod
 toGomod name = foldr apply (Gomod name [] M.empty M.empty [])
   where
-  apply (RequireStatement package version) gomod = gomod { modRequires = Require package version : modRequires gomod }
-  apply (ReplaceStatement old new newVersion) gomod = gomod { modReplaces = M.insert old (Require new newVersion) (modReplaces gomod) }
-  apply (LocalReplaceStatement old path) gomod = gomod { modLocalReplaces = M.insert old path (modLocalReplaces gomod) }
-  apply (ExcludeStatement package version) gomod = gomod { modExcludes = Require package version : modExcludes gomod }
-  apply _ gomod = gomod
+    apply (RequireStatement package version) gomod = gomod {modRequires = Require package version : modRequires gomod}
+    apply (ReplaceStatement old new newVersion) gomod = gomod {modReplaces = M.insert old (Require new newVersion) (modReplaces gomod)}
+    apply (LocalReplaceStatement old path) gomod = gomod {modLocalReplaces = M.insert old path (modLocalReplaces gomod)}
+    apply (ExcludeStatement package version) gomod = gomod {modExcludes = Require package version : modExcludes gomod}
+    apply _ gomod = gomod
 
 -- lookup modRequires and replace them with modReplaces as appropriate, producing the resolved list of requires
 resolve :: Gomod -> [Require]
 resolve gomod = map resolveReplace . filter nonLocalPackage $ modRequires gomod
   where
-  -- nonLocalPackage determines whether the package name is used in a "local
-  -- replace" statement -- i.e., a replace statement pointing to a filepath as a
-  -- local module
-  nonLocalPackage :: Require -> Bool
-  nonLocalPackage = not . (`elem` M.keys (modLocalReplaces gomod)) . reqPackage
+    -- nonLocalPackage determines whether the package name is used in a "local
+    -- replace" statement -- i.e., a replace statement pointing to a filepath as a
+    -- local module
+    nonLocalPackage :: Require -> Bool
+    nonLocalPackage = not . (`elem` M.keys (modLocalReplaces gomod)) . reqPackage
 
-  resolveReplace require = fromMaybe require (M.lookup (reqPackage require) (modReplaces gomod))
+    resolveReplace require = fromMaybe require (M.lookup (reqPackage require) (modReplaces gomod))
 
 analyze' ::
-  ( Has ReadFS sig m
-  , Has Exec sig m
-  , Has Diagnostics sig m
-  )
-  => Path Abs File -> m (Graphing Dependency)
+  ( Has ReadFS sig m,
+    Has Exec sig m,
+    Has Diagnostics sig m
+  ) =>
+  Path Abs File ->
+  m (Graphing Dependency)
 analyze' file = graphingGolang $ do
   gomod <- readContentsParser gomodParser file
 
@@ -209,10 +344,24 @@ analyze' file = graphingGolang $ do
 buildGraph :: Has GolangGrapher sig m => Gomod -> m ()
 buildGraph = traverse_ go . resolve
   where
+    go :: Has GolangGrapher sig m => Require -> m ()
+    go Require {..} = do
+      let pkg = mkGolangPackage reqPackage
 
-  go :: Has GolangGrapher sig m => Require -> m ()
-  go Require{..} = do
-    let pkg = mkGolangPackage reqPackage
+      direct pkg
 
-    direct pkg
-    label pkg (mkGolangVersion reqVersion)
+      -- When labelling the dependency version, we use:
+      --
+      -- 1. The commit hash for pseudo-versions. TODO: we should augment the
+      --    backend to accept full pseudo-versions.
+      -- 2. The full semantic version without build metadata identifiers for
+      --    semantic versions. This is specifically intended to strip the
+      --    "+incompatible" metadata tag that the Go tooling uses. See
+      --    https://golang.org/ref/mod#incompatible-versions for details.
+      -- 3. The raw version text for non-canonical versions. Nothing else we can
+      --    do here.
+      label pkg $
+        GolangLabelVersion $ case reqVersion of
+          NonCanonical n -> n
+          Pseudo commitHash -> commitHash
+          Semantic semver -> "v" <> SemVer.toText semver {_versionMeta = []}

@@ -2,7 +2,7 @@ module Strategy.Go.Types
   ( GolangPackage -- don't export GolangPackage; export the smart constructor instead
   , mkGolangPackage
   , GolangGrapher
-  , GolangLabel(GolangLabelLocation) -- don't export GolangLabelVersion; export the smart constructor instead
+  , GolangLabel(..)
   , mkGolangVersion
 
   , graphingGolang
@@ -57,7 +57,21 @@ golangPackageToDependency pkg = foldr applyLabel start
   applyLabel (GolangLabelVersion ver) dep = dep { dependencyVersion = Just (CEq ver) }
   applyLabel (GolangLabelLocation loc) dep = dep { dependencyLocations = loc : dependencyLocations dep }
 
--- replace "v0.0.0-20191212000000-abcdef+incompatible" with "abcdef"
+-- Replaces "v0.0.0-20191212000000-abcdef+incompatible" with "abcdef".
+--
+-- This parses "pseudo-versions" of Go modules into the commit hash of the
+-- vendored module. See also:
+--
+-- - What are pseudo-versions? https://golang.org/ref/mod#pseudo-versions
+-- - Why do we need pseudo-versions? https://golang.org/ref/mod#glos-pseudo-version
+-- - How does Go resolve import paths into download URLs? https://golang.org/cmd/go/#hdr-Remote_import_paths
+--
+-- FIXME: This doesn't actually work right. For example, it won't handle
+-- versions with pre-releases that are NOT pseudo-versions. That's why we have
+-- a proper pseudo-version parser in the `go.mod` analyzer.
+--
+-- TODO: In `go.mod`, we handle this in the parser. Do we even need to handle
+-- this format in other Go analyzers? Can we just remove this code?
 fixVersion :: Text -> Text
 fixVersion = last . T.splitOn "-" . T.replace "+incompatible" ""
 

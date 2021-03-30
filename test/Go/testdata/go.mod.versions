@@ -1,0 +1,24 @@
+module github.com/hashicorp/nomad
+
+go 1.15
+
+require (
+	// See documentation at https://golang.org/ref/mod#pseudo-versions
+
+	// Pseudo-version examples:
+	// Form 1 ("vX.0.0-yyyymmddhhmmss-abcdefabcdef is used when there is no known base version.")
+	github.com/containerd/go-cni v0.0.0-20190904155053-d20b7eebc7ee
+	gopkg.in/tomb.v2 v2.0.0-20140626144623-14b3d72120e8
+
+	// Form 2 ("vX.Y.Z-pre.0.yyyymmddhhmmss-abcdefabcdef is used when the base version is a pre-release version like vX.Y.Z-pre.")
+	github.com/docker/docker v17.12.0-ce-rc1.0.20200330121334-7f8b4b621b5d+incompatible // Also make sure to handle stripping "+incompatible"
+
+	// Form 3 ("vX.Y.(Z+1)-0.yyyymmddhhmmss-abcdefabcdef is used when the base version is a release version like vX.Y.Z.")
+	github.com/containernetworking/plugins v0.7.3-0.20190501191748-2d6d46d308b2
+	github.com/ryanuber/columnize v2.1.1-0.20170703205827-abc90934186a+incompatible
+
+	// Examples of semantic versions that are NOT pseudo-versions:
+	github.com/opencontainers/runc v1.0.0-rc92
+	honnef.co/go/tools v0.0.1-2020.1.4
+	hub.com/docker/distribution v2.7.1+incompatible
+)
