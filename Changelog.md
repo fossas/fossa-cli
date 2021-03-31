@@ -1,3 +1,20 @@
+# v2.5.8
+
+- Support makefiles in `fossa vps aosp-notice-file` ([#216](https://github.com/fossas/spectrometer/pull/216))
+- Require paths to ninja files as arguments in `fossa vps aosp-notice-file` ([#217](https://github.com/fossas/spectrometer/pull/217))
+
+# v2.5.7
+
+- Print project URL after `fossa vps analyze` ([#215](https://github.com/fossas/spectrometer/pull/215))
+
+# v2.5.6
+
+- Fixes an issue that could cause gradle project analysis to hang forever ([#211](https://github.com/fossas/spectrometer/pull/211))
+
+# v2.5.5
+
+- Fixes an issue where Composer lockfiles could cause a crash when parsing ([#207](https://github.com/fossas/spectrometer/pull/207))
+
 # v2.5.4
 - Fix an issue that could prevent scala analysis from terminating ([#206](https://github.com/fossas/spectrometer/pull/187))
 
