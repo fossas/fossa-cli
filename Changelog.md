@@ -1,3 +1,9 @@
+# v2.5.9
+
+- Update the VPS scanning plugin:
+  - Resolve issues reading IPR files with null byte content.
+  - Workaround recursive variable declarations when parsing Android.mk files.
+
 # v2.5.8
 
 - Support makefiles in `fossa vps aosp-notice-file` ([#216](https://github.com/fossas/spectrometer/pull/216))
