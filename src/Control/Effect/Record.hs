@@ -4,6 +4,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -46,19 +47,19 @@ class Recordable (r :: Type -> Type) where
   recordValue :: r a -> a -> Value
 
 -- | A journal contains all of the effect invocations recorded by RecordC
-newtype Journal = Journal {unJournal :: Map Value Value}
+newtype Journal eff = Journal {unJournal :: Map Value Value}
   deriving (Eq, Ord, Show)
 
-instance FromJSON Journal where
+instance FromJSON (Journal eff) where
   parseJSON = fmap (Journal . M.fromList) . parseJSON
 
-instance ToJSON Journal where
+instance ToJSON (Journal eff) where
   toJSON = toJSON . M.toList . unJournal
 
 -- | Wrap and record an effect; generally used with @-XTypeApplications@, e.g.,
 --
 -- > runRecord @SomeEffect
-runRecord :: forall e sig m a. Has (Lift IO) sig m => RecordC e sig m a -> m (Journal, a)
+runRecord :: forall e sig m a. Has (Lift IO) sig m => RecordC e sig m a -> m (Journal e, a)
 runRecord act = do
   (mapping, a) <- runAtomicState M.empty . runRecordC $ act
   pure (Journal mapping, a)

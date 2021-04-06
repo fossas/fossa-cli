@@ -7,14 +7,17 @@ module App.Fossa.Analyze
   , ScanDestination(..)
   , UnpackArchives(..)
   , discoverFuncs
+  , RecordMode(..)
   ) where
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
+import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
 import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContributors)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
 import App.Types
+import App.Util (validateDir)
 import qualified Control.Carrier.Diagnostics as Diag
 import Control.Carrier.Finally
 import Control.Carrier.Output.IO
@@ -24,8 +27,9 @@ import Control.Effect.Diagnostics ((<||>))
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Record
+import Control.Effect.Replay (runReplay)
 import Control.Monad.IO.Class (MonadIO)
-import Data.Aeson (encodeFile, object, (.=))
+import Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (for_, traverse_)
@@ -75,9 +79,10 @@ import qualified Strategy.RPM as RPM
 import qualified Strategy.Rebar3 as Rebar3
 import qualified Strategy.Scala as Scala
 import qualified Strategy.Yarn as Yarn
-import System.Exit (exitFailure)
+import System.Exit (die, exitFailure)
 import Types
 import VCS.Git (fetchGitContributors)
+import qualified Path.IO as P
 
 data ScanDestination
   = UploadScan ApiOpts ProjectMetadata -- ^ upload to fossa with provided api key and base url
@@ -86,20 +91,38 @@ data ScanDestination
 -- | UnpackArchives bool flag
 data UnpackArchives = UnpackArchives
 
-analyzeMain :: BaseDir -> Bool -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> [BuildTargetFilter] -> IO ()
-analyzeMain basedir debugMode logSeverity destination project unpackArchives filters =
+-- | "Replay logging" modes
+data RecordMode =
+    RecordModeRecord -- ^ record effect invocations
+  | RecordModeReplay FilePath -- ^ replay effect invocations from a file
+  | RecordModeNone -- ^ don't record or replay
+
+analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> [BuildTargetFilter] -> IO ()
+analyzeMain workdir recordMode logSeverity destination project unpackArchives filters =
   withLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO
     . runExecIO
-    $ if not debugMode
-      then analyze basedir destination project unpackArchives filters
-      else do
+    $ case recordMode of
+      RecordModeNone -> do
+        basedir <- sendIO $ validateDir workdir
+        analyze basedir destination project unpackArchives filters
+      RecordModeRecord -> do
+        basedir <- sendIO $ validateDir workdir
         (execLogs, (readFSLogs, ())) <-
-          runRecord @Exec
-            . runRecord @ReadFS
-            $ analyze basedir destination project unpackArchives filters
-        sendIO $ encodeFile "fossa.debug.json" (object ["Exec" .= execLogs, "ReadFS" .= readFSLogs])
+          runRecord @Exec . runRecord @ReadFS $
+            analyze basedir destination project unpackArchives filters
+        sendIO $ saveReplayLog readFSLogs execLogs "fossa.debug.json"
+      RecordModeReplay file -> do
+        basedir <- BaseDir <$> P.resolveDir' workdir
+        maybeJournal <- sendIO $ loadReplayLog file
+        case maybeJournal of
+          Left err -> sendIO (die $ "Issue loading replay log: " <> err)
+          Right journal -> do
+            let effects = analyzeEffects journal
+            runReplay @ReadFS (effectsReadFS effects)
+              . runReplay @Exec (effectsExec effects)
+              $ analyze basedir destination project unpackArchives filters
 
 discoverFuncs ::
   ( Has (Lift IO) sig m,
