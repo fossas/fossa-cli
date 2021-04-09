@@ -1,6 +1,4 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 module App.Fossa.Analyze
   ( analyzeMain
@@ -256,8 +254,8 @@ data CountedResult
   | FilteredAll Int
   | FoundSome (NE.NonEmpty ProjectResult)
 
--- | Return some state of the projects found, since we can't upload empty result arrays.  
--- We accept a list of all projects analyzed, and the list after filtering.  We assume 
+-- | Return some state of the projects found, since we can't upload empty result arrays.
+-- We accept a list of all projects analyzed, and the list after filtering.  We assume
 -- that the smaller list is the latter, and re.
 checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> CountedResult
 checkForEmptyUpload xs ys
@@ -265,7 +263,7 @@ checkForEmptyUpload xs ys
   | xlen == 0 || ylen == 0 = FilteredAll filterCount
   -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
   | otherwise              = FoundSome $ NE.fromList filtered
-  where 
+  where
     xlen = length xs
     ylen = length ys
     filterCount = abs $ xlen - ylen
@@ -276,8 +274,8 @@ checkForEmptyUpload xs ys
 -- We don't want parent directories of the scan root affecting "production path" filtering -- e.g., if we're
 -- running in a directory called "tmp", we still want results.
 filterProjects :: BaseDir -> [ProjectResult] -> [ProjectResult]
-filterProjects rootDir = filter (isProductionPath . dropPrefix rootPath . fromAbsDir . projectResultPath) 
-  where 
+filterProjects rootDir = filter (isProductionPath . dropPrefix rootPath . fromAbsDir . projectResultPath)
+  where
     rootPath = fromAbsDir $ unBaseDir rootDir
     dropPrefix :: String -> String -> String
     dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
@@ -301,7 +299,7 @@ isProductionPath path = not $ any (`isInfixOf` path)
   , "Carthage/"
   , "Checkouts/"
   ]
-  
+
 tryUploadContributors ::
   ( Has Diag.Diagnostics sig m,
     Has Exec sig m,

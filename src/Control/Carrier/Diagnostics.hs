@@ -1,11 +1,6 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Control.Carrier.Diagnostics
@@ -103,7 +98,7 @@ logDiagnostic diag = do
 -- | Useful for setting up diagnostics from CLI entry points.
 logWithExit_ :: (Has (Lift IO) sig m, Has Logger sig m) => DiagnosticsC m () -> m ()
 logWithExit_ diag = logDiagnostic diag >>= maybe (sendIO exitFailure) pure
-  
+
 runDiagnostics :: Applicative m => DiagnosticsC m a -> m (Either FailureBundle (ResultBundle a))
 runDiagnostics = fmap bundle . runWriter (\w a -> pure (appEndo w [], a)) . runError @SomeDiagnostic . runReader [] . runDiagnosticsC
   where

@@ -1,6 +1,5 @@
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TypeApplications #-}
 
 module App.Pathfinder.Scan
   ( scanMain

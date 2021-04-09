@@ -1,5 +1,3 @@
-{-# language TemplateHaskell #-}
-
 module Strategy.Node.YarnLock
   ( analyze'
   , buildGraph

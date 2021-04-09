@@ -1,5 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Strategy.Go.Transitive
   ( fillInTransitive
   )

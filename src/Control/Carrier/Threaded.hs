@@ -1,5 +1,3 @@
-{-# LANGUAGE TypeApplications #-}
-
 module Control.Carrier.Threaded
   ( fork,
     kill,

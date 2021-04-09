@@ -1,5 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Strategy.Maven
   ( discover,
     mkProject,
@@ -37,7 +35,7 @@ mkProject ::
   (Has ReadFS sig n, Has Exec sig n, Has (Lift IO) sig n, Has Diagnostics sig n) =>
   -- | basedir; required for licenses
   Path Abs Dir -> PomClosure.MavenProjectClosure -> DiscoveredProject n
-mkProject basedir closure = 
+mkProject basedir closure =
   DiscoveredProject
     { projectType = "maven",
       projectPath = parent $ PomClosure.closurePath closure,

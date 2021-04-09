@@ -1,6 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TypeApplications #-}
 
 module App.Fossa.Container
   ( ImageText (..),
@@ -36,7 +35,7 @@ import Data.Text (Text, pack)
 import Data.Text.Extra (breakOnAndRemove)
 import Effect.Exec (AllowErr (Never), Command (..), execJson, runExecIO, Exec, execThrow)
 import Effect.Logger
-import Effect.ReadFS (ReadFS, readContentsJson, ReadFSIOC (runReadFSIO), resolveFile) 
+import Effect.ReadFS (ReadFS, readContentsJson, ReadFSIOC (runReadFSIO), resolveFile)
 import Options.Applicative (Parser, argument, help, metavar, str)
 import Path ( toFilePath, reldir, Dir, Rel )
 import Path.IO (getCurrentDir)
@@ -188,7 +187,7 @@ toContainerScan SyftResponse {..} = do
   pure . ContainerScan image tag $ targetDigest target
 
 convertArtifact :: ResponseArtifact -> ContainerArtifact
-convertArtifact ResponseArtifact {..} = 
+convertArtifact ResponseArtifact {..} =
   ContainerArtifact
     { conArtifactName = artifactName,
       conArtifactVersion = artifactVersion,
@@ -245,7 +244,7 @@ parseSyftOutput filepath = do
 dumpSyftScanMain :: Severity -> Maybe FilePath -> ImageText -> IO ()
 dumpSyftScanMain logseverity path image = withLogger logseverity . logWithExit_ . runExecIO $ dumpSyftScan path image
 
-dumpSyftScan :: 
+dumpSyftScan ::
   ( Has Diagnostics sig m,
     Has (Lift IO) sig m,
     Has Exec sig m,

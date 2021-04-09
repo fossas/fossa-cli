@@ -1,4 +1,3 @@
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE GADTs #-}
 
 module Control.Effect.Output

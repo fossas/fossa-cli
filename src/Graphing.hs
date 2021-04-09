@@ -1,6 +1,4 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 
 -- | A graph augmented with a set of "direct" vertices
 --

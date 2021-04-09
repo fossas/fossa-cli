@@ -1,14 +1,10 @@
-# Build, test, and (sometimes) create a release
-#
-# Linux builds are done under our haskell-static-alpine image (see: fossas/haskell-static-alpine)
-# macOS/windows builds use github's setup-haskell action
+# Build and test on each commit. Create a release on tagged commits.
 #
 # Binaries on each platform are stripped. This removes debug symbols.
 name: Build
 on: push
 
 jobs:
-
   build-all:
     name: ${{ matrix.os-name }}-build
     runs-on: ${{ matrix.os }}
@@ -19,32 +15,29 @@ jobs:
         shell: bash
 
     strategy:
-      # TODO: remove me
-      fail-fast: false
       matrix:
         os: ['windows-latest', 'ubuntu-latest', 'macos-latest']
         include:
-
           - os: ubuntu-latest
             os-name: Linux
-            container: quay.io/fossa/haskell-static-alpine:ghc-8.10
+            container: fossa/haskell-static-alpine:ghc-8.10.4
             project-file: cabal.project.ci.linux
-            # note: the real version is the one bundled in the docker image
-            ghc: '8.10'
+            ghc: '8.10.4'
 
           - os: macos-latest
             os-name: macOS
             project-file: cabal.project.ci.macos
-            ghc: '8.10.3'
+            ghc: '8.10.4'
 
           - os: windows-latest
             os-name: Windows
             project-file: cabal.project.ci.windows
-            ghc: '8.10.3'
+            ghc: '8.10.4'
 
     steps:
     - uses: actions/checkout@v2
 
+    # Install tools used in `vendor_download.sh`.
     - name: Install alpine binary dependencies
       if: ${{ contains(matrix.os, 'ubuntu') }}
       shell: sh
@@ -56,6 +49,7 @@ jobs:
       run: |
         brew install upx jq
 
+    # Set up Haskell.
     - uses: haskell/actions/setup@v1
       id: setup-haskell
       name: Setup ghc/cabal (non-alpine)
@@ -69,6 +63,7 @@ jobs:
         cabal --version || echo "no cabal"
         ghcup --version || echo "no ghcup"
 
+    # Build Spectrometer.
     - uses: actions/cache@v2
       name: Cache cabal store
       with:
@@ -95,14 +90,15 @@ jobs:
       run: |
         cabal test --project-file=${{ matrix.project-file }} all
 
-    - name: Find and move binaries (windows)
+    # Save artifacts.
+    - name: Find and move binaries (Windows)
       if: ${{ contains(matrix.os, 'windows') }}
       run: |
         mkdir release
         find . -type f -path '*/fossa/fossa.exe' -exec cp {} release \;
         find . -type f -path '*/pathfinder/pathfinder.exe' -exec cp {} release \;
 
-    - name: Find and move binaries (non-windows)
+    - name: Find and move binaries (non-Windows)
       if: ${{ !contains(matrix.os, 'windows') }}
       run: |
         mkdir release
@@ -129,10 +125,10 @@ jobs:
 
     - name: Get version
       id: get-version
-      # note that this strips the 'v' prefix from the tag
+      # This strips the 'v' prefix from the tag.
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/v/}
 
-    # This uses names compatible with our install script
+    # This uses names compatible with our install script.
     - name: Bundle binaries
       run: |
         mkdir release

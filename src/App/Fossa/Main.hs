@@ -48,10 +48,10 @@ windowsOsName :: String
 windowsOsName = "mingw32"
 
 mainPrefs :: ParserPrefs
-mainPrefs = prefs $ mconcat 
+mainPrefs = prefs $ mconcat
   [ helpShowGlobals,
     showHelpOnError,
-    subparserInline 
+    subparserInline
   ]
 
 appMain :: IO ()
@@ -386,7 +386,7 @@ containerOpts = ContainerOptions <$> (containerCommands <|> hiddenContainerComma
 
 containerCommands :: Parser ContainerCommand
 containerCommands =
-  hsubparser 
+  hsubparser
     ( command
         "analyze"
         ( info (ContainerAnalyze <$> containerAnalyzeOpts) $
@@ -401,8 +401,8 @@ containerCommands =
 
 hiddenContainerCommands :: Parser ContainerCommand
 hiddenContainerCommands =
-  hsubparser 
-    ( internal 
+  hsubparser
+    ( internal
         <> command
           "parse-file"
           ( info (ContainerParseFile <$> containerParseFileOptions) $
@@ -413,7 +413,7 @@ hiddenContainerCommands =
           ( info (ContainerDumpScan <$> containerDumpScanOptions) $
               progDesc "Capture syft output for debugging"
           )
-    ) 
+    )
 
 containerAnalyzeOpts :: Parser ContainerAnalyzeOptions
 containerAnalyzeOpts =
@@ -436,7 +436,7 @@ containerDumpScanOptions :: Parser ContainerDumpScanOptions
 containerDumpScanOptions =
   ContainerDumpScanOptions
     <$> optional (strOption (short 'o' <> long "output-file" <> help "File to write the scan data (omit for stdout)"))
-    <*> imageTextArg 
+    <*> imageTextArg
 
 compatibilityOpts :: Parser [Argument]
 compatibilityOpts =

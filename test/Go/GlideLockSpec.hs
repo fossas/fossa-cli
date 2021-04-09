@@ -34,16 +34,16 @@ expected = run . evalGrapher $ do
                }
 
 glideLockfile :: GlideLockfile
-glideLockfile = 
+glideLockfile =
   GlideLockfile { hash = "123"
   , updated = "now"
-  , imports = 
-    [ GlideDep 
+  , imports =
+    [ GlideDep
         { depName = "github.com/pkg/one"
         , depVersion = 100
         , depRepo = Just "testRepo"
     }
-    , GlideDep 
+    , GlideDep
         { depName = "github.com/pkg/three/v3"
         , depVersion = 300
         , depRepo = Just "testRepo"

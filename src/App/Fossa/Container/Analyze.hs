@@ -1,4 +1,3 @@
-
 module App.Fossa.Container.Analyze
   ( analyzeMain,
   )
@@ -52,4 +51,3 @@ analyze scanDestination override image = do
       logInfo ("  " <> pretty buildUrl)
       -- Report non-critical errors
       traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
-

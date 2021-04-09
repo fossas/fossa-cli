@@ -1,5 +1,4 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE NoStrictData #-}
 
 -- | An effect that provides an atomically-modifiable state value. Similar to

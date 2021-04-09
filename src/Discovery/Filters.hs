@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Discovery.Filters
   ( BuildTargetFilter (..),
     filterParser,

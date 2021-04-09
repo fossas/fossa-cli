@@ -1,4 +1,3 @@
-
 module App.Pathfinder.Main
   ( appMain
   ) where

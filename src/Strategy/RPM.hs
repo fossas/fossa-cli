@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.RPM
@@ -95,7 +94,7 @@ analyze specFiles = do
   pure graphing
 
 analyzeSingle :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyzeSingle file = do 
+analyzeSingle file = do
   specFileText <- readContentsText file
   pure . buildGraph $ getSpecDeps specFileText
 

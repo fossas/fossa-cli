@@ -26,4 +26,3 @@ spec = do
 
     it "should interpolate multiple properties" $ do
       interpolateProperties pom "${project.groupId}${project.artifactId}" `shouldBe` "MYGROUPMYARTIFACT"
-      

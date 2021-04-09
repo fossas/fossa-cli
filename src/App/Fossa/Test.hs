@@ -71,4 +71,3 @@ testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType overrid
   -- here is if we time out
   hPutStrLn stderr "Timed out while waiting for issues scan"
   exitFailure
-

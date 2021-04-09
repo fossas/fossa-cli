@@ -58,44 +58,44 @@ dependencyFive = Dependency { dependencyType = HexType
                       }
 
 depOne :: Rebar3Dep
-depOne = Rebar3Dep 
+depOne = Rebar3Dep
           { depName = "one"
           , depVersion = "1.0.0"
           , depLocation = "https://github.com/dep/one"
           , subDeps = [depTwo, depFour]
           }
- 
+
 depTwo :: Rebar3Dep
-depTwo = Rebar3Dep 
+depTwo = Rebar3Dep
           { depName = "two"
           , depVersion = "2.0.0"
           , depLocation = "hex package"
           , subDeps = [depThree]
-          }         
+          }
 
 depThree :: Rebar3Dep
-depThree = Rebar3Dep 
+depThree = Rebar3Dep
           { depName = "three"
           , depVersion = "3.0.0"
           , depLocation = "hex package"
           , subDeps = []
-          }         
+          }
 
 depFour :: Rebar3Dep
-depFour = Rebar3Dep 
+depFour = Rebar3Dep
           { depName = "four"
           , depVersion = "4.0.0"
           , depLocation = "https://github.com/dep/four"
           , subDeps = []
-          }         
+          }
 
 depFive :: Rebar3Dep
-depFive = Rebar3Dep 
+depFive = Rebar3Dep
           { depName = "five"
           , depVersion = "5.0.0"
           , depLocation = "hex package"
           , subDeps = []
-          }         
+          }
 
 spec :: Spec
 spec = do

@@ -1,5 +1,3 @@
-{-# LANGUAGE TypeApplications #-}
-
 module Strategy.Ruby.GemfileLock
   ( analyze'
   , findSections
@@ -125,7 +123,7 @@ unknownSection = do
   scn
   line <- restOfLine
   pure $ UnknownSection line
-      
+
 restOfLine :: Parser Text
 restOfLine = takeWhileP (Just "ignored") (not . isEndLine)
 
@@ -221,7 +219,7 @@ isEndLine '\r' = True
 isEndLine _    = False
 
 specParser :: Parser Spec
-specParser = L.indentBlock scn p 
+specParser = L.indentBlock scn p
   where
     p = do
       name <- findDep

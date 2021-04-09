@@ -1,5 +1,3 @@
-{-# LANGUAGE TypeApplications #-}
-
 -- | Fused-effects wrapped functions from Path.IO
 module Control.Effect.Path
   ( withSystemTempDir,

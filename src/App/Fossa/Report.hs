@@ -1,5 +1,3 @@
-{-# LANGUAGE NumericUnderscores #-}
-
 module App.Fossa.Report
   ( reportMain
   , ReportType (..)
@@ -71,7 +69,7 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
         AttributionReport ->
           Fossa.getAttribution apiOpts revision
       logSticky ""
-        
+
       logStdout . pretty . decodeUtf8 $ Aeson.encode jsonValue
 
     case result of

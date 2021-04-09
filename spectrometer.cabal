@@ -14,8 +14,44 @@ common lang
   build-depends:      base >=4.12 && <4.15
   default-language:   Haskell2010
   default-extensions:
+    BangPatterns
+    BinaryLiterals
+    ConstrainedClassMethods
+    ConstraintKinds
+    DeriveDataTypeable
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveLift
+    DeriveTraversable
+    EmptyCase
+    EmptyDataDeriving
+    ExistentialQuantification
+    ExplicitForAll
+    FlexibleContexts
+    FlexibleInstances
+    GADTSyntax
+    GeneralizedNewtypeDeriving
+    HexFloatLiterals
+    ImportQualifiedPost
+    InstanceSigs
+    KindSignatures
+    MultiParamTypeClasses
+    NamedFieldPuns
+    NamedWildCards
+    NumericUnderscores
     OverloadedStrings
+    PolyKinds
+    PostfixOperators
+    RankNTypes
+    ScopedTypeVariables
+    StandaloneDeriving
+    StandaloneKindSignatures
     StrictData
+    TupleSections
+    TypeApplications
+    TypeOperators
+    TypeSynonymInstances
 
   ghc-options:
     -Wall -Wincomplete-uni-patterns -Wcompat
@@ -23,6 +59,7 @@ common lang
     -Wmissing-export-lists -Wredundant-constraints
 
 -- TODO: base16-bytestring isn't a direct dep, but we need to add version bounds because cpio-conduit fails to compile with a newer version. Remove the dependency on base16-bytestring once we fix or bump cpio-conduit
+-- TODO: Switch `semver` back to `versions` once https://github.com/fosskers/versions/issues/47 is fixed? This package maintainer seems much more responsive. Contrast https://github.com/brendanhay/semver/issues/12.
 common deps
   build-depends:
     , aeson                        ^>=1.5.2.0
@@ -57,10 +94,6 @@ common deps
     , prettyprinter                >=1.6      && <1.8
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , req                          >=3.4      && <3.6
-    -- TODO: Switch `semver` back to `versions` once
-    -- https://github.com/fosskers/versions/issues/47 is fixed? This package
-    -- maintainer seems much more responsive. Contrast
-    -- https://github.com/brendanhay/semver/issues/12.
     , semver                       ^>=0.4.0.1
     , split                        ^>=0.2.3.4
     , stm                          ^>=2.5.0

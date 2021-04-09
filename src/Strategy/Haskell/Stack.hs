@@ -1,5 +1,4 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Strategy.Haskell.Stack
   ( discover,

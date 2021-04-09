@@ -16,7 +16,7 @@ dependencyOne = Dependency { dependencyType = PodType
                            , dependencyVersion = Just (CEq "1.0.0")
                            , dependencyLocations = []
                            , dependencyEnvironments = []
-                           , dependencyTags = M.empty 
+                           , dependencyTags = M.empty
                            }
 
 dependencyTwo :: Dependency
@@ -25,7 +25,7 @@ dependencyTwo = Dependency { dependencyType = PodType
                            , dependencyVersion = Just (CEq "2.0.0")
                            , dependencyLocations = []
                            , dependencyEnvironments = []
-                           , dependencyTags = M.empty 
+                           , dependencyTags = M.empty
                            }
 
 dependencyThree :: Dependency
@@ -34,7 +34,7 @@ dependencyThree = Dependency { dependencyType = PodType
                              , dependencyVersion = Just (CEq "3.0.0")
                              , dependencyLocations = []
                              , dependencyEnvironments = []
-                             , dependencyTags = M.empty 
+                             , dependencyTags = M.empty
                              }
 
 dependencyFour :: Dependency
@@ -43,7 +43,7 @@ dependencyFour = Dependency { dependencyType = PodType
                             , dependencyVersion = Just (CEq "4.0.0")
                             , dependencyLocations = []
                             , dependencyEnvironments = []
-                            , dependencyTags = M.empty 
+                            , dependencyTags = M.empty
                             }
 
 podSection :: Section

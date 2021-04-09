@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# language TemplateHaskell #-}
 
 module Strategy.Maven.Plugin

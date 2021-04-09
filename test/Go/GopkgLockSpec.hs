@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Go.GopkgLockSpec
   ( spec
   ) where

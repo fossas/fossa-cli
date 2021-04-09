@@ -161,7 +161,7 @@ mkMetadataOpts :: ProjectMetadata -> Text -> Option scheme
 mkMetadataOpts ProjectMetadata{..} projectName = mconcat $ catMaybes maybes
   where
     title = Just $ fromMaybe projectName projectTitle
-    maybes = 
+    maybes =
       [ ("projectURL" =:) <$> projectUrl
       , ("jiraProjectKey" =:) <$> projectJiraKey
       , ("link" =:) <$> projectLink
@@ -232,7 +232,7 @@ getLatestBuild apiOpts ProjectRevision {..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   Organization orgId _ <- getOrganization apiOpts
- 
+
   response <- req GET (buildsEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
 
@@ -248,7 +248,7 @@ getIssues
   -> m Issues
 getIssues apiOpts ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
- 
+
   Organization orgId _ <- getOrganization apiOpts
   response <- req GET (issuesEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
@@ -312,7 +312,7 @@ getOrganization apiOpts = fossaReq $ do
 
 ----------
 
-newtype Contributors = Contributors 
+newtype Contributors = Contributors
   {unContributors :: Map Text Text}
   deriving (Eq, Ord, Show, ToJSON)
 

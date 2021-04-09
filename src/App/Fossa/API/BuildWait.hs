@@ -1,5 +1,3 @@
-{-# LANGUAGE NumericUnderscores #-}
-
 module App.Fossa.API.BuildWait
   ( waitForBuild,
     waitForIssues,

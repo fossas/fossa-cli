@@ -1,5 +1,3 @@
-{-# LANGUAGE TypeApplications #-}
-
 module Strategy.Composer
   ( discover,
     buildGraph,

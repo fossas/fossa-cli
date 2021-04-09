@@ -1,5 +1,4 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Strategy.NuGet.Nuspec
   ( discover,
@@ -74,7 +73,7 @@ nuspecLicenses nuspec = url ++ licenseField
             licenseField = foldr (\a b -> b ++ [License (parseLicenseType $ nuspecLicenseType a) (nuspecLicenseValue a)]) [] (license nuspec)
 
 parseLicenseType :: Text -> LicenseType
-parseLicenseType rawType = case T.unpack rawType of 
+parseLicenseType rawType = case T.unpack rawType of
                             "expression" -> LicenseSPDX
                             "file" -> LicenseFile
                             _ -> UnknownType

@@ -57,7 +57,7 @@ testInner ::
   m ()
 testInner apiOpts outputType override image = do
   logDebug "Running embedded syft binary"
-  
+
   containerScan <- runSyft image >>= toContainerScan
   let revision = extractRevision override containerScan
 

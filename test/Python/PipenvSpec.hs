@@ -86,7 +86,7 @@ depThree = Dependency
   , dependencyEnvironments = [EnvProduction]
   , dependencyTags = M.empty
   }
-  
+
 depFour :: Dependency
 depFour = Dependency
   { dependencyType = PipType

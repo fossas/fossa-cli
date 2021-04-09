@@ -16,7 +16,7 @@ dependencyOne = Dependency { dependencyType = PodType
                            , dependencyVersion = Just (CEq "1.0.0")
                            , dependencyLocations = ["test.repo"]
                            , dependencyEnvironments = []
-                           , dependencyTags = M.empty 
+                           , dependencyTags = M.empty
                            }
 
 dependencyTwo :: Dependency
@@ -25,7 +25,7 @@ dependencyTwo = Dependency { dependencyType = PodType
                            , dependencyVersion = Just (CEq "2.0.0")
                            , dependencyLocations = ["custom.repo"]
                            , dependencyEnvironments = []
-                           , dependencyTags = M.empty 
+                           , dependencyTags = M.empty
                            }
 
 dependencyThree :: Dependency
@@ -34,7 +34,7 @@ dependencyThree = Dependency { dependencyType = PodType
                              , dependencyVersion = Just (CEq "3.0.0")
                              , dependencyLocations = ["test.repo"]
                              , dependencyEnvironments = []
-                             , dependencyTags = M.empty 
+                             , dependencyTags = M.empty
                              }
 
 dependencyFour :: Dependency
@@ -43,11 +43,11 @@ dependencyFour = Dependency { dependencyType = PodType
                              , dependencyVersion = Nothing
                              , dependencyLocations = ["test.repo"]
                              , dependencyEnvironments = []
-                             , dependencyTags = M.empty 
+                             , dependencyTags = M.empty
                              }
 
 podOne :: Pod
-podOne = Pod "one" (Just "1.0.0") M.empty 
+podOne = Pod "one" (Just "1.0.0") M.empty
 
 podTwo :: Pod
 podTwo = Pod "two" (Just "2.0.0") (M.fromList [(SourceProperty, "custom.repo")])
@@ -73,7 +73,7 @@ spec = do
       expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
       expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
       expectEdges [] graph
-      
+
   podLockFile <- T.runIO (TIO.readFile "test/Cocoapods/testdata/Podfile")
   T.describe "podfile parser" $ do
     T.it "correctly parses a file" $ do

@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module NuGet.ProjectAssetsJsonSpec
   ( spec
   ) where

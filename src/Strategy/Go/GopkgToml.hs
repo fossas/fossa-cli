@@ -1,5 +1,4 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Go.GopkgToml
   ( Gopkg(..)

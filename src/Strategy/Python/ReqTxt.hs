@@ -49,7 +49,7 @@ reqParser = [] <$ char '-' <* ignored -- pip options
   ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine) <* (try newLine <|> (() <$ takeWhileP (Just "end of line") isEndLine))
 
   newLine :: Parser ()
-  newLine = char '\\' <* takeWhileP (Just "endLine") isEndLine *> ignored 
+  newLine = char '\\' <* takeWhileP (Just "endLine") isEndLine *> ignored
 
   comment :: Parser ()
   comment = char '#' *> ignored

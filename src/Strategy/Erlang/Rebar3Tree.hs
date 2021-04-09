@@ -50,13 +50,13 @@ extractAliasLookup (ConfigValues erls) = foldr extract M.empty erls
         packages = case val of
           ErlTuple [ErlAtom (AtomText "deps"), ErlArray deplist] -> deplist
           _ -> []
-        
+
         getAlias :: ErlValue -> Maybe (Text, Text)
         getAlias erl = case erl of
           ErlTuple [ErlAtom (AtomText realname), ErlString _, ErlTuple [ErlAtom (AtomText "pkg"), ErlAtom (AtomText alias)]] -> Just (realname, alias)
           ErlTuple [ErlAtom (AtomText realname), ErlTuple [ErlAtom (AtomText "pkg"), ErlAtom (AtomText alias)]] -> Just (realname, alias)
           _ -> Nothing
-          
+
 
 unaliasDeps :: M.Map Text Text -> [Rebar3Dep] -> [Rebar3Dep]
 unaliasDeps aliasMap = map unalias
@@ -71,7 +71,7 @@ unaliasDeps aliasMap = map unalias
 buildGraph :: [Rebar3Dep] -> Graphing Dependency
 buildGraph deps = unfold deps subDeps toDependency
   where
-  toDependency Rebar3Dep{..} = 
+  toDependency Rebar3Dep{..} =
     Dependency { dependencyType = if T.isInfixOf "github.com" depLocation then GitType else HexType
                  , dependencyName = if T.isInfixOf "github.com" depLocation then depLocation else depName
                  , dependencyVersion = Just (CEq depVersion)
@@ -121,18 +121,18 @@ rebar3TreeParser = concat <$> ((try (rebarDep 0) <|> ignoredLine) `sepBy` eol) <
     slashCount <- many "  │"
     _ <- satisfy (\_ -> length slashCount == depth)
 
-    _ <- chunk "  & " <|> chunk "  ├─ " <|> chunk " ├─ " <|> chunk " └─ " 
+    _ <- chunk "  & " <|> chunk "  ├─ " <|> chunk " ├─ " <|> chunk " └─ "
     dep <- findName
     _ <- chunk "─"
     version <- findVersion
     _ <- chunk " ("
     location <- findLocation
     _ <- chunk ")"
-   
+
     deps <- many $ try $ rebarRecurse $ depth + 1
 
     pure [Rebar3Dep dep version location (concat deps)]
-  
+
   rebarRecurse :: Int -> Parser [Rebar3Dep]
   rebarRecurse depth = do
     _ <- chunk "\n"

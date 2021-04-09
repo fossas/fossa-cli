@@ -1,5 +1,4 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Strategy.NuGet.ProjectAssetsJson
   ( discover

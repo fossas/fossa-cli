@@ -59,7 +59,7 @@ spec :: Test.Spec
 spec = do
   Test.describe "cargo metadata parser" $ do
     metaBytes <- Test.runIO $ BL.readFile "test/Cargo/testdata/expected-metadata.json"
-    Test.it "should properly construct a resolution tree" $ 
+    Test.it "should properly construct a resolution tree" $
       case eitherDecode metaBytes of
         Left err -> Test.expectationFailure $ "failed to parse: " ++ err
         Right result -> result `Test.shouldBe` expectedMetadata

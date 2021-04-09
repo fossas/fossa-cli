@@ -20,3 +20,5 @@ source-repository-package
   type: git
   location: https://github.com/fossas/semver.git
   tag: 7bc42dd298e0d98e119486ceab4f74042d46b004
+
+index-state: hackage.haskell.org 2021-04-08T20:19:17Z

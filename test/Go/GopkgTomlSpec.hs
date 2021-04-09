@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Go.GopkgTomlSpec
   ( spec
   ) where

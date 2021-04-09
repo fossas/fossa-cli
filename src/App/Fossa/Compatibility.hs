@@ -1,5 +1,4 @@
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 
 module App.Fossa.Compatibility

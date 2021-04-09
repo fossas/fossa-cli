@@ -1,5 +1,3 @@
-{-# LANGUAGE TypeApplications #-}
-
 module Strategy.Cargo
   ( discover
   , CargoMetadata(..)

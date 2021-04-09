@@ -1,5 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Strategy.Maven.Pom
   ( analyze',
     getLicenses,

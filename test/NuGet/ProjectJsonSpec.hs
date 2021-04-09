@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module NuGet.ProjectJsonSpec
   ( spec
   ) where

@@ -1,4 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.ListTargets

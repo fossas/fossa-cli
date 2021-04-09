@@ -1,6 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
-
 module Strategy.Node.NpmList
   ( analyze'
   ) where

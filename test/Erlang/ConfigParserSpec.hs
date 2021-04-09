@@ -22,7 +22,7 @@ spec = do
     oneWithEverything <- runIO $ TIO.readFile "test/Erlang/testdata/stresstest.config"
     it "should succeed on a real input file" $
       parse parseConfig "" `shouldSucceedOn` rawText
-    
+
     it "should parse an atom" $ do
       let shouldParseInto input = parseMatch parseAtom input
 
@@ -38,7 +38,7 @@ spec = do
       parse parseAtom "" `shouldFailOn` "Abc"
       parse parseAtom "" `shouldFailOn` "4five6"
       parse parseAtom "" `shouldFailOn` "_atom"
-    
+
     it "should parse a string" $ do
       let shouldParseInto input = parseMatch parseErlString input
 
@@ -100,8 +100,8 @@ spec = do
       parse parseRadixLiteral "" `shouldFailOn` "-2#10"
 
     it "should parse everything at once" $
-      parse parseConfig "stresstest.config" oneWithEverything `shouldParse` 
-        ConfigValues 
+      parse parseConfig "stresstest.config" oneWithEverything `shouldParse`
+        ConfigValues
           [ErlTuple [
             atom "rawAtom",
             atom "quotedAtom",

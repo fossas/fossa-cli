@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Discovery.Walk
   ( -- * Walking the filetree
     walk,

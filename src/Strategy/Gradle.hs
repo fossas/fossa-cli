@@ -213,7 +213,7 @@ buildGraph projectsAndDeps = run . withLabeling toDependency $ M.traverseWithKey
     for_ projDeps $ \dep -> do
       edge projAsDep dep
       mkRecursiveEdges dep envLabel
-    
+
   configNameToLabel :: ConfigName -> GradleLabel
   configNameToLabel conf = case unConfigName conf of
     "compileOnly" -> Env EnvDevelopment

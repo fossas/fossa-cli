@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.VPS.Scan.Core
   ( createLocator

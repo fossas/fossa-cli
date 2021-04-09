@@ -40,7 +40,7 @@ spec = do
         Left err -> Test.expectationFailure $ "Failed to parse: " ++ err
         Right deps -> deps `Test.shouldMatchList` allDeps
 
-  Test.describe "Stack graph builder" $ 
+  Test.describe "Stack graph builder" $
     case run . runDiagnostics . buildGraph $ allDeps of
       Left fbundle -> Test.it "should build a graph" $ Test.expectationFailure (show $ renderFailureBundle fbundle)
       Right ResultBundle {..} -> do

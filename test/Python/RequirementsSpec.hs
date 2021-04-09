@@ -76,15 +76,13 @@ spec = do
   T.describe "requirementParser"
     $ T.it "can parse the edge case examples"
     $ traverse_ (\input -> runParser requirementParser "" `shouldSucceedOn` input) examples
-  
+
   requirementsTextFile <- T.runIO (TIO.readFile "test/Python/testdata/req.txt")
   T.describe "req file" $
     T.it "can parse" $
-      case runParser requirementsTxtParser "" requirementsTextFile of 
+      case runParser requirementsTxtParser "" requirementsTextFile of
         Left r -> do
           T.expectationFailure $ "failed to parse: error:" ++ show r
         Right res -> do
-          let result = buildGraph res 
+          let result = buildGraph res
           expectDeps [depOne, depTwo, depThree, depFour] result
-
-          

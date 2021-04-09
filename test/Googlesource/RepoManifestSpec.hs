@@ -169,7 +169,7 @@ validatedProjectFive = ValidatedProject { validatedProjectName = "platform/dalvi
                                        , validatedProjectUrl = [uri|https://android.googlesource.com/platform/dalvik|]
                                        , validatedProjectRevision = "refs/tags/android-10.0.0_r29"
                                        }
-                                      
+
 validatedProjectList :: [ValidatedProject]
 validatedProjectList = [validatedProjectOne, validatedProjectTwo, validatedProjectThree, validatedProjectFour, validatedProjectFive]
 

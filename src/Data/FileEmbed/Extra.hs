@@ -1,4 +1,4 @@
-module Data.FileEmbed.Extra 
+module Data.FileEmbed.Extra
   ( embedFileIfExists
   ) where
 

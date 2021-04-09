@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-
 module Discovery.Archive.RPM
   ( extractRpm,
   )

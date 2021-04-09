@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module NuGet.NuspecSpec
   ( spec
   ) where
@@ -76,7 +74,7 @@ spec = do
     it "reads a file and extracts the correct license" $ do
       case parseXML singleLicense of
         Right project -> do
-          (groups project) `shouldBe` [] 
+          (groups project) `shouldBe` []
           (license project) `shouldMatchList` [NuspecLicense "file" "LICENSE.txt"]
           (licenseUrl project) `shouldBe` Nothing
         Left err -> expectationFailure (T.unpack ("could not parse nuspec file: " <> xmlErrorPretty err))
