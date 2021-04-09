@@ -169,7 +169,7 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 		if line == "[INFO]" || line == "[INFO] " || line == "[INFO] ------------------------------------------------------------------------" {
 			started = false
 		}
-		if strings.HasPrefix(line, "[INFO] Downloading ") || strings.HasPrefix(line, "[WARNING]") {
+		if strings.HasPrefix(line, "[INFO] Download") || strings.HasPrefix(line, "[WARNING]") {
 			continue
 		}
 		if strings.HasPrefix(line, "Download") {

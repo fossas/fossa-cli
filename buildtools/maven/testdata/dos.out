@@ -5,6 +5,8 @@
 [INFO] --------------------------------[ jar ]---------------------------------
 [INFO] 
 [INFO] --- maven-dependency-plugin:2.8:tree (default-cli) @ fossa ---
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/jdiff/jdiff/1.0.9/jdiff-1.0.9.pom (144 B at 6.0 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/jdiff/jdiff/1.0.9/jdiff-1.0.9.pom (144 B at 6.0 kB/s
 Downloading: http://somewhere.com
 [INFO] fossa:test:jar:1-SNAPSHOT
 [INFO] +- dep:one:jar:1.0.0:compile
