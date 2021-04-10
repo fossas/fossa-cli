@@ -30,6 +30,7 @@ import Data.Bifunctor (first)
 import Data.Bool (bool)
 import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Foldable (for_)
+import Data.Functor.Extra ((<$$>))
 import Data.Text (Text)
 import qualified Data.Text as T
 import Discovery.Filters (BuildTargetFilter (..), filterParser)
@@ -157,11 +158,6 @@ parseCommaSeparatedFileArg arg = sequence (validateFile . T.unpack <$> T.splitOn
 requireKey :: Maybe ApiKey -> IO ApiKey
 requireKey (Just key) = pure key
 requireKey Nothing = die "A FOSSA API key is required to run this command"
-
-infixl 4 <$$>
-
-(<$$>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
-(<$$>) = fmap . fmap
 
 -- | Try to fetch FOSSA_API_KEY from env if not supplied from cmdline
 checkAPIKey :: Maybe Text -> IO (Maybe ApiKey)

@@ -28,10 +28,14 @@ import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class
 import Data.Aeson
+import Data.Aeson.Types (parseEither)
+import qualified Data.ByteString.Lazy as BL
+import Data.Functor.Extra ((<$$>))
 import qualified Data.Map.Lazy as LMap
 import Data.Map.Strict (Map)
 import Data.Maybe (listToMaybe, fromMaybe)
 import Data.Text (Text, pack)
+import qualified Data.Text.Lazy.Encoding as TE
 import Data.Text.Extra (breakOnAndRemove)
 import Effect.Exec (AllowErr (Never), Command (..), execJson, runExecIO, Exec, execThrow)
 import Effect.Logger
@@ -39,9 +43,6 @@ import Effect.ReadFS (ReadFS, readContentsJson, ReadFSIOC (runReadFSIO), resolve
 import Options.Applicative (Parser, argument, help, metavar, str)
 import Path ( toFilePath, reldir, Dir, Rel )
 import Path.IO (getCurrentDir)
-import qualified Data.ByteString.Lazy as BL
-import Data.Aeson.Types (parseEither)
-import qualified Data.Text.Lazy.Encoding as TE
 
 newtype ImageText = ImageText {unImageText :: Text} deriving (Show, Eq, Ord)
 
@@ -77,7 +78,7 @@ data ResponseArtifact
         artifactType :: Text,
         artifactPkgUrl :: Text,
         artifactMetadataType :: Text,
-        artifactMetadata :: Map Text Value
+        artifactMetadata :: Maybe (Map Text Value)
       }
 
 instance FromJSON ResponseArtifact where
@@ -92,7 +93,7 @@ instance FromJSON ResponseArtifact where
       -- We use Lazy delete to avoid evaluating the innards of
       -- the field, since Aeson will try to avoid evaluating it
       -- as well.
-      <*> (LMap.delete "files" <$> obj .: "metadata")
+      <*> (LMap.delete "files" <$$> obj .:? "metadata")
 
 newtype ResponseSource
   = ResponseSource
@@ -180,21 +181,23 @@ extractRevision OverrideProject {..} ContainerScan {..} = ProjectRevision name r
 
 toContainerScan :: Has Diagnostics sig m => SyftResponse -> m ContainerScan
 toContainerScan SyftResponse {..} = do
-  let newArts = map convertArtifact responseArtifacts
-      image = ContainerImage newArts (distroName responseDistro) (distroVersion responseDistro)
+  newArts <- context "error while validating system artifacts" $ traverse convertArtifact responseArtifacts
+  let image = ContainerImage newArts (distroName responseDistro) (distroVersion responseDistro)
       target = sourceTarget responseSource
-  tag <- extractTag $ targetTags target
+  tag <- context "error while extracting image tags" . extractTag $ targetTags target
   pure . ContainerScan image tag $ targetDigest target
 
-convertArtifact :: ResponseArtifact -> ContainerArtifact
-convertArtifact ResponseArtifact {..} =
-  ContainerArtifact
+convertArtifact :: Has Diagnostics sig m => ResponseArtifact -> m ContainerArtifact
+convertArtifact ResponseArtifact {..} = do
+  let errMsg = "No metadata for system package with name: " <> artifactName
+  validMetadata <- fromMaybeText errMsg artifactMetadata
+  pure ContainerArtifact
     { conArtifactName = artifactName,
       conArtifactVersion = artifactVersion,
       conArtifactType = artifactType,
       conArtifactPkgUrl = artifactPkgUrl,
       conArtifactMetadataType = artifactMetadataType,
-      conArtifactMetadata = artifactMetadata
+      conArtifactMetadata = validMetadata
     }
 
 extractTag :: Has Diagnostics sig m => [Text] -> m Text

@@ -176,6 +176,7 @@ library
     Control.Exception.Extra
     Data.FileEmbed.Extra
     Data.Flag
+    Data.Functor.Extra
     Data.Text.Extra
     DepTypes
     Discovery.Archive
