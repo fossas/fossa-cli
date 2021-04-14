@@ -10,6 +10,7 @@ module Strategy.Go.GlideLock
   )
   where
 
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics
 import Data.Aeson
 import qualified Data.Map.Strict as M
@@ -31,7 +32,7 @@ buildGraph lockfile = Graphing.fromList (map toDependency direct)
   toDependency GlideDep{..} =
     Dependency { dependencyType = GoType
                , dependencyName = depName
-               , dependencyVersion = Just (CEq $ T.pack (show depVersion))
+               , dependencyVersion = Just (CEq depVersion)
                , dependencyLocations = []
                , dependencyEnvironments = []
                , dependencyTags = M.empty
@@ -45,7 +46,7 @@ data GlideLockfile = GlideLockfile
 
 data GlideDep = GlideDep
   { depName    :: Text
-  , depVersion :: Integer
+  , depVersion :: Text
   , depRepo    :: Maybe Text
   } deriving (Eq, Ord, Show)
 
@@ -58,5 +59,9 @@ instance FromJSON GlideLockfile where
 instance FromJSON GlideDep where
   parseJSON = withObject "GlideDep" $ \obj ->
     GlideDep <$> obj .:  "name"
-               <*> obj .: "version"
+               -- version field can be text or an int (hexadecimal hash)
+               <*> (obj .: "version" <|> (intToText <$> obj .: "version"))
                <*> obj .:? "repo"
+
+intToText :: Int -> Text
+intToText = T.pack . show

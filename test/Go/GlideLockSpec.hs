@@ -19,7 +19,7 @@ expected = run . evalGrapher $ do
   direct $ Dependency
                { dependencyType = GoType
                , dependencyName = "github.com/pkg/one"
-               , dependencyVersion = Just (CEq "100")
+               , dependencyVersion = Just (CEq "1234")
                , dependencyLocations = []
                , dependencyEnvironments = []
                , dependencyTags = M.empty
@@ -27,7 +27,7 @@ expected = run . evalGrapher $ do
   direct $ Dependency
                { dependencyType = GoType
                , dependencyName = "github.com/pkg/three/v3"
-               , dependencyVersion = Just (CEq "300")
+               , dependencyVersion = Just (CEq "4bd8")
                , dependencyLocations = []
                , dependencyEnvironments = []
                , dependencyTags = M.empty
@@ -40,12 +40,12 @@ glideLockfile =
   , imports =
     [ GlideDep
         { depName = "github.com/pkg/one"
-        , depVersion = 100
+        , depVersion = "1234"
         , depRepo = Just "testRepo"
     }
     , GlideDep
         { depName = "github.com/pkg/three/v3"
-        , depVersion = 300
+        , depVersion = "4bd8"
         , depRepo = Just "testRepo"
     }
   ]
@@ -63,4 +63,4 @@ spec = do
     it "works end to end" $ do
       case decodeEither' testFile of
         Right res -> buildGraph res `shouldBe` expected
-        Left _ -> expectationFailure "failed to parse"
+        Left err -> expectationFailure $ "failed to parse: " <> show err
