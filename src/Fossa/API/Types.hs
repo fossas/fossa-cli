@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module Fossa.API.Types
   ( ApiKey (..),
@@ -26,12 +27,13 @@ import Data.Text.Encoding (encodeUtf8)
 import Network.HTTP.Req
 import Text.URI (URI, render)
 import qualified Unsafe.Coerce as Unsafe
+import Text.URI.QQ (uri)
 
 newtype ApiKey = ApiKey {unApiKey :: Text}
   deriving (Eq, Ord, Show)
 
 data ApiOpts = ApiOpts
-  { apiOptsUri :: URI,
+  { apiOptsUri :: Maybe URI,
     apiOptsApiKey :: ApiKey
   }
   deriving (Eq, Ord, Show)
@@ -191,13 +193,15 @@ renderedIssues issues = rendered
 
 -- | parse a URI for use as a base Url, along with some default options (auth, port, ...)
 useApiOpts :: Has Diagnostics sig m => ApiOpts -> m (Url 'Https, Option 'Https)
-useApiOpts opts = case useURI (apiOptsUri opts) of
-  Nothing -> fatalText ("Invalid URL: " <> render (apiOptsUri opts))
+useApiOpts opts = case useURI serverURI of
+  Nothing -> fatalText ("Invalid URL: " <> render serverURI)
   -- Url is "type role Url nominal" in the scheme (Http/Https), so we have to
   -- unsafeCoerce @Url 'Http@ into @Url 'Https@. Options isn't nominal in the
   -- scheme, so we can coerce as usual.
   Just (Left (url, options)) -> pure (Unsafe.unsafeCoerce url, coerce options <> authHeader (apiOptsApiKey opts))
   Just (Right (url, options)) -> pure (url, options <> authHeader (apiOptsApiKey opts))
+  where 
+    serverURI = fromMaybe [uri|https://app.fossa.com|] (apiOptsUri opts)
 
 authHeader :: ApiKey -> Option 'Https
 authHeader key = header "Authorization" (encodeUtf8 ("Bearer " <> unApiKey key))

@@ -13,6 +13,7 @@ import qualified App.Fossa.Container.Test as ContainerTest
 import App.Fossa.Compatibility (argumentParser, Argument, compatibilityMain)
 import qualified App.Fossa.EmbeddedBinary as Embed
 import App.Fossa.ListTargets (listTargetsMain)
+import App.Fossa.Configuration
 import qualified App.Fossa.Report as Report
 import qualified App.Fossa.Test as Test
 import App.Fossa.VPS.NinjaGraph
@@ -41,8 +42,7 @@ import System.Environment (lookupEnv)
 import System.Exit (die)
 import qualified System.Info as SysInfo
 import Text.Megaparsec (errorBundlePretty, runParser)
-import Text.URI (URI)
-import Text.URI.QQ (uri)
+import Text.URI (URI, mkURI)
 import Path
 
 windowsOsName :: String
@@ -55,9 +55,24 @@ mainPrefs = prefs $ mconcat
     subparserInline
   ]
 
+mergeFileCmdConfig :: CmdOptions -> ConfigFile -> CmdOptions
+mergeFileCmdConfig cmd file =
+  CmdOptions
+    { optDebug = optDebug cmd
+    , optBaseUrl = optBaseUrl cmd <|> (configServer file >>= mkURI)
+    , optProjectName = optProjectName cmd <|> (configProject file >>= configProjID)
+    , optProjectRevision = optProjectRevision cmd <|> (configRevision file >>= configCommit)
+    , optAPIKey = optAPIKey cmd <|> configApiKey file
+    , optCommand = optCommand cmd
+    }
+
 appMain :: IO ()
 appMain = do
-  CmdOptions {..} <- customExecParser mainPrefs (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
+  cmdConfig <- customExecParser mainPrefs (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
+  fileConfig <- readConfigFileIO
+
+  let CmdOptions {..} = maybe cmdConfig (mergeFileCmdConfig cmdConfig) fileConfig
+
   let logSeverity = bool SevInfo SevDebug optDebug
 
   maybeApiKey <- checkAPIKey optAPIKey
@@ -70,13 +85,16 @@ appMain = do
 
   case optCommand of
     AnalyzeCommand AnalyzeOptions {..} -> do
-      let analyzeOverride = override {overrideBranch = analyzeBranch}
+      -- The branch override needs to be set here rather than above to preserve
+      -- the preference for command line options.
+      let analyzeOverride = override {overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
       if analyzeOutput
         then analyzeMain analyzeBaseDir analyzeRecordMode logSeverity OutputStdout analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
         else do
           key <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl key
-          analyzeMain analyzeBaseDir analyzeRecordMode logSeverity (UploadScan apiOpts analyzeMetadata) analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
+          let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
+          analyzeMain analyzeBaseDir analyzeRecordMode logSeverity (UploadScan apiOpts metadata) analyzeOverride analyzeUnpackArchives analyzeBuildTargetFilters
     --
     TestCommand TestOptions {..} -> do
       baseDir <- validateDir testBaseDir
@@ -105,7 +123,8 @@ appMain = do
         VPSAnalyzeCommand VPSAnalyzeOptions {..} -> do
           when (SysInfo.os == windowsOsName) $ unless (fromFlag SkipIPRScan skipIprScan) $ die "Windows VPS scans require skipping IPR.  Please try `fossa vps analyze --skip-ipr-scan DIR`"
           baseDir <- validateDir vpsAnalyzeBaseDir
-          scanMain baseDir apiOpts vpsAnalyzeMeta logSeverity override vpsFileFilter skipIprScan licenseOnlyScan
+          let metadata = maybe vpsAnalyzeMeta (mergeFileCmdMetadata vpsAnalyzeMeta) fileConfig
+          scanMain baseDir apiOpts metadata logSeverity override vpsFileFilter skipIprScan licenseOnlyScan
         NinjaGraphCommand ninjaGraphOptions -> do
           _ <- die "This command is no longer supported"
           ninjaGraphMain apiOpts logSeverity override ninjaGraphOptions
@@ -132,7 +151,8 @@ appMain = do
             else do
               apikey <- requireKey maybeApiKey
               let apiOpts = ApiOpts optBaseUrl apikey
-              ContainerAnalyze.analyzeMain (UploadScan apiOpts containerMetadata) logSeverity override containerAnalyzeImage
+              let metadata = maybe containerMetadata (mergeFileCmdMetadata containerMetadata) fileConfig
+              ContainerAnalyze.analyzeMain (UploadScan apiOpts metadata) logSeverity override containerAnalyzeImage
         ContainerTest ContainerTestOptions {..} -> do
           apikey <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl apikey
@@ -172,7 +192,7 @@ opts :: Parser CmdOptions
 opts =
   CmdOptions
     <$> switch (long "debug" <> help "Enable debug logging")
-    <*> uriOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL (default: https://app.fossa.com)" <> value [uri|https://app.fossa.com|])
+    <*> optional (uriOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL (default: https://app.fossa.com)"))
     <*> optional (strOption (long "project" <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
     <*> optional (strOption (long "revision" <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
@@ -440,7 +460,7 @@ compatibilityOpts =
 
 data CmdOptions = CmdOptions
   { optDebug :: Bool,
-    optBaseUrl :: URI,
+    optBaseUrl :: Maybe URI,
     optProjectName :: Maybe Text,
     optProjectRevision :: Maybe Text,
     optAPIKey :: Maybe Text,

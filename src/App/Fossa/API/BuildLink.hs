@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module App.Fossa.API.BuildLink
   ( getBuildURLWithOrg,
@@ -18,6 +19,7 @@ import Fossa.API.Types (ApiOpts (..))
 import Srclib.Types (Locator (..))
 import qualified Text.URI as URI
 import Text.URI.Builder
+import Text.URI.QQ (uri)
 
 fossaProjectUrlPath :: Locator -> ProjectRevision -> [PathComponent]
 fossaProjectUrlPath Locator {..} ProjectRevision {..} = map PathComponent components
@@ -37,7 +39,7 @@ getFossaBuildUrl revision apiopts locator = do
 
 getBuildURLWithOrg :: Has Diagnostics sig m => Maybe Organization -> ProjectRevision -> ApiOpts -> Locator -> m Text
 getBuildURLWithOrg maybeOrg revision apiopts locator = do
-  let baseURI = apiOptsUri apiopts
+  let baseURI = fromMaybe [uri|https://app.fossa.com|] (apiOptsUri apiopts)
       projectPath = fossaProjectUrlPath locator revision
 
   (path, query) <- case maybeOrg of

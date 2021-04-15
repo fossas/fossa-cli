@@ -1,0 +1,20 @@
+version: 3
+
+server: https://app.fossa.com
+apiKey: "123"
+
+project:
+  id: github.com/fossa-cli
+  name: fossa-cli
+  team: fossa-team
+  policy: license-policy
+  link: fossa.com
+  url: fossa.com
+  releaseGroup:
+    name: release-group-name
+    version: "123"
+  jiraProjectKey: key
+
+revision:
+  commit: "12345"
+  branch: master

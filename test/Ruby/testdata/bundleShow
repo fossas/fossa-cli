@@ -1,3 +1,4 @@
 Gems included by the bundle:
   * pkgOne (1.0.0)
   * pkgTwo (2.0.0)
+Use `bundle info` to print more detailed information about a gem
