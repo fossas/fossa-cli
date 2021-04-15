@@ -31,6 +31,7 @@ import Data.Aeson
 import Data.Aeson.Types (parseEither)
 import qualified Data.ByteString.Lazy as BL
 import Data.Functor.Extra ((<$$>))
+import Data.List (nub)
 import qualified Data.Map.Lazy as LMap
 import Data.Map.Strict (Map)
 import Data.Maybe (listToMaybe, fromMaybe)
@@ -205,7 +206,7 @@ instance ToJSON ContainerArtifact where
       [ "name" .= conArtifactName,
         "fullVersion" .= conArtifactVersion,
         "type" .= conArtifactType,
-        "locations" .= conArtifactLocations,
+        "locations" .= nub conArtifactLocations,
         "purl" .= conArtifactPkgUrl,
         "metadataType" .= conArtifactMetadataType,
         "metadata" .= LMap.delete "files" conArtifactMetadata
@@ -256,11 +257,13 @@ runSyft ::
 runSyft image = runExecIO . withSyftBinary $ \syftBin -> do
   execJson @SyftResponse [reldir|.|] $ syftCommand syftBin image
 
+-- Scope to all layers, to prevent odd "squashing" that syft does
+-- Output to produce machine readable json that we can ingest
 syftCommand :: BinaryPaths -> ImageText -> Command
 syftCommand bin (ImageText image) =
   Command
     { cmdName = pack . toFilePath $ toExecutablePath bin,
-      cmdArgs = ["-o", "json", image],
+      cmdArgs = ["--scope", "all-layers", "-o", "json", image],
       cmdAllowErr = Never
     }
 
