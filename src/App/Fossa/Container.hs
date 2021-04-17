@@ -126,7 +126,7 @@ data SourceTarget
 
 instance FromJSON SourceTarget where
   parseJSON = withObject "SourceTarget" $ \obj ->
-    SourceTarget <$> obj .: "digest"
+    SourceTarget <$> obj .: "imageID"
       <*> obj .: "layers"
       <*> obj .: "tags"
 
