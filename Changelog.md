@@ -1,3 +1,23 @@
+# v2.5.12
+
+Update VPS plugin to 2021-04-19-9162a26 ([#231](https://github.com/fossas/spectrometer/pull/231))
+
+# v2.5.11
+
+* Update container scanning version ([#230](https://github.com/fossas/spectrometer/pull/230))
+* Change container scanning layer scope ([#228](https://github.com/fossas/spectrometer/pull/228))
+* Initial configuration file ([#220](https://github.com/fossas/spectrometer/pull/220))
+* Glide.lock: Parse versions as Text ([#221](https://github.com/fossas/spectrometer/pull/221))
+* Add container layers and artifact locations ([#225](https://github.com/fossas/spectrometer/pull/225))
+* Tiny hlint/ormolu fixes ([#224](https://github.com/fossas/spectrometer/pull/224))
+
+# v2.5.10
+
+* Freeze dependencies to allow reproducible builds ([#222](https://github.com/fossas/spectrometer/pull/222))
+* Add documentation for replay logging ([#212](https://github.com/fossas/spectrometer/pull/212))
+* Only activate replay/record mode using --replay/--record (previously it was turned on in --debug mode) ([#212](https://github.com/fossas/spectrometer/pull/212))
+* Fixed a bug where container scanning failed when ignored artifacts aren't in the right shape ([#223](https://github.com/fossas/spectrometer/pull/223))
+
 # v2.5.9
 
 - Update the VPS scanning plugin:
