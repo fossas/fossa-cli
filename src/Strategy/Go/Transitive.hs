@@ -1,7 +1,10 @@
-module Strategy.Go.Transitive
-  ( fillInTransitive
-  )
-  where
+module Strategy.Go.Transitive (
+  fillInTransitive,
+  graphTransitive,
+  normalizeImportsToModules,
+  Module (..),
+  Package (..),
+) where
 
 import Control.Algebra
 import Control.Applicative (many)
@@ -14,6 +17,7 @@ import qualified Data.Attoparsec.ByteString as A
 import qualified Data.ByteString.Lazy as BL
 import Data.Foldable (traverse_)
 import Data.Functor (void)
+import Data.Maybe qualified as Maybe
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -21,6 +25,7 @@ import Effect.Exec
 import Effect.Grapher
 import Path
 import Strategy.Go.Types
+import qualified Data.Map.Strict as M
 
 goListCmd :: Command
 goListCmd = Command
@@ -93,15 +98,40 @@ graphTransitive = void . traverse_ go
       Nothing -> pure ()
       Just ver -> label pkg (mkGolangVersion ver)
 
-
 fillInTransitive ::
   ( Has GolangGrapher sig m
   , Has Exec sig m
   , Has Diagnostics sig m
-  )
-  => Path x Dir -> m ()
+  ) =>
+  Path x Dir ->
+  m ()
 fillInTransitive dir = do
   goListOutput <- execThrow dir goListCmd
   case decodeMany goListOutput of
     Left (path, err) -> fatal (CommandParseError goListCmd (T.pack (formatError path err)))
-    Right (packages :: [Package]) -> graphTransitive packages
+    Right (packages :: [Package]) -> graphTransitive (normalizeImportsToModules packages)
+
+-- HACK(fossas/team-analysis#514) `go list -json all` emits golang dependencies
+-- at the _package_ level; e.g., `github.com/example/foo/some/package`. The
+-- fossa backend handles package-level imports poorly, especially when there are
+-- many of them from the same go module. See the ticket for details.
+--
+-- As a workaround, we map package imports to their modules, and use the modules
+-- in the final dependency graph.
+normalizeImportsToModules :: [Package] -> [Package]
+normalizeImportsToModules packages = map normalizeSingle packages
+ where
+  normalizeSingle :: Package -> Package
+  normalizeSingle package = package{packageImports = map replaceImport <$> packageImports package}
+
+  -- If a package doesn't have an associated module, use the package name instead
+  replaceImport :: Text -> Text
+  replaceImport package = Maybe.fromMaybe package (M.lookup package packageNameToModule)
+
+  packageNameToModule :: M.Map Text Text
+  packageNameToModule =
+    M.fromList
+      [ (packageImportPath package, modPath gomod)
+      | package <- packages
+      , Just gomod <- [packageModule package]
+      ]

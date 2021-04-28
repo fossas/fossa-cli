@@ -1,3 +1,7 @@
+# v2.5.14
+
+- Golang: map package imports to modules ([#234](https://github.com/fossas/spectrometer/pull/234))
+
 # v2.5.13
 
 Update VPS plugin to 2021-04-27-312bbe8 ([#233](https://github.com/fossas/spectrometer/pull/233))

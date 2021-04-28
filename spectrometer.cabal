@@ -297,6 +297,7 @@ test-suite unit-tests
     Go.GomodSpec
     Go.GopkgLockSpec
     Go.GopkgTomlSpec
+    Go.TransitiveSpec
     Googlesource.RepoManifestSpec
     Gradle.GradleSpec
     GraphingSpec
