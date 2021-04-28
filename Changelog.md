@@ -1,3 +1,10 @@
+# v2.5.13
+
+Update VPS plugin to 2021-04-27-312bbe8 ([#233](https://github.com/fossas/spectrometer/pull/233))
+
+* Improve performance of scanning projects
+* Reduce memory pressure when scanning large projects
+
 # v2.5.12
 
 Update VPS plugin to 2021-04-19-9162a26 ([#231](https://github.com/fossas/spectrometer/pull/231))
