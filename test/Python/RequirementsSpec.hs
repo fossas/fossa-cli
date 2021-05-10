@@ -82,7 +82,7 @@ spec = do
     T.it "can parse" $
       case runParser requirementsTxtParser "" requirementsTextFile of
         Left r -> do
-          T.expectationFailure $ "failed to parse: error:" ++ show r
+          T.expectationFailure $ "failed to parse: error:" ++ errorBundlePretty r
         Right res -> do
           let result = buildGraph res
           expectDeps [depOne, depTwo, depThree, depFour] result

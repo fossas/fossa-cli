@@ -34,22 +34,18 @@ reqParser = [] <$ char '-' <* ignored -- pip options
      <|> [] <$ char '/' <* ignored -- absolute path
      <|> [] <$ oneOfS ["http:", "https:", "git+", "hg+", "svn+", "bzr+"] <* ignored -- URLs
      <|> [] <$ comment
-     <|> (pure <$> requirementParser <* ignored)
-     <|> pure [] -- empty line
+     <|> (pure <$> try requirementParser <* ignored)
+     <|> [] <$ ignored -- something else we're not able to parse
 
   where
   isEndLine :: Char -> Bool
   isEndLine '\n' = True
   isEndLine '\r' = True
-  isEndLine '\\' = True
   isEndLine _    = False
 
   -- ignore content until the end of the line
   ignored :: Parser ()
-  ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine) <* (try newLine <|> (() <$ takeWhileP (Just "end of line") isEndLine))
-
-  newLine :: Parser ()
-  newLine = char '\\' <* takeWhileP (Just "endLine") isEndLine *> ignored
+  ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine) <* takeWhileP (Just "end of line") isEndLine
 
   comment :: Parser ()
   comment = char '#' *> ignored
