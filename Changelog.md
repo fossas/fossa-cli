@@ -1,5 +1,7 @@
 # Unreleased
 
+# v2.5.15
+
 - Requirements.txt: fix hang when parsing unsupported fields ([#235](https://github.com/fossas/spectrometer/pull/235))
 
 # v2.5.14
