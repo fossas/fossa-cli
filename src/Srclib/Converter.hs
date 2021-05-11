@@ -105,5 +105,6 @@ depTypeToFetcher = \case
   CarthageType -> "cart"
   CargoType -> "cargo"
   RPMType -> "rpm"
+  URLType -> "url"
   ComposerType -> "comp"
   HackageType -> "hackage"

@@ -1,0 +1,3 @@
+dependencies:
+- package: one
+  type: unsupported

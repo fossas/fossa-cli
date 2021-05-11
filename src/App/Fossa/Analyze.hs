@@ -76,6 +76,7 @@ import qualified Strategy.Python.Setuptools as Setuptools
 import qualified Strategy.RPM as RPM
 import qualified Strategy.Rebar3 as Rebar3
 import qualified Strategy.Scala as Scala
+import qualified Strategy.UserSpecified.YamlDependencies as UserYaml
 import qualified Strategy.Yarn as Yarn
 import System.Exit (die, exitFailure)
 import Types
@@ -164,7 +165,8 @@ discoverFuncs =
     ProjectAssetsJson.discover,
     ProjectJson.discover,
     Glide.discover,
-    Pipenv.discover
+    Pipenv.discover,
+    UserYaml.discover
   ]
 
 runDependencyAnalysis ::

@@ -247,6 +247,7 @@ library
     Strategy.Ruby.GemfileLock
     Strategy.Scala
     Strategy.Yarn
+    Strategy.UserSpecified.YamlDependencies
     Text.URI.Builder
     Types
     VCS.Git
@@ -322,6 +323,7 @@ test-suite unit-tests
     RPM.SpecFileSpec
     Ruby.BundleShowSpec
     Ruby.GemfileLockSpec
+    UserSpecified.YamlDependenciesSpec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.7.1
   build-depends:

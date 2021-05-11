@@ -1,4 +1,5 @@
 # Unreleased
+- Support for manually specified dependencies through `fossa-deps.yaml` ([#236](https://github.com/fossas/spectrometer/pull/236))
 
 # v2.5.15
 

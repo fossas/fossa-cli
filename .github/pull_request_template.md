@@ -26,8 +26,8 @@ _Example:_ Closes https://github.com/example/repo/issues/123.
 
 ## Checklist
 
-- [ ] I added tests for this PR's change.
-- [ ] I linted (`hlint`) and formatted (`ormolu`) any files I touched in this PR.
-- [ ] If this PR introduced a user-visible change, I added documentation into `docs/`.
-- [ ] If this PR marked a release, I updated `CHANGELOG.md`.
-- [ ] I linked this PR to any referenced GitHub issues.
+- [] I added tests for this PR's change.
+- [] I linted (`hlint`) and formatted (`ormolu`) any files I touched in this PR.
+- [] If this PR introduced a user-visible change, I added documentation into `docs/`.
+- [] I updated `CHANGELOG.md`. If the PR did not mark a release, update the `#Unreleased section at the top`.
+- [] I linked this PR to any referenced GitHub issues.
