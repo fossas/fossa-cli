@@ -44,7 +44,7 @@ analyze scanDestination override image = do
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
 
-      resp <- uploadContainerScan apiOpts projectMeta containerScan
+      resp <- uploadContainerScan apiOpts revision projectMeta containerScan
 
       buildUrl <- getFossaBuildUrl revision apiOpts . parseLocator $ uploadLocator resp
       logInfo "View FOSSA Report:"

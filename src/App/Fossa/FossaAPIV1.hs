@@ -5,33 +5,32 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module App.Fossa.FossaAPIV1
-  ( uploadAnalysis
-  , uploadContributors
-  , uploadContainerScan
-  , UploadResponse(..)
-  , mkMetadataOpts
-  , FossaError(..)
-  , FossaReq(..)
-  , Contributors(..)
-  , fossaReq
-
-  , getLatestBuild
-  , Build(..)
-  , BuildTask(..)
-  , BuildStatus(..)
-  , getIssues
-
-  , Organization(..)
-  , getOrganization
-
-  , getAttribution
-  , getAttributionRaw
-  ) where
+  ( uploadAnalysis,
+    uploadContributors,
+    uploadContainerScan,
+    UploadResponse (..),
+    mkMetadataOpts,
+    FossaError (..),
+    FossaReq (..),
+    Contributors (..),
+    fossaReq,
+    getLatestBuild,
+    Build (..),
+    BuildTask (..),
+    BuildStatus (..),
+    getIssues,
+    Organization (..),
+    getOrganization,
+    getAttribution,
+    getAttributionRaw,
+  )
+where
 
 import App.Fossa.Analyze.Project
 import App.Fossa.Container (ContainerScan (..))
 import qualified App.Fossa.Report.Attribution as Attr
 import App.Types
+import App.Version (versionNumber)
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class (MonadIO (..))
@@ -42,6 +41,7 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Effect.Logger
+import Fossa.API.Types (ApiOpts, Issues, useApiOpts)
 import qualified Network.HTTP.Client as HTTP
 import Network.HTTP.Req
 import qualified Network.HTTP.Types as HTTP
@@ -49,10 +49,8 @@ import Srclib.Converter (toSourceUnit)
 import Srclib.Types
 import Text.URI (URI)
 import qualified Text.URI as URI
-import Fossa.API.Types (ApiOpts, useApiOpts, Issues)
-import App.Version (versionNumber)
 
-newtype FossaReq m a = FossaReq { unFossaReq :: m a }
+newtype FossaReq m a = FossaReq {unFossaReq :: m a}
   deriving (Functor, Applicative, Monad, Algebra sig)
 
 instance Has (Lift IO) sig m => MonadIO (FossaReq m) where
@@ -73,7 +71,7 @@ uploadUrl baseurl = baseurl /: "api" /: "builds" /: "custom"
 
 -- | This renders an organization + locator into a path piece for the fossa API
 renderLocatorUrl :: Int -> Locator -> Text
-renderLocatorUrl orgId Locator{..} =
+renderLocatorUrl orgId Locator {..} =
   locatorFetcher <> "+" <> T.pack (show orgId) <> "/" <> normalizeGitProjectName locatorProject <> "$" <> fromMaybe "" locatorRevision
 
 -- | The fossa backend treats http git locators in a specific way for the issues and builds endpoints.
@@ -82,19 +80,20 @@ normalizeGitProjectName :: Text -> Text
 normalizeGitProjectName project
   | "http" `T.isPrefixOf` project = dropPrefix "http://" . dropPrefix "https://" . dropSuffix ".git" $ project
   | otherwise = project
-    where
-      -- like Text.stripPrefix, but with a non-Maybe result (defaults to the original text)
-      dropPrefix :: Text -> Text -> Text
-      dropPrefix pre txt = fromMaybe txt (T.stripPrefix pre txt)
+  where
+    -- like Text.stripPrefix, but with a non-Maybe result (defaults to the original text)
+    dropPrefix :: Text -> Text -> Text
+    dropPrefix pre txt = fromMaybe txt (T.stripPrefix pre txt)
 
-      -- like Text.stripSuffix, but with a non-Maybe result (defaults to the original text)
-      dropSuffix :: Text -> Text -> Text
-      dropSuffix suf txt = fromMaybe txt (T.stripSuffix suf txt)
+    -- like Text.stripSuffix, but with a non-Maybe result (defaults to the original text)
+    dropSuffix :: Text -> Text -> Text
+    dropSuffix suf txt = fromMaybe txt (T.stripSuffix suf txt)
 
 data UploadResponse = UploadResponse
-  { uploadLocator :: Text
-  , uploadError   :: Maybe Text
-  } deriving (Eq, Ord, Show)
+  { uploadLocator :: Text,
+    uploadError :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
 
 instance FromJSON UploadResponse where
   parseJSON = withObject "UploadResponse" $ \obj ->
@@ -120,35 +119,37 @@ instance ToDiagnostic FossaError where
 containerUploadUrl :: Url scheme -> Url scheme
 containerUploadUrl baseurl = baseurl /: "api" /: "container" /: "upload"
 
-uploadContainerScan
-  :: (Has (Lift IO) sig m, Has Diagnostics sig m)
-  => ApiOpts
-  -> ProjectMetadata
-  -> ContainerScan
-  -> m UploadResponse
-uploadContainerScan apiOpts metadata scan = fossaReq $ do
+uploadContainerScan ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  ProjectMetadata ->
+  ContainerScan ->
+  m UploadResponse
+uploadContainerScan apiOpts ProjectRevision {..} metadata scan = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  let locator = renderLocator $ Locator "custom" (imageTag scan) (Just $ imageDigest scan)
-      opts = "locator" =: locator
+  let locator = renderLocator $ Locator "custom" projectName (Just projectRevision)
+      opts =
+        "locator" =: locator
           <> "cliVersion" =: cliVersion
           <> "managedBuild" =: True
-          <> mkMetadataOpts metadata (imageTag scan)
+          <> mkMetadataOpts metadata projectName
   resp <- req POST (containerUploadUrl baseUrl) (ReqBodyJson scan) jsonResponse (baseOpts <> opts)
   pure $ responseBody resp
 
-
-uploadAnalysis
-  :: (Has (Lift IO) sig m, Has Diagnostics sig m)
-  => ApiOpts
-  -> ProjectRevision
-  -> ProjectMetadata
-  -> NE.NonEmpty ProjectResult
-  -> m UploadResponse
-uploadAnalysis apiOpts ProjectRevision{..} metadata projects = fossaReq $ do
+uploadAnalysis ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  ProjectMetadata ->
+  NE.NonEmpty ProjectResult ->
+  m UploadResponse
+uploadAnalysis apiOpts ProjectRevision {..} metadata projects = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let sourceUnits = map toSourceUnit $ NE.toList projects
-      opts = "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
+      opts =
+        "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "cliVersion" =: cliVersion
           <> "managedBuild" =: True
           <> mkMetadataOpts metadata projectName
@@ -158,16 +159,16 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata projects = fossaReq $ do
   pure (responseBody resp)
 
 mkMetadataOpts :: ProjectMetadata -> Text -> Option scheme
-mkMetadataOpts ProjectMetadata{..} projectName = mconcat $ catMaybes maybes
+mkMetadataOpts ProjectMetadata {..} projectName = mconcat $ catMaybes maybes
   where
     title = Just $ fromMaybe projectName projectTitle
     maybes =
-      [ ("projectURL" =:) <$> projectUrl
-      , ("jiraProjectKey" =:) <$> projectJiraKey
-      , ("link" =:) <$> projectLink
-      , ("team" =:) <$> projectTeam
-      , ("policy" =:) <$> projectPolicy
-      , ("title" =:) <$> title
+      [ ("projectURL" =:) <$> projectUrl,
+        ("jiraProjectKey" =:) <$> projectJiraKey,
+        ("link" =:) <$> projectLink,
+        ("team" =:) <$> projectTeam,
+        ("policy" =:) <$> projectPolicy,
+        ("title" =:) <$> title
       ]
 
 mangleError :: HttpException -> FossaError
@@ -195,20 +196,22 @@ data BuildStatus
   deriving (Eq, Ord, Show)
 
 data Build = Build
-  { buildId :: Int
-  , buildError :: Maybe Text
-  , buildTask :: BuildTask
-  } deriving (Eq, Ord, Show)
+  { buildId :: Int,
+    buildError :: Maybe Text,
+    buildTask :: BuildTask
+  }
+  deriving (Eq, Ord, Show)
 
 newtype BuildTask = BuildTask
   { buildTaskStatus :: BuildStatus
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 instance FromJSON Build where
   parseJSON = withObject "Build" $ \obj ->
     Build <$> obj .: "id"
-          <*> obj .:? "error"
-          <*> obj .: "task"
+      <*> obj .:? "error"
+      <*> obj .: "task"
 
 instance FromJSON BuildTask where
   parseJSON = withObject "BuildTask" $ \obj ->
@@ -223,11 +226,11 @@ instance FromJSON BuildStatus where
     "RUNNING" -> pure StatusRunning
     other -> pure $ StatusUnknown other
 
-getLatestBuild
-  :: (Has (Lift IO) sig m, Has Diagnostics sig m)
-  => ApiOpts
-  -> ProjectRevision
-  -> m Build
+getLatestBuild ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  m Build
 getLatestBuild apiOpts ProjectRevision {..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
@@ -241,12 +244,12 @@ getLatestBuild apiOpts ProjectRevision {..} = fossaReq $ do
 issuesEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
 issuesEndpoint baseUrl orgId locator = baseUrl /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "issues"
 
-getIssues
-  :: (Has (Lift IO) sig m, Has Diagnostics sig m)
-  => ApiOpts
-  -> ProjectRevision
-  -> m Issues
-getIssues apiOpts ProjectRevision{..} = fossaReq $ do
+getIssues ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  m Issues
+getIssues apiOpts ProjectRevision {..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   Organization orgId _ <- getOrganization apiOpts
@@ -258,34 +261,36 @@ getIssues apiOpts ProjectRevision{..} = fossaReq $ do
 attributionEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
 attributionEndpoint baseurl orgId locator = baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution" /: "json"
 
-getAttribution
-  :: (Has (Lift IO) sig m, Has Diagnostics sig m)
-  => ApiOpts
-  -> ProjectRevision
-  -> m Attr.Attribution
-getAttribution apiOpts ProjectRevision{..} = fossaReq $ do
+getAttribution ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  m Attr.Attribution
+getAttribution apiOpts ProjectRevision {..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = baseOpts
-        <> "includeDeepDependencies" =: True
-        <> "includeHashAndVersionData" =: True
-        <> "includeDownloadUrl" =: True
+  let opts =
+        baseOpts
+          <> "includeDeepDependencies" =: True
+          <> "includeHashAndVersionData" =: True
+          <> "includeDownloadUrl" =: True
   Organization orgId _ <- getOrganization apiOpts
   response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
-getAttributionRaw
-  :: (Has (Lift IO) sig m, Has Diagnostics sig m)
-  => ApiOpts
-  -> ProjectRevision
-  -> m Value
-getAttributionRaw apiOpts ProjectRevision{..} = fossaReq $ do
+getAttributionRaw ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  m Value
+getAttributionRaw apiOpts ProjectRevision {..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = baseOpts
-        <> "includeDeepDependencies" =: True
-        <> "includeHashAndVersionData" =: True
-        <> "includeDownloadUrl" =: True
+  let opts =
+        baseOpts
+          <> "includeDeepDependencies" =: True
+          <> "includeHashAndVersionData" =: True
+          <> "includeDownloadUrl" =: True
   Organization orgId _ <- getOrganization apiOpts
   response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
@@ -295,12 +300,13 @@ getAttributionRaw apiOpts ProjectRevision{..} = fossaReq $ do
 data Organization = Organization
   { organizationId :: Int,
     orgUsesSAML :: Bool
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 instance FromJSON Organization where
   parseJSON = withObject "Organization" $ \obj ->
     Organization <$> obj .: "organizationId"
-                 <*> obj .:? "usesSAML" .!= False
+      <*> obj .:? "usesSAML" .!= False
 
 organizationEndpoint :: Url scheme -> Url scheme
 organizationEndpoint baseurl = baseurl /: "api" /: "cli" /: "organization"
@@ -323,8 +329,7 @@ uploadContributors :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts ->
 uploadContributors apiOpts locator contributors = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = baseOpts
-        <> "locator" =: locator
+  let opts = baseOpts <> "locator" =: locator
 
   _ <- req POST (contributorsEndpoint baseUrl) (ReqBodyJson contributors) ignoreResponse opts
   pure ()

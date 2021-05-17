@@ -1,4 +1,7 @@
 # Unreleased
+- Fix `fossa container analyze` `--project` and `--revision` flags ([#238](https://github.com/fossas/spectrometer/pull/238)))
+# v2.5.16
+
 - Support for manually specified dependencies through `fossa-deps.yaml` ([#236](https://github.com/fossas/spectrometer/pull/236))
 
 # v2.5.15
