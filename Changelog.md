@@ -1,5 +1,11 @@
-# Unreleased
+# v2.5.18
+
+- Add --depth 1000 to npm ls #240 ([#240](https://github.com/fossas/spectrometer/pull/240)))
+
+# v2.5.17
+
 - Fix `fossa container analyze` `--project` and `--revision` flags ([#238](https://github.com/fossas/spectrometer/pull/238)))
+
 # v2.5.16
 
 - Support for manually specified dependencies through `fossa-deps.yaml` ([#236](https://github.com/fossas/spectrometer/pull/236))

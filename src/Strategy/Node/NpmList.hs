@@ -15,7 +15,7 @@ import Path
 npmListCmd :: Command
 npmListCmd = Command
   { cmdName = "npm"
-  , cmdArgs = ["ls", "--json", "--production"]
+  , cmdArgs = ["ls", "--json", "--production", "--depth", "1000"]
   , cmdAllowErr = NonEmptyStdout
   }
 
