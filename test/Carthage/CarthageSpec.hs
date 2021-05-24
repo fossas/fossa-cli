@@ -33,13 +33,12 @@ spec = do
     it "should work for empty projects" $ do
       case emptyResult of
         Left err -> expectationFailure ("analyze failed: " <> show (renderFailureBundle err))
-        Right result -> resultValue result `shouldBe` G.empty
+        Right result -> result `shouldBe` G.empty
 
     it "should work for a complex project" $ do
       case complexResult of
         Left err -> expectationFailure ("analyze failed: " <> show (renderFailureBundle err))
-        Right result -> do
-          let graph = resultValue result
+        Right graph -> do
           expectDirect [nimble713, swinject, ocmock] graph
           expectDeps [ nimble713
                      , nimble703

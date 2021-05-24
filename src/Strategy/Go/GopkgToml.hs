@@ -64,7 +64,7 @@ analyze' ::
   => Path Abs File -> m (Graphing Dependency)
 analyze' file = graphingGolang $ do
   gopkg <- readContentsToml gopkgCodec file
-  buildGraph gopkg
+  context "Building dependency graph" $ buildGraph gopkg
 
   _ <- recover (fillInTransitive (parent file))
   pure ()

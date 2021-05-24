@@ -20,10 +20,10 @@ import Data.Coerce (coerce)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
+import Data.String.Conversion (encodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Prettyprint.Doc
-import Data.Text.Encoding (encodeUtf8)
 import Network.HTTP.Req
 import Text.URI (URI, render)
 import qualified Unsafe.Coerce as Unsafe

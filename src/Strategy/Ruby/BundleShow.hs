@@ -29,7 +29,9 @@ bundleShowCmd = Command
   }
 
 analyze' :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
-analyze' dir = buildGraph <$> execParser bundleShowParser dir bundleShowCmd
+analyze' dir = do
+  deps <- execParser @[BundleShowDep] bundleShowParser dir bundleShowCmd
+  context "Building dependency graph" $ pure (buildGraph deps)
 
 buildGraph :: [BundleShowDep] -> Graphing Dependency
 buildGraph = Graphing.fromList . map toDependency

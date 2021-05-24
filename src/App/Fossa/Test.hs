@@ -7,14 +7,15 @@ import App.Fossa.API.BuildWait
 import App.Fossa.ProjectInference
 import App.Types
 import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Control.Carrier.StickyLogger (runStickyLogger, logSticky)
 import Control.Effect.Lift (sendIO)
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
 import Data.Functor (void)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text.IO (hPutStrLn)
-import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Logger
 import Effect.ReadFS
-import Fossa.API.Types (ApiOpts, Issues(..))
+import Fossa.API.Types (ApiOpts, Issues (..))
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
 
@@ -31,7 +32,7 @@ testMain
   -> OverrideProject
   -> IO ()
 testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
-  void $ timeout timeoutSeconds $ withLogger logSeverity $ do
+  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger $ do
     result <- runDiagnostics . runReadFSIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
@@ -57,7 +58,7 @@ testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType overrid
             else
               case outputType of
                 TestOutputPretty -> logError $ pretty issues
-                TestOutputJson -> logStdout . pretty . decodeUtf8 . Aeson.encode $ issues
+                TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
 
           sendIO exitFailure
 

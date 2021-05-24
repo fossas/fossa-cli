@@ -7,7 +7,7 @@ module Strategy.Cocoapods
 where
 
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics (Diagnostics, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, (<||>), context)
 import qualified Control.Effect.Diagnostics as Diag
 import Discovery.Walk
 import Effect.ReadFS
@@ -18,7 +18,9 @@ import qualified Strategy.Cocoapods.PodfileLock as PodfileLock
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "Cocoapods" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CocoapodsProject]
 findProjects = walk' $ \dir _ files -> do
@@ -54,7 +56,9 @@ mkProject project =
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m (Graphing Dependency)
-getDeps project = analyzePodfileLock project <||> analyzePodfile project
+getDeps project =
+  context "Cocoapods" $
+    context "Podfile.lock analysis" (analyzePodfileLock project) <||> context "Podfile analysis" (analyzePodfile project)
 
 analyzePodfile :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m (Graphing Dependency)
 analyzePodfile project = Diag.fromMaybeText "No Podfile present in the project" (cocoapodsPodfile project) >>= Podfile.analyze'

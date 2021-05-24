@@ -23,7 +23,9 @@ import qualified Graphing
 import Path
 
 analyze' :: (Has ReadFS sig m , Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' file = buildGraph <$> readContentsYaml @GlideLockfile file
+analyze' file = do
+  lockfile <- readContentsYaml @GlideLockfile file
+  context "Building dependency graph" $ pure (buildGraph lockfile)
 
 buildGraph :: GlideLockfile -> Graphing Dependency
 buildGraph lockfile = Graphing.fromList (map toDependency direct)

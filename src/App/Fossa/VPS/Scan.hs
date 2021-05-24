@@ -40,7 +40,7 @@ vpsScan ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   ) => BaseDir -> Severity -> OverrideProject -> Flag SkipIPRScan -> Flag LicenseOnlyScan -> FilterExpressions -> ApiOpts -> ProjectMetadata -> BinaryPaths -> m ()
-vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag licenseOnlyScan fileFilters apiOpts metadata binaryPaths = withLogger logSeverity $ do
+vpsScan (BaseDir basedir) logSeverity overrideProject skipIprFlag licenseOnlyScan fileFilters apiOpts metadata binaryPaths = withDefaultLogger logSeverity $ do
   projectRevision <- mergeOverride overrideProject <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
   saveRevision projectRevision
 

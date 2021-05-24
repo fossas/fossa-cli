@@ -6,7 +6,7 @@ module Strategy.Bundler
   )
 where
 
-import Control.Effect.Diagnostics (Diagnostics, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, (<||>), context)
 import qualified Control.Effect.Diagnostics as Diag
 import Discovery.Walk
 import Effect.Exec
@@ -18,7 +18,9 @@ import qualified Strategy.Ruby.GemfileLock as GemfileLock
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "Bundler" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [BundlerProject]
 findProjects = walk' $ \dir _ files -> do
@@ -55,10 +57,10 @@ mkProject project =
     }
 
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m (Graphing Dependency)
-getDeps project = analyzeBundleShow project <||> analyzeGemfileLock project
+getDeps project = context "Bundler" $ analyzeBundleShow project <||> analyzeGemfileLock project
 
 analyzeBundleShow :: (Has Exec sig m, Has Diagnostics sig m) => BundlerProject -> m (Graphing Dependency)
-analyzeBundleShow = BundleShow.analyze' . bundlerDir
+analyzeBundleShow = context "bundle-show analysis" . BundleShow.analyze' . bundlerDir
 
 analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m (Graphing Dependency)
-analyzeGemfileLock project = Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project) >>= GemfileLock.analyze'
+analyzeGemfileLock project = context "Gemfile.lock analysis" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project)) >>= GemfileLock.analyze'

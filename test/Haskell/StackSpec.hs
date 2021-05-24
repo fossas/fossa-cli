@@ -43,8 +43,8 @@ spec = do
   Test.describe "Stack graph builder" $
     case run . runDiagnostics . buildGraph $ allDeps of
       Left fbundle -> Test.it "should build a graph" $ Test.expectationFailure (show $ renderFailureBundle fbundle)
-      Right ResultBundle {..} -> do
-        let gr = G.gmap dependencyName resultValue
+      Right graph -> do
+        let gr = G.gmap dependencyName graph
         Test.it "should have the correct deps" $ expectDeps ["deep", "remote"] gr
         Test.it "should have the correct direct deps" $ expectDirect ["remote"] gr
         Test.it "should have the correct edges" $ expectEdges [("remote", "deep")] gr

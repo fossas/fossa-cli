@@ -6,14 +6,15 @@ module App.Fossa.API.BuildWait
   )
 where
 
-import qualified App.Fossa.FossaAPIV1 as Fossa
-import qualified App.Fossa.VPS.Scan.Core as VPSCore
-import qualified App.Fossa.VPS.Scan.ScotlandYard as ScotlandYard
+import App.Fossa.FossaAPIV1 qualified as Fossa
+import App.Fossa.VPS.Scan.Core qualified as VPSCore
+import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
 import App.Types
 import Control.Carrier.Diagnostics
 import Control.Concurrent (threadDelay)
-import qualified Control.Concurrent.Async as Async
+import Control.Concurrent.Async qualified as Async
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Carrier.StickyLogger (StickyLogger, logSticky')
 import Data.Functor (($>))
 import Data.Text (Text)
 import Effect.Logger
@@ -32,7 +33,7 @@ instance ToDiagnostic WaitError where
 
 -- | Wait for a "normal" (non-VPS) build completion
 waitForBuild ::
-  (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) =>
+  (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has StickyLogger sig m) =>
   ApiOpts ->
   ProjectRevision ->
   m ()
@@ -43,7 +44,7 @@ waitForBuild apiOpts revision = do
     Fossa.StatusSucceeded -> pure ()
     Fossa.StatusFailed -> fatal BuildFailed
     otherStatus -> do
-      logSticky $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
+      logSticky' $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
       sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
       waitForBuild apiOpts revision
 
@@ -62,7 +63,7 @@ waitForIssues apiOpts revision = do
 
 -- | Wait for sherlock scan completion (VPS)
 waitForSherlockScan ::
-  (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) =>
+  (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has StickyLogger sig m) =>
   ApiOpts ->
   VPSCore.Locator ->
   -- | scan ID
@@ -74,7 +75,7 @@ waitForSherlockScan apiOpts locator scanId = do
     Just "AVAILABLE" -> pure ()
     Just "ERROR" -> fatalText "The component scan failed. Check the FOSSA webapp for more details."
     Just otherStatus -> do
-      logSticky $ "[ Waiting for component scan... last status: " <> pretty otherStatus <> " ]"
+      logSticky' $ "[ Waiting for component scan... last status: " <> pretty otherStatus <> " ]"
       sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
       waitForSherlockScan apiOpts locator scanId
     Nothing -> do

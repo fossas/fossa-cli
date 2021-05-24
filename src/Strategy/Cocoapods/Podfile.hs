@@ -27,7 +27,9 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' file = buildGraph <$> readContentsParser parsePodfile file
+analyze' file = do
+  podfile <- readContentsParser parsePodfile file
+  context "Building dependency graph" $ pure (buildGraph podfile)
 
 buildGraph :: Podfile -> Graphing Dependency
 buildGraph podfile = Graphing.fromList (map toDependency direct)

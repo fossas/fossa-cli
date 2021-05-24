@@ -4,16 +4,17 @@ module App.Fossa.Report
   ) where
 
 import App.Fossa.API.BuildWait
-import qualified App.Fossa.FossaAPIV1 as Fossa
+import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.ProjectInference
 import App.Types
 import Control.Carrier.Diagnostics
+import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Lift (sendIO)
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
 import Data.Functor (void)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.IO (hPutStrLn)
-import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Logger
 import Effect.ReadFS
 import Fossa.API.Types (ApiOpts)
@@ -48,7 +49,7 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
   * Timeout over `IO a` (easy to move, but where do we move it?)
   * CLI command refactoring as laid out in https://github.com/fossas/issues/issues/129
   -}
-  void $ timeout timeoutSeconds $ withLogger logSeverity $ do
+  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger $ do
     result <- runDiagnostics . runReadFSIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
@@ -61,16 +62,16 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
       waitForBuild apiOpts revision
 
       logSticky "[ Waiting for issue scan completion... ]"
-      _ <- waitForIssues apiOpts revision
-      logSticky ""
 
-      logSticky $ "[ Fetching " <> pretty (reportName reportType) <> " report... ]"
+      _ <- waitForIssues apiOpts revision
+
+      logSticky $ "[ Fetching " <> reportName reportType <> " report... ]"
+
       jsonValue <- case reportType of
         AttributionReport ->
           Fossa.getAttribution apiOpts revision
-      logSticky ""
 
-      logStdout . pretty . decodeUtf8 $ Aeson.encode jsonValue
+      logStdout . decodeUtf8 $ Aeson.encode jsonValue
 
     case result of
       Left err -> do

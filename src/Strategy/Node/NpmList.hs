@@ -20,7 +20,9 @@ npmListCmd = Command
   }
 
 analyze' :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
-analyze' dir = buildGraph <$> execJson @NpmOutput dir npmListCmd
+analyze' dir = do
+  npmOutput <- execJson @NpmOutput dir npmListCmd
+  context "Building dependency graph" $ pure (buildGraph npmOutput)
 
 buildGraph :: NpmOutput -> Graphing Dependency
 buildGraph top = unfold direct getDeps toDependency

@@ -56,7 +56,7 @@ ninjaGraphMain :: ApiOpts -> Severity -> OverrideProject -> NinjaGraphCLIOptions
 ninjaGraphMain apiOpts logSeverity overrideProject NinjaGraphCLIOptions{..} = do
   BaseDir basedir <- validateDir ninjaBaseDir
 
-  withLogger logSeverity . logWithExit_ $ do
+  withDefaultLogger logSeverity . logWithExit_ $ do
     ProjectRevision {..} <- mergeOverride overrideProject <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
     let ninjaGraphOpts = NinjaGraphOpts apiOpts ninjaDepsFile ninjaLunchTarget ninjaScanId projectName ninjaBuildName
 

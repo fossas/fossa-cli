@@ -4,23 +4,24 @@ module App.Fossa.VPS.Report
   ) where
 
 import App.Fossa.API.BuildWait
-import qualified App.Fossa.FossaAPIV1 as Fossa
+import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.ProjectInference
+import App.Fossa.VPS.Scan.Core qualified as VPSCore
+import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
 import App.Types
 import Control.Carrier.Diagnostics
+import Control.Carrier.StickyLogger (runStickyLogger, logSticky)
 import Control.Effect.Lift (sendIO)
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
 import Data.Functor (void)
 import Data.Text (Text)
 import Data.Text.IO (hPutStrLn)
-import Data.Text.Lazy.Encoding (decodeUtf8)
 import Effect.Logger
 import Effect.ReadFS
 import Fossa.API.Types (ApiOpts)
+import Data.String.Conversion (decodeUtf8)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
-import qualified App.Fossa.VPS.Scan.Core as VPSCore
-import qualified App.Fossa.VPS.Scan.ScotlandYard as ScotlandYard
 
 data ReportType =
     AttributionReport
@@ -50,7 +51,7 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
   * Timeout over `IO a` (easy to move, but where do we move it?)
   * CLI command refactoring as laid out in https://github.com/fossas/issues/issues/129
   -}
-  void $ timeout timeoutSeconds $ withLogger logSeverity $ do
+  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger $ do
     result <- runDiagnostics . runReadFSIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
@@ -67,15 +68,13 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
 
       logSticky "[ Waiting for issue scan completion... ]"
       _ <- waitForIssues apiOpts revision
-      logSticky ""
 
-      logSticky $ "[ Fetching " <> pretty (reportName reportType) <> " report... ]"
+      logSticky $ "[ Fetching " <> reportName reportType <> " report... ]"
       jsonValue <- case reportType of
         AttributionReport ->
           Fossa.getAttributionRaw apiOpts revision
-      logSticky ""
 
-      logStdout . pretty . decodeUtf8 $ Aeson.encode jsonValue
+      logStdout . decodeUtf8 $ Aeson.encode jsonValue
 
     case result of
       Left err -> do

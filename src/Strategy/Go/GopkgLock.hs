@@ -54,7 +54,7 @@ analyze' ::
   => Path Abs File -> m (Graphing Dependency)
 analyze' file = graphingGolang $ do
   golock <- readContentsToml golockCodec file
-  buildGraph (lockProjects golock)
+  context "Building dependency graph" $ buildGraph (lockProjects golock)
   _ <- recover (fillInTransitive (parent file))
   pure ()
 

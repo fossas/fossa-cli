@@ -5,11 +5,9 @@ module App.Fossa.API.BuildLinkSpec (spec) where
 import App.Fossa.API.BuildLink
 import App.Fossa.FossaAPIV1 (Organization (Organization))
 import App.Types (ProjectRevision (ProjectRevision))
-import Control.Carrier.Diagnostics (DiagnosticsC, logDiagnostic)
-import Control.Monad (join)
+import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Data.Functor.Identity (Identity (runIdentity))
 import Data.Text (Text)
-import Effect.Logger (IgnoreLoggerC, ignoreLogger)
 import Fossa.API.Types
 import Srclib.Types (Locator (Locator))
 import Test.Hspec
@@ -28,8 +26,8 @@ fullSamlURL = "https://app.fossa.com/account/saml/33?next=/projects/a%2bb/refs/b
 simpleStandardURL :: Text
 simpleStandardURL = "https://app.fossa.com/projects/haskell+89%2fspectrometer/refs/branch/master/revision123"
 
-stripDiag :: DiagnosticsC (IgnoreLoggerC Maybe) a -> Maybe a
-stripDiag = join . ignoreLogger . logDiagnostic
+stripDiag :: DiagnosticsC Identity a -> Maybe a
+stripDiag = either (const Nothing) Just . runIdentity . runDiagnostics
 
 spec :: Spec
 spec = do
@@ -40,7 +38,7 @@ spec = do
           org = Just $ Organization 1 True
           revision = ProjectRevision "" "not this revision" $ Just "master123"
           -- Loggers and Diagnostics modify monads, so we need a no-op monad
-          actual = runIdentity $ ignoreLogger $ logDiagnostic $ getBuildURLWithOrg org revision apiOpts locator
+          actual = stripDiag $ getBuildURLWithOrg org revision apiOpts locator
 
       actual `shouldBe` Just simpleSamlPath
 

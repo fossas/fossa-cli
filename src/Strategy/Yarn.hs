@@ -12,7 +12,9 @@ import Prelude
 import qualified Strategy.Node.YarnLock as YarnLock
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "Yarn" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [YarnProject]
 findProjects = walk' $ \dir _ files -> do
@@ -38,7 +40,7 @@ mkProject project =
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (G.Graphing Dependency)
-getDeps = YarnLock.analyze' . yarnLock
+getDeps = context "Yarn" . context "Static analysis" . YarnLock.analyze' . yarnLock
 
 data YarnProject = YarnProject
   { yarnDir :: Path Abs Dir

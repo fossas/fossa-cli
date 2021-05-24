@@ -52,7 +52,9 @@ instance FromJSON NpmDep where
            <*> obj .:? "dependencies"
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' file = buildGraph <$> readContentsJson @NpmPackageJson file
+analyze' file = do
+  packageJson <- readContentsJson @NpmPackageJson file
+  context "Building dependency graph" $ pure (buildGraph packageJson)
 
 data NpmPackage = NpmPackage
   { pkgName    :: Text

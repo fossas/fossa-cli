@@ -37,11 +37,10 @@ import Data.Bifunctor (first)
 import qualified Data.ByteString.Lazy as BL
 import Data.Kind (Type)
 import Data.String (fromString)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
-import Data.Text.Lazy.Encoding (decodeUtf8)
-import Data.Text.Prettyprint.Doc (pretty, viaShow)
+import Data.Text.Prettyprint.Doc (pretty, viaShow, vsep, line, indent)
 import Data.Void (Void)
 import GHC.Generics (Generic)
 import Path
@@ -130,7 +129,20 @@ data ExecErr
 
 instance ToDiagnostic ExecErr where
   renderDiagnostic = \case
-    CommandFailed err -> "Command execution failed: " <> viaShow err
+    CommandFailed err ->
+      "Command execution failed: "
+        <> line
+        <> indent
+          4
+          ( vsep
+              [ "command: " <> pretty (cmdFailureName err)
+              , "args: " <> pretty (cmdFailureArgs err)
+              , "dir: " <> pretty (cmdFailureDir err)
+              , "exit: " <> viaShow (cmdFailureExit err)
+              , "stdout: " <> line <> indent 2 (pretty @Text (decodeUtf8 (cmdFailureStdout err)))
+              , "stderr: " <> line <> indent 2 (pretty @Text (decodeUtf8 (cmdFailureStderr err)))
+              ]
+          )
     CommandParseError cmd err -> "Failed to parse command output. command: " <> viaShow cmd <> " . error: " <> pretty err
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
@@ -140,10 +152,10 @@ exec dir cmd = send (Exec dir cmd)
 type Parser = Parsec Void Text
 
 -- | Parse the stdout of a command
-execParser :: (Has Exec sig m, Has Diagnostics sig m) => Parser a -> Path x Dir -> Command -> m a
+execParser :: forall a sig m x. (Has Exec sig m, Has Diagnostics sig m) => Parser a -> Path x Dir -> Command -> m a
 execParser parser dir cmd = do
   stdout <- execThrow dir cmd
-  case runParser parser "" (TL.toStrict (decodeUtf8 stdout)) of
+  case runParser parser "" (decodeUtf8 stdout) of
     Left err -> fatal (CommandParseError cmd (T.pack (errorBundlePretty err)))
     Right a -> pure a
 
@@ -157,7 +169,7 @@ execJson dir cmd = do
 
 -- | A variant of 'exec' that throws a 'ExecErr' when the command returns a non-zero exit code
 execThrow :: (Has Exec sig m, Has Diagnostics sig m) => Path x Dir -> Command -> m BL.ByteString
-execThrow dir cmd = do
+execThrow dir cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
   result <- exec dir cmd
   case result of
     Left failure -> fatal (CommandFailed failure)

@@ -11,9 +11,9 @@ import Control.Effect.Diagnostics
 import qualified Data.ByteString.Lazy as BL
 import Data.Foldable (traverse_)
 import Data.Maybe (mapMaybe)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Text.Encoding (decodeUtf8)
 import DepTypes
 import Effect.Exec
 import Effect.Grapher
@@ -40,7 +40,7 @@ analyze' ::
   )
   => Path Abs Dir -> m (Graphing Dependency)
 analyze' dir = graphingGolang $ do
-  stdout <- execThrow dir golistCmd
+  stdout <- context "Getting direct dependencies" $ execThrow dir golistCmd
 
   let gomodLines = drop 1 . T.lines . T.filter (/= '\r') . decodeUtf8 . BL.toStrict $ stdout -- the first line is our package
       requires = mapMaybe toRequire gomodLines
@@ -51,7 +51,7 @@ analyze' dir = graphingGolang $ do
           [package, version] -> Just (Require package version)
           _ -> Nothing
 
-  buildGraph requires
+  context "Adding direct dependencies" $ buildGraph requires
 
   _ <- recover (fillInTransitive dir)
   pure ()

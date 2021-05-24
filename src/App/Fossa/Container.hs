@@ -35,8 +35,8 @@ import Data.List (nub)
 import qualified Data.Map.Lazy as LMap
 import Data.Map.Strict (Map)
 import Data.Maybe (listToMaybe, fromMaybe)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text, pack)
-import qualified Data.Text.Lazy.Encoding as TE
 import Data.Text.Extra (breakOnAndRemove)
 import Effect.Exec (AllowErr (Never), Command (..), execJson, runExecIO, Exec, execThrow)
 import Effect.Logger
@@ -268,7 +268,7 @@ syftCommand bin (ImageText image) =
     }
 
 parseSyftOutputMain :: Severity -> FilePath -> IO ()
-parseSyftOutputMain logseverity path = withLogger logseverity . logWithExit_ . runReadFSIO $ parseSyftOutput path
+parseSyftOutputMain logseverity path = withDefaultLogger logseverity . logWithExit_ . runReadFSIO $ parseSyftOutput path
 
 parseSyftOutput :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => FilePath -> m ()
 parseSyftOutput filepath = do
@@ -283,12 +283,12 @@ parseSyftOutput filepath = do
   payload <- toContainerScan response
   logInfo "Payload is valid!"
 
-  logStdout . pretty . TE.decodeUtf8 $ encode payload
+  logStdout . decodeUtf8 $ encode payload
 
   pure ()
 
 dumpSyftScanMain :: Severity -> Maybe FilePath -> ImageText -> IO ()
-dumpSyftScanMain logseverity path image = withLogger logseverity . logWithExit_ . runExecIO $ dumpSyftScan path image
+dumpSyftScanMain logseverity path image = withDefaultLogger logseverity . logWithExit_ . runExecIO $ dumpSyftScan path image
 
 dumpSyftScan ::
   ( Has Diagnostics sig m,

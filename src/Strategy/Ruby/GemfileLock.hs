@@ -55,9 +55,11 @@ newtype DirectDep = DirectDep
       } deriving (Eq, Ord, Show)
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' file = buildGraph <$> readContentsParser @[Section] findSections file
+analyze' file = do
+  sections <- readContentsParser @[Section] findSections file
+  context "Building dependency graph" $ pure (buildGraph sections)
 
-data GemfilePkg = GemfilePkg { pkgName :: Text }
+newtype GemfilePkg = GemfilePkg { pkgName :: Text }
   deriving (Eq, Ord, Show)
 
 type GemfileGrapher = LabeledGrapher GemfilePkg GemfileLabel

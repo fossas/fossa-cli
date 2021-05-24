@@ -34,8 +34,9 @@ rebar3TreeCmd = Command
 
 analyze' :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
 analyze' dir = do
-  aliasMap <- extractAliasLookup <$> readContentsParser parseConfig (dir </> configFile)
-  buildGraph . unaliasDeps aliasMap <$> execParser rebar3TreeParser dir rebar3TreeCmd
+  aliasMap <- context "Building alias map" $ extractAliasLookup <$> readContentsParser parseConfig (dir </> configFile)
+  deps <- execParser rebar3TreeParser dir rebar3TreeCmd
+  context "Building dependency graph" $ pure (buildGraph . unaliasDeps aliasMap $ deps)
 
 configFile :: Path Rel File
 configFile = $(mkRelFile "rebar.config")

@@ -25,9 +25,9 @@ import Strategy.Maven.Pom.Resolver
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects basedir = do
-  pomFiles <- findPomFiles basedir
-  globalClosure <- buildGlobalClosure pomFiles
-  pure (buildProjectClosures basedir globalClosure)
+  pomFiles <- context "Finding pom files" $ findPomFiles basedir
+  globalClosure <- context "Building global closure" $ buildGlobalClosure pomFiles
+  context "Building project closures" $ pure (buildProjectClosures basedir globalClosure)
 
 findPomFiles :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Path Abs File]
 findPomFiles dir = execState @[Path Abs File] [] $

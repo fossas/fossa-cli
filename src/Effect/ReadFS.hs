@@ -57,10 +57,10 @@ import Data.Aeson
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import Data.Kind (Type)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Text.Encoding (decodeUtf8)
-import Data.Text.Prettyprint.Doc (pretty)
+import Data.Text.Prettyprint.Doc (pretty, line, indent, vsep)
 import Data.Void (Void)
 import Data.Yaml (decodeEither', prettyPrintParseException)
 import GHC.Generics (Generic)
@@ -100,10 +100,19 @@ $(deriveReplayable ''ReadFS)
 
 instance ToDiagnostic ReadFSErr where
   renderDiagnostic = \case
-    FileReadError path err -> "Error reading file " <> pretty path <> " : " <> pretty err
-    FileParseError path err -> "Error parsing file " <> pretty path <> " : " <> pretty err
-    ResolveError base rel err -> "Error resolving a relative file. base: " <> pretty base <> " . relative: " <> pretty rel <> " . error: " <> pretty err
-    ListDirError dir err -> "Error listing directory contents at " <> pretty dir <> " : " <> pretty err
+    FileReadError path err -> "Error reading file " <> pretty path <> ":" <> line <> indent 4 (pretty err)
+    FileParseError path err -> "Error parsing file " <> pretty path <> ":" <> line <> indent 4 (pretty err)
+    ResolveError base rel err ->
+      "Error resolving a relative file:" <> line
+        <> indent
+          4
+          ( vsep
+              [ "base: " <> pretty base
+              , "relative: " <> pretty rel
+              , "error: " <> pretty err
+              ]
+          )
+    ListDirError dir err -> "Error listing directory contents at " <> pretty dir <> ":" <> line <> indent 2 (pretty err)
 
 -- | Read file contents into a strict 'ByteString'
 readContentsBS' :: Has ReadFS sig m => Path b File -> m (Either ReadFSErr ByteString)
@@ -155,7 +164,7 @@ type Parser = Parsec Void Text
 
 -- | Read from a file, parsing its contents
 readContentsParser :: forall a sig m b. (Has ReadFS sig m, Has Diagnostics sig m) => Parser a -> Path b File -> m a
-readContentsParser parser file = do
+readContentsParser parser file = context ("Parsing file '" <> T.pack (toFilePath file) <> "'") $ do
   contents <- readContentsText file
   case runParser parser (toFilePath file) contents of
     Left err -> fatal (FileParseError (toFilePath file) (T.pack (errorBundlePretty err)))
@@ -163,14 +172,14 @@ readContentsParser parser file = do
 
 -- | Read JSON from a file
 readContentsJson :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m a
-readContentsJson file = do
+readContentsJson file = context ("Parsing JSON file '" <> T.pack (toFilePath file) <> "'") $ do
   contents <- readContentsBS file
   case eitherDecodeStrict contents of
     Left err -> fatal (FileParseError (toFilePath file) (T.pack err))
     Right a -> pure a
 
 readContentsToml :: (Has ReadFS sig m, Has Diagnostics sig m) => Toml.TomlCodec a -> Path b File -> m a
-readContentsToml codec file = do
+readContentsToml codec file = context ("Parsing TOML file '" <> T.pack (toFilePath file) <> "'") $ do
   contents <- readContentsText file
   case Toml.decode codec contents of
     Left err -> fatal (FileParseError (toFilePath file) (Toml.prettyTomlDecodeErrors err))
@@ -178,7 +187,7 @@ readContentsToml codec file = do
 
 -- | Read YAML from a file
 readContentsYaml :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m a
-readContentsYaml file = do
+readContentsYaml file = context ("Parsing YAML file '" <> T.pack (toFilePath file) <> "'") $ do
   contents <- readContentsBS file
   case decodeEither' contents of
     Left err -> fatal (FileParseError (toFilePath file) (T.pack $ prettyPrintParseException err))
@@ -186,7 +195,7 @@ readContentsYaml file = do
 
 -- | Read XML from a file
 readContentsXML :: (FromXML a, Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m a
-readContentsXML file = do
+readContentsXML file = context ("Parsing XML file '" <> T.pack (toFilePath file) <> "'") $ do
   contents <- readContentsText file
   case parseXML contents of
     Left err -> fatal (FileParseError (toFilePath file) (xmlErrorPretty err))

@@ -35,7 +35,9 @@ import Types
 type Parser = Parsec Void Text
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "Paket" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PaketProject]
 findProjects = walk' $ \_ _ files -> do
@@ -59,10 +61,12 @@ mkProject project =
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PaketProject -> m (Graphing Dependency)
-getDeps = analyze' . paketLock
+getDeps = context "Paket" . context "Static analysis" . analyze' . paketLock
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' file = buildGraph <$> readContentsParser findSections file
+analyze' file = do
+  sections <- readContentsParser findSections file
+  context "Building dependency graph" $ pure (buildGraph sections)
 
 newtype PaketPkg = PaketPkg { pkgName :: Text }
   deriving (Eq, Ord, Show)

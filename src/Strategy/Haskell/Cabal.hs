@@ -119,7 +119,9 @@ isCabalFile file = isDotCabal || isCabalDotProject
     isCabalDotProject = "cabal.project" == name
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "Cabal" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CabalProject]
 findProjects = walk' $ \dir _ files -> do
@@ -143,9 +145,12 @@ mkProject project =
     }
 
 getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CabalProject -> m (Graphing Dependency)
-getDeps = analyze . cabalDir
+getDeps project =
+  context "Cabal" $
+    context "Dynamic analysis" $
+      analyze (cabalDir project)
 
-data CabalProject = CabalProject
+newtype CabalProject = CabalProject
   { cabalDir :: Path Abs Dir
   } deriving (Eq, Ord, Show)
 
@@ -161,7 +166,7 @@ shouldInclude :: InstallPlan -> Bool
 shouldInclude plan = not $ isDirectDep plan || planType plan == PreExisting
 
 ignorePlanId :: PlanId -> InstallPlan -> InstallPlan
-ignorePlanId = flip const
+ignorePlanId _ x = x
 
 buildGraph :: Has Diagnostics sig m => BuildPlan -> m (Graphing Dependency)
 buildGraph plan = do
@@ -185,4 +190,4 @@ analyze :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs
 analyze dir = do
   _ <- execThrow dir cabalGenPlanCmd
   plans <- readContentsJson @BuildPlan (dir </> cabalPlanFilePath)
-  buildGraph plans
+  context "Building dependency graph" $ buildGraph plans

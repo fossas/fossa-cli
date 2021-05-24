@@ -4,7 +4,7 @@ module Strategy.Godep
 where
 
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics (Diagnostics, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, (<||>), context)
 import qualified Control.Effect.Diagnostics as Diag
 import Discovery.Walk
 import Effect.Exec
@@ -51,7 +51,10 @@ mkProject project =
     }
 
 getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (Graphing Dependency)
-getDeps project = analyzeGopkgLock project <||> analyzeGopkgToml project
+getDeps project =
+  context "Godep" $
+    context "Gopkg.lock analysis" (analyzeGopkgLock project)
+      <||> context "Gopkg.toml analysis" (analyzeGopkgToml project)
 
 analyzeGopkgLock :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (Graphing Dependency)
 analyzeGopkgLock project = Diag.fromMaybeText "No Gopkg.lock present in the project" (godepLock project) >>= GopkgLock.analyze'

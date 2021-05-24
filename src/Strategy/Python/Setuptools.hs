@@ -7,7 +7,7 @@ module Strategy.Python.Setuptools
 where
 
 import Control.Carrier.Output.IO
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, context)
 import qualified Control.Effect.Diagnostics as Diag
 import Data.List (isInfixOf, isSuffixOf)
 import Discovery.Walk
@@ -19,7 +19,9 @@ import qualified Strategy.Python.SetupPy as SetupPy
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "Setuptools" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [SetuptoolsProject]
 findProjects = walk' $ \dir _ files -> do
@@ -42,16 +44,16 @@ findProjects = walk' $ \dir _ files -> do
     _ -> pure ([project], WalkContinue)
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
-getDeps project =
+getDeps project = context "Setuptools" $
   Diag.combineSuccessful
     "Analysis failed for all requirements.txt/setup.py in the project"
     [analyzeReqTxts project, analyzeSetupPy project]
 
 analyzeReqTxts :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
-analyzeReqTxts = fmap mconcat . traverse ReqTxt.analyze' . setuptoolsReqTxt
+analyzeReqTxts = context "Analyzing requirements.txt files" . fmap mconcat . traverse ReqTxt.analyze' . setuptoolsReqTxt
 
 analyzeSetupPy :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
-analyzeSetupPy project = Diag.fromMaybeText "No setup.py found in this project" (setuptoolsSetupPy project) >>= SetupPy.analyze'
+analyzeSetupPy project = context "Analyzing setup.py" (Diag.fromMaybeText "No setup.py found in this project" (setuptoolsSetupPy project)) >>= SetupPy.analyze'
 
 data SetuptoolsProject = SetuptoolsProject
   { setuptoolsReqTxt :: [Path Abs File],

@@ -102,14 +102,13 @@ fillInTransitive ::
   ( Has GolangGrapher sig m
   , Has Exec sig m
   , Has Diagnostics sig m
-  ) =>
-  Path x Dir ->
-  m ()
-fillInTransitive dir = do
+  )
+  => Path x Dir -> m ()
+fillInTransitive dir = context "Getting deep dependencies" $ do
   goListOutput <- execThrow dir goListCmd
   case decodeMany goListOutput of
     Left (path, err) -> fatal (CommandParseError goListCmd (T.pack (formatError path err)))
-    Right (packages :: [Package]) -> graphTransitive (normalizeImportsToModules packages)
+    Right (packages :: [Package]) -> context "Adding transitive dependencies" $ graphTransitive (normalizeImportsToModules packages)
 
 -- HACK(fossas/team-analysis#514) `go list -json all` emits golang dependencies
 -- at the _package_ level; e.g., `github.com/example/foo/some/package`. The

@@ -13,10 +13,10 @@ module Strategy.RPM
 where
 
 import Control.Effect.Diagnostics
-import Control.Monad (when)
+import qualified Control.Effect.Diagnostics as Diag
 import Data.List (isSuffixOf)
 import qualified Data.Map.Strict as M
-import Data.Maybe (mapMaybe, catMaybes)
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Extra (splitOnceOn)
@@ -52,7 +52,9 @@ data Dependencies
   deriving (Eq, Ord, Show)
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "RPM" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [RpmProject]
 findProjects = walk' $ \dir _ files -> do
@@ -79,19 +81,10 @@ mkProject project =
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RpmProject -> m (Graphing Dependency)
-getDeps = analyze . rpmFiles
+getDeps = context "RPM" . context "Static analysis" . analyze . rpmFiles
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m (Graphing Dependency)
-analyze specFiles = do
-  results <- traverse (recover . analyzeSingle) specFiles
-  let successful = catMaybes results
-
-  when (null successful) $ fatalText "Analysis failed for all discovered *.spec files"
-
-  let graphing :: Graphing Dependency
-      graphing = mconcat successful
-
-  pure graphing
+analyze specFiles = Diag.combineSuccessful "Analysis failed for all discovered *.spec files" (map analyzeSingle specFiles)
 
 analyzeSingle :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyzeSingle file = do

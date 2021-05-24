@@ -6,7 +6,7 @@ module Strategy.Rebar3
   )
 where
 
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, context)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
@@ -16,7 +16,9 @@ import qualified Strategy.Erlang.Rebar3Tree as Rebar3Tree
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "Rebar3" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [RebarProject]
 findProjects = walk' $ \dir _ files -> do

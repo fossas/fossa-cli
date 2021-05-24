@@ -24,10 +24,9 @@ import qualified Data.ByteString.Lazy as BL
 import Data.Foldable (find)
 import qualified Data.HashMap.Strict as HM
 import Data.Maybe (mapMaybe, fromMaybe)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
-import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Effect.Exec
 import Effect.Logger
@@ -107,7 +106,7 @@ inferSVN dir = do
 
     where
       toProps :: BL.ByteString -> [(Text, Text)]
-      toProps bs = mapMaybe toProp (T.lines (TL.toStrict (decodeUtf8 bs)))
+      toProps bs = mapMaybe toProp (T.lines (decodeUtf8 bs))
       toProp :: Text -> Maybe (Text, Text)
       toProp propLine =
         case T.splitOn ": " propLine of

@@ -10,15 +10,16 @@ import App.Fossa.API.BuildWait
 import App.Fossa.Container
 import App.Types (OverrideProject (..), ProjectRevision (..))
 import Control.Carrier.Diagnostics
+import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 import Control.Effect.Lift
 import Control.Monad.IO.Class (MonadIO)
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
 import Data.Functor (void)
-import Data.Text.Lazy.Encoding (decodeUtf8)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text.IO (hPutStrLn)
 import Effect.Logger
 import Fossa.API.Types (ApiOpts (..), Issues (..))
-import System.Exit (exitFailure, exitSuccess)
+import System.Exit (exitFailure)
 import System.IO (stderr)
 
 data TestOutputType
@@ -37,26 +38,21 @@ testMain ::
   ImageText ->
   IO ()
 testMain apiOpts logSeverity timeoutSeconds outputType override image = do
-  void $ timeout timeoutSeconds $ withLogger logSeverity $ do
-    result <- runDiagnostics $ testInner apiOpts outputType override image
-    case result of
-      Left err -> do
-        logError $ renderFailureBundle err
-        sendIO exitFailure
-      Right (ResultBundle _ _) -> sendIO exitSuccess
+  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger $ do
+    logWithExit_ $ testInner apiOpts outputType override image
 
   hPutStrLn stderr "Timed out while wait for issues"
   exitFailure
 
 testInner ::
-  (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, MonadIO m) =>
+  (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has StickyLogger sig m, MonadIO m) =>
   ApiOpts ->
   TestOutputType ->
   OverrideProject ->
   ImageText ->
   m ()
 testInner apiOpts outputType override image = do
-  logDebug "Running embedded syft binary"
+  logSticky "Running embedded syft binary"
 
   containerScan <- runSyft image >>= toContainerScan
   let revision = extractRevision override containerScan
@@ -80,5 +76,5 @@ testInner apiOpts outputType override image = do
         else do
           case outputType of
             TestOutputPretty -> logError $ pretty issues
-            TestOutputJson -> logStdout . pretty . decodeUtf8 . Aeson.encode $ issues
+            TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
           sendIO exitFailure

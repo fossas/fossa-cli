@@ -31,7 +31,9 @@ isPackageRefFile :: Path b File -> Bool
 isPackageRefFile file = any (\x -> x `L.isSuffixOf` fileName file) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "PackageReference" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PackageReferenceProject]
 findProjects = walk' $ \_ _ files -> do
@@ -55,10 +57,12 @@ mkProject project =
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PackageReferenceProject -> m (Graphing Dependency)
-getDeps = analyze' . packageReferenceFile
+getDeps = context "PackageReference" . context "Static analysis" . analyze' . packageReferenceFile
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' file = buildGraph <$> readContentsXML @PackageReference file
+analyze' file = do
+  ref <- readContentsXML @PackageReference file
+  context "Building dependency graph" $ pure (buildGraph ref)
 
 newtype PackageReference = PackageReference
   { groups :: [ItemGroup]

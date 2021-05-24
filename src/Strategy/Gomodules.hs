@@ -6,7 +6,7 @@ module Strategy.Gomodules
   )
 where
 
-import Control.Effect.Diagnostics (Diagnostics, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, (<||>), context)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
@@ -17,7 +17,9 @@ import qualified Strategy.Go.Gomod as Gomod
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "Gomodules" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [GomodulesProject]
 findProjects = walk' $ \dir _ files -> do
@@ -42,5 +44,6 @@ mkProject project =
 
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> m (Graphing Dependency)
 getDeps project =
-  GoList.analyze' (gomodulesDir project)
-    <||> Gomod.analyze' (gomodulesGomod project)
+  context "Gomodules" $
+    context "Dynamic analysis" (GoList.analyze' (gomodulesDir project))
+      <||> context "Static analysis" (Gomod.analyze' (gomodulesGomod project))

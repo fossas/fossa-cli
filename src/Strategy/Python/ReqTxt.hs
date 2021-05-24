@@ -17,10 +17,9 @@ import Text.Megaparsec.Char
 import Types
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' = analyzeSingle
-
-analyzeSingle :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyzeSingle file = buildGraph <$> readContentsParser requirementsTxtParser file
+analyze' file = do
+  reqs <- readContentsParser requirementsTxtParser file
+  context "Building dependency graph" $ pure (buildGraph reqs)
 
 type Parser = Parsec Void Text
 

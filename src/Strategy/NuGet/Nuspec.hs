@@ -30,7 +30,9 @@ import Path
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "Nuspec" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [NuspecProject]
 findProjects = walk' $ \_ _ files -> do
@@ -54,10 +56,12 @@ mkProject project =
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuspecProject -> m (Graphing Dependency)
-getDeps = analyze' . nuspecFile
+getDeps = context "Nuspec" . context "Static analysis" . analyze' . nuspecFile
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' file = buildGraph <$> readContentsXML @Nuspec file
+analyze' file = do
+  nuspec <- readContentsXML @Nuspec file
+  context "Building dependency graph" $ pure (buildGraph nuspec)
 
 analyzeLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m [LicenseResult]
 analyzeLicenses file = do

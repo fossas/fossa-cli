@@ -24,7 +24,9 @@ import Path
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "ProjectAssetsJson" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [ProjectAssetsJsonProject]
 findProjects = walk' $ \_ _ files -> do
@@ -48,10 +50,12 @@ mkProject project =
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ProjectAssetsJsonProject -> m (Graphing Dependency)
-getDeps = analyze' . projectAssetsJsonFile
+getDeps = context "ProjectAssetsJson" . context "Static analysis" . analyze' . projectAssetsJsonFile
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' file = buildGraph <$> readContentsJson @ProjectAssetsJson file
+analyze' file = do
+  assetsJson <- readContentsJson @ProjectAssetsJson file
+  context "Building dependency graph" $ pure (buildGraph assetsJson)
 
 newtype ProjectAssetsJson = ProjectAssetsJson
   { targets     :: M.Map Text (M.Map Text DependencyInfo)

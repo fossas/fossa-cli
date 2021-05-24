@@ -17,7 +17,7 @@ module Strategy.Go.Gomod
 where
 
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, recover)
+import Control.Effect.Diagnostics (Diagnostics, recover, context)
 import Data.Char (isSpace)
 import Data.Foldable (traverse_)
 import Data.Functor (void)
@@ -336,7 +336,7 @@ analyze' ::
 analyze' file = graphingGolang $ do
   gomod <- readContentsParser gomodParser file
 
-  buildGraph gomod
+  context "Building dependency graph" $ buildGraph gomod
 
   _ <- recover (fillInTransitive (parent file))
   pure ()

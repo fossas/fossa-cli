@@ -7,12 +7,11 @@ where
 import App.Fossa.FossaAPIV1 (Contributors (..))
 import qualified Control.Carrier.Diagnostics as Diag
 import Control.Effect.Lift (Lift, sendIO)
-import Data.ByteString.Lazy (toStrict)
 import qualified Data.Map as M
 import Data.Maybe (mapMaybe)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
 import Data.Text.Extra (splitOnceOn)
 import Data.Time
 import Data.Time.Format.ISO8601 (iso8601Show)
@@ -41,12 +40,12 @@ fetchGitContributors ::
 fetchGitContributors basedir = do
   now <- sendIO getCurrentTime
   rawContrib <- execThrow basedir $ gitLogCmd now
-  textContrib <- Diag.fromEitherShow . TE.decodeUtf8' $ toStrict rawContrib
   pure . Contributors
     . M.map (T.pack . iso8601Show)
     . M.fromListWith max
     . mapMaybe readLine
-    $ T.lines textContrib
+    . T.lines
+    $ decodeUtf8 rawContrib
   where
     readLine :: Text -> Maybe (Text, Day)
     readLine entry = do

@@ -1,5 +1,4 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -37,7 +36,7 @@ withTaskPool numWorkers reportProgress act = do
           <*> newEmptyTMVarIO
 
   let enqueue action = sendIO $ atomically $ modifyTVar (stQueued state) (action:)
-  sendIO $ (enqueue (void (runTaskPool (stQueued state) act)))
+  sendIO (enqueue (void (runTaskPool (stQueued state) act)))
 
   let mkThreads = do
         workerHandles <- replicateM numWorkers (fork (worker state))

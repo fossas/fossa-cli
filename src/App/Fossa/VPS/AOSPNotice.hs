@@ -2,10 +2,9 @@ module App.Fossa.VPS.AOSPNotice
   ( aospNoticeMain,
   ) where
 
-import Control.Effect.Lift (sendIO, Lift)
+import Control.Effect.Lift (Lift)
 import Control.Carrier.Diagnostics
 import Effect.Exec
-import System.Exit (exitFailure)
 
 import App.Fossa.EmbeddedBinary
 import App.Fossa.VPS.Scan.RunWiggins
@@ -18,13 +17,8 @@ import Fossa.API.Types (ApiOpts(..))
 import Path (Path, Abs, Dir)
 
 aospNoticeMain :: BaseDir -> Severity -> OverrideProject -> NinjaScanID -> NinjaFilePaths -> ApiOpts -> IO ()
-aospNoticeMain (BaseDir basedir) logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts = withLogger logSeverity $ do
-  result <- runDiagnostics $ withWigginsBinary $ aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts
-  case result of
-    Left failure -> do
-      logError $ renderFailureBundle failure
-      sendIO exitFailure
-    Right bundle -> logWarn (renderWarnings $ resultWarnings bundle)
+aospNoticeMain (BaseDir basedir) logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts = withDefaultLogger logSeverity $ do
+  logWithExit_ $ withWigginsBinary $ aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts
 
 ----- main logic
 

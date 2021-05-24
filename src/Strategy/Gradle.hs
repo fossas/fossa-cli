@@ -1,4 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Gradle
@@ -27,9 +26,9 @@ import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
 import qualified Data.Set as S
+import Data.String.Conversion (decodeUtf8, encodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
@@ -66,7 +65,9 @@ discover ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "Gradle" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 pathToText :: Path ar fd -> Text
 pathToText = T.pack . toFilePath
@@ -77,8 +78,8 @@ findProjects = walk' $ \dir _ files -> do
     Nothing -> pure ([], WalkContinue)
     Just _ -> do
 
-      projectsStdout <-
-        runDiagnostics $ context ("getting gradle projects rooted at " <> pathToText dir) $
+      projectsStdout <- errorBoundary .
+        context ("Listing gradle projects at '" <> pathToText dir <> "'") $
           execThrow dir (gradleProjectsCmd (pathToText dir <> "gradlew"))
             <||> execThrow dir (gradleProjectsCmd (pathToText dir <> "gradlew.bat"))
             <||> execThrow dir (gradleProjectsCmd "gradle")
@@ -86,9 +87,16 @@ findProjects = walk' $ \dir _ files -> do
       case projectsStdout of
         Left err -> do
           logWarn $ renderFailureBundle err
-          pure ([], WalkContinue)
+          -- Nearly all gradle projects have a multi-module structure with a
+          -- top-level root project, and subdirectories contain subprojects of
+          -- the top-level root project
+          --
+          -- If we're not able to scan the top-level root project, there's no
+          -- reason to recurse and try the lower-level subprojects -- it only
+          -- adds noise
+          pure ([], WalkSkipAll)
         Right result -> do
-          let subprojects = parseProjects $ resultValue result
+          let subprojects = parseProjects result
 
           let project =
                 GradleProject
@@ -158,23 +166,24 @@ mkProject project =
     }
 
 getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> Set BuildTarget -> m (Graphing Dependency)
-getDeps project targets = analyze' targets (gradleDir project)
+getDeps project targets = context "Gradle" $ analyze targets (gradleDir project)
 
 initScript :: ByteString
 initScript = $(embedFile "scripts/jsondeps.gradle")
 
-analyze' ::
+analyze ::
   ( Has (Lift IO) sig m
   , Has Exec sig m
   , Has Diagnostics sig m
   )
   => Set BuildTarget -> Path Abs Dir -> m (Graphing Dependency)
-analyze' targets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
+analyze targets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
   let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
-  sendIO (BS.writeFile initScriptFilepath initScript)
-  stdout <- execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew") initScriptFilepath targets)
-              <||> execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew.bat") initScriptFilepath targets)
-              <||> execThrow dir (gradleJsonDepsCmd "gradle" initScriptFilepath targets)
+  context "Writing gradle script" $ sendIO (BS.writeFile initScriptFilepath initScript)
+  stdout <- context "Running gradle script" $
+              execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew") initScriptFilepath targets)
+                <||> execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew.bat") initScriptFilepath targets)
+                <||> execThrow dir (gradleJsonDepsCmd "gradle" initScriptFilepath targets)
 
   let text = decodeUtf8 $ BL.toStrict stdout
       textLines :: [Text]
@@ -197,7 +206,7 @@ analyze' targets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
       packagesToOutput :: Map (PackageName, ConfigName) [JsonDep]
       packagesToOutput = M.fromList packagePathsWithDecoded
 
-  pure (buildGraph packagesToOutput)
+  context "Building dependency graph" $ pure (buildGraph packagesToOutput)
 
 -- TODO: use LabeledGraphing to add labels for environments
 buildGraph :: Map (PackageName, ConfigName) [JsonDep] -> Graphing Dependency

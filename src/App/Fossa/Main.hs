@@ -103,7 +103,7 @@ appMain = do
       Test.testMain baseDir apiOpts logSeverity testTimeout testOutputType override
     --
     InitCommand ->
-      withLogger logSeverity $ logWarn "This command has been deprecated and is no longer needed.  It has no effect and may be safely removed."
+      withDefaultLogger logSeverity $ logWarn "This command has been deprecated and is no longer needed.  It has no effect and may be safely removed."
     --
     ReportCommand ReportOptions {..} -> do
       unless reportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"

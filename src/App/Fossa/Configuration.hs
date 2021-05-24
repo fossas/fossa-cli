@@ -88,7 +88,7 @@ readConfigFileIO = do
   config <- Diag.runDiagnostics $ runReadFSIO $ readConfigFile defaultFile
   case config of
     Left err -> die $ show $ Diag.renderFailureBundle err
-    Right a -> pure $ Diag.resultValue a
+    Right a -> pure a
 
 mergeFileCmdMetadata :: ProjectMetadata -> ConfigFile -> ProjectMetadata
 mergeFileCmdMetadata meta file =

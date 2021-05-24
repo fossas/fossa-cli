@@ -118,7 +118,9 @@ instance FromJSON CargoMetadata where
                   <*> obj .: "resolve"
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "Cargo" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CargoProject]
 findProjects = walk' $ \dir _ files -> do
@@ -149,7 +151,7 @@ mkProject project =
     }
 
 getDeps :: (Has Exec sig m, Has Diagnostics sig m) => CargoProject -> m (Graphing Dependency)
-getDeps = analyze . cargoDir
+getDeps = context "Cargo" . context "Dynamic analysis" . analyze . cargoDir
 
 cargoGenLockfileCmd :: Command
 cargoGenLockfileCmd = Command
@@ -168,10 +170,10 @@ cargoMetadataCmd = Command
 analyze :: (Has Exec sig m, Has Diagnostics sig m)
   => Path Abs Dir -> m (Graphing Dependency)
 analyze manifestDir = do
-  _ <- execThrow manifestDir cargoGenLockfileCmd
+  _ <- context "Generating lockfile" $ execThrow manifestDir cargoGenLockfileCmd
   meta <- execJson @CargoMetadata manifestDir cargoMetadataCmd
   --
-  pure $ buildGraph meta
+  context "Building dependency graph" $ pure (buildGraph meta)
 
 toDependency :: PackageId -> Set CargoLabel -> Dependency
 toDependency pkg = foldr applyLabel Dependency

@@ -33,7 +33,9 @@ import Path
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "Pipenv" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PipenvProject]
 findProjects = walk' $ \_ _ files -> do
@@ -47,11 +49,11 @@ getDeps ::
   , Has Diagnostics sig m
   )
   => PipenvProject -> m (Graphing Dependency)
-getDeps project = do
-  lock <- readContentsJson (pipenvLockfile project)
-  maybeDeps <- recover $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
+getDeps project = context "Pipenv" $ do
+  lock <- context "Getting direct dependencies" $ readContentsJson (pipenvLockfile project)
+  maybeDeps <- context "Getting deep dependencies" $ recover $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
 
-  pure (buildGraph lock maybeDeps)
+  context "Building dependency graph" $ pure (buildGraph lock maybeDeps)
 
 mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => PipenvProject -> DiscoveredProject n
 mkProject project = DiscoveredProject

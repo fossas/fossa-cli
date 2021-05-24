@@ -5,6 +5,7 @@
 -- @Control.Effect.State@
 module Control.Effect.AtomicState
   ( AtomicState (..),
+    getSet,
     modify,
     get,
     put
@@ -16,6 +17,9 @@ import Data.Kind
 
 data AtomicState s (m :: Type -> Type) a where
   Modify :: (s -> (s, a)) -> AtomicState s m a
+
+getSet :: Has (AtomicState s) sig m => (s -> (s,a)) -> m a
+getSet = send . Modify
 
 modify :: Has (AtomicState s) sig m => (s -> s) -> m ()
 modify f = send (Modify (\s -> (f s, ())))

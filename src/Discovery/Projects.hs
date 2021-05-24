@@ -1,16 +1,19 @@
-module Discovery.Projects
-  ( withDiscoveredProjects,
-  )
-where
+{-# LANGUAGE UndecidableInstances #-}
 
-import qualified Control.Carrier.Diagnostics as Diag
+module Discovery.Projects (
+  withDiscoveredProjects,
+) where
+
+import Control.Carrier.Diagnostics qualified as Diag
+import Control.Carrier.Diagnostics.StickyContext
+import Control.Effect.AtomicCounter (AtomicCounter)
 import Control.Effect.Finally
 import Control.Effect.Lift
 import Control.Effect.TaskPool
 import Control.Monad (when)
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Trans.Class (MonadTrans (..))
 import Data.Foldable (for_, traverse_)
-import qualified Discovery.Archive as Archive
+import Discovery.Archive qualified as Archive
 import Effect.Logger
 import Effect.ReadFS (ReadFS)
 import Path
@@ -20,9 +23,9 @@ import Types (DiscoveredProject)
 -- on each discovered project. Note that the provided function is also run in
 -- parallel.
 withDiscoveredProjects ::
-  (Has ReadFS sig m, Has (Lift IO) sig m, MonadIO m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
+  (Has AtomicCounter sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
   -- | Discover functions
-  [Path Abs Dir -> Diag.DiagnosticsC m [DiscoveredProject run]] ->
+  [Path Abs Dir -> StickyDiagC (Diag.DiagnosticsC m) [DiscoveredProject run]] ->
   -- | whether to unpack archives
   Bool ->
   Path Abs Dir ->
@@ -30,13 +33,9 @@ withDiscoveredProjects ::
   m ()
 withDiscoveredProjects discoverFuncs unpackArchives basedir f = do
   for_ discoverFuncs $ \discover -> forkTask $ do
-    projectsResult <- Diag.runDiagnosticsIO (discover basedir)
+    projectsResult <- Diag.runDiagnosticsIO . stickyDiag $ discover basedir
     Diag.withResult SevError projectsResult (traverse_ (forkTask . f))
 
   when unpackArchives $ do
-    res <- Diag.runDiagnosticsIO $ Archive.discover (\dir -> liftFoo $ withDiscoveredProjects discoverFuncs unpackArchives dir f) basedir
+    res <- Diag.runDiagnosticsIO $ Archive.discover (\dir -> lift $ withDiscoveredProjects discoverFuncs unpackArchives dir f) basedir
     Diag.withResult SevError res (const (pure ()))
-
-
-liftFoo :: m a -> Diag.DiagnosticsC m a
-liftFoo = undefined

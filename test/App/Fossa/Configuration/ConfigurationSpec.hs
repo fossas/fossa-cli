@@ -60,7 +60,7 @@ spec = do
     T.it "parses a full configuration file correctly" $
       case config of
         Left err -> T.expectationFailure ("failed to parse config file" <> show (Diag.renderFailureBundle err))
-        Right a -> case Diag.resultValue a of
+        Right a -> case a of
           Nothing -> T.expectationFailure "config file was Nothing after parsing"
           Just result -> result `T.shouldBe` expectedConfigFile
 
@@ -72,4 +72,4 @@ spec = do
     T.it "returns Nothing for missing file" $
       case missingConfig of
         Left _ -> T.expectationFailure "should have failed parsing"
-        Right a -> Diag.resultValue a `T.shouldBe` Nothing
+        Right result -> result `T.shouldBe` Nothing

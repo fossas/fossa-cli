@@ -10,7 +10,7 @@ where
 import Data.ByteString (ByteString)
 import Data.Text (Text)
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
+import Data.String.Conversion (decodeUtf8, encodeUtf8)
 
 splitOnceOn :: Text -> Text -> (Text, Text)
 splitOnceOn needle haystack = (first, strippedRemaining)
@@ -42,7 +42,7 @@ breakOnAndRemove needle haystack
   | otherwise = Nothing
 
 underBS :: (ByteString -> ByteString) -> Text -> Text
-underBS f = TE.decodeUtf8 . f . TE.encodeUtf8
+underBS f = decodeUtf8 . f . encodeUtf8
 
 showT :: Show a => a -> Text
 showT = T.pack . show

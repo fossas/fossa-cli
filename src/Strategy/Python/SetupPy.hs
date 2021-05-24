@@ -16,7 +16,9 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import Types
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' file = buildGraph <$> readContentsParser installRequiresParser file
+analyze' file = do
+  reqs <- readContentsParser installRequiresParser file
+  context "Building dependency graph" $ pure (buildGraph reqs)
 
 type Parser = Parsec Void Text
 

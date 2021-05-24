@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- | The Diagnostics effect is a replacement for the Error effect in most cases. It models an unchecked exceptions pattern, and provides for:
 --
@@ -9,8 +10,15 @@ module Control.Effect.Diagnostics
   ( -- * Diagnostics effect and operations
     Diagnostics (..),
     fatal,
-    recover,
     context,
+    recover,
+    recover',
+    errorBoundary,
+
+    -- * Diagnostic result types
+    FailureBundle (..),
+    renderFailureBundle,
+    renderSomeDiagnostic,
 
     -- * Diagnostic helpers
     fatalText,
@@ -31,19 +39,36 @@ where
 
 import Control.Algebra as X
 import Control.Exception (SomeException (..))
+import Data.List (intersperse)
 import qualified Data.List.NonEmpty as NE
 import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
+import Data.Text.Prettyprint.Doc.Render.Terminal
 import Prelude
 
 data Diagnostics m k where
   Fatal :: ToDiagnostic diag => diag -> Diagnostics m a
-  Recover :: m a -> Diagnostics m (Maybe a)
+  Recover' :: m a -> Diagnostics m (Either SomeDiagnostic a)
   Context :: Text -> m a -> Diagnostics m a
+  ErrorBoundary :: m a -> Diagnostics m (Either FailureBundle a)
+
+-- | A class of diagnostic types that can be rendered in a user-friendly way
+class ToDiagnostic a where
+  renderDiagnostic :: a -> Doc AnsiStyle
+
+instance ToDiagnostic Text where
+  renderDiagnostic = pretty
+
+instance ToDiagnostic SomeException where
+  renderDiagnostic (SomeException exc) =
+    "An exception occurred: " <> pretty (show exc)
+
+-- | An error with a ToDiagnostic instance and an associated stack trace
+data SomeDiagnostic where
+  SomeDiagnostic :: ToDiagnostic a => [Text] -> a -> SomeDiagnostic
 
 -- | Analagous to @throwError@ from the error effect
 fatal :: (Has Diagnostics sig m, ToDiagnostic diag) => diag -> m a
@@ -55,11 +80,36 @@ fatalText = fatal
 
 -- | Recover from a fatal error. The error will be recorded as a warning instead.
 recover :: Has Diagnostics sig m => m a -> m (Maybe a)
-recover = send . Recover
+recover = fmap (either (const Nothing) Just) . recover'
 
--- | Push context onto the stack for "stack traces" in diagnostics.
+-- | Recover from a fatal error. The error will be recorded as a warning instead.
+recover' :: Has Diagnostics sig m => m a -> m (Either SomeDiagnostic a)
+recover' = send . Recover'
+
+-- | Form an "error boundary" around an action, where:
+-- - errors and warnings cannot "escape" the scope of the action
+-- - warnings from outside of the error boundary do not impact the FailureBundles produced by the action
 --
--- This is spiritually similar to @errors.Wrap@ from golang
+-- This returns a FailureBundle if the action failed; otherwise returns the result of the action
+errorBoundary :: Has Diagnostics sig m => m a -> m (Either FailureBundle a)
+errorBoundary = send . ErrorBoundary
+
+-- | Push context onto the stack for "stack traces"/"tracebacks" in diagnostics.
+--
+-- This is spiritually similar to @errors.Wrap@ from golang.
+--
+-- In the default Diagnostics carrier from Control.Carrier.Diagnostics, context
+-- messages are additive and scoped:
+--
+--     context "foo" $ do
+--       -- context is [foo] here
+--       context "bar" $ do
+--         -- context is [foo,bar] here
+--         pure ()
+--       context "baz" $ do
+--         -- context is [foo,baz] here
+--         pure ()
+--       -- context is [foo] here
 context :: Has Diagnostics sig m => Text -> m a -> m a
 context ctx go = send (Context ctx go)
 
@@ -99,17 +149,37 @@ combineSuccessful msg actions = do
     Nothing -> fatalText msg
     Just xs -> pure (sconcat xs)
 
--- | A class of diagnostic types that can be rendered in a user-friendly way
-class ToDiagnostic a where
-  renderDiagnostic :: a -> Doc AnsiStyle
+data FailureBundle = FailureBundle
+  { failureWarnings :: [SomeDiagnostic],
+    failureCause :: SomeDiagnostic
+  }
 
-instance ToDiagnostic Text where
-  renderDiagnostic = pretty
+instance Show FailureBundle where
+  show = show . renderFailureBundle
 
-instance ToDiagnostic SomeException where
-  renderDiagnostic (SomeException exc) =
-    "An exception occurred: " <> pretty (show exc)
+renderFailureBundle :: FailureBundle -> Doc AnsiStyle
+renderFailureBundle FailureBundle {..} =
+  vsep
+    [ annotate (color Yellow) "----------",
+      annotate (color Yellow) "An error occurred:",
+      "",
+      indent 4 (renderSomeDiagnostic failureCause),
+      "",
+      ">>>",
+      "",
+      indent 2 (annotate (color Yellow) "Relevant warnings include:"),
+      "",
+      indent 4 (renderWarnings failureWarnings)
+    ]
 
--- | An error with a ToDiagnostic instance and an associated stack trace
-data SomeDiagnostic where
-  SomeDiagnostic :: ToDiagnostic a => [Text] -> a -> SomeDiagnostic
+renderSomeDiagnostic :: SomeDiagnostic -> Doc AnsiStyle
+renderSomeDiagnostic (SomeDiagnostic stack cause) =
+  renderDiagnostic cause
+    <> line
+    <> line
+    <> annotate (color Cyan) "Traceback:"
+    <> line
+    <> indent 2 (vsep (map (pretty . ("- " <>)) stack))
+
+renderWarnings :: [SomeDiagnostic] -> Doc AnsiStyle
+renderWarnings = vsep . intersperse (line <> "--" <> line) . map renderSomeDiagnostic

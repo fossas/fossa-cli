@@ -14,10 +14,10 @@ where
 
 import Control.Carrier.Diagnostics
 import Data.Maybe (mapMaybe)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
-import Data.Text.Lazy.Encoding (decodeUtf8)
 import Discovery.Walk
 import Effect.Exec
 import Effect.Logger hiding (group)
@@ -38,7 +38,9 @@ discover ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject run]
-discover dir = map (mkProject dir) <$> findProjects dir
+discover dir = context "Scala" $ do
+  projects <- findProjects dir
+  pure (map (mkProject dir) projects)
 
 mkProject ::
   Applicative n =>
@@ -65,15 +67,15 @@ findProjects = walk' $ \dir _ files -> do
     Nothing -> pure ([], WalkContinue)
     Just _ -> do
       projectsRes <-
-        runDiagnostics
-          . context ("getting sbt projects rooted at " <> pathToText dir)
+        errorBoundary
+          . context ("Listing sbt projects at " <> pathToText dir)
           $ genPoms dir
 
       case projectsRes of
         Left err -> do
           logWarn $ renderFailureBundle err
           pure ([], WalkSkipAll)
-        Right projects -> pure (resultValue projects, WalkSkipAll)
+        Right projects -> pure (projects, WalkSkipAll)
 
 makePomCmd :: Command
 makePomCmd =
@@ -87,7 +89,7 @@ makePomCmd =
 
 genPoms :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
 genPoms projectDir = do
-  stdoutBL <- execThrow projectDir makePomCmd
+  stdoutBL <- context "Generating poms" $ execThrow projectDir makePomCmd
 
   -- stdout for "sbt makePom" looks something like:
   --

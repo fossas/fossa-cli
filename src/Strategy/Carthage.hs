@@ -31,7 +31,9 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "Carthage" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CarthageProject]
 findProjects = walk' $ \dir _ files -> do
@@ -63,7 +65,7 @@ mkProject project =
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CarthageProject -> m (Graphing Dependency)
-getDeps = fmap (G.gmap toDependency) . analyze . carthageLock
+getDeps = context "Carthage" . context "Static analysis" . fmap (G.gmap toDependency) . analyze . carthageLock
 
 relCheckoutsDir :: Path Abs File -> Path Abs Dir
 relCheckoutsDir file = parent file </> $(mkRelDir "Carthage/Checkouts")

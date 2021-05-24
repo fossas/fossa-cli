@@ -24,11 +24,11 @@ import Unsafe.Coerce
 import qualified Data.Map.Strict as M
 import Data.Aeson.Types (Parser)
 import Control.Applicative
+import Data.String.Conversion (encodeUtf8)
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as Encoding
+import qualified Data.Text.Lazy as TL
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.Text.Lazy.Encoding as LEncoding
 import Path
 import System.Exit
 
@@ -151,10 +151,10 @@ instance (ReplayableValue a, ReplayableValue b, ReplayableValue c, ReplayableVal
 ----- Additional instances
 
 instance ReplayableValue BS.ByteString where
-  fromRecordedValue = fmap Encoding.encodeUtf8 . parseJSON
+  fromRecordedValue = fmap (encodeUtf8 @T.Text) . parseJSON
 
 instance ReplayableValue BL.ByteString where
-  fromRecordedValue = fmap LEncoding.encodeUtf8 . parseJSON
+  fromRecordedValue = fmap (encodeUtf8 @TL.Text) . parseJSON
 
 instance ReplayableValue (Path Abs Dir)
 instance ReplayableValue (Path Abs File)

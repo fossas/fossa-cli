@@ -28,7 +28,9 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' file = buildGraph <$> readContentsParser findSections file
+analyze' file = do
+  podfileLock <- readContentsParser findSections file
+  context "Building dependency graph" $ pure (buildGraph podfileLock)
 
 newtype PodfilePkg = PodfilePkg { pkgName :: Text }
   deriving (Eq, Ord, Show)

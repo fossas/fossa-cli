@@ -30,7 +30,9 @@ instance FromJSON PackageJson where
                 <*> obj .:? "devDependencies" .!= M.empty
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' file = buildGraph <$> readContentsJson @PackageJson file
+analyze' file = do
+  packageJson <- readContentsJson @PackageJson file
+  context "Building dependency graph" $ pure (buildGraph packageJson)
 
 -- TODO: decode version constraints
 data NodePackage = NodePackage

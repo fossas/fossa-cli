@@ -47,8 +47,8 @@ spec = do
   Test.describe "cabal plan graph builder" $
     case run . runDiagnostics . buildGraph $ BuildPlan buildPlan of
       Left fbundle -> Test.it "should build a graph" $ Test.expectationFailure (show $ renderFailureBundle fbundle)
-      Right ResultBundle {..} -> do
-        let gr = gmap dependencyName resultValue
+      Right graph -> do
+        let gr = gmap dependencyName graph
         Test.it "should have the correct deps" $ expectDeps ["aeson", "with-components", "deepdep"] gr
         Test.it "should have the correct direct deps" $ expectDirect ["aeson", "with-components"] gr
         Test.it "should have the correct edges" $ expectEdges [("aeson", "deepdep")] gr

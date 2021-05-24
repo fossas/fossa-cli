@@ -5,17 +5,17 @@ module App.Fossa.VPS.Test
 where
 
 import App.Fossa.API.BuildWait
-import qualified App.Fossa.FossaAPIV1 as Fossa
+import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.ProjectInference
-import qualified App.Fossa.VPS.Scan.Core as VPSCore
-import qualified App.Fossa.VPS.Scan.ScotlandYard as ScotlandYard
+import App.Fossa.VPS.Scan.Core qualified as VPSCore
+import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
 import App.Types
 import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Control.Carrier.StickyLogger (runStickyLogger, logSticky)
 import Control.Effect.Lift (sendIO)
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
+import Data.String.Conversion
 import Data.Text.IO (hPutStrLn)
-import Data.Text.Lazy.Encoding (decodeUtf8)
-import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
 import Fossa.API.Types (ApiOpts, Issues (..))
@@ -38,7 +38,7 @@ testMain ::
   OverrideProject ->
   IO ()
 testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
-  _ <- timeout timeoutSeconds . withLogger logSeverity . runExecIO $ do
+  _ <- timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger $ do
     result <- runDiagnostics . runReadFSIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
@@ -70,7 +70,7 @@ testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType overrid
             else
               case outputType of
                 TestOutputPretty -> pure ()
-                TestOutputJson -> logStdout . pretty . decodeUtf8 . Aeson.encode $ issues
+                TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
           sendIO exitFailure
 
     case result of

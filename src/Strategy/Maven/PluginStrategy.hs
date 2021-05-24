@@ -26,10 +26,10 @@ analyze' ::
   )
   => Path Abs Dir -> m (Graphing Dependency)
 analyze' dir = withUnpackedPlugin $ \filepath -> do
-  installPlugin dir filepath
-  execPlugin dir
+  context "Installing plugin" $ installPlugin dir filepath
+  context "Running plugin" $ execPlugin dir
   pluginOutput <- parsePluginOutput dir
-  pure (buildGraph pluginOutput)
+  context "Building dependency graph" $ pure (buildGraph pluginOutput)
 
 buildGraph :: PluginOutput -> Graphing Dependency
 buildGraph PluginOutput{..} = run $ evalGrapher $ do

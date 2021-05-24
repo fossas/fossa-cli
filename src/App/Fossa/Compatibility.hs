@@ -9,16 +9,16 @@ module App.Fossa.Compatibility
 where
 
 import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath, withCLIv1Binary)
+import Control.Carrier.StickyLogger (runStickyLogger, logSticky)
 import Control.Effect.Lift (sendIO)
+import Data.ByteString.Lazy.Char8 qualified as BL
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text, pack)
-import Data.Foldable (traverse_)
-import Effect.Exec (CmdFailure(cmdFailureStdout), AllowErr (Never), Command (..), exec, runExecIO, cmdFailureStderr)
-import Path
-import qualified Data.ByteString.Lazy.Char8 as BL
+import Effect.Exec (AllowErr (Never), CmdFailure (cmdFailureStdout), Command (..), cmdFailureStderr, exec, runExecIO)
+import Effect.Logger (Pretty (pretty), Severity (SevInfo), logInfo, withDefaultLogger)
 import Options.Applicative (Parser, argument, help, metavar, str)
+import Path
 import System.Exit (exitFailure, exitSuccess)
-import Data.Text.Lazy.Encoding
-import Effect.Logger (Pretty(pretty), logInfo, logSticky, Severity(SevInfo), withLogger)
 
 type Argument = Text
 
@@ -28,14 +28,15 @@ argumentParser = pack <$> argument str (metavar "ARGS" <> help "arguments to fos
 compatibilityMain ::
   [Argument] ->
   IO ()
-compatibilityMain args = withLogger SevInfo . runExecIO . withCLIv1Binary $ \v1Bin -> do
-  logSticky "[ Waiting for fossa analyze completion ]"
-  cmd <- exec [reldir|.|] $ v1Command v1Bin $ args
-  logSticky ""
+compatibilityMain args = withDefaultLogger SevInfo . runExecIO . withCLIv1Binary $ \v1Bin -> do
+  cmd <- runStickyLogger $ do
+    logSticky "[ Waiting for fossa analyze completion ]"
+    exec [reldir|.|] $ v1Command v1Bin args
 
   case cmd of
     Left err -> do
-      traverse_ (\accessor -> logInfo . pretty . decodeUtf8 $ accessor err)  [cmdFailureStderr, cmdFailureStdout]
+      logInfo . pretty @Text . decodeUtf8 $ cmdFailureStderr err
+      logInfo . pretty @Text . decodeUtf8 $ cmdFailureStdout err
       sendIO exitFailure
     Right out -> sendIO (BL.putStr out >> exitSuccess)
 

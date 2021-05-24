@@ -59,7 +59,9 @@ parseLocationType txt
   | otherwise = fail $ "Bad location type: " ++ T.unpack txt
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
-discover dir = map mkProject <$> findProjects dir
+discover dir = context "Stack" $ do
+  projects <- context "Finding projects" $ findProjects dir
+  pure (map mkProject projects)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [StackProject]
 findProjects = walk' $ \dir _ files -> do
@@ -83,9 +85,12 @@ mkProject project =
     }
 
 getDeps :: (Has Exec sig m, Has Diagnostics sig m) => StackProject -> m (G.Graphing Dependency)
-getDeps = analyze . stackDir
+getDeps project =
+  context "Stack" $
+    context "Dynamic analysis" $
+      analyze (stackDir project)
 
-data StackProject = StackProject
+newtype StackProject = StackProject
   { stackDir :: Path Abs Dir
   } deriving (Eq, Ord, Show)
 
@@ -106,7 +111,7 @@ doGraph dep = do
     when (stackLocation dep == Local) (direct child)
 
 ignorePackageName :: PackageName -> a -> a
-ignorePackageName = flip const
+ignorePackageName _ x = x
 
 shouldInclude :: StackDep -> Bool
 shouldInclude dep = Remote == stackLocation dep

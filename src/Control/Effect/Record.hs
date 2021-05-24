@@ -23,10 +23,9 @@ import qualified Data.ByteString.Lazy as BL
 import Data.Kind
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
+import Data.String.Conversion (decodeUtf8)
 import qualified Data.Text as Text
-import qualified Data.Text.Encoding as Encoding
 import qualified Data.Text.Lazy as LText
-import qualified Data.Text.Lazy.Encoding as LEncoding
 import Path
 import System.Exit
 import Unsafe.Coerce
@@ -155,10 +154,10 @@ instance (RecordableValue a, RecordableValue b, RecordableValue c, RecordableVal
 ----- Additional instances
 
 instance RecordableValue BS.ByteString where
-  toRecordedValue = toJSON . Encoding.decodeUtf8
+  toRecordedValue = toJSON . decodeUtf8 @Text.Text
 
 instance RecordableValue BL.ByteString where
-  toRecordedValue = toJSON . LEncoding.decodeUtf8
+  toRecordedValue = toJSON . decodeUtf8 @LText.Text
 
 instance RecordableValue (Path a b)
 

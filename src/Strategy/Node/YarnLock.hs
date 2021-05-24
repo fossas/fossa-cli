@@ -24,7 +24,7 @@ analyze' lockfile = do
   contents <- readContentsText lockfile
   case YL.parse path contents of
     Left err -> fatal (FileParseError path (YL.prettyLockfileError err))
-    Right parsed -> pure (buildGraph parsed)
+    Right parsed -> context "Building dependency graph" $ pure (buildGraph parsed)
 
 buildGraph :: YL.Lockfile -> Graphing Dependency
 buildGraph lockfile = run . evalGrapher $

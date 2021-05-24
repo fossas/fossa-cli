@@ -91,7 +91,7 @@ walkDir ::
   -- | Directory where traversal begins
   Path Abs Dir ->
   m ()
-walkDir handler topdir =
+walkDir handler topdir = context "Walking the filetree" $
   void $
     --makeAbsolute topdir >>= walkAvoidLoop S.empty
     walkAvoidLoop S.empty topdir

@@ -5,34 +5,35 @@ module App.Pathfinder.Scan
   ( scanMain
   ) where
 
+import Control.Carrier.AtomicCounter (runAtomicCounter)
+import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Error.Either
 import Control.Carrier.Finally
 import Control.Carrier.Output.IO
+import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent
-import qualified Control.Carrier.Diagnostics as Diag
 import Control.Effect.Exception as Exc
 import Control.Effect.Lift (sendIO)
 import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Bool (bool)
-import qualified Data.ByteString.Lazy as BL
-import Data.Function ((&))
+import Data.ByteString.Lazy qualified as BL
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Discovery.Projects (withDiscoveredProjects)
+import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
 import Path
-import qualified Path.IO as PIO
-import qualified Strategy.Maven as Maven
-import qualified Strategy.NuGet.Nuspec as Nuspec
+import Path.IO qualified as PIO
+import Strategy.Maven qualified as Maven
+import Strategy.NuGet.Nuspec qualified as Nuspec
 import System.Exit (die)
 import System.IO (BufferMode (NoBuffering), hSetBuffering, stderr, stdout)
 import Types
-import Effect.Exec
 
 scanMain :: Path Abs Dir -> Bool -> IO ()
 scanMain basedir debug = do
@@ -41,8 +42,7 @@ scanMain basedir debug = do
   exists <- PIO.doesDirExist basedir
   unless exists (die $ "ERROR: " <> show basedir <> " does not exist")
 
-  scan basedir
-    & withLogger (bool SevInfo SevDebug debug)
+  withDefaultLogger (bool SevInfo SevDebug debug) $ scan basedir
 
 runLicenseAnalysis ::
   (Has (Lift IO) sig m, Has Logger sig m, Has (Output ProjectLicenseScan) sig m) =>
@@ -64,16 +64,14 @@ scan basedir = runFinally $ do
 
   (projectResults, ()) <-
     runOutput @ProjectLicenseScan
+      . runStickyLogger
       . runReadFSIO
       . runFinally
       . withTaskPool capabilities updateProgress
+      . runAtomicCounter
       $ withDiscoveredProjects discoverFuncs False basedir runLicenseAnalysis
 
-  logSticky "[ Combining Analyses ]"
-
   sendIO (BL.putStr (encode projectResults))
-
-  logSticky ""
 
 
 discoverFuncs ::
@@ -122,13 +120,15 @@ mkLicenseScan project licenses =
       discoveredLicenses = licenses
     }
 
-updateProgress :: Has Logger sig m => Progress -> m ()
-updateProgress Progress{..} =
-  logSticky ( "[ "
-            <> annotate (color Cyan) (pretty pQueued)
-            <> " Waiting / "
-            <> annotate (color Yellow) (pretty pRunning)
-            <> " Running / "
-            <> annotate (color Green) (pretty pCompleted)
-            <> " Completed"
-            <> " ]" )
+updateProgress :: Has StickyLogger sig m => Progress -> m ()
+updateProgress Progress {..} =
+  logSticky'
+    ( "[ "
+        <> annotate (color Cyan) (pretty pQueued)
+        <> " Waiting / "
+        <> annotate (color Yellow) (pretty pRunning)
+        <> " Running / "
+        <> annotate (color Green) (pretty pCompleted)
+        <> " Completed"
+        <> " ]"
+    )
