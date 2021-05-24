@@ -44,6 +44,10 @@ fossa analyze
 fossa test
 ```
 
+## Hacking
+
+Our dev setup and recommendations can be found in [HACKING.md](HACKING.md).
+
 ## Reporting Issues
 
 If you are experiencing an issue related to the results on the FOSSA website/dashboard, please contact [support@fossa.com](mailto:support@fossa.com)
