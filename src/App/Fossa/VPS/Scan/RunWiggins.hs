@@ -29,7 +29,8 @@ import qualified Data.ByteString.Lazy as BL
 import Data.Text.Encoding ( decodeUtf8 )
 
 data ScanType = ScanType
-  { scanSkipIpr :: Bool
+  { followSymlinks :: Bool
+  , scanSkipIpr :: Bool
   , scanLicenseOnly :: Bool
   }
 
@@ -69,6 +70,7 @@ generateSpectrometerScanArgs logSeverity ProjectRevision{..} ScanType{..} fileFi
       ++ optMaybeText "-project-url" projectUrl
       ++ optMaybeText "-team" projectTeam
       ++ optMaybeText "-title" projectTitle
+      ++ optBool "-follow" followSymlinks
       ++ optBool "-license-only" scanLicenseOnly
       ++ optBool "-skip-ipr-scan" scanSkipIpr
       ++ optBool "-debug" (logSeverity == SevDebug)

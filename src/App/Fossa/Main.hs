@@ -18,7 +18,7 @@ import qualified App.Fossa.Report as Report
 import qualified App.Fossa.Test as Test
 import App.Fossa.VPS.NinjaGraph
 import qualified App.Fossa.VPS.Report as VPSReport
-import App.Fossa.VPS.Scan (LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
+import App.Fossa.VPS.Scan (FollowSymlinks (..), LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
 import App.Fossa.VPS.AOSPNotice (aospNoticeMain)
 import qualified App.Fossa.VPS.Test as VPSTest
 import App.Fossa.VPS.Types (FilterExpressions (..), NinjaScanID (..), NinjaFilePaths (..))
@@ -124,7 +124,7 @@ appMain = do
           when (SysInfo.os == windowsOsName) $ unless (fromFlag SkipIPRScan skipIprScan) $ die "Windows VPS scans require skipping IPR.  Please try `fossa vps analyze --skip-ipr-scan DIR`"
           baseDir <- validateDir vpsAnalyzeBaseDir
           let metadata = maybe vpsAnalyzeMeta (mergeFileCmdMetadata vpsAnalyzeMeta) fileConfig
-          scanMain baseDir apiOpts metadata logSeverity override vpsFileFilter skipIprScan licenseOnlyScan
+          scanMain baseDir apiOpts metadata logSeverity override vpsFileFilter followSymlinks skipIprScan licenseOnlyScan
         NinjaGraphCommand ninjaGraphOptions -> do
           _ <- die "This command is no longer supported"
           ninjaGraphMain apiOpts logSeverity override ninjaGraphOptions
@@ -319,8 +319,9 @@ testOpts =
     <*> baseDirArg
 
 vpsOpts :: Parser VPSOptions
-vpsOpts = VPSOptions <$> skipIprScanOpt <*> licenseOnlyScanOpt <*> fileFilterOpt <*> vpsCommands
+vpsOpts = VPSOptions <$> followSymlinksOpt <*> skipIprScanOpt <*> licenseOnlyScanOpt <*> fileFilterOpt <*> vpsCommands
   where
+    followSymlinksOpt = flagOpt FollowSymlinks (long "follow" <> help "If specified, follows symbolic links (does not protect against cyclic links)")
     skipIprScanOpt = flagOpt SkipIPRScan (long "skip-ipr-scan" <> help "If specified, the scan directory will not be scanned for intellectual property rights information")
     licenseOnlyScanOpt = flagOpt LicenseOnlyScan (long "license-only" <> help "If specified, the scan directory will not be scanned for vendored dependencies")
     fileFilterOpt = FilterExpressions <$> jsonOption (long "ignore-file-regex" <> short 'i' <> metavar "REGEXPS" <> help "JSON encoded array of regular expressions used to filter scanned paths" <> value [])
@@ -516,7 +517,8 @@ data TestOptions = TestOptions
   }
 
 data VPSOptions = VPSOptions
-  { skipIprScan :: Flag SkipIPRScan,
+  { followSymlinks :: Flag FollowSymlinks,
+    skipIprScan :: Flag SkipIPRScan,
     licenseOnlyScan :: Flag LicenseOnlyScan,
     vpsFileFilter :: FilterExpressions,
     vpsCommand :: VPSCommand
