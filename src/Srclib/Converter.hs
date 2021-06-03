@@ -108,3 +108,4 @@ depTypeToFetcher = \case
   URLType -> "url"
   ComposerType -> "comp"
   HackageType -> "hackage"
+  CondaType -> "conda"

@@ -187,6 +187,7 @@ library
     Data.FileEmbed.Extra
     Data.Flag
     Data.Functor.Extra
+    Data.List.Extra
     Data.String.Conversion
     Data.Text.Extra
     DepTypes
@@ -211,6 +212,9 @@ library
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer
+    Strategy.Conda
+    Strategy.Conda.CondaList
+    Strategy.Conda.EnvironmentYml
     Strategy.Erlang.ConfigParser
     Strategy.Erlang.Rebar3Tree
     Strategy.Glide
@@ -296,6 +300,8 @@ test-suite unit-tests
     Clojure.ClojureSpec
     Cocoapods.PodfileLockSpec
     Cocoapods.PodfileSpec
+    Conda.EnvironmentYmlSpec
+    Conda.CondaListSpec
     Composer.ComposerLockSpec
     Discovery.FiltersSpec
     Effect.ExecSpec

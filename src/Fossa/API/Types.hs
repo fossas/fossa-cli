@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Fossa.API.Types
   ( ApiKey (..),
@@ -17,6 +17,7 @@ where
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Data.Aeson
 import Data.Coerce (coerce)
+import Data.List.Extra ((!?))
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
@@ -26,8 +27,8 @@ import qualified Data.Text as T
 import Data.Text.Prettyprint.Doc
 import Network.HTTP.Req
 import Text.URI (URI, render)
-import qualified Unsafe.Coerce as Unsafe
 import Text.URI.QQ (uri)
+import qualified Unsafe.Coerce as Unsafe
 
 newtype ApiKey = ApiKey {unApiKey :: Text}
   deriving (Eq, Ord, Show)
@@ -39,10 +40,11 @@ data ApiOpts = ApiOpts
   deriving (Eq, Ord, Show)
 
 data Issues = Issues
-  { issuesCount :: Int
-  , issuesIssues :: [Issue]
-  , issuesStatus :: Text
-  } deriving (Eq, Ord, Show)
+  { issuesCount :: Int,
+    issuesIssues :: [Issue],
+    issuesStatus :: Text
+  }
+  deriving (Eq, Ord, Show)
 
 data IssueType
   = IssuePolicyConflict
@@ -63,50 +65,54 @@ renderIssueType = \case
   IssueOther other -> other
 
 data Issue = Issue
-  { issueId :: Int
-  , issuePriorityString :: Maybe Text -- we only use this field for `fossa test --json`
-  , issueResolved :: Bool
-  , issueRevisionId :: Text
-  , issueType :: IssueType
-  , issueRule :: Maybe IssueRule
-  } deriving (Eq, Ord, Show)
+  { issueId :: Int,
+    issuePriorityString :: Maybe Text, -- we only use this field for `fossa test --json`
+    issueResolved :: Bool,
+    issueRevisionId :: Text,
+    issueType :: IssueType,
+    issueRule :: Maybe IssueRule
+  }
+  deriving (Eq, Ord, Show)
 
 newtype IssueRule = IssueRule
   { ruleLicenseId :: Maybe Text
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 instance FromJSON Issues where
   parseJSON = withObject "Issues" $ \obj ->
     Issues <$> obj .: "count"
-           <*> obj .:? "issues" .!= []
-           <*> obj .: "status"
+      <*> obj .:? "issues" .!= []
+      <*> obj .: "status"
 
 instance ToJSON Issues where
-  toJSON Issues{..} = object
-    [ "count" .= issuesCount
-    , "issues" .= issuesIssues
-    , "status" .= issuesStatus
-    ]
+  toJSON Issues {..} =
+    object
+      [ "count" .= issuesCount,
+        "issues" .= issuesIssues,
+        "status" .= issuesStatus
+      ]
 
 instance FromJSON Issue where
   parseJSON = withObject "Issue" $ \obj ->
     Issue <$> obj .: "id"
-           <*> obj .:? "priorityString"
-           <*> obj .: "resolved"
-           -- VPS issues don't have a revisionId
-           <*> obj .:? "revisionId" .!= "unknown project"
-           <*> obj .: "type"
-           <*> obj .:? "rule"
+      <*> obj .:? "priorityString"
+      <*> obj .: "resolved"
+      -- VPS issues don't have a revisionId
+      <*> obj .:? "revisionId" .!= "unknown project"
+      <*> obj .: "type"
+      <*> obj .:? "rule"
 
 instance ToJSON Issue where
-  toJSON Issue{..} = object
-    [ "id" .= issueId
-    , "priorityString" .= issuePriorityString
-    , "resolved" .= issueResolved
-    , "revisionId" .= issueRevisionId
-    , "type" .= issueType
-    , "rule" .= issueRule
-    ]
+  toJSON Issue {..} =
+    object
+      [ "id" .= issueId,
+        "priorityString" .= issuePriorityString,
+        "resolved" .= issueResolved,
+        "revisionId" .= issueRevisionId,
+        "type" .= issueType,
+        "rule" .= issueRule
+      ]
 
 instance FromJSON IssueType where
   parseJSON = withText "IssueType" $ \case
@@ -118,20 +124,21 @@ instance FromJSON IssueType where
     other -> pure (IssueOther other)
 
 instance ToJSON IssueType where
-  toJSON = String . \case
-    IssuePolicyConflict -> "policy_conflict"
-    IssuePolicyFlag -> "policy_flag"
-    IssueVulnerability -> "vulnerability"
-    IssueUnlicensedDependency -> "unlicensed_dependency"
-    IssueOutdatedDependency -> "outdated_dependency"
-    IssueOther text -> text
+  toJSON =
+    String . \case
+      IssuePolicyConflict -> "policy_conflict"
+      IssuePolicyFlag -> "policy_flag"
+      IssueVulnerability -> "vulnerability"
+      IssueUnlicensedDependency -> "unlicensed_dependency"
+      IssueOutdatedDependency -> "outdated_dependency"
+      IssueOther text -> text
 
 instance FromJSON IssueRule where
   parseJSON = withObject "IssueRule" $ \obj ->
     IssueRule <$> obj .:? "licenseId"
 
 instance ToJSON IssueRule where
-  toJSON IssueRule{..} = object ["licenseId" .= ruleLicenseId]
+  toJSON IssueRule {..} = object ["licenseId" .= ruleLicenseId]
 
 instance Pretty Issues where
   pretty = renderedIssues
@@ -158,20 +165,23 @@ renderedIssues issues = rendered
       renderHeader issueType <> line <> vsep (map renderIssue rawIssues) <> line
 
     rendered :: Doc ann
-    rendered = vsep
-      [renderSection issueType rawIssues | (issueType,rawIssues) <- M.toList issuesByType]
+    rendered =
+      vsep
+        [renderSection issueType rawIssues | (issueType, rawIssues) <- M.toList issuesByType]
 
     renderHeader :: IssueType -> Doc ann
-    renderHeader ty = vsep
-      [ "========================================================================"
-      , pretty $ renderIssueType ty
-      , "========================================================================"
-      , hsep $ map (fill padding) $ case ty of
-          IssuePolicyConflict -> ["Dependency", "Revision", "License"]
-          IssuePolicyFlag -> ["Dependency", "Revision", "License"]
-          _ -> ["Dependency", "Revision"]
-      , ""
-      ]
+    renderHeader ty =
+      vsep
+        [ "========================================================================",
+          pretty $ renderIssueType ty,
+          "========================================================================",
+          hsep $
+            map (fill padding) $ case ty of
+              IssuePolicyConflict -> ["Dependency", "Revision", "License"]
+              IssuePolicyFlag -> ["Dependency", "Revision", "License"]
+              _ -> ["Dependency", "Revision"],
+          ""
+        ]
 
     renderIssue :: Issue -> Doc ann
     renderIssue issue = hsep (map format [name, revision, license])
@@ -185,12 +195,6 @@ renderedIssues issues = rendered
         revision = fromMaybe "" (locatorSplit !? 2)
         license = fromMaybe "" (ruleLicenseId =<< issueRule issue)
 
-        (!?) :: [a] -> Int -> Maybe a
-        xs !? ix
-          | length xs <= ix = Nothing
-          | otherwise = Just (xs !! ix)
-
-
 -- | parse a URI for use as a base Url, along with some default options (auth, port, ...)
 useApiOpts :: Has Diagnostics sig m => ApiOpts -> m (Url 'Https, Option 'Https)
 useApiOpts opts = case useURI serverURI of
@@ -200,7 +204,7 @@ useApiOpts opts = case useURI serverURI of
   -- scheme, so we can coerce as usual.
   Just (Left (url, options)) -> pure (Unsafe.unsafeCoerce url, coerce options <> authHeader (apiOptsApiKey opts))
   Just (Right (url, options)) -> pure (url, options <> authHeader (apiOptsApiKey opts))
-  where 
+  where
     serverURI = fromMaybe [uri|https://app.fossa.com|] (apiOptsUri opts)
 
 authHeader :: ApiKey -> Option 'Https

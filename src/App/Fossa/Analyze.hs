@@ -56,6 +56,7 @@ import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
 import Strategy.Carthage qualified as Carthage
 import Strategy.Cocoapods qualified as Cocoapods
+import Strategy.Conda qualified as Conda
 import Strategy.Composer qualified as Composer
 import Strategy.Glide qualified as Glide
 import Strategy.Godep qualified as Godep
@@ -169,6 +170,7 @@ discoverFuncs =
     ProjectJson.discover,
     Glide.discover,
     Pipenv.discover,
+    Conda.discover,
     UserYaml.discover
   ]
 
