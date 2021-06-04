@@ -93,6 +93,7 @@ fossa analyze --help
 
 ### python
 
+- [conda](quickreference/conda.md)
 - [`requirements.txt`/`setup.py`](quickreference/setuptools.md)
 - [pipenv](quickreference/pipenv.md)
 

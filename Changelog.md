@@ -1,3 +1,6 @@
+# v2.7.0
+
+- Adds support for the Conda package manager ([#226](https://github.com/fossas/spectrometer/pull/226))
 # v2.6.0
 
 - Improves the output of `fossa analyze` by displaying the status of ongoing Project Discovery and Project Analysis tasks ([#241](https://github.com/fossas/spectrometer/pull/241))
