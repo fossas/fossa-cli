@@ -4,6 +4,7 @@ module Data.Text.Extra
     breakOnAndRemove,
     underBS,
     showT,
+    dropPrefix,
   )
 where
 
@@ -11,6 +12,7 @@ import Data.ByteString (ByteString)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.String.Conversion (decodeUtf8, encodeUtf8)
+import Data.Maybe (fromMaybe)
 
 splitOnceOn :: Text -> Text -> (Text, Text)
 splitOnceOn needle haystack = (first, strippedRemaining)
@@ -46,3 +48,6 @@ underBS f = decodeUtf8 . f . encodeUtf8
 
 showT :: Show a => a -> Text
 showT = T.pack . show
+
+dropPrefix :: Text -> Text -> Text
+dropPrefix pre txt = fromMaybe txt (T.stripPrefix pre txt)

@@ -33,7 +33,6 @@ common lang
     GADTSyntax
     GeneralizedNewtypeDeriving
     HexFloatLiterals
-    ImportQualifiedPost
     InstanceSigs
     KindSignatures
     MultiParamTypeClasses
@@ -46,12 +45,13 @@ common lang
     RankNTypes
     ScopedTypeVariables
     StandaloneDeriving
-    StandaloneKindSignatures
     StrictData
     TupleSections
     TypeApplications
     TypeOperators
     TypeSynonymInstances
+    ImportQualifiedPost
+    StandaloneKindSignatures
 
   ghc-options:
     -Wall -Wincomplete-uni-patterns -Wcompat
@@ -123,14 +123,15 @@ library
 
   -- cabal-fmt: expand src
   exposed-modules:
+    Algebra.Graph.AdjacencyMap.Extra
+    App.Fossa.API.BuildLink
+    App.Fossa.API.BuildWait
     App.Fossa.Analyze
     App.Fossa.Analyze.Graph
     App.Fossa.Analyze.GraphBuilder
     App.Fossa.Analyze.GraphMangler
     App.Fossa.Analyze.Project
     App.Fossa.Analyze.Record
-    App.Fossa.API.BuildLink
-    App.Fossa.API.BuildWait
     App.Fossa.Compatibility
     App.Fossa.Configuration
     App.Fossa.Container
@@ -161,20 +162,20 @@ library
     App.Version
     App.Version.TH
     Console.Sticky
+    Control.Carrier.AtomicCounter
     Control.Carrier.AtomicState
     Control.Carrier.Diagnostics
     Control.Carrier.Diagnostics.StickyContext
     Control.Carrier.Finally
-    Control.Carrier.AtomicCounter
     Control.Carrier.Output.IO
     Control.Carrier.StickyLogger
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
+    Control.Effect.AtomicCounter
     Control.Effect.AtomicState
     Control.Effect.ConsoleRegion
     Control.Effect.Diagnostics
     Control.Effect.Finally
-    Control.Effect.AtomicCounter
     Control.Effect.Output
     Control.Effect.Path
     Control.Effect.Record
@@ -184,6 +185,7 @@ library
     Control.Effect.StickyLogger
     Control.Effect.TaskPool
     Control.Exception.Extra
+    Data.Aeson.Extra
     Data.FileEmbed.Extra
     Data.Flag
     Data.Functor.Extra
@@ -242,7 +244,6 @@ library
     Strategy.Node.NpmList
     Strategy.Node.NpmLock
     Strategy.Node.PackageJson
-    Strategy.Node.YarnLock
     Strategy.Npm
     Strategy.NuGet.Nuspec
     Strategy.NuGet.PackageReference
@@ -255,13 +256,17 @@ library
     Strategy.Python.SetupPy
     Strategy.Python.Setuptools
     Strategy.Python.Util
-    Strategy.Rebar3
     Strategy.RPM
+    Strategy.Rebar3
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Strategy.Scala
-    Strategy.Yarn
     Strategy.UserSpecified.YamlDependencies
+    Strategy.Yarn
+    Strategy.Yarn.V1.YarnLock
+    Strategy.Yarn.V2.Lockfile
+    Strategy.Yarn.V2.Resolvers
+    Strategy.Yarn.V2.YarnLock
     Text.URI.Builder
     Types
     VCS.Git
@@ -292,9 +297,9 @@ test-suite unit-tests
   -- cabal-fmt: expand test
   other-modules:
     App.Fossa.API.BuildLinkSpec
+    App.Fossa.Configuration.ConfigurationSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.VPS.NinjaGraphSpec
-    App.Fossa.Configuration.ConfigurationSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec
@@ -317,15 +322,14 @@ test-suite unit-tests
     Go.TransitiveSpec
     Googlesource.RepoManifestSpec
     Gradle.GradleSpec
-    GraphingSpec
     GraphUtil
+    GraphingSpec
     Haskell.CabalSpec
     Haskell.StackSpec
     Maven.PluginStrategySpec
     Maven.PomStrategySpec
     Node.NpmLockSpec
     Node.PackageJsonSpec
-    Node.YarnLockSpec
     NuGet.NuspecSpec
     NuGet.PackageReferenceSpec
     NuGet.PackagesConfigSpec
@@ -340,11 +344,15 @@ test-suite unit-tests
     Ruby.BundleShowSpec
     Ruby.GemfileLockSpec
     UserSpecified.YamlDependenciesSpec
+    Yarn.V2.LockfileSpec
+    Yarn.V2.ResolversSpec
+    Yarn.YarnLockV1Spec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.7.1
   build-depends:
-    , hedgehog          ^>=1.0.2
-    , hspec             ^>=2.7.1
-    , hspec-hedgehog    ^>=0.0.1.2
-    , hspec-megaparsec  ^>=2.1
+    , hedgehog                        ^>=1.0.2
+    , hspec                           ^>=2.7.1
+    , hspec-expectations-pretty-diff  ^>=0.7.2.5
+    , hspec-hedgehog                  ^>=0.0.1.2
+    , hspec-megaparsec                ^>=2.1
     , spectrometer

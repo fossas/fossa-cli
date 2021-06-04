@@ -18,18 +18,22 @@ module Graphing
   -- * Manipulating a Graphing
   , gmap
   , gtraverse
+  , induceJust
   , filter
   , pruneUnreachable
   , stripRoot
 
   -- * Building simple Graphings
+  , fromAdjacencyMap
   , fromList
   , unfold
   ) where
 
 import Algebra.Graph.AdjacencyMap (AdjacencyMap)
 import qualified Algebra.Graph.AdjacencyMap as AM
+import qualified Algebra.Graph.AdjacencyMap.Extra as AME
 import qualified Algebra.Graph.AdjacencyMap.Algorithm as AMA
+import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import qualified Data.Set as S
 import Prelude hiding (filter)
@@ -75,10 +79,14 @@ gtraverse f Graphing{..} = Graphing <$> newSet <*> newAdjacent
     newSet = fmap S.fromList . traverse f . S.toList $ graphingDirect
 
     -- newAdjacent :: f (AM.AdjacencyMap b)
-    newAdjacent = fmap mkAdjacencyMap . traverse (\(a,xs) -> (,) <$> f a <*> traverse f xs) . AM.adjacencyList $ graphingAdjacent
+    newAdjacent = AME.gtraverse f graphingAdjacent
 
-    -- mkAdjacencyMap :: Ord c => [(c,[c])] -> AM.AdjacencyMap c
-    mkAdjacencyMap = AM.fromAdjacencySets . fmap (fmap S.fromList)
+-- | Like 'AM.induceJust', but for Graphings
+induceJust :: Ord a => Graphing (Maybe a) -> Graphing a
+induceJust gr = gr { graphingDirect = direct', graphingAdjacent = adjacent' }
+  where
+    direct' = S.fromList . catMaybes . S.toList $ graphingDirect gr
+    adjacent' = AM.induceJust (graphingAdjacent gr)
 
 -- | Filter Graphing elements
 filter :: (ty -> Bool) -> Graphing ty -> Graphing ty
@@ -141,6 +149,10 @@ unfold seed getDeps toDependency = Graphing
 -- dependencies
 fromList :: Ord ty => [ty] -> Graphing ty
 fromList nodes = Graphing (S.fromList nodes) (AM.vertices nodes)
+
+-- | Wrap an AdjacencyMap as a Graphing
+fromAdjacencyMap :: AM.AdjacencyMap ty -> Graphing ty
+fromAdjacencyMap = Graphing S.empty
 
 -- | Remove unreachable vertices from the graph
 --

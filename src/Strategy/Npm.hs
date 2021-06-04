@@ -22,19 +22,24 @@ discover dir = context "Npm" $ do
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [NpmProject]
 findProjects = walk' $ \dir _ files -> do
-  case findFileNamed "package.json" files of
-    Nothing -> pure ([], WalkSkipSome ["node_modules"])
-    Just packageJson -> do
-      let packageLock = findFileNamed "package-lock.json" files
+  case findFileNamed "yarn.lock" files of
+    -- When we find yarn.lock, assume this directory and subdirectories are managed by yarn.
+    -- This prevents duplicate project analysis and noisy failures
+    Just _ -> pure ([], WalkSkipAll)
+    Nothing ->
+      case findFileNamed "package.json" files of
+        Nothing -> pure ([], WalkSkipSome ["node_modules"])
+        Just packageJson -> do
+          let packageLock = findFileNamed "package-lock.json" files
 
-      let project =
-            NpmProject
-              { npmDir = dir,
-                npmPackageJson = packageJson,
-                npmPackageLock = packageLock
-              }
+          let project =
+                NpmProject
+                  { npmDir = dir,
+                    npmPackageJson = packageJson,
+                    npmPackageLock = packageLock
+                  }
 
-      pure ([project], WalkSkipSome ["node_modules"])
+          pure ([project], WalkSkipSome ["node_modules"])
 
 data NpmProject = NpmProject
   { npmDir :: Path Abs Dir,

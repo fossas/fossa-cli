@@ -1,5 +1,5 @@
-module Strategy.Node.YarnLock
-  ( analyze'
+module Strategy.Yarn.V1.YarnLock
+  ( analyze
   , buildGraph
   ) where
 
@@ -17,8 +17,8 @@ import Path
 import qualified Yarn.Lock as YL
 import qualified Yarn.Lock.Types as YL
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' lockfile = do
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze lockfile = context "Lockfile V1 analysis" $ do
   let path = fromAbsFile lockfile
 
   contents <- readContentsText lockfile

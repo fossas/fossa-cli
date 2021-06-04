@@ -158,19 +158,23 @@ instance Show FailureBundle where
   show = show . renderFailureBundle
 
 renderFailureBundle :: FailureBundle -> Doc AnsiStyle
-renderFailureBundle FailureBundle {..} =
-  vsep
-    [ annotate (color Yellow) "----------",
-      annotate (color Yellow) "An error occurred:",
-      "",
-      indent 4 (renderSomeDiagnostic failureCause),
-      "",
-      ">>>",
-      "",
-      indent 2 (annotate (color Yellow) "Relevant warnings include:"),
-      "",
-      indent 4 (renderWarnings failureWarnings)
+renderFailureBundle FailureBundle{..} =
+  vsep $
+    [ annotate (color Yellow) "----------"
+    , annotate (color Yellow) "An error occurred:"
+    , ""
+    , indent 4 (renderSomeDiagnostic failureCause)
+    , ""
     ]
+    ++ if null failureWarnings
+      then []
+      else
+        [ ">>>"
+        , ""
+        , indent 2 (annotate (color Yellow) "Relevant warnings include:")
+        , ""
+        , indent 4 (renderWarnings failureWarnings)
+        ]
 
 renderSomeDiagnostic :: SomeDiagnostic -> Doc AnsiStyle
 renderSomeDiagnostic (SomeDiagnostic stack cause) =

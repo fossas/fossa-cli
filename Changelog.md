@@ -1,5 +1,6 @@
-# Unreleased
+# 2.7.1
 
+- Adds support for Yarn v2 lockfiles ([#244](https://github.com/fossas/spectrometer/pull/244))
 - Fixes the dependency version parser for `.csproj`, `.vbproj`, and similar .NET files ([#247](https://github.com/fossas/spectrometer/pull/247))
 - Re-enables status messages for commands like `fossa test` in CI environments ([#248](https://github.com/fossas/spectrometer/pull/248))
 
@@ -7,9 +8,13 @@
 
 - Adds support for the Conda package manager ([#226](https://github.com/fossas/spectrometer/pull/226))
 
+# v2.6.1
+
+- Adds --follow to the vps analyze subcommand, which allows for following symbolic links during VPS scans. ([#243](https://github.com/fossas/spectrometer/pull/243))
+
 # v2.6.0
 
-- Improves the output of `fossa analyze` by displaying the status of ongoing Project Discovery and Project Analysis tasks ([#241](https://github.com/fossas/spectrometer/pull/241))
+- Improves the output of `fossa analyze` by displaying the status of ongoing Project Discovery and Project Analysis tasks ([#239](https://github.com/fossas/spectrometer/pull/239))
 
 # v2.5.18
 

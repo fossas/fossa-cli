@@ -1,0 +1,47 @@
+__metadata:
+  version: 4
+  cacheKey: 7
+
+"bar@workspace:bar":
+  version: 0.0.0-use.local
+  resolution: "bar@workspace:bar"
+  dependencies:
+    underscore: 1.13.1
+  languageName: unknown
+  linkType: soft
+
+"foo@workspace:foo":
+  version: 0.0.0-use.local
+  resolution: "foo@workspace:foo"
+  dependencies:
+    underscore: ^1.13.0
+  languageName: unknown
+  linkType: soft
+
+"quux@workspace:quux":
+  version: 0.0.0-use.local
+  resolution: "quux@workspace:quux"
+  dependencies:
+    underscore: "jashkenas/underscore#tag=1.13.1"
+  languageName: unknown
+  linkType: soft
+
+"toplevel@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "toplevel@workspace:."
+  languageName: unknown
+  linkType: soft
+
+"underscore@jashkenas/underscore#tag=1.13.1":
+  version: 1.13.1
+  resolution: "underscore@https://github.com/jashkenas/underscore.git#commit=cbb48b79fc1205aa04feb03dbc055cdd28a12652"
+  checksum: 560609fdb4ba2c30e79db95ea37269982d1a2788d49b78f0de4f391da711bc2495d5fbddd6d24e7716fccf69959e445916af83eb5de1ad137b215777e2d32e4d
+  languageName: node
+  linkType: hard
+
+"underscore@npm:1.13.1, underscore@npm:^1.13.0":
+  version: 1.13.1
+  resolution: "underscore@npm:1.13.1"
+  checksum: 19527b2db3d34f783c3f2db9716a2c1221fef2958866925545697c46f430f59d1b384b8105cc7e7c809bdf0dc9075f2bfff90b8fb270b9d3a6c58347de2dd79d
+  languageName: node
+  linkType: hard
