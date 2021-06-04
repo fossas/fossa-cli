@@ -38,7 +38,7 @@ testMain ::
   OverrideProject ->
   IO ()
 testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
-  _ <- timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger $ do
+  _ <- timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $ do
     result <- runDiagnostics . runReadFSIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 

@@ -117,7 +117,7 @@ uploadBuildGraph apiOpts syOpts@ScotlandYardNinjaOpts {..} targets = runHTTP $ d
   let chunkUrl = uploadBuildGraphChunkEndpoint baseUrl locator scanId (responseBuildGraphId buildGraphId)
       chunkedTargets = chunkedBySize targets (1024 * 1024)
   capabilities <- liftIO getNumCapabilities
-  _ <- runStickyLogger . withTaskPool capabilities updateProgress $
+  _ <- runStickyLogger SevInfo . withTaskPool capabilities updateProgress $
     traverse_ (forkTask . uploadBuildGraphChunk chunkUrl authenticatedHttpOptions) chunkedTargets
 
   -- mark the build graph as complete

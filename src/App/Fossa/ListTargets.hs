@@ -29,7 +29,7 @@ listTargetsMain (BaseDir basedir) = do
   capabilities <- getNumCapabilities
 
   withDefaultLogger SevInfo
-    . runStickyLogger
+    . runStickyLogger SevInfo
     . runFinally
     . withTaskPool capabilities updateProgress
     . runReadFSIO

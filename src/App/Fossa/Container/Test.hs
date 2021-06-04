@@ -38,7 +38,7 @@ testMain ::
   ImageText ->
   IO ()
 testMain apiOpts logSeverity timeoutSeconds outputType override image = do
-  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger $ do
+  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $ do
     logWithExit_ $ testInner apiOpts outputType override image
 
   hPutStrLn stderr "Timed out while wait for issues"

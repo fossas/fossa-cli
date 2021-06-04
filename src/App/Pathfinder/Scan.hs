@@ -64,7 +64,7 @@ scan basedir = runFinally $ do
 
   (projectResults, ()) <-
     runOutput @ProjectLicenseScan
-      . runStickyLogger
+      . runStickyLogger SevInfo
       . runReadFSIO
       . runFinally
       . withTaskPool capabilities updateProgress

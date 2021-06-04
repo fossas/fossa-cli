@@ -29,7 +29,7 @@ compatibilityMain ::
   [Argument] ->
   IO ()
 compatibilityMain args = withDefaultLogger SevInfo . runExecIO . withCLIv1Binary $ \v1Bin -> do
-  cmd <- runStickyLogger $ do
+  cmd <- runStickyLogger SevInfo $ do
     logSticky "[ Waiting for fossa analyze completion ]"
     exec [reldir|.|] $ v1Command v1Bin args
 

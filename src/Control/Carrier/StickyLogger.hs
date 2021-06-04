@@ -16,10 +16,15 @@ import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger as X
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans (MonadTrans)
-import Effect.Logger (Logger)
+import Effect.Logger (Logger, Severity)
 
-runStickyLogger :: Has (Lift IO) sig m => StickyLoggerC m a -> m a
-runStickyLogger act = withStickyRegion $ \region ->
+runStickyLogger ::
+  Has (Lift IO) sig m =>
+  -- | Severity to use for log messages in ansi-incompatible terminals
+  Severity ->
+  StickyLoggerC m a ->
+  m a
+runStickyLogger sev act = withStickyRegion sev $ \region ->
   runReader region (runStickyLoggerC act)
 
 newtype StickyLoggerC m a = StickyLoggerC {runStickyLoggerC :: ReaderC StickyRegion m a}

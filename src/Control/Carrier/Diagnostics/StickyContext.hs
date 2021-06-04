@@ -20,7 +20,7 @@ import Control.Effect.AtomicCounter
 stickyDiag :: (Has AtomicCounter sig m, Has (Lift IO) sig m) => StickyDiagC m a -> m a
 stickyDiag act = do
   taskId <- generateId
-  Sticky.withStickyRegion $ \region ->
+  Sticky.withStickyRegion SevDebug $ \region ->
     runReader (StickyCtx (TaskId taskId) [] region) . runStickyDiagC $ act
 
 data StickyCtx = StickyCtx

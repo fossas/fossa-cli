@@ -217,7 +217,7 @@ analyze (BaseDir basedir) destination override unpackArchives filters = do
 
   (projectResults, ()) <-
     runOutput @ProjectResult
-      . runStickyLogger
+      . runStickyLogger SevInfo
       . runFinally
       . withTaskPool capabilities updateProgress
       . runAtomicCounter

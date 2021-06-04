@@ -1,6 +1,7 @@
 # Unreleased
 
 - Fixes the dependency version parser for `.csproj`, `.vbproj`, and similar .NET files ([#247](https://github.com/fossas/spectrometer/pull/247))
+- Re-enables status messages for commands like `fossa test` in CI environments ([#248](https://github.com/fossas/spectrometer/pull/248))
 
 # v2.7.0
 
