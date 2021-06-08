@@ -22,7 +22,7 @@ import Path (toFilePath)
 import Path.IO (makeRelative)
 import Types (BuildTarget (..), DiscoveredProject (..))
 
-type DummyM = ReadFSIOC (ExecIOC (Diag.DiagnosticsC IO))
+type DummyM = ReadFSIOC (ExecIOC (Diag.DiagnosticsC (LoggerC IO)))
 
 listTargetsMain :: BaseDir -> IO ()
 listTargetsMain (BaseDir basedir) = do

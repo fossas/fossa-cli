@@ -1,3 +1,8 @@
+# 2.7.2
+
+- Updates the VSI Plugin.
+- Adds support for VSI powered dependency discovery as a strategy.
+
 # 2.7.1
 
 - Adds support for Yarn v2 lockfiles ([#244](https://github.com/fossas/spectrometer/pull/244))

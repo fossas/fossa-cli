@@ -261,6 +261,7 @@ library
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Strategy.Scala
+    Strategy.VSI
     Strategy.UserSpecified.YamlDependencies
     Strategy.Yarn
     Strategy.Yarn.V1.YarnLock

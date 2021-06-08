@@ -12,7 +12,7 @@ module App.Fossa.EmbeddedBinary
     withSyftBinary,
     withCLIv1Binary,
     allBins,
-    PackagedBinary (..)
+    PackagedBinary (..),
   )
 where
 
@@ -34,11 +34,10 @@ data PackagedBinary
 allBins :: [PackagedBinary]
 allBins = enumFromTo minBound maxBound
 
-data BinaryPaths
-  = BinaryPaths
-      { binaryPathContainer :: Path Abs Dir,
-        binaryFilePath :: Path Rel File
-      }
+data BinaryPaths = BinaryPaths
+  { binaryPathContainer :: Path Abs Dir,
+    binaryFilePath :: Path Rel File
+  }
 
 toExecutablePath :: BinaryPaths -> Path Abs File
 toExecutablePath BinaryPaths {..} = binaryPathContainer </> binaryFilePath
@@ -67,7 +66,6 @@ withCLIv1Binary ::
   m c
 withCLIv1Binary = withEmbeddedBinary CLIv1
 
-
 withEmbeddedBinary ::
   ( Has (Lift IO) sig m,
     MonadIO m
@@ -92,7 +90,8 @@ extractEmbeddedBinary bin = do
 
 dumpEmbeddedBinary :: Has (Lift IO) sig m => Path Abs Dir -> PackagedBinary -> m ()
 dumpEmbeddedBinary dir bin = writeBinary path bin
-  where path = dir </> extractedPath bin
+  where
+    path = dir </> extractedPath bin
 
 writeBinary :: (Has (Lift IO) sig m) => Path Abs File -> PackagedBinary -> m ()
 writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
@@ -109,8 +108,10 @@ writeExecutable path content = do
 extractedPath :: PackagedBinary -> Path Rel File
 extractedPath bin = case bin of
   Syft -> $(mkRelFile "syft")
-  Wiggins -> $(mkRelFile "wiggins")
   CLIv1 -> $(mkRelFile "cliv1")
+  -- Rename wiggins upon local extraction so that we can provide a better status line to users during the VSI strategy.
+  -- Users don't know what "wiggins" is, but they explicitly enable the VSI plugin, so this is more intuitive.
+  Wiggins -> $(mkRelFile "vsi-plugin")
 
 extractDir :: MonadIO m => m (Path Abs Dir)
 extractDir = do
