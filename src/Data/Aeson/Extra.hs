@@ -1,9 +1,13 @@
 module Data.Aeson.Extra (
+  forbidMembers, 
   TextLike (..),
 ) where
 
 import Control.Applicative ((<|>))
-import Data.Aeson
+import Data.Aeson.Types ( FromJSON(parseJSON), Object, Parser )
+import Data.Foldable (traverse_)
+import Data.HashMap.Strict (member)
+import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as T
 
@@ -22,7 +26,7 @@ import Data.Text qualified as T
 -- This makes things really hard to parse.
 --
 -- As a workaround, we try parsing as Text, then Int, then Double
-newtype TextLike = TextLike {unTextLike :: Text}
+newtype TextLike = TextLike {unTextLike :: Text} deriving (Eq, Ord, Show)
 
 instance FromJSON TextLike where
   parseJSON val = parseAsText <|> parseAsInt <|> parseAsDouble
@@ -30,3 +34,16 @@ instance FromJSON TextLike where
       parseAsText = TextLike <$> parseJSON val
       parseAsInt = TextLike . T.pack . show <$> parseJSON @Int val
       parseAsDouble = TextLike . T.pack . show <$> parseJSON @Double val
+
+-- | Parser insert to prevent specific fields from being used in parsers
+-- Primarily useful for rejecting aeson fields which should be reported with custom error messages
+--
+-- >  parseJSON = withObject "MyDataType" $ \obj ->
+-- >   MyDataType <$> obj .: "my-data-field"
+-- >     <* forbidMembers "Custom error message" ["badfield1", "badfield2"] obj
+forbidMembers :: Text -> [Text] -> Object -> Parser ()
+forbidMembers typename names obj = traverse_ (badMember obj) names
+  where
+    badMember hashmap name = if member name hashmap
+      then fail . toString $ "Invalid field name for " <> typename <> ": " <> name
+      else pure ()

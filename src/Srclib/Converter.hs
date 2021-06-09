@@ -2,7 +2,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Srclib.Converter
-  ( toSourceUnit
+  ( toSourceUnit,
+    depTypeToFetcher
   ) where
 
 import Prelude
@@ -25,13 +26,14 @@ toSourceUnit ProjectResult{..} =
     { sourceUnitName = renderedPath,
       sourceUnitType = projectResultType,
       sourceUnitManifest = renderedPath,
-      sourceUnitBuild =
+      sourceUnitBuild = Just $
         SourceUnitBuild
           { buildArtifact = "default",
             buildSucceeded = True,
             buildImports = imports,
             buildDependencies = deps
-          }
+          },
+      additionalData = Nothing
     }
   where
     renderedPath = Text.pack (toFilePath projectResultPath)
@@ -106,6 +108,7 @@ depTypeToFetcher = \case
   CargoType -> "cargo"
   RPMType -> "rpm"
   URLType -> "url"
+  UserType -> "user"
   ComposerType -> "comp"
   HackageType -> "hackage"
   CondaType -> "conda"

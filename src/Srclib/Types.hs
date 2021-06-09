@@ -4,6 +4,8 @@ module Srclib.Types
   ( SourceUnit(..)
   , SourceUnitBuild(..)
   , SourceUnitDependency(..)
+  , AdditionalDepData(..)
+  , SourceUserDefDep(..)
   , Locator(..)
   , renderLocator
   , parseLocator
@@ -18,7 +20,8 @@ data SourceUnit = SourceUnit
   { sourceUnitName :: Text
   , sourceUnitType :: Text
   , sourceUnitManifest :: Text -- ^ path to manifest file
-  , sourceUnitBuild :: SourceUnitBuild
+  , sourceUnitBuild :: Maybe SourceUnitBuild
+  , additionalData :: Maybe AdditionalDepData
   } deriving (Eq, Ord, Show)
 
 data SourceUnitBuild = SourceUnitBuild
@@ -32,6 +35,18 @@ data SourceUnitDependency = SourceUnitDependency
   { sourceDepLocator :: Locator
   , sourceDepImports :: [Locator] -- omitempty
   -- , sourceDepData :: Aeson.Value
+  } deriving (Eq, Ord, Show)
+
+newtype AdditionalDepData = AdditionalDepData
+  { userDefinedDeps :: [SourceUserDefDep] }
+  deriving (Eq, Ord, Show)
+
+data SourceUserDefDep = SourceUserDefDep
+  { srcUserDepName :: Text,
+    srcUserDepVersion :: Text,
+    srcUserDepLicense :: Text,
+    srcUserDepDescription :: Maybe Text,
+    srcUserDepUrl :: Maybe Text
   } deriving (Eq, Ord, Show)
 
 data Locator = Locator
@@ -57,6 +72,7 @@ instance ToJSON SourceUnit where
     , "Type" .= sourceUnitType
     , "Manifest" .= sourceUnitManifest
     , "Build" .= sourceUnitBuild
+    , "AdditionalDependencyData" .= additionalData
     ]
 
 instance ToJSON SourceUnitBuild where
@@ -71,6 +87,19 @@ instance ToJSON SourceUnitDependency where
   toJSON SourceUnitDependency{..} = object
     [ "locator" .= sourceDepLocator
     , "imports" .= sourceDepImports
+    ]
+
+instance ToJSON AdditionalDepData where
+  toJSON (AdditionalDepData userdeps) = object
+    [ "UserDefinedDependencies" .= userdeps ]
+
+instance ToJSON SourceUserDefDep where
+  toJSON SourceUserDefDep{..} = object
+    [ "Name" .= srcUserDepName
+    , "Version" .= srcUserDepVersion
+    , "License" .= srcUserDepLicense
+    , "Description" .= srcUserDepDescription
+    , "Url" .= srcUserDepUrl
     ]
 
 instance ToJSON Locator where

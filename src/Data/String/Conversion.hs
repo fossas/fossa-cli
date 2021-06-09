@@ -19,6 +19,8 @@ import Data.Text.Encoding.Error qualified as TE
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TLE
 import GHC.TypeLits
+import Path (Path)
+import Path qualified
 
 ----- ConvertUtf8
 
@@ -70,6 +72,9 @@ instance TypeError ( 'Text "Error: Use encodeUtf8/decodeUtf8 instead") => ToText
 instance TypeError ( 'Text "Error: Use encodeUtf8/decodeUtf8 instead") => ToText BL.ByteString where
   toText = error "unreachable"
 
+instance ToText (Path b t) where
+  toText = toText . toString
+
 ----- ToLText
 
 class ToLText a where
@@ -90,6 +95,9 @@ instance TypeError ( 'Text "Error: Use encodeUtf8/decodeUtf8 instead") => ToLTex
 instance TypeError ( 'Text "Error: Use encodeUtf8/decodeUtf8 instead") => ToLText BL.ByteString where
   toLText = error "unreachable"
 
+instance ToLText (Path b t) where
+  toLText = toLText . toString
+
 ----- ToString
 
 class ToString a where
@@ -106,6 +114,9 @@ instance TypeError ( 'Text "Error: Use decodeUtf8 instead") => ToString BS.ByteS
 
 instance TypeError ( 'Text "Error: Use decodeUtf8 instead") => ToString BL.ByteString where
   toString = error "unreachable"
+
+instance ToString (Path b t) where
+  toString = Path.toFilePath
 
 ----- LazyStrict
 

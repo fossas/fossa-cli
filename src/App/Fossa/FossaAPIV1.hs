@@ -26,7 +26,6 @@ module App.Fossa.FossaAPIV1
   )
 where
 
-import App.Fossa.Analyze.Project
 import App.Fossa.Container (ContainerScan (..))
 import qualified App.Fossa.Report.Attribution as Attr
 import App.Types
@@ -45,7 +44,6 @@ import Fossa.API.Types (ApiOpts, Issues, useApiOpts)
 import qualified Network.HTTP.Client as HTTP
 import Network.HTTP.Req
 import qualified Network.HTTP.Types as HTTP
-import Srclib.Converter (toSourceUnit)
 import Srclib.Types
 import Text.URI (URI)
 import qualified Text.URI as URI
@@ -142,20 +140,19 @@ uploadAnalysis ::
   ApiOpts ->
   ProjectRevision ->
   ProjectMetadata ->
-  NE.NonEmpty ProjectResult ->
+  NE.NonEmpty SourceUnit -> 
   m UploadResponse
-uploadAnalysis apiOpts ProjectRevision {..} metadata projects = fossaReq $ do
+uploadAnalysis apiOpts ProjectRevision {..} metadata sourceUnits = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let sourceUnits = map toSourceUnit $ NE.toList projects
-      opts =
+  let opts =
         "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "cliVersion" =: cliVersion
           <> "managedBuild" =: True
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
-  resp <- req POST (uploadUrl baseUrl) (ReqBodyJson sourceUnits) jsonResponse (baseOpts <> opts)
+  resp <- req POST (uploadUrl baseUrl) (ReqBodyJson $ NE.toList sourceUnits) jsonResponse (baseOpts <> opts)
   pure (responseBody resp)
 
 mkMetadataOpts :: ProjectMetadata -> Text -> Option scheme

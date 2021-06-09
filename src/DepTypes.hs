@@ -63,6 +63,7 @@ data DepType =
   | CargoType -- ^ Rust Cargo Dependency
   | RPMType -- ^ RPM dependency
   | URLType -- ^ URL dependency
+  | UserType -- ^ No registry or fetch work needed
   | HackageType -- ^ Hackage Registry
   -- TODO: does this break the "location" abstraction?
   | CarthageType -- ^ A Carthage dependency -- effectively a "git" dependency. Name is repo path and version is tag/branch/hash

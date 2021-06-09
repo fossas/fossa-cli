@@ -154,6 +154,7 @@ library
     App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Test
     App.Fossa.VPS.Types
+    App.Fossa.YamlDeps
     App.OptionExtensions
     App.Pathfinder.Main
     App.Pathfinder.Scan
@@ -262,7 +263,6 @@ library
     Strategy.Ruby.GemfileLock
     Strategy.Scala
     Strategy.VSI
-    Strategy.UserSpecified.YamlDependencies
     Strategy.Yarn
     Strategy.Yarn.V1.YarnLock
     Strategy.Yarn.V2.Lockfile
@@ -301,14 +301,15 @@ test-suite unit-tests
     App.Fossa.Configuration.ConfigurationSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.VPS.NinjaGraphSpec
+    App.Fossa.YamlDepsSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec
     Cocoapods.PodfileLockSpec
     Cocoapods.PodfileSpec
-    Conda.EnvironmentYmlSpec
-    Conda.CondaListSpec
     Composer.ComposerLockSpec
+    Conda.CondaListSpec
+    Conda.EnvironmentYmlSpec
     Discovery.FiltersSpec
     Effect.ExecSpec
     Erlang.ConfigParserSpec
@@ -344,7 +345,6 @@ test-suite unit-tests
     RPM.SpecFileSpec
     Ruby.BundleShowSpec
     Ruby.GemfileLockSpec
-    UserSpecified.YamlDependenciesSpec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec
     Yarn.YarnLockV1Spec
@@ -353,6 +353,7 @@ test-suite unit-tests
   build-depends:
     , hedgehog                        ^>=1.0.2
     , hspec                           ^>=2.7.1
+    , hspec-core                      ^>=2.7.9
     , hspec-expectations-pretty-diff  ^>=0.7.2.5
     , hspec-hedgehog                  ^>=0.0.1.2
     , hspec-megaparsec                ^>=2.1

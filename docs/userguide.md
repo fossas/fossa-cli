@@ -24,13 +24,13 @@ Spectrometer is a tool that requires minimal configuration: usually, only a FOSS
 
 If you do not have an API key, please check the [FOSSA documentation](https://docs.fossa.com/docs/api-reference) for instructions on generating an API key.
 
-**Configure your API key**
+### Configure your API key
 
 ```sh
 export FOSSA_API_KEY=abcdef123456
 ```
 
-**Run Analysis**
+### Run Analysis
 
 This runs dependency analysis in the current directory, uploading results to FOSSA
 
@@ -38,13 +38,14 @@ This runs dependency analysis in the current directory, uploading results to FOS
 fossa analyze
 ```
 
-**Check for FOSSA scan results**
+### Check for FOSSA scan results
 
 ```sh
 fossa test
 ```
 
 For additional commands and command flags, use `--help`:
+
 ```sh
 fossa --help
 fossa analyze --help
@@ -171,26 +172,30 @@ We support the following archive formats:
 - `.jar`
 - `.rpm`
 
-### Manually specifying dependencies
+## Manually specifying dependencies
 
 FOSSA offers a way to manually upload dependencies provided we support the dependency type. Manually specifying dependencies is very helpful in the event your package manager is unsupported or you are using a custom and nonstandard dependency management solution.
 
-The FOSSA CLI will automatically read `fossa-deps.yml` in the root directory when `fossa analyze` is run and parse dependencies from it.
+The FOSSA CLI will automatically read `fossa-deps.yml` in the root directory (usually the current working directory) when `fossa analyze` is run and parse dependencies from it.
 
 > Tip: Use a script to generate this file before running `fossa analyze` to keep your results updated.
 
+To manually specify a dependency, you must provide the package type, package name, and optionally a package version, under the `referenced-dependencies` array, as shown here:
+
 ```yaml
-dependencies:
+referenced-dependencies:
 - type: gem
-  package: iron
-- type: pip
-  package: Django
+  name: iron
+- type: pypi
+  name: Django
   version: 2.1.7
 ```
-The `package` and `type` fields are required and specify the name of the dependency and where to find it. The `version` field is optional and specifies the preferred version of dependency.
+
+The `name` and `type` fields are required and specify the name of the dependency and where to find it. The `version` field is optional and specifies the preferred version of dependency.
 
 Supported dependency types:
-- `cargo` - Rust dependencies that a typically found at [crates.io](https://crates.io/).
+
+- `cargo` - Rust dependencies that are typically found at [crates.io](https://crates.io/).
 - `carthage` - Dependencies as specified by the [Carthage](https://github.com/Carthage/Carthage) package manager.
 - `composer` - Dependencies specified by the PHP package manager [Composer](https://getcomposer.org/), which are located on [Packagist](https://packagist.org/).
 - `gem` - Dependencies which can be found at [RubyGems.org](https://rubygems.org/).
@@ -198,12 +203,64 @@ Supported dependency types:
 - `go` - Golang specific dependency. Many golang dependencies are located on Github, but there are some which look like the following `go.mongodb.org/mongo-driver` that have custom golang URLs.
 - `hackage` - Haskell dependencies found at [Hackage](https://hackage.haskell.org/).
 - `hex` - Erlang and Elixir dependencies that are found at [Hex.pm](https://hex.pm/).
-- `maven` - Maven dependencies that can be found at many different sources. Specified as `package: javax.xml.bind:jaxb-api` where the convention is `groupId:artifactId`.
+- `maven` - Maven dependencies that can be found at many different sources. Specified as `name: javax.xml.bind:jaxb-api` where the convention is `groupId:artifactId`.
 - `npm` - Javascript dependencies found at [npmjs.com](https://www.npmjs.com/).
 - `nuget` - .NET dependencies found at [NuGet.org](https://www.nuget.org/).
-- `python` - Python dependencies found at [Pypi.org](https://pypi.org/).
+- `pypi` - Python dependencies that are typically found at [Pypi.org](https://pypi.org/).
 - `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
-- `url` - The URL type allows you to specify only the download location of a compressed file in the `package` field and the FOSSA backend will attempt to download and scan it. Example for a Maven dependency `https://repo1.maven.org/maven2/aero/m-click/mcpdf/0.2.3/mcpdf-0.2.3-jar-with-dependencies.jar`. The `version` field will be ignored for `url` type dependencies.
+- `url` - The URL type allows you to specify only the download location of an archive (e.g.: `.zip`, .`tar.gz`, etc.) in the `name` field and the FOSSA backend will attempt to download and scan it. Example for a github source dependency `https://github.com/fossas/spectrometer/archive/refs/tags/v2.7.2.tar.gz`. The `version` field will be silently ignored for `url` type dependencies.
+
+### User-defined dependencies
+
+FOSSA supports users that have dependencies that can't be automatically discovered or identified, by offering the ability to define new dependencies.
+
+To do this, you must supply the name, version, and license of the dependency.  This creates a stub package which requires no source code or linkage to any other system, but still acts as a normal dependency in other areas of FOSSA, like reports and the dependency views.
+You may also supply a description and/or url, but both are optional.  Note that these fields reference the dependency itself, and do not reference the parent project (the one at the current analysis directory), or the individual versions of the dependency.
+
+```yaml
+custom-dependencies:
+# Custom dependencies need name, version, and license
+- name: foo
+  version: 1.2.3
+  license: "MIT or Apache-2.0"
+# You can also provide a description and/or url
+- name: foo-wrapper
+  version: 1.2.3
+  license: MIT
+  url: https://www.foowrapper.com/about
+  description: Provides foo and a helpful interface around foo-like tasks.
+```
+
+### Errors in the `fossa-deps` file
+
+The `fossa-deps` scanner tries to report clear error messages when fields are missing, incorrect, or invalid.  For example:
+
+```yaml
+referenced-dependencies:
+- type: pypi
+  name: flask
+  version: "2.0.1"
+  license: MIT  # Error!  "license" is only allowed for custom-dependencies
+
+custom-dependencies:
+- type: custom  # Error!  "type" is only allowed for referenced-dependencies
+  name: mydep
+  version: "3.14.15"
+  license: GPL-3.0
+```
+
+This would return an error with a message explaining what went wrong, and where.  However, we don't check for everything (yet!):
+
+```yaml
+referenced-dependencies:
+- type: cargo
+  name: bitflags
+  some-unexpected-field: hello  # Has no effect, will be considered an error in future versions.
+```
+
+The `fossa-deps` scanner also requires at least one valid dependency if the file exists.  This prevents the file from being created with the wrong array names and us silently ignoring them.
+
+If you see an error message that isn't clear, file an issue in this repository!  Clear error messages are a priority for us, and we want to know where we're lacking.
 
 ## `fossa test`
 
@@ -246,9 +303,9 @@ fossa report attribution
 
 ### Report types
 
-* `fossa report attribution` - A report that contains information about your dependencies and their authors. For more info about attributions, check the [FOSSA docs page illustrating the topic](https://docs.fossa.com/docs/generating-reports).
+- `fossa report attribution` - A report that contains information about your dependencies and their authors. For more info about attributions, check the [FOSSA docs page illustrating the topic](https://docs.fossa.com/docs/generating-reports).
 
-### Specifying a timeout
+### Specifying a report timeout
 
 By default, `fossa report` waits a maximum of 10 minutes for report contents. To override the default timeout, use, e.g.:
 
@@ -267,7 +324,7 @@ fossa report attribtion --json
 ```
 
 *NOTE: Currently, text reports are not supported, and the report will be*
-*printed as JSON.  It is reccommended to use the `--json` flag anyway, since*
+*printed as JSON.  It is recommended to use the `--json` flag anyway, since*
 *the behavior of the command without the flag will change in the future.*
 
 ## Common FOSSA Project Flags

@@ -1,6 +1,0 @@
-dependencies:
-- package: one
-  type: gem
-- type: url
-  package: two
-  version: 1.0.0

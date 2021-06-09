@@ -1,0 +1,4 @@
+referenced-dependencies:
+- name: hello
+  type: go
+  license: nope

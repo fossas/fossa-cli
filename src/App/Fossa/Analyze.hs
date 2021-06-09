@@ -16,6 +16,7 @@ import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
 import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContributors)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
+import App.Fossa.YamlDeps (analyzeFossaDepsYaml)
 import App.Types
 import App.Util (validateDir)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
@@ -55,7 +56,7 @@ import Path
 import Path.IO (makeRelative)
 import Path.IO qualified as P
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (parseLocator)
+import Srclib.Types (parseLocator, SourceUnit)
 import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
 import Strategy.Carthage qualified as Carthage
@@ -83,7 +84,6 @@ import Strategy.Python.Setuptools qualified as Setuptools
 import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
-import Strategy.UserSpecified.YamlDependencies qualified as UserYaml
 import Strategy.VSI qualified as VSI
 import Strategy.Yarn qualified as Yarn
 import System.Exit (die, exitFailure)
@@ -185,8 +185,7 @@ discoverFuncs =
     ProjectJson.discover,
     Glide.discover,
     Pipenv.discover,
-    Conda.discover,
-    UserYaml.discover
+    Conda.discover
   ]
 
 runDependencyAnalysis ::
@@ -234,6 +233,8 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
   -- This is done because the VSI discover function requires more information than other discover functions do, and only matters for analysis.
   let discoverFuncs' = discoverFuncs ++ [vsiDiscoverFunc enableVSI destination]
 
+  manualSrcUnit <- analyzeFossaDepsYaml basedir
+
   (projectResults, ()) <-
     runOutput @ProjectResult
       . runStickyLogger SevInfo
@@ -244,15 +245,29 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
-  case checkForEmptyUpload projectResults filteredProjects of
+  case checkForEmptyUpload projectResults filteredProjects manualSrcUnit of
     NoneDiscovered -> logError "No projects were discovered" >> sendIO exitFailure
     FilteredAll count -> do
-      logError ("Filtered out all " <> pretty count <> " projects due to directory name")
+      logError ("Filtered out all " <> pretty count <> " projects due to directory name, no manual deps found")
       for_ projectResults $ \project -> logDebug ("Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project))
       sendIO exitFailure
-    FoundSome someProjects -> case destination of
-      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode . buildResult $ NE.toList someProjects
-      UploadScan apiOpts metadata -> do
+    FoundSome sourceUnits -> case destination of
+      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnit filteredProjects 
+      UploadScan apiOpts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata override sourceUnits
+
+
+uploadSuccessfulAnalysis :: 
+  ( Has Diag.Diagnostics sig m
+  , Has Logger sig m
+  , Has (Lift IO) sig m
+  )
+  => BaseDir
+  -> ApiOpts
+  -> ProjectMetadata
+  -> OverrideProject
+  -> NE.NonEmpty SourceUnit
+  -> m ()
+uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata override units = do
         revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
         saveRevision revision
 
@@ -262,7 +277,7 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
         let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
         logInfo ("Using branch: `" <> pretty branchText <> "`")
 
-        uploadResult <- uploadAnalysis apiOpts revision metadata someProjects
+        uploadResult <- uploadAnalysis apiOpts revision metadata units
         buildUrl <- getFossaBuildUrl revision apiOpts . parseLocator $ uploadLocator uploadResult
         logInfo $
           vsep
@@ -277,27 +292,37 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
         -- Warn on contributor errors, never fail
         void . Diag.recover . runExecIO $ tryUploadContributors basedir apiOpts (uploadLocator uploadResult)
 
+
 data CountedResult
   = NoneDiscovered
   | FilteredAll Int
-  | FoundSome (NE.NonEmpty ProjectResult)
+  | FoundSome (NE.NonEmpty SourceUnit)
 
 -- | Return some state of the projects found, since we can't upload empty result arrays.
--- We accept a list of all projects analyzed, and the list after filtering.  We assume
--- that the smaller list is the latter, and re.
-checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> CountedResult
-checkForEmptyUpload xs ys
-  | xlen == 0 && ylen == 0 = NoneDiscovered
-  | xlen == 0 || ylen == 0 = FilteredAll filterCount
-  -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
-  | otherwise = FoundSome $ NE.fromList filtered
+-- Takes a list of all projects analyzed, and the list after filtering.  We assume
+-- that the smaller list is the latter, and return that list.  Starting with user-defined deps,
+-- we also include a check for an additional source unit from fossa-deps.yml.
+checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> Maybe SourceUnit -> CountedResult
+checkForEmptyUpload xs ys unit =
+  -- This nested case statement 
+  case unit of
+    -- If we have a manual source unit, then there's always somthing to upload.
+    Just manual -> FoundSome $ manual NE.:| discoveredUnits
+    Nothing -> case (xlen, ylen) of
+      -- We didn't discover, so we also didn't filter
+      (0, 0) -> NoneDiscovered
+      -- If either list is empty, we have nothing to upload
+      (0, _) -> FilteredAll filterCount
+      (_, 0) -> FilteredAll filterCount
+      -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
+      _ -> FoundSome $ NE.fromList discoveredUnits
   where
     xlen = length xs
     ylen = length ys
     filterCount = abs $ xlen - ylen
-    -- Return the smaller list, since filtering cannot add projects
-
+    -- The smaller list is the post-filter list, since filtering cannot add projects
     filtered = if xlen > ylen then ys else xs
+    discoveredUnits = map Srclib.toSourceUnit filtered
 
 -- For each of the projects, we need to strip the root directory path from the prefix of the project path.
 -- We don't want parent directories of the scan root affecting "production path" filtering -- e.g., if we're
@@ -346,12 +371,17 @@ tryUploadContributors baseDir apiOpts locator = do
   contributors <- fetchGitContributors baseDir
   uploadContributors apiOpts locator contributors
 
-buildResult :: [ProjectResult] -> Aeson.Value
-buildResult projects =
-  Aeson.object
-    [ "projects" .= map buildProject projects,
-      "sourceUnits" .= map Srclib.toSourceUnit projects
-    ]
+buildResult :: Maybe SourceUnit -> [ProjectResult] -> Aeson.Value
+buildResult maybeSrcUnit projects = Aeson.object
+  [ "projects" .= map buildProject projects
+  , "sourceUnits" .= finalSourceUnits
+  ]
+
+  where
+    finalSourceUnits = case maybeSrcUnit of
+      Just unit -> unit : scannedUnits
+      Nothing -> scannedUnits
+    scannedUnits = map Srclib.toSourceUnit projects
 
 buildProject :: ProjectResult -> Aeson.Value
 buildProject project =
