@@ -27,7 +27,7 @@ _Example:_ Closes https://github.com/example/repo/issues/123.
 ## Checklist
 
 - [] I added tests for this PR's change.
-- [] I linted (`hlint`) and formatted (`ormolu`) any files I touched in this PR.
+- [] I linted and formatted (via `haskell-language-server`) any files I touched in this PR.
 - [] If this PR introduced a user-visible change, I added documentation into `docs/`.
 - [] I updated `Changelog.md`. If this PR did not mark a release, I added my changes into an `# Unreleased` section at the top.
 - [] I linked this PR to any referenced GitHub issues.

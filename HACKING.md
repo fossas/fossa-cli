@@ -52,31 +52,34 @@ In the base directory, run `cabal test`
 | [ghcup][ghcup] | Used to manage installed versions of ghc and cabal-install |
 | ghc | The haskell compiler (installed via ghcup) |
 | cabal-install | The package manager we use (installed via ghcup). Accessed via `cabal` on most setups. |
-| [haskell-language-server][hls] | LSP server for haskell projects, a.k.a. HLS |
+| [haskell-language-server][hls] ("HLS") | LSP server for haskell projects |
 | [hlint][hlint] | A linting + hints tool for haskell code. It provides really useful suggestions.  `hlint` is bundled with HLS |
-| [ormolu][ormolu] | A haskell source code formatter, `ormolu` is bundled with HLS |
-| [fourmolu][fourmolu] | A forked version of ormolu that we are evaluating |
+| [fourmolu][fourmolu] | A haskell source code formatter. `fourmolu` is bundled with HLS |
 
 ### Installing haskell-language-server
 
-In VSCode: Install the "Haskell Language Server" (`haskell.haskell`) plugin in VSCode.
+In VSCode:
+- Install the "Haskell Language Server" (`haskell.haskell`) plugin in VSCode.
+- In the Haskell extension settings, under `Haskell: Formatting Provider`, choose `fourmolu`
 
 If you installed HLS in the old, complicated way, you can safely remove it.  HLS now bundles all of its needed tools.
 
 ## Linting
 
-We do not recommend using `hlint` outside of the `haskell-language-server`, since by default it does not properly scan the project, and can even choke entirely.
-See [haskell-anguage-server][hls] for configuration instructions.
+`hlint` is built into HLS, and is enabled by default. hlint suggestions appear as warnings in the editor.
 
 `hlint` errors may become required changes in pull requests, but we do not currently run `hlint` in CI, as there are a few outstanding lint errors that have not yet been fixed.
 You do not need to enforce that `hlint` passes to submit a PR, but it does help greatly, for both the author and reviewer.
 
 ## Formatting
 
-Currently, we do not have a standardized formatting solution.  We have been using `ormolu`, but are now evaluating `fourmolu`, as it provides some configuration options that we want to take advantage of.
+Built into HLS, we use `fourmolu` for formatting source code files. In the VSCode Haskell extension settings, under `Haskell: Formatting Provider`, choose `fourmolu`.
 
-You can use HLS to format your code.  Since we are not yet standardized, formatting is not a blanket requirement.  However a code reviewer may ask you to format new files or files that have been mostly changed.
-We do not recommend using formatters outside of HLS yet, as there are some issues with configuration (see [FAQ](#FAQ) for more info).
+In VSCode, the formatter can be activated with the standard format-file and format-region actions.
+
+Make sure to run the formatter on any files you modify. Enabling `Editor: Format On Save` in VSCode can make satisfying this requirement easier.
+
+We do not recommend using formatters outside of HLS, as there are some issues with configuration (see [FAQ](#FAQ) for more info).
 
 ## Docs
 
@@ -121,7 +124,7 @@ Yeah, haskell tools can be a little over-explainy and use too many technicalitie
 * Check your GHC version.  Some dependencies are baked-in (sort of) to the compiler, so make sure you're using the correct version.
 * Update `ghcup`, then re-check all of your haskell tools' versions.  `ghcup tui` is a great interface for this, but you can use normal commands.
 
-### I tried using ormolu/hlint, and it choked on some syntax that builds fine
+### I tried using fourmolu/hlint, and it choked on some syntax that builds fine
 
 We use a fair amount of GHC extensions, which can greatly change the syntax of a file.  When the extensions are listed at the top of a file
 using `{#- LANGUAGE GADTs -#}`-style syntax, these tools can easily pick that up.  But some extensions, like `TypeApplications`, are so ubiquitous
@@ -142,4 +145,3 @@ an issue in this repository for that scenario, since we may be able to fix that.
 [hlint]: https://github.com/ndmitchell/hlint
 [hls]: https://github.com/haskell/haskell-language-server
 [hoogle]: https://hoogle.haskell.org/
-[ormolu]: https://github.com/tweag/ormolu
