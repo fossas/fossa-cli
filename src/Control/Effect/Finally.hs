@@ -1,14 +1,13 @@
 {-# LANGUAGE GADTs #-}
 
-module Control.Effect.Finally
-  ( -- * Finally effect
-    Finally (..),
-    onExit,
+module Control.Effect.Finally (
+  -- * Finally effect
+  Finally (..),
+  onExit,
 
-    -- * Re-exports
-    module X,
-  )
-where
+  -- * Re-exports
+  module X,
+) where
 
 import Control.Algebra as X
 import Prelude

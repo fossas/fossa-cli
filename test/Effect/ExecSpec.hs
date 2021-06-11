@@ -1,7 +1,6 @@
-module Effect.ExecSpec
-  ( spec,
-  )
-where
+module Effect.ExecSpec (
+  spec,
+) where
 
 import Data.Either (isLeft)
 import Effect.Exec

@@ -1,28 +1,27 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Strategy.NuGet.PackageReference
-  ( discover
-  , findProjects
-  , getDeps
-  , mkProject
-  , buildGraph
-
-  , PackageReference(..)
-  , ItemGroup(..)
-  , Package(..)
-  ) where
+module Strategy.NuGet.PackageReference (
+  discover,
+  findProjects,
+  getDeps,
+  mkProject,
+  buildGraph,
+  PackageReference (..),
+  ItemGroup (..),
+  Package (..),
+) where
 
 import Control.Applicative (optional, (<|>))
 import Control.Effect.Diagnostics
 import Data.Foldable (find)
-import qualified Data.List as L
-import qualified Data.Map.Strict as M
+import Data.List qualified as L
+import Data.Map.Strict qualified as M
 import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
-import qualified Graphing
+import Graphing qualified
 import Parse.XML
 import Path
 import Types
@@ -49,11 +48,11 @@ newtype PackageReferenceProject = PackageReferenceProject
 mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => PackageReferenceProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
-    { projectType = "packagereference",
-      projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps project,
-      projectPath = parent $ packageReferenceFile project,
-      projectLicenses = pure []
+    { projectType = "packagereference"
+    , projectBuildTargets = mempty
+    , projectDependencyGraph = const $ getDeps project
+    , projectPath = parent $ packageReferenceFile project
+    , projectLicenses = pure []
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PackageReferenceProject -> m (Graphing Dependency)
@@ -66,16 +65,19 @@ analyze' file = do
 
 newtype PackageReference = PackageReference
   { groups :: [ItemGroup]
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 newtype ItemGroup = ItemGroup
   { dependencies :: [Package]
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 data Package = Package
-  { depID      :: Text
+  { depID :: Text
   , depVersion :: Maybe Text
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 instance FromXML PackageReference where
   parseElement el = PackageReference <$> children "ItemGroup" el
@@ -90,17 +92,18 @@ instance FromXML ItemGroup where
 instance FromXML Package where
   parseElement el =
     Package <$> attr "Include" el
-            <*> optional (attr "Version" el <|> child "Version" el)
+      <*> optional (attr "Version" el <|> child "Version" el)
 
 buildGraph :: PackageReference -> Graphing Dependency
 buildGraph project = Graphing.fromList (map toDependency direct)
-    where
+  where
     direct = concatMap dependencies (groups project)
     toDependency Package{..} =
-      Dependency { dependencyType = NuGetType
-               , dependencyName = depID
-               , dependencyVersion =  fmap CEq depVersion
-               , dependencyLocations = []
-               , dependencyEnvironments = []
-               , dependencyTags = M.empty
-               }
+      Dependency
+        { dependencyType = NuGetType
+        , dependencyName = depID
+        , dependencyVersion = fmap CEq depVersion
+        , dependencyLocations = []
+        , dependencyEnvironments = []
+        , dependencyTags = M.empty
+        }

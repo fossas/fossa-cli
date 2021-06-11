@@ -1,7 +1,7 @@
-module App.Fossa.VPS.Report
-  ( reportMain
-  , ReportType (..)
-  ) where
+module App.Fossa.VPS.Report (
+  reportMain,
+  ReportType (..),
+) where
 
 import App.Fossa.API.BuildWait
 import App.Fossa.FossaAPIV1 qualified as Fossa
@@ -10,34 +10,35 @@ import App.Fossa.VPS.Scan.Core qualified as VPSCore
 import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
 import App.Types
 import Control.Carrier.Diagnostics
-import Control.Carrier.StickyLogger (runStickyLogger, logSticky)
+import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Lift (sendIO)
 import Data.Aeson qualified as Aeson
 import Data.Functor (void)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.IO (hPutStrLn)
 import Effect.Logger
 import Effect.ReadFS
 import Fossa.API.Types (ApiOpts)
-import Data.String.Conversion (decodeUtf8)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
 
-data ReportType =
-    AttributionReport
+data ReportType
+  = AttributionReport
 
 reportName :: ReportType -> Text
 reportName r = case r of
   AttributionReport -> "attribution"
 
 reportMain ::
-  BaseDir
-  -> ApiOpts
-  -> Severity
-  -> Int -- ^ timeout (seconds)
-  -> ReportType
-  -> OverrideProject
-  -> IO ()
+  BaseDir ->
+  ApiOpts ->
+  Severity ->
+  -- | timeout (seconds)
+  Int ->
+  ReportType ->
+  OverrideProject ->
+  IO ()
 reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType override = do
   -- TODO: refactor this code duplicate from `fossa test`
   {-

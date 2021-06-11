@@ -3,12 +3,11 @@
 
 -- | A carrier for the AtomicState effect that utilizes an 'IORef' for atomic
 -- state updates
-module Control.Carrier.AtomicState
-  ( AtomicStateC (AtomicStateC),
-    runAtomicState,
-    module X,
-  )
-where
+module Control.Carrier.AtomicState (
+  AtomicStateC (AtomicStateC),
+  runAtomicState,
+  module X,
+) where
 
 import Control.Algebra
 import Control.Carrier.Lift

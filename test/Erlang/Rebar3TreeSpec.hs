@@ -1,101 +1,116 @@
-module Erlang.Rebar3TreeSpec
-  ( spec
-  ) where
+module Erlang.Rebar3TreeSpec (
+  spec,
+) where
 
-import qualified Data.Map.Strict as M
-import qualified Data.Text.IO as TIO
+import Data.Map.Strict qualified as M
+import Data.Text.IO qualified as TIO
 import Text.Megaparsec
 
 import DepTypes
-import Graphing()
-import Strategy.Erlang.Rebar3Tree
 import GraphUtil
+import Graphing ()
+import Strategy.Erlang.Rebar3Tree
 
 import Test.Hspec
 
 dependencyOne :: Dependency
-dependencyOne = Dependency { dependencyType = GitType
-                      , dependencyName = "https://github.com/dep/one"
-                      , dependencyVersion = Just (CEq "1.0.0")
-                      , dependencyLocations = []
-                      , dependencyEnvironments = []
-                      , dependencyTags = M.empty
-                      }
+dependencyOne =
+  Dependency
+    { dependencyType = GitType
+    , dependencyName = "https://github.com/dep/one"
+    , dependencyVersion = Just (CEq "1.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
+    }
 
 dependencyTwo :: Dependency
-dependencyTwo = Dependency { dependencyType = HexType
-                      , dependencyName = "two"
-                      , dependencyVersion = Just (CEq "2.0.0")
-                      , dependencyLocations = []
-                      , dependencyEnvironments = []
-                      , dependencyTags = M.empty
-                      }
+dependencyTwo =
+  Dependency
+    { dependencyType = HexType
+    , dependencyName = "two"
+    , dependencyVersion = Just (CEq "2.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
+    }
 dependencyThree :: Dependency
-dependencyThree = Dependency { dependencyType = HexType
-                      , dependencyName = "three"
-                      , dependencyVersion = Just (CEq "3.0.0")
-                      , dependencyLocations = []
-                      , dependencyEnvironments = []
-                      , dependencyTags = M.empty
-                      }
+dependencyThree =
+  Dependency
+    { dependencyType = HexType
+    , dependencyName = "three"
+    , dependencyVersion = Just (CEq "3.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
+    }
 
 dependencyFour :: Dependency
-dependencyFour = Dependency { dependencyType = GitType
-                      , dependencyName = "https://github.com/dep/four"
-                      , dependencyVersion = Just (CEq "4.0.0")
-                      , dependencyLocations = []
-                      , dependencyEnvironments = []
-                      , dependencyTags = M.empty
-                      }
+dependencyFour =
+  Dependency
+    { dependencyType = GitType
+    , dependencyName = "https://github.com/dep/four"
+    , dependencyVersion = Just (CEq "4.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
+    }
 
 dependencyFive :: Dependency
-dependencyFive = Dependency { dependencyType = HexType
-                      , dependencyName = "five"
-                      , dependencyVersion = Just (CEq "5.0.0")
-                      , dependencyLocations = []
-                      , dependencyEnvironments = []
-                      , dependencyTags = M.empty
-                      }
+dependencyFive =
+  Dependency
+    { dependencyType = HexType
+    , dependencyName = "five"
+    , dependencyVersion = Just (CEq "5.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
+    }
 
 depOne :: Rebar3Dep
-depOne = Rebar3Dep
-          { depName = "one"
-          , depVersion = "1.0.0"
-          , depLocation = "https://github.com/dep/one"
-          , subDeps = [depTwo, depFour]
-          }
+depOne =
+  Rebar3Dep
+    { depName = "one"
+    , depVersion = "1.0.0"
+    , depLocation = "https://github.com/dep/one"
+    , subDeps = [depTwo, depFour]
+    }
 
 depTwo :: Rebar3Dep
-depTwo = Rebar3Dep
-          { depName = "two"
-          , depVersion = "2.0.0"
-          , depLocation = "hex package"
-          , subDeps = [depThree]
-          }
+depTwo =
+  Rebar3Dep
+    { depName = "two"
+    , depVersion = "2.0.0"
+    , depLocation = "hex package"
+    , subDeps = [depThree]
+    }
 
 depThree :: Rebar3Dep
-depThree = Rebar3Dep
-          { depName = "three"
-          , depVersion = "3.0.0"
-          , depLocation = "hex package"
-          , subDeps = []
-          }
+depThree =
+  Rebar3Dep
+    { depName = "three"
+    , depVersion = "3.0.0"
+    , depLocation = "hex package"
+    , subDeps = []
+    }
 
 depFour :: Rebar3Dep
-depFour = Rebar3Dep
-          { depName = "four"
-          , depVersion = "4.0.0"
-          , depLocation = "https://github.com/dep/four"
-          , subDeps = []
-          }
+depFour =
+  Rebar3Dep
+    { depName = "four"
+    , depVersion = "4.0.0"
+    , depLocation = "https://github.com/dep/four"
+    , subDeps = []
+    }
 
 depFive :: Rebar3Dep
-depFive = Rebar3Dep
-          { depName = "five"
-          , depVersion = "5.0.0"
-          , depLocation = "hex package"
-          , subDeps = []
-          }
+depFive =
+  Rebar3Dep
+    { depName = "five"
+    , depVersion = "5.0.0"
+    , depLocation = "hex package"
+    , subDeps = []
+    }
 
 spec :: Spec
 spec = do

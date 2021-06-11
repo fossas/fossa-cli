@@ -1,12 +1,11 @@
-module App.Fossa.Container.Analyze
-  ( analyzeMain,
-  )
-where
+module App.Fossa.Container.Analyze (
+  analyzeMain,
+) where
 
-import App.Fossa.Analyze (ScanDestination (..))
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
-import App.Fossa.Container (ImageText (..), runSyft, toContainerScan, extractRevision)
-import App.Fossa.FossaAPIV1 (UploadResponse(uploadError, uploadLocator), uploadContainerScan)
+import App.Fossa.Analyze (ScanDestination (..))
+import App.Fossa.Container (ImageText (..), extractRevision, runSyft, toContainerScan)
+import App.Fossa.FossaAPIV1 (UploadResponse (uploadError, uploadLocator), uploadContainerScan)
 import App.Types (OverrideProject (..), ProjectRevision (..))
 import Control.Carrier.Diagnostics
 import Control.Effect.Lift (Lift)
@@ -25,10 +24,10 @@ analyzeMain scanDestination logSeverity override image = withDefaultLogger logSe
     Right _ -> pure ()
 
 analyze ::
-  ( Has Diagnostics sig m,
-    Has (Lift IO) sig m,
-    Has Logger sig m,
-    MonadIO m
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , MonadIO m
   ) =>
   ScanDestination ->
   OverrideProject ->

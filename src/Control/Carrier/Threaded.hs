@@ -1,14 +1,13 @@
-module Control.Carrier.Threaded
-  ( fork,
-    kill,
-    wait,
-    Handle (..),
-  )
-where
+module Control.Carrier.Threaded (
+  fork,
+  kill,
+  wait,
+  Handle (..),
+) where
 
 import Control.Carrier.Lift
-import qualified Control.Concurrent as Conc
-import qualified Control.Concurrent.Async as Async
+import Control.Concurrent qualified as Conc
+import Control.Concurrent.Async qualified as Async
 import Control.Concurrent.STM
 import Control.Effect.Exception
 import Control.Monad.IO.Class
@@ -16,8 +15,8 @@ import Data.Functor (void)
 import Prelude
 
 data Handle = Handle
-  { handleTid :: Conc.ThreadId,
-    handleWait :: STM (Either SomeException ())
+  { handleTid :: Conc.ThreadId
+  , handleWait :: STM (Either SomeException ())
   }
 
 fork :: Has (Lift IO) sig m => m a -> m Handle

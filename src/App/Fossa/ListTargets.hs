@@ -1,16 +1,15 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.Fossa.ListTargets
-  ( listTargetsMain,
-  )
-where
+module App.Fossa.ListTargets (
+  listTargetsMain,
+) where
 
 import App.Fossa.Analyze (discoverFuncs)
 import App.Types (BaseDir (..))
+import Control.Carrier.AtomicCounter
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally
-import Control.Carrier.AtomicCounter
-import Control.Carrier.StickyLogger (runStickyLogger, logSticky', StickyLogger)
+import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent (getNumCapabilities)
 import Data.Foldable (for_)
@@ -58,7 +57,7 @@ listTargetsMain (BaseDir basedir) = do
                   <> pretty (unBuildTarget target)
 
 updateProgress :: Has StickyLogger sig m => Progress -> m ()
-updateProgress Progress {..} =
+updateProgress Progress{..} =
   logSticky'
     ( "[ "
         <> annotate (color Cyan) (pretty pQueued)

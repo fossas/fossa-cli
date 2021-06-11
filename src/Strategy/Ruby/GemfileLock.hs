@@ -1,23 +1,22 @@
-module Strategy.Ruby.GemfileLock
-  ( analyze'
-  , findSections
-  , buildGraph
-
-  , Spec(..)
-  , SpecDep(..)
-  , DirectDep(..)
-  , Section(..)
-  ) where
+module Strategy.Ruby.GemfileLock (
+  analyze',
+  findSections,
+  buildGraph,
+  Spec (..),
+  SpecDep (..),
+  DirectDep (..),
+  Section (..),
+) where
 
 import Control.Effect.Diagnostics
-import qualified Data.Char as C
+import Data.Char qualified as C
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Set (Set)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Void (Void)
 import DepTypes
 import Effect.Grapher
@@ -26,94 +25,100 @@ import Graphing (Graphing)
 import Path
 import Text.Megaparsec hiding (label)
 import Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as L
+import Text.Megaparsec.Char.Lexer qualified as L
 
 type Remote = Text
 type Revision = Text
 type Branch = Text
 
-data Section =
-      GitSection Remote (Maybe Revision) (Maybe Branch) [Spec]
-      | GemSection Remote [Spec]
-      | PathSection Remote [Spec]
-      | DependencySection [DirectDep]
-      | UnknownSection Text
-        deriving (Eq, Ord, Show)
+data Section
+  = GitSection Remote (Maybe Revision) (Maybe Branch) [Spec]
+  | GemSection Remote [Spec]
+  | PathSection Remote [Spec]
+  | DependencySection [DirectDep]
+  | UnknownSection Text
+  deriving (Eq, Ord, Show)
 
 data Spec = Spec
-      { specVersion :: Text
-      , specName :: Text
-      , specDeps :: [SpecDep]
-      } deriving (Eq, Ord, Show)
+  { specVersion :: Text
+  , specName :: Text
+  , specDeps :: [SpecDep]
+  }
+  deriving (Eq, Ord, Show)
 
 newtype SpecDep = SpecDep
-      { depName :: Text
-      } deriving (Eq, Ord, Show)
+  { depName :: Text
+  }
+  deriving (Eq, Ord, Show)
 
 newtype DirectDep = DirectDep
-      { directName :: Text
-      } deriving (Eq, Ord, Show)
+  { directName :: Text
+  }
+  deriving (Eq, Ord, Show)
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze' file = do
   sections <- readContentsParser @[Section] findSections file
   context "Building dependency graph" $ pure (buildGraph sections)
 
-newtype GemfilePkg = GemfilePkg { pkgName :: Text }
+newtype GemfilePkg = GemfilePkg {pkgName :: Text}
   deriving (Eq, Ord, Show)
 
 type GemfileGrapher = LabeledGrapher GemfilePkg GemfileLabel
 
-data GemfileLabel =
-    GemfileVersion Text
-  | GitRemote Text (Maybe Text) -- ^ repo url, revision
-  | OtherRemote Text -- ^ url
+data GemfileLabel
+  = GemfileVersion Text
+  | -- | repo url, revision
+    GitRemote Text (Maybe Text)
+  | -- | url
+    OtherRemote Text
   deriving (Eq, Ord, Show)
 
 toDependency :: GemfilePkg -> Set GemfileLabel -> Dependency
 toDependency pkg = foldr applyLabel start
   where
+    start :: Dependency
+    start =
+      Dependency
+        { dependencyType = GemType
+        , dependencyName = pkgName pkg
+        , dependencyVersion = Nothing
+        , dependencyLocations = []
+        , dependencyEnvironments = []
+        , dependencyTags = M.empty
+        }
 
-  start :: Dependency
-  start = Dependency
-    { dependencyType = GemType
-    , dependencyName = pkgName pkg
-    , dependencyVersion = Nothing
-    , dependencyLocations = []
-    , dependencyEnvironments = []
-    , dependencyTags = M.empty
-    }
-
-  applyLabel :: GemfileLabel -> Dependency -> Dependency
-  applyLabel (GemfileVersion ver) dep = dep { dependencyVersion = Just (CEq ver) }
-  applyLabel (GitRemote repo maybeRevision) dep =
-    dep { dependencyLocations = maybe repo (\revision -> repo <> "@" <> revision) maybeRevision : dependencyLocations dep }
-  applyLabel (OtherRemote loc) dep =
-    dep { dependencyLocations = loc : dependencyLocations dep }
+    applyLabel :: GemfileLabel -> Dependency -> Dependency
+    applyLabel (GemfileVersion ver) dep = dep{dependencyVersion = Just (CEq ver)}
+    applyLabel (GitRemote repo maybeRevision) dep =
+      dep{dependencyLocations = maybe repo (\revision -> repo <> "@" <> revision) maybeRevision : dependencyLocations dep}
+    applyLabel (OtherRemote loc) dep =
+      dep{dependencyLocations = loc : dependencyLocations dep}
 
 buildGraph :: [Section] -> Graphing Dependency
-buildGraph sections = run . withLabeling toDependency $
-  traverse_ addSection sections
+buildGraph sections =
+  run . withLabeling toDependency $
+    traverse_ addSection sections
   where
-  addSection :: Has GemfileGrapher sig m => Section -> m ()
-  addSection (DependencySection deps) = traverse_ (direct . GemfilePkg . directName) deps
-  addSection (GitSection remote revision branch specs) =
-    traverse_ (addSpec (GitRemote remote (revision <|> branch))) specs
-  addSection (PathSection remote specs) =
-    traverse_ (addSpec (OtherRemote remote)) specs
-  addSection (GemSection remote specs) =
-    traverse_ (addSpec (OtherRemote remote)) specs
-  addSection UnknownSection{} = pure ()
+    addSection :: Has GemfileGrapher sig m => Section -> m ()
+    addSection (DependencySection deps) = traverse_ (direct . GemfilePkg . directName) deps
+    addSection (GitSection remote revision branch specs) =
+      traverse_ (addSpec (GitRemote remote (revision <|> branch))) specs
+    addSection (PathSection remote specs) =
+      traverse_ (addSpec (OtherRemote remote)) specs
+    addSection (GemSection remote specs) =
+      traverse_ (addSpec (OtherRemote remote)) specs
+    addSection UnknownSection{} = pure ()
 
-  addSpec :: Has GemfileGrapher sig m => GemfileLabel -> Spec -> m ()
-  addSpec remoteLabel spec = do
-    let pkg = GemfilePkg (specName spec)
-    -- add edges between spec and specdeps
-    traverse_ (edge pkg . GemfilePkg . depName) (specDeps spec)
-    -- add a label for version
-    label pkg (GemfileVersion (specVersion spec))
-    -- add a label for remote
-    label pkg remoteLabel
+    addSpec :: Has GemfileGrapher sig m => GemfileLabel -> Spec -> m ()
+    addSpec remoteLabel spec = do
+      let pkg = GemfilePkg (specName spec)
+      -- add edges between spec and specdeps
+      traverse_ (edge pkg . GemfilePkg . depName) (specDeps spec)
+      -- add a label for version
+      label pkg (GemfileVersion (specVersion spec))
+      -- add a label for remote
+      label pkg remoteLabel
 
 type Parser = Parsec Void Text
 
@@ -154,18 +159,17 @@ gemSectionParser = mkSectionParser "GEM" $ \propertyMap -> do
   pure $ GemSection remote specs
 
 mkSectionParser :: Text -> (Map Text RawField -> Either Text Section) -> Parser Section
-mkSectionParser sectionName toSection = L.nonIndented scn $ L.indentBlock scn $ do
-  _ <- chunk sectionName
-  pure $ L.IndentMany Nothing propertiesToSection (try propertyParser <|> specPropertyParser)
-
+mkSectionParser sectionName toSection = L.nonIndented scn $
+  L.indentBlock scn $ do
+    _ <- chunk sectionName
+    pure $ L.IndentMany Nothing propertiesToSection (try propertyParser <|> specPropertyParser)
   where
     propertiesToSection :: [(Text, RawField)] -> Parser Section
     propertiesToSection properties =
       let propertyMap = M.fromList properties
           result :: Either Text Section
           result = toSection propertyMap
-
-      in case result of
+       in case result of
             Right x -> pure x
             Left y -> fail $ T.unpack $ "could not parse " <> sectionName <> " section: " <> y
 
@@ -194,31 +198,28 @@ propertyParser = do
   _ <- chunk ":"
   value <- textValue
   pure (remote, value)
-
   where
     findFieldName :: Parser Text
     findFieldName = takeWhileP (Just "field name") (/= ':')
 
     textValue :: Parser RawField
     textValue = do
-          _ <- chunk " "
-          RawText <$> restOfLine
+      _ <- chunk " "
+      RawText <$> restOfLine
 
 specPropertyParser :: Parser (Text, RawField)
 specPropertyParser = L.indentBlock scn $ do
   remote <- findFieldName
   _ <- chunk ":"
   pure $ L.IndentMany Nothing (\a -> pure (remote, RawSpecs a)) specParser
-
   where
-
     findFieldName :: Parser Text
     findFieldName = takeWhileP (Just "field name") (/= ':')
 
 isEndLine :: Char -> Bool
 isEndLine '\n' = True
 isEndLine '\r' = True
-isEndLine _    = False
+isEndLine _ = False
 
 specParser :: Parser Spec
 specParser = L.indentBlock scn p
@@ -230,15 +231,15 @@ specParser = L.indentBlock scn p
 
 specDepParser :: Parser SpecDep
 specDepParser = do
-      name <- findDep
-      _ <- ignored
-      pure $ SpecDep name
+  name <- findDep
+  _ <- ignored
+  pure $ SpecDep name
 
 scn :: Parser ()
-scn =  L.space space1 empty empty
+scn = L.space space1 empty empty
 
 sc :: Parser ()
-sc =  L.space (void $ some (char ' ')) empty empty
+sc = L.space (void $ some (char ' ')) empty empty
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
@@ -248,19 +249,19 @@ findDep = lexeme (takeWhile1P (Just "dep") (not . C.isSpace))
 
 findVersion :: Parser Text
 findVersion = do
-      _ <- char '('
-      result <- lexeme (takeWhileP (Just "version") (/= ')'))
-      _ <- char ')'
-      pure result
-
+  _ <- char '('
+  result <- lexeme (takeWhileP (Just "version") (/= ')'))
+  _ <- char ')'
+  pure result
 
 dependenciesSectionParser :: Parser Section
-dependenciesSectionParser = L.nonIndented scn $ L.indentBlock scn $ do
-  _ <- chunk "DEPENDENCIES"
-  pure $ L.IndentMany Nothing (\deps -> pure $ DependencySection deps) findDependency
+dependenciesSectionParser = L.nonIndented scn $
+  L.indentBlock scn $ do
+    _ <- chunk "DEPENDENCIES"
+    pure $ L.IndentMany Nothing (\deps -> pure $ DependencySection deps) findDependency
 
 findDependency :: Parser DirectDep
 findDependency = do
-      dep <- findDep
-      _ <- ignored
-      pure $ DirectDep dep
+  dep <- findDep
+  _ <- ignored
+  pure $ DirectDep dep

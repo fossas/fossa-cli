@@ -3,46 +3,45 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Fossa.API.Types
-  ( ApiKey (..),
-    ApiOpts (..),
-    useApiOpts,
-    Issues (..),
-    IssueRule (..),
-    IssueType (..),
-    Issue (..),
-  )
-where
+module Fossa.API.Types (
+  ApiKey (..),
+  ApiOpts (..),
+  useApiOpts,
+  Issues (..),
+  IssueRule (..),
+  IssueType (..),
+  Issue (..),
+) where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Data.Aeson
 import Data.Coerce (coerce)
 import Data.List.Extra ((!?))
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (encodeUtf8)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Text.Prettyprint.Doc
 import Network.HTTP.Req
 import Text.URI (URI, render)
 import Text.URI.QQ (uri)
-import qualified Unsafe.Coerce as Unsafe
+import Unsafe.Coerce qualified as Unsafe
 
 newtype ApiKey = ApiKey {unApiKey :: Text}
   deriving (Eq, Ord, Show)
 
 data ApiOpts = ApiOpts
-  { apiOptsUri :: Maybe URI,
-    apiOptsApiKey :: ApiKey
+  { apiOptsUri :: Maybe URI
+  , apiOptsApiKey :: ApiKey
   }
   deriving (Eq, Ord, Show)
 
 data Issues = Issues
-  { issuesCount :: Int,
-    issuesIssues :: [Issue],
-    issuesStatus :: Text
+  { issuesCount :: Int
+  , issuesIssues :: [Issue]
+  , issuesStatus :: Text
   }
   deriving (Eq, Ord, Show)
 
@@ -65,12 +64,12 @@ renderIssueType = \case
   IssueOther other -> other
 
 data Issue = Issue
-  { issueId :: Int,
-    issuePriorityString :: Maybe Text, -- we only use this field for `fossa test --json`
-    issueResolved :: Bool,
-    issueRevisionId :: Text,
-    issueType :: IssueType,
-    issueRule :: Maybe IssueRule
+  { issueId :: Int
+  , issuePriorityString :: Maybe Text -- we only use this field for `fossa test --json`
+  , issueResolved :: Bool
+  , issueRevisionId :: Text
+  , issueType :: IssueType
+  , issueRule :: Maybe IssueRule
   }
   deriving (Eq, Ord, Show)
 
@@ -86,11 +85,11 @@ instance FromJSON Issues where
       <*> obj .: "status"
 
 instance ToJSON Issues where
-  toJSON Issues {..} =
+  toJSON Issues{..} =
     object
-      [ "count" .= issuesCount,
-        "issues" .= issuesIssues,
-        "status" .= issuesStatus
+      [ "count" .= issuesCount
+      , "issues" .= issuesIssues
+      , "status" .= issuesStatus
       ]
 
 instance FromJSON Issue where
@@ -104,14 +103,14 @@ instance FromJSON Issue where
       <*> obj .:? "rule"
 
 instance ToJSON Issue where
-  toJSON Issue {..} =
+  toJSON Issue{..} =
     object
-      [ "id" .= issueId,
-        "priorityString" .= issuePriorityString,
-        "resolved" .= issueResolved,
-        "revisionId" .= issueRevisionId,
-        "type" .= issueType,
-        "rule" .= issueRule
+      [ "id" .= issueId
+      , "priorityString" .= issuePriorityString
+      , "resolved" .= issueResolved
+      , "revisionId" .= issueRevisionId
+      , "type" .= issueType
+      , "rule" .= issueRule
       ]
 
 instance FromJSON IssueType where
@@ -138,7 +137,7 @@ instance FromJSON IssueRule where
     IssueRule <$> obj .:? "licenseId"
 
 instance ToJSON IssueRule where
-  toJSON IssueRule {..} = object ["licenseId" .= ruleLicenseId]
+  toJSON IssueRule{..} = object ["licenseId" .= ruleLicenseId]
 
 instance Pretty Issues where
   pretty = renderedIssues
@@ -172,15 +171,15 @@ renderedIssues issues = rendered
     renderHeader :: IssueType -> Doc ann
     renderHeader ty =
       vsep
-        [ "========================================================================",
-          pretty $ renderIssueType ty,
-          "========================================================================",
-          hsep $
+        [ "========================================================================"
+        , pretty $ renderIssueType ty
+        , "========================================================================"
+        , hsep $
             map (fill padding) $ case ty of
               IssuePolicyConflict -> ["Dependency", "Revision", "License"]
               IssuePolicyFlag -> ["Dependency", "Revision", "License"]
-              _ -> ["Dependency", "Revision"],
-          ""
+              _ -> ["Dependency", "Revision"]
+        , ""
         ]
 
     renderIssue :: Issue -> Doc ann

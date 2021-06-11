@@ -2,15 +2,14 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Control.Carrier.Finally
-  ( -- * Finally carrier
-    FinallyC (..),
-    runFinally,
+module Control.Carrier.Finally (
+  -- * Finally carrier
+  FinallyC (..),
+  runFinally,
 
-    -- * Re-exports
-    module X,
-  )
-where
+  -- * Re-exports
+  module X,
+) where
 
 import Control.Carrier.Reader
 import Control.Effect.Exception (finally)

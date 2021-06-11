@@ -1,9 +1,9 @@
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module App.Pathfinder.Scan
-  ( scanMain
-  ) where
+module App.Pathfinder.Scan (
+  scanMain,
+) where
 
 import Control.Carrier.AtomicCounter (runAtomicCounter)
 import Control.Carrier.Diagnostics qualified as Diag
@@ -56,8 +56,9 @@ scan ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
   , MonadIO m
-  )
-  => Path Abs Dir -> m ()
+  ) =>
+  Path Abs Dir ->
+  m ()
 scan basedir = runFinally $ do
   sendIO $ PIO.setCurrentDir basedir
   capabilities <- sendIO getNumCapabilities
@@ -73,16 +74,15 @@ scan basedir = runFinally $ do
 
   sendIO (BL.putStr (encode projectResults))
 
-
 discoverFuncs ::
-  ( Has Diag.Diagnostics sig m,
-    Has (Lift IO) sig m,
-    MonadIO m,
-    Has ReadFS sig m,
-    Has ReadFS rsig run,
-    Has Exec rsig run,
-    Has Diag.Diagnostics rsig run,
-    Has (Lift IO) rsig run
+  ( Has Diag.Diagnostics sig m
+  , Has (Lift IO) sig m
+  , MonadIO m
+  , Has ReadFS sig m
+  , Has ReadFS rsig run
+  , Has Exec rsig run
+  , Has Diag.Diagnostics rsig run
+  , Has (Lift IO) rsig run
   ) =>
   -- | Discover functions
   [Path Abs Dir -> m [DiscoveredProject run]]
@@ -91,37 +91,41 @@ discoverFuncs = [Maven.discover, Nuspec.discover]
 data ProjectLicenseScan = ProjectLicenseScan
   { licenseStrategyType :: Text
   , licenseStrategyName :: Text
-  , discoveredLicenses  :: [LicenseResult]
-  } deriving (Eq, Ord, Show)
+  , discoveredLicenses :: [LicenseResult]
+  }
+  deriving (Eq, Ord, Show)
 
 instance ToJSON ProjectLicenseScan where
-  toJSON ProjectLicenseScan{..} = object
-    [ "type"    .= licenseStrategyType
-    , "name"    .= licenseStrategyName
-    , "files"   .= discoveredLicenses
-    ]
+  toJSON ProjectLicenseScan{..} =
+    object
+      [ "type" .= licenseStrategyType
+      , "name" .= licenseStrategyName
+      , "files" .= discoveredLicenses
+      ]
 
 data CompletedLicenseScan = CompletedLicenseScan
-  { completedLicenseName     :: Text
-  , completedLicenses        :: [LicenseResult]
-  } deriving (Eq, Ord, Show)
+  { completedLicenseName :: Text
+  , completedLicenses :: [LicenseResult]
+  }
+  deriving (Eq, Ord, Show)
 
 instance ToJSON CompletedLicenseScan where
-    toJSON CompletedLicenseScan{..} = object
-      [ "name"            .=  completedLicenseName
-      , "licenseResults"  .=  completedLicenses
+  toJSON CompletedLicenseScan{..} =
+    object
+      [ "name" .= completedLicenseName
+      , "licenseResults" .= completedLicenses
       ]
 
 mkLicenseScan :: DiscoveredProject n -> [LicenseResult] -> ProjectLicenseScan
 mkLicenseScan project licenses =
   ProjectLicenseScan
-    { licenseStrategyType = projectType project,
-      licenseStrategyName = projectType project,
-      discoveredLicenses = licenses
+    { licenseStrategyType = projectType project
+    , licenseStrategyName = projectType project
+    , discoveredLicenses = licenses
     }
 
 updateProgress :: Has StickyLogger sig m => Progress -> m ()
-updateProgress Progress {..} =
+updateProgress Progress{..} =
   logSticky'
     ( "[ "
         <> annotate (color Cyan) (pretty pQueued)

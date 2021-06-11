@@ -1,14 +1,13 @@
-module Discovery.Walk
-  ( -- * Walking the filetree
-    walk,
-    walk',
-    WalkStep (..),
+module Discovery.Walk (
+  -- * Walking the filetree
+  walk,
+  walk',
+  WalkStep (..),
 
-    -- * Helpers
-    fileName,
-    findFileNamed,
-  )
-where
+  -- * Helpers
+  fileName,
+  findFileNamed,
+) where
 
 import Control.Carrier.Writer.Church
 import Control.Effect.Diagnostics
@@ -18,9 +17,9 @@ import Data.Foldable (find)
 import Data.Functor (void)
 import Data.List ((\\))
 import Data.Maybe (mapMaybe)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Effect.ReadFS
 import Path
 
@@ -91,10 +90,11 @@ walkDir ::
   -- | Directory where traversal begins
   Path Abs Dir ->
   m ()
-walkDir handler topdir = context "Walking the filetree" $
-  void $
-    --makeAbsolute topdir >>= walkAvoidLoop S.empty
-    walkAvoidLoop S.empty topdir
+walkDir handler topdir =
+  context "Walking the filetree" $
+    void $
+      --makeAbsolute topdir >>= walkAvoidLoop S.empty
+      walkAvoidLoop S.empty topdir
   where
     walkAvoidLoop traversed curdir = do
       mRes <- checkLoop traversed curdir

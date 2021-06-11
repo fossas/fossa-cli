@@ -6,35 +6,34 @@
 -- The only non-trivial logic that exists in this strategy is adding edges
 -- between poms in the maven "global closure", before building the individual
 -- multi-project closures.
-module Strategy.Scala
-  ( discover,
-    findProjects,
-  )
-where
+module Strategy.Scala (
+  discover,
+  findProjects,
+) where
 
 import Control.Carrier.Diagnostics
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
+import Data.Text qualified as T
+import Data.Text.Lazy qualified as TL
 import Discovery.Walk
 import Effect.Exec
 import Effect.Logger hiding (group)
 import Effect.ReadFS
 import Path
-import qualified Strategy.Maven.Pom as Pom
+import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures)
-import qualified Strategy.Maven.Pom.Closure as PomClosure
+import Strategy.Maven.Pom.Closure qualified as PomClosure
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
 import Types
 
 discover ::
-  ( Has Exec sig m,
-    Has ReadFS sig m,
-    Has Logger sig m,
-    Has Diagnostics sig m,
-    Applicative run
+  ( Has Exec sig m
+  , Has ReadFS sig m
+  , Has Logger sig m
+  , Has Diagnostics sig m
+  , Applicative run
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject run]
@@ -50,12 +49,12 @@ mkProject ::
   DiscoveredProject n
 mkProject basedir closure =
   DiscoveredProject
-    { projectType = "scala",
-      projectPath = parent $ PomClosure.closurePath closure,
-      projectBuildTargets = mempty,
-      -- only do static analysis of generated pom files
-      projectDependencyGraph = \_ -> pure (Pom.analyze' closure),
-      projectLicenses = pure $ Pom.getLicenses basedir closure
+    { projectType = "scala"
+    , projectPath = parent $ PomClosure.closurePath closure
+    , projectBuildTargets = mempty
+    , -- only do static analysis of generated pom files
+      projectDependencyGraph = \_ -> pure (Pom.analyze' closure)
+    , projectLicenses = pure $ Pom.getLicenses basedir closure
     }
 
 pathToText :: Path ar fd -> Text
@@ -80,11 +79,11 @@ findProjects = walk' $ \dir _ files -> do
 makePomCmd :: Command
 makePomCmd =
   Command
-    { cmdName = "sbt",
-      -- --no-colors to disable ANSI escape codes
+    { cmdName = "sbt"
+    , -- --no-colors to disable ANSI escape codes
       -- --batch to disable interactivity. normally, if an `sbt` command fails, it'll drop into repl mode: --batch will disable the repl.
-      cmdArgs = ["--no-colors", "--batch", "makePom"],
-      cmdAllowErr = Never
+      cmdArgs = ["--no-colors", "--batch", "makePom"]
+    , cmdAllowErr = Never
     }
 
 genPoms :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]

@@ -1,24 +1,23 @@
 {-# LANGUAGE DataKinds #-}
 
-module App.Fossa.VPS.Scan.Core
-  ( createLocator
-  , createRevisionLocator
-  , getSherlockInfo
-  , Locator(..)
-  , RevisionLocator(..)
-  , SherlockInfo(..)
-  )
-where
+module App.Fossa.VPS.Scan.Core (
+  createLocator,
+  createRevisionLocator,
+  getSherlockInfo,
+  Locator (..),
+  RevisionLocator (..),
+  SherlockInfo (..),
+) where
 
 import App.Fossa.VPS.Types
-import Data.Text (pack, Text)
-import Prelude
-import Network.HTTP.Req
 import Control.Carrier.Trace.Printing
 import Control.Effect.Diagnostics
 import Control.Effect.Lift (Lift)
 import Data.Aeson
-import Fossa.API.Types (useApiOpts, ApiOpts(..))
+import Data.Text (Text, pack)
+import Fossa.API.Types (ApiOpts (..), useApiOpts)
+import Network.HTTP.Req
+import Prelude
 
 data SherlockInfo = SherlockInfo
   { sherlockUrl :: Text
@@ -33,12 +32,12 @@ instance FromJSON SherlockInfo where
     auth <- obj .: "auth"
     SherlockInfo <$> obj .: "url" <*> auth .: "clientToken" <*> auth .: "clientId" <*> obj .: "orgId"
 
-newtype Locator = Locator { unLocator :: Text }
+newtype Locator = Locator {unLocator :: Text}
 
 createLocator :: Text -> Int -> Locator
 createLocator projectName organizationId = Locator $ "custom+" <> pack (show organizationId) <> "/" <> projectName
 
-newtype RevisionLocator = RevisionLocator { unRevisionLocator :: Text }
+newtype RevisionLocator = RevisionLocator {unRevisionLocator :: Text}
 
 createRevisionLocator :: Text -> Int -> Text -> RevisionLocator
 createRevisionLocator projectName organizationId revision = do
@@ -52,5 +51,5 @@ sherlockInfoEndpoint baseurl = baseurl /: "api" /: "vendored-package-scan" /: "s
 getSherlockInfo :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> m SherlockInfo
 getSherlockInfo apiOpts = runHTTP $ do
   (baseUrl, baseOptions) <- useApiOpts apiOpts
-  resp <- req GET (sherlockInfoEndpoint baseUrl) NoReqBody jsonResponse (baseOptions <> header "Content-Type" "application/json" )
+  resp <- req GET (sherlockInfoEndpoint baseUrl) NoReqBody jsonResponse (baseOptions <> header "Content-Type" "application/json")
   pure (responseBody resp)

@@ -2,16 +2,16 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Go.GoListSpec
-  ( spec
-  ) where
+module Go.GoListSpec (
+  spec,
+) where
 
 import Control.Algebra
 import Control.Carrier.Diagnostics
 import Control.Carrier.Reader
-import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Lazy qualified as BL
 import Data.Function ((&))
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import DepTypes
 import Effect.Exec
 import Effect.Grapher
@@ -23,7 +23,7 @@ import Test.Hspec
 runConstExec :: BL.ByteString -> ConstExecC m a -> m a
 runConstExec output = runReader output . runConstExecC
 
-newtype ConstExecC m a = ConstExecC { runConstExecC :: ReaderC (BL.ByteString) m a }
+newtype ConstExecC m a = ConstExecC {runConstExecC :: ReaderC (BL.ByteString) m a}
   deriving (Functor, Applicative, Monad)
 
 instance Algebra sig m => Algebra (Exec :+: sig) (ConstExecC m) where
@@ -35,20 +35,24 @@ instance Algebra sig m => Algebra (Exec :+: sig) (ConstExecC m) where
 
 expected :: Graphing Dependency
 expected = run . evalGrapher $ do
-  direct $ Dependency { dependencyType = GoType
-                      , dependencyName = "github.com/pkg/one"
-                      , dependencyVersion = Just (CEq "commithash")
-                      , dependencyLocations = []
-                      , dependencyEnvironments = []
-                      , dependencyTags = M.empty
-                      }
-  direct $ Dependency { dependencyType = GoType
-                      , dependencyName = "github.com/pkg/two"
-                      , dependencyVersion = Just (CEq "v2.0.0")
-                      , dependencyLocations = []
-                      , dependencyEnvironments = []
-                      , dependencyTags = M.empty
-                      }
+  direct $
+    Dependency
+      { dependencyType = GoType
+      , dependencyName = "github.com/pkg/one"
+      , dependencyVersion = Just (CEq "commithash")
+      , dependencyLocations = []
+      , dependencyEnvironments = []
+      , dependencyTags = M.empty
+      }
+  direct $
+    Dependency
+      { dependencyType = GoType
+      , dependencyName = "github.com/pkg/two"
+      , dependencyVersion = Just (CEq "v2.0.0")
+      , dependencyLocations = []
+      , dependencyEnvironments = []
+      , dependencyTags = M.empty
+      }
 
 spec :: Spec
 spec = do
@@ -75,5 +79,5 @@ spec = do
               & run
 
       case result of
-          Left err -> fail $ "failed to build graph" <> show (renderFailureBundle err)
-          Right graph -> length (graphingDirect graph) `shouldBe` 12
+        Left err -> fail $ "failed to build graph" <> show (renderFailureBundle err)
+        Right graph -> length (graphingDirect graph) `shouldBe` 12

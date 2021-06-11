@@ -41,26 +41,26 @@
 -- > instance FromXML Foo where
 -- >   parseElement el =
 -- >     Foo <$> optional (child "baz" el) `defaultsTo` "defaultbaz"
-module Parse.XML
-  ( -- * Types
-    FromXML(..)
-  , Parser(..)
-  , parseXML
+module Parse.XML (
+  -- * Types
+  FromXML (..),
+  Parser (..),
+  parseXML,
 
   -- * Parsing an XML element
-  , attr
-  , child
-  , children
-  , content
+  attr,
+  child,
+  children,
+  content,
 
   -- * Helper functions
-  , defaultsTo
+  defaultsTo,
 
   -- * Error formatting
-  , ParseError(..)
-  , ParsePath
-  , xmlErrorPretty
-  ) where
+  ParseError (..),
+  ParsePath,
+  xmlErrorPretty,
+) where
 
 import Prelude
 
@@ -69,10 +69,10 @@ import Control.Carrier.Error.Either
 import Control.Carrier.NonDet.Church
 import Control.Carrier.Reader
 import Data.Functor.Identity (Identity)
-import qualified Data.Map.Strict as M
-import qualified Data.Text as T
+import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
-import qualified Text.XML.Light as XML
+import Data.Text qualified as T
+import Text.XML.Light qualified as XML
 
 -- | A type that can be converted from XML
 --
@@ -91,13 +91,13 @@ instance FromXML T.Text where
 instance FromXML v => FromXML (M.Map T.Text v) where
   parseElement el = M.fromList <$> traverse mkSingle (XML.elChildren el)
     where
-    mkSingle e = do
-      let key :: T.Text
-          key = T.pack (XML.qName (XML.elName e))
-      value <- parseElement e
-      pure (key, value)
+      mkSingle e = do
+        let key :: T.Text
+            key = T.pack (XML.qName (XML.elName e))
+        value <- parseElement e
+        pure (key, value)
 
-newtype Parser a = Parser { unParser :: ReaderC ParsePath (ErrorC ParseError Identity) a }
+newtype Parser a = Parser {unParser :: ReaderC ParsePath (ErrorC ParseError Identity) a}
   deriving (Functor, Applicative, Monad)
 
 instance Alternative Parser where
@@ -110,11 +110,15 @@ instance MonadFail Parser where
 runParser :: String -> Parser a -> Either ParseError a
 runParser rootName = run . runError . runReader [rootName] . unParser
 
-data ParseError =
-    ParseElementMissing ParsePath String -- ^ A 'child' element was missing
-  | ParseAttrMissing ParsePath String -- ^ An 'attr' was missing
-  | ParseXMLDocFailed -- ^ The input 'T.Text' didn't contain valid XML
-  | UnknownError ParsePath String -- ^ A custom error, likely invoked via 'fail'
+data ParseError
+  = -- | A 'child' element was missing
+    ParseElementMissing ParsePath String
+  | -- | An 'attr' was missing
+    ParseAttrMissing ParsePath String
+  | -- | The input 'T.Text' didn't contain valid XML
+    ParseXMLDocFailed
+  | -- | A custom error, likely invoked via 'fail'
+    UnknownError ParsePath String
   deriving (Eq, Ord, Show)
 
 -- | Pretty-print a ParseError into strict 'T.Text'
@@ -154,7 +158,7 @@ attr :: String -> XML.Element -> Parser T.Text
 attr attrName el =
   case XML.findAttrBy (\elName -> XML.qName elName == attrName) el of
     Nothing -> Parser $ ask >>= \path -> throwError (ParseAttrMissing path attrName)
-    Just a  -> pure (T.pack a)
+    Just a -> pure (T.pack a)
 
 -- | Find a child of an XML Element by its name. This will fail if a child with
 -- the given name does not exist
@@ -170,7 +174,7 @@ child :: FromXML a => String -> XML.Element -> Parser a
 child childName el =
   case XML.filterChildName (\elName -> XML.qName elName == childName) el of
     Nothing -> Parser $ ask >>= \path -> throwError (ParseElementMissing path childName)
-    Just a  -> subparse childName a
+    Just a -> subparse childName a
 
 -- | Find all children of an XML element with a given name. __This never
 -- fails__, and will return an empty list if no elements are found.
@@ -212,4 +216,4 @@ defaultsTo fa a = fmap (fromMaybe a) fa
 
 -- parse a child element, and add its name to the parse path
 subparse :: FromXML a => String -> XML.Element -> Parser a
-subparse path el = Parser $ local (path:) (unParser (parseElement el))
+subparse path el = Parser $ local (path :) (unParser (parseElement el))

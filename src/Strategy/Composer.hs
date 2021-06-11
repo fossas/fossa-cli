@@ -1,19 +1,18 @@
-module Strategy.Composer
-  ( discover,
-    buildGraph,
-    ComposerLock (..),
-    CompDep (..),
-  )
-where
+module Strategy.Composer (
+  discover,
+  buildGraph,
+  ComposerLock (..),
+  CompDep (..),
+) where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
-import Data.Set (Set)
 import Data.Aeson.Types
 import Data.Foldable (traverse_)
-import Data.Text (Text)
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
+import Data.Set (Set)
+import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
 import Effect.Grapher
@@ -34,8 +33,8 @@ findProjects = walk' $ \dir _ files -> do
     Just lock -> do
       let project =
             ComposerProject
-              { composerDir = dir,
-                composerLock = lock
+              { composerDir = dir
+              , composerLock = lock
               }
 
       pure ([project], WalkContinue)
@@ -43,11 +42,11 @@ findProjects = walk' $ \dir _ files -> do
 mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => ComposerProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
-    { projectType = "composer",
-      projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps project,
-      projectPath = composerDir project,
-      projectLicenses = pure []
+    { projectType = "composer"
+    , projectBuildTargets = mempty
+    , projectDependencyGraph = const $ getDeps project
+    , projectPath = composerDir project
+    , projectLicenses = pure []
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ComposerProject -> m (Graphing Dependency)
@@ -58,20 +57,21 @@ getDeps project = context "Composer" $ do
 data ComposerProject = ComposerProject
   { composerDir :: Path Abs Dir
   , composerLock :: Path Abs File
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 data ComposerLock = ComposerLock
-  { lockPackages :: [CompDep],
-    lockPackagesDev :: [CompDep]
+  { lockPackages :: [CompDep]
+  , lockPackagesDev :: [CompDep]
   }
   deriving (Eq, Ord, Show)
 
 data CompDep = CompDep
-  { depName :: Text,
-    depVersion :: Text,
-    -- | name to version spec
-    depRequire :: Maybe (Map Text Text),
-    depRequireDev :: Maybe (Map Text Text)
+  { depName :: Text
+  , depVersion :: Text
+  , -- | name to version spec
+    depRequire :: Maybe (Map Text Text)
+  , depRequireDev :: Maybe (Map Text Text)
   }
   deriving (Eq, Ord, Show)
 
@@ -114,16 +114,17 @@ buildGraph lock = run . withLabeling toDependency $ do
     addEdge pkg name _ = edge pkg (CompPkg name)
 
     toDependency :: CompPkg -> Set CompLabel -> Dependency
-    toDependency pkg = foldr addLabel $
-      Dependency
-        { dependencyType = ComposerType,
-          dependencyName = pkgName pkg,
-          dependencyVersion = Nothing,
-          dependencyLocations = [],
-          dependencyEnvironments = [],
-          dependencyTags = M.empty
-        }
+    toDependency pkg =
+      foldr addLabel $
+        Dependency
+          { dependencyType = ComposerType
+          , dependencyName = pkgName pkg
+          , dependencyVersion = Nothing
+          , dependencyLocations = []
+          , dependencyEnvironments = []
+          , dependencyTags = M.empty
+          }
 
     addLabel :: CompLabel -> Dependency -> Dependency
-    addLabel (DepVersion ver) dep = dep {dependencyVersion = Just (CEq ver)}
-    addLabel (CompEnv env) dep = dep {dependencyEnvironments = env : dependencyEnvironments dep}
+    addLabel (DepVersion ver) dep = dep{dependencyVersion = Just (CEq ver)}
+    addLabel (CompEnv env) dep = dep{dependencyEnvironments = env : dependencyEnvironments dep}

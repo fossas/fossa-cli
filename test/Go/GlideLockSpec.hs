@@ -1,9 +1,9 @@
-module Go.GlideLockSpec
-  ( spec
-  ) where
+module Go.GlideLockSpec (
+  spec,
+) where
 
-import qualified Data.Map.Strict as M
-import qualified Data.ByteString as BS
+import Data.ByteString qualified as BS
+import Data.Map.Strict qualified as M
 import Data.Yaml
 
 import Control.Algebra
@@ -16,40 +16,43 @@ import Test.Hspec
 
 expected :: Graphing Dependency
 expected = run . evalGrapher $ do
-  direct $ Dependency
-               { dependencyType = GoType
-               , dependencyName = "github.com/pkg/one"
-               , dependencyVersion = Just (CEq "1234")
-               , dependencyLocations = []
-               , dependencyEnvironments = []
-               , dependencyTags = M.empty
-               }
-  direct $ Dependency
-               { dependencyType = GoType
-               , dependencyName = "github.com/pkg/three/v3"
-               , dependencyVersion = Just (CEq "4bd8")
-               , dependencyLocations = []
-               , dependencyEnvironments = []
-               , dependencyTags = M.empty
-               }
+  direct $
+    Dependency
+      { dependencyType = GoType
+      , dependencyName = "github.com/pkg/one"
+      , dependencyVersion = Just (CEq "1234")
+      , dependencyLocations = []
+      , dependencyEnvironments = []
+      , dependencyTags = M.empty
+      }
+  direct $
+    Dependency
+      { dependencyType = GoType
+      , dependencyName = "github.com/pkg/three/v3"
+      , dependencyVersion = Just (CEq "4bd8")
+      , dependencyLocations = []
+      , dependencyEnvironments = []
+      , dependencyTags = M.empty
+      }
 
 glideLockfile :: GlideLockfile
 glideLockfile =
-  GlideLockfile { hash = "123"
-  , updated = "now"
-  , imports =
-    [ GlideDep
-        { depName = "github.com/pkg/one"
-        , depVersion = "1234"
-        , depRepo = Just "testRepo"
+  GlideLockfile
+    { hash = "123"
+    , updated = "now"
+    , imports =
+        [ GlideDep
+            { depName = "github.com/pkg/one"
+            , depVersion = "1234"
+            , depRepo = Just "testRepo"
+            }
+        , GlideDep
+            { depName = "github.com/pkg/three/v3"
+            , depVersion = "4bd8"
+            , depRepo = Just "testRepo"
+            }
+        ]
     }
-    , GlideDep
-        { depName = "github.com/pkg/three/v3"
-        , depVersion = "4bd8"
-        , depRepo = Just "testRepo"
-    }
-  ]
-  }
 
 spec :: Spec
 spec = do

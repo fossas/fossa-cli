@@ -1,14 +1,13 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.Fossa.Analyze
-  ( analyzeMain,
-    ScanDestination (..),
-    UnpackArchives (..),
-    VSIAnalysisMode (..),
-    discoverFuncs,
-    RecordMode (..),
-  )
-where
+module App.Fossa.Analyze (
+  analyzeMain,
+  ScanDestination (..),
+  UnpackArchives (..),
+  VSIAnalysisMode (..),
+  discoverFuncs,
+  RecordMode (..),
+) where
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
@@ -56,7 +55,7 @@ import Path
 import Path.IO (makeRelative)
 import Path.IO qualified as P
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (parseLocator, SourceUnit)
+import Srclib.Types (SourceUnit, parseLocator)
 import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
 import Strategy.Carthage qualified as Carthage
@@ -91,12 +90,12 @@ import Types
 import VCS.Git (fetchGitContributors)
 
 type TaskEffs sig m =
-  ( Has (Lift IO) sig m,
-    MonadIO m,
-    Has ReadFS sig m,
-    Has Exec sig m,
-    Has Logger sig m,
-    Has Diag.Diagnostics sig m
+  ( Has (Lift IO) sig m
+  , MonadIO m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  , Has Logger sig m
+  , Has Diag.Diagnostics sig m
   )
 
 data ScanDestination
@@ -158,34 +157,34 @@ vsiDiscoverFunc _ _ = const $ pure []
 
 discoverFuncs :: (TaskEffs sig m, TaskEffs rsig run) => [Path Abs Dir -> m [DiscoveredProject run]]
 discoverFuncs =
-  [ Bundler.discover,
-    Cargo.discover,
-    Carthage.discover,
-    Cocoapods.discover,
-    Gradle.discover,
-    Rebar3.discover,
-    Gomodules.discover,
-    Godep.discover,
-    Setuptools.discover,
-    Maven.discover,
-    Leiningen.discover,
-    Composer.discover,
-    Cabal.discover,
-    Stack.discover,
-    Yarn.discover,
-    Npm.discover,
-    Scala.discover,
-    RPM.discover,
-    RepoManifest.discover,
-    Nuspec.discover,
-    PackageReference.discover,
-    PackagesConfig.discover,
-    Paket.discover,
-    ProjectAssetsJson.discover,
-    ProjectJson.discover,
-    Glide.discover,
-    Pipenv.discover,
-    Conda.discover
+  [ Bundler.discover
+  , Cargo.discover
+  , Carthage.discover
+  , Cocoapods.discover
+  , Gradle.discover
+  , Rebar3.discover
+  , Gomodules.discover
+  , Godep.discover
+  , Setuptools.discover
+  , Maven.discover
+  , Leiningen.discover
+  , Composer.discover
+  , Cabal.discover
+  , Stack.discover
+  , Yarn.discover
+  , Npm.discover
+  , Scala.discover
+  , RPM.discover
+  , RepoManifest.discover
+  , Nuspec.discover
+  , PackageReference.discover
+  , PackagesConfig.discover
+  , Paket.discover
+  , ProjectAssetsJson.discover
+  , ProjectJson.discover
+  , Glide.discover
+  , Pipenv.discover
+  , Conda.discover
   ]
 
 runDependencyAnalysis ::
@@ -204,7 +203,7 @@ runDependencyAnalysis (BaseDir basedir) filters project =
       Diag.withResult SevWarn graphResult (output . mkResult project)
 
 applyFiltersToProject :: Path Abs Dir -> [BuildTargetFilter] -> DiscoveredProject n -> Maybe (Set BuildTarget)
-applyFiltersToProject basedir filters DiscoveredProject {..} =
+applyFiltersToProject basedir filters DiscoveredProject{..} =
   case makeRelative basedir projectPath of
     -- FIXME: this is required for --unpack-archives to continue to work.
     -- archives are not unpacked relative to the scan basedir, so "makeRelative"
@@ -213,12 +212,12 @@ applyFiltersToProject basedir filters DiscoveredProject {..} =
     Just rel -> applyFilters filters projectType rel projectBuildTargets
 
 analyze ::
-  ( Has (Lift IO) sig m,
-    Has Logger sig m,
-    Has Diag.Diagnostics sig m,
-    Has Exec sig m,
-    Has ReadFS sig m,
-    MonadIO m
+  ( Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has Diag.Diagnostics sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
+  , MonadIO m
   ) =>
   BaseDir ->
   ScanDestination ->
@@ -252,46 +251,44 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
       for_ projectResults $ \project -> logDebug ("Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project))
       sendIO exitFailure
     FoundSome sourceUnits -> case destination of
-      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnit filteredProjects 
+      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnit filteredProjects
       UploadScan apiOpts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata override sourceUnits
 
-
-uploadSuccessfulAnalysis :: 
+uploadSuccessfulAnalysis ::
   ( Has Diag.Diagnostics sig m
   , Has Logger sig m
   , Has (Lift IO) sig m
-  )
-  => BaseDir
-  -> ApiOpts
-  -> ProjectMetadata
-  -> OverrideProject
-  -> NE.NonEmpty SourceUnit
-  -> m ()
+  ) =>
+  BaseDir ->
+  ApiOpts ->
+  ProjectMetadata ->
+  OverrideProject ->
+  NE.NonEmpty SourceUnit ->
+  m ()
 uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata override units = do
-        revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
-        saveRevision revision
+  revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
+  saveRevision revision
 
-        logInfo ""
-        logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
-        logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
-        let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
-        logInfo ("Using branch: `" <> pretty branchText <> "`")
+  logInfo ""
+  logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
+  logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
+  let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
+  logInfo ("Using branch: `" <> pretty branchText <> "`")
 
-        uploadResult <- uploadAnalysis apiOpts revision metadata units
-        buildUrl <- getFossaBuildUrl revision apiOpts . parseLocator $ uploadLocator uploadResult
-        logInfo $
-          vsep
-            [ "============================================================",
-              "",
-              "    View FOSSA Report:",
-              "    " <> pretty buildUrl,
-              "",
-              "============================================================"
-            ]
-        traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError uploadResult)
-        -- Warn on contributor errors, never fail
-        void . Diag.recover . runExecIO $ tryUploadContributors basedir apiOpts (uploadLocator uploadResult)
-
+  uploadResult <- uploadAnalysis apiOpts revision metadata units
+  buildUrl <- getFossaBuildUrl revision apiOpts . parseLocator $ uploadLocator uploadResult
+  logInfo $
+    vsep
+      [ "============================================================"
+      , ""
+      , "    View FOSSA Report:"
+      , "    " <> pretty buildUrl
+      , ""
+      , "============================================================"
+      ]
+  traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError uploadResult)
+  -- Warn on contributor errors, never fail
+  void . Diag.recover . runExecIO $ tryUploadContributors basedir apiOpts (uploadLocator uploadResult)
 
 data CountedResult
   = NoneDiscovered
@@ -304,7 +301,7 @@ data CountedResult
 -- we also include a check for an additional source unit from fossa-deps.yml.
 checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> Maybe SourceUnit -> CountedResult
 checkForEmptyUpload xs ys unit =
-  -- This nested case statement 
+  -- This nested case statement
   case unit of
     -- If we have a manual source unit, then there's always somthing to upload.
     Just manual -> FoundSome $ manual NE.:| discoveredUnits
@@ -339,28 +336,28 @@ isProductionPath path =
   not $
     any
       (`isInfixOf` path)
-      [ "doc/",
-        "docs/",
-        "test/",
-        "example/",
-        "examples/",
-        "vendor/",
-        "node_modules/",
-        ".srclib-cache/",
-        "spec/",
-        "Godeps/",
-        ".git/",
-        "bower_components/",
-        "third_party/",
-        "third-party/",
-        "Carthage/",
-        "Checkouts/"
+      [ "doc/"
+      , "docs/"
+      , "test/"
+      , "example/"
+      , "examples/"
+      , "vendor/"
+      , "node_modules/"
+      , ".srclib-cache/"
+      , "spec/"
+      , "Godeps/"
+      , ".git/"
+      , "bower_components/"
+      , "third_party/"
+      , "third-party/"
+      , "Carthage/"
+      , "Checkouts/"
       ]
 
 tryUploadContributors ::
-  ( Has Diag.Diagnostics sig m,
-    Has Exec sig m,
-    Has (Lift IO) sig m
+  ( Has Diag.Diagnostics sig m
+  , Has Exec sig m
+  , Has (Lift IO) sig m
   ) =>
   Path x Dir ->
   ApiOpts ->
@@ -372,11 +369,11 @@ tryUploadContributors baseDir apiOpts locator = do
   uploadContributors apiOpts locator contributors
 
 buildResult :: Maybe SourceUnit -> [ProjectResult] -> Aeson.Value
-buildResult maybeSrcUnit projects = Aeson.object
-  [ "projects" .= map buildProject projects
-  , "sourceUnits" .= finalSourceUnits
-  ]
-
+buildResult maybeSrcUnit projects =
+  Aeson.object
+    [ "projects" .= map buildProject projects
+    , "sourceUnits" .= finalSourceUnits
+    ]
   where
     finalSourceUnits = case maybeSrcUnit of
       Just unit -> unit : scannedUnits
@@ -386,13 +383,13 @@ buildResult maybeSrcUnit projects = Aeson.object
 buildProject :: ProjectResult -> Aeson.Value
 buildProject project =
   Aeson.object
-    [ "path" .= projectResultPath project,
-      "type" .= projectResultType project,
-      "graph" .= graphingToGraph (projectResultGraph project)
+    [ "path" .= projectResultPath project
+    , "type" .= projectResultType project
+    , "graph" .= graphingToGraph (projectResultGraph project)
     ]
 
 updateProgress :: Has StickyLogger sig m => Progress -> m ()
-updateProgress Progress {..} =
+updateProgress Progress{..} =
   logSticky'
     ( "[ "
         <> annotate (color Cyan) (pretty pQueued)

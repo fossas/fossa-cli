@@ -8,39 +8,38 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Effect.ReadFS
-  ( -- * ReadFS Effect
-    ReadFS (..),
-    ReadFSErr (..),
-    ReadFSIOC (..),
+module Effect.ReadFS (
+  -- * ReadFS Effect
+  ReadFS (..),
+  ReadFSErr (..),
+  ReadFSIOC (..),
 
-    -- * Reading raw file contents
-    readContentsBS,
-    readContentsText,
+  -- * Reading raw file contents
+  readContentsBS,
+  readContentsText,
 
-    -- * Resolving relative filepaths
-    resolveFile,
-    resolveFile',
-    resolveDir,
-    resolveDir',
+  -- * Resolving relative filepaths
+  resolveFile,
+  resolveFile',
+  resolveDir,
+  resolveDir',
 
-    -- * Checking whether files exist
-    doesFileExist,
-    doesDirExist,
+  -- * Checking whether files exist
+  doesFileExist,
+  doesDirExist,
 
-    -- * Listing a directory
-    listDir,
-    listDir',
+  -- * Listing a directory
+  listDir,
+  listDir',
 
-    -- * Parsing file contents
-    readContentsParser,
-    readContentsJson,
-    readContentsToml,
-    readContentsYaml,
-    readContentsXML,
-    module X,
-  )
-where
+  -- * Parsing file contents
+  readContentsParser,
+  readContentsJson,
+  readContentsToml,
+  readContentsYaml,
+  readContentsXML,
+  module X,
+) where
 
 import Control.Algebra as X
 import Control.Applicative (Alternative)
@@ -50,26 +49,26 @@ import Control.Effect.Record
 import Control.Effect.Record.TH (deriveRecordable)
 import Control.Effect.Replay
 import Control.Effect.Replay.TH (deriveReplayable)
-import qualified Control.Exception as E
+import Control.Exception qualified as E
 import Control.Monad ((<=<))
 import Control.Monad.IO.Class
 import Data.Aeson
 import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
+import Data.ByteString qualified as BS
 import Data.Kind (Type)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
-import qualified Data.Text as T
-import Data.Text.Prettyprint.Doc (pretty, line, indent, vsep)
+import Data.Text qualified as T
+import Data.Text.Prettyprint.Doc (indent, line, pretty, vsep)
 import Data.Void (Void)
 import Data.Yaml (decodeEither', prettyPrintParseException)
 import GHC.Generics (Generic)
 import Parse.XML (FromXML, parseXML, xmlErrorPretty)
 import Path
-import qualified Path.IO as PIO
+import Path.IO qualified as PIO
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
-import qualified Toml
+import Toml qualified
 
 data ReadFS (m :: Type -> Type) k where
   ReadContentsBS' :: Path x File -> ReadFS m (Either ReadFSErr ByteString)

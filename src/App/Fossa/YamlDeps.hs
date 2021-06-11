@@ -3,35 +3,34 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 
-module App.Fossa.YamlDeps
-  ( CustomDependency (..),
-    ReferencedDependency (..),
-    YamlDependencies (..),
-    analyzeFossaDepsYaml,
-  )
-where
+module App.Fossa.YamlDeps (
+  CustomDependency (..),
+  ReferencedDependency (..),
+  YamlDependencies (..),
+  analyzeFossaDepsYaml,
+) where
 
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
-import Data.Aeson
-  ( FromJSON (parseJSON),
-    withObject,
-    (.!=),
-    (.:),
-    (.:?),
-  )
+import Control.Monad (when)
+import Data.Aeson (
+  FromJSON (parseJSON),
+  withObject,
+  (.!=),
+  (.:),
+  (.:?),
+ )
+import Data.Aeson.Extra
 import Data.Aeson.Types (Parser)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty qualified as NE
 import Data.String.Conversion (toText)
 import Data.Text (Text, unpack)
-import DepTypes (DepType(..))
+import DepTypes (DepType (..))
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsYaml)
 import Path
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
-import Control.Monad (when)
-import Data.Aeson.Extra
 
 analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe SourceUnit)
 analyzeFossaDepsYaml root = do
@@ -63,69 +62,71 @@ toSourceUnit root yamldeps@YamlDependencies{..} = do
       additional = toAdditionalData <$> NE.nonEmpty customDependencies
   pure $
     SourceUnit
-      { sourceUnitName = renderedPath,
-        sourceUnitManifest = renderedPath,
-        sourceUnitType = "user-specific-yaml",
-        sourceUnitBuild = build,
-        additionalData = additional
+      { sourceUnitName = renderedPath
+      , sourceUnitManifest = renderedPath
+      , sourceUnitType = "user-specific-yaml"
+      , sourceUnitBuild = build
+      , additionalData = additional
       }
 
 toBuildData :: NE.NonEmpty ReferencedDependency -> SourceUnitBuild
 toBuildData deps =
   SourceUnitBuild
-    { buildArtifact = "default",
-      buildSucceeded = True,
-      buildImports = imports,
-      buildDependencies = map addEmptyDep imports
+    { buildArtifact = "default"
+    , buildSucceeded = True
+    , buildImports = imports
+    , buildDependencies = map addEmptyDep imports
     }
   where
     imports = map toImport $ NE.toList deps
 
     toImport :: ReferencedDependency -> Locator
-    toImport ReferencedDependency {..} =
+    toImport ReferencedDependency{..} =
       Locator
-        { locatorFetcher = depTypeToFetcher locDepType,
-          locatorProject = locDepName,
-          locatorRevision = locDepVersion
+        { locatorFetcher = depTypeToFetcher locDepType
+        , locatorProject = locDepName
+        , locatorRevision = locDepVersion
         }
 
     addEmptyDep :: Locator -> SourceUnitDependency
     addEmptyDep loc = SourceUnitDependency loc []
 
 toAdditionalData :: NE.NonEmpty CustomDependency -> AdditionalDepData
-toAdditionalData deps = AdditionalDepData {userDefinedDeps = map tosrc $ NE.toList deps}
+toAdditionalData deps = AdditionalDepData{userDefinedDeps = map tosrc $ NE.toList deps}
   where
-    tosrc CustomDependency {..} =
+    tosrc CustomDependency{..} =
       SourceUserDefDep
-        { srcUserDepName = customName,
-          srcUserDepVersion = customVersion,
-          srcUserDepLicense = customLicense,
-          srcUserDepDescription = customDescription,
-          srcUserDepUrl = customUrl
+        { srcUserDepName = customName
+        , srcUserDepVersion = customVersion
+        , srcUserDepLicense = customLicense
+        , srcUserDepDescription = customDescription
+        , srcUserDepUrl = customUrl
         }
 
 hasNoDeps :: YamlDependencies -> Bool
 hasNoDeps YamlDependencies{..} = null referencedDependencies && null customDependencies
 
 data YamlDependencies = YamlDependencies
-  { referencedDependencies :: [ReferencedDependency],
-    customDependencies :: [CustomDependency]
-  } deriving (Eq, Ord, Show)
+  { referencedDependencies :: [ReferencedDependency]
+  , customDependencies :: [CustomDependency]
+  }
+  deriving (Eq, Ord, Show)
 
 data ReferencedDependency = ReferencedDependency
-  { locDepName :: Text,
-    locDepType :: DepType,
-    locDepVersion :: Maybe Text
+  { locDepName :: Text
+  , locDepType :: DepType
+  , locDepVersion :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
 data CustomDependency = CustomDependency
-  { customName :: Text,
-    customVersion :: Text,
-    customLicense :: Text,
-    customDescription :: Maybe Text,
-    customUrl :: Maybe Text
-  } deriving (Eq, Ord, Show)
+  { customName :: Text
+  , customVersion :: Text
+  , customLicense :: Text
+  , customDescription :: Maybe Text
+  , customUrl :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
 
 instance FromJSON YamlDependencies where
   parseJSON = withObject "YamlDependencies" $ \obj ->

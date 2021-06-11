@@ -1,11 +1,10 @@
-module App.Types
-  ( BaseDir (..),
-    NinjaGraphCLIOptions (..),
-    OverrideProject (..),
-    ProjectMetadata (..),
-    ProjectRevision (..),
-  )
-where
+module App.Types (
+  BaseDir (..),
+  NinjaGraphCLIOptions (..),
+  OverrideProject (..),
+  ProjectMetadata (..),
+  ProjectRevision (..),
+) where
 
 import Data.Text (Text)
 import Path
@@ -13,9 +12,9 @@ import Path
 newtype BaseDir = BaseDir {unBaseDir :: Path Abs Dir} deriving (Eq, Ord, Show)
 
 data OverrideProject = OverrideProject
-  { overrideName :: Maybe Text,
-    overrideRevision :: Maybe Text,
-    overrideBranch :: Maybe Text
+  { overrideName :: Maybe Text
+  , overrideRevision :: Maybe Text
+  , overrideBranch :: Maybe Text
   }
 
 data ProjectMetadata = ProjectMetadata
@@ -25,18 +24,20 @@ data ProjectMetadata = ProjectMetadata
   , projectLink :: Maybe Text
   , projectTeam :: Maybe Text
   , projectPolicy :: Maybe Text
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 data ProjectRevision = ProjectRevision
   { projectName :: Text
   , projectRevision :: Text
   , projectBranch :: Maybe Text
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 data NinjaGraphCLIOptions = NinjaGraphCLIOptions
-  { ninjaBaseDir :: FilePath,
-    ninjaDepsFile :: Maybe FilePath,
-    ninjaLunchTarget :: Maybe Text,
-    ninjaScanId :: Text,
-    ninjaBuildName :: Text
+  { ninjaBaseDir :: FilePath
+  , ninjaDepsFile :: Maybe FilePath
+  , ninjaLunchTarget :: Maybe Text
+  , ninjaScanId :: Text
+  , ninjaBuildName :: Text
   }

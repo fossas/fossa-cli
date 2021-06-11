@@ -3,22 +3,21 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Control.Carrier.Diagnostics
-  ( -- * Diagnostic carrier
-    DiagnosticsC (..),
-    runDiagnostics,
+module Control.Carrier.Diagnostics (
+  -- * Diagnostic carrier
+  DiagnosticsC (..),
+  runDiagnostics,
 
-    -- * Helpers
-    logDiagnostic,
-    logErrorBundle,
-    logWithExit_,
-    runDiagnosticsIO,
-    withResult,
+  -- * Helpers
+  logDiagnostic,
+  logErrorBundle,
+  logWithExit_,
+  runDiagnosticsIO,
+  withResult,
 
-    -- * Re-exports
-    module X,
-  )
-where
+  -- * Re-exports
+  module X,
+) where
 
 import Control.Carrier.Error.Either
 import Control.Carrier.Reader

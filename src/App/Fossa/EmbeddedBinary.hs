@@ -1,20 +1,19 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.Fossa.EmbeddedBinary
-  ( extractEmbeddedBinary,
-    cleanupExtractedBinaries,
-    withEmbeddedBinary,
-    dumpEmbeddedBinary,
-    toExecutablePath,
-    BinaryPaths,
-    withWigginsBinary,
-    withSyftBinary,
-    withCLIv1Binary,
-    allBins,
-    PackagedBinary (..),
-  )
-where
+module App.Fossa.EmbeddedBinary (
+  extractEmbeddedBinary,
+  cleanupExtractedBinaries,
+  withEmbeddedBinary,
+  dumpEmbeddedBinary,
+  toExecutablePath,
+  BinaryPaths,
+  withWigginsBinary,
+  withSyftBinary,
+  withCLIv1Binary,
+  allBins,
+  PackagedBinary (..),
+) where
 
 import Control.Effect.Exception (bracket)
 import Control.Effect.Lift (Has, Lift, sendIO)
@@ -35,40 +34,40 @@ allBins :: [PackagedBinary]
 allBins = enumFromTo minBound maxBound
 
 data BinaryPaths = BinaryPaths
-  { binaryPathContainer :: Path Abs Dir,
-    binaryFilePath :: Path Rel File
+  { binaryPathContainer :: Path Abs Dir
+  , binaryFilePath :: Path Rel File
   }
 
 toExecutablePath :: BinaryPaths -> Path Abs File
-toExecutablePath BinaryPaths {..} = binaryPathContainer </> binaryFilePath
+toExecutablePath BinaryPaths{..} = binaryPathContainer </> binaryFilePath
 
 withSyftBinary ::
-  ( Has (Lift IO) sig m,
-    MonadIO m
+  ( Has (Lift IO) sig m
+  , MonadIO m
   ) =>
   (BinaryPaths -> m c) ->
   m c
 withSyftBinary = withEmbeddedBinary Syft
 
 withWigginsBinary ::
-  ( Has (Lift IO) sig m,
-    MonadIO m
+  ( Has (Lift IO) sig m
+  , MonadIO m
   ) =>
   (BinaryPaths -> m c) ->
   m c
 withWigginsBinary = withEmbeddedBinary Wiggins
 
 withCLIv1Binary ::
-  ( Has (Lift IO) sig m,
-    MonadIO m
+  ( Has (Lift IO) sig m
+  , MonadIO m
   ) =>
   (BinaryPaths -> m c) ->
   m c
 withCLIv1Binary = withEmbeddedBinary CLIv1
 
 withEmbeddedBinary ::
-  ( Has (Lift IO) sig m,
-    MonadIO m
+  ( Has (Lift IO) sig m
+  , MonadIO m
   ) =>
   PackagedBinary ->
   (BinaryPaths -> m c) ->
@@ -121,7 +120,7 @@ extractDir = do
 makeExecutable :: Path Abs File -> IO ()
 makeExecutable path = do
   p <- getPermissions path
-  setPermissions path (p {executable = True})
+  setPermissions path (p{executable = True})
 
 -- The intent with these embedded binaries is that the build system will replace the files with
 -- built binaries of the appropriate architecture.

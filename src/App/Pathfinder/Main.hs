@@ -1,6 +1,6 @@
-module App.Pathfinder.Main
-  ( appMain
-  ) where
+module App.Pathfinder.Main (
+  appMain,
+) where
 
 import App.Pathfinder.Scan (scanMain)
 import App.Types (BaseDir (..))
@@ -24,21 +24,25 @@ appMain = do
           scanMain (unBaseDir resolved) debug
 
 data CommandOpts = LicenseScan (Maybe FilePath) Bool
-  deriving Show
+  deriving (Show)
 
 opts :: ParserInfo CommandOpts
-opts = info (commands <**> helper)
-  ( fullDesc <> header "pathfinder - finds declared licenses in manifest files")
+opts =
+  info
+    (commands <**> helper)
+    (fullDesc <> header "pathfinder - finds declared licenses in manifest files")
 
 commands :: Parser CommandOpts
-commands = hsubparser
-  ( command "scan" scanCmd
-  -- <> command "other" -- etc
-  )
+commands =
+  hsubparser
+    ( command "scan" scanCmd
+    -- <> command "other" -- etc
+    )
 
 scanCmd :: ParserInfo CommandOpts
-scanCmd = info
-  (LicenseScan <$> optional (strOption $ long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning")
-           <*> (fromMaybe False <$> optional (switch $ long "debug" <> help "Enable debug logging"))
-  )
-  (progDesc "Scan for licenses")
+scanCmd =
+  info
+    ( LicenseScan <$> optional (strOption $ long "basedir" <> short 'd' <> metavar "DIR" <> help "Base directory for scanning")
+        <*> (fromMaybe False <$> optional (switch $ long "debug" <> help "Enable debug logging"))
+    )
+    (progDesc "Scan for licenses")

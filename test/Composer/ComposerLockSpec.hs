@@ -1,11 +1,10 @@
-module Composer.ComposerLockSpec
-  ( spec,
-  )
-where
+module Composer.ComposerLockSpec (
+  spec,
+) where
 
-import qualified Data.ByteString as BS
-import qualified Data.Map.Strict as M
 import Data.Aeson
+import Data.ByteString qualified as BS
+import Data.Map.Strict qualified as M
 import DepTypes
 import GraphUtil
 import Strategy.Composer
@@ -14,67 +13,67 @@ import Test.Hspec
 dependencyOne :: Dependency
 dependencyOne =
   Dependency
-    { dependencyType = ComposerType,
-      dependencyName = "one",
-      dependencyVersion = Just (CEq "1.0.0"),
-      dependencyLocations = [],
-      dependencyEnvironments = [EnvProduction],
-      dependencyTags = M.empty
+    { dependencyType = ComposerType
+    , dependencyName = "one"
+    , dependencyVersion = Just (CEq "1.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = [EnvProduction]
+    , dependencyTags = M.empty
     }
 
 dependencyTwo :: Dependency
 dependencyTwo =
   Dependency
-    { dependencyType = ComposerType,
-      dependencyName = "two",
-      dependencyVersion = Just (CEq "2.0.0"),
-      dependencyLocations = [],
-      dependencyEnvironments = [EnvProduction],
-      dependencyTags = M.empty
+    { dependencyType = ComposerType
+    , dependencyName = "two"
+    , dependencyVersion = Just (CEq "2.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = [EnvProduction]
+    , dependencyTags = M.empty
     }
 
 dependencyThree :: Dependency
 dependencyThree =
   Dependency
-    { dependencyType = ComposerType,
-      dependencyName = "three",
-      dependencyVersion = Just (CEq "3.0.0"),
-      dependencyLocations = [],
-      dependencyEnvironments = [EnvProduction],
-      dependencyTags = M.empty
+    { dependencyType = ComposerType
+    , dependencyName = "three"
+    , dependencyVersion = Just (CEq "3.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = [EnvProduction]
+    , dependencyTags = M.empty
     }
 
 dependencyFour :: Dependency
 dependencyFour =
   Dependency
-    { dependencyType = ComposerType,
-      dependencyName = "four",
-      dependencyVersion = Just (CEq "4.0.0"),
-      dependencyLocations = [],
-      dependencyEnvironments = [EnvProduction],
-      dependencyTags = M.empty
+    { dependencyType = ComposerType
+    , dependencyName = "four"
+    , dependencyVersion = Just (CEq "4.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = [EnvProduction]
+    , dependencyTags = M.empty
     }
 
 dependencyFive :: Dependency
 dependencyFive =
   Dependency
-    { dependencyType = ComposerType,
-      dependencyName = "five",
-      dependencyVersion = Just (CEq "5.0.0"),
-      dependencyLocations = [],
-      dependencyEnvironments = [EnvDevelopment],
-      dependencyTags = M.empty
+    { dependencyType = ComposerType
+    , dependencyName = "five"
+    , dependencyVersion = Just (CEq "5.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = [EnvDevelopment]
+    , dependencyTags = M.empty
     }
 
 dependencySourceless :: Dependency
 dependencySourceless =
   Dependency
-    { dependencyType = ComposerType,
-      dependencyName = "sourceless",
-      dependencyVersion = Just (CEq "5.0.0"),
-      dependencyLocations = [],
-      dependencyEnvironments = [EnvProduction],
-      dependencyTags = M.empty
+    { dependencyType = ComposerType
+    , dependencyName = "sourceless"
+    , dependencyVersion = Just (CEq "5.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = [EnvProduction]
+    , dependencyTags = M.empty
     }
 
 spec :: Spec

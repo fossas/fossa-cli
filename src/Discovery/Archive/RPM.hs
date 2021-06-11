@@ -1,24 +1,23 @@
-module Discovery.Archive.RPM
-  ( extractRpm,
-  )
-where
+module Discovery.Archive.RPM (
+  extractRpm,
+) where
 
-import qualified Codec.RPM.Conduit as RPM
-import qualified Codec.RPM.Tags as Tags
-import qualified Codec.RPM.Types as RPMTypes
+import Codec.RPM.Conduit qualified as RPM
+import Codec.RPM.Tags qualified as Tags
+import Codec.RPM.Types qualified as RPMTypes
 import Conduit
 import Control.Effect.Lift
 import Control.Exception (throwIO)
 import Control.Monad.Except
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BS8
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.CPIO as CPIO
-import qualified Data.Conduit.Lzma as Lzma
-import qualified Data.Conduit.Zlib as Zlib
+import Data.ByteString qualified as BS
+import Data.ByteString.Char8 qualified as BS8
+import Data.ByteString.Lazy qualified as BL
+import Data.CPIO qualified as CPIO
+import Data.Conduit.Lzma qualified as Lzma
+import Data.Conduit.Zlib qualified as Zlib
 import Data.Foldable (asum)
 import Path
-import qualified Path.IO as PIO
+import Path.IO qualified as PIO
 import Prelude
 
 extractRpm :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()

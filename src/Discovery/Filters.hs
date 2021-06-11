@@ -1,18 +1,17 @@
-module Discovery.Filters
-  ( BuildTargetFilter (..),
-    filterParser,
-    applyFilter,
-    applyFilters,
-  )
-where
+module Discovery.Filters (
+  BuildTargetFilter (..),
+  filterParser,
+  applyFilter,
+  applyFilters,
+) where
 
-import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.Semigroup (sconcat)
 import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Void (Void)
 import Path
 import Text.Megaparsec
@@ -47,14 +46,14 @@ applyFilters filters tool dir targets = do
 -- 2. The BuildTargets that should be scanned (@Set BuildTarget@)
 applyFilter :: BuildTargetFilter -> Text -> Path Rel Dir -> Set BuildTarget -> Maybe (Set BuildTarget)
 applyFilter (ProjectFilter tool dir) tool' dir' targets
-  | tool == tool',
-    dir == dir' =
+  | tool == tool'
+    , dir == dir' =
     Just targets
   | otherwise = Nothing
 applyFilter (TargetFilter tool dir target) tool' dir' targets
-  | tool == tool',
-    dir == dir',
-    S.member target targets =
+  | tool == tool'
+    , dir == dir'
+    , S.member target targets =
     Just $ S.singleton target
   | otherwise = Nothing
 

@@ -1,50 +1,58 @@
-module Cocoapods.PodfileLockSpec
-  ( spec
-  ) where
+module Cocoapods.PodfileLockSpec (
+  spec,
+) where
 
-import qualified Data.Map.Strict as M
-import qualified Data.Text.IO as TIO
+import Data.Map.Strict qualified as M
+import Data.Text.IO qualified as TIO
 import DepTypes
 import GraphUtil
 import Strategy.Cocoapods.PodfileLock
-import qualified Test.Hspec as T
+import Test.Hspec qualified as T
 import Text.Megaparsec
 
 dependencyOne :: Dependency
-dependencyOne = Dependency { dependencyType = PodType
-                           , dependencyName = "one"
-                           , dependencyVersion = Just (CEq "1.0.0")
-                           , dependencyLocations = []
-                           , dependencyEnvironments = []
-                           , dependencyTags = M.empty
-                           }
+dependencyOne =
+  Dependency
+    { dependencyType = PodType
+    , dependencyName = "one"
+    , dependencyVersion = Just (CEq "1.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
+    }
 
 dependencyTwo :: Dependency
-dependencyTwo = Dependency { dependencyType = PodType
-                           , dependencyName = "two"
-                           , dependencyVersion = Just (CEq "2.0.0")
-                           , dependencyLocations = []
-                           , dependencyEnvironments = []
-                           , dependencyTags = M.empty
-                           }
+dependencyTwo =
+  Dependency
+    { dependencyType = PodType
+    , dependencyName = "two"
+    , dependencyVersion = Just (CEq "2.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
+    }
 
 dependencyThree :: Dependency
-dependencyThree = Dependency { dependencyType = PodType
-                             , dependencyName = "three"
-                             , dependencyVersion = Just (CEq "3.0.0")
-                             , dependencyLocations = []
-                             , dependencyEnvironments = []
-                             , dependencyTags = M.empty
-                             }
+dependencyThree =
+  Dependency
+    { dependencyType = PodType
+    , dependencyName = "three"
+    , dependencyVersion = Just (CEq "3.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
+    }
 
 dependencyFour :: Dependency
-dependencyFour = Dependency { dependencyType = PodType
-                            , dependencyName = "four"
-                            , dependencyVersion = Just (CEq "4.0.0")
-                            , dependencyLocations = []
-                            , dependencyEnvironments = []
-                            , dependencyTags = M.empty
-                            }
+dependencyFour =
+  Dependency
+    { dependencyType = PodType
+    , dependencyName = "four"
+    , dependencyVersion = Just (CEq "4.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
+    }
 
 podSection :: Section
 podSection = PodSection [Pod "one" "1.0.0" [Dep "two", Dep "three"], Pod "two" "2.0.0" [], Pod "three" "3.0.0" [Dep "four"], Pod "four" "4.0.0" []]
@@ -60,10 +68,12 @@ spec = do
 
       expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
       expectDirect [dependencyOne, dependencyThree] graph
-      expectEdges [ (dependencyOne, dependencyTwo)
-                  , (dependencyOne, dependencyThree)
-                  , (dependencyThree, dependencyFour)
-                  ] graph
+      expectEdges
+        [ (dependencyOne, dependencyTwo)
+        , (dependencyOne, dependencyThree)
+        , (dependencyThree, dependencyFour)
+        ]
+        graph
 
   podLockFile <- T.runIO (TIO.readFile "test/Cocoapods/testdata/Podfile.lock")
   T.describe "podfile lock parser" $

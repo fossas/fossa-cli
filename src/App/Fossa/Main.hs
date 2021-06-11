@@ -1,10 +1,9 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module App.Fossa.Main
-  ( appMain,
-  )
-where
+module App.Fossa.Main (
+  appMain,
+) where
 
 import App.Fossa.Analyze (RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
 import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
@@ -52,20 +51,20 @@ mainPrefs :: ParserPrefs
 mainPrefs =
   prefs $
     mconcat
-      [ helpShowGlobals,
-        showHelpOnError,
-        subparserInline
+      [ helpShowGlobals
+      , showHelpOnError
+      , subparserInline
       ]
 
 mergeFileCmdConfig :: CmdOptions -> ConfigFile -> CmdOptions
 mergeFileCmdConfig cmd file =
   CmdOptions
-    { optDebug = optDebug cmd,
-      optBaseUrl = optBaseUrl cmd <|> (configServer file >>= mkURI),
-      optProjectName = optProjectName cmd <|> (configProject file >>= configProjID),
-      optProjectRevision = optProjectRevision cmd <|> (configRevision file >>= configCommit),
-      optAPIKey = optAPIKey cmd <|> configApiKey file,
-      optCommand = optCommand cmd
+    { optDebug = optDebug cmd
+    , optBaseUrl = optBaseUrl cmd <|> (configServer file >>= mkURI)
+    , optProjectName = optProjectName cmd <|> (configProject file >>= configProjID)
+    , optProjectRevision = optProjectRevision cmd <|> (configRevision file >>= configCommit)
+    , optAPIKey = optAPIKey cmd <|> configApiKey file
+    , optCommand = optCommand cmd
     }
 
 appMain :: IO ()
@@ -73,23 +72,23 @@ appMain = do
   cmdConfig <- customExecParser mainPrefs (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
   fileConfig <- readConfigFileIO
 
-  let CmdOptions {..} = maybe cmdConfig (mergeFileCmdConfig cmdConfig) fileConfig
+  let CmdOptions{..} = maybe cmdConfig (mergeFileCmdConfig cmdConfig) fileConfig
 
   let logSeverity = bool SevInfo SevDebug optDebug
 
   maybeApiKey <- checkAPIKey optAPIKey
   let override =
         OverrideProject
-          { overrideName = optProjectName,
-            overrideRevision = optProjectRevision,
-            overrideBranch = Nothing
+          { overrideName = optProjectName
+          , overrideRevision = optProjectRevision
+          , overrideBranch = Nothing
           }
 
   case optCommand of
-    AnalyzeCommand AnalyzeOptions {..} -> do
+    AnalyzeCommand AnalyzeOptions{..} -> do
       -- The branch override needs to be set here rather than above to preserve
       -- the preference for command line options.
-      let analyzeOverride = override {overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
+      let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
       if analyzeOutput
         then analyzeMain analyzeBaseDir analyzeRecordMode logSeverity OutputStdout analyzeOverride analyzeUnpackArchives analyzeVSIMode analyzeBuildTargetFilters
         else do
@@ -98,7 +97,7 @@ appMain = do
           let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
           analyzeMain analyzeBaseDir analyzeRecordMode logSeverity (UploadScan apiOpts metadata) analyzeOverride analyzeUnpackArchives analyzeVSIMode analyzeBuildTargetFilters
     --
-    TestCommand TestOptions {..} -> do
+    TestCommand TestOptions{..} -> do
       baseDir <- validateDir testBaseDir
       key <- requireKey maybeApiKey
       let apiOpts = ApiOpts optBaseUrl key
@@ -107,7 +106,7 @@ appMain = do
     InitCommand ->
       withDefaultLogger logSeverity $ logWarn "This command has been deprecated and is no longer needed.  It has no effect and may be safely removed."
     --
-    ReportCommand ReportOptions {..} -> do
+    ReportCommand ReportOptions{..} -> do
       unless reportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"
       baseDir <- validateDir reportBaseDir
       key <- requireKey maybeApiKey
@@ -118,11 +117,11 @@ appMain = do
       baseDir <- validateDir dir
       listTargetsMain baseDir
     --
-    VPSCommand VPSOptions {..} -> do
+    VPSCommand VPSOptions{..} -> do
       apikey <- requireKey maybeApiKey
       let apiOpts = ApiOpts optBaseUrl apikey
       case vpsCommand of
-        VPSAnalyzeCommand VPSAnalyzeOptions {..} -> do
+        VPSAnalyzeCommand VPSAnalyzeOptions{..} -> do
           when (SysInfo.os == windowsOsName) $ unless (fromFlag SkipIPRScan skipIprScan) $ die "Windows VPS scans require skipping IPR.  Please try `fossa vps analyze --skip-ipr-scan DIR`"
           baseDir <- validateDir vpsAnalyzeBaseDir
           let metadata = maybe vpsAnalyzeMeta (mergeFileCmdMetadata vpsAnalyzeMeta) fileConfig
@@ -130,24 +129,24 @@ appMain = do
         NinjaGraphCommand ninjaGraphOptions -> do
           _ <- die "This command is no longer supported"
           ninjaGraphMain apiOpts logSeverity override ninjaGraphOptions
-        VPSTestCommand VPSTestOptions {..} -> do
+        VPSTestCommand VPSTestOptions{..} -> do
           baseDir <- validateDir vpsTestBaseDir
           VPSTest.testMain baseDir apiOpts logSeverity vpsTestTimeout vpsTestOutputType override
-        VPSReportCommand VPSReportOptions {..} -> do
+        VPSReportCommand VPSReportOptions{..} -> do
           unless vpsReportJsonOutput $ die "report command currently only supports JSON output.  Please try `fossa report --json REPORT_NAME`"
           baseDir <- validateDir vpsReportBaseDir
           VPSReport.reportMain baseDir apiOpts logSeverity vpsReportTimeout vpsReportType override
-        VPSAOSPNoticeCommand VPSAOSPNoticeOptions {..} -> do
+        VPSAOSPNoticeCommand VPSAOSPNoticeOptions{..} -> do
           dieOnWindows "Vendored Package Scanning (VPS)"
           baseDir <- validateDir vpsAOSPNoticeBaseDir
           ninjaPaths <- parseCommaSeparatedFileArg vpsNinjaFileList
           aospNoticeMain baseDir logSeverity override (NinjaScanID vpsNinjaScanID) (NinjaFilePaths ninjaPaths) apiOpts
 
     --
-    ContainerCommand ContainerOptions {..} -> do
+    ContainerCommand ContainerOptions{..} -> do
       dieOnWindows "container scanning"
       case containerCommand of
-        ContainerAnalyze ContainerAnalyzeOptions {..} ->
+        ContainerAnalyze ContainerAnalyzeOptions{..} ->
           if containerAnalyzeOutput
             then ContainerAnalyze.analyzeMain OutputStdout logSeverity override containerAnalyzeImage
             else do
@@ -155,12 +154,12 @@ appMain = do
               let apiOpts = ApiOpts optBaseUrl apikey
               let metadata = maybe containerMetadata (mergeFileCmdMetadata containerMetadata) fileConfig
               ContainerAnalyze.analyzeMain (UploadScan apiOpts metadata) logSeverity override containerAnalyzeImage
-        ContainerTest ContainerTestOptions {..} -> do
+        ContainerTest ContainerTestOptions{..} -> do
           apikey <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl apikey
           ContainerTest.testMain apiOpts logSeverity containerTestTimeout containerTestOutputType override containerTestImage
         ContainerParseFile path -> parseSyftOutputMain logSeverity path
-        ContainerDumpScan ContainerDumpScanOptions {..} -> dumpSyftScanMain logSeverity dumpScanOutputFile dumpScanImage
+        ContainerDumpScan ContainerDumpScanOptions{..} -> dumpSyftScanMain logSeverity dumpScanOutputFile dumpScanImage
     --
     CompatibilityCommand args -> do
       compatibilityMain args
@@ -466,12 +465,12 @@ compatibilityOpts =
   many argumentParser
 
 data CmdOptions = CmdOptions
-  { optDebug :: Bool,
-    optBaseUrl :: Maybe URI,
-    optProjectName :: Maybe Text,
-    optProjectRevision :: Maybe Text,
-    optAPIKey :: Maybe Text,
-    optCommand :: Command
+  { optDebug :: Bool
+  , optBaseUrl :: Maybe URI
+  , optProjectName :: Maybe Text
+  , optProjectRevision :: Maybe Text
+  , optAPIKey :: Maybe Text
+  , optCommand :: Command
   }
 
 data Command
@@ -493,60 +492,60 @@ data VPSCommand
   | VPSReportCommand VPSReportOptions
 
 data VPSReportOptions = VPSReportOptions
-  { vpsReportJsonOutput :: Bool,
-    vpsReportTimeout :: Int,
-    vpsReportType :: VPSReport.ReportType,
-    vpsReportBaseDir :: FilePath
+  { vpsReportJsonOutput :: Bool
+  , vpsReportTimeout :: Int
+  , vpsReportType :: VPSReport.ReportType
+  , vpsReportBaseDir :: FilePath
   }
 
 data ReportOptions = ReportOptions
-  { reportJsonOutput :: Bool,
-    reportTimeout :: Int,
-    reportType :: Report.ReportType,
-    reportBaseDir :: FilePath
+  { reportJsonOutput :: Bool
+  , reportTimeout :: Int
+  , reportType :: Report.ReportType
+  , reportBaseDir :: FilePath
   }
 
 data AnalyzeOptions = AnalyzeOptions
-  { analyzeOutput :: Bool,
-    analyzeUnpackArchives :: Flag UnpackArchives,
-    analyzeBranch :: Maybe Text,
-    analyzeMetadata :: ProjectMetadata,
-    analyzeBuildTargetFilters :: [BuildTargetFilter],
-    analyzeVSIMode :: VSIAnalysisMode,
-    analyzeRecordMode :: RecordMode,
-    analyzeBaseDir :: FilePath
+  { analyzeOutput :: Bool
+  , analyzeUnpackArchives :: Flag UnpackArchives
+  , analyzeBranch :: Maybe Text
+  , analyzeMetadata :: ProjectMetadata
+  , analyzeBuildTargetFilters :: [BuildTargetFilter]
+  , analyzeVSIMode :: VSIAnalysisMode
+  , analyzeRecordMode :: RecordMode
+  , analyzeBaseDir :: FilePath
   }
 
 data TestOptions = TestOptions
-  { testTimeout :: Int,
-    testOutputType :: Test.TestOutputType,
-    testBaseDir :: FilePath
+  { testTimeout :: Int
+  , testOutputType :: Test.TestOutputType
+  , testBaseDir :: FilePath
   }
 
 data VPSOptions = VPSOptions
-  { followSymlinks :: Flag FollowSymlinks,
-    skipIprScan :: Flag SkipIPRScan,
-    licenseOnlyScan :: Flag LicenseOnlyScan,
-    vpsFileFilter :: FilterExpressions,
-    vpsCommand :: VPSCommand
+  { followSymlinks :: Flag FollowSymlinks
+  , skipIprScan :: Flag SkipIPRScan
+  , licenseOnlyScan :: Flag LicenseOnlyScan
+  , vpsFileFilter :: FilterExpressions
+  , vpsCommand :: VPSCommand
   }
 
 data VPSAnalyzeOptions = VPSAnalyzeOptions
-  { vpsAnalyzeBaseDir :: FilePath,
-    vpsAnalyzeMeta :: ProjectMetadata
+  { vpsAnalyzeBaseDir :: FilePath
+  , vpsAnalyzeMeta :: ProjectMetadata
   }
 
 data VPSAOSPNoticeOptions = VPSAOSPNoticeOptions
-  { vpsAOSPNoticeBaseDir :: FilePath,
-    vpsNinjaScanID :: Text,
-    vpsNinjaFileList :: Text,
-    vpsNinjaScanMeta :: ProjectMetadata
+  { vpsAOSPNoticeBaseDir :: FilePath
+  , vpsNinjaScanID :: Text
+  , vpsNinjaFileList :: Text
+  , vpsNinjaScanMeta :: ProjectMetadata
   }
 
 data VPSTestOptions = VPSTestOptions
-  { vpsTestTimeout :: Int,
-    vpsTestOutputType :: VPSTest.TestOutputType,
-    vpsTestBaseDir :: FilePath
+  { vpsTestTimeout :: Int
+  , vpsTestOutputType :: VPSTest.TestOutputType
+  , vpsTestBaseDir :: FilePath
   }
 
 newtype ContainerOptions = ContainerOptions
@@ -559,18 +558,18 @@ data ContainerCommand
   | ContainerDumpScan ContainerDumpScanOptions
 
 data ContainerAnalyzeOptions = ContainerAnalyzeOptions
-  { containerAnalyzeOutput :: Bool,
-    containerMetadata :: ProjectMetadata,
-    containerAnalyzeImage :: ImageText
+  { containerAnalyzeOutput :: Bool
+  , containerMetadata :: ProjectMetadata
+  , containerAnalyzeImage :: ImageText
   }
 
 data ContainerTestOptions = ContainerTestOptions
-  { containerTestTimeout :: Int,
-    containerTestOutputType :: ContainerTest.TestOutputType,
-    containerTestImage :: ImageText
+  { containerTestTimeout :: Int
+  , containerTestOutputType :: ContainerTest.TestOutputType
+  , containerTestImage :: ImageText
   }
 
 data ContainerDumpScanOptions = ContainerDumpScanOptions
-  { dumpScanOutputFile :: Maybe FilePath,
-    dumpScanImage :: ImageText
+  { dumpScanOutputFile :: Maybe FilePath
+  , dumpScanImage :: ImageText
   }

@@ -1,7 +1,6 @@
-module Strategy.VSI
-  ( discover,
-  )
-where
+module Strategy.VSI (
+  discover,
+) where
 
 import App.Fossa.EmbeddedBinary
 import App.Fossa.VPS.Scan.RunWiggins
@@ -30,9 +29,9 @@ newtype VSILocator = VSILocator
   deriving (Eq, Ord, Show, Generic, FromJSON)
 
 data ValidVSILocator = ValidVSILocator
-  { validType :: DepType,
-    validName :: T.Text,
-    validRevision :: Maybe T.Text
+  { validType :: DepType
+  , validName :: T.Text
+  , validRevision :: Maybe T.Text
   }
 
 data VSIError = UnsupportedLocatorType Locator T.Text
@@ -52,11 +51,11 @@ discover apiOpts dir = context "VSI" $ do
 mkProject :: (Has (Lift IO) sig n, MonadIO n, Has Exec sig n, Has Diagnostics sig n) => WigginsOpts -> VSIProject -> DiscoveredProject n
 mkProject wigginsOpts project =
   DiscoveredProject
-    { projectType = "vsi",
-      projectBuildTargets = mempty,
-      projectDependencyGraph = const $ analyze wigginsOpts,
-      projectPath = vsiDir project,
-      projectLicenses = pure []
+    { projectType = "vsi"
+    , projectBuildTargets = mempty
+    , projectDependencyGraph = const $ analyze wigginsOpts
+    , projectPath = vsiDir project
+    , projectLicenses = pure []
     }
 
 buildGraph :: [VSILocator] -> Either VSIError (Graphing Dependency)

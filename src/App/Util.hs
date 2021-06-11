@@ -1,16 +1,15 @@
 {-# LANGUAGE DataKinds #-}
 
-module App.Util
-  ( validateDir
-  , validateFile
-  )
-where
+module App.Util (
+  validateDir,
+  validateFile,
+) where
 
 import App.Types
 import Control.Monad (unless)
-import qualified Path.IO as P
+import Path (Abs, File, Path)
+import Path.IO qualified as P
 import System.Exit (die)
-import Path ( Path, Abs, File )
 
 -- | Validate that a filepath points to a directory and the directory exists
 validateDir :: FilePath -> IO BaseDir

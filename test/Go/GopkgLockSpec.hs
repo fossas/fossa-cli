@@ -1,17 +1,17 @@
-module Go.GopkgLockSpec
-  ( spec
-  ) where
+module Go.GopkgLockSpec (
+  spec,
+) where
 
 import Data.Function ((&))
-import qualified Data.Map.Strict as M
-import qualified Data.Text.IO as TIO
+import Data.Map.Strict qualified as M
+import Data.Text.IO qualified as TIO
 import DepTypes
 import Effect.Grapher
 import Graphing (Graphing)
 import Strategy.Go.GopkgLock
 import Strategy.Go.Types (graphingGolang)
 import Test.Hspec
-import qualified Toml
+import Toml qualified
 
 projects :: [Project]
 projects =
@@ -34,30 +34,33 @@ projects =
 
 expected :: Graphing Dependency
 expected = run . evalGrapher $ do
-  direct $ Dependency
-             { dependencyType = GoType
-             , dependencyName = "repo/name/A"
-             , dependencyVersion = Just (CEq "3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005")
-             , dependencyLocations = []
-             , dependencyEnvironments = []
-             , dependencyTags = M.empty
-             }
-  direct $ Dependency
-             { dependencyType = GoType
-             , dependencyName = "repo/name/B"
-             , dependencyVersion = Just (CEq "12345")
-             , dependencyLocations = []
-             , dependencyEnvironments = []
-             , dependencyTags = M.empty
-             }
-  direct $ Dependency
-             { dependencyType = GoType
-             , dependencyName = "repo/name/C"
-             , dependencyVersion = Just (CEq "12345")
-             , dependencyLocations = ["https://someotherlocation/"]
-             , dependencyEnvironments = []
-             , dependencyTags = M.empty
-             }
+  direct $
+    Dependency
+      { dependencyType = GoType
+      , dependencyName = "repo/name/A"
+      , dependencyVersion = Just (CEq "3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005")
+      , dependencyLocations = []
+      , dependencyEnvironments = []
+      , dependencyTags = M.empty
+      }
+  direct $
+    Dependency
+      { dependencyType = GoType
+      , dependencyName = "repo/name/B"
+      , dependencyVersion = Just (CEq "12345")
+      , dependencyLocations = []
+      , dependencyEnvironments = []
+      , dependencyTags = M.empty
+      }
+  direct $
+    Dependency
+      { dependencyType = GoType
+      , dependencyName = "repo/name/C"
+      , dependencyVersion = Just (CEq "12345")
+      , dependencyLocations = ["https://someotherlocation/"]
+      , dependencyEnvironments = []
+      , dependencyTags = M.empty
+      }
 
 spec :: Spec
 spec = do

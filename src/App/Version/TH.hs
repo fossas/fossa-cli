@@ -1,26 +1,25 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.Version.TH
-  ( getCurrentTag,
-  )
-where
+module App.Version.TH (
+  getCurrentTag,
+) where
 
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Effect.Diagnostics (Diagnostics, fromEitherShow)
-import qualified Data.ByteString.Lazy as BSL
+import Data.ByteString.Lazy qualified as BSL
 import Data.Maybe (fromMaybe)
-import Data.Text (Text)
-import qualified Data.Text as T
 import Data.String.Conversion (decodeUtf8)
+import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Versions (errorBundlePretty, semver)
-import Effect.Exec
-  ( AllowErr (Always),
-    Command (..),
-    Exec,
-    Has,
-    exec,
-    runExecIO,
-  )
+import Effect.Exec (
+  AllowErr (Always),
+  Command (..),
+  Exec,
+  Has,
+  exec,
+  runExecIO,
+ )
 import GitHash (giHash, tGitInfoCwd)
 import Instances.TH.Lift ()
 import Language.Haskell.TH (TExpQ)
@@ -30,9 +29,9 @@ import Path (Dir, Rel, mkRelDir)
 gitTagPointCommand :: Text -> Command
 gitTagPointCommand commit =
   Command
-    { cmdName = "git",
-      cmdArgs = ["tag", "--points-at", commit],
-      cmdAllowErr = Always
+    { cmdName = "git"
+    , cmdArgs = ["tag", "--points-at", commit]
+    , cmdAllowErr = Always
     }
 
 getCurrentTag :: TExpQ (Maybe Text)

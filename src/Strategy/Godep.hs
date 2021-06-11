@@ -1,18 +1,17 @@
-module Strategy.Godep
-  ( discover,
-  )
-where
+module Strategy.Godep (
+  discover,
+) where
 
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics (Diagnostics, (<||>), context)
-import qualified Control.Effect.Diagnostics as Diag
+import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
+import Control.Effect.Diagnostics qualified as Diag
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
 import Graphing
 import Path
-import qualified Strategy.Go.GopkgLock as GopkgLock
-import qualified Strategy.Go.GopkgToml as GopkgToml
+import Strategy.Go.GopkgLock qualified as GopkgLock
+import Strategy.Go.GopkgToml qualified as GopkgToml
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
@@ -25,9 +24,9 @@ findProjects = walk' $ \dir _ files -> do
 
   let project =
         GodepProject
-          { godepToml = gopkgToml,
-            godepLock = gopkgLock,
-            godepDir = dir
+          { godepToml = gopkgToml
+          , godepLock = gopkgLock
+          , godepDir = dir
           }
 
   case gopkgToml <|> gopkgLock of
@@ -35,19 +34,19 @@ findProjects = walk' $ \dir _ files -> do
     Just _ -> pure ([project], WalkSkipSome ["vendor"])
 
 data GodepProject = GodepProject
-  { godepDir :: Path Abs Dir,
-    godepToml :: Maybe (Path Abs File),
-    godepLock :: Maybe (Path Abs File)
+  { godepDir :: Path Abs Dir
+  , godepToml :: Maybe (Path Abs File)
+  , godepLock :: Maybe (Path Abs File)
   }
 
 mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => GodepProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
-    { projectType = "godep",
-      projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps project,
-      projectPath = godepDir project,
-      projectLicenses = pure []
+    { projectType = "godep"
+    , projectBuildTargets = mempty
+    , projectDependencyGraph = const $ getDeps project
+    , projectPath = godepDir project
+    , projectLicenses = pure []
     }
 
 getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (Graphing Dependency)

@@ -1,12 +1,11 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.Fossa.Analyze.Record
-  ( AnalyzeJournal (..),
-    AnalyzeEffects (..),
-    saveReplayLog,
-    loadReplayLog,
-  )
-where
+module App.Fossa.Analyze.Record (
+  AnalyzeJournal (..),
+  AnalyzeEffects (..),
+  saveReplayLog,
+  loadReplayLog,
+) where
 
 import App.Version (fullVersionDescription)
 import Control.Effect.Record
@@ -18,16 +17,16 @@ import System.Directory (getCurrentDirectory)
 import System.Environment (getArgs)
 
 data AnalyzeJournal = AnalyzeJournal
-  { analyzeCommit :: Text,
-    analyzeEffects :: AnalyzeEffects,
-    analyzeArgs :: [String],
-    analyzeWorkdir :: FilePath
+  { analyzeCommit :: Text
+  , analyzeEffects :: AnalyzeEffects
+  , analyzeArgs :: [String]
+  , analyzeWorkdir :: FilePath
   }
   deriving (Eq, Ord, Show)
 
 data AnalyzeEffects = AnalyzeEffects
-  { effectsReadFS :: Journal ReadFS,
-    effectsExec :: Journal Exec
+  { effectsReadFS :: Journal ReadFS
+  , effectsExec :: Journal Exec
   }
   deriving (Eq, Ord, Show)
 
@@ -44,19 +43,19 @@ instance FromJSON AnalyzeEffects where
       <*> obj .: "Exec"
 
 instance ToJSON AnalyzeJournal where
-  toJSON AnalyzeJournal {..} =
+  toJSON AnalyzeJournal{..} =
     object
-      [ "commit" .= analyzeCommit,
-        "args" .= analyzeArgs,
-        "workdir" .= analyzeWorkdir,
-        "effects" .= analyzeEffects
+      [ "commit" .= analyzeCommit
+      , "args" .= analyzeArgs
+      , "workdir" .= analyzeWorkdir
+      , "effects" .= analyzeEffects
       ]
 
 instance ToJSON AnalyzeEffects where
-  toJSON AnalyzeEffects {..} =
+  toJSON AnalyzeEffects{..} =
     object
-      [ "ReadFS" .= effectsReadFS,
-        "Exec" .= effectsExec
+      [ "ReadFS" .= effectsReadFS
+      , "Exec" .= effectsExec
       ]
 
 saveReplayLog :: Journal ReadFS -> Journal Exec -> FilePath -> IO ()
@@ -65,16 +64,16 @@ saveReplayLog readFSJournal execJournal path = do
   workdir <- getCurrentDirectory
   let effects =
         AnalyzeEffects
-          { effectsReadFS = readFSJournal,
-            effectsExec = execJournal
+          { effectsReadFS = readFSJournal
+          , effectsExec = execJournal
           }
 
       journal =
         AnalyzeJournal
-          { analyzeCommit = fullVersionDescription,
-            analyzeEffects = effects,
-            analyzeArgs = args,
-            analyzeWorkdir = workdir
+          { analyzeCommit = fullVersionDescription
+          , analyzeEffects = effects
+          , analyzeArgs = args
+          , analyzeWorkdir = workdir
           }
 
   encodeFile path journal

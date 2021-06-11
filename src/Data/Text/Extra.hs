@@ -1,18 +1,17 @@
-module Data.Text.Extra
-  ( splitOnceOn,
-    splitOnceOnEnd,
-    breakOnAndRemove,
-    underBS,
-    showT,
-    dropPrefix,
-  )
-where
+module Data.Text.Extra (
+  splitOnceOn,
+  splitOnceOnEnd,
+  breakOnAndRemove,
+  underBS,
+  showT,
+  dropPrefix,
+) where
 
 import Data.ByteString (ByteString)
-import Data.Text (Text)
-import qualified Data.Text as T
-import Data.String.Conversion (decodeUtf8, encodeUtf8)
 import Data.Maybe (fromMaybe)
+import Data.String.Conversion (decodeUtf8, encodeUtf8)
+import Data.Text (Text)
+import Data.Text qualified as T
 
 splitOnceOn :: Text -> Text -> (Text, Text)
 splitOnceOn needle haystack = (first, strippedRemaining)
@@ -39,8 +38,9 @@ splitOnceOnEnd needle haystack = (strippedInitial, end)
 -- Nothing
 breakOnAndRemove :: Text -> Text -> Maybe (Text, Text)
 breakOnAndRemove needle haystack
-  | (before,after) <- T.breakOn needle haystack
-  , T.isPrefixOf needle after = Just (before, T.drop (T.length needle) after)
+  | (before, after) <- T.breakOn needle haystack
+    , T.isPrefixOf needle after =
+    Just (before, T.drop (T.length needle) after)
   | otherwise = Nothing
 
 underBS :: (ByteString -> ByteString) -> Text -> Text

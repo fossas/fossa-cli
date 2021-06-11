@@ -6,45 +6,44 @@
 -- - "stack trace"-like behavior, closely resembling the golang pattern of errors.Wrap (see: 'context')
 --
 -- - recovery from failures, recording them as "warnings" (see: 'recover' or '<||>')
-module Control.Effect.Diagnostics
-  ( -- * Diagnostics effect and operations
-    Diagnostics (..),
-    fatal,
-    context,
-    recover,
-    recover',
-    errorBoundary,
+module Control.Effect.Diagnostics (
+  -- * Diagnostics effect and operations
+  Diagnostics (..),
+  fatal,
+  context,
+  recover,
+  recover',
+  errorBoundary,
 
-    -- * Diagnostic result types
-    FailureBundle (..),
-    renderFailureBundle,
-    renderSomeDiagnostic,
+  -- * Diagnostic result types
+  FailureBundle (..),
+  renderFailureBundle,
+  renderSomeDiagnostic,
 
-    -- * Diagnostic helpers
-    fatalText,
-    fromEither,
-    fromEitherShow,
-    fromMaybe,
-    fromMaybeText,
-    tagError,
-    (<||>),
-    combineSuccessful,
+  -- * Diagnostic helpers
+  fatalText,
+  fromEither,
+  fromEitherShow,
+  fromMaybe,
+  fromMaybeText,
+  tagError,
+  (<||>),
+  combineSuccessful,
 
-    -- * ToDiagnostic typeclass
-    ToDiagnostic (..),
-    SomeDiagnostic (..),
-    module X,
-  )
-where
+  -- * ToDiagnostic typeclass
+  ToDiagnostic (..),
+  SomeDiagnostic (..),
+  module X,
+) where
 
 import Control.Algebra as X
 import Control.Exception (SomeException (..))
 import Data.List (intersperse)
-import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Prelude
@@ -150,8 +149,8 @@ combineSuccessful msg actions = do
     Just xs -> pure (sconcat xs)
 
 data FailureBundle = FailureBundle
-  { failureWarnings :: [SomeDiagnostic],
-    failureCause :: SomeDiagnostic
+  { failureWarnings :: [SomeDiagnostic]
+  , failureCause :: SomeDiagnostic
   }
 
 instance Show FailureBundle where
@@ -166,15 +165,15 @@ renderFailureBundle FailureBundle{..} =
     , indent 4 (renderSomeDiagnostic failureCause)
     , ""
     ]
-    ++ if null failureWarnings
-      then []
-      else
-        [ ">>>"
-        , ""
-        , indent 2 (annotate (color Yellow) "Relevant warnings include:")
-        , ""
-        , indent 4 (renderWarnings failureWarnings)
-        ]
+      ++ if null failureWarnings
+        then []
+        else
+          [ ">>>"
+          , ""
+          , indent 2 (annotate (color Yellow) "Relevant warnings include:")
+          , ""
+          , indent 4 (renderWarnings failureWarnings)
+          ]
 
 renderSomeDiagnostic :: SomeDiagnostic -> Doc AnsiStyle
 renderSomeDiagnostic (SomeDiagnostic stack cause) =

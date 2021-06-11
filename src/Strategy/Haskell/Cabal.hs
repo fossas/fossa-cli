@@ -2,18 +2,17 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Strategy.Haskell.Cabal
-  ( discover,
+module Strategy.Haskell.Cabal (
+  discover,
 
-    -- * Testing
-    BuildPlan (..),
-    PlanId (..),
-    InstallPlan (..),
-    PlanStyle (..),
-    PlanType (..),
-    buildGraph,
-  )
-where
+  -- * Testing
+  BuildPlan (..),
+  PlanId (..),
+  InstallPlan (..),
+  PlanStyle (..),
+  PlanType (..),
+  buildGraph,
+) where
 
 import Control.Effect.Diagnostics
 import Control.Monad (when)
@@ -21,17 +20,17 @@ import Data.Aeson.Types
 import Data.Foldable (for_)
 import Data.List (isSuffixOf)
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
-import qualified Graphing as G
+import Graphing qualified as G
 import Path
 import Types
 
@@ -39,16 +38,15 @@ newtype BuildPlan = BuildPlan {installPlans :: [InstallPlan]} deriving (Eq, Ord,
 newtype Component = Component {componentDeps :: Set PlanId} deriving (Eq, Ord, Show)
 newtype PlanId = PlanId {unPlanId :: Text} deriving (FromJSON, Eq, Ord, Show)
 
-data InstallPlan
-  = InstallPlan
-      { planType :: PlanType,
-        planId :: PlanId,
-        planName :: Text,
-        planVersion :: Text,
-        planDepends :: Set PlanId,
-        planStyle :: Maybe PlanStyle,
-        planComponents :: Set PlanId
-      }
+data InstallPlan = InstallPlan
+  { planType :: PlanType
+  , planId :: PlanId
+  , planName :: Text
+  , planVersion :: Text
+  , planDepends :: Set PlanId
+  , planStyle :: Maybe PlanStyle
+  , planComponents :: Set PlanId
+  }
   deriving (Eq, Ord, Show)
 
 data PlanStyle
@@ -83,10 +81,10 @@ mergeComponents :: Map Text Component -> Set PlanId
 mergeComponents mapA = S.unions . map componentDeps $ M.elems mapA
 
 installPlanDepends :: InstallPlan -> Set PlanId
-installPlanDepends InstallPlan {..} = planComponents <> planDepends
+installPlanDepends InstallPlan{..} = planComponents <> planDepends
 
 isDirectDep :: InstallPlan -> Bool
-isDirectDep InstallPlan {..} = planStyle == Just Local && planType == Configured
+isDirectDep InstallPlan{..} = planStyle == Just Local && planType == Configured
 
 parsePlanStyle :: MonadFail f => Text -> f PlanStyle
 parsePlanStyle style = case T.toLower style of
@@ -103,9 +101,9 @@ parsePlanType typ = case T.toLower typ of
 cabalGenPlanCmd :: Command
 cabalGenPlanCmd =
   Command
-    { cmdName = "cabal",
-      cmdArgs = ["v2-build", "--dry-run"],
-      cmdAllowErr = Never
+    { cmdName = "cabal"
+    , cmdArgs = ["v2-build", "--dry-run"]
+    , cmdAllowErr = Never
     }
 
 cabalPlanFilePath :: Path Rel File
@@ -137,11 +135,11 @@ findProjects = walk' $ \dir _ files -> do
 mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => CabalProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
-    { projectType = "cabal",
-      projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps project,
-      projectPath = cabalDir project,
-      projectLicenses = pure []
+    { projectType = "cabal"
+    , projectBuildTargets = mempty
+    , projectDependencyGraph = const $ getDeps project
+    , projectPath = cabalDir project
+    , projectLicenses = pure []
     }
 
 getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CabalProject -> m (Graphing Dependency)
@@ -152,7 +150,8 @@ getDeps project =
 
 newtype CabalProject = CabalProject
   { cabalDir :: Path Abs Dir
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 doGraph :: Has (MappedGrapher PlanId InstallPlan) sig m => InstallPlan -> m ()
 doGraph plan = do
@@ -178,12 +177,12 @@ buildGraph plan = do
 toDependency :: InstallPlan -> Dependency
 toDependency plan =
   Dependency
-    { dependencyType = HackageType,
-      dependencyName = planName plan,
-      dependencyVersion = Just $ CEq $ planVersion plan,
-      dependencyLocations = [],
-      dependencyEnvironments = [],
-      dependencyTags = M.empty
+    { dependencyType = HackageType
+    , dependencyName = planName plan
+    , dependencyVersion = Just $ CEq $ planVersion plan
+    , dependencyLocations = []
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
     }
 
 analyze :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)

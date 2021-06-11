@@ -1,15 +1,14 @@
-module App.Fossa.Report.AttributionSpec
-  ( spec,
-  )
-where
+module App.Fossa.Report.AttributionSpec (
+  spec,
+) where
 
 import App.Fossa.Report.Attribution
 import Control.Applicative (liftA2)
 import Data.Aeson
 import Data.Map.Strict (Map)
 import Data.Text (Text)
-import qualified Hedgehog.Gen as Gen
-import qualified Hedgehog.Range as Range
+import Hedgehog.Gen qualified as Gen
+import Hedgehog.Range qualified as Range
 import Test.Hspec
 import Test.Hspec.Hedgehog
 
@@ -65,13 +64,13 @@ arbitraryText = Gen.text (Range.linear 3 25) Gen.unicodeAll
 
 spec :: Spec
 spec =
-  describe "Attribution ToJSON/FromJSON instances"
-    $ modifyMaxSuccess (const 20)
-    $ it "are roundtrippable"
-    $ hedgehog
-    $ do
-      attr <- forAll genAttribution
-      roundtripJson attr
+  describe "Attribution ToJSON/FromJSON instances" $
+    modifyMaxSuccess (const 20) $
+      it "are roundtrippable" $
+        hedgehog $
+          do
+            attr <- forAll genAttribution
+            roundtripJson attr
 
 roundtripJson :: (MonadTest m, Show a, Eq a, ToJSON a, FromJSON a) => a -> m ()
 roundtripJson a = tripping a toJSON fromJSON

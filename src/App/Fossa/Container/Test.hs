@@ -1,10 +1,9 @@
 {-# LANGUAGE BlockArguments #-}
 
-module App.Fossa.Container.Test
-  ( TestOutputType (..),
-    testMain,
-  )
-where
+module App.Fossa.Container.Test (
+  TestOutputType (..),
+  testMain,
+) where
 
 import App.Fossa.API.BuildWait
 import App.Fossa.Container

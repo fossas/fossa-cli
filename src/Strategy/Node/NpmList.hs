@@ -1,11 +1,11 @@
-module Strategy.Node.NpmList
-  ( analyze'
-  ) where
+module Strategy.Node.NpmList (
+  analyze',
+) where
 
 import Control.Effect.Diagnostics
 import Data.Aeson
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Text (Text)
 import DepTypes
 import Effect.Exec
@@ -13,11 +13,12 @@ import Graphing (Graphing, unfold)
 import Path
 
 npmListCmd :: Command
-npmListCmd = Command
-  { cmdName = "npm"
-  , cmdArgs = ["ls", "--json", "--production", "--depth", "1000"]
-  , cmdAllowErr = NonEmptyStdout
-  }
+npmListCmd =
+  Command
+    { cmdName = "npm"
+    , cmdArgs = ["ls", "--json", "--production", "--depth", "1000"]
+    , cmdAllowErr = NonEmptyStdout
+    }
 
 analyze' :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
 analyze' dir = do
@@ -27,29 +28,31 @@ analyze' dir = do
 buildGraph :: NpmOutput -> Graphing Dependency
 buildGraph top = unfold direct getDeps toDependency
   where
-  direct = M.toList $ outputDependencies top
-  getDeps (_,nodeOutput) = M.toList $ outputDependencies nodeOutput
-  toDependency (nodeName, nodeOutput) =
-    Dependency { dependencyType = NodeJSType
-               , dependencyName = nodeName
-               , dependencyVersion = CEq <$> outputVersion nodeOutput
-               , dependencyLocations = []
-               , dependencyEnvironments = []
-               , dependencyTags = M.empty
-               }
+    direct = M.toList $ outputDependencies top
+    getDeps (_, nodeOutput) = M.toList $ outputDependencies nodeOutput
+    toDependency (nodeName, nodeOutput) =
+      Dependency
+        { dependencyType = NodeJSType
+        , dependencyName = nodeName
+        , dependencyVersion = CEq <$> outputVersion nodeOutput
+        , dependencyLocations = []
+        , dependencyEnvironments = []
+        , dependencyTags = M.empty
+        }
 
 data NpmOutput = NpmOutput
-  { outputInvalid      :: Maybe Bool
-  , outputVersion      :: Maybe Text
-  , outputFrom         :: Maybe Text
-  , outputResolved     :: Maybe Text
+  { outputInvalid :: Maybe Bool
+  , outputVersion :: Maybe Text
+  , outputFrom :: Maybe Text
+  , outputResolved :: Maybe Text
   , outputDependencies :: Map Text NpmOutput
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 instance FromJSON NpmOutput where
   parseJSON = withObject "NpmOutput" $ \obj ->
     NpmOutput <$> obj .:? "invalid"
-              <*> obj .:? "version"
-              <*> obj .:? "from"
-              <*> obj .:? "resolved"
-              <*> obj .:? "dependencies" .!= M.empty
+      <*> obj .:? "version"
+      <*> obj .:? "from"
+      <*> obj .:? "resolved"
+      <*> obj .:? "dependencies" .!= M.empty

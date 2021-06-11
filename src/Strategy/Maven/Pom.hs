@@ -1,34 +1,34 @@
-module Strategy.Maven.Pom
-  ( analyze',
-    getLicenses,
-    interpolateProperties,
-  )
-where
+module Strategy.Maven.Pom (
+  analyze',
+  getLicenses,
+  interpolateProperties,
+) where
 
-import qualified Algebra.Graph.AdjacencyMap as AM
+import Algebra.Graph.AdjacencyMap qualified as AM
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text.Extra (breakOnAndRemove)
 import DepTypes
 import Effect.Grapher
 import Graphing (Graphing)
 import Path
-import qualified Path.IO as Path
+import Path.IO qualified as Path
 import Strategy.Maven.Pom.Closure
 import Strategy.Maven.Pom.PomFile
 import Types
 
 data MavenStrategyOpts = MavenStrategyOpts
-  { strategyPath  :: Path Rel File
+  { strategyPath :: Path Rel File
   , strategyGraph :: Graphing Dependency
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 analyze' :: MavenProjectClosure -> Graphing Dependency
 analyze' = buildProjectGraph
@@ -41,7 +41,7 @@ getLicenses basedir closure = do
     Just relpath ->
       let path = toFilePath relpath
           validated = mapMaybe validateLicense (pomLicenses pom)
-        in pure (LicenseResult path validated)
+       in pure (LicenseResult path validated)
   where
     -- we prefer URLs over SPDX because name isn't guaranteed to be an SPDX expression
     validateLicense :: PomLicense -> Maybe License
@@ -68,25 +68,25 @@ toDependency (MavenPackage group artifact version) = foldr applyLabel start
     start :: Dependency
     start =
       Dependency
-        { dependencyType = MavenType,
-          dependencyName = group <> ":" <> artifact,
-          dependencyVersion = CEq <$> version,
-          dependencyLocations = [],
-          dependencyEnvironments = [],
-          dependencyTags = M.empty
+        { dependencyType = MavenType
+        , dependencyName = group <> ":" <> artifact
+        , dependencyVersion = CEq <$> version
+        , dependencyLocations = []
+        , dependencyEnvironments = []
+        , dependencyTags = M.empty
         }
 
     applyLabel :: MavenLabel -> Dependency -> Dependency
     applyLabel lbl dep = case lbl of
       MavenLabelScope scope ->
         if scope == "test"
-          then dep {dependencyEnvironments = EnvTesting : dependencyEnvironments dep}
+          then dep{dependencyEnvironments = EnvTesting : dependencyEnvironments dep}
           else addTag "scope" scope dep
       MavenLabelOptional opt -> addTag "optional" opt dep
 
     -- TODO: reuse this in other strategies
     addTag :: Text -> Text -> Dependency -> Dependency
-    addTag key value dep = dep {dependencyTags = M.insertWith (++) key [value] (dependencyTags dep)}
+    addTag key value dep = dep{dependencyTags = M.insertWith (++) key [value] (dependencyTags dep)}
 
 -- TODO: set top-level direct deps as direct instead of the project?
 buildProjectGraph :: MavenProjectClosure -> Graphing Dependency
@@ -149,17 +149,19 @@ interpolateProperties pom = interpolate (pomProperties pom <> computeBuiltinProp
 
 -- | Compute the most-commonly-used builtin properties for package resolution
 computeBuiltinProperties :: Pom -> Map Text Text
-computeBuiltinProperties pom = M.fromList
-  [ ("project.groupId", coordGroup (pomCoord pom))
-  , ("project.artifactId", coordArtifact (pomCoord pom))
-  , ("project.version", coordVersion (pomCoord pom))
-  ]
+computeBuiltinProperties pom =
+  M.fromList
+    [ ("project.groupId", coordGroup (pomCoord pom))
+    , ("project.artifactId", coordArtifact (pomCoord pom))
+    , ("project.version", coordVersion (pomCoord pom))
+    ]
 
 interpolate :: Map Text Text -> Text -> Text
 interpolate properties text =
   case splitMavenProperty text of
     Nothing -> text
-    Just (before, property, after) -> interpolate properties $
+    Just (before, property, after) ->
+      interpolate properties $
         before <> fromMaybe ("PROPERTY NOT FOUND: " <> property) (M.lookup property properties) <> after
 
 -- find the first maven property in the string, e.g., `${foo}`, returning text
@@ -167,5 +169,6 @@ interpolate properties text =
 splitMavenProperty :: Text -> Maybe (Text, Text, Text)
 splitMavenProperty text
   | Just (beforeBegin, afterBegin) <- breakOnAndRemove "${" text
-  , Just (property, afterEnd) <- breakOnAndRemove "}" afterBegin = Just (beforeBegin, property, afterEnd)
+    , Just (property, afterEnd) <- breakOnAndRemove "}" afterBegin =
+    Just (beforeBegin, property, afterEnd)
   | otherwise = Nothing

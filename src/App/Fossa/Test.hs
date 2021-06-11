@@ -1,13 +1,13 @@
-module App.Fossa.Test
-  ( testMain
-  , TestOutputType(..)
-  ) where
+module App.Fossa.Test (
+  testMain,
+  TestOutputType (..),
+) where
 
 import App.Fossa.API.BuildWait
 import App.Fossa.ProjectInference
 import App.Types
 import Control.Carrier.Diagnostics hiding (fromMaybe)
-import Control.Carrier.StickyLogger (runStickyLogger, logSticky)
+import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Lift (sendIO)
 import Data.Aeson qualified as Aeson
 import Data.Functor (void)
@@ -20,17 +20,20 @@ import System.Exit (exitFailure, exitSuccess)
 import System.IO (stderr)
 
 data TestOutputType
-  = TestOutputPretty -- ^ pretty output format for issues
-  | TestOutputJson -- ^ use json output for issues
+  = -- | pretty output format for issues
+    TestOutputPretty
+  | -- | use json output for issues
+    TestOutputJson
 
-testMain
-  :: BaseDir
-  -> ApiOpts
-  -> Severity
-  -> Int -- ^ timeout (seconds)
-  -> TestOutputType
-  -> OverrideProject
-  -> IO ()
+testMain ::
+  BaseDir ->
+  ApiOpts ->
+  Severity ->
+  -- | timeout (seconds)
+  Int ->
+  TestOutputType ->
+  OverrideProject ->
+  IO ()
 testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
   void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $ do
     result <- runDiagnostics . runReadFSIO $ do
@@ -55,10 +58,9 @@ testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType overrid
           logError $ "Test failed. Number of issues found: " <> pretty n
           if null (issuesIssues issues)
             then logError "Check the webapp for more details, or use a full-access API key (currently using a push-only API key)"
-            else
-              case outputType of
-                TestOutputPretty -> logError $ pretty issues
-                TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
+            else case outputType of
+              TestOutputPretty -> logError $ pretty issues
+              TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
 
           sendIO exitFailure
 

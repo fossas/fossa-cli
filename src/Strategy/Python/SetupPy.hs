@@ -1,7 +1,6 @@
-module Strategy.Python.SetupPy
-  ( analyze'
-  )
-  where
+module Strategy.Python.SetupPy (
+  analyze',
+) where
 
 import Control.Effect.Diagnostics
 import Data.Text (Text)
@@ -12,7 +11,7 @@ import Path
 import Strategy.Python.Util
 import Text.Megaparsec
 import Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as L
+import Text.Megaparsec.Char.Lexer qualified as L
 import Types
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
@@ -25,13 +24,13 @@ type Parser = Parsec Void Text
 installRequiresParser :: Parser [Req]
 installRequiresParser = prefix *> entries <* end
   where
-  prefix  = skipManyTill anySingle (symbol "install_requires") *> symbol "=" *> symbol "["
-  entries = (requireSurroundedBy "\"" <|> requireSurroundedBy "\'") `sepEndBy` symbol ","
+    prefix = skipManyTill anySingle (symbol "install_requires") *> symbol "=" *> symbol "["
+    entries = (requireSurroundedBy "\"" <|> requireSurroundedBy "\'") `sepEndBy` symbol ","
 
-  requireSurroundedBy :: Text -> Parser Req
-  requireSurroundedBy quote = between (symbol quote) (symbol quote) requirementParser
+    requireSurroundedBy :: Text -> Parser Req
+    requireSurroundedBy quote = between (symbol quote) (symbol quote) requirementParser
 
-  end     = symbol "]"
+    end = symbol "]"
 
-  symbol :: Text -> Parser Text
-  symbol = L.symbol space
+    symbol :: Text -> Parser Text
+    symbol = L.symbol space

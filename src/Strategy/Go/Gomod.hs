@@ -4,30 +4,29 @@
 -- introduced in Go 1.11, and are now on by default in Go 1.16.
 --
 -- For documentation, see https://golang.org/ref/mod.
-module Strategy.Go.Gomod
-  ( analyze',
-    buildGraph,
-    Gomod (..),
-    Statement (..),
-    Require (..),
-    PackageName,
-    PackageVersion (..),
-    gomodParser,
-  )
-where
+module Strategy.Go.Gomod (
+  analyze',
+  buildGraph,
+  Gomod (..),
+  Statement (..),
+  Require (..),
+  PackageName,
+  PackageVersion (..),
+  gomodParser,
+) where
 
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, recover, context)
+import Control.Effect.Diagnostics (Diagnostics, context, recover)
 import Data.Char (isSpace)
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
-import qualified Data.SemVer as SemVer
+import Data.SemVer qualified as SemVer
 import Data.SemVer.Internal (Identifier (..), Version (..))
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Void (Void)
 import DepTypes (Dependency)
 import Effect.Exec (Exec)
@@ -36,27 +35,27 @@ import Effect.ReadFS (ReadFS, readContentsParser)
 import Graphing (Graphing)
 import Path (Abs, File, Path, parent)
 import Strategy.Go.Transitive (fillInTransitive)
-import Strategy.Go.Types
-  ( GolangGrapher,
-    GolangLabel (..),
-    graphingGolang,
-    mkGolangPackage,
-  )
-import Text.Megaparsec
-  ( MonadParsec (eof, takeWhile1P, try),
-    Parsec,
-    between,
-    chunk,
-    count,
-    many,
-    oneOf,
-    optional,
-    parse,
-    some,
-    (<|>),
-  )
+import Strategy.Go.Types (
+  GolangGrapher,
+  GolangLabel (..),
+  graphingGolang,
+  mkGolangPackage,
+ )
+import Text.Megaparsec (
+  MonadParsec (eof, takeWhile1P, try),
+  Parsec,
+  between,
+  chunk,
+  count,
+  many,
+  oneOf,
+  optional,
+  parse,
+  some,
+  (<|>),
+ )
 import Text.Megaparsec.Char (alphaNumChar, char, numberChar, space1)
-import qualified Text.Megaparsec.Char.Lexer as L
+import Text.Megaparsec.Char.Lexer qualified as L
 
 -- For the file's grammar, see https://golang.org/ref/mod#go-mod-file-grammar.
 --
@@ -95,17 +94,17 @@ data PackageVersion
   deriving (Eq, Ord, Show)
 
 data Gomod = Gomod
-  { modName :: PackageName,
-    modRequires :: [Require],
-    modReplaces :: Map PackageName Require,
-    modLocalReplaces :: Map PackageName Text,
-    modExcludes :: [Require]
+  { modName :: PackageName
+  , modRequires :: [Require]
+  , modReplaces :: Map PackageName Require
+  , modLocalReplaces :: Map PackageName Text
+  , modExcludes :: [Require]
   }
   deriving (Eq, Ord, Show)
 
 data Require = Require
-  { reqPackage :: PackageName,
-    reqVersion :: PackageVersion
+  { reqPackage :: PackageName
+  , reqVersion :: PackageVersion
   }
   deriving (Eq, Ord, Show)
 
@@ -308,10 +307,10 @@ gomodParser = do
 toGomod :: Text -> [Statement] -> Gomod
 toGomod name = foldr apply (Gomod name [] M.empty M.empty [])
   where
-    apply (RequireStatement package version) gomod = gomod {modRequires = Require package version : modRequires gomod}
-    apply (ReplaceStatement old new newVersion) gomod = gomod {modReplaces = M.insert old (Require new newVersion) (modReplaces gomod)}
-    apply (LocalReplaceStatement old path) gomod = gomod {modLocalReplaces = M.insert old path (modLocalReplaces gomod)}
-    apply (ExcludeStatement package version) gomod = gomod {modExcludes = Require package version : modExcludes gomod}
+    apply (RequireStatement package version) gomod = gomod{modRequires = Require package version : modRequires gomod}
+    apply (ReplaceStatement old new newVersion) gomod = gomod{modReplaces = M.insert old (Require new newVersion) (modReplaces gomod)}
+    apply (LocalReplaceStatement old path) gomod = gomod{modLocalReplaces = M.insert old path (modLocalReplaces gomod)}
+    apply (ExcludeStatement package version) gomod = gomod{modExcludes = Require package version : modExcludes gomod}
     apply _ gomod = gomod
 
 -- lookup modRequires and replace them with modReplaces as appropriate, producing the resolved list of requires
@@ -327,9 +326,9 @@ resolve gomod = map resolveReplace . filter nonLocalPackage $ modRequires gomod
     resolveReplace require = fromMaybe require (M.lookup (reqPackage require) (modReplaces gomod))
 
 analyze' ::
-  ( Has ReadFS sig m,
-    Has Exec sig m,
-    Has Diagnostics sig m
+  ( Has ReadFS sig m
+  , Has Exec sig m
+  , Has Diagnostics sig m
   ) =>
   Path Abs File ->
   m (Graphing Dependency)
@@ -345,7 +344,7 @@ buildGraph :: Has GolangGrapher sig m => Gomod -> m ()
 buildGraph = traverse_ go . resolve
   where
     go :: Has GolangGrapher sig m => Require -> m ()
-    go Require {..} = do
+    go Require{..} = do
       let pkg = mkGolangPackage reqPackage
 
       direct pkg
@@ -364,4 +363,4 @@ buildGraph = traverse_ go . resolve
         GolangLabelVersion $ case reqVersion of
           NonCanonical n -> n
           Pseudo commitHash -> commitHash
-          Semantic semver -> "v" <> SemVer.toText semver {_versionMeta = []}
+          Semantic semver -> "v" <> SemVer.toText semver{_versionMeta = []}

@@ -1,14 +1,14 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Googlesource.RepoManifestSpec
-  ( spec
-  ) where
+module Googlesource.RepoManifestSpec (
+  spec,
+) where
 
 import Control.Carrier.Diagnostics hiding (withResult)
-import qualified Data.Map.Strict as M
-import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
+import Data.Map.Strict qualified as M
+import Data.Text qualified as T
+import Data.Text.IO qualified as TIO
 import DepTypes
 import Effect.ReadFS
 import GraphUtil
@@ -21,17 +21,21 @@ import Text.URI.QQ
 
 -- <remote name="aosp" fetch="https://android.googlesource.com" />
 remoteOne :: ManifestRemote
-remoteOne = ManifestRemote { remoteName     = "aosp"
-                           , remoteFetch    = "https://android.googlesource.com"
-                           , remoteRevision = Nothing
-                           }
+remoteOne =
+  ManifestRemote
+    { remoteName = "aosp"
+    , remoteFetch = "https://android.googlesource.com"
+    , remoteRevision = Nothing
+    }
 
 -- <remote fetch="https://android.othersource.com" name="othersource" revision="google/android-6.0.1_r74" />
 remoteTwo :: ManifestRemote
-remoteTwo = ManifestRemote { remoteName     = "othersource"
-                           , remoteFetch    = "https://android.othersource.com"
-                           , remoteRevision = Just "google/android-6.0.1_r74"
-                           }
+remoteTwo =
+  ManifestRemote
+    { remoteName = "othersource"
+    , remoteFetch = "https://android.othersource.com"
+    , remoteRevision = Just "google/android-6.0.1_r74"
+    }
 
 basicRemoteList :: [ManifestRemote]
 basicRemoteList = [remoteOne, remoteTwo]
@@ -40,135 +44,174 @@ basicRemoteList = [remoteOne, remoteTwo]
 --          remote="aosp"
 --          sync-j="4" />
 basicDefault :: ManifestDefault
-basicDefault = ManifestDefault { defaultRemote   = Just "aosp"
-                               , defaultRevision = Just "refs/tags/android-10.0.0_r29"
-                               }
+basicDefault =
+  ManifestDefault
+    { defaultRemote = Just "aosp"
+    , defaultRevision = Just "refs/tags/android-10.0.0_r29"
+    }
 
 -- <project path="art" name="platform/art" groups="pdk" />
 projectOne :: ManifestProject
-projectOne = ManifestProject { projectName     = "platform/art"
-                             , projectPath     = Just "art"
-                             , projectRevision = Nothing
-                             , projectRemote   = Just "aosp"
-                             }
+projectOne =
+  ManifestProject
+    { projectName = "platform/art"
+    , projectPath = Just "art"
+    , projectRevision = Nothing
+    , projectRemote = Just "aosp"
+    }
+
 -- <project path="bionic" name="platform/bionic" groups="pdk" revision="57b7d1574276f5e7f895c884df29f45859da74b6" />
 projectTwo :: ManifestProject
-projectTwo = ManifestProject { projectName     = "platform/bionic"
-                             , projectPath     = Just "bionic"
-                             , projectRevision = Just "57b7d1574276f5e7f895c884df29f45859da74b6"
-                             , projectRemote   = Nothing
-                             }
+projectTwo =
+  ManifestProject
+    { projectName = "platform/bionic"
+    , projectPath = Just "bionic"
+    , projectRevision = Just "57b7d1574276f5e7f895c884df29f45859da74b6"
+    , projectRemote = Nothing
+    }
+
 -- <project path="bionic" name="platform/bionic" groups="pdk" revision="57b7d1574276f5e7f895c884df29f45859da74b6" remote="aosp" />
 projectTwoWithRemote :: ManifestProject
-projectTwoWithRemote = ManifestProject { projectName     = "platform/bionic"
-                             , projectPath     = Just "bionic"
-                             , projectRevision = Just "57b7d1574276f5e7f895c884df29f45859da74b6"
-                             , projectRemote   = Just "aosp"
-                             }
+projectTwoWithRemote =
+  ManifestProject
+    { projectName = "platform/bionic"
+    , projectPath = Just "bionic"
+    , projectRevision = Just "57b7d1574276f5e7f895c884df29f45859da74b6"
+    , projectRemote = Just "aosp"
+    }
+
 -- <project path="bootable/recovery" name="platform/bootable/recovery" groups="pdk" remote="othersource" />
 projectThree :: ManifestProject
-projectThree = ManifestProject { projectName     = "platform/bootable/recovery"
-                               , projectPath     = Just "bootable/recovery"
-                               , projectRevision = Nothing
-                               , projectRemote   = Just "othersource"
-                               }
+projectThree =
+  ManifestProject
+    { projectName = "platform/bootable/recovery"
+    , projectPath = Just "bootable/recovery"
+    , projectRevision = Nothing
+    , projectRemote = Just "othersource"
+    }
+
 -- <project path="cts" name="platform/cts" groups="cts,pdk-cw-fs,pdk-fs" remote="othersource" revision="1111"/>
 projectFour :: ManifestProject
-projectFour = ManifestProject { projectName    = "platform/cts"
-                             , projectPath     = Just "cts"
-                             , projectRevision = Just "1111"
-                             , projectRemote   = Just "othersource"
-                             }
+projectFour =
+  ManifestProject
+    { projectName = "platform/cts"
+    , projectPath = Just "cts"
+    , projectRevision = Just "1111"
+    , projectRemote = Just "othersource"
+    }
+
 -- <project path="dalvik" name="platform/dalvik" groups="pdk-cw-fs,pdk-fs" />
 projectFive :: ManifestProject
-projectFive = ManifestProject { projectName    = "platform/dalvik"
-                             , projectPath     = Just "dalvik"
-                             , projectRevision = Nothing
-                             , projectRemote   = Nothing
-                             }
+projectFive =
+  ManifestProject
+    { projectName = "platform/dalvik"
+    , projectPath = Just "dalvik"
+    , projectRevision = Nothing
+    , projectRemote = Nothing
+    }
 
 basicProjectList :: [ManifestProject]
 basicProjectList = [projectOne, projectTwo, projectThree, projectFour, projectFive]
 
 dependencyOne :: Dependency
-dependencyOne = Dependency { dependencyType = GooglesourceType
-                           , dependencyName = "platform/art"
-                           , dependencyVersion = Just (CEq "refs/tags/android-10.0.0_r29")
-                           , dependencyLocations = ["https://android.googlesource.com/platform/art"]
-                           , dependencyTags = M.empty
-                           , dependencyEnvironments = [EnvProduction]
-                           }
+dependencyOne =
+  Dependency
+    { dependencyType = GooglesourceType
+    , dependencyName = "platform/art"
+    , dependencyVersion = Just (CEq "refs/tags/android-10.0.0_r29")
+    , dependencyLocations = ["https://android.googlesource.com/platform/art"]
+    , dependencyTags = M.empty
+    , dependencyEnvironments = [EnvProduction]
+    }
 
 dependencyTwo :: Dependency
-dependencyTwo = Dependency { dependencyType = GooglesourceType
-                           , dependencyName = "platform/bionic"
-                           , dependencyVersion = Just (CEq "57b7d1574276f5e7f895c884df29f45859da74b6")
-                           , dependencyLocations = ["https://android.googlesource.com/platform/bionic"]
-                           , dependencyTags = M.empty
-                           , dependencyEnvironments = [EnvProduction]
-                           }
+dependencyTwo =
+  Dependency
+    { dependencyType = GooglesourceType
+    , dependencyName = "platform/bionic"
+    , dependencyVersion = Just (CEq "57b7d1574276f5e7f895c884df29f45859da74b6")
+    , dependencyLocations = ["https://android.googlesource.com/platform/bionic"]
+    , dependencyTags = M.empty
+    , dependencyEnvironments = [EnvProduction]
+    }
 
 dependencyThree :: Dependency
-dependencyThree = Dependency { dependencyType = GooglesourceType
-                             , dependencyName = "platform/bootable/recovery"
-                             , dependencyVersion = Just (CEq "google/android-6.0.1_r74")
-                             , dependencyLocations = ["https://android.othersource.com/platform/bootable/recovery"]
-                             , dependencyTags = M.empty
-                             , dependencyEnvironments = [EnvProduction]
-                             }
+dependencyThree =
+  Dependency
+    { dependencyType = GooglesourceType
+    , dependencyName = "platform/bootable/recovery"
+    , dependencyVersion = Just (CEq "google/android-6.0.1_r74")
+    , dependencyLocations = ["https://android.othersource.com/platform/bootable/recovery"]
+    , dependencyTags = M.empty
+    , dependencyEnvironments = [EnvProduction]
+    }
 
 dependencyFour :: Dependency
-dependencyFour = Dependency { dependencyType = GooglesourceType
-                            , dependencyName = "platform/cts"
-                            , dependencyVersion = Just (CEq "1111")
-                            , dependencyLocations = ["https://android.othersource.com/platform/cts"]
-                            , dependencyTags = M.empty
-                            , dependencyEnvironments = [EnvProduction]
-                            }
+dependencyFour =
+  Dependency
+    { dependencyType = GooglesourceType
+    , dependencyName = "platform/cts"
+    , dependencyVersion = Just (CEq "1111")
+    , dependencyLocations = ["https://android.othersource.com/platform/cts"]
+    , dependencyTags = M.empty
+    , dependencyEnvironments = [EnvProduction]
+    }
 
 dependencyFive :: Dependency
-dependencyFive = Dependency { dependencyType = GooglesourceType
-                            , dependencyName = "platform/dalvik"
-                            , dependencyVersion = Just (CEq "refs/tags/android-10.0.0_r29")
-                            , dependencyLocations = ["https://android.googlesource.com/platform/dalvik"]
-                            , dependencyTags = M.empty
-                            , dependencyEnvironments = [EnvProduction]
-                            }
+dependencyFive =
+  Dependency
+    { dependencyType = GooglesourceType
+    , dependencyName = "platform/dalvik"
+    , dependencyVersion = Just (CEq "refs/tags/android-10.0.0_r29")
+    , dependencyLocations = ["https://android.googlesource.com/platform/dalvik"]
+    , dependencyTags = M.empty
+    , dependencyEnvironments = [EnvProduction]
+    }
 
 validatedProjectOne :: ValidatedProject
-validatedProjectOne = ValidatedProject { validatedProjectName = "platform/art"
-                                       , validatedProjectPath = "art"
-                                       , validatedProjectUrl = [uri|https://android.googlesource.com/platform/art|]
-                                       , validatedProjectRevision = "refs/tags/android-10.0.0_r29"
-                                       }
+validatedProjectOne =
+  ValidatedProject
+    { validatedProjectName = "platform/art"
+    , validatedProjectPath = "art"
+    , validatedProjectUrl = [uri|https://android.googlesource.com/platform/art|]
+    , validatedProjectRevision = "refs/tags/android-10.0.0_r29"
+    }
 
 validatedProjectTwo :: ValidatedProject
-validatedProjectTwo = ValidatedProject { validatedProjectName = "platform/bionic"
-                                       , validatedProjectPath = "bionic"
-                                       , validatedProjectUrl = [uri|https://android.googlesource.com/platform/bionic|]
-                                       , validatedProjectRevision = "57b7d1574276f5e7f895c884df29f45859da74b6"
-                                       }
+validatedProjectTwo =
+  ValidatedProject
+    { validatedProjectName = "platform/bionic"
+    , validatedProjectPath = "bionic"
+    , validatedProjectUrl = [uri|https://android.googlesource.com/platform/bionic|]
+    , validatedProjectRevision = "57b7d1574276f5e7f895c884df29f45859da74b6"
+    }
 
 validatedProjectThree :: ValidatedProject
-validatedProjectThree = ValidatedProject { validatedProjectName = "platform/bootable/recovery"
-                                       , validatedProjectPath = "bootable/recovery"
-                                       , validatedProjectUrl = [uri|https://android.othersource.com/platform/bootable/recovery|]
-                                       , validatedProjectRevision = "google/android-6.0.1_r74"
-                                       }
+validatedProjectThree =
+  ValidatedProject
+    { validatedProjectName = "platform/bootable/recovery"
+    , validatedProjectPath = "bootable/recovery"
+    , validatedProjectUrl = [uri|https://android.othersource.com/platform/bootable/recovery|]
+    , validatedProjectRevision = "google/android-6.0.1_r74"
+    }
 
 validatedProjectFour :: ValidatedProject
-validatedProjectFour = ValidatedProject { validatedProjectName = "platform/cts"
-                                       , validatedProjectPath = "cts"
-                                       , validatedProjectUrl = [uri|https://android.othersource.com/platform/cts|]
-                                       , validatedProjectRevision = "1111"
-                                       }
+validatedProjectFour =
+  ValidatedProject
+    { validatedProjectName = "platform/cts"
+    , validatedProjectPath = "cts"
+    , validatedProjectUrl = [uri|https://android.othersource.com/platform/cts|]
+    , validatedProjectRevision = "1111"
+    }
 
 validatedProjectFive :: ValidatedProject
-validatedProjectFive = ValidatedProject { validatedProjectName = "platform/dalvik"
-                                       , validatedProjectPath = "dalvik"
-                                       , validatedProjectUrl = [uri|https://android.googlesource.com/platform/dalvik|]
-                                       , validatedProjectRevision = "refs/tags/android-10.0.0_r29"
-                                       }
+validatedProjectFive =
+  ValidatedProject
+    { validatedProjectName = "platform/dalvik"
+    , validatedProjectPath = "dalvik"
+    , validatedProjectUrl = [uri|https://android.googlesource.com/platform/dalvik|]
+    , validatedProjectRevision = "refs/tags/android-10.0.0_r29"
+    }
 
 validatedProjectList :: [ValidatedProject]
 validatedProjectList = [validatedProjectOne, validatedProjectTwo, validatedProjectThree, validatedProjectFour, validatedProjectFive]
@@ -213,8 +256,8 @@ spec = do
         case parseXML basicManifest of
           Right manifest -> do
             let projects = case validateProjects manifest of
-                        Nothing -> []
-                        (Just ps) -> ps
+                  Nothing -> []
+                  (Just ps) -> ps
             let graph = buildGraph projects
             let vps = validateProject manifest <$> manifestProjects manifest
             vps `shouldMatchList` [Just validatedProjectOne, Just validatedProjectTwo, Just validatedProjectThree, Just validatedProjectFour, Just validatedProjectFive]
@@ -227,7 +270,6 @@ spec = do
           Right manifest -> do
             let vps = validateProject manifest <$> manifestProjects manifest
             vps `shouldMatchList` [Just validatedProjectOne, Just validatedProjectTwo, Just validatedProjectThree, Just validatedProjectFour, Nothing]
-
           Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
 
     describe "for a manifest with no default revision" $

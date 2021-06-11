@@ -1,9 +1,8 @@
-module Strategy.Maven
-  ( discover,
-    mkProject,
-    getDeps,
-  )
-where
+module Strategy.Maven (
+  discover,
+  mkProject,
+  getDeps,
+) where
 
 import Control.Effect.Diagnostics
 import Control.Effect.Lift
@@ -12,20 +11,20 @@ import Effect.Exec
 import Effect.ReadFS
 import Graphing (Graphing)
 import Path
-import qualified Strategy.Maven.PluginStrategy as Plugin
-import qualified Strategy.Maven.Pom as Pom
-import qualified Strategy.Maven.Pom.Closure as PomClosure
+import Strategy.Maven.PluginStrategy qualified as Plugin
+import Strategy.Maven.Pom qualified as Pom
+import Strategy.Maven.Pom.Closure qualified as PomClosure
 import Types
 
 discover ::
-  ( MonadIO m,
-    Has (Lift IO) sig m,
-    Has Diagnostics sig m,
-    Has ReadFS sig m,
-    Has Exec rsig run,
-    Has ReadFS rsig run,
-    Has Diagnostics rsig run,
-    Has (Lift IO) rsig run
+  ( MonadIO m
+  , Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has ReadFS sig m
+  , Has Exec rsig run
+  , Has ReadFS rsig run
+  , Has Diagnostics rsig run
+  , Has (Lift IO) rsig run
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject run]
@@ -36,14 +35,16 @@ discover dir = context "Maven" $ do
 mkProject ::
   (Has ReadFS sig n, Has Exec sig n, Has (Lift IO) sig n, Has Diagnostics sig n) =>
   -- | basedir; required for licenses
-  Path Abs Dir -> PomClosure.MavenProjectClosure -> DiscoveredProject n
+  Path Abs Dir ->
+  PomClosure.MavenProjectClosure ->
+  DiscoveredProject n
 mkProject basedir closure =
   DiscoveredProject
-    { projectType = "maven",
-      projectPath = parent $ PomClosure.closurePath closure,
-      projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps closure,
-      projectLicenses = pure $ Pom.getLicenses basedir closure
+    { projectType = "maven"
+    , projectPath = parent $ PomClosure.closurePath closure
+    , projectBuildTargets = mempty
+    , projectDependencyGraph = const $ getDeps closure
+    , projectLicenses = pure $ Pom.getLicenses basedir closure
     }
 
 getDeps ::

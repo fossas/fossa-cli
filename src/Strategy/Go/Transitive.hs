@@ -8,55 +8,58 @@ module Strategy.Go.Transitive (
 
 import Control.Algebra
 import Control.Applicative (many)
-import Control.Monad (unless)
 import Control.Effect.Diagnostics
+import Control.Monad (unless)
 import Data.Aeson
 import Data.Aeson.Internal (formatError, iparse)
 import Data.Aeson.Parser
-import qualified Data.Attoparsec.ByteString as A
-import qualified Data.ByteString.Lazy as BL
+import Data.Attoparsec.ByteString qualified as A
+import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (traverse_)
 import Data.Functor (void)
+import Data.Map.Strict qualified as M
 import Data.Maybe qualified as Maybe
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Vector as V
+import Data.Text qualified as T
+import Data.Vector qualified as V
 import Effect.Exec
 import Effect.Grapher
 import Path
 import Strategy.Go.Types
-import qualified Data.Map.Strict as M
 
 goListCmd :: Command
-goListCmd = Command
-  { cmdName = "go"
-  , cmdArgs = ["list", "-json", "all"]
-  , cmdAllowErr = NonEmptyStdout
-  }
+goListCmd =
+  Command
+    { cmdName = "go"
+    , cmdArgs = ["list", "-json", "all"]
+    , cmdAllowErr = NonEmptyStdout
+    }
 
 data Package = Package
   { packageImportPath :: Text
-  , packageModule     :: Maybe Module
-  , packageImports    :: Maybe [Text]
-  , packageSystem     :: Maybe Bool
-  } deriving (Eq, Ord, Show)
+  , packageModule :: Maybe Module
+  , packageImports :: Maybe [Text]
+  , packageSystem :: Maybe Bool
+  }
+  deriving (Eq, Ord, Show)
 
 data Module = Module
-  { modPath    :: Text
+  { modPath :: Text
   , modVersion :: Maybe Text
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 instance FromJSON Package where
   parseJSON = withObject "Package" $ \obj ->
-    Package <$> obj .:  "ImportPath"
-            <*> obj .:? "Module"
-            <*> obj .:? "Imports"
-            <*> obj .:? "Standard"
+    Package <$> obj .: "ImportPath"
+      <*> obj .:? "Module"
+      <*> obj .:? "Imports"
+      <*> obj .:? "Standard"
 
 instance FromJSON Module where
   parseJSON = withObject "Module" $ \obj ->
-    Module <$> obj .:  "Path"
-           <*> obj .:? "Version"
+    Module <$> obj .: "Path"
+      <*> obj .:? "Version"
 
 -- `go list -json` is dumb: it outputs a bunch of raw json objects:
 --     {
@@ -71,39 +74,40 @@ instance FromJSON Module where
 decodeMany :: FromJSON a => BL.ByteString -> Either (JSONPath, String) [a]
 decodeMany = eitherDecodeWith parser (iparse parseJSON)
   where
-  -- skipSpace is lifted from Data.Aeson.Parser.Internal
-  skipSpace = A.skipWhile $ \w -> w == 0x20 || w == 0x0a || w == 0x0d || w == 0x09
+    -- skipSpace is lifted from Data.Aeson.Parser.Internal
+    skipSpace = A.skipWhile $ \w -> w == 0x20 || w == 0x0a || w == 0x0d || w == 0x09
 
-  parser = do
-    (objects :: [Value]) <- many json <* skipSpace <* A.endOfInput
-    pure (Array (V.fromList objects))
+    parser = do
+      (objects :: [Value]) <- many json <* skipSpace <* A.endOfInput
+      pure (Array (V.fromList objects))
 
 graphTransitive :: Has GolangGrapher sig m => [Package] -> m ()
 graphTransitive = void . traverse_ go
   where
-  go :: Has GolangGrapher sig m => Package -> m ()
-  go package = unless (packageSystem package == Just True) $ do
-    let -- when a gomod field is present, use that for the package import path
-        -- otherwise use the top-level package import path
-        path :: Text
-        path = maybe (packageImportPath package) modPath (packageModule package)
+    go :: Has GolangGrapher sig m => Package -> m ()
+    go package = unless (packageSystem package == Just True) $ do
+      let -- when a gomod field is present, use that for the package import path
+          -- otherwise use the top-level package import path
+          path :: Text
+          path = maybe (packageImportPath package) modPath (packageModule package)
 
-        pkg :: GolangPackage
-        pkg = mkGolangPackage path
+          pkg :: GolangPackage
+          pkg = mkGolangPackage path
 
-    traverse_ (traverse_ (edge pkg . mkGolangPackage)) (packageImports package)
+      traverse_ (traverse_ (edge pkg . mkGolangPackage)) (packageImports package)
 
-    -- when we have a gomod, and that gomod has a version, add label for version
-    case modVersion =<< packageModule package of
-      Nothing -> pure ()
-      Just ver -> label pkg (mkGolangVersion ver)
+      -- when we have a gomod, and that gomod has a version, add label for version
+      case modVersion =<< packageModule package of
+        Nothing -> pure ()
+        Just ver -> label pkg (mkGolangVersion ver)
 
 fillInTransitive ::
   ( Has GolangGrapher sig m
   , Has Exec sig m
   , Has Diagnostics sig m
-  )
-  => Path x Dir -> m ()
+  ) =>
+  Path x Dir ->
+  m ()
 fillInTransitive dir = context "Getting deep dependencies" $ do
   goListOutput <- execThrow dir goListCmd
   case decodeMany goListOutput of
@@ -119,18 +123,18 @@ fillInTransitive dir = context "Getting deep dependencies" $ do
 -- in the final dependency graph.
 normalizeImportsToModules :: [Package] -> [Package]
 normalizeImportsToModules packages = map normalizeSingle packages
- where
-  normalizeSingle :: Package -> Package
-  normalizeSingle package = package{packageImports = map replaceImport <$> packageImports package}
+  where
+    normalizeSingle :: Package -> Package
+    normalizeSingle package = package{packageImports = map replaceImport <$> packageImports package}
 
-  -- If a package doesn't have an associated module, use the package name instead
-  replaceImport :: Text -> Text
-  replaceImport package = Maybe.fromMaybe package (M.lookup package packageNameToModule)
+    -- If a package doesn't have an associated module, use the package name instead
+    replaceImport :: Text -> Text
+    replaceImport package = Maybe.fromMaybe package (M.lookup package packageNameToModule)
 
-  packageNameToModule :: M.Map Text Text
-  packageNameToModule =
-    M.fromList
-      [ (packageImportPath package, modPath gomod)
-      | package <- packages
-      , Just gomod <- [packageModule package]
-      ]
+    packageNameToModule :: M.Map Text Text
+    packageNameToModule =
+      M.fromList
+        [ (packageImportPath package, modPath gomod)
+        | package <- packages
+        , Just gomod <- [packageModule package]
+        ]

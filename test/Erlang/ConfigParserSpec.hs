@@ -1,12 +1,11 @@
-module Erlang.ConfigParserSpec
-  ( spec,
-  )
-where
+module Erlang.ConfigParserSpec (
+  spec,
+) where
 
-import qualified Data.Char as C
-import Data.Text ( Text )
-import qualified Data.Text.IO as TIO
-import Data.Void ( Void )
+import Data.Char qualified as C
+import Data.Text (Text)
+import Data.Text.IO qualified as TIO
+import Data.Void (Void)
 import Strategy.Erlang.ConfigParser
 import Test.Hspec
 import Test.Hspec.Megaparsec
@@ -47,7 +46,6 @@ spec = do
       "\"\\n\"" `shouldParseInto` ErlString "\n"
       "\"\\\"\"" `shouldParseInto` ErlString "\"" -- in source, LHS would appear as -> "\""
       "\"a\" \"b\"" `shouldParseInto` ErlString "ab" -- run-on strings -> "a" "b"
-
     it "should parse an array" $ do
       let shouldParseInto input = parseMatch parseErlArray input
 
@@ -100,21 +98,22 @@ spec = do
       parse parseRadixLiteral "" `shouldFailOn` "-2#10"
 
     it "should parse everything at once" $
-      parse parseConfig "stresstest.config" oneWithEverything `shouldParse`
-        ConfigValues
-          [ErlTuple [
-            atom "rawAtom",
-            atom "quotedAtom",
-            ErlString "Regular String",
-            ErlString "Escaped \" String",
-            ErlInt 1234, -- Literal
-            ErlFloat 3.14159,
-            ErlInt 120, -- '$x'
-            ErlInt 35338, -- 'wes' in base 33
-            ErlArray [atom "arr1"],
-            ErlArray [ErlTuple [atom "key", ErlString "value"]],
-            ErlTuple [atom "number", ErlInt 5678] -- Literal
-          ]]
+      parse parseConfig "stresstest.config" oneWithEverything
+        `shouldParse` ConfigValues
+          [ ErlTuple
+              [ atom "rawAtom"
+              , atom "quotedAtom"
+              , ErlString "Regular String"
+              , ErlString "Escaped \" String"
+              , ErlInt 1234 -- Literal
+              , ErlFloat 3.14159
+              , ErlInt 120 -- '$x'
+              , ErlInt 35338 -- 'wes' in base 33
+              , ErlArray [atom "arr1"]
+              , ErlArray [ErlTuple [atom "key", ErlString "value"]]
+              , ErlTuple [atom "number", ErlInt 5678] -- Literal
+              ]
+          ]
 
   describe "radix parser" $
     it "should parse number strings correctly" $ do
@@ -123,7 +122,6 @@ spec = do
       intLiteralInBase 10 "1234" `shouldBe` 1234
       intLiteralInBase 16 "abcd" `shouldBe` 0xabcd
       intLiteralInBase 36 "1z" `shouldBe` 71 -- (36 * 2 - 1)
-
   describe "alphaNumToInt" $
     it "should provide the correct value for chars" $ do
       alphaNumToInt 'a' `shouldBe` 10

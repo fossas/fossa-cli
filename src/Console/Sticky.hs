@@ -1,10 +1,9 @@
-module Console.Sticky
-  ( withStickyRegion,
-    StickyRegion, -- constructors intentionally not exported
-    setSticky,
-    setSticky',
-  )
-where
+module Console.Sticky (
+  withStickyRegion,
+  StickyRegion, -- constructors intentionally not exported
+  setSticky,
+  setSticky',
+) where
 
 import Control.Effect.ConsoleRegion qualified as R
 import Control.Effect.Lift

@@ -4,49 +4,48 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module App.Fossa.FossaAPIV1
-  ( uploadAnalysis,
-    uploadContributors,
-    uploadContainerScan,
-    UploadResponse (..),
-    mkMetadataOpts,
-    FossaError (..),
-    FossaReq (..),
-    Contributors (..),
-    fossaReq,
-    getLatestBuild,
-    Build (..),
-    BuildTask (..),
-    BuildStatus (..),
-    getIssues,
-    Organization (..),
-    getOrganization,
-    getAttribution,
-    getAttributionRaw,
-  )
-where
+module App.Fossa.FossaAPIV1 (
+  uploadAnalysis,
+  uploadContributors,
+  uploadContainerScan,
+  UploadResponse (..),
+  mkMetadataOpts,
+  FossaError (..),
+  FossaReq (..),
+  Contributors (..),
+  fossaReq,
+  getLatestBuild,
+  Build (..),
+  BuildTask (..),
+  BuildStatus (..),
+  getIssues,
+  Organization (..),
+  getOrganization,
+  getAttribution,
+  getAttributionRaw,
+) where
 
 import App.Fossa.Container (ContainerScan (..))
-import qualified App.Fossa.Report.Attribution as Attr
+import App.Fossa.Report.Attribution qualified as Attr
 import App.Types
 import App.Version (versionNumber)
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson
-import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Effect.Logger
 import Fossa.API.Types (ApiOpts, Issues, useApiOpts)
-import qualified Network.HTTP.Client as HTTP
+import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Req
-import qualified Network.HTTP.Types as HTTP
+import Network.HTTP.Types qualified as HTTP
 import Srclib.Types
 import Text.URI (URI)
-import qualified Text.URI as URI
+import Text.URI qualified as URI
 
 newtype FossaReq m a = FossaReq {unFossaReq :: m a}
   deriving (Functor, Applicative, Monad, Algebra sig)
@@ -69,7 +68,7 @@ uploadUrl baseurl = baseurl /: "api" /: "builds" /: "custom"
 
 -- | This renders an organization + locator into a path piece for the fossa API
 renderLocatorUrl :: Int -> Locator -> Text
-renderLocatorUrl orgId Locator {..} =
+renderLocatorUrl orgId Locator{..} =
   locatorFetcher <> "+" <> T.pack (show orgId) <> "/" <> normalizeGitProjectName locatorProject <> "$" <> fromMaybe "" locatorRevision
 
 -- | The fossa backend treats http git locators in a specific way for the issues and builds endpoints.
@@ -88,15 +87,15 @@ normalizeGitProjectName project
     dropSuffix suf txt = fromMaybe txt (T.stripSuffix suf txt)
 
 data UploadResponse = UploadResponse
-  { uploadLocator :: Text,
-    uploadError :: Maybe Text
+  { uploadLocator :: Text
+  , uploadError :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
 instance FromJSON UploadResponse where
   parseJSON = withObject "UploadResponse" $ \obj ->
     UploadResponse <$> obj .: "locator"
-                   <*> obj .:? "error"
+      <*> obj .:? "error"
 
 data FossaError
   = InvalidProjectOrRevision HttpException
@@ -124,7 +123,7 @@ uploadContainerScan ::
   ProjectMetadata ->
   ContainerScan ->
   m UploadResponse
-uploadContainerScan apiOpts ProjectRevision {..} metadata scan = fossaReq $ do
+uploadContainerScan apiOpts ProjectRevision{..} metadata scan = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   let locator = renderLocator $ Locator "custom" projectName (Just projectRevision)
       opts =
@@ -140,9 +139,9 @@ uploadAnalysis ::
   ApiOpts ->
   ProjectRevision ->
   ProjectMetadata ->
-  NE.NonEmpty SourceUnit -> 
+  NE.NonEmpty SourceUnit ->
   m UploadResponse
-uploadAnalysis apiOpts ProjectRevision {..} metadata sourceUnits = fossaReq $ do
+uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts =
@@ -156,16 +155,16 @@ uploadAnalysis apiOpts ProjectRevision {..} metadata sourceUnits = fossaReq $ do
   pure (responseBody resp)
 
 mkMetadataOpts :: ProjectMetadata -> Text -> Option scheme
-mkMetadataOpts ProjectMetadata {..} projectName = mconcat $ catMaybes maybes
+mkMetadataOpts ProjectMetadata{..} projectName = mconcat $ catMaybes maybes
   where
     title = Just $ fromMaybe projectName projectTitle
     maybes =
-      [ ("projectURL" =:) <$> projectUrl,
-        ("jiraProjectKey" =:) <$> projectJiraKey,
-        ("link" =:) <$> projectLink,
-        ("team" =:) <$> projectTeam,
-        ("policy" =:) <$> projectPolicy,
-        ("title" =:) <$> title
+      [ ("projectURL" =:) <$> projectUrl
+      , ("jiraProjectKey" =:) <$> projectJiraKey
+      , ("link" =:) <$> projectLink
+      , ("team" =:) <$> projectTeam
+      , ("policy" =:) <$> projectPolicy
+      , ("title" =:) <$> title
       ]
 
 mangleError :: HttpException -> FossaError
@@ -174,7 +173,7 @@ mangleError err = case err of
     case HTTP.responseStatus resp of
       HTTP.Status 404 _ -> InvalidProjectOrRevision err
       HTTP.Status 403 _ -> NoPermission err
-      _                 -> OtherError err
+      _ -> OtherError err
   JsonHttpException msg -> JsonDeserializeError msg
   _ -> OtherError err
 
@@ -193,9 +192,9 @@ data BuildStatus
   deriving (Eq, Ord, Show)
 
 data Build = Build
-  { buildId :: Int,
-    buildError :: Maybe Text,
-    buildTask :: BuildTask
+  { buildId :: Int
+  , buildError :: Maybe Text
+  , buildTask :: BuildTask
   }
   deriving (Eq, Ord, Show)
 
@@ -228,7 +227,7 @@ getLatestBuild ::
   ApiOpts ->
   ProjectRevision ->
   m Build
-getLatestBuild apiOpts ProjectRevision {..} = fossaReq $ do
+getLatestBuild apiOpts ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   Organization orgId _ <- getOrganization apiOpts
@@ -246,7 +245,7 @@ getIssues ::
   ApiOpts ->
   ProjectRevision ->
   m Issues
-getIssues apiOpts ProjectRevision {..} = fossaReq $ do
+getIssues apiOpts ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   Organization orgId _ <- getOrganization apiOpts
@@ -263,7 +262,7 @@ getAttribution ::
   ApiOpts ->
   ProjectRevision ->
   m Attr.Attribution
-getAttribution apiOpts ProjectRevision {..} = fossaReq $ do
+getAttribution apiOpts ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts =
@@ -280,7 +279,7 @@ getAttributionRaw ::
   ApiOpts ->
   ProjectRevision ->
   m Value
-getAttributionRaw apiOpts ProjectRevision {..} = fossaReq $ do
+getAttributionRaw apiOpts ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts =
@@ -295,8 +294,8 @@ getAttributionRaw apiOpts ProjectRevision {..} = fossaReq $ do
 ----------
 
 data Organization = Organization
-  { organizationId :: Int,
-    orgUsesSAML :: Bool
+  { organizationId :: Int
+  , orgUsesSAML :: Bool
   }
   deriving (Eq, Ord, Show)
 

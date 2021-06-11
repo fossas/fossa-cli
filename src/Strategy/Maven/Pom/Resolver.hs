@@ -1,18 +1,18 @@
-{-# language TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 
-module Strategy.Maven.Pom.Resolver
-  ( GlobalClosure(..)
-  , buildGlobalClosure
-  ) where
+module Strategy.Maven.Pom.Resolver (
+  GlobalClosure (..),
+  buildGlobalClosure,
+) where
 
-import qualified Algebra.Graph.AdjacencyMap as AM
+import Algebra.Graph.AdjacencyMap qualified as AM
 import Control.Algebra
 import Control.Carrier.State.Strict
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Control.Monad (unless)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Effect.ReadFS
@@ -21,34 +21,38 @@ import Strategy.Maven.Pom.PomFile
 
 data GlobalClosure = GlobalClosure
   { globalGraph :: AM.AdjacencyMap MavenCoordinate
-  , globalPoms  :: Map MavenCoordinate (Path Abs File, Pom)
-  } deriving (Eq, Ord, Show)
+  , globalPoms :: Map MavenCoordinate (Path Abs File, Pom)
+  }
+  deriving (Eq, Ord, Show)
 
 buildGlobalClosure :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m GlobalClosure
 buildGlobalClosure files = do
-  (loadResults,()) <- runState @LoadResults M.empty $ traverse_ recursiveLoadPom files
+  (loadResults, ()) <- runState @LoadResults M.empty $ traverse_ recursiveLoadPom files
 
   -- TODO: diagnostics/warnings?
   let validated :: Map (Path Abs File) Pom
       validated = M.mapMaybe (validatePom =<<) loadResults
 
   pure (buildClosure validated)
-
   where
-  -- notably, we're not building edges based on <relativePath> from poms.
-  --
-  -- From the docs:
-  -- "However, the group ID, artifact ID and version are still required, and must match the file in the location given or it will revert to the repository for the POM."
-  --
-  -- Because the group/artifact/version are required to match, we can just build edges between _coordinates_, rather than between _pom files_
-  buildClosure :: Map (Path Abs File) Pom -> GlobalClosure
-  buildClosure cache = GlobalClosure
-    { globalGraph = AM.vertices (map pomCoord (M.elems cache)) `AM.overlay` AM.edges
-        [(parentCoord,pomCoord pom)
-          | pom <- M.elems cache
-          , Just parentCoord <- [pomParentCoord pom]]
-    , globalPoms = indexBy (pomCoord . snd) (M.toList cache)
-    }
+    -- notably, we're not building edges based on <relativePath> from poms.
+    --
+    -- From the docs:
+    -- "However, the group ID, artifact ID and version are still required, and must match the file in the location given or it will revert to the repository for the POM."
+    --
+    -- Because the group/artifact/version are required to match, we can just build edges between _coordinates_, rather than between _pom files_
+    buildClosure :: Map (Path Abs File) Pom -> GlobalClosure
+    buildClosure cache =
+      GlobalClosure
+        { globalGraph =
+            AM.vertices (map pomCoord (M.elems cache))
+              `AM.overlay` AM.edges
+                [ (parentCoord, pomCoord pom)
+                | pom <- M.elems cache
+                , Just parentCoord <- [pomParentCoord pom]
+                ]
+        , globalPoms = indexBy (pomCoord . snd) (M.toList cache)
+        }
 
 -- TODO: reuse this in other strategies
 indexBy :: Ord k => (v -> k) -> [v] -> Map k v
@@ -68,26 +72,24 @@ recursiveLoadPom path = do
       (res :: Maybe RawPom) <- recover (readContentsXML path)
       modify @LoadResults (M.insert path res)
       traverse_ loadAdjacent res
-
   where
+    loadAdjacent :: RawPom -> m ()
+    loadAdjacent raw = loadParent raw *> loadSubmodules raw
 
-  loadAdjacent :: RawPom -> m ()
-  loadAdjacent raw = loadParent raw *> loadSubmodules raw
+    loadParent pom = case rawPomParent pom of
+      Nothing -> pure ()
+      -- the default relative path is "../pom.xml"
+      --
+      -- from the docs:
+      -- "The relative path of the parent <code>pom.xml</code> file within the check out. If not specified, it defaults to <code>../pom.xml</code>"
+      Just mvnParent -> recurseRelative (fromMaybe "../pom.xml" (rawParentRelativePath mvnParent))
 
-  loadParent pom = case rawPomParent pom of
-    Nothing -> pure ()
-    -- the default relative path is "../pom.xml"
-    --
-    -- from the docs:
-    -- "The relative path of the parent <code>pom.xml</code> file within the check out. If not specified, it defaults to <code>../pom.xml</code>"
-    Just mvnParent -> recurseRelative (fromMaybe "../pom.xml" (rawParentRelativePath mvnParent))
+    loadSubmodules raw = traverse_ recurseRelative (rawPomModules raw)
 
-  loadSubmodules raw = traverse_ recurseRelative (rawPomModules raw)
-
-  recurseRelative :: Text {- relative filepath -} -> m ()
-  recurseRelative rel = do
-    (resolvedPath :: Maybe (Path Abs File)) <- recover (resolvePath (parent path) rel)
-    traverse_ recursiveLoadPom resolvedPath
+    recurseRelative :: Text {- relative filepath -} -> m ()
+    recurseRelative rel = do
+      (resolvedPath :: Maybe (Path Abs File)) <- recover (resolvePath (parent path) rel)
+      traverse_ recursiveLoadPom resolvedPath
 
 -- resolve a Filepath (in Text) that may either point to a directory or an exact
 -- pom file. when it's a directory, we default to pointing at the "pom.xml" in

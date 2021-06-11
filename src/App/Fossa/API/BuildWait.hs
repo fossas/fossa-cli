@@ -1,20 +1,19 @@
-module App.Fossa.API.BuildWait
-  ( waitForBuild,
-    waitForIssues,
-    waitForSherlockScan,
-    timeout,
-  )
-where
+module App.Fossa.API.BuildWait (
+  waitForBuild,
+  waitForIssues,
+  waitForSherlockScan,
+  timeout,
+) where
 
 import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.VPS.Scan.Core qualified as VPSCore
 import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
 import App.Types
 import Control.Carrier.Diagnostics
+import Control.Carrier.StickyLogger (StickyLogger, logSticky')
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async qualified as Async
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Carrier.StickyLogger (StickyLogger, logSticky')
 import Data.Functor (($>))
 import Data.Text (Text)
 import Effect.Logger

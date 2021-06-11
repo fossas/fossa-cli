@@ -1,12 +1,11 @@
 -- | Fused-effects wrapped functions from Path.IO
-module Control.Effect.Path
-  ( withSystemTempDir,
-  )
-where
+module Control.Effect.Path (
+  withSystemTempDir,
+) where
 
 import Control.Effect.Lift
 import Path
-import qualified Path.IO as PIO
+import Path.IO qualified as PIO
 import Prelude
 
 withSystemTempDir ::

@@ -1,24 +1,22 @@
-module Strategy.Go.Types
-  ( GolangPackage -- don't export GolangPackage; export the smart constructor instead
-  , mkGolangPackage
-  , GolangGrapher
-  , GolangLabel(..)
-  , mkGolangVersion
+module Strategy.Go.Types (
+  GolangPackage, -- don't export GolangPackage; export the smart constructor instead
+  mkGolangPackage,
+  GolangGrapher,
+  GolangLabel (..),
+  mkGolangVersion,
+  graphingGolang,
+) where
 
-  , graphingGolang
-  )
-  where
-
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Set (Set)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import DepTypes
 import Effect.Grapher
 import Graphing
 
 -- | A golang package is uniquely identified by its import path
-newtype GolangPackage = GolangPackage { goImportPath :: Text } deriving (Eq, Ord, Show)
+newtype GolangPackage = GolangPackage {goImportPath :: Text} deriving (Eq, Ord, Show)
 
 -- | Smart constructor for @GolangPackage@. Applies 'unvendor' to the value
 mkGolangPackage :: Text -> GolangPackage
@@ -26,8 +24,8 @@ mkGolangPackage = GolangPackage . unvendor
 
 type GolangGrapher = LabeledGrapher GolangPackage GolangLabel
 
-data GolangLabel =
-    GolangLabelVersion Text
+data GolangLabel
+  = GolangLabelVersion Text
   | GolangLabelLocation Text
   deriving (Eq, Ord, Show)
 
@@ -42,20 +40,20 @@ graphingGolang = withLabeling golangPackageToDependency
 golangPackageToDependency :: GolangPackage -> Set GolangLabel -> Dependency
 golangPackageToDependency pkg = foldr applyLabel start
   where
+    start :: Dependency
+    start =
+      Dependency
+        { dependencyType = GoType
+        , dependencyName = goImportPath pkg
+        , dependencyVersion = Nothing
+        , dependencyLocations = []
+        , dependencyEnvironments = []
+        , dependencyTags = M.empty
+        }
 
-  start :: Dependency
-  start = Dependency
-    { dependencyType = GoType
-    , dependencyName = goImportPath pkg
-    , dependencyVersion = Nothing
-    , dependencyLocations = []
-    , dependencyEnvironments = []
-    , dependencyTags = M.empty
-    }
-
-  applyLabel :: GolangLabel -> Dependency -> Dependency
-  applyLabel (GolangLabelVersion ver) dep = dep { dependencyVersion = Just (CEq ver) }
-  applyLabel (GolangLabelLocation loc) dep = dep { dependencyLocations = loc : dependencyLocations dep }
+    applyLabel :: GolangLabel -> Dependency -> Dependency
+    applyLabel (GolangLabelVersion ver) dep = dep{dependencyVersion = Just (CEq ver)}
+    applyLabel (GolangLabelLocation loc) dep = dep{dependencyLocations = loc : dependencyLocations dep}
 
 -- Replaces "v0.0.0-20191212000000-abcdef+incompatible" with "abcdef".
 --

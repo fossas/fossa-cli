@@ -1,9 +1,8 @@
-module Maven.PomStrategySpec
-  ( spec,
-  )
-where
+module Maven.PomStrategySpec (
+  spec,
+) where
 
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Strategy.Maven.Pom (interpolateProperties)
 import Strategy.Maven.Pom.PomFile
 import Test.Hspec
@@ -18,7 +17,7 @@ spec = do
       interpolateProperties pom "${project.version}" `shouldBe` "MYVERSION"
 
     it "should prefer user-specified properties over computed ones" $ do
-      let pom' = pom { pomProperties = M.singleton "project.groupId" "OTHERGROUP" }
+      let pom' = pom{pomProperties = M.singleton "project.groupId" "OTHERGROUP"}
       interpolateProperties pom' "${project.groupId}" `shouldBe` "OTHERGROUP"
 
     it "should work in the middle of strings" $ do

@@ -3,14 +3,13 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Control.Effect.Record
-  ( Recordable (..),
-    RecordableValue (..),
-    RecordC (..),
-    runRecord,
-    Journal (..),
-  )
-where
+module Control.Effect.Record (
+  Recordable (..),
+  RecordableValue (..),
+  RecordC (..),
+  runRecord,
+  Journal (..),
+) where
 
 import Control.Algebra
 import Control.Carrier.AtomicState
@@ -18,14 +17,14 @@ import Control.Effect.Lift
 import Control.Effect.Sum
 import Control.Monad.Trans
 import Data.Aeson
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BL
+import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as BL
 import Data.Kind
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.String.Conversion (decodeUtf8)
-import qualified Data.Text as Text
-import qualified Data.Text.Lazy as LText
+import Data.Text qualified as Text
+import Data.Text.Lazy qualified as LText
 import Path
 import System.Exit
 import Unsafe.Coerce

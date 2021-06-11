@@ -1,10 +1,8 @@
-module Control.Exception.Extra
-  ( isSyncException,
-    safeCatch,
-  )
-where
+module Control.Exception.Extra (
+  isSyncException,
+  safeCatch,
+) where
 
-import Control.Effect.Lift
 import Control.Effect.Exception
 
 safeCatch :: (Exception e, Has (Lift IO) sig m) => m a -> (e -> m a) -> m a

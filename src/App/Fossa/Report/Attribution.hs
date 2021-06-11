@@ -1,69 +1,62 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module App.Fossa.Report.Attribution
-  ( Attribution (..),
-    Dependency (..),
-    License (..),
-    LicenseContents (..),
-    LicenseName (..),
-    Project (..),
-  )
-where
+module App.Fossa.Report.Attribution (
+  Attribution (..),
+  Dependency (..),
+  License (..),
+  LicenseContents (..),
+  LicenseName (..),
+  Project (..),
+) where
 
 import Data.Aeson
-import Data.Text (Text)
 import Data.Map.Strict (Map)
 import Data.Maybe (catMaybes)
+import Data.Text (Text)
 
-newtype LicenseName
-  = LicenseName {rawName :: Text}
+newtype LicenseName = LicenseName {rawName :: Text}
   deriving (Eq, Ord, Show, FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 
-newtype LicenseContents
-  = LicenseContents {rawContents :: Text}
+newtype LicenseContents = LicenseContents {rawContents :: Text}
   deriving (Eq, Ord, Show, FromJSON, ToJSON)
 
-data Attribution
-  = Attribution
-      { attribProject :: Project,
-        attribDirectDeps :: [Dependency],
-        attribDeepDeps :: [Dependency],
-        attribLicenses :: Map LicenseName LicenseContents
-      }
+data Attribution = Attribution
+  { attribProject :: Project
+  , attribDirectDeps :: [Dependency]
+  , attribDeepDeps :: [Dependency]
+  , attribLicenses :: Map LicenseName LicenseContents
+  }
   deriving (Eq, Show, Ord)
 
-data Dependency
-  = Dependency
-      { depPackage :: Text,
-        depSource :: Text,
-        depVersion :: Maybe Text,
-        depIsGolang :: Maybe Bool,
-        depHash :: Maybe Text,
-        depAuthors :: [Text],
-        depDescription :: Maybe Text,
-        depLicenses :: Maybe [License],
-        depOtherLicenses :: [License],
-        depProjectUrl :: Maybe Text,
-        depDependencyPaths :: [Text],
-        depNotes :: [Text],
-        depDownloadUrl :: Maybe Text,
-        depTitle :: Text
-      }
+data Dependency = Dependency
+  { depPackage :: Text
+  , depSource :: Text
+  , depVersion :: Maybe Text
+  , depIsGolang :: Maybe Bool
+  , depHash :: Maybe Text
+  , depAuthors :: [Text]
+  , depDescription :: Maybe Text
+  , depLicenses :: Maybe [License]
+  , depOtherLicenses :: [License]
+  , depProjectUrl :: Maybe Text
+  , depDependencyPaths :: [Text]
+  , depNotes :: [Text]
+  , depDownloadUrl :: Maybe Text
+  , depTitle :: Text
+  }
   deriving (Eq, Show, Ord)
 
-data License
-  = License
-      { licenseName :: LicenseName,
-        licenseAttribution :: Maybe LicenseContents
-      }
+data License = License
+  { licenseName :: LicenseName
+  , licenseAttribution :: Maybe LicenseContents
+  }
   deriving (Eq, Show, Ord)
 
-data Project
-  = Project
-      { projectName :: Text,
-        projectRevision :: Text
-      }
+data Project = Project
+  { projectName :: Text
+  , projectRevision :: Text
+  }
   deriving (Eq, Show, Ord)
 
 instance FromJSON Attribution where
@@ -75,12 +68,12 @@ instance FromJSON Attribution where
       <*> obj .: "licenses"
 
 instance ToJSON Attribution where
-  toJSON Attribution {..} =
+  toJSON Attribution{..} =
     object
-      [ "project" .= attribProject,
-        "directDependencies" .= attribDirectDeps,
-        "deepDependencies" .= attribDeepDeps,
-        "licenses" .= attribLicenses
+      [ "project" .= attribProject
+      , "directDependencies" .= attribDirectDeps
+      , "deepDependencies" .= attribDeepDeps
+      , "licenses" .= attribLicenses
       ]
 
 instance FromJSON Dependency where
@@ -102,22 +95,22 @@ instance FromJSON Dependency where
       <*> obj .: "title"
 
 instance ToJSON Dependency where
-  toJSON Dependency {..} =
+  toJSON Dependency{..} =
     object
-      [ "package" .= depPackage,
-        "source" .= depSource,
-        "version" .= depVersion,
-        "isGolang" .= depIsGolang,
-        "hash" .= depHash,
-        "authors" .= depAuthors,
-        "description" .= depDescription,
-        "licenses" .= depLicenses,
-        "otherLicenses" .= depOtherLicenses,
-        "projectUrl" .= depProjectUrl,
-        "dependencyPaths" .= depDependencyPaths,
-        "notes" .= depNotes,
-        "downloadUrl" .= depDownloadUrl,
-        "title" .= depTitle
+      [ "package" .= depPackage
+      , "source" .= depSource
+      , "version" .= depVersion
+      , "isGolang" .= depIsGolang
+      , "hash" .= depHash
+      , "authors" .= depAuthors
+      , "description" .= depDescription
+      , "licenses" .= depLicenses
+      , "otherLicenses" .= depOtherLicenses
+      , "projectUrl" .= depProjectUrl
+      , "dependencyPaths" .= depDependencyPaths
+      , "notes" .= depNotes
+      , "downloadUrl" .= depDownloadUrl
+      , "title" .= depTitle
       ]
 
 instance FromJSON License where
@@ -127,10 +120,10 @@ instance FromJSON License where
       <*> obj .:? "attribution"
 
 instance ToJSON License where
-  toJSON License {..} =
+  toJSON License{..} =
     object
-      [ "name" .= licenseName,
-        "attribution" .= licenseAttribution
+      [ "name" .= licenseName
+      , "attribution" .= licenseAttribution
       ]
 
 instance FromJSON Project where
@@ -140,8 +133,8 @@ instance FromJSON Project where
       <*> obj .: "revision"
 
 instance ToJSON Project where
-  toJSON Project {..} =
+  toJSON Project{..} =
     object
-      [ "name" .= projectName,
-        "revision" .= projectRevision
+      [ "name" .= projectName
+      , "revision" .= projectRevision
       ]

@@ -1,27 +1,26 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Strategy.NuGet.ProjectJson
-  ( discover
-  , findProjects
-  , getDeps
-  , mkProject
-  , buildGraph
-
-  , ProjectJson(..)
-  ) where
+module Strategy.NuGet.ProjectJson (
+  discover,
+  findProjects,
+  getDeps,
+  mkProject,
+  buildGraph,
+  ProjectJson (..),
+) where
 
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics
 import Data.Aeson.Types
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
-import qualified Graphing
+import Graphing qualified
 import Path
 import Types
 
@@ -42,11 +41,11 @@ newtype ProjectJsonProject = ProjectJsonProject
 mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => ProjectJsonProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
-    { projectType = "projectjson",
-      projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps project,
-      projectPath = parent $ projectJsonFile project,
-      projectLicenses = pure []
+    { projectType = "projectjson"
+    , projectBuildTargets = mempty
+    , projectDependencyGraph = const $ getDeps project
+    , projectPath = parent $ projectJsonFile project
+    , projectLicenses = pure []
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ProjectJsonProject -> m (Graphing Dependency)
@@ -56,13 +55,15 @@ analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Gra
 analyze' file = buildGraph <$> readContentsJson @ProjectJson file
 
 newtype ProjectJson = ProjectJson
-  { dependencies     :: Map Text DependencyInfo
-  } deriving Show
+  { dependencies :: Map Text DependencyInfo
+  }
+  deriving (Show)
 
 data DependencyInfo = DependencyInfo
-  { depVersion    :: Text
-  , depType       :: Maybe Text
-  } deriving Show
+  { depVersion :: Text
+  , depType :: Maybe Text
+  }
+  deriving (Show)
 
 instance FromJSON ProjectJson where
   parseJSON = withObject "ProjectJson" $ \obj ->
@@ -71,34 +72,36 @@ instance FromJSON ProjectJson where
 instance FromJSON DependencyInfo where
   parseJSON val = parseJSONObject val <|> parseJSONText val
     where
-    parseJSONObject :: Value -> Parser DependencyInfo
-    parseJSONObject = withObject "DependencyInfo" $ \obj ->
+      parseJSONObject :: Value -> Parser DependencyInfo
+      parseJSONObject = withObject "DependencyInfo" $ \obj ->
         DependencyInfo <$> obj .: "version"
-                        <*> obj .:? "type"
+          <*> obj .:? "type"
 
-    parseJSONText :: Value -> Parser DependencyInfo
-    parseJSONText = withText "DependencyVersion" $ \text ->
+      parseJSONText :: Value -> Parser DependencyInfo
+      parseJSONText = withText "DependencyVersion" $ \text ->
         pure $ DependencyInfo text Nothing
 
 data NuGetDependency = NuGetDependency
-  { name            :: Text
-  , version         :: Text
-  , dependencyType  :: Maybe Text
-  } deriving Show
+  { name :: Text
+  , version :: Text
+  , dependencyType :: Maybe Text
+  }
+  deriving (Show)
 
 buildGraph :: ProjectJson -> Graphing Dependency
 buildGraph project = Graphing.fromList (map toDependency direct)
-    where
+  where
     direct = (\(name, dep) -> NuGetDependency name (depVersion dep) (depType dep)) <$> M.toList (dependencies project)
     toDependency NuGetDependency{..} =
-      Dependency { dependencyType = NuGetType
-               , dependencyName = name
-               , dependencyVersion = case T.find ('*' ==) version of
-                  Just '*' -> Just (CCompatible version)
-                  _ -> Just (CEq version)
-               , dependencyLocations = []
-               , dependencyEnvironments = []
-               , dependencyTags = case dependencyType of
-                  Nothing -> M.empty
-                  Just depType -> M.insert "type" [depType]  M.empty
-               }
+      Dependency
+        { dependencyType = NuGetType
+        , dependencyName = name
+        , dependencyVersion = case T.find ('*' ==) version of
+            Just '*' -> Just (CCompatible version)
+            _ -> Just (CEq version)
+        , dependencyLocations = []
+        , dependencyEnvironments = []
+        , dependencyTags = case dependencyType of
+            Nothing -> M.empty
+            Just depType -> M.insert "type" [depType] M.empty
+        }

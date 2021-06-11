@@ -1,101 +1,127 @@
-module Python.PipenvSpec
-  ( spec
-  ) where
+module Python.PipenvSpec (
+  spec,
+) where
 
-import qualified Data.Map.Strict as M
+import Data.Aeson (eitherDecodeStrict)
+import Data.ByteString qualified as BS
+import Data.Map.Strict qualified as M
 import DepTypes
 import GraphUtil
 import Strategy.Python.Pipenv
 import Test.Hspec hiding (xit)
-import Data.Aeson (eitherDecodeStrict)
-import qualified Data.ByteString as BS
 
 pipfileLock :: PipfileLock
-pipfileLock = PipfileLock
-  { fileMeta    = PipfileMeta
-    [ PipfileSource { sourceName = "package-index"
-                    , sourceUrl  = "https://my-package-index/"
-                    }
-    ]
-
-  , fileDefault = M.fromList
-    [ ("pkgTwo", PipfileDep { fileDepVersion = Just "==2.0.0"
-                            , fileDepIndex = Just "package-index"
-                            })
-    , ("pkgThree", PipfileDep { fileDepVersion = Just "==3.0.0"
-                              , fileDepIndex = Nothing
-                              })
-    , ("pkgFour", PipfileDep { fileDepVersion = Nothing
-                              , fileDepIndex = Nothing
-                              })
-    ]
-
-  , fileDevelop = M.fromList
-    [ ("pkgOne", PipfileDep { fileDepVersion = Just "==1.0.0"
-                            , fileDepIndex = Nothing
-                            })
-    ]
-  }
+pipfileLock =
+  PipfileLock
+    { fileMeta =
+        PipfileMeta
+          [ PipfileSource
+              { sourceName = "package-index"
+              , sourceUrl = "https://my-package-index/"
+              }
+          ]
+    , fileDefault =
+        M.fromList
+          [
+            ( "pkgTwo"
+            , PipfileDep
+                { fileDepVersion = Just "==2.0.0"
+                , fileDepIndex = Just "package-index"
+                }
+            )
+          ,
+            ( "pkgThree"
+            , PipfileDep
+                { fileDepVersion = Just "==3.0.0"
+                , fileDepIndex = Nothing
+                }
+            )
+          ,
+            ( "pkgFour"
+            , PipfileDep
+                { fileDepVersion = Nothing
+                , fileDepIndex = Nothing
+                }
+            )
+          ]
+    , fileDevelop =
+        M.fromList
+          [
+            ( "pkgOne"
+            , PipfileDep
+                { fileDepVersion = Just "==1.0.0"
+                , fileDepIndex = Nothing
+                }
+            )
+          ]
+    }
 
 pipenvOutput :: [PipenvGraphDep]
 pipenvOutput =
-  [ PipenvGraphDep { depName         = "pkgOne"
-                   , depInstalled    = "1.0.0"
-                   , depRequired     = "==1.0.0"
-                   , depDependencies = []
-                   }
-  , PipenvGraphDep { depName = "pkgTwo"
-                   , depInstalled = "2.0.0"
-                   , depRequired = "==2.0.0"
-                   , depDependencies =
-                     [ PipenvGraphDep { depName      = "pkgThree"
-                                      , depInstalled = "3.0.0"
-                                      , depRequired  = "==3.0.0"
-                                      , depDependencies = []
-                                      }
-                     ]
-                   }
+  [ PipenvGraphDep
+      { depName = "pkgOne"
+      , depInstalled = "1.0.0"
+      , depRequired = "==1.0.0"
+      , depDependencies = []
+      }
+  , PipenvGraphDep
+      { depName = "pkgTwo"
+      , depInstalled = "2.0.0"
+      , depRequired = "==2.0.0"
+      , depDependencies =
+          [ PipenvGraphDep
+              { depName = "pkgThree"
+              , depInstalled = "3.0.0"
+              , depRequired = "==3.0.0"
+              , depDependencies = []
+              }
+          ]
+      }
   ]
 
 depOne :: Dependency
-depOne = Dependency
-  { dependencyType = PipType
-  , dependencyName = "pkgOne"
-  , dependencyVersion = Just (CEq "1.0.0")
-  , dependencyLocations = []
-  , dependencyEnvironments = [EnvDevelopment]
-  , dependencyTags = M.empty
-  }
+depOne =
+  Dependency
+    { dependencyType = PipType
+    , dependencyName = "pkgOne"
+    , dependencyVersion = Just (CEq "1.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = [EnvDevelopment]
+    , dependencyTags = M.empty
+    }
 
 depTwo :: Dependency
-depTwo = Dependency
-  { dependencyType = PipType
-  , dependencyName = "pkgTwo"
-  , dependencyVersion = Just (CEq "2.0.0")
-  , dependencyLocations = ["https://my-package-index/"]
-  , dependencyEnvironments = [EnvProduction]
-  , dependencyTags = M.empty
-  }
+depTwo =
+  Dependency
+    { dependencyType = PipType
+    , dependencyName = "pkgTwo"
+    , dependencyVersion = Just (CEq "2.0.0")
+    , dependencyLocations = ["https://my-package-index/"]
+    , dependencyEnvironments = [EnvProduction]
+    , dependencyTags = M.empty
+    }
 
 depThree :: Dependency
-depThree = Dependency
-  { dependencyType = PipType
-  , dependencyName = "pkgThree"
-  , dependencyVersion = Just (CEq "3.0.0")
-  , dependencyLocations = []
-  , dependencyEnvironments = [EnvProduction]
-  , dependencyTags = M.empty
-  }
+depThree =
+  Dependency
+    { dependencyType = PipType
+    , dependencyName = "pkgThree"
+    , dependencyVersion = Just (CEq "3.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = [EnvProduction]
+    , dependencyTags = M.empty
+    }
 
 depFour :: Dependency
-depFour = Dependency
-  { dependencyType = PipType
-  , dependencyName = "pkgFour"
-  , dependencyVersion = Nothing
-  , dependencyLocations = []
-  , dependencyEnvironments = [EnvProduction]
-  , dependencyTags = M.empty
-  }
+depFour =
+  Dependency
+    { dependencyType = PipType
+    , dependencyName = "pkgFour"
+    , dependencyVersion = Nothing
+    , dependencyLocations = []
+    , dependencyEnvironments = [EnvProduction]
+    , dependencyTags = M.empty
+    }
 
 xit :: String -> Expectation -> SpecWith (Arg Expectation)
 xit _ _ = it "is an ignored test" $ () `shouldBe` ()

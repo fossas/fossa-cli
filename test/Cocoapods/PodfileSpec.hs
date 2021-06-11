@@ -1,50 +1,58 @@
-module Cocoapods.PodfileSpec
-  ( spec
-  ) where
+module Cocoapods.PodfileSpec (
+  spec,
+) where
 
-import qualified Data.Map.Strict as M
-import qualified Data.Text.IO as TIO
+import Data.Map.Strict qualified as M
+import Data.Text.IO qualified as TIO
 import DepTypes
 import GraphUtil
 import Strategy.Cocoapods.Podfile
-import qualified Test.Hspec as T
+import Test.Hspec qualified as T
 import Text.Megaparsec
 
 dependencyOne :: Dependency
-dependencyOne = Dependency { dependencyType = PodType
-                           , dependencyName = "one"
-                           , dependencyVersion = Just (CEq "1.0.0")
-                           , dependencyLocations = ["test.repo"]
-                           , dependencyEnvironments = []
-                           , dependencyTags = M.empty
-                           }
+dependencyOne =
+  Dependency
+    { dependencyType = PodType
+    , dependencyName = "one"
+    , dependencyVersion = Just (CEq "1.0.0")
+    , dependencyLocations = ["test.repo"]
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
+    }
 
 dependencyTwo :: Dependency
-dependencyTwo = Dependency { dependencyType = PodType
-                           , dependencyName = "two"
-                           , dependencyVersion = Just (CEq "2.0.0")
-                           , dependencyLocations = ["custom.repo"]
-                           , dependencyEnvironments = []
-                           , dependencyTags = M.empty
-                           }
+dependencyTwo =
+  Dependency
+    { dependencyType = PodType
+    , dependencyName = "two"
+    , dependencyVersion = Just (CEq "2.0.0")
+    , dependencyLocations = ["custom.repo"]
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
+    }
 
 dependencyThree :: Dependency
-dependencyThree = Dependency { dependencyType = PodType
-                             , dependencyName = "three"
-                             , dependencyVersion = Just (CEq "3.0.0")
-                             , dependencyLocations = ["test.repo"]
-                             , dependencyEnvironments = []
-                             , dependencyTags = M.empty
-                             }
+dependencyThree =
+  Dependency
+    { dependencyType = PodType
+    , dependencyName = "three"
+    , dependencyVersion = Just (CEq "3.0.0")
+    , dependencyLocations = ["test.repo"]
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
+    }
 
 dependencyFour :: Dependency
-dependencyFour = Dependency { dependencyType = PodType
-                             , dependencyName = "four"
-                             , dependencyVersion = Nothing
-                             , dependencyLocations = ["test.repo"]
-                             , dependencyEnvironments = []
-                             , dependencyTags = M.empty
-                             }
+dependencyFour =
+  Dependency
+    { dependencyType = PodType
+    , dependencyName = "four"
+    , dependencyVersion = Nothing
+    , dependencyLocations = ["test.repo"]
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
+    }
 
 podOne :: Pod
 podOne = Pod "one" (Just "1.0.0") M.empty
@@ -80,5 +88,5 @@ spec = do
       case runParser parsePodfile "" podLockFile of
         Left _ -> T.expectationFailure "failed to parse"
         Right result -> do
-            pods result `T.shouldMatchList` testPods
-            source result `T.shouldBe` "test.repo"
+          pods result `T.shouldMatchList` testPods
+          source result `T.shouldBe` "test.repo"

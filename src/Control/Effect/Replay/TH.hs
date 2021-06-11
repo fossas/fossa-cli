@@ -1,15 +1,14 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Control.Effect.Replay.TH
-  ( deriveReplayable,
-  )
-where
+module Control.Effect.Replay.TH (
+  deriveReplayable,
+) where
 
 import Control.Effect.Replay
-import Language.Haskell.TH
 import Control.Monad (replicateM)
 import Data.Aeson
 import Data.Aeson.Types (parse)
+import Language.Haskell.TH
 
 deriveReplayable :: Name -> Q [Dec]
 deriveReplayable tyName = do
@@ -52,7 +51,7 @@ conNm (RecGadtC nms _ _) = head nms
 mkArgs :: Con -> Q [Name]
 mkArgs (NormalC _ tys) = replicateM (length tys) (newName "a")
 mkArgs (RecC _ tys) = replicateM (length tys) (newName "a")
-mkArgs InfixC {} = replicateM 2 (newName "a")
+mkArgs InfixC{} = replicateM 2 (newName "a")
 mkArgs (ForallC _ _ con) = mkArgs con
 mkArgs (GadtC _ tys _) = replicateM (length tys) (newName "a")
 mkArgs (RecGadtC _ tys _) = replicateM (length tys) (newName "a")

@@ -1,48 +1,47 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 
-module App.Fossa.Configuration
-  ( mergeFileCmdMetadata,
-    readConfigFileIO,
-    readConfigFile,
-    ConfigFile (..),
-    ConfigProject (..),
-    ConfigRevision (..),
-  )
-where
+module App.Fossa.Configuration (
+  mergeFileCmdMetadata,
+  readConfigFileIO,
+  readConfigFile,
+  ConfigFile (..),
+  ConfigProject (..),
+  ConfigRevision (..),
+) where
 
 import App.Types
-import qualified Control.Carrier.Diagnostics as Diag
+import Control.Applicative (Alternative ((<|>)))
+import Control.Carrier.Diagnostics qualified as Diag
 import Data.Aeson (FromJSON (parseJSON), withObject, (.:), (.:?))
 import Data.Text (Text)
 import Effect.ReadFS
-import Control.Applicative ( Alternative ((<|>)) )
 import Path
 import System.Exit (die)
 
 data ConfigFile = ConfigFile
-  { configVersion :: Int,
-    configServer :: Maybe Text,
-    configApiKey :: Maybe Text,
-    configProject :: Maybe ConfigProject,
-    configRevision :: Maybe ConfigRevision
+  { configVersion :: Int
+  , configServer :: Maybe Text
+  , configApiKey :: Maybe Text
+  , configProject :: Maybe ConfigProject
+  , configRevision :: Maybe ConfigRevision
   }
   deriving (Eq, Ord, Show)
 
 data ConfigProject = ConfigProject
-  { configProjID :: Maybe Text,
-    configName :: Maybe Text,
-    configLink :: Maybe Text,
-    configTeam :: Maybe Text,
-    configJiraKey :: Maybe Text,
-    configUrl :: Maybe Text,
-    configPolicy :: Maybe Text
+  { configProjID :: Maybe Text
+  , configName :: Maybe Text
+  , configLink :: Maybe Text
+  , configTeam :: Maybe Text
+  , configJiraKey :: Maybe Text
+  , configUrl :: Maybe Text
+  , configPolicy :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
 data ConfigRevision = ConfigRevision
-  { configCommit :: Maybe Text,
-    configBranch :: Maybe Text
+  { configCommit :: Maybe Text
+  , configBranch :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -93,10 +92,10 @@ readConfigFileIO = do
 mergeFileCmdMetadata :: ProjectMetadata -> ConfigFile -> ProjectMetadata
 mergeFileCmdMetadata meta file =
   ProjectMetadata
-    { projectTitle = projectTitle meta <|> (configProject file >>= configName),
-      projectUrl = projectUrl meta <|> (configProject file >>= configUrl),
-      projectJiraKey = projectJiraKey meta <|> (configProject file >>= configJiraKey),
-      projectLink = projectLink meta <|> (configProject file >>= configLink),
-      projectTeam = projectTeam meta <|> (configProject file >>= configTeam),
-      projectPolicy = projectPolicy meta <|> (configProject file >>= configPolicy)
+    { projectTitle = projectTitle meta <|> (configProject file >>= configName)
+    , projectUrl = projectUrl meta <|> (configProject file >>= configUrl)
+    , projectJiraKey = projectJiraKey meta <|> (configProject file >>= configJiraKey)
+    , projectLink = projectLink meta <|> (configProject file >>= configLink)
+    , projectTeam = projectTeam meta <|> (configProject file >>= configTeam)
+    , projectPolicy = projectPolicy meta <|> (configProject file >>= configPolicy)
     }

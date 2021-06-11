@@ -1,18 +1,17 @@
-module App.Fossa.YamlDepsSpec
-  ( spec,
-  )
-where
+module App.Fossa.YamlDepsSpec (
+  spec,
+) where
 
-import App.Fossa.YamlDeps
-  ( CustomDependency (CustomDependency),
-    ReferencedDependency (ReferencedDependency),
-    YamlDependencies (YamlDependencies),
-  )
+import App.Fossa.YamlDeps (
+  CustomDependency (CustomDependency),
+  ReferencedDependency (ReferencedDependency),
+  YamlDependencies (YamlDependencies),
+ )
 import Control.Effect.Exception (displayException)
 import Data.ByteString qualified as BS
 import Data.Yaml (decodeEither')
 import DepTypes (DepType (..))
-import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe, Expectation, shouldContain)
+import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe, shouldContain)
 import Test.Hspec.Core.Spec (SpecM)
 
 getTestDataFile :: String -> SpecM a BS.ByteString
@@ -22,20 +21,19 @@ theWorks :: YamlDependencies
 theWorks = YamlDependencies references customs
   where
     references =
-        [ ReferencedDependency "one" GemType Nothing,
-          ReferencedDependency "two" URLType $ Just "1.0.0"
-        ]
+      [ ReferencedDependency "one" GemType Nothing
+      , ReferencedDependency "two" URLType $ Just "1.0.0"
+      ]
     customs =
-        [ CustomDependency "hello" "1.2.3" "MIT" Nothing Nothing,
-          CustomDependency "full" "3.2.1" "GPL-3.0" (Just "description for full") (Just "we don't validate url's")
-        ]
+      [ CustomDependency "hello" "1.2.3" "MIT" Nothing Nothing
+      , CustomDependency "full" "3.2.1" "GPL-3.0" (Just "description for full") (Just "we don't validate url's")
+      ]
 
 exceptionContains :: BS.ByteString -> String -> Expectation
 exceptionContains yamlBytes partial = case decodeEither' @YamlDependencies yamlBytes of
   -- Ethics issue: right is wrong
   Right _ -> expectationFailure $ "Expected to fail with message containing: " <> partial
   Left exc -> displayException exc `shouldContain` partial
-
 
 spec :: Spec
 spec =

@@ -1,15 +1,13 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-
-module App.Fossa.Compatibility
-  ( compatibilityMain,
-    argumentParser,
-    Argument,
-  )
-where
+module App.Fossa.Compatibility (
+  compatibilityMain,
+  argumentParser,
+  Argument,
+) where
 
 import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath, withCLIv1Binary)
-import Control.Carrier.StickyLogger (runStickyLogger, logSticky)
+import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Lift (sendIO)
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.String.Conversion (decodeUtf8)
@@ -43,7 +41,7 @@ compatibilityMain args = withDefaultLogger SevInfo . runExecIO . withCLIv1Binary
 v1Command :: BinaryPaths -> [Text] -> Command
 v1Command bin args =
   Command
-    { cmdName = pack . toFilePath $ toExecutablePath bin,
-      cmdArgs = "analyze" : args,
-      cmdAllowErr = Never
+    { cmdName = pack . toFilePath $ toExecutablePath bin
+    , cmdArgs = "analyze" : args
+    , cmdAllowErr = Never
     }

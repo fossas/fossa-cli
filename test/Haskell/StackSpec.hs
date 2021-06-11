@@ -1,20 +1,19 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Haskell.StackSpec
-  ( spec,
-  )
-where
+module Haskell.StackSpec (
+  spec,
+) where
 
-import Data.Aeson
-import qualified Data.ByteString.Lazy as BL
-import Data.Text (Text)
-import qualified Graphing as G
-import qualified Test.Hspec as Test
-import Prelude
-import Strategy.Haskell.Stack
 import Control.Carrier.Diagnostics
-import Types
+import Data.Aeson
+import Data.ByteString.Lazy qualified as BL
+import Data.Text (Text)
 import GraphUtil
+import Graphing qualified as G
+import Strategy.Haskell.Stack
+import Test.Hspec qualified as Test
+import Types
+import Prelude
 
 allDeps :: [StackDep]
 allDeps = [builtinDep, deepDep, localDep, remoteDep]

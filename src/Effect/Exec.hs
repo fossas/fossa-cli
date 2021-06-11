@@ -1,26 +1,25 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Effect.Exec
-  ( Exec (..),
-    ExecErr (..),
-    exec,
-    execThrow,
-    Command (..),
-    CmdFailure (..),
-    AllowErr (..),
-    execParser,
-    execJson,
-    ExecIOC (..),
-    runExecIO,
-    module System.Exit,
-    module X,
-  )
-where
+module Effect.Exec (
+  Exec (..),
+  ExecErr (..),
+  exec,
+  execThrow,
+  Command (..),
+  CmdFailure (..),
+  AllowErr (..),
+  execParser,
+  execJson,
+  ExecIOC (..),
+  runExecIO,
+  module System.Exit,
+  module X,
+) where
 
 import Control.Algebra as X
 import Control.Applicative (Alternative)
@@ -34,13 +33,13 @@ import Control.Exception (IOException, try)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Bifunctor (first)
-import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Lazy qualified as BL
 import Data.Kind (Type)
 import Data.String (fromString)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
-import qualified Data.Text as T
-import Data.Text.Prettyprint.Doc (pretty, viaShow, vsep, line, indent)
+import Data.Text qualified as T
+import Data.Text.Prettyprint.Doc (indent, line, pretty, viaShow, vsep)
 import Data.Void (Void)
 import GHC.Generics (Generic)
 import Path
@@ -52,10 +51,10 @@ import Text.Megaparsec.Error (errorBundlePretty)
 
 data Command = Command
   { -- | Command name to use. E.g., "pip", "pip3", "./gradlew".
-    cmdName :: Text,
-    -- | Arguments for the command
-    cmdArgs :: [Text],
-    -- | Error (i.e. non-zero exit code) tolerance policy for running commands. This is helpful for commands like @npm@, that nonsensically return non-zero exit codes when a command succeeds
+    cmdName :: Text
+  , -- | Arguments for the command
+    cmdArgs :: [Text]
+  , -- | Error (i.e. non-zero exit code) tolerance policy for running commands. This is helpful for commands like @npm@, that nonsensically return non-zero exit codes when a command succeeds
     cmdAllowErr :: AllowErr
   }
   deriving (Eq, Ord, Show, Generic)
@@ -64,34 +63,35 @@ instance ToJSON Command
 instance RecordableValue Command
 
 data CmdFailure = CmdFailure
-  { cmdFailureName :: Text,
-    cmdFailureArgs :: [Text],
-    cmdFailureDir :: FilePath,
-    cmdFailureExit :: ExitCode,
-    cmdFailureStdout :: Stdout,
-    cmdFailureStderr :: Stderr
+  { cmdFailureName :: Text
+  , cmdFailureArgs :: [Text]
+  , cmdFailureDir :: FilePath
+  , cmdFailureExit :: ExitCode
+  , cmdFailureStdout :: Stdout
+  , cmdFailureStderr :: Stderr
   }
   deriving (Eq, Ord, Show)
 
 instance ToJSON CmdFailure where
-  toJSON CmdFailure{..} = object
-    [ "cmdFailureName" .= cmdFailureName
-    , "cmdFailureArgs" .= cmdFailureArgs
-    , "cmdFailureDir" .= cmdFailureDir
-    , "cmdFailureExit" .= toRecordedValue cmdFailureExit
-    , "cmdFailureStdout" .= toRecordedValue cmdFailureStdout
-    , "cmdFailureStderr" .= toRecordedValue cmdFailureStderr
-    ]
+  toJSON CmdFailure{..} =
+    object
+      [ "cmdFailureName" .= cmdFailureName
+      , "cmdFailureArgs" .= cmdFailureArgs
+      , "cmdFailureDir" .= cmdFailureDir
+      , "cmdFailureExit" .= toRecordedValue cmdFailureExit
+      , "cmdFailureStdout" .= toRecordedValue cmdFailureStdout
+      , "cmdFailureStderr" .= toRecordedValue cmdFailureStderr
+      ]
 instance RecordableValue CmdFailure
 
 instance FromJSON CmdFailure where
   parseJSON = withObject "CmdFailure" $ \obj ->
     CmdFailure <$> obj .: "cmdFailureName"
-               <*> obj .: "cmdFailureArgs"
-               <*> obj .: "cmdFailureDir"
-               <*> (obj .: "cmdFailureExit" >>= fromRecordedValue)
-               <*> (obj .: "cmdFailureStdout" >>= fromRecordedValue)
-               <*> (obj .: "cmdFailureStderr" >>= fromRecordedValue)
+      <*> obj .: "cmdFailureArgs"
+      <*> obj .: "cmdFailureDir"
+      <*> (obj .: "cmdFailureExit" >>= fromRecordedValue)
+      <*> (obj .: "cmdFailureStdout" >>= fromRecordedValue)
+      <*> (obj .: "cmdFailureStderr" >>= fromRecordedValue)
 instance ReplayableValue CmdFailure
 
 data AllowErr

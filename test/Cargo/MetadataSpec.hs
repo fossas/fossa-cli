@@ -1,17 +1,17 @@
-module Cargo.MetadataSpec
-  ( spec
-  ) where
+module Cargo.MetadataSpec (
+  spec,
+) where
 
 import Data.Aeson
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.Map.Strict as M
+import Data.ByteString.Lazy qualified as BL
+import Data.Map.Strict qualified as M
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import DepTypes
 import GraphUtil
 import Graphing
 import Strategy.Cargo
-import qualified Test.Hspec as Test
+import Test.Hspec qualified as Test
 
 expectedMetadata :: CargoMetadata
 expectedMetadata = CargoMetadata [] [jfmtId] $ Resolve expectedResolveNodes

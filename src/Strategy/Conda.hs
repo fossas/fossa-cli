@@ -1,7 +1,6 @@
-module Strategy.Conda
-  ( discover,
-  )
-where
+module Strategy.Conda (
+  discover,
+) where
 
 import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Discovery.Walk
@@ -9,8 +8,8 @@ import Effect.Exec
 import Effect.ReadFS
 import Graphing (Graphing)
 import Path
-import qualified Strategy.Conda.CondaList as CondaList
-import qualified Strategy.Conda.EnvironmentYml as EnvironmentYml
+import Strategy.Conda.CondaList qualified as CondaList
+import Strategy.Conda.EnvironmentYml qualified as EnvironmentYml
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
@@ -23,25 +22,25 @@ findProjects = walk' $ \dir _ files -> do
     Just envYml -> do
       let project =
             CondaProject
-              { condaDir = dir,
-                condaEnvironmentYml = envYml
+              { condaDir = dir
+              , condaEnvironmentYml = envYml
               }
       pure ([project], WalkSkipAll) -- Once we find an environment.yml file, skip the rest of the walk
 
 data CondaProject = CondaProject
-  { condaDir :: Path Abs Dir,
-    condaEnvironmentYml :: Path Abs File
+  { condaDir :: Path Abs Dir
+  , condaEnvironmentYml :: Path Abs File
   }
   deriving (Eq, Ord, Show)
 
 mkProject :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CondaProject -> DiscoveredProject m
 mkProject project =
   DiscoveredProject
-    { projectType = "conda",
-      projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps project,
-      projectPath = condaDir project,
-      projectLicenses = pure []
+    { projectType = "conda"
+    , projectBuildTargets = mempty
+    , projectDependencyGraph = const $ getDeps project
+    , projectPath = condaDir project
+    , projectLicenses = pure []
     }
 
 -- Prefer analyzeCondaList over analyzeEnvironmentYml, results shoudln't be combined, it's either/or.

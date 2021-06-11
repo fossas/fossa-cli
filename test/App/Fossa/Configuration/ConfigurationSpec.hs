@@ -1,44 +1,43 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.Fossa.Configuration.ConfigurationSpec
-  ( spec,
-  )
-where
+module App.Fossa.Configuration.ConfigurationSpec (
+  spec,
+) where
 
 import App.Fossa.Configuration
-import qualified Control.Carrier.Diagnostics as Diag
+import Control.Carrier.Diagnostics qualified as Diag
 import Effect.ReadFS
 import Path
-import qualified Test.Hspec as T
+import Test.Hspec qualified as T
 
 expectedConfigFile :: ConfigFile
 expectedConfigFile =
   ConfigFile
-    { configVersion = 3,
-      configServer = Just "https://app.fossa.com",
-      configApiKey = Just "123",
-      configProject = Just expectedConfigProject,
-      configRevision = Just expectedConfigRevision
+    { configVersion = 3
+    , configServer = Just "https://app.fossa.com"
+    , configApiKey = Just "123"
+    , configProject = Just expectedConfigProject
+    , configRevision = Just expectedConfigRevision
     }
 
 expectedConfigProject :: ConfigProject
 expectedConfigProject =
   ConfigProject
-    { configProjID = Just "github.com/fossa-cli",
-      configName = Just "fossa-cli",
-      configLink = Just "fossa.com",
-      configTeam = Just "fossa-team",
-      configJiraKey = Just "key",
-      configUrl = Just "fossa.com",
-      configPolicy = Just "license-policy"
+    { configProjID = Just "github.com/fossa-cli"
+    , configName = Just "fossa-cli"
+    , configLink = Just "fossa.com"
+    , configTeam = Just "fossa-team"
+    , configJiraKey = Just "key"
+    , configUrl = Just "fossa.com"
+    , configPolicy = Just "license-policy"
     }
 
 expectedConfigRevision :: ConfigRevision
 expectedConfigRevision =
   ConfigRevision
-    { configCommit = Just "12345",
-      configBranch = Just "master"
+    { configCommit = Just "12345"
+    , configBranch = Just "master"
     }
 
 testFile :: Path Rel File

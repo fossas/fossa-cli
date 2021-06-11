@@ -1,15 +1,14 @@
 -- | Fused-effects style @Lift IO@ wrappers around 'System.Console.Concurrent'/'System.Console.Regions'
-module Control.Effect.ConsoleRegion
-  ( displayConsoleRegions,
-    withConsoleRegion,
-    setConsoleRegion,
-    appendConsoleRegion,
-    closeConsoleRegion,
-    finishConsoleRegion,
-    getConsoleRegion,
-    module X,
-  )
-where
+module Control.Effect.ConsoleRegion (
+  displayConsoleRegions,
+  withConsoleRegion,
+  setConsoleRegion,
+  appendConsoleRegion,
+  closeConsoleRegion,
+  finishConsoleRegion,
+  getConsoleRegion,
+  module X,
+) where
 
 import Control.Effect.Lift
 import Data.Text (Text)

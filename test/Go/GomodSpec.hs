@@ -2,11 +2,11 @@ module Go.GomodSpec (spec) where
 
 import Control.Algebra (run)
 import Data.Function ((&))
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.SemVer (version)
 import Data.SemVer.Internal (Identifier (..))
 import Data.Text (Text)
-import qualified Data.Text.IO as TIO
+import Data.Text.IO qualified as TIO
 import DepTypes (DepType (GoType), Dependency (..), VerConstraint (CEq))
 import Effect.Grapher (direct, evalGrapher)
 import Graphing (Graphing (..))
@@ -24,12 +24,12 @@ semver x y z = Semantic $ version x y z [] []
 dep :: Text -> Text -> Dependency
 dep name revision =
   Dependency
-    { dependencyType = GoType,
-      dependencyName = name,
-      dependencyVersion = Just (CEq revision),
-      dependencyLocations = [],
-      dependencyEnvironments = [],
-      dependencyTags = M.empty
+    { dependencyType = GoType
+    , dependencyName = name
+    , dependencyVersion = Just (CEq revision)
+    , dependencyLocations = []
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
     }
 
 -- Fixtures for testing.
@@ -37,15 +37,15 @@ dep name revision =
 trivialGomod :: Gomod
 trivialGomod =
   Gomod
-    { modName = "github.com/my/package",
-      modRequires =
-        [ Require "github.com/pkg/one" (semver 1 0 0),
-          Require "github.com/pkg/two/v2" (semver 2 0 0),
-          Require "github.com/pkg/three/v3" (semver 3 0 0)
-        ],
-      modReplaces = M.fromList [("github.com/pkg/two/v2", Require "github.com/pkg/overridden" (NonCanonical "overridden"))],
-      modLocalReplaces = M.empty,
-      modExcludes = []
+    { modName = "github.com/my/package"
+    , modRequires =
+        [ Require "github.com/pkg/one" (semver 1 0 0)
+        , Require "github.com/pkg/two/v2" (semver 2 0 0)
+        , Require "github.com/pkg/three/v3" (semver 3 0 0)
+        ]
+    , modReplaces = M.fromList [("github.com/pkg/two/v2", Require "github.com/pkg/overridden" (NonCanonical "overridden"))]
+    , modLocalReplaces = M.empty
+    , modExcludes = []
     }
 
 trivialGraph :: Graphing Dependency
@@ -54,19 +54,18 @@ trivialGraph = run . evalGrapher $ do
   direct $ dep "github.com/pkg/overridden" "overridden"
   direct $ dep "github.com/pkg/three/v3" "v3.0.0"
 
-
 localReplaceGomod :: Gomod
 localReplaceGomod =
   Gomod
-    { modName = "github.com/my/package",
-      modRequires =
-        [ Require "github.com/pkg/one" (semver 1 0 0),
-          Require "github.com/pkg/two/v2" (semver 2 0 0),
-          Require "github.com/pkg/three/v3" (semver 3 0 0)
-        ],
-      modReplaces = M.empty,
-      modLocalReplaces = M.fromList [("github.com/pkg/two/v2", "./foo")],
-      modExcludes = []
+    { modName = "github.com/my/package"
+    , modRequires =
+        [ Require "github.com/pkg/one" (semver 1 0 0)
+        , Require "github.com/pkg/two/v2" (semver 2 0 0)
+        , Require "github.com/pkg/three/v3" (semver 3 0 0)
+        ]
+    , modReplaces = M.empty
+    , modLocalReplaces = M.fromList [("github.com/pkg/two/v2", "./foo")]
+    , modExcludes = []
     }
 
 localReplaceGraph :: Graphing Dependency
@@ -77,75 +76,75 @@ localReplaceGraph = run . evalGrapher $ do
 edgeCaseGomod :: Gomod
 edgeCaseGomod =
   Gomod
-    { modName = "test/package",
-      modRequires =
-        [ Require "repo/name/A" (semver 1 0 0),
-          Require "repo/B" (Pseudo "000000000002"),
-          Require "repo/C" (semver 1 1 0),
-          Require "repo/name/D" (semver 4 0 0),
-          Require "repo/E" (Semantic $ version 8 0 0 [] [IText "incompatible"]),
-          Require "repo/F_underscore" (semver 1 0 0)
-        ],
-      modReplaces =
+    { modName = "test/package"
+    , modRequires =
+        [ Require "repo/name/A" (semver 1 0 0)
+        , Require "repo/B" (Pseudo "000000000002")
+        , Require "repo/C" (semver 1 1 0)
+        , Require "repo/name/D" (semver 4 0 0)
+        , Require "repo/E" (Semantic $ version 8 0 0 [] [IText "incompatible"])
+        , Require "repo/F_underscore" (semver 1 0 0)
+        ]
+    , modReplaces =
         M.fromList
-          [ ("repo/B", Require "alias/repo/B" $ semver 0 1 0),
-            ("repo/C", Require "alias/repo/C" $ Pseudo "000000000003"),
-            ("repo/E", Require "alias/repo/E" $ Pseudo "000000000005"),
-            ("repo/F_underscore", Require "repo/F_underscore" $ semver 2 0 0)
-          ],
-      modLocalReplaces =
+          [ ("repo/B", Require "alias/repo/B" $ semver 0 1 0)
+          , ("repo/C", Require "alias/repo/C" $ Pseudo "000000000003")
+          , ("repo/E", Require "alias/repo/E" $ Pseudo "000000000005")
+          , ("repo/F_underscore", Require "repo/F_underscore" $ semver 2 0 0)
+          ]
+    , modLocalReplaces =
         M.fromList
-          [ ("foo", "../foo"),
-            ("bar", "/foo/bar/baz")
-          ],
-      modExcludes =
-        [ Require "repo/B" (semver 0 9 0),
-          Require "repo/C" (semver 1 0 0),
-          Require "repo/name/D" (semver 3 0 0)
+          [ ("foo", "../foo")
+          , ("bar", "/foo/bar/baz")
+          ]
+    , modExcludes =
+        [ Require "repo/B" (semver 0 9 0)
+        , Require "repo/C" (semver 1 0 0)
+        , Require "repo/name/D" (semver 3 0 0)
         ]
     }
 
 versionsGomod :: Gomod
 versionsGomod =
   Gomod
-    { modName = "github.com/hashicorp/nomad",
-      modRequires =
+    { modName = "github.com/hashicorp/nomad"
+    , modRequires =
         [ Require
-            { reqPackage = "github.com/containerd/go-cni",
-              reqVersion = Pseudo "d20b7eebc7ee"
-            },
-          Require
-            { reqPackage = "gopkg.in/tomb.v2",
-              reqVersion = Pseudo "14b3d72120e8"
-            },
-          Require
-            { reqPackage = "github.com/docker/docker",
-              reqVersion = Pseudo "7f8b4b621b5d"
-            },
-          Require
-            { reqPackage = "github.com/containernetworking/plugins",
-              reqVersion = Pseudo "2d6d46d308b2"
-            },
-          Require
-            { reqPackage = "github.com/ryanuber/columnize",
-              reqVersion = Pseudo "abc90934186a"
-            },
-          Require
-            { reqPackage = "github.com/opencontainers/runc",
-              reqVersion = Semantic (version 1 0 0 [IText "rc92"] [])
-            },
-          Require
-            { reqPackage = "honnef.co/go/tools",
-              reqVersion = Semantic (version 0 0 1 [INum 2020, INum 1, INum 4] [])
-            },
-          Require
-            { reqPackage = "hub.com/docker/distribution",
-              reqVersion = Semantic (version 2 7 1 [] [IText "incompatible"])
+            { reqPackage = "github.com/containerd/go-cni"
+            , reqVersion = Pseudo "d20b7eebc7ee"
             }
-        ],
-      modReplaces = mempty,
-      modLocalReplaces = mempty,
-      modExcludes = []
+        , Require
+            { reqPackage = "gopkg.in/tomb.v2"
+            , reqVersion = Pseudo "14b3d72120e8"
+            }
+        , Require
+            { reqPackage = "github.com/docker/docker"
+            , reqVersion = Pseudo "7f8b4b621b5d"
+            }
+        , Require
+            { reqPackage = "github.com/containernetworking/plugins"
+            , reqVersion = Pseudo "2d6d46d308b2"
+            }
+        , Require
+            { reqPackage = "github.com/ryanuber/columnize"
+            , reqVersion = Pseudo "abc90934186a"
+            }
+        , Require
+            { reqPackage = "github.com/opencontainers/runc"
+            , reqVersion = Semantic (version 1 0 0 [IText "rc92"] [])
+            }
+        , Require
+            { reqPackage = "honnef.co/go/tools"
+            , reqVersion = Semantic (version 0 0 1 [INum 2020, INum 1, INum 4] [])
+            }
+        , Require
+            { reqPackage = "hub.com/docker/distribution"
+            , reqVersion = Semantic (version 2 7 1 [] [IText "incompatible"])
+            }
+        ]
+    , modReplaces = mempty
+    , modLocalReplaces = mempty
+    , modExcludes = []
     }
 
 versionsGraph :: Graphing Dependency

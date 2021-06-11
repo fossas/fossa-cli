@@ -1,19 +1,18 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Haskell.CabalSpec
-  ( spec,
-  )
-where
+module Haskell.CabalSpec (
+  spec,
+) where
 
 import Control.Carrier.Diagnostics
 import Data.Aeson
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.Set as S
+import Data.ByteString.Lazy qualified as BL
+import Data.Set qualified as S
 import DepTypes
 import GraphUtil
 import Graphing
 import Strategy.Haskell.Cabal
-import qualified Test.Hspec as Test
+import Test.Hspec qualified as Test
 
 buildPlan :: [InstallPlan]
 buildPlan = [aesonPlan, basePlan, deepDepPlan, rtsPlan, spectrometerFossaPlan, spectrometerLibPlan, withCompPlan]

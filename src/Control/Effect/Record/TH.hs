@@ -1,9 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Control.Effect.Record.TH
-  ( deriveRecordable,
-  )
-where
+module Control.Effect.Record.TH (
+  deriveRecordable,
+) where
 
 import Control.Effect.Record
 import Control.Monad (replicateM)
@@ -20,8 +19,8 @@ deriveRecordable tyName = do
         (appT [t|Recordable|] (appT (conT tyName) (varT (mkName "m"))))
         -- recordKey :: ...
         [ recordKeyMethod tyCons
-        -- recordValue :: ...
-        , recordValueMethod tyCons
+        , -- recordValue :: ...
+          recordValueMethod tyCons
         ]
     ]
 
@@ -67,7 +66,7 @@ conNm (RecGadtC nms _ _) = head nms
 mkArgs :: Con -> Q [Name]
 mkArgs (NormalC _ tys) = replicateM (length tys) (newName "a")
 mkArgs (RecC _ tys) = replicateM (length tys) (newName "a")
-mkArgs InfixC {} = replicateM 2 (newName "a")
+mkArgs InfixC{} = replicateM 2 (newName "a")
 mkArgs (ForallC _ _ con) = mkArgs con
 mkArgs (GadtC _ tys _) = replicateM (length tys) (newName "a")
 mkArgs (RecGadtC _ tys _) = replicateM (length tys) (newName "a")

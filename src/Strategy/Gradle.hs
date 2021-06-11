@@ -1,13 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Strategy.Gradle
-  ( discover
-
-  , buildGraph
-  , JsonDep(..)
-  , PackageName (..)
-  , ConfigName (..)
-  ) where
+module Strategy.Gradle (
+  discover,
+  buildGraph,
+  JsonDep (..),
+  PackageName (..),
+  ConfigName (..),
+) where
 
 import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Effect.Exception
@@ -16,19 +15,19 @@ import Control.Effect.Path (withSystemTempDir)
 import Data.Aeson
 import Data.Aeson.Types (Parser, unexpected)
 import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BL
+import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as BL
 import Data.FileEmbed (embedFile)
 import Data.Foldable (find, for_)
 import Data.List (isPrefixOf)
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.String.Conversion (decodeUtf8, encodeUtf8)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
@@ -37,31 +36,30 @@ import Effect.Logger (Logger, logWarn)
 import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
 import Path
-import qualified System.FilePath as FP
+import System.FilePath qualified as FP
 import Types
 
-
-newtype ConfigName = ConfigName { unConfigName :: Text } deriving (Eq, Ord, Show, FromJSON)
+newtype ConfigName = ConfigName {unConfigName :: Text} deriving (Eq, Ord, Show, FromJSON)
 newtype GradleLabel = Env DepEnvironment deriving (Eq, Ord, Show)
-newtype PackageName = PackageName { unPackageName :: Text } deriving (Eq, Ord, Show, FromJSON)
+newtype PackageName = PackageName {unPackageName :: Text} deriving (Eq, Ord, Show, FromJSON)
 
 gradleJsonDepsCmd :: Text -> FP.FilePath -> Set BuildTarget -> Command
-gradleJsonDepsCmd baseCmd initScriptFilepath targets = Command
-  { cmdName = baseCmd
-  , cmdArgs = ["-I", T.pack initScriptFilepath] ++ map (\target -> unBuildTarget target <> ":jsonDeps") (S.toList targets)
-  , cmdAllowErr = Never
-  }
+gradleJsonDepsCmd baseCmd initScriptFilepath targets =
+  Command
+    { cmdName = baseCmd
+    , cmdArgs = ["-I", T.pack initScriptFilepath] ++ map (\target -> unBuildTarget target <> ":jsonDeps") (S.toList targets)
+    , cmdAllowErr = Never
+    }
 
 discover ::
-  ( Has (Lift IO) sig m,
-    Has ReadFS sig m,
-    Has Diagnostics sig m,
-    Has Exec sig m,
-    Has Logger sig m,
-
-    Has (Lift IO) rsig run,
-    Has Exec rsig run,
-    Has Diagnostics rsig run
+  ( Has (Lift IO) sig m
+  , Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has Exec sig m
+  , Has Logger sig m
+  , Has (Lift IO) rsig run
+  , Has Exec rsig run
+  , Has Diagnostics rsig run
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject run]
@@ -77,10 +75,10 @@ findProjects = walk' $ \dir _ files -> do
   case find (\f -> "build.gradle" `isPrefixOf` fileName f) files of
     Nothing -> pure ([], WalkContinue)
     Just _ -> do
-
-      projectsStdout <- errorBoundary .
-        context ("Listing gradle projects at '" <> pathToText dir <> "'") $
-          execThrow dir (gradleProjectsCmd (pathToText dir <> "gradlew"))
+      projectsStdout <-
+        errorBoundary
+          . context ("Listing gradle projects at '" <> pathToText dir <> "'")
+          $ execThrow dir (gradleProjectsCmd (pathToText dir <> "gradlew"))
             <||> execThrow dir (gradleProjectsCmd (pathToText dir <> "gradlew.bat"))
             <||> execThrow dir (gradleProjectsCmd "gradle")
 
@@ -100,8 +98,8 @@ findProjects = walk' $ \dir _ files -> do
 
           let project =
                 GradleProject
-                  { gradleDir = dir,
-                    gradleProjects = subprojects
+                  { gradleDir = dir
+                  , gradleProjects = subprojects
                   }
 
           pure ([project], WalkSkipAll)
@@ -109,15 +107,16 @@ findProjects = walk' $ \dir _ files -> do
 data GradleProject = GradleProject
   { gradleDir :: Path Abs Dir
   , gradleProjects :: Set Text
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 gradleProjectsCmd :: Text -> Command
-gradleProjectsCmd baseCmd = Command
-  { cmdName = baseCmd
-  , cmdArgs = ["projects"]
-  , cmdAllowErr = Never
-  }
-
+gradleProjectsCmd baseCmd =
+  Command
+    { cmdName = baseCmd
+    , cmdArgs = ["projects"]
+    , cmdAllowErr = Never
+    }
 
 -- we use a single empty-string target when no subprojects exist. gradle uses an
 -- empty string to denote the root project when invoking tasks, e.g., ":task"
@@ -158,11 +157,11 @@ parseSubproject line =
 mkProject :: (Has Exec sig n, Has (Lift IO) sig n, Has Diagnostics sig n) => GradleProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
-    { projectType = "gradle",
-      projectBuildTargets = S.map BuildTarget $ gradleProjects project,
-      projectDependencyGraph = getDeps project,
-      projectPath = gradleDir project,
-      projectLicenses = pure []
+    { projectType = "gradle"
+    , projectBuildTargets = S.map BuildTarget $ gradleProjects project
+    , projectDependencyGraph = getDeps project
+    , projectPath = gradleDir project
+    , projectLicenses = pure []
     }
 
 getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> Set BuildTarget -> m (Graphing Dependency)
@@ -175,15 +174,18 @@ analyze ::
   ( Has (Lift IO) sig m
   , Has Exec sig m
   , Has Diagnostics sig m
-  )
-  => Set BuildTarget -> Path Abs Dir -> m (Graphing Dependency)
+  ) =>
+  Set BuildTarget ->
+  Path Abs Dir ->
+  m (Graphing Dependency)
 analyze targets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
   let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
   context "Writing gradle script" $ sendIO (BS.writeFile initScriptFilepath initScript)
-  stdout <- context "Running gradle script" $
-              execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew") initScriptFilepath targets)
-                <||> execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew.bat") initScriptFilepath targets)
-                <||> execThrow dir (gradleJsonDepsCmd "gradle" initScriptFilepath targets)
+  stdout <-
+    context "Running gradle script" $
+      execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew") initScriptFilepath targets)
+        <||> execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew.bat") initScriptFilepath targets)
+        <||> execThrow dir (gradleJsonDepsCmd "gradle" initScriptFilepath targets)
 
   let text = decodeUtf8 $ BL.toStrict stdout
       textLines :: [Text]
@@ -194,7 +196,7 @@ analyze targets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
       jsonDepsLines = mapMaybe (T.stripPrefix "JSONDEPS_") textLines
 
       packagePathsWithJson :: [(PackageName, Text)]
-      packagePathsWithJson = map (\line -> let (x,y) = T.breakOn "_" line in (PackageName x, T.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
+      packagePathsWithJson = map (\line -> let (x, y) = T.breakOn "_" line in (PackageName x, T.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
 
       packagePathsWithDecoded :: [((PackageName, ConfigName), [JsonDep])]
       packagePathsWithDecoded = do
@@ -212,62 +214,63 @@ analyze targets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
 buildGraph :: Map (PackageName, ConfigName) [JsonDep] -> Graphing Dependency
 buildGraph projectsAndDeps = run . withLabeling toDependency $ M.traverseWithKey addProject projectsAndDeps
   where
-  -- add top-level projects from the output
-  addProject :: Has (LabeledGrapher JsonDep GradleLabel) sig m => (PackageName, ConfigName) -> [JsonDep] -> m ()
-  addProject (projName, configName) projDeps = do
-    let projAsDep = ProjectDep $ unPackageName projName
-        envLabel = configNameToLabel configName
-    direct projAsDep
-    label projAsDep envLabel
-    for_ projDeps $ \dep -> do
-      edge projAsDep dep
-      mkRecursiveEdges dep envLabel
+    -- add top-level projects from the output
+    addProject :: Has (LabeledGrapher JsonDep GradleLabel) sig m => (PackageName, ConfigName) -> [JsonDep] -> m ()
+    addProject (projName, configName) projDeps = do
+      let projAsDep = ProjectDep $ unPackageName projName
+          envLabel = configNameToLabel configName
+      direct projAsDep
+      label projAsDep envLabel
+      for_ projDeps $ \dep -> do
+        edge projAsDep dep
+        mkRecursiveEdges dep envLabel
 
-  configNameToLabel :: ConfigName -> GradleLabel
-  configNameToLabel conf = case unConfigName conf of
-    "compileOnly" -> Env EnvDevelopment
-    x | x `elem` ["testImplementation", "testCompileOnly", "testRuntimeOnly"] -> Env EnvTesting
-    x -> Env $ EnvOther x
+    configNameToLabel :: ConfigName -> GradleLabel
+    configNameToLabel conf = case unConfigName conf of
+      "compileOnly" -> Env EnvDevelopment
+      x | x `elem` ["testImplementation", "testCompileOnly", "testRuntimeOnly"] -> Env EnvTesting
+      x -> Env $ EnvOther x
 
-  toDependency :: JsonDep -> S.Set GradleLabel -> Dependency
-  toDependency dep = foldr applyLabel $ jsonDepToDep dep
+    toDependency :: JsonDep -> S.Set GradleLabel -> Dependency
+    toDependency dep = foldr applyLabel $ jsonDepToDep dep
 
-  applyLabel :: GradleLabel -> Dependency -> Dependency
-  applyLabel lbl dep = case lbl of
-    Env env -> insertEnvironment env dep
+    applyLabel :: GradleLabel -> Dependency -> Dependency
+    applyLabel lbl dep = case lbl of
+      Env env -> insertEnvironment env dep
 
-  -- build edges between deps, recursively
-  mkRecursiveEdges :: Has (LabeledGrapher JsonDep GradleLabel) sig m => JsonDep -> GradleLabel -> m ()
-  mkRecursiveEdges (ProjectDep x) envLabel = label (ProjectDep x) envLabel
-  mkRecursiveEdges jsondep@(PackageDep _ _ deps) envLabel = do
-    label jsondep envLabel
-    for_ deps $ \child -> do
-      edge jsondep child
-      mkRecursiveEdges child envLabel
+    -- build edges between deps, recursively
+    mkRecursiveEdges :: Has (LabeledGrapher JsonDep GradleLabel) sig m => JsonDep -> GradleLabel -> m ()
+    mkRecursiveEdges (ProjectDep x) envLabel = label (ProjectDep x) envLabel
+    mkRecursiveEdges jsondep@(PackageDep _ _ deps) envLabel = do
+      label jsondep envLabel
+      for_ deps $ \child -> do
+        edge jsondep child
+        mkRecursiveEdges child envLabel
 
-  jsonDepToDep :: JsonDep -> Dependency
-  jsonDepToDep (ProjectDep name) = projectToDep name
-  jsonDepToDep (PackageDep name version _) =
-    Dependency
-      { dependencyType = MavenType
-      , dependencyName = name
-      , dependencyVersion = Just (CEq version)
-      , dependencyLocations = []
-      , dependencyEnvironments = []
-      , dependencyTags = M.empty
-      }
+    jsonDepToDep :: JsonDep -> Dependency
+    jsonDepToDep (ProjectDep name) = projectToDep name
+    jsonDepToDep (PackageDep name version _) =
+      Dependency
+        { dependencyType = MavenType
+        , dependencyName = name
+        , dependencyVersion = Just (CEq version)
+        , dependencyLocations = []
+        , dependencyEnvironments = []
+        , dependencyTags = M.empty
+        }
 
-  projectToDep name = Dependency
-    { dependencyType = SubprojectType
-    , dependencyName = name
-    , dependencyVersion = Nothing
-    , dependencyLocations = []
-    , dependencyEnvironments = []
-    , dependencyTags = M.empty
-    }
+    projectToDep name =
+      Dependency
+        { dependencyType = SubprojectType
+        , dependencyName = name
+        , dependencyVersion = Nothing
+        , dependencyLocations = []
+        , dependencyEnvironments = []
+        , dependencyTags = M.empty
+        }
 
-data JsonDep =
-    ProjectDep Text -- name
+data JsonDep
+  = ProjectDep Text -- name
   | PackageDep Text Text [JsonDep] -- name version deps
   deriving (Eq, Ord, Show)
 
@@ -277,4 +280,4 @@ instance FromJSON JsonDep where
     case ty of
       "project" -> ProjectDep <$> obj .: "name"
       "package" -> PackageDep <$> obj .: "name" <*> obj .: "version" <*> obj .: "dependencies"
-      _         -> unexpected (String ty)
+      _ -> unexpected (String ty)

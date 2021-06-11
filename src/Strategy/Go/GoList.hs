@@ -1,19 +1,17 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Strategy.Go.GoList
-  ( analyze'
-
-  , Require(..)
-  )
-  where
+module Strategy.Go.GoList (
+  analyze',
+  Require (..),
+) where
 
 import Control.Effect.Diagnostics
-import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (traverse_)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import DepTypes
 import Effect.Exec
 import Effect.Grapher
@@ -25,20 +23,23 @@ import Strategy.Go.Types
 data Require = Require
   { reqPackage :: Text
   , reqVersion :: Text
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 golistCmd :: Command
-golistCmd = Command
-  { cmdName = "go"
-  , cmdArgs = ["list", "-m", "all"]
-  , cmdAllowErr = Never
-  }
+golistCmd =
+  Command
+    { cmdName = "go"
+    , cmdArgs = ["list", "-m", "all"]
+    , cmdAllowErr = Never
+    }
 
 analyze' ::
   ( Has Exec sig m
   , Has Diagnostics sig m
-  )
-  => Path Abs Dir -> m (Graphing Dependency)
+  ) =>
+  Path Abs Dir ->
+  m (Graphing Dependency)
 analyze' dir = graphingGolang $ do
   stdout <- context "Getting direct dependencies" $ execThrow dir golistCmd
 
@@ -59,9 +60,8 @@ analyze' dir = graphingGolang $ do
 buildGraph :: Has GolangGrapher sig m => [Require] -> m ()
 buildGraph = traverse_ go
   where
-
-  go :: Has GolangGrapher sig m => Require -> m ()
-  go Require{..} = do
-    let pkg = mkGolangPackage reqPackage
-    direct pkg
-    label pkg (mkGolangVersion reqVersion)
+    go :: Has GolangGrapher sig m => Require -> m ()
+    go Require{..} = do
+      let pkg = mkGolangPackage reqPackage
+      direct pkg
+      label pkg (mkGolangVersion reqVersion)

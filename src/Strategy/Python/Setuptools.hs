@@ -1,21 +1,20 @@
-module Strategy.Python.Setuptools
-  ( discover,
-    findProjects,
-    getDeps,
-    mkProject,
-  )
-where
+module Strategy.Python.Setuptools (
+  discover,
+  findProjects,
+  getDeps,
+  mkProject,
+) where
 
 import Control.Carrier.Output.IO
 import Control.Effect.Diagnostics (Diagnostics, context)
-import qualified Control.Effect.Diagnostics as Diag
+import Control.Effect.Diagnostics qualified as Diag
 import Data.List (isInfixOf, isSuffixOf)
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
 import Path
-import qualified Strategy.Python.ReqTxt as ReqTxt
-import qualified Strategy.Python.SetupPy as SetupPy
+import Strategy.Python.ReqTxt qualified as ReqTxt
+import Strategy.Python.SetupPy qualified as SetupPy
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
@@ -34,9 +33,9 @@ findProjects = walk' $ \dir _ files -> do
 
   let project =
         SetuptoolsProject
-          { setuptoolsReqTxt = reqTxtFiles,
-            setuptoolsSetupPy = setupPyFile,
-            setuptoolsDir = dir
+          { setuptoolsReqTxt = reqTxtFiles
+          , setuptoolsSetupPy = setupPyFile
+          , setuptoolsDir = dir
           }
 
   case (reqTxtFiles, setupPyFile) of
@@ -44,10 +43,11 @@ findProjects = walk' $ \dir _ files -> do
     _ -> pure ([project], WalkContinue)
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
-getDeps project = context "Setuptools" $
-  Diag.combineSuccessful
-    "Analysis failed for all requirements.txt/setup.py in the project"
-    [analyzeReqTxts project, analyzeSetupPy project]
+getDeps project =
+  context "Setuptools" $
+    Diag.combineSuccessful
+      "Analysis failed for all requirements.txt/setup.py in the project"
+      [analyzeReqTxts project, analyzeSetupPy project]
 
 analyzeReqTxts :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
 analyzeReqTxts = context "Analyzing requirements.txt files" . fmap mconcat . traverse ReqTxt.analyze' . setuptoolsReqTxt
@@ -56,18 +56,18 @@ analyzeSetupPy :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject
 analyzeSetupPy project = context "Analyzing setup.py" (Diag.fromMaybeText "No setup.py found in this project" (setuptoolsSetupPy project)) >>= SetupPy.analyze'
 
 data SetuptoolsProject = SetuptoolsProject
-  { setuptoolsReqTxt :: [Path Abs File],
-    setuptoolsSetupPy :: Maybe (Path Abs File),
-    setuptoolsDir :: Path Abs Dir
+  { setuptoolsReqTxt :: [Path Abs File]
+  , setuptoolsSetupPy :: Maybe (Path Abs File)
+  , setuptoolsDir :: Path Abs Dir
   }
   deriving (Eq, Ord, Show)
 
 mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => SetuptoolsProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
-    { projectType = "setuptools",
-      projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps project,
-      projectPath = setuptoolsDir project,
-      projectLicenses = pure []
+    { projectType = "setuptools"
+    , projectBuildTargets = mempty
+    , projectDependencyGraph = const $ getDeps project
+    , projectPath = setuptoolsDir project
+    , projectLicenses = pure []
     }

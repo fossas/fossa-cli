@@ -1,10 +1,10 @@
 module Data.Aeson.Extra (
-  forbidMembers, 
+  forbidMembers,
   TextLike (..),
 ) where
 
 import Control.Applicative ((<|>))
-import Data.Aeson.Types ( FromJSON(parseJSON), Object, Parser )
+import Data.Aeson.Types (FromJSON (parseJSON), Object, Parser)
 import Data.Foldable (traverse_)
 import Data.HashMap.Strict (member)
 import Data.String.Conversion (toString)
@@ -44,6 +44,7 @@ instance FromJSON TextLike where
 forbidMembers :: Text -> [Text] -> Object -> Parser ()
 forbidMembers typename names obj = traverse_ (badMember obj) names
   where
-    badMember hashmap name = if member name hashmap
-      then fail . toString $ "Invalid field name for " <> typename <> ": " <> name
-      else pure ()
+    badMember hashmap name =
+      if member name hashmap
+        then fail . toString $ "Invalid field name for " <> typename <> ": " <> name
+        else pure ()

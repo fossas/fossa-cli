@@ -2,12 +2,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Control.Carrier.Output.IO
-  ( OutputC (..),
-    runOutput,
-    module X,
-  )
-where
+module Control.Carrier.Output.IO (
+  OutputC (..),
+  runOutput,
+  module X,
+) where
 
 import Control.Applicative (Alternative)
 import Control.Carrier.Reader

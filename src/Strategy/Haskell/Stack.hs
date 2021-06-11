@@ -1,38 +1,38 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Strategy.Haskell.Stack
-  ( discover,
-    -- * Testing
-    buildGraph,
-    PackageName (..),
-    StackDep (..),
-    StackLocation (..),
-  )
-where
+module Strategy.Haskell.Stack (
+  discover,
+
+  -- * Testing
+  buildGraph,
+  PackageName (..),
+  StackDep (..),
+  StackLocation (..),
+) where
 
 import Control.Effect.Diagnostics
+import Control.Monad (when)
 import Data.Aeson.Types
 import Data.Foldable (for_)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
-import qualified Graphing as G
+import Effect.ReadFS (ReadFS)
+import Graphing qualified as G
 import Path
 import Types
 import Prelude
-import Control.Monad (when)
-import Effect.ReadFS (ReadFS)
 
 newtype PackageName = PackageName {unPackageName :: Text} deriving (FromJSON, Eq, Ord, Show)
 
 data StackDep = StackDep
-  { stackName :: PackageName,
-    stackVersion :: Text,
-    stackDepNames :: [PackageName],
-    stackLocation :: StackLocation
+  { stackName :: PackageName
+  , stackVersion :: Text
+  , stackDepNames :: [PackageName]
+  , stackLocation :: StackLocation
   }
   deriving (Eq, Ord, Show)
 
@@ -77,11 +77,11 @@ findProjects = walk' $ \dir _ files -> do
 mkProject :: (Has Exec sig n, Has Diagnostics sig n) => StackProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
-    { projectType = "stack",
-      projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps project,
-      projectPath = stackDir project,
-      projectLicenses = pure []
+    { projectType = "stack"
+    , projectBuildTargets = mempty
+    , projectDependencyGraph = const $ getDeps project
+    , projectPath = stackDir project
+    , projectLicenses = pure []
     }
 
 getDeps :: (Has Exec sig m, Has Diagnostics sig m) => StackProject -> m (G.Graphing Dependency)
@@ -92,14 +92,15 @@ getDeps project =
 
 newtype StackProject = StackProject
   { stackDir :: Path Abs Dir
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 stackJSONDepsCmd :: Command
 stackJSONDepsCmd =
   Command
-    { cmdName = "stack",
-      cmdArgs = ["ls", "dependencies", "json"],
-      cmdAllowErr = Never
+    { cmdName = "stack"
+    , cmdArgs = ["ls", "dependencies", "json"]
+    , cmdAllowErr = Never
     }
 
 doGraph :: Has (MappedGrapher PackageName StackDep) sig m => StackDep -> m ()
@@ -119,12 +120,12 @@ shouldInclude dep = Remote == stackLocation dep
 toDependency :: StackDep -> Dependency
 toDependency dep =
   Dependency
-    { dependencyType = HackageType,
-      dependencyName = unPackageName $ stackName dep,
-      dependencyVersion = Just $ CEq $ stackVersion dep,
-      dependencyLocations = [],
-      dependencyEnvironments = [],
-      dependencyTags = M.empty
+    { dependencyType = HackageType
+    , dependencyName = unPackageName $ stackName dep
+    , dependencyVersion = Just $ CEq $ stackVersion dep
+    , dependencyLocations = []
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
     }
 
 buildGraph :: Has Diagnostics sig m => [StackDep] -> m (G.Graphing Dependency)

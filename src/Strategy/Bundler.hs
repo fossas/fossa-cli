@@ -1,20 +1,19 @@
-module Strategy.Bundler
-  ( discover,
-    findProjects,
-    mkProject,
-    getDeps,
-  )
-where
+module Strategy.Bundler (
+  discover,
+  findProjects,
+  mkProject,
+  getDeps,
+) where
 
-import Control.Effect.Diagnostics (Diagnostics, (<||>), context)
-import qualified Control.Effect.Diagnostics as Diag
+import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
+import Control.Effect.Diagnostics qualified as Diag
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
 import Graphing
 import Path
-import qualified Strategy.Ruby.BundleShow as BundleShow
-import qualified Strategy.Ruby.GemfileLock as GemfileLock
+import Strategy.Ruby.BundleShow qualified as BundleShow
+import Strategy.Ruby.GemfileLock qualified as GemfileLock
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
@@ -32,28 +31,28 @@ findProjects = walk' $ \dir _ files -> do
     Just gemfile -> do
       let project =
             BundlerProject
-              { bundlerGemfile = gemfile,
-                bundlerGemfileLock = gemfileLock,
-                bundlerDir = dir
+              { bundlerGemfile = gemfile
+              , bundlerGemfileLock = gemfileLock
+              , bundlerDir = dir
               }
 
       pure ([project], WalkContinue)
 
 data BundlerProject = BundlerProject
-  { bundlerGemfile :: Path Abs File,
-    bundlerGemfileLock :: Maybe (Path Abs File),
-    bundlerDir :: Path Abs Dir
+  { bundlerGemfile :: Path Abs File
+  , bundlerGemfileLock :: Maybe (Path Abs File)
+  , bundlerDir :: Path Abs Dir
   }
   deriving (Eq, Ord, Show)
 
 mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => BundlerProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
-    { projectType = "bundler",
-      projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps project,
-      projectPath = bundlerDir project,
-      projectLicenses = pure []
+    { projectType = "bundler"
+    , projectBuildTargets = mempty
+    , projectDependencyGraph = const $ getDeps project
+    , projectPath = bundlerDir project
+    , projectLicenses = pure []
     }
 
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m (Graphing Dependency)

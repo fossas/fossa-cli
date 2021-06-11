@@ -1,7 +1,6 @@
-module Data.FileEmbed.Extra
-  ( embedFileIfExists,
-  )
-where
+module Data.FileEmbed.Extra (
+  embedFileIfExists,
+) where
 
 import Data.FileEmbed (embedFile)
 import Language.Haskell.TH

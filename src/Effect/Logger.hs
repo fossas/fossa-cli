@@ -2,42 +2,41 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Effect.Logger
-  ( Logger (..),
-    Severity (..),
-    LoggerC (..),
-    IgnoreLoggerC (..),
-    withLogger,
-    withDefaultLogger,
-    runLogger,
-    ignoreLogger,
-    log,
-    logDebug,
-    logInfo,
-    logWarn,
-    logError,
-    logStdout,
-    module X,
-  )
-where
+module Effect.Logger (
+  Logger (..),
+  Severity (..),
+  LoggerC (..),
+  IgnoreLoggerC (..),
+  withLogger,
+  withDefaultLogger,
+  runLogger,
+  ignoreLogger,
+  log,
+  logDebug,
+  logInfo,
+  logWarn,
+  logError,
+  logStdout,
+  module X,
+) where
 
 import Control.Algebra as X
 import Control.Applicative (Alternative)
 import Control.Carrier.Reader
+import Control.Effect.ConsoleRegion
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
-import Control.Effect.ConsoleRegion
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Trans (lift)
 import Data.Kind (Type)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc as X
 import Data.Text.Prettyprint.Doc.Render.Terminal as X
+import System.Console.ANSI (hSupportsANSI)
 import System.Console.Concurrent
 import System.IO (stderr)
 import Prelude hiding (log)
-import System.Console.ANSI (hSupportsANSI)
-import Control.Monad.Trans (lift)
 
 data LogCtx m = LogCtx
   { logCtxSeverity :: Severity
@@ -123,7 +122,7 @@ newtype LoggerC m a = LoggerC {runLoggerC :: ReaderC (LogCtx m) m a}
 instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (Logger :+: sig) (LoggerC m) where
   alg hdl sig ctx = LoggerC $ case sig of
     L (Log sev msg) -> do
-      LogCtx{logCtxWrite,logCtxFormatter,logCtxSeverity} <- ask
+      LogCtx{logCtxWrite, logCtxFormatter, logCtxSeverity} <- ask
       when (logCtxSeverity <= sev) $
         lift $ logCtxWrite $ logCtxFormatter sev msg
       pure ctx

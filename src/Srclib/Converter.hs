@@ -1,39 +1,40 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Srclib.Converter
-  ( toSourceUnit,
-    depTypeToFetcher
-  ) where
+module Srclib.Converter (
+  toSourceUnit,
+  depTypeToFetcher,
+) where
 
 import Prelude
 
-import qualified Algebra.Graph.AdjacencyMap as AM
+import Algebra.Graph.AdjacencyMap qualified as AM
 import App.Fossa.Analyze.Project
 import Control.Applicative ((<|>))
+import Data.Set qualified as Set
 import Data.Text (Text)
-import qualified Data.Text as Text
-import qualified Data.Set as Set
+import Data.Text qualified as Text
 import DepTypes
 import Graphing (Graphing)
-import qualified Graphing
+import Graphing qualified
 import Path (toFilePath)
 import Srclib.Types
 
 toSourceUnit :: ProjectResult -> SourceUnit
 toSourceUnit ProjectResult{..} =
   SourceUnit
-    { sourceUnitName = renderedPath,
-      sourceUnitType = projectResultType,
-      sourceUnitManifest = renderedPath,
-      sourceUnitBuild = Just $
-        SourceUnitBuild
-          { buildArtifact = "default",
-            buildSucceeded = True,
-            buildImports = imports,
-            buildDependencies = deps
-          },
-      additionalData = Nothing
+    { sourceUnitName = renderedPath
+    , sourceUnitType = projectResultType
+    , sourceUnitManifest = renderedPath
+    , sourceUnitBuild =
+        Just $
+          SourceUnitBuild
+            { buildArtifact = "default"
+            , buildSucceeded = True
+            , buildImports = imports
+            , buildDependencies = deps
+            }
+    , additionalData = Nothing
     }
   where
     renderedPath = Text.pack (toFilePath projectResultPath)
@@ -54,10 +55,11 @@ toSourceUnit ProjectResult{..} =
     imports = Set.toList $ Graphing.graphingDirect locatorGraph
 
 mkSourceUnitDependency :: AM.AdjacencyMap Locator -> Locator -> SourceUnitDependency
-mkSourceUnitDependency gr locator = SourceUnitDependency
-  { sourceDepLocator = locator
-  , sourceDepImports = Set.toList $ AM.postSet locator gr
-  }
+mkSourceUnitDependency gr locator =
+  SourceUnitDependency
+    { sourceDepLocator = locator
+    , sourceDepImports = Set.toList $ AM.postSet locator gr
+    }
 
 shouldPublishDep :: Dependency -> Bool
 shouldPublishDep Dependency{dependencyEnvironments} =
@@ -72,11 +74,12 @@ isSupportedType :: Dependency -> Bool
 isSupportedType Dependency{dependencyType} = dependencyType /= SubprojectType && dependencyType /= GooglesourceType
 
 toLocator :: Dependency -> Locator
-toLocator dep = Locator
-  { locatorFetcher = depTypeToFetcher (dependencyType dep)
-  , locatorProject = dependencyName dep
-  , locatorRevision = verConstraintToRevision =<< dependencyVersion dep
-  }
+toLocator dep =
+  Locator
+    { locatorFetcher = depTypeToFetcher (dependencyType dep)
+    , locatorProject = dependencyName dep
+    , locatorRevision = verConstraintToRevision =<< dependencyVersion dep
+    }
 
 verConstraintToRevision :: VerConstraint -> Maybe Text
 verConstraintToRevision = \case

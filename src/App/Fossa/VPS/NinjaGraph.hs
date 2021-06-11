@@ -2,53 +2,53 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module App.Fossa.VPS.NinjaGraph
-(
-  ninjaGraphMain
-, NinjaGraphCmdOpts(..)
-, scanNinjaDeps
+module App.Fossa.VPS.NinjaGraph (
+  ninjaGraphMain,
+  NinjaGraphCmdOpts (..),
+  scanNinjaDeps,
 ) where
 
-import App.Fossa.VPS.Types
+import App.Fossa.ProjectInference
 import App.Fossa.VPS.Scan.Core
 import App.Fossa.VPS.Scan.ScotlandYard
-import App.Fossa.ProjectInference
+import App.Fossa.VPS.Types
 import App.Types (BaseDir (..), NinjaGraphCLIOptions (..), OverrideProject (..), ProjectRevision (..))
 import App.Util (validateDir)
 import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BL
+import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as BL
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
 import Effect.Exec
 import Effect.Logger hiding (line)
 import Effect.ReadFS
-import Path
-import qualified System.FilePath as FP
-import System.Process.Typed as PROC
 import Fossa.API.Types (ApiOpts)
+import Path
+import System.FilePath qualified as FP
+import System.Process.Typed as PROC
 
 data NinjaGraphCmdOpts = NinjaGraphCmdOpts
   { ninjaCmdBasedir :: FilePath
   , ninjaCmdNinjaGraphOpts :: NinjaGraphOpts
   }
 
-data NinjaGraphError = ErrorRunningNinja Text
-                     | NoNinjaDepsStartLineFound
-                     | NoNinjaDepsEndLineFound
-                     | NinjaDepsParseError
+data NinjaGraphError
+  = ErrorRunningNinja Text
+  | NoNinjaDepsStartLineFound
+  | NoNinjaDepsEndLineFound
+  | NinjaDepsParseError
   deriving (Eq, Ord, Show)
 
 instance ToDiagnostic NinjaGraphError where
   renderDiagnostic = \case
     ErrorRunningNinja err -> "Error while running Ninja: " <> pretty err
     NoNinjaDepsStartLineFound -> "The output of \"ninja -t deps\" did not contain the \"Starting ninja...\" line"
-    NoNinjaDepsEndLineFound   -> "The output of \"ninja -t deps\" did not contain the \"build completed successfully\" line"
-    NinjaDepsParseError   -> "There was an error while parsing the output of \"ninja -t deps\""
+    NoNinjaDepsEndLineFound -> "The output of \"ninja -t deps\" did not contain the \"build completed successfully\" line"
+    NinjaDepsParseError -> "There was an error while parsing the output of \"ninja -t deps\""
 
 data NinjaParseState = Starting | Parsing | Complete | Error
 
@@ -57,14 +57,13 @@ ninjaGraphMain apiOpts logSeverity overrideProject NinjaGraphCLIOptions{..} = do
   BaseDir basedir <- validateDir ninjaBaseDir
 
   withDefaultLogger logSeverity . logWithExit_ $ do
-    ProjectRevision {..} <- mergeOverride overrideProject <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
+    ProjectRevision{..} <- mergeOverride overrideProject <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
     let ninjaGraphOpts = NinjaGraphOpts apiOpts ninjaDepsFile ninjaLunchTarget ninjaScanId projectName ninjaBuildName
 
     ninjaGraphInner basedir apiOpts ninjaGraphOpts
 
 ninjaGraphInner :: (Has Logger sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> ApiOpts -> NinjaGraphOpts -> m ()
 ninjaGraphInner basedir apiOpts ninjaGraphOpts = getAndParseNinjaDeps basedir apiOpts ninjaGraphOpts
-
 
 getAndParseNinjaDeps :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> NinjaGraphOpts -> m ()
 getAndParseNinjaDeps dir apiOpts ninjaGraphOpts@NinjaGraphOpts{..} = do
@@ -106,15 +105,15 @@ generateNinjaDeps baseDir NinjaGraphOpts{..} = do
   where
     commandString = case lunchTarget of
       Nothing -> "cd " ++ show baseDir ++ " && NINJA_ARGS=\"-t deps\" make"
-      Just lunch ->  "cd " ++ show baseDir ++ " && source ./build/envsetup.sh && lunch " ++ T.unpack lunch ++ " && NINJA_ARGS=\"-t deps\" make"
+      Just lunch -> "cd " ++ show baseDir ++ " && source ./build/envsetup.sh && lunch " ++ T.unpack lunch ++ " && NINJA_ARGS=\"-t deps\" make"
 
 correctedTarget :: DepsTarget -> DepsTarget
-correctedTarget target@DepsTarget { targetDependencies = [] } =
+correctedTarget target@DepsTarget{targetDependencies = []} =
   target
-correctedTarget target@DepsTarget { targetDependencies = [singleDep] } =
-  target { targetDependencies = [], targetInputs = [singleDep] }
-correctedTarget target@DepsTarget { targetDependencies = (firstDep : remainingDeps) } =
-  fromMaybe (target { targetInputs = [firstDep], targetDependencies = remainingDeps }) (correctTargetWithLeadingTxtDeps target)
+correctedTarget target@DepsTarget{targetDependencies = [singleDep]} =
+  target{targetDependencies = [], targetInputs = [singleDep]}
+correctedTarget target@DepsTarget{targetDependencies = (firstDep : remainingDeps)} =
+  fromMaybe (target{targetInputs = [firstDep], targetDependencies = remainingDeps}) (correctTargetWithLeadingTxtDeps target)
 
 -- There are cases where the first N dependencies are .txt files and do not match the basename
 -- of the target, and the N+1th dependency is a non-.txt file and matches the basename of
@@ -131,13 +130,12 @@ correctTargetWithLeadingTxtDeps target =
     ([], _) -> Nothing
     (_, []) -> Nothing
     (_, firstNonTxtDep : remainingDeps) ->
-      if firstNonTxtDepBasename == targetBasenameWithoutExt then
-        Just corrected
-      else
-        Nothing
+      if firstNonTxtDepBasename == targetBasenameWithoutExt
+        then Just corrected
+        else Nothing
       where
         (firstNonTxtDepBasename, _) = splitBasenameExt $ dependencyPath firstNonTxtDep
-        corrected = target { targetDependencies = leadingTxtDeps ++ remainingDeps, targetInputs = [firstNonTxtDep]}
+        corrected = target{targetDependencies = leadingTxtDeps ++ remainingDeps, targetInputs = [firstNonTxtDep]}
   where
     splitBasenameExt :: Text -> (String, String)
     splitBasenameExt = FP.splitExtension . FP.takeFileName . T.unpack
@@ -156,8 +154,8 @@ parseNinjaDeps ninjaDepsLines =
   case finalState of
     Complete -> pure $ reverse reversedDependenciesResults
     Starting -> fatal NoNinjaDepsStartLineFound
-    Parsing  -> fatal NoNinjaDepsEndLineFound
-    Error    -> fatal NinjaDepsParseError
+    Parsing -> fatal NoNinjaDepsEndLineFound
+    Error -> fatal NinjaDepsParseError
   where
     newLine = BS.head "\n" -- This is gross, but I couldn't get "BS.split '\n' ninjaDepsLines" to work
     nLines = BS.split newLine ninjaDepsLines
@@ -168,7 +166,7 @@ parseNinjaDeps ninjaDepsLines =
 -- beginning of the array. Fix that here.
 reverseDependencies :: DepsTarget -> DepsTarget
 reverseDependencies target =
-  target { targetDependencies = reverse deps }
+  target{targetDependencies = reverse deps}
   where
     deps = targetDependencies target
 
@@ -202,10 +200,9 @@ parseNinjaLine :: ((NinjaParseState, [DepsTarget]) -> ByteString -> (NinjaParseS
 parseNinjaLine (state, targets) line =
   case state of
     Starting ->
-      if line == "Starting ninja..." then
-        (Parsing, [])
-      else
-        (Starting, [])
+      if line == "Starting ninja..."
+        then (Parsing, [])
+        else (Starting, [])
     Parsing ->
       actuallyParseLine line targets
     Complete ->
@@ -217,26 +214,24 @@ actuallyParseLine :: ByteString -> [DepsTarget] -> (NinjaParseState, [DepsTarget
 -- ignore empty lines
 actuallyParseLine "" targets =
   (Parsing, targets)
-
 actuallyParseLine line []
--- error if you're trying to add a dependency and there are no targets yet
--- or if you reach the end of the file and no targets have been found
+  -- error if you're trying to add a dependency and there are no targets yet
+  -- or if you reach the end of the file and no targets have been found
   | BS.isPrefixOf " " line || BS.isInfixOf "build completed successfully" line =
     (Error, [])
--- Add the first target
+  -- Add the first target
   | otherwise =
     (Parsing, [newDepsTarget])
   where
     newDepsTarget = targetFromLine line
-
 actuallyParseLine line (currentDepsTarget : restOfDepsTargets)
--- The "build completed successfully" line signals that parsing is complete
+  -- The "build completed successfully" line signals that parsing is complete
   | BS.isInfixOf "build completed successfully" line =
     (Complete, currentDepsTarget : restOfDepsTargets)
--- Lines starting with a space add a new dep to the current target
+  -- Lines starting with a space add a new dep to the current target
   | BS.isPrefixOf " " line =
     (Parsing, updatedDepsTarget : restOfDepsTargets)
--- Lines starting with a non-blank char are new targets
+  -- Lines starting with a non-blank char are new targets
   | otherwise =
     (Parsing, newDepsTarget : currentDepsTarget : restOfDepsTargets)
   where
@@ -251,7 +246,7 @@ targetFromLine line =
 
 addDepToDepsTarget :: DepsTarget -> ByteString -> DepsTarget
 addDepToDepsTarget target line =
-  target { targetDependencies = newDep : currentDeps}
+  target{targetDependencies = newDep : currentDeps}
   where
     currentDeps = targetDependencies target
     newDep = parseDepLine line

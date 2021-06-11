@@ -2,35 +2,34 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Control.Effect.Replay
-  ( Replayable (..),
-    ReplayableValue (..),
-    runReplay
-  )
-where
+module Control.Effect.Replay (
+  Replayable (..),
+  ReplayableValue (..),
+  runReplay,
+) where
 
 import Control.Algebra
+import Control.Applicative
 import Control.Carrier.Reader
 import Control.Effect.Lift
+import Control.Effect.Record
 import Control.Effect.Sum
 import Control.Monad.Trans
 import Data.Aeson
+import Data.Aeson.Types (Parser)
+import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as BL
 import Data.Kind
 import Data.Map.Strict (Map)
-import qualified Data.Text as Text
-import qualified Data.Text.Lazy as LText
-import Control.Effect.Record
-import Unsafe.Coerce
-import qualified Data.Map.Strict as M
-import Data.Aeson.Types (Parser)
-import Control.Applicative
+import Data.Map.Strict qualified as M
 import Data.String.Conversion (encodeUtf8)
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BL
+import Data.Text qualified as T
+import Data.Text qualified as Text
+import Data.Text.Lazy qualified as LText
+import Data.Text.Lazy qualified as TL
 import Path
 import System.Exit
+import Unsafe.Coerce
 
 -- | A class of "replayable" effects -- i.e. an effect whose "result values"
 -- (the @a@ in @e m a@) can be deserialized from JSON values produced by
@@ -113,39 +112,39 @@ instance (ReplayableValue a, ReplayableValue b) => ReplayableValue (Either a b) 
   fromRecordedValue = withObject "Either" $ \obj -> do
     (Left <$> (obj .: "Left" >>= fromRecordedValue)) <|> (Right <$> (obj .: "Right" >>= fromRecordedValue))
 
-instance (ReplayableValue a, ReplayableValue b) => ReplayableValue (a,b) where
+instance (ReplayableValue a, ReplayableValue b) => ReplayableValue (a, b) where
   fromRecordedValue val = do
-    [a,b] <- fromRecordedValue val
+    [a, b] <- fromRecordedValue val
     (,) <$> fromRecordedValue a <*> fromRecordedValue b
 
-instance (ReplayableValue a, ReplayableValue b, ReplayableValue c) => ReplayableValue (a,b,c) where
+instance (ReplayableValue a, ReplayableValue b, ReplayableValue c) => ReplayableValue (a, b, c) where
   fromRecordedValue val = do
-    [a,b,c] <- fromRecordedValue val
+    [a, b, c] <- fromRecordedValue val
     (,,) <$> fromRecordedValue a <*> fromRecordedValue b <*> fromRecordedValue c
 
-instance (ReplayableValue a, ReplayableValue b, ReplayableValue c, ReplayableValue d) => ReplayableValue (a,b,c,d) where
+instance (ReplayableValue a, ReplayableValue b, ReplayableValue c, ReplayableValue d) => ReplayableValue (a, b, c, d) where
   fromRecordedValue val = do
-    [a,b,c,d] <- fromRecordedValue val
+    [a, b, c, d] <- fromRecordedValue val
     (,,,) <$> fromRecordedValue a <*> fromRecordedValue b <*> fromRecordedValue c <*> fromRecordedValue d
 
-instance (ReplayableValue a, ReplayableValue b, ReplayableValue c, ReplayableValue d, ReplayableValue e) => ReplayableValue (a,b,c,d,e) where
+instance (ReplayableValue a, ReplayableValue b, ReplayableValue c, ReplayableValue d, ReplayableValue e) => ReplayableValue (a, b, c, d, e) where
   fromRecordedValue val = do
-    [a,b,c,d,e] <- fromRecordedValue val
+    [a, b, c, d, e] <- fromRecordedValue val
     (,,,,) <$> fromRecordedValue a <*> fromRecordedValue b <*> fromRecordedValue c <*> fromRecordedValue d <*> fromRecordedValue e
 
-instance (ReplayableValue a, ReplayableValue b, ReplayableValue c, ReplayableValue d, ReplayableValue e, ReplayableValue f) => ReplayableValue (a,b,c,d,e,f) where
+instance (ReplayableValue a, ReplayableValue b, ReplayableValue c, ReplayableValue d, ReplayableValue e, ReplayableValue f) => ReplayableValue (a, b, c, d, e, f) where
   fromRecordedValue val = do
-    [a,b,c,d,e,f] <- fromRecordedValue val
+    [a, b, c, d, e, f] <- fromRecordedValue val
     (,,,,,) <$> fromRecordedValue a <*> fromRecordedValue b <*> fromRecordedValue c <*> fromRecordedValue d <*> fromRecordedValue e <*> fromRecordedValue f
 
-instance (ReplayableValue a, ReplayableValue b, ReplayableValue c, ReplayableValue d, ReplayableValue e, ReplayableValue f, ReplayableValue g) => ReplayableValue (a,b,c,d,e,f,g) where
+instance (ReplayableValue a, ReplayableValue b, ReplayableValue c, ReplayableValue d, ReplayableValue e, ReplayableValue f, ReplayableValue g) => ReplayableValue (a, b, c, d, e, f, g) where
   fromRecordedValue val = do
-    [a,b,c,d,e,f,g] <- fromRecordedValue val
+    [a, b, c, d, e, f, g] <- fromRecordedValue val
     (,,,,,,) <$> fromRecordedValue a <*> fromRecordedValue b <*> fromRecordedValue c <*> fromRecordedValue d <*> fromRecordedValue e <*> fromRecordedValue f <*> fromRecordedValue g
 
-instance (ReplayableValue a, ReplayableValue b, ReplayableValue c, ReplayableValue d, ReplayableValue e, ReplayableValue f, ReplayableValue g, ReplayableValue h) => ReplayableValue (a,b,c,d,e,f,g,h) where
+instance (ReplayableValue a, ReplayableValue b, ReplayableValue c, ReplayableValue d, ReplayableValue e, ReplayableValue f, ReplayableValue g, ReplayableValue h) => ReplayableValue (a, b, c, d, e, f, g, h) where
   fromRecordedValue val = do
-    [a,b,c,d,e,f,g,h] <- fromRecordedValue val
+    [a, b, c, d, e, f, g, h] <- fromRecordedValue val
     (,,,,,,,) <$> fromRecordedValue a <*> fromRecordedValue b <*> fromRecordedValue c <*> fromRecordedValue d <*> fromRecordedValue e <*> fromRecordedValue f <*> fromRecordedValue g <*> fromRecordedValue h
 
 ----- Additional instances

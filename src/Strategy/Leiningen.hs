@@ -9,46 +9,45 @@
 -- >  [org.clojure/clojure "1.10.0"]
 -- >  {[org.clojure/core.specs.alpha "0.2.44"] nil,
 -- >   [org.clojure/spec.alpha "0.2.176"] nil}}
-module Strategy.Leiningen
-  ( discover,
-    buildGraph,
-    findProjects,
-    getDeps,
-    mkProject,
-    Deps (..),
-    ClojureDep (..),
-    LeiningenProject (..),
-  )
-where
+module Strategy.Leiningen (
+  discover,
+  buildGraph,
+  findProjects,
+  getDeps,
+  mkProject,
+  Deps (..),
+  ClojureDep (..),
+  LeiningenProject (..),
+) where
 
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics
-import qualified Data.EDN as EDN
+import Data.EDN qualified as EDN
 import Data.EDN.Class.Parser (Parser)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Set (Set)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
-import qualified Data.Vector as V
+import Data.Text qualified as T
+import Data.Text.Lazy qualified as TL
+import Data.Vector qualified as V
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
+import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
 import Path
 import Types
-import Effect.ReadFS (ReadFS)
 
 leinDepsCmd :: Command
 leinDepsCmd =
   Command
-    { cmdName = "lein",
-      cmdArgs = ["deps", ":tree-data"],
-      cmdAllowErr = Never
+    { cmdName = "lein"
+    , cmdArgs = ["deps", ":tree-data"]
+    , cmdAllowErr = Never
     }
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
@@ -63,8 +62,8 @@ findProjects = walk' $ \dir _ files -> do
     Just projectClj -> do
       let project =
             LeiningenProject
-              { leinDir = dir,
-                leinProjectClj = projectClj
+              { leinDir = dir
+              , leinProjectClj = projectClj
               }
 
       pure ([project], WalkContinue)
@@ -72,11 +71,11 @@ findProjects = walk' $ \dir _ files -> do
 mkProject :: (Has Exec sig n, Has Diagnostics sig n) => LeiningenProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
-    { projectType = "leiningen",
-      projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps project,
-      projectPath = leinDir project,
-      projectLicenses = pure []
+    { projectType = "leiningen"
+    , projectBuildTargets = mempty
+    , projectDependencyGraph = const $ getDeps project
+    , projectPath = leinDir project
+    , projectLicenses = pure []
     }
 
 getDeps :: (Has Exec sig m, Has Diagnostics sig m) => LeiningenProject -> m (Graphing Dependency)
@@ -85,7 +84,8 @@ getDeps = context "Leiningen" . context "Dynamic analysis" . analyze . leinProje
 data LeiningenProject = LeiningenProject
   { leinDir :: Path Abs Dir
   , leinProjectClj :: Path Abs File
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = do
@@ -99,8 +99,8 @@ analyze file = do
 
 -- node type for our LabeledGrapher
 data ClojureNode = ClojureNode
-  { nodeName :: Text,
-    nodeVersion :: Text
+  { nodeName :: Text
+  , nodeVersion :: Text
   }
   deriving (Eq, Ord, Show)
 
@@ -140,12 +140,12 @@ toDependency node = foldr applyLabel start
     start :: Dependency
     start =
       Dependency
-        { dependencyType = MavenType,
-          dependencyName = nodeName node,
-          dependencyVersion = Just (CEq (nodeVersion node)),
-          dependencyLocations = [],
-          dependencyEnvironments = [],
-          dependencyTags = M.empty
+        { dependencyType = MavenType
+        , dependencyName = nodeName node
+        , dependencyVersion = Just (CEq (nodeVersion node))
+        , dependencyLocations = []
+        , dependencyEnvironments = []
+        , dependencyTags = M.empty
         }
     applyLabel (ScopeLabel "test") dep = insertEnvironment EnvTesting dep
     applyLabel (ScopeLabel other) dep = insertEnvironment (EnvOther other) dep
@@ -189,8 +189,8 @@ newtype Deps = Deps
 
 -- | A single dependency in the lein deps output
 data ClojureDep = ClojureDep
-  { depName :: Text,
-    depVersion :: Text,
-    depScope :: Maybe Text
+  { depName :: Text
+  , depVersion :: Text
+  , depScope :: Maybe Text
   }
   deriving (Eq, Ord, Show)

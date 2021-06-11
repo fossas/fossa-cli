@@ -1,11 +1,10 @@
 -- http://oleg.fi/gists/posts/2019-03-21-flag.html
-module Data.Flag
-  ( Flag,
-    fromFlag,
-    toFlag,
-    flagOpt,
-  )
-where
+module Data.Flag (
+  Flag,
+  fromFlag,
+  toFlag,
+  flagOpt,
+) where
 
 import Options.Applicative (FlagFields, Mod, Parser, switch)
 

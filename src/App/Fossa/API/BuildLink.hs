@@ -1,12 +1,11 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 
-module App.Fossa.API.BuildLink
-  ( getBuildURLWithOrg,
-    getFossaBuildUrl,
-    samlUrlPath,
-  )
-where
+module App.Fossa.API.BuildLink (
+  getBuildURLWithOrg,
+  getFossaBuildUrl,
+  samlUrlPath,
+) where
 
 import App.Fossa.FossaAPIV1 (Organization (..), getOrganization)
 import App.Types
@@ -17,12 +16,12 @@ import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Fossa.API.Types (ApiOpts (..))
 import Srclib.Types (Locator (..))
-import qualified Text.URI as URI
+import Text.URI qualified as URI
 import Text.URI.Builder
 import Text.URI.QQ (uri)
 
 fossaProjectUrlPath :: Locator -> ProjectRevision -> [PathComponent]
-fossaProjectUrlPath Locator {..} ProjectRevision {..} = map PathComponent components
+fossaProjectUrlPath Locator{..} ProjectRevision{..} = map PathComponent components
   where
     components = ["projects", project, "refs", "branch", branch, revision]
     project = locatorFetcher <> "+" <> locatorProject
@@ -54,4 +53,4 @@ samlUrlPair org path = do
   pure (samlUrlPath org, [Pair "next" pathtext])
 
 samlUrlPath :: Organization -> [PathComponent]
-samlUrlPath Organization {organizationId} = map PathComponent ["account", "saml", showT organizationId]
+samlUrlPath Organization{organizationId} = map PathComponent ["account", "saml", showT organizationId]

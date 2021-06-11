@@ -1,24 +1,23 @@
-module Discovery.Archive
-  ( discover,
-  )
-where
+module Discovery.Archive (
+  discover,
+) where
 
-import qualified Codec.Archive.Tar as Tar
-import qualified Codec.Archive.Zip as Zip
-import qualified Codec.Compression.GZip as GZip
+import Codec.Archive.Tar qualified as Tar
+import Codec.Archive.Zip qualified as Zip
+import Codec.Compression.GZip qualified as GZip
+import Control.Carrier.Diagnostics
 import Control.Effect.Finally
 import Control.Effect.Lift
 import Control.Effect.TaskPool (TaskPool, forkTask)
-import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
 import Discovery.Archive.RPM (extractRpm)
 import Discovery.Walk
-import Path
-import qualified Path.IO as PIO
-import Prelude hiding (zip)
-import Control.Carrier.Diagnostics
 import Effect.ReadFS (ReadFS)
+import Path
+import Path.IO qualified as PIO
+import Prelude hiding (zip)
 
 -- Given a function to run over unarchived contents, unpack archives
 discover :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has TaskPool sig m) => (Path Abs Dir -> m ()) -> Path Abs Dir -> m ()

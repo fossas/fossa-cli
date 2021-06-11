@@ -6,8 +6,8 @@ module Control.Effect.StickyLogger (
   module X,
 ) where
 
-import Data.Text (Text)
 import Control.Algebra as X
+import Data.Text (Text)
 import Prettyprinter (Doc, pretty)
 import Prettyprinter.Render.Terminal (AnsiStyle)
 

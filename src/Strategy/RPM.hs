@@ -1,30 +1,29 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Strategy.RPM
-  ( buildGraph,
-    discover,
-    getSpecDeps,
-    getTypeFromLine,
-    toDependency,
-    RPMDependency (..),
-    RequiresType (..),
-    Dependencies (..),
-  )
-where
+module Strategy.RPM (
+  buildGraph,
+  discover,
+  getSpecDeps,
+  getTypeFromLine,
+  toDependency,
+  RPMDependency (..),
+  RequiresType (..),
+  Dependencies (..),
+) where
 
 import Control.Effect.Diagnostics
-import qualified Control.Effect.Diagnostics as Diag
+import Control.Effect.Diagnostics qualified as Diag
 import Data.List (isSuffixOf)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Text.Extra (splitOnceOn)
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
 import Graphing (Graphing)
-import qualified Graphing as G
+import Graphing qualified as G
 import Path
 import Types
 
@@ -32,11 +31,10 @@ newtype SpecFileLabel
   = RequiresType DepEnvironment
   deriving (Eq, Ord, Show)
 
-data RPMDependency
-  = RPMDependency
-      { rpmDepName :: Text,
-        rpmConstraint :: Maybe VerConstraint
-      }
+data RPMDependency = RPMDependency
+  { rpmDepName :: Text
+  , rpmConstraint :: Maybe VerConstraint
+  }
   deriving (Eq, Ord, Show)
 
 data RequiresType
@@ -44,11 +42,10 @@ data RequiresType
   | RuntimeRequires RPMDependency
   deriving (Eq, Ord, Show)
 
-data Dependencies
-  = Dependencies
-      { depBuildRequires :: [RPMDependency],
-        depRuntimeRequires :: [RPMDependency]
-      }
+data Dependencies = Dependencies
+  { depBuildRequires :: [RPMDependency]
+  , depRuntimeRequires :: [RPMDependency]
+  }
   deriving (Eq, Ord, Show)
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
@@ -73,11 +70,11 @@ data RpmProject = RpmProject
 mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => RpmProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
-    { projectType = "rpm",
-      projectBuildTargets = mempty,
-      projectDependencyGraph = const $ getDeps project,
-      projectPath = rpmDir project,
-      projectLicenses = pure []
+    { projectType = "rpm"
+    , projectBuildTargets = mempty
+    , projectDependencyGraph = const $ getDeps project
+    , projectPath = rpmDir project
+    , projectLicenses = pure []
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RpmProject -> m (Graphing Dependency)
@@ -93,17 +90,17 @@ analyzeSingle file = do
 
 toDependency :: RPMDependency -> Dependency
 toDependency pkg =
-    Dependency
-      { dependencyType = RPMType,
-        dependencyName = rpmDepName pkg,
-        dependencyVersion = rpmConstraint pkg,
-        dependencyLocations = [],
-        dependencyEnvironments = [],
-        dependencyTags = M.empty
-      }
+  Dependency
+    { dependencyType = RPMType
+    , dependencyName = rpmDepName pkg
+    , dependencyVersion = rpmConstraint pkg
+    , dependencyLocations = []
+    , dependencyEnvironments = []
+    , dependencyTags = M.empty
+    }
 
 buildGraph :: Dependencies -> Graphing Dependency
-buildGraph Dependencies {..} = G.gmap toDependency $ G.fromList depRuntimeRequires
+buildGraph Dependencies{..} = G.gmap toDependency $ G.fromList depRuntimeRequires
 
 buildConstraint :: Text -> Maybe VerConstraint
 buildConstraint raw = constraint
@@ -142,8 +139,8 @@ buildDependencies = foldr addDep blankDeps
   where
     addDep :: RequiresType -> Dependencies -> Dependencies
     addDep req deps = case req of
-      BuildRequires dep -> deps {depBuildRequires = dep : depBuildRequires deps}
-      RuntimeRequires dep -> deps {depRuntimeRequires = dep : depRuntimeRequires deps}
+      BuildRequires dep -> deps{depBuildRequires = dep : depBuildRequires deps}
+      RuntimeRequires dep -> deps{depRuntimeRequires = dep : depRuntimeRequires deps}
     blankDeps = Dependencies [] []
 
 getSpecDeps :: Text -> Dependencies
