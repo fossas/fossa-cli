@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Adds support for `--branch` flag on `fossa container analyze` command ([#253](https://github.com/fossas/spectrometer/pull/253))
 - Adds support and documentation for user-defined dependencies ([#245](https://github.com/fossas/spectrometer/pull/245))
 - Allows using `.yml` or `.yaml` extensions for `fossa-deps` file, but not both ([#245](https://github.com/fossas/spectrometer/pull/245))
 - `fossa-deps` file is checked before running discovery/analysis, and is no longer run in parallel with other analysis functions ([#245](https://github.com/fossas/spectrometer/pull/245))
