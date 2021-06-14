@@ -150,10 +150,11 @@ appMain = do
           if containerAnalyzeOutput
             then ContainerAnalyze.analyzeMain OutputStdout logSeverity override containerAnalyzeImage
             else do
+              let containerOverride = override{overrideBranch = containerBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
               apikey <- requireKey maybeApiKey
               let apiOpts = ApiOpts optBaseUrl apikey
               let metadata = maybe containerMetadata (mergeFileCmdMetadata containerMetadata) fileConfig
-              ContainerAnalyze.analyzeMain (UploadScan apiOpts metadata) logSeverity override containerAnalyzeImage
+              ContainerAnalyze.analyzeMain (UploadScan apiOpts metadata) logSeverity containerOverride containerAnalyzeImage
         ContainerTest ContainerTestOptions{..} -> do
           apikey <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl apikey
@@ -441,6 +442,7 @@ containerAnalyzeOpts :: Parser ContainerAnalyzeOptions
 containerAnalyzeOpts =
   ContainerAnalyzeOptions
     <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
+    <*> optional (strOption (long "branch" <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> imageTextArg
 
@@ -559,6 +561,7 @@ data ContainerCommand
 
 data ContainerAnalyzeOptions = ContainerAnalyzeOptions
   { containerAnalyzeOutput :: Bool
+  , containerBranch :: Maybe Text
   , containerMetadata :: ProjectMetadata
   , containerAnalyzeImage :: ImageText
   }

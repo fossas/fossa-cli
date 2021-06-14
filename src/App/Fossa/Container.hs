@@ -197,7 +197,7 @@ instance ToJSON ContainerArtifact where
       ]
 
 extractRevision :: OverrideProject -> ContainerScan -> ProjectRevision
-extractRevision OverrideProject{..} ContainerScan{..} = ProjectRevision name revision Nothing
+extractRevision OverrideProject{..} ContainerScan{..} = ProjectRevision name revision overrideBranch
   where
     name = fromMaybe imageTag overrideName
     revision = fromMaybe imageDigest overrideRevision

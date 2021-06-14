@@ -130,6 +130,7 @@ uploadContainerScan apiOpts ProjectRevision{..} metadata scan = fossaReq $ do
         "locator" =: locator
           <> "cliVersion" =: cliVersion
           <> "managedBuild" =: True
+          <> maybe mempty ("branch" =:) projectBranch
           <> mkMetadataOpts metadata projectName
   resp <- req POST (containerUploadUrl baseUrl) (ReqBodyJson scan) jsonResponse (baseOpts <> opts)
   pure $ responseBody resp
