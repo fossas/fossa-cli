@@ -90,7 +90,7 @@ jobs:
     <<: *defaults
     working_directory: /go/src/github.com/fossas/fossa-cli
     docker:
-      - image: circleci/golang:1
+      - image: circleci/golang:1.16.0
     steps:
       - checkout
       - run:
@@ -117,7 +117,7 @@ jobs:
   installer-test:
     <<: *defaults
     docker:
-      - image: circleci/golang:1
+      - image: circleci/golang:1.16.0
     steps:
       - run:
           name: Make folders
@@ -140,7 +140,7 @@ jobs:
     <<: *defaults
     working_directory: /go/src/github.com/fossas/fossa-cli
     docker:
-      - image: circleci/golang:1
+      - image: circleci/golang:1.16.0
     steps:
       - checkout
       - run:
