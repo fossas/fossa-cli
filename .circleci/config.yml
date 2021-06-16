@@ -17,7 +17,7 @@ jobs:
       # gets better performance. The trade-off is that the CircleCI image is
       # cached but the FOSSA CLI image has build tools baked into it (but also
       # is correspondingly larger).
-      - image: circleci/golang:1
+      - image: circleci/golang:1.16.0
     steps:
       - checkout
       - run:
