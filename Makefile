@@ -49,6 +49,7 @@ build: $(BIN)/fossa
 
 $(BIN)/fossa: $(GO_BINDATA) $(GENNY) $(shell find . -name *.go)
 	go mod download
+	go mod tidy
 	go generate ./...
 	go build -o $@ $(GCFLAGS) $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
 
