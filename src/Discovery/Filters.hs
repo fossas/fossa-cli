@@ -37,7 +37,7 @@ applyFilters :: [BuildTargetFilter] -> Text -> Path Rel Dir -> Set BuildTarget -
 applyFilters [] _ _ targets = Just targets
 applyFilters filters tool dir targets = do
   let individualResults = mapMaybe (\one -> applyFilter one tool dir targets) filters
-  successful <- NE.nonEmpty $ individualResults
+  successful <- NE.nonEmpty individualResults
 
   pure (sconcat successful)
 

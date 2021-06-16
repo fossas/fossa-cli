@@ -114,10 +114,7 @@ findSections :: Parser [Section]
 findSections = manyTill (try podSectionParser <|> try dependenciesSectionParser <|> try specRepoParser <|> try externalSourcesParser <|> try checkoutOptionsParser <|> unknownSection) eof
 
 unknownSection :: Parser Section
-unknownSection = do
-  scn
-  line <- restOfLine
-  pure $ UnknownSection line
+unknownSection = UnknownSection <$ scn <*> restOfLine
 
 podSectionParser :: Parser Section
 podSectionParser = sectionParser "PODS:" PodSection podParser
@@ -144,7 +141,7 @@ externalDepsParser :: Parser SourceDep
 externalDepsParser = indentBlock $ do
   name <- lexeme (takeWhileP (Just "external dep parser") (/= ':'))
   _ <- restOfLine
-  return (L.IndentMany Nothing (\exDeps -> pure $ SourceDep name $ M.fromList exDeps) tagParser)
+  return (L.IndentMany Nothing (pure . SourceDep name . M.fromList) tagParser)
 
 tagParser :: Parser (Text, Text)
 tagParser = do
@@ -157,7 +154,7 @@ tagParser = do
 remoteParser :: Parser Remote
 remoteParser = indentBlock $ do
   location <- restOfLine
-  pure (L.IndentMany Nothing (\deps -> pure $ Remote (T.dropWhileEnd (== ':') location) deps) depParser)
+  pure (L.IndentMany Nothing (pure . Remote (T.dropWhileEnd (== ':') location)) depParser)
 
 podParser :: Parser Pod
 podParser = indentBlock $ do
@@ -165,7 +162,7 @@ podParser = indentBlock $ do
   name <- findDep
   version <- findVersion
   _ <- restOfLine
-  pure (L.IndentMany Nothing (\deps -> pure $ Pod name version deps) depParser)
+  pure (L.IndentMany Nothing (pure . Pod name version) depParser)
 
 depParser :: Parser Dep
 depParser = do

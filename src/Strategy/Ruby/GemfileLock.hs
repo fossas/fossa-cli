@@ -126,10 +126,7 @@ findSections :: Parser [Section]
 findSections = manyTill (try gitSectionParser <|> try gemSectionParser <|> try pathSectionParser <|> try dependenciesSectionParser <|> unknownSection) eof
 
 unknownSection :: Parser Section
-unknownSection = do
-  scn
-  line <- restOfLine
-  pure $ UnknownSection line
+unknownSection = UnknownSection <$ scn <*> restOfLine
 
 restOfLine :: Parser Text
 restOfLine = takeWhileP (Just "ignored") (not . isEndLine)
@@ -227,7 +224,7 @@ specParser = L.indentBlock scn p
     p = do
       name <- findDep
       version <- findVersion
-      return (L.IndentMany Nothing (\specs -> pure $ Spec version name specs) specDepParser)
+      return (L.IndentMany Nothing (pure . Spec version name) specDepParser)
 
 specDepParser :: Parser SpecDep
 specDepParser = do
@@ -258,7 +255,7 @@ dependenciesSectionParser :: Parser Section
 dependenciesSectionParser = L.nonIndented scn $
   L.indentBlock scn $ do
     _ <- chunk "DEPENDENCIES"
-    pure $ L.IndentMany Nothing (\deps -> pure $ DependencySection deps) findDependency
+    pure $ L.IndentMany Nothing (pure . DependencySection) findDependency
 
 findDependency :: Parser DirectDep
 findDependency = do

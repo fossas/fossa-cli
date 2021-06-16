@@ -9,7 +9,7 @@ module Data.Flag (
 import Options.Applicative (FlagFields, Mod, Parser, switch)
 
 -- | A Flag datatype with a phantom type argument. See link above for usage
-data Flag a = Flag {getFlag :: Bool}
+newtype Flag a = Flag {getFlag :: Bool}
   deriving (Eq, Ord, Show)
 
 fromFlag :: a -> Flag a -> Bool

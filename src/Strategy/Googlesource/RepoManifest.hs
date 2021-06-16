@@ -57,7 +57,7 @@ findProjects = walk' $ \_ _ files -> do
         then pure ([RepoManifestProject file], WalkSkipAll)
         else pure ([], WalkContinue)
 
-data RepoManifestProject = RepoManifestProject
+newtype RepoManifestProject = RepoManifestProject
   { repoManifestXml :: Path Abs File
   }
   deriving (Eq, Ord, Show)
@@ -178,7 +178,7 @@ data ManifestProject = ManifestProject
   }
   deriving (Eq, Ord, Show)
 
-data ManifestInclude = ManifestInclude {includeName :: Text} deriving (Eq, Ord, Show)
+newtype ManifestInclude = ManifestInclude {includeName :: Text} deriving (Eq, Ord, Show)
 
 data ValidatedProject = ValidatedProject
   { validatedProjectName :: Text

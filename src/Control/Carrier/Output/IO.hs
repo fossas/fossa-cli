@@ -30,6 +30,6 @@ instance Has (Lift IO) sig m => Algebra (Output o :+: sig) (OutputC o m) where
   alg hdl sig ctx = OutputC $ case sig of
     L (Output o) -> do
       ref <- ask
-      sendIO (atomicModifyIORef' ref (\xs -> ((o : xs), ())))
+      sendIO (atomicModifyIORef' ref (\xs -> (o : xs, ())))
       pure ctx
     R other -> alg (runOutputC . hdl) (R other) ctx

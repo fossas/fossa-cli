@@ -1,1 +1,4 @@
 - arguments: [-XTypeApplications, -XNumericUnderscores]
+# Often, code is more readable with extra parens, or less readable with list comprehensions
+- ignore: {name: "Redundant bracket"}
+- ignore: {name: "Use list comprehension"}

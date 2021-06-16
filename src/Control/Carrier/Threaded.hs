@@ -11,7 +11,7 @@ import Control.Concurrent.Async qualified as Async
 import Control.Concurrent.STM
 import Control.Effect.Exception
 import Control.Monad.IO.Class
-import Data.Functor (void)
+import Data.Functor (void, ($>))
 import Prelude
 
 data Handle = Handle
@@ -26,7 +26,7 @@ fork m = liftWith @IO $ \hdl ctx -> do
   pure (Handle tid (readTMVar var) <$ ctx)
 
 kill :: Has (Lift IO) sig m => Handle -> m ()
-kill h = liftWith @IO $ \_ ctx -> liftIO (throwTo (handleTid h) Async.AsyncCancelled) *> pure ctx
+kill h = liftWith @IO $ \_ ctx -> liftIO (throwTo (handleTid h) Async.AsyncCancelled) $> ctx
 
 wait :: Has (Lift IO) sig m => Handle -> m ()
-wait h = liftWith @IO $ \_ ctx -> liftIO (atomically (handleWait h)) *> pure ctx
+wait h = liftWith @IO $ \_ ctx -> liftIO (atomically (handleWait h)) $> ctx

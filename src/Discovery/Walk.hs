@@ -66,7 +66,7 @@ walk' ::
   Path Abs Dir ->
   m o
 walk' f base = do
-  foo <- runWriter (\w a -> pure (w, a)) $ walk mangled base
+  foo <- runWriter (curry pure) $ walk mangled base
   pure (fst foo)
   where
     mangled :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> WriterC o m WalkStep

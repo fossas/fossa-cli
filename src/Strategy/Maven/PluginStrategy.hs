@@ -50,7 +50,7 @@ buildGraph PluginOutput{..} = run $
         , dependencyName = artifactGroupId <> ":" <> artifactArtifactId
         , dependencyVersion = Just (CEq artifactVersion)
         , dependencyLocations = []
-        , dependencyEnvironments = if "test" `elem` artifactScopes then [EnvTesting] else []
+        , dependencyEnvironments = [EnvTesting | "test" `elem` artifactScopes]
         , dependencyTags =
             M.fromList $
               ("scopes", artifactScopes) :

@@ -34,6 +34,7 @@ import Control.Algebra as X
 import Control.Carrier.Diagnostics (ToDiagnostic (..))
 import Control.Carrier.State.Strict
 import Control.Monad.IO.Class (MonadIO)
+import Data.Functor (($>))
 import Data.Kind (Type)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
@@ -66,8 +67,8 @@ newtype GrapherC ty m a = GrapherC {runGrapherC :: StateC (G.Graphing ty) m a}
 
 instance (Algebra sig m, Ord ty) => Algebra (Grapher ty :+: sig) (GrapherC ty m) where
   alg hdl sig ctx = GrapherC $ case sig of
-    L (Direct ty) -> modify (G.direct ty) *> pure ctx
-    L (Edge parent child) -> modify (G.edge parent child) *> pure ctx
+    L (Direct ty) -> modify (G.direct ty) $> ctx
+    L (Edge parent child) -> modify (G.edge parent child) $> ctx
     R other -> alg (runGrapherC . hdl) (R other) ctx
 
 ----- Labeling

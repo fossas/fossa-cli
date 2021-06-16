@@ -219,7 +219,7 @@ validatedProjectList = [validatedProjectOne, validatedProjectTwo, validatedProje
 spec :: Spec
 spec = do
   let runIt = runIO . runDiagnostics . runReadFSIO
-  currentDir <- runIO $ getCurrentDir
+  currentDir <- runIO getCurrentDir
   basicManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest.xml")
   noDefaultRemoteManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-remote.xml")
   noDefaultRevisionManifest <- runIO (TIO.readFile "test/Googlesource/testdata/manifest-no-default-revision.xml")

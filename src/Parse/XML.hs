@@ -101,7 +101,7 @@ newtype Parser a = Parser {unParser :: ReaderC ParsePath (ErrorC ParseError Iden
   deriving (Functor, Applicative, Monad)
 
 instance Alternative Parser where
-  ma <|> mb = Parser $ (unParser ma `catchError` (\(_ :: ParseError) -> unParser mb))
+  ma <|> mb = Parser (unParser ma `catchError` (\(_ :: ParseError) -> unParser mb))
   empty = Parser $ ask >>= \path -> throwError (UnknownError path "Parser.empty")
 
 instance MonadFail Parser where

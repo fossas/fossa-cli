@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Haskell.CabalSpec (
   spec,
 ) where
