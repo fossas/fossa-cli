@@ -62,11 +62,12 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 	}
 
 	log.Debugf("resolving ant libs in: %s", libdir)
-	if ok, err := files.ExistsFolder(a.Module.Dir, libdir); !ok || err != nil {
-		return graph.Deps{}, errors.New("unable to resolve library directory, try specifying it using the `modules.options.libdir` property in `.fossa.yml`")
+	libdirPath := filepath.Join(a.Module.Dir, libdir)
+	if ok, err := files.ExistsFolder(libdirPath); !ok || err != nil {
+		return graph.Deps{}, errors.New("unable to resolve library directory, try specifying it using the `lib-directory` option in `.fossa.yml`")
 	}
 
-	deps, graphErr := ant.Graph(libdir)
+	deps, graphErr := ant.Graph(libdirPath)
 	if graphErr != nil {
 		return graph.Deps{}, graphErr
 	}
