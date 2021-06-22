@@ -6,11 +6,11 @@
 module App.Fossa.YamlDeps (
   CustomDependency (..),
   ReferencedDependency (..),
+  VendoredDependency (..),
   YamlDependencies (..),
   analyzeFossaDepsYaml,
 ) where
 
-import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
 import Control.Monad (when)
 import Data.Aeson (
@@ -20,27 +20,36 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
+
+import App.Fossa.ArchiveUploader
+import Control.Effect.Lift
 import Data.Aeson.Extra
 import Data.Aeson.Types (Parser)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty qualified as NE
+import Data.Maybe ( catMaybes )
 import Data.String.Conversion (toText)
 import Data.Text (Text, unpack)
 import DepTypes (DepType (..))
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsYaml)
+import Fossa.API.Types
 import Path
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
 
-analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe SourceUnit)
-analyzeFossaDepsYaml root = do
+analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m) => Path Abs Dir -> Maybe ApiOpts -> m [SourceUnit]
+analyzeFossaDepsYaml root maybeApiOpts = do
   maybeDepsFile <- findFossaDepsFile root
   case maybeDepsFile of
-    Nothing -> pure Nothing
+    Nothing -> pure []
     -- If the file exists and we have no SourceUnit to report, that's a failure
     Just depsFile -> do
       yamldeps <- context "Reading fossa-deps file" $ readContentsYaml depsFile
-      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root yamldeps
+      sourceUnit <- context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root yamldeps
+      archiveSrcUnit <- case maybeApiOpts of
+        Nothing -> pure $ archiveNoUploadSourceUnit (vendoredDependencies yamldeps)
+        Just apiOpts -> archiveUploadSourceUnit root apiOpts (vendoredDependencies yamldeps)
+      pure $ catMaybes [sourceUnit, archiveSrcUnit]
 
 findFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe (Path Abs File))
 findFossaDepsFile root = do
@@ -104,11 +113,12 @@ toAdditionalData deps = AdditionalDepData{userDefinedDeps = map tosrc $ NE.toLis
         }
 
 hasNoDeps :: YamlDependencies -> Bool
-hasNoDeps YamlDependencies{..} = null referencedDependencies && null customDependencies
+hasNoDeps YamlDependencies{..} = null referencedDependencies && null customDependencies && null vendoredDependencies
 
 data YamlDependencies = YamlDependencies
   { referencedDependencies :: [ReferencedDependency]
   , customDependencies :: [CustomDependency]
+  , vendoredDependencies :: [VendoredDependency]
   }
   deriving (Eq, Ord, Show)
 
@@ -133,6 +143,7 @@ instance FromJSON YamlDependencies where
     YamlDependencies <$ (obj .:? "version" >>= isMissingOr1)
       <*> (obj .:? "referenced-dependencies" .!= [])
       <*> (obj .:? "custom-dependencies" .!= [])
+      <*> (obj .:? "vendored-dependencies" .!= [])
     where
       isMissingOr1 :: Maybe Int -> Parser ()
       isMissingOr1 (Just x) | x /= 1 = fail $ "Invalid fossa-deps version: " <> show x
@@ -148,7 +159,7 @@ instance FromJSON ReferencedDependency where
     ReferencedDependency <$> obj .: "name"
       <*> (obj .: "type" >>= depTypeParser)
       <*> (unTextLike <$$> obj .:? "version")
-      <* forbidMembers "referenced dependencies" ["license", "description", "url"] obj
+      <* forbidMembers "referenced dependencies" ["license", "description", "url", "path"] obj
 
 instance FromJSON CustomDependency where
   parseJSON = withObject "CustomDependency" $ \obj ->
@@ -157,7 +168,7 @@ instance FromJSON CustomDependency where
       <*> obj .: "license"
       <*> obj .:? "description"
       <*> obj .:? "url"
-      <* forbidMembers "custom dependencies" ["type"] obj
+      <* forbidMembers "custom dependencies" ["type", "path"] obj
 
 -- Parse supported dependency types into their respective type or return Nothing.
 depTypeFromText :: Text -> Maybe DepType

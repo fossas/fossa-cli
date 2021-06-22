@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Adds support for `vendored-dependencies` to be licensed scanned ([#257](https://github.com/fossas/spectrometer/pull/257))
+
+## 2.8.0
+
 - Adds support for `--branch` flag on `fossa container analyze` command ([#253](https://github.com/fossas/spectrometer/pull/253))
 - Adds support and documentation for user-defined dependencies ([#245](https://github.com/fossas/spectrometer/pull/245))
 - Allows using `.yml` or `.yaml` extensions for `fossa-deps` file, but not both ([#245](https://github.com/fossas/spectrometer/pull/245))

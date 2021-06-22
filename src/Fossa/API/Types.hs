@@ -11,6 +11,9 @@ module Fossa.API.Types (
   IssueRule (..),
   IssueType (..),
   Issue (..),
+  SignedURL (..),
+  ArchiveComponents (..),
+  Archive (..),
 ) where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
@@ -37,6 +40,34 @@ data ApiOpts = ApiOpts
   , apiOptsApiKey :: ApiKey
   }
   deriving (Eq, Ord, Show)
+
+newtype SignedURL = SignedURL
+  { signedURL :: Text
+  } deriving (Eq, Ord, Show)
+
+instance FromJSON SignedURL where
+  parseJSON = withObject "SignedUrl" $ \obj ->
+    SignedURL <$> obj .: "signedUrl"
+
+newtype ArchiveComponents = ArchiveComponents
+  { archives :: [Archive]
+ } deriving (Eq, Ord, Show)
+
+data Archive = Archive
+ { archiveName :: Text
+ , archiveVersion :: Text
+ } deriving (Eq, Ord, Show)
+
+instance ToJSON ArchiveComponents where
+ toJSON ArchiveComponents{..} = object
+   [ "archives" .= archives
+   ]
+
+instance ToJSON Archive where
+ toJSON Archive{..} = object
+   [ "packageSpec" .= archiveName
+   , "revision" .= archiveVersion
+   ]
 
 data Issues = Issues
   { issuesCount :: Int

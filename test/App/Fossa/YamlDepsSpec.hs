@@ -5,6 +5,7 @@ module App.Fossa.YamlDepsSpec (
 import App.Fossa.YamlDeps (
   CustomDependency (CustomDependency),
   ReferencedDependency (ReferencedDependency),
+  VendoredDependency (VendoredDependency),
   YamlDependencies (YamlDependencies),
  )
 import Control.Effect.Exception (displayException)
@@ -18,7 +19,7 @@ getTestDataFile :: String -> SpecM a BS.ByteString
 getTestDataFile name = runIO . BS.readFile $ "test/App/Fossa/testdata/" <> name
 
 theWorks :: YamlDependencies
-theWorks = YamlDependencies references customs
+theWorks = YamlDependencies references customs vendors
   where
     references =
       [ ReferencedDependency "one" GemType Nothing
@@ -27,6 +28,10 @@ theWorks = YamlDependencies references customs
     customs =
       [ CustomDependency "hello" "1.2.3" "MIT" Nothing Nothing
       , CustomDependency "full" "3.2.1" "GPL-3.0" (Just "description for full") (Just "we don't validate url's")
+      ]
+    vendors =
+      [ VendoredDependency "vendored" "path" Nothing
+      , VendoredDependency "versioned" "path/to/dep" (Just "2.1.0")
       ]
 
 exceptionContains :: BS.ByteString -> String -> Expectation

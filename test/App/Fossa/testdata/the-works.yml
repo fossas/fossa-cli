@@ -5,6 +5,13 @@ referenced-dependencies:
   name: two
   version: 1.0.0
 
+vendored-dependencies:
+- name: vendored
+  path: path
+- name: versioned
+  path: path/to/dep
+  version: 2.1.0
+
 custom-dependencies:
 - name: hello
   version: 1.2.3

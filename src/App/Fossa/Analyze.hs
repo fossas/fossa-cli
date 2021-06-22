@@ -231,8 +231,11 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
   -- When running analysis, append the vsi discover function to the end of the discover functions list.
   -- This is done because the VSI discover function requires more information than other discover functions do, and only matters for analysis.
   let discoverFuncs' = discoverFuncs ++ [vsiDiscoverFunc enableVSI destination]
+      apiOpts = case destination of
+        OutputStdout -> Nothing
+        UploadScan opts _ -> Just opts
 
-  manualSrcUnit <- analyzeFossaDepsYaml basedir
+  manualSrcUnits <- analyzeFossaDepsYaml basedir apiOpts
 
   (projectResults, ()) <-
     runOutput @ProjectResult
@@ -244,15 +247,16 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
-  case checkForEmptyUpload projectResults filteredProjects manualSrcUnit of
+  -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
+  case checkForEmptyUpload projectResults filteredProjects manualSrcUnits of
     NoneDiscovered -> logError "No projects were discovered" >> sendIO exitFailure
     FilteredAll count -> do
       logError ("Filtered out all " <> pretty count <> " projects due to directory name, no manual deps found")
       for_ projectResults $ \project -> logDebug ("Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project))
       sendIO exitFailure
     FoundSome sourceUnits -> case destination of
-      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnit filteredProjects
-      UploadScan apiOpts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata override sourceUnits
+      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
+      UploadScan opts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) opts metadata override sourceUnits
 
 uploadSuccessfulAnalysis ::
   ( Has Diag.Diagnostics sig m
@@ -299,13 +303,10 @@ data CountedResult
 -- Takes a list of all projects analyzed, and the list after filtering.  We assume
 -- that the smaller list is the latter, and return that list.  Starting with user-defined deps,
 -- we also include a check for an additional source unit from fossa-deps.yml.
-checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> Maybe SourceUnit -> CountedResult
-checkForEmptyUpload xs ys unit =
-  -- This nested case statement
-  case unit of
-    -- If we have a manual source unit, then there's always somthing to upload.
-    Just manual -> FoundSome $ manual NE.:| discoveredUnits
-    Nothing -> case (xlen, ylen) of
+checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> [SourceUnit] -> CountedResult
+checkForEmptyUpload xs ys manualUnits =
+  case manualUnits of
+    [] -> case (xlen, ylen) of
       -- We didn't discover, so we also didn't filter
       (0, 0) -> NoneDiscovered
       -- If either list is empty, we have nothing to upload
@@ -313,6 +314,8 @@ checkForEmptyUpload xs ys unit =
       (_, 0) -> FilteredAll filterCount
       -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
       _ -> FoundSome $ NE.fromList discoveredUnits
+    -- If we have a manual or archive source unit, then there's always something to upload.
+    (unit : units) -> FoundSome $ unit NE.:| (units <> discoveredUnits)
   where
     xlen = length xs
     ylen = length ys
@@ -368,16 +371,13 @@ tryUploadContributors baseDir apiOpts locator = do
   contributors <- fetchGitContributors baseDir
   uploadContributors apiOpts locator contributors
 
-buildResult :: Maybe SourceUnit -> [ProjectResult] -> Aeson.Value
-buildResult maybeSrcUnit projects =
+buildResult :: [SourceUnit] -> [ProjectResult] -> Aeson.Value
+buildResult manualUnits projects =
   Aeson.object
     [ "projects" .= map buildProject projects
-    , "sourceUnits" .= finalSourceUnits
+    , "sourceUnits" .= (scannedUnits <> manualUnits)
     ]
   where
-    finalSourceUnits = case maybeSrcUnit of
-      Just unit -> unit : scannedUnits
-      Nothing -> scannedUnits
     scannedUnits = map Srclib.toSourceUnit projects
 
 buildProject :: ProjectResult -> Aeson.Value

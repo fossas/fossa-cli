@@ -23,29 +23,39 @@ module App.Fossa.FossaAPIV1 (
   getOrganization,
   getAttribution,
   getAttributionRaw,
+  getSignedURL,
+  archiveUpload,
+  archiveBuildUpload,
 ) where
 
 import App.Fossa.Container (ContainerScan (..))
 import App.Fossa.Report.Attribution qualified as Attr
 import App.Types
 import App.Version (versionNumber)
-import Control.Effect.Diagnostics hiding (fromMaybe)
+import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fromMaybeText)
+import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson
+import Data.ByteString qualified as BS
+import Data.ByteString.Char8 qualified as C
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Word (Word8)
 import Effect.Logger
-import Fossa.API.Types (ApiOpts, Issues, useApiOpts)
+import Fossa.API.Types (ApiOpts, ArchiveComponents, Issues, SignedURL, signedURL, useApiOpts)
+import Network.HTTP.Client qualified as C
 import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Req
 import Network.HTTP.Types qualified as HTTP
 import Srclib.Types
 import Text.URI (URI)
 import Text.URI qualified as URI
+import Prelude
 
 newtype FossaReq m a = FossaReq {unFossaReq :: m a}
   deriving (Functor, Applicative, Monad, Algebra sig)
@@ -56,8 +66,33 @@ instance Has (Lift IO) sig m => MonadIO (FossaReq m) where
 instance (Has (Lift IO) sig m, Has Diagnostics sig m) => MonadHttp (FossaReq m) where
   handleHttpException = FossaReq . fatal . mangleError
 
+newtype FossaReqAllow401 m a = FossaReqAllow401 {unFossaReqAllow401 :: EmptyC m a}
+  deriving (Functor, Applicative, Monad, Algebra (Empty :+: sig))
+
+instance Has (Lift IO) sig m => MonadIO (FossaReqAllow401 m) where
+  liftIO = sendIO
+
+instance (Has (Lift IO) sig m, Has Diagnostics sig m) => MonadHttp (FossaReqAllow401 m) where
+  handleHttpException = FossaReqAllow401 . allow401
+    where
+      allow401 :: HttpException -> EmptyC m a
+      allow401 err = maybe empty fatal (allow401' err)
+
 fossaReq :: FossaReq m a -> m a
 fossaReq = unFossaReq
+
+fossaReqAllow401 :: FossaReqAllow401 m a -> EmptyC m a
+fossaReqAllow401 = unFossaReqAllow401
+
+-- allow401 is implemented due to the FOSSA API returning 401 status codes when we attempt to queue a build
+-- that already exists. This function prevents us from erroring.
+allow401' :: HttpException -> Maybe FossaError
+allow401' err = case err of
+  VanillaHttpException (HTTP.HttpExceptionRequest _ (HTTP.StatusCodeException resp _)) ->
+    case HTTP.responseStatus resp of
+      HTTP.Status 401 _ -> Nothing
+      _ -> Just $ mangleError err
+  _ -> Just $ mangleError err
 
 -- Don't send any version if one doesn't exist
 cliVersion :: Text
@@ -235,6 +270,85 @@ getLatestBuild apiOpts ProjectRevision{..} = fossaReq $ do
 
   response <- req GET (buildsEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
+
+---------- Archive build queueing. This Endpoint ensures that after an archive is uploaded, it is scanned.
+
+archiveBuildURL :: Url 'Https -> Url 'Https
+archiveBuildURL baseUrl = baseUrl /: "api" /: "components" /: "build"
+
+archiveBuildUpload ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ArchiveComponents ->
+  m (Maybe C.ByteString)
+archiveBuildUpload apiOpts archiveProjects = runEmpty $
+  fossaReqAllow401 $ do
+    (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+    let opts = "dependency" =: True <> "rawLicenseScan" =: True
+
+    -- The response appears to either be "Created" for new builds, or an error message for existing builds.
+    -- Making the actual return value of "Created" essentially worthless.
+    resp <- context "Queuing a build for an archive project" $ 
+      req POST (archiveBuildURL baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
+    pure (responseBody resp)
+
+---------- The signed URL endpoint returns a URL endpoint that can be used to directly upload to an S3 bucket.
+
+signedURLEndpoint :: Url 'Https -> Url 'Https
+signedURLEndpoint baseUrl = baseUrl /: "api" /: "components" /: "signed_url"
+
+getSignedURL ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  Text ->
+  Text ->
+  m SignedURL
+getSignedURL apiOpts revision packageName = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts = "packageSpec" =: packageName <> "revision" =: revision
+
+  response <- context "Retrieving a signed S3 URL" $ 
+    req GET (signedURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
+  pure (responseBody response)
+
+---------- The archive upload function uploads the file it is given directly to the signed URL it is provided.
+
+archiveUpload ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  SignedURL ->
+  FilePath ->
+  m ()
+archiveUpload signedArcURI arcFile = fossaReq $ do
+  let arcURL = URI.mkURI $ signedURL signedArcURI
+
+  uri <- fromMaybeText ("Invalid URL: " <> signedURL signedArcURI) arcURL
+  (url, options) <- fromMaybeText ("Invalid HTTPS URI: " <> T.pack (show uri)) (useHttpsURI uri)
+  _ <- context "Uploading project archive" $ 
+    reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
+  pure ()
+
+-- requestEncoder properly encodes the Request path.
+-- The default encoding logic does not encode "+" ot "$" characters which makes AWS very angry.
+-- This is accomplished by passing "True" to "Http.urlEncode" to signify that we want to encode more characters.
+requestEncoder :: C.Request -> C.Request
+requestEncoder r = r{C.path = encoder (C.path r)}
+
+encoder :: BS.ByteString -> BS.ByteString
+encoder path = BS.singleton slashWord8 <> joined
+  where
+    split :: [BS.ByteString]
+    split = BS.split slashWord8 path
+    filtered :: [BS.ByteString]
+    filtered = filter (/= BS.empty) split
+    encoded :: [BS.ByteString]
+    encoded = map (HTTP.urlEncode True) filtered
+    joined :: BS.ByteString
+    joined = BS.intercalate (BS.singleton slashWord8) encoded
+
+slashWord8 :: Word8
+slashWord8 = fromIntegral $ fromEnum '/'
 
 ----------
 
