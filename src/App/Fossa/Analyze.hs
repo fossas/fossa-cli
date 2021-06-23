@@ -303,10 +303,10 @@ data CountedResult
 -- Takes a list of all projects analyzed, and the list after filtering.  We assume
 -- that the smaller list is the latter, and return that list.  Starting with user-defined deps,
 -- we also include a check for an additional source unit from fossa-deps.yml.
-checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> [SourceUnit] -> CountedResult
-checkForEmptyUpload xs ys manualUnits =
-  case manualUnits of
-    [] -> case (xlen, ylen) of
+checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> Maybe SourceUnit -> CountedResult
+checkForEmptyUpload xs ys manualUnit =
+  case manualUnit of
+    Nothing -> case (xlen, ylen) of
       -- We didn't discover, so we also didn't filter
       (0, 0) -> NoneDiscovered
       -- If either list is empty, we have nothing to upload
@@ -315,7 +315,7 @@ checkForEmptyUpload xs ys manualUnits =
       -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
       _ -> FoundSome $ NE.fromList discoveredUnits
     -- If we have a manual or archive source unit, then there's always something to upload.
-    (unit : units) -> FoundSome $ unit NE.:| (units <> discoveredUnits)
+    Just unit -> FoundSome $ unit NE.:| discoveredUnits
   where
     xlen = length xs
     ylen = length ys
@@ -371,13 +371,16 @@ tryUploadContributors baseDir apiOpts locator = do
   contributors <- fetchGitContributors baseDir
   uploadContributors apiOpts locator contributors
 
-buildResult :: [SourceUnit] -> [ProjectResult] -> Aeson.Value
-buildResult manualUnits projects =
+buildResult :: Maybe SourceUnit -> [ProjectResult] -> Aeson.Value
+buildResult maybeSrcUnit projects =
   Aeson.object
     [ "projects" .= map buildProject projects
-    , "sourceUnits" .= (scannedUnits <> manualUnits)
+    , "sourceUnits" .= finalSourceUnits
     ]
   where
+    finalSourceUnits = case maybeSrcUnit of
+      Just unit -> unit : scannedUnits
+      Nothing -> scannedUnits
     scannedUnits = map Srclib.toSourceUnit projects
 
 buildProject :: ProjectResult -> Aeson.Value

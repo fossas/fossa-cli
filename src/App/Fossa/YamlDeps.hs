@@ -27,7 +27,6 @@ import Data.Aeson.Extra
 import Data.Aeson.Types (Parser)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe ( catMaybes )
 import Data.String.Conversion (toText)
 import Data.Text (Text, unpack)
 import DepTypes (DepType (..))
@@ -37,19 +36,14 @@ import Path
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
 
-analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m) => Path Abs Dir -> Maybe ApiOpts -> m [SourceUnit]
+analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m) => Path Abs Dir -> Maybe ApiOpts -> m (Maybe SourceUnit)
 analyzeFossaDepsYaml root maybeApiOpts = do
   maybeDepsFile <- findFossaDepsFile root
   case maybeDepsFile of
-    Nothing -> pure []
-    -- If the file exists and we have no SourceUnit to report, that's a failure
+    Nothing -> pure Nothing
     Just depsFile -> do
       yamldeps <- context "Reading fossa-deps file" $ readContentsYaml depsFile
-      sourceUnit <- context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root yamldeps
-      archiveSrcUnit <- case maybeApiOpts of
-        Nothing -> pure $ archiveNoUploadSourceUnit (vendoredDependencies yamldeps)
-        Just apiOpts -> archiveUploadSourceUnit root apiOpts (vendoredDependencies yamldeps)
-      pure $ catMaybes [sourceUnit, archiveSrcUnit]
+      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root yamldeps maybeApiOpts
 
 findFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe (Path Abs File))
 findFossaDepsFile root = do
@@ -63,12 +57,18 @@ findFossaDepsFile root = do
     (False, True) -> pure $ Just yamlFile
     (False, False) -> pure Nothing
 
-toSourceUnit :: Has Diagnostics sig m => Path Abs Dir -> YamlDependencies -> m SourceUnit
-toSourceUnit root yamldeps@YamlDependencies{..} = do
-  when (hasNoDeps yamldeps) $ fatalText "No dependencies found in fossa-deps file"
+toSourceUnit :: (Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> YamlDependencies -> Maybe ApiOpts -> m SourceUnit
+toSourceUnit root yamlDeps@YamlDependencies{..} maybeApiOpts = do
+  -- If the file exists and we have no dependencies to report, that's a failure.
+  when (hasNoDeps yamlDeps) $ fatalText "No dependencies found in fossa-deps file"
+  archiveLocators <- case maybeApiOpts of
+    Nothing -> pure $ archiveNoUploadSourceUnit vendoredDependencies
+    Just apiOpts -> archiveUploadSourceUnit root apiOpts vendoredDependencies
+
   let renderedPath = toText root
-      build = toBuildData <$> NE.nonEmpty referencedDependencies
+      referenceLocators = refToLocator <$> referencedDependencies
       additional = toAdditionalData <$> NE.nonEmpty customDependencies
+      build = toBuildData <$> NE.nonEmpty (referenceLocators <> archiveLocators)
   pure $
     SourceUnit
       { sourceUnitName = renderedPath
@@ -78,32 +78,30 @@ toSourceUnit root yamldeps@YamlDependencies{..} = do
       , additionalData = additional
       }
 
-toBuildData :: NE.NonEmpty ReferencedDependency -> SourceUnitBuild
-toBuildData deps =
+toBuildData :: NE.NonEmpty Locator -> SourceUnitBuild
+toBuildData locators =
   SourceUnitBuild
     { buildArtifact = "default"
     , buildSucceeded = True
-    , buildImports = imports
-    , buildDependencies = map addEmptyDep imports
+    , buildImports = NE.toList locators
+    , buildDependencies = map addEmptyDep $ NE.toList locators
     }
-  where
-    imports = map toImport $ NE.toList deps
 
-    toImport :: ReferencedDependency -> Locator
-    toImport ReferencedDependency{..} =
-      Locator
-        { locatorFetcher = depTypeToFetcher locDepType
-        , locatorProject = locDepName
-        , locatorRevision = locDepVersion
-        }
+refToLocator :: ReferencedDependency -> Locator
+refToLocator ReferencedDependency{..} =
+  Locator
+    { locatorFetcher = depTypeToFetcher locDepType
+    , locatorProject = locDepName
+    , locatorRevision = locDepVersion
+    }
 
-    addEmptyDep :: Locator -> SourceUnitDependency
-    addEmptyDep loc = SourceUnitDependency loc []
+addEmptyDep :: Locator -> SourceUnitDependency
+addEmptyDep loc = SourceUnitDependency loc []
 
 toAdditionalData :: NE.NonEmpty CustomDependency -> AdditionalDepData
-toAdditionalData deps = AdditionalDepData{userDefinedDeps = map tosrc $ NE.toList deps}
+toAdditionalData deps = AdditionalDepData{userDefinedDeps = map toSrc $ NE.toList deps}
   where
-    tosrc CustomDependency{..} =
+    toSrc CustomDependency{..} =
       SourceUserDefDep
         { srcUserDepName = customName
         , srcUserDepVersion = customVersion
