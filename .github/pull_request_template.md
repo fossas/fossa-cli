@@ -22,12 +22,12 @@ _List any referenced GitHub issues. If PR references tickets in other systems (e
 
 _Make sure to use keywords to link this PR to GitHub issues ([GitHub Docs](https://docs.github.com/en/github/managing-your-work-on-github/linking-a-pull-request-to-an-issue#linking-a-pull-request-to-an-issue-using-a-keyword))._
 
-_Example:_ Closes https://github.com/example/repo/issues/123.
+_Example:_ Closes org/repo#123.
 
 ## Checklist
 
-- [] I added tests for this PR's change.
-- [] I linted and formatted (via `haskell-language-server`) any files I touched in this PR.
-- [] If this PR introduced a user-visible change, I added documentation into `docs/`.
-- [] I updated `Changelog.md`. If this PR did not mark a release, I added my changes into an `# Unreleased` section at the top.
-- [] I linked this PR to any referenced GitHub issues.
+- [ ] I added tests for this PR's change (or confirmed tests are not viable).
+- [ ] I linted and formatted (via `haskell-language-server`) any haskell files I touched in this PR.
+- [ ] If this PR introduced a user-visible change, I added documentation into `docs/`.
+- [ ] I updated `Changelog.md` if this change is externally facing. If this PR did not mark a release, I added my changes into an `# Unreleased` section at the top.
+- [ ] I linked this PR to any referenced GitHub issues, if they exist.

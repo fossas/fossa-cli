@@ -8,5 +8,10 @@ dist-newstyle/
 *.prof
 *.hp
 
-# vendor directory
-vendor
+# Development files/directories
+vendor/
+.vscode/
+
+# Executables
+/fossa
+/fossa-?dev
