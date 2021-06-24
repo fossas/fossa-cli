@@ -1,7 +1,8 @@
 # Spectrometer Changelog
 
-## Unreleased
+## 2.9.0
 
+- Fix an issue where stdout doesn't always flush to the console ([#265](https://github.com/fossas/spectrometer/pull/265))
 - Fix an issue when referenced-dependencies are not being uploaded ([#262](https://github.com/fossas/spectrometer/pull/262))
 - Adds support for `fossa-deps.json` ([#261](https://github.com/fossas/spectrometer/pull/261))
 - Adds support for `vendored-dependencies` to be licensed scanned ([#257](https://github.com/fossas/spectrometer/pull/257))

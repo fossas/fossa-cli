@@ -27,6 +27,7 @@ import Control.Effect.ConsoleRegion
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
 import Control.Monad (when)
+import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans (lift)
 import Data.Kind (Type)
@@ -48,14 +49,17 @@ type LogFormatter = Severity -> Doc AnsiStyle -> Text
 
 data Logger (m :: Type -> Type) k where
   Log :: Severity -> Doc AnsiStyle -> Logger m ()
+  LogStdout :: Logger m ()
 
 -- | Log a message with the given severity
 log :: Has Logger sig m => Severity -> Doc AnsiStyle -> m ()
 log severity logLine = send (Log severity logLine)
 
 -- | Log a line to stdout. Usually, you want to use 'log', 'logInfo', ..., instead
-logStdout :: Has (Lift IO) sig m => Text -> m ()
-logStdout = sendIO . outputConcurrent
+logStdout :: (Has Logger sig m, Has (Lift IO) sig m) => Text -> m ()
+logStdout txt = do
+  send LogStdout
+  sendIO $ outputConcurrent txt
 
 data Severity
   = SevDebug
@@ -77,9 +81,9 @@ logError :: Has Logger sig m => Doc AnsiStyle -> m ()
 logError = log SevError
 
 withLogger :: Has (Lift IO) sig m => LogCtx m -> LoggerC m a -> m a
-withLogger ctx act = displayConsoleRegions (runLogger ctx act) <* sendIO flushConcurrentOutput
+withLogger ctx act = displayConsoleRegions (runLogger ctx act)
 
-withDefaultLogger :: Has (Lift IO) sig m => Severity -> LoggerC m a -> m a
+withDefaultLogger :: (Has (Lift IO) sig m, MonadIO m, MonadMask m) => Severity -> LoggerC m a -> m a
 withDefaultLogger sev act = do
   formatter <- determineDefaultLogFormatter
   let ctx =
@@ -88,7 +92,7 @@ withDefaultLogger sev act = do
           , logCtxFormatter = formatter
           , logCtxWrite = sendIO . errorConcurrent
           }
-  withLogger ctx act
+  withConcurrentOutput $ withLogger ctx act
 
 runLogger :: LogCtx m -> LoggerC m a -> m a
 runLogger act = runReader act . runLoggerC
@@ -126,6 +130,7 @@ instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (Logger :+: sig) (Logge
       when (logCtxSeverity <= sev) $
         lift $ logCtxWrite $ logCtxFormatter sev msg
       pure ctx
+    L (LogStdout) -> pure ctx
     R other -> alg (runLoggerC . hdl) (R other) ctx
 
 newtype IgnoreLoggerC m a = IgnoreLoggerC {runIgnoreLoggerC :: m a}
@@ -137,6 +142,7 @@ ignoreLogger = runIgnoreLoggerC
 instance Algebra sig m => Algebra (Logger :+: sig) (IgnoreLoggerC m) where
   alg hdl sig ctx = IgnoreLoggerC $ case sig of
     L (Log _ _) -> pure ctx
+    L (LogStdout) -> pure ctx
     R other -> alg (runIgnoreLoggerC . hdl) other ctx
 
 renderIt :: Doc AnsiStyle -> Text
