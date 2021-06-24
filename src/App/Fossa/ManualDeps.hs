@@ -3,12 +3,13 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 
-module App.Fossa.YamlDeps (
+module App.Fossa.ManualDeps (
   CustomDependency (..),
   ReferencedDependency (..),
   VendoredDependency (..),
-  YamlDependencies (..),
-  analyzeFossaDepsYaml,
+  ManualDependencies (..),
+  FoundDepsFile (..),
+  analyzeFossaDepsFile,
 ) where
 
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
@@ -30,37 +31,52 @@ import Data.List.NonEmpty qualified as NE
 import Data.String.Conversion (toText)
 import Data.Text (Text, unpack)
 import DepTypes (DepType (..))
-import Effect.ReadFS (ReadFS, doesFileExist, readContentsYaml)
+import Effect.ReadFS (ReadFS, doesFileExist, readContentsYaml, readContentsJson)
 import Fossa.API.Types
 import Path
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
 
-analyzeFossaDepsYaml :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m) => Path Abs Dir -> Maybe ApiOpts -> m (Maybe SourceUnit)
-analyzeFossaDepsYaml root maybeApiOpts = do
+data FoundDepsFile
+  = ManualYaml (Path Abs File)
+  | ManualJSON (Path Abs File)
+
+analyzeFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m) => Path Abs Dir -> Maybe ApiOpts -> m (Maybe SourceUnit)
+analyzeFossaDepsFile root maybeApiOpts = do
   maybeDepsFile <- findFossaDepsFile root
   case maybeDepsFile of
     Nothing -> pure Nothing
     Just depsFile -> do
-      yamldeps <- context "Reading fossa-deps file" $ readContentsYaml depsFile
-      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root yamldeps maybeApiOpts
+      manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
+      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root manualDeps maybeApiOpts
 
-findFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe (Path Abs File))
+readFoundDeps :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundDepsFile -> m ManualDependencies
+readFoundDeps (ManualJSON path) = readContentsJson path
+readFoundDeps (ManualYaml path) = readContentsYaml path
+
+findFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs Dir -> m (Maybe FoundDepsFile)
 findFossaDepsFile root = do
   let ymlFile = root </> $(mkRelFile "fossa-deps.yml")
       yamlFile = root </> $(mkRelFile "fossa-deps.yaml")
+      jsonFile = root </> $(mkRelFile "fossa-deps.json")
+      multipleFound = fatalText "Found multiple fossa-deps files.  Only one of ('.json', '.yml', and '.yaml') extensions are allowed"
   ymlExists <- doesFileExist ymlFile
   yamlExists <- doesFileExist yamlFile
-  case (ymlExists, yamlExists) of
-    (True, True) -> fatalText "Found '.yml' and '.yaml' files when searching for fossa-deps, only one is permitted if present."
-    (True, False) -> pure $ Just ymlFile
-    (False, True) -> pure $ Just yamlFile
-    (False, False) -> pure Nothing
+  jsonExists <- doesFileExist jsonFile
+  case (ymlExists, yamlExists, jsonExists) of
+    -- Allow 0 or 1 files, not multiple
+    (True, True, _) -> multipleFound
+    (_, True, True) -> multipleFound
+    (True, _, True) -> multipleFound
+    (True, _, _) -> pure $ Just $ ManualYaml ymlFile
+    (_, True, _) -> pure $ Just $ ManualYaml yamlFile
+    (_, _, True) -> pure $ Just $ ManualJSON jsonFile
+    (False, False, False) -> pure Nothing
 
-toSourceUnit :: (Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> YamlDependencies -> Maybe ApiOpts -> m SourceUnit
-toSourceUnit root yamlDeps@YamlDependencies{..} maybeApiOpts = do
+toSourceUnit :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> ManualDependencies -> Maybe ApiOpts -> m SourceUnit
+toSourceUnit root manualDeps@ManualDependencies{..} maybeApiOpts = do
   -- If the file exists and we have no dependencies to report, that's a failure.
-  when (hasNoDeps yamlDeps) $ fatalText "No dependencies found in fossa-deps file"
+  when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
   archiveLocators <- case maybeApiOpts of
     Nothing -> pure $ archiveNoUploadSourceUnit vendoredDependencies
     Just apiOpts -> archiveUploadSourceUnit root apiOpts vendoredDependencies
@@ -110,10 +126,10 @@ toAdditionalData deps = AdditionalDepData{userDefinedDeps = map toSrc $ NE.toLis
         , srcUserDepUrl = customUrl
         }
 
-hasNoDeps :: YamlDependencies -> Bool
-hasNoDeps YamlDependencies{..} = null referencedDependencies && null customDependencies && null vendoredDependencies
+hasNoDeps :: ManualDependencies -> Bool
+hasNoDeps ManualDependencies{..} = null referencedDependencies && null customDependencies && null vendoredDependencies
 
-data YamlDependencies = YamlDependencies
+data ManualDependencies = ManualDependencies
   { referencedDependencies :: [ReferencedDependency]
   , customDependencies :: [CustomDependency]
   , vendoredDependencies :: [VendoredDependency]
@@ -136,9 +152,9 @@ data CustomDependency = CustomDependency
   }
   deriving (Eq, Ord, Show)
 
-instance FromJSON YamlDependencies where
-  parseJSON = withObject "YamlDependencies" $ \obj ->
-    YamlDependencies <$ (obj .:? "version" >>= isMissingOr1)
+instance FromJSON ManualDependencies where
+  parseJSON = withObject "ManualDependencies" $ \obj ->
+    ManualDependencies <$ (obj .:? "version" >>= isMissingOr1)
       <*> (obj .:? "referenced-dependencies" .!= [])
       <*> (obj .:? "custom-dependencies" .!= [])
       <*> (obj .:? "vendored-dependencies" .!= [])

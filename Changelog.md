@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fix an issue when referenced-dependencies are not being uploaded ([#262](https://github.com/fossas/spectrometer/pull/262))
+- Adds support for `fossa-deps.json` ([#261](https://github.com/fossas/spectrometer/pull/261))
 - Adds support for `vendored-dependencies` to be licensed scanned ([#257](https://github.com/fossas/spectrometer/pull/257))
 
 ## 2.8.0

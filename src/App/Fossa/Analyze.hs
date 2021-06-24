@@ -14,8 +14,8 @@ import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
 import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContributors)
+import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
-import App.Fossa.YamlDeps (analyzeFossaDepsYaml)
 import App.Types
 import App.Util (validateDir)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
@@ -235,7 +235,7 @@ analyze (BaseDir basedir) destination override unpackArchives enableVSI filters 
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
 
-  manualSrcUnits <- analyzeFossaDepsYaml basedir apiOpts
+  manualSrcUnits <- analyzeFossaDepsFile basedir apiOpts
 
   (projectResults, ()) <-
     runOutput @ProjectResult

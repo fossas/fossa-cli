@@ -1,16 +1,17 @@
-module App.Fossa.YamlDepsSpec (
+module App.Fossa.ManualDepsSpec (
   spec,
 ) where
 
-import App.Fossa.YamlDeps (
+import App.Fossa.ManualDeps (
   CustomDependency (CustomDependency),
-  ReferencedDependency (ReferencedDependency),
   VendoredDependency (VendoredDependency),
-  YamlDependencies (YamlDependencies),
+  ManualDependencies (ManualDependencies),
+  ReferencedDependency (ReferencedDependency),
  )
 import Control.Effect.Exception (displayException)
+import Data.Aeson qualified as Json
 import Data.ByteString qualified as BS
-import Data.Yaml (decodeEither')
+import Data.Yaml qualified as Yaml
 import DepTypes (DepType (..))
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe, shouldContain)
 import Test.Hspec.Core.Spec (SpecM)
@@ -18,8 +19,8 @@ import Test.Hspec.Core.Spec (SpecM)
 getTestDataFile :: String -> SpecM a BS.ByteString
 getTestDataFile name = runIO . BS.readFile $ "test/App/Fossa/testdata/" <> name
 
-theWorks :: YamlDependencies
-theWorks = YamlDependencies references customs vendors
+theWorks :: ManualDependencies
+theWorks = ManualDependencies references customs vendors
   where
     references =
       [ ReferencedDependency "one" GemType Nothing
@@ -35,17 +36,24 @@ theWorks = YamlDependencies references customs vendors
       ]
 
 exceptionContains :: BS.ByteString -> String -> Expectation
-exceptionContains yamlBytes partial = case decodeEither' @YamlDependencies yamlBytes of
+exceptionContains yamlBytes partial = case Yaml.decodeEither' @ManualDependencies yamlBytes of
   -- Ethics issue: right is wrong
   Right _ -> expectationFailure $ "Expected to fail with message containing: " <> partial
   Left exc -> displayException exc `shouldContain` partial
 
 spec :: Spec
-spec =
-  describe "fossa-deps parser" $ do
+spec = do
+  describe "fossa-deps json parser" $ do
+    theWorksBS <- getTestDataFile "the-works.json"
+    it "should parse json correctly" $
+      case Json.eitherDecodeStrict' theWorksBS of
+        Left err -> expectationFailure err
+        Right jsonDeps -> jsonDeps `shouldBe` theWorks
+
+  describe "fossa-deps yaml parser" $ do
     theWorksBS <- getTestDataFile "the-works.yml"
     it "should successfully parse all possible inputs" $
-      case decodeEither' theWorksBS of
+      case Yaml.decodeEither' theWorksBS of
         Left err -> expectationFailure $ displayException err
         Right yamlDeps -> yamlDeps `shouldBe` theWorks
 

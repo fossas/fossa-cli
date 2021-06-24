@@ -1,0 +1,38 @@
+{
+   "referenced-dependencies": [
+      {
+         "name": "one",
+         "type": "gem"
+      },
+      {
+         "type": "url",
+         "name": "two",
+         "version": "1.0.0"
+      }
+   ],
+   "custom-dependencies": [
+      {
+         "name": "hello",
+         "version": "1.2.3",
+         "license": "MIT"
+      },
+      {
+         "name": "full",
+         "version": "3.2.1",
+         "license": "GPL-3.0",
+         "description": "description for full",
+         "url": "we don't validate url's"
+      }
+   ],
+   "vendored-dependencies": [
+      {
+         "name": "vendored",
+         "path": "path"
+      },
+      {
+         "name": "versioned",
+         "path": "path/to/dep",
+         "version": "2.1.0"
+      }
+   ]
+}

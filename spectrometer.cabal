@@ -143,6 +143,7 @@ library
     App.Fossa.FossaAPIV1
     App.Fossa.ListTargets
     App.Fossa.Main
+    App.Fossa.ManualDeps
     App.Fossa.ProjectInference
     App.Fossa.Report
     App.Fossa.Report.Attribution
@@ -156,7 +157,6 @@ library
     App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Test
     App.Fossa.VPS.Types
-    App.Fossa.YamlDeps
     App.OptionExtensions
     App.Pathfinder.Main
     App.Pathfinder.Scan
@@ -303,7 +303,7 @@ test-suite unit-tests
     App.Fossa.Configuration.ConfigurationSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.VPS.NinjaGraphSpec
-    App.Fossa.YamlDepsSpec
+    App.Fossa.ManualDepsSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec
