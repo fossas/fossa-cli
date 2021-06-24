@@ -240,10 +240,15 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 		log.Debug("Using fallback of node_modules")
 	}
+	deps, err := npm.FromNodeModules(a.Module.BuildTarget, a.DevDeps)
+	if err == nil {
+		return deps, nil
+	}
 
+	log.Warnf("Could not determine deps from node_modules")
 	log.Debug("Using fallback of yarn lockfile check")
 
-	deps, err := a.Yarn.List(a.Module.BuildTarget, a.DevDeps)
+	deps, err = a.Yarn.List(a.Module.BuildTarget, a.DevDeps)
 	if err == nil && len(deps.Direct) > 0 {
 		return deps, nil
 	}
