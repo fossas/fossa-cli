@@ -240,7 +240,6 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 
 		log.Debug("Using fallback of node_modules")
 	}
-
 	deps, err := npm.FromNodeModules(a.Module.BuildTarget, a.DevDeps)
 	if err == nil {
 		return deps, nil
