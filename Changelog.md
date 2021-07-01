@@ -1,25 +1,31 @@
 # Spectrometer Changelog
 
-## 2.9.0
+## v2.9.2
+- Adds JSON-formatted project information to the output of `fossa analyze` with `--json` ([#255](https://github.com/fossas/spectrometer/pull/255))
+
+## v2.9.1
+- Bump wiggins - Updated vps aosp-notice-file subcommand to upload ninja files & trigger async task. ([#272](https://github.com/fossas/spectrometer/pull/272))
+
+## v2.9.0
 
 - Fix an issue where stdout doesn't always flush to the console ([#265](https://github.com/fossas/spectrometer/pull/265))
 - Fix an issue when referenced-dependencies are not being uploaded ([#262](https://github.com/fossas/spectrometer/pull/262))
 - Adds support for `fossa-deps.json` ([#261](https://github.com/fossas/spectrometer/pull/261))
 - Adds support for `vendored-dependencies` to be licensed scanned ([#257](https://github.com/fossas/spectrometer/pull/257))
 
-## 2.8.0
+## v2.8.0
 
 - Adds support for `--branch` flag on `fossa container analyze` command ([#253](https://github.com/fossas/spectrometer/pull/253))
 - Adds support and documentation for user-defined dependencies ([#245](https://github.com/fossas/spectrometer/pull/245))
 - Allows using `.yml` or `.yaml` extensions for `fossa-deps` file, but not both ([#245](https://github.com/fossas/spectrometer/pull/245))
 - `fossa-deps` file is checked before running discovery/analysis, and is no longer run in parallel with other analysis functions ([#245](https://github.com/fossas/spectrometer/pull/245))
 
-## 2.7.2
+## v2.7.2
 
 - Updates the VSI Plugin.
 - Adds support for VSI powered dependency discovery as a strategy.
 
-## 2.7.1
+## v2.7.1
 
 - Adds support for Yarn v2 lockfiles ([#244](https://github.com/fossas/spectrometer/pull/244))
 - Fixes the dependency version parser for `.csproj`, `.vbproj`, and similar .NET files ([#247](https://github.com/fossas/spectrometer/pull/247))

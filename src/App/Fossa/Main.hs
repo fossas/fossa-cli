@@ -4,7 +4,7 @@ module App.Fossa.Main (
   appMain,
 ) where
 
-import App.Fossa.Analyze (RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
+import App.Fossa.Analyze (RecordMode (..), ScanDestination (..), UnpackArchives (..), JsonOutput (..), VSIAnalysisMode (..), analyzeMain)
 import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
 import App.Fossa.Configuration
 import App.Fossa.Container (ImageText (..), dumpSyftScanMain, imageTextArg, parseSyftOutputMain)
@@ -88,13 +88,15 @@ appMain = do
       -- The branch override needs to be set here rather than above to preserve
       -- the preference for command line options.
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
+          doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode analyzeBuildTargetFilters
+
       if analyzeOutput
-        then analyzeMain analyzeBaseDir analyzeRecordMode logSeverity OutputStdout analyzeOverride analyzeUnpackArchives analyzeVSIMode analyzeBuildTargetFilters
+        then doAnalyze OutputStdout 
         else do
           key <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl key
           let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
-          analyzeMain analyzeBaseDir analyzeRecordMode logSeverity (UploadScan apiOpts metadata) analyzeOverride analyzeUnpackArchives analyzeVSIMode analyzeBuildTargetFilters
+          doAnalyze (UploadScan apiOpts metadata)
     --
     TestCommand TestOptions{..} -> do
       baseDir <- validateDir testBaseDir
@@ -268,6 +270,7 @@ analyzeOpts =
   AnalyzeOptions
     <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
     <*> flagOpt UnpackArchives (long "unpack-archives" <> help "Recursively unpack and analyze discovered archives")
+    <*> flagOpt JsonOutput (long "json" <> help "Output project metadata as json to the console. Useful for communicating with the FOSSA API")
     <*> optional (strOption (long "branch" <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> many filterOpt
@@ -509,6 +512,7 @@ data ReportOptions = ReportOptions
 data AnalyzeOptions = AnalyzeOptions
   { analyzeOutput :: Bool
   , analyzeUnpackArchives :: Flag UnpackArchives
+  , analyzeJsonOutput :: Flag JsonOutput
   , analyzeBranch :: Maybe Text
   , analyzeMetadata :: ProjectMetadata
   , analyzeBuildTargetFilters :: [BuildTargetFilter]
