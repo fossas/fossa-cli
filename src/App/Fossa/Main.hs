@@ -193,9 +193,9 @@ opts :: Parser CmdOptions
 opts =
   CmdOptions
     <$> switch (long "debug" <> help "Enable debug logging")
-    <*> optional (uriOption (long "endpoint" <> metavar "URL" <> help "The FOSSA API server base URL (default: https://app.fossa.com)"))
-    <*> optional (strOption (long "project" <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
-    <*> optional (strOption (long "revision" <> help "this repository's current revision hash (default: VCS hash HEAD)"))
+    <*> optional (uriOption (long "endpoint" <> short 'e' <> metavar "URL" <> help "The FOSSA API server base URL (default: https://app.fossa.com)"))
+    <*> optional (strOption (long "project" <> short 'p' <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
+    <*> optional (strOption (long "revision" <> short 'r' <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
     <*> (commands <|> hiddenCommands)
     <**> infoOption (T.unpack fullVersionDescription) (long "version" <> short 'V' <> help "show version text")
@@ -271,7 +271,7 @@ analyzeOpts =
     <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
     <*> flagOpt UnpackArchives (long "unpack-archives" <> help "Recursively unpack and analyze discovered archives")
     <*> flagOpt JsonOutput (long "json" <> help "Output project metadata as json to the console. Useful for communicating with the FOSSA API")
-    <*> optional (strOption (long "branch" <> help "this repository's current branch (default: current VCS branch)"))
+    <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> many filterOpt
     <*> vsiAnalyzeOpt
@@ -298,11 +298,11 @@ filterOpt = option (eitherReader parseFilter) (long "filter" <> help "Analysis-T
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =
   ProjectMetadata
-    <$> optional (strOption (long "title" <> help "the title of the FOSSA project. (default: the project name)"))
-    <*> optional (strOption (long "project-url" <> help "this repository's home page"))
-    <*> optional (strOption (long "jira-project-key" <> help "this repository's JIRA project key"))
-    <*> optional (strOption (long "link" <> help "a link to attach to the current build"))
-    <*> optional (strOption (long "team" <> help "this repository's team inside your organization"))
+    <$> optional (strOption (long "title" <> short 't' <> help "the title of the FOSSA project. (default: the project name)"))
+    <*> optional (strOption (long "project-url" <> short 'P' <> help "this repository's home page"))
+    <*> optional (strOption (long "jira-project-key" <> short 'j' <> help "this repository's JIRA project key"))
+    <*> optional (strOption (long "link" <> short 'L' <> help "a link to attach to the current build"))
+    <*> optional (strOption (long "team" <> short 'T' <> help "this repository's team inside your organization"))
     <*> optional (strOption (long "policy" <> help "the policy to assign to this project in FOSSA"))
 
 reportOpts :: Parser ReportOptions
@@ -444,7 +444,7 @@ containerAnalyzeOpts :: Parser ContainerAnalyzeOptions
 containerAnalyzeOpts =
   ContainerAnalyzeOptions
     <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
-    <*> optional (strOption (long "branch" <> help "this repository's current branch (default: current VCS branch)"))
+    <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> imageTextArg
 

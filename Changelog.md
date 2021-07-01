@@ -1,5 +1,8 @@
 # Spectrometer Changelog
 
+## Unreleased
+- Adds support for short flags to mirror CLI v1 commands ([#264](https://github.com/fossas/spectrometer/pull/264))
+
 ## v2.9.2
 - Adds JSON-formatted project information to the output of `fossa analyze` with `--json` ([#255](https://github.com/fossas/spectrometer/pull/255))
 

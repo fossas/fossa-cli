@@ -132,15 +132,15 @@ For supported command-line flags, use `fossa analyze --help`
 
 In addition to the [usual FOSSA project flags](#common-fossa-project-flags) supported by all commands, the analyze command supports the following FOSSA-project-related flags:
 
-| Name | Description |
-| ---- | ----------- |
-| `--title 'some title'` | Set the title of the FOSSA project |
-| `--branch 'some branch'` | Override the detected FOSSA project branch |
-| `--project-url 'https://example.com'` | Add a URL to the FOSSA project |
-| `--jira-project-key 'some-key'` | Add a Jira project key to the FOSSA project |
-| `--link 'https://example.com'` | Attach a link to the current FOSSA build |
-| `--team 'some team'` | Specify a team within your FOSSA organization |
-| `--policy 'some policy'` | Assign a specific FOSSA policy to this project |
+| Name                                  | Short | Description                                    |
+| ------------------------------------- | ----- | ---------------------------------------------- |
+| `--title 'some title'`                | `-t`  | Set the title of the FOSSA project             |
+| `--branch 'some branch'`              | `-b`  | Override the detected FOSSA project branch     |
+| `--project-url 'https://example.com'` | `-P`  | Add a URL to the FOSSA project                 |
+| `--jira-project-key 'some-key'`       | `-j`  | Add a Jira project key to the FOSSA project    |
+| `--link 'https://example.com'`        | `-L`  | Attach a link to the current FOSSA build       |
+| `--team 'some team'`                  | `-T`  | Specify a team within your FOSSA organization  |
+| `--policy 'some policy'`              |       | Assign a specific FOSSA policy to this project |
 
 ### Printing results without uploading to FOSSA
 
@@ -403,12 +403,12 @@ fossa report attribtion --json
 
 All `fossa` commands support the following FOSSA-project-related flags:
 
-| Name | Description |
-| ---- | ----------- |
-| `--project 'some project'` | Override the detected project name |
-| `--revision 'some revision'` | Override the detected project revision |
-| `--fossa-api-key 'my-api-key'` | An alternative to using the `FOSSA_API_KEY` environment variable to specify a FOSSA API key |
-| `--endpoint 'https://example.com'` | Override the FOSSA API server base URL |
+| Name                               | Short | Description                                                                                 |
+| ---------------------------------- | ----- | ------------------------------------------------------------------------------------------- |
+| `--project 'some project'`         | `-p`  | Override the detected project name                                                          |
+| `--revision 'some revision'`       | `-r`  | -Override the detected project revision                                                     |
+| `--fossa-api-key 'my-api-key'`     |       | An alternative to using the `FOSSA_API_KEY` environment variable to specify a FOSSA API key |
+| `--endpoint 'https://example.com'` | `-e`  | Override the FOSSA API server base URL                                                      |
 
 ## Frequently-Asked Questions
 
