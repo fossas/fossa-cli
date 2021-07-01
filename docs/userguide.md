@@ -234,12 +234,38 @@ custom-dependencies:
 - name: foo
   version: 1.2.3
   license: "MIT or Apache-2.0"
-# You can also provide a description and/or url
+# You can also provide a description and/or homepage. These values populate metadata fields in reports in the FOSSA web UI. 
 - name: foo-wrapper
   version: 1.2.3
   license: MIT
-  url: https://www.foowrapper.com/about
-  description: Provides foo and a helpful interface around foo-like tasks.
+  metadata:
+    homepage: https://www.foowrapper.com/about
+    description: Provides foo and a helpful interface around foo-like tasks.
+```
+
+### Remote dependencies
+
+FOSSA also supports dependencies that can't be automatically discovered or identified, but where the user has a URL where FOSSA can download the source code of the dependency.
+
+To specify a remote dependency, you must provide the name, version, and download URL of the dependency. The FOSSA backend will attempt to download and scan any source code contained in an archive hosted at this URL.
+
+For example, for a dependency released on a GitHub release, your URL might look like: `https://github.com/fossas/spectrometer/archive/refs/tags/v2.7.2.tar.gz`.
+
+You can also optionally add metadata fields ("description" and "homepage") to populate these fields in the FOSSA web UI (these fields can be displayed when generating reports).
+
+```yaml
+remote-dependencies:
+# Remote dependencies need name, version, and url
+- name: foo
+  version: 1.2.3
+  url: https://www.fooarchive.tar.gz
+# You can also provide a description and/or homepage. These values populate metadata fields in reports in the FOSSA web UI.
+- name: foo-wrapper
+  version: 1.2.3
+  url: https://www.foowrapper.tar.gz
+  metadata:
+    description: Provides foo and a helpful interface around foo-like tasks.
+    homepage: https://www.foowrapper-home.com
 ```
 
 ### Errors in the `fossa-deps` file
@@ -258,6 +284,11 @@ custom-dependencies:
   name: mydep
   version: "3.14.15"
   license: GPL-3.0
+
+remote-dependencies:
+- name: mydep
+  version: "3.14.15"
+  license: GPL-3.0 # Error! "license" is only allowed for custom-dependencies
 ```
 
 This would return an error with a message explaining what went wrong, and where.  However, we don't check for everything (yet!):
@@ -317,8 +348,10 @@ We also support json-formatted dependencies:
       "name": "foo-wrapper",
       "version": "1.0.2",
       "license": "MIT or Apache-2.0",
-      "description": "Provides a help wrapper for foo-related tasks",
-      "url": "https://foo-project.org/homepage"
+      "metadata": {
+        "description": "Provides a help wrapper for foo-related tasks",
+        "homepage": "https://foo-project.org/homepage"
+      }
     }
   ],
   "vendored-dependencies": [
@@ -329,6 +362,17 @@ We also support json-formatted dependencies:
       "name": "winston",
       "path": "vendor/winston.tar.gz",
       "version": "5.0.0-alpha"
+    }
+  ],
+  "remote-dependencies": [
+    {
+      "name": "foo-url",
+      "version": "1.2.3",
+      "url": "www.foo.tar.gz",
+      "metadata": {
+        "description": "foo archive",
+        "homepage": "https://foo-url.org/homepage"
+      }
     }
   ]
 }

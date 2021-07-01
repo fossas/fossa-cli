@@ -6,6 +6,7 @@ module Srclib.Types (
   SourceUnitDependency (..),
   AdditionalDepData (..),
   SourceUserDefDep (..),
+  SourceRemoteDep (..),
   Locator (..),
   renderLocator,
   parseLocator,
@@ -43,8 +44,10 @@ data SourceUnitDependency = SourceUnitDependency
   }
   deriving (Eq, Ord, Show)
 
-newtype AdditionalDepData = AdditionalDepData
-  {userDefinedDeps :: [SourceUserDefDep]}
+data AdditionalDepData = AdditionalDepData
+  { userDefinedDeps :: Maybe [SourceUserDefDep]
+  , remoteDeps :: Maybe [SourceRemoteDep]
+  }
   deriving (Eq, Ord, Show)
 
 data SourceUserDefDep = SourceUserDefDep
@@ -52,7 +55,16 @@ data SourceUserDefDep = SourceUserDefDep
   , srcUserDepVersion :: Text
   , srcUserDepLicense :: Text
   , srcUserDepDescription :: Maybe Text
-  , srcUserDepUrl :: Maybe Text
+  , srcUserDepHomepage :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
+
+data SourceRemoteDep = SourceRemoteDep
+  { srcRemoteDepName :: Text
+  , srcRemoteDepVersion :: Text
+  , srcRemoteDepUrl :: Text
+  , srcRemoteDepDescription :: Maybe Text
+  , srcRemoteDepHomepage :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -101,9 +113,11 @@ instance ToJSON SourceUnitDependency where
       ]
 
 instance ToJSON AdditionalDepData where
-  toJSON (AdditionalDepData userdeps) =
+  toJSON AdditionalDepData{..} =
     object
-      ["UserDefinedDependencies" .= userdeps]
+      [ "UserDefinedDependencies" .= userDefinedDeps
+      , "RemoteDependencies" .= remoteDeps
+      ]
 
 instance ToJSON SourceUserDefDep where
   toJSON SourceUserDefDep{..} =
@@ -112,7 +126,17 @@ instance ToJSON SourceUserDefDep where
       , "Version" .= srcUserDepVersion
       , "License" .= srcUserDepLicense
       , "Description" .= srcUserDepDescription
-      , "Url" .= srcUserDepUrl
+      , "Homepage" .= srcUserDepHomepage
+      ]
+
+instance ToJSON SourceRemoteDep where
+  toJSON SourceRemoteDep{..} =
+    object
+      [ "Name" .= srcRemoteDepName
+      , "Version" .= srcRemoteDepVersion
+      , "Url" .= srcRemoteDepUrl
+      , "Description" .= srcRemoteDepDescription
+      , "Homepage" .= srcRemoteDepHomepage
       ]
 
 instance ToJSON Locator where

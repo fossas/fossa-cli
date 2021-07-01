@@ -4,8 +4,10 @@
 {-# LANGUAGE TypeApplications #-}
 
 module App.Fossa.ManualDeps (
-  CustomDependency (..),
   ReferencedDependency (..),
+  CustomDependency (..),
+  RemoteDependency (..),
+  DependencyMetadata (..),
   VendoredDependency (..),
   ManualDependencies (..),
   FoundDepsFile (..),
@@ -31,11 +33,11 @@ import Data.List.NonEmpty qualified as NE
 import Data.String.Conversion (toText)
 import Data.Text (Text, unpack)
 import DepTypes (DepType (..))
-import Effect.ReadFS (ReadFS, doesFileExist, readContentsYaml, readContentsJson)
+import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
 import Fossa.API.Types
 import Path
 import Srclib.Converter (depTypeToFetcher)
-import Srclib.Types (AdditionalDepData (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
+import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
 
 data FoundDepsFile
   = ManualYaml (Path Abs File)
@@ -83,7 +85,7 @@ toSourceUnit root manualDeps@ManualDependencies{..} maybeApiOpts = do
 
   let renderedPath = toText root
       referenceLocators = refToLocator <$> referencedDependencies
-      additional = toAdditionalData <$> NE.nonEmpty customDependencies
+      additional = toAdditionalData (NE.nonEmpty customDependencies) (NE.nonEmpty remoteDependencies)
       build = toBuildData <$> NE.nonEmpty (referenceLocators <> archiveLocators)
   pure $
     SourceUnit
@@ -114,25 +116,39 @@ refToLocator ReferencedDependency{..} =
 addEmptyDep :: Locator -> SourceUnitDependency
 addEmptyDep loc = SourceUnitDependency loc []
 
-toAdditionalData :: NE.NonEmpty CustomDependency -> AdditionalDepData
-toAdditionalData deps = AdditionalDepData{userDefinedDeps = map toSrc $ NE.toList deps}
+toAdditionalData :: Maybe (NE.NonEmpty CustomDependency) -> Maybe (NE.NonEmpty RemoteDependency) -> Maybe AdditionalDepData
+toAdditionalData customDeps remoteDeps =
+  Just
+    AdditionalDepData
+      { userDefinedDeps = map toCustom . NE.toList <$> customDeps
+      , remoteDeps = map toUrl . NE.toList <$> remoteDeps
+      }
   where
-    toSrc CustomDependency{..} =
+    toCustom CustomDependency{..} =
       SourceUserDefDep
         { srcUserDepName = customName
         , srcUserDepVersion = customVersion
         , srcUserDepLicense = customLicense
-        , srcUserDepDescription = customDescription
-        , srcUserDepUrl = customUrl
+        , srcUserDepDescription = customMetadata >>= depDescription
+        , srcUserDepHomepage = customMetadata >>= depHomepage
+        }
+    toUrl RemoteDependency{..} =
+      SourceRemoteDep
+        { srcRemoteDepName = remoteName
+        , srcRemoteDepVersion = remoteVersion
+        , srcRemoteDepUrl = remoteUrl
+        , srcRemoteDepDescription = remoteMetadata >>= depDescription
+        , srcRemoteDepHomepage = remoteMetadata >>= depHomepage
         }
 
 hasNoDeps :: ManualDependencies -> Bool
-hasNoDeps ManualDependencies{..} = null referencedDependencies && null customDependencies && null vendoredDependencies
+hasNoDeps ManualDependencies{..} = null referencedDependencies && null customDependencies && null vendoredDependencies && null remoteDependencies
 
 data ManualDependencies = ManualDependencies
   { referencedDependencies :: [ReferencedDependency]
   , customDependencies :: [CustomDependency]
   , vendoredDependencies :: [VendoredDependency]
+  , remoteDependencies :: [RemoteDependency]
   }
   deriving (Eq, Ord, Show)
 
@@ -147,8 +163,21 @@ data CustomDependency = CustomDependency
   { customName :: Text
   , customVersion :: Text
   , customLicense :: Text
-  , customDescription :: Maybe Text
-  , customUrl :: Maybe Text
+  , customMetadata :: Maybe DependencyMetadata
+  }
+  deriving (Eq, Ord, Show)
+
+data RemoteDependency = RemoteDependency
+  { remoteName :: Text
+  , remoteVersion :: Text
+  , remoteUrl :: Text
+  , remoteMetadata :: Maybe DependencyMetadata
+  }
+  deriving (Eq, Ord, Show)
+
+data DependencyMetadata = DependencyMetadata
+  { depDescription :: Maybe Text
+  , depHomepage :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -158,6 +187,7 @@ instance FromJSON ManualDependencies where
       <*> (obj .:? "referenced-dependencies" .!= [])
       <*> (obj .:? "custom-dependencies" .!= [])
       <*> (obj .:? "vendored-dependencies" .!= [])
+      <*> (obj .:? "remote-dependencies" .!= [])
     where
       isMissingOr1 :: Maybe Int -> Parser ()
       isMissingOr1 (Just x) | x /= 1 = fail $ "Invalid fossa-deps version: " <> show x
@@ -180,9 +210,23 @@ instance FromJSON CustomDependency where
     CustomDependency <$> obj .: "name"
       <*> (unTextLike <$> obj .: "version")
       <*> obj .: "license"
-      <*> obj .:? "description"
-      <*> obj .:? "url"
-      <* forbidMembers "custom dependencies" ["type", "path"] obj
+      <*> obj .:? "metadata"
+      <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
+
+instance FromJSON RemoteDependency where
+  parseJSON = withObject "RemoteDependency" $ \obj ->
+    RemoteDependency <$> obj .: "name"
+      <*> (unTextLike <$> obj .: "version")
+      <*> obj .: "url"
+      <*> obj .:? "metadata"
+      <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
+
+-- Dependency "metadata" section for both Remote and Custom Dependencies
+instance FromJSON DependencyMetadata where
+  parseJSON = withObject "metadata" $ \obj ->
+    DependencyMetadata <$> obj .:? "description"
+      <*> obj .:? "homepage"
+      <* forbidMembers "metadata" ["url"] obj
 
 -- Parse supported dependency types into their respective type or return Nothing.
 depTypeFromText :: Text -> Maybe DepType

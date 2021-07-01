@@ -4,9 +4,11 @@ module App.Fossa.ManualDepsSpec (
 
 import App.Fossa.ManualDeps (
   CustomDependency (CustomDependency),
+  ReferencedDependency (ReferencedDependency),
+  RemoteDependency (RemoteDependency),
+  DependencyMetadata (DependencyMetadata),
   VendoredDependency (VendoredDependency),
   ManualDependencies (ManualDependencies),
-  ReferencedDependency (ReferencedDependency),
  )
 import Control.Effect.Exception (displayException)
 import Data.Aeson qualified as Json
@@ -20,15 +22,19 @@ getTestDataFile :: String -> SpecM a BS.ByteString
 getTestDataFile name = runIO . BS.readFile $ "test/App/Fossa/testdata/" <> name
 
 theWorks :: ManualDependencies
-theWorks = ManualDependencies references customs vendors
+theWorks = ManualDependencies references customs vendors remotes
   where
     references =
       [ ReferencedDependency "one" GemType Nothing
-      , ReferencedDependency "two" URLType $ Just "1.0.0"
+      , ReferencedDependency "two" PipType $ Just "1.0.0"
       ]
     customs =
-      [ CustomDependency "hello" "1.2.3" "MIT" Nothing Nothing
-      , CustomDependency "full" "3.2.1" "GPL-3.0" (Just "description for full") (Just "we don't validate url's")
+      [ CustomDependency "hello" "1.2.3" "MIT" Nothing
+      , CustomDependency "full" "3.2.1" "GPL-3.0" (Just (DependencyMetadata (Just "description for full custom") (Just "we don't validate homepages - custom")))
+      ]
+    remotes =
+      [ RemoteDependency "url-dep-one" "1.2.3" "www.url1.tar.gz" (Just (DependencyMetadata (Just "description for url") (Just "we don't validate homepages - url")))
+      , RemoteDependency "url-dep-two" "1.2.4" "www.url2.tar.gz" Nothing
       ]
     vendors =
       [ VendoredDependency "vendored" "path" Nothing

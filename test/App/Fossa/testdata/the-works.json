@@ -5,7 +5,7 @@
          "type": "gem"
       },
       {
-         "type": "url",
+         "type": "pypi",
          "name": "two",
          "version": "1.0.0"
       }
@@ -20,8 +20,10 @@
          "name": "full",
          "version": "3.2.1",
          "license": "GPL-3.0",
-         "description": "description for full",
-         "url": "we don't validate url's"
+         "metadata": {
+            "description": "description for full custom",
+            "homepage": "we don't validate homepages - custom"
+         }
       }
    ],
    "vendored-dependencies": [
@@ -33,6 +35,22 @@
          "name": "versioned",
          "path": "path/to/dep",
          "version": "2.1.0"
+      }
+   ],
+   "remote-dependencies": [
+      {
+         "name": "url-dep-one",
+         "version": "1.2.3",
+         "url": "www.url1.tar.gz",
+         "metadata": {
+            "description": "description for url",
+            "homepage": "we don't validate homepages - url"
+         }
+      },
+      {
+         "name": "url-dep-two",
+         "version": "1.2.4",
+         "url": "www.url2.tar.gz"
       }
    ]
 }
