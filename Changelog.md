@@ -1,14 +1,21 @@
 # Spectrometer Changelog
 
+## v2.10.1
+
+- Fixes an issue where `fossa container analyze` returned 0 exit code on failure ([#275](https://github.com/fossas/spectrometer/pull/275))
+
 ## v2.10.0
+
 - Adds support for short flags to mirror CLI v1 commands ([#264](https://github.com/fossas/spectrometer/pull/264))
 - Added a `remote-dependencies` section in the `fossa-deps` file to support archives at remote locations ([#260](https://github.com/fossas/spectrometer/pull/260))
 - Modify the payload for `custom-dependencies` to include optional fields in a new `metadata` section ([#260](https://github.com/fossas/spectrometer/pull/260))
 
 ## v2.9.2
+
 - Adds JSON-formatted project information to the output of `fossa analyze` with `--json` ([#255](https://github.com/fossas/spectrometer/pull/255))
 
 ## v2.9.1
+
 - Bump wiggins - Updated vps aosp-notice-file subcommand to upload ninja files & trigger async task. ([#272](https://github.com/fossas/spectrometer/pull/272))
 
 ## v2.9.0

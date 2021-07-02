@@ -16,7 +16,7 @@ import Data.Text.IO (hPutStrLn)
 import Effect.Logger
 import Effect.ReadFS
 import Fossa.API.Types (ApiOpts, Issues (..))
-import System.Exit (exitFailure, exitSuccess)
+import System.Exit (exitFailure)
 import System.IO (stderr)
 
 data TestOutputType
@@ -35,8 +35,8 @@ testMain ::
   OverrideProject ->
   IO ()
 testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
-  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $ do
-    result <- runDiagnostics . runReadFSIO $ do
+  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $
+    logWithExit_ . runReadFSIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
       logInfo ""
@@ -63,12 +63,6 @@ testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType overrid
               TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
 
           sendIO exitFailure
-
-    case result of
-      Left failure -> do
-        logError $ renderFailureBundle failure
-        sendIO exitFailure
-      Right _ -> sendIO exitSuccess
 
   -- we call exitSuccess/exitFailure in each branch above. the only way we get
   -- here is if we time out

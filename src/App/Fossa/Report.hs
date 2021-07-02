@@ -9,7 +9,6 @@ import App.Fossa.ProjectInference
 import App.Types
 import Control.Carrier.Diagnostics
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
-import Control.Effect.Lift (sendIO)
 import Data.Aeson qualified as Aeson
 import Data.Functor (void)
 import Data.String.Conversion (decodeUtf8)
@@ -18,7 +17,7 @@ import Data.Text.IO (hPutStrLn)
 import Effect.Logger
 import Effect.ReadFS
 import Fossa.API.Types (ApiOpts)
-import System.Exit (exitFailure, exitSuccess)
+import System.Exit (exitFailure)
 import System.IO (stderr)
 
 data ReportType
@@ -50,8 +49,8 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
   * Timeout over `IO a` (easy to move, but where do we move it?)
   * CLI command refactoring as laid out in https://github.com/fossas/issues/issues/129
   -}
-  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $ do
-    result <- runDiagnostics . runReadFSIO $ do
+  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $
+    logWithExit_ . runReadFSIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
       logInfo ""
@@ -73,12 +72,6 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
           Fossa.getAttribution apiOpts revision
 
       logStdout . decodeUtf8 $ Aeson.encode jsonValue
-
-    case result of
-      Left err -> do
-        logError $ renderFailureBundle err
-        sendIO exitFailure
-      Right _ -> sendIO exitSuccess
 
   hPutStrLn stderr "Timed out while waiting for build/issues scan"
   exitFailure
