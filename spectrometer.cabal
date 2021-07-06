@@ -33,6 +33,7 @@ common lang
     GADTSyntax
     GeneralizedNewtypeDeriving
     HexFloatLiterals
+    ImportQualifiedPost
     InstanceSigs
     KindSignatures
     MultiParamTypeClasses
@@ -45,13 +46,12 @@ common lang
     RankNTypes
     ScopedTypeVariables
     StandaloneDeriving
+    StandaloneKindSignatures
     StrictData
     TupleSections
     TypeApplications
     TypeOperators
     TypeSynonymInstances
-    ImportQualifiedPost
-    StandaloneKindSignatures
 
   ghc-options:
     -Wall -Wincomplete-uni-patterns -Wcompat
@@ -74,8 +74,8 @@ common deps
     , conduit                      ^>=1.3.2
     , conduit-extra                ^>=1.3.5
     , containers                   ^>=0.6.0
-    , cryptonite                   ^>=0.28
     , cpio-conduit                 ^>=0.7.0
+    , cryptonite                   ^>=0.28
     , directory                    ^>=1.3.6.1
     , exceptions                   ^>=0.10.4
     , file-embed                   ^>=0.0.11
@@ -96,7 +96,7 @@ common deps
     , path-io                      ^>=1.6.0
     , prettyprinter                >=1.6      && <1.8
     , prettyprinter-ansi-terminal  ^>=1.1.1
-    , req                          >=3.7      && <3.8
+    , req                          ^>=3.7
     , semver                       ^>=0.4.0.1
     , split                        ^>=0.2.3.4
     , stm                          ^>=2.5.0
@@ -125,14 +125,14 @@ library
   -- cabal-fmt: expand src
   exposed-modules:
     Algebra.Graph.AdjacencyMap.Extra
-    App.Fossa.API.BuildLink
-    App.Fossa.API.BuildWait
     App.Fossa.Analyze
     App.Fossa.Analyze.Graph
     App.Fossa.Analyze.GraphBuilder
     App.Fossa.Analyze.GraphMangler
     App.Fossa.Analyze.Project
     App.Fossa.Analyze.Record
+    App.Fossa.API.BuildLink
+    App.Fossa.API.BuildWait
     App.Fossa.ArchiveUploader
     App.Fossa.Compatibility
     App.Fossa.Configuration
@@ -259,8 +259,8 @@ library
     Strategy.Python.SetupPy
     Strategy.Python.Setuptools
     Strategy.Python.Util
-    Strategy.RPM
     Strategy.Rebar3
+    Strategy.RPM
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Strategy.Scala
@@ -301,9 +301,9 @@ test-suite unit-tests
   other-modules:
     App.Fossa.API.BuildLinkSpec
     App.Fossa.Configuration.ConfigurationSpec
+    App.Fossa.ManualDepsSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.VPS.NinjaGraphSpec
-    App.Fossa.ManualDepsSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec
@@ -312,6 +312,7 @@ test-suite unit-tests
     Composer.ComposerLockSpec
     Conda.CondaListSpec
     Conda.EnvironmentYmlSpec
+    Control.Carrier.DiagnosticsSpec
     Discovery.FiltersSpec
     Effect.ExecSpec
     Erlang.ConfigParserSpec
@@ -326,8 +327,8 @@ test-suite unit-tests
     Go.TransitiveSpec
     Googlesource.RepoManifestSpec
     Gradle.GradleSpec
-    GraphUtil
     GraphingSpec
+    GraphUtil
     Haskell.CabalSpec
     Haskell.StackSpec
     Maven.PluginStrategySpec

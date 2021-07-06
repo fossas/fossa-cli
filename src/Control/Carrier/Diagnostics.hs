@@ -29,7 +29,7 @@ import Control.Monad.Trans
 import Data.Monoid (Endo (..))
 import Data.Text (Text)
 import Effect.Logger
-import System.Exit (exitFailure)
+import System.Exit (exitFailure, exitSuccess)
 
 newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ReaderC [Text] (ErrorC SomeDiagnostic (WriterC (Endo [SomeDiagnostic]) m)) a}
   deriving (Functor, Applicative, Monad, MonadIO)
@@ -49,10 +49,10 @@ logDiagnostic diag = do
     Right success -> pure $ Just success
 
 -- | Run a void Diagnostic effect into a logger, using the default error/warning renderers.
--- | Exits with non-zero if the result is a failure.
--- | Useful for setting up diagnostics from CLI entry points.
+-- Exits with zero if the result is a success, or non-zero if the result is a failure.
+-- Useful for setting up diagnostics from CLI entry points.
 logWithExit_ :: (Has (Lift IO) sig m, Has Logger sig m) => DiagnosticsC m () -> m ()
-logWithExit_ diag = logDiagnostic diag >>= maybe (sendIO exitFailure) pure
+logWithExit_ diag = logDiagnostic diag >>= maybe (sendIO exitFailure) (const (sendIO exitSuccess))
 
 runDiagnostics :: Applicative m => DiagnosticsC m a -> m (Either FailureBundle a)
 runDiagnostics = fmap bundle . runWriter (\w a -> pure (appEndo w [], a)) . runError @SomeDiagnostic . runReader [] . runDiagnosticsC

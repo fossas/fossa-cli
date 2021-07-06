@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.10.2
+
+- Fixes an issue where some `fossa` commands (including `fossa test`) would exit non-zero on success ([#278](https://github.com/fossas/spectrometer/pull/278)).
+
 ## v2.10.1
 
 - Fixes an issue where `fossa container analyze` returned 0 exit code on failure ([#275](https://github.com/fossas/spectrometer/pull/275))
