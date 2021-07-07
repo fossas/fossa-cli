@@ -54,6 +54,7 @@ jobs:
       - run:
           name: Run unit tests
           command: |
+            set -euxo pipefail
             make -s ci-unit-test > $TEST_RESULTS/go-test-report.xml
       - run:
           name: Save artifacts
