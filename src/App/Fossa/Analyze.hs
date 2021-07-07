@@ -255,7 +255,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   case checkForEmptyUpload projectResults filteredProjects manualSrcUnits of
-    NoneDiscovered -> logError "No projects were discovered" >> sendIO exitFailure
+    NoneDiscovered -> logError "No analysis targets found in directory" >> sendIO exitFailure
     FilteredAll count -> do
       logError ("Filtered out all " <> pretty count <> " projects due to directory name, no manual deps found")
       for_ projectResults $ \project -> logDebug ("Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project))
