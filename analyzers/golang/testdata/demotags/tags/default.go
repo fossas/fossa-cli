@@ -3,5 +3,5 @@
 
 package tags
 
-func Build() {
+func Foo() {
 }

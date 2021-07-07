@@ -2,8 +2,8 @@
 
 package tags
 
-import "imports/customtag"
+import "crypto/sha256"
 
-func Build() {
-	customtag.New()
+func Foo() {
+	_ = sha256.New()
 }

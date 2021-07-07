@@ -188,7 +188,7 @@ func ListLockfileResolution(a *Analyzer) (graph.Deps, error) {
 		}
 
 		if len(main.Deps) == 0 {
-			log.Warnf("No imports found for buid target %+v", m.BuildTarget)
+			log.Warnf("No imports found for build target %+v", m.BuildTarget)
 			return graph.Deps{}, nil
 		}
 
