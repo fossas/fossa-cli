@@ -68,7 +68,7 @@ func ValidBinary(dir string) (string, error) {
 	return lein, err
 }
 
-//go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package leiningen/' > readtree_generated.go"
+//go:generate bash -c "genny -in=../../graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package leiningen/' > readtree_generated.go"
 
 // DependencyGraph uses a Shell's Cmd to generate leiningen formatted output which is
 // converted to a dependency graph.

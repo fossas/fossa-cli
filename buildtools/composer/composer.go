@@ -11,7 +11,7 @@ import (
 	"github.com/fossas/fossa-cli/exec"
 )
 
-//go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Package' | sed -e 's/package graph/package composer/' > readtree_generated.go"
+//go:generate bash -c "genny -in=../../graph/readtree.go gen 'Generic=Package' | sed -e 's/package graph/package composer/' > readtree_generated.go"
 
 // A Composer can return the output of the `show` and `install` commands.
 type Composer interface {
