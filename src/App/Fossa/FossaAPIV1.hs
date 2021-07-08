@@ -289,8 +289,9 @@ archiveBuildUpload apiOpts archiveProjects = runEmpty $
 
     -- The response appears to either be "Created" for new builds, or an error message for existing builds.
     -- Making the actual return value of "Created" essentially worthless.
-    resp <- context "Queuing a build for an archive project" $ 
-      req POST (archiveBuildURL baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
+    resp <-
+      context "Queuing a build for an archive project" $
+        req POST (archiveBuildURL baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
     pure (responseBody resp)
 
 ---------- The signed URL endpoint returns a URL endpoint that can be used to directly upload to an S3 bucket.
@@ -309,8 +310,9 @@ getSignedURL apiOpts revision packageName = fossaReq $ do
 
   let opts = "packageSpec" =: packageName <> "revision" =: revision
 
-  response <- context "Retrieving a signed S3 URL" $ 
-    req GET (signedURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
+  response <-
+    context "Retrieving a signed S3 URL" $
+      req GET (signedURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
   pure (responseBody response)
 
 ---------- The archive upload function uploads the file it is given directly to the signed URL it is provided.
@@ -324,10 +326,16 @@ archiveUpload signedArcURI arcFile = fossaReq $ do
   let arcURL = URI.mkURI $ signedURL signedArcURI
 
   uri <- fromMaybeText ("Invalid URL: " <> signedURL signedArcURI) arcURL
-  (url, options) <- fromMaybeText ("Invalid HTTPS URI: " <> T.pack (show uri)) (useHttpsURI uri)
-  _ <- context "Uploading project archive" $ 
-    reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
+  validatedURI <- fromMaybeText ("Invalid URI: " <> T.pack (show uri)) (useURI uri)
+
+  _ <- context "Uploading project archive" $ case validatedURI of
+        Left (url, options) -> uploadArchiveRequest url options
+        Right (url, options) -> uploadArchiveRequest url options
+
   pure ()
+
+  where
+    uploadArchiveRequest url options = reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
 
 -- requestEncoder properly encodes the Request path.
 -- The default encoding logic does not encode "+" ot "$" characters which makes AWS very angry.
