@@ -1,4 +1,0 @@
-package combo
-
-func New() {
-}

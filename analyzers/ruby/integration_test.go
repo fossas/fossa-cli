@@ -96,6 +96,6 @@ var projects = []fixtures.Project{
 	fixtures.Project{
 		Name:   "vagrant",
 		URL:    "https://github.com/hashicorp/vagrant",
-		Commit: "f36ece40e227539c0f07e52c56c617bae6586d6c",
+		Commit: "4e6c17062f972b82888a0828108cfb9dcbacf97d",
 	},
 }

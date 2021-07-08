@@ -44,14 +44,14 @@ func TestPackageNoDeps(t *testing.T) {
 
 var customtag = pkg.ID{
 	Type:     pkg.Go,
-	Name:     "imports/customtag",
-	Revision: "v3.0.0",
+	Name:     "crypto/sha256",
+	Revision: "",
 }
 
 var combo = pkg.ID{
 	Type:     pkg.Go,
-	Name:     "imports/combo",
-	Revision: "12345",
+	Name:     "fmt",
+	Revision: "",
 }
 
 func TestProjectWithoutBuildTags(t *testing.T) {

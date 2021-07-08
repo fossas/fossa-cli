@@ -2,8 +2,8 @@
 
 package tags
 
-import "imports/combo"
+import "fmt"
 
-func Build() {
-	combo.New()
+func Foo() {
+	fmt.Println("Hello")
 }
