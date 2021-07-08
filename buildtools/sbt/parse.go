@@ -65,6 +65,10 @@ func ParseDependencyGraph(graph Graph, evicted string) (pkg.Imports, pkg.Deps, e
 
 	pkgs := make(pkg.Deps)
 	for id, imports := range deps {
+		_, isEvicted := replacements[id]
+		if isEvicted {
+			continue
+		}
 		pkgs[id] = pkg.Package{
 			ID:      id,
 			Imports: imports,

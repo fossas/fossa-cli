@@ -74,9 +74,17 @@ func TestSanityCheckParseDependencyTree(t *testing.T) {
 
 	_, pkgs, err := sbt.ParseDependencyGraph(graph.Graph, string(evicted))
 	assert.NoError(t, err)
+	assert.NotEmpty(t, pkgs)
 
 	for id, pkg := range pkgs {
 		assert.Equal(t, id, pkg.ID)
+	}
+
+	replacements := sbt.ParseEvicted(string(evicted))
+	for id := range pkgs {
+		for source := range replacements {
+			assert.NotEqual(t, id, source)
+		}
 	}
 }
 
@@ -142,6 +150,7 @@ func TestFilterLines(t *testing.T) {
 		assert.True(t, actual, line)
 	}
 }
+
 func findPackage(packages map[pkg.ID]pkg.Package, name, revision string) pkg.Package {
 	for id := range packages {
 		if id.Name == name && id.Revision == revision {
