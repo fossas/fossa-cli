@@ -1,4 +1,4 @@
-SHELL=/bin/bash -o pipefail
+SHELL=/bin/bash -euxo pipefail
 BIN=$(shell go env GOPATH)/bin
 
 ## Build tools.
