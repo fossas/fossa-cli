@@ -36,6 +36,7 @@ common lang
     ImportQualifiedPost
     InstanceSigs
     KindSignatures
+    LambdaCase
     MultiParamTypeClasses
     NamedFieldPuns
     NamedWildCards
@@ -171,6 +172,7 @@ library
     Control.Carrier.Diagnostics.StickyContext
     Control.Carrier.Finally
     Control.Carrier.Output.IO
+    Control.Carrier.Simple
     Control.Carrier.StickyLogger
     Control.Carrier.TaskPool
     Control.Carrier.Threaded

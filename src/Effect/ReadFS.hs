@@ -1,18 +1,13 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Effect.ReadFS (
   -- * ReadFS Effect
   ReadFS (..),
   ReadFSErr (..),
-  ReadFSIOC (..),
+  ReadFSIOC,
+  runReadFSIO,
 
   -- * Reading raw file contents
   readContentsBS,
@@ -42,7 +37,7 @@ module Effect.ReadFS (
 ) where
 
 import Control.Algebra as X
-import Control.Applicative (Alternative)
+import Control.Carrier.Simple
 import Control.Effect.Diagnostics
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Record
@@ -51,7 +46,6 @@ import Control.Effect.Replay
 import Control.Effect.Replay.TH (deriveReplayable)
 import Control.Exception qualified as E
 import Control.Monad ((<=<))
-import Control.Monad.IO.Class
 import Data.Aeson
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
@@ -200,31 +194,28 @@ readContentsXML file = context ("Parsing XML file '" <> T.pack (toFilePath file)
     Left err -> fatal (FileParseError (toFilePath file) (xmlErrorPretty err))
     Right a -> pure a
 
-newtype ReadFSIOC m a = ReadFSIOC {runReadFSIO :: m a}
-  deriving (Functor, Applicative, Alternative, Monad, MonadIO, MonadFail)
+type ReadFSIOC = SimpleC ReadFS
 
-instance Has (Lift IO) sig m => Algebra (ReadFS :+: sig) (ReadFSIOC m) where
-  alg hdl sig ctx = ReadFSIOC $ do
-    case sig of
-      L (ReadContentsBS' file) -> do
-        res <- catchingIO (BS.readFile (toFilePath file)) (FileReadError (toFilePath file))
-        pure (res <$ ctx)
-      L (ReadContentsText' file) -> do
-        res <- catchingIO (decodeUtf8 <$> BS.readFile (toFilePath file)) (FileReadError (toFilePath file))
-        pure (res <$ ctx)
-      L (ResolveFile' dir path) -> do
-        res <- catchingIO (PIO.resolveFile dir (T.unpack path)) (ResolveError (toFilePath dir) (T.unpack path))
-        pure (res <$ ctx)
-      L (ResolveDir' dir path) -> do
-        res <- catchingIO (PIO.resolveDir dir (T.unpack path)) (ResolveError (toFilePath dir) (T.unpack path))
-        pure (res <$ ctx)
-      L (ListDir dir) -> do
-        res <- catchingIO (PIO.listDir dir) (ListDirError (toFilePath dir))
-        pure (res <$ ctx)
-      -- NB: these never throw
-      L (DoesFileExist file) -> (<$ ctx) <$> sendIO (PIO.doesFileExist file)
-      L (DoesDirExist dir) -> (<$ ctx) <$> sendIO (PIO.doesDirExist dir)
-      R other -> alg (runReadFSIO . hdl) other ctx
-    where
-      catchingIO :: IO a -> (Text -> ReadFSErr) -> m (Either ReadFSErr a)
-      catchingIO io mangle = sendIO $ E.catch (Right <$> io) (\(e :: E.IOException) -> pure (Left (mangle (T.pack (show e)))))
+runReadFSIO :: Has (Lift IO) sig m => ReadFSIOC m a -> m a
+runReadFSIO = interpret $ \case
+  ReadContentsBS' file -> do
+    BS.readFile (toFilePath file)
+      `catchingIO` FileReadError (toFilePath file)
+  ReadContentsText' file -> do
+    (decodeUtf8 <$> BS.readFile (toFilePath file))
+      `catchingIO` FileReadError (toFilePath file)
+  ResolveFile' dir path -> do
+    PIO.resolveFile dir (T.unpack path)
+      `catchingIO` ResolveError (toFilePath dir) (T.unpack path)
+  ResolveDir' dir path -> do
+    PIO.resolveDir dir (T.unpack path)
+      `catchingIO` ResolveError (toFilePath dir) (T.unpack path)
+  ListDir dir -> do
+    PIO.listDir dir
+      `catchingIO` ListDirError (toFilePath dir)
+  -- NB: these never throw
+  DoesFileExist file -> sendIO (PIO.doesFileExist file)
+  DoesDirExist dir -> sendIO (PIO.doesDirExist dir)
+
+catchingIO :: Has (Lift IO) sig m => IO a -> (Text -> ReadFSErr) -> m (Either ReadFSErr a)
+catchingIO io mangle = sendIO $ E.catch (Right <$> io) (\(e :: E.IOException) -> pure (Left (mangle (T.pack (show e)))))

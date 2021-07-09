@@ -34,7 +34,7 @@ mkGolangVersion :: Text -> GolangLabel
 mkGolangVersion = GolangLabelVersion . fixVersion
 
 -- | Monomorphic interpreter for @LabeledGrapher GolangPackage@ into a @Graphing Dependency@
-graphingGolang :: Monad m => LabeledGrapherC GolangPackage GolangLabel m a -> m (Graphing Dependency)
+graphingGolang :: Algebra sig m => LabeledGrapherC GolangPackage GolangLabel m a -> m (Graphing Dependency)
 graphingGolang = withLabeling golangPackageToDependency
 
 golangPackageToDependency :: GolangPackage -> Set GolangLabel -> Dependency

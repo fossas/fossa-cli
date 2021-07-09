@@ -39,7 +39,7 @@ import Data.Text (Text, pack)
 import Data.Text.Extra (breakOnAndRemove)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson, execThrow, runExecIO)
 import Effect.Logger
-import Effect.ReadFS (ReadFS, ReadFSIOC (runReadFSIO), readContentsJson, resolveFile)
+import Effect.ReadFS (ReadFS, runReadFSIO, readContentsJson, resolveFile)
 import Options.Applicative (Parser, argument, help, metavar, str)
 import Path (Dir, Rel, reldir, toFilePath)
 import Path.IO (getCurrentDir)

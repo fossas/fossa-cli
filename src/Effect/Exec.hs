@@ -1,6 +1,4 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -15,14 +13,14 @@ module Effect.Exec (
   AllowErr (..),
   execParser,
   execJson,
-  ExecIOC (..),
+  ExecIOC,
   runExecIO,
   module System.Exit,
   module X,
 ) where
 
 import Control.Algebra as X
-import Control.Applicative (Alternative)
+import Control.Carrier.Simple
 import Control.Effect.Diagnostics
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Record
@@ -30,7 +28,6 @@ import Control.Effect.Record.TH (deriveRecordable)
 import Control.Effect.Replay
 import Control.Effect.Replay.TH (deriveReplayable)
 import Control.Exception (IOException, try)
-import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BL
@@ -175,42 +172,37 @@ execThrow dir cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
     Left failure -> fatal (CommandFailed failure)
     Right stdout -> pure stdout
 
-runExecIO :: ExecIOC m a -> m a
-runExecIO = runExecIOC
+type ExecIOC = SimpleC Exec
 
-newtype ExecIOC m a = ExecIOC {runExecIOC :: m a}
-  deriving (Functor, Applicative, Alternative, Monad, MonadIO, MonadFail)
+runExecIO :: Has (Lift IO) sig m => ExecIOC m a -> m a
+runExecIO = interpret $ \case
+  Exec dir cmd -> sendIO $ do
+    absolute <- makeAbsolute dir
 
-instance Has (Lift IO) sig m => Algebra (Exec :+: sig) (ExecIOC m) where
-  alg hdl sig ctx = ExecIOC $ case sig of
-    R other -> alg (runExecIOC . hdl) other ctx
-    L (Exec dir cmd) -> sendIO $ do
-      absolute <- makeAbsolute dir
+    let cmdName' = T.unpack $ cmdName cmd
+        cmdArgs' = map T.unpack $ cmdArgs cmd
 
-      let cmdName' = T.unpack $ cmdName cmd
-          cmdArgs' = map T.unpack $ cmdArgs cmd
+        mkFailure :: ExitCode -> Stdout -> Stderr -> CmdFailure
+        mkFailure = CmdFailure (cmdName cmd) (cmdArgs cmd) (fromAbsDir absolute)
 
-          mkFailure :: ExitCode -> Stdout -> Stderr -> CmdFailure
-          mkFailure = CmdFailure (cmdName cmd) (cmdArgs cmd) (fromAbsDir absolute)
+        ioExceptionToCmdFailure :: IOException -> CmdFailure
+        ioExceptionToCmdFailure = mkFailure (ExitFailure 1) "" . fromString . show
 
-          ioExceptionToCmdFailure :: IOException -> CmdFailure
-          ioExceptionToCmdFailure = mkFailure (ExitFailure 1) "" . fromString . show
+    processResult <- try $ readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs'))
 
-      processResult <- try $ readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs'))
+    -- apply business logic for considering whether exitcode + stderr constitutes a "failure"
+    let mangleResult :: (ExitCode, Stdout, Stderr) -> Either CmdFailure Stdout
+        mangleResult (exitcode, stdout, stderr) =
+          case (exitcode, cmdAllowErr cmd) of
+            (ExitSuccess, _) -> Right stdout
+            (_, Never) -> Left $ mkFailure exitcode stdout stderr
+            (_, NonEmptyStdout) ->
+              if BL.null stdout
+                then Left $ mkFailure exitcode stdout stderr
+                else Right stdout
+            (_, Always) -> Right stdout
 
-      -- apply business logic for considering whether exitcode + stderr constitutes a "failure"
-      let mangleResult :: (ExitCode, Stdout, Stderr) -> Either CmdFailure Stdout
-          mangleResult (exitcode, stdout, stderr) =
-            case (exitcode, cmdAllowErr cmd) of
-              (ExitSuccess, _) -> Right stdout
-              (_, Never) -> Left $ mkFailure exitcode stdout stderr
-              (_, NonEmptyStdout) ->
-                if BL.null stdout
-                  then Left $ mkFailure exitcode stdout stderr
-                  else Right stdout
-              (_, Always) -> Right stdout
+    let result :: Either CmdFailure Stdout
+        result = first ioExceptionToCmdFailure processResult >>= mangleResult
 
-      let result :: Either CmdFailure Stdout
-          result = first ioExceptionToCmdFailure processResult >>= mangleResult
-
-      pure (result <$ ctx)
+    pure result

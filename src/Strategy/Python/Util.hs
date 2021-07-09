@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Strategy.Python.Util (
   requirementParser,
   buildGraph,

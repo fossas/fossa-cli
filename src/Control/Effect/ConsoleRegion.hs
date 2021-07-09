@@ -7,6 +7,7 @@ module Control.Effect.ConsoleRegion (
   closeConsoleRegion,
   finishConsoleRegion,
   getConsoleRegion,
+  withConcurrentOutput,
   module X,
 ) where
 
@@ -48,3 +49,8 @@ finishConsoleRegion region value = sendIO . R.liftRegion $ do
 -- | See @"System.Console.Regions".'R.getConsoleRegion'@.
 getConsoleRegion :: (Has (Lift IO) sig m) => R.ConsoleRegion -> m Text
 getConsoleRegion region = sendIO $ R.getConsoleRegion region
+
+-- | See @"System.Console.Concurrent".'C.withConcurrentOutput'
+withConcurrentOutput :: Has (Lift IO) sig m => m a -> m a
+withConcurrentOutput act = liftWith @IO $ \hdl ctx ->
+  C.withConcurrentOutput (hdl (act <$ ctx))

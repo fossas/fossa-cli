@@ -1,5 +1,4 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- | Grapher is a thin State wrapper effect around 'G.Graphing'
@@ -32,9 +31,8 @@ module Effect.Grapher (
 
 import Control.Algebra as X
 import Control.Carrier.Diagnostics (ToDiagnostic (..))
+import Control.Carrier.Simple
 import Control.Carrier.State.Strict
-import Control.Monad.IO.Class (MonadIO)
-import Data.Functor (($>))
 import Data.Kind (Type)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
@@ -56,20 +54,15 @@ direct ty = send (Direct ty)
 edge :: Has (Grapher ty) sig m => ty -> ty -> m ()
 edge parent child = send (Edge parent child)
 
-runGrapher :: GrapherC ty m a -> m (G.Graphing ty, a)
-runGrapher = runState G.empty . runGrapherC
+evalGrapher :: (Ord ty, Algebra sig m) => GrapherC ty m a -> m (G.Graphing ty)
+evalGrapher = fmap fst . runGrapher
 
-evalGrapher :: Functor m => GrapherC ty m a -> m (G.Graphing ty)
-evalGrapher = execState G.empty . runGrapherC
+type GrapherC ty m = SimpleStateC (G.Graphing ty) (Grapher ty) m
 
-newtype GrapherC ty m a = GrapherC {runGrapherC :: StateC (G.Graphing ty) m a}
-  deriving (Functor, Applicative, Monad, MonadIO)
-
-instance (Algebra sig m, Ord ty) => Algebra (Grapher ty :+: sig) (GrapherC ty m) where
-  alg hdl sig ctx = GrapherC $ case sig of
-    L (Direct ty) -> modify (G.direct ty) $> ctx
-    L (Edge parent child) -> modify (G.edge parent child) $> ctx
-    R other -> alg (runGrapherC . hdl) (R other) ctx
+runGrapher :: (Ord ty, Algebra sig m) => GrapherC ty m a -> m (G.Graphing ty, a)
+runGrapher = interpretState G.empty $ \case
+  Direct ty -> modify (G.direct ty)
+  Edge parent child -> modify (G.edge parent child)
 
 ----- Labeling
 
@@ -117,7 +110,7 @@ insertLabel :: (Ord ty, Ord lbl) => ty -> lbl -> Labels ty lbl -> Labels ty lbl
 insertLabel ty lbl = M.insertWith (<>) ty (S.singleton lbl)
 
 -- | An interpreter for @LabeledGrapher@. See existing strategies for examples
-withLabeling :: (Monad m, Ord ty, Ord res) => (ty -> Set lbl -> res) -> LabeledGrapherC ty lbl m a -> m (G.Graphing res)
+withLabeling :: (Algebra sig m, Ord ty, Ord res) => (ty -> Set lbl -> res) -> LabeledGrapherC ty lbl m a -> m (G.Graphing res)
 withLabeling f act = do
   (graph, (labels, _)) <- runGrapher . runState M.empty $ act
   pure (unlabel f labels graph)
@@ -175,7 +168,7 @@ type MappedGrapherC ty val m a = StateC (Map ty val) (GrapherC ty m) a
 mapping :: (Ord ty, Has (MappedGrapher ty val) sig m) => ty -> val -> m ()
 mapping ty val = modify (M.insert ty val)
 
-withMapping :: (Monad m, Ord ty, Ord res, Show ty) => (ty -> val -> res) -> MappedGrapherC ty val m a -> m (Either MappingError (G.Graphing res))
+withMapping :: (Algebra sig m, Ord ty, Ord res, Show ty) => (ty -> val -> res) -> MappedGrapherC ty val m a -> m (Either MappingError (G.Graphing res))
 withMapping f act = do
   (graph, (labels, _)) <- runGrapher . runState M.empty $ act
   let -- result :: Either MappingError (G.Graphing res)

@@ -1,12 +1,11 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Effect.Logger (
   Logger (..),
   Severity (..),
-  LoggerC (..),
-  IgnoreLoggerC (..),
+  LoggerC,
+  IgnoreLoggerC,
   withLogger,
   withDefaultLogger,
   runLogger,
@@ -21,21 +20,17 @@ module Effect.Logger (
 ) where
 
 import Control.Algebra as X
-import Control.Applicative (Alternative)
-import Control.Carrier.Reader
+import Control.Carrier.Simple
 import Control.Effect.ConsoleRegion
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
 import Control.Monad (when)
-import Control.Monad.Catch (MonadMask)
-import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Trans (lift)
 import Data.Kind (Type)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc as X
 import Data.Text.Prettyprint.Doc.Render.Terminal as X
 import System.Console.ANSI (hSupportsANSI)
-import System.Console.Concurrent
+import System.Console.Concurrent (outputConcurrent, errorConcurrent)
 import System.IO (stderr)
 import Prelude hiding (log)
 
@@ -49,6 +44,8 @@ type LogFormatter = Severity -> Doc AnsiStyle -> Text
 
 data Logger (m :: Type -> Type) k where
   Log :: Severity -> Doc AnsiStyle -> Logger m ()
+  -- | A dummy effect constructor that ensures stdout logging happens within the
+  -- context of a Logger carrier that can ensure output gets flushed
   LogStdout :: Logger m ()
 
 -- | Log a message with the given severity
@@ -83,7 +80,7 @@ logError = log SevError
 withLogger :: Has (Lift IO) sig m => LogCtx m -> LoggerC m a -> m a
 withLogger ctx act = displayConsoleRegions (runLogger ctx act)
 
-withDefaultLogger :: (Has (Lift IO) sig m, MonadIO m, MonadMask m) => Severity -> LoggerC m a -> m a
+withDefaultLogger :: Has (Lift IO) sig m => Severity -> LoggerC m a -> m a
 withDefaultLogger sev act = do
   formatter <- determineDefaultLogFormatter
   let ctx =
@@ -93,9 +90,6 @@ withDefaultLogger sev act = do
           , logCtxWrite = sendIO . errorConcurrent
           }
   withConcurrentOutput $ withLogger ctx act
-
-runLogger :: LogCtx m -> LoggerC m a -> m a
-runLogger act = runReader act . runLoggerC
 
 -- | Determine the default LogAction to use by checking whether the terminal
 -- supports ANSI rendering
@@ -120,30 +114,21 @@ formatCommon sev msg = hang 2 (pretty '[' <> showSev sev <> pretty @String "] " 
     showSev SevInfo = annotate (color Cyan) (pretty @String " INFO")
     showSev SevDebug = annotate (color White) (pretty @String "DEBUG")
 
-newtype LoggerC m a = LoggerC {runLoggerC :: ReaderC (LogCtx m) m a}
-  deriving (Functor, Applicative, Alternative, Monad, MonadIO)
+type LoggerC = SimpleC Logger
 
-instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (Logger :+: sig) (LoggerC m) where
-  alg hdl sig ctx = LoggerC $ case sig of
-    L (Log sev msg) -> do
-      LogCtx{logCtxWrite, logCtxFormatter, logCtxSeverity} <- ask
-      when (logCtxSeverity <= sev) $
-        lift $ logCtxWrite $ logCtxFormatter sev msg
-      pure ctx
-    L (LogStdout) -> pure ctx
-    R other -> alg (runLoggerC . hdl) (R other) ctx
+runLogger :: Applicative m => LogCtx m -> LoggerC m a -> m a
+runLogger LogCtx{logCtxWrite, logCtxFormatter, logCtxSeverity} = interpret $ \case
+  Log sev msg -> do
+    when (logCtxSeverity <= sev) $
+      logCtxWrite $ logCtxFormatter sev msg
+  LogStdout -> pure ()
 
-newtype IgnoreLoggerC m a = IgnoreLoggerC {runIgnoreLoggerC :: m a}
-  deriving (Functor, Applicative, Monad, MonadIO)
+type IgnoreLoggerC = SimpleC Logger
 
-ignoreLogger :: IgnoreLoggerC m a -> m a
-ignoreLogger = runIgnoreLoggerC
-
-instance Algebra sig m => Algebra (Logger :+: sig) (IgnoreLoggerC m) where
-  alg hdl sig ctx = IgnoreLoggerC $ case sig of
-    L (Log _ _) -> pure ctx
-    L (LogStdout) -> pure ctx
-    R other -> alg (runIgnoreLoggerC . hdl) other ctx
+ignoreLogger :: Applicative m => IgnoreLoggerC m a -> m a
+ignoreLogger = interpret $ \case
+  Log{} -> pure ()
+  LogStdout -> pure ()
 
 renderIt :: Doc AnsiStyle -> Text
 renderIt = renderStrict . layoutPretty defaultLayoutOptions
