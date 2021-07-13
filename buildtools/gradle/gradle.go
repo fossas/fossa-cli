@@ -158,7 +158,7 @@ func (s ShellCommand) DependencyTasks() ([]string, error) {
 	return projects, nil
 }
 
-//go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package gradle/' > readtree_generated.go"
+//go:generate bash -c "genny -in=../../graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package gradle/' > readtree_generated.go"
 
 func ParseDependencies(stdout string) ([]Dependency, map[Dependency][]Dependency, error) {
 	r := regexp.MustCompile(`^((?:[|+]? +)*[\\+]--- )(.*)$`)
