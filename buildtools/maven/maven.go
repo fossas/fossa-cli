@@ -210,7 +210,8 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 			}
 			level := depth / 3
 			depMatches := depRegex.FindStringSubmatch(matches[2])
-			revision := depMatches[4]
+			tokens := strings.Split(matches[2], ":")
+			revision := tokens[len(tokens) - 2]
 			failed := false
 			if strings.HasSuffix(revision, " FAILED") {
 				revision = strings.TrimSuffix(revision, " FAILED")

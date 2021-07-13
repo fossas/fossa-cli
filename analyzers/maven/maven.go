@@ -139,10 +139,16 @@ func (a *Analyzer) Analyze() (graph.Deps, error) {
 		return a.Maven.DependencyTree(a.Module.Dir, a.Module.BuildTarget)
 	default:
 		if a.Options.Command != "" {
-			output, _, err := exec.Shell(exec.Cmd{
-				Dir:     a.Module.Dir,
-				Command: a.Options.Command,
-			})
+			tokens := strings.Split(a.Options.Command," ")
+		        cmd := exec.Cmd {
+				Dir: a.Module.Dir,
+				Name: tokens[0],
+			}
+			if (len(tokens) > 1) {
+				cmd.Argv = tokens[1:]
+			}
+			output, _, err := exec.Run(cmd)
+
 			if err != nil {
 				// Because this was a custom shell command, we do not fall back to any other strategies.
 				return graph.Deps{}, err
