@@ -8,6 +8,7 @@ module App.Fossa.Configuration (
   ConfigFile (..),
   ConfigProject (..),
   ConfigRevision (..),
+  ConfigReleaseGroup (..),
 ) where
 
 import App.Types
@@ -36,12 +37,19 @@ data ConfigProject = ConfigProject
   , configJiraKey :: Maybe Text
   , configUrl :: Maybe Text
   , configPolicy :: Maybe Text
+  , configReleaseGroup :: Maybe ConfigReleaseGroup
   }
   deriving (Eq, Ord, Show)
 
 data ConfigRevision = ConfigRevision
   { configCommit :: Maybe Text
   , configBranch :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
+
+data ConfigReleaseGroup = ConfigReleaseGroup
+  { configReleaseGroupName :: Maybe Text
+  , configReleaseGroupRelease :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -62,11 +70,17 @@ instance FromJSON ConfigProject where
       <*> obj .:? "jiraProjectKey"
       <*> obj .:? "url"
       <*> obj .:? "policy"
+      <*> obj .:? "releaseGroup"
 
 instance FromJSON ConfigRevision where
   parseJSON = withObject "ConfigRevision" $ \obj ->
     ConfigRevision <$> obj .:? "commit"
       <*> obj .:? "branch"
+
+instance FromJSON ConfigReleaseGroup where
+  parseJSON = withObject "ConfigReleaseGroup" $ \obj ->
+    ConfigReleaseGroup <$> obj .:? "name"
+      <*> obj .:? "release"
 
 defaultFile :: Path Rel File
 defaultFile = $(mkRelFile ".fossa.yml")
@@ -98,4 +112,6 @@ mergeFileCmdMetadata meta file =
     , projectLink = projectLink meta <|> (configProject file >>= configLink)
     , projectTeam = projectTeam meta <|> (configProject file >>= configTeam)
     , projectPolicy = projectPolicy meta <|> (configProject file >>= configPolicy)
+    , projectReleaseGroupName = projectReleaseGroupName meta <|> (configProject file >>= configReleaseGroup >>= configReleaseGroupName)
+    , projectReleaseGroupRelease = projectReleaseGroupRelease meta <|> (configProject file >>= configReleaseGroup >>= configReleaseGroupRelease)
     }

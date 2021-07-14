@@ -2,6 +2,7 @@
 
 ## Unreleased 
 
+- Support ReleaseGroup configuration ([#283](https://github.com/fossas/spectrometer/pull/283))
 - Support HTTP endpoints for archive uploads ([#276](https://github.com/fossas/spectrometer/pull/276))
 
 ## v2.10.2

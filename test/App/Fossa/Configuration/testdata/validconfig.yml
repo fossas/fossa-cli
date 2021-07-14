@@ -11,8 +11,8 @@ project:
   link: fossa.com
   url: fossa.com
   releaseGroup:
-    name: release-group-name
-    version: "123"
+    name: test-release
+    release: "123"
   jiraProjectKey: key
 
 revision:

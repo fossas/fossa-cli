@@ -31,6 +31,7 @@ expectedConfigProject =
     , configJiraKey = Just "key"
     , configUrl = Just "fossa.com"
     , configPolicy = Just "license-policy"
+    , configReleaseGroup = Just expectedReleaseGroup
     }
 
 expectedConfigRevision :: ConfigRevision
@@ -38,6 +39,13 @@ expectedConfigRevision =
   ConfigRevision
     { configCommit = Just "12345"
     , configBranch = Just "master"
+    }
+
+expectedReleaseGroup :: ConfigReleaseGroup
+expectedReleaseGroup =
+  ConfigReleaseGroup
+    { configReleaseGroupName = Just "test-release"
+    , configReleaseGroupRelease = Just "123"
     }
 
 testFile :: Path Rel File

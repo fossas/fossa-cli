@@ -32,7 +32,7 @@ jobs:
           - os: windows-latest
             os-name: Windows
             project-file: cabal.project.ci.windows
-            ghc: '8.10.4'
+            ghc: '8.10.5'
 
     steps:
     - uses: actions/checkout@v2
