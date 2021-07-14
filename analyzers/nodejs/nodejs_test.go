@@ -138,6 +138,42 @@ func TestDuplicateDependencies(t *testing.T) {
 	}
 }
 
+// TestMissingPeerDependency checks that analysis correctly handles missing
+// peer dependencies by not including in the result.
+//
+// For example, try running `npm ls --json` in the `testdata/duplicates` folder.
+// Notice that `request` is included as a dependency with `peerMissing: true`
+// attribute at multiple packages. However request is not really installed.
+// This means that we must ensure that the dependencies with `peerMissing: true`
+// are filtered from the processed output.
+//
+// See #657 for details.
+func TestMissingPeerDependency(t *testing.T) {
+	m := module.Module{
+		BuildTarget: filepath.Join("testdata", "duplicates", "package.json"),
+		Dir:         filepath.Join("testdata", "duplicates"),
+		Type:        pkg.NodeJS,
+	}
+
+	a, err := analyzers.New(m, false)
+	assert.NoError(t, err)
+
+	a.(*nodejs.Analyzer).NPM = MockNPM{
+		JSONFilename: filepath.Join("testdata", "duplicates", "npm-ls-json.json"),
+	}
+
+	deps, err := a.Analyze()
+	assert.NoError(t, err)
+
+	id := pkg.ID{
+		Type:     pkg.NodeJS,
+		Name:     "request",
+		Revision: "",
+		Location: "",
+	}
+	assert.NotContains(t, deps.Transitive, id)
+}
+
 var chaiDirectDep = pkg.Import{
 	Target: "chai",
 	Resolved: pkg.ID{
