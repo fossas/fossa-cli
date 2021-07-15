@@ -145,6 +145,7 @@ library
     App.Fossa.ListTargets
     App.Fossa.Main
     App.Fossa.ManualDeps
+    App.Fossa.Monorepo
     App.Fossa.ProjectInference
     App.Fossa.Report
     App.Fossa.Report.Attribution

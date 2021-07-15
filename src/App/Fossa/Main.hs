@@ -4,7 +4,7 @@ module App.Fossa.Main (
   appMain,
 ) where
 
-import App.Fossa.Analyze (RecordMode (..), ScanDestination (..), UnpackArchives (..), JsonOutput (..), VSIAnalysisMode (..), analyzeMain)
+import App.Fossa.Analyze (JsonOutput (..), RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
 import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
 import App.Fossa.Configuration
 import App.Fossa.Container (ImageText (..), dumpSyftScanMain, imageTextArg, parseSyftOutputMain)
@@ -12,6 +12,7 @@ import App.Fossa.Container.Analyze qualified as ContainerAnalyze
 import App.Fossa.Container.Test qualified as ContainerTest
 import App.Fossa.EmbeddedBinary qualified as Embed
 import App.Fossa.ListTargets (listTargetsMain)
+import App.Fossa.Monorepo
 import App.Fossa.Report qualified as Report
 import App.Fossa.Test qualified as Test
 import App.Fossa.VPS.AOSPNotice (aospNoticeMain)
@@ -84,6 +85,19 @@ appMain = do
           }
 
   case optCommand of
+    AnalyzeCommand AnalyzeOptions{analyzeOutput, analyzeBranch, analyzeMetadata, monorepoAnalysisOpts = (MonorepoAnalysisOpts (Just monorepoAnalysisType)), analyzeBaseDir} -> do
+      dieOnWindows "Monorepo analysis is not supported on Windows"
+      if analyzeOutput
+        then die "Monorepo analysis does not support the `--output` flag"
+        else do
+          key <- requireKey maybeApiKey
+          let apiOpts = ApiOpts optBaseUrl key
+          let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
+          let monorepoAnalysisOpts = MonorepoAnalysisOpts (Just monorepoAnalysisType)
+          let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
+          basedir <- parseAbsDir analyzeBaseDir
+          monorepoMain (BaseDir basedir) monorepoAnalysisOpts logSeverity apiOpts metadata analyzeOverride
+    --
     AnalyzeCommand AnalyzeOptions{..} -> do
       -- The branch override needs to be set here rather than above to preserve
       -- the preference for command line options.
@@ -91,7 +105,7 @@ appMain = do
           doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode analyzeBuildTargetFilters
 
       if analyzeOutput
-        then doAnalyze OutputStdout 
+        then doAnalyze OutputStdout
         else do
           key <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl key
@@ -126,6 +140,7 @@ appMain = do
     VPSCommand VPSOptions{..} -> do
       apikey <- requireKey maybeApiKey
       let apiOpts = ApiOpts optBaseUrl apikey
+      withDefaultLogger logSeverity $ logWarn "vps commands are deprecated and will be removed in a future version. Please contact FOSSA for migration steps."
       case vpsCommand of
         VPSAnalyzeCommand VPSAnalyzeOptions{..} -> do
           when (SysInfo.os == windowsOsName) $ unless (fromFlag SkipIPRScan skipIprScan) $ die "Windows VPS scans require skipping IPR.  Please try `fossa vps analyze --skip-ipr-scan DIR`"
@@ -280,6 +295,7 @@ analyzeOpts =
     <*> metadataOpts
     <*> many filterOpt
     <*> vsiAnalyzeOpt
+    <*> monorepoOpts
     <*> analyzeReplayOpt
     <*> baseDirArg
 
@@ -299,6 +315,11 @@ filterOpt = option (eitherReader parseFilter) (long "filter" <> help "Analysis-T
   where
     parseFilter :: String -> Either String BuildTargetFilter
     parseFilter = first errorBundlePretty . runParser filterParser "stdin" . T.pack
+
+monorepoOpts :: Parser MonorepoAnalysisOpts
+monorepoOpts =
+  MonorepoAnalysisOpts
+    <$> optional (strOption (long "experimental-enable-monorepo" <> metavar "MODE" <> help "scan the project in the experimental monorepo mode. Supported modes: aosp"))
 
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =
@@ -524,6 +545,7 @@ data AnalyzeOptions = AnalyzeOptions
   , analyzeMetadata :: ProjectMetadata
   , analyzeBuildTargetFilters :: [BuildTargetFilter]
   , analyzeVSIMode :: VSIAnalysisMode
+  , monorepoAnalysisOpts :: MonorepoAnalysisOpts
   , analyzeRecordMode :: RecordMode
   , analyzeBaseDir :: FilePath
   }

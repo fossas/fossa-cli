@@ -6,6 +6,7 @@ module App.Fossa.VPS.Scan.RunWiggins (
   generateWigginsScanOpts,
   generateWigginsAOSPNoticeOpts,
   generateVSIStandaloneOpts,
+  generateWigginsMonorepoOpts,
   WigginsOpts (..),
   ScanType (..),
 ) where
@@ -53,6 +54,10 @@ generateWigginsAOSPNoticeOpts scanDir logSeverity apiOpts projectRevision ninjaS
 generateVSIStandaloneOpts :: Path Abs Dir -> ApiOpts -> WigginsOpts
 generateVSIStandaloneOpts scanDir apiOpts = WigginsOpts scanDir $ generateVSIStandaloneArgs apiOpts
 
+generateWigginsMonorepoOpts :: Path Abs Dir -> MonorepoAnalysisOpts -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> WigginsOpts
+generateWigginsMonorepoOpts scanDir monorepoAnalysisOpts logSeverity projectRevision apiOpts metadata =
+  WigginsOpts scanDir $ generateMonorepoArgs monorepoAnalysisOpts logSeverity projectRevision apiOpts metadata
+
 generateSpectrometerAOSPNoticeArgs :: Severity -> ApiOpts -> ProjectRevision -> NinjaScanID -> NinjaFilePaths -> [Text]
 generateSpectrometerAOSPNoticeArgs logSeverity ApiOpts{..} ProjectRevision{..} ninjaScanId ninjaInputFiles =
   ["aosp-notice-files"]
@@ -69,6 +74,22 @@ generateVSIStandaloneArgs ApiOpts{..} =
   "vsi-direct" :
   optMaybeText "-endpoint" (render <$> apiOptsUri)
     ++ ["-fossa-api-key", unApiKey apiOptsApiKey]
+    ++ ["."]
+
+generateMonorepoArgs :: MonorepoAnalysisOpts -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> [Text]
+generateMonorepoArgs MonorepoAnalysisOpts{..} logSeverity ProjectRevision{..} ApiOpts{..} ProjectMetadata{..} =
+  "monorepo" :
+  optMaybeText "-endpoint" (render <$> apiOptsUri)
+    ++ ["-fossa-api-key", unApiKey apiOptsApiKey]
+    ++ ["-project", projectName, "-revision", projectRevision]
+    ++ optMaybeText "-jira-project-key" projectJiraKey
+    ++ optMaybeText "-link" projectLink
+    ++ optMaybeText "-policy" projectPolicy
+    ++ optMaybeText "-project-url" projectUrl
+    ++ optMaybeText "-team" projectTeam
+    ++ optMaybeText "-title" projectTitle
+    ++ optBool "-debug" (logSeverity == SevDebug)
+    ++ optMaybeText "-type" monorepoAnalysisType
     ++ ["."]
 
 generateSpectrometerScanArgs :: Severity -> ProjectRevision -> ScanType -> FilterExpressions -> ApiOpts -> ProjectMetadata -> [Text]

@@ -17,6 +17,7 @@
 5. [Frequently-Asked Questions](#frequently-asked-questions)
     - [`fossa analyze`: Why wasn't my project found?](#fossa-analyze-why-wasnt-my-project-found)
     - [When are you adding support for (some buildtool/language)](#when-are-you-adding-support-for-some-buildtoollanguage)
+    - [What are these experimental monorepo flags?](#what-are-these-experimental-monorepo-flags)
 
 ## Quick Start
 
@@ -478,3 +479,8 @@ In your bug report, please include:
 ### When are you adding support for (some buildtool/language)?
 
 If we don't support your choice of language/buildtool, please [open an issue](https://github.com/fossas/spectrometer/issues/new) to express interest
+
+### What are these experimental monorepo flags?
+
+Monorepo flags are only used with support from FOSSA engineering, and are experimental while we build robust support for monorepo projects with FOSSA partners.
+If you’re interested, reach out to our sales team!
