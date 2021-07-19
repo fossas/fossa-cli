@@ -59,7 +59,7 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForBuild apiOpts revision
+      waitForBuild apiOpts revision <||> waitForMonorepoScan apiOpts revision
 
       logSticky "[ Waiting for issue scan completion... ]"
 

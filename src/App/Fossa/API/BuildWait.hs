@@ -1,5 +1,6 @@
 module App.Fossa.API.BuildWait (
   waitForBuild,
+  waitForMonorepoScan,
   waitForIssues,
   waitForSherlockScan,
   timeout,
@@ -46,6 +47,23 @@ waitForBuild apiOpts revision = do
       logSticky' $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
       sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
       waitForBuild apiOpts revision
+
+-- | Wait for monorepo scan completion
+waitForMonorepoScan ::
+  (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has StickyLogger sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  m ()
+waitForMonorepoScan apiOpts revision = do
+  Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts
+  let locator = VPSCore.createLocator (projectName revision) orgId
+
+  logSticky' "[ Getting latest scan ID ]"
+  scan <- ScotlandYard.getLatestScan apiOpts locator (projectRevision revision)
+
+  logSticky' "[ Waiting for monorepo scan... ]"
+  waitForSherlockScan apiOpts locator (ScotlandYard.responseScanId scan)
+  pure ()
 
 waitForIssues ::
   (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) =>

@@ -63,8 +63,8 @@ instance FromJSON Attribution where
   parseJSON = withObject "Attribution" $ \obj ->
     Attribution
       <$> obj .: "project"
-      <*> obj .: "directDependencies"
-      <*> obj .: "deepDependencies"
+      <*> obj .:? "directDependencies" .!= []
+      <*> obj .:? "deepDependencies" .!= []
       <*> obj .: "licenses"
 
 instance ToJSON Attribution where

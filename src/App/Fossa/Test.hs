@@ -45,7 +45,7 @@ testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType overrid
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForBuild apiOpts revision
+      waitForBuild apiOpts revision <||> waitForMonorepoScan apiOpts revision
 
       logSticky "[ Waiting for issue scan completion... ]"
       issues <- waitForIssues apiOpts revision

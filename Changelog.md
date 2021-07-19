@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## Unreleased
+
+- Support `fossa test` and `fossa report` for monorepo projects ([#290](https://github.com/fossas/spectrometer/pull/290))
+
 ## v2.10.3
 
 - Support ReleaseGroup configuration ([#283](https://github.com/fossas/spectrometer/pull/283))
