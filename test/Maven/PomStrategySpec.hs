@@ -3,7 +3,7 @@ module Maven.PomStrategySpec (
 ) where
 
 import Data.Map.Strict qualified as M
-import Strategy.Maven.Pom (interpolateProperties)
+import Strategy.Maven.Pom (MavenPackage (..), buildMavenPackage, interpolateProperties)
 import Strategy.Maven.Pom.PomFile
 import Test.Hspec
 
@@ -25,3 +25,20 @@ spec = do
 
     it "should interpolate multiple properties" $ do
       interpolateProperties pom "${project.groupId}${project.artifactId}" `shouldBe` "MYGROUPMYARTIFACT"
+
+  describe "buildMavenPackage" $ do
+    let pom = Pom (MavenCoordinate "MYGROUP" "MYARTIFACT" "MYVERSION") Nothing M.empty M.empty M.empty []
+    it "should interpolate properties in groupId/artifactId/version" $ do
+      let result =
+            buildMavenPackage
+              pom
+              "${project.groupId}"
+              "${project.artifactId}"
+              ( MvnDepBody
+                  { depVersion = Just "${project.version}"
+                  , depClassifier = Nothing
+                  , depScope = Nothing
+                  , depOptional = Nothing
+                  }
+              )
+      result `shouldBe` MavenPackage "MYGROUP" "MYARTIFACT" (Just "MYVERSION")

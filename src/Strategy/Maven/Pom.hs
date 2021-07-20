@@ -2,6 +2,8 @@ module Strategy.Maven.Pom (
   analyze',
   getLicenses,
   interpolateProperties,
+  buildMavenPackage,
+  MavenPackage (..),
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
@@ -115,13 +117,7 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
 
         addDep :: Has MavenGrapher sig m => (Group, Artifact) -> MvnDepBody -> m ()
         addDep (group, artifact) body = do
-          let interpolatedVersion = classify . interpolateProperties completePom <$> depVersion body
-              -- maven classifiers are appended to the end of versions, e.g., 3.0.0 with a classifier
-              -- of "sources" would result in "3.0.0-sources"
-              classify version = case depClassifier body of
-                Nothing -> version
-                Just classifier -> version <> "-" <> classifier
-              depPackage = MavenPackage group artifact interpolatedVersion
+          let depPackage = buildMavenPackage completePom group artifact body
 
           edge (coordToPackage coord) depPackage
           traverse_ (label depPackage . MavenLabelScope) (depScope body)
@@ -132,9 +128,35 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
           [ (childCoord, pom) | childCoord <- S.toList (AM.postSet coord (closureGraph closure)), Just (_, pom) <- [M.lookup childCoord (closurePoms closure)]
           ]
 
+-- | Build a MavenPackage for a dependency in a pom file
+--
+-- This does ${property} interpolation for dependency group/artifact/version
+-- and appends the dependency classifier to the version
+buildMavenPackage :: Pom -> Group -> Artifact -> MvnDepBody -> MavenPackage
+buildMavenPackage pom group artifact body = MavenPackage interpolatedGroup interpolatedArtifact interpolatedVersion
+  where
+    interpolatedGroup :: Group
+    interpolatedGroup = interpolateProperties pom group
+
+    interpolatedArtifact :: Artifact
+    interpolatedArtifact = interpolateProperties pom artifact
+
+    interpolatedVersion :: Maybe Text
+    interpolatedVersion = classify . interpolateProperties pom <$> depVersion body
+
+    -- maven classifiers are appended to the end of versions, e.g., 3.0.0 with a classifier
+    -- of "sources" would result in "3.0.0-sources"
+    classify :: Version -> Version
+    classify version = case depClassifier body of
+      Nothing -> version
+      Just classifier -> version <> "-" <> classifier
+
 coordToPackage :: MavenCoordinate -> MavenPackage
 coordToPackage coord = MavenPackage (coordGroup coord) (coordArtifact coord) (Just (coordVersion coord))
 
+-- | Reify dependencies in a pom file by overlaying information from the <dependencyManagement> section.
+--
+-- Notably, the dependencies in the resulting @Map@ _do not_ have their ${properties} interpolated
 reifyDeps :: Pom -> Map (Group, Artifact) MvnDepBody
 reifyDeps pom = M.mapWithKey overlayDepManagement (pomDependencies pom)
   where
