@@ -1,10 +1,10 @@
 module Control.Carrier.DiagnosticsSpec (spec) where
 
 import Control.Carrier.Diagnostics (logWithExit_)
-import Control.Effect.Diagnostics (ToDiagnostic(..), fatal)
+import Control.Effect.Diagnostics (ToDiagnostic (..), fatal)
 import Data.Text (Text)
 import Effect.Exec (ExitCode (..))
-import Effect.Logger (Severity (SevDebug), logInfo, withDefaultLogger, pretty)
+import Effect.Logger (Severity (SevDebug), logInfo, pretty, withDefaultLogger)
 import Test.Hspec (Spec, describe, it, shouldThrow)
 
 spec :: Spec

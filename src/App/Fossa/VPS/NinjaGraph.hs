@@ -62,7 +62,7 @@ ninjaGraphMain apiOpts logSeverity overrideProject NinjaGraphCLIOptions{..} = do
     ninjaGraphInner basedir apiOpts ninjaGraphOpts
 
 ninjaGraphInner :: (Has Logger sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> ApiOpts -> NinjaGraphOpts -> m ()
-ninjaGraphInner = getAndParseNinjaDeps 
+ninjaGraphInner = getAndParseNinjaDeps
 
 getAndParseNinjaDeps :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> NinjaGraphOpts -> m ()
 getAndParseNinjaDeps dir apiOpts ninjaGraphOpts@NinjaGraphOpts{..} = do

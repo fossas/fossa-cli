@@ -42,7 +42,8 @@ data ApiOpts = ApiOpts
 
 newtype SignedURL = SignedURL
   { signedURL :: Text
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 instance FromJSON SignedURL where
   parseJSON = withObject "SignedUrl" $ \obj ->
@@ -50,23 +51,27 @@ instance FromJSON SignedURL where
 
 newtype ArchiveComponents = ArchiveComponents
   { archives :: [Archive]
- } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
 data Archive = Archive
- { archiveName :: Text
- , archiveVersion :: Text
- } deriving (Eq, Ord, Show)
+  { archiveName :: Text
+  , archiveVersion :: Text
+  }
+  deriving (Eq, Ord, Show)
 
 instance ToJSON ArchiveComponents where
- toJSON ArchiveComponents{..} = object
-   [ "archives" .= archives
-   ]
+  toJSON ArchiveComponents{..} =
+    object
+      [ "archives" .= archives
+      ]
 
 instance ToJSON Archive where
- toJSON Archive{..} = object
-   [ "packageSpec" .= archiveName
-   , "revision" .= archiveVersion
-   ]
+  toJSON Archive{..} =
+    object
+      [ "packageSpec" .= archiveName
+      , "revision" .= archiveVersion
+      ]
 
 data Issues = Issues
   { issuesCount :: Int

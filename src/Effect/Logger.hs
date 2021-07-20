@@ -30,7 +30,7 @@ import Data.Text (Text)
 import Data.Text.Prettyprint.Doc as X
 import Data.Text.Prettyprint.Doc.Render.Terminal as X
 import System.Console.ANSI (hSupportsANSI)
-import System.Console.Concurrent (outputConcurrent, errorConcurrent)
+import System.Console.Concurrent (errorConcurrent, outputConcurrent)
 import System.IO (stderr)
 import Prelude hiding (log)
 

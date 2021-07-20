@@ -111,9 +111,9 @@ appMain = do
           let apiOpts = ApiOpts optBaseUrl key
           let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
           case (projectReleaseGroupName metadata, projectReleaseGroupRelease metadata) of
-                  (Just _, Just _) -> pure ()
-                  (Nothing, Nothing) -> pure ()
-                  _ -> die "releaseGroup.release and releaseGroup.name must both be specified if you want to associate this project to a release group."
+            (Just _, Just _) -> pure ()
+            (Nothing, Nothing) -> pure ()
+            _ -> die "releaseGroup.release and releaseGroup.name must both be specified if you want to associate this project to a release group."
 
           doAnalyze (UploadScan apiOpts metadata)
     --

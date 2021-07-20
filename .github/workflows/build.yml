@@ -114,6 +114,37 @@ jobs:
         name: ${{ runner.os }}-binaries
         path: release
 
+  # Run linter and format checker indpendently, so you see errors from both.
+  linter-check:
+    name: linter-check
+    runs-on: ubuntu-latest
+    container: ghcr.io/fossas/haskell-dev-tools:8.10.4
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Run hlint
+      run: |
+        make lint
+  
+  format-check:
+    name: formatter-check
+    runs-on: ubuntu-latest
+    container: ghcr.io/fossas/haskell-dev-tools:8.10.4
+
+    steps:
+    - uses: actions/checkout@v2
+
+    # Run the formatter
+    - name: run fourmolu
+      run: |
+        make fmt
+
+    # If git has chages, then the formatter check fails.
+    - name: check git status
+      run: |
+        git diff --name-only --exit-code
+
   create-release:
     name: create-release
     if: ${{ startsWith(github.ref, 'refs/tags/v') }}

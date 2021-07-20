@@ -49,7 +49,7 @@ data DepEnvironment
 -- | A Dependency type. This corresponds to a "fetcher" on the backend
 data DepType
   = -- | An archive upload dependency.
-    ArchiveType 
+    ArchiveType
   | -- | A first-party subproject
     SubprojectType
   | -- | Dependency found from the composer fetcher.

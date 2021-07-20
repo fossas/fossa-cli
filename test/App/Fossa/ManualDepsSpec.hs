@@ -4,11 +4,11 @@ module App.Fossa.ManualDepsSpec (
 
 import App.Fossa.ManualDeps (
   CustomDependency (CustomDependency),
+  DependencyMetadata (DependencyMetadata),
+  ManualDependencies (ManualDependencies),
   ReferencedDependency (ReferencedDependency),
   RemoteDependency (RemoteDependency),
-  DependencyMetadata (DependencyMetadata),
   VendoredDependency (VendoredDependency),
-  ManualDependencies (ManualDependencies),
  )
 import Control.Effect.Exception (displayException)
 import Data.Aeson qualified as Json

@@ -59,6 +59,7 @@ In the base directory, run `cabal test`
 ### Installing haskell-language-server
 
 In VSCode:
+
 - Install the "Haskell Language Server" (`haskell.haskell`) plugin in VSCode.
 - In the Haskell extension settings, under `Haskell: Formatting Provider`, choose `fourmolu`
 
@@ -68,8 +69,9 @@ If you installed HLS in the old, complicated way, you can safely remove it.  HLS
 
 `hlint` is built into HLS, and is enabled by default. hlint suggestions appear as warnings in the editor.
 
-`hlint` errors may become required changes in pull requests, but we do not currently run `hlint` in CI, as there are a few outstanding lint errors that have not yet been fixed.
-You do not need to enforce that `hlint` passes to submit a PR, but it does help greatly, for both the author and reviewer.
+You can also use `make lint` to run the linter.
+
+`make lint` is run in CI, so any outlying errors will prevent merging.
 
 ## Formatting
 
@@ -79,7 +81,9 @@ In VSCode, the formatter can be activated with the standard format-file and form
 
 Make sure to run the formatter on any files you modify. Enabling `Editor: Format On Save` in VSCode can make satisfying this requirement easier.
 
-We do not recommend using formatters outside of HLS, as there are some issues with configuration (see [FAQ](#FAQ) for more info).
+You can run `make fmt` to run the formatter on the entire codebase, or `make check-fmt` to dry-run the formatter.
+
+`make check-fmt` is run in CI, so any formatting errors will revent merging.
 
 ## Docs
 

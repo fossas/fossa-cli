@@ -329,11 +329,10 @@ archiveUpload signedArcURI arcFile = fossaReq $ do
   validatedURI <- fromMaybeText ("Invalid URI: " <> T.pack (show uri)) (useURI uri)
 
   _ <- context "Uploading project archive" $ case validatedURI of
-        Left (url, options) -> uploadArchiveRequest url options
-        Right (url, options) -> uploadArchiveRequest url options
+    Left (url, options) -> uploadArchiveRequest url options
+    Right (url, options) -> uploadArchiveRequest url options
 
   pure ()
-
   where
     uploadArchiveRequest url options = reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
 
