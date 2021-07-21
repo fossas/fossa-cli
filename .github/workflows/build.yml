@@ -22,7 +22,7 @@ jobs:
             os-name: Linux
             container: fossa/haskell-static-alpine:ghc-8.10.4
             project-file: cabal.project.ci.linux
-            ghc: '8.10.4'
+            ghc: '8.10.5'
 
           - os: macos-latest
             os-name: macOS

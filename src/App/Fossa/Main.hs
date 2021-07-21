@@ -6,7 +6,22 @@ module App.Fossa.Main (
 
 import App.Fossa.Analyze (JsonOutput (..), RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
 import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
-import App.Fossa.Configuration
+import App.Fossa.Configuration (
+  ConfigFile (
+    configApiKey,
+    configPaths,
+    configProject,
+    configRevision,
+    configServer,
+    configTargets
+  ),
+  ConfigPaths (pathsExclude, pathsOnly),
+  ConfigProject (configProjID),
+  ConfigRevision (configBranch, configCommit),
+  ConfigTargets (targetsExclude, targetsOnly),
+  mergeFileCmdMetadata,
+  readConfigFileIO,
+ )
 import App.Fossa.Container (ImageText (..), dumpSyftScanMain, imageTextArg, parseSyftOutputMain)
 import App.Fossa.Container.Analyze qualified as ContainerAnalyze
 import App.Fossa.Container.Test qualified as ContainerTest
@@ -16,13 +31,24 @@ import App.Fossa.Monorepo
 import App.Fossa.Report qualified as Report
 import App.Fossa.Test qualified as Test
 import App.Fossa.VPS.AOSPNotice (aospNoticeMain)
-import App.Fossa.VPS.NinjaGraph
+import App.Fossa.VPS.NinjaGraph (ninjaGraphMain)
 import App.Fossa.VPS.Report qualified as VPSReport
 import App.Fossa.VPS.Scan (FollowSymlinks (..), LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
 import App.Fossa.VPS.Test qualified as VPSTest
 import App.Fossa.VPS.Types (FilterExpressions (..), NinjaFilePaths (..), NinjaScanID (..))
-import App.OptionExtensions
-import App.Types
+import App.OptionExtensions (jsonOption, uriOption)
+import App.Types (
+  BaseDir (BaseDir, unBaseDir),
+  MonorepoAnalysisOpts (MonorepoAnalysisOpts),
+  NinjaGraphCLIOptions (NinjaGraphCLIOptions),
+  OverrideProject (
+    OverrideProject,
+    overrideBranch,
+    overrideName,
+    overrideRevision
+  ),
+  ProjectMetadata (..),
+ )
 import App.Util (validateDir, validateFile)
 import App.Version (fullVersionDescription)
 import Control.Monad (unless, when)
@@ -33,16 +59,57 @@ import Data.Foldable (for_)
 import Data.Functor.Extra ((<$$>))
 import Data.Text (Text)
 import Data.Text qualified as T
-import Discovery.Filters (BuildTargetFilter (..), filterParser)
-import Effect.Logger
+import Discovery.Filters (AllFilters (..), FilterCombination (..), targetFilterParser)
+import Effect.Logger (
+  Severity (SevDebug, SevInfo),
+  logWarn,
+  withDefaultLogger,
+ )
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
-import Options.Applicative
-import Path
+import Options.Applicative (
+  Alternative (many, (<|>)),
+  Parser,
+  ParserPrefs,
+  argument,
+  auto,
+  command,
+  customExecParser,
+  eitherReader,
+  flag,
+  flag',
+  fullDesc,
+  header,
+  help,
+  helpShowGlobals,
+  helper,
+  hidden,
+  hsubparser,
+  info,
+  infoOption,
+  internal,
+  long,
+  metavar,
+  option,
+  optional,
+  prefs,
+  progDesc,
+  short,
+  showHelpOnError,
+  str,
+  strOption,
+  subparser,
+  subparserInline,
+  switch,
+  value,
+  (<**>),
+ )
+import Path (Abs, Dir, File, Path, Rel, parseAbsDir, parseRelDir)
 import System.Environment (lookupEnv)
 import System.Exit (die)
 import System.Info qualified as SysInfo
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI, mkURI)
+import Types (TargetFilter)
 
 windowsOsName :: String
 windowsOsName = "mingw32"
@@ -101,8 +168,32 @@ appMain = do
     AnalyzeCommand AnalyzeOptions{..} -> do
       -- The branch override needs to be set here rather than above to preserve
       -- the preference for command line options.
+
+      if null analyzeBuildTargetFilters
+        then pure ()
+        else withDefaultLogger logSeverity $ logWarn "The --filter option has been deprecated. Refer to the new target exclusion feature for upgrading. --filter will be removed by v2.20.0"
+
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
-          doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode analyzeBuildTargetFilters
+          -- If a user enters a single target or path filtering flag, do not use any filters from the configuration file.
+          combinedFilters =
+            if null analyzeOnlyTargets && null analyzeExcludeTargets && null analyzeOnlyPaths && null analyzeExcludePaths
+              then
+                AllFilters
+                  analyzeBuildTargetFilters
+                  (FilterCombination (filterTargets targetsOnly) (filterPaths pathsOnly))
+                  (FilterCombination (filterTargets targetsExclude) (filterPaths pathsExclude))
+              else
+                AllFilters
+                  analyzeBuildTargetFilters
+                  (FilterCombination (analyzeOnlyTargets) analyzeOnlyPaths)
+                  (FilterCombination (analyzeExcludeTargets) analyzeExcludePaths)
+            where
+              filterPaths :: (ConfigPaths -> [Path Rel Dir]) -> [Path Rel Dir]
+              filterPaths field = maybe [] field (fileConfig >>= configPaths)
+              filterTargets :: (ConfigTargets -> [TargetFilter]) -> [TargetFilter]
+              filterTargets field = maybe [] field (fileConfig >>= configTargets)
+
+          doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode combinedFilters
 
       if analyzeOutput
         then doAnalyze OutputStdout
@@ -116,6 +207,7 @@ appMain = do
             _ -> die "releaseGroup.release and releaseGroup.name must both be specified if you want to associate this project to a release group."
 
           doAnalyze (UploadScan apiOpts metadata)
+
     --
     TestCommand TestOptions{..} -> do
       baseDir <- validateDir testBaseDir
@@ -172,13 +264,13 @@ appMain = do
             then ContainerAnalyze.analyzeMain OutputStdout logSeverity override containerAnalyzeImage
             else do
               let containerOverride = override{overrideBranch = containerBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
-              apikey <- requireKey maybeApiKey
-              let apiOpts = ApiOpts optBaseUrl apikey
+              apiKey <- requireKey maybeApiKey
+              let apiOpts = ApiOpts optBaseUrl apiKey
               let metadata = maybe containerMetadata (mergeFileCmdMetadata containerMetadata) fileConfig
               ContainerAnalyze.analyzeMain (UploadScan apiOpts metadata) logSeverity containerOverride containerAnalyzeImage
         ContainerTest ContainerTestOptions{..} -> do
-          apikey <- requireKey maybeApiKey
-          let apiOpts = ApiOpts optBaseUrl apikey
+          apiKey <- requireKey maybeApiKey
+          let apiOpts = ApiOpts optBaseUrl apiKey
           ContainerTest.testMain apiOpts logSeverity containerTestTimeout containerTestOutputType override containerTestImage
         ContainerParseFile path -> parseSyftOutputMain logSeverity path
         ContainerDumpScan ContainerDumpScanOptions{..} -> dumpSyftScanMain logSeverity dumpScanOutputFile dumpScanImage
@@ -200,7 +292,7 @@ requireKey :: Maybe ApiKey -> IO ApiKey
 requireKey (Just key) = pure key
 requireKey Nothing = die "A FOSSA API key is required to run this command"
 
--- | Try to fetch FOSSA_API_KEY from env if not supplied from cmdline
+-- | Try to fetch FOSSA_API_KEY from env if not supplied from cmd line.
 checkAPIKey :: Maybe Text -> IO (Maybe ApiKey)
 checkAPIKey key = case key of
   Just key' -> pure . Just $ ApiKey key'
@@ -245,7 +337,7 @@ commands =
           "list-targets"
           ( info
               (ListTargetsCommand <$> baseDirArg)
-              (progDesc "List available analysis-targets in a directory (projects and subprojects)")
+              (progDesc "List available analysis-targets in a directory (projects and sub-projects)")
           )
         <> command
           "vps"
@@ -294,6 +386,10 @@ analyzeOpts =
     <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> many filterOpt
+    <*> many (option (eitherReader targetOpt) (long "only-target" <> help "Only scan these targets. See targets.only in the fossa.yml spec." <> metavar "PATH"))
+    <*> many (option (eitherReader targetOpt) (long "exclude-target" <> help "Exclude these targets from scanning. See targets.exclude in the fossa.yml spec." <> metavar "PATH"))
+    <*> many (option (eitherReader pathOpt) (long "only-path" <> help "Only scan these paths. See paths.only in the fossa.yml spec." <> metavar "PATH"))
+    <*> many (option (eitherReader pathOpt) (long "exclude-path" <> help "Exclude these paths from scanning. See paths.exclude in the fossa.yml spec." <> metavar "PATH"))
     <*> vsiAnalyzeOpt
     <*> monorepoOpts
     <*> analyzeReplayOpt
@@ -310,16 +406,22 @@ analyzeReplayOpt =
     <|> (RecordModeReplay <$> strOption (long "replay" <> hidden))
     <|> pure RecordModeNone
 
-filterOpt :: Parser BuildTargetFilter
-filterOpt = option (eitherReader parseFilter) (long "filter" <> help "Analysis-Target filters (default: none)" <> metavar "ANALYSIS-TARGET")
+filterOpt :: Parser TargetFilter
+filterOpt = option (eitherReader parseFilter) (long "filter" <> help "(deprecated) Analysis-Target filters (default: none)" <> metavar "ANALYSIS-TARGET")
   where
-    parseFilter :: String -> Either String BuildTargetFilter
-    parseFilter = first errorBundlePretty . runParser filterParser "stdin" . T.pack
+    parseFilter :: String -> Either String TargetFilter
+    parseFilter = first errorBundlePretty . runParser targetFilterParser "stdin" . T.pack
 
 monorepoOpts :: Parser MonorepoAnalysisOpts
 monorepoOpts =
   MonorepoAnalysisOpts
     <$> optional (strOption (long "experimental-enable-monorepo" <> metavar "MODE" <> help "scan the project in the experimental monorepo mode. Supported modes: aosp"))
+
+pathOpt :: String -> Either String (Path Rel Dir)
+pathOpt = first show . parseRelDir
+
+targetOpt :: String -> Either String TargetFilter
+targetOpt = first errorBundlePretty . runParser targetFilterParser "stdin" . T.pack
 
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =
@@ -341,7 +443,7 @@ reportOpts =
     <*> reportCmd
     <*> baseDirArg
 
--- FIXME: make report type a positional argument, rather than a subcommand
+-- FIXME: make report type a positional argument, rather than a sub-command.
 reportCmd :: Parser Report.ReportType
 reportCmd =
   hsubparser $
@@ -381,7 +483,7 @@ vpsAospNoticeOpts =
     <*> strOption (long "ninja-files" <> help "A comma-separated list of ninja files to parse for build graph information.")
     <*> metadataOpts
 
--- FIXME: make report type a positional argument, rather than a subcommand
+-- FIXME: make report type a positional argument, rather than a sub-command.
 vpsReportCmd :: Parser VPSReport.ReportType
 vpsReportCmd =
   hsubparser $
@@ -543,7 +645,11 @@ data AnalyzeOptions = AnalyzeOptions
   , analyzeJsonOutput :: Flag JsonOutput
   , analyzeBranch :: Maybe Text
   , analyzeMetadata :: ProjectMetadata
-  , analyzeBuildTargetFilters :: [BuildTargetFilter]
+  , analyzeBuildTargetFilters :: [TargetFilter]
+  , analyzeOnlyTargets :: [TargetFilter]
+  , analyzeExcludeTargets :: [TargetFilter]
+  , analyzeOnlyPaths :: [Path Rel Dir]
+  , analyzeExcludePaths :: [Path Rel Dir]
   , analyzeVSIMode :: VSIAnalysisMode
   , monorepoAnalysisOpts :: MonorepoAnalysisOpts
   , analyzeRecordMode :: RecordMode

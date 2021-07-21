@@ -1,7 +1,7 @@
 # Spectrometer Changelog
 
-## Unreleased
-
+## v2.11.0
+- Analysis target configuration ([#273](https://github.com/fossas/spectrometer/pull/273))
 - Support `fossa test` and `fossa report` for monorepo projects ([#290](https://github.com/fossas/spectrometer/pull/290))
 - Maven `pom.xml`: Adds `${property}` substitution for `<groupId>` and `<artifactId>` fields in dependencies ([#282](https://github.com/fossas/spectrometer/pull/282))
 

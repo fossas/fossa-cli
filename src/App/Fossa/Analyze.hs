@@ -17,7 +17,12 @@ import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadR
 import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContributors)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
-import App.Types
+import App.Types (
+  BaseDir (..),
+  OverrideProject,
+  ProjectMetadata,
+  ProjectRevision (projectBranch, projectName, projectRevision),
+ )
 import App.Util (validateDir)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Diagnostics qualified as Diag
@@ -28,9 +33,9 @@ import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent
 import Control.Effect.Diagnostics ((<||>))
-import Control.Effect.Exception
+import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
-import Control.Effect.Record
+import Control.Effect.Record (runRecord)
 import Control.Effect.Replay (runReplay)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
@@ -41,18 +46,17 @@ import Data.Functor (void)
 import Data.List (isInfixOf, stripPrefix)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
-import Data.Set (Set)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Discovery.Filters
 import Discovery.Projects (withDiscoveredProjects)
-import Effect.Exec
+import Effect.Exec (Exec, runExecIO)
 import Effect.Logger
-import Effect.ReadFS
+import Effect.ReadFS (ReadFS, runReadFSIO)
 import Fossa.API.Types (ApiOpts (..))
-import Path
+import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
 import Path.IO qualified as P
 import Srclib.Converter qualified as Srclib
@@ -87,7 +91,7 @@ import Strategy.Scala qualified as Scala
 import Strategy.VSI qualified as VSI
 import Strategy.Yarn qualified as Yarn
 import System.Exit (die, exitFailure)
-import Types
+import Types (DiscoveredProject (..), FoundTargets)
 import VCS.Git (fetchGitContributors)
 
 type TaskEffs sig m =
@@ -125,7 +129,7 @@ data RecordMode
   | -- | don't record or replay
     RecordModeNone
 
-analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> VSIAnalysisMode -> [BuildTargetFilter] -> IO ()
+analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> VSIAnalysisMode -> AllFilters -> IO ()
 analyzeMain workdir recordMode logSeverity destination project unpackArchives jsonOutput enableVSI filters =
   withDefaultLogger logSeverity
     . Diag.logWithExit_
@@ -196,25 +200,27 @@ runDependencyAnalysis ::
   (Has (Lift IO) sig m, Has AtomicCounter sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>
   -- | Analysis base directory
   BaseDir ->
-  [BuildTargetFilter] ->
+  AllFilters ->
   DiscoveredProject (StickyDiagC (Diag.DiagnosticsC m)) ->
   m ()
 runDependencyAnalysis (BaseDir basedir) filters project =
   case applyFiltersToProject basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
+      logInfo $ pretty $ show targets
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
       graphResult <- Diag.runDiagnosticsIO . stickyDiag $ projectDependencyGraph project targets
       Diag.withResult SevWarn graphResult (output . mkResult project)
 
-applyFiltersToProject :: Path Abs Dir -> [BuildTargetFilter] -> DiscoveredProject n -> Maybe (Set BuildTarget)
+applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
 applyFiltersToProject basedir filters DiscoveredProject{..} =
   case makeRelative basedir projectPath of
     -- FIXME: this is required for --unpack-archives to continue to work.
     -- archives are not unpacked relative to the scan basedir, so "makeRelative"
     -- will always fail
     Nothing -> Just projectBuildTargets
-    Just rel -> applyFilters filters projectType rel projectBuildTargets
+    Just rel -> do
+      applyFilters filters projectType rel projectBuildTargets
 
 analyze ::
   ( Has (Lift IO) sig m
@@ -230,7 +236,7 @@ analyze ::
   Flag UnpackArchives ->
   Flag JsonOutput ->
   VSIAnalysisMode ->
-  [BuildTargetFilter] ->
+  AllFilters ->
   m ()
 analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableVSI filters = do
   capabilities <- sendIO getNumCapabilities

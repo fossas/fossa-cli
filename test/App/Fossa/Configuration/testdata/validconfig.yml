@@ -18,3 +18,12 @@ project:
 revision:
   commit: "12345"
   branch: master
+
+targets:
+  only:
+    - type: maven
+      path: root
+    - type: pip
+    - type: gradle
+      path: .
+      target: specific-target

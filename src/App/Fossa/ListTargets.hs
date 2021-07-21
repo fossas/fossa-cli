@@ -13,13 +13,15 @@ import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent (getNumCapabilities)
 import Data.Foldable (for_)
+import Data.Set qualified as S
+import Data.Set.NonEmpty
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
 import Path (toFilePath)
 import Path.IO (makeRelative)
-import Types (BuildTarget (..), DiscoveredProject (..))
+import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
 
 type DummyM = ReadFSIOC (ExecIOC (Diag.DiagnosticsC (LoggerC IO)))
 
@@ -47,14 +49,21 @@ listTargetsMain (BaseDir basedir) = do
                 <> "@"
                 <> pretty (toFilePath rel)
 
-            for_ (projectBuildTargets project) $ \target -> do
-              logInfo $
-                "Found target: "
-                  <> pretty (projectType project)
-                  <> "@"
-                  <> pretty (toFilePath rel)
-                  <> ":"
-                  <> pretty (unBuildTarget target)
+            case projectBuildTargets project of
+              ProjectWithoutTargets -> do
+                logInfo $
+                  "Found target: "
+                    <> pretty (projectType project)
+                    <> "@"
+                    <> pretty (toFilePath rel)
+              FoundTargets targets -> for_ (S.toList $ toSet targets) $ \target -> do
+                logInfo $
+                  "Found target: "
+                    <> pretty (projectType project)
+                    <> "@"
+                    <> pretty (toFilePath rel)
+                    <> ":"
+                    <> pretty (unBuildTarget target)
 
 updateProgress :: Has StickyLogger sig m => Progress -> m ()
 updateProgress Progress{..} =

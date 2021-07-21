@@ -197,6 +197,7 @@ library
     Data.Functor.Extra
     Data.List.Extra
     Data.String.Conversion
+    Data.Set.NonEmpty
     Data.Text.Extra
     DepTypes
     Discovery.Archive

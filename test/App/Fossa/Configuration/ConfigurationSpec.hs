@@ -10,6 +10,7 @@ import Control.Carrier.Diagnostics qualified as Diag
 import Effect.ReadFS
 import Path
 import Test.Hspec qualified as T
+import Types (BuildTarget (..), TargetFilter (..))
 
 expectedConfigFile :: ConfigFile
 expectedConfigFile =
@@ -19,6 +20,8 @@ expectedConfigFile =
     , configApiKey = Just "123"
     , configProject = Just expectedConfigProject
     , configRevision = Just expectedConfigRevision
+    , configTargets = Just expectedConfigTargets
+    , configPaths = Nothing
     }
 
 expectedConfigProject :: ConfigProject
@@ -47,6 +50,22 @@ expectedReleaseGroup =
     { configReleaseGroupName = Just "test-release"
     , configReleaseGroupRelease = Just "123"
     }
+
+expectedConfigTargets :: ConfigTargets
+expectedConfigTargets =
+  ConfigTargets
+    { targetsOnly = [directoryTarget, simpleTarget, complexTarget]
+    , targetsExclude = []
+    }
+
+simpleTarget :: TargetFilter
+simpleTarget = TypeTarget "pip"
+
+complexTarget :: TargetFilter
+complexTarget = TypeDirTargetTarget "gradle" $(mkRelDir "./") (BuildTarget "specific-target")
+
+directoryTarget :: TargetFilter
+directoryTarget = TypeDirTarget "maven" $(mkRelDir "root")
 
 testFile :: Path Rel File
 testFile = $(mkRelFile "test/App/Fossa/Configuration/testdata/validconfig.yml")

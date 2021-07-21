@@ -25,6 +25,7 @@ import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
+import Data.Set.NonEmpty
 import Data.String.Conversion (decodeUtf8, encodeUtf8)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -43,11 +44,19 @@ newtype ConfigName = ConfigName {unConfigName :: Text} deriving (Eq, Ord, Show, 
 newtype GradleLabel = Env DepEnvironment deriving (Eq, Ord, Show)
 newtype PackageName = PackageName {unPackageName :: Text} deriving (Eq, Ord, Show, FromJSON)
 
-gradleJsonDepsCmd :: Text -> FP.FilePath -> Set BuildTarget -> Command
-gradleJsonDepsCmd baseCmd initScriptFilepath targets =
+gradleJsonDepsCmdTargets :: FP.FilePath -> Set BuildTarget -> Text -> Command
+gradleJsonDepsCmdTargets initScriptFilepath targets baseCmd =
   Command
     { cmdName = baseCmd
     , cmdArgs = ["-I", T.pack initScriptFilepath] ++ map (\target -> unBuildTarget target <> ":jsonDeps") (S.toList targets)
+    , cmdAllowErr = Never
+    }
+
+gradleJsonDepsCmd :: FP.FilePath -> Text -> Command
+gradleJsonDepsCmd initScriptFilepath baseCmd =
+  Command
+    { cmdName = baseCmd
+    , cmdArgs = ["-I", T.pack initScriptFilepath, "jsonDeps"]
     , cmdAllowErr = Never
     }
 
@@ -158,13 +167,13 @@ mkProject :: (Has Exec sig n, Has (Lift IO) sig n, Has Diagnostics sig n) => Gra
 mkProject project =
   DiscoveredProject
     { projectType = "gradle"
-    , projectBuildTargets = S.map BuildTarget $ gradleProjects project
+    , projectBuildTargets = maybe ProjectWithoutTargets FoundTargets $ nonEmpty $ S.map BuildTarget $ gradleProjects project
     , projectDependencyGraph = getDeps project
     , projectPath = gradleDir project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> Set BuildTarget -> m (Graphing Dependency)
+getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> FoundTargets -> m (Graphing Dependency)
 getDeps project targets = context "Gradle" $ analyze targets (gradleDir project)
 
 initScript :: ByteString
@@ -175,17 +184,23 @@ analyze ::
   , Has Exec sig m
   , Has Diagnostics sig m
   ) =>
-  Set BuildTarget ->
+  FoundTargets ->
   Path Abs Dir ->
   m (Graphing Dependency)
-analyze targets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
+analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
   let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
   context "Writing gradle script" $ sendIO (BS.writeFile initScriptFilepath initScript)
+
+  let cmd :: Text -> Command
+      cmd = case foundTargets of
+        FoundTargets targets -> gradleJsonDepsCmdTargets initScriptFilepath (toSet targets)
+        ProjectWithoutTargets -> gradleJsonDepsCmd initScriptFilepath
+
   stdout <-
     context "Running gradle script" $
-      execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew") initScriptFilepath targets)
-        <||> execThrow dir (gradleJsonDepsCmd (pathToText dir <> "gradlew.bat") initScriptFilepath targets)
-        <||> execThrow dir (gradleJsonDepsCmd "gradle" initScriptFilepath targets)
+      execThrow dir (cmd (pathToText dir <> "gradlew"))
+        <||> execThrow dir (cmd (pathToText dir <> "gradlew.bat"))
+        <||> execThrow dir (cmd "gradle")
 
   let text = decodeUtf8 $ BL.toStrict stdout
       textLines :: [Text]
