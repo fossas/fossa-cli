@@ -2,6 +2,7 @@ executable-static: True
 split-sections: True
 tests: True
 optimization: 2
+jobs: $ncpus
 
 packages: .
 

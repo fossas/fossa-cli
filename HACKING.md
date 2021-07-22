@@ -71,7 +71,7 @@ If you installed HLS in the old, complicated way, you can safely remove it.  HLS
 
 You can also use `make lint` to run the linter.
 
-`make lint` is run in CI, so any outlying errors will prevent merging.
+`make lint` is run in CI, any errors will prevent merging.
 
 ## Formatting
 
@@ -83,7 +83,7 @@ Make sure to run the formatter on any files you modify. Enabling `Editor: Format
 
 You can run `make fmt` to run the formatter on the entire codebase, or `make check-fmt` to dry-run the formatter.
 
-`make check-fmt` is run in CI, so any formatting errors will revent merging.
+`make fmt` is run in CI, any formatting errors will prevent merging.
 
 ## Docs
 
