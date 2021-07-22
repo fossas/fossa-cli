@@ -32,5 +32,5 @@ unintended consequences!), reliable output from setup.py is difficult to obtain.
 Entries in the `install_requires` array are parsed compliant to the
 [PEP-508][pep-508] spec, similar to requirements.txt
 
-[requirements-file-format]: https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format
+[requirements-file-format]: https://pip.pypa.io/en/stable/cli/pip_install/#requirements-file-format
 [pep-508]: https://www.python.org/dev/peps/pep-0508/
