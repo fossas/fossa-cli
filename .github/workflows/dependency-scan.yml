@@ -20,7 +20,6 @@ jobs:
           cabal update
 
       - name: Install spectrometer from github
-        # To get this to work, we have to run the local script and then change it after.
         run: |
           ./install.sh -d
 
