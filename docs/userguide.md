@@ -210,6 +210,7 @@ Supported dependency types:
 - `cargo` - Rust dependencies that are typically found at [crates.io](https://crates.io/).
 - `carthage` - Dependencies as specified by the [Carthage](https://github.com/Carthage/Carthage) package manager.
 - `composer` - Dependencies specified by the PHP package manager [Composer](https://getcomposer.org/), which are located on [Packagist](https://packagist.org/).
+- `cpan` - Dependencies located on the [CPAN package manager](https://www.cpan.org/).
 - `gem` - Dependencies which can be found at [RubyGems.org](https://rubygems.org/).
 - `git` - Github projects (which appear as dependencies in many package managers). Specified as the full github repository `https://github.com/fossas/spectrometer`.
 - `go` - Golang specific dependency. Many golang dependencies are located on Github, but there are some which look like the following `go.mongodb.org/mongo-driver` that have custom golang URLs.

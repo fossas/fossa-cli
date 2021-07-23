@@ -96,22 +96,23 @@ verConstraintToRevision = \case
 depTypeToFetcher :: DepType -> Text
 depTypeToFetcher = \case
   ArchiveType -> "archive"
-  SubprojectType -> "mvn" -- FIXME. I knew SubprojectType would come back to bite us.
-  GooglesourceType -> "git" -- FIXME. Yet another thing that's coming back to bite us
-  GitType -> "git"
+  CarthageType -> "cart"
+  CargoType -> "cargo"
+  ComposerType -> "comp"
+  CondaType -> "conda"
+  CpanType -> "cpan"
   GemType -> "gem"
+  GitType -> "git"
+  GooglesourceType -> "git" -- FIXME. Yet another thing that's coming back to bite us
+  GoType -> "go"
+  HackageType -> "hackage"
   HexType -> "hex"
   MavenType -> "mvn"
   NodeJSType -> "npm"
   NuGetType -> "nuget"
   PipType -> "pip"
   PodType -> "pod"
-  GoType -> "go"
-  CarthageType -> "cart"
-  CargoType -> "cargo"
   RPMType -> "rpm"
+  SubprojectType -> "mvn" -- FIXME. I knew SubprojectType would come back to bite us.
   URLType -> "url"
   UserType -> "user"
-  ComposerType -> "comp"
-  HackageType -> "hackage"
-  CondaType -> "conda"

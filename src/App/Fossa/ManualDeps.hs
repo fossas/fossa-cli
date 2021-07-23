@@ -234,6 +234,7 @@ depTypeFromText text = case text of
   "cargo" -> Just CargoType
   "carthage" -> Just CarthageType
   "composer" -> Just ComposerType
+  "cpan" -> Just CpanType
   "gem" -> Just GemType
   "git" -> Just GitType
   "go" -> Just GoType

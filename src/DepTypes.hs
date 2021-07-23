@@ -56,6 +56,8 @@ data DepType
     ComposerType
   | -- | Conda dependency
     CondaType
+  | -- | CPAN dependency
+    CpanType
   | -- | Repository in Github
     GitType
   | -- | Gem registry
