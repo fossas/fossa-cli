@@ -1,0 +1,12 @@
+# missing dependencies
+
+[tool.poetry]
+description = "test_description"
+name = "test_name"
+version = "test_version"
+
+[tool.poetry.build]
+generate-setup-file = false
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]

@@ -14,6 +14,7 @@ module Graphing (
   size,
   direct,
   edge,
+  deep,
 
   -- * Manipulating a Graphing
   gmap,
@@ -22,6 +23,7 @@ module Graphing (
   filter,
   pruneUnreachable,
   stripRoot,
+  promoteToDirect,
 
   -- * Building simple Graphings
   fromAdjacencyMap,
@@ -33,6 +35,7 @@ import Algebra.Graph.AdjacencyMap (AdjacencyMap)
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Algorithm qualified as AMA
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
+import Data.List qualified as List (filter)
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -119,11 +122,25 @@ direct dep gr = gr{graphingDirect = direct', graphingAdjacent = adjacent'}
     direct' = S.insert dep (graphingDirect gr)
     adjacent' = AM.overlay (AM.vertex dep) (graphingAdjacent gr)
 
+-- | Mark dependencies that pass a predicate as direct dependencies.
+-- Dependencies that are already marked as "direct" are unaffected.
+promoteToDirect :: Ord ty => (ty -> Bool) -> Graphing ty -> Graphing ty
+promoteToDirect f gr = gr{graphingDirect = direct'}
+  where
+    direct' = foldr S.insert (graphingDirect gr) vertices
+    vertices = List.filter f $ AM.vertexList (graphingAdjacent gr)
+
 -- | Add an edge between two nodes in this Graphing
 edge :: Ord ty => ty -> ty -> Graphing ty -> Graphing ty
 edge parent child gr = gr{graphingAdjacent = adjacent'}
   where
     adjacent' = AM.overlay (AM.edge parent child) (graphingAdjacent gr)
+
+-- | Adds a node to this graph as a deep dependency.
+deep :: Ord ty => ty -> Graphing ty -> Graphing ty
+deep dep gr = gr{graphingAdjacent = adjacent'}
+  where
+    adjacent' = AM.overlay (AM.vertex dep) (graphingAdjacent gr)
 
 -- | @unfold direct getDeps toDependency@ unfolds a graph, given:
 --

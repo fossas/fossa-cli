@@ -1,0 +1,41 @@
+[tool.poetry]
+description = "test_description"
+name = "test_name"
+version = "test_version"
+
+[tool.poetry.dependencies]
+
+# git
+flask = {git = "https://github.com/pallets/flask.git", rev = "38eb5d3b"}
+networkx = {git = "https://github.com/networkx/networkx.git"}
+numpy = {git = "https://github.com/numpy/numpy.git", tag = "v0.13.2"}
+requests = {git = "https://github.com/kennethreitz/requests.git", branch = "next"}
+
+# url
+my-packageUrl = {url = "https://example.com/my-package-0.1.0.tar.gz"}
+
+# file
+my-packageFile = {path = "../my-package/dist/my-package-0.1.0.tar.gz"}
+
+# directory
+my-packageDir = {path = "../my-package/", develop = false}
+
+# # detailed
+black = {version = "19.10b0", allow-prereleases = true, python = "^3.6", markers = "platform_python_implementation == 'CPython'"}
+
+# nominal
+flake8 = "^1.1"
+
+# default
+python = "^3.9"
+
+[tool.poetry.dev-dependencies]
+pytest = "*"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0"]
+
+[[tool.poetry.source]]
+name = 'private'
+url = 'http://example.com/simple'
