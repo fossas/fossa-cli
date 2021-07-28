@@ -2,13 +2,19 @@ module Strategy.VSI (
   discover,
 ) where
 
-import App.Fossa.EmbeddedBinary
+import App.Fossa.EmbeddedBinary (withWigginsBinary)
 import App.Fossa.VPS.Scan.RunWiggins
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (..),
+  context,
+  fromEither,
+ )
 import Control.Effect.Lift
 import Control.Monad.IO.Class
 import Data.Aeson
 import Data.Text qualified as T
+import Discovery.Filters
 import Effect.Exec
 import Fossa.API.Types
 import GHC.Generics
@@ -41,11 +47,11 @@ instance ToDiagnostic VSIError where
   renderDiagnostic (UnsupportedLocatorType locator ty) =
     "Unsupported locator type: " <> pretty ty <> " . Locator: " <> viaShow locator
 
-discover :: (Has Diagnostics sig m, Has (Lift IO) rsig run, MonadIO run, Has Exec rsig run, Has Diagnostics rsig run) => ApiOpts -> Path Abs Dir -> m [DiscoveredProject run]
-discover apiOpts dir = context "VSI" $ do
+discover :: (Has Diagnostics sig m, Has (Lift IO) rsig run, MonadIO run, Has Exec rsig run, Has Diagnostics rsig run) => AllFilters -> ApiOpts -> Path Abs Dir -> m [DiscoveredProject run]
+discover filters apiOpts dir = context "VSI" $ do
   -- Right now we assume that if the VSI strategy is run, the top level root is a project to scan.
   -- In the future we will likely add heuristics to detect whether the VSI strategy will yield results.
-  let wigginsOpts = generateVSIStandaloneOpts dir apiOpts
+  let wigginsOpts = generateVSIStandaloneOpts dir (toPathFilters filters) apiOpts
   pure [mkProject wigginsOpts (VSIProject dir)]
 
 mkProject :: (Has (Lift IO) sig n, MonadIO n, Has Exec sig n, Has Diagnostics sig n) => WigginsOpts -> VSIProject -> DiscoveredProject n

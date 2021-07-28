@@ -161,9 +161,9 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
 
 -- vsiDiscoverFunc is appended to discoverFuncs during analyze.
 -- It's not added to discoverFuncs because it requires more information than other discoverFuncs.
-vsiDiscoverFunc :: (TaskEffs sig m, TaskEffs rsig run) => VSIAnalysisMode -> ScanDestination -> Path Abs Dir -> m [DiscoveredProject run]
-vsiDiscoverFunc VSIAnalysisEnabled (UploadScan apiOpts _) = VSI.discover apiOpts
-vsiDiscoverFunc _ _ = const $ pure []
+vsiDiscoverFunc :: (TaskEffs sig m, TaskEffs rsig run) => VSIAnalysisMode -> ScanDestination -> AllFilters -> Path Abs Dir -> m [DiscoveredProject run]
+vsiDiscoverFunc VSIAnalysisEnabled (UploadScan apiOpts _) filters = VSI.discover filters apiOpts
+vsiDiscoverFunc _ _ _ = const $ pure []
 
 discoverFuncs :: (TaskEffs sig m, TaskEffs rsig run) => [Path Abs Dir -> m [DiscoveredProject run]]
 discoverFuncs =
@@ -244,7 +244,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
   capabilities <- sendIO getNumCapabilities
   -- When running analysis, append the vsi discover function to the end of the discover functions list.
   -- This is done because the VSI discover function requires more information than other discover functions do, and only matters for analysis.
-  let discoverFuncs' = discoverFuncs ++ [vsiDiscoverFunc enableVSI destination]
+  let discoverFuncs' = discoverFuncs ++ [vsiDiscoverFunc enableVSI destination filters]
       apiOpts = case destination of
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
