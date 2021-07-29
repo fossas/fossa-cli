@@ -33,7 +33,7 @@ import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent
 import Control.Effect.Diagnostics ((<||>))
-import Control.Effect.Exception (Lift)
+import Control.Effect.Exception (Lift, SomeException, throwIO, try)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Record (runRecord)
 import Control.Effect.Replay (runReplay)
@@ -41,7 +41,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.Flag (Flag, fromFlag)
-import Data.Foldable (for_, traverse_)
+import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.List (isInfixOf, stripPrefix)
 import Data.List.NonEmpty qualified as NE
@@ -91,7 +91,7 @@ import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
 import Strategy.VSI qualified as VSI
 import Strategy.Yarn qualified as Yarn
-import System.Exit (die, exitFailure)
+import System.Exit (die)
 import Types (DiscoveredProject (..), FoundTargets)
 import VCS.Git (fetchGitContributors)
 
@@ -142,10 +142,11 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
         doAnalyze basedir
       RecordModeRecord -> do
         basedir <- sendIO $ validateDir workdir
-        (execLogs, (readFSLogs, ())) <-
-          runRecord @Exec . runRecord @ReadFS $
+        (execLogs, (readFSLogs, res)) <-
+          runRecord @Exec . runRecord @ReadFS . try @SomeException $
             doAnalyze basedir
         sendIO $ saveReplayLog readFSLogs execLogs "fossa.debug.json"
+        either throwIO pure res
       RecordModeReplay file -> do
         basedir <- BaseDir <$> P.resolveDir' workdir
         maybeJournal <- sendIO $ loadReplayLog file
@@ -209,7 +210,6 @@ runDependencyAnalysis (BaseDir basedir) filters project =
   case applyFiltersToProject basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
-      logInfo $ pretty $ show targets
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
       graphResult <- Diag.runDiagnosticsIO . stickyDiag $ projectDependencyGraph project targets
       Diag.withResult SevWarn graphResult (output . mkResult project)
@@ -263,14 +263,30 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   case checkForEmptyUpload projectResults filteredProjects manualSrcUnits of
-    NoneDiscovered -> logError "No analysis targets found in directory" >> sendIO exitFailure
-    FilteredAll count -> do
-      logError ("Filtered out all " <> pretty count <> " projects due to directory name, no manual deps found")
-      for_ projectResults $ \project -> logDebug ("Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project))
-      sendIO exitFailure
+    NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
+    FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
       OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
       UploadScan opts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
+
+data AnalyzeError
+  = ErrNoProjectsDiscovered
+  | ErrFilteredAllProjects Int [ProjectResult]
+
+instance Diag.ToDiagnostic AnalyzeError where
+  renderDiagnostic :: AnalyzeError -> Doc ann
+  renderDiagnostic ErrNoProjectsDiscovered =
+    "No analysis targets found in directory"
+  renderDiagnostic (ErrFilteredAllProjects count projectResults) =
+    "Filtered out all "
+      <> pretty count
+      <> " projects due to directory name, and no manual deps were found."
+      <> line
+      <> line
+      <> vsep (map renderExcludedProject projectResults)
+    where
+      renderExcludedProject :: ProjectResult -> Doc ann
+      renderExcludedProject project = "Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project)
 
 uploadSuccessfulAnalysis ::
   ( Has Diag.Diagnostics sig m
