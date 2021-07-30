@@ -158,7 +158,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has Diagnostics sig m) => CargoProject -> m (Graphing Dependency)
+getDeps :: (Has Exec sig m, Has Diagnostics sig m) => CargoProject -> m (Graphing Dependency, GraphBreadth)
 getDeps = context "Cargo" . context "Dynamic analysis" . analyze . cargoDir
 
 cargoGenLockfileCmd :: Command
@@ -180,12 +180,13 @@ cargoMetadataCmd =
 analyze ::
   (Has Exec sig m, Has Diagnostics sig m) =>
   Path Abs Dir ->
-  m (Graphing Dependency)
+  m (Graphing Dependency, GraphBreadth)
 analyze manifestDir = do
   _ <- context "Generating lockfile" $ execThrow manifestDir cargoGenLockfileCmd
   meta <- execJson @CargoMetadata manifestDir cargoMetadataCmd
   --
-  context "Building dependency graph" $ pure (buildGraph meta)
+  graph <- context "Building dependency graph" $ pure (buildGraph meta)
+  pure (graph, Complete)
 
 toDependency :: PackageId -> Set CargoLabel -> Dependency
 toDependency pkg =

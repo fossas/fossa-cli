@@ -77,11 +77,13 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RpmProject -> m (Graphing Dependency)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RpmProject -> m (Graphing Dependency, GraphBreadth)
 getDeps = context "RPM" . context "Static analysis" . analyze . rpmFiles
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m (Graphing Dependency)
-analyze specFiles = Diag.combineSuccessful "Analysis failed for all discovered *.spec files" (map analyzeSingle specFiles)
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m (Graphing Dependency, GraphBreadth)
+analyze specFiles = do
+  graph <- Diag.combineSuccessful "Analysis failed for all discovered *.spec files" (map analyzeSingle specFiles)
+  pure (graph, Partial)
 
 analyzeSingle :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyzeSingle file = do

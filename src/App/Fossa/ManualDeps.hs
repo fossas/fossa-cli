@@ -38,6 +38,7 @@ import Fossa.API.Types
 import Path
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
+import Types (GraphBreadth (..))
 
 data FoundDepsFile
   = ManualYaml (Path Abs File)
@@ -93,6 +94,7 @@ toSourceUnit root manualDeps@ManualDependencies{..} maybeApiOpts = do
       , sourceUnitManifest = renderedPath
       , sourceUnitType = "user-specific-yaml"
       , sourceUnitBuild = build
+      , sourceUnitGraphBreadth = Complete
       , additionalData = additional
       }
 

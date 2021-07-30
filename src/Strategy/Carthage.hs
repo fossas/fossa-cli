@@ -64,8 +64,11 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CarthageProject -> m (Graphing Dependency)
-getDeps = context "Carthage" . context "Static analysis" . fmap (G.gmap toDependency) . analyze . carthageLock
+-- TODO: is this actually Complete? Docs say so
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CarthageProject -> m (Graphing Dependency, GraphBreadth)
+getDeps project = do
+  graph <- context "Carthage" . context "Static analysis" . fmap (G.gmap toDependency) . analyze . carthageLock $ project
+  pure (graph, Complete)
 
 relCheckoutsDir :: Path Abs File -> Path Abs Dir
 relCheckoutsDir file = parent file </> $(mkRelDir "Carthage/Checkouts")

@@ -54,8 +54,8 @@ getDeps ::
   , Has Exec sig m
   ) =>
   PomClosure.MavenProjectClosure ->
-  m (Graphing Dependency)
+  m (Graphing Dependency, GraphBreadth)
 getDeps closure =
   context "Maven" $
     context "Plugin analysis" (Plugin.analyze' (parent (PomClosure.closurePath closure)))
-      <||> context "Static analysis" (pure (Pom.analyze' closure))
+      <||> context "Static analysis" (pure (Pom.analyze' closure, Partial))

@@ -22,6 +22,7 @@ import Path
 import Strategy.Erlang.ConfigParser (AtomText (..), ConfigValues (..), ErlValue (..), parseConfig)
 import Text.Megaparsec
 import Text.Megaparsec.Char
+import Types (GraphBreadth (..))
 
 rebar3TreeCmd :: Command
 rebar3TreeCmd =
@@ -31,11 +32,12 @@ rebar3TreeCmd =
     , cmdAllowErr = Never
     }
 
-analyze' :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
+analyze' :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency, GraphBreadth)
 analyze' dir = do
   aliasMap <- context "Building alias map" $ extractAliasLookup <$> readContentsParser parseConfig (dir </> configFile)
   deps <- execParser rebar3TreeParser dir rebar3TreeCmd
-  context "Building dependency graph" $ pure (buildGraph . unaliasDeps aliasMap $ deps)
+  graph <- context "Building dependency graph" $ pure (buildGraph . unaliasDeps aliasMap $ deps)
+  pure (graph, Complete)
 
 configFile :: Path Rel File
 configFile = $(mkRelFile "rebar.config")

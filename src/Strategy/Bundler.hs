@@ -55,11 +55,15 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m (Graphing Dependency)
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m (Graphing Dependency, GraphBreadth)
 getDeps project = context "Bundler" $ analyzeBundleShow project <||> analyzeGemfileLock project
 
-analyzeBundleShow :: (Has Exec sig m, Has Diagnostics sig m) => BundlerProject -> m (Graphing Dependency)
-analyzeBundleShow = context "bundle-show analysis" . BundleShow.analyze' . bundlerDir
+analyzeBundleShow :: (Has Exec sig m, Has Diagnostics sig m) => BundlerProject -> m (Graphing Dependency, GraphBreadth)
+analyzeBundleShow project = do
+  graph <- context "bundle-show analysis" . BundleShow.analyze' . bundlerDir $ project
+  pure (graph, Complete)
 
-analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m (Graphing Dependency)
-analyzeGemfileLock project = context "Gemfile.lock analysis" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project)) >>= GemfileLock.analyze'
+analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m (Graphing Dependency, GraphBreadth)
+analyzeGemfileLock project = do
+  graph <- context "Gemfile.lock analysis" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project)) >>= GemfileLock.analyze'
+  pure (graph, Complete)

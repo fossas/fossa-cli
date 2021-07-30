@@ -56,6 +56,7 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (alphaNumChar, char, numberChar, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
+import Types (GraphBreadth (..))
 
 -- For the file's grammar, see https://golang.org/ref/mod#go-mod-file-grammar.
 --
@@ -331,14 +332,16 @@ analyze' ::
   , Has Diagnostics sig m
   ) =>
   Path Abs File ->
-  m (Graphing Dependency)
-analyze' file = graphingGolang $ do
-  gomod <- readContentsParser gomodParser file
+  m (Graphing Dependency, GraphBreadth)
+analyze' file = do
+  graph <- graphingGolang $ do
+    gomod <- readContentsParser gomodParser file
 
-  context "Building dependency graph" $ buildGraph gomod
+    context "Building dependency graph" $ buildGraph gomod
 
-  _ <- recover (fillInTransitive (parent file))
-  pure ()
+    _ <- recover (fillInTransitive (parent file))
+    pure ()
+  pure (graph, Partial)
 
 buildGraph :: Has GolangGrapher sig m => Gomod -> m ()
 buildGraph = traverse_ go . resolve

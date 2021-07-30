@@ -55,13 +55,14 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PackageReferenceProject -> m (Graphing Dependency)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PackageReferenceProject -> m (Graphing Dependency, GraphBreadth)
 getDeps = context "PackageReference" . context "Static analysis" . analyze' . packageReferenceFile
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency, GraphBreadth)
 analyze' file = do
   ref <- readContentsXML @PackageReference file
-  context "Building dependency graph" $ pure (buildGraph ref)
+  graph <- context "Building dependency graph" $ pure (buildGraph ref)
+  pure (graph, Partial)
 
 newtype PackageReference = PackageReference
   { groups :: [ItemGroup]

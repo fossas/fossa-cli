@@ -173,7 +173,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> FoundTargets -> m (Graphing Dependency)
+getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> FoundTargets -> m (Graphing Dependency, GraphBreadth)
 getDeps project targets = context "Gradle" $ analyze targets (gradleDir project)
 
 initScript :: ByteString
@@ -186,44 +186,46 @@ analyze ::
   ) =>
   FoundTargets ->
   Path Abs Dir ->
-  m (Graphing Dependency)
-analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
-  let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
-  context "Writing gradle script" $ sendIO (BS.writeFile initScriptFilepath initScript)
+  m (Graphing Dependency, GraphBreadth)
+analyze foundTargets dir = do
+  graph <- withSystemTempDir "fossa-gradle" $ \tmpDir -> do
+    let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
+    context "Writing gradle script" $ sendIO (BS.writeFile initScriptFilepath initScript)
 
-  let cmd :: Text -> Command
-      cmd = case foundTargets of
-        FoundTargets targets -> gradleJsonDepsCmdTargets initScriptFilepath (toSet targets)
-        ProjectWithoutTargets -> gradleJsonDepsCmd initScriptFilepath
+    let cmd :: Text -> Command
+        cmd = case foundTargets of
+          FoundTargets targets -> gradleJsonDepsCmdTargets initScriptFilepath (toSet targets)
+          ProjectWithoutTargets -> gradleJsonDepsCmd initScriptFilepath
 
-  stdout <-
-    context "Running gradle script" $
-      execThrow dir (cmd (pathToText dir <> "gradlew"))
-        <||> execThrow dir (cmd (pathToText dir <> "gradlew.bat"))
-        <||> execThrow dir (cmd "gradle")
+    stdout <-
+      context "Running gradle script" $
+        execThrow dir (cmd (pathToText dir <> "gradlew"))
+          <||> execThrow dir (cmd (pathToText dir <> "gradlew.bat"))
+          <||> execThrow dir (cmd "gradle")
 
-  let text = decodeUtf8 $ BL.toStrict stdout
-      textLines :: [Text]
-      textLines = T.lines (T.filter (/= '\r') text)
-      -- jsonDeps lines look like:
-      -- JSONDEPS_:project-path_{"configName":[{"type":"package", ...}, ...], ...}
-      jsonDepsLines :: [Text]
-      jsonDepsLines = mapMaybe (T.stripPrefix "JSONDEPS_") textLines
+    let text = decodeUtf8 $ BL.toStrict stdout
+        textLines :: [Text]
+        textLines = T.lines (T.filter (/= '\r') text)
+        -- jsonDeps lines look like:
+        -- JSONDEPS_:project-path_{"configName":[{"type":"package", ...}, ...], ...}
+        jsonDepsLines :: [Text]
+        jsonDepsLines = mapMaybe (T.stripPrefix "JSONDEPS_") textLines
 
-      packagePathsWithJson :: [(PackageName, Text)]
-      packagePathsWithJson = map (\line -> let (x, y) = T.breakOn "_" line in (PackageName x, T.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
+        packagePathsWithJson :: [(PackageName, Text)]
+        packagePathsWithJson = map (\line -> let (x, y) = T.breakOn "_" line in (PackageName x, T.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
 
-      packagePathsWithDecoded :: [((PackageName, ConfigName), [JsonDep])]
-      packagePathsWithDecoded = do
-        (name, outJson) <- packagePathsWithJson
-        let configMap = fromMaybe mempty . decodeStrict $ encodeUtf8 outJson
-        (configName, deps) <- M.toList configMap
-        pure ((name, ConfigName configName), deps)
+        packagePathsWithDecoded :: [((PackageName, ConfigName), [JsonDep])]
+        packagePathsWithDecoded = do
+          (name, outJson) <- packagePathsWithJson
+          let configMap = fromMaybe mempty . decodeStrict $ encodeUtf8 outJson
+          (configName, deps) <- M.toList configMap
+          pure ((name, ConfigName configName), deps)
 
-      packagesToOutput :: Map (PackageName, ConfigName) [JsonDep]
-      packagesToOutput = M.fromList packagePathsWithDecoded
+        packagesToOutput :: Map (PackageName, ConfigName) [JsonDep]
+        packagesToOutput = M.fromList packagePathsWithDecoded
 
-  context "Building dependency graph" $ pure (buildGraph packagesToOutput)
+    context "Building dependency graph" $ pure (buildGraph packagesToOutput)
+  pure (graph, Complete)
 
 -- TODO: use LabeledGraphing to add labels for environments
 buildGraph :: Map (PackageName, ConfigName) [JsonDep] -> Graphing Dependency

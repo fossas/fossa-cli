@@ -16,6 +16,7 @@ import Data.Aeson
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Types (GraphBreadth (..))
 
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
@@ -23,6 +24,7 @@ data SourceUnit = SourceUnit
   , -- | path to manifest file
     sourceUnitManifest :: Text
   , sourceUnitBuild :: Maybe SourceUnitBuild
+  , sourceUnitGraphBreadth :: GraphBreadth
   , additionalData :: Maybe AdditionalDepData
   }
   deriving (Eq, Ord, Show)
@@ -93,6 +95,7 @@ instance ToJSON SourceUnit where
       , "Type" .= sourceUnitType
       , "Manifest" .= sourceUnitManifest
       , "Build" .= sourceUnitBuild
+      , "GraphBreadth" .= sourceUnitGraphBreadth
       , "AdditionalDependencyData" .= additionalData
       ]
 

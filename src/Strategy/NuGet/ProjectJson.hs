@@ -48,11 +48,13 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ProjectJsonProject -> m (Graphing Dependency)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ProjectJsonProject -> m (Graphing Dependency, GraphBreadth)
 getDeps = analyze' . projectJsonFile
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' file = buildGraph <$> readContentsJson @ProjectJson file
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency, GraphBreadth)
+analyze' file = do
+  graph <- buildGraph <$> readContentsJson @ProjectJson file
+  pure (graph, Partial)
 
 newtype ProjectJson = ProjectJson
   { dependencies :: Map Text DependencyInfo

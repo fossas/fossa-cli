@@ -142,7 +142,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CabalProject -> m (Graphing Dependency)
+getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CabalProject -> m (Graphing Dependency, GraphBreadth)
 getDeps project =
   context "Cabal" $
     context "Dynamic analysis" $
@@ -185,8 +185,9 @@ toDependency plan =
     , dependencyTags = M.empty
     }
 
-analyze :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
+analyze :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency, GraphBreadth)
 analyze dir = do
   _ <- execThrow dir cabalGenPlanCmd
   plans <- readContentsJson @BuildPlan (dir </> cabalPlanFilePath)
-  context "Building dependency graph" $ buildGraph plans
+  graph <- context "Building dependency graph" $ buildGraph plans
+  pure (graph, Complete)

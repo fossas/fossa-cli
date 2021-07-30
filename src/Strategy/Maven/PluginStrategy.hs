@@ -17,6 +17,7 @@ import Effect.ReadFS
 import Graphing (Graphing)
 import Path
 import Strategy.Maven.Plugin
+import Types (GraphBreadth (..))
 
 analyze' ::
   ( Has (Lift IO) sig m
@@ -25,12 +26,14 @@ analyze' ::
   , Has Diagnostics sig m
   ) =>
   Path Abs Dir ->
-  m (Graphing Dependency)
-analyze' dir = withUnpackedPlugin $ \filepath -> do
-  context "Installing plugin" $ installPlugin dir filepath
-  context "Running plugin" $ execPlugin dir
-  pluginOutput <- parsePluginOutput dir
-  context "Building dependency graph" $ pure (buildGraph pluginOutput)
+  m (Graphing Dependency, GraphBreadth)
+analyze' dir = do
+  graph <- withUnpackedPlugin $ \filepath -> do
+    context "Installing plugin" $ installPlugin dir filepath
+    context "Running plugin" $ execPlugin dir
+    pluginOutput <- parsePluginOutput dir
+    context "Building dependency graph" $ pure (buildGraph pluginOutput)
+  pure (graph, Complete)
 
 buildGraph :: PluginOutput -> Graphing Dependency
 buildGraph PluginOutput{..} = run $

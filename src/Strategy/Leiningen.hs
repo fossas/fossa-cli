@@ -78,7 +78,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has Diagnostics sig m) => LeiningenProject -> m (Graphing Dependency)
+getDeps :: (Has Exec sig m, Has Diagnostics sig m) => LeiningenProject -> m (Graphing Dependency, GraphBreadth)
 getDeps = context "Leiningen" . context "Dynamic analysis" . analyze . leinProjectClj
 
 data LeiningenProject = LeiningenProject
@@ -87,7 +87,7 @@ data LeiningenProject = LeiningenProject
   }
   deriving (Eq, Ord, Show)
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency, GraphBreadth)
 analyze file = do
   stdoutBL <- execThrow (parent file) leinDepsCmd
   let stdoutTL = decodeUtf8 stdoutBL
@@ -95,7 +95,9 @@ analyze file = do
 
   case EDN.decodeText "lein deps :tree-data" stdout of
     Left err -> fatal (CommandParseError leinDepsCmd (T.pack err))
-    Right deps -> context "Building dependency graph" $ pure (buildGraph deps)
+    Right deps -> do
+      graph <- context "Building dependency graph" $ pure (buildGraph deps)
+      pure (graph, Complete)
 
 -- node type for our LabeledGrapher
 data ClojureNode = ClojureNode

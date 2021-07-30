@@ -41,7 +41,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> m (Graphing Dependency)
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> m (Graphing Dependency, GraphBreadth)
 getDeps project =
   context "Gomodules" $
     context "Dynamic analysis" (GoList.analyze' (gomodulesDir project))

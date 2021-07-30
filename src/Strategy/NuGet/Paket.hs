@@ -59,13 +59,14 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PaketProject -> m (Graphing Dependency)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PaketProject -> m (Graphing Dependency, GraphBreadth)
 getDeps = context "Paket" . context "Static analysis" . analyze' . paketLock
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency, GraphBreadth)
 analyze' file = do
   sections <- readContentsParser findSections file
-  context "Building dependency graph" $ pure (buildGraph sections)
+  graph <- context "Building dependency graph" $ pure (buildGraph sections)
+  pure (graph, Complete)
 
 newtype PaketPkg = PaketPkg {pkgName :: Text}
   deriving (Eq, Ord, Show)

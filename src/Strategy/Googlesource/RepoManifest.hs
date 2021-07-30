@@ -71,11 +71,13 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RepoManifestProject -> m (Graphing Dependency)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RepoManifestProject -> m (Graphing Dependency, GraphBreadth)
 getDeps = analyze' . repoManifestXml
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' file = buildGraph <$> nestedValidatedProjects (parent file) file
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency, GraphBreadth)
+analyze' file = do
+  graph <- buildGraph <$> nestedValidatedProjects (parent file) file
+  pure (graph, Partial)
 
 nestedValidatedProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m [ValidatedProject]
 nestedValidatedProjects rootDir file = do

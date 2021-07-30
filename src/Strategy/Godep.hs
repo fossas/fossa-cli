@@ -49,14 +49,18 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (Graphing Dependency)
+getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (Graphing Dependency, GraphBreadth)
 getDeps project =
   context "Godep" $
     context "Gopkg.lock analysis" (analyzeGopkgLock project)
       <||> context "Gopkg.toml analysis" (analyzeGopkgToml project)
 
-analyzeGopkgLock :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (Graphing Dependency)
-analyzeGopkgLock project = Diag.fromMaybeText "No Gopkg.lock present in the project" (godepLock project) >>= GopkgLock.analyze'
+analyzeGopkgLock :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (Graphing Dependency, GraphBreadth)
+analyzeGopkgLock project = do
+  graph <- Diag.fromMaybeText "No Gopkg.lock present in the project" (godepLock project) >>= GopkgLock.analyze'
+  pure (graph, Complete)
 
-analyzeGopkgToml :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (Graphing Dependency)
-analyzeGopkgToml project = Diag.fromMaybeText "No Gopkg.toml present in the project" (godepToml project) >>= GopkgToml.analyze'
+analyzeGopkgToml :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (Graphing Dependency, GraphBreadth)
+analyzeGopkgToml project = do
+  graph <- Diag.fromMaybeText "No Gopkg.toml present in the project" (godepToml project) >>= GopkgToml.analyze'
+  pure (graph, Complete)

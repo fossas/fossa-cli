@@ -27,7 +27,7 @@ import Path (Abs, Dir, File, Path)
 import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, pyProjectDeps, toMap)
 import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), poetryLockCodec)
 import Strategy.Python.Poetry.PyProject (PyProject (..), pyProjectCodec)
-import Types (DiscoveredProject (..))
+import Types (DiscoveredProject (..), GraphBreadth (..))
 
 newtype PyProjectTomlFile = PyProjectTomlFile {pyProjectTomlPath :: Path Abs File} deriving (Eq, Ord, Show)
 newtype PoetryLockFile = PoetryLockFile {poetryLockPath :: Path Abs File} deriving (Eq, Ord, Show)
@@ -97,7 +97,7 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PoetryProject -> m (Graphing Dependency)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PoetryProject -> m (Graphing Dependency, GraphBreadth)
 getDeps project = do
   context "Poetry" $ context "Static analysis" $ analyze project
 
@@ -108,15 +108,18 @@ analyze ::
   , Has Logger sig m
   ) =>
   PoetryProject ->
-  m (Graphing Dependency)
+  m (Graphing Dependency, GraphBreadth)
 analyze PoetryProject{pyProjectToml, poetryLock} = do
   pyproject <- readContentsToml pyProjectCodec (pyProjectTomlPath pyProjectToml)
   case poetryLock of
     Just lockPath -> do
       poetryLockProject <- readContentsToml poetryLockCodec (poetryLockPath lockPath)
       _ <- logIgnoredDeps pyproject (Just poetryLockProject)
-      context "Building dependency graph from pyproject.toml and poetry.lock" $ pure $ setGraphDirectsFromPyproject (graphFromLockFile poetryLockProject) pyproject
-    Nothing -> context "Building dependency graph from only pyproject.toml" $ pure $ Graphing.fromList $ pyProjectDeps pyproject
+      graph <- context "Building dependency graph from pyproject.toml and poetry.lock" $ pure $ setGraphDirectsFromPyproject (graphFromLockFile poetryLockProject) pyproject
+      pure (graph, Complete)
+    Nothing -> do
+      graph <- context "Building dependency graph from only pyproject.toml" $ pure $ Graphing.fromList $ pyProjectDeps pyproject
+      pure (graph, Partial)
 
 -- | Use a `pyproject.toml` to set the direct dependencies of a graph created from `poetry.lock`.
 setGraphDirectsFromPyproject :: Graphing Dependency -> PyProject -> Graphing Dependency

@@ -47,11 +47,15 @@ mkProject project =
 -- There might be a dep with a version spec in an environment.yml file: i.e. conda+foo$1.2.*, and perhaps
 -- the same dep resolved to a known version in the users virtual environment: i.e. conda+foo$1.2.4 (we get that form conda list).
 -- If we combined the results then we would include both of those deps in the result, which is not correct behavior.
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => CondaProject -> m (Graphing Dependency)
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => CondaProject -> m (Graphing Dependency, GraphBreadth)
 getDeps project = analyzeCondaList project <||> analyzeEnvironmentYml project
 
-analyzeCondaList :: (Has Exec sig m, Has Diagnostics sig m) => CondaProject -> m (Graphing Dependency)
-analyzeCondaList = CondaList.analyze . condaDir
+analyzeCondaList :: (Has Exec sig m, Has Diagnostics sig m) => CondaProject -> m (Graphing Dependency, GraphBreadth)
+analyzeCondaList project = do
+  graph <- CondaList.analyze . condaDir $ project
+  pure (graph, Complete)
 
-analyzeEnvironmentYml :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => CondaProject -> m (Graphing Dependency)
-analyzeEnvironmentYml = EnvironmentYml.analyze . condaEnvironmentYml
+analyzeEnvironmentYml :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => CondaProject -> m (Graphing Dependency, GraphBreadth)
+analyzeEnvironmentYml project = do
+  graph <- EnvironmentYml.analyze . condaEnvironmentYml $ project
+  pure (graph, Complete)

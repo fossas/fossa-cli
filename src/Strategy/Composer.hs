@@ -49,10 +49,11 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ComposerProject -> m (Graphing Dependency)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ComposerProject -> m (Graphing Dependency, GraphBreadth)
 getDeps project = context "Composer" $ do
   lock <- readContentsJson @ComposerLock (composerLock project)
-  context "Building dependency graph" $ pure (buildGraph lock)
+  graph <- context "Building dependency graph" $ pure (buildGraph lock)
+  pure (graph, Complete)
 
 data ComposerProject = ComposerProject
   { composerDir :: Path Abs Dir

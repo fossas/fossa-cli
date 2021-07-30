@@ -40,14 +40,18 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (G.Graphing Dependency)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (G.Graphing Dependency, GraphBreadth)
 getDeps project = context "Yarn" $ getDepsV1 project <||> getDepsV2 project
 
-getDepsV1 :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (G.Graphing Dependency)
-getDepsV1 = V1.analyze . yarnLock
+getDepsV1 :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (G.Graphing Dependency, GraphBreadth)
+getDepsV1 project = do
+  graph <- V1.analyze . yarnLock $ project
+  pure (graph, Complete)
 
-getDepsV2 :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (G.Graphing Dependency)
-getDepsV2 = V2.analyze . yarnLock
+getDepsV2 :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (G.Graphing Dependency, GraphBreadth)
+getDepsV2 project = do
+  graph <- V2.analyze . yarnLock $ project
+  pure (graph, Complete)
 
 data YarnProject = YarnProject
   { yarnDir :: Path Abs Dir

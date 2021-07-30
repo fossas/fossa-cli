@@ -33,6 +33,7 @@ toSourceUnit ProjectResult{..} =
             , buildImports = imports
             , buildDependencies = deps
             }
+    , sourceUnitGraphBreadth = projectResultGraphBreadth
     , additionalData = Nothing
     }
   where

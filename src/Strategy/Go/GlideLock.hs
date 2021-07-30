@@ -18,11 +18,13 @@ import Effect.ReadFS
 import Graphing (Graphing)
 import Graphing qualified
 import Path
+import Types (GraphBreadth (..))
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency, GraphBreadth)
 analyze' file = do
   lockfile <- readContentsYaml @GlideLockfile file
-  context "Building dependency graph" $ pure (buildGraph lockfile)
+  graph <- context "Building dependency graph" $ pure (buildGraph lockfile)
+  pure (graph, Complete)
 
 buildGraph :: GlideLockfile -> Graphing Dependency
 buildGraph lockfile = Graphing.fromList (map toDependency direct)

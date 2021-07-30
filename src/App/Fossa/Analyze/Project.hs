@@ -11,8 +11,8 @@ import Graphing qualified
 import Path
 import Types
 
-mkResult :: DiscoveredProject n -> Graphing Dependency -> ProjectResult
-mkResult project graph =
+mkResult :: DiscoveredProject n -> (Graphing Dependency, GraphBreadth) -> ProjectResult
+mkResult project graphResults =
   ProjectResult
     { projectResultType = projectType project
     , projectResultPath = projectPath project
@@ -25,10 +25,14 @@ mkResult project graph =
         if S.null (Graphing.graphingDirect graph)
           then graph
           else Graphing.pruneUnreachable graph
+    , projectResultGraphBreadth = graphBreadth
     }
+  where
+    (graph, graphBreadth) = graphResults
 
 data ProjectResult = ProjectResult
   { projectResultType :: Text
   , projectResultPath :: Path Abs Dir
   , projectResultGraph :: Graphing Dependency
+  , projectResultGraphBreadth :: GraphBreadth
   }

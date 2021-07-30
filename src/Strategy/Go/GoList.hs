@@ -19,6 +19,7 @@ import Graphing (Graphing)
 import Path
 import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
+import Types (GraphBreadth (..))
 
 data Require = Require
   { reqPackage :: Text
@@ -39,23 +40,25 @@ analyze' ::
   , Has Diagnostics sig m
   ) =>
   Path Abs Dir ->
-  m (Graphing Dependency)
-analyze' dir = graphingGolang $ do
-  stdout <- context "Getting direct dependencies" $ execThrow dir golistCmd
+  m (Graphing Dependency, GraphBreadth)
+analyze' dir = do
+  graph <- graphingGolang $ do
+    stdout <- context "Getting direct dependencies" $ execThrow dir golistCmd
 
-  let gomodLines = drop 1 . T.lines . T.filter (/= '\r') . decodeUtf8 . BL.toStrict $ stdout -- the first line is our package
-      requires = mapMaybe toRequire gomodLines
+    let gomodLines = drop 1 . T.lines . T.filter (/= '\r') . decodeUtf8 . BL.toStrict $ stdout -- the first line is our package
+        requires = mapMaybe toRequire gomodLines
 
-      toRequire :: Text -> Maybe Require
-      toRequire line =
-        case T.splitOn " " line of
-          [package, version] -> Just (Require package version)
-          _ -> Nothing
+        toRequire :: Text -> Maybe Require
+        toRequire line =
+          case T.splitOn " " line of
+            [package, version] -> Just (Require package version)
+            _ -> Nothing
 
-  context "Adding direct dependencies" $ buildGraph requires
+    context "Adding direct dependencies" $ buildGraph requires
 
-  _ <- recover (fillInTransitive dir)
-  pure ()
+    _ <- recover (fillInTransitive dir)
+    pure ()
+  pure (graph, Complete)
 
 buildGraph :: Has GolangGrapher sig m => [Require] -> m ()
 buildGraph = traverse_ go

@@ -42,12 +42,14 @@ findProjects = walk' $ \dir _ files -> do
     ([], Nothing) -> pure ([], WalkContinue)
     _ -> pure ([project], WalkContinue)
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
-getDeps project =
-  context "Setuptools" $
-    Diag.combineSuccessful
-      "Analysis failed for all requirements.txt/setup.py in the project"
-      [analyzeReqTxts project, analyzeSetupPy project]
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency, GraphBreadth)
+getDeps project = do
+  graph <-
+    context "Setuptools" $
+      Diag.combineSuccessful
+        "Analysis failed for all requirements.txt/setup.py in the project"
+        [analyzeReqTxts project, analyzeSetupPy project]
+  pure (graph, Partial)
 
 analyzeReqTxts :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
 analyzeReqTxts = context "Analyzing requirements.txt files" . fmap mconcat . traverse ReqTxt.analyze' . setuptoolsReqTxt

@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## Unreleased
+
+- Support for Graph Breadth Tagging ([#308](https://github.com/fossas/spectrometer/pull/308))
+
 ## v2.12.0
 
 - Adds poetry support for python ([#300](https://github.com/fossas/spectrometer/pull/300))

@@ -2,6 +2,7 @@
 
 module Types (
   DiscoveredProject (..),
+  GraphBreadth (..),
   FoundTargets (..),
   BuildTarget (..),
   LicenseResult (..),
@@ -56,9 +57,28 @@ data DiscoveredProject m = DiscoveredProject
   { projectType :: Text
   , projectPath :: Path Abs Dir
   , projectBuildTargets :: FoundTargets
-  , projectDependencyGraph :: FoundTargets -> m (Graphing Dependency)
+  , projectDependencyGraph :: FoundTargets -> m (Graphing Dependency, GraphBreadth)
   , projectLicenses :: m [LicenseResult]
   }
+
+-- | The exhaustiveness or completeness of the graph found during analysis.
+--   Complete - indicates that the dependencies in question are a full, transitive graph, requiring no additional analysis
+--      Ex -> yarn.lock, Podfile.lock, Gemfile.lock
+--   Partial - indicates that the dependencies in question do *NOT* represent the fully resolved graph, i.e. because of a limitation
+--             in the package manager in use, it wasn't possible for us to obtain a full list of deps. This will signal to Core that
+--             further analysis may need to be run to determine the full graph.
+--      Ex -> stand-alone `package.json`, stand-alone Podfile
+data GraphBreadth = Complete | Partial
+  deriving (Eq, Ord, Show)
+
+instance ToJSON GraphBreadth where
+  -- render as text
+  toJSON = toJSON . renderGraphType
+    where
+      renderGraphType :: GraphBreadth -> Text
+      renderGraphType = \case
+        Complete -> "complete"
+        Partial -> "partial"
 
 newtype BuildTarget = BuildTarget {unBuildTarget :: Text}
   deriving (Eq, Ord, Show)

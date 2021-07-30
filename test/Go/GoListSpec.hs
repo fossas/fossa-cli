@@ -69,7 +69,7 @@ spec = do
               & run
       case result of
         Left err -> expectationFailure ("analyze failed: " <> show (renderFailureBundle err))
-        Right graph -> graph `shouldBe` expected
+        Right (graph, _) -> graph `shouldBe` expected
 
     it "can handle complex inputs" $ do
       let result =
@@ -80,4 +80,4 @@ spec = do
 
       case result of
         Left err -> fail $ "failed to build graph" <> show (renderFailureBundle err)
-        Right graph -> length (graphingDirect graph) `shouldBe` 12
+        Right (graph, _) -> length (graphingDirect graph) `shouldBe` 12

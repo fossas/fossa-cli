@@ -49,13 +49,14 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PackagesConfigProject -> m (Graphing Dependency)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PackagesConfigProject -> m (Graphing Dependency, GraphBreadth)
 getDeps = context "PackagesConfig" . context "Static analysis" . analyze' . packagesConfigFile
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency, GraphBreadth)
 analyze' file = do
   config <- readContentsXML @PackagesConfig file
-  context "Building dependency graph" $ pure (buildGraph config)
+  graph <- context "Building dependency graph" $ pure (buildGraph config)
+  pure (graph, Partial)
 
 instance FromXML PackagesConfig where
   parseElement el = PackagesConfig <$> children "package" el

@@ -47,7 +47,7 @@ data NpmProject = NpmProject
   }
   deriving (Eq, Ord, Show)
 
-mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => NpmProject -> DiscoveredProject n
+mkProject :: (Has Exec sig n, Has ReadFS sig n, Has Diagnostics sig n) => NpmProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "npm"
@@ -57,16 +57,20 @@ mkProject project =
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m (Graphing Dependency)
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m ((Graphing Dependency), GraphBreadth)
 getDeps project = context "Npm" $ analyzeNpmList project <||> analyzeNpmLock project <||> analyzeNpmJson project
 
-analyzeNpmList :: (Has Exec sig m, Has Diagnostics sig m) => NpmProject -> m (Graphing Dependency)
-analyzeNpmList = context "npm-list analysis" . NpmList.analyze' . npmDir
+analyzeNpmList :: (Has Exec sig m, Has Diagnostics sig m) => NpmProject -> m (Graphing Dependency, GraphBreadth)
+analyzeNpmList project = do
+  analyzeResult <- context "npm-list analysis" . NpmList.analyze' $ npmDir project
+  pure (analyzeResult, Complete)
 
-analyzeNpmLock :: (Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m (Graphing Dependency)
-analyzeNpmLock project =
-  context "package-lock.json analysis" $
-    Diag.fromMaybeText "No package-lock.json present in the project" (npmPackageLock project) >>= NpmLock.analyze'
+analyzeNpmLock :: (Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m (Graphing Dependency, GraphBreadth)
+analyzeNpmLock project = do
+  analyzeResult <- context "package-lock.json analysis" $ Diag.fromMaybeText "No package-lock.json present in the project" (npmPackageLock project) >>= NpmLock.analyze'
+  pure (analyzeResult, Complete)
 
-analyzeNpmJson :: (Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m (Graphing Dependency)
-analyzeNpmJson = context "package.json analysis" . PackageJson.analyze' . npmPackageJson
+analyzeNpmJson :: (Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m (Graphing Dependency, GraphBreadth)
+analyzeNpmJson project = do
+  analyzeResult <- context "package.json analysis" . PackageJson.analyze' $ npmPackageJson project
+  pure (analyzeResult, Partial)
