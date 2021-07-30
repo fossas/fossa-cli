@@ -1,8 +1,14 @@
 # Spectrometer Changelog
 
-## Unreleased
+## v2.12.2
 
+- Supports poetry build backend of `poetry.masonry.api` ([#309](https://github.com/fossas/spectrometer/pull/309))
 - Support for Graph Breadth Tagging ([#308](https://github.com/fossas/spectrometer/pull/308))
+
+## v2.12.1
+
+- Add `--exclude-path` and `--only-path` to monorepo functionality in fossa analyze. ([#291](https://github.com/fossas/spectrometer/pull/291))
+- Support globs in exclude/only path flags. ([#291](https://github.com/fossas/spectrometer/pull/291))
 
 ## v2.12.0
 

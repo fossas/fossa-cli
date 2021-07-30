@@ -3,6 +3,7 @@ module Strategy.Python.Poetry.Common (
   toMap,
   pyProjectDeps,
   logIgnoredDeps,
+  toCanonicalName,
 
   -- * for testing
   supportedPyProjectDep,
@@ -13,7 +14,7 @@ import Data.Foldable (asum, for_)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
-import Data.Text (Text, toLower)
+import Data.Text (Text, replace, toLower)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvOther, EnvProduction, EnvTesting),
   DepType (GitType, PipType, URLType),
@@ -129,12 +130,32 @@ poetrytoDependency depEnvs name deps =
     depLocations = []
     depTags = Map.empty
 
+-- | Converts text to canonical python name for dependency.
+-- Relevant Docs: https://www.python.org/dev/peps/pep-0426/#id28
+-- Poetry Code: https://github.com/python-poetry/poetry/blob/master/poetry/utils/helpers.py#L35
+--
+-- Poetry performs this operation inconsistently at the time of writing for package name and it's dependencies
+-- within the lock file.
+--
+--  ```toml
+--  [package.dependencies]
+--  MarkupSafe = ">=2.0"
+--  ....
+--
+-- [[package]]
+-- name = "markupsafe"
+-- version = "2.0.1"
+-- ...
+-- ```
+toCanonicalName :: Text -> Text
+toCanonicalName t = toLower $ replace "_" "-" (replace "." "-" t)
+
 -- | Maps poetry lock package to map of package name and associated dependency.
 toMap :: [PoetryLockPackage] -> Map.Map PackageName Dependency
-toMap pkgs = Map.fromList $ (\x -> (lowerCasePkgName x, toDependency x)) <$> (filter supportedPoetryLockDep pkgs)
+toMap pkgs = Map.fromList $ (\x -> (canonicalPkgName x, toDependency x)) <$> (filter supportedPoetryLockDep pkgs)
   where
-    lowerCasePkgName :: PoetryLockPackage -> PackageName
-    lowerCasePkgName pkg = PackageName $ toLower $ unPackageName $ poetryLockPackageName pkg
+    canonicalPkgName :: PoetryLockPackage -> PackageName
+    canonicalPkgName pkg = PackageName $ toCanonicalName $ unPackageName $ poetryLockPackageName pkg
 
     toDependency :: PoetryLockPackage -> Dependency
     toDependency pkg =

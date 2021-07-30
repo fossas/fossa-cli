@@ -13,7 +13,7 @@ import Control.Effect.Diagnostics (Diagnostics, context)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
-import Data.Text (Text, toLower)
+import Data.Text (Text)
 import DepTypes (DepType (..), Dependency (..))
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
@@ -24,7 +24,7 @@ import Effect.Logger (Logger (..), Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, readContentsToml)
 import Graphing (Graphing, deep, edge, empty, fromList, gmap, promoteToDirect)
 import Path (Abs, Dir, File, Path)
-import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, pyProjectDeps, toMap)
+import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, pyProjectDeps, toCanonicalName, toMap)
 import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), poetryLockCodec)
 import Strategy.Python.Poetry.PyProject (PyProject (..), pyProjectCodec)
 import Types (DiscoveredProject (..), GraphBreadth (..))
@@ -46,8 +46,10 @@ discover dir = context "Poetry" $ do
   pure (map mkProject projects)
 
 -- | Poetry build backend identifier required in [pyproject.toml](https://python-poetry.org/docs/pyproject/#poetry-and-pep-517).
-poetryBuildBackendIdentifier :: Text
-poetryBuildBackendIdentifier = "poetry.core.masonry.api"
+usesPoetryBackend :: Text -> Bool
+usesPoetryBackend backend =
+  backend == "poetry.core.masonry.api" -- For poetry versions >=1.1.0a1 (released 2020)
+    || backend == "poetry.masonry.api" -- Refer to https://github.com/python-poetry/poetry/pull/2212
 
 -- | Reference message text for poetry build backend setting value required in pyproject.toml.
 -- Users should configure poetry build backend in pyproject.toml for poetry project discovery.
@@ -78,7 +80,7 @@ findProjects = walk' $ \dir _ files -> do
       case pyprojectBuildBackend of
         Nothing -> pure ([], WalkContinue)
         Just pbs ->
-          if pbs == poetryBuildBackendIdentifier
+          if usesPoetryBackend pbs
             then pure ([project], WalkSkipAll)
             else ([], WalkContinue) <$ warnIncorrectBuildBackend pbs
 
@@ -126,10 +128,11 @@ setGraphDirectsFromPyproject :: Graphing Dependency -> PyProject -> Graphing Dep
 setGraphDirectsFromPyproject graph pyproject = promoteToDirect isDirect graph
   where
     -- Dependencies in `poetry.lock` are direct if they're specified in `pyproject.toml`.
+    -- `pyproject.toml` may use non canonical naming, when naming dependencies.
     isDirect :: Dependency -> Bool
     isDirect dep = case pyprojectPoetry pyproject of
       Nothing -> False
-      Just _ -> any (\n -> dependencyName n == dependencyName dep) (pyProjectDeps pyproject)
+      Just _ -> any (\n -> toCanonicalName (dependencyName n) == toCanonicalName (dependencyName dep)) $ pyProjectDeps pyproject
 
 -- | Using a Poetry lockfile, build the graph of packages.
 -- The resulting graph contains edges, but does not distinguish between direct and deep dependencies,
@@ -155,29 +158,14 @@ graphFromLockFile poetryLock = gmap pkgNameToDependency (foldr deep edges pkgsNo
     edges :: Graphing PackageName
     edges = foldr (uncurry edge) empty (concatMap edgeOf depsWithEdges)
 
-    lowerCasedPkgName :: PackageName -> PackageName
-    lowerCasedPkgName name = PackageName . toLower $ unPackageName name
+    canonicalPkgName :: PackageName -> PackageName
+    canonicalPkgName name = PackageName . toCanonicalName $ unPackageName name
 
     mapOfDependency :: Map PackageName Dependency
     mapOfDependency = toMap pkgs
 
     -- Pip packages are [case insensitive](https://www.python.org/dev/peps/pep-0508/#id21), but poetry.lock may use
-    -- non-canonical name for reference. Try to lookup with provided casing, otherwise fallback to lower casing.
-    --
-    -- Poetry.lock when referencing deep dependencies uses non canonical names.
-    --
-    --  ```toml
-    --  [package.dependencies]
-    --  MarkupSafe = ">=2.0"
-    --  ....
-    --
-    -- [[package]]
-    -- name = "markupsafe"
-    -- version = "2.0.1"
-    -- ...
-    -- ```
-    --
-    -- TODO: Better approach to handle casing scenarios with poetry.lock file.
+    -- non-canonical name for reference. Try to lookup with provided name, otherwise fallback to canonical naming.
     pkgNameToDependency :: PackageName -> Dependency
     pkgNameToDependency name =
       fromMaybe
@@ -191,4 +179,4 @@ graphFromLockFile poetryLock = gmap pkgNameToDependency (foldr deep edges pkgsNo
             }
         )
         $ Map.lookup name mapOfDependency
-          <|> Map.lookup (lowerCasedPkgName name) mapOfDependency
+          <|> Map.lookup (canonicalPkgName name) mapOfDependency

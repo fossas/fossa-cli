@@ -6,7 +6,7 @@ import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), VerConstraint (..))
-import Strategy.Python.Poetry.Common (getPoetryBuildBackend, pyProjectDeps, supportedPoetryLockDep, supportedPyProjectDep, toMap)
+import Strategy.Python.Poetry.Common (getPoetryBuildBackend, pyProjectDeps, supportedPoetryLockDep, supportedPyProjectDep, toCanonicalName, toMap)
 import Strategy.Python.Poetry.PoetryLock (
   ObjectVersion (..),
   PackageName (..),
@@ -145,6 +145,12 @@ spec :: Spec
 spec = do
   nominalContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pyproject1.toml")
   emptyContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pyproject2.toml")
+
+  describe "toCanonicalName" $ do
+    it "should convert text to lowercase" $
+      toCanonicalName "GreatScore" `shouldBe` "greatscore"
+    it "should replace underscore (_) to hyphens (-)" $
+      toCanonicalName "my_oh_so_great_pkg" `shouldBe` "my-oh-so-great-pkg"
 
   describe "getDependencies" $
     it "should get all dependencies" $

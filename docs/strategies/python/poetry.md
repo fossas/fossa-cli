@@ -35,7 +35,7 @@ Where,
 
 ### Limitations
 
-* For poetry project, build system's `build-backend` must be set to `poetry.core.masonry.api` in `pyproject.toml`. If not done so, it will not discover the project. Refer to [Poetry and PEP-517](https://python-poetry.org/docs/pyproject/#poetry-and-pep-517) for more details. 
+* For poetry project, build system's `build-backend` must be set to `poetry.core.masonry.api` or `poetry.masonry.api` in `pyproject.toml`. If not done so, it will not discover the project. Refer to [Poetry and PEP-517](https://python-poetry.org/docs/pyproject/#poetry-and-pep-517) for more details. 
 * All extras specified in `[tool.poetry.extras]` are currently not reported. 
 * Any [path dependencies](https://python-poetry.org/docs/dependency-specification/#path-dependencies) will not be reported.
 
