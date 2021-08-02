@@ -1,23 +1,49 @@
-
 # Spectrometer User Guide
 
-1. [Quick Start](#quick-start)
-2. [Supported Languages](#supported-languages)
-3. Commands
-    - [`fossa analyze`](#fossa-analyze)
-        - [Specifying FOSSA project details](#specifying-fossa-project-details)
-        - [Printing results without uploading to FOSSA](#printing-results-without-uploading-to-fossa)
-        - [Running in a specific directory](#running-in-a-specific-directory)
-        - [Scanning archive contents](#scanning-archive-contents)
-        - [Manually specifying dependencies](#manually-specifying-dependencies)
-    - [`fossa test`](#fossa-test)
-        - [Specifying a timeout](#specifying-a-timeout)
-        - [Print issues as json](#print-issues-as-json)
-4. [Common FOSSA Project Flags](#common-fossa-project-flags)
-5. [Frequently-Asked Questions](#frequently-asked-questions)
-    - [`fossa analyze`: Why wasn't my project found?](#fossa-analyze-why-wasnt-my-project-found)
-    - [When are you adding support for (some buildtool/language)](#when-are-you-adding-support-for-some-buildtoollanguage)
-    - [What are these experimental monorepo flags?](#what-are-these-experimental-monorepo-flags)
+<!-- omit in toc -->
+## Table of contents
+
+- [Quick Start](#quick-start)
+  - [Configure your API key](#configure-your-api-key)
+  - [Run Analysis](#run-analysis)
+  - [Check for FOSSA scan results](#check-for-fossa-scan-results)
+- [Supported Languages](#supported-languages)
+  - [clojure](#clojure)
+  - [erlang](#erlang)
+  - [golang](#golang)
+  - [haskell](#haskell)
+  - [java](#java)
+  - [javascript/typescript](#javascripttypescript)
+  - [.NET](#net)
+  - [objective-c](#objective-c)
+  - [python](#python)
+  - [ruby](#ruby)
+  - [rust](#rust)
+  - [scala](#scala)
+  - [swift](#swift)
+- [`fossa analyze`](#fossa-analyze)
+  - [Specifying FOSSA project details](#specifying-fossa-project-details)
+  - [Printing results without uploading to FOSSA](#printing-results-without-uploading-to-fossa)
+  - [Printing project metadata](#printing-project-metadata)
+  - [Running in a specific directory](#running-in-a-specific-directory)
+  - [Scanning archive contents](#scanning-archive-contents)
+- [Manually specifying dependencies](#manually-specifying-dependencies)
+  - [Custom dependencies](#custom-dependencies)
+  - [Remote dependencies](#remote-dependencies)
+  - [Errors in the `fossa-deps` file](#errors-in-the-fossa-deps-file)
+  - [License scanning local dependencies](#license-scanning-local-dependencies)
+- [`fossa test`](#fossa-test)
+  - [Specifying a timeout](#specifying-a-timeout)
+  - [Print issues as JSON](#print-issues-as-json)
+- [`fossa report`](#fossa-report)
+  - [Report types](#report-types)
+  - [Specifying a report timeout](#specifying-a-report-timeout)
+  - [Print report as JSON](#print-report-as-json)
+- [Common FOSSA Project Flags](#common-fossa-project-flags)
+- [Frequently-Asked Questions](#frequently-asked-questions)
+  - [`fossa analyze`: Why wasn't my project found?](#fossa-analyze-why-wasnt-my-project-found)
+  - [When are you adding support for (some buildtool/language)?](#when-are-you-adding-support-for-some-buildtoollanguage)
+  - [What are these experimental monorepo flags?](#what-are-these-experimental-monorepo-flags)
 
 ## Quick Start
 
@@ -236,7 +262,7 @@ custom-dependencies:
 - name: foo
   version: 1.2.3
   license: "MIT or Apache-2.0"
-# You can also provide a description and/or homepage. These values populate metadata fields in reports in the FOSSA web UI. 
+# You can also provide a description and/or homepage. These values populate metadata fields in reports in the FOSSA web UI.
 - name: foo-wrapper
   version: 1.2.3
   license: MIT

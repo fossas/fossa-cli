@@ -1,5 +1,18 @@
 {-# LANGUAGE TemplateHaskell #-}
 
+-- Strategy.Gradle provides dependency analysis for Gradle projects. It works by
+-- looking for `build.gradle` files and shelling out to `gradle` using a bundled
+-- Gradle init script (`jsondeps.gradle`). The init script does most of the
+-- thinking, and the analyzer just invokes it and parses the JSON output.
+--
+-- If you're debugging this analyzer, you'll want to start by getting the output
+-- of invoking the Gradle script. You should be able to find this output from
+-- the replay logs of the analysis.
+--
+-- Useful links:
+-- - Gradle subprojects: https://docs.gradle.org/current/userguide/multi_project_builds.html
+-- - Gradle tasks: https://docs.gradle.org/current/userguide/tutorial_using_tasks.html
+-- - Gradle init scripts: https://docs.gradle.org/current/userguide/init_scripts.html
 module Strategy.Gradle (
   discover,
   buildGraph,
@@ -8,11 +21,17 @@ module Strategy.Gradle (
   ConfigName (..),
 ) where
 
-import Control.Carrier.Diagnostics hiding (fromMaybe)
-import Control.Effect.Exception
-import Control.Effect.Lift (sendIO)
+import Control.Algebra (Has, run)
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  context,
+  errorBoundary,
+  renderFailureBundle,
+  (<||>),
+ )
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
-import Data.Aeson
+import Data.Aeson (FromJSON (..), Value (..), decodeStrict, withObject, (.:))
 import Data.Aeson.Types (Parser, unexpected)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
@@ -21,38 +40,48 @@ import Data.FileEmbed (embedFile)
 import Data.Foldable (find, for_)
 import Data.List (isPrefixOf)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
-import Data.Set qualified as S
-import Data.Set.NonEmpty
-import Data.String.Conversion (decodeUtf8, encodeUtf8)
+import Data.Set qualified as Set
+import Data.Set.NonEmpty (nonEmpty, toSet)
+import Data.String.Conversion (decodeUtf8, encodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as T
-import DepTypes
-import Discovery.Walk
-import Effect.Exec
-import Effect.Grapher
+import DepTypes (
+  DepEnvironment (..),
+  DepType (MavenType, SubprojectType),
+  Dependency (..),
+  VerConstraint (CEq),
+  insertEnvironment,
+ )
+import Discovery.Walk (WalkStep (..), fileName, walk')
+import Effect.Exec (AllowErr (..), Command (..), Exec, execThrow)
+import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
 import Effect.Logger (Logger, logWarn)
 import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
-import Path
-import System.FilePath qualified as FP
-import Types
+import Path (Abs, Dir, Path, fromAbsDir)
+import System.FilePath ((</>))
+import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..), GraphBreadth (..))
 
 newtype ConfigName = ConfigName {unConfigName :: Text} deriving (Eq, Ord, Show, FromJSON)
 newtype GradleLabel = Env DepEnvironment deriving (Eq, Ord, Show)
 newtype PackageName = PackageName {unPackageName :: Text} deriving (Eq, Ord, Show, FromJSON)
 
-gradleJsonDepsCmdTargets :: FP.FilePath -> Set BuildTarget -> Text -> Command
+-- Run the init script on a set of subprojects. Note that this runs the
+-- `:jsonDeps` task on every subproject in one command. This is helpful for
+-- performance reasons, because Gradle has a slow startup on each invocation.
+gradleJsonDepsCmdTargets :: FilePath -> Set BuildTarget -> Text -> Command
 gradleJsonDepsCmdTargets initScriptFilepath targets baseCmd =
   Command
     { cmdName = baseCmd
-    , cmdArgs = ["-I", T.pack initScriptFilepath] ++ map (\target -> unBuildTarget target <> ":jsonDeps") (S.toList targets)
+    , cmdArgs = ["-I", T.pack initScriptFilepath] ++ map (\target -> unBuildTarget target <> ":jsonDeps") (Set.toList targets)
     , cmdAllowErr = Never
     }
 
-gradleJsonDepsCmd :: FP.FilePath -> Text -> Command
+-- Run the init script on a root project.
+gradleJsonDepsCmd :: FilePath -> Text -> Command
 gradleJsonDepsCmd initScriptFilepath baseCmd =
   Command
     { cmdName = baseCmd
@@ -73,12 +102,26 @@ discover ::
   Path Abs Dir ->
   m [DiscoveredProject run]
 discover dir = context "Gradle" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+  found <- context "Finding projects" $ findProjects dir
+  pure $ mkProject <$> found
 
-pathToText :: Path ar fd -> Text
-pathToText = T.pack . toFilePath
+-- Run a Gradle command in a specific working directory, while correctly trying
+-- Gradle wrappers.
+runGradle :: (Has Exec sig m, Has Diagnostics sig m) => Path t Dir -> (Text -> Command) -> m BL.ByteString
+runGradle dir cmd =
+  execThrow dir (cmd (toText dir <> "gradlew"))
+    <||> execThrow dir (cmd (toText dir <> "gradlew.bat"))
+    <||> execThrow dir (cmd "gradle")
 
+-- Search for a `build.gradle`. Each `build.gradle` is its own analysis target.
+--
+-- In the user documentation, we say that each Gradle subproject is its own
+-- analysis target. This is morally true, but in our implementation we treat
+-- each `build.gradle` as an analysis target.
+--
+-- This is to avoid invoking Gradle again for each subproject, which would be
+-- slow (because of Gradle's startup time) and possibly wrong (because
+-- subprojects need to resolve dependency constraints together).
 findProjects :: (Has Exec sig m, Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [GradleProject]
 findProjects = walk' $ \dir _ files -> do
   case find (\f -> "build.gradle" `isPrefixOf` fileName f) files of
@@ -86,21 +129,19 @@ findProjects = walk' $ \dir _ files -> do
     Just _ -> do
       projectsStdout <-
         errorBoundary
-          . context ("Listing gradle projects at '" <> pathToText dir <> "'")
-          $ execThrow dir (gradleProjectsCmd (pathToText dir <> "gradlew"))
-            <||> execThrow dir (gradleProjectsCmd (pathToText dir <> "gradlew.bat"))
-            <||> execThrow dir (gradleProjectsCmd "gradle")
+          . context ("Listing gradle projects at '" <> toText dir <> "'")
+          $ runGradle dir gradleProjectsCmd
 
       case projectsStdout of
         Left err -> do
           logWarn $ renderFailureBundle err
-          -- Nearly all gradle projects have a multi-module structure with a
+          -- Nearly all Gradle projects have a multi-module structure with a
           -- top-level root project, and subdirectories contain subprojects of
-          -- the top-level root project
+          -- the top-level root project.
           --
-          -- If we're not able to scan the top-level root project, there's no
-          -- reason to recurse and try the lower-level subprojects -- it only
-          -- adds noise
+          -- If Gradle exits non-zero when invoked in the root project, it will
+          -- almost certainly exit non-zero in subprojects, so there's no point
+          -- in looking for subprojects in this subtree.
           pure ([], WalkSkipAll)
         Right result -> do
           let subprojects = parseProjects result
@@ -127,13 +168,13 @@ gradleProjectsCmd baseCmd =
     , cmdAllowErr = Never
     }
 
--- we use a single empty-string target when no subprojects exist. gradle uses an
+-- We use a single empty-string target when no subprojects exist. Gradle uses an
 -- empty string to denote the root project when invoking tasks, e.g., ":task"
--- instead of ":subproject:task"
+-- instead of ":subproject:task".
 parseProjects :: BL.ByteString -> Set Text
-parseProjects outBL = if S.null subprojects then S.singleton "" else subprojects
+parseProjects outBL = if Set.null subprojects then Set.singleton "" else subprojects
   where
-    subprojects = S.fromList $ mapMaybe parseSubproject outLines
+    subprojects = Set.fromList $ mapMaybe parseSubproject outLines
 
     outText = decodeUtf8 $ BL.toStrict outBL
     outLines = T.lines outText
@@ -153,7 +194,7 @@ parseProjects outBL = if S.null subprojects then S.singleton "" else subprojects
 -- Just ":foo"
 --
 -- >>> parseSubproject "anyprefix +--- Project ':foo'"
--- Just ":foo'
+-- Just ":foo"
 --
 -- >>> parseSubproject "anything else"
 -- Nothing
@@ -167,18 +208,23 @@ mkProject :: (Has Exec sig n, Has (Lift IO) sig n, Has Diagnostics sig n) => Gra
 mkProject project =
   DiscoveredProject
     { projectType = "gradle"
-    , projectBuildTargets = maybe ProjectWithoutTargets FoundTargets $ nonEmpty $ S.map BuildTarget $ gradleProjects project
+    , projectBuildTargets = maybe ProjectWithoutTargets FoundTargets $ nonEmpty $ Set.map BuildTarget $ gradleProjects project
     , projectDependencyGraph = getDeps project
     , projectPath = gradleDir project
     , projectLicenses = pure []
     }
 
 getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> FoundTargets -> m (Graphing Dependency, GraphBreadth)
-getDeps project targets = context "Gradle" $ analyze targets (gradleDir project)
+getDeps project targets = context "Gradle" $ do
+  graph <- analyze targets (gradleDir project)
+  pure (graph, Complete)
 
+-- See the release process to see how this script gets vendored.
 initScript :: ByteString
 initScript = $(embedFile "scripts/jsondeps.gradle")
 
+-- During analysis, we unpack the Gradle init script, run it, and parse the
+-- output.
 analyze ::
   ( Has (Lift IO) sig m
   , Has Exec sig m
@@ -186,50 +232,52 @@ analyze ::
   ) =>
   FoundTargets ->
   Path Abs Dir ->
-  m (Graphing Dependency, GraphBreadth)
-analyze foundTargets dir = do
-  graph <- withSystemTempDir "fossa-gradle" $ \tmpDir -> do
-    let initScriptFilepath = fromAbsDir tmpDir FP.</> "jsondeps.gradle"
-    context "Writing gradle script" $ sendIO (BS.writeFile initScriptFilepath initScript)
+  m (Graphing Dependency)
+analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
+  let initScriptFilepath = fromAbsDir tmpDir </> "jsondeps.gradle"
+  context "Writing gradle script" $ sendIO (BS.writeFile initScriptFilepath initScript)
 
-    let cmd :: Text -> Command
-        cmd = case foundTargets of
-          FoundTargets targets -> gradleJsonDepsCmdTargets initScriptFilepath (toSet targets)
-          ProjectWithoutTargets -> gradleJsonDepsCmd initScriptFilepath
+  let cmd :: Text -> Command
+      cmd = case foundTargets of
+        FoundTargets targets -> gradleJsonDepsCmdTargets initScriptFilepath (toSet targets)
+        ProjectWithoutTargets -> gradleJsonDepsCmd initScriptFilepath
 
-    stdout <-
-      context "Running gradle script" $
-        execThrow dir (cmd (pathToText dir <> "gradlew"))
-          <||> execThrow dir (cmd (pathToText dir <> "gradlew.bat"))
-          <||> execThrow dir (cmd "gradle")
+  stdout <-
+    context "Running gradle script" $
+      execThrow dir (cmd (toText dir <> "gradlew"))
+        <||> execThrow dir (cmd (toText dir <> "gradlew.bat"))
+        <||> execThrow dir (cmd "gradle")
 
-    let text = decodeUtf8 $ BL.toStrict stdout
-        textLines :: [Text]
-        textLines = T.lines (T.filter (/= '\r') text)
-        -- jsonDeps lines look like:
-        -- JSONDEPS_:project-path_{"configName":[{"type":"package", ...}, ...], ...}
-        jsonDepsLines :: [Text]
-        jsonDepsLines = mapMaybe (T.stripPrefix "JSONDEPS_") textLines
+  let text = decodeUtf8 $ BL.toStrict stdout
 
-        packagePathsWithJson :: [(PackageName, Text)]
-        packagePathsWithJson = map (\line -> let (x, y) = T.breakOn "_" line in (PackageName x, T.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
+      textLines :: [Text]
+      textLines = T.lines (T.filter (/= '\r') text)
 
-        packagePathsWithDecoded :: [((PackageName, ConfigName), [JsonDep])]
-        packagePathsWithDecoded = do
-          (name, outJson) <- packagePathsWithJson
-          let configMap = fromMaybe mempty . decodeStrict $ encodeUtf8 outJson
-          (configName, deps) <- M.toList configMap
-          pure ((name, ConfigName configName), deps)
+      -- Output lines from the init script are of the format:
+      -- JSONDEPS_:project-path_{"configName":[{"type":"package", ...}, ...], ...}
+      --
+      -- See the init script's implementation for details.
+      jsonDepsLines :: [Text]
+      jsonDepsLines = mapMaybe (T.stripPrefix "JSONDEPS_") textLines
 
-        packagesToOutput :: Map (PackageName, ConfigName) [JsonDep]
-        packagesToOutput = M.fromList packagePathsWithDecoded
+      packagePathsWithJson :: [(PackageName, Text)]
+      packagePathsWithJson = map (\line -> let (x, y) = T.breakOn "_" line in (PackageName x, T.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
 
-    context "Building dependency graph" $ pure (buildGraph packagesToOutput)
-  pure (graph, Complete)
+      packagePathsWithDecoded :: [((PackageName, ConfigName), [JsonDep])]
+      packagePathsWithDecoded = do
+        (name, outJson) <- packagePathsWithJson
+        let configMap = fromMaybe mempty . decodeStrict $ encodeUtf8 outJson
+        (configName, deps) <- Map.toList configMap
+        pure ((name, ConfigName configName), deps)
+
+      packagesToOutput :: Map (PackageName, ConfigName) [JsonDep]
+      packagesToOutput = Map.fromList packagePathsWithDecoded
+
+  context "Building dependency graph" $ pure (buildGraph packagesToOutput)
 
 -- TODO: use LabeledGraphing to add labels for environments
 buildGraph :: Map (PackageName, ConfigName) [JsonDep] -> Graphing Dependency
-buildGraph projectsAndDeps = run . withLabeling toDependency $ M.traverseWithKey addProject projectsAndDeps
+buildGraph projectsAndDeps = run . withLabeling toDependency $ Map.traverseWithKey addProject projectsAndDeps
   where
     -- add top-level projects from the output
     addProject :: Has (LabeledGrapher JsonDep GradleLabel) sig m => (PackageName, ConfigName) -> [JsonDep] -> m ()
@@ -248,7 +296,7 @@ buildGraph projectsAndDeps = run . withLabeling toDependency $ M.traverseWithKey
       x | x `elem` ["testImplementation", "testCompileOnly", "testRuntimeOnly"] -> Env EnvTesting
       x -> Env $ EnvOther x
 
-    toDependency :: JsonDep -> S.Set GradleLabel -> Dependency
+    toDependency :: JsonDep -> Set GradleLabel -> Dependency
     toDependency dep = foldr applyLabel $ jsonDepToDep dep
 
     applyLabel :: GradleLabel -> Dependency -> Dependency
@@ -273,7 +321,7 @@ buildGraph projectsAndDeps = run . withLabeling toDependency $ M.traverseWithKey
         , dependencyVersion = Just (CEq version)
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }
 
     projectToDep name =
@@ -283,7 +331,7 @@ buildGraph projectsAndDeps = run . withLabeling toDependency $ M.traverseWithKey
         , dependencyVersion = Nothing
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }
 
 data JsonDep

@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.12.3
+
+- Fixes an issue where unresolvable Gradle configurations would cause Gradle analysis to show no dependencies ([#292](https://github.com/fossas/spectrometer/pull/292)).
+
 ## v2.12.2
 
 - Supports poetry build backend of `poetry.masonry.api` ([#309](https://github.com/fossas/spectrometer/pull/309))
@@ -16,7 +20,7 @@
 
 ## v2.11.1
 
-- Support CPAN deps in the fossa-deps file ([#296](https://github.com/fossas/spectrometer/pull/296)) 
+- Support CPAN deps in the fossa-deps file ([#296](https://github.com/fossas/spectrometer/pull/296))
 
 ## v2.11.0
 

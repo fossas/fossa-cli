@@ -1,5 +1,21 @@
-// A gradle init script to add a `jsonDeps` task.
-// This task outputs project dependency trees as JSON.
+// This Gradle init script adds a `jsonDeps` task that outputs the dependencies
+// of each subproject as JSON.
+//
+// If you're debugging this script, you can directly run this on a Gradle project
+// by running `gradle -I/path/to/script $TASK` e.g.
+// `gradle -I/tmp/jsondeps.gradle :jsonDeps`. This lets you see the output
+// directly.
+//
+// Useful documentation:
+// - Gradle init scripts: https://docs.gradle.org/current/userguide/init_scripts.html
+// - Gradle subprojects: https://docs.gradle.org/current/userguide/multi_project_builds.html
+// - Gradle configurations: https://docs.gradle.org/current/userguide/declaring_dependencies.html
+// - Gradle build script primer: https://docs.gradle.org/current/userguide/groovy_build_script_primer.html
+// - Gradle init script API reference:
+//   - https://docs.gradle.org/current/dsl/org.gradle.api.Project.html#org.gradle.api.Project:allprojects(groovy.lang.Closure)
+//   - https://docs.gradle.org/current/javadoc/index.html
+//
+// ----
 //
 // The resulting JSON output is a map of configuration names to an array of
 // top-level dependencies.
@@ -21,31 +37,72 @@
 //     Project Name -- first-party (sub)projects
 //   | Package Name Version [Dependency]
 
+
+// TODO: Only print debug logging when running in debug mode?
 allprojects {
     task jsonDeps {
         doLast {
             def depToJSON
+            // resolvedDep: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ResolvedDependency.html
             depToJSON = { resolvedDep ->
-                def artifact = resolvedDep.moduleArtifacts.iterator().next() // moduleArtifacts never returns null; can it return empty set? it seems to only return a single module or project
+                println "DEBUG: Resolved dep"
+                println resolvedDep
+
+                println "DEBUG: Module artifacts"
+                println resolvedDep.moduleArtifacts
+                println resolvedDep.moduleArtifacts.size()
+
+                // moduleArtifacts never returns null, but sometimes this
+                // iterator can be empty (for dependencies with no artifacts
+                // e.g. `jackson-bom`).
+                //
+                // See also:
+                // - https://docs.gradle.org/current/userguide/declaring_dependencies.html#sub:module_dependencies
+                // - https://stackoverflow.com/questions/67328406/what-is-junit-bom-and-junit-platform-for-and-should-i-include-them-in-gradle-de
+                if (resolvedDep.moduleArtifacts.size() == 0) {
+                    println "DEBUG: Dependency has no module artifacts"
+                    return null
+                }
+
+                // artifact: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ResolvedArtifact.html
+                def artifact = resolvedDep.moduleArtifacts.iterator().next()
+
+                println "DEBUG: Artifact"
+                println artifact
+
+                // artifact.id: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/component/ComponentArtifactIdentifier.html
+                // artifact.id.componentIdentifier: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/component/ComponentIdentifier.html
                 def id = artifact.id.componentIdentifier
                 def json = "{"
+
+                // A "project component identifier" is a dependency that refers
+                // to another Gradle subproject (as opposed to a third-party
+                // dependency). We don't care about these for now.
                 if (id instanceof ProjectComponentIdentifier) {
                     // Minor problem here: we don't get the specific configuration used for the subproject.
                     // The default is the configuration named "default"
-                    json += "\"type\":\"project\",\"name\":\"${id.projectPath}\"" 
+                    json += "\"type\":\"project\",\"name\":\"${id.projectPath}\""
                 } else if (id instanceof ModuleComponentIdentifier) {
+                    // A "module" is a third-party dependency. Almost all
+                    // modules have "artifacts", which is the actual dependency
+                    // code that gets downloaded.
                     json += "\"type\":\"package\",\"name\":\"${id.group}:${id.module}\",\"version\":\"${id.version}\","
                     def childResults = []
                     if (!resolvedDep.children.isEmpty()) {
+                        // childResolvedDep: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ResolvedDependency.html
                         resolvedDep.children.each { childResolvedDep ->
                             def result = depToJSON childResolvedDep
-                            childResults << result
+                            if (result != null) {
+                                childResults << result
+                            }
                         }
                     }
                     json += "\"dependencies\":["
                     json += childResults.join(",")
                     json += "]"
                 } else {
+                    // The other possibility here is "LibraryBinaryIdentifier".
+                    // See: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/component/package-summary.html
                     return null; // FUTURE: binary dependencies in the filetree
                 }
 
@@ -54,9 +111,13 @@ allprojects {
                 return json
             }
 
+            // config: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/Configuration.html
             def configToKeyValue = { config ->
                 def jsonDeps = []
+                // config.resolvedConfiguration: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ResolvedConfiguration.html
                 config.resolvedConfiguration.firstLevelModuleDependencies.each { dep ->
+                    println "DEBUG: Found direct dependency in configuration"
+                    println dep
                     def result = depToJSON dep
                     if (result != null) {
                         jsonDeps << result
@@ -66,19 +127,45 @@ allprojects {
                 return "\"${config.name}\":[${combined}]"
             }
 
+            // project: https://docs.gradle.org/current/javadoc/org/gradle/api/Project.html
             def projectToJSON = { project ->
                 def jsonConfigs = []
                 project.configurations.each { config ->
+                    println "DEBUG: Trying to resolve configuration"
+                    println config
                     try {
-                        def result = configToKeyValue config
-                        jsonConfigs << result
-                    } catch (Exception ignored) {}
+                        // Some configurations aren't meant to be resolved,
+                        // because they're just meant to be containers of
+                        // dependency constraints.
+                        //
+                        // See also:
+                        // - https://discuss.gradle.org/t/what-is-a-configuration-which-cant-be-directly-resolved/30721
+                        // - https://docs.gradle.org/current/userguide/declaring_dependencies.html#sec:resolvable-consumable-configs
+                        if (config.canBeResolved) {
+                            println "DEBUG: Configuration is resolvable"
+                            def result = configToKeyValue config
+                            println "DEBUG: Configuration resolved"
+                            println result
+                            jsonConfigs << result
+                        } else {
+                            println "DEBUG: Configuration is not resolvable"
+                        }
+                    } catch (Exception ignored) {
+                        println "DEBUG: An exception occurred"
+                        println ignored
+                        ignored.printStackTrace()
+                    }
                 }
                 def combined = jsonConfigs.join(",")
                 return "{${combined}}"
             }
 
             def result = projectToJSON project
+
+            // We use the "JSONDEPS_" prefix to print output. This is why it's
+            // safe for us to print a bunch of other debugging messages
+            // everywhere else - the parser in Spectrometer ignores those
+            // messages.
             println "JSONDEPS_${project.path}_${result}"
         }
     }
