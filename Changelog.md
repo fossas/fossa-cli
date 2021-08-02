@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.13.0
+
+- Adds support for elixir projects using `mix` command ([#287](https://github.com/fossas/spectrometer/pull/287))
+
 ## v2.12.3
 
 - Fixes an issue where unresolvable Gradle configurations would cause Gradle analysis to show no dependencies ([#292](https://github.com/fossas/spectrometer/pull/292)).

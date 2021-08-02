@@ -89,6 +89,10 @@ fossa analyze --help
 
 - [rebar3](quickreference/rebar3.md)
 
+### elixir
+
+- [mix](quickreference/mix.md)
+
 ### golang
 
 - [gomodules (`go mod`)](quickreference/gomodules.md)

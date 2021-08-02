@@ -225,6 +225,7 @@ library
     Strategy.Conda
     Strategy.Conda.CondaList
     Strategy.Conda.EnvironmentYml
+    Strategy.Elixir.MixTree
     Strategy.Erlang.ConfigParser
     Strategy.Erlang.Rebar3Tree
     Strategy.Glide
@@ -249,6 +250,7 @@ library
     Strategy.Maven.Pom.Closure
     Strategy.Maven.Pom.PomFile
     Strategy.Maven.Pom.Resolver
+    Strategy.Mix
     Strategy.Node.NpmList
     Strategy.Node.NpmLock
     Strategy.Node.PackageJson
@@ -324,6 +326,7 @@ test-suite unit-tests
     Control.Carrier.DiagnosticsSpec
     Discovery.FiltersSpec
     Effect.ExecSpec
+    Elixir.MixTreeSpec
     Erlang.ConfigParserSpec
     Erlang.Rebar3TreeSpec
     Extra.TextSpec

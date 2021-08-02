@@ -1,5 +1,6 @@
 module GraphUtil (
   expectDeps,
+  expectDep,
   expectDirect,
   expectEdges,
 ) where
@@ -15,6 +16,10 @@ import Test.Hspec
 -- | Expect the given dependencies to be the deps in the graph
 expectDeps :: (Ord a, Show a) => [a] -> Graphing a -> Expectation
 expectDeps deps graph = toList (vertexSet (graphingAdjacent graph)) `shouldMatchList` deps
+
+-- | Expects the given `a` to exist in the `Graphing`
+expectDep :: (Ord a, Show a) => a -> Graphing a -> Expectation
+expectDep dep graph = toList (vertexSet (graphingAdjacent graph)) `shouldContain` [dep]
 
 -- TODO: I expect the shouldSatisfy will produce poor test failure messages
 

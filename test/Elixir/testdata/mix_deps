@@ -1,0 +1,16 @@
+* pkgA 1.0.4 (Hex package) (mix)
+  locked at 1.0.4 (pkgA) 4a0850c9
+  ok
+* pkgB 2.9.0 (https://github.com/some-url.git) (rebar3)
+  locked at 2a08250
+  ok
+* pkgC 2.11.0 (https://github.com/some-id/some - 2.11.0) (rebar3)
+  locked at e9448e5 (ref)
+  ok
+* pkgX 1.0.3 (/Users/some/dir/) (mix)
+  ok
+* pkgD (Hex package)
+  the dependency is not available, run "mix deps.get"
+* privatepkg 0.1.0 (Hex package) (mix)
+  locked at 0.1.0 (hexpm:privateorg/privatepkg) 4964996d
+  ok

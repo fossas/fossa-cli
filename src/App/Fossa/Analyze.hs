@@ -76,6 +76,7 @@ import Strategy.Haskell.Cabal qualified as Cabal
 import Strategy.Haskell.Stack qualified as Stack
 import Strategy.Leiningen qualified as Leiningen
 import Strategy.Maven qualified as Maven
+import Strategy.Mix qualified as Mix
 import Strategy.Npm qualified as Npm
 import Strategy.NuGet.Nuspec qualified as Nuspec
 import Strategy.NuGet.PackageReference qualified as PackageReference
@@ -183,6 +184,7 @@ discoverFuncs =
   , Cabal.discover
   , Stack.discover
   , Yarn.discover
+  , Mix.discover
   , Npm.discover
   , Scala.discover
   , RPM.discover

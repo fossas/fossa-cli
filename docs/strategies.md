@@ -70,6 +70,7 @@ TODO: create a lookup table that categorizes these strategies by language or too
 The CLI supports the following strategies:
 
 - [clojure](strategies/golang.md) (lein)
+- [elixir](strategies/elixir.md) (mix)
 - [erlang](strategies/erlang.md) (rebar3)
 - [golang](strategies/golang.md) (gomodules, dep, glide)
 - [gradle](strategies/gradle.md)
