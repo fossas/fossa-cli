@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.13.1
+
+- Adds support for a new Maven tactic that produces the full dependency graph if `mvn dependency:tree` is available but the plugin is not. ([#310](https://github.com/fossas/spectrometer/pull/287))
+
 ## v2.13.0
 
 - Adds support for elixir projects using `mix` command ([#287](https://github.com/fossas/spectrometer/pull/287))
