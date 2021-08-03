@@ -131,7 +131,7 @@ jobs:
     - name: Run hlint
       run: |
         make lint
-  
+
   format-check:
     name: formatter-check
     runs-on: ubuntu-latest

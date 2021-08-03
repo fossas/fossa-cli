@@ -8,8 +8,14 @@ module GraphUtil (
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.ToGraph (vertexSet)
 import Data.Foldable (toList, traverse_)
-import Graphing
-import Test.Hspec
+import Graphing (Graphing (..))
+import Test.Hspec (
+  Expectation,
+  shouldBe,
+  shouldContain,
+  shouldMatchList,
+  shouldSatisfy,
+ )
 
 -- TODO: expectReachable instead?
 
@@ -25,7 +31,9 @@ expectDep dep graph = toList (vertexSet (graphingAdjacent graph)) `shouldContain
 
 -- | Expect only the given edges between @[(parent,child)]@ dependencies to be present in the graph
 expectEdges :: (Ord a, Show a) => [(a, a)] -> Graphing a -> Expectation
-expectEdges edges graph = (length edges `shouldBe` AM.edgeCount (graphingAdjacent graph)) *> traverse_ (`shouldSatisfy` \(from, to) -> AM.hasEdge from to (graphingAdjacent graph)) edges
+expectEdges edges graph =
+  (length edges `shouldBe` AM.edgeCount (graphingAdjacent graph))
+    *> traverse_ (`shouldSatisfy` \(from, to) -> AM.hasEdge from to (graphingAdjacent graph)) edges
 
 -- | Expect the given dependencies to be the direct deps in the graph
 expectDirect :: (Eq a, Show a) => [a] -> Graphing a -> Expectation

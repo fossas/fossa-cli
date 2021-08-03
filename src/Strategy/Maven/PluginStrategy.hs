@@ -5,18 +5,32 @@ module Strategy.Maven.PluginStrategy (
   buildGraph,
 ) where
 
-import Control.Effect.Diagnostics
-import Control.Effect.Lift
+import Control.Algebra (Has, run)
+import Control.Effect.Diagnostics (Diagnostics, context)
+import Control.Effect.Lift (Lift)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
-import DepTypes
-import Effect.Exec
-import Effect.Grapher hiding (Edge)
-import Effect.ReadFS
+import DepTypes (
+  DepEnvironment (..),
+  DepType (MavenType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
+import Effect.Exec (Exec)
+import Effect.Grapher (Grapher, edge, evalGrapher)
+import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
-import Path
-import Strategy.Maven.Plugin
+import Path (Abs, Dir, Path)
+import Strategy.Maven.Plugin (
+  Artifact (..),
+  Edge (..),
+  PluginOutput (..),
+  execPlugin,
+  installPlugin,
+  parsePluginOutput,
+  withUnpackedPlugin,
+ )
 import Types (GraphBreadth (..))
 
 analyze' ::

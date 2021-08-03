@@ -4,17 +4,19 @@ module Strategy.Maven (
   getDeps,
 ) where
 
-import Control.Effect.Diagnostics
-import Control.Effect.Lift
-import Control.Monad.IO.Class
-import Effect.Exec
-import Effect.ReadFS
+import Control.Algebra (Has)
+import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
+import Control.Effect.Lift (Lift)
+import Control.Monad.IO.Class (MonadIO)
+import Effect.Exec (Exec)
+import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
-import Path
+import Path (Abs, Dir, Path, parent)
+import Strategy.Maven.DepTree qualified as DepTreeCmd
 import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure qualified as PomClosure
-import Types
+import Types (Dependency, DiscoveredProject (..), GraphBreadth (..))
 
 discover ::
   ( MonadIO m
@@ -57,5 +59,6 @@ getDeps ::
   m (Graphing Dependency, GraphBreadth)
 getDeps closure =
   context "Maven" $
-    context "Plugin analysis" (Plugin.analyze' (parent (PomClosure.closurePath closure)))
+    context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
+      <||> context "Dynamic analysis" (DepTreeCmd.analyze . parent $ PomClosure.closurePath closure)
       <||> context "Static analysis" (pure (Pom.analyze' closure, Partial))
