@@ -41,7 +41,7 @@ import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson, execThrow, r
 import Effect.Logger
 import Effect.ReadFS (ReadFS, readContentsJson, resolveFile, runReadFSIO)
 import Options.Applicative (Parser, argument, help, metavar, str)
-import Path (Dir, Rel, reldir, toFilePath)
+import Path (reldir, toFilePath)
 import Path.IO (getCurrentDir)
 
 newtype ImageText = ImageText {unImageText :: Text} deriving (Show, Eq, Ord)

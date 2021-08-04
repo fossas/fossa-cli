@@ -24,7 +24,7 @@ import GitHash (giHash, tGitInfoCwd)
 import Instances.TH.Lift ()
 import Language.Haskell.TH (TExpQ)
 import Language.Haskell.TH.Syntax (reportWarning, runIO)
-import Path (Dir, Rel, mkRelDir)
+import Path (mkRelDir)
 
 gitTagPointCommand :: Text -> Command
 gitTagPointCommand commit =

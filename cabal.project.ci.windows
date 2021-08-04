@@ -9,17 +9,38 @@ packages: .
 package spectrometer
   ghc-options: -Werror
 
-package yarn-lock
-  tests: False
+allow-newer:
+  -- git-config needs to relax its upper bound on megaparsec. PR submitted;
+  -- no action from maintainer yet
+  --
+  -- we can remove this if/when 0.1.3 is released on hackage
+  , git-config:megaparsec
+  -- tomland neesd a relaxed upper bound on megaparsec. PR open at
+  -- https://github.com/kowainik/tomland/pull/386
+  --
+  -- we can remove this if/when 1.3.3.1 is released on hackage
+  , tomland:megaparsec
+  -- codec-rpm needs a bump to its attoparsec bound. latest upload to hackage
+  -- was in 2018, so we may have to fork when breakage occurs
+  , codec-rpm:attoparsec
 
-source-repository-package
-  type: git
-  location: https://github.com/fossas/yarn-lock.git
-  tag: 1ac8875f73eaf76237d506e900f944a34ad3c0fb
-
+-- the semver package only exposes lens-style accessors for its Version type;
+-- normal accessors are in an un-exposed Internal module. on master, the
+-- Internal module is exposed, but a new release hasn't been cut to hackage yet
+--
+-- we can remove this if/when 0.4.0.2 is released on hackage
 source-repository-package
   type: git
   location: https://github.com/fossas/semver.git
   tag: 7bc42dd298e0d98e119486ceab4f74042d46b004
 
-index-state: hackage.haskell.org 2021-04-08T20:19:17Z
+-- cpio-conduit-0.7.2 on hackage has an incompatibility with newer versions of
+-- base16-bytestring. we submitted a PR to fix this, and the PR was merged, but
+-- a new release was never cut to hackage
+-- We can remove this if/when 0.7.3 is released on hackage
+source-repository-package
+  type: git
+  location: https://github.com/da-x/cpio-conduit
+  tag: 30d92919e82c5033fffac7b34288f5a7fd28e9be
+
+index-state: hackage.haskell.org 2021-08-02T13:16:20Z
