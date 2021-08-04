@@ -19,8 +19,8 @@ import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Maybe (fromMaybe)
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
 import Effect.Exec
 import Effect.Logger hiding (line)
@@ -100,11 +100,11 @@ generateNinjaDeps baseDir NinjaGraphOpts{..} = do
   (exitcode, stdout, stderr) <- sendIO $ PROC.readProcess (setWorkingDir (fromAbsDir baseDir) (PROC.shell commandString))
   case (exitcode, stdout, stderr) of
     (ExitSuccess, _, _) -> pure stdout
-    (_, _, err) -> fatal (ErrorRunningNinja (T.pack (show err)))
+    (_, _, err) -> fatal (ErrorRunningNinja (toText (show err)))
   where
     commandString = case lunchTarget of
       Nothing -> "cd " ++ show baseDir ++ " && NINJA_ARGS=\"-t deps\" make"
-      Just lunch -> "cd " ++ show baseDir ++ " && source ./build/envsetup.sh && lunch " ++ T.unpack lunch ++ " && NINJA_ARGS=\"-t deps\" make"
+      Just lunch -> "cd " ++ show baseDir ++ " && source ./build/envsetup.sh && lunch " ++ toString lunch ++ " && NINJA_ARGS=\"-t deps\" make"
 
 correctedTarget :: DepsTarget -> DepsTarget
 correctedTarget target@DepsTarget{targetDependencies = []} =
@@ -137,7 +137,7 @@ correctTargetWithLeadingTxtDeps target =
         corrected = target{targetDependencies = leadingTxtDeps ++ remainingDeps, targetInputs = [firstNonTxtDep]}
   where
     splitBasenameExt :: Text -> (String, String)
-    splitBasenameExt = FP.splitExtension . FP.takeFileName . T.unpack
+    splitBasenameExt = FP.splitExtension . FP.takeFileName . toString
 
     depsPathIsTxtAndBasenameDoesNotMatch :: String -> DepsDependency -> Bool
     depsPathIsTxtAndBasenameDoesNotMatch targetBasename dep =

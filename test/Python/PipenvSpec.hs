@@ -4,7 +4,7 @@ module Python.PipenvSpec (
 
 import Data.Aeson (eitherDecodeStrict)
 import Data.ByteString qualified as BS
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import DepTypes
 import GraphUtil
 import Strategy.Python.Pipenv
@@ -21,7 +21,7 @@ pipfileLock =
               }
           ]
     , fileDefault =
-        M.fromList
+        Map.fromList
           [
             ( "pkgTwo"
             , PipfileDep
@@ -45,7 +45,7 @@ pipfileLock =
             )
           ]
     , fileDevelop =
-        M.fromList
+        Map.fromList
           [
             ( "pkgOne"
             , PipfileDep
@@ -87,7 +87,7 @@ depOne =
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = [EnvDevelopment]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 depTwo :: Dependency
@@ -98,7 +98,7 @@ depTwo =
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = ["https://my-package-index/"]
     , dependencyEnvironments = [EnvProduction]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 depThree :: Dependency
@@ -109,7 +109,7 @@ depThree =
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = [EnvProduction]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 depFour :: Dependency
@@ -120,7 +120,7 @@ depFour =
     , dependencyVersion = Nothing
     , dependencyLocations = []
     , dependencyEnvironments = [EnvProduction]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 xit :: String -> Expectation -> SpecWith (Arg Expectation)

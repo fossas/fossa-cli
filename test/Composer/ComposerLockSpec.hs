@@ -4,7 +4,7 @@ module Composer.ComposerLockSpec (
 
 import Data.Aeson
 import Data.ByteString qualified as BS
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import DepTypes
 import GraphUtil
 import Strategy.Composer
@@ -18,7 +18,7 @@ dependencyOne =
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = [EnvProduction]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyTwo :: Dependency
@@ -29,7 +29,7 @@ dependencyTwo =
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = [EnvProduction]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyThree :: Dependency
@@ -40,7 +40,7 @@ dependencyThree =
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = [EnvProduction]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyFour :: Dependency
@@ -51,7 +51,7 @@ dependencyFour =
     , dependencyVersion = Just (CEq "4.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = [EnvProduction]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyFive :: Dependency
@@ -62,7 +62,7 @@ dependencyFive =
     , dependencyVersion = Just (CEq "5.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = [EnvDevelopment]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencySourceless :: Dependency
@@ -73,7 +73,7 @@ dependencySourceless =
     , dependencyVersion = Just (CEq "5.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = [EnvProduction]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 spec :: Spec

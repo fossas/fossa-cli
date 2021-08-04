@@ -6,11 +6,11 @@ module VCS.Git (
 import App.Fossa.FossaAPIV1 (Contributors (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Lift (Lift, sendIO)
-import Data.Map qualified as M
+import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
-import Data.String.Conversion (decodeUtf8)
+import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Text.Extra (splitOnceOn)
 import Data.Time
 import Data.Time.Format.ISO8601 (iso8601Show)
@@ -25,7 +25,7 @@ gitLogCmd now =
     , cmdAllowErr = Never
     }
   where
-    sinceArg = T.pack . iso8601Show $ utctDay wayBack
+    sinceArg = toText . iso8601Show $ utctDay wayBack
     delta = nominalDay * (-90)
     wayBack = addUTCTime delta now
 
@@ -40,14 +40,14 @@ fetchGitContributors basedir = do
   now <- sendIO getCurrentTime
   rawContrib <- execThrow basedir $ gitLogCmd now
   pure . Contributors
-    . M.map (T.pack . iso8601Show)
-    . M.fromListWith max
+    . Map.map (toText . iso8601Show)
+    . Map.fromListWith max
     . mapMaybe readLine
-    . T.lines
+    . Text.lines
     $ decodeUtf8 rawContrib
   where
     readLine :: Text -> Maybe (Text, Day)
     readLine entry = do
       let (email, textDate) = splitOnceOn "|" entry
-      date <- parseTimeM True defaultTimeLocale "%Y-%-m-%-d" $ T.unpack textDate
+      date <- parseTimeM True defaultTimeLocale "%Y-%-m-%-d" $ toString textDate
       Just (email, date)

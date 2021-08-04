@@ -5,7 +5,7 @@ module Strategy.Node.NpmList (
 import Control.Effect.Diagnostics
 import Data.Aeson
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import DepTypes
 import Effect.Exec
@@ -28,8 +28,8 @@ analyze' dir = do
 buildGraph :: NpmOutput -> Graphing Dependency
 buildGraph top = unfold direct getDeps toDependency
   where
-    direct = M.toList $ outputDependencies top
-    getDeps (_, nodeOutput) = M.toList $ outputDependencies nodeOutput
+    direct = Map.toList $ outputDependencies top
+    getDeps (_, nodeOutput) = Map.toList $ outputDependencies nodeOutput
     toDependency (nodeName, nodeOutput) =
       Dependency
         { dependencyType = NodeJSType
@@ -37,7 +37,7 @@ buildGraph top = unfold direct getDeps toDependency
         , dependencyVersion = CEq <$> outputVersion nodeOutput
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }
 
 data NpmOutput = NpmOutput
@@ -55,4 +55,4 @@ instance FromJSON NpmOutput where
       <*> obj .:? "version"
       <*> obj .:? "from"
       <*> obj .:? "resolved"
-      <*> obj .:? "dependencies" .!= M.empty
+      <*> obj .:? "dependencies" .!= Map.empty

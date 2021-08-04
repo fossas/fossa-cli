@@ -10,10 +10,10 @@ module Strategy.Conda.EnvironmentYml (
 import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Data.Aeson
 import Data.List.Extra ((!?))
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Effect.ReadFS
 import Graphing (Graphing, fromList)
 import Path
@@ -31,7 +31,7 @@ buildGraph envYmlFile = Graphing.fromList (map toDependency allDeps)
         , dependencyVersion = CEq <$> depVersion -- todo - properly handle version constraints
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }
 
 analyze ::
@@ -55,7 +55,7 @@ getCondaDepFromText rcd =
     , depFullVersion = fullVersion
     }
   where
-    depSplit = T.split (== '=') rcd
+    depSplit = Text.split (== '=') rcd
 
     name = fromMaybe rcd (depSplit !? 0)
     version = depSplit !? 1 -- TODO: this may contain constraints that we need to parse

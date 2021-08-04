@@ -47,7 +47,7 @@ import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty, toSet)
 import Data.String.Conversion (decodeUtf8, encodeUtf8, toText)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import DepTypes (
   DepEnvironment (..),
   DepType (MavenType, SubprojectType),
@@ -76,7 +76,7 @@ gradleJsonDepsCmdTargets :: FilePath -> Set BuildTarget -> Text -> Command
 gradleJsonDepsCmdTargets initScriptFilepath targets baseCmd =
   Command
     { cmdName = baseCmd
-    , cmdArgs = ["-I", T.pack initScriptFilepath] ++ map (\target -> unBuildTarget target <> ":jsonDeps") (Set.toList targets)
+    , cmdArgs = ["-I", toText initScriptFilepath] ++ map (\target -> unBuildTarget target <> ":jsonDeps") (Set.toList targets)
     , cmdAllowErr = Never
     }
 
@@ -85,7 +85,7 @@ gradleJsonDepsCmd :: FilePath -> Text -> Command
 gradleJsonDepsCmd initScriptFilepath baseCmd =
   Command
     { cmdName = baseCmd
-    , cmdArgs = ["-I", T.pack initScriptFilepath, "jsonDeps"]
+    , cmdArgs = ["-I", toText initScriptFilepath, "jsonDeps"]
     , cmdAllowErr = Never
     }
 
@@ -177,7 +177,7 @@ parseProjects outBL = if Set.null subprojects then Set.singleton "" else subproj
     subprojects = Set.fromList $ mapMaybe parseSubproject outLines
 
     outText = decodeUtf8 $ BL.toStrict outBL
-    outLines = T.lines outText
+    outLines = Text.lines outText
 
 -- | Parse a subproject line from the gradle output, e.g.,
 --
@@ -200,9 +200,9 @@ parseProjects outBL = if Set.null subprojects then Set.singleton "" else subproj
 -- Nothing
 parseSubproject :: Text -> Maybe Text
 parseSubproject line =
-  case T.breakOnEnd "--- Project '" (T.strip line) of
+  case Text.breakOnEnd "--- Project '" (Text.strip line) of
     ("", _) -> Nothing -- no match
-    (_, rest) -> Just $ T.takeWhile (/= '\'') rest
+    (_, rest) -> Just $ Text.takeWhile (/= '\'') rest
 
 mkProject :: (Has Exec sig n, Has (Lift IO) sig n, Has Diagnostics sig n) => GradleProject -> DiscoveredProject n
 mkProject project =
@@ -251,17 +251,17 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
   let text = decodeUtf8 $ BL.toStrict stdout
 
       textLines :: [Text]
-      textLines = T.lines (T.filter (/= '\r') text)
+      textLines = Text.lines (Text.filter (/= '\r') text)
 
       -- Output lines from the init script are of the format:
       -- JSONDEPS_:project-path_{"configName":[{"type":"package", ...}, ...], ...}
       --
       -- See the init script's implementation for details.
       jsonDepsLines :: [Text]
-      jsonDepsLines = mapMaybe (T.stripPrefix "JSONDEPS_") textLines
+      jsonDepsLines = mapMaybe (Text.stripPrefix "JSONDEPS_") textLines
 
       packagePathsWithJson :: [(PackageName, Text)]
-      packagePathsWithJson = map (\line -> let (x, y) = T.breakOn "_" line in (PackageName x, T.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
+      packagePathsWithJson = map (\line -> let (x, y) = Text.breakOn "_" line in (PackageName x, Text.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
 
       packagePathsWithDecoded :: [((PackageName, ConfigName), [JsonDep])]
       packagePathsWithDecoded = do

@@ -7,7 +7,7 @@ import Control.Effect.Diagnostics
 import Data.Bifunctor (first)
 import Data.Foldable (for_)
 import Data.List.NonEmpty qualified as NE
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.MultiKeyedMap qualified as MKM
 import DepTypes
 import Effect.Grapher
@@ -53,5 +53,5 @@ buildGraph lockfile =
               YL.FileRemoteNoIntegrity url -> [url]
               YL.GitRemote url rev -> [url <> "@" <> rev]
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }

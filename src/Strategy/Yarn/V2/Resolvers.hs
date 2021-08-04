@@ -30,9 +30,9 @@ module Strategy.Yarn.V2.Resolvers (
 import Control.Effect.Diagnostics
 import Data.Foldable (find)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Text.Extra (dropPrefix, showT)
 import Data.Void (Void)
 import Strategy.Yarn.V2.Lockfile
@@ -98,7 +98,7 @@ workspaceResolver :: Resolver
 workspaceResolver =
   Resolver
     { resolverName = "WorkspaceResolver"
-    , resolverSupportsLocator = (workspaceProtocol `T.isPrefixOf`) . locatorReference
+    , resolverSupportsLocator = (workspaceProtocol `Text.isPrefixOf`) . locatorReference
     , resolverLocatorToPackage =
         Right
           . WorkspacePackage
@@ -133,9 +133,9 @@ npmResolver :: Resolver
 npmResolver =
   Resolver
     { resolverName = "NpmResolver"
-    , resolverSupportsLocator = (npmProtocol `T.isPrefixOf`) . locatorReference
+    , resolverSupportsLocator = (npmProtocol `Text.isPrefixOf`) . locatorReference
     , resolverLocatorToPackage = \loc ->
-        Right $ NpmPackage (locatorScope loc) (locatorName loc) (T.takeWhile (/= ':') (dropPrefix npmProtocol (locatorReference loc)))
+        Right $ NpmPackage (locatorScope loc) (locatorName loc) (Text.takeWhile (/= ':') (dropPrefix npmProtocol (locatorReference loc)))
     }
 
 ---------- GitResolver
@@ -160,7 +160,7 @@ gitResolver :: Resolver
 gitResolver =
   Resolver
     { resolverName = "GitResolver"
-    , resolverSupportsLocator = ("commit=" `T.isInfixOf`) . locatorReference
+    , resolverSupportsLocator = ("commit=" `Text.isInfixOf`) . locatorReference
     , resolverLocatorToPackage = gitResolverLocatorToPackage
     }
 
@@ -176,17 +176,17 @@ gitResolverLocatorToPackage loc = do
 
   commit <-
     tag ("Couldn't find commit in git metadata: " <> showT metaMap) $
-      M.lookup "commit" metaMap
+      Map.lookup "commit" metaMap
 
   Right $ GitPackage url commit
 
 tag :: a -> Maybe b -> Either a b
 tag a = maybe (Left a) Right
 
--- | T.splitOn, but only expects to split once
+-- | Text.splitOn, but only expects to split once
 splitSingle :: Text -> Text -> Maybe (Text, Text)
 splitSingle needle txt =
-  case T.splitOn needle txt of
+  case Text.splitOn needle txt of
     [a, b] -> pure (a, b)
     _ -> Nothing
 
@@ -194,7 +194,7 @@ splitSingle needle txt =
 --
 -- The metadata string is formatted as "key1=foo&key2=bar&key3=baz"
 parseGitMetadata :: Text -> Maybe (Map Text Text)
-parseGitMetadata = fmap M.fromList . traverse (splitSingle "=") . T.splitOn "&"
+parseGitMetadata = fmap Map.fromList . traverse (splitSingle "=") . Text.splitOn "&"
 
 ---------- TarResolver
 
@@ -276,6 +276,6 @@ unsupportedResolver :: Text -> Text -> (Text -> Package) -> Resolver
 unsupportedResolver name protocol constructor =
   Resolver
     { resolverName = name
-    , resolverSupportsLocator = (protocol `T.isPrefixOf`) . locatorReference
+    , resolverSupportsLocator = (protocol `Text.isPrefixOf`) . locatorReference
     , resolverLocatorToPackage = Right . constructor . dropPrefix protocol . locatorReference
     }

@@ -5,7 +5,7 @@ module Conda.CondaListSpec (
 import Control.Carrier.Diagnostics
 import Data.Aeson
 import Data.ByteString qualified as BS
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import DepTypes
 import Effect.Grapher
 import Graphing (Graphing)
@@ -22,7 +22,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "1.78")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
   direct $
     Dependency
@@ -31,7 +31,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "1.0")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
   direct $
     Dependency
@@ -40,7 +40,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "2021.1.19")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
 
 spec :: Spec

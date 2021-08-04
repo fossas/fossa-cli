@@ -13,7 +13,7 @@ import Control.Effect.Diagnostics
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import DepTypes
 import Effect.Exec
@@ -71,7 +71,7 @@ analyze' file = graphingGolang $ do
   pure ()
 
 buildGraph :: Has GolangGrapher sig m => Gopkg -> m ()
-buildGraph = void . M.traverseWithKey go . resolve
+buildGraph = void . Map.traverseWithKey go . resolve
   where
     go :: Has GolangGrapher sig m => Text -> PkgConstraint -> m ()
     go name PkgConstraint{..} = do
@@ -92,7 +92,7 @@ resolve :: Gopkg -> Map Text PkgConstraint -- Map Package (Maybe Version)
 resolve gopkg = overridden
   where
     overridden = foldr inserting constraints (pkgOverrides gopkg)
-    constraints = foldr inserting M.empty (pkgConstraints gopkg)
+    constraints = foldr inserting Map.empty (pkgConstraints gopkg)
 
     inserting :: PkgConstraint -> Map Text PkgConstraint -> Map Text PkgConstraint
-    inserting constraint = M.insert (constraintName constraint) constraint
+    inserting constraint = Map.insert (constraintName constraint) constraint

@@ -9,7 +9,7 @@ module Strategy.Conda.CondaList (
 
 import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Data.Aeson
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Effect.Exec
 import Graphing (Graphing, fromList)
@@ -36,7 +36,7 @@ buildGraph deps = Graphing.fromList (map toDependency deps)
         , dependencyVersion = CEq <$> listVersion
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }
 
 analyze ::

@@ -12,10 +12,10 @@ import Data.List ((\\))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.Semigroup (sconcat)
-import Data.Set qualified as S
+import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty, toSet)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as Text
 import Data.Void (Void)
 import Path (Dir, Path, Rel, isProperPrefixOf, parseRelDir)
 import Text.Megaparsec (
@@ -52,8 +52,8 @@ filterFoundTargets :: FilterResult -> FoundTargets -> Maybe FoundTargets
 filterFoundTargets ResultNone _ = Nothing
 filterFoundTargets _ ProjectWithoutTargets = Just ProjectWithoutTargets
 filterFoundTargets ResultAll targets = Just targets
-filterFoundTargets (ResultInclude found) (FoundTargets targets) = FoundTargets <$> nonEmpty (S.intersection (toSet targets) $ S.fromList $ NE.toList found)
-filterFoundTargets (ResultExclude found) (FoundTargets targets) = FoundTargets <$> nonEmpty (S.difference (toSet targets) $ S.fromList $ NE.toList found)
+filterFoundTargets (ResultInclude found) (FoundTargets targets) = FoundTargets <$> nonEmpty (Set.intersection (toSet targets) $ Set.fromList $ NE.toList found)
+filterFoundTargets (ResultExclude found) (FoundTargets targets) = FoundTargets <$> nonEmpty (Set.difference (toSet targets) $ Set.fromList $ NE.toList found)
 
 -- (buildTargetFilters-only `union` pathFilters-only)
 --   `subtract` (buildTargetFilters-exclude `union` pathFilters-exclude)
@@ -130,7 +130,7 @@ targetFilterParser = (try targetFilter <|> try projectFilter <|> typeFilter) <* 
     typeFilter = TypeTarget <$> buildtool
 
     buildtool :: Parser Text
-    buildtool = Text.pack <$> some alphaNumChar
+    buildtool = toText <$> some alphaNumChar
 
     path :: Parser (Path Rel Dir)
     path = do

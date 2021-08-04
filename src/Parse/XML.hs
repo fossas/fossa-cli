@@ -68,9 +68,10 @@ import Control.Carrier.Error.Either
 import Control.Carrier.NonDet.Church
 import Control.Carrier.Reader
 import Data.Functor.Identity (Identity)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
-import Data.Text qualified as T
+import Data.String.Conversion (toText)
+import Data.Text qualified as Text
 import Text.XML.Light qualified as XML
 
 -- | A type that can be converted from XML
@@ -84,15 +85,15 @@ class FromXML a where
 instance FromXML XML.Element where
   parseElement = pure
 
-instance FromXML T.Text where
+instance FromXML Text.Text where
   parseElement = content
 
-instance FromXML v => FromXML (M.Map T.Text v) where
-  parseElement el = M.fromList <$> traverse mkSingle (XML.elChildren el)
+instance FromXML v => FromXML (Map.Map Text.Text v) where
+  parseElement el = Map.fromList <$> traverse mkSingle (XML.elChildren el)
     where
       mkSingle e = do
-        let key :: T.Text
-            key = T.pack (XML.qName (XML.elName e))
+        let key :: Text.Text
+            key = toText (XML.qName (XML.elName e))
         value <- parseElement e
         pure (key, value)
 
@@ -114,30 +115,30 @@ data ParseError
     ParseElementMissing ParsePath String
   | -- | An 'attr' was missing
     ParseAttrMissing ParsePath String
-  | -- | The input 'T.Text' didn't contain valid XML
+  | -- | The input 'Text.Text' didn't contain valid XML
     ParseXMLDocFailed
   | -- | A custom error, likely invoked via 'fail'
     UnknownError ParsePath String
   deriving (Eq, Ord, Show)
 
--- | Pretty-print a ParseError into strict 'T.Text'
-xmlErrorPretty :: ParseError -> T.Text
+-- | Pretty-print a ParseError into strict 'Text.Text'
+xmlErrorPretty :: ParseError -> Text.Text
 xmlErrorPretty = \case
-  ParseElementMissing path childName -> "Missing child at " <> renderPath path <> "; childName: " <> T.pack childName
-  ParseAttrMissing path attrName -> "Missing attribute at " <> renderPath path <> "; attrName: " <> T.pack attrName
-  UnknownError path err -> "UnknownError at " <> renderPath path <> "; err: " <> T.pack err
+  ParseElementMissing path childName -> "Missing child at " <> renderPath path <> "; childName: " <> toText childName
+  ParseAttrMissing path attrName -> "Missing attribute at " <> renderPath path <> "; attrName: " <> toText attrName
+  UnknownError path err -> "UnknownError at " <> renderPath path <> "; err: " <> toText err
   ParseXMLDocFailed -> "parseXMLDoc failed"
 
--- | Render a ParsePath as 'T.Text'
-renderPath :: ParsePath -> T.Text
+-- | Render a ParsePath as 'Text.Text'
+renderPath :: ParsePath -> Text.Text
 renderPath [] = "[no path]"
-renderPath xs = (\path -> "[" <> path <> "]") . T.intercalate "." . map T.pack . reverse $ xs
+renderPath xs = (\path -> "[" <> path <> "]") . Text.intercalate "." . map toText . reverse $ xs
 
 -- | Reversed parse path. As we parse into elements, we /prepend/ them to this list
 type ParsePath = [String]
 
--- | Parse a 'FromXML' value from a strict 'T.Text'
-parseXML :: FromXML a => T.Text -> Either ParseError a
+-- | Parse a 'FromXML' value from a strict 'Text.Text'
+parseXML :: FromXML a => Text.Text -> Either ParseError a
 parseXML inp =
   case XML.parseXMLDoc inp of
     Nothing -> Left ParseXMLDocFailed
@@ -153,11 +154,11 @@ parseXML inp =
 -- this would succeed:
 --
 -- > (,) <$> attr "attrOne" el <*> attr "attrTwo" el
-attr :: String -> XML.Element -> Parser T.Text
+attr :: String -> XML.Element -> Parser Text.Text
 attr attrName el =
   case XML.findAttrBy (\elName -> XML.qName elName == attrName) el of
     Nothing -> Parser $ ask >>= \path -> throwError (ParseAttrMissing path attrName)
-    Just a -> pure (T.pack a)
+    Just a -> pure (toText a)
 
 -- | Find a child of an XML Element by its name. This will fail if a child with
 -- the given name does not exist
@@ -194,8 +195,8 @@ children name = traverse (subparse name) . XML.filterChildrenName (\elName -> XM
 -- > <foo>bar baz quux</foo>
 --
 -- @content el@ would produce "bar baz quux"
-content :: XML.Element -> Parser T.Text
-content = pure . T.pack . XML.strContent
+content :: XML.Element -> Parser Text.Text
+content = pure . toText . XML.strContent
 
 -- | Helper function to default an optional field to a specific value
 --

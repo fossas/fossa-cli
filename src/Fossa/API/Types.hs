@@ -20,11 +20,11 @@ import Data.Aeson
 import Data.Coerce (coerce)
 import Data.List.Extra ((!?))
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (encodeUtf8)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Text.Prettyprint.Doc
 import Network.HTTP.Req
 import Text.URI (URI, render)
@@ -189,7 +189,7 @@ renderedIssues issues = rendered
     issuesList = issuesIssues issues
 
     categorize :: Ord k => (v -> k) -> [v] -> Map k [v]
-    categorize f = M.fromListWith (++) . map (\v -> (f v, [v]))
+    categorize f = Map.fromListWith (++) . map (\v -> (f v, [v]))
 
     issuesByType :: Map IssueType [Issue]
     issuesByType = categorize issueType issuesList
@@ -201,7 +201,7 @@ renderedIssues issues = rendered
     rendered :: Doc ann
     rendered =
       vsep
-        [renderSection issueType rawIssues | (issueType, rawIssues) <- M.toList issuesByType]
+        [renderSection issueType rawIssues | (issueType, rawIssues) <- Map.toList issuesByType]
 
     renderHeader :: IssueType -> Doc ann
     renderHeader ty =
@@ -223,7 +223,7 @@ renderedIssues issues = rendered
         format :: Text -> Doc ann
         format = fill padding . pretty
 
-        locatorSplit = T.split (\c -> c == '$' || c == '+') (issueRevisionId issue)
+        locatorSplit = Text.split (\c -> c == '$' || c == '+') (issueRevisionId issue)
 
         name = fromMaybe (issueRevisionId issue) (locatorSplit !? 1)
         revision = fromMaybe "" (locatorSplit !? 2)

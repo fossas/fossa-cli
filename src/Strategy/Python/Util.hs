@@ -11,9 +11,9 @@ module Strategy.Python.Util (
 import Control.Monad (join)
 import Data.Char qualified as C
 import Data.Foldable (asum)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Void (Void)
 import DepTypes
 import Graphing (Graphing)
@@ -32,7 +32,7 @@ buildGraph = Graphing.fromList . map toDependency
         , dependencyVersion = depVersion req
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = maybe M.empty toTags (depMarker req)
+        , dependencyTags = maybe Map.empty toTags (depMarker req)
         }
 
     depName (NameReq nm _ _ _) = nm
@@ -46,8 +46,8 @@ buildGraph = Graphing.fromList . map toDependency
 
 -- we pull out tags naively. we don't respect and/or semantics, and ignore operators
 -- FUTURE: more useful tagging? in particular: only pull out sys_platform?
-toTags :: Marker -> M.Map Text [Text]
-toTags = M.fromListWith (++) . map (\(a, b) -> (a, [b])) . go
+toTags :: Marker -> Map.Map Text [Text]
+toTags = Map.fromListWith (++) . map (\(a, b) -> (a, [b])) . go
   where
     go (MarkerAnd a b) = go a ++ go b
     go (MarkerOr a b) = go a ++ go b
@@ -139,7 +139,7 @@ requirementParser = specification
           <|> OpGt <$ string ">"
 
     version = label "version" $ whitespace *> some (letterOrDigit <|> oneOf ['-', '_', '.', '*', '+', '!'])
-    version_one = label "version_one" $ Version <$> version_cmp <*> (T.pack <$> version) <* whitespace
+    version_one = label "version_one" $ Version <$> version_cmp <*> (toText <$> version) <* whitespace
     version_many = label "version_many" $ version_one `sepBy1` (whitespace *> char ',')
     versionspec = label "versionspec" $ between (char '(') (char ')') version_many <|> version_many
     urlspec = label "urlspec" $ char '@' *> whitespace *> URI.parser
@@ -183,7 +183,7 @@ requirementParser = specification
           , "extra"
           ]
     marker_var :: Parser Text
-    marker_var = label "marker_var" $ whitespace *> (env_var <|> fmap T.pack python_str)
+    marker_var = label "marker_var" $ whitespace *> (env_var <|> fmap toText python_str)
     marker_expr =
       label "marker_expr" $
         MarkerExpr <$> marker_var <*> marker_op <*> marker_var
@@ -211,11 +211,11 @@ requirementParser = specification
             lod <- letterOrDigit
             pure (special ++ [lod])
     identifier = label "identifier" $ (:) <$> letterOrDigit <*> (concat <$> many identifier_end)
-    name = label "name" $ T.pack <$> identifier
+    name = label "name" $ toText <$> identifier
     extras_list :: Parser [Text]
     extras_list =
       label "extras_list" $
-        (T.pack <$> identifier)
+        (toText <$> identifier)
           `sepBy` (whitespace *> char ',' <* whitespace)
     extras = label "extras" $ char '[' *> whitespace *> optional extras_list <* whitespace <* char ']'
 

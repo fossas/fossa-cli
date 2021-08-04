@@ -9,7 +9,7 @@ module Strategy.Node.PackageJson (
 import Control.Effect.Diagnostics
 import Data.Aeson
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Text (Text)
 import DepTypes
@@ -26,8 +26,8 @@ data PackageJson = PackageJson
 
 instance FromJSON PackageJson where
   parseJSON = withObject "PackageJson" $ \obj ->
-    PackageJson <$> obj .:? "dependencies" .!= M.empty
-      <*> obj .:? "devDependencies" .!= M.empty
+    PackageJson <$> obj .:? "dependencies" .!= Map.empty
+      <*> obj .:? "devDependencies" .!= Map.empty
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze' file = do
@@ -48,8 +48,8 @@ newtype NodePackageLabel = NodePackageEnv DepEnvironment
 
 buildGraph :: PackageJson -> Graphing Dependency
 buildGraph PackageJson{..} = run . withLabeling toDependency $ do
-  _ <- M.traverseWithKey (addDep EnvProduction) packageDeps
-  _ <- M.traverseWithKey (addDep EnvDevelopment) packageDevDeps
+  _ <- Map.traverseWithKey (addDep EnvProduction) packageDeps
+  _ <- Map.traverseWithKey (addDep EnvDevelopment) packageDevDeps
   pure ()
   where
     addDep :: Has NodeGrapher sig m => DepEnvironment -> Text -> Text -> m ()
@@ -73,5 +73,5 @@ buildGraph PackageJson{..} = run . withLabeling toDependency $ do
         , dependencyVersion = Just (CCompatible pkgConstraint)
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }

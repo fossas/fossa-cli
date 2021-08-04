@@ -21,9 +21,8 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Kind
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
-import Data.String.Conversion (encodeUtf8)
-import Data.Text qualified as T
+import Data.Map.Strict qualified as Map
+import Data.String.Conversion (encodeUtf8, toString)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as LText
 import Data.Text.Lazy qualified as TL
@@ -56,7 +55,7 @@ instance (Member e sig, Has (Lift IO) sig m, Replayable (e m)) => Algebra (e :+:
         mapping <- ask @(Map Value Value)
         let eff' = unsafeCoerce eff :: e m a
         let keyVal = recordKey eff'
-        case M.lookup keyVal mapping >>= replay eff' of
+        case Map.lookup keyVal mapping >>= replay eff' of
           Nothing -> do
             -- TODO: log warnings on key miss
             res <- lift $ send eff'
@@ -106,7 +105,7 @@ instance {-# OVERLAPPABLE #-} ReplayableValue a => ReplayableValue [a] where
     traverse fromRecordedValue xs
 
 instance {-# OVERLAPPING #-} ReplayableValue [Char] where
-  fromRecordedValue = withText "String" (pure . T.unpack)
+  fromRecordedValue = withText "String" (pure . toString)
 
 instance (ReplayableValue a, ReplayableValue b) => ReplayableValue (Either a b) where
   fromRecordedValue = withObject "Either" $ \obj -> do
@@ -150,7 +149,7 @@ instance (ReplayableValue a, ReplayableValue b, ReplayableValue c, ReplayableVal
 ----- Additional instances
 
 instance ReplayableValue BS.ByteString where
-  fromRecordedValue = fmap (encodeUtf8 @T.Text) . parseJSON
+  fromRecordedValue = fmap (encodeUtf8 @Text.Text) . parseJSON
 
 instance ReplayableValue BL.ByteString where
   fromRecordedValue = fmap (encodeUtf8 @TL.Text) . parseJSON

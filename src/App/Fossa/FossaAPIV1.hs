@@ -41,8 +41,9 @@ import Data.ByteString.Char8 qualified as C
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Word (Word8)
 import Effect.Logger
 import Fossa.API.Types (ApiOpts, ArchiveComponents, Issues, SignedURL, signedURL, useApiOpts)
@@ -102,22 +103,22 @@ uploadUrl baseurl = baseurl /: "api" /: "builds" /: "custom"
 -- | This renders an organization + locator into a path piece for the fossa API
 renderLocatorUrl :: Int -> Locator -> Text
 renderLocatorUrl orgId Locator{..} =
-  locatorFetcher <> "+" <> T.pack (show orgId) <> "/" <> normalizeGitProjectName locatorProject <> "$" <> fromMaybe "" locatorRevision
+  locatorFetcher <> "+" <> toText (show orgId) <> "/" <> normalizeGitProjectName locatorProject <> "$" <> fromMaybe "" locatorRevision
 
 -- | The fossa backend treats http git locators in a specific way for the issues and builds endpoints.
 -- This normalizes a project name to conform to what the API expects
 normalizeGitProjectName :: Text -> Text
 normalizeGitProjectName project
-  | "http" `T.isPrefixOf` project = dropPrefix "http://" . dropPrefix "https://" . dropSuffix ".git" $ project
+  | "http" `Text.isPrefixOf` project = dropPrefix "http://" . dropPrefix "https://" . dropSuffix ".git" $ project
   | otherwise = project
   where
     -- like Text.stripPrefix, but with a non-Maybe result (defaults to the original text)
     dropPrefix :: Text -> Text -> Text
-    dropPrefix pre txt = fromMaybe txt (T.stripPrefix pre txt)
+    dropPrefix pre txt = fromMaybe txt (Text.stripPrefix pre txt)
 
     -- like Text.stripSuffix, but with a non-Maybe result (defaults to the original text)
     dropSuffix :: Text -> Text -> Text
-    dropSuffix suf txt = fromMaybe txt (T.stripSuffix suf txt)
+    dropSuffix suf txt = fromMaybe txt (Text.stripSuffix suf txt)
 
 data UploadResponse = UploadResponse
   { uploadLocator :: Text
@@ -326,7 +327,7 @@ archiveUpload signedArcURI arcFile = fossaReq $ do
   let arcURL = URI.mkURI $ signedURL signedArcURI
 
   uri <- fromMaybeText ("Invalid URL: " <> signedURL signedArcURI) arcURL
-  validatedURI <- fromMaybeText ("Invalid URI: " <> T.pack (show uri)) (useURI uri)
+  validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
 
   _ <- context "Uploading project archive" $ case validatedURI of
     Left (url, options) -> uploadArchiveRequest url options

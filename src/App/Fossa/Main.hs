@@ -57,8 +57,9 @@ import Data.Bool (bool)
 import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Foldable (for_)
 import Data.Functor.Extra ((<$$>))
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Discovery.Filters (AllFilters (..), FilterCombination (..), targetFilterParser)
 import Effect.Logger (
   Severity (SevDebug, SevInfo),
@@ -291,7 +292,7 @@ dieOnWindows :: String -> IO ()
 dieOnWindows op = when (SysInfo.os == windowsOsName) $ die $ "Operation is not supported on Windows: " <> op
 
 parseCommaSeparatedFileArg :: Text -> IO [Path Abs File]
-parseCommaSeparatedFileArg arg = sequence (validateFile . T.unpack <$> T.splitOn "," arg)
+parseCommaSeparatedFileArg arg = sequence (validateFile . toString <$> Text.splitOn "," arg)
 
 requireKey :: Maybe ApiKey -> IO ApiKey
 requireKey (Just key) = pure key
@@ -301,7 +302,7 @@ requireKey Nothing = die "A FOSSA API key is required to run this command"
 checkAPIKey :: Maybe Text -> IO (Maybe ApiKey)
 checkAPIKey key = case key of
   Just key' -> pure . Just $ ApiKey key'
-  Nothing -> ApiKey . T.pack <$$> lookupEnv "FOSSA_API_KEY"
+  Nothing -> ApiKey . toText <$$> lookupEnv "FOSSA_API_KEY"
 
 baseDirArg :: Parser String
 baseDirArg = argument str (metavar "DIR" <> help "Set the base directory for scanning (default: current directory)" <> value ".")
@@ -315,7 +316,7 @@ opts =
     <*> optional (strOption (long "revision" <> short 'r' <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
     <*> (commands <|> hiddenCommands)
-    <**> infoOption (T.unpack fullVersionDescription) (long "version" <> short 'V' <> help "show version text")
+    <**> infoOption (toString fullVersionDescription) (long "version" <> short 'V' <> help "show version text")
 
 commands :: Parser Command
 commands =
@@ -415,7 +416,7 @@ filterOpt :: Parser TargetFilter
 filterOpt = option (eitherReader parseFilter) (long "filter" <> help "(deprecated) Analysis-Target filters (default: none)" <> metavar "ANALYSIS-TARGET")
   where
     parseFilter :: String -> Either String TargetFilter
-    parseFilter = first errorBundlePretty . runParser targetFilterParser "stdin" . T.pack
+    parseFilter = first errorBundlePretty . runParser targetFilterParser "stdin" . toText
 
 monorepoOpts :: Parser MonorepoAnalysisOpts
 monorepoOpts =
@@ -426,7 +427,7 @@ pathOpt :: String -> Either String (Path Rel Dir)
 pathOpt = first show . parseRelDir
 
 targetOpt :: String -> Either String TargetFilter
-targetOpt = first errorBundlePretty . runParser targetFilterParser "stdin" . T.pack
+targetOpt = first errorBundlePretty . runParser targetFilterParser "stdin" . toText
 
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =

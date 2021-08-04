@@ -12,10 +12,10 @@ import Data.Char qualified as C
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes
 import Effect.Grapher
@@ -51,7 +51,7 @@ toDependency pkg = foldr applyLabel start
         , dependencyVersion = Nothing
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }
 
     applyLabel :: PodfileLabel -> Dependency -> Dependency
@@ -135,13 +135,13 @@ sectionParser :: Text -> ([a] -> Section) -> Parser a -> Parser Section
 sectionParser sectionName lambda parser = nonIndented $
   indentBlock $ do
     _ <- chunk sectionName
-    return (L.IndentMany Nothing (pure . lambda) parser)
+    pure (L.IndentMany Nothing (pure . lambda) parser)
 
 externalDepsParser :: Parser SourceDep
 externalDepsParser = indentBlock $ do
   name <- lexeme (takeWhileP (Just "external dep parser") (/= ':'))
   _ <- restOfLine
-  return (L.IndentMany Nothing (pure . SourceDep name . M.fromList) tagParser)
+  pure (L.IndentMany Nothing (pure . SourceDep name . Map.fromList) tagParser)
 
 tagParser :: Parser (Text, Text)
 tagParser = do
@@ -154,7 +154,7 @@ tagParser = do
 remoteParser :: Parser Remote
 remoteParser = indentBlock $ do
   location <- restOfLine
-  pure (L.IndentMany Nothing (pure . Remote (T.dropWhileEnd (== ':') location)) depParser)
+  pure (L.IndentMany Nothing (pure . Remote (Text.dropWhileEnd (== ':') location)) depParser)
 
 podParser :: Parser Pod
 podParser = indentBlock $ do

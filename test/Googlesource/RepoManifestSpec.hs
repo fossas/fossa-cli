@@ -6,8 +6,8 @@ module Googlesource.RepoManifestSpec (
 ) where
 
 import Control.Carrier.Diagnostics hiding (withResult)
-import Data.Map.Strict qualified as M
-import Data.Text qualified as T
+import Data.Map.Strict qualified as Map
+import Data.String.Conversion (toString)
 import Data.Text.IO qualified as TIO
 import DepTypes
 import Effect.ReadFS
@@ -120,7 +120,7 @@ dependencyOne =
     , dependencyName = "platform/art"
     , dependencyVersion = Just (CEq "refs/tags/android-10.0.0_r29")
     , dependencyLocations = ["https://android.googlesource.com/platform/art"]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     , dependencyEnvironments = [EnvProduction]
     }
 
@@ -131,7 +131,7 @@ dependencyTwo =
     , dependencyName = "platform/bionic"
     , dependencyVersion = Just (CEq "57b7d1574276f5e7f895c884df29f45859da74b6")
     , dependencyLocations = ["https://android.googlesource.com/platform/bionic"]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     , dependencyEnvironments = [EnvProduction]
     }
 
@@ -142,7 +142,7 @@ dependencyThree =
     , dependencyName = "platform/bootable/recovery"
     , dependencyVersion = Just (CEq "google/android-6.0.1_r74")
     , dependencyLocations = ["https://android.othersource.com/platform/bootable/recovery"]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     , dependencyEnvironments = [EnvProduction]
     }
 
@@ -153,7 +153,7 @@ dependencyFour =
     , dependencyName = "platform/cts"
     , dependencyVersion = Just (CEq "1111")
     , dependencyLocations = ["https://android.othersource.com/platform/cts"]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     , dependencyEnvironments = [EnvProduction]
     }
 
@@ -164,7 +164,7 @@ dependencyFive =
     , dependencyName = "platform/dalvik"
     , dependencyVersion = Just (CEq "refs/tags/android-10.0.0_r29")
     , dependencyLocations = ["https://android.googlesource.com/platform/dalvik"]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     , dependencyEnvironments = [EnvProduction]
     }
 
@@ -232,7 +232,7 @@ spec = do
             manifestProjects manifest `shouldMatchList` basicProjectList
             manifestDefault manifest `shouldBe` Just basicDefault
             manifestRemotes manifest `shouldMatchList` basicRemoteList
-          Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
+          Left err -> expectationFailure (toString ("could not parse repo manifest file: " <> xmlErrorPretty err))
 
     describe "for a manifest with no default remote" $
       it "reads a file and constructs a dependency list" $
@@ -240,7 +240,7 @@ spec = do
           Right manifest -> do
             manifestProjects manifest `shouldMatchList` [projectOne, projectTwoWithRemote, projectThree, projectFour, projectFive]
             manifestRemotes manifest `shouldMatchList` basicRemoteList
-          Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
+          Left err -> expectationFailure (toString ("could not parse repo manifest file: " <> xmlErrorPretty err))
 
     describe "for a manifest with no default revision" $
       it "reads a file and constructs a dependency list" $
@@ -248,7 +248,7 @@ spec = do
           Right manifest -> do
             manifestProjects manifest `shouldMatchList` basicProjectList
             manifestRemotes manifest `shouldMatchList` basicRemoteList
-          Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
+          Left err -> expectationFailure (toString ("could not parse repo manifest file: " <> xmlErrorPretty err))
 
   describe "repo manifest buildGraph" $ do
     describe "for a sane manifest" $
@@ -262,7 +262,7 @@ spec = do
             let vps = validateProject manifest <$> manifestProjects manifest
             vps `shouldMatchList` [Just validatedProjectOne, Just validatedProjectTwo, Just validatedProjectThree, Just validatedProjectFour, Just validatedProjectFive]
             expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour, dependencyFive] graph
-          Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
+          Left err -> expectationFailure (toString ("could not parse repo manifest file: " <> xmlErrorPretty err))
 
     describe "for a manifest with no default remote" $
       it "returns nothing for validateProject on a project with no remote attr" $
@@ -270,7 +270,7 @@ spec = do
           Right manifest -> do
             let vps = validateProject manifest <$> manifestProjects manifest
             vps `shouldMatchList` [Just validatedProjectOne, Just validatedProjectTwo, Just validatedProjectThree, Just validatedProjectFour, Nothing]
-          Left err -> expectationFailure (T.unpack ("could not parse repo manifest file: " <> xmlErrorPretty err))
+          Left err -> expectationFailure (toString ("could not parse repo manifest file: " <> xmlErrorPretty err))
 
     describe "for a manifest with no default revision" $
       it "finds the projects with remotes specified" $
@@ -278,7 +278,7 @@ spec = do
           Right manifest -> do
             let vps = validateProject manifest <$> manifestProjects manifest
             vps `shouldMatchList` [Nothing, Just validatedProjectTwo, Just validatedProjectThree, Just validatedProjectFour, Nothing]
-          Left err -> expectationFailure $ T.unpack $ "could not parse repo manifest file: " <> xmlErrorPretty err
+          Left err -> expectationFailure $ toString $ "could not parse repo manifest file: " <> xmlErrorPretty err
 
     let withResult result f =
           case result of

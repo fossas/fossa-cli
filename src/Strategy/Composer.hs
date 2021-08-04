@@ -9,7 +9,7 @@ import Control.Effect.Diagnostics hiding (fromMaybe)
 import Data.Aeson.Types
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Text (Text)
@@ -106,7 +106,7 @@ buildGraph lock = run . withLabeling toDependency $ do
     addDeps :: Has CompGrapher sig m => DepEnvironment -> CompDep -> m ()
     addDeps env dep = do
       let pkg = CompPkg (depName dep)
-      _ <- M.traverseWithKey (addEdge pkg) (fromMaybe M.empty $ depRequire dep)
+      _ <- Map.traverseWithKey (addEdge pkg) (fromMaybe Map.empty $ depRequire dep)
       label pkg (DepVersion $ depVersion dep)
       label pkg (CompEnv env)
       direct pkg
@@ -123,7 +123,7 @@ buildGraph lock = run . withLabeling toDependency $ do
           , dependencyVersion = Nothing
           , dependencyLocations = []
           , dependencyEnvironments = []
-          , dependencyTags = M.empty
+          , dependencyTags = Map.empty
           }
 
     addLabel :: CompLabel -> Dependency -> Dependency

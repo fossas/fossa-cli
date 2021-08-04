@@ -5,7 +5,7 @@ module Yarn.V2.LockfileSpec (
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
 import Control.Carrier.Diagnostics
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Yaml (decodeFileThrow)
 import DepTypes
 import GraphUtil
@@ -47,7 +47,7 @@ spec = do
 exampleLockfile :: YarnLockfile
 exampleLockfile =
   YarnLockfile $
-    M.fromList
+    Map.fromList
       [
         ( [Descriptor Nothing "toplevel" "workspace:."]
         , PackageDescription
@@ -182,7 +182,7 @@ underscoreFromGitDep =
     , dependencyVersion = Just (CEq "cbb48b79fc1205aa04feb03dbc055cdd28a12652")
     , dependencyEnvironments = []
     , dependencyLocations = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 underscoreFromNpmDep :: Dependency
@@ -193,5 +193,5 @@ underscoreFromNpmDep =
     , dependencyVersion = Just (CEq "1.13.1")
     , dependencyEnvironments = []
     , dependencyLocations = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }

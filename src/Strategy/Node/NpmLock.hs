@@ -12,7 +12,7 @@ import Data.Aeson
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Text (Text)
 import DepTypes
@@ -70,8 +70,8 @@ data NpmPackageLabel = NpmPackageEnv DepEnvironment | NpmPackageLocation Text
 
 buildGraph :: NpmPackageJson -> Graphing Dependency
 buildGraph packageJson = run . withLabeling toDependency $ do
-  _ <- M.traverseWithKey addDirect (packageDependencies packageJson)
-  _ <- M.traverseWithKey addDep (packageDependencies packageJson)
+  _ <- Map.traverseWithKey addDirect (packageDependencies packageJson)
+  _ <- Map.traverseWithKey addDep (packageDependencies packageJson)
   pure ()
   where
     addDirect :: Has NpmGrapher sig m => Text -> NpmDep -> m ()
@@ -91,13 +91,13 @@ buildGraph packageJson = run . withLabeling toDependency $ do
       case depRequires of
         Nothing -> pure ()
         Just required ->
-          void $ M.traverseWithKey (\reqName reqVer -> edge pkg (NpmPackage reqName reqVer)) required
+          void $ Map.traverseWithKey (\reqName reqVer -> edge pkg (NpmPackage reqName reqVer)) required
 
       -- add dependency nodes
       case depDependencies of
         Nothing -> pure ()
         Just deps ->
-          void $ M.traverseWithKey addDep deps
+          void $ Map.traverseWithKey addDep deps
 
     toDependency :: NpmPackage -> Set NpmPackageLabel -> Dependency
     toDependency pkg = foldr addLabel (start pkg)
@@ -114,5 +114,5 @@ buildGraph packageJson = run . withLabeling toDependency $ do
         , dependencyVersion = Just $ CEq pkgVersion
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }

@@ -9,10 +9,11 @@ module Strategy.Erlang.Rebar3Tree (
 ) where
 
 import Control.Effect.Diagnostics
-import Data.Map.Strict qualified as M
+import Control.Monad (void)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes
 import Effect.Exec
@@ -42,11 +43,11 @@ analyze' dir = do
 configFile :: Path Rel File
 configFile = $(mkRelFile "rebar.config")
 
-extractAliasLookup :: ConfigValues -> M.Map Text Text
-extractAliasLookup (ConfigValues erls) = foldr extract M.empty erls
+extractAliasLookup :: ConfigValues -> Map.Map Text Text
+extractAliasLookup (ConfigValues erls) = foldr extract Map.empty erls
   where
-    extract :: ErlValue -> M.Map Text Text -> M.Map Text Text
-    extract val aliasMap = aliasMap <> M.fromList (mapMaybe getAlias packages)
+    extract :: ErlValue -> Map.Map Text Text -> Map.Map Text Text
+    extract val aliasMap = aliasMap <> Map.fromList (mapMaybe getAlias packages)
       where
         packages :: [ErlValue]
         packages = case val of
@@ -59,13 +60,13 @@ extractAliasLookup (ConfigValues erls) = foldr extract M.empty erls
           ErlTuple [ErlAtom (AtomText realname), ErlTuple [ErlAtom (AtomText "pkg"), ErlAtom (AtomText alias)]] -> Just (realname, alias)
           _ -> Nothing
 
-unaliasDeps :: M.Map Text Text -> [Rebar3Dep] -> [Rebar3Dep]
+unaliasDeps :: Map.Map Text Text -> [Rebar3Dep] -> [Rebar3Dep]
 unaliasDeps aliasMap = map unalias
   where
     unalias :: Rebar3Dep -> Rebar3Dep
     unalias dep = changeName dep . lookupName aliasMap $ depName dep
-    lookupName :: M.Map Text Text -> Text -> Text
-    lookupName map' name = M.findWithDefault name name map'
+    lookupName :: Map.Map Text Text -> Text -> Text
+    lookupName map' name = Map.findWithDefault name name map'
     changeName :: Rebar3Dep -> Text -> Rebar3Dep
     changeName dep name = dep{depName = name}
 
@@ -74,12 +75,12 @@ buildGraph deps = unfold deps subDeps toDependency
   where
     toDependency Rebar3Dep{..} =
       Dependency
-        { dependencyType = if T.isInfixOf "github.com" depLocation then GitType else HexType
-        , dependencyName = if T.isInfixOf "github.com" depLocation then depLocation else depName
+        { dependencyType = if Text.isInfixOf "github.com" depLocation then GitType else HexType
+        , dependencyName = if Text.isInfixOf "github.com" depLocation then depLocation else depName
         , dependencyVersion = Just (CEq depVersion)
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }
 
 data Rebar3Dep = Rebar3Dep
@@ -102,7 +103,7 @@ rebar3TreeParser = concat <$> ((try (rebarDep 0) <|> ignoredLine) `sepBy` eol) <
 
     -- ignore content until the end of the line
     ignored :: Parser ()
-    ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
+    ignored = void $ takeWhileP (Just "ignored") (not . isEndLine)
 
     ignoredLine :: Parser [Rebar3Dep]
     ignoredLine = do

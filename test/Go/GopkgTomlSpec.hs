@@ -3,7 +3,7 @@ module Go.GopkgTomlSpec (
 ) where
 
 import Data.Function ((&))
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text.IO qualified as TIO
 import DepTypes
 import Effect.Grapher
@@ -66,7 +66,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "v3.0.0")
       , dependencyLocations = ["https://someotherlocation/"]
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
   direct $
     Dependency
@@ -75,7 +75,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "v1.0.0")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
   direct $
     Dependency
@@ -84,7 +84,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "overridebranch")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
   direct $
     Dependency
@@ -93,7 +93,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "branchname")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
 
 spec :: Spec

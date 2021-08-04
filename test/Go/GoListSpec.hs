@@ -11,7 +11,7 @@ import Control.Carrier.Diagnostics
 import Control.Carrier.Reader
 import Data.ByteString.Lazy qualified as BL
 import Data.Function ((&))
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import DepTypes
 import Effect.Exec
 import Effect.Grapher
@@ -42,7 +42,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "commithash")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
   direct $
     Dependency
@@ -51,7 +51,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "v2.0.0")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
 
 spec :: Spec

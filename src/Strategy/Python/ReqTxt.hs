@@ -4,6 +4,7 @@ module Strategy.Python.ReqTxt (
 ) where
 
 import Control.Effect.Diagnostics
+import Control.Monad (void)
 import Data.Foldable (asum)
 import Data.Text (Text)
 import Data.Void (Void)
@@ -43,7 +44,7 @@ reqParser =
 
     -- ignore content until the end of the line
     ignored :: Parser ()
-    ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine) <* takeWhileP (Just "end of line") isEndLine
+    ignored = void $ takeWhileP (Just "ignored") (not . isEndLine) <* takeWhileP (Just "end of line") isEndLine
 
     comment :: Parser ()
     comment = char '#' *> ignored

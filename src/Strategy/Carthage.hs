@@ -14,9 +14,10 @@ import Control.Effect.Diagnostics
 import Data.Char (isSpace)
 import Data.Foldable (for_, traverse_)
 import Data.Functor (void)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes
 import Discovery.Walk
@@ -109,7 +110,7 @@ analyze topPath = evalGrapher $ do
       ResolvedEntry ->
       m ()
     descend checkoutsDir entry = do
-      let checkoutName = T.unpack $ entryToCheckoutName entry
+      let checkoutName = toString $ entryToCheckoutName entry
 
       case parseRelDir checkoutName of
         Nothing -> pure ()
@@ -124,8 +125,8 @@ entryToCheckoutName :: ResolvedEntry -> Text
 entryToCheckoutName entry =
   case resolvedType entry of
     GitEntry -> resolvedName entry
-    -- this is safe because T.splitOn always returns a non-empty list
-    GithubType -> last . T.splitOn "/" $ resolvedName entry
+    -- this is safe because Text.splitOn always returns a non-empty list
+    GithubType -> last . Text.splitOn "/" $ resolvedName entry
     BinaryType -> resolvedName entry
 
 entryToDepName :: ResolvedEntry -> Text
@@ -141,7 +142,7 @@ toDependency entry =
     { dependencyType = CarthageType
     , dependencyName = entryToDepName entry
     , dependencyVersion = Just (CEq (resolvedVersion entry))
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     , dependencyEnvironments = []
     , dependencyLocations = [] -- TODO: git location?
     }
@@ -172,7 +173,7 @@ parseSingleEntry = L.nonIndented scn $ do
 
 word :: Parser Text
 word =
-  T.pack
+  toText
     <$> choice
       [ lexeme (char '\"' *> someTill (satisfy (not . isSpace)) (char '\"'))
       , lexeme (some (satisfy (not . isSpace)))

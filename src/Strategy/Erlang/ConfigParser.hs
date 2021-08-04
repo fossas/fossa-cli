@@ -23,8 +23,9 @@ module Strategy.Erlang.ConfigParser (
 import Data.Aeson.Types (ToJSON (toJSON))
 import Data.Char qualified as C
 import Data.Functor (($>))
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Void
 import GHC.Generics (Generic)
 import Text.Megaparsec
@@ -133,7 +134,7 @@ parseAtomText = AtomText <$> lexeme (rawAtom <|> quotedAtom)
     quotedAtom = enclosed "'" "'" $ takeWhile1P (Just "quoted Atom") (/= '\'')
     --
     rawAtom :: Parser Text
-    rawAtom = T.cons <$> firstChar <*> rawAtomTail
+    rawAtom = Text.cons <$> firstChar <*> rawAtomTail
     isRawAtomChar :: Char -> Bool
     isRawAtomChar c = C.isAlphaNum c || c == '_' || c == '@'
     firstChar :: Parser Char
@@ -145,7 +146,7 @@ parseErlArray :: Parser ErlValue
 parseErlArray = ErlArray <$> enclosed "[" "]" (parseErlValue `sepBy` symbol ",")
 
 parseErlString :: Parser ErlValue
-parseErlString = ErlString . T.pack . concat <$> some (lexeme quotedString)
+parseErlString = ErlString . toText . concat <$> some (lexeme quotedString)
 
 quotedString :: Parser String
 quotedString = char '\"' >> manyTill L.charLiteral (char '\"')

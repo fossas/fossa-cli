@@ -19,8 +19,8 @@ import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.FileEmbed (embedFile)
 import Data.Functor (void)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Effect.Exec
 import Effect.ReadFS
 import Path
@@ -78,7 +78,7 @@ mavenInstallPluginCmd pluginFilePath =
         , "-DartifactId=" <> pluginArtifact
         , "-Dversion=" <> pluginVersion
         , "-Dpackaging=jar"
-        , "-Dfile=" <> T.pack pluginFilePath
+        , "-Dfile=" <> toText pluginFilePath
         ]
     , cmdAllowErr = Never
     }

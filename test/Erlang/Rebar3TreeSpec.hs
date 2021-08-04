@@ -2,7 +2,7 @@ module Erlang.Rebar3TreeSpec (
   spec,
 ) where
 
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text.IO qualified as TIO
 import Text.Megaparsec
 
@@ -21,7 +21,7 @@ dependencyOne =
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyTwo :: Dependency
@@ -32,7 +32,7 @@ dependencyTwo =
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 dependencyThree :: Dependency
 dependencyThree =
@@ -42,7 +42,7 @@ dependencyThree =
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyFour :: Dependency
@@ -53,7 +53,7 @@ dependencyFour =
     , dependencyVersion = Just (CEq "4.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyFive :: Dependency
@@ -64,7 +64,7 @@ dependencyFive =
     , dependencyVersion = Just (CEq "5.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 depOne :: Rebar3Dep

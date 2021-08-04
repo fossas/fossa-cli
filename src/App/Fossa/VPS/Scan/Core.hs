@@ -14,7 +14,8 @@ import Control.Carrier.Trace.Printing
 import Control.Effect.Diagnostics
 import Control.Effect.Lift (Lift)
 import Data.Aeson
-import Data.Text (Text, pack)
+import Data.String.Conversion (toText)
+import Data.Text (Text)
 import Fossa.API.Types (ApiOpts (..), useApiOpts)
 import Network.HTTP.Req
 import Prelude
@@ -35,7 +36,7 @@ instance FromJSON SherlockInfo where
 newtype Locator = Locator {unLocator :: Text}
 
 createLocator :: Text -> Int -> Locator
-createLocator projectName organizationId = Locator $ "custom+" <> pack (show organizationId) <> "/" <> projectName
+createLocator projectName organizationId = Locator $ "custom+" <> toText (show organizationId) <> "/" <> projectName
 
 newtype RevisionLocator = RevisionLocator {unRevisionLocator :: Text}
 

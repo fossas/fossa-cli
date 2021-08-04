@@ -20,11 +20,12 @@ import Data.Aeson.Types
 import Data.Foldable (for_)
 import Data.List (isSuffixOf)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Set (Set)
-import Data.Set qualified as S
+import Data.Set qualified as Set
+import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
@@ -73,12 +74,12 @@ instance FromJSON InstallPlan where
       <*> obj .: "id"
       <*> obj .: "pkg-name"
       <*> obj .: "pkg-version"
-      <*> (obj .:? "depends" .!= S.empty)
+      <*> (obj .:? "depends" .!= Set.empty)
       <*> (obj .:? "style" >>= traverse parsePlanStyle)
-      <*> fmap mergeComponents (obj .:? "components" .!= M.empty)
+      <*> fmap mergeComponents (obj .:? "components" .!= Map.empty)
 
 mergeComponents :: Map Text Component -> Set PlanId
-mergeComponents mapA = S.unions . map componentDeps $ M.elems mapA
+mergeComponents mapA = Set.unions . map componentDeps $ Map.elems mapA
 
 installPlanDepends :: InstallPlan -> Set PlanId
 installPlanDepends InstallPlan{..} = planComponents <> planDepends
@@ -87,16 +88,16 @@ isDirectDep :: InstallPlan -> Bool
 isDirectDep InstallPlan{..} = planStyle == Just Local && planType == Configured
 
 parsePlanStyle :: MonadFail f => Text -> f PlanStyle
-parsePlanStyle style = case T.toLower style of
+parsePlanStyle style = case Text.toLower style of
   "global" -> pure Global
   "local" -> pure Local
-  _ -> fail $ "unknown install plan style" ++ T.unpack style
+  _ -> fail $ "unknown install plan style" ++ toString style
 
 parsePlanType :: MonadFail m => Text -> m PlanType
-parsePlanType typ = case T.toLower typ of
+parsePlanType typ = case Text.toLower typ of
   "configured" -> pure Configured
   "pre-existing" -> pure PreExisting
-  _ -> fail $ "unknown install plan type" ++ T.unpack typ
+  _ -> fail $ "unknown install plan type" ++ toString typ
 
 cabalGenPlanCmd :: Command
 cabalGenPlanCmd =
@@ -182,7 +183,7 @@ toDependency plan =
     , dependencyVersion = Just $ CEq $ planVersion plan
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 analyze :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency, GraphBreadth)

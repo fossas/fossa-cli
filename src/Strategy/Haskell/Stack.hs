@@ -14,9 +14,9 @@ import Control.Effect.Diagnostics
 import Control.Monad (when)
 import Data.Aeson.Types
 import Data.Foldable (for_)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
+import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
@@ -56,7 +56,7 @@ parseLocationType :: MonadFail m => Text -> m StackLocation
 parseLocationType txt
   | txt == "hackage" = pure Remote
   | txt `elem` ["project package", "archive"] = pure Local
-  | otherwise = fail $ "Bad location type: " ++ T.unpack txt
+  | otherwise = fail $ "Bad location type: " ++ toString txt
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = context "Stack" $ do
@@ -125,7 +125,7 @@ toDependency dep =
     , dependencyVersion = Just $ CEq $ stackVersion dep
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 buildGraph :: Has Diagnostics sig m => [StackDep] -> m (G.Graphing Dependency)

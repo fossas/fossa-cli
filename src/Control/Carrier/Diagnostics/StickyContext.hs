@@ -14,7 +14,7 @@ import Control.Effect.Sum (Member (inj))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Class (MonadTrans (..))
 import Data.List (intersperse)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Effect.Logger
 
 stickyDiag :: (Has AtomicCounter sig m, Has (Lift IO) sig m) => StickyDiagC m a -> m a
@@ -25,7 +25,7 @@ stickyDiag act = do
 
 data StickyCtx = StickyCtx
   { ctxTaskId :: TaskId
-  , ctxBacktrace :: [T.Text]
+  , ctxBacktrace :: [Text.Text]
   , ctxRegion :: Sticky.StickyRegion
   }
 

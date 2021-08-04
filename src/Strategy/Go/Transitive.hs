@@ -17,10 +17,10 @@ import Data.Attoparsec.ByteString qualified as A
 import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (traverse_)
 import Data.Functor (void)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Maybe qualified as Maybe
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Vector qualified as V
 import Effect.Exec
 import Effect.Grapher
@@ -111,7 +111,7 @@ fillInTransitive ::
 fillInTransitive dir = context "Getting deep dependencies" $ do
   goListOutput <- execThrow dir goListCmd
   case decodeMany goListOutput of
-    Left (path, err) -> fatal (CommandParseError goListCmd (T.pack (formatError path err)))
+    Left (path, err) -> fatal (CommandParseError goListCmd (toText (formatError path err)))
     Right (packages :: [Package]) -> context "Adding transitive dependencies" $ graphTransitive (normalizeImportsToModules packages)
 
 -- HACK(fossas/team-analysis#514) `go list -json all` emits golang dependencies
@@ -129,11 +129,11 @@ normalizeImportsToModules packages = map normalizeSingle packages
 
     -- If a package doesn't have an associated module, use the package name instead
     replaceImport :: Text -> Text
-    replaceImport package = Maybe.fromMaybe package (M.lookup package packageNameToModule)
+    replaceImport package = Maybe.fromMaybe package (Map.lookup package packageNameToModule)
 
-    packageNameToModule :: M.Map Text Text
+    packageNameToModule :: Map.Map Text Text
     packageNameToModule =
-      M.fromList
+      Map.fromList
         [ (packageImportPath package, modPath gomod)
         | package <- packages
         , Just gomod <- [packageModule package]

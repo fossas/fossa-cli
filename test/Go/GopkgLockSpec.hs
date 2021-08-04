@@ -3,7 +3,7 @@ module Go.GopkgLockSpec (
 ) where
 
 import Data.Function ((&))
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text.IO qualified as TIO
 import DepTypes
 import Effect.Grapher
@@ -41,7 +41,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
   direct $
     Dependency
@@ -50,7 +50,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "12345")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
   direct $
     Dependency
@@ -59,7 +59,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "12345")
       , dependencyLocations = ["https://someotherlocation/"]
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
 
 spec :: Spec

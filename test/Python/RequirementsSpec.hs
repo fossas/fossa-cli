@@ -3,7 +3,7 @@ module Python.RequirementsSpec (
 ) where
 
 import Data.Foldable (traverse_)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import DepTypes
@@ -42,7 +42,7 @@ depOne =
     , dependencyVersion = Just (CEq "1.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 depTwo :: Dependency
@@ -53,7 +53,7 @@ depTwo =
     , dependencyVersion = Just (CLessOrEq "2.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 depThree :: Dependency
@@ -64,7 +64,7 @@ depThree =
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 depFour :: Dependency
@@ -75,7 +75,7 @@ depFour =
     , dependencyVersion = Just (CEq "4.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 spec :: T.Spec

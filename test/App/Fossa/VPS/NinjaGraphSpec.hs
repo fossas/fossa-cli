@@ -6,7 +6,6 @@ import App.Fossa.VPS.NinjaGraph
 import App.Fossa.VPS.Types
 import Control.Carrier.Diagnostics
 import Data.List qualified as List
-import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Text.IO qualified as TIO
 import Test.Hspec
@@ -158,17 +157,17 @@ spec = do
     it "parses a small ninja deps file and generates a dependency graph" $ do
       eitherScanned <- runDiagnostics $ scanNinjaDeps (encodeUtf8 smallNinjaDeps)
       case eitherScanned of
-        Left _ -> expectationFailure (T.unpack "could not parse ninja deps")
+        Left _ -> expectationFailure "could not parse ninja deps"
         Right scanned -> scanned `shouldMatchList` smallNinjaDepsTargets
 
   describe "scanNinjaDeps for a ninja deps file with weird targets" $ do
     it "finds the correct input for a target where the first dependency is a txt file" $ do
       eitherScanned <- runDiagnostics $ scanNinjaDeps (encodeUtf8 weirdNinjaDeps)
       case eitherScanned of
-        Left _ -> expectationFailure (T.unpack "could not parse ninja deps")
+        Left _ -> expectationFailure "could not parse ninja deps"
         Right scanned -> List.head scanned `shouldBe` targetWithFirstLevelWeirdnessFix
     it "finds the correct input for a target where the first and second dependencies are txt files" $ do
       eitherScanned <- runDiagnostics $ scanNinjaDeps (encodeUtf8 weirdNinjaDeps)
       case eitherScanned of
-        Left _ -> expectationFailure (T.unpack "could not parse ninja deps")
+        Left _ -> expectationFailure "could not parse ninja deps"
         Right scanned -> (scanned List.!! 1) `shouldBe` targetWithSecondLevelWeirdnessFix

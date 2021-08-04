@@ -15,9 +15,9 @@ module Strategy.Cargo (
 import Control.Effect.Diagnostics
 import Data.Aeson.Types
 import Data.Foldable (for_, traverse_)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Set (Set)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
@@ -31,32 +31,32 @@ newtype CargoLabel
   deriving (Eq, Ord, Show)
 
 data PackageId = PackageId
-  { pkgIdName :: T.Text
-  , pkgIdVersion :: T.Text
-  , pkgIdSource :: T.Text
+  { pkgIdName :: Text.Text
+  , pkgIdVersion :: Text.Text
+  , pkgIdSource :: Text.Text
   }
   deriving (Eq, Ord, Show)
 
 data PackageDependency = PackageDependency
-  { pkgDepName :: T.Text
-  , pkgDepReq :: T.Text
-  , pkgDepKind :: Maybe T.Text
+  { pkgDepName :: Text.Text
+  , pkgDepReq :: Text.Text
+  , pkgDepKind :: Maybe Text.Text
   }
   deriving (Eq, Ord, Show)
 
 data Package = Package
-  { pkgName :: T.Text
-  , pkgVersion :: T.Text
+  { pkgName :: Text.Text
+  , pkgVersion :: Text.Text
   , pkgId :: PackageId
-  , pkgLicense :: Maybe T.Text
-  , pkgLicenseFile :: Maybe T.Text
+  , pkgLicense :: Maybe Text.Text
+  , pkgLicenseFile :: Maybe Text.Text
   , pkgDependencies :: [PackageDependency]
   }
   deriving (Eq, Ord, Show)
 
 data NodeDepKind = NodeDepKind
-  { nodeDepKind :: Maybe T.Text
-  , nodeDepTarget :: Maybe T.Text
+  { nodeDepKind :: Maybe Text.Text
+  , nodeDepTarget :: Maybe Text.Text
   }
   deriving (Eq, Ord, Show)
 
@@ -198,7 +198,7 @@ toDependency pkg =
       , dependencyVersion = Just $ CEq $ pkgIdVersion pkg
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
   where
     applyLabel :: CargoLabel -> Dependency -> Dependency
@@ -208,7 +208,7 @@ toDependency pkg =
 -- Null refers to productions, while dev and build refer to development-time dependencies
 -- Cargo does not differentiate test dependencies and dev dependencies,
 -- so we just simplify it to Development.
-kindToLabel :: Maybe T.Text -> CargoLabel
+kindToLabel :: Maybe Text.Text -> CargoLabel
 kindToLabel (Just _) = CargoDepKind EnvDevelopment
 kindToLabel Nothing = CargoDepKind EnvProduction
 
@@ -230,8 +230,8 @@ buildGraph meta = stripRoot $
     traverse_ direct $ metadataWorkspaceMembers meta
     traverse_ addEdge $ resolvedNodes $ metadataResolve meta
 
-parsePkgId :: T.Text -> Parser PackageId
+parsePkgId :: Text.Text -> Parser PackageId
 parsePkgId t =
-  case T.splitOn " " t of
+  case Text.splitOn " " t of
     [a, b, c] -> pure $ PackageId a b c
     _ -> fail "malformed Package ID"

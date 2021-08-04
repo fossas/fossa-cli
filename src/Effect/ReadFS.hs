@@ -50,9 +50,8 @@ import Data.Aeson
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.Kind (Type)
-import Data.String.Conversion (decodeUtf8)
+import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Text.Prettyprint.Doc (indent, line, pretty, vsep)
 import Data.Void (Void)
 import Data.Yaml (decodeEither', prettyPrintParseException)
@@ -157,22 +156,22 @@ type Parser = Parsec Void Text
 
 -- | Read from a file, parsing its contents
 readContentsParser :: forall a sig m b. (Has ReadFS sig m, Has Diagnostics sig m) => Parser a -> Path b File -> m a
-readContentsParser parser file = context ("Parsing file '" <> T.pack (toFilePath file) <> "'") $ do
+readContentsParser parser file = context ("Parsing file '" <> toText (toFilePath file) <> "'") $ do
   contents <- readContentsText file
   case runParser parser (toFilePath file) contents of
-    Left err -> fatal (FileParseError (toFilePath file) (T.pack (errorBundlePretty err)))
+    Left err -> fatal (FileParseError (toFilePath file) (toText (errorBundlePretty err)))
     Right a -> pure a
 
 -- | Read JSON from a file
 readContentsJson :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m a
-readContentsJson file = context ("Parsing JSON file '" <> T.pack (toFilePath file) <> "'") $ do
+readContentsJson file = context ("Parsing JSON file '" <> toText (toFilePath file) <> "'") $ do
   contents <- readContentsBS file
   case eitherDecodeStrict contents of
-    Left err -> fatal (FileParseError (toFilePath file) (T.pack err))
+    Left err -> fatal (FileParseError (toFilePath file) (toText err))
     Right a -> pure a
 
 readContentsToml :: (Has ReadFS sig m, Has Diagnostics sig m) => Toml.TomlCodec a -> Path b File -> m a
-readContentsToml codec file = context ("Parsing TOML file '" <> T.pack (toFilePath file) <> "'") $ do
+readContentsToml codec file = context ("Parsing TOML file '" <> toText (toFilePath file) <> "'") $ do
   contents <- readContentsText file
   case Toml.decode codec contents of
     Left err -> fatal (FileParseError (toFilePath file) (Toml.prettyTomlDecodeErrors err))
@@ -180,15 +179,15 @@ readContentsToml codec file = context ("Parsing TOML file '" <> T.pack (toFilePa
 
 -- | Read YAML from a file
 readContentsYaml :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m a
-readContentsYaml file = context ("Parsing YAML file '" <> T.pack (toFilePath file) <> "'") $ do
+readContentsYaml file = context ("Parsing YAML file '" <> toText (toFilePath file) <> "'") $ do
   contents <- readContentsBS file
   case decodeEither' contents of
-    Left err -> fatal (FileParseError (toFilePath file) (T.pack $ prettyPrintParseException err))
+    Left err -> fatal (FileParseError (toFilePath file) (toText $ prettyPrintParseException err))
     Right a -> pure a
 
 -- | Read XML from a file
 readContentsXML :: (FromXML a, Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m a
-readContentsXML file = context ("Parsing XML file '" <> T.pack (toFilePath file) <> "'") $ do
+readContentsXML file = context ("Parsing XML file '" <> toText (toFilePath file) <> "'") $ do
   contents <- readContentsText file
   case parseXML contents of
     Left err -> fatal (FileParseError (toFilePath file) (xmlErrorPretty err))
@@ -205,11 +204,11 @@ runReadFSIO = interpret $ \case
     (decodeUtf8 <$> BS.readFile (toFilePath file))
       `catchingIO` FileReadError (toFilePath file)
   ResolveFile' dir path -> do
-    PIO.resolveFile dir (T.unpack path)
-      `catchingIO` ResolveError (toFilePath dir) (T.unpack path)
+    PIO.resolveFile dir (toString path)
+      `catchingIO` ResolveError (toFilePath dir) (toString path)
   ResolveDir' dir path -> do
-    PIO.resolveDir dir (T.unpack path)
-      `catchingIO` ResolveError (toFilePath dir) (T.unpack path)
+    PIO.resolveDir dir (toString path)
+      `catchingIO` ResolveError (toFilePath dir) (toString path)
   ListDir dir -> do
     PIO.listDir dir
       `catchingIO` ListDirError (toFilePath dir)
@@ -218,4 +217,4 @@ runReadFSIO = interpret $ \case
   DoesDirExist dir -> sendIO (PIO.doesDirExist dir)
 
 catchingIO :: Has (Lift IO) sig m => IO a -> (Text -> ReadFSErr) -> m (Either ReadFSErr a)
-catchingIO io mangle = sendIO $ E.catch (Right <$> io) (\(e :: E.IOException) -> pure (Left (mangle (T.pack (show e)))))
+catchingIO io mangle = sendIO $ E.catch (Right <$> io) (\(e :: E.IOException) -> pure (Left (mangle (toText (show e)))))

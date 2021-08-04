@@ -15,7 +15,7 @@ module Srclib.Types (
 import Data.Aeson
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Types (GraphBreadth (..))
 
 data SourceUnit = SourceUnit
@@ -82,11 +82,11 @@ renderLocator Locator{..} =
   locatorFetcher <> "+" <> locatorProject <> "$" <> fromMaybe "" locatorRevision
 
 parseLocator :: Text -> Locator
-parseLocator raw = Locator fetcher project (if T.null revision then Nothing else Just revision)
+parseLocator raw = Locator fetcher project (if Text.null revision then Nothing else Just revision)
   where
-    (fetcher, xs) = T.breakOn "+" raw
-    (project, xs') = T.breakOn "$" (T.drop 1 xs)
-    revision = T.drop 1 xs'
+    (fetcher, xs) = Text.breakOn "+" raw
+    (project, xs') = Text.breakOn "$" (Text.drop 1 xs)
+    revision = Text.drop 1 xs'
 
 instance ToJSON SourceUnit where
   toJSON SourceUnit{..} =

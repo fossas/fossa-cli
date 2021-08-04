@@ -14,10 +14,10 @@ module Strategy.RPM (
 import Control.Effect.Diagnostics
 import Control.Effect.Diagnostics qualified as Diag
 import Data.List (isSuffixOf)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Text.Extra (splitOnceOn)
 import DepTypes
 import Discovery.Walk
@@ -98,7 +98,7 @@ toDependency pkg =
     , dependencyVersion = rpmConstraint pkg
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 buildGraph :: Dependencies -> Graphing Dependency
@@ -107,9 +107,9 @@ buildGraph Dependencies{..} = G.gmap toDependency $ G.fromList depRuntimeRequire
 buildConstraint :: Text -> Maybe VerConstraint
 buildConstraint raw = constraint
   where
-    (comparatorStr, rawVersion) = splitOnceOn " " $ T.strip raw
-    version = T.strip rawVersion
-    constraint = case T.strip comparatorStr of
+    (comparatorStr, rawVersion) = splitOnceOn " " $ Text.strip raw
+    version = Text.strip rawVersion
+    constraint = case Text.strip comparatorStr of
       "<=" -> Just $ CLessOrEq version
       "<" -> Just $ CLess version
       ">=" -> Just $ CGreaterOrEq version
@@ -122,10 +122,10 @@ getTypeFromLine :: Text -> Maybe RequiresType
 getTypeFromLine line = safeReq
   where
     (header, value) = splitOnceOn ": " line
-    (pkgName, rawConstraint) = splitOnceOn " " $ T.strip value
+    (pkgName, rawConstraint) = splitOnceOn " " $ Text.strip value
     --
     isSafeName :: Text -> Bool
-    isSafeName name = not $ "%{" `T.isInfixOf` name
+    isSafeName name = not $ "%{" `Text.isInfixOf` name
     -- TODO: temporarily ignore names with macros, until we support expansion
     safeReq :: Maybe RequiresType
     safeReq = if isSafeName pkgName then req else Nothing
@@ -146,4 +146,4 @@ buildDependencies = foldr addDep blankDeps
     blankDeps = Dependencies [] []
 
 getSpecDeps :: Text -> Dependencies
-getSpecDeps = buildDependencies . mapMaybe getTypeFromLine . T.lines
+getSpecDeps = buildDependencies . mapMaybe getTypeFromLine . Text.lines

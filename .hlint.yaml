@@ -2,3 +2,18 @@
 # Often, code is more readable with extra parens, or less readable with list comprehensions
 - ignore: {name: "Redundant bracket"}
 - ignore: {name: "Use list comprehension"}
+
+# Import Preferences
+- modules:
+  - {name: Data.Set, as: Set, message: "Use complete name for qualified import of Set"}
+  - {name: Data.Map, as: Map, message: "Use complete name for qualified import of Map"}
+  - {name: Data.Map.Strict, as: Map, message: "Use complete name for qualified import of Strict Map"}
+  - {name: Data.Text, as: Text, message: "Use complete name for qualified import of Text"}
+
+# Styling Preferences
+- suggest: {lhs: "asum [x, y]", rhs: x <|> y}
+- suggest: {lhs: return x, rhs: pure x}
+- suggest: {lhs: () <$ x, rhs: Control.Monad.void x}
+- suggest: {lhs: x <&> f, rhs: f <$> x}
+- suggest: {lhs: Data.Text.pack x, rhs: Data.String.Conversion.toText x}
+- suggest: {lhs: Data.Text.unpack x, rhs: Data.String.Conversion.toString x}

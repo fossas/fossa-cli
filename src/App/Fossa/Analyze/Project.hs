@@ -3,7 +3,7 @@ module App.Fossa.Analyze.Project (
   mkResult,
 ) where
 
-import Data.Set qualified as S
+import Data.Set qualified as Set
 import Data.Text (Text)
 import DepTypes
 import Graphing (Graphing)
@@ -22,7 +22,7 @@ mkResult project graphResults =
         -- their dependencies would be filtered out. The real fix to this is to
         -- have a separate designation for "reachable" vs "direct" on nodes in a
         -- Graphing, where direct deps are inherently reachable.
-        if S.null (Graphing.graphingDirect graph)
+        if Set.null (Graphing.graphingDirect graph)
           then graph
           else Graphing.pruneUnreachable graph
     , projectResultGraphBreadth = graphBreadth

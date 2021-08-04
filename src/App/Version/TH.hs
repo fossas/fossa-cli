@@ -8,9 +8,9 @@ import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Effect.Diagnostics (Diagnostics, fromEitherShow)
 import Data.ByteString.Lazy qualified as BSL
 import Data.Maybe (fromMaybe)
-import Data.String.Conversion (decodeUtf8)
+import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Versions (errorBundlePretty, semver)
 import Effect.Exec (
   AllowErr (Always),
@@ -37,7 +37,7 @@ gitTagPointCommand commit =
 getCurrentTag :: TExpQ (Maybe Text)
 getCurrentTag = do
   let commitHash = giHash $$(tGitInfoCwd)
-  result <- runIO . runDiagnostics . runExecIO . getTags $ T.pack commitHash
+  result <- runIO . runDiagnostics . runExecIO . getTags $ toText commitHash
 
   case result of
     Left err -> reportWarning (show err) >> [||Nothing||]
@@ -49,7 +49,7 @@ getTags hash = do
   result <- exec $(mkRelDir ".") $ gitTagPointCommand hash
   bsl <- fromEitherShow result
 
-  pure . map T.strip . T.lines . decodeUtf8 $ BSL.toStrict bsl
+  pure . map Text.strip . Text.lines . decodeUtf8 $ BSL.toStrict bsl
 
 {- We'd like to use this time to make sure we have tags when we build release
     versions.  However, 2 things make that difficult at the time of writing:
@@ -64,14 +64,14 @@ getTags hash = do
 filterTags :: [Text] -> TExpQ (Maybe Text)
 filterTags [] = [||Nothing||]
 filterTags [x] = validateSingleTag x
-filterTags xs = reportWarning (T.unpack multiTagMesg) >> [||Nothing||]
+filterTags xs = reportWarning (toString multiTagMesg) >> [||Nothing||]
   where
-    multiTagMesg = header <> T.intercalate ", " xs
+    multiTagMesg = header <> Text.intercalate ", " xs
     header = "Multiple tags defined at current commit: "
 
 validateSingleTag :: Text -> TExpQ (Maybe Text)
 validateSingleTag tag = do
-  let normalized = fromMaybe tag $ T.stripPrefix "v" tag
+  let normalized = fromMaybe tag $ Text.stripPrefix "v" tag
 
   case semver normalized of
     Left err -> reportWarning (errorBundlePretty err) >> [||Nothing||]

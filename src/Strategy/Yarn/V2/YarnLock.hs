@@ -10,8 +10,9 @@ import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics
 import Data.Foldable (find)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
-import Data.Text qualified as T
+import Data.Map.Strict qualified as Map
+import Data.String.Conversion (toText)
+import Data.Text qualified as Text
 import DepTypes
 import Effect.ReadFS
 import Graphing (Graphing)
@@ -35,7 +36,7 @@ stitchLockfile (YarnLockfile lockfile) = graph
   where
     -- remapping @Map [Descriptor] PackageDescription@ to @Map Descriptor PackageDescription@
     remapped :: Map Descriptor PackageDescription
-    remapped = M.fromList . concatMap (\(ks, v) -> map (,v) ks) . M.toList $ lockfile
+    remapped = Map.fromList . concatMap (\(ks, v) -> map (,v) ks) . Map.toList $ lockfile
 
     -- look up a package by trying:
     -- 1. the descriptor, verbatim
@@ -51,12 +52,12 @@ stitchLockfile (YarnLockfile lockfile) = graph
     -- descriptor key for a package in the lockfile
     lookupPackage :: Has Diagnostics sig m => Descriptor -> m PackageDescription
     lookupPackage desc =
-      fromMaybeText ("Couldn't find package for descriptor: " <> T.pack (show desc)) $
-        M.lookup desc remapped <|> M.lookup (desc{descriptorRange = "npm:" <> descriptorRange desc}) remapped <|> lookupAnyNpm desc
+      fromMaybeText ("Couldn't find package for descriptor: " <> toText (show desc)) $
+        Map.lookup desc remapped <|> Map.lookup (desc{descriptorRange = "npm:" <> descriptorRange desc}) remapped <|> lookupAnyNpm desc
 
     -- find any package with a descriptor with matching scope/name, and an @npm:@ prefix prefix
     lookupAnyNpm :: Descriptor -> Maybe PackageDescription
-    lookupAnyNpm desc = find (\other -> identMatches desc other && "npm:" `T.isPrefixOf` descriptorRange other) (M.keys remapped) >>= (`M.lookup` remapped)
+    lookupAnyNpm desc = find (\other -> identMatches desc other && "npm:" `Text.isPrefixOf` descriptorRange other) (Map.keys remapped) >>= (`Map.lookup` remapped)
 
     -- whether the scope and name of the package matches in both descriptors
     identMatches :: Descriptor -> Descriptor -> Bool
@@ -72,11 +73,11 @@ stitchLockfile (YarnLockfile lockfile) = graph
 
     -- combine the edges produced by calling packageToEdges on each package in the lockfile
     graphEdges :: Has Diagnostics sig m => m (AM.AdjacencyMap Locator)
-    graphEdges = fmap (AM.edges . concat) . traverse packageToEdges . M.elems $ lockfile
+    graphEdges = fmap (AM.edges . concat) . traverse packageToEdges . Map.elems $ lockfile
 
     -- not all packages will be part of an edge, so add vertices for each package
     graphVertices :: AM.AdjacencyMap Locator
-    graphVertices = AM.vertices (map descResolution (M.elems lockfile))
+    graphVertices = AM.vertices (map descResolution (Map.elems lockfile))
 
     -- combine edges and vertices into a final graph
     graph :: Has Diagnostics sig m => m (AM.AdjacencyMap Locator)
@@ -132,7 +133,7 @@ packageToDependency (NpmPackage maybeScope name version) =
             Just scope -> "@" <> scope <> "/" <> name
       , dependencyVersion = Just (CEq version)
       , dependencyLocations = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       , dependencyEnvironments = []
       }
 packageToDependency (GitPackage repo commit) =
@@ -142,7 +143,7 @@ packageToDependency (GitPackage repo commit) =
       , dependencyName = repo
       , dependencyVersion = Just (CEq commit)
       , dependencyLocations = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       , dependencyEnvironments = []
       }
 packageToDependency (TarPackage url) =
@@ -152,6 +153,6 @@ packageToDependency (TarPackage url) =
       , dependencyName = url
       , dependencyVersion = Nothing
       , dependencyLocations = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       , dependencyEnvironments = []
       }

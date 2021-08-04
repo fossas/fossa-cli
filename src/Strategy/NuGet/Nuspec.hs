@@ -16,9 +16,9 @@ import Control.Applicative (optional)
 import Control.Effect.Diagnostics
 import Data.Foldable (find)
 import Data.List qualified as L
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
+import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Data.Text qualified as T
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
@@ -83,7 +83,7 @@ nuspecLicenses nuspec = url ++ licenseField
     licenseField = foldr (\a b -> b ++ [License (parseLicenseType $ nuspecLicenseType a) (nuspecLicenseValue a)]) [] (license nuspec)
 
 parseLicenseType :: Text -> LicenseType
-parseLicenseType rawType = case T.unpack rawType of
+parseLicenseType rawType = case toString rawType of
   "expression" -> LicenseSPDX
   "file" -> LicenseFile
   _ -> UnknownType
@@ -143,5 +143,5 @@ buildGraph project = Graphing.fromList (map toDependency direct)
         , dependencyVersion = Just (CEq depVersion)
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }

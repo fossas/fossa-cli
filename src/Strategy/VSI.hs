@@ -13,7 +13,7 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Lift
 import Control.Monad.IO.Class
 import Data.Aeson
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Discovery.Filters
 import Effect.Exec
 import Fossa.API.Types
@@ -30,17 +30,17 @@ newtype VSIProject = VSIProject
   deriving (Eq, Ord, Show)
 
 newtype VSILocator = VSILocator
-  { unVSILocator :: T.Text
+  { unVSILocator :: Text.Text
   }
   deriving (Eq, Ord, Show, Generic, FromJSON)
 
 data ValidVSILocator = ValidVSILocator
   { validType :: DepType
-  , validName :: T.Text
-  , validRevision :: Maybe T.Text
+  , validName :: Text.Text
+  , validRevision :: Maybe Text.Text
   }
 
-data VSIError = UnsupportedLocatorType Locator T.Text
+data VSIError = UnsupportedLocatorType Locator Text.Text
   deriving (Eq, Ord, Show)
 
 instance ToDiagnostic VSIError where

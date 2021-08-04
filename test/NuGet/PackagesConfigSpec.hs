@@ -2,8 +2,8 @@ module NuGet.PackagesConfigSpec (
   spec,
 ) where
 
-import Data.Map.Strict qualified as M
-import Data.Text qualified as T
+import Data.Map.Strict qualified as Map
+import Data.String.Conversion (toString)
 import Data.Text.IO qualified as TIO
 import DepTypes
 import GraphUtil
@@ -19,7 +19,7 @@ dependencyOne =
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyTwo :: Dependency
@@ -30,7 +30,7 @@ dependencyTwo =
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 packagesConfig :: PackagesConfig
@@ -47,7 +47,7 @@ spec = do
     it "reads a file and constructs an accurate graph" $ do
       case parseXML nuspecFile of
         Right project -> (deps project) `shouldContain` depList
-        Left err -> expectationFailure (T.unpack ("could not parse packages.config file" <> xmlErrorPretty err))
+        Left err -> expectationFailure (toString ("could not parse packages.config file" <> xmlErrorPretty err))
 
     it "constructs an accurate graph" $ do
       let graph = buildGraph packagesConfig

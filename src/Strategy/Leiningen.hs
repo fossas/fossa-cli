@@ -27,11 +27,11 @@ import Data.EDN.Class.Parser (Parser)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Set (Set)
-import Data.String.Conversion (decodeUtf8)
+import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TL
 import Data.Vector qualified as V
 import Discovery.Walk
@@ -94,7 +94,7 @@ analyze file = do
       stdout = TL.toStrict stdoutTL
 
   case EDN.decodeText "lein deps :tree-data" stdout of
-    Left err -> fatal (CommandParseError leinDepsCmd (T.pack err))
+    Left err -> fatal (CommandParseError leinDepsCmd (toText err))
     Right deps -> do
       graph <- context "Building dependency graph" $ pure (buildGraph deps)
       pure (graph, Complete)
@@ -117,11 +117,11 @@ buildGraph deps = run . withLabeling toDependency $ do
 
 -- extract the top-level clojure deps from a Deps as ClojureNodes
 topLevelNodes :: Deps -> [ClojureNode]
-topLevelNodes = map toClojureNode . M.keys . depsTree
+topLevelNodes = map toClojureNode . Map.keys . depsTree
 
 -- recursively build edges and add labels to dependencies we encounter
 buildEdges :: Has (LabeledGrapher ClojureNode ClojureLabel) sig m => Deps -> m ()
-buildEdges deps = M.traverseWithKey single (depsTree deps) $> ()
+buildEdges deps = Map.traverseWithKey single (depsTree deps) $> ()
   where
     single :: Has (LabeledGrapher ClojureNode ClojureLabel) sig m => ClojureDep -> Maybe Deps -> m ()
     single dep maybeDeeper = do
@@ -134,7 +134,7 @@ buildEdges deps = M.traverseWithKey single (depsTree deps) $> ()
           buildEdges deeper
 
 toClojureNode :: ClojureDep -> ClojureNode
-toClojureNode dep = ClojureNode (T.replace "/" ":" (depName dep)) (depVersion dep)
+toClojureNode dep = ClojureNode (Text.replace "/" ":" (depName dep)) (depVersion dep)
 
 toDependency :: ClojureNode -> Set ClojureLabel -> Dependency
 toDependency node = foldr applyLabel start
@@ -147,7 +147,7 @@ toDependency node = foldr applyLabel start
         , dependencyVersion = Just (CEq (nodeVersion node))
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }
     applyLabel (ScopeLabel "test") dep = insertEnvironment EnvTesting dep
     applyLabel (ScopeLabel other) dep = insertEnvironment (EnvOther other) dep
@@ -173,7 +173,7 @@ instance EDN.FromEDN ClojureDep where
 -- turned into an Map TaggedValue [TaggedValue] -- but for now, we only care
 -- about scopes which can only appear once
 ednVecToMap :: EDN.EDNVec -> Parser EDN.EDNMap
-ednVecToMap = go M.empty
+ednVecToMap = go Map.empty
   where
     go :: EDN.EDNMap -> EDN.EDNVec -> Parser EDN.EDNMap
     go m vec
@@ -181,7 +181,7 @@ ednVecToMap = go M.empty
       | otherwise = do
         key <- EDN.vecGet 0 vec
         value <- EDN.vecGet 1 vec
-        go (M.insert key value m) (V.drop 2 vec)
+        go (Map.insert key value m) (V.drop 2 vec)
 
 -- | The FromEDN type for lein deps output
 newtype Deps = Deps

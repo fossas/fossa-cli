@@ -5,9 +5,9 @@ module Discovery.FiltersSpec (
 ) where
 
 import Data.Foldable (traverse_)
-import Data.Set qualified as S
+import Data.Set qualified as Set
 import Data.Set.NonEmpty
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Discovery.Filters
 import Path
 import Test.Hspec
@@ -36,10 +36,10 @@ spec = do
         gradleFooBar = ("gradle", $(mkRelDir "foo/bar"))
         mvnFooBarBaz = ("mvn", $(mkRelDir "foo/bar/baz"))
         mvnQuux = ("mvn", $(mkRelDir "quux"))
-        gradleTargets = maybe ProjectWithoutTargets FoundTargets (nonEmpty $ S.fromList [BuildTarget "foo", BuildTarget "bar"])
-        fooTargetAssertion = (Just . FoundTargets) =<< nonEmpty (S.fromList [BuildTarget "foo"])
-        barTargetAssertion = (Just . FoundTargets) =<< nonEmpty (S.fromList [BuildTarget "bar"])
-        fooBarTargetAssertion = (Just . FoundTargets) =<< nonEmpty (S.fromList [BuildTarget "bar", BuildTarget "foo"])
+        gradleTargets = maybe ProjectWithoutTargets FoundTargets (nonEmpty $ Set.fromList [BuildTarget "foo", BuildTarget "bar"])
+        fooTargetAssertion = (Just . FoundTargets) =<< nonEmpty (Set.fromList [BuildTarget "foo"])
+        barTargetAssertion = (Just . FoundTargets) =<< nonEmpty (Set.fromList [BuildTarget "bar"])
+        fooBarTargetAssertion = (Just . FoundTargets) =<< nonEmpty (Set.fromList [BuildTarget "bar", BuildTarget "foo"])
 
     it "includes an entire directory" $ do
       let include =
@@ -225,7 +225,7 @@ spec = do
         , (mvnQuux, ProjectWithoutTargets, Nothing)
         ]
 
-testHarness :: FilterCombination -> FilterCombination -> [((T.Text, Path Rel Dir), FoundTargets, Maybe FoundTargets)] -> Expectation
+testHarness :: FilterCombination -> FilterCombination -> [((Text.Text, Path Rel Dir), FoundTargets, Maybe FoundTargets)] -> Expectation
 testHarness include exclude = traverse_ testSingle
   where
     testSingle ((buildtool, dir), targets, expected) = applyFilters (AllFilters [] include exclude) buildtool dir targets `shouldBe` expected

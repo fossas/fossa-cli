@@ -2,7 +2,7 @@ module Cocoapods.PodfileSpec (
   spec,
 ) where
 
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text.IO qualified as TIO
 import DepTypes
 import GraphUtil
@@ -18,7 +18,7 @@ dependencyOne =
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = ["test.repo"]
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyTwo :: Dependency
@@ -29,7 +29,7 @@ dependencyTwo =
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = ["custom.repo"]
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyThree :: Dependency
@@ -40,7 +40,7 @@ dependencyThree =
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = ["test.repo"]
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyFour :: Dependency
@@ -51,20 +51,20 @@ dependencyFour =
     , dependencyVersion = Nothing
     , dependencyLocations = ["test.repo"]
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 podOne :: Pod
-podOne = Pod "one" (Just "1.0.0") M.empty
+podOne = Pod "one" (Just "1.0.0") Map.empty
 
 podTwo :: Pod
-podTwo = Pod "two" (Just "2.0.0") (M.fromList [(SourceProperty, "custom.repo")])
+podTwo = Pod "two" (Just "2.0.0") (Map.fromList [(SourceProperty, "custom.repo")])
 
 podThree :: Pod
-podThree = Pod "three" (Just "3.0.0") (M.fromList [(PathProperty, "internal/path")])
+podThree = Pod "three" (Just "3.0.0") (Map.fromList [(PathProperty, "internal/path")])
 
 podFour :: Pod
-podFour = Pod "four" Nothing (M.fromList [(GitProperty, "fossa/spectrometer"), (CommitProperty, "12345")])
+podFour = Pod "four" Nothing (Map.fromList [(GitProperty, "fossa/spectrometer"), (CommitProperty, "12345")])
 
 testPods :: [Pod]
 testPods = [podOne, podTwo, podThree, podFour]

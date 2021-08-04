@@ -4,7 +4,7 @@ module Python.ReqTxtSpec (
   spec,
 ) where
 
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Text.URI.QQ (uri)
 
 import DepTypes
@@ -43,7 +43,7 @@ expected = run . evalGrapher $ do
             )
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
   direct $
     Dependency
@@ -52,7 +52,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Nothing
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
   direct $
     Dependency
@@ -61,7 +61,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CURI "https://example.com")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
 
 spec :: Spec

@@ -13,7 +13,7 @@ module Data.String.Conversion (
 
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Text.Encoding qualified as TE
 import Data.Text.Encoding.Error qualified as TE
 import Data.Text.Lazy qualified as TL
@@ -29,18 +29,18 @@ class ConvertUtf8 a b where
   decodeUtf8 :: b -> a
 
 instance ConvertUtf8 String BS.ByteString where
-  encodeUtf8 = TE.encodeUtf8 . T.pack
-  decodeUtf8 = T.unpack . TE.decodeUtf8With TE.lenientDecode
+  encodeUtf8 = TE.encodeUtf8 . Text.pack
+  decodeUtf8 = Text.unpack . TE.decodeUtf8With TE.lenientDecode
 
 instance ConvertUtf8 String BL.ByteString where
   encodeUtf8 = TLE.encodeUtf8 . TL.pack
   decodeUtf8 = TL.unpack . TLE.decodeUtf8With TE.lenientDecode
 
-instance ConvertUtf8 T.Text BS.ByteString where
+instance ConvertUtf8 Text.Text BS.ByteString where
   encodeUtf8 = TE.encodeUtf8
   decodeUtf8 = TE.decodeUtf8With TE.lenientDecode
 
-instance ConvertUtf8 T.Text BL.ByteString where
+instance ConvertUtf8 Text.Text BL.ByteString where
   encodeUtf8 = BL.fromStrict . TE.encodeUtf8
   decodeUtf8 = TE.decodeUtf8With TE.lenientDecode . BL.toStrict
 
@@ -55,12 +55,12 @@ instance ConvertUtf8 TL.Text BL.ByteString where
 ----- ToText
 
 class ToText a where
-  toText :: a -> T.Text
+  toText :: a -> Text.Text
 
 instance ToText String where
-  toText = T.pack
+  toText = Text.pack
 
-instance ToText T.Text where
+instance ToText Text.Text where
   toText = id
 
 instance ToText TL.Text where
@@ -83,7 +83,7 @@ class ToLText a where
 instance ToLText String where
   toLText = TL.pack
 
-instance ToLText T.Text where
+instance ToLText Text.Text where
   toLText = TL.fromStrict
 
 instance ToLText TL.Text where
@@ -103,8 +103,8 @@ instance ToLText (Path b t) where
 class ToString a where
   toString :: a -> String
 
-instance ToString T.Text where
-  toString = T.unpack
+instance ToString Text.Text where
+  toString = Text.unpack
 
 instance ToString TL.Text where
   toString = TL.unpack
@@ -161,6 +161,6 @@ instance LazyStrict BL.ByteString BS.ByteString where
   toLazy = BL.fromStrict
   toStrict = BL.toStrict
 
-instance LazyStrict TL.Text T.Text where
+instance LazyStrict TL.Text Text.Text where
   toLazy = TL.fromStrict
   toStrict = TL.toStrict

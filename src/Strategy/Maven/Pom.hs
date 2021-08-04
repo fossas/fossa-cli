@@ -11,10 +11,10 @@ import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
-import Data.Set qualified as S
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text.Extra (breakOnAndRemove)
 import DepTypes
@@ -37,7 +37,7 @@ analyze' = buildProjectGraph
 
 getLicenses :: Path Abs Dir -> MavenProjectClosure -> [LicenseResult]
 getLicenses basedir closure = do
-  (abspath, pom) <- M.elems (closurePoms closure)
+  (abspath, pom) <- Map.elems (closurePoms closure)
   case Path.makeRelative basedir abspath of
     Nothing -> []
     Just relpath ->
@@ -75,7 +75,7 @@ toDependency (MavenPackage group artifact version) = foldr applyLabel start
         , dependencyVersion = CEq <$> version
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }
 
     applyLabel :: MavenLabel -> Dependency -> Dependency
@@ -88,7 +88,7 @@ toDependency (MavenPackage group artifact version) = foldr applyLabel start
 
     -- TODO: reuse this in other strategies
     addTag :: Text -> Text -> Dependency -> Dependency
-    addTag key value dep = dep{dependencyTags = M.insertWith (++) key [value] (dependencyTags dep)}
+    addTag key value dep = dep{dependencyTags = Map.insertWith (++) key [value] (dependencyTags dep)}
 
 -- TODO: set top-level direct deps as direct instead of the project?
 buildProjectGraph :: MavenProjectClosure -> Graphing Dependency
@@ -98,7 +98,7 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
   where
     go :: Has MavenGrapher sig m => MavenCoordinate -> Pom -> m ()
     go coord incompletePom = do
-      _ <- M.traverseWithKey addDep deps
+      _ <- Map.traverseWithKey addDep deps
       for_ childPoms $ \(childCoord, childPom) -> do
         edge (coordToPackage coord) (coordToPackage childCoord)
         go childCoord childPom
@@ -109,7 +109,7 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
         overlayParents :: Pom -> Pom
         overlayParents pom = fromMaybe pom $ do
           parentCoord <- pomParentCoord pom
-          (_, parentPom) <- M.lookup parentCoord (closurePoms closure)
+          (_, parentPom) <- Map.lookup parentCoord (closurePoms closure)
           pure (pom <> overlayParents parentPom)
 
         deps :: Map (Group, Artifact) MvnDepBody
@@ -125,7 +125,7 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
 
         childPoms :: [(MavenCoordinate, Pom)]
         childPoms =
-          [ (childCoord, pom) | childCoord <- S.toList (AM.postSet coord (closureGraph closure)), Just (_, pom) <- [M.lookup childCoord (closurePoms closure)]
+          [ (childCoord, pom) | childCoord <- Set.toList (AM.postSet coord (closureGraph closure)), Just (_, pom) <- [Map.lookup childCoord (closurePoms closure)]
           ]
 
 -- | Build a MavenPackage for a dependency in a pom file
@@ -158,10 +158,10 @@ coordToPackage coord = MavenPackage (coordGroup coord) (coordArtifact coord) (Ju
 --
 -- Notably, the dependencies in the resulting @Map@ _do not_ have their ${properties} interpolated
 reifyDeps :: Pom -> Map (Group, Artifact) MvnDepBody
-reifyDeps pom = M.mapWithKey overlayDepManagement (pomDependencies pom)
+reifyDeps pom = Map.mapWithKey overlayDepManagement (pomDependencies pom)
   where
     overlayDepManagement :: (Group, Artifact) -> MvnDepBody -> MvnDepBody
-    overlayDepManagement key body = maybe body (body <>) (M.lookup key (pomDependencyManagement pom))
+    overlayDepManagement key body = maybe body (body <>) (Map.lookup key (pomDependencyManagement pom))
 
 -- | Interpolate Pom properties into a string with the ${property} format This
 -- interpolates both computed/built-in properties and user-specified properties,
@@ -172,7 +172,7 @@ interpolateProperties pom = interpolate (pomProperties pom <> computeBuiltinProp
 -- | Compute the most-commonly-used builtin properties for package resolution
 computeBuiltinProperties :: Pom -> Map Text Text
 computeBuiltinProperties pom =
-  M.fromList
+  Map.fromList
     [ ("project.groupId", coordGroup (pomCoord pom))
     , ("project.artifactId", coordArtifact (pomCoord pom))
     , ("project.version", coordVersion (pomCoord pom))
@@ -184,7 +184,7 @@ interpolate properties text =
     Nothing -> text
     Just (before, property, after) ->
       interpolate properties $
-        before <> fromMaybe ("PROPERTY NOT FOUND: " <> property) (M.lookup property properties) <> after
+        before <> fromMaybe ("PROPERTY NOT FOUND: " <> property) (Map.lookup property properties) <> after
 
 -- find the first maven property in the string, e.g., `${foo}`, returning text
 -- before the property, the property, and the text after the property

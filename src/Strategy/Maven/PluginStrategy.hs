@@ -10,7 +10,7 @@ import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Lift (Lift)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import DepTypes (
   DepEnvironment (..),
   DepType (MavenType),
@@ -56,7 +56,7 @@ buildGraph PluginOutput{..} = run $
         byNumeric = indexBy artifactNumericId outArtifacts
 
     let depsByNumeric :: Map Int Dependency
-        depsByNumeric = M.map toDependency byNumeric
+        depsByNumeric = Map.map toDependency byNumeric
 
     traverse_ (visitEdge depsByNumeric) outEdges
   where
@@ -69,7 +69,7 @@ buildGraph PluginOutput{..} = run $
         , dependencyLocations = []
         , dependencyEnvironments = [EnvTesting | "test" `elem` artifactScopes]
         , dependencyTags =
-            M.fromList $
+            Map.fromList $
               ("scopes", artifactScopes) :
                 [("optional", ["true"]) | artifactOptional]
         }
@@ -77,11 +77,11 @@ buildGraph PluginOutput{..} = run $
     visitEdge :: Has (Grapher Dependency) sig m => Map Int Dependency -> Edge -> m ()
     visitEdge refsByNumeric Edge{..} = do
       let refs = do
-            parentRef <- M.lookup edgeFrom refsByNumeric
-            childRef <- M.lookup edgeTo refsByNumeric
+            parentRef <- Map.lookup edgeFrom refsByNumeric
+            childRef <- Map.lookup edgeTo refsByNumeric
             Just (parentRef, childRef)
 
       traverse_ (uncurry edge) refs
 
     indexBy :: Ord k => (v -> k) -> [v] -> Map k v
-    indexBy f = M.fromList . map (\v -> (f v, v))
+    indexBy f = Map.fromList . map (\v -> (f v, v))

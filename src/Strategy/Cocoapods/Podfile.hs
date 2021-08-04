@@ -12,9 +12,9 @@ module Strategy.Cocoapods.Podfile (
 import Control.Effect.Diagnostics
 import Data.Functor (void)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Void (Void)
 import DepTypes
 import Effect.ReadFS
@@ -39,11 +39,11 @@ buildGraph podfile = Graphing.fromList (map toDependency direct)
         { dependencyType = PodType
         , dependencyName = name
         , dependencyVersion = CEq <$> version
-        , dependencyLocations = case M.lookup SourceProperty properties of
+        , dependencyLocations = case Map.lookup SourceProperty properties of
             Just repo -> [repo]
             _ -> [source podfile]
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }
 
 type Parser = Parsec Void Text
@@ -92,10 +92,10 @@ podParser = do
   version <- optional (try (comma *> stringLiteral))
   properties <- many property
   _ <- restOfLine
-  pure [PodLine $ Pod name version (M.fromList properties)]
+  pure [PodLine $ Pod name version (Map.fromList properties)]
 
 comma :: Parser ()
-comma = () <$ symbol ","
+comma = void $ symbol ","
 
 property :: Parser (PropertyType, Text)
 property = do
@@ -118,7 +118,7 @@ lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
 
 stringLiteral :: Parser Text
-stringLiteral = T.pack <$> go
+stringLiteral = toText <$> go
   where
     go =
       (char '"' *> manyTill L.charLiteral (char '"'))

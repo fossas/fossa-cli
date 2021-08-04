@@ -23,7 +23,6 @@ import Data.Functor.Extra ((<$$>))
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion
 import Data.Text (Text)
-import Data.Text qualified as T
 import Fossa.API.Types
 import Path hiding ((</>))
 import Srclib.Types (Locator (..))
@@ -48,7 +47,7 @@ uploadArchives apiOpts deps arcDir tmpDir = traverse (compressAndUpload apiOpts 
 
 compressAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => ApiOpts -> Path Abs Dir -> Path Abs Dir -> VendoredDependency -> m Archive
 compressAndUpload apiOpts arcDir tmpDir dependency = do
-  compressedFile <- sendIO $ compressFile tmpDir arcDir (T.unpack $ vendoredPath dependency)
+  compressedFile <- sendIO $ compressFile tmpDir arcDir (toString $ vendoredPath dependency)
 
   depVersion <- case vendoredVersion dependency of
     Nothing -> sendIO $ hashFile compressedFile
@@ -76,7 +75,7 @@ archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
 
   let updateArcName :: Text -> Archive -> Archive
       updateArcName updateText arc = arc{archiveName = updateText <> "/" <> archiveName arc}
-      archivesWithOrganization = updateArcName (T.pack $ show orgId) <$> archives
+      archivesWithOrganization = updateArcName (toText $ show orgId) <$> archives
 
   pure $ arcToLocator <$> archivesWithOrganization
 
@@ -110,4 +109,4 @@ md5 = hashlazy
 hashFile :: FilePath -> IO Text
 hashFile fileToHash = do
   fileContent <- BS.readFile fileToHash
-  pure . T.pack . show $ md5 fileContent
+  pure . toText . show $ md5 fileContent

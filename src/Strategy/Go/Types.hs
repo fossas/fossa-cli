@@ -7,10 +7,10 @@ module Strategy.Go.Types (
   graphingGolang,
 ) where
 
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import DepTypes
 import Effect.Grapher
 import Graphing
@@ -48,7 +48,7 @@ golangPackageToDependency pkg = foldr applyLabel start
         , dependencyVersion = Nothing
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }
 
     applyLabel :: GolangLabel -> Dependency -> Dependency
@@ -71,8 +71,8 @@ golangPackageToDependency pkg = foldr applyLabel start
 -- TODO: In `go.mod`, we handle this in the parser. Do we even need to handle
 -- this format in other Go analyzers? Can we just remove this code?
 fixVersion :: Text -> Text
-fixVersion = last . T.splitOn "-" . T.replace "+incompatible" ""
+fixVersion = last . Text.splitOn "-" . Text.replace "+incompatible" ""
 
 -- replace "github.com/A/B/vendor/github.com/X/Y" with "github.com/X/Y"
 unvendor :: Text -> Text
-unvendor = last . T.splitOn "/vendor/"
+unvendor = last . Text.splitOn "/vendor/"

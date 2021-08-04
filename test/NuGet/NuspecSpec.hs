@@ -2,8 +2,8 @@ module NuGet.NuspecSpec (
   spec,
 ) where
 
-import Data.Map.Strict qualified as M
-import Data.Text qualified as T
+import Data.Map.Strict qualified as Map
+import Data.String.Conversion (toString)
 import Data.Text.IO qualified as TIO
 import DepTypes
 import GraphUtil
@@ -19,7 +19,7 @@ dependencyOne =
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyTwo :: Dependency
@@ -30,7 +30,7 @@ dependencyTwo =
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyThree :: Dependency
@@ -41,7 +41,7 @@ dependencyThree =
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 nuspec :: Nuspec
@@ -75,7 +75,7 @@ spec = do
           (groups project) `shouldContain` groupList
           (license project) `shouldMatchList` [NuspecLicense "file" "license-file"]
           (licenseUrl project) `shouldBe` (Just "https://licence.location.com/LICENSE.md")
-        Left err -> expectationFailure (T.unpack ("could not parse nuspec file: " <> xmlErrorPretty err))
+        Left err -> expectationFailure (toString ("could not parse nuspec file: " <> xmlErrorPretty err))
 
     it "reads a file and extracts the correct license" $ do
       case parseXML singleLicense of
@@ -83,7 +83,7 @@ spec = do
           (groups project) `shouldBe` []
           (license project) `shouldMatchList` [NuspecLicense "file" "LICENSE.txt"]
           (licenseUrl project) `shouldBe` Nothing
-        Left err -> expectationFailure (T.unpack ("could not parse nuspec file: " <> xmlErrorPretty err))
+        Left err -> expectationFailure (toString ("could not parse nuspec file: " <> xmlErrorPretty err))
 
     it "reads a file with multiple licenses" $ do
       case parseXML multipleLicenses of
@@ -91,7 +91,7 @@ spec = do
           (groups project) `shouldBe` []
           (license project) `shouldMatchList` licenses
           (licenseUrl project) `shouldBe` (Just "test.com")
-        Left err -> expectationFailure (T.unpack ("could not parse nuspec file: " <> xmlErrorPretty err))
+        Left err -> expectationFailure (toString ("could not parse nuspec file: " <> xmlErrorPretty err))
 
     it "constructs an accurate graph" $ do
       let graph = buildGraph nuspec

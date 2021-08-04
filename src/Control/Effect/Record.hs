@@ -21,7 +21,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Kind
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.String.Conversion (decodeUtf8)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as LText
@@ -43,17 +43,17 @@ newtype Journal eff = Journal {unJournal :: Map Value Value}
   deriving (Eq, Ord, Show)
 
 instance FromJSON (Journal eff) where
-  parseJSON = fmap (Journal . M.fromList) . parseJSON
+  parseJSON = fmap (Journal . Map.fromList) . parseJSON
 
 instance ToJSON (Journal eff) where
-  toJSON = toJSON . M.toList . unJournal
+  toJSON = toJSON . Map.toList . unJournal
 
 -- | Wrap and record an effect; generally used with @-XTypeApplications@, e.g.,
 --
 -- > runRecord @SomeEffect
 runRecord :: forall e sig m a. Has (Lift IO) sig m => RecordC e sig m a -> m (Journal e, a)
 runRecord act = do
-  (mapping, a) <- runAtomicState M.empty . runRecordC $ act
+  (mapping, a) <- runAtomicState Map.empty . runRecordC $ act
   pure (Journal mapping, a)
 
 -- | @RecordC e sig m a@ is a pseudo-carrier for an effect @e@ with the underlying signature @sig@
@@ -79,7 +79,7 @@ instance (Member e sig, Has (Lift IO) sig m, Recordable (e m)) => Algebra (e :+:
         res <- lift $ send eff'
 
         let values = (recordKey eff', recordValue eff' res)
-        modify (uncurry M.insert values)
+        modify (uncurry Map.insert values)
 
         pure (res <$ ctx)
       R other -> alg (runRecordC . hdl) (R other) ctx

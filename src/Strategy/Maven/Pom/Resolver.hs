@@ -12,7 +12,7 @@ import Control.Effect.Diagnostics hiding (fromMaybe)
 import Control.Monad (unless)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Effect.ReadFS
@@ -27,11 +27,11 @@ data GlobalClosure = GlobalClosure
 
 buildGlobalClosure :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m GlobalClosure
 buildGlobalClosure files = do
-  (loadResults, ()) <- runState @LoadResults M.empty $ traverse_ recursiveLoadPom files
+  (loadResults, ()) <- runState @LoadResults Map.empty $ traverse_ recursiveLoadPom files
 
   -- TODO: diagnostics/warnings?
   let validated :: Map (Path Abs File) Pom
-      validated = M.mapMaybe (validatePom =<<) loadResults
+      validated = Map.mapMaybe (validatePom =<<) loadResults
 
   pure (buildClosure validated)
   where
@@ -45,18 +45,18 @@ buildGlobalClosure files = do
     buildClosure cache =
       GlobalClosure
         { globalGraph =
-            AM.vertices (map pomCoord (M.elems cache))
+            AM.vertices (map pomCoord (Map.elems cache))
               `AM.overlay` AM.edges
                 [ (parentCoord, pomCoord pom)
-                | pom <- M.elems cache
+                | pom <- Map.elems cache
                 , Just parentCoord <- [pomParentCoord pom]
                 ]
-        , globalPoms = indexBy (pomCoord . snd) (M.toList cache)
+        , globalPoms = indexBy (pomCoord . snd) (Map.toList cache)
         }
 
 -- TODO: reuse this in other strategies
 indexBy :: Ord k => (v -> k) -> [v] -> Map k v
-indexBy f = M.fromList . map (\v -> (f v, v))
+indexBy f = Map.fromList . map (\v -> (f v, v))
 
 type LoadResults = Map (Path Abs File) (Maybe RawPom)
 
@@ -65,12 +65,12 @@ recursiveLoadPom :: forall sig m. (Has ReadFS sig m, Has (State LoadResults) sig
 recursiveLoadPom path = do
   results <- get @LoadResults
 
-  case M.lookup path results of
+  case Map.lookup path results of
     -- don't re-inspect this same path
     Just _ -> pure ()
     Nothing -> do
       (res :: Maybe RawPom) <- recover (readContentsXML path)
-      modify @LoadResults (M.insert path res)
+      modify @LoadResults (Map.insert path res)
       traverse_ loadAdjacent res
   where
     loadAdjacent :: RawPom -> m ()

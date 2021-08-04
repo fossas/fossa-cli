@@ -11,7 +11,7 @@ import Data.Foldable (traverse_)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import DepTypes
 import Effect.Exec
 import Effect.Grapher
@@ -45,12 +45,12 @@ analyze' dir = do
   graph <- graphingGolang $ do
     stdout <- context "Getting direct dependencies" $ execThrow dir golistCmd
 
-    let gomodLines = drop 1 . T.lines . T.filter (/= '\r') . decodeUtf8 . BL.toStrict $ stdout -- the first line is our package
+    let gomodLines = drop 1 . Text.lines . Text.filter (/= '\r') . decodeUtf8 . BL.toStrict $ stdout -- the first line is our package
         requires = mapMaybe toRequire gomodLines
 
         toRequire :: Text -> Maybe Require
         toRequire line =
-          case T.splitOn " " line of
+          case Text.splitOn " " line of
             [package, version] -> Just (Require package version)
             _ -> Nothing
 

@@ -5,7 +5,7 @@ module Haskell.CabalSpec (
 import Control.Carrier.Diagnostics
 import Data.Aeson
 import Data.ByteString.Lazy qualified as BL
-import Data.Set qualified as S
+import Data.Set qualified as Set
 import DepTypes
 import GraphUtil
 import Graphing
@@ -25,13 +25,13 @@ spectrometerLibId = PlanId "spectrometer-0.1.0.0-inplace"
 withCompId = PlanId "with-components-1.0.2.3-efgh"
 
 aesonPlan, basePlan, deepDepPlan, rtsPlan, spectrometerFossaPlan, spectrometerLibPlan, withCompPlan :: InstallPlan
-aesonPlan = InstallPlan Configured aesonId "aeson" "1.5.2.0" (S.fromList [baseId, deepDepId]) (Just Global) mempty
-basePlan = InstallPlan PreExisting baseId "base" "4.13.0.0" (S.fromList [rtsId]) Nothing mempty
-deepDepPlan = InstallPlan Configured deepDepId "deepdep" "3.2.1.0" (S.fromList [baseId]) (Just Global) mempty
+aesonPlan = InstallPlan Configured aesonId "aeson" "1.5.2.0" (Set.fromList [baseId, deepDepId]) (Just Global) mempty
+basePlan = InstallPlan PreExisting baseId "base" "4.13.0.0" (Set.fromList [rtsId]) Nothing mempty
+deepDepPlan = InstallPlan Configured deepDepId "deepdep" "3.2.1.0" (Set.fromList [baseId]) (Just Global) mempty
 rtsPlan = InstallPlan PreExisting rtsId "rts" "1.0" mempty Nothing mempty
-spectrometerFossaPlan = InstallPlan Configured spectrometerFossaId "spectrometer" "0.1.0.0" (S.fromList [baseId, spectrometerLibId]) (Just Local) mempty
-spectrometerLibPlan = InstallPlan Configured spectrometerLibId "spectrometer" "0.1.0.0" (S.fromList [aesonId, baseId, withCompId]) (Just Local) mempty
-withCompPlan = InstallPlan Configured withCompId "with-components" "1.0.2.3" mempty (Just Global) (S.fromList [baseId, rtsId])
+spectrometerFossaPlan = InstallPlan Configured spectrometerFossaId "spectrometer" "0.1.0.0" (Set.fromList [baseId, spectrometerLibId]) (Just Local) mempty
+spectrometerLibPlan = InstallPlan Configured spectrometerLibId "spectrometer" "0.1.0.0" (Set.fromList [aesonId, baseId, withCompId]) (Just Local) mempty
+withCompPlan = InstallPlan Configured withCompId "with-components" "1.0.2.3" mempty (Just Global) (Set.fromList [baseId, rtsId])
 
 spec :: Test.Spec
 spec = do

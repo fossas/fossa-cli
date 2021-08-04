@@ -11,10 +11,10 @@ module Strategy.NuGet.ProjectAssetsJson (
 
 import Control.Effect.Diagnostics
 import Data.Aeson
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Maybe
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
@@ -58,7 +58,7 @@ analyze' file = do
   pure (graph, Complete)
 
 newtype ProjectAssetsJson = ProjectAssetsJson
-  { targets :: M.Map Text (M.Map Text DependencyInfo)
+  { targets :: Map.Map Text (Map.Map Text DependencyInfo)
   }
   deriving (Show)
 
@@ -68,20 +68,20 @@ instance FromJSON ProjectAssetsJson where
 
 data DependencyInfo = DependencyInfo
   { depType :: Text
-  , deepDeps :: M.Map Text Text
+  , deepDeps :: Map.Map Text Text
   }
   deriving (Show)
 
 instance FromJSON DependencyInfo where
   parseJSON = withObject "Dependency" $ \obj ->
     DependencyInfo <$> obj .: "type"
-      <*> obj .:? "dependencies" .!= M.empty
+      <*> obj .:? "dependencies" .!= Map.empty
 
 data NuGetDep = NuGetDep
   { depName :: Text
   , depVersion :: Text
   , completeDepType :: Text
-  , completeDeepDeps :: M.Map Text Text
+  , completeDeepDeps :: Map.Map Text Text
   }
   deriving (Show)
 
@@ -89,14 +89,14 @@ buildGraph :: ProjectAssetsJson -> Graphing Dependency
 buildGraph project = unfold direct deepList toDependency
   where
     direct :: [NuGetDep]
-    direct = concatMap (mapMaybe convertDep . M.toList) (M.elems (targets project))
+    direct = concatMap (mapMaybe convertDep . Map.toList) (Map.elems (targets project))
 
     convertDep :: (Text, DependencyInfo) -> Maybe NuGetDep
-    convertDep (depString, dep) = case T.splitOn "/" depString of
+    convertDep (depString, dep) = case Text.splitOn "/" depString of
       [name, ver] -> Just $ NuGetDep name ver (depType dep) (deepDeps dep)
       _ -> Nothing
 
-    deepList nugetDep = (\(x, y) -> NuGetDep x y "" M.empty) <$> M.toList (completeDeepDeps nugetDep)
+    deepList nugetDep = (\(x, y) -> NuGetDep x y "" Map.empty) <$> Map.toList (completeDeepDeps nugetDep)
     toDependency NuGetDep{..} =
       Dependency
         { dependencyType = NuGetType
@@ -104,5 +104,5 @@ buildGraph project = unfold direct deepList toDependency
         , dependencyVersion = Just (CEq depVersion)
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }

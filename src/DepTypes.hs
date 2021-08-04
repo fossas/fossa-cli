@@ -12,7 +12,7 @@ module DepTypes (
 
 import Data.Aeson
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
@@ -33,7 +33,7 @@ insertEnvironment :: DepEnvironment -> Dependency -> Dependency
 insertEnvironment env dep = dep{dependencyEnvironments = env : dependencyEnvironments dep}
 
 insertTag :: Text -> Text -> Dependency -> Dependency
-insertTag key value dep = dep{dependencyTags = M.insertWith (++) key [value] (dependencyTags dep)}
+insertTag key value dep = dep{dependencyTags = Map.insertWith (++) key [value] (dependencyTags dep)}
 
 insertLocation :: Text -> Dependency -> Dependency
 insertLocation loc dep = dep{dependencyLocations = loc : dependencyLocations dep}

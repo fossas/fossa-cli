@@ -3,8 +3,8 @@ module Yarn.V2.ResolversSpec (
 ) where
 
 import Data.Foldable (for_)
+import Data.String.Conversion (toString)
 import Data.Text
-import Data.Text qualified as T
 import Strategy.Yarn.V2.Lockfile
 import Strategy.Yarn.V2.Resolvers
 import Test.Hspec
@@ -57,7 +57,7 @@ testResolver ::
   [(Locator, Package)] ->
   Spec
 testResolver resolver supported =
-  describe (T.unpack (resolverName resolver)) $ do
+  describe (toString (resolverName resolver)) $ do
     it "Should work for supported locators" $ do
       for_ supported $ \(locator, result) -> do
         resolverSupportsLocator resolver locator `shouldBe` True

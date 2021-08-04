@@ -3,7 +3,7 @@ module Go.GlideLockSpec (
 ) where
 
 import Data.ByteString qualified as BS
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Yaml
 
 import Control.Algebra
@@ -23,7 +23,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "1234")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
   direct $
     Dependency
@@ -32,7 +32,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "4bd8")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
 
 glideLockfile :: GlideLockfile

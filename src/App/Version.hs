@@ -7,8 +7,9 @@ module App.Version (
 ) where
 
 import App.Version.TH (getCurrentTag)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Version (showVersion)
 import GitHash (GitInfo, giBranch, giDirty, giHash, tGitInfoCwd)
 import System.Info (compilerName, compilerVersion)
@@ -20,13 +21,13 @@ info :: GitInfo
 info = $$(tGitInfoCwd)
 
 currentBranch :: Text
-currentBranch = T.pack $ giBranch info
+currentBranch = toText $ giBranch info
 
 currentCommit :: Text
-currentCommit = T.pack $ giHash info
+currentCommit = toText $ giHash info
 
 shortCommit :: Text
-shortCommit = T.take 12 currentCommit
+shortCommit = Text.take 12 currentCommit
 
 isDirty :: Bool
 isDirty = giDirty info
@@ -34,11 +35,11 @@ isDirty = giDirty info
 compilerId :: Text
 compilerId = name <> "-" <> version
   where
-    name = T.pack compilerName
-    version = T.pack $ showVersion compilerVersion
+    name = toText compilerName
+    version = toText $ showVersion compilerVersion
 
 fullVersionDescription :: Text
-fullVersionDescription = T.concat items
+fullVersionDescription = Text.concat items
   where
     version :: Text
     version =

@@ -27,7 +27,7 @@ import Data.Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Text.Encoding (decodeUtf8)
 import Discovery.Filters
 import Effect.Exec
@@ -79,7 +79,7 @@ generateSpectrometerAOSPNoticeArgs logSeverity ApiOpts{..} ProjectRevision{..} n
     ++ ["-scan-id", unNinjaScanID ninjaScanId]
     ++ ["-name", projectName]
     ++ ["."]
-    ++ (T.pack . toFilePath <$> unNinjaFilePaths ninjaInputFiles)
+    ++ (toText . toFilePath <$> unNinjaFilePaths ninjaInputFiles)
 
 generateVSIStandaloneArgs :: ApiOpts -> PathFilters -> [Text]
 generateVSIStandaloneArgs ApiOpts{..} PathFilters{..} =
@@ -148,7 +148,7 @@ optExplodeText flag (a : as) = [flag, a] ++ optExplodeText flag as
 -- Path Rel Dir renders with a trailing /, but wiggins needs it to not have that trailing slash when used as an exclude or include-only filter.
 -- Strip the / postfix from the returned value.
 optPathAsFilter :: Path Rel Dir -> Text
-optPathAsFilter p = T.init (toText p)
+optPathAsFilter p = Text.init (toText p)
 
 execWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
 execWiggins binaryPaths opts = decodeUtf8 . BL.toStrict <$> execThrow (scanDir opts) (wigginsCommand binaryPaths opts)
@@ -159,7 +159,7 @@ execWigginsJson opts binaryPaths = execJson (scanDir opts) (wigginsCommand binar
 wigginsCommand :: BinaryPaths -> WigginsOpts -> Command
 wigginsCommand bin WigginsOpts{..} = do
   Command
-    { cmdName = T.pack $ fromAbsFile $ toExecutablePath bin
+    { cmdName = toText $ fromAbsFile $ toExecutablePath bin
     , cmdArgs = spectrometerArgs
     , cmdAllowErr = Never
     }

@@ -42,8 +42,8 @@ import Data.List (intersperse)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
 import Prelude
@@ -118,7 +118,7 @@ fromEither = either fatal pure
 
 -- | Lift an Either result into the Diagnostics effect, given a Show instance for the error type
 fromEitherShow :: (Show err, Has Diagnostics sig m) => Either err a -> m a
-fromEitherShow = either (fatal . T.pack . show) pure
+fromEitherShow = either (fatal . toText . show) pure
 
 -- | Lift a Maybe result into Diagnostics, with the given diagnostic thrown for @Nothing@
 fromMaybe :: (ToDiagnostic err, Has Diagnostics sig m) => err -> Maybe a -> m a

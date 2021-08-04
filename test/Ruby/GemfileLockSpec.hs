@@ -2,7 +2,7 @@ module Ruby.GemfileLockSpec (
   spec,
 ) where
 
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text.IO qualified as TIO
 import DepTypes
 import GraphUtil
@@ -18,7 +18,7 @@ dependencyOne =
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = ["temp@12345"]
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyTwo :: Dependency
@@ -29,7 +29,7 @@ dependencyTwo =
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = ["remote"]
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyThree :: Dependency
@@ -40,7 +40,7 @@ dependencyThree =
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = ["remote"]
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 gitSection :: Section

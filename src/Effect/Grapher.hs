@@ -36,12 +36,12 @@ import Control.Carrier.Simple
 import Control.Carrier.State.Strict
 import Data.Kind (Type)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
-import Data.Set qualified as S
+import Data.Set qualified as Set
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Graphing qualified as G
 import Prettyprinter (pretty)
 
@@ -113,12 +113,12 @@ label :: (Ord ty, Ord lbl, Has (LabeledGrapher ty lbl) sig m) => ty -> lbl -> m 
 label ty lbl = modify (insertLabel ty lbl)
 
 insertLabel :: (Ord ty, Ord lbl) => ty -> lbl -> Labels ty lbl -> Labels ty lbl
-insertLabel ty lbl = M.insertWith (<>) ty (S.singleton lbl)
+insertLabel ty lbl = Map.insertWith (<>) ty (Set.singleton lbl)
 
 -- | An interpreter for @LabeledGrapher@. See existing strategies for examples
 withLabeling :: (Algebra sig m, Ord ty, Ord res) => (ty -> Set lbl -> res) -> LabeledGrapherC ty lbl m a -> m (G.Graphing res)
 withLabeling f act = do
-  (graph, (labels, _)) <- runGrapher . runState M.empty $ act
+  (graph, (labels, _)) <- runGrapher . runState Map.empty $ act
   pure (unlabel f labels graph)
 
 -- | Transform a @Graphing ty@ into a @Graphing ty'@, given a function that
@@ -126,7 +126,7 @@ withLabeling f act = do
 unlabel :: (Ord ty, Ord ty') => (ty -> Set lbl -> ty') -> Labels ty lbl -> G.Graphing ty -> G.Graphing ty'
 unlabel f labels = G.gmap (\ty -> f ty (findLabels ty))
   where
-    findLabels ty = fromMaybe S.empty (M.lookup ty labels)
+    findLabels ty = fromMaybe Set.empty (Map.lookup ty labels)
 
 ----- Mapping
 
@@ -172,18 +172,18 @@ type MappedGrapherC ty val m a = StateC (Map ty val) (GrapherC ty m) a
 
 -- | Associate a key with a given value
 mapping :: (Ord ty, Has (MappedGrapher ty val) sig m) => ty -> val -> m ()
-mapping ty val = modify (M.insert ty val)
+mapping ty val = modify (Map.insert ty val)
 
 withMapping :: (Algebra sig m, Ord ty, Ord res, Show ty) => (ty -> val -> res) -> MappedGrapherC ty val m a -> m (Either MappingError (G.Graphing res))
 withMapping f act = do
-  (graph, (labels, _)) <- runGrapher . runState M.empty $ act
+  (graph, (labels, _)) <- runGrapher . runState Map.empty $ act
   let -- result :: Either MappingError (G.Graphing res)
       result = G.gtraverse replaceVal graph
 
       -- replaceVal :: ty -> Either MappingError res
       replaceVal key =
-        case M.lookup key labels of
-          Nothing -> Left . MissingKey . T.pack $ show key
+        case Map.lookup key labels of
+          Nothing -> Left . MissingKey . toText $ show key
           Just value -> Right $ f key value
 
   pure result

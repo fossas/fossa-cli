@@ -2,7 +2,7 @@ module Go.GomodSpec (spec) where
 
 import Control.Algebra (run)
 import Data.Function ((&))
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.SemVer (version)
 import Data.SemVer.Internal (Identifier (..))
 import Data.Text (Text)
@@ -29,7 +29,7 @@ dep name revision =
     , dependencyVersion = Just (CEq revision)
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 -- Fixtures for testing.
@@ -43,8 +43,8 @@ trivialGomod =
         , Require "github.com/pkg/two/v2" (semver 2 0 0)
         , Require "github.com/pkg/three/v3" (semver 3 0 0)
         ]
-    , modReplaces = M.fromList [("github.com/pkg/two/v2", Require "github.com/pkg/overridden" (NonCanonical "overridden"))]
-    , modLocalReplaces = M.empty
+    , modReplaces = Map.fromList [("github.com/pkg/two/v2", Require "github.com/pkg/overridden" (NonCanonical "overridden"))]
+    , modLocalReplaces = Map.empty
     , modExcludes = []
     }
 
@@ -63,8 +63,8 @@ localReplaceGomod =
         , Require "github.com/pkg/two/v2" (semver 2 0 0)
         , Require "github.com/pkg/three/v3" (semver 3 0 0)
         ]
-    , modReplaces = M.empty
-    , modLocalReplaces = M.fromList [("github.com/pkg/two/v2", "./foo")]
+    , modReplaces = Map.empty
+    , modLocalReplaces = Map.fromList [("github.com/pkg/two/v2", "./foo")]
     , modExcludes = []
     }
 
@@ -86,14 +86,14 @@ edgeCaseGomod =
         , Require "repo/F_underscore" (semver 1 0 0)
         ]
     , modReplaces =
-        M.fromList
+        Map.fromList
           [ ("repo/B", Require "alias/repo/B" $ semver 0 1 0)
           , ("repo/C", Require "alias/repo/C" $ Pseudo "000000000003")
           , ("repo/E", Require "alias/repo/E" $ Pseudo "000000000005")
           , ("repo/F_underscore", Require "repo/F_underscore" $ semver 2 0 0)
           ]
     , modLocalReplaces =
-        M.fromList
+        Map.fromList
           [ ("foo", "../foo")
           , ("bar", "/foo/bar/baz")
           ]

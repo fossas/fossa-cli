@@ -3,7 +3,7 @@ module Clojure.ClojureSpec (
 ) where
 
 import Data.EDN qualified as EDN
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text.IO qualified as TIO
 import DepTypes
 import GraphUtil
@@ -32,7 +32,7 @@ clojureComplete =
     , dependencyVersion = Just (CEq "0.2.5")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 -- [koan-engine "0.2.5"] {[fresh "1.0.2"] nil},
@@ -44,7 +44,7 @@ koanEngine =
     , dependencyVersion = Just (CEq "0.2.5")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 fresh :: Dependency
@@ -55,7 +55,7 @@ fresh =
     , dependencyVersion = Just (CEq "1.0.2")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 -- [lein-koan "0.1.5" :scope "test"] nil,
@@ -67,7 +67,7 @@ leinKoan =
     , dependencyVersion = Just (CEq "0.1.5")
     , dependencyLocations = []
     , dependencyEnvironments = [EnvTesting]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 -- [nrepl "0.6.0" :exclusions [[org.clojure/clojure]]] nil,
@@ -79,7 +79,7 @@ nrepl =
     , dependencyVersion = Just (CEq "0.6.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 -- [org.clojure/clojure "1.10.0"]
@@ -93,7 +93,7 @@ clojure =
     , dependencyVersion = Just (CEq "1.10.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 clojureSpecsAlpha :: Dependency
@@ -104,7 +104,7 @@ clojureSpecsAlpha =
     , dependencyVersion = Just (CEq "0.2.44")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 clojureSpecAlpha :: Dependency
@@ -115,5 +115,5 @@ clojureSpecAlpha =
     , dependencyVersion = Just (CEq "0.2.176")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }

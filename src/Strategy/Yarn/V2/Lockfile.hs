@@ -12,9 +12,9 @@ import Data.Aeson
 import Data.Aeson.Extra (TextLike (..))
 import Data.HashMap.Strict qualified as HM
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Void (Void)
 import Text.Megaparsec
 import Text.Megaparsec.Char
@@ -84,14 +84,14 @@ parsePackageKeys = traverse (tryParse descriptorP) . splitTrim ","
 
 -- | 'Data.Text.splitOn', but trims surrounding whitespace from the results
 splitTrim :: Text -> Text -> [Text]
-splitTrim needle = map T.strip . T.splitOn needle
+splitTrim needle = map Text.strip . Text.splitOn needle
 
 instance FromJSON PackageDescription where
   parseJSON = withObject "PackageDescription" $ \obj ->
     PackageDescription
       <$> obj .: "version"
       <*> obj .: "resolution"
-      <*> (obj .:? "dependencies" .!= M.empty >>= parseDependencyDescriptors . M.map unTextLike)
+      <*> (obj .:? "dependencies" .!= Map.empty >>= parseDependencyDescriptors . Map.map unTextLike)
 
 -- | Rather than storing dependencies as a flat list of Descriptors, the yarn
 -- lockfile stores them as key/value pairs, split on the last "@" in a
@@ -99,7 +99,7 @@ instance FromJSON PackageDescription where
 --
 -- We re-construct the raw descriptor by rejoining on "@" before running the parser
 parseDependencyDescriptors :: MonadFail m => Map Text Text -> m [Descriptor]
-parseDependencyDescriptors = traverse (\(name, range) -> tryParse descriptorP (name <> "@" <> range)) . M.toList
+parseDependencyDescriptors = traverse (\(name, range) -> tryParse descriptorP (name <> "@" <> range)) . Map.toList
 
 ---------- Text field Parsers
 

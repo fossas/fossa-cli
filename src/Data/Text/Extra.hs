@@ -9,23 +9,23 @@ module Data.Text.Extra (
 
 import Data.ByteString (ByteString)
 import Data.Maybe (fromMaybe)
-import Data.String.Conversion (decodeUtf8, encodeUtf8)
+import Data.String.Conversion (decodeUtf8, encodeUtf8, toText)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 
 splitOnceOn :: Text -> Text -> (Text, Text)
 splitOnceOn needle haystack = (first, strippedRemaining)
   where
-    len = T.length needle
-    (first, remaining) = T.breakOn needle haystack
-    strippedRemaining = T.drop len remaining
+    len = Text.length needle
+    (first, remaining) = Text.breakOn needle haystack
+    strippedRemaining = Text.drop len remaining
 
 splitOnceOnEnd :: Text -> Text -> (Text, Text)
 splitOnceOnEnd needle haystack = (strippedInitial, end)
   where
-    len = T.length needle
-    (initial, end) = T.breakOnEnd needle haystack
-    strippedInitial = T.dropEnd len initial
+    len = Text.length needle
+    (initial, end) = Text.breakOnEnd needle haystack
+    strippedInitial = Text.dropEnd len initial
 
 -- | Like Text.breakOn, but with two differences:
 -- 1. This removes the text that was broken on, e.g., `Text.breakOn "foo" "foobar" == ("", "foobar")` `breakOnAndRemove "foo" "foobar" == ("", "bar")`
@@ -38,16 +38,16 @@ splitOnceOnEnd needle haystack = (strippedInitial, end)
 -- Nothing
 breakOnAndRemove :: Text -> Text -> Maybe (Text, Text)
 breakOnAndRemove needle haystack
-  | (before, after) <- T.breakOn needle haystack
-    , T.isPrefixOf needle after =
-    Just (before, T.drop (T.length needle) after)
+  | (before, after) <- Text.breakOn needle haystack
+    , Text.isPrefixOf needle after =
+    Just (before, Text.drop (Text.length needle) after)
   | otherwise = Nothing
 
 underBS :: (ByteString -> ByteString) -> Text -> Text
 underBS f = decodeUtf8 . f . encodeUtf8
 
 showT :: Show a => a -> Text
-showT = T.pack . show
+showT = toText . show
 
 dropPrefix :: Text -> Text -> Text
-dropPrefix pre txt = fromMaybe txt (T.stripPrefix pre txt)
+dropPrefix pre txt = fromMaybe txt (Text.stripPrefix pre txt)

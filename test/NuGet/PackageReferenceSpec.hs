@@ -2,8 +2,8 @@ module NuGet.PackageReferenceSpec (
   spec,
 ) where
 
-import Data.Map.Strict qualified as M
-import Data.Text qualified as T
+import Data.Map.Strict qualified as Map
+import Data.String.Conversion (toString)
 import Data.Text.IO qualified as TIO
 import DepTypes
 import GraphUtil
@@ -19,7 +19,7 @@ dependencyOne =
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyTwo :: Dependency
@@ -30,7 +30,7 @@ dependencyTwo =
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyThree :: Dependency
@@ -41,7 +41,7 @@ dependencyThree =
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyFour :: Dependency
@@ -52,7 +52,7 @@ dependencyFour =
     , dependencyVersion = Nothing
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 packageReference :: PackageReference
@@ -81,7 +81,7 @@ spec = do
     it "reads a file and constructs an accurate list of item groups" $ do
       case parseXML refFile of
         Right project -> (groups project) `shouldContain` itemGroupList
-        Left err -> expectationFailure (T.unpack ("could not parse package reference file" <> xmlErrorPretty err))
+        Left err -> expectationFailure (toString ("could not parse package reference file" <> xmlErrorPretty err))
 
     it "constructs an accurate graph" $ do
       let graph = buildGraph packageReference

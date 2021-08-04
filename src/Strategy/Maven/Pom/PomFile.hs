@@ -17,7 +17,7 @@ module Strategy.Maven.Pom.PomFile
 
 import Control.Applicative (optional, (<|>))
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Parse.XML
 
@@ -36,7 +36,7 @@ validatePom raw = do
   pure (Pom coord parentCoord properties dependencyManagement dependencies licenses)
 
 rawDepsToDeps :: [RawDependency] -> Map (Group, Artifact) MvnDepBody
-rawDepsToDeps = M.fromList . map (\dep -> (depToKey dep, depToBody dep))
+rawDepsToDeps = Map.fromList . map (\dep -> (depToKey dep, depToBody dep))
   where
     depToKey :: RawDependency -> (Group, Artifact)
     depToKey raw = (rawDependencyGroup raw, rawDependencyArtifact raw)
@@ -101,7 +101,7 @@ data MvnDepBody = MvnDepBody
   deriving (Eq, Ord, Show)
 
 instance Semigroup Pom where
-  -- left-biased, similar to M.union
+  -- left-biased, similar to Map.union
   --
   -- almost all fields are inherited -- and the only ones we're tracking are
   -- properties/dependencyManagement/dependencies
@@ -112,14 +112,14 @@ instance Semigroup Pom where
     Pom
       { pomCoord = pomCoord childPom
       , pomParentCoord = pomParentCoord childPom
-      , pomProperties = M.union (pomProperties childPom) (pomProperties parentPom)
-      , pomDependencyManagement = M.unionWith (<>) (pomDependencyManagement childPom) (pomDependencyManagement parentPom)
-      , pomDependencies = M.unionWith (<>) (pomDependencies childPom) (pomDependencies parentPom)
+      , pomProperties = Map.union (pomProperties childPom) (pomProperties parentPom)
+      , pomDependencyManagement = Map.unionWith (<>) (pomDependencyManagement childPom) (pomDependencyManagement parentPom)
+      , pomDependencies = Map.unionWith (<>) (pomDependencies childPom) (pomDependencies parentPom)
       , pomLicenses = pomLicenses childPom
       }
 
 instance Semigroup MvnDepBody where
-  -- left-biased, similar to M.union
+  -- left-biased, similar to Map.union
   left <> right =
     MvnDepBody
       { depVersion = depVersion left <|> depVersion right
@@ -174,7 +174,7 @@ instance FromXML RawPom where
       <*> optional (child "groupId" el)
       <*> child "artifactId" el
       <*> optional (child "version" el)
-      <*> optional (child "properties" el) `defaultsTo` M.empty
+      <*> optional (child "properties" el) `defaultsTo` Map.empty
       <*> optional (child "modules" el >>= children "module") `defaultsTo` []
       <*> optional (child "dependencyManagement" el >>= children "dependency") `defaultsTo` []
       <*> optional (child "dependencies" el >>= children "dependency") `defaultsTo` []

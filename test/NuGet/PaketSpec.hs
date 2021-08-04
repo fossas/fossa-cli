@@ -2,7 +2,7 @@ module NuGet.PaketSpec (
   spec,
 ) where
 
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text.IO qualified as TIO
 import DepTypes
 import GraphUtil
@@ -18,7 +18,7 @@ dependencyOne =
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = ["nuget.com"]
     , dependencyEnvironments = []
-    , dependencyTags = M.fromList [("location", ["NUGET"]), ("group", ["MAIN"])]
+    , dependencyTags = Map.fromList [("location", ["NUGET"]), ("group", ["MAIN"])]
     }
 
 dependencyTwo :: Dependency
@@ -29,7 +29,7 @@ dependencyTwo =
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = ["nuget-v2.com", "nuget.com"]
     , dependencyEnvironments = []
-    , dependencyTags = M.fromList [("location", ["NUGET"]), ("group", ["MAIN", "TEST"])]
+    , dependencyTags = Map.fromList [("location", ["NUGET"]), ("group", ["MAIN", "TEST"])]
     }
 
 dependencyThree :: Dependency
@@ -40,7 +40,7 @@ dependencyThree =
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = ["custom-site.com"]
     , dependencyEnvironments = []
-    , dependencyTags = M.fromList [("location", ["HTTP"]), ("group", ["MAIN"])]
+    , dependencyTags = Map.fromList [("location", ["HTTP"]), ("group", ["MAIN"])]
     }
 
 dependencyFour :: Dependency
@@ -51,7 +51,7 @@ dependencyFour =
     , dependencyVersion = Just (CEq "4.0.0")
     , dependencyLocations = ["nuget-v2.com"]
     , dependencyEnvironments = []
-    , dependencyTags = M.fromList [("location", ["NUGET"]), ("group", ["TEST"])]
+    , dependencyTags = Map.fromList [("location", ["NUGET"]), ("group", ["TEST"])]
     }
 
 dependencyFive :: Dependency
@@ -62,7 +62,7 @@ dependencyFive =
     , dependencyVersion = Just (CEq "5.0.0")
     , dependencyLocations = ["nuget-v2.com"]
     , dependencyEnvironments = []
-    , dependencyTags = M.fromList [("location", ["NUGET"]), ("group", ["TEST"])]
+    , dependencyTags = Map.fromList [("location", ["NUGET"]), ("group", ["TEST"])]
     }
 
 dependencySix :: Dependency
@@ -73,7 +73,7 @@ dependencySix =
     , dependencyVersion = Just (CEq "6.0.0")
     , dependencyLocations = ["github.com"]
     , dependencyEnvironments = []
-    , dependencyTags = M.fromList [("location", ["GITHUB"]), ("group", ["TEST"])]
+    , dependencyTags = Map.fromList [("location", ["GITHUB"]), ("group", ["TEST"])]
     }
 
 nugetSection :: Section

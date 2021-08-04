@@ -4,7 +4,7 @@ module NuGet.ProjectJsonSpec (
 
 import Data.Aeson
 import Data.ByteString qualified as BS
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import DepTypes
 import GraphUtil
 import Strategy.NuGet.ProjectJson
@@ -18,7 +18,7 @@ dependencyOne =
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyTwo :: Dependency
@@ -29,7 +29,7 @@ dependencyTwo =
     , dependencyVersion = Just (CCompatible "2.*")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 dependencyThree :: Dependency
@@ -40,7 +40,7 @@ dependencyThree =
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.fromList [("type", ["sometype"])]
+    , dependencyTags = Map.fromList [("type", ["sometype"])]
     }
 
 spec :: Spec

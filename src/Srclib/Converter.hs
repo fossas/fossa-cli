@@ -11,8 +11,8 @@ import Algebra.Graph.AdjacencyMap qualified as AM
 import App.Fossa.Analyze.Project
 import Control.Applicative ((<|>))
 import Data.Set qualified as Set
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as Text
 import DepTypes
 import Graphing (Graphing)
 import Graphing qualified
@@ -37,7 +37,7 @@ toSourceUnit ProjectResult{..} =
     , additionalData = Nothing
     }
   where
-    renderedPath = Text.pack (toFilePath projectResultPath)
+    renderedPath = toText (toFilePath projectResultPath)
 
     filteredGraph :: Graphing Dependency
     filteredGraph = Graphing.filter (\d -> shouldPublishDep d && isSupportedType d) projectResultGraph

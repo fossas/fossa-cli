@@ -13,7 +13,7 @@ import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent (getNumCapabilities)
 import Data.Foldable (for_)
-import Data.Set qualified as S
+import Data.Set qualified as Set
 import Data.Set.NonEmpty
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec
@@ -56,7 +56,7 @@ listTargetsMain (BaseDir basedir) = do
                     <> pretty (projectType project)
                     <> "@"
                     <> pretty (toFilePath rel)
-              FoundTargets targets -> for_ (S.toList $ toSet targets) $ \target -> do
+              FoundTargets targets -> for_ (Set.toList $ toSet targets) $ \target -> do
                 logInfo $
                   "Found target: "
                     <> pretty (projectType project)

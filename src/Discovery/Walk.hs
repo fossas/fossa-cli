@@ -17,9 +17,9 @@ import Data.Foldable (find)
 import Data.Functor (void)
 import Data.List ((\\))
 import Data.Maybe (mapMaybe)
-import Data.Set qualified as S
+import Data.Set qualified as Set
+import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Effect.ReadFS
 import Path
 
@@ -53,7 +53,7 @@ walk f = walkDir $ \dir subdirs files -> do
     WalkContinue -> pure $ WalkExclude []
     WalkSkipSome dirs ->
       -- we normalize the passed in [Text] as relative directories for more reliable comparisons
-      let parsedDirs = mapMaybe (parseRelDir . T.unpack) dirs
+      let parsedDirs = mapMaybe (parseRelDir . toString) dirs
        in pure . WalkExclude . filter ((`elem` parsedDirs) . dirname) $ subdirs
     WalkSkipAll -> pure $ WalkExclude subdirs
     WalkStop -> pure WalkFinish
@@ -93,32 +93,32 @@ walkDir ::
 walkDir handler topdir =
   context "Walking the filetree" $
     void $
-      --makeAbsolute topdir >>= walkAvoidLoop S.empty
-      walkAvoidLoop S.empty topdir
+      --makeAbsolute topdir >>= walkAvoidLoop Set.empty
+      walkAvoidLoop Set.empty topdir
   where
     walkAvoidLoop traversed curdir = do
       mRes <- checkLoop traversed curdir
       case mRes of
-        Nothing -> return $ Just ()
+        Nothing -> pure $ Just ()
         Just traversed' -> walktree traversed' curdir
     walktree traversed curdir = do
       (subdirs, files) <- listDir curdir
       action <- handler curdir subdirs files
       case action of
-        WalkFinish -> return Nothing
+        WalkFinish -> pure Nothing
         WalkExclude xdirs ->
           case subdirs \\ xdirs of
-            [] -> return $ Just ()
+            [] -> pure $ Just ()
             ds ->
               runMaybeT $
                 mapM_
                   (MaybeT . walkAvoidLoop traversed)
                   ds
     checkLoop traversed dir = do
-      return $
-        if S.member dir traversed
+      pure $
+        if Set.member dir traversed
           then Nothing
-          else Just (S.insert dir traversed)
+          else Just (Set.insert dir traversed)
 
 data WalkAction b
   = -- | Finish the entire walk altogether

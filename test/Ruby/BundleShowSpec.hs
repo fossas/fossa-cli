@@ -2,7 +2,7 @@ module Ruby.BundleShowSpec (
   spec,
 ) where
 
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text.IO qualified as TIO
 import Text.Megaparsec
 
@@ -22,7 +22,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "1.0.0")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
   direct $
     Dependency
@@ -31,7 +31,7 @@ expected = run . evalGrapher $ do
       , dependencyVersion = Just (CEq "2.0.0")
       , dependencyLocations = []
       , dependencyEnvironments = []
-      , dependencyTags = M.empty
+      , dependencyTags = Map.empty
       }
 
 bundleShowOutput :: [BundleShowDep]

@@ -15,10 +15,10 @@ import Control.Monad (guard)
 import Data.Char qualified as C
 import Data.Foldable (traverse_)
 import Data.Functor (void)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes
 import Discovery.Walk
@@ -91,13 +91,13 @@ toDependency pkg = foldr applyLabel start
         , dependencyVersion = Nothing
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }
 
     applyLabel :: PaketLabel -> Dependency -> Dependency
     applyLabel (PaketVersion ver) dep = dep{dependencyVersion = Just (CEq ver)}
-    applyLabel (GroupName name) dep = dep{dependencyTags = M.insertWith (++) "group" [name] (dependencyTags dep)}
-    applyLabel (DepLocation loc) dep = dep{dependencyTags = M.insertWith (++) "location" [loc] (dependencyTags dep)}
+    applyLabel (GroupName name) dep = dep{dependencyTags = Map.insertWith (++) "group" [name] (dependencyTags dep)}
+    applyLabel (DepLocation loc) dep = dep{dependencyTags = Map.insertWith (++) "location" [loc] (dependencyTags dep)}
     applyLabel (PaketRemote repo) dep = dep{dependencyLocations = repo : dependencyLocations dep}
 
 buildGraph :: [Section] -> Graphing Dependency
@@ -165,7 +165,7 @@ groupSection = do
 unknownSection :: Parser Section
 unknownSection = do
   emptyLine <- restOfLine
-  guard $ not $ "GROUP" `T.isPrefixOf` emptyLine
+  guard $ not $ "GROUP" `Text.isPrefixOf` emptyLine
   _ <- eol
   pure $ UnknownSection emptyLine
 
@@ -173,7 +173,7 @@ standardSectionParser :: Parser Section
 standardSectionParser = L.nonIndented scn $
   L.indentBlock scn $ do
     location <- chunk "HTTP" <|> "GITHUB" <|> "NUGET"
-    return $ L.IndentMany Nothing (pure . StandardSection location) remoteParser
+    pure $ L.IndentMany Nothing (pure . StandardSection location) remoteParser
 
 remoteParser :: Parser Remote
 remoteParser = L.indentBlock scn $ do

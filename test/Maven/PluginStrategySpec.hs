@@ -2,7 +2,7 @@ module Maven.PluginStrategySpec (
   spec,
 ) where
 
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import DepTypes
 import GraphUtil
 import Strategy.Maven.Plugin
@@ -17,7 +17,7 @@ packageOne =
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = [EnvTesting]
-    , dependencyTags = M.fromList [("scopes", ["compile", "test"])]
+    , dependencyTags = Map.fromList [("scopes", ["compile", "test"])]
     }
 
 packageTwo :: Dependency
@@ -28,7 +28,7 @@ packageTwo =
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = []
-    , dependencyTags = M.fromList [("scopes", ["compile"]), ("optional", ["true"])]
+    , dependencyTags = Map.fromList [("scopes", ["compile"]), ("optional", ["true"])]
     }
 
 mavenOutput :: PluginOutput

@@ -13,9 +13,9 @@ module Strategy.Scala (
 
 import Control.Carrier.Diagnostics
 import Data.Maybe (mapMaybe)
-import Data.String.Conversion (decodeUtf8)
+import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TL
 import Discovery.Walk
 import Effect.Exec
@@ -58,7 +58,7 @@ mkProject basedir closure =
     }
 
 pathToText :: Path ar fd -> Text
-pathToText = T.pack . toFilePath
+pathToText = toText . toFilePath
 
 findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects = walk' $ \dir _ files -> do
@@ -100,16 +100,16 @@ genPoms projectDir = do
       stdout = TL.toStrict stdoutLText
       --
       stdoutLines :: [Text]
-      stdoutLines = T.lines stdout
+      stdoutLines = Text.lines stdout
       --
       pomLines :: [Text]
-      pomLines = mapMaybe (T.stripPrefix "[info] Wrote ") stdoutLines
+      pomLines = mapMaybe (Text.stripPrefix "[info] Wrote ") stdoutLines
       --
       pomLocations :: Maybe [Path Abs File]
-      pomLocations = traverse (parseAbsFile . T.unpack) pomLines
+      pomLocations = traverse (parseAbsFile . toString) pomLines
 
   case pomLocations of
-    Nothing -> fatalText ("Could not parse pom paths from:\n" <> T.unlines pomLines)
+    Nothing -> fatalText ("Could not parse pom paths from:\n" <> Text.unlines pomLines)
     Just [] -> fatalText "No sbt projects found"
     Just paths -> do
       globalClosure <- buildGlobalClosure paths

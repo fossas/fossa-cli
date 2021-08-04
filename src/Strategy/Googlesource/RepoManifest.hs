@@ -20,14 +20,13 @@ module Strategy.Googlesource.RepoManifest (
 
 import Prelude
 
-import Control.Effect.Diagnostics
-import Data.Map.Strict qualified as M
-import Data.Text qualified as T
-
 import Control.Applicative (optional, (<|>))
+import Control.Effect.Diagnostics
 import Control.Monad (unless)
 import Data.Foldable (find)
 import Data.HashMap.Strict qualified as HM
+import Data.Map.Strict qualified as Map
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc (pretty)
 import DepTypes
@@ -104,10 +103,10 @@ fixRemote rootDir remote = do
   let configFile = rootDir </> $(mkRelFile "manifests.git/config")
 
   exists <- doesFileExist configFile
-  unless exists (fatal $ MissingGitConfig $ T.pack $ show configFile)
+  unless exists (fatal $ MissingGitConfig $ toText $ show configFile)
 
   contents <- readContentsText configFile
-  config <- tagError (GitConfigParse . T.pack . errorBundlePretty) (parseConfig contents)
+  config <- tagError (GitConfigParse . toText . errorBundlePretty) (parseConfig contents)
 
   let fixedUri :: Either Text URI
       fixedUri = do
@@ -139,7 +138,7 @@ validatedProjectsFromIncludes manifest parentDir rootDir = do
   let manifestIncludeFiles :: [Text]
       manifestIncludeFiles = map includeName $ manifestIncludes manifest
       pathRelativeToManifestDir :: Text -> Maybe (Path Abs File)
-      pathRelativeToManifestDir file = (parentDir </>) <$> parseRelFile ("manifests/" ++ T.unpack file)
+      pathRelativeToManifestDir file = (parentDir </>) <$> parseRelFile ("manifests/" ++ toString file)
       manifestFiles :: Maybe [Path Abs File]
       manifestFiles = traverse pathRelativeToManifestDir manifestIncludeFiles
   case manifestFiles of
@@ -274,7 +273,7 @@ buildGraph projects = unfold projects (const []) toDependency
         , dependencyName = validatedProjectName
         , dependencyVersion = Just (CEq validatedProjectRevision)
         , dependencyLocations = [render validatedProjectUrl]
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         , dependencyEnvironments = [EnvProduction]
         }
 

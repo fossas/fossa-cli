@@ -13,10 +13,10 @@ import Data.Char qualified as C
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Set (Set)
+import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Void (Void)
 import DepTypes
 import Effect.Grapher
@@ -85,7 +85,7 @@ toDependency pkg = foldr applyLabel start
         , dependencyVersion = Nothing
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }
 
     applyLabel :: GemfileLabel -> Dependency -> Dependency
@@ -133,7 +133,7 @@ restOfLine = takeWhileP (Just "ignored") (not . isEndLine)
 
 -- ignore content until the end of the line
 ignored :: Parser ()
-ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
+ignored = void $ takeWhileP (Just "ignored") (not . isEndLine)
 
 gitSectionParser :: Parser Section
 gitSectionParser = mkSectionParser "GIT" $ \propertyMap -> do
@@ -163,24 +163,24 @@ mkSectionParser sectionName toSection = L.nonIndented scn $
   where
     propertiesToSection :: [(Text, RawField)] -> Parser Section
     propertiesToSection properties =
-      let propertyMap = M.fromList properties
+      let propertyMap = Map.fromList properties
           result :: Either Text Section
           result = toSection propertyMap
        in case result of
             Right x -> pure x
-            Left y -> fail $ T.unpack $ "could not parse " <> sectionName <> " section: " <> y
+            Left y -> fail $ toString $ "could not parse " <> sectionName <> " section: " <> y
 
 eitherToMaybe :: Either a b -> Maybe b
 eitherToMaybe (Right a) = Just a
 eitherToMaybe (Left _) = Nothing
 
 lookupRawText :: Text -> Map Text RawField -> Either Text Text
-lookupRawText key m = case M.lookup key m of
+lookupRawText key m = case Map.lookup key m of
   Just (RawText val) -> Right val
   _ -> Left $ "a value for " <> key <> " was unable to be found in the map"
 
 lookupRawSpecs :: Text -> Map Text RawField -> Either Text [Spec]
-lookupRawSpecs key m = case M.lookup key m of
+lookupRawSpecs key m = case Map.lookup key m of
   Just (RawSpecs val) -> Right val
   _ -> Left $ "a value for " <> key <> " was unable to be found in the map"
 
@@ -224,7 +224,7 @@ specParser = L.indentBlock scn p
     p = do
       name <- findDep
       version <- findVersion
-      return (L.IndentMany Nothing (pure . Spec version name) specDepParser)
+      pure (L.IndentMany Nothing (pure . Spec version name) specDepParser)
 
 specDepParser :: Parser SpecDep
 specDepParser = do

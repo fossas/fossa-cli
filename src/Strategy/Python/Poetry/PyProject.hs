@@ -19,9 +19,8 @@ import Data.Foldable (asum)
 import Data.Functor (void)
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
-import Data.String.Conversion (toString)
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
-import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes (
   VerConstraint (
@@ -217,7 +216,7 @@ parseVerConstraint :: Parser VerConstraint
 parseVerConstraint = do
   operator <- whitespaceOrTab *> parseConstraintOperator <* whitespaceOrTab
   versionText <- many (noneOf [andOperatorChar, orOperatorChar] <* whitespaceOrTab)
-  let v = Text.pack versionText
+  let v = toText versionText
   case operator of
     Equal -> pure $ CEq v
     NotEqual -> pure $ CNot v

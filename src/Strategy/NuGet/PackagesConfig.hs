@@ -12,7 +12,7 @@ module Strategy.NuGet.PackagesConfig (
 
 import Control.Effect.Diagnostics
 import Data.Foldable (find)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
@@ -87,5 +87,5 @@ buildGraph = Graphing.fromList . map toDependency . deps
         , dependencyVersion = Just (CEq depVersion)
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }

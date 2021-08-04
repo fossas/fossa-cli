@@ -3,7 +3,7 @@ module Yarn.YarnLockV1Spec (
 ) where
 
 import Data.ByteString qualified as BS
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text.Encoding
 import DepTypes
 import GraphUtil
@@ -19,7 +19,7 @@ packageOne =
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = ["https://registry.npmjs.org/packageOne"]
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 packageTwo :: Dependency
@@ -30,7 +30,7 @@ packageTwo =
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = ["https://registry.npmjs.org/packageTwo"]
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 packageThree :: Dependency
@@ -41,7 +41,7 @@ packageThree =
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = ["https://registry.npmjs.org/packageThree"]
     , dependencyEnvironments = []
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 spec :: Spec

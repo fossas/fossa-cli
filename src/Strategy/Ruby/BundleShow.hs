@@ -8,7 +8,8 @@ module Strategy.Ruby.BundleShow (
 ) where
 
 import Control.Effect.Diagnostics
-import Data.Map.Strict qualified as M
+import Control.Monad (void)
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Void (Void)
 import DepTypes
@@ -42,7 +43,7 @@ buildGraph = Graphing.fromList . map toDependency
         , dependencyVersion = Just (CEq depVersion)
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }
 
 data BundleShowDep = BundleShowDep
@@ -63,7 +64,7 @@ bundleShowParser = concat <$> ((line <|> ignoredLine) `sepBy` eol) <* eof
 
     -- ignore content until the end of the line
     ignored :: Parser ()
-    ignored = () <$ takeWhileP (Just "ignored") (not . isEndLine)
+    ignored = void $ takeWhileP (Just "ignored") (not . isEndLine)
 
     ignoredLine :: Parser [BundleShowDep]
     ignoredLine = do

@@ -34,7 +34,7 @@ import Data.List (nub)
 import Data.Map.Lazy qualified as LMap
 import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe, listToMaybe)
-import Data.String.Conversion (decodeUtf8)
+import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text, pack)
 import Data.Text.Extra (breakOnAndRemove)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson, execThrow, runExecIO)
@@ -258,7 +258,7 @@ parseSyftOutput :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m
 parseSyftOutput filepath = do
   curdir <- sendIO getCurrentDir
   logDebug "Resolving file"
-  path <- resolveFile curdir $ pack filepath
+  path <- resolveFile curdir $ toText filepath
   logDebug "Reading JSON file"
   rawvalue <- readContentsJson @Value path
   logDebug "Parsing JSON contents"

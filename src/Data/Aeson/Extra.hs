@@ -7,9 +7,8 @@ import Control.Applicative ((<|>))
 import Data.Aeson.Types (FromJSON (parseJSON), Object, Parser)
 import Data.Foldable (traverse_)
 import Data.HashMap.Strict (member)
-import Data.String.Conversion (toString)
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
-import Data.Text qualified as T
 
 -- | A Text-like field
 --
@@ -32,8 +31,8 @@ instance FromJSON TextLike where
   parseJSON val = parseAsText <|> parseAsInt <|> parseAsDouble
     where
       parseAsText = TextLike <$> parseJSON val
-      parseAsInt = TextLike . T.pack . show <$> parseJSON @Int val
-      parseAsDouble = TextLike . T.pack . show <$> parseJSON @Double val
+      parseAsInt = TextLike . toText . show <$> parseJSON @Int val
+      parseAsDouble = TextLike . toText . show <$> parseJSON @Double val
 
 -- | Parser insert to prevent specific fields from being used in parsers
 -- Primarily useful for rejecting aeson fields which should be reported with custom error messages

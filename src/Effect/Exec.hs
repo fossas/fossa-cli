@@ -33,9 +33,8 @@ import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BL
 import Data.Kind (Type)
 import Data.String (fromString)
-import Data.String.Conversion (decodeUtf8)
+import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Text.Prettyprint.Doc (indent, line, pretty, viaShow, vsep)
 import Data.Void (Void)
 import GHC.Generics (Generic)
@@ -153,7 +152,7 @@ execParser :: forall a sig m x. (Has Exec sig m, Has Diagnostics sig m) => Parse
 execParser parser dir cmd = do
   stdout <- execThrow dir cmd
   case runParser parser "" (decodeUtf8 stdout) of
-    Left err -> fatal (CommandParseError cmd (T.pack (errorBundlePretty err)))
+    Left err -> fatal (CommandParseError cmd (toText (errorBundlePretty err)))
     Right a -> pure a
 
 -- | Parse the JSON stdout of a command
@@ -161,7 +160,7 @@ execJson :: (FromJSON a, Has Exec sig m, Has Diagnostics sig m) => Path x Dir ->
 execJson dir cmd = do
   stdout <- execThrow dir cmd
   case eitherDecode stdout of
-    Left err -> fatal (CommandParseError cmd (T.pack (show err)))
+    Left err -> fatal (CommandParseError cmd (toText (show err)))
     Right a -> pure a
 
 -- | A variant of 'exec' that throws a 'ExecErr' when the command returns a non-zero exit code
@@ -179,8 +178,8 @@ runExecIO = interpret $ \case
   Exec dir cmd -> sendIO $ do
     absolute <- makeAbsolute dir
 
-    let cmdName' = T.unpack $ cmdName cmd
-        cmdArgs' = map T.unpack $ cmdArgs cmd
+    let cmdName' = toString $ cmdName cmd
+        cmdArgs' = map toString $ cmdArgs cmd
 
         mkFailure :: ExitCode -> Stdout -> Stderr -> CmdFailure
         mkFailure = CmdFailure (cmdName cmd) (cmdArgs cmd) (fromAbsDir absolute)

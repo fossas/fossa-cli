@@ -17,10 +17,10 @@ import Control.Effect.Diagnostics
 import Data.Aeson
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import DepTypes
 import Discovery.Walk
 import Effect.Exec
@@ -99,7 +99,7 @@ buildGraph lock maybeDeps = run . withLabeling toDependency $ do
             , dependencyVersion = CEq <$> pipPkgVersion pkg
             , dependencyLocations = []
             , dependencyEnvironments = []
-            , dependencyTags = M.empty
+            , dependencyTags = Map.empty
             }
 
 data PipPkg = PipPkg
@@ -118,12 +118,12 @@ data PipLabel
 buildNodes :: forall sig m. Has PipGrapher sig m => PipfileLock -> m ()
 buildNodes PipfileLock{..} = do
   let indexBy :: Ord k => (v -> k) -> [v] -> Map k v
-      indexBy ix = M.fromList . map (\v -> (ix v, v))
+      indexBy ix = Map.fromList . map (\v -> (ix v, v))
 
       sourcesMap = indexBy sourceName (fileSources fileMeta)
 
-  _ <- M.traverseWithKey (addWithEnv EnvDevelopment sourcesMap) fileDevelop
-  _ <- M.traverseWithKey (addWithEnv EnvProduction sourcesMap) fileDefault
+  _ <- Map.traverseWithKey (addWithEnv EnvDevelopment sourcesMap) fileDevelop
+  _ <- Map.traverseWithKey (addWithEnv EnvProduction sourcesMap) fileDefault
   pure ()
   where
     addWithEnv ::
@@ -133,14 +133,14 @@ buildNodes PipfileLock{..} = do
       PipfileDep ->
       m ()
     addWithEnv env sourcesMap depName dep = do
-      let pkg = PipPkg depName (T.drop 2 <$> fileDepVersion dep)
+      let pkg = PipPkg depName (Text.drop 2 <$> fileDepVersion dep)
       -- TODO: reachable instead of direct
       direct pkg
       label pkg (PipEnvironment env)
 
       -- add label for source when it exists
       for_ (fileDepIndex dep) $ \index ->
-        case M.lookup index sourcesMap of
+        case Map.lookup index sourcesMap of
           Just source -> label pkg (PipSource (sourceUrl source))
           Nothing -> pure ()
 

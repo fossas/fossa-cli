@@ -22,9 +22,9 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (find)
 import Data.HashMap.Strict qualified as HM
 import Data.Maybe (fromMaybe, mapMaybe)
-import Data.String.Conversion (decodeUtf8)
+import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Text.IO qualified as TIO
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Effect.Exec
@@ -65,7 +65,7 @@ inferProjectDefault dir = sendIO $ do
   let name = FP.dropTrailingPathSeparator (fromRelDir (dirname dir))
   time <- floor <$> getPOSIXTime :: IO Int
 
-  pure (InferredProject (T.pack name) (T.pack (show time)) Nothing)
+  pure (InferredProject (toText name) (toText (show time)) Nothing)
 
 svnCommand :: Command
 svnCommand =
@@ -96,17 +96,17 @@ inferSVN dir = do
                 . dropPrefix "^"
                 $ relUrl
 
-        pure . InferredProject root revision $ if T.null trimmedRelative then Nothing else Just trimmedRelative
+        pure . InferredProject root revision $ if Text.null trimmedRelative then Nothing else Just trimmedRelative
 
   case maybeProject of
     Nothing -> fatal (CommandParseError svnCommand "Invalid output (missing Repository Root or Revision)")
     Just project -> pure project
   where
     toProps :: BL.ByteString -> [(Text, Text)]
-    toProps bs = mapMaybe toProp (T.lines (decodeUtf8 bs))
+    toProps bs = mapMaybe toProp (Text.lines (decodeUtf8 bs))
     toProp :: Text -> Maybe (Text, Text)
     toProp propLine =
-      case T.splitOn ": " propLine of
+      case Text.splitOn ": " propLine of
         [key, val] -> Just (key, val)
         _ -> Nothing
 
@@ -122,7 +122,7 @@ readCachedRevision = do
 
 -- like Text.stripPrefix, but with a non-Maybe result (defaults to the original text)
 dropPrefix :: Text -> Text -> Text
-dropPrefix pre txt = fromMaybe txt (T.stripPrefix pre txt)
+dropPrefix pre txt = fromMaybe txt (Text.stripPrefix pre txt)
 
 findGitDir :: Has ReadFS sig m => Path Abs Dir -> m (Maybe (Path Abs Dir))
 findGitDir dir = do
@@ -169,7 +169,7 @@ parseGitProjectName dir = do
   contents <- readContentsText (dir </> relConfig)
 
   case parseConfig contents of
-    Left err -> fatal (GitConfigParse (T.pack (errorBundlePretty err)))
+    Left err -> fatal (GitConfigParse (toText (errorBundlePretty err)))
     Right config -> do
       let maybeSection = find isOrigin config
       case maybeSection of
@@ -198,11 +198,11 @@ parseGitProjectRevision dir = do
 
   headText <- readContentsText (dir </> relHead)
 
-  if "ref: " `T.isPrefixOf` headText
+  if "ref: " `Text.isPrefixOf` headText
     then do
       let rawPath = removeNewlines . dropPrefix "ref: " $ headText
 
-      case parseRelFile (T.unpack rawPath) of
+      case parseRelFile (toString rawPath) of
         Nothing -> fatal (InvalidBranchName rawPath)
         Just path -> do
           branchExists <- doesFileExist (dir </> path)
@@ -212,10 +212,10 @@ parseGitProjectRevision dir = do
           revision <- removeNewlines <$> readContentsText (dir </> path)
           let branch = dropPrefix "refs/heads/" rawPath
           pure (Just branch, revision)
-    else pure (Nothing, T.strip headText)
+    else pure (Nothing, Text.strip headText)
 
 removeNewlines :: Text -> Text
-removeNewlines = T.replace "\r" "" . T.replace "\n" ""
+removeNewlines = Text.replace "\r" "" . Text.replace "\n" ""
 
 data InferenceError
   = InvalidRemote

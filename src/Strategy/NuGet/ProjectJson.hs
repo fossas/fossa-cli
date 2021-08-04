@@ -13,9 +13,9 @@ import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics
 import Data.Aeson.Types
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
@@ -93,17 +93,17 @@ data NuGetDependency = NuGetDependency
 buildGraph :: ProjectJson -> Graphing Dependency
 buildGraph project = Graphing.fromList (map toDependency direct)
   where
-    direct = (\(name, dep) -> NuGetDependency name (depVersion dep) (depType dep)) <$> M.toList (dependencies project)
+    direct = (\(name, dep) -> NuGetDependency name (depVersion dep) (depType dep)) <$> Map.toList (dependencies project)
     toDependency NuGetDependency{..} =
       Dependency
         { dependencyType = NuGetType
         , dependencyName = name
-        , dependencyVersion = case T.find ('*' ==) version of
+        , dependencyVersion = case Text.find ('*' ==) version of
             Just '*' -> Just (CCompatible version)
             _ -> Just (CEq version)
         , dependencyLocations = []
         , dependencyEnvironments = []
         , dependencyTags = case dependencyType of
-            Nothing -> M.empty
-            Just depType -> M.insert "type" [depType] M.empty
+            Nothing -> Map.empty
+            Just depType -> Map.insert "type" [depType] Map.empty
         }

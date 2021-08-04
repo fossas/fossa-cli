@@ -21,12 +21,12 @@ import Data.Char (isSpace)
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.SemVer qualified as SemVer
 import Data.SemVer.Internal (Identifier (..), Version (..))
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Void (Void)
 import DepTypes (Dependency)
 import Effect.Exec (Exec)
@@ -198,7 +198,7 @@ gomodParser = do
 
     -- package name, e.g., golang.org/x/text
     packageName :: Parser PackageName
-    packageName = T.pack <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_'))
+    packageName = toText <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_'))
 
     -- Version parses version strings and distinguishes between non-canonical
     -- versions, semantic versions, and pseudo-versions.
@@ -216,7 +216,7 @@ gomodParser = do
     version = parseSemOrPseudo <|> parseNonCanonical
       where
         -- Helpers.
-        semVerText = T.pack <$> lexeme (some (alphaNumChar <|> oneOf ['.', '-', '+', '_', '/']))
+        semVerText = toText <$> lexeme (some (alphaNumChar <|> oneOf ['.', '-', '+', '_', '/']))
 
         mapLeft _ (Right r) = r
         mapLeft f (Left l) = f l
@@ -277,13 +277,13 @@ gomodParser = do
         parsePseudoPreRelease = parse parser ""
           where
             parser :: Parser PackageVersion
-            parser = Pseudo <$ count 14 numberChar <* char '-' <*> (T.pack <$> count 12 alphaNumChar) <* eof
+            parser = Pseudo <$ count 14 numberChar <* char '-' <*> (toText <$> count 12 alphaNumChar) <* eof
 
     -- goVersion, e.g.:
     --   v0.0.0-20190101000000-abcdefabcdef
     --   v1.2.3
     goVersion :: Parser Text
-    goVersion = T.pack <$> lexeme (some (alphaNumChar <|> oneOf ['.', '-', '+']))
+    goVersion = toText <$> lexeme (some (alphaNumChar <|> oneOf ['.', '-', '+']))
 
     -- singleton list. semantically more meaningful than 'pure'
     singleton :: a -> [a]
@@ -306,11 +306,11 @@ gomodParser = do
     scn = L.space space1 (L.skipLineComment "//") (L.skipBlockComment "/*" "*/")
 
 toGomod :: Text -> [Statement] -> Gomod
-toGomod name = foldr apply (Gomod name [] M.empty M.empty [])
+toGomod name = foldr apply (Gomod name [] Map.empty Map.empty [])
   where
     apply (RequireStatement package version) gomod = gomod{modRequires = Require package version : modRequires gomod}
-    apply (ReplaceStatement old new newVersion) gomod = gomod{modReplaces = M.insert old (Require new newVersion) (modReplaces gomod)}
-    apply (LocalReplaceStatement old path) gomod = gomod{modLocalReplaces = M.insert old path (modLocalReplaces gomod)}
+    apply (ReplaceStatement old new newVersion) gomod = gomod{modReplaces = Map.insert old (Require new newVersion) (modReplaces gomod)}
+    apply (LocalReplaceStatement old path) gomod = gomod{modLocalReplaces = Map.insert old path (modLocalReplaces gomod)}
     apply (ExcludeStatement package version) gomod = gomod{modExcludes = Require package version : modExcludes gomod}
     apply _ gomod = gomod
 
@@ -322,9 +322,9 @@ resolve gomod = map resolveReplace . filter nonLocalPackage $ modRequires gomod
     -- replace" statement -- i.e., a replace statement pointing to a filepath as a
     -- local module
     nonLocalPackage :: Require -> Bool
-    nonLocalPackage = not . (`elem` M.keys (modLocalReplaces gomod)) . reqPackage
+    nonLocalPackage = not . (`elem` Map.keys (modLocalReplaces gomod)) . reqPackage
 
-    resolveReplace require = fromMaybe require (M.lookup (reqPackage require) (modReplaces gomod))
+    resolveReplace require = fromMaybe require (Map.lookup (reqPackage require) (modReplaces gomod))
 
 analyze' ::
   ( Has ReadFS sig m

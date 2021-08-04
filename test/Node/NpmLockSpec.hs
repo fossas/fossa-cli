@@ -2,7 +2,7 @@ module Node.NpmLockSpec (
   spec,
 ) where
 
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import DepTypes
 import GraphUtil
 import Strategy.Node.NpmLock
@@ -14,24 +14,24 @@ mockInput =
     { packageName = "example"
     , packageVersion = "1.0.0"
     , packageDependencies =
-        M.fromList
+        Map.fromList
           [
             ( "packageOne"
             , NpmDep
                 { depVersion = "1.0.0"
                 , depDev = Nothing
                 , depResolved = Just "https://example.com/one.tgz"
-                , depRequires = Just (M.fromList [("packageTwo", "2.0.0")])
+                , depRequires = Just (Map.fromList [("packageTwo", "2.0.0")])
                 , depDependencies =
                     Just
-                      ( M.fromList
+                      ( Map.fromList
                           [
                             ( "packageTwo"
                             , NpmDep
                                 { depVersion = "2.0.0"
                                 , depDev = Just True
                                 , depResolved = Just "https://example.com/two.tgz"
-                                , depRequires = Just (M.fromList [("packageThree", "3.0.0")])
+                                , depRequires = Just (Map.fromList [("packageThree", "3.0.0")])
                                 , depDependencies = Nothing
                                 }
                             )
@@ -45,7 +45,7 @@ mockInput =
                 { depVersion = "3.0.0"
                 , depDev = Just True
                 , depResolved = Nothing
-                , depRequires = Just (M.fromList [("packageOne", "1.0.0")])
+                , depRequires = Just (Map.fromList [("packageOne", "1.0.0")])
                 , depDependencies = Nothing
                 }
             )
@@ -60,7 +60,7 @@ packageOne =
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = ["https://example.com/one.tgz"]
     , dependencyEnvironments = [EnvProduction]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 packageTwo :: Dependency
@@ -71,7 +71,7 @@ packageTwo =
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = ["https://example.com/two.tgz"]
     , dependencyEnvironments = [EnvDevelopment]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 packageThree :: Dependency
@@ -82,7 +82,7 @@ packageThree =
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = [EnvDevelopment]
-    , dependencyTags = M.empty
+    , dependencyTags = Map.empty
     }
 
 spec :: Spec

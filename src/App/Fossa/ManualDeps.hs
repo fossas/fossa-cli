@@ -30,8 +30,8 @@ import Data.Aeson.Extra
 import Data.Aeson.Types (Parser)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty qualified as NE
-import Data.String.Conversion (toText)
-import Data.Text (Text, unpack)
+import Data.String.Conversion (toString, toText)
+import Data.Text (Text)
 import DepTypes (DepType (..))
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
 import Fossa.API.Types
@@ -198,7 +198,7 @@ instance FromJSON ManualDependencies where
 depTypeParser :: Text -> Parser DepType
 depTypeParser text = case depTypeFromText text of
   Just t -> pure t
-  Nothing -> fail $ "dep type: " <> unpack text <> " not supported"
+  Nothing -> fail $ "dep type: " <> toString text <> " not supported"
 
 instance FromJSON ReferencedDependency where
   parseJSON = withObject "ReferencedDependency" $ \obj ->

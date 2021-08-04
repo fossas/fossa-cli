@@ -3,7 +3,7 @@ module Algebra.Graph.AdjacencyMap.Extra (
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
-import Data.Set qualified as S
+import Data.Set qualified as Set
 
 -- | It's 'traverse', but for graphs
 --
@@ -16,4 +16,4 @@ gtraverse ::
 gtraverse f = fmap mkAdjacencyMap . traverse (\(a, xs) -> (,) <$> f a <*> traverse f xs) . AM.adjacencyList
   where
     mkAdjacencyMap :: Ord c => [(c, [c])] -> AM.AdjacencyMap c
-    mkAdjacencyMap = AM.fromAdjacencySets . fmap (fmap S.fromList)
+    mkAdjacencyMap = AM.fromAdjacencySets . fmap (fmap Set.fromList)

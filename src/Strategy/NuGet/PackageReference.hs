@@ -15,7 +15,7 @@ import Control.Applicative (optional, (<|>))
 import Control.Effect.Diagnostics
 import Data.Foldable (find)
 import Data.List qualified as L
-import Data.Map.Strict qualified as M
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
@@ -106,5 +106,5 @@ buildGraph project = Graphing.fromList (map toDependency direct)
         , dependencyVersion = fmap CEq depVersion
         , dependencyLocations = []
         , dependencyEnvironments = []
-        , dependencyTags = M.empty
+        , dependencyTags = Map.empty
         }
