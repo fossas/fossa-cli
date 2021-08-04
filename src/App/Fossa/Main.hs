@@ -48,6 +48,7 @@ import App.Types (
     overrideRevision
   ),
   ProjectMetadata (..),
+  ReleaseGroupMetadata (..),
  )
 import App.Util (validateDir, validateFile)
 import App.Version (fullVersionDescription)
@@ -190,10 +191,6 @@ appMain = do
           key <- requireKey maybeApiKey
           let apiOpts = ApiOpts optBaseUrl key
           let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
-          case (projectReleaseGroupName metadata, projectReleaseGroupRelease metadata) of
-            (Just _, Just _) -> pure ()
-            (Nothing, Nothing) -> pure ()
-            _ -> die "releaseGroup.release and releaseGroup.name must both be specified if you want to associate this project to a release group."
 
           doAnalyze (UploadScan apiOpts metadata)
 
@@ -438,8 +435,13 @@ metadataOpts =
     <*> optional (strOption (long "link" <> short 'L' <> help "a link to attach to the current build"))
     <*> optional (strOption (long "team" <> short 'T' <> help "this repository's team inside your organization"))
     <*> optional (strOption (long "policy" <> help "the policy to assign to this project in FOSSA"))
-    <*> optional (strOption (long "release-group-name" <> help "the name of the release group to add this project to"))
-    <*> optional (strOption (long "release-group-release" <> help "the release of the release group to add this project to"))
+    <*> optional releaseGroupMetadataOpts
+
+releaseGroupMetadataOpts :: Parser ReleaseGroupMetadata
+releaseGroupMetadataOpts =
+  ReleaseGroupMetadata
+    <$> strOption (long "release-group-name" <> help "the name of the release group to add this project to")
+    <*> strOption (long "release-group-release" <> help "the release of the release group to add this project to")
 
 reportOpts :: Parser ReportOptions
 reportOpts =

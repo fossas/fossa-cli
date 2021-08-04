@@ -6,6 +6,7 @@ module App.Fossa.Configuration.ConfigurationSpec (
 ) where
 
 import App.Fossa.Configuration
+import App.Types (ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Effect.ReadFS
 import Path
@@ -44,11 +45,11 @@ expectedConfigRevision =
     , configBranch = Just "master"
     }
 
-expectedReleaseGroup :: ConfigReleaseGroup
+expectedReleaseGroup :: ReleaseGroupMetadata
 expectedReleaseGroup =
-  ConfigReleaseGroup
-    { configReleaseGroupName = Just "test-release"
-    , configReleaseGroupRelease = Just "123"
+  ReleaseGroupMetadata
+    { releaseGroupName = "test-release"
+    , releaseGroupRelease = "123"
     }
 
 expectedConfigTargets :: ConfigTargets

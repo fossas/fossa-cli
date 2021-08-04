@@ -3,12 +3,14 @@ module App.Types (
   NinjaGraphCLIOptions (..),
   OverrideProject (..),
   ProjectMetadata (..),
+  ReleaseGroupMetadata (..),
   ProjectRevision (..),
   MonorepoAnalysisOpts (..),
 ) where
 
+import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
 import Data.Text (Text)
-import Path
+import Path (Abs, Dir, Path)
 
 newtype BaseDir = BaseDir {unBaseDir :: Path Abs Dir} deriving (Eq, Ord, Show)
 
@@ -25,10 +27,20 @@ data ProjectMetadata = ProjectMetadata
   , projectLink :: Maybe Text
   , projectTeam :: Maybe Text
   , projectPolicy :: Maybe Text
-  , projectReleaseGroupName :: Maybe Text
-  , projectReleaseGroupRelease :: Maybe Text
+  , projectReleaseGroup :: Maybe ReleaseGroupMetadata
   }
   deriving (Eq, Ord, Show)
+
+data ReleaseGroupMetadata = ReleaseGroupMetadata
+  { releaseGroupName :: Text
+  , releaseGroupRelease :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ReleaseGroupMetadata where
+  parseJSON = withObject "ReleaseGroupMetadata" $ \obj ->
+    ReleaseGroupMetadata <$> obj .: "name"
+      <*> obj .: "release"
 
 newtype MonorepoAnalysisOpts = MonorepoAnalysisOpts
   { monorepoAnalysisType :: Maybe Text

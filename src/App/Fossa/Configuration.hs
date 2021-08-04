@@ -8,7 +8,6 @@ module App.Fossa.Configuration (
   ConfigFile (..),
   ConfigProject (..),
   ConfigRevision (..),
-  ConfigReleaseGroup (..),
   ConfigTargets (..),
   ConfigPaths (..),
 ) where
@@ -42,19 +41,13 @@ data ConfigProject = ConfigProject
   , configJiraKey :: Maybe Text
   , configUrl :: Maybe Text
   , configPolicy :: Maybe Text
-  , configReleaseGroup :: Maybe ConfigReleaseGroup
+  , configReleaseGroup :: Maybe ReleaseGroupMetadata
   }
   deriving (Eq, Ord, Show)
 
 data ConfigRevision = ConfigRevision
   { configCommit :: Maybe Text
   , configBranch :: Maybe Text
-  }
-  deriving (Eq, Ord, Show)
-
-data ConfigReleaseGroup = ConfigReleaseGroup
-  { configReleaseGroupName :: Maybe Text
-  , configReleaseGroupRelease :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -96,11 +89,6 @@ instance FromJSON ConfigRevision where
     ConfigRevision <$> obj .:? "commit"
       <*> obj .:? "branch"
 
-instance FromJSON ConfigReleaseGroup where
-  parseJSON = withObject "ConfigReleaseGroup" $ \obj ->
-    ConfigReleaseGroup <$> obj .:? "name"
-      <*> obj .:? "release"
-
 instance FromJSON ConfigTargets where
   parseJSON = withObject "ConfigTargets" $ \obj ->
     ConfigTargets <$> (obj .:? "only" .!= [])
@@ -141,6 +129,5 @@ mergeFileCmdMetadata meta file =
     , projectLink = projectLink meta <|> (configProject file >>= configLink)
     , projectTeam = projectTeam meta <|> (configProject file >>= configTeam)
     , projectPolicy = projectPolicy meta <|> (configProject file >>= configPolicy)
-    , projectReleaseGroupName = projectReleaseGroupName meta <|> (configProject file >>= configReleaseGroup >>= configReleaseGroupName)
-    , projectReleaseGroupRelease = projectReleaseGroupRelease meta <|> (configProject file >>= configReleaseGroup >>= configReleaseGroupRelease)
+    , projectReleaseGroup = projectReleaseGroup meta <|> (configProject file >>= configReleaseGroup)
     }
