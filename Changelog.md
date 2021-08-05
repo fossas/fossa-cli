@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.13.2
+
+- Maven: `mvn dependency:tree` now correctly cleans up temporary files after an exception, and correctly uses `settings.xml` when available. ([#318](https://github.com/fossas/spectrometer/pull/318))
+
 ## v2.13.1
 
 - Adds support for a new Maven tactic that produces the full dependency graph if `mvn dependency:tree` is available but the plugin is not. ([#310](https://github.com/fossas/spectrometer/pull/287))
