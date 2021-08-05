@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.14.3
+
+- Monorepo: archive expansion now respects `--exclude-path` and `--only-path`. ([#320](https://github.com/fossas/spectrometer/pull/320))
+
 ## v2.14.2
 
 - Maven: `mvn dependency:tree` now correctly cleans up temporary files after an exception, and correctly uses `settings.xml` when available. ([#318](https://github.com/fossas/spectrometer/pull/318))
