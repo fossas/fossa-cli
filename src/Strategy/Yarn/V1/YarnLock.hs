@@ -5,14 +5,13 @@ module Strategy.Yarn.V1.YarnLock (
 
 import Control.Effect.Diagnostics
 import Data.Bifunctor (first)
-import Data.Foldable (for_)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.MultiKeyedMap qualified as MKM
 import DepTypes
-import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
+import Graphing qualified
 import Path
 import Yarn.Lock qualified as YL
 import Yarn.Lock.Types qualified as YL
@@ -27,16 +26,15 @@ analyze lockfile = context "Lockfile V1 analysis" $ do
     Right parsed -> context "Building dependency graph" $ pure (buildGraph parsed)
 
 buildGraph :: YL.Lockfile -> Graphing Dependency
-buildGraph lockfile =
-  run . evalGrapher $
-    traverse (add . first NE.head) (MKM.toList lockfile)
+buildGraph lockfile = Graphing.edges (concatMap (edgesForPackage . first NE.head) (MKM.toList lockfile))
   where
-    add :: Has (Grapher Dependency) sig m => (YL.PackageKey, YL.Package) -> m ()
-    add parentPkg@(_, package) =
-      for_ (YL.dependencies package) $ \childKey -> do
-        let childPkg = (childKey, MKM.at lockfile childKey)
-        edge (toDependency parentPkg) (toDependency childPkg)
+    edgesForPackage :: (YL.PackageKey, YL.Package) -> [(Dependency, Dependency)]
+    edgesForPackage parentPkg@(_, package) = do
+      childKey <- YL.dependencies package
+      let childPkg = (childKey, MKM.at lockfile childKey)
+      pure (toDependency parentPkg, toDependency childPkg)
 
+    toDependency :: (YL.PackageKey, YL.Package) -> Dependency
     toDependency (key, package) =
       Dependency
         { dependencyType = NodeJSType

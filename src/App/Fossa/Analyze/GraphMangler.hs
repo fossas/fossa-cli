@@ -14,12 +14,13 @@ import Data.Set qualified as Set
 import App.Fossa.Analyze.Graph qualified as G
 import App.Fossa.Analyze.GraphBuilder
 import DepTypes
-import Graphing (Graphing (..))
+import Graphing (Graphing)
+import Graphing qualified
 
 graphingToGraph :: Graphing Dependency -> G.Graph
 graphingToGraph graphing = run . evalGraphBuilder G.empty $ do
-  let depAmap = graphingAdjacent graphing
-      depDirect = Set.toList (graphingDirect graphing)
+  let depAmap = Graphing.toAdjacencyMap graphing
+      depDirect = Graphing.directList graphing
 
       nodes = dfs depDirect depAmap
 

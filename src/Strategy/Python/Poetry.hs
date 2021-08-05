@@ -22,7 +22,8 @@ import Discovery.Walk (
  )
 import Effect.Logger (Logger (..), Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, readContentsToml)
-import Graphing (Graphing, deep, edge, empty, fromList, gmap, promoteToDirect)
+import Graphing (Graphing)
+import Graphing qualified
 import Path (Abs, Dir, File, Path)
 import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, pyProjectDeps, toCanonicalName, toMap)
 import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), poetryLockCodec)
@@ -125,7 +126,7 @@ analyze PoetryProject{pyProjectToml, poetryLock} = do
 
 -- | Use a `pyproject.toml` to set the direct dependencies of a graph created from `poetry.lock`.
 setGraphDirectsFromPyproject :: Graphing Dependency -> PyProject -> Graphing Dependency
-setGraphDirectsFromPyproject graph pyproject = promoteToDirect isDirect graph
+setGraphDirectsFromPyproject graph pyproject = Graphing.promoteToDirect isDirect graph
   where
     -- Dependencies in `poetry.lock` are direct if they're specified in `pyproject.toml`.
     -- `pyproject.toml` may use non canonical naming, when naming dependencies.
@@ -138,7 +139,7 @@ setGraphDirectsFromPyproject graph pyproject = promoteToDirect isDirect graph
 -- The resulting graph contains edges, but does not distinguish between direct and deep dependencies,
 -- since `poetry.lock` does not indicate which dependencies are direct.
 graphFromLockFile :: PoetryLock -> Graphing Dependency
-graphFromLockFile poetryLock = gmap pkgNameToDependency (foldr deep edges pkgsNoDeps)
+graphFromLockFile poetryLock = Graphing.gmap pkgNameToDependency (edges <> Graphing.deeps pkgsNoDeps)
   where
     pkgs :: [PoetryLockPackage]
     pkgs = poetryLockPackages poetryLock
@@ -156,7 +157,7 @@ graphFromLockFile poetryLock = gmap pkgNameToDependency (foldr deep edges pkgsNo
         tuplify x = (poetryLockPackageName p, PackageName x)
 
     edges :: Graphing PackageName
-    edges = foldr (uncurry edge) empty (concatMap edgeOf depsWithEdges)
+    edges = Graphing.edges (concatMap edgeOf depsWithEdges)
 
     canonicalPkgName :: PackageName -> PackageName
     canonicalPkgName name = PackageName . toCanonicalName $ unPackageName name

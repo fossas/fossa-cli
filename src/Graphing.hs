@@ -1,24 +1,42 @@
--- | A graph augmented with a set of "direct" vertices
+-- | A graph (Algebra.Graph.AdjacencyMap) augmented with the notion of "direct" vertices.
 --
--- Graphings can be built with the 'direct' and 'edge' primitives.
+-- Graphings can be built with the 'direct', 'edge', 'deep', 'directs', ... primitives.
 --
 -- For simple (non-cyclic) graphs, try 'unfold'. For graphs with only direct dependencies, try 'fromList'
+--
+-- Most commonly, Graphings are built by combining sub-graphs with (<>), e.g.,
+--
+-- @
+--     myCoolGraph = directs myListOfDirectNodes <> edges myListOfEdges
+-- @
 --
 -- For describing complex graphs, see the 'Effect.Grapher' effect.
 module Graphing (
   -- * Graphing type
   Graphing (..),
+  Node (..),
   empty,
   size,
   direct,
+  directs,
   edge,
+  edges,
   deep,
+  deeps,
+
+  -- * Accessing graph elements
+  directList,
+  vertexList,
+  toAdjacencyMap,
 
   -- * Manipulating a Graphing
   gmap,
   gtraverse,
+  induce,
   induceJust,
-  Graphing.filter,
+  filter,
+  shrink,
+  shrinkSingle,
   pruneUnreachable,
   stripRoot,
   promoteToDirect,
@@ -34,10 +52,10 @@ import Algebra.Graph.AdjacencyMap (AdjacencyMap)
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Algorithm qualified as AMA
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
-import Data.List qualified as List
-import Data.Maybe (catMaybes)
-import Data.Set (Set)
+import Data.Bifunctor (bimap)
 import Data.Set qualified as Set
+import Prelude hiding (filter)
+import Prelude qualified
 
 -- | A @Graphing ty@ is a graph of nodes with type @ty@.
 --
@@ -45,100 +63,150 @@ import Data.Set qualified as Set
 -- automatically deduplicated using the 'Ord' instance of @ty@.
 --
 -- Typically, when consuming a Graphing, we only care about nodes in the graph
--- reachable from 'graphingDirect'
-data Graphing ty = Graphing
-  { graphingDirect :: Set ty
-  , graphingAdjacent :: AdjacencyMap ty
-  }
+-- reachable from 'directList'
+newtype Graphing ty = Graphing {unGraphing :: AdjacencyMap (Node ty)}
   deriving (Eq, Ord, Show)
 
+data Node a = Root | Node a
+  deriving (Eq, Ord, Show)
+
+instance Functor Node where
+  fmap _ Root = Root
+  fmap f (Node a) = Node (f a)
+
+instance Foldable Node where
+  foldMap _ Root = mempty
+  foldMap f (Node a) = f a
+
+instance Traversable Node where
+  traverse _ Root = pure Root
+  traverse f (Node a) = Node <$> f a
+
 instance Ord ty => Semigroup (Graphing ty) where
-  graphing <> graphing' =
-    Graphing
-      (graphingDirect graphing `Set.union` graphingDirect graphing')
-      (graphingAdjacent graphing `AM.overlay` graphingAdjacent graphing')
+  Graphing graphing <> Graphing graphing' = Graphing (AM.overlay graphing graphing')
 
 instance Ord ty => Monoid (Graphing ty) where
-  mempty = Graphing Set.empty AM.empty
+  mempty = Graphing AM.empty
 
 -- | Transform a Graphing by applying a function to each of its vertices.
 --
 -- Graphing isn't a lawful 'Functor', so we don't provide an instance.
 gmap :: (Ord ty, Ord ty') => (ty -> ty') -> Graphing ty -> Graphing ty'
-gmap f gr = gr{graphingDirect = direct', graphingAdjacent = adjacent'}
-  where
-    direct' = Set.map f (graphingDirect gr)
-    adjacent' = AM.gmap f (graphingAdjacent gr)
+gmap f = Graphing . AM.gmap (fmap f) . unGraphing
 
 -- | Map each element of the Graphing to an action, evaluate the actions, and
 -- collect the results.
 --
 -- Graphing isn't a lawful 'Traversable', so we don't provide an instance.
 gtraverse :: (Ord b, Applicative f) => (a -> f b) -> Graphing a -> f (Graphing b)
-gtraverse f Graphing{graphingDirect, graphingAdjacent} = Graphing <$> newSet <*> newAdjacent
-  where
-    -- newSet :: f (Set b)
-    newSet = fmap Set.fromList . traverse f . Set.toList $ graphingDirect
+gtraverse f = fmap Graphing . AME.gtraverse (traverse f) . unGraphing
 
-    -- newAdjacent :: f (AM.AdjacencyMap b)
-    newAdjacent = AME.gtraverse f graphingAdjacent
+-- | Filter Graphing elements. Alias for 'filter' to match the AdjacencyMap naming
+induce :: (ty -> Bool) -> Graphing ty -> Graphing ty
+induce = filter
 
 -- | Like 'AM.induceJust', but for Graphings
 induceJust :: Ord a => Graphing (Maybe a) -> Graphing a
-induceJust gr = gr{graphingDirect = direct', graphingAdjacent = adjacent'}
-  where
-    direct' = Set.fromList . catMaybes . Set.toList $ graphingDirect gr
-    adjacent' = AM.induceJust (graphingAdjacent gr)
+induceJust = Graphing . AM.induceJust . AM.gmap sequenceA . unGraphing
 
 -- | Filter Graphing elements
-filter :: (ty -> Bool) -> Graphing ty -> Graphing ty
-filter f gr = gr{graphingDirect = direct', graphingAdjacent = adjacent'}
+filter :: forall ty. (ty -> Bool) -> Graphing ty -> Graphing ty
+filter f = Graphing . AM.induce f' . unGraphing
   where
-    direct' = Set.filter f (graphingDirect gr)
-    adjacent' = AM.induce f (graphingAdjacent gr)
+    f' :: Node ty -> Bool
+    f' Root = True
+    f' (Node a) = f a
+
+-- | Filter vertices in a Graphing, preserving the overall structure by rewiring edges through deleted vertices.
+--
+-- For example, given the graph @1 -> 2 -> 3 -> 4@ and applying @shrink (/= 3)@, we return the graph
+-- @1 -> 2 -> 4@
+shrink :: forall a. Ord a => (a -> Bool) -> Graphing a -> Graphing a
+shrink f = Graphing . AME.shrink f' . unGraphing
+  where
+    f' :: Node a -> Bool
+    f' Root = True
+    f' (Node a) = f a
+
+-- | Delete a vertex in a Grahing, preserving the overall structure by rewiring edges through the delted vertex.
+--
+-- For example, given the graph @1 -> 2 -> 3 -> 4@ and applying @shrinkSingle 3@, we return the graph
+-- @1 -> 2 -> 4@
+shrinkSingle :: Ord a => a -> Graphing a -> Graphing a
+shrinkSingle vert = Graphing . AME.shrinkSingle (Node vert) . unGraphing
 
 -- | The empty Graphing
 empty :: Graphing ty
-empty = Graphing Set.empty AM.empty
+empty = Graphing AM.empty
 
 -- | Determines the number of nodes in the graph ("reachable" or not)
 size :: Graphing ty -> Int
-size = AM.vertexCount . graphingAdjacent
+size = length . Set.filter ignoreRoot . AM.vertexSet . unGraphing
+  where
+    ignoreRoot :: Node a -> Bool
+    ignoreRoot Root = False
+    ignoreRoot _ = True
 
 -- | Strip all items from the direct set, promote their immediate children to direct items
-stripRoot :: Ord ty => Graphing ty -> Graphing ty
-stripRoot gr = gr{graphingDirect = direct'}
+stripRoot :: forall ty. Ord ty => Graphing ty -> Graphing ty
+stripRoot (Graphing gr) = Graphing $ AM.overlay newDirectEdges (AM.removeVertex Root gr)
   where
-    roots = Set.toList $ graphingDirect gr
-    edgeSet root = AM.postSet root $ graphingAdjacent gr
-    direct' = Set.unions $ map edgeSet roots
+    currentDirect :: [Node ty]
+    currentDirect = Set.toList $ AM.postSet Root gr
 
--- | Add a direct dependency to this Graphing
-direct :: Ord ty => ty -> Graphing ty -> Graphing ty
-direct dep gr = gr{graphingDirect = direct', graphingAdjacent = adjacent'}
-  where
-    direct' = Set.insert dep (graphingDirect gr)
-    adjacent' = AM.overlay (AM.vertex dep) (graphingAdjacent gr)
+    newDirect :: [Node ty]
+    newDirect = Set.toList . Set.unions $ map (`AM.postSet` gr) currentDirect
+
+    newDirectEdges :: AM.AdjacencyMap (Node ty)
+    newDirectEdges = AM.edges $ map (Root,) newDirect
+
+-- | Add a direct node to this Graphing
+direct :: Ord ty => ty -> Graphing ty
+direct node = Graphing (AM.edge Root (Node node))
+
+-- | Add several direct nodes to this Graphing
+directs :: Ord ty => [ty] -> Graphing ty
+directs nodes = Graphing (AM.edges [(Root, Node node) | node <- nodes])
 
 -- | Mark dependencies that pass a predicate as direct dependencies.
 -- Dependencies that are already marked as "direct" are unaffected.
-promoteToDirect :: Ord ty => (ty -> Bool) -> Graphing ty -> Graphing ty
-promoteToDirect f gr = gr{graphingDirect = direct'}
+promoteToDirect :: forall ty. Ord ty => (ty -> Bool) -> Graphing ty -> Graphing ty
+promoteToDirect f gr = gr <> directs matchingVertices
   where
-    direct' = foldr Set.insert (graphingDirect gr) vertices
-    vertices = List.filter f $ AM.vertexList (graphingAdjacent gr)
+    matchingVertices :: [ty]
+    matchingVertices = Prelude.filter f (vertexList gr)
 
--- | Add an edge between two nodes in this Graphing
-edge :: Ord ty => ty -> ty -> Graphing ty -> Graphing ty
-edge parent child gr = gr{graphingAdjacent = adjacent'}
-  where
-    adjacent' = AM.overlay (AM.edge parent child) (graphingAdjacent gr)
+-- | Get a list of direct vertices in the Graphing
+directList :: Ord ty => Graphing ty -> [ty]
+directList (Graphing gr) = [node | Node node <- Set.toList (AM.postSet Root gr)]
 
--- | Adds a node to this graph as a deep dependency.
-deep :: Ord ty => ty -> Graphing ty -> Graphing ty
-deep dep gr = gr{graphingAdjacent = adjacent'}
+-- | Get a list of vertices in the Graphing
+vertexList :: Graphing ty -> [ty]
+vertexList gr = [node | Node node <- AM.vertexList (unGraphing gr)]
+
+-- | Convert to the underlying AdjacencyMap (without the Root element)
+toAdjacencyMap :: Ord ty => Graphing ty -> AM.AdjacencyMap ty
+toAdjacencyMap = AM.induceJust . AM.gmap convert . unGraphing
   where
-    adjacent' = AM.overlay (AM.vertex dep) (graphingAdjacent gr)
+    convert :: Node ty -> Maybe ty
+    convert Root = Nothing
+    convert (Node a) = Just a
+
+-- | Build a Graphing containing a single edge between two nodes
+edge :: Ord ty => ty -> ty -> Graphing ty
+edge parent child = Graphing (AM.edge (Node parent) (Node child))
+
+-- | Build a Graphing containing several edges
+edges :: Ord ty => [(ty, ty)] -> Graphing ty
+edges = Graphing . AM.edges . map (bimap Node Node)
+
+-- | Add a single deep node to the graphing
+deep :: ty -> Graphing ty
+deep = Graphing . AM.vertex . Node
+
+-- | Add several deep nodes to the graphing.
+deeps :: Ord ty => [ty] -> Graphing ty
+deeps = Graphing . AM.vertices . map Node
 
 -- | @unfold direct getDeps toDependency@ unfolds a graph, given:
 --
@@ -150,12 +218,14 @@ deep dep gr = gr{graphingAdjacent = adjacent'}
 --
 -- __Unfold does not work for recursive inputs__
 unfold :: forall dep res. Ord res => [dep] -> (dep -> [dep]) -> (dep -> res) -> Graphing res
-unfold seed getDeps toDependency =
-  Graphing
-    { graphingDirect = Set.fromList (map toDependency seed)
-    , graphingAdjacent = AM.vertices (map toDependency seed) `AM.overlay` AM.edges [(toDependency parentDep, toDependency childDep) | (parentDep, childDep) <- edgesFrom seed]
-    }
+unfold seed getDeps toDependency = directs directNodes <> edges builtEdges
   where
+    directNodes :: [res]
+    directNodes = map toDependency seed
+
+    builtEdges :: [(res, res)]
+    builtEdges = map (bimap toDependency toDependency) (edgesFrom seed)
+
     edgesFrom :: [dep] -> [(dep, dep)]
     edgesFrom nodes = do
       node <- nodes
@@ -165,20 +235,34 @@ unfold seed getDeps toDependency =
 -- | Remove unreachable vertices from the graph
 --
 -- A vertex is reachable if there's a path from the "direct" vertices to that vertex
-pruneUnreachable :: Ord ty => Graphing ty -> Graphing ty
-pruneUnreachable gr = gr{graphingAdjacent = AM.induce (`Set.member` reachable) (graphingAdjacent gr)}
+pruneUnreachable :: forall ty. Ord ty => Graphing ty -> Graphing ty
+pruneUnreachable (Graphing gr) = Graphing (AM.induce keepPredicate gr)
   where
-    reachable = Set.fromList $ AMA.dfs (Set.toList (graphingDirect gr)) (graphingAdjacent gr)
+    directNodes :: [Node ty]
+    directNodes = Set.toList $ AM.postSet Root gr
+
+    reachableNodes :: Set.Set (Node ty)
+    reachableNodes = Set.fromList $ AMA.dfs directNodes gr
+
+    keepPredicate :: Node ty -> Bool
+    keepPredicate Root = True
+    keepPredicate (Node ty) = Set.member (Node ty) reachableNodes
 
 -- | Build a graphing from a list, where all list elements are treated as direct
 -- dependencies
+--
+-- Alias for 'directs'
 fromList :: Ord ty => [ty] -> Graphing ty
-fromList nodes = Graphing (Set.fromList nodes) (AM.vertices nodes)
+fromList = directs
 
 -- | Wrap an AdjacencyMap as a Graphing
-fromAdjacencyMap :: AM.AdjacencyMap ty -> Graphing ty
-fromAdjacencyMap = Graphing Set.empty
+--
+-- All nodes in the resulting Graphing are considered indirect/"deep"
+fromAdjacencyMap :: Ord ty => AM.AdjacencyMap ty -> Graphing ty
+fromAdjacencyMap = Graphing . AM.gmap Node
 
 -- | Get the list of nodes in the Graphing.
+--
+-- Alias for 'vertexList'
 toList :: Graphing ty -> [ty]
-toList Graphing{graphingAdjacent} = AM.vertexList graphingAdjacent
+toList = vertexList

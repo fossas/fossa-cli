@@ -4,8 +4,8 @@ module Python.PoetrySpec (
 
 import Data.Map qualified as Map
 import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), VerConstraint (..))
-import Effect.Grapher (addNode, direct, edge, evalGrapher, run)
 import Graphing (Graphing)
+import Graphing qualified
 import Strategy.Python.Poetry (graphFromLockFile, setGraphDirectsFromPyproject)
 import Strategy.Python.Poetry.PoetryLock (
   PackageName (..),
@@ -51,19 +51,18 @@ candidatePoetryLock =
     ]
 
 expectedGraph :: Graphing Dependency
-expectedGraph = run . evalGrapher $ do
-  edge
+expectedGraph =
+  Graphing.edge
     (Dependency PipType "flow_pipes" (Just $ CEq "1.21.0") [] [EnvProduction] Map.empty)
     (Dependency PipType "flow_pipes_gravity" (Just $ CEq "1.1.1") [] [EnvProduction] Map.empty)
-  direct (Dependency PipType "flow_pipes" (Just $ CEq "1.21.0") [] [EnvProduction] Map.empty)
+    <> Graphing.direct (Dependency PipType "flow_pipes" (Just $ CEq "1.21.0") [] [EnvProduction] Map.empty)
 
 expectedGraphWithNoDeps :: Graphing Dependency
-expectedGraphWithNoDeps = run . evalGrapher $ do
-  addNode (Dependency PipType "somePkg" (Just $ CEq "1.21.0") [] [EnvProduction] Map.empty)
+expectedGraphWithNoDeps = Graphing.deep (Dependency PipType "somePkg" (Just $ CEq "1.21.0") [] [EnvProduction] Map.empty)
 
 expectedGraphWithDeps :: Graphing Dependency
-expectedGraphWithDeps = run . evalGrapher $ do
-  edge
+expectedGraphWithDeps =
+  Graphing.edge
     (Dependency PipType "somePkg" (Just $ CEq "1.21.0") [] [EnvProduction] Map.empty)
     (Dependency PipType "pkgOneChildOne" (Just $ CEq "1.22.0") [] [EnvProduction] Map.empty)
 

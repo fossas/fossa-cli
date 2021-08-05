@@ -40,19 +40,19 @@ toSourceUnit ProjectResult{..} =
     renderedPath = toText (toFilePath projectResultPath)
 
     filteredGraph :: Graphing Dependency
-    filteredGraph = Graphing.filter (\d -> shouldPublishDep d && isSupportedType d) projectResultGraph
+    filteredGraph = Graphing.shrink (\d -> shouldPublishDep d && isSupportedType d) projectResultGraph
 
     locatorGraph :: Graphing Locator
     locatorGraph = Graphing.gmap toLocator filteredGraph
 
     locatorAdjacent :: AM.AdjacencyMap Locator
-    locatorAdjacent = Graphing.graphingAdjacent locatorGraph
+    locatorAdjacent = Graphing.toAdjacencyMap locatorGraph
 
     deps :: [SourceUnitDependency]
     deps = map (mkSourceUnitDependency locatorAdjacent) (AM.vertexList locatorAdjacent)
 
     imports :: [Locator]
-    imports = Set.toList $ Graphing.graphingDirect locatorGraph
+    imports = Graphing.directList locatorGraph
 
 mkSourceUnitDependency :: AM.AdjacencyMap Locator -> Locator -> SourceUnitDependency
 mkSourceUnitDependency gr locator =

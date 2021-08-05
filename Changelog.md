@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.14.4
+
+- Gradle: Fixes an issue where all dependencies would appear as direct ([#319](https://github.com/fossas/spectrometer/pull/319))
+
 ## v2.14.3
 
 - Monorepo: archive expansion now respects `--exclude-path` and `--only-path`. ([#320](https://github.com/fossas/spectrometer/pull/320))

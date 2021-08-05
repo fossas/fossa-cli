@@ -15,7 +15,8 @@ import Data.Map.Strict qualified as Map
 import DepTypes
 import Effect.Exec
 import Effect.Grapher
-import Graphing (Graphing (..))
+import Graphing (Graphing)
+import Graphing qualified
 import Path.IO (getCurrentDir)
 import Strategy.Go.GoList
 import Test.Hspec
@@ -80,4 +81,4 @@ spec = do
 
       case result of
         Left err -> fail $ "failed to build graph" <> show (renderFailureBundle err)
-        Right (graph, _) -> length (graphingDirect graph) `shouldBe` 12
+        Right (graph, _) -> length (Graphing.directList graph) `shouldBe` 12

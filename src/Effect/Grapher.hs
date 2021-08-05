@@ -9,7 +9,7 @@ module Effect.Grapher (
   Grapher (..),
   direct,
   edge,
-  addNode,
+  deep,
   evalGrapher,
   runGrapher,
 
@@ -48,16 +48,16 @@ import Prettyprinter (pretty)
 data Grapher ty (m :: Type -> Type) k where
   Direct :: ty -> Grapher ty m ()
   Edge :: ty -> ty -> Grapher ty m ()
-  Node :: ty -> Grapher ty m ()
+  Deep :: ty -> Grapher ty m ()
 
 direct :: Has (Grapher ty) sig m => ty -> m ()
-direct ty = send (Direct ty)
+direct = send . Direct
 
 edge :: Has (Grapher ty) sig m => ty -> ty -> m ()
 edge parent child = send (Edge parent child)
 
-addNode :: Has (Grapher ty) sig m => ty -> m ()
-addNode v = send (Node v)
+deep :: Has (Grapher ty) sig m => ty -> m ()
+deep = send . Deep
 
 evalGrapher :: (Ord ty, Algebra sig m) => GrapherC ty m a -> m (G.Graphing ty)
 evalGrapher = fmap fst . runGrapher
@@ -66,9 +66,9 @@ type GrapherC ty m = SimpleStateC (G.Graphing ty) (Grapher ty) m
 
 runGrapher :: (Ord ty, Algebra sig m) => GrapherC ty m a -> m (G.Graphing ty, a)
 runGrapher = interpretState G.empty $ \case
-  Direct ty -> modify (G.direct ty)
-  Edge parent child -> modify (G.edge parent child)
-  Node n -> modify (G.deep n)
+  Direct ty -> modify (G.direct ty <>)
+  Edge parent child -> modify (G.edge parent child <>)
+  Deep n -> modify (G.deep n <>)
 
 ----- Labeling
 
