@@ -1,8 +1,12 @@
 # Spectrometer Changelog
 
-## v2.13.2
+## v2.14.2
 
 - Maven: `mvn dependency:tree` now correctly cleans up temporary files after an exception, and correctly uses `settings.xml` when available. ([#318](https://github.com/fossas/spectrometer/pull/318))
+
+## v2.14.1
+
+- Expanded proprietary language snippets in monorepo scans. ([#317](https://github.com/fossas/spectrometer/pull/317))
 
 ## v2.13.1
 
