@@ -170,35 +170,35 @@ vsiDiscoverFunc _ _ _ = const $ pure []
 discoverFuncs :: (TaskEffs sig m, TaskEffs rsig run) => [Path Abs Dir -> m [DiscoveredProject run]]
 discoverFuncs =
   [ Bundler.discover
+  , Cabal.discover
   , Cargo.discover
   , Carthage.discover
   , Cocoapods.discover
-  , Gradle.discover
-  , Rebar3.discover
-  , Gomodules.discover
-  , Godep.discover
-  , Setuptools.discover
-  , Maven.discover
-  , Leiningen.discover
   , Composer.discover
-  , Cabal.discover
-  , Stack.discover
-  , Yarn.discover
+  , Conda.discover
+  , Glide.discover
+  , Godep.discover
+  , Gomodules.discover
+  , Gradle.discover
+  , Leiningen.discover
+  , Maven.discover
   , Mix.discover
   , Npm.discover
-  , Scala.discover
-  , RPM.discover
-  , RepoManifest.discover
   , Nuspec.discover
   , PackageReference.discover
   , PackagesConfig.discover
   , Paket.discover
-  , ProjectAssetsJson.discover
-  , ProjectJson.discover
-  , Glide.discover
   , Pipenv.discover
   , Poetry.discover
-  , Conda.discover
+  , ProjectAssetsJson.discover
+  , ProjectJson.discover
+  , RPM.discover
+  , Rebar3.discover
+  , RepoManifest.discover
+  , Scala.discover
+  , Setuptools.discover
+  , Stack.discover
+  , Yarn.discover
   ]
 
 runDependencyAnalysis ::
