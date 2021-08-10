@@ -80,7 +80,7 @@ deptreeCmd settingsFile outputFile =
           -- the failing module.)
           "--fail-at-end"
         ]
-          <> maybe [] (\p -> ["--settings " <> toText (fromAbsFile p)]) settingsFile
+          <> maybe [] (\file -> ["--settings", toText file]) settingsFile
     , -- `mvn dependency:tree` will exit non-zero when the build of any module
       -- in a multi-module build fails. However, this should not cause an Exec
       -- failure, since we can still get partial results.

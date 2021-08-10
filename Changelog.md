@@ -1,8 +1,12 @@
 # Spectrometer Changelog
 
+## v2.14.5
+
+- Maven: Fixes an issue where projects with `settings.xml` files would not be analyzed correctly using the `dependency:tree` tactic. ([#327](https://github.com/fossas/spectrometer/pull/327))
+
 ## v2.14.4
 
-- Gradle: Fixes an issue where all dependencies would appear as direct ([#319](https://github.com/fossas/spectrometer/pull/319))
+- Gradle: Fixes an issue where all dependencies would appear as direct. ([#319](https://github.com/fossas/spectrometer/pull/319))
 
 ## v2.14.3
 
