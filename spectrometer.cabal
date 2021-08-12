@@ -213,6 +213,7 @@ library
     Effect.ReadFS
     Fossa.API.Types
     Graphing
+    Path.Extra
     Parse.XML
     Srclib.Converter
     Srclib.Types

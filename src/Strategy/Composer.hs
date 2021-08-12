@@ -44,16 +44,21 @@ mkProject project =
   DiscoveredProject
     { projectType = "composer"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = composerDir project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ComposerProject -> m (Graphing Dependency, GraphBreadth)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ComposerProject -> m DependencyResults
 getDeps project = context "Composer" $ do
   lock <- readContentsJson @ComposerLock (composerLock project)
   graph <- context "Building dependency graph" $ pure (buildGraph lock)
-  pure (graph, Complete)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [composerLock project]
+      }
 
 data ComposerProject = ComposerProject
   { composerDir :: Path Abs Dir

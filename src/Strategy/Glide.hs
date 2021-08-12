@@ -5,7 +5,6 @@ module Strategy.Glide (
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Discovery.Walk
 import Effect.ReadFS
-import Graphing
 import Path
 import Strategy.Go.GlideLock qualified as GlideLock
 import Types
@@ -31,10 +30,10 @@ mkProject project =
   DiscoveredProject
     { projectType = "glide"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = glideDir project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => GlideProject -> m (Graphing Dependency, GraphBreadth)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => GlideProject -> m DependencyResults
 getDeps project = context "Glide" (GlideLock.analyze' (glideLock project))

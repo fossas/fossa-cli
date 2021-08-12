@@ -153,13 +153,20 @@ mkProject project =
   DiscoveredProject
     { projectType = "cargo"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = cargoDir project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has Diagnostics sig m) => CargoProject -> m (Graphing Dependency, GraphBreadth)
-getDeps = context "Cargo" . context "Dynamic analysis" . analyze . cargoDir
+getDeps :: (Has Exec sig m, Has Diagnostics sig m) => CargoProject -> m DependencyResults
+getDeps project = do
+  (graph, graphBreadth) <- context "Cargo" . context "Dynamic analysis" . analyze . cargoDir $ project
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = graphBreadth
+      , dependencyManifestFiles = [cargoToml project]
+      }
 
 cargoGenLockfileCmd :: Command
 cargoGenLockfileCmd =

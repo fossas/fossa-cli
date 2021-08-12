@@ -213,8 +213,8 @@ runDependencyAnalysis (BaseDir basedir) filters project =
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
-      graphResult <- Diag.runDiagnosticsIO . stickyDiag $ projectDependencyGraph project targets
-      Diag.withResult SevWarn graphResult (output . mkResult project)
+      graphResult <- Diag.runDiagnosticsIO . stickyDiag $ projectDependencyResults project targets
+      Diag.withResult SevWarn graphResult (output . mkResult basedir project)
 
 applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
 applyFiltersToProject basedir filters DiscoveredProject{..} =

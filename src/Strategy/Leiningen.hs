@@ -73,12 +73,12 @@ mkProject project =
   DiscoveredProject
     { projectType = "leiningen"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = leinDir project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has Diagnostics sig m) => LeiningenProject -> m (Graphing Dependency, GraphBreadth)
+getDeps :: (Has Exec sig m, Has Diagnostics sig m) => LeiningenProject -> m DependencyResults
 getDeps = context "Leiningen" . context "Dynamic analysis" . analyze . leinProjectClj
 
 data LeiningenProject = LeiningenProject
@@ -87,7 +87,7 @@ data LeiningenProject = LeiningenProject
   }
   deriving (Eq, Ord, Show)
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency, GraphBreadth)
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze file = do
   stdoutBL <- execThrow (parent file) leinDepsCmd
   let stdoutTL = decodeUtf8 stdoutBL
@@ -97,7 +97,12 @@ analyze file = do
     Left err -> fatal (CommandParseError leinDepsCmd (toText err))
     Right deps -> do
       graph <- context "Building dependency graph" $ pure (buildGraph deps)
-      pure (graph, Complete)
+      pure $
+        DependencyResults
+          { dependencyGraph = graph
+          , dependencyGraphBreadth = Complete
+          , dependencyManifestFiles = [file]
+          }
 
 -- node type for our LabeledGrapher
 data ClojureNode = ClojureNode

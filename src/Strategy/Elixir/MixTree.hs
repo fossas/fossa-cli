@@ -1,5 +1,6 @@
 module Strategy.Elixir.MixTree (
   PackageName (..),
+  MixProject (..),
   MixDep (..),
   MixDepResolved (..),
   DepManager (..),
@@ -66,13 +67,14 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (alphaNumChar, char, eol, newline, string)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
-import Types (GraphBreadth (..))
+import Types (DependencyResults (..), GraphBreadth (..))
 
 missingDepVersionsMsg :: Text
 missingDepVersionsMsg = "Some of dependencies versions were not resolved from `mix deps` and `mix deps.tree`. Has `mix deps.get` and `mix compile` been executed?"
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m (Graphing Dependency, GraphBreadth)
-analyze dir = do
+analyze :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => MixProject -> m DependencyResults
+analyze project = do
+  let dir = mixDir project
   -- Get all dependencies
   depsAllEnvTree <-
     context "Identifying relationship among dependencies" $
@@ -84,7 +86,19 @@ analyze dir = do
 
   -- Reminder to get and compile dependencies, if not already done so.
   _ <- if missingResolvedVersions depsAllResolved then (logWarn . pretty) missingDepVersionsMsg else pure ()
-  context "Building dependency graph" $ pure (buildGraph depsAllEnvTree depsAllResolved, Complete)
+  graph <- context "Building dependency graph" $ pure (buildGraph depsAllEnvTree depsAllResolved)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [mixFile project]
+      }
+
+data MixProject = MixProject
+  { mixDir :: Path Abs Dir
+  , mixFile :: Path Abs File
+  }
+  deriving (Eq, Ord, Show)
 
 -- | Name of the Package.
 newtype PackageName = PackageName {unPackageName :: Text} deriving (Show, Eq, Ord)

@@ -8,7 +8,6 @@ import Control.Effect.Diagnostics qualified as Diag
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
-import Graphing
 import Path
 import Strategy.Go.GopkgLock qualified as GopkgLock
 import Strategy.Go.GopkgToml qualified as GopkgToml
@@ -44,23 +43,35 @@ mkProject project =
   DiscoveredProject
     { projectType = "godep"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = godepDir project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (Graphing Dependency, GraphBreadth)
+getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m DependencyResults
 getDeps project =
   context "Godep" $
     context "Gopkg.lock analysis" (analyzeGopkgLock project)
       <||> context "Gopkg.toml analysis" (analyzeGopkgToml project)
 
-analyzeGopkgLock :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (Graphing Dependency, GraphBreadth)
+analyzeGopkgLock :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m DependencyResults
 analyzeGopkgLock project = do
-  graph <- Diag.fromMaybeText "No Gopkg.lock present in the project" (godepLock project) >>= GopkgLock.analyze'
-  pure (graph, Complete)
+  lockFile <- Diag.fromMaybeText "No Gopkg.lock present in the project" (godepLock project)
+  graph <- GopkgLock.analyze' lockFile
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [lockFile]
+      }
 
-analyzeGopkgToml :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m (Graphing Dependency, GraphBreadth)
+analyzeGopkgToml :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m DependencyResults
 analyzeGopkgToml project = do
-  graph <- Diag.fromMaybeText "No Gopkg.toml present in the project" (godepToml project) >>= GopkgToml.analyze'
-  pure (graph, Complete)
+  tomlFile <- Diag.fromMaybeText "No Gopkg.toml present in the project" (godepToml project)
+  graph <- GopkgToml.analyze' tomlFile
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [tomlFile]
+      }

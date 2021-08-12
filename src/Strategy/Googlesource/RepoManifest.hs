@@ -65,18 +65,23 @@ mkProject project =
   DiscoveredProject
     { projectType = "repomanifest"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = parent $ repoManifestXml project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RepoManifestProject -> m (Graphing Dependency, GraphBreadth)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RepoManifestProject -> m DependencyResults
 getDeps = analyze' . repoManifestXml
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency, GraphBreadth)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze' file = do
   graph <- buildGraph <$> nestedValidatedProjects (parent file) file
-  pure (graph, Partial)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Partial
+      , dependencyManifestFiles = [file]
+      }
 
 nestedValidatedProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m [ValidatedProject]
 nestedValidatedProjects rootDir file = do

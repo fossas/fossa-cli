@@ -1,7 +1,6 @@
 module Strategy.Mix (
   discover,
   findProjects,
-  getDeps,
   mkProject,
 ) where
 
@@ -14,10 +13,9 @@ import Discovery.Walk (
 import Effect.Exec (Exec, Has)
 import Effect.Logger (Logger (..))
 import Effect.ReadFS (ReadFS)
-import Graphing (Graphing)
 import Path
-import Strategy.Elixir.MixTree qualified as MixTree
-import Types (Dependency, DiscoveredProject (..), GraphBreadth (..))
+import Strategy.Elixir.MixTree (MixProject (..), analyze)
+import Types (DiscoveredProject (..))
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = context "Mix" $ do
@@ -28,22 +26,14 @@ findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [
 findProjects = walk' $ \dir _ files -> do
   case findFileNamed "mix.exs" files of
     Nothing -> pure ([], WalkContinue)
-    Just _ -> pure ([MixProject dir], WalkSkipSome ["deps", "_build"])
-
-newtype MixProject = MixProject
-  { mixDir :: Path Abs Dir
-  }
-  deriving (Eq, Ord, Show)
+    Just file -> pure ([MixProject dir file], WalkSkipSome ["deps", "_build"])
 
 mkProject :: (Has Exec sig n, Has Diagnostics sig n, Has Logger sig n) => MixProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "mix"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ analyze project
     , projectPath = mixDir project
     , projectLicenses = pure []
     }
-
-getDeps :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => MixProject -> m (Graphing Dependency, GraphBreadth)
-getDeps project = MixTree.analyze (mixDir project)

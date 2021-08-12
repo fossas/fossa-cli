@@ -43,19 +43,24 @@ mkProject project =
   DiscoveredProject
     { projectType = "projectassetsjson"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = parent $ projectAssetsJsonFile project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ProjectAssetsJsonProject -> m (Graphing Dependency, GraphBreadth)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ProjectAssetsJsonProject -> m DependencyResults
 getDeps = context "ProjectAssetsJson" . context "Static analysis" . analyze' . projectAssetsJsonFile
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency, GraphBreadth)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze' file = do
   assetsJson <- readContentsJson @ProjectAssetsJson file
   graph <- context "Building dependency graph" $ pure (buildGraph assetsJson)
-  pure (graph, Complete)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [file]
+      }
 
 newtype ProjectAssetsJson = ProjectAssetsJson
   { targets :: Map.Map Text (Map.Map Text DependencyInfo)

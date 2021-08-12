@@ -44,19 +44,24 @@ mkProject project =
   DiscoveredProject
     { projectType = "packagesconfig"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = parent $ packagesConfigFile project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PackagesConfigProject -> m (Graphing Dependency, GraphBreadth)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PackagesConfigProject -> m DependencyResults
 getDeps = context "PackagesConfig" . context "Static analysis" . analyze' . packagesConfigFile
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency, GraphBreadth)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze' file = do
   config <- readContentsXML @PackagesConfig file
   graph <- context "Building dependency graph" $ pure (buildGraph config)
-  pure (graph, Partial)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Partial
+      , dependencyManifestFiles = [file]
+      }
 
 instance FromXML PackagesConfig where
   parseElement el = PackagesConfig <$> children "package" el

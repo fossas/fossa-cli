@@ -2,6 +2,7 @@
 
 module Types (
   DiscoveredProject (..),
+  DependencyResults (..),
   GraphBreadth (..),
   FoundTargets (..),
   BuildTarget (..),
@@ -21,7 +22,6 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
-
 import Data.Aeson.Types (Parser)
 import Data.Set.NonEmpty (NonEmptySet)
 import Data.String.Conversion (toString)
@@ -36,7 +36,7 @@ import DepTypes (
   insertTag,
  )
 import Graphing (Graphing)
-import Path (Abs, Dir, Path, Rel, parseRelDir)
+import Path (Abs, Dir, File, Path, Rel, parseRelDir)
 
 -- TODO: results should be within a graph of build targets && eliminate SubprojectType
 
@@ -57,9 +57,19 @@ data DiscoveredProject m = DiscoveredProject
   { projectType :: Text
   , projectPath :: Path Abs Dir
   , projectBuildTargets :: FoundTargets
-  , projectDependencyGraph :: FoundTargets -> m (Graphing Dependency, GraphBreadth)
+  , projectDependencyResults :: FoundTargets -> m DependencyResults
   , projectLicenses :: m [LicenseResult]
   }
+
+-- | The results from analyzing dependencies on a project. This contains the graph,
+-- the GraphBreadth (if it was partially analyzed, or fully analyzed), and the
+-- manifest file(s) (if available) used to determine the graph
+data DependencyResults = DependencyResults
+  { dependencyGraph :: Graphing Dependency
+  , dependencyGraphBreadth :: GraphBreadth
+  , dependencyManifestFiles :: [Path Abs File]
+  }
+  deriving (Show)
 
 -- | The exhaustiveness or completeness of the graph found during analysis.
 --   Complete - indicates that the dependencies in question are a full, transitive graph, requiring no additional analysis

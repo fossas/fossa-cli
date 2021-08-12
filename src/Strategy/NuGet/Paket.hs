@@ -54,19 +54,24 @@ mkProject project =
   DiscoveredProject
     { projectType = "paket"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = parent $ paketLock project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PaketProject -> m (Graphing Dependency, GraphBreadth)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PaketProject -> m DependencyResults
 getDeps = context "Paket" . context "Static analysis" . analyze' . paketLock
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency, GraphBreadth)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze' file = do
   sections <- readContentsParser findSections file
   graph <- context "Building dependency graph" $ pure (buildGraph sections)
-  pure (graph, Complete)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [file]
+      }
 
 newtype PaketPkg = PaketPkg {pkgName :: Text}
   deriving (Eq, Ord, Show)

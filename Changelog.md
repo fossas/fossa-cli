@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+# unreleased
+
+- Modified DiscoveredProject's to include manifest file information (origin paths) ([#316](https://github.com/fossas/spectrometer/pull/316))
+
 ## v2.14.5
 
 - Maven: Fixes an issue where projects with `settings.xml` files would not be analyzed correctly using the `dependency:tree` tactic. ([#327](https://github.com/fossas/spectrometer/pull/327))

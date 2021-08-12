@@ -50,19 +50,24 @@ mkProject project =
   DiscoveredProject
     { projectType = "packagereference"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = parent $ packageReferenceFile project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PackageReferenceProject -> m (Graphing Dependency, GraphBreadth)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PackageReferenceProject -> m DependencyResults
 getDeps = context "PackageReference" . context "Static analysis" . analyze' . packageReferenceFile
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency, GraphBreadth)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze' file = do
   ref <- readContentsXML @PackageReference file
   graph <- context "Building dependency graph" $ pure (buildGraph ref)
-  pure (graph, Partial)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Partial
+      , dependencyManifestFiles = [file]
+      }
 
 newtype PackageReference = PackageReference
   { groups :: [ItemGroup]

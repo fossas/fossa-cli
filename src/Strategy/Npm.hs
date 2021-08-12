@@ -7,7 +7,6 @@ import Control.Effect.Diagnostics qualified as Diag
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
-import Graphing
 import Path
 import Strategy.Node.NpmList qualified as NpmList
 import Strategy.Node.NpmLock qualified as NpmLock
@@ -52,25 +51,41 @@ mkProject project =
   DiscoveredProject
     { projectType = "npm"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = npmDir project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m ((Graphing Dependency), GraphBreadth)
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m DependencyResults
 getDeps project = context "Npm" $ analyzeNpmList project <||> analyzeNpmLock project <||> analyzeNpmJson project
 
-analyzeNpmList :: (Has Exec sig m, Has Diagnostics sig m) => NpmProject -> m (Graphing Dependency, GraphBreadth)
+analyzeNpmList :: (Has Exec sig m, Has Diagnostics sig m) => NpmProject -> m DependencyResults
 analyzeNpmList project = do
-  analyzeResult <- context "npm-list analysis" . NpmList.analyze' $ npmDir project
-  pure (analyzeResult, Complete)
+  graph <- context "npm-list analysis" . NpmList.analyze' $ npmDir project
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = maybe [npmPackageJson project] pure $ npmPackageLock project
+      }
 
-analyzeNpmLock :: (Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m (Graphing Dependency, GraphBreadth)
+analyzeNpmLock :: (Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m DependencyResults
 analyzeNpmLock project = do
-  analyzeResult <- context "package-lock.json analysis" $ Diag.fromMaybeText "No package-lock.json present in the project" (npmPackageLock project) >>= NpmLock.analyze'
-  pure (analyzeResult, Complete)
+  lockFile <- Diag.fromMaybeText "No package-lock.json present in the project" (npmPackageLock project)
+  graph <- context "package-lock.json analysis" . NpmLock.analyze' $ lockFile
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [lockFile]
+      }
 
-analyzeNpmJson :: (Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m (Graphing Dependency, GraphBreadth)
+analyzeNpmJson :: (Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m DependencyResults
 analyzeNpmJson project = do
-  analyzeResult <- context "package.json analysis" . PackageJson.analyze' $ npmPackageJson project
-  pure (analyzeResult, Partial)
+  graph <- context "package.json analysis" . PackageJson.analyze' $ npmPackageJson project
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Partial
+      , dependencyManifestFiles = [npmPackageJson project]
+      }

@@ -9,7 +9,6 @@ import Control.Effect.Diagnostics (Diagnostics, context)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
-import Graphing
 import Path
 import Strategy.Erlang.Rebar3Tree qualified as Rebar3Tree
 import Types
@@ -23,10 +22,11 @@ findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [
 findProjects = walk' $ \dir _ files -> do
   case findFileNamed "rebar.config" files of
     Nothing -> pure ([], WalkContinue)
-    Just _ -> pure ([RebarProject dir], WalkSkipAll)
+    Just f -> pure ([RebarProject dir f], WalkSkipAll)
 
-newtype RebarProject = RebarProject
+data RebarProject = RebarProject
   { rebarDir :: Path Abs Dir
+  , rebarFile :: Path Abs File
   }
   deriving (Eq, Ord, Show)
 
@@ -35,10 +35,17 @@ mkProject project =
   DiscoveredProject
     { projectType = "rebar3"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = rebarDir project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => RebarProject -> m (Graphing Dependency, GraphBreadth)
-getDeps project = Rebar3Tree.analyze' (rebarDir project)
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => RebarProject -> m DependencyResults
+getDeps project = do
+  (graph, graphBreadth) <- Rebar3Tree.analyze' (rebarDir project)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = graphBreadth
+      , dependencyManifestFiles = [rebarFile project]
+      }

@@ -61,9 +61,9 @@ import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
 import Effect.Logger (Logger, logWarn)
 import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
-import Path (Abs, Dir, Path, fromAbsDir)
+import Path (Abs, Dir, File, Path, fromAbsDir)
 import System.FilePath ((</>))
-import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..), GraphBreadth (..))
+import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), FoundTargets (..), GraphBreadth (..))
 
 newtype ConfigName = ConfigName {unConfigName :: Text} deriving (Eq, Ord, Show, FromJSON)
 newtype GradleLabel = Env DepEnvironment deriving (Eq, Ord, Show)
@@ -126,7 +126,7 @@ findProjects :: (Has Exec sig m, Has Logger sig m, Has ReadFS sig m, Has Diagnos
 findProjects = walk' $ \dir _ files -> do
   case find (\f -> "build.gradle" `isPrefixOf` fileName f) files of
     Nothing -> pure ([], WalkContinue)
-    Just _ -> do
+    Just buildFile -> do
       projectsStdout <-
         errorBoundary
           . context ("Listing gradle projects at '" <> toText dir <> "'")
@@ -149,6 +149,7 @@ findProjects = walk' $ \dir _ files -> do
           let project =
                 GradleProject
                   { gradleDir = dir
+                  , gradleBuildFile = buildFile
                   , gradleProjects = subprojects
                   }
 
@@ -156,6 +157,7 @@ findProjects = walk' $ \dir _ files -> do
 
 data GradleProject = GradleProject
   { gradleDir :: Path Abs Dir
+  , gradleBuildFile :: Path Abs File
   , gradleProjects :: Set Text
   }
   deriving (Eq, Ord, Show)
@@ -209,15 +211,20 @@ mkProject project =
   DiscoveredProject
     { projectType = "gradle"
     , projectBuildTargets = maybe ProjectWithoutTargets FoundTargets $ nonEmpty $ Set.map BuildTarget $ gradleProjects project
-    , projectDependencyGraph = getDeps project
+    , projectDependencyResults = getDeps project
     , projectPath = gradleDir project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> FoundTargets -> m (Graphing Dependency, GraphBreadth)
+getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> FoundTargets -> m DependencyResults
 getDeps project targets = context "Gradle" $ do
   graph <- analyze targets (gradleDir project)
-  pure (graph, Complete)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [gradleBuildFile project]
+      }
 
 -- See the release process to see how this script gets vendored.
 initScript :: ByteString

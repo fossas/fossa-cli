@@ -5,7 +5,6 @@ module Strategy.Yarn (
 import Control.Effect.Diagnostics
 import Discovery.Walk
 import Effect.ReadFS
-import Graphing qualified as G
 import Path
 import Strategy.Yarn.V1.YarnLock qualified as V1
 import Strategy.Yarn.V2.YarnLock qualified as V2
@@ -35,23 +34,33 @@ mkProject project =
   DiscoveredProject
     { projectType = "yarn"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = yarnDir project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (G.Graphing Dependency, GraphBreadth)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m DependencyResults
 getDeps project = context "Yarn" $ getDepsV1 project <||> getDepsV2 project
 
-getDepsV1 :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (G.Graphing Dependency, GraphBreadth)
+getDepsV1 :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m DependencyResults
 getDepsV1 project = do
   graph <- V1.analyze . yarnLock $ project
-  pure (graph, Complete)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [yarnLock project]
+      }
 
-getDepsV2 :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m (G.Graphing Dependency, GraphBreadth)
+getDepsV2 :: (Has ReadFS sig m, Has Diagnostics sig m) => YarnProject -> m DependencyResults
 getDepsV2 project = do
   graph <- V2.analyze . yarnLock $ project
-  pure (graph, Complete)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [yarnLock project]
+      }
 
 data YarnProject = YarnProject
   { yarnDir :: Path Abs Dir

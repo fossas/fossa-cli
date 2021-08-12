@@ -23,7 +23,6 @@ import DepTypes
 import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
-import Graphing (Graphing)
 import Graphing qualified as G
 import Path
 import Text.Megaparsec
@@ -60,16 +59,20 @@ mkProject project =
   DiscoveredProject
     { projectType = "carthage"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = carthageDir project
     , projectLicenses = pure []
     }
 
--- TODO: is this actually Complete? Docs say so
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CarthageProject -> m (Graphing Dependency, GraphBreadth)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CarthageProject -> m DependencyResults
 getDeps project = do
   graph <- context "Carthage" . context "Static analysis" . fmap (G.gmap toDependency) . analyze . carthageLock $ project
-  pure (graph, Complete)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [carthageLock project]
+      }
 
 relCheckoutsDir :: Path Abs File -> Path Abs Dir
 relCheckoutsDir file = parent file </> $(mkRelDir "Carthage/Checkouts")

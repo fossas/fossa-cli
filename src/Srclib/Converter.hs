@@ -34,6 +34,7 @@ toSourceUnit ProjectResult{..} =
             , buildDependencies = deps
             }
     , sourceUnitGraphBreadth = projectResultGraphBreadth
+    , sourceUnitOriginPaths = projectResultManifestFiles
     , additionalData = Nothing
     }
   where

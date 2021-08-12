@@ -53,7 +53,14 @@ mkProject basedir closure =
     , projectPath = parent $ PomClosure.closurePath closure
     , projectBuildTargets = mempty
     , -- only do static analysis of generated pom files
-      projectDependencyGraph = const $ pure (Pom.analyze' closure, Complete)
+      projectDependencyResults =
+        const $
+          pure
+            DependencyResults
+              { dependencyGraph = Pom.analyze' closure
+              , dependencyGraphBreadth = Complete
+              , dependencyManifestFiles = [PomClosure.closurePath closure]
+              }
     , projectLicenses = pure $ Pom.getLicenses basedir closure
     }
 

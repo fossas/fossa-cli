@@ -10,13 +10,12 @@ import Control.Effect.Lift (Lift)
 import Control.Monad.IO.Class (MonadIO)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS)
-import Graphing (Graphing)
 import Path (Abs, Dir, Path, parent)
 import Strategy.Maven.DepTree qualified as DepTreeCmd
 import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure qualified as PomClosure
-import Types (Dependency, DiscoveredProject (..), GraphBreadth (..))
+import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (..))
 
 discover ::
   ( MonadIO m
@@ -45,7 +44,7 @@ mkProject basedir closure =
     { projectType = "maven"
     , projectPath = parent $ PomClosure.closurePath closure
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps closure
+    , projectDependencyResults = const $ getDeps closure
     , projectLicenses = pure $ Pom.getLicenses basedir closure
     }
 
@@ -56,9 +55,16 @@ getDeps ::
   , Has Exec sig m
   ) =>
   PomClosure.MavenProjectClosure ->
-  m (Graphing Dependency, GraphBreadth)
-getDeps closure =
-  context "Maven" $
-    context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
-      <||> context "Dynamic analysis" (DepTreeCmd.analyze . parent $ PomClosure.closurePath closure)
-      <||> context "Static analysis" (pure (Pom.analyze' closure, Partial))
+  m DependencyResults
+getDeps closure = do
+  (graph, graphBreadth) <-
+    context "Maven" $
+      context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
+        <||> context "Dynamic analysis" (DepTreeCmd.analyze . parent $ PomClosure.closurePath closure)
+        <||> context "Static analysis" (pure (Pom.analyze' closure, Partial))
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = graphBreadth
+      , dependencyManifestFiles = [PomClosure.closurePath closure]
+      }

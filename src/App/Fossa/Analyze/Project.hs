@@ -8,10 +8,11 @@ import DepTypes
 import Graphing (Graphing)
 import Graphing qualified
 import Path
+import Path.Extra (tryMakeRelative)
 import Types
 
-mkResult :: DiscoveredProject n -> (Graphing Dependency, GraphBreadth) -> ProjectResult
-mkResult project graphResults =
+mkResult :: Path Abs Dir -> DiscoveredProject n -> (DependencyResults) -> ProjectResult
+mkResult basedir project dependencyResults =
   ProjectResult
     { projectResultType = projectType project
     , projectResultPath = projectPath project
@@ -24,14 +25,17 @@ mkResult project graphResults =
         if null (Graphing.directList graph)
           then graph
           else Graphing.pruneUnreachable graph
-    , projectResultGraphBreadth = graphBreadth
+    , projectResultGraphBreadth = dependencyGraphBreadth dependencyResults
+    , projectResultManifestFiles = relativeManifestFiles
     }
   where
-    (graph, graphBreadth) = graphResults
+    graph = dependencyGraph dependencyResults
+    relativeManifestFiles = map (tryMakeRelative basedir) $ dependencyManifestFiles dependencyResults
 
 data ProjectResult = ProjectResult
   { projectResultType :: Text
   , projectResultPath :: Path Abs Dir
   , projectResultGraph :: Graphing Dependency
   , projectResultGraphBreadth :: GraphBreadth
+  , projectResultManifestFiles :: [SomeBase File]
   }

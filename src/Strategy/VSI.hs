@@ -59,7 +59,7 @@ mkProject wigginsOpts project =
   DiscoveredProject
     { projectType = "vsi"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ analyze wigginsOpts
+    , projectDependencyResults = const $ analyze wigginsOpts
     , projectPath = vsiDir project
     , projectLicenses = pure []
     }
@@ -87,11 +87,16 @@ transformLocator locator =
   Dependency (validType locator) (validName locator) (CEq <$> validRevision locator) [] [] mempty
 
 -- Note: this is *actually* a Partial graph, however we are treating it as a full one in the UI, so the GraphBreadth will remain as Complete for now
-analyze :: (Has (Lift IO) sig m, MonadIO m, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> m (Graphing Dependency, GraphBreadth)
+analyze :: (Has (Lift IO) sig m, MonadIO m, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> m DependencyResults
 analyze opts = context "VSI" $ do
   vsiLocators <- context "Running VSI binary" $ withWigginsBinary (execWigginsJson opts)
   graph <- context "Building dependency graph" $ fromEither (buildGraph vsiLocators)
-  pure (graph, Complete)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = []
+      }
 
 toDepType :: Locator -> Either VSIError DepType
 toDepType locator = case locatorFetcher locator of

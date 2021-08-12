@@ -36,6 +36,7 @@ import DepTypes (DepType (..))
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
 import Fossa.API.Types
 import Path
+import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
 import Types (GraphBreadth (..))
@@ -51,7 +52,7 @@ analyzeFossaDepsFile root maybeApiOpts = do
     Nothing -> pure Nothing
     Just depsFile -> do
       manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
-      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root manualDeps maybeApiOpts
+      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts
 
 readFoundDeps :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundDepsFile -> m ManualDependencies
 readFoundDeps (ManualJSON path) = readContentsJson path
@@ -76,8 +77,8 @@ findFossaDepsFile root = do
     (_, _, True) -> pure $ Just $ ManualJSON jsonFile
     (False, False, False) -> pure Nothing
 
-toSourceUnit :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> ManualDependencies -> Maybe ApiOpts -> m SourceUnit
-toSourceUnit root manualDeps@ManualDependencies{..} maybeApiOpts = do
+toSourceUnit :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> FoundDepsFile -> ManualDependencies -> Maybe ApiOpts -> m SourceUnit
+toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts = do
   -- If the file exists and we have no dependencies to report, that's a failure.
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
   archiveLocators <- case maybeApiOpts of
@@ -88,6 +89,9 @@ toSourceUnit root manualDeps@ManualDependencies{..} maybeApiOpts = do
       referenceLocators = refToLocator <$> referencedDependencies
       additional = toAdditionalData (NE.nonEmpty customDependencies) (NE.nonEmpty remoteDependencies)
       build = toBuildData <$> NE.nonEmpty (referenceLocators <> archiveLocators)
+      originPath = case depsFile of
+        (ManualJSON path) -> tryMakeRelative root path
+        (ManualYaml path) -> tryMakeRelative root path
   pure $
     SourceUnit
       { sourceUnitName = renderedPath
@@ -95,6 +99,7 @@ toSourceUnit root manualDeps@ManualDependencies{..} maybeApiOpts = do
       , sourceUnitType = "user-specific-yaml"
       , sourceUnitBuild = build
       , sourceUnitGraphBreadth = Complete
+      , sourceUnitOriginPaths = [originPath]
       , additionalData = additional
       }
 

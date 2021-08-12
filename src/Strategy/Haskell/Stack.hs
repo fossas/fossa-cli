@@ -65,33 +65,29 @@ discover dir = context "Stack" $ do
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [StackProject]
 findProjects = walk' $ \dir _ files -> do
-  let project =
-        StackProject
-          { stackDir = dir
-          }
-
   case findFileNamed "stack.yaml" files of
     Nothing -> pure ([], WalkContinue)
-    Just _ -> pure ([project], WalkSkipAll)
+    Just file -> pure ([StackProject dir file], WalkSkipAll)
 
 mkProject :: (Has Exec sig n, Has Diagnostics sig n) => StackProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "stack"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = stackDir project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has Diagnostics sig m) => StackProject -> m (G.Graphing Dependency, GraphBreadth)
+getDeps :: (Has Exec sig m, Has Diagnostics sig m) => StackProject -> m DependencyResults
 getDeps project =
   context "Stack" $
     context "Dynamic analysis" $
-      analyze (stackDir project)
+      analyze project
 
-newtype StackProject = StackProject
+data StackProject = StackProject
   { stackDir :: Path Abs Dir
+  , stackFile :: Path Abs File
   }
   deriving (Eq, Ord, Show)
 
@@ -133,7 +129,12 @@ buildGraph deps = do
   result <- fromEither =<< withMapping ignorePackageName (traverse doGraph deps)
   pure . G.gmap toDependency $ G.filter shouldInclude result
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (G.Graphing Dependency, GraphBreadth)
-analyze dir = do
-  graph <- execJson @[StackDep] dir stackJSONDepsCmd >>= buildGraph
-  pure (graph, Complete)
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => StackProject -> m DependencyResults
+analyze project = do
+  graph <- execJson @[StackDep] (stackDir project) stackJSONDepsCmd >>= buildGraph
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [stackFile project]
+      }

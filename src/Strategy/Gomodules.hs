@@ -9,8 +9,7 @@ import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
-import Graphing
-import Path
+import Path (Abs, Dir, File, Path)
 import Strategy.Go.GoList qualified as GoList
 import Strategy.Go.Gomod qualified as Gomod
 import Types
@@ -36,13 +35,20 @@ mkProject project =
   DiscoveredProject
     { projectType = "gomod"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = gomodulesDir project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> m (Graphing Dependency, GraphBreadth)
-getDeps project =
-  context "Gomodules" $
-    context "Dynamic analysis" (GoList.analyze' (gomodulesDir project))
-      <||> context "Static analysis" (Gomod.analyze' (gomodulesGomod project))
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> m DependencyResults
+getDeps project = do
+  (graph, graphBreadth) <-
+    context "Gomodules" $
+      context "Dynamic analysis" (GoList.analyze' (gomodulesDir project))
+        <||> context "Static analysis" (Gomod.analyze' (gomodulesGomod project))
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = graphBreadth
+      , dependencyManifestFiles = [gomodulesGomod project]
+      }

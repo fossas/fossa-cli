@@ -10,7 +10,6 @@ import Control.Effect.Diagnostics qualified as Diag
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
-import Graphing
 import Path
 import Strategy.Ruby.BundleShow qualified as BundleShow
 import Strategy.Ruby.GemfileLock qualified as GemfileLock
@@ -50,20 +49,31 @@ mkProject project =
   DiscoveredProject
     { projectType = "bundler"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = bundlerDir project
     , projectLicenses = pure []
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m (Graphing Dependency, GraphBreadth)
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
 getDeps project = context "Bundler" $ analyzeBundleShow project <||> analyzeGemfileLock project
 
-analyzeBundleShow :: (Has Exec sig m, Has Diagnostics sig m) => BundlerProject -> m (Graphing Dependency, GraphBreadth)
+analyzeBundleShow :: (Has Exec sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
 analyzeBundleShow project = do
   graph <- context "bundle-show analysis" . BundleShow.analyze' . bundlerDir $ project
-  pure (graph, Complete)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = maybe [bundlerGemfile project] pure (bundlerGemfileLock project)
+      }
 
-analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m (Graphing Dependency, GraphBreadth)
+analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
 analyzeGemfileLock project = do
-  graph <- context "Gemfile.lock analysis" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project)) >>= GemfileLock.analyze'
-  pure (graph, Complete)
+  lockFile <- context "Retrieve Gemfile.lock" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project))
+  graph <- context "Gemfile.lock analysis" . GemfileLock.analyze' $ lockFile
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [lockFile]
+      }

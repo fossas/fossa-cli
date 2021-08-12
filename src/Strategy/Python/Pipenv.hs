@@ -47,20 +47,25 @@ getDeps ::
   , Has Diagnostics sig m
   ) =>
   PipenvProject ->
-  m (Graphing Dependency, GraphBreadth)
+  m DependencyResults
 getDeps project = context "Pipenv" $ do
   lock <- context "Getting direct dependencies" $ readContentsJson (pipenvLockfile project)
   maybeDeps <- context "Getting deep dependencies" $ recover $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
 
   graph <- context "Building dependency graph" $ pure (buildGraph lock maybeDeps)
-  pure (graph, Complete)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [pipenvLockfile project]
+      }
 
 mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => PipenvProject -> DiscoveredProject n
 mkProject project =
   DiscoveredProject
     { projectType = "pipenv"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = parent $ pipenvLockfile project
     , projectLicenses = pure []
     }

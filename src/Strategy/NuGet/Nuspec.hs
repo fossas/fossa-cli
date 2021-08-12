@@ -27,6 +27,7 @@ import Graphing qualified
 import Parse.XML
 import Path
 import Types (
+  DependencyResults (..),
   DiscoveredProject (..),
   GraphBreadth (Partial),
   License (License),
@@ -55,19 +56,24 @@ mkProject project =
   DiscoveredProject
     { projectType = "nuspec"
     , projectBuildTargets = mempty
-    , projectDependencyGraph = const $ getDeps project
+    , projectDependencyResults = const $ getDeps project
     , projectPath = parent $ nuspecFile project
     , projectLicenses = analyzeLicenses (nuspecFile project)
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuspecProject -> m (Graphing Dependency, GraphBreadth)
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuspecProject -> m DependencyResults
 getDeps = context "Nuspec" . context "Static analysis" . analyze' . nuspecFile
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency, GraphBreadth)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze' file = do
   nuspec <- readContentsXML @Nuspec file
   graph <- context "Building dependency graph" $ pure (buildGraph nuspec)
-  pure (graph, Partial)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Partial
+      , dependencyManifestFiles = [file]
+      }
 
 analyzeLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m [LicenseResult]
 analyzeLicenses file = do
