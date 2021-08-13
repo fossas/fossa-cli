@@ -9,6 +9,7 @@
   - [Check for FOSSA scan results](#check-for-fossa-scan-results)
 - [Supported Languages](#supported-languages)
   - [clojure](#clojure)
+  - [dart](#dart)
   - [erlang](#erlang)
   - [golang](#golang)
   - [haskell](#haskell)
@@ -84,6 +85,10 @@ fossa analyze --help
 ### clojure
 
 - [leiningen](quickreference/leiningen.md)
+
+### dart
+
+- [pub](quickreference/pub.md)
 
 ### erlang
 
@@ -249,6 +254,7 @@ Supported dependency types:
 - `maven` - Maven dependencies that can be found at many different sources. Specified as `name: javax.xml.bind:jaxb-api` where the convention is `groupId:artifactId`.
 - `npm` - Javascript dependencies found at [npmjs.com](https://www.npmjs.com/).
 - `nuget` - .NET dependencies found at [NuGet.org](https://www.nuget.org/).
+- `pub` - Dart dependencies found at [pub.dev](https://www.pub.dev/).
 - `pypi` - Python dependencies that are typically found at [Pypi.org](https://pypi.org/).
 - `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
 - `url` - The URL type allows you to specify only the download location of an archive (e.g.: `.zip`, .`tar.gz`, etc.) in the `name` field and the FOSSA backend will attempt to download and scan it. Example for a github source dependency `https://github.com/fossas/spectrometer/archive/refs/tags/v2.7.2.tar.gz`. The `version` field will be silently ignored for `url` type dependencies.

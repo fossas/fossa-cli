@@ -1,7 +1,8 @@
 # Spectrometer Changelog
 
-# unreleased
+## v2.15.0
 
+- Dart: Adds support for pub package manager. ([#313](https://github.com/fossas/spectrometer/pull/313))
 - Modified DiscoveredProject's to include manifest file information (origin paths) ([#316](https://github.com/fossas/spectrometer/pull/316))
 
 ## v2.14.5

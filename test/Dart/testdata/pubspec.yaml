@@ -1,0 +1,32 @@
+name: some_example
+description: A Flutter sample to demonstrate isolates
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.0.0 <3.0.0"
+
+dependencies:
+  pkg_default: 1.3.0
+  pkg_hosted:
+    hosted:
+      name: pkg_hosted
+      url: http://pub.dev
+    version: ^1.0.0
+  pkg_a:
+    git: https://github.com/user/pkg_a.git
+  pkg_b:
+    git:
+      url: https://github.com/user/pkg_b
+      ref: release-0.9
+  pkg_sdk:
+    sdk: flutter
+
+dev_dependencies:
+  pkg_dev_default: 1.0.0
+
+dependency_overrides:
+  pkg_b: 
+    path: ./some/dir
+
+flutter:
+  uses-material-design: true

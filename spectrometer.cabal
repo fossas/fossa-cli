@@ -227,6 +227,9 @@ library
     Strategy.Conda
     Strategy.Conda.CondaList
     Strategy.Conda.EnvironmentYml
+    Strategy.Dart.PubDeps
+    Strategy.Dart.PubSpec
+    Strategy.Dart.PubSpecLock
     Strategy.Elixir.MixTree
     Strategy.Erlang.ConfigParser
     Strategy.Erlang.Rebar3Tree
@@ -264,6 +267,7 @@ library
     Strategy.NuGet.Paket
     Strategy.NuGet.ProjectAssetsJson
     Strategy.NuGet.ProjectJson
+    Strategy.Pub
     Strategy.Python.Pipenv
     Strategy.Python.Poetry
     Strategy.Python.Poetry.Common
@@ -327,6 +331,9 @@ test-suite unit-tests
     Conda.CondaListSpec
     Conda.EnvironmentYmlSpec
     Control.Carrier.DiagnosticsSpec
+    Dart.PubDepsSpec
+    Dart.PubSpecSpec
+    Dart.PubSpecLockSpec
     Discovery.FiltersSpec
     Effect.ExecSpec
     Elixir.MixTreeSpec

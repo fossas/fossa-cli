@@ -1,0 +1,67 @@
+{
+    "root": "main_app",
+    "packages": [
+      {
+        "name": "main_app",
+        "version": "2.0.0",
+        "kind": "root",
+        "source": "root",
+        "dependencies": [
+          "pkg_a",
+          "pkg_dev_a",
+          "pkg_git",
+          "pkg_flutter"
+        ]
+      },
+      {
+        "name": "pkg_a",
+        "version": "1.8.0",
+        "kind": "direct",
+        "source": "hosted",
+        "dependencies": ["pkg_deep"]
+      },
+      {
+        "name": "pkg_dev_a",
+        "version": "3.2.0",
+        "kind": "dev",
+        "source": "hosted",
+        "dependencies": []
+      },
+      {
+        "name": "pkg_git",
+        "version": "1.8.0",
+        "kind": "direct",
+        "source": "git",
+        "dependencies": []
+      },
+      {
+        "name": "pkg_flutter",
+        "version": "1.8.0",
+        "kind": "direct",
+        "source": "sdk",
+        "dependencies": []
+      },
+      {
+        "name": "pkg_deep",
+        "version": "1.10.0",
+        "kind": "transitive",
+        "source": "hosted",
+        "dependencies": []
+      }
+    ],
+    "sdks": [
+      {
+        "name": "Dart",
+        "version": "2.14.0-301.0.dev"
+      },
+      {
+        "name": "Flutter",
+        "version": "2.4.0-4.0.pre"
+      }
+    ],
+    "executables": [
+      "test",
+      "build_runner"
+    ]
+  }
+  

@@ -1,0 +1,21 @@
+Dart SDK 2.14.0-301.0.dev
+Flutter SDK 2.4.0-4.0.pre
+some_example 1.0.0+1
+
+dependencies:
+- pkg_a 5.0.0 [pkg_aa]
+- pkg_b 4.0.0
+- pkg_c 3.0.0 [pkg_ca pkg_cb]
+- pkg_d 3.0.1
+
+dev dependencies:
+- pkg_e 2.0.0 [pkg_ea]
+
+dependency overrides:
+- pkg_d 3.0.1
+
+transitive dependencies:
+- pkg_aa 1.0.0 [pkg_ca]
+- pkg_ca 1.2.0
+- pkg_cb 1.3.0
+- pkg_ea 1.4.0

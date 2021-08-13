@@ -118,3 +118,4 @@ depTypeToFetcher = \case
   SubprojectType -> "mvn" -- FIXME. I knew SubprojectType would come back to bite us.
   URLType -> "url"
   UserType -> "user"
+  PubType -> "pub"
