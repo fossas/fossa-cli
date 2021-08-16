@@ -2,8 +2,19 @@ module Maven.DepTreeSpec (spec) where
 
 import Data.Text (Text)
 import Data.Text.IO qualified as TextIO
-import Strategy.Maven.DepTree (DotGraph (..), PackageId (..), parseDotGraphs)
-import Test.Hspec (Spec, describe, it, runIO)
+import DepTypes (
+  DepEnvironment (..),
+  DepType (MavenType),
+  Dependency (..),
+  VerConstraint (..),
+ )
+import Strategy.Maven.DepTree (
+  DotGraph (..),
+  PackageId (..),
+  parseDotGraphs,
+  toDependency,
+ )
+import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Test.Hspec.Megaparsec (shouldParse, shouldSucceedOn)
 import Text.Megaparsec (parse)
 
@@ -29,6 +40,27 @@ spec =
     it "parses package IDs with platforms" $
       parse parseDotGraphs "" fixturePackageIDWithPlatformContents
         `shouldParse` fixturePackageIDWithPlatformGraph
+
+    it "renders parsed dependencies" $ do
+      let p =
+            PackageId
+              { groupName = "org.apache.commons"
+              , artifactName = "commons-rng-parent"
+              , artifactType = "pom"
+              , artifactVersion = "1.4-SNAPSHOT"
+              , artifactPlatform = Nothing
+              , buildTag = Nothing
+              }
+      let d =
+            Dependency
+              { dependencyType = MavenType
+              , dependencyName = "org.apache.commons:commons-rng-parent"
+              , dependencyVersion = Just (CEq "1.4-SNAPSHOT")
+              , dependencyLocations = []
+              , dependencyEnvironments = [EnvProduction]
+              , dependencyTags = mempty
+              }
+      toDependency p `shouldBe` d
 
 fixtureSingleFile :: FilePath
 fixtureSingleFile = "test/Maven/testdata/fossa-deptree.dot"

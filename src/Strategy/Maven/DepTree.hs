@@ -5,6 +5,7 @@ module Strategy.Maven.DepTree (
   -- * Exported for testing
   DotGraph (..),
   PackageId (..),
+  toDependency,
 ) where
 
 import Control.Algebra (Has, run)
@@ -144,10 +145,10 @@ buildGraph :: [DotGraph] -> Graphing Dependency
 buildGraph = gmap toDependency . foldMap toGraph
 
 toDependency :: PackageId -> Dependency
-toDependency PackageId{artifactName, artifactVersion, buildTag} =
+toDependency PackageId{groupName, artifactName, artifactVersion, buildTag} =
   Dependency
     { dependencyType = MavenType
-    , dependencyName = artifactName
+    , dependencyName = groupName <> ":" <> artifactName
     , dependencyVersion = Just $ CEq artifactVersion
     , dependencyLocations = []
     , dependencyEnvironments = maybe [EnvProduction] ((: []) . toBuildTag) buildTag

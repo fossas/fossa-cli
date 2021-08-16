@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.15.2
+
+- Maven: Fixes an issue where dependencies parsed from `dependency:tree` would fail to resolve when uploaded. ([#332](https://github.com/fossas/spectrometer/pull/332))
+
 ## v2.15.1
 
 - Maven: Fixes an issue where dependencies with a platform specifier were not correctly parsed. ([#329](https://github.com/fossas/spectrometer/pull/329))
