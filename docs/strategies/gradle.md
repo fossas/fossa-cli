@@ -11,20 +11,24 @@ Gradle users generally specify their builds using a `build.gradle` file (written
 <!-- omit in toc -->
 ## Table of contents
 
-- [Concepts](#concepts)
-  - [Subprojects and configurations](#subprojects-and-configurations)
-  - [Gradle wrappers](#gradle-wrappers)
-- [Running Gradle](#running-gradle)
-- [Discovery](#discovery)
-- [Tactics](#tactics)
-  - [Tactic selection](#tactic-selection)
-  - [Gradle build plugin](#gradle-build-plugin)
-  - [Parsing `gradle :dependencies`](#parsing-gradle-dependencies)
-- [Debugging an integration](#debugging-an-integration)
-  - [Determining whether Gradle targets are detected](#determining-whether-gradle-targets-are-detected)
-  - [Manually checking Gradle dependency results](#manually-checking-gradle-dependency-results)
-  - [Debugging the "Gradle build plugin" tactic](#debugging-the-gradle-build-plugin-tactic)
-- [Manually specifying Gradle dependencies](#manually-specifying-gradle-dependencies)
+- [Gradle](#gradle)
+  - [Concepts](#concepts)
+    - [Subprojects and configurations](#subprojects-and-configurations)
+      - [Subprojects](#subprojects)
+      - [Configurations](#configurations)
+      - [Relationship to analysis targets](#relationship-to-analysis-targets)
+    - [Gradle wrappers](#gradle-wrappers)
+  - [Running Gradle](#running-gradle)
+  - [Discovery](#discovery)
+  - [Tactics](#tactics)
+    - [Tactic selection](#tactic-selection)
+    - [Gradle build plugin](#gradle-build-plugin)
+    - [Parsing `gradle :dependencies`](#parsing-gradle-dependencies)
+  - [Debugging an integration](#debugging-an-integration)
+    - [Determining whether Gradle targets are detected](#determining-whether-gradle-targets-are-detected)
+    - [Manually checking Gradle dependency results](#manually-checking-gradle-dependency-results)
+    - [Debugging the "Gradle build plugin" tactic](#debugging-the-gradle-build-plugin-tactic)
+  - [Manually specifying Gradle dependencies](#manually-specifying-gradle-dependencies)
 
 ## Concepts
 
@@ -70,9 +74,9 @@ This strategy requires dynamic analysis in its discovery phase (not just in the 
 
 When executing Gradle for an analysis target at directory `ANALYSIS_TARGET_DIR`, the CLI will prefer (in order):
 
-1. `$ANALYSIS_TARGET_DIR/gradlew`
-2. `$ANALYSIS_TARGET_DIR/gradlew.bat`
-3. `gradle` (from `$PATH`)
+1. `gradlew`. First looking in `ANALYSIS_TARGET_DIR` and then recursively searching parent directories until `gradlew` is found.
+1. `gradlew.bat`. First looking in `ANALYSIS_TARGET_DIR` and then recursively searching parent directories until `gradlew.bat` is found.
+1. `gradle` (from `$PATH`)
 
 For more details, see [Gradle wrappers](#gradle-wrappers).
 

@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## Unreleased
+
+- Gradle: Search parent directories for gradlew and gradlew.bat ([#336](https://github.com/fossas/spectrometer/pull/336)) 
+
 ## v2.15.3
 
 - Resolve a scan performance regression for `fossa vps` invocations. ([#335](https://github.com/fossas/spectrometer/pull/335))
