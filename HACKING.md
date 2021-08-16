@@ -1,5 +1,7 @@
 # Hacking
 
+[Back to development doc homepage](devdocs/index.md)
+
 ## Quickstart
 
 Use [ghcup][ghcup] to install the `cabal` cli tool and the ghc version we're using:
@@ -90,7 +92,7 @@ You can run `make fmt` to run the formatter on the entire codebase, or `make che
 | name | description |
 | ---- | ----------- |
 | [hoogle][hoogle] | Search for type signatures or symbols |
-| [hackage][hackage] | Package repository; can be used to browse invdividual package docs ("haddocks") |
+| [hackage][hackage] | Package repository; can be used to browse individual package docs ("haddocks") |
 
 If on macOS, [dash](https://kapeli.com/dash) is a great tool that allows for downloading searchable package haddocks
 
@@ -124,9 +126,9 @@ Use `cabal repl` to open ghci.
 
 Yeah, haskell tools can be a little over-explainy and use too many technicalities. Try these steps (one at a time):
 
-* Run `cabal update`.  This solves most problems with dependencies and should be a go-to for these issues.
-* Check your GHC version.  Some dependencies are baked-in (sort of) to the compiler, so make sure you're using the correct version.
-* Update `ghcup`, then re-check all of your haskell tools' versions.  `ghcup tui` is a great interface for this, but you can use normal commands.
+- Run `cabal update`.  This solves most problems with dependencies and should be a go-to for these issues.
+- Check your GHC version.  Some dependencies are baked-in (sort of) to the compiler, so make sure you're using the correct version.
+- Update `ghcup`, then re-check all of your haskell tools' versions.  `ghcup tui` is a great interface for this, but you can use normal commands.
 
 ### I tried using fourmolu/hlint, and it choked on some syntax that builds fine
 
@@ -135,12 +137,13 @@ using `{#- LANGUAGE GADTs -#}`-style syntax, these tools can easily pick that up
 that we define them everywhere using cabal's `default-extensions` feature.  If these also extensions modify syntax (like `TypeApplications` does), then
 these tools can choke, and sometimes pretty poorly.
 
-Using these tools through HLS should prevent these issues, since HLS checks for build-system-provided extensions.
+Using these tools through HLS should prevent these issues, since HLS checks for build-system-provided extensions.  The `makefile` is also set up to
+include the correct extensions where necessary, so running `make lint` or `make fmt` can be easier than running `hlint` or `fourmolu` directly.
 
 ### GHC/hlint is telling me to add/remove a language extension.  Is that safe?
 
 Yes.  Missing language extensions are usually compile-time errors, and will be caught in CI.  Unused extensions are caught by hlint, and can be safely removed.
-If, for any reason, GHC teel you add an extension, and hlint tells you to remove the extension you just added, keep it there and ignore hiint.  You should also file
+If, for any reason, GHC tells you add an extension, and hlint tells you to remove the extension you just added, keep it there and ignore hlint.  You should also file
 an issue in this repository for that scenario, since we may be able to fix that.
 
 [fourmolu]: https://github.com/fourmolu/fourmolu
