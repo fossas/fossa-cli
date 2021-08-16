@@ -3,6 +3,7 @@
 Upgrading from FOSSA CLI 1.x to 2.x is a major breaking change. For most users, this change should be seamless. For users who use less common flags, or who have heavily customized their CLI usage, you may need to update some scripts.
 
 ## Table of contents <!-- omit in toc -->
+
 - [What's new in FOSSA 2.x?](#whats-new-in-fossa-2x)
   - ["Modules" are now "analysis targets"](#modules-are-now-analysis-targets)
   - [Automatic analysis target discovery](#automatic-analysis-target-discovery)
@@ -74,3 +75,9 @@ In 2.x, archive uploads are no longer a special analysis target type. Instead, y
 If you run into migration issues, you can get support by opening a ticket in this repository.
 
 If you are integrating a private project and want to share more details, or if you're a FOSSA customer with priority support, you can also email support@fossa.com or file a ticket at support.fossa.com for assistance.
+
+### Migrate "fossa report" commands
+
+In 1.x, `fossa report` supported `fossa report dependencies`, `fossa report licenses` and `fossa report attribution`.
+
+In 2.x, only `fossa report attribution --json` is reported. The information in the previously supported v1 commands is contained in the output from `attribution`.
