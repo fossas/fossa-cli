@@ -4,7 +4,6 @@ module App.Fossa.Analyze.GraphMangler (
 
 import Algebra.Graph.AdjacencyMap (AdjacencyMap)
 import Algebra.Graph.AdjacencyMap qualified as AM
-import Algebra.Graph.ToGraph (dfs)
 import Control.Algebra
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
@@ -22,7 +21,7 @@ graphingToGraph graphing = run . evalGraphBuilder G.empty $ do
   let depAmap = Graphing.toAdjacencyMap graphing
       depDirect = Graphing.directList graphing
 
-      nodes = dfs depDirect depAmap
+      nodes = Graphing.vertexList graphing
 
   refs <- Map.fromList <$> traverse addingNode nodes
 
