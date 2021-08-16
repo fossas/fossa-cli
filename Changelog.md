@@ -1,9 +1,13 @@
 # Spectrometer Changelog
 
+## v2.15.1
+
+- Maven: Fixes an issue where dependencies with a platform specifier were not correctly parsed. ([#329](https://github.com/fossas/spectrometer/pull/329))
+
 ## v2.15.0
 
 - Dart: Adds support for pub package manager. ([#313](https://github.com/fossas/spectrometer/pull/313))
-- Modified DiscoveredProject's to include manifest file information (origin paths) ([#316](https://github.com/fossas/spectrometer/pull/316))
+- Analyzed dependencies now report what file they were found in. ([#316](https://github.com/fossas/spectrometer/pull/316))
 
 ## v2.14.5
 

@@ -170,6 +170,7 @@ data PackageId = PackageId
   , artifactName :: Text
   , artifactType :: Text
   , artifactVersion :: Text
+  , artifactPlatform :: Maybe Text
   , buildTag :: Maybe Text
   }
   deriving (Eq, Ord, Show)
@@ -185,7 +186,7 @@ data DotGraph = DotGraph
 parseDotGraphs :: Parser [DotGraph]
 parseDotGraphs = some $ do
   root <- symbol "digraph" *> parseNode
-  edgeLists <- enclosed "{" "}" (many $ try parseGraphEntry)
+  edgeLists <- enclosed "{" "}" $ many $ try parseGraphEntry
   pure $ DotGraph root edgeLists
 
 parseGraphEntry :: Parser (PackageId, PackageId)
@@ -208,8 +209,12 @@ parseName input = combine parts
     parts = Text.splitOn ":" input
 
     combine :: [Text] -> m PackageId
-    combine [a, b, c, d, e] = pure . PackageId a b c d $ Just e
-    combine [a, b, c, d] = pure $ PackageId a b c d Nothing
+    combine [group, artifact, type', platform, version, scope] =
+      pure $ PackageId group artifact type' version (Just platform) (Just scope)
+    combine [group, artifact, type', version, scope] =
+      pure $ PackageId group artifact type' version Nothing (Just scope)
+    combine [group, artifact, type', version] =
+      pure $ PackageId group artifact type' version Nothing Nothing
     combine items = fail $ toString $ "invalid identifier: " <> Text.intercalate ":" items
 
 enclosed :: Text -> Text -> Parser a -> Parser a
