@@ -1,5 +1,10 @@
 # Spectrometer Changelog
 
+## v2.15.3
+
+- Resolve a scan performance regression for `fossa vps` invocations. ([#335](https://github.com/fossas/spectrometer/pull/335))
+- Resolve a scan performance regression for `fossa analyze --experimental-enable-monorepo` invocations. ([#335](https://github.com/fossas/spectrometer/pull/335))
+
 ## v2.15.2
 
 - Maven: Fixes an issue where dependencies parsed from `dependency:tree` would fail to resolve when uploaded. ([#332](https://github.com/fossas/spectrometer/pull/332))
