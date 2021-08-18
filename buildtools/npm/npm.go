@@ -40,10 +40,10 @@ func (n SystemNPM) List(dir string, devDeps bool) (Output, error) {
 	listCmd := exec.Cmd{
 		Name: n.Cmd,
 		Dir:  dir,
-		Argv: []string{"ls", "--json"},
+		Argv: []string{"ls", "--json", "--all"},
 	}
 	if !devDeps {
-		listCmd.Argv = []string{"ls", "--json", "--production"}
+		listCmd.Argv = []string{"ls", "--json", "--all", "--production"}
 	}
 
 	stdout, _, err := exec.Run(listCmd)
