@@ -184,6 +184,9 @@ func fromModulesHelper(pathToModule string, moduleProjects map[pkg.ID]pkg.Packag
 			return err
 		}
 
+		if _, exists := moduleProjects[modulePackage.ID]; exists {
+			continue
+		}
 		moduleProjects[modulePackage.ID] = modulePackage
 
 		err = fromModulesHelper(pathToDepModule, moduleProjects, devDeps)

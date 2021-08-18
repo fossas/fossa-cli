@@ -27,7 +27,7 @@ analyze:
     - name: github.com/fossas/fossa-cli/cmd/fossa
       type: pip
       target: python/project
-      dir:  python/project
+      path:  python/project
       options:
         strategy: pipenv
 ```

@@ -153,7 +153,7 @@ func (m *Maven) tryDependencyCommands(subGoal, dir, buildTarget string) (stdout 
 	return output, err
 }
 
-//go:generate bash -c "genny -in=$GOPATH/src/github.com/fossas/fossa-cli/graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package maven/' > readtree_generated.go"
+//go:generate bash -c "genny -in=../../graph/readtree.go gen 'Generic=Dependency' | sed -e 's/package graph/package maven/' > readtree_generated.go"
 
 func ParseDependencyTree(stdin string) (graph.Deps, error) {
 	var modules [][]string
@@ -169,7 +169,7 @@ func ParseDependencyTree(stdin string) (graph.Deps, error) {
 		if line == "[INFO]" || line == "[INFO] " || line == "[INFO] ------------------------------------------------------------------------" {
 			started = false
 		}
-		if strings.HasPrefix(line, "[INFO] Downloading ") || strings.HasPrefix(line, "[WARNING]") {
+		if strings.HasPrefix(line, "[INFO] Download") || strings.HasPrefix(line, "[WARNING]") {
 			continue
 		}
 		if strings.HasPrefix(line, "Download") {

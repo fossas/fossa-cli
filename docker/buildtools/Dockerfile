@@ -78,8 +78,7 @@ RUN sudo add-apt-repository -y ppa:ondrej/php && \
     php7.2 php7.2-gd php7.2-curl php7.2-intl php7.2-xml php7.2-mbstring
 
 # Install PHP build tools.
-RUN curl https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer && \
-    sudo chown -R fossa:fossa $HOME/.composer
+RUN curl https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
 
 # Install NuGet.
 RUN wget https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && \

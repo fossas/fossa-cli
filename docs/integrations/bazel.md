@@ -26,7 +26,7 @@ analyze:
     - name:   WORKSPACE
       type:   bazel
       target: vendor/...
-      dir:    project-dir
+      path:    project-dir
 ```
 
 ## Options
@@ -44,7 +44,7 @@ analyze:
     - name:   go-bazel-file
       type:   bazel
       target: repos.bzl
-      dir:   project-dir
+      path:   project-dir
       options:
         strategy: go-bazel
 ```

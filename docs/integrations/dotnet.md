@@ -16,7 +16,7 @@ analyze:
     - name: NugetModule
       type: nuget
       target: MyProject/Manifest.csproj
-      dir: MyProject
+      path: MyProject
       options:
         strategy: package-reference
 ```
@@ -52,3 +52,9 @@ Default .NET analysis follows a series of fallbacks which attempts to determine 
 - Doesn't support conditional direct dependencies (e.g. conditioned on target framework) -- will get all references regardless of target framework.
 - Only supports top-level itemgroup/packagereferences (not e.g. those under choose element).
 - Currently, `fossa` supports NuGet lockfiles of `v2` and `v3` schemas.
+
+## FAQ
+
+### Q: Why are `<Reference>` fields from package reference files ignored?
+
+Reference fields located in a package reference file (e.g. `.csproj`) are used to reference dependencies that are produced by the .NET team. They are part of the .NET framework and are not produced by a true third party developer. One example of a Reference import is [System.Web](https://docs.microsoft.com/en-us/dotnet/api/system.web?view=net-5.0) which allows .NET developers to send HTTP requests. These fields are very different from the `<PackageReference>` fields which contain dependencies from third parties which must be explicitly imported and may contain undesirable license obligations.

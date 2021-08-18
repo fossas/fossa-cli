@@ -20,7 +20,7 @@ analyze:
     - name: cargo-project
       type: cargo
       target: rust/root
-      dir:  rust/root
+      path:  rust/root
 ```
 
 ## Analysis

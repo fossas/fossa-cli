@@ -1,3 +1,4 @@
+SHELL=/bin/bash -euxo pipefail
 BIN=$(shell go env GOPATH)/bin
 
 ## Build tools.
@@ -49,6 +50,7 @@ build: $(BIN)/fossa
 
 $(BIN)/fossa: $(GO_BINDATA) $(GENNY) $(shell find . -name *.go)
 	go mod download
+	go mod tidy
 	go generate ./...
 	go build -o $@ $(GCFLAGS) $(LDFLAGS) github.com/fossas/fossa-cli/cmd/fossa
 
@@ -104,7 +106,7 @@ unit-test:
 
 .PHONY: ci-unit-test
 ci-unit-test: $(GO_JUNIT_REPORT)
-	GO_TEST_FLAGS="-coverprofile=coverage.txt -v" make -s unit-test | go-junit-report;
+	GO_TEST_FLAGS="-coverprofile=coverage.txt -v" make -s unit-test | go-junit-report
 	if [ -n "$${CODECOV_TOKEN}" ]; then curl -s https://codecov.io/bash | bash 1>&2; fi
 
 .PHONY: integration-test
@@ -115,7 +117,7 @@ integration-test:
 
 .PHONY: ci-integration-test
 ci-integration-test: $(GO_JUNIT_REPORT)
-	GO_TEST_FLAGS="-coverprofile=coverage.txt -v" make -s integration-test | go-junit-report;
+	GO_TEST_FLAGS="-coverprofile=coverage.txt -v" make -s integration-test | go-junit-report
 	if [ -n "$${CODECOV_TOKEN}" ]; then curl -s https://codecov.io/bash | bash 1>&2; fi
 
 # Release tasks.
