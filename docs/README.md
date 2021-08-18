@@ -1,5 +1,5 @@
 
-# FOSSA CLI Documentation
+# FOSSA CLI Documentation 
 
 The FOSSA CLI is designed to discover all build environments in your project and extract third party dependency information from all of them.
 
