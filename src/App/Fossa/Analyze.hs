@@ -6,6 +6,7 @@ module App.Fossa.Analyze (
   UnpackArchives (..),
   JsonOutput (..),
   VSIAnalysisMode (..),
+  IATAssertionMode (..),
   discoverFuncs,
   RecordMode (..),
 ) where
@@ -17,6 +18,8 @@ import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadR
 import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContributors)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
+import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
+import App.Fossa.VSIDeps (analyzeVSIDeps)
 import App.Types (
   BaseDir (..),
   OverrideProject,
@@ -45,7 +48,7 @@ import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.List (isInfixOf, stripPrefix)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
@@ -60,7 +63,7 @@ import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
 import Path.IO qualified as P
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (SourceUnit, parseLocator)
+import Srclib.Types (Locator, SourceUnit, parseLocator)
 import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
 import Strategy.Carthage qualified as Carthage
@@ -91,7 +94,6 @@ import Strategy.Python.Setuptools qualified as Setuptools
 import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
-import Strategy.VSI qualified as VSI
 import Strategy.Yarn qualified as Yarn
 import System.Exit (die)
 import Types (DiscoveredProject (..), FoundTargets)
@@ -123,6 +125,13 @@ data VSIAnalysisMode
   | -- | disable the VSI analysis strategy
     VSIAnalysisDisabled
 
+-- | "IAT Assertion" modes
+data IATAssertionMode
+  = -- | assertion enabled, reading binaries from this directory
+    IATAssertionEnabled (Path Abs Dir)
+  | -- | assertion not enabled
+    IATAssertionDisabled
+
 -- | "Replay logging" modes
 data RecordMode
   = -- | record effect invocations
@@ -132,8 +141,8 @@ data RecordMode
   | -- | don't record or replay
     RecordModeNone
 
-analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> VSIAnalysisMode -> AllFilters -> IO ()
-analyzeMain workdir recordMode logSeverity destination project unpackArchives jsonOutput enableVSI filters =
+analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> VSIAnalysisMode -> IATAssertionMode -> AllFilters -> IO ()
+analyzeMain workdir recordMode logSeverity destination project unpackArchives jsonOutput enableVSI assertionMode filters =
   withDefaultLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO
@@ -160,13 +169,7 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
               . runReplay @Exec (effectsExec effects)
               $ doAnalyze basedir
   where
-    doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput enableVSI filters
-
--- vsiDiscoverFunc is appended to discoverFuncs during analyze.
--- It's not added to discoverFuncs because it requires more information than other discoverFuncs.
-vsiDiscoverFunc :: (TaskEffs sig m, TaskEffs rsig run) => VSIAnalysisMode -> ScanDestination -> AllFilters -> Path Abs Dir -> m [DiscoveredProject run]
-vsiDiscoverFunc VSIAnalysisEnabled (UploadScan apiOpts _) filters = VSI.discover filters apiOpts
-vsiDiscoverFunc _ _ _ = const $ pure []
+    doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput enableVSI assertionMode filters
 
 discoverFuncs :: (TaskEffs sig m, TaskEffs rsig run) => [Path Abs Dir -> m [DiscoveredProject run]]
 discoverFuncs =
@@ -242,18 +245,18 @@ analyze ::
   Flag UnpackArchives ->
   Flag JsonOutput ->
   VSIAnalysisMode ->
+  IATAssertionMode ->
   AllFilters ->
   m ()
-analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableVSI filters = do
+analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableVSI iatAssertion filters = do
   capabilities <- sendIO getNumCapabilities
-  -- When running analysis, append the vsi discover function to the end of the discover functions list.
-  -- This is done because the VSI discover function requires more information than other discover functions do, and only matters for analysis.
-  let discoverFuncs' = discoverFuncs ++ [vsiDiscoverFunc enableVSI destination filters]
-      apiOpts = case destination of
+
+  let apiOpts = case destination of
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
 
   manualSrcUnits <- analyzeFossaDepsFile basedir apiOpts
+  vsiResults <- analyzeVSI enableVSI apiOpts basedir filters
 
   (projectResults, ()) <-
     runOutput @ProjectResult
@@ -261,17 +264,30 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
       . runFinally
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
-      $ withDiscoveredProjects discoverFuncs' (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
+      $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
-  case checkForEmptyUpload projectResults filteredProjects manualSrcUnits of
+  case checkForEmptyUpload projectResults filteredProjects [manualSrcUnits, vsiResults] of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
       OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
-      UploadScan opts metadata -> uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
+      UploadScan opts metadata -> do
+        locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
+        doAssertRevisionBinaries iatAssertion opts locator
+
+analyzeVSI :: (MonadIO m, Has Diag.Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m, Has Logger sig m) => VSIAnalysisMode -> Maybe ApiOpts -> Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
+analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir filters = do
+  logInfo "Running VSI analysis"
+  results <- analyzeVSIDeps dir apiOpts filters
+  pure $ Just results
+analyzeVSI _ _ _ _ = pure Nothing
+
+doAssertRevisionBinaries :: (Has Diag.Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => IATAssertionMode -> ApiOpts -> Locator -> m ()
+doAssertRevisionBinaries (IATAssertionEnabled dir) apiOpts locator = assertRevisionBinaries dir apiOpts locator
+doAssertRevisionBinaries _ _ _ = pure ()
 
 data AnalyzeError
   = ErrNoProjectsDiscovered
@@ -303,7 +319,7 @@ uploadSuccessfulAnalysis ::
   Flag JsonOutput ->
   OverrideProject ->
   NE.NonEmpty SourceUnit ->
-  m ()
+  m Locator
 uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override units = do
   revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
   saveRevision revision
@@ -315,7 +331,8 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override 
   logInfo ("Using branch: `" <> pretty branchText <> "`")
 
   uploadResult <- uploadAnalysis apiOpts revision metadata units
-  buildUrl <- getFossaBuildUrl revision apiOpts . parseLocator $ uploadLocator uploadResult
+  let locator = parseLocator $ uploadLocator uploadResult
+  buildUrl <- getFossaBuildUrl revision apiOpts locator
   logInfo $
     vsep
       [ "============================================================"
@@ -333,6 +350,8 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override 
     then logStdout . decodeUtf8 . Aeson.encode $ buildProjectSummary revision (uploadLocator uploadResult) buildUrl
     else pure ()
 
+  pure locator
+
 data CountedResult
   = NoneDiscovered
   | FilteredAll Int
@@ -342,10 +361,11 @@ data CountedResult
 -- Takes a list of all projects analyzed, and the list after filtering.  We assume
 -- that the smaller list is the latter, and return that list.  Starting with user-defined deps,
 -- we also include a check for an additional source unit from fossa-deps.yml.
-checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> Maybe SourceUnit -> CountedResult
-checkForEmptyUpload xs ys manualUnit =
-  case manualUnit of
-    Nothing -> case (xlen, ylen) of
+checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> [Maybe SourceUnit] -> CountedResult
+checkForEmptyUpload xs ys potentialAdditionalUnits = do
+  let additionalUnits = catMaybes potentialAdditionalUnits
+  if null additionalUnits
+    then case (xlen, ylen) of
       -- We didn't discover, so we also didn't filter
       (0, 0) -> NoneDiscovered
       -- If either list is empty, we have nothing to upload
@@ -353,8 +373,8 @@ checkForEmptyUpload xs ys manualUnit =
       (_, 0) -> FilteredAll filterCount
       -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
       _ -> FoundSome $ NE.fromList discoveredUnits
-    -- If we have a manual or archive source unit, then there's always something to upload.
-    Just unit -> FoundSome $ unit NE.:| discoveredUnits
+    else -- If we have a additional source units, then there's always something to upload.
+      FoundSome $ NE.fromList (additionalUnits ++ discoveredUnits)
   where
     xlen = length xs
     ylen = length ys

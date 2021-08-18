@@ -4,7 +4,7 @@ module App.Fossa.Main (
   appMain,
 ) where
 
-import App.Fossa.Analyze (JsonOutput (..), RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
+import App.Fossa.Analyze (IATAssertionMode (..), JsonOutput (..), RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
 import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
 import App.Fossa.Configuration (
   ConfigFile (
@@ -36,6 +36,8 @@ import App.Fossa.VPS.Report qualified as VPSReport
 import App.Fossa.VPS.Scan (FollowSymlinks (..), LicenseOnlyScan (..), SkipIPRScan (..), scanMain)
 import App.Fossa.VPS.Test qualified as VPSTest
 import App.Fossa.VPS.Types (FilterExpressions (..), NinjaFilePaths (..), NinjaScanID (..))
+import App.Fossa.VSI.IAT.AssertUserDefinedBinaries (assertUserDefinedBinariesMain)
+import App.Fossa.VSI.IAT.Types (UserDefinedAssertionMeta (..))
 import App.OptionExtensions (jsonOption, uriOption)
 import App.Types (
   BaseDir (BaseDir, unBaseDir),
@@ -181,9 +183,15 @@ appMain = do
         then pure ()
         else withDefaultLogger logSeverity $ logWarn "The --filter option has been deprecated. Refer to the new target exclusion feature for upgrading. --filter will be removed by v2.20.0"
 
+      assertionMode <- case analyzeAssertMode of
+        AnalyzeVSIAssertionDisabled -> pure IATAssertionDisabled
+        AnalyzeVSIAssertionEnabled p -> do
+          dir <- validateDir p
+          pure $ IATAssertionEnabled (unBaseDir dir)
+
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
           combinedFilters = normalizedFilters fileConfig analyzeOptions
-          doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode combinedFilters
+          doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode assertionMode combinedFilters
 
       if analyzeOutput
         then doAnalyze OutputStdout
@@ -260,6 +268,12 @@ appMain = do
           ContainerTest.testMain apiOpts logSeverity containerTestTimeout containerTestOutputType override containerTestImage
         ContainerParseFile path -> parseSyftOutputMain logSeverity path
         ContainerDumpScan ContainerDumpScanOptions{..} -> dumpSyftScanMain logSeverity dumpScanOutputFile dumpScanImage
+    --
+    AssertUserDefinedBinariesCommand AssertUserDefinedBinariesOptions{..} -> do
+      apikey <- requireKey maybeApiKey
+      baseDir <- validateDir assertionDir
+      let apiOpts = ApiOpts optBaseUrl apikey
+      assertUserDefinedBinariesMain logSeverity baseDir apiOpts assertionMeta
     --
     CompatibilityCommand args -> do
       compatibilityMain args
@@ -378,6 +392,12 @@ hiddenCommands =
               (CompatibilityCommand <$> compatibilityOpts)
               (progDesc "Run fossa cli v1 analyze. Supply arguments as \"fossa compatibility -- --project test\"")
           )
+        <> command
+          "experimental-link-user-defined-dependency-binary"
+          ( info
+              (AssertUserDefinedBinariesCommand <$> assertUserDefinedBinariesOpts)
+              (progDesc "Link one or more binary fingerprints as a user-defined dependency")
+          )
     )
 
 analyzeOpts :: Parser AnalyzeOptions
@@ -394,6 +414,7 @@ analyzeOpts =
     <*> many (option (eitherReader pathOpt) (long "only-path" <> help "Only scan these paths. See paths.only in the fossa.yml spec." <> metavar "PATH"))
     <*> many (option (eitherReader pathOpt) (long "exclude-path" <> help "Exclude these paths from scanning. See paths.exclude in the fossa.yml spec." <> metavar "PATH"))
     <*> vsiAnalyzeOpt
+    <*> iatAssertionOpt
     <*> monorepoOpts
     <*> analyzeReplayOpt
     <*> baseDirArg
@@ -402,6 +423,11 @@ vsiAnalyzeOpt :: Parser VSIAnalysisMode
 vsiAnalyzeOpt =
   flag' VSIAnalysisEnabled (long "enable-vsi" <> hidden)
     <|> pure VSIAnalysisDisabled
+
+iatAssertionOpt :: Parser AnalyzeVSIAssertionMode
+iatAssertionOpt =
+  (AnalyzeVSIAssertionEnabled <$> strOption (long "experimental-link-project-binary" <> hidden))
+    <|> pure AnalyzeVSIAssertionDisabled
 
 analyzeReplayOpt :: Parser RecordMode
 analyzeReplayOpt =
@@ -606,6 +632,23 @@ compatibilityOpts :: Parser [Argument]
 compatibilityOpts =
   many argumentParser
 
+assertUserDefinedBinariesOpts :: Parser AssertUserDefinedBinariesOptions
+assertUserDefinedBinariesOpts =
+  AssertUserDefinedBinariesOptions
+    <$> assertUserDefinedBinariesDir
+    <*> assertUserDefinedBinariesMeta
+  where
+    assertUserDefinedBinariesMeta :: Parser UserDefinedAssertionMeta
+    assertUserDefinedBinariesMeta =
+      UserDefinedAssertionMeta
+        <$> (strOption (long "name" <> help "The name to display for the dependency"))
+        <*> (strOption (long "version" <> help "The version to display for the dependency"))
+        <*> (strOption (long "license" <> help "The license identifier to use for the dependency"))
+        <*> optional (strOption (long "description" <> help "The description to use for the dependency"))
+        <*> optional (strOption (long "homepage" <> help "The URL to the homepage for the dependency"))
+    assertUserDefinedBinariesDir :: Parser String
+    assertUserDefinedBinariesDir = argument str (metavar "DIR" <> help "The directory containing one or more binaries to assert to the provided values (default: current directory)" <> value ".")
+
 data CmdOptions = CmdOptions
   { optDebug :: Bool
   , optBaseUrl :: Maybe URI
@@ -621,6 +664,7 @@ data Command
   | ReportCommand ReportOptions
   | VPSCommand VPSOptions
   | ContainerCommand ContainerOptions
+  | AssertUserDefinedBinariesCommand AssertUserDefinedBinariesOptions
   | CompatibilityCommand [Argument]
   | ListTargetsCommand FilePath
   | InitCommand
@@ -659,10 +703,20 @@ data AnalyzeOptions = AnalyzeOptions
   , analyzeOnlyPaths :: [Path Rel Dir]
   , analyzeExcludePaths :: [Path Rel Dir]
   , analyzeVSIMode :: VSIAnalysisMode
+  , analyzeAssertMode :: AnalyzeVSIAssertionMode
   , monorepoAnalysisOpts :: MonorepoAnalysisOpts
   , analyzeRecordMode :: RecordMode
   , analyzeBaseDir :: FilePath
   }
+
+-- | "IAT Assertion" modes
+-- This type translates to IATAssertionMode, but exists so that the flag parser can work with FilePath
+-- until the FilePath can be converted to a Path Abs Dir in appMain.
+data AnalyzeVSIAssertionMode
+  = -- | assertion enabled, reading binaries from this directory
+    AnalyzeVSIAssertionEnabled FilePath
+  | -- | assertion not enabled
+    AnalyzeVSIAssertionDisabled
 
 data TestOptions = TestOptions
   { testTimeout :: Int
@@ -694,6 +748,11 @@ data VPSTestOptions = VPSTestOptions
   { vpsTestTimeout :: Int
   , vpsTestOutputType :: VPSTest.TestOutputType
   , vpsTestBaseDir :: FilePath
+  }
+
+data AssertUserDefinedBinariesOptions = AssertUserDefinedBinariesOptions
+  { assertionDir :: FilePath
+  , assertionMeta :: UserDefinedAssertionMeta
   }
 
 newtype ContainerOptions = ContainerOptions

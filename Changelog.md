@@ -1,8 +1,19 @@
 # Spectrometer Changelog
 
-## Unreleased
+## v2.15.4
 
 - Gradle: Search parent directories for gradlew and gradlew.bat ([#336](https://github.com/fossas/spectrometer/pull/336)) 
+
+This release also adds a number of closed beta features around FOSSA C/C++ support.
+For now this functionality is considered publicly undocumented, and is only used with support from FOSSA engineering.
+
+As such this new functionality is hidden from the help and other documentation in this repo.
+For questions using the new functionality in this release please contact us!
+
+- Support linking user-defined dependency binaries. ([#323](https://github.com/fossas/spectrometer/pull/323))
+- Support resolving linked user-defined binaries found in projects when VSI is enabled. ([#328](https://github.com/fossas/spectrometer/pull/328))
+- Support linking user project binaries. ([#333](https://github.com/fossas/spectrometer/pull/333))
+- Support resolving linked user project binaries found in projects when VSI is enabled. ([#333](https://github.com/fossas/spectrometer/pull/333))
 
 ## v2.15.3
 

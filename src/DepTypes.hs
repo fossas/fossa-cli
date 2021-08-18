@@ -58,6 +58,8 @@ data DepType
     CondaType
   | -- | CPAN dependency
     CpanType
+  | -- | Custom dependency
+    CustomType
   | -- | Repository in Github
     GitType
   | -- | Gem registry

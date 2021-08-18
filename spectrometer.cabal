@@ -161,6 +161,13 @@ library
     App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Test
     App.Fossa.VPS.Types
+    App.Fossa.VSI.IAT.AssertRevisionBinaries
+    App.Fossa.VSI.IAT.AssertUserDefinedBinaries
+    App.Fossa.VSI.IAT.Fingerprint
+    App.Fossa.VSI.IAT.Resolve
+    App.Fossa.VSI.IAT.Types
+    App.Fossa.VSI.Types
+    App.Fossa.VSIDeps
     App.OptionExtensions
     App.Pathfinder.Main
     App.Pathfinder.Scan
@@ -282,7 +289,6 @@ library
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Strategy.Scala
-    Strategy.VSI
     Strategy.Yarn
     Strategy.Yarn.V1.YarnLock
     Strategy.Yarn.V2.Lockfile
