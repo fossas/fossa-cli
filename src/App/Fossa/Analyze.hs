@@ -36,7 +36,7 @@ import Control.Carrier.Output.IO
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent
-import Control.Effect.Diagnostics ((<||>))
+import Control.Effect.Diagnostics (fromMaybeText, (<||>))
 import Control.Effect.Exception (Lift, SomeException, throwIO, try)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Record (runRecord)
@@ -64,7 +64,7 @@ import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
 import Path.IO qualified as P
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (Locator, SourceUnit, parseLocator)
+import Srclib.Types (Locator (locatorProject, locatorRevision), SourceUnit, parseLocator)
 import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
 import Strategy.Carthage qualified as Carthage
@@ -354,7 +354,11 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override 
   void . Diag.recover . runExecIO $ tryUploadContributors basedir apiOpts (uploadLocator uploadResult)
 
   if fromFlag JsonOutput jsonOutput
-    then logStdout . decodeUtf8 . Aeson.encode $ buildProjectSummary revision (uploadLocator uploadResult) buildUrl
+    then do
+      summary <-
+        Diag.context "Analysis ran successfully, but the server returned invalid metadata" $
+          buildProjectSummary revision (uploadLocator uploadResult) buildUrl
+      logStdout . decodeUtf8 $ Aeson.encode summary
     else pure ()
 
   pure locator
@@ -438,15 +442,18 @@ tryUploadContributors baseDir apiOpts locator = do
   uploadContributors apiOpts locator contributors
 
 -- | Build project summary JSON to be output to stdout
-buildProjectSummary :: ProjectRevision -> Text -> Text -> Aeson.Value
-buildProjectSummary project projectLocator projectUrl =
-  Aeson.object
-    [ "project" .= projectName project
-    , "revision" .= projectRevision project
-    , "branch" .= projectBranch project
-    , "url" .= projectUrl
-    , "id" .= projectLocator
-    ]
+buildProjectSummary :: Has Diag.Diagnostics sig m => ProjectRevision -> Text -> Text -> m Aeson.Value
+buildProjectSummary project projectLocator projectUrl = do
+  let locator = parseLocator projectLocator
+  revision <- fromMaybeText "Server returned an invalid project revision" $ locatorRevision locator
+  pure $
+    Aeson.object
+      [ "project" .= locatorProject locator
+      , "revision" .= revision
+      , "branch" .= projectBranch project
+      , "url" .= projectUrl
+      , "id" .= projectLocator
+      ]
 
 buildResult :: Maybe SourceUnit -> [ProjectResult] -> Aeson.Value
 buildResult maybeSrcUnit projects =

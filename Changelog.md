@@ -1,8 +1,12 @@
 # Spectrometer Changelog
 
+## v2.15.5
+
+- Fixes an issue where `--json` would output the raw project ID, instead of a normalized ID ([#339](https://github.com/fossas/spectrometer/pull/339))
+
 ## v2.15.4
 
-- Gradle: Search parent directories for gradlew and gradlew.bat ([#336](https://github.com/fossas/spectrometer/pull/336)) 
+- Gradle: Search parent directories for gradlew and gradlew.bat ([#336](https://github.com/fossas/spectrometer/pull/336))
 
 This release also adds a number of closed beta features around FOSSA C/C++ support.
 For now this functionality is considered publicly undocumented, and is only used with support from FOSSA engineering.
