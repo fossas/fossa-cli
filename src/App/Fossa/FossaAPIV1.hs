@@ -56,6 +56,7 @@ import Fossa.API.Types (ApiOpts, ArchiveComponents, Issues, SignedURL, signedURL
 import Network.HTTP.Client qualified as C
 import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Req
+import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
 import Network.HTTP.Types qualified as HTTP
 import Srclib.Types
 import Text.URI (URI)
@@ -69,6 +70,7 @@ instance Has (Lift IO) sig m => MonadIO (FossaReq m) where
   liftIO = sendIO
 
 instance (Has (Lift IO) sig m, Has Diagnostics sig m) => MonadHttp (FossaReq m) where
+  getHttpConfig = pure httpConfigRetryTimeouts
   handleHttpException = FossaReq . fatal . mangleError
 
 newtype FossaReqAllow401 m a = FossaReqAllow401 {unFossaReqAllow401 :: EmptyC m a}
@@ -78,6 +80,7 @@ instance Has (Lift IO) sig m => MonadIO (FossaReqAllow401 m) where
   liftIO = sendIO
 
 instance (Has (Lift IO) sig m, Has Diagnostics sig m) => MonadHttp (FossaReqAllow401 m) where
+  getHttpConfig = pure httpConfigRetryTimeouts
   handleHttpException = FossaReqAllow401 . allow401
     where
       allow401 :: HttpException -> EmptyC m a

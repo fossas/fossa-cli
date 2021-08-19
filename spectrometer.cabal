@@ -100,6 +100,7 @@ common deps
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , random                       ^>=1.2.0
     , req                          ^>=3.9.1
+    , retry                        ^>=0.9.0.0
     , semver                       ^>=0.4.0.1
     , split                        ^>=0.2.3.4
     , stm                          ^>=2.5.0
@@ -223,6 +224,7 @@ library
     Graphing
     Path.Extra
     Parse.XML
+    Network.HTTP.Req.Extra
     Srclib.Converter
     Srclib.Types
     Strategy.Bundler

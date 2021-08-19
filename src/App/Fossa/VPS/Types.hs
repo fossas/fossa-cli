@@ -26,6 +26,7 @@ import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Prettyprint.Doc (viaShow)
 import Fossa.API.Types (ApiOpts)
 import Network.HTTP.Req
+import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
 import Path
 
 newtype NinjaScanID = NinjaScanID {unNinjaScanID :: Text}
@@ -107,6 +108,7 @@ instance ToDiagnostic HTTPRequestFailed where
   renderDiagnostic (HTTPRequestFailed exc) = "An HTTP request failed: " <> viaShow exc
 
 instance (Has (Lift IO) sig m, Has Diagnostics sig m) => MonadHttp (HTTP m) where
+  getHttpConfig = pure httpConfigRetryTimeouts
   handleHttpException = HTTP . fatal . HTTPRequestFailed
 
 runHTTP :: HTTP m a -> m a
