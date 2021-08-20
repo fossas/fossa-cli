@@ -5,6 +5,10 @@ module Strategy.Cocoapods.PodfileLock (
   Dep (..),
   Pod (..),
   Section (..),
+
+  -- * for testing,
+  podParser,
+  depParser,
 ) where
 
 import Control.Effect.Diagnostics
@@ -158,21 +162,22 @@ remoteParser = indentBlock $ do
 
 podParser :: Parser Pod
 podParser = indentBlock $ do
-  _ <- chunk "- "
-  name <- findDep
+  name <- symbol "-" *> ignoreDoubleQuote *> findDep
   version <- findVersion
   _ <- restOfLine
   pure (L.IndentMany Nothing (pure . Pod name version) depParser)
 
 depParser :: Parser Dep
 depParser = do
-  _ <- chunk "- "
-  name <- findDep
+  name <- symbol "-" *> ignoreDoubleQuote *> findDep
   _ <- restOfLine
   pure $ Dep name
 
 findDep :: Parser Text
-findDep = lexeme (takeWhile1P (Just "dep") (not . C.isSpace))
+findDep = lexeme (takeWhile1P (Just "dep") isNotDoubleQuoteAndSpace)
+  where
+    isNotDoubleQuoteAndSpace :: Char -> Bool
+    isNotDoubleQuoteAndSpace c = c /= '"' && (not . C.isSpace) c
 
 findVersion :: Parser Text
 findVersion = between (char '(') (char ')') (lexeme (takeWhileP (Just "version") (/= ')')))
@@ -199,3 +204,9 @@ lexeme = L.lexeme sc
 
 sc :: Parser ()
 sc = L.space (void $ some (char ' ')) empty empty
+
+symbol :: Text -> Parser Text
+symbol = L.symbol scn
+
+ignoreDoubleQuote :: Parser (Maybe Text)
+ignoreDoubleQuote = optional $ symbol "\""

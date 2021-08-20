@@ -20,8 +20,8 @@ We scan the `Podfile.lock` for two particular sections: `PODS` and
 dependencies, and `DEPENDENCIES` tells us which of the dependencies the project
 depends on directly.
 
-In the following example, we have four dependencies, `one`, `two`, `three`, and
-`four`.  `one`, and `three` are direct dependencies, `one` depends on both
+In the following example, we have five dependencies, `one`, `two`, `three`,
+`four` and `five/+zlib`. `one`, `three` and `five/+zlib` are direct dependencies, `one` depends on both
 `two` and `three`, and `three` depends on `four`.
 
 ```
@@ -33,8 +33,10 @@ PODS:
   - three (3.0.0)
     - four (= 2.3.3)
   - four (4.0.0):
+  - "five/+zlib (7.0.0)"
 
 DEPENDENCIES:
   - one (> 4.4)
   - three (from `Submodules/subproject/.podspec`)
+  - "five/+zlib (7.0.0)"
 ```

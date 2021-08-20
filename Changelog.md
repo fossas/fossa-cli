@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.15.6 
+
+- CocoaPods: Fixes `Podfile.lock` parsing. It safely parses when Pod and Dependencies entries are enclosed with quotations. ([#337](https://github.com/fossas/spectrometer/pull/337))
+
 ## v2.15.5
 
 - Fixes an issue where `--json` would output the raw project ID, instead of a normalized ID ([#339](https://github.com/fossas/spectrometer/pull/339))
