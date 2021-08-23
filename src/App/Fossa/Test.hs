@@ -3,18 +3,38 @@ module App.Fossa.Test (
   TestOutputType (..),
 ) where
 
-import App.Fossa.API.BuildWait
-import App.Fossa.ProjectInference
-import App.Types
-import Control.Carrier.Diagnostics hiding (fromMaybe)
+import App.Fossa.API.BuildWait (
+  timeout,
+  waitForIssues,
+  waitForScanCompletion,
+ )
+import App.Fossa.ProjectInference (
+  inferProjectCached,
+  inferProjectDefault,
+  inferProjectFromVCS,
+  mergeOverride,
+ )
+import App.Types (
+  BaseDir (BaseDir),
+  OverrideProject,
+  ProjectRevision (projectName, projectRevision),
+ )
+import Control.Carrier.Diagnostics (logWithExit_, (<||>))
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Lift (sendIO)
 import Data.Aeson qualified as Aeson
 import Data.Functor (void)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text.IO (hPutStrLn)
-import Effect.Logger
-import Effect.ReadFS
+import Effect.Logger (
+  Severity (SevInfo),
+  logError,
+  logInfo,
+  logStdout,
+  pretty,
+  withDefaultLogger,
+ )
+import Effect.ReadFS (runReadFSIO)
 import Fossa.API.Types (ApiOpts, Issues (..))
 import System.Exit (exitFailure)
 import System.IO (stderr)
@@ -45,7 +65,7 @@ testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType overrid
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForBuild apiOpts revision <||> waitForMonorepoScan apiOpts revision
+      waitForScanCompletion apiOpts revision
 
       logSticky "[ Waiting for issue scan completion... ]"
       issues <- waitForIssues apiOpts revision

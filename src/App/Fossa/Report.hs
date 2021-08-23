@@ -3,19 +3,38 @@ module App.Fossa.Report (
   ReportType (..),
 ) where
 
-import App.Fossa.API.BuildWait
+import App.Fossa.API.BuildWait (
+  timeout,
+  waitForIssues,
+  waitForScanCompletion,
+ )
 import App.Fossa.FossaAPIV1 qualified as Fossa
-import App.Fossa.ProjectInference
-import App.Types
-import Control.Carrier.Diagnostics
+import App.Fossa.ProjectInference (
+  inferProjectCached,
+  inferProjectDefault,
+  inferProjectFromVCS,
+  mergeOverride,
+ )
+import App.Types (
+  BaseDir (BaseDir),
+  OverrideProject,
+  ProjectRevision (projectName, projectRevision),
+ )
+import Control.Carrier.Diagnostics (logWithExit_, (<||>))
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Data.Aeson qualified as Aeson
 import Data.Functor (void)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.IO (hPutStrLn)
-import Effect.Logger
-import Effect.ReadFS
+import Effect.Logger (
+  Pretty (pretty),
+  Severity (SevInfo),
+  logInfo,
+  logStdout,
+  withDefaultLogger,
+ )
+import Effect.ReadFS (runReadFSIO)
 import Fossa.API.Types (ApiOpts)
 import System.Exit (exitFailure)
 import System.IO (stderr)
@@ -59,7 +78,7 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForBuild apiOpts revision <||> waitForMonorepoScan apiOpts revision
+      waitForScanCompletion apiOpts revision
 
       logSticky "[ Waiting for issue scan completion... ]"
 

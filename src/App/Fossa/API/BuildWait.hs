@@ -3,21 +3,29 @@ module App.Fossa.API.BuildWait (
   waitForMonorepoScan,
   waitForIssues,
   waitForSherlockScan,
+  waitForScanCompletion,
   timeout,
 ) where
 
 import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.VPS.Scan.Core qualified as VPSCore
 import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
-import App.Types
-import Control.Carrier.Diagnostics
-import Control.Carrier.StickyLogger (StickyLogger, logSticky')
+import App.Types (ProjectRevision (projectName, projectRevision))
+import Control.Algebra (Has)
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async qualified as Async
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (..),
+  fatal,
+  fatalText,
+  recover,
+ )
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.StickyLogger (StickyLogger, logSticky')
 import Data.Functor (($>))
 import Data.Text (Text)
-import Effect.Logger
+import Effect.Logger (Logger, pretty, viaShow)
 import Fossa.API.Types (ApiOpts, Issues (..))
 
 pollDelaySeconds :: Int
@@ -30,6 +38,24 @@ data WaitError
 
 instance ToDiagnostic WaitError where
   renderDiagnostic BuildFailed = "The build failed. Check the FOSSA webapp for more details."
+
+-- | Wait for either a normal build completion or a monorepo scan completion.
+-- Try to detect the correct method, use provided fallback
+waitForScanCompletion ::
+  (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has StickyLogger sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  m ()
+waitForScanCompletion apiopts revision = do
+  -- Route is new, this may fail on on-prem if they haven't updated
+  project <- recover $ Fossa.getProject apiopts revision
+
+  -- Try inferring, fallback to standard.
+  let runAsMonorepo = maybe False Fossa.projectIsMonorepo project
+
+  if runAsMonorepo
+    then waitForMonorepoScan apiopts revision
+    else waitForBuild apiopts revision
 
 -- | Wait for a "normal" (non-VPS) build completion
 waitForBuild ::

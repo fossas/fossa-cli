@@ -18,10 +18,12 @@ module App.Fossa.FossaAPIV1 (
   BuildStatus (..),
   getIssues,
   Organization (..),
+  Project (..),
   getOrganization,
   getAttribution,
   getAttributionRaw,
   getSignedURL,
+  getProject,
   archiveUpload,
   archiveBuildUpload,
   assertUserDefinedBinaries,
@@ -222,6 +224,40 @@ mangleError err = case err of
       _ -> OtherError err
   JsonHttpException msg -> JsonDeserializeError msg
   _ -> OtherError err
+
+-----
+
+projectEndpoint :: Url scheme -> Int -> Locator -> Url scheme
+projectEndpoint baseurl orgid locator = baseurl /: "api" /: "cli" /: renderLocatorUrl orgid locator /: "project"
+
+data Project = Project
+  { projectId :: Text
+  , projectTitle :: Text
+  , projectIsMonorepo :: Bool
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON Project where
+  parseJSON = withObject "Project" $ \obj ->
+    Project <$> obj .: "id"
+      <*> obj .: "title"
+      <*> obj .: "isMonorepo"
+
+getProject ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  ) =>
+  ApiOpts ->
+  ProjectRevision ->
+  m Project
+getProject apiopts ProjectRevision{..} = fossaReq $ do
+  (baseurl, baseopts) <- useApiOpts apiopts
+
+  Organization orgid _ <- getOrganization apiopts
+
+  let endpoint = projectEndpoint baseurl orgid $ Locator "custom" projectName Nothing
+
+  responseBody <$> req GET endpoint NoReqBody jsonResponse baseopts
 
 -----
 
