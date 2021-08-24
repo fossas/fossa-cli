@@ -1,5 +1,10 @@
 # Spectrometer Changelog
 
+## v2.15.7
+
+- Resolves an issue where errors running `fossa report` and `fossa test` would be made more confusing when the project isn't a monorepo project ([#321](https://github.com/fossas/spectrometer/pull/321))
+- Prevents uploading standard analysis results to monorepo projects, where they'd be silently ignored ([#341](https://github.com/fossas/spectrometer/pull/341))
+
 ## v2.15.6 
 
 - CocoaPods: Fixes `Podfile.lock` parsing. It safely parses when Pod and Dependencies entries are enclosed with quotations. ([#337](https://github.com/fossas/spectrometer/pull/337))

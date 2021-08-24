@@ -16,7 +16,7 @@ import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
-import App.Fossa.FossaAPIV1 (UploadResponse (..), uploadAnalysis, uploadContributors)
+import App.Fossa.FossaAPIV1 (UploadResponse (..), getProject, projectIsMonorepo, uploadAnalysis, uploadContributors)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
@@ -36,7 +36,7 @@ import Control.Carrier.Output.IO
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent
-import Control.Effect.Diagnostics (fromMaybeText, (<||>))
+import Control.Effect.Diagnostics (fatalText, fromMaybeText, recover, (<||>))
 import Control.Effect.Exception (Lift, SomeException, throwIO, try)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Record (runRecord)
@@ -290,6 +290,13 @@ doAssertRevisionBinaries :: (Has Diag.Diagnostics sig m, Has ReadFS sig m, Has (
 doAssertRevisionBinaries (IATAssertionEnabled dir) apiOpts locator = assertRevisionBinaries dir apiOpts locator
 doAssertRevisionBinaries _ _ _ = pure ()
 
+dieOnMonorepoUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => ApiOpts -> ProjectRevision -> m ()
+dieOnMonorepoUpload apiOpts revision = do
+  project <- recover $ getProject apiOpts revision
+  if maybe False projectIsMonorepo project
+    then fatalText "This project already exists as a monorepo project. Perhaps you meant to supply '--experimental-enable-monorepo', or meant to run 'fossa vps analyze' instead?"
+    else pure ()
+
 data AnalyzeError
   = ErrNoProjectsDiscovered
   | ErrFilteredAllProjects Int [ProjectResult]
@@ -329,6 +336,7 @@ uploadSuccessfulAnalysis ::
   m Locator
 uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override units = do
   revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
+  dieOnMonorepoUpload apiOpts revision
   saveRevision revision
 
   logInfo ""
