@@ -39,3 +39,6 @@ brews:
     commit_author:
       name: fossabot
       email: engineering@fossa.com
+
+    install: |
+      bin.install 'fossa'
