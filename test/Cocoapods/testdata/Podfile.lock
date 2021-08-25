@@ -3,13 +3,13 @@ PODS:
     - two (= 3.2.1)
     - three (= 3.2.1)
     - "ab-normal/+name (2.0.0)"
-  - two (2.0.0)
+  - two (2.0.0):
     - two_dep_A
     - "two-dep-B"
-  - three (3.0.0)
+  - three (3.0.0):
     - four (= 2.3.3)
   - "ab-normal/+name (2.0.0)"
-  - four (4.0.0):
+  - four (4.0.0)
   - "not-so-safe-name (2.0.0)"
   - some-dep-sourced-from-git (2.0.0)
   - depWithTag (2.0.0)

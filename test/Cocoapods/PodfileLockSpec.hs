@@ -2,19 +2,24 @@ module Cocoapods.PodfileLockSpec (
   spec,
 ) where
 
+import Data.ByteString qualified as BS
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import Data.Text.IO qualified as TIO
-import Data.Void (Void)
-import DepTypes
-import GraphUtil
-import Strategy.Cocoapods.PodfileLock
+import Data.Yaml (decodeEither')
+import DepTypes (
+  DepType (PodType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
+import GraphUtil (expectDeps, expectDirect, expectEdges)
+import Strategy.Cocoapods.PodfileLock (
+  Dep (Dep),
+  Pod (Pod),
+  Section (..),
+  buildGraph,
+  toSections,
+ )
 import Test.Hspec qualified as T
-import Test.Hspec.Megaparsec (shouldParse)
-import Text.Megaparsec (Parsec, errorBundlePretty, parse, runParser)
-
-parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> T.Expectation
-parseMatch parser input expected = parse parser "" input `shouldParse` expected
 
 depOf :: Text -> Maybe Text -> Dependency
 depOf name version =
@@ -116,24 +121,11 @@ spec = do
         ]
         graph
 
-  podLockFile <- T.runIO (TIO.readFile "test/Cocoapods/testdata/Podfile.lock")
+  podLockFile <- T.runIO (BS.readFile "test/Cocoapods/testdata/Podfile.lock")
   T.describe "podfile lock parser" $ do
-    T.describe "dep parser" $ do
-      let shouldParseInto input = parseMatch depParser input
-      T.it "parses names" $ do
-        "- atomFire (1.0.0)" `shouldParseInto` Dep "atomFire"
-        "- \"at/+om (1.0.0)\"" `shouldParseInto` Dep "at/+om"
-        "- \"not-so-safe-name (2.0.0)\"" `shouldParseInto` Dep "not-so-safe-name"
-
-    T.describe "pod parser" $ do
-      let shouldParseInto input = parseMatch podParser input
-      T.it "parses names" $ do
-        "- atomFire (1.0.0)" `shouldParseInto` Pod "atomFire" "1.0.0" ([])
-        "- \"atomFire (1.0.0)\"" `shouldParseInto` Pod "atomFire" "1.0.0" ([])
-
     T.it "parses pod and dependency sections" $
-      case runParser findSections "" podLockFile of
-        Left err -> T.expectationFailure ("failed to parse: " <> errorBundlePretty err)
+      case toSections <$> decodeEither' podLockFile of
+        Left err -> T.expectationFailure $ "failed to parse: " <> show err
         Right result -> do
           result `T.shouldContain` [podSection]
           result `T.shouldContain` [dependencySection]

@@ -1,38 +1,42 @@
 module Strategy.Cocoapods.PodfileLock (
   analyze',
   buildGraph,
-  findSections,
+  PodLock (..),
   Dep (..),
   Pod (..),
   Section (..),
-
-  -- * for testing,
-  podParser,
-  depParser,
+  toSections,
 ) where
 
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  run,
+ )
+import Data.Aeson (FromJSON (parseJSON), (.:))
 import Data.Char qualified as C
 import Data.Foldable (traverse_)
 import Data.Functor (void)
+import Data.HashMap.Lazy qualified as HashMap (toList)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Text (Text)
-import Data.Text qualified as Text
 import Data.Void (Void)
-import DepTypes
-import Effect.Grapher
-import Effect.ReadFS
+import Data.Yaml qualified as Yaml
+import DepTypes (DepType (PodType), Dependency (..), VerConstraint (CEq))
+import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
+import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing)
 import Path
-import Text.Megaparsec hiding (label)
-import Text.Megaparsec.Char
+import Text.Megaparsec (MonadParsec (takeWhileP), Parsec, between, empty, errorBundlePretty, parse, some, takeWhile1P)
+import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer qualified as L
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze' file = do
-  podfileLock <- readContentsParser findSections file
+  podfileLock <- toSections <$> readContentsYaml file
   context "Building dependency graph" $ pure (buildGraph podfileLock)
 
 newtype PodfilePkg = PodfilePkg {pkgName :: Text}
@@ -69,7 +73,6 @@ buildGraph sections =
     addSection :: Has PodfileGrapher sig m => Section -> m ()
     addSection (DependencySection deps) = traverse_ (direct . PodfilePkg . depName) deps
     addSection (PodSection pods) = traverse_ addSpec pods
-    addSection _ = pure ()
 
     addSpec :: Has PodfileGrapher sig m => Pod -> m ()
     addSpec pod = do
@@ -84,11 +87,19 @@ type Parser = Parsec Void Text
 data Section
   = PodSection [Pod]
   | DependencySection [Dep]
-  | SpecRepos [Remote]
-  | ExternalSources [SourceDep]
-  | CheckoutOptions [SourceDep]
-  | UnknownSection Text
   deriving (Eq, Ord, Show)
+
+data PodLock = PodLock
+  { lockPods :: [Pod]
+  , lockDeps :: [Dep]
+  }
+  deriving (Show, Eq, Ord)
+
+toSections :: PodLock -> [Section]
+toSections lockContent =
+  [ PodSection $ lockPods lockContent
+  , DependencySection $ lockDeps lockContent
+  ]
 
 newtype Dep = Dep
   { depName :: Text
@@ -114,99 +125,43 @@ data Remote = Remote
   }
   deriving (Eq, Ord, Show)
 
-findSections :: Parser [Section]
-findSections = manyTill (try podSectionParser <|> try dependenciesSectionParser <|> try specRepoParser <|> try externalSourcesParser <|> try checkoutOptionsParser <|> unknownSection) eof
+parseName :: Parser Text
+parseName = lexeme $ takeWhile1P (Just "dep") (not . C.isSpace)
 
-unknownSection :: Parser Section
-unknownSection = UnknownSection <$ scn <*> restOfLine
+parseVersion :: Parser Text
+parseVersion = between (char '(') (char ')') $ lexeme (takeWhileP (Just "version") (/= ')'))
 
-podSectionParser :: Parser Section
-podSectionParser = sectionParser "PODS:" PodSection podParser
+parseNameAndVersion :: Parser (Text, Text)
+parseNameAndVersion = (,) <$> parseName <*> parseVersion
 
-dependenciesSectionParser :: Parser Section
-dependenciesSectionParser = sectionParser "DEPENDENCIES:" DependencySection depParser
+instance FromJSON PodLock where
+  parseJSON = Yaml.withObject "Podfile.lock content" $ \obj -> do
+    PodLock <$> obj .: "PODS"
+      <*> obj .: "DEPENDENCIES"
 
-specRepoParser :: Parser Section
-specRepoParser = sectionParser "SPEC REPOS:" SpecRepos remoteParser
+instance FromJSON Pod where
+  parseJSON (Yaml.String p) = parserPod p Nothing
+  parseJSON (Yaml.Object obj) = case HashMap.toList obj of
+    [(podEntry, podDepsListing)] -> parserPod podEntry $ Just podDepsListing
+    [] -> fail "Expected non empty list of dependencies, but received empty list"
+    _ -> fail $ "Expected list of dependencies, but received: " <> show obj
+  parseJSON notSupported = fail $ "Expected string, but received: " <> show notSupported
 
-externalSourcesParser :: Parser Section
-externalSourcesParser = sectionParser "EXTERNAL SOURCES:" ExternalSources externalDepsParser
+instance FromJSON Dep where
+  parseJSON (Yaml.String d) = case parse parseName "" d of
+    Left pErr -> fail $ show $ errorBundlePretty pErr
+    Right name -> pure $ Dep name
+  parseJSON notSupported = fail $ "Expected string, but received: " <> show notSupported
 
-checkoutOptionsParser :: Parser Section
-checkoutOptionsParser = sectionParser "CHECKOUT OPTIONS:" CheckoutOptions externalDepsParser
-
-sectionParser :: Text -> ([a] -> Section) -> Parser a -> Parser Section
-sectionParser sectionName lambda parser = nonIndented $
-  indentBlock $ do
-    _ <- chunk sectionName
-    pure (L.IndentMany Nothing (pure . lambda) parser)
-
-externalDepsParser :: Parser SourceDep
-externalDepsParser = indentBlock $ do
-  name <- lexeme (takeWhileP (Just "external dep parser") (/= ':'))
-  _ <- restOfLine
-  pure (L.IndentMany Nothing (pure . SourceDep name . Map.fromList) tagParser)
-
-tagParser :: Parser (Text, Text)
-tagParser = do
-  _ <- chunk ":"
-  tag <- lexeme (takeWhileP (Just "tag parser") (/= ':'))
-  _ <- chunk ": "
-  value <- restOfLine
-  pure (tag, value)
-
-remoteParser :: Parser Remote
-remoteParser = indentBlock $ do
-  location <- restOfLine
-  pure (L.IndentMany Nothing (pure . Remote (Text.dropWhileEnd (== ':') location)) depParser)
-
-podParser :: Parser Pod
-podParser = indentBlock $ do
-  name <- symbol "-" *> ignoreDoubleQuote *> findDep
-  version <- findVersion
-  _ <- restOfLine
-  pure (L.IndentMany Nothing (pure . Pod name version) depParser)
-
-depParser :: Parser Dep
-depParser = do
-  name <- symbol "-" *> ignoreDoubleQuote *> findDep
-  _ <- restOfLine
-  pure $ Dep name
-
-findDep :: Parser Text
-findDep = lexeme (takeWhile1P (Just "dep") isNotDoubleQuoteAndSpace)
-  where
-    isNotDoubleQuoteAndSpace :: Char -> Bool
-    isNotDoubleQuoteAndSpace c = c /= '"' && (not . C.isSpace) c
-
-findVersion :: Parser Text
-findVersion = between (char '(') (char ')') (lexeme (takeWhileP (Just "version") (/= ')')))
-
-restOfLine :: Parser Text
-restOfLine = takeWhileP (Just "ignored") (not . isEndLine)
-
-isEndLine :: Char -> Bool
-isEndLine '\n' = True
-isEndLine '\r' = True
-isEndLine _ = False
-
-nonIndented :: Parser a -> Parser a
-nonIndented = L.nonIndented scn
-
-indentBlock :: Parser (L.IndentOpt Parser a b) -> Parser a
-indentBlock = L.indentBlock scn
-
-scn :: Parser ()
-scn = L.space space1 empty empty
+parserPod :: Text -> Maybe Yaml.Value -> Yaml.Parser Pod
+parserPod query deps = case parse parseNameAndVersion "" query of
+  Left pErr -> fail $ show $ errorBundlePretty pErr
+  Right (name, version) -> case deps of
+    Nothing -> pure $ Pod name version []
+    Just podDeps -> Pod name version <$> parseJSON @[Dep] podDeps
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
 
 sc :: Parser ()
 sc = L.space (void $ some (char ' ')) empty empty
-
-symbol :: Text -> Parser Text
-symbol = L.symbol scn
-
-ignoreDoubleQuote :: Parser (Maybe Text)
-ignoreDoubleQuote = optional $ symbol "\""
