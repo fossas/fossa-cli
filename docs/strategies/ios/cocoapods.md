@@ -40,3 +40,10 @@ DEPENDENCIES:
   - three (from `Submodules/subproject/.podspec`)
   - "five/+zlib (7.0.0)"
 ```
+
+## Limitations
+
+- Pods sourced from local path are not supported (e.g. `pod 'AFNetworking', :path => '~/Documents/AFNetworking'`).
+- Pods sourced from http path are not supported (e.g `pod 'JSONKit', :podspec => 'https://example.com/JSONKit.podspec'`).
+- Pods sourced from subversion, mercurial, and bazaar are not supported.
+- Plugins in Podfiles are ignored.

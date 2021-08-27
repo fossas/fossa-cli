@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.15.9
+
+- CocoaPods: Supports git sources in `Podfile.lock` analysis. ([#345](https://github.com/fossas/spectrometer/pull/345))
+
 ## v2.15.8
 
 - `fossa analyze --experimental-enable-monorepo` now turns off proprietary language scanning by default, and has this feature controlled by a feature flag ([#343](https://github.com/fossas/spectrometer/pull/343))

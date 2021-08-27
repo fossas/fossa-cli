@@ -10,15 +10,11 @@ PODS:
     - four (= 2.3.3)
   - "ab-normal/+name (2.0.0)"
   - four (4.0.0)
-  - "not-so-safe-name (2.0.0)"
-  - some-dep-sourced-from-git (2.0.0)
   - depWithTag (2.0.0)
 
 DEPENDENCIES:
   - one (> 4.4)
   - three (from `Submodules/subproject/.podspec`)
-  - "not-so-safe-name (2.0.0)"
-  - "some-dep-sourced-from-git (from `git@github.example.com:ab/ios.git`, commit `559e6a`)"
   - depWithTag (from `git@github.example.com:ab/cap.git`, tag `v1.2.3`)
 
 SPEC REPOS:
@@ -27,6 +23,15 @@ SPEC REPOS:
     - Appirater
 
 EXTERNAL SOURCES:
+  depWithTag:
+    :git: "git@github.example.com:ab/cap.git"
+    :tag: v1.2.3
+  depWithBranch:
+    :git: "git@github.example.com:ab/cap.git"
+    :branch: main
+  depWithCommit:
+    :git: "git@github.example.com:ab/cap.git"
+    :commit: 9a9a9
   ChatSecure-Push-iOS:
     :path: Submodules/ChatSecure-Push-iOS/ChatSecure-Push-iOS.podspec
   ChatSecureCore:
