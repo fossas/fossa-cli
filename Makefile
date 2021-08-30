@@ -22,6 +22,8 @@ check: check-fmt lint
 # Format everything (if this fails, update FMT_OPTS or use your IDE to format)
 # `@command` does not echo the command before running
 fmt:
+	@echo "Running fourmolu"
+	@fourmolu --version
 	@fourmolu --mode inplace ${FMT_OPTS} $(shell find ${FIND_OPTS})
 
 # Confirm everything is formatted without changing anything
