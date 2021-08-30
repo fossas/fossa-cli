@@ -23,7 +23,7 @@ spec = do
       parse parseConfig "" `shouldSucceedOn` rawText
 
     it "should parse an atom" $ do
-      let shouldParseInto input = parseMatch parseAtom input
+      let shouldParseInto = parseMatch parseAtom
 
       "a" `shouldParseInto` atom "a"
       "a_" `shouldParseInto` atom "a_"
@@ -39,7 +39,7 @@ spec = do
       parse parseAtom "" `shouldFailOn` "_atom"
 
     it "should parse a string" $ do
-      let shouldParseInto input = parseMatch parseErlString input
+      let shouldParseInto = parseMatch parseErlString
 
       "\"hello\"" `shouldParseInto` ErlString "hello"
       "\"'a'\"" `shouldParseInto` ErlString "'a'"
@@ -47,27 +47,27 @@ spec = do
       "\"\\\"\"" `shouldParseInto` ErlString "\"" -- in source, LHS would appear as -> "\""
       "\"a\" \"b\"" `shouldParseInto` ErlString "ab" -- run-on strings -> "a" "b"
     it "should parse an array" $ do
-      let shouldParseInto input = parseMatch parseErlArray input
+      let shouldParseInto = parseMatch parseErlArray
 
       "[]" `shouldParseInto` ErlArray []
       "[[], []]" `shouldParseInto` ErlArray [ErlArray [], ErlArray []]
       "[a, b, '234']" `shouldParseInto` ErlArray (map atom ["a", "b", "234"])
 
     it "should parse a tuple" $ do
-      let shouldParseInto input = parseMatch parseTuple input
+      let shouldParseInto = parseMatch parseTuple
 
       "{a}" `shouldParseInto` ErlTuple [atom "a"]
       "{a, {b, c}}" `shouldParseInto` ErlTuple [atom "a", ErlTuple [atom "b", atom "c"]]
 
     it "should parse an integer" $ do
-      let shouldParseInto input = parseMatch parseIntLiteral input
+      let shouldParseInto = parseMatch parseIntLiteral
 
       "1" `shouldParseInto` ErlInt 1
       "+56" `shouldParseInto` ErlInt 56
       "-21" `shouldParseInto` ErlInt (-21)
 
     it "should parse a float" $ do
-      let shouldParseInto input = parseMatch parseFloatLiteral input
+      let shouldParseInto = parseMatch parseFloatLiteral
 
       "1.0" `shouldParseInto` ErlFloat 1.0
       "0.0" `shouldParseInto` ErlFloat 0.0
@@ -77,7 +77,7 @@ spec = do
       "-3.14" `shouldParseInto` ErlFloat (-3.14)
 
     it "should parse a numeric char" $ do
-      let shouldParseInto input = parseMatch parseCharNum input
+      let shouldParseInto = parseMatch parseCharNum
 
       "$A" `shouldParseInto` ErlInt (C.ord 'A')
       "$\\n" `shouldParseInto` ErlInt 10
@@ -86,7 +86,7 @@ spec = do
       parse parseCharNum "" `shouldFailOn` "-$A"
 
     it "should parse a radix str" $ do
-      let shouldParseInto input = parseMatch parseRadixLiteral input
+      let shouldParseInto = parseMatch parseRadixLiteral
 
       "2#1" `shouldParseInto` ErlInt 1
       "2#11001" `shouldParseInto` ErlInt 25

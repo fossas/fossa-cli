@@ -85,7 +85,7 @@ instance FromJSON PubLockPackageMetadata where
     pure $ PubLockPackageMetadata pubLockPackageIsDirect pubLockPackageSource pubLockPackageVersion pubLockPackageEnvironment
     where
       isDirect :: Text -> Bool
-      isDirect candidate = Text.isInfixOf "direct" candidate
+      isDirect = Text.isInfixOf "direct"
 
       getEnvironment :: Text -> [DepEnvironment]
       getEnvironment candidate

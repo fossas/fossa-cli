@@ -43,7 +43,7 @@ withTaskPool numWorkers reportProgress act = do
         progressHandle <- fork (updateProgress reportProgress state)
         pure (progressHandle : workerHandles)
 
-  let cleanup handles = traverse_ kill handles
+  let cleanup = traverse_ kill
 
   let waitForCompletion _ = join $
         sendIO $
