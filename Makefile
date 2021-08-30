@@ -26,11 +26,16 @@ fmt:
 
 # Confirm everything is formatted without changing anything
 check-fmt:
+	@echo "Running fourmolu"
+	@fourmolu --version
 	@fourmolu --mode check ${FMT_OPTS} $(shell find ${FIND_OPTS})
 	@echo "No formatting errors found"
 
 # Lint everything (If this fails, update .hlint.yaml or report the failure)
 lint:
-	hlint src test
+	@echo "Running hlint"
+	@hlint --version
+	@hlint src test
+	@echo "No linter errors found"
 
 .PHONY: build test analyze install-local fmt check check-fmt lint

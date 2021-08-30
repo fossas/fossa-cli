@@ -148,7 +148,7 @@ jobs:
     # If git has changes, then the formatter check fails.
     - name: check git status
       run: |
-        git diff --name-only --exit-code
+        git diff --exit-code
 
   create-release:
     name: create-release
