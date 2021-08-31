@@ -45,7 +45,7 @@ esac
 TAG="latest"
 echo "Downloading asset information from latest tag for architecture '$ASSET_POSTFIX'"
 
-WIGGINS_TAG="2021-08-24-cfbea25"
+WIGGINS_TAG="2021-08-31-f8aa91d"
 echo "Downloading wiggins binary"
 echo "Using wiggins release: $WIGGINS_TAG"
 WIGGINS_RELEASE_JSON=vendor/wiggins-release.json
