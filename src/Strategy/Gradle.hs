@@ -63,6 +63,7 @@ import Effect.Logger (Logger, logWarn)
 import Effect.ReadFS (ReadFS, doesFileExist, runReadFSIO)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, fromAbsDir, parent, parseRelFile, (</>))
+import Strategy.Android.Util (isDefaultAndroidDevConfig, isDefaultAndroidTestConfig)
 import System.FilePath qualified as FilePath
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), FoundTargets (..), GraphBreadth (..))
 
@@ -315,6 +316,8 @@ buildGraph projectsAndDeps = run . withLabeling toDependency $ Map.traverseWithK
     configNameToLabel conf = case unConfigName conf of
       "compileOnly" -> Env EnvDevelopment
       x | x `elem` ["testImplementation", "testCompileOnly", "testRuntimeOnly"] -> Env EnvTesting
+      x | isDefaultAndroidDevConfig x -> Env EnvDevelopment
+      x | isDefaultAndroidTestConfig x -> Env EnvTesting
       x -> Env $ EnvOther x
 
     toDependency :: JsonDep -> Set GradleLabel -> Dependency

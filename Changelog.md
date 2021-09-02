@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.15.11
+
+- Gradle: Classifies dependency's environment correctly, when originating from common android development and test configurations. ([#338](https://github.com/fossas/spectrometer/pull/338))
+
 ## v2.15.10
 
 - Monorepo: Ignore permission errors when searching for ninja or buildspec files. ([#351](https://github.com/fossas/spectrometer/pull/351))

@@ -227,6 +227,7 @@ library
     Network.HTTP.Req.Extra
     Srclib.Converter
     Srclib.Types
+    Strategy.Android.Util
     Strategy.Bundler
     Strategy.Cargo
     Strategy.Carthage
@@ -326,6 +327,7 @@ test-suite unit-tests
 
   -- cabal-fmt: expand test
   other-modules:
+    Android.UtilSpec
     App.DocsSpec
     App.Fossa.API.BuildLinkSpec
     App.Fossa.Configuration.ConfigurationSpec

@@ -29,6 +29,7 @@ Gradle users generally specify their builds using a `build.gradle` file (written
     - [Manually checking Gradle dependency results](#manually-checking-gradle-dependency-results)
     - [Debugging the "Gradle build plugin" tactic](#debugging-the-gradle-build-plugin-tactic)
   - [Manually specifying Gradle dependencies](#manually-specifying-gradle-dependencies)
+  - [Android Gradle Configurations For Development and Testing](#android-gradle-configurations-for-development-and-testing)
 
 ## Concepts
 
@@ -190,3 +191,69 @@ referenced-dependencies:
 Notice that the `name` field follows Maven conventions: `groupId:artifactId`.
 
 For more details, see the [manual dependencies](../userguide.md#manually-specifying-dependencies) documentation.
+
+## Android Gradle Configurations For Development and Testing
+
+We classify following configurations, and any dependencies originating from it as a test environment dependency:
+```
+Any dependencies with following prefixes:
+- androidTest
+- debugAndroidTest
+- releaseUnitTest
+
+And any configuration named:
+- androidJacocoAnt
+- testApiDependenciesMetadata
+- testCompileOnlyDependenciesMetadata
+- debugUnitTestApiDependenciesMetadata
+- debugUnitTestCompileOnlyDependenciesMetadata
+- debugUnitTestImplementationDependenciesMetadata
+- debugUnitTestIntransitiveDependenciesMetadata
+- debugUnitTestRuntimeOnlyDependenciesMetadata
+- testDebugApiDependenciesMetadata
+- testDebugCompileOnlyDependenciesMetadata
+- testDebugImplementationDependenciesMetadata
+- testDebugIntransitiveDependenciesMetadata
+- testDebugRuntimeOnlyDependenciesMetadata
+- testImplementationDependenciesMetadata
+- testIntransitiveDependenciesMetadata
+- testReleaseApiDependenciesMetadata
+- testReleaseCompileOnlyDependenciesMetadata
+- testReleaseImplementationDependenciesMetadata
+- testReleaseIntransitiveDependenciesMetadata
+- testReleaseRuntimeOnlyDependenciesMetadata
+- testRuntimeOnlyDependenciesMetadata
+- debugUnitTestAnnotationProcessorClasspath
+
+```
+
+We classify following configurations, and dependencies originating from it as a development (or debug) environment dependency:
+```
+- lintChecks
+- lintClassPath
+- lintPublish
+- debugApiDependenciesMetadata
+- debugCompileClasspath
+- debugCompileOnly
+- debugCompileOnlyDependenciesMetadata
+- debugImplementationDependenciesMetadata
+- debugIntransitiveDependenciesMetadata
+- debugReverseMetadataValues
+- debugRuntimeClasspath
+- debugRuntimeOnlyDependenciesMetadata
+- compileOnlyDependenciesMetadata
+- releaseCompileOnly
+- releaseCompileOnlyDependenciesMetadata
+- debugWearBundling
+- debugAnnotationProcessorClasspath
+- releaseAnnotationProcessorClasspath
+- androidJdkImage
+- kotlinCompilerClasspath
+- kotlinCompilerPluginClasspathDebug
+- kotlinCompilerPluginClasspathDebugAndroidTest
+- kotlinCompilerPluginClasspathDebugUnitTest
+- kotlinCompilerPluginClasspathReleaseUnitTest
+- kotlinCompilerPluginClasspathRelease
+- kotlinKlibCommonizerClasspath
+- kotlinNativeCompilerPluginClasspath
+```
