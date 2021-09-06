@@ -67,7 +67,7 @@ func (n SystemNPM) Clean(dir string) error {
 func (n SystemNPM) Install(dir string) error {
 	_, _, err := exec.Run(exec.Cmd{
 		Name: n.Cmd,
-		Argv: []string{"install", "--production"},
+		Argv: []string{"ci", "--ignore-scripts", "--production"},
 		Dir:  dir,
 	})
 	if err != nil && !n.AllowErr {
