@@ -7,8 +7,10 @@ module App.Fossa.Analyze (
   JsonOutput (..),
   VSIAnalysisMode (..),
   IATAssertionMode (..),
-  discoverFuncs,
+  BinaryDiscoveryMode (..),
   RecordMode (..),
+  ModeOptions (..),
+  discoverFuncs,
 ) where
 
 import App.Docs (userGuideUrl)
@@ -16,6 +18,7 @@ import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
+import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.FossaAPIV1 (UploadResponse (..), getProject, projectIsMonorepo, uploadAnalysis, uploadContributors)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
@@ -64,7 +67,7 @@ import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
 import Path.IO qualified as P
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (Locator (locatorProject, locatorRevision), SourceUnit, parseLocator)
+import Srclib.Types (Locator (locatorProject, locatorRevision), SourceUnit (..), parseLocator)
 import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
 import Strategy.Carthage qualified as Carthage
@@ -119,6 +122,14 @@ data UnpackArchives = UnpackArchives
 
 data JsonOutput = JsonOutput
 
+-- | Collect analysis modes into a single type for ease of use.
+-- These modes are intended to be different options that alter how analysis is performed or what analysis steps are followed.
+data ModeOptions = ModeOptions
+  { modeVSIAnalysis :: VSIAnalysisMode
+  , modeIATAssertion :: IATAssertionMode
+  , modeBinaryDiscovery :: BinaryDiscoveryMode
+  }
+
 -- | "VSI analysis" modes
 data VSIAnalysisMode
   = -- | enable the VSI analysis strategy
@@ -133,6 +144,13 @@ data IATAssertionMode
   | -- | assertion not enabled
     IATAssertionDisabled
 
+-- | "Binary Discovery" modes
+data BinaryDiscoveryMode
+  = -- | Binary discovery enabled
+    BinaryDiscoveryEnabled
+  | -- | Binary discovery disabled
+    BinaryDiscoveryDisabled
+
 -- | "Replay logging" modes
 data RecordMode
   = -- | record effect invocations
@@ -142,8 +160,8 @@ data RecordMode
   | -- | don't record or replay
     RecordModeNone
 
-analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> VSIAnalysisMode -> IATAssertionMode -> AllFilters -> IO ()
-analyzeMain workdir recordMode logSeverity destination project unpackArchives jsonOutput enableVSI assertionMode filters =
+analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> ModeOptions -> AllFilters -> IO ()
+analyzeMain workdir recordMode logSeverity destination project unpackArchives jsonOutput modeOptions filters =
   withDefaultLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO
@@ -170,7 +188,7 @@ analyzeMain workdir recordMode logSeverity destination project unpackArchives js
               . runReplay @Exec (effectsExec effects)
               $ doAnalyze basedir
   where
-    doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput enableVSI assertionMode filters
+    doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput modeOptions filters
 
 discoverFuncs :: (TaskEffs sig m, TaskEffs rsig run) => [Path Abs Dir -> m [DiscoveredProject run]]
 discoverFuncs =
@@ -245,19 +263,23 @@ analyze ::
   OverrideProject ->
   Flag UnpackArchives ->
   Flag JsonOutput ->
-  VSIAnalysisMode ->
-  IATAssertionMode ->
+  ModeOptions ->
   AllFilters ->
   m ()
-analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableVSI iatAssertion filters = do
+analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOptions{..} filters = do
   capabilities <- sendIO getNumCapabilities
 
   let apiOpts = case destination of
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
 
+  -- additional source units are built outside the standard strategy flow, because they either
+  -- require additional information (eg API credentials), or they return additional information (eg user deps).
   manualSrcUnits <- analyzeFossaDepsFile basedir apiOpts
-  vsiResults <- analyzeVSI enableVSI apiOpts basedir filters
+  vsiResults <- analyzeVSI modeVSIAnalysis apiOpts basedir filters
+  binarySearchResults <- analyzeDiscoverBinaries modeBinaryDiscovery basedir filters
+  let additionalSourceUnits :: [SourceUnit]
+      additionalSourceUnits = catMaybes [manualSrcUnits, vsiResults, binarySearchResults]
 
   (projectResults, ()) <-
     runOutput @ProjectResult
@@ -270,14 +292,14 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput enableV
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
-  case checkForEmptyUpload projectResults filteredProjects [manualSrcUnits, vsiResults] of
+  case checkForEmptyUpload projectResults filteredProjects additionalSourceUnits of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
-      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult manualSrcUnits filteredProjects
+      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult additionalSourceUnits filteredProjects
       UploadScan opts metadata -> do
         locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
-        doAssertRevisionBinaries iatAssertion opts locator
+        doAssertRevisionBinaries modeIATAssertion opts locator
 
 analyzeVSI :: (MonadIO m, Has Diag.Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m, Has Logger sig m) => VSIAnalysisMode -> Maybe ApiOpts -> Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
 analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir filters = do
@@ -285,6 +307,12 @@ analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir filters = do
   results <- analyzeVSIDeps dir apiOpts filters
   pure $ Just results
 analyzeVSI _ _ _ _ = pure Nothing
+
+analyzeDiscoverBinaries :: (MonadIO m, Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has ReadFS sig m) => BinaryDiscoveryMode -> Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
+analyzeDiscoverBinaries BinaryDiscoveryEnabled dir filters = do
+  logInfo "Discovering binary files as dependencies"
+  analyzeBinaryDeps dir filters
+analyzeDiscoverBinaries _ _ _ = pure Nothing
 
 doAssertRevisionBinaries :: (Has Diag.Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => IATAssertionMode -> ApiOpts -> Locator -> m ()
 doAssertRevisionBinaries (IATAssertionEnabled dir) apiOpts locator = assertRevisionBinaries dir apiOpts locator
@@ -380,9 +408,8 @@ data CountedResult
 -- Takes a list of all projects analyzed, and the list after filtering.  We assume
 -- that the smaller list is the latter, and return that list.  Starting with user-defined deps,
 -- we also include a check for an additional source unit from fossa-deps.yml.
-checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> [Maybe SourceUnit] -> CountedResult
-checkForEmptyUpload xs ys potentialAdditionalUnits = do
-  let additionalUnits = catMaybes potentialAdditionalUnits
+checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> [SourceUnit] -> CountedResult
+checkForEmptyUpload xs ys additionalUnits = do
   if null additionalUnits
     then case (xlen, ylen) of
       -- We didn't discover, so we also didn't filter
@@ -463,16 +490,14 @@ buildProjectSummary project projectLocator projectUrl = do
       , "id" .= projectLocator
       ]
 
-buildResult :: Maybe SourceUnit -> [ProjectResult] -> Aeson.Value
-buildResult maybeSrcUnit projects =
+buildResult :: [SourceUnit] -> [ProjectResult] -> Aeson.Value
+buildResult srcUnits projects =
   Aeson.object
     [ "projects" .= map buildProject projects
     , "sourceUnits" .= finalSourceUnits
     ]
   where
-    finalSourceUnits = case maybeSrcUnit of
-      Just unit -> unit : scannedUnits
-      Nothing -> scannedUnits
+    finalSourceUnits = srcUnits ++ scannedUnits
     scannedUnits = map Srclib.toSourceUnit projects
 
 buildProject :: ProjectResult -> Aeson.Value

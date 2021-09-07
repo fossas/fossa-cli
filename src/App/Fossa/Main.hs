@@ -4,7 +4,7 @@ module App.Fossa.Main (
   appMain,
 ) where
 
-import App.Fossa.Analyze (IATAssertionMode (..), JsonOutput (..), RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
+import App.Fossa.Analyze (BinaryDiscoveryMode (..), IATAssertionMode (..), JsonOutput (..), ModeOptions (ModeOptions), RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
 import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
 import App.Fossa.Configuration (
   ConfigFile (
@@ -191,7 +191,8 @@ appMain = do
 
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
           combinedFilters = normalizedFilters fileConfig analyzeOptions
-          doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeVSIMode assertionMode combinedFilters
+          modeOptions = ModeOptions analyzeVSIMode assertionMode analyzeBinaryDiscoveryMode
+          doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput modeOptions combinedFilters
 
       if analyzeOutput
         then doAnalyze OutputStdout
@@ -414,6 +415,7 @@ analyzeOpts =
     <*> many (option (eitherReader pathOpt) (long "only-path" <> help "Only scan these paths. See paths.only in the fossa.yml spec." <> metavar "PATH"))
     <*> many (option (eitherReader pathOpt) (long "exclude-path" <> help "Exclude these paths from scanning. See paths.exclude in the fossa.yml spec." <> metavar "PATH"))
     <*> vsiAnalyzeOpt
+    <*> binaryDiscoveryOpt
     <*> iatAssertionOpt
     <*> monorepoOpts
     <*> analyzeReplayOpt
@@ -423,6 +425,11 @@ vsiAnalyzeOpt :: Parser VSIAnalysisMode
 vsiAnalyzeOpt =
   flag' VSIAnalysisEnabled (long "enable-vsi" <> hidden)
     <|> pure VSIAnalysisDisabled
+
+binaryDiscoveryOpt :: Parser BinaryDiscoveryMode
+binaryDiscoveryOpt =
+  flag' BinaryDiscoveryEnabled (long "experimental-enable-binary-discovery" <> hidden)
+    <|> pure BinaryDiscoveryDisabled
 
 iatAssertionOpt :: Parser AnalyzeVSIAssertionMode
 iatAssertionOpt =
@@ -703,6 +710,7 @@ data AnalyzeOptions = AnalyzeOptions
   , analyzeOnlyPaths :: [Path Rel Dir]
   , analyzeExcludePaths :: [Path Rel Dir]
   , analyzeVSIMode :: VSIAnalysisMode
+  , analyzeBinaryDiscoveryMode :: BinaryDiscoveryMode
   , analyzeAssertMode :: AnalyzeVSIAssertionMode
   , monorepoAnalysisOpts :: MonorepoAnalysisOpts
   , analyzeRecordMode :: RecordMode

@@ -11,6 +11,7 @@ module Effect.ReadFS (
 
   -- * Reading raw file contents
   readContentsBS,
+  readContentsBSLimit,
   readContentsText,
 
   -- * Resolving relative filepaths
@@ -59,12 +60,14 @@ import GHC.Generics (Generic)
 import Parse.XML (FromXML, parseXML, xmlErrorPretty)
 import Path
 import Path.IO qualified as PIO
+import System.IO (IOMode (ReadMode), withFile)
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Toml qualified
 
 data ReadFS (m :: Type -> Type) k where
   ReadContentsBS' :: Path x File -> ReadFS m (Either ReadFSErr ByteString)
+  ReadContentsBSLimit' :: Path x File -> Int -> ReadFS m (Either ReadFSErr ByteString)
   ReadContentsText' :: Path x File -> ReadFS m (Either ReadFSErr Text)
   DoesFileExist :: Path x File -> ReadFS m Bool
   DoesDirExist :: Path x Dir -> ReadFS m Bool
@@ -109,6 +112,10 @@ instance ToDiagnostic ReadFSErr where
 -- | Read file contents into a strict 'ByteString'
 readContentsBS' :: Has ReadFS sig m => Path b File -> m (Either ReadFSErr ByteString)
 readContentsBS' path = send (ReadContentsBS' path)
+
+-- | Read at most n bytes of file content into a strict 'ByteString'
+readContentsBSLimit :: Has ReadFS sig m => Path b File -> Int -> m (Either ReadFSErr ByteString)
+readContentsBSLimit path limit = send (ReadContentsBSLimit' path limit)
 
 -- | Read file contents into a strict 'ByteString'
 readContentsBS :: (Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m ByteString
@@ -200,6 +207,9 @@ runReadFSIO = interpret $ \case
   ReadContentsBS' file -> do
     BS.readFile (toFilePath file)
       `catchingIO` FileReadError (toFilePath file)
+  ReadContentsBSLimit' file limit -> do
+    readContentsBSLimit' file limit
+      `catchingIO` FileReadError (toFilePath file)
   ReadContentsText' file -> do
     (decodeUtf8 <$> BS.readFile (toFilePath file))
       `catchingIO` FileReadError (toFilePath file)
@@ -215,6 +225,9 @@ runReadFSIO = interpret $ \case
   -- NB: these never throw
   DoesFileExist file -> sendIO (PIO.doesFileExist file)
   DoesDirExist dir -> sendIO (PIO.doesDirExist dir)
+
+readContentsBSLimit' :: Path x File -> Int -> IO ByteString
+readContentsBSLimit' file limit = withFile (toFilePath file) ReadMode $ \handle -> BS.hGetSome handle limit
 
 catchingIO :: Has (Lift IO) sig m => IO a -> (Text -> ReadFSErr) -> m (Either ReadFSErr a)
 catchingIO io mangle = sendIO $ E.catch (Right <$> io) (\(e :: E.IOException) -> pure (Left (mangle (toText (show e)))))

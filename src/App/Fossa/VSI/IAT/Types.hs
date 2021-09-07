@@ -9,12 +9,7 @@ module App.Fossa.VSI.IAT.Types (
 ) where
 
 import App.Fossa.VSI.Types qualified as VSI
-import Data.Aeson (
-  FromJSON (parseJSON),
-  ToJSON (toJSON),
-  withObject,
-  (.:),
- )
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), withObject, (.:))
 import Data.Text (Text)
 
 -- | Fingerprint uniquely idenfies a file, derived from its content.

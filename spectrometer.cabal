@@ -139,6 +139,7 @@ library
     App.Fossa.API.BuildLink
     App.Fossa.API.BuildWait
     App.Fossa.ArchiveUploader
+    App.Fossa.BinaryDeps
     App.Fossa.Compatibility
     App.Fossa.Configuration
     App.Fossa.Container
