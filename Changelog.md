@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.15.12
+
+- Yarn: Analyzes yarn.lock without runtime error, when yarn.lock includes directory dependency. ([#361](https://github.com/fossas/spectrometer/pull/361))
+
 ## v2.15.11
 
 - Gradle: Classifies dependency's environment correctly, when originating from common android development and test configurations. ([#338](https://github.com/fossas/spectrometer/pull/338))

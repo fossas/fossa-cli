@@ -50,6 +50,7 @@ buildGraph lockfile = Graphing.edges (concatMap (edgesForPackage . first NE.head
               YL.FileRemote url _ -> [url]
               YL.FileRemoteNoIntegrity url -> [url]
               YL.GitRemote url rev -> [url <> "@" <> rev]
+              YL.DirectoryLocal dirPath -> [dirPath]
         , dependencyEnvironments = []
         , dependencyTags = Map.empty
         }
