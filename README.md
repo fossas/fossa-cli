@@ -23,6 +23,12 @@ more.
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
 ```
 
+### macOS with Apple M1 Silicon
+
+```bash
+arch -x86_64 /bin/bash -c "$(curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh)"
+```
+
 ### Windows with Powershell
 
 ```powershell
