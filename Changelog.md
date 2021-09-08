@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.15.15
+
+- Monorepo: Efficiently upload binary blobs for ninja & buildspec files ([#362](https://github.com/fossas/spectrometer/pull/362)).
+
 ## v2.15.14
 
 - Yarn: Fixes missing dependency from the analyses, when dependency has zero deep dependencies, and is not a deep dependency of any other dependency. ([#359](https://github.com/fossas/spectrometer/pull/359))
