@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.15.14
+
+- Yarn: Fixes missing dependency from the analyses, when dependency has zero deep dependencies, and is not a deep dependency of any other dependency. ([#359](https://github.com/fossas/spectrometer/pull/359))
+
 ## v2.15.13
 
 Adds another closed beta feature around FOSSA C/C++ support.

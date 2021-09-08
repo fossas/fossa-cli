@@ -44,6 +44,17 @@ packageThree =
     , dependencyTags = Map.empty
     }
 
+packageFour :: Dependency
+packageFour =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "packageFour"
+    , dependencyVersion = Just (CEq "4.0.0")
+    , dependencyLocations = ["https://registry.npmjs.org/packageFour"]
+    , dependencyEnvironments = []
+    , dependencyTags = Map.empty
+    }
+
 spec :: Spec
 spec = do
   testFile <- runIO (BS.readFile "test/Yarn/testdata/yarn.lock")
@@ -53,7 +64,7 @@ spec = do
         Left _ -> expectationFailure "failed to parse"
         Right lockfile -> do
           let graph = buildGraph lockfile
-          expectDeps [packageOne, packageTwo, packageThree] graph
+          expectDeps [packageOne, packageTwo, packageThree, packageFour] graph
           expectDirect [] graph
           expectEdges
             [ (packageOne, packageTwo)

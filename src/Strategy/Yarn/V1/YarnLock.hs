@@ -26,8 +26,16 @@ analyze lockfile = context "Lockfile V1 analysis" $ do
     Right parsed -> context "Building dependency graph" $ pure (buildGraph parsed)
 
 buildGraph :: YL.Lockfile -> Graphing Dependency
-buildGraph lockfile = Graphing.edges (concatMap (edgesForPackage . first NE.head) (MKM.toList lockfile))
+buildGraph lockfile =
+  Graphing.edges (concatMap edgesForPackage packagesList)
+    <> Graphing.deeps (map toDependency packageWithoutOutEdges)
   where
+    packagesList :: [(YL.PackageKey, YL.Package)]
+    packagesList = map (first NE.head) $ MKM.toList lockfile
+
+    packageWithoutOutEdges :: [(YL.PackageKey, YL.Package)]
+    packageWithoutOutEdges = filter (null . YL.dependencies . snd) packagesList
+
     edgesForPackage :: (YL.PackageKey, YL.Package) -> [(Dependency, Dependency)]
     edgesForPackage parentPkg@(_, package) = do
       childKey <- YL.dependencies package
