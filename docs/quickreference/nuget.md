@@ -1,4 +1,4 @@
-# Quick reference: nuget
+# Quick reference: NuGet
 
 ## Requirements
 
@@ -11,8 +11,7 @@ One more more of the following:
 - `project.assets.json`
 - `packages.config`
 - `project.json`
-- `paket.lock`
 
 ## Project discovery
 
-Directories containing any of the files listed above are considered Nuget projects.
+Directories containing any of the files listed above are considered NuGet projects.

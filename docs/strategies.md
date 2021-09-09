@@ -84,3 +84,4 @@ The CLI supports the following strategies:
 - [ruby](strategies/ruby.md) (bundler)
 - [rust](strategies/rust.md) (cargo)
 - [sbt](strategies/sbt.md) (sbt)
+- [.NET](strategies/dotnet.md) (NuGet, Paket)

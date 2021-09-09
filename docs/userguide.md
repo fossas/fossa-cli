@@ -121,7 +121,8 @@ fossa analyze --help
 
 ### .NET
 
-- [nuget](quickreference/nuget.md)
+- [NuGet](quickreference/nuget.md)
+- [Paket](quickreference/paket.md)
 
 ### objective-c
 
@@ -254,6 +255,7 @@ Supported dependency types:
 - `maven` - Maven dependencies that can be found at many different sources. Specified as `name: javax.xml.bind:jaxb-api` where the convention is `groupId:artifactId`.
 - `npm` - Javascript dependencies found at [npmjs.com](https://www.npmjs.com/).
 - `nuget` - .NET dependencies found at [NuGet.org](https://www.nuget.org/).
+- `paket` - .NET dependencies found at [fsprojects.github.io/Paket/](https://fsprojects.github.io/Paket/).
 - `pub` - Dart dependencies found at [pub.dev](https://www.pub.dev/).
 - `pypi` - Python dependencies that are typically found at [Pypi.org](https://pypi.org/).
 - `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
