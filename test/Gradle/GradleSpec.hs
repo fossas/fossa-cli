@@ -66,12 +66,48 @@ packageTwo =
     , dependencyTags = Map.empty
     }
 
+mkProject :: Text -> DepEnvironment -> Dependency
+mkProject name env =
+  Dependency
+    { dependencyType = SubprojectType
+    , dependencyName = name
+    , dependencyVersion = Nothing
+    , dependencyLocations = []
+    , dependencyEnvironments = [env, EnvOther "config"]
+    , dependencyTags = Map.empty
+    }
+
+projectFour :: Dependency
+projectFour = mkProject ":projectFour" EnvTesting
+
+projectFive :: Dependency
+projectFive = mkProject ":projectFive" EnvTesting
+
+mkMavenDep :: Text -> DepEnvironment -> Dependency
+mkMavenDep name env =
+  Dependency
+    { dependencyType = MavenType
+    , dependencyName = name
+    , dependencyVersion = Just (CEq "2.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = [env]
+    , dependencyTags = Map.empty
+    }
+
+packageFour :: Dependency
+packageFour = mkMavenDep "mygroup:packageFour" EnvTesting
+
+packageFive :: Dependency
+packageFive = mkMavenDep "mygroup:packageFive" EnvTesting
+
 gradleOutput :: Map (Text, Text) [JsonDep]
 gradleOutput =
   Map.fromList
-    [ ((":projectOne", "config"), [ProjectDep ":projectTwo"])
+    [ ((":projectOne", "config"), [ProjectDep ":projectTwo", ProjectDep ":projectFour", ProjectDep ":projectFive"])
     , ((":projectTwo", "compileOnly"), [ProjectDep ":projectThree", PackageDep "mygroup:packageOne" "1.0.0" []])
     , ((":projectThree", "testCompileOnly"), [PackageDep "mygroup:packageTwo" "2.0.0" []])
+    , ((":projectFour", "testCompileClasspath"), [PackageDep "mygroup:packageFour" "2.0.0" []])
+    , ((":projectFive", "testRuntimeClasspath"), [PackageDep "mygroup:packageFive" "2.0.0" []])
     ]
 
 wrapKeys :: (Text, Text) -> (PackageName, ConfigName)
@@ -86,12 +122,16 @@ spec = do
 
     it "should produce expected output" $ do
       let graph = buildGraph $ Map.mapKeys wrapKeys gradleOutput
-      expectDeps [projectOne, projectTwo, projectThree, packageOne, packageTwo] graph
-      expectDirect [projectOne, projectTwo, projectThree] graph
+      expectDeps [projectOne, projectTwo, projectThree, packageOne, packageTwo, projectFour, projectFive, packageFour, packageFive] graph
+      expectDirect [projectOne, projectTwo, projectThree, projectFour, projectFive] graph
       expectEdges
         [ (projectOne, projectTwo)
         , (projectTwo, projectThree)
         , (projectTwo, packageOne)
         , (projectThree, packageTwo)
+        , (projectOne, projectFour)
+        , (projectOne, projectFive)
+        , (projectFour, packageFour)
+        , (projectFive, packageFive)
         ]
         graph

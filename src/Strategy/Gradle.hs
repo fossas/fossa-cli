@@ -312,10 +312,12 @@ buildGraph projectsAndDeps = run . withLabeling toDependency $ Map.traverseWithK
         edge projAsDep dep
         mkRecursiveEdges dep envLabel
 
+    -- Infers environment label based on the name of configuration.
+    -- Ref: https://docs.gradle.org/current/userguide/java_library_plugin.html#sec:java_library_configurations_graph
     configNameToLabel :: ConfigName -> GradleLabel
     configNameToLabel conf = case unConfigName conf of
       "compileOnly" -> Env EnvDevelopment
-      x | x `elem` ["testImplementation", "testCompileOnly", "testRuntimeOnly"] -> Env EnvTesting
+      x | x `elem` ["testImplementation", "testCompileOnly", "testRuntimeOnly", "testCompileClasspath", "testRuntimeClasspath"] -> Env EnvTesting
       x | isDefaultAndroidDevConfig x -> Env EnvDevelopment
       x | isDefaultAndroidTestConfig x -> Env EnvTesting
       x -> Env $ EnvOther x

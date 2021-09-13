@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.15.17
+
+- Gradle: Classifies dependency from `testCompileClasspath` and `testRuntimeClasspath` configurations as test dependencies. ([#366](https://github.com/fossas/spectrometer/pull/366))
+
 ## v2.15.16
 
 - Yarn: Analyzes yarn.lock without runtime error, when yarn.lock includes symlinked package. ([#363](https://github.com/fossas/spectrometer/pull/363))

@@ -29,6 +29,7 @@ Gradle users generally specify their builds using a `build.gradle` file (written
     - [Manually checking Gradle dependency results](#manually-checking-gradle-dependency-results)
     - [Debugging the "Gradle build plugin" tactic](#debugging-the-gradle-build-plugin-tactic)
   - [Manually specifying Gradle dependencies](#manually-specifying-gradle-dependencies)
+  - [Configurations For Development and Testing](#configurations-for-development-and-testing)
   - [Android Gradle Configurations For Development and Testing](#android-gradle-configurations-for-development-and-testing)
 
 ## Concepts
@@ -192,6 +193,23 @@ Notice that the `name` field follows Maven conventions: `groupId:artifactId`.
 
 For more details, see the [manual dependencies](../userguide.md#manually-specifying-dependencies) documentation.
 
+## Configurations For Development and Testing
+
+We classify following configurations are for development:
+
+```
+- compileOnly
+```
+
+and following are for testing: 
+
+```
+- testImplementation
+- testCompileOnly
+- testRuntimeOnly
+- testCompileClasspath
+- testRuntimeClasspath
+```
 ## Android Gradle Configurations For Development and Testing
 
 We classify following configurations, and any dependencies originating from it as a test environment dependency:
