@@ -59,6 +59,7 @@ buildGraph lockfile =
               YL.FileRemoteNoIntegrity url -> [url]
               YL.GitRemote url rev -> [url <> "@" <> rev]
               YL.DirectoryLocal dirPath -> [dirPath]
+              YL.DirectoryLocalSymLinked dirPath -> [dirPath]
         , dependencyEnvironments = []
         , dependencyTags = Map.empty
         }
