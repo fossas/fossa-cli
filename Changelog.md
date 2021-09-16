@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.15.18
+
+- Monorepo: Speeds up commercial phrase detection by doing a first pass before trying to parse context. ([#371](https://github.com/fossas/spectrometer/issues/371))
+
 ## v2.15.17
 
 - Gradle: Classifies dependency from `testCompileClasspath` and `testRuntimeClasspath` configurations as test dependencies. ([#366](https://github.com/fossas/spectrometer/pull/366))
