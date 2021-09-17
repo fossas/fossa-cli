@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.15.20
+
+- Yarn: Fixes potential runtime errors, when yarn.lock contains deep dependency without specification at root level in yarn.lock. ([#369](https://github.com/fossas/spectrometer/pull/369))
+
 ## v2.15.19
 
 - Fixes an issue with `fossa-deps.yml` `vendored-dependencies` entries where uploads would fail if the dependency was in a subdirectory. ([#373](https://github.com/fossas/spectrometer/pull/373))

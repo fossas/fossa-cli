@@ -7,6 +7,7 @@ import Control.Effect.Diagnostics
 import Data.Bifunctor (first)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
+import Data.Maybe (catMaybes)
 import Data.MultiKeyedMap qualified as MKM
 import DepTypes
 import Effect.ReadFS
@@ -23,24 +24,37 @@ analyze lockfile = context "Lockfile V1 analysis" $ do
   contents <- readContentsText lockfile
   case YL.parse path contents of
     Left err -> fatal (FileParseError path (YL.prettyLockfileError err))
-    Right parsed -> context "Building dependency graph" $ pure (buildGraph parsed)
+    Right parsed -> context "Building dependency graph" $ pure $ buildGraph parsed
 
 buildGraph :: YL.Lockfile -> Graphing Dependency
 buildGraph lockfile =
-  Graphing.edges (concatMap edgesForPackage packagesList)
+  Graphing.edges (concatMap catMaybes (edgesForPackage <$> packagesList))
     <> Graphing.deeps (map toDependency packageWithoutOutEdges)
   where
     packagesList :: [(YL.PackageKey, YL.Package)]
     packagesList = map (first NE.head) $ MKM.toList lockfile
 
     packageWithoutOutEdges :: [(YL.PackageKey, YL.Package)]
-    packageWithoutOutEdges = filter (null . YL.dependencies . snd) packagesList
+    packageWithoutOutEdges = filter isWithoutAnyReachableDeps packagesList
 
-    edgesForPackage :: (YL.PackageKey, YL.Package) -> [(Dependency, Dependency)]
+    isWithoutAnyReachableDeps :: (a, YL.Package) -> Bool
+    isWithoutAnyReachableDeps pkg = not (any isMember $ depsOf pkg) || null (depsOf pkg)
+
+    isMember :: YL.PackageKey -> Bool
+    isMember = flip MKM.member lockfile
+
+    depsOf :: (a, YL.Package) -> [YL.PackageKey]
+    depsOf = YL.dependencies . snd
+
+    edgesForPackage :: (YL.PackageKey, YL.Package) -> [Maybe (Dependency, Dependency)]
     edgesForPackage parentPkg@(_, package) = do
       childKey <- YL.dependencies package
-      let childPkg = (childKey, MKM.at lockfile childKey)
-      pure (toDependency parentPkg, toDependency childPkg)
+
+      let childPackageAtKey = MKM.lookup childKey lockfile
+      case childPackageAtKey of
+        Nothing -> pure Nothing
+        Just childPackage ->
+          pure $ Just (toDependency parentPkg, toDependency (childKey, childPackage))
 
     toDependency :: (YL.PackageKey, YL.Package) -> Dependency
     toDependency (key, package) =

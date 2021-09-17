@@ -16,3 +16,8 @@ packageThree@^3.0.0:
 packageFour@^4.0.0:
   version "4.0.0"
   resolved "https://registry.npmjs.org/packageFour"
+packageFive@5.0.0:
+  version "5.0.0"
+  resolved "https://someurl.io/somefile.gz#somehash"
+  dependencies:
+    unSeenDep "0.0.0"
