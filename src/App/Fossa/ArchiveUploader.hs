@@ -20,6 +20,7 @@ import Data.Aeson (
 import Data.Aeson.Extra
 import Data.ByteString.Lazy qualified as BS
 import Data.Functor.Extra ((<$$>))
+import Data.List (intercalate)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion
 import Data.Text (Text)
@@ -96,9 +97,7 @@ arcToLocator arc =
 
 compressFile :: Path Abs Dir -> Path Abs Dir -> FilePath -> IO FilePath
 compressFile outputDir directory fileToTar = do
-  -- Without using `fromAbsDir` for each of these directories, the conversion
-  -- is incorrect. `show outputDir` gives an incorrect result even though it typechecks.
-  let finalFile = toString outputDir </> fileToTar
+  let finalFile = toString outputDir </> safeSeparators fileToTar
   entries <- Tar.pack (toString directory) [fileToTar]
   BS.writeFile finalFile $ GZip.compress $ Tar.write entries
   pure finalFile
@@ -110,3 +109,6 @@ hashFile :: FilePath -> IO Text
 hashFile fileToHash = do
   fileContent <- BS.readFile fileToHash
   pure . toText . show $ md5 fileContent
+
+safeSeparators :: FilePath -> FilePath
+safeSeparators = intercalate "_" . splitDirectories
