@@ -140,6 +140,7 @@ library
     App.Fossa.API.BuildWait
     App.Fossa.ArchiveUploader
     App.Fossa.BinaryDeps
+    App.Fossa.BinaryDeps.Jar
     App.Fossa.Compatibility
     App.Fossa.Configuration
     App.Fossa.Container
@@ -331,6 +332,7 @@ test-suite unit-tests
     Android.UtilSpec
     App.DocsSpec
     App.Fossa.API.BuildLinkSpec
+    App.Fossa.BinaryDeps.JarSpec
     App.Fossa.Configuration.ConfigurationSpec
     App.Fossa.ManualDepsSpec
     App.Fossa.Report.AttributionSpec
@@ -347,6 +349,7 @@ test-suite unit-tests
     Dart.PubDepsSpec
     Dart.PubSpecSpec
     Dart.PubSpecLockSpec
+    Discovery.ArchiveSpec
     Discovery.FiltersSpec
     Effect.ExecSpec
     Elixir.MixTreeSpec

@@ -1,5 +1,10 @@
 module Discovery.Archive (
   discover,
+  withArchive,
+  extractRpm,
+  extractTar,
+  extractTarGz,
+  extractZip,
 ) where
 
 import Codec.Archive.Tar qualified as Tar
@@ -23,16 +28,16 @@ import Prelude hiding (zip)
 discover :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has TaskPool sig m) => (Path Abs Dir -> m ()) -> Path Abs Dir -> m ()
 discover go = walk $ \_ _ files -> do
   let tars = filter (\file -> ".tar" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkTask $ withArchive tar file go) tars
+  traverse_ (\file -> forkTask $ withArchive extractTar file go) tars
 
   let tarGzs = filter (\file -> ".tar.gz" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkTask $ withArchive tarGz file go) tarGzs
+  traverse_ (\file -> forkTask $ withArchive extractTarGz file go) tarGzs
 
   let zips = filter (\file -> ".zip" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkTask $ withArchive zip file go) zips
+  traverse_ (\file -> forkTask $ withArchive extractZip file go) zips
 
   let jars = filter (\file -> ".jar" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkTask $ withArchive zip file go) jars
+  traverse_ (\file -> forkTask $ withArchive extractZip file go) jars
 
   let rpms = filter (\file -> ".rpm" `isSuffixOf` fileName file) files
   traverse_ (\file -> forkTask $ withArchive extractRpm file go) rpms
@@ -49,8 +54,8 @@ withArchive ::
   -- | Path to archive
   Path Abs File ->
   -- | Callback
-  (Path Abs Dir -> m ()) ->
-  m ()
+  (Path Abs Dir -> m c) ->
+  m c
 withArchive extract file go = do
   tmpDir <- mkTempDir (fileName file)
   extract tmpDir file
@@ -66,12 +71,12 @@ mkTempDir name = do
 
 ---------- Tar files
 
-tar :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
-tar dir tarFile =
+extractTar :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
+extractTar dir tarFile =
   sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read =<< BL.readFile (fromAbsFile tarFile)
 
-tarGz :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
-tarGz dir tarGzFile =
+extractTarGz :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
+extractTarGz dir tarGzFile =
   sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read . GZip.decompress =<< BL.readFile (fromAbsFile tarGzFile)
 
 -- The tar unpacker dies when tar files reference files outside of the archive root
@@ -86,6 +91,6 @@ removeTarLinks (Tar.Fail e) = Tar.Fail e
 
 ---------- Zip files
 
-zip :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
-zip dir zipFile =
+extractZip :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
+extractZip dir zipFile =
   sendIO $ Zip.withArchive (fromAbsFile zipFile) (Zip.unpackInto (fromAbsDir dir))

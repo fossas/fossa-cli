@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.15.21
+
+- When using `--experimental-enable-binary-discovery`, prepopulates information discovered in JAR manfiests. ([#372](https://github.com/fossas/spectrometer/pull/372))
+
 ## v2.15.20
 
 - Yarn: Fixes potential runtime errors, when yarn.lock contains deep dependency without specification at root level in yarn.lock. ([#369](https://github.com/fossas/spectrometer/pull/369))
