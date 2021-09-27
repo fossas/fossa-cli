@@ -1,5 +1,8 @@
 # Spectrometer Changelog
 
+## v2.15.22
+- Adds branch and revision information to the URL reported at the end of a `fossa analyze --experimental-enable-monorepo` scan. ([#378](https://github.com/fossas/spectrometer/pull/378))
+
 ## v2.15.21
 
 - When using `--experimental-enable-binary-discovery`, prepopulates information discovered in JAR manfiests. ([#372](https://github.com/fossas/spectrometer/pull/372))
