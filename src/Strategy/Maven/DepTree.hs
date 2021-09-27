@@ -6,6 +6,7 @@ module Strategy.Maven.DepTree (
   DotGraph (..),
   PackageId (..),
   toDependency,
+  buildGraph,
 ) where
 
 import Control.Algebra (Has, run)
@@ -28,7 +29,7 @@ import DepTypes (
 import Effect.Exec (AllowErr (..), Command (..), Exec, exec)
 import Effect.Grapher (direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser)
-import Graphing (Graphing, gmap)
+import Graphing (Graphing, gmap, shrinkRoots)
 import Path (Abs, Dir, File, Path, Rel, fromAbsFile, parseRelFile, (</>))
 import Path.IO (getTempDir, removeFile)
 import System.Random (randomIO)
@@ -142,7 +143,9 @@ analyze dir = do
       Nothing -> fatal $ toText $ "invalid file name: " <> f
 
 buildGraph :: [DotGraph] -> Graphing Dependency
-buildGraph = gmap toDependency . foldMap toGraph
+buildGraph = withoutProjectAsDep . gmap toDependency . foldMap toGraph
+  where
+    withoutProjectAsDep = shrinkRoots
 
 toDependency :: PackageId -> Dependency
 toDependency PackageId{groupName, artifactName, artifactVersion, buildTag} =

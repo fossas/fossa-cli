@@ -8,9 +8,11 @@ import DepTypes (
   Dependency (..),
   VerConstraint (..),
  )
+import GraphUtil
 import Strategy.Maven.DepTree (
   DotGraph (..),
   PackageId (..),
+  buildGraph,
   parseDotGraphs,
   toDependency,
  )
@@ -28,6 +30,22 @@ spec =
     single <- runIO $ TextIO.readFile fixtureSingleFile
     it "parses single dot graphs" $
       parse parseDotGraphs fixtureSingleFile single `shouldParse` fixtureSingleGraph
+
+    it "should build dependency graph without project as dependency" $ do
+      -- Setup
+      let depRngCore = Dependency MavenType "org.apache.commons:commons-rng-core" (Just $ CEq "1.4-SNAPSHOT") [] [EnvProduction] (mempty)
+      let depMath3 = Dependency MavenType "org.apache.commons:commons-math3" (Just $ CEq "3.6.1") [] [EnvTesting] (mempty)
+      let depJunit = Dependency MavenType "junit:junit" (Just $ CEq "4.13.1") [] [EnvTesting] (mempty)
+      let depRngClientApi = Dependency MavenType "org.apache.commons:commons-rng-client-api" (Just $ CEq "1.4-SNAPSHOT") [] [EnvProduction] (mempty)
+      let depHamcrestCore = Dependency MavenType "org.hamcrest:hamcrest-core" (Just $ CEq "1.3") [] [EnvTesting] (mempty)
+
+      -- Act
+      let graph = buildGraph fixtureSingleGraph
+
+      -- Assert
+      expectDeps [depRngCore, depMath3, depJunit, depRngClientApi, depHamcrestCore] graph
+      expectDirect [depRngCore, depMath3, depJunit] graph
+      expectEdges [(depRngCore, depRngClientApi), (depJunit, depHamcrestCore)] graph
 
     multi <- runIO $ TextIO.readFile fixtureMultiFile
     it "parses multiple dot graphs in one file" $

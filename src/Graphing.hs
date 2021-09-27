@@ -40,6 +40,7 @@ module Graphing (
   pruneUnreachable,
   stripRoot,
   promoteToDirect,
+  shrinkRoots,
 
   -- * Conversions
   fromAdjacencyMap,
@@ -159,6 +160,15 @@ stripRoot (Graphing gr) = Graphing $ AM.overlay newDirectEdges (AM.removeVertex 
 
     newDirectEdges :: AM.AdjacencyMap (Node ty)
     newDirectEdges = AM.edges $ map (Root,) newDirect
+
+-- | Shrinks all root nodes.
+-- Remove current direct nodes. It will promote their immediate children as directs.
+-- Unlike @stripRoot@, it removes them from graphing, instead of preserving them (as node), and their edges.
+shrinkRoots :: forall ty. Ord ty => Graphing ty -> Graphing ty
+shrinkRoots (Graphing gr) = Graphing $ foldr AME.shrinkSingle gr currentDirect
+  where
+    currentDirect :: [Node ty]
+    currentDirect = Set.toList $ AM.postSet Root gr
 
 -- | Add a direct node to this Graphing
 direct :: Ord ty => ty -> Graphing ty

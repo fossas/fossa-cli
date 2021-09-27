@@ -80,3 +80,41 @@ spec = do
       expectDirect [] graph'
       expectDeps [1, 4, 5] graph'
       expectEdges [(1, 4), (4, 5)] graph'
+
+  describe "stripRoot" $ do
+    let graph :: Graphing Int
+        graph = Graphing.directs [1] <> Graphing.edges [(1, 2), (1, 3), (2, 4), (3, 6)]
+
+    it "should promote immediate children as direct nodes" $ do
+      let graph' = Graphing.stripRoot graph
+      expectDirect [2, 3] graph'
+
+    it "should preserve current root nodes in the graphing as nodes" $ do
+      let graph' = Graphing.stripRoot graph
+      expectDeps [1, 2, 3, 4, 6] graph'
+
+    it "should preserve edges of current root nodes in the graphing" $ do
+      let graph' = Graphing.stripRoot graph
+      expectEdges [(1, 2), (1, 3), (2, 4), (3, 6)] graph'
+
+  describe "shrinkRoots" $ do
+    let graph :: Graphing Int
+        graph = Graphing.directs [1] <> Graphing.edges [(1, 2), (1, 3), (2, 4), (3, 6)]
+
+    it "should remove direct nodes" $ do
+      let graph' = Graphing.shrinkRoots graph
+
+      expectDirect [2, 3] graph'
+      expectDeps [2, 3, 4, 6] graph'
+      expectEdges [(2, 4), (3, 6)] graph'
+
+    it "should not modify when there are no direct nodes" $ do
+      let graphWithoutDirectNodes :: Graphing Int
+          graphWithoutDirectNodes = Graphing.edges [(1, 2), (1, 3), (2, 4), (3, 6)]
+
+          graph' :: Graphing Int
+          graph' = Graphing.shrinkRoots graphWithoutDirectNodes
+
+      expectDirect [] graph'
+      expectDeps [1, 2, 3, 4, 6] graph'
+      expectEdges [(1, 2), (1, 3), (2, 4), (3, 6)] graph'

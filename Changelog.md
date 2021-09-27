@@ -1,5 +1,8 @@
 # Spectrometer Changelog
 
+## v2.15.23
+- Maven: Fixes `mvn:dependency` tactic to exclude root project as direct dependency. ([#375](https://github.com/fossas/spectrometer/pull/375))
+
 ## v2.15.22
 - Adds branch and revision information to the URL reported at the end of a `fossa analyze --experimental-enable-monorepo` scan. ([#378](https://github.com/fossas/spectrometer/pull/378))
 
