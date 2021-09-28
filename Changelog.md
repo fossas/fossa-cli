@@ -1,5 +1,8 @@
 # Spectrometer Changelog
 
+## v2.16.0
+- Swift: Supports dependencies analysis for dependencies managed by Swift Package Manager. ([#354](https://github.com/fossas/spectrometer/pull/354))
+
 ## v2.15.24
 - Leiningen: Executes `lein --version` before performing any analysis, to ensure Leiningen has performed its install tasks (done on its first invocation). ([#379](https://github.com/fossas/spectrometer/pull/379))
 

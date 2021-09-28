@@ -98,6 +98,7 @@ import Strategy.Python.Setuptools qualified as Setuptools
 import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
+import Strategy.SwiftPM qualified as SwiftPM
 import Strategy.Yarn qualified as Yarn
 import System.Exit (die)
 import Types (DiscoveredProject (..), FoundTargets)
@@ -222,6 +223,7 @@ discoverFuncs =
   , Scala.discover
   , Setuptools.discover
   , Stack.discover
+  , SwiftPM.discover
   , Yarn.discover
   ]
 

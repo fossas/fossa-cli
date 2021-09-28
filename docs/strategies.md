@@ -76,7 +76,7 @@ The CLI supports the following strategies:
 - [golang](strategies/golang.md) (gomodules, dep, glide)
 - [gradle](strategies/gradle.md)
 - [haskell](strategies/haskell.md) (cabal, stack)
-- [iOS](strategies/ios.md) (Carthage, Cocoapods)
+- [iOS](strategies/ios.md) (Carthage, Cocoapods, Swift package manager)
 - [maven](strategies/maven.md)
 - [nodejs](strategies/nodejs.md) (yarn, npmcli)
 - [python](strategies/python.md) (conda, pipenv, setuptools)

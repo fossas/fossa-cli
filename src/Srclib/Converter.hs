@@ -121,6 +121,7 @@ depTypeToFetcher = \case
   URLType -> "url"
   UserType -> "user"
   PubType -> "pub"
+  SwiftType -> "swift"
 
 -- | GooglesourceType and SubprojectType are not supported with this function, since they're ambiguous.
 fetcherToDepType :: Text -> Maybe DepType

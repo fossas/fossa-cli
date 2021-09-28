@@ -153,6 +153,7 @@ fossa analyze --help
 
 - [carthage](quickreference/carthage.md)
 - [cocoapods](quickreference/cocoapods.md)
+- [swift package manager](quickreference/swiftpm.md)
 
 ## `fossa analyze`
 
@@ -259,6 +260,7 @@ Supported dependency types:
 - `pub` - Dart dependencies found at [pub.dev](https://www.pub.dev/).
 - `pypi` - Python dependencies that are typically found at [Pypi.org](https://pypi.org/).
 - `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
+- `swift` - Swift package manager dependencies. Specified as the full git repository `https://github.com/fossas/spectrometer`.
 - `url` - The URL type allows you to specify only the download location of an archive (e.g.: `.zip`, .`tar.gz`, etc.) in the `name` field and the FOSSA backend will attempt to download and scan it. Example for a github source dependency `https://github.com/fossas/spectrometer/archive/refs/tags/v2.7.2.tar.gz`. The `version` field will be silently ignored for `url` type dependencies.
 
 ### Custom dependencies

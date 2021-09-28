@@ -22,7 +22,7 @@ mkResult basedir project dependencyResults =
         -- their dependencies would be filtered out. The real fix to this is to
         -- have a separate designation for "reachable" vs "direct" on nodes in a
         -- Graphing, where direct deps are inherently reachable.
-        if null (Graphing.directList graph)
+        if null (Graphing.directList graph) || shouldKeepUnreachableDeps (projectType project)
           then graph
           else Graphing.pruneUnreachable graph
     , projectResultGraphBreadth = dependencyGraphBreadth dependencyResults
@@ -39,3 +39,7 @@ data ProjectResult = ProjectResult
   , projectResultGraphBreadth :: GraphBreadth
   , projectResultManifestFiles :: [SomeBase File]
   }
+
+shouldKeepUnreachableDeps :: Text -> Bool
+shouldKeepUnreachableDeps "swift" = True
+shouldKeepUnreachableDeps _ = False

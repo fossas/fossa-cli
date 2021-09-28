@@ -99,6 +99,7 @@ common deps
     , prettyprinter                >=1.6      && <1.8
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , random                       ^>=1.2.0
+    , raw-strings-qq               ^>=1.1
     , req                          ^>=3.9.1
     , retry                        ^>=0.9.0.0
     , semver                       ^>=0.4.0.1
@@ -295,6 +296,11 @@ library
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Strategy.Scala
+    Strategy.SwiftPM
+    Strategy.Swift.PackageResolved
+    Strategy.Swift.PackageSwift
+    Strategy.Swift.Xcode.Pbxproj
+    Strategy.Swift.Xcode.PbxprojParser
     Strategy.Yarn
     Strategy.Yarn.V1.YarnLock
     Strategy.Yarn.V2.Lockfile
@@ -391,6 +397,10 @@ test-suite unit-tests
     RPM.SpecFileSpec
     Ruby.BundleShowSpec
     Ruby.GemfileLockSpec
+    Swift.PackageResolvedSpec
+    Swift.PackageSwiftSpec
+    Swift.Xcode.PbxprojSpec
+    Swift.Xcode.PbxprojParserSpec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec
     Yarn.YarnLockV1Spec

@@ -253,6 +253,7 @@ depTypeFromText text = case text of
   "pypi" -> Just PipType
   "cocoapods" -> Just PodType
   "url" -> Just URLType
+  "swift" -> Just SwiftType
   _ -> Nothing -- unsupported dep, need to respond with an error and skip this dependency
   -- rpm is an unsupported type. This is because we currently have 2 RPM fetchers
   -- and we should wait for a need to determine which one to use for manually

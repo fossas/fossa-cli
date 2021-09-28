@@ -1,0 +1,125 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 52;
+	objects = {
+
+/* Common Special Characters */
+		11111111111111111111111 = {isa = "※üAÆÁÂÄÀÅÃBCÇDEÉÊËÈÐ€FGHIÍÎÏÌJKLŁMNÑOŒÓÔÖÒØÕPQRSŠTÞUÚÛÜÙVWXYÝŸZŽaáâ ́äæà&å^~*@ãb\|{}[] ̆¦•cˇç ̧¢ˆ:,©¤d†‡° ̈÷$ ̇ıeéêëè8…—–=ð!¡fﬁ5ﬂƒ4⁄gß`>«»‹›h ̋-iíîïìjkl<¬łm ̄−μ×n9ñ#oóôöœ ̨ò1½¼1aoøõp¶()%.·‰+±q?¿r® ̊sš§;76/£tþ3¾3 ̃™22uúûüùýÿ¥zž0"};
+
+/* Begin PBXBuildFile section */
+		172D94BF26C5D824008A4DB2 /* Vapor in Frameworks */ = {isa = PBXBuildFile; productRef = 172D94BE26C5D824008A4DB2 /* Vapor */; };
+		17874CE526C46B8500D16CA8 /* ExampleProjectApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17874CE426C46B8500D16CA8 /* ExampleProjectApp.swift */; };
+		17874CE726C46B8500D16CA8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17874CE626C46B8500D16CA8 /* ContentView.swift */; };
+		17874CE926C46B8800D16CA8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 17874CE826C46B8700D16CA8 /* Assets.xcassets */; };
+		17874CEC26C46B8800D16CA8 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 17874CEB26C46B8800D16CA8 /* Preview Assets.xcassets */; };
+		17874CF726C46B8800D16CA8 /* ExampleProjectTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17874CF626C46B8800D16CA8 /* ExampleProjectTests.swift */; };
+		17874D0226C46B8800D16CA8 /* ExampleProjectUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17874D0126C46B8800D16CA8 /* ExampleProjectUITests.swift */; };
+		17874D1126C46CBA00D16CA8 /* AckGen in Frameworks */ = {isa = PBXBuildFile; productRef = 17874D1026C46CBA00D16CA8 /* AckGen */; };
+		17874D1326C46CBA00D16CA8 /* AckGenUI in Frameworks */ = {isa = PBXBuildFile; productRef = 17874D1226C46CBA00D16CA8 /* AckGenUI */; };
+		17874D1626C4877900D16CA8 /* SwiftSyntax in Frameworks */ = {isa = PBXBuildFile; productRef = 17874D1526C4877900D16CA8 /* SwiftSyntax */; };
+		17874D1826C4877900D16CA8 /* SwiftSyntaxBuilder in Frameworks */ = {isa = PBXBuildFile; productRef = 17874D1726C4877900D16CA8 /* SwiftSyntaxBuilder */; };
+/* End PBXBuildFile section */
+
+/* ... some content excluded for brevity */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		170A463726ECEDEF002DDFB8 /* XCRemoteSwiftPackageReference "example-package-deckofplayingcards" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/example-package-deckofplayingcards";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+		170A463A26ED051A002DDFB8 /* XCRemoteSwiftPackageReference "MyHTML" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PopFlamingo/MyHTML.git";
+			requirement = {
+				kind = exactVersion;
+				version = 2.0.0;
+			};
+		};
+		170A463D26ED054A002DDFB8 /* XCRemoteSwiftPackageReference "Spinetail" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/brightdigit/Spinetail.git";
+			requirement = {
+				kind = revision;
+				revision = 97ad8ba7a43fac299ef88f3200fccf852c778b67;
+			};
+		};
+		172D94BD26C5D824008A4DB2 /* XCRemoteSwiftPackageReference "vapor" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/vapor/vapor.git";
+			requirement = {
+				kind = versionRange;
+				maximumVersion = 5.0.0;
+				minimumVersion = 4.48.3;
+			};
+		};
+		17874D0F26C46CBA00D16CA8 /* XCRemoteSwiftPackageReference "AckGen" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/MartinP7r/AckGen.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.1.0;
+			};
+		};
+		17874D1426C4877900D16CA8 /* XCRemoteSwiftPackageReference "swift-syntax" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-syntax";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.50400.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		170A463826ECEDF0002DDFB8 /* DeckOfPlayingCards */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 170A463726ECEDEF002DDFB8 /* XCRemoteSwiftPackageReference "example-package-deckofplayingcards" */;
+			productName = DeckOfPlayingCards;
+		};
+		170A463B26ED051A002DDFB8 /* MyHTML */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 170A463A26ED051A002DDFB8 /* XCRemoteSwiftPackageReference "MyHTML" */;
+			productName = MyHTML;
+		};
+		170A463E26ED054A002DDFB8 /* Spinetail */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 170A463D26ED054A002DDFB8 /* XCRemoteSwiftPackageReference "Spinetail" */;
+			productName = Spinetail;
+		};
+		172D94BE26C5D824008A4DB2 /* Vapor */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 172D94BD26C5D824008A4DB2 /* XCRemoteSwiftPackageReference "vapor" */;
+			productName = Vapor;
+		};
+		17874D1026C46CBA00D16CA8 /* AckGen */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 17874D0F26C46CBA00D16CA8 /* XCRemoteSwiftPackageReference "AckGen" */;
+			productName = AckGen;
+		};
+		17874D1226C46CBA00D16CA8 /* AckGenUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 17874D0F26C46CBA00D16CA8 /* XCRemoteSwiftPackageReference "AckGen" */;
+			productName = AckGenUI;
+		};
+		17874D1526C4877900D16CA8 /* SwiftSyntax */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 17874D1426C4877900D16CA8 /* XCRemoteSwiftPackageReference "swift-syntax" */;
+			productName = SwiftSyntax;
+		};
+		17874D1726C4877900D16CA8 /* SwiftSyntaxBuilder */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 17874D1426C4877900D16CA8 /* XCRemoteSwiftPackageReference "swift-syntax" */;
+			productName = SwiftSyntaxBuilder;
+		};
+/* End XCSwiftPackageProductDependency section */
+
+	};
+	rootObject = 17874CD926C46B8500D16CA8 /* Project object */;
+}
