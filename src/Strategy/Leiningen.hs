@@ -50,6 +50,14 @@ leinDepsCmd =
     , cmdAllowErr = Never
     }
 
+leinVersionCmd :: Command
+leinVersionCmd =
+  Command
+    { cmdName = "lein"
+    , cmdArgs = ["--version"]
+    , cmdAllowErr = Always
+    }
+
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
 discover dir = context "Leiningen" $ do
   projects <- context "Finding projects" $ findProjects dir
@@ -89,6 +97,11 @@ data LeiningenProject = LeiningenProject
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze file = do
+  -- Lein executable performs configuration task and prints its progress on the first invocation.
+  -- Intentionally invoke --version command to ensure subsequent analyses command are not lein's first invocation.
+  -- This ensures, subsequent analyzes commands' outputs are not contaminated with lein's configuration task's output.
+  _ <- exec (parent file) leinVersionCmd
+
   stdoutBL <- execThrow (parent file) leinDepsCmd
   let stdoutTL = decodeUtf8 stdoutBL
       stdout = TL.toStrict stdoutTL

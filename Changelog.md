@@ -1,5 +1,8 @@
 # Spectrometer Changelog
 
+## v2.15.24
+- Leiningen: Executes `lein --version` before performing any analysis, to ensure Leiningen has performed its install tasks (done on its first invocation). ([#379](https://github.com/fossas/spectrometer/pull/379))
+
 ## v2.15.23
 - Maven: Fixes `mvn:dependency` tactic to exclude root project as direct dependency. ([#375](https://github.com/fossas/spectrometer/pull/375))
 
