@@ -24,6 +24,7 @@ import Data.Aeson.Types qualified as AesonTypes
 import Data.Foldable (asum, for_)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Yaml (FromJSON (parseJSON), (.:), (.:?))
@@ -128,7 +129,7 @@ toDependency pkg meta =
     , dependencyName = depName
     , dependencyVersion = depVersion
     , dependencyLocations = depLocation
-    , dependencyEnvironments = pubLockPackageEnvironment meta
+    , dependencyEnvironments = Set.fromList $ pubLockPackageEnvironment meta
     , dependencyTags = Map.empty
     }
   where

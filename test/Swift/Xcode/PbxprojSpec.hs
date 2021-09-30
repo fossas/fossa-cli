@@ -60,10 +60,10 @@ makeXCRSwiftRef :: SwiftPackageGitDepRequirement -> XCRemoteSwiftPackageReferenc
 makeXCRSwiftRef = XCRemoteSwiftPackageReference mockUrl
 
 makeGitDep :: Text -> Text -> Dependency
-makeGitDep name c = Dependency GitType name (CEq <$> Just c) [] [] Map.empty
+makeGitDep name c = Dependency GitType name (CEq <$> Just c) [] mempty Map.empty
 
 makeSwiftDep :: Text -> Text -> Dependency
-makeSwiftDep name c = Dependency SwiftType name (CEq <$> Just c) [] [] Map.empty
+makeSwiftDep name c = Dependency SwiftType name (CEq <$> Just c) [] mempty Map.empty
 
 spec :: Spec
 spec = do

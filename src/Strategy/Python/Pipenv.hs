@@ -94,8 +94,8 @@ buildGraph lock maybeDeps = run . withLabeling toDependency $ do
     toDependency pkg = foldr applyLabel start
       where
         applyLabel :: PipLabel -> Dependency -> Dependency
-        applyLabel (PipSource loc) dep = dep{dependencyLocations = loc : dependencyLocations dep}
-        applyLabel (PipEnvironment env) dep = dep{dependencyEnvironments = env : dependencyEnvironments dep}
+        applyLabel (PipSource loc) = insertLocation loc
+        applyLabel (PipEnvironment env) = insertEnvironment env
 
         start =
           Dependency
@@ -103,7 +103,7 @@ buildGraph lock maybeDeps = run . withLabeling toDependency $ do
             , dependencyName = pipPkgName pkg
             , dependencyVersion = CEq <$> pipPkgVersion pkg
             , dependencyLocations = []
-            , dependencyEnvironments = []
+            , dependencyEnvironments = mempty
             , dependencyTags = Map.empty
             }
 

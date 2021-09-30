@@ -86,9 +86,9 @@ spec = do
   describe "buildGraph, when no resolved content is discovered" $ do
     it "should use git dependency type, when constraint is of branch, revision, or exact type" $ do
       let expectedDeps =
-            [ Dependency GitType "some-url" (CEq <$> Just "some-ref") [] [] Map.empty
-            , Dependency GitType "some-url" (CEq <$> Just "some-branch") [] [] Map.empty
-            , Dependency GitType "some-url" (CEq <$> Just "1.0.0") [] [] Map.empty
+            [ Dependency GitType "some-url" (CEq <$> Just "some-ref") [] mempty Map.empty
+            , Dependency GitType "some-url" (CEq <$> Just "some-branch") [] mempty Map.empty
+            , Dependency GitType "some-url" (CEq <$> Just "1.0.0") [] mempty Map.empty
             ]
       let graph =
             buildGraph
@@ -120,12 +120,12 @@ spec = do
               )
               Nothing
       let expectedDeps =
-            [ Dependency SwiftType "some-url-dep" Nothing [] [] Map.empty
-            , Dependency SwiftType "some-url-dep" (CEq <$> Just "^3.0.0") [] [] Map.empty
-            , Dependency SwiftType "some-url-dep" (CEq <$> Just "^2.0.0") [] [] Map.empty
-            , Dependency SwiftType "some-url-dep" (CEq <$> Just "~1.0.0") [] [] Map.empty
-            , Dependency SwiftType "some-url-dep" (CEq <$> Just ">=2.5.0 <2.5.6") [] [] Map.empty
-            , Dependency SwiftType "some-url-dep" (CEq <$> Just ">=3.0.5 <=3.0.7") [] [] Map.empty
+            [ Dependency SwiftType "some-url-dep" Nothing [] mempty Map.empty
+            , Dependency SwiftType "some-url-dep" (CEq <$> Just "^3.0.0") [] mempty Map.empty
+            , Dependency SwiftType "some-url-dep" (CEq <$> Just "^2.0.0") [] mempty Map.empty
+            , Dependency SwiftType "some-url-dep" (CEq <$> Just "~1.0.0") [] mempty Map.empty
+            , Dependency SwiftType "some-url-dep" (CEq <$> Just ">=2.5.0 <2.5.6") [] mempty Map.empty
+            , Dependency SwiftType "some-url-dep" (CEq <$> Just ">=3.0.5 <=3.0.7") [] mempty Map.empty
             ]
       expectDirect expectedDeps graph
       expectDeps expectedDeps graph
@@ -134,10 +134,10 @@ spec = do
   describe "buildGraph, when resolved content is discovered" $ do
     it "should use git dependency type, when constraint is of branch, revision, or exact type" $ do
       let expectedDirectDeps =
-            [ Dependency GitType "dep-A" (CEq <$> Just "some-rev-A") [] [] Map.empty
-            , Dependency GitType "dep-B" (CEq <$> Just "some-rev-B") [] [] Map.empty
+            [ Dependency GitType "dep-A" (CEq <$> Just "some-rev-A") [] mempty Map.empty
+            , Dependency GitType "dep-B" (CEq <$> Just "some-rev-B") [] mempty Map.empty
             ]
-      let expectedDeepDeps = [Dependency GitType "dep-A-C" (CEq <$> Just "5.1.0") [] [] Map.empty]
+      let expectedDeepDeps = [Dependency GitType "dep-A-C" (CEq <$> Just "5.1.0") [] mempty Map.empty]
 
       let graph =
             buildGraph

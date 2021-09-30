@@ -35,7 +35,7 @@ buildGraph deps = Graphing.fromList (map toDependency deps)
         , dependencyName = listName
         , dependencyVersion = CEq <$> listVersion
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }
 

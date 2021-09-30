@@ -185,7 +185,7 @@ graphFromLockFile poetryLock = Graphing.gmap pkgNameToDependency (edges <> Graph
             , dependencyName = unPackageName name
             , dependencyVersion = Nothing
             , dependencyLocations = []
-            , dependencyEnvironments = []
+            , dependencyEnvironments = mempty
             , dependencyTags = Map.empty
             }
         )

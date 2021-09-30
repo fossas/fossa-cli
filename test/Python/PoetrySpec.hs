@@ -15,6 +15,7 @@ import Strategy.Python.Poetry.PoetryLock (
   PoetryMetadata (..),
  )
 
+import Data.Set qualified as Set
 import Strategy.Python.Poetry.PyProject (PoetryDependency (..), PyProject (..), PyProjectBuildSystem (..), PyProjectPoetry (..))
 import Test.Hspec
 
@@ -53,18 +54,18 @@ candidatePoetryLock =
 expectedGraph :: Graphing Dependency
 expectedGraph =
   Graphing.edge
-    (Dependency PipType "flow_pipes" (Just $ CEq "1.21.0") [] [EnvProduction] Map.empty)
-    (Dependency PipType "flow_pipes_gravity" (Just $ CEq "1.1.1") [] [EnvProduction] Map.empty)
-    <> Graphing.direct (Dependency PipType "flow_pipes" (Just $ CEq "1.21.0") [] [EnvProduction] Map.empty)
+    (Dependency PipType "flow_pipes" (Just $ CEq "1.21.0") [] (Set.singleton EnvProduction) Map.empty)
+    (Dependency PipType "flow_pipes_gravity" (Just $ CEq "1.1.1") [] (Set.singleton EnvProduction) Map.empty)
+    <> Graphing.direct (Dependency PipType "flow_pipes" (Just $ CEq "1.21.0") [] (Set.singleton EnvProduction) Map.empty)
 
 expectedGraphWithNoDeps :: Graphing Dependency
-expectedGraphWithNoDeps = Graphing.deep (Dependency PipType "somePkg" (Just $ CEq "1.21.0") [] [EnvProduction] Map.empty)
+expectedGraphWithNoDeps = Graphing.deep (Dependency PipType "somePkg" (Just $ CEq "1.21.0") [] (Set.singleton EnvProduction) Map.empty)
 
 expectedGraphWithDeps :: Graphing Dependency
 expectedGraphWithDeps =
   Graphing.edge
-    (Dependency PipType "somePkg" (Just $ CEq "1.21.0") [] [EnvProduction] Map.empty)
-    (Dependency PipType "pkgOneChildOne" (Just $ CEq "1.22.0") [] [EnvProduction] Map.empty)
+    (Dependency PipType "somePkg" (Just $ CEq "1.21.0") [] (Set.singleton EnvProduction) Map.empty)
+    (Dependency PipType "pkgOneChildOne" (Just $ CEq "1.22.0") [] (Set.singleton EnvProduction) Map.empty)
 
 spec :: Spec
 spec = do

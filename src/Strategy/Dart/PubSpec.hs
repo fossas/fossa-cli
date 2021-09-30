@@ -17,6 +17,7 @@ import Data.Foldable (asum, for_)
 import Data.Map (Map, toList)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, maybeToList)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Yaml (FromJSON (parseJSON), (.:), (.:?))
 import Data.Yaml qualified as Yaml
@@ -116,7 +117,7 @@ toDependency environment name (HostedSource (PubSpecDepHostedSource version _ ur
       , dependencyName = unPackageName name
       , dependencyVersion = CEq <$> version
       , dependencyLocations = maybeToList url
-      , dependencyEnvironments = [environment]
+      , dependencyEnvironments = Set.singleton environment
       , dependencyTags = Map.empty
       }
 toDependency environment _ (GitSource (PubSpecDepGitSource gitRef gitUrl)) =
@@ -126,7 +127,7 @@ toDependency environment _ (GitSource (PubSpecDepGitSource gitRef gitUrl)) =
       , dependencyName = gitUrl
       , dependencyVersion = CEq <$> gitRef
       , dependencyLocations = []
-      , dependencyEnvironments = [environment]
+      , dependencyEnvironments = Set.singleton environment
       , dependencyTags = Map.empty
       }
 toDependency _ _ (SdkSource _) = Nothing

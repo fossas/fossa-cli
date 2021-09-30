@@ -30,7 +30,7 @@ buildGraph envYmlFile = Graphing.fromList (map toDependency allDeps)
         , dependencyName = depName
         , dependencyVersion = CEq <$> depVersion -- todo - properly handle version constraints
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }
 

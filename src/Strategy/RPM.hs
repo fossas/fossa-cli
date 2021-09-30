@@ -103,7 +103,7 @@ toDependency pkg =
     , dependencyName = rpmDepName pkg
     , dependencyVersion = rpmConstraint pkg
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 

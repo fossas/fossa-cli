@@ -31,7 +31,7 @@ buildGraph = Graphing.fromList . map toDependency
         , dependencyName = depName req
         , dependencyVersion = depVersion req
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = maybe Map.empty toTags (depMarker req)
         }
 

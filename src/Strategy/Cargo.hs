@@ -204,12 +204,12 @@ toDependency pkg =
       , dependencyName = pkgIdName pkg
       , dependencyVersion = Just $ CEq $ pkgIdVersion pkg
       , dependencyLocations = []
-      , dependencyEnvironments = []
+      , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
       }
   where
     applyLabel :: CargoLabel -> Dependency -> Dependency
-    applyLabel (CargoDepKind env) dep = dep{dependencyEnvironments = env : dependencyEnvironments dep}
+    applyLabel (CargoDepKind env) = insertEnvironment env
 
 -- Possible values here are "build", "dev", and null.
 -- Null refers to productions, while dev and build refer to development-time dependencies

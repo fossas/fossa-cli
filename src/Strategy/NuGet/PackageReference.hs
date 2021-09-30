@@ -110,6 +110,6 @@ buildGraph project = Graphing.fromList (map toDependency direct)
         , dependencyName = depID
         , dependencyVersion = fmap CEq depVersion
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }

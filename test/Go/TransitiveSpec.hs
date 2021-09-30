@@ -155,7 +155,7 @@ fooDep =
     , dependencyName = "github.com/example/foo"
     , dependencyVersion = Nothing
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = mempty
     }
 
@@ -166,7 +166,7 @@ barDep =
     , dependencyName = "github.com/example/bar"
     , dependencyVersion = Nothing
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = mempty
     }
 
@@ -177,6 +177,6 @@ bazDep =
     , dependencyName = "github.com/example/baz"
     , dependencyVersion = Nothing
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = mempty
     }

@@ -108,6 +108,6 @@ buildGraph project = unfold direct deepList toDependency
         , dependencyName = depName
         , dependencyVersion = Just (CEq depVersion)
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }

@@ -3,6 +3,7 @@ module Node.PackageJsonSpec (
 ) where
 
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import DepTypes
 import GraphUtil
 import Strategy.Node.PackageJson
@@ -22,7 +23,7 @@ packageOne =
     , dependencyName = "packageOne"
     , dependencyVersion = Just (CCompatible "^1.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvProduction]
+    , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.empty
     }
 
@@ -33,7 +34,7 @@ packageTwo =
     , dependencyName = "packageTwo"
     , dependencyVersion = Just (CCompatible "^2.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvDevelopment]
+    , dependencyEnvironments = Set.singleton EnvDevelopment
     , dependencyTags = Map.empty
     }
 

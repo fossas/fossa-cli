@@ -4,6 +4,7 @@ module Gradle.GradleSpec (
 
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import Data.Text (Text)
 import DepTypes
 import GraphUtil
@@ -18,7 +19,7 @@ projectOne =
     , dependencyName = ":projectOne"
     , dependencyVersion = Nothing
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvOther "config"]
+    , dependencyEnvironments = Set.singleton $ EnvOther "config"
     , dependencyTags = Map.empty
     }
 
@@ -29,7 +30,7 @@ projectTwo =
     , dependencyName = ":projectTwo"
     , dependencyVersion = Nothing
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvDevelopment, EnvOther "config"]
+    , dependencyEnvironments = Set.fromList [EnvDevelopment, EnvOther "config"]
     , dependencyTags = Map.empty
     }
 
@@ -40,7 +41,7 @@ projectThree =
     , dependencyName = ":projectThree"
     , dependencyVersion = Nothing
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvDevelopment, EnvTesting]
+    , dependencyEnvironments = Set.fromList [EnvDevelopment, EnvTesting]
     , dependencyTags = Map.empty
     }
 
@@ -51,7 +52,7 @@ packageOne =
     , dependencyName = "mygroup:packageOne"
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvDevelopment]
+    , dependencyEnvironments = Set.singleton EnvDevelopment
     , dependencyTags = Map.empty
     }
 
@@ -62,7 +63,7 @@ packageTwo =
     , dependencyName = "mygroup:packageTwo"
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvTesting]
+    , dependencyEnvironments = Set.singleton EnvTesting
     , dependencyTags = Map.empty
     }
 
@@ -73,7 +74,7 @@ mkProject name env =
     , dependencyName = name
     , dependencyVersion = Nothing
     , dependencyLocations = []
-    , dependencyEnvironments = [env, EnvOther "config"]
+    , dependencyEnvironments = Set.fromList [env, EnvOther "config"]
     , dependencyTags = Map.empty
     }
 
@@ -90,7 +91,7 @@ mkMavenDep name env =
     , dependencyName = name
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = [env]
+    , dependencyEnvironments = Set.singleton env
     , dependencyTags = Map.empty
     }
 

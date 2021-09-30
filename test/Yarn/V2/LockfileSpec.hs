@@ -180,7 +180,7 @@ underscoreFromGitDep =
     { dependencyType = GitType
     , dependencyName = "https://github.com/jashkenas/underscore.git"
     , dependencyVersion = Just (CEq "cbb48b79fc1205aa04feb03dbc055cdd28a12652")
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyLocations = []
     , dependencyTags = Map.empty
     }
@@ -191,7 +191,7 @@ underscoreFromNpmDep =
     { dependencyType = NodeJSType
     , dependencyName = "underscore"
     , dependencyVersion = Just (CEq "1.13.1")
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyLocations = []
     , dependencyTags = Map.empty
     }

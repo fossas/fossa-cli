@@ -21,7 +21,7 @@ expected = run . evalGrapher $ do
       , dependencyName = "pkgOne"
       , dependencyVersion = Just (CEq "1.0.0")
       , dependencyLocations = []
-      , dependencyEnvironments = []
+      , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
       }
   direct $
@@ -30,7 +30,7 @@ expected = run . evalGrapher $ do
       , dependencyName = "pkgTwo"
       , dependencyVersion = Just (CEq "2.0.0")
       , dependencyLocations = []
-      , dependencyEnvironments = []
+      , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
       }
 

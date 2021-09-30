@@ -120,7 +120,7 @@ toDependency dep =
     , dependencyName = unPackageName $ stackName dep
     , dependencyVersion = Just $ CEq $ stackVersion dep
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 

@@ -41,7 +41,7 @@ depOne =
     , dependencyName = "one"
     , dependencyVersion = Just (CEq "1.0")
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -52,7 +52,7 @@ depTwo =
     , dependencyName = "two"
     , dependencyVersion = Just (CLessOrEq "2.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -63,7 +63,7 @@ depThree =
     , dependencyName = "three"
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -74,7 +74,7 @@ depFour =
     , dependencyName = "four"
     , dependencyVersion = Just (CEq "4.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 

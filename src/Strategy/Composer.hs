@@ -127,10 +127,10 @@ buildGraph lock = run . withLabeling toDependency $ do
           , dependencyName = pkgName pkg
           , dependencyVersion = Nothing
           , dependencyLocations = []
-          , dependencyEnvironments = []
+          , dependencyEnvironments = mempty
           , dependencyTags = Map.empty
           }
 
     addLabel :: CompLabel -> Dependency -> Dependency
     addLabel (DepVersion ver) dep = dep{dependencyVersion = Just (CEq ver)}
-    addLabel (CompEnv env) dep = dep{dependencyEnvironments = env : dependencyEnvironments dep}
+    addLabel (CompEnv env) dep = insertEnvironment env dep

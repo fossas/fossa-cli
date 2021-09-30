@@ -5,6 +5,7 @@ module Cargo.MetadataSpec (
 import Data.Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes
@@ -26,7 +27,7 @@ mkPkgId :: Text.Text -> Text.Text -> PackageId
 mkPkgId name ver = PackageId name ver registrySource
 
 mkDep :: Text -> Text -> [DepEnvironment] -> Dependency
-mkDep name version envs = Dependency CargoType name (Just $ CEq version) [] envs Map.empty
+mkDep name version envs = Dependency CargoType name (Just $ CEq version) [] (Set.fromList envs) Map.empty
 
 ansiTermId :: PackageId
 ansiTermId = mkPkgId "ansi_term" "0.11.0"

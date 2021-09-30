@@ -14,6 +14,7 @@ import Data.Foldable (asum, for_)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
+import Data.Set qualified as Set
 import Data.Text (Text, replace, toLower)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvOther, EnvProduction, EnvTesting),
@@ -102,7 +103,7 @@ poetrytoDependency depEnvs name deps =
     , dependencyName = depName
     , dependencyVersion = depVersion
     , dependencyLocations = depLocations
-    , dependencyEnvironments = depEnvironment
+    , dependencyEnvironments = Set.fromList depEnvironment
     , dependencyTags = depTags
     }
   where
@@ -164,7 +165,7 @@ toMap pkgs = Map.fromList $ (\x -> (canonicalPkgName x, toDependency x)) <$> (fi
         , dependencyName = toDepName pkg
         , dependencyVersion = toDepVersion pkg
         , dependencyLocations = toDepLocs pkg
-        , dependencyEnvironments = toDepEnvironment pkg
+        , dependencyEnvironments = Set.singleton $ toDepEnvironment pkg
         , dependencyTags = Map.empty
         }
 
@@ -197,9 +198,9 @@ toMap pkgs = Map.fromList $ (\x -> (canonicalPkgName x, toDependency x)) <$> (fi
           ref <- poetryLockPackageSourceReference lockPkgSrc
           if poetryLockPackageSourceType lockPkgSrc /= "legacy" then Just ref else Nothing
 
-    toDepEnvironment :: PoetryLockPackage -> [DepEnvironment]
+    toDepEnvironment :: PoetryLockPackage -> DepEnvironment
     toDepEnvironment pkg = case poetryLockPackageCategory pkg of
-      "dev" -> [EnvDevelopment]
-      "main" -> [EnvProduction]
-      "test" -> [EnvTesting]
-      other -> [EnvOther other]
+      "dev" -> EnvDevelopment
+      "main" -> EnvProduction
+      "test" -> EnvTesting
+      other -> EnvOther other

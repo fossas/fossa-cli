@@ -42,7 +42,7 @@ buildGraph podfile = Graphing.fromList (map toDependency direct)
         , dependencyLocations = case Map.lookup SourceProperty properties of
             Just repo -> [repo]
             _ -> [source podfile]
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }
 

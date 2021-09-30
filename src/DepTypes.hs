@@ -13,6 +13,8 @@ module DepTypes (
 import Data.Aeson
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
@@ -24,13 +26,13 @@ data Dependency = Dependency
   , dependencyName :: Text
   , dependencyVersion :: Maybe VerConstraint
   , dependencyLocations :: [Text]
-  , dependencyEnvironments :: [DepEnvironment] -- FIXME: this should be a Set
+  , dependencyEnvironments :: Set DepEnvironment
   , dependencyTags :: Map Text [Text]
   }
   deriving (Eq, Ord, Show)
 
 insertEnvironment :: DepEnvironment -> Dependency -> Dependency
-insertEnvironment env dep = dep{dependencyEnvironments = env : dependencyEnvironments dep}
+insertEnvironment env dep = dep{dependencyEnvironments = env `Set.insert` dependencyEnvironments dep}
 
 insertTag :: Text -> Text -> Dependency -> Dependency
 insertTag key value dep = dep{dependencyTags = Map.insertWith (++) key [value] (dependencyTags dep)}

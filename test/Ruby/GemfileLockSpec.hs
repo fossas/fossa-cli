@@ -17,7 +17,7 @@ dependencyOne =
     , dependencyName = "dep-one"
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = ["temp@12345"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -28,7 +28,7 @@ dependencyTwo =
     , dependencyName = "dep-two"
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = ["remote"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -39,7 +39,7 @@ dependencyThree =
     , dependencyName = "dep-three"
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = ["remote"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 

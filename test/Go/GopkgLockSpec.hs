@@ -40,7 +40,7 @@ expected = run . evalGrapher $ do
       , dependencyName = "repo/name/A"
       , dependencyVersion = Just (CEq "3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005")
       , dependencyLocations = []
-      , dependencyEnvironments = []
+      , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
       }
   direct $
@@ -49,7 +49,7 @@ expected = run . evalGrapher $ do
       , dependencyName = "repo/name/B"
       , dependencyVersion = Just (CEq "12345")
       , dependencyLocations = []
-      , dependencyEnvironments = []
+      , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
       }
   direct $
@@ -58,7 +58,7 @@ expected = run . evalGrapher $ do
       , dependencyName = "repo/name/C"
       , dependencyVersion = Just (CEq "12345")
       , dependencyLocations = ["https://someotherlocation/"]
-      , dependencyEnvironments = []
+      , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
       }
 

@@ -5,6 +5,7 @@ module Composer.ComposerLockSpec (
 import Data.Aeson
 import Data.ByteString qualified as BS
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import DepTypes
 import GraphUtil
 import Strategy.Composer
@@ -17,7 +18,7 @@ dependencyOne =
     , dependencyName = "one"
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvProduction]
+    , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.empty
     }
 
@@ -28,7 +29,7 @@ dependencyTwo =
     , dependencyName = "two"
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvProduction]
+    , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.empty
     }
 
@@ -39,7 +40,7 @@ dependencyThree =
     , dependencyName = "three"
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvProduction]
+    , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.empty
     }
 
@@ -50,7 +51,7 @@ dependencyFour =
     , dependencyName = "four"
     , dependencyVersion = Just (CEq "4.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvProduction]
+    , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.empty
     }
 
@@ -61,7 +62,7 @@ dependencyFive =
     , dependencyName = "five"
     , dependencyVersion = Just (CEq "5.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvDevelopment]
+    , dependencyEnvironments = Set.singleton EnvDevelopment
     , dependencyTags = Map.empty
     }
 
@@ -72,7 +73,7 @@ dependencySourceless =
     , dependencyName = "sourceless"
     , dependencyVersion = Just (CEq "5.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvProduction]
+    , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.empty
     }
 

@@ -346,7 +346,7 @@ buildGraph projectsAndDeps = run . withLabeling toDependency $ Map.traverseWithK
         , dependencyName = name
         , dependencyVersion = Just (CEq version)
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }
 
@@ -356,7 +356,7 @@ buildGraph projectsAndDeps = run . withLabeling toDependency $ Map.traverseWithK
         , dependencyName = name
         , dependencyVersion = Nothing
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }
 

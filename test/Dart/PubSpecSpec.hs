@@ -4,6 +4,7 @@ module Dart.PubSpecSpec (
 
 import Data.ByteString qualified as BS
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import Data.Yaml (decodeEither')
 import DepTypes
 import GraphUtil (expectDeps, expectDirect, expectEdges)
@@ -75,7 +76,7 @@ spec = do
                 , dependencyName = "pkg_default"
                 , dependencyVersion = Just $ CEq "1.3.0"
                 , dependencyLocations = []
-                , dependencyEnvironments = [EnvProduction]
+                , dependencyEnvironments = Set.singleton EnvProduction
                 , dependencyTags = Map.empty
                 }
             , Dependency
@@ -83,7 +84,7 @@ spec = do
                 , dependencyName = "pkg_hosted"
                 , dependencyVersion = Just $ CEq "^1.0.0"
                 , dependencyLocations = ["http://pub.dev"]
-                , dependencyEnvironments = [EnvProduction]
+                , dependencyEnvironments = Set.singleton EnvProduction
                 , dependencyTags = Map.empty
                 }
             , Dependency
@@ -91,7 +92,7 @@ spec = do
                 , dependencyName = "https://github.com/user/pkg_a.git"
                 , dependencyVersion = Nothing
                 , dependencyLocations = []
-                , dependencyEnvironments = [EnvProduction]
+                , dependencyEnvironments = Set.singleton EnvProduction
                 , dependencyTags = Map.empty
                 }
             , Dependency
@@ -99,7 +100,7 @@ spec = do
                 , dependencyName = "pkg_dev_default"
                 , dependencyVersion = Just $ CEq "^1.0.0"
                 , dependencyLocations = []
-                , dependencyEnvironments = [EnvDevelopment]
+                , dependencyEnvironments = Set.singleton EnvDevelopment
                 , dependencyTags = Map.empty
                 }
             ]
@@ -136,7 +137,7 @@ spec = do
                 , dependencyName = "https://github.com/user/pkg_b"
                 , dependencyVersion = Just $ CEq "develop"
                 , dependencyLocations = []
-                , dependencyEnvironments = [EnvProduction]
+                , dependencyEnvironments = Set.singleton EnvProduction
                 , dependencyTags = Map.empty
                 }
             ]

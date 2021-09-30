@@ -17,7 +17,7 @@ dependencyOne =
     , dependencyName = "one"
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = ["nuget.com"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.fromList [("location", ["NUGET"]), ("group", ["MAIN"])]
     }
 
@@ -28,7 +28,7 @@ dependencyTwo =
     , dependencyName = "two"
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = ["nuget-v2.com", "nuget.com"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.fromList [("location", ["NUGET"]), ("group", ["MAIN", "TEST"])]
     }
 
@@ -39,7 +39,7 @@ dependencyThree =
     , dependencyName = "three"
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = ["custom-site.com"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.fromList [("location", ["HTTP"]), ("group", ["MAIN"])]
     }
 
@@ -50,7 +50,7 @@ dependencyFour =
     , dependencyName = "four"
     , dependencyVersion = Just (CEq "4.0.0")
     , dependencyLocations = ["nuget-v2.com"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.fromList [("location", ["NUGET"]), ("group", ["TEST"])]
     }
 
@@ -61,7 +61,7 @@ dependencyFive =
     , dependencyName = "five"
     , dependencyVersion = Just (CEq "5.0.0")
     , dependencyLocations = ["nuget-v2.com"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.fromList [("location", ["NUGET"]), ("group", ["TEST"])]
     }
 
@@ -72,7 +72,7 @@ dependencySix =
     , dependencyName = "six"
     , dependencyVersion = Just (CEq "6.0.0")
     , dependencyLocations = ["github.com"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.fromList [("location", ["GITHUB"]), ("group", ["TEST"])]
     }
 

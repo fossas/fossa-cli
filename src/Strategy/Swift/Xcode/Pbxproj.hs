@@ -74,7 +74,7 @@ toDependency src =
     , dependencyName = urlOf src
     , dependencyVersion = Just $ toConstraint $ requirementOf src
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
   where

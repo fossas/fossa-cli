@@ -220,7 +220,7 @@ spec = do
   describe "buildGraph" $ do
     it "should identify dependency type correctly" $ do
       expectDep
-        (Dependency GitType "https://github.com/dep/one.git" Nothing ([]) ([]) Map.empty)
+        (Dependency GitType "https://github.com/dep/one.git" Nothing ([]) mempty Map.empty)
         ( buildGraph
             [ MixDep
                 { depName = PackageName "one"
@@ -233,7 +233,7 @@ spec = do
         )
 
       expectDep
-        (Dependency HexType "pkgZ" Nothing ([]) ([]) Map.empty)
+        (Dependency HexType "pkgZ" Nothing ([]) mempty Map.empty)
         ( buildGraph
             [ MixDep
                 { depName = PackageName "pkgZ"
@@ -247,7 +247,7 @@ spec = do
 
     it "should use git ref for version, when dependency is GitType" $ do
       expectDep
-        (Dependency GitType "https://github.com/some-url.git" (Just $ CEq "2a08250") ([]) ([]) Map.empty)
+        (Dependency GitType "https://github.com/some-url.git" (Just $ CEq "2a08250") ([]) mempty Map.empty)
         ( buildGraph
             ( [ MixDep
                   { depName = PackageName "pkgY"
@@ -273,7 +273,7 @@ spec = do
 
     it "should use locked ref for version, when locked ref exists" $ do
       expectDep
-        (Dependency HexType "pkgX" (Just $ CEq "2.0.1") ([]) ([]) Map.empty)
+        (Dependency HexType "pkgX" (Just $ CEq "2.0.1") ([]) mempty Map.empty)
         ( buildGraph
             ( [ MixDep
                   { depName = PackageName "pkgX"
@@ -299,7 +299,7 @@ spec = do
 
     it "should use version constraint for version, when locked ref or resolved version does not exists" $ do
       expectDep
-        (Dependency HexType "pkgW" (Just $ CCompatible "2.0") ([]) ([]) Map.empty)
+        (Dependency HexType "pkgW" (Just $ CCompatible "2.0") ([]) mempty Map.empty)
         ( buildGraph
             ( [ MixDep
                   { depName = PackageName "pkgW"
@@ -406,10 +406,10 @@ spec = do
               )
 
       let expectedDeps =
-            [ Dependency HexType "pkgParentA" (Just $ CEq "A") [] [] Map.empty
-            , Dependency HexType "pkgParentB" (Just $ CEq "B") [] [] Map.empty
-            , Dependency HexType "pkgChildC" (Just $ CEq "C") [] [] Map.empty
-            , Dependency HexType "pkgChildD" (Just $ CEq "D") [] [] Map.empty
+            [ Dependency HexType "pkgParentA" (Just $ CEq "A") [] mempty Map.empty
+            , Dependency HexType "pkgParentB" (Just $ CEq "B") [] mempty Map.empty
+            , Dependency HexType "pkgChildC" (Just $ CEq "C") [] mempty Map.empty
+            , Dependency HexType "pkgChildD" (Just $ CEq "D") [] mempty Map.empty
             ]
       let expectedEdges =
             [ (head expectedDeps, expectedDeps !! 1)

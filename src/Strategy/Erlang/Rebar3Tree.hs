@@ -79,7 +79,7 @@ buildGraph deps = unfold deps subDeps toDependency
         , dependencyName = if Text.isInfixOf "github.com" depLocation then depLocation else depName
         , dependencyVersion = Just (CEq depVersion)
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }
 

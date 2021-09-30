@@ -55,7 +55,7 @@ toDependency locator =
     <*> Right (locatorProject locator)
     <*> (Right . Just . CEq $ locatorRevision locator)
     <*> Right []
-    <*> Right []
+    <*> Right mempty
     <*> Right mempty
 
 validateDepType :: Locator -> Either ToDependencyError DepType

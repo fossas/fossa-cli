@@ -24,7 +24,7 @@ dependencyOne =
     , dependencyName = "name"
     , dependencyVersion = Just (CEq "version1")
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -35,7 +35,7 @@ dependencyTwo =
     , dependencyName = "name"
     , dependencyVersion = Just (CEq "version2")
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -46,7 +46,7 @@ dependencyThree =
     , dependencyName = "name"
     , dependencyVersion = Nothing
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -58,7 +58,7 @@ expectedGraph = run . evalGrapher $ do
       , dependencyName = "biopython"
       , dependencyVersion = Just (CEq "1.78")
       , dependencyLocations = []
-      , dependencyEnvironments = []
+      , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
       }
   direct $
@@ -67,7 +67,7 @@ expectedGraph = run . evalGrapher $ do
       , dependencyName = "blas"
       , dependencyVersion = Just (CEq "1.0")
       , dependencyLocations = []
-      , dependencyEnvironments = []
+      , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
       }
   direct $
@@ -76,7 +76,7 @@ expectedGraph = run . evalGrapher $ do
       , dependencyName = "ca-certificates"
       , dependencyVersion = Just (CEq "2021.1.19")
       , dependencyLocations = []
-      , dependencyEnvironments = []
+      , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
       }
 

@@ -28,7 +28,7 @@ dep name revision =
     , dependencyName = name
     , dependencyVersion = Just (CEq revision)
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 

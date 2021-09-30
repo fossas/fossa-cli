@@ -11,6 +11,7 @@ import Control.Effect.Lift (Lift)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import DepTypes (
   DepEnvironment (..),
   DepType (MavenType),
@@ -67,7 +68,7 @@ buildGraph PluginOutput{..} = run $
         , dependencyName = artifactGroupId <> ":" <> artifactArtifactId
         , dependencyVersion = Just (CEq artifactVersion)
         , dependencyLocations = []
-        , dependencyEnvironments = [EnvTesting | "test" `elem` artifactScopes]
+        , dependencyEnvironments = Set.fromList $ [EnvTesting | "test" `elem` artifactScopes]
         , dependencyTags =
             Map.fromList $
               ("scopes", artifactScopes) :

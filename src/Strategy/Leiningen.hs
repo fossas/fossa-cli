@@ -164,7 +164,7 @@ toDependency node = foldr applyLabel start
         , dependencyName = nodeName node
         , dependencyVersion = Just (CEq (nodeVersion node))
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }
     applyLabel (ScopeLabel "test") dep = insertEnvironment EnvTesting dep

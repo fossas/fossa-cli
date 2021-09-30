@@ -146,7 +146,7 @@ toDependency entry =
     , dependencyName = entryToDepName entry
     , dependencyVersion = Just (CEq (resolvedVersion entry))
     , dependencyTags = Map.empty
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyLocations = [] -- TODO: git location?
     }
 

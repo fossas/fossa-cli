@@ -103,8 +103,8 @@ buildGraph packageJson = run . withLabeling toDependency $ do
     toDependency pkg = foldr addLabel (start pkg)
 
     addLabel :: NpmPackageLabel -> Dependency -> Dependency
-    addLabel (NpmPackageEnv env) dep = dep{dependencyEnvironments = env : dependencyEnvironments dep}
-    addLabel (NpmPackageLocation loc) dep = dep{dependencyLocations = loc : dependencyLocations dep}
+    addLabel (NpmPackageEnv env) = insertEnvironment env
+    addLabel (NpmPackageLocation loc) = insertLocation loc
 
     start :: NpmPackage -> Dependency
     start NpmPackage{..} =
@@ -113,6 +113,6 @@ buildGraph packageJson = run . withLabeling toDependency $ do
         , dependencyName = pkgName
         , dependencyVersion = Just $ CEq pkgVersion
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }

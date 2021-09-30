@@ -5,6 +5,7 @@ module Python.PipenvSpec (
 import Data.Aeson (eitherDecodeStrict)
 import Data.ByteString qualified as BS
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import DepTypes
 import GraphUtil
 import Strategy.Python.Pipenv
@@ -86,7 +87,7 @@ depOne =
     , dependencyName = "pkgOne"
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvDevelopment]
+    , dependencyEnvironments = Set.singleton EnvDevelopment
     , dependencyTags = Map.empty
     }
 
@@ -97,7 +98,7 @@ depTwo =
     , dependencyName = "pkgTwo"
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = ["https://my-package-index/"]
-    , dependencyEnvironments = [EnvProduction]
+    , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.empty
     }
 
@@ -108,7 +109,7 @@ depThree =
     , dependencyName = "pkgThree"
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvProduction]
+    , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.empty
     }
 
@@ -119,7 +120,7 @@ depFour =
     , dependencyName = "pkgFour"
     , dependencyVersion = Nothing
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvProduction]
+    , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.empty
     }
 

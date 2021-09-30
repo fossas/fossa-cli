@@ -91,6 +91,6 @@ buildGraph = Graphing.fromList . map toDependency . deps
         , dependencyName = depID
         , dependencyVersion = Just (CEq depVersion)
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }

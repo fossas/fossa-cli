@@ -3,6 +3,7 @@ module Python.Poetry.CommonSpec (
 ) where
 
 import Data.Map qualified as Map
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), VerConstraint (..))
@@ -134,12 +135,12 @@ expectedDeps =
   , dep PipType "pytest" Nothing devEnvs
   ]
   where
-    dep :: DepType -> Text -> Maybe VerConstraint -> [DepEnvironment] -> Dependency
-    dep t n v e = Dependency t n v [] e Map.empty
-    prodEnvs :: [DepEnvironment]
-    prodEnvs = [EnvProduction]
-    devEnvs :: [DepEnvironment]
-    devEnvs = [EnvDevelopment]
+    dep :: DepType -> Text -> Maybe VerConstraint -> DepEnvironment -> Dependency
+    dep t n v e = Dependency t n v [] (Set.singleton e) Map.empty
+    prodEnvs :: DepEnvironment
+    prodEnvs = EnvProduction
+    devEnvs :: DepEnvironment
+    devEnvs = EnvDevelopment
 
 spec :: Spec
 spec = do
@@ -201,7 +202,7 @@ spec = do
                 , dependencyName = "pkgOne"
                 , dependencyVersion = Just $ CEq "1.21.0"
                 , dependencyLocations = []
-                , dependencyEnvironments = [EnvProduction]
+                , dependencyEnvironments = Set.singleton EnvProduction
                 , dependencyTags = Map.empty
                 }
             )
@@ -228,7 +229,7 @@ spec = do
                   , dependencyName = "https://github.com/someUser/pkgWithGitSource.git"
                   , dependencyVersion = Just $ CEq "v1.1.1"
                   , dependencyLocations = []
-                  , dependencyEnvironments = [EnvProduction]
+                  , dependencyEnvironments = Set.singleton EnvProduction
                   , dependencyTags = Map.empty
                   }
               )
@@ -255,7 +256,7 @@ spec = do
                   , dependencyName = "https://some-url.com/some-dir/pkgThree-3.92.1.tar.gz"
                   , dependencyVersion = Just $ CEq "3.92.1"
                   , dependencyLocations = []
-                  , dependencyEnvironments = [EnvProduction]
+                  , dependencyEnvironments = Set.singleton EnvProduction
                   , dependencyTags = Map.empty
                   }
               )
@@ -297,7 +298,7 @@ spec = do
                   , dependencyName = "myprivatepkg"
                   , dependencyVersion = Just $ CEq "0.0.1"
                   , dependencyLocations = ["https://gitlab.com/api/v4/projects/packages/pypi/simple"]
-                  , dependencyEnvironments = [EnvProduction]
+                  , dependencyEnvironments = Set.singleton EnvProduction
                   , dependencyTags = Map.empty
                   }
               )

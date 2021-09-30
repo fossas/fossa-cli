@@ -107,7 +107,7 @@ buildGraph project = Graphing.fromList (map toDependency direct)
             Just '*' -> Just (CCompatible version)
             _ -> Just (CEq version)
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = case dependencyType of
             Nothing -> Map.empty
             Just depType -> Map.insert "type" [depType] Map.empty

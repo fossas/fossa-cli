@@ -305,7 +305,7 @@ buildGraph deps depsResolved = unfold deps subDeps toDependency
         , dependencyName = dName md depsResolved
         , dependencyVersion = dVersion md depsResolved
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }
 

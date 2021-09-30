@@ -4,6 +4,7 @@ module Dart.PubSpecLockSpec (
 
 import Data.ByteString qualified as BS
 import Data.Map qualified as Map
+import Data.Set qualified as Set
 import Data.Yaml (decodeEither')
 import DepTypes
 import GraphUtil (expectDeps, expectDirect)
@@ -109,7 +110,7 @@ spec = do
               , dependencyName = "pkg_a"
               , dependencyVersion = Just $ CEq "1.1"
               , dependencyLocations = ["https://pub.dartlang.org"]
-              , dependencyEnvironments = [EnvDevelopment]
+              , dependencyEnvironments = Set.singleton EnvDevelopment
               , dependencyTags = Map.empty
               }
       toDependency (PackageName "pkg_a") pkg `shouldBe` expectedDependency
@@ -128,7 +129,7 @@ spec = do
               , dependencyName = "https://github.com/user/pkg"
               , dependencyVersion = Just $ CEq "release-0.9"
               , dependencyLocations = []
-              , dependencyEnvironments = []
+              , dependencyEnvironments = mempty
               , dependencyTags = Map.empty
               }
       toDependency (PackageName "pkg_b") pkg `shouldBe` expectedDependency
@@ -183,7 +184,7 @@ spec = do
             , dependencyName = "pkg_direct"
             , dependencyVersion = Nothing
             , dependencyLocations = ["some-url-1"]
-            , dependencyEnvironments = []
+            , dependencyEnvironments = mempty
             , dependencyTags = Map.empty
             }
         ]
@@ -195,7 +196,7 @@ spec = do
             , dependencyName = "pkg_direct"
             , dependencyVersion = Nothing
             , dependencyLocations = ["some-url-1"]
-            , dependencyEnvironments = []
+            , dependencyEnvironments = mempty
             , dependencyTags = Map.empty
             }
         , Dependency
@@ -203,7 +204,7 @@ spec = do
             , dependencyName = "pkg_deep"
             , dependencyVersion = Nothing
             , dependencyLocations = ["some-url-2"]
-            , dependencyEnvironments = []
+            , dependencyEnvironments = mempty
             , dependencyTags = Map.empty
             }
         ]

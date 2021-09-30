@@ -7,6 +7,7 @@ module Googlesource.RepoManifestSpec (
 
 import Control.Carrier.Diagnostics hiding (withResult)
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text.IO qualified as TIO
 import DepTypes
@@ -121,7 +122,7 @@ dependencyOne =
     , dependencyVersion = Just (CEq "refs/tags/android-10.0.0_r29")
     , dependencyLocations = ["https://android.googlesource.com/platform/art"]
     , dependencyTags = Map.empty
-    , dependencyEnvironments = [EnvProduction]
+    , dependencyEnvironments = Set.singleton EnvProduction
     }
 
 dependencyTwo :: Dependency
@@ -132,7 +133,7 @@ dependencyTwo =
     , dependencyVersion = Just (CEq "57b7d1574276f5e7f895c884df29f45859da74b6")
     , dependencyLocations = ["https://android.googlesource.com/platform/bionic"]
     , dependencyTags = Map.empty
-    , dependencyEnvironments = [EnvProduction]
+    , dependencyEnvironments = Set.singleton EnvProduction
     }
 
 dependencyThree :: Dependency
@@ -143,7 +144,7 @@ dependencyThree =
     , dependencyVersion = Just (CEq "google/android-6.0.1_r74")
     , dependencyLocations = ["https://android.othersource.com/platform/bootable/recovery"]
     , dependencyTags = Map.empty
-    , dependencyEnvironments = [EnvProduction]
+    , dependencyEnvironments = Set.singleton EnvProduction
     }
 
 dependencyFour :: Dependency
@@ -154,7 +155,7 @@ dependencyFour =
     , dependencyVersion = Just (CEq "1111")
     , dependencyLocations = ["https://android.othersource.com/platform/cts"]
     , dependencyTags = Map.empty
-    , dependencyEnvironments = [EnvProduction]
+    , dependencyEnvironments = Set.singleton EnvProduction
     }
 
 dependencyFive :: Dependency
@@ -165,7 +166,7 @@ dependencyFive =
     , dependencyVersion = Just (CEq "refs/tags/android-10.0.0_r29")
     , dependencyLocations = ["https://android.googlesource.com/platform/dalvik"]
     , dependencyTags = Map.empty
-    , dependencyEnvironments = [EnvProduction]
+    , dependencyEnvironments = Set.singleton EnvProduction
     }
 
 validatedProjectOne :: ValidatedProject

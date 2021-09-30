@@ -73,6 +73,6 @@ resolvedDependenciesOf resolvedContent = map toDependency $ pinnedPackages resol
                 , repositoryBranch pkg
                 ]
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = mempty
         }

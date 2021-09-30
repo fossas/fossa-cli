@@ -17,7 +17,7 @@ dependencyOne =
     , dependencyName = "one"
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = ["test.repo"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -28,7 +28,7 @@ dependencyTwo =
     , dependencyName = "two"
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = ["custom.repo"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -39,7 +39,7 @@ dependencyThree =
     , dependencyName = "three"
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = ["test.repo"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -50,7 +50,7 @@ dependencyFour =
     , dependencyName = "four"
     , dependencyVersion = Nothing
     , dependencyLocations = ["test.repo"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 

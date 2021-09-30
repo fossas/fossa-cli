@@ -29,7 +29,7 @@ podDepOf name version =
     , dependencyName = name
     , dependencyVersion = CEq <$> version
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -40,7 +40,7 @@ gitDepOf name version =
     , dependencyName = name
     , dependencyVersion = CEq <$> version
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 

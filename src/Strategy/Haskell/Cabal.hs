@@ -182,7 +182,7 @@ toDependency plan =
     , dependencyName = planName plan
     , dependencyVersion = Just $ CEq $ planVersion plan
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 

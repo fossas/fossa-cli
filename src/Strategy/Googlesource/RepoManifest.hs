@@ -26,6 +26,7 @@ import Control.Monad (unless)
 import Data.Foldable (find)
 import Data.HashMap.Strict qualified as HM
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc (pretty)
@@ -279,7 +280,7 @@ buildGraph projects = unfold projects (const []) toDependency
         , dependencyVersion = Just (CEq validatedProjectRevision)
         , dependencyLocations = [render validatedProjectUrl]
         , dependencyTags = Map.empty
-        , dependencyEnvironments = [EnvProduction]
+        , dependencyEnvironments = Set.singleton EnvProduction
         }
 
 data ManifestGitConfigError

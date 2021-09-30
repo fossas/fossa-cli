@@ -3,6 +3,7 @@ module Maven.PluginStrategySpec (
 ) where
 
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import DepTypes
 import GraphUtil
 import Strategy.Maven.Plugin
@@ -16,7 +17,7 @@ packageOne =
     , dependencyName = "mygroup:packageOne"
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvTesting]
+    , dependencyEnvironments = Set.singleton EnvTesting
     , dependencyTags = Map.fromList [("scopes", ["compile", "test"])]
     }
 
@@ -27,7 +28,7 @@ packageTwo =
     , dependencyName = "mygroup:packageTwo"
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.fromList [("scopes", ["compile"]), ("optional", ["true"])]
     }
 

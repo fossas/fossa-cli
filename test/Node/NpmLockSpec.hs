@@ -3,6 +3,7 @@ module Node.NpmLockSpec (
 ) where
 
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import DepTypes
 import GraphUtil
 import Strategy.Node.NpmLock
@@ -59,7 +60,7 @@ packageOne =
     , dependencyName = "packageOne"
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = ["https://example.com/one.tgz"]
-    , dependencyEnvironments = [EnvProduction]
+    , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.empty
     }
 
@@ -70,7 +71,7 @@ packageTwo =
     , dependencyName = "packageTwo"
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = ["https://example.com/two.tgz"]
-    , dependencyEnvironments = [EnvDevelopment]
+    , dependencyEnvironments = Set.singleton EnvDevelopment
     , dependencyTags = Map.empty
     }
 
@@ -81,7 +82,7 @@ packageThree =
     , dependencyName = "packageThree"
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = [EnvDevelopment]
+    , dependencyEnvironments = Set.singleton EnvDevelopment
     , dependencyTags = Map.empty
     }
 

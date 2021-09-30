@@ -61,7 +61,7 @@ toDependency externalSrc pkg = foldr applyLabel start
         , dependencyName = depName
         , dependencyVersion = Nothing
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }
 

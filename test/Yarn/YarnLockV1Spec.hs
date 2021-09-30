@@ -18,7 +18,7 @@ packageOne =
     , dependencyName = "packageOne"
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = ["https://registry.npmjs.org/packageOne"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -29,7 +29,7 @@ packageTwo =
     , dependencyName = "packageTwo"
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = ["https://registry.npmjs.org/packageTwo"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -40,7 +40,7 @@ packageThree =
     , dependencyName = "packageThree"
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = ["https://registry.npmjs.org/packageThree"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -51,7 +51,7 @@ packageFour =
     , dependencyName = "packageFour"
     , dependencyVersion = Just (CEq "4.0.0")
     , dependencyLocations = ["https://registry.npmjs.org/packageFour"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -62,7 +62,7 @@ packageFive =
     , dependencyName = "packageFive"
     , dependencyVersion = Just (CEq "5.0.0")
     , dependencyLocations = ["https://someurl.io/somefile.gz"]
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 

@@ -20,7 +20,7 @@ dependencyOne =
     , dependencyName = "https://github.com/dep/one"
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -31,7 +31,7 @@ dependencyTwo =
     , dependencyName = "two"
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 dependencyThree :: Dependency
@@ -41,7 +41,7 @@ dependencyThree =
     , dependencyName = "three"
     , dependencyVersion = Just (CEq "3.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -52,7 +52,7 @@ dependencyFour =
     , dependencyName = "https://github.com/dep/four"
     , dependencyVersion = Just (CEq "4.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 
@@ -63,7 +63,7 @@ dependencyFive =
     , dependencyName = "five"
     , dependencyVersion = Just (CEq "5.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = []
+    , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
 

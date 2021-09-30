@@ -247,7 +247,7 @@ toDependency (GitSource pkgDep) =
       , dependencyName = srcOf pkgDep
       , dependencyVersion = toConstraint <$> versionRequirement pkgDep
       , dependencyLocations = []
-      , dependencyEnvironments = []
+      , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
       }
   where

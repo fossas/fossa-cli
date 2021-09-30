@@ -41,7 +41,7 @@ buildGraph lockfile = Graphing.fromList (map toDependency direct)
         , dependencyName = depName
         , dependencyVersion = Just (CEq depVersion)
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }
 

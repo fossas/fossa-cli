@@ -12,8 +12,19 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Text (Text)
-import DepTypes
-import Effect.Grapher
+import DepTypes (
+  DepEnvironment (..),
+  DepType (NodeJSType),
+  Dependency (..),
+  VerConstraint (CCompatible),
+  insertEnvironment,
+ )
+import Effect.Grapher (
+  LabeledGrapher,
+  direct,
+  label,
+  withLabeling,
+ )
 import Effect.ReadFS
 import Graphing (Graphing)
 import Path
@@ -62,8 +73,7 @@ buildGraph PackageJson{..} = run . withLabeling toDependency $ do
     toDependency dep = foldr addLabel (start dep)
 
     addLabel :: NodePackageLabel -> Dependency -> Dependency
-    addLabel (NodePackageEnv env) dep =
-      dep{dependencyEnvironments = env : dependencyEnvironments dep}
+    addLabel (NodePackageEnv env) = insertEnvironment env
 
     start :: NodePackage -> Dependency
     start NodePackage{..} =
@@ -72,6 +82,6 @@ buildGraph PackageJson{..} = run . withLabeling toDependency $ do
         , dependencyName = pkgName
         , dependencyVersion = Just (CCompatible pkgConstraint)
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }

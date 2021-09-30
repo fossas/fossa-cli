@@ -92,7 +92,7 @@ spec = do
             , dependencyName = "pkg_a"
             , dependencyVersion = Just $ CEq "1.8.0"
             , dependencyLocations = ["https://pub.dartlang.org"]
-            , dependencyEnvironments = []
+            , dependencyEnvironments = mempty
             , dependencyTags = Map.empty
             }
         ]
@@ -104,7 +104,7 @@ spec = do
             , dependencyName = "pkg_a"
             , dependencyVersion = Just $ CEq "1.8.0"
             , dependencyLocations = ["https://pub.dartlang.org"]
-            , dependencyEnvironments = []
+            , dependencyEnvironments = mempty
             , dependencyTags = Map.empty
             }
         , Dependency
@@ -112,7 +112,7 @@ spec = do
             , dependencyName = "pkg_deep"
             , dependencyVersion = Just $ CEq "1.10.0"
             , dependencyLocations = ["https://pub.dartlang.org"]
-            , dependencyEnvironments = []
+            , dependencyEnvironments = mempty
             , dependencyTags = Map.empty
             }
         , Dependency
@@ -120,7 +120,7 @@ spec = do
             , dependencyName = "pkg_deeper"
             , dependencyVersion = Just $ CEq "1.20.0"
             , dependencyLocations = ["https://pub.dartlang.org"]
-            , dependencyEnvironments = []
+            , dependencyEnvironments = mempty
             , dependencyTags = Map.empty
             }
         ]
@@ -133,7 +133,7 @@ spec = do
               , dependencyName = "pkg_a"
               , dependencyVersion = Just $ CEq "1.8.0"
               , dependencyLocations = ["https://pub.dartlang.org"]
-              , dependencyEnvironments = []
+              , dependencyEnvironments = mempty
               , dependencyTags = Map.empty
               }
           , Dependency
@@ -141,7 +141,7 @@ spec = do
               , dependencyName = "pkg_deep"
               , dependencyVersion = Just $ CEq "1.10.0"
               , dependencyLocations = ["https://pub.dartlang.org"]
-              , dependencyEnvironments = []
+              , dependencyEnvironments = mempty
               , dependencyTags = Map.empty
               }
           )
@@ -151,7 +151,7 @@ spec = do
               , dependencyName = "pkg_deep"
               , dependencyVersion = Just $ CEq "1.10.0"
               , dependencyLocations = ["https://pub.dartlang.org"]
-              , dependencyEnvironments = []
+              , dependencyEnvironments = mempty
               , dependencyTags = Map.empty
               }
           , Dependency
@@ -159,7 +159,7 @@ spec = do
               , dependencyName = "pkg_deeper"
               , dependencyVersion = Just $ CEq "1.20.0"
               , dependencyLocations = ["https://pub.dartlang.org"]
-              , dependencyEnvironments = []
+              , dependencyEnvironments = mempty
               , dependencyTags = Map.empty
               }
           )
@@ -239,7 +239,7 @@ spec = do
             , dependencyName = "pkg_a"
             , dependencyVersion = Just $ CEq "1.8.0"
             , dependencyLocations = []
-            , dependencyEnvironments = []
+            , dependencyEnvironments = mempty
             , dependencyTags = Map.empty
             }
         ]
@@ -250,7 +250,7 @@ spec = do
             , dependencyName = "pkg_a"
             , dependencyVersion = Just $ CEq "1.8.0"
             , dependencyLocations = []
-            , dependencyEnvironments = []
+            , dependencyEnvironments = mempty
             , dependencyTags = Map.empty
             }
         ]
@@ -305,7 +305,7 @@ spec = do
             , dependencyName = "pkg_a"
             , dependencyVersion = Just $ CEq "1.8.0"
             , dependencyLocations = ["https://pub.dartlang.org"]
-            , dependencyEnvironments = []
+            , dependencyEnvironments = mempty
             , dependencyTags = Map.empty
             }
         ]
@@ -317,7 +317,7 @@ spec = do
             , dependencyName = "pkg_a"
             , dependencyVersion = Just $ CEq "1.8.0"
             , dependencyLocations = ["https://pub.dartlang.org"]
-            , dependencyEnvironments = []
+            , dependencyEnvironments = mempty
             , dependencyTags = Map.empty
             }
         , Dependency
@@ -325,7 +325,7 @@ spec = do
             , dependencyName = "pkg_deeper"
             , dependencyVersion = Just $ CEq "1.20.0"
             , dependencyLocations = ["https://pub.dartlang.org"]
-            , dependencyEnvironments = []
+            , dependencyEnvironments = mempty
             , dependencyTags = Map.empty
             }
         ]
@@ -338,7 +338,7 @@ spec = do
               , dependencyName = "pkg_a"
               , dependencyVersion = Just $ CEq "1.8.0"
               , dependencyLocations = ["https://pub.dartlang.org"]
-              , dependencyEnvironments = []
+              , dependencyEnvironments = mempty
               , dependencyTags = Map.empty
               }
           , Dependency
@@ -346,7 +346,7 @@ spec = do
               , dependencyName = "pkg_deeper"
               , dependencyVersion = Just $ CEq "1.20.0"
               , dependencyLocations = ["https://pub.dartlang.org"]
-              , dependencyEnvironments = []
+              , dependencyEnvironments = mempty
               , dependencyTags = Map.empty
               }
           )

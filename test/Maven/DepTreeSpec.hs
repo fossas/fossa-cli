@@ -1,5 +1,6 @@
 module Maven.DepTreeSpec (spec) where
 
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text.IO qualified as TextIO
 import DepTypes (
@@ -33,11 +34,46 @@ spec =
 
     it "should build dependency graph without project as dependency" $ do
       -- Setup
-      let depRngCore = Dependency MavenType "org.apache.commons:commons-rng-core" (Just $ CEq "1.4-SNAPSHOT") [] [EnvProduction] (mempty)
-      let depMath3 = Dependency MavenType "org.apache.commons:commons-math3" (Just $ CEq "3.6.1") [] [EnvTesting] (mempty)
-      let depJunit = Dependency MavenType "junit:junit" (Just $ CEq "4.13.1") [] [EnvTesting] (mempty)
-      let depRngClientApi = Dependency MavenType "org.apache.commons:commons-rng-client-api" (Just $ CEq "1.4-SNAPSHOT") [] [EnvProduction] (mempty)
-      let depHamcrestCore = Dependency MavenType "org.hamcrest:hamcrest-core" (Just $ CEq "1.3") [] [EnvTesting] (mempty)
+      let depRngCore =
+            Dependency
+              MavenType
+              "org.apache.commons:commons-rng-core"
+              (Just $ CEq "1.4-SNAPSHOT")
+              []
+              (Set.singleton EnvProduction)
+              (mempty)
+      let depMath3 =
+            Dependency
+              MavenType
+              "org.apache.commons:commons-math3"
+              (Just $ CEq "3.6.1")
+              []
+              (Set.singleton EnvTesting)
+              (mempty)
+      let depJunit =
+            Dependency
+              MavenType
+              "junit:junit"
+              (Just $ CEq "4.13.1")
+              []
+              (Set.singleton EnvTesting)
+              (mempty)
+      let depRngClientApi =
+            Dependency
+              MavenType
+              "org.apache.commons:commons-rng-client-api"
+              (Just $ CEq "1.4-SNAPSHOT")
+              []
+              (Set.singleton EnvProduction)
+              (mempty)
+      let depHamcrestCore =
+            Dependency
+              MavenType
+              "org.hamcrest:hamcrest-core"
+              (Just $ CEq "1.3")
+              []
+              (Set.singleton EnvTesting)
+              (mempty)
 
       -- Act
       let graph = buildGraph fixtureSingleGraph
@@ -75,7 +111,7 @@ spec =
               , dependencyName = "org.apache.commons:commons-rng-parent"
               , dependencyVersion = Just (CEq "1.4-SNAPSHOT")
               , dependencyLocations = []
-              , dependencyEnvironments = [EnvProduction]
+              , dependencyEnvironments = Set.singleton EnvProduction
               , dependencyTags = mempty
               }
       toDependency p `shouldBe` d

@@ -134,7 +134,7 @@ packageToDependency (NpmPackage maybeScope name version) =
       , dependencyVersion = Just (CEq version)
       , dependencyLocations = []
       , dependencyTags = Map.empty
-      , dependencyEnvironments = []
+      , dependencyEnvironments = mempty
       }
 packageToDependency (GitPackage repo commit) =
   Just
@@ -144,7 +144,7 @@ packageToDependency (GitPackage repo commit) =
       , dependencyVersion = Just (CEq commit)
       , dependencyLocations = []
       , dependencyTags = Map.empty
-      , dependencyEnvironments = []
+      , dependencyEnvironments = mempty
       }
 packageToDependency (TarPackage url) =
   Just
@@ -154,5 +154,5 @@ packageToDependency (TarPackage url) =
       , dependencyVersion = Nothing
       , dependencyLocations = []
       , dependencyTags = Map.empty
-      , dependencyEnvironments = []
+      , dependencyEnvironments = mempty
       }

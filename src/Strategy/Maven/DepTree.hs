@@ -16,6 +16,7 @@ import Control.Effect.Exception (finally)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Char (isSpace)
 import Data.Foldable (for_)
+import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -154,7 +155,8 @@ toDependency PackageId{groupName, artifactName, artifactVersion, buildTag} =
     , dependencyName = groupName <> ":" <> artifactName
     , dependencyVersion = Just $ CEq artifactVersion
     , dependencyLocations = []
-    , dependencyEnvironments = maybe [EnvProduction] ((: []) . toBuildTag) buildTag
+    , -- TODO: cleanup logic, no need to use list
+      dependencyEnvironments = Set.fromList $ maybe [EnvProduction] ((: []) . toBuildTag) buildTag
     , dependencyTags = mempty
     }
 

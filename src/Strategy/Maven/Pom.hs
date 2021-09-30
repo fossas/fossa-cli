@@ -74,7 +74,7 @@ toDependency (MavenPackage group artifact version) = foldr applyLabel start
         , dependencyName = group <> ":" <> artifact
         , dependencyVersion = CEq <$> version
         , dependencyLocations = []
-        , dependencyEnvironments = []
+        , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }
 
@@ -82,7 +82,7 @@ toDependency (MavenPackage group artifact version) = foldr applyLabel start
     applyLabel lbl dep = case lbl of
       MavenLabelScope scope ->
         if scope == "test"
-          then dep{dependencyEnvironments = EnvTesting : dependencyEnvironments dep}
+          then insertEnvironment EnvTesting dep
           else addTag "scope" scope dep
       MavenLabelOptional opt -> addTag "optional" opt dep
 
