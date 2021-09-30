@@ -1,5 +1,8 @@
 # Spectrometer Changelog
 
+## v2.16.1
+- Gradle: Supports analysis of projects using gralde v3.3 or below. ([#370](https://github.com/fossas/spectrometer/pull/370))
+
 ## v2.16.0
 - Swift: Supports dependencies analysis for dependencies managed by Swift Package Manager. ([#354](https://github.com/fossas/spectrometer/pull/354))
 

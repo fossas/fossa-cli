@@ -115,7 +115,7 @@ allprojects {
             def configToKeyValue = { config ->
                 def jsonDeps = []
                 // config.resolvedConfiguration: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ResolvedConfiguration.html
-                config.resolvedConfiguration.firstLevelModuleDependencies.each { dep ->
+                config.resolvedConfiguration.getFirstLevelModuleDependencies().each { dep ->
                     println "DEBUG: Found direct dependency in configuration"
                     println dep
                     def result = depToJSON dep
@@ -127,33 +127,51 @@ allprojects {
                 return "\"${config.name}\":[${combined}]"
             }
 
+            // Gets dependencies of resolved configurations.
+            // If the configuration is not resolvable, or exception is thrown returns 0 dependencies.
+            // 
+            // Note:
+            // -----
+            // Some configurations aren't meant to be resolved, because they're just meant to be containers of
+            // dependency constraints. This only occurs for gradle version v3.3 onwards.
+            // 
+            // References:
+            // -----------
+            // - https://discuss.gradle.org/t/what-is-a-configuration-which-cant-be-directly-resolved/30721
+            // - https://docs.gradle.org/current/userguide/declaring_dependencies.html#sec:resolvable-consumable-configs
+            def getResolvedConfigDepsOrEmptyOf = { config -> 
+                def configsDeps = null              
+                try {
+                    // We know that we are working against gradle version greater or equal to v3.3
+                    // So, configuration has resolvable property. If the configuration is not resolvable return null.
+                    if (config.respondsTo("isCanBeResolved") && !config.isCanBeResolved()) {
+                        println "DEBUG: Configuration is not resolvable"
+                        return null
+                    }
+
+                    // At this point, we know one of these must be true: 
+                    // - We are on Gradle v3.3 or newer (because isCanBeResolved is present) and the configuration is resolvable (isCanBeResolved() == true, therefore did not exit early above).
+                    // - We are on Gradle v3.2.1 or older (because isCanBeResolved is not present). Configurations in Gradle v3.2.1 or older are always resolvable.
+                    configsDeps = configToKeyValue config
+                    println configsDeps
+                    println "DEBUG: Configuration is resolved"
+                } catch (Exception ignored) {
+                    println "DEBUG: An exception occurred"
+                    println ignored
+                    ignored.printStackTrace()
+                }
+                return configsDeps
+            }
+
             // project: https://docs.gradle.org/current/javadoc/org/gradle/api/Project.html
             def projectToJSON = { project ->
                 def jsonConfigs = []
                 project.configurations.each { config ->
                     println "DEBUG: Trying to resolve configuration"
                     println config
-                    try {
-                        // Some configurations aren't meant to be resolved,
-                        // because they're just meant to be containers of
-                        // dependency constraints.
-                        //
-                        // See also:
-                        // - https://discuss.gradle.org/t/what-is-a-configuration-which-cant-be-directly-resolved/30721
-                        // - https://docs.gradle.org/current/userguide/declaring_dependencies.html#sec:resolvable-consumable-configs
-                        if (config.canBeResolved) {
-                            println "DEBUG: Configuration is resolvable"
-                            def result = configToKeyValue config
-                            println "DEBUG: Configuration resolved"
-                            println result
-                            jsonConfigs << result
-                        } else {
-                            println "DEBUG: Configuration is not resolvable"
-                        }
-                    } catch (Exception ignored) {
-                        println "DEBUG: An exception occurred"
-                        println ignored
-                        ignored.printStackTrace()
+                    def jsonConfigWithDeps = getResolvedConfigDepsOrEmptyOf config
+                    if (jsonConfigWithDeps != null) {
+                        jsonConfigs << jsonConfigWithDeps
                     }
                 }
                 def combined = jsonConfigs.join(",")
