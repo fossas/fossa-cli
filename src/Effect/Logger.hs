@@ -2,7 +2,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Effect.Logger (
-  Logger (..),
+  Logger,
+  LoggerF (..),
   Severity (..),
   LoggerC,
   IgnoreLoggerC,
@@ -25,7 +26,6 @@ import Control.Effect.ConsoleRegion
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
 import Control.Monad (when)
-import Data.Kind (Type)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc as X
 import Data.Text.Prettyprint.Doc.Render.Terminal as X
@@ -42,20 +42,22 @@ data LogCtx m = LogCtx
 
 type LogFormatter = Severity -> Doc AnsiStyle -> Text
 
-data Logger (m :: Type -> Type) k where
-  Log :: Severity -> Doc AnsiStyle -> Logger m ()
+data LoggerF a where
+  Log :: Severity -> Doc AnsiStyle -> LoggerF ()
   -- | A dummy effect constructor that ensures stdout logging happens within the
   -- context of a Logger carrier that can ensure output gets flushed
-  LogStdout :: Logger m ()
+  LogStdout :: LoggerF ()
+
+type Logger = Simple LoggerF
 
 -- | Log a message with the given severity
 log :: Has Logger sig m => Severity -> Doc AnsiStyle -> m ()
-log severity logLine = send (Log severity logLine)
+log severity logLine = sendSimple (Log severity logLine)
 
 -- | Log a line to stdout. Usually, you want to use 'log', 'logInfo', ..., instead
 logStdout :: (Has Logger sig m, Has (Lift IO) sig m) => Text -> m ()
 logStdout txt = do
-  send LogStdout
+  sendSimple LogStdout
   sendIO $ outputConcurrent txt
 
 data Severity
@@ -114,7 +116,7 @@ formatCommon sev msg = hang 2 (pretty '[' <> showSev sev <> pretty @String "] " 
     showSev SevInfo = annotate (color Cyan) (pretty @String " INFO")
     showSev SevDebug = annotate (color White) (pretty @String "DEBUG")
 
-type LoggerC = SimpleC Logger
+type LoggerC = SimpleC LoggerF
 
 runLogger :: Applicative m => LogCtx m -> LoggerC m a -> m a
 runLogger LogCtx{logCtxWrite, logCtxFormatter, logCtxSeverity} = interpret $ \case
@@ -123,7 +125,7 @@ runLogger LogCtx{logCtxWrite, logCtxFormatter, logCtxSeverity} = interpret $ \ca
       logCtxWrite $ logCtxFormatter sev msg
   LogStdout -> pure ()
 
-type IgnoreLoggerC = SimpleC Logger
+type IgnoreLoggerC = SimpleC LoggerF
 
 ignoreLogger :: Applicative m => IgnoreLoggerC m a -> m a
 ignoreLogger = interpret $ \case

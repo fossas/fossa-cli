@@ -1,6 +1,7 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Control.Effect.Record (
@@ -9,10 +10,12 @@ module Control.Effect.Record (
   RecordC (..),
   runRecord,
   Journal (..),
+  EffectResult (..),
 ) where
 
 import Control.Algebra
 import Control.Carrier.AtomicState
+import Control.Carrier.Simple
 import Control.Effect.Lift
 import Control.Effect.Sum
 import Control.Monad.Trans
@@ -25,22 +28,27 @@ import Data.Map.Strict qualified as Map
 import Data.String.Conversion (decodeUtf8)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as LText
+import Data.Void (Void)
 import Path
 import System.Exit
-import Unsafe.Coerce
+import Unsafe.Coerce (unsafeCoerce)
 
 -- | A class of "recordable" effects -- i.e. an effect whose data constructors
--- and "result values" (the @a@ in @e m a@) can be serialized to JSON values
-class Recordable (r :: Type -> Type) where
-  -- | Serialize a data constructor to JSON
-  recordKey :: r a -> Value
-
-  -- | Serialize an effect data constructor's "return value" to JSON
-  recordValue :: r a -> a -> Value
+-- and "result values" (the @a@ in @e a@) can be serialized to JSON values
+--
+-- We require that all types @e a@ have an 'Ord' instance so they can be used
+-- as keys in a 'Map'
+class (forall a. Ord (r a)) => Recordable (r :: Type -> Type) where
+  -- | Serialize an effect data constructor and result value to JSON
+  recordEff :: r a -> a -> (Value, Value)
 
 -- | A journal contains all of the effect invocations recorded by RecordC
 newtype Journal eff = Journal {unJournal :: Map Value Value}
   deriving (Eq, Ord, Show)
+
+-- | The result of an effectful action
+data EffectResult r where
+  EffectResult :: r a -> a -> EffectResult r
 
 instance FromJSON (Journal eff) where
   parseJSON = fmap (Journal . Map.fromList) . parseJSON
@@ -51,38 +59,42 @@ instance ToJSON (Journal eff) where
 -- | Wrap and record an effect; generally used with @-XTypeApplications@, e.g.,
 --
 -- > runRecord @SomeEffect
-runRecord :: forall e sig m a. Has (Lift IO) sig m => RecordC e sig m a -> m (Journal e, a)
+runRecord :: forall e sig m a. (Recordable e, Has (Lift IO) sig m) => RecordC e sig m a -> m (Journal e, a)
 runRecord act = do
   (mapping, a) <- runAtomicState Map.empty . runRecordC $ act
-  pure (Journal mapping, a)
+  pure (convertToJournal (Map.elems mapping), a)
+
+convertToJournal :: Recordable e => [EffectResult e] -> Journal e
+convertToJournal = Journal . Map.fromList . map (\(EffectResult k v) -> recordEff k v)
 
 -- | @RecordC e sig m a@ is a pseudo-carrier for an effect @e@ with the underlying signature @sig@
-newtype RecordC (e :: (Type -> Type) -> Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = RecordC
-  { runRecordC :: AtomicStateC (Map Value Value) m a
+newtype RecordC (e :: Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = RecordC
+  { runRecordC :: AtomicStateC (Map (e Void) (EffectResult e)) m a
   }
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
 
--- | We can handle an arbitrary effect 'e' -- @Algebra (e :+: sig) (RecordC e sig m)@
--- ..but we require a few things:
--- 1. 'e' must also appear somewhere else in the effect stack -- @Member e sig@
--- 2. 'e' is Recordable -- @Recordable (e m)@
+-- | We can handle a simple effect 'e' -- @Algebra (Simple e :+: sig) (RecordC e sig m)@ ..but we require a few things:
 --
--- There's a third claim we make, not reflected in the types: in the
--- instantiated effect type 'e m a', 'm' must be a phantom type variable. This
--- is reflected in our use of 'unsafeCoerce', and is required for us to 'send'
--- the effect further down the handler stack
-instance (Member e sig, Has (Lift IO) sig m, Recordable (e m)) => Algebra (e :+: sig) (RecordC e sig m) where
+-- 1. 'e' must also appear somewhere else in the effect stack -- @Member (Simple e) sig@
+-- 2. 'e' is Recordable -- @Recordable e@
+instance (Member (Simple e) sig, Has (Lift IO) sig m, Recordable e) => Algebra (Simple e :+: sig) (RecordC e sig m) where
   alg hdl sig' ctx = RecordC $ do
     case sig' of
-      L eff -> do
-        let eff' = unsafeCoerce eff :: e any a
-        res <- lift $ send eff'
+      L (Simple eff) -> do
+        res <- lift $ send (Simple eff)
 
-        let values = (recordKey eff', recordValue eff' res)
-        modify (uncurry Map.insert values)
+        -- NOTE: this unsafeCoerce is safe, because declaring a 'Recordable'
+        -- instance necessarily requires that the @a@ in @e a@ is a phantom
+        -- type variable. We're safe to coerce it to @Void@
+        modify @(Map (e Void) (EffectResult e)) (insertUnlessExists (unsafeCoerce eff) (EffectResult eff res))
 
         pure (res <$ ctx)
       R other -> alg (runRecordC . hdl) (R other) ctx
+
+insertUnlessExists :: Ord k => k -> v -> Map k v -> Map k v
+insertUnlessExists k v m
+  | Map.member k m = m
+  | otherwise = Map.insert k v m
 
 -- | RecordableValue is essentially @ToJSON@ with a different name. We use
 -- RecordableValue to avoid orphan ToJSON instances for, e.g., ByteString and
@@ -159,6 +171,8 @@ instance RecordableValue BL.ByteString where
   toRecordedValue = toJSON . decodeUtf8 @LText.Text
 
 instance RecordableValue (Path a b)
+
+instance RecordableValue (SomeBase a)
 
 instance RecordableValue ExitCode where
   toRecordedValue ExitSuccess = toJSON (0 :: Int)

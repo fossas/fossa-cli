@@ -3,7 +3,7 @@ module Strategy.Pub (discover) where
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Discovery.Walk (WalkStep (WalkContinue), findFileNamed, walk')
 import Effect.Exec (Exec, Has)
-import Effect.Logger (Logger (..))
+import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import Path
 import Strategy.Dart.PubDeps (analyzeDepsCmd)

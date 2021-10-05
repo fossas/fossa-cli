@@ -13,7 +13,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Output as X
 import Data.IORef
 
-type OutputC o = SimpleC (Output o)
+type OutputC o = SimpleC (OutputF o)
 
 runOutput :: forall o sig m a. Has (Lift IO) sig m => OutputC o m a -> m ([o], a)
 runOutput act = do

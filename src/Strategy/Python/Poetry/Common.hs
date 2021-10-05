@@ -24,7 +24,7 @@ import DepTypes (
     CEq
   ),
  )
-import Effect.Logger (Has, Logger (..), Pretty (pretty), logDebug)
+import Effect.Logger (Has, Logger, Pretty (pretty), logDebug)
 import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), PoetryLockPackageSource (..))
 import Strategy.Python.Poetry.PyProject (
   PoetryDependency (..),

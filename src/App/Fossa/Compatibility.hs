@@ -1,5 +1,3 @@
-{-# LANGUAGE QuasiQuotes #-}
-
 module App.Fossa.Compatibility (
   compatibilityMain,
   argumentParser,
@@ -16,6 +14,7 @@ import Effect.Exec (AllowErr (Never), CmdFailure (cmdFailureStdout), Command (..
 import Effect.Logger (Pretty (pretty), Severity (SevInfo), logInfo, withDefaultLogger)
 import Options.Applicative (Parser, argument, help, metavar, str)
 import Path
+import Path.IO (getCurrentDir)
 import System.Exit (exitFailure, exitSuccess)
 
 type Argument = Text
@@ -27,9 +26,10 @@ compatibilityMain ::
   [Argument] ->
   IO ()
 compatibilityMain args = withDefaultLogger SevInfo . runExecIO . withCLIv1Binary $ \v1Bin -> do
+  dir <- sendIO getCurrentDir
   cmd <- runStickyLogger SevInfo $ do
     logSticky "[ Waiting for fossa analyze completion ]"
-    exec [reldir|.|] $ v1Command v1Bin args
+    exec dir $ v1Command v1Bin args
 
   case cmd of
     Left err -> do

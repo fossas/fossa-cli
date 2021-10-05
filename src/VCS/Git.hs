@@ -34,7 +34,7 @@ fetchGitContributors ::
   , Has Exec sig m
   , Has (Lift IO) sig m
   ) =>
-  Path x Dir ->
+  Path Abs Dir ->
   m Contributors
 fetchGitContributors basedir = do
   now <- sendIO getCurrentTime

@@ -36,7 +36,7 @@ import DepTypes (
   VerConstraint (CEq),
  )
 import Effect.Exec (Exec, Has)
-import Effect.Logger (Logger (..), Pretty (pretty), logDebug)
+import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import GHC.Generics (Generic)
 import Graphing (Graphing, deeps, directs)

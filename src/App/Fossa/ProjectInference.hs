@@ -75,7 +75,7 @@ svnCommand =
     , cmdAllowErr = Never
     }
 
-inferSVN :: (Has Exec sig m, Has Diagnostics sig m) => Path b Dir -> m InferredProject
+inferSVN :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m InferredProject
 inferSVN dir = do
   output <- execThrow dir svnCommand
   let props = toProps output

@@ -4,7 +4,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Effect.Exec (
-  Exec (..),
+  Exec,
+  ExecF (..),
   ExecErr (..),
   exec,
   execThrow,
@@ -31,7 +32,6 @@ import Control.Exception (IOException, try)
 import Data.Aeson
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BL
-import Data.Kind (Type)
 import Data.String (fromString)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
@@ -57,6 +57,8 @@ data Command = Command
 
 instance ToJSON Command
 instance RecordableValue Command
+instance FromJSON Command
+instance ReplayableValue Command
 
 data CmdFailure = CmdFailure
   { cmdFailureName :: Text
@@ -101,20 +103,28 @@ data AllowErr
 
 instance ToJSON AllowErr
 instance RecordableValue AllowErr
+instance FromJSON AllowErr
+instance ReplayableValue AllowErr
 
 type Stdout = BL.ByteString
 
 type Stderr = BL.ByteString
 
 -- TODO: add a "shell command" method; this would help in App.Fossa.VPS.NinjaGraph
-data Exec (m :: Type -> Type) k where
+data ExecF a where
   -- | Exec runs a command and returns either:
   -- - stdout when the command succeeds
   -- - a description of the command failure
-  Exec :: Path x Dir -> Command -> Exec m (Either CmdFailure Stdout)
+  Exec :: SomeBase Dir -> Command -> ExecF (Either CmdFailure Stdout)
 
-$(deriveRecordable ''Exec)
-$(deriveReplayable ''Exec)
+type Exec = Simple ExecF
+
+$(deriveRecordable ''ExecF)
+$(deriveReplayable ''ExecF)
+
+deriving instance Show (ExecF a)
+deriving instance Eq (ExecF a)
+deriving instance Ord (ExecF a)
 
 data ExecErr
   = -- | Command execution failed, usually from a non-zero exit
@@ -142,13 +152,13 @@ instance ToDiagnostic ExecErr where
     CommandParseError cmd err -> "Failed to parse command output. command: " <> viaShow cmd <> " . error: " <> pretty err
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
-exec :: Has Exec sig m => Path x Dir -> Command -> m (Either CmdFailure Stdout)
-exec dir cmd = send (Exec dir cmd)
+exec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure Stdout)
+exec dir cmd = sendSimple (Exec (Abs dir) cmd)
 
 type Parser = Parsec Void Text
 
 -- | Parse the stdout of a command
-execParser :: forall a sig m x. (Has Exec sig m, Has Diagnostics sig m) => Parser a -> Path x Dir -> Command -> m a
+execParser :: forall a sig m. (Has Exec sig m, Has Diagnostics sig m) => Parser a -> Path Abs Dir -> Command -> m a
 execParser parser dir cmd = do
   stdout <- execThrow dir cmd
   case runParser parser "" (decodeUtf8 stdout) of
@@ -156,7 +166,7 @@ execParser parser dir cmd = do
     Right a -> pure a
 
 -- | Parse the JSON stdout of a command
-execJson :: (FromJSON a, Has Exec sig m, Has Diagnostics sig m) => Path x Dir -> Command -> m a
+execJson :: (FromJSON a, Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> Command -> m a
 execJson dir cmd = do
   stdout <- execThrow dir cmd
   case eitherDecode stdout of
@@ -164,19 +174,22 @@ execJson dir cmd = do
     Right a -> pure a
 
 -- | A variant of 'exec' that throws a 'ExecErr' when the command returns a non-zero exit code
-execThrow :: (Has Exec sig m, Has Diagnostics sig m) => Path x Dir -> Command -> m BL.ByteString
+execThrow :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> Command -> m BL.ByteString
 execThrow dir cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
   result <- exec dir cmd
   case result of
     Left failure -> fatal (CommandFailed failure)
     Right stdout -> pure stdout
 
-type ExecIOC = SimpleC Exec
+type ExecIOC = SimpleC ExecF
 
 runExecIO :: Has (Lift IO) sig m => ExecIOC m a -> m a
 runExecIO = interpret $ \case
   Exec dir cmd -> sendIO $ do
-    absolute <- makeAbsolute dir
+    absolute <-
+      case dir of
+        Abs absDir -> pure absDir
+        Rel relDir -> makeAbsolute relDir
 
     let cmdName' = toString $ cmdName cmd
         cmdArgs' = map toString $ cmdArgs cmd

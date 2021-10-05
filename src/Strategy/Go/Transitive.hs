@@ -106,7 +106,7 @@ fillInTransitive ::
   , Has Exec sig m
   , Has Diagnostics sig m
   ) =>
-  Path x Dir ->
+  Path Abs Dir ->
   m ()
 fillInTransitive dir = context "Getting deep dependencies" $ do
   goListOutput <- execThrow dir goListCmd

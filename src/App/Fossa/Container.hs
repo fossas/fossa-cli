@@ -1,4 +1,3 @@
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Container (
@@ -41,7 +40,7 @@ import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson, execThrow, r
 import Effect.Logger
 import Effect.ReadFS (ReadFS, readContentsJson, resolveFile, runReadFSIO)
 import Options.Applicative (Parser, argument, help, metavar, str)
-import Path (reldir, toFilePath)
+import Path (toFilePath)
 import Path.IO (getCurrentDir)
 
 newtype ImageText = ImageText {unImageText :: Text} deriving (Show, Eq, Ord)
@@ -239,7 +238,8 @@ runSyft ::
   ImageText ->
   m SyftResponse
 runSyft image = runExecIO . withSyftBinary $ \syftBin -> do
-  execJson @SyftResponse [reldir|.|] $ syftCommand syftBin image
+  dir <- sendIO getCurrentDir
+  execJson @SyftResponse dir $ syftCommand syftBin image
 
 -- Scope to all layers, to prevent odd "squashing" that syft does
 -- Output to produce machine readable json that we can ingest
@@ -284,7 +284,8 @@ dumpSyftScan ::
   ImageText ->
   m ()
 dumpSyftScan path image = withSyftBinary $ \syft -> do
-  syftOutput <- execThrow [reldir|.|] $ syftCommand syft image
+  dir <- sendIO getCurrentDir
+  syftOutput <- execThrow dir $ syftCommand syft image
   let writer :: BL.ByteString -> IO ()
       writer = maybe BL.putStr BL.writeFile path
   sendIO $ writer syftOutput

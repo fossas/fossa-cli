@@ -1,16 +1,19 @@
 {-# LANGUAGE GADTs #-}
 
 module Control.Effect.Output (
-  Output (..),
+  OutputF (..),
+  Output,
   output,
   module X,
 ) where
 
 import Control.Algebra as X
-import Data.Kind (Type)
+import Control.Carrier.Simple (Simple, sendSimple)
 
-data Output o (m :: Type -> Type) k where
-  Output :: o -> Output o m ()
+data OutputF o a where
+  Output :: o -> OutputF o ()
+
+type Output o = Simple (OutputF o)
 
 output :: Has (Output o) sig m => o -> m ()
-output o = send (Output o)
+output o = sendSimple (Output o)

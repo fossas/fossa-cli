@@ -4,7 +4,8 @@
 
 module Effect.ReadFS (
   -- * ReadFS Effect
-  ReadFS (..),
+  ReadFS,
+  ReadFSF (..),
   ReadFSErr (..),
   ReadFSIOC,
   runReadFSIO,
@@ -50,7 +51,6 @@ import Control.Monad ((<=<))
 import Data.Aeson
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
-import Data.Kind (Type)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc (indent, line, pretty, vsep)
@@ -60,20 +60,23 @@ import GHC.Generics (Generic)
 import Parse.XML (FromXML, parseXML, xmlErrorPretty)
 import Path
 import Path.IO qualified as PIO
+import System.Directory qualified as Directory
 import System.IO (IOMode (ReadMode), withFile)
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Toml qualified
 
-data ReadFS (m :: Type -> Type) k where
-  ReadContentsBS' :: Path x File -> ReadFS m (Either ReadFSErr ByteString)
-  ReadContentsBSLimit' :: Path x File -> Int -> ReadFS m (Either ReadFSErr ByteString)
-  ReadContentsText' :: Path x File -> ReadFS m (Either ReadFSErr Text)
-  DoesFileExist :: Path x File -> ReadFS m Bool
-  DoesDirExist :: Path x Dir -> ReadFS m Bool
-  ResolveFile' :: Path Abs Dir -> Text -> ReadFS m (Either ReadFSErr (Path Abs File))
-  ResolveDir' :: Path Abs Dir -> Text -> ReadFS m (Either ReadFSErr (Path Abs Dir))
-  ListDir :: Path Abs Dir -> ReadFS m (Either ReadFSErr ([Path Abs Dir], [Path Abs File]))
+data ReadFSF a where
+  ReadContentsBS' :: SomeBase File -> ReadFSF (Either ReadFSErr ByteString)
+  ReadContentsBSLimit' :: SomeBase File -> Int -> ReadFSF (Either ReadFSErr ByteString)
+  ReadContentsText' :: SomeBase File -> ReadFSF (Either ReadFSErr Text)
+  DoesFileExist :: SomeBase File -> ReadFSF Bool
+  DoesDirExist :: SomeBase Dir -> ReadFSF Bool
+  ResolveFile' :: Path Abs Dir -> Text -> ReadFSF (Either ReadFSErr (Path Abs File))
+  ResolveDir' :: Path Abs Dir -> Text -> ReadFSF (Either ReadFSErr (Path Abs Dir))
+  ListDir :: Path Abs Dir -> ReadFSF (Either ReadFSErr ([Path Abs Dir], [Path Abs File]))
+
+type ReadFS = Simple ReadFSF
 
 data ReadFSErr
   = -- | A file couldn't be read. file, err
@@ -90,8 +93,12 @@ instance ToJSON ReadFSErr
 instance RecordableValue ReadFSErr
 instance FromJSON ReadFSErr
 instance ReplayableValue ReadFSErr
-$(deriveRecordable ''ReadFS)
-$(deriveReplayable ''ReadFS)
+$(deriveRecordable ''ReadFSF)
+$(deriveReplayable ''ReadFSF)
+
+deriving instance Show (ReadFSF a)
+deriving instance Eq (ReadFSF a)
+deriving instance Ord (ReadFSF a)
 
 instance ToDiagnostic ReadFSErr where
   renderDiagnostic = \case
@@ -110,28 +117,28 @@ instance ToDiagnostic ReadFSErr where
     ListDirError dir err -> "Error listing directory contents at " <> pretty dir <> ":" <> line <> indent 2 (pretty err)
 
 -- | Read file contents into a strict 'ByteString'
-readContentsBS' :: Has ReadFS sig m => Path b File -> m (Either ReadFSErr ByteString)
-readContentsBS' path = send (ReadContentsBS' path)
+readContentsBS' :: Has ReadFS sig m => Path Abs File -> m (Either ReadFSErr ByteString)
+readContentsBS' path = sendSimple (ReadContentsBS' (Abs path))
 
 -- | Read at most n bytes of file content into a strict 'ByteString'
-readContentsBSLimit :: Has ReadFS sig m => Path b File -> Int -> m (Either ReadFSErr ByteString)
-readContentsBSLimit path limit = send (ReadContentsBSLimit' path limit)
+readContentsBSLimit :: Has ReadFS sig m => Path Abs File -> Int -> m (Either ReadFSErr ByteString)
+readContentsBSLimit path limit = sendSimple (ReadContentsBSLimit' (Abs path) limit)
 
 -- | Read file contents into a strict 'ByteString'
-readContentsBS :: (Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m ByteString
+readContentsBS :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ByteString
 readContentsBS = fromEither <=< readContentsBS'
 
 -- | Read file contents into a strict 'Text'
-readContentsText' :: Has ReadFS sig m => Path b File -> m (Either ReadFSErr Text)
-readContentsText' path = send (ReadContentsText' path)
+readContentsText' :: Has ReadFS sig m => Path Abs File -> m (Either ReadFSErr Text)
+readContentsText' path = sendSimple (ReadContentsText' (Abs path))
 
 -- | Read file contents into a strict 'Text'
-readContentsText :: (Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m Text
+readContentsText :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m Text
 readContentsText = fromEither <=< readContentsText'
 
 -- | Resolve a relative filepath to a file
 resolveFile' :: Has ReadFS sig m => Path Abs Dir -> Text -> m (Either ReadFSErr (Path Abs File))
-resolveFile' base path = send (ResolveFile' base path)
+resolveFile' base path = sendSimple (ResolveFile' base path)
 
 -- | Resolve a relative filepath to a file
 resolveFile :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)
@@ -139,22 +146,22 @@ resolveFile dir path = fromEither =<< resolveFile' dir path
 
 -- | Resolve a relative filepath to a directory
 resolveDir' :: Has ReadFS sig m => Path Abs Dir -> Text -> m (Either ReadFSErr (Path Abs Dir))
-resolveDir' base path = send (ResolveDir' base path)
+resolveDir' base path = sendSimple (ResolveDir' base path)
 
 -- | Resolve a relative filepath to a directory
 resolveDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs Dir)
 resolveDir dir path = fromEither =<< resolveDir' dir path
 
 -- | Check whether a file exists
-doesFileExist :: Has ReadFS sig m => Path b File -> m Bool
-doesFileExist path = send (DoesFileExist path)
+doesFileExist :: Has ReadFS sig m => Path Abs File -> m Bool
+doesFileExist path = sendSimple (DoesFileExist (Abs path))
 
 -- | Check whether a directory exists
-doesDirExist :: Has ReadFS sig m => Path b Dir -> m Bool
-doesDirExist path = send (DoesDirExist path)
+doesDirExist :: Has ReadFS sig m => Path Abs Dir -> m Bool
+doesDirExist path = sendSimple (DoesDirExist (Abs path))
 
 listDir' :: Has ReadFS sig m => Path Abs Dir -> m (Either ReadFSErr ([Path Abs Dir], [Path Abs File]))
-listDir' = send . ListDir
+listDir' = sendSimple . ListDir
 
 listDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m ([Path Abs Dir], [Path Abs File])
 listDir dir = fromEither =<< listDir' dir
@@ -162,57 +169,57 @@ listDir dir = fromEither =<< listDir' dir
 type Parser = Parsec Void Text
 
 -- | Read from a file, parsing its contents
-readContentsParser :: forall a sig m b. (Has ReadFS sig m, Has Diagnostics sig m) => Parser a -> Path b File -> m a
-readContentsParser parser file = context ("Parsing file '" <> toText (toFilePath file) <> "'") $ do
+readContentsParser :: forall a sig m. (Has ReadFS sig m, Has Diagnostics sig m) => Parser a -> Path Abs File -> m a
+readContentsParser parser file = context ("Parsing file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsText file
-  case runParser parser (toFilePath file) contents of
-    Left err -> fatal (FileParseError (toFilePath file) (toText (errorBundlePretty err)))
+  case runParser parser (fromAbsFile file) contents of
+    Left err -> fatal (FileParseError (fromAbsFile file) (toText (errorBundlePretty err)))
     Right a -> pure a
 
 -- | Read JSON from a file
-readContentsJson :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m a
-readContentsJson file = context ("Parsing JSON file '" <> toText (toFilePath file) <> "'") $ do
+readContentsJson :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
+readContentsJson file = context ("Parsing JSON file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsBS file
   case eitherDecodeStrict contents of
-    Left err -> fatal (FileParseError (toFilePath file) (toText err))
+    Left err -> fatal (FileParseError (fromAbsFile file) (toText err))
     Right a -> pure a
 
-readContentsToml :: (Has ReadFS sig m, Has Diagnostics sig m) => Toml.TomlCodec a -> Path b File -> m a
-readContentsToml codec file = context ("Parsing TOML file '" <> toText (toFilePath file) <> "'") $ do
+readContentsToml :: (Has ReadFS sig m, Has Diagnostics sig m) => Toml.TomlCodec a -> Path Abs File -> m a
+readContentsToml codec file = context ("Parsing TOML file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsText file
   case Toml.decode codec contents of
-    Left err -> fatal (FileParseError (toFilePath file) (Toml.prettyTomlDecodeErrors err))
+    Left err -> fatal (FileParseError (fromAbsFile file) (Toml.prettyTomlDecodeErrors err))
     Right a -> pure a
 
 -- | Read YAML from a file
-readContentsYaml :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m a
-readContentsYaml file = context ("Parsing YAML file '" <> toText (toFilePath file) <> "'") $ do
+readContentsYaml :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
+readContentsYaml file = context ("Parsing YAML file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsBS file
   case decodeEither' contents of
-    Left err -> fatal (FileParseError (toFilePath file) (toText $ prettyPrintParseException err))
+    Left err -> fatal (FileParseError (fromAbsFile file) (toText $ prettyPrintParseException err))
     Right a -> pure a
 
 -- | Read XML from a file
-readContentsXML :: (FromXML a, Has ReadFS sig m, Has Diagnostics sig m) => Path b File -> m a
-readContentsXML file = context ("Parsing XML file '" <> toText (toFilePath file) <> "'") $ do
+readContentsXML :: (FromXML a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
+readContentsXML file = context ("Parsing XML file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsText file
   case parseXML contents of
-    Left err -> fatal (FileParseError (toFilePath file) (xmlErrorPretty err))
+    Left err -> fatal (FileParseError (fromAbsFile file) (xmlErrorPretty err))
     Right a -> pure a
 
-type ReadFSIOC = SimpleC ReadFS
+type ReadFSIOC = SimpleC ReadFSF
 
 runReadFSIO :: Has (Lift IO) sig m => ReadFSIOC m a -> m a
 runReadFSIO = interpret $ \case
   ReadContentsBS' file -> do
-    BS.readFile (toFilePath file)
-      `catchingIO` FileReadError (toFilePath file)
+    BS.readFile (fromSomeFile file)
+      `catchingIO` FileReadError (fromSomeFile file)
   ReadContentsBSLimit' file limit -> do
     readContentsBSLimit' file limit
-      `catchingIO` FileReadError (toFilePath file)
+      `catchingIO` FileReadError (fromSomeFile file)
   ReadContentsText' file -> do
-    (decodeUtf8 <$> BS.readFile (toFilePath file))
-      `catchingIO` FileReadError (toFilePath file)
+    (decodeUtf8 <$> BS.readFile (fromSomeFile file))
+      `catchingIO` FileReadError (fromSomeFile file)
   ResolveFile' dir path -> do
     PIO.resolveFile dir (toString path)
       `catchingIO` ResolveError (toFilePath dir) (toString path)
@@ -223,11 +230,11 @@ runReadFSIO = interpret $ \case
     PIO.listDir dir
       `catchingIO` ListDirError (toFilePath dir)
   -- NB: these never throw
-  DoesFileExist file -> sendIO (PIO.doesFileExist file)
-  DoesDirExist dir -> sendIO (PIO.doesDirExist dir)
+  DoesFileExist file -> sendIO (Directory.doesFileExist (fromSomeFile file))
+  DoesDirExist dir -> sendIO (Directory.doesDirectoryExist (fromSomeDir dir))
 
-readContentsBSLimit' :: Path x File -> Int -> IO ByteString
-readContentsBSLimit' file limit = withFile (toFilePath file) ReadMode $ \handle -> BS.hGetSome handle limit
+readContentsBSLimit' :: SomeBase File -> Int -> IO ByteString
+readContentsBSLimit' file limit = withFile (fromSomeFile file) ReadMode $ \handle -> BS.hGetSome handle limit
 
 catchingIO :: Has (Lift IO) sig m => IO a -> (Text -> ReadFSErr) -> m (Either ReadFSErr a)
 catchingIO io mangle = sendIO $ E.catch (Right <$> io) (\(e :: E.IOException) -> pure (Left (mangle (toText (show e)))))

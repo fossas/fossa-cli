@@ -10,6 +10,7 @@ import App.Types (ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Effect.ReadFS
 import Path
+import Path.IO (getCurrentDir)
 import Test.Hspec qualified as T
 import Types (BuildTarget (..), TargetFilter (..))
 
@@ -79,9 +80,11 @@ missingFile = $(mkRelFile "test/App/Fossa/Configuration/testdata/missingfile.yml
 
 spec :: T.Spec
 spec = do
-  config <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile testFile
-  badConfig <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile badFile
-  missingConfig <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile missingFile
+  dir <- T.runIO getCurrentDir
+
+  config <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> testFile)
+  badConfig <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> badFile)
+  missingConfig <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> missingFile)
 
   T.describe "config file parser" $ do
     T.it "parses a full configuration file correctly" $

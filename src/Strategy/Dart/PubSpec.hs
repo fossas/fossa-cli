@@ -27,7 +27,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Effect.Logger (Logger (..), Pretty (pretty), logDebug)
+import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (Has, ReadFS, readContentsYaml)
 import Graphing (Graphing, directs, induceJust)
 import Path

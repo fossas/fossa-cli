@@ -6,7 +6,8 @@
 -- It defines @direct@ and @edge@ combinators analagous to 'G.direct' and
 -- 'G.edge' from 'G.Graphing'
 module Effect.Grapher (
-  Grapher (..),
+  Grapher,
+  SGrapher (..),
   direct,
   edge,
   deep,
@@ -34,7 +35,6 @@ import Control.Algebra as X
 import Control.Carrier.Diagnostics (ToDiagnostic (..))
 import Control.Carrier.Simple
 import Control.Carrier.State.Strict
-import Data.Kind (Type)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
@@ -45,24 +45,26 @@ import Data.Text (Text)
 import Graphing qualified as G
 import Prettyprinter (pretty)
 
-data Grapher ty (m :: Type -> Type) k where
-  Direct :: ty -> Grapher ty m ()
-  Edge :: ty -> ty -> Grapher ty m ()
-  Deep :: ty -> Grapher ty m ()
+data SGrapher ty k where
+  Direct :: ty -> SGrapher ty ()
+  Edge :: ty -> ty -> SGrapher ty ()
+  Deep :: ty -> SGrapher ty ()
+
+type Grapher ty = Simple (SGrapher ty)
 
 direct :: Has (Grapher ty) sig m => ty -> m ()
-direct = send . Direct
+direct = sendSimple . Direct
 
 edge :: Has (Grapher ty) sig m => ty -> ty -> m ()
-edge parent child = send (Edge parent child)
+edge parent child = sendSimple (Edge parent child)
 
 deep :: Has (Grapher ty) sig m => ty -> m ()
-deep = send . Deep
+deep = sendSimple . Deep
 
 evalGrapher :: (Ord ty, Algebra sig m) => GrapherC ty m a -> m (G.Graphing ty)
 evalGrapher = fmap fst . runGrapher
 
-type GrapherC ty m = SimpleStateC (G.Graphing ty) (Grapher ty) m
+type GrapherC ty m = SimpleStateC (G.Graphing ty) (SGrapher ty) m
 
 runGrapher :: (Ord ty, Algebra sig m) => GrapherC ty m a -> m (G.Graphing ty, a)
 runGrapher = interpretState G.empty $ \case
@@ -72,7 +74,7 @@ runGrapher = interpretState G.empty $ \case
 
 ----- Labeling
 
--- | An extension of 'Grapher' that tracks a set of associated /labels/ for
+-- | An extension of 'SGrapher that tracks a set of associated /labels/ for
 -- each node in the graph.
 --
 -- For example, given a node type of:
@@ -130,7 +132,7 @@ unlabel f labels = G.gmap (\ty -> f ty (findLabels ty))
 
 ----- Mapping
 
--- | An extension of 'Grapher' that tracks an associated value for each node in
+-- | An extension of 'SGrapher that tracks an associated value for each node in
 -- the graph. It is expected that each node in the graph /must/ have an
 -- associated value.
 --

@@ -31,4 +31,4 @@ runStickyLogger sev act = withStickyRegion sev $ \region ->
     )
     act
 
-type StickyLoggerC = SimpleC StickyLogger
+type StickyLoggerC = SimpleC StickyLoggerF

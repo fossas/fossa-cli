@@ -4,42 +4,86 @@ module Control.Effect.Replay.TH (
   deriveReplayable,
 ) where
 
+import Control.Applicative ((<|>))
 import Control.Effect.Replay
 import Control.Monad (replicateM)
-import Data.Aeson
-import Data.Aeson.Types (parse)
 import Language.Haskell.TH
 
 deriveReplayable :: Name -> Q [Dec]
 deriveReplayable tyName = do
   TyConI (DataD _ctx _nm _tyVars _kind tyCons _deriv) <- reify tyName
   sequence
-    -- instance Replayable (MyEffect m) where
+    -- instance Replayable MyEffect where
     [ instanceD
         (pure [])
-        (appT [t|Replayable|] (appT (conT tyName) (varT (mkName "m"))))
-        -- replay :: ...
-        [ replayMethod tyCons
+        (appT [t|Replayable|] (conT tyName))
+        -- replayDecode :: Value -> Value -> Parser (MyEffect Void, Some)
+        -- replayDecode = ...
+        [ replayDecodeMethod tyCons
         ]
     ]
 
-replayMethod :: [Con] -> Q Dec
-replayMethod cons = funD 'replay (map replayClause cons)
+replayDecodeMethod :: [Con] -> Q Dec
+replayDecodeMethod cons = do
+  keyValNm <- newName "keyVal"
+  valValNm <- newName "valVal"
+  -- clauses = [decodeSingle Constructor1, decodeSingle DataConstructor2, ...]
+  let clauses = map (decodeSingle keyValNm valValNm) cons
+  -- combinedClauses = decodeSingle Constructor1 <|> decodeSingle Constructor2 <|> ...
+  let combinedClauses = foldl1 (\a b -> [e|$a <|> $b|]) clauses
+  funD
+    'replayDecode
+    [ clause
+        -- replayDecode keyVal valVal = combinedClauses
+        [varP keyValNm, varP valValNm]
+        (normalB (combinedClauses))
+        []
+    ]
 
-replayClause :: Con -> Q Clause
-replayClause con = do
-  args <- mkArgs con
-  clause
-    [conP (conNm con) (map (const wildP) args), [p|resultValue|]]
-    (normalB (appE [e|tryDecode|] [e|resultValue|]))
-    []
+-- Given some constructor `Bar :: a -> b -> MyGadt Foo`..
+decodeSingle :: Name -> Name -> Con -> Q Exp
+decodeSingle keyVal valVal con = do
+  -- the variable name used for the "result value" of the effect constructor
+  resultNm <- newName "decodedResultValue"
 
-tryDecode :: ReplayableValue a => Value -> Maybe a
-tryDecode val =
-  case parse fromRecordedValue val of
-    Error _ -> Nothing
-    Success a -> Just a
+  -- constructorArgNames = [a,b]
+  constructorArgNames <- mkArgs con
 
+  let -- constructorE = Bar
+      constructorE :: ExpQ
+      constructorE = conE (conNm con)
+
+  let -- constructorArgsE = [a,b]
+      constructorArgsE :: [ExpQ]
+      constructorArgsE = map varE constructorArgNames
+
+  let -- conAppliedE = Bar a b
+      conAppliedE :: ExpQ
+      conAppliedE = foldl1 appE (constructorE : constructorArgsE)
+
+  let -- constructorNameP = ("MyGadt.Bar" :: String)
+      constructorNameP :: PatQ
+      constructorNameP = sigP (litP (stringL (show (conNm con)))) (conT ''String)
+
+  let -- constructorArgsP = [a,b]
+      constructorArgsP :: [PatQ]
+      constructorArgsP = map varP constructorArgNames
+
+  let -- constructorTupleP = (("MyGadt.Bar" :: String), a, b)
+      constructorTupleP :: PatQ
+      constructorTupleP = tupP (constructorNameP : constructorArgsP)
+
+  -- do
+  doE
+    -- (("MyGadt.Bar" :: String), a, b) <- fromRecordedValue keyVal
+    [ bindS constructorTupleP [e|fromRecordedValue $(varE keyVal)|]
+    , -- decodedResultValue <- fromRecordedValue valVal
+      bindS (sigP (varP resultNm) (getGadtTy con)) [e|fromRecordedValue $(varE valVal)|]
+    , -- pure (EffectResult (Bar a b) decodedResultValue)
+      noBindS [e|pure (EffectResult $(conAppliedE) $(varE resultNm))|]
+    ]
+
+-- | Get the Name of a data constructor
 conNm :: Con -> Name
 conNm (NormalC nm _) = nm
 conNm (RecC nm _) = nm
@@ -48,6 +92,7 @@ conNm (ForallC _ _ con) = conNm con
 conNm (GadtC nms _ _) = head nms
 conNm (RecGadtC nms _ _) = head nms
 
+-- | Create a Name for each argument of a data constructor
 mkArgs :: Con -> Q [Name]
 mkArgs (NormalC _ tys) = replicateM (length tys) (newName "a")
 mkArgs (RecC _ tys) = replicateM (length tys) (newName "a")
@@ -55,3 +100,13 @@ mkArgs InfixC{} = replicateM 2 (newName "a")
 mkArgs (ForallC _ _ con) = mkArgs con
 mkArgs (GadtC _ tys _) = replicateM (length tys) (newName "a")
 mkArgs (RecGadtC _ tys _) = replicateM (length tys) (newName "a")
+
+-- | Get the last type parameter for a GADT constructor
+--
+-- data Foo a where
+--   Bar :: Foo Int
+--
+-- getGadtTy on Bar produces Int
+getGadtTy :: Con -> TypeQ
+getGadtTy (GadtC _ _ (AppT _ ty)) = pure ty
+getGadtTy con = fail $ "Expecting a GADT constructor; encountered " <> show con

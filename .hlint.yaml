@@ -22,5 +22,5 @@
 
 # Forbidden items
 - functions:
-  - {name: error, within: [Data.String.Conversion]}
+  - {name: error, within: [Data.String.Conversion, Control.Effect.Replay]}
   - {name: undefined, within: []}

@@ -1,5 +1,4 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Go.GoListSpec (
@@ -8,7 +7,7 @@ module Go.GoListSpec (
 
 import Control.Algebra
 import Control.Carrier.Diagnostics
-import Control.Carrier.Reader
+import Control.Carrier.Simple
 import Data.ByteString.Lazy qualified as BL
 import Data.Function ((&))
 import Data.Map.Strict qualified as Map
@@ -21,18 +20,11 @@ import Path.IO (getCurrentDir)
 import Strategy.Go.GoList
 import Test.Hspec
 
-runConstExec :: BL.ByteString -> ConstExecC m a -> m a
-runConstExec output = runReader output . runConstExecC
+type ConstExecC = SimpleC ExecF
 
-newtype ConstExecC m a = ConstExecC {runConstExecC :: ReaderC BL.ByteString m a}
-  deriving (Functor, Applicative, Monad)
-
-instance Algebra sig m => Algebra (Exec :+: sig) (ConstExecC m) where
-  alg hdl sig ctx = ConstExecC $ case sig of
-    R other -> alg (runConstExecC . hdl) (R other) ctx
-    L (Exec _ _) -> do
-      output <- ask
-      pure (Right output <$ ctx)
+runConstExec :: Applicative m => BL.ByteString -> ConstExecC m a -> m a
+runConstExec output = interpret $ \case
+  Exec _ _ -> pure (Right output)
 
 expected :: Graphing Dependency
 expected = run . evalGrapher $ do

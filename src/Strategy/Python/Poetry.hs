@@ -20,7 +20,7 @@ import Discovery.Walk (
   findFileNamed,
   walk',
  )
-import Effect.Logger (Logger (..), Pretty (pretty), logDebug)
+import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, readContentsToml)
 import Graphing (Graphing)
 import Graphing qualified
