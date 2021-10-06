@@ -17,6 +17,7 @@
   - [javascript/typescript](#javascripttypescript)
   - [.NET](#net)
   - [objective-c](#objective-c)
+  - [php](#php)
   - [python](#python)
   - [ruby](#ruby)
   - [rust](#rust)
@@ -128,6 +129,10 @@ fossa analyze --help
 
 - [carthage](quickreference/carthage.md)
 - [cocoapods](quickreference/cocoapods.md)
+
+### php
+
+- [composer](strategies/composer.md)
 
 ### python
 
