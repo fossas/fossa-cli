@@ -1,5 +1,8 @@
 # Spectrometer Changelog
 
+## v2.16.3
+- Monorepo: Fix bug with non-glob exclusions. ([#386](https://github.com/fossas/spectrometer/pull/386))
+
 ## v2.16.2
 - Monorepo: Don't crash if there are no ninja/buildspec files to upload. ([#385](https://github.com/fossas/spectrometer/pull/385))
 - Monorepo: Fix issue with only-path/exclude-path globs.
