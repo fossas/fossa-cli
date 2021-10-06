@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.16.2
+- Monorepo: Don't crash if there are no ninja/buildspec files to upload. ([#385](https://github.com/fossas/spectrometer/pull/385))
+- Monorepo: Fix issue with only-path/exclude-path globs.
+
 ## v2.16.1
 - Gradle: Supports analysis of projects using gralde v3.3 or below. ([#370](https://github.com/fossas/spectrometer/pull/370))
 
