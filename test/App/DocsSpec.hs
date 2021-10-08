@@ -2,7 +2,7 @@ module App.DocsSpec (
   spec,
 ) where
 
-import App.Docs (newIssueUrl, userGuideUrl)
+import App.Docs (fossaYmlDocUrl, newIssueUrl, userGuideUrl)
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 import Network.HTTP.Req (
@@ -33,3 +33,7 @@ spec = do
   describe "newIssueUrl" $
     it "should be reachable" $
       newIssueUrl `shouldRespondToGETWithHttpCode` 200
+
+  describe "fossaYmlDocUrl" $
+    it "should be reachable" $
+      fossaYmlDocUrl `shouldRespondToGETWithHttpCode` 200

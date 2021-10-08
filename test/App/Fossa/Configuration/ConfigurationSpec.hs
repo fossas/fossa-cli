@@ -78,6 +78,9 @@ badFile = $(mkRelFile "test/App/Fossa/Configuration/testdata/invalidconfig.yml")
 missingFile :: Path Rel File
 missingFile = $(mkRelFile "test/App/Fossa/Configuration/testdata/missingfile.yml")
 
+ver2configFile :: Path Rel File
+ver2configFile = $(mkRelFile "test/App/Fossa/Configuration/testdata/ver2config.yml")
+
 spec :: T.Spec
 spec = do
   dir <- T.runIO getCurrentDir
@@ -85,6 +88,7 @@ spec = do
   config <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> testFile)
   badConfig <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> badFile)
   missingConfig <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> missingFile)
+  ver2Config <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> ver2configFile)
 
   T.describe "config file parser" $ do
     T.it "parses a full configuration file correctly" $
@@ -102,4 +106,9 @@ spec = do
     T.it "returns Nothing for missing file" $
       case missingConfig of
         Left _ -> T.expectationFailure "should have failed parsing"
+        Right result -> result `T.shouldBe` Nothing
+
+    T.it "returns Nothing for incompatible file" $
+      case ver2Config of
+        Left err -> T.expectationFailure ("failed to parse config file" <> show (Diag.renderFailureBundle err))
         Right result -> result `T.shouldBe` Nothing
