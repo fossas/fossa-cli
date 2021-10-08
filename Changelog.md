@@ -1,5 +1,8 @@
 # Spectrometer Changelog
 
+## v2.16.4
+- Monorepo: Fix bug with symlink logic mismatch between walker and buildspec uploader. ([#388](https://github.com/fossas/spectrometer/pull/388))
+
 ## v2.16.3
 - Monorepo: Fix bug with non-glob exclusions. ([#386](https://github.com/fossas/spectrometer/pull/386))
 
