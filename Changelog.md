@@ -1,5 +1,8 @@
 # Spectrometer Changelog
 
+## v2.16.5
+- JSON Output for `fossa test --json` when there are no issues. ([#387](https://github.com/fossas/spectrometer/pull/387))
+
 ## v2.16.4
 - Monorepo: Fix bug with symlink logic mismatch between walker and buildspec uploader. ([#388](https://github.com/fossas/spectrometer/pull/388))
 
