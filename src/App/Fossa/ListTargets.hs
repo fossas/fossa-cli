@@ -4,66 +4,90 @@ module App.Fossa.ListTargets (
   listTargetsMain,
 ) where
 
-import App.Fossa.Analyze (discoverFuncs)
+import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), discoverFuncs)
 import App.Types (BaseDir (..))
 import Control.Carrier.AtomicCounter
-import Control.Carrier.Diagnostics qualified as Diag
+import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Finally
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent (getNumCapabilities)
-import Data.Foldable (for_)
+import Control.Effect.Debug (Debug)
+import Control.Effect.Lift (Lift)
+import Control.Monad.IO.Class (MonadIO)
+import Data.Aeson (ToJSON)
+import Data.Aeson.Extra (encodeJSONToText)
+import Data.Foldable (for_, traverse_)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
-import Path (toFilePath)
+import Path
 import Path.IO (makeRelative)
 import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
 
-type DummyM = ReadFSIOC (ExecIOC (Diag.DiagnosticsC (LoggerC IO)))
-
-listTargetsMain :: BaseDir -> IO ()
-listTargetsMain (BaseDir basedir) = do
+listTargetsMain :: Severity -> BaseDir -> IO ()
+listTargetsMain logSeverity (BaseDir basedir) = do
   capabilities <- getNumCapabilities
 
-  withDefaultLogger SevInfo
+  ignoreDebug
+    . withDefaultLogger logSeverity
     . runStickyLogger SevInfo
     . runFinally
     . withTaskPool capabilities updateProgress
     . runReadFSIO
     . runExecIO
     . runAtomicCounter
-    $ do
-      withDiscoveredProjects discoverFuncs False basedir $ \(project :: DiscoveredProject DummyM) -> do
-        let maybeRel = makeRelative basedir (projectPath project)
+    $ runAll basedir
 
-        case maybeRel of
-          Nothing -> pure ()
-          Just rel -> do
-            logInfo $
-              "Found project: "
-                <> pretty (projectType project)
-                <> "@"
-                <> pretty (toFilePath rel)
+runAll ::
+  ( Has ReadFS sig m
+  , Has Exec sig m
+  , Has Logger sig m
+  , Has TaskPool sig m
+  , Has (Lift IO) sig m
+  , MonadIO m
+  , Has AtomicCounter sig m
+  , Has Debug sig m
+  ) =>
+  Path Abs Dir ->
+  m ()
+runAll basedir = traverse_ single discoverFuncs
+  where
+    single (DiscoverFunc f) = withDiscoveredProjects f basedir (printSingle basedir)
 
-            case projectBuildTargets project of
-              ProjectWithoutTargets -> do
-                logInfo $
-                  "Found target: "
-                    <> pretty (projectType project)
-                    <> "@"
-                    <> pretty (toFilePath rel)
-              FoundTargets targets -> for_ (Set.toList $ toSet targets) $ \target -> do
-                logInfo $
-                  "Found target: "
-                    <> pretty (projectType project)
-                    <> "@"
-                    <> pretty (toFilePath rel)
-                    <> ":"
-                    <> pretty (unBuildTarget target)
+printSingle :: (ToJSON a, Has Logger sig m) => Path Abs Dir -> DiscoveredProject a -> m ()
+printSingle basedir project = do
+  let maybeRel = makeRelative basedir (projectPath project)
+
+  case maybeRel of
+    Nothing -> pure ()
+    Just rel -> do
+      logInfo $
+        "Found project: "
+          <> pretty (projectType project)
+          <> "@"
+          <> pretty (toFilePath rel)
+
+      logDebug . pretty . encodeJSONToText $ projectData project
+
+      case projectBuildTargets project of
+        ProjectWithoutTargets -> do
+          logInfo $
+            "Found target: "
+              <> pretty (projectType project)
+              <> "@"
+              <> pretty (toFilePath rel)
+        FoundTargets targets -> for_ (Set.toList $ toSet targets) $ \target -> do
+          logInfo $
+            "Found target: "
+              <> pretty (projectType project)
+              <> "@"
+              <> pretty (toFilePath rel)
+              <> ":"
+              <> pretty (unBuildTarget target)
 
 updateProgress :: Has StickyLogger sig m => Progress -> m ()
 updateProgress Progress{..} =

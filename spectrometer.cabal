@@ -33,7 +33,6 @@ common lang
     GADTSyntax
     GeneralizedNewtypeDeriving
     HexFloatLiterals
-    ImportQualifiedPost
     InstanceSigs
     KindSignatures
     LambdaCase
@@ -47,12 +46,13 @@ common lang
     RankNTypes
     ScopedTypeVariables
     StandaloneDeriving
-    StandaloneKindSignatures
     StrictData
     TupleSections
     TypeApplications
     TypeOperators
     TypeSynonymInstances
+    ImportQualifiedPost
+    StandaloneKindSignatures
 
   ghc-options:
     -Wall -Wincomplete-uni-patterns -Wcompat
@@ -131,14 +131,16 @@ library
   exposed-modules:
     Algebra.Graph.AdjacencyMap.Extra
     App.Docs
+    App.Fossa.API.BuildLink
+    App.Fossa.API.BuildWait
     App.Fossa.Analyze
+    App.Fossa.Analyze.Debug
     App.Fossa.Analyze.Graph
     App.Fossa.Analyze.GraphBuilder
     App.Fossa.Analyze.GraphMangler
     App.Fossa.Analyze.Project
     App.Fossa.Analyze.Record
-    App.Fossa.API.BuildLink
-    App.Fossa.API.BuildWait
+    App.Fossa.Analyze.Types
     App.Fossa.ArchiveUploader
     App.Fossa.BinaryDeps
     App.Fossa.BinaryDeps.Jar
@@ -176,6 +178,7 @@ library
     App.OptionExtensions
     App.Pathfinder.Main
     App.Pathfinder.Scan
+    App.Pathfinder.Types
     App.Types
     App.Util
     App.Version
@@ -183,6 +186,7 @@ library
     Console.Sticky
     Control.Carrier.AtomicCounter
     Control.Carrier.AtomicState
+    Control.Carrier.Debug
     Control.Carrier.Diagnostics
     Control.Carrier.Diagnostics.StickyContext
     Control.Carrier.Finally
@@ -194,6 +198,7 @@ library
     Control.Effect.AtomicCounter
     Control.Effect.AtomicState
     Control.Effect.ConsoleRegion
+    Control.Effect.Debug
     Control.Effect.Diagnostics
     Control.Effect.Finally
     Control.Effect.Output
@@ -225,9 +230,9 @@ library
     Effect.ReadFS
     Fossa.API.Types
     Graphing
-    Path.Extra
-    Parse.XML
     Network.HTTP.Req.Extra
+    Parse.XML
+    Path.Extra
     Srclib.Converter
     Srclib.Types
     Strategy.Android.Util
@@ -291,8 +296,8 @@ library
     Strategy.Python.SetupPy
     Strategy.Python.Setuptools
     Strategy.Python.Util
-    Strategy.Rebar3
     Strategy.RPM
+    Strategy.Rebar3
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Strategy.Scala
@@ -353,9 +358,9 @@ test-suite unit-tests
     Conda.EnvironmentYmlSpec
     Control.Carrier.DiagnosticsSpec
     Dart.PubDepsSpec
-    Dart.PubSpecSpec
     Dart.PubSpecLockSpec
     Discovery.ArchiveSpec
+    Dart.PubSpecSpec
     Discovery.FiltersSpec
     Effect.ExecSpec
     Elixir.MixTreeSpec
@@ -371,8 +376,8 @@ test-suite unit-tests
     Go.TransitiveSpec
     Googlesource.RepoManifestSpec
     Gradle.GradleSpec
-    GraphingSpec
     GraphUtil
+    GraphingSpec
     Haskell.CabalSpec
     Haskell.StackSpec
     Maven.DepTreeSpec

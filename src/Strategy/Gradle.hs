@@ -21,6 +21,7 @@ module Strategy.Gradle (
   ConfigName (..),
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Algebra (Has, run)
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -32,7 +33,7 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
-import Data.Aeson (FromJSON (..), Value (..), decodeStrict, withObject, (.:))
+import Data.Aeson (FromJSON (..), ToJSON, Value (..), decodeStrict, withObject, (.:))
 import Data.Aeson.Types (Parser, unexpected)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
@@ -60,7 +61,8 @@ import Discovery.Walk (WalkStep (..), fileName, walk')
 import Effect.Exec (AllowErr (..), Command (..), Exec, execThrow)
 import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
 import Effect.Logger (Logger, logWarn)
-import Effect.ReadFS (ReadFS, doesFileExist, runReadFSIO)
+import Effect.ReadFS (ReadFS, doesFileExist)
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, fromAbsDir, parent, parseRelFile, (</>))
 import Strategy.Android.Util (isDefaultAndroidDevConfig, isDefaultAndroidTestConfig)
@@ -97,12 +99,9 @@ discover ::
   , Has Diagnostics sig m
   , Has Exec sig m
   , Has Logger sig m
-  , Has (Lift IO) rsig run
-  , Has Exec rsig run
-  , Has Diagnostics rsig run
   ) =>
   Path Abs Dir ->
-  m [DiscoveredProject run]
+  m [DiscoveredProject GradleProject]
 discover dir = context "Gradle" $ do
   found <- context "Finding projects" $ findProjects dir
   pure $ mkProject <$> found
@@ -179,7 +178,12 @@ data GradleProject = GradleProject
   , gradleBuildFile :: Path Abs File
   , gradleProjects :: Set Text
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON GradleProject
+
+instance AnalyzeProject GradleProject where
+  analyzeProject = getDeps
 
 gradleProjectsCmd :: Text -> Command
 gradleProjectsCmd baseCmd =
@@ -225,18 +229,17 @@ parseSubproject line =
     ("", _) -> Nothing -- no match
     (_, rest) -> Just $ Text.takeWhile (/= '\'') rest
 
-mkProject :: (Has Exec sig n, Has (Lift IO) sig n, Has Diagnostics sig n) => GradleProject -> DiscoveredProject n
+mkProject :: GradleProject -> DiscoveredProject GradleProject
 mkProject project =
   DiscoveredProject
     { projectType = "gradle"
     , projectBuildTargets = maybe ProjectWithoutTargets FoundTargets $ nonEmpty $ Set.map BuildTarget $ gradleProjects project
-    , projectDependencyResults = getDeps project
     , projectPath = gradleDir project
-    , projectLicenses = pure []
+    , projectData = project
     }
 
-getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => GradleProject -> FoundTargets -> m DependencyResults
-getDeps project targets = context "Gradle" $ do
+getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => FoundTargets -> GradleProject -> m DependencyResults
+getDeps targets project = context "Gradle" $ do
   graph <- analyze targets (gradleDir project)
   pure $
     DependencyResults
@@ -254,6 +257,7 @@ initScript = $(embedFile "scripts/jsondeps.gradle")
 analyze ::
   ( Has (Lift IO) sig m
   , Has Exec sig m
+  , Has ReadFS sig m
   , Has Diagnostics sig m
   ) =>
   FoundTargets ->
@@ -268,7 +272,7 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
         FoundTargets targets -> gradleJsonDepsCmdTargets initScriptFilepath (toSet targets)
         ProjectWithoutTargets -> gradleJsonDepsCmd initScriptFilepath
 
-  stdout <- context "running gradle script" $ runReadFSIO $ runGradle dir cmd
+  stdout <- context "running gradle script" $ runGradle dir cmd
 
   let text = decodeUtf8 $ BL.toStrict stdout
 

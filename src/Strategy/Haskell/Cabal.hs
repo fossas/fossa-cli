@@ -14,6 +14,7 @@ module Strategy.Haskell.Cabal (
   buildGraph,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics
 import Control.Monad (when)
 import Data.Aeson.Types
@@ -30,6 +31,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified as G
 import Path
@@ -110,7 +112,7 @@ cabalGenPlanCmd =
 cabalPlanFilePath :: Path Rel File
 cabalPlanFilePath = $(mkRelFile "dist-newstyle/cache/plan.json")
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CabalProject]
 discover dir = context "Cabal" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -132,14 +134,13 @@ findProjects = walk' $ \dir _ files -> do
     then pure ([CabalProject dir manifestFiles], WalkSkipAll)
     else pure ([], WalkContinue)
 
-mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => CabalProject -> DiscoveredProject n
+mkProject :: CabalProject -> DiscoveredProject CabalProject
 mkProject project =
   DiscoveredProject
     { projectType = "cabal"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
     , projectPath = cabalDir project
-    , projectLicenses = pure []
+    , projectData = project
     }
 
 getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CabalProject -> m DependencyResults
@@ -152,7 +153,12 @@ data CabalProject = CabalProject
   { cabalDir :: Path Abs Dir
   , cabalFiles :: [Path Abs File]
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON CabalProject
+
+instance AnalyzeProject CabalProject where
+  analyzeProject _ = getDeps
 
 doGraph :: Has (MappedGrapher PlanId InstallPlan) sig m => InstallPlan -> m ()
 doGraph plan = do

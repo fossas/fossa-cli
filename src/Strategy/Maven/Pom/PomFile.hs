@@ -16,9 +16,11 @@ module Strategy.Maven.Pom.PomFile
 ) where
 
 import Control.Applicative (optional, (<|>))
+import Data.Aeson (ToJSON, ToJSONKey)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
+import GHC.Generics (Generic)
 import Parse.XML
 
 ----- Validating POM files
@@ -83,14 +85,19 @@ data Pom = Pom
   , pomDependencies :: Map (Group, Artifact) MvnDepBody
   , pomLicenses :: [PomLicense]
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON Pom
 
 data MavenCoordinate = MavenCoordinate
   { coordGroup :: Text
   , coordArtifact :: Text
   , coordVersion :: Text
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON MavenCoordinate
+instance ToJSONKey MavenCoordinate
 
 data MvnDepBody = MvnDepBody
   { depVersion :: Maybe Text
@@ -98,7 +105,9 @@ data MvnDepBody = MvnDepBody
   , depScope :: Maybe Text
   , depOptional :: Maybe Text
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON MvnDepBody
 
 instance Semigroup Pom where
   -- left-biased, similar to Map.union
@@ -166,7 +175,9 @@ data PomLicense = PomLicense
   { pomLicenseName :: Maybe Text
   , pomLicenseUrl :: Maybe Text
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON PomLicense
 
 instance FromXML RawPom where
   parseElement el =

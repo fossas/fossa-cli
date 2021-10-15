@@ -35,13 +35,16 @@ import DepTypes (
   insertLocation,
   insertTag,
  )
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, Rel, parseRelDir)
 
 -- TODO: results should be within a graph of build targets && eliminate SubprojectType
 
 data FoundTargets = ProjectWithoutTargets | FoundTargets (NonEmptySet BuildTarget)
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON FoundTargets
 
 instance Semigroup FoundTargets where
   a <> ProjectWithoutTargets = a
@@ -53,13 +56,15 @@ instance Monoid FoundTargets where
 
 -- | A project found during project discovery, parameterized by the monad
 -- used to perform dependency analysis
-data DiscoveredProject m = DiscoveredProject
+data DiscoveredProject a = DiscoveredProject
   { projectType :: Text
   , projectPath :: Path Abs Dir
   , projectBuildTargets :: FoundTargets
-  , projectDependencyResults :: FoundTargets -> m DependencyResults
-  , projectLicenses :: m [LicenseResult]
+  , projectData :: a
   }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON a => ToJSON (DiscoveredProject a)
 
 -- | The results from analyzing dependencies on a project. This contains the graph,
 -- the GraphBreadth (if it was partially analyzed, or fully analyzed), and the
@@ -91,7 +96,7 @@ instance ToJSON GraphBreadth where
         Partial -> "partial"
 
 newtype BuildTarget = BuildTarget {unBuildTarget :: Text}
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, ToJSON)
 
 {-
   The following filters separate the difference between the following filters:

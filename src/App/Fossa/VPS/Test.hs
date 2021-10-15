@@ -15,6 +15,7 @@ import Control.Effect.Lift (sendIO)
 import Data.Aeson qualified as Aeson
 import Data.String.Conversion
 import Data.Text.IO (hPutStrLn)
+import Effect.Exec (runExecIO)
 import Effect.Logger
 import Effect.ReadFS
 import Fossa.API.Types (ApiOpts, Issues (..))
@@ -38,7 +39,7 @@ testMain ::
   IO ()
 testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
   _ <- timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $
-    logWithExit_ . runReadFSIO $ do
+    logWithExit_ . runReadFSIO . runExecIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
       logInfo ""

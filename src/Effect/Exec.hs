@@ -61,8 +61,7 @@ instance FromJSON Command
 instance ReplayableValue Command
 
 data CmdFailure = CmdFailure
-  { cmdFailureName :: Text
-  , cmdFailureArgs :: [Text]
+  { cmdFailureCmd :: Command
   , cmdFailureDir :: FilePath
   , cmdFailureExit :: ExitCode
   , cmdFailureStdout :: Stdout
@@ -73,8 +72,7 @@ data CmdFailure = CmdFailure
 instance ToJSON CmdFailure where
   toJSON CmdFailure{..} =
     object
-      [ "cmdFailureName" .= cmdFailureName
-      , "cmdFailureArgs" .= cmdFailureArgs
+      [ "cmdFailureCmd" .= cmdFailureCmd
       , "cmdFailureDir" .= cmdFailureDir
       , "cmdFailureExit" .= toRecordedValue cmdFailureExit
       , "cmdFailureStdout" .= toRecordedValue cmdFailureStdout
@@ -84,8 +82,7 @@ instance RecordableValue CmdFailure
 
 instance FromJSON CmdFailure where
   parseJSON = withObject "CmdFailure" $ \obj ->
-    CmdFailure <$> obj .: "cmdFailureName"
-      <*> obj .: "cmdFailureArgs"
+    CmdFailure <$> obj .: "cmdFailureCmd"
       <*> obj .: "cmdFailureDir"
       <*> (obj .: "cmdFailureExit" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStdout" >>= fromRecordedValue)
@@ -141,8 +138,7 @@ instance ToDiagnostic ExecErr where
         <> indent
           4
           ( vsep
-              [ "command: " <> pretty (cmdFailureName err)
-              , "args: " <> pretty (cmdFailureArgs err)
+              [ "command: " <> viaShow (cmdFailureCmd err)
               , "dir: " <> pretty (cmdFailureDir err)
               , "exit: " <> viaShow (cmdFailureExit err)
               , "stdout: " <> line <> indent 2 (pretty @Text (decodeUtf8 (cmdFailureStdout err)))
@@ -195,7 +191,7 @@ runExecIO = interpret $ \case
         cmdArgs' = map toString $ cmdArgs cmd
 
         mkFailure :: ExitCode -> Stdout -> Stderr -> CmdFailure
-        mkFailure = CmdFailure (cmdName cmd) (cmdArgs cmd) (fromAbsDir absolute)
+        mkFailure = CmdFailure cmd (fromAbsDir absolute)
 
         ioExceptionToCmdFailure :: IOException -> CmdFailure
         ioExceptionToCmdFailure = mkFailure (ExitFailure 1) "" . fromString . show

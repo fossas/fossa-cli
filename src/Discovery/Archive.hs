@@ -17,6 +17,7 @@ import Control.Effect.TaskPool (TaskPool, forkTask)
 import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
+import Data.String.Conversion (toText)
 import Discovery.Archive.RPM (extractRpm)
 import Discovery.Walk
 import Effect.ReadFS (ReadFS)
@@ -24,25 +25,32 @@ import Path
 import Path.IO qualified as PIO
 import Prelude hiding (zip)
 
--- Given a function to run over unarchived contents, unpack archives
+-- | Given a function to run over unarchived contents, recursively unpack archives
 discover :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has TaskPool sig m) => (Path Abs Dir -> m ()) -> Path Abs Dir -> m ()
-discover go = walk $ \_ _ files -> do
-  let tars = filter (\file -> ".tar" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkTask $ withArchive extractTar file go) tars
+discover go dir = context "Finding archives" $
+  flip walk dir $ \_ _ files -> do
+    -- To process an unpacked archive, run the provided function on the archive
+    -- contents, and recursively call discover
+    let process file unpackedDir = context (toText (fileName file)) $ do
+          go unpackedDir
+          discover go unpackedDir
 
-  let tarGzs = filter (\file -> ".tar.gz" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkTask $ withArchive extractTarGz file go) tarGzs
+    let tars = filter (\file -> ".tar" `isSuffixOf` fileName file) files
+    traverse_ (\file -> forkTask $ withArchive extractTar file (process file)) tars
 
-  let zips = filter (\file -> ".zip" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkTask $ withArchive extractZip file go) zips
+    let tarGzs = filter (\file -> ".tar.gz" `isSuffixOf` fileName file) files
+    traverse_ (\file -> forkTask $ withArchive extractTarGz file (process file)) tarGzs
 
-  let jars = filter (\file -> ".jar" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkTask $ withArchive extractZip file go) jars
+    let zips = filter (\file -> ".zip" `isSuffixOf` fileName file) files
+    traverse_ (\file -> forkTask $ withArchive extractZip file (process file)) zips
 
-  let rpms = filter (\file -> ".rpm" `isSuffixOf` fileName file) files
-  traverse_ (\file -> forkTask $ withArchive extractRpm file go) rpms
+    let jars = filter (\file -> ".jar" `isSuffixOf` fileName file) files
+    traverse_ (\file -> forkTask $ withArchive extractZip file (process file)) jars
 
-  pure WalkContinue
+    let rpms = filter (\file -> ".rpm" `isSuffixOf` fileName file) files
+    traverse_ (\file -> forkTask $ withArchive extractRpm file (process file)) rpms
+
+    pure WalkContinue
 
 -- | Extract an archive to a temporary directory, and run the provided callback
 -- on the temporary directory. Archive contents are removed when the callback

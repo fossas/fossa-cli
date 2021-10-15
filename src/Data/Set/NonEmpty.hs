@@ -4,6 +4,7 @@ module Data.Set.NonEmpty (
   toSet,
 ) where
 
+import Data.Aeson (ToJSON)
 import Data.Set qualified as Set
 
 -- | A non empty set. Inspired by non empty list.
@@ -21,4 +22,5 @@ nonEmpty s
 toSet :: NonEmptySet a -> Set.Set a
 toSet = unEmptySet
 
-newtype NonEmptySet a = NonEmptySet {unEmptySet :: Set.Set a} deriving (Eq, Ord, Show, Semigroup)
+newtype NonEmptySet a = NonEmptySet {unEmptySet :: Set.Set a}
+  deriving (Eq, Ord, Show, Semigroup, ToJSON)

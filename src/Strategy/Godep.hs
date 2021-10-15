@@ -2,18 +2,21 @@ module Strategy.Godep (
   discover,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
+import Data.Aeson (ToJSON)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Strategy.Go.GopkgLock qualified as GopkgLock
 import Strategy.Go.GopkgToml qualified as GopkgToml
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject GodepProject]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [GodepProject]
@@ -37,15 +40,20 @@ data GodepProject = GodepProject
   , godepToml :: Maybe (Path Abs File)
   , godepLock :: Maybe (Path Abs File)
   }
+  deriving (Eq, Ord, Show, Generic)
 
-mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => GodepProject -> DiscoveredProject n
+instance ToJSON GodepProject
+
+instance AnalyzeProject GodepProject where
+  analyzeProject _ = getDeps
+
+mkProject :: GodepProject -> DiscoveredProject GodepProject
 mkProject project =
   DiscoveredProject
     { projectType = "godep"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
     , projectPath = godepDir project
-    , projectLicenses = pure []
+    , projectData = project
     }
 
 getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m DependencyResults

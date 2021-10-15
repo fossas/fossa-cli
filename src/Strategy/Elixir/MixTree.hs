@@ -17,9 +17,11 @@ module Strategy.Elixir.MixTree (
   analyze,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Monad (void)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
+import Data.Aeson (ToJSON)
 import Data.Foldable (asum)
 import Data.Functor (($>))
 import Data.Map (Map)
@@ -45,6 +47,7 @@ import DepTypes (
  )
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
 import Effect.Logger (Logger, logWarn)
+import GHC.Generics (Generic)
 import Graphing (Graphing, unfold)
 import Path
 import Prettyprinter (pretty)
@@ -98,7 +101,12 @@ data MixProject = MixProject
   { mixDir :: Path Abs Dir
   , mixFile :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON MixProject
+
+instance AnalyzeProject MixProject where
+  analyzeProject _ = analyze
 
 -- | Name of the Package.
 newtype PackageName = PackageName {unPackageName :: Text} deriving (Show, Eq, Ord)

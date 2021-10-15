@@ -5,20 +5,23 @@ module Strategy.Python.Setuptools (
   mkProject,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Carrier.Output.IO
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Diagnostics qualified as Diag
+import Data.Aeson (ToJSON)
 import Data.List (isInfixOf, isSuffixOf)
 import Data.Maybe (maybeToList)
 import Discovery.Walk
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path
 import Strategy.Python.ReqTxt qualified as ReqTxt
 import Strategy.Python.SetupPy qualified as SetupPy
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject SetuptoolsProject]
 discover dir = context "Setuptools" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -61,21 +64,27 @@ analyzeReqTxts :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject
 analyzeReqTxts = context "Analyzing requirements.txt files" . fmap mconcat . traverse ReqTxt.analyze' . setuptoolsReqTxt
 
 analyzeSetupPy :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
-analyzeSetupPy project = context "Analyzing setup.py" (Diag.fromMaybeText "No setup.py found in this project" (setuptoolsSetupPy project)) >>= SetupPy.analyze'
+analyzeSetupPy project = context "Analyzing setup.py" $ do
+  setupPy <- Diag.fromMaybeText "No setup.py found in this project" (setuptoolsSetupPy project)
+  SetupPy.analyze' setupPy
 
 data SetuptoolsProject = SetuptoolsProject
   { setuptoolsReqTxt :: [Path Abs File]
   , setuptoolsSetupPy :: Maybe (Path Abs File)
   , setuptoolsDir :: Path Abs Dir
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => SetuptoolsProject -> DiscoveredProject n
+instance ToJSON SetuptoolsProject
+
+instance AnalyzeProject SetuptoolsProject where
+  analyzeProject _ = getDeps
+
+mkProject :: SetuptoolsProject -> DiscoveredProject SetuptoolsProject
 mkProject project =
   DiscoveredProject
     { projectType = "setuptools"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
     , projectPath = setuptoolsDir project
-    , projectLicenses = pure []
+    , projectData = project
     }

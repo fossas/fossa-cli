@@ -7,9 +7,11 @@ module Strategy.Python.Poetry (
   PoetryProject (..),
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Algebra (Has)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context)
+import Data.Aeson (ToJSON)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
@@ -22,6 +24,7 @@ import Discovery.Walk (
  )
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, readContentsToml)
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, File, Path)
@@ -30,18 +33,27 @@ import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), Poe
 import Strategy.Python.Poetry.PyProject (PyProject (..), pyProjectCodec)
 import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (..))
 
-newtype PyProjectTomlFile = PyProjectTomlFile {pyProjectTomlPath :: Path Abs File} deriving (Eq, Ord, Show)
-newtype PoetryLockFile = PoetryLockFile {poetryLockPath :: Path Abs File} deriving (Eq, Ord, Show)
-newtype ProjectDir = ProjectDir {pyProjectPath :: Path Abs Dir} deriving (Eq, Ord, Show)
+newtype PyProjectTomlFile = PyProjectTomlFile {pyProjectTomlPath :: Path Abs File} deriving (Eq, Ord, Show, Generic)
+newtype PoetryLockFile = PoetryLockFile {poetryLockPath :: Path Abs File} deriving (Eq, Ord, Show, Generic)
+newtype ProjectDir = ProjectDir {pyProjectPath :: Path Abs Dir} deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON PyProjectTomlFile
+instance ToJSON PoetryLockFile
+instance ToJSON ProjectDir
 
 data PoetryProject = PoetryProject
   { projectDir :: ProjectDir
   , pyProjectToml :: PyProjectTomlFile
   , poetryLock :: Maybe PoetryLockFile
   }
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Generic)
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has Logger rsig run, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+instance ToJSON PoetryProject
+
+instance AnalyzeProject PoetryProject where
+  analyzeProject _ = getDeps
+
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m [DiscoveredProject PoetryProject]
 discover dir = context "Poetry" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -90,14 +102,13 @@ findProjects = walk' $ \dir _ files -> do
     (Just _, Nothing) -> context "poetry.lock file found without accompanying pyproject.toml!" $ pure ([], WalkContinue)
     (Nothing, Nothing) -> pure ([], WalkContinue)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n, Has Logger sig n) => PoetryProject -> DiscoveredProject n
+mkProject :: PoetryProject -> DiscoveredProject PoetryProject
 mkProject project =
   DiscoveredProject
     { projectType = "poetry"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
     , projectPath = pyProjectPath $ projectDir project
-    , projectLicenses = pure []
+    , projectData = project
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PoetryProject -> m DependencyResults

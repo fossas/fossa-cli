@@ -11,8 +11,10 @@ module Strategy.RPM (
   Dependencies (..),
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics
 import Control.Effect.Diagnostics qualified as Diag
+import Data.Aeson (ToJSON)
 import Data.List (isSuffixOf)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
@@ -22,6 +24,7 @@ import Data.Text.Extra (splitOnceOn)
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified as G
 import Path
@@ -48,7 +51,7 @@ data Dependencies = Dependencies
   }
   deriving (Eq, Ord, Show)
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject RpmProject]
 discover dir = context "RPM" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -65,16 +68,20 @@ data RpmProject = RpmProject
   { rpmDir :: Path Abs Dir
   , rpmFiles :: [Path Abs File]
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => RpmProject -> DiscoveredProject n
+instance ToJSON RpmProject
+
+instance AnalyzeProject RpmProject where
+  analyzeProject _ = getDeps
+
+mkProject :: RpmProject -> DiscoveredProject RpmProject
 mkProject project =
   DiscoveredProject
     { projectType = "rpm"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
     , projectPath = rpmDir project
-    , projectLicenses = pure []
+    , projectData = project
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RpmProject -> m DependencyResults

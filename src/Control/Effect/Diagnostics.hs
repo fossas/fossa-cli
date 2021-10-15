@@ -14,6 +14,7 @@ module Control.Effect.Diagnostics (
   recover,
   recover',
   errorBoundary,
+  rethrow,
 
   -- * Diagnostic result types
   FailureBundle (..),
@@ -38,6 +39,7 @@ module Control.Effect.Diagnostics (
 
 import Control.Algebra as X
 import Control.Exception (SomeException (..))
+import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.List (intersperse)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
@@ -53,6 +55,7 @@ data Diagnostics m k where
   Recover' :: m a -> Diagnostics m (Either SomeDiagnostic a)
   Context :: Text -> m a -> Diagnostics m a
   ErrorBoundary :: m a -> Diagnostics m (Either FailureBundle a)
+  Rethrow :: FailureBundle -> Diagnostics m a
 
 -- | A class of diagnostic types that can be rendered in a user-friendly way
 class ToDiagnostic a where
@@ -68,6 +71,13 @@ instance ToDiagnostic SomeException where
 -- | An error with a ToDiagnostic instance and an associated stack trace
 data SomeDiagnostic where
   SomeDiagnostic :: ToDiagnostic a => [Text] -> a -> SomeDiagnostic
+
+instance ToJSON SomeDiagnostic where
+  toJSON (SomeDiagnostic path cause) =
+    object
+      [ "errorPath" .= path
+      , "errorCause" .= show (renderDiagnostic cause)
+      ]
 
 -- | Analagous to @throwError@ from the error effect
 fatal :: (Has Diagnostics sig m, ToDiagnostic diag) => diag -> m a
@@ -92,6 +102,10 @@ recover' = send . Recover'
 -- This returns a FailureBundle if the action failed; otherwise returns the result of the action
 errorBoundary :: Has Diagnostics sig m => m a -> m (Either FailureBundle a)
 errorBoundary = send . ErrorBoundary
+
+-- | Rethrow a FailureBundle from an 'errorBoundary'
+rethrow :: Has Diagnostics sig m => FailureBundle -> m a
+rethrow = send . Rethrow
 
 -- | Push context onto the stack for "stack traces"/"tracebacks" in diagnostics.
 --

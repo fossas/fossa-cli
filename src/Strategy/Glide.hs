@@ -2,14 +2,17 @@ module Strategy.Glide (
   discover,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context)
+import Data.Aeson (ToJSON)
 import Discovery.Walk
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Strategy.Go.GlideLock qualified as GlideLock
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject GlideProject]
 discover dir = context "Glide" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -24,15 +27,20 @@ data GlideProject = GlideProject
   { glideLock :: Path Abs File
   , glideDir :: Path Abs Dir
   }
+  deriving (Eq, Ord, Show, Generic)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => GlideProject -> DiscoveredProject n
+instance ToJSON GlideProject
+
+instance AnalyzeProject GlideProject where
+  analyzeProject _ = getDeps
+
+mkProject :: GlideProject -> DiscoveredProject GlideProject
 mkProject project =
   DiscoveredProject
     { projectType = "glide"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
     , projectPath = glideDir project
-    , projectLicenses = pure []
+    , projectData = project
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => GlideProject -> m DependencyResults

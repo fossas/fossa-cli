@@ -2,18 +2,21 @@ module Strategy.Npm (
   discover,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
+import Data.Aeson (ToJSON)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Strategy.Node.NpmList qualified as NpmList
 import Strategy.Node.NpmLock qualified as NpmLock
 import Strategy.Node.PackageJson qualified as PackageJson
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject NpmProject]
 discover dir = context "Npm" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -44,16 +47,20 @@ data NpmProject = NpmProject
   , npmPackageJson :: Path Abs File
   , npmPackageLock :: Maybe (Path Abs File)
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
 
-mkProject :: (Has Exec sig n, Has ReadFS sig n, Has Diagnostics sig n) => NpmProject -> DiscoveredProject n
+instance ToJSON NpmProject
+
+instance AnalyzeProject NpmProject where
+  analyzeProject _ = getDeps
+
+mkProject :: NpmProject -> DiscoveredProject NpmProject
 mkProject project =
   DiscoveredProject
     { projectType = "npm"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
     , projectPath = npmDir project
-    , projectLicenses = pure []
+    , projectData = project
     }
 
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => NpmProject -> m DependencyResults

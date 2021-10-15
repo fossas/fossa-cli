@@ -1,41 +1,35 @@
-{-# LANGUAGE UndecidableInstances #-}
-
 module Discovery.Projects (
   withDiscoveredProjects,
 ) where
 
+import App.Fossa.Analyze.Debug (DiagDebugC, diagToDebug)
+import Control.Carrier.Debug (Debug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Diagnostics.StickyContext
+import Control.Carrier.Output.IO
 import Control.Effect.AtomicCounter (AtomicCounter)
-import Control.Effect.Finally
 import Control.Effect.Lift
 import Control.Effect.TaskPool
-import Control.Monad (when)
-import Control.Monad.Trans.Class (MonadTrans (..))
-import Data.Foldable (for_, traverse_)
-import Discovery.Archive qualified as Archive
+import Data.Foldable (traverse_)
 import Effect.Logger
-import Effect.ReadFS (ReadFS)
 import Path
-import Types (DiscoveredProject)
+import Types
 
--- | Run a list of discover functions in parallel, running the provided function
--- on each discovered project. Note that the provided function is also run in
--- parallel.
+-- | Fork a task to run a discover function, forking a task with the provided
+-- continuation applied to each discovered project
 withDiscoveredProjects ::
-  (Has AtomicCounter sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has TaskPool sig m, Has Logger sig m, Has Finally sig m) =>
-  -- | Discover functions
-  [Path Abs Dir -> StickyDiagC (Diag.DiagnosticsC m) [DiscoveredProject run]] ->
+  ( Has AtomicCounter sig m
+  , Has (Lift IO) sig m
+  , Has Debug sig m
+  , Has TaskPool sig m
+  , Has Logger sig m
+  ) =>
+  -- | Discover function
+  (Path Abs Dir -> StickyDiagC (DiagDebugC (Diag.DiagnosticsC m)) [DiscoveredProject run]) ->
   -- | whether to unpack archives
-  Bool ->
   Path Abs Dir ->
   (DiscoveredProject run -> m ()) ->
   m ()
-withDiscoveredProjects discoverFuncs unpackArchives basedir f = do
-  for_ discoverFuncs $ \discover -> forkTask $ do
-    projectsResult <- Diag.runDiagnosticsIO . stickyDiag $ discover basedir
-    Diag.withResult SevError projectsResult (traverse_ (forkTask . f))
-
-  when unpackArchives $ do
-    res <- Diag.runDiagnosticsIO $ Archive.discover (\dir -> lift $ withDiscoveredProjects discoverFuncs unpackArchives dir f) basedir
-    Diag.withResult SevError res (const (pure ()))
+withDiscoveredProjects discover basedir f = forkTask $ do
+  projectsResult <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag $ discover basedir
+  Diag.withResult SevError projectsResult (traverse_ (forkTask . f))

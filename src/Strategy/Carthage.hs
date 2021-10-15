@@ -10,7 +10,9 @@ module Strategy.Carthage (
   EntryType (..),
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics
+import Data.Aeson (ToJSON)
 import Data.Char (isSpace)
 import Data.Foldable (for_, traverse_)
 import Data.Functor (void)
@@ -23,6 +25,7 @@ import DepTypes
 import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing qualified as G
 import Path
 import Text.Megaparsec
@@ -30,7 +33,7 @@ import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CarthageProject]
 discover dir = context "Carthage" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -52,16 +55,20 @@ data CarthageProject = CarthageProject
   { carthageDir :: Path Abs Dir
   , carthageLock :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => CarthageProject -> DiscoveredProject n
+instance ToJSON CarthageProject
+
+instance AnalyzeProject CarthageProject where
+  analyzeProject _ = getDeps
+
+mkProject :: CarthageProject -> DiscoveredProject CarthageProject
 mkProject project =
   DiscoveredProject
     { projectType = "carthage"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
     , projectPath = carthageDir project
-    , projectLicenses = pure []
+    , projectData = project
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CarthageProject -> m DependencyResults

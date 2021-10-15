@@ -11,7 +11,9 @@ module Strategy.Scala (
   findProjects,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Carrier.Diagnostics
+import Data.Aeson (ToJSON)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
@@ -21,6 +23,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.Logger hiding (group)
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures)
@@ -33,35 +36,37 @@ discover ::
   , Has ReadFS sig m
   , Has Logger sig m
   , Has Diagnostics sig m
-  , Applicative run
   ) =>
   Path Abs Dir ->
-  m [DiscoveredProject run]
+  m [DiscoveredProject ScalaProject]
 discover dir = context "Scala" $ do
   projects <- findProjects dir
-  pure (map (mkProject dir) projects)
+  pure (map mkProject projects)
 
-mkProject ::
-  Applicative n =>
-  -- | basedir; required for licenses
-  Path Abs Dir ->
-  MavenProjectClosure ->
-  DiscoveredProject n
-mkProject basedir closure =
+newtype ScalaProject = ScalaProject {unScalaProject :: PomClosure.MavenProjectClosure}
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ScalaProject
+
+instance AnalyzeProject ScalaProject where
+  analyzeProject _ = pure . getDeps
+
+mkProject :: MavenProjectClosure -> DiscoveredProject ScalaProject
+mkProject closure =
   DiscoveredProject
     { projectType = "scala"
     , projectPath = parent $ PomClosure.closurePath closure
     , projectBuildTargets = mempty
-    , -- only do static analysis of generated pom files
-      projectDependencyResults =
-        const $
-          pure
-            DependencyResults
-              { dependencyGraph = Pom.analyze' closure
-              , dependencyGraphBreadth = Complete
-              , dependencyManifestFiles = [PomClosure.closurePath closure]
-              }
-    , projectLicenses = pure $ Pom.getLicenses basedir closure
+    , projectData = ScalaProject closure
+    }
+
+-- only do static analysis of generated pom files
+getDeps :: ScalaProject -> DependencyResults
+getDeps (ScalaProject closure) =
+  DependencyResults
+    { dependencyGraph = Pom.analyze' closure
+    , dependencyGraphBreadth = Complete
+    , dependencyManifestFiles = [PomClosure.closurePath closure]
     }
 
 pathToText :: Path ar fd -> Text

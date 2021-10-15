@@ -5,16 +5,19 @@ module Strategy.Gomodules (
   mkProject,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
+import Data.Aeson (ToJSON)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
 import Strategy.Go.GoList qualified as GoList
 import Strategy.Go.Gomod qualified as Gomod
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject GomodulesProject]
 discover dir = context "Gomodules" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -29,15 +32,20 @@ data GomodulesProject = GomodulesProject
   { gomodulesGomod :: Path Abs File
   , gomodulesDir :: Path Abs Dir
   }
+  deriving (Eq, Ord, Show, Generic)
 
-mkProject :: (Has Exec sig n, Has ReadFS sig n, Has Diagnostics sig n) => GomodulesProject -> DiscoveredProject n
+instance ToJSON GomodulesProject
+
+instance AnalyzeProject GomodulesProject where
+  analyzeProject _ = getDeps
+
+mkProject :: GomodulesProject -> DiscoveredProject GomodulesProject
 mkProject project =
   DiscoveredProject
     { projectType = "gomod"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
     , projectPath = gomodulesDir project
-    , projectLicenses = pure []
+    , projectData = project
     }
 
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> m DependencyResults

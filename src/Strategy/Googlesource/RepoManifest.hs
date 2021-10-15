@@ -20,9 +20,11 @@ module Strategy.Googlesource.RepoManifest (
 
 import Prelude
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative (optional, (<|>))
 import Control.Effect.Diagnostics
 import Control.Monad (unless)
+import Data.Aeson (ToJSON)
 import Data.Foldable (find)
 import Data.HashMap.Strict qualified as HM
 import Data.Map.Strict qualified as Map
@@ -33,6 +35,7 @@ import Data.Text.Prettyprint.Doc (pretty)
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing (Graphing, unfold)
 import Parse.XML
 import Path
@@ -41,7 +44,7 @@ import Text.Megaparsec (errorBundlePretty)
 import Text.URI
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject RepoManifestProject]
 discover dir = context "RepoManifest" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -59,17 +62,21 @@ findProjects = walk' $ \_ _ files -> do
 newtype RepoManifestProject = RepoManifestProject
   { repoManifestXml :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => RepoManifestProject -> DiscoveredProject n
+instance ToJSON RepoManifestProject
+
+mkProject :: RepoManifestProject -> DiscoveredProject RepoManifestProject
 mkProject project =
   DiscoveredProject
     { projectType = "repomanifest"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
+    , projectData = project
     , projectPath = parent $ repoManifestXml project
-    , projectLicenses = pure []
     }
+
+instance AnalyzeProject RepoManifestProject where
+  analyzeProject _ = getDeps
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RepoManifestProject -> m DependencyResults
 getDeps = analyze' . repoManifestXml

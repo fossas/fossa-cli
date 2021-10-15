@@ -35,10 +35,10 @@ data MavenStrategyOpts = MavenStrategyOpts
 analyze' :: MavenProjectClosure -> Graphing Dependency
 analyze' = buildProjectGraph
 
-getLicenses :: Path Abs Dir -> MavenProjectClosure -> [LicenseResult]
-getLicenses basedir closure = do
+getLicenses :: MavenProjectClosure -> [LicenseResult]
+getLicenses closure = do
   (abspath, pom) <- Map.elems (closurePoms closure)
-  case Path.makeRelative basedir abspath of
+  case Path.makeRelative (closureAnalysisRoot closure) abspath of
     Nothing -> []
     Just relpath ->
       let path = toFilePath relpath

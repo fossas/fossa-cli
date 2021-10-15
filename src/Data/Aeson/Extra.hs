@@ -1,13 +1,16 @@
 module Data.Aeson.Extra (
   forbidMembers,
   TextLike (..),
+  encodeJSONToText,
 ) where
 
 import Control.Applicative ((<|>))
+import Data.Aeson (ToJSON)
+import Data.Aeson qualified as Aeson
 import Data.Aeson.Types (FromJSON (parseJSON), Object, Parser)
 import Data.Foldable (traverse_)
 import Data.HashMap.Strict (member)
-import Data.String.Conversion (toString, toText)
+import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 
 -- | A Text-like field
@@ -47,3 +50,7 @@ forbidMembers typename names obj = traverse_ (badMember obj) names
       if member name hashmap
         then fail . toString $ "Invalid field name for " <> typename <> ": " <> name
         else pure ()
+
+-- | Like 'Data.Aeson.encode', but produces @Text@ instead of @ByteString@
+encodeJSONToText :: ToJSON a => a -> Text
+encodeJSONToText = decodeUtf8 . Aeson.encode

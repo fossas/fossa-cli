@@ -95,7 +95,7 @@ recursiveLoadPom path = do
 -- pom file. when it's a directory, we default to pointing at the "pom.xml" in
 -- that directory.
 resolvePath :: forall sig m. (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)
-resolvePath cur txt = do
+resolvePath cur txt = context "Resolving parent pom.xml path" $ do
   let resolveToFile :: m (Path Abs File)
       resolveToFile = do
         file <- resolveFile cur txt
@@ -110,7 +110,7 @@ resolvePath cur txt = do
       checkFile file = do
         exists <- doesFileExist file
         unless exists $
-          fatal (FileReadError (show file) "resolvePath: resolved file does not exist: ")
+          fatal (FileReadError (show file) "resolvePath: resolved file does not exist")
         pure file
 
   resolveToFile <||> resolveToDir

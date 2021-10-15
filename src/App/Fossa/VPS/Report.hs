@@ -16,6 +16,7 @@ import Data.Functor (void)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.IO (hPutStrLn)
+import Effect.Exec (runExecIO)
 import Effect.Logger
 import Effect.ReadFS
 import Fossa.API.Types (ApiOpts)
@@ -52,7 +53,7 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
   * CLI command refactoring as laid out in https://github.com/fossas/issues/issues/129
   -}
   void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $
-    logWithExit_ . runReadFSIO $ do
+    logWithExit_ . runReadFSIO . runExecIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
       logSticky "[ Getting latest scan ID ]"

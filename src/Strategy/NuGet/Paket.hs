@@ -10,8 +10,10 @@ module Strategy.NuGet.Paket (
   Remote (..),
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics
 import Control.Monad (guard)
+import Data.Aeson (ToJSON)
 import Data.Char qualified as C
 import Data.Foldable (traverse_)
 import Data.Functor (void)
@@ -24,6 +26,7 @@ import DepTypes
 import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path
 import Text.Megaparsec hiding (label)
@@ -33,7 +36,7 @@ import Types
 
 type Parser = Parsec Void Text
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PaketProject]
 discover dir = context "Paket" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -47,16 +50,20 @@ findProjects = walk' $ \_ _ files -> do
 newtype PaketProject = PaketProject
   { paketLock :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => PaketProject -> DiscoveredProject n
+instance ToJSON PaketProject
+
+instance AnalyzeProject PaketProject where
+  analyzeProject _ = getDeps
+
+mkProject :: PaketProject -> DiscoveredProject PaketProject
 mkProject project =
   DiscoveredProject
     { projectType = "paket"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
     , projectPath = parent $ paketLock project
-    , projectLicenses = pure []
+    , projectData = project
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PaketProject -> m DependencyResults

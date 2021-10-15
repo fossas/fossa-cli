@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Strategy.Maven.Pom.Closure (
   findProjects,
   MavenProjectClosure (..),
@@ -9,6 +11,7 @@ import Algebra.Graph.AdjacencyMap.Algorithm qualified as AM
 import Control.Algebra
 import Control.Carrier.State.Strict
 import Control.Effect.Diagnostics
+import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
 import Data.Map.Strict (Map)
@@ -18,6 +21,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Discovery.Walk
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Path.IO qualified as PIO
 import Strategy.Maven.Pom.PomFile
@@ -43,7 +47,7 @@ buildProjectClosures basedir global = closures
     closures = map (\(path, (coord, pom)) -> toClosure path coord pom) (Map.toList projectRoots)
 
     toClosure :: Path Abs File -> MavenCoordinate -> Pom -> MavenProjectClosure
-    toClosure path coord pom = MavenProjectClosure path coord pom reachableGraph reachablePomMap
+    toClosure path coord pom = MavenProjectClosure basedir path coord pom reachableGraph reachablePomMap
       where
         reachableGraph = AM.induce (`Set.member` reachablePoms) $ globalGraph global
         reachablePomMap = Map.filterWithKey (\k _ -> Set.member k reachablePoms) $ globalPoms global
@@ -95,10 +99,24 @@ determineProjectRoots rootDir closure = go . Set.fromList
         frontier = Set.unions $ Set.map (\coord -> AM.postSet coord (globalGraph closure)) remainingCoords
 
 data MavenProjectClosure = MavenProjectClosure
-  { closurePath :: Path Abs File
+  { -- | the root of global fossa-analyze analysis; needed for pathfinder license scan
+    closureAnalysisRoot :: Path Abs Dir
+  , -- | path of the pom file used as the root of this project closure
+    closurePath :: Path Abs File
   , closureRootCoord :: MavenCoordinate
   , closureRootPom :: Pom
   , closureGraph :: AM.AdjacencyMap MavenCoordinate
   , closurePoms :: Map MavenCoordinate (Path Abs File, Pom)
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON MavenProjectClosure where
+  toJSON MavenProjectClosure{..} =
+    object
+      [ "closureAnalysisRoot" .= closureAnalysisRoot
+      , "closurePath" .= closurePath
+      , "closureRootCoord" .= closureRootCoord
+      , "closureRootPom" .= closureRootPom
+      , "closureGraph" .= AM.adjacencyMap closureGraph
+      , "closurePoms" .= closurePoms
+      ]

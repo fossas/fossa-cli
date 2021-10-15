@@ -26,6 +26,7 @@ import Data.Aeson qualified as Aeson
 import Data.Functor (void)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text.IO (hPutStrLn)
+import Effect.Exec (runExecIO)
 import Effect.Logger (
   Severity (SevInfo),
   logError,
@@ -56,7 +57,7 @@ testMain ::
   IO ()
 testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
   void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $
-    logWithExit_ . runReadFSIO $ do
+    logWithExit_ . runReadFSIO . runExecIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
       logInfo ""

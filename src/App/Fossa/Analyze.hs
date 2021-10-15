@@ -8,16 +8,17 @@ module App.Fossa.Analyze (
   VSIAnalysisMode (..),
   IATAssertionMode (..),
   BinaryDiscoveryMode (..),
-  RecordMode (..),
   ModeOptions (..),
+  DiscoverFunc (..),
   discoverFuncs,
 ) where
 
 import App.Docs (userGuideUrl)
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
+import App.Fossa.Analyze.Debug (collectDebugBundle, diagToDebug)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
-import App.Fossa.Analyze.Record (AnalyzeEffects (..), AnalyzeJournal (..), loadReplayLog, saveReplayLog)
+import App.Fossa.Analyze.Types
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.FossaAPIV1 (UploadResponse (..), getProject, projectIsMonorepo, uploadAnalysis, uploadContributors)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
@@ -31,7 +32,9 @@ import App.Types (
   ProjectRevision (projectBranch, projectName, projectRevision),
  )
 import App.Util (validateDir)
+import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
+import Control.Carrier.Debug (Debug, debugMetadata, debugScope, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Diagnostics.StickyContext
 import Control.Carrier.Finally
@@ -40,13 +43,13 @@ import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent
 import Control.Effect.Diagnostics (fatalText, fromMaybeText, recover, (<||>))
-import Control.Effect.Exception (Lift, SomeException, throwIO, try)
+import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
-import Control.Effect.Record (runRecord)
-import Control.Effect.Replay (runReplay)
+import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
+import Data.ByteString.Lazy qualified as BL
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (void)
@@ -57,17 +60,17 @@ import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Terminal
+import Discovery.Archive qualified as Archive
 import Discovery.Filters
 import Discovery.Projects (withDiscoveredProjects)
-import Effect.Exec (Exec, ExecF, runExecIO)
+import Effect.Exec (Exec, runExecIO)
 import Effect.Logger
-import Effect.ReadFS (ReadFS, ReadFSF, runReadFSIO)
+import Effect.ReadFS (ReadFS, runReadFSIO)
 import Fossa.API.Types (ApiOpts (..))
 import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
-import Path.IO qualified as P
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (Locator (locatorProject, locatorRevision), SourceUnit (..), parseLocator)
+import Srclib.Types (Locator (locatorProject, locatorRevision), SourceUnit, parseLocator)
 import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
 import Strategy.Carthage qualified as Carthage
@@ -100,18 +103,8 @@ import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
 import Strategy.SwiftPM qualified as SwiftPM
 import Strategy.Yarn qualified as Yarn
-import System.Exit (die)
 import Types (DiscoveredProject (..), FoundTargets)
 import VCS.Git (fetchGitContributors)
-
-type TaskEffs sig m =
-  ( Has (Lift IO) sig m
-  , MonadIO m
-  , Has ReadFS sig m
-  , Has Exec sig m
-  , Has Logger sig m
-  , Has Diag.Diagnostics sig m
-  )
 
 data ScanDestination
   = -- | upload to fossa with provided api key and base url
@@ -152,94 +145,50 @@ data BinaryDiscoveryMode
   | -- | Binary discovery disabled
     BinaryDiscoveryDisabled
 
--- | "Replay logging" modes
-data RecordMode
-  = -- | record effect invocations
-    RecordModeRecord
-  | -- | replay effect invocations from a file
-    RecordModeReplay FilePath
-  | -- | don't record or replay
-    RecordModeNone
-
-analyzeMain :: FilePath -> RecordMode -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> ModeOptions -> AllFilters -> IO ()
-analyzeMain workdir recordMode logSeverity destination project unpackArchives jsonOutput modeOptions filters =
+analyzeMain :: FilePath -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> ModeOptions -> AllFilters -> IO ()
+analyzeMain workdir logSeverity destination project unpackArchives jsonOutput modeOptions filters =
   withDefaultLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO
     . runExecIO
-    $ case recordMode of
-      RecordModeNone -> do
+    $ case logSeverity of
+      -- In --debug mode, emit a debug bundle to "fossa.debug.json"
+      SevDebug -> do
         basedir <- sendIO $ validateDir workdir
-        doAnalyze basedir
-      RecordModeRecord -> do
+        (scope, res) <- collectDebugBundle . Diag.errorBoundaryIO $ doAnalyze basedir
+        sendIO . BL.writeFile "fossa.debug.json.gz" . GZip.compress $ Aeson.encode scope
+        either Diag.rethrow pure res
+      _ -> do
         basedir <- sendIO $ validateDir workdir
-        (execLogs, (readFSLogs, res)) <-
-          runRecord @ExecF . runRecord @ReadFSF . try @SomeException $
-            doAnalyze basedir
-        sendIO $ saveReplayLog readFSLogs execLogs "fossa.debug.json"
-        either throwIO pure res
-      RecordModeReplay file -> do
-        basedir <- BaseDir <$> P.resolveDir' workdir
-        maybeJournal <- sendIO $ loadReplayLog file
-        case maybeJournal of
-          Left err -> sendIO (die $ "Issue loading replay log: " <> err)
-          Right journal -> do
-            let effects = analyzeEffects journal
-            runReplay @ReadFSF (effectsReadFS effects)
-              . runReplay @ExecF (effectsExec effects)
-              $ doAnalyze basedir
+        ignoreDebug $ doAnalyze basedir
   where
     doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput modeOptions filters
 
-discoverFuncs :: (TaskEffs sig m, TaskEffs rsig run) => [Path Abs Dir -> m [DiscoveredProject run]]
-discoverFuncs =
-  [ Bundler.discover
-  , Cabal.discover
-  , Cargo.discover
-  , Carthage.discover
-  , Cocoapods.discover
-  , Composer.discover
-  , Conda.discover
-  , Glide.discover
-  , Godep.discover
-  , Gomodules.discover
-  , Gradle.discover
-  , Leiningen.discover
-  , Maven.discover
-  , Mix.discover
-  , Npm.discover
-  , Nuspec.discover
-  , PackageReference.discover
-  , PackagesConfig.discover
-  , Paket.discover
-  , Pipenv.discover
-  , Poetry.discover
-  , ProjectAssetsJson.discover
-  , ProjectJson.discover
-  , Pub.discover
-  , RPM.discover
-  , Rebar3.discover
-  , RepoManifest.discover
-  , Scala.discover
-  , Setuptools.discover
-  , Stack.discover
-  , SwiftPM.discover
-  , Yarn.discover
-  ]
-
 runDependencyAnalysis ::
-  (Has (Lift IO) sig m, Has AtomicCounter sig m, Has Logger sig m, Has (Output ProjectResult) sig m) =>
+  ( AnalyzeProject proj
+  , Aeson.ToJSON proj
+  , Has (Lift IO) sig m
+  , Has AtomicCounter sig m
+  , Has Debug sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  , Has (Output ProjectResult) sig m
+  , MonadIO m
+  ) =>
   -- | Analysis base directory
-  BaseDir ->
+  Path Abs Dir ->
   AllFilters ->
-  DiscoveredProject (StickyDiagC (Diag.DiagnosticsC m)) ->
+  DiscoveredProject proj ->
   m ()
-runDependencyAnalysis (BaseDir basedir) filters project =
+runDependencyAnalysis basedir filters project = do
   case applyFiltersToProject basedir filters project of
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
-      graphResult <- Diag.runDiagnosticsIO . stickyDiag $ projectDependencyResults project targets
+      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag . Diag.context "Project Analysis" $ do
+        debugMetadata "DiscoveredProject" project
+        analyzeProject targets (projectData project)
       Diag.withResult SevWarn graphResult (output . mkResult basedir project)
 
 applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
@@ -252,10 +201,79 @@ applyFiltersToProject basedir filters DiscoveredProject{..} =
     Just rel -> do
       applyFilters filters projectType rel projectBuildTargets
 
+runAnalyzers ::
+  ( AnalyzeTaskEffs sig m
+  , Has (Output ProjectResult) sig m
+  , Has TaskPool sig m
+  , Has AtomicCounter sig m
+  ) =>
+  Path Abs Dir ->
+  AllFilters ->
+  m ()
+runAnalyzers basedir filters = traverse_ single discoverFuncs
+  where
+    single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters)
+
+discoverFuncs :: AnalyzeTaskEffs sig m => [DiscoverFunc m]
+discoverFuncs =
+  [ DiscoverFunc Bundler.discover
+  , DiscoverFunc Cabal.discover
+  , DiscoverFunc Cargo.discover
+  , DiscoverFunc Carthage.discover
+  , DiscoverFunc Cocoapods.discover
+  , DiscoverFunc Composer.discover
+  , DiscoverFunc Conda.discover
+  , DiscoverFunc Glide.discover
+  , DiscoverFunc Godep.discover
+  , DiscoverFunc Gomodules.discover
+  , DiscoverFunc Gradle.discover
+  , DiscoverFunc Leiningen.discover
+  , DiscoverFunc Maven.discover
+  , DiscoverFunc Mix.discover
+  , DiscoverFunc Npm.discover
+  , DiscoverFunc Nuspec.discover
+  , DiscoverFunc PackageReference.discover
+  , DiscoverFunc PackagesConfig.discover
+  , DiscoverFunc Paket.discover
+  , DiscoverFunc Pipenv.discover
+  , DiscoverFunc Poetry.discover
+  , DiscoverFunc ProjectAssetsJson.discover
+  , DiscoverFunc ProjectJson.discover
+  , DiscoverFunc Pub.discover
+  , DiscoverFunc RPM.discover
+  , DiscoverFunc Rebar3.discover
+  , DiscoverFunc RepoManifest.discover
+  , DiscoverFunc Scala.discover
+  , DiscoverFunc Setuptools.discover
+  , DiscoverFunc Stack.discover
+  , DiscoverFunc SwiftPM.discover
+  , DiscoverFunc Yarn.discover
+  ]
+
+-- DiscoverFunc is a workaround for the lack of impredicative types.
+--
+-- @discoverFuncs@ is a heterogenous list of discover functions that produce
+-- different types of projects we can analyze for dependencies.
+--
+-- This GADT allows us to say that we don't care about the specific type of
+-- projects produced by a discover function; we only care that each project type
+-- implements ToJSON and AnalyzeProject
+--
+-- With impredicative types, we could shift the @forall@ inside the list,
+-- avoiding the need for this GADT
+--
+--     discoverFuncs ::
+--       AnalyzeTaskEffs sig m =>
+--       [forall a. (AnalyzeProject a, ToJSON a) =>
+--          Path Abs Dir -> m [DiscoveredProject a]]
+data DiscoverFunc m where
+  DiscoverFunc :: (AnalyzeProject a, Aeson.ToJSON a) => (Path Abs Dir -> m [DiscoveredProject a]) -> DiscoverFunc m
+
 analyze ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
   , Has Diag.Diagnostics sig m
+  , Has Debug sig m
   , Has Exec sig m
   , Has ReadFS sig m
   , MonadIO m
@@ -268,7 +286,7 @@ analyze ::
   ModeOptions ->
   AllFilters ->
   m ()
-analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOptions{..} filters = do
+analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOptions{..} filters = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
 
   let apiOpts = case destination of
@@ -277,19 +295,25 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOpt
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
-  manualSrcUnits <- analyzeFossaDepsFile basedir apiOpts
-  vsiResults <- analyzeVSI modeVSIAnalysis apiOpts basedir filters
-  binarySearchResults <- analyzeDiscoverBinaries modeBinaryDiscovery basedir filters
+  manualSrcUnits <- Diag.context "fossa-deps" $ analyzeFossaDepsFile basedir apiOpts
+  vsiResults <- Diag.context "analyze-vsi" $ analyzeVSI modeVSIAnalysis apiOpts basedir filters
+  binarySearchResults <- Diag.context "discover-binaries" $ analyzeDiscoverBinaries modeBinaryDiscovery basedir filters
   let additionalSourceUnits :: [SourceUnit]
       additionalSourceUnits = catMaybes [manualSrcUnits, vsiResults, binarySearchResults]
 
   (projectResults, ()) <-
-    runOutput @ProjectResult
+    Diag.context "discovery/analysis tasks"
+      . runOutput @ProjectResult
       . runStickyLogger SevInfo
       . runFinally
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
-      $ withDiscoveredProjects discoverFuncs (fromFlag UnpackArchives unpackArchives) basedir (runDependencyAnalysis (BaseDir basedir) filters)
+      $ do
+        runAnalyzers basedir filters
+        when (fromFlag UnpackArchives unpackArchives) $
+          forkTask $ do
+            res <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag $ Archive.discover (`runAnalyzers` filters) basedir
+            Diag.withResult SevError res (const (pure ()))
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 
@@ -298,8 +322,15 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOpt
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
-      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult additionalSourceUnits filteredProjects
-      UploadScan opts metadata -> do
+      OutputStdout -> do
+        debugScope "DEBUG: Project inference" $ do
+          inferred <- Diag.context "Inferring project name/revision" (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
+          logDebug $ "Inferred revision: " <> viaShow inferred
+
+          let revision = mergeOverride override inferred
+          logDebug $ "Merged revision: " <> viaShow revision
+        logStdout . decodeUtf8 . Aeson.encode $ buildResult additionalSourceUnits filteredProjects
+      UploadScan opts metadata -> Diag.context "upload-results" $ do
         locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
         doAssertRevisionBinaries modeIATAssertion opts locator
 
@@ -356,6 +387,8 @@ uploadSuccessfulAnalysis ::
   ( Has Diag.Diagnostics sig m
   , Has Logger sig m
   , Has (Lift IO) sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
   BaseDir ->
   ApiOpts ->
@@ -364,16 +397,21 @@ uploadSuccessfulAnalysis ::
   OverrideProject ->
   NE.NonEmpty SourceUnit ->
   m Locator
-uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override units = do
-  revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
-  dieOnMonorepoUpload apiOpts revision
-  saveRevision revision
+uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override units = Diag.context "Uploading analysis" $ do
+  inferred <- Diag.context "Inferring project name/revision" (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
+  logDebug $ "Inferred revision: " <> viaShow inferred
+
+  let revision = mergeOverride override inferred
+  logDebug $ "Merged revision: " <> viaShow revision
 
   logInfo ""
   logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
   logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
   let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
   logInfo ("Using branch: `" <> pretty branchText <> "`")
+
+  dieOnMonorepoUpload apiOpts revision
+  saveRevision revision
 
   uploadResult <- uploadAnalysis apiOpts revision metadata units
   let locator = parseLocator $ uploadLocator uploadResult

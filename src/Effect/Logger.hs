@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Effect.Logger (
@@ -25,10 +26,14 @@ import Control.Carrier.Simple
 import Control.Effect.ConsoleRegion
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
+import Control.Effect.Record (RecordableValue)
+import Control.Effect.Record.TH (deriveRecordable)
 import Control.Monad (when)
+import Data.Aeson (ToJSON)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc as X
 import Data.Text.Prettyprint.Doc.Render.Terminal as X
+import GHC.Generics (Generic)
 import System.Console.ANSI (hSupportsANSI)
 import System.Console.Concurrent (errorConcurrent, outputConcurrent)
 import System.IO (stderr)
@@ -42,11 +47,23 @@ data LogCtx m = LogCtx
 
 type LogFormatter = Severity -> Doc AnsiStyle -> Text
 
+data Severity
+  = SevDebug
+  | SevInfo
+  | SevWarn
+  | SevError
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON Severity
+instance RecordableValue Severity
+
 data LoggerF a where
   Log :: Severity -> Doc AnsiStyle -> LoggerF ()
   -- | A dummy effect constructor that ensures stdout logging happens within the
   -- context of a Logger carrier that can ensure output gets flushed
   LogStdout :: LoggerF ()
+
+$(deriveRecordable ''LoggerF)
 
 type Logger = Simple LoggerF
 
@@ -59,13 +76,6 @@ logStdout :: (Has Logger sig m, Has (Lift IO) sig m) => Text -> m ()
 logStdout txt = do
   sendSimple LogStdout
   sendIO $ outputConcurrent txt
-
-data Severity
-  = SevDebug
-  | SevInfo
-  | SevWarn
-  | SevError
-  deriving (Eq, Ord, Show)
 
 logDebug :: Has Logger sig m => Doc AnsiStyle -> m ()
 logDebug = log SevDebug

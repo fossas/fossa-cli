@@ -5,20 +5,18 @@ module App.Fossa.VPS.Scan (
   LicenseOnlyScan (..),
 ) where
 
-import Control.Carrier.Diagnostics
-import Control.Effect.Lift (Lift, sendIO)
-import Effect.Exec
-import System.Exit (exitFailure)
-
 import App.Fossa.EmbeddedBinary
 import App.Fossa.ProjectInference
 import App.Fossa.VPS.Scan.RunWiggins
 import App.Fossa.VPS.Types
 import App.Types (BaseDir (..), OverrideProject (..), ProjectMetadata (..))
+import Control.Carrier.Diagnostics
+import Control.Effect.Lift (Lift)
 import Data.Flag (Flag, fromFlag)
-import Data.String.Conversion (toText)
 import Data.Text
+import Effect.Exec (Exec, runExecIO)
 import Effect.Logger
+import Effect.ReadFS (ReadFS, runReadFSIO)
 import Fossa.API.Types (ApiOpts (..))
 
 -- | FollowSymlinks bool flag
@@ -32,18 +30,15 @@ data LicenseOnlyScan = LicenseOnlyScan
 
 scanMain :: BaseDir -> ApiOpts -> ProjectMetadata -> Severity -> OverrideProject -> FilterExpressions -> Flag FollowSymlinks -> Flag SkipIPRScan -> Flag LicenseOnlyScan -> IO ()
 scanMain basedir apiOpts metadata logSeverity overrideProject fileFilters followSymlinks skipIprFlag licenseOnlyScan = withDefaultLogger logSeverity $ do
-  result <- runDiagnostics $ withWigginsBinary $ vpsScan basedir logSeverity overrideProject followSymlinks skipIprFlag licenseOnlyScan fileFilters apiOpts metadata
-  case result of
-    Left failure -> do
-      logStdout $ toText $ show $ renderFailureBundle failure
-      sendIO exitFailure
-    Right _ -> pure ()
+  logWithExit_ . runReadFSIO $ runExecIO $ withWigginsBinary $ vpsScan basedir logSeverity overrideProject followSymlinks skipIprFlag licenseOnlyScan fileFilters apiOpts metadata
 
 ----- main logic
 
 vpsScan ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
   , Has Logger sig m
   ) =>
   BaseDir ->

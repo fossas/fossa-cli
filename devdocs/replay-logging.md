@@ -8,16 +8,16 @@ It leverages some unique properties of haskell that allow us to "record" an end-
 
 ## Recording
 
-The `--record` flag is used to run `fossa analyze` in record mode. The analysis will run normally (if a bit slower), and create a file called `fossa.debug.json`.
+The `--debug` flag is used to run `fossa analyze` in record mode. The analysis will run normally (if a bit slower), and create a file called `fossa.debug.json`.
 
-In addition to some basic metadata, `fossa.debug.json` contains the arguments and results of each method invocation from our `ReadFS` and `Exec` effects:
+In addition to some basic metadata, `fossa.debug.json` contains the arguments and results of each method invocation from our `ReadFS` and `Exec` effects within the `journals` key:
 
 ```json
 {
-  "commit": "0abcdef",
+  "system": {...},
   "workdir": "/foo",
   "args": ["analyze", "--record"],
-  "effects": {
+  "journals": {
     "ReadFS": [...]
     "Exec": [...]
   }
@@ -25,6 +25,8 @@ In addition to some basic metadata, `fossa.debug.json` contains the arguments an
 ```
 
 ## Replaying
+
+**Replay mode is temporarily unavailable.**
 
 The `--replay <file>` flag is used to run `fossa analyze` in replay mode. Rather than reading from real files with our `ReadFS` effect or running real commands with our `Exec` effect, we stub in the recorded effect calls from `fossa.debug.json`.
 

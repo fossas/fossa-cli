@@ -5,17 +5,20 @@ module Strategy.Bundler (
   getDeps,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
+import Data.Aeson (ToJSON)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Strategy.Ruby.BundleShow qualified as BundleShow
 import Strategy.Ruby.GemfileLock qualified as GemfileLock
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject BundlerProject]
 discover dir = context "Bundler" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -42,16 +45,20 @@ data BundlerProject = BundlerProject
   , bundlerGemfileLock :: Maybe (Path Abs File)
   , bundlerDir :: Path Abs Dir
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
 
-mkProject :: (Has ReadFS sig n, Has Exec sig n, Has Diagnostics sig n) => BundlerProject -> DiscoveredProject n
+instance ToJSON BundlerProject
+
+instance AnalyzeProject BundlerProject where
+  analyzeProject _ = getDeps
+
+mkProject :: BundlerProject -> DiscoveredProject BundlerProject
 mkProject project =
   DiscoveredProject
     { projectType = "bundler"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
     , projectPath = bundlerDir project
-    , projectLicenses = pure []
+    , projectData = project
     }
 
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults

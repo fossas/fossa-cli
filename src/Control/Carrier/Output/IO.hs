@@ -20,7 +20,7 @@ runOutput act = do
   ref <- sendIO $ newIORef []
   res <- runOutputRef ref act
   outputs <- sendIO $ readIORef ref
-  pure (outputs, res)
+  pure (reverse outputs, res)
 
 runOutputRef :: Has (Lift IO) sig m => IORef [o] -> OutputC o m a -> m a
 runOutputRef ref = interpret $ \case

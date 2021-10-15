@@ -37,7 +37,12 @@ recordEffClause con = do
     []
 
 toJsonTuple :: Con -> [Name] -> ExpQ
-toJsonTuple con nms = tupE ([e|constructor :: String|] : map varE nms)
+toJsonTuple con nms =
+  case nms of
+    -- When a constructor has no arguments, don't form a tuple over it. It will
+    -- otherwise build a "Unit tuple"(?!) over it with one element
+    [] -> [e|constructor :: String|]
+    _ -> tupE ([e|constructor :: String|] : map varE nms)
   where
     constructor = show $ conNm con
 

@@ -31,9 +31,12 @@ import System.Exit
 import Unsafe.Coerce
 
 -- | A class of "replayable" effects -- i.e. an effect whose "result values"
--- (the @a@ in @e m a@) can be deserialized from JSON values produced by
+-- (the @a@ in @e a@) can be deserialized from JSON values produced by
 -- 'recordValue' from 'Recordable'
-class Recordable r => Replayable (r :: Type -> Type) where
+--
+-- We require that all types @e a@ have an 'Ord' instance so they can be used
+-- as keys in a 'Map'
+class (forall x. (Ord (r x)), Recordable r) => Replayable (r :: Type -> Type) where
   -- | Deserialize an effect data constructor and "return value" from JSON values
   replayDecode :: Value -> Value -> Parser (EffectResult r)
 

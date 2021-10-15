@@ -2,16 +2,19 @@ module Strategy.Conda (
   discover,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Data.Aeson (ToJSON)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Strategy.Conda.CondaList qualified as CondaList
 import Strategy.Conda.EnvironmentYml qualified as EnvironmentYml
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CondaProject]
 discover dir = map mkProject <$> findProjects dir
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CondaProject]
@@ -30,16 +33,20 @@ data CondaProject = CondaProject
   { condaDir :: Path Abs Dir
   , condaEnvironmentYml :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
 
-mkProject :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CondaProject -> DiscoveredProject m
+instance ToJSON CondaProject
+
+instance AnalyzeProject CondaProject where
+  analyzeProject _ = getDeps
+
+mkProject :: CondaProject -> DiscoveredProject CondaProject
 mkProject project =
   DiscoveredProject
     { projectType = "conda"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
     , projectPath = condaDir project
-    , projectLicenses = pure []
+    , projectData = project
     }
 
 -- Prefer analyzeCondaList over analyzeEnvironmentYml, results shoudln't be combined, it's either/or.

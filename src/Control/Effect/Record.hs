@@ -11,6 +11,7 @@ module Control.Effect.Record (
   runRecord,
   Journal (..),
   EffectResult (..),
+  SomeEffectResult (..),
 ) where
 
 import Control.Algebra
@@ -30,15 +31,14 @@ import Data.Text qualified as Text
 import Data.Text.Lazy qualified as LText
 import Data.Void (Void)
 import Path
+import Prettyprinter (Doc, defaultLayoutOptions, layoutPretty)
+import Prettyprinter.Render.Text (renderStrict)
 import System.Exit
 import Unsafe.Coerce (unsafeCoerce)
 
 -- | A class of "recordable" effects -- i.e. an effect whose data constructors
 -- and "result values" (the @a@ in @e a@) can be serialized to JSON values
---
--- We require that all types @e a@ have an 'Ord' instance so they can be used
--- as keys in a 'Map'
-class (forall a. Ord (r a)) => Recordable (r :: Type -> Type) where
+class Recordable (r :: Type -> Type) where
   -- | Serialize an effect data constructor and result value to JSON
   recordEff :: r a -> a -> (Value, Value)
 
@@ -50,16 +50,21 @@ newtype Journal eff = Journal {unJournal :: Map Value Value}
 data EffectResult r where
   EffectResult :: r a -> a -> EffectResult r
 
+-- | The result of an effectful action, but we don't know the effect
+data SomeEffectResult where
+  SomeEffectResult :: Recordable r => r a -> a -> SomeEffectResult
+
 instance FromJSON (Journal eff) where
   parseJSON = fmap (Journal . Map.fromList) . parseJSON
 
 instance ToJSON (Journal eff) where
   toJSON = toJSON . Map.toList . unJournal
+  toEncoding = toEncoding . Map.toList . unJournal
 
 -- | Wrap and record an effect; generally used with @-XTypeApplications@, e.g.,
 --
 -- > runRecord @SomeEffect
-runRecord :: forall e sig m a. (Recordable e, Has (Lift IO) sig m) => RecordC e sig m a -> m (Journal e, a)
+runRecord :: forall e sig m a. (Recordable e, Has (Lift IO) sig m) => RecordC e m a -> m (Journal e, a)
 runRecord act = do
   (mapping, a) <- runAtomicState Map.empty . runRecordC $ act
   pure (convertToJournal (Map.elems mapping), a)
@@ -68,7 +73,7 @@ convertToJournal :: Recordable e => [EffectResult e] -> Journal e
 convertToJournal = Journal . Map.fromList . map (\(EffectResult k v) -> recordEff k v)
 
 -- | @RecordC e sig m a@ is a pseudo-carrier for an effect @e@ with the underlying signature @sig@
-newtype RecordC (e :: Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :: Type -> Type) a = RecordC
+newtype RecordC (e :: Type -> Type) (m :: Type -> Type) a = RecordC
   { runRecordC :: AtomicStateC (Map (e Void) (EffectResult e)) m a
   }
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
@@ -77,7 +82,7 @@ newtype RecordC (e :: Type -> Type) (sig :: (Type -> Type) -> Type -> Type) (m :
 --
 -- 1. 'e' must also appear somewhere else in the effect stack -- @Member (Simple e) sig@
 -- 2. 'e' is Recordable -- @Recordable e@
-instance (Member (Simple e) sig, Has (Lift IO) sig m, Recordable e) => Algebra (Simple e :+: sig) (RecordC e sig m) where
+instance (forall a. Ord (e a), Member (Simple e) sig, Has (Lift IO) sig m) => Algebra (Simple e :+: sig) (RecordC e m) where
   alg hdl sig' ctx = RecordC $ do
     case sig' of
       L (Simple eff) -> do
@@ -177,3 +182,6 @@ instance RecordableValue (SomeBase a)
 instance RecordableValue ExitCode where
   toRecordedValue ExitSuccess = toJSON (0 :: Int)
   toRecordedValue (ExitFailure i) = toJSON (i :: Int)
+
+instance RecordableValue (Doc a) where
+  toRecordedValue = toJSON . renderStrict . layoutPretty defaultLayoutOptions

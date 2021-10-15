@@ -12,6 +12,7 @@ module Strategy.Cargo (
   findProjects,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics
 import Data.Aeson.Types
 import Data.Foldable (for_, traverse_)
@@ -22,6 +23,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS (ReadFS)
+import GHC.Generics (Generic)
 import Graphing (Graphing, stripRoot)
 import Path
 import Types
@@ -124,7 +126,7 @@ instance FromJSON CargoMetadata where
       <*> (obj .: "workspace_members" >>= traverse parsePkgId)
       <*> obj .: "resolve"
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CargoProject]
 discover dir = context "Cargo" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -146,16 +148,20 @@ data CargoProject = CargoProject
   { cargoDir :: Path Abs Dir
   , cargoToml :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
 
-mkProject :: (Has Exec sig n, Has Diagnostics sig n) => CargoProject -> DiscoveredProject n
+instance ToJSON CargoProject
+
+instance AnalyzeProject CargoProject where
+  analyzeProject _ = getDeps
+
+mkProject :: CargoProject -> DiscoveredProject CargoProject
 mkProject project =
   DiscoveredProject
     { projectType = "cargo"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
     , projectPath = cargoDir project
-    , projectLicenses = pure []
+    , projectData = project
     }
 
 getDeps :: (Has Exec sig m, Has Diagnostics sig m) => CargoProject -> m DependencyResults

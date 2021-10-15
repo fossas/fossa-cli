@@ -10,6 +10,7 @@ module Strategy.Haskell.Stack (
   StackLocation (..),
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics
 import Control.Monad (when)
 import Data.Aeson.Types
@@ -21,6 +22,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS (ReadFS)
+import GHC.Generics (Generic)
 import Graphing qualified as G
 import Path
 import Types
@@ -58,7 +60,7 @@ parseLocationType txt
   | txt `elem` ["project package", "archive"] = pure Local
   | otherwise = fail $ "Bad location type: " ++ toString txt
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject StackProject]
 discover dir = context "Stack" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -69,14 +71,13 @@ findProjects = walk' $ \dir _ files -> do
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([StackProject dir file], WalkSkipAll)
 
-mkProject :: (Has Exec sig n, Has Diagnostics sig n) => StackProject -> DiscoveredProject n
+mkProject :: StackProject -> DiscoveredProject StackProject
 mkProject project =
   DiscoveredProject
     { projectType = "stack"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
     , projectPath = stackDir project
-    , projectLicenses = pure []
+    , projectData = project
     }
 
 getDeps :: (Has Exec sig m, Has Diagnostics sig m) => StackProject -> m DependencyResults
@@ -89,7 +90,12 @@ data StackProject = StackProject
   { stackDir :: Path Abs Dir
   , stackFile :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON StackProject
+
+instance AnalyzeProject StackProject where
+  analyzeProject _ = getDeps
 
 stackJSONDepsCmd :: Command
 stackJSONDepsCmd =

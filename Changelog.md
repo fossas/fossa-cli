@@ -1,20 +1,24 @@
 # Spectrometer Changelog
 
+## v2.17.0
+
+- When running `fossa analyze` with the `--debug` flag, we now create a `fossa.debug.json.gz` file containing detailed runtime traces for project discovery and dependency analysis
+
 ## v2.16.6
-- Monorepo: Add automatic retries to failed API calls. ([#392](https://github.com/fossas/spectrometer/pull/392))
+- Monorepo: Adds automatic retries to failed API calls. ([#392](https://github.com/fossas/spectrometer/pull/392))
 
 ## v2.16.5
-- JSON Output for `fossa test --json` when there are no issues. ([#387](https://github.com/fossas/spectrometer/pull/387))
+- Adds JSON Output for `fossa test --json` when there are no issues. ([#387](https://github.com/fossas/spectrometer/pull/387))
 
 ## v2.16.4
-- Monorepo: Fix bug with symlink logic mismatch between walker and buildspec uploader. ([#388](https://github.com/fossas/spectrometer/pull/388))
+- Monorepo: Fixes bug with symlink logic mismatch between walker and buildspec uploader. ([#388](https://github.com/fossas/spectrometer/pull/388))
 
 ## v2.16.3
-- Monorepo: Fix bug with non-glob exclusions. ([#386](https://github.com/fossas/spectrometer/pull/386))
+- Monorepo: Fixes bug with non-glob exclusions. ([#386](https://github.com/fossas/spectrometer/pull/386))
 
 ## v2.16.2
-- Monorepo: Don't crash if there are no ninja/buildspec files to upload. ([#385](https://github.com/fossas/spectrometer/pull/385))
-- Monorepo: Fix issue with only-path/exclude-path globs.
+- Monorepo: Fixes crash when there are no ninja/buildspec files to upload. ([#385](https://github.com/fossas/spectrometer/pull/385))
+- Monorepo: Fixes issue with only-path/exclude-path globs.
 
 ## v2.16.1
 - Gradle: Supports analysis of projects using gralde v3.3 or below. ([#370](https://github.com/fossas/spectrometer/pull/370))

@@ -2,23 +2,23 @@ module App.Fossa.VPS.AOSPNotice (
   aospNoticeMain,
 ) where
 
-import Control.Carrier.Diagnostics
-import Control.Effect.Lift (Lift)
-import Effect.Exec
-
 import App.Fossa.EmbeddedBinary
 import App.Fossa.ProjectInference
 import App.Fossa.VPS.Scan.RunWiggins
 import App.Fossa.VPS.Types
 import App.Types (BaseDir (..), OverrideProject)
+import Control.Carrier.Diagnostics
+import Control.Effect.Lift (Lift)
 import Data.Text (Text)
+import Effect.Exec (Exec, runExecIO)
 import Effect.Logger
+import Effect.ReadFS (ReadFS, runReadFSIO)
 import Fossa.API.Types (ApiOpts (..))
 import Path (Abs, Dir, Path)
 
 aospNoticeMain :: BaseDir -> Severity -> OverrideProject -> NinjaScanID -> NinjaFilePaths -> ApiOpts -> IO ()
 aospNoticeMain (BaseDir basedir) logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts = withDefaultLogger logSeverity $ do
-  logWithExit_ $ withWigginsBinary $ aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts
+  logWithExit_ $ runExecIO $ runReadFSIO $ withWigginsBinary $ aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts
 
 ----- main logic
 
@@ -26,6 +26,8 @@ aospNoticeGenerate ::
   ( Has Diagnostics sig m
   , Has Logger sig m
   , Has (Lift IO) sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
   Severity ->

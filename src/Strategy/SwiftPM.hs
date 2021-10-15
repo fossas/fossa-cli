@@ -5,8 +5,10 @@ module Strategy.SwiftPM (
   mkProject,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject (..))
 import Control.Carrier.Simple (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
+import Data.Aeson (ToJSON)
 import Data.Functor (($>))
 import Data.Maybe (listToMaybe)
 import Discovery.Walk (
@@ -16,6 +18,7 @@ import Discovery.Walk (
  )
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS)
+import GHC.Generics (Generic)
 import Path
 import Strategy.Swift.PackageSwift (analyzePackageSwift)
 import Strategy.Swift.Xcode.Pbxproj (analyzeXcodeProjForSwiftPkg, hasSomeSwiftDeps)
@@ -24,23 +27,27 @@ import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (..))
 data SwiftProject
   = PackageProject SwiftPackageProject
   | XcodeProject XcodeProjectUsingSwiftPm
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Generic)
 
 data SwiftPackageProject = SwiftPackageProject
   { swiftPkgManifest :: Path Abs File
   , swiftPkgProjectDir :: Path Abs Dir
   , swiftPkgResolved :: Maybe (Path Abs File)
   }
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Generic)
 
 data XcodeProjectUsingSwiftPm = XcodeProjectUsingSwiftPm
   { xCodeProjectFile :: Path Abs File
   , xCodeProjectDir :: Path Abs Dir
   , xCodeResolvedFile :: Maybe (Path Abs File)
   }
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Generic)
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+instance ToJSON SwiftPackageProject
+instance ToJSON XcodeProjectUsingSwiftPm
+instance ToJSON SwiftProject
+
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m [DiscoveredProject SwiftProject]
 discover dir = context "Swift" $ do
   swiftPackageProjects <- context "Finding swift package projects" $ findSwiftPackageProjects dir
   xCodeProjects <- context "Finding xcode projects using swift package manager" $ findXcodeProjects dir
@@ -96,20 +103,19 @@ debugXCodeWithoutSwiftDeps projFile =
       <> show projFile
       <> "), did not have any XCRemoteSwiftPackageReference, ignoring from swift analyses."
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => SwiftProject -> DiscoveredProject n
+mkProject :: SwiftProject -> DiscoveredProject SwiftProject
 mkProject project =
   DiscoveredProject
     { projectType = "swift"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
-    , projectPath = getProjectDir
-    , projectLicenses = pure []
+    , projectPath = case project of
+        PackageProject p -> swiftPkgProjectDir p
+        XcodeProject p -> xCodeProjectDir p
+    , projectData = project
     }
-  where
-    getProjectDir :: Path Abs Dir
-    getProjectDir = case project of
-      PackageProject prj -> swiftPkgProjectDir prj
-      XcodeProject prj -> xCodeProjectDir prj
+
+instance AnalyzeProject SwiftProject where
+  analyzeProject _ = getDeps
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SwiftProject -> m DependencyResults
 getDeps project = do

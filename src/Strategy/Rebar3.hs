@@ -5,15 +5,18 @@ module Strategy.Rebar3 (
   mkProject,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context)
+import Data.Aeson (ToJSON)
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Path
 import Strategy.Erlang.Rebar3Tree qualified as Rebar3Tree
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Exec rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject RebarProject]
 discover dir = context "Rebar3" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -28,16 +31,20 @@ data RebarProject = RebarProject
   { rebarDir :: Path Abs Dir
   , rebarFile :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
 
-mkProject :: (Has Exec sig n, Has ReadFS sig n, Has Diagnostics sig n) => RebarProject -> DiscoveredProject n
+instance ToJSON RebarProject
+
+instance AnalyzeProject RebarProject where
+  analyzeProject _ = getDeps
+
+mkProject :: RebarProject -> DiscoveredProject RebarProject
 mkProject project =
   DiscoveredProject
     { projectType = "rebar3"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
     , projectPath = rebarDir project
-    , projectLicenses = pure []
+    , projectData = project
     }
 
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => RebarProject -> m DependencyResults

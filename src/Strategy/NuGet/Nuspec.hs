@@ -12,8 +12,11 @@ module Strategy.NuGet.Nuspec (
   NuspecLicense (..),
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics
+import Data.Aeson (ToJSON)
 import Data.Foldable (find)
 import Data.List qualified as L
 import Data.Map.Strict qualified as Map
@@ -22,6 +25,7 @@ import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
 import Parse.XML
@@ -35,7 +39,7 @@ import Types (
   LicenseType (..),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject NuspecProject]
 discover dir = context "Nuspec" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
@@ -49,17 +53,24 @@ findProjects = walk' $ \_ _ files -> do
 newtype NuspecProject = NuspecProject
   { nuspecFile :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => NuspecProject -> DiscoveredProject n
+instance ToJSON NuspecProject
+
+mkProject :: NuspecProject -> DiscoveredProject NuspecProject
 mkProject project =
   DiscoveredProject
     { projectType = "nuspec"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
+    , projectData = project
     , projectPath = parent $ nuspecFile project
-    , projectLicenses = analyzeLicenses (nuspecFile project)
     }
+
+instance AnalyzeProject NuspecProject where
+  analyzeProject _ = getDeps
+
+instance LicenseAnalyzeProject NuspecProject where
+  licenseAnalyzeProject = analyzeLicenses . nuspecFile
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuspecProject -> m DependencyResults
 getDeps = context "Nuspec" . context "Static analysis" . analyze' . nuspecFile

@@ -10,20 +10,23 @@ module Strategy.NuGet.PackagesConfig (
   NuGetDependency (..),
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics
+import Data.Aeson (ToJSON)
 import Data.Foldable (find)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
 import Parse.XML
 import Path
 import Types
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has ReadFS rsig run, Has Diagnostics rsig run) => Path Abs Dir -> m [DiscoveredProject run]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PackagesConfigProject]
 discover dir = context "PackagesConfig" $ do
   projects <- context "Finding Projects" $ findProjects dir
   pure (map mkProject projects)
@@ -37,16 +40,20 @@ findProjects = walk' $ \_ _ files -> do
 newtype PackagesConfigProject = PackagesConfigProject
   { packagesConfigFile :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
 
-mkProject :: (Has ReadFS sig n, Has Diagnostics sig n) => PackagesConfigProject -> DiscoveredProject n
+instance ToJSON PackagesConfigProject
+
+instance AnalyzeProject PackagesConfigProject where
+  analyzeProject _ = getDeps
+
+mkProject :: PackagesConfigProject -> DiscoveredProject PackagesConfigProject
 mkProject project =
   DiscoveredProject
     { projectType = "packagesconfig"
     , projectBuildTargets = mempty
-    , projectDependencyResults = const $ getDeps project
     , projectPath = parent $ packagesConfigFile project
-    , projectLicenses = pure []
+    , projectData = project
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PackagesConfigProject -> m DependencyResults

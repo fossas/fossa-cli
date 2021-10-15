@@ -4,7 +4,7 @@ module App.Fossa.Main (
   appMain,
 ) where
 
-import App.Fossa.Analyze (BinaryDiscoveryMode (..), IATAssertionMode (..), JsonOutput (..), ModeOptions (ModeOptions), RecordMode (..), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
+import App.Fossa.Analyze (BinaryDiscoveryMode (..), IATAssertionMode (..), JsonOutput (..), ModeOptions (ModeOptions), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
 import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
 import App.Fossa.Configuration (
   ConfigFile (
@@ -192,7 +192,7 @@ appMain = do
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
           combinedFilters = normalizedFilters fileConfig analyzeOptions
           modeOptions = ModeOptions analyzeVSIMode assertionMode analyzeBinaryDiscoveryMode
-          doAnalyze destination = analyzeMain analyzeBaseDir analyzeRecordMode logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput modeOptions combinedFilters
+          doAnalyze destination = analyzeMain analyzeBaseDir logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput modeOptions combinedFilters
 
       if analyzeOutput
         then doAnalyze OutputStdout
@@ -222,7 +222,7 @@ appMain = do
     --
     ListTargetsCommand dir -> do
       baseDir <- validateDir dir
-      listTargetsMain baseDir
+      listTargetsMain logSeverity baseDir
     --
     VPSCommand VPSOptions{..} -> do
       apikey <- requireKey maybeApiKey
@@ -322,7 +322,7 @@ baseDirArg = argument str (metavar "DIR" <> help "Set the base directory for sca
 opts :: Parser CmdOptions
 opts =
   CmdOptions
-    <$> switch (long "debug" <> help "Enable debug logging")
+    <$> switch (long "debug" <> help "Enable debug logging, and write detailed debug information to `fossa.debug.json`")
     <*> optional (uriOption (long "endpoint" <> short 'e' <> metavar "URL" <> help "The FOSSA API server base URL (default: https://app.fossa.com)"))
     <*> optional (strOption (long "project" <> short 'p' <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
     <*> optional (strOption (long "revision" <> short 'r' <> help "this repository's current revision hash (default: VCS hash HEAD)"))
@@ -418,7 +418,6 @@ analyzeOpts =
     <*> binaryDiscoveryOpt
     <*> iatAssertionOpt
     <*> monorepoOpts
-    <*> analyzeReplayOpt
     <*> baseDirArg
 
 vsiAnalyzeOpt :: Parser VSIAnalysisMode
@@ -435,12 +434,6 @@ iatAssertionOpt :: Parser AnalyzeVSIAssertionMode
 iatAssertionOpt =
   (AnalyzeVSIAssertionEnabled <$> strOption (long "experimental-link-project-binary" <> hidden))
     <|> pure AnalyzeVSIAssertionDisabled
-
-analyzeReplayOpt :: Parser RecordMode
-analyzeReplayOpt =
-  flag' RecordModeRecord (long "record" <> hidden)
-    <|> (RecordModeReplay <$> strOption (long "replay" <> hidden))
-    <|> pure RecordModeNone
 
 filterOpt :: Parser TargetFilter
 filterOpt = option (eitherReader parseFilter) (long "filter" <> help "(deprecated) Analysis-Target filters (default: none)" <> metavar "ANALYSIS-TARGET")
@@ -713,7 +706,6 @@ data AnalyzeOptions = AnalyzeOptions
   , analyzeBinaryDiscoveryMode :: BinaryDiscoveryMode
   , analyzeAssertMode :: AnalyzeVSIAssertionMode
   , monorepoAnalysisOpts :: MonorepoAnalysisOpts
-  , analyzeRecordMode :: RecordMode
   , analyzeBaseDir :: FilePath
   }
 
