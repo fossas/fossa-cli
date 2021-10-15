@@ -1,5 +1,8 @@
 # Spectrometer Changelog
 
+## v2.16.6
+- Monorepo: Add automatic retries to failed API calls. ([#392](https://github.com/fossas/spectrometer/pull/392))
+
 ## v2.16.5
 - JSON Output for `fossa test --json` when there are no issues. ([#387](https://github.com/fossas/spectrometer/pull/387))
 
