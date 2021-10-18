@@ -62,4 +62,5 @@ toUserDefDep UserDefinedAssertionMeta{..} =
     , srcUserDepLicense = assertedLicense
     , srcUserDepDescription = assertedDescription
     , srcUserDepHomepage = assertedUrl
+    , srcUserDepOrigin = Nothing
     }

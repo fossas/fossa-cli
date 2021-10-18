@@ -14,6 +14,7 @@ module Srclib.Types (
 
 import Data.Aeson
 import Data.Maybe (fromMaybe)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Path (File, SomeBase)
@@ -60,6 +61,7 @@ data SourceUserDefDep = SourceUserDefDep
   , srcUserDepLicense :: Text
   , srcUserDepDescription :: Maybe Text
   , srcUserDepHomepage :: Maybe Text
+  , srcUserDepOrigin :: Maybe (SomeBase File)
   }
   deriving (Eq, Ord, Show)
 
@@ -133,6 +135,7 @@ instance ToJSON SourceUserDefDep where
       , "License" .= srcUserDepLicense
       , "Description" .= srcUserDepDescription
       , "Homepage" .= srcUserDepHomepage
+      , "Origin" .= fmap toText srcUserDepOrigin
       ]
 
 instance ToJSON SourceRemoteDep where

@@ -8,6 +8,7 @@ import Data.String.Conversion (toText)
 import Effect.Logger (Severity (SevError), withDefaultLogger)
 import Effect.ReadFS (runReadFSIO)
 import Path (Abs, Dir, File, Path, mkRelDir, mkRelFile, (</>))
+import Path.Extra (tryMakeRelative)
 import Path.IO qualified as PIO
 import Srclib.Types (SourceUserDefDep (..))
 import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
@@ -21,7 +22,7 @@ spec = do
 
     it "parses the jar correctly" $ case result of
       Left _ -> expectationFailure "could not parse jar"
-      Right dep -> dep `shouldBe` Just expectedMultiplePoms
+      Right dep -> dep `shouldBe` Just (expectedMultiplePoms root)
 
   describe "handle JAR with one pom.xml" $ do
     root <- runIO testdataParentDir
@@ -30,7 +31,7 @@ spec = do
 
     it "parses the jar correctly" $ case result of
       Left _ -> expectationFailure "could not parse jar"
-      Right dep -> dep `shouldBe` Just expectedLicenseInPom
+      Right dep -> dep `shouldBe` Just (expectedLicenseInPom root)
 
   describe "handle JAR without pom.xml" $ do
     root <- runIO testdataParentDir
@@ -39,7 +40,7 @@ spec = do
 
     it "parses the jar correctly" $ case result of
       Left _ -> expectationFailure "could not parse jar"
-      Right dep -> dep `shouldBe` Just expectedMetaInfManifest
+      Right dep -> dep `shouldBe` Just (expectedMetaInfManifest root)
 
 testdataParentDir :: IO (Path Abs Dir)
 testdataParentDir = PIO.resolveDir' "test/App/Fossa/BinaryDeps"
@@ -53,11 +54,20 @@ withLicenseInPom = PIO.resolveFile' "test/App/Fossa/BinaryDeps/testdata/json-sim
 withMetaInfManifest :: IO (Path Abs File)
 withMetaInfManifest = PIO.resolveFile' "test/App/Fossa/BinaryDeps/testdata/micrometer-registry-prometheus-1.5.4.jar"
 
-expectedMultiplePoms :: SourceUserDefDep
-expectedMultiplePoms = SourceUserDefDep (toText $ $(mkRelDir "testdata") </> $(mkRelFile "jruby-complete-1.7.12.jar")) "1.0" "" (Just "org.jruby:yecht") Nothing
+expectedMultiplePoms :: Path Abs Dir -> SourceUserDefDep
+expectedMultiplePoms root = do
+  let path = root </> $(mkRelDir "testdata") </> $(mkRelFile "jruby-complete-1.7.12.jar")
+  let rel = tryMakeRelative root path
+  SourceUserDefDep (toText rel) "1.0" "" (Just "org.jruby:yecht") Nothing (Just rel)
 
-expectedLicenseInPom :: SourceUserDefDep
-expectedLicenseInPom = SourceUserDefDep (toText $ $(mkRelDir "testdata") </> $(mkRelFile "json-simple-1.1.1.7.jar")) "1.1.1" "The Apache Software License, Version 2.0" (Just "com.googlecode.json-simple:json-simple") Nothing
+expectedLicenseInPom :: Path Abs Dir -> SourceUserDefDep
+expectedLicenseInPom root = do
+  let path = root </> $(mkRelDir "testdata") </> $(mkRelFile "json-simple-1.1.1.7.jar")
+  let rel = tryMakeRelative root path
+  SourceUserDefDep (toText rel) "1.1.1" "The Apache Software License, Version 2.0" (Just "com.googlecode.json-simple:json-simple") Nothing (Just rel)
 
-expectedMetaInfManifest :: SourceUserDefDep
-expectedMetaInfManifest = SourceUserDefDep (toText $ $(mkRelDir "testdata") </> $(mkRelFile "micrometer-registry-prometheus-1.5.4.jar")) "1.5.4" "" (Just "io.micrometer#micrometer-registry-prometheus;1.5.4") Nothing
+expectedMetaInfManifest :: Path Abs Dir -> SourceUserDefDep
+expectedMetaInfManifest root = do
+  let path = root </> $(mkRelDir "testdata") </> $(mkRelFile "micrometer-registry-prometheus-1.5.4.jar")
+  let rel = tryMakeRelative root path
+  SourceUserDefDep (toText rel) "1.5.4" "" (Just "io.micrometer#micrometer-registry-prometheus;1.5.4") Nothing (Just rel)

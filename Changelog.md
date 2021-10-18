@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## 2.17.1
+
+- Adds support for reporting origin path for binaries discovered via `--experimental-enable-binary-discovery` ([#396](https://github.com/fossas/spectrometer/pull/396))
+
 ## v2.17.0
 
 - When running `fossa analyze` with the `--debug` flag, we now create a `fossa.debug.json.gz` file containing detailed runtime traces for project discovery and dependency analysis

@@ -138,6 +138,7 @@ toAdditionalData customDeps remoteDeps =
         , srcUserDepLicense = customLicense
         , srcUserDepDescription = customMetadata >>= depDescription
         , srcUserDepHomepage = customMetadata >>= depHomepage
+        , srcUserDepOrigin = Nothing
         }
     toUrl RemoteDependency{..} =
       SourceRemoteDep
