@@ -1,4 +1,4 @@
-version: 2
+version: 2.1
 
 defaults: &defaults
   environment:
@@ -153,8 +153,16 @@ jobs:
           command: |
             curl -sL https://git.io/goreleaser | GOVERSION=`go version` bash -s -- --rm-dist
 workflows:
-  version: 2
   tests:
+    # Run this workflow only for v1, if: 
+    #   - Branch is named master, or
+    #   - Branch is named with "v1/" prefix - e.g. v1/hotfix-security-ae1-etc, v1/docs, etc, or
+    #   - Commit is associated with tag "v1." - e.g. v1.11.0, v1.11.0-alpha+1, etc.
+    when:
+      or:
+        - equal: [ master, << pipeline.git.branch >> ]
+        - matches: { pattern: "^v1/.*", value: << pipeline.git.branch >> }
+        - matches: { pattern: "^v1.*", value: << pipeline.git.tag >> }
     jobs:
       - unit-test
       - integration-test
