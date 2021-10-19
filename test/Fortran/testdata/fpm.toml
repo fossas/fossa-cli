@@ -1,0 +1,16 @@
+name = "example"
+
+[[ executable ]]
+name = "app-tool"
+[executable.dependencies]
+dep-exec = { git = "git-url-exec" }
+
+[dependencies]
+my-utils = { path = "utils" }
+dep-head = { git = "git-url" }
+dep-branch = { git = "git-url", branch = "main" }
+dep-tag = { git = "git-url", tag = "v0.2.1" }
+dep-rev = { git = "git-url", rev = "2f5eaba" }
+
+[dev-dependencies]
+dep-dev = { git = "git-url-dev-dep", rev = "2f5eaba" }

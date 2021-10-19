@@ -252,6 +252,8 @@ library
     Strategy.Elixir.MixTree
     Strategy.Erlang.ConfigParser
     Strategy.Erlang.Rebar3Tree
+    Strategy.Fpm
+    Strategy.Fortran.FpmToml
     Strategy.Glide
     Strategy.Go.GlideLock
     Strategy.Go.GoList
@@ -368,6 +370,7 @@ test-suite unit-tests
     Erlang.Rebar3TreeSpec
     Extra.TextSpec
     Fossa.API.TypesSpec
+    Fortran.FpmTomlSpec
     Go.GlideLockSpec
     Go.GoListSpec
     Go.GomodSpec

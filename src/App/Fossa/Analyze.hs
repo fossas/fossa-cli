@@ -77,6 +77,7 @@ import Strategy.Carthage qualified as Carthage
 import Strategy.Cocoapods qualified as Cocoapods
 import Strategy.Composer qualified as Composer
 import Strategy.Conda qualified as Conda
+import Strategy.Fpm qualified as Fpm
 import Strategy.Glide qualified as Glide
 import Strategy.Godep qualified as Godep
 import Strategy.Gomodules qualified as Gomodules
@@ -223,6 +224,7 @@ discoverFuncs =
   , DiscoverFunc Cocoapods.discover
   , DiscoverFunc Composer.discover
   , DiscoverFunc Conda.discover
+  , DiscoverFunc Fpm.discover
   , DiscoverFunc Glide.discover
   , DiscoverFunc Godep.discover
   , DiscoverFunc Gomodules.discover
