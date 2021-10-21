@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.17.3
+
+ - Monorepo: adds some optimizations to reduce the amount of file buffering in memory during a scan, resulting in less memory pressure and faster scans. ([#402](https://github.com/fossas/spectrometer/pull/402))
+
 ## v2.17.2
 
 - Fortran: Supports fortran package manager. ([#377](https://github.com/fossas/spectrometer/pull/377))
