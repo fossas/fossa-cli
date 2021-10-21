@@ -10,6 +10,7 @@ dist-newstyle/
 
 # Development files/directories
 vendor/
+vendor-bins/
 .vscode/
 
 # Executables

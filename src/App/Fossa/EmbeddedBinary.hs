@@ -124,13 +124,13 @@ makeExecutable path = do
 
 -- The intent with these embedded binaries is that the build system will replace the files with
 -- built binaries of the appropriate architecture.
--- The below functions are expected to warn since the vendor directory is typically populated in CI.
+-- The below functions are expected to warn since the vendor-bins directory is typically populated in CI.
 -- If you wish to run these on your local system, populate these binaries via `vendor_download.sh`.
 embeddedBinaryWiggins :: ByteString
-embeddedBinaryWiggins = $(embedFileIfExists "vendor/wiggins")
+embeddedBinaryWiggins = $(embedFileIfExists "vendor-bins/wiggins")
 
 embeddedBinarySyft :: ByteString
-embeddedBinarySyft = $(embedFileIfExists "vendor/syft")
+embeddedBinarySyft = $(embedFileIfExists "vendor-bins/syft")
 
 embeddedBinaryCLIv1 :: ByteString
-embeddedBinaryCLIv1 = $(embedFileIfExists "vendor/cliv1")
+embeddedBinaryCLIv1 = $(embedFileIfExists "vendor-bins/cliv1")

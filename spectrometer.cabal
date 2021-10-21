@@ -6,9 +6,9 @@ build-type:         Simple
 extra-source-files:
   scripts/depgraph-maven-plugin-3.3.0.jar
   scripts/jsondeps.gradle
-  vendor/cliv1
-  vendor/syft
-  vendor/wiggins
+  vendor-bins/cliv1
+  vendor-bins/syft
+  vendor-bins/wiggins
 
 common lang
   build-depends:      base >=4.12 && <4.15
