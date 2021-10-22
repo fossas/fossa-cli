@@ -195,6 +195,7 @@ library
     Control.Carrier.StickyLogger
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
+    Control.Concurrent.Extra
     Control.Effect.AtomicCounter
     Control.Effect.AtomicState
     Control.Effect.ConsoleRegion
@@ -252,8 +253,8 @@ library
     Strategy.Elixir.MixTree
     Strategy.Erlang.ConfigParser
     Strategy.Erlang.Rebar3Tree
-    Strategy.Fpm
     Strategy.Fortran.FpmToml
+    Strategy.Fpm
     Strategy.Glide
     Strategy.Go.GlideLock
     Strategy.Go.GoList
@@ -303,16 +304,19 @@ library
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Strategy.Scala
-    Strategy.SwiftPM
     Strategy.Swift.PackageResolved
     Strategy.Swift.PackageSwift
     Strategy.Swift.Xcode.Pbxproj
     Strategy.Swift.Xcode.PbxprojParser
+    Strategy.SwiftPM
     Strategy.Yarn
     Strategy.Yarn.V1.YarnLock
     Strategy.Yarn.V2.Lockfile
     Strategy.Yarn.V2.Resolvers
     Strategy.Yarn.V2.YarnLock
+    System.CGroup
+    System.CGroup.CPU
+    System.CGroup.Types
     Text.URI.Builder
     Types
     VCS.Git
@@ -324,14 +328,14 @@ executable fossa
   main-is:        Main.hs
   hs-source-dirs: app/fossa
   build-depends:  spectrometer
-  ghc-options:    -threaded -with-rtsopts=-N
+  ghc-options:    -threaded
 
 executable pathfinder
   import:         lang
   main-is:        Main.hs
   hs-source-dirs: app/pathfinder
   build-depends:  spectrometer
-  ghc-options:    -threaded -with-rtsopts=-N
+  ghc-options:    -threaded
 
 test-suite unit-tests
   import:             lang
@@ -361,16 +365,16 @@ test-suite unit-tests
     Control.Carrier.DiagnosticsSpec
     Dart.PubDepsSpec
     Dart.PubSpecLockSpec
-    Discovery.ArchiveSpec
     Dart.PubSpecSpec
+    Discovery.ArchiveSpec
     Discovery.FiltersSpec
     Effect.ExecSpec
     Elixir.MixTreeSpec
     Erlang.ConfigParserSpec
     Erlang.Rebar3TreeSpec
     Extra.TextSpec
-    Fossa.API.TypesSpec
     Fortran.FpmTomlSpec
+    Fossa.API.TypesSpec
     Go.GlideLockSpec
     Go.GoListSpec
     Go.GomodSpec
@@ -407,8 +411,10 @@ test-suite unit-tests
     Ruby.GemfileLockSpec
     Swift.PackageResolvedSpec
     Swift.PackageSwiftSpec
-    Swift.Xcode.PbxprojSpec
     Swift.Xcode.PbxprojParserSpec
+    Swift.Xcode.PbxprojSpec
+    System.CGroup.CPUSpec
+    System.CGroup.TypesSpec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec
     Yarn.YarnLockV1Spec

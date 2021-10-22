@@ -1,0 +1,8 @@
+623 434 0:161 / / rw,relatime master:161 - overlay overlay rw,lowerdir=/var/lib/docker/overlay2/l/4HCB7FKXGOKVFG5LMB7MJEAMJ4:/var/lib/docker/overlay2/l/FSMEFB6672AAE6ANGEPMIFDZAQ:/var/lib/docker/overlay2/l/OOXJX3PUF6D2LLFT2SYKGQMYWV:/var/lib/docker/overlay2/l/T5FNCAQTEANVA5TYAVXIMHB37W:/var/lib/docker/overlay2/l/XUL6EMIUAIGC5UXJ2UVXAJ6EU5:/var/lib/docker/overlay2/l/U6KL2F5A2HXKJCRWATE4J37NXX:/var/lib/docker/overlay2/l/RU2BMNWGFSX653UD3UXXA52UHS,upperdir=/var/lib/docker/overlay2/bbad75edc1476c2258a545cd3afd00d912e73360535a258c35ff7ab3aaea04eb/diff,workdir=/var/lib/docker/overlay2/bbad75edc1476c2258a545cd3afd00d912e73360535a258c35ff7ab3aaea04eb/work
+624 623 0:164 / /proc rw,nosuid,nodev,noexec,relatime - proc proc rw
+625 623 0:165 / /dev rw,nosuid - tmpfs tmpfs rw,size=65536k,mode=755
+626 625 0:166 / /dev/pts rw,nosuid,noexec,relatime - devpts devpts rw,gid=5,mode=620,ptmxmode=666
+627 623 0:167 / /sys ro,nosuid,nodev,noexec,relatime - sysfs sysfs ro
+628 627 0:168 / /sys/fs/cgroup rw,nosuid,nodev,noexec,relatime - tmpfs tmpfs rw,mode=755
+629 628 0:30 /docker/9a727716c6193036fa661c0bbe254354036e130905cbbd6c69568b26df684b1d /sys/fs/cgroup/cpuset ro,nosuid,nodev,noexec,relatime master:18 - cgroup cpuset rw,cpuset
+630 628 0:31 /docker/9a727716c6193036fa661c0bbe254354036e130905cbbd6c69568b26df684b1d /sys/fs/cgroup/cpu ro,nosuid,nodev,noexec,relatime master:19 - cgroup cpu rw,cpu

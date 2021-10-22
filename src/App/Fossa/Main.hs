@@ -54,6 +54,7 @@ import App.Types (
  )
 import App.Util (validateDir, validateFile)
 import App.Version (fullVersionDescription)
+import Control.Concurrent.Extra (initCapabilities)
 import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.Bool (bool)
@@ -140,6 +141,7 @@ mergeFileCmdConfig cmd file =
 
 appMain :: IO ()
 appMain = do
+  initCapabilities
   cmdConfig <- customExecParser mainPrefs (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
   fileConfig <- readConfigFileIO
 

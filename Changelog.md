@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.18.0
+
+- When applicable, fossa-cli uses the cgroup CPU quota (under cfs) to determine the number of runtime threads to use. This dramatically improves runtime speed when we're running within a cpu-limited container on a large machine with many physical processors.
+
 ## v2.17.3
 
  - Monorepo: adds some optimizations to reduce the amount of file buffering in memory during a scan, resulting in less memory pressure and faster scans. ([#402](https://github.com/fossas/spectrometer/pull/402))
