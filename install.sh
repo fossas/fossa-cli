@@ -79,11 +79,11 @@ check_platform() {
   fi
 }
 tag_to_version() {
-  if [ -z "${TAG}" ]; then
+  if [ -z "${TAG}" ] || [ "${TAG}" = "latest" ]; then
     # Since, github's latest releases are based on chronological order
     # Ensure install-v1 script never installs v2 or greater releases
     log_info "checking GitHub for latest tag for v1"
-    TAG="$RELEASE_V1_UPPERBOUND"
+    TAG="$RELEASE_V1_LATEST"
   else
     log_info "checking GitHub for tag '${TAG}'"
   fi
@@ -99,7 +99,7 @@ tag_to_version() {
   # Ensure script only installs fossa-cli less than v2.0.0
   MAJOR_VERSION=$(printf %.1s "$VERSION")
   if [ "$MAJOR_VERSION" != "0" ] && [ "$MAJOR_VERSION" != "1" ]; then
-    log_crit "Provided release tag: ${VERSION} is greater than or equal to v2.0.0. You should use install-v2.sh script instead!"
+    log_crit "Provided release tag: ${VERSION} is greater than or equal to v2.0.0. You should use install-latest.sh script instead!"
     exit 1
   fi
 }
@@ -360,7 +360,7 @@ FORMAT=tar.gz
 OS=$(uname_os)
 ARCH=$(uname_arch)
 PREFIX="$OWNER/$REPO"
-RELEASE_V1_UPPERBOUND="v1.1.10"
+RELEASE_V1_LATEST="v1.1.10"
 
 # use in logging routines
 log_prefix() {
