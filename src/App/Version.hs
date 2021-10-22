@@ -50,7 +50,7 @@ fullVersionDescription = Text.concat items
     dirty = if isDirty then " (dirty)" else ""
     items :: [Text]
     items =
-      [ "spectrometer: "
+      [ "fossa-cli "
       , version
       , " (revision "
       , shortCommit
