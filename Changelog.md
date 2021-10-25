@@ -2,7 +2,7 @@
 
 ## v2.18.1
 
-- Monorepo: Send eror state to UI if the CLI crashes, so scans won't appear to hang forever. ([#409](https://github.com/fossas/spectrometer/pull/409))
+- Monorepo: Send error state to UI if the CLI crashes, so scans won't appear to hang forever. ([#409](https://github.com/fossas/spectrometer/pull/409))
 - Monorepo: Fix parsing nomos output bug where files contain newlines. ([#409](https://github.com/fossas/spectrometer/pull/409))
 
 ## v2.18.0
