@@ -50,7 +50,7 @@ Write-Verbose "Looking up release ($releaseTag)..."
 
 $releasePage = Invoke-RestMethod $latestUri
 
-if ($releasePage -inotmatch 'href=\"(.*?releases\/download\/.*?windows.*?)\"')
+if ($releasePage -inotmatch 'href=\"(.*?releases\/download\/fossa_(v?\d+\.\d+\.\d+)_windows.*\.zip)\"')
 {
     throw "Did not find Windows release at $latestUri"
 }
