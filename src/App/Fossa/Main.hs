@@ -4,7 +4,17 @@ module App.Fossa.Main (
   appMain,
 ) where
 
-import App.Fossa.Analyze (BinaryDiscoveryMode (..), IATAssertionMode (..), JsonOutput (..), ModeOptions (ModeOptions), ScanDestination (..), UnpackArchives (..), VSIAnalysisMode (..), analyzeMain)
+import App.Fossa.Analyze (
+  BinaryDiscoveryMode (..),
+  IATAssertionMode (..),
+  IncludeAll (IncludeAll),
+  JsonOutput (..),
+  ModeOptions (ModeOptions),
+  ScanDestination (..),
+  UnpackArchives (..),
+  VSIAnalysisMode (..),
+  analyzeMain,
+ )
 import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
 import App.Fossa.Configuration (
   ConfigFile (
@@ -27,7 +37,11 @@ import App.Fossa.Container.Analyze qualified as ContainerAnalyze
 import App.Fossa.Container.Test qualified as ContainerTest
 import App.Fossa.EmbeddedBinary qualified as Embed
 import App.Fossa.ListTargets (listTargetsMain)
-import App.Fossa.Monorepo
+import App.Fossa.Monorepo (
+  PathFilters,
+  monorepoMain,
+  toPathFilters,
+ )
 import App.Fossa.Report qualified as Report
 import App.Fossa.Test qualified as Test
 import App.Fossa.VPS.AOSPNotice (aospNoticeMain)
@@ -194,7 +208,7 @@ appMain = do
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
           combinedFilters = normalizedFilters fileConfig analyzeOptions
           modeOptions = ModeOptions analyzeVSIMode assertionMode analyzeBinaryDiscoveryMode
-          doAnalyze destination = analyzeMain analyzeBaseDir logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput modeOptions combinedFilters
+          doAnalyze destination = analyzeMain analyzeBaseDir logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeIncludeAllDeps modeOptions combinedFilters
 
       if analyzeOutput
         then doAnalyze OutputStdout
@@ -409,6 +423,7 @@ analyzeOpts =
     <$> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
     <*> flagOpt UnpackArchives (long "unpack-archives" <> help "Recursively unpack and analyze discovered archives")
     <*> flagOpt JsonOutput (long "json" <> help "Output project metadata as json to the console. Useful for communicating with the FOSSA API")
+    <*> flagOpt IncludeAll (long "include-unused-deps" <> help "Include all deps found, instead of filtering non-production deps.  Ignored by VSI.")
     <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> many filterOpt
@@ -697,6 +712,7 @@ data AnalyzeOptions = AnalyzeOptions
   { analyzeOutput :: Bool
   , analyzeUnpackArchives :: Flag UnpackArchives
   , analyzeJsonOutput :: Flag JsonOutput
+  , analyzeIncludeAllDeps :: Flag IncludeAll
   , analyzeBranch :: Maybe Text
   , analyzeMetadata :: ProjectMetadata
   , analyzeBuildTargetFilters :: [TargetFilter]

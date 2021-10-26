@@ -51,7 +51,7 @@ toProject dir graph = ProjectResult "vsi" dir graph Complete []
 
 toSourceUnit :: ProjectResult -> Maybe [SourceUserDefDep] -> SourceUnit
 toSourceUnit project deps = do
-  let unit = Srclib.toSourceUnit project
+  let unit = Srclib.toSourceUnit False project
   unit{additionalData = fmap toDepData deps}
   where
     toDepData d = AdditionalDepData (Just d) Nothing

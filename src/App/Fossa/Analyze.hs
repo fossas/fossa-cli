@@ -11,6 +11,7 @@ module App.Fossa.Analyze (
   ModeOptions (..),
   DiscoverFunc (..),
   discoverFuncs,
+  IncludeAll (..),
 ) where
 
 import App.Docs (userGuideUrl)
@@ -112,9 +113,9 @@ data ScanDestination
     UploadScan ApiOpts ProjectMetadata
   | OutputStdout
 
--- | UnpackArchives bool flag
+-- CLI flags, for use with 'Data.Flag'
 data UnpackArchives = UnpackArchives
-
+data IncludeAll = IncludeAll
 data JsonOutput = JsonOutput
 
 -- | Collect analysis modes into a single type for ease of use.
@@ -146,8 +147,18 @@ data BinaryDiscoveryMode
   | -- | Binary discovery disabled
     BinaryDiscoveryDisabled
 
-analyzeMain :: FilePath -> Severity -> ScanDestination -> OverrideProject -> Flag UnpackArchives -> Flag JsonOutput -> ModeOptions -> AllFilters -> IO ()
-analyzeMain workdir logSeverity destination project unpackArchives jsonOutput modeOptions filters =
+analyzeMain ::
+  FilePath ->
+  Severity ->
+  ScanDestination ->
+  OverrideProject ->
+  Flag UnpackArchives ->
+  Flag JsonOutput ->
+  Flag IncludeAll ->
+  ModeOptions ->
+  AllFilters ->
+  IO ()
+analyzeMain workdir logSeverity destination project unpackArchives jsonOutput includeAll modeOptions filters =
   withDefaultLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO
@@ -163,7 +174,7 @@ analyzeMain workdir logSeverity destination project unpackArchives jsonOutput mo
         basedir <- sendIO $ validateDir workdir
         ignoreDebug $ doAnalyze basedir
   where
-    doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput modeOptions filters
+    doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput includeAll modeOptions filters
 
 runDependencyAnalysis ::
   ( AnalyzeProject proj
@@ -285,10 +296,11 @@ analyze ::
   OverrideProject ->
   Flag UnpackArchives ->
   Flag JsonOutput ->
+  Flag IncludeAll ->
   ModeOptions ->
   AllFilters ->
   m ()
-analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOptions{..} filters = Diag.context "fossa-analyze" $ do
+analyze (BaseDir basedir) destination override unpackArchives jsonOutput includeAll ModeOptions{..} filters = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
 
   let apiOpts = case destination of
@@ -318,9 +330,10 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOpt
             Diag.withResult SevError res (const (pure ()))
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
+  logInfo ("Include-all option is set to: " <> pretty (fromFlag IncludeAll includeAll))
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
-  case checkForEmptyUpload projectResults filteredProjects additionalSourceUnits of
+  case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
@@ -331,7 +344,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput ModeOpt
 
           let revision = mergeOverride override inferred
           logDebug $ "Merged revision: " <> viaShow revision
-        logStdout . decodeUtf8 . Aeson.encode $ buildResult additionalSourceUnits filteredProjects
+        logStdout . decodeUtf8 . Aeson.encode $ buildResult includeAll additionalSourceUnits filteredProjects
       UploadScan opts metadata -> Diag.context "upload-results" $ do
         locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
         doAssertRevisionBinaries modeIATAssertion opts locator
@@ -450,8 +463,8 @@ data CountedResult
 -- Takes a list of all projects analyzed, and the list after filtering.  We assume
 -- that the smaller list is the latter, and return that list.  Starting with user-defined deps,
 -- we also include a check for an additional source unit from fossa-deps.yml.
-checkForEmptyUpload :: [ProjectResult] -> [ProjectResult] -> [SourceUnit] -> CountedResult
-checkForEmptyUpload xs ys additionalUnits = do
+checkForEmptyUpload :: Flag IncludeAll -> [ProjectResult] -> [ProjectResult] -> [SourceUnit] -> CountedResult
+checkForEmptyUpload includeAll xs ys additionalUnits = do
   if null additionalUnits
     then case (xlen, ylen) of
       -- We didn't discover, so we also didn't filter
@@ -469,7 +482,7 @@ checkForEmptyUpload xs ys additionalUnits = do
     filterCount = abs $ xlen - ylen
     -- The smaller list is the post-filter list, since filtering cannot add projects
     filtered = if xlen > ylen then ys else xs
-    discoveredUnits = map Srclib.toSourceUnit filtered
+    discoveredUnits = map (Srclib.toSourceUnit (fromFlag IncludeAll includeAll)) filtered
 
 -- For each of the projects, we need to strip the root directory path from the prefix of the project path.
 -- We don't want parent directories of the scan root affecting "production path" filtering -- e.g., if we're
@@ -532,15 +545,15 @@ buildProjectSummary project projectLocator projectUrl = do
       , "id" .= projectLocator
       ]
 
-buildResult :: [SourceUnit] -> [ProjectResult] -> Aeson.Value
-buildResult srcUnits projects =
+buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Aeson.Value
+buildResult includeAll srcUnits projects =
   Aeson.object
     [ "projects" .= map buildProject projects
     , "sourceUnits" .= finalSourceUnits
     ]
   where
     finalSourceUnits = srcUnits ++ scannedUnits
-    scannedUnits = map Srclib.toSourceUnit projects
+    scannedUnits = map (Srclib.toSourceUnit (fromFlag IncludeAll includeAll)) projects
 
 buildProject :: ProjectResult -> Aeson.Value
 buildProject project =

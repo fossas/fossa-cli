@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.18.2
+
+- Adds support for `fossa analyze --include-unused-deps`, which prevents filtering out non-production dependencies. ([#412](https://github.com/fossas/spectrometer/pull/412))
+
 ## v2.18.1
 
 - Monorepo: Send error state to UI if the CLI crashes, so scans won't appear to hang forever. ([#409](https://github.com/fossas/spectrometer/pull/409))

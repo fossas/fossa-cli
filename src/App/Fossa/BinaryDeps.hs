@@ -69,7 +69,7 @@ toProject dir = ProjectResult "binary-deps" dir mempty Complete []
 
 toSourceUnit :: ProjectResult -> [SourceUserDefDep] -> SourceUnit
 toSourceUnit project deps = do
-  let unit = Srclib.toSourceUnit project
+  let unit = Srclib.toSourceUnit False project
   unit{additionalData = Just $ AdditionalDepData (Just deps) Nothing}
 
 -- | Just render the first few characters of the fingerprint.
