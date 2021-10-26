@@ -11,6 +11,8 @@ Param()
 $OldEAP = $ErrorActionPreference #Preserve the original value
 $ErrorActionPreference = "Stop"
 
+$app = "fossa"
+
 # Set to default if null
 if ($env:FOSSA_RELEASE)
 {
@@ -48,15 +50,16 @@ Write-Verbose "Looking up release ($releaseTag)..."
 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 
-$releasePage = Invoke-RestMethod $latestUri
-
-if ($releasePage -inotmatch 'href=\"(.*?releases\/download\/fossa_(v?\d+\.\d+\.\d+)_windows.*\.zip)\"')
-{
-    throw "Did not find Windows release at $latestUri"
+$headers = @{
+    'Accept' = 'application/json'
 }
 
-$downloadUri = "$github/$($Matches[1])"
-Write-Verbose "Downloading from: $downloadUri"
+$release = Invoke-RestMethod -Uri $latestUri -Method Get -Headers $headers
+$releaseVersion = $release.tag_name;
+$releaseVersionSemver = $releaseVersion.TrimStart("v");
+$downloadUri = "$github/fossas/spectrometer/releases/download/$releaseVersion/$($app)_$($releaseVersionSemver)_windows_amd64.zip"
+
+Write-Output "Downloading from: $downloadUri"
 
 $TempDir = Join-Path ([System.IO.Path]::GetTempPath()) "fossa"
 if (![System.IO.Directory]::Exists($TempDir)) {[void][System.IO.Directory]::CreateDirectory($TempDir)}

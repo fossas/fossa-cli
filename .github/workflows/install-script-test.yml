@@ -26,6 +26,13 @@ jobs:
     runs-on: 'windows-latest'
     steps:
       - uses: actions/checkout@v2
+      
+      - name: install script performs installation
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
+          .\install.ps1
+
       - name: install-v1 script does not install v2 or greater version
         shell: pwsh
         run: |
