@@ -239,6 +239,7 @@ instance FromJSON DependencyMetadata where
 -- Parse supported dependency types into their respective type or return Nothing.
 depTypeFromText :: Text -> Maybe DepType
 depTypeFromText text = case text of
+  "bower" -> Just BowerType
   "cargo" -> Just CargoType
   "carthage" -> Just CarthageType
   "composer" -> Just ComposerType

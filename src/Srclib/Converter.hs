@@ -99,6 +99,7 @@ verConstraintToRevision = \case
 depTypeToFetcher :: DepType -> Text
 depTypeToFetcher = \case
   ArchiveType -> "archive"
+  BowerType -> "bower"
   CarthageType -> "cart"
   CargoType -> "cargo"
   ComposerType -> "comp"
@@ -126,6 +127,7 @@ depTypeToFetcher = \case
 -- | GooglesourceType and SubprojectType are not supported with this function, since they're ambiguous.
 fetcherToDepType :: Text -> Maybe DepType
 fetcherToDepType fetcher | depTypeToFetcher ArchiveType == fetcher = Just ArchiveType
+fetcherToDepType fetcher | depTypeToFetcher BowerType == fetcher = Just BowerType
 fetcherToDepType fetcher | depTypeToFetcher CarthageType == fetcher = Just CarthageType
 fetcherToDepType fetcher | depTypeToFetcher CargoType == fetcher = Just CargoType
 fetcherToDepType fetcher | depTypeToFetcher ComposerType == fetcher = Just ComposerType

@@ -255,6 +255,7 @@ The `name` and `type` fields are required and specify the name of the dependency
 
 Supported dependency types:
 
+- `bower` - Bower dependencies that are typically found at found at [bower.io](https://registry.bower.io).
 - `cargo` - Rust dependencies that are typically found at [crates.io](https://crates.io/).
 - `carthage` - Dependencies as specified by the [Carthage](https://github.com/Carthage/Carthage) package manager.
 - `composer` - Dependencies specified by the PHP package manager [Composer](https://getcomposer.org/), which are located on [Packagist](https://packagist.org/).

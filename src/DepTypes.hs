@@ -52,6 +52,8 @@ data DepEnvironment
 data DepType
   = -- | An archive upload dependency.
     ArchiveType
+  | -- | Bower dependency
+    BowerType
   | -- | A first-party subproject
     SubprojectType
   | -- | Dependency found from the composer fetcher.
