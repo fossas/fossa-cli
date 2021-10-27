@@ -17,7 +17,7 @@ Run `fossa init` to detect all python directories that contain `requirements.txt
 
 ### Manual
 
-Add a module with `type: pip`, and `target` and `dir` set to the root of the Python project.
+Add a module with `type: pip`, and `target` and `path` set to the root of the Python project.
 
 See [Options](#Options) for an in depth look at all of the available options for a Python module.
 
