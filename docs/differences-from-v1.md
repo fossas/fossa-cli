@@ -209,7 +209,7 @@ For documentation on the new configuration file format, see [here](references/fi
 
 In 1.x, ["archive upload" modules](https://github.com/fossas/fossa-cli/blob/master/docs/integrations/archive.md#archive) were a special kind of manually specified module of type `archive` that uploaded source code to the FOSSA backend for license scanning. They were also known as "raw" modules or "license scan" modules.
 
-In 2.x, archive uploads are no longer a special analysis target type. Instead, you can use our general support for [manually specified dependencies](https://github.com/fossas/spectrometer/blob/master/docs/userguide.md#license-scanning-local-dependencies) to specify local dependencies.
+In 2.x, archive uploads are no longer a special analysis target type. Instead, you can use our general support for [manually specified dependencies](./features/manual-dependencies.md) to specify local dependencies.
 
 ### Getting help with your migration
 
@@ -224,7 +224,8 @@ In 1.x, `fossa report` supported `fossa report dependencies`, `fossa report lice
 In 2.x, only `fossa report attribution --json` is reported. The information in the previously supported v1 commands is contained in the output from `attribution`.
 
 The format for this report has also changed slightly. Until the end of April 2022, FOSSA supports a compatibilty script to convert the format of the report.
-For more information, including usage information, see [FOSSAv1 report compatibility](https://github.com/fossas/spectrometer/blob/master/docs/userguide.md#fossav1-report-compatibility) in the user guide.
+For more information, including usage information, see [FOSSAv1 report compatibility](references/subcommands/report.md#fossav1-report-compatibility) in the user guide.
+
 ## Frequently Asked Questions
 
 #### Until when CLI v1 will be supported by FOSSA?
