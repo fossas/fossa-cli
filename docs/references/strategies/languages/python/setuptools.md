@@ -1,0 +1,89 @@
+# Setuptools (requirements.txt/setup.py)
+
+requirements.txt, alongside setup.py, is the most common -- yet imprecise --
+approach to dependency management in python projects.
+
+## Project Discovery
+
+`requirements.txt`: Find all files matching the glob: `req*.txt`
+
+`setup.py`: Find all files named `setup.py`
+
+## Analysis: requirements.txt
+
+requirements.txt contains direct dependencies, and is parsed compliant to its
+[file format spec][requirements-file-format].
+
+pip-cli options, URLs, absolute paths, and relative paths are ignored -- though
+this may be revisited in the future.
+
+Dependencies found in requirements.txt have a spec defined by
+[PEP-508][pep-508]. Dependencies often have version ranges and environment
+markers (e.g. python version, OS, ...). The resulting graph contains packages
+tagged with environment markers.
+
+## Analysis: setup.py
+
+setup.py is naively scanned for its `install_requires=[...]` field, which often
+fails on projects encountered in the wild. Short of implementing a robust python
+parser, or running a python script in their environment (which may have
+unintended consequences!), reliable output from setup.py is difficult to obtain.
+
+Entries in the `install_requires` array are parsed compliant to the
+[PEP-508][pep-508] spec, similar to requirements.txt
+
+[requirements-file-format]: https://pip.pypa.io/en/stable/cli/pip_install/#requirements-file-format
+[pep-508]: https://www.python.org/dev/peps/pep-0508/
+
+## Limitations
+
+* Python requirements files and setup.py files do not provide any data about edges between dependencies.
+* Requirements files can be completely different than an existing setup.py specification, as there is no built-in
+synchronization between them.
+* Since we don't completely parse the python files, any programmability done in the `setup.py` file will hide the
+true `install_requires` list from our view.  However, we do catch *variables* named `install_requires` as well, as
+long as they are declared earlier in the file than the `install_requires` keyword argument to `setup`.
+* Often, the `requirements.txt` file entirely overlaps the `setup.py` file.  This is almost always by design.
+
+## Examples
+
+Given the following files:
+
+`setup.py` (manually created):
+
+```python
+setup(
+    name='Foo-project',
+    version='1.0',
+    description='Python example project',
+    author='Jeff Jefferson',
+    author_email='bug-catcher@butterfly.net',
+    url='https://this.url/means#nothing',
+    packages=['foo'],
+    # And now the important part...
+    install_requires=[  
+        "requests",
+    ],
+)
+```
+
+`requirements.txt` (obtained by running `pip install requests && pip freeze > requirements.txt`):
+*Note: your requirements file may have different versions. This file is just a reference example.*
+
+```txt
+certifi==2021.5.30
+chardet==4.0.0
+idna==2.10
+requests==2.25.1
+urllib3==1.26.6
+```
+
+We will produce a list of these direct dependencies with no edges between them (see [#limitations](#limitations)):
+
+```txt
+certifi==2021.5.30
+chardet==4.0.0
+idna==2.10
+requests==2.25.1
+urllib3==1.26.6
+```

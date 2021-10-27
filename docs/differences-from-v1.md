@@ -51,11 +51,11 @@ Our focus in CLI 2.x is making FOSSA integrations easier to deploy by reducing t
 
 FOSSA 2.x supports following new build managers and languages:
 
-- [Swift Package Manager (for swift)](strategies/ios/swift.md)
-- [Pub (for flutter and dart)](strategies/dart.md)
-- [Poetry (for Python)](strategies/python.md)
-- [Mix (for Elixir)](strategies/elixir.md)
-- [Fortran Package Manager (for Fortran)](strategies/fortran.md)
+- [Swift Package Manager (for swift)](references/strategies/platforms/ios/swift.md)
+- [Pub (for flutter and dart)](references/strategies/languages/dart/dart.md)
+- [Poetry (for Python)](references/strategies/languages/python/python.md)
+- [Mix (for Elixir)](references/strategies/languages/elixir/elixir.md)
+- [Fortran Package Manager (for Fortran)](references/strategies/languages/fortran/fortran.md)
 
 ### Automatic analysis target discovery
 
@@ -67,16 +67,17 @@ In 2.x, the CLI now automatically selects the optimal strategy for analysis targ
 
 ### New fossa-deps configuration support
 
-With [`fossa-deps.{yml,json}` file](userguide.md#manually-specifying-dependencies), 2.x supports:
+With [`fossa-deps.{yml,json}` file](features/manual-dependencies.md), 2.x supports:
 
 - License scanning vendor dependencies 
+<!-- markdown-link-check-disable-next-line -->
 - Analyzing archives that are located at a specific web address (e.g. https://my-deps-source/v1.zip)
 - Manually specifying dependency by it's name and license (e.g. my-custom-dep with MIT licence)
 - Manually specifying dependency for analysis by its name and dependency type (e.g. pip dependency: request)
 
 This is very useful when working with a package manager that is not supported, or when you have a custom and nonstandard dependency management solution. The FOSSA CLI will automatically read a fossa-deps.yml or a fossa-deps.json file in the root directory (usually the current working directory) when fossa analyze is run and parse dependencies from it. These dependencies will be added to the dependencies that are normally found when fossa analysis is run in the directory.
 
-Please refer to [fossa-deps](userguide.md#manually-specifying-dependencies) documentation for more details.
+Please refer to [fossa-deps](features/manual-dependencies.md) documentation for more details.
 
 ### Improved correctness
 
@@ -129,65 +130,65 @@ Following CLI commands are not supported with 2.x:
    - There are no retries (CLI will attempt to analyze the project once)
    - Specific command and Gradle tasks can not be used in the analysis
    - `$FOSSA_GRADLE_COMMAND` environment variable cannot be configured. 2.x uses Gradle executable in `$PATH`.
-- Refer to [FOSSA 2.x gradle docs](strategies/gradle.md) for more information for gradle.
+- Refer to [FOSSA 2.x gradle docs](references/strategies/languages/gradle/gradle.md) for more information for gradle.
 
 #### Clojure 
 - 2.x performs the `lein deps :tree` strategy by default. 
 - 2.x does not support any options - `strategy`, and `lien` for Clojure analysis.
-- Refer to [FOSSA 2.x clojure docs](strategies/clojure.md) for more information on how 2.x performs analysis for clojure.
+- Refer to [FOSSA 2.x clojure docs](references/strategies/languages/clojure/clojure.md) for more information on how 2.x performs analysis for clojure.
 
 #### Golang 
 - 2.x supports analysis of the Golang project for projects using gomod, godeps, and glide.
 - 2.x does not support following options: `tags`, `all-tags,` `strategy`, `lockfile`, `manifest`, `modules-vendor`, `allow-unresolved`, `allow-unresolved-prefix`, `allow-nested-vendor`, `allow-deep-vendor`, `allow-external-vendor`, `allow-external-vendor-prefix`.
-- Refer to [FOSSA 2.x golang docs](strategies/golang.md) for more information on how 2.x performs analysis for golang.
+- Refer to [FOSSA 2.x golang docs](references/strategies/languages/golang/golang.md) for more information on how 2.x performs analysis for golang.
 
 #### Haskell 
 - 2.x will apply stack strategy when a project is discovered having stack.yaml file
 - 2.x will apply cabal-install strategy for projects using cabal.project or file with .cabal extension
 - 2.x does not support `strategy` option for Haskell analysis
-- Refer to [FOSSA 2.x haskell docs](strategies/haskell.md) for more information on how 2.x performs analysis for haskell.
+- Refer to [FOSSA 2.x haskell docs](references/strategies/languages/haskell/README.md) for more information on how 2.x performs analysis for haskell.
 
 #### Maven
 - 2.x uses `mvn` command for analysis. `mvn` must be accessible in $PATH
 - 2.x does not support any option: `strategy`, `cmd`, or `bin` for Maven analysis
-- Refer to [FOSSA 2.x maven docs](strategies/maven.md) for more information on how 2.x performs analysis for maven.
+- Refer to [FOSSA 2.x maven docs](references/strategies/languages/maven/maven.md) for more information on how 2.x performs analysis for maven.
 
 #### Nodejs
 - 2.x supports `yarn`, `npm`, and `package.json` for analysis.
 - 2.x does not support the `strategy` option for Nodejs analysis. v2.x automatically selects the application strategy which yields the highest fidelity of dependency information.
-- Refer to [FOSSA 2.x nodejs docs](strategies/nodejs.md) for more information on how 2.x performs analysis for nodejs.
+- Refer to [FOSSA 2.x nodejs docs](references/strategies/languages/nodejs/npm.md) for more information on how 2.x performs analysis for nodejs.
 
 #### Nuget
 - 2.x does not support the `strategy` option for Nuget analysis. v2.x automatically selects the application strategy which yields the highest fidelity of dependency information.
-- Refer to [FOSSA 2.x nuget docs](strategies/dotnet.md) for more information on how 2.x performs analysis for nuget.
+- Refer to [FOSSA 2.x nuget docs](references/strategies/languages/dotnet/README.md) for more information on how 2.x performs analysis for nuget.
 
 #### Cocoapods
-- Refer to [FOSSA 2.x cocoapods docs](strategies/ios/cocoapods.md) for more information on how 2.x performs analysis for cocoapods.
+- Refer to [FOSSA 2.x cocoapods docs](references/strategies/platforms/ios/cocoapods.md) for more information on how 2.x performs analysis for cocoapods.
 
 #### Carthage
-- Refer to [FOSSA 2.x carthage docs](strategies/ios/carthage.md) for more information on how 2.x performs analysis for carthage.
+- Refer to [FOSSA 2.x carthage docs](references/strategies/platforms/ios/carthage.md) for more information on how 2.x performs analysis for carthage.
 
 #### Composer
-- Refer to [FOSSA 2.x composer docs](strategies/composer.md) for more information on how 2.x performs analysis for composer.
+- Refer to [FOSSA 2.x composer docs](references/strategies/languages/php/composer.md) for more information on how 2.x performs analysis for composer.
 
 #### Python
 - 2.x automatically selects the application strategy which yields the highest fidelity of dependency information.
 - 2.x uses attempts to infer requirements.txt for any file with prefix `req` in its name, and `txt` extension.
 - 2.x does not support the `strategy` or `requirement` option for Python analysis. 
-- Refer to [FOSSA 2.x python docs](strategies/python.md) for more information on how 2.x performs analysis for python.
+- Refer to [FOSSA 2.x python docs](references/strategies/languages/python/python.md) for more information on how 2.x performs analysis for python.
 
 #### Gem
 - 2.x attempts to use the `bundle show` command (`bundle` must be accessible from `$PATH`), and if it fails, it attempts to analyze dependencies from `Gemfile.lock` file. 
 - 2.x does not support `strategy` or `gemfile-lock-path` option for Gem Analysis.
-- Refer to [FOSSA 2.x gem docs](strategies/ruby.md) for more information on how 2.x performs analysis for gem.
+- Refer to [FOSSA 2.x gem docs](references/strategies/languages/ruby/ruby.md) for more information on how 2.x performs analysis for gem.
 
 #### Cargo
-- Refer to [FOSSA 2.x cargo docs](strategies/rust.md) for more information on how 2.x performs analysis for cargo.
+- Refer to [FOSSA 2.x cargo docs](references/strategies/languages/rust/rust.md) for more information on how 2.x performs analysis for cargo.
 
 #### Sbt
 - 2.x requires `sbt` executable to be accessible from `$PATH`
 - 2.x does not require a project to have a `net.virtual-void.sbt-dependency-graph` extension installed.
-- Refer to [FOSSA 2.x scala docs](strategies/sbt.md) for more information on how 2.x performs analysis for sbt.
+- Refer to [FOSSA 2.x scala docs](references/strategies/languages/scala/sbt.md) for more information on how 2.x performs analysis for sbt.
 
 ## How to upgrade to FOSSA 2.x
 
@@ -202,7 +203,7 @@ We've made major breaking changes in the `.fossa.yml` file format for CLI 2.x to
 - .fossa.yml with version field value of `1` and `2` are for 1.x.
 - .fossa.yml with version field value of `3` are for 2.x.
 
-For documentation on the new configuration file format, see [here](/docs/reference/fossa_yml.md).
+For documentation on the new configuration file format, see [here](references/files/fossa-yml.md)
 
 ### Migrate "archive upload" targets
 
@@ -240,7 +241,7 @@ If you are integrating a private project and want to share more details, or if y
 
 #### How do I run only a specific analyzer for my project? 
 
-You can configure to run specific analyzer or only analyze specific paths in `.fossa.yml` file. Please refer to documentation [here](reference/fossa_yml.md)
+You can configure to run specific analyzer or only analyze specific paths in `.fossa.yml` file. Please refer to documentation [here](references/files/fossa-yml.md)
 
 ### How do I identify which version of CLI I have installed?
 

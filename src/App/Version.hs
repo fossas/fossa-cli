@@ -4,6 +4,7 @@ module App.Version (
   versionNumber,
   fullVersionDescription,
   isDirty,
+  currentBranch,
 ) where
 
 import App.Version.TH (getCurrentTag)

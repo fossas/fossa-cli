@@ -1,0 +1,6 @@
+digraph G {
+    requests -> {certifi chardet idna urllib3};
+    pytest -> {attrs "importlib-metadata" iniconfig pluggy py toml};
+    "importlib-metadata" -> {"typing-extensions" zipp};
+    pluggy -> "importlib-metadata";
+}

@@ -1,75 +1,154 @@
 # Spectrometer
 
-[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B1%2Fgithub.com%2Ffossas%2Fspectrometer.svg?type=shield)](https://app.fossa.com/projects/custom%2B1%2Fgithub.com%2Ffossas%2Fspectrometer?ref=badge_shield)
+[![Build](https://github.com/fossas/spectrometer/actions/workflows/build.yml/badge.svg)](https://github.com/fossas/spectrometer/actions/workflows/build.yml)
+[![Dependency scan](https://github.com/fossas/spectrometer/actions/workflows/dependency-scan.yml/badge.svg)](https://github.com/fossas/spectrometer/actions/workflows/dependency-scan.yml) <!-- markdown-link-check-disable-next-line -->
+[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Fspectrometer.svg?type=shield)](https://app.fossa.com/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Fspectrometer?ref=badge_shield)
 
-Spectrometer is a minimal-configuration dependency analysis tool. It supports a
-wide array of languages and buildtools.
+Spectrometer is a zero-configuration polyglot dependency analysis tool. You can point Spectrometer at any codebase or build, and it will automatically detect dependencies being used by your project.
 
-Spectrometer extracts dependency graphs from your projects and reports them to
-[FOSSA](https://fossa.com) for license scanning, vulnerability scanning, and
-more.
+Spectrometer currently supports automatic dependency analysis for [many different build tools and languages](docs/references/strategies/README.md). It also has limited support for vendored dependency detection, container scanning, and system dependency detection. These features are still a work in progress. Our goal is to make Spectrometer a single, universal tool for all kinds of dependency analysis.
+
+Spectrometer integrates with [FOSSA](https://fossa.com) for dependency analysis, license scanning, vulnerability scanning, attribution report generation, and more.
 
 ## Table of Contents
 
 1. [Installation](#installation)
-2. [Using Spectrometer](#using-spectrometer)
-3. [Reporting Issues](#reporting-issues)
+2. [Getting Started](#getting-started)
+3. [User Manual](#user-guide)
+4. [Reporting Issues](#reporting-issues)
+5. [Contributing](#contributing)
 
 ## Installation
 
-### macOS or 64-bit Linux
+### Using the install script
+
+Spectrometer provides an install script that downloads the latest release from GitHub Releases for your computer's architecture. You can see the source code and flags at [`install.sh`](https://github.com/fossas/spectrometer/blob/master/install.sh) for Mac and Linux or [`install.ps1`](https://github.com/fossas/spectrometer/blob/master/install.ps1) for Windows.
+
+**NOTE:** You may need to add the downloaded executable to your `$PATH`. The installer script will output the installed path of the executable. You can also use `-b` to pick the installation directory when using `install.sh` (see [the `install.sh` source code](https://github.com/fossas/spectrometer/blob/master/install.sh) for details).
+
+#### macOS or 64-bit Linux
 
 ```bash
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
 ```
 
-### macOS with Apple M1 Silicon
+#### macOS with Apple M1 Silicon
+
+We do not currently support ARM as a target architecture. You can work around this on M1 Mac devices using the M1's x86_64 emulation.
 
 ```bash
 arch -x86_64 /bin/bash -c "$(curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh)"
 ```
 
-### Windows with Powershell
+#### Windows with Powershell
 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/spectrometer/master/install.ps1'))
 ```
 
-**NOTE**: You may need to add the executable to your PATH. The installer
-reports the installation path of the executable.
+### Installing manually
 
-## Using Spectrometer
+You can install Spectrometer releases manually by downloading the latest release from [GitHub Releases](https://github.com/fossas/spectrometer/releases) and extracting the binary to your `$PATH`.
 
-See the [User Guide](docs/userguide.md) for detailed instructions.
+## Getting Started
 
-Usually, this is sufficient:
+### Integrating your project with FOSSA
 
-``` sh
-# configure api key
-export FOSSA_API_KEY=your-api-key-goes-here
+#### TL;DR, Linux, Mac, \*nix-like
 
-# run dependency analysis in the current
-# directory, uploading results to FOSSA
+```sh
+# Download FOSSA.
+curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
+
+# Set your API key. Get this from the FOSSA web application.
+export FOSSA_API_KEY=XXXX
+
+# Run an analysis in your project's directory.
+cd $MY_PROJECT_DIR
 fossa analyze
-
-# check for FOSSA license- and vulnerability-scan results
-fossa test
 ```
 
-## Contributing
+#### TL;DR, Windows
 
-For development documentation (still WIP, but not empty), see our [Development
-Docs Homepage](devdocs/index.md).
+```powershell
+# Download FOSSA.
+Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/spectrometer/master/install.ps1'))
+
+# Set your API key. Get this from the FOSSA web application.
+$env:FOSSA_API_KEY=XXXX
+
+# Run an analysis in your project's directory.
+cd $MY_PROJECT_DIR
+fossa analyze
+```
+
+#### Installing Spectrometer
+
+Follow [the installation instructions](#installation) above to install Spectrometer. Once installed, you should have a new binary named `fossa` available on your `$PATH`.
+
+#### Generating an API key
+
+To get started with integrating your project into FOSSA, you'll need to [generate an API key](https://docs.fossa.com/docs/api-reference). You'll get this API key from the FOSSA web application ([app.fossa.com](https://app.fossa.com)).
+
+Once you have your API key:
+
+```sh
+export FOSSA_API_KEY=XXXX # Use your API key here.
+```
+
+#### Running an analysis
+
+Now we can run an analysis. To run an analysis, all you need to do is navigate to your project's directory and run `fossa analyze`.
+
+**NOTE:** While `fossa` will try its best to report available results for any kind of project, you'll get the best results by running in a directory with a working project build. A working build lets us integrate directly with your build tool to identify dependencies, instead of trying to infer dependencies from your source code.
+
+```sh
+$ cd $MY_PROJECT_DIR # Use your actual project location here.
+
+$ fossa analyze
+[ INFO] Using project name: `https://github.com/fossas/spectrometer`
+[ INFO] Using revision: `09ca72e398bb32747b27c0f43731678fa42c3c26`
+[ INFO] Using branch: `No branch (detached HEAD)`
+[ INFO] ============================================================
+
+      View FOSSA Report:
+      https://app.fossa.com/projects/custom+1%2fgithub.com%2ffossas%2fspectrometer/refs/branch/master/09ca72e398bb32747b27c0f43731678fa42c3c26
+
+  ============================================================
+```
+
+#### Viewing your results
+
+Once an analysis has been uploaded, you can view your results in the FOSSA web application. You can see your analysis by using the link provided as output by `fossa analyze`, or by navigating to your project and revision in the FOSSA web application.
+
+#### What next?
+
+Now that your analysis is complete, there are a couple things you might want to do after an initial integration:
+
+- **Double-check your results.** Some analysis methods may produce partial or unexpected results depending on what information was available when you ran the analysis. If something seems wrong, [our debugging guide](./docs/walkthroughs/debugging-your-integration.md) can help you diagnose and debug your integration.
+
+- **Scan for issues and generate a compliance report.** Once your analysis is ready, we'll automatically queue an issue scan and report the results in the web application. Once an issue scan is complete, you can also [generate a report](https://docs.fossa.com/docs/running-a-scan) from the web application.
+
+- **Set up FOSSA in your CI.** You can also use your issue scan results as inputs to CI scripts. For GitHub repositories, you can use FOSSA's [native GitHub integration](https://docs.fossa.com/docs/automatic-updates#pull-request--commit-statuses-github-only) to report a status check on your PRs. For other CI integrations, you can also [use `fossa test`](docs/references/subcommands/test.md) to get programmatic issue status in CI.
+
+## User Manual
+
+For most users, Spectrometer will work out-of-the-box without any configuration. Just get an API key, run `fossa analyze`, and view your results in the FOSSA web application.
+
+Users who need more advanced customizations or features should see the [User Manual](./docs/README.md). Some common topics of interest include:
+
+- [Debugging your integration](./docs/walkthroughs/debugging-your-integration.md)
+- [Specifying vendored dependencies](docs/features/vendored-dependencies.md)
+- [Adding manual dependencies](docs/features/manual-dependencies.md)
 
 ## Reporting Issues
 
-If you are experiencing an issue related to the results on the FOSSA
-website/dashboard, please contact [support@fossa.com](mailto:support@fossa.com)
+If you've found a bug or need support, the best way to get support is to email [support@fossa.com](mailto:support@fossa.com).
 
-Issues specific to Spectrometer should be filed through the [Github issues
-page](https://github.com/fossas/spectrometer/issues/new).
+Make sure to include reproduction steps and any relevant project files (e.g. `pom.xml`s, `package.json`s, etc.). Including the output from `fossa analyze --debug` in the email as well as any relevant fossa files (`fossa-deps.json`, `.fossa.yml`) will help expedite a solution.
 
-Please include the following in your bug report:
+We'll try to respond to issues opened in this repository on a best-effort basis, but we mostly provide support via our [`support@`](mailto:support@fossa.com) email.
 
-- Steps to reproduce your issue
-- Relevant project manifest files (e.g., `pom.xml` or `package.json`)
+## Contributing
+
+If you're interested in contributing, check out our [contributor documentation](./docs/contributing/README.md). PRs are welcome!
