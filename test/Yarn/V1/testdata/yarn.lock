@@ -21,3 +21,8 @@ packageFive@5.0.0:
   resolved "https://someurl.io/somefile.gz#somehash"
   dependencies:
     unSeenDep "0.0.0"
+packageSix@^6.0.0:
+  version "6.0.0"
+  resolved "https://registry.npmjs.org/packageSix"
+  dependencies:
+    packageThree "^3.0.0"

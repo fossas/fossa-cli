@@ -4,15 +4,27 @@ module Node.PackageJsonSpec (
 
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
-import DepTypes
-import GraphUtil
-import Strategy.Node.PackageJson
-import Test.Hspec
+import DepTypes (
+  DepEnvironment (EnvDevelopment, EnvProduction),
+  DepType (NodeJSType),
+  Dependency (..),
+  VerConstraint (CCompatible),
+ )
+import GraphUtil (expectDeps, expectDirect, expectEdges)
+import Strategy.Node.PackageJson (
+  PackageJson (..),
+  PkgJsonWorkspaces (PkgJsonWorkspaces),
+  buildGraph,
+ )
+import Test.Hspec (Spec, describe, it)
 
 mockInput :: PackageJson
 mockInput =
   PackageJson
-    { packageDeps = Map.fromList [("packageOne", "^1.0.0")]
+    { packageName = Nothing
+    , packageVersion = Nothing
+    , packageWorkspaces = PkgJsonWorkspaces []
+    , packageDeps = Map.fromList [("packageOne", "^1.0.0")]
     , packageDevDeps = Map.fromList [("packageTwo", "^2.0.0")]
     }
 

@@ -19,7 +19,10 @@ import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.Debug (collectDebugBundle, diagToDebug)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
-import App.Fossa.Analyze.Types
+import App.Fossa.Analyze.Types (
+  AnalyzeProject (..),
+  AnalyzeTaskEffs,
+ )
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.FossaAPIV1 (UploadResponse (..), getProject, projectIsMonorepo, uploadAnalysis, uploadContributors)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
@@ -37,12 +40,17 @@ import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, debugScope, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
-import Control.Carrier.Diagnostics.StickyContext
-import Control.Carrier.Finally
-import Control.Carrier.Output.IO
+import Control.Carrier.Diagnostics.StickyContext (stickyDiag)
+import Control.Carrier.Finally (Has, runFinally)
+import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
-import Control.Carrier.TaskPool
-import Control.Concurrent
+import Control.Carrier.TaskPool (
+  Progress (..),
+  TaskPool,
+  forkTask,
+  withTaskPool,
+ )
+import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Diagnostics (fatalText, fromMaybeText, recover, (<||>))
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
@@ -59,13 +67,31 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
-import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Render.Terminal
+import Data.Text.Prettyprint.Doc (
+  Doc,
+  Pretty (pretty),
+  annotate,
+  line,
+  viaShow,
+  vsep,
+ )
+import Data.Text.Prettyprint.Doc.Render.Terminal (
+  Color (Cyan, Green, Yellow),
+  color,
+ )
 import Discovery.Archive qualified as Archive
-import Discovery.Filters
+import Discovery.Filters (AllFilters, applyFilters)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec, runExecIO)
-import Effect.Logger
+import Effect.Logger (
+  Logger,
+  Severity (..),
+  logDebug,
+  logError,
+  logInfo,
+  logStdout,
+  withDefaultLogger,
+ )
 import Effect.ReadFS (ReadFS, runReadFSIO)
 import Fossa.API.Types (ApiOpts (..))
 import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
@@ -89,7 +115,7 @@ import Strategy.Haskell.Stack qualified as Stack
 import Strategy.Leiningen qualified as Leiningen
 import Strategy.Maven qualified as Maven
 import Strategy.Mix qualified as Mix
-import Strategy.Npm qualified as Npm
+import Strategy.Node qualified as Node
 import Strategy.NuGet.Nuspec qualified as Nuspec
 import Strategy.NuGet.PackageReference qualified as PackageReference
 import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
@@ -104,7 +130,6 @@ import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
 import Strategy.SwiftPM qualified as SwiftPM
-import Strategy.Yarn qualified as Yarn
 import Types (DiscoveredProject (..), FoundTargets)
 import VCS.Git (fetchGitContributors)
 
@@ -243,7 +268,7 @@ discoverFuncs =
   , DiscoverFunc Leiningen.discover
   , DiscoverFunc Maven.discover
   , DiscoverFunc Mix.discover
-  , DiscoverFunc Npm.discover
+  , DiscoverFunc Node.discover
   , DiscoverFunc Nuspec.discover
   , DiscoverFunc PackageReference.discover
   , DiscoverFunc PackagesConfig.discover
@@ -260,7 +285,6 @@ discoverFuncs =
   , DiscoverFunc Setuptools.discover
   , DiscoverFunc Stack.discover
   , DiscoverFunc SwiftPM.discover
-  , DiscoverFunc Yarn.discover
   ]
 
 -- DiscoverFunc is a workaround for the lack of impredicative types.

@@ -1,0 +1,22 @@
+digraph G {
+    style="filled"
+
+    TopProd -> ProdChild -> MutualGrandChild;
+    TopDev -> DevChild -> MutualGrandChild;
+    TopProd -> MutualChild;
+    TopDev -> MutualChild;
+    TopIsolated -> IsolatedChild;
+
+    CycleRed -> CycleBlue -> CycleRed;
+
+    TopProd [style = filled, fillcolor = red]
+    TopDev [style = filled, fillcolor = blue]
+    TopIsolated [style = filled, fillcolor = yellow]
+    ProdChild [style = filled, fillcolor = red]
+    DevChild [style = filled, fillcolor = blue]
+    MutualChild [style = filled, fillcolor = purple]
+    MutualGrandChild [style = filled, fillcolor = purple]
+    IsolatedChild [style = filled, fillcolor = yellow]
+    CycleRed [style = filled, fillcolor = purple]
+    CycleBlue [style = filled, fillcolor = purple]
+}

@@ -6,7 +6,7 @@ import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import DepTypes
 import GraphUtil
-import Strategy.Node.NpmLock
+import Strategy.Node.Npm.PackageLock
 import Test.Hspec
 
 mockInput :: NpmPackageJson
@@ -20,34 +20,42 @@ mockInput =
             ( "packageOne"
             , NpmDep
                 { depVersion = "1.0.0"
-                , depDev = Nothing
+                , depDev = False
                 , depResolved = Just "https://example.com/one.tgz"
-                , depRequires = Just (Map.fromList [("packageTwo", "2.0.0")])
+                , depRequires = Map.fromList [("packageTwo", "2.0.0")]
                 , depDependencies =
-                    Just
-                      ( Map.fromList
-                          [
-                            ( "packageTwo"
-                            , NpmDep
-                                { depVersion = "2.0.0"
-                                , depDev = Just True
-                                , depResolved = Just "https://example.com/two.tgz"
-                                , depRequires = Just (Map.fromList [("packageThree", "3.0.0")])
-                                , depDependencies = Nothing
-                                }
-                            )
-                          ]
-                      )
+                    Map.fromList
+                      [
+                        ( "packageTwo"
+                        , NpmDep
+                            { depVersion = "2.0.0"
+                            , depDev = True
+                            , depResolved = Just "https://example.com/two.tgz"
+                            , depRequires = Map.fromList [("packageThree", "3.0.0")]
+                            , depDependencies = mempty
+                            }
+                        )
+                      ]
                 }
             )
           ,
             ( "packageThree"
             , NpmDep
                 { depVersion = "3.0.0"
-                , depDev = Just True
+                , depDev = True
+                , depResolved = Just "https://example.com/three.tgz"
+                , depRequires = Map.fromList [("packageOne", "1.0.0")]
+                , depDependencies = mempty
+                }
+            )
+          ,
+            ( "packageFour"
+            , NpmDep
+                { depVersion = "file:abc/def"
+                , depDev = False
                 , depResolved = Nothing
-                , depRequires = Just (Map.fromList [("packageOne", "1.0.0")])
-                , depDependencies = Nothing
+                , depRequires = mempty
+                , depDependencies = mempty
                 }
             )
           ]
@@ -81,7 +89,7 @@ packageThree =
     { dependencyType = NodeJSType
     , dependencyName = "packageThree"
     , dependencyVersion = Just (CEq "3.0.0")
-    , dependencyLocations = []
+    , dependencyLocations = ["https://example.com/three.tgz"]
     , dependencyEnvironments = Set.singleton EnvDevelopment
     , dependencyTags = Map.empty
     }
@@ -90,7 +98,7 @@ spec :: Spec
 spec = do
   describe "buildGraph" $ do
     it "should produce expected output" $ do
-      let graph = buildGraph mockInput
+      let graph = buildGraph mockInput $ Set.fromList ["packageOne", "packageThree"]
       expectDeps [packageOne, packageTwo, packageThree] graph
       expectDirect [packageOne, packageThree] graph
       expectEdges

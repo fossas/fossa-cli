@@ -25,3 +25,14 @@ as well as the output of any commands executed during analysis.  This is called 
 and is a very useful debugging tool.
 
 [3laws]: https://en.wikipedia.org/wiki/Clarke%27s_three_laws
+
+## Graph Hydration
+
+If a top-level component of a graph of dependencies is a test dependency, then its direct children are also test
+dependencies, as are their direct children, and so on.  In some cases, the build tool/manifest files/lock files will
+tell us this information, but sometimes, we have to propogate these environments downwards ourselves.  This is called
+[`graph hydration`](graph-hydration.md), and is handled by the `Graphing.Hydrate` module.
+
+## Testing with effects
+
+--

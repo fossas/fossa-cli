@@ -4,10 +4,26 @@ module Yarn.V2.ResolversSpec (
 
 import Data.Foldable (for_)
 import Data.String.Conversion (toString)
-import Data.Text
-import Strategy.Yarn.V2.Lockfile
-import Strategy.Yarn.V2.Resolvers
-import Test.Hspec
+import Data.Text (Text)
+import Strategy.Node.YarnV2.Lockfile (Locator (Locator))
+import Strategy.Node.YarnV2.Resolvers (
+  Package (..),
+  Resolver (
+    resolverLocatorToPackage,
+    resolverName,
+    resolverSupportsLocator
+  ),
+  execResolver,
+  fileResolver,
+  gitResolver,
+  linkResolver,
+  npmResolver,
+  patchResolver,
+  portalResolver,
+  tarResolver,
+  workspaceResolver,
+ )
+import Test.Hspec (Spec, describe, it, shouldBe)
 
 spec :: Spec
 spec = do

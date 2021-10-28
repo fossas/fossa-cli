@@ -1,11 +1,14 @@
+{-# LANGUAGE RecordWildCards #-}
+
 -- | Types and decoders for the elements found in a yarn v2 lockfile
 --
 -- See the yarnv2 devdocs for an overview
-module Strategy.Yarn.V2.Lockfile (
+module Strategy.Node.YarnV2.Lockfile (
   YarnLockfile (..),
   Locator (..),
   Descriptor (..),
   PackageDescription (..),
+  tryParseDescriptor,
 ) where
 
 import Data.Aeson
@@ -16,6 +19,7 @@ import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
+import Strategy.Node.PackageJson (NodePackage (..))
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
@@ -104,6 +108,9 @@ parseDependencyDescriptors = traverse (\(name, range) -> tryParse descriptorP (n
 ---------- Text field Parsers
 
 type Parser = Parsec Void Text
+
+tryParseDescriptor :: NodePackage -> Maybe Descriptor
+tryParseDescriptor NodePackage{..} = tryParse descriptorP $ pkgName <> "@" <> pkgConstraint
 
 tryParse :: MonadFail m => Parser a -> Text -> m a
 tryParse p = either (fail . errorBundlePretty) pure . runParser p ""

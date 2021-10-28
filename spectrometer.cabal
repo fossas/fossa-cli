@@ -33,6 +33,7 @@ common lang
     GADTSyntax
     GeneralizedNewtypeDeriving
     HexFloatLiterals
+    ImportQualifiedPost
     InstanceSigs
     KindSignatures
     LambdaCase
@@ -46,13 +47,12 @@ common lang
     RankNTypes
     ScopedTypeVariables
     StandaloneDeriving
+    StandaloneKindSignatures
     StrictData
     TupleSections
     TypeApplications
     TypeOperators
     TypeSynonymInstances
-    ImportQualifiedPost
-    StandaloneKindSignatures
 
   ghc-options:
     -Wall -Wincomplete-uni-patterns -Wcompat
@@ -81,6 +81,7 @@ common deps
     , exceptions                   ^>=0.10.4
     , file-embed                   ^>=0.0.11
     , filepath                     ^>=1.4.2.1
+    , filepattern                  ^>=0.1.2
     , fused-effects                ^>=1.1.0.0
     , fused-effects-exceptions     ^>=1.1.0.0
     , git-config                   ^>=0.1.2
@@ -131,8 +132,6 @@ library
   exposed-modules:
     Algebra.Graph.AdjacencyMap.Extra
     App.Docs
-    App.Fossa.API.BuildLink
-    App.Fossa.API.BuildWait
     App.Fossa.Analyze
     App.Fossa.Analyze.Debug
     App.Fossa.Analyze.Graph
@@ -141,6 +140,8 @@ library
     App.Fossa.Analyze.Project
     App.Fossa.Analyze.Record
     App.Fossa.Analyze.Types
+    App.Fossa.API.BuildLink
+    App.Fossa.API.BuildWait
     App.Fossa.ArchiveUploader
     App.Fossa.BinaryDeps
     App.Fossa.BinaryDeps.Jar
@@ -215,9 +216,11 @@ library
     Data.FileEmbed.Extra
     Data.Flag
     Data.Functor.Extra
+    Data.Glob
     Data.List.Extra
     Data.Set.NonEmpty
     Data.String.Conversion
+    Data.Tagged
     Data.Text.Extra
     DepTypes
     Discovery.Archive
@@ -231,6 +234,7 @@ library
     Effect.ReadFS
     Fossa.API.Types
     Graphing
+    Graphing.Hydrate
     Network.HTTP.Req.Extra
     Parse.XML
     Path.Extra
@@ -279,10 +283,13 @@ library
     Strategy.Maven.Pom.PomFile
     Strategy.Maven.Pom.Resolver
     Strategy.Mix
-    Strategy.Node.NpmList
-    Strategy.Node.NpmLock
+    Strategy.Node
+    Strategy.Node.Npm.PackageLock
     Strategy.Node.PackageJson
-    Strategy.Npm
+    Strategy.Node.YarnV1.YarnLock
+    Strategy.Node.YarnV2.Lockfile
+    Strategy.Node.YarnV2.Resolvers
+    Strategy.Node.YarnV2.YarnLock
     Strategy.NuGet.Nuspec
     Strategy.NuGet.PackageReference
     Strategy.NuGet.PackagesConfig
@@ -299,8 +306,8 @@ library
     Strategy.Python.SetupPy
     Strategy.Python.Setuptools
     Strategy.Python.Util
-    Strategy.RPM
     Strategy.Rebar3
+    Strategy.RPM
     Strategy.Ruby.BundleShow
     Strategy.Ruby.GemfileLock
     Strategy.Scala
@@ -309,11 +316,6 @@ library
     Strategy.Swift.Xcode.Pbxproj
     Strategy.Swift.Xcode.PbxprojParser
     Strategy.SwiftPM
-    Strategy.Yarn
-    Strategy.Yarn.V1.YarnLock
-    Strategy.Yarn.V2.Lockfile
-    Strategy.Yarn.V2.Resolvers
-    Strategy.Yarn.V2.YarnLock
     System.CGroup
     System.CGroup.CPU
     System.CGroup.Types
@@ -346,8 +348,10 @@ test-suite unit-tests
 
   -- cabal-fmt: expand test
   other-modules:
+    AdjacencyMapSpec
     Android.UtilSpec
     App.DocsSpec
+    App.Fossa.AnalyzeSpec
     App.Fossa.API.BuildLinkSpec
     App.Fossa.BinaryDeps.JarSpec
     App.Fossa.Configuration.ConfigurationSpec
@@ -383,8 +387,9 @@ test-suite unit-tests
     Go.TransitiveSpec
     Googlesource.RepoManifestSpec
     Gradle.GradleSpec
-    GraphUtil
+    Graphing.HydrateSpec
     GraphingSpec
+    GraphUtil
     Haskell.CabalSpec
     Haskell.StackSpec
     Maven.DepTreeSpec
@@ -415,9 +420,10 @@ test-suite unit-tests
     Swift.Xcode.PbxprojSpec
     System.CGroup.CPUSpec
     System.CGroup.TypesSpec
+    Test.Effect
+    Yarn.V1.YarnLockV1Spec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec
-    Yarn.YarnLockV1Spec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
   build-depends:

@@ -4,7 +4,7 @@ package.json is a common build manifest used by both yarn and npmcli.
 
 ## Project Discovery
 
-`npmlock`: Find all files named `package.json`, not descending into directories
+`npm`: Find all files named `package.json`, not descending into directories
 named `node_modules`
 
 ## Analysis
@@ -18,3 +18,8 @@ dependencies specified here are direct.
 
 There is also a different block for development dependencies which allows us to
 accurately determine part of the tags available for node.
+
+As of _v2.19.x_, we also combine `package.json` files that are members of the
+same workspace.  The files are treated as though all dependencies were found
+from the same file, though we report the origins of the deps as a set of all
+files.

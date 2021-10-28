@@ -2,12 +2,9 @@
 
 ## Requirements
 
-**Ideal**
+**Ideal/Minimum**
 
 - `yarn.lock` file present in your project
-
-**Minimum**
-
 - `package.json` file present in your project
 
 ## Project discovery

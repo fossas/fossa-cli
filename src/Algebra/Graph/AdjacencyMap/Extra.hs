@@ -2,9 +2,12 @@ module Algebra.Graph.AdjacencyMap.Extra (
   gtraverse,
   shrink,
   shrinkSingle,
+  splitGraph,
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
+import Algebra.Graph.AdjacencyMap.Algorithm qualified as AMA
+import Data.Set (Set)
 import Data.Set qualified as Set
 
 -- | It's 'traverse', but for graphs
@@ -43,3 +46,29 @@ shrinkSingle vert gr = AM.overlay (AM.removeVertex vert gr) inducedEdges
         | pre <- Set.toList (AM.preSet vert gr)
         , post <- Set.toList (AM.postSet vert gr)
         ]
+
+-- | Split graph into distinct sibling graphs via nodes that have no incoming edges.
+-- Returns 'Nothing' if graph is cyclic.
+--
+-- @
+-- splitGraph 'edges' [(1, 2), (2, 3), (4, 5)] = ['edges' [(1, 2), (2, 3)], 'edge' 4 5]
+-- @
+splitGraph :: Ord a => AM.AdjacencyMap a -> Maybe [AM.AdjacencyMap a]
+splitGraph gr =
+  if AMA.isAcyclic gr
+    then Just $ splitAcyclicGraph gr
+    else Nothing
+
+-- | The internals of splitGraph, but only for acyclic graphs.  Results for
+-- cyclic graphs are unspecified.
+splitAcyclicGraph :: Ord a => AM.AdjacencyMap a -> [AM.AdjacencyMap a]
+splitAcyclicGraph gr =
+  case AM.vertexList $ AM.induce (\x -> Set.null $ AM.preSet x gr) gr of
+    [] -> [gr]
+    tops -> map (`takeReachable` gr) tops
+
+takeReachable :: forall a. Ord a => a -> AM.AdjacencyMap a -> AM.AdjacencyMap a
+takeReachable x gr = AM.induce (`Set.member` vertices) gr
+  where
+    vertices :: Set a
+    vertices = Set.fromList $ AMA.reachable x gr

@@ -1,8 +1,12 @@
 # Spectrometer Changelog
 
-## v2.18.2
+## v2.19.0
 
 - Adds support for `fossa analyze --include-unused-deps`, which prevents filtering out non-production dependencies. ([#412](https://github.com/fossas/spectrometer/pull/412))
+- Yarn: Adds support for workspaces. ([#374](https://github.com/fossas/spectrometer/pull/374))
+- Npm: Adds support for workspaces. ([#374](https://github.com/fossas/spectrometer/pull/374))
+- Npm: Removes unreliable `npm ls`-based analysis tactic. ([#374](https://github.com/fossas/spectrometer/pull/374))
+- `fossa-deps`: Adds support for `bower`-type in `referenced-dependencies`. ([#406](https://github.com/fossas/spectrometer/pull/406))
 
 ## v2.18.1
 
@@ -31,34 +35,44 @@
 - When running `fossa analyze` with the `--debug` flag, we now create a `fossa.debug.json.gz` file containing detailed runtime traces for project discovery and dependency analysis
 
 ## v2.16.6
+
 - Monorepo: Adds automatic retries to failed API calls. ([#392](https://github.com/fossas/spectrometer/pull/392))
 
 ## v2.16.5
+
 - Adds JSON Output for `fossa test --json` when there are no issues. ([#387](https://github.com/fossas/spectrometer/pull/387))
 
 ## v2.16.4
+
 - Monorepo: Fixes bug with symlink logic mismatch between walker and buildspec uploader. ([#388](https://github.com/fossas/spectrometer/pull/388))
 
 ## v2.16.3
+
 - Monorepo: Fixes bug with non-glob exclusions. ([#386](https://github.com/fossas/spectrometer/pull/386))
 
 ## v2.16.2
+
 - Monorepo: Fixes crash when there are no ninja/buildspec files to upload. ([#385](https://github.com/fossas/spectrometer/pull/385))
 - Monorepo: Fixes issue with only-path/exclude-path globs.
 
 ## v2.16.1
+
 - Gradle: Supports analysis of projects using gralde v3.3 or below. ([#370](https://github.com/fossas/spectrometer/pull/370))
 
 ## v2.16.0
+
 - Swift: Supports dependencies analysis for dependencies managed by Swift Package Manager. ([#354](https://github.com/fossas/spectrometer/pull/354))
 
 ## v2.15.24
+
 - Leiningen: Executes `lein --version` before performing any analysis, to ensure Leiningen has performed its install tasks (done on its first invocation). ([#379](https://github.com/fossas/spectrometer/pull/379))
 
 ## v2.15.23
+
 - Maven: Fixes `mvn:dependency` tactic to exclude root project as direct dependency. ([#375](https://github.com/fossas/spectrometer/pull/375))
 
 ## v2.15.22
+
 - Adds branch and revision information to the URL reported at the end of a `fossa analyze --experimental-enable-monorepo` scan. ([#378](https://github.com/fossas/spectrometer/pull/378))
 
 ## v2.15.21
@@ -125,7 +139,7 @@ For now this functionality is considered publicly undocumented, and is only used
 - Resolves an issue where errors running `fossa report` and `fossa test` would be made more confusing when the project isn't a monorepo project ([#321](https://github.com/fossas/spectrometer/pull/321))
 - Prevents uploading standard analysis results to monorepo projects, where they'd be silently ignored ([#341](https://github.com/fossas/spectrometer/pull/341))
 
-## v2.15.6 
+## v2.15.6
 
 - CocoaPods: Fixes `Podfile.lock` parsing. It safely parses when Pod and Dependencies entries are enclosed with quotations. ([#337](https://github.com/fossas/spectrometer/pull/337))
 

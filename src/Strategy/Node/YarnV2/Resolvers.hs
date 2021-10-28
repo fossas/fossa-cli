@@ -9,7 +9,7 @@
 -- Resolvers
 --
 -- See also: default plugins, many of which contain resolvers https://github.com/yarnpkg/berry/blob/8afcaa2a954e196d6cd997f8ba506f776df83b1f/packages/yarnpkg-cli/package.json#L68-L82
-module Strategy.Yarn.V2.Resolvers (
+module Strategy.Node.YarnV2.Resolvers (
   -- * Primary exports
   Resolver (..),
   Package (..),
@@ -35,7 +35,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Extra (dropPrefix, showT)
 import Data.Void (Void)
-import Strategy.Yarn.V2.Lockfile
+import Strategy.Node.YarnV2.Lockfile
 import Text.Megaparsec
 
 data Resolver = Resolver
