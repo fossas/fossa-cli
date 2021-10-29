@@ -14,7 +14,7 @@ Spectrometer integrates with [FOSSA](https://fossa.com) for dependency analysis,
 
 1. [Installation](#installation)
 2. [Getting Started](#getting-started)
-3. [User Manual](#user-guide)
+3. [User Manual](#user-manual)
 4. [Reporting Issues](#reporting-issues)
 5. [Contributing](#contributing)
 
