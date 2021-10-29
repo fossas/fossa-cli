@@ -29,4 +29,5 @@ _Example:_ Closes org/repo#123.
 - [ ] I added tests for this PR's change (or confirmed tests are not viable).
 - [ ] If this PR introduced a user-visible change, I added documentation into `docs/`.
 - [ ] I updated `Changelog.md` if this change is externally facing. If this PR did not mark a release, I added my changes into an `# Unreleased` section at the top.
+- [ ] I updated `*schema.json` if I have made changes for `.fossa.yml`, `fossa-deps.{json, yaml, yml}`. You may also need to update these if you have added/removed new dependency (e.g. pip) or analysis target type (e.g. poetry).
 - [ ] I linked this PR to any referenced GitHub issues, if they exist.
