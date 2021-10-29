@@ -354,7 +354,6 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput include
             Diag.withResult SevError res (const (pure ()))
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
-  logInfo ("Include-all option is set to: " <> pretty (fromFlag IncludeAll includeAll))
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits of
