@@ -15,7 +15,6 @@ import App.Fossa.Analyze (
   VSIAnalysisMode (..),
   analyzeMain,
  )
-import App.Fossa.Compatibility (Argument, argumentParser, compatibilityMain)
 import App.Fossa.Configuration (
   ConfigFile (
     configApiKey,
@@ -300,9 +299,6 @@ appMain = do
       let apiOpts = ApiOpts optBaseUrl apikey
       assertUserDefinedBinariesMain logSeverity baseDir apiOpts assertionMeta
     --
-    CompatibilityCommand args -> do
-      compatibilityMain args
-    --
     DumpBinsCommand dir -> do
       basedir <- validateDir dir
       for_ Embed.allBins $ Embed.dumpEmbeddedBinary $ unBaseDir basedir
@@ -411,12 +407,6 @@ hiddenCommands =
           ( info
               (DumpBinsCommand <$> baseDirArg)
               (progDesc "Output all embedded binaries to specified path")
-          )
-        <> command
-          "compatibility"
-          ( info
-              (CompatibilityCommand <$> compatibilityOpts)
-              (progDesc "Run fossa cli v1 analyze. Supply arguments as \"fossa compatibility -- --project test\"")
           )
         <> command
           "experimental-link-user-defined-dependency-binary"
@@ -654,10 +644,6 @@ containerDumpScanOptions =
     <$> optional (strOption (short 'o' <> long "output-file" <> help "File to write the scan data (omit for stdout)"))
     <*> imageTextArg
 
-compatibilityOpts :: Parser [Argument]
-compatibilityOpts =
-  many argumentParser
-
 assertUserDefinedBinariesOpts :: Parser AssertUserDefinedBinariesOptions
 assertUserDefinedBinariesOpts =
   AssertUserDefinedBinariesOptions
@@ -692,7 +678,6 @@ data Command
   | VPSCommand VPSOptions
   | ContainerCommand ContainerOptions
   | AssertUserDefinedBinariesCommand AssertUserDefinedBinariesOptions
-  | CompatibilityCommand [Argument]
   | ListTargetsCommand FilePath
   | InitCommand
   | DumpBinsCommand FilePath

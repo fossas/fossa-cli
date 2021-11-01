@@ -1,5 +1,11 @@
 # Spectrometer Changelog
 
+## v2.19.3
+
+- Removes `fossa compatibility` command. ([#383](https://github.com/fossas/spectrometer/pull/383))
+
+Use [`fossa-deps.{yml,json}`](docs/features/vendored-dependencies.md) file to facilitate archive uploading capability, previously provided by `fossa compatibility` command.
+
 ## v2.19.2
 
 - Adds `--config` flag, which can set custom path for configuration file. If `--config` flag is not used, base directory will scanned for `.fossa.yml` file. ([#415](https://github.com/fossas/spectrometer/pull/415))

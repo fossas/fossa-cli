@@ -145,7 +145,6 @@ library
     App.Fossa.ArchiveUploader
     App.Fossa.BinaryDeps
     App.Fossa.BinaryDeps.Jar
-    App.Fossa.Compatibility
     App.Fossa.Configuration
     App.Fossa.Container
     App.Fossa.Container.Analyze
