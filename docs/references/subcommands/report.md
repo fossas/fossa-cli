@@ -29,7 +29,7 @@ Where `60` is the maximum number of seconds to wait for the report to be downloa
 By default, `fossa report` displays issues in a human-readable format. To instead print issues as JSON, use:
 
 ```sh
-fossa report attribtion --json
+fossa report attribution --json
 ```
 
 *NOTE: Currently, text reports are not supported, and the report will be*
