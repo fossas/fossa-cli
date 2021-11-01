@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.19.2
+
+- Adds `--config` flag, which can set custom path for configuration file. If `--config` flag is not used, base directory will scanned for `.fossa.yml` file. ([#415](https://github.com/fossas/spectrometer/pull/415))
+
 ## v2.19.1
 
 - Fixes an issue where nodeJS errors were reported when no NodeJS project were discovered. ([#424](https://github.com/fossas/spectrometer/pull/424))

@@ -18,6 +18,7 @@ import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Lift (Lift)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
 import Data.Functor (($>))
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc (Doc, Pretty (pretty), vsep)
 import Effect.Logger (Severity (SevWarn), logWarn, withDefaultLogger)
@@ -129,12 +130,12 @@ readConfigFile file = do
         , ""
         ]
 
-readConfigFileIO :: IO (Maybe ConfigFile)
-readConfigFileIO = do
+readConfigFileIO :: Maybe (Path Abs File) -> IO (Maybe ConfigFile)
+readConfigFileIO configFile = do
   -- FIXME: we probably want to read from the target directory of analysis, not
   -- the current directory
   dir <- getCurrentDir
-  config <- Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> defaultFile)
+  config <- Diag.runDiagnostics $ runReadFSIO $ readConfigFile $ fromMaybe (dir </> defaultFile) configFile
   case config of
     Left err -> die $ show $ Diag.renderFailureBundle err
     Right a -> pure a

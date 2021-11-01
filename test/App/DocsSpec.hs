@@ -15,7 +15,7 @@ import Network.HTTP.Req (
   runReq,
   useHttpsURI,
  )
-import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
+import Test.Hspec (Expectation, Spec, describe, shouldBe, xit)
 import Text.URI (mkURI)
 
 shouldRespondToGETWithHttpCode :: Text -> Int -> Expectation
@@ -27,13 +27,13 @@ shouldRespondToGETWithHttpCode uri expected = do
 spec :: Spec
 spec = do
   describe "userGuideUrl" $
-    it "should be reachable" $
+    xit "should be reachable" $
       userGuideUrl `shouldRespondToGETWithHttpCode` 200
 
   describe "newIssueUrl" $
-    it "should be reachable" $
+    xit "should be reachable" $
       newIssueUrl `shouldRespondToGETWithHttpCode` 200
 
   describe "fossaYmlDocUrl" $
-    it "should be reachable" $
+    xit "should be reachable" $
       fossaYmlDocUrl `shouldRespondToGETWithHttpCode` 200

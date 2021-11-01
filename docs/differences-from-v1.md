@@ -109,11 +109,9 @@ For these managers, you can write a custom integration by creating `fossa-deps.{
 
 Following CLI commands are not supported with 2.x:
 
-- `fossa analyze --config`
 - `fossa analyze --server-scan`
 - `fossa analyze --dev`
 - `fossa analyze --options`
-- `fossa test --config`
 - `fossa test --suppress-issues`
 - `fossa upload` (this is supplemented by `fossa-deps.{yml,json}` file now, refer to "Migrate archive upload targets" section)
 - `fossa report licences` (supplemented by `fossa report attribution --json`)
