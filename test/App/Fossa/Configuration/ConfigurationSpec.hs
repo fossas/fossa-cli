@@ -8,6 +8,7 @@ module App.Fossa.Configuration.ConfigurationSpec (
 import App.Fossa.Configuration
 import App.Types (ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
+import Data.Set qualified as Set
 import Effect.ReadFS
 import Path
 import Path.IO (getCurrentDir)
@@ -24,6 +25,7 @@ expectedConfigFile =
     , configRevision = Just expectedConfigRevision
     , configTargets = Just expectedConfigTargets
     , configPaths = Nothing
+    , configExperimental = Just expectedExperimentalConfig
     }
 
 expectedConfigProject :: ConfigProject
@@ -58,6 +60,12 @@ expectedConfigTargets =
   ConfigTargets
     { targetsOnly = [directoryTarget, simpleTarget, complexTarget]
     , targetsExclude = []
+    }
+
+expectedExperimentalConfig :: ExperimentalConfigs
+expectedExperimentalConfig =
+  ExperimentalConfigs
+    { gradle = Just $ ExperimentalGradleConfigs (Set.fromList ["onlyProdConfigs", "onlyProdConfigs2"])
     }
 
 simpleTarget :: TargetFilter

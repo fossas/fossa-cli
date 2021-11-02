@@ -31,6 +31,7 @@ Gradle users generally specify their builds using a `build.gradle` file (written
   - [Manually specifying Gradle dependencies](#manually-specifying-gradle-dependencies)
   - [Configurations For Development and Testing](#configurations-for-development-and-testing)
   - [Android Gradle Configurations For Development and Testing](#android-gradle-configurations-for-development-and-testing)
+  - [(Experimental) Only Selecting Set of Configurations For Analysis](#experimental-only-selecting-set-of-configurations-for-analysis)
 
 ## Concepts
 
@@ -274,4 +275,18 @@ We classify following configurations, and dependencies originating from it as a 
 - kotlinCompilerPluginClasspathRelease
 - kotlinKlibCommonizerClasspath
 - kotlinNativeCompilerPluginClasspath
+```
+
+## (Experimental) Only Selecting Set of Configurations For Analysis
+
+You can use [configuration file](../../../files/fossa-yml.md) to provide set of configurations to filter the analysis for. Any configurations not listed will be excluded from analysis. This feature is experimental and may be changed or removed at any time, without warning.
+
+```yaml
+version: 3
+
+experimental:
+  gradle:
+    configurations-only:
+      - example-1-config-to-include
+      - example-2-config-to-include
 ```

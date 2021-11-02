@@ -21,8 +21,9 @@ module Strategy.Gradle (
   ConfigName (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..), AnalyzeProject, analyzeProject)
 import Control.Algebra (Has, run)
+import Control.Carrier.Reader (Reader)
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
@@ -33,6 +34,7 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
+import Control.Effect.Reader (asks)
 import Data.Aeson (FromJSON (..), ToJSON, Value (..), decodeStrict, withObject, (.:))
 import Data.Aeson.Types (Parser, unexpected)
 import Data.ByteString (ByteString)
@@ -238,7 +240,16 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has (Lift IO) sig m, Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => FoundTargets -> GradleProject -> m DependencyResults
+getDeps ::
+  ( Has (Lift IO) sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has (Reader AnalyzeExperimentalPreferences) sig m
+  ) =>
+  FoundTargets ->
+  GradleProject ->
+  m DependencyResults
 getDeps targets project = context "Gradle" $ do
   graph <- analyze targets (gradleDir project)
   pure $
@@ -259,6 +270,7 @@ analyze ::
   , Has Exec sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has (Reader AnalyzeExperimentalPreferences) sig m
   ) =>
   FoundTargets ->
   Path Abs Dir ->
@@ -273,6 +285,10 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
         ProjectWithoutTargets -> gradleJsonDepsCmd initScriptFilepath
 
   stdout <- context "running gradle script" $ runGradle dir cmd
+
+  onlyConfigurations <- do
+    configs <- asks gradleOnlyConfigsAllowed
+    pure $ maybe Set.empty (Set.map ConfigName) configs
 
   let text = decodeUtf8 $ BL.toStrict stdout
 
@@ -299,12 +315,21 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
       packagesToOutput :: Map (PackageName, ConfigName) [JsonDep]
       packagesToOutput = Map.fromList packagePathsWithDecoded
 
-  context "Building dependency graph" $ pure (buildGraph packagesToOutput)
+  context "Building dependency graph" $ pure (buildGraph packagesToOutput onlyConfigurations)
 
 -- TODO: use LabeledGraphing to add labels for environments
-buildGraph :: Map (PackageName, ConfigName) [JsonDep] -> Graphing Dependency
-buildGraph projectsAndDeps = run . withLabeling toDependency $ Map.traverseWithKey addProject projectsAndDeps
+buildGraph :: Map (PackageName, ConfigName) [JsonDep] -> Set ConfigName -> Graphing Dependency
+buildGraph projectsAndDeps onlyConfigs = run . withLabeling toDependency $ Map.traverseWithKey addProject filteredProjectAndDeps
   where
+    filteredProjectAndDeps :: Map (PackageName, ConfigName) [JsonDep]
+    filteredProjectAndDeps = Map.filterWithKey (\(_, config) _ -> isConfigIncluded config) (projectsAndDeps)
+
+    isConfigExcluded :: ConfigName -> Bool
+    isConfigExcluded c = not (Set.null onlyConfigs) && Set.notMember c onlyConfigs
+
+    isConfigIncluded :: ConfigName -> Bool
+    isConfigIncluded = not . isConfigExcluded
+
     -- add top-level projects from the output
     addProject :: Has (LabeledGrapher JsonDep GradleLabel) sig m => (PackageName, ConfigName) -> [JsonDep] -> m ()
     addProject (projName, configName) projDeps = do
@@ -319,12 +344,15 @@ buildGraph projectsAndDeps = run . withLabeling toDependency $ Map.traverseWithK
     -- Infers environment label based on the name of configuration.
     -- Ref: https://docs.gradle.org/current/userguide/java_library_plugin.html#sec:java_library_configurations_graph
     configNameToLabel :: ConfigName -> GradleLabel
-    configNameToLabel conf = case unConfigName conf of
-      "compileOnly" -> Env EnvDevelopment
-      x | x `elem` ["testImplementation", "testCompileOnly", "testRuntimeOnly", "testCompileClasspath", "testRuntimeClasspath"] -> Env EnvTesting
-      x | isDefaultAndroidDevConfig x -> Env EnvDevelopment
-      x | isDefaultAndroidTestConfig x -> Env EnvTesting
-      x -> Env $ EnvOther x
+    configNameToLabel conf =
+      if (not . Set.null $ onlyConfigs)
+        then Env $ EnvOther (unConfigName conf) -- We only have specified configs, so we mark them all as Other
+        else case unConfigName conf of -- We have no specified configs, so we have to guess the correct Env.
+          "compileOnly" -> Env EnvDevelopment
+          x | x `elem` ["testImplementation", "testCompileOnly", "testRuntimeOnly", "testCompileClasspath", "testRuntimeClasspath"] -> Env EnvTesting
+          x | isDefaultAndroidDevConfig x -> Env EnvDevelopment
+          x | isDefaultAndroidTestConfig x -> Env EnvTesting
+          x -> Env $ EnvOther x
 
     toDependency :: JsonDep -> Set GradleLabel -> Dependency
     toDependency dep = foldr applyLabel $ jsonDepToDep dep

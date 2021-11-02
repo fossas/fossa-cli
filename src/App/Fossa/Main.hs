@@ -15,9 +15,11 @@ import App.Fossa.Analyze (
   VSIAnalysisMode (..),
   analyzeMain,
  )
+import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..))
 import App.Fossa.Configuration (
   ConfigFile (
     configApiKey,
+    configExperimental,
     configPaths,
     configProject,
     configRevision,
@@ -28,6 +30,8 @@ import App.Fossa.Configuration (
   ConfigProject (configProjID),
   ConfigRevision (configBranch, configCommit),
   ConfigTargets (targetsExclude, targetsOnly),
+  ExperimentalConfigs (gradle),
+  ExperimentalGradleConfigs (gradleConfigsOnly),
   mergeFileCmdMetadata,
   readConfigFileIO,
  )
@@ -168,6 +172,7 @@ appMain = do
 
   let CmdOptions{..} = maybe cmdConfig (mergeFileCmdConfig cmdConfig) fileConfig
 
+  let analyzePreferences = AnalyzeExperimentalPreferences (gradleConfigsOnly <$> (gradle =<< configExperimental =<< fileConfig))
   let logSeverity = bool SevInfo SevDebug optDebug
 
   maybeApiKey <- checkAPIKey optAPIKey
@@ -215,7 +220,7 @@ appMain = do
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
           combinedFilters = normalizedFilters fileConfig analyzeOptions
           modeOptions = ModeOptions analyzeVSIMode assertionMode analyzeBinaryDiscoveryMode
-          doAnalyze destination = analyzeMain analyzeBaseDir logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeIncludeAllDeps modeOptions combinedFilters
+          doAnalyze destination = analyzeMain analyzeBaseDir logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeIncludeAllDeps modeOptions combinedFilters analyzePreferences
 
       if analyzeOutput
         then doAnalyze OutputStdout
@@ -245,7 +250,7 @@ appMain = do
     --
     ListTargetsCommand dir -> do
       baseDir <- validateDir dir
-      listTargetsMain logSeverity baseDir
+      listTargetsMain analyzePreferences logSeverity baseDir
     --
     VPSCommand VPSOptions{..} -> do
       apikey <- requireKey maybeApiKey

@@ -27,3 +27,9 @@ targets:
     - type: gradle
       path: .
       target: specific-target
+
+experimental:
+  gradle:
+    configurations-only:
+      - onlyProdConfigs
+      - onlyProdConfigs2

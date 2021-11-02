@@ -5,10 +5,12 @@ module App.Fossa.ListTargets (
 ) where
 
 import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), discoverFuncs)
+import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences)
 import App.Types (BaseDir (..))
 import Control.Carrier.AtomicCounter
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Finally
+import Control.Carrier.Reader (Reader, runReader)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent (getNumCapabilities)
@@ -28,8 +30,8 @@ import Path
 import Path.IO (makeRelative)
 import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
 
-listTargetsMain :: Severity -> BaseDir -> IO ()
-listTargetsMain logSeverity (BaseDir basedir) = do
+listTargetsMain :: AnalyzeExperimentalPreferences -> Severity -> BaseDir -> IO ()
+listTargetsMain preferences logSeverity (BaseDir basedir) = do
   capabilities <- getNumCapabilities
 
   ignoreDebug
@@ -40,6 +42,7 @@ listTargetsMain logSeverity (BaseDir basedir) = do
     . runReadFSIO
     . runExecIO
     . runAtomicCounter
+    . runReader preferences
     $ runAll basedir
 
 runAll ::
@@ -51,6 +54,7 @@ runAll ::
   , MonadIO m
   , Has AtomicCounter sig m
   , Has Debug sig m
+  , Has (Reader AnalyzeExperimentalPreferences) sig m
   ) =>
   Path Abs Dir ->
   m ()

@@ -210,6 +210,25 @@
                     "description": "Associated path with target type (if any)"
                 }
             }
+        },
+        "experimental": {
+            "type": "object",
+            "description": "Experimental preferences with fossa cli.",
+            "properties": {
+                "gradle": {
+                    "type": "object",
+                    "description": "Gradle preferences for all targets",
+                    "properties": {
+                        "configurations-only": {
+                            "type": "array",
+                            "description": "Configurations to only include in analysis (by default excludes any other configurations not listed)",
+                            "items": {"type": "string"},
+                            "minItems": 1,
+                            "uniqueItems": true 
+                        }
+                    }
+                }
+            }
         }
     },
     "type": "object",

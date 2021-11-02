@@ -20,6 +20,7 @@ import App.Fossa.Analyze.Debug (collectDebugBundle, diagToDebug)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Types (
+  AnalyzeExperimentalPreferences (..),
   AnalyzeProject (..),
   AnalyzeTaskEffs,
  )
@@ -43,6 +44,7 @@ import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Diagnostics.StickyContext (stickyDiag)
 import Control.Carrier.Finally (Has, runFinally)
 import Control.Carrier.Output.IO (Output, output, runOutput)
+import Control.Carrier.Reader (Reader, runReader)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool (
   Progress (..),
@@ -182,11 +184,13 @@ analyzeMain ::
   Flag IncludeAll ->
   ModeOptions ->
   AllFilters ->
+  AnalyzeExperimentalPreferences ->
   IO ()
-analyzeMain workdir logSeverity destination project unpackArchives jsonOutput includeAll modeOptions filters =
+analyzeMain workdir logSeverity destination project unpackArchives jsonOutput includeAll modeOptions filters preferences =
   withDefaultLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO
+    . runReader preferences
     . runExecIO
     $ case logSeverity of
       -- In --debug mode, emit a debug bundle to "fossa.debug.json"
@@ -211,6 +215,7 @@ runDependencyAnalysis ::
   , Has ReadFS sig m
   , Has Exec sig m
   , Has (Output ProjectResult) sig m
+  , Has (Reader AnalyzeExperimentalPreferences) sig m
   , MonadIO m
   ) =>
   -- | Analysis base directory
@@ -313,6 +318,7 @@ analyze ::
   , Has Debug sig m
   , Has Exec sig m
   , Has ReadFS sig m
+  , Has (Reader AnalyzeExperimentalPreferences) sig m
   , MonadIO m
   ) =>
   BaseDir ->

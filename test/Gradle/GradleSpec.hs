@@ -118,11 +118,11 @@ spec :: Spec
 spec = do
   describe "buildGraph" $ do
     it "should produce an empty graph for empty input" $ do
-      let graph = buildGraph Map.empty
+      let graph = buildGraph Map.empty (Set.fromList [])
       graph `shouldBe` (empty :: Graphing Dependency)
 
     it "should produce expected output" $ do
-      let graph = buildGraph $ Map.mapKeys wrapKeys gradleOutput
+      let graph = buildGraph (Map.mapKeys wrapKeys gradleOutput) (Set.fromList [])
       expectDeps [projectOne, projectTwo, projectThree, packageOne, packageTwo, projectFour, projectFive, packageFour, packageFive] graph
       expectDirect [projectOne, projectTwo, projectThree, projectFour, projectFive] graph
       expectEdges
@@ -134,5 +134,18 @@ spec = do
         , (projectOne, projectFive)
         , (projectFour, packageFour)
         , (projectFive, packageFive)
+        ]
+        graph
+
+    it "should filter configurations when provided" $ do
+      let filteredConfig = "testRuntimeClasspath"
+      let graph = buildGraph (Map.mapKeys wrapKeys gradleOutput) (Set.fromList [ConfigName filteredConfig])
+      let projectFiveCustomEnv = projectFive{dependencyEnvironments = Set.singleton $ EnvOther filteredConfig}
+      let packageFiveCustomEnv = packageFive{dependencyEnvironments = Set.singleton $ EnvOther filteredConfig}
+
+      expectDeps [projectFiveCustomEnv, packageFiveCustomEnv] graph
+      expectDirect [projectFiveCustomEnv] graph
+      expectEdges
+        [ (projectFiveCustomEnv, packageFiveCustomEnv)
         ]
         graph

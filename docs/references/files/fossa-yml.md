@@ -115,7 +115,6 @@ Default:
 - SVN: The CLI will run `svn info` and compare the "URL" and "Repository Root" fields in an attempt to determine a branch.
 - No VCS: The CLI will leave the branch field empty.
 
-
 ### `targets:`
 The targets filtering section allows you to specify the exact targets which be should be scanned. 
 
