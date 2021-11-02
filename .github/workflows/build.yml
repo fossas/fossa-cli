@@ -246,6 +246,12 @@ jobs:
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/pathfinder.exe
         zip -j release/compat-attribution_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/compat-attribution.exe
 
+    - name: Create checksums
+      run: |
+        sha256sum "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip" > "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip.sha256"
+        sha256sum "release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip" > "release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip.sha256"
+        sha256sum "release/fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip" > "release/fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip.sha256"
+
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
