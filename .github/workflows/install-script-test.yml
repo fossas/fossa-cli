@@ -87,12 +87,16 @@ jobs:
           # Reference: https://github.com/ScoopInstaller/Main/pull/2778/files
           scoop install fossa
 
-          $cliVersionCmdOutput = cmd /c 'fossa.exe' '--version'
-          $cliVersion = $cliVersionCmdOutput.Split(" ")[2]
-          if ($cliVersion -ne $env:LATEST_RELEASE_VERSION) {
-            Write-Output "Latest version is $env:LATEST_RELEASE_VERSION but installed $cliVersion instead!"
-            exit 1
-          }
+          # Scoop does not update it's registry at once
+          # Sometimes latest release are not picked by scoop!
+          # ------------------------------------------------
+          #
+          # $cliVersionCmdOutput = cmd /c 'fossa.exe' '--version'
+          # $cliVersion = $cliVersionCmdOutput.Split(" ")[2]
+          # if ($cliVersion -ne $env:LATEST_RELEASE_VERSION) {
+          #   Write-Output "Latest version is $env:LATEST_RELEASE_VERSION but installed $cliVersion instead!"
+          #  exit 1
+          # }
 
 
       - name: install-v1 script does not install v2 or greater version
