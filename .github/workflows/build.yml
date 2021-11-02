@@ -250,9 +250,13 @@ jobs:
       # We have to run from within the release dir so that "release" isn't prepended to the relative path of the zip file.
       run: |
         cd release
-        sha256sum "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip.sha256"
-        sha256sum "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip.sha256"
-        sha256sum "fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip.sha256"
+        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip.sha256"
+        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip.sha256"
+        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip.sha256"
+
+        echo "Sanity-checking the checksums."
+
+        cat *.sha256 | sha256sum --check --status
 
     - name: Release
       uses: softprops/action-gh-release@v1
