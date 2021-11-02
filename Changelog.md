@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.19.5
+
+- Fixes an issue observed during VSI analysis where fingerprinting files with lines longer than 64KiB would fail. ([#427](https://github.com/fossas/spectrometer/pull/427))
+
 ## v2.19.4
 
 - Adds experimental capability for filtering gradle configuration for analysis. ([#425](https://github.com/fossas/spectrometer/pull/425))
