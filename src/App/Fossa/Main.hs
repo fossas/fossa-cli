@@ -71,7 +71,7 @@ import App.Types (
  )
 import App.Util (validateDir, validateFile)
 import App.Version (fullVersionDescription)
-import Control.Concurrent.Extra (initCapabilities)
+import Control.Concurrent.CGroup (initRTSThreads)
 import Control.Effect.Lift (sendIO)
 import Control.Monad (unless, when)
 import Data.Bifunctor (first)
@@ -160,7 +160,7 @@ mergeFileCmdConfig cmd file =
 
 appMain :: IO ()
 appMain = do
-  initCapabilities
+  initRTSThreads
   cmdConfig <- customExecParser mainPrefs (info (opts <**> helper) (fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"))
 
   fileConfigPath <-

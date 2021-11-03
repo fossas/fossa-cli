@@ -69,18 +69,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
-import Data.Text.Prettyprint.Doc (
-  Doc,
-  Pretty (pretty),
-  annotate,
-  line,
-  viaShow,
-  vsep,
- )
-import Data.Text.Prettyprint.Doc.Render.Terminal (
-  Color (Cyan, Green, Yellow),
-  color,
- )
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, applyFilters)
 import Discovery.Projects (withDiscoveredProjects)
@@ -98,6 +86,18 @@ import Effect.ReadFS (ReadFS, runReadFSIO)
 import Fossa.API.Types (ApiOpts (..))
 import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
+import Prettyprinter (
+  Doc,
+  Pretty (pretty),
+  annotate,
+  line,
+  viaShow,
+  vsep,
+ )
+import Prettyprinter.Render.Terminal (
+  Color (Cyan, Green, Yellow),
+  color,
+ )
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (Locator (locatorProject, locatorRevision), SourceUnit, parseLocator)
 import Strategy.Bundler qualified as Bundler

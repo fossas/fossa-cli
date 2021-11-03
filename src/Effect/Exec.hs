@@ -35,11 +35,11 @@ import Data.ByteString.Lazy qualified as BL
 import Data.String (fromString)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
-import Data.Text.Prettyprint.Doc (indent, line, pretty, viaShow, vsep)
 import Data.Void (Void)
 import GHC.Generics (Generic)
 import Path
 import Path.IO
+import Prettyprinter (indent, line, pretty, viaShow, vsep)
 import System.Exit (ExitCode (..))
 import System.Process.Typed
 import Text.Megaparsec (Parsec, runParser)

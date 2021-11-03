@@ -25,8 +25,8 @@ import Data.Maybe (fromMaybe)
 import Data.String.Conversion (encodeUtf8)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Text.Prettyprint.Doc
 import Network.HTTP.Req
+import Prettyprinter
 import Text.URI (URI, render)
 import Text.URI.QQ (uri)
 import Unsafe.Coerce qualified as Unsafe

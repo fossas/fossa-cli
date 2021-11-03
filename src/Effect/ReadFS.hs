@@ -53,13 +53,13 @@ import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
-import Data.Text.Prettyprint.Doc (indent, line, pretty, vsep)
 import Data.Void (Void)
 import Data.Yaml (decodeEither', prettyPrintParseException)
 import GHC.Generics (Generic)
 import Parse.XML (FromXML, parseXML, xmlErrorPretty)
 import Path
 import Path.IO qualified as PIO
+import Prettyprinter (indent, line, pretty, vsep)
 import System.Directory qualified as Directory
 import System.IO (IOMode (ReadMode), withFile)
 import Text.Megaparsec (Parsec, runParser)

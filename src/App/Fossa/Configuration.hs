@@ -24,11 +24,11 @@ import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Data.Text.Prettyprint.Doc (Doc, Pretty (pretty), vsep)
 import Effect.Logger (Severity (SevWarn), logWarn, withDefaultLogger)
 import Effect.ReadFS
 import Path
 import Path.IO (getCurrentDir)
+import Prettyprinter (Doc, Pretty (pretty), vsep)
 import System.Exit (die)
 import Text.Megaparsec
 import Types

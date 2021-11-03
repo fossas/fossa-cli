@@ -48,8 +48,8 @@ import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Render.Terminal
+import Prettyprinter
+import Prettyprinter.Render.Terminal
 import Prelude
 
 data Diagnostics m k where

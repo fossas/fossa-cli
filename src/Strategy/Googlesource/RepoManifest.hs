@@ -31,7 +31,6 @@ import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
-import Data.Text.Prettyprint.Doc (pretty)
 import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
@@ -39,6 +38,7 @@ import GHC.Generics (Generic)
 import Graphing (Graphing, unfold)
 import Parse.XML
 import Path
+import Prettyprinter (pretty)
 import Text.GitConfig.Parser (Section (..), parseConfig)
 import Text.Megaparsec (errorBundlePretty)
 import Text.URI

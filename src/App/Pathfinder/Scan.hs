@@ -23,8 +23,6 @@ import Data.Aeson
 import Data.Bool (bool)
 import Data.ByteString.Lazy qualified as BL
 import Data.Text (Text)
-import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Render.Terminal
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec
 import Effect.Logger

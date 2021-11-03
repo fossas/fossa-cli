@@ -5,14 +5,14 @@ module App.Pathfinder.Main (
 import App.Pathfinder.Scan (scanMain)
 import App.Types (BaseDir (..))
 import App.Util (validateDir)
-import Control.Concurrent.Extra (initCapabilities)
+import Control.Concurrent.CGroup (initRTSThreads)
 import Data.Maybe (fromMaybe)
 import Options.Applicative
 import Path.IO
 
 appMain :: IO ()
 appMain = do
-  initCapabilities
+  initRTSThreads
   options <- execParser opts
 
   currentDir <- getCurrentDir

@@ -32,9 +32,9 @@ import Control.Effect.Record.TH (deriveRecordable)
 import Control.Monad (when)
 import Data.Aeson (ToJSON)
 import Data.Text (Text)
-import Data.Text.Prettyprint.Doc as X
-import Data.Text.Prettyprint.Doc.Render.Terminal as X
 import GHC.Generics (Generic)
+import Prettyprinter as X
+import Prettyprinter.Render.Terminal as X
 import System.Console.ANSI (hSupportsANSI)
 import System.Console.Concurrent (errorConcurrent, outputConcurrent)
 import System.IO (stderr)

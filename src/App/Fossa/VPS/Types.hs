@@ -23,11 +23,11 @@ import Data.Aeson
 import Data.ByteString.Lazy qualified as BSL
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
-import Data.Text.Prettyprint.Doc (viaShow)
 import Fossa.API.Types (ApiOpts)
 import Network.HTTP.Req
 import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
 import Path
+import Prettyprinter (viaShow)
 
 newtype NinjaScanID = NinjaScanID {unNinjaScanID :: Text}
 
