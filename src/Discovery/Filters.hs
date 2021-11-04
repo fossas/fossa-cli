@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Discovery.Filters (
   AllFilters (..),
   targetFilterParser,
@@ -6,6 +8,7 @@ module Discovery.Filters (
   FilterMatch (..),
   FilterResult (..),
   apply,
+  filterIsVSIOnly,
 ) where
 
 import Data.List ((\\))
@@ -27,6 +30,18 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (alphaNumChar, char)
 import Types (BuildTarget (..), FoundTargets (FoundTargets, ProjectWithoutTargets), TargetFilter (..))
+
+-- | filterIsVSIOnly is a very naive check for whether the user provided a filter for the VSI target *only*, at the root of the project with no path specified.
+-- This decision was made because predicating VSI only scans is a stopgap until we have more broad support for *preemptive* analysis filtering.
+-- VSI supports very large scans that the rest of our analysis may not.
+filterIsVSIOnly :: AllFilters -> Bool
+filterIsVSIOnly AllFilters{..} = do
+  let includes = combinedTargets includeFilters
+  length includes == 1 && any matches includes
+  where
+    matches f = case f of
+      TypeTarget name -> name == "vsi"
+      _ -> False
 
 data AllFilters = AllFilters
   { legacyFilters :: [TargetFilter]

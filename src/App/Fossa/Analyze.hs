@@ -71,7 +71,7 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Discovery.Archive qualified as Archive
-import Discovery.Filters (AllFilters, applyFilters)
+import Discovery.Filters (AllFilters, applyFilters, filterIsVSIOnly)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec, runExecIO)
 import Effect.Logger (
@@ -254,7 +254,12 @@ runAnalyzers ::
   Path Abs Dir ->
   AllFilters ->
   m ()
-runAnalyzers basedir filters = traverse_ single discoverFuncs
+runAnalyzers basedir filters = do
+  if filterIsVSIOnly filters
+    then do
+      logInfo "Running in VSI only mode, skipping other analyzers"
+      pure ()
+    else traverse_ single discoverFuncs
   where
     single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters)
 
@@ -341,9 +346,14 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput include
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
-  manualSrcUnits <- Diag.context "fossa-deps" $ analyzeFossaDepsFile basedir apiOpts
   vsiResults <- Diag.context "analyze-vsi" $ analyzeVSI modeVSIAnalysis apiOpts basedir filters modeVSISkipResolution
   binarySearchResults <- Diag.context "discover-binaries" $ analyzeDiscoverBinaries modeBinaryDiscovery basedir filters
+  manualSrcUnits <-
+    if filterIsVSIOnly filters
+      then do
+        logInfo "Running in VSI only mode, skipping manual source units"
+        pure Nothing
+      else Diag.context "fossa-deps" $ analyzeFossaDepsFile basedir apiOpts
   let additionalSourceUnits :: [SourceUnit]
       additionalSourceUnits = catMaybes [manualSrcUnits, vsiResults, binarySearchResults]
 
@@ -397,8 +407,13 @@ analyzeVSI _ _ _ _ _ = pure Nothing
 
 analyzeDiscoverBinaries :: (MonadIO m, Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has ReadFS sig m) => BinaryDiscoveryMode -> Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
 analyzeDiscoverBinaries BinaryDiscoveryEnabled dir filters = do
-  logInfo "Discovering binary files as dependencies"
-  analyzeBinaryDeps dir filters
+  if filterIsVSIOnly filters
+    then do
+      logInfo "Running in VSI only mode, skipping binary discovery"
+      pure Nothing
+    else do
+      logInfo "Discovering binary files as dependencies"
+      analyzeBinaryDeps dir filters
 analyzeDiscoverBinaries _ _ _ = pure Nothing
 
 doAssertRevisionBinaries :: (Has Diag.Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => IATAssertionMode -> ApiOpts -> Locator -> m ()

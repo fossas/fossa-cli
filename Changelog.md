@@ -2,6 +2,7 @@
 
 ## v2.19.6
 
+- Special cases scans with a single VSI only filter to skip other analysis strategies ([#407](https://github.com/fossas/spectrometer/pull/407))
 - Adds the ability to skip resolving dependencies from FOSSA projects discovered during VSI scans ([#435](https://github.com/fossas/spectrometer/pull/435))
 
 ## v2.19.5
@@ -45,7 +46,7 @@ Use [`fossa-deps.{yml,json}`](docs/features/vendored-dependencies.md) file to fa
 
 ## v2.18.0
 
-- When applicable, fossa-cli uses the cgroup CPU quota (under cfs) to determine the number of runtime threads to use. This dramatically improves runtime speed when we're running within a cpu-limited container on a large machine with many physical processors.
+- Improves performance in scenarios where cgroups are used to limit the amount of CPU time available, such as K8S containers ([#403](https://github.com/fossas/spectrometer/pull/403))
 
 ## v2.17.3
 
