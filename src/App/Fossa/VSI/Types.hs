@@ -3,6 +3,8 @@
 module App.Fossa.VSI.Types (
   Locator (..),
   LocatorParseError (..),
+  SkipResolution (..),
+  shouldSkipResolving,
   parseLocator,
   renderLocator,
   isUserDefined,
@@ -13,6 +15,9 @@ module App.Fossa.VSI.Types (
 
 import Control.Effect.Diagnostics (ToDiagnostic, renderDiagnostic)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
+import Data.Set (Set)
+import Data.Set qualified as Set
+import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
 import Effect.Logger (Pretty (pretty), viaShow)
@@ -44,9 +49,23 @@ renderLocator Locator{..} = locatorFetcher <> "+" <> locatorProject <> "$" <> lo
 newtype LocatorParseError = RevisionRequired Srclib.Locator
   deriving (Eq, Ord, Show)
 
+instance ToText LocatorParseError where
+  toText (RevisionRequired locator) =
+    "Revision is required on locator: " <> Srclib.renderLocator locator
+
 instance ToDiagnostic LocatorParseError where
   renderDiagnostic (RevisionRequired locator) =
     "Revision is required on locator: " <> viaShow locator
+
+-- | VSI locally resolves the dependencies of some VSI dependencies using the FOSSA API.
+-- In the case where a user doesn't have access to view a project that is a dependency of their project,
+-- we can't perform this resolution.
+-- To handle this case we provide users with an escape hatch, which is an argument allowing them to skip resolving some of their dependencies.
+-- This type canonicalizes that request.
+newtype SkipResolution = SkipResolution {unVSISkipResolution :: Set Locator}
+
+shouldSkipResolving :: SkipResolution -> Locator -> Bool
+shouldSkipResolving skip loc = loc `Set.member` (unVSISkipResolution skip)
 
 toDependency :: Locator -> Either ToDependencyError Dependency
 toDependency locator =

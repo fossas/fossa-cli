@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.19.6
+
+- Adds the ability to skip resolving dependencies from FOSSA projects discovered during VSI scans ([#435](https://github.com/fossas/spectrometer/pull/435))
+
 ## v2.19.5
 
 - Fixes an issue observed during VSI analysis where fingerprinting files with lines longer than 64KiB would fail. ([#427](https://github.com/fossas/spectrometer/pull/427))

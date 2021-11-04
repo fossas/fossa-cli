@@ -26,12 +26,12 @@ import Types (GraphBreadth (Complete))
 
 -- | VSI analysis is sufficiently different from other analysis types that it cannot be just another strategy.
 -- Instead, VSI analysis is run separately over the entire scan directory, outputting its own source unit.
-analyzeVSIDeps :: (MonadIO m, Has Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m) => Path Abs Dir -> ApiOpts -> AllFilters -> m SourceUnit
-analyzeVSIDeps dir apiOpts filters = do
+analyzeVSIDeps :: (MonadIO m, Has Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m) => Path Abs Dir -> ApiOpts -> AllFilters -> VSI.SkipResolution -> m SourceUnit
+analyzeVSIDeps dir apiOpts filters skipResolving = do
   (direct, userDeps) <- pluginAnalyze $ generateVSIStandaloneOpts dir (toPathFilters filters) apiOpts
 
   resolvedUserDeps <- resolveUserDefined apiOpts userDeps
-  resolvedGraph <- resolveGraph apiOpts direct
+  resolvedGraph <- resolveGraph apiOpts direct skipResolving
   dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
 
   pure $ toSourceUnit (toProject dir dependencies) resolvedUserDeps

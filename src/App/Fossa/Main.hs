@@ -55,6 +55,7 @@ import App.Fossa.VPS.Test qualified as VPSTest
 import App.Fossa.VPS.Types (FilterExpressions (..), NinjaFilePaths (..), NinjaScanID (..))
 import App.Fossa.VSI.IAT.AssertUserDefinedBinaries (assertUserDefinedBinariesMain)
 import App.Fossa.VSI.IAT.Types (UserDefinedAssertionMeta (..))
+import App.Fossa.VSI.Types qualified as VSI
 import App.OptionExtensions (jsonOption, uriOption)
 import App.Types (
   BaseDir (BaseDir, unBaseDir),
@@ -79,6 +80,7 @@ import Data.Bool (bool)
 import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Foldable (for_)
 import Data.Functor.Extra ((<$$>))
+import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -219,7 +221,7 @@ appMain = do
 
       let analyzeOverride = override{overrideBranch = analyzeBranch <|> ((fileConfig >>= configRevision) >>= configBranch)}
           combinedFilters = normalizedFilters fileConfig analyzeOptions
-          modeOptions = ModeOptions analyzeVSIMode assertionMode analyzeBinaryDiscoveryMode
+          modeOptions = ModeOptions analyzeVSIMode (VSI.SkipResolution $ Set.fromList analyzeSkipVSIGraphResolution) assertionMode analyzeBinaryDiscoveryMode
           doAnalyze destination = analyzeMain analyzeBaseDir logSeverity destination analyzeOverride analyzeUnpackArchives analyzeJsonOutput analyzeIncludeAllDeps modeOptions combinedFilters analyzePreferences
 
       if analyzeOutput
@@ -438,6 +440,7 @@ analyzeOpts =
     <*> vsiAnalyzeOpt
     <*> binaryDiscoveryOpt
     <*> iatAssertionOpt
+    <*> many skipVSIGraphResolutionOpt
     <*> monorepoOpts
     <*> baseDirArg
 
@@ -455,6 +458,14 @@ iatAssertionOpt :: Parser AnalyzeVSIAssertionMode
 iatAssertionOpt =
   (AnalyzeVSIAssertionEnabled <$> strOption (long "experimental-link-project-binary" <> hidden))
     <|> pure AnalyzeVSIAssertionDisabled
+
+skipVSIGraphResolutionOpt :: Parser VSI.Locator
+skipVSIGraphResolutionOpt = (option (eitherReader parseLocator) (long "experimental-skip-vsi-graph" <> hidden))
+  where
+    parseLocator :: String -> Either String VSI.Locator
+    parseLocator s = case VSI.parseLocator (toText s) of
+      Left err -> Left $ toString (toText err)
+      Right loc -> pure loc
 
 filterOpt :: Parser TargetFilter
 filterOpt = option (eitherReader parseFilter) (long "filter" <> help "(deprecated) Analysis-Target filters (default: none)" <> metavar "ANALYSIS-TARGET")
@@ -723,6 +734,7 @@ data AnalyzeOptions = AnalyzeOptions
   , analyzeVSIMode :: VSIAnalysisMode
   , analyzeBinaryDiscoveryMode :: BinaryDiscoveryMode
   , analyzeAssertMode :: AnalyzeVSIAssertionMode
+  , analyzeSkipVSIGraphResolution :: [VSI.Locator]
   , monorepoAnalysisOpts :: MonorepoAnalysisOpts
   , analyzeBaseDir :: FilePath
   }

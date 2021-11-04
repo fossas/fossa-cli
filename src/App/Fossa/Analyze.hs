@@ -29,6 +29,7 @@ import App.Fossa.FossaAPIV1 (UploadResponse (..), getProject, projectIsMonorepo,
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
+import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VSIDeps (analyzeVSIDeps)
 import App.Types (
   BaseDir (..),
@@ -149,6 +150,7 @@ data JsonOutput = JsonOutput
 -- These modes are intended to be different options that alter how analysis is performed or what analysis steps are followed.
 data ModeOptions = ModeOptions
   { modeVSIAnalysis :: VSIAnalysisMode
+  , modeVSISkipResolution :: VSI.SkipResolution
   , modeIATAssertion :: IATAssertionMode
   , modeBinaryDiscovery :: BinaryDiscoveryMode
   }
@@ -340,7 +342,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput include
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
   manualSrcUnits <- Diag.context "fossa-deps" $ analyzeFossaDepsFile basedir apiOpts
-  vsiResults <- Diag.context "analyze-vsi" $ analyzeVSI modeVSIAnalysis apiOpts basedir filters
+  vsiResults <- Diag.context "analyze-vsi" $ analyzeVSI modeVSIAnalysis apiOpts basedir filters modeVSISkipResolution
   binarySearchResults <- Diag.context "discover-binaries" $ analyzeDiscoverBinaries modeBinaryDiscovery basedir filters
   let additionalSourceUnits :: [SourceUnit]
       additionalSourceUnits = catMaybes [manualSrcUnits, vsiResults, binarySearchResults]
@@ -378,12 +380,20 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput include
         locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
         doAssertRevisionBinaries modeIATAssertion opts locator
 
-analyzeVSI :: (MonadIO m, Has Diag.Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m, Has Logger sig m) => VSIAnalysisMode -> Maybe ApiOpts -> Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
-analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir filters = do
+analyzeVSI :: (MonadIO m, Has Diag.Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m, Has Logger sig m) => VSIAnalysisMode -> Maybe ApiOpts -> Path Abs Dir -> AllFilters -> VSI.SkipResolution -> m (Maybe SourceUnit)
+analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir filters skipResolving = do
   logInfo "Running VSI analysis"
-  results <- analyzeVSIDeps dir apiOpts filters
+
+  let skippedLocators = VSI.unVSISkipResolution skipResolving
+  if not $ null skippedLocators
+    then do
+      logInfo "Skipping resolution of the following locators:"
+      traverse_ (logInfo . pretty . VSI.renderLocator) skippedLocators
+    else pure ()
+
+  results <- analyzeVSIDeps dir apiOpts filters skipResolving
   pure $ Just results
-analyzeVSI _ _ _ _ = pure Nothing
+analyzeVSI _ _ _ _ _ = pure Nothing
 
 analyzeDiscoverBinaries :: (MonadIO m, Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has ReadFS sig m) => BinaryDiscoveryMode -> Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
 analyzeDiscoverBinaries BinaryDiscoveryEnabled dir filters = do
