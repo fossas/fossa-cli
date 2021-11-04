@@ -1,4 +1,81 @@
-### Errors in the `fossa-deps` file
+# `fossa-deps`
+
+Fossa-deps file is a file named `fossa-deps.{yaml, yml, json}` at the root of the project. It can be used to provide manual and vendor dependencies. 
+
+## Fields
+
+### `referenced-dependencies:`
+
+Denotes listing of dependencies, which are to be analyzed in conjunction with the analysis. 
+
+- `type`: Type of dependency. (Required)
+- `name`: Name of the dependency. It should be the same name as listed in dependencies registry. (Required)
+- `version`: Revision of the dependency. If left unspecified, the latest version discovered from the registry will be used.
+
+```yaml
+referenced-dependencies:
+- type: gem
+  name: iron
+- type: pypi
+  name: Django
+  version: 2.1.7
+```
+
+For more details, please refer to the [feature](../../features/manual-dependencies.md) walk through. 
+
+### `custom-dependencies:`
+
+Denotes listing of dependencies, which can't be automatically discovered or identified but are to be stubbed and included in the analysis. 
+
+- `name`: Name of the dependency. (Required)
+- `version`: Revision of the dependency. (Required)
+- `license`: Licence of the dependency. (Required)
+- `metadata.homepage`: Homepage of the dependency. This metadata is used to enrich reporting provided in FOSSA's web interface.
+- `metadata.description`: Description of the dependency. This metadata is used to enrich reporting provided in FOSSA's web interface.
+
+Example: 
+```yaml 
+- name: foo-wrapper
+  version: 1.2.3
+  license: MIT
+  metadata:
+    homepage: https://www.foowrapper.com/about
+    description: Provides foo and a helpful interface around foo-like tasks.
+```
+
+For more details, please refer to the [feature](../../features/manual-dependencies.md) walk through. 
+
+### `remote-dependencies:`
+
+Denotes listing of dependencies, whose source code is to be downloaded from provided URL, and analyzed for license scanning in FOSSA backend.
+
+- `name`: Name of the dependency. (Required)
+- `version`: Revision of the dependency. (Required)
+- `url`: URL of archived source code. (Required)
+- `metadata.homepage`: Homepage of the dependency. This metadata is used to enrich reporting provided in FOSSA's web interface.
+- `metadata.description`: Description of the dependency. This metadata is used to enrich reporting provided in FOSSA's web interface.
+
+For more details, please refer to the [feature](../../features/manual-dependencies.md) walk through. 
+
+### `vendored-dependencies:`
+
+Denotes listing of files or directories, which are to be archived and uploaded to FOSSA backend for license scanning.
+
+- `name`: Name of the dependency (Required)
+- `path`: Local path to a file, or a directory (Required)
+- `version`: Revision of the dependency. If not specified, the md5 hash of the file path will be used. 
+
+```yaml
+vendored-dependencies:
+- name: Django
+  path: vendor/Django-3.4.16.zip
+  version: 3.4.16
+```
+> Note: License scanning currently operates by uploading the files at the specified path to a secure S3 bucket. All files that do not contain licenses are then removed after 2 weeks.
+
+For more details, please refer to the [feature](../../features/vendored-dependencies.md) walk through. 
+
+## Errors in the `fossa-deps` file
 
 The `fossa-deps` scanner tries to report clear error messages when fields are missing, incorrect, or invalid.  For example:
 
