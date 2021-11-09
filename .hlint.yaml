@@ -20,7 +20,22 @@
 - suggest: {lhs: Data.Text.pack x, rhs: Data.String.Conversion.toText x}
 - suggest: {lhs: Data.Text.unpack x, rhs: Data.String.Conversion.toString x}
 
-# Forbidden items
+# Forbidden items, only allowed in compile-time code, or test code.
 - functions:
   - {name: error, within: [Data.String.Conversion, Control.Effect.Replay]}
   - {name: undefined, within: []}
+  - {name: Prelude.head, within: [Control.Effect.Replay.TH, Control.Effect.Record.TH, Elixir.MixTreeSpec]}
+  - {name: Prelude.tail, within: []}
+  - {name: Prelude.init, within: []}
+  - {name: Prelude.last, within: []}
+  - {name: Data.ByteString.head, within: []}
+  - {name: Data.Bytestring.tail, within: []}
+  - {name: Data.Bytestring.init, within: []}
+  - {name: Data.Bytestring.last, within: []}
+  - {name: Data.Text.head, within: []}
+  - {name: Data.Text.tail, within: []}
+  - {name: Data.Text.init, within: []}
+  - {name: Data.Text.last, within: []}
+  - {name: "Prelude.!!", within: [Elixir.MixTreeSpec]}
+  - {name: "Data.Map.!", within: []}
+  - {name: fromJust, within: [App.DocsSpec]}

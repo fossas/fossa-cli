@@ -4,6 +4,6 @@ module Data.List.Extra ((!?)) where
 -- if the index doesn't exist, return Nothing, otherwise
 -- return Just (value)
 (!?) :: [a] -> Int -> Maybe a
-xs !? ix
-  | length xs <= ix = Nothing
-  | otherwise = Just (xs !! ix)
+xs !? ix = case drop ix xs of
+  [] -> Nothing
+  a : _ -> Just a

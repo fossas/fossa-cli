@@ -22,9 +22,10 @@ import App.Fossa.VPS.Types (
  )
 import App.Types
 import Control.Carrier.Error.Either
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (Diagnostics)
 import Data.Aeson
 import Data.ByteString.Lazy qualified as BL
+import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -148,7 +149,9 @@ optExplodeText flag (a : as) = [flag, a] ++ optExplodeText flag as
 -- Path Rel Dir renders with a trailing /, but wiggins needs it to not have that trailing slash when used as an exclude or include-only filter.
 -- Strip the / postfix from the returned value.
 optPathAsFilter :: Path Rel Dir -> Text
-optPathAsFilter p = Text.init (toText p)
+optPathAsFilter p = fromMaybe t $ Text.stripSuffix "/" t
+  where
+    t = toText p
 
 execWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
 execWiggins binaryPaths opts = decodeUtf8 . BL.toStrict <$> execThrow (scanDir opts) (wigginsCommand binaryPaths opts)

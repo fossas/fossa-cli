@@ -19,7 +19,7 @@ import Data.Functor (void)
 import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
-import Data.Text qualified as Text
+import Data.Text.Extra qualified as Text
 import Data.Void (Void)
 import DepTypes
 import Discovery.Walk
@@ -136,7 +136,7 @@ entryToCheckoutName entry =
   case resolvedType entry of
     GitEntry -> resolvedName entry
     -- this is safe because Text.splitOn always returns a non-empty list
-    GithubType -> last . Text.splitOn "/" $ resolvedName entry
+    GithubType -> snd . Text.splitOnceOnEnd "/" $ resolvedName entry
     BinaryType -> resolvedName entry
 
 entryToDepName :: ResolvedEntry -> Text

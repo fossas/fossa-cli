@@ -11,6 +11,7 @@ import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Text.Extra qualified as Text
 import DepTypes
 import Effect.Grapher
 import Graphing
@@ -71,8 +72,8 @@ golangPackageToDependency pkg = foldr applyLabel start
 -- TODO: In `go.mod`, we handle this in the parser. Do we even need to handle
 -- this format in other Go analyzers? Can we just remove this code?
 fixVersion :: Text -> Text
-fixVersion = last . Text.splitOn "-" . Text.replace "+incompatible" ""
+fixVersion = snd . Text.splitOnceOnEnd "-" . Text.replace "+incompatible" ""
 
 -- replace "github.com/A/B/vendor/github.com/X/Y" with "github.com/X/Y"
 unvendor :: Text -> Text
-unvendor = last . Text.splitOn "/vendor/"
+unvendor = snd . Text.splitOnceOnEnd "/vendor/"

@@ -18,6 +18,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
+import Data.Char (ord)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -156,7 +157,7 @@ parseNinjaDeps ninjaDepsLines =
     Parsing -> fatal NoNinjaDepsEndLineFound
     Error -> fatal NinjaDepsParseError
   where
-    newLine = BS.head "\n" -- This is gross, but I couldn't get "BS.split '\n' ninjaDepsLines" to work
+    newLine = fromIntegral $ ord '\n'
     nLines = BS.split newLine ninjaDepsLines
     (finalState, results) = foldl parseNinjaLine (Starting, []) nLines
     reversedDependenciesResults = map reverseDependencies results
@@ -259,4 +260,4 @@ parseDepLine line =
     hasDeps = BS.isPrefixOf "out/" path
 
 stripLeadingSpace :: ByteString -> ByteString
-stripLeadingSpace = BS.dropWhile (\c -> c == BS.head " ")
+stripLeadingSpace = BS.dropWhile (== (fromIntegral $ ord ' '))
