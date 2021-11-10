@@ -29,7 +29,6 @@ import Strategy.Node.PackageJson (FlatDeps (directDeps), NodePackage (pkgName), 
 
 data NpmPackageJson = NpmPackageJson
   { packageName :: Text
-  , packageVersion :: Text
   , packageDependencies :: Map Text NpmDep
   }
   deriving (Eq, Ord, Show)
@@ -47,7 +46,6 @@ data NpmDep = NpmDep
 instance FromJSON NpmPackageJson where
   parseJSON = withObject "NpmPackageJson" $ \obj ->
     NpmPackageJson <$> obj .: "name"
-      <*> obj .: "version"
       <*> obj .: "dependencies"
 
 instance FromJSON NpmDep where

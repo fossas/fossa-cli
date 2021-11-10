@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.19.7
+
+- Resolves a regression when parsing npm `package-lock.json` files that do not contain a `version` field ([#445](https://github.com/fossas/spectrometer/pull/445))
+
 ## v2.19.6
 
 - Special cases scans with a single VSI only filter to skip other analysis strategies ([#407](https://github.com/fossas/spectrometer/pull/407))

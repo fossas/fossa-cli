@@ -13,7 +13,6 @@ mockInput :: NpmPackageJson
 mockInput =
   NpmPackageJson
     { packageName = "example"
-    , packageVersion = "1.0.0"
     , packageDependencies =
         Map.fromList
           [
