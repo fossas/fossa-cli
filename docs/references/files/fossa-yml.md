@@ -118,7 +118,7 @@ Default:
 ### `targets:`
 The targets filtering section allows you to specify the exact targets which be should be scanned. 
 
-Targets can be are listed in the following formats for both `only` and `exclude` lists.
+Targets are listed in the following formats for both `only` and `exclude` lists.
 ```yaml
     - type: maven
       path: foo/bar
