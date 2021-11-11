@@ -2,7 +2,7 @@
 #
 # Binaries on each platform are stripped. This removes debug symbols.
 name: Build
-on: push
+on: [push, pull_request]
 
 jobs:
   build-attribution-compat:
