@@ -15,7 +15,6 @@ import DepTypes
 import Effect.Exec
 import Effect.Grapher
 import Graphing (Graphing)
-import Graphing qualified
 import Path.IO (getCurrentDir)
 import Strategy.Go.GoList
 import Test.Hspec
@@ -31,17 +30,17 @@ expected = run . evalGrapher $ do
   direct $
     Dependency
       { dependencyType = GoType
-      , dependencyName = "github.com/pkg/one"
-      , dependencyVersion = Just (CEq "commithash")
+      , dependencyName = "gopkg.in/yaml.v3"
+      , dependencyVersion = Just (CEq "496545a6307b")
       , dependencyLocations = []
       , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
       }
-  direct $
+  deep $
     Dependency
       { dependencyType = GoType
-      , dependencyName = "github.com/pkg/two"
-      , dependencyVersion = Just (CEq "v2.0.0")
+      , dependencyName = "gopkg.in/check.v1"
+      , dependencyVersion = Just (CEq "788fd7840127")
       , dependencyLocations = []
       , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
@@ -49,8 +48,7 @@ expected = run . evalGrapher $ do
 
 spec :: Spec
 spec = do
-  outputTrivial <- runIO (BL.readFile "test/Go/testdata/golist-stdout.trivial")
-  outputComplex <- runIO (BL.readFile "test/Go/testdata/golist-stdout.complex")
+  outputTrivial <- runIO (BL.readFile "test/Go/testdata/golist-stdout")
   testdir <- runIO getCurrentDir
 
   describe "golist analyze" $ do
@@ -63,14 +61,3 @@ spec = do
       case result of
         Left err -> expectationFailure ("analyze failed: " <> show (renderFailureBundle err))
         Right (graph, _) -> graph `shouldBe` expected
-
-    it "can handle complex inputs" $ do
-      let result =
-            analyze' testdir
-              & runConstExec outputComplex
-              & runDiagnostics
-              & run
-
-      case result of
-        Left err -> fail $ "failed to build graph" <> show (renderFailureBundle err)
-        Right (graph, _) -> length (Graphing.directList graph) `shouldBe` 12

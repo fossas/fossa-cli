@@ -1,0 +1,22 @@
+{
+        "Path": "example.com/foo/bar",
+        "Main": true,
+        "Dir": "/Users/megh/Codes/golang/simple",
+        "GoMod": "/Users/megh/Codes/golang/simple/go.mod",
+        "GoVersion": "1.16"
+}
+{
+        "Path": "gopkg.in/check.v1",
+        "Version": "v1.0.0-20180628173108-788fd7840127",
+        "Time": "2018-06-28T17:31:08Z",
+        "Indirect": true,
+        "Dir": "/Users/megh/go/pkg/mod/gopkg.in/check.v1@v1.0.0-20180628173108-788fd7840127",
+        "GoMod": "/Users/megh/go/pkg/mod/cache/download/gopkg.in/check.v1/@v/v1.0.0-20180628173108-788fd7840127.mod"
+}
+{
+        "Path": "gopkg.in/yaml.v3",
+        "Version": "v3.0.0-20210107192922-496545a6307b",
+        "Time": "2021-01-07T19:29:22Z",
+        "Dir": "/Users/megh/go/pkg/mod/gopkg.in/yaml.v3@v3.0.0-20210107192922-496545a6307b",
+        "GoMod": "/Users/megh/go/pkg/mod/cache/download/gopkg.in/yaml.v3/@v/v3.0.0-20210107192922-496545a6307b.mod"
+}

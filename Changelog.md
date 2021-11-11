@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.19.9
+
+- Go: Fixes a regression, where deep dependencies were reported as direct dependencies. ([#443](https://github.com/fossas/spectrometer/pull/443/))
+
 ## v2.19.8
 
 - Perl: Adds support for Perl with parsing of `META.json`, `META.yml`, `MYMETA.yml`, `MYMETA.json`. ([#428](https://github.com/fossas/spectrometer/pull/428))

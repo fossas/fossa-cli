@@ -4,6 +4,7 @@ module Strategy.Go.Transitive (
   normalizeImportsToModules,
   Module (..),
   Package (..),
+  decodeMany,
 ) where
 
 import Control.Algebra

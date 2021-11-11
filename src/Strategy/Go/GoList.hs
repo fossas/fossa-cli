@@ -5,36 +5,67 @@ module Strategy.Go.GoList (
   Require (..),
 ) where
 
-import Control.Effect.Diagnostics
-import Data.ByteString.Lazy qualified as BL
+import Control.Effect.Diagnostics hiding (fromMaybe)
+import Data.Aeson (FromJSON, withObject, (.!=), (.:), (.:?))
+import Data.Aeson.Internal (formatError)
+import Data.Aeson.Types (parseJSON)
 import Data.Foldable (traverse_)
-import Data.Maybe (mapMaybe)
-import Data.String.Conversion (decodeUtf8)
+import Data.Maybe (fromMaybe)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as Text
-import DepTypes
-import Effect.Exec
-import Effect.Grapher
+import DepTypes (Dependency)
+import Effect.Exec (
+  AllowErr (Never),
+  Command (..),
+  Exec,
+  ExecErr (CommandParseError),
+  execThrow,
+ )
+import Effect.Grapher (deep, direct, label)
 import Graphing (Graphing)
 import Path
-import Strategy.Go.Transitive (fillInTransitive)
-import Strategy.Go.Types
+import Strategy.Go.Transitive (decodeMany, fillInTransitive)
+import Strategy.Go.Types (
+  GolangGrapher,
+  graphingGolang,
+  mkGolangPackage,
+  mkGolangVersion,
+ )
 import Types (GraphBreadth (..))
 
 data Require = Require
   { reqPackage :: Text
   , reqVersion :: Text
+  , isDirect :: Bool
   }
   deriving (Eq, Ord, Show)
 
-golistCmd :: Command
-golistCmd =
+goListJsonCmd :: Command
+goListJsonCmd =
   Command
     { cmdName = "go"
-    , cmdArgs = ["list", "-m", "all"]
+    , cmdArgs = ["list", "-m", "-json", "all"]
     , cmdAllowErr = Never
     }
+data GoListModule = GoListModule
+  { path :: Text
+  , version :: Maybe Text
+  , isMain :: Bool
+  , isIndirect :: Bool
+  }
+  deriving (Show, Eq, Ord)
 
+instance FromJSON GoListModule where
+  parseJSON = withObject "GoListModule" $ \obj ->
+    GoListModule <$> obj .: "Path"
+      <*> obj .:? "Version"
+      <*> (obj .:? "Main" .!= False)
+      <*> (obj .:? "Indirect" .!= False)
+
+-- | Analyze using `go list`, and build dependency graph.
+--
+-- Since, sometimes go list directive includes test transitive dependencies in the listing
+-- We may include test transitive dependencies as deep dependencies on the graph without any edges.
 analyze' ::
   ( Has Exec sig m
   , Has Diagnostics sig m
@@ -43,22 +74,20 @@ analyze' ::
   m (Graphing Dependency, GraphBreadth)
 analyze' dir = do
   graph <- graphingGolang $ do
-    stdout <- context "Getting direct dependencies" $ execThrow dir golistCmd
-
-    let gomodLines = drop 1 . Text.lines . Text.filter (/= '\r') . decodeUtf8 . BL.toStrict $ stdout -- the first line is our package
-        requires = mapMaybe toRequire gomodLines
-
-        toRequire :: Text -> Maybe Require
-        toRequire line =
-          case Text.splitOn " " line of
-            [package, version] -> Just (Require package version)
-            _ -> Nothing
-
-    context "Adding direct dependencies" $ buildGraph requires
-
-    _ <- recover (fillInTransitive dir)
-    pure ()
+    stdout <- context ("Getting direct dependencies using, " <> toText (show goListJsonCmd)) $ execThrow dir goListJsonCmd
+    case decodeMany stdout of
+      Left (path, err) -> fatal (CommandParseError goListJsonCmd (toText (formatError path err)))
+      Right (mods :: [GoListModule]) -> do
+        context "Adding direct dependencies" $ buildGraph (toRequires mods)
+        _ <- recover (fillInTransitive dir)
+        pure ()
   pure (graph, Complete)
+  where
+    toRequires :: [GoListModule] -> [Require]
+    toRequires src = map (\m -> Require (path m) (fromMaybe "LATEST" $ version m) (not $ isIndirect m)) (withoutMain src)
+
+    withoutMain :: [GoListModule] -> [GoListModule]
+    withoutMain = filter (not . isMain)
 
 buildGraph :: Has GolangGrapher sig m => [Require] -> m ()
 buildGraph = traverse_ go
@@ -66,5 +95,7 @@ buildGraph = traverse_ go
     go :: Has GolangGrapher sig m => Require -> m ()
     go Require{..} = do
       let pkg = mkGolangPackage reqPackage
-      direct pkg
+      if isDirect
+        then direct pkg
+        else deep pkg
       label pkg (mkGolangVersion reqVersion)
