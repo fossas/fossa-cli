@@ -1,11 +1,12 @@
 module Path.Extra (
   tryMakeRelative,
   renderRelative,
+  extensionOf,
 ) where
 
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Path (Abs, Dir, File, Path, SomeBase (..), stripProperPrefix)
+import Path (Abs, Dir, File, Path, SomeBase (..), fileExtension, stripProperPrefix)
 
 -- tryMakeRelative returns the path of an absolute file (Path Abs File) relative to an absolute directory (Path Abs Dir).
 -- If the file is not within the directory, then the absolute file path will be returned
@@ -19,3 +20,6 @@ tryMakeRelative absDir absFile =
 -- Intended for convenience when displaying the newly relative path; to interact with it use `tryMakeRelative` instead.
 renderRelative :: Path Abs Dir -> Path Abs File -> Text
 renderRelative absDir absFile = toText $ tryMakeRelative absDir absFile
+
+extensionOf :: Path Abs File -> Maybe Text
+extensionOf absFile = toText <$> fileExtension absFile

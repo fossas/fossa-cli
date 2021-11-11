@@ -1,0 +1,17 @@
+abstract: 'Some Description'
+author:
+  - 'Some Author'
+build_requires:
+  Compress::Zlib: '0'
+configure_requires:
+  ExtUtils::MakeMaker: '0'
+dynamic_config: 1
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: '1.4'
+name: Some-App
+requires:
+  Archive::Zip: '0'
+  perl: '5.006'
+version: 1.16

@@ -68,6 +68,10 @@
 - [carthage](platforms/ios/carthage.md)
 - [cocoapods](platforms/ios/cocoapods.md)
 
+### perl
+
+- [perl](languages/perl/perl.md)
+
 ### php
 
 - [php](languages/php/composer.md)

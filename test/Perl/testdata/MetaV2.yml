@@ -1,0 +1,23 @@
+name: Some-App
+meta-spec:
+  url: http://search.cpan.org/perldoc?CPAN::Meta::Spec
+  version: 2
+prereqs:
+  configure:
+    requires:
+      ExtUtils::MakeMaker: '0'
+      perl: '5.006'
+  develop:
+    requires:
+      Dist::Zilla: '5'
+      perl: '5.006'
+  runtime:
+    requires:
+      Carp: '0'
+      perl: '5.006'
+  test:
+    requires:
+      perl: '5.006'
+  build:
+    requires:
+      perl: '5.006'

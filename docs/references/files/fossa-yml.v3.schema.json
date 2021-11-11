@@ -201,6 +201,10 @@
                         {
                             "const": "setuptools",
                             "description": "For setuptools targets (python)"
+                        },
+                        {
+                            "const": "perl",
+                            "description": "For perl targets (using *META.{json,yml})"
                         }
                     ],
                     "description": "Target (package manager)"

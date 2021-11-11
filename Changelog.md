@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v2.19.8
+
+- Perl: Adds support for Perl with parsing of `META.json`, `META.yml`, `MYMETA.yml`, `MYMETA.json`. ([#428](https://github.com/fossas/spectrometer/pull/428))
+
 ## v2.19.7
 
 - Resolves a regression when parsing npm `package-lock.json` files that do not contain a `version` field ([#445](https://github.com/fossas/spectrometer/pull/445))
