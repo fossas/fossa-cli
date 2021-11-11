@@ -46,6 +46,12 @@ arch -x86_64 /bin/bash -c "$(curl -H 'Cache-Control: no-cache' https://raw.githu
 Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/spectrometer/master/install.ps1'))
 ```
 
+Alternatively, install using [Scoop](https://scoop.sh/):
+
+```
+scoop install fossa
+```
+
 ### Installing manually
 
 You can install Spectrometer releases manually by downloading the latest release from [GitHub Releases](https://github.com/fossas/spectrometer/releases) and extracting the binary to your `$PATH`.
