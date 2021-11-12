@@ -17,12 +17,15 @@ jobs:
           ./fossa --version
           rm fossa
 
-      - name: install latest script performs installation
-        shell: bash
-        run: |
-          ./install-latest.sh -b .
-          ./fossa --version
-          rm fossa
+      # Commenting out latest script as it requires as release
+      # v1 release have different artifact name, compared to v2+
+      #
+      # - name: install latest script performs installation
+      #   shell: bash
+      #   run: |
+      #     ./install-latest.sh -b .
+      #     ./fossa --version
+      #     rm fossa
 
       - name: install-v1 script does not install v2 or greater version
         shell: bash
@@ -49,15 +52,19 @@ jobs:
           $releaseVersionSemver = $releaseVersion.TrimStart("v");
           echo "LATEST_RELEASE_VERSION=$releaseVersionSemver" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8 -Append
 
-      - name: install script performs installation
+      - name: install script performs installation for v1
         shell: pwsh
         run: |
           Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
           .\install.ps1
+          $cliVersionCmdOutput = cmd /c 'C:\ProgramData\fossa-cli\fossa.exe' '--version'
+          $cliVersion = $cliVersionCmdOutput.Split(" ")[2]
+          $cliVersionMajor = $cliVersion.Split(".")[0]
 
-          # Remove fossa.exe
-          Remove-Item -Path (Get-Command "fossa.exe").Path
-          
+          if (-Not $cliVersionMajor -eq "1") {
+            Write-Output "Got: $cliVersionMajor instead!"
+            exit 1
+          }          
 
       - name: install latest script performs installation
         shell: pwsh

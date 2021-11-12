@@ -22,9 +22,9 @@ fossa-cli integrates with [FOSSA](https://fossa.com) for dependency analysis, li
 
 ### Using the install script
 
-fossa-cli provides an install script that downloads the latest release from GitHub Releases for your computer's architecture. You can see the source code and flags at [`install.sh`](https://github.com/fossas/fossa-cli/blob/master/install-latest.sh) for Mac and Linux or [`install-latest.ps1`](https://github.com/fossas/fossa-cli/blob/master/install-latest.ps1) for Windows.
+fossa-cli provides an install script that downloads the latest release from GitHub Releases for your computer's architecture. You can see the source code and flags at [`install-latest.sh`](./install-latest.sh) for Mac and Linux or [`install-latest.ps1`](./install-latest.ps1) for Windows.
 
-**NOTE:** You may need to add the downloaded executable to your `$PATH`. The installer script will output the installed path of the executable. You can also use `-b` to pick the installation directory when using `install.sh` (see [the `install.sh` source code](https://github.com/fossas/fossa-cli/blob/master/install-latest.sh) for details).
+**NOTE:** You may need to add the downloaded executable to your `$PATH`. The installer script will output the installed path of the executable. You can also use `-b` to pick the installation directory when using `install-latest.sh` (see [the `install-latest.sh` source code](./install-latest.sh) for details).
 
 #### macOS or 64-bit Linux
 
@@ -56,7 +56,7 @@ scoop install fossa
 
 You can install fossa-cli releases manually by downloading the latest release from [GitHub Releases](https://github.com/fossas/fossa-cli/releases) and extracting the binary to your `$PATH`.
 
-### Installing fossa-cli 1.x
+### Installing CLI 1.x
 
 You can install fossa-cli 1.x with installation script for macOS or 64-bit Linux using:
 
