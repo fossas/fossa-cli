@@ -28,7 +28,7 @@ else
 }
 
 $github = "https://github.com"
-$latestUri = "$github/fossas/spectrometer/releases/$releaseTag"
+$latestUri = "$github/fossas/fossa-cli/releases/$releaseTag"
 $userExtractDir = "$env:LOCALAPPDATA\fossa-cli"
 $allUsersExtractDir = "$env:PROGRAMFILES\fossa-cli"
 
@@ -57,7 +57,7 @@ $headers = @{
 $release = Invoke-RestMethod -Uri $latestUri -Method Get -Headers $headers
 $releaseVersion = $release.tag_name;
 $releaseVersionSemver = $releaseVersion.TrimStart("v");
-$downloadUri = "$github/fossas/spectrometer/releases/download/$releaseVersion/$($app)_$($releaseVersionSemver)_windows_amd64.zip"
+$downloadUri = "$github/fossas/fossa-cli/releases/download/$releaseVersion/$($app)_$($releaseVersionSemver)_windows_amd64.zip"
 
 Write-Output "Downloading from: $downloadUri"
 
