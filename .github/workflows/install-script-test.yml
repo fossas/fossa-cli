@@ -66,26 +66,26 @@ jobs:
             exit 1
           }          
 
-      - name: install latest script performs installation
-        shell: pwsh
-        run: |
-          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
-          .\install-latest.ps1
+      # Commenting out latest script as it requires as release
+      # v1 release have different artifact name, compared to v2+
+      # 
+      # - name: install latest script performs installation
+      #   shell: pwsh
+      #   run: |
+      #     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
+      #     .\install-latest.ps1
           
-          # Commenting out test as fossa-cli does not have v3 release yet
-          # #############################################################
+      #     $cliVersionCmdOutput = cmd /c 'fossa.exe' '--version'
+      #     $cliVersion = $cliVersionCmdOutput.Split(" ")[2]
+      #     $cliVersionMajor = $cliVersion.Split(".")[0]
 
-          # $cliVersionCmdOutput = cmd /c 'fossa.exe' '--version'
-          # $cliVersion = $cliVersionCmdOutput.Split(" ")[2]
-          # $cliVersionMajor = $cliVersion.Split(".")[0]
+      #     if ($cliVersionMajor -eq "1") {
+      #       Write-Output "Got: $cliVersionMajor instead!"
+      #       exit 1
+      #     }
 
-          # if ($cliVersionMajor -eq "1") {
-          #   Write-Output "Got: $cliVersionMajor instead!"
-          #   exit 1
-          # }
-
-          # # Remove fossa.exe
-          # Remove-Item -Path (Get-Command "fossa.exe").Path
+      #     # Remove fossa.exe
+      #     Remove-Item -Path (Get-Command "fossa.exe").Path
 
       - name: scoop installs latest version
         shell: pwsh
