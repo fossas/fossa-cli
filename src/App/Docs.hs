@@ -8,7 +8,7 @@ import App.Version (currentBranch, versionNumber)
 import Data.Text (Text)
 
 sourceCodeUrl :: Text
-sourceCodeUrl = "https://github.com/fossas/spectrometer"
+sourceCodeUrl = "https://github.com/fossas/fossa-cli"
 
 guidePathOf :: Text -> Text -> Text
 guidePathOf revision repoRelUrl = sourceCodeUrl <> "/blob/" <> revision <> repoRelUrl
