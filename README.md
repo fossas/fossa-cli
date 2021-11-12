@@ -22,14 +22,14 @@ fossa-cli integrates with [FOSSA](https://fossa.com) for dependency analysis, li
 
 ### Using the install script
 
-fossa-cli provides an install script that downloads the latest release from GitHub Releases for your computer's architecture. You can see the source code and flags at [`install.sh`](https://github.com/fossas/fossa-cli/blob/master/install.sh) for Mac and Linux or [`install.ps1`](https://github.com/fossas/fossa-cli/blob/master/install.ps1) for Windows.
+fossa-cli provides an install script that downloads the latest release from GitHub Releases for your computer's architecture. You can see the source code and flags at [`install.sh`](https://github.com/fossas/fossa-cli/blob/master/install-latest.sh) for Mac and Linux or [`install-latest.ps1`](https://github.com/fossas/fossa-cli/blob/master/install-latest.ps1) for Windows.
 
-**NOTE:** You may need to add the downloaded executable to your `$PATH`. The installer script will output the installed path of the executable. You can also use `-b` to pick the installation directory when using `install.sh` (see [the `install.sh` source code](https://github.com/fossas/fossa-cli/blob/master/install.sh) for details).
+**NOTE:** You may need to add the downloaded executable to your `$PATH`. The installer script will output the installed path of the executable. You can also use `-b` to pick the installation directory when using `install.sh` (see [the `install.sh` source code](https://github.com/fossas/fossa-cli/blob/master/install-latest.sh) for details).
 
 #### macOS or 64-bit Linux
 
 ```bash
-curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
+curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash
 ```
 
 #### macOS with Apple M1 Silicon
@@ -37,13 +37,13 @@ curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa
 We do not currently support ARM as a target architecture. You can work around this on M1 Mac devices using the M1's x86_64 emulation.
 
 ```bash
-arch -x86_64 /bin/bash -c "$(curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh)"
+arch -x86_64 /bin/bash -c "$(curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh)"
 ```
 
 #### Windows with Powershell
 
 ```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install.ps1'))
+Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.ps1'))
 ```
 
 Alternatively, install using [Scoop](https://scoop.sh/):
@@ -55,6 +55,20 @@ scoop install fossa
 ### Installing manually
 
 You can install fossa-cli releases manually by downloading the latest release from [GitHub Releases](https://github.com/fossas/fossa-cli/releases) and extracting the binary to your `$PATH`.
+
+### Installing fossa-cli 1.x
+
+You can install fossa-cli 1.x with installation script for macOS or 64-bit Linux using:
+
+```bash
+curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-v1.sh | bash
+```
+
+And for windows:
+
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install-v1.ps1'))
+```
 
 ## Getting Started
 
