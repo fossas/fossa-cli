@@ -1,5 +1,5 @@
 name: Dependency scan
-on: [push, pull_request]
+on: [push]
 
 jobs:
   dependency-scan:

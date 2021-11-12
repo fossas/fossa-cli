@@ -44,7 +44,7 @@ jobs:
             'Accept' = 'application/json';
             'Cache-Control' = 'no-cache'
           }
-          $release = Invoke-RestMethod -Uri "https://github.com/fossas/spectrometer/releases/latest" -Method Get -Headers $headers
+          $release = Invoke-RestMethod -Uri "https://github.com/fossas/fossa-cli/releases/latest" -Method Get -Headers $headers
           $releaseVersion = $release.tag_name;
           $releaseVersionSemver = $releaseVersion.TrimStart("v");
           echo "LATEST_RELEASE_VERSION=$releaseVersionSemver" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8 -Append
@@ -65,17 +65,20 @@ jobs:
           Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
           .\install-latest.ps1
           
-          $cliVersionCmdOutput = cmd /c 'fossa.exe' '--version'
-          $cliVersion = $cliVersionCmdOutput.Split(" ")[2]
-          $cliVersionMajor = $cliVersion.Split(".")[0]
+          # Commenting out test as fossa-cli does not have v3 release yet
+          # #############################################################
 
-          if ($cliVersionMajor -eq "1") {
-            Write-Output "Got: $cliVersionMajor instead!"
-            exit 1
-          }
+          # $cliVersionCmdOutput = cmd /c 'fossa.exe' '--version'
+          # $cliVersion = $cliVersionCmdOutput.Split(" ")[2]
+          # $cliVersionMajor = $cliVersion.Split(".")[0]
 
-          # Remove fossa.exe
-          Remove-Item -Path (Get-Command "fossa.exe").Path
+          # if ($cliVersionMajor -eq "1") {
+          #   Write-Output "Got: $cliVersionMajor instead!"
+          #   exit 1
+          # }
+
+          # # Remove fossa.exe
+          # Remove-Item -Path (Get-Command "fossa.exe").Path
 
       - name: scoop installs latest version
         shell: pwsh
