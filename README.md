@@ -1,14 +1,14 @@
-# Spectrometer
+# fossa-cli
 
-[![Build](https://github.com/fossas/spectrometer/actions/workflows/build.yml/badge.svg)](https://github.com/fossas/spectrometer/actions/workflows/build.yml)
-[![Dependency scan](https://github.com/fossas/spectrometer/actions/workflows/dependency-scan.yml/badge.svg)](https://github.com/fossas/spectrometer/actions/workflows/dependency-scan.yml) <!-- markdown-link-check-disable-next-line -->
-[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Fspectrometer.svg?type=shield)](https://app.fossa.com/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Fspectrometer?ref=badge_shield)
+[![Build](https://github.com/fossas/fossa-cli/actions/workflows/build.yml/badge.svg)](https://github.com/fossas/fossa-cli/actions/workflows/build.yml)
+[![Dependency scan](https://github.com/fossas/fossa-cli/actions/workflows/dependency-scan.yml/badge.svg)](https://github.com/fossas/fossa-cli/actions/workflows/dependency-scan.yml) <!-- markdown-link-check-disable-next-line -->
+[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli.svg?type=shield)](https://app.fossa.com/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli?ref=badge_shield)
 
-Spectrometer is a zero-configuration polyglot dependency analysis tool. You can point Spectrometer at any codebase or build, and it will automatically detect dependencies being used by your project.
+fossa-cli is a zero-configuration polyglot dependency analysis tool. You can point fossa-cli at any codebase or build, and it will automatically detect dependencies being used by your project.
 
-Spectrometer currently supports automatic dependency analysis for [many different build tools and languages](docs/references/strategies/README.md). It also has limited support for vendored dependency detection, container scanning, and system dependency detection. These features are still a work in progress. Our goal is to make Spectrometer a single, universal tool for all kinds of dependency analysis.
+fossa-cli currently supports automatic dependency analysis for [many different build tools and languages](docs/references/strategies/README.md). It also has limited support for vendored dependency detection, container scanning, and system dependency detection. These features are still a work in progress. Our goal is to make fossa-cli a single, universal tool for all kinds of dependency analysis.
 
-Spectrometer integrates with [FOSSA](https://fossa.com) for dependency analysis, license scanning, vulnerability scanning, attribution report generation, and more.
+fossa-cli integrates with [FOSSA](https://fossa.com) for dependency analysis, license scanning, vulnerability scanning, attribution report generation, and more.
 
 ## Table of Contents
 
@@ -22,14 +22,14 @@ Spectrometer integrates with [FOSSA](https://fossa.com) for dependency analysis,
 
 ### Using the install script
 
-Spectrometer provides an install script that downloads the latest release from GitHub Releases for your computer's architecture. You can see the source code and flags at [`install.sh`](https://github.com/fossas/spectrometer/blob/master/install.sh) for Mac and Linux or [`install.ps1`](https://github.com/fossas/spectrometer/blob/master/install.ps1) for Windows.
+fossa-cli provides an install script that downloads the latest release from GitHub Releases for your computer's architecture. You can see the source code and flags at [`install.sh`](https://github.com/fossas/fossa-cli/blob/master/install.sh) for Mac and Linux or [`install.ps1`](https://github.com/fossas/fossa-cli/blob/master/install.ps1) for Windows.
 
-**NOTE:** You may need to add the downloaded executable to your `$PATH`. The installer script will output the installed path of the executable. You can also use `-b` to pick the installation directory when using `install.sh` (see [the `install.sh` source code](https://github.com/fossas/spectrometer/blob/master/install.sh) for details).
+**NOTE:** You may need to add the downloaded executable to your `$PATH`. The installer script will output the installed path of the executable. You can also use `-b` to pick the installation directory when using `install.sh` (see [the `install.sh` source code](https://github.com/fossas/fossa-cli/blob/master/install.sh) for details).
 
 #### macOS or 64-bit Linux
 
 ```bash
-curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
+curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
 ```
 
 #### macOS with Apple M1 Silicon
@@ -37,13 +37,13 @@ curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spect
 We do not currently support ARM as a target architecture. You can work around this on M1 Mac devices using the M1's x86_64 emulation.
 
 ```bash
-arch -x86_64 /bin/bash -c "$(curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh)"
+arch -x86_64 /bin/bash -c "$(curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh)"
 ```
 
 #### Windows with Powershell
 
 ```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/spectrometer/master/install.ps1'))
+Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install.ps1'))
 ```
 
 Alternatively, install using [Scoop](https://scoop.sh/):
@@ -54,7 +54,7 @@ scoop install fossa
 
 ### Installing manually
 
-You can install Spectrometer releases manually by downloading the latest release from [GitHub Releases](https://github.com/fossas/spectrometer/releases) and extracting the binary to your `$PATH`.
+You can install fossa-cli releases manually by downloading the latest release from [GitHub Releases](https://github.com/fossas/fossa-cli/releases) and extracting the binary to your `$PATH`.
 
 ## Getting Started
 
@@ -64,7 +64,7 @@ You can install Spectrometer releases manually by downloading the latest release
 
 ```sh
 # Download FOSSA.
-curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | bash
+curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
 
 # Set your API key. Get this from the FOSSA web application.
 export FOSSA_API_KEY=XXXX
@@ -78,7 +78,7 @@ fossa analyze
 
 ```powershell
 # Download FOSSA.
-Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/spectrometer/master/install.ps1'))
+Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install.ps1'))
 
 # Set your API key. Get this from the FOSSA web application.
 $env:FOSSA_API_KEY=XXXX
@@ -88,9 +88,9 @@ cd $MY_PROJECT_DIR
 fossa analyze
 ```
 
-#### Installing Spectrometer
+#### Installing fossa-cli
 
-Follow [the installation instructions](#installation) above to install Spectrometer. Once installed, you should have a new binary named `fossa` available on your `$PATH`.
+Follow [the installation instructions](#installation) above to install fossa-cli. Once installed, you should have a new binary named `fossa` available on your `$PATH`.
 
 #### Generating an API key
 
@@ -112,13 +112,13 @@ Now we can run an analysis. To run an analysis, all you need to do is navigate t
 $ cd $MY_PROJECT_DIR # Use your actual project location here.
 
 $ fossa analyze
-[ INFO] Using project name: `https://github.com/fossas/spectrometer`
+[ INFO] Using project name: `https://github.com/fossas/fossa-cli`
 [ INFO] Using revision: `09ca72e398bb32747b27c0f43731678fa42c3c26`
 [ INFO] Using branch: `No branch (detached HEAD)`
 [ INFO] ============================================================
 
       View FOSSA Report:
-      https://app.fossa.com/projects/custom+1%2fgithub.com%2ffossas%2fspectrometer/refs/branch/master/09ca72e398bb32747b27c0f43731678fa42c3c26
+      https://app.fossa.com/projects/custom+1%2fgithub.com%2ffossas%2ffossa-cli/refs/branch/master/09ca72e398bb32747b27c0f43731678fa42c3c26
 
   ============================================================
 ```
@@ -139,7 +139,7 @@ Now that your analysis is complete, there are a couple things you might want to 
 
 ## User Manual
 
-For most users, Spectrometer will work out-of-the-box without any configuration. Just get an API key, run `fossa analyze`, and view your results in the FOSSA web application.
+For most users, fossa-cli will work out-of-the-box without any configuration. Just get an API key, run `fossa analyze`, and view your results in the FOSSA web application.
 
 Users who need more advanced customizations or features should see the [User Manual](./docs/README.md). Some common topics of interest include:
 
