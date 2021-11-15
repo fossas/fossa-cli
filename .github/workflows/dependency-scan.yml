@@ -40,4 +40,4 @@ jobs:
         env:
           FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
         run: |
-          fossa test
+          fossa test --timeout 1800
