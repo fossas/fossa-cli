@@ -19,6 +19,9 @@ module Strategy.Gradle (
   JsonDep (..),
   PackageName (..),
   ConfigName (..),
+
+  -- * for testing
+  packagePathsWithJson,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..), AnalyzeProject, analyzeProject)
@@ -291,31 +294,31 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
     pure $ maybe Set.empty (Set.map ConfigName) configs
 
   let text = decodeUtf8 $ BL.toStrict stdout
-
-      textLines :: [Text]
-      textLines = Text.lines (Text.filter (/= '\r') text)
-
-      -- Output lines from the init script are of the format:
-      -- JSONDEPS_:project-path_{"configName":[{"type":"package", ...}, ...], ...}
-      --
-      -- See the init script's implementation for details.
-      jsonDepsLines :: [Text]
-      jsonDepsLines = mapMaybe (Text.stripPrefix "JSONDEPS_") textLines
-
-      packagePathsWithJson :: [(PackageName, Text)]
-      packagePathsWithJson = map (\line -> let (x, y) = Text.breakOn "_" line in (PackageName x, Text.drop 1 y {- drop the underscore; break doesn't remove it -})) jsonDepsLines
-
-      packagePathsWithDecoded :: [((PackageName, ConfigName), [JsonDep])]
-      packagePathsWithDecoded = do
-        (name, outJson) <- packagePathsWithJson
-        let configMap = fromMaybe mempty . decodeStrict $ encodeUtf8 outJson
-        (configName, deps) <- Map.toList configMap
-        pure ((name, ConfigName configName), deps)
-
-      packagesToOutput :: Map (PackageName, ConfigName) [JsonDep]
-      packagesToOutput = Map.fromList packagePathsWithDecoded
-
+  let packagesToOutput = parseJsonDeps text
   context "Building dependency graph" $ pure (buildGraph packagesToOutput onlyConfigurations)
+
+packagePathsWithJson :: [Text] -> [(PackageName, Text)]
+packagePathsWithJson = map (\line -> let (x, y) = Text.breakOn "_{" line in (PackageName x, Text.drop 1 y))
+
+parseJsonDeps :: Text -> Map (PackageName, ConfigName) [JsonDep]
+parseJsonDeps text = Map.fromList packagePathsWithDecoded
+  where
+    textLines :: [Text]
+    textLines = Text.lines (Text.filter (/= '\r') text)
+
+    -- Output lines from the init script are of the format:
+    -- JSONDEPS_:project-path_{"configName":[{"type":"package", ...}, ...], ...}
+    --
+    -- See the init script's implementation for details.
+    jsonDepsLines :: [Text]
+    jsonDepsLines = mapMaybe (Text.stripPrefix "JSONDEPS_") textLines
+
+    packagePathsWithDecoded :: [((PackageName, ConfigName), [JsonDep])]
+    packagePathsWithDecoded = do
+      (name, outJson) <- packagePathsWithJson jsonDepsLines
+      let configMap = fromMaybe mempty . decodeStrict $ encodeUtf8 outJson
+      (configName, deps) <- Map.toList configMap
+      pure ((name, ConfigName configName), deps)
 
 -- TODO: use LabeledGraphing to add labels for environments
 buildGraph :: Map (PackageName, ConfigName) [JsonDep] -> Set ConfigName -> Graphing Dependency
