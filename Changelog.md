@@ -1,5 +1,9 @@
 # Spectrometer Changelog
 
+## v3.0.1
+
+- Deduplicates `vendored-dependencies` entries when possible, and provides a better error message when not. ([#689](https://github.com/fossas/fossa-cli/pull/689))
+
 ## v2.19.9
 
 - Go: Fixes a regression, where deep dependencies were reported as direct dependencies. ([#443](https://github.com/fossas/spectrometer/pull/443/))
