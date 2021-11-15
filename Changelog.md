@@ -2,7 +2,7 @@
 
 # Version 3 Changelog
 
-- Migrates source code from spectrometer into fossa-cli repository. 
+- Migrates source code from [spectrometer](https://github.com/fossas/spectrometer) into fossa-cli (this repository). 
 
 # Version 2 Changelog
 

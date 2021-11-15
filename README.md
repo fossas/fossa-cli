@@ -6,7 +6,7 @@
 
 Fossa CLI is a zero-configuration polyglot dependency analysis tool. You can point fossa CLI at any codebase or build, and it will automatically detect dependencies being used by your project.
 
-Fossa CLI currently supports automatic dependency analysis for [many different build tools and languages](docs/references/strategies/README.md). It also has limited support for vendored dependency detection, container scanning, and system dependency detection. These features are still a work in progress. Our goal is to make fossa-cli a single, universal tool for all kinds of dependency analysis.
+Fossa CLI currently supports automatic dependency analysis for [many different build tools and languages](docs/references/strategies/README.md#supported-languages). It also has limited support for vendored dependency detection, container scanning, and system dependency detection. These features are still a work in progress. Our goal is to make fossa-cli a single, universal tool for all kinds of dependency analysis.
 
 Fossa CLI integrates with [FOSSA](https://fossa.com) for dependency analysis, license scanning, vulnerability scanning, attribution report generation, and more.
 
@@ -70,8 +70,7 @@ And for windows:
 Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install-v1.ps1'))
 ```
 
-It is recommended, that you migrate to CLI 3.x. Please read [migration guide](./docs/differences-from-v1.md) for more details.
-
+It is recommended that you migrate to CLI 3.x. Please read the [migration guide](./docs/differences-from-v1.md) for more details.
 ## Getting Started
 
 ### Integrating your project with FOSSA
