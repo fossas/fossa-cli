@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## v3.0.1
+
+- Deduplicates `vendored-dependencies` entries when possible, and provides a better error message when not. ([#689](https://github.com/fossas/fossa-cli/pull/689))
+
 # Version 3 Changelog
 
 - Migrates source code from [spectrometer](https://github.com/fossas/spectrometer) into fossa-cli (this repository). 
@@ -7,10 +11,6 @@
 # Version 2 Changelog
 
 Releases for CLI 2.x can be found at: https://github.com/fossas/spectrometer/releases
-
-## v3.0.1
-
-- Deduplicates `vendored-dependencies` entries when possible, and provides a better error message when not. ([#689](https://github.com/fossas/fossa-cli/pull/689))
 
 ## v2.19.9
 
