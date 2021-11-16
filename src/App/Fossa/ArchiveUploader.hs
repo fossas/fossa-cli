@@ -10,6 +10,7 @@ import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Lift
 import Control.Effect.Path (withSystemTempDir)
+import Control.Monad (unless)
 import Crypto.Hash
 import Data.Aeson (
   FromJSON (parseJSON),
@@ -72,9 +73,7 @@ archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
   -- However, users may also have vendored dependencies that have duplicate names but are not complete duplicates.
   -- These aren't valid and can't be automatically handled, so fail the scan with them.
   let duplicates = duplicateNames uniqDeps
-  if not $ null duplicates
-    then Diag.fatalText $ duplicateFailureBundle duplicates
-    else pure ()
+  unless (null duplicates) $ Diag.fatalText $ duplicateFailureBundle duplicates
 
   -- At this point, we have a good list of deps, so go for it.
   archives <- withSystemTempDir "fossa-temp" (uploadArchives apiOpts uniqDeps baseDir)
@@ -98,12 +97,8 @@ archiveNoUploadSourceUnit :: [VendoredDependency] -> [Locator]
 archiveNoUploadSourceUnit = map (arcToLocator . forceVendoredToArchive)
 
 duplicateNames :: [VendoredDependency] -> [Text]
-duplicateNames deps = map extract $ filter isDuplicated (Map.toList . Map.fromListWith (+) . map pair $ deps)
+duplicateNames deps = Map.keys . Map.filter (> 1) . Map.fromListWith (+) $ map pair deps
   where
-    extract :: (Text, Int) -> Text
-    extract (a, _) = a
-    isDuplicated :: (Text, Int) -> Bool
-    isDuplicated (_, c) = c > 1
     pair :: VendoredDependency -> (Text, Int)
     pair VendoredDependency{vendoredName} = (vendoredName, 1)
 
