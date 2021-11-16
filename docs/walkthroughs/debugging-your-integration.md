@@ -10,7 +10,7 @@ fossa analyze --debug
 
 Note that the output is likely to be very noisy: our project discovery process is very lenient, and can produce many false-positives. False-positive projects almost always fail during the dependency analysis step, so we don't show analysis failures by default.
 
-If your project wasn't in the `--debug` output, or you believe you've encountered a bug, please [file a bug](https://github.com/fossas/spectrometer/issues/new).
+If your project wasn't in the `--debug` output, or you believe you've encountered a bug, please [file a bug](https://github.com/fossas/fossa-cli/issues/new).
 
 In your bug report, please include:
 
@@ -19,4 +19,4 @@ In your bug report, please include:
 
 ### When are you adding support for (some buildtool/language)?
 
-If we don't support your choice of language/buildtool, please [open an issue](https://github.com/fossas/spectrometer/issues/new) to express interest
+If we don't support your choice of language/buildtool, please [open an issue](https://github.com/fossas/fossa-cli/issues/new) to express interest
