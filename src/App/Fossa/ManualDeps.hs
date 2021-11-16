@@ -26,6 +26,7 @@ import Data.Aeson (
 
 import App.Fossa.ArchiveUploader
 import Control.Effect.Lift
+import Control.Effect.StickyLogger (StickyLogger)
 import Data.Aeson.Extra
 import Data.Aeson.Types (Parser)
 import Data.Functor.Extra ((<$$>))
@@ -45,7 +46,7 @@ data FoundDepsFile
   = ManualYaml (Path Abs File)
   | ManualJSON (Path Abs File)
 
-analyzeFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m) => Path Abs Dir -> Maybe ApiOpts -> m (Maybe SourceUnit)
+analyzeFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has StickyLogger sig m) => Path Abs Dir -> Maybe ApiOpts -> m (Maybe SourceUnit)
 analyzeFossaDepsFile root maybeApiOpts = do
   maybeDepsFile <- findFossaDepsFile root
   case maybeDepsFile of
@@ -77,7 +78,7 @@ findFossaDepsFile root = do
     (_, _, True) -> pure $ Just $ ManualJSON jsonFile
     (False, False, False) -> pure Nothing
 
-toSourceUnit :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> FoundDepsFile -> ManualDependencies -> Maybe ApiOpts -> m SourceUnit
+toSourceUnit :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has StickyLogger sig m) => Path Abs Dir -> FoundDepsFile -> ManualDependencies -> Maybe ApiOpts -> m SourceUnit
 toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts = do
   -- If the file exists and we have no dependencies to report, that's a failure.
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"

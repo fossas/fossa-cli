@@ -355,7 +355,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput include
       then do
         logInfo "Running in VSI only mode, skipping manual source units"
         pure Nothing
-      else Diag.context "fossa-deps" $ analyzeFossaDepsFile basedir apiOpts
+      else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir apiOpts
   let additionalSourceUnits :: [SourceUnit]
       additionalSourceUnits = catMaybes [manualSrcUnits, vsiResults, binarySearchResults]
 

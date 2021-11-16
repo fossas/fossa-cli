@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.ArchiveUploader (
   archiveUploadSourceUnit,
   archiveNoUploadSourceUnit,
@@ -8,6 +10,8 @@ import App.Fossa.FossaAPIV1 qualified as Fossa
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.Diagnostics qualified as Diag
+import Control.Carrier.StickyLogger (StickyLogger, logSticky)
+import Control.Effect.Diagnostics (context)
 import Control.Effect.Lift
 import Control.Effect.Path (withSystemTempDir)
 import Control.Monad (unless)
@@ -46,26 +50,28 @@ instance FromJSON VendoredDependency where
       <*> (unTextLike <$$> obj .:? "version")
       <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
 
-uploadArchives :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => ApiOpts -> [VendoredDependency] -> Path Abs Dir -> Path Abs Dir -> m [Archive]
+uploadArchives :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m) => ApiOpts -> [VendoredDependency] -> Path Abs Dir -> Path Abs Dir -> m [Archive]
 uploadArchives apiOpts deps arcDir tmpDir = traverse (compressAndUpload apiOpts arcDir tmpDir) deps
 
-compressAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => ApiOpts -> Path Abs Dir -> Path Abs Dir -> VendoredDependency -> m Archive
-compressAndUpload apiOpts arcDir tmpDir dependency = do
-  compressedFile <- sendIO $ compressFile tmpDir arcDir (toString $ vendoredPath dependency)
+compressAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m) => ApiOpts -> Path Abs Dir -> Path Abs Dir -> VendoredDependency -> m Archive
+compressAndUpload apiOpts arcDir tmpDir VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
+  logSticky $ "Compressing '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
+  compressedFile <- sendIO $ compressFile tmpDir arcDir (toString vendoredPath)
 
-  depVersion <- case vendoredVersion dependency of
+  depVersion <- case vendoredVersion of
     Nothing -> sendIO $ hashFile compressedFile
     Just version -> pure version
 
-  signedURL <- Fossa.getSignedURL apiOpts depVersion (vendoredName dependency)
+  signedURL <- Fossa.getSignedURL apiOpts depVersion vendoredName
 
+  logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
   _ <- Fossa.archiveUpload signedURL compressedFile
 
-  pure $ Archive (vendoredName dependency) depVersion
+  pure $ Archive vendoredName depVersion
 
 -- archiveUploadSourceUnit receives a list of vendored dependencies, a root path, and API settings.
 -- Using this information, it uploads each vendored dependency and queues a build for the dependency.
-archiveUploadSourceUnit :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> ApiOpts -> [VendoredDependency] -> m [Locator]
+archiveUploadSourceUnit :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m) => Path Abs Dir -> ApiOpts -> [VendoredDependency] -> m [Locator]
 archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
   -- Users with many instances of vendored dependencies may accidentally have complete duplicates. Remove them.
   let uniqDeps = nub vendoredDeps
