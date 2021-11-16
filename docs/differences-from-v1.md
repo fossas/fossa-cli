@@ -206,7 +206,7 @@ For documentation on the new configuration file format, see [here](references/fi
 
 ### Migrate "archive upload" targets
 
-In 1.x, ["archive upload" modules](https://github.com/fossas/fossa-cli/blob/master/docs/integrations/archive.md#archive) were a special kind of manually specified module of type `archive` that uploaded source code to the FOSSA backend for license scanning. They were also known as "raw" modules or "license scan" modules.
+In 1.x, ["archive upload" modules](https://github.com/fossas/fossa-cli/blob/v1-master/docs/integrations/archive.md#archive) were a special kind of manually specified module of type `archive` that uploaded source code to the FOSSA backend for license scanning. They were also known as "raw" modules or "license scan" modules.
 
 In 3.x, archive uploads are no longer a special analysis target type. Instead, you can use our general support for [manually specified dependencies](./features/manual-dependencies.md) to specify local dependencies.
 

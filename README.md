@@ -1,14 +1,14 @@
-# fossa-cli
+# Fossa CLI
 
 [![Build](https://github.com/fossas/fossa-cli/actions/workflows/build.yml/badge.svg)](https://github.com/fossas/fossa-cli/actions/workflows/build.yml)
 [![Dependency scan](https://github.com/fossas/fossa-cli/actions/workflows/dependency-scan.yml/badge.svg)](https://github.com/fossas/fossa-cli/actions/workflows/dependency-scan.yml) <!-- markdown-link-check-disable-next-line -->
 [![FOSSA Status](https://app.fossa.com/api/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli.svg?type=shield)](https://app.fossa.com/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli?ref=badge_shield)
 
-fossa-cli is a zero-configuration polyglot dependency analysis tool. You can point fossa-cli at any codebase or build, and it will automatically detect dependencies being used by your project.
+Fossa CLI is a zero-configuration polyglot dependency analysis tool. You can point fossa CLI at any codebase or build, and it will automatically detect dependencies being used by your project.
 
-fossa-cli currently supports automatic dependency analysis for [many different build tools and languages](docs/references/strategies/README.md). It also has limited support for vendored dependency detection, container scanning, and system dependency detection. These features are still a work in progress. Our goal is to make fossa-cli a single, universal tool for all kinds of dependency analysis.
+Fossa CLI currently supports automatic dependency analysis for [many different build tools and languages](docs/references/strategies/README.md#supported-languages). It also has limited support for vendored dependency detection, container scanning, and system dependency detection. These features are still a work in progress. Our goal is to make fossa-cli a single, universal tool for all kinds of dependency analysis.
 
-fossa-cli integrates with [FOSSA](https://fossa.com) for dependency analysis, license scanning, vulnerability scanning, attribution report generation, and more.
+Fossa CLI integrates with [FOSSA](https://fossa.com) for dependency analysis, license scanning, vulnerability scanning, attribution report generation, and more.
 
 ## Table of Contents
 
@@ -56,7 +56,7 @@ scoop install fossa
 
 You can install fossa-cli releases manually by downloading the latest release from [GitHub Releases](https://github.com/fossas/fossa-cli/releases) and extracting the binary to your `$PATH`.
 
-### Installing CLI 1.x
+## Installing CLI 1.x
 
 You can install fossa-cli 1.x with installation script for macOS or 64-bit Linux using:
 
@@ -70,6 +70,7 @@ And for windows:
 Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install-v1.ps1'))
 ```
 
+It is recommended that you migrate to CLI 3.x. Please read the [migration guide](./docs/differences-from-v1.md) for more details.
 ## Getting Started
 
 ### Integrating your project with FOSSA
@@ -78,7 +79,7 @@ Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.W
 
 ```sh
 # Download FOSSA.
-curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash
+curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash
 
 # Set your API key. Get this from the FOSSA web application.
 export FOSSA_API_KEY=XXXX
@@ -92,7 +93,7 @@ fossa analyze
 
 ```powershell
 # Download FOSSA.
-Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install.ps1'))
+Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.ps1'))
 
 # Set your API key. Get this from the FOSSA web application.
 $env:FOSSA_API_KEY=XXXX
