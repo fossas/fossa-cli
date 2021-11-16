@@ -1,4 +1,4 @@
-# Spectrometer style guide
+# Fossa CLI style guide
 
 [Back to development doc homepage](README.md)
 

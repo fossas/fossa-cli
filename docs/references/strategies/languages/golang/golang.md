@@ -9,7 +9,7 @@ issues previously seen around versioning and build reproducibility.
 
 Because modules address those issues so well, the other tooling has largely gone
 into maintenance mode, with the notable exception of dep. As such, golang
-analysis in spectrometer primarily targets Golang 1.11+ modules and dep. Support
+analysis in fossa-cli primarily targets Golang 1.11+ modules and dep. Support
 for Glide is also included, because it's still commonly used.
 
 | Strategy                             | Direct Deps | Deep Deps | Edges |

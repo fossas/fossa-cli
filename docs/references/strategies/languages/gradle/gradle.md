@@ -118,7 +118,7 @@ This tactic runs a Gradle [init script](https://docs.gradle.org/current/userguid
 2. Invokes the init script with `gradle jsonDeps -Ipath/to/init.gradle`.
 3. Parses the JSON output of the init script.
 
-This init script is implemented [here](https://github.com/fossas/spectrometer/blob/master/scripts/jsondeps.gradle) and bundled into the CLI during compilation.
+This init script is implemented [here](https://github.com/fossas/fossa-cli/blob/master/scripts/jsondeps.gradle) and bundled into the CLI during compilation.
 
 The script works by iterating through configurations, resolving their dependencies, and then serializing those dependencies into JSON.
 
