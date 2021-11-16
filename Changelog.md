@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## v3.0.1
+
+- Adds logging to `vendored-dependencies` processing. ([#703](https://github.com/fossas/fossa-cli/pull/703))
+
 # Version 3 Changelog
 
 - Migrates source code from [spectrometer](https://github.com/fossas/spectrometer) into fossa-cli (this repository). 
