@@ -1,6 +1,6 @@
 # Development Docs
 
-This is a collection of development-related docs for working on the spectrometer repo.
+This is a collection of development-related docs for working on the fossa-cli repo.
 
 ## Building and Running the project
 

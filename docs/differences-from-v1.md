@@ -267,8 +267,5 @@ You can add `--debug` argument to your fossa commands (e.g. `fossa analyze --deb
 
 > Note: There are no breaking changes from 2.x to 3.x. The 3.x version in functional sense, continuation of 2.x version. The 3.x version was released to (1) match the `version` field of the fossa configuration file with the major release version of cli, (2) mark migration of CLI 2.x source code back into the fossa-cli repository, and (3) mark 3.x now the default target for installation for all fossa users moving forwards. 
 
-<!--
-Remove this once, migration has occurred.
 
 If you were previously using the installation script provided at [fossas/spectrometer](https://github.com/fossas/spectrometer/), it is now recommended to use the installation latest script provided at [fossas/fossa-cli](https://github.com/fossas/fossa-cli/).
-!-->
