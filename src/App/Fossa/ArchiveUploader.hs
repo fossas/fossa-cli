@@ -14,6 +14,7 @@ import Control.Carrier.StickyLogger (StickyLogger, logSticky)
 import Control.Effect.Diagnostics (context)
 import Control.Effect.Lift
 import Control.Effect.Path (withSystemTempDir)
+import Control.Monad (unless)
 import Crypto.Hash
 import Data.Aeson (
   FromJSON (parseJSON),
@@ -24,10 +25,12 @@ import Data.Aeson (
 import Data.Aeson.Extra
 import Data.ByteString.Lazy qualified as BS
 import Data.Functor.Extra ((<$$>))
-import Data.List (intercalate)
+import Data.List (intercalate, nub)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Fossa.API.Types
 import Path hiding ((</>))
 import Srclib.Types (Locator (..))
@@ -70,7 +73,16 @@ compressAndUpload apiOpts arcDir tmpDir VendoredDependency{..} = context "compre
 -- Using this information, it uploads each vendored dependency and queues a build for the dependency.
 archiveUploadSourceUnit :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m) => Path Abs Dir -> ApiOpts -> [VendoredDependency] -> m [Locator]
 archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
-  archives <- withSystemTempDir "fossa-temp" (uploadArchives apiOpts vendoredDeps baseDir)
+  -- Users with many instances of vendored dependencies may accidentally have complete duplicates. Remove them.
+  let uniqDeps = nub vendoredDeps
+
+  -- However, users may also have vendored dependencies that have duplicate names but are not complete duplicates.
+  -- These aren't valid and can't be automatically handled, so fail the scan with them.
+  let duplicates = duplicateNames uniqDeps
+  unless (null duplicates) $ Diag.fatalText $ duplicateFailureBundle duplicates
+
+  -- At this point, we have a good list of deps, so go for it.
+  archives <- withSystemTempDir "fossa-temp" (uploadArchives apiOpts uniqDeps baseDir)
 
   -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
@@ -89,6 +101,20 @@ archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
 -- archiveNoUploadSourceUnit exists for when users run `fossa analyze -o` and do not upload their source units.
 archiveNoUploadSourceUnit :: [VendoredDependency] -> [Locator]
 archiveNoUploadSourceUnit = map (arcToLocator . forceVendoredToArchive)
+
+duplicateNames :: [VendoredDependency] -> [Text]
+duplicateNames deps = Map.keys . Map.filter (> 1) . Map.fromListWith (+) $ map pair deps
+  where
+    pair :: VendoredDependency -> (Text, Int)
+    pair VendoredDependency{vendoredName} = (vendoredName, 1)
+
+duplicateFailureBundle :: [Text] -> Text
+duplicateFailureBundle names =
+  "The provided vendored dependencies contain the following duplicate names:\n\t"
+    <> Text.intercalate "\n\t" names
+    <> "\n\n"
+    <> "Vendored dependency entries may not specify duplicate names.\n"
+    <> "Please ensure that each vendored dependency entry has a unique name."
 
 forceVendoredToArchive :: VendoredDependency -> Archive
 forceVendoredToArchive dep = Archive (vendoredName dep) (fromMaybe "" $ vendoredVersion dep)

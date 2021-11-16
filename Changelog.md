@@ -2,6 +2,7 @@
 
 ## v3.0.1
 
+- Deduplicates `vendored-dependencies` entries when possible, and provides a better error message when not. ([#689](https://github.com/fossas/fossa-cli/pull/689))
 - Adds logging to `vendored-dependencies` processing. ([#703](https://github.com/fossas/fossa-cli/pull/703))
 
 # Version 3 Changelog
