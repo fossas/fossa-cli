@@ -1,6 +1,6 @@
 {
-      "version" : 1,
-      "targets" : {
+      "version": 1,
+      "targets": {
             ".NETFramework,Version=v4.0": {
                   "one/1.0.0": {
                         "type": "package",
@@ -10,11 +10,42 @@
                   },
                   "two/2.0.0": {
                         "type": "package"
+                  },
+                  "three/3.0.0": {
+                        "type": "package"
+                  },
+                  "six/6.0.0": {
+                        "type": "project",
+                        "dependencies": {
+                              "five": "5.0.0",
+                              "otherProject": "1.0.0"
+                        }
+                  },
+                  "five/5.0.0": {
+                        "type": "package"
+                  },
+                  "otherProject/1.0.0": {
+                        "type": "project",
+                        "compile": {
+                              "bin/placeholder/otherProject.dll": {}
+                        }
                   }
             },
             ".NETFramework,Version=v4.0/Win32": {
                   "four/4.0.0": {
-                        "type": "dependency"
+                        "type": "package"
+                  }
+            }
+      },
+      "project": {
+            "frameworks": {
+                  "net4.0": {
+                        "targetAlias": "net4.0",
+                        "dependencies": {
+                              "one": {},
+                              "two": {},
+                              "four": {}
+                        }
                   }
             }
       }
