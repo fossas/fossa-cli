@@ -9,7 +9,13 @@ import Data.Text (Text)
 import DepTypes
 import GraphUtil
 import Graphing (Graphing, empty)
-import Strategy.Gradle (ConfigName (..), JsonDep (..), PackageName (..), buildGraph)
+import Strategy.Gradle (
+  ConfigName (..),
+  JsonDep (..),
+  PackageName (..),
+  buildGraph,
+  packagePathsWithJson,
+ )
 import Test.Hspec
 
 projectOne :: Dependency
@@ -116,6 +122,13 @@ wrapKeys (a, b) = (PackageName a, ConfigName b)
 
 spec :: Spec
 spec = do
+  describe "packagePathsWithJson" $ do
+    it "should break package and jsonText correctly for project with _" $ do
+      packagePathsWithJson ["sub-project_{}"] `shouldBe` [(PackageName "sub-project", "{}")]
+      packagePathsWithJson ["sub_project_{}"] `shouldBe` [(PackageName "sub_project", "{}")]
+      packagePathsWithJson ["sub-project__{}"] `shouldBe` [(PackageName "sub-project_", "{}")]
+      packagePathsWithJson ["subProject_{}"] `shouldBe` [(PackageName "subProject", "{}")]
+
   describe "buildGraph" $ do
     it "should produce an empty graph for empty input" $ do
       let graph = buildGraph Map.empty (Set.fromList [])
