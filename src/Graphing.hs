@@ -245,7 +245,7 @@ unfold seed getDeps toDependency = directs directNodes <> edges builtEdges
 
 -- | @unfoldDeep dep getDeps toDependency@ unfolds a graph, given:
 --
--- - The @dep@ dependencies in the graph
+-- - The @deep@ dependencies in the graph
 --
 -- - A way to @getDeps@ for a dependency
 --
