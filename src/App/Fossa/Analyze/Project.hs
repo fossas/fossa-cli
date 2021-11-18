@@ -42,4 +42,5 @@ data ProjectResult = ProjectResult
 
 shouldKeepUnreachableDeps :: Text -> Bool
 shouldKeepUnreachableDeps "swift" = True
+shouldKeepUnreachableDeps "gomod" = True
 shouldKeepUnreachableDeps _ = False
