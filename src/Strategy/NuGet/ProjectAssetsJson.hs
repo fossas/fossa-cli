@@ -10,6 +10,7 @@ module Strategy.NuGet.ProjectAssetsJson (
 
   -- * for testing
   approxEql,
+  FrameworkName (..),
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
@@ -50,6 +51,9 @@ newtype ProjectAssetsJsonProject = ProjectAssetsJsonProject
   }
   deriving (Eq, Ord, Show, Generic)
 
+newtype FrameworkName = FrameworkName Text
+  deriving (Eq, Ord, Show, Generic, FromJSONKey)
+
 instance ToJSON ProjectAssetsJsonProject
 
 instance AnalyzeProject ProjectAssetsJsonProject where
@@ -87,8 +91,8 @@ data NuGetDep = NuGetDep
   deriving (Show, Eq, Ord)
 
 data ProjectAssetsJson = ProjectAssetsJson
-  { targets :: Map.Map Text (Map.Map Text DependencyInfo)
-  , projectFramework :: Map.Map Text (Set Text)
+  { targets :: Map.Map FrameworkName (Map.Map Text DependencyInfo)
+  , projectFramework :: Map.Map FrameworkName (Set Text)
   }
   deriving (Show, Eq, Ord)
 
@@ -123,11 +127,11 @@ instance FromJSON ProjectAssetsJson where
           Just hm -> pure (fst <$> HM.toList hm)
         pure $ Set.fromList deps
 
-      parseFramework :: Value -> Parser (Map.Map Text (Set Text))
+      parseFramework :: Value -> Parser (Map.Map FrameworkName (Set Text))
       parseFramework = withObject "parseFramework" $ \o -> do
         projectFrameworks <- for (HM.toList o) $ \(framework, kv) -> do
           frameworkDeps <- parseFrameworkDeps kv
-          pure (framework, frameworkDeps)
+          pure (FrameworkName framework, frameworkDeps)
         pure $ Map.fromList projectFrameworks
 
 buildGraph :: ProjectAssetsJson -> Graphing Dependency
@@ -138,26 +142,21 @@ buildGraph project = foldr (<>) Graphing.empty graphsOfTargetFrameworks
         (graphOfFramework $ projectFramework project)
         (Map.toList $ targets project)
 
-graphOfFramework :: Map.Map Text (Set Text) -> (Text, Map.Map Text DependencyInfo) -> Graphing Dependency
+graphOfFramework :: Map.Map FrameworkName (Set Text) -> (FrameworkName, Map.Map Text DependencyInfo) -> Graphing Dependency
 graphOfFramework projectFrameworkDeps (targetFramework, targetFrameworkDeps) =
-  withoutTags
+  Graphing.gmap toDependency
     . withoutProjects
     . promoteToDirect isDirectDep
-    $ unfoldDeep allResolvedDeps getTransitiveDeps toDependency
+    $ unfoldDeep allResolvedDeps getTransitiveDeps id
   where
-    withoutTags :: Graphing Dependency -> Graphing Dependency
-    withoutTags = Graphing.gmap (\d -> d{dependencyTags = Map.empty})
-
-    withoutProjects :: Graphing Dependency -> Graphing Dependency
+    withoutProjects :: Graphing NuGetDep -> Graphing NuGetDep
     withoutProjects = Graphing.shrink (not . isProjectDep)
 
-    isDirectDep :: Dependency -> Bool
-    isDirectDep d = dependencyName d `elem` (getProjectDirectDepsByFramework)
+    isDirectDep :: NuGetDep -> Bool
+    isDirectDep d = depName d `elem` (getProjectDirectDepsByFramework)
 
-    isProjectDep :: Dependency -> Bool
-    isProjectDep Dependency{..} = case Map.lookup "type" dependencyTags of
-      Nothing -> False
-      Just tags -> "project" `elem` tags
+    isProjectDep :: NuGetDep -> Bool
+    isProjectDep NuGetDep{..} = completeDepType == "project"
 
     allResolvedDeps :: [NuGetDep]
     allResolvedDeps = mapMaybe toNugetDep $ Map.toList targetFrameworkDeps
@@ -178,7 +177,7 @@ graphOfFramework projectFrameworkDeps (targetFramework, targetFrameworkDeps) =
         , dependencyVersion = Just (CEq depVersion)
         , dependencyLocations = []
         , dependencyEnvironments = mempty
-        , dependencyTags = Map.fromList [("type", [completeDepType])] -- we provide tag, for shrinking project deps!
+        , dependencyTags = Map.empty
         }
 
     -- Note:
@@ -210,8 +209,8 @@ graphOfFramework projectFrameworkDeps (targetFramework, targetFrameworkDeps) =
 -- | Check if two framework identifier are equivalent.
 -- FIXME: This hack, although works for 99+% targets, deterministic approach is needed (ideally we replicate nuget)
 -- Reference: https://github.com/NuGet/NuGet.Client/blob/dev/src/NuGet.Core/NuGet.Frameworks/NuGetFrameworkFactory.cs
-approxEql :: Text -> Text -> Bool
-approxEql targetF projectF
+approxEql :: FrameworkName -> FrameworkName -> Bool
+approxEql (FrameworkName targetF) (FrameworkName projectF)
   | targetF == projectF = True
   | simplified targetF == simplified projectF = True
   | otherwise = numbersOnly targetF == numbersOnly projectF

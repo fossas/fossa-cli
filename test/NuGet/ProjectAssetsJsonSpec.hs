@@ -10,7 +10,7 @@ import Data.String.Conversion (toString)
 import Data.Text (Text)
 import DepTypes
 import GraphUtil
-import Strategy.NuGet.ProjectAssetsJson
+import Strategy.NuGet.ProjectAssetsJson (FrameworkName (..), approxEql, buildGraph)
 import Test.Hspec
 
 dependencyOne :: Dependency
@@ -198,13 +198,13 @@ spec = do
   testFile <- runIO (BS.readFile "test/NuGet/testdata/project.assets.json")
 
   describe "approxEqlFramework" $ do
-    it "should return false when provided with equivalent framework" $ do
-      (approxEql "net472" ".NETFramework,Version=4.5.2") `shouldBe` False
-      (approxEql "netstandard2.0" ".NETStandard,Version=3.0") `shouldBe` False
+    it "should return false when provided with not equivalent framework" $ do
+      approxEql (FrameworkName "net472") (FrameworkName ".NETFramework,Version=4.5.2") `shouldBe` False
+      approxEql (FrameworkName "netstandard2.0") (FrameworkName ".NETStandard,Version=3.0") `shouldBe` False
 
     for_ testCasesForEquivalentFrameworks $ \(candidateLhs, candidateRhs) -> do
       it ("should return true when, comparing " <> (toString candidateLhs) <> " ~ " <> (toString candidateRhs)) $ do
-        approxEql candidateLhs candidateRhs `shouldBe` True
+        approxEql (FrameworkName candidateLhs) (FrameworkName candidateRhs) `shouldBe` True
 
   describe "project.assets.json analyzer" $ do
     it "reads a file and constructs an accurate graph" $ do
