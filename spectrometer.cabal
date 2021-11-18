@@ -261,6 +261,7 @@ library
     Strategy.Go.GlideLock
     Strategy.Go.GoList
     Strategy.Go.Gomod
+    Strategy.Go.GoModGraph
     Strategy.Go.GopkgLock
     Strategy.Go.GopkgToml
     Strategy.Go.Transitive
@@ -380,6 +381,7 @@ test-suite unit-tests
     Go.GlideLockSpec
     Go.GoListSpec
     Go.GomodSpec
+    Go.GoModGraphSpec
     Go.GopkgLockSpec
     Go.GopkgTomlSpec
     Go.TransitiveSpec

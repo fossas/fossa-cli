@@ -14,6 +14,7 @@ import Effect.ReadFS
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
 import Strategy.Go.GoList qualified as GoList
+import Strategy.Go.GoModGraph qualified as GoModGraph
 import Strategy.Go.Gomod qualified as Gomod
 import Types
 
@@ -52,7 +53,8 @@ getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Gomodule
 getDeps project = do
   (graph, graphBreadth) <-
     context "Gomodules" $
-      context "Dynamic analysis" (GoList.analyze' (gomodulesDir project))
+      context "Dynamic analysis using go mod graph" (GoModGraph.analyze (gomodulesDir project))
+        <||> context "Dynamic analysis using go list" (GoList.analyze' (gomodulesDir project))
         <||> context "Static analysis" (Gomod.analyze' (gomodulesGomod project))
   pure $
     DependencyResults
