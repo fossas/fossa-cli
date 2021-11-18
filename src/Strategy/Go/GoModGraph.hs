@@ -122,7 +122,7 @@ buildGraph fromToMods mainMod selectedMods directMods applyMVS =
     . Graphing.induceJust
     . Graphing.gmap withSelection
     . Graphing.promoteToDirect (`member` directMods)
-    . Graphing.shrink (\m -> m == fromMaybe impossibleMod mainMod)
+    . Graphing.shrink (\m -> m /= fromMaybe impossibleMod mainMod)
     . Graphing.edges
     $ fromToMods
   where
@@ -160,9 +160,9 @@ analyze dir = do
   -- Get selected module version from mvs selection using `go list`
   -- `go list` reports final versions that will be used in a build for all direct and deep dependencies
   goListStdout <- context ("Getting selected dependencies versions using, " <> toText (show goListJsonCmd)) $ execThrow dir goListJsonCmd
-  (mainMod, directMods, selectedMods) <- case decodeMany goListStdout of
+  (mainMod, selectedMods, directMods) <- case decodeMany goListStdout of
     Left (path, err) -> fatal (CommandParseError goListJsonCmd (toText (formatError path err)))
-    Right (mods :: [GoListModule]) -> pure (onlyMain mods, onlyDirects mods, withoutMain mods)
+    Right (mods :: [GoListModule]) -> pure (onlyMain mods, withoutMain mods, onlyDirects mods)
 
   -- Command 'go mod graph' reports, all module version considered (not just final version selected)
   -- For this reason, we filter out versions of module, not used in build using (versions provided by 'go list')
