@@ -1,12 +1,17 @@
-# Fossa CLI
+![FOSSA](https://raw.githubusercontent.com/fossas/fossa-cli/master/docs/assets/header.png)
+
+# FOSSA CLI
 
 [![Build](https://github.com/fossas/fossa-cli/actions/workflows/build.yml/badge.svg)](https://github.com/fossas/fossa-cli/actions/workflows/build.yml)
 [![Dependency scan](https://github.com/fossas/fossa-cli/actions/workflows/dependency-scan.yml/badge.svg)](https://github.com/fossas/fossa-cli/actions/workflows/dependency-scan.yml) <!-- markdown-link-check-disable-next-line -->
 [![FOSSA Status](https://app.fossa.com/api/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli.svg?type=shield)](https://app.fossa.com/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli?ref=badge_shield)
+[![FOSSA Downloads](https://app.fossa.com/api/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli.svg?type=shield)](https://app.fossa.com/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli?ref=badge_shield)
+[![Github All Releases](https://img.shields.io/github/downloads/fossas/fossa-cli/total.svg)]([fossa.com](https://github.com/fossas/fossa-cli/release))
+
 
 Fossa CLI is a zero-configuration polyglot dependency analysis tool. You can point fossa CLI at any codebase or build, and it will automatically detect dependencies being used by your project.
 
-Fossa CLI currently supports automatic dependency analysis for [many different build tools and languages](docs/references/strategies/README.md#supported-languages). It also has limited support for vendored dependency detection, container scanning, and system dependency detection. These features are still a work in progress. Our goal is to make fossa-cli a single, universal tool for all kinds of dependency analysis.
+Fossa CLI currently supports automatic dependency analysis for [many different build tools and languages](docs/references/strategies/README.md#supported-languages). It also has limited support for vendored dependency detection, container scanning, and system dependency detection. These features are still a work in progress. Our goal is to make the FOSSA CLI a universal tool for dependency analysis.
 
 Fossa CLI integrates with [FOSSA](https://fossa.com) for dependency analysis, license scanning, vulnerability scanning, attribution report generation, and more.
 
@@ -22,7 +27,7 @@ Fossa CLI integrates with [FOSSA](https://fossa.com) for dependency analysis, li
 
 ### Using the install script
 
-fossa-cli provides an install script that downloads the latest release from GitHub Releases for your computer's architecture. You can see the source code and flags at [`install-latest.sh`](./install-latest.sh) for Mac and Linux or [`install-latest.ps1`](./install-latest.ps1) for Windows.
+FOSSA CLI provides an install script that downloads the latest release from GitHub Releases for your computer's architecture. You can see the source code and flags at [`install-latest.sh`](./install-latest.sh) for Mac and Linux or [`install-latest.ps1`](./install-latest.ps1) for Windows.
 
 **NOTE:** You may need to add the downloaded executable to your `$PATH`. The installer script will output the installed path of the executable. You can also use `-b` to pick the installation directory when using `install-latest.sh` (see [the `install-latest.sh` source code](./install-latest.sh) for details).
 
@@ -54,11 +59,11 @@ scoop install fossa
 
 ### Installing manually
 
-You can install fossa-cli releases manually by downloading the latest release from [GitHub Releases](https://github.com/fossas/fossa-cli/releases) and extracting the binary to your `$PATH`.
+You can install the FOSSA CLI releases manually by downloading the latest release from [GitHub Releases](https://github.com/fossas/fossa-cli/releases) and extracting the binary to your `$PATH`.
 
 ## Installing CLI 1.x
 
-You can install fossa-cli 1.x with installation script for macOS or 64-bit Linux using:
+You can install FOSSA CLI 1.x with installation script for macOS or 64-bit Linux using:
 
 ```bash
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-v1.sh | bash
@@ -103,9 +108,9 @@ cd $MY_PROJECT_DIR
 fossa analyze
 ```
 
-#### Installing fossa-cli
+#### Installing FOSSA CLI
 
-Follow [the installation instructions](#installation) above to install fossa-cli. Once installed, you should have a new binary named `fossa` available on your `$PATH`.
+Follow [the installation instructions](#installation) above to install the FOSSA CLI. Once installed, you should have a new binary named `fossa` available on your `$PATH`.
 
 #### Generating an API key
 
@@ -154,9 +159,9 @@ Now that your analysis is complete, there are a couple things you might want to 
 
 ## User Manual
 
-For most users, fossa-cli will work out-of-the-box without any configuration. Just get an API key, run `fossa analyze`, and view your results in the FOSSA web application.
+For most users, the FOSSA CLI will work out-of-the-box without any configuration. Just get an API key, run `fossa analyze`, and view your results in the FOSSA web application.
 
-Users who need more advanced customizations or features should see the [User Manual](./docs/README.md). Some common topics of interest include:
+Users who need advanced customization or features should see the [User Manual](./docs/README.md). Some common topics of interest include:
 
 - [Debugging your integration](./docs/walkthroughs/debugging-your-integration.md)
 - [Specifying vendored dependencies](docs/features/vendored-dependencies.md)
