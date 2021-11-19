@@ -90,8 +90,22 @@ data NuGetDep = NuGetDep
   }
   deriving (Show, Eq, Ord)
 
+data NuGetDepKey = NuGetDepKey
+  { depKeyName :: Text
+  , depKeyVersion :: Text
+  }
+  deriving (Show, Eq, Ord, Generic)
+
+instance FromJSONKey (NuGetDepKey) where
+  fromJSONKey :: FromJSONKeyFunction NuGetDepKey
+  fromJSONKey = FromJSONKeyTextParser $ \depString ->
+    case Text.splitOn "/" depString of
+      [name, ver] -> pure $ NuGetDepKey name ver
+      _ -> fail $ "Unexpected dependency key: " <> show depString
+  fromJSONKeyList = replicate 1 <$> fromJSONKey
+
 data ProjectAssetsJson = ProjectAssetsJson
-  { targets :: Map.Map FrameworkName (Map.Map Text DependencyInfo)
+  { targets :: Map.Map FrameworkName (Map.Map NuGetDepKey DependencyInfo)
   , projectFramework :: Map.Map FrameworkName (Set Text)
   }
   deriving (Show, Eq, Ord)
@@ -142,7 +156,7 @@ buildGraph project = foldr (<>) Graphing.empty graphsOfTargetFrameworks
         (graphOfFramework $ projectFramework project)
         (Map.toList $ targets project)
 
-graphOfFramework :: Map.Map FrameworkName (Set Text) -> (FrameworkName, Map.Map Text DependencyInfo) -> Graphing Dependency
+graphOfFramework :: Map.Map FrameworkName (Set Text) -> (FrameworkName, Map.Map NuGetDepKey DependencyInfo) -> Graphing Dependency
 graphOfFramework projectFrameworkDeps (targetFramework, targetFrameworkDeps) =
   Graphing.gmap toDependency
     . withoutProjects
@@ -159,12 +173,10 @@ graphOfFramework projectFrameworkDeps (targetFramework, targetFrameworkDeps) =
     isProjectDep NuGetDep{..} = completeDepType == "project"
 
     allResolvedDeps :: [NuGetDep]
-    allResolvedDeps = mapMaybe toNugetDep $ Map.toList targetFrameworkDeps
+    allResolvedDeps = map toNugetDep $ Map.toList targetFrameworkDeps
 
-    toNugetDep :: (Text, DependencyInfo) -> Maybe NuGetDep
-    toNugetDep (depString, dep) = case Text.splitOn "/" depString of
-      [name, ver] -> Just $ NuGetDep name ver (depType dep) (deepDeps dep)
-      _ -> Nothing
+    toNugetDep :: (NuGetDepKey, DependencyInfo) -> NuGetDep
+    toNugetDep (depKey, dep) = NuGetDep (depKeyName depKey) (depKeyVersion depKey) (depType dep) (deepDeps dep)
 
     getTransitiveDeps :: NuGetDep -> [NuGetDep]
     getTransitiveDeps nugetDep = concat $ (\(name, _) -> filter (\d -> depName d == name) allResolvedDeps) <$> Map.toList (completeDeepDeps nugetDep)
