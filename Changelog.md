@@ -1,5 +1,10 @@
 # Fossa CLI Changelog
 
+## v3.0.2
+
+- Nuget (projectassetsjson): Ignores project type dependencies in reporting ([#704](https://github.com/fossas/fossa-cli/pull/704))
+- Nuget (projectassetsjson): Fixes a bug, where indirect dependencies where appearing as direct dependencies([#704](https://github.com/fossas/fossa-cli/pull/704))
+
 ## v3.0.1
 
 - Deduplicates `vendored-dependencies` entries when possible, and provides a better error message when not. ([#689](https://github.com/fossas/fossa-cli/pull/689))

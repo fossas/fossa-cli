@@ -47,6 +47,7 @@ module Graphing (
   fromList,
   toList,
   unfold,
+  unfoldDeep,
 ) where
 
 import Algebra.Graph.AdjacencyMap (AdjacencyMap)
@@ -229,6 +230,31 @@ deeps = Graphing . AM.vertices . map Node
 -- __Unfold does not work for recursive inputs__
 unfold :: forall dep res. Ord res => [dep] -> (dep -> [dep]) -> (dep -> res) -> Graphing res
 unfold seed getDeps toDependency = directs directNodes <> edges builtEdges
+  where
+    directNodes :: [res]
+    directNodes = map toDependency seed
+
+    builtEdges :: [(res, res)]
+    builtEdges = map (bimap toDependency toDependency) (edgesFrom seed)
+
+    edgesFrom :: [dep] -> [(dep, dep)]
+    edgesFrom nodes = do
+      node <- nodes
+      let children = getDeps node
+      map (node,) children ++ edgesFrom children
+
+-- | @unfoldDeep dep getDeps toDependency@ unfolds a graph, given:
+--
+-- - The @deep@ dependencies in the graph
+--
+-- - A way to @getDeps@ for a dependency
+--
+-- - A way to convert a dependency @toDependency@
+--
+-- __unfoldDeep does not work for recursive inputs__
+-- __unfoldDeep marks all dependencies as deeps__
+unfoldDeep :: forall dep res. Ord res => [dep] -> (dep -> [dep]) -> (dep -> res) -> Graphing res
+unfoldDeep seed getDeps toDependency = deeps directNodes <> edges builtEdges
   where
     directNodes :: [res]
     directNodes = map toDependency seed
