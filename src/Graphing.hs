@@ -37,6 +37,7 @@ module Graphing (
   filter,
   shrink,
   shrinkSingle,
+  shrinkWithoutPromotionToDirect,
   pruneUnreachable,
   stripRoot,
   promoteToDirect,
@@ -129,6 +130,23 @@ shrink f = Graphing . AME.shrink f' . unGraphing
     f' :: Node a -> Bool
     f' Root = True
     f' (Node a) = f a
+
+-- | Unlike @shrink@ when root vertices are deleted, their successor are not promoted as direct.
+shrinkWithoutPromotionToDirect :: forall a. Ord a => (a -> Bool) -> Graphing a -> Graphing a
+shrinkWithoutPromotionToDirect f gr = foldl withoutEdge shrinkedGraph jumpedDirects
+  where
+    shrinkedGraph :: Graphing a
+    shrinkedGraph = shrink f gr
+
+    jumpedDirects :: [a]
+    jumpedDirects =
+      Set.toList $
+        Set.difference
+          (Set.fromList . directList $ shrinkedGraph)
+          (Set.fromList . directList $ gr)
+
+    withoutEdge :: Graphing a -> a -> Graphing a
+    withoutEdge g n = Graphing . AM.removeEdge Root (Node n) $ unGraphing g
 
 -- | Delete a vertex in a Grahing, preserving the overall structure by rewiring edges through the delted vertex.
 --

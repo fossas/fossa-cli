@@ -25,7 +25,7 @@ import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Path
-import Strategy.Node.PackageJson (FlatDeps (directDeps), NodePackage (pkgName), Production)
+import Strategy.Node.PackageJson (Development, FlatDeps (devDeps, directDeps), NodePackage (pkgName), Production)
 
 data NpmPackageJson = NpmPackageJson
   { packageName :: Text
@@ -59,7 +59,11 @@ instance FromJSON NpmDep where
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> FlatDeps -> m (Graphing Dependency)
 analyze file flatdeps = context "Analyzing Npm Lockfile" $ do
   packageJson <- context "Parsing package-lock.json" $ readContentsJson @NpmPackageJson file
-  context "Building dependency graph" $ pure $ buildGraph packageJson $ Set.map pkgName $ unTag @Production $ directDeps flatdeps
+  context "Building dependency graph" $ pure $ buildGraph packageJson directDepsSet
+  where
+    directDepsSet =
+      Set.map pkgName $
+        (unTag @Production $ directDeps flatdeps) <> (unTag @Development $ devDeps flatdeps)
 
 data NpmPackage = NpmPackage
   { lockName :: Text
@@ -73,8 +77,9 @@ data NpmPackageLabel = NpmPackageEnv DepEnvironment | NpmPackageLocation Text
   deriving (Eq, Ord, Show)
 
 buildGraph :: NpmPackageJson -> Set Text -> Graphing Dependency
-buildGraph packageJson directSet = run . withLabeling toDependency $ do
-  void $ Map.traverseWithKey (maybeAddDep False) (packageDependencies packageJson)
+buildGraph packageJson directSet =
+  run . withLabeling toDependency $
+    void $ Map.traverseWithKey (maybeAddDep False) (packageDependencies packageJson)
   where
     -- Skip adding deps if we think it's a workspace package.
     maybeAddDep isRecursive name dep@NpmDep{..} =
@@ -100,10 +105,13 @@ buildGraph packageJson directSet = run . withLabeling toDependency $ do
       traverse_ (label pkg . NpmPackageLocation) depResolved
 
       -- add edges to required packages
-      void $ Map.traverseWithKey (\reqName reqVer -> edge pkg (NpmPackage reqName reqVer)) depRequires
+      void $ Map.traverseWithKey (\reqName reqVer -> edge pkg $ NpmPackage reqName $ getResolvedVersion reqName reqVer) depRequires
 
       -- add dependency nodes
       void $ Map.traverseWithKey (maybeAddDep True) depDependencies
+
+    getResolvedVersion :: Text -> Text -> Text
+    getResolvedVersion reqName reqVersion = maybe reqVersion depVersion (Map.lookup reqName $ packageDependencies packageJson)
 
     toDependency :: NpmPackage -> Set NpmPackageLabel -> Dependency
     toDependency pkg = foldr addLabel (start pkg)
