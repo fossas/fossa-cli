@@ -160,6 +160,7 @@ nimbleDumpJsonCmd =
 
 -- | Represents content retrieved from @nimbleDumpJsonCmd@.
 newtype NimbleDump = NimbleDump {requires :: [NimbleRequire]} deriving (Show, Eq, Ord)
+
 newtype NimbleRequire = NimbleRequire {nameOf :: PackageName} deriving (Show, Eq, Ord)
 
 instance FromJSON NimbleDump where
