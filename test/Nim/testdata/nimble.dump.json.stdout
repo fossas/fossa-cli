@@ -1,0 +1,47 @@
+{
+    "name": "nim",
+    "version": "0.1.0",
+    "author": "User",
+    "desc": "A new awesome nimble package",
+    "license": "MIT",
+    "skipDirs": [],
+    "skipFiles": [],
+    "skipExt": [],
+    "installDirs": [],
+    "installFiles": [],
+    "installExt": [
+      "nim"
+    ],
+    "requires": [
+      {
+        "name": "nim",
+        "str": ">= 1.6.0",
+        "ver": {
+          "kind": "verEqLater",
+          "ver": "1.6.0"
+        }
+      },
+      {
+        "name": "C",
+        "str": ">= 0.4.1 & < 0.5.0",
+        "ver": {
+          "kind": "verIntersect",
+          "verILeft": {
+            "kind": "verEqLater",
+            "ver": "0.4.1"
+          },
+          "verIRight": {
+            "kind": "verEarlier",
+            "ver": "0.5.0"
+          }
+        }
+      }
+    ],
+    "bin": [
+      "nim"
+    ],
+    "binDir": "",
+    "srcDir": "src",
+    "backend": "c"
+}
+  

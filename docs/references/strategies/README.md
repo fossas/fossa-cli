@@ -58,6 +58,10 @@
 - [yarn](languages/nodejs/yarn.md)
 - [npm](languages/nodejs/npm.md)
 
+### nim
+
+- [Nimble](languages/nim/nimble.md)
+
 ### .NET
 
 - [NuGet](languages/dotnet/nuget.md)

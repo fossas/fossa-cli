@@ -57,6 +57,7 @@ FOSSA 3.x supports following new build managers and languages:
 - [Poetry (for Python)](references/strategies/languages/python/python.md)
 - [Mix (for Elixir)](references/strategies/languages/elixir/elixir.md)
 - [Fortran Package Manager (for Fortran)](references/strategies/languages/fortran/fortran.md)
+- [Nim (Nimble)](references/strategies/languages/nim/nimble.md)
 
 ### Automatic analysis target discovery
 

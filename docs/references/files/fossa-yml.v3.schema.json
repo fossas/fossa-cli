@@ -139,6 +139,10 @@
                             "description": "For npm targets (javascript)"
                         },
                         {
+                            "const": "nimble",
+                            "description": "For nimble targets (nim)"
+                        },
+                        {
                             "const": "pub",
                             "description": "For pub targets (dart, flutter)"
                         },
