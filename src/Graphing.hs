@@ -131,9 +131,21 @@ shrink f = Graphing . AME.shrink f' . unGraphing
     f' Root = True
     f' (Node a) = f a
 
--- | Unlike @shrink@ when root vertices are deleted, their successor are not promoted as direct.
+-- | Unlike @shrink@ when root vertices are deleted, their successor are not promoted as direct
+-- if they have any predecessors.
+--
+--  Example:
+--
+--   1 -> 2 -> 5 -> 6
+--        \       \
+--         \       7
+--   3 ----> 4
+--    \
+--     8
+--
+--  When node (3) is shrinked, 8 will be promoted to direct, and 4 will be not be promoted as direct.
 shrinkWithoutPromotionToDirect :: forall a. Ord a => (a -> Bool) -> Graphing a -> Graphing a
-shrinkWithoutPromotionToDirect f gr = foldl withoutEdge shrinkedGraph jumpedDirects
+shrinkWithoutPromotionToDirect f gr = foldl withoutEdgeToRoot shrinkedGraph jumpedDirects
   where
     shrinkedGraph :: Graphing a
     shrinkedGraph = shrink f gr
@@ -141,12 +153,16 @@ shrinkWithoutPromotionToDirect f gr = foldl withoutEdge shrinkedGraph jumpedDire
     jumpedDirects :: [a]
     jumpedDirects =
       Set.toList $
-        Set.difference
-          (Set.fromList . directList $ shrinkedGraph)
-          (Set.fromList . directList $ gr)
+        Set.filter (hasPredecessors shrinkedGraph) $
+          Set.difference
+            (Set.fromList . directList $ shrinkedGraph)
+            (Set.fromList . directList $ gr)
 
-    withoutEdge :: Graphing a -> a -> Graphing a
-    withoutEdge g n = Graphing . AM.removeEdge Root (Node n) $ unGraphing g
+    hasPredecessors :: Graphing a -> a -> Bool
+    hasPredecessors g n = Set.size (AM.preSet n $ toAdjacencyMap g) /= 0
+
+    withoutEdgeToRoot :: Graphing a -> a -> Graphing a
+    withoutEdgeToRoot g n = Graphing . AM.removeEdge Root (Node n) $ unGraphing g
 
 -- | Delete a vertex in a Grahing, preserving the overall structure by rewiring edges through the delted vertex.
 --
