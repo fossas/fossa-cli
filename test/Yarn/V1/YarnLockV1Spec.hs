@@ -102,13 +102,41 @@ packageSix =
     , dependencyTags = mempty
     }
 
+packageSeven :: Dependency
+packageSeven =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "packageSeven"
+    , dependencyVersion = Just $ CEq "7.0.0"
+    , dependencyLocations = ["https://registry.npmjs.org/packageSeven"]
+    , dependencyEnvironments = mempty
+    , dependencyTags = mempty
+    }
+
+prodPackageSeven :: Dependency
+prodPackageSeven = insertEnvironment EnvProduction packageSeven
+
+packageEight :: Dependency
+packageEight =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "packageEight"
+    , dependencyVersion = Just $ CEq "8.0.0"
+    , dependencyLocations = ["https://registry.npmjs.org/packageEight"]
+    , dependencyEnvironments = mempty
+    , dependencyTags = mempty
+    }
+
+prodPackageEight :: Dependency
+prodPackageEight = insertEnvironment EnvProduction packageEight
+
 devPackageSix :: Dependency
 devPackageSix = insertEnvironment EnvDevelopment packageSix
 
 simpleFlatDeps :: FlatDeps
 simpleFlatDeps =
   FlatDeps
-    (applyTag @Production $ Set.fromList [NodePackage "packageOne" "^1.0.0"])
+    (applyTag @Production $ Set.fromList [NodePackage "packageOne" "^1.0.0", NodePackage "packageSeven" "^7.0.0"])
     (applyTag @Development $ Set.fromList [NodePackage "packageSix" "^6.0.0"])
     mempty
 
@@ -127,12 +155,13 @@ spec = do
     it' "should produce expected structure" $ do
       yarnLock <- parseFile $(mkRelFile "yarn.lock")
       graph <- buildGraph yarnLock mempty
-      expectDeps' [packageOne, packageTwo, packageThree, packageFour, packageFive, packageSix] graph
+      expectDeps' [packageOne, packageTwo, packageThree, packageFour, packageFive, packageSix, packageSeven, packageEight] graph
       expectDirect' [] graph
       expectEdges'
         [ (packageOne, packageTwo)
         , (packageTwo, packageThree)
         , (packageSix, packageThree)
+        , (packageSeven, packageEight)
         ]
         graph
 
@@ -140,11 +169,12 @@ spec = do
     it' "Should apply the correct dep environments" $ do
       yarnLock <- parseFile $(mkRelFile "yarn.lock")
       graph <- buildGraph yarnLock simpleFlatDeps
-      expectDeps' [prodPackageOne, prodPackageTwo, prodDevPackageThree, packageFour, packageFive, devPackageSix] graph
-      expectDirect' [prodPackageOne, devPackageSix] graph
+      expectDeps' [prodPackageOne, prodPackageTwo, prodDevPackageThree, packageFour, packageFive, devPackageSix, prodPackageSeven, prodPackageEight] graph
+      expectDirect' [prodPackageOne, devPackageSix, prodPackageSeven] graph
       expectEdges'
         [ (prodPackageOne, prodPackageTwo)
         , (prodPackageTwo, prodDevPackageThree)
         , (devPackageSix, prodDevPackageThree)
+        , (prodPackageSeven, prodPackageEight)
         ]
         graph

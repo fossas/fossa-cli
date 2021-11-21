@@ -85,12 +85,15 @@ buildGraph ::
   FlatDeps ->
   m (Graphing Dependency)
 buildGraph lockfile FlatDeps{..} = fmap hydrateDepEnvs . withLabeling toDependency $
-  for_ (map firstKey $ MKM.toList lockfile) $ \(key, pkg) -> do
+  for_ (map allKeys $ MKM.toList lockfile) $ \(firstKey, otherKeys, pkg) -> do
     let parent :: YarnV1Package
-        parent = pairToPackage key pkg
+        parent = pairToPackage firstKey pkg
 
         keyAsNodePackage :: NodePackage
-        keyAsNodePackage = toNodePackage key
+        keyAsNodePackage = toNodePackage firstKey
+
+        otherKeysAsNodePackages :: [NodePackage]
+        otherKeysAsNodePackages = map toNodePackage otherKeys
 
         childrenSpecs :: [YL.PackageKey]
         childrenSpecs = YL.dependencies pkg
@@ -106,7 +109,7 @@ buildGraph lockfile FlatDeps{..} = fmap hydrateDepEnvs . withLabeling toDependen
     -- Add edges from current parent
     traverse_ (edge parent) children
     let promote env pkgSet =
-          if keyAsNodePackage `Set.member` pkgSet
+          if (keyAsNodePackage `Set.member` pkgSet) || any (`Set.member` pkgSet) otherKeysAsNodePackages
             then do
               direct parent
               label parent $ NodeEnvironment env
@@ -173,8 +176,8 @@ missingResolvedVersionErrorMsg key =
 pairToPackage :: YL.PackageKey -> YL.Package -> YarnV1Package
 pairToPackage key pkg = YarnV1Package (extractFullName key) (YL.version pkg)
 
-firstKey :: (NE.NonEmpty a, b) -> (a, b)
-firstKey (neList, pkg) = (NE.head neList, pkg)
+allKeys :: (NE.NonEmpty a, b) -> (a, [a], b)
+allKeys (neList, pkg) = (NE.head neList, drop 1 $ NE.toList neList, pkg)
 
 extractFullName :: YL.PackageKey -> Text
 extractFullName key = case YL.name key of

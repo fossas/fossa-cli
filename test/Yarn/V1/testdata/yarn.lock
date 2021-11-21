@@ -26,3 +26,11 @@ packageSix@^6.0.0:
   resolved "https://registry.npmjs.org/packageSix"
   dependencies:
     packageThree "^3.0.0"
+packageSeven@7.0.0, packageSeven@^7.0.0:
+  version "7.0.0"
+  resolved "https://registry.npmjs.org/packageSeven"
+  dependencies:
+    packageEight "8.0.0"
+packageEight@8.0.0:
+  version "8.0.0"
+  resolved "https://registry.npmjs.org/packageEight"
