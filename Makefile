@@ -5,7 +5,15 @@ build:
 	cabal build
 
 test:
-	cabal test
+	@echo "Testing with unit tests"
+	cabal test unit-tests --test-show-details=direct
+
+test-integration:
+	@echo "Testing with integrations tests"
+	cabal test integration-tests --test-show-details=direct
+
+	@echo "Removing downloaded artifact"
+	if [ -d "integration-test/artifacts/" ]; then rm -r "integration-test/artifacts/"; fi
 
 # Dogfood the dev version
 analyze:
@@ -41,10 +49,8 @@ lint:
 # Performs markdown lint checks for dead links
 # You will need to install https://github.com/tcort/markdown-link-check
 check-links:
-	@echo "Running markdown-link-check in docs directory"
 	find ./docs/ -name \*.md -exec markdown-link-check {} \;
-	@echo "Running markdown-link-check for README.md"
-	markdown-link-check README.md
+	markdown-link-check README.md Changelog.md
 
 # Docker doesn't always check for new versions during build, so pulling ensures
 # that we always have the latest.
@@ -53,4 +59,4 @@ check-ci:
 	docker build --tag delete-me -f docker/Dockerfile.lint .
 	docker rmi delete-me
 
-.PHONY: build test analyze install-local fmt check check-fmt lint
+.PHONY: build test test-integration analyze install-local fmt check check-fmt lint
