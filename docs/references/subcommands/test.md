@@ -10,7 +10,7 @@ The test command checks whether the most-recent scan of your FOSSA project raise
 
 ### Specifying a timeout
 
-By default, `fossa test` waits a maximum of 10 minutes for issue scan results. To override the default timeout, use, e.g.:
+By default, `fossa test` waits a maximum of 3600 seconds (1 hour) for issue scan results. To override the default timeout, use, e.g.:
 
 ```sh
 fossa test --timeout 60
