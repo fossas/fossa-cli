@@ -139,6 +139,9 @@ import Types (TargetFilter)
 windowsOsName :: String
 windowsOsName = "mingw32"
 
+oneHourInSeconds :: Int
+oneHourInSeconds = 3600
+
 mainPrefs :: ParserPrefs
 mainPrefs =
   prefs $
@@ -505,7 +508,7 @@ reportOpts :: Parser ReportOptions
 reportOpts =
   ReportOptions
     <$> switch (long "json" <> help "Output the report in JSON format (Currently required).")
-    <*> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
+    <*> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value oneHourInSeconds)
     <*> reportCmd
     <*> baseDirArg
 
@@ -518,7 +521,7 @@ reportCmd =
 testOpts :: Parser TestOptions
 testOpts =
   TestOptions
-    <$> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
+    <$> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value oneHourInSeconds)
     <*> flag Test.TestOutputPretty Test.TestOutputJson (long "json" <> help "Output issues as json")
     <*> baseDirArg
 
@@ -537,7 +540,7 @@ vpsReportOpts :: Parser VPSReportOptions
 vpsReportOpts =
   VPSReportOptions
     <$> switch (long "json" <> help "Output the report in JSON format (Currently required).")
-    <*> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
+    <*> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value oneHourInSeconds)
     <*> vpsReportCmd
     <*> baseDirArg
 
@@ -558,7 +561,7 @@ vpsReportCmd =
 vpsTestOpts :: Parser VPSTestOptions
 vpsTestOpts =
   VPSTestOptions
-    <$> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
+    <$> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value oneHourInSeconds)
     <*> flag VPSTest.TestOutputPretty VPSTest.TestOutputJson (long "json" <> help "Output issues as json")
     <*> baseDirArg
 
@@ -647,7 +650,7 @@ containerAnalyzeOpts =
 containerTestOpts :: Parser ContainerTestOptions
 containerTestOpts =
   ContainerTestOptions
-    <$> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
+    <$> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value oneHourInSeconds)
     <*> flag ContainerTest.TestOutputPretty ContainerTest.TestOutputJson (long "json" <> help "Output issues as json")
     <*> imageTextArg
 

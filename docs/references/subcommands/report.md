@@ -16,7 +16,7 @@ fossa report attribution
 
 ### Specifying a report timeout
 
-By default, `fossa report` waits a maximum of 10 minutes for report contents. To override the default timeout, use, e.g.:
+By default, `fossa report` waits a maximum of 3600 seconds (1 hour) for report contents. To override the default timeout, use, e.g.:
 
 ```sh
 fossa report attribution --timeout 60
