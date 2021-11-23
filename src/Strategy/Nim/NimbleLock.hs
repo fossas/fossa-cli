@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Strategy.Nim.NimbleLock (
   analyze,
 
@@ -16,8 +18,9 @@ import Control.Effect.Diagnostics (Diagnostics, context, recover)
 import Data.Aeson (
   FromJSON (parseJSON),
   FromJSONKey,
-  Value (String),
+  Value,
   withObject,
+  withText,
   (.:),
  )
 import Data.Aeson.Types (Parser)
@@ -74,7 +77,7 @@ instance FromJSON NimbleLock where
     pure $ NimbleLock pkgs
     where
       parsePkgs :: Value -> Parser [NimPackage]
-      parsePkgs = withObject "NimPackage" $ \o -> do
+      parsePkgs = withObject "NimPackage" $ \o ->
         for (HM.toList o) $ \(pkgName, pkgMeta) -> do
           parseNimPackageWithName (PackageName pkgName) pkgMeta
 
@@ -92,17 +95,15 @@ data NimbleDownloadMethod
   deriving (Show, Eq, Ord)
 
 instance FromJSON NimbleDownloadMethod where
-  parseJSON (String s) = pure $ case s of
-    "git" -> NimbleDownloadMethodGit
-    _ -> NimbleDownloadMethodOther
-  parseJSON notSupported = fail $ "Expected string, but received: " <> show notSupported
+  parseJSON = withText "NimbleDownloadMethod" $ \case
+    "git" -> pure NimbleDownloadMethodGit
+    _ -> pure NimbleDownloadMethodOther
 
 newtype PackageName = PackageName {unPackageName :: Text}
   deriving (Show, Eq, Ord, Generic, FromJSONKey)
 
 instance FromJSON PackageName where
-  parseJSON (String name) = pure $ PackageName name
-  parseJSON notSupported = fail $ "Expected string, but received: " <> show notSupported
+  parseJSON = withText "PackageName" $ \s -> pure $ PackageName s
 
 -- | Builds the graph from nimble lock file, and enriches with output of nimble dump.
 buildGraph :: NimbleLock -> Maybe NimbleDump -> Graphing Dependency
@@ -110,7 +111,7 @@ buildGraph lockFile nimbleDump =
   Graphing.induceJust
     . Graphing.gmap toDependency
     . applyDirect
-    $ Graphing.unfoldDeep (packages lockFile) (getTransitives) (id)
+    $ Graphing.unfoldDeep (packages lockFile) getTransitives id
   where
     pkgRegistry :: Map PackageName NimPackage
     pkgRegistry = Map.fromList $ map (\p -> (name p, p)) (packages lockFile)

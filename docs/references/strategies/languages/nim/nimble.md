@@ -45,7 +45,7 @@ requires "jester >= 0.4.1 & < 0.5.0"
 3. Execute `nimble lock` to install and pin dependencies - this will create (or modify) the `nimble.lock` file.
 4. Execute `fossa analyze -o` on the project to print analyzed dependency graphing (this will not upload any analysis to any endpoint)
 
->> If you are on older version of Nim, you may need to do following:
+>> If you are using an on older version of Nim, you may need to do following:
 >>  Perform: `choosenim 1.6.0`
 >>  Perform: `nimble install https://github.com/nim-lang/nimble@\#head` (get latest nimble or any version after lock file support!)
 
