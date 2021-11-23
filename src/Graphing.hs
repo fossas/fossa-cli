@@ -151,6 +151,8 @@ shrinkWithoutPromotionToDirect f gr = foldl' withoutEdgeToRoot shrinkedGraph jum
     shrinkedGraph :: Graphing a
     shrinkedGraph = shrink f gr
 
+    -- Identify direct nodes after shrinking the graph on predicate,
+    -- that were not part of direct nodes previously and have predecessors. 
     jumpedDirects :: [a]
     jumpedDirects =
       Set.toList $
