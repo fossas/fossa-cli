@@ -434,3 +434,27 @@ test-suite unit-tests
     , hspec-hedgehog                  ^>=0.0.1.2
     , hspec-megaparsec                ^>=2.2
     , spectrometer
+
+
+test-suite integration-tests
+  import:             lang
+  import:             deps
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     integration-test
+  main-is:            test.hs
+  ghc-options:        -threaded
+
+  other-modules:
+    Analysis.Python.SetuptoolsSpec
+    Analysis.Utils
+
+  build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
+  build-depends:
+    , hedgehog                        ^>=1.0.2
+    , hspec                           ^>=2.8.2
+    , hspec-core                      ^>=2.8.2
+    , hspec-expectations-pretty-diff  ^>=0.7.2.5
+    , hspec-hedgehog                  ^>=0.0.1.2
+    , hspec-megaparsec                ^>=2.2
+    , req-conduit                     ^>=1.0.1
+    , spectrometer
