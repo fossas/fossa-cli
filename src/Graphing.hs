@@ -56,6 +56,7 @@ import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Algorithm qualified as AMA
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
 import Data.Bifunctor (bimap)
+import Data.List (foldl')
 import Data.Set qualified as Set
 import Prelude hiding (filter)
 import Prelude qualified
@@ -145,7 +146,7 @@ shrink f = Graphing . AME.shrink f' . unGraphing
 --
 --  When node (3) is shrinked, 8 will be promoted to direct, and 4 will be not be promoted as direct.
 shrinkWithoutPromotionToDirect :: forall a. Ord a => (a -> Bool) -> Graphing a -> Graphing a
-shrinkWithoutPromotionToDirect f gr = foldl withoutEdgeToRoot shrinkedGraph jumpedDirects
+shrinkWithoutPromotionToDirect f gr = foldl' withoutEdgeToRoot shrinkedGraph jumpedDirects
   where
     shrinkedGraph :: Graphing a
     shrinkedGraph = shrink f gr
@@ -159,7 +160,7 @@ shrinkWithoutPromotionToDirect f gr = foldl withoutEdgeToRoot shrinkedGraph jump
             (Set.fromList . directList $ gr)
 
     hasPredecessors :: Graphing a -> a -> Bool
-    hasPredecessors g n = Set.size (AM.preSet n $ toAdjacencyMap g) /= 0
+    hasPredecessors g n = not $ Set.null (AM.preSet n $ toAdjacencyMap g)
 
     withoutEdgeToRoot :: Graphing a -> a -> Graphing a
     withoutEdgeToRoot g n = Graphing . AM.removeEdge Root (Node n) $ unGraphing g
