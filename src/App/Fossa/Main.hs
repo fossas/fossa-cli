@@ -508,7 +508,7 @@ reportOpts :: Parser ReportOptions
 reportOpts =
   ReportOptions
     <$> switch (long "json" <> help "Output the report in JSON format (Currently required).")
-    <*> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value 600)
+    <*> option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)" <> value oneHourInSeconds)
     <*> reportCmd
     <*> baseDirArg
 
