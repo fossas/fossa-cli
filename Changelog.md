@@ -1,5 +1,14 @@
 # Fossa CLI Changelog
 
+## v3.0.3
+
+- Increases default timeout to 3600 seconds (1 hour) for commands listed below ([#712](https://github.com/fossas/fossa-cli/pull/712))
+  - `fossa test`
+  - `fossa container test`
+  - `fossa vps test`
+  - `fossa report`
+  - `fossa vps report`
+
 ## v3.0.2
 
 - Nuget (projectassetsjson): Ignores project type dependencies in reporting ([#704](https://github.com/fossas/fossa-cli/pull/704))
