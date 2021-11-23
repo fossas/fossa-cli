@@ -1709,7 +1709,7 @@ Built with go version go1.10 linux/amd64
 
 - 46d1dbd feat(go): Implement Go module discovery (#97)
 - b476653 fix(go): Do Go import tracing with go list instead of depth (#96)
-- 451ab20 README: Fix rendering of a link to https://fossa.io (#88)
+- 451ab20 README: Fix rendering of a link to `https://fossa.io` (#88)
 - 2893145 chore(cli): update help text
 - c285037 Merge branch 'master' of https://github.com/fossas/fossa-cli
 - d604f5b release(0.4.3): update readme and installer
