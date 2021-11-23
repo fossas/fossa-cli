@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## v3.0.4
+
+- Npm: Fixes a bug where dev dependencies were not included in result when using `--include-unused-deps` ([#710](https://github.com/fossas/fossa-cli/pull/710))
+
 ## v3.0.3
 
 - Increases default timeout to 3600 seconds (1 hour) for commands listed below ([#712](https://github.com/fossas/fossa-cli/pull/712))
