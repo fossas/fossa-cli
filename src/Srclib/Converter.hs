@@ -64,7 +64,7 @@ toSourceUnit leaveUnfiltered ProjectResult{..} =
     renderedPath = toText (toFilePath projectResultPath)
 
     filteredGraph :: Graphing Dependency
-    filteredGraph = Graphing.shrink ff projectResultGraph
+    filteredGraph = Graphing.shrinkWithoutPromotionToDirect ff projectResultGraph
       where
         ff =
           if leaveUnfiltered

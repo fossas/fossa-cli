@@ -19,6 +19,9 @@
 - suggest: {lhs: x <&> f, rhs: f <$> x}
 - suggest: {lhs: Data.Text.pack x, rhs: Data.String.Conversion.toText x}
 - suggest: {lhs: Data.Text.unpack x, rhs: Data.String.Conversion.toString x}
+- suggest: {lhs: Data.List.foldl x, rhs: Data.List.foldl' x}
+- suggest: {lhs: "(Data.Set.size x) == 0" , rhs: "Data.Set.null x"}
+- suggest: {lhs: "(Data.Set.size x) /= 0" , rhs: "not $ Data.Set.null x"}
 
 # Forbidden items, only allowed in compile-time code, or test code.
 - functions:
