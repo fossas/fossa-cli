@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## v3.0.5
+
+- Nim: Adds support for dependency analysis using `nimble.lock` file. ([#711](https://github.com/fossas/fossa-cli/pull/711))
+
 ## v3.0.4
 
 - Npm: Fixes a bug where dev dependencies were not included in result when using `--include-unused-deps` ([#710](https://github.com/fossas/fossa-cli/pull/710))
