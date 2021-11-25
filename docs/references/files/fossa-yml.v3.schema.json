@@ -226,7 +226,7 @@
                         "configurations-only": {
                             "type": "array",
                             "description": "Configurations to only include in analysis (by default excludes any other configurations not listed)",
-                            "items": {"type": "string"},
+                            "items": { "type": "string" },
                             "minItems": 1,
                             "uniqueItems": true 
                         }
@@ -254,6 +254,9 @@
         },
         "project": {
             "$ref": "#/$defs/project"
+        },
+        "experimental": {
+            "$ref": "#/$defs/experimental"
         },
         "revision": {
             "type": "array",
