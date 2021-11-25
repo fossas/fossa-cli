@@ -353,12 +353,6 @@ commands =
               (progDesc "List available analysis-targets in a directory (projects and sub-projects)")
           )
         <> command
-          "vps"
-          ( info
-              (VPSCommand <$> vpsOpts)
-              (progDesc "Run in Vendored Package Scan mode")
-          )
-        <> command
           "container"
           ( info
               (ContainerCommand <$> containerOpts)
@@ -387,6 +381,12 @@ hiddenCommands =
           ( info
               (DumpBinsCommand <$> baseDirArg)
               (progDesc "Output all embedded binaries to specified path")
+          )
+        <> command
+          "vps"
+          ( info
+              (VPSCommand <$> vpsOpts)
+              (progDesc "Run in Vendored Package Scan mode")
           )
     )
 
