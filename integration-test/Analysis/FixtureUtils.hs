@@ -149,15 +149,12 @@ absoluteDirOf relDir = sendIO $ PIO.makeAbsolute (analysisIntegrationCaseFixture
 
 extractArtifact :: Url a -> Path Rel Dir -> Path Abs File -> Handle -> IO (Path Abs Dir)
 extractArtifact url extractAt tempFile tempFileHandle = do
-  -- Save content into binary file
   _ <- runReq defaultHttpConfig $
     reqBr GET url NoReqBody mempty $
     \r -> runConduitRes $ responseBodySource r .| CB.sinkFileCautious (toFilePath tempFile)
 
-  -- close file
   sendIO $ hClose tempFileHandle
 
-  -- Extract
   sendIO $ PIO.ensureDir extractAt
   archiveExtractFolder <- sendIO $ PIO.makeAbsolute extractAt
   sendIO $ extractTarGz archiveExtractFolder tempFile
@@ -173,9 +170,7 @@ downloadExtractArtifact target = sendIO $ do
   let artifactUrl = tarGzFileUrl target
   let archiveExtractionDir = analysisIntegrationCaseFixtureDir </> extractAt target
 
-  -- -- Ensure test artifacts are always fresh!
   PIO.ensureDir archiveExtractionDir
-  -- PIO.removeDirRecur archiveExtractionDir
   resolvedUrl <- useHttpsURI <$> mkURI artifactUrl
 
   case resolvedUrl of

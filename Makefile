@@ -5,6 +5,9 @@ build:
 	cabal build
 
 test:
+	cabal test unit-tests
+
+test-all:
 	cabal test
 
 # Dogfood the dev version
