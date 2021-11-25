@@ -3,6 +3,9 @@ module Strategy.Python.Setuptools (
   findProjects,
   getDeps,
   mkProject,
+
+  -- * for testing
+  SetuptoolsProject 
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)

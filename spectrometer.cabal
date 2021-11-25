@@ -123,13 +123,6 @@ common deps
     , yarn-lock                    ^>=0.6.5
     , zip                          ^>=1.7.1
     , zlib                         ^>=0.6.2.1
-    , hedgehog                        ^>=1.0.2
-    , hspec                           ^>=2.8.2
-    , hspec-core                      ^>=2.8.2
-    , hspec-expectations-pretty-diff  ^>=0.7.2.5
-    , hspec-hedgehog                  ^>=0.0.1.2
-    , hspec-megaparsec                ^>=2.2
-    , req-conduit                     ^>=1.0.1
 
 library
   import:          lang
@@ -328,7 +321,6 @@ library
     Text.URI.Builder
     Types
     VCS.Git
-    Utils
 
   hs-source-dirs:  src
 
@@ -444,25 +436,26 @@ test-suite unit-tests
     , spectrometer
 
 
--- test-suite integration-tests
---   import:             lang
---   import:             deps
---   type:               exitcode-stdio-1.0
---   hs-source-dirs:     integration-test
---   main-is:            test.hs
---   ghc-options:        -threaded
+test-suite integration-tests
+  import:             lang
+  import:             deps
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     integration-test
+  main-is:            test.hs
+  ghc-options:        -threaded
 
---   other-modules:
---     Analysis.Python.SetuptoolsSpec
---     Analysis.Utils
+  other-modules:
+    Analysis.Python.PoetrySpec
+    Analysis.FixtureUtils
+    Analysis.FixtureExpectationUtils
 
---   build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
---   build-depends:
---     , hedgehog                        ^>=1.0.2
---     , hspec                           ^>=2.8.2
---     , hspec-core                      ^>=2.8.2
---     , hspec-expectations-pretty-diff  ^>=0.7.2.5
---     , hspec-hedgehog                  ^>=0.0.1.2
---     , hspec-megaparsec                ^>=2.2
---     , req-conduit                     ^>=1.0.1
---     , spectrometer
+  build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
+  build-depends:
+    , hedgehog                        ^>=1.0.2
+    , hspec                           ^>=2.8.2
+    , hspec-core                      ^>=2.8.2
+    , hspec-expectations-pretty-diff  ^>=0.7.2.5
+    , hspec-hedgehog                  ^>=0.0.1.2
+    , hspec-megaparsec                ^>=2.2
+    , req-conduit                     ^>=1.0.1
+    , spectrometer

@@ -27,6 +27,7 @@ module Graphing (
   -- * Accessing graph elements
   directList,
   vertexList,
+  edgesList,
   toAdjacencyMap,
 
   -- * Manipulating a Graphing
@@ -231,6 +232,10 @@ directList (Graphing gr) = [node | Node node <- Set.toList (AM.postSet Root gr)]
 -- | Get a list of vertices in the Graphing
 vertexList :: Graphing ty -> [ty]
 vertexList gr = [node | Node node <- AM.vertexList (unGraphing gr)]
+
+-- | Gets a list of edges in the Graphing.
+edgesList :: Ord ty => Graphing ty -> [(ty, ty)]
+edgesList gr = AM.edgeList $ toAdjacencyMap gr
 
 -- | Convert to the underlying AdjacencyMap (without the Root element)
 toAdjacencyMap :: Ord ty => Graphing ty -> AM.AdjacencyMap ty
