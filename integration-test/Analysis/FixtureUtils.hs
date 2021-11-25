@@ -44,7 +44,6 @@ import Network.HTTP.Req (
   reqBr,
   runReq,
   useHttpsURI,
-  Scheme (..),
   Url,
  )
 import Network.HTTP.Req.Conduit (responseBodySource)
@@ -52,7 +51,7 @@ import Path
 import Path.IO qualified as PIO
 import Text.URI (mkURI)
 import Types
-import System.Directory.Internal.Prelude (hClose, finally, Handle)
+import System.Directory.Internal.Prelude (hClose, Handle)
 
 analysisIntegrationCaseFixtureDir :: Path Rel Dir
 analysisIntegrationCaseFixtureDir = [reldir|integration-test/artifacts/|]
