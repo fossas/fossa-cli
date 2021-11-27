@@ -50,13 +50,14 @@ import DepTypes (
  )
 import Discovery.Walk (WalkStep (..), fileName, walk')
 import Effect.Exec (AllowErr (..), Command (..), Exec, execThrow)
-import Effect.Logger (Logger, logWarn)
+import Effect.Logger (Logger, Pretty (pretty), logWarn)
 import Effect.ReadFS (ReadFS, doesFileExist)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, fromAbsDir, parent, parseRelFile, (</>))
 import Strategy.Gradle.Common (
   ConfigName (..),
+  getWarningMessages,
  )
 import Strategy.Gradle.ResolvedConfiguration (buildGraph, parseJsonDeps)
 import System.FilePath qualified as FilePath
@@ -233,6 +234,7 @@ getDeps ::
   , Has ReadFS sig m
   , Has Diagnostics sig m
   , Has (Reader AnalyzeExperimentalPreferences) sig m
+  , Has Logger sig m
   ) =>
   FoundTargets ->
   GradleProject ->
@@ -258,6 +260,7 @@ analyze ::
   , Has ReadFS sig m
   , Has Diagnostics sig m
   , Has (Reader AnalyzeExperimentalPreferences) sig m
+  , Has Logger sig m
   ) =>
   FoundTargets ->
   Path Abs Dir ->
@@ -279,4 +282,12 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
 
   let text = decodeUtf8 $ BL.toStrict stdout
   let packagesToOutput = parseJsonDeps text
+
+  -- Print all warning messages that seen in gradle init script
+  _ <- logWarningMessages (getWarningMessages text)
+
   context "Building dependency graph" $ pure (buildGraph packagesToOutput onlyConfigurations)
+
+-- | Print all warnings retrieved from gradle init script
+logWarningMessages :: Has Logger sig m => [Text] -> m ()
+logWarningMessages warnings = sequence_ $ logWarn . pretty . ("Gradle: " <>) <$> warnings

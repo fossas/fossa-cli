@@ -45,4 +45,4 @@ configNameToLabel conf =
 -- >>> getWarningMessages "FOSSA-WARNING (some scope): some message/n DEBUG (some scope): some debug message"
 -- ["some message"]
 getWarningMessages :: Text -> [Text]
-getWarningMessages text = map (Text.strip . Text.drop 2 . snd . Text.breakOn ") ") $ getLinesWithPrefix text "FOSSA-WARNING"
+getWarningMessages text = map (Text.strip . Text.drop 2 . snd . Text.breakOn "):") $ getLinesWithPrefix text "FOSSA-WARNING"
