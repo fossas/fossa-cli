@@ -130,18 +130,16 @@ allprojects {
                         printWarning ("Could not resolve dependency: ${id} for configuration ${config}. This dependency is ignored in analysis reporting.", "flatDeepAndDirectDepsToJson")
                     } else {
                         def id = it.selected.getId()
-                        if (id instanceof ProjectComponentIdentifier) {    
-                            resolvedDependencies << "{\"type\":\"project\",\"name\":\"${id.projectPath}\"}"
-                        }
-                        else if (id instanceof ModuleComponentIdentifier) {
+                        if (id instanceof ModuleComponentIdentifier) {
                             resolvedDependencies <<  "{\"type\":\"package\",\"name\":\"${id.group}:${id.module}\",\"version\":\"${id.version}\", \"dependencies\":[]}"
                         }
                         else {
-                            printWarning ("Recieved dependency which is not project component or module: ${id}. This dependency is ignored in analysis reporting", "flatDeepAndDirectDepsToJson")
-                            printWarning ("Could not resolve dependency: ${id} for configuration ${config}. This dependency is ignored in analysis reporting.", "flatDeepAndDirectDepsToJson")
+                            printDebug ("Recieved dependency which is not a module (external dep): ${id}. This dependency is ignored in analysis reporting", "flatDeepAndDirectDepsToJson")
                         }
                     }
                 }
+
+                // allDependencies may include duplicate dependenncies!
                 resolvedDependencies.unique { lhs, rhs -> lhs <=> rhs }
                 return resolvedDependencies
             }
