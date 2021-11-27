@@ -65,7 +65,7 @@ analyze' file = do
   graph <- context "Building dependency graph" $ pure (buildGraph config)
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = Graphing.pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = [file]
       }

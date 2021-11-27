@@ -13,6 +13,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
 import GHC.Generics (Generic)
+import Graphing (pruneUnreachableIfDirectNodes)
 import Path
 import Strategy.Ruby.BundleShow qualified as BundleShow
 import Strategy.Ruby.GemfileLock qualified as GemfileLock
@@ -80,7 +81,7 @@ analyzeGemfileLock project = do
   graph <- context "Gemfile.lock analysis" . GemfileLock.analyze' $ lockFile
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [lockFile]
       }

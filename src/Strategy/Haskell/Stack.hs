@@ -23,6 +23,7 @@ import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
+import Graphing (pruneUnreachableIfDirectNodes)
 import Graphing qualified as G
 import Path
 import Types
@@ -140,7 +141,7 @@ analyze project = do
   graph <- execJson @[StackDep] (stackDir project) stackJSONDepsCmd >>= buildGraph
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [stackFile project]
       }

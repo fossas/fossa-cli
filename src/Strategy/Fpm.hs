@@ -6,6 +6,7 @@ import Data.Aeson (ToJSON)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipSome), findFileNamed, walk')
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
+import Graphing (pruneUnreachableIfDirectNodes)
 import Path
 import Strategy.Fortran.FpmToml (analyzeFpmToml)
 import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (Partial))
@@ -52,7 +53,7 @@ getDeps project = do
   graph <- analyzeFpmToml $ fpmSpec project
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = [fpmSpec project]
       }

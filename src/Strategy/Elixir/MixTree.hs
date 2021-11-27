@@ -48,7 +48,7 @@ import DepTypes (
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
 import Effect.Logger (Logger, logWarn)
 import GHC.Generics (Generic)
-import Graphing (Graphing, unfold)
+import Graphing (Graphing, pruneUnreachableIfDirectNodes, unfold)
 import Path
 import Prettyprinter (pretty)
 import Text.Megaparsec (
@@ -92,7 +92,7 @@ analyze project = do
   graph <- context "Building dependency graph" $ pure (buildGraph depsAllEnvTree depsAllResolved)
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [mixFile project]
       }

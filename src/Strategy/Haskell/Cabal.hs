@@ -32,7 +32,7 @@ import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
 import GHC.Generics (Generic)
-import Graphing (Graphing)
+import Graphing (Graphing, pruneUnreachableIfDirectNodes)
 import Graphing qualified as G
 import Path
 import Types
@@ -200,7 +200,7 @@ analyze project = do
   graph <- context "Building dependency graph" $ buildGraph plans
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = cabalFiles project
       }

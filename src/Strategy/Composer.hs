@@ -19,7 +19,7 @@ import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
 import GHC.Generics (Generic)
-import Graphing (Graphing)
+import Graphing (Graphing, pruneUnreachableIfDirectNodes)
 import Path
 import Types
 
@@ -56,7 +56,7 @@ getDeps project = context "Composer" $ do
   graph <- context "Building dependency graph" $ pure (buildGraph lock)
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [composerLock project]
       }

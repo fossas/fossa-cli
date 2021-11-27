@@ -8,6 +8,7 @@ import Effect.Exec (Exec, Has)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
+import Graphing (pruneUnreachableIfDirectNodes)
 import Path
 import Strategy.Dart.PubDeps (analyzeDepsCmd)
 import Strategy.Dart.PubSpec (analyzePubSpecFile)
@@ -61,7 +62,7 @@ getDeps project = do
     Nothing -> analyzePubSpecFile $ pubSpec project
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = graphBreadth
       , dependencyManifestFiles = [pubSpec project]
       }

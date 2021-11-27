@@ -38,6 +38,7 @@ module Graphing (
   shrink,
   shrinkSingle,
   pruneUnreachable,
+  pruneUnreachableIfDirectNodes,
   stripRoot,
   promoteToDirect,
   shrinkRoots,
@@ -276,3 +277,12 @@ fromAdjacencyMap = Graphing . AM.gmap Node
 -- Alias for 'vertexList'
 toList :: Graphing ty -> [ty]
 toList = vertexList
+
+-- | Removes unreachable nodes, if there is at-least one direct node in the graph, otherwise, perform no transformation.
+-- FIXME: this is a hack to work around analyzers that aren't able to
+-- determine which dependencies are direct. Without this hack, all of
+-- their dependencies would be filtered out. The real fix to this is to
+-- have a separate designation for "reachable" vs "direct" on nodes in a
+-- Graphing, where direct deps are inherently reachable.
+pruneUnreachableIfDirectNodes :: Ord ty => Graphing ty -> Graphing ty
+pruneUnreachableIfDirectNodes gr = if (null $ directList gr) then gr else pruneUnreachable gr

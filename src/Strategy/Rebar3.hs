@@ -12,6 +12,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
 import GHC.Generics (Generic)
+import Graphing (pruneUnreachableIfDirectNodes)
 import Path
 import Strategy.Erlang.Rebar3Tree qualified as Rebar3Tree
 import Types
@@ -52,7 +53,7 @@ getDeps project = do
   (graph, graphBreadth) <- Rebar3Tree.analyze' (rebarDir project)
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = graphBreadth
       , dependencyManifestFiles = [rebarFile project]
       }

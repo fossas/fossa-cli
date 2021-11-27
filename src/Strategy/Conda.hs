@@ -9,6 +9,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
 import GHC.Generics (Generic)
+import Graphing (pruneUnreachableIfDirectNodes)
 import Path
 import Strategy.Conda.CondaList qualified as CondaList
 import Strategy.Conda.EnvironmentYml qualified as EnvironmentYml
@@ -61,7 +62,7 @@ analyzeCondaList project = do
   graph <- CondaList.analyze . condaDir $ project
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [condaEnvironmentYml project]
       }

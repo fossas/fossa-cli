@@ -28,7 +28,7 @@ import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
 import GHC.Generics (Generic)
-import Graphing (Graphing)
+import Graphing (Graphing, pruneUnreachableIfDirectNodes)
 import Path
 import Types
 
@@ -57,7 +57,7 @@ getDeps project = context "Pipenv" $ do
   graph <- context "Building dependency graph" $ pure (buildGraph lock maybeDeps)
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [pipenvLockfile project]
       }

@@ -41,7 +41,7 @@ import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Graphing (Graphing)
+import Graphing (Graphing, pruneUnreachableIfDirectNodes)
 import Path
 import Types
 
@@ -119,7 +119,7 @@ analyze file = do
       graph <- context "Building dependency graph" $ pure (buildGraph deps)
       pure $
         DependencyResults
-          { dependencyGraph = graph
+          { dependencyGraph = pruneUnreachableIfDirectNodes graph
           , dependencyGraphBreadth = Complete
           , dependencyManifestFiles = [file]
           }

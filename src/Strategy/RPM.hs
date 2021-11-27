@@ -25,7 +25,7 @@ import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
 import GHC.Generics (Generic)
-import Graphing (Graphing)
+import Graphing (Graphing, pruneUnreachableIfDirectNodes)
 import Graphing qualified as G
 import Path
 import Types
@@ -93,7 +93,7 @@ analyze specFiles = do
   -- TODO: Should each Dep have an origin path?
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = []
       }

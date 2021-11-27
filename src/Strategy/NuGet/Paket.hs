@@ -27,7 +27,7 @@ import Discovery.Walk
 import Effect.Grapher
 import Effect.ReadFS
 import GHC.Generics (Generic)
-import Graphing (Graphing)
+import Graphing (Graphing, pruneUnreachableIfDirectNodes)
 import Path
 import Text.Megaparsec hiding (label)
 import Text.Megaparsec.Char
@@ -75,7 +75,7 @@ analyze' file = do
   graph <- context "Building dependency graph" $ pure (buildGraph sections)
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [file]
       }

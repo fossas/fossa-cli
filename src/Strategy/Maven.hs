@@ -15,6 +15,7 @@ import Data.Aeson (ToJSON)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
+import Graphing (pruneUnreachableIfDirectNodes)
 import Path (Abs, Dir, Path, parent)
 import Strategy.Maven.DepTree qualified as DepTreeCmd
 import Strategy.Maven.PluginStrategy qualified as Plugin
@@ -74,7 +75,7 @@ getDeps (MavenProject closure) = do
         <||> context "Static analysis" (pure (Pom.analyze' closure, Partial))
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = graphBreadth
       , dependencyManifestFiles = [PomClosure.closurePath closure]
       }

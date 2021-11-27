@@ -23,7 +23,7 @@ import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
 import GHC.Generics (Generic)
-import Graphing (Graphing)
+import Graphing (Graphing, pruneUnreachableIfDirectNodes)
 import Graphing qualified
 import Parse.XML
 import Path
@@ -71,7 +71,7 @@ analyze' file = do
   graph <- context "Building dependency graph" $ pure (buildGraph ref)
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = [file]
       }

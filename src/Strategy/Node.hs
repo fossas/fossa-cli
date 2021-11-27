@@ -50,6 +50,7 @@ import Effect.ReadFS (
   readContentsJson,
  )
 import GHC.Generics (Generic)
+import Graphing (pruneUnreachableIfDirectNodes)
 import Path (Abs, Dir, File, Path, Rel, mkRelFile, parent, (</>))
 import Strategy.Node.Npm.PackageLock qualified as PackageLock
 import Strategy.Node.PackageJson (
@@ -145,12 +146,12 @@ getDeps (NPM graph) = analyzeNpm graph
 analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> PkgJsonGraph -> m DependencyResults
 analyzeNpmLock (Manifest file) graph = do
   result <- PackageLock.analyze file $ extractDepLists graph
-  pure $ DependencyResults result Complete [file]
+  pure $ DependencyResults (pruneUnreachableIfDirectNodes result) Complete [file]
 
 analyzeNpm :: (Has Diagnostics sig m) => PkgJsonGraph -> m DependencyResults
 analyzeNpm wsGraph = do
   graph <- PackageJson.analyze $ Map.elems $ jsonLookup wsGraph
-  pure $ DependencyResults graph Partial $ pkgFileList wsGraph
+  pure $ DependencyResults (pruneUnreachableIfDirectNodes graph) Partial $ pkgFileList wsGraph
 
 analyzeYarn ::
   ( Has Diagnostics sig m

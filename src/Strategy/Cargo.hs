@@ -24,7 +24,7 @@ import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Graphing (Graphing, stripRoot)
+import Graphing (Graphing, pruneUnreachableIfDirectNodes, stripRoot)
 import Path
 import Types
 
@@ -169,7 +169,7 @@ getDeps project = do
   (graph, graphBreadth) <- context "Cargo" . context "Dynamic analysis" . analyze . cargoDir $ project
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = graphBreadth
       , dependencyManifestFiles = [cargoToml project]
       }

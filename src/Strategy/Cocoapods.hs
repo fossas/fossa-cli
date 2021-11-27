@@ -13,6 +13,7 @@ import Data.Aeson (ToJSON)
 import Discovery.Walk
 import Effect.ReadFS
 import GHC.Generics (Generic)
+import Graphing (pruneUnreachableIfDirectNodes)
 import Path
 import Strategy.Cocoapods.Podfile qualified as Podfile
 import Strategy.Cocoapods.PodfileLock qualified as PodfileLock
@@ -71,7 +72,7 @@ analyzePodfile project = do
   graph <- Podfile.analyze' podFile
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = [podFile]
       }

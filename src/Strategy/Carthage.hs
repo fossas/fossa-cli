@@ -76,7 +76,7 @@ getDeps project = do
   graph <- context "Carthage" . context "Static analysis" . fmap (G.gmap toDependency) . analyze . carthageLock $ project
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = G.pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [carthageLock project]
       }

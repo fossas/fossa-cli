@@ -24,6 +24,7 @@ import Effect.Exec
 import Effect.Logger hiding (group)
 import Effect.ReadFS
 import GHC.Generics (Generic)
+import Graphing (pruneUnreachableIfDirectNodes)
 import Path
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures)
@@ -64,7 +65,7 @@ mkProject closure =
 getDeps :: ScalaProject -> DependencyResults
 getDeps (ScalaProject closure) =
   DependencyResults
-    { dependencyGraph = Pom.analyze' closure
+    { dependencyGraph = pruneUnreachableIfDirectNodes $ Pom.analyze' closure
     , dependencyGraphBreadth = Complete
     , dependencyManifestFiles = [PomClosure.closurePath closure]
     }

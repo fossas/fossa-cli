@@ -21,7 +21,7 @@ import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
 import GHC.Generics (Generic)
-import Graphing (Graphing)
+import Graphing (Graphing, pruneUnreachableIfDirectNodes)
 import Graphing qualified
 import Path
 import Types
@@ -62,7 +62,7 @@ analyze' file = do
   graph <- buildGraph <$> readContentsJson @ProjectJson file
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = [file]
       }

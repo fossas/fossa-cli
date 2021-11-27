@@ -16,15 +16,7 @@ mkResult basedir project dependencyResults =
   ProjectResult
     { projectResultType = projectType project
     , projectResultPath = projectPath project
-    , projectResultGraph =
-        -- FIXME: this is a hack to work around analyzers that aren't able to
-        -- determine which dependencies are direct. Without this hack, all of
-        -- their dependencies would be filtered out. The real fix to this is to
-        -- have a separate designation for "reachable" vs "direct" on nodes in a
-        -- Graphing, where direct deps are inherently reachable.
-        if null (Graphing.directList graph) || shouldKeepUnreachableDeps (projectType project)
-          then graph
-          else Graphing.pruneUnreachable graph
+    , projectResultGraph = graph
     , projectResultGraphBreadth = dependencyGraphBreadth dependencyResults
     , projectResultManifestFiles = relativeManifestFiles
     }
@@ -39,8 +31,3 @@ data ProjectResult = ProjectResult
   , projectResultGraphBreadth :: GraphBreadth
   , projectResultManifestFiles :: [SomeBase File]
   }
-
-shouldKeepUnreachableDeps :: Text -> Bool
-shouldKeepUnreachableDeps "swift" = True
-shouldKeepUnreachableDeps "gomod" = True
-shouldKeepUnreachableDeps _ = False

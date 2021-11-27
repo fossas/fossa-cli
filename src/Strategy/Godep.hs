@@ -11,6 +11,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
 import GHC.Generics (Generic)
+import Graphing (pruneUnreachableIfDirectNodes)
 import Path
 import Strategy.Go.GopkgLock qualified as GopkgLock
 import Strategy.Go.GopkgToml qualified as GopkgToml
@@ -79,7 +80,7 @@ analyzeGopkgToml project = do
   graph <- GopkgToml.analyze' tomlFile
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [tomlFile]
       }

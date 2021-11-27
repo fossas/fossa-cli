@@ -15,7 +15,7 @@ import Data.Maybe (maybeToList)
 import Discovery.Walk
 import Effect.ReadFS
 import GHC.Generics (Generic)
-import Graphing (Graphing)
+import Graphing (Graphing, pruneUnreachableIfDirectNodes)
 import Path
 import Strategy.Python.ReqTxt qualified as ReqTxt
 import Strategy.Python.SetupPy qualified as SetupPy
@@ -55,7 +55,7 @@ getDeps project = do
         [analyzeReqTxts project, analyzeSetupPy project]
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = maybeToList (setuptoolsSetupPy project) ++ setuptoolsReqTxt project
       }

@@ -65,7 +65,7 @@ import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
 import Effect.Logger (Logger, logWarn)
 import Effect.ReadFS (ReadFS, doesFileExist)
 import GHC.Generics (Generic)
-import Graphing (Graphing)
+import Graphing (Graphing, pruneUnreachableIfDirectNodes)
 import Path (Abs, Dir, File, Path, fromAbsDir, parent, parseRelFile, (</>))
 import Strategy.Android.Util (isDefaultAndroidDevConfig, isDefaultAndroidTestConfig)
 import System.FilePath qualified as FilePath
@@ -254,7 +254,7 @@ getDeps targets project = context "Gradle" $ do
   graph <- analyze targets (gradleDir project)
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [gradleBuildFile project]
       }

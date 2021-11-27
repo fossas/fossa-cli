@@ -33,7 +33,7 @@ import Discovery.Walk (
 import Effect.Exec (Has)
 import Effect.ReadFS (ReadFS, readContentsJson, readContentsYaml)
 import GHC.Generics (Generic)
-import Graphing (Graphing, deeps)
+import Graphing (Graphing, deeps, pruneUnreachableIfDirectNodes)
 import Path
 import Path.Extra (extensionOf)
 import Text.Read (readMaybe)
@@ -80,7 +80,7 @@ getDeps project = do
   graph <- analyze (perlMetaFile project)
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = [perlMetaFile project]
       }

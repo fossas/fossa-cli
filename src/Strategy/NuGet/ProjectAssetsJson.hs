@@ -20,7 +20,7 @@ import DepTypes
 import Discovery.Walk
 import Effect.ReadFS
 import GHC.Generics (Generic)
-import Graphing (Graphing, unfold)
+import Graphing (Graphing, pruneUnreachableIfDirectNodes, unfold)
 import Path
 import Types
 
@@ -63,7 +63,7 @@ analyze' file = do
   graph <- context "Building dependency graph" $ pure (buildGraph assetsJson)
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = pruneUnreachableIfDirectNodes graph
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [file]
       }
