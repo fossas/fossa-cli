@@ -43,26 +43,21 @@ allprojects {
     task jsonDeps {
         doLast {
 
-            def printDebug = { message, scope ->
-                println "DEBUG (${scope}): ${message}"
+            def printTrace = { message, scope ->
+                println "TRACE (${scope}): ${message}"
             }
 
-            // All printed warnings will be parsed by CLI!
-            // And warnings may be presented to end user. 
-            def printWarning = { message, scope ->
-                println "FOSSA-WARNING (${scope}): ${message}"
-            }
-
-            def printError = { message, scope ->
-                println "ERROR (${scope}): ${message}"
+            // These will be included as debug logs in CLI!
+            def printDebugToFossa = { message, scope ->
+                println "FOSSA-DEBUG (${scope}): ${message}"
             }
 
             def depToJSON
             // resolvedDep: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ResolvedDependency.html
             depToJSON = { resolvedDep ->
-                printDebug ("Resolving Dependency: ${resolvedDep}", "depToJSON")
-                printDebug ("Resolving Dependency's Artifact: ${resolvedDep.moduleArtifacts}", "depToJSON")
-                printDebug ("Resolving Dependency's Artifact Size: ${resolvedDep.moduleArtifacts.size()}", "depToJSON")
+                printTrace ("Resolving Dependency: ${resolvedDep}", "depToJSON")
+                printTrace ("Resolving Dependency's Artifact: ${resolvedDep.moduleArtifacts}", "depToJSON")
+                printTrace ("Resolving Dependency's Artifact Size: ${resolvedDep.moduleArtifacts.size()}", "depToJSON")
 
                 // moduleArtifacts never returns null, but sometimes this
                 // iterator can be empty (for dependencies with no artifacts
@@ -72,14 +67,14 @@ allprojects {
                 // - https://docs.gradle.org/current/userguide/declaring_dependencies.html#sub:module_dependencies
                 // - https://stackoverflow.com/questions/67328406/what-is-junit-bom-and-junit-platform-for-and-should-i-include-them-in-gradle-de
                 if (resolvedDep.moduleArtifacts.size() == 0) {
-                    printDebug ("Dependency ${resolvedDep} has no module artifacts", "depToJSON")
+                    printTrace ("Dependency ${resolvedDep} has no module artifacts", "depToJSON")
                     return null
                 }
 
                 // artifact: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ResolvedArtifact.html
                 def artifact = resolvedDep.moduleArtifacts.iterator().next()
 
-                printDebug ("Artifact ${artifact}", "depToJSON")
+                printTrace ("Artifact ${artifact}", "depToJSON")
 
                 // artifact.id: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/component/ComponentArtifactIdentifier.html
                 // artifact.id.componentIdentifier: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/component/ComponentIdentifier.html
@@ -114,7 +109,7 @@ allprojects {
                 } else {
                     // The other possibility here is "LibraryBinaryIdentifier".
                     // See: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/component/package-summary.html
-                    printWarning ("Recieved dependency which is not project component or module: ${id}. This dependency is ignored in analysis reporting.", "depToJSON")
+                    printDebugToFossa ("Recieved dependency which is not project component or module: ${id}. This dependency is ignored in analysis reporting.", "depToJSON")
                     return null; // FUTURE: binary dependencies in the filetree
                 }
 
@@ -123,45 +118,19 @@ allprojects {
                 return json
             }
 
-            def flatDeepAndDirectDepsToJson = { config -> 
-                def resolvedDependencies = []
-                config.incoming.resolutionResult.allDependencies.each {
-                    if (it instanceof UnresolvedComponentResult) {
-                        printWarning ("Could not resolve dependency: ${id} for configuration ${config}. This dependency is ignored in analysis reporting.", "flatDeepAndDirectDepsToJson")
-                    } else {
-                        def id = it.selected.getId()
-                        if (id instanceof ModuleComponentIdentifier) {
-                            resolvedDependencies <<  "{\"type\":\"package\",\"name\":\"${id.group}:${id.module}\",\"version\":\"${id.version}\", \"dependencies\":[]}"
-                        }
-                        else {
-                            printDebug ("Recieved dependency which is not a module (external dep): ${id}. This dependency is ignored in analysis reporting", "flatDeepAndDirectDepsToJson")
-                        }
-                    }
-                }
-
-                // allDependencies may include duplicate dependenncies!
-                resolvedDependencies.unique { lhs, rhs -> lhs <=> rhs }
-                return resolvedDependencies
-            }
-
             // config: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/Configuration.html
             def configToKeyValue = { config ->
                 def jsonDeps = []
                 // config.resolvedConfiguration: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ResolvedConfiguration.html
-                try {
-                    config.resolvedConfiguration.getFirstLevelModuleDependencies().each { dep ->
-                        printDebug ("Found direct dependency in configuration: ${dep}.", "configToKeyValue")
+                config.resolvedConfiguration.getFirstLevelModuleDependencies().each { dep ->
+                    try {
                         def result = depToJSON dep
                         if (result != null) {
                             jsonDeps << result
                         }
+                    } catch (Exception ignored) {
+                        printDebugToFossa("Failed to perform dependency resolution for ${dep}!", "configToKeyValue")
                     }
-                } catch (Exception ignored) {
-                    printDebug("Failed to perform complete dependency resolution for ${config}!", "configToKeyValue")
-                    printDebug(ignored, "configToKeyValue")
-                    printDebug("Reverting to flat listig of dependencies for ${config}!", "configToKeyValue")
-                    printWarning("Using non ideal resolution, dependencies will lack edges and will not differentiate between direct and deep dependencies for: ${config}, ", "configToKeyValue")
-                    jsonDeps = flatDeepAndDirectDepsToJson config
                 }
                 def combined = jsonDeps.join(",")
                 return "\"${config.name}\":[${combined}]"
@@ -185,7 +154,7 @@ allprojects {
                     // We know that we are working against gradle version greater or equal to v3.3
                     // So, configuration has resolvable property. If the configuration is not resolvable return null.
                     if (config.respondsTo("isCanBeResolved") && !config.isCanBeResolved()) {
-                        printDebug ("Configuration is not resolvable - ${config}", "getResolvedConfigDepsOrEmptyOf")
+                        printDebugToFossa ("Configuration is not resolvable ${config}!", "getResolvedConfigDepsOrEmptyOf")
                         return null
                     }
 
@@ -193,9 +162,9 @@ allprojects {
                     // - We are on Gradle v3.3 or newer (because isCanBeResolved is present) and the configuration is resolvable (isCanBeResolved() == true, therefore did not exit early above).
                     // - We are on Gradle v3.2.1 or older (because isCanBeResolved is not present). Configurations in Gradle v3.2.1 or older are always resolvable.
                     configsDeps = configToKeyValue config
-                    printDebug ("Configuration is resolved - ${config}", "getResolvedConfigDepsOrEmptyOf")
+                    printTrace ("Configuration is resolved ${config}!", "getResolvedConfigDepsOrEmptyOf")
                 } catch (Exception ignored) {
-                    printError("${ignored}", "getResolvedConfigDepsOrEmptyOf")
+                    printDebugToFossa("${ignored}", "getResolvedConfigDepsOrEmptyOf")
                     ignored.printStackTrace()
                 }
                 return configsDeps
@@ -205,7 +174,7 @@ allprojects {
             def projectToJSON = { project ->
                 def jsonConfigs = []
                 project.configurations.each { config ->
-                    printDebug ("Trying to resolve configuration - ${config}", "projectToJSON")
+                    printTrace ("Trying to resolve configuration - ${config}", "projectToJSON")
                     def jsonConfigWithDeps = getResolvedConfigDepsOrEmptyOf config
                     if (jsonConfigWithDeps != null) {
                         jsonConfigs << jsonConfigWithDeps

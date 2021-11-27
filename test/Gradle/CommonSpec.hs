@@ -2,7 +2,7 @@ module Gradle.CommonSpec (
   spec,
 ) where
 
-import Strategy.Gradle.Common (PackageName (PackageName), getWarningMessages, packagePathsWithJson)
+import Strategy.Gradle.Common (PackageName (PackageName), getLogWithPrefix, packagePathsWithJson)
 import Test.Hspec
 
 spec :: Spec
@@ -14,9 +14,8 @@ spec = do
       packagePathsWithJson ["sub-project__{}"] `shouldBe` [(PackageName "sub-project_", "{}")]
       packagePathsWithJson ["subProject_{}"] `shouldBe` [(PackageName "subProject", "{}")]
 
-  describe "getWarningMessages" $ do
-    it "should get only warning messages" $ do
-      getWarningMessages "FOSSA-WARNING (someScope): some warning message" `shouldBe` ["some warning message"]
-      getWarningMessages "DEBUG (someScope): some debug message" `shouldBe` []
-      getWarningMessages "ERROR (someScope): some error message" `shouldBe` []
-      getWarningMessages "  some exception warning message" `shouldBe` []
+  describe "getLogWithPrefix" $ do
+    it "should get only messages matching prefix" $ do
+      getLogWithPrefix "FOSSA-WARNING (someScope): some warning message" "FOSSA-WARNING" `shouldBe` ["some warning message"]
+      getLogWithPrefix "ERROR (someScope): some error message" "ERROR" `shouldBe` ["some error message"]
+      getLogWithPrefix "DEBUG (someScope): some debug message" "FOSSA-WARNING" `shouldBe` []

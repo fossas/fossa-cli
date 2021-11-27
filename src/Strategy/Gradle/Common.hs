@@ -2,10 +2,13 @@ module Strategy.Gradle.Common (
   packagePathsWithJson,
   getLinesWithPrefix,
   configNameToLabel,
-  getWarningMessages,
+  getDebugMessages,
   ConfigName (..),
   GradleLabel (..),
   PackageName (..),
+
+  -- * for testing
+  getLogWithPrefix,
 ) where
 
 import Data.Aeson (FromJSON)
@@ -40,9 +43,13 @@ configNameToLabel conf =
     x | isDefaultAndroidTestConfig x -> Env EnvTesting
     x -> Env $ EnvOther x
 
--- | Gets the warning messages from jsondeps gradle script stdout text
+getDebugMessages :: Text -> [Text]
+getDebugMessages text = getLogWithPrefix text "FOSSA-DEBUG"
+
+-- | Gets the log message for matching identifier. Applies to gradle init script log format.
+-- Log format of the gradle script is: 'identifier (scope): message'
 --
--- >>> getWarningMessages "FOSSA-WARNING (some scope): some message/n DEBUG (some scope): some debug message"
+-- >>> getLogWithPrefix "SOME-PREFIX (some scope): some message/n DEBUG (some scope): some debug message" "SOME-PREFIX"
 -- ["some message"]
-getWarningMessages :: Text -> [Text]
-getWarningMessages text = map (Text.strip . Text.drop 2 . snd . Text.breakOn "):") $ getLinesWithPrefix text "FOSSA-WARNING"
+getLogWithPrefix :: Text -> Text -> [Text]
+getLogWithPrefix text prefix = map (Text.strip . Text.drop 2 . snd . Text.breakOn "):") $ getLinesWithPrefix text prefix
