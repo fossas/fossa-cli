@@ -15,17 +15,10 @@
 -- - Gradle init scripts: https://docs.gradle.org/current/userguide/init_scripts.html
 module Strategy.Gradle (
   discover,
-  buildGraph,
-  JsonDep (..),
-  PackageName (..),
-  ConfigName (..),
-
-  -- * for testing
-  packagePathsWithJson,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..), AnalyzeProject, analyzeProject)
-import Control.Algebra (Has, run)
+import Control.Algebra (Has)
 import Control.Carrier.Reader (Reader)
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -38,45 +31,36 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.Reader (asks)
-import Data.Aeson (FromJSON (..), ToJSON, Value (..), decodeStrict, withObject, (.:))
-import Data.Aeson.Types (Parser, unexpected)
+import Data.Aeson (ToJSON)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.FileEmbed (embedFile)
-import Data.Foldable (find, for_)
+import Data.Foldable (find)
 import Data.List (isPrefixOf)
-import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty, toSet)
-import Data.String.Conversion (decodeUtf8, encodeUtf8, toString, toText)
+import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
-  DepEnvironment (..),
-  DepType (MavenType, SubprojectType),
   Dependency (..),
-  VerConstraint (CEq),
-  insertEnvironment,
  )
 import Discovery.Walk (WalkStep (..), fileName, walk')
 import Effect.Exec (AllowErr (..), Command (..), Exec, execThrow)
-import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
 import Effect.Logger (Logger, logWarn)
 import Effect.ReadFS (ReadFS, doesFileExist)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, fromAbsDir, parent, parseRelFile, (</>))
-import Strategy.Android.Util (isDefaultAndroidDevConfig, isDefaultAndroidTestConfig)
+import Strategy.Gradle.Common (
+  ConfigName (..),
+ )
+import Strategy.Gradle.ResolvedConfiguration (buildGraph, parseJsonDeps)
 import System.FilePath qualified as FilePath
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), FoundTargets (..), GraphBreadth (..))
-
-newtype ConfigName = ConfigName {unConfigName :: Text} deriving (Eq, Ord, Show, FromJSON)
-newtype GradleLabel = Env DepEnvironment deriving (Eq, Ord, Show)
-newtype PackageName = PackageName {unPackageName :: Text} deriving (Eq, Ord, Show, FromJSON)
 
 -- Run the init script on a set of subprojects. Note that this runs the
 -- `:jsonDeps` task on every subproject in one command. This is helpful for
@@ -296,114 +280,3 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
   let text = decodeUtf8 $ BL.toStrict stdout
   let packagesToOutput = parseJsonDeps text
   context "Building dependency graph" $ pure (buildGraph packagesToOutput onlyConfigurations)
-
-packagePathsWithJson :: [Text] -> [(PackageName, Text)]
-packagePathsWithJson = map (\line -> let (x, y) = Text.breakOn "_{" line in (PackageName x, Text.drop 1 y))
-
-parseJsonDeps :: Text -> Map (PackageName, ConfigName) [JsonDep]
-parseJsonDeps text = Map.fromList packagePathsWithDecoded
-  where
-    textLines :: [Text]
-    textLines = Text.lines (Text.filter (/= '\r') text)
-
-    -- Output lines from the init script are of the format:
-    -- JSONDEPS_:project-path_{"configName":[{"type":"package", ...}, ...], ...}
-    --
-    -- See the init script's implementation for details.
-    jsonDepsLines :: [Text]
-    jsonDepsLines = mapMaybe (Text.stripPrefix "JSONDEPS_") textLines
-
-    packagePathsWithDecoded :: [((PackageName, ConfigName), [JsonDep])]
-    packagePathsWithDecoded = do
-      (name, outJson) <- packagePathsWithJson jsonDepsLines
-      let configMap = fromMaybe mempty . decodeStrict $ encodeUtf8 outJson
-      (configName, deps) <- Map.toList configMap
-      pure ((name, ConfigName configName), deps)
-
--- TODO: use LabeledGraphing to add labels for environments
-buildGraph :: Map (PackageName, ConfigName) [JsonDep] -> Set ConfigName -> Graphing Dependency
-buildGraph projectsAndDeps onlyConfigs = run . withLabeling toDependency $ Map.traverseWithKey addProject filteredProjectAndDeps
-  where
-    filteredProjectAndDeps :: Map (PackageName, ConfigName) [JsonDep]
-    filteredProjectAndDeps = Map.filterWithKey (\(_, config) _ -> isConfigIncluded config) (projectsAndDeps)
-
-    isConfigExcluded :: ConfigName -> Bool
-    isConfigExcluded c = not (Set.null onlyConfigs) && Set.notMember c onlyConfigs
-
-    isConfigIncluded :: ConfigName -> Bool
-    isConfigIncluded = not . isConfigExcluded
-
-    -- add top-level projects from the output
-    addProject :: Has (LabeledGrapher JsonDep GradleLabel) sig m => (PackageName, ConfigName) -> [JsonDep] -> m ()
-    addProject (projName, configName) projDeps = do
-      let projAsDep = ProjectDep $ unPackageName projName
-          envLabel = configNameToLabel configName
-      direct projAsDep
-      label projAsDep envLabel
-      for_ projDeps $ \dep -> do
-        edge projAsDep dep
-        mkRecursiveEdges dep envLabel
-
-    -- Infers environment label based on the name of configuration.
-    -- Ref: https://docs.gradle.org/current/userguide/java_library_plugin.html#sec:java_library_configurations_graph
-    configNameToLabel :: ConfigName -> GradleLabel
-    configNameToLabel conf =
-      if (not . Set.null $ onlyConfigs)
-        then Env $ EnvOther (unConfigName conf) -- We only have specified configs, so we mark them all as Other
-        else case unConfigName conf of -- We have no specified configs, so we have to guess the correct Env.
-          "compileOnly" -> Env EnvDevelopment
-          x | x `elem` ["testImplementation", "testCompileOnly", "testRuntimeOnly", "testCompileClasspath", "testRuntimeClasspath"] -> Env EnvTesting
-          x | isDefaultAndroidDevConfig x -> Env EnvDevelopment
-          x | isDefaultAndroidTestConfig x -> Env EnvTesting
-          x -> Env $ EnvOther x
-
-    toDependency :: JsonDep -> Set GradleLabel -> Dependency
-    toDependency dep = foldr applyLabel $ jsonDepToDep dep
-
-    applyLabel :: GradleLabel -> Dependency -> Dependency
-    applyLabel lbl dep = case lbl of
-      Env env -> insertEnvironment env dep
-
-    -- build edges between deps, recursively
-    mkRecursiveEdges :: Has (LabeledGrapher JsonDep GradleLabel) sig m => JsonDep -> GradleLabel -> m ()
-    mkRecursiveEdges (ProjectDep x) envLabel = label (ProjectDep x) envLabel
-    mkRecursiveEdges jsondep@(PackageDep _ _ deps) envLabel = do
-      label jsondep envLabel
-      for_ deps $ \child -> do
-        edge jsondep child
-        mkRecursiveEdges child envLabel
-
-    jsonDepToDep :: JsonDep -> Dependency
-    jsonDepToDep (ProjectDep name) = projectToDep name
-    jsonDepToDep (PackageDep name version _) =
-      Dependency
-        { dependencyType = MavenType
-        , dependencyName = name
-        , dependencyVersion = Just (CEq version)
-        , dependencyLocations = []
-        , dependencyEnvironments = mempty
-        , dependencyTags = Map.empty
-        }
-
-    projectToDep name =
-      Dependency
-        { dependencyType = SubprojectType
-        , dependencyName = name
-        , dependencyVersion = Nothing
-        , dependencyLocations = []
-        , dependencyEnvironments = mempty
-        , dependencyTags = Map.empty
-        }
-
-data JsonDep
-  = ProjectDep Text -- name
-  | PackageDep Text Text [JsonDep] -- name version deps
-  deriving (Eq, Ord, Show)
-
-instance FromJSON JsonDep where
-  parseJSON = withObject "JsonDep" $ \obj -> do
-    ty <- obj .: "type" :: Parser Text
-    case ty of
-      "project" -> ProjectDep <$> obj .: "name"
-      "package" -> PackageDep <$> obj .: "name" <*> obj .: "version" <*> obj .: "dependencies"
-      _ -> unexpected (String ty)
