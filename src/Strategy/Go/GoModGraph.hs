@@ -10,12 +10,11 @@ module Strategy.Go.GoModGraph (
   buildGraph,
 ) where
 
-import Control.Effect.Diagnostics hiding (fromMaybe)
+import Control.Effect.Diagnostics
 import Control.Monad (void)
 import Data.Aeson.Internal (formatError)
 import Data.Foldable (find)
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe)
 import Data.SemVer qualified as SemVer
 import Data.SemVer.Internal (Version (..))
 import Data.Set (Set, fromList, member, notMember)
@@ -44,6 +43,7 @@ import Text.Megaparsec (
   MonadParsec (eof),
   Parsec,
   empty,
+  errorBundlePretty,
   optional,
   parse,
   sepEndBy,
@@ -86,10 +86,9 @@ goListJsonCmd =
     , cmdAllowErr = Never
     }
 
-data GoGraphMod = GoGraphMod
-  { goGraphModName :: Text
-  , goGraphModVersion :: Maybe PackageVersion
-  }
+data GoGraphMod
+  = MainMod Text
+  | OtherMod Text PackageVersion
   deriving (Show, Eq, Ord)
 
 -- * Parsers
@@ -101,11 +100,13 @@ parseGoGraphMod = do
   version <- optional $ do
     _ <- try $ symbol "@"
     lexeme (parsePackageVersion lexeme)
-  pure $ GoGraphMod name version
+  case version of
+    Nothing -> pure $ MainMod name
+    Just v -> pure $ OtherMod name v
 
 toGoModVersion :: Text -> Maybe PackageVersion
 toGoModVersion modVersion = case parse (parsePackageVersion lexeme) "go module version" modVersion of
-  Left _ -> Nothing
+  Left err -> fail $ errorBundlePretty err
   Right vc -> Just vc
 
 -- | Parses output of 'go mod graph'.
@@ -116,29 +117,33 @@ parseGoModGraph = parseGoModPair `sepEndBy` (symbol "\n" <|> symbol "\r") <* eof
     parseGoModPair = (,) <$> parseGoGraphMod <*> parseGoGraphMod
 
 -- Builds graph from edges, main module, and selected module version set.
-buildGraph :: [(GoGraphMod, GoGraphMod)] -> Maybe GoGraphMod -> Set GoGraphMod -> Set GoGraphMod -> Bool -> Graphing.Graphing Dependency
+buildGraph :: [(GoGraphMod, GoGraphMod)] -> GoGraphMod -> Set GoGraphMod -> Set GoGraphMod -> Bool -> Graphing.Graphing Dependency
 buildGraph fromToMods mainMod selectedMods directMods applyMVS =
   Graphing.gmap toDependency
-    . Graphing.induceJust
-    . Graphing.gmap withSelection
+    . Graphing.filter (withSelection)
     . Graphing.promoteToDirect (`member` directMods)
-    . Graphing.shrink (\m -> m /= fromMaybe impossibleMod mainMod)
+    . Graphing.shrink (/= mainMod)
     . Graphing.edges
     $ fromToMods
   where
-    -- module name must have at-least one character
-    impossibleMod :: GoGraphMod
-    impossibleMod = GoGraphMod "" Nothing
-
-    withSelection :: GoGraphMod -> Maybe GoGraphMod
-    withSelection m = if m `notMember` selectedMods && applyMVS then Nothing else Just m
+    withSelection :: GoGraphMod -> Bool
+    withSelection m = not (m `notMember` selectedMods && applyMVS)
 
     toDependency :: GoGraphMod -> Dependency
-    toDependency GoGraphMod{..} =
+    toDependency (MainMod name) =
       Dependency
         { dependencyType = GoType
-        , dependencyName = goGraphModName
-        , dependencyVersion = toVersion <$> goGraphModVersion
+        , dependencyName = name
+        , dependencyVersion = Nothing
+        , dependencyLocations = []
+        , dependencyEnvironments = mempty
+        , dependencyTags = Map.empty
+        }
+    toDependency (OtherMod name pkgVersion) =
+      Dependency
+        { dependencyType = GoType
+        , dependencyName = name
+        , dependencyVersion = Just (toVersion pkgVersion)
         , dependencyLocations = []
         , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
@@ -172,12 +177,15 @@ analyze dir = do
   -- Reference: https://github.com/golang/exp/tree/master/cmd/modgraphviz
   let filterModsNotUsedInBuild = True
   goModGraphStdout <- context ("Getting selected dependencies versions using, " <> toText (show goModGraphCmd)) $ execParser parseGoModGraph dir goModGraphCmd
-  let graph = buildGraph goModGraphStdout mainMod selectedMods directMods filterModsNotUsedInBuild
+  ggm <- fromMaybeText "expected to find main module, but found no main module!" mainMod
 
+  let graph = buildGraph goModGraphStdout ggm selectedMods directMods filterModsNotUsedInBuild
   pure (graph, Complete)
   where
     toGoGraphMod :: GoListModule -> GoGraphMod
-    toGoGraphMod GoListModule{..} = GoGraphMod path (toGoModVersion =<< version)
+    toGoGraphMod GoListModule{..} = case (toGoModVersion =<< version) of
+      Nothing -> MainMod path
+      Just pv -> OtherMod path pv
 
     withoutMain :: [GoListModule] -> Set GoGraphMod
     withoutMain = fromList . map toGoGraphMod . filter (not . isMain)

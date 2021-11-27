@@ -7,7 +7,7 @@ import Data.Text
 import Data.Text.IO qualified as TIO
 import Data.Void (Void)
 import GraphUtil (expectDeps, expectDirect, expectEdges)
-import Strategy.Go.GoModGraph (GoGraphMod (GoGraphMod), buildGraph, parseGoGraphMod, parseGoModGraph)
+import Strategy.Go.GoModGraph (GoGraphMod (..), buildGraph, parseGoGraphMod, parseGoModGraph)
 import Strategy.Go.Gomod (PackageVersion (NonCanonical, Pseudo, Semantic))
 import Test.Hspec (Expectation, Spec, describe, it, runIO)
 import Test.Hspec.Megaparsec (shouldParse)
@@ -21,7 +21,7 @@ parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Expectation
 parseMatch parser input expected = parse parser "" input `shouldParse` expected
 
 mkGoMod :: Text -> Text -> GoGraphMod
-mkGoMod name ver = GoGraphMod name (Just $ NonCanonical ver)
+mkGoMod name ver = OtherMod name (NonCanonical ver)
 
 mkDep :: Text -> Text -> Dependency
 mkDep name ver = Dependency GoType name (Just $ CEq ver) [] mempty Map.empty
@@ -36,8 +36,8 @@ specGraph = do
   describe "buildGraph" $ do
     -- Test case graph is from: https://golang.org/ref/mod#minimal-version-selection (first diagram)
     let testEdges =
-          [ (GoGraphMod "Main" Nothing, mkGoMod "A" "1.2")
-          , (GoGraphMod "Main" Nothing, mkGoMod "B" "1.2")
+          [ (MainMod "Main", mkGoMod "A" "1.2")
+          , (MainMod "Main", mkGoMod "B" "1.2")
           , -- from A
             (mkGoMod "A" "1.1", mkGoMod "C" "1.1")
           , (mkGoMod "A" "1.2", mkGoMod "C" "1.3")
@@ -66,8 +66,7 @@ specGraph = do
 
     it "should should remove main module, and produce graphing with minimal version selection (MVS)" $ do
       -- Act
-      let graph = buildGraph testEdges (Just $ GoGraphMod "Main" Nothing) testSelectedMods directMods True
-      print graph
+      let graph = buildGraph testEdges (MainMod "Main") testSelectedMods directMods True
 
       -- Assert
       let depA = mkDep "A" "1.2"
@@ -81,8 +80,7 @@ specGraph = do
 
     it "should should remove main module, and produce graphing with all module versioning" $ do
       -- Act
-      let graph = buildGraph testEdges (Just $ GoGraphMod "Main" Nothing) testSelectedMods directMods False
-      print graph
+      let graph = buildGraph testEdges (MainMod "Main") testSelectedMods directMods False
 
       -- Assert
       let depA1_1 = mkDep "A" "1.1"
@@ -139,21 +137,21 @@ specParse = do
     let shouldParseInto = parseMatch parseGoGraphMod
 
     it "should parse module without version" $ do
-      "github.com/Microsoft/go-winio" `shouldParseInto` GoGraphMod "github.com/Microsoft/go-winio" Nothing
+      "github.com/Microsoft/go-winio" `shouldParseInto` MainMod "github.com/Microsoft/go-winio"
 
     it "should parse module with semver version" $ do
-      "go-winio@v0.5.0" `shouldParseInto` GoGraphMod "go-winio" (Just $ semver 0 5 0)
+      "go-winio@v0.5.0" `shouldParseInto` OtherMod "go-winio" (semver 0 5 0)
 
     it "should parse module with pseudo semver version" $ do
-      "go-winio@v0.0.0-20210619224110-3f7ff695adc6" `shouldParseInto` GoGraphMod "go-winio" (Just $ Pseudo "3f7ff695adc6")
+      "go-winio@v0.0.0-20210619224110-3f7ff695adc6" `shouldParseInto` OtherMod "go-winio" (Pseudo "3f7ff695adc6")
 
     it "should parse module with non canonical version" $ do
-      "go-winio@LATEST" `shouldParseInto` GoGraphMod "go-winio" (Just $ NonCanonical "LATEST")
+      "go-winio@LATEST" `shouldParseInto` OtherMod "go-winio" (NonCanonical "LATEST")
 
   describe "go mod graph parser" $ do
     trivialInput <- runIO (TIO.readFile "test/Go/testdata/go.mod.graph.stdout")
     it "parses a trivial example" $ do
       runParser parseGoModGraph "" trivialInput
-        `shouldParse` [ (GoGraphMod "main" Nothing, GoGraphMod "dep" (Just $ semver 0 5 0))
-                      , (GoGraphMod "dep" (Just $ semver 0 5 0), GoGraphMod "depB" (Just $ semver 0 6 0))
+        `shouldParse` [ (MainMod "main", OtherMod "dep" (semver 0 5 0))
+                      , (OtherMod "dep" (semver 0 5 0), OtherMod "depB" (semver 0 6 0))
                       ]
