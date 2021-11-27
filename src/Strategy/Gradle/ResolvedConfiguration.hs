@@ -88,7 +88,6 @@ buildGraph projectsAndDeps onlyConfigs = run . withLabeling toDependency $ Map.t
       if (not . Set.null $ onlyConfigs)
         then Env $ EnvOther (unConfigName conf) -- We only have specified configs, so we mark them all as Other.
         else configNameToLabel (unConfigName conf) -- We have no specified configs, so we have to guess the correct Env.
-
     toDependency :: JsonDep -> Set GradleLabel -> Dependency
     toDependency dep = foldr applyLabel $ jsonDepToDep dep
 
