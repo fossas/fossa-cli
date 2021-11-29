@@ -18,7 +18,7 @@ module Analysis.FixtureExpectationUtils (
   expectNumManifests,
 ) where
 
-import Analysis.FixtureUtils (AnalysisTestFixture (..), FixtureArtifact (..), downloadExtractArtifact, performDiscoveryAndAnalyses)
+import Analysis.FixtureUtils (AnalysisTestFixture (..), FixtureArtifact (..), getArtifact, performDiscoveryAndAnalyses)
 import App.Fossa.Analyze.Types (AnalyzeProject)
 import Control.Algebra (Has)
 import Control.Effect.Lift (Lift, sendIO)
@@ -45,7 +45,7 @@ data DependencyResultsSummary = DependencyResultsSummary
 -- | Performs discovery and analysis for all discovered project fop provided analysis integration fixture.
 withAnalysisOf :: (Has (Lift IO) sig m, AnalyzeProject a, MonadFail m) => AnalysisTestFixture a -> (([(DiscoveredProject a, DependencyResults)], Path Abs Dir) -> m b) -> m ()
 withAnalysisOf a runTest = do
-  extractedDir <- downloadExtractArtifact (artifact a)
+  extractedDir <- getArtifact (artifact a)
   res <- performDiscoveryAndAnalyses a
   _ <- case scopedDir . artifact $ a of
     Nothing -> runTest (res, extractedDir)

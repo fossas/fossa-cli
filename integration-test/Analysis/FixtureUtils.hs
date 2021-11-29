@@ -9,7 +9,7 @@ module Analysis.FixtureUtils (
   FixtureEnvironment (..),
   FixtureArtifact (..),
   performDiscoveryAndAnalyses,
-  downloadExtractArtifact,
+  getArtifact,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (AnalyzeExperimentalPreferences), AnalyzeProject (analyzeProject))
@@ -123,11 +123,11 @@ performDiscoveryAndAnalyses AnalysisTestFixture{..} = do
   case discoveryResult of
     Left fb -> fail (show fb)
     Right dps ->
-      forM dps $ \dP -> do
-        analysisResult <- sendIO $ testRunnerWithLogger (ignoreDebug $ analyzeProject (projectBuildTargets dP) (projectData dP)) environment
+      forM dps $ \dp -> do
+        analysisResult <- sendIO $ testRunnerWithLogger (ignoreDebug $ analyzeProject (projectBuildTargets dp) (projectData dp)) environment
         case analysisResult of
           Left fb -> fail (show fb)
-          Right dr -> pure (dP, dr)
+          Right dr -> pure (dp, dr)
   where
     runCmd :: FixtureEnvironment -> Maybe (Command, Path Rel Dir) -> IO ()
     runCmd env cmd =
@@ -146,24 +146,8 @@ performDiscoveryAndAnalyses AnalysisTestFixture{..} = do
 absoluteDirOf :: Has (Lift IO) sig m => Path Rel Dir -> m (Path Abs Dir)
 absoluteDirOf relDir = sendIO $ PIO.makeAbsolute (analysisIntegrationCaseFixtureDir </> relDir)
 
-extractArtifact :: Url a -> Path Rel Dir -> Path Abs File -> Handle -> IO (Path Abs Dir)
-extractArtifact url extractAt tempFile tempFileHandle = do
-  _ <- runReq defaultHttpConfig $
-    reqBr GET url NoReqBody mempty $
-    \r -> runConduitRes $ responseBodySource r .| CB.sinkFileCautious (toFilePath tempFile)
-
-  sendIO $ hClose tempFileHandle
-
-  sendIO $ PIO.ensureDir extractAt
-  archiveExtractFolder <- sendIO $ PIO.makeAbsolute extractAt
-  sendIO $ extractTarGz archiveExtractFolder tempFile
-
-  PIO.removeFile tempFile
-  pure archiveExtractFolder
-
-
-downloadExtractArtifact :: Has (Lift IO) sig m => FixtureArtifact -> m (Path Abs Dir)
-downloadExtractArtifact target = sendIO $ do
+getArtifact :: Has (Lift IO) sig m => FixtureArtifact -> m (Path Abs Dir)
+getArtifact target = sendIO $ do
   -- Ensure parent directory for fixture exists
   PIO.ensureDir analysisIntegrationCaseFixtureDir
   let artifactUrl = tarGzFileUrl target
@@ -175,4 +159,20 @@ downloadExtractArtifact target = sendIO $ do
   case resolvedUrl of
     Nothing -> fail ("could not be resolved, artifact's download url: " <> show artifactUrl)
     Just (url, _) -> do
-      PIO.withTempFile (analysisIntegrationCaseFixtureDir) "artifact" (extractArtifact url archiveExtractionDir)
+      PIO.withTempFile (analysisIntegrationCaseFixtureDir) "artifact" (downloadAndExtractArtifact url archiveExtractionDir)
+  
+  where
+    downloadAndExtractArtifact :: Url a -> Path Rel Dir -> Path Abs File -> Handle -> IO (Path Abs Dir)
+    downloadAndExtractArtifact url extractAt tempFile tempFileHandle = do
+      _ <- runReq defaultHttpConfig $
+        reqBr GET url NoReqBody mempty $
+        \r -> runConduitRes $ responseBodySource r .| CB.sinkFileCautious (toFilePath tempFile)
+
+      sendIO $ hClose tempFileHandle
+
+      sendIO $ PIO.ensureDir extractAt
+      archiveExtractFolder <- sendIO $ PIO.makeAbsolute extractAt
+      sendIO $ extractTarGz archiveExtractFolder tempFile
+
+      PIO.removeFile tempFile
+      pure archiveExtractFolder
