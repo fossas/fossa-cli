@@ -105,10 +105,24 @@ packageSix =
 devPackageSix :: Dependency
 devPackageSix = insertEnvironment EnvDevelopment packageSix
 
+packageOnce :: Dependency
+packageOnce =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "once"
+    , dependencyVersion = Just $ CEq "1.4.0"
+    , dependencyLocations = ["https://registry.npmjs.org/once"]
+    , dependencyEnvironments = mempty
+    , dependencyTags = mempty
+    }
+
+prodPackageOnce :: Dependency
+prodPackageOnce = insertEnvironment EnvProduction packageOnce
+
 simpleFlatDeps :: FlatDeps
 simpleFlatDeps =
   FlatDeps
-    (applyTag @Production $ Set.fromList [NodePackage "packageOne" "^1.0.0"])
+    (applyTag @Production $ Set.fromList [NodePackage "packageOne" "^1.0.0", NodePackage "once" "^1.3.0"])
     (applyTag @Development $ Set.fromList [NodePackage "packageSix" "^6.0.0"])
     mempty
 
@@ -127,7 +141,7 @@ spec = do
     it' "should produce expected structure" $ do
       yarnLock <- parseFile $(mkRelFile "yarn.lock")
       graph <- buildGraph yarnLock mempty
-      expectDeps' [packageOne, packageTwo, packageThree, packageFour, packageFive, packageSix] graph
+      expectDeps' [packageOne, packageTwo, packageThree, packageFour, packageFive, packageSix, packageOnce] graph
       expectDirect' [] graph
       expectEdges'
         [ (packageOne, packageTwo)
@@ -140,8 +154,8 @@ spec = do
     it' "Should apply the correct dep environments" $ do
       yarnLock <- parseFile $(mkRelFile "yarn.lock")
       graph <- buildGraph yarnLock simpleFlatDeps
-      expectDeps' [prodPackageOne, prodPackageTwo, prodDevPackageThree, packageFour, packageFive, devPackageSix] graph
-      expectDirect' [prodPackageOne, devPackageSix] graph
+      expectDeps' [prodPackageOne, prodPackageTwo, prodDevPackageThree, packageFour, packageFive, devPackageSix, prodPackageOnce] graph
+      expectDirect' [prodPackageOne, devPackageSix, prodPackageOnce] graph
       expectEdges'
         [ (prodPackageOne, prodPackageTwo)
         , (prodPackageTwo, prodDevPackageThree)

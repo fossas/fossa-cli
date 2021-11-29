@@ -26,3 +26,9 @@ packageSix@^6.0.0:
   resolved "https://registry.npmjs.org/packageSix"
   dependencies:
     packageThree "^3.0.0"
+
+# To verify we look at both keys, when inferring direct dep
+# Key ordering is presumed to be not consistent
+once@^1.0.0, once@^1.3.0:
+  version "1.4.0"
+  resolved "https://registry.npmjs.org/once"
