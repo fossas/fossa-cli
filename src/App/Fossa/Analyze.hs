@@ -118,6 +118,7 @@ import Strategy.Haskell.Stack qualified as Stack
 import Strategy.Leiningen qualified as Leiningen
 import Strategy.Maven qualified as Maven
 import Strategy.Mix qualified as Mix
+import Strategy.Nim qualified as Nim
 import Strategy.Node qualified as Node
 import Strategy.NuGet.Nuspec qualified as Nuspec
 import Strategy.NuGet.PackageReference qualified as PackageReference
@@ -281,6 +282,7 @@ discoverFuncs =
   , DiscoverFunc Leiningen.discover
   , DiscoverFunc Maven.discover
   , DiscoverFunc Mix.discover
+  , DiscoverFunc Nim.discover
   , DiscoverFunc Node.discover
   , DiscoverFunc Nuspec.discover
   , DiscoverFunc PackageReference.discover
