@@ -1,0 +1,70 @@
+name: Static analysis
+on: push
+
+jobs:
+  # Run linter and format checkers independently, so you see errors from both.
+  linter-check:
+    name: linter-check
+    runs-on: ubuntu-latest
+    container: ghcr.io/fossas/haskell-dev-tools:8.10.4
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Run hlint
+      run: |
+        make lint
+
+  link-check:
+    name: link-check
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Check Markdown links
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: 'yes'
+        config-file: '.markdown-link-check.json'
+
+    - name: Disallow empty Markdown links
+      run: |
+        ! grep ']()' **/*.md
+
+  format-check:
+    name: formatter-check
+    runs-on: ubuntu-latest
+    container: ghcr.io/fossas/haskell-dev-tools:8.10.4
+
+    steps:
+    - uses: actions/checkout@v2
+
+    # Run the formatter
+    - name: run fourmolu
+      run: |
+        make fmt
+
+    # If git has changes, then the formatter check fails.
+    - name: check git status
+      run: |
+        git diff --exit-code
+
+  cabal-format-check:
+    name: cabal-format-check
+    runs-on: ubuntu-latest
+    container: ghcr.io/fossas/haskell-dev-tools:8.10.4
+
+    steps:
+    - uses: actions/checkout@v2
+
+    # Run the formatter
+    - name: "run cabal-fmt"
+      run: |
+        cabal-fmt -i spectrometer.cabal
+
+    # If git has changes, then the formatter check fails.
+    - name: check git status
+      run: |
+        git diff --exit-code
+
