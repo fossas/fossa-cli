@@ -281,9 +281,9 @@ library
     Strategy.Maven.Pom.PomFile
     Strategy.Maven.Pom.Resolver
     Strategy.Mix
-    Strategy.Node
     Strategy.Nim
     Strategy.Nim.NimbleLock
+    Strategy.Node
     Strategy.Node.Npm.PackageLock
     Strategy.Node.PackageJson
     Strategy.Node.YarnV1.YarnLock
