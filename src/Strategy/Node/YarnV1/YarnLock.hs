@@ -85,11 +85,9 @@ buildGraph ::
   FlatDeps ->
   m (Graphing Dependency)
 buildGraph lockfile FlatDeps{..} = fmap hydrateDepEnvs . withLabeling toDependency $
-  for_ (map allkeys $ MKM.toList lockfile) $ \(firstKey, keys, pkg) -> do
-    -- Since all keys have same resolved version, and same extracted name
-    -- we can use any key to infer parent.
+  for_ (map extractPkgTriple $ MKM.toList lockfile) $ \(pkgName, keys, pkg) -> do
     let parent :: YarnV1Package
-        parent = pairToPackage firstKey pkg
+        parent = YarnV1Package pkgName $ YL.version pkg
 
         allKeysAsNodePackages :: [NodePackage]
         allKeysAsNodePackages = toNodePackage <$> keys
@@ -175,8 +173,8 @@ missingResolvedVersionErrorMsg key =
 pairToPackage :: YL.PackageKey -> YL.Package -> YarnV1Package
 pairToPackage key pkg = YarnV1Package (extractFullName key) (YL.version pkg)
 
-allkeys :: (NE.NonEmpty a, b) -> (a, [a], b)
-allkeys (neList, pkg) = (NE.head neList, NE.toList neList, pkg)
+extractPkgTriple :: (NE.NonEmpty YL.PackageKey, b) -> (Text, [YL.PackageKey], b)
+extractPkgTriple (neList, pkg) = (extractFullName $ NE.head neList, NE.toList neList, pkg)
 
 extractFullName :: YL.PackageKey -> Text
 extractFullName key = case YL.name key of
