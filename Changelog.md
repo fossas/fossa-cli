@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## Unreleased
+
+- Makes experimental flags discoverable and documents them. ([#723](https://github.com/fossas/fossa-cli/pull/723))
+
 ## v3.0.6
 
 - Yarn: Fixes a bug with yarn v1 lock file analysis, where direct dependencies were not reported sometimes. ([#716](https://github.com/fossas/fossa-cli/pull/716))
