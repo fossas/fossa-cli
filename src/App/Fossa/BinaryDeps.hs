@@ -2,7 +2,7 @@ module App.Fossa.BinaryDeps (analyzeBinaryDeps) where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.BinaryDeps.Jar (resolveJar)
-import App.Fossa.VSI.IAT.Fingerprint (fingerprintRaw)
+import App.Fossa.VSI.Fingerprint (fingerprintRaw)
 import App.Fossa.VSI.IAT.Types (Fingerprint (..))
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics, fromEither)

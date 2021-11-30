@@ -1,4 +1,4 @@
-module App.Fossa.VSI.IAT.Fingerprint (
+module App.Fossa.VSI.Fingerprint (
   fingerprintRaw,
   fingerprintContentsRaw,
 ) where

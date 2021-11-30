@@ -3,7 +3,7 @@ module App.Fossa.VSI.IAT.AssertRevisionBinaries (
 ) where
 
 import App.Fossa.FossaAPIV1 qualified as Fossa
-import App.Fossa.VSI.IAT.Fingerprint (fingerprintContentsRaw)
+import App.Fossa.VSI.Fingerprint (fingerprintContentsRaw)
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
