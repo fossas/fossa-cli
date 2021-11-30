@@ -55,7 +55,7 @@ From the `pom.xml` we read:
 
 #### Read `META-INF/MANIFEST.MF`
 
-We unpack the JAR and search inside for a `META-INF/MANIFEST.MF` file. 
+We unpack the JAR and search inside for a `META-INF/MANIFEST.MF` file.
 
 From that file we read:
 
