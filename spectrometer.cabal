@@ -281,6 +281,8 @@ library
     Strategy.Maven.Pom.PomFile
     Strategy.Maven.Pom.Resolver
     Strategy.Mix
+    Strategy.Nim
+    Strategy.Nim.NimbleLock
     Strategy.Node
     Strategy.Node.Npm.PackageLock
     Strategy.Node.PackageJson
@@ -391,6 +393,7 @@ test-suite unit-tests
     Maven.DepTreeSpec
     Maven.PluginStrategySpec
     Maven.PomStrategySpec
+    Nim.NimbleSpec
     Node.NpmLockSpec
     Node.PackageJsonSpec
     NuGet.NuspecSpec

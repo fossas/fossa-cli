@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "packages": {
+    "A": {
+      "version": "0.1.1",
+      "vcsRevision": "a",
+      "url": "https://github.com/A",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "hash-a"
+      }
+    },
+    "B": {
+      "version": "0.3.0",
+      "vcsRevision": "b",
+      "url": "https://github.com/B",
+      "downloadMethod": "git",
+      "dependencies": [
+        "A"
+      ],
+      "checksums": {
+        "sha1": "hash-b"
+      }
+    },
+    "C": {
+      "version": "0.4.3",
+      "vcsRevision": "c",
+      "url": "https://github.com/C",
+      "downloadMethod": "git",
+      "dependencies": [
+        "B",
+        "A"
+      ],
+      "checksums": {
+        "sha1": "hash-c"
+      }
+    }
+  }
+}
