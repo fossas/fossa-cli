@@ -2,8 +2,7 @@ module App.Fossa.BinaryDeps (analyzeBinaryDeps) where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.BinaryDeps.Jar (resolveJar)
-import App.Fossa.VSI.Fingerprint (fingerprintRaw)
-import App.Fossa.VSI.IAT.Types (Fingerprint (..))
+import App.Fossa.VSI.Fingerprint (Fingerprint, fingerprintRaw)
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics, fromEither)
 import Control.Effect.Lift (Lift)
@@ -75,8 +74,8 @@ toSourceUnit project deps = do
 -- | Just render the first few characters of the fingerprint.
 -- The goal is to provide a high confidence that future binaries with the same name won't collide,
 -- and we don't need all 256 bits for that.
-renderFingerprint :: Fingerprint -> Text
-renderFingerprint fingerprint = Text.take 12 $ unFingerprint fingerprint
+renderFingerprint :: Fingerprint t -> Text
+renderFingerprint fingerprint = Text.take 12 $ toText fingerprint
 
 -- | Determine if a file is binary using the same method as git:
 -- "is there a zero byte in the first 8000 bytes of the file"
