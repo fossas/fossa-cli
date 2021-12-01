@@ -14,7 +14,7 @@ import Data.Text qualified as Text
 import Discovery.Filters (AllFilters (..), FilterCombination (combinedPaths))
 import Discovery.Walk (WalkStep (WalkContinue), walk')
 import Effect.Logger (Logger)
-import Effect.ReadFS (ReadFS, readContentsBSLimit)
+import Effect.ReadFS (ReadFS, contentIsBinary, readContentsBSLimit)
 import Path (Abs, Dir, File, Path, isProperPrefixOf, (</>))
 import Path.Extra (tryMakeRelative)
 import Srclib.Converter qualified as Srclib
@@ -38,7 +38,7 @@ findBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) =
 findBinaries filters = walk' $ \dir _ files -> do
   if shouldFingerprintDir dir filters
     then do
-      binaries <- filterM fileIsBinary files
+      binaries <- filterM contentIsBinary files
       pure (binaries, WalkContinue)
     else pure ([], WalkContinue)
 
@@ -76,14 +76,6 @@ toSourceUnit project deps = do
 -- and we don't need all 256 bits for that.
 renderFingerprint :: Fingerprint t -> Text
 renderFingerprint fingerprint = Text.take 12 $ toText fingerprint
-
--- | Determine if a file is binary using the same method as git:
--- "is there a zero byte in the first 8000 bytes of the file"
-fileIsBinary :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m Bool
-fileIsBinary file = do
-  attemptedContent <- readContentsBSLimit file 8000
-  content <- fromEither attemptedContent
-  pure $ BS.elem 0 content
 
 -- | Try the next strategy in the list. If successful, evaluate to its result; if not move down the list of strategies and try again.
 -- Eventually falls back to strategyRawFingerprint if no other strategy succeeds.
