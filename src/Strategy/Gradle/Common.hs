@@ -6,6 +6,7 @@ module Strategy.Gradle.Common (
   ConfigName (..),
   GradleLabel (..),
   PackageName (..),
+  ProjectName (..),
 
   -- * for testing
   getLogWithPrefix,
@@ -21,6 +22,7 @@ import Strategy.Android.Util (isDefaultAndroidDevConfig, isDefaultAndroidTestCon
 newtype ConfigName = ConfigName {unConfigName :: Text} deriving (Eq, Ord, Show, FromJSON)
 newtype GradleLabel = Env DepEnvironment deriving (Eq, Ord, Show)
 newtype PackageName = PackageName {unPackageName :: Text} deriving (Eq, Ord, Show, FromJSON)
+newtype ProjectName = ProjectName {unProjectName :: Text} deriving (Eq, Ord, Show, FromJSON)
 
 packagePathsWithJson :: [Text] -> [(PackageName, Text)]
 packagePathsWithJson = map (\line -> let (x, y) = Text.breakOn "_{" line in (PackageName x, Text.drop 1 y))

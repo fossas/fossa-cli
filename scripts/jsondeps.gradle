@@ -1,44 +1,76 @@
-// This Gradle init script adds a `jsonDeps` task that outputs the dependencies
-// of each subproject as JSON.
-//
-// If you're debugging this script, you can directly run this on a Gradle project
-// by running `gradle -I/path/to/script $TASK` e.g.
-// `gradle -I/tmp/jsondeps.gradle :jsonDeps`. This lets you see the output
-// directly.
-//
-// Useful documentation:
-// - Gradle init scripts: https://docs.gradle.org/current/userguide/init_scripts.html
-// - Gradle subprojects: https://docs.gradle.org/current/userguide/multi_project_builds.html
-// - Gradle configurations: https://docs.gradle.org/current/userguide/declaring_dependencies.html
-// - Gradle build script primer: https://docs.gradle.org/current/userguide/groovy_build_script_primer.html
-// - Gradle init script API reference:
-//   - https://docs.gradle.org/current/dsl/org.gradle.api.Project.html#org.gradle.api.Project:allprojects(groovy.lang.Closure)
-//   - https://docs.gradle.org/current/javadoc/index.html
-//
-// ----
-//
-// The resulting JSON output is a map of configuration names to an array of
-// top-level dependencies.
-//
-// Dependencies have a "type", either "project" or "package"
-//
-// "project" dependencies look like: `{ "type": "project", "name": ":project-name" }`
-// "package" dependencies look like: `{ "type": "package", "name": "group:module", "version": "1.0", "dependencies": [] }`
-//
-// Semantically:
-//
-// type ConfigurationName = Text
-// type Name = Text
-// type Version = Text
-//
-// type Output = Map ConfigurationName [Dependency]
-//
-// data Dependency =
-//     Project Name -- first-party (sub)projects
-//   | Package Name Version [Dependency]
+/* 
 
+This Gradle init script adds a `jsonDeps` task that outputs the dependencies
+of each subproject as JSON.
 
-// TODO: Only print debug logging when running in debug mode?
+If you're debugging this script, you can directly run this on a Gradle project
+by running `gradle -I/path/to/script $TASK` e.g.
+    `gradle -I/tmp/jsondeps.gradle :jsonDeps`. This lets you see the output directly.
+
+Useful documentation:
+- Gradle init scripts: https://docs.gradle.org/current/userguide/init_scripts.html
+- Gradle subprojects: https://docs.gradle.org/current/userguide/multi_project_builds.html
+- Gradle configurations: https://docs.gradle.org/current/userguide/declaring_dependencies.html
+- Gradle build script primer: https://docs.gradle.org/current/userguide/groovy_build_script_primer.html
+- Gradle init script API reference:
+  - https://docs.gradle.org/current/dsl/org.gradle.api.Project.html#org.gradle.api.Project:allprojects(groovy.lang.Closure)
+  - https://docs.gradle.org/current/javadoc/index.html
+
+----
+
+There are two form of generated JSON: (1) from resolved configuration API (2) from resolution API. 
+
+## For (1) Resolved configuration:
+----------------------------------
+
+    The resulting JSON output is a map of configuration names to an array of top-level dependencies.
+
+    Dependencies have a "type", either "project" or "package"
+        "project" dependencies look like: `{ "type": "project", "name": ":project-name" }`
+        "package" dependencies look like: `{ "type": "package", "name": "group:module", "version": "1.0" }`
+
+Semantically:
+
+    type ConfigurationName = Text
+    type Name = Text
+    type Version = Text
+    type Output = Map ConfigurationName [Dependency]
+    
+    data Dependency =
+        Project Name -- first-party (sub)projects
+        | Package Name Version [Dependency]
+
+## For (2) Resolution API:
+-------------------------
+
+    The resulting JSON output is a list of all configuration with adjacency map of dependencies.
+
+    For a project resulting json is:    
+    ```
+        {
+            resolvedProjectName: ..
+            resolvedProjectConfigurations: [
+                {
+                    resolvedConfigurationName: ...,
+                    resolvedConfigurationDirectComponents: [
+                        { "type": "project", "name": ":project-name" }, 
+                        ....
+                    ],
+                    resolvedConfigurationDependencies: [
+                        {
+                            "resolvedComponentNode": { "type": "project", "name": ":project-name" }
+                            "resolvedComponentOutgoing": [
+                                { "type": "package", "name": "group:module", "version": "1.0" },
+                                ...
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ```
+*/
+
 allprojects {
     task jsonDeps {
         doLast {
@@ -50,6 +82,88 @@ allprojects {
             // These will be included as debug logs in CLI!
             def printDebugToFossa = { message, scope ->
                 println "FOSSA-DEBUG (${scope}): ${message}"
+            }
+
+            // Uses configuration resolution api to serialize adjacency map of dependencies to json. 
+            // This is recommended approach to infer resolved graph. 
+            // 
+            // See:
+            //  - https://github.com/gradle/gradle/issues/5953#issuecomment-404514591
+            //  - 
+            // 
+            // Reference:
+            // - https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ResolvableDependencies.html
+            // - https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/Configuration.html#getIncoming--
+            def resolutedConfigToJSON = { resolvedConfig -> 
+                def getComponentName = { component -> 
+                    if (component instanceof ProjectComponentIdentifier) { return "${component.projectPath}"}
+                    if (component instanceof ModuleComponentIdentifier) { return "${component.group}:${component.module}"}
+                    printTrace("Component is not project or module: ${component}", "resolutedConfigToJSON")
+                    return null
+                }
+
+                def componentToJson = { component -> 
+                    if (component instanceof ProjectComponentIdentifier) { return "{\"type\":\"project\",\"name\":\"${getComponentName(component)}\"}"}
+                    if (component instanceof ModuleComponentIdentifier) { return "{\"type\":\"package\",\"name\":\"${getComponentName(component)}\",\"version\":\"${component.version}\"}"}
+                    printTrace("Component is not project or module: ${component}", "resolutedConfigToJSON")
+                    return null
+                }
+
+                def resolutionResult = resolvedConfig.incoming.resolutionResult
+                def adjacencyMap = [:]
+                def directComponents = []
+                def loggedWarnings = []
+                
+                // Refs:
+                // -----
+                // resolutionResult: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ResolvableDependencies.html#getResolutionResult--
+                // getAllComponents(): https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/ResolutionResult.html#getAllComponents--
+                // resolvedComponent: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/ComponentResult.html
+                // getDependencies(): https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/ResolvedComponentResult.html#getDependencies--
+                // resolvedDep: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/DependencyResult.html
+                // - 
+                resolvedConfig.incoming.resolutionResult.getAllComponents().each { resolvedComponent ->
+                    if (resolvedComponent instanceof UnresolvedComponentResult) {
+                        printDebugToFossa("Could not resolve component: ${resolvedComponent.getAttempted()}", "resolutedConfigToJSON")
+                        return;
+                    } 
+                    
+                    resolvedComponent.getDependencies().each { resolvedDep ->     
+                        if (resolvedDep instanceof UnresolvedDependencyResult) {
+                            printDebugToFossa("Could not resolve dependency: ${resolvedDep.getAttempted()}", "resolutedConfigToJSON")
+                            return;
+                        }
+                        
+                        def resolvedDependencyId = resolvedDep.getSelected().getId()
+                        if (resolvedDependencyId != resolvedComponent.getId()) {
+                            adjacencyMap.get(resolvedComponent, []) << resolvedDependencyId
+                        }
+                    }
+                }
+
+                // Sort for reproducibility - ordering matches that of, 
+                // official gradle scan plugin dependencies results
+                directComponents = adjacencyMap.get(resolutionResult.getRoot(), [])
+                directComponents.sort { getComponentName(it) }                          
+
+                def json = "{"
+                json += "\"resolvedConfigurationName\": \"${resolvedConfig.getName()}\","
+                json += "\"resolvedConfigurationDirectComponents\": [${directComponents.collect() { componentToJson(it) }.join(',')}],"
+                json += "\"resolvedConfigurationDependencies\": ["
+
+                adjacencyMap.eachWithIndex { node, listOfConnectedNodes, i ->
+                    def connectedNodesJson = listOfConnectedNodes.sort { getComponentName(it) }.collect() { componentToJson(it) }.join(",")
+                    json += "{"
+                    json += "\"resolvedComponentNode\": ${componentToJson(node.getId())},"
+                    json += "\"resolvedComponentOutgoing\": [${connectedNodesJson}]"
+                    json += "}"
+                    if (i < adjacencyMap.size() - 1 ) {
+                        json += ","
+                    }
+                }
+                json += "]"                
+                json += "}"
+                return json
             }
 
             def depToJSON
@@ -171,10 +285,10 @@ allprojects {
             }
 
             // project: https://docs.gradle.org/current/javadoc/org/gradle/api/Project.html
-            def projectToJSON = { project ->
+            def projectToJsonWithResolvedConfigApi = { project ->
                 def jsonConfigs = []
                 project.configurations.each { config ->
-                    printTrace ("Trying to resolve configuration - ${config}", "projectToJSON")
+                    printTrace ("Trying to resolve configuration - ${config}", "projectToJsonWithResolvedConfigApi")
                     def jsonConfigWithDeps = getResolvedConfigDepsOrEmptyOf config
                     if (jsonConfigWithDeps != null) {
                         jsonConfigs << jsonConfigWithDeps
@@ -184,13 +298,32 @@ allprojects {
                 return "{${combined}}"
             }
 
-            def result = projectToJSON project
+            def projectToJsonWithResolutionApi = { project ->
+                def jsonConfigs = []
+                project.configurations.each { config ->
+                    def result = null
+                    if (config.respondsTo("isCanBeResolved") && config.isCanBeResolved()) {
+                        try {
+                            result = resolutedConfigToJSON (config)
+                            jsonConfigs << result
+                        } catch (Exception ignored) {}
+                    } else {
+                        printTrace("Configuration: ${config} can not be resolved!", "projectToJsonWithResolutionApi")
+                    }
+                }
+                return "{ \"resolvedProjectName\": \"${project.path}\", \"resolvedProjectConfigurations\": [${jsonConfigs.join(",")}]}"
+            }
+            
 
-            // We use the "JSONDEPS_" prefix to print output. This is why it's
+            def resultWithResolvedConfigApi = projectToJsonWithResolvedConfigApi project
+            def resultWithResolutionApi = projectToJsonWithResolutionApi project
+
+            // We use the "*JSONDEPS_*" to print output. This is why it's
             // safe for us to print a bunch of other debugging messages
             // everywhere else - the parser in Spectrometer ignores those
             // messages.
-            println "JSONDEPS_${project.path}_${result}"
+            println "JSONDEPS_${project.path}_${resultWithResolvedConfigApi}"
+            println "RESOLUTIONAPI_JSONDEPS_${project.path}_${resultWithResolutionApi}"
         }
     }
 }
