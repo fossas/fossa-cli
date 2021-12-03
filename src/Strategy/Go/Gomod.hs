@@ -12,6 +12,7 @@ module Strategy.Go.Gomod (
   Require (..),
   PackageName,
   PackageVersion (..),
+  parsePackageVersion,
   gomodParser,
 ) where
 
@@ -111,6 +112,85 @@ data Require = Require
 
 type Parser = Parsec Void Text
 
+-- | Parses package version of go module.
+-- Version parses version strings and distinguishes between non-canonical
+-- versions, semantic versions, and pseudo-versions.
+--
+-- We first attempt to parse the version as semantic. On success, we
+-- determine whether the semantic version is a pseudo-version (which
+-- requires special formatting for the backend).
+--
+-- On failure, we treat the version string as a non-canonical version as
+-- long as it's composed of legal characters.
+--
+-- For how Go modules use versions, see https://golang.org/ref/mod#versions.
+-- For the semantic version spec, see https://semver.org/.
+parsePackageVersion :: (Parser [Char] -> Parser [Char]) -> Parser PackageVersion
+parsePackageVersion lexify = parseSemOrPseudo <|> parseNonCanonical
+  where
+    -- Helpers.
+    semVerText = toText <$> lexify (some (alphaNumChar <|> oneOf ['.', '-', '+', '_', '/']))
+    mapLeft _ (Right r) = r
+    mapLeft f (Left l) = f l
+
+    -- Non-canonical versions can be made of any valid string of characters.
+    parseNonCanonical = NonCanonical <$> semVerText
+
+    -- Pseudo-versions are also valid semantic versions. We first determine
+    -- whether a version is properly semantic, and then determine whether it
+    -- could also be a pseudo-version.
+    parseSemOrPseudo = do
+      -- Go modules adds a leading "v". See
+      -- https://golang.org/ref/mod#versions.
+      --
+      -- > Each version starts with the letter v, followed by a semantic
+      -- > version.
+      _ <- char 'v'
+      raw <- semVerText
+
+      -- Once we have the version text, we then try to parse the version
+      -- text as a semver using SemVer.fromText.
+      pure $ case SemVer.fromText raw of
+        Right semver -> case reverse $ _versionRelease semver of
+          -- See https://golang.org/ref/mod#pseudo-versions for the forms
+          -- of pseudo-versions, reproduced below:
+          --
+          -- - Form 1 (no tagged version): vX.0.0-yyyymmddhhmmss-abcdefabcdef
+          -- - Form 2 (pre-release version): vX.Y.Z-pre.0.yyyymmddhhmmss-abcdefabcdef
+          -- - Form 3 (tagged version): vX.Y.(Z+1)-0.yyyymmddhhmmss-abcdefabcdef
+          --
+          -- Pseudo-versions always have a trailing "pseudo" pre-release
+          -- identifier, so we reverse the pre-release identifier list to
+          -- match on the end of the list. If the original tagged version
+          -- has a pre-release identifier, then the pseudo-version will
+          -- separate the original identifier and the "pseudo" identifier
+          -- with a numeric identifier section equal to 0.
+          --
+          -- If a semantic version matches a possible pseudo-version form,
+          -- we then check whether the pre-release identifiers are formatted
+          -- as if the version is a pseudo-version. If the parse fails, then
+          -- we treat this version as a normal semantic version.
+          [IText preReleaseId] -> mapLeft (const $ Semantic semver) $ parsePseudoPreRelease preReleaseId
+          (IText preReleaseId) : (INum 0) : _ -> mapLeft (const $ Semantic semver) $ parsePseudoPreRelease preReleaseId
+          -- If the semantic version's pre-release identifiers are not of a
+          -- pseudo-version form, it cannot possibly be a pseudo-version.
+          _ -> Semantic semver
+        Left _ -> NonCanonical raw
+
+    -- Here, we run a sub-parser to determine whether the "pseudo"
+    -- pre-release identifier is correctly formatted. This is always of the
+    -- form "yyyymmddhhmmss-abcdefabcdef" - a timestamp, and then a commit
+    -- hash.
+    --
+    -- For the backend's sake, we want to upload the commit hash (which
+    -- identifies the version of the dependency).
+    --
+    -- See https://golang.org/ref/mod#pseudo-versions for more details.
+    parsePseudoPreRelease = parse parser ""
+      where
+        parser :: Parser PackageVersion
+        parser = Pseudo <$ count 14 numberChar <* char '-' <*> (toText <$> count 12 alphaNumChar) <* eof
+
 gomodParser :: Parser Gomod
 gomodParser = do
   _ <- scn
@@ -181,6 +261,9 @@ gomodParser = do
     singleExclude :: Parser Statement
     singleExclude = ExcludeStatement <$> packageName <*> version
 
+    version :: Parser PackageVersion
+    version = parsePackageVersion lexeme
+
     -- helper combinator to parse things like:
     --
     --   prefix <singleparse>
@@ -199,85 +282,6 @@ gomodParser = do
     -- package name, e.g., golang.org/x/text
     packageName :: Parser PackageName
     packageName = toText <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_'))
-
-    -- Version parses version strings and distinguishes between non-canonical
-    -- versions, semantic versions, and pseudo-versions.
-    --
-    -- We first attempt to parse the version as semantic. On success, we
-    -- determine whether the semantic version is a pseudo-version (which
-    -- requires special formatting for the backend).
-    --
-    -- On failure, we treat the version string as a non-canonical version as
-    -- long as it's composed of legal characters.
-    --
-    -- For how Go modules use versions, see https://golang.org/ref/mod#versions.
-    -- For the semantic version spec, see https://semver.org/.
-    version :: Parser PackageVersion
-    version = parseSemOrPseudo <|> parseNonCanonical
-      where
-        -- Helpers.
-        semVerText = toText <$> lexeme (some (alphaNumChar <|> oneOf ['.', '-', '+', '_', '/']))
-
-        mapLeft _ (Right r) = r
-        mapLeft f (Left l) = f l
-
-        -- Non-canonical versions can be made of any valid string of characters.
-        parseNonCanonical = NonCanonical <$> semVerText
-
-        -- Pseudo-versions are also valid semantic versions. We first determine
-        -- whether a version is properly semantic, and then determine whether it
-        -- could also be a pseudo-version.
-        parseSemOrPseudo = do
-          -- Go modules adds a leading "v". See
-          -- https://golang.org/ref/mod#versions.
-          --
-          -- > Each version starts with the letter v, followed by a semantic
-          -- > version.
-          _ <- char 'v'
-          raw <- semVerText
-
-          -- Once we have the version text, we then try to parse the version
-          -- text as a semver using SemVer.fromText.
-          pure $ case SemVer.fromText raw of
-            Right semver -> case reverse $ _versionRelease semver of
-              -- See https://golang.org/ref/mod#pseudo-versions for the forms
-              -- of pseudo-versions, reproduced below:
-              --
-              -- - Form 1 (no tagged version): vX.0.0-yyyymmddhhmmss-abcdefabcdef
-              -- - Form 2 (pre-release version): vX.Y.Z-pre.0.yyyymmddhhmmss-abcdefabcdef
-              -- - Form 3 (tagged version): vX.Y.(Z+1)-0.yyyymmddhhmmss-abcdefabcdef
-              --
-              -- Pseudo-versions always have a trailing "pseudo" pre-release
-              -- identifier, so we reverse the pre-release identifier list to
-              -- match on the end of the list. If the original tagged version
-              -- has a pre-release identifier, then the pseudo-version will
-              -- separate the original identifier and the "pseudo" identifier
-              -- with a numeric identifier section equal to 0.
-              --
-              -- If a semantic version matches a possible pseudo-version form,
-              -- we then check whether the pre-release identifiers are formatted
-              -- as if the version is a pseudo-version. If the parse fails, then
-              -- we treat this version as a normal semantic version.
-              [IText preReleaseId] -> mapLeft (const $ Semantic semver) $ parsePseudoPreRelease preReleaseId
-              (IText preReleaseId) : (INum 0) : _ -> mapLeft (const $ Semantic semver) $ parsePseudoPreRelease preReleaseId
-              -- If the semantic version's pre-release identifiers are not of a
-              -- pseudo-version form, it cannot possibly be a pseudo-version.
-              _ -> Semantic semver
-            Left _ -> NonCanonical raw
-
-        -- Here, we run a sub-parser to determine whether the "pseudo"
-        -- pre-release identifier is correctly formatted. This is always of the
-        -- form "yyyymmddhhmmss-abcdefabcdef" - a timestamp, and then a commit
-        -- hash.
-        --
-        -- For the backend's sake, we want to upload the commit hash (which
-        -- identifies the version of the dependency).
-        --
-        -- See https://golang.org/ref/mod#pseudo-versions for more details.
-        parsePseudoPreRelease = parse parser ""
-          where
-            parser :: Parser PackageVersion
-            parser = Pseudo <$ count 14 numberChar <* char '-' <*> (toText <$> count 12 alphaNumChar) <* eof
 
     -- goVersion, e.g.:
     --   v0.0.0-20190101000000-abcdefabcdef

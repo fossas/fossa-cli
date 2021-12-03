@@ -1,8 +1,8 @@
 # Fossa CLI Changelog
 
-## v3.0.8
+## v3.0.7
 
-- Gradle: Uses `getResolutionResult` api for analysis. ([#727](https://github.com/fossas/fossa-cli/pull/727))
+- Go: `go mod graph` is used as default tactic for gomod strategy. ([#707](https://github.com/fossas/fossa-cli/pull/707))
 
 ## v3.0.6
 
