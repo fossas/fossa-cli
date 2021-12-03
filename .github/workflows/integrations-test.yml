@@ -48,6 +48,5 @@ jobs:
         $RUN_CMD || $RUN_CMD
     
     - name: Run all integration tests
-      if: ${{ event.inputs.integrationTestFilter == '*'}}
       run: |
         cabal test --project-file=cabal.project.ci.linux integration-tests --test-show-details=direct --test-option=--times

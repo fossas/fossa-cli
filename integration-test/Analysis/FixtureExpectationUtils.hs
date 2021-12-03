@@ -42,11 +42,15 @@ data DependencyResultsSummary = DependencyResultsSummary
   }
   deriving (Show, Eq, Ord)
 
--- | Performs discovery and analysis for all discovered project fop provided analysis integration fixture.
-withAnalysisOf :: (Has (Lift IO) sig m, AnalyzeProject a, MonadFail m) => AnalysisTestFixture a -> (([(DiscoveredProject a, DependencyResults)], Path Abs Dir) -> m b) -> m ()
+-- | Performs discovery and analysis for all discovered project for provided analysis integration fixture.
+withAnalysisOf ::
+  (Has (Lift IO) sig m, AnalyzeProject a, MonadFail m) =>
+  AnalysisTestFixture a ->
+  (([(DiscoveredProject a, DependencyResults)], Path Abs Dir) -> m b) ->
+  m ()
 withAnalysisOf a runTest = do
   extractedDir <- getArtifact (artifact a)
-  res <- performDiscoveryAndAnalyses a
+  res <- performDiscoveryAndAnalyses extractedDir a
   _ <- case scopedDir . artifact $ a of
     Nothing -> runTest (res, extractedDir)
     Just sd -> runTest (res, extractedDir </> sd)
