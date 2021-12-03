@@ -3,6 +3,7 @@
 module Strategy.Go.GoList (
   analyze',
   Require (..),
+  GoListModule (..),
 ) where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
