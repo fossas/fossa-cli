@@ -11,20 +11,19 @@ module App.Fossa.VSI.Fingerprint (
   Combined,
 ) where
 
-import Conduit (ConduitT, Void, await, runConduitRes, sourceFile, (.|))
+import Conduit (ConduitT, Void, await, decodeUtf8C, encodeUtf8C, linesUnboundedC, runConduitRes, sourceFile, yield, (.|))
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.Exception (IOException, Lift, catch)
 import Control.Effect.Lift (sendIO)
-import Crypto.Hash (Digest, HashAlgorithm, SHA256 (..), hashFinalize, hashInit, hashUpdate, hashWith)
+import Crypto.Hash (Digest, HashAlgorithm, SHA256 (..), hashFinalize, hashInit, hashUpdate)
 import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.ByteString qualified as B
 import Data.String.Conversion (ToText (..))
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Text.Encoding qualified as TE
 import Discovery.Walk (WalkStep (..), walk')
-import Effect.ReadFS (ReadFS, contentIsBinary, readContentsText)
+import Effect.ReadFS (ReadFS, contentIsBinary)
 import Path (Abs, Dir, File, Path, toFilePath)
 
 -- | Fingerprint deterministically idenfies a file and is derived from its content.
@@ -82,6 +81,18 @@ hashFile fp =
   sendIO (runConduitRes (sourceFile fp .| sinkHash))
     `catch` (\(e :: IOException) -> fatalText ("unable to hash file: " <> toText (show e)))
 
+hashFileCommentStripped :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
+hashFileCommentStripped file =
+  sendIO
+    ( runConduitRes $
+        sourceFile file -- Read from the file
+          .| decodeUtf8C -- Decode to text
+          .| basicCStyleCommentStripC -- Strip comments
+          .| encodeUtf8C -- Encode back to bytes
+          .| sinkHash -- Hash the result
+    )
+    `catch` (\(e :: IOException) -> fatalText ("unable to hash file: " <> toText (show e)))
+
 fingerprintRaw :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m (Fingerprint Raw)
 fingerprintRaw file = do
   (fp :: Digest SHA256) <- hashFile $ toFilePath file
@@ -92,13 +103,13 @@ fingerprintContentsRaw = walk' $ \_ _ files -> do
   fps <- traverse fingerprintRaw files
   pure (fps, WalkContinue)
 
-fingerprintCommentStripped :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Maybe (Fingerprint CommentStripped))
+fingerprintCommentStripped :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m (Maybe (Fingerprint CommentStripped))
 fingerprintCommentStripped file = contentIsBinary file >>= doFingerprint
   where
     doFingerprint True = pure Nothing -- Don't attempt to comment strip binary files
     doFingerprint False = do
-      content <- readContentsText file
-      pure . Just . encodeFingerprint . hashWith SHA256 . TE.encodeUtf8 $ basicCStyleCommentStrip content
+      (fp :: Digest SHA256) <- hashFileCommentStripped $ toFilePath file
+      pure . Just $ encodeFingerprint fp
 
 fingerprint :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m Combined
 fingerprint file =
@@ -107,12 +118,16 @@ fingerprint file =
     <*> fingerprintCommentStripped file
 
 -- | This implementation is based on the comment strip logic from the internal logic used when crawling OSS components.
--- It is very basic, only works for C-style comments and @\n@ newlines, and doesn't handle edge cases.
--- Despite these drawbacks, we have to reimplement it the same way so that fingerprints line up correctly in the VSI analysis service.
+-- It is very basic:
 --
--- TODO: We should ideally move this to stream processing instead of buffering the whole file.
-basicCStyleCommentStrip :: Text -> Text
-basicCStyleCommentStrip content = Text.unlines . (process False) $ Text.lines content
+-- * Only works for C-style comments
+-- * Only catches @\\n@ newlines
+-- * Doesn't handle edge cases (escaped comments for example)
+-- * Also omits any blank lines
+--
+-- Despite these drawbacks, we have to reimplement it the same way so that fingerprints line up correctly in the VSI analysis service.
+basicCStyleCommentStripC :: Monad m => ConduitT Text Text m ()
+basicCStyleCommentStripC = linesUnboundedC .| process False
   where
     breakOn' :: Text -> Text -> (Text, Text, Bool)
     breakOn' needle haystack = do
@@ -121,19 +136,27 @@ basicCStyleCommentStrip content = Text.unlines . (process False) $ Text.lines co
         then (before, Text.empty, False)
         else (before, Text.drop (Text.length needle) remaining, True)
 
-    mergeLineWithRest :: Bool -> Text -> [Text] -> [Text]
-    mergeLineWithRest inMultilineComment line remainingLines =
+    yieldLine inMultilineComment raw = do
+      let line = Text.strip raw
       if line == Text.empty
-        then process inMultilineComment remainingLines
-        else line : process inMultilineComment remainingLines
+        then process inMultilineComment
+        else do
+          yield line
+          process inMultilineComment
 
-    process :: Bool -> [Text] -> [Text]
-    process _ [] = []
-    process True (line : remainingLines) = do
-      let (_, lineAfterComment, foundCommentEnd) = breakOn' "*/" line
-      mergeLineWithRest (not foundCommentEnd) lineAfterComment remainingLines
-    process False (line : remainingLines) = do
-      let (lineBeforeComment, _, foundCommentStart) = breakOn' "/*" line
-      if foundCommentStart
-        then mergeLineWithRest True lineBeforeComment remainingLines
-        else fst (Text.breakOn line "//") : process False remainingLines -- Trim off any single line comment at the end of the line
+    process True = do
+      chunk <- await
+      case chunk of
+        Nothing -> pure ()
+        Just line -> do
+          let (_, lineAfterComment, foundCommentEnd) = breakOn' "*/" line
+          yieldLine (not foundCommentEnd) lineAfterComment
+    process False = do
+      chunk <- await
+      case chunk of
+        Nothing -> pure ()
+        Just line -> do
+          let (lineBeforeComment, _, foundCommentStart) = breakOn' "/*" line
+          if foundCommentStart
+            then yieldLine True lineBeforeComment
+            else yieldLine False $ fst (Text.breakOn line "//")
