@@ -54,6 +54,8 @@ getDeps project = do
   (graph, graphBreadth) <-
     context "Gomodules" $
       context "Dynamic analysis using go mod graph" (GoModGraph.analyze (gomodulesDir project))
+        -- Go List tactic is only kept in consideration, in event go mod graph fails.
+        -- In reality, this is highly unlikely scenario, and should almost never happen.
         <||> context "Dynamic analysis using go list" (GoList.analyze' (gomodulesDir project))
         <||> context "Static analysis" (Gomod.analyze' (gomodulesGomod project))
   pure $
