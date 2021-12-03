@@ -435,7 +435,6 @@ test-suite unit-tests
     , hspec-megaparsec                ^>=2.2
     , spectrometer
 
-
 test-suite integration-tests
   import:             lang
   import:             deps
@@ -443,11 +442,10 @@ test-suite integration-tests
   hs-source-dirs:     integration-test
   main-is:            test.hs
   ghc-options:        -threaded
-
   other-modules:
-    Analysis.Python.PoetrySpec
-    Analysis.FixtureUtils
     Analysis.FixtureExpectationUtils
+    Analysis.FixtureUtils
+    Analysis.Python.PoetrySpec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
   build-depends:
