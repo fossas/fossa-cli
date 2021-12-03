@@ -1,10 +1,13 @@
 FMT_OPTS = -co -XTypeApplications -o -XImportQualifiedPost
-FIND_OPTS = src test -type f -name '*.hs'
+FIND_OPTS = src test integration-test -type f -name '*.hs'
 
 build:
 	cabal build
 
 test:
+	cabal test unit-tests
+
+test-all:
 	cabal test
 
 # Dogfood the dev version
@@ -42,7 +45,7 @@ check-fmt:
 lint:
 	@echo "Running hlint"
 	@hlint --version
-	@hlint src test
+	@hlint src test integration-test
 	@echo "No linter errors found"
 
 # Performs markdown lint checks for dead links
