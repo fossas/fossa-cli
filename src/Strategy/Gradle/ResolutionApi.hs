@@ -19,7 +19,7 @@ import Data.Aeson (
   (.:),
  )
 import Data.Aeson.Types (Parser, unexpected)
-import Data.Foldable (forM_)
+import Data.Foldable (for_)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
@@ -106,16 +106,16 @@ buildGraph projects onlyConfigs = run . withLabeling toDependency $ mapM_ addCon
     addConfig resolvedConfig = do
       let configLabel = toGradleLabel $ resolvedConfigurationName resolvedConfig
 
-      forM_ (resolvedConfigurationDirectComponents resolvedConfig) $ \directDep -> do
+      for_ (resolvedConfigurationDirectComponents resolvedConfig) $ \directDep -> do
         label directDep configLabel
         direct directDep
 
-      forM_ (resolvedConfigurationDependencies resolvedConfig) $ \rcDepAdjacency -> do
+      for_ (resolvedConfigurationDependencies resolvedConfig) $ \rcDepAdjacency -> do
         let parentDep = resolvedComponentNode rcDepAdjacency
         label parentDep configLabel
         deep parentDep
 
-        forM_ (resolvedComponentOutgoing rcDepAdjacency) $ \childDep -> do
+        for_ (resolvedComponentOutgoing rcDepAdjacency) $ \childDep -> do
           deep childDep
           label childDep configLabel
           edge parentDep childDep

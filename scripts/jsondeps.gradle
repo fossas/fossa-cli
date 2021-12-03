@@ -75,18 +75,18 @@ allprojects {
             // Reference:
             // - https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ResolvableDependencies.html
             // - https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/Configuration.html#getIncoming--
-            def resolutedConfigToJSON = { resolvedConfig -> 
+            def resolvedConfigToJSON = { resolvedConfig -> 
                 def getComponentName = { component -> 
                     if (component instanceof ProjectComponentIdentifier) { return "${component.projectPath}"}
                     if (component instanceof ModuleComponentIdentifier) { return "${component.group}:${component.module}"}
-                    printTrace("Component is not project or module: ${component}", "resolutedConfigToJSON")
+                    printTrace("Component is not project or module: ${component}", "resolvedConfigToJSON")
                     return null
                 }
 
                 def componentToJson = { component -> 
                     if (component instanceof ProjectComponentIdentifier) { return "{\"type\":\"project\",\"name\":\"${getComponentName(component)}\"}"}
                     if (component instanceof ModuleComponentIdentifier) { return "{\"type\":\"package\",\"name\":\"${getComponentName(component)}\",\"version\":\"${component.version}\"}"}
-                    printTrace("Component is not project or module: ${component}", "resolutedConfigToJSON")
+                    printTrace("Component is not project or module: ${component}", "resolvedConfigToJSON")
                     return null
                 }
 
@@ -105,13 +105,13 @@ allprojects {
                 // - 
                 resolvedConfig.incoming.resolutionResult.getAllComponents().each { resolvedComponent ->
                     if (resolvedComponent instanceof UnresolvedComponentResult) {
-                        printDebugToFossa("Could not resolve component: ${resolvedComponent.getAttempted()}", "resolutedConfigToJSON")
+                        printDebugToFossa("Could not resolve component: ${resolvedComponent.getAttempted()}", "resolvedConfigToJSON")
                         return;
                     } 
                     
                     resolvedComponent.getDependencies().each { resolvedDep ->     
                         if (resolvedDep instanceof UnresolvedDependencyResult) {
-                            printDebugToFossa("Could not resolve dependency: ${resolvedDep.getAttempted()}", "resolutedConfigToJSON")
+                            printDebugToFossa("Could not resolve dependency: ${resolvedDep.getAttempted()}", "resolvedConfigToJSON")
                             return;
                         }
                         
@@ -161,7 +161,7 @@ allprojects {
                             printDebugToFossa ("Configuration is not resolvable: ${config}!", "projectToJsonWithResolutionApi")
                             return null
                         }
-                        result = resolutedConfigToJSON (config)
+                        result = resolvedConfigToJSON (config)
                         jsonConfigs << result
                     } catch (Exception ignored) {
                         printDebugToFossa("${ignored}", "projectToJsonWithResolutionApi")
