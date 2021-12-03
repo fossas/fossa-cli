@@ -380,8 +380,8 @@ test-suite unit-tests
     Fossa.API.TypesSpec
     Go.GlideLockSpec
     Go.GoListSpec
-    Go.GomodSpec
     Go.GoModGraphSpec
+    Go.GomodSpec
     Go.GopkgLockSpec
     Go.GopkgTomlSpec
     Go.TransitiveSpec
