@@ -356,6 +356,7 @@ test-suite unit-tests
     App.Fossa.ManualDepsSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.VPS.NinjaGraphSpec
+    App.Fossa.VSI.FingerprintSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec
