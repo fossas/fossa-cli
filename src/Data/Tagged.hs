@@ -51,7 +51,7 @@ type role Tagged nominal representational
 
 -- | Enable strict type checking of tags with @-XTypeApplications@.
 -- > enforceTag @MyTag (x :: Tagged MyTag ty) = id
-enforceTag :: forall tag ty. Tagged tag ty -> Tagged ty tag
+enforceTag :: forall tag ty. Tagged tag ty -> Tagged tag ty
 enforceTag = id
 
 -- | Same as 'enforceTag', but extracts the inner @ty@.
