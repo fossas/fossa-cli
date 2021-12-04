@@ -168,11 +168,11 @@ library
     App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Test
     App.Fossa.VPS.Types
+    App.Fossa.VSI.Fingerprint
     App.Fossa.VSI.IAT.AssertRevisionBinaries
     App.Fossa.VSI.IAT.AssertUserDefinedBinaries
     App.Fossa.VSI.IAT.Resolve
     App.Fossa.VSI.IAT.Types
-    App.Fossa.VSI.Fingerprint
     App.Fossa.VSI.Types
     App.Fossa.VSIDeps
     App.OptionExtensions
