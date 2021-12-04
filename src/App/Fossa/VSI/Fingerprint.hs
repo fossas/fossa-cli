@@ -8,10 +8,10 @@ module App.Fossa.VSI.Fingerprint (
   Fingerprint,
   Raw,
   CommentStripped,
-  Combined,
+  Combined (..),
 ) where
 
-import Conduit (ConduitT, Void, await, decodeUtf8C, encodeUtf8C, linesUnboundedC, runConduitRes, sourceFile, yield, (.|))
+import Conduit (ConduitT, Void, await, decodeUtf8C, encodeUtf8C, filterC, linesUnboundedC, mapC, runConduitRes, sourceFile, yield, (.|))
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.Exception (IOException, Lift, catch)
@@ -22,6 +22,7 @@ import Data.ByteString qualified as B
 import Data.String.Conversion (ToText (..))
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Text.Extra (breakOnAndRemove)
 import Discovery.Walk (WalkStep (..), walk')
 import Effect.ReadFS (ReadFS, contentIsBinary)
 import Path (Abs, Dir, File, Path, toFilePath)
@@ -127,36 +128,50 @@ fingerprint file =
 --
 -- Despite these drawbacks, we have to reimplement it the same way so that fingerprints line up correctly in the VSI analysis service.
 basicCStyleCommentStripC :: Monad m => ConduitT Text Text m ()
-basicCStyleCommentStripC = linesUnboundedC .| process False
+basicCStyleCommentStripC = linesUnboundedC .| process .| mapC Text.strip .| filterC (not . Text.null) .| bufferedNewline Nothing
   where
-    breakOn' :: Text -> Text -> (Text, Text, Bool)
-    breakOn' needle haystack = do
-      let (before, remaining) = Text.breakOn needle haystack
-      if remaining == Text.empty -- `remaining` includes the needle if found, so if it's empty it wasn't found
-        then (before, Text.empty, False)
-        else (before, Text.drop (Text.length needle) remaining, True)
+    -- For compatibility with the original version of this function we can't write a newline after the final line in the output, but we want newlines otherwise.
+    -- As we read through the input stream, instead of writing lines directly we'll buffer one at a time.
+    -- This way we can delay the decision of whether to write a trailing newline until we know if we're at the end of the input.
+    bufferedNewline buf = do
+      chunk <- await
+      case chunk of
+        -- Now that we're done reading the input stream, if there's a buffered output line write it *without a trailing newline*.
+        -- This is to maintain compatibility with the original version of this function.
+        -- We have to keep this compatible, because all of our fingerprint corpus relies on how this fingerprint function works.
+        Nothing -> case buf of
+          Nothing -> pure ()
+          Just bufferedLine -> do
+            yield bufferedLine
+            bufferedNewline Nothing
 
-    yieldLine inMultilineComment raw = do
-      let line = Text.strip raw
-      if line == Text.empty
-        then process inMultilineComment
-        else do
-          yield line
-          process inMultilineComment
+        -- Here, we know we have a new line coming down the pipe.
+        -- If we had a previous line buffered, write it with a newline.
+        -- If not, store this new line in the buffer first.
+        Just line -> case buf of
+          Nothing -> bufferedNewline (Just line)
+          Just bufferedLine -> do
+            yield $ bufferedLine <> "\n"
+            bufferedNewline (Just line)
 
-    process True = do
+    processInComment = do
       chunk <- await
       case chunk of
         Nothing -> pure ()
-        Just line -> do
-          let (_, lineAfterComment, foundCommentEnd) = breakOn' "*/" line
-          yieldLine (not foundCommentEnd) lineAfterComment
-    process False = do
+        Just line -> case breakOnAndRemove "*/" line of
+          Nothing -> processInComment
+          Just (_, lineAfterComment) -> do
+            yield $ lineAfterComment <> "\n"
+            process
+
+    process = do
       chunk <- await
       case chunk of
         Nothing -> pure ()
-        Just line -> do
-          let (lineBeforeComment, _, foundCommentStart) = breakOn' "/*" line
-          if foundCommentStart
-            then yieldLine True lineBeforeComment
-            else yieldLine False $ fst (Text.breakOn line "//")
+        Just line -> case breakOnAndRemove "/*" line of
+          Nothing -> do
+            yield $ fst (Text.breakOn "//" line)
+            process
+          Just (lineBeforeComment, _) -> do
+            yield lineBeforeComment
+            processInComment
