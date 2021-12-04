@@ -7,7 +7,26 @@ way to do dependency management.
 
 Find all files named `go.mod`
 
-## Analysis: golist
+## Analysis
+
+We attempt to perform the following strategies in order (first succeeding strategy's results are selected):
+
+1. go mod graph and golist
+2. go list
+3. gomod
+
+## Strategy: go mod graph and golist
+
+Discovery: find go.mod files
+
+1. We execute `go mod graph` to retrieve all edges, and all considered versions of the module.
+2. We execute `go list -m -json all` to identify the main module, selected version of the module, and whether the module is direct dependency (using `Indirect` field from the command response)
+3. We create a dependencies graph from using the result of (1) in the following fashion:
+   1. We remove the main module from the dependency graph
+   2. We label all direct modules, as a direct dependency
+   3. We filter out module versions that were not selected - we know selected module versions from step (2). We do this, since the output of `go mod graph`, does return only the selected version, used in the build list! 
+
+## Strategy: golist
 
 Discovery: find go.mod files
 
@@ -36,7 +55,7 @@ We run `go list -m -json all`, which produces, e.g.,:
 
 For package dependencies that aren't using gomodules, a pseudo-version (`v0.0.0-TIMESTAMP-COMMITID`) is present instead. We use the commit ID as the version.
 
-## Analysis: gomod
+## Strategy: gomod
 
 We parse the go.mod file, which looks something like:
 

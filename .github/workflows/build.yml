@@ -141,9 +141,9 @@ jobs:
         cabal update
         $RUN_CMD || $RUN_CMD
 
-    - name: Run tests
+    - name: Run unit tests
       run: |
-        cabal test --project-file=${{ matrix.project-file }} all
+        cabal test --project-file=${{ matrix.project-file }} unit-tests
 
     # Save artifacts.
     - name: Find and move binaries (Windows)
