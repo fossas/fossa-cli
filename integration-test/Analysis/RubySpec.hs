@@ -26,7 +26,6 @@ testRailSrcRepo =
   aroundAll (withAnalysisOf rails) $ do
     describe "rails" $ do
       it "should find targets" $ \(result, extractedDir) -> do
-        print result
         shouldFindProjectOf ("bundler", extractedDir) result
       it "should have expected dependency results" $ \(result, extractedDir) -> do
         (DependencyResultsSummary 210 70 293 1 Complete) `expectDepResultsSummary` (getDepResultsOf result ("bundler", extractedDir))
