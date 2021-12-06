@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RoleAnnotations #-}
 
 module App.Fossa.VSI.Fingerprint (
   fingerprintRaw,
@@ -35,6 +36,7 @@ import Path (Abs, Dir, File, Path, toFilePath)
 --
 -- For ease of implementation, the backing representation of a @Fingerprint@ instance is a @Base16@ encoded @Text@.
 newtype Fingerprint k = Fingerprint Text
+
 type role Fingerprint nominal
 
 -- | Represents a 'Fingerprint' derived from the unmodified content of a file.

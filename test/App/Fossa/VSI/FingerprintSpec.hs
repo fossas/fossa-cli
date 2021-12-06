@@ -2,7 +2,7 @@ module App.Fossa.VSI.FingerprintSpec (spec) where
 
 import App.Fossa.VSI.Fingerprint (Combined (..), fingerprint)
 import Control.Carrier.Diagnostics (runDiagnostics)
-import Data.String.Conversion (toString, toText)
+import Data.String.Conversion (toText)
 import Effect.ReadFS (runReadFSIO)
 import Path (Abs, File, Path)
 import Path.IO qualified as PIO
