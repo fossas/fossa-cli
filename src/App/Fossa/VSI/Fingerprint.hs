@@ -12,7 +12,7 @@ module App.Fossa.VSI.Fingerprint (
   Combined (..),
 ) where
 
-import Conduit (ConduitT, Void, await, decodeUtf8C, encodeUtf8C, filterC, mapC, runConduitRes, sourceFile, yield, (.|))
+import Conduit (ConduitT, Void, await, decodeUtf8C, encodeUtf8C, filterC, linesUnboundedC, mapC, runConduitRes, sourceFile, yield, (.|))
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.Exception (IOException, Lift, catch)
@@ -20,7 +20,6 @@ import Control.Effect.Lift (sendIO)
 import Crypto.Hash (Digest, HashAlgorithm, SHA256 (..), hashFinalize, hashInit, hashUpdate)
 import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.ByteString qualified as B
-import Data.Conduit.Combinators (splitOnUnboundedE)
 import Data.String.Conversion (ToText (..))
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -132,7 +131,7 @@ fingerprint file =
 --
 -- Despite these drawbacks, we have to reimplement it the same way so that fingerprints line up correctly in the VSI analysis service.
 basicCStyleCommentStripC :: Monad m => ConduitT Text Text m ()
-basicCStyleCommentStripC = splitOnUnboundedE (== '\n') .| process .| mapC Text.strip .| filterC (not . Text.null) .| bufferedNewline Nothing
+basicCStyleCommentStripC = linesUnboundedC .| process .| mapC Text.strip .| filterC (not . Text.null) .| bufferedNewline Nothing
   where
     -- For compatibility with the original version of this function we can't write a newline after the final line in the output, but we want newlines otherwise.
     -- As we read through the input stream, instead of writing lines directly we'll buffer one at a time.
