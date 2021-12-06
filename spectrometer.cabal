@@ -460,6 +460,7 @@ test-suite integration-tests
     Analysis.Python.PipenvSpec
     Analysis.Python.PoetrySpec
     Analysis.Python.SetuptoolsSpec
+    Analysis.RubySpec
     Analysis.RustSpec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
