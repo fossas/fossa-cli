@@ -2,7 +2,7 @@
 
 ### What is it?
 
-FOSSA supports the ability to flag all binary dependencies discovered in your project source tree as unlicensed dependencies via an opt in flag.
+FOSSA supports the ability to flag all binary dependencies discovered in your project source tree as unlicensed dependencies via an opt-in flag.
 
 The core idea behind this feature is that some organizations wish to validate all potential sources of intellectual property rights, and binaries are potential sources of intellectual property rights data for which we typically cannot automatically discover licensing information.
 
@@ -19,16 +19,17 @@ The description of the dependency is "Binary discovered in source tree".
 ### Correcting discovered binaries
 
 Most binaries cannot be statically analyzed for licensing or other information. As such, users need to correct the information about the binary using the standard FOSSA corrections flow.
-Users are able to edit the information about the binary, such as its name or licensing information. Users may also ignore binaries that are not relevant.
+Users can edit the information about the binary, such as its name or licensing information. Users may also ignore binaries that are not relevant.
 
 These corrections persist in future revisions of the project so long as the binary does not move to a different path in the project.
 If it does, the binary appears in the list again without any corrections.
-If the binary content changes but stays at the same location on disk, these corrects persist and a different hash is displayed in the version field of the dependency.
+If the binary content changes but stays at the same location on disk, these corrections persist and a different hash is displayed in the version field of the dependency.
 
 ### Filtering discovered binaries
 
 This feature has the potential to be quite noisy, as most projects have many binary files.
-This feature supports the standard `--exclude-path` and `--only-path` flags to customize the parts of the project inspected for binaries.
+
+This feature supports the standard path filters used in FOSSA CLI (via `--exclude-path` and `--only-path` flags, or [.fossa.yml](../../files/fossa-yml.md#paths-)) to customize which paths are scanned.
 
 ### Inspecting binaries
 

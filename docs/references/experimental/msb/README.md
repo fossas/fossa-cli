@@ -1,13 +1,13 @@
 ## Multi Stage Builds
 
-Multi-stage buiilds allows users give FOSSA metadata attached to a binary ahead of time (for example, a team working on an internal library can tell FOSSA about that library as part of that CI process).
+The _Multi-stage builds_ feature allows users give FOSSA metadata attached to a binary ahead of time (for example, a team working on an internal library can tell FOSSA about that library as part of that CI process).
 FOSSA then can detect binaries that are registered as dependencies in downstream projects that include that binary in their source tree when running with [VSI enabled](../vsi/README.md).
 
 ### Use Cases
 
 #### Vendor a known binary
 
-Multi-stage builds supports the ability to link metadata to binaries (example: `name`, `version`, `license`) for which you do not have the source available.
+The _Multi-stage builds_ feature supports the ability to link metadata to binaries (example: `name`, `version`, `license`) for which you do not have the source available.
 The binary will be identified within the org by its unique fingerprint as it is shared internally between the projects it will appear as a regular direct dependency with all of the specified metadata that was previously specified.
 Such binary can be a library purchased from a vendor, or a prebuilt open source project.
 
@@ -20,7 +20,7 @@ The upstream library project will be shown as a direct dependency of the project
 
 #### Build a binary used downstream
 
-Multi-stage builldds supports the ability to link your output binaries when analyzing your project to support the internal binary use case.
+The _Multi-stage builds_ feature supports the ability to link your output binaries when analyzing your project to support the internal binary use case.
 This allows you to configure the CI pipeline for your project to always keep the linked binary up to date.
 
 ### Link a binary’s fingerprint to a user project

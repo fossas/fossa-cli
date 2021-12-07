@@ -1,7 +1,7 @@
 ## Experimental Features
 
 At FOSSA, we like to develop in the open. 
-This helps us get feedback from our users early and often, and helps our users take advantage of the newest cutting edge featues we're working on.
+This helps us get feedback from our users early and often, and helps our users take advantage of the newest cutting-edge features we're working on.
 
 FOSSA also has strong commitments to backwards compatibility and support.
 We respect the fact that we live in the CI pipeline, and we want to avoid anything that would get in the way of our users shipping software.

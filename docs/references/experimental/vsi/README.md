@@ -1,4 +1,4 @@
-## Vendored Source Identification
+## Vendored Source Identification (VSI)
 
 Some projects, especially C or C++ projects, vendor open source libraries in directories adjacent to the first party code being developed in-house.
 FOSSA's Vendored Source Identification is intended to support identifying and categorizing such vendored libraries.
