@@ -21,11 +21,10 @@ import Crypto.Hash (Digest, HashAlgorithm, SHA256 (..), hashFinalize, hashInit, 
 import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.ByteString qualified as B
 import Data.Maybe (fromMaybe)
-import Data.String.Conversion (ToText (..), toString)
+import Data.String.Conversion (ToText (..))
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Extra (breakOnAndRemove)
-import Debug.Trace qualified as Debug
 import Discovery.Walk (WalkStep (..), walk')
 import Effect.ReadFS (ReadFS, contentIsBinary)
 import Path (Abs, Dir, File, Path, toFilePath)
@@ -93,7 +92,6 @@ hashTextFileCommentStripped file =
         sourceFile file -- Read from the file
           .| decodeUtf8C -- Decode to text
           .| basicCStyleCommentStripC -- Strip comments
-          .| traceC "hashTextFileCommentStripped"
           .| encodeUtf8C -- Encode back to bytes
           .| sinkHash -- Hash the result
     )
@@ -108,7 +106,6 @@ hashTextFile file =
           .| linesUnboundedC -- Split into lines (for @stripCrLines@)
           .| stripCrLines -- Normalize CRLF -> LF
           .| mapC (<> "\n") -- Always append a newline here
-          .| traceC "hashTextFile"
           .| encodeUtf8C -- Encode back to bytes
           .| sinkHash -- Hash the result
     )
@@ -142,15 +139,6 @@ fingerprint file =
   Combined
     <$> fingerprintRaw file
     <*> fingerprintCommentStripped file
-
-traceC :: Monad m => Text -> ConduitT Text Text m ()
-traceC context = do
-  chunk <- await
-  case chunk of
-    Nothing -> pure ()
-    Just l -> do
-      yield $ Debug.trace ("[" ++ toString context ++ "] -> " ++ show l) l
-      traceC context
 
 -- | For compatibility with the original version of this function we can't write a newline after the final line in the output, but we want newlines otherwise.
 -- As we read through the input stream, instead of writing lines directly we'll buffer one at a time.
