@@ -261,6 +261,7 @@ library
     Strategy.Go.GlideLock
     Strategy.Go.GoList
     Strategy.Go.Gomod
+    Strategy.Go.GoModGraph
     Strategy.Go.GopkgLock
     Strategy.Go.GopkgToml
     Strategy.Go.Transitive
@@ -379,6 +380,7 @@ test-suite unit-tests
     Fossa.API.TypesSpec
     Go.GlideLockSpec
     Go.GoListSpec
+    Go.GoModGraphSpec
     Go.GomodSpec
     Go.GopkgLockSpec
     Go.GopkgTomlSpec
@@ -431,4 +433,27 @@ test-suite unit-tests
     , hspec-expectations-pretty-diff  ^>=0.7.2.5
     , hspec-hedgehog                  ^>=0.0.1.2
     , hspec-megaparsec                ^>=2.2
+    , spectrometer
+
+test-suite integration-tests
+  import:             lang
+  import:             deps
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     integration-test
+  main-is:            test.hs
+  ghc-options:        -threaded
+  other-modules:
+    Analysis.FixtureExpectationUtils
+    Analysis.FixtureUtils
+    Analysis.Python.PoetrySpec
+
+  build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
+  build-depends:
+    , hedgehog                        ^>=1.0.2
+    , hspec                           ^>=2.8.2
+    , hspec-core                      ^>=2.8.2
+    , hspec-expectations-pretty-diff  ^>=0.7.2.5
+    , hspec-hedgehog                  ^>=0.0.1.2
+    , hspec-megaparsec                ^>=2.2
+    , req-conduit                     ^>=1.0.1
     , spectrometer

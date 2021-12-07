@@ -4,6 +4,14 @@
 
 - Makes experimental flags discoverable and documents them. ([#723](https://github.com/fossas/fossa-cli/pull/723))
 
+## v3.0.8
+
+- Nuget: Fixes analysis performance when working with `project.assets.json` ([#733](https://github.com/fossas/fossa-cli/pull/733))
+
+## v3.0.7
+
+- Go: `go mod graph` is used as default tactic for gomod strategy. ([#707](https://github.com/fossas/fossa-cli/pull/707))
+
 ## v3.0.6
 
 - Yarn: Fixes a bug with yarn v1 lock file analysis, where direct dependencies were not reported sometimes. ([#716](https://github.com/fossas/fossa-cli/pull/716))

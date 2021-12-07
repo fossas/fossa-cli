@@ -1,10 +1,13 @@
 FMT_OPTS = -co -XTypeApplications -o -XImportQualifiedPost
-FIND_OPTS = src test -type f -name '*.hs'
+FIND_OPTS = src test integration-test -type f -name '*.hs'
 
 build:
 	cabal build
 
 test:
+	cabal test unit-tests
+
+test-all:
 	cabal test
 
 # Dogfood the dev version
@@ -15,6 +18,9 @@ analyze:
 install-local: build
 	cp $(shell cabal list-bin fossa) ./fossa
 
+install-dev: build
+	cp $(shell cabal list-bin fossa) /usr/local/bin/fossa-dev
+
 check: check-fmt lint
 
 # Format everything (if this fails, update FMT_OPTS or use your IDE to format)
@@ -23,6 +29,8 @@ fmt:
 	@echo "Running fourmolu"
 	@fourmolu --version
 	@fourmolu --mode inplace ${FMT_OPTS} $(shell find ${FIND_OPTS})
+	@echo "Running cabal-fmt"
+	@cabal-fmt spectrometer.cabal --inplace
 
 # Confirm everything is formatted without changing anything
 check-fmt:
@@ -30,12 +38,14 @@ check-fmt:
 	@fourmolu --version
 	@fourmolu --mode check ${FMT_OPTS} $(shell find ${FIND_OPTS})
 	@echo "No formatting errors found"
+	@echo "Running cabal-fmt"
+	@cabal-fmt --check spectrometer.cabal
 
 # Lint everything (If this fails, update .hlint.yaml or report the failure)
 lint:
 	@echo "Running hlint"
 	@hlint --version
-	@hlint src test
+	@hlint src test integration-test
 	@echo "No linter errors found"
 
 # Performs markdown lint checks for dead links
