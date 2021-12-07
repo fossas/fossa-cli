@@ -165,7 +165,7 @@ bufferedNewline buf = do
         yield $ bufferedLine <> "\n"
         bufferedNewline (Just line)
 
--- || Windows git implementations typically add carriage returns before each newline when checked out.
+-- | Windows git implementations typically add carriage returns before each newline when checked out.
 -- However, crawlers were run on Linux, so aren't expecting files to have carriage returns.
 -- Convert CRLF -> LF. While this does cause a hash mismatch on files that legitimately have CRLF endings, this way of doing it is believed to result in less misses.
 stripCrLines :: Monad m => ConduitT Text Text m ()
