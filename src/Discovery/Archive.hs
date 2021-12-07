@@ -4,17 +4,21 @@ module Discovery.Archive (
   extractRpm,
   extractTar,
   extractTarGz,
+  extractTarXz,
   extractZip,
 ) where
 
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Zip qualified as Zip
 import Codec.Compression.GZip qualified as GZip
+import Conduit (runConduit, runResourceT, sourceFileBS, (.|))
 import Control.Carrier.Diagnostics
 import Control.Effect.Finally
 import Control.Effect.Lift
 import Control.Effect.TaskPool (TaskPool, forkTask)
 import Data.ByteString.Lazy qualified as BL
+import Data.Conduit.Binary (sinkLbs)
+import Data.Conduit.Lzma qualified as Lzma
 import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
 import Data.String.Conversion (toText)
@@ -40,6 +44,9 @@ discover go dir = context "Finding archives" $
 
     let tarGzs = filter (\file -> ".tar.gz" `isSuffixOf` fileName file) files
     traverse_ (\file -> forkTask $ withArchive extractTarGz file (process file)) tarGzs
+
+    let tarXzs = filter (\file -> ".tar.xz" `isSuffixOf` fileName file) files
+    traverse_ (\file -> forkTask $ withArchive extractTarXz file (process file)) tarXzs
 
     let zips = filter (\file -> ".zip" `isSuffixOf` fileName file) files
     traverse_ (\file -> forkTask $ withArchive extractZip file (process file)) zips
@@ -86,6 +93,11 @@ extractTar dir tarFile =
 extractTarGz :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
 extractTarGz dir tarGzFile =
   sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read . GZip.decompress =<< BL.readFile (fromAbsFile tarGzFile)
+
+extractTarXz :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
+extractTarXz dir tarXzFile = do
+  decompressed <- sendIO (runResourceT . runConduit $ sourceFileBS (toFilePath tarXzFile) .| Lzma.decompress Nothing .| sinkLbs)
+  sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read $ decompressed
 
 -- The tar unpacker dies when tar files reference files outside of the archive root
 removeTarLinks :: Tar.Entries e -> Tar.Entries e
