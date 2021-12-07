@@ -17,6 +17,7 @@ import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Data.Aeson
 import Data.Aeson.Types (Parser)
+import Data.Foldable (for_)
 import Data.HashMap.Strict qualified as HM
 import Data.Map.Strict qualified as Map
 import Data.Maybe
@@ -33,7 +34,6 @@ import Effect.ReadFS
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path
-import Data.Foldable (for_)
 import Text.Read (readMaybe)
 import Types
 
@@ -161,14 +161,16 @@ buildGraph project = run . withLabeling toDependency $ graphsOfTargetFrameworks
         (Map.toList $ targets project)
 
     toDependency :: NuGetDep -> Set NugetLabel -> Dependency
-    toDependency NuGetDep{..} = foldr (\_ d -> d) $ Dependency
-        { dependencyType = NuGetType
-        , dependencyName = depName
-        , dependencyVersion = Just (CEq depVersion)
-        , dependencyLocations = []
-        , dependencyEnvironments = mempty
-        , dependencyTags = Map.empty
-        }
+    toDependency NuGetDep{..} =
+      foldr (\_ d -> d) $
+        Dependency
+          { dependencyType = NuGetType
+          , dependencyName = depName
+          , dependencyVersion = Just (CEq depVersion)
+          , dependencyLocations = []
+          , dependencyEnvironments = mempty
+          , dependencyTags = Map.empty
+          }
 
 graphOfFramework :: Has (LabeledGrapher NuGetDep NugetLabel) sig m => (Map.Map FrameworkName (Set Text)) -> (FrameworkName, Map.Map NuGetDepKey DependencyInfo) -> m ()
 graphOfFramework projectFrameworkDeps (targetFramework, targetFrameworkDeps) = do
@@ -195,7 +197,7 @@ graphOfFramework projectFrameworkDeps (targetFramework, targetFrameworkDeps) = d
     toNugetDep (depKey, dep) = NuGetDep (depKeyName depKey) (depKeyVersion depKey) (depType dep) (deepDeps dep)
 
     withoutProjectDep :: [NuGetDep] -> [NuGetDep]
-    withoutProjectDep deps = filter (\dep -> completeDepType dep /= "project") deps
+    withoutProjectDep = filter (\dep -> completeDepType dep /= "project")
 
     -- Note:
     --  Project's framework's identifier do not always match 1:1 with (resolved) target framework.
