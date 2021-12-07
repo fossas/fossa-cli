@@ -131,8 +131,25 @@ fingerprint file =
 --
 -- Despite these drawbacks, we have to reimplement it the same way so that fingerprints line up correctly in the VSI analysis service.
 basicCStyleCommentStripC :: Monad m => ConduitT Text Text m ()
-basicCStyleCommentStripC = linesUnboundedC .| process .| mapC Text.strip .| filterC (not . Text.null) .| bufferedNewline Nothing
+basicCStyleCommentStripC =
+  linesUnboundedC
+    .| mapLineEnding
+    .| process
+    .| mapC Text.strip
+    .| filterC (not . Text.null)
+    .| bufferedNewline Nothing
   where
+    -- Windows git implementations typically add carriage returns before each newline when checked out.
+    -- However, crawlers were run on Linux, so aren't expecting files to have carriage returns.
+    -- Convert CRLF -> LF. While this does cause a hash mismatch on files that legitimately have CRLF endings, this way of doing it is believed to result in less misses.
+    mapLineEnding = do
+      chunk <- await
+      case chunk of
+        Nothing -> pure ()
+        Just c -> do
+          yield $ Text.replace "\r\n" "\n" c
+          mapLineEnding
+
     -- For compatibility with the original version of this function we can't write a newline after the final line in the output, but we want newlines otherwise.
     -- As we read through the input stream, instead of writing lines directly we'll buffer one at a time.
     -- This way we can delay the decision of whether to write a trailing newline until we know if we're at the end of the input.
@@ -164,7 +181,7 @@ basicCStyleCommentStripC = linesUnboundedC .| process .| mapC Text.strip .| filt
         Just line -> case breakOnAndRemove "*/" line of
           Nothing -> processInComment
           Just (_, lineAfterComment) -> do
-            yield $ lineAfterComment <> "\n"
+            yield lineAfterComment
             process
 
     process = do
