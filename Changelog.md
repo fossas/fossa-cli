@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## v3.0.8
+
+- Nuget: Fixes analysis performance when working with `project.assets.json` ([#733](https://github.com/fossas/fossa-cli/pull/733))
+
 ## v3.0.7
 
 - Go: `go mod graph` is used as default tactic for gomod strategy. ([#707](https://github.com/fossas/fossa-cli/pull/707))
