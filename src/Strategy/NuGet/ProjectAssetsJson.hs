@@ -17,7 +17,7 @@ import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Data.Aeson
 import Data.Aeson.Types (Parser)
-import Data.Foldable (for_, traverse_)
+import Data.Foldable (for_)
 import Data.HashMap.Strict qualified as HM
 import Data.Map.Strict qualified as Map
 import Data.Maybe
@@ -150,13 +150,11 @@ instance FromJSON ProjectAssetsJson where
           pure (FrameworkName framework, frameworkDeps)
         pure $ Map.fromList projectFrameworks
 
-newtype NugetLabel = Env DepEnvironment deriving (Eq, Ord, Show)
-
 buildGraph :: ProjectAssetsJson -> Graphing Dependency
 buildGraph project = Graphing.gmap toDependency $ run . evalGrapher $ graphsOfTargetFrameworks
   where
     graphsOfTargetFrameworks =
-      traverse_
+      traverse
         (graphOfFramework $ projectFramework project)
         (Map.toList $ targets project)
 
