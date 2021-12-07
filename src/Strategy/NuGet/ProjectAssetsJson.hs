@@ -17,7 +17,7 @@ import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Data.Aeson
 import Data.Aeson.Types (Parser)
-import Data.Foldable (for_)
+import Data.Foldable (for_, traverse_)
 import Data.HashMap.Strict qualified as HM
 import Data.Map.Strict qualified as Map
 import Data.Maybe
@@ -29,10 +29,10 @@ import Data.Text qualified as Text
 import Data.Traversable (for)
 import DepTypes
 import Discovery.Walk
-import Effect.Grapher (LabeledGrapher, deep, direct, edge, withLabeling)
+import Effect.Grapher (Grapher, deep, direct, edge, evalGrapher)
 import Effect.ReadFS
 import GHC.Generics (Generic)
-import Graphing (Graphing)
+import Graphing (Graphing, gmap)
 import Path
 import Text.Read (readMaybe)
 import Types
@@ -153,26 +153,25 @@ instance FromJSON ProjectAssetsJson where
 newtype NugetLabel = Env DepEnvironment deriving (Eq, Ord, Show)
 
 buildGraph :: ProjectAssetsJson -> Graphing Dependency
-buildGraph project = run . withLabeling toDependency $ graphsOfTargetFrameworks
+buildGraph project = Graphing.gmap toDependency $ run . evalGrapher $ graphsOfTargetFrameworks
   where
     graphsOfTargetFrameworks =
-      mapM
+      traverse_
         (graphOfFramework $ projectFramework project)
         (Map.toList $ targets project)
 
-    toDependency :: NuGetDep -> Set NugetLabel -> Dependency
+    toDependency :: NuGetDep -> Dependency
     toDependency NuGetDep{..} =
-      foldr (\_ d -> d) $
-        Dependency
-          { dependencyType = NuGetType
-          , dependencyName = depName
-          , dependencyVersion = Just (CEq depVersion)
-          , dependencyLocations = []
-          , dependencyEnvironments = mempty
-          , dependencyTags = Map.empty
-          }
+      Dependency
+        { dependencyType = NuGetType
+        , dependencyName = depName
+        , dependencyVersion = Just (CEq depVersion)
+        , dependencyLocations = []
+        , dependencyEnvironments = mempty
+        , dependencyTags = Map.empty
+        }
 
-graphOfFramework :: Has (LabeledGrapher NuGetDep NugetLabel) sig m => (Map.Map FrameworkName (Set Text)) -> (FrameworkName, Map.Map NuGetDepKey DependencyInfo) -> m ()
+graphOfFramework :: Has (Grapher NuGetDep) sig m => (Map.Map FrameworkName (Set Text)) -> (FrameworkName, Map.Map NuGetDepKey DependencyInfo) -> m ()
 graphOfFramework projectFrameworkDeps (targetFramework, targetFrameworkDeps) = do
   for_ (withoutProjectDep allResolvedDeps) $ \resolvedDep -> do
     if isDirectDep resolvedDep
