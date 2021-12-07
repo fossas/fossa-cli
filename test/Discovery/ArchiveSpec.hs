@@ -77,7 +77,7 @@ spec = do
     it "should have cleaned up the temporary directory" $ do
       tempDirExists `shouldBe` False
 
-  describe "extract tar.xz archive to a temporary location" $ do
+  describe "extract tar.bz2 archive to a temporary location" $ do
     target <- runIO simpleTarBz2Path
     (extractedDir, extractedContentA, extractedContentB) <- runIO $
       runFinally . withArchive extractTarBz2 target $ \dir -> do
