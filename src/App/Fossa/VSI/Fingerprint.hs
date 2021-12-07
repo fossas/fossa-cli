@@ -140,31 +140,6 @@ fingerprint file =
     <$> fingerprintRaw file
     <*> fingerprintCommentStripped file
 
--- | For compatibility with the original version of this function we can't write a newline after the final line in the output, but we want newlines otherwise.
--- As we read through the input stream, instead of writing lines directly we'll buffer one at a time.
--- This way we can delay the decision of whether to write a trailing newline until we know if we're at the end of the input.
-bufferedNewline :: Monad m => Maybe Text -> ConduitT Text Text m ()
-bufferedNewline buf = do
-  chunk <- await
-  case chunk of
-    -- Now that we're done reading the input stream, if there's a buffered output line write it *without a trailing newline*.
-    -- This is to maintain compatibility with the original version of this function.
-    -- We have to keep this compatible, because all of our fingerprint corpus relies on how this fingerprint function works.
-    Nothing -> case buf of
-      Nothing -> pure ()
-      Just bufferedLine -> do
-        yield bufferedLine
-        bufferedNewline Nothing
-
-    -- Here, we know we have a new line coming down the pipe.
-    -- If we had a previous line buffered, write it with a newline.
-    -- If not, store this new line in the buffer first.
-    Just line -> case buf of
-      Nothing -> bufferedNewline (Just line)
-      Just bufferedLine -> do
-        yield $ bufferedLine <> "\n"
-        bufferedNewline (Just line)
-
 -- | Windows git implementations typically add carriage returns before each newline when checked out.
 -- However, crawlers were run on Linux, so aren't expecting files to have carriage returns.
 -- Convert CRLF -> LF. While this does cause a hash mismatch on files that legitimately have CRLF endings, this way of doing it is believed to result in less misses.
@@ -195,6 +170,30 @@ basicCStyleCommentStripC =
     .| filterC (not . Text.null)
     .| bufferedNewline Nothing
   where
+    -- For compatibility with the original version of this function we can't write a newline after the final line in the output, but we want newlines otherwise.
+    -- As we read through the input stream, instead of writing lines directly we'll buffer one at a time.
+    -- This way we can delay the decision of whether to write a trailing newline until we know if we're at the end of the input.
+    bufferedNewline buf = do
+      chunk <- await
+      case chunk of
+        -- Now that we're done reading the input stream, if there's a buffered output line write it *without a trailing newline*.
+        -- This is to maintain compatibility with the original version of this function.
+        -- We have to keep this compatible, because all of our fingerprint corpus relies on how this fingerprint function works.
+        Nothing -> case buf of
+          Nothing -> pure ()
+          Just bufferedLine -> do
+            yield bufferedLine
+            bufferedNewline Nothing
+
+        -- Here, we know we have a new line coming down the pipe.
+        -- If we had a previous line buffered, write it with a newline.
+        -- If not, store this new line in the buffer first.
+        Just line -> case buf of
+          Nothing -> bufferedNewline (Just line)
+          Just bufferedLine -> do
+            yield $ bufferedLine <> "\n"
+            bufferedNewline (Just line)
+
     processInComment = do
       chunk <- await
       case chunk of
