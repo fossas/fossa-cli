@@ -50,6 +50,9 @@ discover go dir = context "Finding archives" $
     let tarXzs = filter (\file -> ".tar.xz" `isSuffixOf` fileName file) files
     traverse_ (\file -> forkTask $ withArchive extractTarXz file (process file)) tarXzs
 
+    let tarBz2s = filter (\file -> ".tar.bz2" `isSuffixOf` fileName file) files
+    traverse_ (\file -> forkTask $ withArchive extractTarBz2 file (process file)) tarBz2s
+
     let zips = filter (\file -> ".zip" `isSuffixOf` fileName file) files
     traverse_ (\file -> forkTask $ withArchive extractZip file (process file)) zips
 
