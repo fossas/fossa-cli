@@ -20,6 +20,7 @@ import Control.Effect.Lift (sendIO)
 import Crypto.Hash (Digest, HashAlgorithm, SHA256 (..), hashFinalize, hashInit, hashUpdate)
 import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.ByteString qualified as B
+import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToText (..), toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -104,6 +105,9 @@ hashTextFile file =
     ( runConduitRes $
         sourceFile file -- Read from the file
           .| decodeUtf8C -- Decode to text
+          .| linesUnboundedC -- Split into lines (for @stripCrLines@)
+          .| stripCrLines -- Normalize CRLF -> LF
+          .| mapC (<> "\n") -- Always append a newline here
           .| traceC "hashTextFile"
           .| encodeUtf8C -- Encode back to bytes
           .| sinkHash -- Hash the result
@@ -173,6 +177,18 @@ bufferedNewline buf = do
         yield $ bufferedLine <> "\n"
         bufferedNewline (Just line)
 
+-- || Windows git implementations typically add carriage returns before each newline when checked out.
+-- However, crawlers were run on Linux, so aren't expecting files to have carriage returns.
+-- Convert CRLF -> LF. While this does cause a hash mismatch on files that legitimately have CRLF endings, this way of doing it is believed to result in less misses.
+stripCrLines :: Monad m => ConduitT Text Text m ()
+stripCrLines = do
+  chunk <- await
+  case chunk of
+    Nothing -> pure ()
+    Just line -> do
+      yield $ fromMaybe line (Text.stripSuffix "\r" line)
+      stripCrLines
+
 -- | This implementation is based on the comment strip logic from the internal logic used when crawling OSS components.
 -- It is very basic:
 --
@@ -185,23 +201,12 @@ bufferedNewline buf = do
 basicCStyleCommentStripC :: Monad m => ConduitT Text Text m ()
 basicCStyleCommentStripC =
   linesUnboundedC
-    .| mapLineEnding
+    .| stripCrLines
     .| process
     .| mapC Text.strip
     .| filterC (not . Text.null)
     .| bufferedNewline Nothing
   where
-    -- Windows git implementations typically add carriage returns before each newline when checked out.
-    -- However, crawlers were run on Linux, so aren't expecting files to have carriage returns.
-    -- Convert CRLF -> LF. While this does cause a hash mismatch on files that legitimately have CRLF endings, this way of doing it is believed to result in less misses.
-    mapLineEnding = do
-      chunk <- await
-      case chunk of
-        Nothing -> pure ()
-        Just c -> do
-          yield $ Text.replace "\r\n" "\n" c
-          mapLineEnding
-
     processInComment = do
       chunk <- await
       case chunk of
