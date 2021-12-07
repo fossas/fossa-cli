@@ -5,11 +5,13 @@ module Discovery.Archive (
   extractTar,
   extractTarGz,
   extractTarXz,
+  extractTarBz2,
   extractZip,
 ) where
 
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Zip qualified as Zip
+import Codec.Compression.BZip qualified as BZip
 import Codec.Compression.GZip qualified as GZip
 import Conduit (runConduit, runResourceT, sourceFileBS, (.|))
 import Control.Carrier.Diagnostics
@@ -98,6 +100,10 @@ extractTarXz :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
 extractTarXz dir tarXzFile = do
   decompressed <- sendIO (runResourceT . runConduit $ sourceFileBS (toFilePath tarXzFile) .| Lzma.decompress Nothing .| sinkLbs)
   sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read $ decompressed
+
+extractTarBz2 :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
+extractTarBz2 dir tarGzFile =
+  sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read . BZip.decompress =<< BL.readFile (fromAbsFile tarGzFile)
 
 -- The tar unpacker dies when tar files reference files outside of the archive root
 removeTarLinks :: Tar.Entries e -> Tar.Entries e
