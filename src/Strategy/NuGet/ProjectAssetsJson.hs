@@ -17,6 +17,7 @@ import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Data.Aeson
 import Data.Aeson.Types (Parser)
+import Data.Foldable (for_)
 import Data.HashMap.Strict qualified as HM
 import Data.Map.Strict qualified as Map
 import Data.Maybe
@@ -28,9 +29,10 @@ import Data.Text qualified as Text
 import Data.Traversable (for)
 import DepTypes
 import Discovery.Walk
+import Effect.Grapher (Grapher, deep, direct, edge, evalGrapher)
 import Effect.ReadFS
 import GHC.Generics (Generic)
-import Graphing (Graphing, empty, gmap, promoteToDirect, shrink, unfoldDeep)
+import Graphing (Graphing, gmap)
 import Path
 import Text.Read (readMaybe)
 import Types
@@ -149,37 +151,12 @@ instance FromJSON ProjectAssetsJson where
         pure $ Map.fromList projectFrameworks
 
 buildGraph :: ProjectAssetsJson -> Graphing Dependency
-buildGraph project = foldr (<>) Graphing.empty graphsOfTargetFrameworks
+buildGraph project = Graphing.gmap toDependency $ run . evalGrapher $ graphsOfTargetFrameworks
   where
     graphsOfTargetFrameworks =
-      map
+      traverse
         (graphOfFramework $ projectFramework project)
         (Map.toList $ targets project)
-
-graphOfFramework :: Map.Map FrameworkName (Set Text) -> (FrameworkName, Map.Map NuGetDepKey DependencyInfo) -> Graphing Dependency
-graphOfFramework projectFrameworkDeps (targetFramework, targetFrameworkDeps) =
-  Graphing.gmap toDependency
-    . withoutProjects
-    . promoteToDirect isDirectDep
-    $ unfoldDeep allResolvedDeps getTransitiveDeps id
-  where
-    withoutProjects :: Graphing NuGetDep -> Graphing NuGetDep
-    withoutProjects = Graphing.shrink (not . isProjectDep)
-
-    isDirectDep :: NuGetDep -> Bool
-    isDirectDep d = depName d `elem` (getProjectDirectDepsByFramework)
-
-    isProjectDep :: NuGetDep -> Bool
-    isProjectDep NuGetDep{..} = completeDepType == "project"
-
-    allResolvedDeps :: [NuGetDep]
-    allResolvedDeps = map toNugetDep $ Map.toList targetFrameworkDeps
-
-    toNugetDep :: (NuGetDepKey, DependencyInfo) -> NuGetDep
-    toNugetDep (depKey, dep) = NuGetDep (depKeyName depKey) (depKeyVersion depKey) (depType dep) (deepDeps dep)
-
-    getTransitiveDeps :: NuGetDep -> [NuGetDep]
-    getTransitiveDeps nugetDep = concat $ (\(name, _) -> filter (\d -> depName d == name) allResolvedDeps) <$> Map.toList (completeDeepDeps nugetDep)
 
     toDependency :: NuGetDep -> Dependency
     toDependency NuGetDep{..} =
@@ -191,6 +168,33 @@ graphOfFramework projectFrameworkDeps (targetFramework, targetFrameworkDeps) =
         , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }
+
+graphOfFramework :: Has (Grapher NuGetDep) sig m => (Map.Map FrameworkName (Set Text)) -> (FrameworkName, Map.Map NuGetDepKey DependencyInfo) -> m ()
+graphOfFramework projectFrameworkDeps (targetFramework, targetFrameworkDeps) = do
+  for_ (withoutProjectDep allResolvedDeps) $ \resolvedDep -> do
+    if isDirectDep resolvedDep
+      then direct resolvedDep
+      else deep resolvedDep
+
+    let transitives = withoutProjectDep $ getTransitiveDeps resolvedDep
+    for_ transitives $ \childDep -> do
+      deep childDep
+      edge resolvedDep childDep
+  where
+    isDirectDep :: NuGetDep -> Bool
+    isDirectDep d = depName d `elem` (getProjectDirectDepsByFramework)
+
+    getTransitiveDeps :: NuGetDep -> [NuGetDep]
+    getTransitiveDeps nugetDep = concat $ (\(name, _) -> filter (\d -> depName d == name) allResolvedDeps) <$> Map.toList (completeDeepDeps nugetDep)
+
+    allResolvedDeps :: [NuGetDep]
+    allResolvedDeps = map toNugetDep $ Map.toList targetFrameworkDeps
+
+    toNugetDep :: (NuGetDepKey, DependencyInfo) -> NuGetDep
+    toNugetDep (depKey, dep) = NuGetDep (depKeyName depKey) (depKeyVersion depKey) (depType dep) (deepDeps dep)
+
+    withoutProjectDep :: [NuGetDep] -> [NuGetDep]
+    withoutProjectDep = filter (\dep -> completeDepType dep /= "project")
 
     -- Note:
     --  Project's framework's identifier do not always match 1:1 with (resolved) target framework.
