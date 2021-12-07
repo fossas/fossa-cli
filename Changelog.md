@@ -2,8 +2,8 @@
 
 ## Unreleased (todo: fill this in before merge)
 
-- Supports extracting `.tar.xz` files (PR TODO)
-- Supports extracting `.tar.bz2` files (PR TODO)
+- Supports extracting `.tar.xz` files ([#734](https://github.com/fossas/fossa-cli/pull/734))
+- Supports extracting `.tar.bz2` files ([#734](https://github.com/fossas/fossa-cli/pull/734))
 
 ## v3.0.8
 

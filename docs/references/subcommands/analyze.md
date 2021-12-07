@@ -62,5 +62,7 @@ We support the following archive formats:
 - `.zip`
 - `.tar`
 - `.tar.gz`
+- `.tar.xz`
+- `.tar.bz2`
 - `.jar`
 - `.rpm`
