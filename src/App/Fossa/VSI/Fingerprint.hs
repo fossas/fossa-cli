@@ -20,7 +20,7 @@ import Control.Effect.Lift (sendIO)
 import Crypto.Hash (Digest, HashAlgorithm, SHA256 (..), hashFinalize, hashInit, hashUpdate)
 import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.ByteString qualified as B
-import Data.String.Conversion (ToText (..))
+import Data.String.Conversion (ToText (..), toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Extra (breakOnAndRemove)
@@ -80,37 +80,45 @@ sinkHash = sink hashInit
         Just bs -> sink $! hashUpdate ctx bs
 
 -- | Hashes the whole contents of the given file in constant memory.
--- Adapted from @hashFile@ in https://hackage.haskell.org/package/cryptonite-conduit-0.2.2/docs/src/Crypto-Hash-Conduit.html
-hashFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
-hashFile fp =
+hashBinaryFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
+hashBinaryFile fp =
   sendIO (runConduitRes (sourceFile fp .| sinkHash))
     `catch` (\(e :: IOException) -> fatalText ("unable to hash file: " <> toText (show e)))
 
-hashFileCommentStripped :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
-hashFileCommentStripped file =
+hashTextFileCommentStripped :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
+hashTextFileCommentStripped file =
   sendIO
     ( runConduitRes $
         sourceFile file -- Read from the file
           .| decodeUtf8C -- Decode to text
           .| basicCStyleCommentStripC -- Strip comments
-          .| trace
+          .| traceC "hashTextFileCommentStripped"
           .| encodeUtf8C -- Encode back to bytes
           .| sinkHash -- Hash the result
     )
     `catch` (\(e :: IOException) -> fatalText ("unable to hash file: " <> toText (show e)))
-  where
-    trace = do
-      chunk <- await
-      case chunk of
-        Nothing -> pure ()
-        Just l -> do
-          yield $ Debug.trace ("-> " ++ show l) l
-          trace
 
-fingerprintRaw :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m (Fingerprint Raw)
-fingerprintRaw file = do
-  (fp :: Digest SHA256) <- hashFile $ toFilePath file
-  pure $ encodeFingerprint fp
+hashTextFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
+hashTextFile file =
+  sendIO
+    ( runConduitRes $
+        sourceFile file -- Read from the file
+          .| decodeUtf8C -- Decode to text
+          .| traceC "hashTextFile"
+          .| encodeUtf8C -- Encode back to bytes
+          .| sinkHash -- Hash the result
+    )
+    `catch` (\(e :: IOException) -> fatalText ("unable to hash file: " <> toText (show e)))
+
+fingerprintRaw :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m (Fingerprint Raw)
+fingerprintRaw file = contentIsBinary file >>= doFingerprint
+  where
+    doFingerprint True = do
+      (fp :: Digest SHA256) <- hashBinaryFile $ toFilePath file
+      pure $ encodeFingerprint fp
+    doFingerprint False = do
+      (fp :: Digest SHA256) <- hashTextFile $ toFilePath file
+      pure $ encodeFingerprint fp
 
 fingerprintContentsRaw :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> m [Fingerprint Raw]
 fingerprintContentsRaw = walk' $ \_ _ files -> do
@@ -122,7 +130,7 @@ fingerprintCommentStripped file = contentIsBinary file >>= doFingerprint
   where
     doFingerprint True = pure Nothing -- Don't attempt to comment strip binary files
     doFingerprint False = do
-      (fp :: Digest SHA256) <- hashFileCommentStripped $ toFilePath file
+      (fp :: Digest SHA256) <- hashTextFileCommentStripped $ toFilePath file
       pure . Just $ encodeFingerprint fp
 
 fingerprint :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m Combined
@@ -130,6 +138,40 @@ fingerprint file =
   Combined
     <$> fingerprintRaw file
     <*> fingerprintCommentStripped file
+
+traceC :: Monad m => Text -> ConduitT Text Text m ()
+traceC context = do
+  chunk <- await
+  case chunk of
+    Nothing -> pure ()
+    Just l -> do
+      yield $ Debug.trace ("[" ++ toString context ++ "] -> " ++ show l) l
+      traceC context
+
+-- | For compatibility with the original version of this function we can't write a newline after the final line in the output, but we want newlines otherwise.
+-- As we read through the input stream, instead of writing lines directly we'll buffer one at a time.
+-- This way we can delay the decision of whether to write a trailing newline until we know if we're at the end of the input.
+bufferedNewline :: Monad m => Maybe Text -> ConduitT Text Text m ()
+bufferedNewline buf = do
+  chunk <- await
+  case chunk of
+    -- Now that we're done reading the input stream, if there's a buffered output line write it *without a trailing newline*.
+    -- This is to maintain compatibility with the original version of this function.
+    -- We have to keep this compatible, because all of our fingerprint corpus relies on how this fingerprint function works.
+    Nothing -> case buf of
+      Nothing -> pure ()
+      Just bufferedLine -> do
+        yield bufferedLine
+        bufferedNewline Nothing
+
+    -- Here, we know we have a new line coming down the pipe.
+    -- If we had a previous line buffered, write it with a newline.
+    -- If not, store this new line in the buffer first.
+    Just line -> case buf of
+      Nothing -> bufferedNewline (Just line)
+      Just bufferedLine -> do
+        yield $ bufferedLine <> "\n"
+        bufferedNewline (Just line)
 
 -- | This implementation is based on the comment strip logic from the internal logic used when crawling OSS components.
 -- It is very basic:
@@ -159,30 +201,6 @@ basicCStyleCommentStripC =
         Just c -> do
           yield $ Text.replace "\r\n" "\n" c
           mapLineEnding
-
-    -- For compatibility with the original version of this function we can't write a newline after the final line in the output, but we want newlines otherwise.
-    -- As we read through the input stream, instead of writing lines directly we'll buffer one at a time.
-    -- This way we can delay the decision of whether to write a trailing newline until we know if we're at the end of the input.
-    bufferedNewline buf = do
-      chunk <- await
-      case chunk of
-        -- Now that we're done reading the input stream, if there's a buffered output line write it *without a trailing newline*.
-        -- This is to maintain compatibility with the original version of this function.
-        -- We have to keep this compatible, because all of our fingerprint corpus relies on how this fingerprint function works.
-        Nothing -> case buf of
-          Nothing -> pure ()
-          Just bufferedLine -> do
-            yield bufferedLine
-            bufferedNewline Nothing
-
-        -- Here, we know we have a new line coming down the pipe.
-        -- If we had a previous line buffered, write it with a newline.
-        -- If not, store this new line in the buffer first.
-        Just line -> case buf of
-          Nothing -> bufferedNewline (Just line)
-          Just bufferedLine -> do
-            yield $ bufferedLine <> "\n"
-            bufferedNewline (Just line)
 
     processInComment = do
       chunk <- await
