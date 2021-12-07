@@ -83,7 +83,14 @@ sinkHash = sink hashInit
 -- Adapted from @hashFile@ in https://hackage.haskell.org/package/cryptonite-conduit-0.2.2/docs/src/Crypto-Hash-Conduit.html
 hashFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
 hashFile fp =
-  sendIO (runConduitRes (sourceFile fp .| sinkHash))
+  sendIO
+    ( runConduitRes $
+        sourceFile fp
+          .| decodeUtf8C -- Decode to text
+          .| normalizeLineEnding -- Convert file to \n only
+          .| encodeUtf8C -- Encode back to bytes
+          .| sinkHash -- Hash the result
+    )
     `catch` (\(e :: IOException) -> fatalText ("unable to hash file: " <> toText (show e)))
 
 hashFileCommentStripped :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
@@ -92,6 +99,7 @@ hashFileCommentStripped file =
     ( runConduitRes $
         sourceFile file -- Read from the file
           .| decodeUtf8C -- Decode to text
+          .| normalizeLineEnding -- Convert file to \n only
           .| basicCStyleCommentStripC -- Strip comments
           .| trace
           .| encodeUtf8C -- Encode back to bytes
@@ -131,6 +139,19 @@ fingerprint file =
     <$> fingerprintRaw file
     <*> fingerprintCommentStripped file
 
+-- | Windows git implementations typically add carriage returns before each newline when checked out.
+-- However, crawlers were run on Linux, so aren't expecting files to have carriage returns.
+-- Convert CRLF -> LF. While this does cause a hash mismatch on files that legitimately have CRLF endings, this way of doing it is believed to result in less misses.
+normalizeLineEnding :: Monad m => ConduitT Text Text m ()
+normalizeLineEnding =
+  linesUnboundedC .| do
+    chunk <- await
+    case chunk of
+      Nothing -> pure ()
+      Just c -> do
+        yield $ Text.replace "\r\n" "\n" c
+        normalizeLineEnding
+
 -- | This implementation is based on the comment strip logic from the internal logic used when crawling OSS components.
 -- It is very basic:
 --
@@ -143,23 +164,11 @@ fingerprint file =
 basicCStyleCommentStripC :: Monad m => ConduitT Text Text m ()
 basicCStyleCommentStripC =
   linesUnboundedC
-    .| mapLineEnding
     .| process
     .| mapC Text.strip
     .| filterC (not . Text.null)
     .| bufferedNewline Nothing
   where
-    -- Windows git implementations typically add carriage returns before each newline when checked out.
-    -- However, crawlers were run on Linux, so aren't expecting files to have carriage returns.
-    -- Convert CRLF -> LF. While this does cause a hash mismatch on files that legitimately have CRLF endings, this way of doing it is believed to result in less misses.
-    mapLineEnding = do
-      chunk <- await
-      case chunk of
-        Nothing -> pure ()
-        Just c -> do
-          yield $ Text.replace "\r\n" "\n" c
-          mapLineEnding
-
     -- For compatibility with the original version of this function we can't write a newline after the final line in the output, but we want newlines otherwise.
     -- As we read through the input stream, instead of writing lines directly we'll buffer one at a time.
     -- This way we can delay the decision of whether to write a trailing newline until we know if we're at the end of the input.
