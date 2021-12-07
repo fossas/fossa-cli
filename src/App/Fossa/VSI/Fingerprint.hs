@@ -24,6 +24,7 @@ import Data.String.Conversion (ToText (..))
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Extra (breakOnAndRemove)
+import Debug.Trace qualified as Debug
 import Discovery.Walk (WalkStep (..), walk')
 import Effect.ReadFS (ReadFS, contentIsBinary)
 import Path (Abs, Dir, File, Path, toFilePath)
@@ -100,10 +101,19 @@ hashFileCommentStripped file =
           .| decodeUtf8C -- Decode to text
           .| normalizeLineEnding -- Convert file to \n only
           .| basicCStyleCommentStripC -- Strip comments
+          .| trace
           .| encodeUtf8C -- Encode back to bytes
           .| sinkHash -- Hash the result
     )
     `catch` (\(e :: IOException) -> fatalText ("unable to hash file: " <> toText (show e)))
+  where
+    trace = do
+      chunk <- await
+      case chunk of
+        Nothing -> pure ()
+        Just l -> do
+          yield $ Debug.trace ("-> " ++ show l) l
+          trace
 
 fingerprintRaw :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m (Fingerprint Raw)
 fingerprintRaw file = do
