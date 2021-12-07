@@ -95,6 +95,20 @@ spec = do
         Nothing -> expectationFailure "should have comment strip fingerprinted file"
         Just fp -> (toText fp) `shouldBe` "44fc8f68ab633c7ca0240a66e4ff038c0f2412fe69d14b6f052556edaa1b9160"
 
+  describe "multi line file with comment (windows)" $ do
+    target <- runIO fileMultiLineCommentWindows
+    result <- runIO . runDiagnostics . runReadFSIO $ fingerprint (Debug.trace (show target) target)
+
+    it "fingerprints raw correctly" $ case result of
+      Left _ -> expectationFailure "could not fingerprint"
+      Right c -> (toText . combinedRaw $ c) `shouldBe` "9976b2fda660ce9a9084992881df35ec17bc78b39a2bf24434d8fed875af3a2d"
+
+    it "fingerprints comment stripped correctly" $ case result of
+      Left _ -> expectationFailure "could not fingerprint"
+      Right c -> case (combinedCommentStripped c) of
+        Nothing -> expectationFailure "should have comment strip fingerprinted file"
+        Just fp -> (toText fp) `shouldBe` "44fc8f68ab633c7ca0240a66e4ff038c0f2412fe69d14b6f052556edaa1b9160"
+
 fileEmpty :: IO (Path Abs File)
 fileEmpty = PIO.resolveFile' "test/App/Fossa/VSI/testdata/empty.c"
 
@@ -112,3 +126,6 @@ fileMultiLine = PIO.resolveFile' "test/App/Fossa/VSI/testdata/multi_line.c"
 
 fileMultiLineComment :: IO (Path Abs File)
 fileMultiLineComment = PIO.resolveFile' "test/App/Fossa/VSI/testdata/multi_line_comment.c"
+
+fileMultiLineCommentWindows :: IO (Path Abs File)
+fileMultiLineCommentWindows = PIO.resolveFile' "test/App/Fossa/VSI/testdata/multi_line_comment_cr.c"
