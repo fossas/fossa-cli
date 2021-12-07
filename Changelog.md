@@ -1,5 +1,10 @@
 # Fossa CLI Changelog
 
+## Unreleased (todo: fill this in before merge)
+
+- Supports extracting `.tar.xz` files (PR TODO)
+- Supports extracting `.tar.bz2` files (PR TODO)
+
 ## v3.0.8
 
 - Nuget: Fixes analysis performance when working with `project.assets.json` ([#733](https://github.com/fossas/fossa-cli/pull/733))
