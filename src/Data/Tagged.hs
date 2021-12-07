@@ -47,11 +47,11 @@ newtype Tagged tag ty = Tagged {inner :: ty}
 
 -- We want to inherit as much as we can from the inner type, deriving will exclude things that don't fit.
 
-type role Tagged representational nominal
+type role Tagged nominal representational
 
 -- | Enable strict type checking of tags with @-XTypeApplications@.
--- > enforceTag @MyTag (x :: Tagged ty MyTag) = id
-enforceTag :: forall tag ty. Tagged ty tag -> Tagged ty tag
+-- > enforceTag @MyTag (x :: Tagged MyTag ty) = id
+enforceTag :: forall tag ty. Tagged tag ty -> Tagged tag ty
 enforceTag = id
 
 -- | Same as 'enforceTag', but extracts the inner @ty@.
