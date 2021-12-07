@@ -3,7 +3,6 @@ module App.Fossa.VSI.FingerprintSpec (spec) where
 import App.Fossa.VSI.Fingerprint (Combined (..), fingerprint)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Data.String.Conversion (toText)
-import Debug.Trace qualified as Debug
 import Effect.ReadFS (runReadFSIO)
 import Path (Abs, File, Path)
 import Path.IO qualified as PIO
@@ -13,7 +12,7 @@ spec :: Spec
 spec = do
   describe "content is binary" $ do
     target <- runIO fileBinary
-    result <- runIO . runDiagnostics . runReadFSIO $ fingerprint (Debug.trace (show target) target)
+    result <- runIO . runDiagnostics . runReadFSIO $ fingerprint target
 
     it "fingerprints raw correctly" $ case result of
       Left _ -> expectationFailure "could not fingerprint"
@@ -27,7 +26,7 @@ spec = do
 
   describe "content is empty" $ do
     target <- runIO fileEmpty
-    result <- runIO . runDiagnostics . runReadFSIO $ fingerprint (Debug.trace (show target) target)
+    result <- runIO . runDiagnostics . runReadFSIO $ fingerprint target
 
     it "fingerprints raw correctly" $ case result of
       Left _ -> expectationFailure "could not fingerprint"
@@ -41,7 +40,7 @@ spec = do
 
   describe "single line file" $ do
     target <- runIO fileSingleLine
-    result <- runIO . runDiagnostics . runReadFSIO $ fingerprint (Debug.trace (show target) target)
+    result <- runIO . runDiagnostics . runReadFSIO $ fingerprint target
 
     it "fingerprints raw correctly" $ case result of
       Left _ -> expectationFailure "could not fingerprint"
@@ -55,7 +54,7 @@ spec = do
 
   describe "single line file with comment" $ do
     target <- runIO fileSingleLineComment
-    result <- runIO . runDiagnostics . runReadFSIO $ fingerprint (Debug.trace (show target) target)
+    result <- runIO . runDiagnostics . runReadFSIO $ fingerprint target
 
     it "fingerprints raw correctly" $ case result of
       Left _ -> expectationFailure "could not fingerprint"
@@ -69,7 +68,7 @@ spec = do
 
   describe "multi line file" $ do
     target <- runIO fileMultiLine
-    result <- runIO . runDiagnostics . runReadFSIO $ fingerprint (Debug.trace (show target) target)
+    result <- runIO . runDiagnostics . runReadFSIO $ fingerprint target
 
     it "fingerprints raw correctly" $ case result of
       Left _ -> expectationFailure "could not fingerprint"
@@ -83,7 +82,7 @@ spec = do
 
   describe "multi line file with comment" $ do
     target <- runIO fileMultiLineComment
-    result <- runIO . runDiagnostics . runReadFSIO $ fingerprint (Debug.trace (show target) target)
+    result <- runIO . runDiagnostics . runReadFSIO $ fingerprint target
 
     it "fingerprints raw correctly" $ case result of
       Left _ -> expectationFailure "could not fingerprint"
