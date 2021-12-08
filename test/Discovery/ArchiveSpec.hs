@@ -104,7 +104,7 @@ spec = do
     it "should have cleaned up the temporary directory" $ do
       tempDirExists `shouldBe` False
 
-  describe "extract el7 rpm to a temporary location" $ do
+  describe "extract el7 (xz) rpm to a temporary location" $ do
     target <- runIO rpmCurlEl7Path
     result <- runIO . runFinally . runDiagnostics . runReadFSIO $ withArchive extractRpm target hashFiles
 
@@ -112,7 +112,7 @@ spec = do
       Left _ -> expectationFailure "could not extract rpm"
       Right contents -> contents `shouldBe` rpmCurlEl7ExpectedFiles
 
-  describe "extract fc35 rpm to a temporary location" $ do
+  describe "extract fc35 (zstd) rpm to a temporary location" $ do
     target <- runIO rpmCurlFc35Path
     result <- runIO . runFinally . runDiagnostics . runReadFSIO $ withArchive extractRpm target hashFiles
 
