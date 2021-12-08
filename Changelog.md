@@ -2,6 +2,10 @@
 
 ## v3.0.8
 
+- Adds a prerequisite required for future VSI improvements ([#730](https://github.com/fossas/fossa-cli/pull/730))
+
+## v3.0.8
+
 - Nuget: Fixes analysis performance when working with `project.assets.json` ([#733](https://github.com/fossas/fossa-cli/pull/733))
 
 ## v3.0.7
