@@ -70,3 +70,17 @@ We support the following archive formats:
   - `lzma` compression
   - `xz` compression
   - `zstd` compression
+
+### Experimental Options
+
+_Important: For support and other general information, refer to the [experimental options overview](../experimental/README.md) before using experimental options._
+
+In addition to the [standard flags](#specifying-fossa-project-details), the analyze command supports the following experimental flags:
+
+| Name                                                    | Description                                                                                                                                                         |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--experimental-enable-vsi`                             | Enable the vendored source indentification engine. For more information, see the [vendored source indentification overview](../experimental/vsi/README.md).         |
+| `--experimental-enable-binary-discovery`                | Enable reporting binary files as unlicensed dependencies. For more information, see the [binary discovery overview](../experimental/binary-discovery/README.md).    |
+| `--experimental-link-project-binary './some-dir'`       | Link the provided binary files to the project being analyzed. For more information, see the [multi stage builds overview](../experimental/msb/README.md).           |
+| `--experimental-skip-vsi-graph 'custom+1/some$locator'` | Skip resolving the dependencies of the given project that was previously linked via `--experimental-link-project-binary`.                                           |
+| `--experimental-enable-monorepo 'monorepo-type'`        | Scan the project in monorepo mode. For more information, see the [monorepo overview](../experimental/monorepo/README.md).                                           |
