@@ -62,3 +62,8 @@ Reference guides provide an exhaustive listing of all CLI functionality. If you 
   - [`.fossa.yml`](./references/files/fossa-yml.md)
   - [`fossa-deps.{yml,json}`](./references/files/fossa-deps.md)
 - [CLI analysis strategies](./references/strategies/README.md)
+- Experimental
+  - [Experimental options overview](./references/experimental/README.md)
+  - CLI Commands
+    - [`fossa experimental-link-user-defined-dependency-binary`](./references/experimental/subcommands/experimental-link-user-defined-dependency-binary.md)
+  

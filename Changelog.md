@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## v3.0.9
+
+- Makes experimental flags discoverable and documents them. ([#723](https://github.com/fossas/fossa-cli/pull/723))
+
 ## v3.0.8
 
 - Nuget: Fixes analysis performance when working with `project.assets.json` ([#733](https://github.com/fossas/fossa-cli/pull/733))
