@@ -14,8 +14,8 @@ module App.Fossa.VSI.Fingerprint (
 
 import Conduit (ConduitT, Void, await, decodeUtf8C, encodeUtf8C, filterC, linesUnboundedC, mapC, runConduitRes, sourceFile, yield, (.|))
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, fatalText)
-import Control.Effect.Exception (IOException, Lift, catch)
+import Control.Effect.Diagnostics (Diagnostics, fatalOnIOException)
+import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Crypto.Hash (Digest, HashAlgorithm, SHA256 (..), hashFinalize, hashInit, hashUpdate)
 import Data.Aeson (ToJSON, object, toJSON, (.=))
@@ -78,35 +78,27 @@ sinkHash = sink hashInit
 
 -- | Hashes the whole contents of the given file in constant memory.
 hashBinaryFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
-hashBinaryFile fp =
-  sendIO (runConduitRes (sourceFile fp .| sinkHash))
-    `catch` (\(e :: IOException) -> fatalText ("unable to hash file: " <> toText (show e)))
+hashBinaryFile fp = fatalOnIOException . sendIO . runConduitRes $ sourceFile fp .| sinkHash
 
 hashTextFileCommentStripped :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
 hashTextFileCommentStripped file =
-  sendIO
-    ( runConduitRes $
-        sourceFile file -- Read from the file
-          .| decodeUtf8C -- Decode to text
-          .| basicCStyleCommentStripC -- Strip comments
-          .| encodeUtf8C -- Encode back to bytes
-          .| sinkHash -- Hash the result
-    )
-    `catch` (\(e :: IOException) -> fatalText ("unable to hash file: " <> toText (show e)))
+  fatalOnIOException . sendIO . runConduitRes $
+    sourceFile file -- Read from the file
+      .| decodeUtf8C -- Decode to text
+      .| basicCStyleCommentStripC -- Strip comments
+      .| encodeUtf8C -- Encode back to bytes
+      .| sinkHash -- Hash the result
 
 hashTextFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
 hashTextFile file =
-  sendIO
-    ( runConduitRes $
-        sourceFile file -- Read from the file
-          .| decodeUtf8C -- Decode to text
-          .| linesUnboundedC -- Split into lines (for @stripCrLines@)
-          .| stripCrLines -- Normalize CRLF -> LF
-          .| mapC (<> "\n") -- Always append a newline here
-          .| encodeUtf8C -- Encode back to bytes
-          .| sinkHash -- Hash the result
-    )
-    `catch` (\(e :: IOException) -> fatalText ("unable to hash file: " <> toText (show e)))
+  fatalOnIOException . sendIO . runConduitRes $
+    sourceFile file -- Read from the file
+      .| decodeUtf8C -- Decode to text
+      .| linesUnboundedC -- Split into lines (for @stripCrLines@)
+      .| stripCrLines -- Normalize CRLF -> LF
+      .| mapC (<> "\n") -- Always append a newline here
+      .| encodeUtf8C -- Encode back to bytes
+      .| sinkHash -- Hash the result
 
 fingerprintRaw :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m (Fingerprint Raw)
 fingerprintRaw file = contentIsBinary file >>= doFingerprint
