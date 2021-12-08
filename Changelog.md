@@ -1,6 +1,6 @@
 # Fossa CLI Changelog
 
-## Unreleased (todo: fill this in before merge)
+## v3.0.9
 
 - Supports extracting `.tar.xz` files ([#734](https://github.com/fossas/fossa-cli/pull/734))
 - Supports extracting `.tar.bz2` files ([#734](https://github.com/fossas/fossa-cli/pull/734))
