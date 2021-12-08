@@ -42,7 +42,7 @@ module Control.Effect.Diagnostics (
 
 import Control.Algebra as X
 import Control.Effect.Exception (catch)
-import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Lift (Lift)
 import Control.Exception (IOException, SomeException (..))
 import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.List (intersperse)
