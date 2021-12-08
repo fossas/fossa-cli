@@ -3,6 +3,7 @@
 ## v3.0.9
 
 - Adds a prerequisite required for future VSI improvements ([#730](https://github.com/fossas/fossa-cli/pull/730))
+- Makes experimental flags discoverable and documents them. ([#723](https://github.com/fossas/fossa-cli/pull/723))
 
 ## v3.0.8
 
