@@ -1,6 +1,6 @@
 # Fossa CLI Changelog
 
-## Unreleased
+## v3.0.9
 
 - Makes experimental flags discoverable and documents them. ([#723](https://github.com/fossas/fossa-cli/pull/723))
 
