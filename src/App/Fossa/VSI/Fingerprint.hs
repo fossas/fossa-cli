@@ -114,11 +114,9 @@ hashTextFile file =
 fingerprintRaw :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m (Fingerprint Raw)
 fingerprintRaw file = contentIsBinary file >>= doFingerprint
   where
-    doFingerprint True = do
-      (fp :: Digest SHA256) <- hashBinaryFile $ toFilePath file
-      pure $ encodeFingerprint fp
-    doFingerprint False = do
-      (fp :: Digest SHA256) <- hashTextFile $ toFilePath file
+    doFingerprint isBinary = do
+      let hasher = if isBinary then hashBinaryFile else hashTextFile
+      (fp :: Digest SHA256) <- hasher $ toFilePath file
       pure $ encodeFingerprint fp
 
 fingerprintContentsRaw :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> m [Fingerprint Raw]
