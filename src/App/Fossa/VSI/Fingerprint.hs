@@ -138,9 +138,12 @@ fingerprint file =
     <$> fingerprintRaw file
     <*> fingerprintCommentStripped file
 
--- | Windows git implementations typically add carriage returns before each newline when checked out.
--- However, crawlers were run on Linux, so aren't expecting files to have carriage returns.
--- Convert CRLF -> LF. While this does cause a hash mismatch on files that legitimately have CRLF endings, this way of doing it is believed to result in less misses.
+-- | Converts CRLF line endings into LF line endings.
+-- Must run after a @ConuitT@ that converts an input stream into lines (for example 'linesUnboundedC').
+--
+-- Windows git implementations typically add carriage returns before each newline when checked out.
+-- However, crawlers are run on Linux, so aren't expecting files to have carriage returns.
+-- While this does cause a hash mismatch on files that legitimately have CRLF endings that weren't added by git, we believe this results in fewer mismatches.
 stripCrLines :: Monad m => ConduitT Text Text m ()
 stripCrLines = do
   chunk <- await
@@ -157,6 +160,7 @@ stripCrLines = do
 -- * Only catches @\\n@ newlines
 -- * Doesn't handle edge cases (escaped comments for example)
 -- * Also omits any blank lines
+-- * Trims any trailing newline off the content
 --
 -- Despite these drawbacks, we have to reimplement it the same way so that fingerprints line up correctly in the VSI analysis service.
 basicCStyleCommentStripC :: Monad m => ConduitT Text Text m ()
@@ -168,30 +172,29 @@ basicCStyleCommentStripC =
     .| filterC (not . Text.null)
     .| bufferedNewline Nothing
   where
-    -- For compatibility with the original version of this function we can't write a newline after the final line in the output, but we want newlines otherwise.
+    -- The original version of this function included newlines between each line but did not include a trailing newline, even when originally present in the file.
+    -- We have to keep this compatible, because all of our fingerprint corpus relies on how this fingerprint function works.
     -- As we read through the input stream, instead of writing lines directly we'll buffer one at a time.
     -- This way we can delay the decision of whether to write a trailing newline until we know if we're at the end of the input.
     bufferedNewline buf = do
       chunk <- await
-      case chunk of
-        -- Now that we're done reading the input stream, if there's a buffered output line write it *without a trailing newline*.
-        -- This is to maintain compatibility with the original version of this function.
-        -- We have to keep this compatible, because all of our fingerprint corpus relies on how this fingerprint function works.
-        Nothing -> case buf of
-          Nothing -> pure ()
-          Just bufferedLine -> do
-            yield bufferedLine
-            bufferedNewline Nothing
+      case (chunk, buf) of
+        -- First line lands here and is always buffered.
+        (Just line, Nothing) -> bufferedNewline (Just line)
+        -- All lines other than the last yield with a newline appended.
+        -- This only happens when we know we have another line incoming.
+        (Just incomingLine, Just bufferedLine) -> do
+          yield $ bufferedLine <> "\n"
+          bufferedNewline (Just incomingLine)
+        -- No incoming line, so the buffered line is the last one.
+        -- For compatibility, this line must not have a trailing newline appended.
+        (Nothing, Just bufferedLine) -> yield bufferedLine
+        -- All lines have been written, so just exit.
+        -- Technically unreachable since we don't recurse after yielding the last line.
+        (Nothing, Nothing) -> pure ()
 
-        -- Here, we know we have a new line coming down the pipe.
-        -- If we had a previous line buffered, write it with a newline.
-        -- If not, store this new line in the buffer first.
-        Just line -> case buf of
-          Nothing -> bufferedNewline (Just line)
-          Just bufferedLine -> do
-            yield $ bufferedLine <> "\n"
-            bufferedNewline (Just line)
-
+    -- Throws away lines until we find a line with the literal @*/@.
+    -- Once found, yields all the text *after* the literal and returns to the standard 'process' function.
     processInComment = do
       chunk <- await
       case chunk of
@@ -202,6 +205,11 @@ basicCStyleCommentStripC =
             yield lineAfterComment
             process
 
+    -- Yields lines that do not contain comments without modification.
+    -- For lines which contain a single-line comment (@//@), yields only the text leading up to that comment (so @foo // comment@ becomes @foo @).
+    -- For lines which contain the literal @/*@:
+    -- - Yields the text leading up to the literal.
+    -- - Enters the specialized 'processInComment' function.
     process = do
       chunk <- await
       case chunk of
