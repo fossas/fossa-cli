@@ -75,6 +75,7 @@ common deps
     , concurrent-output            ^>=1.10.12
     , conduit                      ^>=1.3.2
     , conduit-extra                ^>=1.3.5
+    , conduit-zstd                 ^>=0.0.2.0
     , containers                   ^>=0.6.0
     , cpio-conduit                 ^>=0.7.0
     , cryptonite                   ^>=0.29
