@@ -76,7 +76,7 @@ sinkHash = sink hashInit
     sink ctx = do
       b <- await
       case b of
-        Nothing -> return $! hashFinalize ctx
+        Nothing -> pure $! hashFinalize ctx
         Just bs -> sink $! hashUpdate ctx bs
 
 -- | Hashes the whole contents of the given file in constant memory.
