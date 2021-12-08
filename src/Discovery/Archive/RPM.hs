@@ -15,6 +15,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.CPIO qualified as CPIO
 import Data.Conduit.Lzma qualified as Lzma
 import Data.Conduit.Zlib qualified as Zlib
+import Data.Conduit.Zstd qualified as Zstd
 import Data.Foldable (asum)
 import Path
 import Path.IO qualified as PIO
@@ -54,10 +55,14 @@ decompressorFor rpm =
     Nothing -> Lzma.decompress Nothing -- default to lzma
     Just GZIP -> Zlib.ungzip
     Just LZMA -> Lzma.decompress Nothing
+    Just XZ -> Lzma.decompress Nothing
+    Just ZSTD -> Zstd.decompress
 
 data Compressor
   = LZMA
   | GZIP
+  | XZ
+  | ZSTD
   deriving (Eq, Ord, Show)
 
 -- | There are two types of supported compressors in RPM files: "gzip" and "lzma"
@@ -68,4 +73,6 @@ getCompressor = asum . map go . concatMap RPMTypes.headerTags . RPMTypes.rpmHead
     go :: Tags.Tag -> Maybe Compressor
     go (Tags.PayloadCompressor "gzip") = Just GZIP
     go (Tags.PayloadCompressor "lzma") = Just LZMA
+    go (Tags.PayloadCompressor "xz") = Just XZ
+    go (Tags.PayloadCompressor "zstd") = Just ZSTD
     go _ = Nothing

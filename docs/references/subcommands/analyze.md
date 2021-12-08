@@ -62,8 +62,14 @@ We support the following archive formats:
 - `.zip`
 - `.tar`
 - `.tar.gz`
+- `.tar.xz`
+- `.tar.bz2`
 - `.jar`
-- `.rpm`
+- `.rpm`, with...
+  - `gzip` compression
+  - `lzma` compression
+  - `xz` compression
+  - `zstd` compression
 
 ### Experimental Options
 
