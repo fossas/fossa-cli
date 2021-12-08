@@ -91,43 +91,7 @@ import Effect.Logger (
   withDefaultLogger,
  )
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
-import Options.Applicative (
-  Alternative (many, (<|>)),
-  Parser,
-  ParserPrefs,
-  argument,
-  auto,
-  command,
-  customExecParser,
-  eitherReader,
-  flag,
-  flag',
-  fullDesc,
-  header,
-  help,
-  helpShowGlobals,
-  helper,
-  hidden,
-  hsubparser,
-  info,
-  infoOption,
-  internal,
-  long,
-  metavar,
-  option,
-  optional,
-  prefs,
-  progDesc,
-  short,
-  showHelpOnError,
-  str,
-  strOption,
-  subparser,
-  subparserInline,
-  switch,
-  value,
-  (<**>),
- )
+import Options.Applicative (Alternative (many, (<|>)), Parser, ParserPrefs, argument, auto, command, customExecParser, eitherReader, flag, fullDesc, header, help, helpShowGlobals, helper, hidden, hsubparser, info, infoOption, internal, long, metavar, option, optional, prefs, progDesc, short, showHelpOnError, str, strOption, subparser, subparserInline, switch, value, (<**>))
 import Path (Abs, Dir, File, Path, Rel, parseAbsDir, parseRelDir)
 import System.Environment (lookupEnv)
 import System.Exit (die)
@@ -389,16 +353,16 @@ commands =
               (progDesc "List available analysis-targets in a directory (projects and sub-projects)")
           )
         <> command
-          "vps"
-          ( info
-              (VPSCommand <$> vpsOpts)
-              (progDesc "Run in Vendored Package Scan mode")
-          )
-        <> command
           "container"
           ( info
               (ContainerCommand <$> containerOpts)
               (progDesc "Run in Container Scan mode")
+          )
+        <> command
+          "experimental-link-user-defined-dependency-binary"
+          ( info
+              (AssertUserDefinedBinariesCommand <$> assertUserDefinedBinariesOpts)
+              (progDesc "Link one or more binary fingerprints as a user-defined dependency")
           )
     )
 
@@ -419,10 +383,10 @@ hiddenCommands =
               (progDesc "Output all embedded binaries to specified path")
           )
         <> command
-          "experimental-link-user-defined-dependency-binary"
+          "vps"
           ( info
-              (AssertUserDefinedBinariesCommand <$> assertUserDefinedBinariesOpts)
-              (progDesc "Link one or more binary fingerprints as a user-defined dependency")
+              (VPSCommand <$> vpsOpts)
+              (progDesc "Run in Vendored Package Scan mode")
           )
     )
 
@@ -449,21 +413,20 @@ analyzeOpts =
 
 vsiAnalyzeOpt :: Parser VSIAnalysisMode
 vsiAnalyzeOpt =
-  flag' VSIAnalysisEnabled (long "enable-vsi" <> hidden)
-    <|> pure VSIAnalysisDisabled
+  flag VSIAnalysisDisabled VSIAnalysisEnabled (long "experimental-enable-vsi" <> help "Analyzes project files on disk to detect vendored open source libraries")
+    <|> flag VSIAnalysisDisabled VSIAnalysisEnabled (long "enable-vsi" <> hidden)
 
 binaryDiscoveryOpt :: Parser BinaryDiscoveryMode
 binaryDiscoveryOpt =
-  flag' BinaryDiscoveryEnabled (long "experimental-enable-binary-discovery" <> hidden)
-    <|> pure BinaryDiscoveryDisabled
+  flag BinaryDiscoveryDisabled BinaryDiscoveryEnabled (long "experimental-enable-binary-discovery" <> help "Reports binary files as unlicensed dependencies")
 
 iatAssertionOpt :: Parser AnalyzeVSIAssertionMode
 iatAssertionOpt =
-  (AnalyzeVSIAssertionEnabled <$> strOption (long "experimental-link-project-binary" <> hidden))
+  (AnalyzeVSIAssertionEnabled <$> strOption (long "experimental-link-project-binary" <> metavar "DIR" <> help "Links output binary files to this project in FOSSA"))
     <|> pure AnalyzeVSIAssertionDisabled
 
 skipVSIGraphResolutionOpt :: Parser VSI.Locator
-skipVSIGraphResolutionOpt = (option (eitherReader parseLocator) (long "experimental-skip-vsi-graph" <> hidden))
+skipVSIGraphResolutionOpt = (option (eitherReader parseLocator) (long "experimental-skip-vsi-graph" <> metavar "LOCATOR" <> help "Skip resolving the dependencies of the given project in FOSSA"))
   where
     parseLocator :: String -> Either String VSI.Locator
     parseLocator s = case VSI.parseLocator (toText s) of
@@ -479,7 +442,7 @@ filterOpt = option (eitherReader parseFilter) (long "filter" <> help "(deprecate
 monorepoOpts :: Parser MonorepoAnalysisOpts
 monorepoOpts =
   MonorepoAnalysisOpts
-    <$> optional (strOption (long "experimental-enable-monorepo" <> metavar "MODE" <> help "scan the project in the experimental monorepo mode. Supported modes: aosp"))
+    <$> optional (strOption (long "experimental-enable-monorepo" <> metavar "MODE" <> help "scan the project in monorepo mode. Supported modes: aosp"))
 
 pathOpt :: String -> Either String (Path Rel Dir)
 pathOpt = first show . parseRelDir
