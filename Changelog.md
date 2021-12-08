@@ -1,6 +1,6 @@
 # Fossa CLI Changelog
 
-## v3.0.8
+## v3.0.9
 
 - Adds a prerequisite required for future VSI improvements ([#730](https://github.com/fossas/fossa-cli/pull/730))
 
