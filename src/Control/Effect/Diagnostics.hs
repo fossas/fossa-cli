@@ -92,9 +92,9 @@ fatal = send . Fatal
 fatalText :: Has Diagnostics sig m => Text -> m a
 fatalText = fatal
 
--- | Throw a generic error message on IO error
-fatalOnIOException :: (Has (Lift IO) sig m, Has Diagnostics sig m) => m a -> m a
-fatalOnIOException go = catch go die'
+-- | Throw a generic error message on IO error, wrapped in a new 'context' using the provided @Text@.
+fatalOnIOException :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> m a -> m a
+fatalOnIOException ctx go = context ctx $ catch go die'
   where
     die' (e :: IOException) = fatalText ("io exception: " <> toText (show e))
 

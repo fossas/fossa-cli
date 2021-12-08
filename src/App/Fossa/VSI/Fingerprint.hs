@@ -78,11 +78,11 @@ sinkHash = sink hashInit
 
 -- | Hashes the whole contents of the given file in constant memory.
 hashBinaryFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
-hashBinaryFile fp = fatalOnIOException . sendIO . runConduitRes $ sourceFile fp .| sinkHash
+hashBinaryFile fp = (fatalOnIOException "hash binary file") . sendIO . runConduitRes $ sourceFile fp .| sinkHash
 
 hashTextFileCommentStripped :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
 hashTextFileCommentStripped file =
-  fatalOnIOException . sendIO . runConduitRes $
+  (fatalOnIOException "hash text file comment stripped") . sendIO . runConduitRes $
     sourceFile file -- Read from the file
       .| decodeUtf8C -- Decode to text
       .| basicCStyleCommentStripC -- Strip comments
@@ -91,7 +91,7 @@ hashTextFileCommentStripped file =
 
 hashTextFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
 hashTextFile file =
-  fatalOnIOException . sendIO . runConduitRes $
+  (fatalOnIOException "hash text file") . sendIO . runConduitRes $
     sourceFile file -- Read from the file
       .| decodeUtf8C -- Decode to text
       .| linesUnboundedC -- Split into lines (for @stripCrLines@)
