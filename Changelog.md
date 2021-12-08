@@ -4,6 +4,8 @@
 
 - Supports extracting `.tar.xz` files ([#734](https://github.com/fossas/fossa-cli/pull/734))
 - Supports extracting `.tar.bz2` files ([#734](https://github.com/fossas/fossa-cli/pull/734))
+- Adds explicit `xz` support for `rpm` files ([#735](https://github.com/fossas/fossa-cli/pull/735))
+- Adds `zstd` support for `rpm` files ([#735](https://github.com/fossas/fossa-cli/pull/735))
 
 ## v3.0.8
 
