@@ -36,7 +36,7 @@ import Path (Abs, Dir, File, Path, toFilePath)
 --   @k@ - Kind, the kind of fingerprint computed.
 --
 -- For ease of implementation, the backing representation of a @Fingerprint@ instance is a @Base16@ encoded @Text@.
-newtype Fingerprint k = Fingerprint Text
+newtype Fingerprint k = Fingerprint Text deriving (ToJSON)
 
 type role Fingerprint nominal
 
@@ -48,9 +48,6 @@ data CommentStripped
 
 instance ToText (Fingerprint k) where
   toText (Fingerprint k) = k
-
-instance ToJSON (Fingerprint k) where
-  toJSON = toJSON . toText
 
 -- | Represents the result of running all fingerprinting implementations on a file.
 data Combined = Combined

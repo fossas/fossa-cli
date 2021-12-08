@@ -2,6 +2,7 @@ module App.Fossa.VSI.FingerprintSpec (spec) where
 
 import App.Fossa.VSI.Fingerprint (Combined (..), fingerprint)
 import Control.Carrier.Diagnostics (runDiagnostics)
+import Data.Aeson (encode, toJSON)
 import Data.String.Conversion (toText)
 import Effect.ReadFS (runReadFSIO)
 import Path (Abs, File, Path)
@@ -10,6 +11,14 @@ import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
 
 spec :: Spec
 spec = do
+  describe "derives ToJSON" $ do
+    target <- runIO fileBinary
+    result <- runIO . runDiagnostics . runReadFSIO $ fingerprint target
+
+    it "derives ToJSON correctly" $ case result of
+      Left _ -> expectationFailure "could not fingerprint"
+      Right c -> (encode . toJSON . combinedRaw $ c) `shouldBe` "\"a57d87677b2b67c573c870aff75d8c92c23beaf9f8682e7749ba7b421e84c991\""
+
   describe "content is binary" $ do
     target <- runIO fileBinary
     result <- runIO . runDiagnostics . runReadFSIO $ fingerprint target
