@@ -1,7 +1,9 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.VSI.Types (
+  ScanID (..),
   Locator (..),
+  AnalysisStatus (..),
   LocatorParseError (..),
   SkipResolution (..),
   shouldSkipResolving,
@@ -11,10 +13,11 @@ module App.Fossa.VSI.Types (
   userDefinedFetcher,
   isTopLevelProject,
   toDependency,
+  parseAnalysisStatus,
 ) where
 
 import Control.Effect.Diagnostics (ToDiagnostic, renderDiagnostic)
-import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
+import Data.Aeson (FromJSON (parseJSON), ToJSON, withObject, (.:))
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (ToText, toText)
@@ -23,6 +26,27 @@ import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
 import Effect.Logger (Pretty (pretty), viaShow)
 import Srclib.Converter (depTypeToFetcher, fetcherToDepType)
 import Srclib.Types qualified as Srclib
+
+-- | The VSI backend returns a scan ID when a scan is created, which is then used to add files to the scan and get inferred OSS dependencies.
+newtype ScanID = ScanID {unScanID :: Text} deriving (ToJSON, FromJSON)
+
+instance ToText ScanID where
+  toText = unScanID
+
+-- | The VSI backend returns statuses for tracking which stage analysis is on.
+-- Programmatically we only care about some of these, the rest are informational and can be safely shown to a user to indicate activity.
+data AnalysisStatus
+  = Pending
+  | Finished
+  | Failed
+  | Informational Text
+
+parseAnalysisStatus :: (ToText a) => a -> AnalysisStatus
+parseAnalysisStatus a = case toText a of
+  "NOT_STARTED" -> Pending
+  "DONE" -> Finished
+  "FAILED" -> Failed
+  other -> Informational other
 
 -- | VSI supports a subset of possible Locators.
 -- Specifically, all VSI locators must have a valid revision.
