@@ -3,7 +3,7 @@ module App.Fossa.VSI.IAT.AssertUserDefinedBinaries (
 ) where
 
 import App.Fossa.FossaAPIV1 qualified as Fossa
-import App.Fossa.VSI.IAT.Fingerprint (fingerprintContentsRaw)
+import App.Fossa.VSI.Fingerprint (fingerprintContentsRaw)
 import App.Fossa.VSI.IAT.Types (UserDefinedAssertionMeta)
 import App.Types (BaseDir (..))
 import Control.Algebra (Has)

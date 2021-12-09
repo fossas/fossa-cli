@@ -23,6 +23,7 @@ module Control.Effect.Diagnostics (
 
   -- * Diagnostic helpers
   fatalText,
+  fatalOnIOException,
   fromEither,
   fromEitherShow,
   fromMaybe,
@@ -40,7 +41,9 @@ module Control.Effect.Diagnostics (
 ) where
 
 import Control.Algebra as X
-import Control.Exception (SomeException (..))
+import Control.Effect.Exception (catch)
+import Control.Effect.Lift (Lift)
+import Control.Exception (IOException, SomeException (..))
 import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.List (intersperse)
 import Data.List.NonEmpty qualified as NE
@@ -88,6 +91,12 @@ fatal = send . Fatal
 -- | Throw an untyped string error
 fatalText :: Has Diagnostics sig m => Text -> m a
 fatalText = fatal
+
+-- | Throw a generic error message on IO error, wrapped in a new 'context' using the provided @Text@.
+fatalOnIOException :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> m a -> m a
+fatalOnIOException ctx go = context ctx $ catch go die'
+  where
+    die' (e :: IOException) = fatalText ("io exception: " <> toText (show e))
 
 -- | Recover from a fatal error. The error will be recorded as a warning instead.
 recover :: Has Diagnostics sig m => m a -> m (Maybe a)
