@@ -1,7 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.VSI.IAT.Types (
-  Fingerprint (..),
   UserDefinedAssertionMeta (..),
   UserDep (..),
   toUserDep,
@@ -9,15 +8,8 @@ module App.Fossa.VSI.IAT.Types (
 ) where
 
 import App.Fossa.VSI.Types qualified as VSI
-import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), withObject, (.:))
+import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
 import Data.Text (Text)
-
--- | Fingerprint uniquely idenfies a file, derived from its content.
--- Fingerprints are backed by base16 representations of underlying data.
-newtype Fingerprint = Fingerprint {unFingerprint :: Text}
-
-instance ToJSON Fingerprint where
-  toJSON = toJSON . unFingerprint
 
 -- | UserDep is the minimal set of data required to lookup a UserDefinedAssertionMeta in FOSSA.
 data UserDep = UserDep

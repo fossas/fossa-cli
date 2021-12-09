@@ -35,6 +35,9 @@ module Effect.ReadFS (
   readContentsToml,
   readContentsYaml,
   readContentsXML,
+
+  -- * File identity information
+  contentIsBinary,
   module X,
 ) where
 
@@ -165,6 +168,14 @@ listDir' = sendSimple . ListDir
 
 listDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m ([Path Abs Dir], [Path Abs File])
 listDir dir = fromEither =<< listDir' dir
+
+-- | Determine if a file is binary using the same method as git:
+-- "is there a zero byte in the first 8000 bytes of the file"
+contentIsBinary :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m Bool
+contentIsBinary file = do
+  attemptedContent <- readContentsBSLimit file 8000
+  content <- fromEither attemptedContent
+  pure $ BS.elem 0 content
 
 type Parser = Parsec Void Text
 

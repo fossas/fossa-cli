@@ -170,9 +170,9 @@ library
     App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Test
     App.Fossa.VPS.Types
+    App.Fossa.VSI.Fingerprint
     App.Fossa.VSI.IAT.AssertRevisionBinaries
     App.Fossa.VSI.IAT.AssertUserDefinedBinaries
-    App.Fossa.VSI.IAT.Fingerprint
     App.Fossa.VSI.IAT.Resolve
     App.Fossa.VSI.IAT.Types
     App.Fossa.VSI.Types
@@ -359,6 +359,7 @@ test-suite unit-tests
     App.Fossa.ManualDepsSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.VPS.NinjaGraphSpec
+    App.Fossa.VSI.FingerprintSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec

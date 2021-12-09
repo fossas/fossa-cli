@@ -2,20 +2,18 @@ module App.Fossa.BinaryDeps (analyzeBinaryDeps) where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.BinaryDeps.Jar (resolveJar)
-import App.Fossa.VSI.IAT.Fingerprint (fingerprintRaw)
-import App.Fossa.VSI.IAT.Types (Fingerprint (..))
+import App.Fossa.VSI.Fingerprint (Fingerprint, fingerprintRaw)
 import Control.Algebra (Has)
-import Control.Carrier.Diagnostics (Diagnostics, fromEither)
+import Control.Carrier.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Control.Monad (filterM)
-import Data.ByteString qualified as BS
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Filters (AllFilters (..), FilterCombination (combinedPaths))
 import Discovery.Walk (WalkStep (WalkContinue), walk')
 import Effect.Logger (Logger)
-import Effect.ReadFS (ReadFS, readContentsBSLimit)
+import Effect.ReadFS (ReadFS, contentIsBinary)
 import Path (Abs, Dir, File, Path, isProperPrefixOf, (</>))
 import Path.Extra (tryMakeRelative)
 import Srclib.Converter qualified as Srclib
@@ -39,7 +37,7 @@ findBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) =
 findBinaries filters = walk' $ \dir _ files -> do
   if shouldFingerprintDir dir filters
     then do
-      binaries <- filterM fileIsBinary files
+      binaries <- filterM contentIsBinary files
       pure (binaries, WalkContinue)
     else pure ([], WalkContinue)
 
@@ -75,16 +73,8 @@ toSourceUnit project deps = do
 -- | Just render the first few characters of the fingerprint.
 -- The goal is to provide a high confidence that future binaries with the same name won't collide,
 -- and we don't need all 256 bits for that.
-renderFingerprint :: Fingerprint -> Text
-renderFingerprint fingerprint = Text.take 12 $ unFingerprint fingerprint
-
--- | Determine if a file is binary using the same method as git:
--- "is there a zero byte in the first 8000 bytes of the file"
-fileIsBinary :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m Bool
-fileIsBinary file = do
-  attemptedContent <- readContentsBSLimit file 8000
-  content <- fromEither attemptedContent
-  pure $ BS.elem 0 content
+renderFingerprint :: Fingerprint t -> Text
+renderFingerprint fingerprint = Text.take 12 $ toText fingerprint
 
 -- | Try the next strategy in the list. If successful, evaluate to its result; if not move down the list of strategies and try again.
 -- Eventually falls back to strategyRawFingerprint if no other strategy succeeds.
@@ -103,7 +93,7 @@ strategies =
 
 -- | Fallback strategy: resolve to a user defined dependency for the binary, where the name is the relative path and the version is the fingerprint.
 -- This strategy is used if no other strategy succeeds at resolving the binary.
-strategyRawFingerprint :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m SourceUserDefDep
+strategyRawFingerprint :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m SourceUserDefDep
 strategyRawFingerprint root file = do
   fp <- fingerprintRaw file
   let rel = tryMakeRelative root file
