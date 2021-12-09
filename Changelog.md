@@ -1,6 +1,6 @@
 # Fossa CLI Changelog
 
-## v3.1.0
+## v3.0.9
 
 - Makes experimental flags discoverable and documents them. ([#723](https://github.com/fossas/fossa-cli/pull/723))
 - Supports extracting `.tar.xz` files ([#734](https://github.com/fossas/fossa-cli/pull/734))
