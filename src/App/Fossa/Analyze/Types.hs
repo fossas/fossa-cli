@@ -4,16 +4,17 @@ module App.Fossa.Analyze.Types (
   AnalyzeExperimentalPreferences (..),
 ) where
 
-import Control.Carrier.Diagnostics
+import App.NewFossa.Config.Analyze (ExperimentalAnalyzeConfig)
 import Control.Effect.Debug (Debug)
-import Control.Effect.Lift
+import Control.Effect.Diagnostics (Diagnostics, Has)
+import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader)
 import Data.Set (Set)
 import Data.Text (Text)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
-import Types
+import Types (DependencyResults, FoundTargets)
 
 newtype AnalyzeExperimentalPreferences = AnalyzeExperimentalPreferences
   {gradleOnlyConfigsAllowed :: Maybe (Set Text)}
@@ -26,7 +27,7 @@ type AnalyzeTaskEffs sig m =
   , Has Logger sig m
   , Has Diagnostics sig m
   , Has Debug sig m
-  , Has (Reader AnalyzeExperimentalPreferences) sig m
+  , Has (Reader ExperimentalAnalyzeConfig) sig m
   )
 
 class AnalyzeProject a where

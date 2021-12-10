@@ -3,9 +3,9 @@ module App.Fossa.Container.Analyze (
 ) where
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
-import App.Fossa.Analyze (ScanDestination (..))
 import App.Fossa.Container (ImageText (..), extractRevision, runSyft, toContainerScan)
 import App.Fossa.FossaAPIV1 (UploadResponse (uploadError, uploadLocator), uploadContainerScan)
+import App.NewFossa.Config.Analyze (ScanDestination (..))
 import App.Types (OverrideProject (..), ProjectRevision (..))
 import Control.Carrier.Diagnostics (Diagnostics, logWithExit_)
 import Control.Effect.Lift (Lift)
@@ -13,7 +13,18 @@ import Data.Aeson (encode)
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8)
-import Effect.Logger
+import Effect.Logger (
+  Has,
+  Logger,
+  Pretty (pretty),
+  Severity,
+  logDebug,
+  logError,
+  logInfo,
+  logStdout,
+  viaShow,
+  withDefaultLogger,
+ )
 import Srclib.Types (parseLocator)
 
 analyzeMain :: ScanDestination -> Severity -> OverrideProject -> ImageText -> IO ()
