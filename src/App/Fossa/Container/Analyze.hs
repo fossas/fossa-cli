@@ -7,9 +7,7 @@ module App.Fossa.Container.Analyze (
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Container.Scan (extractRevision, runSyft, toContainerScan)
 import App.Fossa.FossaAPIV1 (UploadResponse (uploadError, uploadLocator), uploadContainerScan)
-import App.NewFossa.Config.Common (
-  ScanDestination (OutputStdout, UploadScan),
- )
+import App.NewFossa.Config.Common ( ScanDestination(..) )
 import App.NewFossa.Config.Container (
   ContainerAnalyzeConfig (
     ContainerAnalyzeConfig,
@@ -19,7 +17,7 @@ import App.NewFossa.Config.Container (
   ),
  )
 import App.Types (ProjectRevision (..))
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics ( Diagnostics )
 import Control.Effect.Lift (Lift)
 import Data.Aeson (encode)
 import Data.Foldable (traverse_)
