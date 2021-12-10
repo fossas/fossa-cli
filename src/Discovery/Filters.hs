@@ -1,14 +1,21 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RoleAnnotations #-}
 
 module Discovery.Filters (
   AllFilters (..),
   targetFilterParser,
   applyFilters,
-  FilterCombination (..),
+  FilterCombination,
   FilterMatch (..),
   FilterResult (..),
   apply,
   filterIsVSIOnly,
+  comboInclude,
+  comboExclude,
+  combinedPaths,
+  combinedTargets,
+  Include,
+  Exclude,
 ) where
 
 import Data.List ((\\))
@@ -44,20 +51,49 @@ filterIsVSIOnly AllFilters{..} = do
       _ -> False
 
 data AllFilters = AllFilters
-  { legacyFilters :: [TargetFilter]
-  , includeFilters :: FilterCombination
-  , excludeFilters :: FilterCombination
+  { includeFilters :: FilterCombination Include
+  , excludeFilters :: FilterCombination Exclude
   }
+  deriving (Eq, Ord, Show)
 
-data FilterCombination = FilterCombination
-  { combinedTargets :: [TargetFilter]
-  , combinedPaths :: [Path Rel Dir]
+instance Semigroup AllFilters where
+  (AllFilters a1 b1) <> (AllFilters a2 b2) = AllFilters (a1 <> a2) (b1 <> b2)
+
+instance Monoid AllFilters where
+  mempty = AllFilters mempty mempty
+
+data FilterCombination a = FilterCombination
+  { _combinedTargets :: [TargetFilter]
+  , _combinedPaths :: [Path Rel Dir]
   }
+  deriving (Eq, Ord, Show)
+
+type role FilterCombination nominal
+
+data Include
+data Exclude
+
+instance Semigroup (FilterCombination a) where
+  (FilterCombination a1 b1) <> (FilterCombination a2 b2) = FilterCombination (a1 <> a2) (b1 <> b2)
+
+instance Monoid (FilterCombination a) where
+  mempty = FilterCombination mempty mempty
+
+comboInclude :: [TargetFilter] -> [Path Rel Dir] -> FilterCombination Include
+comboInclude = FilterCombination
+
+comboExclude :: [TargetFilter] -> [Path Rel Dir] -> FilterCombination Exclude
+comboExclude = FilterCombination
+
+combinedTargets :: FilterCombination a -> [TargetFilter]
+combinedTargets = _combinedTargets
+
+combinedPaths :: FilterCombination a -> [Path Rel Dir]
+combinedPaths = _combinedPaths
 
 -- applyFilters determines if legacy filters are present and if they need to converted to `TargetFilters` for filtering.
 applyFilters :: AllFilters -> Text -> Path Rel Dir -> FoundTargets -> Maybe FoundTargets
-applyFilters (AllFilters [] onlyFilters excludeFilters) tool dir targets = filterFoundTargets (apply onlyFilters excludeFilters tool dir) targets
-applyFilters (AllFilters legacyFilters _ _) tool dir targets = filterFoundTargets (apply (FilterCombination legacyFilters []) (FilterCombination [] []) tool dir) targets
+applyFilters (AllFilters onlyFilters excludeFilters) tool dir = filterFoundTargets (apply onlyFilters excludeFilters tool dir)
 
 -- finalizeResult combines a FilterResult with the targets that exist in a project and returns the final filtering Result
 -- If the return value is Nothing, that means that no targets remain for scanning.
@@ -72,14 +108,14 @@ filterFoundTargets (ResultExclude found) (FoundTargets targets) = FoundTargets <
 
 -- (buildTargetFilters-only `union` pathFilters-only)
 --   `subtract` (buildTargetFilters-exclude `union` pathFilters-exclude)
-apply :: FilterCombination -> FilterCombination -> Text -> Path Rel Dir -> FilterResult
+apply :: FilterCombination Include -> FilterCombination Exclude -> Text -> Path Rel Dir -> FilterResult
 apply include exclude buildtool dir =
   dSubtract
     (fromMaybe MatchAll (applyComb include buildtool dir))
     (fromMaybe MatchNone (applyComb exclude buildtool dir))
 
 -- Nothing = "Unknown" -- i.e., there were no filters that matched the buildtool + directories.
-applyComb :: FilterCombination -> Text -> Path Rel Dir -> Maybe FilterMatch
+applyComb :: FilterCombination a -> Text -> Path Rel Dir -> Maybe FilterMatch
 applyComb comb buildtool dir =
   buildTargetFiltersResult <> pathFiltersResult
   where

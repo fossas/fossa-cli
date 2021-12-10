@@ -42,16 +42,8 @@ spec = do
         fooBarTargetAssertion = (Just . FoundTargets) =<< nonEmpty (Set.fromList [BuildTarget "bar", BuildTarget "foo"])
 
     it "includes an entire directory" $ do
-      let include =
-            FilterCombination
-              { combinedTargets = []
-              , combinedPaths = [$(mkRelDir "quux")]
-              }
-          exclude =
-            FilterCombination
-              { combinedTargets = []
-              , combinedPaths = []
-              }
+      let include = comboInclude [] [$(mkRelDir "quux")]
+          exclude = mempty
 
       testHarness
         include
@@ -65,16 +57,8 @@ spec = do
         ]
 
     it "includes a subdirectory" $ do
-      let include =
-            FilterCombination
-              { combinedTargets = []
-              , combinedPaths = [$(mkRelDir "foo/bar")]
-              }
-          exclude =
-            FilterCombination
-              { combinedTargets = []
-              , combinedPaths = []
-              }
+      let include = comboInclude [] [$(mkRelDir "foo/bar")]
+          exclude = mempty
 
       testHarness
         include
@@ -88,16 +72,8 @@ spec = do
         ]
 
     it "excludes a directory" $ do
-      let include =
-            FilterCombination
-              { combinedTargets = []
-              , combinedPaths = []
-              }
-          exclude =
-            FilterCombination
-              { combinedTargets = []
-              , combinedPaths = [$(mkRelDir "foo")]
-              }
+      let include = mempty
+          exclude = comboExclude [] [$(mkRelDir "foo")]
 
       testHarness
         include
@@ -111,16 +87,8 @@ spec = do
         ]
 
     it "excludes a subdirectory" $ do
-      let include =
-            FilterCombination
-              { combinedTargets = []
-              , combinedPaths = []
-              }
-          exclude =
-            FilterCombination
-              { combinedTargets = []
-              , combinedPaths = [$(mkRelDir "foo/bar")]
-              }
+      let include = mempty
+          exclude = comboExclude [] [$(mkRelDir "foo/bar")]
 
       testHarness
         include
@@ -134,16 +102,8 @@ spec = do
         ]
 
     it "excludes a target in a subdirectory" $ do
-      let include =
-            FilterCombination
-              { combinedTargets = []
-              , combinedPaths = []
-              }
-          exclude =
-            FilterCombination
-              { combinedTargets = [TypeDirTargetTarget "gradle" $(mkRelDir "foo/bar") (BuildTarget "foo")]
-              , combinedPaths = []
-              }
+      let include = mempty
+          exclude = comboExclude [TypeDirTargetTarget "gradle" $(mkRelDir "foo/bar") (BuildTarget "foo")] []
 
       testHarness
         include
@@ -157,16 +117,8 @@ spec = do
         ]
 
     it "excludes a subdirectory of an included directory" $ do
-      let include =
-            FilterCombination
-              { combinedTargets = []
-              , combinedPaths = [$(mkRelDir "foo")]
-              }
-          exclude =
-            FilterCombination
-              { combinedTargets = []
-              , combinedPaths = [$(mkRelDir "foo/bar")]
-              }
+      let include = comboInclude [] [$(mkRelDir "foo")]
+          exclude = comboExclude [] [$(mkRelDir "foo/bar")]
 
       testHarness
         include
@@ -180,16 +132,8 @@ spec = do
         ]
 
     it "excludes a build-target in an included directory" $ do
-      let include =
-            FilterCombination
-              { combinedTargets = []
-              , combinedPaths = [$(mkRelDir "foo")]
-              }
-          exclude =
-            FilterCombination
-              { combinedTargets = [TypeDirTargetTarget "gradle" $(mkRelDir "foo") (BuildTarget "foo")]
-              , combinedPaths = []
-              }
+      let include = comboInclude [] [$(mkRelDir "foo")]
+          exclude = comboExclude [TypeDirTargetTarget "gradle" $(mkRelDir "foo") (BuildTarget "foo")] []
 
       testHarness
         include
@@ -203,16 +147,8 @@ spec = do
         ]
 
     it "does the thing" $ do
-      let include =
-            FilterCombination
-              { combinedTargets = [TypeDirTargetTarget "gradle" $(mkRelDir "foo") (BuildTarget "foo")]
-              , combinedPaths = [$(mkRelDir "foo")]
-              }
-          exclude =
-            FilterCombination
-              { combinedTargets = []
-              , combinedPaths = []
-              }
+      let include = comboInclude [TypeDirTargetTarget "gradle" $(mkRelDir "foo") (BuildTarget "foo")] [$(mkRelDir "foo")]
+          exclude = mempty
 
       testHarness
         include
@@ -225,7 +161,7 @@ spec = do
         , (mvnQuux, ProjectWithoutTargets, Nothing)
         ]
 
-testHarness :: FilterCombination -> FilterCombination -> [((Text.Text, Path Rel Dir), FoundTargets, Maybe FoundTargets)] -> Expectation
+testHarness :: FilterCombination Include -> FilterCombination Exclude -> [((Text.Text, Path Rel Dir), FoundTargets, Maybe FoundTargets)] -> Expectation
 testHarness include exclude = traverse_ testSingle
   where
-    testSingle ((buildtool, dir), targets, expected) = applyFilters (AllFilters [] include exclude) buildtool dir targets `shouldBe` expected
+    testSingle ((buildtool, dir), targets, expected) = applyFilters (AllFilters include exclude) buildtool dir targets `shouldBe` expected
