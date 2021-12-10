@@ -2,13 +2,14 @@
 
 module Discovery.ArchiveSpec (spec) where
 
-import Conduit (await, runConduitRes, sourceFile, (.|))
+import Conduit (runConduitRes, sourceFile, (.|))
 import Control.Algebra (Has)
-import Control.Carrier.Diagnostics (Diagnostics, fatalText, runDiagnostics)
+import Control.Carrier.Diagnostics (Diagnostics, fatalOnIOException, fatalText, runDiagnostics)
 import Control.Carrier.Finally (runFinally)
-import Control.Effect.Exception (IOException, Lift, catch)
+import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
-import Crypto.Hash (Digest, SHA256, hashFinalize, hashInit, hashUpdate)
+import Crypto.Hash (Digest, SHA256)
+import Data.Conduit.Extra (sinkHash)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.String.Conversion (ToText (..))
@@ -193,23 +194,14 @@ hashFiles dir = do
     mkRel (p, a) = case tryMakeRelative dir p of
       Rel f -> pure (f, a)
       Abs _ -> fatalText $ "Unable to make " <> toText p <> " relative to '" <> toText dir <> "'"
+    hashToPair path = do
+      hash <- hashFile path
+      pure (path, toText . show $ hash)
     collect _ _ files = do
-      fps <- traverse hashFilePair files
+      fps <- traverse hashToPair files
       pure (fps, WalkContinue)
 
 -- | Adapted from fingerprint hashing, but kept separate so that if the fingerprint implementation changes we don't see errors here.
 -- TODO: Maybe basic file hashing should be in ReadFS?
-hashFilePair :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m (Path Abs File, Text)
-hashFilePair file = do
-  (h :: Digest SHA256) <- hashFile $ toFilePath file
-  pure (file, toText . show $ h)
-  where
-    sinkHash = sink hashInit
-    hashFile fp =
-      sendIO (runConduitRes (sourceFile fp .| sinkHash))
-        `catch` (\(e :: IOException) -> fatalText ("unable to hash file: " <> toText (show e)))
-    sink ctx = do
-      b <- await
-      case b of
-        Nothing -> return $! hashFinalize ctx
-        Just bs -> sink $! hashUpdate ctx bs
+hashFile :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m (Digest SHA256)
+hashFile file = (fatalOnIOException "hash file") . sendIO . runConduitRes $ sourceFile (toFilePath file) .| sinkHash

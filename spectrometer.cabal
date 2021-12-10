@@ -213,6 +213,7 @@ library
     Control.Effect.TaskPool
     Control.Exception.Extra
     Data.Aeson.Extra
+    Data.Conduit.Extra
     Data.FileEmbed.Extra
     Data.Flag
     Data.Functor.Extra
