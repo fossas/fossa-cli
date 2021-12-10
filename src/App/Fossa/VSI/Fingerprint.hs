@@ -12,14 +12,14 @@ module App.Fossa.VSI.Fingerprint (
   Combined (..),
 ) where
 
-import Conduit (ConduitT, Void, await, decodeUtf8C, encodeUtf8C, filterC, linesUnboundedC, mapC, runConduitRes, sourceFile, yield, (.|))
+import Conduit (ConduitT, await, decodeUtf8C, encodeUtf8C, filterC, linesUnboundedC, mapC, runConduitRes, sourceFile, yield, (.|))
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, fatalOnIOException)
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
-import Crypto.Hash (Digest, HashAlgorithm, SHA256 (..), hashFinalize, hashInit, hashUpdate)
+import Crypto.Hash (Digest, HashAlgorithm, SHA256 (..))
 import Data.Aeson (ToJSON, object, toJSON, (.=))
-import Data.ByteString qualified as B
+import Data.Conduit.Extra (sinkHash)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToText (..))
 import Data.Text (Text)
@@ -62,19 +62,8 @@ instance ToJSON Combined where
       , "comment_stripped:sha_256" .= fmap toText combinedCommentStripped
       ]
 
-encodeFingerprint :: Digest hash -> Fingerprint t
+encodeFingerprint :: Digest SHA256 -> Fingerprint t
 encodeFingerprint = Fingerprint . toText . show
-
--- | Hashes a stream of 'B.ByteString'@s@ and creates a digest @d@.
--- Adapted from @sinkHash@ in https://hackage.haskell.org/package/cryptonite-conduit-0.2.2/docs/src/Crypto-Hash-Conduit.html
-sinkHash :: (Monad m, HashAlgorithm hash) => ConduitT B.ByteString Void m (Digest hash)
-sinkHash = sink hashInit
-  where
-    sink ctx = do
-      b <- await
-      case b of
-        Nothing -> pure $! hashFinalize ctx
-        Just bs -> sink $! hashUpdate ctx bs
 
 -- | Hashes the whole contents of the given file in constant memory.
 hashBinaryFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
@@ -105,7 +94,7 @@ fingerprintRaw file = contentIsBinary file >>= doFingerprint
   where
     doFingerprint isBinary = do
       let hasher = if isBinary then hashBinaryFile else hashTextFile
-      (fp :: Digest SHA256) <- hasher $ toFilePath file
+      fp <- hasher $ toFilePath file
       pure $ encodeFingerprint fp
 
 fingerprintContentsRaw :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> m [Fingerprint Raw]
@@ -118,7 +107,7 @@ fingerprintCommentStripped file = contentIsBinary file >>= doFingerprint
   where
     doFingerprint True = pure Nothing -- Don't attempt to comment strip binary files
     doFingerprint False = do
-      (fp :: Digest SHA256) <- hashTextFileCommentStripped $ toFilePath file
+      fp <- hashTextFileCommentStripped $ toFilePath file
       pure . Just $ encodeFingerprint fp
 
 fingerprint :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m Combined
