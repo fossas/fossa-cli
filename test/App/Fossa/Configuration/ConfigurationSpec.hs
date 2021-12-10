@@ -1,18 +1,28 @@
-{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.Configuration.ConfigurationSpec (
   spec,
 ) where
 
-import App.Fossa.Configuration
+import App.NewFossa.ConfigFile (
+  ConfigFile (..),
+  ConfigProject (..),
+  ConfigRevision (..),
+  ConfigTargets (..),
+  ExperimentalConfigs (..),
+  ExperimentalGradleConfigs (ExperimentalGradleConfigs),
+  resolveConfigFile,
+ )
 import App.Types (ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
+import Control.Effect.Diagnostics (FailureBundle)
 import Data.Set qualified as Set
-import Effect.ReadFS
-import Path
+import Effect.Logger (ignoreLogger)
+import Effect.ReadFS (runReadFSIO)
+import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
 import Test.Hspec qualified as T
+import Test.Hspec.Core.Spec (SpecM)
 import Types (BuildTarget (..), TargetFilter (..))
 
 expectedConfigFile :: ConfigFile
@@ -77,26 +87,29 @@ complexTarget = TypeDirTargetTarget "gradle" $(mkRelDir "./") (BuildTarget "spec
 directoryTarget :: TargetFilter
 directoryTarget = TypeDirTarget "maven" $(mkRelDir "root")
 
-testFile :: Path Rel File
-testFile = $(mkRelFile "test/App/Fossa/Configuration/testdata/validconfig.yml")
+testFile :: FilePath
+testFile = "validconfig.yml"
 
-badFile :: Path Rel File
-badFile = $(mkRelFile "test/App/Fossa/Configuration/testdata/invalidconfig.yml")
+badFile :: FilePath
+badFile = "invalidconfig.yml"
 
-missingFile :: Path Rel File
-missingFile = $(mkRelFile "test/App/Fossa/Configuration/testdata/missingfile.yml")
+ver2configFile :: FilePath
+ver2configFile = "ver2config.yml"
 
-ver2configFile :: Path Rel File
-ver2configFile = $(mkRelFile "test/App/Fossa/Configuration/testdata/ver2config.yml")
+testdir :: Path Rel Dir
+testdir = $(mkRelDir "test/App/Fossa/Configuration/testdata")
 
 spec :: T.Spec
 spec = do
-  dir <- T.runIO getCurrentDir
+  curdir <- T.runIO getCurrentDir
 
-  config <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> testFile)
-  badConfig <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> badFile)
-  missingConfig <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> missingFile)
-  ver2Config <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> ver2configFile)
+  let runIt :: Maybe FilePath -> SpecM a (Either FailureBundle (Maybe ConfigFile))
+      runIt maybeFile = T.runIO . ignoreLogger $ Diag.runDiagnostics $ runReadFSIO $ resolveConfigFile (curdir </> testdir) maybeFile
+
+  config <- runIt $ Just testFile
+  badConfig <- runIt $ Just badFile
+  missingConfig <- runIt Nothing
+  ver2Config <- runIt $ Just ver2configFile
 
   T.describe "config file parser" $ do
     T.it "parses a full configuration file correctly" $
@@ -111,12 +124,12 @@ spec = do
         Left err -> show (Diag.renderFailureBundle err) `T.shouldNotBe` ""
         Right _ -> T.expectationFailure "should have failed parsing"
 
-    T.it "returns Nothing for missing file" $
+    T.it "returns Nothing for missing default file" $
       case missingConfig of
         Left _ -> T.expectationFailure "should have failed parsing"
         Right result -> result `T.shouldBe` Nothing
 
-    T.it "returns Nothing for incompatible file" $
+    T.it "fails for incompatible specified file" $
       case ver2Config of
-        Left err -> T.expectationFailure ("failed to parse config file" <> show (Diag.renderFailureBundle err))
-        Right result -> result `T.shouldBe` Nothing
+        Left _ -> pure ()
+        Right _ -> T.expectationFailure "Should have thrown error for invalid config"
