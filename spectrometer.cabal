@@ -118,6 +118,7 @@ common deps
     , transformers
     , typed-process                ^>=0.2.6
     , unordered-containers         ^>=0.2.10
+    , validation-selective         ^>=0.1.0.1
     , vector                       ^>=0.12.0.3
     , versions                     ^>=5.0.0
     , xml                          ^>=1.3.14
@@ -147,7 +148,6 @@ library
     App.Fossa.ArchiveUploader
     App.Fossa.BinaryDeps
     App.Fossa.BinaryDeps.Jar
-    App.Fossa.Configuration
     App.Fossa.Container
     App.Fossa.Container.Analyze
     App.Fossa.Container.Test
@@ -177,6 +177,12 @@ library
     App.Fossa.VSI.IAT.Types
     App.Fossa.VSI.Types
     App.Fossa.VSIDeps
+    App.NewFossa.Config.Analyze
+    App.NewFossa.Config.Common
+    App.NewFossa.ConfigFile
+    App.NewFossa.EnvironmentVars
+    App.NewFossa.Main
+    App.NewFossa.Subcommand
     App.OptionExtensions
     App.Pathfinder.Main
     App.Pathfinder.Scan
@@ -219,6 +225,7 @@ library
     Data.Functor.Extra
     Data.Glob
     Data.List.Extra
+    Data.Monoid.Extra
     Data.Set.NonEmpty
     Data.String.Conversion
     Data.Tagged
