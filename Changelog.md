@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## Unreleased
+
+- Cleans up duplicated internal hashing primitives ([#737](https://github.com/fossas/fossa-cli/pull/737))
+
 ## v3.0.9
 
 - Makes experimental flags discoverable and documents them. ([#723](https://github.com/fossas/fossa-cli/pull/723))
