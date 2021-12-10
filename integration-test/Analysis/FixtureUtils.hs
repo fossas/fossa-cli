@@ -12,7 +12,8 @@ module Analysis.FixtureUtils (
   getArtifact,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (AnalyzeExperimentalPreferences), AnalyzeProject (analyzeProject))
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
+import App.NewFossa.Config.Analyze (ExperimentalAnalyzeConfig(ExperimentalAnalyzeConfig))
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
@@ -79,7 +80,7 @@ data FixtureArtifact = FixtureArtifact
   }
   deriving (Show, Eq, Ord)
 
-type TestC m a = ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC ((ReaderC AnalyzeExperimentalPreferences) (FinallyC m))))) a
+type TestC m a = ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC ((ReaderC ExperimentalAnalyzeConfig) (FinallyC m))))) a
 
 testRunnerWithLogger :: (Has (Lift IO) sig m) => TestC m a -> FixtureEnvironment -> m (Either FailureBundle a)
 testRunnerWithLogger f env =
@@ -88,7 +89,7 @@ testRunnerWithLogger f env =
     & runReadFSIO
     & runDiagnostics
     & withDefaultLogger SevDebug
-    & runReader (AnalyzeExperimentalPreferences Nothing)
+    & runReader (ExperimentalAnalyzeConfig Nothing)
     & runFinally
 
 runExecIOWithinEnv :: (Has (Lift IO) sig m) => FixtureEnvironment -> ExecIOC m a -> m a
