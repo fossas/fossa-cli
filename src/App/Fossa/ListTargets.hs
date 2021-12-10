@@ -16,7 +16,6 @@ import Control.Carrier.TaskPool
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Lift (Lift)
-import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Extra (encodeJSONToText)
 import Data.Foldable (for_, traverse_)
@@ -51,7 +50,6 @@ runAll ::
   , Has Logger sig m
   , Has TaskPool sig m
   , Has (Lift IO) sig m
-  , MonadIO m
   , Has AtomicCounter sig m
   , Has Debug sig m
   , Has (Reader AnalyzeExperimentalPreferences) sig m

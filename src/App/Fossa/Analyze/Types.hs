@@ -8,7 +8,6 @@ import Control.Carrier.Diagnostics
 import Control.Effect.Debug (Debug)
 import Control.Effect.Lift
 import Control.Effect.Reader (Reader)
-import Control.Monad.IO.Class (MonadIO)
 import Data.Set (Set)
 import Data.Text (Text)
 import Effect.Exec (Exec)
@@ -22,7 +21,6 @@ newtype AnalyzeExperimentalPreferences = AnalyzeExperimentalPreferences
 
 type AnalyzeTaskEffs sig m =
   ( Has (Lift IO) sig m
-  , MonadIO m
   , Has ReadFS sig m
   , Has Exec sig m
   , Has Logger sig m

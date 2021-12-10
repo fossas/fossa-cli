@@ -11,7 +11,6 @@ import App.Types (OverrideProject (..), ProjectRevision (..))
 import Control.Carrier.Diagnostics
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 import Control.Effect.Lift
-import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson qualified as Aeson
 import Data.Functor (void)
 import Data.String.Conversion (decodeUtf8)
@@ -44,7 +43,11 @@ testMain apiOpts logSeverity timeoutSeconds outputType override image = do
   exitFailure
 
 testInner ::
-  (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has StickyLogger sig m, MonadIO m) =>
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has StickyLogger sig m
+  ) =>
   ApiOpts ->
   TestOutputType ->
   OverrideProject ->

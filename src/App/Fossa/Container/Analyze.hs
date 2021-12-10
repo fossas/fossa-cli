@@ -9,7 +9,6 @@ import App.Fossa.FossaAPIV1 (UploadResponse (uploadError, uploadLocator), upload
 import App.Types (OverrideProject (..), ProjectRevision (..))
 import Control.Carrier.Diagnostics (Diagnostics, logWithExit_)
 import Control.Effect.Lift (Lift)
-import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (encode)
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
@@ -25,7 +24,6 @@ analyze ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
-  , MonadIO m
   ) =>
   ScanDestination ->
   OverrideProject ->
