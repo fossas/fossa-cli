@@ -5,17 +5,22 @@ module App.Fossa.VSIDeps (
 import App.Fossa.Analyze.Project (ProjectResult (ProjectResult))
 import App.Fossa.EmbeddedBinary (withWigginsBinary)
 import App.Fossa.VPS.Scan.RunWiggins (WigginsOpts, execWigginsJson, generateVSIStandaloneOpts, toPathFilters)
+import App.Fossa.VSI.Analyze (runVsiAnalysis)
 import App.Fossa.VSI.IAT.Resolve (resolveGraph, resolveUserDefined)
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
+import App.Types (ProjectRevision (projectRevision))
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, fromEither)
 import Control.Effect.Lift (Lift)
+import Control.Effect.StickyLogger (StickyLogger)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Text (Text)
 import DepTypes (Dependency)
 import Discovery.Filters (AllFilters)
 import Effect.Exec (Exec)
+import Effect.Logger (Logger)
+import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import Graphing (Graphing)
 import Graphing qualified
@@ -26,9 +31,10 @@ import Types (GraphBreadth (Complete))
 
 -- | VSI analysis is sufficiently different from other analysis types that it cannot be just another strategy.
 -- Instead, VSI analysis is run separately over the entire scan directory, outputting its own source unit.
-analyzeVSIDeps :: (MonadIO m, Has Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m) => Path Abs Dir -> ApiOpts -> AllFilters -> VSI.SkipResolution -> m SourceUnit
-analyzeVSIDeps dir apiOpts filters skipResolving = do
-  (direct, userDeps) <- pluginAnalyze $ generateVSIStandaloneOpts dir (toPathFilters filters) apiOpts
+analyzeVSIDeps :: (MonadIO m, Has Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m, Has Logger sig m, Has StickyLogger sig m, Has ReadFS sig m) => Path Abs Dir -> ProjectRevision -> ApiOpts -> AllFilters -> VSI.SkipResolution -> m SourceUnit
+analyzeVSIDeps dir projectRevision apiOpts filters skipResolving = do
+  (direct, userDeps) <- runVsiAnalysis dir apiOpts projectRevision filters
+  -- (direct, userDeps) <- pluginAnalyze $ generateVSIStandaloneOpts dir (toPathFilters filters) apiOpts
 
   resolvedUserDeps <- resolveUserDefined apiOpts userDeps
   resolvedGraph <- resolveGraph apiOpts direct skipResolving
