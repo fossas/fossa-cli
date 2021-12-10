@@ -34,6 +34,8 @@ module Control.Effect.Diagnostics (
   tagError,
   (<||>),
   combineSuccessful,
+  validationBoundary,
+  runValidation,
 
   -- * ToDiagnostic typeclass
   ToDiagnostic (..),
@@ -47,6 +49,7 @@ import Control.Effect.Lift (Lift)
 import Control.Exception (IOException, SomeException (..))
 import Control.Exception.Extra (safeCatch)
 import Data.Aeson (ToJSON, object, toJSON, (.=))
+import Data.Bifunctor (first)
 import Data.List (intersperse)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
@@ -55,6 +58,7 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Prettyprinter
 import Prettyprinter.Render.Terminal
+import Validation (Validation (Failure, Success), eitherToValidation)
 import Prelude
 
 data Diagnostics m k where
@@ -70,6 +74,9 @@ class ToDiagnostic a where
 
 instance ToDiagnostic Text where
   renderDiagnostic = pretty
+
+instance ToDiagnostic (Doc AnsiStyle) where
+  renderDiagnostic = id
 
 instance ToDiagnostic SomeException where
   renderDiagnostic (SomeException exc) =
@@ -121,6 +128,19 @@ recover' = send . Recover'
 -- This returns a FailureBundle if the action failed; otherwise returns the result of the action
 errorBoundary :: Has Diagnostics sig m => m a -> m (Either FailureBundle a)
 errorBoundary = send . ErrorBoundary
+
+validationBoundary :: Has Diagnostics sig m => m a -> m (Validation (NE.NonEmpty FailureBundle) a)
+validationBoundary act = eitherToValidation . first (NE.:| []) <$> errorBoundary act
+
+runValidation :: Has Diagnostics sig m => Validation (NE.NonEmpty FailureBundle) a -> m a
+runValidation (Success a) = pure a
+runValidation (Failure bundles) = fatal . renderValidationFailure $ NE.toList bundles
+
+renderValidationFailure :: [FailureBundle] -> Doc AnsiStyle
+renderValidationFailure bundles =
+  vsep $
+    ["One or more errors occurred during validation"]
+      <> map (indent 4 . renderFailureBundle) bundles
 
 -- | Rethrow a FailureBundle from an 'errorBoundary'
 rethrow :: Has Diagnostics sig m => FailureBundle -> m a
