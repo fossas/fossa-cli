@@ -11,7 +11,6 @@ import App.Fossa.VSI.Types qualified as VSI
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, fromEither)
 import Control.Effect.Lift (Lift)
-import Control.Monad.IO.Class (MonadIO)
 import Data.Text (Text)
 import DepTypes (Dependency)
 import Discovery.Filters (AllFilters)
@@ -26,7 +25,16 @@ import Types (GraphBreadth (Complete))
 
 -- | VSI analysis is sufficiently different from other analysis types that it cannot be just another strategy.
 -- Instead, VSI analysis is run separately over the entire scan directory, outputting its own source unit.
-analyzeVSIDeps :: (MonadIO m, Has Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m) => Path Abs Dir -> ApiOpts -> AllFilters -> VSI.SkipResolution -> m SourceUnit
+analyzeVSIDeps ::
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has (Lift IO) sig m
+  ) =>
+  Path Abs Dir ->
+  ApiOpts ->
+  AllFilters ->
+  VSI.SkipResolution ->
+  m SourceUnit
 analyzeVSIDeps dir apiOpts filters skipResolving = do
   (direct, userDeps) <- pluginAnalyze $ generateVSIStandaloneOpts dir (toPathFilters filters) apiOpts
 
@@ -37,7 +45,13 @@ analyzeVSIDeps dir apiOpts filters skipResolving = do
   pure $ toSourceUnit (toProject dir dependencies) resolvedUserDeps
 
 -- | The VSI plugin results in a shallow graph of direct discovered dependencies and a list of discovered user defined dependencies.
-pluginAnalyze :: (MonadIO m, Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => WigginsOpts -> m ([VSI.Locator], [IAT.UserDep])
+pluginAnalyze ::
+  ( Has (Lift IO) sig m
+  , Has Exec sig m
+  , Has Diagnostics sig m
+  ) =>
+  WigginsOpts ->
+  m ([VSI.Locator], [IAT.UserDep])
 pluginAnalyze opts = context "VSI" $ do
   (discoveredRawLocators :: [Text]) <- context "Running VSI binary" $ withWigginsBinary (execWigginsJson opts)
   parsedLocators <- fromEither $ traverse VSI.parseLocator discoveredRawLocators

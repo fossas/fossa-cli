@@ -24,7 +24,6 @@ import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath, withSyftBinary)
 import App.Types (OverrideProject (..), ProjectRevision (..))
 import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Monad.IO.Class
 import Data.Aeson
 import Data.Aeson.Types (parseEither)
 import Data.ByteString.Lazy qualified as BL
@@ -233,7 +232,6 @@ extractTag tags = do
 runSyft ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
-  , MonadIO m
   ) =>
   ImageText ->
   m SyftResponse
@@ -278,7 +276,6 @@ dumpSyftScan ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Exec sig m
-  , MonadIO m
   ) =>
   Maybe FilePath ->
   ImageText ->
