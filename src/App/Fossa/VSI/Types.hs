@@ -30,9 +30,6 @@ import Srclib.Types qualified as Srclib
 -- | The VSI backend returns a scan ID when a scan is created, which is then used to add files to the scan and get inferred OSS dependencies.
 newtype ScanID = ScanID {unScanID :: Text} deriving (ToJSON, FromJSON)
 
-instance ToText ScanID where
-  toText = unScanID
-
 -- | The VSI backend returns statuses for tracking which stage analysis is on.
 -- Programmatically we only care about some of these, the rest are informational and can be safely shown to a user to indicate activity.
 data AnalysisStatus
