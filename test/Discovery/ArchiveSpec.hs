@@ -2,13 +2,13 @@
 
 module Discovery.ArchiveSpec (spec) where
 
-import Conduit (await, runConduitRes, sourceFile, (.|))
+import Conduit (runConduitRes, sourceFile, (.|))
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics, fatalOnIOException, fatalText, runDiagnostics)
 import Control.Carrier.Finally (runFinally)
-import Control.Effect.Exception (IOException, Lift, catch)
+import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
-import Crypto.Hash (Digest, SHA256, hashFinalize, hashInit, hashUpdate)
+import Crypto.Hash (Digest, SHA256)
 import Data.Conduit.Extra (sinkHash)
 import Data.Map (Map)
 import Data.Map qualified as Map
