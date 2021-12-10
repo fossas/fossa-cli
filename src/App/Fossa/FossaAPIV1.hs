@@ -30,11 +30,17 @@ module App.Fossa.FossaAPIV1 (
   assertRevisionBinaries,
   resolveUserDefinedBinary,
   resolveProjectDependencies,
+  vsiCreateScan,
+  vsiAddFilesToScan,
+  vsiCompleteScan,
+  vsiScanAnalysisStatus,
+  vsiDownloadInferences,
 ) where
 
 import App.Fossa.Container (ContainerScan (..))
 import App.Fossa.Report.Attribution qualified as Attr
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
+import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types
@@ -61,6 +67,7 @@ import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Req
 import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
 import Network.HTTP.Types qualified as HTTP
+import Path (File, Path, Rel)
 import Srclib.Types
 import Text.URI (URI)
 import Text.URI qualified as URI
@@ -580,3 +587,100 @@ resolveProjectDependencies apiOpts locator = fossaReq $ do
   (dependencies :: [ResolvedDependency]) <- responseBody <$> req GET (resolveProjectDependenciesEndpoint baseUrl locator) NoReqBody jsonResponse opts
 
   pure $ map unwrapResolvedDependency dependencies
+
+----------
+
+baseVsiUrl :: Url scheme -> Url scheme
+baseVsiUrl baseurl = baseurl /: "api" /: "proxy" /: "sherlock"
+
+data VSICreateScanRequestBody = VSICreateScanRequestBody
+  { vsiCreateScanRequestBodyOrgID :: Int
+  , vsiCreateScanRequestBodyProjectID :: Text
+  , vsiCreateScanRequestBodyRevisionID :: Text
+  }
+
+instance ToJSON VSICreateScanRequestBody where
+  toJSON VSICreateScanRequestBody{..} =
+    object
+      [ "OrganizationID" .= vsiCreateScanRequestBodyOrgID
+      , "ProjectID" .= vsiCreateScanRequestBodyProjectID
+      , "RevisionID" .= vsiCreateScanRequestBodyRevisionID
+      ]
+
+newtype VSICreateScanResponseBody = VSICreateScanResponseBody {unVSICreateScanResponseBody :: VSI.ScanID}
+
+instance FromJSON VSICreateScanResponseBody where
+  parseJSON = withObject "VSICreateScanResponseBody" $ \obj -> VSICreateScanResponseBody <$> obj .: "ScanID"
+
+vsiCreateScanEndpoint :: Url scheme -> Url scheme
+vsiCreateScanEndpoint baseurl = baseVsiUrl baseurl /: "scans"
+
+vsiCreateScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> ProjectRevision -> m VSI.ScanID
+vsiCreateScan apiOpts ProjectRevision{..} = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  Organization orgId _ <- getOrganization apiOpts
+  let projectID = renderLocator $ Locator "custom" projectName Nothing
+  let reqBody = VSICreateScanRequestBody orgId projectRevision projectID
+
+  body <- responseBody <$> req POST (vsiCreateScanEndpoint baseUrl) (ReqBodyJson reqBody) jsonResponse baseOpts
+  pure $ unVSICreateScanResponseBody body
+
+newtype VSIAddFilesToScanRequestBody = VSIAddFilesToScanRequestBody {vsiAddFilesToScanRequestBodyFiles :: Map (Path Rel File) Fingerprint.Combined}
+
+instance ToJSON VSIAddFilesToScanRequestBody where
+  toJSON VSIAddFilesToScanRequestBody{..} = object ["ScanData" .= vsiAddFilesToScanRequestBodyFiles]
+
+vsiAddFilesToScanEndpoint :: Url scheme -> VSI.ScanID -> Url scheme
+vsiAddFilesToScanEndpoint baseurl (VSI.ScanID scanID) = baseVsiUrl baseurl /: "scans" /: scanID /: "files"
+
+vsiAddFilesToScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> VSI.ScanID -> Map (Path Rel File) Fingerprint.Combined -> m ()
+vsiAddFilesToScan apiOpts scanID files = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts = baseOpts <> "sync" =: True
+  let body = VSIAddFilesToScanRequestBody files
+  _ <- req POST (vsiAddFilesToScanEndpoint baseUrl scanID) (ReqBodyJson body) ignoreResponse opts
+
+  pure ()
+
+vsiCompleteScanEndpoint :: Url scheme -> VSI.ScanID -> Url scheme
+vsiCompleteScanEndpoint baseurl (VSI.ScanID scanID) = baseVsiUrl baseurl /: "scans" /: scanID /: "complete"
+
+vsiCompleteScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> VSI.ScanID -> m ()
+vsiCompleteScan apiOpts scanID = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  _ <- req POST (vsiCompleteScanEndpoint baseUrl scanID) NoReqBody ignoreResponse baseOpts
+  pure ()
+
+newtype VSIScanAnalysisStatusBody = VSIScanAnalysisStatusBody {unVSIScanAnalysisStatusBody :: VSI.AnalysisStatus}
+
+instance FromJSON VSIScanAnalysisStatusBody where
+  parseJSON = withObject "VSIScanAnalysisStatusBody" $ \obj -> do
+    status <- obj .: "Status"
+    pure . VSIScanAnalysisStatusBody $ VSI.parseAnalysisStatus status
+
+vsiScanAnalysisStatusEndpoint :: Url scheme -> VSI.ScanID -> Url scheme
+vsiScanAnalysisStatusEndpoint baseurl (VSI.ScanID scanID) = baseVsiUrl baseurl /: "scans" /: scanID /: "status" /: "analysis"
+
+vsiScanAnalysisStatus :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> VSI.ScanID -> m VSI.AnalysisStatus
+vsiScanAnalysisStatus apiOpts scanID = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  body <- responseBody <$> req GET (vsiScanAnalysisStatusEndpoint baseUrl scanID) NoReqBody jsonResponse baseOpts
+  pure $ unVSIScanAnalysisStatusBody body
+
+newtype VSIExportedInferencesBody = VSIExportedInferencesBody {unVSIExportedInferencesBody :: [Locator]}
+
+instance FromJSON VSIExportedInferencesBody where
+  parseJSON = withObject "VSIExportedInferencesBody" $ \obj -> do
+    plainLocators <- obj .: "Locators"
+    pure . VSIExportedInferencesBody $ fmap parseLocator plainLocators
+
+vsiDownloadInferencesEndpoint :: Url scheme -> VSI.ScanID -> Url scheme
+vsiDownloadInferencesEndpoint baseurl (VSI.ScanID scanID) = baseVsiUrl baseurl /: "scans" /: scanID /: "inferences" /: "locator"
+
+vsiDownloadInferences :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> VSI.ScanID -> m [Locator]
+vsiDownloadInferences apiOpts scanID = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  body <- responseBody <$> req GET (vsiDownloadInferencesEndpoint baseUrl scanID) NoReqBody jsonResponse baseOpts
+  pure $ unVSIExportedInferencesBody body

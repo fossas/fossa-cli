@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## Unreleased
+
+- Adds a prerequisite required for future VSI improvements ([#736](https://github.com/fossas/fossa-cli/pull/736))
+
 ## v3.0.9
 
 - Makes experimental flags discoverable and documents them. ([#723](https://github.com/fossas/fossa-cli/pull/723))
