@@ -15,20 +15,50 @@ module App.NewFossa.ConfigFile (
   empty,
 ) where
 
-import App.Docs
-import App.Types
+import App.Docs (fossaYmlDocUrl)
+import App.Types (ProjectMetadata (..), ReleaseGroupMetadata)
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics
-import Control.Effect.Lift
-import Data.Aeson
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  fatal,
+  fatalText,
+  fromEitherShow,
+ )
+import Control.Effect.Lift (Lift)
+import Data.Aeson (
+  FromJSON (parseJSON),
+  withObject,
+  (.!=),
+  (.:),
+  (.:?),
+ )
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.String.Conversion
+import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
-import Effect.Logger
-import Effect.ReadFS
-import Path
-import Types
+import Effect.Logger (
+  AnsiStyle,
+  Doc,
+  Logger,
+  Pretty (pretty),
+  logWarn,
+  vsep,
+ )
+import Effect.ReadFS (ReadFS, doesFileExist, readContentsYaml)
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  SomeBase (Abs, Rel),
+  mkRelFile,
+  parseSomeFile,
+  (</>),
+ )
+import Types (TargetFilter)
 
 defaultConfigFileLocation :: Path Rel File
 defaultConfigFileLocation = $(mkRelFile ".fossa.yml")
@@ -64,7 +94,7 @@ resolveConfigFile base path = do
     (realpath, _, True) -> do
       -- file requested and exists
       configFile <- readContentsYaml realpath
-      
+
       let version = configVersion configFile
           oldVersionMsg = warnMsgForOlderConfig @AnsiStyle version
 
