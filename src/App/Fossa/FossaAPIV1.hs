@@ -657,7 +657,7 @@ newtype VSIScanAnalysisStatusBody = VSIScanAnalysisStatusBody {unVSIScanAnalysis
 
 instance FromJSON VSIScanAnalysisStatusBody where
   parseJSON = withObject "VSIScanAnalysisStatusBody" $ \obj -> do
-    (status :: Text) <- obj .: "Status"
+    status <- obj .: "Status"
     pure . VSIScanAnalysisStatusBody $ VSI.parseAnalysisStatus status
 
 vsiScanAnalysisStatusEndpoint :: Url scheme -> VSI.ScanID -> Url scheme
@@ -673,7 +673,7 @@ newtype VSIExportedInferencesBody = VSIExportedInferencesBody {unVSIExportedInfe
 
 instance FromJSON VSIExportedInferencesBody where
   parseJSON = withObject "VSIExportedInferencesBody" $ \obj -> do
-    (plainLocators :: [Text]) <- obj .: "Locators"
+    plainLocators <- obj .: "Locators"
     pure . VSIExportedInferencesBody $ fmap parseLocator plainLocators
 
 vsiDownloadInferencesEndpoint :: Url scheme -> VSI.ScanID -> Url scheme

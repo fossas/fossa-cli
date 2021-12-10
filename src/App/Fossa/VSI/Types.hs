@@ -38,8 +38,8 @@ data AnalysisStatus
   | Failed
   | Informational Text
 
-parseAnalysisStatus :: (ToText a) => a -> AnalysisStatus
-parseAnalysisStatus a = case toText a of
+parseAnalysisStatus :: Text -> AnalysisStatus
+parseAnalysisStatus status = case status of
   "NOT_STARTED" -> Pending
   "DONE" -> Finished
   "FAILED" -> Failed
