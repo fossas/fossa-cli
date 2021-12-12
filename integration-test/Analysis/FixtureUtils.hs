@@ -8,6 +8,7 @@ module Analysis.FixtureUtils (
   AnalysisTestFixture (..),
   FixtureEnvironment (..),
   FixtureArtifact (..),
+  TestC,
   performDiscoveryAndAnalyses,
   getArtifact,
 ) where
@@ -25,12 +26,14 @@ import Data.Conduit (runConduitRes, (.|))
 import Data.Conduit.Binary qualified as CB
 import Data.Function ((&))
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Discovery.Archive (extractTarGz)
 import Effect.Exec (
   Command (..),
   ExecF (Exec),
   ExecIOC,
   Has,
+  exec,
   runExecIO,
  )
 import Effect.Logger (LoggerC, Severity (SevDebug), withDefaultLogger)
@@ -59,19 +62,21 @@ data AnalysisTestFixture a = AnalysisTestFixture
   { testName :: Text
   , discover :: Path Abs Dir -> TestC IO [DiscoveredProject a]
   , environment :: FixtureEnvironment
+  , buildCmd :: Maybe Command
   , artifact :: FixtureArtifact
   }
 
 -- | Fixture Environment to mimic when executing commands.
 data FixtureEnvironment
   = LocalEnvironment
+  | NixEnv [Text]
   deriving (Show, Eq, Ord)
 
 -- | Artifact to download and use for the test.
 data FixtureArtifact = FixtureArtifact
   { tarGzFileUrl :: Text
   , extractAt :: Path Rel Dir
-  , scopedDir :: Maybe (Path Rel Dir)
+  , scopedDir :: Path Rel Dir
   }
   deriving (Show, Eq, Ord)
 
@@ -93,12 +98,22 @@ runExecIOWithinEnv conf = interpret $ \case
 
 decorateCmdWith :: FixtureEnvironment -> Command -> Command
 decorateCmdWith LocalEnvironment cmd = cmd
+decorateCmdWith (NixEnv pkgs) cmd =
+  Command
+    { cmdName = "nix-shell"
+    , cmdArgs = ["-p"] <> pkgs <> ["--run"] <> [cmdName cmd <> " " <> Text.intercalate " " (cmdArgs cmd)]
+    , cmdAllowErr = cmdAllowErr cmd
+    }
 
 -- --------------------------------
 -- Analysis fixture test runner
 
 performDiscoveryAndAnalyses :: (Has (Lift IO) sig m, AnalyzeProject a, MonadFail m) => Path Abs Dir -> AnalysisTestFixture a -> m [(DiscoveredProject a, DependencyResults)]
 performDiscoveryAndAnalyses targetDir AnalysisTestFixture{..} = do
+  -- Perform any project builds
+  _ <- sendIO $ runCmd environment buildCmd
+
+  -- Perform discovery
   discoveryResult <- sendIO $ testRunnerWithLogger (discover targetDir) environment
   case discoveryResult of
     Left fb -> fail (show fb)
@@ -108,6 +123,16 @@ performDiscoveryAndAnalyses targetDir AnalysisTestFixture{..} = do
         case analysisResult of
           Left fb -> fail (show fb)
           Right dr -> pure (dp, dr)
+  where
+    runCmd :: FixtureEnvironment -> Maybe (Command) -> IO ()
+    runCmd env cmd =
+      case cmd of
+        Nothing -> pure ()
+        Just c -> do
+          res <- runExecIOWithinEnv env $ exec (targetDir </> scopedDir artifact) c
+          case res of
+            Left err -> fail (show err)
+            Right _ -> pure ()
 
 -- --------------------------------
 -- IO helpers for test runners

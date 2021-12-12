@@ -7,6 +7,7 @@ module Strategy.NuGet.PackageReference (
   mkProject,
   buildGraph,
   PackageReference (..),
+  PackageReferenceProject (..),
   ItemGroup (..),
   Package (..),
 ) where

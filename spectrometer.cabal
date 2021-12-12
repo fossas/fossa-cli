@@ -443,9 +443,19 @@ test-suite integration-tests
   main-is:            test.hs
   ghc-options:        -threaded
   other-modules:
+    Analysis.CarthageSpec
+    Analysis.ClojureSpec
+    Analysis.CocoapodsSpec
+    Analysis.ElixirSpec
+    Analysis.ErlangSpec
     Analysis.FixtureExpectationUtils
     Analysis.FixtureUtils
+    Analysis.MavenSpec
+    Analysis.NugetSpec
+    Analysis.Python.PipenvSpec
     Analysis.Python.PoetrySpec
+    Analysis.Python.SetuptoolsSpec
+    Analysis.RustSpec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
   build-depends:
