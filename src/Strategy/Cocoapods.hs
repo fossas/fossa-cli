@@ -3,6 +3,7 @@ module Strategy.Cocoapods (
   findProjects,
   getDeps,
   mkProject,
+  CocoapodsProject (..),
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)

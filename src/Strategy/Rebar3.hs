@@ -1,4 +1,5 @@
 module Strategy.Rebar3 (
+  RebarProject (..),
   discover,
   findProjects,
   getDeps,

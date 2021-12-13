@@ -3,6 +3,7 @@ module Strategy.Gomodules (
   findProjects,
   getDeps,
   mkProject,
+  GomodulesProject (..),
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
