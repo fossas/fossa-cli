@@ -8,6 +8,7 @@ module Strategy.Carthage (
   analyze,
   ResolvedEntry (..),
   EntryType (..),
+  CarthageProject (..),
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)

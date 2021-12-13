@@ -10,6 +10,7 @@ module Strategy.Python.Pipenv (
   PipfileMeta (..),
   PipfileSource (..),
   PipfileDep (..),
+  PipenvProject (..),
   buildGraph,
 ) where
 
