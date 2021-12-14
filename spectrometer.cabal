@@ -273,6 +273,8 @@ library
     Strategy.Gomodules
     Strategy.Googlesource.RepoManifest
     Strategy.Gradle
+    Strategy.Gradle.Common
+    Strategy.Gradle.ResolutionApi
     Strategy.Haskell.Cabal
     Strategy.Haskell.Stack
     Strategy.Leiningen
@@ -390,7 +392,8 @@ test-suite unit-tests
     Go.GopkgTomlSpec
     Go.TransitiveSpec
     Googlesource.RepoManifestSpec
-    Gradle.GradleSpec
+    Gradle.CommonSpec
+    Gradle.ResolutionApiSpec
     Graphing.HydrateSpec
     GraphingSpec
     GraphUtil
