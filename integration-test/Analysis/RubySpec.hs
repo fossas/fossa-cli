@@ -16,20 +16,12 @@ rails =
     "rails"
     Bundler.discover
     LocalEnvironment
+    Nothing
     $ FixtureArtifact
-      "https://github.com/rails/rails/archive/refs/tags/v6.1.4.tar.gz"
+    "https://github.com/rails/rails/archive/refs/tags/v6.1.4.tar.gz"
       [reldir|ruby/rails/|]
-      $ Just [reldir|rails-6.1.4/|]
-
-testRailSrcRepo :: Spec
-testRailSrcRepo =
-  aroundAll (withAnalysisOf rails) $ do
-    describe "rails" $ do
-      it "should find targets" $ \(result, extractedDir) -> do
-        shouldFindProjectOf ("bundler", extractedDir) result
-      it "should have expected dependency results" $ \(result, extractedDir) -> do
-        (DependencyResultsSummary 210 70 293 1 Complete) `expectDepResultsSummary` (getDepResultsOf result ("bundler", extractedDir))
+      [reldir|rails-6.1.4/|]
 
 spec :: Spec
 spec = do
-  testRailSrcRepo
+  testSuiteDepResultSummary rails "bundler" (DependencyResultsSummary 210 70 293 1 Complete)
