@@ -3,6 +3,7 @@ module Strategy.Bundler (
   findProjects,
   mkProject,
   getDeps,
+  BundlerProject (..),
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
