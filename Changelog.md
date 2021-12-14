@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## v3.0.8
+
+- Gradle: Uses `getResolutionResult` api for analysis. ([#727](https://github.com/fossas/fossa-cli/pull/727))
+
 ## v3.0.6
 
 - Yarn: Fixes a bug with yarn v1 lock file analysis, where direct dependencies were not reported sometimes. ([#716](https://github.com/fossas/fossa-cli/pull/716))

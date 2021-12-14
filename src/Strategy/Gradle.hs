@@ -59,7 +59,7 @@ import Strategy.Gradle.Common (
   ConfigName (..),
   getDebugMessages,
  )
-import Strategy.Gradle.ResolvedConfiguration (buildGraph, parseJsonDeps)
+import Strategy.Gradle.ResolutionApi qualified as ResolutionApi
 import System.FilePath qualified as FilePath
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), FoundTargets (..), GraphBreadth (..))
 
@@ -281,9 +281,10 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
     pure $ maybe Set.empty (Set.map ConfigName) configs
 
   let text = decodeUtf8 $ BL.toStrict stdout
-  let packagesToOutput = parseJsonDeps text
+  let resolvedProjects = ResolutionApi.parseResolutionApiJsonDeps text
+  let graphFromResolutionApi = ResolutionApi.buildGraph resolvedProjects (onlyConfigurations)
 
   -- Log debug messages as seen in gradle script
   sequence_ $ logDebug . pretty <$> (getDebugMessages text)
 
-  context "Building dependency graph" $ pure (buildGraph packagesToOutput onlyConfigurations)
+  context "Building dependency graph" $ pure graphFromResolutionApi
