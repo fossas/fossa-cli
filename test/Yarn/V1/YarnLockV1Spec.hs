@@ -102,8 +102,22 @@ packageSix =
     , dependencyTags = mempty
     }
 
+packageSeven :: Dependency
+packageSeven =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "packageSeven"
+    , dependencyVersion = Just $ CEq "7.0.0"
+    , dependencyLocations = []
+    , dependencyEnvironments = mempty
+    , dependencyTags = mempty
+    }
+
 devPackageSix :: Dependency
 devPackageSix = insertEnvironment EnvDevelopment packageSix
+
+prodPackageSeven :: Dependency
+prodPackageSeven = insertEnvironment EnvProduction packageSeven
 
 packageOnce :: Dependency
 packageOnce =
@@ -122,7 +136,7 @@ prodPackageOnce = insertEnvironment EnvProduction packageOnce
 simpleFlatDeps :: FlatDeps
 simpleFlatDeps =
   FlatDeps
-    (applyTag @Production $ Set.fromList [NodePackage "packageOne" "^1.0.0", NodePackage "once" "^1.3.0"])
+    (applyTag @Production $ Set.fromList [NodePackage "packageOne" "^1.0.0", NodePackage "once" "^1.3.0", NodePackage "packageSeven" "^7.0.0"])
     (applyTag @Development $ Set.fromList [NodePackage "packageSix" "^6.0.0"])
     mempty
 
@@ -141,7 +155,7 @@ spec = do
     it' "should produce expected structure" $ do
       yarnLock <- parseFile $(mkRelFile "yarn.lock")
       graph <- buildGraph yarnLock mempty
-      expectDeps' [packageOne, packageTwo, packageThree, packageFour, packageFive, packageSix, packageOnce] graph
+      expectDeps' [packageOne, packageTwo, packageThree, packageFour, packageFive, packageSix, packageSeven, packageOnce] graph
       expectDirect' [] graph
       expectEdges'
         [ (packageOne, packageTwo)
@@ -154,8 +168,8 @@ spec = do
     it' "Should apply the correct dep environments" $ do
       yarnLock <- parseFile $(mkRelFile "yarn.lock")
       graph <- buildGraph yarnLock simpleFlatDeps
-      expectDeps' [prodPackageOne, prodPackageTwo, prodDevPackageThree, packageFour, packageFive, devPackageSix, prodPackageOnce] graph
-      expectDirect' [prodPackageOne, devPackageSix, prodPackageOnce] graph
+      expectDeps' [prodPackageOne, prodPackageTwo, prodDevPackageThree, packageFour, packageFive, devPackageSix, prodPackageSeven, prodPackageOnce] graph
+      expectDirect' [prodPackageOne, devPackageSix, prodPackageOnce, prodPackageSeven] graph
       expectEdges'
         [ (prodPackageOne, prodPackageTwo)
         , (prodPackageTwo, prodDevPackageThree)

@@ -26,6 +26,9 @@ packageSix@^6.0.0:
   resolved "https://registry.npmjs.org/packageSix"
   dependencies:
     packageThree "^3.0.0"
+packageSeven@^7.0.0:
+  integrity "some-hash"
+  version "7.0.0"
 
 # To verify we look at both keys, when inferring direct dep
 # Key ordering is presumed to be not consistent
