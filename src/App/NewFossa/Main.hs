@@ -3,6 +3,7 @@
 module App.NewFossa.Main (appMain) where
 
 import App.Fossa.Analyze qualified as Analyze
+import App.Fossa.Test qualified as Test
 import App.NewFossa.Subcommand (GetSeverity, SubCommand (..), runSubCommand)
 import App.Version (fullVersionDescription)
 import Control.Monad (join)
@@ -50,6 +51,7 @@ subcommands =
   hsubparser $
     mconcat
       [ decodeSubCommand Analyze.analyzeSubCommand
+      , decodeSubCommand Test.testSubCommand
       ]
 
 decodeSubCommand :: GetSeverity a => SubCommand a b -> Mod CommandFields (IO ())
