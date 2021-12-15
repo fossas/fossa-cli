@@ -116,13 +116,13 @@ buildGraph lockfile FlatDeps{..} = fmap hydrateDepEnvs . withLabeling toDependen
     promote EnvProduction $ unTag @Production directDeps
     promote EnvDevelopment $ unTag @Development devDeps
 
-getLocations :: YL.Remote -> [Text]
+getLocations :: Maybe YL.Remote -> [Text]
 getLocations = \case
-  YL.FileRemote url _ -> [url]
-  YL.FileRemoteNoIntegrity url -> [url]
-  YL.GitRemote url rev -> [url <> "@" <> rev]
-  YL.DirectoryLocal dirpath -> [dirpath]
-  YL.DirectoryLocalSymLinked dirpath -> [dirpath]
+  Just (YL.FileRemote url _) -> [url]
+  Just (YL.FileRemoteNoIntegrity url) -> [url]
+  Just (YL.GitRemote url rev) -> [url <> "@" <> rev]
+  Just (YL.DirectoryLocal dirpath) -> [dirpath]
+  Just (YL.DirectoryLocalSymLinked dirpath) -> [dirpath]
   _ -> []
 
 toDependency :: YarnV1Package -> Set YarnV1Label -> Dependency
