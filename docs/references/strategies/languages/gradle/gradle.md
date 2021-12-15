@@ -120,7 +120,7 @@ This tactic runs a Gradle [init script](https://docs.gradle.org/current/userguid
 
 This init script is implemented [here](https://github.com/fossas/fossa-cli/blob/master/scripts/jsondeps.gradle) and bundled into the CLI during compilation.
 
-The script works by iterating through configurations, resolving their dependencies, and then serializing those dependencies into JSON.
+The script works by iterating through configurations, getting resolution result for the configuration, and then serializing those dependencies into JSON. Please note that we currently only support analysis for builds using gradle v3.3 or greater.
 
 ### Parsing `gradle :dependencies`
 

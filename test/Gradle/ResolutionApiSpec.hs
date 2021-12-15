@@ -1,22 +1,25 @@
-module Gradle.GradleSpec (
+module Gradle.ResolutionApiSpec (
   spec,
 ) where
 
-import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
 import DepTypes
-import GraphUtil
+import GraphUtil (expectDeps, expectDirect, expectEdges)
 import Graphing (Graphing, empty)
-import Strategy.Gradle (
-  ConfigName (..),
-  JsonDep (..),
-  PackageName (..),
-  buildGraph,
-  packagePathsWithJson,
+import Strategy.Gradle.Common (
+  ConfigName (ConfigName),
+  ProjectName (ProjectName),
  )
-import Test.Hspec
+import Strategy.Gradle.ResolutionApi (
+  ResolvedComponent (ResolvedComponent),
+  ResolvedConfiguration (..),
+  ResolvedDependency (..),
+  ResolvedProject (..),
+  buildGraph,
+ )
+import Test.Hspec (Spec, describe, it, shouldBe)
 
 projectOne :: Dependency
 projectOne =
@@ -107,35 +110,54 @@ packageFour = mkMavenDep "mygroup:packageFour" EnvTesting
 packageFive :: Dependency
 packageFive = mkMavenDep "mygroup:packageFive" EnvTesting
 
-gradleOutput :: Map (Text, Text) [JsonDep]
+gradleOutput :: [ResolvedProject]
 gradleOutput =
-  Map.fromList
-    [ ((":projectOne", "config"), [ProjectDep ":projectTwo", ProjectDep ":projectFour", ProjectDep ":projectFive"])
-    , ((":projectTwo", "compileOnly"), [ProjectDep ":projectThree", PackageDep "mygroup:packageOne" "1.0.0" []])
-    , ((":projectThree", "testCompileOnly"), [PackageDep "mygroup:packageTwo" "2.0.0" []])
-    , ((":projectFour", "testCompileClasspath"), [PackageDep "mygroup:packageFour" "2.0.0" []])
-    , ((":projectFive", "testRuntimeClasspath"), [PackageDep "mygroup:packageFive" "2.0.0" []])
-    ]
-
-wrapKeys :: (Text, Text) -> (PackageName, ConfigName)
-wrapKeys (a, b) = (PackageName a, ConfigName b)
+  [ ResolvedProject
+      (ProjectName ":projectOne")
+      [ ResolvedConfiguration
+          (ConfigName "config")
+          [ProjectDependency ":projectOne"]
+          [ResolvedComponent (ProjectDependency ":projectOne") [ProjectDependency ":projectTwo", ProjectDependency ":projectFour", ProjectDependency ":projectFive"]]
+      ]
+  , ResolvedProject
+      (ProjectName ":projectTwo")
+      [ ResolvedConfiguration
+          (ConfigName "compileOnly")
+          [ProjectDependency ":projectTwo"]
+          [ResolvedComponent (ProjectDependency ":projectTwo") [ProjectDependency ":projectThree", PackageDependency "mygroup:packageOne" "1.0.0"]]
+      ]
+  , ResolvedProject
+      (ProjectName ":projectThree")
+      [ ResolvedConfiguration
+          (ConfigName "testCompileOnly")
+          [ProjectDependency ":projectThree"]
+          [ResolvedComponent (ProjectDependency ":projectThree") [PackageDependency "mygroup:packageTwo" "2.0.0"]]
+      ]
+  , ResolvedProject
+      (ProjectName ":projectFour")
+      [ ResolvedConfiguration
+          (ConfigName "testCompileClasspath")
+          [ProjectDependency ":projectFour"]
+          [ResolvedComponent (ProjectDependency ":projectFour") [PackageDependency "mygroup:packageFour" "2.0.0"]]
+      ]
+  , ResolvedProject
+      (ProjectName ":projectFive")
+      [ ResolvedConfiguration
+          (ConfigName "testRuntimeClasspath")
+          [ProjectDependency ":projectFive"]
+          [ResolvedComponent (ProjectDependency ":projectFive") [PackageDependency "mygroup:packageFive" "2.0.0"]]
+      ]
+  ]
 
 spec :: Spec
 spec = do
-  describe "packagePathsWithJson" $ do
-    it "should break package and jsonText correctly for project with _" $ do
-      packagePathsWithJson ["sub-project_{}"] `shouldBe` [(PackageName "sub-project", "{}")]
-      packagePathsWithJson ["sub_project_{}"] `shouldBe` [(PackageName "sub_project", "{}")]
-      packagePathsWithJson ["sub-project__{}"] `shouldBe` [(PackageName "sub-project_", "{}")]
-      packagePathsWithJson ["subProject_{}"] `shouldBe` [(PackageName "subProject", "{}")]
-
   describe "buildGraph" $ do
     it "should produce an empty graph for empty input" $ do
-      let graph = buildGraph Map.empty (Set.fromList [])
+      let graph = buildGraph [] Set.empty
       graph `shouldBe` (empty :: Graphing Dependency)
 
     it "should produce expected output" $ do
-      let graph = buildGraph (Map.mapKeys wrapKeys gradleOutput) (Set.fromList [])
+      let graph = buildGraph gradleOutput Set.empty
       expectDeps [projectOne, projectTwo, projectThree, packageOne, packageTwo, projectFour, projectFive, packageFour, packageFive] graph
       expectDirect [projectOne, projectTwo, projectThree, projectFour, projectFive] graph
       expectEdges
@@ -152,12 +174,12 @@ spec = do
 
     it "should filter configurations when provided" $ do
       let filteredConfig = "testRuntimeClasspath"
-      let graph = buildGraph (Map.mapKeys wrapKeys gradleOutput) (Set.fromList [ConfigName filteredConfig])
+      let graph = buildGraph gradleOutput (Set.fromList [ConfigName filteredConfig])
       let projectFiveCustomEnv = projectFive{dependencyEnvironments = Set.singleton $ EnvOther filteredConfig}
       let packageFiveCustomEnv = packageFive{dependencyEnvironments = Set.singleton $ EnvOther filteredConfig}
 
-      expectDeps [projectFiveCustomEnv, packageFiveCustomEnv] graph
       expectDirect [projectFiveCustomEnv] graph
+      expectDeps [projectFiveCustomEnv, packageFiveCustomEnv] graph
       expectEdges
         [ (projectFiveCustomEnv, packageFiveCustomEnv)
         ]

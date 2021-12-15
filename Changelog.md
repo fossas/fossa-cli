@@ -1,7 +1,8 @@
 # Fossa CLI Changelog
 
-## Unreleased
+## v3.0.10
 
+- Gradle: Uses ResolutionAPI for gradle analysis. ([#740](https://github.com/fossas/fossa-cli/pull/740/))
 - Cleans up duplicated internal hashing primitives ([#737](https://github.com/fossas/fossa-cli/pull/737))
 - Adds a prerequisite required for future VSI improvements ([#736](https://github.com/fossas/fossa-cli/pull/736))
 
