@@ -8,7 +8,10 @@ module App.Fossa.API.BuildWait (
   timeout',
   waitForScanCompletion',
   waitForIssues',
-waitForSherlockScan') where
+  waitForSherlockScan',
+  shouldCancel,
+  Cancel,
+) where
 
 import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.VPS.Scan.Core qualified as VPSCore
@@ -45,7 +48,11 @@ data WaitError
     LocalTimeout
   deriving (Eq, Ord, Show)
 
-newtype Cancel = Cancel Bool deriving (Eq, Ord, Show)
+-- Opaque wrapper
+newtype Cancel = Cancel (MVar ()) deriving (Eq)
+
+shouldCancel :: Cancel -> IO Bool
+shouldCancel (Cancel mvar) = isJust <$> tryTakeMVar mvar
 
 instance ToDiagnostic WaitError where
   renderDiagnostic BuildFailed = "The build failed. Check the FOSSA webapp for more details."
@@ -53,6 +60,7 @@ instance ToDiagnostic WaitError where
 
 -- | Wait for either a normal build completion or a monorepo scan completion.
 -- Try to detect the correct method, use provided fallback
+-- TODO: Delete me!  I'm an infinite loop!
 waitForScanCompletion ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -74,6 +82,7 @@ waitForScanCompletion apiopts revision = do
     else waitForBuild apiopts revision
 
 -- | Wait for a "normal" (non-VPS) build completion
+-- TODO: Delete me!  I'm an infinite loop!
 waitForBuild ::
   (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has StickyLogger sig m) =>
   ApiOpts ->
@@ -91,6 +100,7 @@ waitForBuild apiOpts revision = do
       waitForBuild apiOpts revision
 
 -- | Wait for monorepo scan completion
+-- TODO: Delete me!  I'm an infinite loop!
 waitForMonorepoScan ::
   (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has StickyLogger sig m) =>
   ApiOpts ->
@@ -107,6 +117,7 @@ waitForMonorepoScan apiOpts revision = do
   waitForSherlockScan apiOpts locator (ScotlandYard.responseScanId scan)
   pure ()
 
+-- TODO: Delete me!  I'm an infinite loop!
 waitForIssues ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -124,6 +135,7 @@ waitForIssues apiOpts revision = do
     _ -> pure issues
 
 -- | Wait for sherlock scan completion (VPS)
+-- TODO: Delete me!  I'm an infinite loop!
 waitForSherlockScan ::
   (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has StickyLogger sig m) =>
   ApiOpts ->
@@ -161,7 +173,7 @@ waitForScanCompletion' ::
   ) =>
   ApiOpts ->
   ProjectRevision ->
-  MVar () ->
+  Cancel ->
   m ()
 waitForScanCompletion' apiopts revision cancelFlag = do
   -- Route is new, this may fail on on-prem if they haven't updated
@@ -183,7 +195,7 @@ waitForBuild' ::
   ) =>
   ApiOpts ->
   ProjectRevision ->
-  MVar () ->
+  Cancel ->
   m ()
 waitForBuild' apiOpts revision cancelFlag = do
   build <- Fossa.getLatestBuild apiOpts revision
@@ -205,7 +217,7 @@ waitForMonorepoScan' ::
   ) =>
   ApiOpts ->
   ProjectRevision ->
-  MVar () ->
+  Cancel ->
   m ()
 waitForMonorepoScan' apiOpts revision cancelFlag = do
   checkForCancel cancelFlag
@@ -225,7 +237,7 @@ waitForIssues' ::
   ) =>
   ApiOpts ->
   ProjectRevision ->
-  MVar () ->
+  Cancel ->
   m Issues
 waitForIssues' apiOpts revision cancelFlag = do
   checkForCancel cancelFlag
@@ -241,7 +253,7 @@ waitForSherlockScan' ::
   (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has StickyLogger sig m) =>
   ApiOpts ->
   VPSCore.Locator ->
-  MVar () ->
+  Cancel ->
   -- | scan ID
   Text ->
   m ()
@@ -263,17 +275,20 @@ checkForCancel ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   ) =>
-  MVar () ->
+  Cancel ->
   m ()
-checkForCancel mvar = do
-  x <- sendIO $ tryTakeMVar mvar
-  when (isJust x) $ fatal LocalTimeout
+checkForCancel cancel = do
+  should <- sendIO $ shouldCancel cancel
+  when should $ fatal LocalTimeout
 
-timeout' :: (Has (Lift IO) sig m) => Int -> (MVar () -> m a) -> m a
+timeout' :: (Has (Lift IO) sig m) => Int -> (Cancel -> m a) -> m a
 timeout' seconds act = do
   mvar <- sendIO newEmptyMVar
   handle <- sendIO $
     fork $ do
       threadDelay $ seconds * 1_000_000
       putMVar mvar ()
-  act mvar `finally` kill handle
+  -- We need 'finally' here, because `act` can short-circuit.
+  -- If we don't use it, we might join the thread, which
+  -- requires the timeout to fully expire.
+  act (Cancel mvar) `finally` kill handle
