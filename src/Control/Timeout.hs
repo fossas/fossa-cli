@@ -66,7 +66,7 @@ checkForCancel err cancel = do
 -- @
 --
 -- Which will run @longRunningComputation@ until it returns, and set the cancel
--- flag after the duration expires.  For a cancellation to occur, 
+-- flag after the duration expires.  For a cancellation to occur,
 -- @longRunningComputation@ must return a value early by checking the cancel
 -- flag with 'checkForCancel'.  If @longRunningComputation@ does not check the
 -- cancel flag, or doesn't return early when the flag is set, no timeout will
