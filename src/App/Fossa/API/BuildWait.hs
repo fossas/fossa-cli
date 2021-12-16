@@ -11,7 +11,6 @@ import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
 import App.Types (ProjectRevision (projectName, projectRevision))
 import Control.Concurrent (threadDelay)
 import Control.Effect.Diagnostics (
-  Has,
   Diagnostics,
   Has,
   ToDiagnostic (..),
