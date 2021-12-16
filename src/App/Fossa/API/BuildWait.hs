@@ -9,7 +9,7 @@ module App.Fossa.API.BuildWait (
   waitForScanCompletion',
   waitForIssues',
   waitForSherlockScan',
-  shouldCancel,
+  shouldCancelRightNow,
   Cancel,
 ) where
 
@@ -17,23 +17,26 @@ import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.VPS.Scan.Core qualified as VPSCore
 import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
 import App.Types (ProjectRevision (projectName, projectRevision))
-import Control.Algebra (Has)
-import Control.Carrier.Threaded (fork, kill)
-import Control.Concurrent (MVar, newEmptyMVar, putMVar, threadDelay, tryTakeMVar)
+import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async qualified as Async
 import Control.Effect.Diagnostics (
+  Has,
   Diagnostics,
   ToDiagnostic (..),
   fatal,
   fatalText,
   recover,
  )
-import Control.Effect.Exception (Lift, finally)
+import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.StickyLogger (StickyLogger, logSticky')
-import Control.Monad (when)
+import Control.Timeout (
+  Cancel,
+  checkForCancel,
+  shouldCancelRightNow,
+  timeout',
+ )
 import Data.Functor (($>))
-import Data.Maybe (isJust)
 import Data.Text (Text)
 import Effect.Logger (Logger, pretty, viaShow)
 import Fossa.API.Types (ApiOpts, Issues (..))
@@ -47,12 +50,6 @@ data WaitError
   | -- | We ran out of time locally, and aborted
     LocalTimeout
   deriving (Eq, Ord, Show)
-
--- Opaque wrapper
-newtype Cancel = Cancel (MVar ()) deriving (Eq)
-
-shouldCancel :: Cancel -> IO Bool
-shouldCancel (Cancel mvar) = isJust <$> tryTakeMVar mvar
 
 instance ToDiagnostic WaitError where
   renderDiagnostic BuildFailed = "The build failed. Check the FOSSA webapp for more details."
@@ -198,6 +195,7 @@ waitForBuild' ::
   Cancel ->
   m ()
 waitForBuild' apiOpts revision cancelFlag = do
+  checkForTimeout cancelFlag
   build <- Fossa.getLatestBuild apiOpts revision
 
   case Fossa.buildTaskStatus (Fossa.buildTask build) of
@@ -220,7 +218,7 @@ waitForMonorepoScan' ::
   Cancel ->
   m ()
 waitForMonorepoScan' apiOpts revision cancelFlag = do
-  checkForCancel cancelFlag
+  checkForTimeout cancelFlag
   Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts
   let locator = VPSCore.createLocator (projectName revision) orgId
 
@@ -240,7 +238,7 @@ waitForIssues' ::
   Cancel ->
   m Issues
 waitForIssues' apiOpts revision cancelFlag = do
-  checkForCancel cancelFlag
+  checkForTimeout cancelFlag
   issues <- Fossa.getIssues apiOpts revision
   case issuesStatus issues of
     "WAITING" -> do
@@ -258,7 +256,7 @@ waitForSherlockScan' ::
   Text ->
   m ()
 waitForSherlockScan' apiOpts locator cancelFlag scanId = do
-  checkForCancel cancelFlag
+  checkForTimeout cancelFlag
   scan <- ScotlandYard.getScan apiOpts locator scanId
   case ScotlandYard.responseScanStatus scan of
     Just "AVAILABLE" -> pure ()
@@ -271,24 +269,12 @@ waitForSherlockScan' apiOpts locator cancelFlag scanId = do
       sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
       waitForSherlockScan' apiOpts locator cancelFlag scanId
 
-checkForCancel ::
+-- | Specialized version of 'checkForCancel' which represents
+-- a backend build/issue scan timeout.
+checkForTimeout ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   ) =>
   Cancel ->
   m ()
-checkForCancel cancel = do
-  should <- sendIO $ shouldCancel cancel
-  when should $ fatal LocalTimeout
-
-timeout' :: (Has (Lift IO) sig m) => Int -> (Cancel -> m a) -> m a
-timeout' seconds act = do
-  mvar <- sendIO newEmptyMVar
-  handle <- sendIO $
-    fork $ do
-      threadDelay $ seconds * 1_000_000
-      putMVar mvar ()
-  -- We need 'finally' here, because `act` can short-circuit.
-  -- If we don't use it, we might join the thread, which
-  -- requires the timeout to fully expire.
-  act (Cancel mvar) `finally` kill handle
+checkForTimeout = checkForCancel LocalTimeout
