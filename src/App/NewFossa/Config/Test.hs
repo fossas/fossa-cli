@@ -5,7 +5,6 @@ module App.NewFossa.Config.Test (
   TestCliOpts,
   TestConfig (..),
   OutputFormat (..),
-  TimeoutSeconds (..),
   mkSubCommand,
 ) where
 
@@ -29,6 +28,7 @@ import Control.Effect.Diagnostics (
   validationBoundary,
  )
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Timeout (Duration (..))
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS)
@@ -41,8 +41,8 @@ import Options.Applicative (
   help,
   long,
   option,
+  optional,
   progDesc,
-  value,
  )
 import Path.IO (getCurrentDir)
 
@@ -51,14 +51,9 @@ data OutputFormat
   | TestOutputJson
   deriving (Eq, Ord, Show)
 
-newtype TimeoutSeconds = TimeoutSeconds
-  { unTimeoutSeconds :: Int
-  }
-  deriving (Eq, Ord, Show)
-
 data TestCliOpts = TestCliOpts
   { globals :: GlobalOpts
-  , testTimeout :: Int
+  , testTimeout :: Maybe Int
   , testOutputType :: OutputFormat
   , testBaseDir :: FilePath
   }
@@ -70,7 +65,7 @@ instance GetSeverity TestCliOpts where
 data TestConfig = TestConfig
   { baseDir :: BaseDir
   , apiOpts :: ApiOpts
-  , timeoutSeconds :: TimeoutSeconds
+  , timeout :: Duration
   , outputFormat :: OutputFormat
   , projectRevision :: ProjectRevision
   }
@@ -81,23 +76,16 @@ testInfo = progDesc "Check for issues from FOSSA and exit non-zero when issues a
 mkSubCommand :: (TestConfig -> EffStack ()) -> SubCommand TestCliOpts TestConfig
 mkSubCommand = SubCommand "test" testInfo parser loadConfig mergeOpts
 
+defaultTimeoutDuration :: Duration
+defaultTimeoutDuration = Minutes 60
+
 parser :: Parser TestCliOpts
 parser =
   TestCliOpts
     <$> globalOpts
-    <*> option
-      auto
-      ( mconcat
-          [ long "timeout"
-          , help "Duration to wait for build completion (in seconds)"
-          , value oneHourInSeconds
-          ]
-      )
+    <*> optional (option auto (long "timeout" <> help "Duration to wait for build completion in seconds (Defaults to 1 hour)"))
     <*> flag TestOutputPretty TestOutputJson (long "json" <> help "Output issues as json")
     <*> baseDirArg
-
-oneHourInSeconds :: Int
-oneHourInSeconds = 60 * 60
 
 loadConfig ::
   ( Has (Lift IO) sig m
@@ -125,7 +113,7 @@ mergeOpts ::
 mergeOpts maybeConfig envvars TestCliOpts{..} = do
   baseDir <- collectBaseDir testBaseDir
   apiOpts <- collectApiOpts maybeConfig envvars globals
-  let timeout = TimeoutSeconds testTimeout
+  let timeout = maybe defaultTimeoutDuration Seconds testTimeout
   revision <-
     collectRevisionData baseDir maybeConfig $
       OverrideProject (optProjectName globals) (optProjectRevision globals) Nothing

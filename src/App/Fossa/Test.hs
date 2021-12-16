@@ -43,7 +43,7 @@ testMain ::
   TestConfig ->
   m ()
 testMain config = runStickyLogger SevInfo $
-  timeout' (Config.unTimeoutSeconds $ Config.timeoutSeconds config) $
+  timeout' (Config.timeout config) $
     \cancelFlag -> do
       let apiOpts = Config.apiOpts config
           revision = Config.projectRevision config
