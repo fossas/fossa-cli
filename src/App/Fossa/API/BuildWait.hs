@@ -20,8 +20,8 @@ import App.Types (ProjectRevision (projectName, projectRevision))
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async qualified as Async
 import Control.Effect.Diagnostics (
-  Has,
   Diagnostics,
+  Has,
   ToDiagnostic (..),
   fatal,
   fatalText,

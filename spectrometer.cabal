@@ -227,6 +227,7 @@ library
     Control.Effect.StickyLogger
     Control.Effect.TaskPool
     Control.Exception.Extra
+    Control.Timeout
     Data.Aeson.Extra
     Data.Conduit.Extra
     Data.FileEmbed.Extra
