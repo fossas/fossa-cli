@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## v3.0.11
+
+- Yarn: Fixes an issue, where entry missing `resolved` attribute in `yarn.lock` would throw exception. ([#741](https://github.com/fossas/fossa-cli/pull/741))
+
 ## v3.0.10
 
 - Gradle: Uses ResolutionAPI for gradle analysis. ([#740](https://github.com/fossas/fossa-cli/pull/740/))
