@@ -25,8 +25,10 @@ import Options.Applicative (
   hsubparser,
   info,
   infoOption,
+  internal,
   long,
   prefs,
+  progDesc,
   short,
   showHelpOnEmpty,
   showHelpOnError,
@@ -52,7 +54,14 @@ subcommands =
     mconcat
       [ decodeSubCommand Analyze.analyzeSubCommand
       , decodeSubCommand Test.testSubCommand
+      , initCommand
       ]
+
+initCommand :: Mod CommandFields (IO ())
+initCommand = internal <> command "init" (info runInit $ progDesc "Deprecated, no longer has any effect.")
+  where
+    runInit :: Parser (IO ())
+    runInit = pure $ putStrLn "The 'init' command has been deprecated and no longer has any effect.  You may safely remove this command."
 
 decodeSubCommand :: GetSeverity a => SubCommand a b -> Mod CommandFields (IO ())
 decodeSubCommand cmd@SubCommand{..} = command commandName $ info (runSubCommand cmd) commandInfo
