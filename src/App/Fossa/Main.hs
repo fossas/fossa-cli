@@ -15,6 +15,7 @@ import App.Fossa.Analyze (
   VSIAnalysisMode (..),
   analyzeMain,
  )
+import App.Fossa.Analyze.Log4jReport (analyzeForLog4j)
 import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..))
 import App.Fossa.Configuration (
   ConfigFile (
@@ -77,7 +78,7 @@ import Control.Effect.Lift (sendIO)
 import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.Bool (bool)
-import Data.Flag (Flag, flagOpt, fromFlag, toFlag)
+import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Foldable (for_)
 import Data.Functor.Extra ((<$$>))
 import Data.Set qualified as Set
@@ -201,15 +202,7 @@ appMain = do
           doAnalyze (UploadScan apiOpts metadata)
     --
     Log4jCommand targetDirectory -> do
-      -- We ignore filters, include all dependencies, and disregard non-standard analysis.
-      let withAllDeps = toFlag IncludeAll True
-      let withoutUnpackedArchives = toFlag UnpackArchives False
-      let withoutExperimentalAnalyzers = ModeOptions VSIAnalysisDisabled (VSI.SkipResolution $ Set.fromList []) IATAssertionDisabled BinaryDiscoveryDisabled
-      let withJsonOutput = toFlag JsonOutput True
-      let withoutFilters = AllFilters [] (FilterCombination [] []) (FilterCombination [] [])
-      let doAnalyze destination = analyzeMain targetDirectory logSeverity destination override withoutUnpackedArchives withJsonOutput (withAllDeps) withoutExperimentalAnalyzers withoutFilters analyzePreferences
-
-      doAnalyze OutputStdoutLog4jDependencyReport
+      analyzeForLog4j targetDirectory
 
     --
     TestCommand TestOptions{..} -> do

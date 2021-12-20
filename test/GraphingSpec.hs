@@ -153,3 +153,46 @@ spec = do
       expectDirect [] graph'
       expectDeps [1, 2, 3, 4, 6] graph'
       expectEdges [(1, 2), (1, 3), (2, 4), (3, 6)] graph'
+
+  describe "hasPredecessors" $ do
+    it "should report False when node has no predecessors" $ do
+      --  1 -> 2 -> 3 -> 4
+      let graph :: Graphing Int = Graphing.directs [1] <> Graphing.edges [(1, 2), (2, 3), (3, 4)]
+      hasPredecessors graph 1 `shouldBe` False
+
+    it "should report True when node has predecessors" $ do
+      --  1 -> 2 -> 3 -> 4
+      let graph :: Graphing Int = Graphing.directs [1, 2] <> Graphing.edges [(1, 2), (2, 3), (3, 4)]
+      hasPredecessors graph 2 `shouldBe` True
+
+  describe "getRootsOf" $ do
+    it "should report direct node origins" $ do
+      --   1 -> 2
+      --    \    \
+      --     3    \
+      --      \    4
+      --       6
+      let graph :: Graphing Int = Graphing.directs [1] <> Graphing.edges [(1, 2), (1, 3), (2, 4), (3, 6)]
+      getRootsOf graph 4 `shouldBe` [1]
+
+    it "should report multiple direct node origins" $ do
+      --   1 -> 2
+      --    \    \
+      --     3    \
+      --      \    4
+      --       6
+      let graph :: Graphing Int = Graphing.directs [1, 2] <> Graphing.edges [(1, 2), (1, 3), (2, 4), (3, 6)]
+      getRootsOf graph 4 `shouldContain` [1]
+      getRootsOf graph 4 `shouldContain` [2]
+
+    it "should report direct node origins even when graphing is cyclic" $ do
+      --   1 -> 2 -> 3 -> 4 -> 5
+      --         ↑	     /
+      --          -------
+      let graph :: Graphing Int = Graphing.directs [1] <> Graphing.edges [(1, 2), (2, 3), (3, 4), (4, 2), (4, 5)]
+      getRootsOf graph 4 `shouldBe` [1]
+
+    it "should not report itself when queried node is direct node" $ do
+      --  1 -> 2 -> 3 -> 4
+      let graph :: Graphing Int = Graphing.directs [1] <> Graphing.edges [(1, 2), (2, 3), (3, 4)]
+      getRootsOf graph 1 `shouldBe` []

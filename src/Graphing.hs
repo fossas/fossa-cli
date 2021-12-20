@@ -30,6 +30,7 @@ module Graphing (
   edgesList,
   toAdjacencyMap,
   getRootsOf,
+  hasPredecessors,
 
   -- * Manipulating a Graphing
   gmap,
@@ -347,9 +348,9 @@ fromAdjacencyMap = Graphing . AM.gmap Node
 toList :: Graphing ty -> [ty]
 toList = vertexList
 
--- | Gets the roots of a node in the graphing.
+-- | Gets direct nodes which can reach provided node.
 getRootsOf :: forall ty. (Ord ty) => Graphing ty -> ty -> [ty]
-getRootsOf (Graphing gr) from = mapMaybe withoutRoots (Prelude.filter predecessorIsRoot reachableNodes)
+getRootsOf (Graphing gr) from = Prelude.filter (/= from) $ mapMaybe withoutRoots (Prelude.filter predecessorIsRoot reachableNodes)
   where
     reachableNodes :: [Node ty]
     reachableNodes = AMA.reachable (Node from) (AM.transpose gr)
@@ -360,3 +361,10 @@ getRootsOf (Graphing gr) from = mapMaybe withoutRoots (Prelude.filter predecesso
     withoutRoots :: Node a -> Maybe a
     withoutRoots (Node a) = Just a
     withoutRoots (Root) = Nothing
+
+hasPredecessors :: forall ty. (Ord ty) => Graphing ty -> ty -> Bool
+hasPredecessors (Graphing gr) from = not $ Set.null $ Set.filter (withoutRoots) $ AM.preSet (Node from) gr
+  where
+    withoutRoots :: Node a -> Bool
+    withoutRoots (Node _) = True
+    withoutRoots (Root) = False
