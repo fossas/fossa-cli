@@ -29,6 +29,7 @@ module Graphing (
   vertexList,
   edgesList,
   toAdjacencyMap,
+  getRootsOf,
 
   -- * Manipulating a Graphing
   gmap,
@@ -58,6 +59,8 @@ import Algebra.Graph.AdjacencyMap.Algorithm qualified as AMA
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
 import Data.Bifunctor (bimap)
 import Data.List (foldl')
+import Data.Maybe
+import Data.Maybe (catMaybes)
 import Data.Set qualified as Set
 import Prelude hiding (filter)
 import Prelude qualified
@@ -344,3 +347,17 @@ fromAdjacencyMap = Graphing . AM.gmap Node
 -- Alias for 'vertexList'
 toList :: Graphing ty -> [ty]
 toList = vertexList
+
+-- | Gets the roots of a node in the graphing.
+getRootsOf :: forall ty. (Ord ty) => Graphing ty -> ty -> [ty]
+getRootsOf (Graphing gr) from = mapMaybe withoutRoots (Prelude.filter predecessorIsRoot reachableNodes)
+  where
+    reachableNodes :: [Node ty]
+    reachableNodes = AMA.reachable (Node from) (AM.transpose gr)
+
+    predecessorIsRoot :: Node ty -> Bool
+    predecessorIsRoot node = Root `Set.member` AM.preSet node gr
+
+    withoutRoots :: Node a -> Maybe a
+    withoutRoots (Node a) = Just a
+    withoutRoots (Root) = Nothing

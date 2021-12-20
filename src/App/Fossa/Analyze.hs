@@ -24,6 +24,7 @@ import App.Fossa.Analyze.Types (
   AnalyzeProject (..),
   AnalyzeTaskEffs,
  )
+import App.Fossa.Analyze.VulnerabilityReport (logVulnerabilityReport)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.FossaAPIV1 (UploadResponse (..), getProject, projectIsMonorepo, uploadAnalysis, uploadContributors)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
@@ -142,6 +143,7 @@ data ScanDestination
   = -- | upload to fossa with provided api key and base url
     UploadScan ApiOpts ProjectMetadata
   | OutputStdout
+  | OutputStdoutLog4jDependencyReport
 
 -- CLI flags, for use with 'Data.Flag'
 data UnpackArchives = UnpackArchives
@@ -345,6 +347,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput include
   capabilities <- sendIO getNumCapabilities
 
   let apiOpts = case destination of
+        OutputStdoutLog4jDependencyReport -> Nothing
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
 
@@ -382,6 +385,8 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput include
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
+      OutputStdoutLog4jDependencyReport -> do
+        logVulnerabilityReport filteredProjects
       OutputStdout -> do
         debugScope "DEBUG: Project inference" $ do
           inferred <- Diag.context "Inferring project name/revision" (inferProjectFromVCS basedir <||> inferProjectDefault basedir)

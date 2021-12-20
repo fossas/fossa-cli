@@ -77,7 +77,7 @@ import Control.Effect.Lift (sendIO)
 import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.Bool (bool)
-import Data.Flag (Flag, flagOpt, fromFlag)
+import Data.Flag (Flag, flagOpt, fromFlag, toFlag)
 import Data.Foldable (for_)
 import Data.Functor.Extra ((<$$>))
 import Data.Set qualified as Set
@@ -199,6 +199,17 @@ appMain = do
           let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
 
           doAnalyze (UploadScan apiOpts metadata)
+    --
+    Log4jCommand targetDirectory -> do
+      -- We ignore filters, include all dependencies, and disregard non-standard analysis.
+      let withAllDeps = toFlag IncludeAll True
+      let withoutUnpackedArchives = toFlag UnpackArchives False
+      let withoutExperimentalAnalyzers = ModeOptions VSIAnalysisDisabled (VSI.SkipResolution $ Set.fromList []) IATAssertionDisabled BinaryDiscoveryDisabled
+      let withJsonOutput = toFlag JsonOutput True
+      let withoutFilters = AllFilters [] (FilterCombination [] []) (FilterCombination [] [])
+      let doAnalyze destination = analyzeMain targetDirectory logSeverity destination override withoutUnpackedArchives withJsonOutput (withAllDeps) withoutExperimentalAnalyzers withoutFilters analyzePreferences
+
+      doAnalyze OutputStdoutLog4jDependencyReport
 
     --
     TestCommand TestOptions{..} -> do
@@ -387,6 +398,12 @@ hiddenCommands =
           ( info
               (VPSCommand <$> vpsOpts)
               (progDesc "Run in Vendored Package Scan mode")
+          )
+        <> command
+          "log4j"
+          ( info
+              (Log4jCommand <$> baseDirArg)
+              (progDesc "List projects using *log4j* dependency")
           )
     )
 
@@ -662,6 +679,7 @@ data Command
   | AssertUserDefinedBinariesCommand AssertUserDefinedBinariesOptions
   | ListTargetsCommand FilePath
   | InitCommand
+  | Log4jCommand FilePath
   | DumpBinsCommand FilePath
 
 data VPSCommand
