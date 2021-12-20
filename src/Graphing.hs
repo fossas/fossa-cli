@@ -165,9 +165,6 @@ shrinkWithoutPromotionToDirect f gr = foldl' withoutEdgeToRoot shrinkedGraph jum
             (Set.fromList . directList $ shrinkedGraph)
             (Set.fromList . directList $ gr)
 
-    hasPredecessors :: Graphing a -> a -> Bool
-    hasPredecessors g n = not $ Set.null (AM.preSet n $ toAdjacencyMap g)
-
     withoutEdgeToRoot :: Graphing a -> a -> Graphing a
     withoutEdgeToRoot g n = Graphing . AM.removeEdge Root (Node n) $ unGraphing g
 
