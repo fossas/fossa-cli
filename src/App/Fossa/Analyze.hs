@@ -14,6 +14,7 @@ module App.Fossa.Analyze (
   updateProgress,
   IncludeAll (..),
   runAnalyzers,
+  runDependencyAnalysis,
 ) where
 
 import App.Docs (userGuideUrl)

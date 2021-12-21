@@ -14,8 +14,9 @@ module App.Fossa.Analyze.Log4jReport (
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.Analyze.Types (
   AnalyzeExperimentalPreferences (..),
+  AnalyzeTaskEffs,
  )
-import Control.Carrier.AtomicCounter (runAtomicCounter)
+import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally (Has, runFinally)
@@ -23,14 +24,17 @@ import Control.Carrier.StickyLogger (runStickyLogger)
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Lift (sendIO)
 import Data.List qualified as List
-import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (Dependency (..), VerConstraint)
 import Effect.ReadFS (runReadFSIO)
+import Strategy.Gradle qualified as Gradle
+import Strategy.Leiningen qualified as Leiningen
+import Strategy.Maven qualified as Maven
+import Strategy.Scala qualified as Scala
 
-import App.Fossa.Analyze (runAnalyzers, updateProgress)
+import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), runDependencyAnalysis, updateProgress)
 import App.Types (
   BaseDir (..),
  )
@@ -39,12 +43,16 @@ import Control.Carrier.Lift (Lift)
 import Control.Carrier.Output.IO (runOutput)
 import Control.Carrier.Reader (runReader)
 import Control.Carrier.TaskPool (
+  TaskPool,
   withTaskPool,
  )
+import Control.Effect.Output (Output)
+import Data.Foldable (traverse_)
 import Data.Map qualified as Map
-import Data.Set (Set)
+import Data.Maybe (isNothing)
 import Data.Void (Void)
 import Discovery.Filters (AllFilters (AllFilters), FilterCombination (FilterCombination))
+import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (runExecIO)
 import Effect.Logger (
   Logger,
@@ -54,27 +62,20 @@ import Effect.Logger (
   withDefaultLogger,
  )
 import Graphing (directList, getRootsOf, hasPredecessors, vertexList)
-import Path (File, SomeBase)
+import Path
 import Prettyprinter (Doc, Pretty (pretty), annotate, vsep)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Yellow), color)
 import Srclib.Converter (verConstraintToRevision)
-import Text.Megaparsec
-import Text.Read (readMaybe)
+import Text.Megaparsec (Parsec, parse)
+import Text.Megaparsec.Char (char)
+import Text.Megaparsec.Char.Lexer (decimal)
 
 type Parser = Parsec Void Text
 
 data SimplifiedVersion = SimplifiedVersion Int Int deriving (Show, Eq, Ord)
 
 parseSimplifiedVersion :: Parser SimplifiedVersion
-parseSimplifiedVersion = do
-  major <- toString <$> takeWhileP (Just "MajorVersion") isDigitChar
-  _ <- chunk "."
-  minor <- toString <$> takeWhileP (Just "MinorVersion") isDigitChar
-  case (readMaybe major, readMaybe minor) of
-    (Just majorVer, Just minorVer) -> pure $ SimplifiedVersion majorVer minorVer
-    _ -> fail ("failed to parse " <> show (major, minor))
-  where
-    isDigitChar c = c `elem` ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+parseSimplifiedVersion = SimplifiedVersion <$> decimal <* char '.' <*> decimal
 
 -- | Performs Analysis for Log4j, and prints report detailing projects using log4j.
 analyzeForLog4j ::
@@ -99,16 +100,36 @@ analyzeForLog4j targetDirectory = do
           . withTaskPool capabilities updateProgress
           . runAtomicCounter
           $ do
-            runAnalyzers (toPath basedir) withoutFilters
+            runAnalyzersForLog4j (toPath basedir) withoutFilters
       reportLog4jVulnerability projectResults
   where
     toPath (BaseDir path) = path
     withoutAnyExperimentalPreferences = AnalyzeExperimentalPreferences Nothing
     withoutFilters = AllFilters [] (FilterCombination [] []) (FilterCombination [] [])
 
+runAnalyzersForLog4j ::
+  ( AnalyzeTaskEffs sig m
+  , Has (Output ProjectResult) sig m
+  , Has TaskPool sig m
+  , Has AtomicCounter sig m
+  ) =>
+  Path Abs Dir ->
+  AllFilters ->
+  m ()
+runAnalyzersForLog4j basedir filters = do
+  traverse_
+    single
+    [ DiscoverFunc Gradle.discover
+    , DiscoverFunc Leiningen.discover
+    , DiscoverFunc Maven.discover
+    , DiscoverFunc Scala.discover
+    ]
+  where
+    single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters)
+
 data VulnerableDependency = VulnerableDependency
   { vdName :: Text
-  , vdKnownVulnerableVersion :: Map.Map SimplifiedVersion (Set Vulnerability)
+  , vdKnownVulnerableVersion :: Map.Map SimplifiedVersion Vulnerability
   }
   deriving (Show, Eq, Ord)
 
@@ -123,60 +144,26 @@ instance Show Vulnerability where
 
 getVulnerableDeps :: [VulnerableDependency]
 getVulnerableDeps =
-  [ VulnerableDependency "org.apache.logging.log4j:log4j-core" $
-      Map.fromList
-        [ (SimplifiedVersion 2 0, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 1, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 2, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 3, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 4, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 5, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 6, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 7, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 8, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 9, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 10, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 11, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 12, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 13, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 14, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 15, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 16, Set.singleton VulnerabilityOther)
-        ]
-  , VulnerableDependency
-      "org.apache.logging.log4j:log4j"
-      $ Map.fromList
-        [ (SimplifiedVersion 2 0, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 1, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 2, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 3, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 4, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 5, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 6, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 7, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 8, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 9, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 10, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 11, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 12, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 13, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 14, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 15, Set.singleton VulnerabilityRemoteCodeExecution)
-        , (SimplifiedVersion 2 16, Set.singleton VulnerabilityOther)
-        ]
-  , VulnerableDependency "log4j:log4j" $
-      Map.fromList
-        [ (SimplifiedVersion 1 0, Set.singleton VulnerabilityOther)
-        , (SimplifiedVersion 1 1, Set.singleton VulnerabilityOther)
-        , (SimplifiedVersion 1 2, Set.singleton VulnerabilityOther)
-        ]
+  [ mkVulnDep corename coreVulns
+  , mkVulnDep orgname orgVulns
+  , mkVulnDep legacyname legacyVulns
   ]
+  where
+    corename = "org.apache.logging.log4j:log4j-core"
+    orgname = "org.apache.logging.log4j:log4j"
+    legacyname = "log4j:log4j"
+    mkVulnDep name pairs = VulnerableDependency name $ Map.fromList pairs
+    orgVulns = coreVulns -- Same vuln set
+    legacyVulns = map (toOtherPair 1) [0 .. 2]
+    coreVulns = (toOtherPair 2 16) : map (toRCEPair 2) [0 .. 15]
+    toRCEPair major minor = (SimplifiedVersion major minor, VulnerabilityRemoteCodeExecution)
+    toOtherPair major minor = (SimplifiedVersion major minor, VulnerabilityOther)
 
 data Log4jVulnerableReportItem = Log4jVulnerableReportItem
   { vriName :: Text
   , vriVersion :: Maybe VerConstraint
   , vriOrigin :: VulnerableDependencyOrigin
-  , vriVulnerability :: Set Vulnerability
+  , vriVulnerability :: Maybe Vulnerability
   }
   deriving (Show, Eq, Ord)
 
@@ -204,28 +191,28 @@ reportLog4jVulnerability projects = do
           , "-----------------------------------------"
           , "Log4j Dependencies & Vulnerability Report"
           , "-----------------------------------------"
-          , "Lists all projects, reports any log4j dependencies and it's vulnerability type (if any)."
+          , "For details about the Log4j vulnerability, including mitigation steps, see our"
+          , "blog post here: https://fossa.com/blog/log4j-log4shell-zero-day-vulnerability-impact-fixes/"
           , ""
-          , "For more information refer to:"
-          , "- Log4j Vulnerability: https://fossa.com/blog/log4j-log4shell-zero-day-vulnerability-impact-fixes/"
-          , "- Fossa CLI documentation: https://github.com/fossas/fossa-cli/blob/master/README.md"
+          , "This report is limited to just Log4j, but FOSSA CLI can help find security"
+          , "vulnerabilities in your other dependencies too. Sign up for an account at"
+          , "https://fossa.com/"
           , ""
-          , "To analyze all dependencies (not only log4j), please refer to Fossa CLI."
+          , "Note: This report is experimental, and it may get modified or removed in the future."
+          , ""
           , ""
           ]
       )
   projectReports <- traverse printProjectReport projects
   logStdout $ renderIt (vsep projectReports)
 
-getVulnerability :: Dependency -> Set Vulnerability
-getVulnerability Dependency{..} =
-  case List.find (\vd -> dependencyName == vdName vd) getVulnerableDeps of
-    Nothing -> Set.empty
-    Just vd -> case (verConstraintToRevision =<< dependencyVersion) of
-      Nothing -> Set.empty
-      Just versionText -> case parse parseSimplifiedVersion "dependency version" versionText of
-        Left _ -> Set.empty
-        Right sv -> Map.findWithDefault Set.empty sv (vdKnownVulnerableVersion vd)
+getVulnerability :: Dependency -> Maybe Vulnerability
+getVulnerability Dependency{..} = do
+  vd <- List.find (\vd -> dependencyName == vdName vd) getVulnerableDeps
+  versionText <- verConstraintToRevision =<< dependencyVersion
+  case (parse parseSimplifiedVersion "dependency version" versionText) of
+    Left _ -> Nothing
+    Right sv -> Map.lookup sv (vdKnownVulnerableVersion vd)
 
 printProjectReport :: (Has Diag.Diagnostics sig m) => ProjectResult -> m (Doc AnsiStyle)
 printProjectReport ProjectResult{..} =
@@ -252,7 +239,7 @@ printProjectReport ProjectResult{..} =
     inDirectInclusion = map (toVulnerableReportItem toVulnerableDependencyRootDependency) allDeep
 
     withAnnotation :: Log4jVulnerableReportItem -> Doc AnsiStyle
-    withAnnotation (Log4jVulnerableReportItem name version origin vulTypes) =
+    withAnnotation (Log4jVulnerableReportItem name version origin vuln) =
       colorCoded $
         Text.intercalate
           " "
@@ -262,12 +249,13 @@ printProjectReport ProjectResult{..} =
           , toText . show $ origin
           ]
       where
-        colorCoded doc = if Set.null vulTypes then (pretty doc) else (annotateWarn $ pretty doc)
-        formattedVersion = maybe "N/A" ("v" <>) (verConstraintToRevision =<< version)
+        indeterminate = "indeterminate"
+        colorCoded doc = if isNothing vuln then (pretty doc) else (annotateWarn $ pretty doc)
+        formattedVersion = maybe indeterminate ("v" <>) (verConstraintToRevision =<< version)
         formattedVulnerability =
-          if Set.null vulTypes
-            then inBracket "N/A"
-            else inBracket $ Text.intercalate ", " (map (toText . show) $ Set.toList vulTypes)
+          if isNothing vuln
+            then if formattedVersion == indeterminate then inBracket indeterminate else inBracket "Safe"
+            else inBracket (toText . show $ vuln)
 
     onlyDirects :: [Dependency]
     onlyDirects = filter isRelevantDep $ directList projectResultGraph

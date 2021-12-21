@@ -2,9 +2,9 @@ module App.Fossa.Report.Log4jReportSpec (
   spec,
 ) where
 
-import App.Fossa.Analyze.Log4jReport (SimplifiedVersion (SimplifiedVersion), Vulnerability (VulnerabilityRemoteCodeExecution), getVulnerability, parseSimplifiedVersion)
+import App.Fossa.Analyze.Log4jReport (SimplifiedVersion (SimplifiedVersion), Vulnerability (VulnerabilityOther, VulnerabilityRemoteCodeExecution), getVulnerability, parseSimplifiedVersion)
 import Data.Foldable (for_)
-import Data.Set qualified as Set
+import Data.Maybe (isJust)
 import Data.String.Conversion (ToString (toString), toText)
 import Data.Text (Text)
 import Data.Void (Void)
@@ -69,21 +69,25 @@ spec = do
 
   describe "log4j vulnerability" $ do
     it "should identify RCE Vulnerability with log4j 2.15.0 and below" $ do
-      getVulnerability (mkDep "org.apache.logging.log4j:log4j-core" (Just $ CEq "2.15.0")) `shouldBe` Set.singleton VulnerabilityRemoteCodeExecution
-      getVulnerability (mkDep "org.apache.logging.log4j:log4j" (Just $ CEq "2.15.0")) `shouldBe` Set.singleton VulnerabilityRemoteCodeExecution
-      getVulnerability (mkDep "org.apache.logging.log4j:log4j" (Just $ CEq "2.15.0")) `shouldBe` Set.singleton VulnerabilityRemoteCodeExecution
-      getVulnerability (mkDep "org.apache.logging.log4j:log4j-core" (Just $ CEq "2.0")) `shouldBe` Set.singleton VulnerabilityRemoteCodeExecution
+      getVulnerability (mkDep "org.apache.logging.log4j:log4j-core" (Just $ CEq "2.15.0")) `shouldBe` Just VulnerabilityRemoteCodeExecution
+      getVulnerability (mkDep "org.apache.logging.log4j:log4j" (Just $ CEq "2.15.0")) `shouldBe` Just VulnerabilityRemoteCodeExecution
+      getVulnerability (mkDep "org.apache.logging.log4j:log4j" (Just $ CEq "2.15.0")) `shouldBe` Just VulnerabilityRemoteCodeExecution
+      getVulnerability (mkDep "org.apache.logging.log4j:log4j-core" (Just $ CEq "2.0")) `shouldBe` Just VulnerabilityRemoteCodeExecution
+
+    it "should identify non RCE vulnerability with log4j 2.16.0" $ do
+      getVulnerability (mkDep "org.apache.logging.log4j:log4j-core" (Just $ CEq "2.16.0")) `shouldBe` Just VulnerabilityOther
+      getVulnerability (mkDep "org.apache.logging.log4j:log4j" (Just $ CEq "2.16.0")) `shouldBe` Just VulnerabilityOther
 
     it "should not identify any vulnerability with log4j 2.17.0 or above" $ do
-      getVulnerability (mkDep "org.apache.logging.log4j:log4j-core" (Just $ CEq "2.17.0")) `shouldBe` Set.empty
-      getVulnerability (mkDep "org.apache.logging.log4j:log4j" (Just $ CEq "2.17.0")) `shouldBe` Set.empty
+      getVulnerability (mkDep "org.apache.logging.log4j:log4j-core" (Just $ CEq "2.17.0")) `shouldBe` Nothing
+      getVulnerability (mkDep "org.apache.logging.log4j:log4j" (Just $ CEq "2.17.0")) `shouldBe` Nothing
 
     it "should compare prefix of vulnerable versions" $ do
-      getVulnerability (mkDep "log4j:log4j" (Just $ CEq "1.1.17-atlassian-15")) `shouldSatisfy` (not . Set.null)
-      getVulnerability (mkDep "org.apache.logging.log4j:log4j" (Just $ CEq "2.15.0.redhat-000001")) `shouldSatisfy` (not . Set.null)
-      getVulnerability (mkDep "org.apache.logging.log4j:log4j" (Just $ CEq "2.0-rc1")) `shouldSatisfy` (not . Set.null)
-      getVulnerability (mkDep "org.apache.logging.log4j:log4j-core" (Just $ CEq "2.0+somebuild")) `shouldSatisfy` (not . Set.null)
+      getVulnerability (mkDep "log4j:log4j" (Just $ CEq "1.1.17-atlassian-15")) `shouldSatisfy` isJust
+      getVulnerability (mkDep "org.apache.logging.log4j:log4j" (Just $ CEq "2.15.0.redhat-000001")) `shouldSatisfy` isJust
+      getVulnerability (mkDep "org.apache.logging.log4j:log4j" (Just $ CEq "2.0-rc1")) `shouldSatisfy` isJust
+      getVulnerability (mkDep "org.apache.logging.log4j:log4j-core" (Just $ CEq "2.0+somebuild")) `shouldSatisfy` isJust
 
     for_ someOfKnownVulnerableDeps $ \knownV -> do
       it (toString $ "should identify vulnerability with: " <> (dependencyName knownV) <> ": " <> (toText . show $ dependencyVersion knownV)) $ do
-        getVulnerability knownV `shouldSatisfy` (not . Set.null)
+        getVulnerability knownV `shouldSatisfy` isJust
