@@ -29,6 +29,8 @@ module Graphing (
   vertexList,
   edgesList,
   toAdjacencyMap,
+  getRootsOf,
+  hasPredecessors,
 
   -- * Manipulating a Graphing
   gmap,
@@ -58,6 +60,7 @@ import Algebra.Graph.AdjacencyMap.Algorithm qualified as AMA
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
 import Data.Bifunctor (bimap)
 import Data.List (foldl')
+import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Prelude hiding (filter)
 import Prelude qualified
@@ -161,9 +164,6 @@ shrinkWithoutPromotionToDirect f gr = foldl' withoutEdgeToRoot shrinkedGraph jum
           Set.difference
             (Set.fromList . directList $ shrinkedGraph)
             (Set.fromList . directList $ gr)
-
-    hasPredecessors :: Graphing a -> a -> Bool
-    hasPredecessors g n = not $ Set.null (AM.preSet n $ toAdjacencyMap g)
 
     withoutEdgeToRoot :: Graphing a -> a -> Graphing a
     withoutEdgeToRoot g n = Graphing . AM.removeEdge Root (Node n) $ unGraphing g
@@ -344,3 +344,24 @@ fromAdjacencyMap = Graphing . AM.gmap Node
 -- Alias for 'vertexList'
 toList :: Graphing ty -> [ty]
 toList = vertexList
+
+-- | Gets direct nodes which can reach provided node.
+getRootsOf :: forall ty. (Ord ty) => Graphing ty -> ty -> [ty]
+getRootsOf (Graphing gr) from = Prelude.filter (/= from) $ mapMaybe withoutRoots (Prelude.filter predecessorIsRoot reachableNodes)
+  where
+    reachableNodes :: [Node ty]
+    reachableNodes = AMA.reachable (Node from) (AM.transpose gr)
+
+    predecessorIsRoot :: Node ty -> Bool
+    predecessorIsRoot node = Root `Set.member` AM.preSet node gr
+
+    withoutRoots :: Node a -> Maybe a
+    withoutRoots (Node a) = Just a
+    withoutRoots (Root) = Nothing
+
+hasPredecessors :: forall ty. (Ord ty) => Graphing ty -> ty -> Bool
+hasPredecessors (Graphing gr) from = not $ Set.null $ Set.filter (withoutRoots) $ AM.preSet (Node from) gr
+  where
+    withoutRoots :: Node a -> Bool
+    withoutRoots (Node _) = True
+    withoutRoots (Root) = False

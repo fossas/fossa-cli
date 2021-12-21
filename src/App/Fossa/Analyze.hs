@@ -11,7 +11,10 @@ module App.Fossa.Analyze (
   ModeOptions (..),
   DiscoverFunc (..),
   discoverFuncs,
+  updateProgress,
   IncludeAll (..),
+  runAnalyzers,
+  runDependencyAnalysis,
 ) where
 
 import App.Docs (userGuideUrl)
