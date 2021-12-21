@@ -68,7 +68,6 @@ common deps
     , async                        ^>=2.2.2
     , attoparsec                   ^>=0.14.1
     , base16-bytestring            ^>=1.0.1.0
-    , boxes                        ^>=0.1.5
     , bytestring                   ^>=0.10.8
     , bzlib                        ^>=0.5.0.0
     , cgroup-rts-threads           ^>=0.2.0.0
