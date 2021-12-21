@@ -239,7 +239,7 @@ printProjectReport ProjectResult{..} =
     inDirectInclusion = map (toVulnerableReportItem toVulnerableDependencyRootDependency) allDeep
 
     withAnnotation :: Log4jVulnerableReportItem -> Doc AnsiStyle
-    withAnnotation (Log4jVulnerableReportItem name version origin vuln) =
+    withAnnotation (Log4jVulnerableReportItem name version origin foundVuln) =
       colorCoded $
         Text.intercalate
           " "
@@ -250,12 +250,11 @@ printProjectReport ProjectResult{..} =
           ]
       where
         indeterminate = "indeterminate"
-        colorCoded doc = if isNothing vuln then (pretty doc) else (annotateWarn $ pretty doc)
+        colorCoded doc = if isNothing foundVuln then (pretty doc) else (annotateWarn $ pretty doc)
         formattedVersion = maybe indeterminate ("v" <>) (verConstraintToRevision =<< version)
-        formattedVulnerability =
-          if isNothing vuln
-            then if formattedVersion == indeterminate then inBracket indeterminate else inBracket "Safe"
-            else inBracket (toText . show $ vuln)
+        formattedVulnerability = case foundVuln of
+          Nothing -> if formattedVersion == indeterminate then inBracket indeterminate else inBracket "Safe"
+          Just vuln -> inBracket (toText . show $ vuln)
 
     onlyDirects :: [Dependency]
     onlyDirects = filter isRelevantDep $ directList projectResultGraph
