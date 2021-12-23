@@ -13,8 +13,7 @@ import App.NewFossa.Config.Common (
   baseDirArg,
   collectBaseDir,
   collectRevisionData,
-  globalOpts,
-  validateApiKey,
+  globalOpts, collectApiOpts
  )
 import App.NewFossa.ConfigFile (ConfigFile, resolveConfigFile)
 import App.NewFossa.EnvironmentVars (EnvVars)
@@ -23,16 +22,14 @@ import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
-  Validator,
   runValidation,
-  validationBoundary,
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Timeout (Duration (..))
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS)
-import Fossa.API.Types (ApiOpts (ApiOpts))
+import Fossa.API.Types (ApiOpts)
 import Options.Applicative (
   InfoMod,
   Parser,
@@ -124,9 +121,3 @@ mergeOpts maybeConfig envvars TestCliOpts{..} = do
       <*> pure timeout
       <*> pure testOutputType
       <*> revision
-
-collectApiOpts :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> GlobalOpts -> m (Validator ApiOpts)
-collectApiOpts maybeconfig envvars globals = validationBoundary $ do
-  apikey <- validateApiKey maybeconfig envvars globals
-  let baseuri = optBaseUrl globals
-  pure $ ApiOpts baseuri apikey

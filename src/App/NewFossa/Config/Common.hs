@@ -18,6 +18,11 @@ module App.NewFossa.Config.Common (
   -- * CLI Collectors
   collectBaseDir,
   collectRevisionData,
+  collectRevisionOverride,
+  collectApiOpts,
+
+  -- * Configuration Types
+  ScanDestination (..),
 ) where
 
 import App.Fossa.ProjectInference (
@@ -56,7 +61,7 @@ import Data.Text (Text)
 import Discovery.Filters (targetFilterParser)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS, doesDirExist)
-import Fossa.API.Types (ApiKey (ApiKey))
+import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts))
 import Options.Applicative (
   Parser,
   argument,
@@ -78,6 +83,12 @@ import Path.IO (resolveDir')
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI)
 import Types (TargetFilter)
+
+data ScanDestination
+  = -- | upload to fossa with provided api key and base url
+    UploadScan ApiOpts ProjectMetadata
+  | OutputStdout
+  deriving (Eq, Ord, Show)
 
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =
@@ -153,6 +164,26 @@ validateApiKey maybeConfigFile EnvVars{envApiKey} GlobalOpts{optAPIKey} = do
         <|> envApiKey
   pure $ ApiKey textkey
 
+collectApiOpts :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> GlobalOpts -> m (Validator ApiOpts)
+collectApiOpts maybeconfig envvars globals = validationBoundary $ do
+  apikey <- validateApiKey maybeconfig envvars globals
+  let baseuri = optBaseUrl globals
+  pure $ ApiOpts baseuri apikey
+
+collectRevisionOverride :: Maybe ConfigFile -> OverrideProject -> OverrideProject
+collectRevisionOverride maybeConfig OverrideProject{..} = override
+  where
+    override = OverrideProject projectName projectRevision projectBranch
+
+    projectName :: Maybe Text
+    projectName = overrideName <|> (maybeConfig >>= configProject >>= configProjID)
+
+    projectRevision :: Maybe Text
+    projectRevision = overrideRevision <|> (maybeConfig >>= configRevision >>= configCommit)
+
+    projectBranch :: Maybe Text
+    projectBranch = overrideBranch <|> (maybeConfig >>= configRevision >>= configBranch)
+
 collectRevisionData ::
   ( Has Diagnostics sig m
   , Has Exec sig m
@@ -164,18 +195,8 @@ collectRevisionData ::
   OverrideProject ->
   m (Validator ProjectRevision)
 collectRevisionData (Failure _) _ _ = validationBoundary $ fatalText "Cannot perform revision inference without a valid base directory"
-collectRevisionData (Success (BaseDir basedir)) maybeConfig OverrideProject{..} = validationBoundary $ do
-  let override = OverrideProject projectName projectRevision projectBranch
-
-      projectName :: Maybe Text
-      projectName = overrideName <|> (maybeConfig >>= configProject >>= configProjID)
-
-      projectRevision :: Maybe Text
-      projectRevision = overrideRevision <|> (maybeConfig >>= configRevision >>= configCommit)
-
-      projectBranch :: Maybe Text
-      projectBranch = overrideBranch <|> (maybeConfig >>= configRevision >>= configBranch)
-
+collectRevisionData (Success (BaseDir basedir)) maybeConfig cliOverride = validationBoundary $ do
+  let override = collectRevisionOverride maybeConfig cliOverride
   inferred <- inferProjectFromVCS basedir <||> inferProjectDefault basedir
   pure $ mergeOverride override inferred
 
