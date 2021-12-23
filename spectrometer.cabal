@@ -155,6 +155,7 @@ library
     App.Fossa.BinaryDeps.Jar
     App.Fossa.Container
     App.Fossa.Container.Analyze
+    App.Fossa.Container.Scan
     App.Fossa.Container.Test
     App.Fossa.EmbeddedBinary
     App.Fossa.FossaAPIV1
