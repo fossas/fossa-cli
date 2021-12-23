@@ -19,6 +19,7 @@ data OverrideProject = OverrideProject
   , overrideRevision :: Maybe Text
   , overrideBranch :: Maybe Text
   }
+  deriving (Eq, Ord, Show)
 
 data ProjectMetadata = ProjectMetadata
   { projectTitle :: Maybe Text
@@ -45,6 +46,7 @@ instance FromJSON ReleaseGroupMetadata where
 newtype MonorepoAnalysisOpts = MonorepoAnalysisOpts
   { monorepoAnalysisType :: Maybe Text
   }
+  deriving (Eq, Ord, Show)
 
 data ProjectRevision = ProjectRevision
   { projectName :: Text

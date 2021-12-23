@@ -84,6 +84,7 @@ instance ToDiagnostic LocatorParseError where
 -- To handle this case we provide users with an escape hatch, which is an argument allowing them to skip resolving some of their dependencies.
 -- This type canonicalizes that request.
 newtype SkipResolution = SkipResolution {unVSISkipResolution :: Set Locator}
+  deriving (Eq, Ord, Show)
 
 shouldSkipResolving :: SkipResolution -> Locator -> Bool
 shouldSkipResolving skip loc = loc `Set.member` (unVSISkipResolution skip)
