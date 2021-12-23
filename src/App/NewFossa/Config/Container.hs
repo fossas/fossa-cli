@@ -14,8 +14,10 @@ module App.NewFossa.Config.Container (
 
 import App.NewFossa.Config.Common (
   GlobalOpts (
+    GlobalOpts,
     optBaseUrl,
     optConfig,
+    optDebug,
     optProjectName,
     optProjectRevision
   ),
@@ -32,7 +34,7 @@ import App.NewFossa.ConfigFile (
   resolveConfigFile,
  )
 import App.NewFossa.EnvironmentVars (EnvVars)
-import App.NewFossa.Subcommand (EffStack, SubCommand (SubCommand))
+import App.NewFossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (
   OverrideProject (OverrideProject),
   ProjectMetadata,
@@ -42,7 +44,7 @@ import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Timeout (Duration (Minutes, Seconds))
 import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Text (Text)
-import Effect.Logger (Logger)
+import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts (ApiOpts))
 import Options.Applicative (
@@ -236,6 +238,15 @@ data ContainerScanConfig
   | TestCfg ContainerTestConfig
   | DumpCfg ContainerDumpScapConfig
   | ParseCfg ContainerParseFileConfig
+
+instance GetSeverity ContainerCommand where
+  getSeverity = \case
+    ContainerAnalyze (ContainerAnalyzeOptions{analyzeGlobals = GlobalOpts{optDebug}}) -> fromBool optDebug
+    ContainerTest (ContainerTestOptions{testGlobals = GlobalOpts{optDebug}}) -> fromBool optDebug
+    ContainerParseFile _ -> SevInfo
+    ContainerDumpScan _ -> SevInfo
+    where
+      fromBool b = if b then SevDebug else SevInfo
 
 data ContainerAnalyzeConfig = ContainerAnalyzeConfig
   { scanDestination :: ScanDestination

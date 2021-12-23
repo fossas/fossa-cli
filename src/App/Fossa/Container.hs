@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Container (
-  subcommand,
+  containerSubCommand,
 ) where
 
 import App.Fossa.Container.Analyze qualified as Analyze
@@ -36,8 +36,8 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS, readContentsJson)
 import Path.IO (getCurrentDir)
 
-subcommand :: SubCommand ContainerCommand ContainerScanConfig
-subcommand = Config.mkSubCommand dispatch
+containerSubCommand :: SubCommand ContainerCommand ContainerScanConfig
+containerSubCommand = Config.mkSubCommand dispatch
 
 dispatch ::
   ( Has Diagnostics sig m

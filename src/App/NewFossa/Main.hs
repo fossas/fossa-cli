@@ -35,6 +35,7 @@ import Options.Applicative (
   subparserInline,
   (<**>),
  )
+import qualified App.Fossa.Container as Container
 
 appMain :: IO ()
 appMain = join $ customExecParser mainPrefs $ info (subcommands <**> helper <**> versionOpt) progData
@@ -55,6 +56,7 @@ subcommands =
       [ decodeSubCommand Analyze.analyzeSubCommand
       , decodeSubCommand Test.testSubCommand
       , initCommand
+      , decodeSubCommand Container.containerSubCommand
       ]
 
 initCommand :: Mod CommandFields (IO ())
