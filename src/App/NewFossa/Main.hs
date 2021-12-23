@@ -41,6 +41,7 @@ import Options.Applicative (
   subparserInline,
   (<**>),
  )
+import qualified App.Fossa.Container as Container
 
 appMain :: IO ()
 appMain = do
@@ -69,6 +70,7 @@ subcommands =
       , decodeSubCommand Embed.dumpSubCommand
       , decodeSubCommand LinkBins.linkBinsSubCommand
       , initCommand
+      , decodeSubCommand Container.containerSubCommand
       ]
 
 initCommand :: Mod CommandFields (IO ())
