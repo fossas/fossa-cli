@@ -34,6 +34,13 @@ data Duration
   = Seconds Int
   | Minutes Int
   | MicroSeconds Int
+  deriving Show
+
+instance Eq Duration where
+  a == b = durationToMicro a == durationToMicro b
+
+instance Ord Duration where
+  compare a b = compare (durationToMicro a) (durationToMicro b)
 
 -- Whether a cancellable should cancel right now, or poll again.
 -- Use checkForCancel instead if you want to fail.
