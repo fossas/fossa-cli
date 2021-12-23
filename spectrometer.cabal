@@ -188,6 +188,7 @@ library
     App.Fossa.VSIDeps
     App.NewFossa.Config.Analyze
     App.NewFossa.Config.Common
+    App.NewFossa.Config.Container
     App.NewFossa.Config.Test
     App.NewFossa.ConfigFile
     App.NewFossa.EnvironmentVars
