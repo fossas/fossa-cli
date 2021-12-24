@@ -23,6 +23,9 @@ module App.NewFossa.Config.Common (
 
   -- * Configuration Types
   ScanDestination (..),
+
+  -- * Global Defaults
+  defaultTimeoutDuration,
 ) where
 
 import App.Fossa.ProjectInference (
@@ -55,6 +58,7 @@ import Control.Effect.Diagnostics (
   (<||>),
  )
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Timeout (Duration (Minutes))
 import Data.Bifunctor (Bifunctor (first))
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
@@ -89,6 +93,9 @@ data ScanDestination
     UploadScan ApiOpts ProjectMetadata
   | OutputStdout
   deriving (Eq, Ord, Show)
+
+defaultTimeoutDuration :: Duration
+defaultTimeoutDuration = Minutes 60
 
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =

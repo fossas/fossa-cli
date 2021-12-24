@@ -24,6 +24,7 @@ import App.NewFossa.Config.Common (
   ScanDestination (..),
   collectApiOpts,
   collectRevisionOverride,
+  defaultTimeoutDuration,
   globalOpts,
   metadataOpts,
   validateApiKey,
@@ -41,7 +42,7 @@ import App.Types (
  )
 import Control.Effect.Diagnostics (Diagnostics, Validator, runValidation, validationBoundary)
 import Control.Effect.Lift (Has, Lift, sendIO)
-import Control.Timeout (Duration (Minutes, Seconds))
+import Control.Timeout (Duration (Seconds))
 import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Text (Text)
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
@@ -83,9 +84,6 @@ newtype ImageText = ImageText
   { unImageText :: Text
   }
   deriving (Eq, Ord, Show)
-
-defaultTimeoutDuration :: Duration
-defaultTimeoutDuration = Minutes 60
 
 containerCmdInfo :: InfoMod a
 containerCmdInfo = progDesc "Run in container-scanning mode"

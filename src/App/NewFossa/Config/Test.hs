@@ -11,9 +11,11 @@ module App.NewFossa.Config.Test (
 import App.NewFossa.Config.Common (
   GlobalOpts (..),
   baseDirArg,
+  collectApiOpts,
   collectBaseDir,
   collectRevisionData,
-  globalOpts, collectApiOpts
+  defaultTimeoutDuration,
+  globalOpts,
  )
 import App.NewFossa.ConfigFile (ConfigFile, resolveConfigFile)
 import App.NewFossa.EnvironmentVars (EnvVars)
@@ -72,9 +74,6 @@ testInfo = progDesc "Check for issues from FOSSA and exit non-zero when issues a
 
 mkSubCommand :: (TestConfig -> EffStack ()) -> SubCommand TestCliOpts TestConfig
 mkSubCommand = SubCommand "test" testInfo parser loadConfig mergeOpts
-
-defaultTimeoutDuration :: Duration
-defaultTimeoutDuration = Minutes 60
 
 parser :: Parser TestCliOpts
 parser =
