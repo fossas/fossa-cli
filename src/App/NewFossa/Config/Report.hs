@@ -17,13 +17,13 @@ import App.NewFossa.Config.Common (
  )
 import App.NewFossa.ConfigFile (ConfigFile, resolveConfigFile)
 import App.NewFossa.EnvironmentVars (EnvVars)
-import App.NewFossa.Subcommand (EffStack, SubCommand (SubCommand))
+import App.NewFossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
 import Control.Effect.Diagnostics (Diagnostics, fatalText, runValidation)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Timeout (Duration (Seconds))
 import Effect.Exec (Exec)
-import Effect.Logger (Logger)
+import Effect.Logger (Logger, Severity (..))
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import Options.Applicative (
@@ -84,6 +84,9 @@ data ReportCliOptions = ReportCliOptions
   , cliReportBaseDir :: FilePath
   }
   deriving (Eq, Ord, Show)
+
+instance GetSeverity ReportCliOptions where
+  getSeverity ReportCliOptions{..} = if (optDebug globals) then SevDebug else SevInfo
 
 loadConfig ::
   ( Has (Lift IO) sig m
