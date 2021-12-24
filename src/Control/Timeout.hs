@@ -7,6 +7,7 @@ module Control.Timeout (
   Duration (..),
   durationToMicro,
   timeout',
+  timeoutIO,
 ) where
 
 import Control.Carrier.Threaded (fork, kill)
@@ -17,6 +18,7 @@ import Control.Concurrent (
   putMVar,
   threadDelay,
  )
+import Control.Concurrent.Async qualified as Async
 import Control.Effect.Diagnostics (
   Diagnostics,
   ToDiagnostic,
@@ -25,6 +27,7 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Exception (finally)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Monad (when)
+import Data.Functor (($>))
 
 -- Opaque wrapper around MVar (sort of like an atomic variable)
 -- Only created by using `timeout'`
@@ -34,7 +37,7 @@ data Duration
   = Seconds Int
   | Minutes Int
   | MicroSeconds Int
-  deriving Show
+  deriving (Show)
 
 instance Eq Duration where
   a == b = durationToMicro a == durationToMicro b
@@ -85,11 +88,24 @@ timeout' duration act = do
   handle <- sendIO . fork $ do
     threadDelay $ durationToMicro duration
     -- We fill the MVar here, which is the cancel signal.
+    -- SAFETY: putMVar can block infinitely if we do it twice, since we never
+    --   empty the MVar. Since we never expose the underlying MVar to the
+    --   consumer, we only have to validate that this putMVar call is safe,
+    --   and that all other usage in this module is non-blocking.
     putMVar mvar ()
   -- We need 'finally' here, because `act` can short-circuit.
   -- If we don't use it, we might join the thread, which
   -- requires the timeout to fully expire.
   act (Cancel mvar) `finally` kill handle
+
+-- Legacy timeout function, using external cancellation, but cannot work with
+-- other IO-capable monad stacks or effects.  
+timeoutIO ::
+  -- | number of seconds before timeout
+  Int ->
+  IO a ->
+  IO (Maybe a)
+timeoutIO seconds act = either id id <$> Async.race (Just <$> act) (threadDelay (seconds * 1_000_000) $> Nothing)
 
 -- threadDelay only accepts microseconds, so we simplfy that with the tiny
 -- abstraction of 'Duration'.

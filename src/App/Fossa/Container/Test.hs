@@ -6,7 +6,6 @@ module App.Fossa.Container.Test (
 ) where
 
 import App.Fossa.API.BuildWait (
-  timeout',
   waitForBuild',
   waitForIssues',
  )
@@ -36,6 +35,7 @@ import Effect.Logger (
  )
 import Fossa.API.Types (Issues (..))
 import System.Exit (exitFailure)
+import Control.Timeout (timeout')
 
 test ::
   ( Has Diagnostics sig m

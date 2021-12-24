@@ -1,12 +1,8 @@
 module App.Fossa.API.BuildWait (
-  timeoutIO,
-  timeout',
   waitForScanCompletion',
   waitForIssues',
   waitForSherlockScan',
   waitForBuild',
-  shouldCancelRightNow,
-  Cancel,
 ) where
 
 import App.Fossa.FossaAPIV1 qualified as Fossa
@@ -14,7 +10,6 @@ import App.Fossa.VPS.Scan.Core qualified as VPSCore
 import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
 import App.Types (ProjectRevision (projectName, projectRevision))
 import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async qualified as Async
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -26,13 +21,7 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.StickyLogger (StickyLogger, logSticky')
-import Control.Timeout (
-  Cancel,
-  checkForCancel,
-  shouldCancelRightNow,
-  timeout',
- )
-import Data.Functor (($>))
+import Control.Timeout (Cancel, checkForCancel)
 import Data.Text (Text)
 import Effect.Logger (Logger, pretty, viaShow)
 import Fossa.API.Types (ApiOpts, Issues (..))
@@ -50,13 +39,6 @@ data WaitError
 instance ToDiagnostic WaitError where
   renderDiagnostic BuildFailed = "The build failed. Check the FOSSA webapp for more details."
   renderDiagnostic LocalTimeout = "Build/Issue scan was not completed, and the CLI has locally timed out."
-
-timeoutIO ::
-  -- | number of seconds before timeout
-  Int ->
-  IO a ->
-  IO (Maybe a)
-timeoutIO seconds act = either id id <$> Async.race (Just <$> act) (threadDelay (seconds * 1_000_000) $> Nothing)
 
 -- | Wait for either a normal build completion or a monorepo scan completion.
 -- Try to detect the correct method, use provided fallback

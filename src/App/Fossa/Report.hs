@@ -6,7 +6,6 @@ module App.Fossa.Report (
 ) where
 
 import App.Fossa.API.BuildWait (
-  timeout',
   waitForIssues',
   waitForScanCompletion',
  )
@@ -27,6 +26,7 @@ import Effect.Logger (
   logInfo,
   logStdout,
  )
+import Control.Timeout (timeout')
 
 reportSubCommand :: SubCommand ReportCliOptions ReportConfig
 reportSubCommand = mkSubCommand report

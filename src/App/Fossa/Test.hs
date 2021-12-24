@@ -5,7 +5,6 @@ module App.Fossa.Test (
 ) where
 
 import App.Fossa.API.BuildWait (
-  timeout',
   waitForIssues',
   waitForScanCompletion',
  )
@@ -31,6 +30,7 @@ import Effect.Logger (
  )
 import Fossa.API.Types (Issues (..))
 import System.Exit (exitFailure)
+import Control.Timeout (timeout')
 
 testSubCommand :: SubCommand TestCliOpts TestConfig
 testSubCommand = Config.mkSubCommand testMain
