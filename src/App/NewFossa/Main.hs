@@ -3,6 +3,8 @@
 module App.NewFossa.Main (appMain) where
 
 import App.Fossa.Analyze qualified as Analyze
+import App.Fossa.Container qualified as Container
+import App.Fossa.Report qualified as Report
 import App.Fossa.Test qualified as Test
 import App.NewFossa.Subcommand (GetSeverity, SubCommand (..), runSubCommand)
 import App.Version (fullVersionDescription)
@@ -35,7 +37,6 @@ import Options.Applicative (
   subparserInline,
   (<**>),
  )
-import qualified App.Fossa.Container as Container
 
 appMain :: IO ()
 appMain = join $ customExecParser mainPrefs $ info (subcommands <**> helper <**> versionOpt) progData
@@ -55,8 +56,9 @@ subcommands =
     mconcat
       [ decodeSubCommand Analyze.analyzeSubCommand
       , decodeSubCommand Test.testSubCommand
-      , initCommand
+      , decodeSubCommand Report.reportSubCommand
       , decodeSubCommand Container.containerSubCommand
+      , initCommand
       ]
 
 initCommand :: Mod CommandFields (IO ())
