@@ -189,6 +189,7 @@ library
     App.NewFossa.Config.Analyze
     App.NewFossa.Config.Common
     App.NewFossa.Config.Container
+    App.NewFossa.Config.Report
     App.NewFossa.Config.Test
     App.NewFossa.ConfigFile
     App.NewFossa.EnvironmentVars
