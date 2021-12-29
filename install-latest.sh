@@ -64,6 +64,7 @@ is_supported_platform() {
   case "$platform" in
     windows/amd64) found=0 ;;
     darwin/amd64) found=0 ;;
+    darwin/arm64) found=0 ;;
     linux/amd64) found=0 ;;
   esac
   return $found
@@ -176,6 +177,7 @@ uname_arch() {
   arch=$(uname -m)
   case $arch in
     x86_64) arch="amd64" ;;
+    arm64) arch="arm64" ;;
     x86) arch="386" ;;
     i686) arch="386" ;;
     i386) arch="386" ;;
@@ -341,6 +343,29 @@ End of functions from https://github.com/client9/shlib
 ------------------------------------------------------------------------
 EOF
 
+###############################################
+# Gets the binary filename (without extentsion)
+# used in repo release.
+#
+# Globals:
+#   PROJECT_NAME
+#   VERSION
+#   OS
+#   ARCH
+# Arguments:
+#   None
+################################################
+get_binary_name() {
+  name=${PROJECT_NAME}_${VERSION}_${OS}_${ARCH}
+  case ${PLATFORM} in
+    darwin/arm64)
+      log_info "Platform ${PLATFORM} (m1 silicon) detected, using compatible darwin/amd64 binary instead."
+      name=${PROJECT_NAME}_${VERSION}_${OS}_${ARCH}
+      ;;
+  esac
+  echo "$name"
+}
+
 PROJECT_NAME="fossa"
 OWNER=fossas
 REPO="fossa-cli"
@@ -372,11 +397,12 @@ adjust_os
 
 adjust_arch
 
-log_info "found version: ${VERSION} for ${TAG}/${OS}/${ARCH}"
 
-NAME=${PROJECT_NAME}_${VERSION}_${OS}_${ARCH}
+NAME=$(get_binary_name)
 TARBALL=${NAME}.${FORMAT}
 TARBALL_URL=${GITHUB_DOWNLOAD}/${TAG}/${TARBALL}
+log_info "found fossa-cli ${VERSION} binary for ${PLATFORM} at ${TARBALL_URL}"
+
 CHECKSUM=${PROJECT_NAME}_${VERSION}_checksums.txt
 CHECKSUM_URL=${GITHUB_DOWNLOAD}/${TAG}/${CHECKSUM}
 
