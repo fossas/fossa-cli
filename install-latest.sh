@@ -360,7 +360,7 @@ get_binary_name() {
   case ${PLATFORM} in
     darwin/arm64)
       log_info "Platform ${PLATFORM} (m1 silicon) detected, using compatible darwin/amd64 binary instead."
-      name=${PROJECT_NAME}_${VERSION}_${OS}_${ARCH}
+      name=${PROJECT_NAME}_${VERSION}_${OS}_amd64
       ;;
   esac
   echo "$name"
