@@ -1,82 +1,74 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.VPS.Test (
   testMain,
-  TestOutputType (..),
 ) where
 
-import App.Fossa.API.BuildWait
+import App.Fossa.API.BuildWait (
+  waitForIssues',
+  waitForSherlockScan',
+ )
 import App.Fossa.FossaAPIV1 qualified as Fossa
-import App.Fossa.ProjectInference
+import App.Fossa.ProjectInference ()
 import App.Fossa.VPS.Scan.Core qualified as VPSCore
 import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
-import App.Types
-import Control.Carrier.Diagnostics hiding (fromMaybe)
+import App.NewFossa.Config.VPS (OutputFormat (..), TestConfig (..))
+import App.Types (ProjectRevision (projectName, projectRevision))
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
-import Control.Effect.Lift (sendIO)
+import Control.Effect.Diagnostics (Diagnostics, Has)
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Timeout (timeout')
 import Data.Aeson qualified as Aeson
-import Data.String.Conversion
-import Data.Text.IO (hPutStrLn)
-import Effect.Exec (runExecIO)
-import Effect.Logger
-import Effect.ReadFS
-import Fossa.API.Types (ApiOpts, Issues (..))
+import Data.String.Conversion (ConvertUtf8 (decodeUtf8))
+import Effect.Logger (
+  Logger,
+  Pretty (pretty),
+  Severity (SevInfo),
+  logError,
+  logInfo,
+  logStdout,
+ )
+import Fossa.API.Types (Issues (..))
 import System.Exit (exitFailure)
-import System.IO (stderr)
-
-data TestOutputType
-  = -- | pretty output format for issues
-    TestOutputPretty
-  | -- | use json output for issues
-    TestOutputJson
 
 testMain ::
-  BaseDir ->
-  ApiOpts ->
-  Severity ->
-  -- | timeout (seconds)
-  Int ->
-  TestOutputType ->
-  OverrideProject ->
-  IO ()
-testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
-  _ <- timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $
-    logWithExit_ . runReadFSIO . runExecIO $ do
-      revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  ) =>
+  TestConfig ->
+  m ()
+testMain TestConfig{..} = runStickyLogger SevInfo . timeout' testTimeoutDuration $ \cancelToken -> do
+  logInfo ""
+  logInfo ("Using project name: `" <> pretty (projectName testRevision) <> "`")
+  logInfo ("Using revision: `" <> pretty (projectRevision testRevision) <> "`")
 
-      logInfo ""
-      logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
-      logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
+  logSticky "[ Getting latest scan ID ]"
 
-      logSticky "[ Getting latest scan ID ]"
+  Fossa.Organization orgId _ <- Fossa.getOrganization testApiOpts
+  let locator = VPSCore.createLocator (projectName testRevision) orgId
 
-      Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts
-      let locator = VPSCore.createLocator (projectName revision) orgId
+  scan <- ScotlandYard.getLatestScan testApiOpts locator (projectRevision testRevision)
 
-      scan <- ScotlandYard.getLatestScan apiOpts locator (projectRevision revision)
+  logSticky "[ Waiting for component scan... ]"
 
-      logSticky "[ Waiting for component scan... ]"
+  waitForSherlockScan' testApiOpts locator cancelToken $ ScotlandYard.responseScanId scan
 
-      waitForSherlockScan apiOpts locator (ScotlandYard.responseScanId scan)
+  logSticky "[ Waiting for issue scan completion... ]"
+  issues <- waitForIssues' testApiOpts testRevision cancelToken
+  logSticky ""
 
-      logSticky "[ Waiting for issue scan completion... ]"
-      issues <- waitForIssues apiOpts revision
-      logSticky ""
-
-      case issuesCount issues of
-        0 -> do
-          logInfo "Test passed! 0 issues found"
-          case outputType of
-            TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
-            TestOutputPretty -> pure ()
-        n -> do
-          logError $ "Test failed. Number of issues found: " <> pretty n
-          if null (issuesIssues issues)
-            then logError "Check the webapp for more details, or use a full-access API key (currently using a push-only API key)"
-            else case outputType of
-              TestOutputPretty -> pure ()
-              TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
-          sendIO exitFailure
-
-  -- we call exitSuccess/exitFailure in each branch above. the only way we get
-  -- here is if we time out
-  hPutStrLn stderr "Timed out while waiting for issues scan"
-  exitFailure
+  case issuesCount issues of
+    0 -> do
+      logInfo "Test passed! 0 issues found"
+      case testOutputFormat of
+        TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
+        TestOutputPretty -> pure ()
+    n -> do
+      logError $ "Test failed. Number of issues found: " <> pretty n
+      if null (issuesIssues issues)
+        then logError "Check the webapp for more details, or use a full-access API key (currently using a push-only API key)"
+        else case testOutputFormat of
+          TestOutputPretty -> pure ()
+          TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
+      sendIO exitFailure

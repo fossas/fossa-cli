@@ -1,45 +1,36 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.VPS.Report (
   reportMain,
   ReportType (..),
 ) where
 
-import App.Fossa.API.BuildWait
+import App.Fossa.API.BuildWait (
+  waitForIssues',
+  waitForSherlockScan',
+ )
 import App.Fossa.FossaAPIV1 qualified as Fossa
-import App.Fossa.ProjectInference
 import App.Fossa.VPS.Scan.Core qualified as VPSCore
 import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
-import App.Types
-import Control.Carrier.Diagnostics
+import App.NewFossa.Config.VPS (ReportConfig (..), ReportType (Attribution))
+import App.Types (ProjectRevision (projectName, projectRevision))
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
+import Control.Effect.Diagnostics (Diagnostics, Has)
+import Control.Effect.Lift (Lift)
+import Control.Timeout (timeout')
 import Data.Aeson qualified as Aeson
-import Data.Functor (void)
 import Data.String.Conversion (decodeUtf8)
-import Data.Text (Text)
-import Data.Text.IO (hPutStrLn)
-import Effect.Exec (runExecIO)
-import Effect.Logger
-import Effect.ReadFS
-import Fossa.API.Types (ApiOpts)
-import System.Exit (exitFailure)
-import System.IO (stderr)
-
-data ReportType
-  = AttributionReport
-
-reportName :: ReportType -> Text
-reportName r = case r of
-  AttributionReport -> "attribution"
+import Data.Text.Extra (showT)
+import Effect.Logger (Logger, Severity (SevInfo), logStdout)
 
 reportMain ::
-  BaseDir ->
-  ApiOpts ->
-  Severity ->
-  -- | timeout (seconds)
-  Int ->
-  ReportType ->
-  OverrideProject ->
-  IO ()
-reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType override = do
+  ( Has Diagnostics sig m
+  , Has Logger sig m
+  , Has (Lift IO) sig m
+  ) =>
+  ReportConfig ->
+  m ()
+reportMain ReportConfig{..} = runStickyLogger SevInfo . timeout' reportTimeoutDuration $ \cancelToken -> do
   -- TODO: refactor this code duplicate from `fossa test`
   {-
   Most of this module (almost everything below this line) has been copied
@@ -52,30 +43,23 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
   * Timeout over `IO a` (easy to move, but where do we move it?)
   * CLI command refactoring as laid out in https://github.com/fossas/issues/issues/129
   -}
-  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $
-    logWithExit_ . runReadFSIO . runExecIO $ do
-      revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
+  logSticky "[ Getting latest scan ID ]"
 
-      logSticky "[ Getting latest scan ID ]"
+  Fossa.Organization orgId _ <- Fossa.getOrganization reportApiOpts
+  let locator = VPSCore.createLocator (projectName reportRevision) orgId
 
-      Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts
-      let locator = VPSCore.createLocator (projectName revision) orgId
+  scan <- ScotlandYard.getLatestScan reportApiOpts locator (projectRevision reportRevision)
 
-      scan <- ScotlandYard.getLatestScan apiOpts locator (projectRevision revision)
+  logSticky "[ Waiting for component scan... ]"
 
-      logSticky "[ Waiting for component scan... ]"
+  waitForSherlockScan' reportApiOpts locator cancelToken $ ScotlandYard.responseScanId scan
 
-      waitForSherlockScan apiOpts locator (ScotlandYard.responseScanId scan)
+  logSticky "[ Waiting for issue scan completion... ]"
+  _ <- waitForIssues' reportApiOpts reportRevision cancelToken
 
-      logSticky "[ Waiting for issue scan completion... ]"
-      _ <- waitForIssues apiOpts revision
+  logSticky $ "[ Fetching " <> showT reportType <> " report... ]"
+  jsonValue <- case reportType of
+    Attribution ->
+      Fossa.getAttributionRaw reportApiOpts reportRevision
 
-      logSticky $ "[ Fetching " <> reportName reportType <> " report... ]"
-      jsonValue <- case reportType of
-        AttributionReport ->
-          Fossa.getAttributionRaw apiOpts revision
-
-      logStdout . decodeUtf8 $ Aeson.encode jsonValue
-
-  hPutStrLn stderr "Timed out while waiting for build/issues scan"
-  exitFailure
+  logStdout . decodeUtf8 $ Aeson.encode jsonValue
