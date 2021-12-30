@@ -16,6 +16,7 @@ import App.Types (ProjectRevision (..))
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift)
+import Control.Timeout (timeout')
 import Data.Aeson qualified as Aeson
 import Data.String.Conversion (decodeUtf8)
 import Data.Text.Extra (showT)
@@ -26,7 +27,6 @@ import Effect.Logger (
   logInfo,
   logStdout,
  )
-import Control.Timeout (timeout')
 
 reportSubCommand :: SubCommand ReportCliOptions ReportConfig
 reportSubCommand = mkSubCommand report

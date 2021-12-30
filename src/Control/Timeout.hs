@@ -99,7 +99,7 @@ timeout' duration act = do
   act (Cancel mvar) `finally` kill handle
 
 -- Legacy timeout function, using external cancellation, but cannot work with
--- other IO-capable monad stacks or effects.  
+-- other IO-capable monad stacks or effects.
 timeoutIO ::
   -- | number of seconds before timeout
   Int ->

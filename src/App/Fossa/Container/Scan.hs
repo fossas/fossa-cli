@@ -7,7 +7,7 @@ module App.Fossa.Container.Scan (
   extractTag,
   extractRevision,
   SyftResponse,
-  ContainerScan(..),
+  ContainerScan (..),
 ) where
 
 import App.Fossa.EmbeddedBinary (

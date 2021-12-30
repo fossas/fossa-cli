@@ -23,6 +23,7 @@ import App.Types (ProjectRevision (..))
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift, sendIO)
+import Control.Timeout (timeout')
 import Data.Aeson qualified as Aeson
 import Data.String.Conversion (decodeUtf8)
 import Effect.Logger (
@@ -35,7 +36,6 @@ import Effect.Logger (
  )
 import Fossa.API.Types (Issues (..))
 import System.Exit (exitFailure)
-import Control.Timeout (timeout')
 
 test ::
   ( Has Diagnostics sig m
