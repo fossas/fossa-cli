@@ -12,7 +12,6 @@ module Control.Timeout (
 
 import Control.Carrier.Threaded (fork, kill)
 import Control.Concurrent (
-  MVar,
   isEmptyMVar,
   newEmptyMVar,
   putMVar,
@@ -27,23 +26,12 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Exception (finally)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Monad (when)
+import Control.Timeout.Internal (
+  Cancel (..),
+  Duration (..),
+  durationToMicro,
+ )
 import Data.Functor (($>))
-
--- Opaque wrapper around MVar (sort of like an atomic variable)
--- Only created by using `timeout'`
-newtype Cancel = Cancel (MVar ()) deriving (Eq)
-
-data Duration
-  = Seconds Int
-  | Minutes Int
-  | MicroSeconds Int
-  deriving (Show)
-
-instance Eq Duration where
-  a == b = durationToMicro a == durationToMicro b
-
-instance Ord Duration where
-  compare a b = compare (durationToMicro a) (durationToMicro b)
 
 -- Whether a cancellable should cancel right now, or poll again.
 -- Use checkForCancel instead if you want to fail.
@@ -106,11 +94,3 @@ timeoutIO ::
   IO a ->
   IO (Maybe a)
 timeoutIO seconds act = either id id <$> Async.race (Just <$> act) (threadDelay (seconds * 1_000_000) $> Nothing)
-
--- threadDelay only accepts microseconds, so we simplfy that with the tiny
--- abstraction of 'Duration'.
-durationToMicro :: Duration -> Int
-durationToMicro = \case
-  Seconds n -> n * 1_000_000
-  Minutes n -> n * 60_000_000
-  MicroSeconds n -> n
