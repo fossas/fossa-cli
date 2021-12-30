@@ -16,6 +16,7 @@ data UserDep = UserDep
   { userDepName :: Text
   , userDepVersion :: Text
   }
+  deriving (Eq, Ord, Show)
 
 renderUserDep :: UserDep -> Text
 renderUserDep UserDep{..} = VSI.userDefinedFetcher <> "+" <> userDepName <> "$" <> userDepVersion
@@ -28,6 +29,7 @@ data UserDefinedAssertionMeta = UserDefinedAssertionMeta
   , assertedDescription :: Maybe Text
   , assertedUrl :: Maybe Text
   }
+  deriving (Eq, Ord, Show)
 
 instance FromJSON UserDefinedAssertionMeta where
   parseJSON = withObject "UserDefinedAssertionMetadata" $ \obj -> do
