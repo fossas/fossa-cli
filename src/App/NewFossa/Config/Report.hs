@@ -20,7 +20,7 @@ import App.NewFossa.ConfigFile (ConfigFile, resolveConfigFile)
 import App.NewFossa.EnvironmentVars (EnvVars)
 import App.NewFossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
-import Control.Effect.Diagnostics (Diagnostics, fatalText, runValidation)
+import Control.Effect.Diagnostics (Diagnostics, Validator, fatalText, runValidation, validationBoundary)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Timeout (Duration (Seconds))
 import Effect.Exec (Exec)
@@ -49,7 +49,7 @@ instance Show ReportType where
   show Attribution = "attribution"
 
 -- TODO: Add support for text-format reports
-data OutputFormat
+data ReportOutputFormat
   = ReportJson
   -- ReportPretty
   deriving (Eq, Ord, Show)
@@ -123,21 +123,22 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
     ReportConfig
       <$> apiOpts
       <*> basedir
-      <*> pure outputformat
+      <*> outputformat
       <*> pure timeoutduration
       <*> pure cliReportType
       <*> revision
 
-validateOutputFormat :: Has Diagnostics sig m => Bool -> m OutputFormat
+validateOutputFormat :: Has Diagnostics sig m => Bool -> m (Validator ReportOutputFormat)
 validateOutputFormat doJson =
-  if doJson
-    then pure ReportJson
-    else fatalText "Plaintext reports are not available for this report."
+  validationBoundary $
+    if doJson
+      then pure ReportJson
+      else fatalText "Plaintext reports are not available for this report."
 
 data ReportConfig = ReportConfig
   { apiOpts :: ApiOpts
   , baseDir :: BaseDir
-  , outputFormat :: OutputFormat
+  , outputFormat :: ReportOutputFormat
   , timeoutDuration :: Duration
   , reportType :: ReportType
   , revision :: ProjectRevision
