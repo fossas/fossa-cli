@@ -235,6 +235,7 @@ library
     Control.Effect.TaskPool
     Control.Exception.Extra
     Control.Timeout
+    Control.Timeout.Internal
     Data.Aeson.Extra
     Data.Conduit.Extra
     Data.FileEmbed.Extra
@@ -398,6 +399,7 @@ test-suite unit-tests
     Conda.CondaListSpec
     Conda.EnvironmentYmlSpec
     Control.Carrier.DiagnosticsSpec
+    Control.TimeoutSpec
     Dart.PubDepsSpec
     Dart.PubSpecLockSpec
     Dart.PubSpecSpec
