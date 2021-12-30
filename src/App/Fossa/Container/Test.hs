@@ -67,8 +67,7 @@ test ContainerTestConfig{..} = runStickyLogger SevInfo $
         logError $ "Test failed. Number of issues found: " <> pretty n
         if null (issuesIssues issues)
           then logError "Check webapp for more details, or use a full-access API key (currently using a push-only API key)"
-          else do
-            case outputFormat of
-              TestOutputPretty -> logError $ pretty issues
-              TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
-            sendIO exitFailure
+          else case outputFormat of
+            TestOutputPretty -> logError $ pretty issues
+            TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
+        sendIO exitFailure
