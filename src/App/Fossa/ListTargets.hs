@@ -2,47 +2,74 @@
 
 module App.Fossa.ListTargets (
   listTargetsMain,
+  listSubCommand,
 ) where
 
 import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), discoverFuncs)
 import App.NewFossa.Config.Analyze (ExperimentalAnalyzeConfig)
+import App.NewFossa.Config.ListTargets
+import App.NewFossa.Subcommand (SubCommand)
 import App.Types (BaseDir (..))
-import Control.Carrier.AtomicCounter
+import Control.Carrier.AtomicCounter (
+  AtomicCounter,
+  Has,
+  runAtomicCounter,
+ )
 import Control.Carrier.Debug (ignoreDebug)
-import Control.Carrier.Finally
+import Control.Carrier.Finally (runFinally)
 import Control.Carrier.Reader (Reader, runReader)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
-import Control.Carrier.TaskPool
+import Control.Carrier.TaskPool (
+  Progress (..),
+  TaskPool,
+  withTaskPool,
+ )
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Debug (Debug)
-import Control.Effect.Lift (Lift)
+import Control.Effect.Lift (Lift, sendIO)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Extra (encodeJSONToText)
 import Data.Foldable (for_, traverse_)
 import Data.Set qualified as Set
-import Data.Set.NonEmpty
+import Data.Set.NonEmpty (toSet)
 import Discovery.Projects (withDiscoveredProjects)
-import Effect.Exec
-import Effect.Logger
-import Effect.ReadFS
-import Path
+import Effect.Exec (Exec)
+import Effect.Logger (
+  Color (Cyan, Green, Yellow),
+  Logger,
+  Pretty (pretty),
+  Severity (SevInfo),
+  annotate,
+  color,
+  logDebug,
+  logInfo,
+ )
+import Effect.ReadFS (ReadFS)
+import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
 
-listTargetsMain :: ExperimentalAnalyzeConfig -> Severity -> BaseDir -> IO ()
-listTargetsMain preferences logSeverity (BaseDir basedir) = do
-  capabilities <- getNumCapabilities
+listSubCommand :: SubCommand ListTargetsCliOpts ListTargetsConfig
+listSubCommand = mkSubCommand listTargetsMain
+
+listTargetsMain ::
+  ( Has Logger sig m
+  , Has Exec sig m
+  , Has (Lift IO) sig m
+  , Has ReadFS sig m
+  ) =>
+  ListTargetsConfig ->
+  m ()
+listTargetsMain ListTargetsConfig{..} = do
+  capabilities <- sendIO getNumCapabilities
 
   ignoreDebug
-    . withDefaultLogger logSeverity
     . runStickyLogger SevInfo
     . runFinally
     . withTaskPool capabilities updateProgress
-    . runReadFSIO
-    . runExecIO
     . runAtomicCounter
-    . runReader preferences
-    $ runAll basedir
+    . runReader experimental
+    $ runAll (unBaseDir baseDir)
 
 runAll ::
   ( Has ReadFS sig m
