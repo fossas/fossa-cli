@@ -167,8 +167,8 @@ library
     App.Fossa.Report
     App.Fossa.Report.Attribution
     App.Fossa.Test
+    App.Fossa.VPS
     App.Fossa.VPS.AOSPNotice
-    App.Fossa.VPS.NinjaGraph
     App.Fossa.VPS.Report
     App.Fossa.VPS.Scan
     App.Fossa.VPS.Scan.Core
@@ -189,8 +189,12 @@ library
     App.NewFossa.Config.Analyze
     App.NewFossa.Config.Common
     App.NewFossa.Config.Container
+    App.NewFossa.Config.DumpBinaries
+    App.NewFossa.Config.LinkUserBinaries
+    App.NewFossa.Config.ListTargets
     App.NewFossa.Config.Report
     App.NewFossa.Config.Test
+    App.NewFossa.Config.VPS
     App.NewFossa.ConfigFile
     App.NewFossa.EnvironmentVars
     App.NewFossa.Main
@@ -382,7 +386,6 @@ test-suite unit-tests
     App.Fossa.ManualDepsSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.Report.Log4jReportSpec
-    App.Fossa.VPS.NinjaGraphSpec
     App.Fossa.VSI.DynLinked.UtilSpec
     App.Fossa.VSI.FingerprintSpec
     Cargo.MetadataSpec
