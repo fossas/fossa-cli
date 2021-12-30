@@ -18,6 +18,7 @@ module App.NewFossa.Config.Common (
   -- * CLI Collectors
   collectBaseDir,
   collectRevisionData,
+  CacheAction (..),
   collectRevisionOverride,
   collectApiOpts,
 
@@ -29,9 +30,11 @@ module App.NewFossa.Config.Common (
 ) where
 
 import App.Fossa.ProjectInference (
+  inferProjectCached,
   inferProjectDefault,
   inferProjectFromVCS,
   mergeOverride,
+  saveRevision,
  )
 import App.NewFossa.ConfigFile (
   ConfigFile (configApiKey, configProject, configRevision),
@@ -92,6 +95,11 @@ data ScanDestination
   = -- | upload to fossa with provided api key and base url
     UploadScan ApiOpts ProjectMetadata
   | OutputStdout
+  deriving (Eq, Ord, Show)
+
+data CacheAction
+  = ReadOnly
+  | WriteOnly
   deriving (Eq, Ord, Show)
 
 defaultTimeoutDuration :: Duration
@@ -191,6 +199,7 @@ collectRevisionOverride maybeConfig OverrideProject{..} = override
     projectBranch :: Maybe Text
     projectBranch = overrideBranch <|> (maybeConfig >>= configRevision >>= configBranch)
 
+-- | Handles reading from and writing to the revision cache, based on CacheAction.
 collectRevisionData ::
   ( Has Diagnostics sig m
   , Has Exec sig m
@@ -199,13 +208,21 @@ collectRevisionData ::
   ) =>
   Validator BaseDir ->
   Maybe ConfigFile ->
+  CacheAction ->
   OverrideProject ->
   m (Validator ProjectRevision)
-collectRevisionData (Failure _) _ _ = validationBoundary $ fatalText "Cannot perform revision inference without a valid base directory"
-collectRevisionData (Success (BaseDir basedir)) maybeConfig cliOverride = validationBoundary $ do
+collectRevisionData (Failure _) _ _ _ = validationBoundary $ fatalText "Cannot perform revision inference without a valid base directory"
+collectRevisionData (Success (BaseDir basedir)) maybeConfig cacheStrategy cliOverride = validationBoundary $ do
   let override = collectRevisionOverride maybeConfig cliOverride
-  inferred <- inferProjectFromVCS basedir <||> inferProjectDefault basedir
-  pure $ mergeOverride override inferred
+  case cacheStrategy of
+    ReadOnly -> do
+      inferred <- inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir
+      pure $ mergeOverride override inferred
+    WriteOnly -> do
+      inferred <- inferProjectFromVCS basedir <||> inferProjectDefault basedir
+      let revision = mergeOverride override inferred
+      saveRevision revision
+      pure revision
 
 data GlobalOpts = GlobalOpts
   { optDebug :: Bool

@@ -9,6 +9,7 @@ module App.NewFossa.Config.Test (
 ) where
 
 import App.NewFossa.Config.Common (
+  CacheAction (ReadOnly),
   GlobalOpts (..),
   baseDirArg,
   collectApiOpts,
@@ -111,7 +112,7 @@ mergeOpts maybeConfig envvars TestCliOpts{..} = do
   apiOpts <- collectApiOpts maybeConfig envvars globals
   let timeout = maybe defaultTimeoutDuration Seconds testTimeout
   revision <-
-    collectRevisionData baseDir maybeConfig $
+    collectRevisionData baseDir maybeConfig ReadOnly $
       OverrideProject (optProjectName globals) (optProjectRevision globals) Nothing
   runValidation $
     TestConfig

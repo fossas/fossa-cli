@@ -7,6 +7,7 @@ module App.NewFossa.Config.Report (
 ) where
 
 import App.NewFossa.Config.Common (
+  CacheAction (ReadOnly),
   GlobalOpts (..),
   baseDirArg,
   collectApiOpts,
@@ -116,7 +117,7 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
   outputformat <- validateOutputFormat cliReportJsonOutput
   let timeoutduration = maybe defaultTimeoutDuration Seconds cliReportTimeout
   revision <-
-    collectRevisionData basedir cfgfile $
+    collectRevisionData basedir cfgfile ReadOnly $
       OverrideProject (optProjectName globals) (optProjectRevision globals) Nothing
   runValidation $
     ReportConfig

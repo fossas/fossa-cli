@@ -17,6 +17,7 @@ module App.NewFossa.Config.Analyze (
 
 import App.Fossa.VSI.Types qualified as VSI
 import App.NewFossa.Config.Common (
+  CacheAction (WriteOnly),
   GlobalOpts (..),
   ScanDestination (..),
   baseDirArg,
@@ -227,7 +228,7 @@ mergeOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
   let logSeverity = if optDebug globals then SevDebug else SevInfo
   scanDestination <- collectScanDestination maybeConfig envvars cliOpts
   revisionData <-
-    collectRevisionData basedir maybeConfig $
+    collectRevisionData basedir maybeConfig WriteOnly $
       OverrideProject (optProjectName globals) (optProjectRevision globals) (analyzeBranch)
   modeOpts <- collectModeOptions cliOpts
   filters <- collectFilters maybeConfig cliOpts
