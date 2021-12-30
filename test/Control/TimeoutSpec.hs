@@ -25,7 +25,7 @@ import Test.Effect (expectationFailure', it', shouldBe')
 import Test.Hspec (Spec, describe, it, shouldBe)
 
 tinyDuration :: Duration
-tinyDuration = MicroSeconds 20
+tinyDuration = MicroSeconds 200
 
 data CancelSet = CancelSet deriving (Eq, Ord, Show)
 
@@ -37,9 +37,9 @@ spec = do
   describe "timeout'" $
     it "Should set the flag after the alloted time" $
       void . timeout' tinyDuration $ \token -> do
-        -- Wait for twice the time, we should definitely have the flag set
+        -- Wait for 10x the duration, we should definitely have the flag set.
         -- If this test is flaky, try increasing tinyDuration
-        threadDelay $ (* 2) $ durationToMicro tinyDuration
+        threadDelay $ (* 10) $ durationToMicro tinyDuration
         cancelSet <- shouldCancelRightNow token
         cancelSet `shouldBe` True
 
@@ -48,12 +48,12 @@ spec = do
     it "should return true when the mvar is not empty" $ do
       token <- Cancel <$> newMVar ()
       cancelSet <- shouldCancelRightNow token
-      cancelSet `shouldBe` False
+      cancelSet `shouldBe` True
 
     it "should return false when the mvar is empty" $ do
       token <- Cancel <$> newEmptyMVar
       cancelSet <- shouldCancelRightNow token
-      cancelSet `shouldBe` True
+      cancelSet `shouldBe` False
 
   describe "checkForCancel" $
     it' "should throw a fatal error after the alloted time" $ do

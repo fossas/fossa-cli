@@ -15,6 +15,7 @@ import Control.Concurrent (
   isEmptyMVar,
   newEmptyMVar,
   putMVar,
+  takeMVar,
   threadDelay,
  )
 import Control.Concurrent.Async qualified as Async
@@ -72,19 +73,25 @@ checkForCancel err cancel = do
 timeout' :: (Has (Lift IO) sig m) => Duration -> (Cancel -> m a) -> m a
 timeout' duration act = do
   -- We start with an empty MVar to signal that we're not ready to cancel.
-  mvar <- sendIO newEmptyMVar
+  cancel <- sendIO newEmptyMVar
+  start <- sendIO newEmptyMVar
   handle <- sendIO . fork $ do
+    -- signal that the fork is about to begin it's sleep
+    putMVar start ()
     threadDelay $ durationToMicro duration
     -- We fill the MVar here, which is the cancel signal.
     -- SAFETY: putMVar can block infinitely if we do it twice, since we never
     --   empty the MVar. Since we never expose the underlying MVar to the
     --   consumer, we only have to validate that this putMVar call is safe,
     --   and that all other usage in this module is non-blocking.
-    putMVar mvar ()
+    putMVar cancel ()
+  -- Once 'start' is taken, we know that the fork has begun the timer
+  -- We have to actually wait for this value, which is why we use $!.
+  sendIO $! takeMVar start
   -- We need 'finally' here, because `act` can short-circuit.
   -- If we don't use it, we might join the thread, which
   -- requires the timeout to fully expire.
-  act (Cancel mvar) `finally` kill handle
+  act (Cancel cancel) `finally` kill handle
 
 -- Legacy timeout function, using external cancellation, but cannot work with
 -- other IO-capable monad stacks or effects.
