@@ -39,6 +39,8 @@ spec = do
       void . timeout' tinyDuration $ \token -> do
         -- Wait for 10x the duration, we should definitely have the flag set.
         -- If this test is flaky, try increasing tinyDuration
+        -- timeout' makes no guarantees about when the flag will be set,
+        -- other than that it will not happen before the duration is expired.
         threadDelay $ (* 10) $ durationToMicro tinyDuration
         cancelSet <- shouldCancelRightNow token
         cancelSet `shouldBe` True
