@@ -5,6 +5,7 @@ module App.Fossa.VSI.Analyze (
 import App.Fossa.FossaAPIV1 (vsiAddFilesToScan, vsiCompleteScan, vsiCreateScan, vsiDownloadInferences, vsiScanAnalysisStatus)
 import App.Fossa.VSI.Fingerprint (Combined, fingerprint)
 import App.Fossa.VSI.IAT.Types qualified as IAT
+import App.Fossa.VSI.Types (ScanID (..))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
 import Control.Algebra (Has)
@@ -15,7 +16,6 @@ import Control.Effect.StickyLogger (StickyLogger, logSticky)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes)
-import Data.String.Conversion (toText)
 import Discovery.Filters (AllFilters, combinedPaths, excludeFilters, includeFilters)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk')
 import Effect.Logger (Logger, logDebug, pretty)
@@ -42,7 +42,7 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
   -- TODO(kit): Figure out how to filter walked files
 
   scanID <- context "Create scan in backend" $ vsiCreateScan apiOpts projectRevision
-  logDebug . pretty $ "Created Scan ID: " <> toText scanID
+  logDebug . pretty $ "Created Scan ID: " <> unScanID scanID
 
   -- TODO(kit): Make both walking and uploading streaming so we work on 1000 fingerprint chunks at a time.
   fingerprints <- context "Fingerprint files" $ runFingerprint dir (toPathFilters dir filters)

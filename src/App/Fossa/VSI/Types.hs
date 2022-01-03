@@ -33,17 +33,17 @@ newtype ScanID = ScanID {unScanID :: Text} deriving (ToJSON, FromJSON)
 -- | The VSI backend returns statuses for tracking which stage analysis is on.
 -- Programmatically we only care about some of these, the rest are informational and can be safely shown to a user to indicate activity.
 data AnalysisStatus
-  = Pending
-  | Finished
-  | Failed
-  | Informational Text
+  = AnalysisPending
+  | AnalysisFinished
+  | AnalysisFailed
+  | AnalysisInformational Text
 
 parseAnalysisStatus :: Text -> AnalysisStatus
 parseAnalysisStatus status = case status of
-  "NOT_STARTED" -> Pending
-  "DONE" -> Finished
-  "FAILED" -> Failed
-  other -> Informational other
+  "NOT_STARTED" -> AnalysisPending
+  "DONE" -> AnalysisFinished
+  "FAILED" -> AnalysisFailed
+  other -> AnalysisInformational other
 
 -- | VSI supports a subset of possible Locators.
 -- Specifically, all VSI locators must have a valid revision.
