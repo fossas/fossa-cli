@@ -30,23 +30,20 @@ import Srclib.Types qualified as Srclib
 -- | The VSI backend returns a scan ID when a scan is created, which is then used to add files to the scan and get inferred OSS dependencies.
 newtype ScanID = ScanID {unScanID :: Text} deriving (ToJSON, FromJSON)
 
-instance ToText ScanID where
-  toText = unScanID
-
 -- | The VSI backend returns statuses for tracking which stage analysis is on.
 -- Programmatically we only care about some of these, the rest are informational and can be safely shown to a user to indicate activity.
 data AnalysisStatus
-  = AnalysisPending
-  | AnalysisFinished
-  | AnalysisFailed
-  | AnalysisInformational Text
+  = Pending
+  | Finished
+  | Failed
+  | Informational Text
 
-parseAnalysisStatus :: (ToText a) => a -> AnalysisStatus
-parseAnalysisStatus a = case toText a of
-  "NOT_STARTED" -> AnalysisPending
-  "DONE" -> AnalysisFinished
-  "FAILED" -> AnalysisFailed
-  other -> AnalysisInformational other
+parseAnalysisStatus :: Text -> AnalysisStatus
+parseAnalysisStatus status = case status of
+  "NOT_STARTED" -> Pending
+  "DONE" -> Finished
+  "FAILED" -> Failed
+  other -> Informational other
 
 -- | VSI supports a subset of possible Locators.
 -- Specifically, all VSI locators must have a valid revision.

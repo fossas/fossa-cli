@@ -1,6 +1,7 @@
 module Strategy.Cargo (
   discover,
   CargoMetadata (..),
+  CargoProject (..),
   NodeDependency (..),
   NodeDepKind (..),
   PackageId (..),

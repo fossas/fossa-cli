@@ -19,3 +19,6 @@ vendor-bins/
 
 # Debug output
 fossa.debug.json.gz
+
+# Integration Tests
+integration-test/artifacts/

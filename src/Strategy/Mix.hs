@@ -2,6 +2,7 @@ module Strategy.Mix (
   discover,
   findProjects,
   mkProject,
+  MixProject (..),
 ) where
 
 import Control.Effect.Diagnostics (Diagnostics, context)

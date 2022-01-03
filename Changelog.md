@@ -1,5 +1,19 @@
 # Fossa CLI Changelog
 
+## v3.0.12
+
+- log4j: Adds `fossa log4j` command to identify log4j dependencies. ([#744](https://github.com/fossas/fossa-cli/pull/744))
+
+## v3.0.11
+
+- Yarn: Fixes an issue, where entry missing `resolved` attribute in `yarn.lock` would throw exception. ([#741](https://github.com/fossas/fossa-cli/pull/741))
+
+## v3.0.10
+
+- Gradle: Uses ResolutionAPI for gradle analysis. ([#740](https://github.com/fossas/fossa-cli/pull/740/))
+- Cleans up duplicated internal hashing primitives ([#737](https://github.com/fossas/fossa-cli/pull/737))
+- Adds a prerequisite required for future VSI improvements ([#736](https://github.com/fossas/fossa-cli/pull/736))
+
 ## v3.0.9
 
 - Makes experimental flags discoverable and documents them. ([#723](https://github.com/fossas/fossa-cli/pull/723))

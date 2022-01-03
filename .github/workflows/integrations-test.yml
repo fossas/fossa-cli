@@ -18,6 +18,11 @@ jobs:
       shell: sh
       run: |
         apk add bash xz-dev bzip2-dev bzip2-static upx curl jq
+
+    - uses: cachix/install-nix-action@v15
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+
     - name: Debugging information
       run: |
         ghc --version || echo "no ghc"
@@ -33,6 +38,7 @@ jobs:
           ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
           ${{ runner.os }}-${{ matrix.ghc }}-
           ${{ runner.os }}-
+
     - name: Update vendored binaries
       run: |
         mkdir vendor-bins

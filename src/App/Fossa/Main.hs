@@ -15,6 +15,7 @@ import App.Fossa.Analyze (
   VSIAnalysisMode (..),
   analyzeMain,
  )
+import App.Fossa.Analyze.Log4jReport (analyzeForLog4j)
 import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..))
 import App.Fossa.Configuration (
   ConfigFile (
@@ -199,6 +200,9 @@ appMain = do
           let metadata = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) fileConfig
 
           doAnalyze (UploadScan apiOpts metadata)
+    --
+    Log4jCommand targetDirectory -> do
+      analyzeForLog4j targetDirectory
 
     --
     TestCommand TestOptions{..} -> do
@@ -387,6 +391,12 @@ hiddenCommands =
           ( info
               (VPSCommand <$> vpsOpts)
               (progDesc "Run in Vendored Package Scan mode")
+          )
+        <> command
+          "log4j"
+          ( info
+              (Log4jCommand <$> baseDirArg)
+              (progDesc "List projects using *log4j* dependency")
           )
     )
 
@@ -662,6 +672,7 @@ data Command
   | AssertUserDefinedBinariesCommand AssertUserDefinedBinariesOptions
   | ListTargetsCommand FilePath
   | InitCommand
+  | Log4jCommand FilePath
   | DumpBinsCommand FilePath
 
 data VPSCommand
