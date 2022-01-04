@@ -15,12 +15,12 @@ module App.Fossa.EmbeddedBinary (
   dumpSubCommand,
 ) where
 
-import App.NewFossa.Config.DumpBinaries (
+import App.Fossa.Config.DumpBinaries (
   DumpBinsConfig (..),
   DumpBinsOpts,
   mkSubCommand,
  )
-import App.NewFossa.Subcommand (SubCommand)
+import App.Fossa.Subcommand (SubCommand)
 import Control.Effect.Exception (bracket)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.ByteString (ByteString, writeFile)

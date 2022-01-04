@@ -10,8 +10,8 @@ import App.Fossa.API.BuildWait (
   waitForScanCompletion',
  )
 import App.Fossa.FossaAPIV1 qualified as Fossa
-import App.NewFossa.Config.Report (ReportCliOptions, ReportConfig (..), mkSubCommand)
-import App.NewFossa.Subcommand (SubCommand)
+import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), mkSubCommand)
+import App.Fossa.Subcommand (SubCommand)
 import App.Types (ProjectRevision (..))
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)

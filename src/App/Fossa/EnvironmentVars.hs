@@ -1,4 +1,4 @@
-module App.NewFossa.EnvironmentVars (
+module App.Fossa.EnvironmentVars (
   EnvVars (..),
   getEnvVars,
 ) where

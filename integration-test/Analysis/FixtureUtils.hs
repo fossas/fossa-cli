@@ -13,7 +13,7 @@ module Analysis.FixtureUtils (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
-import App.NewFossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)

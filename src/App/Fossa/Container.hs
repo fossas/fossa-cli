@@ -8,14 +8,14 @@ import App.Fossa.Container.Analyze qualified as Analyze
 import App.Fossa.Container.Scan (SyftResponse, syftCommand, toContainerScan)
 import App.Fossa.Container.Test qualified as Test
 import App.Fossa.EmbeddedBinary (withSyftBinary)
-import App.NewFossa.Config.Container (
+import App.Fossa.Config.Container (
   ContainerCommand,
   ContainerDumpScanConfig (ContainerDumpScanConfig),
   ContainerParseFileConfig (ContainerParseFileConfig),
   ContainerScanConfig (..),
  )
-import App.NewFossa.Config.Container qualified as Config
-import App.NewFossa.Subcommand (SubCommand)
+import App.Fossa.Config.Container qualified as Config
+import App.Fossa.Subcommand (SubCommand)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,

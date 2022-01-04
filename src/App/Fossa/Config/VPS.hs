@@ -1,7 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module App.NewFossa.Config.VPS (
+module App.Fossa.Config.VPS (
   mkSubCommand,
   VPSCliOpts,
   VPSConfig (..),
@@ -21,7 +21,7 @@ import App.Fossa.VPS.Types (
   NinjaFilePaths (NinjaFilePaths),
   NinjaScanID (NinjaScanID),
  )
-import App.NewFossa.Config.Common (
+import App.Fossa.Config.Common (
   CacheAction (ReadOnly, WriteOnly),
   GlobalOpts (
     optConfig,
@@ -37,13 +37,13 @@ import App.NewFossa.Config.Common (
   globalOpts,
   metadataOpts,
  )
-import App.NewFossa.ConfigFile (
+import App.Fossa.Config.ConfigFile (
   ConfigFile,
   mergeFileCmdMetadata,
   resolveConfigFile,
  )
-import App.NewFossa.EnvironmentVars (EnvVars)
-import App.NewFossa.Subcommand (
+import App.Fossa.EnvironmentVars (EnvVars)
+import App.Fossa.Subcommand (
   EffStack,
   GetSeverity (..),
   SubCommand (SubCommand),

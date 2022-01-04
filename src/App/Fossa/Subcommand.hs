@@ -1,14 +1,14 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.NewFossa.Subcommand (
+module App.Fossa.Subcommand (
   runSubCommand,
   EffStack,
   GetSeverity (..),
   SubCommand (..),
 ) where
 
-import App.NewFossa.ConfigFile (ConfigFile)
-import App.NewFossa.EnvironmentVars (EnvVars, getEnvVars)
+import App.Fossa.Config.ConfigFile (ConfigFile)
+import App.Fossa.EnvironmentVars (EnvVars, getEnvVars)
 import Control.Carrier.Diagnostics (DiagnosticsC, logWithExit_)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (

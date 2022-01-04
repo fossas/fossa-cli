@@ -4,7 +4,7 @@ module App.Fossa.Configuration.ConfigurationSpec (
   spec,
 ) where
 
-import App.NewFossa.ConfigFile (
+import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
   ConfigProject (..),
   ConfigRevision (..),

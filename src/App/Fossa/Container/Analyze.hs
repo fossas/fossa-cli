@@ -7,8 +7,8 @@ module App.Fossa.Container.Analyze (
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Container.Scan (extractRevision, runSyft, toContainerScan)
 import App.Fossa.FossaAPIV1 (UploadResponse (uploadError, uploadLocator), uploadContainerScan)
-import App.NewFossa.Config.Common ( ScanDestination(..) )
-import App.NewFossa.Config.Container (
+import App.Fossa.Config.Common ( ScanDestination(..) )
+import App.Fossa.Config.Container (
   ContainerAnalyzeConfig (
     ContainerAnalyzeConfig,
     imageLocator,

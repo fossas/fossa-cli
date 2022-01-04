@@ -1,12 +1,12 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.NewFossa.Config.Report (
+module App.Fossa.Config.Report (
   ReportConfig (..),
   ReportCliOptions,
   mkSubCommand,
 ) where
 
-import App.NewFossa.Config.Common (
+import App.Fossa.Config.Common (
   CacheAction (ReadOnly),
   GlobalOpts (..),
   baseDirArg,
@@ -16,9 +16,9 @@ import App.NewFossa.Config.Common (
   defaultTimeoutDuration,
   globalOpts,
  )
-import App.NewFossa.ConfigFile (ConfigFile, resolveConfigFile)
-import App.NewFossa.EnvironmentVars (EnvVars)
-import App.NewFossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
+import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
+import App.Fossa.EnvironmentVars (EnvVars)
+import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
 import Control.Effect.Diagnostics (Diagnostics, Validator, fatalText, runValidation, validationBoundary)
 import Control.Effect.Lift (Has, Lift, sendIO)

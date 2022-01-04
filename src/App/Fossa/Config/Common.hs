@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.NewFossa.Config.Common (
+module App.Fossa.Config.Common (
   -- * CLI Parsers
   GlobalOpts (..),
   globalOpts,
@@ -36,12 +36,12 @@ import App.Fossa.ProjectInference (
   mergeOverride,
   saveRevision,
  )
-import App.NewFossa.ConfigFile (
+import App.Fossa.Config.ConfigFile (
   ConfigFile (configApiKey, configProject, configRevision),
   ConfigProject (configProjID),
   ConfigRevision (configBranch, configCommit),
  )
-import App.NewFossa.EnvironmentVars (EnvVars (..))
+import App.Fossa.EnvironmentVars (EnvVars (..))
 import App.OptionExtensions (uriOption)
 import App.Types (
   BaseDir (BaseDir),

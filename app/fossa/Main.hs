@@ -1,6 +1,6 @@
 module Main (main) where
 
-import App.NewFossa.Main (appMain)
+import App.Fossa.Main (appMain)
 
 main :: IO ()
 main = appMain

@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.NewFossa.Config.Analyze (
+module App.Fossa.Config.Analyze (
   AnalyzeCliOpts,
   AnalyzeConfig (..),
   BinaryDiscovery (..),
@@ -16,7 +16,7 @@ module App.NewFossa.Config.Analyze (
 ) where
 
 import App.Fossa.VSI.Types qualified as VSI
-import App.NewFossa.Config.Common (
+import App.Fossa.Config.Common (
   CacheAction (WriteOnly),
   GlobalOpts (..),
   ScanDestination (..),
@@ -31,7 +31,7 @@ import App.NewFossa.Config.Common (
   validateApiKey,
   validateDir,
  )
-import App.NewFossa.ConfigFile (
+import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
   ConfigPaths (..),
   ConfigTargets (..),
@@ -40,8 +40,8 @@ import App.NewFossa.ConfigFile (
   mergeFileCmdMetadata,
   resolveConfigFile,
  )
-import App.NewFossa.EnvironmentVars (EnvVars)
-import App.NewFossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
+import App.Fossa.EnvironmentVars (EnvVars)
+import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (
   BaseDir,
   MonorepoAnalysisOpts (MonorepoAnalysisOpts),

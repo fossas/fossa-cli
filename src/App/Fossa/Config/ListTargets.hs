@@ -1,27 +1,27 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.NewFossa.Config.ListTargets (
+module App.Fossa.Config.ListTargets (
   mkSubCommand,
   ListTargetsCliOpts,
   ListTargetsConfig (..),
 ) where
 
-import App.NewFossa.Config.Analyze (
+import App.Fossa.Config.Analyze (
   ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig),
  )
-import App.NewFossa.Config.Common (
+import App.Fossa.Config.Common (
   GlobalOpts (GlobalOpts, optConfig, optDebug),
   baseDirArg,
   collectBaseDir,
   globalOpts,
  )
-import App.NewFossa.ConfigFile (
+import App.Fossa.Config.ConfigFile (
   ConfigFile (configExperimental),
   ExperimentalConfigs (gradle),
   ExperimentalGradleConfigs (gradleConfigsOnly),
   resolveConfigFile,
  )
-import App.NewFossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
+import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir)
 import Control.Effect.Diagnostics (Diagnostics, runValidation)
 import Control.Effect.Lift (Lift, sendIO)

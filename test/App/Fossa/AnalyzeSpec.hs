@@ -1,7 +1,7 @@
 module App.Fossa.AnalyzeSpec (spec) where
 
 import App.Fossa.Analyze (DiscoverFunc, discoverFuncs)
-import App.NewFossa.Config.Analyze (ExperimentalAnalyzeConfig)
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
 import Control.Carrier.Debug (DebugC)
 import Control.Carrier.Diagnostics (DiagnosticsC)
 import Control.Carrier.Reader (ReaderC)

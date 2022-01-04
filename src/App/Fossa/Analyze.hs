@@ -26,7 +26,7 @@ import App.Fossa.ProjectInference (saveRevision)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VSIDeps (analyzeVSIDeps)
-import App.NewFossa.Config.Analyze (
+import App.Fossa.Config.Analyze (
   AnalyzeCliOpts,
   AnalyzeConfig (severity),
   BinaryDiscovery (BinaryDiscovery),
@@ -37,8 +37,8 @@ import App.NewFossa.Config.Analyze (
   ScanDestination (OutputStdout, UploadScan),
   UnpackArchives (UnpackArchives),
  )
-import App.NewFossa.Config.Analyze qualified as Config
-import App.NewFossa.Subcommand (SubCommand)
+import App.Fossa.Config.Analyze qualified as Config
+import App.Fossa.Subcommand (SubCommand)
 import App.Types (
   BaseDir (..),
   ProjectMetadata,

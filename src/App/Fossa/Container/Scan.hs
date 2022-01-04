@@ -15,7 +15,7 @@ import App.Fossa.EmbeddedBinary (
   toExecutablePath,
   withSyftBinary,
  )
-import App.NewFossa.Config.Container (ImageText (ImageText))
+import App.Fossa.Config.Container (ImageText (ImageText))
 import App.Types (
   OverrideProject (..),
   ProjectRevision (ProjectRevision),

@@ -4,7 +4,7 @@ module App.Fossa.Analyze.Types (
   AnalyzeExperimentalPreferences (..),
 ) where
 
-import App.NewFossa.Config.Analyze (ExperimentalAnalyzeConfig)
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Effect.Lift (Lift)

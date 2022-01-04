@@ -12,7 +12,7 @@ import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.ProjectInference ()
 import App.Fossa.VPS.Scan.Core qualified as VPSCore
 import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
-import App.NewFossa.Config.VPS (OutputFormat (..), TestConfig (..))
+import App.Fossa.Config.VPS (OutputFormat (..), TestConfig (..))
 import App.Types (ProjectRevision (projectName, projectRevision))
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics, Has)

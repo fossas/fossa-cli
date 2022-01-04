@@ -10,7 +10,7 @@ import App.Fossa.VPS.Scan.RunWiggins (
   execWiggins,
   generateWigginsAOSPNoticeOpts,
  )
-import App.NewFossa.Config.VPS (AOSPNoticeConfig (..))
+import App.Fossa.Config.VPS (AOSPNoticeConfig (..))
 import App.Types (BaseDir (..))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Effect.Lift (Lift)

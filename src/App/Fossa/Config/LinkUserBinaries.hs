@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.NewFossa.Config.LinkUserBinaries (
+module App.Fossa.Config.LinkUserBinaries (
   mkSubCommand,
   LinkUserBinsConfig (..),
   LinkUserBinsOpts,
@@ -9,15 +9,15 @@ module App.NewFossa.Config.LinkUserBinaries (
 import App.Fossa.VSI.IAT.Types (
   UserDefinedAssertionMeta (UserDefinedAssertionMeta),
  )
-import App.NewFossa.Config.Common (
+import App.Fossa.Config.Common (
   GlobalOpts (..),
   collectApiOpts,
   collectBaseDir,
   globalOpts,
  )
-import App.NewFossa.ConfigFile (ConfigFile, resolveConfigFile)
-import App.NewFossa.EnvironmentVars (EnvVars)
-import App.NewFossa.Subcommand (
+import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
+import App.Fossa.EnvironmentVars (EnvVars)
+import App.Fossa.Subcommand (
   EffStack,
   GetSeverity (..),
   SubCommand (SubCommand),

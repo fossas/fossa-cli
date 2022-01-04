@@ -6,9 +6,9 @@ module App.Fossa.ListTargets (
 ) where
 
 import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), discoverFuncs)
-import App.NewFossa.Config.Analyze (ExperimentalAnalyzeConfig)
-import App.NewFossa.Config.ListTargets
-import App.NewFossa.Subcommand (SubCommand)
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
+import App.Fossa.Config.ListTargets
+import App.Fossa.Subcommand (SubCommand)
 import App.Types (BaseDir (..))
 import Control.Carrier.AtomicCounter (
   AtomicCounter,

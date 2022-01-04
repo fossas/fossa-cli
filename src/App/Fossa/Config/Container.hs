@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.NewFossa.Config.Container (
+module App.Fossa.Config.Container (
   mkSubCommand,
   ImageText (..),
   OutputFormat (..),
@@ -12,7 +12,7 @@ module App.NewFossa.Config.Container (
   ContainerParseFileConfig (..),
 ) where
 
-import App.NewFossa.Config.Common (
+import App.Fossa.Config.Common (
   GlobalOpts (
     GlobalOpts,
     optBaseUrl,
@@ -29,13 +29,13 @@ import App.NewFossa.Config.Common (
   metadataOpts,
   validateApiKey,
  )
-import App.NewFossa.ConfigFile (
+import App.Fossa.Config.ConfigFile (
   ConfigFile,
   mergeFileCmdMetadata,
   resolveConfigFile,
  )
-import App.NewFossa.EnvironmentVars (EnvVars)
-import App.NewFossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
+import App.Fossa.EnvironmentVars (EnvVars)
+import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (
   OverrideProject (OverrideProject),
   ProjectMetadata,

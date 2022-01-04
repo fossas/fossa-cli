@@ -11,7 +11,7 @@ import App.Fossa.VPS.Scan.RunWiggins (
   execWiggins,
   generateWigginsScanOpts,
  )
-import App.NewFossa.Config.VPS (
+import App.Fossa.Config.VPS (
   AnalyzeConfig (..),
   FollowSymlinks (..),
   LicenseOnlyScan (..),

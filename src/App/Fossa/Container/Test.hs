@@ -14,11 +14,11 @@ import App.Fossa.Container.Scan (
   runSyft,
   toContainerScan,
  )
-import App.NewFossa.Config.Container (
+import App.Fossa.Config.Container (
   ContainerTestConfig (ContainerTestConfig, timeoutDuration),
   OutputFormat (TestOutputJson, TestOutputPretty),
  )
-import App.NewFossa.Config.Container qualified as Config
+import App.Fossa.Config.Container qualified as Config
 import App.Types (ProjectRevision (..))
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)

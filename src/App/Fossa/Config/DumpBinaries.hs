@@ -1,11 +1,11 @@
-module App.NewFossa.Config.DumpBinaries (
+module App.Fossa.Config.DumpBinaries (
   mkSubCommand,
   DumpBinsConfig (..),
   DumpBinsOpts,
 ) where
 
-import App.NewFossa.Config.Common (baseDirArg, validateDir)
-import App.NewFossa.Subcommand (EffStack, GetSeverity, SubCommand (SubCommand))
+import App.Fossa.Config.Common (baseDirArg, validateDir)
+import App.Fossa.Subcommand (EffStack, GetSeverity, SubCommand (SubCommand))
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift)
 import Effect.ReadFS (ReadFS)

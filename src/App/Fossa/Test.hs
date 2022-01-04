@@ -8,9 +8,9 @@ import App.Fossa.API.BuildWait (
   waitForIssues',
   waitForScanCompletion',
  )
-import App.NewFossa.Config.Test (OutputFormat (TestOutputJson, TestOutputPretty), TestCliOpts, TestConfig)
-import App.NewFossa.Config.Test qualified as Config
-import App.NewFossa.Subcommand (SubCommand)
+import App.Fossa.Config.Test (OutputFormat (TestOutputJson, TestOutputPretty), TestCliOpts, TestConfig)
+import App.Fossa.Config.Test qualified as Config
+import App.Fossa.Subcommand (SubCommand)
 import App.Types (
   ProjectRevision (projectName, projectRevision),
  )

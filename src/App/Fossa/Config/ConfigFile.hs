@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.NewFossa.ConfigFile (
+module App.Fossa.Config.ConfigFile (
   defaultConfigFileLocation,
   resolveConfigFile,
   ConfigFile (..),

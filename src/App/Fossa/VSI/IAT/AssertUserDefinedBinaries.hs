@@ -6,12 +6,12 @@ module App.Fossa.VSI.IAT.AssertUserDefinedBinaries (
 
 import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.VSI.Fingerprint (fingerprintContentsRaw)
-import App.NewFossa.Config.LinkUserBinaries (
+import App.Fossa.Config.LinkUserBinaries (
   LinkUserBinsConfig (..),
   LinkUserBinsOpts,
   mkSubCommand,
  )
-import App.NewFossa.Subcommand (SubCommand)
+import App.Fossa.Subcommand (SubCommand)
 import App.Types (BaseDir (..))
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
