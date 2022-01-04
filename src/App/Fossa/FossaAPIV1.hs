@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module App.Fossa.FossaAPIV1 (
@@ -67,7 +68,7 @@ import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Req
 import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
 import Network.HTTP.Types qualified as HTTP
-import Path (File, Path, Rel)
+import Path (Abs, Dir, File, Path, Rel, mkAbsDir)
 import Srclib.Types
 import Text.URI (URI)
 import Text.URI qualified as URI
@@ -593,6 +594,21 @@ resolveProjectDependencies apiOpts locator = fossaReq $ do
 baseVsiUrl :: Url scheme -> Url scheme
 baseVsiUrl baseurl = baseurl /: "api" /: "proxy" /: "sherlock"
 
+-- | This body option allows us to use a JSON object as the request body.
+-- Just wrap a data type that is an instance of 'ToJSON' type class and you are done:
+-- it will be converted to JSON and inserted as request body.
+--
+-- This type is a replacement for @HTTP.ReqBodyJson@, because some services aren't tolerant
+-- of the charset declaration appended to 'Content-Type' by that body provider.
+-- Specifically, the VSI backend wants explicitly only an 'application/json' value.
+--
+-- This body option sets the @Content-Type@ header to @\"application/json\"@ value.
+newtype ReqBodyJsonCompat a = ReqBodyJsonCompat a
+
+instance ToJSON a => HttpBody (ReqBodyJsonCompat a) where
+  getRequestBody (ReqBodyJsonCompat a) = HTTP.RequestBodyLBS (encode a)
+  getRequestContentType _ = pure "application/json"
+
 data VSICreateScanRequestBody = VSICreateScanRequestBody
   { vsiCreateScanRequestBodyOrgID :: Int
   , vsiCreateScanRequestBodyProjectID :: Text
@@ -623,7 +639,7 @@ vsiCreateScan apiOpts ProjectRevision{..} = fossaReq $ do
   let projectID = renderLocator $ Locator "custom" projectName Nothing
   let reqBody = VSICreateScanRequestBody orgId projectRevision projectID
 
-  body <- responseBody <$> req POST (vsiCreateScanEndpoint baseUrl) (ReqBodyJson reqBody) jsonResponse baseOpts
+  body <- responseBody <$> req POST (vsiCreateScanEndpoint baseUrl) (ReqBodyJsonCompat reqBody) jsonResponse baseOpts
   pure $ unVSICreateScanResponseBody body
 
 newtype VSIAddFilesToScanRequestBody = VSIAddFilesToScanRequestBody {vsiAddFilesToScanRequestBodyFiles :: Map (Path Rel File) Fingerprint.Combined}
@@ -640,9 +656,16 @@ vsiAddFilesToScan apiOpts scanID files = fossaReq $ do
 
   let opts = baseOpts <> "sync" =: True
   let body = VSIAddFilesToScanRequestBody files
-  _ <- req POST (vsiAddFilesToScanEndpoint baseUrl scanID) (ReqBodyJson body) ignoreResponse opts
+  _ <- req POST (vsiAddFilesToScanEndpoint baseUrl scanID) (ReqBodyJsonCompat body) ignoreResponse opts
 
   pure ()
+
+-- | The 'vsiCompleteScanFilePath' is an absolute path denoting what portion of the scan should be considered complete.
+-- In this path structure, '/' means "the root of the scan".
+newtype VSICompleteScanRequestBody = VSICompleteScanRequestBody {vsiCompleteScanFilePath :: Path Abs Dir}
+
+instance ToJSON VSICompleteScanRequestBody where
+  toJSON VSICompleteScanRequestBody{..} = object ["FilePath" .= toText vsiCompleteScanFilePath]
 
 vsiCompleteScanEndpoint :: Url scheme -> VSI.ScanID -> Url scheme
 vsiCompleteScanEndpoint baseurl (VSI.ScanID scanID) = baseVsiUrl baseurl /: "scans" /: scanID /: "complete"
@@ -650,7 +673,10 @@ vsiCompleteScanEndpoint baseurl (VSI.ScanID scanID) = baseVsiUrl baseurl /: "sca
 vsiCompleteScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> VSI.ScanID -> m ()
 vsiCompleteScan apiOpts scanID = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  _ <- req POST (vsiCompleteScanEndpoint baseUrl scanID) NoReqBody ignoreResponse baseOpts
+
+  -- Indicate that the entire scan is complete.
+  let body = VSICompleteScanRequestBody $(mkAbsDir "/")
+  _ <- req PUT (vsiCompleteScanEndpoint baseUrl scanID) (ReqBodyJsonCompat body) ignoreResponse baseOpts
   pure ()
 
 newtype VSIScanAnalysisStatusBody = VSIScanAnalysisStatusBody {unVSIScanAnalysisStatusBody :: VSI.AnalysisStatus}
@@ -673,7 +699,7 @@ newtype VSIExportedInferencesBody = VSIExportedInferencesBody {unVSIExportedInfe
 
 instance FromJSON VSIExportedInferencesBody where
   parseJSON = withObject "VSIExportedInferencesBody" $ \obj -> do
-    plainLocators <- obj .: "Locators"
+    plainLocators <- obj .: "locators"
     pure . VSIExportedInferencesBody $ fmap parseLocator plainLocators
 
 vsiDownloadInferencesEndpoint :: Url scheme -> VSI.ScanID -> Url scheme

@@ -13,9 +13,11 @@ import Control.Concurrent (threadDelay)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText, fromEither)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
+import Control.Monad (when)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes)
+import Data.String.Conversion (toText)
 import Discovery.Filters (AllFilters, combinedPaths, excludeFilters, includeFilters)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk')
 import Effect.Logger (Logger, logDebug, pretty)
@@ -40,12 +42,14 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
   -- TODO(kit): Figure out how to parallelize fingerprinting
   -- TODO(kit): Figure out how to walk expanded files
   -- TODO(kit): Figure out how to filter walked files
+  -- TODO(kit): Make both walking and uploading streaming so we work on 1000 fingerprint chunks at a time.
+  fingerprints <- context "Fingerprint files" $ runFingerprint dir (toPathFilters dir filters)
+  when (Map.null fingerprints) $ fatalText "No files fingerprinted"
 
   scanID <- context "Create scan in backend" $ vsiCreateScan apiOpts projectRevision
   logDebug . pretty $ "Created Scan ID: " <> unScanID scanID
 
-  -- TODO(kit): Make both walking and uploading streaming so we work on 1000 fingerprint chunks at a time.
-  fingerprints <- context "Fingerprint files" $ runFingerprint dir (toPathFilters dir filters)
+  logDebug . pretty $ "Adding " <> toText (show $ length fingerprints) <> " files to scan " <> VSI.unScanID scanID
   context "Upload fingerprints" $ vsiAddFilesToScan apiOpts scanID fingerprints
 
   context "Finalize scan files" $ vsiCompleteScan apiOpts scanID
@@ -59,18 +63,21 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
   pure (allOtherDeps, userDefinedDeps)
 
 -- | Walk the directory tree starting from the root directory, fingerprinting any files that are children of the root directory.
-runFingerprint :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> PathFilters -> m (Map (Path Rel File) Combined)
-runFingerprint root filters = flip walk' root $ \dir _ files ->
-  if shouldFingerprint dir
+runFingerprint :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> PathFilters -> m (Map (Path Rel File) Combined)
+runFingerprint root filters = flip walk' root $ \dir _ files -> do
+  let willFingerprint = shouldFingerprint dir
+  logDebug . pretty $ "Should fingerprint " <> toText (show dir) <> ": " <> toText (show willFingerprint)
+  if willFingerprint
     then do
       fingerprints <- traverse (fingerprintRelativeFiles root) files
       pure (Map.fromList $ catMaybes fingerprints, WalkContinue)
     else pure (Map.empty, WalkSkipAll)
   where
-    shouldFingerprint dir = filters `allow` dir && dir `isChildOf` root
+    shouldFingerprint dir = filters `allow` dir && (dir == root || dir `isChildOf` root)
     fingerprintRelativeFiles dir file = case tryMakeRelative dir file of
       Abs _ -> pure Nothing
       Rel rel -> do
+        logDebug . pretty $ "Fingerprint " <> toText (show file)
         fp <- fingerprint file
         pure $ Just (rel, fp)
 
