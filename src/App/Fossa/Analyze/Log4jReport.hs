@@ -60,7 +60,7 @@ import Effect.Logger (
   withDefaultLogger,
  )
 import Graphing (directList, getRootsOf, hasPredecessors, vertexList)
-import Path
+import Path (Abs, Dir, File, Path, SomeBase)
 import Prettyprinter (Doc, Pretty (pretty), annotate, vsep)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Yellow), color)
 import Srclib.Converter (verConstraintToRevision)
