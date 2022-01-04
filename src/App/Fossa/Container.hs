@@ -10,7 +10,7 @@ import App.Fossa.Container.Test qualified as Test
 import App.Fossa.EmbeddedBinary (withSyftBinary)
 import App.NewFossa.Config.Container (
   ContainerCommand,
-  ContainerDumpScapConfig (ContainerDumpScapConfig),
+  ContainerDumpScanConfig (ContainerDumpScanConfig),
   ContainerParseFileConfig (ContainerParseFileConfig),
   ContainerScanConfig (..),
  )
@@ -78,9 +78,9 @@ dumpSyftScan ::
   , Has (Lift IO) sig m
   , Has Exec sig m
   ) =>
-  ContainerDumpScapConfig ->
+  ContainerDumpScanConfig ->
   m ()
-dumpSyftScan ContainerDumpScapConfig{..} = withSyftBinary $ \syft -> do
+dumpSyftScan ContainerDumpScanConfig{..} = withSyftBinary $ \syft -> do
   dir <- sendIO getCurrentDir
   syftOutput <- execThrow dir $ syftCommand syft dumpImageLocator
   let writer :: BL.ByteString -> IO ()

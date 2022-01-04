@@ -8,7 +8,7 @@ module App.NewFossa.Config.Container (
   ContainerScanConfig (..),
   ContainerAnalyzeConfig (..),
   ContainerTestConfig (..),
-  ContainerDumpScapConfig (..),
+  ContainerDumpScanConfig (..),
   ContainerParseFileConfig (..),
 ) where
 
@@ -174,13 +174,13 @@ mergeDumpOpts ::
   Maybe ConfigFile ->
   EnvVars ->
   ContainerDumpScanOptions ->
-  m ContainerDumpScapConfig
+  m ContainerDumpScanConfig
 mergeDumpOpts _ _ ContainerDumpScanOptions{..} = do
   curdir <- sendIO getCurrentDir
   maybeOut <- case dumpScanOutputFile of
     Nothing -> pure Nothing
     Just fp -> sendIO $ Just <$> resolveFile curdir fp
-  pure $ ContainerDumpScapConfig maybeOut dumpScanImage
+  pure $ ContainerDumpScanConfig maybeOut dumpScanImage
 
 loadConfig ::
   ( Has Diagnostics sig m
@@ -234,7 +234,7 @@ data ContainerDumpScanOptions = ContainerDumpScanOptions
 data ContainerScanConfig
   = AnalyzeCfg ContainerAnalyzeConfig
   | TestCfg ContainerTestConfig
-  | DumpCfg ContainerDumpScapConfig
+  | DumpCfg ContainerDumpScanConfig
   | ParseCfg ContainerParseFileConfig
 
 instance GetSeverity ContainerCommand where
@@ -262,7 +262,7 @@ data ContainerTestConfig = ContainerTestConfig
   }
   deriving (Eq, Ord, Show)
 
-data ContainerDumpScapConfig = ContainerDumpScapConfig
+data ContainerDumpScanConfig = ContainerDumpScanConfig
   { outputFile :: Maybe (Path Abs File)
   , dumpImageLocator :: ImageText
   }
