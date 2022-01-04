@@ -63,6 +63,7 @@ import Prettyprinter (
   Doc,
   Pretty (pretty),
   annotate,
+  hsep,
   indent,
   line,
   vsep,
@@ -142,20 +143,28 @@ recover' = send . Recover'
 errorBoundary :: Has Diagnostics sig m => m a -> m (Either FailureBundle a)
 errorBoundary = send . ErrorBoundary
 
-type Validator = Validation (NonEmpty FailureBundle)
+-- | A convenience type for the 'Validation' returned by 'validationBoundary'.
+type Validator = Validation (NonEmpty SomeDiagnostic)
 
+-- | Same as 'errorBoundary', but converted to a 'Validator'.
 validationBoundary :: Has Diagnostics sig m => m a -> m (Validator a)
-validationBoundary act = eitherToValidation . first (NE.:| []) <$> errorBoundary act
+validationBoundary act = eitherToValidation . first (toNEList . failureCause) <$> errorBoundary act
+  where
+    toNEList = (NE.:| [])
 
-runValidation :: Has Diagnostics sig m => Validation (NE.NonEmpty FailureBundle) a -> m a
+-- | Convert a @Validator a@ to @m a@, throwing 'fatal' if the validator was not successful.
+runValidation :: Has Diagnostics sig m => Validator a -> m a
 runValidation (Success a) = pure a
 runValidation (Failure bundles) = fatal . renderValidationFailure $ NE.toList bundles
 
-renderValidationFailure :: [FailureBundle] -> Doc AnsiStyle
-renderValidationFailure bundles =
+renderValidationFailure :: [SomeDiagnostic] -> Doc AnsiStyle
+renderValidationFailure msgs =
   vsep $
     ["One or more errors occurred during validation"]
-      <> map (indent 4 . renderFailureBundle) bundles
+      <> map (indent 2 . renderSingle) msgs
+  where
+    -- Because we report the errors together, we don't care about the individual contexts.
+    renderSingle (SomeDiagnostic _ cause) = hsep ["-", renderDiagnostic cause]
 
 -- | Rethrow a FailureBundle from an 'errorBoundary'
 rethrow :: Has Diagnostics sig m => FailureBundle -> m a

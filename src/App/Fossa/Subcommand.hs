@@ -9,7 +9,7 @@ module App.Fossa.Subcommand (
 
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.EnvironmentVars (EnvVars, getEnvVars)
-import Control.Carrier.Diagnostics (DiagnosticsC, logWithExit_)
+import Control.Carrier.Diagnostics (DiagnosticsC, context, logWithExit_)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (
   LoggerC,
@@ -41,9 +41,9 @@ runSubCommand SubCommand{..} = uncurry runEffs . mergeAndRun <$> parser
     -- since the CLI parser is Applicative, but not Monad.
     mergeAndRun :: cli -> (Severity, EffStack ())
     mergeAndRun cliOptions = (getSeverity cliOptions,) $ do
-      configFile <- configLoader cliOptions
-      envvars <- getEnvVars
-      cfg <- optMerge configFile envvars cliOptions
+      configFile <- context "Loading config file" $ configLoader cliOptions
+      envvars <- context "Fetching environment variables" getEnvVars
+      cfg <- context "Validating configuration" $ optMerge configFile envvars cliOptions
       perform cfg
 
 runEffs :: Severity -> EffStack () -> IO ()
