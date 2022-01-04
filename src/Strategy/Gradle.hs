@@ -19,7 +19,7 @@ module Strategy.Gradle (
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import App.NewFossa.Config.Analyze (ExperimentalAnalyzeConfig (allowedGradleConfigs))
-import Control.Algebra (Has, run)
+import Control.Algebra (Has)
 import Control.Carrier.Reader (Reader)
 import Control.Effect.Diagnostics (
   Diagnostics,
