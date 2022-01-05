@@ -16,6 +16,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
 import Control.Monad (when)
 import Data.Foldable (traverse_)
+import Data.List.Split (chunksOf)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.String.Conversion (toText)
@@ -48,16 +49,26 @@ runVsiAnalysis ::
   m ([VSI.Locator], [IAT.UserDep])
 runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
   -- TODO(kit): Figure out how to parallelize fingerprinting
-  -- TODO(kit): Make both walking and uploading streaming so we work on 1000 fingerprint chunks at a time.
+  -- TODO(kit): Figure out how to stream fingerprinting
   fingerprints <- context "Fingerprint files" $ runFingerprint (toPathFilters dir filters) dir
   when (Map.null fingerprints) $ fatalText "No files fingerprinted"
 
   scanID <- context "Create scan in backend" $ vsiCreateScan apiOpts projectRevision
   logDebug . pretty $ "Created Scan ID: " <> unScanID scanID
 
-  logDebug . pretty $ "Adding " <> toText (show $ length fingerprints) <> " files to scan " <> VSI.unScanID scanID <> ":"
-  traverse_ (logDebug . pretty . ("  " <>) . toText . P.toFilePath . fst) $ Map.toList fingerprints
-  context "Upload fingerprints" $ vsiAddFilesToScan apiOpts scanID fingerprints
+  -- Split into 1000-fingerprint buckets for uploading.
+  -- This number wasn't chosen for any specific reason, it's just what the current VSI plugin does.
+  -- The goal is to ensure that we don't hit any upload size limits.
+  let chunks = map Map.fromList $ chunksOf 1000 $ Map.toList fingerprints
+  logDebug . pretty $
+    "Adding "
+      <> toText (show $ length fingerprints)
+      <> " file(s) to scan "
+      <> VSI.unScanID scanID
+      <> " in "
+      <> toText (show $ length chunks)
+      <> " chunk(s)"
+  context "Upload fingerprints" $ traverse_ (uploadChunk scanID) chunks
 
   context "Finalize scan files" $ vsiCompleteScan apiOpts scanID
   context "Waiting for backend analysis to complete" $ waitForAnalysis apiOpts scanID
@@ -68,6 +79,11 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
   let userDefinedDeps = map IAT.toUserDep $ filter VSI.isUserDefined parsedLocators
   let allOtherDeps = filter (not . VSI.isUserDefined) parsedLocators
   pure (allOtherDeps, userDefinedDeps)
+  where
+    uploadChunk scanID chunk = do
+      logDebug . pretty $ "Uploading chunk of " <> toText (show $ length chunk) <> " fingerprints:"
+      traverse_ (logDebug . pretty . ("  " <>) . toText . P.toFilePath . fst) $ Map.toList chunk
+      vsiAddFilesToScan apiOpts scanID chunk
 
 -- | Walk the directory tree starting from the root directory, fingerprinting any files that are children of the root directory.
 --
