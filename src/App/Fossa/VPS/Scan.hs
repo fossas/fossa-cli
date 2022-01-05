@@ -4,18 +4,18 @@ module App.Fossa.VPS.Scan (
   scanMain,
 ) where
 
+import App.Fossa.Config.VPS (
+  AnalyzeConfig (..),
+  FollowSymlinks (..),
+  LicenseOnlyScan (..),
+  SkipIPRScan (..),
+ )
 import App.Fossa.EmbeddedBinary (BinaryPaths, withWigginsBinary)
 import App.Fossa.VPS.Scan.RunWiggins (
   ScanType (ScanType),
   WigginsOpts,
   execWiggins,
   generateWigginsScanOpts,
- )
-import App.Fossa.Config.VPS (
-  AnalyzeConfig (..),
-  FollowSymlinks (..),
-  LicenseOnlyScan (..),
-  SkipIPRScan (..),
  )
 import App.Types (BaseDir (..))
 import Control.Effect.Diagnostics (Diagnostics)

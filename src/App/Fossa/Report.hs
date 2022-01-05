@@ -9,8 +9,8 @@ import App.Fossa.API.BuildWait (
   waitForIssues',
   waitForScanCompletion',
  )
-import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), mkSubCommand)
+import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (ProjectRevision (..))
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)

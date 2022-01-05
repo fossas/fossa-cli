@@ -1,12 +1,12 @@
 module App.Fossa.VPS (vpsSubCommand) where
 
+import App.Fossa.Config.VPS (VPSCliOpts, VPSConfig (..))
+import App.Fossa.Config.VPS qualified as Config
+import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VPS.AOSPNotice qualified as AOSP
 import App.Fossa.VPS.Report qualified as Report
 import App.Fossa.VPS.Scan qualified as Analyze
 import App.Fossa.VPS.Test qualified as Test
-import App.Fossa.Config.VPS (VPSCliOpts, VPSConfig (..))
-import App.Fossa.Config.VPS qualified as Config
-import App.Fossa.Subcommand (SubCommand)
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Effect.Lift (Lift)
 import Effect.Exec (Exec)

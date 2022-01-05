@@ -4,10 +4,6 @@ module App.Fossa.Container (
   containerSubCommand,
 ) where
 
-import App.Fossa.Container.Analyze qualified as Analyze
-import App.Fossa.Container.Scan (SyftResponse, syftCommand, toContainerScan)
-import App.Fossa.Container.Test qualified as Test
-import App.Fossa.EmbeddedBinary (withSyftBinary)
 import App.Fossa.Config.Container (
   ContainerCommand,
   ContainerDumpScanConfig (ContainerDumpScanConfig),
@@ -15,6 +11,10 @@ import App.Fossa.Config.Container (
   ContainerScanConfig (..),
  )
 import App.Fossa.Config.Container qualified as Config
+import App.Fossa.Container.Analyze qualified as Analyze
+import App.Fossa.Container.Scan (SyftResponse, syftCommand, toContainerScan)
+import App.Fossa.Container.Test qualified as Test
+import App.Fossa.EmbeddedBinary (withSyftBinary)
 import App.Fossa.Subcommand (SubCommand)
 import Control.Effect.Diagnostics (
   Diagnostics,

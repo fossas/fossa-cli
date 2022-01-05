@@ -10,12 +10,12 @@ module App.Fossa.Container.Scan (
   ContainerScan (..),
 ) where
 
+import App.Fossa.Config.Container (ImageText (ImageText))
 import App.Fossa.EmbeddedBinary (
   BinaryPaths,
   toExecutablePath,
   withSyftBinary,
  )
-import App.Fossa.Config.Container (ImageText (ImageText))
 import App.Types (
   OverrideProject (..),
   ProjectRevision (ProjectRevision),

@@ -4,14 +4,14 @@ module App.Fossa.VSI.IAT.AssertUserDefinedBinaries (
   linkBinsSubCommand,
 ) where
 
-import App.Fossa.FossaAPIV1 qualified as Fossa
-import App.Fossa.VSI.Fingerprint (fingerprintContentsRaw)
 import App.Fossa.Config.LinkUserBinaries (
   LinkUserBinsConfig (..),
   LinkUserBinsOpts,
   mkSubCommand,
  )
+import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.Subcommand (SubCommand)
+import App.Fossa.VSI.Fingerprint (fingerprintContentsRaw)
 import App.Types (BaseDir (..))
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)

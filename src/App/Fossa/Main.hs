@@ -7,10 +7,10 @@ import App.Fossa.Container qualified as Container
 import App.Fossa.EmbeddedBinary qualified as Embed
 import App.Fossa.ListTargets qualified as ListTargets
 import App.Fossa.Report qualified as Report
+import App.Fossa.Subcommand (GetSeverity, SubCommand (..), runSubCommand)
 import App.Fossa.Test qualified as Test
 import App.Fossa.VPS qualified as VPS
 import App.Fossa.VSI.IAT.AssertUserDefinedBinaries qualified as LinkBins
-import App.Fossa.Subcommand (GetSeverity, SubCommand (..), runSubCommand)
 import App.Version (fullVersionDescription)
 import Control.Concurrent.CGroup (initRTSThreads)
 import Control.Monad (join)

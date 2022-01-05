@@ -4,13 +4,13 @@ module App.Fossa.VPS.AOSPNotice (
   aospNoticeMain,
 ) where
 
+import App.Fossa.Config.VPS (AOSPNoticeConfig (..))
 import App.Fossa.EmbeddedBinary (BinaryPaths, withWigginsBinary)
 import App.Fossa.VPS.Scan.RunWiggins (
   WigginsOpts,
   execWiggins,
   generateWigginsAOSPNoticeOpts,
  )
-import App.Fossa.Config.VPS (AOSPNoticeConfig (..))
 import App.Types (BaseDir (..))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Effect.Lift (Lift)

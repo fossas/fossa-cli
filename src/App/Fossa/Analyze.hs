@@ -20,12 +20,6 @@ import App.Fossa.Analyze.Types (
   AnalyzeTaskEffs,
  )
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
-import App.Fossa.FossaAPIV1 (UploadResponse (..), getProject, projectIsMonorepo, uploadAnalysis, uploadContributors)
-import App.Fossa.ManualDeps (analyzeFossaDepsFile)
-import App.Fossa.ProjectInference (saveRevision)
-import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
-import App.Fossa.VSI.Types qualified as VSI
-import App.Fossa.VSIDeps (analyzeVSIDeps)
 import App.Fossa.Config.Analyze (
   AnalyzeCliOpts,
   AnalyzeConfig (severity),
@@ -38,7 +32,13 @@ import App.Fossa.Config.Analyze (
   UnpackArchives (UnpackArchives),
  )
 import App.Fossa.Config.Analyze qualified as Config
+import App.Fossa.FossaAPIV1 (UploadResponse (..), getProject, projectIsMonorepo, uploadAnalysis, uploadContributors)
+import App.Fossa.ManualDeps (analyzeFossaDepsFile)
+import App.Fossa.ProjectInference (saveRevision)
 import App.Fossa.Subcommand (SubCommand)
+import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
+import App.Fossa.VSI.Types qualified as VSI
+import App.Fossa.VSIDeps (analyzeVSIDeps)
 import App.Types (
   BaseDir (..),
   ProjectMetadata,
