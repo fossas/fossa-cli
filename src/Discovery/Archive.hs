@@ -1,6 +1,7 @@
 module Discovery.Archive (
   discover,
   withArchive,
+  withArchive',
   extractRpm,
   extractTar,
   extractTarGz,
@@ -41,28 +42,32 @@ discover go dir = context "Finding archives" $
           go unpackedDir
           discover go unpackedDir
 
-    let tars = filter (\file -> ".tar" `isSuffixOf` fileName file) files
-    traverse_ (\file -> forkTask $ withArchive extractTar file (process file)) tars
-
-    let tarGzs = filter (\file -> ".tar.gz" `isSuffixOf` fileName file) files
-    traverse_ (\file -> forkTask $ withArchive extractTarGz file (process file)) tarGzs
-
-    let tarXzs = filter (\file -> ".tar.xz" `isSuffixOf` fileName file) files
-    traverse_ (\file -> forkTask $ withArchive extractTarXz file (process file)) tarXzs
-
-    let tarBz2s = filter (\file -> ".tar.bz2" `isSuffixOf` fileName file) files
-    traverse_ (\file -> forkTask $ withArchive extractTarBz2 file (process file)) tarBz2s
-
-    let zips = filter (\file -> ".zip" `isSuffixOf` fileName file) files
-    traverse_ (\file -> forkTask $ withArchive extractZip file (process file)) zips
-
-    let jars = filter (\file -> ".jar" `isSuffixOf` fileName file) files
-    traverse_ (\file -> forkTask $ withArchive extractZip file (process file)) jars
-
-    let rpms = filter (\file -> ".rpm" `isSuffixOf` fileName file) files
-    traverse_ (\file -> forkTask $ withArchive extractRpm file (process file)) rpms
-
+    traverse_ (\file -> forkTask $ withArchive' file (process file)) files
     pure WalkContinue
+
+-- | Extract an archive to a temporary directory, and run the provided callback
+-- on the temporary directory. Archive contents are removed when the callback
+-- finishes.
+--
+-- The archive extraction function is automatically selected from the
+-- file extension of the target archive.
+--
+-- If the file is not supported for extraction, results in 'Nothing'.
+withArchive' ::
+  (Has (Lift IO) sig m, Has Finally sig m) =>
+  -- | Path to archive
+  Path Abs File ->
+  -- | Callback
+  (Path Abs Dir -> m c) ->
+  m (Maybe c)
+withArchive' file go | ".tar" `isSuffixOf` fileName file = Just <$> withArchive extractTar file go
+withArchive' file go | ".tar.gz" `isSuffixOf` fileName file = Just <$> withArchive extractTarGz file go
+withArchive' file go | ".tar.xz" `isSuffixOf` fileName file = Just <$> withArchive extractTarXz file go
+withArchive' file go | ".tar.bz2" `isSuffixOf` fileName file = Just <$> withArchive extractTarBz2 file go
+withArchive' file go | ".zip" `isSuffixOf` fileName file = Just <$> withArchive extractZip file go
+withArchive' file go | ".jar" `isSuffixOf` fileName file = Just <$> withArchive extractZip file go
+withArchive' file go | ".rpm" `isSuffixOf` fileName file = Just <$> withArchive extractRpm file go
+withArchive' _ _ = pure Nothing
 
 -- | Extract an archive to a temporary directory, and run the provided callback
 -- on the temporary directory. Archive contents are removed when the callback

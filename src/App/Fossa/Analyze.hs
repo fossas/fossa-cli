@@ -46,7 +46,7 @@ import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, debugScope, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Diagnostics.StickyContext (stickyDiag)
-import Control.Carrier.Finally (Has, runFinally)
+import Control.Carrier.Finally (Finally, Has, runFinally)
 import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.Reader (Reader, runReader)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
@@ -353,8 +353,12 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput include
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
-  vsiResults <- Diag.context "analyze-vsi" . runStickyLogger SevInfo $ analyzeVSI modeVSIAnalysis apiOpts basedir override filters modeVSISkipResolution
-  binarySearchResults <- Diag.context "discover-binaries" $ analyzeDiscoverBinaries modeBinaryDiscovery basedir filters
+  vsiResults <-
+    Diag.context "analyze-vsi" . runStickyLogger SevInfo . runFinally $
+      analyzeVSI modeVSIAnalysis apiOpts basedir override filters modeVSISkipResolution
+  binarySearchResults <-
+    Diag.context "discover-binaries" $
+      analyzeDiscoverBinaries modeBinaryDiscovery basedir filters
   manualSrcUnits <-
     if filterIsVSIOnly filters
       then do
@@ -397,7 +401,22 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput include
         locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
         doAssertRevisionBinaries modeIATAssertion opts locator
 
-analyzeVSI :: (MonadIO m, Has Diag.Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m, Has Logger sig m, Has StickyLogger sig m, Has ReadFS sig m) => VSIAnalysisMode -> Maybe ApiOpts -> Path Abs Dir -> OverrideProject -> AllFilters -> VSI.SkipResolution -> m (Maybe SourceUnit)
+analyzeVSI ::
+  ( Has Diag.Diagnostics sig m
+  , Has Exec sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has StickyLogger sig m
+  , Has ReadFS sig m
+  , Has Finally sig m
+  ) =>
+  VSIAnalysisMode ->
+  Maybe ApiOpts ->
+  Path Abs Dir ->
+  OverrideProject ->
+  AllFilters ->
+  VSI.SkipResolution ->
+  m (Maybe SourceUnit)
 analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir override filters skipResolving = do
   logInfo "Running VSI analysis"
 
