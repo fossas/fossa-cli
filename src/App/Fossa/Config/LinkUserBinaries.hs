@@ -6,9 +6,6 @@ module App.Fossa.Config.LinkUserBinaries (
   LinkUserBinsOpts,
 ) where
 
-import App.Fossa.VSI.IAT.Types (
-  UserDefinedAssertionMeta (UserDefinedAssertionMeta),
- )
 import App.Fossa.Config.Common (
   GlobalOpts (..),
   collectApiOpts,
@@ -16,11 +13,14 @@ import App.Fossa.Config.Common (
   globalOpts,
  )
 import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
-import App.Fossa.EnvironmentVars (EnvVars)
+import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (
   EffStack,
   GetSeverity (..),
   SubCommand (SubCommand),
+ )
+import App.Fossa.VSI.IAT.Types (
+  UserDefinedAssertionMeta (UserDefinedAssertionMeta),
  )
 import App.Types (BaseDir)
 import Control.Effect.Diagnostics (

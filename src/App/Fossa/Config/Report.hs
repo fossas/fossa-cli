@@ -17,7 +17,7 @@ import App.Fossa.Config.Common (
   globalOpts,
  )
 import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
-import App.Fossa.EnvironmentVars (EnvVars)
+import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
 import Control.Effect.Diagnostics (Diagnostics, Validator, fatalText, runValidation, validationBoundary)

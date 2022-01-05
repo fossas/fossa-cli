@@ -32,7 +32,7 @@ import Strategy.Maven qualified as Maven
 import Strategy.Scala qualified as Scala
 
 import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), runDependencyAnalysis, updateProgress)
-import App.NewFossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
 import App.Types (
   BaseDir (..),
  )

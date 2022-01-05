@@ -8,7 +8,7 @@ module App.Fossa.Subcommand (
 ) where
 
 import App.Fossa.Config.ConfigFile (ConfigFile)
-import App.Fossa.EnvironmentVars (EnvVars, getEnvVars)
+import App.Fossa.Config.EnvironmentVars (EnvVars, getEnvVars)
 import Control.Carrier.Diagnostics (DiagnosticsC, context, logWithExit_)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (

@@ -15,7 +15,6 @@ module App.Fossa.Config.Analyze (
   mkSubCommand,
 ) where
 
-import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.Config.Common (
   CacheAction (WriteOnly),
   GlobalOpts (..),
@@ -40,8 +39,9 @@ import App.Fossa.Config.ConfigFile (
   mergeFileCmdMetadata,
   resolveConfigFile,
  )
-import App.Fossa.EnvironmentVars (EnvVars)
+import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
+import App.Fossa.VSI.Types qualified as VSI
 import App.Types (
   BaseDir,
   MonorepoAnalysisOpts (MonorepoAnalysisOpts),

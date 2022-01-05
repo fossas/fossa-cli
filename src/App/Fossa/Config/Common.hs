@@ -29,6 +29,12 @@ module App.Fossa.Config.Common (
   defaultTimeoutDuration,
 ) where
 
+import App.Fossa.Config.ConfigFile (
+  ConfigFile (configApiKey, configProject, configRevision),
+  ConfigProject (configProjID),
+  ConfigRevision (configBranch, configCommit),
+ )
+import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.ProjectInference (
   inferProjectCached,
   inferProjectDefault,
@@ -36,12 +42,6 @@ import App.Fossa.ProjectInference (
   mergeOverride,
   saveRevision,
  )
-import App.Fossa.Config.ConfigFile (
-  ConfigFile (configApiKey, configProject, configRevision),
-  ConfigProject (configProjID),
-  ConfigRevision (configBranch, configCommit),
- )
-import App.Fossa.EnvironmentVars (EnvVars (..))
 import App.OptionExtensions (uriOption)
 import App.Types (
   BaseDir (BaseDir),

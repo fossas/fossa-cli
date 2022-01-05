@@ -158,6 +158,7 @@ library
     App.Fossa.Config.ConfigFile
     App.Fossa.Config.Container
     App.Fossa.Config.DumpBinaries
+    App.Fossa.Config.EnvironmentVars
     App.Fossa.Config.LinkUserBinaries
     App.Fossa.Config.ListTargets
     App.Fossa.Config.Report
@@ -168,7 +169,6 @@ library
     App.Fossa.Container.Scan
     App.Fossa.Container.Test
     App.Fossa.EmbeddedBinary
-    App.Fossa.EnvironmentVars
     App.Fossa.FossaAPIV1
     App.Fossa.ListTargets
     App.Fossa.Main

@@ -34,7 +34,7 @@ import App.Fossa.Config.ConfigFile (
   mergeFileCmdMetadata,
   resolveConfigFile,
  )
-import App.Fossa.EnvironmentVars (EnvVars)
+import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (
   OverrideProject (OverrideProject),

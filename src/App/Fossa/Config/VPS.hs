@@ -16,11 +16,6 @@ module App.Fossa.Config.VPS (
   ReportType (..),
 ) where
 
-import App.Fossa.VPS.Types (
-  FilterExpressions (FilterExpressions),
-  NinjaFilePaths (NinjaFilePaths),
-  NinjaScanID (NinjaScanID),
- )
 import App.Fossa.Config.Common (
   CacheAction (ReadOnly, WriteOnly),
   GlobalOpts (
@@ -42,11 +37,16 @@ import App.Fossa.Config.ConfigFile (
   mergeFileCmdMetadata,
   resolveConfigFile,
  )
-import App.Fossa.EnvironmentVars (EnvVars)
+import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (
   EffStack,
   GetSeverity (..),
   SubCommand (SubCommand),
+ )
+import App.Fossa.VPS.Types (
+  FilterExpressions (FilterExpressions),
+  NinjaFilePaths (NinjaFilePaths),
+  NinjaScanID (NinjaScanID),
  )
 import App.OptionExtensions (jsonOption)
 import App.Types (
