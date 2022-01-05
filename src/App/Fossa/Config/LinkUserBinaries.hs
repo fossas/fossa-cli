@@ -7,10 +7,10 @@ module App.Fossa.Config.LinkUserBinaries (
 ) where
 
 import App.Fossa.Config.Common (
-  GlobalOpts (..),
+  CommonOpts (..),
   collectApiOpts,
   collectBaseDir,
-  globalOpts,
+  commonOpts,
  )
 import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
@@ -66,7 +66,7 @@ mergeOpts ::
   LinkUserBinsOpts ->
   m LinkUserBinsConfig
 mergeOpts cfgfile envvars LinkUserBinsOpts{..} = do
-  apiopts <- collectApiOpts cfgfile envvars globals
+  apiopts <- collectApiOpts cfgfile envvars commons
   basedir <- collectBaseDir assertionDir
   let metadata = assertionMeta
   runValidation $
@@ -92,22 +92,22 @@ loadConfig ::
   m (Maybe ConfigFile)
 loadConfig LinkUserBinsOpts{..} = do
   curdir <- sendIO getCurrentDir
-  resolveConfigFile curdir $ optConfig globals
+  resolveConfigFile curdir $ optConfig commons
 
 data LinkUserBinsOpts = LinkUserBinsOpts
-  { globals :: GlobalOpts
+  { commons :: CommonOpts
   , assertionDir :: FilePath
   , assertionMeta :: UserDefinedAssertionMeta
   }
   deriving (Eq, Ord, Show)
 
 instance GetSeverity LinkUserBinsOpts where
-  getSeverity LinkUserBinsOpts{globals = GlobalOpts{optDebug}} = if optDebug then SevDebug else SevInfo
+  getSeverity LinkUserBinsOpts{commons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo
 
 cliParser :: Parser LinkUserBinsOpts
 cliParser =
   LinkUserBinsOpts
-    <$> globalOpts
+    <$> commonOpts
     <*> assertUserDefinedBinariesDir
     <*> assertUserDefinedBinariesMeta
   where

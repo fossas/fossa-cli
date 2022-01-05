@@ -17,13 +17,13 @@ module App.Fossa.Config.Analyze (
 
 import App.Fossa.Config.Common (
   CacheAction (WriteOnly),
-  GlobalOpts (..),
+  CommonOpts (..),
   ScanDestination (..),
   baseDirArg,
   collectBaseDir,
   collectRevisionData,
+  commonOpts,
   filterOpt,
-  globalOpts,
   metadataOpts,
   pathOpt,
   targetOpt,
@@ -115,7 +115,7 @@ data VSIModeOptions = VSIModeOptions
   deriving (Eq, Ord, Show)
 
 data AnalyzeCliOpts = AnalyzeCliOpts
-  { globals :: GlobalOpts
+  { commons :: CommonOpts
   , analyzeOutput :: Bool
   , analyzeUnpackArchives :: Flag UnpackArchives
   , analyzeJsonOutput :: Flag JsonOutput
@@ -137,7 +137,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   deriving (Eq, Ord, Show)
 
 instance GetSeverity AnalyzeCliOpts where
-  getSeverity AnalyzeCliOpts{globals = GlobalOpts{optDebug}} = if optDebug then SevDebug else SevInfo
+  getSeverity AnalyzeCliOpts{commons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo
 
 data AnalyzeConfig = AnalyzeConfig
   { baseDir :: BaseDir
@@ -167,7 +167,7 @@ analyzeInfo = progDesc "Scan for projects and their dependencies"
 cliParser :: Parser AnalyzeCliOpts
 cliParser =
   AnalyzeCliOpts
-    <$> globalOpts
+    <$> commonOpts
     <*> switch (long "output" <> short 'o' <> help "Output results to stdout instead of uploading to fossa")
     <*> flagOpt UnpackArchives (long "unpack-archives" <> help "Recursively unpack and analyze discovered archives")
     <*> flagOpt JsonOutput (long "json" <> help "Output project metadata as json to the console. Useful for communicating with the FOSSA API")
@@ -207,7 +207,7 @@ loadConfig ::
   ) =>
   AnalyzeCliOpts ->
   m (Maybe ConfigFile)
-loadConfig AnalyzeCliOpts{globals = GlobalOpts{optConfig}} = do
+loadConfig AnalyzeCliOpts{commons = CommonOpts{optConfig}} = do
   -- FIXME: We eventually want to use the basedir to inform the config file root
   configRelBase <- sendIO getCurrentDir
   resolveConfigFile configRelBase optConfig
@@ -225,11 +225,11 @@ mergeOpts ::
   m AnalyzeConfig
 mergeOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
   basedir <- collectBaseDir analyzeBaseDir
-  let logSeverity = if optDebug globals then SevDebug else SevInfo
+  let logSeverity = if optDebug commons then SevDebug else SevInfo
   scanDestination <- collectScanDestination maybeConfig envvars cliOpts
   revisionData <-
     collectRevisionData basedir maybeConfig WriteOnly $
-      OverrideProject (optProjectName globals) (optProjectRevision globals) (analyzeBranch)
+      OverrideProject (optProjectName commons) (optProjectRevision commons) (analyzeBranch)
   modeOpts <- collectModeOptions cliOpts
   filters <- collectFilters maybeConfig cliOpts
   let experimentalCfgs = collectExperimental maybeConfig
@@ -301,8 +301,8 @@ collectScanDestination maybeCfgFile envvars AnalyzeCliOpts{..} =
     if analyzeOutput
       then pure OutputStdout
       else do
-        apiKey <- validateApiKey maybeCfgFile envvars globals
-        let baseuri = optBaseUrl globals
+        apiKey <- validateApiKey maybeCfgFile envvars commons
+        let baseuri = optBaseUrl commons
             apiOpts = ApiOpts baseuri apiKey
             metaMerged = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
         pure $ UploadScan apiOpts metaMerged

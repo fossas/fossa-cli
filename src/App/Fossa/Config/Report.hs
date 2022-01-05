@@ -8,13 +8,13 @@ module App.Fossa.Config.Report (
 
 import App.Fossa.Config.Common (
   CacheAction (ReadOnly),
-  GlobalOpts (..),
+  CommonOpts (..),
   baseDirArg,
   collectApiOpts,
   collectBaseDir,
   collectRevisionData,
+  commonOpts,
   defaultTimeoutDuration,
-  globalOpts,
  )
 import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
@@ -63,7 +63,7 @@ mkSubCommand = SubCommand "report" reportInfo parser loadConfig mergeOpts
 parser :: Parser ReportCliOptions
 parser =
   ReportCliOptions
-    <$> globalOpts
+    <$> commonOpts
     <*> switch (long "json" <> help "Output the report in JSON format (Currently required).")
     <*> optional (option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)"))
     <*> reportTypeArg
@@ -78,7 +78,7 @@ reportTypeArg = argument (maybeReader parseType) (metavar "REPORT" <> help "The 
       _ -> Nothing
 
 data ReportCliOptions = ReportCliOptions
-  { globals :: GlobalOpts
+  { commons :: CommonOpts
   , cliReportJsonOutput :: Bool
   , cliReportTimeout :: Maybe Int
   , cliReportType :: ReportType
@@ -87,7 +87,7 @@ data ReportCliOptions = ReportCliOptions
   deriving (Eq, Ord, Show)
 
 instance GetSeverity ReportCliOptions where
-  getSeverity ReportCliOptions{..} = if (optDebug globals) then SevDebug else SevInfo
+  getSeverity ReportCliOptions{..} = if (optDebug commons) then SevDebug else SevInfo
 
 loadConfig ::
   ( Has (Lift IO) sig m
@@ -97,7 +97,7 @@ loadConfig ::
   ) =>
   ReportCliOptions ->
   m (Maybe ConfigFile)
-loadConfig ReportCliOptions{globals = GlobalOpts{optConfig}} = do
+loadConfig ReportCliOptions{commons = CommonOpts{optConfig}} = do
   configRelBase <- sendIO getCurrentDir
   resolveConfigFile configRelBase optConfig
 
@@ -112,13 +112,13 @@ mergeOpts ::
   ReportCliOptions ->
   m ReportConfig
 mergeOpts cfgfile envvars ReportCliOptions{..} = do
-  apiOpts <- collectApiOpts cfgfile envvars globals
+  apiOpts <- collectApiOpts cfgfile envvars commons
   basedir <- collectBaseDir cliReportBaseDir
   outputformat <- validateOutputFormat cliReportJsonOutput
   let timeoutduration = maybe defaultTimeoutDuration Seconds cliReportTimeout
   revision <-
     collectRevisionData basedir cfgfile ReadOnly $
-      OverrideProject (optProjectName globals) (optProjectRevision globals) Nothing
+      OverrideProject (optProjectName commons) (optProjectRevision commons) Nothing
   runValidation $
     ReportConfig
       <$> apiOpts

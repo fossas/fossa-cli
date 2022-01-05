@@ -10,10 +10,10 @@ import App.Fossa.Config.Analyze (
   ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig),
  )
 import App.Fossa.Config.Common (
-  GlobalOpts (GlobalOpts, optConfig, optDebug),
+  CommonOpts (..),
   baseDirArg,
   collectBaseDir,
-  globalOpts,
+  commonOpts,
  )
 import App.Fossa.Config.ConfigFile (
   ConfigFile (configExperimental),
@@ -43,13 +43,13 @@ loadConfig ::
   m (Maybe ConfigFile)
 loadConfig ListTargetsCliOpts{..} = do
   curdir <- sendIO getCurrentDir
-  resolveConfigFile curdir $ optConfig globals
+  resolveConfigFile curdir $ optConfig commons
 
 listTargetsInfo :: InfoMod a
 listTargetsInfo = progDesc "List available analysis-targets in a directory (projects and sub-projects)"
 
 parser :: Parser ListTargetsCliOpts
-parser = ListTargetsCliOpts <$> globalOpts <*> baseDirArg
+parser = ListTargetsCliOpts <$> commonOpts <*> baseDirArg
 
 mergeOpts ::
   ( Has Diagnostics sig m
@@ -76,12 +76,12 @@ collectExperimental maybeCfg =
       (maybeCfg >>= configExperimental >>= gradle)
 
 data ListTargetsCliOpts = ListTargetsCliOpts
-  { globals :: GlobalOpts
+  { commons :: CommonOpts
   , cliBaseDir :: FilePath
   }
 
 instance GetSeverity ListTargetsCliOpts where
-  getSeverity ListTargetsCliOpts{globals = GlobalOpts{optDebug}} = if optDebug then SevDebug else SevInfo
+  getSeverity ListTargetsCliOpts{commons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo
 
 data ListTargetsConfig = ListTargetsConfig
   { baseDir :: BaseDir

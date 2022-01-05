@@ -18,18 +18,13 @@ module App.Fossa.Config.VPS (
 
 import App.Fossa.Config.Common (
   CacheAction (ReadOnly, WriteOnly),
-  GlobalOpts (
-    optConfig,
-    optDebug,
-    optProjectName,
-    optProjectRevision
-  ),
+  CommonOpts (..),
   baseDirArg,
   collectApiOpts,
   collectBaseDir,
   collectRevisionData,
+  commonOpts,
   defaultTimeoutDuration,
-  globalOpts,
   metadataOpts,
  )
 import App.Fossa.Config.ConfigFile (
@@ -134,7 +129,7 @@ loadConfig ::
   m (Maybe ConfigFile)
 loadConfig opts = do
   curdir <- sendIO getCurrentDir
-  resolveConfigFile curdir . optConfig $ getGlobals opts
+  resolveConfigFile curdir . optConfig $ getCommons opts
 
 mergeOpts ::
   ( Has Diagnostics sig m
@@ -169,13 +164,13 @@ mergeAnalyzeOpts cfgfile envvars cliOpts@VPSAnalyzeOpts{..} = do
       followSymlinks = analyzeCliFollowSymlinks
       licenseOnly = analyzeCliLicenseOnlyScan
       skipIPR = analyzeCliSkipIprScan
-  apiopts <- collectApiOpts cfgfile envvars analyzeCliGlobals
+  apiopts <- collectApiOpts cfgfile envvars analyzeCliCommons
   basedir <- collectBaseDir analyzeCliBaseDir
   revision <-
     collectRevisionData basedir cfgfile WriteOnly $
       OverrideProject
-        (optProjectName analyzeCliGlobals)
-        (optProjectRevision analyzeCliGlobals)
+        (optProjectName analyzeCliCommons)
+        (optProjectRevision analyzeCliCommons)
         Nothing
   runValidation $
     AnalyzeConfig
@@ -203,14 +198,14 @@ mergeAOSPOpts cfgfile envvars cliOpts@VPSAOSPNoticeOpts{..} = do
   let metadata = collectProjectMetadata cfgfile aospNinjaScanMeta
       severity = getSeverity $ VPSAOSPNoticeCommand cliOpts
       scanId = NinjaScanID aospNinjaScanID
-  apiopts <- collectApiOpts cfgfile envvars aospGlobals
+  apiopts <- collectApiOpts cfgfile envvars aospCommons
   basedir <- collectBaseDir aospCliBaseDir
   filepaths <- NinjaFilePaths <$$> parseCommaSeparatedFileArg aospNinjaFileList
   revision <-
     collectRevisionData basedir cfgfile WriteOnly $
       OverrideProject
-        (optProjectName aospGlobals)
-        (optProjectRevision aospGlobals)
+        (optProjectName aospCommons)
+        (optProjectRevision aospCommons)
         Nothing
   runValidation $
     AOSPNoticeConfig
@@ -241,13 +236,13 @@ mergeTestOpts ::
 mergeTestOpts cfgfile envvars VPSTestOpts{..} = do
   let outputFormat = vpsTestOutputType
       timeoutDuration = maybe defaultTimeoutDuration Seconds vpsTestTimeout
-  apiopts <- collectApiOpts cfgfile envvars testGlobals
+  apiopts <- collectApiOpts cfgfile envvars testCommons
   basedir <- collectBaseDir vpsTestBaseDir
   revision <-
     collectRevisionData basedir cfgfile ReadOnly $
       OverrideProject
-        (optProjectName testGlobals)
-        (optProjectRevision testGlobals)
+        (optProjectName testCommons)
+        (optProjectRevision testCommons)
         Nothing
   runValidation $
     TestConfig
@@ -270,14 +265,14 @@ mergeReportOpts ::
 mergeReportOpts cfgfile envvars VPSReportOpts{..} = do
   let reportTyp = vpsReportType
       timeoutDuration = maybe defaultTimeoutDuration Seconds vpsReportTimeout
-  apiopts <- collectApiOpts cfgfile envvars reportGlobals
+  apiopts <- collectApiOpts cfgfile envvars reportCommons
   basedir <- collectBaseDir vpsReportBaseDir
   outputFormat <- validateReportOutputFormat vpsReportJsonOutput
   revision <-
     collectRevisionData basedir cfgfile ReadOnly $
       OverrideProject
-        (optProjectName reportGlobals)
-        (optProjectRevision reportGlobals)
+        (optProjectName reportCommons)
+        (optProjectRevision reportCommons)
         Nothing
   runValidation $
     ReportConfig
@@ -295,12 +290,12 @@ validateReportOutputFormat dojson =
       then pure ReportJson
       else fatalText "Plaintext reports are not available yet"
 
-getGlobals :: VPSCliOpts -> GlobalOpts
-getGlobals = \case
-  VPSAnalyzeCommand VPSAnalyzeOpts{..} -> analyzeCliGlobals
-  VPSAOSPNoticeCommand VPSAOSPNoticeOpts{..} -> aospGlobals
-  VPSTestCommand VPSTestOpts{..} -> testGlobals
-  VPSReportCommand VPSReportOpts{..} -> reportGlobals
+getCommons :: VPSCliOpts -> CommonOpts
+getCommons = \case
+  VPSAnalyzeCommand VPSAnalyzeOpts{..} -> analyzeCliCommons
+  VPSAOSPNoticeCommand VPSAOSPNoticeOpts{..} -> aospCommons
+  VPSTestCommand VPSTestOpts{..} -> testCommons
+  VPSReportCommand VPSReportOpts{..} -> reportCommons
 
 collectProjectMetadata :: Maybe ConfigFile -> ProjectMetadata -> ProjectMetadata
 collectProjectMetadata cfgfile cliMetadata = maybe cliMetadata (mergeFileCmdMetadata cliMetadata) cfgfile
@@ -308,7 +303,7 @@ collectProjectMetadata cfgfile cliMetadata = maybe cliMetadata (mergeFileCmdMeta
 instance GetSeverity VPSCliOpts where
   getSeverity opts = if debugMode then SevDebug else SevInfo
     where
-      debugMode = optDebug $ getGlobals opts
+      debugMode = optDebug $ getCommons opts
 
 data VPSConfig
   = AnalyzeCfg AnalyzeConfig
@@ -368,7 +363,7 @@ data VPSCliOpts
   deriving (Eq, Ord, Show)
 
 data VPSAnalyzeOpts = VPSAnalyzeOpts
-  { analyzeCliGlobals :: GlobalOpts
+  { analyzeCliCommons :: CommonOpts
   , analyzeCliFollowSymlinks :: Flag FollowSymlinks
   , analyzeCliSkipIprScan :: Flag SkipIPRScan
   , analyzeCliLicenseOnlyScan :: Flag LicenseOnlyScan
@@ -379,7 +374,7 @@ data VPSAnalyzeOpts = VPSAnalyzeOpts
   deriving (Eq, Ord, Show)
 
 data VPSAOSPNoticeOpts = VPSAOSPNoticeOpts
-  { aospGlobals :: GlobalOpts
+  { aospCommons :: CommonOpts
   , aospCliBaseDir :: FilePath
   , aospNinjaScanID :: Text
   , aospNinjaFileList :: Text
@@ -388,7 +383,7 @@ data VPSAOSPNoticeOpts = VPSAOSPNoticeOpts
   deriving (Eq, Ord, Show)
 
 data VPSTestOpts = VPSTestOpts
-  { testGlobals :: GlobalOpts
+  { testCommons :: CommonOpts
   , vpsTestTimeout :: Maybe Int
   , vpsTestOutputType :: OutputFormat
   , vpsTestBaseDir :: FilePath
@@ -396,7 +391,7 @@ data VPSTestOpts = VPSTestOpts
   deriving (Eq, Ord, Show)
 
 data VPSReportOpts = VPSReportOpts
-  { reportGlobals :: GlobalOpts
+  { reportCommons :: CommonOpts
   , vpsReportJsonOutput :: Bool
   , vpsReportTimeout :: Maybe Int
   , vpsReportType :: ReportType
@@ -434,7 +429,7 @@ cliParser =
 vpsAnalyzeOpts :: Parser VPSAnalyzeOpts
 vpsAnalyzeOpts =
   VPSAnalyzeOpts
-    <$> globalOpts
+    <$> commonOpts
     <*> flagOpt FollowSymlinks (long "follow" <> help "If specified, follows symbolic links (does not protect against cyclic links)")
     <*> flagOpt SkipIPRScan (long "skip-ipr-scan" <> help "If specified, the scan directory will not be scanned for intellectual property rights information")
     <*> flagOpt LicenseOnlyScan (long "license-only" <> help "If specified, the scan directory will not be scanned for vendored dependencies")
@@ -445,7 +440,7 @@ vpsAnalyzeOpts =
 vpsReportOpts :: Parser VPSReportOpts
 vpsReportOpts =
   VPSReportOpts
-    <$> globalOpts
+    <$> commonOpts
     <*> switch (long "json" <> help "Output the report in JSON format (Currently required).")
     <*> optional (option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)"))
     <*> reportTypeArg
@@ -461,7 +456,7 @@ reportTypeArg = argument (maybeReader parseType) (metavar "REPORT" <> help "The 
 vpsAospNoticeOpts :: Parser VPSAOSPNoticeOpts
 vpsAospNoticeOpts =
   VPSAOSPNoticeOpts
-    <$> globalOpts
+    <$> commonOpts
     <*> baseDirArg
     <*> strOption (long "scan-id" <> help "ID of the scan to which notice content should be added. Reported by `analyze` upon completion.")
     <*> strOption (long "ninja-files" <> help "A comma-separated list of ninja files to parse for build graph information.")
@@ -470,7 +465,7 @@ vpsAospNoticeOpts =
 vpsTestOpts :: Parser VPSTestOpts
 vpsTestOpts =
   VPSTestOpts
-    <$> globalOpts
+    <$> commonOpts
     <*> optional (option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)"))
     <*> flag TestOutputPretty TestOutputJson (long "json" <> help "Output issues as json")
     <*> baseDirArg

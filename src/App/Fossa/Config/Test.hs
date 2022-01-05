@@ -10,13 +10,13 @@ module App.Fossa.Config.Test (
 
 import App.Fossa.Config.Common (
   CacheAction (ReadOnly),
-  GlobalOpts (..),
+  CommonOpts (..),
   baseDirArg,
   collectApiOpts,
   collectBaseDir,
   collectRevisionData,
+  commonOpts,
   defaultTimeoutDuration,
-  globalOpts,
  )
 import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
@@ -52,7 +52,7 @@ data OutputFormat
   deriving (Eq, Ord, Show)
 
 data TestCliOpts = TestCliOpts
-  { globals :: GlobalOpts
+  { commons :: CommonOpts
   , testTimeout :: Maybe Int
   , testOutputType :: OutputFormat
   , testBaseDir :: FilePath
@@ -60,7 +60,7 @@ data TestCliOpts = TestCliOpts
   deriving (Eq, Ord, Show)
 
 instance GetSeverity TestCliOpts where
-  getSeverity TestCliOpts{globals = GlobalOpts{optDebug}} = if optDebug then SevDebug else SevInfo
+  getSeverity TestCliOpts{commons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo
 
 data TestConfig = TestConfig
   { baseDir :: BaseDir
@@ -79,7 +79,7 @@ mkSubCommand = SubCommand "test" testInfo parser loadConfig mergeOpts
 parser :: Parser TestCliOpts
 parser =
   TestCliOpts
-    <$> globalOpts
+    <$> commonOpts
     <*> optional (option auto (long "timeout" <> help "Duration to wait for build completion in seconds (Defaults to 1 hour)"))
     <*> flag TestOutputPretty TestOutputJson (long "json" <> help "Output issues as json")
     <*> baseDirArg
@@ -92,7 +92,7 @@ loadConfig ::
   ) =>
   TestCliOpts ->
   m (Maybe ConfigFile)
-loadConfig TestCliOpts{globals = GlobalOpts{optConfig}} = do
+loadConfig TestCliOpts{commons = CommonOpts{optConfig}} = do
   -- FIXME: We eventually want to use the basedir to inform the config file root
   configRelBase <- sendIO getCurrentDir
   resolveConfigFile configRelBase optConfig
@@ -109,11 +109,11 @@ mergeOpts ::
   m TestConfig
 mergeOpts maybeConfig envvars TestCliOpts{..} = do
   baseDir <- collectBaseDir testBaseDir
-  apiOpts <- collectApiOpts maybeConfig envvars globals
+  apiOpts <- collectApiOpts maybeConfig envvars commons
   let timeout = maybe defaultTimeoutDuration Seconds testTimeout
   revision <-
     collectRevisionData baseDir maybeConfig ReadOnly $
-      OverrideProject (optProjectName globals) (optProjectRevision globals) Nothing
+      OverrideProject (optProjectName commons) (optProjectRevision commons) Nothing
   runValidation $
     TestConfig
       <$> baseDir

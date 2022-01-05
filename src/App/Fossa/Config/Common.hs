@@ -2,8 +2,8 @@
 
 module App.Fossa.Config.Common (
   -- * CLI Parsers
-  GlobalOpts (..),
-  globalOpts,
+  CommonOpts (..),
+  commonOpts,
   releaseGroupMetadataOpts,
   filterOpt,
   pathOpt,
@@ -165,9 +165,9 @@ validateApiKey ::
   ) =>
   Maybe ConfigFile ->
   EnvVars ->
-  GlobalOpts ->
+  CommonOpts ->
   m ApiKey
-validateApiKey maybeConfigFile EnvVars{envApiKey} GlobalOpts{optAPIKey} = do
+validateApiKey maybeConfigFile EnvVars{envApiKey} CommonOpts{optAPIKey} = do
   textkey <-
     fromMaybeText "A FOSSA API key is required to run this command" $
       -- API key significance is strictly defined:
@@ -179,7 +179,7 @@ validateApiKey maybeConfigFile EnvVars{envApiKey} GlobalOpts{optAPIKey} = do
         <|> envApiKey
   pure $ ApiKey textkey
 
-collectApiOpts :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> GlobalOpts -> m (Validator ApiOpts)
+collectApiOpts :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> CommonOpts -> m (Validator ApiOpts)
 collectApiOpts maybeconfig envvars globals = validationBoundary $ do
   apikey <- validateApiKey maybeconfig envvars globals
   let baseuri = optBaseUrl globals
@@ -224,7 +224,7 @@ collectRevisionData (Success (BaseDir basedir)) maybeConfig cacheStrategy cliOve
       saveRevision revision
       pure revision
 
-data GlobalOpts = GlobalOpts
+data CommonOpts = CommonOpts
   { optDebug :: Bool
   , optBaseUrl :: Maybe URI
   , optProjectName :: Maybe Text
@@ -234,9 +234,9 @@ data GlobalOpts = GlobalOpts
   }
   deriving (Eq, Ord, Show)
 
-globalOpts :: Parser GlobalOpts
-globalOpts =
-  GlobalOpts
+commonOpts :: Parser CommonOpts
+commonOpts =
+  CommonOpts
     <$> switch (long "debug" <> help "Enable debug logging, and write detailed debug information to `fossa.debug.json`")
     <*> optional (uriOption (long "endpoint" <> short 'e' <> metavar "URL" <> help "The FOSSA API server base URL (default: https://app.fossa.com)"))
     <*> optional (strOption (long "project" <> short 'p' <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))

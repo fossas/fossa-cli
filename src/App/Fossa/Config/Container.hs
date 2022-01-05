@@ -13,19 +13,12 @@ module App.Fossa.Config.Container (
 ) where
 
 import App.Fossa.Config.Common (
-  GlobalOpts (
-    GlobalOpts,
-    optBaseUrl,
-    optConfig,
-    optDebug,
-    optProjectName,
-    optProjectRevision
-  ),
+  CommonOpts (..),
   ScanDestination (..),
   collectApiOpts,
   collectRevisionOverride,
+  commonOpts,
   defaultTimeoutDuration,
-  globalOpts,
   metadataOpts,
   validateApiKey,
  )
@@ -117,8 +110,8 @@ mergeAnalyzeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
       revOverride =
         collectRevisionOverride cfgfile $
           OverrideProject
-            (optProjectName analyzeGlobals)
-            (optProjectRevision analyzeGlobals)
+            (optProjectName analyzeCommons)
+            (optProjectRevision analyzeCommons)
             (containerBranch)
   runValidation $
     ContainerAnalyzeConfig
@@ -137,8 +130,8 @@ collectScanDestination maybeCfgFile envvars ContainerAnalyzeOptions{..} =
     if fromFlag NoUpload containerNoUpload
       then pure OutputStdout
       else do
-        apiKey <- validateApiKey maybeCfgFile envvars analyzeGlobals
-        let baseuri = optBaseUrl analyzeGlobals
+        apiKey <- validateApiKey maybeCfgFile envvars analyzeCommons
+        let baseuri = optBaseUrl analyzeCommons
             apiOpts = ApiOpts baseuri apiKey
             metaMerged = maybe containerMetadata (mergeFileCmdMetadata containerMetadata) (maybeCfgFile)
         pure $ UploadScan apiOpts metaMerged
@@ -150,11 +143,11 @@ mergeTestOpts ::
   ContainerTestOptions ->
   m ContainerTestConfig
 mergeTestOpts cfgfile envvars ContainerTestOptions{..} = do
-  apiopts <- collectApiOpts cfgfile envvars testGlobals
+  apiopts <- collectApiOpts cfgfile envvars testCommons
   let timeout = maybe defaultTimeoutDuration Seconds containerTestTimeout
       revOverride =
         collectRevisionOverride cfgfile $
-          OverrideProject (optProjectName testGlobals) (optProjectRevision testGlobals) Nothing
+          OverrideProject (optProjectName testCommons) (optProjectRevision testCommons) Nothing
   runValidation $
     ContainerTestConfig
       <$> apiopts
@@ -200,8 +193,8 @@ loadConfig = \case
 
 getCfgFilePath :: ContainerCommand -> Maybe FilePath
 getCfgFilePath = \case
-  ContainerAnalyze opts -> optConfig $ analyzeGlobals opts
-  ContainerTest opts -> optConfig $ testGlobals opts
+  ContainerAnalyze opts -> optConfig $ analyzeCommons opts
+  ContainerTest opts -> optConfig $ testCommons opts
   -- We only use the config file for analyze and test
   _ -> Nothing
 
@@ -212,7 +205,7 @@ data ContainerCommand
   | ContainerDumpScan ContainerDumpScanOptions
 
 data ContainerAnalyzeOptions = ContainerAnalyzeOptions
-  { analyzeGlobals :: GlobalOpts
+  { analyzeCommons :: CommonOpts
   , containerNoUpload :: Flag NoUpload
   , containerBranch :: Maybe Text
   , containerMetadata :: ProjectMetadata
@@ -220,7 +213,7 @@ data ContainerAnalyzeOptions = ContainerAnalyzeOptions
   }
 
 data ContainerTestOptions = ContainerTestOptions
-  { testGlobals :: GlobalOpts
+  { testCommons :: CommonOpts
   , containerTestTimeout :: Maybe Int
   , containerTestOutputType :: OutputFormat
   , containerTestImage :: ImageText
@@ -239,8 +232,8 @@ data ContainerScanConfig
 
 instance GetSeverity ContainerCommand where
   getSeverity = \case
-    ContainerAnalyze (ContainerAnalyzeOptions{analyzeGlobals = GlobalOpts{optDebug}}) -> fromBool optDebug
-    ContainerTest (ContainerTestOptions{testGlobals = GlobalOpts{optDebug}}) -> fromBool optDebug
+    ContainerAnalyze (ContainerAnalyzeOptions{analyzeCommons = CommonOpts{optDebug}}) -> fromBool optDebug
+    ContainerTest (ContainerTestOptions{testCommons = CommonOpts{optDebug}}) -> fromBool optDebug
     ContainerParseFile _ -> SevInfo
     ContainerDumpScan _ -> SevInfo
     where
@@ -306,7 +299,7 @@ hiddenContainerCommands =
 containerAnalyzeOpts :: Parser ContainerAnalyzeOptions
 containerAnalyzeOpts =
   ContainerAnalyzeOptions
-    <$> globalOpts
+    <$> commonOpts
     <*> flagOpt
       NoUpload
       ( long "output"
@@ -326,7 +319,7 @@ containerAnalyzeOpts =
 containerTestOpts :: Parser ContainerTestOptions
 containerTestOpts =
   ContainerTestOptions
-    <$> globalOpts
+    <$> commonOpts
     <*> optional (option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)"))
     <*> flag TestOutputPretty TestOutputJson (long "json" <> help "Output issues as json")
     <*> imageTextArg
