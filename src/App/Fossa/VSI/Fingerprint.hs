@@ -14,7 +14,7 @@ module App.Fossa.VSI.Fingerprint (
 
 import Conduit (ConduitT, await, decodeUtf8C, encodeUtf8C, filterC, linesUnboundedC, mapC, runConduitRes, sourceFile, yield, (.|))
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, fatalOnIOException)
+import Control.Effect.Diagnostics (Diagnostics, context, fatalOnIOException, recover)
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Crypto.Hash (Digest, HashAlgorithm, SHA256 (..))
@@ -26,7 +26,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Extra (breakOnAndRemove)
 import Discovery.Walk (WalkStep (..), walk')
-import Effect.ReadFS (ReadFS, contentIsBinary)
+import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, File, Path, toFilePath)
 
 -- | Fingerprint deterministically idenfies a file and is derived from its content.
@@ -67,35 +67,41 @@ encodeFingerprint = Fingerprint . toText . show
 
 -- | Hashes the whole contents of the given file in constant memory.
 hashBinaryFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
-hashBinaryFile fp = (fatalOnIOException "hash binary file") . sendIO . runConduitRes $ sourceFile fp .| sinkHash
+hashBinaryFile fp =
+  context "hash binary file" $
+    (fatalOnIOException "hash binary file") . sendIO . runConduitRes $ sourceFile fp .| sinkHash
 
 hashTextFileCommentStripped :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
 hashTextFileCommentStripped file =
-  (fatalOnIOException "hash text file comment stripped") . sendIO . runConduitRes $
-    sourceFile file -- Read from the file
-      .| decodeUtf8C -- Decode to text
-      .| basicCStyleCommentStripC -- Strip comments
-      .| encodeUtf8C -- Encode back to bytes
-      .| sinkHash -- Hash the result
+  context "hash text file comment stripped" $
+    (fatalOnIOException "hash text file comment stripped") . sendIO . runConduitRes $
+      sourceFile file -- Read from the file
+        .| decodeUtf8C -- Decode to text
+        .| basicCStyleCommentStripC -- Strip comments
+        .| encodeUtf8C -- Encode back to bytes
+        .| sinkHash -- Hash the result
 
 hashTextFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
 hashTextFile file =
-  (fatalOnIOException "hash text file") . sendIO . runConduitRes $
-    sourceFile file -- Read from the file
-      .| decodeUtf8C -- Decode to text
-      .| linesUnboundedC -- Split into lines (for @stripCrLines@)
-      .| stripCrLines -- Normalize CRLF -> LF
-      .| mapC (<> "\n") -- Always append a newline here
-      .| encodeUtf8C -- Encode back to bytes
-      .| sinkHash -- Hash the result
+  context "hash text file" $
+    (fatalOnIOException "hash text file") . sendIO . runConduitRes $
+      sourceFile file -- Read from the file
+        .| decodeUtf8C -- Decode to text
+        .| linesUnboundedC -- Split into lines (for @stripCrLines@)
+        .| stripCrLines -- Normalize CRLF -> LF
+        .| mapC (<> "\n") -- Always append a newline here
+        .| encodeUtf8C -- Encode back to bytes
+        .| sinkHash -- Hash the result
 
 fingerprintRaw :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m (Fingerprint Raw)
-fingerprintRaw file = contentIsBinary file >>= doFingerprint
-  where
-    doFingerprint isBinary = do
-      let hasher = if isBinary then hashBinaryFile else hashTextFile
-      fp <- hasher $ toFilePath file
+fingerprintRaw file = context "raw" $ do
+  let target = toFilePath file
+  fpText <- recover $ hashTextFile target
+  case fpText of
+    Nothing -> do
+      fp <- hashBinaryFile target
       pure $ encodeFingerprint fp
+    Just fp -> pure $ encodeFingerprint fp
 
 fingerprintContentsRaw :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> m [Fingerprint Raw]
 fingerprintContentsRaw = walk' $ \_ _ files -> do
@@ -103,18 +109,16 @@ fingerprintContentsRaw = walk' $ \_ _ files -> do
   pure (fps, WalkContinue)
 
 fingerprintCommentStripped :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m (Maybe (Fingerprint CommentStripped))
-fingerprintCommentStripped file = contentIsBinary file >>= doFingerprint
-  where
-    doFingerprint True = pure Nothing -- Don't attempt to comment strip binary files
-    doFingerprint False = do
-      fp <- hashTextFileCommentStripped $ toFilePath file
-      pure . Just $ encodeFingerprint fp
+fingerprintCommentStripped file = context "comment stripped" $ do
+  fp <- recover . hashTextFileCommentStripped $ toFilePath file
+  pure $ fmap encodeFingerprint fp
 
 fingerprint :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m Combined
 fingerprint file =
-  Combined
-    <$> fingerprintRaw file
-    <*> fingerprintCommentStripped file
+  context "fingerprint combined" $
+    Combined
+      <$> fingerprintRaw file
+      <*> fingerprintCommentStripped file
 
 -- | Converts CRLF line endings into LF line endings.
 -- Must run after a @ConuitT@ that converts an input stream into lines (for example 'linesUnboundedC').

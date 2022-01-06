@@ -59,7 +59,7 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
   -- Split into 1000-fingerprint buckets for uploading.
   -- This number wasn't chosen for any specific reason, it's just what the current VSI plugin does.
   -- The goal is to ensure that we don't hit any upload size limits.
-  let chunks = map Map.fromList $ chunksOf 1000 $ Map.toList fingerprints
+  let chunks = map Map.fromList . chunksOf 1000 $ Map.toList fingerprints
   logDebug . pretty $
     "Adding "
       <> toText (show $ length fingerprints)
@@ -159,8 +159,8 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
 -- >   , ("external/ffmpeg.zip!_fossa.virtual_!/ffmpeg.h", { <fingerprints> })
 -- >   ]
 --
--- The `!_fossa.virtual_!` suffix is expected by the server-side analysis implementation,
--- so this literal is significant and may not be changed without ensuring the server expects the change.
+-- The `!_fossa.virtual_!` suffix is a server-side invariant.
+-- Similarly, it is a server-side invariant that the `!_fossa.virtual_!`-suffixed directory is a sibling of the original archive.
 runFingerprint :: FingerprintEffs sig m => PathFilters -> Path Abs Dir -> m (Map (Path Rel File) Combined)
 runFingerprint filters root = flip walk' root $ \dir _ files -> do
   if filters `allow` dir
