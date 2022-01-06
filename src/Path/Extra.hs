@@ -19,7 +19,7 @@ tryMakeRelative absDir absFile =
 
 -- | Render the relative path between a Path Abs Dir and a Path Abs File that is supposed to be in that dir.
 -- Intended for convenience when displaying the newly relative path; to interact with it use `tryMakeRelative` instead.
-renderRelative :: Path Abs Dir -> Path Abs File -> Text
+renderRelative :: Path Abs Dir -> Path Abs t -> Text
 renderRelative absDir absFile = toText $ tryMakeRelative absDir absFile
 
 extensionOf :: Path Abs File -> Maybe Text

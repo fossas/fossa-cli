@@ -28,7 +28,7 @@ import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (Abs, Rel), isProperPrefixOf, (</>))
 import Path qualified as P
-import Path.Extra (tryMakeRelative)
+import Path.Extra (renderRelative, tryMakeRelative)
 
 type FingerprintEffs sig m =
   ( Has (Lift IO) sig m
@@ -165,8 +165,9 @@ runFingerprint :: FingerprintEffs sig m => PathFilters -> Path Abs Dir -> m (Map
 runFingerprint filters root = flip walk' root $ \dir _ files -> do
   if filters `allow` dir
     then do
-      logDebug . pretty $ "Fingerprint: " <> toText (show dir)
-      fingerprints <- traverse (fingerprintFile filters root) files
+      fingerprints <-
+        context ("Fingerprint directory contents: " <> renderRelative root dir) $
+          traverse (fingerprintFile filters root) files
       pure (Map.unions fingerprints, WalkContinue)
     else do
       logDebug . pretty $ "Excluded by filter: " <> toText (show dir)
@@ -181,18 +182,24 @@ runFingerprint filters root = flip walk' root $ \dir _ files -> do
 -- If the file is not an archive, results in a singleton map of the fingerprints for this file.
 fingerprintFile :: FingerprintEffs sig m => PathFilters -> Path Abs Dir -> Path Abs File -> m (Map (Path Rel File) Combined)
 fingerprintFile filters root file = do
+  let desc = renderRelative root file
+  logDebug . pretty $ "Fingerprint: " <> desc
+
   relFile <- mustMakeRelative root file
-  fp <- fingerprint file
+  fp <- context ("fingerprint: " <> desc) $ fingerprint file
   let direct = Map.singleton relFile fp
 
-  contains <- withArchive' file (runFingerprint filters)
+  contains <- context ("extract as archive: " <> desc) $ withArchive' file (runFingerprint filters)
   case contains of
     -- In the most common case where this file was not an archive, evaluate to the singleton directly.
     Nothing -> pure direct
     -- In the case where `file` is an archive, we'll have a map of paths relative to the archive.
     -- Remap the ancestry of all the contained files such that they are reported correctly.
     Just contents -> do
-      withRemappedAncestry <- traverse (remapAncestry relFile) $ Map.toList contents
+      withRemappedAncestry <-
+        context ("remap contents into virtual paths: " <> desc) $
+          traverse (remapAncestry relFile) $
+            Map.toList contents
       pure . Map.union direct $ Map.fromList withRemappedAncestry
   where
     remapAncestry archive (target, fp) = do
