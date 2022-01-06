@@ -27,10 +27,8 @@ import Graphing (Graphing)
 import Path
 import Strategy.Node.PackageJson (Development, FlatDeps (devDeps, directDeps), NodePackage (pkgName), Production)
 
-data NpmPackageJson = NpmPackageJson
-  { packageName :: Text
-  , packageDependencies :: Map Text NpmDep
-  }
+newtype NpmPackageJson = NpmPackageJson
+  { packageDependencies :: Map Text NpmDep }
   deriving (Eq, Ord, Show)
 
 data NpmDep = NpmDep
@@ -45,8 +43,7 @@ data NpmDep = NpmDep
 
 instance FromJSON NpmPackageJson where
   parseJSON = withObject "NpmPackageJson" $ \obj ->
-    NpmPackageJson <$> obj .: "name"
-      <*> obj .: "dependencies"
+    NpmPackageJson <$> obj .: "dependencies"
 
 instance FromJSON NpmDep where
   parseJSON = withObject "NpmDep" $ \obj ->

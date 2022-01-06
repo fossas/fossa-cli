@@ -12,8 +12,7 @@ import Test.Hspec
 mockInput :: NpmPackageJson
 mockInput =
   NpmPackageJson
-    { packageName = "example"
-    , packageDependencies =
+    { packageDependencies =
         Map.fromList
           [
             ( "packageOne"
