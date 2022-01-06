@@ -37,14 +37,6 @@ FOSSA CLI provides an install script that downloads the latest release from GitH
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash
 ```
 
-#### macOS with Apple M1 Silicon
-
-We do not currently support ARM as a target architecture. You can work around this on M1 Mac devices using the M1's x86_64 emulation.
-
-```bash
-arch -x86_64 /bin/bash -c "$(curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh)"
-```
-
 #### Windows with Powershell
 
 ```powershell
