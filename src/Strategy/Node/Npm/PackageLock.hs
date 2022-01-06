@@ -28,7 +28,7 @@ import Path
 import Strategy.Node.PackageJson (Development, FlatDeps (devDeps, directDeps), NodePackage (pkgName), Production)
 
 newtype NpmPackageJson = NpmPackageJson
-  { packageDependencies :: Map Text NpmDep }
+  {packageDependencies :: Map Text NpmDep}
   deriving (Eq, Ord, Show)
 
 data NpmDep = NpmDep
