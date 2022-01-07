@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## v3.0.13
+
+- `package-lock.json` parser ignores name field. ([#757](https://github.com/fossas/fossa-cli/pull/757)) 
+
 ## v3.0.12
 
 - log4j: Adds `fossa log4j` command to identify log4j dependencies. ([#744](https://github.com/fossas/fossa-cli/pull/744))

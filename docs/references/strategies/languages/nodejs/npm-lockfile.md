@@ -1,20 +1,18 @@
-# Npm (cli)
+# Npm Lockfile
 
-The npm cli is the canonical package manager for nodejs projects.
+The `package-lock.json` file is generated when npm modifies `node_modules` or `package.json` and describes the exact dependency tree generated. One example of this is when `npm install` is run.
+
+> Note: In old versions of npm, `package-lock.json` was only modified when dependencies were installed.
 
 ## Project Discovery
 
-`npmlock`: Find all files named `package-lock.json`, not descending into
-directories named `node_modules`
+Search for files named `package.json` and check for a corresponding `package-lock.json` in the same directory, ignoring directories named `node_modules`.
 
-## Analysis: npmlock
+> Note: When using NPM workspaces, only the root of the project will have a `package-lock.json`. The other `package.json` files in the project directory will be combined to determine which dependencies are direct and which ones are development.
 
-The package lock json file is generated when npm modifies `node_modules` or
-`package.json` and describes the exact dependency tree generated.
+## Analysis
 
-> Note: In old versions of npm, package-lock.json was only modified when dependencies were installed.
-
-This dependency tree contains information about a dependency's version, its transitive dependencies, the URL where the dependency is located at, and whether or not the dependency is used as a development dependency or not. The transitive dependency information is listed in an unintuitive way. Under each dependency there may be two fields, `requires` and `dependencies` as in the following example:
+Opening a `package-lock.json` file reveals the project's dependency tree. This dependency tree contains information about a dependency's version, its transitive dependencies, the URL where the dependency is located at, and whether or not the dependency is used as a development dependency or not. The transitive dependency information is listed in an unintuitive way. Under each dependency there may be two fields, `requires` and `dependencies` as in the following example:
 
 ```json
     "babel-code-frame": {
