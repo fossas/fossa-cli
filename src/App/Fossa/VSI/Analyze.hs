@@ -200,11 +200,12 @@ runFingerprint' filters root renderAncestry = context ("walk root: " <> toText r
           logDebug . pretty $ "Output file '" <> toText file <> "' as: " <> toText logicalPath
           output (logicalPath, fp)
 
-          -- If the file is an archive, fingerprint its contents.
-          withArchive' file $ \archiveRoot -> context ("expand archive: " <> toText file) . forkTask $ do
-            asLogicalParent <- context "convert parent to logical parent" $ convertArchiveSuffix logicalPath
-            logDebug . pretty $ "Walking into archive '" <> toText logicalPath <> "' as: " <> toText asLogicalParent
-            runFingerprint' filters archiveRoot $ ancestryDerived asLogicalParent
+        -- If the file is an archive, fingerprint its contents.
+        -- TODO(kit): Uncomment this. Commented for a baseline test compared with Basis.
+        -- withArchive' file $ \archiveRoot -> context ("expand archive: " <> toText file) . forkTask $ do
+        --   asLogicalParent <- context "convert parent to logical parent" $ convertArchiveSuffix logicalPath
+        --   logDebug . pretty $ "Walking into archive '" <> toText logicalPath <> "' as: " <> toText asLogicalParent
+        --   runFingerprint' filters archiveRoot $ ancestryDerived asLogicalParent
         pure WalkContinue
       else do
         logDebug "Skipped: filters do not match"
