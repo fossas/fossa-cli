@@ -24,11 +24,12 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.StickyLogger (StickyLogger, logSticky, logSticky')
 import Control.Effect.TaskPool (TaskPool, forkTask)
 import Control.Monad (join, when)
-import Data.Foldable (traverse_, for_)
+import Data.Foldable (for_, traverse_)
 import Data.List.Split (chunksOf)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.String.Conversion (toText)
+import Data.Text (Text)
 import Discovery.Archive (withArchive')
 import Discovery.Filters (AllFilters, combinedPaths, excludeFilters, includeFilters)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk, walk')
@@ -38,7 +39,6 @@ import Fossa.API.Types (ApiOpts)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (Abs, Rel), isProperPrefixOf, toFilePath, (</>))
 import Path qualified as P
 import Path.Extra (renderRelative, tryMakeRelative)
-import Data.Text (Text)
 
 type FingerprintEffs sig m =
   ( Has (Lift IO) sig m
@@ -100,8 +100,6 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
       logDebug . pretty $ "Uploading chunk of " <> toText (show $ length chunk) <> " fingerprints:"
       traverse_ (logDebug . pretty . ("  " <>) . toText . P.toFilePath . fst) $ Map.toList chunk
       vsiAddFilesToScan apiOpts scanID chunk
-
-
 
 -- | Walk the directory tree starting from the root directory, fingerprinting any files that are children of the root directory.
 --
@@ -179,7 +177,7 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
 --
 -- The `!_fossa.virtual_!` suffix is a server-side invariant.
 -- Similarly, it is a server-side invariant that the `!_fossa.virtual_!`-suffixed directory is a sibling of the original archive.
-runFingerprint' :: 
+runFingerprint' ::
   ( FingerprintEffs sig m
   , Has (Output (Path Rel File, Combined)) sig m
   , Has TaskPool sig m
@@ -195,7 +193,7 @@ runFingerprint' filters root renderAncestry = context ("walk root: " <> toText r
     logDebug . pretty $ "Walking child: " <> toText dir
     if filters `allow` dir
       then do
-        for_ files $ \file -> context ("handle file: " <> toText file) $ do
+        for_ files $ \file -> context ("handle file: " <> toText file) . forkTask $ do
           -- Fingerprint the file itself
           fp <- context "fingerprint" $ fingerprint file
           logicalPath <- context "render logical ancestry" $ renderAncestry root file
@@ -203,7 +201,7 @@ runFingerprint' filters root renderAncestry = context ("walk root: " <> toText r
           output (logicalPath, fp)
 
           -- If the file is an archive, fingerprint its contents.
-          withArchive' file $ \archiveRoot -> context ("expand archive: " <> toText file) $ do
+          withArchive' file $ \archiveRoot -> context ("expand archive: " <> toText file) . forkTask $ do
             asLogicalParent <- context "convert parent to logical parent" $ convertArchiveSuffix logicalPath
             logDebug . pretty $ "Walking into archive '" <> toText logicalPath <> "' as: " <> toText asLogicalParent
             runFingerprint' filters archiveRoot $ ancestryDerived asLogicalParent
