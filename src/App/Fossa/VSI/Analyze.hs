@@ -1,7 +1,10 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.VSI.Analyze (
   runVsiAnalysis,
 ) where
 
+import App.Fossa.Analyze.Debug (diagToDebug)
 import App.Fossa.FossaAPIV1 (vsiAddFilesToScan, vsiCompleteScan, vsiCreateScan, vsiDownloadInferences, vsiScanAnalysisStatus)
 import App.Fossa.VSI.Fingerprint (Combined, fingerprint)
 import App.Fossa.VSI.IAT.Types qualified as IAT
@@ -9,26 +12,33 @@ import App.Fossa.VSI.Types (ScanID (..))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
 import Control.Algebra (Has)
-import Control.Concurrent (threadDelay)
+import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
+import Control.Carrier.Diagnostics (runDiagnosticsIO, withResult)
+import Control.Carrier.Diagnostics.StickyContext (stickyDiag)
+import Control.Carrier.Output.IO (Output, output, runOutput)
+import Control.Carrier.TaskPool (Progress (..), withTaskPool)
+import Control.Concurrent (getNumCapabilities, threadDelay)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText, fromEither)
 import Control.Effect.Finally (Finally)
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.StickyLogger (StickyLogger, logSticky)
-import Control.Monad (when)
-import Data.Foldable (traverse_)
+import Control.Effect.StickyLogger (StickyLogger, logSticky, logSticky')
+import Control.Effect.TaskPool (TaskPool, forkTask)
+import Control.Monad (join, when)
+import Data.Foldable (traverse_, for_)
 import Data.List.Split (chunksOf)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.String.Conversion (toText)
 import Discovery.Archive (withArchive')
 import Discovery.Filters (AllFilters, combinedPaths, excludeFilters, includeFilters)
-import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk')
-import Effect.Logger (Logger, logDebug, pretty)
+import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk, walk')
+import Effect.Logger (Color (..), Logger, Severity (SevError), annotate, color, logDebug, logInfo, pretty)
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
-import Path (Abs, Dir, File, Path, Rel, SomeBase (Abs, Rel), isProperPrefixOf, (</>))
+import Path (Abs, Dir, File, Path, Rel, SomeBase (Abs, Rel), isProperPrefixOf, toFilePath, (</>))
 import Path qualified as P
 import Path.Extra (renderRelative, tryMakeRelative)
+import Data.Text (Text)
 
 type FingerprintEffs sig m =
   ( Has (Lift IO) sig m
@@ -48,26 +58,32 @@ runVsiAnalysis ::
   AllFilters ->
   m ([VSI.Locator], [IAT.UserDep])
 runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
-  -- TODO(kit): Figure out how to parallelize fingerprinting
-  -- TODO(kit): Figure out how to stream fingerprinting
-  fingerprints <- context "Fingerprint files" $ runFingerprint (toPathFilters dir filters) dir
-  when (Map.null fingerprints) $ fatalText "No files fingerprinted"
+  -- TODO(kit): Reuse capabilities from parent
+  capabilities <- sendIO getNumCapabilities
 
-  scanID <- context "Create scan in backend" $ vsiCreateScan apiOpts projectRevision
-  logDebug . pretty $ "Created Scan ID: " <> unScanID scanID
+  -- TODO(kit): Figure out how to stream fingerprinting
+  (files, ()) <-
+    context "fingerprint files"
+      . runOutput @(Path Rel File, Combined)
+      . withTaskPool capabilities updateProgress
+      . runAtomicCounter
+      $ runFingerprint' (toPathFilters dir filters) dir ancestryDirect
+  when (null files) $ fatalText "No files fingerprinted"
 
   -- Split into 1000-fingerprint buckets for uploading.
   -- This number wasn't chosen for any specific reason, it's just what the current VSI plugin does.
   -- The goal is to ensure that we don't hit any upload size limits.
-  let chunks = map Map.fromList . chunksOf 1000 $ Map.toList fingerprints
-  logDebug . pretty $
+  let chunks = map Map.fromList . chunksOf 1000 $ files
+  logInfo . pretty $
     "Adding "
-      <> toText (show $ length fingerprints)
-      <> " file(s) to scan "
-      <> VSI.unScanID scanID
-      <> " in "
+      <> toText (show $ length files)
+      <> " file(s) to scan in "
       <> toText (show $ length chunks)
       <> " chunk(s)"
+
+  fatalText "stopping here for now"
+  scanID <- context "Create scan in backend" $ vsiCreateScan apiOpts projectRevision
+  logDebug . pretty $ "Created Scan ID: " <> unScanID scanID
   context "Upload fingerprints" $ traverse_ (uploadChunk scanID) chunks
 
   context "Finalize scan files" $ vsiCompleteScan apiOpts scanID
@@ -84,6 +100,8 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
       logDebug . pretty $ "Uploading chunk of " <> toText (show $ length chunk) <> " fingerprints:"
       traverse_ (logDebug . pretty . ("  " <>) . toText . P.toFilePath . fst) $ Map.toList chunk
       vsiAddFilesToScan apiOpts scanID chunk
+
+
 
 -- | Walk the directory tree starting from the root directory, fingerprinting any files that are children of the root directory.
 --
@@ -161,50 +179,52 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
 --
 -- The `!_fossa.virtual_!` suffix is a server-side invariant.
 -- Similarly, it is a server-side invariant that the `!_fossa.virtual_!`-suffixed directory is a sibling of the original archive.
-runFingerprint :: FingerprintEffs sig m => PathFilters -> Path Abs Dir -> m (Map (Path Rel File) Combined)
-runFingerprint filters root = flip walk' root $ \dir _ files -> do
-  if filters `allow` dir
-    then do
-      fingerprints <-
-        context ("Fingerprint directory contents: " <> renderRelative root dir) $
-          traverse (fingerprintFile filters root) files
-      pure (Map.unions fingerprints, WalkContinue)
-    else do
-      logDebug . pretty $ "Excluded by filter: " <> toText (show dir)
-      pure (Map.empty, WalkSkipAll)
+runFingerprint' :: 
+  ( FingerprintEffs sig m
+  , Has (Output (Path Rel File, Combined)) sig m
+  , Has TaskPool sig m
+  , Has AtomicCounter sig m
+  ) =>
+  PathFilters ->
+  Path Abs Dir ->
+  (Path Abs Dir -> Path Abs File -> m (Path Rel File)) ->
+  m ()
+runFingerprint' filters root renderAncestry = context ("walk root: " <> toText root) $ do
+  logDebug . pretty $ "Walking new root: " <> toText root
+  flip walk root $ \dir _ files -> context ("walk child: " <> toText dir) $ do
+    logDebug . pretty $ "Walking child: " <> toText dir
+    if filters `allow` dir
+      then do
+        for_ files $ \file -> context ("handle file: " <> toText file) $ do
+          -- Fingerprint the file itself
+          fp <- context "fingerprint" $ fingerprint file
+          logicalPath <- context "render logical ancestry" $ renderAncestry root file
+          logDebug . pretty $ "Output file '" <> toText file <> "' as: " <> toText logicalPath
+          output (logicalPath, fp)
 
--- | Fingerprints the file, and attempts to extract it as though it was an archive.
---
--- If the file is an archive, its contents are extracted and fingerprinted, resulting in a map
--- of the fingerprint of the archive itself combined with the fingerprints of its contents
--- (with remapped file paths, per the comment for @runFingerprint@).
---
--- If the file is not an archive, results in a singleton map of the fingerprints for this file.
-fingerprintFile :: FingerprintEffs sig m => PathFilters -> Path Abs Dir -> Path Abs File -> m (Map (Path Rel File) Combined)
-fingerprintFile filters root file = do
-  let desc = renderRelative root file
-  logDebug . pretty $ "Fingerprint: " <> desc
+          -- If the file is an archive, fingerprint its contents.
+          withArchive' file $ \archiveRoot -> context ("expand archive: " <> toText file) $ do
+            asLogicalParent <- context "convert parent to logical parent" $ convertArchiveSuffix logicalPath
+            logDebug . pretty $ "Walking into archive '" <> toText logicalPath <> "' as: " <> toText asLogicalParent
+            runFingerprint' filters archiveRoot $ ancestryDerived asLogicalParent
+        pure WalkContinue
+      else do
+        logDebug "Skipped: filters do not match"
+        pure WalkSkipAll
 
-  relFile <- mustMakeRelative root file
-  fp <- context ("fingerprint: " <> desc) $ fingerprint file
-  let direct = Map.singleton relFile fp
+-- | Renders the relative path from the provided directory to the file.
+-- If the path cannot be made relative, fatally exits through the diagnostic effect.
+ancestryDirect :: Has Diagnostics sig m => Path Abs Dir -> Path Abs File -> m (Path Rel File)
+ancestryDirect dir file = case tryMakeRelative dir file of
+  Abs _ -> fatalText $ "failed to make " <> toText (toFilePath file) <> " relative to " <> toText (toFilePath dir)
+  Rel rel -> pure rel
 
-  contains <- context ("extract as archive: " <> desc) $ withArchive' file (runFingerprint filters)
-  case contains of
-    -- In the most common case where this file was not an archive, evaluate to the singleton directly.
-    Nothing -> pure direct
-    -- In the case where `file` is an archive, we'll have a map of paths relative to the archive.
-    -- Remap the ancestry of all the contained files such that they are reported correctly.
-    Just contents -> do
-      withRemappedAncestry <-
-        context ("remap contents into virtual paths: " <> desc) $
-          traverse (remapAncestry relFile) $
-            Map.toList contents
-      pure . Map.union direct $ Map.fromList withRemappedAncestry
-  where
-    remapAncestry archive (target, fp) = do
-      parent <- convertArchiveSuffix archive
-      pure (parent </> target, fp)
+-- | Renders the relative path from the provided directory to the file, prepended with the provided relative directory as a parent.
+-- If the path cannot be made relative, fatally exits through the diagnostic effect.
+ancestryDerived :: Has Diagnostics sig m => Path Rel Dir -> Path Abs Dir -> Path Abs File -> m (Path Rel File)
+ancestryDerived parent dir file = do
+  rel <- ancestryDirect dir file
+  pure $ parent </> rel
 
 -- | Converts a relative file path into a relative directory, where the passed in file path is suffixed by the archive suffix literal.
 -- In other words, this:
@@ -219,13 +239,6 @@ convertArchiveSuffix file = do
   -- Lifting this exception into IO is not exactly safe, but since it's coming directly from a filename this should never error.
   name <- sendIO . P.parseRelDir $ P.toFilePath (P.filename file) <> "!_fossa.virtual_!"
   pure $ P.parent file </> name
-
--- | Makes the passed file relative to the passed directory.
--- If that's not possible, fatally exits via the Diagnostics effect.
-mustMakeRelative :: Has Diagnostics sig m => Path Abs Dir -> Path Abs File -> m (Path Rel File)
-mustMakeRelative root file = case tryMakeRelative root file of
-  Abs _ -> fatalText $ "cannot make " <> toText (show file) <> " relative to " <> toText (show root)
-  Rel rel -> pure rel
 
 -- | Wait for analysis to complete
 waitForAnalysis ::
@@ -275,3 +288,16 @@ allow filters dir = (not shouldExclude) && shouldInclude
     shouldExclude = (isPrefixedOrEqual dir) `any` (exclude filters)
     shouldInclude = null (include filters) || (isPrefixedOrEqual dir) `any` (include filters)
     isPrefixedOrEqual a b = a == b || isProperPrefixOf b a -- swap order of isProperPrefixOf comparison because we want to know if dir is prefixed by any filter
+
+updateProgress :: Has StickyLogger sig m => Progress -> m ()
+updateProgress Progress{..} =
+  logSticky'
+    ( "[ "
+        <> annotate (color Cyan) (pretty pQueued)
+        <> " Waiting / "
+        <> annotate (color Yellow) (pretty pRunning)
+        <> " Running / "
+        <> annotate (color Green) (pretty pCompleted)
+        <> " Completed"
+        <> " ]"
+    )
