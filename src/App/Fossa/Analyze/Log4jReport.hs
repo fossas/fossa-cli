@@ -8,62 +8,68 @@ module App.Fossa.Analyze.Log4jReport (
   getVulnerability,
   Vulnerability (..),
   SimplifiedVersion (..),
+  Log4jPath (),
   parseSimplifiedVersion,
+  log4jSubCommand,
 ) where
 
+import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), runDependencyAnalysis, updateProgress)
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.Analyze.Types (AnalyzeTaskEffs)
-import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
-import Control.Carrier.Debug (ignoreDebug)
-import Control.Carrier.Diagnostics qualified as Diag
-import Control.Carrier.Finally (Has, runFinally)
-import Control.Carrier.StickyLogger (runStickyLogger)
-import Control.Concurrent (getNumCapabilities)
-import Control.Effect.Lift (sendIO)
-import Data.List qualified as List
-import Data.String.Conversion (toString, toText)
-import Data.Text (Text)
-import Data.Text qualified as Text
-import DepTypes (Dependency (..), VerConstraint)
-import Effect.ReadFS (runReadFSIO)
-import Strategy.Gradle qualified as Gradle
-import Strategy.Leiningen qualified as Leiningen
-import Strategy.Maven qualified as Maven
-import Strategy.Scala qualified as Scala
-
-import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), runDependencyAnalysis, updateProgress)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
+import App.Fossa.Config.Common (baseDirArg, collectBaseDir)
+import App.Fossa.Subcommand (GetSeverity, SubCommand (SubCommand))
 import App.Types (
   BaseDir (..),
  )
-import App.Util (validateDir)
+import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
+import Control.Carrier.Debug (ignoreDebug)
+import Control.Carrier.Finally (Has, runFinally)
 import Control.Carrier.Lift (Lift)
 import Control.Carrier.Output.IO (runOutput)
 import Control.Carrier.Reader (runReader)
+import Control.Carrier.StickyLogger (runStickyLogger)
 import Control.Carrier.TaskPool (
   TaskPool,
   withTaskPool,
  )
+import Control.Concurrent (getNumCapabilities)
+import Control.Effect.Diagnostics (Diagnostics, runValidation)
+import Control.Effect.Diagnostics qualified as Diag (
+  Diagnostics,
+  context,
+ )
+import Control.Effect.Lift (sendIO)
 import Control.Effect.Output (Output)
 import Data.Foldable (traverse_)
+import Data.List qualified as List
 import Data.Map qualified as Map
 import Data.Maybe (isNothing)
+import Data.String.Conversion (toString, toText)
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
+import DepTypes (Dependency (..), VerConstraint)
 import Discovery.Filters (AllFilters)
 import Discovery.Projects (withDiscoveredProjects)
-import Effect.Exec (runExecIO)
+import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
   Severity (SevInfo),
   logStdout,
   renderIt,
-  withDefaultLogger,
  )
+import Effect.ReadFS (ReadFS)
 import Graphing (directList, getRootsOf, hasPredecessors, vertexList)
+import Options.Applicative (InfoMod, progDesc)
 import Path (Abs, Dir, File, Path, SomeBase)
 import Prettyprinter (Doc, Pretty (pretty), annotate, vsep)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Yellow), color)
 import Srclib.Converter (verConstraintToRevision)
+import Strategy.Gradle qualified as Gradle
+import Strategy.Leiningen qualified as Leiningen
+import Strategy.Maven qualified as Maven
+import Strategy.Scala qualified as Scala
 import Text.Megaparsec (Parsec, parse)
 import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer (decimal)
@@ -71,23 +77,37 @@ import Text.Megaparsec.Char.Lexer (decimal)
 type Parser = Parsec Void Text
 
 data SimplifiedVersion = SimplifiedVersion Int Int deriving (Show, Eq, Ord)
+newtype Log4jPath = Log4jPath FilePath deriving (Show, Eq, Ord)
+
+instance GetSeverity Log4jPath
 
 parseSimplifiedVersion :: Parser SimplifiedVersion
 parseSimplifiedVersion = SimplifiedVersion <$> decimal <* char '.' <*> decimal
 
+log4jSubCommand :: SubCommand Log4jPath BaseDir
+log4jSubCommand = SubCommand "log4j" log4jInfo cliParser ignoreConfig mergeOpts analyzeForLog4j
+  where
+    cliParser = Log4jPath <$> baseDirArg
+    ignoreConfig = const $ pure Nothing
+    mergeOpts _ _ (Log4jPath filepath) = collectBaseDir filepath >>= runValidation
+
+log4jInfo :: InfoMod a
+log4jInfo = progDesc "List projects using *log4j* dependency"
+
 -- | Performs Analysis for Log4j, and prints report detailing projects using log4j.
 analyzeForLog4j ::
-  FilePath ->
-  IO ()
-analyzeForLog4j targetDirectory = do
-  basedir <- sendIO $ validateDir targetDirectory
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  ) =>
+  BaseDir ->
+  m ()
+analyzeForLog4j basedir = do
   capabilities <- sendIO getNumCapabilities
 
-  withDefaultLogger SevInfo
-    . Diag.logWithExit_
-    . runReadFSIO
-    . runReader withoutAnyExperimentalPreferences
-    . runExecIO
+  runReader withoutAnyExperimentalPreferences
     . ignoreDebug
     $ do
       (projectResults, ()) <-

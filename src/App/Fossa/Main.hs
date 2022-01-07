@@ -41,6 +41,7 @@ import Options.Applicative (
   subparserInline,
   (<**>),
  )
+import qualified App.Fossa.Analyze.Log4jReport as Log4j
 
 appMain :: IO ()
 appMain = do
@@ -68,6 +69,7 @@ subcommands =
       , decodeSubCommand ListTargets.listSubCommand
       , decodeSubCommand Embed.dumpSubCommand
       , decodeSubCommand LinkBins.linkBinsSubCommand
+      , decodeSubCommand Log4j.log4jSubCommand
       , initCommand
       ]
 
