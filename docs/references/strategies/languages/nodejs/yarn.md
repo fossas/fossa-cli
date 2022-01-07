@@ -7,7 +7,7 @@ transitive dependencies, its location, and its resolved version.
 
 ## Project Discovery
 
-Find all files named `yarn.lock`, as well as any associated `package.json` files.
+Find all files named `yarn.lock` which have a corresponding `package.json` file.
 
 ## Analysis
 

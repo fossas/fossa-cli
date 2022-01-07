@@ -6,7 +6,9 @@ The `package-lock.json` file is generated when npm modifies `node_modules` or `p
 
 ## Project Discovery
 
-Search for all files named `package.json` and check if they have a corresponding `package-lock.json` file in the same directory, ignoring directories named `node_modules`.
+Search for files named `package.json` and check for a corresponding `package-lock.json` in the same directory, ignoring directories named `node_modules`.
+
+> Note: When using NPM workspaces, only the root of the project will have a `package-lock.json`. The other `package.json` files in the project directory will be combined to determine which dependencies are direct and which ones are development.
 
 ## Analysis
 
