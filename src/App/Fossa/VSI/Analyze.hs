@@ -4,7 +4,6 @@ module App.Fossa.VSI.Analyze (
   runVsiAnalysis,
 ) where
 
-import App.Fossa.Analyze.Debug (diagToDebug)
 import App.Fossa.FossaAPIV1 (vsiAddFilesToScan, vsiCompleteScan, vsiCreateScan, vsiDownloadInferences, vsiScanAnalysisStatus)
 import App.Fossa.VSI.Fingerprint (Combined, fingerprint)
 import App.Fossa.VSI.IAT.Types qualified as IAT
@@ -13,8 +12,6 @@ import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
-import Control.Carrier.Diagnostics (runDiagnosticsIO, withResult)
-import Control.Carrier.Diagnostics.StickyContext (stickyDiag)
 import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.TaskPool (Progress (..), withTaskPool)
 import Control.Concurrent (getNumCapabilities, threadDelay)
@@ -23,22 +20,20 @@ import Control.Effect.Finally (Finally)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.StickyLogger (StickyLogger, logSticky, logSticky')
 import Control.Effect.TaskPool (TaskPool, forkTask)
-import Control.Monad (join, when)
+import Control.Monad (when)
 import Data.Foldable (for_, traverse_)
 import Data.List.Split (chunksOf)
-import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.String.Conversion (toText)
-import Data.Text (Text)
 import Discovery.Archive (withArchive')
 import Discovery.Filters (AllFilters, combinedPaths, excludeFilters, includeFilters)
-import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk, walk')
-import Effect.Logger (Color (..), Logger, Severity (SevError), annotate, color, logDebug, logInfo, pretty)
+import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk)
+import Effect.Logger (Color (..), Logger, annotate, color, logDebug, logInfo, pretty)
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (Abs, Rel), isProperPrefixOf, toFilePath, (</>))
 import Path qualified as P
-import Path.Extra (renderRelative, tryMakeRelative)
+import Path.Extra (tryMakeRelative)
 
 type FingerprintEffs sig m =
   ( Has (Lift IO) sig m
@@ -81,7 +76,6 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
       <> toText (show $ length chunks)
       <> " chunk(s)"
 
-  fatalText "stopping here for now"
   scanID <- context "Create scan in backend" $ vsiCreateScan apiOpts projectRevision
   logDebug . pretty $ "Created Scan ID: " <> unScanID scanID
   context "Upload fingerprints" $ traverse_ (uploadChunk scanID) chunks
@@ -200,12 +194,11 @@ runFingerprint' filters root renderAncestry = context ("walk root: " <> toText r
           logDebug . pretty $ "Output file '" <> toText file <> "' as: " <> toText logicalPath
           output (logicalPath, fp)
 
-        -- If the file is an archive, fingerprint its contents.
-        -- TODO(kit): Uncomment this. Commented for a baseline test compared with Basis.
-        -- withArchive' file $ \archiveRoot -> context ("expand archive: " <> toText file) . forkTask $ do
-        --   asLogicalParent <- context "convert parent to logical parent" $ convertArchiveSuffix logicalPath
-        --   logDebug . pretty $ "Walking into archive '" <> toText logicalPath <> "' as: " <> toText asLogicalParent
-        --   runFingerprint' filters archiveRoot $ ancestryDerived asLogicalParent
+          -- If the file is an archive, fingerprint its contents.
+          withArchive' file $ \archiveRoot -> context ("expand archive: " <> toText file) . forkTask $ do
+            asLogicalParent <- context "convert parent to logical parent" $ convertArchiveSuffix logicalPath
+            logDebug . pretty $ "Walking into archive '" <> toText logicalPath <> "' as: " <> toText asLogicalParent
+            runFingerprint' filters archiveRoot $ ancestryDerived asLogicalParent
         pure WalkContinue
       else do
         logDebug "Skipped: filters do not match"
@@ -252,10 +245,10 @@ waitForAnalysis ::
 waitForAnalysis apiOpts scanID = do
   status <- vsiScanAnalysisStatus apiOpts scanID
   case status of
-    VSI.AnalysisFailed -> fatalText "Backend analysis failed. If this persists, please contact FOSSA and provide debug logs (generated with --debug)"
-    VSI.AnalysisFinished -> do
+    VSI.AnalysisFailed ->
+      fatalText "Backend analysis failed. If this persists, please contact FOSSA and provide debug logs (generated with --debug)"
+    VSI.AnalysisFinished ->
       logDebug "Backend analysis complete"
-      pure ()
     VSI.AnalysisPending -> do
       logSticky "Backend analysis is enqueued, waiting to start..."
       waitForAnalysis apiOpts scanID
@@ -291,7 +284,7 @@ allow filters dir = (not shouldExclude) && shouldInclude
 updateProgress :: Has StickyLogger sig m => Progress -> m ()
 updateProgress Progress{..} =
   logSticky'
-    ( "[ "
+    ( "Fingerprinting files: [ "
         <> annotate (color Cyan) (pretty pQueued)
         <> " Waiting / "
         <> annotate (color Yellow) (pretty pRunning)
