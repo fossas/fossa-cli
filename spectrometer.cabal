@@ -120,6 +120,7 @@ common deps
     , unordered-containers         ^>=0.2.10
     , vector                       ^>=0.12.0.3
     , versions                     ^>=5.0.0
+    , word8                        ^>=0.1.3
     , xml                          ^>=1.3.14
     , yaml                         ^>=0.11.1
     , yarn-lock                    ^>=0.6.5
