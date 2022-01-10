@@ -11,40 +11,38 @@ import App.Fossa.VSI.Types (ScanID (..))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
 import Control.Algebra (Has)
-import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
+import Control.Carrier.AtomicCounter (runAtomicCounter)
+import Control.Carrier.Diagnostics (runDiagnosticsIO, withResult)
 import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.TaskPool (Progress (..), withTaskPool)
 import Control.Concurrent (getNumCapabilities, threadDelay)
-import Control.Effect.Diagnostics (Diagnostics, context, fatalText, fromEither)
+import Control.Effect.Diagnostics (Diagnostics, context, fatalOnSomeException, fatalText, fromEither, recover)
 import Control.Effect.Finally (Finally)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.StickyLogger (StickyLogger, logSticky, logSticky')
 import Control.Effect.TaskPool (TaskPool, forkTask)
-import Control.Monad (when)
-import Data.Foldable (for_, traverse_)
+import Data.Foldable (traverse_)
 import Data.List.Split (chunksOf)
 import Data.Map qualified as Map
 import Data.String.Conversion (toText)
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Discovery.Archive (withArchive')
 import Discovery.Filters (AllFilters, combinedPaths, excludeFilters, includeFilters)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk)
-import Effect.Logger (Color (..), Logger, annotate, color, logDebug, logInfo, pretty)
+import Effect.Logger (Color (..), Logger, Severity (SevError), annotate, color, logDebug, logInfo, pretty)
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (Abs, Rel), isProperPrefixOf, toFilePath, (</>))
 import Path qualified as P
 import Path.Extra (tryMakeRelative)
 
-type FingerprintEffs sig m =
+runVsiAnalysis ::
   ( Has (Lift IO) sig m
   , Has Finally sig m
   , Has Logger sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
-  )
-
-runVsiAnalysis ::
-  ( FingerprintEffs sig m
   , Has StickyLogger sig m
   ) =>
   Path Abs Dir ->
@@ -57,31 +55,33 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
   capabilities <- sendIO getNumCapabilities
 
   -- TODO(kit): Figure out how to stream fingerprinting
-  (files, ()) <-
-    context "fingerprint files"
-      . runOutput @(Path Rel File, Combined)
-      . withTaskPool capabilities updateProgress
-      . runAtomicCounter
-      $ runFingerprint' (toPathFilters dir filters) dir ancestryDirect
-  when (null files) $ fatalText "No files fingerprinted"
-
-  -- Split into 1000-fingerprint buckets for uploading.
-  -- This number wasn't chosen for any specific reason, it's just what the current VSI plugin does.
-  -- The goal is to ensure that we don't hit any upload size limits.
-  let chunks = map Map.fromList . chunksOf 1000 $ files
-  logInfo . pretty $
-    "Adding "
-      <> toText (show $ length files)
-      <> " file(s) to scan in "
-      <> toText (show $ length chunks)
-      <> " chunk(s)"
+  (files, _) <- context "Fingerprint files"
+    . runOutput @(Path Rel File, Combined)
+    . withTaskPool capabilities (updateProgress "Fingerprint files")
+    . runAtomicCounter
+    . forkTask
+    $ do
+      res <- runDiagnosticsIO $ discover (toPathFilters dir filters) dir ancestryDirect
+      withResult SevError res (const (pure ()))
+  logDebug . pretty $ "Fingerprinted " <> (toText . show $ length files) <> " files"
 
   scanID <- context "Create scan in backend" $ vsiCreateScan apiOpts projectRevision
-  logDebug . pretty $ "Created Scan ID: " <> unScanID scanID
-  context "Upload fingerprints" $ traverse_ (uploadChunk scanID) chunks
+  logInfo . pretty $ "Created Scan ID: " <> unScanID scanID
 
-  context "Finalize scan files" $ vsiCompleteScan apiOpts scanID
-  context "Waiting for backend analysis to complete" $ waitForAnalysis apiOpts scanID
+  logInfo . pretty $ "Uploading " <> toText (show $ length files) <> " fingerprints"
+  context "Upload fingerprints"
+    -- Running 4 requests in parallel isn't for any real reason, just a generic choice.
+    -- The idea is that we don't want to saturate their bandwidth with too many parallel requests.
+    . withTaskPool 4 (updateProgress "Upload fingerprint batches")
+    . runAtomicCounter
+    . forkTask
+    $ traverse_ (forkTask . vsiAddFilesToScan apiOpts scanID . Map.fromList) $ chunksOf 1000 files
+
+  logInfo "Finalizing scan"
+  context "Finalize scan" $ vsiCompleteScan apiOpts scanID
+
+  logInfo "Waiting for cloud analysis"
+  context "Wait for cloud analysis" $ waitForAnalysis apiOpts scanID
 
   discoveredRawLocators <- context "Download analysis results" $ vsiDownloadInferences apiOpts scanID
   parsedLocators <- context "Parse analysis results" . fromEither $ traverse VSI.parseLocator discoveredRawLocators
@@ -89,11 +89,6 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
   let userDefinedDeps = map IAT.toUserDep $ filter VSI.isUserDefined parsedLocators
   let allOtherDeps = filter (not . VSI.isUserDefined) parsedLocators
   pure (allOtherDeps, userDefinedDeps)
-  where
-    uploadChunk scanID chunk = do
-      logDebug . pretty $ "Uploading chunk of " <> toText (show $ length chunk) <> " fingerprints:"
-      traverse_ (logDebug . pretty . ("  " <>) . toText . P.toFilePath . fst) $ Map.toList chunk
-      vsiAddFilesToScan apiOpts scanID chunk
 
 -- | Walk the directory tree starting from the root directory, fingerprinting any files that are children of the root directory.
 --
@@ -171,38 +166,47 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
 --
 -- The `!_fossa.virtual_!` suffix is a server-side invariant.
 -- Similarly, it is a server-side invariant that the `!_fossa.virtual_!`-suffixed directory is a sibling of the original archive.
-runFingerprint' ::
-  ( FingerprintEffs sig m
-  , Has (Output (Path Rel File, Combined)) sig m
+discover ::
+  ( Has (Lift IO) sig m
+  , Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has Finally sig m
   , Has TaskPool sig m
-  , Has AtomicCounter sig m
+  , Has Logger sig m
+  , Has (Output (Path Rel File, Combined)) sig m
   ) =>
   PathFilters ->
+  -- | Root to discover at
   Path Abs Dir ->
+  -- | Path rendering
   (Path Abs Dir -> Path Abs File -> m (Path Rel File)) ->
   m ()
-runFingerprint' filters root renderAncestry = context ("walk root: " <> toText root) $ do
-  logDebug . pretty $ "Walking new root: " <> toText root
-  flip walk root $ \dir _ files -> context ("walk child: " <> toText dir) $ do
-    logDebug . pretty $ "Walking child: " <> toText dir
-    if filters `allow` dir
-      then do
-        for_ files $ \file -> context ("handle file: " <> toText file) . forkTask $ do
-          -- Fingerprint the file itself
-          fp <- context "fingerprint" $ fingerprint file
-          logicalPath <- context "render logical ancestry" $ renderAncestry root file
-          logDebug . pretty $ "Output file '" <> toText file <> "' as: " <> toText logicalPath
-          output (logicalPath, fp)
+discover filters root renderAncestry =
+  context "discover" $ do
+    logDebug . pretty $ "walking new root: " <> toText root
+    flip walk root $ \dir _ files -> handle dir files
+  where
+    handle dir files | filters `allow` dir = do
+      logDebug . pretty $ "processing dir: " <> toText dir
+      traverse_ (forkTask . process) files
+      pure WalkContinue
+    handle dir _ = do
+      logDebug . pretty $ "skip dir: " <> toText dir
+      pure WalkSkipAll
+    process file = context "process file" $ do
+      -- Synchronously fingerprint the file and compute its logical path.
+      fp <- fingerprint file
+      logicalPath <- renderAncestry root file
 
-          -- If the file is an archive, fingerprint its contents.
-          withArchive' file $ \archiveRoot -> context ("expand archive: " <> toText file) . forkTask $ do
-            asLogicalParent <- context "convert parent to logical parent" $ convertArchiveSuffix logicalPath
-            logDebug . pretty $ "Walking into archive '" <> toText logicalPath <> "' as: " <> toText asLogicalParent
-            runFingerprint' filters archiveRoot $ ancestryDerived asLogicalParent
-        pure WalkContinue
-      else do
-        logDebug "Skipped: filters do not match"
-        pure WalkSkipAll
+      -- Fork an async task to walk the contents of the archive, if the file is an archive.
+      forkTask . recover . fatalOnSomeException "extract archive" . withArchive' file $ \archiveRoot -> context "walking into child archive" $ do
+        logDebug . pretty $ "walking into " <> toText file <> " as archive"
+        logicalParent <- convertArchiveSuffix logicalPath
+        discover filters archiveRoot $ ancestryDerived logicalParent
+
+      -- Report the fingerprint and logical path for computing this chunk.
+      logDebug . pretty $ "report logical path: " <> toText logicalPath
+      output (logicalPath, fp)
 
 -- | Renders the relative path from the provided directory to the file.
 -- If the path cannot be made relative, fatally exits through the diagnostic effect.
@@ -281,10 +285,10 @@ allow filters dir = (not shouldExclude) && shouldInclude
     shouldInclude = null (include filters) || (isPrefixedOrEqual dir) `any` (include filters)
     isPrefixedOrEqual a b = a == b || isProperPrefixOf b a -- swap order of isProperPrefixOf comparison because we want to know if dir is prefixed by any filter
 
-updateProgress :: Has StickyLogger sig m => Progress -> m ()
-updateProgress Progress{..} =
+updateProgress :: Has StickyLogger sig m => Text -> Progress -> m ()
+updateProgress status Progress{..} =
   logSticky'
-    ( "Fingerprinting files: [ "
+    ( renderStatus <> "[ "
         <> annotate (color Cyan) (pretty pQueued)
         <> " Waiting / "
         <> annotate (color Yellow) (pretty pRunning)
@@ -293,3 +297,5 @@ updateProgress Progress{..} =
         <> " Completed"
         <> " ]"
     )
+  where
+    renderStatus = pretty $ if Text.null status then "" else status <> ": "
