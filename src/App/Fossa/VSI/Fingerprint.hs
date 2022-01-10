@@ -69,20 +69,19 @@ encodeFingerprint = Fingerprint . toText . show
 -- | Hashes the whole contents of the given file in constant memory.
 hashBinaryFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
 hashBinaryFile fp =
-  context "hash binary file" $
+  context "as binary" $
     (fatalOnIOException "hash binary file") . sendIO . runConduitRes $ sourceFile fp .| sinkHash
 
 hashTextFileCommentStripped :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
 hashTextFileCommentStripped file =
-  context "hash text file comment stripped" $
-    (fatalOnIOException "hash text file comment stripped") . sendIO . runConduitRes $
-      sourceFile file -- Read from the file
-        .| basicCStyleCommentStripC -- Strip comments
-        .| sinkHash -- Hash the result
+  (fatalOnIOException "hash text file comment stripped") . sendIO . runConduitRes $
+    sourceFile file -- Read from the file
+      .| basicCStyleCommentStripC -- Strip comments
+      .| sinkHash -- Hash the result
 
 hashTextFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
 hashTextFile file =
-  context "hash text file" $
+  context "as text" $
     (fatalOnIOException "hash text file") . sendIO . runConduitRes $
       sourceFile file -- Read from the file
         .| linesUnboundedAsciiC -- Split into lines (for @stripCrLines@)
