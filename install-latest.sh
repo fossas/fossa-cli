@@ -249,9 +249,9 @@ http_download_curl() {
   source_url=$2
   header=$3
   if [ -z "$header" ]; then
-    code=$(curl -w '%{http_code}' -sL -o "$local_file" "$source_url")
+    code=$(curl -w '%{http_code}' -sL -o "$local_file" "$source_url") || (log_debug "curl command failed." && return 1)
   else
-    code=$(curl -w '%{http_code}' -sL -H "$header" -o "$local_file" "$source_url")
+    code=$(curl -w '%{http_code}' -sL -H "$header" -o "$local_file" "$source_url") || (log_debug "curl command failed." && return 1)
   fi
   if [ "$code" != "200" ]; then
     log_debug "http_download_curl received HTTP status $code"
@@ -264,9 +264,9 @@ http_download_wget() {
   source_url=$2
   header=$3
   if [ -z "$header" ]; then
-    wget -q -O "$local_file" "$source_url"
+    wget -q -O "$local_file" "$source_url" || (log_debug "wget command failed." && return 1)
   else
-    wget -q --header "$header" -O "$local_file" "$source_url"
+    wget -q --header "$header" -O "$local_file" "$source_url" || (log_debug "wget command failed." && return 1)
   fi
 }
 http_download() {
@@ -283,6 +283,15 @@ http_download() {
 }
 http_copy() {
   tmp=$(mktemp)
+  if [ ! -w "$tmp" ];
+  then
+    log_crit "Generated tempory file ${tmp} is not writable!"
+  fi
+  if [ ! -r "$tmp" ];
+  then
+    log_crit "Generated tempory file ${tmp} is not readable!"
+  fi
+
   http_download "${tmp}" "$1" "$2" || return 1
   body=$(cat "$tmp")
   rm -f "${tmp}"
