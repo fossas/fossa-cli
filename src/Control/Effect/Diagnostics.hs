@@ -24,6 +24,7 @@ module Control.Effect.Diagnostics (
   -- * Diagnostic helpers
   fatalText,
   fatalOnIOException,
+  fatalOnSomeException,
   fromEither,
   fromEitherShow,
   fromMaybe,
@@ -97,6 +98,12 @@ fatalOnIOException :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> m 
 fatalOnIOException ctx go = context ctx $ catch go die'
   where
     die' (e :: IOException) = fatalText ("io exception: " <> toText (show e))
+
+-- | Throw a generic error message on any exception, wrapped in a new 'context' using the provided @Text@.
+fatalOnSomeException :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> m a -> m a
+fatalOnSomeException ctx go = context ctx $ catch go die'
+  where
+    die' (e :: SomeException) = fatalText ("caught exception: " <> toText (show e))
 
 -- | Recover from a fatal error. The error will be recorded as a warning instead.
 recover :: Has Diagnostics sig m => m a -> m (Maybe a)
