@@ -50,6 +50,7 @@ import Control.Effect.Record.TH (deriveRecordable)
 import Control.Effect.Replay
 import Control.Effect.Replay.TH (deriveReplayable)
 import Control.Exception qualified as E
+import Control.Exception.Extra (safeCatch)
 import Control.Monad ((<=<))
 import Data.Aeson
 import Data.ByteString (ByteString)
@@ -248,4 +249,4 @@ readContentsBSLimit' :: SomeBase File -> Int -> IO ByteString
 readContentsBSLimit' file limit = withFile (fromSomeFile file) ReadMode $ \handle -> BS.hGetSome handle limit
 
 catchingIO :: Has (Lift IO) sig m => IO a -> (Text -> ReadFSErr) -> m (Either ReadFSErr a)
-catchingIO io mangle = sendIO $ E.catch (Right <$> io) (\(e :: E.IOException) -> pure (Left (mangle (toText (show e)))))
+catchingIO io mangle = safeCatch (Right <$> sendIO io) (\(e :: E.IOException) -> pure (Left (mangle (toText (show e)))))
