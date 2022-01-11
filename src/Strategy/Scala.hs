@@ -30,6 +30,7 @@ import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures)
 import Strategy.Maven.Pom.Closure qualified as PomClosure
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
 import Types
+import Control.Effect.DiagWarn (withWarn, REPLACEME (REPLACEME))
 
 discover ::
   ( Has Exec sig m
@@ -78,15 +79,14 @@ findProjects = walk' $ \dir _ files -> do
     Nothing -> pure ([], WalkContinue)
     Just _ -> do
       projectsRes <-
-        errorBoundary
+        recover
+          . withWarn REPLACEME
           . context ("Listing sbt projects at " <> pathToText dir)
           $ genPoms dir
 
       case projectsRes of
-        Left err -> do
-          logWarn $ renderFailureBundle err
-          pure ([], WalkSkipAll)
-        Right projects -> pure (projects, WalkSkipAll)
+        Nothing -> pure ([], WalkSkipAll)
+        Just projects -> pure (projects, WalkSkipAll)
 
 makePomCmd :: Command
 makePomCmd =

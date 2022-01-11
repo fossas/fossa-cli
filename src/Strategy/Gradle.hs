@@ -18,15 +18,12 @@ module Strategy.Gradle (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..), AnalyzeProject, analyzeProject)
-import Control.Algebra (Has)
 import Control.Carrier.Reader (Reader)
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
-  errorBoundary,
   fatal,
-  renderFailureBundle,
-  (<||>),
+  (<||>), recover
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
@@ -50,7 +47,7 @@ import DepTypes (
  )
 import Discovery.Walk (WalkStep (..), fileName, walk')
 import Effect.Exec (AllowErr (..), Command (..), Exec, execThrow)
-import Effect.Logger (Logger, Pretty (pretty), logDebug, logWarn)
+import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, doesFileExist)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
@@ -62,6 +59,7 @@ import Strategy.Gradle.Common (
 import Strategy.Gradle.ResolutionApi qualified as ResolutionApi
 import System.FilePath qualified as FilePath
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), FoundTargets (..), GraphBreadth (..))
+import Control.Effect.DiagWarn
 
 -- Run the init script on a set of subprojects. Note that this runs the
 -- `:jsonDeps` task on every subproject in one command. This is helpful for
@@ -136,22 +134,21 @@ findProjects = walk' $ \dir _ files -> do
     Nothing -> pure ([], WalkContinue)
     Just buildFile -> do
       projectsStdout <-
-        errorBoundary
+        recover
+          . withWarn REPLACEME
           . context ("Listing gradle projects at '" <> toText dir <> "'")
           $ runGradle dir gradleProjectsCmd
 
       case projectsStdout of
-        Left err -> do
-          logWarn $ renderFailureBundle err
-          -- Nearly all Gradle projects have a multi-module structure with a
-          -- top-level root project, and subdirectories contain subprojects of
-          -- the top-level root project.
-          --
-          -- If Gradle exits non-zero when invoked in the root project, it will
-          -- almost certainly exit non-zero in subprojects, so there's no point
-          -- in looking for subprojects in this subtree.
-          pure ([], WalkSkipAll)
-        Right result -> do
+        -- Nearly all Gradle projects have a multi-module structure with a
+        -- top-level root project, and subdirectories contain subprojects of
+        -- the top-level root project.
+        --
+        -- If Gradle exits non-zero when invoked in the root project, it will
+        -- almost certainly exit non-zero in subprojects, so there's no point
+        -- in looking for subprojects in this subtree.
+        Nothing -> pure ([], WalkSkipAll)
+        Just result -> do
           let subprojects = parseProjects result
 
           let project =

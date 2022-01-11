@@ -11,46 +11,41 @@ module App.Fossa.Analyze.Log4jReport (
   parseSimplifiedVersion,
 ) where
 
+import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), runDependencyAnalysis, updateProgress)
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.Analyze.Types (
   AnalyzeExperimentalPreferences (..),
   AnalyzeTaskEffs,
  )
-import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
-import Control.Carrier.Debug (ignoreDebug)
-import Control.Carrier.Diagnostics qualified as Diag
-import Control.Carrier.Finally (Has, runFinally)
-import Control.Carrier.StickyLogger (runStickyLogger)
-import Control.Concurrent (getNumCapabilities)
-import Control.Effect.Lift (sendIO)
-import Data.List qualified as List
-import Data.String.Conversion (toString, toText)
-import Data.Text (Text)
-import Data.Text qualified as Text
-import DepTypes (Dependency (..), VerConstraint)
-import Effect.ReadFS (runReadFSIO)
-import Strategy.Gradle qualified as Gradle
-import Strategy.Leiningen qualified as Leiningen
-import Strategy.Maven qualified as Maven
-import Strategy.Scala qualified as Scala
-
-import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), runDependencyAnalysis, updateProgress)
 import App.Types (
   BaseDir (..),
  )
 import App.Util (validateDir)
+import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
+import Control.Carrier.Debug (ignoreDebug)
+import Control.Carrier.Diagnostics qualified as Diag
+import Control.Carrier.Finally (Has, runFinally)
 import Control.Carrier.Lift (Lift)
 import Control.Carrier.Output.IO (runOutput)
 import Control.Carrier.Reader (runReader)
+import Control.Carrier.StickyLogger (runStickyLogger)
 import Control.Carrier.TaskPool (
   TaskPool,
   withTaskPool,
  )
+import Control.Concurrent (getNumCapabilities)
+import Control.Effect.DiagWarn (runDiagWarn)
+import Control.Effect.Lift (sendIO)
 import Control.Effect.Output (Output)
 import Data.Foldable (traverse_)
+import Data.List qualified as List
 import Data.Map qualified as Map
 import Data.Maybe (isNothing)
+import Data.String.Conversion (toString, toText)
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
+import DepTypes (Dependency (..), VerConstraint)
 import Discovery.Filters (AllFilters (AllFilters), FilterCombination (FilterCombination))
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (runExecIO)
@@ -61,11 +56,16 @@ import Effect.Logger (
   renderIt,
   withDefaultLogger,
  )
+import Effect.ReadFS (runReadFSIO)
 import Graphing (directList, getRootsOf, hasPredecessors, vertexList)
 import Path
 import Prettyprinter (Doc, Pretty (pretty), annotate, vsep)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Yellow), color)
 import Srclib.Converter (verConstraintToRevision)
+import Strategy.Gradle qualified as Gradle
+import Strategy.Leiningen qualified as Leiningen
+import Strategy.Maven qualified as Maven
+import Strategy.Scala qualified as Scala
 import Text.Megaparsec (Parsec, parse)
 import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer (decimal)
@@ -87,6 +87,7 @@ analyzeForLog4j targetDirectory = do
 
   withDefaultLogger SevInfo
     . Diag.logWithExit_
+    . runDiagWarn
     . runReadFSIO
     . runReader withoutAnyExperimentalPreferences
     . runExecIO

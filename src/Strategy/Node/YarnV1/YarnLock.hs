@@ -35,9 +35,7 @@ import Effect.Grapher (
 import Effect.Logger (
   AnsiStyle,
   Doc,
-  Logger,
   hsep,
-  logWarn,
   pretty,
  )
 import Effect.ReadFS (ReadFS, ReadFSErr (FileParseError), readContentsText)
@@ -46,11 +44,12 @@ import Path (Abs, File, Path)
 import Strategy.Node.PackageJson (Development, FlatDeps (..), NodePackage (..), Production)
 import Yarn.Lock qualified as YL
 import Yarn.Lock.Types qualified as YL
+import Control.Effect.DiagWarn (warn, DiagWarn)
 
 analyze ::
   forall m sig.
   ( Has Diagnostics sig m
-  , Has Logger sig m
+  , Has DiagWarn sig m
   , Has ReadFS sig m
   ) =>
   Path Abs File ->
@@ -79,7 +78,7 @@ data YarnV1Package = YarnV1Package
 buildGraph ::
   forall m sig.
   ( Has Diagnostics sig m
-  , Has Logger sig m
+  , Has DiagWarn sig m
   ) =>
   YL.Lockfile ->
   FlatDeps ->
@@ -145,10 +144,10 @@ toDependency YarnV1Package{..} = foldr applyLabel start
 toNodePackage :: YL.PackageKey -> NodePackage
 toNodePackage key = NodePackage (extractFullName key) (YL.npmVersionSpec key)
 
-resolveVersion :: Has Logger sig m => YL.Lockfile -> YL.PackageKey -> m (Maybe YarnV1Package)
+resolveVersion :: Has DiagWarn sig m => YL.Lockfile -> YL.PackageKey -> m (Maybe YarnV1Package)
 resolveVersion lockfile key = logMaybePackage key $ pairToPackage key <$> MKM.lookup key lockfile
 
-logMaybePackage :: Has Logger sig m => YL.PackageKey -> Maybe a -> m (Maybe a)
+logMaybePackage :: Has DiagWarn sig m => YL.PackageKey -> Maybe a -> m (Maybe a)
 logMaybePackage key something = do
   case something of
     -- In some (currently unknown) cases, we don't find the key we expect to find.
@@ -156,7 +155,7 @@ logMaybePackage key something = do
     -- partially succeed anyway, so we just log a warning for now.
     -- If a valid case is discovered, it's likely a bug elsewhere (perhaps
     -- in the 'yarn-lock' package), and should be fixed.
-    Nothing -> logWarn $ missingResolvedVersionErrorMsg key
+    Nothing -> warn $ missingResolvedVersionErrorMsg key
     _ -> pure ()
   pure something
 

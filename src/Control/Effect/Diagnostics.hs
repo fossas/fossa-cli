@@ -66,6 +66,9 @@ data Diagnostics m k where
 class ToDiagnostic a where
   renderDiagnostic :: a -> Doc AnsiStyle
 
+instance ToDiagnostic (Doc AnsiStyle) where
+  renderDiagnostic = id
+
 instance ToDiagnostic Text where
   renderDiagnostic = pretty
 
