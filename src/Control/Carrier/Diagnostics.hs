@@ -38,8 +38,6 @@ import System.Exit (exitFailure, exitSuccess)
 newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: DiagErrC (StackC m) a}
   deriving (Functor, Applicative, Monad, MonadIO, Algebra (DiagErr :+: Stack :+: sig))
 
---deriving instance Algebra sig m => Algebra (DiagErr :+: Stack :+: sig) (DiagnosticsC m)
-
 runDiagnostics :: Applicative m => DiagnosticsC m a -> m (Either FailureBundle a)
 runDiagnostics = runStack [] . runDiagErr . runDiagnosticsC
 
@@ -80,15 +78,15 @@ runDiagErr = fmap bundle . runWriter (\w a -> pure (appEndo w [], a)) . runError
 instance Has Stack sig m => Algebra (DiagErr :+: sig) (DiagErrC m) where
   alg hdl sig ctx = DiagErrC $ case sig of
     L (Fatal diag) -> getStack >>= \path -> throwError (SomeDiagnostic path diag)
-    L (Recover' act) -> do
+    L (Recover act) -> do
       let -- run the action, wrapping in a Right
           go = do
             res <- runDiagErrC $ hdl (act <$ ctx)
-            pure (Right <$> res)
+            pure (Just <$> res)
           -- append the error to the warnings list and return Left
           errorHandler diag@(SomeDiagnostic _ _) = do
             tell (Endo (diag :))
-            pure (Left diag <$ ctx)
+            pure (Nothing <$ ctx)
 
       go `catchError` errorHandler
     L (ErrorBoundary act) -> do

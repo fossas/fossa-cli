@@ -15,7 +15,6 @@ module Control.Effect.Diagnostics (
   fatal,
   context,
   recover,
-  recover',
   errorBoundary,
   rethrow,
 
@@ -61,9 +60,10 @@ import Prelude
 
 type Diagnostics = Stack :+: DiagErr
 
+-- TODO: 'catch' primitive?
 data DiagErr m k where
   Fatal :: ToDiagnostic diag => diag -> DiagErr m a
-  Recover' :: m a -> DiagErr m (Either SomeDiagnostic a)
+  Recover :: m a -> DiagErr m (Maybe a)
   ErrorBoundary :: m a -> DiagErr m (Either FailureBundle a)
   Rethrow :: FailureBundle -> DiagErr m a
 
@@ -108,11 +108,7 @@ fatalOnIOException ctx go = context ctx $ catch go die'
 
 -- | Recover from a fatal error. The error will be recorded as a warning instead.
 recover :: Has Diagnostics sig m => m a -> m (Maybe a)
-recover = fmap (either (const Nothing) Just) . recover'
-
--- | Recover from a fatal error. The error will be recorded as a warning instead.
-recover' :: Has Diagnostics sig m => m a -> m (Either SomeDiagnostic a)
-recover' = send . Recover'
+recover = send . Recover
 
 -- | Form an "error boundary" around an action, where:
 -- - errors and warnings cannot "escape" the scope of the action
