@@ -3,9 +3,12 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Control.Carrier.Diagnostics (
-  -- * Diagnostic carrier
-  DiagnosticsC (..),
+  DiagnosticsC,
   runDiagnostics,
+
+  -- * DiagErr carrier
+  DiagErrC,
+  runDiagErr,
 
   -- * Helpers
   logDiagnostic,
@@ -20,7 +23,7 @@ module Control.Carrier.Diagnostics (
 ) where
 
 import Control.Carrier.Error.Either
-import Control.Carrier.Reader
+import Control.Carrier.Stack
 import Control.Carrier.Writer.Church
 import Control.Effect.Diagnostics as X
 import Control.Effect.Lift (Lift, sendIO)
@@ -29,15 +32,25 @@ import Control.Exception.Extra (safeCatch)
 import Control.Monad.Trans
 import Data.Foldable (traverse_)
 import Data.Monoid (Endo (..))
-import Data.Text (Text)
 import Effect.Logger
 import System.Exit (exitFailure, exitSuccess)
 
-newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ReaderC [Text] (ErrorC SomeDiagnostic (WriterC (Endo [SomeDiagnostic]) m)) a}
-  deriving (Functor, Applicative, Monad, MonadIO)
+newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: DiagErrC (StackC m) a}
+  deriving (Functor, Applicative, Monad, MonadIO, Algebra (DiagErr :+: Stack :+: sig))
+
+--deriving instance Algebra sig m => Algebra (DiagErr :+: Stack :+: sig) (DiagnosticsC m)
+
+runDiagnostics :: Applicative m => DiagnosticsC m a -> m (Either FailureBundle a)
+runDiagnostics = runStack [] . runDiagErr . runDiagnosticsC
 
 instance MonadTrans DiagnosticsC where
-  lift = DiagnosticsC . lift . lift . lift
+  lift = DiagnosticsC . lift . lift
+
+newtype DiagErrC m a = DiagErrC {runDiagErrC :: ErrorC SomeDiagnostic (WriterC (Endo [SomeDiagnostic]) m) a}
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+instance MonadTrans DiagErrC where
+  lift = DiagErrC . lift . lift
 
 logErrorBundle :: Has Logger sig m => FailureBundle -> m ()
 logErrorBundle = logError . renderFailureBundle
@@ -56,22 +69,21 @@ logDiagnostic diag = do
 logWithExit_ :: (Has (Lift IO) sig m, Has Logger sig m) => DiagnosticsC m () -> m ()
 logWithExit_ diag = logDiagnostic diag >>= maybe (sendIO exitFailure) (const (sendIO exitSuccess))
 
-runDiagnostics :: Applicative m => DiagnosticsC m a -> m (Either FailureBundle a)
-runDiagnostics = fmap bundle . runWriter (\w a -> pure (appEndo w [], a)) . runError @SomeDiagnostic . runReader [] . runDiagnosticsC
+runDiagErr :: Applicative m => DiagErrC m a -> m (Either FailureBundle a)
+runDiagErr = fmap bundle . runWriter (\w a -> pure (appEndo w [], a)) . runError @SomeDiagnostic . runDiagErrC
   where
     bundle (warnings, res) =
       case res of
         Left err -> Left (FailureBundle warnings err)
         Right a -> Right a
 
-instance Algebra sig m => Algebra (Diagnostics :+: sig) (DiagnosticsC m) where
-  alg hdl sig ctx = DiagnosticsC $ case sig of
-    L (Fatal diag) -> ask >>= \path -> throwError (SomeDiagnostic path diag)
-    L (Context path go) -> local (path :) $ runDiagnosticsC $ hdl (go <$ ctx)
+instance Has Stack sig m => Algebra (DiagErr :+: sig) (DiagErrC m) where
+  alg hdl sig ctx = DiagErrC $ case sig of
+    L (Fatal diag) -> getStack >>= \path -> throwError (SomeDiagnostic path diag)
     L (Recover' act) -> do
       let -- run the action, wrapping in a Right
           go = do
-            res <- runDiagnosticsC $ hdl (act <$ ctx)
+            res <- runDiagErrC $ hdl (act <$ ctx)
             pure (Right <$> res)
           -- append the error to the warnings list and return Left
           errorHandler diag@(SomeDiagnostic _ _) = do
@@ -80,23 +92,17 @@ instance Algebra sig m => Algebra (Diagnostics :+: sig) (DiagnosticsC m) where
 
       go `catchError` errorHandler
     L (ErrorBoundary act) -> do
-      currentContext <- ask
-
-      let -- Inject our current context stack as a starting point for the inner action
-          injectContext :: DiagnosticsC m a -> DiagnosticsC m a
-          injectContext = DiagnosticsC . local @[Text] (const currentContext) . runDiagnosticsC
-
-      let act' = runDiagnostics . injectContext $ hdl (act <$ ctx)
+      let act' = runDiagErr $ hdl (act <$ ctx)
 
       -- have to lift for each inner monad transformer (reader, error, writer)
-      res' <- lift . lift . lift $ act'
+      res' <- lift . lift $ act'
       case res' of
         Left e -> pure (Left e <$ ctx)
         Right a -> pure (Right <$> a)
     L (Rethrow bundle) -> do
       traverse_ (\diag -> tell (Endo (diag :))) (failureWarnings bundle)
       throwError (failureCause bundle)
-    R other -> alg (runDiagnosticsC . hdl) (R (R (R other))) ctx
+    R other -> alg (runDiagErrC . hdl) (R (R other)) ctx
 
 -- | Run the DiagnosticsC carrier, also catching IO exceptions
 runDiagnosticsIO :: Has (Lift IO) sig m => DiagnosticsC m a -> m (Either FailureBundle a)

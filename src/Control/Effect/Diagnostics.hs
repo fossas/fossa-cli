@@ -8,7 +8,10 @@
 -- - recovery from failures, recording them as "warnings" (see: 'recover' or '<||>')
 module Control.Effect.Diagnostics (
   -- * Diagnostics effect and operations
-  Diagnostics (..),
+
+  -- FIXME
+  Diagnostics,
+  DiagErr (..),
   fatal,
   context,
   recover,
@@ -41,6 +44,7 @@ module Control.Effect.Diagnostics (
 ) where
 
 import Control.Algebra as X
+import Control.Carrier.Stack
 import Control.Effect.Exception (catch)
 import Control.Effect.Lift (Lift)
 import Control.Exception (IOException, SomeException (..))
@@ -55,12 +59,13 @@ import Prettyprinter
 import Prettyprinter.Render.Terminal
 import Prelude
 
-data Diagnostics m k where
-  Fatal :: ToDiagnostic diag => diag -> Diagnostics m a
-  Recover' :: m a -> Diagnostics m (Either SomeDiagnostic a)
-  Context :: Text -> m a -> Diagnostics m a
-  ErrorBoundary :: m a -> Diagnostics m (Either FailureBundle a)
-  Rethrow :: FailureBundle -> Diagnostics m a
+type Diagnostics = Stack :+: DiagErr
+
+data DiagErr m k where
+  Fatal :: ToDiagnostic diag => diag -> DiagErr m a
+  Recover' :: m a -> DiagErr m (Either SomeDiagnostic a)
+  ErrorBoundary :: m a -> DiagErr m (Either FailureBundle a)
+  Rethrow :: FailureBundle -> DiagErr m a
 
 -- | A class of diagnostic types that can be rendered in a user-friendly way
 class ToDiagnostic a where
@@ -120,25 +125,6 @@ errorBoundary = send . ErrorBoundary
 -- | Rethrow a FailureBundle from an 'errorBoundary'
 rethrow :: Has Diagnostics sig m => FailureBundle -> m a
 rethrow = send . Rethrow
-
--- | Push context onto the stack for "stack traces"/"tracebacks" in diagnostics.
---
--- This is spiritually similar to @errors.Wrap@ from golang.
---
--- In the default Diagnostics carrier from Control.Carrier.Diagnostics, context
--- messages are additive and scoped:
---
---     context "foo" $ do
---       -- context is [foo] here
---       context "bar" $ do
---         -- context is [foo,bar] here
---         pure ()
---       context "baz" $ do
---         -- context is [foo,baz] here
---         pure ()
---       -- context is [foo] here
-context :: Has Diagnostics sig m => Text -> m a -> m a
-context ctx go = send (Context ctx go)
 
 -- | Lift an Either result into the Diagnostics effect, given a ToDiagnostic instance for the error type
 fromEither :: (ToDiagnostic err, Has Diagnostics sig m) => Either err a -> m a

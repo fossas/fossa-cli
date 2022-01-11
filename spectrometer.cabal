@@ -195,6 +195,7 @@ library
     Control.Carrier.Finally
     Control.Carrier.Output.IO
     Control.Carrier.Simple
+    Control.Carrier.Stack
     Control.Carrier.StickyLogger
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
@@ -211,6 +212,7 @@ library
     Control.Effect.Record.TH
     Control.Effect.Replay
     Control.Effect.Replay.TH
+    Control.Effect.Stack
     Control.Effect.StickyLogger
     Control.Effect.TaskPool
     Control.Exception.Extra
