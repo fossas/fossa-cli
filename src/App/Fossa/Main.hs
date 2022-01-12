@@ -3,6 +3,7 @@
 module App.Fossa.Main (appMain) where
 
 import App.Fossa.Analyze qualified as Analyze
+import App.Fossa.Analyze.Log4jReport qualified as Log4j
 import App.Fossa.Container qualified as Container
 import App.Fossa.EmbeddedBinary qualified as Embed
 import App.Fossa.ListTargets qualified as ListTargets
@@ -41,7 +42,6 @@ import Options.Applicative (
   subparserInline,
   (<**>),
  )
-import qualified App.Fossa.Analyze.Log4jReport as Log4j
 
 appMain :: IO ()
 appMain = do
