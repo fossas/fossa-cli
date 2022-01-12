@@ -60,7 +60,6 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Word (Word8)
-import Debug.Trace (traceM)
 import Effect.Logger
 import Fossa.API.Types (ApiOpts, ArchiveComponents, Issues, SignedURL, signedURL, useApiOpts)
 import Network.HTTP.Client qualified as C
