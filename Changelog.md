@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## v3.0.14
+
+- Maven: Updates implementation to delineate classifier, and consequently maven dependencies with classifier can be scanned without failure in FOSSA. ([#755](https://github.com/fossas/fossa-cli/pull/755/))
+
 ## v3.0.13
 
 - `package-lock.json` parser ignores name field. ([#757](https://github.com/fossas/fossa-cli/pull/757)) 
