@@ -8,7 +8,9 @@ module App.Fossa.Config.Analyze (
   IATAssertion (..),
   IncludeAll (..),
   JsonOutput (..),
+  MonorepoAnalyzeConfig (..),
   ScanDestination (..),
+  StandardAnalyzeConfig (..),
   UnpackArchives (..),
   VSIAnalysis (..),
   VSIModeOptions (..),
@@ -20,6 +22,8 @@ import App.Fossa.Config.Common (
   CommonOpts (..),
   ScanDestination (..),
   baseDirArg,
+  collectAPIMetadata,
+  collectApiOpts,
   collectBaseDir,
   collectRevisionData,
   commonOpts,
@@ -44,7 +48,7 @@ import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (Su
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (
   BaseDir,
-  MonorepoAnalysisOpts (MonorepoAnalysisOpts),
+  MonorepoAnalysisOpts (MonorepoAnalysisOpts, monorepoAnalysisType),
   OverrideProject (OverrideProject),
   ProjectMetadata,
   ProjectRevision,
@@ -53,11 +57,14 @@ import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   Validator,
+  fatalText,
   runValidation,
   validationBoundary,
  )
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Monad (when)
 import Data.Flag (Flag, flagOpt)
+import Data.Maybe (isJust)
 import Data.Monoid.Extra (isMempty)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -91,6 +98,7 @@ import Options.Applicative (
  )
 import Path (Abs, Dir, Path, Rel)
 import Path.IO (getCurrentDir)
+import System.Info qualified as SysInfo
 import Types (TargetFilter)
 
 -- CLI flags, for use with 'Data.Flag'
@@ -139,7 +147,22 @@ data AnalyzeCliOpts = AnalyzeCliOpts
 instance GetSeverity AnalyzeCliOpts where
   getSeverity AnalyzeCliOpts{commons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo
 
-data AnalyzeConfig = AnalyzeConfig
+data AnalyzeConfig
+  = Monorepo MonorepoAnalyzeConfig
+  | Standard StandardAnalyzeConfig
+
+data MonorepoAnalyzeConfig = MonorepoAnalyzeConfig
+  { monorepoAnalyzeOpts :: MonorepoAnalysisOpts
+  , monorepoApiOpts :: ApiOpts
+  , monorepoBasedir :: BaseDir
+  , monorepoFilters :: AllFilters
+  , monorepoMetadata :: ProjectMetadata
+  , monorepoRevision :: ProjectRevision
+  , monorepoSeverity :: Severity
+  }
+  deriving (Eq, Ord, Show)
+
+data StandardAnalyzeConfig = StandardAnalyzeConfig
   { baseDir :: BaseDir
   , severity :: Severity
   , scanDestination :: ScanDestination
@@ -223,9 +246,68 @@ mergeOpts ::
   EnvVars ->
   AnalyzeCliOpts ->
   m AnalyzeConfig
-mergeOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
+mergeOpts cfg env cliOpts =
+  if isJust $ monorepoAnalysisType $ monorepoAnalysisOpts cliOpts
+    then Monorepo <$> mergeMonorepoOpts cfg env cliOpts
+    else Standard <$> mergeStandardOpts cfg env cliOpts
+
+mergeMonorepoOpts ::
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  ) =>
+  Maybe ConfigFile ->
+  EnvVars ->
+  AnalyzeCliOpts ->
+  m MonorepoAnalyzeConfig
+mergeMonorepoOpts cfgfile envvars cliOpts@AnalyzeCliOpts{..} = do
+  let monoOpts = monorepoAnalysisOpts
+      metadata = collectAPIMetadata cfgfile analyzeMetadata
+      severity = getSeverity cliOpts
+  apiopts <- collectApiOpts cfgfile envvars commons
   basedir <- collectBaseDir analyzeBaseDir
-  let logSeverity = if optDebug commons then SevDebug else SevInfo
+  filters <- collectFilters cfgfile cliOpts
+  revision <-
+    collectRevisionData basedir cfgfile WriteOnly $
+      OverrideProject (optProjectName commons) (optProjectRevision commons) (analyzeBranch)
+  failureOnWindows <- validationBoundary $ fatalOnWindows "Monorepo analysis is not supported on windows"
+  failureOnOutput <- validationBoundary $ when analyzeOutput $ fatalText "Monorepo analysis does not support the `--output` flag"
+
+  runValidation $
+    MonorepoAnalyzeConfig
+      monoOpts
+      <$> apiopts
+      <*> basedir
+      <*> filters
+      <*> pure metadata
+      <*> revision
+      <*> pure severity
+      -- Add phantom failures here (no data to return)
+      <* failureOnWindows
+      <* failureOnOutput
+
+windowsOsName :: String
+windowsOsName = "mingw32"
+
+fatalOnWindows :: Has Diagnostics sig m => Text -> m ()
+fatalOnWindows msg = when (SysInfo.os == windowsOsName) $ fatalText msg
+
+mergeStandardOpts ::
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  ) =>
+  Maybe ConfigFile ->
+  EnvVars ->
+  AnalyzeCliOpts ->
+  m StandardAnalyzeConfig
+mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
+  basedir <- collectBaseDir analyzeBaseDir
+  let logSeverity = getSeverity cliOpts
   scanDestination <- collectScanDestination maybeConfig envvars cliOpts
   revisionData <-
     collectRevisionData basedir maybeConfig WriteOnly $
@@ -235,7 +317,7 @@ mergeOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
   let experimentalCfgs = collectExperimental maybeConfig
 
   runValidation $
-    AnalyzeConfig
+    StandardAnalyzeConfig
       <$> basedir
       <*> pure logSeverity
       <*> scanDestination

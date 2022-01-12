@@ -15,6 +15,7 @@ module App.Fossa.Config.Container (
 import App.Fossa.Config.Common (
   CommonOpts (..),
   ScanDestination (..),
+  collectAPIMetadata,
   collectApiOpts,
   collectRevisionOverride,
   commonOpts,
@@ -24,7 +25,6 @@ import App.Fossa.Config.Common (
  )
 import App.Fossa.Config.ConfigFile (
   ConfigFile,
-  mergeFileCmdMetadata,
   resolveConfigFile,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars)
@@ -35,7 +35,7 @@ import App.Types (
  )
 import Control.Effect.Diagnostics (Diagnostics, Validator, runValidation, validationBoundary)
 import Control.Effect.Lift (Has, Lift, sendIO)
-import Control.Timeout (Duration (Seconds))
+import Control.Timeout.Internal (Duration (Seconds))
 import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Text (Text)
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
@@ -133,7 +133,7 @@ collectScanDestination maybeCfgFile envvars ContainerAnalyzeOptions{..} =
         apiKey <- validateApiKey maybeCfgFile envvars analyzeCommons
         let baseuri = optBaseUrl analyzeCommons
             apiOpts = ApiOpts baseuri apiKey
-            metaMerged = maybe containerMetadata (mergeFileCmdMetadata containerMetadata) (maybeCfgFile)
+            metaMerged = collectAPIMetadata maybeCfgFile containerMetadata
         pure $ UploadScan apiOpts metaMerged
 
 mergeTestOpts ::

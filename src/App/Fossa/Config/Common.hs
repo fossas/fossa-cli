@@ -20,6 +20,7 @@ module App.Fossa.Config.Common (
   collectRevisionData,
   CacheAction (..),
   collectRevisionOverride,
+  collectAPIMetadata,
   collectApiOpts,
 
   -- * Configuration Types
@@ -33,6 +34,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigFile (configApiKey, configProject, configRevision),
   ConfigProject (configProjID),
   ConfigRevision (configBranch, configCommit),
+  mergeFileCmdMetadata,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.ProjectInference (
@@ -223,6 +225,9 @@ collectRevisionData (Success (BaseDir basedir)) maybeConfig cacheStrategy cliOve
       let revision = mergeOverride override inferred
       saveRevision revision
       pure revision
+
+collectAPIMetadata :: Maybe ConfigFile -> ProjectMetadata -> ProjectMetadata
+collectAPIMetadata cfgfile cliMeta = maybe cliMeta (mergeFileCmdMetadata cliMeta) cfgfile
 
 data CommonOpts = CommonOpts
   { optDebug :: Bool

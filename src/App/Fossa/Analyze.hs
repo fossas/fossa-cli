@@ -22,18 +22,20 @@ import App.Fossa.Analyze.Types (
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.Config.Analyze (
   AnalyzeCliOpts,
-  AnalyzeConfig (severity),
+  AnalyzeConfig (..),
   BinaryDiscovery (BinaryDiscovery),
   ExperimentalAnalyzeConfig,
   IATAssertion (IATAssertion),
   IncludeAll (IncludeAll),
   JsonOutput (JsonOutput),
-  ScanDestination (OutputStdout, UploadScan),
+  ScanDestination (..),
+  StandardAnalyzeConfig (),
   UnpackArchives (UnpackArchives),
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.FossaAPIV1 (UploadResponse (..), getProject, projectIsMonorepo, uploadAnalysis, uploadContributors)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
+import App.Fossa.Monorepo (monorepoScan)
 import App.Fossa.ProjectInference (saveRevision)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
@@ -146,7 +148,20 @@ debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json.gz"
 
 analyzeSubCommand :: SubCommand AnalyzeCliOpts AnalyzeConfig
-analyzeSubCommand = Config.mkSubCommand analyzeMain
+analyzeSubCommand = Config.mkSubCommand dispatch
+
+dispatch ::
+  ( Has Diag.Diagnostics sig m
+  , Has Exec sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  ) =>
+  AnalyzeConfig ->
+  m ()
+dispatch = \case
+  Monorepo cfg -> monorepoScan cfg
+  Standard cfg -> analyzeMain cfg
 
 -- This is just a handler for the Debug effect.
 -- The real logic is in the inner analyze
@@ -158,9 +173,9 @@ analyzeMain ::
   , Has Exec sig m
   , Has ReadFS sig m
   ) =>
-  AnalyzeConfig ->
+  StandardAnalyzeConfig ->
   m ()
-analyzeMain cfg = runReader cfg $ case severity cfg of
+analyzeMain cfg = runReader cfg $ case Config.severity cfg of
   SevDebug -> do
     (scope, res) <- collectDebugBundle $ Diag.errorBoundaryIO analyze
     sendIO . BL.writeFile debugBundlePath . GZip.compress $ Aeson.encode scope
@@ -286,7 +301,7 @@ analyze ::
   , Has Debug sig m
   , Has Exec sig m
   , Has ReadFS sig m
-  , Has (Reader AnalyzeConfig) sig m
+  , Has (Reader StandardAnalyzeConfig) sig m
   ) =>
   m ()
 analyze = Diag.context "fossa-analyze" $ do
