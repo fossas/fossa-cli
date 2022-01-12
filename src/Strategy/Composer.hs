@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Strategy.Composer (
   discover,
   buildGraph,
@@ -6,14 +8,16 @@ module Strategy.Composer (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Data.Aeson.Types
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Text (Text)
+import Data.Vector qualified as Vec
 import DepTypes
 import Discovery.Walk
 import Effect.Grapher
@@ -72,6 +76,16 @@ instance ToJSON ComposerProject
 instance AnalyzeProject ComposerProject where
   analyzeProject _ = getDeps
 
+instance LicenseAnalyzeProject ComposerProject where
+  licenseAnalyzeProject = analyzeLicenses . composerDir
+
+analyzeLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [LicenseResult]
+analyzeLicenses path =
+  maybe [] mkLicenseResult . license <$> readContentsJson licenseFileName
+  where
+    licenseFileName = path </> $(mkRelFile "composer.lock")
+    mkLicenseResult = pure . LicenseResult (toFilePath licenseFileName)
+
 data ComposerLock = ComposerLock
   { lockPackages :: [CompDep]
   , lockPackagesDev :: [CompDep]
@@ -98,6 +112,26 @@ instance FromJSON CompDep where
       <*> obj .: "version"
       <*> obj .:? "require"
       <*> obj .:? "require-dev"
+
+newtype ComposerJson = ComposerJson
+  { license :: Maybe [License]
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ComposerJson where
+  parseJSON = withObject "ComposerJson" $ \obj ->
+    do
+      licenses <- obj .:? "license"
+      case licenses of
+        Just licenses' -> case licenses' of
+          Array licenseVec -> pure $ ComposerJson $ Just (License LicenseSPDX <$> mapMaybe f (Vec.toList licenseVec))
+          String licenseStr -> pure $ ComposerJson $ Just [License LicenseSPDX licenseStr]
+          _ -> fail "Invalid schema for key 'license' in composer.json"
+        Nothing -> pure $ ComposerJson Nothing
+    where
+      f :: Value -> Maybe Text
+      f (String t) = Just t
+      f _ = Nothing
 
 newtype CompPkg = CompPkg {pkgName :: Text}
   deriving (Eq, Ord, Show)
