@@ -11,6 +11,7 @@ module Control.Effect.Diagnostics (
   -- FIXME
   Diagnostics,
   DiagErr (..),
+  errCtx,
   fatal,
   context,
   recover,
@@ -66,6 +67,9 @@ data DiagErr m k where
   Recover :: m a -> DiagErr m (Maybe a)
   ErrorBoundary :: m a -> DiagErr m (Either FailureBundle a)
   Rethrow :: FailureBundle -> DiagErr m a
+
+errCtx :: (ToDiagnostic ctx, Has Diagnostics sig m) => ctx -> m a -> m a
+errCtx ctx m = send (ErrCtx ctx m)
 
 -- | Analagous to @throwError@ from the error effect
 fatal :: (Has Diagnostics sig m, ToDiagnostic diag) => diag -> m a
