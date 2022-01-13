@@ -5,11 +5,12 @@ module Strategy.Composer (
   buildGraph,
   ComposerLock (..),
   CompDep (..),
-  ComposerProject(..),
+  ComposerProject (..),
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Data.Aeson.Types
 import Data.Foldable (traverse_)
@@ -124,15 +125,35 @@ instance FromJSON ComposerJson where
     do
       licenses <- obj .:? "license"
       case licenses of
-        Just licenses' -> case licenses' of
-          Array licenseVec -> pure $ ComposerJson $ Just (License LicenseSPDX <$> mapMaybe f (Vec.toList licenseVec))
-          String licenseStr -> pure $ ComposerJson $ Just [License LicenseSPDX licenseStr]
-          _ -> fail "Invalid schema for key 'license' in composer.json"
+        Just licenses' ->
+          parseArrayLicense licenses'
+            <|> parseStrLicense licenses'
+            <|> fail "Invalid schema for key 'license' in composer.json"
         Nothing -> pure $ ComposerJson Nothing
     where
-      f :: Value -> Maybe Text
-      f (String t) = Just t
-      f _ = Nothing
+      parseStrLicense s =
+        withText
+          "licenseString"
+          ( \licenseStr ->
+              pure . ComposerJson . Just $ [License LicenseSPDX licenseStr]
+          )
+          s
+
+      parseArrayLicense s =
+        withArray
+          "licenseArray"
+          ( pure
+              . ComposerJson
+              . Just
+              . map (License LicenseSPDX)
+              . mapMaybe maybeString
+              . Vec.toList
+          )
+          s
+
+      maybeString :: Value -> Maybe Text
+      maybeString (String t) = Just t
+      maybeString _ = Nothing
 
 newtype CompPkg = CompPkg {pkgName :: Text}
   deriving (Eq, Ord, Show)
