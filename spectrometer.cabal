@@ -370,6 +370,7 @@ test-suite unit-tests
     Clojure.ClojureSpec
     Cocoapods.PodfileLockSpec
     Cocoapods.PodfileSpec
+    Composer.ComposerJsonSpec
     Composer.ComposerLockSpec
     Conda.CondaListSpec
     Conda.EnvironmentYmlSpec

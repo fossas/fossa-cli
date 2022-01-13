@@ -5,6 +5,7 @@ module Strategy.Composer (
   buildGraph,
   ComposerLock (..),
   CompDep (..),
+  ComposerProject(..),
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
@@ -83,7 +84,7 @@ analyzeLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> 
 analyzeLicenses path =
   maybe [] mkLicenseResult . license <$> readContentsJson licenseFileName
   where
-    licenseFileName = path </> $(mkRelFile "composer.lock")
+    licenseFileName = path </> $(mkRelFile "composer.json")
     mkLicenseResult = pure . LicenseResult (toFilePath licenseFileName)
 
 data ComposerLock = ComposerLock
