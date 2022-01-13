@@ -218,6 +218,7 @@ library
     Control.Exception.Extra
     Data.Aeson.Extra
     Data.Conduit.Extra
+    Data.Diagnostic
     Data.FileEmbed.Extra
     Data.Flag
     Data.Functor.Extra
