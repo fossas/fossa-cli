@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Strategy.Composer (
   discover,
   buildGraph,
@@ -10,24 +8,59 @@ module Strategy.Composer (
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
-import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics hiding (fromMaybe)
-import Data.Aeson.Types
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  run,
+ )
+import Data.Aeson.Types (
+  FromJSON (parseJSON),
+  ToJSON,
+  Value (Array, String),
+  withObject,
+  (.!=),
+  (.:),
+  (.:?),
+ )
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Text (Text)
-import Data.Vector qualified as Vec
-import DepTypes
-import Discovery.Walk
-import Effect.Grapher
-import Effect.ReadFS
+import Data.Text qualified as Text
+import DepTypes (
+  DepEnvironment (EnvDevelopment, EnvProduction),
+  DepType (ComposerType),
+  Dependency (..),
+  VerConstraint (CEq),
+  insertEnvironment,
+ )
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  findFileNamed,
+  walk',
+ )
+import Effect.Grapher (
+  LabeledGrapher,
+  direct,
+  edge,
+  label,
+  withLabeling,
+ )
+import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
-import Path
-import Types
+import Path (Abs, Dir, File, Path, toFilePath)
+import Types (
+  DependencyResults (..),
+  DiscoveredProject (..),
+  GraphBreadth (Complete),
+  License (License),
+  LicenseResult (LicenseResult),
+  LicenseType (LicenseSPDX),
+ )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject ComposerProject]
 discover dir = context "Composer" $ do
@@ -43,6 +76,7 @@ findProjects = walk' $ \dir _ files -> do
             ComposerProject
               { composerDir = dir
               , composerLock = lock
+              , composerJson = findFileNamed "composer.json" files
               }
 
       pure ([project], WalkContinue)
@@ -70,6 +104,7 @@ getDeps project = context "Composer" $ do
 data ComposerProject = ComposerProject
   { composerDir :: Path Abs Dir
   , composerLock :: Path Abs File
+  , composerJson :: Maybe (Path Abs File)
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -79,14 +114,15 @@ instance AnalyzeProject ComposerProject where
   analyzeProject _ = getDeps
 
 instance LicenseAnalyzeProject ComposerProject where
-  licenseAnalyzeProject = analyzeLicenses . composerDir
+  licenseAnalyzeProject = analyzeLicenses . composerJson
 
-analyzeLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [LicenseResult]
-analyzeLicenses path =
-  maybe [] mkLicenseResult . license <$> readContentsJson licenseFileName
-  where
-    licenseFileName = path </> $(mkRelFile "composer.json")
-    mkLicenseResult = pure . LicenseResult (toFilePath licenseFileName)
+analyzeLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe (Path Abs File) -> m [LicenseResult]
+analyzeLicenses Nothing = pure []
+analyzeLicenses (Just licenseFileName) = do
+  let mkLicenseResults l = [LicenseResult (toFilePath licenseFileName) l]
+      textToLicense = License LicenseSPDX
+  contents <- readContentsJson licenseFileName
+  pure . mkLicenseResults . map textToLicense . filter (not . Text.null) . unLicense . license $ contents
 
 data ComposerLock = ComposerLock
   { lockPackages :: [CompDep]
@@ -115,45 +151,22 @@ instance FromJSON CompDep where
       <*> obj .:? "require"
       <*> obj .:? "require-dev"
 
+newtype ComposerLicenses = ComposerLicenses {unLicense :: [Text]}
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ComposerLicenses where
+  parseJSON (Array t) = ComposerLicenses <$> parseJSON (Array t)
+  parseJSON (String t) = pure $ ComposerLicenses [t]
+  parseJSON _ = fail "Invalid schema for key 'license' in composer.json"
+
 newtype ComposerJson = ComposerJson
-  { license :: Maybe [License]
+  { license :: ComposerLicenses
   }
   deriving (Eq, Ord, Show)
 
 instance FromJSON ComposerJson where
   parseJSON = withObject "ComposerJson" $ \obj ->
-    do
-      licenses <- obj .:? "license"
-      case licenses of
-        Just licenses' ->
-          parseArrayLicense licenses'
-            <|> parseStrLicense licenses'
-            <|> fail "Invalid schema for key 'license' in composer.json"
-        Nothing -> pure $ ComposerJson Nothing
-    where
-      parseStrLicense s =
-        withText
-          "licenseString"
-          ( \licenseStr ->
-              pure . ComposerJson . Just $ [License LicenseSPDX licenseStr]
-          )
-          s
-
-      parseArrayLicense s =
-        withArray
-          "licenseArray"
-          ( pure
-              . ComposerJson
-              . Just
-              . map (License LicenseSPDX)
-              . mapMaybe maybeString
-              . Vec.toList
-          )
-          s
-
-      maybeString :: Value -> Maybe Text
-      maybeString (String t) = Just t
-      maybeString _ = Nothing
+    ComposerJson <$> obj .:? "license" .!= ComposerLicenses []
 
 newtype CompPkg = CompPkg {pkgName :: Text}
   deriving (Eq, Ord, Show)

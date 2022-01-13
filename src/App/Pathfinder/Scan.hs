@@ -29,12 +29,12 @@ import Effect.Logger
 import Effect.ReadFS
 import Path
 import Path.IO qualified as PIO
+import Strategy.Composer qualified as Composer
 import Strategy.Maven qualified as Maven
 import Strategy.NuGet.Nuspec qualified as Nuspec
 import System.Exit (die)
 import System.IO (BufferMode (NoBuffering), hSetBuffering, stderr, stdout)
 import Types
-import qualified Strategy.Composer as Composer
 
 scanMain :: Path Abs Dir -> Bool -> IO ()
 scanMain basedir debug = do
