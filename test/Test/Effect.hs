@@ -8,7 +8,6 @@ module Test.Effect (
   shouldMatchList',
   it',
   runTestEffects',
-  runTestEffects,
 ) where
 
 import Control.Effect.Lift (Has, Lift, sendIO)
