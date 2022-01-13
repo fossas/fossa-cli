@@ -15,7 +15,6 @@ import Effect.Exec (Exec)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import Types
-import Control.Effect.DiagWarn
 
 newtype AnalyzeExperimentalPreferences = AnalyzeExperimentalPreferences
   {gradleOnlyConfigsAllowed :: Maybe (Set Text)}
@@ -28,7 +27,6 @@ type AnalyzeTaskEffs sig m =
   , Has Exec sig m
   , Has Logger sig m
   , Has Diagnostics sig m
-  , Has DiagWarn sig m
   , Has Debug sig m
   , Has (Reader AnalyzeExperimentalPreferences) sig m
   )

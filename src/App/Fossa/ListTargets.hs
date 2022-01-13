@@ -29,7 +29,6 @@ import Effect.ReadFS
 import Path
 import Path.IO (makeRelative)
 import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
-import Control.Effect.DiagWarn (DiagWarn, runDiagWarn)
 
 listTargetsMain :: AnalyzeExperimentalPreferences -> Severity -> BaseDir -> IO ()
 listTargetsMain preferences logSeverity (BaseDir basedir) = do
@@ -44,13 +43,11 @@ listTargetsMain preferences logSeverity (BaseDir basedir) = do
     . runExecIO
     . runAtomicCounter
     . runReader preferences
-    . runDiagWarn
     $ runAll basedir
 
 runAll ::
   ( Has ReadFS sig m
   , Has Exec sig m
-  , Has DiagWarn sig m
   , Has Logger sig m
   , Has TaskPool sig m
   , Has (Lift IO) sig m

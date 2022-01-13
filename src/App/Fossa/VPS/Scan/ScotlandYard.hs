@@ -137,7 +137,7 @@ createBuildGraph ScotlandYardNinjaOpts{..} url httpOptions = runHTTP $ do
 uploadBuildGraphChunk :: (Has (Lift IO) sig m) => Url 'Https -> Option 'Https -> [DepsTarget] -> m ()
 uploadBuildGraphChunk url httpOptions targets = do
   let jsonChunk = object ["targets" .= targets]
-  _ <- sendIO $ runDiagnostics $ runHTTP $ req POST url (ReqBodyJson jsonChunk) ignoreResponse httpOptions
+  _ <- sendIO $ ignoreLogger $ runDiagnostics $ runHTTP $ req POST url (ReqBodyJson jsonChunk) ignoreResponse httpOptions
   pure ()
 
 updateProgress :: Has StickyLogger sig m => Progress -> m ()

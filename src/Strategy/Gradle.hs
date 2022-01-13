@@ -19,12 +19,7 @@ module Strategy.Gradle (
 
 import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..), AnalyzeProject, analyzeProject)
 import Control.Carrier.Reader (Reader)
-import Control.Effect.Diagnostics (
-  Diagnostics,
-  context,
-  fatal,
-  (<||>), recover
- )
+import Control.Effect.Diagnostics (Diagnostics, Has, REPLACEME (..), context, fatal, recover, withWarn, (<||>))
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.Reader (asks)
@@ -59,7 +54,6 @@ import Strategy.Gradle.Common (
 import Strategy.Gradle.ResolutionApi qualified as ResolutionApi
 import System.FilePath qualified as FilePath
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), FoundTargets (..), GraphBreadth (..))
-import Control.Effect.DiagWarn
 
 -- Run the init script on a set of subprojects. Note that this runs the
 -- `:jsonDeps` task on every subproject in one command. This is helpful for

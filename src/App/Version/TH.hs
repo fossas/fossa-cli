@@ -21,6 +21,7 @@ import Effect.Exec (
   exec,
   runExecIO,
  )
+import Effect.Logger (ignoreLogger)
 import GitHash (giHash, tGitInfoCwd)
 import Instances.TH.Lift ()
 import Language.Haskell.TH (TExpQ)
@@ -38,7 +39,7 @@ gitTagPointCommand commit =
 getCurrentTag :: TExpQ (Maybe Text)
 getCurrentTag = do
   let commitHash = giHash $$(tGitInfoCwd)
-  result <- runIO . runDiagnostics . runExecIO . getTags $ toText commitHash
+  result <- runIO . ignoreLogger . runDiagnostics . runExecIO . getTags $ toText commitHash
 
   case result of
     Left err -> reportWarning (show err) >> [||Nothing||]

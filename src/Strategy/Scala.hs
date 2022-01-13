@@ -30,7 +30,6 @@ import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures)
 import Strategy.Maven.Pom.Closure qualified as PomClosure
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
 import Types
-import Control.Effect.DiagWarn (withWarn, REPLACEME (REPLACEME))
 
 discover ::
   ( Has Exec sig m

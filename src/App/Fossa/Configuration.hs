@@ -24,7 +24,7 @@ import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Effect.Logger (Severity (SevWarn), logWarn, withDefaultLogger)
+import Effect.Logger (Severity (SevWarn), ignoreLogger, logWarn, withDefaultLogger)
 import Effect.ReadFS
 import Path
 import Path.IO (getCurrentDir)
@@ -157,7 +157,7 @@ readConfigFileIO configFile = do
   -- FIXME: we probably want to read from the target directory of analysis, not
   -- the current directory
   dir <- getCurrentDir
-  config <- Diag.runDiagnostics $ runReadFSIO $ readConfigFile $ fromMaybe (dir </> defaultFile) configFile
+  config <- ignoreLogger $ Diag.runDiagnostics $ runReadFSIO $ readConfigFile $ fromMaybe (dir </> defaultFile) configFile
   case config of
     Left err -> die $ show $ Diag.renderFailureBundle err
     Right a -> pure a

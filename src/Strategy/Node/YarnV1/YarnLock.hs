@@ -6,7 +6,7 @@ module Strategy.Node.YarnV1.YarnLock (
   mangleParseErr,
 ) where
 
-import Control.Effect.Diagnostics (Diagnostics, Has, context, tagError)
+import Control.Effect.Diagnostics (Diagnostics, Has, context, tagError, warn)
 import Data.Foldable (for_, traverse_)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
@@ -44,12 +44,10 @@ import Path (Abs, File, Path)
 import Strategy.Node.PackageJson (Development, FlatDeps (..), NodePackage (..), Production)
 import Yarn.Lock qualified as YL
 import Yarn.Lock.Types qualified as YL
-import Control.Effect.DiagWarn (warn, DiagWarn)
 
 analyze ::
   forall m sig.
   ( Has Diagnostics sig m
-  , Has DiagWarn sig m
   , Has ReadFS sig m
   ) =>
   Path Abs File ->
@@ -78,7 +76,6 @@ data YarnV1Package = YarnV1Package
 buildGraph ::
   forall m sig.
   ( Has Diagnostics sig m
-  , Has DiagWarn sig m
   ) =>
   YL.Lockfile ->
   FlatDeps ->
@@ -144,10 +141,10 @@ toDependency YarnV1Package{..} = foldr applyLabel start
 toNodePackage :: YL.PackageKey -> NodePackage
 toNodePackage key = NodePackage (extractFullName key) (YL.npmVersionSpec key)
 
-resolveVersion :: Has DiagWarn sig m => YL.Lockfile -> YL.PackageKey -> m (Maybe YarnV1Package)
+resolveVersion :: Has Diagnostics sig m => YL.Lockfile -> YL.PackageKey -> m (Maybe YarnV1Package)
 resolveVersion lockfile key = logMaybePackage key $ pairToPackage key <$> MKM.lookup key lockfile
 
-logMaybePackage :: Has DiagWarn sig m => YL.PackageKey -> Maybe a -> m (Maybe a)
+logMaybePackage :: Has Diagnostics sig m => YL.PackageKey -> Maybe a -> m (Maybe a)
 logMaybePackage key something = do
   case something of
     -- In some (currently unknown) cases, we don't find the key we expect to find.

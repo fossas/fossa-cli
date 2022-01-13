@@ -18,7 +18,7 @@ module Strategy.Elixir.MixTree (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics (Diagnostics, context)
+import Control.Effect.Diagnostics (Diagnostics, Has, context, warn)
 import Control.Monad (void)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Aeson (ToJSON)
@@ -69,12 +69,11 @@ import Text.Megaparsec (
 import Text.Megaparsec.Char (alphaNumChar, char, eol, newline, string)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 import Types (DependencyResults (..), GraphBreadth (..))
-import Control.Effect.DiagWarn
 
 missingDepVersionsMsg :: Text
 missingDepVersionsMsg = "Some of dependencies versions were not resolved from `mix deps` and `mix deps.tree`. Has `mix deps.get` and `mix compile` been executed?"
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m, Has DiagWarn sig m) => MixProject -> m DependencyResults
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => MixProject -> m DependencyResults
 analyze project = do
   let dir = mixDir project
   -- Get all dependencies

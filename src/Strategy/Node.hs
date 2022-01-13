@@ -12,10 +12,13 @@ import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
+  REPLACEME (..),
   context,
   fromEither,
   fromEitherShow,
-  fromMaybeText, recover
+  fromMaybeText,
+  recover,
+  withWarn,
  )
 import Control.Monad ((<=<))
 import Data.Glob (Glob)
@@ -67,7 +70,6 @@ import Types (
   FoundTargets (ProjectWithoutTargets),
   GraphBreadth (Complete, Partial),
  )
-import Control.Effect.DiagWarn (withWarn, REPLACEME (REPLACEME), DiagWarn)
 
 skipJsFolders :: WalkStep
 skipJsFolders = WalkSkipSome ["node_modules", "bower_components", ".yarn"]
@@ -124,7 +126,6 @@ instance AnalyzeProject NodeProject where
 getDeps ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
-  , Has DiagWarn sig m
   ) =>
   NodeProject ->
   m DependencyResults
@@ -144,7 +145,6 @@ analyzeNpm wsGraph = do
 
 analyzeYarn ::
   ( Has Diagnostics sig m
-  , Has DiagWarn sig m
   , Has ReadFS sig m
   ) =>
   Manifest ->

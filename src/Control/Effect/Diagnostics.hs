@@ -1,5 +1,4 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE RecordWildCards #-}
 
 -- | The Diagnostics effect is a replacement for the Error effect in most cases. It models an unchecked exceptions pattern, and provides for:
 --
@@ -18,11 +17,6 @@ module Control.Effect.Diagnostics (
   errorBoundary,
   rethrow,
 
-  -- * Diagnostic result types
-  FailureBundle (..),
-  renderFailureBundle,
-  renderSomeDiagnostic,
-
   -- * Diagnostic helpers
   fatalText,
   fatalOnIOException,
@@ -36,10 +30,18 @@ module Control.Effect.Diagnostics (
   (<||>),
   combineSuccessful,
 
+  -- * Algebra re-exports
+  module X,
+
   -- * ToDiagnostic typeclass
   ToDiagnostic (..),
   SomeDiagnostic (..),
-  module X,
+  module Diagnostic,
+
+  -- * FIXME: temporary DiagWarn
+  DiagWarn (..),
+  warn,
+  withWarn,
 ) where
 
 import Control.Algebra as X
@@ -47,21 +49,19 @@ import Control.Carrier.Stack
 import Control.Effect.Lift (Lift)
 import Control.Exception (IOException)
 import Control.Exception.Extra (safeCatch)
-import Data.Diagnostic (SomeDiagnostic (SomeDiagnostic), ToDiagnostic, renderDiagnostic)
-import Data.List (intersperse)
+import Data.Diagnostic as Diagnostic
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Prettyprinter
-import Prettyprinter.Render.Terminal
-import Prelude
+import Effect.Logger (Logger, logWarn)
 
-type Diagnostics = Stack :+: DiagErr
+type Diagnostics = Stack :+: DiagErr :+: DiagWarn
 
--- TODO: 'catch' primitive?
 data DiagErr m k where
+  -- FIXME: separate constraint that's not ToDiagnostic?
+  ErrCtx :: ToDiagnostic ctx => ctx -> m a -> DiagErr m a
   Fatal :: ToDiagnostic diag => diag -> DiagErr m a
   Recover :: m a -> DiagErr m (Maybe a)
   ErrorBoundary :: m a -> DiagErr m (Either FailureBundle a)
@@ -139,41 +139,23 @@ combineSuccessful msg actions = do
     Nothing -> fatalText msg
     Just xs -> pure (sconcat xs)
 
-data FailureBundle = FailureBundle
-  { failureWarnings :: [SomeDiagnostic]
-  , failureCause :: SomeDiagnostic
-  }
+---------- FIXME: temporary separate DiagWarn. incorporate the Warn operation into DiagErr
 
-instance Show FailureBundle where
-  show = show . renderFailureBundle
+data DiagWarn m a where
+  Warn :: ToDiagnostic warn => warn -> DiagWarn m ()
 
-renderFailureBundle :: FailureBundle -> Doc AnsiStyle
-renderFailureBundle FailureBundle{..} =
-  vsep $
-    [ annotate (color Yellow) "----------"
-    , annotate (color Yellow) "An error occurred:"
-    , ""
-    , indent 4 (renderSomeDiagnostic failureCause)
-    , ""
-    ]
-      ++ if null failureWarnings
-        then []
-        else
-          [ ">>>"
-          , ""
-          , indent 2 (annotate (color Yellow) "Relevant warnings include:")
-          , ""
-          , indent 4 (renderWarnings failureWarnings)
-          ]
+-- | Emit a warning
+warn :: (ToDiagnostic diag, Has Diagnostics sig m) => diag -> m ()
+warn = send . Warn
 
-renderSomeDiagnostic :: SomeDiagnostic -> Doc AnsiStyle
-renderSomeDiagnostic (SomeDiagnostic stack cause) =
-  renderDiagnostic cause
-    <> line
-    <> line
-    <> annotate (color Cyan) "Traceback:"
-    <> line
-    <> indent 2 (vsep (map (pretty . ("- " <>)) stack))
-
-renderWarnings :: [SomeDiagnostic] -> Doc AnsiStyle
-renderWarnings = vsep . intersperse (line <> "--" <> line) . map renderSomeDiagnostic
+-- | Contextualize a thrown error with a warning
+--
+-- FIXME: this doesn't currently use the provided diagnostic, and just logs the failure bundle (to maintain present behavior)
+withWarn :: (Has Logger sig m, Has Diagnostics sig m) => diag -> m a -> m a
+withWarn _ m = do
+  maybeBundle <- errorBoundary m
+  case maybeBundle of
+    Left bundle -> do
+      logWarn (renderFailureBundle bundle)
+      rethrow bundle
+    Right res -> pure res

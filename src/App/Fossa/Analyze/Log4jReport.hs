@@ -34,7 +34,6 @@ import Control.Carrier.TaskPool (
   withTaskPool,
  )
 import Control.Concurrent (getNumCapabilities)
-import Control.Effect.DiagWarn (runDiagWarn)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Output (Output)
 import Data.Foldable (traverse_)
@@ -87,7 +86,6 @@ analyzeForLog4j targetDirectory = do
 
   withDefaultLogger SevInfo
     . Diag.logWithExit_
-    . runDiagWarn
     . runReadFSIO
     . runReader withoutAnyExperimentalPreferences
     . runExecIO

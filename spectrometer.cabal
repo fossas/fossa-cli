@@ -204,7 +204,6 @@ library
     Control.Effect.ConsoleRegion
     Control.Effect.Debug
     Control.Effect.Diagnostics
-    Control.Effect.DiagWarn
     Control.Effect.Finally
     Control.Effect.Output
     Control.Effect.Path

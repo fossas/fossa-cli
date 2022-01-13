@@ -35,14 +35,18 @@ import Data.Monoid (Endo (..))
 import Effect.Logger
 import System.Exit (exitFailure, exitSuccess)
 
-newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: DiagErrC (StackC m) a}
-  deriving (Functor, Applicative, Monad, MonadIO, Algebra (DiagErr :+: Stack :+: sig))
+newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: LogWarnC (DiagErrC (StackC m)) a}
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+-- FIXME: use
+-- deriving (Functor, Applicative, Monad, MonadIO, Algebra (DiagWarn :+: DiagErr :+: Stack :+: sig))
+deriving instance Has Logger sig m => Algebra (DiagWarn :+: DiagErr :+: Stack :+: sig) (DiagnosticsC m)
 
 runDiagnostics :: Applicative m => DiagnosticsC m a -> m (Either FailureBundle a)
-runDiagnostics = runStack [] . runDiagErr . runDiagnosticsC
+runDiagnostics = runStack [] . runDiagErr . runLogWarnC . runDiagnosticsC
 
 instance MonadTrans DiagnosticsC where
-  lift = DiagnosticsC . lift . lift
+  lift = DiagnosticsC . lift . lift . lift
 
 newtype DiagErrC m a = DiagErrC {runDiagErrC :: ErrorC SomeDiagnostic (WriterC (Endo [SomeDiagnostic]) m) a}
   deriving (Functor, Applicative, Monad, MonadIO)
@@ -77,6 +81,8 @@ runDiagErr = fmap bundle . runWriter (\w a -> pure (appEndo w [], a)) . runError
 
 instance Has Stack sig m => Algebra (DiagErr :+: sig) (DiagErrC m) where
   alg hdl sig ctx = DiagErrC $ case sig of
+    -- FIXME: make this add error context
+    L (ErrCtx _ act) -> runDiagErrC $ hdl (act <$ ctx)
     L (Fatal diag) -> getStack >>= \path -> throwError (SomeDiagnostic path diag)
     L (Recover act) -> do
       let -- run the action, wrapping in a Right
@@ -103,7 +109,7 @@ instance Has Stack sig m => Algebra (DiagErr :+: sig) (DiagErrC m) where
     R other -> alg (runDiagErrC . hdl) (R (R other)) ctx
 
 -- | Run the DiagnosticsC carrier, also catching IO exceptions
-runDiagnosticsIO :: Has (Lift IO) sig m => DiagnosticsC m a -> m (Either FailureBundle a)
+runDiagnosticsIO :: (Has (Lift IO) sig m, Has Logger sig m) => DiagnosticsC m a -> m (Either FailureBundle a)
 runDiagnosticsIO act = runDiagnostics $ act `safeCatch` (\(e :: SomeException) -> fatal e)
 
 -- | Like 'errorBoundary', but also catches IO exceptions
@@ -114,3 +120,18 @@ errorBoundaryIO act = errorBoundary $ act `safeCatch` (\(e :: SomeException) -> 
 withResult :: Has Logger sig m => Severity -> Either FailureBundle a -> (a -> m ()) -> m ()
 withResult sev (Left e) _ = Effect.Logger.log sev $ renderFailureBundle e
 withResult _ (Right res) f = f res
+
+---------- FIXME: temporary separate DiagWarn. incorporate the Warn/withWarn operations into DiagErrC
+
+newtype LogWarnC m a = LogWarnC {runLogWarnC :: m a}
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+instance Has Logger sig m => Algebra (DiagWarn :+: sig) (LogWarnC m) where
+  alg hdl sig ctx = LogWarnC $ case sig of
+    L (Warn diag) -> do
+      logWarn (renderDiagnostic diag)
+      pure ctx
+    R other -> alg (runLogWarnC . hdl) other ctx
+
+instance MonadTrans LogWarnC where
+  lift = LogWarnC

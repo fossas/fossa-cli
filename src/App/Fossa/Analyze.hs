@@ -140,7 +140,6 @@ import Strategy.Scala qualified as Scala
 import Strategy.SwiftPM qualified as SwiftPM
 import Types (DiscoveredProject (..), FoundTargets)
 import VCS.Git (fetchGitContributors)
-import Control.Effect.DiagWarn (runDiagWarn, DiagWarn)
 
 data ScanDestination
   = -- | upload to fossa with provided api key and base url
@@ -197,7 +196,6 @@ analyzeMain ::
 analyzeMain workdir logSeverity destination project unpackArchives jsonOutput includeAll modeOptions filters preferences =
   withDefaultLogger logSeverity
     . Diag.logWithExit_
-    . runDiagWarn
     . runReadFSIO
     . runReader preferences
     . runExecIO
@@ -237,7 +235,7 @@ runDependencyAnalysis basedir filters project = do
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
-      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag . runDiagWarn . Diag.context "Project Analysis" $ do
+      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag . Diag.context "Project Analysis" $ do
         debugMetadata "DiscoveredProject" project
         analyzeProject targets (projectData project)
       Diag.withResult SevWarn graphResult (output . mkResult basedir project)
@@ -331,7 +329,6 @@ analyze ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
   , Has Diag.Diagnostics sig m
-  , Has DiagWarn sig m
   , Has Debug sig m
   , Has Exec sig m
   , Has ReadFS sig m

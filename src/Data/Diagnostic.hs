@@ -1,13 +1,24 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Data.Diagnostic (
+  -- * ToDiagnostic
   ToDiagnostic (..),
   SomeDiagnostic (..),
+
+  -- * FailureBundle
+  FailureBundle (..),
+  renderFailureBundle,
+  renderSomeDiagnostic,
+
+  -- * Warnings
+  REPLACEME (..),
 ) where
 
 import Control.Exception (SomeException (SomeException))
 import Data.Aeson (ToJSON, object, toJSON, (.=))
+import Data.List (intersperse)
 import Data.Text (Text)
-import Prettyprinter (Doc, Pretty (pretty))
-import Prettyprinter.Render.Terminal (AnsiStyle)
+import Effect.Logger
 
 -- | A class of diagnostic types that can be rendered in a user-friendly way
 class ToDiagnostic a where
@@ -33,3 +44,51 @@ instance ToJSON SomeDiagnostic where
       [ "errorPath" .= path
       , "errorCause" .= show (renderDiagnostic cause)
       ]
+
+---------- Failure bundles
+
+data FailureBundle = FailureBundle
+  { failureWarnings :: [SomeDiagnostic]
+  , failureCause :: SomeDiagnostic
+  }
+
+instance Show FailureBundle where
+  show = show . renderFailureBundle
+
+renderFailureBundle :: FailureBundle -> Doc AnsiStyle
+renderFailureBundle FailureBundle{..} =
+  vsep $
+    [ annotate (color Yellow) "----------"
+    , annotate (color Yellow) "An error occurred:"
+    , ""
+    , indent 4 (renderSomeDiagnostic failureCause)
+    , ""
+    ]
+      ++ if null failureWarnings
+        then []
+        else
+          [ ">>>"
+          , ""
+          , indent 2 (annotate (color Yellow) "Relevant warnings include:")
+          , ""
+          , indent 4 (renderWarnings failureWarnings)
+          ]
+
+renderSomeDiagnostic :: SomeDiagnostic -> Doc AnsiStyle
+renderSomeDiagnostic (SomeDiagnostic stack cause) =
+  renderDiagnostic cause
+    <> line
+    <> line
+    <> annotate (color Cyan) "Traceback:"
+    <> line
+    <> indent 2 (vsep (map (pretty . ("- " <>)) stack))
+
+renderWarnings :: [SomeDiagnostic] -> Doc AnsiStyle
+renderWarnings = vsep . intersperse (line <> "--" <> line) . map renderSomeDiagnostic
+
+---------- Warnings
+
+data REPLACEME = REPLACEME
+
+instance ToDiagnostic REPLACEME where
+  renderDiagnostic = const "REPLACME"
