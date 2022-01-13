@@ -13,16 +13,16 @@ import App.Types (ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.AtomicCounter (runAtomicCounter)
 import Control.Carrier.Diagnostics (runDiagnosticsIO, withResult)
-import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.TaskPool (Progress (..), withTaskPool)
 import Control.Concurrent (getNumCapabilities, threadDelay)
+import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM.TBMChan (TBMChan, closeTBMChan, newTBMChanIO, readTBMChan, writeTBMChan)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalOnSomeException, fatalText, fromEither, recover)
 import Control.Effect.Finally (Finally)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.StickyLogger (StickyLogger, logSticky, logSticky')
 import Control.Effect.TaskPool (TaskPool, forkTask)
 import Data.Foldable (traverse_)
-import Data.List.Split (chunksOf)
 import Data.Map qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -51,31 +51,21 @@ runVsiAnalysis ::
   AllFilters ->
   m ([VSI.Locator], [IAT.UserDep])
 runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
-  -- TODO(kit): Reuse capabilities from parent
   capabilities <- sendIO getNumCapabilities
-
-  -- TODO(kit): Figure out how to stream fingerprinting
-  (files, _) <- context "Fingerprint files"
-    . runOutput @(Path Rel File, Combined)
-    . withTaskPool capabilities (updateProgress "Fingerprint files")
-    . runAtomicCounter
-    . forkTask
-    $ do
-      res <- runDiagnosticsIO $ discover (toPathFilters dir filters) dir ancestryDirect
-      withResult SevError res (const (pure ()))
-  logDebug . pretty $ "Fingerprinted " <> (toText . show $ length files) <> " files"
 
   scanID <- context "Create scan in backend" $ vsiCreateScan apiOpts projectRevision
   logInfo . pretty $ "Created Scan ID: " <> unScanID scanID
 
-  logInfo . pretty $ "Uploading " <> toText (show $ length files) <> " fingerprints"
-  context "Upload fingerprints"
-    -- Running 4 requests in parallel isn't for any real reason, just a generic choice.
-    -- The idea is that we don't want to saturate their bandwidth with too many parallel requests.
-    . withTaskPool 4 (updateProgress "Upload fingerprint batches")
+  -- Allow up to 2x the buffer size to be stored:
+  -- - runBatchUploader buffers up to uploadBufferSize
+  -- - newTBMChanIO also buffers up to uploadBufferSize
+  files <- sendIO $ newTBMChanIO uploadBufferSize
+  context "Fingerprint files"
+    . withTaskPool capabilities (updateProgress "Upload files")
     . runAtomicCounter
-    . forkTask
-    $ traverse_ (forkTask . vsiAddFilesToScan apiOpts scanID . Map.fromList) $ chunksOf 1000 files
+    $ do
+      context "Discover fingerprints" . forkTask $ runFingerprintDiscovery capabilities files dir filters
+      context "Upload fingerprints" . forkTask $ runBatchUploader files apiOpts scanID
 
   logInfo "Finalizing scan"
   context "Finalize scan" $ vsiCompleteScan apiOpts scanID
@@ -89,6 +79,64 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
   let userDefinedDeps = map IAT.toUserDep $ filter VSI.isUserDefined parsedLocators
   let allOtherDeps = filter (not . VSI.isUserDefined) parsedLocators
   pure (allOtherDeps, userDefinedDeps)
+
+uploadBufferSize :: Int
+uploadBufferSize = 1000
+
+runFingerprintDiscovery ::
+  ( Has (Lift IO) sig m
+  , Has Finally sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  , Has StickyLogger sig m
+  ) =>
+  -- | Parallelization factor
+  Int ->
+  -- | Channel on which new files are collected
+  TBMChan (Path Rel File, Combined) ->
+  Path Abs Dir ->
+  AllFilters ->
+  m ()
+runFingerprintDiscovery capabilities files dir filters = do
+  withTaskPool capabilities (updateProgress "Fingerprint files") . runAtomicCounter $ do
+    res <- runDiagnosticsIO $ discover files (toPathFilters dir filters) dir ancestryDirect
+    withResult SevError res (const (pure ()))
+
+  logDebug "Finished processing files"
+  sendIO . atomically $ closeTBMChan files
+
+-- | Collects fingerprinted files coming in over a channel and uploads them to the server in chunks.
+runBatchUploader ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  ) =>
+  -- | Channel on which new files are collected
+  TBMChan (Path Rel File, Combined) ->
+  -- | API options used for the upload
+  ApiOpts ->
+  ScanID ->
+  m ()
+runBatchUploader files apiOpts scanID = collect []
+  where
+    await = sendIO . atomically $ readTBMChan files
+    upload [] = pure ()
+    upload buf = do
+      logDebug . pretty $ "Upload chunk of " <> show (length buf) <> " file(s)"
+      vsiAddFilesToScan apiOpts scanID $ Map.fromList buf
+    collect buf | length buf >= uploadBufferSize = do
+      logDebug "Upload buffer is full, uploading chunk"
+      upload buf
+      collect []
+    collect buf = do
+      next <- await
+      case next of
+        Nothing -> do
+          logDebug "No more files, uploading final chunk"
+          upload buf
+        Just f -> do
+          logDebug . pretty $ "Appending " <> toText (fst f) <> " to upload buffer (" <> (toText . show) (length buf + 1) <> " / 1000)"
+          collect $ f : buf
 
 -- | Walk the directory tree starting from the root directory, fingerprinting any files that are children of the root directory.
 --
@@ -173,15 +221,16 @@ discover ::
   , Has Finally sig m
   , Has TaskPool sig m
   , Has Logger sig m
-  , Has (Output (Path Rel File, Combined)) sig m
   ) =>
+  TBMChan (Path Rel File, Combined) ->
+  -- | Filters used to exclude scanned directories
   PathFilters ->
   -- | Root to discover at
   Path Abs Dir ->
   -- | Path rendering
   (Path Abs Dir -> Path Abs File -> m (Path Rel File)) ->
   m ()
-discover filters root renderAncestry =
+discover output filters root renderAncestry =
   context "discover" $ do
     logDebug . pretty $ "walking new root: " <> toText root
     flip walk root $ \dir _ files -> handle dir files
@@ -202,11 +251,11 @@ discover filters root renderAncestry =
       forkTask . recover . fatalOnSomeException "extract archive" . withArchive' file $ \archiveRoot -> context "walking into child archive" $ do
         logDebug . pretty $ "walking into " <> toText file <> " as archive"
         logicalParent <- convertArchiveSuffix logicalPath
-        discover filters archiveRoot $ ancestryDerived logicalParent
+        discover output filters archiveRoot $ ancestryDerived logicalParent
 
       -- Report the fingerprint and logical path for computing this chunk.
       logDebug . pretty $ "report logical path: " <> toText logicalPath
-      output (logicalPath, fp)
+      sendIO . atomically $ writeTBMChan output (logicalPath, fp)
 
 -- | Renders the relative path from the provided directory to the file.
 -- If the path cannot be made relative, fatally exits through the diagnostic effect.
