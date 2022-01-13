@@ -68,7 +68,7 @@ compressAndUpload apiOpts arcDir tmpDir VendoredDependency{..} = context "compre
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
   res <- Fossa.archiveUpload signedURL compressedFile
-  logDebug $ pretty res
+  logDebug $ pretty $ show res
 
   pure $ Archive vendoredName depVersion
 
