@@ -93,7 +93,7 @@ walkDir ::
 walkDir handler topdir =
   context "Walking the filetree" $
     void $
-      --makeAbsolute topdir >>= walkAvoidLoop Set.empty
+      -- makeAbsolute topdir >>= walkAvoidLoop Set.empty
       walkAvoidLoop Set.empty topdir
   where
     walkAvoidLoop traversed curdir = do

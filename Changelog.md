@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## v3.0.15
+
+- Improve archive upload logging. ([#761](https://github.com/fossas/fossa-cli/pull/761)) 
+
 ## v3.0.14
 
 - Maven: Updates implementation to delineate classifier, and consequently maven dependencies with classifier can be scanned without failure in FOSSA. ([#755](https://github.com/fossas/fossa-cli/pull/755/))

@@ -34,6 +34,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import DepTypes (DepType (..))
+import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
 import Fossa.API.Types
 import Path
@@ -46,7 +47,7 @@ data FoundDepsFile
   = ManualYaml (Path Abs File)
   | ManualJSON (Path Abs File)
 
-analyzeFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has StickyLogger sig m) => Path Abs Dir -> Maybe ApiOpts -> m (Maybe SourceUnit)
+analyzeFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => Path Abs Dir -> Maybe ApiOpts -> m (Maybe SourceUnit)
 analyzeFossaDepsFile root maybeApiOpts = do
   maybeDepsFile <- findFossaDepsFile root
   case maybeDepsFile of
@@ -78,7 +79,7 @@ findFossaDepsFile root = do
     (_, _, True) -> pure $ Just $ ManualJSON jsonFile
     (False, False, False) -> pure Nothing
 
-toSourceUnit :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has StickyLogger sig m) => Path Abs Dir -> FoundDepsFile -> ManualDependencies -> Maybe ApiOpts -> m SourceUnit
+toSourceUnit :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has StickyLogger sig m, Has Logger sig m) => Path Abs Dir -> FoundDepsFile -> ManualDependencies -> Maybe ApiOpts -> m SourceUnit
 toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts = do
   -- If the file exists and we have no dependencies to report, that's a failure.
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"

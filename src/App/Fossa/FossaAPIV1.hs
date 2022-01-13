@@ -344,7 +344,7 @@ archiveBuildUpload apiOpts archiveProjects = runEmpty $
     -- The response appears to either be "Created" for new builds, or an error message for existing builds.
     -- Making the actual return value of "Created" essentially worthless.
     resp <-
-      context "Queuing a build for an archive project" $
+      context "Queuing a build for all archive uploads" $
         req POST (archiveBuildURL baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
     pure (responseBody resp)
 
@@ -365,7 +365,7 @@ getSignedURL apiOpts revision packageName = fossaReq $ do
   let opts = "packageSpec" =: packageName <> "revision" =: revision
 
   response <-
-    context "Retrieving a signed S3 URL" $
+    context ("Retrieving a signed S3 URL for " <> packageName) $
       req GET (signedURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
   pure (responseBody response)
 
@@ -375,18 +375,16 @@ archiveUpload ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   SignedURL ->
   FilePath ->
-  m ()
+  m LbsResponse
 archiveUpload signedArcURI arcFile = fossaReq $ do
   let arcURL = URI.mkURI $ signedURL signedArcURI
 
   uri <- fromMaybeText ("Invalid URL: " <> signedURL signedArcURI) arcURL
   validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
 
-  _ <- context "Uploading project archive" $ case validatedURI of
+  context ("Uploading project archive to " <> signedURL signedArcURI) $ case validatedURI of
     Left (url, options) -> uploadArchiveRequest url options
     Right (url, options) -> uploadArchiveRequest url options
-
-  pure ()
   where
     uploadArchiveRequest url options = reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
 
