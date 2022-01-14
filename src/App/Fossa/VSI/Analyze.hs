@@ -61,7 +61,7 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
   -- - newTBMChanIO also buffers up to uploadBufferSize
   files <- sendIO $ newTBMChanIO uploadBufferSize
   context "Fingerprint files"
-    . withTaskPool capabilities (updateProgress "Upload files")
+    . withTaskPool capabilities (updateProgress "Upload remaining files")
     . runAtomicCounter
     $ do
       context "Discover fingerprints" . forkTask $ runFingerprintDiscovery capabilities files dir filters
