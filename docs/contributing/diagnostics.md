@@ -104,6 +104,8 @@ messages for running tasks
 
 > **The current callstack can be inspected**
 
+---
+
 ## Operations
 
 ### Callstack
@@ -141,6 +143,12 @@ TODO: notes
 recover :: Has Diagnostics sig m => m a -> m (Maybe a)
 ```
 
+#### Get the result of the first of two actions to succeed
+
+```hs
+(<||>) :: Has Diagnostics sig m => m a -> m a -> m a
+```
+
 #### TODO: helper error operations: tagError, fromEither, ...
 
 #### TODO: errorBoundary, rethrow
@@ -153,11 +161,86 @@ recover :: Has Diagnostics sig m => m a -> m (Maybe a)
 warn :: (ToDiagnostic warn, Has Diagnostics sig m) => warn -> m ()
 ```
 
-#### Attach a warning to an action when it fails
+#### Attach a warning to an action
 
 ```hs
 withWarn :: (ToDiagnostic warn, Has Diagnostics sig m) => warn -> m a -> m a
 ```
+
+---
+
+## Common idioms
+
+### Analysis fallbacks with warnings
+
+TODO: notes
+
+```hs
+mavenAnalyzer project = context "Maven" $
+  mvnCommandAnalysis project <||> mvnStaticAnalysis project
+
+mvnCommandAnalysis project =
+  context "Dynamic analysis"
+    . withWarn MissingDeps
+    . withWarn MissingEdges
+    $ MvnPlugin.analyze project
+
+mvnStaticAnalysis project =
+  context "Static analysis"
+    $ MvnPom.analyze project
+```
+
+### Optional analysis actions with warnings
+
+TODO: notes
+
+```hs
+pipenvAnalyzer project = context "Pipenv" $ do
+  direct <-
+    context "Parsing Pipfile.lock for direct deps"
+      . errCtx (PipenvLockParseFailed (projPipfile project))
+      $ PipfileLock.analyze (projPipfile project)
+
+  deep <-
+    context "Running pipenv to get deep deps"
+      . recover
+      . withWarn MissingDeps
+      . withWarn MissingEdges
+      . errCtx (PipenvCmdFailed (projDir project))
+      $ runPipenvCmd ...
+
+  pure (buildGraph direct deep)
+
+--- Concrete warning types
+
+data PipenvLockParseFailed = PipenvLockParseFailed (Path Abs File)
+
+instance ToDiagnostic PipenvLockParseFailed where
+  renderDiagnostic (PipenvLockParseFailed file) = "..."
+
+data PipenvCmdFailed = PipenvCmdFailed (Path Abs Dir)
+
+instance ToDiagnostic PipenvCmdFailed where
+  renderDiagnostic (PipenvCmdFailed dir) = "..."
+```
+
+### Surfacing a standalone warning
+
+While it's usually better to attach a warning to a thrown error with `withWarn`,
+it's occasionally useful to surface standalone warnings
+
+```hs
+foo = do
+  warn MyWarnType
+  ...
+
+data MyWarnType = MyWarnType
+
+instance ToDiagnostic MyWarnType where
+  renderDiagnostic MyWarnType = ...
+```
+
+---
 
 # TODO
 

@@ -10,8 +10,10 @@ module Data.Diagnostic (
   renderFailureBundle,
   renderSomeDiagnostic,
 
-  -- * Warnings
+  -- * Warnings (temporary)
   REPLACEME (..),
+  MissingDeps (..),
+  MissingEdges (..),
 ) where
 
 import Control.Exception (SomeException (SomeException))
@@ -86,9 +88,19 @@ renderSomeDiagnostic (SomeDiagnostic stack cause) =
 renderWarnings :: [SomeDiagnostic] -> Doc AnsiStyle
 renderWarnings = vsep . intersperse (line <> "--" <> line) . map renderSomeDiagnostic
 
----------- Warnings
+---------- Warnings. FIXME: delete or move to another module as appropriate
 
 data REPLACEME = REPLACEME
 
 instance ToDiagnostic REPLACEME where
-  renderDiagnostic = const "REPLACME"
+  renderDiagnostic = const "TODO: REPLACEME"
+
+data MissingDeps = MissingDeps
+
+instance ToDiagnostic MissingDeps where
+  renderDiagnostic = const "TODO: MissingDeps"
+
+data MissingEdges = MissingEdges
+
+instance ToDiagnostic MissingEdges where
+  renderDiagnostic = const "TODO: MissingEdges"
