@@ -654,9 +654,8 @@ vsiAddFilesToScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> 
 vsiAddFilesToScan apiOpts scanID files = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = baseOpts <> "sync" =: True
   let body = VSIAddFilesToScanRequestBody files
-  _ <- req POST (vsiAddFilesToScanEndpoint baseUrl scanID) (ReqBodyJsonCompat body) ignoreResponse opts
+  _ <- req POST (vsiAddFilesToScanEndpoint baseUrl scanID) (ReqBodyJsonCompat body) ignoreResponse baseOpts
 
   pure ()
 
