@@ -140,6 +140,9 @@ normalizeGitProjectName project
     dropSuffix :: Text -> Text -> Text
     dropSuffix suf txt = fromMaybe txt (Text.stripSuffix suf txt)
 
+responseTimeoutSeconds :: Int -> Option scheme
+responseTimeoutSeconds sec = responseTimeout $ sec * 1_000_000
+
 data UploadResponse = UploadResponse
   { uploadLocator :: Text
   , uploadError :: Maybe Text
@@ -673,9 +676,14 @@ vsiCompleteScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> VS
 vsiCompleteScan apiOpts scanID = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
+  -- Completing the scan can take a fair amount of time for very large scans.
+  -- For a project the size of Chromium, for example, it could take a minute or two (the server does a lot of work to mark a scan complete today).
+  -- This timeout value wasn't chosen for any specific reason other than "it's unlikely we'll ever hit this for projects of the size we envision people scanning".
+  let opts = baseOpts <> responseTimeoutSeconds 600
+
   -- Indicate that the entire scan is complete.
   let body = VSICompleteScanRequestBody $(mkAbsDir "/")
-  _ <- req PUT (vsiCompleteScanEndpoint baseUrl scanID) (ReqBodyJsonCompat body) ignoreResponse baseOpts
+  _ <- req PUT (vsiCompleteScanEndpoint baseUrl scanID) (ReqBodyJsonCompat body) ignoreResponse opts
   pure ()
 
 newtype VSIScanAnalysisStatusBody = VSIScanAnalysisStatusBody {unVSIScanAnalysisStatusBody :: VSI.AnalysisStatus}
