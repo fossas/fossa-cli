@@ -12,10 +12,14 @@ module Data.Errors (
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
+import Data.Diagnostic (ToDiagnostic, renderDiagnostic)
+import Data.Text (Text)
 
+-- FIXME: considerations about ordering of warnings/errors
 data Result a = Failure [EmittedWarn] ErrGroup | Success [EmittedWarn] a
   deriving Show
 
+-- TODO: add UncaughtErrGroup constructor?
 data EmittedWarn = StandaloneWarn SomeWarn | WarnOnErrGroup (NonEmpty SomeWarn) [ErrCtx] (NonEmpty ErrWithStack)
   deriving Show
 
@@ -31,10 +35,7 @@ newtype ResultT m a = ResultT { runResultT :: m (Result a) }
   deriving Functor
 
 instance Monad m => Applicative (ResultT m) where
-  ResultT mf <*> ResultT ma = ResultT $ do
-    resF <- mf
-    resA <- ma
-    pure (resF <*> resA)
+  ResultT mf <*> ResultT ma = ResultT $ (<*>) <$> mf <*> ma
 
   pure = ResultT . pure . pure
 
@@ -94,11 +95,7 @@ warn :: SomeWarn -> Result ()
 warn w = Success [StandaloneWarn w] ()
 
 recover :: Result a -> Result (Maybe a)
-recover (Failure ws (ErrGroup sws ectx es)) =
-  case NE.nonEmpty sws of
-    -- NOTE: errors from errgroup get dropped when no warning is present
-    Nothing -> Success ws Nothing
-    Just ws' -> Success (WarnOnErrGroup ws' ectx es : ws) Nothing
+recover failure@Failure{} = Success (getWarnings failure) Nothing
 recover (Success ws a) = Success ws (Just a)
 
 errorBoundary :: Result a -> Result (Result a)
@@ -127,16 +124,19 @@ instance Applicative Result where
 
   pure = Success []
 
+getWarnings :: Result a -> [EmittedWarn]
+getWarnings (Failure ws (ErrGroup sws ectx es)) =
+    -- FIXME: errors from errgroup get dropped when no warning is present
+  case NE.nonEmpty sws of
+    Nothing -> ws
+    Just sws' -> (WarnOnErrGroup sws' ectx es : ws)
+
 mergeErrGroup :: ErrGroup -> ErrGroup -> ErrGroup
 mergeErrGroup (ErrGroup sws ectx nee) (ErrGroup sws' ectx' nee') = ErrGroup (sws' <> sws) (ectx' <> ectx) (nee' <> nee)
 
 tryBoth :: Result a -> Result a -> Result a
 tryBoth (Success ws a) _ = Success ws a
--- NOTE: eg on left gets dropped when no warning is present
-tryBoth (Failure ws (ErrGroup sws ectx es)) (Success ws' a) =
-  case NE.nonEmpty sws of
-    Nothing -> Success (ws' <> ws) a
-    Just sws' -> Success (WarnOnErrGroup sws' ectx es : ws' <> ws) a
+tryBoth failure@Failure{} (Success ws' a) = Success (ws' <> getWarnings failure) a
 tryBoth (Failure ws eg) (Failure ws' eg') = Failure (ws' <> ws) (mergeErrGroup eg eg')
 
 instance Monad Result where
@@ -150,9 +150,49 @@ instance Monad Result where
 
 data Stack = Stack
   deriving Show
-data SomeWarn = SomeWarn
-  deriving Show
-data SomeErr = SomeErr
-  deriving Show
-data ErrCtx = ErrCtx
-  deriving Show
+
+data SomeWarn where
+  SomeWarn :: ToDiagnostic diag => diag -> SomeWarn
+
+instance Show SomeWarn where
+  show (SomeWarn w) = show (renderDiagnostic w)
+
+data SomeErr where
+  SomeErr :: ToDiagnostic diag => diag -> SomeErr
+
+instance Show SomeErr where
+  show (SomeErr e) = show (renderDiagnostic e)
+
+data ErrCtx where
+  ErrCtx :: ToDiagnostic diag => diag -> ErrCtx
+
+instance Show ErrCtx where
+  show (ErrCtx c) = show (renderDiagnostic c)
+
+----------
+
+gradleExample :: Monad m => ResultT m ()
+gradleExample = errCtxT (ErrCtx @Text "some context about the gradle command") $
+  tryGradleW
+    <||> tryGradleWExe
+    <||> tryGradle
+
+  where
+    tryGradleW = fatalT Stack (SomeErr @Text "blah gradlew")
+    tryGradleWExe = fatalT Stack (SomeErr @Text "blah gradlewexe")
+    tryGradle = fatalT Stack (SomeErr @Text "blah gradle")
+
+pipenvExample :: Monad m => ResultT m ()
+pipenvExample = do
+  direct <-
+    errCtxT (ErrCtx @Text "some context about parsing pipfile lock")
+      $ pure ()
+
+  deep <-
+    recoverT
+      . withWarnT (SomeWarn @Text "missing deps")
+      . withWarnT (SomeWarn @Text "missing edges")
+      . errCtxT (ErrCtx @Text "blah blah pipenv command")
+      $ fatalT Stack (SomeErr @Text "oh no pipenv command failed")
+
+  pure ()

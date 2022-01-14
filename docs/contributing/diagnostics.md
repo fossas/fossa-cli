@@ -28,11 +28,14 @@ Analyzers have "fallbacks" to less- and less-accurate analysis techniques.
 For example, the maven analyzer:
 
 1. Attempts to do analysis with the `mvn` command
-2. When that fails, it attempts to do static analysis on `pom.xml` files.
+2. When the `mvn` command fails, attempts to do static analysis on `pom.xml`
+   files.
 
 When both (1) and (2) fail, we want to show _both_ errors.
 
 This use-case surfaces the first of our unusual constraints:
+
+> **Actions can be grouped into a fallback sequence**
 
 > **When all sub-actions in a fallback sequence fail, we want to aggregate and
 > show _all_ errors**
@@ -161,7 +164,7 @@ recover :: Has Diagnostics sig m => m a -> m (Maybe a)
 warn :: (ToDiagnostic warn, Has Diagnostics sig m) => warn -> m ()
 ```
 
-#### Attach a warning to an action
+#### Attach a warning to an action's failure
 
 ```hs
 withWarn :: (ToDiagnostic warn, Has Diagnostics sig m) => warn -> m a -> m a
