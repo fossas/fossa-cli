@@ -4,9 +4,16 @@ module Composer.ComposerJsonSpec (spec) where
 
 import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Control.Effect.Diagnostics qualified as Diagnostics
-import Path (mkRelDir, mkRelFile, toFilePath, (</>))
+import Path (
+  Abs,
+  Dir,
+  Path,
+  mkRelDir,
+  mkRelFile,
+  toFilePath,
+  (</>),
+ )
 import Path.IO (getCurrentDir)
-import Path.Posix (Abs, Dir, Path)
 import Strategy.Composer (ComposerProject (..))
 import Test.Effect (it', shouldBe')
 import Test.Hspec (Spec, describe, runIO)
