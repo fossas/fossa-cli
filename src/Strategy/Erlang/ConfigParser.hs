@@ -155,7 +155,7 @@ quotedString = char '\"' *> manyTill takeOne (char '\"')
     takeOne = L.charLiteral <|> takeOneEscaped
 
     takeOneEscaped = char '\\' *> escapedChar
-    escapedChar = label "escaped character in string" anySingle 
+    escapedChar = label "escaped character in string" anySingle
 
 parseTuple :: Parser ErlValue
 parseTuple = ErlTuple <$ symbol "{" <*> parseErlValue `sepBy1` symbol "," <* symbol "}"
