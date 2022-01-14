@@ -4,6 +4,8 @@ module Data.List.Extra (
   singleton,
 ) where
 
+import Data.Maybe (listToMaybe)
+
 -- | infix operator to access an array (similar to 'Data.List.!!')
 -- if the index doesn't exist, return Nothing, otherwise
 -- return Just (value)
@@ -12,11 +14,9 @@ xs !? ix = case drop ix xs of
   [] -> Nothing
   a : _ -> Just a
 
--- | If the list is empty, return Nothing, otherwise return the first element
+-- | Better name for listToMaybe
 head' :: [a] -> Maybe a
-head' = \case
-  [] -> Nothing
-  (x : _) -> Just x
+head' = listToMaybe
 
 -- | Create a one-item list from the item given
 singleton :: a -> [a]

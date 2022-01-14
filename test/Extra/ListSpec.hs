@@ -1,25 +1,10 @@
 module Extra.ListSpec (spec) where
 
-import Data.List.Extra (head', singleton, (!?))
-import Data.Maybe (isJust)
-import Data.Void (Void)
-import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy)
+import Data.List.Extra (singleton, (!?))
+import Test.Hspec (Spec, describe, it, shouldBe)
 
 spec :: Spec
 spec = do
-  describe "head'" $ do
-    it "should return the first item of a non-empty list" $
-      head' [True, False, False] `shouldBe` Just True
-
-    it "should return Nothing for an empty list" $
-      head' [] `shouldBe` (Nothing :: Maybe ())
-
-    it "should not loop for infinite lists" $
-      head' (True : repeat False) `shouldBe` Just True
-
-    it "should not evaluate any of the items in the list" $
-      head' (repeat undefined :: [Void]) `shouldSatisfy` isJust
-
   describe "singleton" $ do
     it "should create a one-item list" $
       singleton (3 :: Int) `shouldBe` [3]
