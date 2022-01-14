@@ -164,6 +164,8 @@ newtype ComposerJson = ComposerJson
   }
   deriving (Eq, Ord, Show)
 
+-- | composer.json and its license key is documented
+-- [here](https://getcomposer.org/doc/04-schema.md#license)
 instance FromJSON ComposerJson where
   parseJSON = withObject "ComposerJson" $ \obj ->
     ComposerJson <$> obj .:? "license" .!= ComposerLicenses []
