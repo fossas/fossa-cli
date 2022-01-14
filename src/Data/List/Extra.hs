@@ -1,4 +1,8 @@
-module Data.List.Extra ((!?),head',singleton) where
+module Data.List.Extra (
+  (!?),
+  head',
+  singleton,
+) where
 
 -- | infix operator to access an array (similar to 'Data.List.!!')
 -- if the index doesn't exist, return Nothing, otherwise
@@ -12,7 +16,7 @@ xs !? ix = case drop ix xs of
 head' :: [a] -> Maybe a
 head' = \case
   [] -> Nothing
-  (x:_) -> Just x
+  (x : _) -> Just x
 
 -- | Create a one-item list from the item given
 singleton :: a -> [a]
