@@ -1,4 +1,21 @@
 module Data.Errors (
+  ResultT (..),
+  fatalT,
+  warnT,
+  recoverT,
+  errorBoundaryT,
+  rethrowT,
+  withWarnT,
+  errCtxT,
+  (<||>),
+
+  getWarnings,
+
+  SomeErr(..),
+  SomeWarn(..),
+  ErrCtx(..),
+  Stack(..),
+
   Result (..),
   fatal,
   warn,
@@ -7,32 +24,39 @@ module Data.Errors (
   rethrow,
   withWarn,
   errCtx,
-  (<||>),
 ) where
 
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.Trans (MonadTrans, lift)
+import Data.Diagnostic (ToDiagnostic, renderDiagnostic)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
-import Data.Diagnostic (ToDiagnostic, renderDiagnostic)
 import Data.Text (Text)
 
 -- FIXME: considerations about ordering of warnings/errors
 data Result a = Failure [EmittedWarn] ErrGroup | Success [EmittedWarn] a
-  deriving Show
+  deriving (Show)
 
 -- TODO: add UncaughtErrGroup constructor?
 data EmittedWarn = StandaloneWarn SomeWarn | WarnOnErrGroup (NonEmpty SomeWarn) [ErrCtx] (NonEmpty ErrWithStack)
-  deriving Show
+  deriving (Show)
 
 data ErrGroup = ErrGroup [SomeWarn] [ErrCtx] (NonEmpty ErrWithStack)
-  deriving Show
+  deriving (Show)
 
 data ErrWithStack = ErrWithStack Stack SomeErr
-  deriving Show
+  deriving (Show)
 
 --------------
 
-newtype ResultT m a = ResultT { runResultT :: m (Result a) }
-  deriving Functor
+newtype ResultT m a = ResultT {runResultT :: m (Result a)}
+  deriving (Functor)
+
+instance MonadIO m => MonadIO (ResultT m) where
+  liftIO = ResultT . fmap pure . liftIO
+
+instance MonadTrans ResultT where
+  lift = ResultT . fmap pure
 
 instance Monad m => Applicative (ResultT m) where
   ResultT mf <*> ResultT ma = ResultT $ (<*>) <$> mf <*> ma
@@ -126,7 +150,7 @@ instance Applicative Result where
 
 getWarnings :: Result a -> [EmittedWarn]
 getWarnings (Failure ws (ErrGroup sws ectx es)) =
-    -- FIXME: errors from errgroup get dropped when no warning is present
+  -- FIXME: errors from errgroup get dropped when no warning is present
   case NE.nonEmpty sws of
     Nothing -> ws
     Just sws' -> (WarnOnErrGroup sws' ectx es : ws)
@@ -148,51 +172,51 @@ instance Monad Result where
 
 ----------
 
-data Stack = Stack
-  deriving Show
+newtype Stack = Stack [Text]
+  deriving (Show)
 
 data SomeWarn where
   SomeWarn :: ToDiagnostic diag => diag -> SomeWarn
 
 instance Show SomeWarn where
-  show (SomeWarn w) = show (renderDiagnostic w)
+  show (SomeWarn w) = "\"" <> show (renderDiagnostic w) <> "\""
 
 data SomeErr where
   SomeErr :: ToDiagnostic diag => diag -> SomeErr
 
 instance Show SomeErr where
-  show (SomeErr e) = show (renderDiagnostic e)
+  show (SomeErr e) = "\"" <> show (renderDiagnostic e) <> "\""
 
 data ErrCtx where
   ErrCtx :: ToDiagnostic diag => diag -> ErrCtx
 
 instance Show ErrCtx where
-  show (ErrCtx c) = show (renderDiagnostic c)
+  show (ErrCtx c) = "\"" <> show (renderDiagnostic c) <> "\""
 
 ----------
 
 gradleExample :: Monad m => ResultT m ()
-gradleExample = errCtxT (ErrCtx @Text "some context about the gradle command") $
-  tryGradleW
-    <||> tryGradleWExe
-    <||> tryGradle
-
+gradleExample =
+  errCtxT (ErrCtx @Text "some context about the gradle command") $
+    tryGradleW
+      <||> tryGradleWExe
+      <||> tryGradle
   where
-    tryGradleW = fatalT Stack (SomeErr @Text "blah gradlew")
-    tryGradleWExe = fatalT Stack (SomeErr @Text "blah gradlewexe")
-    tryGradle = fatalT Stack (SomeErr @Text "blah gradle")
+    tryGradleW = fatalT (Stack []) (SomeErr @Text "blah gradlew")
+    tryGradleWExe = fatalT (Stack []) (SomeErr @Text "blah gradlewexe")
+    tryGradle = fatalT (Stack []) (SomeErr @Text "blah gradle")
 
 pipenvExample :: Monad m => ResultT m ()
 pipenvExample = do
   direct <-
-    errCtxT (ErrCtx @Text "some context about parsing pipfile lock")
-      $ pure ()
+    errCtxT (ErrCtx @Text "some context about parsing pipfile lock") $
+      pure ()
 
   deep <-
     recoverT
       . withWarnT (SomeWarn @Text "missing deps")
       . withWarnT (SomeWarn @Text "missing edges")
       . errCtxT (ErrCtx @Text "blah blah pipenv command")
-      $ fatalT Stack (SomeErr @Text "oh no pipenv command failed")
+      $ fatalT (Stack []) (SomeErr @Text "oh no pipenv command failed")
 
   pure ()

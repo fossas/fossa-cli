@@ -1,5 +1,7 @@
 {-# LANGUAGE GADTs #-}
 
+-- FIXME: haddocks
+
 -- | The Diagnostics effect is a replacement for the Error effect in most cases. It models an unchecked exceptions pattern, and provides for:
 --
 -- - "stack trace"-like behavior, closely resembling the golang pattern of errors.Wrap (see: 'context')
@@ -10,7 +12,9 @@ module Control.Effect.Diagnostics (
 
   -- FIXME
   Diagnostics,
-  DiagErr (..),
+  Diag (..),
+  warn,
+  withWarn,
   errCtx,
   fatal,
   context,
@@ -38,11 +42,6 @@ module Control.Effect.Diagnostics (
   ToDiagnostic (..),
   SomeDiagnostic (..),
   module Diagnostic,
-
-  -- * FIXME: temporary DiagWarn
-  DiagWarn (..),
-  warn,
-  withWarn,
 ) where
 
 import Control.Algebra as X
@@ -51,22 +50,45 @@ import Control.Effect.Lift (Lift)
 import Control.Exception (IOException)
 import Control.Exception.Extra (safeCatch)
 import Data.Diagnostic as Diagnostic
+import Data.Errors (Result)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Effect.Logger (Logger, logWarn)
 
-type Diagnostics = Stack :+: DiagErr :+: DiagWarn
+type Diagnostics = Diag :+: Stack
 
-data DiagErr m k where
-  -- FIXME: separate constraint that's not ToDiagnostic?
-  ErrCtx :: ToDiagnostic ctx => ctx -> m a -> DiagErr m a
-  Fatal :: ToDiagnostic diag => diag -> DiagErr m a
-  Recover :: m a -> DiagErr m (Maybe a)
-  ErrorBoundary :: m a -> DiagErr m (Either FailureBundle a)
-  Rethrow :: FailureBundle -> DiagErr m a
+data Diag m k where
+  FirstToSucceed :: m a -> m a -> Diag m a
+  Warn :: ToDiagnostic warn => warn -> Diag m ()
+  WithWarn :: ToDiagnostic warn => warn -> m a -> Diag m a
+  ErrCtx :: ToDiagnostic ctx => ctx -> m a -> Diag m a
+  Fatal :: ToDiagnostic diag => diag -> Diag m a
+  Recover :: m a -> Diag m (Maybe a)
+  ErrorBoundary :: m a -> Diag m (Result a)
+  Rethrow :: Result a -> Diag m a
+
+-- | Emit a warning
+warn :: (ToDiagnostic diag, Has Diagnostics sig m) => diag -> m ()
+warn = send . Warn
+
+-- | Contextualize a thrown error with a warning
+--
+-- FIXME: this doesn't currently use the provided diagnostic, and just logs the failure bundle (to maintain present behavior)
+withWarn :: (ToDiagnostic warn, Has Diagnostics sig m) => warn -> m a -> m a
+withWarn w m = send (WithWarn w m)
+
+-- FIXME: kill
+{-
+withWarn _ m = do
+  maybeBundle <- errorBoundary m
+  case maybeBundle of
+    Left bundle -> do
+      logWarn (renderFailureBundle bundle)
+      rethrow bundle
+    Right res -> pure res
+-}
 
 errCtx :: (ToDiagnostic ctx, Has Diagnostics sig m) => ctx -> m a -> m a
 errCtx ctx m = send (ErrCtx ctx m)
@@ -78,6 +100,8 @@ fatal = send . Fatal
 -- | Throw an untyped string error
 fatalText :: Has Diagnostics sig m => Text -> m a
 fatalText = fatal
+
+-- FIXME
 
 -- | Throw a generic error message on IO error, wrapped in a new 'context' using the provided @Text@.
 fatalOnIOException :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> m a -> m a
@@ -94,11 +118,11 @@ recover = send . Recover
 -- - warnings from outside of the error boundary do not impact the FailureBundles produced by the action
 --
 -- This returns a FailureBundle if the action failed; otherwise returns the result of the action
-errorBoundary :: Has Diagnostics sig m => m a -> m (Either FailureBundle a)
+errorBoundary :: Has Diagnostics sig m => m a -> m (Result a)
 errorBoundary = send . ErrorBoundary
 
 -- | Rethrow a FailureBundle from an 'errorBoundary'
-rethrow :: Has Diagnostics sig m => FailureBundle -> m a
+rethrow :: Has Diagnostics sig m => Result a -> m a
 rethrow = send . Rethrow
 
 -- | Lift an Either result into the Diagnostics effect, given a ToDiagnostic instance for the error type
@@ -117,9 +141,11 @@ fromMaybe msg = maybe (fatal msg) pure
 fromMaybeText :: Has Diagnostics sig m => Text -> Maybe a -> m a
 fromMaybeText = fromMaybe
 
+-- FIXME: kill
 warnMaybe :: (ToDiagnostic err, Has Diagnostics sig m) => err -> Maybe a -> m (Maybe a)
 warnMaybe msg = recover . maybe (fatal msg) pure
 
+-- FIXME: kill
 warnMaybeText :: Has Diagnostics sig m => Text -> Maybe a -> m (Maybe a)
 warnMaybeText = warnMaybe
 
@@ -132,7 +158,7 @@ infixl 3 <||>
 
 -- | Analagous to @Alternative@'s @<|>@. Tries both actions and chooses the result that succeeds, invoking 'recover' semantics for errors.
 (<||>) :: Has Diagnostics sig m => m a -> m a -> m a
-(<||>) ma mb = recover ma >>= maybe mb pure
+(<||>) ma mb = send (FirstToSucceed ma mb)
 
 -- | Run a list of actions, combining the successful ones. If all actions fail, 'fatalText' is invoked with the provided @Text@ message.
 combineSuccessful :: (Semigroup a, Has Diagnostics sig m) => Text -> [m a] -> m a
@@ -142,24 +168,3 @@ combineSuccessful msg actions = do
   case successful of
     Nothing -> fatalText msg
     Just xs -> pure (sconcat xs)
-
----------- FIXME: temporary separate DiagWarn. incorporate the Warn operation into DiagErr
-
-data DiagWarn m a where
-  Warn :: ToDiagnostic warn => warn -> DiagWarn m ()
-
--- | Emit a warning
-warn :: (ToDiagnostic diag, Has Diagnostics sig m) => diag -> m ()
-warn = send . Warn
-
--- | Contextualize a thrown error with a warning
---
--- FIXME: this doesn't currently use the provided diagnostic, and just logs the failure bundle (to maintain present behavior)
-withWarn :: (Has Logger sig m, Has Diagnostics sig m) => diag -> m a -> m a
-withWarn _ m = do
-  maybeBundle <- errorBoundary m
-  case maybeBundle of
-    Left bundle -> do
-      logWarn (renderFailureBundle bundle)
-      rethrow bundle
-    Right res -> pure res
