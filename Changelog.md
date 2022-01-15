@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## v3.0.16
+
+- Improves the overall performance and progress reporting of VSI scans. ([#765](https://github.com/fossas/fossa-cli/pull/765))
+
 ## v3.0.15
 
 - Improve archive upload logging. ([#761](https://github.com/fossas/fossa-cli/pull/761)) 
