@@ -1,5 +1,17 @@
 # Fossa CLI Changelog
 
+## v3.0.15
+
+- Improve archive upload logging. ([#761](https://github.com/fossas/fossa-cli/pull/761)) 
+
+## v3.0.14
+
+- Maven: Updates implementation to delineate classifier, and consequently maven dependencies with classifier can be scanned without failure in FOSSA. ([#755](https://github.com/fossas/fossa-cli/pull/755/))
+
+## v3.0.13
+
+- `package-lock.json` parser ignores name field. ([#757](https://github.com/fossas/fossa-cli/pull/757)) 
+
 ## v3.0.12
 
 - log4j: Adds `fossa log4j` command to identify log4j dependencies. ([#744](https://github.com/fossas/fossa-cli/pull/744))

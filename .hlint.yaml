@@ -23,11 +23,11 @@
 - suggest: {lhs: "(Data.Set.size x) == 0" , rhs: "Data.Set.null x"}
 - suggest: {lhs: "(Data.Set.size x) /= 0" , rhs: "not $ Data.Set.null x"}
 
-# Forbidden items, only allowed in compile-time code, or test code.
+# Forbidden items, only allowed in compile-time code, or test code (however, it should be avoided in tests as much as possible).
 - functions:
   - {name: error, within: [Data.String.Conversion, Control.Effect.Replay]}
   - {name: undefined, within: []}
-  - {name: Prelude.head, within: [Control.Effect.Replay.TH, Control.Effect.Record.TH, Elixir.MixTreeSpec]}
+  - {name: Prelude.head, within: [Control.Effect.Replay.TH, Control.Effect.Record.TH], message: "Use Data.List.Extra.head' instead."}
   - {name: Prelude.tail, within: []}
   - {name: Prelude.init, within: []}
   - {name: Prelude.last, within: []}
@@ -39,6 +39,7 @@
   - {name: Data.Text.tail, within: []}
   - {name: Data.Text.init, within: []}
   - {name: Data.Text.last, within: []}
-  - {name: "Prelude.!!", within: [Elixir.MixTreeSpec]}
+  - {name: "Prelude.!!", within: []}
   - {name: "Data.Map.!", within: []}
+    # TODO: remove the need to special-case this test module.
   - {name: fromJust, within: [App.DocsSpec]}

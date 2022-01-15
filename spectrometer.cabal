@@ -385,6 +385,7 @@ test-suite unit-tests
     Elixir.MixTreeSpec
     Erlang.ConfigParserSpec
     Erlang.Rebar3TreeSpec
+    Extra.ListSpec
     Extra.TextSpec
     Fortran.FpmTomlSpec
     Fossa.API.TypesSpec

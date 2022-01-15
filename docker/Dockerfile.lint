@@ -3,7 +3,8 @@ FROM ghcr.io/fossas/haskell-dev-tools:8.10.4
 WORKDIR /spectrometer
 COPY app/ app/
 COPY scripts/ scripts/
-COPY .hlint.yaml fourmolu.yaml Makefile ./
+COPY integration-test/ integration-test/
+COPY .hlint.yaml fourmolu.yaml Makefile spectrometer.cabal ./
 COPY test/ test/
 COPY src/ src/
 

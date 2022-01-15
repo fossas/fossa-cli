@@ -145,11 +145,13 @@ buildMavenPackage pom group artifact body = MavenPackage interpolatedGroup inter
     interpolatedVersion = classify . interpolateProperties pom <$> depVersion body
 
     -- maven classifiers are appended to the end of versions, e.g., 3.0.0 with a classifier
-    -- of "sources" would result in "3.0.0-sources"
+    -- of "sources" would result in "3.0.0-sources". However, current fetcher implementation uses ":",
+    -- to separate classifier when resolving.
+
     classify :: Version -> Version
     classify version = case depClassifier body of
       Nothing -> version
-      Just classifier -> version <> "-" <> classifier
+      Just classifier -> version <> ":" <> classifier
 
 coordToPackage :: MavenCoordinate -> MavenPackage
 coordToPackage coord = MavenPackage (coordGroup coord) (coordArtifact coord) (Just (coordVersion coord))
