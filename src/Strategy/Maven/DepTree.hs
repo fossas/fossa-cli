@@ -12,8 +12,9 @@ module Strategy.Maven.DepTree (
 import Control.Algebra (Has, run)
 import Control.Applicative (some, (<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, fatal)
-import Control.Effect.Exception (finally)
+import Control.Effect.Exception (SomeException, finally)
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Exception.Extra (safeTry)
 import Data.Char (isSpace)
 import Data.Foldable (for_)
 import Data.Set qualified as Set
@@ -123,7 +124,7 @@ analyze dir = do
   -- the temporary file.
   graphs <-
     execAndParse (if settingsExists then Just settingsPath else Nothing) tmp
-      `finally` sendIO (removeFile tmp)
+      `finally` sendIO (safeTry @SomeException (removeFile tmp))
   pure (buildGraph graphs, Complete)
   where
     -- Note that we do both of these in a single action so that the `finally`
