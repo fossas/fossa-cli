@@ -105,7 +105,7 @@ instance (Has (Lift IO) sig m, Has Diagnostics sig m) => Algebra (Debug :+: sig)
         let act' = errorBoundaryIO $ hdl (act <$ ctx)
         (inner, res) <- lift . lift $ runDebug act'
         output (EventScope nm inner)
-        either rethrow pure res
+        rethrow res
       L (DebugMetadata k v) -> do
         modify (Map.insert k (toJSON v))
         pure ctx

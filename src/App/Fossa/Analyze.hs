@@ -49,6 +49,7 @@ import Control.Carrier.Diagnostics.StickyContext (stickyDiag)
 import Control.Carrier.Finally (Has, runFinally)
 import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.Reader (Reader, runReader)
+import Control.Carrier.Stack (Stack, runStack)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool (
   Progress (..),
@@ -57,7 +58,7 @@ import Control.Carrier.TaskPool (
   withTaskPool,
  )
 import Control.Concurrent (getNumCapabilities)
-import Control.Effect.Diagnostics (fatalText, fromMaybeText, recover, (<||>))
+import Control.Effect.Diagnostics (fatalText, fromMaybeText, recover, rethrow, (<||>))
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Control.Monad (when)
@@ -194,7 +195,8 @@ analyzeMain ::
   AnalyzeExperimentalPreferences ->
   IO ()
 analyzeMain workdir logSeverity destination project unpackArchives jsonOutput includeAll modeOptions filters preferences =
-  withDefaultLogger logSeverity
+  runStack []
+    . withDefaultLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO
     . runReader preferences
@@ -205,7 +207,7 @@ analyzeMain workdir logSeverity destination project unpackArchives jsonOutput in
         basedir <- sendIO $ validateDir workdir
         (scope, res) <- collectDebugBundle . Diag.errorBoundaryIO $ doAnalyze basedir
         sendIO . BL.writeFile "fossa.debug.json.gz" . GZip.compress $ Aeson.encode scope
-        either Diag.rethrow pure res
+        rethrow res
       _ -> do
         basedir <- sendIO $ validateDir workdir
         ignoreDebug $ doAnalyze basedir
@@ -223,6 +225,7 @@ runDependencyAnalysis ::
   , Has Exec sig m
   , Has (Output ProjectResult) sig m
   , Has (Reader AnalyzeExperimentalPreferences) sig m
+  , Has Stack sig m
   , MonadIO m
   ) =>
   -- | Analysis base directory

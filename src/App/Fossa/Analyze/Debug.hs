@@ -19,7 +19,7 @@ module App.Fossa.Analyze.Debug (
 ) where
 
 import Control.Carrier.Debug
-import Control.Carrier.Diagnostics (DiagErr (Fatal), Diagnostics)
+import Control.Carrier.Diagnostics (Diag (Fatal), Diagnostics)
 import Control.Carrier.Lift (sendIO)
 import Control.Carrier.Simple (SimpleC, interpret, sendSimple)
 import Control.Carrier.Stack (Stack (Context))
@@ -158,7 +158,7 @@ newtype DiagDebugC m a = DiagDebugC {runDiagDebugC :: m a}
   deriving (Functor, Applicative, Monad, MonadIO)
 
 -- | Transcribe 'fatal' as 'debugError'
-instance (Member DiagErr sig, Member Debug sig, Algebra sig m) => Algebra (DiagErr :+: sig) (DiagDebugC m) where
+instance (Member Diag sig, Member Debug sig, Algebra sig m) => Algebra (Diag :+: sig) (DiagDebugC m) where
   alg hdl sig ctx = DiagDebugC $
     case sig of
       L thing@(Fatal err) -> do

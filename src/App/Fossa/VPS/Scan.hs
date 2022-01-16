@@ -11,6 +11,7 @@ import App.Fossa.VPS.Scan.RunWiggins
 import App.Fossa.VPS.Types
 import App.Types (BaseDir (..), OverrideProject (..), ProjectMetadata (..))
 import Control.Carrier.Diagnostics
+import Control.Carrier.Stack (runStack)
 import Control.Effect.Lift (Lift)
 import Data.Flag (Flag, fromFlag)
 import Data.Text
@@ -30,7 +31,7 @@ data LicenseOnlyScan = LicenseOnlyScan
 
 scanMain :: BaseDir -> ApiOpts -> ProjectMetadata -> Severity -> OverrideProject -> FilterExpressions -> Flag FollowSymlinks -> Flag SkipIPRScan -> Flag LicenseOnlyScan -> IO ()
 scanMain basedir apiOpts metadata logSeverity overrideProject fileFilters followSymlinks skipIprFlag licenseOnlyScan = withDefaultLogger logSeverity $ do
-  logWithExit_ . runReadFSIO $ runExecIO $ withWigginsBinary $ vpsScan basedir logSeverity overrideProject followSymlinks skipIprFlag licenseOnlyScan fileFilters apiOpts metadata
+  runStack [] . logWithExit_ . runReadFSIO $ runExecIO $ withWigginsBinary $ vpsScan basedir logSeverity overrideProject followSymlinks skipIprFlag licenseOnlyScan fileFilters apiOpts metadata
 
 ----- main logic
 

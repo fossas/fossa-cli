@@ -9,6 +9,7 @@ import Control.Carrier.Diagnostics.StickyContext
 import Control.Carrier.Output.IO
 import Control.Effect.AtomicCounter (AtomicCounter)
 import Control.Effect.Lift
+import Control.Effect.Stack (Stack)
 import Control.Effect.TaskPool
 import Data.Foldable (traverse_)
 import Effect.Logger
@@ -23,6 +24,7 @@ withDiscoveredProjects ::
   , Has Debug sig m
   , Has TaskPool sig m
   , Has Logger sig m
+  , Has Stack sig m
   ) =>
   -- | Discover function
   (Path Abs Dir -> StickyDiagC (DiagDebugC (Diag.DiagnosticsC m)) [DiscoveredProject run]) ->

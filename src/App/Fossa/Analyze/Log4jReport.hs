@@ -28,6 +28,7 @@ import Control.Carrier.Finally (Has, runFinally)
 import Control.Carrier.Lift (Lift)
 import Control.Carrier.Output.IO (runOutput)
 import Control.Carrier.Reader (runReader)
+import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (runStickyLogger)
 import Control.Carrier.TaskPool (
   TaskPool,
@@ -84,7 +85,8 @@ analyzeForLog4j targetDirectory = do
   basedir <- sendIO $ validateDir targetDirectory
   capabilities <- sendIO getNumCapabilities
 
-  withDefaultLogger SevInfo
+  runStack []
+    . withDefaultLogger SevInfo
     . Diag.logWithExit_
     . runReadFSIO
     . runReader withoutAnyExperimentalPreferences

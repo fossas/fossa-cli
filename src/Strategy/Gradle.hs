@@ -80,7 +80,6 @@ discover ::
   , Has ReadFS sig m
   , Has Diagnostics sig m
   , Has Exec sig m
-  , Has Logger sig m
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject GradleProject]
@@ -122,7 +121,7 @@ walkUpDir dir filename = do
 -- This is to avoid invoking Gradle again for each subproject, which would be
 -- slow (because of Gradle's startup time) and possibly wrong (because
 -- subprojects need to resolve dependency constraints together).
-findProjects :: (Has Exec sig m, Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [GradleProject]
+findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [GradleProject]
 findProjects = walk' $ \dir _ files -> do
   case find (\f -> "build.gradle" `isPrefixOf` fileName f) files of
     Nothing -> pure ([], WalkContinue)

@@ -25,10 +25,10 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception (SomeException)
 import Control.Exception.Extra (safeCatch)
 import Control.Monad.Trans
+import Data.Errors (Result (Failure, Success), ResultT)
+import Data.Errors qualified as ResultT
 import Effect.Logger
 import System.Exit (exitFailure, exitSuccess)
-import Data.Errors (ResultT)
-import Data.Errors qualified as ResultT
 
 -- TODO: ensure stack hacks are still working for e.g., inner tasks, debug bundles
 newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ResultT m a}
@@ -40,19 +40,25 @@ runDiagnostics = ResultT.runResultT . runDiagnosticsC
 logErrorBundle :: Has Logger sig m => FailureBundle -> m ()
 logErrorBundle = logError . renderFailureBundle
 
+-- FIXME: rendering of failure
+-- FIXME: show warnings on success
 -- | Run a Diagnostic effect into a logger, using the default error/warning renderers.
-logDiagnostic :: (Has (Lift IO) sig m, Has Logger sig m) => DiagnosticsC m a -> m (Maybe a)
+logDiagnostic :: (Has (Lift IO) sig m, Has Logger sig m, Has Stack sig m) => DiagnosticsC m a -> m (Maybe a)
 logDiagnostic diag = do
-  undefined
-  -- result <- runDiagnosticsIO diag
-  -- case result of
-  --   Left failure -> logErrorBundle failure >> pure Nothing
-  --   Right success -> pure $ Just success
+  result <- runDiagnosticsIO diag
+  case result of
+    Failure ws eg -> logError (viaShow ws <> line <> viaShow eg) >> pure Nothing
+    Success _ a -> pure $ Just a
+
+-- result <- runDiagnosticsIO diag
+-- case result of
+--   Left failure -> logErrorBundle failure >> pure Nothing
+--   Right success -> pure $ Just success
 
 -- | Run a void Diagnostic effect into a logger, using the default error/warning renderers.
 -- Exits with zero if the result is a success, or non-zero if the result is a failure.
 -- Useful for setting up diagnostics from CLI entry points.
-logWithExit_ :: (Has (Lift IO) sig m, Has Logger sig m) => DiagnosticsC m () -> m ()
+logWithExit_ :: (Has (Lift IO) sig m, Has Logger sig m, Has Stack sig m) => DiagnosticsC m () -> m ()
 logWithExit_ diag = logDiagnostic diag >>= maybe (sendIO exitFailure) (const (sendIO exitSuccess))
 
 instance Has Stack sig m => Algebra (Diag :+: sig) (DiagnosticsC m) where
@@ -90,7 +96,9 @@ runDiagnosticsIO act = runDiagnostics $ act `safeCatch` (\(e :: SomeException) -
 errorBoundaryIO :: (Has (Lift IO) sig m, Has Diagnostics sig m) => m a -> m (ResultT.Result a)
 errorBoundaryIO act = errorBoundary $ act `safeCatch` (\(e :: SomeException) -> fatal e)
 
+-- FIXME: look at use-sites; see if warning mechanism is a better fit
+-- FIXME: rendering failure
 -- | Use the result of a Diagnostics computation, logging an error on failure
-withResult :: Has Logger sig m => Severity -> Either FailureBundle a -> (a -> m ()) -> m ()
-withResult sev (Left e) _ = Effect.Logger.log sev $ renderFailureBundle e
-withResult _ (Right res) f = f res
+withResult :: Has Logger sig m => Severity -> Result a -> (a -> m ()) -> m ()
+withResult _ (Success _ res) f = f res
+withResult sev (Failure ws eg) _ = Effect.Logger.log sev (viaShow ws <> line <> viaShow eg)

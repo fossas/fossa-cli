@@ -20,10 +20,11 @@ import Effect.Exec (Exec, runExecIO)
 import Effect.Logger
 import Effect.ReadFS (ReadFS, runReadFSIO)
 import Fossa.API.Types
+import Control.Carrier.Stack (runStack)
 
 monorepoMain :: BaseDir -> MonorepoAnalysisOpts -> Severity -> ApiOpts -> ProjectMetadata -> OverrideProject -> PathFilters -> IO ()
 monorepoMain basedir monoRepoAnalysisOpts logSeverity apiOpts projectMeta overrideProject filters = withDefaultLogger logSeverity $ do
-  logWithExit_ $ runReadFSIO $ runExecIO $ withWigginsBinary $ monorepoScan basedir monoRepoAnalysisOpts filters logSeverity apiOpts projectMeta overrideProject
+  runStack [] . logWithExit_ . runReadFSIO . runExecIO . withWigginsBinary $ monorepoScan basedir monoRepoAnalysisOpts filters logSeverity apiOpts projectMeta overrideProject
 
 monorepoScan ::
   ( Has Diagnostics sig m

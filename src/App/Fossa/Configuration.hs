@@ -17,8 +17,10 @@ module App.Fossa.Configuration (
 import App.Docs (fossaYmlDocUrl)
 import App.Types
 import Control.Carrier.Diagnostics qualified as Diag
+import Control.Carrier.Stack (runStack)
 import Control.Effect.Lift (Lift)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
+import Data.Errors (Result (Failure, Success))
 import Data.Functor (($>))
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
@@ -28,7 +30,7 @@ import Effect.Logger (Severity (SevWarn), ignoreLogger, logWarn, withDefaultLogg
 import Effect.ReadFS
 import Path
 import Path.IO (getCurrentDir)
-import Prettyprinter (Doc, Pretty (pretty), vsep)
+import Prettyprinter (Doc, Pretty (pretty), line, viaShow, vsep)
 import System.Exit (die)
 import Text.Megaparsec
 import Types
@@ -152,15 +154,17 @@ readConfigFile file = do
         , ""
         ]
 
+-- FIXME: rendering failure
+-- FIXME: warnings
 readConfigFileIO :: Maybe (Path Abs File) -> IO (Maybe ConfigFile)
 readConfigFileIO configFile = do
   -- FIXME: we probably want to read from the target directory of analysis, not
   -- the current directory
   dir <- getCurrentDir
-  config <- ignoreLogger $ Diag.runDiagnostics $ runReadFSIO $ readConfigFile $ fromMaybe (dir </> defaultFile) configFile
+  config <- runStack [] $ ignoreLogger $ Diag.runDiagnostics $ runReadFSIO $ readConfigFile $ fromMaybe (dir </> defaultFile) configFile
   case config of
-    Left err -> die $ show $ Diag.renderFailureBundle err
-    Right a -> pure a
+    Failure ws eg -> die $ show (viaShow ws <> line <> viaShow eg)
+    Success _ a -> pure a
 
 mergeFileCmdMetadata :: ProjectMetadata -> ConfigFile -> ProjectMetadata
 mergeFileCmdMetadata meta file =

@@ -21,7 +21,6 @@ import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TL
 import Discovery.Walk
 import Effect.Exec
-import Effect.Logger hiding (group)
 import Effect.ReadFS
 import GHC.Generics (Generic)
 import Path
@@ -34,7 +33,6 @@ import Types
 discover ::
   ( Has Exec sig m
   , Has ReadFS sig m
-  , Has Logger sig m
   , Has Diagnostics sig m
   ) =>
   Path Abs Dir ->
@@ -72,7 +70,7 @@ getDeps (ScalaProject closure) =
 pathToText :: Path ar fd -> Text
 pathToText = toText . toFilePath
 
-findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
+findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects = walk' $ \dir _ files -> do
   case findFileNamed "build.sbt" files of
     Nothing -> pure ([], WalkContinue)

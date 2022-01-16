@@ -14,6 +14,7 @@ import App.Fossa.VPS.Types
 import App.Types (BaseDir (..), NinjaGraphCLIOptions (..), OverrideProject (..), ProjectRevision (..))
 import App.Util (validateDir)
 import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Control.Carrier.Stack (runStack)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
@@ -56,7 +57,7 @@ ninjaGraphMain :: ApiOpts -> Severity -> OverrideProject -> NinjaGraphCLIOptions
 ninjaGraphMain apiOpts logSeverity overrideProject NinjaGraphCLIOptions{..} = do
   BaseDir basedir <- validateDir ninjaBaseDir
 
-  withDefaultLogger logSeverity . logWithExit_ . runReadFSIO . runExecIO $ do
+  runStack [] . withDefaultLogger logSeverity . logWithExit_ . runReadFSIO . runExecIO $ do
     ProjectRevision{..} <- mergeOverride overrideProject <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
     let ninjaGraphOpts = NinjaGraphOpts apiOpts ninjaDepsFile ninjaLunchTarget ninjaScanId projectName ninjaBuildName
 

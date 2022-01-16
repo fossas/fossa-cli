@@ -5,9 +5,11 @@ module App.Version.TH (
 ) where
 
 import Control.Carrier.Diagnostics (runDiagnostics)
+import Control.Carrier.Stack (runStack)
 import Control.Effect.Diagnostics (Diagnostics, fromEitherShow)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString.Lazy qualified as BSL
+import Data.Errors (Result (Success))
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
@@ -39,11 +41,12 @@ gitTagPointCommand commit =
 getCurrentTag :: TExpQ (Maybe Text)
 getCurrentTag = do
   let commitHash = giHash $$(tGitInfoCwd)
-  result <- runIO . ignoreLogger . runDiagnostics . runExecIO . getTags $ toText commitHash
+  result <- runIO . ignoreLogger . runStack [] . runDiagnostics . runExecIO . getTags $ toText commitHash
 
+  -- FIXME: helper combinator?
   case result of
-    Left err -> reportWarning (show err) >> [||Nothing||]
-    Right tags -> filterTags tags
+    Success _ tags -> filterTags tags
+    err -> reportWarning (show err) >> [||Nothing||]
 
 getTags :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => Text -> m [Text]
 getTags hash = do

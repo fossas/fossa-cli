@@ -11,11 +11,13 @@ import Control.Carrier.AtomicCounter
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Finally
 import Control.Carrier.Reader (Reader, runReader)
+import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Lift (Lift)
+import Control.Effect.Stack (Stack)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Extra (encodeJSONToText)
@@ -34,7 +36,8 @@ listTargetsMain :: AnalyzeExperimentalPreferences -> Severity -> BaseDir -> IO (
 listTargetsMain preferences logSeverity (BaseDir basedir) = do
   capabilities <- getNumCapabilities
 
-  ignoreDebug
+  runStack []
+    . ignoreDebug
     . withDefaultLogger logSeverity
     . runStickyLogger SevInfo
     . runFinally
@@ -55,6 +58,7 @@ runAll ::
   , Has AtomicCounter sig m
   , Has Debug sig m
   , Has (Reader AnalyzeExperimentalPreferences) sig m
+  , Has Stack sig m
   ) =>
   Path Abs Dir ->
   m ()

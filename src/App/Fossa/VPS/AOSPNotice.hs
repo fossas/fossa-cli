@@ -15,10 +15,11 @@ import Effect.Logger
 import Effect.ReadFS (ReadFS, runReadFSIO)
 import Fossa.API.Types (ApiOpts (..))
 import Path (Abs, Dir, Path)
+import Control.Carrier.Stack (runStack)
 
 aospNoticeMain :: BaseDir -> Severity -> OverrideProject -> NinjaScanID -> NinjaFilePaths -> ApiOpts -> IO ()
 aospNoticeMain (BaseDir basedir) logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts = withDefaultLogger logSeverity $ do
-  logWithExit_ $ runExecIO $ runReadFSIO $ withWigginsBinary $ aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts
+  runStack [] . logWithExit_ . runExecIO . runReadFSIO . withWigginsBinary $ aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts
 
 ----- main logic
 
