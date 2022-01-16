@@ -50,7 +50,7 @@ instance AnalyzeProject PackagesConfigProject where
 mkProject :: PackagesConfigProject -> DiscoveredProject PackagesConfigProject
 mkProject project =
   DiscoveredProject
-    { projectType = "packagesconfig"
+    { projectType = PackagesConfigProjectType
     , projectBuildTargets = mempty
     , projectPath = parent $ packagesConfigFile project
     , projectData = project

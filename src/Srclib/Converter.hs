@@ -47,7 +47,7 @@ toSourceUnit :: Bool -> ProjectResult -> SourceUnit
 toSourceUnit leaveUnfiltered ProjectResult{..} =
   SourceUnit
     { sourceUnitName = renderedPath
-    , sourceUnitType = projectResultType
+    , sourceUnitType = toText projectResultType
     , sourceUnitManifest = renderedPath
     , sourceUnitBuild =
         Just $

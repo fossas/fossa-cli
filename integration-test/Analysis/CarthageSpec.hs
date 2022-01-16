@@ -8,7 +8,7 @@ import Analysis.FixtureUtils
 import Path
 import Strategy.Carthage qualified as Carthage
 import Test.Hspec
-import Types (GraphBreadth (Complete))
+import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
 
 swiftQueue :: AnalysisTestFixture (Carthage.CarthageProject)
 swiftQueue =
@@ -24,4 +24,4 @@ swiftQueue =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary swiftQueue "carthage" (DependencyResultsSummary 1 1 0 1 Complete)
+  testSuiteDepResultSummary swiftQueue CarthageProjectType (DependencyResultsSummary 1 1 0 1 Complete)

@@ -8,7 +8,7 @@ import Analysis.FixtureUtils
 import Path
 import Strategy.Leiningen qualified as Leiningen
 import Test.Hspec
-import Types (GraphBreadth (Complete))
+import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
 
 clojureEnv :: FixtureEnvironment
 clojureEnv = NixEnv ["openjdk11", "clojure", "leiningen"]
@@ -39,5 +39,5 @@ ring =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary eastwood "leiningen" (DependencyResultsSummary 10 7 3 1 Complete)
-  testSuiteDepResultSummary ring "leiningen" (DependencyResultsSummary 23 6 17 1 Complete)
+  testSuiteDepResultSummary eastwood LeiningenProjectType (DependencyResultsSummary 10 7 3 1 Complete)
+  testSuiteDepResultSummary ring LeiningenProjectType (DependencyResultsSummary 23 6 17 1 Complete)

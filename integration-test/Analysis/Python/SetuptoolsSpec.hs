@@ -8,7 +8,7 @@ import Analysis.FixtureUtils
 import Path
 import Strategy.Python.Setuptools qualified as Setuptools
 import Test.Hspec
-import Types (GraphBreadth (..))
+import Types (DiscoveredProjectType (..), GraphBreadth (..))
 
 theFuck :: AnalysisTestFixture (Setuptools.SetuptoolsProject)
 theFuck =
@@ -36,5 +36,5 @@ flask =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary theFuck "setuptools" (DependencyResultsSummary 16 16 0 2 Partial)
-  testSuiteDepResultSummary flask "setuptools" (DependencyResultsSummary 4 4 0 1 Partial)
+  testSuiteDepResultSummary theFuck SetuptoolsProjectType (DependencyResultsSummary 16 16 0 2 Partial)
+  testSuiteDepResultSummary flask SetuptoolsProjectType (DependencyResultsSummary 4 4 0 1 Partial)

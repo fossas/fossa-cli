@@ -40,6 +40,7 @@ import Text.Read (readMaybe)
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
+  DiscoveredProjectType (PerlProjectType),
   GraphBreadth (Partial),
  )
 
@@ -69,7 +70,7 @@ instance AnalyzeProject PerlProject where
 mkProject :: PerlProject -> DiscoveredProject PerlProject
 mkProject project =
   DiscoveredProject
-    { projectType = "perl"
+    { projectType = PerlProjectType
     , projectBuildTargets = mempty
     , projectPath = perlDir project
     , projectData = project

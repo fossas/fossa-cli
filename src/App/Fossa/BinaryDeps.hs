@@ -18,7 +18,7 @@ import Path (Abs, Dir, File, Path, isProperPrefixOf, (</>))
 import Path.Extra (tryMakeRelative)
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep (..))
-import Types (GraphBreadth (Complete))
+import Types (DiscoveredProjectType (BinaryDepsProjectType), GraphBreadth (Complete))
 
 -- | Binary detection is sufficiently different from other analysis types that it cannot be just another strategy.
 -- Instead, binary detection is run separately over the entire scan directory, outputting its own source unit.
@@ -63,7 +63,7 @@ shouldFingerprintDir dir filters = (not shouldExclude) && shouldInclude
     isPrefixedOrEqual a b = a == b || isProperPrefixOf b a -- swap order of isProperPrefixOf comparison because we want to know if dir is prefixed by any filter
 
 toProject :: Path Abs Dir -> ProjectResult
-toProject dir = ProjectResult "binary-deps" dir mempty Complete []
+toProject dir = ProjectResult BinaryDepsProjectType dir mempty Complete []
 
 toSourceUnit :: ProjectResult -> [SourceUserDefDep] -> SourceUnit
 toSourceUnit project deps = do

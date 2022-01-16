@@ -20,7 +20,7 @@ import Strategy.Maven.DepTree qualified as DepTreeCmd
 import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure qualified as PomClosure
-import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (..))
+import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), GraphBreadth (..))
 
 discover ::
   ( MonadIO m
@@ -39,7 +39,7 @@ mkProject ::
   DiscoveredProject MavenProject
 mkProject closure =
   DiscoveredProject
-    { projectType = "maven"
+    { projectType = MavenProjectType
     , projectPath = parent $ PomClosure.closurePath closure
     , projectBuildTargets = mempty
     , projectData = MavenProject closure

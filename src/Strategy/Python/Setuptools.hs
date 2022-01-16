@@ -84,7 +84,7 @@ instance AnalyzeProject SetuptoolsProject where
 mkProject :: SetuptoolsProject -> DiscoveredProject SetuptoolsProject
 mkProject project =
   DiscoveredProject
-    { projectType = "setuptools"
+    { projectType = SetuptoolsProjectType
     , projectBuildTargets = mempty
     , projectPath = setuptoolsDir project
     , projectData = project

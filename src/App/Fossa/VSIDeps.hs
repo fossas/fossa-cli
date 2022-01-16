@@ -22,7 +22,7 @@ import Graphing qualified
 import Path (Abs, Dir, Path)
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
-import Types (GraphBreadth (Complete))
+import Types (DiscoveredProjectType (VsiProjectType), GraphBreadth (Complete))
 
 -- | VSI analysis is sufficiently different from other analysis types that it cannot be just another strategy.
 -- Instead, VSI analysis is run separately over the entire scan directory, outputting its own source unit.
@@ -47,7 +47,7 @@ pluginAnalyze opts = context "VSI" $ do
   pure (allOtherDeps, userDefinedDeps)
 
 toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
-toProject dir graph = ProjectResult "vsi" dir graph Complete []
+toProject dir graph = ProjectResult VsiProjectType dir graph Complete []
 
 toSourceUnit :: ProjectResult -> Maybe [SourceUserDefDep] -> SourceUnit
 toSourceUnit project deps = do

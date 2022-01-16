@@ -55,7 +55,7 @@ instance AnalyzeProject CocoapodsProject where
 mkProject :: CocoapodsProject -> DiscoveredProject CocoapodsProject
 mkProject project =
   DiscoveredProject
-    { projectType = "cocoapods"
+    { projectType = CocoapodsProjectType
     , projectBuildTargets = mempty
     , projectPath = cocoapodsDir project
     , projectData = project

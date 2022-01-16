@@ -14,7 +14,7 @@ import Discovery.Walk (
 import Effect.ReadFS (Has, ReadFS)
 import Path
 import Strategy.Elixir.MixTree (MixProject (..))
-import Types (DiscoveredProject (..))
+import Types (DiscoveredProject (..), DiscoveredProjectType (MixProjectType))
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject MixProject]
 discover dir = context "Mix" $ do
@@ -30,7 +30,7 @@ findProjects = walk' $ \dir _ files -> do
 mkProject :: MixProject -> DiscoveredProject MixProject
 mkProject project =
   DiscoveredProject
-    { projectType = "mix"
+    { projectType = MixProjectType
     , projectBuildTargets = mempty
     , projectPath = mixDir project
     , projectData = project

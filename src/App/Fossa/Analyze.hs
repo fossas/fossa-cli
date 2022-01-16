@@ -71,7 +71,7 @@ import Data.Functor (void)
 import Data.List (isInfixOf, stripPrefix)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, fromMaybe)
-import Data.String.Conversion (decodeUtf8)
+import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, applyFilters, filterIsVSIOnly)
@@ -248,7 +248,7 @@ applyFiltersToProject basedir filters DiscoveredProject{..} =
     -- will always fail
     Nothing -> Just projectBuildTargets
     Just rel -> do
-      applyFilters filters projectType rel projectBuildTargets
+      applyFilters filters (toText projectType) rel projectBuildTargets
 
 runAnalyzers ::
   ( AnalyzeTaskEffs sig m

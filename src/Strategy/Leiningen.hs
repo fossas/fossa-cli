@@ -82,7 +82,7 @@ findProjects = walk' $ \dir _ files -> do
 mkProject :: LeiningenProject -> DiscoveredProject LeiningenProject
 mkProject project =
   DiscoveredProject
-    { projectType = "leiningen"
+    { projectType = LeiningenProjectType
     , projectBuildTargets = mempty
     , projectPath = leinDir project
     , projectData = project

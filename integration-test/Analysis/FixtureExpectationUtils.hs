@@ -18,13 +18,12 @@ import App.Fossa.Analyze.Types (AnalyzeProject)
 import Control.Algebra (Has)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.List (find)
-import Data.String.Conversion (toString)
-import Data.Text (Text)
+import Data.String.Conversion (toString, toText)
 import Graphing
 import Path
 import Path.IO qualified as PIO
 import Test.Hspec (Expectation, Spec, aroundAll, describe, expectationFailure, it, shouldBe, shouldNotBe)
-import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth)
+import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (..), GraphBreadth)
 
 -- | Tabulated property of the DependencyResult.
 data DependencyResultsSummary = DependencyResultsSummary
@@ -62,7 +61,7 @@ withAnalysisOf a runTest = do
 -- | Retrieves a dependency result from discovered project of a given type and path.
 getDepResultsOf ::
   [(DiscoveredProject a, DependencyResults)] ->
-  (Text, Path Abs Dir) ->
+  (DiscoveredProjectType, Path Abs Dir) ->
   Maybe DependencyResults
 getDepResultsOf result (projType, projPath) =
   snd <$> withProjectOfType result (projType, projPath)
@@ -70,7 +69,7 @@ getDepResultsOf result (projType, projPath) =
 -- | Expects a discovered project of type at given path.
 expectProject ::
   (Show a, Eq a) =>
-  (Text, Path Abs Dir) ->
+  (DiscoveredProjectType, Path Abs Dir) ->
   [(DiscoveredProject a, DependencyResults)] ->
   Expectation
 expectProject (projType, projPath) result =
@@ -84,12 +83,12 @@ expectDepResultsSummary depResultSummary depResult = case depResult of
 
 withProjectOfType ::
   [(DiscoveredProject a, DependencyResults)] ->
-  (Text, Path Abs Dir) ->
+  (DiscoveredProjectType, Path Abs Dir) ->
   Maybe (DiscoveredProject a, DependencyResults)
 withProjectOfType result (projType, projPath) =
-  find (\(dr, _) -> projectType dr == projType && projectPath dr == projPath) result
+  find (\(dr, _) -> (toText . show $ projectType dr) == toText (show projType) && projectPath dr == projPath) result
 
-testSuiteDepResultSummary :: (AnalyzeProject a, Show a, Eq a) => AnalysisTestFixture a -> Text -> DependencyResultsSummary -> Spec
+testSuiteDepResultSummary :: (AnalyzeProject a, Show a, Eq a) => AnalysisTestFixture a -> DiscoveredProjectType -> DependencyResultsSummary -> Spec
 testSuiteDepResultSummary fixture projType depResultSummary =
   aroundAll (withAnalysisOf fixture) $
     describe (toString $ testName fixture) $ do

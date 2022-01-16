@@ -8,7 +8,7 @@ import Analysis.FixtureUtils
 import Path
 import Strategy.Cocoapods qualified as Cocoapods
 import Test.Hspec
-import Types (GraphBreadth (..))
+import Types (DiscoveredProjectType (..), GraphBreadth (..))
 
 shadowsocksXNG :: AnalysisTestFixture (Cocoapods.CocoapodsProject)
 shadowsocksXNG =
@@ -36,5 +36,5 @@ sDWebImage =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary shadowsocksXNG "cocoapods" (DependencyResultsSummary 6 6 0 1 Partial)
-  testSuiteDepResultSummary sDWebImage "cocoapods" (DependencyResultsSummary 4 4 0 1 Partial)
+  testSuiteDepResultSummary shadowsocksXNG CocoapodsProjectType (DependencyResultsSummary 6 6 0 1 Partial)
+  testSuiteDepResultSummary sDWebImage CocoapodsProjectType (DependencyResultsSummary 4 4 0 1 Partial)
