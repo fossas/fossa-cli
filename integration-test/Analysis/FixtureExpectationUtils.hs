@@ -18,7 +18,7 @@ import App.Fossa.Analyze.Types (AnalyzeProject)
 import Control.Algebra (Has)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.List (find)
-import Data.String.Conversion (toString, toText)
+import Data.String.Conversion (toString)
 import Graphing
 import Path
 import Path.IO qualified as PIO
@@ -86,7 +86,7 @@ withProjectOfType ::
   (DiscoveredProjectType, Path Abs Dir) ->
   Maybe (DiscoveredProject a, DependencyResults)
 withProjectOfType result (projType, projPath) =
-  find (\(dr, _) -> (toText . show $ projectType dr) == toText (show projType) && projectPath dr == projPath) result
+  find (\(dr, _) -> projectType dr == projType && projectPath dr == projPath) result
 
 testSuiteDepResultSummary :: (AnalyzeProject a, Show a, Eq a) => AnalysisTestFixture a -> DiscoveredProjectType -> DependencyResultsSummary -> Spec
 testSuiteDepResultSummary fixture projType depResultSummary =
