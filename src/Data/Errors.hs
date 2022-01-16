@@ -1,4 +1,16 @@
 module Data.Errors (
+  -- * Church-encoded result carrier
+  ResultCPS (..),
+  fatalTC,
+  warnTC,
+  recoverTC,
+  errorBoundaryTC,
+  rethrowTC,
+  withWarnTC,
+  errCtxTC,
+  (<|||>),
+
+  -- * Result carrier
   ResultT (..),
   fatalT,
   warnT,
@@ -9,19 +21,21 @@ module Data.Errors (
   errCtxT,
   (<||>),
 
-  getWarnings,
-
+  -- * Result type
+  Result (..),
   SomeErr(..),
   SomeWarn(..),
   ErrCtx(..),
   Stack(..),
 
-  Result (..),
+  -- * Result operations
   fatal,
   warn,
   recover,
   errorBoundary,
   rethrow,
+  tryBoth,
+  getWarnings,
   withWarn,
   errCtx,
 ) where
@@ -49,19 +63,84 @@ data ErrWithStack = ErrWithStack Stack SomeErr
 
 --------------
 
+newtype ResultCPS m a = ResultCPS { runResultCPS :: forall r. ([EmittedWarn] -> ErrGroup -> m r) -> ([EmittedWarn] -> a -> m r) -> m r }
+
+instance Functor (ResultCPS m) where
+  fmap f m = ResultCPS $ \fai suc -> runResultCPS m fai (\ws a -> suc ws (f a))
+  {-# INLINE fmap #-}
+
+instance Applicative (ResultCPS m) where
+  mf <*> ma = ResultCPS $ \fai suc -> runResultCPS mf
+    (\ws eg -> runResultCPS ma (\ws' eg' -> fai (ws' <> ws) (mergeErrGroup eg eg')) (\ws' _ -> fai (ws' <> ws) eg))
+    (\ws f -> runResultCPS ma (\ws' eg -> fai (ws' <> ws) eg) (\ws' a -> suc (ws' <> ws) (f a)))
+  {-# INLINE (<*>) #-}
+
+  pure a = ResultCPS $ \_ suc -> suc [] a
+  {-# INLINE pure #-}
+
+instance Monad (ResultCPS m) where
+  m >>= k = ResultCPS $ \fai suc -> runResultCPS m fai (\ws a -> runResultCPS (k a) (\ws' eg' -> fai (ws' <> ws) eg') (\ws' b' -> suc (ws' <> ws) b'))
+  {-# INLINE (>>=) #-}
+
+-- FIXME: doesn't emit warning for failure <|> success
+(<|||>) :: ResultCPS m a -> ResultCPS m a -> ResultCPS m a
+ma <|||> ma' = ResultCPS $ \fai suc -> runResultCPS ma
+  (\ws eg -> runResultCPS ma' (\ws' eg' -> fai (ws' <> ws) (mergeErrGroup eg eg')) (\ws' a' -> suc (ws' <> getWarnings (Failure ws eg)) a'))
+  suc
+{-# INLINE (<|||>) #-}
+
+fatalTC :: Stack -> SomeErr -> ResultCPS m a
+fatalTC stack err = ResultCPS $ \fai _ -> fai [] (ErrGroup [] [] (ErrWithStack stack err NE.:| []))
+{-# INLINE fatalTC #-}
+
+warnTC :: SomeWarn -> ResultCPS m ()
+warnTC war = ResultCPS $ \_ suc -> suc [StandaloneWarn war] ()
+{-# INLINE warnTC #-}
+
+-- FIXME: factor out getWarnings
+recoverTC :: ResultCPS m a -> ResultCPS m (Maybe a)
+recoverTC m = ResultCPS $ \_ suc -> runResultCPS m (\ws eg -> suc (getWarnings (Failure ws eg)) Nothing) (\ws a -> suc ws (Just a))
+{-# INLINE recoverTC #-}
+
+errorBoundaryTC :: ResultCPS m a -> ResultCPS m (Result a)
+errorBoundaryTC m = ResultCPS $ \_ suc -> runResultCPS m (\ws eg -> suc [] (Failure ws eg)) (\ws a -> suc [] (Success ws a))
+{-# INLINE errorBoundaryTC #-}
+
+rethrowTC :: Result a -> ResultCPS m a
+rethrowTC (Failure ws eg) = ResultCPS $ \fai _ -> fai ws eg
+rethrowTC (Success ws a) = ResultCPS $ \_ suc -> suc ws a
+{-# INLINE rethrowTC #-}
+
+withWarnTC :: SomeWarn -> ResultCPS m a -> ResultCPS m a
+withWarnTC w m = ResultCPS $ \fai suc -> runResultCPS m (\ws (ErrGroup sws ectx es) -> fai ws (ErrGroup (w : sws) ectx es)) suc
+{-# INLINE withWarnTC #-}
+
+errCtxTC :: ErrCtx -> ResultCPS m a -> ResultCPS m a
+errCtxTC c m = ResultCPS $ \fai suc -> runResultCPS m (\ws (ErrGroup sws ectx es) -> fai ws (ErrGroup sws (c : ectx) es)) suc
+{-# INLINE errCtxTC #-}
+
+--------------
+
 newtype ResultT m a = ResultT {runResultT :: m (Result a)}
-  deriving (Functor)
+
+instance Functor m => Functor (ResultT m) where
+  fmap f = ResultT . fmap (fmap f) . runResultT
+  {-# INLINE fmap #-}
 
 instance MonadIO m => MonadIO (ResultT m) where
   liftIO = ResultT . fmap pure . liftIO
+  {-# INLINE liftIO #-}
 
 instance MonadTrans ResultT where
   lift = ResultT . fmap pure
+  {-# INLINE lift #-}
 
 instance Monad m => Applicative (ResultT m) where
   ResultT mf <*> ResultT ma = ResultT $ (<*>) <$> mf <*> ma
+  {-# INLINE (<*>) #-}
 
   pure = ResultT . pure . pure
+  {-# INLINE pure #-}
 
 instance Monad m => Monad (ResultT m) where
   ResultT m >>= k = ResultT $ do
@@ -73,42 +152,47 @@ instance Monad m => Monad (ResultT m) where
         case resB of
           Failure ws' eg' -> pure (Failure (ws' <> ws) eg')
           Success ws' b' -> pure (Success (ws' <> ws) b')
+  {-# INLINE (>>=) #-}
 
 fatalT :: Applicative m => Stack -> SomeErr -> ResultT m a
 fatalT stack err = ResultT (pure (fatal stack err))
+{-# INLINE fatalT #-}
 
 warnT :: Applicative m => SomeWarn -> ResultT m ()
 warnT = ResultT . pure . warn
+{-# INLINE warnT #-}
 
 recoverT :: Functor m => ResultT m a -> ResultT m (Maybe a)
 recoverT = ResultT . fmap recover . runResultT
+{-# INLINE recoverT #-}
 
 errorBoundaryT :: Functor m => ResultT m a -> ResultT m (Result a)
 errorBoundaryT = ResultT . fmap pure . runResultT
+{-# INLINE errorBoundaryT #-}
 
 rethrowT :: Applicative m => Result a -> ResultT m a
 rethrowT = ResultT . pure
+{-# INLINE rethrowT #-}
 
 withWarnT :: Functor m => SomeWarn -> ResultT m a -> ResultT m a
 withWarnT w = ResultT . fmap (withWarn w) . runResultT
+{-# INLINE withWarnT #-}
 
 errCtxT :: Functor m => ErrCtx -> ResultT m a -> ResultT m a
 errCtxT c = ResultT . fmap (errCtx c) . runResultT
+{-# INLINE errCtxT #-}
 
 (<||>) :: Monad m => ResultT m a -> ResultT m a -> ResultT m a
 ResultT ma <||> ResultT ma' = ResultT $ do
   resA <- ma
   case resA of
     Success ws a -> pure (Success ws a)
-    Failure ws eg@(ErrGroup sws ectx es) -> do
+    failure@(Failure ws eg) -> do
       resA' <- ma'
       case resA' of
-        -- FIXME: not great..
-        Success ws' a' ->
-          case NE.nonEmpty sws of
-            Nothing -> pure (Success (ws' <> ws) a')
-            Just sws' -> pure (Success (WarnOnErrGroup sws' ectx es : ws' <> ws) a')
+        Success ws' a' -> pure (Success (ws' <> getWarnings failure) a')
         Failure ws' eg' -> pure (Failure (ws' <> ws) (mergeErrGroup eg eg'))
+{-# INLINE (<||>) #-}
 
 --------------
 
@@ -149,6 +233,7 @@ instance Applicative Result where
   pure = Success []
 
 getWarnings :: Result a -> [EmittedWarn]
+getWarnings (Success ws _) = ws
 getWarnings (Failure ws (ErrGroup sws ectx es)) =
   -- FIXME: errors from errgroup get dropped when no warning is present
   case NE.nonEmpty sws of
@@ -218,5 +303,31 @@ pipenvExample = do
       . withWarnT (SomeWarn @Text "missing edges")
       . errCtxT (ErrCtx @Text "blah blah pipenv command")
       $ fatalT (Stack []) (SomeErr @Text "oh no pipenv command failed")
+
+  pure ()
+
+gradleExample' :: ResultCPS m ()
+gradleExample' =
+  errCtxTC (ErrCtx @Text "some context about the gradle command") $
+    tryGradleW
+      <|||> tryGradleWExe
+      <|||> tryGradle
+  where
+    tryGradleW = fatalTC (Stack []) (SomeErr @Text "blah gradlew")
+    tryGradleWExe = fatalTC (Stack []) (SomeErr @Text "blah gradlewexe")
+    tryGradle = fatalTC (Stack []) (SomeErr @Text "blah gradle")
+
+pipenvExample' :: ResultCPS m ()
+pipenvExample' = do
+  direct <-
+    errCtxTC (ErrCtx @Text "some context about parsing pipfile lock") $
+      pure ()
+
+  deep <-
+    recoverTC
+      . withWarnTC (SomeWarn @Text "missing deps")
+      . withWarnTC (SomeWarn @Text "missing edges")
+      . errCtxTC (ErrCtx @Text "blah blah pipenv command")
+      $ fatalTC (Stack []) (SomeErr @Text "oh no pipenv command failed")
 
   pure ()
