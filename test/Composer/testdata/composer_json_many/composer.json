@@ -1,0 +1,12 @@
+{
+    "name": "fossa/fakeproject",
+    "type": "project",
+    "description": "A test PHP project",
+    "keywords": [
+        "framework",
+        "test"
+    ],
+    "license": ["MIT",
+                "GPL",
+                "BSD"]
+}
