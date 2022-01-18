@@ -2,6 +2,7 @@ module Control.Effect.Stack (
   -- * Stack effect and operations
   context,
   getStack,
+  withEmptyStack,
   Stack (..),
 
   -- * Re-exports
@@ -25,10 +26,14 @@ import Data.Text (Text)
 --
 --     context "baz" $ do
 --       getStack -- stack is ["foo","baz"] here
+--
+--     withEmptyStack . context "quux" $ do
+--       getStack -- stack is ["quux"] here
 -- @
 data Stack m a where
   Context :: Text -> m a -> Stack m a
   GetStack :: Stack m [Text]
+  WithEmptyStack :: m a -> Stack m a
 
 -- | Push a scope onto the stack. When the inner action completes, the scope is popped
 context :: Has Stack sig m => Text -> m a -> m a
@@ -37,3 +42,7 @@ context name m = send (Context name m)
 -- | Get the current scope stack
 getStack :: Has Stack sig m => m [Text]
 getStack = send GetStack
+
+-- | Run the provided action with an empty callstack
+withEmptyStack :: Has Stack sig m => m a -> m a
+withEmptyStack = send . WithEmptyStack

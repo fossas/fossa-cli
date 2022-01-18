@@ -31,4 +31,7 @@ instance Algebra sig m => Algebra (Stack :+: sig) (StackC m) where
       let lowered = runStackC (hdl (m <$ ctx))
       local (s :) lowered
     L GetStack -> ((<$ ctx) . reverse) <$> ask
+    L (WithEmptyStack m) -> do
+      let lowered = runStackC (hdl (m <$ ctx))
+      lift (runReader [] lowered)
     R other -> alg (runStackC . hdl) (R other) ctx

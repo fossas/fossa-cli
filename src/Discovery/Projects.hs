@@ -9,7 +9,7 @@ import Control.Carrier.Diagnostics.StickyContext
 import Control.Carrier.Output.IO
 import Control.Effect.AtomicCounter (AtomicCounter)
 import Control.Effect.Lift
-import Control.Effect.Stack (Stack)
+import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.TaskPool
 import Data.Foldable (traverse_)
 import Effect.Logger
@@ -33,5 +33,5 @@ withDiscoveredProjects ::
   (DiscoveredProject run -> m ()) ->
   m ()
 withDiscoveredProjects discover basedir f = forkTask $ do
-  projectsResult <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag $ discover basedir
+  projectsResult <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag . withEmptyStack $ discover basedir
   Diag.withResult SevError projectsResult (traverse_ (forkTask . f))
