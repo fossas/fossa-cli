@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## Unreleased
+
+- Rebar: Fix `rebar.config` parser failing on unneccessary escapes. ([#764](https://github.com/fossas/fossa-cli/pull/764))
+
 ## v3.0.15
 
 - Improve archive upload logging. ([#761](https://github.com/fossas/fossa-cli/pull/761)) 
