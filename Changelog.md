@@ -3,6 +3,7 @@
 ## v3.0.16
 
 - Improves the overall performance and progress reporting of VSI scans. ([#765](https://github.com/fossas/fossa-cli/pull/765))
+- Rebar: Fix `rebar.config` parser failing on unneccessary escapes. ([#764](https://github.com/fossas/fossa-cli/pull/764))
 
 ## v3.0.15
 
