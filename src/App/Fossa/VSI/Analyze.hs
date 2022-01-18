@@ -13,6 +13,7 @@ import App.Types (ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.AtomicCounter (runAtomicCounter)
 import Control.Carrier.Diagnostics (runDiagnosticsIO, withResult)
+import Control.Carrier.StickyLogger (runStickyLogger)
 import Control.Carrier.TaskPool (Progress (..), withTaskPool)
 import Control.Concurrent (getNumCapabilities, threadDelay)
 import Control.Concurrent.STM (atomically)
@@ -30,7 +31,7 @@ import Data.Text qualified as Text
 import Discovery.Archive (withArchive')
 import Discovery.Filters (AllFilters, combinedPaths, excludeFilters, includeFilters)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk)
-import Effect.Logger (Color (..), Logger, Severity (SevError), annotate, color, logDebug, logInfo, pretty)
+import Effect.Logger (Color (..), Logger, Severity (SevError, SevInfo), annotate, color, logDebug, logInfo, plural, pretty)
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (Abs, Rel), isProperPrefixOf, toFilePath, (</>))
@@ -61,7 +62,7 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
   -- - newTBMChanIO also buffers up to uploadBufferSize
   files <- sendIO $ newTBMChanIO uploadBufferSize
   context "Fingerprint files"
-    . withTaskPool capabilities (updateProgress "Upload remaining files")
+    . withTaskPool capabilities (updateProgress "Fingerprint and upload")
     . runAtomicCounter
     $ do
       context "Discover fingerprints" . forkTask $ runFingerprintDiscovery capabilities files dir filters
@@ -88,7 +89,6 @@ runFingerprintDiscovery ::
   , Has Finally sig m
   , Has Logger sig m
   , Has ReadFS sig m
-  , Has StickyLogger sig m
   ) =>
   -- | Parallelization factor
   Int ->
@@ -98,7 +98,7 @@ runFingerprintDiscovery ::
   AllFilters ->
   m ()
 runFingerprintDiscovery capabilities files dir filters = do
-  withTaskPool capabilities (updateProgress "Fingerprint files") . runAtomicCounter $ do
+  runStickyLogger SevInfo . withTaskPool capabilities (updateProgress " > Fingerprint files") . runAtomicCounter $ do
     res <- runDiagnosticsIO $ discover files (toPathFilters dir filters) dir ancestryDirect
     withResult SevError res (const (pure ()))
 
@@ -117,18 +117,22 @@ runBatchUploader ::
   ApiOpts ->
   ScanID ->
   m ()
-runBatchUploader files apiOpts scanID = collect []
+runBatchUploader files apiOpts scanID = runStickyLogger SevInfo $ do
+  logSticky " > Buffering first chunk..."
+  collect (0 :: Int) []
   where
     await = sendIO . atomically $ readTBMChan files
     upload [] = pure ()
     upload buf = do
       logDebug . pretty $ "Upload chunk of " <> show (length buf) <> " file(s)"
       vsiAddFilesToScan apiOpts scanID $ Map.fromList buf
-    collect buf | length buf >= uploadBufferSize = do
+    collect uploadCount buf | length buf >= uploadBufferSize = do
       logDebug "Upload buffer is full, uploading chunk"
       upload buf
-      collect []
-    collect buf = do
+      let newCount = uploadCount + 1
+      logSticky $ " > Uploaded " <> toText (show newCount) <> " chunk" <> plural "" "s" newCount
+      collect newCount []
+    collect uploadCount buf = do
       next <- await
       case next of
         Nothing -> do
@@ -136,7 +140,7 @@ runBatchUploader files apiOpts scanID = collect []
           upload buf
         Just f -> do
           logDebug . pretty $ "Appending " <> toText (fst f) <> " to upload buffer (" <> (toText . show) (length buf + 1) <> " / 1000)"
-          collect $ f : buf
+          collect uploadCount $ f : buf
 
 -- | Walk the directory tree starting from the root directory, fingerprinting any files that are children of the root directory.
 --
