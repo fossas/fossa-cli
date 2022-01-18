@@ -100,7 +100,6 @@ collectManifests = walk' $ \_ _ files ->
 
 mkProject ::
   ( Has Diagnostics sig m
-  , Has Logger sig m
   ) =>
   NodeProject ->
   m (DiscoveredProject NodeProject)

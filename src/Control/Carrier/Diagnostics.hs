@@ -24,6 +24,7 @@ import Control.Effect.Diagnostics as X
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception (SomeException)
 import Control.Exception.Extra (safeCatch)
+import Control.Monad (unless)
 import Control.Monad.Trans
 import Data.Errors (Result (Failure, Success), ResultT)
 import Data.Errors qualified as ResultT
@@ -42,6 +43,7 @@ logErrorBundle = logError . renderFailureBundle
 
 -- FIXME: rendering of failure
 -- FIXME: show warnings on success
+
 -- | Run a Diagnostic effect into a logger, using the default error/warning renderers.
 logDiagnostic :: (Has (Lift IO) sig m, Has Logger sig m, Has Stack sig m) => DiagnosticsC m a -> m (Maybe a)
 logDiagnostic diag = do
@@ -98,7 +100,11 @@ errorBoundaryIO act = errorBoundary $ act `safeCatch` (\(e :: SomeException) -> 
 
 -- FIXME: look at use-sites; see if warning mechanism is a better fit
 -- FIXME: rendering failure
+-- FIXME: displaying warnings
+
 -- | Use the result of a Diagnostics computation, logging an error on failure
 withResult :: Has Logger sig m => Severity -> Result a -> (a -> m ()) -> m ()
-withResult _ (Success _ res) f = f res
+withResult sev (Success ws res) f = do
+  unless (null ws) (Effect.Logger.log sev (viaShow ws))
+  f res
 withResult sev (Failure ws eg) _ = Effect.Logger.log sev (viaShow ws <> line <> viaShow eg)
