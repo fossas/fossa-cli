@@ -287,7 +287,6 @@ ancestryDerived parent dir file = do
 -- > "external/lib.zip!_fossa.virtual_!/" :: Path Rel Dir
 convertArchiveSuffix :: (Has Diagnostics sig m) => Path Rel File -> m (Path Rel Dir)
 convertArchiveSuffix file = do
-  -- Lifting this exception into IO is not exactly safe, but since it's coming directly from a filename this should never error.
   name <- fromEither . P.parseRelDir $ P.toFilePath (P.filename file) <> "!_fossa.virtual_!"
   pure $ P.parent file </> name
 
