@@ -1,15 +1,4 @@
 module Data.Errors (
-  -- * Church-encoded result carrier
-  ResultCPS (..),
-  fatalTC,
-  warnTC,
-  recoverTC,
-  errorBoundaryTC,
-  rethrowTC,
-  withWarnTC,
-  errCtxTC,
-  (<|||>),
-
   -- * Result carrier
   ResultT (..),
   fatalT,
@@ -60,64 +49,6 @@ data ErrGroup = ErrGroup [SomeWarn] [ErrCtx] (NonEmpty ErrWithStack)
 
 data ErrWithStack = ErrWithStack Stack SomeErr
   deriving (Show)
-
---------------
-
-newtype ResultCPS m a = ResultCPS { runResultCPS :: forall r. ([EmittedWarn] -> ErrGroup -> m r) -> ([EmittedWarn] -> a -> m r) -> m r }
-
-instance Functor (ResultCPS m) where
-  fmap f m = ResultCPS $ \fai suc -> runResultCPS m fai (\ws a -> suc ws (f a))
-  {-# INLINE fmap #-}
-
-instance Applicative (ResultCPS m) where
-  mf <*> ma = ResultCPS $ \fai suc -> runResultCPS mf
-    (\ws eg -> runResultCPS ma (\ws' eg' -> fai (ws' <> ws) (mergeErrGroup eg eg')) (\ws' _ -> fai (ws' <> ws) eg))
-    (\ws f -> runResultCPS ma (\ws' eg -> fai (ws' <> ws) eg) (\ws' a -> suc (ws' <> ws) (f a)))
-  {-# INLINE (<*>) #-}
-
-  pure a = ResultCPS $ \_ suc -> suc [] a
-  {-# INLINE pure #-}
-
-instance Monad (ResultCPS m) where
-  m >>= k = ResultCPS $ \fai suc -> runResultCPS m fai (\ws a -> runResultCPS (k a) (\ws' eg' -> fai (ws' <> ws) eg') (\ws' b' -> suc (ws' <> ws) b'))
-  {-# INLINE (>>=) #-}
-
--- FIXME: doesn't emit warning for failure <|> success
-(<|||>) :: ResultCPS m a -> ResultCPS m a -> ResultCPS m a
-ma <|||> ma' = ResultCPS $ \fai suc -> runResultCPS ma
-  (\ws eg -> runResultCPS ma' (\ws' eg' -> fai (ws' <> ws) (mergeErrGroup eg eg')) (\ws' a' -> suc (ws' <> getWarnings (Failure ws eg)) a'))
-  suc
-{-# INLINE (<|||>) #-}
-
-fatalTC :: Stack -> SomeErr -> ResultCPS m a
-fatalTC stack err = ResultCPS $ \fai _ -> fai [] (ErrGroup [] [] (ErrWithStack stack err NE.:| []))
-{-# INLINE fatalTC #-}
-
-warnTC :: SomeWarn -> ResultCPS m ()
-warnTC war = ResultCPS $ \_ suc -> suc [StandaloneWarn war] ()
-{-# INLINE warnTC #-}
-
--- FIXME: factor out getWarnings
-recoverTC :: ResultCPS m a -> ResultCPS m (Maybe a)
-recoverTC m = ResultCPS $ \_ suc -> runResultCPS m (\ws eg -> suc (getWarnings (Failure ws eg)) Nothing) (\ws a -> suc ws (Just a))
-{-# INLINE recoverTC #-}
-
-errorBoundaryTC :: ResultCPS m a -> ResultCPS m (Result a)
-errorBoundaryTC m = ResultCPS $ \_ suc -> runResultCPS m (\ws eg -> suc [] (Failure ws eg)) (\ws a -> suc [] (Success ws a))
-{-# INLINE errorBoundaryTC #-}
-
-rethrowTC :: Result a -> ResultCPS m a
-rethrowTC (Failure ws eg) = ResultCPS $ \fai _ -> fai ws eg
-rethrowTC (Success ws a) = ResultCPS $ \_ suc -> suc ws a
-{-# INLINE rethrowTC #-}
-
-withWarnTC :: SomeWarn -> ResultCPS m a -> ResultCPS m a
-withWarnTC w m = ResultCPS $ \fai suc -> runResultCPS m (\ws (ErrGroup sws ectx es) -> fai ws (ErrGroup (w : sws) ectx es)) suc
-{-# INLINE withWarnTC #-}
-
-errCtxTC :: ErrCtx -> ResultCPS m a -> ResultCPS m a
-errCtxTC c m = ResultCPS $ \fai suc -> runResultCPS m (\ws (ErrGroup sws ectx es) -> fai ws (ErrGroup sws (c : ectx) es)) suc
-{-# INLINE errCtxTC #-}
 
 --------------
 
@@ -303,31 +234,5 @@ pipenvExample = do
       . withWarnT (SomeWarn @Text "missing edges")
       . errCtxT (ErrCtx @Text "blah blah pipenv command")
       $ fatalT (Stack []) (SomeErr @Text "oh no pipenv command failed")
-
-  pure ()
-
-gradleExample' :: ResultCPS m ()
-gradleExample' =
-  errCtxTC (ErrCtx @Text "some context about the gradle command") $
-    tryGradleW
-      <|||> tryGradleWExe
-      <|||> tryGradle
-  where
-    tryGradleW = fatalTC (Stack []) (SomeErr @Text "blah gradlew")
-    tryGradleWExe = fatalTC (Stack []) (SomeErr @Text "blah gradlewexe")
-    tryGradle = fatalTC (Stack []) (SomeErr @Text "blah gradle")
-
-pipenvExample' :: ResultCPS m ()
-pipenvExample' = do
-  direct <-
-    errCtxTC (ErrCtx @Text "some context about parsing pipfile lock") $
-      pure ()
-
-  deep <-
-    recoverTC
-      . withWarnTC (SomeWarn @Text "missing deps")
-      . withWarnTC (SomeWarn @Text "missing edges")
-      . errCtxTC (ErrCtx @Text "blah blah pipenv command")
-      $ fatalTC (Stack []) (SomeErr @Text "oh no pipenv command failed")
 
   pure ()
