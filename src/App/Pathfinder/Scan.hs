@@ -134,8 +134,8 @@ instance ToJSON CompletedLicenseScan where
 mkLicenseScan :: DiscoveredProject n -> [LicenseResult] -> ProjectLicenseScan
 mkLicenseScan project licenses =
   ProjectLicenseScan
-    { licenseStrategyType = toText (show $ projectType project)
-    , licenseStrategyName = toText (show $ projectType project)
+    { licenseStrategyType = toText (projectType project)
+    , licenseStrategyName = toText (projectType project)
     , discoveredLicenses = licenses
     }
 

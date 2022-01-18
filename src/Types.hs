@@ -27,7 +27,6 @@ import Data.Aeson.Types (Parser)
 import Data.Set.NonEmpty (NonEmptySet)
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
-import Data.Text qualified as Text
 import DepTypes (
   DepEnvironment (..),
   DepType (..),
@@ -97,49 +96,50 @@ data DiscoveredProjectType
   deriving (Eq, Ord)
 
 instance Show DiscoveredProjectType where
-  show BinaryDepsProjectType = "binary-deps"
-  show BundlerProjectType = "bundler"
-  show CabalProjectType = "stack"
-  show CargoProjectType = "cargo"
-  show CarthageProjectType = "carthage"
-  show CocoapodsProjectType = "cocoapods"
-  show ComposerProjectType = "composer"
-  show CondaProjectType = "conda"
-  show FpmProjectType = "fpm"
-  show GlideProjectType = "glide"
-  show GodepProjectType = "godep"
-  show GomodProjectType = "gomod"
-  show GradleProjectType = "gradle"
-  show LeiningenProjectType = "leiningen"
-  show MavenProjectType = "maven"
-  show MixProjectType = "mix"
-  show NimbleProjectType = "nimble"
-  show NpmProjectType = "npm"
-  show NuspecProjectType = "nuspec"
-  show PackageReferenceProjectType = "packagereference"
-  show PackagesConfigProjectType = "packagesconfig"
-  show PaketProjectType = "packet"
-  show PerlProjectType = "perl"
-  show PipenvProjectType = "pipenv"
-  show PoetryProjectType = "poetry"
-  show ProjectAssetsJsonProjectType = "projectassetsjson"
-  show ProjectJsonProjectType = "projectjson"
-  show PubProjectType = "pub"
-  show Rebar3ProjectType = "rebar3"
-  show RepoManifestProjectType = "repomanifest"
-  show RpmProjectType = "rpm"
-  show ScalaProjectType = "scala"
-  show SetuptoolsProjectType = "setuptools"
-  show StackProjectType = "stack"
-  show SwiftProjectType = "swift"
-  show VsiProjectType = "vsi"
-  show YarnProjectType = "yarn"
+  show = \case
+    BinaryDepsProjectType -> "binary-deps"
+    BundlerProjectType -> "bundler"
+    CabalProjectType -> "stack"
+    CargoProjectType -> "cargo"
+    CarthageProjectType -> "carthage"
+    CocoapodsProjectType -> "cocoapods"
+    ComposerProjectType -> "composer"
+    CondaProjectType -> "conda"
+    FpmProjectType -> "fpm"
+    GlideProjectType -> "glide"
+    GodepProjectType -> "godep"
+    GomodProjectType -> "gomod"
+    GradleProjectType -> "gradle"
+    LeiningenProjectType -> "leiningen"
+    MavenProjectType -> "maven"
+    MixProjectType -> "mix"
+    NimbleProjectType -> "nimble"
+    NpmProjectType -> "npm"
+    NuspecProjectType -> "nuspec"
+    PackageReferenceProjectType -> "packagereference"
+    PackagesConfigProjectType -> "packagesconfig"
+    PaketProjectType -> "packet"
+    PerlProjectType -> "perl"
+    PipenvProjectType -> "pipenv"
+    PoetryProjectType -> "poetry"
+    ProjectAssetsJsonProjectType -> "projectassetsjson"
+    ProjectJsonProjectType -> "projectjson"
+    PubProjectType -> "pub"
+    Rebar3ProjectType -> "rebar3"
+    RepoManifestProjectType -> "repomanifest"
+    RpmProjectType -> "rpm"
+    ScalaProjectType -> "scala"
+    SetuptoolsProjectType -> "setuptools"
+    StackProjectType -> "stack"
+    SwiftProjectType -> "swift"
+    VsiProjectType -> "vsi"
+    YarnProjectType -> "yarn"
 
 instance ToJSON DiscoveredProjectType where
   toJSON = toJSON . show
 
 instance ToText DiscoveredProjectType where
-  toText = Text.pack . show
+  toText = toText . show
 
 instance Pretty DiscoveredProjectType where
   pretty = pretty . toText
