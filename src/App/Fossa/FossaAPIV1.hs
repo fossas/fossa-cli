@@ -68,7 +68,7 @@ import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Req
 import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
 import Network.HTTP.Types qualified as HTTP
-import Path (Abs, Dir, File, Path, Rel, mkAbsDir)
+import Path (File, Path, Rel)
 import Srclib.Types
 import Text.URI (URI)
 import Text.URI qualified as URI
@@ -662,7 +662,9 @@ vsiAddFilesToScan apiOpts scanID files = fossaReq $ do
 
 -- | The 'vsiCompleteScanFilePath' is an absolute path denoting what portion of the scan should be considered complete.
 -- In this path structure, '/' means "the root of the scan".
-newtype VSICompleteScanRequestBody = VSICompleteScanRequestBody {vsiCompleteScanFilePath :: Path Abs Dir}
+-- Technically this should really be a @Path Abs Dir@, because that's what it represents in the backend.
+-- However @$(mkAbsDir "/")@ fails in Windows builds, and is the only thing we ever actually pass in, so leaving it @Text@.
+newtype VSICompleteScanRequestBody = VSICompleteScanRequestBody {vsiCompleteScanFilePath :: Text}
 
 instance ToJSON VSICompleteScanRequestBody where
   toJSON VSICompleteScanRequestBody{..} = object ["FilePath" .= toText vsiCompleteScanFilePath]
@@ -680,7 +682,7 @@ vsiCompleteScan apiOpts scanID = fossaReq $ do
   let opts = baseOpts <> responseTimeoutSeconds 600
 
   -- Indicate that the entire scan is complete.
-  let body = VSICompleteScanRequestBody $(mkAbsDir "/")
+  let body = VSICompleteScanRequestBody "/"
   _ <- req PUT (vsiCompleteScanEndpoint baseUrl scanID) (ReqBodyJsonCompat body) ignoreResponse opts
   pure ()
 
