@@ -46,7 +46,7 @@ import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, debugScope, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Diagnostics.StickyContext (stickyDiag)
-import Control.Carrier.Finally (Has, runFinally)
+import Control.Carrier.Finally (Finally, Has, runFinally)
 import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.Reader (Reader, runReader)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
@@ -57,7 +57,7 @@ import Control.Carrier.TaskPool (
   withTaskPool,
  )
 import Control.Concurrent (getNumCapabilities)
-import Control.Effect.Diagnostics (fatalText, fromMaybeText, recover, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, fatalText, fromMaybeText, recover, (<||>))
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Control.Monad (when)
@@ -353,8 +353,12 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput include
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
-  vsiResults <- Diag.context "analyze-vsi" $ analyzeVSI modeVSIAnalysis apiOpts basedir filters modeVSISkipResolution
-  binarySearchResults <- Diag.context "discover-binaries" $ analyzeDiscoverBinaries modeBinaryDiscovery basedir filters
+  vsiResults <-
+    Diag.context "analyze-vsi" . runStickyLogger SevInfo . runFinally $
+      analyzeVSI modeVSIAnalysis apiOpts basedir override filters modeVSISkipResolution
+  binarySearchResults <-
+    Diag.context "discover-binaries" $
+      analyzeDiscoverBinaries modeBinaryDiscovery basedir filters
   manualSrcUnits <-
     if filterIsVSIOnly filters
       then do
@@ -397,8 +401,23 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput include
         locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
         doAssertRevisionBinaries modeIATAssertion opts locator
 
-analyzeVSI :: (MonadIO m, Has Diag.Diagnostics sig m, Has Exec sig m, Has (Lift IO) sig m, Has Logger sig m) => VSIAnalysisMode -> Maybe ApiOpts -> Path Abs Dir -> AllFilters -> VSI.SkipResolution -> m (Maybe SourceUnit)
-analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir filters skipResolving = do
+analyzeVSI ::
+  ( Has Diag.Diagnostics sig m
+  , Has Exec sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has StickyLogger sig m
+  , Has ReadFS sig m
+  , Has Finally sig m
+  ) =>
+  VSIAnalysisMode ->
+  Maybe ApiOpts ->
+  Path Abs Dir ->
+  OverrideProject ->
+  AllFilters ->
+  VSI.SkipResolution ->
+  m (Maybe SourceUnit)
+analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir override filters skipResolving = do
   logInfo "Running VSI analysis"
 
   let skippedLocators = VSI.unVSISkipResolution skipResolving
@@ -408,9 +427,10 @@ analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir filters skipResolving = do
       traverse_ (logInfo . pretty . VSI.renderLocator) skippedLocators
     else pure ()
 
-  results <- analyzeVSIDeps dir apiOpts filters skipResolving
+  revision <- inferProjectRevision dir override
+  results <- analyzeVSIDeps dir revision apiOpts filters skipResolving
   pure $ Just results
-analyzeVSI _ _ _ _ _ = pure Nothing
+analyzeVSI _ _ _ _ _ _ = pure Nothing
 
 analyzeDiscoverBinaries :: (MonadIO m, Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has ReadFS sig m) => BinaryDiscoveryMode -> Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
 analyzeDiscoverBinaries BinaryDiscoveryEnabled dir filters = do
@@ -474,10 +494,7 @@ uploadSuccessfulAnalysis ::
   NE.NonEmpty SourceUnit ->
   m Locator
 uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override units = Diag.context "Uploading analysis" $ do
-  inferred <- Diag.context "Inferring project name/revision" (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
-  logDebug $ "Inferred revision: " <> viaShow inferred
-
-  let revision = mergeOverride override inferred
+  revision <- inferProjectRevision basedir override
   logDebug $ "Merged revision: " <> viaShow revision
 
   logInfo ""
@@ -514,6 +531,12 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override 
     else pure ()
 
   pure locator
+
+inferProjectRevision :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> OverrideProject -> m ProjectRevision
+inferProjectRevision basedir override = do
+  inferred <- Diag.context "Inferring project name/revision" (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
+  logDebug $ "Inferred revision: " <> viaShow inferred
+  pure $ mergeOverride override inferred
 
 data CountedResult
   = NoneDiscovered

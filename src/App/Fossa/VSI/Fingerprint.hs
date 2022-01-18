@@ -12,19 +12,20 @@ module App.Fossa.VSI.Fingerprint (
   Combined (..),
 ) where
 
-import Conduit (ConduitT, await, decodeUtf8C, encodeUtf8C, filterC, linesUnboundedC, mapC, runConduitRes, sourceFile, yield, (.|))
+import Conduit (ConduitT, await, filterC, linesUnboundedAsciiC, mapC, runConduitRes, sourceFile, yield, (.|))
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, fatalOnIOException)
+import Control.Effect.Diagnostics (Diagnostics, context, fatalOnIOException)
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Crypto.Hash (Digest, HashAlgorithm, SHA256 (..))
 import Data.Aeson (ToJSON, object, toJSON, (.=))
+import Data.ByteString (ByteString)
+import Data.ByteString qualified as BS
 import Data.Conduit.Extra (sinkHash)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToText (..))
 import Data.Text (Text)
-import Data.Text qualified as Text
-import Data.Text.Extra (breakOnAndRemove)
+import Data.Word8 (isSpace)
 import Discovery.Walk (WalkStep (..), walk')
 import Effect.ReadFS (ReadFS, contentIsBinary)
 import Path (Abs, Dir, File, Path, toFilePath)
@@ -67,30 +68,29 @@ encodeFingerprint = Fingerprint . toText . show
 
 -- | Hashes the whole contents of the given file in constant memory.
 hashBinaryFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
-hashBinaryFile fp = (fatalOnIOException "hash binary file") . sendIO . runConduitRes $ sourceFile fp .| sinkHash
+hashBinaryFile fp =
+  context "as binary" $
+    (fatalOnIOException "hash binary file") . sendIO . runConduitRes $ sourceFile fp .| sinkHash
 
 hashTextFileCommentStripped :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
 hashTextFileCommentStripped file =
   (fatalOnIOException "hash text file comment stripped") . sendIO . runConduitRes $
     sourceFile file -- Read from the file
-      .| decodeUtf8C -- Decode to text
       .| basicCStyleCommentStripC -- Strip comments
-      .| encodeUtf8C -- Encode back to bytes
       .| sinkHash -- Hash the result
 
 hashTextFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
 hashTextFile file =
-  (fatalOnIOException "hash text file") . sendIO . runConduitRes $
-    sourceFile file -- Read from the file
-      .| decodeUtf8C -- Decode to text
-      .| linesUnboundedC -- Split into lines (for @stripCrLines@)
-      .| stripCrLines -- Normalize CRLF -> LF
-      .| mapC (<> "\n") -- Always append a newline here
-      .| encodeUtf8C -- Encode back to bytes
-      .| sinkHash -- Hash the result
+  context "as text" $
+    (fatalOnIOException "hash text file") . sendIO . runConduitRes $
+      sourceFile file -- Read from the file
+        .| linesUnboundedAsciiC -- Split into lines (for @stripCrLines@)
+        .| stripCrLines -- Normalize CRLF -> LF
+        .| mapC (<> "\n") -- Always append a newline here
+        .| sinkHash -- Hash the result
 
 fingerprintRaw :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m (Fingerprint Raw)
-fingerprintRaw file = contentIsBinary file >>= doFingerprint
+fingerprintRaw file = context "raw" $ contentIsBinary file >>= doFingerprint
   where
     doFingerprint isBinary = do
       let hasher = if isBinary then hashBinaryFile else hashTextFile
@@ -103,7 +103,7 @@ fingerprintContentsRaw = walk' $ \_ _ files -> do
   pure (fps, WalkContinue)
 
 fingerprintCommentStripped :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m (Maybe (Fingerprint CommentStripped))
-fingerprintCommentStripped file = contentIsBinary file >>= doFingerprint
+fingerprintCommentStripped file = context "comment stripped" $ contentIsBinary file >>= doFingerprint
   where
     doFingerprint True = pure Nothing -- Don't attempt to comment strip binary files
     doFingerprint False = do
@@ -112,9 +112,10 @@ fingerprintCommentStripped file = contentIsBinary file >>= doFingerprint
 
 fingerprint :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m Combined
 fingerprint file =
-  Combined
-    <$> fingerprintRaw file
-    <*> fingerprintCommentStripped file
+  context "fingerprint combined" $
+    Combined
+      <$> fingerprintRaw file
+      <*> fingerprintCommentStripped file
 
 -- | Converts CRLF line endings into LF line endings.
 -- Must run after a @ConuitT@ that converts an input stream into lines (for example 'linesUnboundedC').
@@ -122,13 +123,13 @@ fingerprint file =
 -- Windows git implementations typically add carriage returns before each newline when checked out.
 -- However, crawlers are run on Linux, so aren't expecting files to have carriage returns.
 -- While this does cause a hash mismatch on files that legitimately have CRLF endings that weren't added by git, we believe this results in fewer mismatches.
-stripCrLines :: Monad m => ConduitT Text Text m ()
+stripCrLines :: Monad m => ConduitT ByteString ByteString m ()
 stripCrLines = do
   chunk <- await
   case chunk of
     Nothing -> pure ()
     Just line -> do
-      yield $ fromMaybe line (Text.stripSuffix "\r" line)
+      yield $ fromMaybe line (BS.stripSuffix "\r" line)
       stripCrLines
 
 -- | This implementation is based on the comment strip logic from the internal logic used when crawling OSS components.
@@ -141,13 +142,15 @@ stripCrLines = do
 -- * Trims any trailing newline off the content
 --
 -- Despite these drawbacks, we have to reimplement it the same way so that fingerprints line up correctly in the VSI analysis service.
-basicCStyleCommentStripC :: Monad m => ConduitT Text Text m ()
+--
+-- Uses @ByteString@ instead of @Text@ to replicate the functionality of the Go implementation of this logic.
+basicCStyleCommentStripC :: Monad m => ConduitT ByteString ByteString m ()
 basicCStyleCommentStripC =
-  linesUnboundedC
+  linesUnboundedAsciiC
     .| stripCrLines
     .| process
-    .| mapC Text.strip
-    .| filterC (not . Text.null)
+    .| mapC stripSpace
+    .| filterC (not . BS.null)
     .| bufferedNewline Nothing
   where
     -- The original version of this function included newlines between each line but did not include a trailing newline, even when originally present in the file.
@@ -177,7 +180,7 @@ basicCStyleCommentStripC =
       chunk <- await
       case chunk of
         Nothing -> pure ()
-        Just line -> case breakOnAndRemove "*/" line of
+        Just line -> case breakSubstringAndRemove "*/" line of
           Nothing -> processInComment
           Just (_, lineAfterComment) -> do
             yield lineAfterComment
@@ -192,10 +195,30 @@ basicCStyleCommentStripC =
       chunk <- await
       case chunk of
         Nothing -> pure ()
-        Just line -> case breakOnAndRemove "/*" line of
+        Just line -> case breakSubstringAndRemove "/*" line of
           Nothing -> do
-            yield $ fst (Text.breakOn "//" line)
+            yield $ fst (BS.breakSubstring "//" line)
             process
           Just (lineBeforeComment, _) -> do
             yield lineBeforeComment
             processInComment
+
+-- | Like 'BS.breakSubstring', but with two differences.
+--
+-- 1. This removes the text that was broken on:
+--
+-- > BS.breakSubstring "foo" "foobar" == ("", "foobar")
+-- > breakSubstringAndRemove "foo" "foobar" == ("", "bar")
+--
+-- 2. If the substring was not found, the result is @Nothing@,
+-- instead of one of the options being a blank @ByteString@.
+breakSubstringAndRemove :: ByteString -> ByteString -> Maybe (ByteString, ByteString)
+breakSubstringAndRemove needle haystack
+  | (before, after) <- BS.breakSubstring needle haystack
+    , BS.isPrefixOf needle after =
+    Just (before, BS.drop (BS.length needle) after)
+  | otherwise = Nothing
+
+-- | Remove leading and trailing spaces.
+stripSpace :: ByteString -> ByteString
+stripSpace s = BS.dropWhileEnd isSpace $ BS.dropWhile isSpace s

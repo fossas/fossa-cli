@@ -139,6 +139,9 @@ normalizeGitProjectName project
     dropSuffix :: Text -> Text -> Text
     dropSuffix suf txt = fromMaybe txt (Text.stripSuffix suf txt)
 
+responseTimeoutSeconds :: Int -> Option scheme
+responseTimeoutSeconds sec = responseTimeout $ sec * 1_000_000
+
 data UploadResponse = UploadResponse
   { uploadLocator :: Text
   , uploadError :: Maybe Text
@@ -591,6 +594,21 @@ resolveProjectDependencies apiOpts locator = fossaReq $ do
 baseVsiUrl :: Url scheme -> Url scheme
 baseVsiUrl baseurl = baseurl /: "api" /: "proxy" /: "sherlock"
 
+-- | This body option allows us to use a JSON object as the request body.
+-- Just wrap a data type that is an instance of 'ToJSON' type class and you are done:
+-- it will be converted to JSON and inserted as request body.
+--
+-- This type is a replacement for @HTTP.ReqBodyJson@, because some services aren't tolerant
+-- of the charset declaration appended to 'Content-Type' by that body provider.
+-- Specifically, the VSI backend wants explicitly only an 'application/json' value.
+--
+-- This body option sets the @Content-Type@ header to @\"application/json\"@ value.
+newtype ReqBodyJsonCompat a = ReqBodyJsonCompat a
+
+instance ToJSON a => HttpBody (ReqBodyJsonCompat a) where
+  getRequestBody (ReqBodyJsonCompat a) = HTTP.RequestBodyLBS (encode a)
+  getRequestContentType _ = pure "application/json"
+
 data VSICreateScanRequestBody = VSICreateScanRequestBody
   { vsiCreateScanRequestBodyOrgID :: Int
   , vsiCreateScanRequestBodyProjectID :: Text
@@ -621,7 +639,7 @@ vsiCreateScan apiOpts ProjectRevision{..} = fossaReq $ do
   let projectID = renderLocator $ Locator "custom" projectName Nothing
   let reqBody = VSICreateScanRequestBody orgId projectRevision projectID
 
-  body <- responseBody <$> req POST (vsiCreateScanEndpoint baseUrl) (ReqBodyJson reqBody) jsonResponse baseOpts
+  body <- responseBody <$> req POST (vsiCreateScanEndpoint baseUrl) (ReqBodyJsonCompat reqBody) jsonResponse baseOpts
   pure $ unVSICreateScanResponseBody body
 
 newtype VSIAddFilesToScanRequestBody = VSIAddFilesToScanRequestBody {vsiAddFilesToScanRequestBodyFiles :: Map (Path Rel File) Fingerprint.Combined}
@@ -636,11 +654,19 @@ vsiAddFilesToScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> 
 vsiAddFilesToScan apiOpts scanID files = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = baseOpts <> "sync" =: True
   let body = VSIAddFilesToScanRequestBody files
-  _ <- req POST (vsiAddFilesToScanEndpoint baseUrl scanID) (ReqBodyJson body) ignoreResponse opts
+  _ <- req POST (vsiAddFilesToScanEndpoint baseUrl scanID) (ReqBodyJsonCompat body) ignoreResponse baseOpts
 
   pure ()
+
+-- | The 'vsiCompleteScanFilePath' is an absolute path denoting what portion of the scan should be considered complete.
+-- In this path structure, '/' means "the root of the scan".
+-- Technically this should really be a @Path Abs Dir@, because that's what it represents in the backend.
+-- However @$(mkAbsDir "/")@ fails in Windows builds, and is the only thing we ever actually pass in, so leaving it @Text@.
+newtype VSICompleteScanRequestBody = VSICompleteScanRequestBody {vsiCompleteScanFilePath :: Text}
+
+instance ToJSON VSICompleteScanRequestBody where
+  toJSON VSICompleteScanRequestBody{..} = object ["FilePath" .= toText vsiCompleteScanFilePath]
 
 vsiCompleteScanEndpoint :: Url scheme -> VSI.ScanID -> Url scheme
 vsiCompleteScanEndpoint baseurl (VSI.ScanID scanID) = baseVsiUrl baseurl /: "scans" /: scanID /: "complete"
@@ -648,7 +674,15 @@ vsiCompleteScanEndpoint baseurl (VSI.ScanID scanID) = baseVsiUrl baseurl /: "sca
 vsiCompleteScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> VSI.ScanID -> m ()
 vsiCompleteScan apiOpts scanID = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  _ <- req POST (vsiCompleteScanEndpoint baseUrl scanID) NoReqBody ignoreResponse baseOpts
+
+  -- Completing the scan can take a fair amount of time for very large scans.
+  -- For a project the size of Chromium, for example, it could take a minute or two (the server does a lot of work to mark a scan complete today).
+  -- This timeout value wasn't chosen for any specific reason other than "it's unlikely we'll ever hit this for projects of the size we envision people scanning".
+  let opts = baseOpts <> responseTimeoutSeconds 600
+
+  -- Indicate that the entire scan is complete.
+  let body = VSICompleteScanRequestBody "/"
+  _ <- req PUT (vsiCompleteScanEndpoint baseUrl scanID) (ReqBodyJsonCompat body) ignoreResponse opts
   pure ()
 
 newtype VSIScanAnalysisStatusBody = VSIScanAnalysisStatusBody {unVSIScanAnalysisStatusBody :: VSI.AnalysisStatus}
@@ -671,7 +705,7 @@ newtype VSIExportedInferencesBody = VSIExportedInferencesBody {unVSIExportedInfe
 
 instance FromJSON VSIExportedInferencesBody where
   parseJSON = withObject "VSIExportedInferencesBody" $ \obj -> do
-    plainLocators <- obj .: "Locators"
+    plainLocators <- obj .: "locators"
     pure . VSIExportedInferencesBody $ fmap parseLocator plainLocators
 
 vsiDownloadInferencesEndpoint :: Url scheme -> VSI.ScanID -> Url scheme
