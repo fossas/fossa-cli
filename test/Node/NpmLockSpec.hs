@@ -19,7 +19,7 @@ mockInput =
             , NpmDep
                 { depVersion = "1.0.0"
                 , depDev = False
-                , depResolved = Just "https://example.com/one.tgz"
+                , depResolved = NpmResolved $ Just "https://example.com/one.tgz"
                 , depRequires = Map.fromList [("packageTwo", "2.0.0"), ("packageSeven", "7.0.0")]
                 , depDependencies =
                     Map.fromList
@@ -28,7 +28,7 @@ mockInput =
                         , NpmDep
                             { depVersion = "2.0.0"
                             , depDev = True
-                            , depResolved = Just "https://example.com/two.tgz"
+                            , depResolved = NpmResolved $ Just "https://example.com/two.tgz"
                             , depRequires = Map.fromList [("packageThree", "3.0.0")]
                             , depDependencies = mempty
                             }
@@ -41,7 +41,7 @@ mockInput =
             , NpmDep
                 { depVersion = "3.0.0"
                 , depDev = True
-                , depResolved = Just "https://example.com/three.tgz"
+                , depResolved = NpmResolved $ Just "https://example.com/three.tgz"
                 , depRequires = Map.fromList [("packageOne", "1.0.0")]
                 , depDependencies = mempty
                 }
@@ -51,7 +51,7 @@ mockInput =
             , NpmDep
                 { depVersion = "7.0.0"
                 , depDev = False
-                , depResolved = Just "https://example.com/seven.tgz"
+                , depResolved = NpmResolved $ Just "https://example.com/seven.tgz"
                 , depRequires = mempty
                 , depDependencies = mempty
                 }
@@ -61,7 +61,7 @@ mockInput =
             , NpmDep
                 { depVersion = "file:abc/def"
                 , depDev = False
-                , depResolved = Nothing
+                , depResolved = NpmResolved Nothing
                 , depRequires = mempty
                 , depDependencies = mempty
                 }
@@ -71,7 +71,7 @@ mockInput =
             , NpmDep
                 { depVersion = "5.0.0"
                 , depDev = True
-                , depResolved = Just "https://example.com/five.tgz"
+                , depResolved = NpmResolved $ Just "https://example.com/five.tgz"
                 , depRequires = Map.fromList [("packageSix", "6.0.0")]
                 , depDependencies = mempty
                 }
@@ -81,7 +81,7 @@ mockInput =
             , NpmDep
                 { depVersion = "6.0.0"
                 , depDev = True
-                , depResolved = Just "https://example.com/six.tgz"
+                , depResolved = NpmResolved $ Just "https://example.com/six.tgz"
                 , depRequires = mempty
                 , depDependencies = mempty
                 }
