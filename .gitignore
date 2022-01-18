@@ -16,6 +16,7 @@ vendor-bins/
 # Executables
 /fossa
 /fossa-?dev
+/release
 
 # Debug output
 fossa.debug.json.gz

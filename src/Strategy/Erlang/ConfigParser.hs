@@ -149,7 +149,13 @@ parseErlString :: Parser ErlValue
 parseErlString = ErlString . toText . concat <$> some (lexeme quotedString)
 
 quotedString :: Parser String
-quotedString = char '\"' >> manyTill L.charLiteral (char '\"')
+quotedString = char '\"' *> manyTill takeOne (char '\"')
+  where
+    takeOne :: Parser Char
+    takeOne = L.charLiteral <|> takeOneEscaped
+
+    takeOneEscaped = char '\\' *> escapedChar
+    escapedChar = label "escaped character in string" anySingle
 
 parseTuple :: Parser ErlValue
 parseTuple = ErlTuple <$ symbol "{" <*> parseErlValue `sepBy1` symbol "," <* symbol "}"
