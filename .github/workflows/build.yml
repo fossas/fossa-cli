@@ -131,6 +131,10 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
 
+    - name: Build test data
+      run: |
+        make build-test-data
+
     - name: Build
       # Occasionally, we run out of memory on the build process.
       # Since cabal uses incremental compilation, we can retry from where we left off
