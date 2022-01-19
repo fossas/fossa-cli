@@ -47,7 +47,7 @@ logDiagnostic diag = do
   result <- runDiagnosticsIO diag
   case result of
     Failure ws eg -> logError (viaShow ws <> line <> viaShow eg) >> pure Nothing
-    Success _ a -> pure $ Just a
+    Success ws a -> logWarn (viaShow ws) *> pure (Just a)
 
 -- result <- runDiagnosticsIO diag
 -- case result of
