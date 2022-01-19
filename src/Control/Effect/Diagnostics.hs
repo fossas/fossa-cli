@@ -1,26 +1,25 @@
 {-# LANGUAGE GADTs #-}
 
--- FIXME: haddocks
-
--- | The Diagnostics effect is a replacement for the Error effect in most cases. It models an unchecked exceptions pattern, and provides for:
+-- | The Diagnostics effect is an augmented Error effect. It models an unchecked
+-- exceptions pattern with support for stack traces, error aggregation, and
+-- warnings.
 --
--- - "stack trace"-like behavior, closely resembling the golang pattern of errors.Wrap (see: 'context')
---
--- - recovery from failures, recording them as "warnings" (see: 'recover' or '<||>')
+-- See /docs/contributing/diagnostics.md for motivation and usage details.
 module Control.Effect.Diagnostics (
-  -- * Diagnostics effect and operations
-
-  -- FIXME
+  -- * Diagnostics
   Diagnostics,
-  Diag (..),
-  warn,
-  withWarn,
-  errCtx,
-  fatal,
   context,
+
+  -- * Diag effect and primitives
+  Diag (..),
+  fatal,
   recover,
+  errCtx,
   errorBoundary,
   rethrow,
+  warn,
+  withWarn,
+  (<||>),
 
   -- * Diagnostic helpers
   fatalText,
@@ -29,10 +28,7 @@ module Control.Effect.Diagnostics (
   fromEitherShow,
   fromMaybe,
   fromMaybeText,
-  warnMaybe,
-  warnMaybeText,
   tagError,
-  (<||>),
   combineSuccessful,
 
   -- * Algebra re-exports
@@ -57,58 +53,75 @@ import Data.Semigroup (sconcat)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 
+---------- Diagnostics
+
+-- | 'Stack' (the callstack effect) is separate from Diag, but most code using
+-- Diag also requires Stack.
+--
+-- This helper alias can be used to require both:
+--
+-- @
+--     foo :: Has Diagnostics sig m => m ()
+-- @
 type Diagnostics = Diag :+: Stack
 
+---------- Diag effect and primitives
+
 data Diag m k where
-  FirstToSucceed :: m a -> m a -> Diag m a
-  Warn :: ToDiagnostic warn => warn -> Diag m ()
-  WithWarn :: ToDiagnostic warn => warn -> m a -> Diag m a
-  ErrCtx :: ToDiagnostic ctx => ctx -> m a -> Diag m a
   Fatal :: ToDiagnostic diag => diag -> Diag m a
   Recover :: m a -> Diag m (Maybe a)
+  ErrCtx :: ToDiagnostic ctx => ctx -> m a -> Diag m a
   ErrorBoundary :: m a -> Diag m (Result a)
   Rethrow :: Result a -> Diag m a
+  Warn :: ToDiagnostic warn => warn -> Diag m ()
+  WithWarn :: ToDiagnostic warn => warn -> m a -> Diag m a
+  FirstToSucceed :: m a -> m a -> Diag m a
+
+-- | Throw an error
+fatal :: (Has Diagnostics sig m, ToDiagnostic diag) => diag -> m a
+fatal = send . Fatal
+
+-- | Recover from an error
+recover :: Has Diagnostics sig m => m a -> m (Maybe a)
+recover = send . Recover
+
+-- | When the provided action fails, annotate its error with the provided
+-- context
+errCtx :: (ToDiagnostic ctx, Has Diagnostics sig m) => ctx -> m a -> m a
+errCtx ctx m = send (ErrCtx ctx m)
+
+-- | Nearly identical to @runDiagnostics@, run an action, returning its
+-- underlying 'Result'. Most often, you'll want to use 'recover' instead.
+--
+-- Warnings and errors that occurred outside the scope of the @errorBoundary@ do
+-- not impact the returned 'Result'.
+errorBoundary :: Has Diagnostics sig m => m a -> m (Result a)
+errorBoundary = send . ErrorBoundary
+
+-- | Lift a Result value. Most often used in combination with 'errorBoundary'
+rethrow :: Has Diagnostics sig m => Result a -> m a
+rethrow = send . Rethrow
 
 -- | Emit a warning
 warn :: (ToDiagnostic diag, Has Diagnostics sig m) => diag -> m ()
 warn = send . Warn
 
--- | Contextualize a thrown error with a warning
+-- | When the provided action fails, emit a warning
 withWarn :: (ToDiagnostic warn, Has Diagnostics sig m) => warn -> m a -> m a
 withWarn w m = send (WithWarn w m)
 
-errCtx :: (ToDiagnostic ctx, Has Diagnostics sig m) => ctx -> m a -> m a
-errCtx ctx m = send (ErrCtx ctx m)
+-- | Analagous to @Alternative@'s @<|>@. Try the provided actions, returning the
+-- value of the first to succeed
+(<||>) :: Has Diagnostics sig m => m a -> m a -> m a
+(<||>) ma mb = send (FirstToSucceed ma mb)
 
--- | Analagous to @throwError@ from the error effect
-fatal :: (Has Diagnostics sig m, ToDiagnostic diag) => diag -> m a
-fatal = send . Fatal
+infixl 3 <||>
+
+---------- Helpers
 
 -- | Throw an untyped string error
 fatalText :: Has Diagnostics sig m => Text -> m a
 fatalText = fatal
-
--- | Throw a generic error message on IO error, wrapped in a new 'context' using the provided @Text@.
-fatalOnIOException :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> m a -> m a
-fatalOnIOException ctx go = context ctx $ safeCatch go die'
-  where
-    die' (e :: IOException) = fatalText ("io exception: " <> toText (show e))
-
--- | Recover from a fatal error. The error will be recorded as a warning instead.
-recover :: Has Diagnostics sig m => m a -> m (Maybe a)
-recover = send . Recover
-
--- | Form an "error boundary" around an action, where:
--- - errors and warnings cannot "escape" the scope of the action
--- - warnings from outside of the error boundary do not impact the FailureBundles produced by the action
---
--- This returns a FailureBundle if the action failed; otherwise returns the result of the action
-errorBoundary :: Has Diagnostics sig m => m a -> m (Result a)
-errorBoundary = send . ErrorBoundary
-
--- | Rethrow a FailureBundle from an 'errorBoundary'
-rethrow :: Has Diagnostics sig m => Result a -> m a
-rethrow = send . Rethrow
 
 -- | Lift an Either result into the Diagnostics effect, given a ToDiagnostic instance for the error type
 fromEither :: (ToDiagnostic err, Has Diagnostics sig m) => Either err a -> m a
@@ -126,25 +139,18 @@ fromMaybe msg = maybe (fatal msg) pure
 fromMaybeText :: Has Diagnostics sig m => Text -> Maybe a -> m a
 fromMaybeText = fromMaybe
 
--- FIXME: kill
-warnMaybe :: (ToDiagnostic err, Has Diagnostics sig m) => err -> Maybe a -> m (Maybe a)
-warnMaybe msg = recover . maybe (fatal msg) pure
-
--- FIXME: kill
-warnMaybeText :: Has Diagnostics sig m => Text -> Maybe a -> m (Maybe a)
-warnMaybeText = warnMaybe
-
 -- | Lift an Either result into the Diagnostics effect, given a function from the error type to another type that implements 'ToDiagnostic'
 tagError :: (ToDiagnostic e', Has Diagnostics sig m) => (e -> e') -> Either e a -> m a
 tagError f (Left e) = fatal (f e)
 tagError _ (Right a) = pure a
 
-infixl 3 <||>
+-- | Throw a generic error message on IO error, wrapped in a new 'context' using the provided @Text@.
+fatalOnIOException :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> m a -> m a
+fatalOnIOException ctx go = context ctx $ safeCatch go die'
+  where
+    die' (e :: IOException) = fatalText ("io exception: " <> toText (show e))
 
--- | Analagous to @Alternative@'s @<|>@. Tries both actions and chooses the result that succeeds, invoking 'recover' semantics for errors.
-(<||>) :: Has Diagnostics sig m => m a -> m a -> m a
-(<||>) ma mb = send (FirstToSucceed ma mb)
-
+-- FIXME: kill/replace with better abstraction
 -- | Run a list of actions, combining the successful ones. If all actions fail, 'fatalText' is invoked with the provided @Text@ message.
 combineSuccessful :: (Semigroup a, Has Diagnostics sig m) => Text -> [m a] -> m a
 combineSuccessful msg actions = do
