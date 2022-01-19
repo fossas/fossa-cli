@@ -369,6 +369,7 @@ test-suite unit-tests
     App.Fossa.Report.AttributionSpec
     App.Fossa.Report.Log4jReportSpec
     App.Fossa.VPS.NinjaGraphSpec
+    App.Fossa.VSI.DynLinked.UtilSpec
     App.Fossa.VSI.FingerprintSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
