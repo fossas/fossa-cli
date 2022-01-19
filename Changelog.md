@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## v3.0.17
+
+- Monorepo: Upload file data and licenses together during monorepo scans, speed up issue scans. ([#772](https://github.com/fossas/fossa-cli/pull/772))
+
 ## v3.0.16
 
 - Improves the overall performance and progress reporting of VSI scans. ([#765](https://github.com/fossas/fossa-cli/pull/765))
