@@ -21,6 +21,7 @@ import App.Types (
   ProjectRevision (projectName, projectRevision),
  )
 import Control.Carrier.Diagnostics (logWithExit_, (<||>))
+import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Data.Aeson qualified as Aeson
 import Data.Functor (void)
@@ -39,7 +40,6 @@ import Effect.ReadFS (runReadFSIO)
 import Fossa.API.Types (ApiOpts)
 import System.Exit (exitFailure)
 import System.IO (stderr)
-import Control.Carrier.Stack (runStack)
 
 data ReportType
   = AttributionReport

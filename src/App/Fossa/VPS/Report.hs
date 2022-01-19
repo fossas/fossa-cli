@@ -10,6 +10,7 @@ import App.Fossa.VPS.Scan.Core qualified as VPSCore
 import App.Fossa.VPS.Scan.ScotlandYard qualified as ScotlandYard
 import App.Types
 import Control.Carrier.Diagnostics
+import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Data.Aeson qualified as Aeson
 import Data.Functor (void)
@@ -22,7 +23,6 @@ import Effect.ReadFS
 import Fossa.API.Types (ApiOpts)
 import System.Exit (exitFailure)
 import System.IO (stderr)
-import Control.Carrier.Stack (runStack)
 
 data ReportType
   = AttributionReport

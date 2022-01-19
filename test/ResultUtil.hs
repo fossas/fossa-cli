@@ -3,7 +3,7 @@ module ResultUtil (
   assertOnSuccess,
 ) where
 
-import Diag.Result (Result (Failure, Success), EmittedWarn, renderFailure)
+import Diag.Result (EmittedWarn, Result (Failure, Success), renderFailure)
 import Test.Hspec (Expectation, expectationFailure)
 
 expectFailure :: Result a -> Expectation

@@ -4,6 +4,7 @@ module App.Fossa.BinaryDeps.JarSpec (spec) where
 
 import App.Fossa.BinaryDeps.Jar (resolveJar)
 import Control.Carrier.Diagnostics (runDiagnostics)
+import Control.Carrier.Stack (runStack)
 import Data.String.Conversion (toText)
 import Diag.Result (Result (Failure, Success))
 import Effect.Logger (Severity (SevError), withDefaultLogger)
@@ -13,7 +14,6 @@ import Path.Extra (tryMakeRelative)
 import Path.IO qualified as PIO
 import Srclib.Types (SourceUserDefDep (..))
 import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
-import Control.Carrier.Stack (runStack)
 
 spec :: Spec
 spec = do
