@@ -74,21 +74,8 @@ warn :: (ToDiagnostic diag, Has Diagnostics sig m) => diag -> m ()
 warn = send . Warn
 
 -- | Contextualize a thrown error with a warning
---
--- FIXME: this doesn't currently use the provided diagnostic, and just logs the failure bundle (to maintain present behavior)
 withWarn :: (ToDiagnostic warn, Has Diagnostics sig m) => warn -> m a -> m a
 withWarn w m = send (WithWarn w m)
-
--- FIXME: kill
-{-
-withWarn _ m = do
-  maybeBundle <- errorBoundary m
-  case maybeBundle of
-    Left bundle -> do
-      logWarn (renderFailureBundle bundle)
-      rethrow bundle
-    Right res -> pure res
--}
 
 errCtx :: (ToDiagnostic ctx, Has Diagnostics sig m) => ctx -> m a -> m a
 errCtx ctx m = send (ErrCtx ctx m)
@@ -100,8 +87,6 @@ fatal = send . Fatal
 -- | Throw an untyped string error
 fatalText :: Has Diagnostics sig m => Text -> m a
 fatalText = fatal
-
--- FIXME
 
 -- | Throw a generic error message on IO error, wrapped in a new 'context' using the provided @Text@.
 fatalOnIOException :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> m a -> m a
