@@ -228,6 +228,7 @@ library
     Data.Text.Extra
     DepTypes
     Diag.Diagnostic
+    Diag.Monad
     Diag.Result
     Discovery.Archive
     Discovery.Archive.RPM

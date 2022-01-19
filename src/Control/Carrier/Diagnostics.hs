@@ -25,16 +25,17 @@ import Control.Exception (SomeException)
 import Control.Exception.Extra (safeCatch)
 import Control.Monad (unless)
 import Control.Monad.Trans
-import Diag.Result (Result (Failure, Success), ResultT)
-import Diag.Result qualified as ResultT
+import Diag.Monad (ResultT)
+import Diag.Monad qualified as ResultT
+import Diag.Result (Result (Failure, Success))
 import Effect.Logger
 import System.Exit (exitFailure, exitSuccess)
+import qualified Diag.Result as Result
 
--- TODO: ensure stack hacks are still working for e.g., inner tasks, debug bundles
 newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ResultT m a}
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
 
-runDiagnostics :: DiagnosticsC m a -> m (ResultT.Result a)
+runDiagnostics :: DiagnosticsC m a -> m (Result a)
 runDiagnostics = ResultT.runResultT . runDiagnosticsC
 
 -- FIXME: rendering of failure
@@ -62,36 +63,36 @@ logWithExit_ diag = logDiagnostic diag >>= maybe (sendIO exitFailure) (const (se
 instance Has Stack sig m => Algebra (Diag :+: sig) (DiagnosticsC m) where
   alg hdl sig ctx = DiagnosticsC $ case sig of
     L (FirstToSucceed ma ma') -> (ResultT.<||>) (runDiagnosticsC $ hdl (ma <$ ctx)) (runDiagnosticsC $ hdl (ma' <$ ctx))
-    L (Warn w) -> (<$ ctx) <$> ResultT.warnT (ResultT.SomeWarn w)
-    L (WithWarn w act) -> ResultT.withWarnT (ResultT.SomeWarn w) $ runDiagnosticsC $ hdl (act <$ ctx)
-    L (ErrCtx c act) -> ResultT.errCtxT (ResultT.ErrCtx c) $ runDiagnosticsC $ hdl (act <$ ctx)
-    L (Fatal diag) -> lift getStack >>= \path -> ResultT.fatalT (ResultT.Stack path) (ResultT.SomeErr diag)
-    L (Recover act) -> fmap (swizzleM ctx) $ ResultT.recoverT $ runDiagnosticsC $ hdl (act <$ ctx)
-    L (ErrorBoundary act) -> fmap (swizzleR ctx) $ ResultT.errorBoundaryT $ runDiagnosticsC $ hdl (act <$ ctx)
+    L (Warn w) -> (<$ ctx) <$> ResultT.warnT (Result.SomeWarn w)
+    L (WithWarn w act) -> ResultT.withWarnT (Result.SomeWarn w) $ runDiagnosticsC $ hdl (act <$ ctx)
+    L (ErrCtx c act) -> ResultT.errCtxT (Result.ErrCtx c) $ runDiagnosticsC $ hdl (act <$ ctx)
+    L (Fatal diag) -> lift getStack >>= \path -> ResultT.fatalT (Result.Stack path) (Result.SomeErr diag)
+    L (Recover act) -> fmap (distributeMaybe ctx) $ ResultT.recoverT $ runDiagnosticsC $ hdl (act <$ ctx)
+    L (ErrorBoundary act) -> fmap (distributeResult ctx) $ ResultT.errorBoundaryT $ runDiagnosticsC $ hdl (act <$ ctx)
     L (Rethrow bundle) -> (<$ ctx) <$> (ResultT.ResultT (pure bundle))
     R other -> ResultT.ResultT $ thread (hdlC ~<~ hdl) other (pure ctx)
 
-swizzleR :: Functor ctx => ctx () -> ResultT.Result (ctx a1) -> ctx (ResultT.Result a1)
-swizzleR ctx (ResultT.Failure ws eg) = ResultT.Failure ws eg <$ ctx
-swizzleR _ (ResultT.Success ws ctx) = ResultT.Success ws <$> ctx
+distributeResult :: Functor ctx => ctx () -> Result (ctx a1) -> ctx (Result a1)
+distributeResult ctx (Failure ws eg) = Failure ws eg <$ ctx
+distributeResult _ (Success ws ctx) = Success ws <$> ctx
 
-swizzleM :: Functor ctx => ctx () -> Maybe (ctx a1) -> ctx (Maybe a1)
-swizzleM _ (Just ctx) = Just <$> ctx
-swizzleM ctx Nothing = Nothing <$ ctx
+distributeMaybe :: Functor ctx => ctx () -> Maybe (ctx a1) -> ctx (Maybe a1)
+distributeMaybe _ (Just ctx) = Just <$> ctx
+distributeMaybe ctx Nothing = Nothing <$ ctx
 
-hdlC :: Applicative m => ResultT.Result (DiagnosticsC m a) -> m (ResultT.Result a)
-hdlC (ResultT.Failure ws eg) = pure (ResultT.Failure ws eg)
-hdlC (ResultT.Success ws m) = addWarns <$> ResultT.runResultT (runDiagnosticsC m)
+hdlC :: Applicative m => Result (DiagnosticsC m a) -> m (Result a)
+hdlC (Failure ws eg) = pure (Failure ws eg)
+hdlC (Success ws m) = addWarns <$> ResultT.runResultT (runDiagnosticsC m)
   where
-    addWarns (ResultT.Success ws' a') = ResultT.Success (ws' <> ws) a'
-    addWarns (ResultT.Failure ws' eg') = ResultT.Failure (ws' <> ws) eg'
+    addWarns (Success ws' a') = Success (ws' <> ws) a'
+    addWarns (Failure ws' eg') = Failure (ws' <> ws) eg'
 
 -- | Run the DiagnosticsC carrier, also catching IO exceptions
-runDiagnosticsIO :: (Has (Lift IO) sig m, Has Stack sig m) => DiagnosticsC m a -> m (ResultT.Result a)
+runDiagnosticsIO :: (Has (Lift IO) sig m, Has Stack sig m) => DiagnosticsC m a -> m (Result a)
 runDiagnosticsIO act = runDiagnostics $ act `safeCatch` (\(e :: SomeException) -> fatal e)
 
 -- | Like 'errorBoundary', but also catches IO exceptions
-errorBoundaryIO :: (Has (Lift IO) sig m, Has Diagnostics sig m) => m a -> m (ResultT.Result a)
+errorBoundaryIO :: (Has (Lift IO) sig m, Has Diagnostics sig m) => m a -> m (Result a)
 errorBoundaryIO act = errorBoundary $ act `safeCatch` (\(e :: SomeException) -> fatal e)
 
 -- FIXME: look at use-sites; see if warning mechanism is a better fit
