@@ -3,27 +3,32 @@
 module App.Fossa.VSI.DynLinked.UtilSpec (spec) where
 
 import App.Fossa.VSI.DynLinked.Util (isSetUID)
+import Control.Carrier.Diagnostics (runDiagnostics)
 import Path (Abs, File, Path)
 import Path.IO qualified as PIO
-import Test.Hspec (Spec, describe, it, runIO, shouldBe)
+import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
 
 spec :: Spec
 spec = do
   describe "reports setuid bit correctly" $ do
     pathSetUID <- runIO fileSetUID
     pathStandard <- runIO fileStandard
-    resultSetUID <- runIO $ isSetUID pathSetUID
-    resultStandard <- runIO $ isSetUID pathStandard
-
-    it "reports setuid bit correctly" $ do
+    resultSetUID <- runIO . runDiagnostics $ isSetUID pathSetUID
+    resultStandard <- runIO . runDiagnostics $ isSetUID pathStandard
 
 #ifdef mingw32_HOST_OS
-      resultSetUID `shouldBe` False
-      resultStandard `shouldBe` False
+  it "reports setuid bit correctly" $ case resultSetUID of
+      Left _ -> expectationFailure "could not check file"
+      Right result -> result `shouldBe` False
 #else
-      resultSetUID `shouldBe` True
-      resultStandard `shouldBe` False
+    it "reports setuid bit correctly" $ case resultSetUID of
+      Left _ -> expectationFailure "could not check file"
+      Right result -> result `shouldBe` True
 #endif
+
+    it "reports non-setuid bit correctly" $ case resultStandard of
+      Left _ -> expectationFailure "could not check file"
+      Right result -> result `shouldBe` False
 
 fileSetUID :: IO (Path Abs File)
 fileSetUID = PIO.resolveFile' "test/App/Fossa/VSI/DynLinked/testdata/hello_setuid"
