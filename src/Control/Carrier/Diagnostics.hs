@@ -25,6 +25,7 @@ import Control.Exception (SomeException)
 import Control.Exception.Extra (safeCatch)
 import Control.Monad (unless)
 import Control.Monad.Trans
+import Data.Functor (($>))
 import Diag.Monad (ResultT)
 import Diag.Monad qualified as ResultT
 import Diag.Result (Result (Failure, Success), renderFailure, renderSuccess)
@@ -48,7 +49,7 @@ logDiagnostic diag = do
   case result of
     Failure ws eg -> logError (renderFailure ws eg) >> pure Nothing
     Success [] a -> pure (Just a)
-    Success ws a -> logWarn (renderSuccess ws) *> pure (Just a)
+    Success ws a -> logWarn (renderSuccess ws) $> (Just a)
 
 -- result <- runDiagnosticsIO diag
 -- case result of
