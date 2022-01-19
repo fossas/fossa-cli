@@ -45,13 +45,13 @@ import Control.Carrier.Stack
 import Control.Effect.Lift (Lift)
 import Control.Exception (IOException)
 import Control.Exception.Extra (safeCatch)
-import Data.Diagnostic as Diagnostic
-import Data.Errors (Result)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Diag.Diagnostic as Diagnostic
+import Diag.Result (Result)
 
 ---------- Diagnostics
 
@@ -151,6 +151,7 @@ fatalOnIOException ctx go = context ctx $ safeCatch go die'
     die' (e :: IOException) = fatalText ("io exception: " <> toText (show e))
 
 -- FIXME: kill/replace with better abstraction
+
 -- | Run a list of actions, combining the successful ones. If all actions fail, 'fatalText' is invoked with the provided @Text@ message.
 combineSuccessful :: (Semigroup a, Has Diagnostics sig m) => Text -> [m a] -> m a
 combineSuccessful msg actions = do

@@ -1,4 +1,4 @@
-module Data.Errors (
+module Diag.Result (
   -- * Result carrier
   ResultT (..),
   fatalT,
@@ -12,10 +12,10 @@ module Data.Errors (
 
   -- * Result type
   Result (..),
-  SomeErr(..),
-  SomeWarn(..),
-  ErrCtx(..),
-  Stack(..),
+  SomeErr (..),
+  SomeWarn (..),
+  ErrCtx (..),
+  Stack (..),
 
   -- * Result operations
   fatal,
@@ -31,10 +31,10 @@ module Data.Errors (
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans (MonadTrans, lift)
-import Data.Diagnostic (ToDiagnostic, renderDiagnostic)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
+import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
 
 -- FIXME: considerations about ordering of warnings/errors
 data Result a = Failure [EmittedWarn] ErrGroup | Success [EmittedWarn] a

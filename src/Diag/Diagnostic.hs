@@ -1,14 +1,8 @@
-{-# LANGUAGE RecordWildCards #-}
-
-module Data.Diagnostic (
+-- | The ToDiagnostic typeclass
+module Diag.Diagnostic (
   -- * ToDiagnostic
   ToDiagnostic (..),
   SomeDiagnostic (..),
-
-  -- * FailureBundle
-  FailureBundle (..),
-  renderFailureBundle,
-  renderSomeDiagnostic,
 
   -- * Warnings (temporary)
   REPLACEME (..),
@@ -18,7 +12,6 @@ module Data.Diagnostic (
 
 import Control.Exception (SomeException (SomeException))
 import Data.Aeson (ToJSON, object, toJSON, (.=))
-import Data.List (intersperse)
 import Data.Text (Text)
 import Effect.Logger
 
@@ -49,44 +42,36 @@ instance ToJSON SomeDiagnostic where
 
 ---------- Failure bundles
 
-data FailureBundle = FailureBundle
-  { failureWarnings :: [SomeDiagnostic]
-  , failureCause :: SomeDiagnostic
-  }
+-- renderFailureBundle :: FailureBundle -> Doc AnsiStyle
+-- renderFailureBundle FailureBundle{..} =
+--   vsep $
+--     [ annotate (color Yellow) "----------"
+--     , annotate (color Yellow) "An error occurred:"
+--     , ""
+--     , indent 4 (renderSomeDiagnostic failureCause)
+--     , ""
+--     ]
+--       ++ if null failureWarnings
+--         then []
+--         else
+--           [ ">>>"
+--           , ""
+--           , indent 2 (annotate (color Yellow) "Relevant warnings include:")
+--           , ""
+--           , indent 4 (renderWarnings failureWarnings)
+--           ]
 
-instance Show FailureBundle where
-  show = show . renderFailureBundle
+-- renderSomeDiagnostic :: SomeDiagnostic -> Doc AnsiStyle
+-- renderSomeDiagnostic (SomeDiagnostic stack cause) =
+--   renderDiagnostic cause
+--     <> line
+--     <> line
+--     <> annotate (color Cyan) "Traceback:"
+--     <> line
+--     <> indent 2 (vsep (map (pretty . ("- " <>)) stack))
 
-renderFailureBundle :: FailureBundle -> Doc AnsiStyle
-renderFailureBundle FailureBundle{..} =
-  vsep $
-    [ annotate (color Yellow) "----------"
-    , annotate (color Yellow) "An error occurred:"
-    , ""
-    , indent 4 (renderSomeDiagnostic failureCause)
-    , ""
-    ]
-      ++ if null failureWarnings
-        then []
-        else
-          [ ">>>"
-          , ""
-          , indent 2 (annotate (color Yellow) "Relevant warnings include:")
-          , ""
-          , indent 4 (renderWarnings failureWarnings)
-          ]
-
-renderSomeDiagnostic :: SomeDiagnostic -> Doc AnsiStyle
-renderSomeDiagnostic (SomeDiagnostic stack cause) =
-  renderDiagnostic cause
-    <> line
-    <> line
-    <> annotate (color Cyan) "Traceback:"
-    <> line
-    <> indent 2 (vsep (map (pretty . ("- " <>)) stack))
-
-renderWarnings :: [SomeDiagnostic] -> Doc AnsiStyle
-renderWarnings = vsep . intersperse (line <> "--" <> line) . map renderSomeDiagnostic
+-- renderWarnings :: [SomeDiagnostic] -> Doc AnsiStyle
+-- renderWarnings = vsep . intersperse (line <> "--" <> line) . map renderSomeDiagnostic
 
 ---------- Warnings. FIXME: delete or move to another module as appropriate
 

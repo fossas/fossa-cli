@@ -217,8 +217,6 @@ library
     Control.Exception.Extra
     Data.Aeson.Extra
     Data.Conduit.Extra
-    Data.Diagnostic
-    Data.Errors
     Data.FileEmbed.Extra
     Data.Flag
     Data.Functor.Extra
@@ -229,6 +227,8 @@ library
     Data.Tagged
     Data.Text.Extra
     DepTypes
+    Diag.Diagnostic
+    Diag.Result
     Discovery.Archive
     Discovery.Archive.RPM
     Discovery.Filters

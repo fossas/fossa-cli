@@ -20,12 +20,12 @@ import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Stack (runStack)
 import Control.Effect.Lift (Lift)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
-import Data.Errors (Result (Failure, Success))
 import Data.Functor (($>))
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
+import Diag.Result (Result (Failure, Success))
 import Effect.Logger (Severity (SevWarn), ignoreLogger, logWarn, withDefaultLogger)
 import Effect.ReadFS
 import Path

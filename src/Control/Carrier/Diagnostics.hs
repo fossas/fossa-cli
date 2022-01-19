@@ -8,7 +8,6 @@ module Control.Carrier.Diagnostics (
 
   -- * Helpers
   logDiagnostic,
-  logErrorBundle,
   logWithExit_,
   runDiagnosticsIO,
   errorBoundaryIO,
@@ -26,8 +25,8 @@ import Control.Exception (SomeException)
 import Control.Exception.Extra (safeCatch)
 import Control.Monad (unless)
 import Control.Monad.Trans
-import Data.Errors (Result (Failure, Success), ResultT)
-import Data.Errors qualified as ResultT
+import Diag.Result (Result (Failure, Success), ResultT)
+import Diag.Result qualified as ResultT
 import Effect.Logger
 import System.Exit (exitFailure, exitSuccess)
 
@@ -37,9 +36,6 @@ newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ResultT m a}
 
 runDiagnostics :: DiagnosticsC m a -> m (ResultT.Result a)
 runDiagnostics = ResultT.runResultT . runDiagnosticsC
-
-logErrorBundle :: Has Logger sig m => FailureBundle -> m ()
-logErrorBundle = logError . renderFailureBundle
 
 -- FIXME: rendering of failure
 -- FIXME: show warnings on success

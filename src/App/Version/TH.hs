@@ -9,12 +9,12 @@ import Control.Carrier.Stack (runStack)
 import Control.Effect.Diagnostics (Diagnostics, fromEitherShow)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString.Lazy qualified as BSL
-import Data.Errors (Result (Success))
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Versions (errorBundlePretty, semver)
+import Diag.Result (Result (Success))
 import Effect.Exec (
   AllowErr (Always),
   Command (..),
