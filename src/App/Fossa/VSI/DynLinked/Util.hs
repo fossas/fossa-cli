@@ -1,9 +1,22 @@
+{-# LANGUAGE CPP #-}
+
 module App.Fossa.VSI.DynLinked.Util (
   isSetUID,
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Lift (Lift)
+
+#ifdef mingw32_HOST_OS
+
+-- | Test whether the file has a `setuid` bit.
+-- Windows doesn't have the concept of a "set uid bit", so always eval to false.
+isSetUID :: (Has (Lift IO) sig m) => Path t File -> m Bool
+isSetUID _ = pure False
+
+#else
+
+import Control.Effect.Lift qualified as EL -- qualified to get the linter to stop yelling about combining imports
 import Data.Bits ((.|.))
 import Path (File, Path, toFilePath)
 import System.Posix.Files (fileMode, getFileStatus, setUserIDMode)
@@ -11,5 +24,7 @@ import System.Posix.Files (fileMode, getFileStatus, setUserIDMode)
 -- | Test whether the file has a `setuid` bit.
 isSetUID :: (Has (Lift IO) sig m) => Path t File -> m Bool
 isSetUID file = do
-  stat <- sendIO . getFileStatus $ toFilePath file
+  stat <- EL.sendIO . getFileStatus $ toFilePath file
   pure $ fileMode stat .|. setUserIDMode == 0
+
+#endif
