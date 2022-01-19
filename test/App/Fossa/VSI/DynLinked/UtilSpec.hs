@@ -16,19 +16,23 @@ spec = do
     resultSetUID <- runIO . runDiagnostics $ isSetUID pathSetUID
     resultStandard <- runIO . runDiagnostics $ isSetUID pathStandard
 
-#ifdef mingw32_HOST_OS
-  it "reports setuid bit correctly" $ case resultSetUID of
-      Left _ -> expectationFailure "could not check file"
-      Right result -> result `shouldBe` False
-#else
-    it "reports setuid bit correctly" $ case resultSetUID of
-      Left _ -> expectationFailure "could not check file"
-      Right result -> result `shouldBe` True
-#endif
-
     it "reports non-setuid bit correctly" $ case resultStandard of
       Left _ -> expectationFailure "could not check file"
       Right result -> result `shouldBe` False
+
+#ifdef mingw32_HOST_OS
+
+    it "reports setuid bit correctly" $ case resultSetUID of
+      Left _ -> expectationFailure "could not check file"
+      Right result -> result `shouldBe` False
+
+#else
+
+    it "reports setuid bit correctly" $ case resultSetUID of
+      Left _ -> expectationFailure "could not check file"
+      Right result -> result `shouldBe` True
+
+#endif
 
 fileSetUID :: IO (Path Abs File)
 fileSetUID = PIO.resolveFile' "test/App/Fossa/VSI/DynLinked/testdata/hello_setuid"
