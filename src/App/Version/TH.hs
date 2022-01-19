@@ -43,7 +43,6 @@ getCurrentTag = do
   let commitHash = giHash $$(tGitInfoCwd)
   result <- runIO . ignoreLogger . runStack [] . runDiagnostics . runExecIO . getTags $ toText commitHash
 
-  -- FIXME: helper combinator?
   case result of
     Success _ tags -> filterTags tags
     err -> reportWarning (show err) >> [||Nothing||]
