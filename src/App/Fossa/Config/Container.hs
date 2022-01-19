@@ -82,7 +82,7 @@ containerCmdInfo :: InfoMod a
 containerCmdInfo = progDesc "Run in container-scanning mode"
 
 mkSubCommand :: (ContainerScanConfig -> EffStack ()) -> SubCommand ContainerCommand ContainerScanConfig
-mkSubCommand = SubCommand "String" containerCmdInfo parser loadConfig mergeOpts
+mkSubCommand = SubCommand "container" containerCmdInfo parser loadConfig mergeOpts
 
 mergeOpts ::
   ( Has Diagnostics sig m
