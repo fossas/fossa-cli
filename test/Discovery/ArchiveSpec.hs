@@ -6,6 +6,7 @@ import Conduit (runConduitRes, sourceFile, (.|))
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics, fatalOnIOException, fatalText, runDiagnostics)
 import Control.Carrier.Finally (runFinally)
+import Control.Carrier.Stack (runStack)
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Crypto.Hash (Digest, SHA256)
@@ -21,7 +22,8 @@ import Effect.ReadFS (ReadFS, runReadFSIO)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (Abs, Rel), mkRelDir, mkRelFile, toFilePath, (</>))
 import Path.Extra (tryMakeRelative)
 import Path.IO qualified as PIO
-import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
+import ResultUtil
+import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 
 spec :: Spec
 spec = do
@@ -107,19 +109,17 @@ spec = do
 
   describe "extract el7 (xz) rpm to a temporary location" $ do
     target <- runIO rpmCurlEl7Path
-    result <- runIO . runFinally . runDiagnostics . runReadFSIO $ withArchive extractRpm target hashFiles
+    result <- runIO . runStack [] . runFinally . runDiagnostics . runReadFSIO $ withArchive extractRpm target hashFiles
 
-    it "should have extracted the correct contents" $ case result of
-      Left _ -> expectationFailure "could not extract rpm"
-      Right contents -> contents `shouldBe` rpmCurlEl7ExpectedFiles
+    it "should have extracted the correct contents" $
+      assertOnSuccess result $ \_ contents -> contents `shouldBe` rpmCurlEl7ExpectedFiles
 
   describe "extract fc35 (zstd) rpm to a temporary location" $ do
     target <- runIO rpmCurlFc35Path
-    result <- runIO . runFinally . runDiagnostics . runReadFSIO $ withArchive extractRpm target hashFiles
+    result <- runIO . runStack [] . runFinally . runDiagnostics . runReadFSIO $ withArchive extractRpm target hashFiles
 
-    it "should have extracted the correct contents" $ case result of
-      Left _ -> expectationFailure "could not extract rpm"
-      Right contents -> contents `shouldBe` rpmCurlFc35ExpectedFiles
+    it "should have extracted the correct contents" $
+      assertOnSuccess result $ \_ contents -> contents `shouldBe` rpmCurlFc35ExpectedFiles
 
 simpleZipPath :: IO (Path Abs File)
 simpleZipPath = PIO.resolveFile' "test/Discovery/testdata/simple.zip"

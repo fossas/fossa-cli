@@ -11,6 +11,9 @@ module Diag.Result (
   SomeWarn (..),
   ErrCtx (..),
 
+  -- * Helpers
+  resultToMaybe,
+
   -- * Rendering
   renderFailure,
   renderSuccess,
@@ -83,6 +86,12 @@ data ErrCtx where
 
 instance Show ErrCtx where
   show (ErrCtx c) = "\"" <> show (renderDiagnostic c) <> "\""
+
+---------- Helpers
+
+resultToMaybe :: Result a -> Maybe a
+resultToMaybe (Success _ a) = Just a
+resultToMaybe (Failure _ _) = Nothing
 
 ---------- Rendering
 

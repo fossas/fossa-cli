@@ -5,12 +5,13 @@ import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences)
 import Control.Carrier.Debug (DebugC)
 import Control.Carrier.Diagnostics (DiagnosticsC)
 import Control.Carrier.Reader (ReaderC)
+import Control.Carrier.Stack (StackC)
 import Effect.Exec (ExecIOC)
 import Effect.Logger (LoggerC)
 import Effect.ReadFS (ReadFSIOC)
 import Test.Hspec (Spec, describe, it, shouldBe)
 
-type SomeMonad = ReaderC AnalyzeExperimentalPreferences (DebugC (DiagnosticsC (LoggerC (ExecIOC (ReadFSIOC IO)))))
+type SomeMonad = ReaderC AnalyzeExperimentalPreferences (DebugC (DiagnosticsC (LoggerC (ExecIOC (ReadFSIOC (StackC IO))))))
 
 spec :: Spec
 spec =

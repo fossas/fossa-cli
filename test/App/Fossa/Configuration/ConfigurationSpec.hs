@@ -8,10 +8,12 @@ module App.Fossa.Configuration.ConfigurationSpec (
 import App.Fossa.Configuration
 import App.Types (ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
+import Control.Carrier.Stack (runStack)
 import Data.Set qualified as Set
 import Effect.ReadFS
 import Path
 import Path.IO (getCurrentDir)
+import ResultUtil
 import Test.Hspec qualified as T
 import Types (BuildTarget (..), TargetFilter (..))
 
@@ -93,30 +95,21 @@ spec :: T.Spec
 spec = do
   dir <- T.runIO getCurrentDir
 
-  config <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> testFile)
-  badConfig <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> badFile)
-  missingConfig <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> missingFile)
-  ver2Config <- T.runIO . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> ver2configFile)
+  config <- T.runIO . runStack [] . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> testFile)
+  badConfig <- T.runIO . runStack [] . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> badFile)
+  missingConfig <- T.runIO . runStack [] . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> missingFile)
+  ver2Config <- T.runIO . runStack [] . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> ver2configFile)
 
   T.describe "config file parser" $ do
-    T.it "parses a full configuration file correctly" $
-      case config of
-        Left err -> T.expectationFailure ("failed to parse config file" <> show (Diag.renderFailureBundle err))
-        Right a -> case a of
-          Nothing -> T.expectationFailure "config file was Nothing after parsing"
-          Just result -> result `T.shouldBe` expectedConfigFile
+    T.it "parses a full configuration file correctly" $ do
+      assertOnSuccess config $ \_ a -> case a of
+        Nothing -> T.expectationFailure "config file was Nothing after parsing"
+        Just result -> result `T.shouldBe` expectedConfigFile
 
-    T.it "returns failure for a bad file" $
-      case badConfig of
-        Left err -> show (Diag.renderFailureBundle err) `T.shouldNotBe` ""
-        Right _ -> T.expectationFailure "should have failed parsing"
+    T.it "returns failure for a bad file" $ expectFailure badConfig
 
     T.it "returns Nothing for missing file" $
-      case missingConfig of
-        Left _ -> T.expectationFailure "should have failed parsing"
-        Right result -> result `T.shouldBe` Nothing
+      assertOnSuccess missingConfig $ \_ result -> result `T.shouldBe` Nothing
 
     T.it "returns Nothing for incompatible file" $
-      case ver2Config of
-        Left err -> T.expectationFailure ("failed to parse config file" <> show (Diag.renderFailureBundle err))
-        Right result -> result `T.shouldBe` Nothing
+      assertOnSuccess ver2Config $ \_ result -> result `T.shouldBe` Nothing

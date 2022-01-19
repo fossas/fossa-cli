@@ -5,9 +5,11 @@ module App.Fossa.VPS.NinjaGraphSpec (
 import App.Fossa.VPS.NinjaGraph
 import App.Fossa.VPS.Types
 import Control.Carrier.Diagnostics
+import Control.Carrier.Stack (runStack)
 import Data.List qualified as List
 import Data.Text.Encoding
 import Data.Text.IO qualified as TIO
+import ResultUtil
 import Test.Hspec
 
 -- out/target/product/coral/obj/STATIC_LIBRARIES/libgptutils_intermediates/gpt-utils.o: #deps 2, deps mtime 1583962189 (VALID)
@@ -155,19 +157,13 @@ spec = do
 
   describe "scanNinjaDeps for a standard ninja deps file" $
     it "parses a small ninja deps file and generates a dependency graph" $ do
-      eitherScanned <- runDiagnostics $ scanNinjaDeps (encodeUtf8 smallNinjaDeps)
-      case eitherScanned of
-        Left _ -> expectationFailure "could not parse ninja deps"
-        Right scanned -> scanned `shouldMatchList` smallNinjaDepsTargets
+      res <- runStack [] . runDiagnostics $ scanNinjaDeps (encodeUtf8 smallNinjaDeps)
+      assertOnSuccess res $ \_ scanned -> scanned `shouldMatchList` smallNinjaDepsTargets
 
   describe "scanNinjaDeps for a ninja deps file with weird targets" $ do
     it "finds the correct input for a target where the first dependency is a txt file" $ do
-      eitherScanned <- runDiagnostics $ scanNinjaDeps (encodeUtf8 weirdNinjaDeps)
-      case eitherScanned of
-        Left _ -> expectationFailure "could not parse ninja deps"
-        Right scanned -> List.head scanned `shouldBe` targetWithFirstLevelWeirdnessFix
+      res <- runStack [] . runDiagnostics $ scanNinjaDeps (encodeUtf8 weirdNinjaDeps)
+      assertOnSuccess res $ \_ scanned -> List.head scanned `shouldBe` targetWithFirstLevelWeirdnessFix
     it "finds the correct input for a target where the first and second dependencies are txt files" $ do
-      eitherScanned <- runDiagnostics $ scanNinjaDeps (encodeUtf8 weirdNinjaDeps)
-      case eitherScanned of
-        Left _ -> expectationFailure "could not parse ninja deps"
-        Right scanned -> (scanned List.!! 1) `shouldBe` targetWithSecondLevelWeirdnessFix
+      res <- runStack [] . runDiagnostics $ scanNinjaDeps (encodeUtf8 weirdNinjaDeps)
+      assertOnSuccess res $ \_ scanned -> (scanned List.!! 1) `shouldBe` targetWithSecondLevelWeirdnessFix
