@@ -16,7 +16,7 @@ parseMatch parser input expected = parse parser "" input `shouldParse` expected
 
 spec :: Spec
 spec = do
-  fdescribe "Erlang config parser" $ do
+  describe "Erlang config parser" $ do
     rawText <- runIO $ TIO.readFile "test/Erlang/testdata/rebar.config"
     oneWithEverything <- runIO $ TIO.readFile "test/Erlang/testdata/stresstest.config"
     it "should succeed on a real input file" $
@@ -116,14 +116,14 @@ spec = do
               ]
           ]
 
-  fdescribe "radix parser" $
+  describe "radix parser" $
     it "should parse number strings correctly" $ do
       intLiteralInBase 2 "11001" `shouldBe` 25
       intLiteralInBase 8 "1234" `shouldBe` 0o1234
       intLiteralInBase 10 "1234" `shouldBe` 1234
       intLiteralInBase 16 "abcd" `shouldBe` 0xabcd
       intLiteralInBase 36 "1z" `shouldBe` 71 -- (36 * 2 - 1)
-  fdescribe "alphaNumToInt" $
+  describe "alphaNumToInt" $
     it "should provide the correct value for chars" $ do
       alphaNumToInt 'a' `shouldBe` 10
       alphaNumToInt 'B' `shouldBe` 11
