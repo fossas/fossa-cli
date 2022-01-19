@@ -39,8 +39,10 @@ import Options.Applicative (
   short,
   showHelpOnEmpty,
   showHelpOnError,
+  subparser,
   subparserInline,
   (<**>),
+  (<|>),
  )
 
 appMain :: IO ()
@@ -58,23 +60,30 @@ progData :: InfoMod (IO ())
 progData = fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"
 
 subcommands :: Parser (IO ())
-subcommands =
-  hsubparser $
-    mconcat
-      [ decodeSubCommand Analyze.analyzeSubCommand
-      , decodeSubCommand Test.testSubCommand
-      , decodeSubCommand Report.reportSubCommand
-      , decodeSubCommand Container.containerSubCommand
-      , decodeSubCommand VPS.vpsSubCommand
-      , decodeSubCommand ListTargets.listSubCommand
-      , decodeSubCommand Embed.dumpSubCommand
-      , decodeSubCommand LinkBins.linkBinsSubCommand
-      , decodeSubCommand Log4j.log4jSubCommand
-      , initCommand
-      ]
+subcommands = public <|> private
+  where
+    private =
+      subparser $
+        mconcat
+          [ internal
+          , initCommand
+          , decodeSubCommand Embed.dumpSubCommand
+          , decodeSubCommand Log4j.log4jSubCommand
+          , decodeSubCommand VPS.vpsSubCommand
+          ]
+    public =
+      hsubparser $
+        mconcat
+          [ decodeSubCommand Analyze.analyzeSubCommand
+          , decodeSubCommand Test.testSubCommand
+          , decodeSubCommand Report.reportSubCommand
+          , decodeSubCommand Container.containerSubCommand
+          , decodeSubCommand ListTargets.listSubCommand
+          , decodeSubCommand LinkBins.linkBinsSubCommand
+          ]
 
 initCommand :: Mod CommandFields (IO ())
-initCommand = internal <> command "init" (info runInit $ progDesc "Deprecated, no longer has any effect.")
+initCommand = command "init" (info runInit $ progDesc "Deprecated, no longer has any effect.")
   where
     runInit :: Parser (IO ())
     runInit = pure $ putStrLn "The 'init' command has been deprecated and no longer has any effect.  You may safely remove this command."
