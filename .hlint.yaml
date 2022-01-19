@@ -43,3 +43,8 @@
   - {name: "Data.Map.!", within: []}
     # TODO: remove the need to special-case this test module.
   - {name: fromJust, within: [App.DocsSpec]}
+  - {name: fdescribe, within: []}
+  - {name: fit, within: []}
+  - {name: focus, within: []}
+  - {name: fspecify, within: []}
+  - {name: fcontext, within: []}
