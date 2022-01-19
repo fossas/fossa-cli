@@ -127,8 +127,7 @@ common deps
     , zip                          ^>=1.7.1
     , zlib                         ^>=0.6.2.1
   if !os(windows)
-    build-depends:
-      , unix                       ^>=2.7.2.2
+    build-depends: unix ^>=2.7.2.2
 
 library
   import:          lang
