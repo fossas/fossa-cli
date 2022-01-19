@@ -27,10 +27,10 @@ import Control.Monad (unless)
 import Control.Monad.Trans
 import Diag.Monad (ResultT)
 import Diag.Monad qualified as ResultT
-import Diag.Result (Result (Failure, Success))
+import Diag.Result (Result (Failure, Success), renderFailure, renderSuccess)
+import Diag.Result qualified as Result
 import Effect.Logger
 import System.Exit (exitFailure, exitSuccess)
-import qualified Diag.Result as Result
 
 newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ResultT m a}
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
@@ -46,8 +46,9 @@ logDiagnostic :: (Has (Lift IO) sig m, Has Logger sig m, Has Stack sig m) => Dia
 logDiagnostic diag = do
   result <- runDiagnosticsIO diag
   case result of
-    Failure ws eg -> logError (viaShow ws <> line <> viaShow eg) >> pure Nothing
-    Success ws a -> logWarn (viaShow ws) *> pure (Just a)
+    Failure ws eg -> logError (renderFailure ws eg) >> pure Nothing
+    Success [] a -> pure (Just a)
+    Success ws a -> logWarn (renderSuccess ws) *> pure (Just a)
 
 -- result <- runDiagnosticsIO diag
 -- case result of
@@ -102,6 +103,6 @@ errorBoundaryIO act = errorBoundary $ act `safeCatch` (\(e :: SomeException) -> 
 -- | Use the result of a Diagnostics computation, logging an error on failure
 withResult :: Has Logger sig m => Severity -> Result a -> (a -> m ()) -> m ()
 withResult sev (Success ws res) f = do
-  unless (null ws) (Effect.Logger.log sev (viaShow ws))
+  unless (null ws) (Effect.Logger.log sev (renderSuccess ws))
   f res
-withResult sev (Failure ws eg) _ = Effect.Logger.log sev (viaShow ws <> line <> viaShow eg)
+withResult sev (Failure ws eg) _ = Effect.Logger.log sev (renderFailure ws eg)

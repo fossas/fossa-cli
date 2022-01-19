@@ -4,17 +4,24 @@ module Diag.Result (
   EmittedWarn (..),
   ErrGroup (..),
   ErrWithStack (..),
+  Stack (..),
 
   -- * Diagnostics
   SomeErr (..),
   SomeWarn (..),
   ErrCtx (..),
-  Stack (..),
+
+  -- * Rendering
+  renderFailure,
+  renderSuccess,
 ) where
 
 import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
+import Prettyprinter
+import Prettyprinter.Render.Terminal
 
 -- FIXME: considerations about ordering of warnings/errors
 data Result a = Failure [EmittedWarn] ErrGroup | Success [EmittedWarn] a
@@ -33,7 +40,8 @@ instance Semigroup ErrGroup where
 data ErrWithStack = ErrWithStack Stack SomeErr
   deriving (Show)
 
---------------
+newtype Stack = Stack [Text]
+  deriving (Show)
 
 instance Functor Result where
   fmap _ (Failure ws eg) = Failure ws eg
@@ -54,10 +62,9 @@ instance Monad Result where
       Failure ws' eg' -> Failure (ws' <> ws) eg'
       Success ws' b' -> Success (ws' <> ws) b'
 
-----------
+---------- Diagnostics
 
-newtype Stack = Stack [Text]
-  deriving (Show)
+-- FIXME: kill Show instances?
 
 data SomeWarn where
   SomeWarn :: ToDiagnostic diag => diag -> SomeWarn
@@ -76,3 +83,74 @@ data ErrCtx where
 
 instance Show ErrCtx where
   show (ErrCtx c) = "\"" <> show (renderDiagnostic c) <> "\""
+
+---------- Rendering
+
+-- FIXME: should WarnOnErrGroup err groups get emitted in this message somewhere?
+renderFailure :: [EmittedWarn] -> ErrGroup -> Doc AnsiStyle
+renderFailure _ (ErrGroup _ ectx es) = header <> renderedCtx <> renderedErrs
+  where
+    header =
+      annotate (color Yellow) "----------"
+        <> line
+        <> annotate (color Yellow) "An issue occurred"
+        <> line
+        <> line
+    renderedCtx =
+      case ectx of
+        [] -> emptyDoc
+        _ ->
+          annotate (color Yellow) ">>> Description" <> line <> line
+            <> indent 2 (vsep (map (\ctx -> renderErrCtx ctx <> line) ectx))
+            <> line
+    renderedErrs =
+      annotate (color Yellow) ">>> Relevant errors" <> line <> line
+        <> indent 2 (vsep (map (\err -> annotate (color Yellow) "---" <> line <> renderErrWithStack err <> line) (NE.toList es)))
+
+renderErrCtx :: ErrCtx -> Doc AnsiStyle
+renderErrCtx (ErrCtx ctx) = renderDiagnostic ctx
+
+renderErrWithStack :: ErrWithStack -> Doc AnsiStyle
+renderErrWithStack (ErrWithStack (Stack stack) (SomeErr err)) =
+  renderDiagnostic err
+    <> line
+    <> line
+    <> annotate (color Cyan) "Traceback:"
+    <> line
+    <> case stack of
+      [] -> indent 2 "(none)"
+      _ -> indent 2 (vsep (map (pretty . ("- " <>)) (reverse stack)))
+
+renderSuccess :: [EmittedWarn] -> Doc AnsiStyle
+renderSuccess ws = header <> renderedWarnings
+  where
+    header =
+      annotate (color Yellow) "----------"
+        <> line
+        <> annotate (color Yellow) "A task succeeded with warnings"
+        <> line
+        <> line
+
+    renderedWarnings =
+      (vsep (map (\w -> annotate (color Yellow) "----- Warning" <> line <> line <> renderEmittedWarn w <> line) ws))
+
+renderEmittedWarn :: EmittedWarn -> Doc AnsiStyle
+renderEmittedWarn (StandaloneWarn (SomeWarn warn)) = renderDiagnostic warn
+renderEmittedWarn (WarnOnErrGroup ws ectx es) = renderedWarnings <> renderedCtx <> renderedErrors
+  where
+    renderedWarnings = vsep (map (\w -> renderSomeWarn w <> line) (NE.toList ws)) <> line
+
+    renderedCtx =
+      case ectx of
+        [] -> emptyDoc
+        _ ->
+          annotate (color Yellow) ">>> Additional context" <> line <> line
+            <> indent 2 (vsep (map (\ctx -> renderErrCtx ctx <> line) ectx))
+            <> line
+
+    renderedErrors =
+      annotate (color Yellow) ">>> Relevant errors" <> line <> line
+        <> indent 2 (vsep (map (\err -> annotate (color Yellow) "---" <> line <> renderErrWithStack err <> line) (NE.toList es)))
+
+renderSomeWarn :: SomeWarn -> Doc AnsiStyle
+renderSomeWarn (SomeWarn w) = renderDiagnostic w
