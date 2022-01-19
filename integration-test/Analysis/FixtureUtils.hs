@@ -19,13 +19,14 @@ import Control.Carrier.Finally (FinallyC, runFinally)
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.Simple (interpret, sendSimple)
-import Control.Effect.Diagnostics (FailureBundle)
+import Control.Carrier.Stack (StackC, runStack)
 import Control.Monad (forM)
 import Data.Conduit (runConduitRes, (.|))
 import Data.Conduit.Binary qualified as CB
 import Data.Function ((&))
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Diag.Result (EmittedWarn, Result (Failure, Success), renderFailure)
 import Discovery.Archive (extractTarGz)
 import Effect.Exec (
   Command (..),
@@ -79,9 +80,9 @@ data FixtureArtifact = FixtureArtifact
   }
   deriving (Show, Eq, Ord)
 
-type TestC m a = ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC ((ReaderC AnalyzeExperimentalPreferences) (FinallyC m))))) a
+type TestC m a = ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC ((ReaderC AnalyzeExperimentalPreferences) (FinallyC (StackC m)))))) a
 
-testRunnerWithLogger :: (Has (Lift IO) sig m) => TestC m a -> FixtureEnvironment -> m (Either FailureBundle a)
+testRunnerWithLogger :: TestC IO a -> FixtureEnvironment -> IO (Result a)
 testRunnerWithLogger f env =
   f
     & runExecIOWithinEnv env
@@ -90,6 +91,7 @@ testRunnerWithLogger f env =
     & withDefaultLogger SevDebug
     & runReader (AnalyzeExperimentalPreferences Nothing)
     & runFinally
+    & runStack []
 
 runExecIOWithinEnv :: (Has (Lift IO) sig m) => FixtureEnvironment -> ExecIOC m a -> m a
 runExecIOWithinEnv conf = interpret $ \case
@@ -114,14 +116,10 @@ performDiscoveryAndAnalyses targetDir AnalysisTestFixture{..} = do
 
   -- Perform discovery
   discoveryResult <- sendIO $ testRunnerWithLogger (discover targetDir) environment
-  case discoveryResult of
-    Left fb -> fail (show fb)
-    Right dps ->
-      forM dps $ \dp -> do
-        analysisResult <- sendIO $ testRunnerWithLogger (ignoreDebug $ analyzeProject (projectBuildTargets dp) (projectData dp)) environment
-        case analysisResult of
-          Left fb -> fail (show fb)
-          Right dr -> pure (dp, dr)
+  withResult discoveryResult $ \_ dps ->
+    forM dps $ \dp -> do
+      analysisResult <- sendIO $ testRunnerWithLogger (ignoreDebug $ analyzeProject (projectBuildTargets dp) (projectData dp)) environment
+      withResult analysisResult $ \_ dr -> pure (dp, dr)
   where
     runCmd :: FixtureEnvironment -> Maybe (Command) -> IO ()
     runCmd env cmd =
@@ -132,6 +130,10 @@ performDiscoveryAndAnalyses targetDir AnalysisTestFixture{..} = do
           case res of
             Left err -> fail (show err)
             Right _ -> pure ()
+
+withResult :: MonadFail m => Result a -> ([EmittedWarn] -> a -> m b) -> m b
+withResult (Failure ws eg) _ = fail (show (renderFailure ws eg))
+withResult (Success ws a) f = f ws a
 
 -- --------------------------------
 -- IO helpers for test runners
