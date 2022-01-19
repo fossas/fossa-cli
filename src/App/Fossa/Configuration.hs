@@ -156,6 +156,7 @@ readConfigFile file = do
 
 -- FIXME: rendering failure
 -- FIXME: warnings
+-- FIXME: blocked on entrypoint refactor
 readConfigFileIO :: Maybe (Path Abs File) -> IO (Maybe ConfigFile)
 readConfigFileIO configFile = do
   -- FIXME: we probably want to read from the target directory of analysis, not

@@ -191,11 +191,11 @@ library
     Control.Carrier.AtomicState
     Control.Carrier.Debug
     Control.Carrier.Diagnostics
-    Control.Carrier.Diagnostics.StickyContext
     Control.Carrier.Finally
     Control.Carrier.Output.IO
     Control.Carrier.Simple
     Control.Carrier.Stack
+    Control.Carrier.Stack.StickyLog
     Control.Carrier.StickyLogger
     Control.Carrier.TaskPool
     Control.Carrier.Threaded

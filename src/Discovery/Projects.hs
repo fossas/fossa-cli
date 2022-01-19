@@ -5,8 +5,8 @@ module Discovery.Projects (
 import App.Fossa.Analyze.Debug (DiagDebugC, diagToDebug)
 import Control.Carrier.Debug (Debug)
 import Control.Carrier.Diagnostics qualified as Diag
-import Control.Carrier.Diagnostics.StickyContext
 import Control.Carrier.Output.IO
+import Control.Carrier.Stack.StickyLog
 import Control.Effect.AtomicCounter (AtomicCounter)
 import Control.Effect.Lift
 import Control.Effect.Stack (Stack, withEmptyStack)
@@ -27,11 +27,11 @@ withDiscoveredProjects ::
   , Has Stack sig m
   ) =>
   -- | Discover function
-  (Path Abs Dir -> StickyDiagC (DiagDebugC (Diag.DiagnosticsC m)) [DiscoveredProject run]) ->
+  (Path Abs Dir -> StickyLogStackC (DiagDebugC (Diag.DiagnosticsC m)) [DiscoveredProject run]) ->
   -- | whether to unpack archives
   Path Abs Dir ->
   (DiscoveredProject run -> m ()) ->
   m ()
 withDiscoveredProjects discover basedir f = forkTask $ do
-  projectsResult <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag . withEmptyStack $ discover basedir
+  projectsResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ discover basedir
   Diag.withResult SevError projectsResult (traverse_ (forkTask . f))

@@ -45,11 +45,11 @@ import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, debugScope, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
-import Control.Carrier.Diagnostics.StickyContext (stickyDiag)
 import Control.Carrier.Finally (Has, runFinally)
 import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.Reader (Reader, runReader)
 import Control.Carrier.Stack (Stack, runStack, withEmptyStack)
+import Control.Carrier.Stack.StickyLog (stickyLogStack)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool (
   Progress (..),
@@ -238,7 +238,7 @@ runDependencyAnalysis basedir filters project = do
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
-      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag . withEmptyStack . Diag.context "Project Analysis" $ do
+      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context "Project Analysis" $ do
         debugMetadata "DiscoveredProject" project
         analyzeProject targets (projectData project)
       Diag.withResult SevWarn graphResult (output . mkResult basedir project)
@@ -378,7 +378,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput include
         runAnalyzers basedir filters
         when (fromFlag UnpackArchives unpackArchives) $
           forkTask $ do
-            res <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag . withEmptyStack $ Archive.discover (`runAnalyzers` filters) basedir
+            res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (`runAnalyzers` filters) basedir
             Diag.withResult SevError res (const (pure ()))
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
