@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module App.Fossa.VSI.DynLinked.UtilSpec (spec) where
 
 import App.Fossa.VSI.DynLinked.Util (isSetUID)
@@ -14,8 +16,14 @@ spec = do
     resultStandard <- runIO $ isSetUID pathStandard
 
     it "reports setuid bit correctly" $ do
+
+#ifdef mingw32_HOST_OS
+      resultSetUID `shouldBe` False
+      resultStandard `shouldBe` False
+#else
       resultSetUID `shouldBe` True
       resultStandard `shouldBe` False
+#endif
 
 fileSetUID :: IO (Path Abs File)
 fileSetUID = PIO.resolveFile' "test/App/Fossa/VSI/DynLinked/testdata/hello_setuid"
