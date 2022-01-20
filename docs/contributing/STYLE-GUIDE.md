@@ -83,7 +83,7 @@ errors, and properly aligned records are easy to read:
 
 ``` haskell
 data Pos = Pos
-  { posLine   :: Int
+  { posLine :: Int
   , posColumn :: Int
   }
 ```
@@ -172,7 +172,7 @@ accompanying comment explaining the safety.
 
 When operating on a list, using `map` tells the reader "I'm transforming a
 list", where `fmap` tells them "I'm transforming *some* functor, and it doesn't
-matter which one.
+matter which one."
 
 ```haskell
 appendFoo t = t <> "-foo"
