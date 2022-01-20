@@ -168,6 +168,9 @@ In some cases, partial functions are necessary, like indexing lists.  In this
 case, you must prove the safety of the function before using, ideally with an
 accompanying comment explaining the safety.
 
+Currently, our CI linter prevents adding known partial functions, and you should
+try very hard to prevent including them.
+
 ### Prefer `map` to `fmap` or `<$>`
 
 When operating on a list, using `map` tells the reader "I'm transforming a
