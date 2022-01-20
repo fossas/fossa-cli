@@ -8,7 +8,7 @@ import Analysis.FixtureUtils
 import Path
 import Strategy.Python.Poetry qualified as Poetry
 import Test.Hspec
-import Types (GraphBreadth (Complete))
+import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
 
 poetry :: AnalysisTestFixture (Poetry.PoetryProject)
 poetry =
@@ -24,4 +24,4 @@ poetry =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary poetry "poetry" (DependencyResultsSummary 66 29 69 1 Complete)
+  testSuiteDepResultSummary poetry PoetryProjectType (DependencyResultsSummary 66 29 69 1 Complete)

@@ -61,7 +61,7 @@ import Strategy.Gradle.Common (
  )
 import Strategy.Gradle.ResolutionApi qualified as ResolutionApi
 import System.FilePath qualified as FilePath
-import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), FoundTargets (..), GraphBreadth (..))
+import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (GradleProjectType), FoundTargets (..), GraphBreadth (..))
 
 -- Run the init script on a set of subprojects. Note that this runs the
 -- `:jsonDeps` task on every subproject in one command. This is helpful for
@@ -222,7 +222,7 @@ parseSubproject line =
 mkProject :: GradleProject -> DiscoveredProject GradleProject
 mkProject project =
   DiscoveredProject
-    { projectType = "gradle"
+    { projectType = GradleProjectType
     , projectBuildTargets = maybe ProjectWithoutTargets FoundTargets $ nonEmpty $ Set.map BuildTarget $ gradleProjects project
     , projectPath = gradleDir project
     , projectData = project

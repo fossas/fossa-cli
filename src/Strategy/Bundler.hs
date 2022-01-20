@@ -56,7 +56,7 @@ instance AnalyzeProject BundlerProject where
 mkProject :: BundlerProject -> DiscoveredProject BundlerProject
 mkProject project =
   DiscoveredProject
-    { projectType = "bundler"
+    { projectType = BundlerProjectType
     , projectBuildTargets = mempty
     , projectPath = bundlerDir project
     , projectData = project

@@ -78,7 +78,7 @@ instance AnalyzeProject RpmProject where
 mkProject :: RpmProject -> DiscoveredProject RpmProject
 mkProject project =
   DiscoveredProject
-    { projectType = "rpm"
+    { projectType = RpmProjectType
     , projectBuildTargets = mempty
     , projectPath = rpmDir project
     , projectData = project

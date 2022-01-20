@@ -84,7 +84,7 @@ findProjects = walk' $ \dir _ files -> do
 mkProject :: ComposerProject -> DiscoveredProject ComposerProject
 mkProject project =
   DiscoveredProject
-    { projectType = "composer"
+    { projectType = ComposerProjectType
     , projectBuildTargets = mempty
     , projectPath = composerDir project
     , projectData = project

@@ -8,6 +8,7 @@ import Analysis.FixtureUtils
 import Path
 import Strategy.Maven qualified as Maven
 import Test.Hspec
+import Types
 
 mavenEnv :: FixtureEnvironment
 mavenEnv = NixEnv ["maven", "jdk11"]
@@ -29,7 +30,7 @@ testKeycloak =
   aroundAll (withAnalysisOf keycloak) $ do
     describe "keycloak" $ do
       it "should find targets" $ \(result, extractedDir) ->
-        expectProject ("maven", extractedDir) result
+        expectProject (MavenProjectType, extractedDir) result
 
 spec :: Spec
 spec = do

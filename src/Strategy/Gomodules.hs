@@ -44,7 +44,7 @@ instance AnalyzeProject GomodulesProject where
 mkProject :: GomodulesProject -> DiscoveredProject GomodulesProject
 mkProject project =
   DiscoveredProject
-    { projectType = "gomod"
+    { projectType = GomodProjectType
     , projectBuildTargets = mempty
     , projectPath = gomodulesDir project
     , projectData = project

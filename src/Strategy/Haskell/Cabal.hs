@@ -137,7 +137,7 @@ findProjects = walk' $ \dir _ files -> do
 mkProject :: CabalProject -> DiscoveredProject CabalProject
 mkProject project =
   DiscoveredProject
-    { projectType = "cabal"
+    { projectType = CabalProjectType
     , projectBuildTargets = mempty
     , projectPath = cabalDir project
     , projectData = project

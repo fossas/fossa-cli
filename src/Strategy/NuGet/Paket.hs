@@ -60,7 +60,7 @@ instance AnalyzeProject PaketProject where
 mkProject :: PaketProject -> DiscoveredProject PaketProject
 mkProject project =
   DiscoveredProject
-    { projectType = "paket"
+    { projectType = PaketProjectType
     , projectBuildTargets = mempty
     , projectPath = parent $ paketLock project
     , projectData = project

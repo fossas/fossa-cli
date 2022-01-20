@@ -48,7 +48,7 @@ instance AnalyzeProject ProjectJsonProject where
 mkProject :: ProjectJsonProject -> DiscoveredProject ProjectJsonProject
 mkProject project =
   DiscoveredProject
-    { projectType = "projectjson"
+    { projectType = ProjectJsonProjectType
     , projectBuildTargets = mempty
     , projectPath = parent $ projectJsonFile project
     , projectData = project

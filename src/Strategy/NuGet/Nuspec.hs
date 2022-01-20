@@ -33,6 +33,7 @@ import Path
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
+  DiscoveredProjectType (NuspecProjectType),
   GraphBreadth (Partial),
   License (License),
   LicenseResult (LicenseResult),
@@ -60,7 +61,7 @@ instance ToJSON NuspecProject
 mkProject :: NuspecProject -> DiscoveredProject NuspecProject
 mkProject project =
   DiscoveredProject
-    { projectType = "nuspec"
+    { projectType = NuspecProjectType
     , projectBuildTargets = mempty
     , projectData = project
     , projectPath = parent $ nuspecFile project

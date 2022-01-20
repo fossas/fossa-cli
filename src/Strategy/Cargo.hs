@@ -159,7 +159,7 @@ instance AnalyzeProject CargoProject where
 mkProject :: CargoProject -> DiscoveredProject CargoProject
 mkProject project =
   DiscoveredProject
-    { projectType = "cargo"
+    { projectType = CargoProjectType
     , projectBuildTargets = mempty
     , projectPath = cargoDir project
     , projectData = project

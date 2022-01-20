@@ -66,7 +66,7 @@ getDeps project = context "Pipenv" $ do
 mkProject :: PipenvProject -> DiscoveredProject PipenvProject
 mkProject project =
   DiscoveredProject
-    { projectType = "pipenv"
+    { projectType = PipenvProjectType
     , projectBuildTargets = mempty
     , projectPath = parent $ pipenvLockfile project
     , projectData = project

@@ -12,7 +12,7 @@ import Path
 import Strategy.Dart.PubDeps (analyzeDepsCmd)
 import Strategy.Dart.PubSpec (analyzePubSpecFile)
 import Strategy.Dart.PubSpecLock (analyzePubLockFile)
-import Types (DependencyResults (..), DiscoveredProject (..))
+import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (PubProjectType))
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PubProject]
 discover dir = context "Pub" $ do
@@ -48,7 +48,7 @@ instance AnalyzeProject PubProject where
 mkProject :: PubProject -> DiscoveredProject PubProject
 mkProject project =
   DiscoveredProject
-    { projectType = "pub"
+    { projectType = PubProjectType
     , projectBuildTargets = mempty
     , projectPath = pubSpecDir project
     , projectData = project

@@ -8,7 +8,7 @@ import Analysis.FixtureUtils
 import Path
 import Strategy.Rebar3 qualified as Rebar3
 import Test.Hspec
-import Types (GraphBreadth (Complete))
+import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
 
 erlangEnv :: FixtureEnvironment
 erlangEnv = NixEnv ["erlang", "rebar3"]
@@ -39,5 +39,5 @@ emqx =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary cowboy "rebar3" (DependencyResultsSummary 2 2 0 1 Complete)
-  testSuiteDepResultSummary emqx "rebar3" (DependencyResultsSummary 0 0 0 1 Complete)
+  testSuiteDepResultSummary cowboy Rebar3ProjectType (DependencyResultsSummary 2 2 0 1 Complete)
+  testSuiteDepResultSummary emqx Rebar3ProjectType (DependencyResultsSummary 0 0 0 1 Complete)

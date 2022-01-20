@@ -43,7 +43,7 @@ instance AnalyzeProject CondaProject where
 mkProject :: CondaProject -> DiscoveredProject CondaProject
 mkProject project =
   DiscoveredProject
-    { projectType = "conda"
+    { projectType = CondaProjectType
     , projectBuildTargets = mempty
     , projectPath = condaDir project
     , projectData = project

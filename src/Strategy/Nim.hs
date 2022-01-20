@@ -17,7 +17,7 @@ import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Path
 import Strategy.Nim.NimbleLock (analyze)
-import Types (DependencyResults (..), DiscoveredProject (..))
+import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (NimbleProjectType))
 
 data NimbleProject = NimbleProject
   { nimDir :: Path Abs Dir
@@ -44,7 +44,7 @@ findProjects = walk' $ \dir _ files -> do
 mkProject :: NimbleProject -> DiscoveredProject NimbleProject
 mkProject project =
   DiscoveredProject
-    { projectType = "nimble"
+    { projectType = NimbleProjectType
     , projectBuildTargets = mempty
     , projectPath = nimDir project
     , projectData = project

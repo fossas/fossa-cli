@@ -69,7 +69,7 @@ instance ToJSON RepoManifestProject
 mkProject :: RepoManifestProject -> DiscoveredProject RepoManifestProject
 mkProject project =
   DiscoveredProject
-    { projectType = "repomanifest"
+    { projectType = RepoManifestProjectType
     , projectBuildTargets = mempty
     , projectData = project
     , projectPath = parent $ repoManifestXml project

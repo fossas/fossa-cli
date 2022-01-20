@@ -3,7 +3,6 @@ module App.Fossa.Analyze.Project (
   mkResult,
 ) where
 
-import Data.Text (Text)
 import DepTypes
 import Graphing (Graphing)
 import Graphing qualified
@@ -33,14 +32,14 @@ mkResult basedir project dependencyResults =
     relativeManifestFiles = map (tryMakeRelative basedir) $ dependencyManifestFiles dependencyResults
 
 data ProjectResult = ProjectResult
-  { projectResultType :: Text
+  { projectResultType :: DiscoveredProjectType
   , projectResultPath :: Path Abs Dir
   , projectResultGraph :: Graphing Dependency
   , projectResultGraphBreadth :: GraphBreadth
   , projectResultManifestFiles :: [SomeBase File]
   }
 
-shouldKeepUnreachableDeps :: Text -> Bool
-shouldKeepUnreachableDeps "swift" = True
-shouldKeepUnreachableDeps "gomod" = True
+shouldKeepUnreachableDeps :: DiscoveredProjectType -> Bool
+shouldKeepUnreachableDeps SwiftProjectType = True
+shouldKeepUnreachableDeps GomodProjectType = True
 shouldKeepUnreachableDeps _ = False

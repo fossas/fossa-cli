@@ -22,6 +22,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Bool (bool)
 import Data.ByteString.Lazy qualified as BL
+import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec
@@ -135,8 +136,8 @@ instance ToJSON CompletedLicenseScan where
 mkLicenseScan :: DiscoveredProject n -> [LicenseResult] -> ProjectLicenseScan
 mkLicenseScan project licenses =
   ProjectLicenseScan
-    { licenseStrategyType = projectType project
-    , licenseStrategyName = projectType project
+    { licenseStrategyType = toText (projectType project)
+    , licenseStrategyName = toText (projectType project)
     , discoveredLicenses = licenses
     }
 
