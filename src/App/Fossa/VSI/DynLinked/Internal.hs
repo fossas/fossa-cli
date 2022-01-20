@@ -7,14 +7,16 @@ module App.Fossa.VSI.DynLinked.Internal (
 
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
+import Control.Monad (unless, void)
 import Data.Char (isSpace)
+import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.String.Conversion (toText)
-import Data.Text (Text)
+import Data.Text (Text, isInfixOf)
 import Data.Void (Void)
 import Effect.Exec (Exec)
 import Path (Abs, File, Path, parseAbsFile)
-import Text.Megaparsec (Parsec, between, empty, eof, many, satisfy)
+import Text.Megaparsec (Parsec, between, empty, eof, many, satisfy, try, (<|>))
 import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 
@@ -46,14 +48,53 @@ data LocalDependency = LocalDependency Text (Path Abs File) deriving (Show, Eq, 
 --
 -- > Set.fromList [$(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
 parseLocalDependencies :: Parser [LocalDependency]
-parseLocalDependencies = many parseLine <* eof
+parseLocalDependencies =
+  catMaybes
+    <$> many
+      ( try consumeSyscallLib
+          <|> try consumeLinker
+          <|> try parseLine
+      )
+      <* eof
 
-parseLine :: Parser LocalDependency
-parseLine = LocalDependency <$> (prefix *> name) <* symbol "=>" <*> path <* addr
-  where
-    prefix = sc -- lines may be prefixed by arbitrary spaces
-    name = ident -- the name is a plain identifier
-    addr = lexeme . between (char '(') (char ')') $ many (satisfy (/= ')'))
+parseLine :: Parser (Maybe LocalDependency)
+parseLine = Just <$> (LocalDependency <$> (linePrefix *> ident) <* symbol "=>" <*> path <* addr)
+
+-- | The userspace library for system calls appears as the following in @ldd@ output:
+--
+-- > linux-vdso.so.1 (0x00007fff7e567000)
+--
+-- We want to ignore it, so just consume it:
+-- this parser always returns @Nothing@ after having consumed the line.
+consumeSyscallLib :: Parser (Maybe LocalDependency)
+consumeSyscallLib = do
+  _ <- linePrefix <* symbol "linux-vdso.so.1" <* symbol "=>" <* addr
+  pure Nothing
+
+-- | The linker appears as the following in @ldd@ output:
+--
+-- > /lib64/ld-linux-x86-64.so.2 (0x00007f4232cc1000)
+--
+-- We want to ignore it, so just consume it:
+-- this parser always returns @Nothing@ after having consumed the line.
+--
+-- Where the linker is stored and its postfix vary by architecture.
+-- For that reason, this function successfully parses (and thereby ignores)
+-- any line that begins with an @ident@ containing @/ld-linux@.
+consumeLinker :: Parser (Maybe LocalDependency)
+consumeLinker = do
+  name <- linePrefix *> ident
+  unless ("/ld-linux" `isInfixOf` name) $ fail "try another parser"
+  _ <- addr
+  pure Nothing
+
+-- | Lines may be prefixed by arbitrary spaces.
+linePrefix :: Parser ()
+linePrefix = sc
+
+-- | We don't care about the memory address, so just consume it.
+addr :: Parser ()
+addr = void . lexeme . between (char '(') (char ')') $ many (satisfy (/= ')'))
 
 -- | Consume spaces.
 sc :: Parser ()
