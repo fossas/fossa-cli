@@ -11,21 +11,28 @@ import Control.Monad (unless, void)
 import Data.Char (isSpace)
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.String.Conversion (toText)
 import Data.Text (Text, isInfixOf)
 import Data.Void (Void)
-import Effect.Exec (Exec)
-import Path (Abs, File, Path, parseAbsFile)
+import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
+import Path (Abs, File, Path, parent, parseAbsFile, toFilePath)
 import Text.Megaparsec (Parsec, between, empty, eof, many, satisfy, try, (<|>))
 import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 
 listLocalDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs File -> m (Set (Path Abs File))
-listLocalDependencies file = undefined
+listLocalDependencies file = do
+  deps <- execParser parseLocalDependencies (parent file) $ Command "ldd" [toText $ toFilePath file] Never
+  pure . Set.fromList $ map localDependencyPath deps
 
 type Parser = Parsec Void Text
 
-data LocalDependency = LocalDependency Text (Path Abs File) deriving (Show, Eq, Ord)
+data LocalDependency = LocalDependency
+  { localDependencyName :: Text
+  , localDependencyPath :: (Path Abs File)
+  }
+  deriving (Show, Eq, Ord)
 
 -- | Parse output from 'ldd' into a list of dependencies on disk.
 --
