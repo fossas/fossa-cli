@@ -173,6 +173,7 @@ library
     App.Fossa.VPS.Test
     App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
+    App.Fossa.VSI.DynLinked.Internal
     App.Fossa.VSI.DynLinked.Types
     App.Fossa.VSI.Fingerprint
     App.Fossa.VSI.IAT.AssertRevisionBinaries
@@ -367,6 +368,7 @@ test-suite unit-tests
     App.Fossa.Report.AttributionSpec
     App.Fossa.Report.Log4jReportSpec
     App.Fossa.VPS.NinjaGraphSpec
+    App.Fossa.VSI.DynLinked.InternalSpec
     App.Fossa.VSI.FingerprintSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
