@@ -173,6 +173,7 @@ library
     App.Fossa.VPS.Test
     App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
+    App.Fossa.VSI.DynLinked.Types
     App.Fossa.VSI.Fingerprint
     App.Fossa.VSI.IAT.AssertRevisionBinaries
     App.Fossa.VSI.IAT.AssertUserDefinedBinaries
