@@ -18,24 +18,29 @@ spec = do
 
     it "reports non-setuid bit correctly" $ case resultStandard of
       Left _ -> expectationFailure "could not check file"
-      Right result -> result `shouldBe` False
-
-#ifdef mingw32_HOST_OS
+      Right result -> result `shouldBe` fileStandardExpected
 
     it "reports setuid bit correctly" $ case resultSetUID of
       Left _ -> expectationFailure "could not check file"
-      Right result -> result `shouldBe` False
+      Right result -> result `shouldBe` fileSetUIDExpected
 
-#else
+fileStandard :: IO (Path Abs File)
+fileStandard = PIO.resolveFile' "test/App/Fossa/VSI/DynLinked/testdata/hello_standard"
 
-    it "reports setuid bit correctly" $ case resultSetUID of
-      Left _ -> expectationFailure "could not check file"
-      Right result -> result `shouldBe` True
-
-#endif
+fileStandardExpected :: Bool
+fileStandardExpected = False
 
 fileSetUID :: IO (Path Abs File)
 fileSetUID = PIO.resolveFile' "test/App/Fossa/VSI/DynLinked/testdata/hello_setuid"
 
-fileStandard :: IO (Path Abs File)
-fileStandard = PIO.resolveFile' "test/App/Fossa/VSI/DynLinked/testdata/hello_standard"
+#ifdef mingw32_HOST_OS
+
+fileSetUIDExpected :: Bool
+fileSetUIDExpected = False
+
+#else
+
+fileSetUIDExpected :: Bool
+fileSetUIDExpected = True
+
+#endif
