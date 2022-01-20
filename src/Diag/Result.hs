@@ -30,7 +30,6 @@ import Prettyprinter.Render.Terminal
 data Result a = Failure [EmittedWarn] ErrGroup | Success [EmittedWarn] a
   deriving (Show)
 
--- TODO: add UncaughtErrGroup constructor?
 data EmittedWarn
   = StandaloneWarn SomeWarn
   | WarnOnErrGroup (NonEmpty SomeWarn) [ErrCtx] (NonEmpty ErrWithStack)
