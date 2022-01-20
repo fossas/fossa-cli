@@ -1,13 +1,36 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Node.NpmLockSpec (
   spec,
 ) where
 
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
-import DepTypes
-import GraphUtil
-import Strategy.Node.Npm.PackageLock
-import Test.Hspec
+import DepTypes (
+  DepEnvironment (EnvDevelopment, EnvProduction),
+  DepType (NodeJSType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
+import Effect.ReadFS (readContentsJson)
+import GraphUtil (expectDeps, expectDirect, expectEdges)
+import Path (mkRelDir, mkRelFile, (</>))
+import Path.IO (getCurrentDir)
+import Strategy.Node.Npm.PackageLock (
+  NpmDep (
+    NpmDep,
+    depDependencies,
+    depDev,
+    depRequires,
+    depResolved,
+    depVersion
+  ),
+  NpmPackageJson (..),
+  NpmResolved (NpmResolved, unNpmResolved),
+  buildGraph,
+ )
+import Test.Effect (it', shouldBe')
+import Test.Hspec (Spec, describe, it, runIO)
 
 mockInput :: NpmPackageJson
 mockInput =
@@ -170,3 +193,24 @@ spec = do
         , (packageFive, packageSix)
         ]
         graph
+  describe "parsing package-json.lock" $ do
+    currentDir <- runIO getCurrentDir
+    let testDir = currentDir </> $(mkRelDir "test/Node/testdata")
+
+    it' "Should ignore \"resolved\": <bool> in package-lock.json" $ do
+      let packageLock = testDir </> $(mkRelFile "boolean-resolved-package-lock.json")
+      NpmPackageJson{packageDependencies = packageDependencies} <- readContentsJson packageLock
+      let foo = Map.lookup "foo" packageDependencies >>= unNpmResolved . depResolved
+      foo `shouldBe'` Nothing
+
+    it' "Should parse \"resolved\": <string> in package-lock.json" $ do
+      let packageLock = testDir </> $(mkRelFile "string-resolved-package-lock.json")
+      NpmPackageJson{packageDependencies = packageDependencies} <- readContentsJson packageLock
+      let foo = Map.lookup "foo" packageDependencies >>= unNpmResolved . depResolved
+      foo `shouldBe'` Just "https://bar.npmjs.org/foo/-/foo-1.0.0.tgz"
+
+    it' "Should parse dependency with no \"resolved\" key in package-lock.json" $ do
+      let packageLock = testDir </> $(mkRelFile "absent-resolved-package-lock.json")
+      NpmPackageJson{packageDependencies = packageDependencies} <- readContentsJson packageLock
+      let foo = Map.lookup "foo" packageDependencies >>= unNpmResolved . depResolved
+      foo `shouldBe'` Nothing
