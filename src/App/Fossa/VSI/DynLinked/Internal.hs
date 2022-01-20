@@ -7,14 +7,14 @@ module App.Fossa.VSI.DynLinked.Internal (
 
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
-import Data.Char (isHexDigit, isSpace)
+import Data.Char (isSpace)
 import Data.Set (Set)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
 import Effect.Exec (Exec)
 import Path (Abs, File, Path, parseAbsFile)
-import Text.Megaparsec (Parsec, between, empty, eof, many, satisfy, try)
+import Text.Megaparsec (Parsec, between, empty, eof, many, satisfy)
 import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 
@@ -46,15 +46,14 @@ data LocalDependency = LocalDependency Text (Path Abs File) deriving (Show, Eq, 
 --
 -- > Set.fromList [$(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
 parseLocalDependencies :: Parser [LocalDependency]
-parseLocalDependencies = try (many parseLine) <* eof
+parseLocalDependencies = many parseLine <* eof
 
 parseLine :: Parser LocalDependency
 parseLine = LocalDependency <$> (prefix *> name) <* symbol "=>" <*> path <* addr
   where
     prefix = sc -- lines may be prefixed by arbitrary spaces
     name = ident -- the name is a plain identifier
-    addr = lexeme . between (char '(') (char ')') $ many (satisfy isPrintedHex)
-    isPrintedHex c = isHexDigit c || c == 'x'
+    addr = lexeme . between (char '(') (char ')') $ many (satisfy (/= ')'))
 
 -- | Consume spaces.
 sc :: Parser ()

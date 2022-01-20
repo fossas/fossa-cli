@@ -1,40 +1,52 @@
+{-# LANGUAGE CPP #-}
+
+#ifndef mingw32_HOST_OS
 {-# LANGUAGE TemplateHaskell #-}
+#endif
 
 module App.Fossa.VSI.DynLinked.InternalSpec (spec) where
+
+import Test.Hspec qualified as Hspec
+
+#ifdef mingw32_HOST_OS
+
+spec :: Hspec.Spec
+spec = pure ()
+
+#else
 
 import App.Fossa.VSI.DynLinked.Internal (LocalDependency (..), parseLine, parseLocalDependencies)
 import Data.Text (Text)
 import Data.Void (Void)
 import Path (mkAbsFile)
-import Test.Hspec (Expectation, Spec, describe, it)
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (Parsec, parse)
 
-parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Expectation
-parseMatch parser input expected = parse parser "" input `shouldParse` expected
-
-shouldParseLineInto :: Text -> LocalDependency -> Expectation
-shouldParseLineInto = parseMatch parseLine
-
-shouldParseOutputInto :: Text -> [LocalDependency] -> Expectation
-shouldParseOutputInto = parseMatch parseLocalDependencies
-
-spec :: Spec
+spec :: Hspec.Spec
 spec = do
-  describe "parse ldd output" $ do
-    it "should parse a single line" $ do
+  Hspec.describe "parse ldd output" $ do
+    Hspec.it "should parse a single line" $ do
       singleLine `shouldParseLineInto` singleLineExpected
       singleLineMoreSpaces `shouldParseLineInto` singleLineExpected
 
-    it "should parse output with a single line" $ do
+    Hspec.it "should parse output with a single line" $ do
       singleLine `shouldParseOutputInto` [singleLineExpected]
       singleLineMoreSpaces `shouldParseOutputInto` [singleLineExpected]
 
-    it "should parse output with multiple lines" $ do
+    Hspec.it "should parse output with multiple lines" $ do
       multipleLine `shouldParseOutputInto` multipleLineExpected
 
--- it "should parse output with multiple lines while ignoring system" $ do
---   multipleLineSystemPresent `shouldParseOutputInto` multipleLineSystemPresentExpected
+    Hspec.it "should parse output with multiple lines while ignoring system" $ do
+      multipleLineSystemPresent `shouldParseOutputInto` multipleLineSystemPresentExpected
+
+parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Hspec.Expectation
+parseMatch parser input expected = parse parser "" input `shouldParse` expected
+
+shouldParseLineInto :: Text -> LocalDependency -> Hspec.Expectation
+shouldParseLineInto = parseMatch parseLine
+
+shouldParseOutputInto :: Text -> [LocalDependency] -> Hspec.Expectation
+shouldParseOutputInto = parseMatch parseLocalDependencies
 
 singleLine :: Text
 singleLine = "libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)"
@@ -59,3 +71,5 @@ multipleLineSystemPresent = "linux-vdso.so.1 =>  (0x00007ffc28d59000)\n\tlibc.so
 
 multipleLineSystemPresentExpected :: [LocalDependency]
 multipleLineSystemPresentExpected = [LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
+
+#endif
