@@ -2,7 +2,7 @@
 
 module App.Fossa.VSI.DynLinked.UtilSpec (spec) where
 
-import App.Fossa.VSI.DynLinked.Util (isSetUID)
+import App.Fossa.VSI.DynLinked.Util (hasSetUID)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Path (Abs, File, Path)
 import Path.IO qualified as PIO
@@ -10,11 +10,11 @@ import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
 
 spec :: Spec
 spec = do
-  describe "reports setuid bit correctly" $ do
+  describe "setuid bit" $ do
     pathSetUID <- runIO fileSetUID
     pathStandard <- runIO fileStandard
-    resultSetUID <- runIO . runDiagnostics $ isSetUID pathSetUID
-    resultStandard <- runIO . runDiagnostics $ isSetUID pathStandard
+    resultSetUID <- runIO . runDiagnostics $ hasSetUID pathSetUID
+    resultStandard <- runIO . runDiagnostics $ hasSetUID pathStandard
 
     it "reports non-setuid bit correctly" $ case resultStandard of
       Left _ -> expectationFailure "could not check file"

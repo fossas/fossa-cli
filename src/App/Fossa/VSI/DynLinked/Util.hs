@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 
 module App.Fossa.VSI.DynLinked.Util (
-  isSetUID,
+  hasSetUID,
 ) where
 
 import Path (File, Path)
@@ -10,8 +10,8 @@ import Path (File, Path)
 
 -- | Test whether the file has a `setuid` bit.
 -- Windows doesn't have the concept of a "set uid bit", so always eval to false.
-isSetUID :: Monad m => Path t File -> m Bool
-isSetUID _ = pure False
+hasSetUID :: Monad m => Path t File -> m Bool
+hasSetUID _ = pure False
 
 #else
 
@@ -23,8 +23,8 @@ import Path qualified as P
 import System.Posix.Files (fileMode, getFileStatus, setUserIDMode)
 
 -- | Test whether the file has a `setuid` bit.
-isSetUID :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path t File -> m Bool
-isSetUID file = do
+hasSetUID :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path t File -> m Bool
+hasSetUID file = do
   stat <- fatalOnSomeException "get file status" . sendIO . getFileStatus $ P.toFilePath file
   pure $ fileMode stat .&. setUserIDMode /= 0
 
