@@ -200,17 +200,17 @@ spec = do
     it' "Should ignore \"resolved\": <bool> in package-lock.json" $ do
       let packageLock = testDir </> $(mkRelFile "boolean-resolved-package-lock.json")
       NpmPackageJson{packageDependencies = packageDependencies} <- readContentsJson packageLock
-      let foo = Map.lookup "foo" packageDependencies >>= unNpmResolved . depResolved
+      let foo = unNpmResolved . depResolved =<< Map.lookup "foo" packageDependencies
       foo `shouldBe'` Nothing
 
     it' "Should parse \"resolved\": <string> in package-lock.json" $ do
       let packageLock = testDir </> $(mkRelFile "string-resolved-package-lock.json")
       NpmPackageJson{packageDependencies = packageDependencies} <- readContentsJson packageLock
-      let foo = Map.lookup "foo" packageDependencies >>= unNpmResolved . depResolved
+      let foo = unNpmResolved . depResolved =<< Map.lookup "foo" packageDependencies
       foo `shouldBe'` Just "https://bar.npmjs.org/foo/-/foo-1.0.0.tgz"
 
     it' "Should parse dependency with no \"resolved\" key in package-lock.json" $ do
       let packageLock = testDir </> $(mkRelFile "absent-resolved-package-lock.json")
       NpmPackageJson{packageDependencies = packageDependencies} <- readContentsJson packageLock
-      let foo = Map.lookup "foo" packageDependencies >>= unNpmResolved . depResolved
+      let foo = unNpmResolved . depResolved =<< Map.lookup "foo" packageDependencies
       foo `shouldBe'` Nothing
