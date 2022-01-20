@@ -23,9 +23,7 @@ import Control.Effect.Diagnostics as X
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception (SomeException)
 import Control.Exception.Extra (safeCatch)
-import Control.Monad (unless)
 import Control.Monad.Trans
-import Data.Functor (($>))
 import Diag.Monad (ResultT)
 import Diag.Monad qualified as ResultT
 import Diag.Result (Result (Failure, Success), renderFailure, renderSuccess)
@@ -48,8 +46,12 @@ logDiagnostic diag = do
   result <- runDiagnosticsIO diag
   case result of
     Failure ws eg -> logError (renderFailure ws eg) >> pure Nothing
-    Success [] a -> pure (Just a)
-    Success ws a -> logWarn (renderSuccess ws) $> (Just a)
+    Success ws a -> do
+      case renderSuccess ws of
+        Nothing -> pure ()
+        Just rendered -> logWarn rendered
+
+      pure (Just a)
 
 -- result <- runDiagnosticsIO diag
 -- case result of
@@ -98,12 +100,14 @@ errorBoundaryIO :: (Has (Lift IO) sig m, Has Diagnostics sig m) => m a -> m (Res
 errorBoundaryIO act = errorBoundary $ act `safeCatch` (\(e :: SomeException) -> fatal e)
 
 -- FIXME: look at use-sites; see if warning mechanism is a better fit
--- FIXME: rendering failure
--- FIXME: displaying warnings
+-- FIXME: severity concerns
 
 -- | Use the result of a Diagnostics computation, logging an error on failure
 withResult :: Has Logger sig m => Severity -> Result a -> (a -> m ()) -> m ()
 withResult sev (Success ws res) f = do
-  unless (null ws) (Effect.Logger.log sev (renderSuccess ws))
+  case renderSuccess ws of
+    Nothing -> pure ()
+    Just rendered -> Effect.Logger.log sev rendered
+
   f res
 withResult sev (Failure ws eg) _ = Effect.Logger.log sev (renderFailure ws eg)

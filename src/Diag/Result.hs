@@ -26,12 +26,15 @@ import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
 import Prettyprinter
 import Prettyprinter.Render.Terminal
 
--- FIXME: considerations about ordering of warnings/errors
+-- FIXME: doc about more-recent errors and warnings appearing first
 data Result a = Failure [EmittedWarn] ErrGroup | Success [EmittedWarn] a
   deriving (Show)
 
 -- TODO: add UncaughtErrGroup constructor?
-data EmittedWarn = StandaloneWarn SomeWarn | WarnOnErrGroup (NonEmpty SomeWarn) [ErrCtx] (NonEmpty ErrWithStack)
+data EmittedWarn
+  = StandaloneWarn SomeWarn
+  | WarnOnErrGroup (NonEmpty SomeWarn) [ErrCtx] (NonEmpty ErrWithStack)
+  | IgnoredErrGroup [ErrCtx] (NonEmpty ErrWithStack)
   deriving (Show)
 
 data ErrGroup = ErrGroup [SomeWarn] [ErrCtx] (NonEmpty ErrWithStack)
@@ -95,26 +98,28 @@ resultToMaybe (Failure _ _) = Nothing
 
 ---------- Rendering
 
--- FIXME: should WarnOnErrGroup err groups get emitted in this message somewhere?
+-- FIXME: standalone warnings are rendered poorly
 renderFailure :: [EmittedWarn] -> ErrGroup -> Doc AnsiStyle
-renderFailure _ (ErrGroup _ ectx es) = header <> renderedCtx <> renderedErrs
+renderFailure ws (ErrGroup _ ectx es) = header "An issue occurred" <> renderedCtx <> renderedErrs <> renderedPossibleErrs
   where
-    header =
-      annotate (color Yellow) "----------"
-        <> line
-        <> annotate (color Yellow) "An issue occurred"
-        <> line
-        <> line
+    renderedCtx :: Doc AnsiStyle
     renderedCtx =
       case ectx of
         [] -> emptyDoc
-        _ ->
-          annotate (color Yellow) ">>> Description" <> line <> line
-            <> indent 2 (vsep (map (\ctx -> renderErrCtx ctx <> line) ectx))
-            <> line
+        _ -> section "Description" (vsep (map (\ctx -> renderErrCtx ctx <> line) ectx))
+
+    renderedErrs :: Doc AnsiStyle
     renderedErrs =
-      annotate (color Yellow) ">>> Relevant errors" <> line <> line
-        <> indent 2 (vsep (map (\err -> annotate (color Yellow) "---" <> line <> renderErrWithStack err <> line) (NE.toList es)))
+      section "Relevant errors" $
+        numbered "Error" (map renderErrWithStack (NE.toList es))
+
+    renderedPossibleErrs :: Doc AnsiStyle
+    renderedPossibleErrs =
+      case ws of
+        [] -> emptyDoc
+        _ ->
+          section "Possibly-related warnings" $
+            numbered "Warning" (map renderEmittedWarn ws)
 
 renderErrCtx :: ErrCtx -> Doc AnsiStyle
 renderErrCtx (ErrCtx ctx) = renderDiagnostic ctx
@@ -130,20 +135,35 @@ renderErrWithStack (ErrWithStack (Stack stack) (SomeErr err)) =
       [] -> indent 2 "(none)"
       _ -> indent 2 (vsep (map (pretty . ("- " <>)) (reverse stack)))
 
-renderSuccess :: [EmittedWarn] -> Doc AnsiStyle
-renderSuccess ws = header <> renderedWarnings
+renderSuccess :: [EmittedWarn] -> Maybe (Doc AnsiStyle)
+renderSuccess ws =
+  case notIgnoredErrs of
+    [] -> Nothing
+    ws' ->
+      Just $
+        header "A task succeeded with warnings"
+          <> numbered "Warning" (map renderEmittedWarn ws')
   where
-    header =
-      annotate (color Yellow) "----------"
-        <> line
-        <> annotate (color Yellow) "A task succeeded with warnings"
-        <> line
-        <> line
+    notIgnoredErrs :: [EmittedWarn]
+    notIgnoredErrs = filter (not . isIgnoredErrGroup) ws
 
-    renderedWarnings =
-      (vsep (map (\w -> annotate (color Yellow) "----- Warning" <> line <> line <> renderEmittedWarn w <> line) ws))
+    isIgnoredErrGroup :: EmittedWarn -> Bool
+    isIgnoredErrGroup IgnoredErrGroup{} = True
+    isIgnoredErrGroup _ = False
 
 renderEmittedWarn :: EmittedWarn -> Doc AnsiStyle
+renderEmittedWarn (IgnoredErrGroup ectx es) = renderedCtx <> renderedErrors
+  where
+    renderedCtx =
+      case ectx of
+        [] -> emptyDoc
+        _ ->
+          (vsep (map (\ctx -> renderErrCtx ctx <> line) ectx))
+
+    renderedErrors =
+      section
+        "Relevant errors"
+        $ numbered "Error" (map renderErrWithStack (NE.toList es))
 renderEmittedWarn (StandaloneWarn (SomeWarn warn)) = renderDiagnostic warn
 renderEmittedWarn (WarnOnErrGroup ws ectx es) = renderedWarnings <> renderedCtx <> renderedErrors
   where
@@ -153,13 +173,35 @@ renderEmittedWarn (WarnOnErrGroup ws ectx es) = renderedWarnings <> renderedCtx 
       case ectx of
         [] -> emptyDoc
         _ ->
-          annotate (color Yellow) ">>> Additional context" <> line <> line
-            <> indent 2 (vsep (map (\ctx -> renderErrCtx ctx <> line) ectx))
-            <> line
+          section
+            "Additional context"
+            (vsep (map (\ctx -> renderErrCtx ctx <> line) ectx))
 
     renderedErrors =
-      annotate (color Yellow) ">>> Relevant errors" <> line <> line
-        <> indent 2 (vsep (map (\err -> annotate (color Yellow) "---" <> line <> renderErrWithStack err <> line) (NE.toList es)))
+      section
+        "Relevant errors"
+        $ numbered "Error" (map renderErrWithStack (NE.toList es))
 
 renderSomeWarn :: SomeWarn -> Doc AnsiStyle
 renderSomeWarn (SomeWarn w) = renderDiagnostic w
+
+---------- Rendering helpers
+
+header :: Doc AnsiStyle -> Doc AnsiStyle
+header name =
+  annotate (color Yellow) "----------"
+    <> line
+    <> annotate (color Yellow) name
+    <> line
+    <> line
+
+section :: Doc AnsiStyle -> Doc AnsiStyle -> Doc AnsiStyle
+section name content =
+  annotate (color Yellow) (">>> " <> name) <> line <> line
+    <> indent 2 content
+    <> line
+
+numbered :: Doc AnsiStyle -> [Doc AnsiStyle] -> Doc AnsiStyle
+numbered name = vsep . zipWith (\n single -> title n <> line <> line <> indent 2 single <> line) [1 ..]
+  where
+    title n = annotate (color Yellow) (name <> " " <> viaShow @Int n)
