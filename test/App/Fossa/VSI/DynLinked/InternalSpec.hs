@@ -2,7 +2,7 @@
 
 module App.Fossa.VSI.DynLinked.InternalSpec (spec) where
 
-import App.Fossa.VSI.DynLinked.Internal (LocalDependency (..), parseLocalDependencies)
+import App.Fossa.VSI.DynLinked.Internal (LocalDependency (..), parseLine, parseLocalDependencies)
 import Data.Text (Text)
 import Data.Void (Void)
 import Path (mkAbsFile)
@@ -13,21 +13,28 @@ import Text.Megaparsec (Parsec, parse)
 parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Expectation
 parseMatch parser input expected = parse parser "" input `shouldParse` expected
 
-shouldParseInto :: Text -> [LocalDependency] -> Expectation
-shouldParseInto = parseMatch parseLocalDependencies
+shouldParseLineInto :: Text -> LocalDependency -> Expectation
+shouldParseLineInto = parseMatch parseLine
+
+shouldParseOutputInto :: Text -> [LocalDependency] -> Expectation
+shouldParseOutputInto = parseMatch parseLocalDependencies
 
 spec :: Spec
 spec = do
   describe "parse ldd output" $ do
-    it "should parse single line" $ do
-      singleLine `shouldParseInto` singleLineExpected
-      singleLineMoreSpaces `shouldParseInto` singleLineExpected
+    it "should parse a single line" $ do
+      singleLine `shouldParseLineInto` singleLineExpected
+      singleLineMoreSpaces `shouldParseLineInto` singleLineExpected
 
-    it "should parse multiple lines" $ do
-      multipleLine `shouldParseInto` multipleLineExpected
+    it "should parse output with a single line" $ do
+      singleLine `shouldParseOutputInto` [singleLineExpected]
+      singleLineMoreSpaces `shouldParseOutputInto` [singleLineExpected]
 
-    it "should parse multiple lines while ignoring linker" $ do
-      multipleLineSystemPresent `shouldParseInto` multipleLineSystemPresentExpected
+    it "should parse output with multiple lines" $ do
+      multipleLine `shouldParseOutputInto` multipleLineExpected
+
+-- it "should parse output with multiple lines while ignoring system" $ do
+--   multipleLineSystemPresent `shouldParseOutputInto` multipleLineSystemPresentExpected
 
 singleLine :: Text
 singleLine = "libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)"
@@ -35,13 +42,11 @@ singleLine = "libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)"
 singleLineMoreSpaces :: Text
 singleLineMoreSpaces = "\t\tlibc.so.6\t\t=>\t\t/lib/x86_64-linux-gnu/libc.so.6\t\t(0x00007fbea9a88000)\t\t"
 
-singleLineExpected :: [LocalDependency]
-singleLineExpected = [LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
+singleLineExpected :: LocalDependency
+singleLineExpected = LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")
 
 multipleLine :: Text
-multipleLine =
-  "  libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)\
-  \  libc2.so.6 => /lib/x86_64-linux-gnu/libc2.so.6 (0x00007fbea9a88000)"
+multipleLine = "libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)\n\tlibc2.so.6 => /lib/x86_64-linux-gnu/libc2.so.6 (0x00007fbea9a88000)"
 
 multipleLineExpected :: [LocalDependency]
 multipleLineExpected =
@@ -50,10 +55,7 @@ multipleLineExpected =
   ]
 
 multipleLineSystemPresent :: Text
-multipleLineSystemPresent =
-  "  linux-vdso.so.1 =>  (0x00007ffc28d59000)\
-  \  libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)\
-  \  /lib64/ld-linux-x86-64.so.2 (0x00007fbea9e52000)"
+multipleLineSystemPresent = "linux-vdso.so.1 =>  (0x00007ffc28d59000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007fbea9e52000)"
 
 multipleLineSystemPresentExpected :: [LocalDependency]
 multipleLineSystemPresentExpected = [LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]

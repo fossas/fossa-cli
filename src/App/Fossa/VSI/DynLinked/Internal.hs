@@ -1,19 +1,21 @@
 module App.Fossa.VSI.DynLinked.Internal (
   listLocalDependencies,
   parseLocalDependencies,
+  parseLine,
   LocalDependency (..),
 ) where
 
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
+import Data.Char (isHexDigit, isSpace)
 import Data.Set (Set)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
 import Effect.Exec (Exec)
 import Path (Abs, File, Path, parseAbsFile)
-import Text.Megaparsec (Parsec, empty, eof, many, manyTill)
-import Text.Megaparsec.Char (eol, space1)
+import Text.Megaparsec (Parsec, between, empty, eof, many, satisfy, try)
+import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 
 listLocalDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs File -> m (Set (Path Abs File))
@@ -44,10 +46,15 @@ data LocalDependency = LocalDependency Text (Path Abs File) deriving (Show, Eq, 
 --
 -- > Set.fromList [$(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
 parseLocalDependencies :: Parser [LocalDependency]
-parseLocalDependencies = many parseLine <* eof
+parseLocalDependencies = try (many parseLine) <* eof
 
 parseLine :: Parser LocalDependency
-parseLine = LocalDependency <$> (sc *> ident) <* symbol "=>" <*> path <* eol
+parseLine = LocalDependency <$> (prefix *> name) <* symbol "=>" <*> path <* addr
+  where
+    prefix = sc -- lines may be prefixed by arbitrary spaces
+    name = ident -- the name is a plain identifier
+    addr = lexeme . between (char '(') (char ')') $ many (satisfy isPrintedHex)
+    isPrintedHex c = isHexDigit c || c == 'x'
 
 -- | Consume spaces.
 sc :: Parser ()
@@ -62,13 +69,14 @@ symbol :: Text -> Parser Text
 symbol = L.symbol sc
 
 -- | Collect a contiguous list of non-space characters into a @Text@, then consume any trailing spaces.
+-- Requires that a space trails the identifier.
 ident :: Parser Text
-ident = toText <$> lexeme (manyTill L.charLiteral space1)
+ident = lexeme $ toText <$> many (satisfy $ not . isSpace)
 
 -- | Parse a @Path Abs File@, then consume any trailing spaces.
 path :: Parser (Path Abs File)
 path = lexeme $ do
-  filepath <- manyTill L.charLiteral space1
+  filepath <- many (satisfy $ not . isSpace)
   case parseAbsFile filepath of
     Left err -> fail (show err)
     Right a -> pure a
