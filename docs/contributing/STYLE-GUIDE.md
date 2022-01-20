@@ -14,6 +14,11 @@ This style guide is forked from Github's
 Make your code look like the code around it. Consistency is the name of the
 game.
 
+Don't spent too much effort making the code follow these exact guidelines if
+the code is more readable without them.  You should submit changes to this doc
+if you think you can improve it, or if a case should be covered by this doc,
+but currently is not.
+
 Use `fourmolu` for formatting.  Our CI setup enforces that all changes pass a
 `fourmolu` run with no differences.
 
