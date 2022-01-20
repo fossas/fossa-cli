@@ -199,6 +199,35 @@ quux & bar baz & foo
 `<$>` is meant to mimic `$`, but for functors.  Therefore, if we use `$`
 instead of `&`, we should also use `<$>` instead of `<&>`.
 
+### Prefer unflipped versions of certain ubiquitous functions/operators
+
+Unlike the previous rule about `&` and `<&>`, this is a general guideline:
+
+Using standard functions/operators (or at least more common versions of them)
+prevents people from having to learn too many definitions, or having to rely
+on HLS to read the code.  This is alleviated somewhat by operators which contain
+directional arrows, and those can be used where necessary.
+
+You SHOULD use flipped versions of operators to keep the functional flow moving
+in the same direction (from the perspective of the reader).  See below for an example.
+
+```haskell
+-- Assuming this existed in the GHC prelude
+(.&) = flip (.)
+-- Bad, order of functions is mixed up
+firstOp >>= thirdOp . secondOp
+-- Bad, ordering is defined, but the operator has no pointing chars,
+-- and readers unfamiliar with the function can't figure it out just by reading
+firstOp >>= secondOp .& thirdOp
+-- Good, order is cleanly defined right-to-left, with arrows and familiar functions
+thirdOp . secondOp =<< firstOp
+```
+
+Note that `for = flip traverse` (same with `traverse_` and `for_`), and is very useful
+when defining an anonymous pipeline for traversal (that comes up a lot during graph
+building).  There are other known exceptions, but they are much less common.  When in
+doubt, use your best judgement, these cases are not likely to cause much review holdup.
+
 ## Data Types
 
 ### Prefer `newtype`s to `type`s
@@ -302,7 +331,3 @@ Use these instead of `decodeUtf8`/`encodeUTF8`/`Text.pack`
   compiles identically, then remove it.
 - Avoid nested `where` blocks.  If you feel that you need them, rethink your
   design.  Consider making an `Internal` module instead.
-- Prefer unflipped versions of functions, unless it significantly improves
-  readability.  Some examples:
-  - If `traverse` makes sense, don't use `for`.
-  - If you can use `>>=`, don't use `=<<`.
