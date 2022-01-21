@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## Unreleased
+
+- Npm: Fixes an issue where a package-lock.json dep with a boolean 'resolved' key wouldn't parse. ([#718](https://github.com/fossas/fossa-cli/issues/718))
+
 ## v3.0.16
 
 - Monorepo: Upload file data and licenses together during monorepo scans, speed up issue scans. ([#772](https://github.com/fossas/fossa-cli/pull/772))
