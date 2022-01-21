@@ -1,4 +1,7 @@
-module App.Fossa.BinaryDeps (analyzeBinaryDeps) where
+module App.Fossa.BinaryDeps (
+  analyzeBinaryDeps,
+  analyzeSingleBinary,
+) where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.BinaryDeps.Jar (resolveJar)
@@ -30,8 +33,18 @@ analyzeBinaryDeps dir filters = do
   if null binaryPaths
     then pure Nothing
     else do
-      resolvedBinaries <- traverse (resolveBinary strategies dir) binaryPaths
+      resolvedBinaries <- traverse (analyzeSingleBinary dir) binaryPaths
       pure . Just $ toSourceUnit (toProject dir) resolvedBinaries
+
+-- | Equivalent to @analyzeBinaryDeps@, but analyzes a specific binary instead of discovering and analyzing all binaries in a directory.
+--
+-- This analysis uses strategies to attempt to extract some information from the binary, see the internal @strategies@ function for details.
+--
+-- The @Path Abs Dir@ provided is used to render the name of the resulting dependency:
+-- if we fallback to a plain "unknown binary" strategy its name is reported as the relative path between the provided @Path Abs Dir@ and the @Path Abs File@.
+-- If the path can't be made relative, the dependency name is the absolute path of the binary.
+analyzeSingleBinary :: (Has (Lift IO) sig m, Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m SourceUserDefDep
+analyzeSingleBinary = resolveBinary strategies
 
 findBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => PathFilters -> Path Abs Dir -> m [Path Abs File]
 findBinaries filters = walk' $ \dir _ files -> do
