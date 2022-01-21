@@ -5,11 +5,24 @@ module Strategy.Node.Npm.PackageLock (
   buildGraph,
   NpmPackageJson (..),
   NpmDep (..),
+  NpmResolved (..),
 ) where
 
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  run,
+ )
 import Control.Monad (when)
-import Data.Aeson
+import Data.Aeson (
+  FromJSON (parseJSON),
+  Value (Bool, String),
+  withObject,
+  (.!=),
+  (.:),
+  (.:?),
+ )
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
@@ -20,11 +33,25 @@ import Data.Set qualified as Set
 import Data.Tagged (unTag)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import DepTypes
-import Effect.Grapher
-import Effect.ReadFS
+import DepTypes (
+  DepEnvironment (EnvDevelopment, EnvProduction),
+  DepType (NodeJSType),
+  Dependency (..),
+  VerConstraint (CEq),
+  insertEnvironment,
+  insertLocation,
+ )
+import Effect.Grapher (
+  LabeledGrapher,
+  deep,
+  direct,
+  edge,
+  label,
+  withLabeling,
+ )
+import Effect.ReadFS (ReadFS, readContentsJson)
 import Graphing (Graphing)
-import Path
+import Path (Abs, File, Path)
 import Strategy.Node.PackageJson (Development, FlatDeps (devDeps, directDeps), NodePackage (pkgName), Production)
 
 newtype NpmPackageJson = NpmPackageJson
@@ -34,7 +61,7 @@ newtype NpmPackageJson = NpmPackageJson
 data NpmDep = NpmDep
   { depVersion :: Text
   , depDev :: Bool
-  , depResolved :: Maybe Text
+  , depResolved :: NpmResolved
   , -- | name to version spec
     depRequires :: Map Text Text
   , depDependencies :: Map Text NpmDep
@@ -45,11 +72,19 @@ instance FromJSON NpmPackageJson where
   parseJSON = withObject "NpmPackageJson" $ \obj ->
     NpmPackageJson <$> obj .: "dependencies"
 
+newtype NpmResolved = NpmResolved {unNpmResolved :: Maybe Text}
+  deriving (Eq, Ord, Show)
+
+instance FromJSON NpmResolved where
+  parseJSON (String t) = pure . NpmResolved $ Just t
+  parseJSON (Bool _) = pure . NpmResolved $ Nothing
+  parseJSON _ = fail "Failed to parse key 'resolved'."
+
 instance FromJSON NpmDep where
   parseJSON = withObject "NpmDep" $ \obj ->
     NpmDep <$> obj .: "version"
       <*> obj .:? "dev" .!= False
-      <*> obj .:? "resolved"
+      <*> obj .:? "resolved" .!= NpmResolved Nothing
       <*> obj .:? "requires" .!= mempty
       <*> obj .:? "dependencies" .!= mempty
 
@@ -80,7 +115,7 @@ buildGraph packageJson directSet =
   where
     -- Skip adding deps if we think it's a workspace package.
     maybeAddDep isRecursive name dep@NpmDep{..} =
-      if isNothing depResolved || "file:" `Text.isPrefixOf` depVersion
+      if isNothing (unNpmResolved depResolved) || "file:" `Text.isPrefixOf` depVersion
         then pure ()
         else addDep isRecursive name dep
 
@@ -99,7 +134,7 @@ buildGraph packageJson directSet =
 
       label pkg $ NpmPackageEnv $ if depDev then EnvDevelopment else EnvProduction
 
-      traverse_ (label pkg . NpmPackageLocation) depResolved
+      traverse_ (label pkg . NpmPackageLocation) (unNpmResolved depResolved)
 
       -- add edges to required packages
       void $ Map.traverseWithKey (\reqName reqVer -> edge pkg $ NpmPackage reqName $ getResolvedVersion reqName reqVer) depRequires
