@@ -55,7 +55,7 @@ spec = do
     targetDependencies <- Hspec.runIO . runDiagnostics . runExecIO $ Binary.dynamicLinkedDependencies executableTarget
 
     Hspec.it "should parse actual ldd output" $ case targetDependencies of
-      Left _ -> Hspec.expectationFailure "could not check file: ensure you've run `make build-test-data` locally"
+      Left e -> Hspec.expectationFailure ("could not check file: ensure you've run `make build-test-data` locally. Error: " <> show e)
       Right result -> result `Hspec.shouldBe` localExecutableExpected
 
 parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Hspec.Expectation
