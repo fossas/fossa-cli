@@ -150,13 +150,15 @@ fatalOnIOException ctx go = context ctx $ safeCatch go die'
   where
     die' (e :: IOException) = fatalText ("io exception: " <> toText (show e))
 
--- FIXME: kill/replace with better abstraction
-
--- | Run a list of actions, combining the successful ones. If all actions fail, 'fatalText' is invoked with the provided @Text@ message.
-combineSuccessful :: (Semigroup a, Has Diagnostics sig m) => Text -> [m a] -> m a
-combineSuccessful msg actions = do
-  results <- traverse recover actions
+-- | Run a list of actions, combining the results of successful actions.
+--
+-- A warning @warn@ is attached to and emitted for each of the failing actions.
+--
+-- When all actions fail, 'fatal' is invoked with the provided @err@.
+combineSuccessful :: (ToDiagnostic err, ToDiagnostic warn, Semigroup a, Has Diagnostics sig m) => err -> warn -> [m a] -> m a
+combineSuccessful err war actions = do
+  results <- traverse (recover . warnOnErr war) actions
   let successful = NE.nonEmpty $ catMaybes results
   case successful of
-    Nothing -> fatalText msg
+    Nothing -> fatal err
     Just xs -> pure (sconcat xs)
