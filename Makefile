@@ -23,6 +23,14 @@ install-dev: build
 
 check: check-fmt lint
 
+# Run any build scripts required for test data to be generated.
+build-test-data:
+	./test/App/Fossa/VSI/DynLinked/testdata/build.sh
+
+# Clean up built test data (generated with the above command)
+clean-test-data:
+	./test/App/Fossa/VSI/DynLinked/testdata/clean.sh
+
 # Format everything (if this fails, update FMT_OPTS or use your IDE to format)
 # `@command` does not echo the command before running
 fmt:

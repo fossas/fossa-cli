@@ -127,6 +127,9 @@ common deps
     , zip                          ^>=1.7.1
     , zlib                         ^>=0.6.2.1
 
+  if !os(windows)
+    build-depends: unix ^>=2.7.2.2
+
 library
   import:          lang
   import:          deps
@@ -174,6 +177,7 @@ library
     App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
     App.Fossa.VSI.DynLinked.Types
+    App.Fossa.VSI.DynLinked.Util
     App.Fossa.VSI.Fingerprint
     App.Fossa.VSI.IAT.AssertRevisionBinaries
     App.Fossa.VSI.IAT.AssertUserDefinedBinaries
@@ -367,6 +371,7 @@ test-suite unit-tests
     App.Fossa.Report.AttributionSpec
     App.Fossa.Report.Log4jReportSpec
     App.Fossa.VPS.NinjaGraphSpec
+    App.Fossa.VSI.DynLinked.UtilSpec
     App.Fossa.VSI.FingerprintSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
