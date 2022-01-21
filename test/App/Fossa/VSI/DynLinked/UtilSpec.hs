@@ -17,11 +17,11 @@ spec = do
     resultStandard <- runIO . runDiagnostics $ hasSetUID pathStandard
 
     it "reports non-setuid bit correctly" $ case resultStandard of
-      Left _ -> expectationFailure "could not check file"
+      Left _ -> expectationFailure "could not check file: ensure you've run `make build-test-data` locally"
       Right result -> result `shouldBe` fileStandardExpected
 
     it "reports setuid bit correctly" $ case resultSetUID of
-      Left _ -> expectationFailure "could not check file"
+      Left _ -> expectationFailure "could not check file: ensure you've run `make build-test-data` locally"
       Right result -> result `shouldBe` fileSetUIDExpected
 
 fileStandard :: IO (Path Abs File)
