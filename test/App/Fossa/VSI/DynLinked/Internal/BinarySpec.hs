@@ -4,7 +4,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 #endif
 
-module App.Fossa.VSI.DynLinked.InternalSpec (spec) where
+module App.Fossa.VSI.DynLinked.Internal.BinarySpec (spec) where
 
 import Test.Hspec qualified as Hspec
 
@@ -17,7 +17,7 @@ spec = pure ()
 
 #else
 
-import App.Fossa.VSI.DynLinked.Internal qualified as DL
+import App.Fossa.VSI.DynLinked.Internal.Binary qualified as Binary
 import Data.Text (Text)
 import Data.Void (Void)
 import Path (Path, Abs, File, mkAbsFile)
@@ -52,7 +52,7 @@ spec = do
 
   Hspec.describe "parse ldd output" $ do
     executableTarget <- Hspec.runIO localExecutable
-    targetDependencies <- Hspec.runIO . runDiagnostics . runExecIO $ DL.listLocalDependencies executableTarget
+    targetDependencies <- Hspec.runIO . runDiagnostics . runExecIO $ Binary.dynamicLinkedDependencies executableTarget
 
     Hspec.it "should parse actual ldd output" $ case targetDependencies of
       Left _ -> Hspec.expectationFailure "could not check file: ensure you've run `make build-test-data` locally"
@@ -61,11 +61,11 @@ spec = do
 parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Hspec.Expectation
 parseMatch parser input expected = parse parser "" input `shouldParse` expected
 
-shouldParseLineInto :: Text -> (Maybe DL.LocalDependency) -> Hspec.Expectation
-shouldParseLineInto = parseMatch DL.lddParseDependency
+shouldParseLineInto :: Text -> (Maybe Binary.LocalDependency) -> Hspec.Expectation
+shouldParseLineInto = parseMatch Binary.lddParseDependency
 
-shouldParseOutputInto :: Text -> [DL.LocalDependency] -> Hspec.Expectation
-shouldParseOutputInto = parseMatch DL.lddParseLocalDependencies
+shouldParseOutputInto :: Text -> [Binary.LocalDependency] -> Hspec.Expectation
+shouldParseOutputInto = parseMatch Binary.lddParseLocalDependencies
 
 singleLine :: Text
 singleLine = "libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)"
@@ -73,35 +73,35 @@ singleLine = "libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)"
 singleLineMoreSpaces :: Text
 singleLineMoreSpaces = "\t\tlibc.so.6\t\t=>\t\t/lib/x86_64-linux-gnu/libc.so.6\t\t(0x00007fbea9a88000)\t\t"
 
-singleLineExpected :: Maybe DL.LocalDependency
-singleLineExpected = Just $ DL.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")
+singleLineExpected :: Maybe Binary.LocalDependency
+singleLineExpected = Just $ Binary.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")
 
 multipleLine :: Text
 multipleLine = "libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)\n\tlibc2.so.6 => /lib/x86_64-linux-gnu/libc2.so.6 (0x00007fbea9a88000)"
 
-multipleLineExpected :: [DL.LocalDependency]
+multipleLineExpected :: [Binary.LocalDependency]
 multipleLineExpected =
-  [ DL.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")
-  , DL.LocalDependency "libc2.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc2.so.6")
+  [ Binary.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")
+  , Binary.LocalDependency "libc2.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc2.so.6")
   ]
 
 syscallPresent :: Text
 syscallPresent = "linux-vdso.so.1 =>  (0x00007ffc28d59000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)"
 
-syscallPresentExpected :: [DL.LocalDependency]
-syscallPresentExpected = [DL.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
+syscallPresentExpected :: [Binary.LocalDependency]
+syscallPresentExpected = [Binary.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
 
 linkerPresent :: Text
 linkerPresent = "/lib64/ld-linux-x86-64.so.2 (0x00007f4232cc1000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)"
 
-linkerPresentExpected :: [DL.LocalDependency]
-linkerPresentExpected = [DL.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
+linkerPresentExpected :: [Binary.LocalDependency]
+linkerPresentExpected = [Binary.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
 
 syscallAndLinkerPresent :: Text
 syscallAndLinkerPresent = "linux-vdso.so.1 =>  (0x00007ffc28d59000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007f4232cc1000)"
 
-syscallAndLinkerPresentExpected :: [DL.LocalDependency]
-syscallAndLinkerPresentExpected = [DL.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
+syscallAndLinkerPresentExpected :: [Binary.LocalDependency]
+syscallAndLinkerPresentExpected = [Binary.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
 
 localExecutable :: IO (Path Abs File)
 localExecutable = PIO.resolveFile' "test/App/Fossa/VSI/DynLinked/testdata/hello_standard"

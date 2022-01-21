@@ -1,5 +1,5 @@
-module App.Fossa.VSI.DynLinked.Internal (
-  listLocalDependencies,
+module App.Fossa.VSI.DynLinked.Internal.Binary (
+  dynamicLinkedDependencies,
   lddParseLocalDependencies,
   lddParseDependency,
   LocalDependency (..),
@@ -24,13 +24,13 @@ import Text.Megaparsec (Parsec, between, empty, eof, many, satisfy, try, (<|>))
 import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 
--- | Report the dynamically linked dependencies of the given file.
+-- | Report the list of dynamically linked dependencies of the target executable as a set of file paths.
 -- This is currently a stub for non-linux targets: on these systems an empty set is reported.
-listLocalDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs File -> m (Set (Path Abs File))
-listLocalDependencies file | SysInfo.os == "linux" = do
+dynamicLinkedDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs File -> m (Set (Path Abs File))
+dynamicLinkedDependencies file | SysInfo.os == "linux" = do
   deps <- Exec.execParser lddParseLocalDependencies (P.parent file) $ Exec.Command "ldd" [toText $ P.toFilePath file] Exec.Never
   pure . Set.fromList $ map localDependencyPath deps
-listLocalDependencies _ = pure Set.empty
+dynamicLinkedDependencies _ = pure Set.empty
 
 type Parser = Parsec Void Text
 
