@@ -53,10 +53,10 @@ import Prettyprinter.Render.Terminal
 -- aren't legal according to the haskell police (please don't tell them).
 --
 -- When building up a Result in the Applicative style with '<*>', we accumulate
--- errors encountered into a single Failure's 'ErrGroup'
+-- Failures encountered into a single Failure.
 --
 -- When building up a result in the Monadic style with '>>=', we short-circuit
--- on the first Failure
+-- on the first Failure.
 data Result a = Failure [EmittedWarn] ErrGroup | Success [EmittedWarn] a
   deriving (Show)
 

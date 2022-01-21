@@ -20,6 +20,15 @@ import Diag.Result (EmittedWarn (..), ErrCtx (..), ErrGroup (..), ErrWithStack (
 
 -- | A monad transformer that adds error-/warning-reporting capabilities to
 -- other monads
+--
+-- Like the underlying 'Result' type, the Applicative and Monad instances for
+-- 'ResultT' carry different semantics.
+--
+-- When building up a ResultT computation in the applicative style with '<*>' we
+-- accumulate Failures encountered into a single Failure.
+--
+-- When building up a result in the Monadic style with '>>=', we short-circuit
+-- on the first Failure.
 newtype ResultT m a = ResultT {runResultT :: m (Result a)}
 
 instance Functor m => Functor (ResultT m) where
@@ -53,34 +62,59 @@ instance Monad m => Monad (ResultT m) where
           Success ws' b' -> pure (Success (ws' <> ws) b')
   {-# INLINE (>>=) #-}
 
+-- | Fail with the given stacktrace and error
 fatalT :: Applicative m => Stack -> SomeErr -> ResultT m a
 fatalT stack err = ResultT (pure (fatalR stack err))
 {-# INLINE fatalT #-}
 
+-- | Emit a standalone warning
 warnT :: Applicative m => SomeWarn -> ResultT m ()
 warnT = ResultT . pure . warnR
 {-# INLINE warnT #-}
 
+-- | Recover from a possibly-failing computation, returning @Nothing@ on Failure
+-- and @Just a@ on Success
 recoverT :: Functor m => ResultT m a -> ResultT m (Maybe a)
 recoverT = ResultT . fmap recoverR . runResultT
 {-# INLINE recoverT #-}
 
+-- | Isolate and extract the Result of a given computation
 errorBoundaryT :: Functor m => ResultT m a -> ResultT m (Result a)
 errorBoundaryT = ResultT . fmap pure . runResultT
 {-# INLINE errorBoundaryT #-}
 
+-- | Lift a Result value into ResultT
+--
+-- @
+--     rethrowT =<< errorBoundary m === m
+-- @
 rethrowT :: Applicative m => Result a -> ResultT m a
 rethrowT = ResultT . pure
 {-# INLINE rethrowT #-}
 
+-- | Attach a warning to the ErrGroup of a possibly-failing computation. No-op
+-- on Success
 withWarnT :: Functor m => SomeWarn -> ResultT m a -> ResultT m a
 withWarnT w = ResultT . fmap (withWarnR w) . runResultT
 {-# INLINE withWarnT #-}
 
+-- | Attach error context to the ErrGroup of a possibly-failing computation.
+-- No-op on Success
 errCtxT :: Functor m => ErrCtx -> ResultT m a -> ResultT m a
 errCtxT c = ResultT . fmap (errCtxR c) . runResultT
 {-# INLINE errCtxT #-}
 
+-- | Try both actions, returning the value of the first to succeed.
+--
+-- Similar to the Applicative instance, this accumulates errors from encountered
+-- Failures
+--
+-- Dissimilar to the Applicative instance, this won't run the second action when
+-- the first action results in Success
+--
+-- @<||>@ is like @<|>@ from 'Control.Applicative.Alternative', but ResultT
+-- cannot have a useful Alternative instance, because it cannot implement
+-- @empty@
 (<||>) :: Monad m => ResultT m a -> ResultT m a -> ResultT m a
 ResultT ma <||> ResultT ma' = ResultT $ do
   resA <- ma
