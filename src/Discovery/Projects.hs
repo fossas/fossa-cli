@@ -34,4 +34,4 @@ withDiscoveredProjects ::
   m ()
 withDiscoveredProjects discover basedir f = forkTask $ do
   projectsResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ discover basedir
-  Diag.withResult SevError projectsResult (traverse_ (forkTask . f))
+  Diag.withResult SevError SevWarn projectsResult (traverse_ (forkTask . f))

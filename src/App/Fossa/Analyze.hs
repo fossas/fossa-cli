@@ -241,7 +241,7 @@ runDependencyAnalysis basedir filters project = do
       graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context "Project Analysis" $ do
         debugMetadata "DiscoveredProject" project
         analyzeProject targets (projectData project)
-      Diag.withResult SevWarn graphResult (output . mkResult basedir project)
+      Diag.withResult SevWarn SevWarn graphResult (output . mkResult basedir project)
 
 applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
 applyFiltersToProject basedir filters DiscoveredProject{..} =
@@ -379,7 +379,7 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput include
         when (fromFlag UnpackArchives unpackArchives) $
           forkTask $ do
             res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (`runAnalyzers` filters) basedir
-            Diag.withResult SevError res (const (pure ()))
+            Diag.withResult SevError SevWarn res (const (pure ()))
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 

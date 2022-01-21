@@ -125,12 +125,18 @@ errorBoundaryIO act = errorBoundary $ act `safeCatch` (\(e :: SomeException) -> 
 -- FIXME: look at use-sites; see if warning mechanism is a better fit
 -- FIXME: severity concerns
 
--- | Use the result of a Diagnostics computation, logging an error on failure
-withResult :: Has Logger sig m => Severity -> Result a -> (a -> m ()) -> m ()
-withResult sev (Success ws res) f = do
+-- | Use the result of a Diagnostics computation, logging any encountered errors
+-- and warnings
+--
+-- - On failure, the failure is logged with the provided @sevOnErr@ severity
+--
+-- - On success, the associated warnings are logged with the provided
+--   @sevOnSuccess@ severity
+withResult :: Has Logger sig m => Severity -> Severity -> Result a -> (a -> m ()) -> m ()
+withResult _ sevOnSuccess (Success ws res) f = do
   case renderSuccess ws of
     Nothing -> pure ()
-    Just rendered -> Effect.Logger.log sev rendered
+    Just rendered -> Effect.Logger.log sevOnSuccess rendered
 
   f res
-withResult sev (Failure ws eg) _ = Effect.Logger.log sev (renderFailure ws eg)
+withResult sevOnErr _ (Failure ws eg) _ = Effect.Logger.log sevOnErr (renderFailure ws eg)

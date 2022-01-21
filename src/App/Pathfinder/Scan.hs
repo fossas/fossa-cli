@@ -80,7 +80,7 @@ runSingle ::
   m ()
 runSingle project = do
   licenseResult <- Diag.runDiagnosticsIO $ licenseAnalyzeProject (projectData project)
-  Diag.withResult SevWarn licenseResult (output . mkLicenseScan project)
+  Diag.withResult SevWarn SevWarn licenseResult (output . mkLicenseScan project)
 
 scan ::
   ( Has (Lift IO) sig m
