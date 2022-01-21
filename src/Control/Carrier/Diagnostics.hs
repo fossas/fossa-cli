@@ -66,30 +66,53 @@ logWithExit_ diag = logDiagnostic diag >>= maybe (sendIO exitFailure) (const (se
 
 instance Has Stack sig m => Algebra (Diag :+: sig) (DiagnosticsC m) where
   alg hdl sig ctx = DiagnosticsC $ case sig of
-    L (FirstToSucceed ma ma') -> (ResultT.<||>) (runDiagnosticsC $ hdl (ma <$ ctx)) (runDiagnosticsC $ hdl (ma' <$ ctx))
-    L (Warn w) -> (<$ ctx) <$> ResultT.warnT (Result.SomeWarn w)
-    L (WithWarn w act) -> ResultT.withWarnT (Result.SomeWarn w) $ runDiagnosticsC $ hdl (act <$ ctx)
-    L (ErrCtx c act) -> ResultT.errCtxT (Result.ErrCtx c) $ runDiagnosticsC $ hdl (act <$ ctx)
-    L (Fatal diag) -> lift getStack >>= \path -> ResultT.fatalT (Result.Stack path) (Result.SomeErr diag)
-    L (Recover act) -> fmap (distributeMaybe ctx) $ ResultT.recoverT $ runDiagnosticsC $ hdl (act <$ ctx)
-    L (ErrorBoundary act) -> fmap (distributeResult ctx) $ ResultT.errorBoundaryT $ runDiagnosticsC $ hdl (act <$ ctx)
-    L (Rethrow bundle) -> (<$ ctx) <$> (ResultT.ResultT (pure bundle))
-    R other -> ResultT.ResultT $ thread (hdlC ~<~ hdl) other (pure ctx)
+    L (FirstToSucceed ma ma') ->
+      (ResultT.<||>)
+        (runDiagnosticsC $ hdl (ma <$ ctx))
+        (runDiagnosticsC $ hdl (ma' <$ ctx))
+    L (Warn w) ->
+      (<$ ctx) <$> ResultT.warnT (Result.SomeWarn w)
+    L (WithWarn w act) ->
+      ResultT.withWarnT (Result.SomeWarn w) $ runDiagnosticsC $ hdl (act <$ ctx)
+    L (ErrCtx c act) ->
+      ResultT.errCtxT (Result.ErrCtx c) $ runDiagnosticsC $ hdl (act <$ ctx)
+    L (Fatal diag) -> do
+      stack <- lift getStack
+      ResultT.fatalT (Result.Stack stack) (Result.SomeErr diag)
+    L (Recover act) ->
+      fmap (distributeMaybe ctx) $
+        ResultT.recoverT $
+          runDiagnosticsC $ hdl (act <$ ctx)
+    L (ErrorBoundary act) ->
+      fmap (distributeResult ctx) $
+        ResultT.errorBoundaryT $
+          runDiagnosticsC $ hdl (act <$ ctx)
+    L (Rethrow result) ->
+      (<$ ctx) <$> ResultT.rethrowT result
+    R other ->
+      ResultT.ResultT $ thread (hdlResult ~<~ hdl) other (pure ctx)
+  {-# INLINE alg #-}
 
-distributeResult :: Functor ctx => ctx () -> Result (ctx a1) -> ctx (Result a1)
+-- "invert" a Result into a functorial context
+distributeResult :: Functor ctx => ctx () -> Result (ctx a) -> ctx (Result a)
 distributeResult ctx (Failure ws eg) = Failure ws eg <$ ctx
 distributeResult _ (Success ws ctx) = Success ws <$> ctx
+{-# INLINE distributeResult #-}
 
-distributeMaybe :: Functor ctx => ctx () -> Maybe (ctx a1) -> ctx (Maybe a1)
+-- "invert" a Maybe into a functorial context
+distributeMaybe :: Functor ctx => ctx () -> Maybe (ctx a) -> ctx (Maybe a)
 distributeMaybe _ (Just ctx) = Just <$> ctx
 distributeMaybe ctx Nothing = Nothing <$ ctx
+{-# INLINE distributeMaybe #-}
 
-hdlC :: Applicative m => Result (DiagnosticsC m a) -> m (Result a)
-hdlC (Failure ws eg) = pure (Failure ws eg)
-hdlC (Success ws m) = addWarns <$> ResultT.runResultT (runDiagnosticsC m)
+-- "distribute" a Result into a DiagnosticsC computation
+hdlResult :: Applicative m => Result (DiagnosticsC m a) -> m (Result a)
+hdlResult (Failure ws eg) = pure (Failure ws eg)
+hdlResult (Success ws m) = addWarns <$> ResultT.runResultT (runDiagnosticsC m)
   where
     addWarns (Success ws' a') = Success (ws' <> ws) a'
     addWarns (Failure ws' eg') = Failure (ws' <> ws) eg'
+{-# INLINE hdlResult #-}
 
 -- | Run the DiagnosticsC carrier, also catching IO exceptions
 runDiagnosticsIO :: (Has (Lift IO) sig m, Has Stack sig m) => DiagnosticsC m a -> m (Result a)
