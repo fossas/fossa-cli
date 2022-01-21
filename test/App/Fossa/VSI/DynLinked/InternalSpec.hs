@@ -66,10 +66,10 @@ parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Hspec.Expecta
 parseMatch parser input expected = parse parser "" input `shouldParse` expected
 
 shouldParseLineInto :: Text -> (Maybe DL.LocalDependency) -> Hspec.Expectation
-shouldParseLineInto = parseMatch DL.parseLine
+shouldParseLineInto = parseMatch DL.lddParseDependency
 
 shouldParseOutputInto :: Text -> [DL.LocalDependency] -> Hspec.Expectation
-shouldParseOutputInto = parseMatch DL.parseLocalDependencies
+shouldParseOutputInto = parseMatch DL.lddParseLocalDependencies
 
 singleLine :: Text
 singleLine = "libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)"
