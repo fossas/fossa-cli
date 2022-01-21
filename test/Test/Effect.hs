@@ -6,8 +6,10 @@ module Test.Effect (
   shouldEndWith',
   shouldContain',
   shouldMatchList',
-  it',
   runTestEffects',
+  it',
+  fit',
+  xit',
 ) where
 
 import Control.Effect.Lift (Has, Lift, sendIO)
@@ -15,6 +17,7 @@ import Test.Hspec (
   Spec,
   SpecWith,
   expectationFailure,
+  fit,
   it,
   runIO,
   shouldBe,
@@ -23,6 +26,7 @@ import Test.Hspec (
   shouldMatchList,
   shouldSatisfy,
   shouldStartWith,
+  xit,
  )
 
 import Control.Carrier.Diagnostics (DiagnosticsC, renderFailureBundle, runDiagnostics)
@@ -37,6 +41,12 @@ type EffectStack a = ExecIOC (ReadFSIOC (DiagnosticsC (IgnoreLoggerC IO))) a
 
 it' :: String -> EffectStack () -> SpecWith ()
 it' msg = it msg . runTestEffects
+
+fit' :: String -> EffectStack () -> SpecWith ()
+fit' msg = fit msg . runTestEffects
+
+xit' :: String -> EffectStack () -> SpecWith ()
+xit' msg = xit msg . runTestEffects
 
 runTestEffects' :: EffectStack () -> Spec
 runTestEffects' = runIO . runTestEffects
