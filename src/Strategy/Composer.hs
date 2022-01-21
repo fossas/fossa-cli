@@ -56,6 +56,7 @@ import Path (Abs, Dir, File, Path, toFilePath)
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
+  DiscoveredProjectType (..),
   GraphBreadth (Complete),
   License (License),
   LicenseResult (LicenseResult),
