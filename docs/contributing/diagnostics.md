@@ -61,13 +61,14 @@ This use-case surfaces another pair of unusual constraints:
 Low-level errors (http request errors, file read errors, command execution
 errors) are not useful to users attempting to fix analysis issues.
 
-While we don't have control over many of the low-level errors thrown, we need to
-be able to annotate errors with information about troubleshooting,
-documentation, and other pertinent context.
+While we don't have control over many of the low-level errors thrown in our
+code, we'd like the ability to annotate these low-level errors with
+user-friendly information about troubleshooting, documentation, and other
+pertinent context.
 
 > **Error context can be attached to any action**
 
-Further, contextualization information is _scoped_.
+Further, we'd like error contextualization to be _scoped_.
 
 For example, consider the maven analyzer example above:
 
@@ -186,7 +187,7 @@ mvnCommandAnalysis project =
   context "Dynamic analysis"
     . warnOnErr MissingDeps
     . warnOnErr MissingEdges
-    $ MvnPlugin.analyze project
+    $ MvnDepTree.analyze project
 
 mvnStaticAnalysis project =
   context "Static analysis"
@@ -247,9 +248,7 @@ instance ToDiagnostic MyWarnType where
 
 # TODO
 
-- caveats
-  - dropped errors when caught without warning
-- Result/algebra
-- how to use
+- semantics
+- how to use / helper functions
   - lifting Either
   - dealing with Exceptions
