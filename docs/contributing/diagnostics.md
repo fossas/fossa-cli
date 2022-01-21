@@ -249,6 +249,7 @@ instance ToDiagnostic MyWarnType where
 # TODO
 
 - semantics
+- Result values produced by examples
 - how to use / helper functions
   - lifting Either
   - dealing with Exceptions

@@ -37,9 +37,6 @@ newtype DiagnosticsC m a = DiagnosticsC {runDiagnosticsC :: ResultT m a}
 runDiagnostics :: DiagnosticsC m a -> m (Result a)
 runDiagnostics = ResultT.runResultT . runDiagnosticsC
 
--- FIXME: rendering of failure
--- FIXME: show warnings on success
-
 -- | Run a Diagnostic effect into a logger, using the default error/warning renderers.
 logDiagnostic :: (Has (Lift IO) sig m, Has Logger sig m, Has Stack sig m) => DiagnosticsC m a -> m (Maybe a)
 logDiagnostic diag = do
@@ -121,9 +118,6 @@ runDiagnosticsIO act = runDiagnostics $ act `safeCatch` (\(e :: SomeException) -
 -- | Like 'errorBoundary', but also catches IO exceptions
 errorBoundaryIO :: (Has (Lift IO) sig m, Has Diagnostics sig m) => m a -> m (Result a)
 errorBoundaryIO act = errorBoundary $ act `safeCatch` (\(e :: SomeException) -> fatal e)
-
--- FIXME: look at use-sites; see if warning mechanism is a better fit
--- FIXME: severity concerns
 
 -- | Use the result of a Diagnostics computation, logging any encountered errors
 -- and warnings

@@ -25,7 +25,7 @@ import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Diag.Result (Result (Failure, Success))
+import Diag.Result (Result (Failure, Success), renderFailure)
 import Effect.Logger (Severity (SevWarn), ignoreLogger, logWarn, withDefaultLogger)
 import Effect.ReadFS
 import Path
@@ -154,9 +154,8 @@ readConfigFile file = do
         , ""
         ]
 
--- FIXME: rendering failure
--- FIXME: warnings
--- FIXME: blocked on entrypoint refactor
+-- TODO(warnings): don't runDiagnostics here. send constraints upward. can be
+-- addressed after entrypoint refactor
 readConfigFileIO :: Maybe (Path Abs File) -> IO (Maybe ConfigFile)
 readConfigFileIO configFile = do
   -- FIXME: we probably want to read from the target directory of analysis, not
@@ -164,7 +163,7 @@ readConfigFileIO configFile = do
   dir <- getCurrentDir
   config <- runStack [] $ ignoreLogger $ Diag.runDiagnostics $ runReadFSIO $ readConfigFile $ fromMaybe (dir </> defaultFile) configFile
   case config of
-    Failure ws eg -> die $ show (viaShow ws <> line <> viaShow eg)
+    Failure ws eg -> die $ show (renderFailure ws eg)
     Success _ a -> pure a
 
 mergeFileCmdMetadata :: ProjectMetadata -> ConfigFile -> ProjectMetadata
