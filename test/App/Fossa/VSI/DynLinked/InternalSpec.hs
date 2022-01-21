@@ -8,7 +8,7 @@ module App.Fossa.VSI.DynLinked.InternalSpec (spec) where
 
 import Test.Hspec qualified as Hspec
 
--- Windows isn't happy with our `/` shaped abs paths, which happen at compile time.
+-- Windows isn't happy with our `/` shaped abs paths, which are built at compile time with TH.
 -- Since Windows isn't going to be parsing ldd output anyway, just skip it.
 #ifdef mingw32_HOST_OS
 
@@ -29,6 +29,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Effect.Exec (runExecIO)
+import qualified System.Info as SysInfo
 
 spec :: Hspec.Spec
 spec = do
@@ -106,16 +107,9 @@ localExecutable :: IO (Path Abs File)
 localExecutable = PIO.resolveFile' "test/App/Fossa/VSI/DynLinked/testdata/hello_standard"
 
 -- While parsing ldd-shaped output works on every platform, only Linux can actually run ldd.
-#ifdef linux_HOST_OS
-
 localExecutableExpected :: Set (Path Abs File)
-localExecutableExpected = S.singleton $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")
-
-# else
-
-localExecutableExpected :: Set (Path Abs File)
-localExecutableExpected = Set.empty
-
-#endif
+localExecutableExpected = if SysInfo.os == "linux"
+  then Set.singleton $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")
+  else Set.empty
 
 #endif
