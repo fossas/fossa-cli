@@ -167,7 +167,7 @@ warn :: (ToDiagnostic warn, Has Diagnostics sig m) => warn -> m ()
 #### Attach a warning to an action's failure
 
 ```hs
-withWarn :: (ToDiagnostic warn, Has Diagnostics sig m) => warn -> m a -> m a
+warnOnErr :: (ToDiagnostic warn, Has Diagnostics sig m) => warn -> m a -> m a
 ```
 
 ---
@@ -184,8 +184,8 @@ mavenAnalyzer project = context "Maven" $
 
 mvnCommandAnalysis project =
   context "Dynamic analysis"
-    . withWarn MissingDeps
-    . withWarn MissingEdges
+    . warnOnErr MissingDeps
+    . warnOnErr MissingEdges
     $ MvnPlugin.analyze project
 
 mvnStaticAnalysis project =
@@ -207,8 +207,8 @@ pipenvAnalyzer project = context "Pipenv" $ do
   deep <-
     context "Running pipenv to get deep deps"
       . recover
-      . withWarn MissingDeps
-      . withWarn MissingEdges
+      . warnOnErr MissingDeps
+      . warnOnErr MissingEdges
       . errCtx (PipenvCmdFailed (projDir project))
       $ runPipenvCmd ...
 
@@ -229,8 +229,8 @@ instance ToDiagnostic PipenvCmdFailed where
 
 ### Surfacing a standalone warning
 
-While it's usually better to attach a warning to a thrown error with `withWarn`,
-it's occasionally useful to surface standalone warnings
+While it's usually better to attach a warning to a thrown error with
+`warnOnErr`, it's occasionally useful to surface standalone warnings
 
 ```hs
 foo = do

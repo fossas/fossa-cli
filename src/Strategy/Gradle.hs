@@ -19,7 +19,7 @@ module Strategy.Gradle (
 
 import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..), AnalyzeProject, analyzeProject)
 import Control.Carrier.Reader (Reader)
-import Control.Effect.Diagnostics (Diagnostics, Has, REPLACEME (..), context, fatal, recover, withWarn, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, Has, REPLACEME (..), context, fatal, recover, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.Reader (asks)
@@ -128,7 +128,7 @@ findProjects = walk' $ \dir _ files -> do
     Just buildFile -> do
       projectsStdout <-
         recover
-          . withWarn REPLACEME
+          . warnOnErr REPLACEME
           . context ("Listing gradle projects at '" <> toText dir <> "'")
           $ runGradle dir gradleProjectsCmd
 

@@ -18,7 +18,7 @@ import Control.Effect.Diagnostics (
   fromEitherShow,
   fromMaybeText,
   recover,
-  withWarn,
+  warnOnErr,
  )
 import Control.Monad ((<=<))
 import Data.Glob (Glob)
@@ -108,7 +108,7 @@ mkProject project = do
         Yarn _ g -> (g, "yarn")
         NPMLock _ g -> (g, "npm")
         NPM g -> (g, "npm")
-  Manifest rootManifest <- withWarn REPLACEME . fromEitherShow $ findWorkspaceRootManifest graph
+  Manifest rootManifest <- warnOnErr REPLACEME . fromEitherShow $ findWorkspaceRootManifest graph
   pure $
     DiscoveredProject
       { projectType = typename
@@ -190,7 +190,7 @@ extractDepLists PkgJsonGraph{..} = foldMap extractSingle $ Map.elems jsonLookup
 
 loadPackage :: (Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Manifest -> m (Maybe (Manifest, PackageJson))
 loadPackage (Manifest file) = do
-  result <- recover . withWarn REPLACEME $ readContentsJson @PackageJson file
+  result <- recover . warnOnErr REPLACEME $ readContentsJson @PackageJson file
   case result of
     Nothing -> pure Nothing
     Just contents -> pure $ Just (Manifest file, contents)

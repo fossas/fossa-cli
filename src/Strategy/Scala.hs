@@ -77,7 +77,7 @@ findProjects = walk' $ \dir _ files -> do
     Just _ -> do
       projectsRes <-
         recover
-          . withWarn REPLACEME
+          . warnOnErr REPLACEME
           . context ("Listing sbt projects at " <> pathToText dir)
           $ genPoms dir
 
