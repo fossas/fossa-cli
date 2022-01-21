@@ -1,3 +1,16 @@
+-- | A 'Result' type, suitable for recording errors and warnings that occurred
+-- during a computation. It's like @Either@, but much more useful.
+--
+-- To avoid binding pollution, operations on the base 'Result' type are omitted
+-- from this module. For example, while @warn@ is an important primitive when
+-- building up 'Result' values, that name would also conflict with the @warn@
+-- from our @Diagnostics@ effect. This module exclusively exports the essential
+-- result-related datatypes and destructors on those datatypes.
+--
+-- Instead, those essential operations are defined for the @ResultT@ monad
+-- transformer, which lives in the 'Diag.Monad' module. The operations available
+-- in that module provide color/semantics to the datatypes defined in this
+-- module. Make sure to read the documentation in 'Diag.Monad' as well.
 module Diag.Result (
   -- * Result type
   Result (..),
@@ -26,25 +39,57 @@ import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
 import Prettyprinter
 import Prettyprinter.Render.Terminal
 
--- FIXME: doc about more-recent errors and warnings appearing first
+-- | The result of some computation producing either:
+--
+-- - A Failure, containing the group of errors that directly led to the failure ('ErrGroup').
+--
+-- - A Success, containing the result value @a@.
+--
+-- Both data constructors also contain the list of warning emitted during
+-- the computation (@['EmittedWarn']@). More-recent warnings appear first
+-- in the list.
+--
+-- The Applicative and Monad instances on Result carry different semantics, and
+-- aren't legal according to the haskell police (please don't tell them).
+--
+-- When building up a Result in the Applicative style with '<*>', we accumulate
+-- errors encountered into a single Failure's 'ErrGroup'
+--
+-- When building up a result in the Monadic style with '>>=', we short-circuit
+-- on the first Failure
 data Result a = Failure [EmittedWarn] ErrGroup | Success [EmittedWarn] a
   deriving (Show)
 
+-- | A warning emitted during a computation
+--
+-- It has three constructors:
+--
+-- - 'StandaloneWarn', which contains only a warning
+--
+-- - 'WarnOnErrGroup', emitted when recovering from a Failure whose ErrGroup
+--   contains at least one warning
+--
+-- - 'IgnoredErrGroup', emitted when recovering from a Failure whose ErrGroup
+--   contains no warnings
 data EmittedWarn
   = StandaloneWarn SomeWarn
   | WarnOnErrGroup (NonEmpty SomeWarn) [ErrCtx] (NonEmpty ErrWithStack)
   | IgnoredErrGroup [ErrCtx] (NonEmpty ErrWithStack)
   deriving (Show)
 
+-- | An error, or group of errors, that occurred during a computation that led
+-- to a Failure. An ErrGroup can have warnings and error context attached.
 data ErrGroup = ErrGroup [SomeWarn] [ErrCtx] (NonEmpty ErrWithStack)
   deriving (Show)
 
 instance Semigroup ErrGroup where
   ErrGroup sws ectx nee <> ErrGroup sws' ectx' nee' = ErrGroup (sws <> sws') (ectx <> ectx') (nee <> nee')
 
+-- | An error with an associated stacktrace
 data ErrWithStack = ErrWithStack Stack SomeErr
   deriving (Show)
 
+-- | A stacktrace
 newtype Stack = Stack [Text]
   deriving (Show)
 
@@ -71,18 +116,21 @@ instance Monad Result where
 
 -- FIXME: kill Show instances?
 
+-- | Some warning type. Right now, this just requires a ToDiagnostic instance for the type.
 data SomeWarn where
   SomeWarn :: ToDiagnostic diag => diag -> SomeWarn
 
 instance Show SomeWarn where
   show (SomeWarn w) = "\"" <> show (renderDiagnostic w) <> "\""
 
+-- | Some error type. Right now, this just requires a ToDiagnostic instance for the type.
 data SomeErr where
   SomeErr :: ToDiagnostic diag => diag -> SomeErr
 
 instance Show SomeErr where
   show (SomeErr e) = "\"" <> show (renderDiagnostic e) <> "\""
 
+-- | Some error context type. Right now, this just requires a ToDiagnostics instance for the type.
 data ErrCtx where
   ErrCtx :: ToDiagnostic diag => diag -> ErrCtx
 
@@ -97,6 +145,7 @@ resultToMaybe (Failure _ _) = Nothing
 
 ---------- Rendering
 
+-- FIXME: documentation about which warnings appear and why
 -- FIXME: standalone warnings are rendered poorly
 renderFailure :: [EmittedWarn] -> ErrGroup -> Doc AnsiStyle
 renderFailure ws (ErrGroup _ ectx es) = header "An issue occurred" <> renderedCtx <> renderedErrs <> renderedPossibleErrs
@@ -134,6 +183,7 @@ renderErrWithStack (ErrWithStack (Stack stack) (SomeErr err)) =
       [] -> indent 2 "(none)"
       _ -> indent 2 (vsep (map (pretty . ("- " <>)) (reverse stack)))
 
+-- FIXME: documentation about which warnings appear and why
 renderSuccess :: [EmittedWarn] -> Maybe (Doc AnsiStyle)
 renderSuccess ws =
   case notIgnoredErrs of
