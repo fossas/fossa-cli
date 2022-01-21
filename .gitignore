@@ -23,3 +23,7 @@ fossa.debug.json.gz
 
 # Integration Tests
 integration-test/artifacts/
+
+# One offs
+test/App/Fossa/VSI/DynLinked/testdata/hello_standard
+test/App/Fossa/VSI/DynLinked/testdata/hello_setuid
