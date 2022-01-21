@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module App.Fossa.VSI.DynLinked.Internal (
   listLocalDependencies,
   lddParseLocalDependencies,
@@ -7,6 +5,8 @@ module App.Fossa.VSI.DynLinked.Internal (
   LocalDependency (..),
 ) where
 
+import Control.Algebra (Has)
+import Control.Effect.Diagnostics (Diagnostics)
 import Control.Monad (unless, void)
 import Data.Char (isSpace)
 import Data.Maybe (catMaybes)
@@ -15,34 +15,22 @@ import Data.Set qualified as Set
 import Data.String.Conversion (toText)
 import Data.Text (Text, isInfixOf)
 import Data.Void (Void)
+import Effect.Exec (Exec)
+import Effect.Exec qualified as Exec
 import Path (Abs, File, Path)
 import Path qualified as P
+import System.Info qualified as SysInfo
 import Text.Megaparsec (Parsec, between, empty, eof, many, satisfy, try, (<|>))
 import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 
--- Parsing dynamic dependencies is platform specific.
--- Right now we're only implementing for linux, so leave other platforms as a stub.
-#ifdef linux_HOST_OS
-
-import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics)
-import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
-
--- | Report the dynamically linked dependencies of the given file.
-listLocalDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs File -> m (Set (Path Abs File))
-listLocalDependencies file = do
-  deps <- execParser lddParseLocalDependencies (P.parent file) $ Command "ldd" [toText $ P.toFilePath file] Never
-  pure . Set.fromList $ map localDependencyPath deps
-
-#else
-
 -- | Report the dynamically linked dependencies of the given file.
 -- This is currently a stub for non-linux targets: on these systems an empty set is reported.
-listLocalDependencies :: Monad m => Path Abs File -> m (Set (Path Abs File))
+listLocalDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs File -> m (Set (Path Abs File))
+listLocalDependencies file | SysInfo.os == "linux" = do
+  deps <- Exec.execParser lddParseLocalDependencies (P.parent file) $ Exec.Command "ldd" [toText $ P.toFilePath file] Exec.Never
+  pure . Set.fromList $ map localDependencyPath deps
 listLocalDependencies _ = pure Set.empty
-
-#endif
 
 type Parser = Parsec Void Text
 
