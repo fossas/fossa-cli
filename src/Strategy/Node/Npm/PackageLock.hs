@@ -23,7 +23,7 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
-import Data.Foldable (traverse_, asum)
+import Data.Foldable (asum, traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
