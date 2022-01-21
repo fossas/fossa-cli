@@ -1,12 +1,12 @@
+{-# LANGUAGE CPP #-}
+
 module App.Fossa.VSI.DynLinked.Internal (
   listLocalDependencies,
-  parseLocalDependencies,
-  parseLine,
+  lddParseLocalDependencies,
+  lddParseDependency,
   LocalDependency (..),
 ) where
 
-import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics)
 import Control.Monad (unless, void)
 import Data.Char (isSpace)
 import Data.Maybe (catMaybes)
@@ -15,16 +15,34 @@ import Data.Set qualified as Set
 import Data.String.Conversion (toText)
 import Data.Text (Text, isInfixOf)
 import Data.Void (Void)
-import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
-import Path (Abs, File, Path, parent, parseAbsFile, toFilePath)
+import Path (Abs, File, Path)
+import Path qualified as P
 import Text.Megaparsec (Parsec, between, empty, eof, many, satisfy, try, (<|>))
 import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 
+-- Parsing dynamic dependencies is platform specific.
+-- Right now we're only implementing for linux, so leave other platforms as a stub.
+#ifdef linux_HOST_OS
+
+import Control.Algebra (Has)
+import Control.Effect.Diagnostics (Diagnostics)
+import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
+
+-- | Report the dynamically linked dependencies of the given file.
 listLocalDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs File -> m (Set (Path Abs File))
 listLocalDependencies file = do
-  deps <- execParser parseLocalDependencies (parent file) $ Command "ldd" [toText $ toFilePath file] Never
+  deps <- execParser lddParseLocalDependencies (P.parent file) $ Command "ldd" [toText $ P.toFilePath file] Never
   pure . Set.fromList $ map localDependencyPath deps
+
+#else
+
+-- | Report the dynamically linked dependencies of the given file.
+-- This is currently a stub for non-linux targets: on these systems an empty set is reported.
+listLocalDependencies :: Monad m => Path Abs File -> m (Set (Path Abs File))
+listLocalDependencies _ = pure Set.empty
+
+#endif
 
 type Parser = Parsec Void Text
 
@@ -54,18 +72,18 @@ data LocalDependency = LocalDependency
 -- The above rules mean that the output above would evaluate to the following result:
 --
 -- > Set.fromList [$(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
-parseLocalDependencies :: Parser [LocalDependency]
-parseLocalDependencies =
+lddParseLocalDependencies :: Parser [LocalDependency]
+lddParseLocalDependencies =
   catMaybes
     <$> many
-      ( try consumeSyscallLib
-          <|> try consumeLinker
-          <|> try parseLine
+      ( try lddConsumeSyscallLib
+          <|> try lddConsumeLinker
+          <|> try lddParseDependency
       )
       <* eof
 
-parseLine :: Parser (Maybe LocalDependency)
-parseLine = Just <$> (LocalDependency <$> (linePrefix *> ident) <* symbol "=>" <*> path <* addr)
+lddParseDependency :: Parser (Maybe LocalDependency)
+lddParseDependency = Just <$> (LocalDependency <$> (linePrefix *> ident) <* symbol "=>" <*> path <* printedHex)
 
 -- | The userspace library for system calls appears as the following in @ldd@ output:
 --
@@ -73,9 +91,9 @@ parseLine = Just <$> (LocalDependency <$> (linePrefix *> ident) <* symbol "=>" <
 --
 -- We want to ignore it, so just consume it:
 -- this parser always returns @Nothing@ after having consumed the line.
-consumeSyscallLib :: Parser (Maybe LocalDependency)
-consumeSyscallLib = do
-  _ <- linePrefix <* symbol "linux-vdso.so.1" <* symbol "=>" <* addr
+lddConsumeSyscallLib :: Parser (Maybe LocalDependency)
+lddConsumeSyscallLib = do
+  _ <- linePrefix <* symbol "linux-vdso.so.1" <* symbol "=>" <* printedHex
   pure Nothing
 
 -- | The linker appears as the following in @ldd@ output:
@@ -88,11 +106,11 @@ consumeSyscallLib = do
 -- Where the linker is stored and its postfix vary by architecture.
 -- For that reason, this function successfully parses (and thereby ignores)
 -- any line that begins with an @ident@ containing @/ld-linux@.
-consumeLinker :: Parser (Maybe LocalDependency)
-consumeLinker = do
+lddConsumeLinker :: Parser (Maybe LocalDependency)
+lddConsumeLinker = do
   name <- linePrefix *> ident
   unless ("/ld-linux" `isInfixOf` name) $ fail "try another parser"
-  _ <- addr
+  _ <- printedHex
   pure Nothing
 
 -- | Lines may be prefixed by arbitrary spaces.
@@ -100,8 +118,8 @@ linePrefix :: Parser ()
 linePrefix = sc
 
 -- | We don't care about the memory address, so just consume it.
-addr :: Parser ()
-addr = void . lexeme . between (char '(') (char ')') $ many (satisfy (/= ')'))
+printedHex :: Parser ()
+printedHex = void . lexeme . between (char '(') (char ')') $ many (satisfy (/= ')'))
 
 -- | Consume spaces.
 sc :: Parser ()
@@ -124,6 +142,6 @@ ident = lexeme $ toText <$> many (satisfy $ not . isSpace)
 path :: Parser (Path Abs File)
 path = lexeme $ do
   filepath <- many (satisfy $ not . isSpace)
-  case parseAbsFile filepath of
+  case P.parseAbsFile filepath of
     Left err -> fail (show err)
     Right a -> pure a
