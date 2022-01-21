@@ -12,13 +12,11 @@ import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
-  REPLACEME (..),
   context,
   fromEither,
   fromEitherShow,
   fromMaybeText,
   recover,
-  warnOnErr,
  )
 import Control.Monad ((<=<))
 import Data.Glob (Glob)
@@ -108,7 +106,7 @@ mkProject project = do
         Yarn _ g -> (g, "yarn")
         NPMLock _ g -> (g, "npm")
         NPM g -> (g, "npm")
-  Manifest rootManifest <- warnOnErr REPLACEME . fromEitherShow $ findWorkspaceRootManifest graph
+  Manifest rootManifest <- fromEitherShow $ findWorkspaceRootManifest graph
   pure $
     DiscoveredProject
       { projectType = typename
@@ -190,7 +188,7 @@ extractDepLists PkgJsonGraph{..} = foldMap extractSingle $ Map.elems jsonLookup
 
 loadPackage :: (Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Manifest -> m (Maybe (Manifest, PackageJson))
 loadPackage (Manifest file) = do
-  result <- recover . warnOnErr REPLACEME $ readContentsJson @PackageJson file
+  result <- recover $ readContentsJson @PackageJson file
   case result of
     Nothing -> pure Nothing
     Just contents -> pure $ Just (Manifest file, contents)

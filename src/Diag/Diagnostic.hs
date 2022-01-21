@@ -5,7 +5,6 @@ module Diag.Diagnostic (
   SomeDiagnostic (..),
 
   -- * Warnings (temporary)
-  REPLACEME (..),
   MissingDeps (..),
   MissingEdges (..),
 ) where
@@ -41,11 +40,6 @@ instance ToJSON SomeDiagnostic where
       ]
 
 ---------- Warnings. FIXME: delete or move to another module as appropriate
-
-data REPLACEME = REPLACEME
-
-instance ToDiagnostic REPLACEME where
-  renderDiagnostic = const "TODO: REPLACEME"
 
 data MissingDeps = MissingDeps
 
