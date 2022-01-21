@@ -58,7 +58,7 @@ spec = do
     targetDependencies <- Hspec.runIO . runDiagnostics . runExecIO $ DL.listLocalDependencies executableTarget
 
     Hspec.it "should parse actual ldd output" $ case targetDependencies of
-      Left _ -> Hspec.expectationFailure "could not check file"
+      Left _ -> Hspec.expectationFailure "could not check file: ensure you've run `make build-test-data` locally"
       Right result -> result `Hspec.shouldBe` localExecutableExpected
 #endif
 
