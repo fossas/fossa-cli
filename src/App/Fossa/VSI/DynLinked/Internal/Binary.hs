@@ -16,7 +16,7 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
-import Path (Abs, File, Path, parent, toFilePath)
+import Path (Abs, File, Path, parent, parseAbsFile, toFilePath)
 import System.Info qualified as SysInfo
 import Text.Megaparsec (Parsec, between, empty, eof, many, satisfy, try, (<|>))
 import Text.Megaparsec.Char (char, space1)
@@ -127,6 +127,6 @@ ident = lexeme $ toText <$> many (satisfy $ not . isSpace)
 path :: Parser (Path Abs File)
 path = lexeme $ do
   filepath <- many (satisfy $ not . isSpace)
-  case P.parseAbsFile filepath of
+  case parseAbsFile filepath of
     Left err -> fail (show err)
     Right a -> pure a
