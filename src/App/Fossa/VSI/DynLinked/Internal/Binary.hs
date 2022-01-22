@@ -7,13 +7,13 @@ module App.Fossa.VSI.DynLinked.Internal.Binary (
 
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
-import Control.Monad (unless, void)
+import Control.Monad (void)
 import Data.Char (isSpace)
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toText)
-import Data.Text (Text, isInfixOf)
+import Data.Text (Text)
 import Data.Void (Void)
 import Effect.Exec (Exec)
 import Effect.Exec qualified as Exec
@@ -48,14 +48,15 @@ data LocalDependency = LocalDependency
 -- >  libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)
 -- >  /lib64/ld-linux-x86-64.so.2 (0x00007fbea9e52000)
 --
--- Each line is in the form @{spaces}{library name}{spaces}{literal =>}{spaces}{library path on disk}{spaces}{memory address}@.
---   * The memory address is ignored.
---   * We consider each line to form a tuple of @({Name}, {Path})@.
---     * Any line that doesn't form a complete tuple is considered a parsing error (with the below exceptions).
+-- Or this:
 --
--- Exceptions:
---   * Lines with the library name @linux-vdso.so.1@ is ignored.
---   * Lines with the literal @/ld-linux@ in them are ignored.
+-- >  /lib/ld-musl-x86_64.so.1 (0x7f2ca52da000)
+-- >  libc.musl-x86_64.so.1 => /lib/ld-musl-x86_64.so.1 (0x7f2ca52da000)
+--
+-- Each line is in the form @{name}{literal =>}{path}{memory address}@.
+--   * The memory address is ignored.
+--   * We consider each line to form a tuple of @({name}, {path})@.
+--     * Any line that doesn't form a complete tuple is ignored.
 --
 -- The above rules mean that the output above would evaluate to the following result:
 --
@@ -75,30 +76,28 @@ lddParseDependency = Just <$> (LocalDependency <$> (linePrefix *> ident) <* symb
 
 -- | The userspace library for system calls appears as the following in @ldd@ output:
 --
--- > linux-vdso.so.1 (0x00007fff7e567000)
+-- > linux-vdso.so.1 => (0x00007ffc28d59000)
 --
--- We want to ignore it, so just consume it:
+-- In other words, such libraries are in the format @{name}{literal =>}{memory address}@.
+--
+-- We want to ignore these, so just consume them:
 -- this parser always returns @Nothing@ after having consumed the line.
 lddConsumeSyscallLib :: Parser (Maybe LocalDependency)
 lddConsumeSyscallLib = do
-  _ <- linePrefix <* symbol "linux-vdso.so.1" <* symbol "=>" <* printedHex
+  _ <- linePrefix <* ident <* symbol "=>" <* printedHex
   pure Nothing
 
 -- | The linker appears as the following in @ldd@ output:
 --
 -- > /lib64/ld-linux-x86-64.so.2 (0x00007f4232cc1000)
 --
--- We want to ignore it, so just consume it:
--- this parser always returns @Nothing@ after having consumed the line.
+-- In other words, such libraries are in the format @{path}{memory address}@.
 --
--- Where the linker is stored and its postfix vary by architecture.
--- For that reason, this function successfully parses (and thereby ignores)
--- any line that begins with an @ident@ containing @/ld-linux@.
+-- We want to ignore these, so just consume them:
+-- this parser always returns @Nothing@ after having consumed the line.
 lddConsumeLinker :: Parser (Maybe LocalDependency)
 lddConsumeLinker = do
-  name <- linePrefix *> ident
-  unless ("/ld-linux" `isInfixOf` name) $ fail "try another parser"
-  _ <- printedHex
+  _ <- linePrefix <* path <* printedHex
   pure Nothing
 
 -- | Lines may be prefixed by arbitrary spaces.

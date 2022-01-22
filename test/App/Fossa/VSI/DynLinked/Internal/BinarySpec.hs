@@ -48,7 +48,8 @@ spec = do
     Hspec.it "should parse output with multiple lines while ignoring things we don't care about" $ do
       syscallPresent `shouldParseOutputInto` syscallPresentExpected
       linkerPresent `shouldParseOutputInto` linkerPresentExpected
-      syscallAndLinkerPresent `shouldParseOutputInto` syscallAndLinkerPresentExpected
+      realOutputUbuntu `shouldParseOutputInto` realOutputUbuntuExpected
+      realOutputAlpine `shouldParseOutputInto` realOutputAlpineExpected
 
   Hspec.describe "parse ldd output" $ do
     executableTarget <- Hspec.runIO localExecutable
@@ -97,11 +98,17 @@ linkerPresent = "/lib64/ld-linux-x86-64.so.2 (0x00007f4232cc1000)\n\tlibc.so.6 =
 linkerPresentExpected :: [Binary.LocalDependency]
 linkerPresentExpected = [Binary.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
 
-syscallAndLinkerPresent :: Text
-syscallAndLinkerPresent = "linux-vdso.so.1 =>  (0x00007ffc28d59000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007f4232cc1000)"
+realOutputUbuntu :: Text
+realOutputUbuntu = "linux-vdso.so.1 =>  (0x00007ffc28d59000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007f4232cc1000)"
 
-syscallAndLinkerPresentExpected :: [Binary.LocalDependency]
-syscallAndLinkerPresentExpected = [Binary.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
+realOutputAlpine :: Text
+realOutputAlpine = "/lib/ld-musl-x86_64.so.1 (0x7f2ca52da000)\n\tlibc.musl-x86_64.so.1 => /lib/ld-musl-x86_64.so.1 (0x7f2ca52da000)"
+
+realOutputUbuntuExpected :: [Binary.LocalDependency]
+realOutputUbuntuExpected = [Binary.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
+
+realOutputAlpineExpected :: [Binary.LocalDependency]
+realOutputAlpineExpected = [Binary.LocalDependency "libc.musl-x86_64.so.1" $(mkAbsFile "/lib/ld-musl-x86_64.so.1")]
 
 localExecutable :: IO (Path Abs File)
 localExecutable = PIO.resolveFile' "test/App/Fossa/VSI/DynLinked/testdata/hello_standard"
@@ -109,7 +116,7 @@ localExecutable = PIO.resolveFile' "test/App/Fossa/VSI/DynLinked/testdata/hello_
 -- While parsing ldd-shaped output works on every platform, only Linux can actually run ldd.
 localExecutableExpected :: Set (Path Abs File)
 localExecutableExpected = if SysInfo.os == "linux"
-  then Set.singleton $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")
+  then Set.singleton $(mkAbsFile "/lib/ld-musl-x86_64.so.1")
   else Set.empty
 
 #endif
