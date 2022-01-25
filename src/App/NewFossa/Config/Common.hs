@@ -18,12 +18,23 @@ module App.NewFossa.Config.Common (
   -- * CLI Collectors
   collectBaseDir,
   collectRevisionData,
+  CacheAction (..),
+  collectRevisionOverride,
+  collectApiOpts,
+
+  -- * Configuration Types
+  ScanDestination (..),
+
+  -- * Global Defaults
+  defaultTimeoutDuration,
 ) where
 
 import App.Fossa.ProjectInference (
+  inferProjectCached,
   inferProjectDefault,
   inferProjectFromVCS,
   mergeOverride,
+  saveRevision,
  )
 import App.NewFossa.ConfigFile (
   ConfigFile (configApiKey, configProject, configRevision),
@@ -50,13 +61,14 @@ import Control.Effect.Diagnostics (
   (<||>),
  )
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Timeout (Duration (Minutes))
 import Data.Bifunctor (Bifunctor (first))
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
 import Discovery.Filters (targetFilterParser)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS, doesDirExist)
-import Fossa.API.Types (ApiKey (ApiKey))
+import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts))
 import Options.Applicative (
   Parser,
   argument,
@@ -78,6 +90,20 @@ import Path.IO (resolveDir')
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI)
 import Types (TargetFilter)
+
+data ScanDestination
+  = -- | upload to fossa with provided api key and base url
+    UploadScan ApiOpts ProjectMetadata
+  | OutputStdout
+  deriving (Eq, Ord, Show)
+
+data CacheAction
+  = ReadOnly
+  | WriteOnly
+  deriving (Eq, Ord, Show)
+
+defaultTimeoutDuration :: Duration
+defaultTimeoutDuration = Minutes 60
 
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =
@@ -153,6 +179,27 @@ validateApiKey maybeConfigFile EnvVars{envApiKey} GlobalOpts{optAPIKey} = do
         <|> envApiKey
   pure $ ApiKey textkey
 
+collectApiOpts :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> GlobalOpts -> m (Validator ApiOpts)
+collectApiOpts maybeconfig envvars globals = validationBoundary $ do
+  apikey <- validateApiKey maybeconfig envvars globals
+  let baseuri = optBaseUrl globals
+  pure $ ApiOpts baseuri apikey
+
+collectRevisionOverride :: Maybe ConfigFile -> OverrideProject -> OverrideProject
+collectRevisionOverride maybeConfig OverrideProject{..} = override
+  where
+    override = OverrideProject projectName projectRevision projectBranch
+
+    projectName :: Maybe Text
+    projectName = overrideName <|> (maybeConfig >>= configProject >>= configProjID)
+
+    projectRevision :: Maybe Text
+    projectRevision = overrideRevision <|> (maybeConfig >>= configRevision >>= configCommit)
+
+    projectBranch :: Maybe Text
+    projectBranch = overrideBranch <|> (maybeConfig >>= configRevision >>= configBranch)
+
+-- | Handles reading from and writing to the revision cache, based on CacheAction.
 collectRevisionData ::
   ( Has Diagnostics sig m
   , Has Exec sig m
@@ -161,23 +208,21 @@ collectRevisionData ::
   ) =>
   Validator BaseDir ->
   Maybe ConfigFile ->
+  CacheAction ->
   OverrideProject ->
   m (Validator ProjectRevision)
-collectRevisionData (Failure _) _ _ = validationBoundary $ fatalText "Cannot perform revision inference without a valid base directory"
-collectRevisionData (Success (BaseDir basedir)) maybeConfig OverrideProject{..} = validationBoundary $ do
-  let override = OverrideProject projectName projectRevision projectBranch
-
-      projectName :: Maybe Text
-      projectName = overrideName <|> (maybeConfig >>= configProject >>= configProjID)
-
-      projectRevision :: Maybe Text
-      projectRevision = overrideRevision <|> (maybeConfig >>= configRevision >>= configCommit)
-
-      projectBranch :: Maybe Text
-      projectBranch = overrideBranch <|> (maybeConfig >>= configRevision >>= configBranch)
-
-  inferred <- inferProjectFromVCS basedir <||> inferProjectDefault basedir
-  pure $ mergeOverride override inferred
+collectRevisionData (Failure _) _ _ _ = validationBoundary $ fatalText "Cannot perform revision inference without a valid base directory"
+collectRevisionData (Success (BaseDir basedir)) maybeConfig cacheStrategy cliOverride = validationBoundary $ do
+  let override = collectRevisionOverride maybeConfig cliOverride
+  case cacheStrategy of
+    ReadOnly -> do
+      inferred <- inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir
+      pure $ mergeOverride override inferred
+    WriteOnly -> do
+      inferred <- inferProjectFromVCS basedir <||> inferProjectDefault basedir
+      let revision = mergeOverride override inferred
+      saveRevision revision
+      pure revision
 
 data GlobalOpts = GlobalOpts
   { optDebug :: Bool

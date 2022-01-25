@@ -12,20 +12,52 @@ module App.Fossa.EmbeddedBinary (
   withSyftBinary,
   allBins,
   PackagedBinary (..),
+  dumpSubCommand,
 ) where
 
+import App.NewFossa.Config.DumpBinaries (
+  DumpBinsConfig (..),
+  DumpBinsOpts,
+  mkSubCommand,
+ )
+import App.NewFossa.Subcommand (SubCommand)
 import Control.Effect.Exception (bracket)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.ByteString (ByteString, writeFile)
-import Data.FileEmbed.Extra
-import Path
-import Path.IO
+import Data.FileEmbed.Extra (embedFileIfExists)
+import Data.Foldable (for_)
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  fromAbsFile,
+  mkRelDir,
+  mkRelFile,
+  parent,
+  (</>),
+ )
+import Path.IO (
+  Permissions (executable),
+  ensureDir,
+  getPermissions,
+  getTempDir,
+  removeDirRecur,
+  setPermissions,
+ )
 import Prelude hiding (writeFile)
 
 data PackagedBinary
   = Syft
   | Wiggins
   deriving (Show, Eq, Enum, Bounded)
+
+dumpSubCommand :: SubCommand DumpBinsOpts DumpBinsConfig
+dumpSubCommand = mkSubCommand dumpBinsMain
+
+dumpBinsMain :: Has (Lift IO) sig m => DumpBinsConfig -> m ()
+dumpBinsMain (DumpBinsConfig dir) = for_ allBins $ dumpEmbeddedBinary dir
 
 allBins :: [PackagedBinary]
 allBins = enumFromTo minBound maxBound

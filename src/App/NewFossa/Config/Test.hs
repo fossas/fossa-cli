@@ -9,12 +9,14 @@ module App.NewFossa.Config.Test (
 ) where
 
 import App.NewFossa.Config.Common (
+  CacheAction (ReadOnly),
   GlobalOpts (..),
   baseDirArg,
+  collectApiOpts,
   collectBaseDir,
   collectRevisionData,
+  defaultTimeoutDuration,
   globalOpts,
-  validateApiKey,
  )
 import App.NewFossa.ConfigFile (ConfigFile, resolveConfigFile)
 import App.NewFossa.EnvironmentVars (EnvVars)
@@ -23,16 +25,14 @@ import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
-  Validator,
   runValidation,
-  validationBoundary,
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Timeout (Duration (..))
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS)
-import Fossa.API.Types (ApiOpts (ApiOpts))
+import Fossa.API.Types (ApiOpts)
 import Options.Applicative (
   InfoMod,
   Parser,
@@ -76,9 +76,6 @@ testInfo = progDesc "Check for issues from FOSSA and exit non-zero when issues a
 mkSubCommand :: (TestConfig -> EffStack ()) -> SubCommand TestCliOpts TestConfig
 mkSubCommand = SubCommand "test" testInfo parser loadConfig mergeOpts
 
-defaultTimeoutDuration :: Duration
-defaultTimeoutDuration = Minutes 60
-
 parser :: Parser TestCliOpts
 parser =
   TestCliOpts
@@ -115,7 +112,7 @@ mergeOpts maybeConfig envvars TestCliOpts{..} = do
   apiOpts <- collectApiOpts maybeConfig envvars globals
   let timeout = maybe defaultTimeoutDuration Seconds testTimeout
   revision <-
-    collectRevisionData baseDir maybeConfig $
+    collectRevisionData baseDir maybeConfig ReadOnly $
       OverrideProject (optProjectName globals) (optProjectRevision globals) Nothing
   runValidation $
     TestConfig
@@ -124,9 +121,3 @@ mergeOpts maybeConfig envvars TestCliOpts{..} = do
       <*> pure timeout
       <*> pure testOutputType
       <*> revision
-
-collectApiOpts :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> GlobalOpts -> m (Validator ApiOpts)
-collectApiOpts maybeconfig envvars globals = validationBoundary $ do
-  apikey <- validateApiKey maybeconfig envvars globals
-  let baseuri = optBaseUrl globals
-  pure $ ApiOpts baseuri apikey

@@ -1,13 +1,25 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.Container.Analyze (
-  analyzeMain,
+  analyze,
 ) where
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
-import App.Fossa.Container (ImageText (..), extractRevision, runSyft, toContainerScan)
+import App.Fossa.Container.Scan (extractRevision, runSyft, toContainerScan)
 import App.Fossa.FossaAPIV1 (UploadResponse (uploadError, uploadLocator), uploadContainerScan)
-import App.NewFossa.Config.Analyze (ScanDestination (..))
-import App.Types (OverrideProject (..), ProjectRevision (..))
-import Control.Carrier.Diagnostics (Diagnostics, logWithExit_)
+import App.NewFossa.Config.Common (
+  ScanDestination (OutputStdout, UploadScan),
+ )
+import App.NewFossa.Config.Container (
+  ContainerAnalyzeConfig (
+    ContainerAnalyzeConfig,
+    imageLocator,
+    revisionOverride,
+    scanDestination
+  ),
+ )
+import App.Types (ProjectRevision (..))
+import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Data.Aeson (encode)
 import Data.Foldable (traverse_)
@@ -17,36 +29,28 @@ import Effect.Logger (
   Has,
   Logger,
   Pretty (pretty),
-  Severity,
   logDebug,
   logError,
   logInfo,
   logStdout,
   viaShow,
-  withDefaultLogger,
  )
 import Srclib.Types (parseLocator)
-
-analyzeMain :: ScanDestination -> Severity -> OverrideProject -> ImageText -> IO ()
-analyzeMain scanDestination logSeverity override image = withDefaultLogger logSeverity $ do
-  logWithExit_ $ analyze scanDestination override image
 
 analyze ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
   ) =>
-  ScanDestination ->
-  OverrideProject ->
-  ImageText ->
+  ContainerAnalyzeConfig ->
   m ()
-analyze scanDestination override image = do
+analyze ContainerAnalyzeConfig{..} = do
   logDebug "Running embedded syft binary"
-  containerScan <- runSyft image >>= toContainerScan
+  containerScan <- runSyft imageLocator >>= toContainerScan
   case scanDestination of
     OutputStdout -> logStdout . decodeUtf8 $ encode containerScan
     UploadScan apiOpts projectMeta -> do
-      let revision = extractRevision override containerScan
+      let revision = extractRevision revisionOverride containerScan
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
       let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision

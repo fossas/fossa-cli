@@ -17,7 +17,9 @@ module App.NewFossa.Config.Analyze (
 
 import App.Fossa.VSI.Types qualified as VSI
 import App.NewFossa.Config.Common (
+  CacheAction (WriteOnly),
   GlobalOpts (..),
+  ScanDestination (..),
   baseDirArg,
   collectBaseDir,
   collectRevisionData,
@@ -102,11 +104,6 @@ data UnpackArchives = UnpackArchives
 
 data VSIAnalysis = VSIAnalysis
 
-data ScanDestination
-  = -- | upload to fossa with provided api key and base url
-    UploadScan ApiOpts ProjectMetadata
-  | OutputStdout
-
 newtype IATAssertion = IATAssertion {unIATAssertion :: Maybe (Path Abs Dir)} deriving (Eq, Ord, Show)
 
 data VSIModeOptions = VSIModeOptions
@@ -115,6 +112,7 @@ data VSIModeOptions = VSIModeOptions
   , iatAssertion :: IATAssertion
   , binaryDiscoveryEnabled :: Flag BinaryDiscovery
   }
+  deriving (Eq, Ord, Show)
 
 data AnalyzeCliOpts = AnalyzeCliOpts
   { globals :: GlobalOpts
@@ -136,6 +134,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , monorepoAnalysisOpts :: MonorepoAnalysisOpts
   , analyzeBaseDir :: FilePath
   }
+  deriving (Eq, Ord, Show)
 
 instance GetSeverity AnalyzeCliOpts where
   getSeverity AnalyzeCliOpts{globals = GlobalOpts{optDebug}} = if optDebug then SevDebug else SevInfo
@@ -152,10 +151,12 @@ data AnalyzeConfig = AnalyzeConfig
   , jsonOutput :: Flag JsonOutput
   , includeAllDeps :: Flag IncludeAll
   }
+  deriving (Eq, Ord, Show)
 
 newtype ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
   { allowedGradleConfigs :: Maybe (Set Text)
   }
+  deriving (Eq, Ord, Show)
 
 mkSubCommand :: (AnalyzeConfig -> EffStack ()) -> SubCommand AnalyzeCliOpts AnalyzeConfig
 mkSubCommand = SubCommand "analyze" analyzeInfo cliParser loadConfig mergeOpts
@@ -227,7 +228,7 @@ mergeOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
   let logSeverity = if optDebug globals then SevDebug else SevInfo
   scanDestination <- collectScanDestination maybeConfig envvars cliOpts
   revisionData <-
-    collectRevisionData basedir maybeConfig $
+    collectRevisionData basedir maybeConfig WriteOnly $
       OverrideProject (optProjectName globals) (optProjectRevision globals) (analyzeBranch)
   modeOpts <- collectModeOptions cliOpts
   filters <- collectFilters maybeConfig cliOpts

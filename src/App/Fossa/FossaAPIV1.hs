@@ -37,7 +37,7 @@ module App.Fossa.FossaAPIV1 (
   vsiDownloadInferences,
 ) where
 
-import App.Fossa.Container (ContainerScan (..))
+import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Fossa.Report.Attribution qualified as Attr
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
 import App.Fossa.VSI.Fingerprint qualified as Fingerprint

@@ -29,11 +29,11 @@ import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
 import Path
 import Prettyprinter (viaShow)
 
-newtype NinjaScanID = NinjaScanID {unNinjaScanID :: Text}
+newtype NinjaScanID = NinjaScanID {unNinjaScanID :: Text} deriving (Eq, Ord, Show)
 
-newtype NinjaFilePaths = NinjaFilePaths {unNinjaFilePaths :: [Path Abs File]}
+newtype NinjaFilePaths = NinjaFilePaths {unNinjaFilePaths :: [Path Abs File]} deriving (Eq, Ord, Show)
 
-newtype FilterExpressions = FilterExpressions {unFilterExpressions :: [Text]}
+newtype FilterExpressions = FilterExpressions {unFilterExpressions :: [Text]} deriving (Eq, Ord, Show)
 
 encodeFilterExpressions :: FilterExpressions -> Text
 encodeFilterExpressions filters = decodeUtf8 $ BSL.toStrict $ encode (unFilterExpressions filters)

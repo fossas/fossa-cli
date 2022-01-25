@@ -5,7 +5,6 @@ module App.Fossa.Test (
 ) where
 
 import App.Fossa.API.BuildWait (
-  timeout',
   waitForIssues',
   waitForScanCompletion',
  )
@@ -19,6 +18,7 @@ import Control.Algebra (Has)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Timeout (timeout')
 import Data.Aeson qualified as Aeson
 import Data.String.Conversion (decodeUtf8)
 import Effect.Logger (
