@@ -5,7 +5,7 @@ module App.Fossa.ListTargets (
 ) where
 
 import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), discoverFuncs)
-import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences)
+import App.NewFossa.Config.Analyze (ExperimentalAnalyzeConfig)
 import App.Types (BaseDir (..))
 import Control.Carrier.AtomicCounter
 import Control.Carrier.Debug (ignoreDebug)
@@ -16,7 +16,6 @@ import Control.Carrier.TaskPool
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Lift (Lift)
-import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Extra (encodeJSONToText)
 import Data.Foldable (for_, traverse_)
@@ -30,7 +29,7 @@ import Path
 import Path.IO (makeRelative)
 import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
 
-listTargetsMain :: AnalyzeExperimentalPreferences -> Severity -> BaseDir -> IO ()
+listTargetsMain :: ExperimentalAnalyzeConfig -> Severity -> BaseDir -> IO ()
 listTargetsMain preferences logSeverity (BaseDir basedir) = do
   capabilities <- getNumCapabilities
 
@@ -51,10 +50,9 @@ runAll ::
   , Has Logger sig m
   , Has TaskPool sig m
   , Has (Lift IO) sig m
-  , MonadIO m
   , Has AtomicCounter sig m
   , Has Debug sig m
-  , Has (Reader AnalyzeExperimentalPreferences) sig m
+  , Has (Reader ExperimentalAnalyzeConfig) sig m
   ) =>
   Path Abs Dir ->
   m ()

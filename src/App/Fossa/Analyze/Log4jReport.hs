@@ -12,10 +12,7 @@ module App.Fossa.Analyze.Log4jReport (
 ) where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
-import App.Fossa.Analyze.Types (
-  AnalyzeExperimentalPreferences (..),
-  AnalyzeTaskEffs,
- )
+import App.Fossa.Analyze.Types (AnalyzeTaskEffs)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
@@ -35,6 +32,7 @@ import Strategy.Maven qualified as Maven
 import Strategy.Scala qualified as Scala
 
 import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), runDependencyAnalysis, updateProgress)
+import App.NewFossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
 import App.Types (
   BaseDir (..),
  )
@@ -51,7 +49,7 @@ import Data.Foldable (traverse_)
 import Data.Map qualified as Map
 import Data.Maybe (isNothing)
 import Data.Void (Void)
-import Discovery.Filters (AllFilters (AllFilters), FilterCombination (FilterCombination))
+import Discovery.Filters (AllFilters)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (runExecIO)
 import Effect.Logger (
@@ -100,12 +98,11 @@ analyzeForLog4j targetDirectory = do
           . withTaskPool capabilities updateProgress
           . runAtomicCounter
           $ do
-            runAnalyzersForLog4j (toPath basedir) withoutFilters
+            runAnalyzersForLog4j (toPath basedir) mempty
       reportLog4jVulnerability projectResults
   where
     toPath (BaseDir path) = path
-    withoutAnyExperimentalPreferences = AnalyzeExperimentalPreferences Nothing
-    withoutFilters = AllFilters [] (FilterCombination [] []) (FilterCombination [] [])
+    withoutAnyExperimentalPreferences = ExperimentalAnalyzeConfig Nothing
 
 runAnalyzersForLog4j ::
   ( AnalyzeTaskEffs sig m

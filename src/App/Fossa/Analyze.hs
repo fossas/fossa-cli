@@ -2,19 +2,12 @@
 
 module App.Fossa.Analyze (
   analyzeMain,
-  ScanDestination (..),
-  UnpackArchives (..),
-  JsonOutput (..),
-  VSIAnalysisMode (..),
-  IATAssertionMode (..),
-  BinaryDiscoveryMode (..),
-  ModeOptions (..),
   DiscoverFunc (..),
   discoverFuncs,
   updateProgress,
-  IncludeAll (..),
   runAnalyzers,
   runDependencyAnalysis,
+  analyzeSubCommand,
 ) where
 
 import App.Docs (userGuideUrl)
@@ -23,27 +16,37 @@ import App.Fossa.Analyze.Debug (collectDebugBundle, diagToDebug)
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Types (
-  AnalyzeExperimentalPreferences (..),
   AnalyzeProject (..),
   AnalyzeTaskEffs,
  )
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.FossaAPIV1 (UploadResponse (..), getProject, projectIsMonorepo, uploadAnalysis, uploadContributors)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
-import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride, saveRevision)
+import App.Fossa.ProjectInference (saveRevision)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VSIDeps (analyzeVSIDeps)
+import App.NewFossa.Config.Analyze (
+  AnalyzeCliOpts,
+  AnalyzeConfig (severity),
+  BinaryDiscovery (BinaryDiscovery),
+  ExperimentalAnalyzeConfig,
+  IATAssertion (IATAssertion),
+  IncludeAll (IncludeAll),
+  JsonOutput (JsonOutput),
+  ScanDestination (OutputStdout, UploadScan),
+  UnpackArchives (UnpackArchives),
+ )
+import App.NewFossa.Config.Analyze qualified as Config
+import App.NewFossa.Subcommand (SubCommand)
 import App.Types (
   BaseDir (..),
-  OverrideProject,
   ProjectMetadata,
-  ProjectRevision (projectBranch, projectName, projectRevision),
+  ProjectRevision (..)
  )
-import App.Util (validateDir)
 import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
-import Control.Carrier.Debug (Debug, debugMetadata, debugScope, ignoreDebug)
+import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Diagnostics.StickyContext (stickyDiag)
 import Control.Carrier.Finally (Finally, Has, runFinally)
@@ -57,11 +60,11 @@ import Control.Carrier.TaskPool (
   withTaskPool,
  )
 import Control.Concurrent (getNumCapabilities)
-import Control.Effect.Diagnostics (Diagnostics, fatalText, fromMaybeText, recover, (<||>))
+import Control.Effect.Diagnostics (fatalText, fromMaybeText, recover)
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
+import Control.Effect.Reader (ask)
 import Control.Monad (when)
-import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
@@ -80,13 +83,11 @@ import Effect.Exec (Exec, runExecIO)
 import Effect.Logger (
   Logger,
   Severity (..),
-  logDebug,
   logError,
   logInfo,
   logStdout,
-  withDefaultLogger,
  )
-import Effect.ReadFS (ReadFS, runReadFSIO)
+import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts (..))
 import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
 import Path.IO (makeRelative)
@@ -141,76 +142,30 @@ import Strategy.SwiftPM qualified as SwiftPM
 import Types (DiscoveredProject (..), FoundTargets)
 import VCS.Git (fetchGitContributors)
 
-data ScanDestination
-  = -- | upload to fossa with provided api key and base url
-    UploadScan ApiOpts ProjectMetadata
-  | OutputStdout
+debugBundlePath :: FilePath
+debugBundlePath = "fossa.debug.json.gz"
 
--- CLI flags, for use with 'Data.Flag'
-data UnpackArchives = UnpackArchives
-data IncludeAll = IncludeAll
-data JsonOutput = JsonOutput
+analyzeSubCommand :: SubCommand AnalyzeCliOpts AnalyzeConfig
+analyzeSubCommand = Config.mkSubCommand analyzeMain
 
--- | Collect analysis modes into a single type for ease of use.
--- These modes are intended to be different options that alter how analysis is performed or what analysis steps are followed.
-data ModeOptions = ModeOptions
-  { modeVSIAnalysis :: VSIAnalysisMode
-  , modeVSISkipResolution :: VSI.SkipResolution
-  , modeIATAssertion :: IATAssertionMode
-  , modeBinaryDiscovery :: BinaryDiscoveryMode
-  }
-
--- | "VSI analysis" modes
-data VSIAnalysisMode
-  = -- | enable the VSI analysis strategy
-    VSIAnalysisEnabled
-  | -- | disable the VSI analysis strategy
-    VSIAnalysisDisabled
-
--- | "IAT Assertion" modes
-data IATAssertionMode
-  = -- | assertion enabled, reading binaries from this directory
-    IATAssertionEnabled (Path Abs Dir)
-  | -- | assertion not enabled
-    IATAssertionDisabled
-
--- | "Binary Discovery" modes
-data BinaryDiscoveryMode
-  = -- | Binary discovery enabled
-    BinaryDiscoveryEnabled
-  | -- | Binary discovery disabled
-    BinaryDiscoveryDisabled
-
+-- This is just a handler for the Debug effect.
+-- The real logic is in the inner analyze
+-- TODO: dispatch to monorepo analysis when option is given.
 analyzeMain ::
-  FilePath ->
-  Severity ->
-  ScanDestination ->
-  OverrideProject ->
-  Flag UnpackArchives ->
-  Flag JsonOutput ->
-  Flag IncludeAll ->
-  ModeOptions ->
-  AllFilters ->
-  AnalyzeExperimentalPreferences ->
-  IO ()
-analyzeMain workdir logSeverity destination project unpackArchives jsonOutput includeAll modeOptions filters preferences =
-  withDefaultLogger logSeverity
-    . Diag.logWithExit_
-    . runReadFSIO
-    . runReader preferences
-    . runExecIO
-    $ case logSeverity of
-      -- In --debug mode, emit a debug bundle to "fossa.debug.json"
-      SevDebug -> do
-        basedir <- sendIO $ validateDir workdir
-        (scope, res) <- collectDebugBundle . Diag.errorBoundaryIO $ doAnalyze basedir
-        sendIO . BL.writeFile "fossa.debug.json.gz" . GZip.compress $ Aeson.encode scope
-        either Diag.rethrow pure res
-      _ -> do
-        basedir <- sendIO $ validateDir workdir
-        ignoreDebug $ doAnalyze basedir
-  where
-    doAnalyze basedir = analyze basedir destination project unpackArchives jsonOutput includeAll modeOptions filters
+  ( Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has Diag.Diagnostics sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
+  ) =>
+  AnalyzeConfig ->
+  m ()
+analyzeMain cfg = runReader cfg $ case severity cfg of
+  SevDebug -> do
+    (scope, res) <- collectDebugBundle $ Diag.errorBoundaryIO analyze
+    sendIO . BL.writeFile debugBundlePath . GZip.compress $ Aeson.encode scope
+    either Diag.rethrow pure res
+  _ -> ignoreDebug analyze
 
 runDependencyAnalysis ::
   ( AnalyzeProject proj
@@ -222,8 +177,7 @@ runDependencyAnalysis ::
   , Has ReadFS sig m
   , Has Exec sig m
   , Has (Output ProjectResult) sig m
-  , Has (Reader AnalyzeExperimentalPreferences) sig m
-  , MonadIO m
+  , Has (Reader ExperimentalAnalyzeConfig) sig m
   ) =>
   -- | Analysis base directory
   Path Abs Dir ->
@@ -332,33 +286,40 @@ analyze ::
   , Has Debug sig m
   , Has Exec sig m
   , Has ReadFS sig m
-  , Has (Reader AnalyzeExperimentalPreferences) sig m
-  , MonadIO m
+  , Has (Reader AnalyzeConfig) sig m
   ) =>
-  BaseDir ->
-  ScanDestination ->
-  OverrideProject ->
-  Flag UnpackArchives ->
-  Flag JsonOutput ->
-  Flag IncludeAll ->
-  ModeOptions ->
-  AllFilters ->
   m ()
-analyze (BaseDir basedir) destination override unpackArchives jsonOutput includeAll ModeOptions{..} filters = Diag.context "fossa-analyze" $ do
+analyze = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
 
+  -- TODO: refactor other code to use config reader, rather than passing
+  -- values directly and defining them upfront like this.
+  cfg <- ask
   let apiOpts = case destination of
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
+      BaseDir basedir = Config.baseDir cfg
+      destination = Config.scanDestination cfg
+      filters = Config.filterSet cfg
+      iatAssertion = Config.iatAssertion $ Config.vsiOptions cfg
+      includeAll = Config.includeAllDeps cfg
+      jsonOutput = Config.jsonOutput cfg
+      revision = Config.projectRevision cfg
+      skipResolutionSet = Config.vsiSkipSet $ Config.vsiOptions cfg
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
   vsiResults <-
-    Diag.context "analyze-vsi" . runStickyLogger SevInfo . runFinally $
-      analyzeVSI modeVSIAnalysis apiOpts basedir override filters modeVSISkipResolution
+    Diag.context "analyze-vsi" . runStickyLogger SevInfo . runFinally $ do
+      let shouldRunVSI = fromFlag Config.VSIAnalysis $ Config.vsiAnalysisEnabled $ Config.vsiOptions cfg
+      case (shouldRunVSI, apiOpts) of
+        (True, Just apiOpts') -> analyzeVSI apiOpts' basedir revision filters skipResolutionSet
+        _ -> pure Nothing
   binarySearchResults <-
     Diag.context "discover-binaries" $
-      analyzeDiscoverBinaries modeBinaryDiscovery basedir filters
+      if (fromFlag BinaryDiscovery $ Config.binaryDiscoveryEnabled $ Config.vsiOptions cfg)
+        then analyzeDiscoverBinaries basedir filters
+        else pure Nothing
   manualSrcUnits <-
     if filterIsVSIOnly filters
       then do
@@ -375,9 +336,10 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput include
       . runFinally
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
+      . runReader (Config.experimental cfg)
       $ do
         runAnalyzers basedir filters
-        when (fromFlag UnpackArchives unpackArchives) $
+        when (fromFlag UnpackArchives $ Config.unpackArchives cfg) $
           forkTask $ do
             res <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag $ Archive.discover (`runAnalyzers` filters) basedir
             Diag.withResult SevError res (const (pure ()))
@@ -389,35 +351,26 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput include
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
     FoundSome sourceUnits -> case destination of
-      OutputStdout -> do
-        debugScope "DEBUG: Project inference" $ do
-          inferred <- Diag.context "Inferring project name/revision" (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
-          logDebug $ "Inferred revision: " <> viaShow inferred
-
-          let revision = mergeOverride override inferred
-          logDebug $ "Merged revision: " <> viaShow revision
-        logStdout . decodeUtf8 . Aeson.encode $ buildResult includeAll additionalSourceUnits filteredProjects
+      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult includeAll additionalSourceUnits filteredProjects
       UploadScan opts metadata -> Diag.context "upload-results" $ do
-        locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput override sourceUnits
-        doAssertRevisionBinaries modeIATAssertion opts locator
+        locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput revision sourceUnits
+        doAssertRevisionBinaries iatAssertion opts locator
 
 analyzeVSI ::
   ( Has Diag.Diagnostics sig m
-  , Has Exec sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has StickyLogger sig m
   , Has ReadFS sig m
   , Has Finally sig m
   ) =>
-  VSIAnalysisMode ->
-  Maybe ApiOpts ->
+  ApiOpts ->
   Path Abs Dir ->
-  OverrideProject ->
+  ProjectRevision ->
   AllFilters ->
   VSI.SkipResolution ->
   m (Maybe SourceUnit)
-analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir override filters skipResolving = do
+analyzeVSI apiOpts dir revision filters skipResolving = do
   logInfo "Running VSI analysis"
 
   let skippedLocators = VSI.unVSISkipResolution skipResolving
@@ -427,13 +380,19 @@ analyzeVSI VSIAnalysisEnabled (Just apiOpts) dir override filters skipResolving 
       traverse_ (logInfo . pretty . VSI.renderLocator) skippedLocators
     else pure ()
 
-  revision <- inferProjectRevision dir override
   results <- analyzeVSIDeps dir revision apiOpts filters skipResolving
   pure $ Just results
-analyzeVSI _ _ _ _ _ _ = pure Nothing
 
-analyzeDiscoverBinaries :: (MonadIO m, Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has ReadFS sig m) => BinaryDiscoveryMode -> Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
-analyzeDiscoverBinaries BinaryDiscoveryEnabled dir filters = do
+analyzeDiscoverBinaries ::
+  ( Has Diag.Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  ) =>
+  Path Abs Dir ->
+  AllFilters ->
+  m (Maybe SourceUnit)
+analyzeDiscoverBinaries dir filters = do
   if filterIsVSIOnly filters
     then do
       logInfo "Running in VSI only mode, skipping binary discovery"
@@ -441,10 +400,9 @@ analyzeDiscoverBinaries BinaryDiscoveryEnabled dir filters = do
     else do
       logInfo "Discovering binary files as dependencies"
       analyzeBinaryDeps dir filters
-analyzeDiscoverBinaries _ _ _ = pure Nothing
 
-doAssertRevisionBinaries :: (Has Diag.Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => IATAssertionMode -> ApiOpts -> Locator -> m ()
-doAssertRevisionBinaries (IATAssertionEnabled dir) apiOpts locator = assertRevisionBinaries dir apiOpts locator
+doAssertRevisionBinaries :: (Has Diag.Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => IATAssertion -> ApiOpts -> Locator -> m ()
+doAssertRevisionBinaries (IATAssertion (Just dir)) apiOpts locator = assertRevisionBinaries dir apiOpts locator
 doAssertRevisionBinaries _ _ _ = pure ()
 
 dieOnMonorepoUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => ApiOpts -> ProjectRevision -> m ()
@@ -483,20 +441,15 @@ uploadSuccessfulAnalysis ::
   ( Has Diag.Diagnostics sig m
   , Has Logger sig m
   , Has (Lift IO) sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
   ) =>
   BaseDir ->
   ApiOpts ->
   ProjectMetadata ->
   Flag JsonOutput ->
-  OverrideProject ->
+  ProjectRevision ->
   NE.NonEmpty SourceUnit ->
   m Locator
-uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override units = Diag.context "Uploading analysis" $ do
-  revision <- inferProjectRevision basedir override
-  logDebug $ "Merged revision: " <> viaShow revision
-
+uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput revision units = Diag.context "Uploading analysis" $ do
   logInfo ""
   logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
   logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
@@ -531,12 +484,6 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput override 
     else pure ()
 
   pure locator
-
-inferProjectRevision :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> OverrideProject -> m ProjectRevision
-inferProjectRevision basedir override = do
-  inferred <- Diag.context "Inferring project name/revision" (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
-  logDebug $ "Inferred revision: " <> viaShow inferred
-  pure $ mergeOverride override inferred
 
 data CountedResult
   = NoneDiscovered
