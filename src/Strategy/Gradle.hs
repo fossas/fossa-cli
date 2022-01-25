@@ -63,7 +63,7 @@ import Strategy.Gradle.ResolutionApi qualified as ResolutionApi
 import System.FilePath qualified as FilePath
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (GradleProjectType), FoundTargets (..), GraphBreadth (..))
 
--- Run the init script on a set of subprojects. Note that this runs the
+-- |Run the init script on a set of subprojects. Note that this runs the
 -- `:jsonDeps` task on every subproject in one command. This is helpful for
 -- performance reasons, because Gradle has a slow startup on each invocation.
 gradleJsonDepsCmdTargets :: FilePath -> Set BuildTarget -> Text -> Command
@@ -74,7 +74,7 @@ gradleJsonDepsCmdTargets initScriptFilepath targets baseCmd =
     , cmdAllowErr = Never
     }
 
--- Run the init script on a root project.
+-- |Run the init script on a root project.
 gradleJsonDepsCmd :: FilePath -> Text -> Command
 gradleJsonDepsCmd initScriptFilepath baseCmd =
   Command
@@ -96,8 +96,8 @@ discover dir = context "Gradle" $ do
   found <- context "Finding projects" $ findProjects dir
   pure $ mkProject <$> found
 
--- Run a Gradle command in a specific working directory, while correctly trying
--- Gradle wrappers.
+-- |Run a Gradle command in a specific working directory, while correctly trying
+--Gradle wrappers.
 runGradle :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> (Text -> Command) -> m BL.ByteString
 runGradle dir cmd =
   do
@@ -105,7 +105,7 @@ runGradle dir cmd =
     <||> (walkUpDir dir "gradlew.bat" >>= execThrow dir . cmd . toText)
     <||> execThrow dir (cmd "gradle")
 
--- Search upwards in a directory for the existence of the supplied file.
+-- |Search upwards in a directory for the existence of the supplied file.
 walkUpDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)
 walkUpDir dir filename = do
   relFile <- case parseRelFile $ toString filename of
@@ -132,7 +132,14 @@ walkUpDir dir filename = do
 -- subprojects need to resolve dependency constraints together).
 findProjects :: (Has Exec sig m, Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [GradleProject]
 findProjects = walk' $ \dir _ files -> do
-  case find (\f -> "build.gradle" `isPrefixOf` fileName f) files of
+  let isProjectFile f =
+        any
+          (`isPrefixOf` fileName f)
+          [ "build.gradle"
+          , "settings.gradle"
+          ]
+
+  case find isProjectFile files of
     Nothing -> pure ([], WalkContinue)
     Just buildFile -> do
       projectsStdout <-
