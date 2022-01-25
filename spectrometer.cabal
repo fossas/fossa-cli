@@ -331,6 +331,9 @@ library
     Strategy.Swift.Xcode.Pbxproj
     Strategy.Swift.Xcode.PbxprojParser
     Strategy.SwiftPM
+    Telemetry.Telemetry
+    Telemetry.AsyncQueue
+    Telemetry.Instrument
     Text.URI.Builder
     Types
     VCS.Git
