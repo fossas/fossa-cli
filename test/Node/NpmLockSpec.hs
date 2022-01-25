@@ -13,7 +13,14 @@ import DepTypes (
   VerConstraint (CEq),
  )
 import Effect.ReadFS (readContentsJson)
-import GraphUtil (expectDeps, expectDirect, expectEdges)
+import GraphUtil (
+  expectDeps,
+  expectDeps',
+  expectDirect,
+  expectDirect',
+  expectEdges,
+  expectEdges',
+ )
 import Path (mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Npm.PackageLock (
@@ -178,8 +185,55 @@ packageSeven =
     , dependencyTags = Map.empty
     }
 
+argparseDirect :: Dependency
+argparseDirect =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "argparse"
+    , dependencyVersion = Just $ CEq "1.0.10"
+    , dependencyLocations = ["https://registry.npmjs.org/argparse/-/argparse-1.0.10.tgz"]
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = mempty
+    }
+
+argparseDeep :: Dependency
+argparseDeep =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "argparse"
+    , dependencyVersion = Just $ CEq "2.0.1"
+    , dependencyLocations = ["https://registry.npmjs.org/argparse/-/argparse-2.0.1.tgz"]
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = mempty
+    }
+
+jsyaml :: Dependency
+jsyaml =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "js-yaml"
+    , dependencyVersion = Just $ CEq "4.1.0"
+    , dependencyLocations = ["https://registry.npmjs.org/js-yaml/-/js-yaml-4.1.0.tgz"]
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = mempty
+    }
+
+sprintf :: Dependency
+sprintf =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "sprintf-js"
+    , dependencyVersion = Just $ CEq "1.0.3"
+    , dependencyLocations = ["https://registry.npmjs.org/sprintf-js/-/sprintf-js-1.0.3.tgz"]
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = mempty
+    }
+
 spec :: Spec
 spec = do
+  curdir <- runIO getCurrentDir
+  let testDir = curdir </> $(mkRelDir "test/Node/testdata")
+
   describe "buildGraph" $ do
     it "should produce expected output" $ do
       let graph = buildGraph mockInput (Set.fromList ["packageOne", "packageThree", "packageFive"])
@@ -193,10 +247,19 @@ spec = do
         , (packageFive, packageSix)
         ]
         graph
-  describe "parsing package-json.lock" $ do
-    currentDir <- runIO getCurrentDir
-    let testDir = currentDir </> $(mkRelDir "test/Node/testdata")
 
+    it' "should process nested dependencies" $ do
+      parsed <- readContentsJson (testDir </> $(mkRelFile "nested-deps.json"))
+      let graph = buildGraph parsed (Set.fromList ["argparse", "js-yaml", "sprintf-js"])
+      expectDeps' [argparseDeep, argparseDirect, jsyaml, sprintf] graph
+      expectDirect' [argparseDirect, jsyaml, sprintf] graph
+      expectEdges'
+        [ (jsyaml, argparseDeep)
+        , (argparseDirect, sprintf)
+        ]
+        graph
+
+  describe "parsing package-json.lock" $ do
     it' "Should ignore \"resolved\": <bool> in package-lock.json" $ do
       let packageLock = testDir </> $(mkRelFile "boolean-resolved-package-lock.json")
       NpmPackageJson{packageDependencies = packageDependencies} <- readContentsJson packageLock
