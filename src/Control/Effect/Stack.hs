@@ -22,10 +22,10 @@ import Data.Text (Text)
 --     getStack -- stack is ["foo"] here
 --
 --     context "bar" $ do
---       getStack -- stack is ["foo","bar"] here
+--       getStack -- stack is ["bar","foo"] here
 --
 --     context "baz" $ do
---       getStack -- stack is ["foo","baz"] here
+--       getStack -- stack is ["baz","foo"] here
 --
 --     withEmptyStack . context "quux" $ do
 --       getStack -- stack is ["quux"] here
@@ -39,7 +39,7 @@ data Stack m a where
 context :: Has Stack sig m => Text -> m a -> m a
 context name m = send (Context name m)
 
--- | Get the current scope stack
+-- | Get the current scope stack in FILO order
 getStack :: Has Stack sig m => m [Text]
 getStack = send GetStack
 

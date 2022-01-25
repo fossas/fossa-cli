@@ -181,7 +181,7 @@ renderErrWithStack (ErrWithStack (Stack stack) (SomeErr err)) =
     <> line
     <> case stack of
       [] -> indent 2 "(none)"
-      _ -> indent 2 (vsep (map (pretty . ("- " <>)) (reverse stack)))
+      _ -> indent 2 (vsep (map (pretty . ("- " <>)) stack))
 
 -- FIXME: documentation about which warnings appear and why
 renderSuccess :: [EmittedWarn] -> Maybe (Doc AnsiStyle)

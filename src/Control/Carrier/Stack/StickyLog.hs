@@ -39,7 +39,7 @@ instance (Algebra sig m, Member Stack sig, Member (Lift IO) sig, Member Logger s
       region <- asks ctxRegion
       stack <- getStack
       let chevron = annotate (color Yellow) (pretty (" > " :: String))
-      let path = map pretty (stack <> [txt])
+      let path = map pretty (reverse (txt:stack))
       let formatted = "[" <> annotate (color Green) ("TASK " <> pretty taskId) <> "] " <> hcat (intersperse chevron path)
       Sticky.setSticky' region formatted
       alg (runStickyLogStackC . hdl) (inj thing) ctx
