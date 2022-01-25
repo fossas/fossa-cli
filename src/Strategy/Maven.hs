@@ -10,7 +10,6 @@ import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Control.Effect.Lift (Lift)
-import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (ToJSON)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS)
@@ -23,8 +22,7 @@ import Strategy.Maven.Pom.Closure qualified as PomClosure
 import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), GraphBreadth (..))
 
 discover ::
-  ( MonadIO m
-  , Has (Lift IO) sig m
+  ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has ReadFS sig m
   ) =>

@@ -18,7 +18,9 @@ module Strategy.Gradle (
   GradleProject,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..), AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (allowedGradleConfigs))
+import Control.Algebra (Has)
 import Control.Carrier.Reader (Reader)
 import Control.Effect.Diagnostics (Diagnostics, Has, context, fatal, recover, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift, sendIO)
@@ -240,8 +242,8 @@ getDeps ::
   , Has Exec sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
-  , Has (Reader AnalyzeExperimentalPreferences) sig m
   , Has Logger sig m
+  , Has (Reader ExperimentalAnalyzeConfig) sig m
   ) =>
   FoundTargets ->
   GradleProject ->
@@ -266,8 +268,8 @@ analyze ::
   , Has Exec sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
-  , Has (Reader AnalyzeExperimentalPreferences) sig m
   , Has Logger sig m
+  , Has (Reader ExperimentalAnalyzeConfig) sig m
   ) =>
   FoundTargets ->
   Path Abs Dir ->
@@ -284,7 +286,7 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
   stdout <- context "running gradle script" $ runGradle dir cmd
 
   onlyConfigurations <- do
-    configs <- asks gradleOnlyConfigsAllowed
+    configs <- asks allowedGradleConfigs
     pure $ maybe Set.empty (Set.map ConfigName) configs
 
   let text = decodeUtf8 $ BL.toStrict stdout

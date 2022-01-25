@@ -1,50 +1,43 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.VPS.AOSPNotice (
   aospNoticeMain,
 ) where
 
-import App.Fossa.EmbeddedBinary
-import App.Fossa.ProjectInference
-import App.Fossa.VPS.Scan.RunWiggins
-import App.Fossa.VPS.Types
-import App.Types (BaseDir (..), OverrideProject)
-import Control.Carrier.Diagnostics
-import Control.Carrier.Stack (runStack)
+import App.Fossa.Config.VPS (AOSPNoticeConfig (..))
+import App.Fossa.EmbeddedBinary (BinaryPaths, withWigginsBinary)
+import App.Fossa.VPS.Scan.RunWiggins (
+  WigginsOpts,
+  execWiggins,
+  generateWigginsAOSPNoticeOpts,
+ )
+import App.Types (BaseDir (..))
+import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Effect.Lift (Lift)
 import Data.Text (Text)
-import Effect.Exec (Exec, runExecIO)
-import Effect.Logger
-import Effect.ReadFS (ReadFS, runReadFSIO)
-import Fossa.API.Types (ApiOpts (..))
-import Path (Abs, Dir, Path)
+import Effect.Exec (Exec)
+import Effect.Logger (Logger, Pretty (pretty), logInfo)
 
-aospNoticeMain :: BaseDir -> Severity -> OverrideProject -> NinjaScanID -> NinjaFilePaths -> ApiOpts -> IO ()
-aospNoticeMain (BaseDir basedir) logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts = withDefaultLogger logSeverity $ do
-  runStack . logWithExit_ . runExecIO . runReadFSIO . withWigginsBinary $ aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts
-
------ main logic
-
-aospNoticeGenerate ::
+aospNoticeMain ::
   ( Has Diagnostics sig m
   , Has Logger sig m
   , Has (Lift IO) sig m
   , Has Exec sig m
-  , Has ReadFS sig m
   ) =>
-  Path Abs Dir ->
-  Severity ->
-  OverrideProject ->
-  NinjaScanID ->
-  NinjaFilePaths ->
-  ApiOpts ->
-  BinaryPaths ->
+  AOSPNoticeConfig ->
   m ()
-aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts binaryPaths = do
-  projectRevision <- mergeOverride overrideProject <$> (inferProjectFromVCS basedir <||> inferProjectDefault basedir)
-
-  let wigginsOpts = generateWigginsAOSPNoticeOpts basedir logSeverity apiOpts projectRevision ninjaScanId ninjaFilePaths
+aospNoticeMain AOSPNoticeConfig{..} = withWigginsBinary $ \binaryPaths -> do
+  let wigginsOpts =
+        generateWigginsAOSPNoticeOpts
+          (unBaseDir aospBaseDir)
+          aospSeverity
+          aospApiOpts
+          aospRevision
+          ninjaScanId
+          ninjaFileList
 
   logInfo "Running VPS plugin: generating AOSP notice files"
-  stdout <- runExecIO $ runWiggins binaryPaths wigginsOpts
+  stdout <- runWiggins binaryPaths wigginsOpts
   logInfo $ pretty stdout
 
 runWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text

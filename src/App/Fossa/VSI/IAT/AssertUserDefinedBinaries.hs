@@ -1,30 +1,38 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.VSI.IAT.AssertUserDefinedBinaries (
-  assertUserDefinedBinariesMain,
+  linkBinsSubCommand,
 ) where
 
+import App.Fossa.Config.LinkUserBinaries (
+  LinkUserBinsConfig (..),
+  LinkUserBinsOpts,
+  mkSubCommand,
+ )
 import App.Fossa.FossaAPIV1 qualified as Fossa
+import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.Fingerprint (fingerprintContentsRaw)
-import App.Fossa.VSI.IAT.Types (UserDefinedAssertionMeta)
 import App.Types (BaseDir (..))
 import Control.Algebra (Has)
-import Control.Carrier.Diagnostics (Diagnostics, logWithExit_)
-import Control.Carrier.Stack (runStack)
+import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
-import Effect.Logger (Logger, Severity, logInfo, withDefaultLogger)
-import Effect.ReadFS (ReadFS, runReadFSIO)
-import Fossa.API.Types (ApiOpts)
-import Path (Abs, Dir, Path)
+import Effect.Logger (Logger, logInfo)
+import Effect.ReadFS (ReadFS)
 
-assertUserDefinedBinariesMain :: Severity -> BaseDir -> ApiOpts -> UserDefinedAssertionMeta -> IO ()
-assertUserDefinedBinariesMain logSeverity (BaseDir dir) apiOpts assertion = runStack . withDefaultLogger logSeverity . logWithExit_ . runReadFSIO $ do
-  assertUserDefinedBinaries dir apiOpts assertion
+linkBinsSubCommand :: SubCommand LinkUserBinsOpts LinkUserBinsConfig
+linkBinsSubCommand = mkSubCommand assertUserDefinedBinaries
 
-assertUserDefinedBinaries :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> UserDefinedAssertionMeta -> m ()
-assertUserDefinedBinaries dir apiOpts assertionMeta = do
+assertUserDefinedBinaries ::
+  ( Has Diagnostics sig m
+  , Has ReadFS sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  ) =>
+  LinkUserBinsConfig ->
+  m ()
+assertUserDefinedBinaries LinkUserBinsConfig{..} = do
   logInfo "Fingerprinting directory contents"
-  fingerprints <- fingerprintContentsRaw dir
+  fingerprints <- fingerprintContentsRaw $ unBaseDir baseDir
 
   logInfo "Uploading assertion to FOSSA"
-  Fossa.assertUserDefinedBinaries apiOpts assertionMeta fingerprints
-
-  pure ()
+  Fossa.assertUserDefinedBinaries apiOpts binMetadata fingerprints

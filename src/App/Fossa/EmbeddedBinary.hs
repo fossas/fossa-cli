@@ -12,21 +12,52 @@ module App.Fossa.EmbeddedBinary (
   withSyftBinary,
   allBins,
   PackagedBinary (..),
+  dumpSubCommand,
 ) where
 
+import App.Fossa.Config.DumpBinaries (
+  DumpBinsConfig (..),
+  DumpBinsOpts,
+  mkSubCommand,
+ )
+import App.Fossa.Subcommand (SubCommand)
 import Control.Effect.Exception (bracket)
 import Control.Effect.Lift (Has, Lift, sendIO)
-import Control.Monad.IO.Class
 import Data.ByteString (ByteString, writeFile)
-import Data.FileEmbed.Extra
-import Path
-import Path.IO
+import Data.FileEmbed.Extra (embedFileIfExists)
+import Data.Foldable (for_)
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  fromAbsFile,
+  mkRelDir,
+  mkRelFile,
+  parent,
+  (</>),
+ )
+import Path.IO (
+  Permissions (executable),
+  ensureDir,
+  getPermissions,
+  getTempDir,
+  removeDirRecur,
+  setPermissions,
+ )
 import Prelude hiding (writeFile)
 
 data PackagedBinary
   = Syft
   | Wiggins
   deriving (Show, Eq, Enum, Bounded)
+
+dumpSubCommand :: SubCommand DumpBinsOpts DumpBinsConfig
+dumpSubCommand = mkSubCommand dumpBinsMain
+
+dumpBinsMain :: Has (Lift IO) sig m => DumpBinsConfig -> m ()
+dumpBinsMain (DumpBinsConfig dir) = for_ allBins $ dumpEmbeddedBinary dir
 
 allBins :: [PackagedBinary]
 allBins = enumFromTo minBound maxBound
@@ -41,7 +72,6 @@ toExecutablePath BinaryPaths{..} = binaryPathContainer </> binaryFilePath
 
 withSyftBinary ::
   ( Has (Lift IO) sig m
-  , MonadIO m
   ) =>
   (BinaryPaths -> m c) ->
   m c
@@ -49,7 +79,6 @@ withSyftBinary = withEmbeddedBinary Syft
 
 withWigginsBinary ::
   ( Has (Lift IO) sig m
-  , MonadIO m
   ) =>
   (BinaryPaths -> m c) ->
   m c
@@ -57,23 +86,22 @@ withWigginsBinary = withEmbeddedBinary Wiggins
 
 withEmbeddedBinary ::
   ( Has (Lift IO) sig m
-  , MonadIO m
   ) =>
   PackagedBinary ->
   (BinaryPaths -> m c) ->
   m c
 withEmbeddedBinary bin = bracket (extractEmbeddedBinary bin) cleanupExtractedBinaries
 
-cleanupExtractedBinaries :: (MonadIO m) => BinaryPaths -> m ()
-cleanupExtractedBinaries (BinaryPaths binPath _) = removeDirRecur binPath
+cleanupExtractedBinaries :: (Has (Lift IO) sig m) => BinaryPaths -> m ()
+cleanupExtractedBinaries (BinaryPaths binPath _) = sendIO $ removeDirRecur binPath
 
-extractEmbeddedBinary :: (MonadIO m) => PackagedBinary -> m BinaryPaths
+extractEmbeddedBinary :: (Has (Lift IO) sig m) => PackagedBinary -> m BinaryPaths
 extractEmbeddedBinary bin = do
-  container <- extractDir
+  container <- sendIO extractDir
   -- Determine paths to which we should write the binaries
   let binPath = extractedPath bin
   -- Write the binary
-  liftIO $ writeBinary (container </> binPath) bin
+  sendIO $ writeBinary (container </> binPath) bin
   -- Return the paths
   pure (BinaryPaths container binPath)
 
@@ -100,9 +128,9 @@ extractedPath bin = case bin of
   -- Users don't know what "wiggins" is, but they explicitly enable the VSI plugin, so this is more intuitive.
   Wiggins -> $(mkRelFile "vsi-plugin")
 
-extractDir :: MonadIO m => m (Path Abs Dir)
+extractDir :: Has (Lift IO) sig m => m (Path Abs Dir)
 extractDir = do
-  wd <- liftIO getTempDir
+  wd <- sendIO getTempDir
   pure (wd </> $(mkRelDir "fossa-vendor"))
 
 makeExecutable :: Path Abs File -> IO ()
