@@ -18,6 +18,8 @@ module Control.Effect.Diagnostics (
 
   -- * Diagnostic result types
   FailureBundle (..),
+  Validator,
+  Validation (..),
   renderFailureBundle,
   renderSomeDiagnostic,
 
@@ -51,15 +53,26 @@ import Control.Exception.Extra (safeCatch)
 import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.Bifunctor (first)
 import Data.List (intersperse)
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Prettyprinter
-import Prettyprinter.Render.Terminal
+import Prettyprinter (
+  Doc,
+  Pretty (pretty),
+  annotate,
+  indent,
+  line,
+  vsep,
+ )
+import Prettyprinter.Render.Terminal (
+  AnsiStyle,
+  Color (Cyan, Yellow),
+  color,
+ )
 import Validation (Validation (Failure, Success), eitherToValidation)
-import Prelude
 
 data Diagnostics m k where
   Fatal :: ToDiagnostic diag => diag -> Diagnostics m a
@@ -129,7 +142,9 @@ recover' = send . Recover'
 errorBoundary :: Has Diagnostics sig m => m a -> m (Either FailureBundle a)
 errorBoundary = send . ErrorBoundary
 
-validationBoundary :: Has Diagnostics sig m => m a -> m (Validation (NE.NonEmpty FailureBundle) a)
+type Validator = Validation (NonEmpty FailureBundle)
+
+validationBoundary :: Has Diagnostics sig m => m a -> m (Validator a)
 validationBoundary act = eitherToValidation . first (NE.:| []) <$> errorBoundary act
 
 runValidation :: Has Diagnostics sig m => Validation (NE.NonEmpty FailureBundle) a -> m a

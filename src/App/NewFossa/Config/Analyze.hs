@@ -15,39 +15,33 @@ module App.NewFossa.Config.Analyze (
   mkSubCommand,
 ) where
 
-import App.Fossa.ProjectInference (inferProjectDefault, inferProjectFromVCS, mergeOverride)
 import App.Fossa.VSI.Types qualified as VSI
 import App.NewFossa.Config.Common (
-  GlobalOpts (GlobalOpts, optAPIKey, optBaseUrl, optConfig, optDebug, optProjectName, optProjectRevision),
+  GlobalOpts (..),
   baseDirArg,
+  collectBaseDir,
+  collectRevisionData,
   filterOpt,
   globalOpts,
   metadataOpts,
   pathOpt,
   targetOpt,
+  validateApiKey,
+  validateDir,
  )
 import App.NewFossa.ConfigFile (
-  ConfigFile (
-    configApiKey,
-    configExperimental,
-    configPaths,
-    configProject,
-    configRevision,
-    configTargets
-  ),
-  ConfigPaths (pathsExclude, pathsOnly),
-  ConfigProject (configProjID),
-  ConfigRevision (configBranch, configCommit),
-  ConfigTargets (targetsExclude, targetsOnly),
-  ExperimentalConfigs (gradle),
-  ExperimentalGradleConfigs (gradleConfigsOnly),
+  ConfigFile (..),
+  ConfigPaths (..),
+  ConfigTargets (..),
+  ExperimentalConfigs (..),
+  ExperimentalGradleConfigs (..),
   mergeFileCmdMetadata,
   resolveConfigFile,
  )
-import App.NewFossa.EnvironmentVars (EnvVars (EnvVars, envApiKey))
+import App.NewFossa.EnvironmentVars (EnvVars)
 import App.NewFossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (
-  BaseDir (BaseDir),
+  BaseDir,
   MonorepoAnalysisOpts (MonorepoAnalysisOpts),
   OverrideProject (OverrideProject),
   ProjectMetadata,
@@ -55,17 +49,13 @@ import App.Types (
  )
 import Control.Effect.Diagnostics (
   Diagnostics,
-  FailureBundle,
   Has,
-  fatalText,
-  fromMaybeText,
+  Validator,
   runValidation,
   validationBoundary,
-  (<||>),
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Flag (Flag, flagOpt)
-import Data.List.NonEmpty (NonEmpty)
 import Data.Monoid.Extra (isMempty)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -79,8 +69,8 @@ import Effect.Exec (
   Exec,
  )
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn)
-import Effect.ReadFS (ReadFS, doesDirExist)
-import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts))
+import Effect.ReadFS (ReadFS)
+import Fossa.API.Types (ApiOpts (ApiOpts))
 import Options.Applicative (
   Alternative (many),
   InfoMod,
@@ -96,18 +86,20 @@ import Options.Applicative (
   short,
   strOption,
   switch,
-  (<|>),
  )
 import Path (Abs, Dir, Path, Rel)
-import Path.IO (getCurrentDir, resolveDir')
+import Path.IO (getCurrentDir)
 import Types (TargetFilter)
-import Validation (Validation (Failure, Success))
 
 -- CLI flags, for use with 'Data.Flag'
 data BinaryDiscovery = BinaryDiscovery
+
 data IncludeAll = IncludeAll
+
 data JsonOutput = JsonOutput
+
 data UnpackArchives = UnpackArchives
+
 data VSIAnalysis = VSIAnalysis
 
 data ScanDestination
@@ -219,8 +211,6 @@ loadConfig AnalyzeCliOpts{globals = GlobalOpts{optConfig}} = do
   configRelBase <- sendIO getCurrentDir
   resolveConfigFile configRelBase optConfig
 
-type Validator = Validation (NonEmpty FailureBundle)
-
 mergeOpts ::
   ( Has Diagnostics sig m
   , Has Exec sig m
@@ -233,10 +223,12 @@ mergeOpts ::
   AnalyzeCliOpts ->
   m AnalyzeConfig
 mergeOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
-  basedir <- collectBaseDir cliOpts
+  basedir <- collectBaseDir analyzeBaseDir
   let logSeverity = if optDebug globals then SevDebug else SevInfo
   scanDestination <- collectScanDestination maybeConfig envvars cliOpts
-  revisionData <- collectRevisionData basedir maybeConfig cliOpts
+  revisionData <-
+    collectRevisionData basedir maybeConfig $
+      OverrideProject (optProjectName globals) (optProjectRevision globals) (analyzeBranch)
   modeOpts <- collectModeOptions cliOpts
   filters <- collectFilters maybeConfig cliOpts
   let experimentalCfgs = collectExperimental maybeConfig
@@ -296,32 +288,6 @@ collectExperimental maybeCfg =
       gradleConfigsOnly
       (maybeCfg >>= configExperimental >>= gradle)
 
-collectRevisionData ::
-  ( Has Diagnostics sig m
-  , Has Exec sig m
-  , Has (Lift IO) sig m
-  , Has ReadFS sig m
-  ) =>
-  Validator BaseDir ->
-  Maybe ConfigFile ->
-  AnalyzeCliOpts ->
-  m (Validator ProjectRevision)
-collectRevisionData (Failure _) _ _ = validationBoundary $ fatalText "Cannot perform revision inference without a valid base directory"
-collectRevisionData (Success (BaseDir basedir)) maybeConfig AnalyzeCliOpts{..} = validationBoundary $ do
-  let override = OverrideProject projectName projectRevision projectBranch
-
-      projectName :: Maybe Text
-      projectName = optProjectName globals <|> (maybeConfig >>= configProject >>= configProjID)
-
-      projectRevision :: Maybe Text
-      projectRevision = optProjectRevision globals <|> (maybeConfig >>= configRevision >>= configCommit)
-
-      projectBranch :: Maybe Text
-      projectBranch = analyzeBranch <|> (maybeConfig >>= configRevision >>= configBranch)
-
-  inferred <- inferProjectFromVCS basedir <||> inferProjectDefault basedir
-  pure $ mergeOverride override inferred
-
 collectScanDestination ::
   ( Has Diagnostics sig m
   ) =>
@@ -339,48 +305,6 @@ collectScanDestination maybeCfgFile envvars AnalyzeCliOpts{..} =
             apiOpts = ApiOpts baseuri apiKey
             metaMerged = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
         pure $ UploadScan apiOpts metaMerged
-
-validateApiKey ::
-  ( Has Diagnostics sig m
-  ) =>
-  Maybe ConfigFile ->
-  EnvVars ->
-  GlobalOpts ->
-  m ApiKey
-validateApiKey maybeConfigFile EnvVars{envApiKey} GlobalOpts{optAPIKey} = do
-  textkey <-
-    fromMaybeText "A FOSSA API key is required to run this command" $
-      -- API key significance is strictly defined:
-      -- 1. Cmd-line option (rarely used, not encouraged)
-      -- 2. Config file (maybe used)
-      -- 3. Environment Variable (most common)
-      optAPIKey
-        <|> (maybeConfigFile >>= configApiKey)
-        <|> envApiKey
-  pure $ ApiKey textkey
-
-collectBaseDir ::
-  ( Has Diagnostics sig m
-  , Has (Lift IO) sig m
-  , Has ReadFS sig m
-  ) =>
-  AnalyzeCliOpts ->
-  m (Validator BaseDir)
-collectBaseDir AnalyzeCliOpts{analyzeBaseDir} = validationBoundary $ BaseDir <$> validateDir analyzeBaseDir
-
-validateDir ::
-  ( Has Diagnostics sig m
-  , Has (Lift IO) sig m
-  , Has ReadFS sig m
-  ) =>
-  FilePath ->
-  m (Path Abs Dir)
-validateDir fp = do
-  dir <- sendIO $ resolveDir' fp
-  exists <- doesDirExist dir
-  if exists
-    then pure dir
-    else fatalText $ "Directory does not exist: " <> toText dir
 
 collectModeOptions ::
   ( Has Diagnostics sig m

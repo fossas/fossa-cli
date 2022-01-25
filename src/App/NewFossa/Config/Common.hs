@@ -1,23 +1,62 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.NewFossa.Config.Common (
+  -- * CLI Parsers
+  GlobalOpts (..),
+  globalOpts,
   releaseGroupMetadataOpts,
   filterOpt,
   pathOpt,
   targetOpt,
   baseDirArg,
-  GlobalOpts (..),
-  globalOpts,
   metadataOpts,
+
+  -- * CLI Validators
+  validateDir,
+  validateApiKey,
+
+  -- * CLI Collectors
+  collectBaseDir,
+  collectRevisionData,
 ) where
 
+import App.Fossa.ProjectInference (
+  inferProjectDefault,
+  inferProjectFromVCS,
+  mergeOverride,
+ )
+import App.NewFossa.ConfigFile (
+  ConfigFile (configApiKey, configProject, configRevision),
+  ConfigProject (configProjID),
+  ConfigRevision (configBranch, configCommit),
+ )
+import App.NewFossa.EnvironmentVars (EnvVars (..))
 import App.OptionExtensions (uriOption)
 import App.Types (
+  BaseDir (BaseDir),
+  OverrideProject (..),
   ProjectMetadata (ProjectMetadata),
+  ProjectRevision,
   ReleaseGroupMetadata (ReleaseGroupMetadata),
  )
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  Validation (Failure, Success),
+  Validator,
+  fatalText,
+  fromMaybeText,
+  validationBoundary,
+  (<||>),
+ )
+import Control.Effect.Lift (Lift, sendIO)
 import Data.Bifunctor (Bifunctor (first))
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
 import Discovery.Filters (targetFilterParser)
+import Effect.Exec (Exec)
+import Effect.ReadFS (ReadFS, doesDirExist)
+import Fossa.API.Types (ApiKey (ApiKey))
 import Options.Applicative (
   Parser,
   argument,
@@ -32,8 +71,10 @@ import Options.Applicative (
   strOption,
   switch,
   value,
+  (<|>),
  )
-import Path (Dir, Path, Rel, parseRelDir)
+import Path (Abs, Dir, Path, Rel, parseRelDir)
+import Path.IO (resolveDir')
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI)
 import Types (TargetFilter)
@@ -70,6 +111,74 @@ targetOpt = first errorBundlePretty . runParser targetFilterParser "(Command-lin
 baseDirArg :: Parser String
 baseDirArg = argument str (metavar "DIR" <> help "Set the base directory for scanning (default: current directory)" <> value ".")
 
+collectBaseDir ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has ReadFS sig m
+  ) =>
+  FilePath ->
+  m (Validator BaseDir)
+collectBaseDir baseDirFp = validationBoundary $ BaseDir <$> validateDir baseDirFp
+
+validateDir ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has ReadFS sig m
+  ) =>
+  FilePath ->
+  m (Path Abs Dir)
+validateDir fp = do
+  dir <- sendIO $ resolveDir' fp
+  exists <- doesDirExist dir
+  if exists
+    then pure dir
+    else fatalText $ "Directory does not exist: " <> toText dir
+
+validateApiKey ::
+  ( Has Diagnostics sig m
+  ) =>
+  Maybe ConfigFile ->
+  EnvVars ->
+  GlobalOpts ->
+  m ApiKey
+validateApiKey maybeConfigFile EnvVars{envApiKey} GlobalOpts{optAPIKey} = do
+  textkey <-
+    fromMaybeText "A FOSSA API key is required to run this command" $
+      -- API key significance is strictly defined:
+      -- 1. Cmd-line option (rarely used, not encouraged)
+      -- 2. Config file (maybe used)
+      -- 3. Environment Variable (most common)
+      optAPIKey
+        <|> (maybeConfigFile >>= configApiKey)
+        <|> envApiKey
+  pure $ ApiKey textkey
+
+collectRevisionData ::
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has (Lift IO) sig m
+  , Has ReadFS sig m
+  ) =>
+  Validator BaseDir ->
+  Maybe ConfigFile ->
+  OverrideProject ->
+  m (Validator ProjectRevision)
+collectRevisionData (Failure _) _ _ = validationBoundary $ fatalText "Cannot perform revision inference without a valid base directory"
+collectRevisionData (Success (BaseDir basedir)) maybeConfig OverrideProject{..} = validationBoundary $ do
+  let override = OverrideProject projectName projectRevision projectBranch
+
+      projectName :: Maybe Text
+      projectName = overrideName <|> (maybeConfig >>= configProject >>= configProjID)
+
+      projectRevision :: Maybe Text
+      projectRevision = overrideRevision <|> (maybeConfig >>= configRevision >>= configCommit)
+
+      projectBranch :: Maybe Text
+      projectBranch = overrideBranch <|> (maybeConfig >>= configRevision >>= configBranch)
+
+  inferred <- inferProjectFromVCS basedir <||> inferProjectDefault basedir
+  pure $ mergeOverride override inferred
+
 data GlobalOpts = GlobalOpts
   { optDebug :: Bool
   , optBaseUrl :: Maybe URI
@@ -78,6 +187,7 @@ data GlobalOpts = GlobalOpts
   , optAPIKey :: Maybe Text
   , optConfig :: Maybe FilePath
   }
+  deriving (Eq, Ord, Show)
 
 globalOpts :: Parser GlobalOpts
 globalOpts =

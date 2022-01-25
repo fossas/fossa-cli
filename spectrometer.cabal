@@ -187,6 +187,7 @@ library
     App.Fossa.VSIDeps
     App.NewFossa.Config.Analyze
     App.NewFossa.Config.Common
+    App.NewFossa.Config.Test
     App.NewFossa.ConfigFile
     App.NewFossa.EnvironmentVars
     App.NewFossa.Main
@@ -226,6 +227,7 @@ library
     Control.Effect.StickyLogger
     Control.Effect.TaskPool
     Control.Exception.Extra
+    Control.Timeout
     Data.Aeson.Extra
     Data.Conduit.Extra
     Data.FileEmbed.Extra
