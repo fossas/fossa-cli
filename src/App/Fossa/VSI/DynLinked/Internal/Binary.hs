@@ -12,13 +12,13 @@ import Data.Char (isSpace)
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.String.Conversion (toText)
+import Data.String.Conversion (ToString (toString), toText)
 import Data.Text (Text)
 import Data.Void (Void)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
 import Path (Abs, File, Path, parent, parseAbsFile)
 import System.Info qualified as SysInfo
-import Text.Megaparsec (Parsec, between, empty, eof, many, satisfy, try, (<|>))
+import Text.Megaparsec (Parsec, between, empty, eof, many, takeWhile1P, try, (<|>))
 import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 
@@ -116,7 +116,7 @@ linePrefix = sc
 
 -- | We don't care about the memory address, so just consume it.
 printedHex :: Parser ()
-printedHex = void . lexeme . between (char '(') (char ')') $ many (satisfy (/= ')'))
+printedHex = void . lexeme . between (char '(') (char ')') $ takeWhile1P Nothing (/= ')')
 
 -- | Consume spaces.
 sc :: Parser ()
@@ -133,7 +133,7 @@ symbol = L.symbol sc
 -- | Collect a contiguous list of non-space characters into a @Text@, then consume any trailing spaces.
 -- Requires that a space trails the identifier.
 ident :: Parser Text
-ident = lexeme $ toText <$> many (satisfy $ not . isSpace)
+ident = lexeme $ toText <$> takeWhile1P Nothing (not . isSpace)
 
 -- | Parse a @Path Abs File@, then consume any trailing spaces.
 -- We don't support spaces in the file path due to C library naming conventions.
@@ -146,7 +146,7 @@ ident = lexeme $ toText <$> many (satisfy $ not . isSpace)
 -- fields in its output- if this becomes a problem we'll most likely need to reach for reading the ELF sections ourselves.
 path :: Parser (Path Abs File)
 path = lexeme $ do
-  filepath <- many (satisfy $ not . isSpace)
+  filepath <- toString <$> takeWhile1P Nothing (not . isSpace)
   case parseAbsFile filepath of
     Left err -> fail (show err)
     Right a -> pure a
