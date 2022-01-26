@@ -24,7 +24,15 @@ import Types (DiscoveredProjectType (VsiProjectType), GraphBreadth (Complete))
 
 -- | Resolves a set of dynamic dependencies into a @SourceUnit@.
 -- Any @DynamicDependency@ that isn't resolved to a Linux package dependency is converted to an unknown binary dependency.
-toSourceUnit :: (Has (Lift IO) sig m, Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Set DynamicDependency -> m SourceUnit
+toSourceUnit ::
+  ( Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  , Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  Set DynamicDependency ->
+  m SourceUnit
 toSourceUnit root dependencies = do
   let (resolved, unresolved) = sortResolvedUnresolved dependencies
   binaries <- traverse (analyzeSingleBinary root) unresolved
