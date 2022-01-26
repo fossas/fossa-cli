@@ -12,7 +12,7 @@ import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Data.Set (Set, toList)
-import Data.Text (intercalate)
+import Data.Text (Text, intercalate)
 import DepTypes (DepType (LinuxAPK, LinuxDEB, LinuxRPM), Dependency (..), VerConstraint (CEq))
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
@@ -50,6 +50,7 @@ toDependency ResolvedLinuxPackage{..} = case resolvedLinuxPackageManager of
   LinuxPackageManagerRPM -> renderRPM resolvedLinuxPackageMetadata
   LinuxPackageManagerAPK -> renderAPK resolvedLinuxPackageMetadata
   where
+    render :: DepType -> [Text] -> [Text] -> Dependency
     render fetcher projectParts revisionParts =
       Dependency
         { dependencyType = fetcher
@@ -59,22 +60,32 @@ toDependency ResolvedLinuxPackage{..} = case resolvedLinuxPackageManager of
         , dependencyEnvironments = mempty
         , dependencyTags = mempty
         }
+
+    fromParts :: [Text] -> Text
     fromParts = intercalate "#"
+
+    renderDEB :: LinuxPackageMetadata -> Dependency
     renderDEB LinuxPackageMetadata{..} =
       render
         LinuxDEB
         [linuxPackageID, linuxPackageDistro, linuxPackageDistroRelease]
         [linuxPackageArch, linuxPackageRevision]
+
+    renderRPM :: LinuxPackageMetadata -> Dependency
     renderRPM LinuxPackageMetadata{..} =
       render
         LinuxRPM
         [linuxPackageID, linuxPackageDistro, linuxPackageDistroRelease]
         [linuxPackageArch, epoch <> linuxPackageRevision]
+
+    renderAPK :: LinuxPackageMetadata -> Dependency
     renderAPK LinuxPackageMetadata{..} =
       render
         LinuxAPK
         [linuxPackageID, linuxPackageDistro, linuxPackageDistroRelease]
         [linuxPackageArch, linuxPackageRevision]
+
+    epoch :: Text
     epoch = maybe "" (<> ":") $ linuxPackageDistroEpoch resolvedLinuxPackageMetadata
 
 -- | Sort @Set DynamicDependency@ into two lists: "resolved", and "unresolved", in a single pass.
