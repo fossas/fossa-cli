@@ -2,6 +2,7 @@
 
 module App.Fossa.VSI.DynLinked.Util (
   hasSetUID,
+  runningLinux,
 ) where
 
 import Path (File, Path)
@@ -21,6 +22,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Data.Bits ((.&.))
 import Path qualified as P
 import System.Posix.Files (fileMode, getFileStatus, setUserIDMode)
+import qualified System.Info as SysInfo
 
 -- | Test whether the file has a `setuid` bit.
 hasSetUID :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path t File -> m Bool
@@ -29,3 +31,6 @@ hasSetUID file = do
   pure $ fileMode stat .&. setUserIDMode /= 0
 
 #endif
+
+runningLinux :: Bool
+runningLinux = SysInfo.os == "linux"
