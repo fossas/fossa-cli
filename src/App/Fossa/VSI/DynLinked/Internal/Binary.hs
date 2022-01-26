@@ -124,6 +124,14 @@ ident :: Parser Text
 ident = lexeme $ toText <$> many (satisfy $ not . isSpace)
 
 -- | Parse a @Path Abs File@, then consume any trailing spaces.
+-- We don't support spaces in the file path due to C library naming conventions.
+-- From `https://amir.rachum.com/blog/2016/09/17/shared-libraries`:
+--
+-- >  Notice that we called the shared library librandom.so.
+-- >  This is not arbitrary - shared libraries should be called lib<name>.so for them to link properly later on.
+--
+-- Working around this for specifically @ldd@ parsing is difficult as well considering @ldd@ uses spaces to separate
+-- fields in its output- if this becomes a problem we'll most likely need to reach for reading the ELF sections ourselves.
 path :: Parser (Path Abs File)
 path = lexeme $ do
   filepath <- many (satisfy $ not . isSpace)
