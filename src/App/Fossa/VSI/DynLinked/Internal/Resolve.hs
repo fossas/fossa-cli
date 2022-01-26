@@ -97,9 +97,6 @@ toDependency ResolvedLinuxPackage{..} = case resolvedLinuxPackageManager of
 -- Whether a dependency is "resolved" is predicated on whether its @dynamicDependencyResolved@ is not @Nothing@.
 -- Dependencies thus sorted are unwrapped into more specific types based on the needs of downstream functions
 -- converting this set of dependencies into a @SourceUnit@.
---
--- This function reverses the order of dependencies for performance reasons,
--- but dependency order isn't significant so we don't reverse it back.
 sortResolvedUnresolved :: Set DynamicDependency -> ([ResolvedLinuxPackage], [Path Abs File])
 sortResolvedUnresolved = partitionEithers . map forkEither . toList
   where
