@@ -16,7 +16,7 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
-import Path (Abs, File, Path, parent, parseAbsFile, toFilePath)
+import Path (Abs, File, Path, parent, parseAbsFile)
 import System.Info qualified as SysInfo
 import Text.Megaparsec (Parsec, between, empty, eof, many, satisfy, try, (<|>))
 import Text.Megaparsec.Char (char, space1)
@@ -26,9 +26,17 @@ import Text.Megaparsec.Char.Lexer qualified as L
 -- This is currently a stub for non-linux targets: on these systems an empty set is reported.
 dynamicLinkedDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs File -> m (Set (Path Abs File))
 dynamicLinkedDependencies file | SysInfo.os == "linux" = do
-  deps <- execParser lddParseLocalDependencies (parent file) $ Command "ldd" [toText $ toFilePath file] Never
+  deps <- execParser lddParseLocalDependencies (parent file) $ lddCommand file
   pure . Set.fromList $ map localDependencyPath deps
 dynamicLinkedDependencies _ = pure Set.empty
+
+lddCommand :: Path Abs File -> Command
+lddCommand binaryPath =
+  Command
+    { cmdName = "ldd"
+    , cmdArgs = [toText binaryPath]
+    , cmdAllowErr = Never
+    }
 
 type Parser = Parsec Void Text
 
