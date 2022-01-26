@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 #ifndef mingw32_HOST_OS
 {-# LANGUAGE TemplateHaskell #-}
@@ -30,6 +31,7 @@ import Data.Set qualified as Set
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Effect.Exec (runExecIO)
 import qualified System.Info as SysInfo
+import Text.RawString.QQ (r)
 
 spec :: Hspec.Spec
 spec = do
@@ -72,13 +74,20 @@ singleLine :: Text
 singleLine = "libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)"
 
 singleLineMoreSpaces :: Text
-singleLineMoreSpaces = "\t\tlibc.so.6\t\t=>\t\t/lib/x86_64-linux-gnu/libc.so.6\t\t(0x00007fbea9a88000)\t\t"
+singleLineMoreSpaces = "    libc.so.6   =>    /lib/x86_64-linux-gnu/libc.so.6    (0x00007fbea9a88000)    "
 
 singleLineExpected :: Maybe Binary.LocalDependency
 singleLineExpected = Just $ Binary.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")
 
+-- multipleLine :: Text
+-- multipleLine = "libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)\n\tlibc2.so.6 => /lib/x86_64-linux-gnu/libc2.so.6 (0x00007fbea9a88000)"
+
 multipleLine :: Text
-multipleLine = "libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)\n\tlibc2.so.6 => /lib/x86_64-linux-gnu/libc2.so.6 (0x00007fbea9a88000)"
+multipleLine =
+  [r|  libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)
+       libc2.so.6 => /lib/x86_64-linux-gnu/libc2.so.6 (0x00007fbea9a88000)
+  |]
+
 
 multipleLineExpected :: [Binary.LocalDependency]
 multipleLineExpected =
@@ -87,22 +96,36 @@ multipleLineExpected =
   ]
 
 syscallPresent :: Text
-syscallPresent = "linux-vdso.so.1 =>  (0x00007ffc28d59000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)"
+syscallPresent =
+  [r|  linux-vdso.so.1 =>  (0x00007ffc28d59000)
+       libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)
+  |]
 
 syscallPresentExpected :: [Binary.LocalDependency]
 syscallPresentExpected = [Binary.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
 
 linkerPresent :: Text
-linkerPresent = "/lib64/ld-linux-x86-64.so.2 (0x00007f4232cc1000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)"
+linkerPresent =
+  [r|  /lib64/ld-linux-x86-64.so.2 (0x00007f4232cc1000)
+       libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)
+  |]
 
 linkerPresentExpected :: [Binary.LocalDependency]
 linkerPresentExpected = [Binary.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
 
 realOutputUbuntu :: Text
-realOutputUbuntu = "linux-vdso.so.1 =>  (0x00007ffc28d59000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007f4232cc1000)"
+realOutputUbuntu =
+  [r|  linux-vdso.so.1 =>  (0x00007ffc28d59000)
+       libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)
+       /lib64/ld-linux-x86-64.so.2 (0x00007f4232cc1000)
+  |]
+
 
 realOutputAlpine :: Text
-realOutputAlpine = "/lib/ld-musl-x86_64.so.1 (0x7f2ca52da000)\n\tlibc.musl-x86_64.so.1 => /lib/ld-musl-x86_64.so.1 (0x7f2ca52da000)"
+realOutputAlpine =
+  [r|  /lib/ld-musl-x86_64.so.1 (0x7f2ca52da000)
+       libc.musl-x86_64.so.1 => /lib/ld-musl-x86_64.so.1 (0x7f2ca52da000)
+  |]
 
 realOutputUbuntuExpected :: [Binary.LocalDependency]
 realOutputUbuntuExpected = [Binary.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")]
