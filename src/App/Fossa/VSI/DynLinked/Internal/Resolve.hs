@@ -11,15 +11,17 @@ import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxPackageManage
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
+import Data.Either (partitionEithers)
 import Data.Set (Set, toList)
 import Data.Text (Text, intercalate)
 import DepTypes (DepType (LinuxAPK, LinuxDEB, LinuxRPM), Dependency (..), VerConstraint (CEq))
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
+import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, File, Path)
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (AdditionalDepData (..), SourceUnit (..))
+import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
 import Types (DiscoveredProjectType (VsiProjectType), GraphBreadth (Complete))
 
 -- | Resolves a set of dynamic dependencies into a @SourceUnit@.
@@ -41,7 +43,9 @@ toSourceUnit root dependencies = do
   let unit = Srclib.toSourceUnit False project
   pure $ unit{additionalData = fmap toDepData (Just binaries)}
   where
+    toDepData :: [SourceUserDefDep] -> AdditionalDepData
     toDepData d = AdditionalDepData (Just d) Nothing
+    toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
     toProject dir graph = ProjectResult VsiProjectType dir graph Complete []
 
 toDependency :: ResolvedLinuxPackage -> Dependency
@@ -97,9 +101,9 @@ toDependency ResolvedLinuxPackage{..} = case resolvedLinuxPackageManager of
 -- This function reverses the order of dependencies for performance reasons,
 -- but dependency order isn't significant so we don't reverse it back.
 sortResolvedUnresolved :: Set DynamicDependency -> ([ResolvedLinuxPackage], [Path Abs File])
-sortResolvedUnresolved = buckets [] [] . toList
+sortResolvedUnresolved = partitionEithers . map forkEither . toList
   where
-    buckets resolved unresolved [] = (resolved, unresolved)
-    buckets resolved unresolved (dep : remaining) = case dynamicDependencyResolved dep of
-      Nothing -> buckets resolved (dynamicDependencyDiskPath dep : unresolved) remaining
-      Just linuxPackage -> buckets (linuxPackage : resolved) unresolved remaining
+    forkEither :: DynamicDependency -> Either ResolvedLinuxPackage (Path Abs File)
+    forkEither dep = case dynamicDependencyResolved dep of
+      Nothing -> Right $ dynamicDependencyDiskPath dep
+      Just linuxPackage -> Left linuxPackage
