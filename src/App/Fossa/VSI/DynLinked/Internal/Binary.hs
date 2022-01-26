@@ -6,7 +6,7 @@ module App.Fossa.VSI.DynLinked.Internal.Binary (
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, recover)
 import Control.Monad (void)
 import Data.Char (isSpace)
 import Data.Maybe (catMaybes)
@@ -26,8 +26,12 @@ import Text.Megaparsec.Char.Lexer qualified as L
 -- This is currently a stub for non-linux targets: on these systems an empty set is reported.
 dynamicLinkedDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs File -> m (Set (Path Abs File))
 dynamicLinkedDependencies file | SysInfo.os == "linux" = do
-  deps <- execParser lddParseLocalDependencies (parent file) $ lddCommand file
-  pure . Set.fromList $ map localDependencyPath deps
+  -- If the target isn't a dynamically linked dependency, @ldd@ exits with code 1.
+  -- Handle this and any other issues by stashing them in @Diagnostics@ so we can just warn the user about it at the end.
+  deps <- recover . execParser lddParseLocalDependencies (parent file) $ lddCommand file
+  case deps of
+    Nothing -> pure Set.empty
+    Just paths -> pure . Set.fromList $ map localDependencyPath paths
 dynamicLinkedDependencies _ = pure Set.empty
 
 lddCommand :: Path Abs File -> Command
