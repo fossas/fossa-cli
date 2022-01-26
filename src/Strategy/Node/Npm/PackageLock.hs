@@ -23,7 +23,7 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
-import Data.Foldable (traverse_)
+import Data.Foldable (asum, traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -111,39 +111,56 @@ data NpmPackageLabel = NpmPackageEnv DepEnvironment | NpmPackageLocation Text
 buildGraph :: NpmPackageJson -> Set Text -> Graphing Dependency
 buildGraph packageJson directSet =
   run . withLabeling toDependency $
-    void $ Map.traverseWithKey (maybeAddDep False) (packageDependencies packageJson)
+    void $ Map.traverseWithKey (maybeAddDep False Nothing) (packageDependencies packageJson)
   where
     -- Skip adding deps if we think it's a workspace package.
-    maybeAddDep isRecursive name dep@NpmDep{..} =
+    maybeAddDep isRecursive parent name dep@NpmDep{..} =
       if isNothing (unNpmResolved depResolved) || "file:" `Text.isPrefixOf` depVersion
         then pure ()
-        else addDep isRecursive name dep
+        else addDep isRecursive parent name dep
 
     -- If not resolved, then likely a workspace dep, should be ignored.
     -- isRecursive lets us know if we are parsing a top-level or nested dep.
-    addDep :: Has NpmGrapher sig m => Bool -> Text -> NpmDep -> m ()
-    addDep isRecursive name NpmDep{..} = do
+    addDep :: Has NpmGrapher sig m => Bool -> Maybe NpmPackage -> Text -> NpmDep -> m ()
+    addDep isRecursive parent name NpmDep{..} = do
       let pkg = NpmPackage name depVersion
 
+      -- DEEP/DIRECT
       -- Allow entry of orphan deps.  We may prune these later.
       deep pkg
-
       -- Try marking non-recursively-discovered deps as direct
       when (not isRecursive && Set.member name directSet) $
         direct pkg
 
+      -- LOCATION/ENVIRONMENT
+      -- Mark prod/dev
       label pkg $ NpmPackageEnv $ if depDev then EnvDevelopment else EnvProduction
-
+      -- Add locations from "resolved"
       traverse_ (label pkg . NpmPackageLocation) (unNpmResolved depResolved)
 
-      -- add edges to required packages
-      void $ Map.traverseWithKey (\reqName reqVer -> edge pkg $ NpmPackage reqName $ getResolvedVersion reqName reqVer) depRequires
+      -- EDGES
+      -- Add edges to packages in "requires"
+      void $
+        Map.traverseWithKey
+          ( \reqName reqVer ->
+              edge pkg $
+                NpmPackage reqName $
+                  getResolvedVersion [depDependencies, packageDependencies packageJson] reqName reqVer
+          )
+          depRequires
+      -- Add edge from parent
+      case parent of
+        Nothing -> pure ()
+        Just parentPkg -> edge parentPkg pkg
 
-      -- add dependency nodes
-      void $ Map.traverseWithKey (maybeAddDep True) depDependencies
+      -- RECURSION
+      -- Recurse to dep nodes
+      void $ Map.traverseWithKey (maybeAddDep True (Just pkg)) depDependencies
 
-    getResolvedVersion :: Text -> Text -> Text
-    getResolvedVersion reqName reqVersion = maybe reqVersion depVersion (Map.lookup reqName $ packageDependencies packageJson)
+    getResolvedVersion :: [Map Text NpmDep] -> Text -> Text -> Text
+    getResolvedVersion lookups reqName reqVersion = maybe reqVersion depVersion foundVersion
+      where
+        foundVersion = asum $ map (Map.lookup reqName) lookups
 
     toDependency :: NpmPackage -> Set NpmPackageLabel -> Dependency
     toDependency pkg = foldr addLabel (start pkg)
