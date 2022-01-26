@@ -37,7 +37,7 @@ toSourceUnit root dependencies = do
   let (resolved, unresolved) = sortResolvedUnresolved dependencies
   binaries <- traverse (analyzeSingleBinary root) unresolved
 
-  let project = toProject root $ Graphing.fromList (map toDependency resolved)
+  let project = toProject root $ Graphing.directs (map toDependency resolved)
   let unit = Srclib.toSourceUnit False project
   pure $ unit{additionalData = fmap toDepData (Just binaries)}
   where
