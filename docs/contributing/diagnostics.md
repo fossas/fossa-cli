@@ -2,9 +2,9 @@
 
 Most commonly in haskell, failure is represented with `Either SomeErrorType a`
 
-In effectful code, that type is `m (Either SomeErrorType a)`. `fused-effects`
-gives us a convenient wrapper around that type, `ErrorC`, and operations to
-"throw" and "catch" errors
+In effectful code, that type looks like `m (Either SomeErrorType a)`.
+`fused-effects` gives us a convenient wrapper around that type, `ErrorC`, and
+operations to "throw" and "catch" errors
 
 ```hs
 newtype ErrorC e m a = ErrorC { runErrorC :: m (Either e a) }
@@ -18,6 +18,8 @@ example = throwError False `catchError` (\b -> if b then pure () else throwError
 
 Unfortunately, `m (Either e a)` is not good enough for our purposes, as we have
 some unusual constraints.
+
+---
 
 ## Constraints
 
@@ -37,8 +39,8 @@ This use-case surfaces the first of our unusual constraints:
 
 > **Actions can be grouped into a fallback sequence**
 
-> **When all sub-actions in a fallback sequence fail, we want to aggregate and
-> show _all_ errors**
+> **When several sub-actions in a fallback sequence fail, we want to combine the
+> failures**
 
 ### Warnings
 
@@ -54,7 +56,8 @@ This use-case surfaces another pair of unusual constraints:
 
 > **Sub-action failures can cause warnings to be emitted**
 
-> **Warnings are only emitted iff the total action succeeds**
+> **Warnings emitted this way are only shown to the user iff the total action
+> succeeds**
 
 ### Error context
 
@@ -70,7 +73,7 @@ pertinent context.
 
 Further, we'd like error contextualization to be _scoped_.
 
-For example, consider the maven analyzer example above:
+Consider the maven analyzer example above:
 
 1. For a fatal, uncaught error thrown within the maven analyzer, we may want to
    add general "Here's documentation for maven analysis" context
@@ -78,13 +81,13 @@ For example, consider the maven analyzer example above:
    documentation and troubleshooting steps for the maven command" context
 
 In the existing analyzer where (2) is immediately caught, we only want the
-second piece of context attached to the error
+command-specific context attached to the error.
 
 In a world where a failure of (2) causes the whole maven analysis to fail, we
 want to see both pieces of context from (1) and (2).
 
-> **An uncaught failure inherits any error context it encounters as the failure
-> propagates "upward"**
+> **An uncaught failure inherits any error context it encounters as the uncaught
+> failure propagates "upward"**
 
 ### Stack traces
 
@@ -103,59 +106,86 @@ These callstacks are attached to errors to provide supplementary context.
 
 > **Errors contain the callstack in which they occurred**
 
-As an added benefit, these callstack elements can be used as "progress"/status
-messages for running tasks
-
-> **The current callstack can be inspected**
-
 ---
 
-## Operations
+## Syntax
 
 ### Callstack
 
-TODO: notes
-
 ```hs
 context :: Has Diagnostics sig m => Text -> m a -> m a
-getStack :: Has Diagnostics sig m => m [Text]
+
+example = context "foo" $ do
+  res <- context "bar" $ someAction
+  ...
 ```
+
+Push an element onto the callstack for the duration of the provided action.
 
 ### Errors
 
 #### Throwing errors
 
-TODO: notes
-
 ```hs
 fatal :: (ToDiagnostic err, Has Diagnostics sig m) => err -> m a
+
+example = do
+  ...
+  fatal MyErrType
+
+data MyErrType
+instance ToDiagnostic MyErrType
 ```
 
 #### Adding error context to an action
 
-TODO: notes
-
 ```hs
 errCtx :: (ToDiagnostic ctx, Has Diagnostics sig m) => ctx -> m a -> m a
+
+example = do
+  val <- errCtx CmdFailureTroubleshooting runSomeCommand
+  ...
+
+data CmdFailureTroubleshooting
+instance ToDiagnostic CmdFailureTroubleshooting
+```
+
+When the provided action fails, this operation attaches context to the error.
+
+When the provided action succeeds, `errCtx` is a no-op:
+
+```hs
+errCtx _something (pure ()) === pure ()
+errCtx _something (recover foo) === recover foo
 ```
 
 #### Recovering from an error
 
-TODO: notes
-
 ```hs
 recover :: Has Diagnostics sig m => m a -> m (Maybe a)
+
+example = do
+  res <- recover somethingThatMightFail
+  case res of
+    Nothing -> ...
+    Just val -> ...
 ```
 
-#### Get the result of the first of two actions to succeed
+When the provided action succeeds, return its value wrapped in Just.
+
+When the provided action fails, emit a warning, and return Nothing.
+
+#### Try several actions
 
 ```hs
 (<||>) :: Has Diagnostics sig m => m a -> m a -> m a
+
+example =
+  tryFirstCmd <||> trySecondCmd <||> tryThirdCmd
 ```
 
-#### TODO: helper error operations: tagError, fromEither, ...
-
-#### TODO: errorBoundary, rethrow
+Try the two provided actions, returning the value of the first successful
+action.
 
 ### Warnings
 
@@ -165,19 +195,41 @@ recover :: Has Diagnostics sig m => m a -> m (Maybe a)
 warn :: (ToDiagnostic warn, Has Diagnostics sig m) => warn -> m ()
 ```
 
+```hs
+example = do
+  warn MyWarnType
+
+data MyWarnType
+instance ToDiagnostic MyWarnType
+```
+
 #### Attach a warning to an action's failure
 
 ```hs
 warnOnErr :: (ToDiagnostic warn, Has Diagnostics sig m) => warn -> m a -> m a
+
+example = do
+  val <- recover $ warnOnErr MissingEdges runSomeOptionalCommand
+  ...
+
+data MissingEdges
+instance ToDiagnostic MissingEdges
+```
+
+When the provided action fails, this operation attaches a warning to the error.
+
+When the provided action succeeds, this operation is a no-op:
+
+```hs
+warnOnErr _something (pure ()) === pure ()
+warnOnErr _something (recover foo) === recover foo
 ```
 
 ---
 
-## Common idioms
+## Cookbook
 
 ### Analysis fallbacks with warnings
-
-TODO: notes
 
 ```hs
 mavenAnalyzer project = context "Maven" $
@@ -194,9 +246,7 @@ mvnStaticAnalysis project =
     $ MvnPom.analyze project
 ```
 
-### Optional analysis actions with warnings
-
-TODO: notes
+### Optional analysis actions with warnings and error context
 
 ```hs
 pipenvAnalyzer project = context "Pipenv" $ do
@@ -215,7 +265,7 @@ pipenvAnalyzer project = context "Pipenv" $ do
 
   pure (buildGraph direct deep)
 
---- Concrete warning types
+--- Concrete error context types
 
 data PipenvLockParseFailed = PipenvLockParseFailed (Path Abs File)
 
@@ -227,29 +277,3 @@ data PipenvCmdFailed = PipenvCmdFailed (Path Abs Dir)
 instance ToDiagnostic PipenvCmdFailed where
   renderDiagnostic (PipenvCmdFailed dir) = "..."
 ```
-
-### Surfacing a standalone warning
-
-While it's usually better to attach a warning to a thrown error with
-`warnOnErr`, it's occasionally useful to surface standalone warnings
-
-```hs
-foo = do
-  warn MyWarnType
-  ...
-
-data MyWarnType = MyWarnType
-
-instance ToDiagnostic MyWarnType where
-  renderDiagnostic MyWarnType = ...
-```
-
----
-
-# TODO
-
-- semantics
-- Result values produced by examples
-- how to use / helper functions
-  - lifting Either
-  - dealing with Exceptions
