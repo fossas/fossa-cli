@@ -177,6 +177,7 @@ library
     App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
     App.Fossa.VSI.DynLinked.Internal.Binary
+    App.Fossa.VSI.DynLinked.Internal.Lookup.DEB
     App.Fossa.VSI.DynLinked.Internal.Lookup.RPM
     App.Fossa.VSI.DynLinked.Internal.Resolve
     App.Fossa.VSI.DynLinked.Types
@@ -375,6 +376,7 @@ test-suite unit-tests
     App.Fossa.Report.Log4jReportSpec
     App.Fossa.VPS.NinjaGraphSpec
     App.Fossa.VSI.DynLinked.Internal.BinarySpec
+    App.Fossa.VSI.DynLinked.Internal.Lookup.DEBSpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.RPMSpec
     App.Fossa.VSI.DynLinked.Internal.ResolveSpec
     App.Fossa.VSI.DynLinked.UtilSpec
