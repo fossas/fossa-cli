@@ -4,6 +4,7 @@
 
 - Npm: Fixes an issue where a package-lock.json dep with a boolean 'resolved' key wouldn't parse. ([#775](https://github.com/fossas/fossa-cli/pull/775))
 - Npm: Fixes an issue where analyzing `package-lock.json` would miss duplicate packages with different versions. ([#779](https://github.com/fossas/fossa-cli/pull/779))
+- Gradle: Projects with only a top-level `settings.gradle` file will now be detected. ([#785](https://github.com/fossas/fossa-cli/pull/785))
 
 ## v3.0.16
 

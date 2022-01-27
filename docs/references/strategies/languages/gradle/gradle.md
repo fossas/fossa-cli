@@ -2,7 +2,7 @@
 
 [Gradle](https://gradle.org/) is a polyglot tool mostly used by JVM projects. It's popular with Java and Android projects.
 
-Gradle users generally specify their builds using a `build.gradle` file (written in Groovy) or a `build.gradle.kts` file (written in Kotlin). These builds are specified as programs that must be dynamically evaluated.
+Gradle users generally specify their builds using a `build.gradle`/`settings.gradle` file (written in Groovy) or a `build.gradle.kts`/`settings.gradle.kts` file (written in Kotlin). These builds are specified as programs that must be dynamically evaluated. Examples of many different kinds of `gradle` projects are distributed on Gradle's website or for older versions of Gradle in the "complete" release archive in the `examples/` directory.
 
 |           |                                                                           |
 | --------- | ------------------------------------------------------------------------- |
@@ -41,7 +41,7 @@ Most sizable Gradle builds organize their dependencies with two concepts: subpro
 
 #### Subprojects
 
-_Subprojects_ are used when you have multiple "projects" in a single Gradle build (e.g. having multiple projects in a single repository managed by with single `settings.gradle` and one or more `build.gradle` files). Gradle calls these "multi-projects". Gradle multi-projects have one root project, and one or more subprojects.
+_Subprojects_ are used when you have multiple "projects" in a single Gradle build (e.g. having multiple projects in a single repository managed by with single `settings.gradle` and zero or more `build.gradle` files). Gradle calls these "multi-projects". Gradle multi-projects have one root project, and one or more subprojects.
 
 A single subproject roughly corresponds to a single set of outputs. Hence, we treat subprojects as separate analysis targets.
 
@@ -73,7 +73,7 @@ Because of this, the Gradle analyzer has logic for selecting which `gradle` exec
 
 ## Running Gradle
 
-This strategy requires dynamic analysis in its discovery phase (not just in the analysis phase). This is because we need to execute Gradle in order to list subprojects and evaluate `build.gradle` files.
+This strategy requires dynamic analysis in its discovery phase (not just in the analysis phase). This is because we need to execute Gradle in order to list subprojects and evaluate `build.gradle` or `settings.gradle` files.
 
 When executing Gradle for an analysis target at directory `ANALYSIS_TARGET_DIR`, the CLI will prefer (in order):
 
@@ -87,7 +87,7 @@ In this documentation below, for brevity, we'll always refer to the selected too
 
 ## Discovery
 
-This strategy discovers analysis targets by looking for files in the folder being analyzed whose names start with `build.gradle`. This matches both `build.gradle` as well as `build.gradle.kts` and Gradle build scripts in other Gradle-supported languages (`build.gradle.*`).
+This strategy discovers analysis targets by looking for files in the folder being analyzed whose names start with `build.gradle` or `settings.gradle`. This matches any of `build.gradle`, or `settings.gradle` and Gradle build scripts in other Gradle-supported languages (`build.gradle.*`, `settings.gradle.*`).
 
 It then executes `gradle projects` in the directory where the build file is found to get a list of subprojects for this Gradle build. These subprojects are used to create the analysis targets for this Gradle build.
 
