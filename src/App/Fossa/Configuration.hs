@@ -30,7 +30,7 @@ import Effect.Logger (Severity (SevWarn), ignoreLogger, logWarn, withDefaultLogg
 import Effect.ReadFS
 import Path
 import Path.IO (getCurrentDir)
-import Prettyprinter (Doc, Pretty (pretty), line, viaShow, vsep)
+import Prettyprinter (Doc, Pretty (pretty), vsep)
 import System.Exit (die)
 import Text.Megaparsec
 import Types
