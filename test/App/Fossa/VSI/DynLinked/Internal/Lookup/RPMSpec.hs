@@ -1,6 +1,6 @@
 module App.Fossa.VSI.DynLinked.Internal.Lookup.RPMSpec (spec) where
 
-import App.Fossa.VSI.DynLinked.Internal.Lookup.RPM (parseCommand)
+import App.Fossa.VSI.DynLinked.Internal.Lookup.RPM (parseMetaOutput)
 import App.Fossa.VSI.DynLinked.Types (LinuxPackageMetadata (..))
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -12,8 +12,8 @@ import Text.Megaparsec (Parsec, parse)
 parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Expectation
 parseMatch parser input expected = parse parser "" input `shouldParse` expected
 
-shouldParseInto :: Text -> (Maybe LinuxPackageMetadata) -> Expectation
-shouldParseInto = parseMatch parseCommand
+shouldParseInto :: Text -> LinuxPackageMetadata -> Expectation
+shouldParseInto = parseMatch parseMetaOutput
 
 spec :: Spec
 spec = do
@@ -24,14 +24,8 @@ spec = do
     it "parses rpm output with epoch" $ do
       rpmOutputEpoch `shouldParseInto` rpmOutputEpochExpected
 
-    it "parses noting on package not found" $ do
-      notFoundOutput `shouldParseInto` Nothing
-
-notFoundOutput :: Text
-notFoundOutput = "package glibc-2.28-151.el8.x86_64 is not installed"
-
-rpmOutputExpected :: Maybe LinuxPackageMetadata
-rpmOutputExpected = Just $ LinuxPackageMetadata "glibc" "2.28-151.el8" "x86_64" Nothing
+rpmOutputExpected :: LinuxPackageMetadata
+rpmOutputExpected = LinuxPackageMetadata "glibc" "2.28-151.el8" "x86_64" Nothing
 
 rpmOutput :: Text
 rpmOutput =
@@ -64,8 +58,8 @@ rpmOutput =
     , "Linux system will not function."
     ]
 
-rpmOutputEpochExpected :: Maybe LinuxPackageMetadata
-rpmOutputEpochExpected = Just $ LinuxPackageMetadata "device-mapper-libs" "1.02.175-5.el8" "x86_64" (Just "8")
+rpmOutputEpochExpected :: LinuxPackageMetadata
+rpmOutputEpochExpected = LinuxPackageMetadata "device-mapper-libs" "1.02.175-5.el8" "x86_64" (Just "8")
 
 rpmOutputEpoch :: Text
 rpmOutputEpoch =

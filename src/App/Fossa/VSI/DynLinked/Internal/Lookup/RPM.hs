@@ -1,22 +1,21 @@
 module App.Fossa.VSI.DynLinked.Internal.Lookup.RPM (
   lookupDependencies,
-  parseCommand,
+  parseMetaOutput,
 ) where
 
 import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxDistro, LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
 import App.Fossa.VSI.DynLinked.Util (runningLinux)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, recover)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT), runMaybeT)
-import Data.ByteString.Lazy qualified as BL
 import Data.Char (isSpace)
 import Data.Either (partitionEithers)
-import Data.String.Conversion (decodeUtf8, toText)
-import Data.Text (Text, isInfixOf, strip)
+import Data.String.Conversion (toText)
+import Data.Text (Text)
 import Data.Void (Void)
-import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser, execThrow)
+import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
 import Path (Abs, Dir, File, Path)
-import Text.Megaparsec (Parsec, empty, many, option, satisfy, try, (<|>))
+import Text.Megaparsec (MonadParsec (eof), Parsec, empty, option, takeWhile1P, try)
 import Text.Megaparsec.Char (space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 
@@ -30,55 +29,77 @@ lookupDependencies root distro files = partitionEithers <$> traverse (tryLookup 
 
 tryLookup :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> LinuxDistro -> Path Abs File -> m (Either (Path Abs File) DynamicDependency)
 tryLookup root distro file = fmap (maybeToRight file) . runMaybeT $ do
-  pkgName <- MaybeT $ rpmqf root file
-  meta <- MaybeT $ rpmqi root pkgName
+  name <- MaybeT $ packageForFile root file
+  meta <- MaybeT $ packageMeta root name
   pure . DynamicDependency file . Just $ ResolvedLinuxPackage LinuxPackageManagerRPM distro meta
 
-maybeToRight :: a -> Maybe b -> Either a b
-maybeToRight df right = case right of
-  Just a -> Right a
-  Nothing -> Left df
+packageForFile :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe Text)
+packageForFile _ _ | not runningLinux = pure Nothing
+packageForFile root file = recover . execParser parsePackageForFileOutput root $ packageForFileCommand file
 
-rpmqf :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe Text)
-rpmqf _ _ | not runningLinux = pure Nothing
-rpmqf root file = do
-  content <- decodeUtf8 . BL.toStrict <$> execThrow root (rpmqfCommand file)
-  if "not owned by any package" `isInfixOf` content
-    then pure Nothing
-    else pure . Just $ strip content
-
-rpmqfCommand :: Path Abs File -> Command
-rpmqfCommand file =
+packageForFileCommand :: Path Abs File -> Command
+packageForFileCommand file =
   Command
     { cmdName = "rpm"
     , cmdArgs = ["-qf", toText file]
     , cmdAllowErr = Never
     }
 
-rpmqi :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Text -> m (Maybe LinuxPackageMetadata)
-rpmqi _ _ | not runningLinux = pure Nothing
-rpmqi root name = execParser parseCommand root $ rpmqiCommand name
+-- | Parse @rpm -qf@ output.
+-- Example:
+--
+-- > rpm -qf /lib64/libc.so.6
+-- > glibc-2.28-151.el8.x86_64
+-- > ^^^^^^^^^^^^^^^^^^^^^^^^^ we want this whole output.
+parsePackageForFileOutput :: Parser Text
+parsePackageForFileOutput = takeWhile1P Nothing (const True) <* eof
 
-rpmqiCommand :: Text -> Command
-rpmqiCommand packageName =
+packageMeta :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Text -> m (Maybe LinuxPackageMetadata)
+packageMeta _ _ | not runningLinux = pure Nothing
+packageMeta root name = recover . execParser parseMetaOutput root $ packageMetaCommand name
+
+packageMetaCommand :: Text -> Command
+packageMetaCommand packageName =
   Command
     { cmdName = "rpm"
     , cmdArgs = ["-qi", packageName]
     , cmdAllowErr = Never
     }
 
-parseCommand :: Parser (Maybe LinuxPackageMetadata)
-parseCommand = try consumePackageNotFound <|> fmap Just parseMeta
-
-consumePackageNotFound :: Parser (Maybe LinuxPackageMetadata)
-consumePackageNotFound = do
-  _ <- symbol "package" <* ident <* symbol "is" <* symbol "not" <* symbol "installed"
-  pure Nothing
-
--- | To keep things simple for now, assume fields always appear in predictable order.
+-- | Parse @rpm -qi@ output.
+--
+-- To keep things simple for now, assume fields always appear in predictable order.
 -- if this turns out to be incorrect, we should parse the rpm db directly, like syft does.
-parseMeta :: Parser LinuxPackageMetadata
-parseMeta = do
+--
+-- Example output:
+-- > rpm -qi glibc-2.28-151.el8.x86_64
+-- > Name        : glibc
+-- > Version     : 2.28
+-- > Release     : 151.el8
+-- > Architecture: x86_64
+-- > Install Date: Wed Sep 15 14:17:28 2021
+-- > Group       : Unspecified
+-- > Size        : 15646740
+-- > License     : LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
+-- > Signature   : RSA/SHA256, Thu Mar 11 21:46:42 2021, Key ID 05b555b38483c65d
+-- > Source RPM  : glibc-2.28-151.el8.src.rpm
+-- > Build Date  : Thu Mar 11 20:16:40 2021
+-- > Build Host  : x86-01.mbox.centos.org
+-- > Relocations : (not relocatable)
+-- > Packager    : CentOS Buildsys <bugs@centos.org>
+-- > Vendor      : CentOS
+-- > URL         : http://www.gnu.org/software/glibc/
+-- > Summary     : The GNU libc libraries
+-- > Description :
+-- > The glibc package contains standard libraries which are used by
+-- > multiple programs on the system. In order to save disk space and
+-- > memory, as well as to make upgrading easier, common system code is
+-- > kept in one place and shared between programs. This particular package
+-- > contains the most important sets of shared libraries: the standard C
+-- > library and the standard math library. Without these two libraries, a
+-- > Linux system will not function.
+parseMetaOutput :: Parser LinuxPackageMetadata
+parseMetaOutput = do
   name <- parseField "Name"
   epoch <- try . option Nothing $ Just <$> parseField "Epoch"
   version <- parseField "Version"
@@ -104,4 +125,9 @@ symbol = L.symbol sc
 -- | Collect a contiguous list of non-space characters into a @Text@, then consume any trailing spaces.
 -- Requires that a space trails the identifier.
 ident :: Parser Text
-ident = lexeme $ toText <$> many (satisfy $ not . isSpace)
+ident = lexeme $ toText <$> takeWhile1P Nothing (not . isSpace)
+
+maybeToRight :: a -> Maybe b -> Either a b
+maybeToRight df right = case right of
+  Just a -> Right a
+  Nothing -> Left df
