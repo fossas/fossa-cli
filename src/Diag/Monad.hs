@@ -43,7 +43,7 @@ instance MonadTrans ResultT where
   lift = ResultT . fmap pure
   {-# INLINE lift #-}
 
-instance Monad m => Applicative (ResultT m) where
+instance Applicative m => Applicative (ResultT m) where
   ResultT mf <*> ResultT ma = ResultT $ (<*>) <$> mf <*> ma
   {-# INLINE (<*>) #-}
 
@@ -169,5 +169,5 @@ errGroupToWarning :: ErrGroup -> EmittedWarn
 errGroupToWarning (ErrGroup sws ectx es) =
   case NE.nonEmpty sws of
     Nothing -> IgnoredErrGroup ectx es
-    Just sws' -> (WarnOnErrGroup sws' ectx es)
+    Just sws' -> WarnOnErrGroup sws' ectx es
 {-# INLINE errGroupToWarning #-}
