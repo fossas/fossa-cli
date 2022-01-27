@@ -32,25 +32,31 @@ import Diag.Result (EmittedWarn (..), ErrCtx (..), ErrGroup (..), ErrWithStack (
 newtype ResultT m a = ResultT {runResultT :: m (Result a)}
 
 instance Functor m => Functor (ResultT m) where
+  fmap :: (a -> b) -> ResultT m a -> ResultT m b
   fmap f = ResultT . fmap (fmap f) . runResultT
   {-# INLINE fmap #-}
 
 instance MonadIO m => MonadIO (ResultT m) where
+  liftIO :: IO a -> ResultT m a
   liftIO = ResultT . fmap pure . liftIO
   {-# INLINE liftIO #-}
 
 instance MonadTrans ResultT where
+  lift :: Monad m => m a -> ResultT m a
   lift = ResultT . fmap pure
   {-# INLINE lift #-}
 
 instance Applicative m => Applicative (ResultT m) where
+  (<*>) :: ResultT m (a -> b) -> ResultT m a -> ResultT m b
   ResultT mf <*> ResultT ma = ResultT $ (<*>) <$> mf <*> ma
   {-# INLINE (<*>) #-}
 
+  pure :: a -> ResultT m a
   pure = ResultT . pure . pure
   {-# INLINE pure #-}
 
 instance Monad m => Monad (ResultT m) where
+  (>>=) :: ResultT m a -> (a -> ResultT m b) -> ResultT m b
   ResultT m >>= k = ResultT $ do
     resA <- m
     case resA of

@@ -83,6 +83,7 @@ data ErrGroup = ErrGroup [SomeWarn] [ErrCtx] (NonEmpty ErrWithStack)
   deriving (Show)
 
 instance Semigroup ErrGroup where
+  (<>) :: ErrGroup -> ErrGroup -> ErrGroup
   ErrGroup sws ectx nee <> ErrGroup sws' ectx' nee' = ErrGroup (sws <> sws') (ectx <> ectx') (nee <> nee')
 
 -- | An error with an associated stacktrace
@@ -94,18 +95,22 @@ newtype Stack = Stack [Text]
   deriving (Show)
 
 instance Functor Result where
+  fmap :: (a -> b) -> Result a -> Result b
   fmap _ (Failure ws eg) = Failure ws eg
   fmap f (Success ws a) = Success ws (f a)
 
 instance Applicative Result where
+  (<*>) :: Result (a -> b) -> Result a -> Result b
   Success ws f <*> Success ws' a = Success (ws' <> ws) (f a)
   Success ws _ <*> Failure ws' eg' = Failure (ws' <> ws) eg'
   Failure ws eg <*> Success ws' _ = Failure (ws' <> ws) eg
   Failure ws eg <*> Failure ws' eg' = Failure (ws' <> ws) (eg' <> eg)
 
+  pure :: a -> Result a
   pure = Success []
 
 instance Monad Result where
+  (>>=) :: Result a -> (a -> Result b) -> Result b
   Failure ws eg >>= _ = Failure ws eg
   Success ws a >>= k =
     case k a of
