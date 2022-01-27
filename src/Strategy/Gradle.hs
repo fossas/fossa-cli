@@ -15,6 +15,7 @@
 -- - Gradle init scripts: https://docs.gradle.org/current/userguide/init_scripts.html
 module Strategy.Gradle (
   discover,
+  GradleProject,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..), AnalyzeProject, analyzeProject)
