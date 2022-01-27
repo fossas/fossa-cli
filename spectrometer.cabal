@@ -177,6 +177,7 @@ library
     App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
     App.Fossa.VSI.DynLinked.Internal.Binary
+    App.Fossa.VSI.DynLinked.Internal.Resolve
     App.Fossa.VSI.DynLinked.Types
     App.Fossa.VSI.DynLinked.Util
     App.Fossa.VSI.Fingerprint
@@ -373,6 +374,7 @@ test-suite unit-tests
     App.Fossa.Report.Log4jReportSpec
     App.Fossa.VPS.NinjaGraphSpec
     App.Fossa.VSI.DynLinked.Internal.BinarySpec
+    App.Fossa.VSI.DynLinked.Internal.ResolveSpec
     App.Fossa.VSI.DynLinked.UtilSpec
     App.Fossa.VSI.FingerprintSpec
     Cargo.MetadataSpec
