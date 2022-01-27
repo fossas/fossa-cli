@@ -13,7 +13,7 @@ import Analysis.FixtureUtils (
   FixtureArtifact (FixtureArtifact),
   FixtureEnvironment (NixEnv),
  )
-import Path (mkRelDir, reldir)
+import Path (reldir)
 import Strategy.Gradle qualified as Gradle
 import Test.Hspec (Spec, aroundAll, describe, it, shouldBe)
 import Types (DiscoveredProjectType (..))
@@ -31,7 +31,7 @@ springBoot =
     $ FixtureArtifact
       "https://github.com/spring-projects/spring-boot/archive/refs/tags/v3.0.0-M1.tar.gz"
       [reldir|gradle/sample/|]
-      $(mkRelDir "spring-boot-3.0.0-M1")
+      [reldir|spring-boot-3.0.0-M1|]
 
 gradleSettingsOnly :: AnalysisTestFixture (Gradle.GradleProject)
 gradleSettingsOnly =
