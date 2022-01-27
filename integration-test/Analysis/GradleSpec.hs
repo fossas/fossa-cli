@@ -17,15 +17,15 @@ import Strategy.Gradle qualified as Gradle
 import Test.Hspec (Spec, aroundAll, describe, it, shouldBe)
 import Types (DiscoveredProjectType (..))
 
-goEnv :: FixtureEnvironment
-goEnv = NixEnv ["gradle"]
+gradleEnv :: FixtureEnvironment
+gradleEnv = NixEnv ["gradle"]
 
 springBoot :: AnalysisTestFixture (Gradle.GradleProject)
 springBoot =
   AnalysisTestFixture
     "gradle-java"
     Gradle.discover
-    goEnv
+    gradleEnv
     Nothing
     $ FixtureArtifact
       "https://github.com/spring-projects/spring-boot/archive/refs/tags/v3.0.0-M1.tar.gz"
@@ -37,10 +37,10 @@ gradleSettingsOnly =
   AnalysisTestFixture
     "gradle-java"
     Gradle.discover
-    goEnv
+    gradleEnv
     Nothing
     $ FixtureArtifact
-      "https://docs.gradle.org/current/samples/zips/sample_building_java_applications-groovy-dsl.zip"
+      "https://docs.gradle.org/7.3.3/samples/zips/sample_building_java_applications-groovy-dsl.zip"
       [reldir|gradle/sample/|]
       [reldir|.|]
 
