@@ -1,6 +1,7 @@
 module App.Fossa.VSI.DynLinked.Types (
   LinuxPackageManager (..),
   LinuxPackageMetadata (..),
+  LinuxDistro (..),
   DynamicDependency (..),
   ResolvedLinuxPackage (..),
 ) where
@@ -18,14 +19,19 @@ data LinuxPackageManager
 data LinuxPackageMetadata = LinuxPackageMetadata
   { linuxPackageID :: Text
   , linuxPackageRevision :: Text
-  , linuxPackageDistro :: Text
-  , linuxPackageDistroRelease :: Text
   , linuxPackageArch :: Text
   , linuxPackageDistroEpoch :: Maybe Text
+  }
+  deriving (Eq, Show)
+
+data LinuxDistro = LinuxDistro
+  { linuxDistroName :: Text
+  , linuxDistroRelease :: Text
   }
 
 data ResolvedLinuxPackage = ResolvedLinuxPackage
   { resolvedLinuxPackageManager :: LinuxPackageManager
+  , resolvedLinuxDistro :: LinuxDistro
   , resolvedLinuxPackageMetadata :: LinuxPackageMetadata
   }
 

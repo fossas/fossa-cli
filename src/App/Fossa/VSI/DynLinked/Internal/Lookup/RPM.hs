@@ -1,10 +1,9 @@
 module App.Fossa.VSI.DynLinked.Internal.Lookup.RPM (
   lookupDependencies,
   parseCommand,
-  LinuxPackageSubset (..),
 ) where
 
-import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxPackageManager (LinuxPackageManagerRPM), ResolvedLinuxPackage (..))
+import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxDistro, LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
 import App.Fossa.VSI.DynLinked.Util (runningLinux)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
@@ -16,36 +15,24 @@ import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text, isInfixOf, strip)
 import Data.Void (Void)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser, execThrow)
-import Path (Abs, Dir, File, Path, toFilePath)
+import Path (Abs, Dir, File, Path)
 import Text.Megaparsec (Parsec, empty, many, option, satisfy, try, (<|>))
 import Text.Megaparsec.Char (space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 
 type Parser = Parsec Void Text
 
-data LinuxPackageSubset = LinuxPackageSubset
-  { linuxPackageID :: Text
-  , linuxPackageRevision :: Text
-  , linuxPackageArch :: Text
-  , linuxPackageDistroEpoch :: Maybe Text
-  }
-  deriving (Show, Eq)
-
 -- | The idea here is that we look up what paths we can with RPM and turn them into @DynamicDependency@.
 -- We then hand back leftovers and lookup results for the next resolution function.
-lookupDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> [Path Abs File] -> m ([Path Abs File], [DynamicDependency])
-lookupDependencies _ files | not runningLinux = pure (files, [])
-lookupDependencies root files = partitionEithers <$> traverse (tryLookup root) files
+lookupDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> LinuxDistro -> [Path Abs File] -> m ([Path Abs File], [DynamicDependency])
+lookupDependencies _ _ files | not runningLinux = pure (files, [])
+lookupDependencies root distro files = partitionEithers <$> traverse (tryLookup root distro) files
 
-tryLookup :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Either (Path Abs File) DynamicDependency)
-tryLookup root file = fmap (maybeToRight file) . runMaybeT $ do
+tryLookup :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> LinuxDistro -> Path Abs File -> m (Either (Path Abs File) DynamicDependency)
+tryLookup root distro file = fmap (maybeToRight file) . runMaybeT $ do
   pkgName <- MaybeT $ rpmqf root file
   meta <- MaybeT $ rpmqi root pkgName
-
-  -- TODO: I need to refactor the types to remove distro name & version from packages.
-  -- for now, leave this undefined until I've merged in flight PRs so I don't have to deal with conflicts.
-
-  pure . DynamicDependency file . Just $ ResolvedLinuxPackage LinuxPackageManagerRPM undefined
+  pure . DynamicDependency file . Just $ ResolvedLinuxPackage LinuxPackageManagerRPM distro meta
 
 maybeToRight :: a -> Maybe b -> Either a b
 maybeToRight df right = case right of
@@ -55,33 +42,49 @@ maybeToRight df right = case right of
 rpmqf :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe Text)
 rpmqf _ _ | not runningLinux = pure Nothing
 rpmqf root file = do
-  content <- decodeUtf8 . BL.toStrict <$> execThrow root (Command "rpm" ["-qf", toText $ toFilePath file] Never)
+  content <- decodeUtf8 . BL.toStrict <$> execThrow root (rpmqfCommand file)
   if "not owned by any package" `isInfixOf` content
     then pure Nothing
     else pure . Just $ strip content
 
-rpmqi :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Text -> m (Maybe LinuxPackageSubset)
-rpmqi _ _ | not runningLinux = pure Nothing
-rpmqi root name = execParser parseCommand root $ Command "rpm" ["-qi", name] Never
+rpmqfCommand :: Path Abs File -> Command
+rpmqfCommand file =
+  Command
+    { cmdName = "rpm"
+    , cmdArgs = ["-qf", toText file]
+    , cmdAllowErr = Never
+    }
 
-parseCommand :: Parser (Maybe LinuxPackageSubset)
+rpmqi :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Text -> m (Maybe LinuxPackageMetadata)
+rpmqi _ _ | not runningLinux = pure Nothing
+rpmqi root name = execParser parseCommand root $ rpmqiCommand name
+
+rpmqiCommand :: Text -> Command
+rpmqiCommand packageName =
+  Command
+    { cmdName = "rpm"
+    , cmdArgs = ["-qi", packageName]
+    , cmdAllowErr = Never
+    }
+
+parseCommand :: Parser (Maybe LinuxPackageMetadata)
 parseCommand = try consumePackageNotFound <|> fmap Just parseMeta
 
-consumePackageNotFound :: Parser (Maybe LinuxPackageSubset)
+consumePackageNotFound :: Parser (Maybe LinuxPackageMetadata)
 consumePackageNotFound = do
   _ <- symbol "package" <* ident <* symbol "is" <* symbol "not" <* symbol "installed"
   pure Nothing
 
 -- | To keep things simple for now, assume fields always appear in predictable order.
 -- if this turns out to be incorrect, we should parse the rpm db directly, like syft does.
-parseMeta :: Parser LinuxPackageSubset
+parseMeta :: Parser LinuxPackageMetadata
 parseMeta = do
   name <- parseField "Name"
   epoch <- try . option Nothing $ Just <$> parseField "Epoch"
   version <- parseField "Version"
   release <- parseField "Release"
   arch <- parseField "Architecture"
-  pure $ LinuxPackageSubset name (version <> "-" <> release) arch epoch
+  pure $ LinuxPackageMetadata name (version <> "-" <> release) arch epoch
 
 parseField :: Text -> Parser Text
 parseField field = symbol field *> symbol ":" *> ident

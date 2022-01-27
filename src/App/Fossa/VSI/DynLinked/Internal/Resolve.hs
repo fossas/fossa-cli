@@ -7,7 +7,7 @@ module App.Fossa.VSI.DynLinked.Internal.Resolve (
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.BinaryDeps (analyzeSingleBinary)
-import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
+import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxDistro (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
@@ -50,9 +50,9 @@ toSourceUnit root dependencies = do
 
 toDependency :: ResolvedLinuxPackage -> Dependency
 toDependency ResolvedLinuxPackage{..} = case resolvedLinuxPackageManager of
-  LinuxPackageManagerDEB -> renderDEB resolvedLinuxPackageMetadata
-  LinuxPackageManagerRPM -> renderRPM resolvedLinuxPackageMetadata
-  LinuxPackageManagerAPK -> renderAPK resolvedLinuxPackageMetadata
+  LinuxPackageManagerDEB -> renderDEB resolvedLinuxPackageMetadata resolvedLinuxDistro
+  LinuxPackageManagerRPM -> renderRPM resolvedLinuxPackageMetadata resolvedLinuxDistro
+  LinuxPackageManagerAPK -> renderAPK resolvedLinuxPackageMetadata resolvedLinuxDistro
   where
     render :: DepType -> [Text] -> [Text] -> Dependency
     render fetcher projectParts revisionParts =
@@ -68,25 +68,25 @@ toDependency ResolvedLinuxPackage{..} = case resolvedLinuxPackageManager of
     fromParts :: [Text] -> Text
     fromParts = intercalate "#"
 
-    renderDEB :: LinuxPackageMetadata -> Dependency
-    renderDEB LinuxPackageMetadata{..} =
+    renderDEB :: LinuxPackageMetadata -> LinuxDistro -> Dependency
+    renderDEB LinuxPackageMetadata{..} LinuxDistro{..} =
       render
         LinuxDEB
-        [linuxPackageID, linuxPackageDistro, linuxPackageDistroRelease]
+        [linuxPackageID, linuxDistroName, linuxDistroRelease]
         [linuxPackageArch, linuxPackageRevision]
 
-    renderRPM :: LinuxPackageMetadata -> Dependency
-    renderRPM LinuxPackageMetadata{..} =
+    renderRPM :: LinuxPackageMetadata -> LinuxDistro -> Dependency
+    renderRPM LinuxPackageMetadata{..} LinuxDistro{..} =
       render
         LinuxRPM
-        [linuxPackageID, linuxPackageDistro, linuxPackageDistroRelease]
+        [linuxPackageID, linuxDistroName, linuxDistroRelease]
         [linuxPackageArch, epoch <> linuxPackageRevision]
 
-    renderAPK :: LinuxPackageMetadata -> Dependency
-    renderAPK LinuxPackageMetadata{..} =
+    renderAPK :: LinuxPackageMetadata -> LinuxDistro -> Dependency
+    renderAPK LinuxPackageMetadata{..} LinuxDistro{..} =
       render
         LinuxAPK
-        [linuxPackageID, linuxPackageDistro, linuxPackageDistroRelease]
+        [linuxPackageID, linuxDistroName, linuxDistroRelease]
         [linuxPackageArch, linuxPackageRevision]
 
     epoch :: Text
