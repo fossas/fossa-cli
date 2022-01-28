@@ -161,7 +161,7 @@ renderFailure ws (ErrGroup _ ectx es) = header "An issue occurred" <> renderedCt
     renderedCtx =
       case ectx of
         [] -> emptyDoc
-        _ -> section "Description" (vsep (map (\ctx -> renderErrCtx ctx <> line) ectx))
+        _ -> section "Details" (vsep (map (\ctx -> renderErrCtx ctx <> line) ectx))
 
     renderedErrs :: Doc AnsiStyle
     renderedErrs =
