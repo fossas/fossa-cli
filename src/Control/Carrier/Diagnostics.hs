@@ -100,7 +100,7 @@ distributeMaybe ctx Nothing = Nothing <$ ctx
 -- "distribute" a Result into a DiagnosticsC computation
 hdlResult :: Applicative m => Result (DiagnosticsC m a) -> m (Result a)
 hdlResult (Failure ws eg) = pure (Failure ws eg)
-hdlResult (Success ws m) = addWarns <$> ResultT.runResultT (runDiagnosticsC m)
+hdlResult (Success ws m) = addWarns <$> runDiagnostics m
   where
     addWarns (Success ws' a') = Success (ws' <> ws) a'
     addWarns (Failure ws' eg') = Failure (ws' <> ws) eg'
