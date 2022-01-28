@@ -50,11 +50,6 @@ logDiagnostic diag = do
 
       pure (Just a)
 
--- result <- runDiagnosticsIO diag
--- case result of
---   Left failure -> logErrorBundle failure >> pure Nothing
---   Right success -> pure $ Just success
-
 -- | Run a void Diagnostic effect into a logger, using the default error/warning renderers.
 -- Exits with zero if the result is a success, or non-zero if the result is a failure.
 -- Useful for setting up diagnostics from CLI entry points.
