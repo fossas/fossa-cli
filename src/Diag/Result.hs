@@ -148,10 +148,12 @@ resultToMaybe :: Result a -> Maybe a
 resultToMaybe (Success _ a) = Just a
 resultToMaybe (Failure _ _) = Nothing
 
----------- Rendering
+---------- Rendering Failure and Success
 
--- FIXME: documentation about which warnings appear and why
--- FIXME: standalone warnings are rendered poorly
+-- | renderFailure turns a list of accumulated warnings and the fatal ErrGroup
+-- from a Failure into a message suitable for logging
+--
+-- renderFailure displays all types of emitted warnings.
 renderFailure :: [EmittedWarn] -> ErrGroup -> Doc AnsiStyle
 renderFailure ws (ErrGroup _ ectx es) = header "An issue occurred" <> renderedCtx <> renderedErrs <> renderedPossibleErrs
   where
@@ -164,7 +166,7 @@ renderFailure ws (ErrGroup _ ectx es) = header "An issue occurred" <> renderedCt
     renderedErrs :: Doc AnsiStyle
     renderedErrs =
       section "Relevant errors" $
-        numbered "Error" (map renderErrWithStack (NE.toList es))
+        subsection "Error" (map renderErrWithStack (NE.toList es))
 
     renderedPossibleErrs :: Doc AnsiStyle
     renderedPossibleErrs =
@@ -172,7 +174,35 @@ renderFailure ws (ErrGroup _ ectx es) = header "An issue occurred" <> renderedCt
         [] -> emptyDoc
         _ ->
           section "Possibly-related warnings" $
-            numbered "Warning" (map renderEmittedWarn ws)
+            subsection "Warning" (map renderEmittedWarn ws)
+
+-- | renderSuccess turns a list of warnings from a Success into a message
+-- suitable for logging
+--
+-- renderSuccess only displays warnings that aren't 'IgnoredErrGroup'.
+-- IgnoredErrGroup warnings are noisy: they are the errors we recovered from
+-- without attaching an explicit warning. When the action succeeds, those errors
+-- don't matter.
+--
+-- when all errors in the list are IgnoredErrGroup, or the provided list is
+-- empty, this returns Nothing
+renderSuccess :: [EmittedWarn] -> Maybe (Doc AnsiStyle)
+renderSuccess ws =
+  case notIgnoredErrs of
+    [] -> Nothing
+    ws' ->
+      Just $
+        header "A task succeeded with warnings"
+          <> subsection "Warning" (map renderEmittedWarn ws')
+  where
+    notIgnoredErrs :: [EmittedWarn]
+    notIgnoredErrs = filter (not . isIgnoredErrGroup) ws
+
+    isIgnoredErrGroup :: EmittedWarn -> Bool
+    isIgnoredErrGroup IgnoredErrGroup{} = True
+    isIgnoredErrGroup _ = False
+
+---------- Renering individual Result components: ErrCtx, EmittedWarn, SomeWarn, ErrWithStack
 
 renderErrCtx :: ErrCtx -> Doc AnsiStyle
 renderErrCtx (ErrCtx ctx) = renderDiagnostic ctx
@@ -188,23 +218,6 @@ renderErrWithStack (ErrWithStack (Stack stack) (SomeErr err)) =
       [] -> indent 2 "(none)"
       _ -> indent 2 (vsep (map (pretty . ("- " <>)) stack))
 
--- FIXME: documentation about which warnings appear and why
-renderSuccess :: [EmittedWarn] -> Maybe (Doc AnsiStyle)
-renderSuccess ws =
-  case notIgnoredErrs of
-    [] -> Nothing
-    ws' ->
-      Just $
-        header "A task succeeded with warnings"
-          <> numbered "Warning" (map renderEmittedWarn ws')
-  where
-    notIgnoredErrs :: [EmittedWarn]
-    notIgnoredErrs = filter (not . isIgnoredErrGroup) ws
-
-    isIgnoredErrGroup :: EmittedWarn -> Bool
-    isIgnoredErrGroup IgnoredErrGroup{} = True
-    isIgnoredErrGroup _ = False
-
 renderEmittedWarn :: EmittedWarn -> Doc AnsiStyle
 renderEmittedWarn (IgnoredErrGroup ectx es) = renderedCtx <> renderedErrors
   where
@@ -217,7 +230,7 @@ renderEmittedWarn (IgnoredErrGroup ectx es) = renderedCtx <> renderedErrors
     renderedErrors =
       section
         "Relevant errors"
-        $ numbered "Error" (map renderErrWithStack (NE.toList es))
+        $ subsection "Error" (map renderErrWithStack (NE.toList es))
 renderEmittedWarn (StandaloneWarn (SomeWarn warn)) = renderDiagnostic warn
 renderEmittedWarn (WarnOnErrGroup ws ectx es) = renderedWarnings <> renderedCtx <> renderedErrors
   where
@@ -234,7 +247,7 @@ renderEmittedWarn (WarnOnErrGroup ws ectx es) = renderedWarnings <> renderedCtx 
     renderedErrors =
       section
         "Relevant errors"
-        $ numbered "Error" (map renderErrWithStack (NE.toList es))
+        $ subsection "Error" (map renderErrWithStack (NE.toList es))
 
 renderSomeWarn :: SomeWarn -> Doc AnsiStyle
 renderSomeWarn (SomeWarn w) = renderDiagnostic w
@@ -255,7 +268,5 @@ section name content =
     <> indent 2 content
     <> line
 
-numbered :: Doc AnsiStyle -> [Doc AnsiStyle] -> Doc AnsiStyle
-numbered name = vsep . zipWith (\n single -> title n <> line <> line <> indent 2 single <> line) [1 ..]
-  where
-    title n = annotate (color Yellow) (name <> " " <> viaShow @Int n)
+subsection :: Doc AnsiStyle -> [Doc AnsiStyle] -> Doc AnsiStyle
+subsection name = vsep . map (\single -> annotate (color Yellow) name <> line <> line <> indent 2 single <> line)
