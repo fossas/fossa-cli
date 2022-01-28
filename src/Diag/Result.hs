@@ -241,7 +241,7 @@ renderEmittedWarn (WarnOnErrGroup ws ectx es) = renderedWarnings <> renderedCtx 
         [] -> emptyDoc
         _ ->
           section
-            "Additional context"
+            "Details"
             (vsep (map (\ctx -> renderErrCtx ctx <> line) ectx))
 
     renderedErrors =
