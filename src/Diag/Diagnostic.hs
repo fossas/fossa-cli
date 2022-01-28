@@ -3,10 +3,6 @@ module Diag.Diagnostic (
   -- * ToDiagnostic
   ToDiagnostic (..),
   SomeDiagnostic (..),
-
-  -- * Warnings (temporary)
-  MissingDeps (..),
-  MissingEdges (..),
 ) where
 
 import Control.Exception (SomeException (SomeException))
@@ -38,15 +34,3 @@ instance ToJSON SomeDiagnostic where
       [ "errorPath" .= path
       , "errorCause" .= show (renderDiagnostic cause)
       ]
-
----------- Warnings. FIXME: delete or move to another module as appropriate
-
-data MissingDeps = MissingDeps
-
-instance ToDiagnostic MissingDeps where
-  renderDiagnostic = const "TODO: MissingDeps"
-
-data MissingEdges = MissingEdges
-
-instance ToDiagnostic MissingEdges where
-  renderDiagnostic = const "TODO: MissingEdges"
