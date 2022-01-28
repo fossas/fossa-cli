@@ -195,5 +195,5 @@ validation =
     checkBasedir :: Has Diagnostics sig m => m ()
     checkBasedir =
       context "Making sure scan dir exists"
-        . errCtx @Text "scan target directory didn't exist. make sure you target a real directory or whatever"
+        . errCtx @Text "scan target directory doesn't exist. make sure you target a real directory or whatever"
         $ fatalText "directory doesn't exist"
