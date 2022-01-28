@@ -6,3 +6,5 @@ cradle:
       component: "lib:spectrometer"
     - path: "./test"
       component: "test:unit-tests"
+    - path: "./integration-test"
+      component: "test:integration-tests"

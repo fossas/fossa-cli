@@ -474,6 +474,7 @@ test-suite integration-tests
     Analysis.FixtureExpectationUtils
     Analysis.FixtureUtils
     Analysis.GoSpec
+    Analysis.GradleSpec
     Analysis.MavenSpec
     Analysis.NugetSpec
     Analysis.Python.PipenvSpec
