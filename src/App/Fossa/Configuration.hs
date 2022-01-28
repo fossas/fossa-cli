@@ -161,7 +161,7 @@ readConfigFileIO configFile = do
   -- FIXME: we probably want to read from the target directory of analysis, not
   -- the current directory
   dir <- getCurrentDir
-  config <- runStack [] $ ignoreLogger $ Diag.runDiagnostics $ runReadFSIO $ readConfigFile $ fromMaybe (dir </> defaultFile) configFile
+  config <- runStack $ ignoreLogger $ Diag.runDiagnostics $ runReadFSIO $ readConfigFile $ fromMaybe (dir </> defaultFile) configFile
   case config of
     Failure ws eg -> die $ show (renderFailure ws eg)
     Success _ a -> pure a

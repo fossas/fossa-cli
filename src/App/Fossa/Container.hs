@@ -253,7 +253,7 @@ syftCommand bin (ImageText image) =
     }
 
 parseSyftOutputMain :: Severity -> FilePath -> IO ()
-parseSyftOutputMain logseverity path = runStack [] . withDefaultLogger logseverity . logWithExit_ . runReadFSIO $ parseSyftOutput path
+parseSyftOutputMain logseverity path = runStack . withDefaultLogger logseverity . logWithExit_ . runReadFSIO $ parseSyftOutput path
 
 parseSyftOutput :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => FilePath -> m ()
 parseSyftOutput filepath = do
@@ -273,7 +273,7 @@ parseSyftOutput filepath = do
   pure ()
 
 dumpSyftScanMain :: Severity -> Maybe FilePath -> ImageText -> IO ()
-dumpSyftScanMain logseverity path image = runStack [] . withDefaultLogger logseverity . logWithExit_ . runExecIO $ dumpSyftScan path image
+dumpSyftScanMain logseverity path image = runStack . withDefaultLogger logseverity . logWithExit_ . runExecIO $ dumpSyftScan path image
 
 dumpSyftScan ::
   ( Has Diagnostics sig m

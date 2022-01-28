@@ -195,7 +195,7 @@ analyzeMain ::
   AnalyzeExperimentalPreferences ->
   IO ()
 analyzeMain workdir logSeverity destination project unpackArchives jsonOutput includeAll modeOptions filters preferences =
-  runStack []
+  runStack
     . withDefaultLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO

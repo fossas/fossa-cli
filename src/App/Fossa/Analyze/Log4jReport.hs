@@ -85,7 +85,7 @@ analyzeForLog4j targetDirectory = do
   basedir <- sendIO $ validateDir targetDirectory
   capabilities <- sendIO getNumCapabilities
 
-  runStack []
+  runStack
     . withDefaultLogger SevInfo
     . Diag.logWithExit_
     . runReadFSIO

@@ -36,7 +36,7 @@ listTargetsMain :: AnalyzeExperimentalPreferences -> Severity -> BaseDir -> IO (
 listTargetsMain preferences logSeverity (BaseDir basedir) = do
   capabilities <- getNumCapabilities
 
-  runStack []
+  runStack
     . ignoreDebug
     . withDefaultLogger logSeverity
     . runStickyLogger SevInfo

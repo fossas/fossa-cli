@@ -19,7 +19,7 @@ import Path (Abs, Dir, Path)
 
 aospNoticeMain :: BaseDir -> Severity -> OverrideProject -> NinjaScanID -> NinjaFilePaths -> ApiOpts -> IO ()
 aospNoticeMain (BaseDir basedir) logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts = withDefaultLogger logSeverity $ do
-  runStack [] . logWithExit_ . runExecIO . runReadFSIO . withWigginsBinary $ aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts
+  runStack . logWithExit_ . runExecIO . runReadFSIO . withWigginsBinary $ aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts
 
 ----- main logic
 

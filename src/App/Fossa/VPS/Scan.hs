@@ -31,7 +31,7 @@ data LicenseOnlyScan = LicenseOnlyScan
 
 scanMain :: BaseDir -> ApiOpts -> ProjectMetadata -> Severity -> OverrideProject -> FilterExpressions -> Flag FollowSymlinks -> Flag SkipIPRScan -> Flag LicenseOnlyScan -> IO ()
 scanMain basedir apiOpts metadata logSeverity overrideProject fileFilters followSymlinks skipIprFlag licenseOnlyScan = withDefaultLogger logSeverity $ do
-  runStack [] . logWithExit_ . runReadFSIO $ runExecIO $ withWigginsBinary $ vpsScan basedir logSeverity overrideProject followSymlinks skipIprFlag licenseOnlyScan fileFilters apiOpts metadata
+  runStack . logWithExit_ . runReadFSIO $ runExecIO $ withWigginsBinary $ vpsScan basedir logSeverity overrideProject followSymlinks skipIprFlag licenseOnlyScan fileFilters apiOpts metadata
 
 ----- main logic
 

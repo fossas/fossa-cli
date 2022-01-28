@@ -44,7 +44,7 @@ scanMain basedir debug = do
   exists <- PIO.doesDirExist basedir
   unless exists (die $ "ERROR: " <> show basedir <> " does not exist")
 
-  runStack [] . withDefaultLogger (bool SevInfo SevDebug debug) $ scan basedir
+  runStack . withDefaultLogger (bool SevInfo SevDebug debug) $ scan basedir
 
 runAll ::
   ( Has ReadFS sig m

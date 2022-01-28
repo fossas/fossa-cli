@@ -41,7 +41,7 @@ gitTagPointCommand commit =
 getCurrentTag :: TExpQ (Maybe Text)
 getCurrentTag = do
   let commitHash = giHash $$(tGitInfoCwd)
-  result <- runIO . ignoreLogger . runStack [] . runDiagnostics . runExecIO . getTags $ toText commitHash
+  result <- runIO . ignoreLogger . runStack . runDiagnostics . runExecIO . getTags $ toText commitHash
 
   case result of
     Success _ tags -> filterTags tags

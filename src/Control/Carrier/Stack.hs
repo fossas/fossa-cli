@@ -5,6 +5,7 @@ module Control.Carrier.Stack (
   -- * Stack carrier
   StackC,
   runStack,
+  runStackWith,
 
   -- * Re-exports
   module X,
@@ -19,8 +20,13 @@ import Data.Text (Text)
 newtype StackC m a = StackC {runStackC :: ReaderC [Text] m a}
   deriving (Functor, Applicative, Monad, MonadIO)
 
-runStack :: [Text] -> StackC m a -> m a
-runStack initial = runReader initial . runStackC
+-- | Run the Stack effect with an empty initial callstack
+runStack :: StackC m a -> m a
+runStack = runStackWith []
+
+-- | Run the Stack effect with the provided initial callstack
+runStackWith :: [Text] -> StackC m a -> m a
+runStackWith initial = runReader initial . runStackC
 
 instance MonadTrans StackC where
   lift = StackC . lift

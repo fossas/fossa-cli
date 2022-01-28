@@ -16,7 +16,7 @@ import Fossa.API.Types (ApiOpts)
 import Path (Abs, Dir, Path)
 
 assertUserDefinedBinariesMain :: Severity -> BaseDir -> ApiOpts -> UserDefinedAssertionMeta -> IO ()
-assertUserDefinedBinariesMain logSeverity (BaseDir dir) apiOpts assertion = runStack [] . withDefaultLogger logSeverity . logWithExit_ . runReadFSIO $ do
+assertUserDefinedBinariesMain logSeverity (BaseDir dir) apiOpts assertion = runStack . withDefaultLogger logSeverity . logWithExit_ . runReadFSIO $ do
   assertUserDefinedBinaries dir apiOpts assertion
 
 assertUserDefinedBinaries :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> UserDefinedAssertionMeta -> m ()

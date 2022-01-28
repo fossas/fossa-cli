@@ -19,7 +19,7 @@ import Effect.Logger
 import Srclib.Types (parseLocator)
 
 analyzeMain :: ScanDestination -> Severity -> OverrideProject -> ImageText -> IO ()
-analyzeMain scanDestination logSeverity override image = runStack [] . withDefaultLogger logSeverity . logWithExit_ $ analyze scanDestination override image
+analyzeMain scanDestination logSeverity override image = runStack . withDefaultLogger logSeverity . logWithExit_ $ analyze scanDestination override image
 
 analyze ::
   ( Has Diagnostics sig m
