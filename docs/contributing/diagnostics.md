@@ -152,6 +152,10 @@ instance ToDiagnostic CmdFailureTroubleshooting
 
 When the provided action fails, this operation attaches context to the error.
 
+This context will be displayed prominently above the error, and is intended for
+the purpose of providing a user-friendly description, links to documentation,
+troubleshooting information, etc.
+
 When the provided action succeeds, `errCtx` is a no-op:
 
 ```hs
@@ -212,11 +216,26 @@ example = do
   val <- recover $ warnOnErr MissingEdges runSomeOptionalCommand
   ...
 
+example2 = do
+  val <- warnOnErr MissingEdges runSomeCommandToGetGraph
+           <||> warnOnErr MissingDeps lessOptimalCommandToGetGraph
+           <||> staticAnalysisMethod
+  ...
+
 data MissingEdges
 instance ToDiagnostic MissingEdges
+data MissingDeps
+instance ToDiagnostic MissingDeps
 ```
 
 When the provided action fails, this operation attaches a warning to the error.
+
+This is intended to be used alongside `recover` and `<||>`, where failure of an
+optional sub-action causes a non-ideal outcome.
+
+For example, in the case of "analysis fallbacks", failure of a dynamic analysis
+strategy could, e.g., prevent us from finding edges. This is the operation used
+to surface those warnings.
 
 When the provided action succeeds, this operation is a no-op:
 
