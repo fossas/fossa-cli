@@ -89,7 +89,7 @@ instance ToDiagnostic GradleFailureCtx where
 --
 -- `failingPipenvLike` simulates a failure of static analysis on Pipenv.lock
 --
--- `successfulPipenvLike` simulates a successful static analysis, but failing
+-- `partiallySuccessfulPipenvLike` simulates a successful static analysis, but failing
 -- `pipenv` command. Note that unlike the successful gradle example, we emit a
 -- warning here because the outcome is non-optimal: it may be missing
 -- dependencies
@@ -164,7 +164,7 @@ instance ToDiagnostic PipenvCmdFailureCtx where
 --
 -- 1. a config file
 -- 2. environment variables
--- 3. a failing config file parse
+-- 3. validating the scan directory exists
 --
 -- In this example, (1) and (3) both fail, and (2) is successful. Note that we
 -- attempted (3) even though (1) failed. Also note that the errors and error
