@@ -36,6 +36,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
+import GHC.Show (showLitString)
 import Prettyprinter
 import Prettyprinter.Render.Terminal
 
@@ -119,28 +120,32 @@ instance Monad Result where
 
 ---------- Diagnostics
 
--- FIXME: kill Show instances?
-
 -- | Some warning type. Right now, this just requires a ToDiagnostic instance for the type.
 data SomeWarn where
   SomeWarn :: ToDiagnostic diag => diag -> SomeWarn
 
 instance Show SomeWarn where
-  show (SomeWarn w) = "\"" <> show (renderDiagnostic w) <> "\""
+  showsPrec p (SomeWarn w) = showParen (p > 10) $ showString "SomeWarn " . diagToShowS w
 
 -- | Some error type. Right now, this just requires a ToDiagnostic instance for the type.
 data SomeErr where
   SomeErr :: ToDiagnostic diag => diag -> SomeErr
 
 instance Show SomeErr where
-  show (SomeErr e) = "\"" <> show (renderDiagnostic e) <> "\""
+  showsPrec p (SomeErr e) = showParen (p > 10) $ showString "SomeErr " . diagToShowS e
 
 -- | Some error context type. Right now, this just requires a ToDiagnostics instance for the type.
 data ErrCtx where
   ErrCtx :: ToDiagnostic diag => diag -> ErrCtx
 
 instance Show ErrCtx where
-  show (ErrCtx c) = "\"" <> show (renderDiagnostic c) <> "\""
+  showsPrec p (ErrCtx c) = showParen (p > 10) $ showString "ErrCtx " . diagToShowS c
+
+diagToShowS :: ToDiagnostic diag => diag -> ShowS
+diagToShowS = showWrapped '"' . showLitString . show . renderDiagnostic
+  where
+    showWrapped :: Char -> ShowS -> ShowS
+    showWrapped c str = showChar c . str . showChar c
 
 ---------- Helpers
 
