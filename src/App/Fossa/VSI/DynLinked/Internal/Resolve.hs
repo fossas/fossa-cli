@@ -33,13 +33,14 @@ toSourceUnit ::
   , Has Diagnostics sig m
   ) =>
   Path Abs Dir ->
+  LinuxDistro ->
   Set DynamicDependency ->
   m SourceUnit
-toSourceUnit root dependencies = do
+toSourceUnit root distro dependencies = do
   let (resolved, unresolved) = sortResolvedUnresolved dependencies
   binaries <- traverse (analyzeSingleBinary root) unresolved
 
-  let project = toProject root $ Graphing.directs (map toDependency resolved)
+  let project = toProject root . Graphing.directs $ map (toDependency distro) resolved
   let unit = Srclib.toSourceUnit False project
   pure $ unit{additionalData = fmap toDepData (Just binaries)}
   where
@@ -48,11 +49,11 @@ toSourceUnit root dependencies = do
     toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
     toProject dir graph = ProjectResult VsiProjectType dir graph Complete []
 
-toDependency :: ResolvedLinuxPackage -> Dependency
-toDependency ResolvedLinuxPackage{..} = case resolvedLinuxPackageManager of
-  LinuxPackageManagerDEB -> renderDEB resolvedLinuxPackageMetadata resolvedLinuxDistro
-  LinuxPackageManagerRPM -> renderRPM resolvedLinuxPackageMetadata resolvedLinuxDistro
-  LinuxPackageManagerAPK -> renderAPK resolvedLinuxPackageMetadata resolvedLinuxDistro
+toDependency :: LinuxDistro -> ResolvedLinuxPackage -> Dependency
+toDependency distro ResolvedLinuxPackage{..} = case resolvedLinuxPackageManager of
+  LinuxPackageManagerDEB -> renderDEB resolvedLinuxPackageMetadata distro
+  LinuxPackageManagerRPM -> renderRPM resolvedLinuxPackageMetadata distro
+  LinuxPackageManagerAPK -> renderAPK resolvedLinuxPackageMetadata distro
   where
     render :: DepType -> [Text] -> [Text] -> Dependency
     render fetcher projectParts revisionParts =

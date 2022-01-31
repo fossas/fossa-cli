@@ -12,7 +12,7 @@ module App.Fossa.VSI.DynLinked.Internal.Lookup.APK (
   SyftLookupTable (..),
 ) where
 
-import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxDistro, LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
+import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
 import App.Fossa.VSI.DynLinked.Util (runningLinux)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
@@ -29,18 +29,18 @@ import Path (Abs, Dir, File, Path)
 
 -- | The idea here is that we look up what paths we can with apt and turn them into @DynamicDependency@.
 -- We then hand back leftovers and lookup results for the next resolution function.
-lookupDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> LinuxDistro -> [Path Abs File] -> m ([Path Abs File], [DynamicDependency])
-lookupDependencies _ _ files | not runningLinux = pure (files, [])
-lookupDependencies root distro files = do
+lookupDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> [Path Abs File] -> m ([Path Abs File], [DynamicDependency])
+lookupDependencies _ files | not runningLinux = pure (files, [])
+lookupDependencies root files = do
   syft <- runSyft root
   table <- constructLookupTables syft
-  partitionEithers <$> traverse (tryLookup table distro) files
+  partitionEithers <$> traverse (tryLookup table) files
 
-tryLookup :: (Has Diagnostics sig m) => SyftLookupTable -> LinuxDistro -> Path Abs File -> m (Either (Path Abs File) DynamicDependency)
-tryLookup SyftLookupTable{..} distro file = fmap (maybeToRight file) . runMaybeT $ do
+tryLookup :: (Has Diagnostics sig m) => SyftLookupTable -> Path Abs File -> m (Either (Path Abs File) DynamicDependency)
+tryLookup SyftLookupTable{..} file = fmap (maybeToRight file) . runMaybeT $ do
   index <- MaybeT . pure $ Map.lookup file pathToIndex
   meta <- MaybeT . pure $ Map.lookup index indexToMeta
-  pure . DynamicDependency file . Just $ ResolvedLinuxPackage LinuxPackageManagerRPM distro meta
+  pure . DynamicDependency file . Just $ ResolvedLinuxPackage LinuxPackageManagerRPM meta
 
 -- | The output of the syft binary
 newtype SyftData = SyftData

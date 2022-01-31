@@ -3,7 +3,7 @@ module App.Fossa.VSI.DynLinked.Internal.Lookup.RPM (
   parseMetaOutput,
 ) where
 
-import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxDistro, LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
+import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
 import App.Fossa.VSI.DynLinked.Util (runningLinux)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, recover)
@@ -23,15 +23,15 @@ type Parser = Parsec Void Text
 
 -- | The idea here is that we look up what paths we can with RPM and turn them into @DynamicDependency@.
 -- We then hand back leftovers and lookup results for the next resolution function.
-lookupDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> LinuxDistro -> [Path Abs File] -> m ([Path Abs File], [DynamicDependency])
-lookupDependencies _ _ files | not runningLinux = pure (files, [])
-lookupDependencies root distro files = partitionEithers <$> traverse (tryLookup root distro) files
+lookupDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> [Path Abs File] -> m ([Path Abs File], [DynamicDependency])
+lookupDependencies _ files | not runningLinux = pure (files, [])
+lookupDependencies root files = partitionEithers <$> traverse (tryLookup root) files
 
-tryLookup :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> LinuxDistro -> Path Abs File -> m (Either (Path Abs File) DynamicDependency)
-tryLookup root distro file = fmap (maybeToRight file) . runMaybeT $ do
+tryLookup :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Either (Path Abs File) DynamicDependency)
+tryLookup root file = fmap (maybeToRight file) . runMaybeT $ do
   name <- MaybeT $ packageForFile root file
   meta <- MaybeT $ packageMeta root name
-  pure . DynamicDependency file . Just $ ResolvedLinuxPackage LinuxPackageManagerRPM distro meta
+  pure . DynamicDependency file . Just $ ResolvedLinuxPackage LinuxPackageManagerRPM meta
 
 packageForFile :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe Text)
 packageForFile _ _ | not runningLinux = pure Nothing
