@@ -26,7 +26,7 @@ import Data.Conduit.Binary qualified as CB
 import Data.Function ((&))
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Discovery.Archive (extractTarGz)
+import Discovery.Archive (selectUnarchiver)
 import Effect.Exec (
   Command (..),
   ExecF (Exec),
@@ -42,16 +42,29 @@ import Network.HTTP.Req (
   NoReqBody (NoReqBody),
   Url,
   defaultHttpConfig,
+  renderUrl,
   reqBr,
   runReq,
   useHttpsURI,
  )
 import Network.HTTP.Req.Conduit (responseBodySource)
-import Path
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  reldir,
+  toFilePath,
+  (</>),
+ )
 import Path.IO qualified as PIO
 import System.Directory.Internal.Prelude (Handle, hClose)
 import Text.URI (mkURI)
-import Types
+import Types (
+  DependencyResults,
+  DiscoveredProject (projectBuildTargets, projectData),
+ )
 
 analysisIntegrationCaseFixtureDir :: Path Rel Dir
 analysisIntegrationCaseFixtureDir = [reldir|integration-test/artifacts/|]
@@ -140,7 +153,6 @@ getArtifact :: Has (Lift IO) sig m => FixtureArtifact -> m (Path Abs Dir)
 getArtifact target = sendIO $ do
   -- Ensure parent directory for fixture exists
   PIO.ensureDir analysisIntegrationCaseFixtureDir
-  let artifactUrl = tarGzFileUrl target
   let archiveExtractionDir = analysisIntegrationCaseFixtureDir </> extractAt target
 
   PIO.ensureDir archiveExtractionDir
@@ -149,9 +161,12 @@ getArtifact target = sendIO $ do
   case resolvedUrl of
     Nothing -> fail ("could not be resolved, artifact's download url: " <> show artifactUrl)
     Just (url, _) -> do
-      PIO.withTempFile (analysisIntegrationCaseFixtureDir) "artifact" (downloadAndExtractArtifact url archiveExtractionDir)
+      res <- PIO.withTempFile (analysisIntegrationCaseFixtureDir) "artifact" (downloadAndExtractArtifact url archiveExtractionDir)
+      either fail pure res
   where
-    downloadAndExtractArtifact :: Url a -> Path Rel Dir -> Path Abs File -> Handle -> IO (Path Abs Dir)
+    artifactUrl = tarGzFileUrl target
+
+    downloadAndExtractArtifact :: Url a -> Path Rel Dir -> Path Abs File -> Handle -> IO (Either String (Path Abs Dir))
     downloadAndExtractArtifact url extractionTarget tempFile tempFileHandle = do
       _ <- runReq defaultHttpConfig $
         reqBr GET url NoReqBody mempty $
@@ -161,7 +176,10 @@ getArtifact target = sendIO $ do
 
       sendIO $ PIO.ensureDir extractionTarget
       archiveExtractFolder <- sendIO $ PIO.makeAbsolute extractionTarget
-      sendIO $ extractTarGz archiveExtractFolder tempFile
 
-      PIO.removeFile tempFile
-      pure archiveExtractFolder
+      let urlStr = Text.unpack . renderUrl $ url
+      case selectUnarchiver urlStr of
+        Nothing -> pure . Left $ "Failed to extract file from " <> urlStr
+        Just extractor -> do
+          sendIO $ extractor archiveExtractFolder tempFile
+          pure . Right $ archiveExtractFolder
