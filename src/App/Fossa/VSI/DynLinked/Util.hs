@@ -6,7 +6,9 @@ module App.Fossa.VSI.DynLinked.Util (
 ) where
 
 import Path (File, Path)
+import System.Info qualified as SysInfo
 
+-- Have to use CPP pragmas here so we can import @System.Posix.Files@.
 #ifdef mingw32_HOST_OS
 
 -- | Test whether the file has a `setuid` bit.
@@ -22,7 +24,6 @@ import Control.Effect.Lift (Lift, sendIO)
 import Data.Bits ((.&.))
 import Path qualified as P
 import System.Posix.Files (fileMode, getFileStatus, setUserIDMode)
-import qualified System.Info as SysInfo
 
 -- | Test whether the file has a `setuid` bit.
 hasSetUID :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path t File -> m Bool
