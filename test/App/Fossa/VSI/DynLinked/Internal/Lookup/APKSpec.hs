@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -9,7 +10,7 @@ import App.Fossa.VSI.DynLinked.Types (LinuxPackageMetadata (..))
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Data.Aeson (toJSON)
 import Data.Map qualified as Map
-import Path (mkAbsFile)
+import Path (Abs, Dir, Path, mkAbsDir, mkRelFile, (</>))
 import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
 
 spec :: Spec
@@ -34,9 +35,9 @@ syntheticData =
               SyftArtifactMetadata
                 { metadataArchitecture = "arch_1"
                 , metadataFiles =
-                    [ SyftArtifactMetadataFile $(mkAbsFile "/file1_1")
-                    , SyftArtifactMetadataFile $(mkAbsFile "/file1_2")
-                    , SyftArtifactMetadataFile $(mkAbsFile "/file1_3")
+                    [ SyftArtifactMetadataFile $ safeAbsRoot </> $(mkRelFile "file1_1")
+                    , SyftArtifactMetadataFile $ safeAbsRoot </> $(mkRelFile "file1_2")
+                    , SyftArtifactMetadataFile $ safeAbsRoot </> $(mkRelFile "file1_3")
                     ]
                 }
         }
@@ -50,9 +51,9 @@ syntheticData =
               SyftArtifactMetadata
                 { metadataArchitecture = "arch_2"
                 , metadataFiles =
-                    [ SyftArtifactMetadataFile $(mkAbsFile "/file2_1")
-                    , SyftArtifactMetadataFile $(mkAbsFile "/file2_2")
-                    , SyftArtifactMetadataFile $(mkAbsFile "/file2_3")
+                    [ SyftArtifactMetadataFile $ safeAbsRoot </> $(mkRelFile "file2_1")
+                    , SyftArtifactMetadataFile $ safeAbsRoot </> $(mkRelFile "file2_2")
+                    , SyftArtifactMetadataFile $ safeAbsRoot </> $(mkRelFile "file2_3")
                     ]
                 }
         }
@@ -63,12 +64,12 @@ expectedLookupTable =
   SyftLookupTable
     { pathToIndex =
         Map.fromList
-          [ ($(mkAbsFile "/file1_1"), 0)
-          , ($(mkAbsFile "/file1_2"), 0)
-          , ($(mkAbsFile "/file1_3"), 0)
-          , ($(mkAbsFile "/file2_1"), 1)
-          , ($(mkAbsFile "/file2_2"), 1)
-          , ($(mkAbsFile "/file2_3"), 1)
+          [ (safeAbsRoot </> $(mkRelFile "file1_1"), 0)
+          , (safeAbsRoot </> $(mkRelFile "file1_2"), 0)
+          , (safeAbsRoot </> $(mkRelFile "file1_3"), 0)
+          , (safeAbsRoot </> $(mkRelFile "file2_1"), 1)
+          , (safeAbsRoot </> $(mkRelFile "file2_2"), 1)
+          , (safeAbsRoot </> $(mkRelFile "file2_3"), 1)
           ]
     , indexToMeta =
         Map.fromList
@@ -92,3 +93,12 @@ expectedLookupTable =
             )
           ]
     }
+
+-- We have to use CPP pragmas here, because we can't compile abs paths for other platforms.
+#ifdef mingw32_HOST_OS
+safeAbsRoot :: Path Abs Dir
+safeAbsRoot = $(mkAbsDir "C:/")
+#else
+safeAbsRoot :: Path Abs Dir
+safeAbsRoot = $(mkAbsDir "/")
+#endif
