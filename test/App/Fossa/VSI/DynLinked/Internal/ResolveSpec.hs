@@ -10,24 +10,24 @@ spec :: Spec
 spec = do
   describe "resolves linux dependencies to srclib dependencies" $ do
     it "resolves apk" $ do
-      let original = ResolvedLinuxPackage LinuxPackageManagerAPK placeholderDistro placeholderMeta
+      let original = ResolvedLinuxPackage LinuxPackageManagerAPK placeholderMeta
       let expected = Dependency LinuxAPK "id#distro#release" (Just $ CEq "arch#revision") [] mempty mempty
-      toDependency original `shouldBe` expected
+      toDependency placeholderDistro original `shouldBe` expected
 
     it "resolves debian" $ do
-      let original = ResolvedLinuxPackage LinuxPackageManagerDEB placeholderDistro placeholderMeta
+      let original = ResolvedLinuxPackage LinuxPackageManagerDEB placeholderMeta
       let expected = Dependency LinuxDEB "id#distro#release" (Just $ CEq "arch#revision") [] mempty mempty
-      toDependency original `shouldBe` expected
+      toDependency placeholderDistro original `shouldBe` expected
 
     it "resolves rpm with epoch" $ do
-      let original = ResolvedLinuxPackage LinuxPackageManagerRPM placeholderDistro placeholderMeta
+      let original = ResolvedLinuxPackage LinuxPackageManagerRPM placeholderMeta
       let expected = Dependency LinuxRPM "id#distro#release" (Just $ CEq "arch#epoch:revision") [] mempty mempty
-      toDependency original `shouldBe` expected
+      toDependency placeholderDistro original `shouldBe` expected
 
     it "resolves rpm without epoch" $ do
-      let original = ResolvedLinuxPackage LinuxPackageManagerRPM placeholderDistro $ baseMeta Nothing
+      let original = ResolvedLinuxPackage LinuxPackageManagerRPM $ baseMeta Nothing
       let expected = Dependency LinuxRPM "id#distro#release" (Just $ CEq "arch#revision") [] mempty mempty
-      toDependency original `shouldBe` expected
+      toDependency placeholderDistro original `shouldBe` expected
 
 placeholderMeta :: LinuxPackageMetadata
 placeholderMeta = baseMeta (Just "epoch")
