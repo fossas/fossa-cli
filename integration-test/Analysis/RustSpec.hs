@@ -8,7 +8,7 @@ import Analysis.FixtureUtils
 import Path
 import Strategy.Cargo qualified as Cargo
 import Test.Hspec
-import Types (GraphBreadth (Complete))
+import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
 
 rustEnv :: FixtureEnvironment
 rustEnv = NixEnv ["rustc", "cargo"]
@@ -39,5 +39,5 @@ fd =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary bat "cargo" (DependencyResultsSummary 146 29 269 1 Complete)
-  testSuiteDepResultSummary fd "cargo" (DependencyResultsSummary 71 25 137 1 Complete)
+  testSuiteDepResultSummary bat CargoProjectType (DependencyResultsSummary 146 29 269 1 Complete)
+  testSuiteDepResultSummary fd CargoProjectType (DependencyResultsSummary 71 25 137 1 Complete)

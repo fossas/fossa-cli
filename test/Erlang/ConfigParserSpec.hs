@@ -112,6 +112,7 @@ spec = do
               , ErlArray [atom "arr1"]
               , ErlArray [ErlTuple [atom "key", ErlString "value"]]
               , ErlTuple [atom "number", ErlInt 5678] -- Literal
+              , ErlTuple [atom "escapedString", ErlString "{{erts_vsn}}/bin/erl"]
               ]
           ]
 

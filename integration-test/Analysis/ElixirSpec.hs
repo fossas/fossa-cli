@@ -9,7 +9,7 @@ import Effect.Exec (AllowErr (Never), Command (Command))
 import Path
 import Strategy.Mix qualified as Mix
 import Test.Hspec
-import Types (GraphBreadth (Complete))
+import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
 
 elixirEnv :: FixtureEnvironment
 elixirEnv = NixEnv ["elixir"]
@@ -31,4 +31,4 @@ absinthe =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary absinthe "mix" (DependencyResultsSummary 4 4 1 1 Complete)
+  testSuiteDepResultSummary absinthe MixProjectType (DependencyResultsSummary 4 4 1 1 Complete)

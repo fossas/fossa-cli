@@ -8,7 +8,7 @@ import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Path
 import Strategy.Fortran.FpmToml (analyzeFpmToml)
-import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (Partial))
+import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (FpmProjectType), GraphBreadth (Partial))
 
 discover ::
   ( Has ReadFS sig m
@@ -41,7 +41,7 @@ instance AnalyzeProject FpmProject where
 mkProject :: FpmProject -> DiscoveredProject FpmProject
 mkProject project =
   DiscoveredProject
-    { projectType = "fpm"
+    { projectType = FpmProjectType
     , projectBuildTargets = mempty
     , projectPath = fpmSpecDir project
     , projectData = project

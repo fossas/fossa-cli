@@ -57,7 +57,7 @@ instance AnalyzeProject PackageReferenceProject where
 mkProject :: PackageReferenceProject -> DiscoveredProject PackageReferenceProject
 mkProject project =
   DiscoveredProject
-    { projectType = "packagereference"
+    { projectType = PackageReferenceProjectType
     , projectBuildTargets = mempty
     , projectPath = parent $ packageReferenceFile project
     , projectData = project

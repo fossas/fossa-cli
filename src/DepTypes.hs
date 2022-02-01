@@ -85,6 +85,12 @@ data DepType
     GooglesourceType
   | -- | Hex registry
     HexType
+  | -- | Linux "apk" registry
+    LinuxAPK
+  | -- | Linux "debian" registry
+    LinuxDEB
+  | -- | Linux "rpm" registry
+    LinuxRPM
   | -- | Maven registry
     MavenType
   | -- | NPM registry (or similar)

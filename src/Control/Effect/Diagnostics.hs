@@ -24,6 +24,7 @@ module Control.Effect.Diagnostics (
   -- * Diagnostic helpers
   fatalText,
   fatalOnIOException,
+  fatalOnSomeException,
   fromEither,
   fromEitherShow,
   fromMaybe,
@@ -43,7 +44,7 @@ module Control.Effect.Diagnostics (
 import Control.Algebra as X
 import Control.Carrier.Stack
 import Control.Effect.Lift (Lift)
-import Control.Exception (IOException)
+import Control.Exception (IOException, SomeException (..))
 import Control.Exception.Extra (safeCatch)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
@@ -149,6 +150,12 @@ fatalOnIOException :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> m 
 fatalOnIOException ctx go = context ctx $ safeCatch go die'
   where
     die' (e :: IOException) = fatalText ("io exception: " <> toText (show e))
+
+-- | Throw a generic error message on any exception, wrapped in a new 'context' using the provided @Text@.
+fatalOnSomeException :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> m a -> m a
+fatalOnSomeException ctx go = context ctx $ safeCatch go die'
+  where
+    die' (e :: SomeException) = fatalText ("caught exception: " <> toText (show e))
 
 -- | Run a list of actions, combining the results of successful actions.
 --

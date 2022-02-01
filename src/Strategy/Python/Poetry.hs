@@ -31,7 +31,7 @@ import Path (Abs, Dir, File, Path)
 import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, pyProjectDeps, toCanonicalName, toMap)
 import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), poetryLockCodec)
 import Strategy.Python.Poetry.PyProject (PyProject (..), pyProjectCodec)
-import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (..))
+import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (PoetryProjectType), GraphBreadth (..))
 
 newtype PyProjectTomlFile = PyProjectTomlFile {pyProjectTomlPath :: Path Abs File} deriving (Eq, Ord, Show, Generic)
 newtype PoetryLockFile = PoetryLockFile {poetryLockPath :: Path Abs File} deriving (Eq, Ord, Show, Generic)
@@ -105,7 +105,7 @@ findProjects = walk' $ \dir _ files -> do
 mkProject :: PoetryProject -> DiscoveredProject PoetryProject
 mkProject project =
   DiscoveredProject
-    { projectType = "poetry"
+    { projectType = PoetryProjectType
     , projectBuildTargets = mempty
     , projectPath = pyProjectPath $ projectDir project
     , projectData = project

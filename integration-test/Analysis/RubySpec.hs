@@ -8,7 +8,7 @@ import Analysis.FixtureUtils
 import Path
 import Strategy.Bundler qualified as Bundler
 import Test.Hspec
-import Types (GraphBreadth (Complete))
+import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
 
 rails :: AnalysisTestFixture (Bundler.BundlerProject)
 rails =
@@ -24,4 +24,4 @@ rails =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary rails "bundler" (DependencyResultsSummary 210 70 293 1 Complete)
+  testSuiteDepResultSummary rails BundlerProjectType (DependencyResultsSummary 210 70 293 1 Complete)

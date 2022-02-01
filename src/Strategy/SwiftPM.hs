@@ -22,7 +22,7 @@ import GHC.Generics (Generic)
 import Path
 import Strategy.Swift.PackageSwift (analyzePackageSwift)
 import Strategy.Swift.Xcode.Pbxproj (analyzeXcodeProjForSwiftPkg, hasSomeSwiftDeps)
-import Types (DependencyResults (..), DiscoveredProject (..), GraphBreadth (..))
+import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (SwiftProjectType), GraphBreadth (..))
 
 data SwiftProject
   = PackageProject SwiftPackageProject
@@ -106,7 +106,7 @@ debugXCodeWithoutSwiftDeps projFile =
 mkProject :: SwiftProject -> DiscoveredProject SwiftProject
 mkProject project =
   DiscoveredProject
-    { projectType = "swift"
+    { projectType = SwiftProjectType
     , projectBuildTargets = mempty
     , projectPath = case project of
         PackageProject p -> swiftPkgProjectDir p

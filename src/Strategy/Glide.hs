@@ -37,7 +37,7 @@ instance AnalyzeProject GlideProject where
 mkProject :: GlideProject -> DiscoveredProject GlideProject
 mkProject project =
   DiscoveredProject
-    { projectType = "glide"
+    { projectType = GlideProjectType
     , projectBuildTargets = mempty
     , projectPath = glideDir project
     , projectData = project

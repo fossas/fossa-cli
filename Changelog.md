@@ -1,5 +1,25 @@
 # Fossa CLI Changelog
 
+## v3.0.17
+
+- Npm: Fixes an issue where a package-lock.json dep with a boolean 'resolved' key wouldn't parse. ([#775](https://github.com/fossas/fossa-cli/pull/775))
+- Npm: Fixes an issue where analyzing `package-lock.json` would miss duplicate packages with different versions. ([#779](https://github.com/fossas/fossa-cli/pull/779))
+- Gradle: Projects with only a top-level `settings.gradle` file will now be detected. ([#785](https://github.com/fossas/fossa-cli/pull/785))
+
+## v3.0.16
+
+- Monorepo: Upload file data and licenses together during monorepo scans, speed up issue scans. ([#772](https://github.com/fossas/fossa-cli/pull/772))
+- Improves the overall performance and progress reporting of VSI scans. ([#765](https://github.com/fossas/fossa-cli/pull/765))
+- Rebar: Fix `rebar.config` parser failing on unneccessary escapes. ([#764](https://github.com/fossas/fossa-cli/pull/764))
+
+## v3.0.15
+
+- Improve archive upload logging. ([#761](https://github.com/fossas/fossa-cli/pull/761)) 
+
+## v3.0.14
+
+- Maven: Updates implementation to delineate classifier, and consequently maven dependencies with classifier can be scanned without failure in FOSSA. ([#755](https://github.com/fossas/fossa-cli/pull/755/))
+
 ## v3.0.13
 
 - `package-lock.json` parser ignores name field. ([#757](https://github.com/fossas/fossa-cli/pull/757)) 

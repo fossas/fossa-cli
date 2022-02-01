@@ -58,7 +58,7 @@ walk f = walkDir $ \dir subdirs files -> do
     WalkSkipAll -> pure $ WalkExclude subdirs
     WalkStop -> pure WalkFinish
 
--- Like @walk@, but collects the output of @f@ in a monoid.
+-- |Like @walk@, but collects the output of @f@ in a monoid.
 walk' ::
   forall o sig m.
   (Has ReadFS sig m, Has Diagnostics sig m, Monoid o) =>
@@ -93,7 +93,7 @@ walkDir ::
 walkDir handler topdir =
   context "Walking the filetree" $
     void $
-      --makeAbsolute topdir >>= walkAvoidLoop Set.empty
+      -- makeAbsolute topdir >>= walkAvoidLoop Set.empty
       walkAvoidLoop Set.empty topdir
   where
     walkAvoidLoop traversed curdir = do

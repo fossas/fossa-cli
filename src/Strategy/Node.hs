@@ -65,6 +65,7 @@ import Strategy.Node.YarnV2.YarnLock qualified as V2
 import Types (
   DependencyResults (DependencyResults),
   DiscoveredProject (..),
+  DiscoveredProjectType (NpmProjectType, YarnProjectType),
   FoundTargets (ProjectWithoutTargets),
   GraphBreadth (Complete, Partial),
  )
@@ -103,9 +104,9 @@ mkProject ::
   m (DiscoveredProject NodeProject)
 mkProject project = do
   let (graph, typename) = case project of
-        Yarn _ g -> (g, "yarn")
-        NPMLock _ g -> (g, "npm")
-        NPM g -> (g, "npm")
+        Yarn _ g -> (g, YarnProjectType)
+        NPMLock _ g -> (g, NpmProjectType)
+        NPM g -> (g, NpmProjectType)
   Manifest rootManifest <- fromEitherShow $ findWorkspaceRootManifest graph
   pure $
     DiscoveredProject

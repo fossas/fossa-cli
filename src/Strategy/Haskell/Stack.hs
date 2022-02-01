@@ -74,7 +74,7 @@ findProjects = walk' $ \dir _ files -> do
 mkProject :: StackProject -> DiscoveredProject StackProject
 mkProject project =
   DiscoveredProject
-    { projectType = "stack"
+    { projectType = StackProjectType
     , projectBuildTargets = mempty
     , projectPath = stackDir project
     , projectData = project

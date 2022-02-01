@@ -34,10 +34,10 @@ jobs:
         env:
           FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
         run: |
-          fossa analyze --filter cabal@.
+          fossa analyze --only-target cabal
 
       - name: Check for scan results
         env:
           FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
         run: |
-          fossa test --timeout 1800
+          fossa test

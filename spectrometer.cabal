@@ -120,11 +120,15 @@ common deps
     , unordered-containers         ^>=0.2.10
     , vector                       ^>=0.12.0.3
     , versions                     ^>=5.0.0
+    , word8                        ^>=0.1.3
     , xml                          ^>=1.3.14
     , yaml                         ^>=0.11.1
     , yarn-lock                    ^>=0.6.5
     , zip                          ^>=1.7.1
     , zlib                         ^>=0.6.2.1
+
+  if !os(windows)
+    build-depends: unix ^>=2.7.2.2
 
 library
   import:          lang
@@ -171,6 +175,11 @@ library
     App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Test
     App.Fossa.VPS.Types
+    App.Fossa.VSI.Analyze
+    App.Fossa.VSI.DynLinked.Internal.Binary
+    App.Fossa.VSI.DynLinked.Internal.Resolve
+    App.Fossa.VSI.DynLinked.Types
+    App.Fossa.VSI.DynLinked.Util
     App.Fossa.VSI.Fingerprint
     App.Fossa.VSI.IAT.AssertRevisionBinaries
     App.Fossa.VSI.IAT.AssertUserDefinedBinaries
@@ -369,12 +378,16 @@ test-suite unit-tests
     App.Fossa.Report.AttributionSpec
     App.Fossa.Report.Log4jReportSpec
     App.Fossa.VPS.NinjaGraphSpec
+    App.Fossa.VSI.DynLinked.Internal.BinarySpec
+    App.Fossa.VSI.DynLinked.Internal.ResolveSpec
+    App.Fossa.VSI.DynLinked.UtilSpec
     App.Fossa.VSI.FingerprintSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec
     Cocoapods.PodfileLockSpec
     Cocoapods.PodfileSpec
+    Composer.ComposerJsonSpec
     Composer.ComposerLockSpec
     Conda.CondaListSpec
     Conda.EnvironmentYmlSpec
@@ -388,6 +401,7 @@ test-suite unit-tests
     Elixir.MixTreeSpec
     Erlang.ConfigParserSpec
     Erlang.Rebar3TreeSpec
+    Extra.ListSpec
     Extra.TextSpec
     Fortran.FpmTomlSpec
     Fossa.API.TypesSpec
@@ -466,6 +480,7 @@ test-suite integration-tests
     Analysis.FixtureExpectationUtils
     Analysis.FixtureUtils
     Analysis.GoSpec
+    Analysis.GradleSpec
     Analysis.MavenSpec
     Analysis.NugetSpec
     Analysis.Python.PipenvSpec

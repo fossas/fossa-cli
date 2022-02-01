@@ -66,7 +66,7 @@ instance AnalyzeProject CarthageProject where
 mkProject :: CarthageProject -> DiscoveredProject CarthageProject
 mkProject project =
   DiscoveredProject
-    { projectType = "carthage"
+    { projectType = CarthageProjectType
     , projectBuildTargets = mempty
     , projectPath = carthageDir project
     , projectData = project

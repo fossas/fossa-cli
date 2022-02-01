@@ -53,7 +53,7 @@ instance AnalyzeProject ScalaProject where
 mkProject :: MavenProjectClosure -> DiscoveredProject ScalaProject
 mkProject closure =
   DiscoveredProject
-    { projectType = "scala"
+    { projectType = ScalaProjectType
     , projectPath = parent $ PomClosure.closurePath closure
     , projectBuildTargets = mempty
     , projectData = ScalaProject closure

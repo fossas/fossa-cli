@@ -47,7 +47,7 @@ toSourceUnit :: Bool -> ProjectResult -> SourceUnit
 toSourceUnit leaveUnfiltered ProjectResult{..} =
   SourceUnit
     { sourceUnitName = renderedPath
-    , sourceUnitType = projectResultType
+    , sourceUnitType = toText projectResultType
     , sourceUnitManifest = renderedPath
     , sourceUnitBuild =
         Just $
@@ -140,6 +140,9 @@ depTypeToFetcher = \case
   GoType -> "go"
   HackageType -> "hackage"
   HexType -> "hex"
+  LinuxAPK -> "apk"
+  LinuxDEB -> "deb"
+  LinuxRPM -> "rpm-generic"
   MavenType -> "mvn"
   NodeJSType -> "npm"
   NuGetType -> "nuget"
@@ -167,6 +170,9 @@ fetcherToDepType fetcher | depTypeToFetcher GitType == fetcher = Just GitType
 fetcherToDepType fetcher | depTypeToFetcher GoType == fetcher = Just GoType
 fetcherToDepType fetcher | depTypeToFetcher HackageType == fetcher = Just HackageType
 fetcherToDepType fetcher | depTypeToFetcher HexType == fetcher = Just HexType
+fetcherToDepType fetcher | depTypeToFetcher LinuxAPK == fetcher = Just LinuxAPK
+fetcherToDepType fetcher | depTypeToFetcher LinuxDEB == fetcher = Just LinuxDEB
+fetcherToDepType fetcher | depTypeToFetcher LinuxRPM == fetcher = Just LinuxRPM
 fetcherToDepType fetcher | depTypeToFetcher MavenType == fetcher = Just MavenType
 fetcherToDepType fetcher | depTypeToFetcher NodeJSType == fetcher = Just NodeJSType
 fetcherToDepType fetcher | depTypeToFetcher NuGetType == fetcher = Just NuGetType

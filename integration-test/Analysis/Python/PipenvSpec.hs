@@ -8,7 +8,7 @@ import Analysis.FixtureUtils
 import Path
 import Strategy.Python.Pipenv qualified as Pipenv
 import Test.Hspec
-import Types (GraphBreadth (Complete))
+import Types (DiscoveredProjectType (PipenvProjectType), GraphBreadth (Complete))
 
 pipenv :: AnalysisTestFixture (Pipenv.PipenvProject)
 pipenv =
@@ -24,4 +24,4 @@ pipenv =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary pipenv "pipenv" (DependencyResultsSummary 90 90 0 1 Complete)
+  testSuiteDepResultSummary pipenv PipenvProjectType (DependencyResultsSummary 90 90 0 1 Complete)

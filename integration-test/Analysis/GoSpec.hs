@@ -8,6 +8,7 @@ import Analysis.FixtureUtils
 import Path
 import Strategy.Gomodules qualified as Gomodules
 import Test.Hspec
+import Types (DiscoveredProjectType (..))
 
 goEnv :: FixtureEnvironment
 goEnv = NixEnv ["go"]
@@ -29,7 +30,7 @@ testVault =
   aroundAll (withAnalysisOf vault) $ do
     describe "vault" $ do
       it "should find targets" $ \(result, extractedDir) -> do
-        expectProject ("gomod", extractedDir) result
+        expectProject (GomodProjectType, extractedDir) result
         length result `shouldBe` 7
 
 spec :: Spec

@@ -1,12 +1,14 @@
 module Discovery.Archive (
   discover,
   withArchive,
+  withArchive',
   extractRpm,
   extractTar,
   extractTarGz,
   extractTarXz,
   extractTarBz2,
   extractZip,
+  selectUnarchiver,
 ) where
 
 import Codec.Archive.Tar qualified as Tar
@@ -14,9 +16,9 @@ import Codec.Archive.Zip qualified as Zip
 import Codec.Compression.BZip qualified as BZip
 import Codec.Compression.GZip qualified as GZip
 import Conduit (runConduit, runResourceT, sourceFileBS, (.|))
-import Control.Carrier.Diagnostics
-import Control.Effect.Finally
-import Control.Effect.Lift
+import Control.Effect.Diagnostics (Diagnostics, Has, context)
+import Control.Effect.Finally (Finally, onExit)
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.TaskPool (TaskPool, forkTask)
 import Data.ByteString.Lazy qualified as BL
 import Data.Conduit.Binary (sinkLbs)
@@ -25,9 +27,17 @@ import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
 import Data.String.Conversion (toText)
 import Discovery.Archive.RPM (extractRpm)
-import Discovery.Walk
+import Discovery.Walk (WalkStep (WalkContinue), fileName, walk)
 import Effect.ReadFS (ReadFS)
-import Path
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  fromAbsDir,
+  fromAbsFile,
+  toFilePath,
+ )
 import Path.IO qualified as PIO
 import Prelude hiding (zip)
 
@@ -41,28 +51,37 @@ discover go dir = context "Finding archives" $
           go unpackedDir
           discover go unpackedDir
 
-    let tars = filter (\file -> ".tar" `isSuffixOf` fileName file) files
-    traverse_ (\file -> forkTask $ withArchive extractTar file (process file)) tars
-
-    let tarGzs = filter (\file -> ".tar.gz" `isSuffixOf` fileName file) files
-    traverse_ (\file -> forkTask $ withArchive extractTarGz file (process file)) tarGzs
-
-    let tarXzs = filter (\file -> ".tar.xz" `isSuffixOf` fileName file) files
-    traverse_ (\file -> forkTask $ withArchive extractTarXz file (process file)) tarXzs
-
-    let tarBz2s = filter (\file -> ".tar.bz2" `isSuffixOf` fileName file) files
-    traverse_ (\file -> forkTask $ withArchive extractTarBz2 file (process file)) tarBz2s
-
-    let zips = filter (\file -> ".zip" `isSuffixOf` fileName file) files
-    traverse_ (\file -> forkTask $ withArchive extractZip file (process file)) zips
-
-    let jars = filter (\file -> ".jar" `isSuffixOf` fileName file) files
-    traverse_ (\file -> forkTask $ withArchive extractZip file (process file)) jars
-
-    let rpms = filter (\file -> ".rpm" `isSuffixOf` fileName file) files
-    traverse_ (\file -> forkTask $ withArchive extractRpm file (process file)) rpms
-
+    traverse_ (\file -> forkTask $ withArchive' file (process file)) files
     pure WalkContinue
+
+-- |Given a file extension, return an extraction function for that file type.
+selectUnarchiver :: Has (Lift IO) sig m => String -> Maybe (Path Abs Dir -> Path Abs File -> m ())
+selectUnarchiver file
+  | ".tar" `isSuffixOf` file = Just extractTar
+  | ".tar.gz" `isSuffixOf` file = Just extractTarGz
+  | ".tar.xz" `isSuffixOf` file = Just extractTarXz
+  | ".tar.bz2" `isSuffixOf` file = Just extractTarBz2
+  | ".zip" `isSuffixOf` file = Just extractZip
+  | ".jar" `isSuffixOf` file = Just extractZip
+  | ".rpm" `isSuffixOf` file = Just extractRpm
+  | otherwise = Nothing
+
+-- | Extract an archive to a temporary directory, and run the provided callback
+-- on the temporary directory. Archive contents are removed when the callback
+-- finishes.
+--
+-- The archive extraction function is automatically selected from the
+-- file extension of the target archive.
+--
+-- If the file is not supported for extraction, results in 'Nothing'.
+withArchive' ::
+  (Has (Lift IO) sig m, Has Finally sig m) =>
+  -- | Path to archive
+  Path Abs File ->
+  -- | Callback
+  (Path Abs Dir -> m c) ->
+  m (Maybe c)
+withArchive' file go = traverse (\e -> withArchive e file go) (selectUnarchiver $ fileName file)
 
 -- | Extract an archive to a temporary directory, and run the provided callback
 -- on the temporary directory. Archive contents are removed when the callback

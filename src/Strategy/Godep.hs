@@ -50,7 +50,7 @@ instance AnalyzeProject GodepProject where
 mkProject :: GodepProject -> DiscoveredProject GodepProject
 mkProject project =
   DiscoveredProject
-    { projectType = "godep"
+    { projectType = GodepProjectType
     , projectBuildTargets = mempty
     , projectPath = godepDir project
     , projectData = project

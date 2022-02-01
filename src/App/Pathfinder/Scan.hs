@@ -24,6 +24,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
 import Data.Bool (bool)
 import Data.ByteString.Lazy qualified as BL
+import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec
@@ -31,6 +32,7 @@ import Effect.Logger
 import Effect.ReadFS
 import Path
 import Path.IO qualified as PIO
+import Strategy.Composer qualified as Composer
 import Strategy.Maven qualified as Maven
 import Strategy.NuGet.Nuspec qualified as Nuspec
 import System.Exit (die)
@@ -63,6 +65,7 @@ runAll ::
 runAll basedir = do
   single Maven.discover
   single Nuspec.discover
+  single Composer.discover
   where
     single f = withDiscoveredProjects f basedir runSingle
 
@@ -138,8 +141,8 @@ instance ToJSON CompletedLicenseScan where
 mkLicenseScan :: DiscoveredProject n -> [LicenseResult] -> ProjectLicenseScan
 mkLicenseScan project licenses =
   ProjectLicenseScan
-    { licenseStrategyType = projectType project
-    , licenseStrategyName = projectType project
+    { licenseStrategyType = toText (projectType project)
+    , licenseStrategyName = toText (projectType project)
     , discoveredLicenses = licenses
     }
 

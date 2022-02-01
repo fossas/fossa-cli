@@ -405,19 +405,19 @@ spec = do
                   ]
               )
 
-      let expectedDeps =
-            [ Dependency HexType "pkgParentA" (Just $ CEq "A") [] mempty Map.empty
-            , Dependency HexType "pkgParentB" (Just $ CEq "B") [] mempty Map.empty
-            , Dependency HexType "pkgChildC" (Just $ CEq "C") [] mempty Map.empty
-            , Dependency HexType "pkgChildD" (Just $ CEq "D") [] mempty Map.empty
+      let depA = Dependency HexType "pkgParentA" (Just $ CEq "A") [] mempty Map.empty
+          depB = Dependency HexType "pkgParentB" (Just $ CEq "B") [] mempty Map.empty
+          depC = Dependency HexType "pkgChildC" (Just $ CEq "C") [] mempty Map.empty
+          depD = Dependency HexType "pkgChildD" (Just $ CEq "D") [] mempty Map.empty
+
+          expectedDeps = [depA, depB, depC, depD]
+          expectedDirect = [depA, depB]
+          expectedEdges =
+            [ (depA, depB)
+            , (depA, depC)
+            , (depB, depC)
+            , (depB, depD)
             ]
-      let expectedEdges =
-            [ (head expectedDeps, expectedDeps !! 1)
-            , (head expectedDeps, expectedDeps !! 2)
-            , (expectedDeps !! 1, expectedDeps !! 2)
-            , (expectedDeps !! 1, expectedDeps !! 3)
-            ]
-      let expectedDirect = [head expectedDeps, expectedDeps !! 1]
 
       expectDeps expectedDeps graph
       expectEdges expectedEdges graph

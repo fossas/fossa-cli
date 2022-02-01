@@ -14,7 +14,7 @@ module Srclib.Types (
 
 import Data.Aeson
 import Data.Maybe (fromMaybe)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Path (File, SomeBase)
@@ -80,6 +80,9 @@ data Locator = Locator
   , locatorRevision :: Maybe Text
   }
   deriving (Eq, Ord, Show)
+
+instance ToText Locator where
+  toText = renderLocator
 
 renderLocator :: Locator -> Text
 renderLocator Locator{..} =

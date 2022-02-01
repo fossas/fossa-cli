@@ -11,6 +11,7 @@ module Types (
   LicenseType (..),
   module DepTypes,
   TargetFilter (..),
+  DiscoveredProjectType (..),
 ) where
 
 import Data.Aeson (
@@ -24,7 +25,7 @@ import Data.Aeson (
  )
 import Data.Aeson.Types (Parser)
 import Data.Set.NonEmpty (NonEmptySet)
-import Data.String.Conversion (toString)
+import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
 import DepTypes (
   DepEnvironment (..),
@@ -38,6 +39,7 @@ import DepTypes (
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, Rel, parseRelDir)
+import Prettyprinter (Pretty (pretty))
 
 -- TODO: results should be within a graph of build targets && eliminate SubprojectType
 data FoundTargets = ProjectWithoutTargets | FoundTargets (NonEmptySet BuildTarget)
@@ -53,10 +55,99 @@ instance Semigroup FoundTargets where
 instance Monoid FoundTargets where
   mempty = ProjectWithoutTargets
 
+data DiscoveredProjectType
+  = BinaryDepsProjectType
+  | BundlerProjectType
+  | CabalProjectType
+  | CargoProjectType
+  | CarthageProjectType
+  | CocoapodsProjectType
+  | ComposerProjectType
+  | CondaProjectType
+  | FpmProjectType
+  | GlideProjectType
+  | GodepProjectType
+  | GomodProjectType
+  | GradleProjectType
+  | LeiningenProjectType
+  | MavenProjectType
+  | MixProjectType
+  | NimbleProjectType
+  | NpmProjectType
+  | NuspecProjectType
+  | PackageReferenceProjectType
+  | PackagesConfigProjectType
+  | PaketProjectType
+  | PerlProjectType
+  | PipenvProjectType
+  | PoetryProjectType
+  | ProjectAssetsJsonProjectType
+  | ProjectJsonProjectType
+  | PubProjectType
+  | Rebar3ProjectType
+  | RepoManifestProjectType
+  | RpmProjectType
+  | ScalaProjectType
+  | SetuptoolsProjectType
+  | StackProjectType
+  | SwiftProjectType
+  | VsiProjectType
+  | YarnProjectType
+  deriving (Eq, Ord)
+
+instance Show DiscoveredProjectType where
+  show = \case
+    BinaryDepsProjectType -> "binary-deps"
+    BundlerProjectType -> "bundler"
+    CabalProjectType -> "stack"
+    CargoProjectType -> "cargo"
+    CarthageProjectType -> "carthage"
+    CocoapodsProjectType -> "cocoapods"
+    ComposerProjectType -> "composer"
+    CondaProjectType -> "conda"
+    FpmProjectType -> "fpm"
+    GlideProjectType -> "glide"
+    GodepProjectType -> "godep"
+    GomodProjectType -> "gomod"
+    GradleProjectType -> "gradle"
+    LeiningenProjectType -> "leiningen"
+    MavenProjectType -> "maven"
+    MixProjectType -> "mix"
+    NimbleProjectType -> "nimble"
+    NpmProjectType -> "npm"
+    NuspecProjectType -> "nuspec"
+    PackageReferenceProjectType -> "packagereference"
+    PackagesConfigProjectType -> "packagesconfig"
+    PaketProjectType -> "packet"
+    PerlProjectType -> "perl"
+    PipenvProjectType -> "pipenv"
+    PoetryProjectType -> "poetry"
+    ProjectAssetsJsonProjectType -> "projectassetsjson"
+    ProjectJsonProjectType -> "projectjson"
+    PubProjectType -> "pub"
+    Rebar3ProjectType -> "rebar3"
+    RepoManifestProjectType -> "repomanifest"
+    RpmProjectType -> "rpm"
+    ScalaProjectType -> "scala"
+    SetuptoolsProjectType -> "setuptools"
+    StackProjectType -> "stack"
+    SwiftProjectType -> "swift"
+    VsiProjectType -> "vsi"
+    YarnProjectType -> "yarn"
+
+instance ToJSON DiscoveredProjectType where
+  toJSON = toJSON . show
+
+instance ToText DiscoveredProjectType where
+  toText = toText . show
+
+instance Pretty DiscoveredProjectType where
+  pretty = pretty . toText
+
 -- | A project found during project discovery, parameterized by the monad
 -- used to perform dependency analysis
 data DiscoveredProject a = DiscoveredProject
-  { projectType :: Text
+  { projectType :: DiscoveredProjectType
   , projectPath :: Path Abs Dir
   , projectBuildTargets :: FoundTargets
   , projectData :: a
