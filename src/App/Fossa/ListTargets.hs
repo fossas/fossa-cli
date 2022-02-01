@@ -7,7 +7,11 @@ module App.Fossa.ListTargets (
 
 import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), discoverFuncs)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
-import App.Fossa.Config.ListTargets
+import App.Fossa.Config.ListTargets (
+  ListTargetsCliOpts,
+  ListTargetsConfig (..),
+  mkSubCommand,
+ )
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (BaseDir (..))
 import Control.Carrier.AtomicCounter (
@@ -18,7 +22,6 @@ import Control.Carrier.AtomicCounter (
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Finally (runFinally)
 import Control.Carrier.Reader (Reader, runReader)
-import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool (
   Progress (..),
@@ -28,6 +31,7 @@ import Control.Carrier.TaskPool (
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Stack (Stack)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Extra (encodeJSONToText)
 import Data.Foldable (for_, traverse_)
@@ -58,6 +62,7 @@ listTargetsMain ::
   , Has Exec sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
+  , Has Stack sig m
   ) =>
   ListTargetsConfig ->
   m ()

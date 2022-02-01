@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Config.Analyze (
@@ -25,7 +26,7 @@ import App.Fossa.Config.Common (
   collectAPIMetadata,
   collectApiOpts,
   collectBaseDir,
-  collectRevisionData,
+  collectRevisionData',
   commonOpts,
   filterOpt,
   metadataOpts,
@@ -56,10 +57,7 @@ import App.Types (
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
-  Validator,
   fatalText,
-  runValidation,
-  validationBoundary,
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad (when)
@@ -266,27 +264,26 @@ mergeMonorepoOpts cfgfile envvars cliOpts@AnalyzeCliOpts{..} = do
   let monoOpts = monorepoAnalysisOpts
       metadata = collectAPIMetadata cfgfile analyzeMetadata
       severity = getSeverity cliOpts
-  apiopts <- collectApiOpts cfgfile envvars commons
-  basedir <- collectBaseDir analyzeBaseDir
-  filters <- collectFilters cfgfile cliOpts
-  revision <-
-    collectRevisionData basedir cfgfile WriteOnly $
-      OverrideProject (optProjectName commons) (optProjectRevision commons) (analyzeBranch)
-  failureOnWindows <- validationBoundary $ fatalOnWindows "Monorepo analysis is not supported on windows"
-  failureOnOutput <- validationBoundary $ when analyzeOutput $ fatalText "Monorepo analysis does not support the `--output` flag"
+      apiopts = collectApiOpts cfgfile envvars commons
+      basedir = collectBaseDir analyzeBaseDir
+      filters = collectFilters cfgfile cliOpts
+      revision =
+        collectRevisionData' basedir cfgfile WriteOnly $
+          OverrideProject (optProjectName commons) (optProjectRevision commons) (analyzeBranch)
+      failureOnWindows = fatalOnWindows "Monorepo analysis is not supported on windows"
+      failureOnOutput = when analyzeOutput $ fatalText "Monorepo analysis does not support the `--output` flag"
 
-  runValidation $
-    MonorepoAnalyzeConfig
-      monoOpts
-      <$> apiopts
-      <*> basedir
-      <*> filters
-      <*> pure metadata
-      <*> revision
-      <*> pure severity
-      -- Add phantom failures here (no data to return)
-      <* failureOnWindows
-      <* failureOnOutput
+  MonorepoAnalyzeConfig
+    monoOpts
+    <$> apiopts
+    <*> basedir
+    <*> filters
+    <*> pure metadata
+    <*> revision
+    <*> pure severity
+    -- Add phantom failures here (no data to return)
+    <* failureOnWindows
+    <* failureOnOutput
 
 windowsOsName :: String
 windowsOsName = "mingw32"
@@ -306,28 +303,27 @@ mergeStandardOpts ::
   AnalyzeCliOpts ->
   m StandardAnalyzeConfig
 mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
-  basedir <- collectBaseDir analyzeBaseDir
-  let logSeverity = getSeverity cliOpts
-  scanDestination <- collectScanDestination maybeConfig envvars cliOpts
-  revisionData <-
-    collectRevisionData basedir maybeConfig WriteOnly $
-      OverrideProject (optProjectName commons) (optProjectRevision commons) (analyzeBranch)
-  modeOpts <- collectModeOptions cliOpts
-  filters <- collectFilters maybeConfig cliOpts
-  let experimentalCfgs = collectExperimental maybeConfig
+  let basedir = collectBaseDir analyzeBaseDir
+      logSeverity = getSeverity cliOpts
+      scanDestination = collectScanDestination maybeConfig envvars cliOpts
+      revisionData =
+        collectRevisionData' basedir maybeConfig WriteOnly $
+          OverrideProject (optProjectName commons) (optProjectRevision commons) (analyzeBranch)
+      modeOpts = collectModeOptions cliOpts
+      filters = collectFilters maybeConfig cliOpts
+      experimentalCfgs = collectExperimental maybeConfig
 
-  runValidation $
-    StandardAnalyzeConfig
-      <$> basedir
-      <*> pure logSeverity
-      <*> scanDestination
-      <*> revisionData
-      <*> modeOpts
-      <*> filters
-      <*> pure experimentalCfgs
-      <*> pure analyzeUnpackArchives
-      <*> pure analyzeJsonOutput
-      <*> pure analyzeIncludeAllDeps
+  StandardAnalyzeConfig
+    <$> basedir
+    <*> pure logSeverity
+    <*> scanDestination
+    <*> revisionData
+    <*> modeOpts
+    <*> filters
+    <*> pure experimentalCfgs
+    <*> pure analyzeUnpackArchives
+    <*> pure analyzeJsonOutput
+    <*> pure analyzeIncludeAllDeps
 
 collectFilters ::
   ( Has Diagnostics sig m
@@ -335,8 +331,8 @@ collectFilters ::
   ) =>
   Maybe ConfigFile ->
   AnalyzeCliOpts ->
-  m (Validator AllFilters)
-collectFilters maybeConfig cliOpts = validationBoundary $ do
+  m AllFilters
+collectFilters maybeConfig cliOpts = do
   let cliFilters = collectCLIFilters cliOpts
       cfgFileFilters = maybe mempty collectConfigFileFilters maybeConfig
   case (isMempty cliFilters, isMempty cfgFileFilters) of
@@ -377,17 +373,16 @@ collectScanDestination ::
   Maybe ConfigFile ->
   EnvVars ->
   AnalyzeCliOpts ->
-  m (Validator ScanDestination)
+  m ScanDestination
 collectScanDestination maybeCfgFile envvars AnalyzeCliOpts{..} =
-  validationBoundary $
-    if analyzeOutput
-      then pure OutputStdout
-      else do
-        apiKey <- validateApiKey maybeCfgFile envvars commons
-        let baseuri = optBaseUrl commons
-            apiOpts = ApiOpts baseuri apiKey
-            metaMerged = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
-        pure $ UploadScan apiOpts metaMerged
+  if analyzeOutput
+    then pure OutputStdout
+    else do
+      apiKey <- validateApiKey maybeCfgFile envvars commons
+      let baseuri = optBaseUrl commons
+          apiOpts = ApiOpts baseuri apiKey
+          metaMerged = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
+      pure $ UploadScan apiOpts metaMerged
 
 collectModeOptions ::
   ( Has Diagnostics sig m
@@ -395,8 +390,8 @@ collectModeOptions ::
   , Has ReadFS sig m
   ) =>
   AnalyzeCliOpts ->
-  m (Validator VSIModeOptions)
-collectModeOptions AnalyzeCliOpts{..} = validationBoundary $ do
+  m VSIModeOptions
+collectModeOptions AnalyzeCliOpts{..} = do
   assertionDir <- traverse validateDir analyzeAssertMode
   pure
     VSIModeOptions

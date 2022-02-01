@@ -33,9 +33,9 @@ import App.Types (
   OverrideProject (OverrideProject),
   ProjectMetadata,
  )
-import Control.Effect.Diagnostics (Diagnostics, Validator, runValidation, validationBoundary)
+import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift, sendIO)
-import Control.Timeout.Internal (Duration (Seconds))
+import Control.Timeout (Duration (Seconds))
 import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Text (Text)
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
@@ -105,36 +105,34 @@ mergeAnalyzeOpts ::
   ContainerAnalyzeOptions ->
   m ContainerAnalyzeConfig
 mergeAnalyzeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
-  scanDest <- collectScanDestination cfgfile envvars cliOpts
-  let imageLoc = containerAnalyzeImage
+  let scanDest = collectScanDestination cfgfile envvars cliOpts
+      imageLoc = containerAnalyzeImage
       revOverride =
         collectRevisionOverride cfgfile $
           OverrideProject
             (optProjectName analyzeCommons)
             (optProjectRevision analyzeCommons)
             (containerBranch)
-  runValidation $
-    ContainerAnalyzeConfig
-      <$> scanDest
-      <*> pure revOverride
-      <*> pure imageLoc
+  ContainerAnalyzeConfig
+    <$> scanDest
+    <*> pure revOverride
+    <*> pure imageLoc
 
 collectScanDestination ::
   Has Diagnostics sig m =>
   Maybe ConfigFile ->
   EnvVars ->
   ContainerAnalyzeOptions ->
-  m (Validator ScanDestination)
+  m ScanDestination
 collectScanDestination maybeCfgFile envvars ContainerAnalyzeOptions{..} =
-  validationBoundary $
-    if fromFlag NoUpload containerNoUpload
-      then pure OutputStdout
-      else do
-        apiKey <- validateApiKey maybeCfgFile envvars analyzeCommons
-        let baseuri = optBaseUrl analyzeCommons
-            apiOpts = ApiOpts baseuri apiKey
-            metaMerged = collectAPIMetadata maybeCfgFile containerMetadata
-        pure $ UploadScan apiOpts metaMerged
+  if fromFlag NoUpload containerNoUpload
+    then pure OutputStdout
+    else do
+      apiKey <- validateApiKey maybeCfgFile envvars analyzeCommons
+      let baseuri = optBaseUrl analyzeCommons
+          apiOpts = ApiOpts baseuri apiKey
+          metaMerged = collectAPIMetadata maybeCfgFile containerMetadata
+      pure $ UploadScan apiOpts metaMerged
 
 mergeTestOpts ::
   Has Diagnostics sig m =>
@@ -143,18 +141,17 @@ mergeTestOpts ::
   ContainerTestOptions ->
   m ContainerTestConfig
 mergeTestOpts cfgfile envvars ContainerTestOptions{..} = do
-  apiopts <- collectApiOpts cfgfile envvars testCommons
-  let timeout = maybe defaultTimeoutDuration Seconds containerTestTimeout
+  let apiopts = collectApiOpts cfgfile envvars testCommons
+      timeout = maybe defaultTimeoutDuration Seconds containerTestTimeout
       revOverride =
         collectRevisionOverride cfgfile $
           OverrideProject (optProjectName testCommons) (optProjectRevision testCommons) Nothing
-  runValidation $
-    ContainerTestConfig
-      <$> apiopts
-      <*> pure timeout
-      <*> pure containerTestOutputType
-      <*> pure containerTestImage
-      <*> pure revOverride
+  ContainerTestConfig
+    <$> apiopts
+    <*> pure timeout
+    <*> pure containerTestOutputType
+    <*> pure containerTestImage
+    <*> pure revOverride
 
 mergeParseFileOpts :: Has (Lift IO) sig m => Maybe ConfigFile -> EnvVars -> FilePath -> m ContainerParseFileConfig
 mergeParseFileOpts _ _ fp = do

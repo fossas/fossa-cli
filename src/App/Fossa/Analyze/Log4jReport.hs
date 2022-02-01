@@ -34,7 +34,7 @@ import Control.Carrier.TaskPool (
   withTaskPool,
  )
 import Control.Concurrent (getNumCapabilities)
-import Control.Effect.Diagnostics (Diagnostics, runValidation)
+import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Diagnostics qualified as Diag (
   Diagnostics,
   context,
@@ -89,7 +89,7 @@ log4jSubCommand = SubCommand "log4j" log4jInfo cliParser ignoreConfig mergeOpts 
   where
     cliParser = Log4jPath <$> baseDirArg
     ignoreConfig = const $ pure Nothing
-    mergeOpts _ _ (Log4jPath filepath) = collectBaseDir filepath >>= runValidation
+    mergeOpts _ _ (Log4jPath filepath) = collectBaseDir filepath
 
 log4jInfo :: InfoMod a
 log4jInfo = progDesc "List projects using *log4j* dependency"

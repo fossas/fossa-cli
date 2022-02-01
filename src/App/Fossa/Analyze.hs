@@ -53,7 +53,6 @@ import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally (Finally, Has, runFinally)
 import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.Reader (Reader, runReader)
-import Control.Carrier.Stack (Stack, runStack, withEmptyStack)
 import Control.Carrier.Stack.StickyLog (stickyLogStack)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool (
@@ -67,6 +66,7 @@ import Control.Effect.Diagnostics (fatalText, fromMaybeText, recover)
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Reader (ask)
+import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Monad (when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
@@ -173,7 +173,6 @@ analyzeMain ::
   , Has Diag.Diagnostics sig m
   , Has Exec sig m
   , Has ReadFS sig m
-  , Has Stack sig m
   ) =>
   StandardAnalyzeConfig ->
   m ()
@@ -181,7 +180,7 @@ analyzeMain cfg = runReader cfg $ case Config.severity cfg of
   SevDebug -> do
     (scope, res) <- collectDebugBundle $ Diag.errorBoundaryIO analyze
     sendIO . BL.writeFile debugBundlePath . GZip.compress $ Aeson.encode scope
-    either Diag.rethrow pure res
+    Diag.rethrow res
   _ -> ignoreDebug analyze
 
 runDependencyAnalysis ::

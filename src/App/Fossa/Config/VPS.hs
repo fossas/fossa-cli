@@ -22,7 +22,7 @@ import App.Fossa.Config.Common (
   baseDirArg,
   collectApiOpts,
   collectBaseDir,
-  collectRevisionData,
+  collectRevisionData',
   commonOpts,
   defaultTimeoutDuration,
   metadataOpts,
@@ -53,16 +53,12 @@ import App.Types (
 import App.Util (validateFile)
 import Control.Effect.Diagnostics (
   Diagnostics,
-  Validator,
   fatalOnIOException,
   fatalText,
-  runValidation,
-  validationBoundary,
  )
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Timeout (Duration (Seconds))
 import Data.Flag (Flag, flagOpt)
-import Data.Functor.Extra ((<$$>))
 import Data.String.Conversion (ToString (toString))
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -164,25 +160,24 @@ mergeAnalyzeOpts cfgfile envvars cliOpts@VPSAnalyzeOpts{..} = do
       followSymlinks = analyzeCliFollowSymlinks
       licenseOnly = analyzeCliLicenseOnlyScan
       skipIPR = analyzeCliSkipIprScan
-  apiopts <- collectApiOpts cfgfile envvars analyzeCliCommons
-  basedir <- collectBaseDir analyzeCliBaseDir
-  revision <-
-    collectRevisionData basedir cfgfile WriteOnly $
-      OverrideProject
-        (optProjectName analyzeCliCommons)
-        (optProjectRevision analyzeCliCommons)
-        Nothing
-  runValidation $
-    AnalyzeConfig
-      <$> apiopts
-      <*> basedir
-      <*> pure metadata
-      <*> revision
-      <*> pure severity
-      <*> pure filters
-      <*> pure followSymlinks
-      <*> pure licenseOnly
-      <*> pure skipIPR
+  let apiopts = collectApiOpts cfgfile envvars analyzeCliCommons
+  let basedir = collectBaseDir analyzeCliBaseDir
+  let revision =
+        collectRevisionData' basedir cfgfile WriteOnly $
+          OverrideProject
+            (optProjectName analyzeCliCommons)
+            (optProjectRevision analyzeCliCommons)
+            Nothing
+  AnalyzeConfig
+    <$> apiopts
+    <*> basedir
+    <*> pure metadata
+    <*> revision
+    <*> pure severity
+    <*> pure filters
+    <*> pure followSymlinks
+    <*> pure licenseOnly
+    <*> pure skipIPR
 
 mergeAOSPOpts ::
   ( Has Diagnostics sig m
@@ -198,30 +193,28 @@ mergeAOSPOpts cfgfile envvars cliOpts@VPSAOSPNoticeOpts{..} = do
   let metadata = collectProjectMetadata cfgfile aospNinjaScanMeta
       severity = getSeverity $ VPSAOSPNoticeCommand cliOpts
       scanId = NinjaScanID aospNinjaScanID
-  apiopts <- collectApiOpts cfgfile envvars aospCommons
-  basedir <- collectBaseDir aospCliBaseDir
-  filepaths <- NinjaFilePaths <$$> parseCommaSeparatedFileArg aospNinjaFileList
-  revision <-
-    collectRevisionData basedir cfgfile WriteOnly $
-      OverrideProject
-        (optProjectName aospCommons)
-        (optProjectRevision aospCommons)
-        Nothing
-  runValidation $
-    AOSPNoticeConfig
-      <$> apiopts
-      <*> basedir
-      <*> pure metadata
-      <*> revision
-      <*> pure severity
-      <*> filepaths
-      <*> pure scanId
+      apiopts = collectApiOpts cfgfile envvars aospCommons
+      basedir = collectBaseDir aospCliBaseDir
+      filepaths = NinjaFilePaths <$> parseCommaSeparatedFileArg aospNinjaFileList
+      revision =
+        collectRevisionData' basedir cfgfile WriteOnly $
+          OverrideProject
+            (optProjectName aospCommons)
+            (optProjectRevision aospCommons)
+            Nothing
+  AOSPNoticeConfig
+    <$> apiopts
+    <*> basedir
+    <*> pure metadata
+    <*> revision
+    <*> pure severity
+    <*> filepaths
+    <*> pure scanId
 
-parseCommaSeparatedFileArg :: (Has Diagnostics sig m, Has (Lift IO) sig m) => Text -> m (Validator [Path Abs File])
+parseCommaSeparatedFileArg :: (Has Diagnostics sig m, Has (Lift IO) sig m) => Text -> m [Path Abs File]
 parseCommaSeparatedFileArg arg =
-  validationBoundary $
-    fatalOnIOException "Parsing comma-separated file paths" $
-      traverse (sendIO . validateFile . toString) $ Text.splitOn "," arg
+  fatalOnIOException "Parsing comma-separated file paths" $
+    traverse (sendIO . validateFile . toString) $ Text.splitOn "," arg
 
 mergeTestOpts ::
   ( Has Diagnostics sig m
@@ -236,21 +229,20 @@ mergeTestOpts ::
 mergeTestOpts cfgfile envvars VPSTestOpts{..} = do
   let outputFormat = vpsTestOutputType
       timeoutDuration = maybe defaultTimeoutDuration Seconds vpsTestTimeout
-  apiopts <- collectApiOpts cfgfile envvars testCommons
-  basedir <- collectBaseDir vpsTestBaseDir
-  revision <-
-    collectRevisionData basedir cfgfile ReadOnly $
-      OverrideProject
-        (optProjectName testCommons)
-        (optProjectRevision testCommons)
-        Nothing
-  runValidation $
-    TestConfig
-      <$> apiopts
-      <*> basedir
-      <*> pure outputFormat
-      <*> revision
-      <*> pure timeoutDuration
+      apiopts = collectApiOpts cfgfile envvars testCommons
+      basedir = collectBaseDir vpsTestBaseDir
+      revision =
+        collectRevisionData' basedir cfgfile ReadOnly $
+          OverrideProject
+            (optProjectName testCommons)
+            (optProjectRevision testCommons)
+            Nothing
+  TestConfig
+    <$> apiopts
+    <*> basedir
+    <*> pure outputFormat
+    <*> revision
+    <*> pure timeoutDuration
 
 mergeReportOpts ::
   ( Has Diagnostics sig m
@@ -265,30 +257,28 @@ mergeReportOpts ::
 mergeReportOpts cfgfile envvars VPSReportOpts{..} = do
   let reportTyp = vpsReportType
       timeoutDuration = maybe defaultTimeoutDuration Seconds vpsReportTimeout
-  apiopts <- collectApiOpts cfgfile envvars reportCommons
-  basedir <- collectBaseDir vpsReportBaseDir
-  outputFormat <- validateReportOutputFormat vpsReportJsonOutput
-  revision <-
-    collectRevisionData basedir cfgfile ReadOnly $
-      OverrideProject
-        (optProjectName reportCommons)
-        (optProjectRevision reportCommons)
-        Nothing
-  runValidation $
-    ReportConfig
-      <$> apiopts
-      <*> basedir
-      <*> outputFormat
-      <*> revision
-      <*> pure timeoutDuration
-      <*> pure reportTyp
+      apiopts = collectApiOpts cfgfile envvars reportCommons
+      basedir = collectBaseDir vpsReportBaseDir
+      outputFormat = validateReportOutputFormat vpsReportJsonOutput
+      revision =
+        collectRevisionData' basedir cfgfile ReadOnly $
+          OverrideProject
+            (optProjectName reportCommons)
+            (optProjectRevision reportCommons)
+            Nothing
+  ReportConfig
+    <$> apiopts
+    <*> basedir
+    <*> outputFormat
+    <*> revision
+    <*> pure timeoutDuration
+    <*> pure reportTyp
 
-validateReportOutputFormat :: Has Diagnostics sig m => Bool -> m (Validator ReportOutputFormat)
+validateReportOutputFormat :: Has Diagnostics sig m => Bool -> m ReportOutputFormat
 validateReportOutputFormat dojson =
-  validationBoundary $
-    if dojson
-      then pure ReportJson
-      else fatalText "Plaintext reports are not available yet"
+  if dojson
+    then pure ReportJson
+    else fatalText "Plaintext reports are not available yet"
 
 getCommons :: VPSCliOpts -> CommonOpts
 getCommons = \case

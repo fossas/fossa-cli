@@ -23,7 +23,7 @@ import App.Fossa.Config.ConfigFile (
  )
 import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir)
-import Control.Effect.Diagnostics (Diagnostics, runValidation)
+import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift, sendIO)
 import Effect.Logger (Has, Logger, Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS)
@@ -61,12 +61,11 @@ mergeOpts ::
   ListTargetsCliOpts ->
   m ListTargetsConfig
 mergeOpts cfgfile _envvars ListTargetsCliOpts{..} = do
-  basedir <- collectBaseDir cliBaseDir
-  let experimentalPrefs = collectExperimental cfgfile
-  runValidation $
-    ListTargetsConfig
-      <$> basedir
-      <*> pure experimentalPrefs
+  let basedir = collectBaseDir cliBaseDir
+      experimentalPrefs = collectExperimental cfgfile
+  ListTargetsConfig
+    <$> basedir
+    <*> pure experimentalPrefs
 
 collectExperimental :: Maybe ConfigFile -> ExperimentalAnalyzeConfig
 collectExperimental maybeCfg =

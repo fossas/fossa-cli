@@ -14,7 +14,7 @@ import App.Fossa.Config.Common (
   baseDirArg,
   collectApiOpts,
   collectBaseDir,
-  collectRevisionData,
+  collectRevisionData',
   commonOpts,
   defaultTimeoutDuration,
  )
@@ -25,7 +25,6 @@ import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
-  runValidation,
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Timeout (Duration (..))
@@ -108,16 +107,15 @@ mergeOpts ::
   TestCliOpts ->
   m TestConfig
 mergeOpts maybeConfig envvars TestCliOpts{..} = do
-  baseDir <- collectBaseDir testBaseDir
-  apiOpts <- collectApiOpts maybeConfig envvars commons
-  let timeout = maybe defaultTimeoutDuration Seconds testTimeout
-  revision <-
-    collectRevisionData baseDir maybeConfig ReadOnly $
-      OverrideProject (optProjectName commons) (optProjectRevision commons) Nothing
-  runValidation $
-    TestConfig
-      <$> baseDir
-      <*> apiOpts
-      <*> pure timeout
-      <*> pure testOutputType
-      <*> revision
+  let baseDir = collectBaseDir testBaseDir
+      apiOpts = collectApiOpts maybeConfig envvars commons
+      timeout = maybe defaultTimeoutDuration Seconds testTimeout
+      revision =
+        collectRevisionData' baseDir maybeConfig ReadOnly $
+          OverrideProject (optProjectName commons) (optProjectRevision commons) Nothing
+  TestConfig
+    <$> baseDir
+    <*> apiOpts
+    <*> pure timeout
+    <*> pure testOutputType
+    <*> revision

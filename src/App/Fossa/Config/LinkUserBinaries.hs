@@ -26,7 +26,6 @@ import App.Types (BaseDir)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
-  runValidation,
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
@@ -66,14 +65,13 @@ mergeOpts ::
   LinkUserBinsOpts ->
   m LinkUserBinsConfig
 mergeOpts cfgfile envvars LinkUserBinsOpts{..} = do
-  apiopts <- collectApiOpts cfgfile envvars commons
-  basedir <- collectBaseDir assertionDir
-  let metadata = assertionMeta
-  runValidation $
-    LinkUserBinsConfig
-      <$> apiopts
-      <*> basedir
-      <*> pure metadata
+  let apiopts = collectApiOpts cfgfile envvars commons
+      basedir = collectBaseDir assertionDir
+      metadata = assertionMeta
+  LinkUserBinsConfig
+    <$> apiopts
+    <*> basedir
+    <*> pure metadata
 
 data LinkUserBinsConfig = LinkUserBinsConfig
   { apiOpts :: ApiOpts

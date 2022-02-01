@@ -28,6 +28,7 @@ module App.Fossa.Config.Common (
 
   -- * Global Defaults
   defaultTimeoutDuration,
+  collectRevisionData',
 ) where
 
 import App.Fossa.Config.ConfigFile (
@@ -55,11 +56,9 @@ import App.Types (
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
-  Validation (Failure, Success),
-  Validator,
+  errCtx,
   fatalText,
   fromMaybeText,
-  validationBoundary,
   (<||>),
  )
 import Control.Effect.Lift (Lift, sendIO)
@@ -145,8 +144,8 @@ collectBaseDir ::
   , Has ReadFS sig m
   ) =>
   FilePath ->
-  m (Validator BaseDir)
-collectBaseDir baseDirFp = validationBoundary $ BaseDir <$> validateDir baseDirFp
+  m BaseDir
+collectBaseDir = fmap BaseDir . validateDir
 
 validateDir ::
   ( Has Diagnostics sig m
@@ -181,8 +180,8 @@ validateApiKey maybeConfigFile EnvVars{envApiKey} CommonOpts{optAPIKey} = do
         <|> envApiKey
   pure $ ApiKey textkey
 
-collectApiOpts :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> CommonOpts -> m (Validator ApiOpts)
-collectApiOpts maybeconfig envvars globals = validationBoundary $ do
+collectApiOpts :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> CommonOpts -> m ApiOpts
+collectApiOpts maybeconfig envvars globals = do
   apikey <- validateApiKey maybeconfig envvars globals
   let baseuri = optBaseUrl globals
   pure $ ApiOpts baseuri apikey
@@ -208,13 +207,12 @@ collectRevisionData ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
-  Validator BaseDir ->
+  BaseDir ->
   Maybe ConfigFile ->
   CacheAction ->
   OverrideProject ->
-  m (Validator ProjectRevision)
-collectRevisionData (Failure _) _ _ _ = validationBoundary $ fatalText "Cannot perform revision inference without a valid base directory"
-collectRevisionData (Success (BaseDir basedir)) maybeConfig cacheStrategy cliOverride = validationBoundary $ do
+  m ProjectRevision
+collectRevisionData (BaseDir basedir) maybeConfig cacheStrategy cliOverride = do
   let override = collectRevisionOverride maybeConfig cliOverride
   case cacheStrategy of
     ReadOnly -> do
@@ -225,6 +223,21 @@ collectRevisionData (Success (BaseDir basedir)) maybeConfig cacheStrategy cliOve
       let revision = mergeOverride override inferred
       saveRevision revision
       pure revision
+
+collectRevisionData' ::
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has (Lift IO) sig m
+  , Has ReadFS sig m
+  ) =>
+  m BaseDir ->
+  Maybe ConfigFile ->
+  CacheAction ->
+  OverrideProject ->
+  m ProjectRevision
+collectRevisionData' basedir cfg cache override = do
+  basedir' <- errCtx ("Cannot collect revision data without a valid base directory" :: Text) basedir
+  collectRevisionData basedir' cfg cache override
 
 collectAPIMetadata :: Maybe ConfigFile -> ProjectMetadata -> ProjectMetadata
 collectAPIMetadata cfgfile cliMeta = maybe cliMeta (mergeFileCmdMetadata cliMeta) cfgfile

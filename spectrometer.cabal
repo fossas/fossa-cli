@@ -118,7 +118,6 @@ common deps
     , transformers
     , typed-process                ^>=0.2.6
     , unordered-containers         ^>=0.2.10
-    , validation-selective         ^>=0.1.0.1
     , vector                       ^>=0.12.0.3
     , versions                     ^>=5.0.0
     , word8                        ^>=0.1.3

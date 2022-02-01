@@ -12,7 +12,7 @@ import App.Fossa.Config.Common (
   baseDirArg,
   collectApiOpts,
   collectBaseDir,
-  collectRevisionData,
+  collectRevisionData',
   commonOpts,
   defaultTimeoutDuration,
  )
@@ -20,7 +20,7 @@ import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
-import Control.Effect.Diagnostics (Diagnostics, Validator, fatalText, runValidation, validationBoundary)
+import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Timeout (Duration (Seconds))
 import Effect.Exec (Exec)
@@ -112,15 +112,14 @@ mergeOpts ::
   ReportCliOptions ->
   m ReportConfig
 mergeOpts cfgfile envvars ReportCliOptions{..} = do
-  apiOpts <- collectApiOpts cfgfile envvars commons
-  basedir <- collectBaseDir cliReportBaseDir
-  outputformat <- validateOutputFormat cliReportJsonOutput
-  let timeoutduration = maybe defaultTimeoutDuration Seconds cliReportTimeout
-  revision <-
-    collectRevisionData basedir cfgfile ReadOnly $
-      OverrideProject (optProjectName commons) (optProjectRevision commons) Nothing
-  runValidation $
-    ReportConfig
+  let apiOpts = collectApiOpts cfgfile envvars commons
+      basedir = collectBaseDir cliReportBaseDir
+      outputformat = validateOutputFormat cliReportJsonOutput
+      timeoutduration = maybe defaultTimeoutDuration Seconds cliReportTimeout
+      revision =
+        collectRevisionData' basedir cfgfile ReadOnly $
+          OverrideProject (optProjectName commons) (optProjectRevision commons) Nothing
+  ReportConfig
       <$> apiOpts
       <*> basedir
       <*> outputformat
@@ -128,9 +127,8 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
       <*> pure cliReportType
       <*> revision
 
-validateOutputFormat :: Has Diagnostics sig m => Bool -> m (Validator ReportOutputFormat)
+validateOutputFormat :: Has Diagnostics sig m => Bool -> m  ReportOutputFormat
 validateOutputFormat doJson =
-  validationBoundary $
     if doJson
       then pure ReportJson
       else fatalText "Plaintext reports are not available for this report."
