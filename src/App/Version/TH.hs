@@ -5,6 +5,7 @@ module App.Version.TH (
 ) where
 
 import Control.Carrier.Diagnostics (runDiagnostics)
+import Control.Carrier.Stack (runStack)
 import Control.Effect.Diagnostics (Diagnostics, fromEitherShow)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString.Lazy qualified as BSL
@@ -13,6 +14,7 @@ import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Versions (errorBundlePretty, semver)
+import Diag.Result (Result (Success))
 import Effect.Exec (
   AllowErr (Always),
   Command (..),
@@ -21,6 +23,7 @@ import Effect.Exec (
   exec,
   runExecIO,
  )
+import Effect.Logger (ignoreLogger)
 import GitHash (giHash, tGitInfoCwd)
 import Instances.TH.Lift ()
 import Language.Haskell.TH (TExpQ)
@@ -38,11 +41,11 @@ gitTagPointCommand commit =
 getCurrentTag :: TExpQ (Maybe Text)
 getCurrentTag = do
   let commitHash = giHash $$(tGitInfoCwd)
-  result <- runIO . runDiagnostics . runExecIO . getTags $ toText commitHash
+  result <- runIO . ignoreLogger . runStack . runDiagnostics . runExecIO . getTags $ toText commitHash
 
   case result of
-    Left err -> reportWarning (show err) >> [||Nothing||]
-    Right tags -> filterTags tags
+    Success _ tags -> filterTags tags
+    err -> reportWarning (show err) >> [||Nothing||]
 
 getTags :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => Text -> m [Text]
 getTags hash = do

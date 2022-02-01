@@ -9,6 +9,7 @@ import App.Fossa.API.BuildWait
 import App.Fossa.Container
 import App.Types (OverrideProject (..), ProjectRevision (..))
 import Control.Carrier.Diagnostics
+import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 import Control.Effect.Lift
 import Control.Monad.IO.Class (MonadIO)
@@ -37,8 +38,7 @@ testMain ::
   ImageText ->
   IO ()
 testMain apiOpts logSeverity timeoutSeconds outputType override image = do
-  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $ do
-    logWithExit_ $ testInner apiOpts outputType override image
+  void . timeout timeoutSeconds . runStack . withDefaultLogger logSeverity . runStickyLogger SevInfo . logWithExit_ $ testInner apiOpts outputType override image
 
   hPutStrLn stderr "Timed out while wait for issues"
   exitFailure

@@ -13,12 +13,10 @@ import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   context,
-  errorBoundary,
-  fatalText,
   fromEither,
   fromEitherShow,
   fromMaybeText,
-  renderFailureBundle,
+  recover,
  )
 import Control.Monad ((<=<))
 import Data.Glob (Glob)
@@ -40,8 +38,6 @@ import Discovery.Walk (
  )
 import Effect.Logger (
   Logger,
-  logError,
-  logWarn,
  )
 import Effect.ReadFS (
   ReadFS,
@@ -103,7 +99,6 @@ collectManifests = walk' $ \_ _ files ->
 
 mkProject ::
   ( Has Diagnostics sig m
-  , Has Logger sig m
   ) =>
   NodeProject ->
   m (DiscoveredProject NodeProject)
@@ -112,13 +107,7 @@ mkProject project = do
         Yarn _ g -> (g, YarnProjectType)
         NPMLock _ g -> (g, NpmProjectType)
         NPM g -> (g, NpmProjectType)
-  result <- errorBoundary $ fromEitherShow $ findWorkspaceRootManifest graph
-  Manifest rootManifest <- case result of
-    Left bundle -> do
-      logError $ renderFailureBundle bundle
-      fatalText "aborting NodeJS project creation"
-    Right manifest -> do
-      pure manifest
+  Manifest rootManifest <- fromEitherShow $ findWorkspaceRootManifest graph
   pure $
     DiscoveredProject
       { projectType = typename
@@ -135,7 +124,6 @@ instance AnalyzeProject NodeProject where
 getDeps ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
-  , Has Logger sig m
   ) =>
   NodeProject ->
   m DependencyResults
@@ -156,7 +144,6 @@ analyzeNpm wsGraph = do
 analyzeYarn ::
   ( Has Diagnostics sig m
   , Has ReadFS sig m
-  , Has Logger sig m
   ) =>
   Manifest ->
   PkgJsonGraph ->
@@ -202,10 +189,10 @@ extractDepLists PkgJsonGraph{..} = foldMap extractSingle $ Map.elems jsonLookup
 
 loadPackage :: (Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Manifest -> m (Maybe (Manifest, PackageJson))
 loadPackage (Manifest file) = do
-  result <- errorBoundary $ readContentsJson @PackageJson file
+  result <- recover $ readContentsJson @PackageJson file
   case result of
-    Left err -> logWarn (renderFailureBundle err) >> pure Nothing
-    Right contents -> pure $ Just (Manifest file, contents)
+    Nothing -> pure Nothing
+    Just contents -> pure $ Just (Manifest file, contents)
 
 buildManifestGraph :: Map Manifest PackageJson -> PkgJsonGraph
 buildManifestGraph manifestMap = PkgJsonGraph adjmap manifestMap

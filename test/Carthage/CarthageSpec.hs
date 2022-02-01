@@ -5,12 +5,14 @@ module Carthage.CarthageSpec (
 ) where
 
 import Control.Carrier.Diagnostics
+import Control.Carrier.Stack (runStack)
 import Data.Function ((&))
 import Effect.ReadFS
 import GraphUtil
 import Graphing qualified as G
 import Path
 import Path.IO (makeAbsolute)
+import ResultUtil
 import Strategy.Carthage
 import Test.Hspec
 
@@ -26,38 +28,35 @@ spec = do
         analyze f
           & runReadFSIO
           & runDiagnostics
+          & runStack
 
   emptyResult <- runIO $ runIt =<< makeAbsolute testProjectEmpty
   complexResult <- runIO $ runIt =<< makeAbsolute testProjectComplex
 
   describe "carthage analyze" $ do
     it "should work for empty projects" $ do
-      case emptyResult of
-        Left err -> expectationFailure ("analyze failed: " <> show (renderFailureBundle err))
-        Right result -> result `shouldBe` G.empty
+      assertOnSuccess emptyResult $ \_ result -> result `shouldBe` G.empty
 
     it "should work for a complex project" $ do
-      case complexResult of
-        Left err -> expectationFailure ("analyze failed: " <> show (renderFailureBundle err))
-        Right graph -> do
-          expectDirect [nimble713, swinject, ocmock] graph
-          expectDeps
-            [ nimble713
-            , nimble703
-            , swinject
-            , ocmock
-            , quick
-            , cwlPreconditionTesting
-            , cwlCatchException
-            ]
-            graph
-          expectEdges
-            [ (nimble713, cwlPreconditionTesting)
-            , (nimble713, cwlCatchException)
-            , (swinject, nimble703)
-            , (swinject, quick)
-            ]
-            graph
+      assertOnSuccess complexResult $ \_ graph -> do
+        expectDirect [nimble713, swinject, ocmock] graph
+        expectDeps
+          [ nimble713
+          , nimble703
+          , swinject
+          , ocmock
+          , quick
+          , cwlPreconditionTesting
+          , cwlCatchException
+          ]
+          graph
+        expectEdges
+          [ (nimble713, cwlPreconditionTesting)
+          , (nimble713, cwlCatchException)
+          , (swinject, nimble703)
+          , (swinject, quick)
+          ]
+          graph
 
 nimble713 :: ResolvedEntry
 nimble713 = ResolvedEntry GithubType "Quick/Nimble" "v7.1.3"

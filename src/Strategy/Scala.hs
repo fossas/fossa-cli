@@ -21,10 +21,10 @@ import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TL
 import Discovery.Walk
 import Effect.Exec
-import Effect.Logger hiding (group)
 import Effect.ReadFS
 import GHC.Generics (Generic)
 import Path
+import Prettyprinter (viaShow)
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures)
 import Strategy.Maven.Pom.Closure qualified as PomClosure
@@ -34,7 +34,6 @@ import Types
 discover ::
   ( Has Exec sig m
   , Has ReadFS sig m
-  , Has Logger sig m
   , Has Diagnostics sig m
   ) =>
   Path Abs Dir ->
@@ -72,21 +71,28 @@ getDeps (ScalaProject closure) =
 pathToText :: Path ar fd -> Text
 pathToText = toText . toFilePath
 
-findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
+findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects = walk' $ \dir _ files -> do
   case findFileNamed "build.sbt" files of
     Nothing -> pure ([], WalkContinue)
     Just _ -> do
       projectsRes <-
-        errorBoundary
+        recover
+          . warnOnErr (FailedToListProjects dir)
           . context ("Listing sbt projects at " <> pathToText dir)
           $ genPoms dir
 
       case projectsRes of
-        Left err -> do
-          logWarn $ renderFailureBundle err
-          pure ([], WalkSkipAll)
-        Right projects -> pure (projects, WalkSkipAll)
+        Nothing -> pure ([], WalkSkipAll)
+        Just projects -> pure (projects, WalkSkipAll)
+
+newtype FailedToListProjects = FailedToListProjects (Path Abs Dir)
+  deriving (Eq, Ord, Show)
+
+-- TODO(warnings): this warning is not helpful
+instance ToDiagnostic FailedToListProjects where
+  renderDiagnostic (FailedToListProjects dir) =
+    "Found an sbt build manifest, but failed to list sbt projects in " <> viaShow dir
 
 makePomCmd :: Command
 makePomCmd =

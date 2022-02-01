@@ -19,9 +19,10 @@ module App.Fossa.Analyze.Debug (
 ) where
 
 import Control.Carrier.Debug
-import Control.Carrier.Diagnostics (Diagnostics (Context, Fatal))
+import Control.Carrier.Diagnostics (Diag (Fatal), Diagnostics)
 import Control.Carrier.Lift (sendIO)
 import Control.Carrier.Simple (SimpleC, interpret, sendSimple)
+import Control.Carrier.Stack (Stack (Context))
 import Control.Effect.Lift (Lift)
 import Control.Effect.Record (Journal, RecordC, runRecord)
 import Control.Effect.Sum (Member, inj)
@@ -137,14 +138,29 @@ instance ToJSON BundleJournals where
 
 -----------------------------------------------
 
+newtype StackDebugC m a = StackDebugC {runStackDebugC :: m a}
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+-- | Transcribe 'scope' as 'debugScope'
+instance (Member Stack sig, Member Debug sig, Algebra sig m) => Algebra (Stack :+: sig) (StackDebugC m) where
+  alg hdl sig ctx = StackDebugC $
+    case sig of
+      L thing@(Context nm _) -> debugScope nm $ alg (runStackDebugC . hdl) (inj thing) ctx
+      L ours -> alg (runStackDebugC . hdl) (inj ours) ctx
+      R other -> alg (runStackDebugC . hdl) other ctx
+
+stackToDebug :: StackDebugC m a -> m a
+stackToDebug = runStackDebugC
+
+-----------------------------------------------
+
 newtype DiagDebugC m a = DiagDebugC {runDiagDebugC :: m a}
   deriving (Functor, Applicative, Monad, MonadIO)
 
--- | Transcribe 'context' as 'debugScope', and 'fatal' as 'debugError'
-instance (Member Diagnostics sig, Member Debug sig, Algebra sig m) => Algebra (Diagnostics :+: sig) (DiagDebugC m) where
+-- | Transcribe 'fatal' as 'debugError'
+instance (Member Diag sig, Member Debug sig, Algebra sig m) => Algebra (Diag :+: sig) (DiagDebugC m) where
   alg hdl sig ctx = DiagDebugC $
     case sig of
-      L thing@(Context nm _) -> debugScope nm $ alg (runDiagDebugC . hdl) (inj thing) ctx
       L thing@(Fatal err) -> do
         debugError err
         alg (runDiagDebugC . hdl) (inj thing) ctx
@@ -193,7 +209,7 @@ logToDebug = interpret $ \case
 -----------------------------------------------
 
 -- | Combine all of our debug wrappers into a mega-wrapper
-type DebugEverythingC m = DiagDebugC (ReadFSDebugC (ExecDebugC (LogDebugC m)))
+type DebugEverythingC m = DiagDebugC (StackDebugC (ReadFSDebugC (ExecDebugC (LogDebugC m))))
 
 debugEverything :: (Has Debug sig m, Has Exec sig m, Has ReadFS sig m, Has Logger sig m) => DebugEverythingC m a -> m a
-debugEverything = logToDebug . execToDebug . readFSToDebug . diagToDebug
+debugEverything = logToDebug . execToDebug . readFSToDebug . stackToDebug . diagToDebug

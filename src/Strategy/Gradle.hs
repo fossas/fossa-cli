@@ -19,16 +19,8 @@ module Strategy.Gradle (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..), AnalyzeProject, analyzeProject)
-import Control.Algebra (Has)
 import Control.Carrier.Reader (Reader)
-import Control.Effect.Diagnostics (
-  Diagnostics,
-  context,
-  errorBoundary,
-  fatal,
-  renderFailureBundle,
-  (<||>),
- )
+import Control.Effect.Diagnostics (Diagnostics, Has, context, fatal, recover, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.Reader (asks)
@@ -49,9 +41,10 @@ import Data.Text qualified as Text
 import DepTypes (
   Dependency (..),
  )
+import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
 import Discovery.Walk (WalkStep (..), fileName, walk')
 import Effect.Exec (AllowErr (..), Command (..), Exec, execThrow)
-import Effect.Logger (Logger, Pretty (pretty), logDebug, logWarn)
+import Effect.Logger (Logger, Pretty (pretty), logDebug, viaShow)
 import Effect.ReadFS (ReadFS, doesFileExist)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
@@ -89,7 +82,6 @@ discover ::
   , Has ReadFS sig m
   , Has Diagnostics sig m
   , Has Exec sig m
-  , Has Logger sig m
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject GradleProject]
@@ -131,7 +123,7 @@ walkUpDir dir filename = do
 -- This is to avoid invoking Gradle again for each subproject, which would be
 -- slow (because of Gradle's startup time) and possibly wrong (because
 -- subprojects need to resolve dependency constraints together).
-findProjects :: (Has Exec sig m, Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [GradleProject]
+findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [GradleProject]
 findProjects = walk' $ \dir _ files -> do
   let isProjectFile f =
         any
@@ -144,22 +136,21 @@ findProjects = walk' $ \dir _ files -> do
     Nothing -> pure ([], WalkContinue)
     Just buildFile -> do
       projectsStdout <-
-        errorBoundary
+        recover
+          . warnOnErr (FailedToListProjects dir)
           . context ("Listing gradle projects at '" <> toText dir <> "'")
           $ runGradle dir gradleProjectsCmd
 
       case projectsStdout of
-        Left err -> do
-          logWarn $ renderFailureBundle err
-          -- Nearly all Gradle projects have a multi-module structure with a
-          -- top-level root project, and subdirectories contain subprojects of
-          -- the top-level root project.
-          --
-          -- If Gradle exits non-zero when invoked in the root project, it will
-          -- almost certainly exit non-zero in subprojects, so there's no point
-          -- in looking for subprojects in this subtree.
-          pure ([], WalkSkipAll)
-        Right result -> do
+        -- Nearly all Gradle projects have a multi-module structure with a
+        -- top-level root project, and subdirectories contain subprojects of
+        -- the top-level root project.
+        --
+        -- If Gradle exits non-zero when invoked in the root project, it will
+        -- almost certainly exit non-zero in subprojects, so there's no point
+        -- in looking for subprojects in this subtree.
+        Nothing -> pure ([], WalkSkipAll)
+        Just result -> do
           let subprojects = parseProjects result
 
           let project =
@@ -170,6 +161,14 @@ findProjects = walk' $ \dir _ files -> do
                   }
 
           pure ([project], WalkSkipAll)
+
+newtype FailedToListProjects = FailedToListProjects (Path Abs Dir)
+  deriving (Eq, Ord, Show)
+
+-- TODO(warnings): this warning is not helpful
+instance ToDiagnostic FailedToListProjects where
+  renderDiagnostic (FailedToListProjects dir) =
+    "Found a gradle build manifest, but failed to list gradle projects in " <> viaShow dir
 
 data GradleProject = GradleProject
   { gradleDir :: Path Abs Dir

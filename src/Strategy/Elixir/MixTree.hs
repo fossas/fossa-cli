@@ -18,7 +18,7 @@ module Strategy.Elixir.MixTree (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics (Diagnostics, Has, context)
+import Control.Effect.Diagnostics (Diagnostics, Has, context, warn)
 import Control.Monad (void)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Aeson (ToJSON)
@@ -46,11 +46,9 @@ import DepTypes (
   ),
  )
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
-import Effect.Logger (Logger, logWarn)
 import GHC.Generics (Generic)
 import Graphing (Graphing, unfold)
 import Path
-import Prettyprinter (pretty)
 import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, takeWhileP, try),
   Parsec,
@@ -75,7 +73,7 @@ import Types (DependencyResults (..), GraphBreadth (..))
 missingDepVersionsMsg :: Text
 missingDepVersionsMsg = "Some of dependencies versions were not resolved from `mix deps` and `mix deps.tree`. Has `mix deps.get` and `mix compile` been executed?"
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => MixProject -> m DependencyResults
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => MixProject -> m DependencyResults
 analyze project = do
   let dir = mixDir project
   -- Get all dependencies
@@ -88,7 +86,7 @@ analyze project = do
         <$> execParser mixDepsCmdOutputParser dir mixDepCmd
 
   -- Reminder to get and compile dependencies, if not already done so.
-  _ <- if missingResolvedVersions depsAllResolved then (logWarn . pretty) missingDepVersionsMsg else pure ()
+  _ <- if missingResolvedVersions depsAllResolved then warn missingDepVersionsMsg else pure ()
   graph <- context "Building dependency graph" $ pure (buildGraph depsAllEnvTree depsAllResolved)
   pure $
     DependencyResults

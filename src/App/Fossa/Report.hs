@@ -21,6 +21,7 @@ import App.Types (
   ProjectRevision (projectName, projectRevision),
  )
 import Control.Carrier.Diagnostics (logWithExit_, (<||>))
+import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Data.Aeson qualified as Aeson
 import Data.Functor (void)
@@ -70,7 +71,7 @@ reportMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds reportType overr
   * CLI command refactoring as laid out in https://github.com/fossas/issues/issues/129
   -}
   void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $
-    logWithExit_ . runReadFSIO . runExecIO $ do
+    runStack . logWithExit_ . runReadFSIO . runExecIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
       logInfo ""

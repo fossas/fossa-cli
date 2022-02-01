@@ -13,6 +13,7 @@ import App.Types (ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.AtomicCounter (runAtomicCounter)
 import Control.Carrier.Diagnostics (runDiagnosticsIO, withResult)
+import Control.Carrier.Stack (Stack)
 import Control.Carrier.StickyLogger (runStickyLogger)
 import Control.Carrier.TaskPool (Progress (..), withTaskPool)
 import Control.Concurrent (getNumCapabilities, threadDelay)
@@ -31,7 +32,7 @@ import Data.Text qualified as Text
 import Discovery.Archive (withArchive')
 import Discovery.Filters (AllFilters, combinedPaths, excludeFilters, includeFilters)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk)
-import Effect.Logger (Color (..), Logger, Severity (SevError, SevInfo), annotate, color, logDebug, logInfo, plural, pretty)
+import Effect.Logger (Color (..), Logger, Severity (SevError, SevInfo, SevWarn), annotate, color, logDebug, logInfo, plural, pretty)
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (Abs, Rel), isProperPrefixOf, toFilePath, (</>))
@@ -86,6 +87,7 @@ uploadBufferSize = 1000
 
 runFingerprintDiscovery ::
   ( Has (Lift IO) sig m
+  , Has Stack sig m
   , Has Finally sig m
   , Has Logger sig m
   , Has ReadFS sig m
@@ -100,7 +102,7 @@ runFingerprintDiscovery ::
 runFingerprintDiscovery capabilities files dir filters = do
   runStickyLogger SevInfo . withTaskPool capabilities (updateProgress " > Fingerprint files") . runAtomicCounter $ do
     res <- runDiagnosticsIO $ discover files (toPathFilters dir filters) dir ancestryDirect
-    withResult SevError res (const (pure ()))
+    withResult SevError SevWarn res (const (pure ()))
 
   logDebug "Finished processing files"
   sendIO . atomically $ closeTBMChan files

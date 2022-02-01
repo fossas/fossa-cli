@@ -3,11 +3,13 @@ module Haskell.StackSpec (
 ) where
 
 import Control.Carrier.Diagnostics
+import Control.Carrier.Stack (runStack)
 import Data.Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Text (Text)
 import GraphUtil
 import Graphing qualified as G
+import ResultUtil
 import Strategy.Haskell.Stack
 import Test.Hspec qualified as Test
 import Types
@@ -37,11 +39,12 @@ spec = do
         Left err -> Test.expectationFailure $ "Failed to parse: " ++ err
         Right deps -> deps `Test.shouldMatchList` allDeps
 
-  Test.describe "Stack graph builder" $
-    case run . runDiagnostics . buildGraph $ allDeps of
-      Left fbundle -> Test.it "should build a graph" $ Test.expectationFailure (show $ renderFailureBundle fbundle)
-      Right graph -> do
+  Test.describe "Stack graph builder" $ do
+    let result = run . runStack . runDiagnostics . buildGraph $ allDeps
+
+    Test.it "should build a correct graph" $
+      assertOnSuccess result $ \_ graph -> do
         let gr = G.gmap dependencyName graph
-        Test.it "should have the correct deps" $ expectDeps ["deep", "remote"] gr
-        Test.it "should have the correct direct deps" $ expectDirect ["remote"] gr
-        Test.it "should have the correct edges" $ expectEdges [("remote", "deep")] gr
+        expectDeps ["deep", "remote"] gr
+        expectDirect ["remote"] gr
+        expectEdges [("remote", "deep")] gr

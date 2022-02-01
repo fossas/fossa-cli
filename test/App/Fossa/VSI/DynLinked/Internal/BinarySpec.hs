@@ -32,6 +32,8 @@ import Control.Carrier.Diagnostics (runDiagnostics)
 import Effect.Exec (runExecIO)
 import qualified System.Info as SysInfo
 import Text.RawString.QQ (r)
+import Diag.Result (Result(Failure, Success), renderFailure)
+import Control.Carrier.Stack (runStack)
 
 spec :: Hspec.Spec
 spec = do
@@ -55,11 +57,11 @@ spec = do
 
   Hspec.describe "parse ldd output" $ do
     executableTarget <- Hspec.runIO localExecutable
-    targetDependencies <- Hspec.runIO . runDiagnostics . runExecIO $ Binary.dynamicLinkedDependencies executableTarget
+    targetDependencies <- Hspec.runIO . runStack . runDiagnostics . runExecIO $ Binary.dynamicLinkedDependencies executableTarget
 
     Hspec.it "should parse actual ldd output" $ case targetDependencies of
-      Left e -> Hspec.expectationFailure ("could not check file: ensure you've run `make build-test-data` locally. Error: " <> show e)
-      Right result -> result `Hspec.shouldBe` localExecutableExpected
+      Failure ws eg -> Hspec.expectationFailure ("could not check file: ensure you've run `make build-test-data` locally. Error: " <> show (renderFailure ws eg))
+      Success _ result -> result `Hspec.shouldBe` localExecutableExpected
 
 parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Hspec.Expectation
 parseMatch parser input expected = parse parser "" input `shouldParse` expected

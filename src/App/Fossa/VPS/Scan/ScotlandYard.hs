@@ -12,6 +12,7 @@ module App.Fossa.VPS.Scan.ScotlandYard (
 import App.Fossa.VPS.Scan.Core
 import App.Fossa.VPS.Types
 import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Effect.Lift
@@ -137,7 +138,7 @@ createBuildGraph ScotlandYardNinjaOpts{..} url httpOptions = runHTTP $ do
 uploadBuildGraphChunk :: (Has (Lift IO) sig m) => Url 'Https -> Option 'Https -> [DepsTarget] -> m ()
 uploadBuildGraphChunk url httpOptions targets = do
   let jsonChunk = object ["targets" .= targets]
-  _ <- sendIO $ runDiagnostics $ runHTTP $ req POST url (ReqBodyJson jsonChunk) ignoreResponse httpOptions
+  _ <- sendIO $ ignoreLogger $ runStack $ runDiagnostics $ runHTTP $ req POST url (ReqBodyJson jsonChunk) ignoreResponse httpOptions
   pure ()
 
 updateProgress :: Has StickyLogger sig m => Progress -> m ()

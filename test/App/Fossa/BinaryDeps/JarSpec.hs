@@ -4,7 +4,9 @@ module App.Fossa.BinaryDeps.JarSpec (spec) where
 
 import App.Fossa.BinaryDeps.Jar (resolveJar)
 import Control.Carrier.Diagnostics (runDiagnostics)
+import Control.Carrier.Stack (runStack)
 import Data.String.Conversion (toText)
+import Diag.Result (Result (Failure, Success))
 import Effect.Logger (Severity (SevError), withDefaultLogger)
 import Effect.ReadFS (runReadFSIO)
 import Path (Abs, Dir, File, Path, mkRelDir, mkRelFile, (</>))
@@ -18,29 +20,29 @@ spec = do
   describe "handle JAR with multiple pom.xml" $ do
     root <- runIO testdataParentDir
     target <- runIO withMultiplePoms
-    result <- runIO . withDefaultLogger SevError . runDiagnostics . runReadFSIO $ resolveJar root target
+    result <- runIO . runStack . withDefaultLogger SevError . runDiagnostics . runReadFSIO $ resolveJar root target
 
     it "parses the jar correctly" $ case result of
-      Left _ -> expectationFailure "could not parse jar"
-      Right dep -> dep `shouldBe` Just (expectedMultiplePoms root)
+      Failure _ _ -> expectationFailure "could not parse jar"
+      Success _ dep -> dep `shouldBe` Just (expectedMultiplePoms root)
 
   describe "handle JAR with one pom.xml" $ do
     root <- runIO testdataParentDir
     target <- runIO withLicenseInPom
-    result <- runIO . withDefaultLogger SevError . runDiagnostics . runReadFSIO $ resolveJar root target
+    result <- runIO . runStack . withDefaultLogger SevError . runDiagnostics . runReadFSIO $ resolveJar root target
 
     it "parses the jar correctly" $ case result of
-      Left _ -> expectationFailure "could not parse jar"
-      Right dep -> dep `shouldBe` Just (expectedLicenseInPom root)
+      Failure _ _ -> expectationFailure "could not parse jar"
+      Success _ dep -> dep `shouldBe` Just (expectedLicenseInPom root)
 
   describe "handle JAR without pom.xml" $ do
     root <- runIO testdataParentDir
     target <- runIO withMetaInfManifest
-    result <- runIO . withDefaultLogger SevError . runDiagnostics . runReadFSIO $ resolveJar root target
+    result <- runIO . runStack . withDefaultLogger SevError . runDiagnostics . runReadFSIO $ resolveJar root target
 
     it "parses the jar correctly" $ case result of
-      Left _ -> expectationFailure "could not parse jar"
-      Right dep -> dep `shouldBe` Just (expectedMetaInfManifest root)
+      Failure _ _ -> expectationFailure "could not parse jar"
+      Success _ dep -> dep `shouldBe` Just (expectedMetaInfManifest root)
 
 testdataParentDir :: IO (Path Abs Dir)
 testdataParentDir = PIO.resolveDir' "test/App/Fossa/BinaryDeps"

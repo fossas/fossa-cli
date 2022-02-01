@@ -8,6 +8,7 @@ module Go.GoListSpec (
 import Control.Algebra
 import Control.Carrier.Diagnostics
 import Control.Carrier.Simple
+import Control.Carrier.Stack (runStack)
 import Data.ByteString.Lazy qualified as BL
 import Data.Function ((&))
 import Data.Map.Strict qualified as Map
@@ -16,6 +17,7 @@ import Effect.Exec
 import Effect.Grapher
 import Graphing (Graphing)
 import Path.IO (getCurrentDir)
+import ResultUtil
 import Strategy.Go.GoList
 import Test.Hspec
 
@@ -57,7 +59,6 @@ spec = do
             analyze' testdir
               & runConstExec outputTrivial
               & runDiagnostics
+              & runStack
               & run
-      case result of
-        Left err -> expectationFailure ("analyze failed: " <> show (renderFailureBundle err))
-        Right (graph, _) -> graph `shouldBe` expected
+      assertOnSuccess result $ \_ (graph, _) -> graph `shouldBe` expected

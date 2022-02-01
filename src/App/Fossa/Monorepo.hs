@@ -14,6 +14,7 @@ import App.Fossa.ProjectInference (
 import App.Fossa.VPS.Scan.RunWiggins
 import App.Types
 import Control.Carrier.Diagnostics
+import Control.Carrier.Stack (runStack)
 import Control.Effect.Lift (Lift)
 import Data.Text
 import Effect.Exec (Exec, runExecIO)
@@ -23,7 +24,7 @@ import Fossa.API.Types
 
 monorepoMain :: BaseDir -> MonorepoAnalysisOpts -> Severity -> ApiOpts -> ProjectMetadata -> OverrideProject -> PathFilters -> IO ()
 monorepoMain basedir monoRepoAnalysisOpts logSeverity apiOpts projectMeta overrideProject filters = withDefaultLogger logSeverity $ do
-  logWithExit_ $ runReadFSIO $ runExecIO $ withWigginsBinary $ monorepoScan basedir monoRepoAnalysisOpts filters logSeverity apiOpts projectMeta overrideProject
+  runStack . logWithExit_ . runReadFSIO . runExecIO . withWigginsBinary $ monorepoScan basedir monoRepoAnalysisOpts filters logSeverity apiOpts projectMeta overrideProject
 
 monorepoScan ::
   ( Has Diagnostics sig m

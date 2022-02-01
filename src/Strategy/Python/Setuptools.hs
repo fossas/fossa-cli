@@ -13,6 +13,7 @@ import Control.Effect.Diagnostics qualified as Diag
 import Data.Aeson (ToJSON)
 import Data.List (isInfixOf, isSuffixOf)
 import Data.Maybe (maybeToList)
+import Data.Text (Text)
 import Discovery.Walk
 import Effect.ReadFS
 import GHC.Generics (Generic)
@@ -51,8 +52,9 @@ getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m D
 getDeps project = do
   graph <-
     context "Setuptools" $
-      Diag.combineSuccessful
+      Diag.combineSuccessful @Text @Text
         "Analysis failed for all requirements.txt/setup.py in the project"
+        "Failed to parse python file"
         [analyzeReqTxts project, analyzeSetupPy project]
   pure $
     DependencyResults

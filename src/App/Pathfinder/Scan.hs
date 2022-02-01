@@ -12,11 +12,13 @@ import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Error.Either
 import Control.Carrier.Finally
 import Control.Carrier.Output.IO
+import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool
 import Control.Concurrent
 import Control.Effect.Exception as Exc
 import Control.Effect.Lift (sendIO)
+import Control.Effect.Stack (Stack)
 import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson
@@ -44,7 +46,7 @@ scanMain basedir debug = do
   exists <- PIO.doesDirExist basedir
   unless exists (die $ "ERROR: " <> show basedir <> " does not exist")
 
-  withDefaultLogger (bool SevInfo SevDebug debug) $ scan basedir
+  runStack . withDefaultLogger (bool SevInfo SevDebug debug) $ scan basedir
 
 runAll ::
   ( Has ReadFS sig m
@@ -55,6 +57,7 @@ runAll ::
   , Has (Lift IO) sig m
   , Has AtomicCounter sig m
   , Has Debug sig m
+  , Has Stack sig m
   , MonadIO m
   ) =>
   Path Abs Dir ->
@@ -73,17 +76,19 @@ runSingle ::
   , Has (Output ProjectLicenseScan) sig m
   , Has Logger sig m
   , Has (Lift IO) sig m
+  , Has Stack sig m
   , MonadIO m
   ) =>
   DiscoveredProject a ->
   m ()
 runSingle project = do
   licenseResult <- Diag.runDiagnosticsIO $ licenseAnalyzeProject (projectData project)
-  Diag.withResult SevWarn licenseResult (output . mkLicenseScan project)
+  Diag.withResult SevWarn SevWarn licenseResult (output . mkLicenseScan project)
 
 scan ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
+  , Has Stack sig m
   , MonadIO m
   ) =>
   Path Abs Dir ->

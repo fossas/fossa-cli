@@ -45,10 +45,11 @@ import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, debugScope, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
-import Control.Carrier.Diagnostics.StickyContext (stickyDiag)
 import Control.Carrier.Finally (Finally, Has, runFinally)
 import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.Reader (Reader, runReader)
+import Control.Carrier.Stack (Stack, runStack, withEmptyStack)
+import Control.Carrier.Stack.StickyLog (stickyLogStack)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool (
   Progress (..),
@@ -57,7 +58,7 @@ import Control.Carrier.TaskPool (
   withTaskPool,
  )
 import Control.Concurrent (getNumCapabilities)
-import Control.Effect.Diagnostics (Diagnostics, fatalText, fromMaybeText, recover, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, fatalText, fromMaybeText, recover, rethrow, (<||>))
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Control.Monad (when)
@@ -194,7 +195,8 @@ analyzeMain ::
   AnalyzeExperimentalPreferences ->
   IO ()
 analyzeMain workdir logSeverity destination project unpackArchives jsonOutput includeAll modeOptions filters preferences =
-  withDefaultLogger logSeverity
+  runStack
+    . withDefaultLogger logSeverity
     . Diag.logWithExit_
     . runReadFSIO
     . runReader preferences
@@ -205,7 +207,7 @@ analyzeMain workdir logSeverity destination project unpackArchives jsonOutput in
         basedir <- sendIO $ validateDir workdir
         (scope, res) <- collectDebugBundle . Diag.errorBoundaryIO $ doAnalyze basedir
         sendIO . BL.writeFile "fossa.debug.json.gz" . GZip.compress $ Aeson.encode scope
-        either Diag.rethrow pure res
+        rethrow res
       _ -> do
         basedir <- sendIO $ validateDir workdir
         ignoreDebug $ doAnalyze basedir
@@ -223,6 +225,7 @@ runDependencyAnalysis ::
   , Has Exec sig m
   , Has (Output ProjectResult) sig m
   , Has (Reader AnalyzeExperimentalPreferences) sig m
+  , Has Stack sig m
   , MonadIO m
   ) =>
   -- | Analysis base directory
@@ -235,10 +238,10 @@ runDependencyAnalysis basedir filters project = do
     Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
-      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag . Diag.context "Project Analysis" $ do
+      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context "Project Analysis" $ do
         debugMetadata "DiscoveredProject" project
         analyzeProject targets (projectData project)
-      Diag.withResult SevWarn graphResult (output . mkResult basedir project)
+      Diag.withResult SevWarn SevWarn graphResult (output . mkResult basedir project)
 
 applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
 applyFiltersToProject basedir filters DiscoveredProject{..} =
@@ -379,8 +382,8 @@ analyze (BaseDir basedir) destination override unpackArchives jsonOutput include
         runAnalyzers basedir filters
         when (fromFlag UnpackArchives unpackArchives) $
           forkTask $ do
-            res <- Diag.runDiagnosticsIO . diagToDebug . stickyDiag $ Archive.discover (`runAnalyzers` filters) basedir
-            Diag.withResult SevError res (const (pure ()))
+            res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (`runAnalyzers` filters) basedir
+            Diag.withResult SevError SevWarn res (const (pure ()))
 
   let filteredProjects = filterProjects (BaseDir basedir) projectResults
 

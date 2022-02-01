@@ -29,13 +29,15 @@ import Test.Hspec (
   xit,
  )
 
-import Control.Carrier.Diagnostics (DiagnosticsC, renderFailureBundle, runDiagnostics)
+import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
+import Control.Carrier.Stack (StackC, runStack)
 import Data.String.Conversion (toString)
+import Diag.Result (Result (Failure, Success), renderFailure)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (IgnoreLoggerC, ignoreLogger, renderIt)
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
 
-type EffectStack a = ExecIOC (ReadFSIOC (DiagnosticsC (IgnoreLoggerC IO))) a
+type EffectStack a = ExecIOC (ReadFSIOC (DiagnosticsC (IgnoreLoggerC (StackC IO)))) a
 
 -- TODO: add useful describe, naive describe' doesn't work.
 
@@ -52,14 +54,14 @@ runTestEffects' :: EffectStack () -> Spec
 runTestEffects' = runIO . runTestEffects
 
 runTestEffects :: EffectStack () -> IO ()
-runTestEffects = ignoreLogger . handleDiag . runReadFSIO . runExecIO
+runTestEffects = runStack . ignoreLogger . handleDiag . runReadFSIO . runExecIO
   where
     handleDiag :: (Has (Lift IO) sig m) => DiagnosticsC m () -> m ()
     handleDiag diag =
       runDiagnostics diag >>= \case
-        Left err -> do
-          expectationFailure' $ toString $ renderIt $ renderFailureBundle err
-        Right _ -> pure ()
+        Failure ws eg -> do
+          expectationFailure' $ toString $ renderIt $ renderFailure ws eg
+        Success _ _ -> pure ()
 
 expectationFailure' :: (Has (Lift IO) sig m) => String -> m ()
 expectationFailure' = sendIO . expectationFailure

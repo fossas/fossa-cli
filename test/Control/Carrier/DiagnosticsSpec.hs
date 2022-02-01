@@ -1,6 +1,7 @@
 module Control.Carrier.DiagnosticsSpec (spec) where
 
 import Control.Carrier.Diagnostics (logWithExit_)
+import Control.Carrier.Stack (runStack)
 import Control.Effect.Diagnostics (ToDiagnostic (..), fatal)
 import Data.Text (Text)
 import Effect.Exec (ExitCode (..))
@@ -14,8 +15,8 @@ spec = describe "logWithExit_" $ do
   it "exits on failure" $ do
     failureAction `shouldThrow` (== ExitFailure 1)
   where
-    successAction = withDefaultLogger SevDebug $ logWithExit_ $ logInfo "Action succeeded!"
-    failureAction = withDefaultLogger SevDebug $ logWithExit_ $ fatal $ TestError "Action failed!"
+    successAction = runStack . withDefaultLogger SevDebug . logWithExit_ $ logInfo "Action succeeded!"
+    failureAction = runStack . withDefaultLogger SevDebug . logWithExit_ . fatal $ TestError "Action failed!"
 
 newtype TestError = TestError Text
   deriving (Eq, Ord, Show)

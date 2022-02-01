@@ -3,12 +3,14 @@ module Haskell.CabalSpec (
 ) where
 
 import Control.Carrier.Diagnostics
+import Control.Carrier.Stack (runStack)
 import Data.Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Set qualified as Set
 import DepTypes
 import GraphUtil
 import Graphing
+import ResultUtil
 import Strategy.Haskell.Cabal
 import Test.Hspec qualified as Test
 
@@ -41,11 +43,12 @@ spec = do
       case eitherDecode metaBytes of
         Left err -> Test.expectationFailure $ "failed to parse: " ++ err
         Right result -> installPlans result `Test.shouldMatchList` buildPlan
-  Test.describe "cabal plan graph builder" $
-    case run . runDiagnostics . buildGraph $ BuildPlan buildPlan of
-      Left fbundle -> Test.it "should build a graph" $ Test.expectationFailure (show $ renderFailureBundle fbundle)
-      Right graph -> do
+  Test.describe "cabal plan graph builder" $ do
+    let result = run . runStack . runDiagnostics . buildGraph $ BuildPlan buildPlan
+
+    Test.it "should build a correct graph" $
+      assertOnSuccess result $ \_ graph -> do
         let gr = gmap dependencyName graph
-        Test.it "should have the correct deps" $ expectDeps ["aeson", "with-components", "deepdep"] gr
-        Test.it "should have the correct direct deps" $ expectDirect ["aeson", "with-components"] gr
-        Test.it "should have the correct edges" $ expectEdges [("aeson", "deepdep")] gr
+        expectDeps ["aeson", "with-components", "deepdep"] gr
+        expectDirect ["aeson", "with-components"] gr
+        expectEdges [("aeson", "deepdep")] gr

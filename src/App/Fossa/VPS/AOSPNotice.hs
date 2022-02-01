@@ -8,6 +8,7 @@ import App.Fossa.VPS.Scan.RunWiggins
 import App.Fossa.VPS.Types
 import App.Types (BaseDir (..), OverrideProject)
 import Control.Carrier.Diagnostics
+import Control.Carrier.Stack (runStack)
 import Control.Effect.Lift (Lift)
 import Data.Text (Text)
 import Effect.Exec (Exec, runExecIO)
@@ -18,7 +19,7 @@ import Path (Abs, Dir, Path)
 
 aospNoticeMain :: BaseDir -> Severity -> OverrideProject -> NinjaScanID -> NinjaFilePaths -> ApiOpts -> IO ()
 aospNoticeMain (BaseDir basedir) logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts = withDefaultLogger logSeverity $ do
-  logWithExit_ $ runExecIO $ runReadFSIO $ withWigginsBinary $ aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts
+  runStack . logWithExit_ . runExecIO . runReadFSIO . withWigginsBinary $ aospNoticeGenerate basedir logSeverity overrideProject ninjaScanId ninjaFilePaths apiOpts
 
 ----- main logic
 

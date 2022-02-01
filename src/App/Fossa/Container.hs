@@ -23,6 +23,7 @@ module App.Fossa.Container (
 import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath, withSyftBinary)
 import App.Types (OverrideProject (..), ProjectRevision (..))
 import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Control.Carrier.Stack (runStack)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad.IO.Class
 import Data.Aeson
@@ -252,7 +253,7 @@ syftCommand bin (ImageText image) =
     }
 
 parseSyftOutputMain :: Severity -> FilePath -> IO ()
-parseSyftOutputMain logseverity path = withDefaultLogger logseverity . logWithExit_ . runReadFSIO $ parseSyftOutput path
+parseSyftOutputMain logseverity path = runStack . withDefaultLogger logseverity . logWithExit_ . runReadFSIO $ parseSyftOutput path
 
 parseSyftOutput :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => FilePath -> m ()
 parseSyftOutput filepath = do
@@ -272,7 +273,7 @@ parseSyftOutput filepath = do
   pure ()
 
 dumpSyftScanMain :: Severity -> Maybe FilePath -> ImageText -> IO ()
-dumpSyftScanMain logseverity path image = withDefaultLogger logseverity . logWithExit_ . runExecIO $ dumpSyftScan path image
+dumpSyftScanMain logseverity path image = runStack . withDefaultLogger logseverity . logWithExit_ . runExecIO $ dumpSyftScan path image
 
 dumpSyftScan ::
   ( Has Diagnostics sig m

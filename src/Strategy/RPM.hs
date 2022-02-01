@@ -89,7 +89,11 @@ getDeps = context "RPM" . context "Static analysis" . analyze . rpmFiles
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m DependencyResults
 analyze specFiles = do
-  graph <- Diag.combineSuccessful "Analysis failed for all discovered *.spec files" (map analyzeSingle specFiles)
+  graph <-
+    Diag.combineSuccessful @Text @Text
+      "Analysis failed for all discovered *.spec files"
+      "Failed to parse a spec file"
+      (map analyzeSingle specFiles)
   -- TODO: Should each Dep have an origin path?
   pure $
     DependencyResults

@@ -17,6 +17,7 @@ module App.Fossa.Configuration (
 import App.Docs (fossaYmlDocUrl)
 import App.Types
 import Control.Carrier.Diagnostics qualified as Diag
+import Control.Carrier.Stack (runStack)
 import Control.Effect.Lift (Lift)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
 import Data.Functor (($>))
@@ -24,7 +25,8 @@ import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Effect.Logger (Severity (SevWarn), logWarn, withDefaultLogger)
+import Diag.Result (Result (Failure, Success), renderFailure)
+import Effect.Logger (Severity (SevWarn), ignoreLogger, logWarn, withDefaultLogger)
 import Effect.ReadFS
 import Path
 import Path.IO (getCurrentDir)
@@ -152,15 +154,17 @@ readConfigFile file = do
         , ""
         ]
 
+-- TODO(warnings): don't runDiagnostics here. send constraints upward. can be
+-- addressed after entrypoint refactor
 readConfigFileIO :: Maybe (Path Abs File) -> IO (Maybe ConfigFile)
 readConfigFileIO configFile = do
   -- FIXME: we probably want to read from the target directory of analysis, not
   -- the current directory
   dir <- getCurrentDir
-  config <- Diag.runDiagnostics $ runReadFSIO $ readConfigFile $ fromMaybe (dir </> defaultFile) configFile
+  config <- runStack $ ignoreLogger $ Diag.runDiagnostics $ runReadFSIO $ readConfigFile $ fromMaybe (dir </> defaultFile) configFile
   case config of
-    Left err -> die $ show $ Diag.renderFailureBundle err
-    Right a -> pure a
+    Failure ws eg -> die $ show (renderFailure ws eg)
+    Success _ a -> pure a
 
 mergeFileCmdMetadata :: ProjectMetadata -> ConfigFile -> ProjectMetadata
 mergeFileCmdMetadata meta file =

@@ -20,6 +20,7 @@ import App.Types (
   ProjectRevision (projectName, projectRevision),
  )
 import Control.Carrier.Diagnostics (logWithExit_, (<||>))
+import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Lift (sendIO)
 import Data.Aeson qualified as Aeson
@@ -57,7 +58,7 @@ testMain ::
   IO ()
 testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
   void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $
-    logWithExit_ . runReadFSIO . runExecIO $ do
+    runStack . logWithExit_ . runReadFSIO . runExecIO $ do
       revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
 
       logInfo ""
