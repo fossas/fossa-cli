@@ -5,8 +5,8 @@ module App.Fossa.VPS.Test (
 ) where
 
 import App.Fossa.API.BuildWait (
-  waitForIssues',
-  waitForSherlockScan',
+  waitForIssues,
+  waitForSherlockScan,
  )
 import App.Fossa.Config.VPS (OutputFormat (..), TestConfig (..))
 import App.Fossa.FossaAPIV1 qualified as Fossa
@@ -52,10 +52,10 @@ testMain TestConfig{..} = runStickyLogger SevInfo . timeout' testTimeoutDuration
 
   logSticky "[ Waiting for component scan... ]"
 
-  waitForSherlockScan' testApiOpts locator cancelToken $ ScotlandYard.responseScanId scan
+  waitForSherlockScan testApiOpts locator cancelToken $ ScotlandYard.responseScanId scan
 
   logSticky "[ Waiting for issue scan completion... ]"
-  issues <- waitForIssues' testApiOpts testRevision cancelToken
+  issues <- waitForIssues testApiOpts testRevision cancelToken
   logSticky ""
 
   case issuesCount issues of

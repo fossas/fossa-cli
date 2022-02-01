@@ -1,8 +1,8 @@
 module App.Fossa.API.BuildWait (
-  waitForScanCompletion',
-  waitForIssues',
-  waitForSherlockScan',
-  waitForBuild',
+  waitForScanCompletion,
+  waitForIssues,
+  waitForSherlockScan,
+  waitForBuild,
 ) where
 
 import App.Fossa.FossaAPIV1 qualified as Fossa
@@ -38,11 +38,11 @@ data WaitError
 
 instance ToDiagnostic WaitError where
   renderDiagnostic BuildFailed = "The build failed. Check the FOSSA webapp for more details."
-  renderDiagnostic LocalTimeout = "Build/Issue scan was not completed, and the CLI has locally timed out."
+  renderDiagnostic LocalTimeout = "Build/Issue scan was not completed on the FOSSA server, and the --timeout duration has expired."
 
 -- | Wait for either a normal build completion or a monorepo scan completion.
 -- Try to detect the correct method, use provided fallback
-waitForScanCompletion' ::
+waitForScanCompletion ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
@@ -52,7 +52,7 @@ waitForScanCompletion' ::
   ProjectRevision ->
   Cancel ->
   m ()
-waitForScanCompletion' apiopts revision cancelFlag = do
+waitForScanCompletion apiopts revision cancelFlag = do
   -- Route is new, this may fail on on-prem if they haven't updated
   project <- recover $ Fossa.getProject apiopts revision
 
@@ -60,11 +60,11 @@ waitForScanCompletion' apiopts revision cancelFlag = do
   let runAsMonorepo = maybe False Fossa.projectIsMonorepo project
 
   if runAsMonorepo
-    then waitForMonorepoScan' apiopts revision cancelFlag
-    else waitForBuild' apiopts revision cancelFlag
+    then waitForMonorepoScan apiopts revision cancelFlag
+    else waitForBuild apiopts revision cancelFlag
 
 -- | Wait for a "normal" (non-VPS) build completion
-waitForBuild' ::
+waitForBuild ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
@@ -74,7 +74,7 @@ waitForBuild' ::
   ProjectRevision ->
   Cancel ->
   m ()
-waitForBuild' apiOpts revision cancelFlag = do
+waitForBuild apiOpts revision cancelFlag = do
   checkForTimeout cancelFlag
   build <- Fossa.getLatestBuild apiOpts revision
 
@@ -84,10 +84,10 @@ waitForBuild' apiOpts revision cancelFlag = do
     otherStatus -> do
       logSticky' $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
       sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
-      waitForBuild' apiOpts revision cancelFlag
+      waitForBuild apiOpts revision cancelFlag
 
 -- | Wait for monorepo scan completion
-waitForMonorepoScan' ::
+waitForMonorepoScan ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
@@ -97,7 +97,7 @@ waitForMonorepoScan' ::
   ProjectRevision ->
   Cancel ->
   m ()
-waitForMonorepoScan' apiOpts revision cancelFlag = do
+waitForMonorepoScan apiOpts revision cancelFlag = do
   checkForTimeout cancelFlag
   Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts
   let locator = VPSCore.createLocator (projectName revision) orgId
@@ -106,9 +106,9 @@ waitForMonorepoScan' apiOpts revision cancelFlag = do
   scan <- ScotlandYard.getLatestScan apiOpts locator (projectRevision revision)
 
   logSticky' "[ Waiting for monorepo scan... ]"
-  waitForSherlockScan' apiOpts locator cancelFlag (ScotlandYard.responseScanId scan)
+  waitForSherlockScan apiOpts locator cancelFlag (ScotlandYard.responseScanId scan)
 
-waitForIssues' ::
+waitForIssues ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
@@ -117,17 +117,17 @@ waitForIssues' ::
   ProjectRevision ->
   Cancel ->
   m Issues
-waitForIssues' apiOpts revision cancelFlag = do
+waitForIssues apiOpts revision cancelFlag = do
   checkForTimeout cancelFlag
   issues <- Fossa.getIssues apiOpts revision
   case issuesStatus issues of
     "WAITING" -> do
       sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
-      waitForIssues' apiOpts revision cancelFlag
+      waitForIssues apiOpts revision cancelFlag
     _ -> pure issues
 
 -- | Wait for sherlock scan completion (VPS)
-waitForSherlockScan' ::
+waitForSherlockScan ::
   (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m, Has StickyLogger sig m) =>
   ApiOpts ->
   VPSCore.Locator ->
@@ -135,7 +135,7 @@ waitForSherlockScan' ::
   -- | scan ID
   Text ->
   m ()
-waitForSherlockScan' apiOpts locator cancelFlag scanId = do
+waitForSherlockScan apiOpts locator cancelFlag scanId = do
   checkForTimeout cancelFlag
   scan <- ScotlandYard.getScan apiOpts locator scanId
   case ScotlandYard.responseScanStatus scan of
@@ -144,10 +144,10 @@ waitForSherlockScan' apiOpts locator cancelFlag scanId = do
     Just otherStatus -> do
       logSticky' $ "[ Waiting for component scan... last status: " <> pretty otherStatus <> " ]"
       sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
-      waitForSherlockScan' apiOpts locator cancelFlag scanId
+      waitForSherlockScan apiOpts locator cancelFlag scanId
     Nothing -> do
       sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
-      waitForSherlockScan' apiOpts locator cancelFlag scanId
+      waitForSherlockScan apiOpts locator cancelFlag scanId
 
 -- | Specialized version of 'checkForCancel' which represents
 -- a backend build/issue scan timeout.

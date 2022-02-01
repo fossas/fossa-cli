@@ -6,8 +6,8 @@ module App.Fossa.VPS.Report (
 ) where
 
 import App.Fossa.API.BuildWait (
-  waitForIssues',
-  waitForSherlockScan',
+  waitForIssues,
+  waitForSherlockScan,
  )
 import App.Fossa.Config.VPS (ReportConfig (..), ReportType (Attribution))
 import App.Fossa.FossaAPIV1 qualified as Fossa
@@ -52,10 +52,10 @@ reportMain ReportConfig{..} = runStickyLogger SevInfo . timeout' reportTimeoutDu
 
   logSticky "[ Waiting for component scan... ]"
 
-  waitForSherlockScan' reportApiOpts locator cancelToken $ ScotlandYard.responseScanId scan
+  waitForSherlockScan reportApiOpts locator cancelToken $ ScotlandYard.responseScanId scan
 
   logSticky "[ Waiting for issue scan completion... ]"
-  _ <- waitForIssues' reportApiOpts reportRevision cancelToken
+  _ <- waitForIssues reportApiOpts reportRevision cancelToken
 
   logSticky $ "[ Fetching " <> showT reportType <> " report... ]"
   jsonValue <- case reportType of

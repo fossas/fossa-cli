@@ -6,8 +6,8 @@ module App.Fossa.Report (
 ) where
 
 import App.Fossa.API.BuildWait (
-  waitForIssues',
-  waitForScanCompletion',
+  waitForIssues,
+  waitForScanCompletion,
  )
 import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), mkSubCommand)
 import App.Fossa.FossaAPIV1 qualified as Fossa
@@ -56,11 +56,11 @@ report ReportConfig{..} = do
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForScanCompletion' apiOpts revision cancelToken
+      waitForScanCompletion apiOpts revision cancelToken
 
       logSticky "[ Waiting for issue scan completion... ]"
 
-      _ <- waitForIssues' apiOpts revision cancelToken
+      _ <- waitForIssues apiOpts revision cancelToken
 
       logSticky $ "[ Fetching " <> showT reportType <> " report... ]"
 

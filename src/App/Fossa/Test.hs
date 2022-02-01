@@ -5,8 +5,8 @@ module App.Fossa.Test (
 ) where
 
 import App.Fossa.API.BuildWait (
-  waitForIssues',
-  waitForScanCompletion',
+  waitForIssues,
+  waitForScanCompletion,
  )
 import App.Fossa.Config.Test (OutputFormat (TestOutputJson, TestOutputPretty), TestCliOpts, TestConfig)
 import App.Fossa.Config.Test qualified as Config
@@ -54,10 +54,10 @@ testMain config = runStickyLogger SevInfo $
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForScanCompletion' apiOpts revision cancelFlag
+      waitForScanCompletion apiOpts revision cancelFlag
 
       logSticky "[ Waiting for issue scan completion... ]"
-      issues <- waitForIssues' apiOpts revision cancelFlag
+      issues <- waitForIssues apiOpts revision cancelFlag
       logSticky ""
       logInfo ""
 

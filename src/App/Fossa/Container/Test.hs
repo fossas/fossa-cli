@@ -6,8 +6,8 @@ module App.Fossa.Container.Test (
 ) where
 
 import App.Fossa.API.BuildWait (
-  waitForBuild',
-  waitForIssues',
+  waitForBuild,
+  waitForIssues,
  )
 import App.Fossa.Config.Container (
   ContainerTestConfig (ContainerTestConfig, timeoutDuration),
@@ -55,10 +55,10 @@ test ContainerTestConfig{..} = runStickyLogger SevInfo $
     logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
 
     logSticky "[ Waiting for build completion ]"
-    waitForBuild' apiOpts revision cancelToken
+    waitForBuild apiOpts revision cancelToken
 
     logSticky "[ Waiting for issue scan completion ]"
-    issues <- waitForIssues' apiOpts revision cancelToken
+    issues <- waitForIssues apiOpts revision cancelToken
     logSticky ""
 
     case issuesCount issues of
