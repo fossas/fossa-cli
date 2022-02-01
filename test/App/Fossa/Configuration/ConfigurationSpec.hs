@@ -95,10 +95,10 @@ spec :: T.Spec
 spec = do
   dir <- T.runIO getCurrentDir
 
-  config <- T.runIO . runStack [] . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> testFile)
-  badConfig <- T.runIO . runStack [] . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> badFile)
-  missingConfig <- T.runIO . runStack [] . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> missingFile)
-  ver2Config <- T.runIO . runStack [] . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> ver2configFile)
+  config <- T.runIO . runStack . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> testFile)
+  badConfig <- T.runIO . runStack . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> badFile)
+  missingConfig <- T.runIO . runStack . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> missingFile)
+  ver2Config <- T.runIO . runStack . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> ver2configFile)
 
   T.describe "config file parser" $ do
     T.it "parses a full configuration file correctly" $ do

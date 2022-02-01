@@ -29,7 +29,7 @@ simpleStandardURL :: Text
 simpleStandardURL = "https://app.fossa.com/projects/haskell+89%2fspectrometer/refs/branch/master/revision123"
 
 stripDiag :: DiagnosticsC (StackC Identity) a -> Maybe a
-stripDiag = resultToMaybe . runIdentity . runStack [] . runDiagnostics
+stripDiag = resultToMaybe . runIdentity . runStack . runDiagnostics
 
 spec :: Spec
 spec = do

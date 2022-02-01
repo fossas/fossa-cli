@@ -44,7 +44,7 @@ spec = do
         Left err -> Test.expectationFailure $ "failed to parse: " ++ err
         Right result -> installPlans result `Test.shouldMatchList` buildPlan
   Test.describe "cabal plan graph builder" $ do
-    let result = run . runStack [] . runDiagnostics . buildGraph $ BuildPlan buildPlan
+    let result = run . runStack . runDiagnostics . buildGraph $ BuildPlan buildPlan
 
     Test.it "should build a correct graph" $
       assertOnSuccess result $ \_ graph -> do

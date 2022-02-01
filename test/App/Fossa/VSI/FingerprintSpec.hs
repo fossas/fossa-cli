@@ -15,7 +15,7 @@ spec :: Spec
 spec = do
   describe "derives ToJSON" $ do
     target <- runIO fileBinary
-    result <- runIO . runStack [] . runDiagnostics . runReadFSIO $ fingerprint target
+    result <- runIO . runStack . runDiagnostics . runReadFSIO $ fingerprint target
 
     it "derives ToJSON correctly" $
       assertOnSuccess result $ \_ c ->
@@ -23,7 +23,7 @@ spec = do
 
   describe "content is binary" $ do
     target <- runIO fileBinary
-    result <- runIO . runStack [] . runDiagnostics . runReadFSIO $ fingerprint target
+    result <- runIO . runStack . runDiagnostics . runReadFSIO $ fingerprint target
 
     it "fingerprints raw correctly" $
       assertOnSuccess result $ \_ c ->
@@ -37,7 +37,7 @@ spec = do
 
   describe "content is empty" $ do
     target <- runIO fileEmpty
-    result <- runIO . runStack [] . runDiagnostics . runReadFSIO $ fingerprint target
+    result <- runIO . runStack . runDiagnostics . runReadFSIO $ fingerprint target
 
     it "fingerprints raw correctly" $
       assertOnSuccess result $ \_ c -> (toText . combinedRaw $ c) `shouldBe` "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -50,7 +50,7 @@ spec = do
 
   describe "single line file" $ do
     target <- runIO fileSingleLine
-    result <- runIO . runStack [] . runDiagnostics . runReadFSIO $ fingerprint target
+    result <- runIO . runStack . runDiagnostics . runReadFSIO $ fingerprint target
 
     it "fingerprints raw correctly" $
       assertOnSuccess result $ \_ c ->
@@ -64,7 +64,7 @@ spec = do
 
   describe "single line file with comment" $ do
     target <- runIO fileSingleLineComment
-    result <- runIO . runStack [] . runDiagnostics . runReadFSIO $ fingerprint target
+    result <- runIO . runStack . runDiagnostics . runReadFSIO $ fingerprint target
 
     it "fingerprints raw correctly" $
       assertOnSuccess result $ \_ c ->
@@ -78,7 +78,7 @@ spec = do
 
   describe "multi line file" $ do
     target <- runIO fileMultiLine
-    result <- runIO . runStack [] . runDiagnostics . runReadFSIO $ fingerprint target
+    result <- runIO . runStack . runDiagnostics . runReadFSIO $ fingerprint target
 
     it "fingerprints raw correctly" $
       assertOnSuccess result $ \_ c ->
@@ -92,7 +92,7 @@ spec = do
 
   describe "multi line file with comment" $ do
     target <- runIO fileMultiLineComment
-    result <- runIO . runStack [] . runDiagnostics . runReadFSIO $ fingerprint target
+    result <- runIO . runStack . runDiagnostics . runReadFSIO $ fingerprint target
 
     it "fingerprints raw correctly" $
       assertOnSuccess result $ \_ c ->
@@ -106,7 +106,7 @@ spec = do
 
   describe "multi line file with comment (windows)" $ do
     target <- runIO fileMultiLineCommentWindows
-    result <- runIO . runStack [] . runDiagnostics . runReadFSIO $ fingerprint target
+    result <- runIO . runStack . runDiagnostics . runReadFSIO $ fingerprint target
 
     it "fingerprints raw correctly" $
       assertOnSuccess result $ \_ c ->

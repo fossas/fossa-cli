@@ -40,7 +40,7 @@ spec = do
         Right deps -> deps `Test.shouldMatchList` allDeps
 
   Test.describe "Stack graph builder" $ do
-    let result = run . runStack [] . runDiagnostics . buildGraph $ allDeps
+    let result = run . runStack . runDiagnostics . buildGraph $ allDeps
 
     Test.it "should build a correct graph" $
       assertOnSuccess result $ \_ graph -> do

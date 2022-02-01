@@ -104,7 +104,7 @@ testRunnerWithLogger f env =
     & withDefaultLogger SevDebug
     & runReader (AnalyzeExperimentalPreferences Nothing)
     & runFinally
-    & runStack []
+    & runStack
 
 runExecIOWithinEnv :: (Has (Lift IO) sig m) => FixtureEnvironment -> ExecIOC m a -> m a
 runExecIOWithinEnv conf = interpret $ \case

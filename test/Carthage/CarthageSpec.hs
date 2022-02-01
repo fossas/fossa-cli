@@ -28,7 +28,7 @@ spec = do
         analyze f
           & runReadFSIO
           & runDiagnostics
-          & runStack []
+          & runStack
 
   emptyResult <- runIO $ runIt =<< makeAbsolute testProjectEmpty
   complexResult <- runIO $ runIt =<< makeAbsolute testProjectComplex

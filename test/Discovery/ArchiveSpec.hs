@@ -109,14 +109,14 @@ spec = do
 
   describe "extract el7 (xz) rpm to a temporary location" $ do
     target <- runIO rpmCurlEl7Path
-    result <- runIO . runStack [] . runFinally . runDiagnostics . runReadFSIO $ withArchive extractRpm target hashFiles
+    result <- runIO . runStack . runFinally . runDiagnostics . runReadFSIO $ withArchive extractRpm target hashFiles
 
     it "should have extracted the correct contents" $
       assertOnSuccess result $ \_ contents -> contents `shouldBe` rpmCurlEl7ExpectedFiles
 
   describe "extract fc35 (zstd) rpm to a temporary location" $ do
     target <- runIO rpmCurlFc35Path
-    result <- runIO . runStack [] . runFinally . runDiagnostics . runReadFSIO $ withArchive extractRpm target hashFiles
+    result <- runIO . runStack . runFinally . runDiagnostics . runReadFSIO $ withArchive extractRpm target hashFiles
 
     it "should have extracted the correct contents" $
       assertOnSuccess result $ \_ contents -> contents `shouldBe` rpmCurlFc35ExpectedFiles

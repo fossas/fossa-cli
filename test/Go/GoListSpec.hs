@@ -59,6 +59,6 @@ spec = do
             analyze' testdir
               & runConstExec outputTrivial
               & runDiagnostics
-              & runStack []
+              & runStack
               & run
       assertOnSuccess result $ \_ (graph, _) -> graph `shouldBe` expected

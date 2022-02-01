@@ -54,7 +54,7 @@ runTestEffects' :: EffectStack () -> Spec
 runTestEffects' = runIO . runTestEffects
 
 runTestEffects :: EffectStack () -> IO ()
-runTestEffects = runStack [] . ignoreLogger . handleDiag . runReadFSIO . runExecIO
+runTestEffects = runStack . ignoreLogger . handleDiag . runReadFSIO . runExecIO
   where
     handleDiag :: (Has (Lift IO) sig m) => DiagnosticsC m () -> m ()
     handleDiag diag =

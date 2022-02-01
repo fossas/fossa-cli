@@ -20,7 +20,7 @@ spec = do
   describe "handle JAR with multiple pom.xml" $ do
     root <- runIO testdataParentDir
     target <- runIO withMultiplePoms
-    result <- runIO . runStack [] . withDefaultLogger SevError . runDiagnostics . runReadFSIO $ resolveJar root target
+    result <- runIO . runStack . withDefaultLogger SevError . runDiagnostics . runReadFSIO $ resolveJar root target
 
     it "parses the jar correctly" $ case result of
       Failure _ _ -> expectationFailure "could not parse jar"
@@ -29,7 +29,7 @@ spec = do
   describe "handle JAR with one pom.xml" $ do
     root <- runIO testdataParentDir
     target <- runIO withLicenseInPom
-    result <- runIO . runStack [] . withDefaultLogger SevError . runDiagnostics . runReadFSIO $ resolveJar root target
+    result <- runIO . runStack . withDefaultLogger SevError . runDiagnostics . runReadFSIO $ resolveJar root target
 
     it "parses the jar correctly" $ case result of
       Failure _ _ -> expectationFailure "could not parse jar"
@@ -38,7 +38,7 @@ spec = do
   describe "handle JAR without pom.xml" $ do
     root <- runIO testdataParentDir
     target <- runIO withMetaInfManifest
-    result <- runIO . runStack [] . withDefaultLogger SevError . runDiagnostics . runReadFSIO $ resolveJar root target
+    result <- runIO . runStack . withDefaultLogger SevError . runDiagnostics . runReadFSIO $ resolveJar root target
 
     it "parses the jar correctly" $ case result of
       Failure _ _ -> expectationFailure "could not parse jar"

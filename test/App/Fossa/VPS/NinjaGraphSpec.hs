@@ -157,13 +157,13 @@ spec = do
 
   describe "scanNinjaDeps for a standard ninja deps file" $
     it "parses a small ninja deps file and generates a dependency graph" $ do
-      res <- runStack [] . runDiagnostics $ scanNinjaDeps (encodeUtf8 smallNinjaDeps)
+      res <- runStack . runDiagnostics $ scanNinjaDeps (encodeUtf8 smallNinjaDeps)
       assertOnSuccess res $ \_ scanned -> scanned `shouldMatchList` smallNinjaDepsTargets
 
   describe "scanNinjaDeps for a ninja deps file with weird targets" $ do
     it "finds the correct input for a target where the first dependency is a txt file" $ do
-      res <- runStack [] . runDiagnostics $ scanNinjaDeps (encodeUtf8 weirdNinjaDeps)
+      res <- runStack . runDiagnostics $ scanNinjaDeps (encodeUtf8 weirdNinjaDeps)
       assertOnSuccess res $ \_ scanned -> List.head scanned `shouldBe` targetWithFirstLevelWeirdnessFix
     it "finds the correct input for a target where the first and second dependencies are txt files" $ do
-      res <- runStack [] . runDiagnostics $ scanNinjaDeps (encodeUtf8 weirdNinjaDeps)
+      res <- runStack . runDiagnostics $ scanNinjaDeps (encodeUtf8 weirdNinjaDeps)
       assertOnSuccess res $ \_ scanned -> (scanned List.!! 1) `shouldBe` targetWithSecondLevelWeirdnessFix
