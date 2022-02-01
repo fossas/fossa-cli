@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.Config.ConfigFile (
-  defaultConfigFileLocation,
+  defaultConfigFileName,
   resolveConfigFile,
   ConfigFile (..),
   ConfigProject (..),
@@ -34,6 +34,7 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
+import Data.Functor (($>))
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (ToText (toText))
@@ -60,21 +61,25 @@ import Path (
  )
 import Types (TargetFilter)
 
-defaultConfigFileLocation :: Path Rel File
-defaultConfigFileLocation = $(mkRelFile ".fossa.yml")
+defaultConfigFileName :: Path Rel File
+defaultConfigFileName = $(mkRelFile ".fossa.yml")
 
-data ConfigLocation = ConfigLocation
-  { -- | Did the user specify the path (True/required), or is this default (False/optional)?
-    isRequired :: Bool
-  , -- | What is the absolute file path?
-    configFilePath :: Path Abs File
-  }
+-- data ConfigLocation = ConfigLocation
+--   { -- | Did the user specify the path (True/required), or is this default (False/optional)?
+--     isRequired :: Bool
+--   , -- | What is the absolute file path?
+--     configFilePath :: Path Abs File
+--   }
+
+data ConfigLocation
+  = DefaultConfigLocation (Path Abs Dir)
+  | SpecifiedConfigLocation (Path Abs File)
 
 resolveConfigFile ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has ReadFS sig m
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
   , Has Logger sig m
+  , Has ReadFS sig m
   ) =>
   -- | Where do we look for a config file if relative?
   Path Abs Dir ->
@@ -82,31 +87,33 @@ resolveConfigFile ::
   Maybe FilePath ->
   m (Maybe ConfigFile)
 resolveConfigFile base path = do
-  ConfigLocation{..} <- resolveLocation base path
-  exists <- doesFileExist configFilePath
-  -- User manually specifies config: config must be valid
-  -- We use 'isRequired' to represent this.
-  case (configFilePath, isRequired, exists) of
-    (_, False, False) -> pure Nothing -- no file exists or was requested
-    (realpath, True, False) ->
-      -- file requested, but missing
-      fatalText ("requested config file does not exist" <> toText realpath)
-    (realpath, _, True) -> do
-      -- file requested and exists
-      configFile <- readContentsYaml realpath
-
-      let version = configVersion configFile
-          oldVersionMsg = warnMsgForOlderConfig @AnsiStyle version
-
-      case (version >= 3, isRequired) of
-        (True, _) -> pure $ Just configFile -- valid config
-        (False, True) ->
-          -- Invalid config with --config specified: fail with message.
-          fatal oldVersionMsg
-        (False, False) -> do
-          -- Invalid config found without --config flag: warn and ignore file.
-          logWarn oldVersionMsg
+  loc <- resolveLocation base path
+  case loc of
+    DefaultConfigLocation dir -> do
+      let realpath = dir </> defaultConfigFileName
+      exists <- doesFileExist realpath
+      if not exists
+        then -- File missing and not requested
           pure Nothing
+        else do
+          configFile <- readContentsYaml realpath
+          let version = configVersion configFile
+          if version >= 3
+            then pure $ Just configFile
+            else -- Invalid config found without --config flag: warn and ignore file.
+              logWarn (warnMsgForOlderConfig @AnsiStyle version) $> Nothing
+    SpecifiedConfigLocation realpath -> do
+      exists <- doesFileExist realpath
+      if not exists
+        then -- file requested, but missing
+          fatalText ("requested config file does not exist: " <> toText realpath)
+        else do
+          configFile <- readContentsYaml realpath
+          let version = configVersion configFile
+          if version >= 3
+            then pure $ Just configFile
+            else -- Invalid config with --config specified: fail with message.
+              fatal $ warnMsgForOlderConfig @AnsiStyle version
 
 warnMsgForOlderConfig :: Int -> Doc ann
 warnMsgForOlderConfig foundVersion =
@@ -119,11 +126,11 @@ warnMsgForOlderConfig foundVersion =
     ]
 
 resolveLocation :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> Maybe FilePath -> m ConfigLocation
-resolveLocation base Nothing = pure $ ConfigLocation False $ base </> defaultConfigFileLocation
+resolveLocation base Nothing = pure $ DefaultConfigLocation base
 resolveLocation base (Just filepath) = do
   someFile <- context "Parsing `--config` option as a file" $ fromEitherShow $ parseSomeFile filepath
   pure $
-    ConfigLocation True $ case someFile of
+    SpecifiedConfigLocation $ case someFile of
       Abs path -> path
       Rel path -> base </> path
 
