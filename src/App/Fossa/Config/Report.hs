@@ -120,18 +120,18 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
         collectRevisionData' basedir cfgfile ReadOnly $
           OverrideProject (optProjectName commons) (optProjectRevision commons) Nothing
   ReportConfig
-      <$> apiOpts
-      <*> basedir
-      <*> outputformat
-      <*> pure timeoutduration
-      <*> pure cliReportType
-      <*> revision
+    <$> apiOpts
+    <*> basedir
+    <*> outputformat
+    <*> pure timeoutduration
+    <*> pure cliReportType
+    <*> revision
 
-validateOutputFormat :: Has Diagnostics sig m => Bool -> m  ReportOutputFormat
+validateOutputFormat :: Has Diagnostics sig m => Bool -> m ReportOutputFormat
 validateOutputFormat doJson =
-    if doJson
-      then pure ReportJson
-      else fatalText "Plaintext reports are not available for this report."
+  if doJson
+    then pure ReportJson
+    else fatalText "Plaintext reports are not available for this report."
 
 data ReportConfig = ReportConfig
   { apiOpts :: ApiOpts
