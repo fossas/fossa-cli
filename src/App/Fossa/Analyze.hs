@@ -65,7 +65,6 @@ import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Diagnostics (fatalText, fromMaybeText, recover)
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
-import Control.Effect.Reader (ask)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Monad (when)
 import Data.Aeson ((.=))
@@ -176,12 +175,12 @@ analyzeMain ::
   ) =>
   StandardAnalyzeConfig ->
   m ()
-analyzeMain cfg = runReader cfg $ case Config.severity cfg of
+analyzeMain cfg = case Config.severity cfg of
   SevDebug -> do
-    (scope, res) <- collectDebugBundle $ Diag.errorBoundaryIO analyze
+    (scope, res) <- collectDebugBundle $ Diag.errorBoundaryIO $ analyze cfg
     sendIO . BL.writeFile debugBundlePath . GZip.compress $ Aeson.encode scope
     Diag.rethrow res
-  _ -> ignoreDebug analyze
+  _ -> ignoreDebug $ analyze cfg
 
 runDependencyAnalysis ::
   ( AnalyzeProject proj
@@ -303,15 +302,12 @@ analyze ::
   , Has Debug sig m
   , Has Exec sig m
   , Has ReadFS sig m
-  , Has (Reader StandardAnalyzeConfig) sig m
   ) =>
+  StandardAnalyzeConfig ->
   m ()
-analyze = Diag.context "fossa-analyze" $ do
+analyze cfg = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
 
-  -- TODO: refactor other code to use config reader, rather than passing
-  -- values directly and defining them upfront like this.
-  cfg <- ask
   let apiOpts = case destination of
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
