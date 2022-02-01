@@ -22,7 +22,12 @@ analyze' file = do
 type Parser = Parsec Void Text
 
 installRequiresParser :: Parser [Req]
-installRequiresParser = prefix *> entries <* end
+installRequiresParser = do
+  maybePrefix <- optional prefix
+  -- When we find `install_requires`, try to parse requirement strings
+  case maybePrefix of
+    Nothing -> pure []
+    Just _ -> entries <* end
   where
     prefix = skipManyTill anySingle (symbol "install_requires") *> symbol "=" *> symbol "["
     entries = (requireSurroundedBy "\"" <|> requireSurroundedBy "\'") `sepEndBy` symbol ","
