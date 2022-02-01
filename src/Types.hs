@@ -99,7 +99,7 @@ instance Show DiscoveredProjectType where
   show = \case
     BinaryDepsProjectType -> "binary-deps"
     BundlerProjectType -> "bundler"
-    CabalProjectType -> "stack"
+    CabalProjectType -> "cabal"
     CargoProjectType -> "cargo"
     CarthageProjectType -> "carthage"
     CocoapodsProjectType -> "cocoapods"
