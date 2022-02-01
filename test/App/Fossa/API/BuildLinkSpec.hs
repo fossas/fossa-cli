@@ -2,7 +2,7 @@
 
 module App.Fossa.API.BuildLinkSpec (spec) where
 
-import App.Fossa.API.BuildLink
+import App.Fossa.API.BuildLink (getBuildURLWithOrg)
 import App.Fossa.FossaAPIV1 (Organization (Organization))
 import App.Types (ProjectRevision (ProjectRevision))
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
@@ -12,21 +12,21 @@ import Data.Text (Text)
 import Diag.Result (resultToMaybe)
 import Fossa.API.Types
 import Srclib.Types (Locator (Locator))
-import Test.Hspec
-import Text.URI.QQ
+import Test.Hspec (Spec, describe, it, shouldBe)
+import Text.URI.QQ (uri)
 
 simpleSamlPath :: Text
-simpleSamlPath = "https://app.fossa.com/account/saml/1?next=/projects/fetcher123%2bproject123/refs/branch/master123/revision123"
+simpleSamlPath = "https://app.fossa.com/account/saml/1?next=/projects/fetcher123%252bproject123/refs/branch/master123/revision123"
 
 -- | Note the differences here between '%2F' and '%252F'.  The percent sign is re-encoded so that it's properly handled on the next redirect.
 gitSamlPath :: Text
-gitSamlPath = "https://app.fossa.com/account/saml/103?next=/projects/fetcher@123%252fabc%2bgit@github.com%252fuser%252frepo/refs/branch/weird--branch/revision@123%252fabc"
+gitSamlPath = "https://app.fossa.com/account/saml/103?next=/projects/fetcher%2540123%252fabc%252bgit%2540github.com%252fuser%252frepo/refs/branch/weird--branch/revision%2540123%252fabc"
 
 fullSamlURL :: Text
-fullSamlURL = "https://app.fossa.com/account/saml/33?next=/projects/a%2bb/refs/branch/master/c"
+fullSamlURL = "https://app.fossa.com/account/saml/33?next=/projects/a%252bb/refs/branch/master/c"
 
 simpleStandardURL :: Text
-simpleStandardURL = "https://app.fossa.com/projects/haskell+89%2fspectrometer/refs/branch/master/revision123"
+simpleStandardURL = "https://app.fossa.com/projects/haskell%2b89%2fspectrometer/refs/branch/master/revision123"
 
 stripDiag :: DiagnosticsC (StackC Identity) a -> Maybe a
 stripDiag = resultToMaybe . runIdentity . runStack . runDiagnostics
