@@ -18,7 +18,10 @@ import Text.URI.QQ (uri)
 simpleSamlPath :: Text
 simpleSamlPath = "https://app.fossa.com/account/saml/1?next=/projects/fetcher123%252bproject123/refs/branch/master123/revision123"
 
--- | Note the differences here between '%2F' and '%252F'.  The percent sign is re-encoded so that it's properly handled on the next redirect.
+-- All reserved characters in the 'next' URI get encoded once during render of
+-- the query value. Then the resulting '%' symbols are themselves
+-- percent-encoded during final rendering of the URI.  For example, the process
+-- for '@' works this way: '@' -> '%40' -> '%2540'
 gitSamlPath :: Text
 gitSamlPath = "https://app.fossa.com/account/saml/103?next=/projects/fetcher%2540123%252fabc%252bgit%2540github.com%252fuser%252frepo/refs/branch/weird--branch/revision%2540123%252fabc"
 
