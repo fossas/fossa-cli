@@ -168,6 +168,11 @@ library
     App.Fossa.Config.Report
     App.Fossa.Config.Test
     App.Fossa.Config.VPS
+    App.Fossa.Config.VPS.Analyze
+    App.Fossa.Config.VPS.AOSP
+    App.Fossa.Config.VPS.Common
+    App.Fossa.Config.VPS.Report
+    App.Fossa.Config.VPS.Test
     App.Fossa.Container
     App.Fossa.Container.Analyze
     App.Fossa.Container.Scan
