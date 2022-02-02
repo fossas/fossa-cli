@@ -1,5 +1,6 @@
 module Test.Effect (
   expectationFailure',
+  expectFailure',
   shouldBe',
   shouldSatisfy',
   shouldStartWith',
@@ -36,6 +37,7 @@ import Diag.Result (Result (Failure, Success), renderFailure)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (IgnoreLoggerC, ignoreLogger, renderIt)
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
+import ResultUtil (expectFailure)
 
 type EffectStack a = ExecIOC (ReadFSIOC (DiagnosticsC (IgnoreLoggerC (StackC IO)))) a
 
@@ -83,3 +85,6 @@ shouldContain' list sublist = sendIO $ shouldContain list sublist
 
 shouldMatchList' :: (Has (Lift IO) sig m, Show a, Eq a) => [a] -> [a] -> m ()
 shouldMatchList' a b = sendIO $ shouldMatchList a b
+
+expectFailure' :: Has (Lift IO) sig m => Result a -> m ()
+expectFailure' res = sendIO $ expectFailure res
