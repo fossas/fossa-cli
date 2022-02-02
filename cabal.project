@@ -46,14 +46,7 @@ source-repository-package
   tag: 7d9f505b35750e54bf9d73e5a996df4a1c5ab117
   subdir: yarn-lock
 
--- Current version of modern-uri does not render '+' or '@' characters in percent encoding.
--- TODO: Remove once version 0.3.4.3 is released to hackage
-source-repository-package
-  type: git
-  location: https://github.com/fossas/modern-uri
-  tag: 127c1f069f88c63f236c8f62d59a1c0984a3ed47
-
-index-state: hackage.haskell.org 2021-11-03T16:17:20Z
+index-state: hackage.haskell.org 2022-02-02T15:17:53Z
 
 package *
   extra-include-dirs: /opt/homebrew/include
