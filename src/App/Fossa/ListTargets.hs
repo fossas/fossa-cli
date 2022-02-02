@@ -5,7 +5,7 @@ module App.Fossa.ListTargets (
   listSubCommand,
 ) where
 
-import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), discoverFuncs)
+import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc), discoverFuncs)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
 import App.Fossa.Config.ListTargets (
   ListTargetsCliOpts,

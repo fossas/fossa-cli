@@ -140,6 +140,8 @@ library
     App.Docs
     App.Fossa.Analyze
     App.Fossa.Analyze.Debug
+    App.Fossa.Analyze.Discover
+    App.Fossa.Analyze.Filter
     App.Fossa.Analyze.Graph
     App.Fossa.Analyze.GraphBuilder
     App.Fossa.Analyze.GraphMangler
@@ -147,6 +149,7 @@ library
     App.Fossa.Analyze.Project
     App.Fossa.Analyze.Record
     App.Fossa.Analyze.Types
+    App.Fossa.Analyze.Upload
     App.Fossa.API.BuildLink
     App.Fossa.API.BuildWait
     App.Fossa.ArchiveUploader

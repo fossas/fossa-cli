@@ -2,8 +2,6 @@
 
 module App.Fossa.Analyze (
   analyzeMain,
-  DiscoverFunc (..),
-  discoverFuncs,
   updateProgress,
   runAnalyzers,
   runDependencyAnalysis,
@@ -11,14 +9,23 @@ module App.Fossa.Analyze (
 ) where
 
 import App.Docs (userGuideUrl)
-import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.Debug (collectDebugBundle, diagToDebug)
+import App.Fossa.Analyze.Discover (
+  DiscoverFunc (..),
+  discoverFuncs,
+ )
+import App.Fossa.Analyze.Filter (
+  CountedResult (FilteredAll, FoundSome, NoneDiscovered),
+  checkForEmptyUpload,
+  filterProjects,
+ )
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Types (
   AnalyzeProject (..),
   AnalyzeTaskEffs,
  )
+import App.Fossa.Analyze.Upload (uploadSuccessfulAnalysis)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.Config.Analyze (
   AnalyzeCliOpts,
@@ -27,23 +34,19 @@ import App.Fossa.Config.Analyze (
   ExperimentalAnalyzeConfig,
   IATAssertion (IATAssertion),
   IncludeAll (IncludeAll),
-  JsonOutput (JsonOutput),
   ScanDestination (..),
   StandardAnalyzeConfig (),
   UnpackArchives (UnpackArchives),
  )
 import App.Fossa.Config.Analyze qualified as Config
-import App.Fossa.FossaAPIV1 (UploadResponse (..), getProject, projectIsMonorepo, uploadAnalysis, uploadContributors)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.Monorepo (monorepoScan)
-import App.Fossa.ProjectInference (saveRevision)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VSIDeps (analyzeVSIDeps)
 import App.Types (
   BaseDir (..),
-  ProjectMetadata,
   ProjectRevision (..),
  )
 import Codec.Compression.GZip qualified as GZip
@@ -62,7 +65,6 @@ import Control.Carrier.TaskPool (
   withTaskPool,
  )
 import Control.Concurrent (getNumCapabilities)
-import Control.Effect.Diagnostics (fatalText, fromMaybeText, recover)
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
@@ -72,26 +74,21 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
-import Data.Functor (void)
-import Data.List (isInfixOf, stripPrefix)
-import Data.List.NonEmpty qualified as NE
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (catMaybes)
 import Data.String.Conversion (decodeUtf8, toText)
-import Data.Text (Text)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, applyFilters, filterIsVSIOnly)
 import Discovery.Projects (withDiscoveredProjects)
-import Effect.Exec (Exec, runExecIO)
+import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
   Severity (..),
-  logError,
   logInfo,
   logStdout,
  )
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts (..))
-import Path (Abs, Dir, Path, fromAbsDir, toFilePath)
+import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
   Doc,
@@ -106,43 +103,8 @@ import Prettyprinter.Render.Terminal (
   color,
  )
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (Locator (locatorProject, locatorRevision), SourceUnit, parseLocator)
-import Strategy.Bundler qualified as Bundler
-import Strategy.Cargo qualified as Cargo
-import Strategy.Carthage qualified as Carthage
-import Strategy.Cocoapods qualified as Cocoapods
-import Strategy.Composer qualified as Composer
-import Strategy.Conda qualified as Conda
-import Strategy.Fpm qualified as Fpm
-import Strategy.Glide qualified as Glide
-import Strategy.Godep qualified as Godep
-import Strategy.Gomodules qualified as Gomodules
-import Strategy.Googlesource.RepoManifest qualified as RepoManifest
-import Strategy.Gradle qualified as Gradle
-import Strategy.Haskell.Cabal qualified as Cabal
-import Strategy.Haskell.Stack qualified as Stack
-import Strategy.Leiningen qualified as Leiningen
-import Strategy.Maven qualified as Maven
-import Strategy.Mix qualified as Mix
-import Strategy.Nim qualified as Nim
-import Strategy.Node qualified as Node
-import Strategy.NuGet.Nuspec qualified as Nuspec
-import Strategy.NuGet.PackageReference qualified as PackageReference
-import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
-import Strategy.NuGet.Paket qualified as Paket
-import Strategy.NuGet.ProjectAssetsJson qualified as ProjectAssetsJson
-import Strategy.NuGet.ProjectJson qualified as ProjectJson
-import Strategy.Perl qualified as Perl
-import Strategy.Pub qualified as Pub
-import Strategy.Python.Pipenv qualified as Pipenv
-import Strategy.Python.Poetry qualified as Poetry
-import Strategy.Python.Setuptools qualified as Setuptools
-import Strategy.RPM qualified as RPM
-import Strategy.Rebar3 qualified as Rebar3
-import Strategy.Scala qualified as Scala
-import Strategy.SwiftPM qualified as SwiftPM
+import Srclib.Types (Locator, SourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
-import VCS.Git (fetchGitContributors)
 
 debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json.gz"
@@ -165,7 +127,6 @@ dispatch = \case
 
 -- This is just a handler for the Debug effect.
 -- The real logic is in the inner analyze
--- TODO: dispatch to monorepo analysis when option is given.
 analyzeMain ::
   ( Has (Lift IO) sig m
   , Has Logger sig m
@@ -237,63 +198,6 @@ runAnalyzers basedir filters = do
     else traverse_ single discoverFuncs
   where
     single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters)
-
-discoverFuncs :: AnalyzeTaskEffs sig m => [DiscoverFunc m]
-discoverFuncs =
-  [ DiscoverFunc Bundler.discover
-  , DiscoverFunc Cabal.discover
-  , DiscoverFunc Cargo.discover
-  , DiscoverFunc Carthage.discover
-  , DiscoverFunc Cocoapods.discover
-  , DiscoverFunc Composer.discover
-  , DiscoverFunc Conda.discover
-  , DiscoverFunc Fpm.discover
-  , DiscoverFunc Glide.discover
-  , DiscoverFunc Godep.discover
-  , DiscoverFunc Gomodules.discover
-  , DiscoverFunc Gradle.discover
-  , DiscoverFunc Leiningen.discover
-  , DiscoverFunc Maven.discover
-  , DiscoverFunc Mix.discover
-  , DiscoverFunc Nim.discover
-  , DiscoverFunc Node.discover
-  , DiscoverFunc Nuspec.discover
-  , DiscoverFunc PackageReference.discover
-  , DiscoverFunc PackagesConfig.discover
-  , DiscoverFunc Paket.discover
-  , DiscoverFunc Perl.discover
-  , DiscoverFunc Pipenv.discover
-  , DiscoverFunc Poetry.discover
-  , DiscoverFunc ProjectAssetsJson.discover
-  , DiscoverFunc ProjectJson.discover
-  , DiscoverFunc Pub.discover
-  , DiscoverFunc RPM.discover
-  , DiscoverFunc Rebar3.discover
-  , DiscoverFunc RepoManifest.discover
-  , DiscoverFunc Scala.discover
-  , DiscoverFunc Setuptools.discover
-  , DiscoverFunc Stack.discover
-  , DiscoverFunc SwiftPM.discover
-  ]
-
--- DiscoverFunc is a workaround for the lack of impredicative types.
---
--- @discoverFuncs@ is a heterogenous list of discover functions that produce
--- different types of projects we can analyze for dependencies.
---
--- This GADT allows us to say that we don't care about the specific type of
--- projects produced by a discover function; we only care that each project type
--- implements ToJSON and AnalyzeProject
---
--- With impredicative types, we could shift the @forall@ inside the list,
--- avoiding the need for this GADT
---
---     discoverFuncs ::
---       AnalyzeTaskEffs sig m =>
---       [forall a. (AnalyzeProject a, ToJSON a) =>
---          Path Abs Dir -> m [DiscoveredProject a]]
-data DiscoverFunc m where
-  DiscoverFunc :: (AnalyzeProject a, Aeson.ToJSON a) => (Path Abs Dir -> m [DiscoveredProject a]) -> DiscoverFunc m
 
 analyze ::
   ( Has (Lift IO) sig m
@@ -418,13 +322,6 @@ doAssertRevisionBinaries :: (Has Diag.Diagnostics sig m, Has ReadFS sig m, Has (
 doAssertRevisionBinaries (IATAssertion (Just dir)) apiOpts locator = assertRevisionBinaries dir apiOpts locator
 doAssertRevisionBinaries _ _ _ = pure ()
 
-dieOnMonorepoUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => ApiOpts -> ProjectRevision -> m ()
-dieOnMonorepoUpload apiOpts revision = do
-  project <- recover $ getProject apiOpts revision
-  if maybe False projectIsMonorepo project
-    then fatalText "This project already exists as a monorepo project. Perhaps you meant to supply '--experimental-enable-monorepo', or meant to run 'fossa vps analyze' instead?"
-    else pure ()
-
 data AnalyzeError
   = ErrNoProjectsDiscovered
   | ErrFilteredAllProjects Int [ProjectResult]
@@ -449,145 +346,6 @@ instance Diag.ToDiagnostic AnalyzeError where
     where
       renderExcludedProject :: ProjectResult -> Doc ann
       renderExcludedProject project = "Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project)
-
-uploadSuccessfulAnalysis ::
-  ( Has Diag.Diagnostics sig m
-  , Has Logger sig m
-  , Has (Lift IO) sig m
-  ) =>
-  BaseDir ->
-  ApiOpts ->
-  ProjectMetadata ->
-  Flag JsonOutput ->
-  ProjectRevision ->
-  NE.NonEmpty SourceUnit ->
-  m Locator
-uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput revision units = Diag.context "Uploading analysis" $ do
-  logInfo ""
-  logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
-  logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
-  let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
-  logInfo ("Using branch: `" <> pretty branchText <> "`")
-
-  dieOnMonorepoUpload apiOpts revision
-  saveRevision revision
-
-  uploadResult <- uploadAnalysis apiOpts revision metadata units
-  let locator = parseLocator $ uploadLocator uploadResult
-  buildUrl <- getFossaBuildUrl revision apiOpts locator
-  logInfo $
-    vsep
-      [ "============================================================"
-      , ""
-      , "    View FOSSA Report:"
-      , "    " <> pretty buildUrl
-      , ""
-      , "============================================================"
-      ]
-  traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError uploadResult)
-  -- Warn on contributor errors, never fail
-  void . Diag.recover . runExecIO $ tryUploadContributors basedir apiOpts (uploadLocator uploadResult)
-
-  if fromFlag JsonOutput jsonOutput
-    then do
-      summary <-
-        Diag.context "Analysis ran successfully, but the server returned invalid metadata" $
-          buildProjectSummary revision (uploadLocator uploadResult) buildUrl
-      logStdout . decodeUtf8 $ Aeson.encode summary
-    else pure ()
-
-  pure locator
-
-data CountedResult
-  = NoneDiscovered
-  | FilteredAll Int
-  | FoundSome (NE.NonEmpty SourceUnit)
-
--- | Return some state of the projects found, since we can't upload empty result arrays.
--- Takes a list of all projects analyzed, and the list after filtering.  We assume
--- that the smaller list is the latter, and return that list.  Starting with user-defined deps,
--- we also include a check for an additional source unit from fossa-deps.yml.
-checkForEmptyUpload :: Flag IncludeAll -> [ProjectResult] -> [ProjectResult] -> [SourceUnit] -> CountedResult
-checkForEmptyUpload includeAll xs ys additionalUnits = do
-  if null additionalUnits
-    then case (xlen, ylen) of
-      -- We didn't discover, so we also didn't filter
-      (0, 0) -> NoneDiscovered
-      -- If either list is empty, we have nothing to upload
-      (0, _) -> FilteredAll filterCount
-      (_, 0) -> FilteredAll filterCount
-      -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
-      _ -> FoundSome $ NE.fromList discoveredUnits
-    else -- If we have a additional source units, then there's always something to upload.
-      FoundSome $ NE.fromList (additionalUnits ++ discoveredUnits)
-  where
-    xlen = length xs
-    ylen = length ys
-    filterCount = abs $ xlen - ylen
-    -- The smaller list is the post-filter list, since filtering cannot add projects
-    filtered = if xlen > ylen then ys else xs
-    discoveredUnits = map (Srclib.toSourceUnit (fromFlag IncludeAll includeAll)) filtered
-
--- For each of the projects, we need to strip the root directory path from the prefix of the project path.
--- We don't want parent directories of the scan root affecting "production path" filtering -- e.g., if we're
--- running in a directory called "tmp", we still want results.
-filterProjects :: BaseDir -> [ProjectResult] -> [ProjectResult]
-filterProjects rootDir = filter (isProductionPath . dropPrefix rootPath . fromAbsDir . projectResultPath)
-  where
-    rootPath = fromAbsDir $ unBaseDir rootDir
-    dropPrefix :: String -> String -> String
-    dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
-
-isProductionPath :: FilePath -> Bool
-isProductionPath path =
-  not $
-    any
-      (`isInfixOf` path)
-      [ "doc/"
-      , "docs/"
-      , "test/"
-      , "example/"
-      , "examples/"
-      , "vendor/"
-      , "node_modules/"
-      , ".srclib-cache/"
-      , "spec/"
-      , "Godeps/"
-      , ".git/"
-      , "bower_components/"
-      , "third_party/"
-      , "third-party/"
-      , "Carthage/"
-      , "Checkouts/"
-      ]
-
-tryUploadContributors ::
-  ( Has Diag.Diagnostics sig m
-  , Has Exec sig m
-  , Has (Lift IO) sig m
-  ) =>
-  Path Abs Dir ->
-  ApiOpts ->
-  -- | Locator
-  Text ->
-  m ()
-tryUploadContributors baseDir apiOpts locator = do
-  contributors <- fetchGitContributors baseDir
-  uploadContributors apiOpts locator contributors
-
--- | Build project summary JSON to be output to stdout
-buildProjectSummary :: Has Diag.Diagnostics sig m => ProjectRevision -> Text -> Text -> m Aeson.Value
-buildProjectSummary project projectLocator projectUrl = do
-  let locator = parseLocator projectLocator
-  revision <- fromMaybeText "Server returned an invalid project revision" $ locatorRevision locator
-  pure $
-    Aeson.object
-      [ "project" .= locatorProject locator
-      , "revision" .= revision
-      , "branch" .= projectBranch project
-      , "url" .= projectUrl
-      , "id" .= projectLocator
-      ]
 
 buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Aeson.Value
 buildResult includeAll srcUnits projects =

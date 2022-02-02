@@ -13,7 +13,8 @@ module App.Fossa.Analyze.Log4jReport (
   log4jSubCommand,
 ) where
 
-import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), runDependencyAnalysis, updateProgress)
+import App.Fossa.Analyze (runDependencyAnalysis, updateProgress)
+import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc))
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.Analyze.Types (AnalyzeTaskEffs)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
