@@ -156,6 +156,11 @@ library
     App.Fossa.Config.Common
     App.Fossa.Config.ConfigFile
     App.Fossa.Config.Container
+    App.Fossa.Config.Container.Analyze
+    App.Fossa.Config.Container.Common
+    App.Fossa.Config.Container.Dump
+    App.Fossa.Config.Container.Parse
+    App.Fossa.Config.Container.Test
     App.Fossa.Config.DumpBinaries
     App.Fossa.Config.EnvironmentVars
     App.Fossa.Config.LinkUserBinaries
