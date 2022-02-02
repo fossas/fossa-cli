@@ -19,11 +19,11 @@ import Control.Timeout.Internal (Cancel (Cancel))
 import Data.Functor (void)
 import Prettyprinter (pretty)
 import Test.Effect (expectFailure', it')
-import Test.Hspec (Spec, describe, it, shouldBe)
+import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 
 -- This needs to be at least 50ms to not be flaky
 shortDuration :: Duration
-shortDuration = MilliSeconds 50
+shortDuration = MilliSeconds 200
 
 data CancelSet = CancelSet deriving (Eq, Ord, Show)
 
@@ -41,7 +41,9 @@ spec = do
         -- other than that it will not happen before the duration is expired.
         threadDelay $ (* 2) $ durationToMicro shortDuration
         cancelSet <- shouldCancelRightNow token
-        cancelSet `shouldBe` True
+        if cancelSet
+          then pure ()
+          else expectationFailure "Cancel flag was not set in time. If you repeatedly see this issue, increase the shortDuration in this module."
 
   -- Normally, we can't control when Cancel tokens are set.  We expose the internals for these tests.
   describe "shouldCancelRightNow" $ do
