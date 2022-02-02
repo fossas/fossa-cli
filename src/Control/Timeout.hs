@@ -15,7 +15,6 @@ import Control.Concurrent (
   isEmptyMVar,
   newEmptyMVar,
   putMVar,
-  takeMVar,
   threadDelay,
  )
 import Control.Concurrent.Async qualified as Async
@@ -74,10 +73,7 @@ timeout' :: (Has (Lift IO) sig m) => Duration -> (Cancel -> m a) -> m a
 timeout' duration act = do
   -- We start with an empty MVar to signal that we're not ready to cancel.
   cancel <- sendIO newEmptyMVar
-  start <- sendIO newEmptyMVar
   handle <- sendIO . fork $ do
-    -- signal that the fork is about to begin it's sleep
-    putMVar start ()
     threadDelay $ durationToMicro duration
     -- We fill the MVar here, which is the cancel signal.
     -- SAFETY: putMVar can block infinitely if we do it twice, since we never
@@ -85,9 +81,6 @@ timeout' duration act = do
     --   consumer, we only have to validate that this putMVar call is safe,
     --   and that all other usage in this module is non-blocking.
     putMVar cancel ()
-  -- Once 'start' is taken, we know that the fork has begun the timer
-  -- We have to actually wait for this value, which is why we use $!.
-  sendIO $! takeMVar start
   -- We need 'finally' here, because `act` can short-circuit.
   -- If we don't use it, we might join the thread, which
   -- requires the timeout to fully expire.

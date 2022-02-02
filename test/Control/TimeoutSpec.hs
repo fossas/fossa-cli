@@ -3,16 +3,13 @@ module Control.TimeoutSpec (spec) where
 import Control.Concurrent (newEmptyMVar, newMVar, threadDelay)
 import Control.Effect.Diagnostics (
   Diagnostics,
-  FailureBundle (FailureBundle),
-  SomeDiagnostic (SomeDiagnostic),
   ToDiagnostic (renderDiagnostic),
   errorBoundary,
-  renderFailureBundle,
  )
 import Control.Effect.Lift (Has, Lift)
 import Control.Timeout (
   Cancel,
-  Duration (MicroSeconds),
+  Duration (..),
   checkForCancel,
   durationToMicro,
   shouldCancelRightNow,
@@ -21,11 +18,12 @@ import Control.Timeout (
 import Control.Timeout.Internal (Cancel (Cancel))
 import Data.Functor (void)
 import Prettyprinter (pretty)
-import Test.Effect (expectationFailure', it', shouldBe')
+import Test.Effect (expectFailure', it')
 import Test.Hspec (Spec, describe, it, shouldBe)
 
-tinyDuration :: Duration
-tinyDuration = MicroSeconds 200
+-- This needs to be at least 50ms to not be flaky
+shortDuration :: Duration
+shortDuration = MilliSeconds 50
 
 data CancelSet = CancelSet deriving (Eq, Ord, Show)
 
@@ -36,12 +34,12 @@ spec :: Spec
 spec = do
   describe "timeout'" $
     it "Should set the flag after the alloted time" $
-      void . timeout' tinyDuration $ \token -> do
-        -- Wait for 10x the duration, we should definitely have the flag set.
-        -- If this test is flaky, try increasing tinyDuration
+      void . timeout' shortDuration $ \token -> do
+        -- Wait for 2x the duration, we should definitely have the flag set.
+        -- If this test is flaky, try increasing shortDuration
         -- timeout' makes no guarantees about when the flag will be set,
         -- other than that it will not happen before the duration is expired.
-        threadDelay $ (* 10) $ durationToMicro tinyDuration
+        threadDelay $ (* 2) $ durationToMicro shortDuration
         cancelSet <- shouldCancelRightNow token
         cancelSet `shouldBe` True
 
@@ -59,11 +57,7 @@ spec = do
 
   describe "checkForCancel" $
     it' "should throw a fatal error after the alloted time" $ do
-      result <- errorBoundary $ timeout' tinyDuration waitForever
-      case result of
-        Left (FailureBundle [] (SomeDiagnostic [] err)) -> show (renderDiagnostic err) `shouldBe'` show CancelSet
-        Left bundle -> expectationFailure' $ show $ renderFailureBundle bundle
-        Right () -> expectationFailure' "Expected timeoutfailure, got return value"
+      errorBoundary (timeout' shortDuration waitForever) >>= expectFailure'
 
 waitForever :: (Has Diagnostics sig m, Has (Lift IO) sig m) => Cancel -> m a
 waitForever token = do

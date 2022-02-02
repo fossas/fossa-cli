@@ -15,6 +15,7 @@ newtype Cancel = Cancel (MVar ()) deriving (Eq)
 data Duration
   = Seconds Int
   | Minutes Int
+  | MilliSeconds Int
   | MicroSeconds Int
   deriving (Show)
 
@@ -30,4 +31,5 @@ durationToMicro :: Duration -> Int
 durationToMicro = \case
   Seconds n -> n * 1_000_000
   Minutes n -> n * 60_000_000
+  MilliSeconds n -> n * 1000
   MicroSeconds n -> n
