@@ -6,6 +6,9 @@ module App.Fossa.Analyze (
   runAnalyzers,
   runDependencyAnalysis,
   analyzeSubCommand,
+
+  -- * Helpers
+  applyFiltersToProject,
 ) where
 
 import App.Docs (userGuideUrl)
@@ -17,13 +20,17 @@ import App.Fossa.Analyze.Discover (
 import App.Fossa.Analyze.Filter (
   CountedResult (FilteredAll, FoundSome, NoneDiscovered),
   checkForEmptyUpload,
-  filterProjects,
+  ignoredPaths,
+  skipNonProdProjectsBasedOnPath,
  )
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
+import App.Fossa.Analyze.ScanSummary (renderScanSummary)
 import App.Fossa.Analyze.Types (
   AnalyzeProject (..),
   AnalyzeTaskEffs,
+  DiscoveredProjectIdentifier (..),
+  DiscoveredProjectScan (..),
  )
 import App.Fossa.Analyze.Upload (uploadSuccessfulAnalysis)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
@@ -74,8 +81,9 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
+import Diag.Result (flushLogs, resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, applyFilters, filterIsVSIOnly)
 import Discovery.Projects (withDiscoveredProjects)
@@ -94,7 +102,6 @@ import Prettyprinter (
   Doc,
   Pretty (pretty),
   annotate,
-  line,
   viaShow,
   vsep,
  )
@@ -152,7 +159,7 @@ runDependencyAnalysis ::
   , Has Logger sig m
   , Has ReadFS sig m
   , Has Exec sig m
-  , Has (Output ProjectResult) sig m
+  , Has (Output DiscoveredProjectScan) sig m
   , Has Stack sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   ) =>
@@ -162,14 +169,18 @@ runDependencyAnalysis ::
   DiscoveredProject proj ->
   m ()
 runDependencyAnalysis basedir filters project = do
+  let dpi = DiscoveredProjectIdentifier (projectPath project) (projectType project)
   case applyFiltersToProject basedir filters project of
-    Nothing -> logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
+    Nothing -> do
+      logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
+      output $ SkippedDueToProvidedFilter dpi
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
       graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context "Project Analysis" $ do
         debugMetadata "DiscoveredProject" project
         analyzeProject targets (projectData project)
-      Diag.withResult SevWarn SevWarn graphResult (output . mkResult basedir project)
+      flushLogs SevWarn SevWarn graphResult
+      output $ Scanned dpi (mkResult basedir project <$> graphResult)
 
 applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
 applyFiltersToProject basedir filters DiscoveredProject{..} =
@@ -183,7 +194,7 @@ applyFiltersToProject basedir filters DiscoveredProject{..} =
 
 runAnalyzers ::
   ( AnalyzeTaskEffs sig m
-  , Has (Output ProjectResult) sig m
+  , Has (Output DiscoveredProjectScan) sig m
   , Has TaskPool sig m
   , Has AtomicCounter sig m
   ) =>
@@ -226,29 +237,31 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
-  vsiResults <-
+  vsiResults <- Diag.runDiagnosticsIO . diagToDebug $
     Diag.context "analyze-vsi" . runStickyLogger SevInfo . runFinally $ do
       let shouldRunVSI = fromFlag Config.VSIAnalysis $ Config.vsiAnalysisEnabled $ Config.vsiOptions cfg
       case (shouldRunVSI, apiOpts) of
         (True, Just apiOpts') -> analyzeVSI apiOpts' basedir revision filters skipResolutionSet
         _ -> pure Nothing
   binarySearchResults <-
-    Diag.context "discover-binaries" $
-      if (fromFlag BinaryDiscovery $ Config.binaryDiscoveryEnabled $ Config.vsiOptions cfg)
-        then analyzeDiscoverBinaries basedir filters
-        else pure Nothing
+    Diag.runDiagnosticsIO . diagToDebug $
+      Diag.context "discover-binaries" $
+        if (fromFlag BinaryDiscovery $ Config.binaryDiscoveryEnabled $ Config.vsiOptions cfg)
+          then analyzeDiscoverBinaries basedir filters
+          else pure Nothing
   manualSrcUnits <-
-    if filterIsVSIOnly filters
-      then do
-        logInfo "Running in VSI only mode, skipping manual source units"
-        pure Nothing
-      else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir apiOpts
+    Diag.runDiagnosticsIO . diagToDebug $
+      if filterIsVSIOnly filters
+        then do
+          logInfo "Running in VSI only mode, skipping manual source units"
+          pure Nothing
+        else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir apiOpts
   let additionalSourceUnits :: [SourceUnit]
-      additionalSourceUnits = catMaybes [manualSrcUnits, vsiResults, binarySearchResults]
+      additionalSourceUnits = catMaybes $ mapMaybe resultToMaybe [manualSrcUnits, vsiResults, binarySearchResults]
 
-  (projectResults, ()) <-
+  (projectScans, ()) <-
     Diag.context "discovery/analysis tasks"
-      . runOutput @ProjectResult
+      . runOutput @DiscoveredProjectScan
       . runStickyLogger SevInfo
       . runFinally
       . withTaskPool capabilities updateProgress
@@ -261,17 +274,26 @@ analyze cfg = Diag.context "fossa-analyze" $ do
             res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (`runAnalyzers` filters) basedir
             Diag.withResult SevError SevWarn res (const (pure ()))
 
-  let filteredProjects = filterProjects (BaseDir basedir) projectResults
+  let projectScansWithSkippedProdPath = skipNonProdProjectsBasedOnPath (BaseDir basedir) projectScans
+  let projectResults = mapMaybe toProjectResult projectScans
+  let filteredProjects = mapMaybe toProjectResult projectScansWithSkippedProdPath
+
+  _ <- renderScanSummary projectScansWithSkippedProdPath vsiResults binarySearchResults manualSrcUnits
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
-    FilteredAll count -> Diag.fatal (ErrFilteredAllProjects count projectResults)
+    FilteredAll -> Diag.fatal ErrFilteredAllProjects
     FoundSome sourceUnits -> case destination of
       OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult includeAll additionalSourceUnits filteredProjects
       UploadScan opts metadata -> Diag.context "upload-results" $ do
         locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput revision sourceUnits
         doAssertRevisionBinaries iatAssertion opts locator
+
+toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
+toProjectResult (SkippedDueToProvidedFilter _) = Nothing
+toProjectResult (SkippedDueToDefaultProductionFilter _) = Nothing
+toProjectResult (Scanned _ res) = resultToMaybe res
 
 analyzeVSI ::
   ( Has Diag.Diagnostics sig m
@@ -324,7 +346,7 @@ doAssertRevisionBinaries _ _ _ = pure ()
 
 data AnalyzeError
   = ErrNoProjectsDiscovered
-  | ErrFilteredAllProjects Int [ProjectResult]
+  | ErrFilteredAllProjects
 
 instance Diag.ToDiagnostic AnalyzeError where
   renderDiagnostic :: AnalyzeError -> Doc ann
@@ -336,16 +358,19 @@ instance Diag.ToDiagnostic AnalyzeError where
       , "    " <> pretty userGuideUrl
       , ""
       ]
-  renderDiagnostic (ErrFilteredAllProjects count projectResults) =
-    "Filtered out all "
-      <> pretty count
-      <> " projects due to directory name, and no manual deps were found."
-      <> line
-      <> line
-      <> vsep (map renderExcludedProject projectResults)
-    where
-      renderExcludedProject :: ProjectResult -> Doc ann
-      renderExcludedProject project = "Excluded by directory name: " <> pretty (toFilePath $ projectResultPath project)
+  renderDiagnostic (ErrFilteredAllProjects) =
+    vsep
+      [ "Filtered out all projects. This may be occurring because: "
+      , ""
+      , " * No manual or vendor dependencies were provided with `fossa-deps` file."
+      , " * Exclusion filters were used, filtering out discovered projects. "
+      , " * Discovered projects resided in following ignored path by default:"
+      , vsep $ map (\i -> pretty $ "    * " <> toText i) ignoredPaths
+      , ""
+      , "See the user guide for details:"
+      , "    " <> pretty userGuideUrl
+      , ""
+      ]
 
 buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Aeson.Value
 buildResult includeAll srcUnits projects =

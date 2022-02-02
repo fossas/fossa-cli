@@ -42,7 +42,6 @@ import Effect.Logger (
   logInfo,
   logStdout,
   viaShow,
-  vsep,
  )
 import Fossa.API.Types (ApiOpts)
 import Path (Abs, Dir, Path)
@@ -77,15 +76,15 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput revision 
   uploadResult <- uploadAnalysis apiOpts revision metadata units
   let locator = parseLocator $ uploadLocator uploadResult
   buildUrl <- getFossaBuildUrl revision apiOpts locator
-  logInfo $
-    vsep
-      [ "============================================================"
-      , ""
-      , "    View FOSSA Report:"
-      , "    " <> pretty buildUrl
-      , ""
-      , "============================================================"
-      ]
+  traverse_
+    logInfo
+    [ "============================================================"
+    , ""
+    , "    View FOSSA Report:"
+    , "    " <> pretty buildUrl
+    , ""
+    , "============================================================"
+    ]
   traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError uploadResult)
   -- Warn on contributor errors, never fail
   void . recover . runExecIO $ tryUploadContributors basedir apiOpts (uploadLocator uploadResult)
