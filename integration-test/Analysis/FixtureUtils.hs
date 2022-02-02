@@ -94,7 +94,7 @@ data FixtureArtifact = FixtureArtifact
   }
   deriving (Show, Eq, Ord)
 
-type TestC m a = ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC ((ReaderC ExperimentalAnlyzeConfig) (FinallyC (StackC m)))))) a
+type TestC m a = ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC ((ReaderC ExperimentalAnalyzeConfig) (FinallyC (StackC m)))))) a
 
 testRunnerWithLogger :: TestC IO a -> FixtureEnvironment -> IO (Result a)
 testRunnerWithLogger f env =
