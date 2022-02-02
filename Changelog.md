@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## Unreleased
+
+- Fully percent-encode sub-paths in generated URLs. ([#789](https://github.com/fossas/fossa-cli/pull/789))
+
 ## v3.0.17
 
 - Npm: Fixes an issue where a package-lock.json dep with a boolean 'resolved' key wouldn't parse. ([#775](https://github.com/fossas/fossa-cli/pull/775))
