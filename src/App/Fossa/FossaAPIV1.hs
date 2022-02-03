@@ -69,9 +69,23 @@ import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
 import Network.HTTP.Types qualified as HTTP
 import Path (File, Path, Rel)
 import Srclib.Types
-import Text.URI (URI)
 import Text.URI qualified as URI
 import Prelude
+
+-- | Represents error emitted via FOSSA instance.
+-- This data-shape corresponds to 'PublicFacingError' type in backend,
+-- used for rendering errors from API endpoints, as well as FOSSA UI.
+data FossaPublicFacingError = FossaPublicFacingError
+  { fpeMessage :: Text
+  , fpeUuid :: Text
+  }
+  deriving (Show, Eq, Ord)
+
+instance FromJSON FossaPublicFacingError where
+  parseJSON = withObject "FossaPublicFacingError" $ \v ->
+    FossaPublicFacingError
+      <$> v .: "message"
+      <*> v .: "uuid"
 
 newtype FossaReq m a = FossaReq {unFossaReq :: m a}
   deriving (Functor, Applicative, Monad, Algebra sig)
@@ -154,20 +168,30 @@ instance FromJSON UploadResponse where
       <*> obj .:? "error"
 
 data FossaError
-  = InvalidProjectOrRevision HttpException
-  | NoPermission HttpException
-  | JsonDeserializeError String
+  = JsonDeserializeError String
   | OtherError HttpException
-  | BadURI URI
+  | BackendPublicFacingError FossaPublicFacingError
   deriving (Show)
 
 instance ToDiagnostic FossaError where
   renderDiagnostic = \case
-    InvalidProjectOrRevision _ -> "Response from FOSSA API: invalid project or revision"
-    NoPermission _ -> "Response from FOSSA API: no permission"
     JsonDeserializeError err -> "An error occurred when deserializing a response from the FOSSA API: " <> pretty err
     OtherError err -> "An unknown error occurred when accessing the FOSSA API: " <> viaShow err
-    BadURI uri -> "Invalid FOSSA URL: " <> pretty (URI.render uri)
+    BackendPublicFacingError pfe ->
+      vsep
+        [ "An error occurred when accessing the FOSSA API."
+        , ""
+        , "Error message from API:"
+        , ""
+        , pretty $ "   " <> fpeMessage pfe
+        , ""
+        , "Error UUID from API:"
+        , ""
+        , pretty $ "   " <> fpeUuid pfe
+        , ""
+        , "If you believe this to be a defect,"
+        , "please contact FOSSA support with provided Error UUID."
+        ]
 
 containerUploadUrl :: Url scheme -> Url scheme
 containerUploadUrl baseurl = baseurl /: "api" /: "container" /: "upload"
@@ -228,11 +252,10 @@ mkMetadataOpts ProjectMetadata{..} projectName = mconcat $ catMaybes maybes
 
 mangleError :: HttpException -> FossaError
 mangleError err = case err of
-  VanillaHttpException (HTTP.HttpExceptionRequest _ (HTTP.StatusCodeException resp _)) ->
-    case HTTP.responseStatus resp of
-      HTTP.Status 404 _ -> InvalidProjectOrRevision err
-      HTTP.Status 403 _ -> NoPermission err
-      _ -> OtherError err
+  VanillaHttpException (HTTP.HttpExceptionRequest _ (HTTP.StatusCodeException _ respBody)) ->
+    case decodeStrict respBody of
+      Just pfe -> BackendPublicFacingError pfe
+      Nothing -> OtherError err
   JsonHttpException msg -> JsonDeserializeError msg
   _ -> OtherError err
 
