@@ -37,10 +37,10 @@ tryLookup root file = fmap (maybeToRight file) . runMaybeT $ do
 
 packageForFile :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe Text)
 packageForFile _ _ | not runningLinux = pure Nothing
-packageForFile root file = recover . execParser parsePackageForFileOutput root $ packageForFileCommand file
+packageForFile root file = recover . execParser parsePackageForFileOutput root $ dpkgQueryFileCommand file
 
-packageForFileCommand :: Path Abs File -> Command
-packageForFileCommand file =
+dpkgQueryFileCommand :: Path Abs File -> Command
+dpkgQueryFileCommand file =
   Command
     { cmdName = "dpkg"
     , cmdArgs = ["-S", toText file]
@@ -58,10 +58,10 @@ parsePackageForFileOutput = ident <* symbol ": "
 
 packageMeta :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Text -> m (Maybe LinuxPackageMetadata)
 packageMeta _ _ | not runningLinux = pure Nothing
-packageMeta root name = recover . execParser parseMetaOutput root $ packageMetaCommand name
+packageMeta root name = recover . execParser parseMetaOutput root $ dpkgQueryPackageInfoCommand name
 
-packageMetaCommand :: Text -> Command
-packageMetaCommand packageName =
+dpkgQueryPackageInfoCommand :: Text -> Command
+dpkgQueryPackageInfoCommand packageName =
   Command
     { cmdName = "dpkg"
     , cmdArgs = ["-s", packageName]

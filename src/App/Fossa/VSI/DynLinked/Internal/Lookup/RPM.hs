@@ -1,6 +1,6 @@
 module App.Fossa.VSI.DynLinked.Internal.Lookup.RPM (
   lookupDependencies,
-  parseMetaOutput,
+  rpmParseQueryPackageInfo,
 ) where
 
 import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
@@ -35,10 +35,10 @@ tryLookup root file = fmap (maybeToRight file) . runMaybeT $ do
 
 packageForFile :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe Text)
 packageForFile _ _ | not runningLinux = pure Nothing
-packageForFile root file = recover . execParser parsePackageForFileOutput root $ packageForFileCommand file
+packageForFile root file = recover . execParser rpmParseQueryFile root $ rpmQueryFileCommand file
 
-packageForFileCommand :: Path Abs File -> Command
-packageForFileCommand file =
+rpmQueryFileCommand :: Path Abs File -> Command
+rpmQueryFileCommand file =
   Command
     { cmdName = "rpm"
     , cmdArgs = ["-qf", toText file]
@@ -51,15 +51,15 @@ packageForFileCommand file =
 -- > rpm -qf /lib64/libc.so.6
 -- > glibc-2.28-151.el8.x86_64
 -- > ^^^^^^^^^^^^^^^^^^^^^^^^^ we want this whole output.
-parsePackageForFileOutput :: Parser Text
-parsePackageForFileOutput = takeWhile1P Nothing (const True) <* eof
+rpmParseQueryFile :: Parser Text
+rpmParseQueryFile = takeWhile1P Nothing (const True) <* eof
 
 packageMeta :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Text -> m (Maybe LinuxPackageMetadata)
 packageMeta _ _ | not runningLinux = pure Nothing
-packageMeta root name = recover . execParser parseMetaOutput root $ packageMetaCommand name
+packageMeta root name = recover . execParser rpmParseQueryPackageInfo root $ rpmQueryPackageInfoCommand name
 
-packageMetaCommand :: Text -> Command
-packageMetaCommand packageName =
+rpmQueryPackageInfoCommand :: Text -> Command
+rpmQueryPackageInfoCommand packageName =
   Command
     { cmdName = "rpm"
     , cmdArgs = ["-qi", packageName]
@@ -98,8 +98,8 @@ packageMetaCommand packageName =
 -- > contains the most important sets of shared libraries: the standard C
 -- > library and the standard math library. Without these two libraries, a
 -- > Linux system will not function.
-parseMetaOutput :: Parser LinuxPackageMetadata
-parseMetaOutput = do
+rpmParseQueryPackageInfo :: Parser LinuxPackageMetadata
+rpmParseQueryPackageInfo = do
   name <- parseField "Name"
   epoch <- try . option Nothing $ Just <$> parseField "Epoch"
   version <- parseField "Version"
