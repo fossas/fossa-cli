@@ -2,6 +2,8 @@
 
 The fossa configuration file, `.fossa.yml`, is an optional file located at the root of a project that can be used to configure project settings. 
 
+You can use [this configuration generator tool](https://wirechunk.com/topics/cf5f5c70-bfd3-48d9-9f3c-928dd42f50ef) to easily create a configuration file.
+
 The following example is a configuration file with all available fields filled displayed. All fields except for `version` are optional, configuration file versions 1 and 2 were used for CLI versions prior to 2.0.0.
 
 
