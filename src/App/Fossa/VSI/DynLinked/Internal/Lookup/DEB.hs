@@ -7,6 +7,7 @@ import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxPackageManage
 import App.Fossa.VSI.DynLinked.Util (runningLinux)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, recover)
+import Control.Monad (void)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT), runMaybeT)
 import Data.Char (isSpace)
 import Data.Either (partitionEithers)
@@ -111,7 +112,7 @@ parseMetaOutput = do
 
 consumeLine :: Parser ()
 consumeLine = do
-  _ <- lexeme $ takeWhile1P Nothing (/= '\n')
+  void . lexeme $ takeWhile1P Nothing (/= '\n')
   pure ()
 
 parseField :: Text -> Parser Text
