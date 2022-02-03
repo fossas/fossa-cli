@@ -1,6 +1,6 @@
 module App.Fossa.VSI.DynLinked.Internal.Lookup.DEB (
-  lookupDependencies,
-  parseMetaOutput,
+  debTactic,
+  dpkgParseQueryPackageInfo,
 ) where
 
 import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
@@ -10,7 +10,6 @@ import Control.Effect.Diagnostics (Diagnostics, recover)
 import Control.Monad (void)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT), runMaybeT)
 import Data.Char (isSpace)
-import Data.Either (partitionEithers)
 import Data.Foldable (traverse_)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -23,17 +22,12 @@ import Text.Megaparsec.Char.Lexer qualified as L
 
 type Parser = Parsec Void Text
 
--- | The idea here is that we look up what paths we can with apt and turn them into @DynamicDependency@.
--- We then hand back leftovers and lookup results for the next resolution function.
-lookupDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> [Path Abs File] -> m ([Path Abs File], [DynamicDependency])
-lookupDependencies _ files | not runningLinux = pure (files, [])
-lookupDependencies root files = partitionEithers <$> traverse (tryLookup root) files
-
-tryLookup :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Either (Path Abs File) DynamicDependency)
-tryLookup root file = fmap (maybeToRight file) . runMaybeT $ do
+debTactic :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe DynamicDependency)
+debTactic root file | runningLinux = runMaybeT $ do
   name <- MaybeT $ packageForFile root file
   meta <- MaybeT $ packageMeta root name
   pure . DynamicDependency file . Just $ ResolvedLinuxPackage LinuxPackageManagerRPM meta
+debTactic _ _ = pure Nothing
 
 packageForFile :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe Text)
 packageForFile _ _ | not runningLinux = pure Nothing
@@ -58,7 +52,7 @@ parsePackageForFileOutput = ident <* symbol ": "
 
 packageMeta :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Text -> m (Maybe LinuxPackageMetadata)
 packageMeta _ _ | not runningLinux = pure Nothing
-packageMeta root name = recover . execParser parseMetaOutput root $ dpkgQueryPackageInfoCommand name
+packageMeta root name = recover . execParser dpkgParseQueryPackageInfo root $ dpkgQueryPackageInfoCommand name
 
 dpkgQueryPackageInfoCommand :: Text -> Command
 dpkgQueryPackageInfoCommand packageName =
@@ -101,8 +95,8 @@ dpkgQueryPackageInfoCommand packageName =
 -- > Original-Maintainer: GNU Libc Maintainers <debian-glibc@lists.debian.org>
 -- > Original-Vcs-Browser: https://salsa.debian.org/glibc-team/glibc
 -- > Original-Vcs-Git: https://salsa.debian.org/glibc-team/glibc.git
-parseMetaOutput :: Parser LinuxPackageMetadata
-parseMetaOutput = do
+dpkgParseQueryPackageInfo :: Parser LinuxPackageMetadata
+dpkgParseQueryPackageInfo = do
   name <- parseField "Package"
   repeatM consumeLine 5
   arch <- parseField "Architecture"
@@ -134,11 +128,6 @@ symbol = L.symbol sc
 -- Requires that a space trails the identifier.
 ident :: Parser Text
 ident = lexeme $ toText <$> takeWhile1P Nothing (not . isSpace)
-
-maybeToRight :: a -> Maybe b -> Either a b
-maybeToRight df right = case right of
-  Just a -> Right a
-  Nothing -> Left df
 
 repeatM :: Monad m => m () -> Word -> m ()
 repeatM f n = traverse_ (const f) [1 .. n]

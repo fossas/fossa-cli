@@ -2,7 +2,7 @@
 
 module App.Fossa.VSI.DynLinked.Internal.Lookup.DEBSpec (spec) where
 
-import App.Fossa.VSI.DynLinked.Internal.Lookup.DEB (parseMetaOutput)
+import App.Fossa.VSI.DynLinked.Internal.Lookup.DEB (dpkgParseQueryPackageInfo)
 import App.Fossa.VSI.DynLinked.Types (LinuxPackageMetadata (..))
 import Data.Text (Text)
 import Data.Void (Void)
@@ -15,7 +15,7 @@ parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Expectation
 parseMatch parser input expected = parse parser "" input `shouldParse` expected
 
 shouldParseInto :: Text -> LinuxPackageMetadata -> Expectation
-shouldParseInto = parseMatch parseMetaOutput
+shouldParseInto = parseMatch dpkgParseQueryPackageInfo
 
 spec :: Spec
 spec = do

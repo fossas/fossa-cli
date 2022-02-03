@@ -1,5 +1,5 @@
 module App.Fossa.VSI.DynLinked.Internal.Lookup.RPM (
-  lookupDependencies,
+  rpmTactic,
   rpmParseQueryPackageInfo,
 ) where
 
@@ -9,7 +9,6 @@ import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, recover)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT), runMaybeT)
 import Data.Char (isSpace)
-import Data.Either (partitionEithers)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
@@ -21,17 +20,12 @@ import Text.Megaparsec.Char.Lexer qualified as L
 
 type Parser = Parsec Void Text
 
--- | The idea here is that we look up what paths we can with RPM and turn them into @DynamicDependency@.
--- We then hand back leftovers and lookup results for the next resolution function.
-lookupDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> [Path Abs File] -> m ([Path Abs File], [DynamicDependency])
-lookupDependencies _ files | not runningLinux = pure (files, [])
-lookupDependencies root files = partitionEithers <$> traverse (tryLookup root) files
-
-tryLookup :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Either (Path Abs File) DynamicDependency)
-tryLookup root file = fmap (maybeToRight file) . runMaybeT $ do
+rpmTactic :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe DynamicDependency)
+rpmTactic root file | runningLinux = runMaybeT $ do
   name <- MaybeT $ packageForFile root file
   meta <- MaybeT $ packageMeta root name
   pure . DynamicDependency file . Just $ ResolvedLinuxPackage LinuxPackageManagerRPM meta
+rpmTactic _ _ = pure Nothing
 
 packageForFile :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe Text)
 packageForFile _ _ | not runningLinux = pure Nothing
@@ -126,8 +120,3 @@ symbol = L.symbol sc
 -- Requires that a space trails the identifier.
 ident :: Parser Text
 ident = lexeme $ toText <$> takeWhile1P Nothing (not . isSpace)
-
-maybeToRight :: a -> Maybe b -> Either a b
-maybeToRight df right = case right of
-  Just a -> Right a
-  Nothing -> Left df

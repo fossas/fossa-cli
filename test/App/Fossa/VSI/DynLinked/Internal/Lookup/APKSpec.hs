@@ -4,7 +4,7 @@
 
 module App.Fossa.VSI.DynLinked.Internal.Lookup.APKSpec (spec) where
 
-import App.Fossa.VSI.DynLinked.Internal.Lookup.APK (SyftArtifact (..), SyftArtifactMetadata (..), SyftArtifactMetadataFile (..), SyftData (..), SyftLookupTable (..), constructLookupTables)
+import App.Fossa.VSI.DynLinked.Internal.Lookup.APK (APKLookupTable (..), SyftArtifact (..), SyftArtifactMetadata (..), SyftArtifactMetadataFile (..), SyftData (..), compileSyftOutput)
 import App.Fossa.VSI.DynLinked.Types (LinuxPackageMetadata (..))
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Data.Aeson (toJSON)
@@ -15,7 +15,7 @@ import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
 spec :: Spec
 spec = do
   describe "lookup table" $ do
-    result <- runIO . runDiagnostics $ constructLookupTables syntheticData
+    result <- runIO . runDiagnostics $ compileSyftOutput syntheticData
 
     it "correctly builds lookup table" $ case result of
       Left e -> expectationFailure ("could not construct lookup table: " <> show e)
@@ -58,9 +58,9 @@ syntheticData =
         }
     ]
 
-expectedLookupTable :: SyftLookupTable
+expectedLookupTable :: APKLookupTable
 expectedLookupTable =
-  SyftLookupTable
+  APKLookupTable
     { pathToIndex =
         Map.fromList
           [ (safeAbsRoot </> $(mkRelFile "file1_1"), 0)
