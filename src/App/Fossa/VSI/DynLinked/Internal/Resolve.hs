@@ -5,7 +5,7 @@ module App.Fossa.VSI.DynLinked.Internal.Resolve (
   toSourceUnit,
   toDependency,
   environmentDistro,
-  readLinuxDistro,
+  parseLinuxDistro,
 ) where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
@@ -13,11 +13,10 @@ import App.Fossa.BinaryDeps (analyzeSingleBinary)
 import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxDistro (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
 import App.Fossa.VSI.DynLinked.Util (fsRoot, runningLinux)
 import Control.Algebra (Has)
-import Control.Applicative.Permutations (intercalateEffect, toPermutation)
-import Control.Effect.Diagnostics (Diagnostics, fatal, recover, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, recover, (<||>))
 import Control.Effect.Lift (Lift)
-import Data.Char (isSpace)
 import Data.Either (partitionEithers)
+import Data.Map qualified as Map
 import Data.Set (Set, toList)
 import Data.String.Conversion (toText)
 import Data.Text (Text, intercalate)
@@ -25,14 +24,14 @@ import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes (DepType (LinuxAPK, LinuxDEB, LinuxRPM), Dependency (..), VerConstraint (CEq))
 import Effect.Logger (Logger)
-import Effect.ReadFS (ReadFS, readContentsText)
+import Effect.ReadFS (ReadFS, readContentsParser)
 import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
-import Text.Megaparsec (Parsec, empty, errorBundlePretty, runParser, takeWhile1P)
-import Text.Megaparsec.Char (space1)
+import Text.Megaparsec (Parsec, empty, eof, many, takeWhile1P)
+import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 import Types (DiscoveredProjectType (VsiProjectType), GraphBreadth (Complete))
 
@@ -124,8 +123,8 @@ sortResolvedUnresolved = partitionEithers . map forkEither . toList
 -- Exits via @Diagnostics@ on parse errors.
 environmentDistro :: (Has Diagnostics sig m, Has ReadFS sig m) => m (Maybe LinuxDistro)
 environmentDistro
-  | not runningLinux = pure Nothing
-  | otherwise = recover $ readOsReleaseAt primaryPath <||> readOsReleaseAt fallbackPath
+  | runningLinux = recover $ readOsReleaseAt primaryPath <||> readOsReleaseAt fallbackPath
+  | otherwise = pure Nothing
   where
     primaryPath :: Path Abs File
     primaryPath = fsRoot </> $(mkRelFile "etc/os-release")
@@ -134,38 +133,24 @@ environmentDistro
     fallbackPath = fsRoot </> $(mkRelFile "usr/lib/os-release")
 
     readOsReleaseAt :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs File -> m LinuxDistro
-    readOsReleaseAt file = do
-      content <- readContentsText file
-      readLinuxDistro content
-
--- | Reads the linux distro from a file.
-readLinuxDistro :: (Has Diagnostics sig m) => Text -> m LinuxDistro
-readLinuxDistro contents = case runParser parseLinuxDistro "" filteredLines of
-  Left err -> fatal $ toText (errorBundlePretty err)
-  Right a -> pure a
-  where
-    prefixes :: [Text]
-    prefixes = map (<> "=") ["ID", "VERSION_ID"]
-
-    filteredLines :: Text
-    filteredLines = filterLinePrefixes contents
-
-    filterLinePrefixes :: Text -> Text
-    filterLinePrefixes = Text.unlines . filter lineIsUsed . fmap Text.strip . Text.lines
-      where
-        lineIsUsed line = any (`Text.isPrefixOf` line) prefixes
+    readOsReleaseAt = readContentsParser parseLinuxDistro
 
 type Parser = Parsec Void Text
 
 parseLinuxDistro :: Parser LinuxDistro
-parseLinuxDistro =
-  intercalateEffect sc $
-    LinuxDistro
-      <$> toPermutation (parseField "ID")
-      <*> toPermutation (parseField "VERSION_ID")
+parseLinuxDistro = do
+  keys <- Map.fromList <$> many parseField <* eof
+  case (Map.lookup "ID" keys, Map.lookup "VERSION_ID" keys) of
+    (Just distro, Just version) -> pure $ LinuxDistro distro version
+    (Just _, Nothing) -> fail "missing required key: VERSION_ID"
+    (Nothing, Just _) -> fail "missing required key: ID"
+    (Nothing, Nothing) -> fail "missing required keys: ID, VERSION_ID"
 
-parseField :: Text -> Parser Text
-parseField field = sc *> symbol field *> symbol "=" *> ident
+parseField :: Parser (Text, Text)
+parseField = do
+  name <- lexeme $ takeWhile1P Nothing (/= '=') <* char '='
+  value <- lexeme $ toText <$> takeWhile1P Nothing (/= '\n')
+  pure (Text.strip name, Text.strip value)
 
 -- | Consume spaces.
 sc :: Parser ()
@@ -174,12 +159,3 @@ sc = L.space space1 empty empty
 -- | Run the provided parser, then consume any trailing spaces.
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
-
--- | Parse for the provided symbol, then consume any trailing spaces.
-symbol :: Text -> Parser Text
-symbol = L.symbol sc
-
--- | Collect a contiguous list of non-space characters into a @Text@, then consume any trailing spaces.
--- Requires that a space trails the identifier.
-ident :: Parser Text
-ident = lexeme $ toText <$> takeWhile1P Nothing (not . isSpace)

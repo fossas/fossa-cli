@@ -2,13 +2,24 @@
 
 module App.Fossa.VSI.DynLinked.Internal.ResolveSpec (spec) where
 
-import App.Fossa.VSI.DynLinked.Internal.Resolve (readLinuxDistro, toDependency)
+import App.Fossa.VSI.DynLinked.Internal.Resolve (parseLinuxDistro, toDependency)
 import App.Fossa.VSI.DynLinked.Types (LinuxDistro (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
-import Control.Carrier.Diagnostics (runDiagnostics)
 import Data.Text (Text)
+import Data.Void (Void)
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
-import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
+import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
+import Test.Hspec.Megaparsec (shouldFailOn, shouldParse)
+import Text.Megaparsec (Parsec, parse)
 import Text.RawString.QQ (r)
+
+parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Expectation
+parseMatch parser input expected = parse parser "" input `shouldParse` expected
+
+shouldParseInto :: Text -> LinuxDistro -> Expectation
+shouldParseInto = parseMatch parseLinuxDistro
+
+shouldFailParsing :: Text -> Expectation
+shouldFailParsing input = parse parseLinuxDistro "" `shouldFailOn` input
 
 spec :: Spec
 spec = do
@@ -34,16 +45,14 @@ spec = do
       toDependency placeholderDistro original `shouldBe` expected
 
   describe "parses linux distro" $ do
-    simpleResult <- runIO . runDiagnostics $ readLinuxDistro simpleDistro
-    complexResult <- runIO . runDiagnostics $ readLinuxDistro complexDistro
+    it "parses simple distro" $ do
+      simpleDistro `shouldParseInto` expectedSimpleDistro
 
-    it "parses simple distro" $ case simpleResult of
-      Left e -> expectationFailure ("could not parse: " <> show e)
-      Right result -> result `shouldBe` expectedSimpleDistro
+    it "parses complex distro" $ do
+      complexDistro `shouldParseInto` expectedComplexDistro
 
-    it "parses complex distro" $ case complexResult of
-      Left e -> expectationFailure ("could not parse: " <> show e)
-      Right result -> result `shouldBe` expectedComplexDistro
+    it "fails missing pieces distro" $ do
+      shouldFailParsing malformedDistro
 
 placeholderMeta :: LinuxPackageMetadata
 placeholderMeta = baseMeta (Just "epoch")
@@ -59,6 +68,9 @@ simpleDistro =
   [r| ID=distro
       VERSION_ID=release
   |]
+
+malformedDistro :: Text
+malformedDistro = "ID=distro"
 
 expectedSimpleDistro :: LinuxDistro
 expectedSimpleDistro = LinuxDistro "distro" "release"
