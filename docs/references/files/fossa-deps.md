@@ -2,6 +2,8 @@
 
 Fossa-deps file is a file named `fossa-deps.{yaml, yml, json}` at the root of the project. It can be used to provide manual and vendor dependencies. 
 
+You can use [this configuration generator tool](https://wirechunk.com/topics/c4f67ee8-29f4-4fd3-8b87-76b80da015f6) to easily create a fossa-deps file.
+
 ## Fields
 
 ### `referenced-dependencies:`
@@ -29,7 +31,7 @@ Denotes listing of dependencies, which can't be automatically discovered or iden
 
 - `name`: Name of the dependency. (Required)
 - `version`: Revision of the dependency. (Required)
-- `license`: Licence of the dependency. (Required)
+- `license`: License of the dependency. (Required)
 - `metadata.homepage`: Homepage of the dependency. This metadata is used to enrich reporting provided in FOSSA's web interface.
 - `metadata.description`: Description of the dependency. This metadata is used to enrich reporting provided in FOSSA's web interface.
 
