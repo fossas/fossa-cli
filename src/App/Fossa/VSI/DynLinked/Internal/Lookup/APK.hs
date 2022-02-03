@@ -50,7 +50,7 @@ newtype SyftData = SyftData
 
 instance FromJSON SyftData where
   parseJSON = withObject "SyftData" $ \obj ->
-    SyftData . filter artifactIsOk <$> obj .: "artifacts"
+    SyftData . filter isAPKArtifact <$> obj .: "artifacts"
 
 data SyftArtifact = SyftArtifact
   { artifactName :: Text
@@ -101,8 +101,8 @@ instance FromJSON SyftArtifactMetadataFile where
 instance ToJSON SyftArtifactMetadataFile where
   toJSON SyftArtifactMetadataFile{..} = object ["path" .= metadataFilePath]
 
-artifactIsOk :: SyftArtifact -> Bool
-artifactIsOk SyftArtifact{..} = artifactType == "apk" && artifactMetadataType == "ApkMetadata"
+isAPKArtifact :: SyftArtifact -> Bool
+isAPKArtifact SyftArtifact{..} = artifactType == "apk" && artifactMetadataType == "ApkMetadata"
 
 runSyft :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> m SyftData
 runSyft root = execJson root syftCommand
