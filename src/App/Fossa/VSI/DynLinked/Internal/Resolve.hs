@@ -13,7 +13,7 @@ import App.Fossa.BinaryDeps (analyzeSingleBinary)
 import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxDistro (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
 import App.Fossa.VSI.DynLinked.Util (fsRoot, runningLinux)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, recover, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import Control.Effect.Lift (Lift)
 import Data.Either (partitionEithers)
 import Data.Map qualified as Map
@@ -123,7 +123,7 @@ sortResolvedUnresolved = partitionEithers . map forkEither . toList
 -- Exits via @Diagnostics@ on parse errors.
 environmentDistro :: (Has Diagnostics sig m, Has ReadFS sig m) => m (Maybe LinuxDistro)
 environmentDistro
-  | runningLinux = recover $ readOsReleaseAt primaryPath <||> readOsReleaseAt fallbackPath
+  | runningLinux = Just <$> (readOsReleaseAt primaryPath <||> readOsReleaseAt fallbackPath)
   | otherwise = pure Nothing
   where
     primaryPath :: Path Abs File
