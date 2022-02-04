@@ -1,27 +1,38 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.VSI.DynLinked.Internal.Resolve (
   toSourceUnit,
   toDependency,
+  environmentDistro,
+  parseLinuxDistro,
 ) where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.BinaryDeps (analyzeSingleBinary)
-import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
+import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxDistro (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
+import App.Fossa.VSI.DynLinked.Util (fsRoot, runningLinux)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import Control.Effect.Lift (Lift)
 import Data.Either (partitionEithers)
+import Data.Map qualified as Map
 import Data.Set (Set, toList)
+import Data.String.Conversion (toText)
 import Data.Text (Text, intercalate)
+import Data.Text qualified as Text
+import Data.Void (Void)
 import DepTypes (DepType (LinuxAPK, LinuxDEB, LinuxRPM), Dependency (..), VerConstraint (CEq))
 import Effect.Logger (Logger)
-import Effect.ReadFS (ReadFS)
+import Effect.ReadFS (ReadFS, readContentsParser)
 import Graphing (Graphing)
 import Graphing qualified
-import Path (Abs, Dir, File, Path)
+import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
+import Text.Megaparsec (Parsec, empty, eof, many, takeWhile1P)
+import Text.Megaparsec.Char (char, space1)
+import Text.Megaparsec.Char.Lexer qualified as L
 import Types (DiscoveredProjectType (VsiProjectType), GraphBreadth (Complete))
 
 -- | Resolves a set of dynamic dependencies into a @SourceUnit@.
@@ -33,13 +44,14 @@ toSourceUnit ::
   , Has Diagnostics sig m
   ) =>
   Path Abs Dir ->
+  LinuxDistro ->
   Set DynamicDependency ->
   m SourceUnit
-toSourceUnit root dependencies = do
+toSourceUnit root distro dependencies = do
   let (resolved, unresolved) = sortResolvedUnresolved dependencies
   binaries <- traverse (analyzeSingleBinary root) unresolved
 
-  let project = toProject root $ Graphing.directs (map toDependency resolved)
+  let project = toProject root . Graphing.directs $ map (toDependency distro) resolved
   let unit = Srclib.toSourceUnit False project
   pure $ unit{additionalData = fmap toDepData (Just binaries)}
   where
@@ -48,11 +60,11 @@ toSourceUnit root dependencies = do
     toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
     toProject dir graph = ProjectResult VsiProjectType dir graph Complete []
 
-toDependency :: ResolvedLinuxPackage -> Dependency
-toDependency ResolvedLinuxPackage{..} = case resolvedLinuxPackageManager of
-  LinuxPackageManagerDEB -> renderDEB resolvedLinuxPackageMetadata
-  LinuxPackageManagerRPM -> renderRPM resolvedLinuxPackageMetadata
-  LinuxPackageManagerAPK -> renderAPK resolvedLinuxPackageMetadata
+toDependency :: LinuxDistro -> ResolvedLinuxPackage -> Dependency
+toDependency distro ResolvedLinuxPackage{..} = case resolvedLinuxPackageManager of
+  LinuxPackageManagerDEB -> renderDEB resolvedLinuxPackageMetadata distro
+  LinuxPackageManagerRPM -> renderRPM resolvedLinuxPackageMetadata distro
+  LinuxPackageManagerAPK -> renderAPK resolvedLinuxPackageMetadata distro
   where
     render :: DepType -> [Text] -> [Text] -> Dependency
     render fetcher projectParts revisionParts =
@@ -68,25 +80,25 @@ toDependency ResolvedLinuxPackage{..} = case resolvedLinuxPackageManager of
     fromParts :: [Text] -> Text
     fromParts = intercalate "#"
 
-    renderDEB :: LinuxPackageMetadata -> Dependency
-    renderDEB LinuxPackageMetadata{..} =
+    renderDEB :: LinuxPackageMetadata -> LinuxDistro -> Dependency
+    renderDEB LinuxPackageMetadata{..} LinuxDistro{..} =
       render
         LinuxDEB
-        [linuxPackageID, linuxPackageDistro, linuxPackageDistroRelease]
+        [linuxPackageID, linuxDistroName, linuxDistroRelease]
         [linuxPackageArch, linuxPackageRevision]
 
-    renderRPM :: LinuxPackageMetadata -> Dependency
-    renderRPM LinuxPackageMetadata{..} =
+    renderRPM :: LinuxPackageMetadata -> LinuxDistro -> Dependency
+    renderRPM LinuxPackageMetadata{..} LinuxDistro{..} =
       render
         LinuxRPM
-        [linuxPackageID, linuxPackageDistro, linuxPackageDistroRelease]
+        [linuxPackageID, linuxDistroName, linuxDistroRelease]
         [linuxPackageArch, epoch <> linuxPackageRevision]
 
-    renderAPK :: LinuxPackageMetadata -> Dependency
-    renderAPK LinuxPackageMetadata{..} =
+    renderAPK :: LinuxPackageMetadata -> LinuxDistro -> Dependency
+    renderAPK LinuxPackageMetadata{..} LinuxDistro{..} =
       render
         LinuxAPK
-        [linuxPackageID, linuxPackageDistro, linuxPackageDistroRelease]
+        [linuxPackageID, linuxDistroName, linuxDistroRelease]
         [linuxPackageArch, linuxPackageRevision]
 
     epoch :: Text
@@ -104,3 +116,46 @@ sortResolvedUnresolved = partitionEithers . map forkEither . toList
     forkEither dep = case dynamicDependencyResolved dep of
       Nothing -> Right $ dynamicDependencyDiskPath dep
       Just linuxPackage -> Left linuxPackage
+
+-- | Discover the linux distro under which we are currently executing.
+--
+-- Evaluates to @Nothing@ on non-Linux environments.
+-- Exits via @Diagnostics@ on parse errors.
+environmentDistro :: (Has Diagnostics sig m, Has ReadFS sig m) => m (Maybe LinuxDistro)
+environmentDistro
+  | runningLinux = Just <$> (readOsReleaseAt primaryPath <||> readOsReleaseAt fallbackPath)
+  | otherwise = pure Nothing
+  where
+    primaryPath :: Path Abs File
+    primaryPath = fsRoot </> $(mkRelFile "etc/os-release")
+
+    fallbackPath :: Path Abs File
+    fallbackPath = fsRoot </> $(mkRelFile "usr/lib/os-release")
+
+    readOsReleaseAt :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs File -> m LinuxDistro
+    readOsReleaseAt = readContentsParser parseLinuxDistro
+
+type Parser = Parsec Void Text
+
+parseLinuxDistro :: Parser LinuxDistro
+parseLinuxDistro = do
+  keys <- Map.fromList <$> many parseField <* eof
+  case (Map.lookup "ID" keys, Map.lookup "VERSION_ID" keys) of
+    (Just distro, Just version) -> pure $ LinuxDistro distro version
+    (Just _, Nothing) -> fail "missing required key: VERSION_ID"
+    (Nothing, Just _) -> fail "missing required key: ID"
+    (Nothing, Nothing) -> fail "missing required keys: ID, VERSION_ID"
+
+parseField :: Parser (Text, Text)
+parseField = do
+  name <- lexeme $ takeWhile1P Nothing (/= '=') <* char '='
+  value <- lexeme $ toText <$> takeWhile1P Nothing (/= '\n')
+  pure (Text.strip name, Text.strip value)
+
+-- | Consume spaces.
+sc :: Parser ()
+sc = L.space space1 empty empty
+
+-- | Run the provided parser, then consume any trailing spaces.
+lexeme :: Parser a -> Parser a
+lexeme = L.lexeme sc
