@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+
 module Cargo.CargoTomlSpec (spec) where
 
 import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
@@ -69,8 +70,12 @@ licenseSpecs = do
       let baseDir = currentDir </> $(mkRelDir "test/Cargo/testdata/spdx_license_and_file")
       let licenseFile = toFilePath (baseDir </> $(mkRelFile "LICENSE.txt"))
       licenses <- licenseAnalyzeProject (cargoProject baseDir)
-      licenses `shouldBe'` licenseResult [spdxLicense
-                                         , cargoLicenseFile licenseFile] baseDir
+      licenses
+        `shouldBe'` licenseResult
+          [ spdxLicense
+          , cargoLicenseFile licenseFile
+          ]
+          baseDir
 
 spec :: Spec
 spec = licenseSpecs
