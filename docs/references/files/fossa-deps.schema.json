@@ -56,9 +56,9 @@
                     "description": "Version of the dependency. This will be the version used in FOSSA's dashboard.",
                     "minLength": 1
                 },
-                "licence": {
+                "license": {
                     "type": "string",
-                    "description": "Licence of the dependency. This string will be used to infer licence type.",
+                    "description": "License of the dependency. This string will be used to infer license type.",
                     "minLength": 1
                 },
                 "metadata": {
@@ -78,7 +78,7 @@
             "required": [
                 "name",
                 "version",
-                "licence"
+                "license"
             ],
             "additionalProperties": false
         },
@@ -91,7 +91,7 @@
                 },
                 "path": {
                     "type": "string",
-                    "description": "Path to directory, which will be archived and upload to provided endpoint for licence scanning.",
+                    "description": "Path to directory, which will be archived and upload to provided endpoint for license scanning.",
                     "minLength": 1
                 },
                 "version": {
@@ -150,28 +150,28 @@
         },
         "referenced-dependencies": {
             "type": "array",
-            "description": "Reference dependency to locate from registry and include it project's dependency and licence scanning.",
+            "description": "Reference dependency to locate from registry and include it project's dependency and license scanning.",
             "items": {
                 "$ref": "#/$defs/referenced-dependency"
             }
         },
         "custom-dependencies": {
             "type": "array",
-            "description": "Custom dependency and their licence for project",
+            "description": "Custom dependency and their license for project",
             "items": {
                 "$ref": "#/$defs/custom-dependency"
             }
         },
         "vendored-dependencies": {
             "type": "array",
-            "description": "Local dependencies upload to server for licence scanning",
+            "description": "Local dependencies upload to server for license scanning",
             "items": {
                 "$ref": "#/$defs/vendored-dependency"
             }
         },
         "remote-dependencies": {
             "type": "array",
-            "description": "Remote dependencies to licence scanning",
+            "description": "Remote dependencies to license scanning",
             "items": {
                 "$ref": "#/$defs/remote-dependency"
             }
