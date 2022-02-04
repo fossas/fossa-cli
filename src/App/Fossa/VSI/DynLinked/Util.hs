@@ -1,11 +1,13 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.VSI.DynLinked.Util (
   hasSetUID,
   runningLinux,
+  fsRoot,
 ) where
 
-import Path (File, Path)
+import Path (Abs, Dir, File, Path, mkAbsDir)
 import System.Info qualified as SysInfo
 
 -- Have to use CPP pragmas here so we can import @System.Posix.Files@.
@@ -15,6 +17,10 @@ import System.Info qualified as SysInfo
 -- Windows doesn't have the concept of a "set uid bit", so always eval to false.
 hasSetUID :: Monad m => Path t File -> m Bool
 hasSetUID _ = pure False
+
+-- | The root of the primary file system.
+fsRoot :: Path Abs Dir
+fsRoot = $(mkAbsDir "C:/")
 
 #else
 
@@ -30,6 +36,10 @@ hasSetUID :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path t File -> m Bo
 hasSetUID file = do
   stat <- fatalOnSomeException "get file status" . sendIO . getFileStatus $ P.toFilePath file
   pure $ fileMode stat .&. setUserIDMode /= 0
+
+-- | The root of the primary file system.
+fsRoot :: Path Abs Dir
+fsRoot = $(mkAbsDir "/")
 
 #endif
 
