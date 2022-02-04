@@ -1,0 +1,10 @@
+[package]
+name = "foo"
+version = "0.0.0"
+edition = "2022"
+license = "MIT OR Apache-2.0"
+homepage = "https://foo.baz"
+repository = "https://foo.baz"
+documentation = "https://foo.baz"
+readme = "README.md"
+description = """test cargo file"""

@@ -14,20 +14,65 @@ module Strategy.Cargo (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics
-import Data.Aeson.Types
+import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  run,
+ )
+import Data.Aeson.Types (
+  FromJSON (parseJSON),
+  Parser,
+  ToJSON,
+  withObject,
+  (.:),
+  (.:?),
+ )
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Text qualified as Text
-import Discovery.Walk
-import Effect.Exec
-import Effect.Grapher
-import Effect.ReadFS (ReadFS)
+import Discovery.Walk (
+  WalkStep (WalkContinue, WalkSkipAll),
+  findFileNamed,
+  walk',
+ )
+import Effect.Exec (
+  AllowErr (Never),
+  Command (..),
+  Exec,
+  execJson,
+  execThrow,
+ )
+import Effect.Grapher (
+  LabeledGrapher,
+  direct,
+  edge,
+  label,
+  withLabeling,
+ )
+import Effect.ReadFS (ReadFS, readContentsToml)
 import GHC.Generics (Generic)
 import Graphing (Graphing, stripRoot)
-import Path
-import Types
+import Path (Abs, Dir, File, Path, toFilePath)
+import Toml (TomlCodec, dioptional, diwrap, (.=))
+import Toml qualified
+import Types (
+  DepEnvironment (EnvDevelopment, EnvProduction),
+  DepType (CargoType),
+  Dependency (..),
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (CargoProjectType),
+  GraphBreadth (Complete),
+  License (License),
+  LicenseResult (LicenseResult, licenseFile, licensesFound),
+  LicenseType (LicenseSPDX),
+  VerConstraint (CEq),
+  insertEnvironment,
+ )
 
 newtype CargoLabel
   = CargoDepKind DepEnvironment
@@ -155,6 +200,40 @@ instance ToJSON CargoProject
 
 instance AnalyzeProject CargoProject where
   analyzeProject _ = getDeps
+
+newtype CargoPackage = CargoPackage {unLicense :: Maybe Text.Text}
+  deriving (Eq, Show)
+
+cargoPackageCodec :: TomlCodec CargoPackage
+cargoPackageCodec = CargoPackage <$> dioptional (Toml.text "license") .= unLicense
+
+-- |Representation of a Cargo.toml file. See
+-- [here](https://doc.rust-lang.org/cargo/reference/manifest.html#the-license-and-license-file-fields)
+-- for a description of this format.
+newtype CargoToml = CargoToml
+  {cargoPackage :: CargoPackage}
+  deriving (Eq, Show)
+
+cargoTomlCodec :: TomlCodec CargoToml
+cargoTomlCodec = diwrap (Toml.table cargoPackageCodec "package")
+-- ^^ The above is a bit obscure. It's generating a TomlCodec CargoPackage and
+-- then using 'diwrap'/Coercible to make a TomlCodec CargoToml.  I can't use
+-- 'CargoToml <$>' because TomlCodec aliases (Codec a a) and only (Codec a)
+-- has a Functor instance, so I'd end up with a (Codec CargoPackage CargoToml).
+
+instance LicenseAnalyzeProject CargoProject where
+  licenseAnalyzeProject = analyzeLicenses . cargoToml
+
+analyzeLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m [LicenseResult]
+analyzeLicenses tomlPath = do
+  cargoToml <- readContentsToml cargoTomlCodec tomlPath
+  let licenseText = unLicense . cargoPackage $ cargoToml
+  pure
+    [ LicenseResult
+        { licenseFile = toFilePath tomlPath
+        , licensesFound = catMaybes [(License LicenseSPDX) <$> licenseText]
+        }
+    ]
 
 mkProject :: CargoProject -> DiscoveredProject CargoProject
 mkProject project =
