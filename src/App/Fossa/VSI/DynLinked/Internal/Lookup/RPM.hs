@@ -7,7 +7,7 @@ import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxPackageManage
 import App.Fossa.VSI.DynLinked.Util (runningLinux)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, recover)
-import Control.Monad.Trans.Maybe (MaybeT (MaybeT), runMaybeT)
+import Control.Monad (join)
 import Data.Char (isSpace)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -21,10 +21,10 @@ import Text.Megaparsec.Char.Lexer qualified as L
 type Parser = Parsec Void Text
 
 rpmTactic :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe DynamicDependency)
-rpmTactic root file | runningLinux = runMaybeT $ do
-  name <- MaybeT $ packageForFile root file
-  meta <- MaybeT $ packageMeta root name
-  pure . DynamicDependency file . Just $ ResolvedLinuxPackage LinuxPackageManagerRPM meta
+rpmTactic root file | runningLinux = do
+  name <- packageForFile root file
+  meta <- join <$> traverse (packageMeta root) name
+  pure (DynamicDependency file . Just . ResolvedLinuxPackage LinuxPackageManagerRPM <$> meta)
 rpmTactic _ _ = pure Nothing
 
 packageForFile :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe Text)

@@ -17,7 +17,6 @@ import App.Fossa.VSI.DynLinked.Util (runningLinux)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, fatalText, recover)
 import Control.Monad (join)
-import Control.Monad.Trans.Maybe (MaybeT (MaybeT), runMaybeT)
 import Data.Aeson (FromJSON, Result (Error, Success), ToJSON, Value, fromJSON, object, parseJSON, toJSON, withObject, (.:), (.=))
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -114,9 +113,9 @@ data APKLookupTable = APKLookupTable
   deriving (Eq, Show)
 
 buildLookupTable :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> m (Maybe APKLookupTable)
-buildLookupTable root | runningLinux = runMaybeT $ do
-  syft <- MaybeT . recover $ runSyft root
-  compileSyftOutput syft
+buildLookupTable root | runningLinux = do
+  syft <- recover $ runSyft root
+  traverse compileSyftOutput syft
 buildLookupTable _ = pure Nothing
 
 compileSyftOutput :: (Has Diagnostics sig m) => SyftData -> m APKLookupTable
