@@ -1,11 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
-
--- |
---Module : Cargo.CargoTomlSpec
---Description : Tests for parsing Cargo.toml files
 module Cargo.CargoTomlSpec (spec) where
 
 import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
+import Data.String.Conversion (toText)
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, toFilePath, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Cargo (
@@ -14,16 +11,22 @@ import Strategy.Cargo (
   cargoToml,
  )
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Spec, runIO, describe)
-import Types (License (..), LicenseResult (..), LicenseType (LicenseSPDX))
+import Test.Hspec (Spec, describe, runIO)
+import Types (License (..), LicenseResult (..), LicenseType (LicenseFile, LicenseSPDX))
 
-spdxLicense :: [License]
+spdxLicense :: License
 spdxLicense =
-  [ License
-      { licenseType = LicenseSPDX
-      , licenseValue = "MIT OR Apache-2.0"
-      }
-  ]
+  License
+    { licenseType = LicenseSPDX
+    , licenseValue = "MIT OR Apache-2.0"
+    }
+
+cargoLicenseFile :: FilePath -> License
+cargoLicenseFile filepath =
+  License
+    { licenseType = LicenseFile
+    , licenseValue = toText filepath
+    }
 
 licenseResult :: [License] -> Path a Dir -> [LicenseResult]
 licenseResult licenses baseDir =
@@ -49,12 +52,25 @@ licenseSpecs = do
     it' "Reads a Cargo.toml with an SPDX license field" $ do
       let baseDir = currentDir </> $(mkRelDir "test/Cargo/testdata/spdx_cargo_toml")
       licenses <- licenseAnalyzeProject (cargoProject baseDir)
-      licenses `shouldBe'` licenseResult spdxLicense baseDir
+      licenses `shouldBe'` licenseResult [spdxLicense] baseDir
 
     it' "Reads a Cargo.toml without any license information" $ do
       let baseDir = currentDir </> $(mkRelDir "test/Cargo/testdata/missing_cargo_license")
       licenses <- licenseAnalyzeProject (cargoProject baseDir)
       licenses `shouldBe'` licenseResult [] baseDir
+
+    it' "Reads a Cargo.toml with a license file" $ do
+      let baseDir = currentDir </> $(mkRelDir "test/Cargo/testdata/license_file")
+      let licenseFile = toFilePath (baseDir </> $(mkRelFile "LICENSE.txt"))
+      licenses <- licenseAnalyzeProject (cargoProject baseDir)
+      licenses `shouldBe'` licenseResult [cargoLicenseFile licenseFile] baseDir
+
+    it' "Reads a Cargo.toml with both an SPDX license and a file" $ do
+      let baseDir = currentDir </> $(mkRelDir "test/Cargo/testdata/spdx_license_and_file")
+      let licenseFile = toFilePath (baseDir </> $(mkRelFile "LICENSE.txt"))
+      licenses <- licenseAnalyzeProject (cargoProject baseDir)
+      licenses `shouldBe'` licenseResult [spdxLicense
+                                         , cargoLicenseFile licenseFile] baseDir
 
 spec :: Spec
 spec = licenseSpecs
