@@ -170,12 +170,6 @@ library
     App.Fossa.Config.ListTargets
     App.Fossa.Config.Report
     App.Fossa.Config.Test
-    App.Fossa.Config.VPS
-    App.Fossa.Config.VPS.Analyze
-    App.Fossa.Config.VPS.AOSP
-    App.Fossa.Config.VPS.Common
-    App.Fossa.Config.VPS.Report
-    App.Fossa.Config.VPS.Test
     App.Fossa.Container
     App.Fossa.Container.Analyze
     App.Fossa.Container.Scan
@@ -191,14 +185,9 @@ library
     App.Fossa.Report.Attribution
     App.Fossa.Subcommand
     App.Fossa.Test
-    App.Fossa.VPS
-    App.Fossa.VPS.AOSPNotice
-    App.Fossa.VPS.Report
-    App.Fossa.VPS.Scan
     App.Fossa.VPS.Scan.Core
     App.Fossa.VPS.Scan.RunWiggins
     App.Fossa.VPS.Scan.ScotlandYard
-    App.Fossa.VPS.Test
     App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
     App.Fossa.VSI.DynLinked.Internal.Binary

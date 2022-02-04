@@ -10,7 +10,6 @@ import App.Fossa.ListTargets qualified as ListTargets
 import App.Fossa.Report qualified as Report
 import App.Fossa.Subcommand (GetSeverity, SubCommand (..), runSubCommand)
 import App.Fossa.Test qualified as Test
-import App.Fossa.VPS qualified as VPS
 import App.Fossa.VSI.IAT.AssertUserDefinedBinaries qualified as LinkBins
 import App.Version (fullVersionDescription)
 import Control.Concurrent.CGroup (initRTSThreads)
@@ -69,7 +68,6 @@ subcommands = public <|> private
           , initCommand
           , decodeSubCommand Embed.dumpSubCommand
           , decodeSubCommand Log4j.log4jSubCommand
-          , decodeSubCommand VPS.vpsSubCommand
           ]
     public =
       hsubparser $
