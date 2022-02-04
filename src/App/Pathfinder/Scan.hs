@@ -38,6 +38,7 @@ import Strategy.NuGet.Nuspec qualified as Nuspec
 import System.Exit (die)
 import System.IO (BufferMode (NoBuffering), hSetBuffering, stderr, stdout)
 import Types
+import qualified Strategy.Cargo as Cargo
 
 scanMain :: Path Abs Dir -> Bool -> IO ()
 scanMain basedir debug = do
@@ -66,6 +67,7 @@ runAll basedir = do
   single Maven.discover
   single Nuspec.discover
   single Composer.discover
+  single Cargo.discover
   where
     single f = withDiscoveredProjects f basedir runSingle
 
