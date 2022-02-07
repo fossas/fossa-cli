@@ -13,13 +13,20 @@ import Strategy.Cargo (
  )
 import Test.Effect (it', shouldBe')
 import Test.Hspec (Spec, describe, runIO)
-import Types (License (..), LicenseResult (..), LicenseType (LicenseFile, LicenseSPDX))
+import Types (License (..), LicenseResult (..), LicenseType (LicenseFile, LicenseSPDX, UnknownType))
 
 spdxLicense :: License
 spdxLicense =
   License
     { licenseType = LicenseSPDX
     , licenseValue = "MIT OR Apache-2.0"
+    }
+
+slashSpdxLicense :: License
+slashSpdxLicense =
+  License
+    { licenseType = UnknownType
+    , licenseValue = "MIT/Apache-2.0"
     }
 
 cargoLicenseFile :: FilePath -> License
@@ -76,6 +83,11 @@ licenseSpecs = do
           , cargoLicenseFile licenseFile
           ]
           baseDir
+
+    it' "Reads a Cargo.toml with both SPDX licenses separated by '/'" $ do
+      let baseDir = currentDir </> $(mkRelDir "test/Cargo/testdata/slash_licenses")
+      licenses <- licenseAnalyzeProject (cargoProject baseDir)
+      licenses `shouldBe'` licenseResult [slashSpdxLicense] baseDir
 
 spec :: Spec
 spec = licenseSpecs

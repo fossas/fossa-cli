@@ -31,7 +31,7 @@ import Data.Aeson.Types (
  )
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, isJust)
 import Data.Set (Set)
 import Data.Text qualified as Text
 import Discovery.Walk (
@@ -69,7 +69,7 @@ import Types (
   GraphBreadth (Complete),
   License (License),
   LicenseResult (LicenseResult, licenseFile, licensesFound),
-  LicenseType (LicenseFile, LicenseSPDX),
+  LicenseType (LicenseFile, LicenseSPDX, UnknownType),
   VerConstraint (CEq),
   insertEnvironment,
  )
@@ -230,24 +230,39 @@ cargoTomlCodec = diwrap (Toml.table cargoPackageCodec "package")
 instance LicenseAnalyzeProject CargoProject where
   licenseAnalyzeProject = analyzeLicenses . cargoToml
 
+-- |Analyze a Cargo.toml for license information. The format is documented
+-- (here)[https://doc.rust-lang.org/cargo/reference/manifest.html#the-license-and-license-file-fields]
 analyzeLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m [LicenseResult]
 analyzeLicenses tomlPath = do
-  CargoToml{cargoPackage = cargoPackage} <- readContentsToml cargoTomlCodec tomlPath
+  CargoPackage
+    { unLicenseFile = maybeLicenseFile
+    , unLicense = maybeLicense
+    } <-
+    cargoPackage <$> readContentsToml cargoTomlCodec tomlPath
+
   -- The license-file field in Cargo.toml is relative to the dir of the
   -- Cargo.toml file. Generate an absolute path to license-file.
-  let licensePathText = fmap prependTomlDir . parseRelFile . Text.unpack =<< unLicenseFile cargoPackage
+  let licensePathText = fmap prependTomlDir . parseRelFile . Text.unpack =<< maybeLicenseFile
+  let licenseCon = selectLicenseCon <$> maybeLicense
   pure
     [ LicenseResult
         { licenseFile = toFilePath tomlPath
         , licensesFound =
             catMaybes
-              [ License LicenseSPDX <$> unLicense cargoPackage
+              [ License <$> licenseCon <*> maybeLicense
               , License LicenseFile <$> licensePathText
               ]
         }
     ]
   where
     prependTomlDir = Text.pack . toFilePath . (parent tomlPath </>)
+    textElem c = isJust . Text.findIndex (== c)
+    -- Old versions of Cargo allow '/' as a separator between SPDX values in
+    -- 'license'. In that case 'license' can't be treated as a LicenseSPDX.
+    selectLicenseCon licenseText =
+      if textElem '/' licenseText
+        then UnknownType
+        else LicenseSPDX
 
 mkProject :: CargoProject -> DiscoveredProject CargoProject
 mkProject project =
