@@ -1,6 +1,6 @@
 module App.Fossa.Analyze.Upload (
-  
-uploadSuccessfulAnalysis) where
+  uploadSuccessfulAnalysis,
+) where
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
