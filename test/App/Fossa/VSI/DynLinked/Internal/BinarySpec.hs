@@ -21,19 +21,11 @@ spec = pure ()
 import App.Fossa.VSI.DynLinked.Internal.Binary qualified as Binary
 import Data.Text (Text)
 import Data.Void (Void)
-import Path (Path, Abs, File, mkAbsFile)
+import Path (mkAbsFile)
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (Parsec, parse)
 import Data.Maybe (catMaybes)
-import Path.IO qualified as PIO
-import Data.Set (Set)
-import Data.Set qualified as Set
-import Control.Carrier.Diagnostics (runDiagnostics)
-import Effect.Exec (runExecIO)
-import qualified System.Info as SysInfo
 import Text.RawString.QQ (r)
-import Diag.Result (Result(Failure, Success), renderFailure)
-import Control.Carrier.Stack (runStack)
 
 spec :: Hspec.Spec
 spec = do

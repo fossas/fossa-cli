@@ -8,19 +8,21 @@ import App.Fossa.VSI.DynLinked.Internal.Lookup.APK (APKLookupTable (..), SyftArt
 import App.Fossa.VSI.DynLinked.Types (LinuxPackageMetadata (..))
 import App.Fossa.VSI.DynLinked.Util (fsRoot)
 import Control.Carrier.Diagnostics (runDiagnostics)
+import Control.Carrier.Stack (runStack)
 import Data.Aeson (toJSON)
 import Data.Map qualified as Map
+import Diag.Result (Result (..))
 import Path (mkRelFile, (</>))
 import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
 
 spec :: Spec
 spec = do
   describe "lookup table" $ do
-    result <- runIO . runDiagnostics $ compileSyftOutput syntheticData
+    result <- runIO . runStack . runDiagnostics $ compileSyftOutput syntheticData
 
     it "correctly builds lookup table" $ case result of
-      Left e -> expectationFailure ("could not construct lookup table: " <> show e)
-      Right table -> table `shouldBe` expectedLookupTable
+      Failure _ e -> expectationFailure ("could not construct lookup table: " <> show e)
+      Success _ table -> table `shouldBe` expectedLookupTable
 
 syntheticData :: SyftData
 syntheticData =
