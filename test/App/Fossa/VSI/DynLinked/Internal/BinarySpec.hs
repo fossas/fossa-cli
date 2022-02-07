@@ -55,14 +55,6 @@ spec = do
       realOutputUbuntu `shouldParseOutputInto` realOutputUbuntuExpected
       realOutputAlpine `shouldParseOutputInto` realOutputAlpineExpected
 
-  Hspec.describe "parse ldd output" $ do
-    executableTarget <- Hspec.runIO localExecutable
-    targetDependencies <- Hspec.runIO . runStack . runDiagnostics . runExecIO $ Binary.dynamicLinkedDependencies executableTarget
-
-    Hspec.it "should parse actual ldd output" $ case targetDependencies of
-      Failure ws eg -> Hspec.expectationFailure ("could not check file: ensure you've run `make build-test-data` locally. Error: " <> show (renderFailure ws eg))
-      Success _ result -> result `Hspec.shouldBe` localExecutableExpected
-
 parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Hspec.Expectation
 parseMatch parser input expected = parse parser "" input `shouldParse` expected
 
@@ -80,9 +72,6 @@ singleLineMoreSpaces = "    libc.so.6   =>    /lib/x86_64-linux-gnu/libc.so.6   
 
 singleLineExpected :: Maybe Binary.LocalDependency
 singleLineExpected = Just $ Binary.LocalDependency "libc.so.6" $(mkAbsFile "/lib/x86_64-linux-gnu/libc.so.6")
-
--- multipleLine :: Text
--- multipleLine = "libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)\n\tlibc2.so.6 => /lib/x86_64-linux-gnu/libc2.so.6 (0x00007fbea9a88000)"
 
 multipleLine :: Text
 multipleLine =
@@ -134,14 +123,5 @@ realOutputUbuntuExpected = [Binary.LocalDependency "libc.so.6" $(mkAbsFile "/lib
 
 realOutputAlpineExpected :: [Binary.LocalDependency]
 realOutputAlpineExpected = [Binary.LocalDependency "libc.musl-x86_64.so.1" $(mkAbsFile "/lib/ld-musl-x86_64.so.1")]
-
-localExecutable :: IO (Path Abs File)
-localExecutable = PIO.resolveFile' "test/App/Fossa/VSI/DynLinked/testdata/hello_standard"
-
--- While parsing ldd-shaped output works on every platform, only Linux can actually run ldd.
-localExecutableExpected :: Set (Path Abs File)
-localExecutableExpected = if SysInfo.os == "linux"
-  then Set.singleton $(mkAbsFile "/lib/ld-musl-x86_64.so.1")
-  else Set.empty
 
 #endif
