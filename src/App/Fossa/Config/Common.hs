@@ -5,7 +5,6 @@ module App.Fossa.Config.Common (
   CommonOpts (..),
   commonOpts,
   releaseGroupMetadataOpts,
-  filterOpt,
   pathOpt,
   targetOpt,
   baseDirArg,
@@ -73,11 +72,9 @@ import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts))
 import Options.Applicative (
   Parser,
   argument,
-  eitherReader,
   help,
   long,
   metavar,
-  option,
   optional,
   short,
   str,
@@ -122,12 +119,6 @@ releaseGroupMetadataOpts =
   ReleaseGroupMetadata
     <$> strOption (long "release-group-name" <> help "the name of the release group to add this project to")
     <*> strOption (long "release-group-release" <> help "the release of the release group to add this project to")
-
-filterOpt :: Parser TargetFilter
-filterOpt = option (eitherReader parseFilter) (long "filter" <> help "(deprecated) Analysis-Target filters (default: none)" <> metavar "ANALYSIS-TARGET")
-  where
-    parseFilter :: String -> Either String TargetFilter
-    parseFilter = first errorBundlePretty . runParser targetFilterParser "(Command-line arguments)" . toText
 
 pathOpt :: String -> Either String (Path Rel Dir)
 pathOpt = first show . parseRelDir

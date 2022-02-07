@@ -28,7 +28,6 @@ import App.Fossa.Config.Common (
   collectBaseDir,
   collectRevisionData',
   commonOpts,
-  filterOpt,
   metadataOpts,
   pathOpt,
   targetOpt,
@@ -128,7 +127,6 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeIncludeAllDeps :: Flag IncludeAll
   , analyzeBranch :: Maybe Text
   , analyzeMetadata :: ProjectMetadata
-  , analyzeBuildTargetFilters :: [TargetFilter]
   , analyzeOnlyTargets :: [TargetFilter]
   , analyzeExcludeTargets :: [TargetFilter]
   , analyzeOnlyPaths :: [Path Rel Dir]
@@ -195,7 +193,6 @@ cliParser =
     <*> flagOpt IncludeAll (long "include-unused-deps" <> help "Include all deps found, instead of filtering non-production deps.  Ignored by VSI.")
     <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
-    <*> many filterOpt
     <*> many (option (eitherReader targetOpt) (long "only-target" <> help "Only scan these targets. See targets.only in the fossa.yml spec." <> metavar "PATH"))
     <*> many (option (eitherReader targetOpt) (long "exclude-target" <> help "Exclude these targets from scanning. See targets.exclude in the fossa.yml spec." <> metavar "PATH"))
     <*> many (option (eitherReader pathOpt) (long "only-path" <> help "Only scan these paths. See paths.only in the fossa.yml spec." <> metavar "PATH"))
