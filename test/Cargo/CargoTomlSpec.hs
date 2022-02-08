@@ -56,25 +56,26 @@ cargoProject baseDir =
 licenseSpecs :: Spec
 licenseSpecs = do
   currentDir <- runIO getCurrentDir
+  let mkBaseDir testDir = currentDir </> $(mkRelDir "test/Cargo/testdata") </> testDir
   describe "Cargo.toml LicenseAnalyzeProject" $ do
     it' "Reads a Cargo.toml with an SPDX license field" $ do
-      let baseDir = currentDir </> $(mkRelDir "test/Cargo/testdata/spdx_cargo_toml")
+      let baseDir = mkBaseDir $(mkRelDir "spdx_cargo_toml")
       licenses <- licenseAnalyzeProject (cargoProject baseDir)
       licenses `shouldBe'` licenseResult [spdxLicense] baseDir
 
     it' "Reads a Cargo.toml without any license information" $ do
-      let baseDir = currentDir </> $(mkRelDir "test/Cargo/testdata/missing_cargo_license")
+      let baseDir = mkBaseDir $(mkRelDir "missing_cargo_license")
       licenses <- licenseAnalyzeProject (cargoProject baseDir)
       licenses `shouldBe'` licenseResult [] baseDir
 
     it' "Reads a Cargo.toml with a license file" $ do
-      let baseDir = currentDir </> $(mkRelDir "test/Cargo/testdata/license_file")
+      let baseDir = mkBaseDir $(mkRelDir "license_file")
       let licenseFile = toFilePath (baseDir </> $(mkRelFile "LICENSE.txt"))
       licenses <- licenseAnalyzeProject (cargoProject baseDir)
       licenses `shouldBe'` licenseResult [cargoLicenseFile licenseFile] baseDir
 
     it' "Reads a Cargo.toml with both an SPDX license and a file" $ do
-      let baseDir = currentDir </> $(mkRelDir "test/Cargo/testdata/spdx_license_and_file")
+      let baseDir = mkBaseDir $(mkRelDir "spdx_license_and_file")
       let licenseFile = toFilePath (baseDir </> $(mkRelFile "LICENSE.txt"))
       licenses <- licenseAnalyzeProject (cargoProject baseDir)
       licenses
@@ -85,7 +86,7 @@ licenseSpecs = do
           baseDir
 
     it' "Reads a Cargo.toml with both SPDX licenses separated by '/'" $ do
-      let baseDir = currentDir </> $(mkRelDir "test/Cargo/testdata/slash_licenses")
+      let baseDir = mkBaseDir $(mkRelDir "slash_licenses")
       licenses <- licenseAnalyzeProject (cargoProject baseDir)
       licenses `shouldBe'` licenseResult [slashSpdxLicense] baseDir
 
