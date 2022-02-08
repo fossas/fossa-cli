@@ -1,8 +1,10 @@
 # Fossa CLI Changelog
 
-## Unreleased
+## v3.0.18
 
 - Fully percent-encode sub-paths in generated URLs. ([#789](https://github.com/fossas/fossa-cli/pull/789))
+- Improve error tracking and outputs. ([#774](https://github.com/fossas/fossa-cli/pull/774))
+- Cabal: Fixed a filter error that treated cabal projects as stack projects. ([#787](https://github.com/fossas/fossa-cli/pull/787))
 
 ## v3.0.17
 
