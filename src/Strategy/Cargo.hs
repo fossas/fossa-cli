@@ -20,6 +20,7 @@ import Control.Effect.Diagnostics (
   Has,
   context,
   run,
+  warn,
  )
 import Data.Aeson.Types (
   FromJSON (parseJSON),
@@ -57,7 +58,7 @@ import Effect.Grapher (
 import Effect.ReadFS (ReadFS, readContentsToml)
 import GHC.Generics (Generic)
 import Graphing (Graphing, stripRoot)
-import Path (Abs, Dir, File, Path, Rel, parent, parseRelFile, toFilePath, (</>))
+import Path (Abs, Dir, File, Path, parent, parseRelFile, toFilePath, (</>))
 import Toml (TomlCodec, dioptional, diwrap, (.=))
 import Toml qualified
 import Types (
@@ -204,7 +205,8 @@ instance AnalyzeProject CargoProject where
 
 data CargoPackage = CargoPackage
   { license :: Maybe Text.Text
-  , cargoLicenseFile :: Maybe (Path Rel File)
+  , -- | Path relative to Cargo.toml containing the license
+    cargoLicenseFile :: Maybe FilePath
   }
   deriving (Eq, Show)
 
@@ -212,10 +214,7 @@ cargoPackageCodec :: TomlCodec CargoPackage
 cargoPackageCodec =
   CargoPackage
     <$> dioptional (Toml.text "license") .= license
-    <*> pathCodec
-  where
-    filePathCodec = dioptional (Toml.string "license-file") .= (fmap toFilePath . cargoLicenseFile)
-    pathCodec = (>>= parseRelFile) <$> filePathCodec
+    <*> dioptional (Toml.string "license-file") .= cargoLicenseFile
 
 -- |Representation of a Cargo.toml file. See
 -- [here](https://doc.rust-lang.org/cargo/reference/manifest.html)
@@ -239,10 +238,11 @@ instance LicenseAnalyzeProject CargoProject where
 analyzeLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m [LicenseResult]
 analyzeLicenses tomlPath = do
   pkg <- cargoPackage <$> readContentsToml cargoTomlCodec tomlPath
+  licensePathText <- maybe (pure Nothing) mkLicensePath (cargoLicenseFile pkg)
+
   -- The license-file field in Cargo.toml is relative to the dir of the
   -- Cargo.toml file. Generate an absolute path to license-file.
   let maybeLicense = license pkg
-  let licensePathText = prependTomlDir <$> cargoLicenseFile pkg
   let licenseCon = selectLicenseCon <$> maybeLicense
   pure
     [ LicenseResult
@@ -255,7 +255,12 @@ analyzeLicenses tomlPath = do
         }
     ]
   where
-    prependTomlDir = toText . toFilePath . (parent tomlPath </>)
+    mkLicensePath path = case parseRelFile path of
+      Just p -> pure . Just . toText $ parent tomlPath </> p
+      Nothing ->
+        warn ("Cannot parse 'license-file' value: " <> path)
+          >> pure Nothing
+
     textElem c = isJust . Text.findIndex (== c)
     -- Old versions of Cargo allow '/' as a separator between SPDX values in
     -- 'license'. In that case 'license' can't be treated as a LicenseSPDX.
