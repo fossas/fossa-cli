@@ -33,6 +33,7 @@ import Data.Foldable (for_, traverse_)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, isJust)
 import Data.Set (Set)
+import Data.String.Conversion (toText)
 import Data.Text qualified as Text
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
@@ -56,7 +57,7 @@ import Effect.Grapher (
 import Effect.ReadFS (ReadFS, readContentsToml)
 import GHC.Generics (Generic)
 import Graphing (Graphing, stripRoot)
-import Path (Abs, Dir, File, Path, parent, parseRelFile, toFilePath, (</>))
+import Path (Abs, Dir, File, Path, Rel, parent, parseRelFile, toFilePath, (</>))
 import Toml (TomlCodec, dioptional, diwrap, (.=))
 import Toml qualified
 import Types (
@@ -202,16 +203,19 @@ instance AnalyzeProject CargoProject where
   analyzeProject _ = getDeps
 
 data CargoPackage = CargoPackage
-  { unLicense :: Maybe Text.Text
-  , unLicenseFile :: Maybe Text.Text
+  { license :: Maybe Text.Text
+  , cargoLicenseFile :: Maybe (Path Rel File)
   }
   deriving (Eq, Show)
 
 cargoPackageCodec :: TomlCodec CargoPackage
 cargoPackageCodec =
   CargoPackage
-    <$> dioptional (Toml.text "license") .= unLicense
-    <*> dioptional (Toml.text "license-file") .= unLicenseFile
+    <$> dioptional (Toml.text "license") .= license
+    <*> pathCodec
+  where
+    filePathCodec = dioptional (Toml.string "license-file") .= (fmap toFilePath . cargoLicenseFile)
+    pathCodec = (>>= parseRelFile) <$> filePathCodec
 
 -- |Representation of a Cargo.toml file. See
 -- [here](https://doc.rust-lang.org/cargo/reference/manifest.html)
@@ -234,15 +238,11 @@ instance LicenseAnalyzeProject CargoProject where
 -- (here)[https://doc.rust-lang.org/cargo/reference/manifest.html#the-license-and-license-file-fields]
 analyzeLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m [LicenseResult]
 analyzeLicenses tomlPath = do
-  CargoPackage
-    { unLicenseFile = maybeLicenseFile
-    , unLicense = maybeLicense
-    } <-
-    cargoPackage <$> readContentsToml cargoTomlCodec tomlPath
-
+  pkg <- cargoPackage <$> readContentsToml cargoTomlCodec tomlPath
   -- The license-file field in Cargo.toml is relative to the dir of the
   -- Cargo.toml file. Generate an absolute path to license-file.
-  let licensePathText = fmap prependTomlDir . parseRelFile . Text.unpack =<< maybeLicenseFile
+  let maybeLicense = license pkg
+  let licensePathText = prependTomlDir <$> cargoLicenseFile pkg
   let licenseCon = selectLicenseCon <$> maybeLicense
   pure
     [ LicenseResult
@@ -255,7 +255,7 @@ analyzeLicenses tomlPath = do
         }
     ]
   where
-    prependTomlDir = Text.pack . toFilePath . (parent tomlPath </>)
+    prependTomlDir = toText . toFilePath . (parent tomlPath </>)
     textElem c = isJust . Text.findIndex (== c)
     -- Old versions of Cargo allow '/' as a separator between SPDX values in
     -- 'license'. In that case 'license' can't be treated as a LicenseSPDX.
