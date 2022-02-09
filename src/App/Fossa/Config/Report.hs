@@ -23,6 +23,7 @@ import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Timeout (Duration (Seconds))
+import Data.List (intercalate)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (..))
 import Effect.ReadFS (ReadFS)
@@ -43,7 +44,7 @@ import Options.Applicative (
  )
 import Path.IO (getCurrentDir)
 
-data ReportType = Attribution deriving (Eq, Ord)
+data ReportType = Attribution deriving (Eq, Ord, Enum, Bounded)
 
 instance Show ReportType where
   show Attribution = "attribution"
@@ -55,7 +56,15 @@ data ReportOutputFormat
   deriving (Eq, Ord, Show)
 
 reportInfo :: InfoMod a
-reportInfo = progDesc "Access various reports from FOSSA and print to stdout"
+reportInfo = progDesc desc
+  where
+    allReports :: [ReportType]
+    allReports = enumFromTo minBound maxBound
+
+    desc =
+      "Access various reports from FOSSA and print to stdout.  Currently available reports: ("
+        <> intercalate ", " (map show allReports)
+        <> ")"
 
 mkSubCommand :: (ReportConfig -> EffStack ()) -> SubCommand ReportCliOptions ReportConfig
 mkSubCommand = SubCommand "report" reportInfo parser loadConfig mergeOpts
