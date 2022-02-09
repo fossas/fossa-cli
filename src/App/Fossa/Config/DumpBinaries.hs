@@ -25,7 +25,7 @@ newtype DumpBinsOpts = DumpBinsOpts FilePath
 
 instance GetSeverity DumpBinsOpts
 
-newtype DumpBinsConfig = DumpBinsConfig (Path Abs Dir)
+newtype DumpBinsConfig = DumpBinsConfig (Path Abs Dir) deriving (Show)
 
 mergeOpts ::
   ( Has Diagnostics sig m

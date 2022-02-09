@@ -147,6 +147,7 @@ instance GetSeverity AnalyzeCliOpts where
 data AnalyzeConfig
   = Monorepo MonorepoAnalyzeConfig
   | Standard StandardAnalyzeConfig
+  deriving (Show)
 
 data MonorepoAnalyzeConfig = MonorepoAnalyzeConfig
   { monorepoAnalyzeOpts :: MonorepoAnalysisOpts

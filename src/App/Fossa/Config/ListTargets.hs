@@ -86,3 +86,4 @@ data ListTargetsConfig = ListTargetsConfig
   { baseDir :: BaseDir
   , experimental :: ExperimentalAnalyzeConfig
   }
+  deriving (Show)

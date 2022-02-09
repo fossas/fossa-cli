@@ -97,6 +97,7 @@ data ContainerScanConfig
   | TestCfg ContainerTestConfig
   | DumpCfg ContainerDumpScanConfig
   | ParseCfg ContainerParseFileConfig
+  deriving (Show)
 
 instance GetSeverity ContainerCommand where
   getSeverity = \case

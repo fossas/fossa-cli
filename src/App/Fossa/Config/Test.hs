@@ -68,6 +68,7 @@ data TestConfig = TestConfig
   , outputFormat :: OutputFormat
   , projectRevision :: ProjectRevision
   }
+  deriving (Show)
 
 testInfo :: InfoMod a
 testInfo = progDesc "Check for issues from FOSSA and exit non-zero when issues are found"
