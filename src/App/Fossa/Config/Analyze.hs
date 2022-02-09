@@ -92,6 +92,7 @@ import Options.Applicative (
   short,
   strOption,
   switch,
+  (<|>),
  )
 import Path (Abs, Dir, Path, Rel)
 import Path.IO (getCurrentDir)
@@ -197,16 +198,28 @@ cliParser =
     <*> many (option (eitherReader targetOpt) (long "exclude-target" <> help "Exclude these targets from scanning. See targets.exclude in the fossa.yml spec." <> metavar "PATH"))
     <*> many (option (eitherReader pathOpt) (long "only-path" <> help "Only scan these paths. See paths.only in the fossa.yml spec." <> metavar "PATH"))
     <*> many (option (eitherReader pathOpt) (long "exclude-path" <> help "Exclude these paths from scanning. See paths.exclude in the fossa.yml spec." <> metavar "PATH"))
-    <*> flagOpt VSIAnalysis (long "enable-vsi" <> hidden)
-    <*> flagOpt BinaryDiscovery (long "experimental-enable-binary-discovery" <> hidden)
-    <*> optional (strOption (long "experimental-link-project-binary" <> hidden))
+    <*> vsiEnableOpt
+    <*> flagOpt BinaryDiscovery (long "experimental-enable-binary-discovery" <> help "Reports binary files as unlicensed dependencies")
+    <*> optional (strOption (long "experimental-link-project-binary" <> metavar "DIR" <> help "Links output binary files to this project in FOSSA"))
     <*> many skipVSIGraphResolutionOpt
     <*> monorepoOpts
     <*> baseDirArg
 
-skipVSIGraphResolutionOpt :: Parser VSI.Locator
-skipVSIGraphResolutionOpt = (option (eitherReader parseLocator) (long "experimental-skip-vsi-graph" <> hidden))
+vsiEnableOpt :: Parser (Flag VSIAnalysis)
+vsiEnableOpt = visible <|> legacy
   where
+    visible = flagOpt VSIAnalysis (long "experimental-enable-vsi" <> help "Analyzes project files on disk to detect vendored open source libraries")
+    legacy = flagOpt VSIAnalysis (long "enable-vsi" <> hidden)
+
+skipVSIGraphResolutionOpt :: Parser VSI.Locator
+skipVSIGraphResolutionOpt = (option (eitherReader parseLocator) details)
+  where
+    details =
+      mconcat
+        [ long "experimental-skip-vsi-graph"
+        , metavar "LOCATOR"
+        , help "Skip resolving the dependencies of the given project in FOSSA"
+        ]
     parseLocator :: String -> Either String VSI.Locator
     parseLocator s = case VSI.parseLocator (toText s) of
       Left err -> Left $ toString (toText err)
