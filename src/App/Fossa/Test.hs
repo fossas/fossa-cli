@@ -16,11 +16,12 @@ import App.Types (
  )
 import Control.Algebra (Has)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
-import Control.Effect.Diagnostics (Diagnostics)
-import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.Lift (Lift)
 import Control.Timeout (timeout')
 import Data.Aeson qualified as Aeson
 import Data.String.Conversion (decodeUtf8)
+import Data.Text.Extra (showT)
 import Effect.Logger (
   Logger,
   Severity (SevInfo),
@@ -30,7 +31,6 @@ import Effect.Logger (
   pretty,
  )
 import Fossa.API.Types (Issues (..))
-import System.Exit (exitFailure)
 
 testSubCommand :: SubCommand TestCliOpts TestConfig
 testSubCommand = Config.mkSubCommand testMain
@@ -68,11 +68,9 @@ testMain config = runStickyLogger SevInfo $
             TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
             TestOutputPretty -> pure ()
         n -> do
-          logError $ "Test failed. Number of issues found: " <> pretty n
           if null (issuesIssues issues)
-            then logError "Check the webapp for more details, or use a full-access API key (currently using a push-only API key)"
+            then logError "Cannot display issues in the terminal. Check the webapp for more details, or use a full-access API key (currently using a push-only API key)."
             else case outputType of
               TestOutputPretty -> logError $ pretty issues
               TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
-
-          sendIO exitFailure
+          fatalText $ "The scan has revealed issues, test failed. Number of issues found: " <> showT n
