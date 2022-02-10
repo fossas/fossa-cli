@@ -1,76 +1,63 @@
+{-# LANGUAGE BlockArguments #-}
+
 module App.Fossa.Test (
-  testMain,
-  TestOutputType (..),
+  testSubCommand,
 ) where
 
 import App.Fossa.API.BuildWait (
-  timeout,
   waitForIssues,
   waitForScanCompletion,
  )
-import App.Fossa.ProjectInference (
-  inferProjectCached,
-  inferProjectDefault,
-  inferProjectFromVCS,
-  mergeOverride,
- )
+import App.Fossa.Config.Test (OutputFormat (TestOutputJson, TestOutputPretty), TestCliOpts, TestConfig)
+import App.Fossa.Config.Test qualified as Config
+import App.Fossa.Subcommand (SubCommand)
 import App.Types (
-  BaseDir (BaseDir),
-  OverrideProject,
   ProjectRevision (projectName, projectRevision),
  )
-import Control.Carrier.Diagnostics (logWithExit_, (<||>))
-import Control.Carrier.Stack (runStack)
+import Control.Algebra (Has)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
-import Control.Effect.Lift (sendIO)
+import Control.Effect.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.Lift (Lift)
+import Control.Timeout (timeout')
 import Data.Aeson qualified as Aeson
-import Data.Functor (void)
 import Data.String.Conversion (decodeUtf8)
-import Data.Text.IO (hPutStrLn)
-import Effect.Exec (runExecIO)
+import Data.Text.Extra (showT)
 import Effect.Logger (
+  Logger,
   Severity (SevInfo),
   logError,
   logInfo,
   logStdout,
   pretty,
-  withDefaultLogger,
  )
-import Effect.ReadFS (runReadFSIO)
-import Fossa.API.Types (ApiOpts, Issues (..))
-import System.Exit (exitFailure)
-import System.IO (stderr)
+import Fossa.API.Types (Issues (..))
 
-data TestOutputType
-  = -- | pretty output format for issues
-    TestOutputPretty
-  | -- | use json output for issues
-    TestOutputJson
+testSubCommand :: SubCommand TestCliOpts TestConfig
+testSubCommand = Config.mkSubCommand testMain
 
 testMain ::
-  BaseDir ->
-  ApiOpts ->
-  Severity ->
-  -- | timeout (seconds)
-  Int ->
-  TestOutputType ->
-  OverrideProject ->
-  IO ()
-testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType override = do
-  void . timeout timeoutSeconds . withDefaultLogger logSeverity . runStickyLogger SevInfo $
-    runStack . logWithExit_ . runReadFSIO . runExecIO $ do
-      revision <- mergeOverride override <$> (inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir)
-
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  ) =>
+  TestConfig ->
+  m ()
+testMain config = runStickyLogger SevInfo $
+  timeout' (Config.timeout config) $
+    \cancelFlag -> do
+      let apiOpts = Config.apiOpts config
+          revision = Config.projectRevision config
+          outputType = Config.outputFormat config
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForScanCompletion apiOpts revision
+      waitForScanCompletion apiOpts revision cancelFlag
 
       logSticky "[ Waiting for issue scan completion... ]"
-      issues <- waitForIssues apiOpts revision
+      issues <- waitForIssues apiOpts revision cancelFlag
       logSticky ""
       logInfo ""
 
@@ -81,16 +68,9 @@ testMain (BaseDir basedir) apiOpts logSeverity timeoutSeconds outputType overrid
             TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
             TestOutputPretty -> pure ()
         n -> do
-          logError $ "Test failed. Number of issues found: " <> pretty n
           if null (issuesIssues issues)
-            then logError "Check the webapp for more details, or use a full-access API key (currently using a push-only API key)"
+            then logError "A push-only API key was used, so issue details cannot be displayed. Check the webapp for issue details, or rerun this command with a full-access API key."
             else case outputType of
               TestOutputPretty -> logError $ pretty issues
               TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
-
-          sendIO exitFailure
-
-  -- we call exitSuccess/exitFailure in each branch above. the only way we get
-  -- here is if we time out
-  hPutStrLn stderr "Timed out while waiting for issues scan"
-  exitFailure
+          fatalText $ "The scan has revealed issues. Number of issues found: " <> showT n

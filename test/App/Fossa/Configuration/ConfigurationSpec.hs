@@ -1,20 +1,30 @@
-{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.Configuration.ConfigurationSpec (
   spec,
 ) where
 
-import App.Fossa.Configuration
+import App.Fossa.Config.ConfigFile (
+  ConfigFile (..),
+  ConfigProject (..),
+  ConfigRevision (..),
+  ConfigTargets (..),
+  ExperimentalConfigs (..),
+  ExperimentalGradleConfigs (ExperimentalGradleConfigs),
+  resolveConfigFile,
+ )
 import App.Types (ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Stack (runStack)
 import Data.Set qualified as Set
-import Effect.ReadFS
-import Path
+import Diag.Result (Result)
+import Effect.Logger (ignoreLogger)
+import Effect.ReadFS (runReadFSIO)
+import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
-import ResultUtil
+import ResultUtil (assertOnSuccess, expectFailure)
 import Test.Hspec qualified as T
+import Test.Hspec.Core.Spec (SpecM)
 import Types (BuildTarget (..), TargetFilter (..))
 
 expectedConfigFile :: ConfigFile
@@ -79,37 +89,64 @@ complexTarget = TypeDirTargetTarget "gradle" $(mkRelDir "./") (BuildTarget "spec
 directoryTarget :: TargetFilter
 directoryTarget = TypeDirTarget "maven" $(mkRelDir "root")
 
-testFile :: Path Rel File
-testFile = $(mkRelFile "test/App/Fossa/Configuration/testdata/validconfig.yml")
+maintestdir :: Path Rel Dir
+maintestdir = $(mkRelDir "test/App/Fossa/Configuration/testdata")
 
-badFile :: Path Rel File
-badFile = $(mkRelFile "test/App/Fossa/Configuration/testdata/invalidconfig.yml")
+ver2DefaultDir :: Path Rel Dir
+ver2DefaultDir = maintestdir </> $(mkRelDir "ver2-default")
 
-missingFile :: Path Rel File
-missingFile = $(mkRelFile "test/App/Fossa/Configuration/testdata/missingfile.yml")
+validDefaultDir :: Path Rel Dir
+validDefaultDir = maintestdir </> $(mkRelDir "valid-default")
 
-ver2configFile :: Path Rel File
-ver2configFile = $(mkRelFile "test/App/Fossa/Configuration/testdata/ver2config.yml")
+invalidDefaultDir :: Path Rel Dir
+invalidDefaultDir = maintestdir </> $(mkRelDir "invalid-default")
+
+expectSuccessfulParse :: Result (Maybe ConfigFile) -> T.Expectation
+expectSuccessfulParse act =
+  assertOnSuccess act $ \_ a -> case a of
+    Nothing -> T.expectationFailure "config file was Nothing after parsing"
+    Just result -> result `T.shouldBe` expectedConfigFile
 
 spec :: T.Spec
 spec = do
-  dir <- T.runIO getCurrentDir
+  curdir <- T.runIO getCurrentDir
 
-  config <- T.runIO . runStack . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> testFile)
-  badConfig <- T.runIO . runStack . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> badFile)
-  missingConfig <- T.runIO . runStack . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> missingFile)
-  ver2Config <- T.runIO . runStack . Diag.runDiagnostics $ runReadFSIO $ readConfigFile (dir </> ver2configFile)
+  let runIt :: Path Rel Dir -> Maybe FilePath -> SpecM a (Result (Maybe ConfigFile))
+      runIt dir maybeFile = T.runIO . runStack . ignoreLogger $ Diag.runDiagnostics $ runReadFSIO $ resolveConfigFile (curdir </> dir) maybeFile
+
+  -- @Nothing@ informs us to search for the default config file in that dir,
+  -- so we use ignore/warn semantics, with one exception.
+  validDefault <- runIt validDefaultDir Nothing
+  missingDefault <- runIt maintestdir Nothing
+  ver2Default <- runIt ver2DefaultDir Nothing
+  -- If the file exists, but is invalid YAML, that's most likely a real error,
+  -- so we error here
+  invalidDefault <- runIt invalidDefaultDir Nothing
+
+  -- @Just file@ informs us that the file is specified manually, so we fail
+  -- instead of trying to recover, so we don't ignore the file and do the wrong thing
+  validSpecified <- runIt validDefaultDir $ Just ".fossa.yml"
+  invalidSpecified <- runIt maintestdir $ Just "invalid-specified.yml"
+  missingSpecified <- runIt maintestdir $ Just "missing"
+  ver2Specified <- runIt maintestdir $ Just "ver2-specified.yml"
 
   T.describe "config file parser" $ do
-    T.it "parses a full configuration file correctly" $ do
-      assertOnSuccess config $ \_ a -> case a of
-        Nothing -> T.expectationFailure "config file was Nothing after parsing"
-        Just result -> result `T.shouldBe` expectedConfigFile
+    T.it "parses a full config file in the default location" $ expectSuccessfulParse validDefault
 
-    T.it "returns failure for a bad file" $ expectFailure badConfig
+    T.it "parses a full config file in a specified location" $ expectSuccessfulParse validSpecified
 
-    T.it "returns Nothing for missing file" $
-      assertOnSuccess missingConfig $ \_ result -> result `T.shouldBe` Nothing
+    T.it "always returns failure for a bad file" $ do
+      expectFailure invalidSpecified
+      expectFailure invalidDefault
+
+    T.it "returns Nothing for missing default file" $
+      assertOnSuccess missingDefault $ \_ result -> result `T.shouldBe` Nothing
 
     T.it "returns Nothing for incompatible file" $
-      assertOnSuccess ver2Config $ \_ result -> result `T.shouldBe` Nothing
+      assertOnSuccess ver2Default $ \_ result -> result `T.shouldBe` Nothing
+
+    T.it "fails for a missing specified file" $
+      expectFailure missingSpecified
+
+    T.it "fails for incompatible specified file" $
+      expectFailure ver2Specified

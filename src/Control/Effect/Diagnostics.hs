@@ -41,9 +41,9 @@ module Control.Effect.Diagnostics (
   module Diagnostic,
 ) where
 
-import Control.Algebra as X
-import Control.Carrier.Stack
+import Control.Algebra as X -- intentionally implicit
 import Control.Effect.Lift (Lift)
+import Control.Effect.Stack (Stack, context)
 import Control.Exception (IOException, SomeException (..))
 import Control.Exception.Extra (safeCatch)
 import Data.List.NonEmpty qualified as NE
@@ -51,7 +51,10 @@ import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Diag.Diagnostic as Diagnostic
+import Diag.Diagnostic as Diagnostic (
+  SomeDiagnostic (..),
+  ToDiagnostic (..),
+ )
 import Diag.Result (Result)
 
 ---------- Diagnostics

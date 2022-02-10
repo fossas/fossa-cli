@@ -2,51 +2,80 @@
 
 module App.Fossa.ListTargets (
   listTargetsMain,
+  listSubCommand,
 ) where
 
-import App.Fossa.Analyze (DiscoverFunc (DiscoverFunc), discoverFuncs)
-import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences)
+import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc), discoverFuncs)
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
+import App.Fossa.Config.ListTargets (
+  ListTargetsCliOpts,
+  ListTargetsConfig (..),
+  mkSubCommand,
+ )
+import App.Fossa.Subcommand (SubCommand)
 import App.Types (BaseDir (..))
-import Control.Carrier.AtomicCounter
+import Control.Carrier.AtomicCounter (
+  AtomicCounter,
+  Has,
+  runAtomicCounter,
+ )
 import Control.Carrier.Debug (ignoreDebug)
-import Control.Carrier.Finally
+import Control.Carrier.Finally (runFinally)
 import Control.Carrier.Reader (Reader, runReader)
-import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
-import Control.Carrier.TaskPool
+import Control.Carrier.TaskPool (
+  Progress (..),
+  TaskPool,
+  withTaskPool,
+ )
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Debug (Debug)
-import Control.Effect.Lift (Lift)
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Stack (Stack)
-import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Extra (encodeJSONToText)
 import Data.Foldable (for_, traverse_)
 import Data.Set qualified as Set
-import Data.Set.NonEmpty
+import Data.Set.NonEmpty (toSet)
 import Discovery.Projects (withDiscoveredProjects)
-import Effect.Exec
-import Effect.Logger
-import Effect.ReadFS
-import Path
+import Effect.Exec (Exec)
+import Effect.Logger (
+  Color (Cyan, Green, Yellow),
+  Logger,
+  Pretty (pretty),
+  Severity (SevInfo),
+  annotate,
+  color,
+  logDebug,
+  logInfo,
+ )
+import Effect.ReadFS (ReadFS)
+import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
 
-listTargetsMain :: AnalyzeExperimentalPreferences -> Severity -> BaseDir -> IO ()
-listTargetsMain preferences logSeverity (BaseDir basedir) = do
-  capabilities <- getNumCapabilities
+listSubCommand :: SubCommand ListTargetsCliOpts ListTargetsConfig
+listSubCommand = mkSubCommand listTargetsMain
 
-  runStack
-    . ignoreDebug
-    . withDefaultLogger logSeverity
+listTargetsMain ::
+  ( Has Logger sig m
+  , Has Exec sig m
+  , Has (Lift IO) sig m
+  , Has ReadFS sig m
+  , Has Stack sig m
+  ) =>
+  ListTargetsConfig ->
+  m ()
+listTargetsMain ListTargetsConfig{..} = do
+  capabilities <- sendIO getNumCapabilities
+
+  ignoreDebug
     . runStickyLogger SevInfo
     . runFinally
     . withTaskPool capabilities updateProgress
-    . runReadFSIO
-    . runExecIO
     . runAtomicCounter
-    . runReader preferences
-    $ runAll basedir
+    . runReader experimental
+    $ runAll (unBaseDir baseDir)
 
 runAll ::
   ( Has ReadFS sig m
@@ -54,11 +83,10 @@ runAll ::
   , Has Logger sig m
   , Has TaskPool sig m
   , Has (Lift IO) sig m
-  , MonadIO m
   , Has AtomicCounter sig m
   , Has Debug sig m
-  , Has (Reader AnalyzeExperimentalPreferences) sig m
   , Has Stack sig m
+  , Has (Reader ExperimentalAnalyzeConfig) sig m
   ) =>
   Path Abs Dir ->
   m ()

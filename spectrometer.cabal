@@ -99,6 +99,7 @@ common deps
     , parser-combinators           ^>=1.3
     , path                         ^>=0.9.0
     , path-io                      ^>=1.6.0
+    , pretty-simple                ^>=4.0
     , prettyprinter                >=1.6      && <1.8
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , random                       ^>=1.2.0
@@ -140,6 +141,8 @@ library
     App.Docs
     App.Fossa.Analyze
     App.Fossa.Analyze.Debug
+    App.Fossa.Analyze.Discover
+    App.Fossa.Analyze.Filter
     App.Fossa.Analyze.Graph
     App.Fossa.Analyze.GraphBuilder
     App.Fossa.Analyze.GraphMangler
@@ -147,14 +150,30 @@ library
     App.Fossa.Analyze.Project
     App.Fossa.Analyze.Record
     App.Fossa.Analyze.Types
+    App.Fossa.Analyze.Upload
     App.Fossa.API.BuildLink
     App.Fossa.API.BuildWait
     App.Fossa.ArchiveUploader
     App.Fossa.BinaryDeps
     App.Fossa.BinaryDeps.Jar
-    App.Fossa.Configuration
+    App.Fossa.Config.Analyze
+    App.Fossa.Config.Common
+    App.Fossa.Config.ConfigFile
+    App.Fossa.Config.Container
+    App.Fossa.Config.Container.Analyze
+    App.Fossa.Config.Container.Common
+    App.Fossa.Config.Container.Dump
+    App.Fossa.Config.Container.Parse
+    App.Fossa.Config.Container.Test
+    App.Fossa.Config.DumpBinaries
+    App.Fossa.Config.EnvironmentVars
+    App.Fossa.Config.LinkUserBinaries
+    App.Fossa.Config.ListTargets
+    App.Fossa.Config.Report
+    App.Fossa.Config.Test
     App.Fossa.Container
     App.Fossa.Container.Analyze
+    App.Fossa.Container.Scan
     App.Fossa.Container.Test
     App.Fossa.EmbeddedBinary
     App.Fossa.FossaAPIV1
@@ -165,15 +184,11 @@ library
     App.Fossa.ProjectInference
     App.Fossa.Report
     App.Fossa.Report.Attribution
+    App.Fossa.Subcommand
     App.Fossa.Test
-    App.Fossa.VPS.AOSPNotice
-    App.Fossa.VPS.NinjaGraph
-    App.Fossa.VPS.Report
-    App.Fossa.VPS.Scan
     App.Fossa.VPS.Scan.Core
     App.Fossa.VPS.Scan.RunWiggins
     App.Fossa.VPS.Scan.ScotlandYard
-    App.Fossa.VPS.Test
     App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
     App.Fossa.VSI.DynLinked.Internal.Binary
@@ -228,6 +243,8 @@ library
     Control.Effect.StickyLogger
     Control.Effect.TaskPool
     Control.Exception.Extra
+    Control.Timeout
+    Control.Timeout.Internal
     Data.Aeson.Extra
     Data.Conduit.Extra
     Data.FileEmbed.Extra
@@ -235,6 +252,7 @@ library
     Data.Functor.Extra
     Data.Glob
     Data.List.Extra
+    Data.Monoid.Extra
     Data.Set.NonEmpty
     Data.String.Conversion
     Data.Tagged
@@ -381,7 +399,6 @@ test-suite unit-tests
     App.Fossa.ManualDepsSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.Report.Log4jReportSpec
-    App.Fossa.VPS.NinjaGraphSpec
     App.Fossa.VSI.DynLinked.Internal.BinarySpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.APKSpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.DEBSpec
@@ -399,6 +416,7 @@ test-suite unit-tests
     Conda.CondaListSpec
     Conda.EnvironmentYmlSpec
     Control.Carrier.DiagnosticsSpec
+    Control.TimeoutSpec
     Dart.PubDepsSpec
     Dart.PubSpecLockSpec
     Dart.PubSpecSpec

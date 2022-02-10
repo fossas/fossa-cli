@@ -35,4 +35,9 @@ tell us this information, but sometimes, we have to propogate these environments
 
 ## Testing with effects
 
---
+Testing with `hspec` provides several useful assertion/organization methods.  Wrtiting business logic with
+`fused-effects` allows us to write expressive, convenient, and safe code.  Testing those `fused-effects`-based
+functions with `hspec` is a nightmare.  In short, `hspec` is `IO`-only, and `fused-effects` operates on free-ish
+monads (not really, but it does work similarly).  To make this easier for us, we created the `Test.Effect` module,
+and use that to mimic `hspec` for an effectful system.  [More details can be found here.](testing-with-effects.md)
+
