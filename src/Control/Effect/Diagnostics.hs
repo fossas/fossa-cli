@@ -41,16 +41,7 @@ module Control.Effect.Diagnostics (
   module Diagnostic,
 ) where
 
-import Control.Algebra as X (
-  Algebra (..),
-  Handler,
-  Has,
-  run,
-  send,
-  thread,
-  (~<~),
-  type (:+:) (..),
- )
+import Control.Algebra as X -- intentionally implicit
 import Control.Effect.Lift (Lift)
 import Control.Effect.Stack (Stack, context)
 import Control.Exception (IOException, SomeException (..))
