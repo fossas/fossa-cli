@@ -1,5 +1,8 @@
 # Fossa CLI Changelog
 
+## Unreleased
+- Gradle: improves error message when gradle, gradlew, gradlew.bat is not found, or fails.
+
 ## v3.0.18
 
 - Fully percent-encode sub-paths in generated URLs. ([#789](https://github.com/fossas/fossa-cli/pull/789))
