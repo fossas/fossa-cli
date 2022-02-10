@@ -293,6 +293,7 @@ library
     Strategy.Googlesource.RepoManifest
     Strategy.Gradle
     Strategy.Gradle.Common
+    Strategy.Gradle.Errors
     Strategy.Gradle.ResolutionApi
     Strategy.Haskell.Cabal
     Strategy.Haskell.Stack

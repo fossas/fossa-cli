@@ -15,7 +15,8 @@ import Network.HTTP.Req (
   runReq,
   useHttpsURI,
  )
-import Test.Hspec (Expectation, Spec, describe, shouldBe, xit)
+import Strategy.Gradle.Errors (refGradleDocUrl)
+import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 import Text.URI (mkURI)
 
 shouldRespondToGETWithHttpCode :: Text -> Int -> Expectation
@@ -27,13 +28,17 @@ shouldRespondToGETWithHttpCode uri expected = do
 spec :: Spec
 spec = do
   describe "userGuideUrl" $
-    xit "should be reachable" $
+    it "should be reachable" $
       userGuideUrl `shouldRespondToGETWithHttpCode` 200
 
   describe "newIssueUrl" $
-    xit "should be reachable" $
+    it "should be reachable" $
       newIssueUrl `shouldRespondToGETWithHttpCode` 200
 
   describe "fossaYmlDocUrl" $
-    xit "should be reachable" $
+    it "should be reachable" $
       fossaYmlDocUrl `shouldRespondToGETWithHttpCode` 200
+
+  describe "refGradleDocUrl" $
+    it "should be reachable" $
+      refGradleDocUrl `shouldRespondToGETWithHttpCode` 200

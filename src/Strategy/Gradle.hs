@@ -19,6 +19,7 @@ module Strategy.Gradle (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeExperimentalPreferences (..), AnalyzeProject, analyzeProject)
+import Control.Carrier.Diagnostics (errCtx)
 import Control.Carrier.Reader (Reader)
 import Control.Effect.Diagnostics (Diagnostics, Has, context, fatal, recover, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift, sendIO)
@@ -53,6 +54,7 @@ import Strategy.Gradle.Common (
   ConfigName (..),
   getDebugMessages,
  )
+import Strategy.Gradle.Errors (GradleCmdErrCtx (GradleCmdErrCtx))
 import Strategy.Gradle.ResolutionApi qualified as ResolutionApi
 import System.FilePath qualified as FilePath
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (GradleProjectType), FoundTargets (..), GraphBreadth (..))
@@ -94,9 +96,10 @@ discover dir = context "Gradle" $ do
 runGradle :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> (Text -> Command) -> m BL.ByteString
 runGradle dir cmd =
   do
-    walkUpDir dir "gradlew" >>= execThrow dir . cmd . toText
-    <||> (walkUpDir dir "gradlew.bat" >>= execThrow dir . cmd . toText)
-    <||> execThrow dir (cmd "gradle")
+    errCtx (GradleCmdErrCtx dir) $
+      (execThrow dir . cmd . toText =<< walkUpDir dir "gradlew")
+        <||> (execThrow dir . cmd . toText =<< walkUpDir dir "gradlew.bat")
+        <||> execThrow dir (cmd "gradle")
 
 -- |Search upwards in a directory for the existence of the supplied file.
 walkUpDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)
@@ -289,9 +292,9 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
 
   let text = decodeUtf8 $ BL.toStrict stdout
   let resolvedProjects = ResolutionApi.parseResolutionApiJsonDeps text
-  let graphFromResolutionApi = ResolutionApi.buildGraph resolvedProjects (onlyConfigurations)
+  let graphFromResolutionApi = ResolutionApi.buildGraph resolvedProjects onlyConfigurations
 
   -- Log debug messages as seen in gradle script
-  sequence_ $ logDebug . pretty <$> (getDebugMessages text)
+  sequence_ $ logDebug . pretty <$> getDebugMessages text
 
   context "Building dependency graph" $ pure graphFromResolutionApi
