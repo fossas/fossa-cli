@@ -73,4 +73,4 @@ testMain config = runStickyLogger SevInfo $
             else case outputType of
               TestOutputPretty -> logError $ pretty issues
               TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
-          fatalText $ "The scan has revealed issues, test failed. Number of issues found: " <> showT n
+          fatalText $ "The scan has revealed issues. Number of issues found: " <> showT n
