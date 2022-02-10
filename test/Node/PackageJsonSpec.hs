@@ -26,6 +26,8 @@ mockInput =
     , packageWorkspaces = PkgJsonWorkspaces []
     , packageDeps = Map.fromList [("packageOne", "^1.0.0")]
     , packageDevDeps = Map.fromList [("packageTwo", "^2.0.0")]
+    , packageLicense = Nothing
+    , packageLicenses = Nothing
     }
 
 packageOne :: Dependency
