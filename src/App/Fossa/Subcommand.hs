@@ -8,17 +8,21 @@ module App.Fossa.Subcommand (
 ) where
 
 import App.Fossa.Config.ConfigFile (ConfigFile)
-import App.Fossa.Config.EnvironmentVars (EnvVars, getEnvVars)
+import App.Fossa.Config.EnvironmentVars (EnvVars (envConfigDebug), getEnvVars)
 import Control.Carrier.Diagnostics (DiagnosticsC, context, logWithExit_)
 import Control.Carrier.Stack (StackC, runStack)
+import Data.String.Conversion (toStrict)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (
   LoggerC,
   Severity (SevInfo),
+  logInfo,
+  logStdout,
   withDefaultLogger,
  )
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
 import Options.Applicative (InfoMod, Parser)
+import Text.Pretty.Simple (pShowNoColor)
 
 data SubCommand cli cfg = SubCommand
   { commandName :: String
@@ -35,7 +39,7 @@ class GetSeverity a where
   getSeverity :: a -> Severity
   getSeverity = const SevInfo
 
-runSubCommand :: forall cli cfg. GetSeverity cli => SubCommand cli cfg -> Parser (IO ())
+runSubCommand :: forall cli cfg. (GetSeverity cli, Show cfg) => SubCommand cli cfg -> Parser (IO ())
 runSubCommand SubCommand{..} = uncurry runEffs . mergeAndRun <$> parser
   where
     -- We have to extract the severity from the options, which is not straightforward
@@ -45,7 +49,11 @@ runSubCommand SubCommand{..} = uncurry runEffs . mergeAndRun <$> parser
       configFile <- context "Loading config file" $ configLoader cliOptions
       envvars <- context "Fetching environment variables" getEnvVars
       cfg <- context "Validating configuration" $ optMerge configFile envvars cliOptions
-      perform cfg
+      if envConfigDebug envvars
+        then do
+          logInfo "Running in config-debug mode, no action will be performed"
+          logStdout (toStrict $ pShowNoColor cfg)
+        else perform cfg
 
 runEffs :: Severity -> EffStack () -> IO ()
 runEffs sev = runStack . withDefaultLogger sev . logWithExit_ . runReadFSIO . runExecIO

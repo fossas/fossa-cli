@@ -86,7 +86,7 @@ initCommand = command "init" (info runInit $ progDesc "Deprecated, no longer has
     runInit :: Parser (IO ())
     runInit = pure $ putStrLn "The 'init' command has been deprecated and no longer has any effect.  You may safely remove this command."
 
-decodeSubCommand :: GetSeverity a => SubCommand a b -> Mod CommandFields (IO ())
+decodeSubCommand :: (GetSeverity a, Show b) => SubCommand a b -> Mod CommandFields (IO ())
 decodeSubCommand cmd@SubCommand{..} = command commandName $ info (runSubCommand cmd) commandInfo
 
 mainPrefs :: ParserPrefs
