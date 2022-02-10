@@ -22,7 +22,8 @@ On Apple silicon, you'll need `llvm` installed. The simplest way to install it i
 brew install llvm@12
 ```
 
-We've had issues with `llvm@13` (the default installed by Homebrew as of this writing), so we recommend just starting with `llvm@12`.
+We've observed issues using `llvm@13` (the default installed by Homebrew as of this writing) compiling some libraries,
+so we recommend just starting with `llvm@12`.
 
 ### Quickstart Explanation
 
