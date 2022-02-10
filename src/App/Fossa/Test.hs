@@ -69,7 +69,7 @@ testMain config = runStickyLogger SevInfo $
             TestOutputPretty -> pure ()
         n -> do
           if null (issuesIssues issues)
-            then logError "Cannot display issues in the terminal. Check the webapp for more details, or use a full-access API key (currently using a push-only API key)."
+            then logError "A push-only API key was used, so issue details cannot be displayed. Check the webapp for issue details, or rerun this command with a full-access API key."
             else case outputType of
               TestOutputPretty -> logError $ pretty issues
               TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
