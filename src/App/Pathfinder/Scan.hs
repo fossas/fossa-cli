@@ -9,35 +9,56 @@ import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
-import Control.Carrier.Error.Either
-import Control.Carrier.Finally
-import Control.Carrier.Output.IO
+import Control.Carrier.Error.Either (Has)
+import Control.Carrier.Finally (runFinally)
+import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
-import Control.Carrier.TaskPool
-import Control.Concurrent
-import Control.Effect.Exception as Exc
+import Control.Carrier.TaskPool (
+  Progress (..),
+  TaskPool,
+  withTaskPool,
+ )
+import Control.Concurrent (getNumCapabilities)
+import Control.Effect.Exception as Exc (Lift)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack)
 import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO)
-import Data.Aeson
+import Data.Aeson (
+  KeyValue ((.=)),
+  ToJSON (toJSON),
+  encode,
+  object,
+ )
 import Data.Bool (bool)
 import Data.ByteString.Lazy qualified as BL
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
 import Discovery.Projects (withDiscoveredProjects)
-import Effect.Exec
-import Effect.Logger
-import Effect.ReadFS
-import Path
+import Effect.Exec (Exec, runExecIO)
+import Effect.Logger (
+  Color (Cyan, Green, Yellow),
+  Logger,
+  Pretty (pretty),
+  Severity (SevDebug, SevInfo, SevWarn),
+  annotate,
+  color,
+  withDefaultLogger,
+ )
+import Effect.ReadFS (ReadFS, runReadFSIO)
+import Path (Abs, Dir, Path)
 import Path.IO qualified as PIO
+import Strategy.Cargo qualified as Cargo
 import Strategy.Composer qualified as Composer
 import Strategy.Maven qualified as Maven
 import Strategy.NuGet.Nuspec qualified as Nuspec
 import System.Exit (die)
 import System.IO (BufferMode (NoBuffering), hSetBuffering, stderr, stdout)
-import Types
+import Types (
+  DiscoveredProject (projectData, projectType),
+  LicenseResult,
+ )
 
 scanMain :: Path Abs Dir -> Bool -> IO ()
 scanMain basedir debug = do
@@ -66,6 +87,7 @@ runAll basedir = do
   single Maven.discover
   single Nuspec.discover
   single Composer.discover
+  single Cargo.discover
   where
     single f = withDiscoveredProjects f basedir runSingle
 

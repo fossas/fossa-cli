@@ -14,12 +14,17 @@
 
 # Styling Preferences
 - suggest: {lhs: "asum [x, y]", rhs: x <|> y}
-- suggest: {lhs: return x, rhs: pure x}
+- suggest: {lhs: return, rhs: pure}
 - suggest: {lhs: () <$ x, rhs: Control.Monad.void x}
 - suggest: {lhs: x <&> f, rhs: f <$> x}
-- suggest: {lhs: Data.Text.pack x, rhs: Data.String.Conversion.toText x}
-- suggest: {lhs: Data.Text.unpack x, rhs: Data.String.Conversion.toString x}
-- suggest: {lhs: Data.List.foldl x, rhs: Data.List.foldl' x}
+
+- suggest: {lhs: Data.Text.pack, rhs: Data.String.Conversion.toText}
+- ignore: {name: "Use toText", within: ["Data.String.Conversion"]}
+
+- suggest: {lhs: Data.Text.unpack, rhs: Data.String.Conversion.toString}
+- ignore: {name: "Use toString", within: ["Data.String.Conversion"]}
+
+- suggest: {lhs: Data.List.foldl, rhs: Data.List.foldl'}
 - suggest: {lhs: "(Data.Set.size x) == 0" , rhs: "Data.Set.null x"}
 - suggest: {lhs: "(Data.Set.size x) /= 0" , rhs: "not $ Data.Set.null x"}
 

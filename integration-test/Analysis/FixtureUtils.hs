@@ -25,6 +25,7 @@ import Control.Monad (forM)
 import Data.Conduit (runConduitRes, (.|))
 import Data.Conduit.Binary qualified as CB
 import Data.Function ((&))
+import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Diag.Result (EmittedWarn, Result (Failure, Success), renderFailure)
@@ -180,7 +181,7 @@ getArtifact target = sendIO $ do
       sendIO $ PIO.ensureDir extractionTarget
       archiveExtractFolder <- sendIO $ PIO.makeAbsolute extractionTarget
 
-      let urlStr = Text.unpack . renderUrl $ url
+      let urlStr = toString . renderUrl $ url
       case selectUnarchiver urlStr of
         Nothing -> pure . Left $ "Failed to extract file from " <> urlStr
         Just extractor -> do
