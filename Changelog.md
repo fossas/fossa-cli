@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## Unreleased 
+
+- Fossa API: Uses `SSL_CERT_FILE`, and `SSL_CERT_DIR` environment variable for certificates when provided. 
+
 ## v3.0.18
 
 - Fully percent-encode sub-paths in generated URLs. ([#789](https://github.com/fossas/fossa-cli/pull/789))

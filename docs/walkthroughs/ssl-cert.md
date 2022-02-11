@@ -17,7 +17,7 @@ Fossa-cli looks for certificate store in the following paths:
 - `/usr/local/share/certs/`
 - `/etc/ssl/cert.pem`
 
-#### Osx
+#### macOS
 
 Fossa-cli creates a certificate store by finding all signed certificates.  
 
