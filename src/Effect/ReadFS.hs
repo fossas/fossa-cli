@@ -36,7 +36,7 @@ module Effect.ReadFS (
   readContentsToml,
   readContentsYaml,
   readContentsXML,
-  ParsingFileType(..),
+  ParsingFileType (..),
 
   -- * File identity information
   contentIsBinary,
@@ -72,7 +72,6 @@ import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Toml qualified
 
-
 data ReadFSF a where
   ReadContentsBS' :: SomeBase File -> ReadFSF (Either ReadFSErr ByteString)
   ReadContentsBSLimit' :: SomeBase File -> Int -> ReadFSF (Either ReadFSErr ByteString)
@@ -85,8 +84,8 @@ data ReadFSF a where
 
 type ReadFS = Simple ReadFSF
 
-data ParsingFileType = 
-  PythonRequirementFiletype
+data ParsingFileType
+  = PythonRequirementFiletype
   | OtherFiletype
   deriving (Show, Eq, Ord, Generic)
 
@@ -133,7 +132,6 @@ instance ToDiagnostic ReadFSErr where
         , "If you believe this to be a defect - please report bug with copy of the file"
         , "to FOSSA support: https://support.fossa.com/hc/en-us."
         ]
-
     FileParseError path err OtherFiletype ->
       vsep
         [ "Error parsing file: " <> pretty path <> "."

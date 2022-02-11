@@ -17,7 +17,7 @@ module Strategy.Go.Gomod (
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, context, recover)
+import Control.Effect.Diagnostics (Diagnostics, context, recover, warnOnErr)
 import Data.Char (isSpace)
 import Data.Foldable (traverse_)
 import Data.Functor (void)
@@ -35,6 +35,9 @@ import Effect.Grapher (direct, label)
 import Effect.ReadFS (ReadFS, readContentsParser)
 import Graphing (Graphing)
 import Path (Abs, File, Path, parent)
+import Strategy.Go.Errors (
+  GoModTransitivesNotFilled (..),
+ )
 import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types (
   GolangGrapher,
@@ -343,7 +346,7 @@ analyze' file = do
 
     context "Building dependency graph" $ buildGraph gomod
 
-    _ <- recover (fillInTransitive (parent file))
+    _ <- recover $ warnOnErr GoModTransitivesNotFilled $ (fillInTransitive (parent file))
     pure ()
   pure (graph, Partial)
 

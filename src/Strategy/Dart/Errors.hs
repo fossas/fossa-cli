@@ -1,6 +1,6 @@
 module Strategy.Dart.Errors (
-    PubspecLimitation(..),
-    refPubDocUrl,
+  PubspecLimitation (..),
+  refPubDocUrl,
 ) where
 
 import App.Docs (strategyLangDocUrl)

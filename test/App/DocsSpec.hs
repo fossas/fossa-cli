@@ -15,8 +15,10 @@ import Network.HTTP.Req (
   runReq,
   useHttpsURI,
  )
-import Strategy.Gradle.Errors (refGradleDocUrl)
 import Strategy.Dart.Errors (refPubDocUrl)
+import Strategy.Elixir.MixTree (refMixDocUrl)
+import Strategy.Go.Errors (refGoModDocUrl)
+import Strategy.Gradle.Errors (refGradleDocUrl)
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 import Text.URI (mkURI)
 
@@ -44,6 +46,14 @@ spec = do
     it "should be reachable" $
       refGradleDocUrl `shouldRespondToGETWithHttpCode` 200
 
-  describe "refPubDocUrl" $ 
+  describe "refPubDocUrl" $
     it "should be reachable" $
       refPubDocUrl `shouldRespondToGETWithHttpCode` 200
+
+  describe "refMixDocUrl" $
+    it "should be reachable" $
+      refMixDocUrl `shouldRespondToGETWithHttpCode` 200
+
+  describe "refGoModDocUrl" $
+    it "should be reachable" $
+      refGoModDocUrl `shouldRespondToGETWithHttpCode` 200

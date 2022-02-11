@@ -18,6 +18,9 @@ import Effect.Grapher
 import Effect.ReadFS
 import Graphing (Graphing)
 import Path
+import Strategy.Go.Errors (
+  GoModTransitivesNotFilled (..),
+ )
 import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
 import Toml (TomlCodec, (.=))
@@ -57,7 +60,7 @@ analyze' ::
 analyze' file = graphingGolang $ do
   golock <- readContentsToml golockCodec file
   context "Building dependency graph" $ buildGraph (lockProjects golock)
-  _ <- recover (fillInTransitive (parent file))
+  _ <- recover $ warnOnErr GoModTransitivesNotFilled (fillInTransitive (parent file))
   pure ()
 
 buildGraph :: Has GolangGrapher sig m => [Project] -> m ()

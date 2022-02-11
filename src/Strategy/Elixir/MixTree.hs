@@ -15,8 +15,12 @@ module Strategy.Elixir.MixTree (
   -- * Graphs and Analyzers
   buildGraph,
   analyze,
+
+  -- * Reference docs
+  refMixDocUrl,
 ) where
 
+import App.Docs (strategyLangDocUrl)
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context, warn)
 import Control.Monad (void)
@@ -24,11 +28,12 @@ import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Aeson (ToJSON)
 import Data.Foldable (asum)
 import Data.Functor (($>))
+import Data.List.NonEmpty (fromList)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, isNothing, mapMaybe)
-import Data.Set qualified as Set 
 import Data.Set (Set, insert, notMember, unions)
+import Data.Set qualified as Set
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
@@ -47,6 +52,7 @@ import DepTypes (
     COr
   ),
  )
+import Diag.Diagnostic (ActionableDiagCtx (..), ToDiagnostic (renderDiagnostic), renderActionable)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
 import Effect.Logger
 import GHC.Generics (Generic)
@@ -72,19 +78,11 @@ import Text.Megaparsec (
 import Text.Megaparsec.Char (alphaNumChar, char, eol, newline, string)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 import Types (DependencyResults (..), GraphBreadth (..))
-import App.Docs (strategyLangDocUrl)
-
-refMixDocUrl :: Text
-refMixDocUrl = strategyLangDocUrl "elixir/mix.md"
-
-
-missingDepVersionsMsg :: Text
-missingDepVersionsMsg = "Some of dependencies versions were not resolved from `mix deps` and `mix deps.tree`. Has `mix deps.get` and `mix compile` been executed?"
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => MixProject -> m DependencyResults
 analyze project = do
   let dir = mixDir project
-  
+
   -- Get all dependencies
   depsAllEnvTree <-
     context "Identifying relationship among dependencies" $
@@ -92,7 +90,7 @@ analyze project = do
 
   let depsNotSupported = notSupportedDeps depsAllEnvTree
   let depsAllEnvTreeSupported = supportedMixDeps depsAllEnvTree
-  
+
   depsAllResolved <-
     context "Inferring dependencies versioning" $
       Map.filter (supportedSCM . depResolvedSCM)
@@ -100,13 +98,14 @@ analyze project = do
 
   -- Reminder to get and compile dependencies, if not already done so.
   _ <- if missingResolvedVersions depsAllResolved then warn missingDepVersionsMsg else pure ()
-  
+
   -- TODO-MEGH:
-  _ <- if (Set.null depsNotSupported) then warn missingDepVersionsMsg else pure () 
-  
-  graph <- context "Building dependency graph" $
-    pure (buildGraph depsAllEnvTreeSupported depsAllResolved)
-  
+  _ <- if (Set.null depsNotSupported) then warn missingDepVersionsMsg else pure ()
+
+  graph <-
+    context "Building dependency graph" $
+      pure (buildGraph depsAllEnvTreeSupported depsAllResolved)
+
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -170,6 +169,27 @@ mixDepTreeCmd =
     , cmdAllowErr = Never
     }
 
+refMixDocUrl :: Text
+refMixDocUrl = strategyLangDocUrl "elixir/mix.md"
+
+missingDepVersionsMsg :: Text
+missingDepVersionsMsg = "Some of dependencies versions were not resolved from `mix deps` and `mix deps.tree`. Has `mix deps.get` and `mix compile` been executed?"
+
+newtype MixSCMLimitation = MixSCMLimitation (Set (PackageName, DepSCM))
+
+instance ToDiagnostic MixSCMLimitation where
+  renderDiagnostic (MixSCMLimitation sets) =
+    renderActionable $
+      ActionableDiagCtx
+        { description =
+            vsep
+              [ "Mix (elixir) analysis only supports git and hex scm. Listed packages were not analyzed:"
+              , indent 4 (vsep $ map (\(pkg, _) -> pretty $ unPackageName pkg) $ Set.toList sets)
+              ]
+        , documentationLinks = fromList [refMixDocUrl]
+        , troubleshootingSteps = Nothing
+        }
+
 type Parser = Parsec Void Text
 
 sc :: Parser ()
@@ -212,7 +232,7 @@ supportedMixDeps = mapMaybe isSupported
               , subDeps = supportedMixDeps (subDeps m)
               }
         else Nothing
-        
+
 notSupportedDeps :: [MixDep] -> Set (PackageName, DepSCM)
 notSupportedDeps deps = unions $ map (flatten mempty) deps
   where

@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
 {-# HLINT ignore "Move brackets to avoid $" #-}
 module Strategy.Pub (discover) where
 
@@ -12,11 +13,11 @@ import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Path
+import Strategy.Dart.Errors (PubspecLimitation (PubspecLimitation))
 import Strategy.Dart.PubDeps (analyzeDepsCmd)
 import Strategy.Dart.PubSpec (analyzePubSpecFile)
 import Strategy.Dart.PubSpecLock (analyzePubLockFile)
 import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (PubProjectType))
-import Strategy.Dart.Errors (PubspecLimitation(PubspecLimitation))
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PubProject]
 discover dir = context "Pub" $ do

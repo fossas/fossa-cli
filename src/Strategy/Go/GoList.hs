@@ -25,6 +25,9 @@ import Effect.Exec (
 import Effect.Grapher (deep, direct, label)
 import Graphing (Graphing)
 import Path
+import Strategy.Go.Errors (
+  GoModTransitivesNotFilled (..),
+ )
 import Strategy.Go.Transitive (decodeMany, fillInTransitive)
 import Strategy.Go.Types (
   GolangGrapher,
@@ -80,7 +83,7 @@ analyze' dir = do
       Left (path, err) -> fatal (CommandParseError goListJsonCmd (toText (formatError path err)))
       Right (mods :: [GoListModule]) -> do
         context "Adding direct dependencies" $ buildGraph (toRequires mods)
-        _ <- recover (fillInTransitive dir)
+        _ <- recover $ warnOnErr GoModTransitivesNotFilled (fillInTransitive dir)
         pure ()
   pure (graph, Complete)
   where
