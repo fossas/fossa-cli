@@ -30,11 +30,13 @@ module Effect.ReadFS (
   listDir',
 
   -- * Parsing file contents
+  readContentsParserOf,
   readContentsParser,
   readContentsJson,
   readContentsToml,
   readContentsYaml,
   readContentsXML,
+  ParsingFileType(..),
 
   -- * File identity information
   contentIsBinary,
@@ -70,6 +72,7 @@ import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Toml qualified
 
+
 data ReadFSF a where
   ReadContentsBS' :: SomeBase File -> ReadFSF (Either ReadFSErr ByteString)
   ReadContentsBSLimit' :: SomeBase File -> Int -> ReadFSF (Either ReadFSErr ByteString)
@@ -82,11 +85,20 @@ data ReadFSF a where
 
 type ReadFS = Simple ReadFSF
 
+data ParsingFileType = 
+  PythonRequirementFiletype
+  | OtherFiletype
+  deriving (Show, Eq, Ord, Generic)
+
+instance ToJSON ParsingFileType
+instance FromJSON ParsingFileType
+instance RecordableValue ParsingFileType
+
 data ReadFSErr
   = -- | A file couldn't be read. file, err
     FileReadError FilePath Text
-  | -- | A file's contents couldn't be parsed. TODO: ask user to help with this. file, err
-    FileParseError FilePath Text
+  | -- | A file's contents couldn't be parsed.
+    FileParseError FilePath Text ParsingFileType
   | -- | An IOException was thrown when resolving a file/directory
     ResolveError FilePath FilePath Text
   | -- | An IOException was thrown when listing a directory
@@ -107,7 +119,31 @@ deriving instance Ord (ReadFSF a)
 instance ToDiagnostic ReadFSErr where
   renderDiagnostic = \case
     FileReadError path err -> "Error reading file " <> pretty path <> ":" <> line <> indent 4 (pretty err)
-    FileParseError path err -> "Error parsing file " <> pretty path <> ":" <> line <> indent 4 (pretty err)
+    FileParseError path err PythonRequirementFiletype ->
+      vsep
+        [ "Error parsing file: " <> pretty path <> "."
+        , ""
+        , "We occasionally find files we think are python requirements.txt files but"
+        , "aren't. If this file isn't a python requirements.txt file, this error can"
+        , "be safely ignored."
+        , ""
+        , "Details:"
+        , indent 4 (pretty err)
+        , ""
+        , "If you believe this to be a defect - please report bug with copy of the file"
+        , "to FOSSA support: https://support.fossa.com/hc/en-us."
+        ]
+
+    FileParseError path err OtherFiletype ->
+      vsep
+        [ "Error parsing file: " <> pretty path <> "."
+        , ""
+        , "Details:"
+        , indent 4 (pretty err)
+        , ""
+        , "If you believe this to be a defect - please report bug with copy of the file"
+        , "to FOSSA support: https://support.fossa.com/hc/en-us."
+        ]
     ResolveError base rel err ->
       "Error resolving a relative file:" <> line
         <> indent
@@ -180,12 +216,20 @@ contentIsBinary file = do
 
 type Parser = Parsec Void Text
 
+-- | Read from a file, parsing its content. If error is encountered, it renders error with provided parsing filetype.
+readContentsParserOf :: forall a sig m. (Has ReadFS sig m, Has Diagnostics sig m) => ParsingFileType -> Parser a -> Path Abs File -> m a
+readContentsParserOf filetype parser file = context ("Parsing file '" <> toText (fromAbsFile file) <> "'") $ do
+  contents <- readContentsText file
+  case runParser parser (fromAbsFile file) contents of
+    Left err -> fatal (FileParseError (fromAbsFile file) (toText (errorBundlePretty err)) filetype)
+    Right a -> pure a
+
 -- | Read from a file, parsing its contents
 readContentsParser :: forall a sig m. (Has ReadFS sig m, Has Diagnostics sig m) => Parser a -> Path Abs File -> m a
 readContentsParser parser file = context ("Parsing file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsText file
   case runParser parser (fromAbsFile file) contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (toText (errorBundlePretty err)))
+    Left err -> fatal (FileParseError (fromAbsFile file) (toText (errorBundlePretty err)) OtherFiletype)
     Right a -> pure a
 
 -- | Read JSON from a file
@@ -193,14 +237,14 @@ readContentsJson :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Pat
 readContentsJson file = context ("Parsing JSON file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsBS file
   case eitherDecodeStrict contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (toText err))
+    Left err -> fatal (FileParseError (fromAbsFile file) (toText err) OtherFiletype)
     Right a -> pure a
 
 readContentsToml :: (Has ReadFS sig m, Has Diagnostics sig m) => Toml.TomlCodec a -> Path Abs File -> m a
 readContentsToml codec file = context ("Parsing TOML file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsText file
   case Toml.decode codec contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (Toml.prettyTomlDecodeErrors err))
+    Left err -> fatal (FileParseError (fromAbsFile file) (Toml.prettyTomlDecodeErrors err) OtherFiletype)
     Right a -> pure a
 
 -- | Read YAML from a file
@@ -208,7 +252,7 @@ readContentsYaml :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Pat
 readContentsYaml file = context ("Parsing YAML file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsBS file
   case decodeEither' contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (toText $ prettyPrintParseException err))
+    Left err -> fatal (FileParseError (fromAbsFile file) (toText $ prettyPrintParseException err) OtherFiletype)
     Right a -> pure a
 
 -- | Read XML from a file
@@ -216,7 +260,7 @@ readContentsXML :: (FromXML a, Has ReadFS sig m, Has Diagnostics sig m) => Path 
 readContentsXML file = context ("Parsing XML file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsText file
   case parseXML contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (xmlErrorPretty err))
+    Left err -> fatal (FileParseError (fromAbsFile file) (xmlErrorPretty err) OtherFiletype)
     Right a -> pure a
 
 type ReadFSIOC = SimpleC ReadFSF

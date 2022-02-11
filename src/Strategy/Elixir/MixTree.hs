@@ -18,7 +18,7 @@ module Strategy.Elixir.MixTree (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics (Diagnostics, Has, context, warn)
+import Control.Effect.Diagnostics (Diagnostics, context, warn)
 import Control.Monad (void)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Aeson (ToJSON)
@@ -27,6 +27,8 @@ import Data.Functor (($>))
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, isNothing, mapMaybe)
+import Data.Set qualified as Set 
+import Data.Set (Set, insert, notMember, unions)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
@@ -46,6 +48,7 @@ import DepTypes (
   ),
  )
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
+import Effect.Logger
 import GHC.Generics (Generic)
 import Graphing (Graphing, unfold)
 import Path
@@ -69,6 +72,11 @@ import Text.Megaparsec (
 import Text.Megaparsec.Char (alphaNumChar, char, eol, newline, string)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 import Types (DependencyResults (..), GraphBreadth (..))
+import App.Docs (strategyLangDocUrl)
+
+refMixDocUrl :: Text
+refMixDocUrl = strategyLangDocUrl "elixir/mix.md"
+
 
 missingDepVersionsMsg :: Text
 missingDepVersionsMsg = "Some of dependencies versions were not resolved from `mix deps` and `mix deps.tree`. Has `mix deps.get` and `mix compile` been executed?"
@@ -76,10 +84,15 @@ missingDepVersionsMsg = "Some of dependencies versions were not resolved from `m
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => MixProject -> m DependencyResults
 analyze project = do
   let dir = mixDir project
+  
   -- Get all dependencies
   depsAllEnvTree <-
     context "Identifying relationship among dependencies" $
-      supportedMixDeps <$> execParser mixTreeCmdOutputParser dir mixDepTreeCmd
+      execParser mixTreeCmdOutputParser dir mixDepTreeCmd
+
+  let depsNotSupported = notSupportedDeps depsAllEnvTree
+  let depsAllEnvTreeSupported = supportedMixDeps depsAllEnvTree
+  
   depsAllResolved <-
     context "Inferring dependencies versioning" $
       Map.filter (supportedSCM . depResolvedSCM)
@@ -87,7 +100,13 @@ analyze project = do
 
   -- Reminder to get and compile dependencies, if not already done so.
   _ <- if missingResolvedVersions depsAllResolved then warn missingDepVersionsMsg else pure ()
-  graph <- context "Building dependency graph" $ pure (buildGraph depsAllEnvTree depsAllResolved)
+  
+  -- TODO-MEGH:
+  _ <- if (Set.null depsNotSupported) then warn missingDepVersionsMsg else pure () 
+  
+  graph <- context "Building dependency graph" $
+    pure (buildGraph depsAllEnvTreeSupported depsAllResolved)
+  
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -193,6 +212,15 @@ supportedMixDeps = mapMaybe isSupported
               , subDeps = supportedMixDeps (subDeps m)
               }
         else Nothing
+        
+notSupportedDeps :: [MixDep] -> Set (PackageName, DepSCM)
+notSupportedDeps deps = unions $ map (flatten mempty) deps
+  where
+    flatten :: Set (PackageName, DepSCM) -> MixDep -> Set (PackageName, DepSCM)
+    flatten st dep =
+      if (depName dep, depSCM dep) `notMember` st
+        then unions $ map (flatten (insert (depName dep, depSCM dep) st)) (subDeps dep)
+        else st
 
 -- | Parses Source Control Manager
 parseDepSCM :: Parser DepSCM

@@ -145,7 +145,16 @@ instance ToDiagnostic ExecErr where
               , "stderr: " <> line <> indent 2 (pretty @Text (decodeUtf8 (cmdFailureStderr err)))
               ]
           )
-    CommandParseError cmd err -> "Failed to parse command output. command: " <> viaShow cmd <> " . error: " <> pretty err
+    CommandParseError cmd err ->
+      vsep
+        [ "Failed to parse command output. command: " <> viaShow cmd <> "."
+        , ""
+        , "Details:"
+        , indent 4 (pretty err)
+        , ""
+        , "If you believe this to be a defect, please report bug to"
+        , "FOSSA support at: https://support.fossa.com/hc/en-us."
+        ]
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
 exec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure Stdout)

@@ -1,12 +1,19 @@
+{-# LANGUAGE RecordWildCards #-}
+
 -- | The ToDiagnostic typeclass
 module Diag.Diagnostic (
   -- * ToDiagnostic
   ToDiagnostic (..),
   SomeDiagnostic (..),
+
+  -- * Helpers
+  ActionableDiagCtx (..),
+  renderActionable,
 ) where
 
 import Control.Exception (SomeException (SomeException))
 import Data.Aeson (ToJSON, object, toJSON, (.=))
+import Data.List.NonEmpty (NonEmpty, toList)
 import Data.Text (Text)
 import Effect.Logger
 
@@ -34,3 +41,36 @@ instance ToJSON SomeDiagnostic where
       [ "errorPath" .= path
       , "errorCause" .= show (renderDiagnostic cause)
       ]
+
+data ActionableDiagCtx = ActionableDiagCtx
+  { description :: Doc AnsiStyle
+  , documentationLinks :: NonEmpty Text
+  , troubleshootingSteps :: Maybe (NonEmpty Text)
+  }
+  deriving (Show)
+
+renderActionable :: ActionableDiagCtx -> Doc AnsiStyle
+renderActionable ActionableDiagCtx{..} =
+  vsep
+    [ description
+    , ""
+    , ""
+    , "Relevant Documentation:"
+    , renderList documentationLinks
+    , ""
+    , ""
+    , renderTroubleshooting troubleshootingSteps
+    ]
+  where
+    renderTroubleshooting :: Maybe (NonEmpty Text) -> Doc AnsiStyle
+    renderTroubleshooting maybeSelfHelpMsg = case maybeSelfHelpMsg of
+      Nothing -> ""
+      Just doc ->
+        vsep
+          [ "Troubleshooting:"
+          , renderList doc
+          , ""
+          ]
+
+    renderList :: Pretty a => NonEmpty a -> Doc AnsiStyle
+    renderList items = vsep $ map ((" - " <>) . pretty) (toList items)

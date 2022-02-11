@@ -7,7 +7,7 @@ import App.Docs (strategyLangDocUrl)
 import Data.List.NonEmpty (fromList)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Diag.Diagnostic (ActionableErrCtx (..), ToDiagnostic (..), renderActionable)
+import Diag.Diagnostic (ActionableDiagCtx (..), ToDiagnostic (..), renderActionable)
 import Path
 import Prettyprinter (Pretty (pretty), vsep)
 
@@ -19,7 +19,7 @@ newtype GradleCmdErrCtx = GradleCmdErrCtx (Path Abs Dir)
 instance ToDiagnostic GradleCmdErrCtx where
   renderDiagnostic (GradleCmdErrCtx path) =
     renderActionable $
-      ActionableErrCtx
+      ActionableDiagCtx
         { description =
             vsep
               [ "Failed to run gradle, gradlew, or gradlew.bat for gradle analysis in directory:"

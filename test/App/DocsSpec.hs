@@ -16,6 +16,7 @@ import Network.HTTP.Req (
   useHttpsURI,
  )
 import Strategy.Gradle.Errors (refGradleDocUrl)
+import Strategy.Dart.Errors (refPubDocUrl)
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 import Text.URI (mkURI)
 
@@ -42,3 +43,7 @@ spec = do
   describe "refGradleDocUrl" $
     it "should be reachable" $
       refGradleDocUrl `shouldRespondToGETWithHttpCode` 200
+
+  describe "refPubDocUrl" $ 
+    it "should be reachable" $
+      refPubDocUrl `shouldRespondToGETWithHttpCode` 200

@@ -1,8 +1,11 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Move brackets to avoid $" #-}
 module Strategy.Pub (discover) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, context, warnOnSuccess, (<||>))
 import Data.Aeson (ToJSON)
+import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
 import Discovery.Walk (WalkStep (WalkContinue), findFileNamed, walk')
 import Effect.Exec (Exec, Has)
 import Effect.Logger (Logger)
@@ -13,6 +16,7 @@ import Strategy.Dart.PubDeps (analyzeDepsCmd)
 import Strategy.Dart.PubSpec (analyzePubSpecFile)
 import Strategy.Dart.PubSpecLock (analyzePubLockFile)
 import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (PubProjectType))
+import Strategy.Dart.Errors (PubspecLimitation(PubspecLimitation))
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PubProject]
 discover dir = context "Pub" $ do
@@ -57,8 +61,8 @@ mkProject project =
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PubProject -> m DependencyResults
 getDeps project = do
   (graph, graphBreadth) <- case pubLock project of
-    Just lockFile -> analyzeDepsCmd lockFile (pubSpecDir project) <||> analyzePubLockFile lockFile
-    Nothing -> analyzePubSpecFile $ pubSpec project
+    Just lockFile -> analyzeDepsCmd lockFile (pubSpecDir project) <||> (warnOnSuccess PubspecLimitation $ analyzePubLockFile lockFile)
+    Nothing -> warnOnSuccess PubspecLimitation $ analyzePubSpecFile $ pubSpec project
   pure $
     DependencyResults
       { dependencyGraph = graph

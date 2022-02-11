@@ -19,6 +19,7 @@ module Control.Effect.Diagnostics (
   rethrow,
   warn,
   warnOnErr,
+  warnOnSuccess,
   (<||>),
 
   -- * Diagnostic helpers
@@ -76,6 +77,7 @@ data Diag m k where
   Rethrow :: Result a -> Diag m a
   Warn :: ToDiagnostic warn => warn -> Diag m ()
   WarnOnErr :: ToDiagnostic warn => warn -> m a -> Diag m a
+  WarnOnSuccess :: ToDiagnostic warn => warn -> m a -> Diag m a
   FirstToSucceed :: m a -> m a -> Diag m a
 
 -- | Throw an error
@@ -110,6 +112,10 @@ warn = send . Warn
 -- | When the provided action fails, emit a warning
 warnOnErr :: (ToDiagnostic warn, Has Diagnostics sig m) => warn -> m a -> m a
 warnOnErr w m = send (WarnOnErr w m)
+
+-- | When the provided action fails, emit a warning
+warnOnSuccess :: (ToDiagnostic warn, Has Diagnostics sig m) => warn -> m a -> m a
+warnOnSuccess w m = send (WarnOnSuccess w m)
 
 -- | Analagous to @Alternative@'s @<|>@. Try the provided actions, returning the
 -- value of the first to succeed

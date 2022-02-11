@@ -66,6 +66,8 @@ instance Has Stack sig m => Algebra (Diag :+: sig) (DiagnosticsC m) where
       (<$ ctx) <$> ResultT.warnT (Result.SomeWarn w)
     L (WarnOnErr w act) ->
       ResultT.warnOnErrT (Result.SomeWarn w) $ runDiagnosticsC $ hdl (act <$ ctx)
+    L (WarnOnSuccess w act) ->
+      ResultT.warnOnSuccessT (Result.SomeWarn w) $ runDiagnosticsC $ hdl (act <$ ctx)
     L (ErrCtx c act) ->
       ResultT.errCtxT (Result.ErrCtx c) $ runDiagnosticsC $ hdl (act <$ ctx)
     L (Fatal diag) -> do

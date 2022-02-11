@@ -9,6 +9,7 @@ module Diag.Monad (
   errorBoundaryT,
   rethrowT,
   warnOnErrT,
+  warnOnSuccessT,
   errCtxT,
   (<||>),
 ) where
@@ -104,6 +105,12 @@ warnOnErrT :: Functor m => SomeWarn -> ResultT m a -> ResultT m a
 warnOnErrT w = ResultT . fmap (warnOnErrR w) . runResultT
 {-# INLINE warnOnErrT #-}
 
+-- | Attach a warning to the ErrGroup of a possibly-failing computation. No-op
+-- on Success
+warnOnSuccessT :: Functor m => SomeWarn -> ResultT m a -> ResultT m a
+warnOnSuccessT w = ResultT . fmap (warnOnSuccessR w) . runResultT
+{-# INLINE warnOnSuccessT #-}
+
 -- | Attach error context to the ErrGroup of a possibly-failing computation.
 -- No-op on Success
 errCtxT :: Functor m => ErrCtx -> ResultT m a -> ResultT m a
@@ -158,6 +165,11 @@ warnOnErrR :: SomeWarn -> Result a -> Result a
 warnOnErrR w (Failure ws (ErrGroup sws ectx es)) = Failure ws (ErrGroup (w : sws) ectx es)
 warnOnErrR _ (Success ws a) = Success ws a
 {-# INLINE warnOnErrR #-}
+
+warnOnSuccessR :: SomeWarn -> Result a -> Result a
+warnOnSuccessR _ (Failure ws erg) = Failure ws erg
+warnOnSuccessR w (Success ws a) = Success ((StandaloneWarn w) : ws) a
+{-# INLINE warnOnSuccessR #-}
 
 -- | Attach error context to the ErrGroup of a possibly-failing computation.
 -- No-op on Success
