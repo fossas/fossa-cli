@@ -1,7 +1,11 @@
 # Fossa CLI Changelog
 
 ## Unreleased
+- Improves error for parsing failure when parsing file or command output's content.
 - Gradle: improves error message when gradle, gradlew, gradlew.bat is not found, or fails.
+- Elixir: warns when packages are not analyzed because of not supported scm.
+- Dart: warns when suboptimal analysis is performed.
+- Go: warns when transitives are not retrieved as part of analysis.
 
 ## v3.0.18
 

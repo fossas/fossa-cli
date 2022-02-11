@@ -281,6 +281,7 @@ library
     Strategy.Fortran.FpmToml
     Strategy.Fpm
     Strategy.Glide
+    Strategy.Go.Errors
     Strategy.Go.GlideLock
     Strategy.Go.GoList
     Strategy.Go.Gomod

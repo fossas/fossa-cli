@@ -345,8 +345,7 @@ analyze' file = do
     gomod <- readContentsParser gomodParser file
 
     context "Building dependency graph" $ buildGraph gomod
-
-    _ <- recover $ warnOnErr GoModTransitivesNotFilled $ (fillInTransitive (parent file))
+    _ <- recover $ warnOnErr GoModTransitivesNotFilled (fillInTransitive (parent file))
     pure ()
   pure (graph, Partial)
 
