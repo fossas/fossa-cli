@@ -12,7 +12,7 @@ import App.Docs (strategyLangDocUrl)
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
 import Path
-import Prettyprinter (indent, viaShow, vsep)
+import Prettyprinter (Pretty (pretty), indent, viaShow, vsep)
 
 bundlerLockFileRationaleUrl :: Text
 bundlerLockFileRationaleUrl = "https://bundler.io/rationale.html#sharing-your-application-with-other-developers"
@@ -24,14 +24,14 @@ newtype BundlerMissingLockFile = BundlerMissingLockFile (Path Abs File)
 instance ToDiagnostic BundlerMissingLockFile where
   renderDiagnostic (BundlerMissingLockFile path) =
     vsep
-      [ "We could not corresponding Gemfile.lock for Gemfile: " <> viaShow path
+      [ "We could not find or parse Gemfile.lock corresponding to Gemfile: " <> viaShow path
       , ""
       , "Ensure your ruby project is built, and has lockfile prior to running fossa."
-      , "If you are using bundler, you can perform: bundler install."
+      , "If you are using bundler, you can perform: `bundler install` to generate Gemfile.lock."
       , ""
       , "Refer to:"
-      , indent 4 $ viaShow bundlerLockFileRationaleUrl
-      , indent 4 $ viaShow rubyFossaDocUrl
+      , indent 2 $ pretty $ "- " <> bundlerLockFileRationaleUrl
+      , indent 2 $ pretty $ "- " <> rubyFossaDocUrl
       ]
 
 data RubyMissingEdges = RubyMissingEdges
