@@ -26,7 +26,6 @@ module Diag.Result (
 
   -- * Helpers
   resultToMaybe,
-  flushLogs,
 
   -- * Rendering
   renderFailure,
@@ -37,7 +36,6 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
-import Effect.Logger (Has, Logger, Severity, log)
 import GHC.Show (showLitString)
 import Prettyprinter
 import Prettyprinter.Render.Terminal
@@ -277,16 +275,3 @@ section name content =
 
 subsection :: Doc AnsiStyle -> [Doc AnsiStyle] -> Doc AnsiStyle
 subsection name = vsep . map (\single -> annotate (color Yellow) name <> line <> line <> indent 2 single <> line)
-
--- | Log all encountered errors and warnings associated with 'Result a'
---
--- - On failure, the failure is logged with the provided @sevOnErr@ severity
---
--- - On success, the associated warnings are logged with the provided
---   @sevOnSuccess@ severity
-flushLogs :: Has Logger sig m => Severity -> Severity -> Result a -> m ()
-flushLogs sevOnErr _ (Failure ws eg) = Effect.Logger.log sevOnErr (renderFailure ws eg)
-flushLogs _ sevOnSuccess (Success ws _) = do
-  case renderSuccess ws of
-    Nothing -> pure ()
-    Just rendered -> Effect.Logger.log sevOnSuccess rendered

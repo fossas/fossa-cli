@@ -75,15 +75,15 @@ import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
-import Control.Monad (when)
+import Control.Monad (join, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
-import Data.Maybe (catMaybes, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
-import Diag.Result (flushLogs, resultToMaybe)
+import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, applyFilters, filterIsVSIOnly)
 import Discovery.Projects (withDiscoveredProjects)
@@ -179,7 +179,7 @@ runDependencyAnalysis basedir filters project = do
       graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context "Project Analysis" $ do
         debugMetadata "DiscoveredProject" project
         analyzeProject targets (projectData project)
-      flushLogs SevWarn SevWarn graphResult
+      Diag.flushLogs SevWarn SevWarn graphResult
       output $ Scanned dpi (mkResult basedir project <$> graphResult)
 
 applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
@@ -237,27 +237,27 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
-  vsiResults <- Diag.runDiagnosticsIO . diagToDebug $
+  vsiResults <- Diag.errorBoundaryIO . diagToDebug $
     Diag.context "analyze-vsi" . runStickyLogger SevInfo . runFinally $ do
       let shouldRunVSI = fromFlag Config.VSIAnalysis $ Config.vsiAnalysisEnabled $ Config.vsiOptions cfg
       case (shouldRunVSI, apiOpts) of
         (True, Just apiOpts') -> analyzeVSI apiOpts' basedir revision filters skipResolutionSet
         _ -> pure Nothing
   binarySearchResults <-
-    Diag.runDiagnosticsIO . diagToDebug $
+    Diag.errorBoundaryIO . diagToDebug $
       Diag.context "discover-binaries" $
         if (fromFlag BinaryDiscovery $ Config.binaryDiscoveryEnabled $ Config.vsiOptions cfg)
           then analyzeDiscoverBinaries basedir filters
           else pure Nothing
   manualSrcUnits <-
-    Diag.runDiagnosticsIO . diagToDebug $
+    Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
         then do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir apiOpts
   let additionalSourceUnits :: [SourceUnit]
-      additionalSourceUnits = catMaybes $ mapMaybe resultToMaybe [manualSrcUnits, vsiResults, binarySearchResults]
+      additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults]
 
   (projectScans, ()) <-
     Diag.context "discovery/analysis tasks"

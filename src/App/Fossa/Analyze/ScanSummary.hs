@@ -17,7 +17,6 @@ import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
 import Control.Monad (when)
 import Data.Foldable (traverse_)
 import Data.List (sortBy)
-import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Diag.Result (EmittedWarn (IgnoredErrGroup), Result (Failure, Success))
 import Effect.Logger (
@@ -29,7 +28,7 @@ import Effect.Logger (
   logInfo,
  )
 import Path
-import Prettyprinter (Doc, annotate)
+import Prettyprinter (Doc, annotate, viaShow)
 import Prettyprinter.Render.Terminal (Color (Green, Red, Yellow), bold, color)
 import Srclib.Types (
   AdditionalDepData (userDefinedDeps),
@@ -47,9 +46,11 @@ data ScanCount = ScanCount
   }
   deriving (Show, Eq, Ord)
 
-(|+|) :: ScanCount -> ScanCount -> ScanCount
-ScanCount l1 l2 l3 l4 l5 |+| ScanCount r1 r2 r3 r4 r5 =
-  ScanCount (l1 + r1) (l2 + r2) (l3 + r3) (l4 + r4) (l5 + r5)
+instance Semigroup (ScanCount) where
+  (ScanCount l1 l2 l3 l4 l5) <> (ScanCount r1 r2 r3 r4 r5) = ScanCount (l1 + r1) (l2 + r2) (l3 + r3) (l4 + r4) (l5 + r5)
+
+instance Monoid (ScanCount) where
+  mempty = ScanCount 0 0 0 0 0
 
 getScanCount :: [DiscoveredProjectScan] -> ScanCount
 getScanCount = foldl countOf (ScanCount 0 0 0 0 0)
@@ -116,22 +117,22 @@ renderScanSummary ::
   Result (Maybe SourceUnit) ->
   m ()
 renderScanSummary dps vsi binary manualDeps = do
-  -- Ensure consistent order for serialization
-  -- or repeated analysis
-
-  let projects = sortBy orderByScanStatusAndType dps
+  let cliVersion = maybe currentBranch ("v" <>) versionNumber
+  let projects = sortBy orderByScanStatusAndType dps -- consistent ordering for repeated analysis
   let totalScanCount =
-        getScanCount projects
-          |+| srcUnitToScanCount vsi
-          |+| srcUnitToScanCount binary
-          |+| srcUnitToScanCount manualDeps
+        mconcat
+          [ getScanCount projects
+          , srcUnitToScanCount vsi
+          , srcUnitToScanCount binary
+          , srcUnitToScanCount manualDeps
+          ]
 
   when (numProjects totalScanCount > 0) $ do
     logInfoVsep
       [ ""
       , "Scan Summary"
       , "------------"
-      , pretty $ "Using fossa-cli: `" <> maybe currentBranch ("v" <>) versionNumber <> "`"
+      , pretty $ "Using fossa-cli: " <> cliVersion
       , ""
       , pretty totalScanCount
       ]
@@ -143,11 +144,11 @@ renderScanSummary dps vsi binary manualDeps = do
     summarizeSrcUnit "binary-deps analysis" (Just getBinaryIdentifier) binary
     summarizeSrcUnit "manual and vendor dependencies" Nothing manualDeps
 
-listSymbol :: Text
+listSymbol :: Doc AnsiStyle
 listSymbol = "* "
 
-itemize :: Text -> (a -> Doc ann) -> [a] -> [Doc ann]
-itemize symbol f = map ((pretty symbol <>) . f)
+itemize :: Doc ann -> (a -> Doc ann) -> [a] -> [Doc ann]
+itemize symbol f = map ((symbol <>) . f)
 
 getBinaryIdentifier :: SourceUnit -> [Text]
 getBinaryIdentifier srcUnit = maybe [] (srcUserDepName <$>) (userDefinedDeps =<< additionalData srcUnit)
@@ -159,19 +160,16 @@ srcUnitToScanCount (Success wg (Just _)) = ScanCount 1 0 1 0 (countWarnings wg)
 
 summarizeSrcUnit ::
   (Has Diag.Diagnostics sig m, Has Logger sig m) =>
-  Text ->
-  (Maybe (SourceUnit -> [Text])) ->
+  Doc AnsiStyle ->
+  Maybe (SourceUnit -> [Text]) ->
   Result (Maybe SourceUnit) ->
   m ()
 summarizeSrcUnit analysisHeader maybeGetter (Success wg (Just unit)) = do
-  logInfo $ successColorCoded wg $ pretty (listSymbol <> analysisHeader) <> renderSucceeded wg
-  case maybeGetter <*> (Just unit) of
-    Just txts -> logInfoVsep $ itemize ("  *" <> listSymbol) pretty txts
+  logInfo $ successColorCoded wg $ (listSymbol <> analysisHeader) <> renderSucceeded wg
+  case maybeGetter <*> Just unit of
+    Just txts -> logInfoVsep $ itemize ("  *" <> listSymbol) viaShow txts
     Nothing -> pure ()
-summarizeSrcUnit analysisHeader _ (Failure _ _) =
-  logInfo . failColorCoded $
-    (annotate bold . pretty $ analysisHeader)
-      <> renderFailed
+summarizeSrcUnit analysisHeader _ (Failure _ _) = logInfo . failColorCoded $ annotate bold analysisHeader <> renderFailed
 summarizeSrcUnit _ _ _ = pure ()
 
 summarizeProjectScan :: DiscoveredProjectScan -> Doc AnsiStyle
@@ -192,28 +190,31 @@ renderProjectResult :: ProjectResult -> Doc AnsiStyle
 renderProjectResult pr = renderProjectPathAndType (projectResultType pr) (projectResultPath pr)
 
 renderProjectPathAndType :: DiscoveredProjectType -> Path Abs Dir -> Doc AnsiStyle
-renderProjectPathAndType pt path =
-  (annotate bold . pretty $ projectTypeToText pt)
-    <> pretty (" project in " :: Text)
-    <> pretty (toText path)
+renderProjectPathAndType pt path = annotate bold projectTypeDoc <> pathDoc
+  where
+    pathDoc = " project in " <> viaShow path
+    projectTypeDoc = viaShow $ projectTypeToText pt
 
 successColorCoded :: [EmittedWarn] -> Doc AnsiStyle -> Doc AnsiStyle
-successColorCoded ew = if countWarnings ew == 0 then annotate (color Green) else annotate (color Yellow)
+successColorCoded ew =
+  if countWarnings ew == 0
+    then annotate $ color Green
+    else annotate $ color Yellow
 
 failColorCoded :: Doc AnsiStyle -> Doc AnsiStyle
-failColorCoded = annotate (color Red)
+failColorCoded = annotate $ color Red
 
-renderSkipped :: Doc ann
-renderSkipped = pretty (": skipped" :: Text)
+renderSkipped :: Doc AnsiStyle
+renderSkipped = ": skipped"
 
-renderSucceeded :: [EmittedWarn] -> Doc ann
+renderSucceeded :: [EmittedWarn] -> Doc AnsiStyle
 renderSucceeded ew =
   if countWarnings ew == 0
-    then pretty (": succeeded" :: Text)
-    else pretty (": succeeded with " :: Text) <> pretty (show $ countWarnings ew) <> pretty (": warning" :: Text)
+    then ": succeeded"
+    else ": succeeded with " <> viaShow (countWarnings ew) <> ": warning"
 
-renderFailed :: Doc ann
-renderFailed = pretty (": failed" :: Text)
+renderFailed :: Doc AnsiStyle
+renderFailed = ": failed"
 
 orderByScanStatusAndType :: DiscoveredProjectScan -> DiscoveredProjectScan -> Ordering
 orderByScanStatusAndType (SkippedDueToProvidedFilter lhs) (SkippedDueToProvidedFilter rhs) = compare lhs rhs
@@ -222,9 +223,12 @@ orderByScanStatusAndType (SkippedDueToDefaultProductionFilter lhs) (SkippedDueTo
 orderByScanStatusAndType (SkippedDueToDefaultProductionFilter lhs) (SkippedDueToDefaultProductionFilter rhs) = compare lhs rhs
 orderByScanStatusAndType (SkippedDueToDefaultProductionFilter _) (Scanned _ _) = GT
 orderByScanStatusAndType (SkippedDueToProvidedFilter _) (Scanned _ _) = GT
-orderByScanStatusAndType (Scanned _ (Success _ lhs)) (Scanned _ (Success _ rhs)) = compare (projectResultType lhs) (projectResultType rhs)
+orderByScanStatusAndType (Scanned _ (Success lhsEw lhs)) (Scanned _ (Success rhsEw rhs)) =
+  if (projectResultType lhs) /= (projectResultType rhs)
+    then compare (length rhsEw) (length lhsEw)
+    else EQ
 orderByScanStatusAndType (Scanned lhs (Failure _ _)) (Scanned rhs (Failure _ _)) = compare lhs rhs
-orderByScanStatusAndType (Scanned _ (Success _ _)) (Scanned _ (Failure _ _)) = LT
+orderByScanStatusAndType (Scanned _ (Success _ _)) (Scanned _ (Failure _ _)) = GT
 orderByScanStatusAndType (Scanned _ _) _ = LT
 
 -- | Counts number of displayed warning.
