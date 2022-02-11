@@ -6,7 +6,7 @@ module App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
 ) where
 
-import App.Fossa.Analyze.Project (ProjectResult)
+import App.Fossa.Analyze.Project (ProjectResult (projectResultType))
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics, Has)
@@ -14,7 +14,7 @@ import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader)
 import Data.Set (Set)
 import Data.Text (Text)
-import Diag.Result (Result)
+import Diag.Result (Result (Failure, Success))
 import Effect.Exec (Exec)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
@@ -39,6 +39,27 @@ data DiscoveredProjectScan
   = SkippedDueToProvidedFilter DiscoveredProjectIdentifier
   | SkippedDueToDefaultProductionFilter DiscoveredProjectIdentifier
   | Scanned DiscoveredProjectIdentifier (Result ProjectResult)
+
+instance Ord DiscoveredProjectScan where
+  a `compare` b = orderByScanStatusAndType a b
+
+instance Eq DiscoveredProjectScan where
+  a == b = orderByScanStatusAndType a b == EQ
+
+orderByScanStatusAndType :: DiscoveredProjectScan -> DiscoveredProjectScan -> Ordering
+orderByScanStatusAndType (SkippedDueToProvidedFilter lhs) (SkippedDueToProvidedFilter rhs) = compare lhs rhs
+orderByScanStatusAndType (SkippedDueToProvidedFilter lhs) (SkippedDueToDefaultProductionFilter rhs) = compare lhs rhs
+orderByScanStatusAndType (SkippedDueToDefaultProductionFilter lhs) (SkippedDueToProvidedFilter rhs) = compare lhs rhs
+orderByScanStatusAndType (SkippedDueToDefaultProductionFilter lhs) (SkippedDueToDefaultProductionFilter rhs) = compare lhs rhs
+orderByScanStatusAndType (SkippedDueToDefaultProductionFilter _) (Scanned _ _) = GT
+orderByScanStatusAndType (SkippedDueToProvidedFilter _) (Scanned _ _) = GT
+orderByScanStatusAndType (Scanned _ (Success lhsEw lhs)) (Scanned _ (Success rhsEw rhs)) =
+  if (projectResultType lhs) /= (projectResultType rhs)
+    then compare (length rhsEw) (length lhsEw)
+    else EQ
+orderByScanStatusAndType (Scanned lhs (Failure _ _)) (Scanned rhs (Failure _ _)) = compare lhs rhs
+orderByScanStatusAndType (Scanned _ (Success _ _)) (Scanned _ (Failure _ _)) = GT
+orderByScanStatusAndType (Scanned _ _) _ = LT
 
 data DiscoveredProjectIdentifier = DiscoveredProjectIdentifier
   { dpiProjectPath :: Path Abs Dir

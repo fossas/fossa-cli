@@ -16,7 +16,7 @@ import App.Version (currentBranch, versionNumber)
 import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
 import Control.Monad (when)
 import Data.Foldable (traverse_)
-import Data.List (sortBy)
+import Data.List (sort)
 import Data.Text (Text)
 import Diag.Result (EmittedWarn (IgnoredErrGroup), Result (Failure, Success))
 import Effect.Logger (
@@ -118,7 +118,7 @@ renderScanSummary ::
   m ()
 renderScanSummary dps vsi binary manualDeps = do
   let cliVersion = maybe currentBranch ("v" <>) versionNumber
-  let projects = sortBy orderByScanStatusAndType dps -- consistent ordering for repeated analysis
+  let projects = sort dps -- consistent ordering for repeated analysis
   let totalScanCount =
         mconcat
           [ getScanCount projects
@@ -215,21 +215,6 @@ renderSucceeded ew =
 
 renderFailed :: Doc AnsiStyle
 renderFailed = ": failed"
-
-orderByScanStatusAndType :: DiscoveredProjectScan -> DiscoveredProjectScan -> Ordering
-orderByScanStatusAndType (SkippedDueToProvidedFilter lhs) (SkippedDueToProvidedFilter rhs) = compare lhs rhs
-orderByScanStatusAndType (SkippedDueToProvidedFilter lhs) (SkippedDueToDefaultProductionFilter rhs) = compare lhs rhs
-orderByScanStatusAndType (SkippedDueToDefaultProductionFilter lhs) (SkippedDueToProvidedFilter rhs) = compare lhs rhs
-orderByScanStatusAndType (SkippedDueToDefaultProductionFilter lhs) (SkippedDueToDefaultProductionFilter rhs) = compare lhs rhs
-orderByScanStatusAndType (SkippedDueToDefaultProductionFilter _) (Scanned _ _) = GT
-orderByScanStatusAndType (SkippedDueToProvidedFilter _) (Scanned _ _) = GT
-orderByScanStatusAndType (Scanned _ (Success lhsEw lhs)) (Scanned _ (Success rhsEw rhs)) =
-  if (projectResultType lhs) /= (projectResultType rhs)
-    then compare (length rhsEw) (length lhsEw)
-    else EQ
-orderByScanStatusAndType (Scanned lhs (Failure _ _)) (Scanned rhs (Failure _ _)) = compare lhs rhs
-orderByScanStatusAndType (Scanned _ (Success _ _)) (Scanned _ (Failure _ _)) = GT
-orderByScanStatusAndType (Scanned _ _) _ = LT
 
 -- | Counts number of displayed warning.
 -- It ignores warning aggregated under @IgnoredErrGroup@.
