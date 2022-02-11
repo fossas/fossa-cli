@@ -6,7 +6,6 @@ module Strategy.Pub (discover) where
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context, warnOnSuccess, (<||>))
 import Data.Aeson (ToJSON)
-import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
 import Discovery.Walk (WalkStep (WalkContinue), findFileNamed, walk')
 import Effect.Exec (Exec, Has)
 import Effect.Logger (Logger)
