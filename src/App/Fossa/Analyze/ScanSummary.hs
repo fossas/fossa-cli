@@ -12,7 +12,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (dpiProjectPath, dpiProjectType),
   DiscoveredProjectScan (..),
  )
-import App.Version (currentBranch, fullVersionDescription, versionNumber)
+import App.Version (fullVersionDescription)
 import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
 import Control.Monad (when)
 import Data.Foldable (traverse_)
@@ -131,7 +131,7 @@ renderScanSummary dps vsi binary manualDeps = do
       [ ""
       , "Scan Summary"
       , "------------"
-      , fullVersionDescription
+      , pretty fullVersionDescription
       , ""
       , pretty totalScanCount
       ]
