@@ -8,6 +8,12 @@ FOSSA's Vendored Source Identification is intended to support identifying and ca
 FOSSA fingerprints all files in your project and uploads those fingerprints to our analysis service.
 The analysis service then uses a proprietary algorithm to compare those fingerprints with the fingerprints in our database of open source projects.
 
+VSI can be enabled with the `--experimental-enable-vsi` flag when running `fossa analyze`. For example:
+
+```
+fossa analyze --experimental-enable-vsi
+```
+
 ### Prerequisites
 
 VSI support requires a feature flag enabled in your FOSSA organization. If you're interested in using this feature please contact us!
