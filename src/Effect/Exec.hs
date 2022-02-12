@@ -20,6 +20,7 @@ module Effect.Exec (
   module X,
 ) where
 
+import App.Docs (supportUrl)
 import Control.Algebra as X
 import Control.Carrier.Simple
 import Control.Effect.Diagnostics
@@ -145,7 +146,16 @@ instance ToDiagnostic ExecErr where
               , "stderr: " <> line <> indent 2 (pretty @Text (decodeUtf8 (cmdFailureStderr err)))
               ]
           )
-    CommandParseError cmd err -> "Failed to parse command output. command: " <> viaShow cmd <> " . error: " <> pretty err
+    CommandParseError cmd err ->
+      vsep
+        [ "Failed to parse command output. command: " <> viaShow cmd <> "."
+        , ""
+        , "Details:"
+        , indent 4 (pretty err)
+        , ""
+        , "If you believe this to be a defect, please report bug to"
+        , pretty $ "to FOSSA support: " <> supportUrl
+        ]
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
 exec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure Stdout)

@@ -18,7 +18,7 @@ import Types
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze' file = do
-  reqs <- readContentsParser requirementsTxtParser file
+  reqs <- readContentsParserOf PythonRequirementErrFmt requirementsTxtParser file
   context "Building dependency graph" $ pure (buildGraph reqs)
 
 type Parser = Parsec Void Text

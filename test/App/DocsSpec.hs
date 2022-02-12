@@ -2,7 +2,7 @@ module App.DocsSpec (
   spec,
 ) where
 
-import App.Docs (fossaYmlDocUrl, newIssueUrl, userGuideUrl)
+import App.Docs (fossaYmlDocUrl, newIssueUrl, supportUrl, userGuideUrl)
 import Data.Foldable (for_)
 import Data.Maybe (fromJust)
 import Data.String.Conversion (toString)
@@ -42,3 +42,7 @@ spec = do
     for_ urlsToCheck $ \url ->
       it (toString url <> " should be reachable") $
         url `shouldRespondToGETWithHttpCode` 200
+
+  describe "supportUrl" $
+    it "should be reachable" $
+      supportUrl `shouldRespondToGETWithHttpCode` 200
