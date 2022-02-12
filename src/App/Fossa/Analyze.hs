@@ -278,7 +278,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let projectResults = mapMaybe toProjectResult projectScans
   let filteredProjects = mapMaybe toProjectResult projectScansWithSkippedProdPath
 
-  _ <- renderScanSummary projectScansWithSkippedProdPath vsiResults binarySearchResults manualSrcUnits
+  renderScanSummary projectScansWithSkippedProdPath vsiResults binarySearchResults manualSrcUnits
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits of

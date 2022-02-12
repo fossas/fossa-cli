@@ -44,7 +44,7 @@ instance Ord DiscoveredProjectScan where
   a `compare` b = orderByScanStatusAndType a b
 
 instance Eq DiscoveredProjectScan where
-  a == b = orderByScanStatusAndType a b == EQ
+  a == b = compare a b == EQ
 
 orderByScanStatusAndType :: DiscoveredProjectScan -> DiscoveredProjectScan -> Ordering
 orderByScanStatusAndType (SkippedDueToProvidedFilter lhs) (SkippedDueToProvidedFilter rhs) = compare lhs rhs
@@ -55,7 +55,7 @@ orderByScanStatusAndType (SkippedDueToDefaultProductionFilter _) (Scanned _ _) =
 orderByScanStatusAndType (SkippedDueToProvidedFilter _) (Scanned _ _) = GT
 orderByScanStatusAndType (Scanned _ (Success lhsEw lhs)) (Scanned _ (Success rhsEw rhs)) =
   if (projectResultType lhs) /= (projectResultType rhs)
-    then compare (length rhsEw) (length lhsEw)
+    then compare (length lhsEw) (length rhsEw)
     else EQ
 orderByScanStatusAndType (Scanned lhs (Failure _ _)) (Scanned rhs (Failure _ _)) = compare lhs rhs
 orderByScanStatusAndType (Scanned _ (Success _ _)) (Scanned _ (Failure _ _)) = GT

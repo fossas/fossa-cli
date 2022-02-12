@@ -12,7 +12,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (dpiProjectPath, dpiProjectType),
   DiscoveredProjectScan (..),
  )
-import App.Version (currentBranch, versionNumber)
+import App.Version (currentBranch, fullVersionDescription, versionNumber)
 import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
 import Control.Monad (when)
 import Data.Foldable (traverse_)
@@ -117,7 +117,6 @@ renderScanSummary ::
   Result (Maybe SourceUnit) ->
   m ()
 renderScanSummary dps vsi binary manualDeps = do
-  let cliVersion = maybe currentBranch ("v" <>) versionNumber
   let projects = sort dps -- consistent ordering for repeated analysis
   let totalScanCount =
         mconcat
@@ -132,7 +131,7 @@ renderScanSummary dps vsi binary manualDeps = do
       [ ""
       , "Scan Summary"
       , "------------"
-      , pretty $ "Using fossa-cli: " <> cliVersion
+      , fullVersionDescription
       , ""
       , pretty totalScanCount
       ]
