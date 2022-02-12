@@ -12,6 +12,7 @@ module Control.Carrier.Diagnostics (
   runDiagnosticsIO,
   errorBoundaryIO,
   withResult,
+  flushLogs,
 
   -- * Re-exports
   module X,
@@ -23,6 +24,7 @@ import Control.Effect.Diagnostics as X
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception (SomeException)
 import Control.Exception.Extra (safeCatch)
+import Control.Monad (void)
 import Control.Monad.Trans
 import Diag.Monad (ResultT)
 import Diag.Monad qualified as ResultT
@@ -128,3 +130,12 @@ withResult _ sevOnSuccess (Success ws res) f = do
     Nothing -> pure ()
     Just rendered -> Effect.Logger.log sevOnSuccess rendered
   f res
+
+-- | Log all encountered errors and warnings associated with 'Result a'
+--
+-- - On failure, the failure is logged with the provided @sevOnErr@ severity
+--
+-- - On success, the associated warnings are logged with the provided
+--   @sevOnSuccess@ severity
+flushLogs :: Has Logger sig m => Severity -> Severity -> Result a -> m ()
+flushLogs s1 s2 res = withResult s1 s2 res (void . pure)

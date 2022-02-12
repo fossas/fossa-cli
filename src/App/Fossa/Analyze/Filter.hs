@@ -1,58 +1,28 @@
 module App.Fossa.Analyze.Filter (
-  checkForEmptyUpload,
   CountedResult (..),
-  filterProjects,
+  checkForEmptyUpload,
+  skipNonProdProjectsBasedOnPath,
+  ignoredPaths,
 ) where
 
 import App.Fossa.Analyze.Project (
   ProjectResult (projectResultPath),
  )
+import App.Fossa.Analyze.Types (DiscoveredProjectScan (..), dpiProjectPath)
 import App.Fossa.Config.Analyze (IncludeAll (..))
 import App.Types (BaseDir (unBaseDir))
 import Data.Flag (Flag, fromFlag)
 import Data.List (isInfixOf, stripPrefix)
 import Data.List.NonEmpty (NonEmpty, fromList)
 import Data.Maybe (fromMaybe)
-import Path (fromAbsDir)
+import Diag.Result
+import Path
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (SourceUnit)
 
--- For each of the projects, we need to strip the root directory path from the prefix of the project path.
--- We don't want parent directories of the scan root affecting "production path" filtering -- e.g., if we're
--- running in a directory called "tmp", we still want results.
-filterProjects :: BaseDir -> [ProjectResult] -> [ProjectResult]
-filterProjects rootDir = filter (isProductionPath . dropPrefix rootPath . fromAbsDir . projectResultPath)
-  where
-    rootPath = fromAbsDir $ unBaseDir rootDir
-    dropPrefix :: String -> String -> String
-    dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
-
-isProductionPath :: FilePath -> Bool
-isProductionPath path =
-  not $
-    any
-      (`isInfixOf` path)
-      [ "doc/"
-      , "docs/"
-      , "test/"
-      , "example/"
-      , "examples/"
-      , "vendor/"
-      , "node_modules/"
-      , ".srclib-cache/"
-      , "spec/"
-      , "Godeps/"
-      , ".git/"
-      , "bower_components/"
-      , "third_party/"
-      , "third-party/"
-      , "Carthage/"
-      , "Checkouts/"
-      ]
-
 data CountedResult
   = NoneDiscovered
-  | FilteredAll Int
+  | FilteredAll
   | FoundSome (NonEmpty SourceUnit)
 
 -- | Return some state of the projects found, since we can't upload empty result arrays.
@@ -66,8 +36,8 @@ checkForEmptyUpload includeAll xs ys additionalUnits = do
       -- We didn't discover, so we also didn't filter
       (0, 0) -> NoneDiscovered
       -- If either list is empty, we have nothing to upload
-      (0, _) -> FilteredAll filterCount
-      (_, 0) -> FilteredAll filterCount
+      (0, _) -> FilteredAll
+      (_, 0) -> FilteredAll
       -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
       _ -> FoundSome $ fromList discoveredUnits
     else -- If we have a additional source units, then there's always something to upload.
@@ -75,7 +45,59 @@ checkForEmptyUpload includeAll xs ys additionalUnits = do
   where
     xlen = length xs
     ylen = length ys
-    filterCount = abs $ xlen - ylen
+
     -- The smaller list is the post-filter list, since filtering cannot add projects
     filtered = if xlen > ylen then ys else xs
     discoveredUnits = map (Srclib.toSourceUnit (fromFlag IncludeAll includeAll)) filtered
+
+-- | Skips projects by relabeling scan type, by applying production path filtering.
+skipNonProdProjectsBasedOnPath :: BaseDir -> [DiscoveredProjectScan] -> [DiscoveredProjectScan]
+skipNonProdProjectsBasedOnPath dir = map (applyDefaultProductionPathFilter dir)
+
+-- For each of the projects, we strip the root directory path from the prefix of the project path.
+-- We don't want parent directories of the scan root affecting "production path" filtering -- e.g.,
+-- if we're running in a directory called "tmp", we still want results.
+applyDefaultProductionPathFilter :: BaseDir -> DiscoveredProjectScan -> DiscoveredProjectScan
+applyDefaultProductionPathFilter _ (SkippedDueToProvidedFilter a) = SkippedDueToProvidedFilter a
+applyDefaultProductionPathFilter _ (SkippedDueToDefaultProductionFilter a) = SkippedDueToDefaultProductionFilter a
+applyDefaultProductionPathFilter dir (Scanned dpi result) = case result of
+  Failure _ _ ->
+    if isInProdPath $ dpiProjectPath dpi
+      then Scanned dpi result
+      else SkippedDueToDefaultProductionFilter dpi
+  Success _ res ->
+    if isInProdPath $ projectResultPath res
+      then Scanned dpi result
+      else SkippedDueToDefaultProductionFilter dpi
+  where
+    isInProdPath :: Path Abs Dir -> Bool
+    isInProdPath = isProductionPath . dropPrefix rootPath . fromAbsDir
+
+    rootPath :: FilePath
+    rootPath = fromAbsDir $ unBaseDir dir
+
+    dropPrefix :: String -> String -> String
+    dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
+
+isProductionPath :: FilePath -> Bool
+isProductionPath path = not $ any (`isInfixOf` path) ignoredPaths
+
+ignoredPaths :: [[Char]]
+ignoredPaths =
+  [ "doc/"
+  , "docs/"
+  , "test/"
+  , "example/"
+  , "examples/"
+  , "vendor/"
+  , "node_modules/"
+  , ".srclib-cache/"
+  , "spec/"
+  , "Godeps/"
+  , ".git/"
+  , "bower_components/"
+  , "third_party/"
+  , "third-party/"
+  , "Carthage/"
+  , "Checkouts/"
+  ]
