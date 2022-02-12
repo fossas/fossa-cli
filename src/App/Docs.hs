@@ -27,5 +27,8 @@ newIssueUrl = sourceCodeUrl <> "/issues/new"
 strategyLangDocUrl :: Text -> Text
 strategyLangDocUrl path = guidePathOf (maybe currentBranch ("v" <>) versionNumber) ("/docs/references/strategies/languages/" <> path)
 
+-- When updated, please update Effect.Exec
+-- supportUrl is not directly used due to cyclic module imports.
+-- TODO: refractor EffectExec and App.TH.*, and App.Docs
 supportUrl :: Text
 supportUrl = "https://support.fossa.com"

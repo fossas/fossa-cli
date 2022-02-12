@@ -18,7 +18,7 @@ import Network.HTTP.Req (
   useHttpsURI,
  )
 import Strategy.Ruby.Errors (bundlerLockFileRationaleUrl, rubyFossaDocUrl)
-import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
+import Test.Hspec (Expectation, Spec, describe, it, shouldBe, xit)
 import Text.URI (mkURI)
 
 shouldRespondToGETWithHttpCode :: Text -> Int -> Expectation

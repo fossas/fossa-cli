@@ -20,7 +20,6 @@ module Effect.Exec (
   module X,
 ) where
 
-import App.Docs (supportUrl)
 import Control.Algebra as X
 import Control.Carrier.Simple
 import Control.Effect.Diagnostics
@@ -154,7 +153,7 @@ instance ToDiagnostic ExecErr where
         , indent 4 (pretty err)
         , ""
         , "If you believe this to be a defect, please report bug to"
-        , pretty $ "to FOSSA support: " <> supportUrl
+        , "to FOSSA support: https://support.fossa.com"
         ]
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
