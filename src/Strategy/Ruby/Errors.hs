@@ -24,10 +24,13 @@ newtype BundlerMissingLockFile = BundlerMissingLockFile (Path Abs File)
 instance ToDiagnostic BundlerMissingLockFile where
   renderDiagnostic (BundlerMissingLockFile path) =
     vsep
-      [ "We could not find or parse Gemfile.lock corresponding to Gemfile: " <> viaShow path
+      [ "We could not perform Gemfile.lock analysis for Gemfile: " <> viaShow path
       , ""
-      , "Ensure your ruby project is built, and has lockfile prior to running fossa."
-      , "If you are using bundler, you can perform: `bundler install` to generate Gemfile.lock."
+      , indent 2 $
+          vsep
+            [ "Ensure valid Gemfile.lock exists, and is readable by user."
+            , "If you are using bundler, you can perform: `bundler install` to generate Gemfile.lock."
+            ]
       , ""
       , "Refer to:"
       , indent 2 $ pretty $ "- " <> bundlerLockFileRationaleUrl
