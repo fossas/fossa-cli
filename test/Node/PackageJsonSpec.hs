@@ -28,7 +28,7 @@ import Strategy.Node.PackageJson (
   buildGraph,
  )
 import Test.Effect (it', shouldBe', shouldMatchList')
-import Test.Hspec (Spec, describe, fdescribe, it)
+import Test.Hspec (Spec, describe, it)
 import Types (License (License), LicenseResult (LicenseResult, licenseFile, licensesFound), LicenseType (LicenseURL, UnknownType))
 
 mockInput :: PackageJson
@@ -91,20 +91,26 @@ licenseMock license licenses =
 mockManifest :: Manifest
 mockManifest = Manifest $(mkAbsFile "/usr/local/foo/package.json")
 
+mockManifest2 :: Manifest
+mockManifest2 = Manifest $(mkAbsFile "/usr/local/bar/package.json")
+
 mockManifestFilePath :: FilePath
 mockManifestFilePath = toFilePath . unManifest $ mockManifest
 
-mkTestLicenseResult :: [License] -> Types.LicenseResult
-mkTestLicenseResult ls = LicenseResult{licenseFile = mockManifestFilePath, licensesFound = ls}
+mockManifestFilePath2 :: FilePath
+mockManifestFilePath2 = toFilePath . unManifest $ mockManifest2
+
+mkTestLicenseResult :: FilePath -> [License] -> Types.LicenseResult
+mkTestLicenseResult manifest ls = LicenseResult{licenseFile = manifest, licensesFound = ls}
 
 singleLicenseResult :: LicenseResult
-singleLicenseResult = mkTestLicenseResult [License Types.UnknownType "MIT"]
+singleLicenseResult = mkTestLicenseResult mockManifestFilePath [License Types.UnknownType "MIT"]
 
 singleLicenseObjResult :: Text -> LicenseResult
-singleLicenseObjResult url = mkTestLicenseResult [License LicenseURL url]
+singleLicenseObjResult url = mkTestLicenseResult mockManifestFilePath [License LicenseURL url]
 
 multiLicenseObjResult :: [Text] -> LicenseResult
-multiLicenseObjResult urls = mkTestLicenseResult $ License LicenseURL <$> urls
+multiLicenseObjResult urls = mkTestLicenseResult mockManifestFilePath $ License LicenseURL <$> urls
 
 mkMockPkgJsonGraph :: [(Manifest, PackageJson)] -> PkgJsonGraph
 mkMockPkgJsonGraph packagePairs =
@@ -121,8 +127,8 @@ mkMockPkgJsonGraph packagePairs =
 
 -- remember that most of the fields in a NodeProject/PackageJson are not of interest to us.
 licenseSpec :: Spec
-licenseSpec =
-  fdescribe "license field detection from a single PackageJson" $ do
+licenseSpec = do
+  describe "license field detection from a single PackageJson" $ do
     it' "It discovers a string license field" $ do
       let mockPackageJson = licenseMock (Just $ LicenseText "MIT") Nothing
       foundLicenses <- licenseAnalyzeProject (NPM $ mkMockPkgJsonGraph [(mockManifest, mockPackageJson)])
@@ -154,9 +160,30 @@ licenseSpec =
             , PkgJsonLicenseObj{licenseType = "GPL", licenseUrl = url2}
             ]
       let mockPackageJson = licenseMock (Just $ LicenseText "MIT") (Just mockLicenses)
-      let licenses = mkTestLicenseResult $ (License UnknownType "MIT") : map (License LicenseURL) [url1, url2]
+      let licenses = mkTestLicenseResult mockManifestFilePath $ (License UnknownType "MIT") : map (License LicenseURL) [url1, url2]
       foundLicenses <- licenseAnalyzeProject . NPM . mkMockPkgJsonGraph $ [(mockManifest, mockPackageJson)]
       foundLicenses `shouldMatchList'` [licenses]
+
+  describe "License field detection with multiple PackageJson's in a project" $ do
+    it' "It discovers licenses when there are two PackageJson's in a Node project" $ do
+      let url1 = "https://foo.com"
+      let url2 = "https://bar.com"
+      let mockLicenses =
+            [ PkgJsonLicenseObj{licenseType = "MIT", licenseUrl = url1}
+            , PkgJsonLicenseObj{licenseType = "GPL", licenseUrl = url2}
+            ]
+      let mockPackageJson1 = licenseMock Nothing (Just mockLicenses)
+      let mockResult1 = mkTestLicenseResult mockManifestFilePath $ License LicenseURL <$> [url1, url2]
+      let mockPackageJson2 = licenseMock (Just $ LicenseText "MIT") Nothing
+      let mockResult2 = mkTestLicenseResult mockManifestFilePath2 [(License UnknownType "MIT")]
+      let nodeProjects =
+            NPM $
+              mkMockPkgJsonGraph
+                [ (mockManifest, mockPackageJson1)
+                , (mockManifest2, mockPackageJson2)
+                ]
+      foundLicenses <- licenseAnalyzeProject nodeProjects
+      foundLicenses `shouldMatchList'` [mockResult1, mockResult2]
 
 spec :: Spec
 spec = do
