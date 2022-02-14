@@ -27,9 +27,9 @@ import Strategy.Node.PackageJson (
   PkgJsonWorkspaces (PkgJsonWorkspaces),
   buildGraph,
  )
-import Test.Effect (it', shouldBe')
+import Test.Effect (it', shouldBe', shouldMatchList')
 import Test.Hspec (Spec, describe, fdescribe, it)
-import Types (License (License, licenseValue), LicenseResult (LicenseResult, licenseFile, licensesFound), LicenseType (LicenseURL, UnknownType))
+import Types (License (License), LicenseResult (LicenseResult, licenseFile, licensesFound), LicenseType (LicenseURL, UnknownType))
 
 mockInput :: PackageJson
 mockInput =
@@ -130,19 +130,33 @@ licenseSpec =
 
     it' "It discovers an object license field" $ do
       let url = "http://foo.com"
-      let mockLicense = LicenseObj PkgJsonLicenseObj { licenseType = "MIT" , licenseUrl = url}
+      let mockLicense = LicenseObj PkgJsonLicenseObj{licenseType = "MIT", licenseUrl = url}
       let mockPackageJson = licenseMock (Just mockLicense) Nothing
       foundLicenses <- licenseAnalyzeProject . NPM . mkMockPkgJsonGraph $ [(mockManifest, mockPackageJson)]
-      foundLicenses `shouldBe'` [singleLicenseObjResult url]
+      foundLicenses `shouldMatchList'` [singleLicenseObjResult url]
 
     it' "It discovers a licenses field with multiple license objects" $ do
       let url1 = "https://foo.com"
       let url2 = "https://bar.com"
-      let mockLicenses = [PkgJsonLicenseObj { licenseType = "MIT", licenseUrl = url1}
-                         , PkgJsonLicenseObj { licenseType = "GPL", licenseUrl = url2}]
+      let mockLicenses =
+            [ PkgJsonLicenseObj{licenseType = "MIT", licenseUrl = url1}
+            , PkgJsonLicenseObj{licenseType = "GPL", licenseUrl = url2}
+            ]
       let mockPackageJson = licenseMock Nothing (Just mockLicenses)
       foundLicenses <- licenseAnalyzeProject . NPM . mkMockPkgJsonGraph $ [(mockManifest, mockPackageJson)]
-      foundLicenses `shouldBe'` [multiLicenseObjResult [url1, url2]]
+      foundLicenses `shouldMatchList'` [multiLicenseObjResult [url1, url2]]
+
+    it' "It discovers licenses when both 'license' and 'licenses' are set." $ do
+      let url1 = "https://foo.com"
+      let url2 = "https://bar.com"
+      let mockLicenses =
+            [ PkgJsonLicenseObj{licenseType = "MIT", licenseUrl = url1}
+            , PkgJsonLicenseObj{licenseType = "GPL", licenseUrl = url2}
+            ]
+      let mockPackageJson = licenseMock (Just $ LicenseText "MIT") (Just mockLicenses)
+      let licenses = mkTestLicenseResult $ (License UnknownType "MIT") : map (License LicenseURL) [url1, url2]
+      foundLicenses <- licenseAnalyzeProject . NPM . mkMockPkgJsonGraph $ [(mockManifest, mockPackageJson)]
+      foundLicenses `shouldMatchList'` [licenses]
 
 spec :: Spec
 spec = do

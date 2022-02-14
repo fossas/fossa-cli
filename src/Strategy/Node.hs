@@ -27,9 +27,7 @@ import Control.Effect.Diagnostics (
 import Control.Monad (void, (<=<))
 import Data.Glob (Glob)
 import Data.Glob qualified as Glob
-import Data.List.Extra (singleton) -- This is in Data.List in base 4.16
--- This is in Data.List in base 4.16
-
+import Data.List.Extra (singleton) -- singleton is in Data.List in base 4.16
 import Data.Map (Map, toList)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, mapMaybe)
@@ -332,8 +330,9 @@ mkLicenseResult
   pkgJson = constrLicenseResult <$> allLicenses
     where
       manifestPath = toFilePath . unManifest $ manifest
-      allLicenses = (singleton <$> packageLicense pkgJson)
-                    <> (map LicenseObj <$> packageLicenses pkgJson)
+      allLicenses =
+        (singleton <$> packageLicense pkgJson)
+          <> (map LicenseObj <$> packageLicenses pkgJson)
 
       mkLicense (LicenseText txt) = License UnknownType txt
       mkLicense (LicenseObj pjlo) = License LicenseURL (licenseUrl pjlo)
