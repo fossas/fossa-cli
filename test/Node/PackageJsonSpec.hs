@@ -4,8 +4,11 @@ module Node.PackageJsonSpec (
   spec,
 ) where
 
+import Algebra.Graph.AdjacencyMap qualified as AM
+import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
+import Data.Text (Text)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (NodeJSType),
@@ -14,22 +17,19 @@ import DepTypes (
  )
 import GraphUtil (expectDeps, expectDirect, expectEdges)
 import Path (mkAbsFile, toFilePath)
+import Strategy.Node (NodeProject (NPM))
 import Strategy.Node.PackageJson (
   Manifest (Manifest, unManifest),
   PackageJson (..),
-  PkgJsonLicense (LicenseText),
-  PkgJsonLicenseObj (licenseType),
+  PkgJsonGraph (PkgJsonGraph, jsonGraph, jsonLookup),
+  PkgJsonLicense (LicenseObj, LicenseText),
+  PkgJsonLicenseObj (PkgJsonLicenseObj, licenseType, licenseUrl),
   PkgJsonWorkspaces (PkgJsonWorkspaces),
-  buildGraph, PkgJsonGraph (PkgJsonGraph, jsonGraph, jsonLookup)
+  buildGraph,
  )
-import Test.Hspec (Spec, describe, it, shouldBe, fdescribe)
-import Types (License (License, licenseValue), LicenseResult (LicenseResult, licenseFile, licensesFound), LicenseType (UnknownType))
-import Control.Monad (forM_)
-import App.Pathfinder.Types (LicenseAnalyzeProject(licenseAnalyzeProject))
-import Test.Effect (shouldBe', it')
-import Data.Maybe (catMaybes)
-import qualified Algebra.Graph.AdjacencyMap as AM
-import Strategy.Node (NodeProject(NPM))
+import Test.Effect (it', shouldBe')
+import Test.Hspec (Spec, describe, fdescribe, it)
+import Types (License (License, licenseValue), LicenseResult (LicenseResult, licenseFile, licensesFound), LicenseType (LicenseURL, UnknownType))
 
 mockInput :: PackageJson
 mockInput =
@@ -97,24 +97,26 @@ mockManifestFilePath = toFilePath . unManifest $ mockManifest
 -- 3-tuple of test name, the package json to analyze and a LicenseResult
 type LicenseTestTriple = (String, PackageJson, [LicenseResult])
 
-mkTestLicenseResult :: [License] -> LicenseResult
+mkTestLicenseResult :: [License] -> Types.LicenseResult
 mkTestLicenseResult ls = LicenseResult{licenseFile = mockManifestFilePath, licensesFound = ls}
 
 singleLicense :: LicenseTestTriple
 singleLicense =
-  ("Single License", licenseMock{packageLicense = Just (LicenseText "MIT")}, [mkTestLicenseResult [License UnknownType "MIT"]])
+  ("Single License", licenseMock{packageLicense = Just (LicenseText "MIT")}, [mkTestLicenseResult [License Types.UnknownType "MIT"]])
 
-licenseTests :: [LicenseTestTriple]
-licenseTests =
-  [singleLicense]
+singleLicenseResult :: [LicenseResult]
+singleLicenseResult = [mkTestLicenseResult [License Types.UnknownType "MIT"]]
 
-mkMockPkgJsonGraph :: PackageJson -> PkgJsonGraph
-mkMockPkgJsonGraph pkg =
-  PkgJsonGraph {
-  -- jsonGraph isn't relevant to license detection
-  jsonGraph = AM.empty
-  , jsonLookup = Map.fromList [(mockManifest, pkg)]
-  }
+singleLicenseObjResult :: Text -> [LicenseResult]
+singleLicenseObjResult url = [mkTestLicenseResult [License LicenseURL url]]
+
+mkMockPkgJsonGraph :: PkgJsonLicense -> PkgJsonGraph
+mkMockPkgJsonGraph license =
+  PkgJsonGraph
+    { -- jsonGraph isn't relevant to license detection
+      jsonGraph = AM.empty
+    , jsonLookup = Map.fromList [(mockManifest, licenseMock{packageLicense = Just license})]
+    }
 
 -- make an initial helper function to generate test NodeProjects
 -- begin by doing a test of just the cases for the different types of node projects with
@@ -125,23 +127,34 @@ mkMockPkgJsonGraph pkg =
 licenseSpec :: Spec
 licenseSpec =
   fdescribe "license field generation from PackageJson" $ do
-  it' "It discovers a license field" $ do
-    foundLicenses <- licenseAnalyzeProject (NPM $ mkMockPkgJsonGraph licenseMock {packageLicense = Just (LicenseText "MIT") })
-    foundLicenses `shouldBe'` [mkTestLicenseResult [License UnknownType "MIT"]]
+    it' "It discovers a string license field" $ do
+      foundLicenses <- licenseAnalyzeProject (NPM . mkMockPkgJsonGraph $ LicenseText "MIT")
+      foundLicenses `shouldBe'` singleLicenseResult
 
-  -- do license <- [Just (LicenseText "MIT")]
-     -- [it' ("It correctly detects a license field of " <> show license) $ do
-     --     foundLicenses <- licenseAnalyzeProject (licenseMock {packageLicense = license})
-     --     pure ()]
-       --foundLicenses `shouldBe` mkTestLicenseResult [(catMaybes [License UnknownType <$> license])]
+    it' "It discovers an object license field" $ do
+      let url = "http://foo.com"
+      foundLicenses <-
+        licenseAnalyzeProject
+          ( NPM . mkMockPkgJsonGraph $
+              LicenseObj $
+                PkgJsonLicenseObj
+                  { licenseType = "MIT"
+                  , licenseUrl = url
+                  }
+          )
+      foundLicenses `shouldBe'` singleLicenseObjResult url
 
+-- do license <- [Just (LicenseText "MIT")]
+-- [it' ("It correctly detects a license field of " <> show license) $ do
+--     foundLicenses <- licenseAnalyzeProject (licenseMock {packageLicense = license})
+--     pure ()]
+--foundLicenses `shouldBe` mkTestLicenseResult [(catMaybes [License UnknownType <$> license])]
 
-
-  -- forM_ licenseTests $
-  --   \(testCaseName, mock, result) ->
-  --     it' ("It generates licenses in the " <> testCaseName <> "case") $ do
-  --     foundLicenses <- licenseAnalyzeProject mock
-  --     foundLicenses `shouldBe'` result
+-- forM_ licenseTests $
+--   \(testCaseName, mock, result) ->
+--     it' ("It generates licenses in the " <> testCaseName <> "case") $ do
+--     foundLicenses <- licenseAnalyzeProject mock
+--     foundLicenses `shouldBe'` result
 
 spec :: Spec
 spec = do

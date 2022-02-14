@@ -29,6 +29,7 @@ import Data.Glob (Glob)
 import Data.Glob qualified as Glob
 import Data.List.Extra (singleton) -- This is in Data.List in base 4.16
 -- This is in Data.List in base 4.16
+
 import Data.Map (Map, toList)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, mapMaybe)
@@ -85,7 +86,8 @@ import Strategy.Node.PackageJson (
   NodePackage (NodePackage),
   PackageJson (..),
   PkgJsonGraph (..),
-  PkgJsonLicense (LicenseText, LicenseObj),
+  PkgJsonLicense (LicenseObj, LicenseText),
+  PkgJsonLicenseObj (licenseUrl),
   PkgJsonWorkspaces (unWorkspaces),
   Production,
   pkgFileList,
@@ -99,8 +101,10 @@ import Types (
   DiscoveredProjectType (NpmProjectType, YarnProjectType),
   FoundTargets (ProjectWithoutTargets),
   GraphBreadth (Complete, Partial),
+  License (License),
   LicenseResult (LicenseResult, licensesFound),
-  licenseFile, License (License), LicenseType (UnknownType)
+  LicenseType (LicenseURL, UnknownType),
+  licenseFile,
  )
 
 skipJsFolders :: WalkStep
@@ -331,8 +335,7 @@ mkLicenseResult
       allLicenses = (singleton <$> packageLicense pkgJson) <> packageLicenses pkgJson
 
       mkLicense (LicenseText txt) = License UnknownType txt
-      mkLicense (LicenseObj pjlo) = error "Not implemented"
-
+      mkLicense (LicenseObj pjlo) = License LicenseURL (licenseUrl pjlo)
 
       constrLicenseResult licenses = do
         LicenseResult
