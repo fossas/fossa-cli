@@ -13,10 +13,13 @@ import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   context,
+  errCtx,
+  fatalText,
   fromEither,
   fromEitherShow,
   fromMaybeText,
   recover,
+  warnOnErr,
  )
 import Control.Monad ((<=<))
 import Data.Glob (Glob)
@@ -31,6 +34,10 @@ import Data.Tagged (applyTag)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Yaml.Aeson (ToJSON)
+import Diag.Common (
+  MissingDeepDeps (MissingDeepDeps),
+  MissingEdges (MissingEdges),
+ )
 import Discovery.Walk (
   WalkStep (WalkSkipSome),
   findFileNamed,
@@ -47,6 +54,7 @@ import Effect.ReadFS (
  )
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, Rel, mkRelFile, parent, (</>))
+import Strategy.Node.Errors (MissingNodeLockFile (MissingNodeLockFile))
 import Strategy.Node.Npm.PackageLock qualified as PackageLock
 import Strategy.Node.PackageJson (
   Development,
@@ -138,6 +146,12 @@ analyzeNpmLock (Manifest file) graph = do
 
 analyzeNpm :: (Has Diagnostics sig m) => PkgJsonGraph -> m DependencyResults
 analyzeNpm wsGraph = do
+  _ <-
+    recover $
+      warnOnErr MissingEdges
+        . warnOnErr MissingDeepDeps
+        $ errCtx (MissingNodeLockFile) $ fatalText "Lock files - yarn.lock or package-lock.json were not discovered."
+
   graph <- PackageJson.analyze $ Map.elems $ jsonLookup wsGraph
   pure $ DependencyResults graph Partial $ pkgFileList wsGraph
 

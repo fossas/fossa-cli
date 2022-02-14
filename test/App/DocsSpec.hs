@@ -18,6 +18,11 @@ import Network.HTTP.Req (
   useHttpsURI,
  )
 import Strategy.Dart.Errors (refPubDocUrl)
+import Strategy.Node.Errors (
+  fossaNodeDocUrl,
+  npmLockFileDocUrl,
+  yarnLockfileDocUrl,
+ )
 import Strategy.Python.Errors (commitPoetryLockToVCS)
 import Strategy.Ruby.Errors (bundlerLockFileRationaleUrl, rubyFossaDocUrl)
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
@@ -38,6 +43,9 @@ urlsToCheck =
   , rubyFossaDocUrl
   , refPubDocUrl
   , commitPoetryLockToVCS
+  , npmLockFileDocUrl
+  , yarnLockfileDocUrl
+  , fossaNodeDocUrl
   ]
 
 spec :: Spec
