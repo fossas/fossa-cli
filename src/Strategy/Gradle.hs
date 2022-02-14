@@ -22,7 +22,7 @@ import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (allowedGradleConfigs))
 import Control.Algebra (Has)
 import Control.Carrier.Reader (Reader)
-import Control.Effect.Diagnostics (Diagnostics, context, fatal, recover, warnOnErr, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, context, errCtx, fatal, recover, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.Reader (asks)
@@ -55,6 +55,7 @@ import Strategy.Gradle.Common (
   ConfigName (..),
   getDebugMessages,
  )
+import Strategy.Gradle.Errors (FailedToListProjects (FailedToListProjects), GradleCmdErrCtx (GradleCmdErrCtx))
 import Strategy.Gradle.ResolutionApi qualified as ResolutionApi
 import System.FilePath qualified as FilePath
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (GradleProjectType), FoundTargets (..), GraphBreadth (..))
@@ -96,9 +97,10 @@ discover dir = context "Gradle" $ do
 runGradle :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> (Text -> Command) -> m BL.ByteString
 runGradle dir cmd =
   do
-    walkUpDir dir "gradlew" >>= execThrow dir . cmd . toText
-    <||> (walkUpDir dir "gradlew.bat" >>= execThrow dir . cmd . toText)
-    <||> execThrow dir (cmd "gradle")
+    errCtx (GradleCmdErrCtx dir) $
+      (walkUpDir dir "gradlew" >>= execThrow dir . cmd . toText)
+        <||> (walkUpDir dir "gradlew.bat" >>= execThrow dir . cmd . toText)
+        <||> execThrow dir (cmd "gradle")
 
 -- |Search upwards in a directory for the existence of the supplied file.
 walkUpDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)
@@ -163,14 +165,6 @@ findProjects = walk' $ \dir _ files -> do
                   }
 
           pure ([project], WalkSkipAll)
-
-newtype FailedToListProjects = FailedToListProjects (Path Abs Dir)
-  deriving (Eq, Ord, Show)
-
--- TODO(warnings): this warning is not helpful
-instance ToDiagnostic FailedToListProjects where
-  renderDiagnostic (FailedToListProjects dir) =
-    "Found a gradle build manifest, but failed to list gradle projects in " <> viaShow dir
 
 data GradleProject = GradleProject
   { gradleDir :: Path Abs Dir

@@ -19,6 +19,7 @@ import Network.HTTP.Req (
  )
 import Strategy.Cocoapods.Errors (refPodDocUrl)
 import Strategy.Dart.Errors (refPubDocUrl)
+import Strategy.Gradle.Errors (refGradleDocUrl)
 import Strategy.Node.Errors (
   fossaNodeDocUrl,
   npmLockFileDocUrl,
@@ -58,6 +59,7 @@ urlsToCheck =
   , swiftPackageResolvedRef
   , xcodeCoordinatePkgVersion
   , refPodDocUrl
+  , refGradleDocUrl
   ]
 
 spec :: Spec
