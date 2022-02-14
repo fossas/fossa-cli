@@ -13,7 +13,7 @@ module Strategy.Swift.PackageSwift (
 ) where
 
 import Control.Applicative (Alternative ((<|>)), optional)
-import Control.Effect.Diagnostics (Diagnostics, context)
+import Control.Effect.Diagnostics (Diagnostics, context, errCtx, fatalText, recover, warnOnErr)
 import Control.Monad (void)
 import Data.Foldable (asum)
 import Data.Map.Strict qualified as Map
@@ -24,6 +24,7 @@ import DepTypes (DepType (GitType, SwiftType), Dependency (..), VerConstraint (C
 import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsParser)
 import Graphing (Graphing, deeps, directs, induceJust, promoteToDirect)
 import Path
+import Strategy.Swift.Errors (MissingPackageResolvedFile (..), SwiftAnalysisDeepDeps (SwiftAnalysisDeepDeps))
 import Strategy.Swift.PackageResolved (SwiftPackageResolvedFile, resolvedDependenciesOf)
 import Text.Megaparsec (
   MonadParsec (takeWhile1P, try),
@@ -210,7 +211,12 @@ analyzePackageSwift manifestFile resolvedFile = do
   manifestContent <- context "Identifying dependencies in Package.swift" $ readContentsParser parsePackageSwiftFile manifestFile
 
   packageResolvedContent <- case resolvedFile of
-    Nothing -> pure Nothing
+    Nothing ->
+      do
+        recover
+          . warnOnErr SwiftAnalysisDeepDeps
+          . errCtx (MissingPackageResolvedFile manifestFile)
+          $ fatalText "Package.resolved file was not discovered"
     Just packageResolved -> context "Identifying dependencies in Package.resolved" $ readContentsJson packageResolved
 
   context "Building dependency graph" $ pure $ buildGraph manifestContent packageResolvedContent
