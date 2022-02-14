@@ -16,7 +16,8 @@ import DepTypes (
   VerConstraint (CCompatible),
  )
 import GraphUtil (expectDeps, expectDirect, expectEdges)
-import Path (mkAbsFile, toFilePath)
+import Path (mkRelFile, toFilePath, (</>))
+import Path.IO (getCurrentDir)
 import Strategy.Node (NodeProject (NPM))
 import Strategy.Node.PackageJson (
   Manifest (Manifest, unManifest),
@@ -28,7 +29,7 @@ import Strategy.Node.PackageJson (
   buildGraph,
  )
 import Test.Effect (it', shouldBe', shouldMatchList')
-import Test.Hspec (Spec, describe, it)
+import Test.Hspec (Spec, describe, it, runIO)
 import Types (License (License), LicenseResult (LicenseResult, licenseFile, licensesFound), LicenseType (LicenseURL, UnknownType))
 
 mockInput :: PackageJson
@@ -88,29 +89,29 @@ licenseMock license licenses =
     , packageLicenses = licenses
     }
 
-mockManifest :: Manifest
-mockManifest = Manifest $(mkAbsFile "/usr/local/foo/package.json")
+mockUrl1 :: Text
+mockUrl1 = "https://foo.com"
 
-mockManifest2 :: Manifest
-mockManifest2 = Manifest $(mkAbsFile "/usr/local/bar/package.json")
+mockUrl2 :: Text
+mockUrl2 = "https://bar.com"
 
-mockManifestFilePath :: FilePath
-mockManifestFilePath = toFilePath . unManifest $ mockManifest
-
-mockManifestFilePath2 :: FilePath
-mockManifestFilePath2 = toFilePath . unManifest $ mockManifest2
+mockLicensesObjs :: [PkgJsonLicenseObj]
+mockLicensesObjs =
+  [ PkgJsonLicenseObj{licenseType = "MIT", licenseUrl = mockUrl1}
+  , PkgJsonLicenseObj{licenseType = "GPL", licenseUrl = mockUrl2}
+  ]
 
 mkTestLicenseResult :: FilePath -> [License] -> Types.LicenseResult
 mkTestLicenseResult manifest ls = LicenseResult{licenseFile = manifest, licensesFound = ls}
 
-singleLicenseResult :: LicenseResult
-singleLicenseResult = mkTestLicenseResult mockManifestFilePath [License Types.UnknownType "MIT"]
+singleLicenseResult :: FilePath -> LicenseResult
+singleLicenseResult mockManifestFilePath = mkTestLicenseResult mockManifestFilePath [License Types.UnknownType "MIT"]
 
-singleLicenseObjResult :: Text -> LicenseResult
-singleLicenseObjResult url = mkTestLicenseResult mockManifestFilePath [License LicenseURL url]
+singleLicenseObjResult :: FilePath -> Text -> LicenseResult
+singleLicenseObjResult mockManifestFilePath url = mkTestLicenseResult mockManifestFilePath [License LicenseURL url]
 
-multiLicenseObjResult :: [Text] -> LicenseResult
-multiLicenseObjResult urls = mkTestLicenseResult mockManifestFilePath $ License LicenseURL <$> urls
+multiLicenseObjResult :: FilePath -> [Text] -> LicenseResult
+multiLicenseObjResult mockManifestFilePath urls = mkTestLicenseResult mockManifestFilePath $ License LicenseURL <$> urls
 
 mkMockPkgJsonGraph :: [(Manifest, PackageJson)] -> PkgJsonGraph
 mkMockPkgJsonGraph packagePairs =
@@ -120,63 +121,50 @@ mkMockPkgJsonGraph packagePairs =
     , jsonLookup = Map.fromList packagePairs
     }
 
--- make an initial helper function to generate test NodeProjects
--- begin by doing a test of just the cases for the different types of node projects with
--- a fixed license. Then add the next different dimension (e.g. license text or license obj)
--- keep adding dimensions until you get to a comprehensive test.
+mkNodeProject :: [(Manifest, PackageJson)] -> NodeProject
+mkNodeProject = NPM . mkMockPkgJsonGraph
 
--- remember that most of the fields in a NodeProject/PackageJson are not of interest to us.
 licenseSpec :: Spec
 licenseSpec = do
-  describe "license field detection from a single PackageJson" $ do
+  -- The actual paths here don't matter much, but this is a cross-platform way
+  -- to get absolute filepaths.
+  currDir <- runIO getCurrentDir
+  let mockManifest = Manifest $ currDir </> $(mkRelFile "foo/package.json")
+      mockManifestFilePath = toFilePath . unManifest $ mockManifest
+
+  describe "license field detection from a PackageJson" $ do
+    let mockMIT = Just $ LicenseText "MIT"
     it' "It discovers a string license field" $ do
-      let mockPackageJson = licenseMock (Just $ LicenseText "MIT") Nothing
-      foundLicenses <- licenseAnalyzeProject (NPM $ mkMockPkgJsonGraph [(mockManifest, mockPackageJson)])
-      foundLicenses `shouldBe'` [singleLicenseResult]
+      let mockPackageJson = licenseMock mockMIT Nothing
+      foundLicenses <- licenseAnalyzeProject (mkNodeProject [(mockManifest, mockPackageJson)])
+      foundLicenses `shouldBe'` [singleLicenseResult mockManifestFilePath]
 
     it' "It discovers an object license field" $ do
-      let url = "http://foo.com"
-      let mockLicense = LicenseObj PkgJsonLicenseObj{licenseType = "MIT", licenseUrl = url}
-      let mockPackageJson = licenseMock (Just mockLicense) Nothing
-      foundLicenses <- licenseAnalyzeProject . NPM . mkMockPkgJsonGraph $ [(mockManifest, mockPackageJson)]
-      foundLicenses `shouldMatchList'` [singleLicenseObjResult url]
+      let mockLicense = LicenseObj PkgJsonLicenseObj{licenseType = "MIT", licenseUrl = mockUrl1}
+          mockPackageJson = licenseMock (Just mockLicense) Nothing
+      foundLicenses <- licenseAnalyzeProject . mkNodeProject $ [(mockManifest, mockPackageJson)]
+      foundLicenses `shouldMatchList'` [singleLicenseObjResult mockManifestFilePath mockUrl1]
 
     it' "It discovers a licenses field with multiple license objects" $ do
-      let url1 = "https://foo.com"
-      let url2 = "https://bar.com"
-      let mockLicenses =
-            [ PkgJsonLicenseObj{licenseType = "MIT", licenseUrl = url1}
-            , PkgJsonLicenseObj{licenseType = "GPL", licenseUrl = url2}
-            ]
-      let mockPackageJson = licenseMock Nothing (Just mockLicenses)
-      foundLicenses <- licenseAnalyzeProject . NPM . mkMockPkgJsonGraph $ [(mockManifest, mockPackageJson)]
-      foundLicenses `shouldMatchList'` [multiLicenseObjResult [url1, url2]]
+      let mockPackageJson = licenseMock Nothing (Just mockLicensesObjs)
+      foundLicenses <- licenseAnalyzeProject . mkNodeProject $ [(mockManifest, mockPackageJson)]
+      foundLicenses `shouldMatchList'` [multiLicenseObjResult mockManifestFilePath [mockUrl1, mockUrl2]]
 
     it' "It discovers licenses when both 'license' and 'licenses' are set." $ do
-      let url1 = "https://foo.com"
-      let url2 = "https://bar.com"
-      let mockLicenses =
-            [ PkgJsonLicenseObj{licenseType = "MIT", licenseUrl = url1}
-            , PkgJsonLicenseObj{licenseType = "GPL", licenseUrl = url2}
-            ]
-      let mockPackageJson = licenseMock (Just $ LicenseText "MIT") (Just mockLicenses)
-      let licenses = mkTestLicenseResult mockManifestFilePath $ (License UnknownType "MIT") : map (License LicenseURL) [url1, url2]
-      foundLicenses <- licenseAnalyzeProject . NPM . mkMockPkgJsonGraph $ [(mockManifest, mockPackageJson)]
+      let mockPackageJson = licenseMock mockMIT (Just mockLicensesObjs)
+          licenses = mkTestLicenseResult mockManifestFilePath $ (License UnknownType "MIT") : map (License LicenseURL) [mockUrl1, mockUrl2]
+      foundLicenses <- licenseAnalyzeProject . mkNodeProject $ [(mockManifest, mockPackageJson)]
       foundLicenses `shouldMatchList'` [licenses]
 
-  describe "License field detection with multiple PackageJson's in a project" $ do
-    it' "It discovers licenses when there are two PackageJson's in a Node project" $ do
-      let url1 = "https://foo.com"
-      let url2 = "https://bar.com"
-      let mockLicenses =
-            [ PkgJsonLicenseObj{licenseType = "MIT", licenseUrl = url1}
-            , PkgJsonLicenseObj{licenseType = "GPL", licenseUrl = url2}
-            ]
-      let mockPackageJson1 = licenseMock Nothing (Just mockLicenses)
-      let mockResult1 = mkTestLicenseResult mockManifestFilePath $ License LicenseURL <$> [url1, url2]
-      let mockPackageJson2 = licenseMock (Just $ LicenseText "MIT") Nothing
-      let mockResult2 = mkTestLicenseResult mockManifestFilePath2 [(License UnknownType "MIT")]
-      let nodeProjects =
+    it' "It discovers licenses when there are > 1 PackageJson's in a Node project" $ do
+      let mockPackageJson1 = licenseMock Nothing (Just mockLicensesObjs)
+          mockResult1 = mkTestLicenseResult mockManifestFilePath . map (License LicenseURL) $ [mockUrl1, mockUrl2]
+          mockManifest2 = Manifest $ currDir </> $(mkRelFile "bar/package.json")
+          mockManifestFilePath2 = toFilePath . unManifest $ mockManifest2
+
+          mockPackageJson2 = licenseMock (Just $ LicenseText "MIT") Nothing
+          mockResult2 = mkTestLicenseResult mockManifestFilePath2 [(License UnknownType "MIT")]
+          nodeProjects =
             NPM $
               mkMockPkgJsonGraph
                 [ (mockManifest, mockPackageJson1)

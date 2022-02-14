@@ -325,23 +325,21 @@ analyzeLicenses :: PkgJsonGraph -> [LicenseResult]
 analyzeLicenses (PkgJsonGraph _ graph) = mapMaybe (uncurry mkLicenseResult) . toList $ graph
 
 mkLicenseResult :: Manifest -> PackageJson -> Maybe LicenseResult
-mkLicenseResult
-  manifest
-  pkgJson = constrLicenseResult <$> allLicenses
-    where
-      manifestPath = toFilePath . unManifest $ manifest
-      allLicenses =
-        (singleton <$> packageLicense pkgJson)
-          <> (map LicenseObj <$> packageLicenses pkgJson)
+mkLicenseResult manifest PackageJson{..} = constrLicenseResult <$> allLicenses
+  where
+    manifestPath = toFilePath . unManifest $ manifest
+    allLicenses =
+      (singleton <$> packageLicense)
+        <> (map LicenseObj <$> packageLicenses)
 
-      mkLicense (LicenseText txt) = License UnknownType txt
-      mkLicense (LicenseObj pjlo) = License LicenseURL (licenseUrl pjlo)
+    mkLicense (LicenseText txt) = License UnknownType txt
+    mkLicense (LicenseObj pjlo) = License LicenseURL (licenseUrl pjlo)
 
-      constrLicenseResult licenses = do
-        LicenseResult
-          { licenseFile = manifestPath
-          , licensesFound = map mkLicense licenses
-          }
+    constrLicenseResult licenses =
+      LicenseResult
+        { licenseFile = manifestPath
+        , licensesFound = map mkLicense licenses
+        }
 
 instance ToJSON NodeProject
 
