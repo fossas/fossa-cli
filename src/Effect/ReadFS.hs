@@ -43,7 +43,7 @@ module Effect.ReadFS (
   module X,
 ) where
 
-import App.Docs (supportUrl)
+import App.Support (reportDefectWithFileMsg)
 import Control.Algebra as X
 import Control.Carrier.Simple
 import Control.Effect.Diagnostics
@@ -130,8 +130,7 @@ instance ToDiagnostic ReadFSErr where
         , "Details:"
         , indent 4 (pretty err)
         , ""
-        , "If you believe this to be a defect - please report bug with copy of the file"
-        , pretty $ "to FOSSA support: " <> supportUrl
+        , reportDefectWithFileMsg path
         ]
     FileParseError path err DefaultParseErrMsgFmt ->
       vsep
@@ -140,8 +139,7 @@ instance ToDiagnostic ReadFSErr where
         , "Details:"
         , indent 4 (pretty err)
         , ""
-        , "If you believe this to be a defect - please report bug with copy of the file"
-        , pretty $ "to FOSSA support: " <> supportUrl
+        , reportDefectWithFileMsg path
         ]
     ResolveError base rel err ->
       "Error resolving a relative file:" <> line

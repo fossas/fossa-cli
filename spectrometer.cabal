@@ -211,6 +211,7 @@ library
     App.Pathfinder.Main
     App.Pathfinder.Scan
     App.Pathfinder.Types
+    App.Support
     App.Types
     App.Util
     App.Version
