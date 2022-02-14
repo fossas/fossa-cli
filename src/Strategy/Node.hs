@@ -332,7 +332,8 @@ mkLicenseResult
   pkgJson = constrLicenseResult <$> allLicenses
     where
       manifestPath = toFilePath . unManifest $ manifest
-      allLicenses = (singleton <$> packageLicense pkgJson) <> packageLicenses pkgJson
+      allLicenses = (singleton <$> packageLicense pkgJson)
+                    <> (map LicenseObj <$> packageLicenses pkgJson)
 
       mkLicense (LicenseText txt) = License UnknownType txt
       mkLicense (LicenseObj pjlo) = License LicenseURL (licenseUrl pjlo)

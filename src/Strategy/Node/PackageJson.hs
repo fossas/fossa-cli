@@ -109,7 +109,7 @@ data PackageJson = PackageJson
   , packageDeps :: Map Text Text
   , packageDevDeps :: Map Text Text
   , packageLicense :: Maybe PkgJsonLicense
-  , packageLicenses :: Maybe [PkgJsonLicense]
+  , packageLicenses :: Maybe [PkgJsonLicenseObj]
   }
   deriving (Eq, Ord, Show)
 
