@@ -43,10 +43,9 @@ import Data.Text qualified as Text
 import DepTypes (
   Dependency (..),
  )
-import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
 import Discovery.Walk (WalkStep (..), fileName, walk')
 import Effect.Exec (AllowErr (..), Command (..), Exec, execThrow)
-import Effect.Logger (Logger, Pretty (pretty), logDebug, viaShow)
+import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, doesFileExist)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
