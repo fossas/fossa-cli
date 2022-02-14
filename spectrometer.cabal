@@ -345,6 +345,7 @@ library
     Strategy.NuGet.ProjectJson
     Strategy.Perl
     Strategy.Pub
+    Strategy.Python.Errors
     Strategy.Python.Pipenv
     Strategy.Python.Poetry
     Strategy.Python.Poetry.Common

@@ -34,8 +34,9 @@ import Data.Aeson
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BL
 import Data.String (fromString)
-import Data.String.Conversion (decodeUtf8, toString, toText)
+import Data.String.Conversion (ToText, decodeUtf8, toString, toText)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
 import GHC.Generics (Generic)
 import Path
@@ -60,6 +61,9 @@ instance ToJSON Command
 instance RecordableValue Command
 instance FromJSON Command
 instance ReplayableValue Command
+
+instance ToText Command where
+  toText (Command name args _) = Text.intercalate " " $ [name] <> args
 
 data CmdFailure = CmdFailure
   { cmdFailureCmd :: Command

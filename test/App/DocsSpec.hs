@@ -18,6 +18,7 @@ import Network.HTTP.Req (
   useHttpsURI,
  )
 import Strategy.Dart.Errors (refPubDocUrl)
+import Strategy.Python.Errors (commitPoetryLockToVCS)
 import Strategy.Ruby.Errors (bundlerLockFileRationaleUrl, rubyFossaDocUrl)
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 import Text.URI (mkURI)
@@ -36,6 +37,7 @@ urlsToCheck =
   , bundlerLockFileRationaleUrl
   , rubyFossaDocUrl
   , refPubDocUrl
+  , commitPoetryLockToVCS
   ]
 
 spec :: Spec

@@ -24,6 +24,7 @@ import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes
+import Diag.Common
 import Discovery.Walk
 import Effect.Exec
 import Effect.Grapher
@@ -31,6 +32,7 @@ import Effect.ReadFS
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path
+import Strategy.Python.Errors
 import Types
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PipenvProject]
@@ -53,7 +55,14 @@ getDeps ::
   m DependencyResults
 getDeps project = context "Pipenv" $ do
   lock <- context "Getting direct dependencies" $ readContentsJson (pipenvLockfile project)
-  maybeDeps <- context "Getting deep dependencies" $ recover $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
+
+  maybeDeps <-
+    context "Getting deep dependencies" $
+      recover
+        . warnOnErr MissingDeepDeps
+        . warnOnErr MissingEdges
+        . errCtx (PipenvCmdFailed pipenvGraphCmd)
+        $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
 
   graph <- context "Building dependency graph" $ pure (buildGraph lock maybeDeps)
   pure $

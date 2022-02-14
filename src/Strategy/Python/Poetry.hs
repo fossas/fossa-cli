@@ -10,13 +10,14 @@ module Strategy.Python.Poetry (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Algebra (Has)
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics (Diagnostics, context)
+import Control.Effect.Diagnostics (Diagnostics, context, errCtx, fatalText, recover, warnOnErr)
 import Data.Aeson (ToJSON)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import DepTypes (DepType (..), Dependency (..))
+import Diag.Common
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
   findFileNamed,
@@ -28,6 +29,9 @@ import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, File, Path)
+import Strategy.Python.Errors (
+  MissingPoetryLockFile (MissingPoetryLockFile),
+ )
 import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, pyProjectDeps, toCanonicalName, toMap)
 import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), poetryLockCodec)
 import Strategy.Python.Poetry.PyProject (PyProject (..), pyProjectCodec)
@@ -137,6 +141,12 @@ analyze PoetryProject{pyProjectToml, poetryLock} = do
           , dependencyManifestFiles = [poetryLockPath lockPath]
           }
     Nothing -> do
+      _ <-
+        recover
+          . warnOnErr MissingDeepDeps
+          . warnOnErr MissingEdges
+          . errCtx (MissingPoetryLockFile (pyProjectTomlPath pyProjectToml))
+          $ fatalText "poetry.lock file was not discovered"
       graph <- context "Building dependency graph from only pyproject.toml" $ pure $ Graphing.fromList $ pyProjectDeps pyproject
       pure $
         DependencyResults
