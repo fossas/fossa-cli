@@ -1,14 +1,20 @@
 module Strategy.Pub (discover) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, context, errCtx, fatalText, recover, warnOnErr, (<||>))
+import Control.Monad (void)
 import Data.Aeson (ToJSON)
+import Diag.Common (
+  MissingDeepDeps (MissingDeepDeps),
+  MissingEdges (MissingEdges),
+ )
 import Discovery.Walk (WalkStep (WalkContinue), findFileNamed, walk')
 import Effect.Exec (Exec, Has)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Path
+import Strategy.Dart.Errors (PubspecLimitation (..))
 import Strategy.Dart.PubDeps (analyzeDepsCmd)
 import Strategy.Dart.PubSpec (analyzePubSpecFile)
 import Strategy.Dart.PubSpecLock (analyzePubLockFile)
@@ -58,7 +64,12 @@ getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger 
 getDeps project = do
   (graph, graphBreadth) <- case pubLock project of
     Just lockFile -> analyzeDepsCmd lockFile (pubSpecDir project) <||> analyzePubLockFile lockFile
-    Nothing -> analyzePubSpecFile $ pubSpec project
+    Nothing -> do
+      void . recover $
+        warnOnErr MissingDeepDeps
+          . warnOnErr MissingEdges
+          $ errCtx PubspecLimitation (fatalText "Missing pubspec.lock file")
+      analyzePubSpecFile $ pubSpec project
   pure $
     DependencyResults
       { dependencyGraph = graph

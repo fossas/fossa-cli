@@ -260,6 +260,7 @@ library
     Data.Tagged
     Data.Text.Extra
     DepTypes
+    Diag.Common
     Diag.Diagnostic
     Diag.Monad
     Diag.Result
@@ -291,6 +292,7 @@ library
     Strategy.Conda
     Strategy.Conda.CondaList
     Strategy.Conda.EnvironmentYml
+    Strategy.Dart.Errors
     Strategy.Dart.PubDeps
     Strategy.Dart.PubSpec
     Strategy.Dart.PubSpecLock
