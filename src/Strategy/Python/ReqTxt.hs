@@ -11,6 +11,7 @@ import Data.Void (Void)
 import Effect.ReadFS
 import Graphing (Graphing)
 import Path
+import Prettyprinter (Pretty (pretty), vsep)
 import Strategy.Python.Util
 import Text.Megaparsec
 import Text.Megaparsec.Char
@@ -18,8 +19,19 @@ import Types
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze' file = do
-  reqs <- readContentsParser requirementsTxtParser file
+  reqs <- errCtx (ReqsTxtFailed file) $ readContentsParser requirementsTxtParser file
   context "Building dependency graph" $ pure (buildGraph reqs)
+
+newtype ReqsTxtFailed = ReqsTxtFailed (Path Abs File)
+instance ToDiagnostic ReqsTxtFailed where
+  renderDiagnostic (ReqsTxtFailed path) =
+    vsep
+      [ pretty $ "Failed to parse: " <> show path
+      , ""
+      , "We occasionally find files we think are python requirements.txt files but"
+      , "aren't. If this file isn't a python requirements.txt file, this error can"
+      , "be safely ignored."
+      ]
 
 type Parser = Parsec Void Text
 

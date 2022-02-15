@@ -23,7 +23,7 @@ type Parser = Parsec Void Text
 
 installRequiresParser :: Parser [Req]
 installRequiresParser = do
-  maybePrefix <- optional prefix
+  maybePrefix <- optional (try prefix)
   -- When we find `install_requires`, try to parse requirement strings
   case maybePrefix of
     Nothing -> pure []

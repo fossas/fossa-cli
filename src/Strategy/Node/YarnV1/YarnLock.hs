@@ -60,7 +60,7 @@ analyze yarnFile flatdeps = do
   context "Building yarn.lock package graph" $ buildGraph parsed flatdeps
 
 mangleParseErr :: FilePath -> YL.LockfileError -> ReadFSErr
-mangleParseErr path = FileParseError path . YL.prettyLockfileError
+mangleParseErr path err = FileParseError path (YL.prettyLockfileError err)
 
 data YarnV1Label
   = NodeEnvironment DepEnvironment

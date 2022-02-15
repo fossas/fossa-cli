@@ -41,6 +41,7 @@ module Effect.ReadFS (
   module X,
 ) where
 
+import App.Support (reportDefectWithFileMsg)
 import Control.Algebra as X
 import Control.Carrier.Simple
 import Control.Effect.Diagnostics
@@ -85,7 +86,7 @@ type ReadFS = Simple ReadFSF
 data ReadFSErr
   = -- | A file couldn't be read. file, err
     FileReadError FilePath Text
-  | -- | A file's contents couldn't be parsed. TODO: ask user to help with this. file, err
+  | -- | A file's contents couldn't be parsed.
     FileParseError FilePath Text
   | -- | An IOException was thrown when resolving a file/directory
     ResolveError FilePath FilePath Text
@@ -107,7 +108,14 @@ deriving instance Ord (ReadFSF a)
 instance ToDiagnostic ReadFSErr where
   renderDiagnostic = \case
     FileReadError path err -> "Error reading file " <> pretty path <> ":" <> line <> indent 4 (pretty err)
-    FileParseError path err -> "Error parsing file " <> pretty path <> ":" <> line <> indent 4 (pretty err)
+    FileParseError path err ->
+      vsep
+        [ "Error parsing file: " <> pretty path <> "."
+        , ""
+        , indent 4 (pretty err)
+        , ""
+        , reportDefectWithFileMsg path
+        ]
     ResolveError base rel err ->
       "Error resolving a relative file:" <> line
         <> indent
@@ -185,7 +193,7 @@ readContentsParser :: forall a sig m. (Has ReadFS sig m, Has Diagnostics sig m) 
 readContentsParser parser file = context ("Parsing file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsText file
   case runParser parser (fromAbsFile file) contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (toText (errorBundlePretty err)))
+    Left err -> fatal $ FileParseError (fromAbsFile file) (toText (errorBundlePretty err))
     Right a -> pure a
 
 -- | Read JSON from a file
@@ -193,14 +201,14 @@ readContentsJson :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Pat
 readContentsJson file = context ("Parsing JSON file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsBS file
   case eitherDecodeStrict contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (toText err))
+    Left err -> fatal $ FileParseError (fromAbsFile file) (toText err)
     Right a -> pure a
 
 readContentsToml :: (Has ReadFS sig m, Has Diagnostics sig m) => Toml.TomlCodec a -> Path Abs File -> m a
 readContentsToml codec file = context ("Parsing TOML file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsText file
   case Toml.decode codec contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (Toml.prettyTomlDecodeErrors err))
+    Left err -> fatal $ FileParseError (fromAbsFile file) (Toml.prettyTomlDecodeErrors err)
     Right a -> pure a
 
 -- | Read YAML from a file
@@ -208,7 +216,7 @@ readContentsYaml :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Pat
 readContentsYaml file = context ("Parsing YAML file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsBS file
   case decodeEither' contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (toText $ prettyPrintParseException err))
+    Left err -> fatal $ FileParseError (fromAbsFile file) (toText $ prettyPrintParseException err)
     Right a -> pure a
 
 -- | Read XML from a file
@@ -216,7 +224,7 @@ readContentsXML :: (FromXML a, Has ReadFS sig m, Has Diagnostics sig m) => Path 
 readContentsXML file = context ("Parsing XML file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsText file
   case parseXML contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (xmlErrorPretty err))
+    Left err -> fatal $ FileParseError (fromAbsFile file) (xmlErrorPretty err)
     Right a -> pure a
 
 type ReadFSIOC = SimpleC ReadFSF
