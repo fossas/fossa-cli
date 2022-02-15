@@ -52,6 +52,7 @@ import Path.IO qualified as PIO
 import Strategy.Cargo qualified as Cargo
 import Strategy.Composer qualified as Composer
 import Strategy.Maven qualified as Maven
+import Strategy.Node qualified as Node
 import Strategy.NuGet.Nuspec qualified as Nuspec
 import System.Exit (die)
 import System.IO (BufferMode (NoBuffering), hSetBuffering, stderr, stdout)
@@ -88,6 +89,7 @@ runAll basedir = do
   single Nuspec.discover
   single Composer.discover
   single Cargo.discover
+  single Node.discover
   where
     single f = withDiscoveredProjects f basedir runSingle
 
