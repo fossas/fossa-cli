@@ -286,6 +286,7 @@ library
     Strategy.Cargo
     Strategy.Carthage
     Strategy.Cocoapods
+    Strategy.Cocoapods.Errors
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer

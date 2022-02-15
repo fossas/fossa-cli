@@ -17,6 +17,7 @@ import Network.HTTP.Req (
   runReq,
   useHttpsURI,
  )
+import Strategy.Cocoapods.Errors (refPodDocUrl)
 import Strategy.Dart.Errors (refPubDocUrl)
 import Strategy.Node.Errors (
   fossaNodeDocUrl,
@@ -56,6 +57,7 @@ urlsToCheck =
   , swiftFossaDocUrl
   , swiftPackageResolvedRef
   , xcodeCoordinatePkgVersion
+  , refPodDocUrl
   ]
 
 spec :: Spec
