@@ -6,7 +6,7 @@ module Strategy.Maven.PluginStrategy (
 ) where
 
 import Control.Algebra (Has, run)
-import Control.Effect.Diagnostics (Diagnostics, context)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, errCtx)
 import Control.Effect.Lift (Lift)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
@@ -44,11 +44,19 @@ analyze' ::
   m (Graphing Dependency, GraphBreadth)
 analyze' dir = do
   graph <- withUnpackedPlugin $ \filepath -> do
-    context "Installing plugin" $ installPlugin dir filepath
-    context "Running plugin" $ execPlugin dir
+    context "Installing plugin" $ errCtx MvnPluginInstallFailed $ installPlugin dir filepath
+    context "Running plugin" $ errCtx MvnPluginExecFailed $ execPlugin dir
     pluginOutput <- parsePluginOutput dir
     context "Building dependency graph" $ pure (buildGraph pluginOutput)
   pure (graph, Complete)
+
+data MvnPluginInstallFailed = MvnPluginInstallFailed
+instance ToDiagnostic MvnPluginInstallFailed where
+  renderDiagnostic (MvnPluginInstallFailed) = "Failed to install maven plugin for analysis."
+
+data MvnPluginExecFailed = MvnPluginExecFailed
+instance ToDiagnostic MvnPluginExecFailed where
+  renderDiagnostic (MvnPluginExecFailed) = "Failed to execute maven plugin for analysis."
 
 buildGraph :: PluginOutput -> Graphing Dependency
 buildGraph PluginOutput{..} = run $

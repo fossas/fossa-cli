@@ -88,7 +88,7 @@ getDepsDynamicAnalysis closure =
   context "Dynamic Analysis" $
     warnOnErr MissingEdges
       . warnOnErr MissingDeepDeps
-      $ getDepsPlugin closure <||> getDepsTreeCmd closure
+      $ (getDepsPlugin closure <||> getDepsTreeCmd closure)
 
 getDepsPlugin ::
   ( Has (Lift IO) sig m
