@@ -112,7 +112,6 @@ instance ToDiagnostic ReadFSErr where
       vsep
         [ "Error parsing file: " <> pretty path <> "."
         , ""
-        , "Details:"
         , indent 4 (pretty err)
         , ""
         , reportDefectWithFileMsg path

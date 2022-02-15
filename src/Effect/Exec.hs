@@ -150,7 +150,6 @@ instance ToDiagnostic ExecErr where
       vsep
         [ "Failed to parse command output. command: " <> viaShow cmd <> "."
         , ""
-        , "Details:"
         , indent 4 (pretty err)
         , ""
         , reportDefectMsg

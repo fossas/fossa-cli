@@ -3,6 +3,8 @@
 ## Yet to be released
 
 - Ruby: Improves error and warning messages. ([#800](https://github.com/fossas/fossa-cli/pull/800))
+- UX: Parser error messages include call to action. ([#801](https://github.com/fossas/fossa-cli/pull/801))
+- Python: `setup.py` error messages are _less_ noisy. ([#801](https://github.com/fossas/fossa-cli/pull/801))
 
 ## v3.1.0 
 
