@@ -89,25 +89,8 @@ recursiveLoadPom path = do
 
     recurseRelative :: Text {- relative filepath -} -> m ()
     recurseRelative rel = do
-      (resolvedPath :: Maybe (Path Abs File)) <-
-        context rel $
-          recover $
-            warnOnErr (PomProjectInheritanceResolutionFailed path)
-              . errCtx (FailedToResolveParentPom rel)
-              $ (resolvePath (parent path) rel)
+      resolvedPath :: Maybe (Path Abs File) <- recover $ resolvePath (parent path) rel
       traverse_ recursiveLoadPom resolvedPath
-
-newtype PomProjectInheritanceResolutionFailed = PomProjectInheritanceResolutionFailed (Path Abs File)
-instance ToDiagnostic PomProjectInheritanceResolutionFailed where
-  renderDiagnostic (PomProjectInheritanceResolutionFailed pomPath) =
-    vsep
-      [ "Dependencies originated or using inheritance may have missing or incorrect dependency information,"
-      , pretty $ "for: " <> show pomPath
-      ]
-
-newtype FailedToResolveParentPom = FailedToResolveParentPom Text
-instance ToDiagnostic FailedToResolveParentPom where
-  renderDiagnostic (FailedToResolveParentPom relativePath) = pretty $ "Failed to resolve relative path: " <> relativePath <> " for parent pom."
 
 -- resolve a Filepath (in Text) that may either point to a directory or an exact
 -- pom file. when it's a directory, we default to pointing at the "pom.xml" in
