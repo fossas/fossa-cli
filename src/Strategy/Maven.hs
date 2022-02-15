@@ -14,12 +14,14 @@ import Data.Aeson (ToJSON)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
+import Graphing (Graphing)
 import Path (Abs, Dir, Path, parent)
 import Strategy.Maven.DepTree qualified as DepTreeCmd
 import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
+import Strategy.Maven.Pom.Closure (MavenProjectClosure)
 import Strategy.Maven.Pom.Closure qualified as PomClosure
-import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), GraphBreadth (..))
+import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), GraphBreadth (..), Dependency)
 
 discover ::
   ( Has (Lift IO) sig m
@@ -67,12 +69,42 @@ getDeps ::
 getDeps (MavenProject closure) = do
   (graph, graphBreadth) <-
     context "Maven" $
-      context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
-        <||> context "Dynamic analysis" (DepTreeCmd.analyze . parent $ PomClosure.closurePath closure)
-        <||> context "Static analysis" (pure (Pom.analyze' closure, Partial))
+      getDepsPlugin closure
+        <||> getDepsTreeCmd closure
+        <||> getStaticAnalysisCmd closure
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = graphBreadth
       , dependencyManifestFiles = [PomClosure.closurePath closure]
       }
+
+getDepsPlugin ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  ) =>
+  MavenProjectClosure ->
+  m (Graphing Dependency, GraphBreadth)
+getDepsPlugin closure = context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
+
+getDepsTreeCmd ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  ) =>
+  MavenProjectClosure ->
+  m (Graphing Dependency, GraphBreadth)
+getDepsTreeCmd closure =
+  context "Dynamic analysis" $ 
+    DepTreeCmd.analyze . parent $ PomClosure.closurePath closure
+
+getStaticAnalysisCmd ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  ) =>
+  MavenProjectClosure ->
+  m (Graphing Dependency, GraphBreadth)
+getStaticAnalysisCmd closure = context "Static analysis" $ pure (Pom.analyze' closure, Partial)
