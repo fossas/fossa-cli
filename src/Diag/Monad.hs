@@ -129,7 +129,7 @@ ResultT ma <||> ResultT ma' = ResultT $ do
     Failure ws eg -> do
       resA' <- ma'
       case resA' of
-        Success ws' a' -> pure (Success (ws' <> (errGroupToWarning eg : ws) <> ws') a')
+        Success ws' a' -> pure (Success (ws' <> (errGroupToWarning eg : ws)) a')
         Failure ws' eg' -> pure (Failure (ws' <> ws) (eg <> eg'))
 {-# INLINE (<||>) #-}
 
