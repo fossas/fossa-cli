@@ -30,13 +30,11 @@ module Effect.ReadFS (
   listDir',
 
   -- * Parsing file contents
-  readContentsParserOf,
   readContentsParser,
   readContentsJson,
   readContentsToml,
   readContentsYaml,
   readContentsXML,
-  ParseErrMsgFmt (..),
 
   -- * File identity information
   contentIsBinary,
@@ -85,20 +83,11 @@ data ReadFSF a where
 
 type ReadFS = Simple ReadFSF
 
-data ParseErrMsgFmt
-  = PythonRequirementErrFmt
-  | DefaultParseErrMsgFmt
-  deriving (Show, Eq, Ord, Generic)
-
-instance ToJSON ParseErrMsgFmt
-instance FromJSON ParseErrMsgFmt
-instance RecordableValue ParseErrMsgFmt
-
 data ReadFSErr
   = -- | A file couldn't be read. file, err
     FileReadError FilePath Text
-  | -- | A file's contents couldn't be parsed. TODO: ask user to help with this. file, err
-    FileParseError FilePath Text ParseErrMsgFmt
+  | -- | A file's contents couldn't be parsed.
+    FileParseError FilePath Text
   | -- | An IOException was thrown when resolving a file/directory
     ResolveError FilePath FilePath Text
   | -- | An IOException was thrown when listing a directory
@@ -119,20 +108,7 @@ deriving instance Ord (ReadFSF a)
 instance ToDiagnostic ReadFSErr where
   renderDiagnostic = \case
     FileReadError path err -> "Error reading file " <> pretty path <> ":" <> line <> indent 4 (pretty err)
-    FileParseError path err PythonRequirementErrFmt ->
-      vsep
-        [ "Error parsing file: " <> pretty path <> "."
-        , ""
-        , "We occasionally find files we think are python requirements.txt files but"
-        , "aren't. If this file isn't a python requirements.txt file, this error can"
-        , "be safely ignored."
-        , ""
-        , "Details:"
-        , indent 4 (pretty err)
-        , ""
-        , reportDefectWithFileMsg path
-        ]
-    FileParseError path err DefaultParseErrMsgFmt ->
+    FileParseError path err ->
       vsep
         [ "Error parsing file: " <> pretty path <> "."
         , ""
@@ -213,20 +189,12 @@ contentIsBinary file = do
 
 type Parser = Parsec Void Text
 
--- | Read from a file, parsing its content. If error is encountered, it uses provided parser error format type.
-readContentsParserOf :: forall a sig m. (Has ReadFS sig m, Has Diagnostics sig m) => ParseErrMsgFmt -> Parser a -> Path Abs File -> m a
-readContentsParserOf errFmt parser file = context ("Parsing file '" <> toText (fromAbsFile file) <> "'") $ do
-  contents <- readContentsText file
-  case runParser parser (fromAbsFile file) contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (toText (errorBundlePretty err)) errFmt)
-    Right a -> pure a
-
 -- | Read from a file, parsing its contents
 readContentsParser :: forall a sig m. (Has ReadFS sig m, Has Diagnostics sig m) => Parser a -> Path Abs File -> m a
 readContentsParser parser file = context ("Parsing file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsText file
   case runParser parser (fromAbsFile file) contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (toText (errorBundlePretty err)) DefaultParseErrMsgFmt)
+    Left err -> fatal $ FileParseError (fromAbsFile file) (toText (errorBundlePretty err))
     Right a -> pure a
 
 -- | Read JSON from a file
@@ -234,14 +202,14 @@ readContentsJson :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Pat
 readContentsJson file = context ("Parsing JSON file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsBS file
   case eitherDecodeStrict contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (toText err) DefaultParseErrMsgFmt)
+    Left err -> fatal $ FileParseError (fromAbsFile file) (toText err)
     Right a -> pure a
 
 readContentsToml :: (Has ReadFS sig m, Has Diagnostics sig m) => Toml.TomlCodec a -> Path Abs File -> m a
 readContentsToml codec file = context ("Parsing TOML file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsText file
   case Toml.decode codec contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (Toml.prettyTomlDecodeErrors err) DefaultParseErrMsgFmt)
+    Left err -> fatal $ FileParseError (fromAbsFile file) (Toml.prettyTomlDecodeErrors err)
     Right a -> pure a
 
 -- | Read YAML from a file
@@ -249,7 +217,7 @@ readContentsYaml :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Pat
 readContentsYaml file = context ("Parsing YAML file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsBS file
   case decodeEither' contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (toText $ prettyPrintParseException err) DefaultParseErrMsgFmt)
+    Left err -> fatal $ FileParseError (fromAbsFile file) (toText $ prettyPrintParseException err)
     Right a -> pure a
 
 -- | Read XML from a file
@@ -257,7 +225,7 @@ readContentsXML :: (FromXML a, Has ReadFS sig m, Has Diagnostics sig m) => Path 
 readContentsXML file = context ("Parsing XML file '" <> toText (fromAbsFile file) <> "'") $ do
   contents <- readContentsText file
   case parseXML contents of
-    Left err -> fatal (FileParseError (fromAbsFile file) (xmlErrorPretty err) DefaultParseErrMsgFmt)
+    Left err -> fatal $ FileParseError (fromAbsFile file) (xmlErrorPretty err)
     Right a -> pure a
 
 type ReadFSIOC = SimpleC ReadFSF

@@ -38,7 +38,7 @@ import Effect.Logger (
   hsep,
   pretty,
  )
-import Effect.ReadFS (ParseErrMsgFmt (DefaultParseErrMsgFmt), ReadFS, ReadFSErr (FileParseError), readContentsText)
+import Effect.ReadFS (ReadFS, ReadFSErr (FileParseError), readContentsText)
 import Graphing (Graphing)
 import Path (Abs, File, Path)
 import Strategy.Node.PackageJson (Development, FlatDeps (..), NodePackage (..), Production)
@@ -60,7 +60,7 @@ analyze yarnFile flatdeps = do
   context "Building yarn.lock package graph" $ buildGraph parsed flatdeps
 
 mangleParseErr :: FilePath -> YL.LockfileError -> ReadFSErr
-mangleParseErr path err = FileParseError path (YL.prettyLockfileError err) DefaultParseErrMsgFmt
+mangleParseErr path err = FileParseError path (YL.prettyLockfileError err)
 
 data YarnV1Label
   = NodeEnvironment DepEnvironment
