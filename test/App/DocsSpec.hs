@@ -17,6 +17,7 @@ import Network.HTTP.Req (
   runReq,
   useHttpsURI,
  )
+import Strategy.Dart.Errors (refPubDocUrl)
 import Strategy.Ruby.Errors (bundlerLockFileRationaleUrl, rubyFossaDocUrl)
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 import Text.URI (mkURI)
@@ -34,6 +35,7 @@ urlsToCheck =
   , fossaYmlDocUrl
   , bundlerLockFileRationaleUrl
   , rubyFossaDocUrl
+  , refPubDocUrl
   ]
 
 spec :: Spec
