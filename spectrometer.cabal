@@ -354,6 +354,7 @@ library
     Strategy.Rebar3
     Strategy.RPM
     Strategy.Ruby.BundleShow
+    Strategy.Ruby.Errors
     Strategy.Ruby.GemfileLock
     Strategy.Scala
     Strategy.Swift.PackageResolved

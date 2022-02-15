@@ -3,7 +3,9 @@ module App.DocsSpec (
 ) where
 
 import App.Docs (fossaYmlDocUrl, newIssueUrl, userGuideUrl)
+import Data.Foldable (for_)
 import Data.Maybe (fromJust)
+import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Network.HTTP.Req (
   GET (GET),
@@ -15,7 +17,8 @@ import Network.HTTP.Req (
   runReq,
   useHttpsURI,
  )
-import Test.Hspec (Expectation, Spec, describe, shouldBe, xit)
+import Strategy.Ruby.Errors (bundlerLockFileRationaleUrl, rubyFossaDocUrl)
+import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 import Text.URI (mkURI)
 
 shouldRespondToGETWithHttpCode :: Text -> Int -> Expectation
@@ -24,16 +27,18 @@ shouldRespondToGETWithHttpCode uri expected = do
   r <- runReq defaultHttpConfig $ req GET url NoReqBody bsResponse mempty
   responseStatusCode r `shouldBe` expected
 
+urlsToCheck :: [Text]
+urlsToCheck =
+  [ userGuideUrl
+  , newIssueUrl
+  , fossaYmlDocUrl
+  , bundlerLockFileRationaleUrl
+  , rubyFossaDocUrl
+  ]
+
 spec :: Spec
 spec = do
-  describe "userGuideUrl" $
-    xit "should be reachable" $
-      userGuideUrl `shouldRespondToGETWithHttpCode` 200
-
-  describe "newIssueUrl" $
-    xit "should be reachable" $
-      newIssueUrl `shouldRespondToGETWithHttpCode` 200
-
-  describe "fossaYmlDocUrl" $
-    xit "should be reachable" $
-      fossaYmlDocUrl `shouldRespondToGETWithHttpCode` 200
+  describe "Documentation links provided in application are reachable" $
+    for_ urlsToCheck $ \url ->
+      it (toString url <> " should be reachable") $
+        url `shouldRespondToGETWithHttpCode` 200

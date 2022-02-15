@@ -7,6 +7,7 @@ module Strategy.Bundler (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import Control.Carrier.Diagnostics (errCtx, warnOnErr)
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
 import Data.Aeson (ToJSON)
@@ -16,6 +17,11 @@ import Effect.ReadFS
 import GHC.Generics (Generic)
 import Path
 import Strategy.Ruby.BundleShow qualified as BundleShow
+import Strategy.Ruby.Errors (
+  BundlerMissingLockFile (..),
+  RubyMissingDepClassification (..),
+  RubyMissingEdges (..),
+ )
 import Strategy.Ruby.GemfileLock qualified as GemfileLock
 import Types
 
@@ -63,7 +69,7 @@ mkProject project =
     }
 
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
-getDeps project = context "Bundler" $ analyzeBundleShow project <||> analyzeGemfileLock project
+getDeps project = analyzeGemfileLock project <||> context "Bundler" (analyzeBundleShow project)
 
 analyzeBundleShow :: (Has Exec sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
 analyzeBundleShow project = do
@@ -76,12 +82,16 @@ analyzeBundleShow project = do
       }
 
 analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
-analyzeGemfileLock project = do
-  lockFile <- context "Retrieve Gemfile.lock" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project))
-  graph <- context "Gemfile.lock analysis" . GemfileLock.analyze' $ lockFile
-  pure $
-    DependencyResults
-      { dependencyGraph = graph
-      , dependencyGraphBreadth = Complete
-      , dependencyManifestFiles = [lockFile]
-      }
+analyzeGemfileLock project =
+  warnOnErr RubyMissingDepClassification
+    . warnOnErr RubyMissingEdges
+    . errCtx (BundlerMissingLockFile $ bundlerGemfile project)
+    $ do
+      lockFile <- context "Retrieve Gemfile.lock" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project))
+      graph <- context "Gemfile.lock analysis" . GemfileLock.analyze' $ lockFile
+      pure $
+        DependencyResults
+          { dependencyGraph = graph
+          , dependencyGraphBreadth = Complete
+          , dependencyManifestFiles = [lockFile]
+          }

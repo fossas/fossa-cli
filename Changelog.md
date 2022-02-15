@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## Yet to be released
+
+- Ruby: Improves error and warning messages. ([#800](https://github.com/fossas/fossa-cli/pull/800))
+
 ## v3.1.0 
 
 - Fossa API: Uses `SSL_CERT_FILE`, and `SSL_CERT_DIR` environment variable for certificates when provided. ([#760](https://github.com/fossas/fossa-cli/pull/760)) 

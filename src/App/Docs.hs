@@ -2,6 +2,7 @@ module App.Docs (
   userGuideUrl,
   newIssueUrl,
   fossaYmlDocUrl,
+  strategyLangDocUrl,
 ) where
 
 import App.Version (currentBranch, versionNumber)
@@ -21,3 +22,6 @@ fossaYmlDocUrl = guidePathOf (maybe currentBranch ("v" <>) versionNumber) "/docs
 
 newIssueUrl :: Text
 newIssueUrl = sourceCodeUrl <> "/issues/new"
+
+strategyLangDocUrl :: Text -> Text
+strategyLangDocUrl path = guidePathOf (maybe currentBranch ("v" <>) versionNumber) ("/docs/references/strategies/languages/" <> path)
