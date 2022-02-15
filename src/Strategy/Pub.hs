@@ -2,6 +2,7 @@ module Strategy.Pub (discover) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, fatalText, recover, warnOnErr, (<||>))
+import Control.Monad (void)
 import Data.Aeson (ToJSON)
 import Diag.Common (
   MissingDeepDeps (MissingDeepDeps),
@@ -11,7 +12,6 @@ import Discovery.Walk (WalkStep (WalkContinue), findFileNamed, walk')
 import Effect.Exec (Exec, Has)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
-import Control.Monad (void)
 import GHC.Generics (Generic)
 import Path
 import Strategy.Dart.Errors (PubspecLimitation (..))
