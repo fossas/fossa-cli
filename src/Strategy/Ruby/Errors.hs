@@ -45,4 +45,4 @@ instance ToDiagnostic RubyMissingEdges where
 data RubyMissingDepClassification = RubyMissingDepClassification
 instance ToDiagnostic RubyMissingDepClassification where
   renderDiagnostic (RubyMissingDepClassification) =
-    "Could not classify dependencies between direct or deep. All dependencies will be classified as direct."
+    "Could not differentiate between direct and deep dependencies. All dependencies will be classified as direct."
