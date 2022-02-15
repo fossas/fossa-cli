@@ -17,7 +17,6 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Effect.ReadFS
 import Path
-import Prettyprinter (Pretty (pretty), vsep)
 import Strategy.Maven.Pom.PomFile
 
 data GlobalClosure = GlobalClosure
