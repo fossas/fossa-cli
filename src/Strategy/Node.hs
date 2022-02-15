@@ -88,7 +88,7 @@ discover dir = context "NodeJS" $ do
       pure []
     else do
       globalGraph <- context "Building global workspace graph" $ pure $ buildManifestGraph manifestMap
-      graphs <- context "Splitting global graph into chunks" $ fromMaybeText "" $ splitGraph globalGraph
+      graphs <- context "Splitting global graph into chunks" $ fromMaybeText "Detected cyclic package.json graph" $ splitGraph globalGraph
       context "Converting graphs to analysis targets" $ traverse (mkProject <=< identifyProjectType) graphs
 
 collectManifests :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Manifest]
