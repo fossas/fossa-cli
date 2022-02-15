@@ -6,7 +6,9 @@ module Node.PackageJsonSpec (
 
 import Algebra.Graph.AdjacencyMap qualified as AM
 import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
+import Data.Aeson (decode, encode)
 import Data.Foldable (for_)
+import Data.Glob (toGlob)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -17,7 +19,10 @@ import DepTypes (
   VerConstraint (CCompatible),
  )
 import GraphUtil (expectDeps, expectDirect, expectEdges)
-import Path (mkRelFile, toFilePath, (</>))
+import Hedgehog (Gen, forAll, tripping)
+import Hedgehog.Gen qualified as Gen
+import Hedgehog.Range qualified as Range
+import Path (mkRelFile, parseRelDir, toFilePath, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node (NodeProject (NPM, NPMLock, Yarn))
 import Strategy.Node.PackageJson (
@@ -31,19 +36,27 @@ import Strategy.Node.PackageJson (
  )
 import Test.Effect (it', shouldBe', shouldMatchList')
 import Test.Hspec (Spec, describe, it, runIO)
-import Types (License (License), LicenseResult (LicenseResult, licenseFile, licensesFound), LicenseType (LicenseURL, UnknownType))
+import Test.Hspec.Hedgehog (hedgehog, modifyMaxSuccess)
+import Types (
+  License (License),
+  LicenseResult (LicenseResult, licenseFile, licensesFound),
+  LicenseType (LicenseURL, UnknownType),
+ )
 
-mockInput :: PackageJson
-mockInput =
+pkgJsonMock :: Maybe PkgJsonLicense -> Maybe [PkgJsonLicenseObj] -> PackageJson
+pkgJsonMock license licenses =
   PackageJson
     { packageName = Nothing
     , packageVersion = Nothing
     , packageWorkspaces = PkgJsonWorkspaces []
     , packageDeps = Map.fromList [("packageOne", "^1.0.0")]
     , packageDevDeps = Map.fromList [("packageTwo", "^2.0.0")]
-    , packageLicense = Nothing
-    , packageLicenses = Nothing
+    , packageLicense = license
+    , packageLicenses = licenses
     }
+
+mockInput :: PackageJson
+mockInput = pkgJsonMock Nothing Nothing
 
 packageOne :: Dependency
 packageOne =
@@ -78,18 +91,6 @@ graphSpec =
 
 -- License Testing
 
-licenseMock :: Maybe PkgJsonLicense -> Maybe [PkgJsonLicenseObj] -> PackageJson
-licenseMock license licenses =
-  PackageJson
-    { packageName = Nothing
-    , packageVersion = Nothing
-    , packageWorkspaces = PkgJsonWorkspaces []
-    , packageDeps = Map.fromList [("packageOne", "^1.0.0")]
-    , packageDevDeps = Map.fromList [("packageTwo", "^2.0.0")]
-    , packageLicense = license
-    , packageLicenses = licenses
-    }
-
 mockUrl1 :: Text
 mockUrl1 = "https://foo.com"
 
@@ -103,16 +104,20 @@ mockLicensesObjs =
   ]
 
 mkTestLicenseResult :: FilePath -> [License] -> Types.LicenseResult
-mkTestLicenseResult manifest ls = LicenseResult{licenseFile = manifest, licensesFound = ls}
+mkTestLicenseResult manifest ls =
+  LicenseResult{licenseFile = manifest, licensesFound = ls}
 
 singleLicenseResult :: FilePath -> LicenseResult
-singleLicenseResult mockManifestFilePath = mkTestLicenseResult mockManifestFilePath [License Types.UnknownType "MIT"]
+singleLicenseResult mockManifestFilePath =
+  mkTestLicenseResult mockManifestFilePath [License Types.UnknownType "MIT"]
 
 singleLicenseObjResult :: FilePath -> Text -> LicenseResult
-singleLicenseObjResult mockManifestFilePath url = mkTestLicenseResult mockManifestFilePath [License LicenseURL url]
+singleLicenseObjResult mockManifestFilePath url =
+  mkTestLicenseResult mockManifestFilePath [License LicenseURL url]
 
 multiLicenseObjResult :: FilePath -> [Text] -> LicenseResult
-multiLicenseObjResult mockManifestFilePath urls = mkTestLicenseResult mockManifestFilePath $ License LicenseURL <$> urls
+multiLicenseObjResult mockManifestFilePath urls =
+  mkTestLicenseResult mockManifestFilePath $ License LicenseURL <$> urls
 
 mkMockPkgJsonGraph :: [(Manifest, PackageJson)] -> PkgJsonGraph
 mkMockPkgJsonGraph packagePairs =
@@ -137,34 +142,34 @@ licenseSpec = do
     describe ("license field detection from a " <> name <> " PackageJson") $ do
       let mockMIT = Just $ LicenseText "MIT"
       it' "It discovers a string license field" $ do
-        let mockPackageJson = licenseMock mockMIT Nothing
+        let mockPackageJson = pkgJsonMock mockMIT Nothing
         foundLicenses <- licenseAnalyzeProject (mkNodeProject nodeConstr [(mockManifest, mockPackageJson)])
         foundLicenses `shouldBe'` [singleLicenseResult mockManifestFilePath]
 
       it' "It discovers an object license field" $ do
         let mockLicense = LicenseObj PkgJsonLicenseObj{licenseType = "MIT", licenseUrl = mockUrl1}
-            mockPackageJson = licenseMock (Just mockLicense) Nothing
+            mockPackageJson = pkgJsonMock (Just mockLicense) Nothing
         foundLicenses <- licenseAnalyzeProject . mkNodeProject nodeConstr $ [(mockManifest, mockPackageJson)]
         foundLicenses `shouldMatchList'` [singleLicenseObjResult mockManifestFilePath mockUrl1]
 
       it' "It discovers a licenses field with multiple license objects" $ do
-        let mockPackageJson = licenseMock Nothing (Just mockLicensesObjs)
+        let mockPackageJson = pkgJsonMock Nothing (Just mockLicensesObjs)
         foundLicenses <- licenseAnalyzeProject . mkNodeProject nodeConstr $ [(mockManifest, mockPackageJson)]
         foundLicenses `shouldMatchList'` [multiLicenseObjResult mockManifestFilePath [mockUrl1, mockUrl2]]
 
       it' "It discovers licenses when both 'license' and 'licenses' are set." $ do
-        let mockPackageJson = licenseMock mockMIT (Just mockLicensesObjs)
+        let mockPackageJson = pkgJsonMock mockMIT (Just mockLicensesObjs)
             licenses = mkTestLicenseResult mockManifestFilePath $ (License UnknownType "MIT") : map (License LicenseURL) [mockUrl1, mockUrl2]
         foundLicenses <- licenseAnalyzeProject . mkNodeProject nodeConstr $ [(mockManifest, mockPackageJson)]
         foundLicenses `shouldMatchList'` [licenses]
 
       it' "It discovers licenses when there are > 1 PackageJson's in a Node project" $ do
-        let mockPackageJson1 = licenseMock Nothing (Just mockLicensesObjs)
+        let mockPackageJson1 = pkgJsonMock Nothing (Just mockLicensesObjs)
             mockResult1 = mkTestLicenseResult mockManifestFilePath . map (License LicenseURL) $ [mockUrl1, mockUrl2]
             mockManifest2 = Manifest $ currDir </> $(mkRelFile "bar/package.json")
             mockManifestFilePath2 = toFilePath . unManifest $ mockManifest2
 
-            mockPackageJson2 = licenseMock (Just $ LicenseText "MIT") Nothing
+            mockPackageJson2 = pkgJsonMock (Just $ LicenseText "MIT") Nothing
             mockResult2 = mkTestLicenseResult mockManifestFilePath2 [(License UnknownType "MIT")]
             nodeProjects =
               NPM $
@@ -175,7 +180,64 @@ licenseSpec = do
         foundLicenses <- licenseAnalyzeProject nodeProjects
         foundLicenses `shouldMatchList'` [mockResult1, mockResult2]
 
+-- PackageJson parsing Spec
+
+alphaTextGen :: Int -> Gen Text
+alphaTextGen n = Gen.text (Range.linear 1 n) Gen.alpha
+
+alphaNumGen :: Gen Text
+alphaNumGen = Gen.text (Range.linear 5 50) Gen.alphaNum
+
+pkgJsonWorkSpaceGen :: Gen PkgJsonWorkspaces
+pkgJsonWorkSpaceGen = PkgJsonWorkspaces <$> Gen.list (Range.linear 0 5) globGen
+  where
+    alphaString = Gen.string (Range.linear 1 5) Gen.alpha
+    relDir = Gen.just (parseRelDir <$> alphaString)
+    globGen = toGlob <$> relDir
+
+licenseObjGen :: Gen PkgJsonLicenseObj
+licenseObjGen = PkgJsonLicenseObj <$> alphaNumGen <*> alphaNumGen
+
+licenseGen :: Gen PkgJsonLicense
+licenseGen = Gen.choice [textGen, objGen]
+  where
+    textGen = LicenseText <$> alphaNumGen
+    objGen = LicenseObj <$> licenseObjGen
+
+packageJsonGen :: Gen PackageJson
+packageJsonGen = do
+  let keyValGen = Gen.list (Range.linear 0 10) ((,) <$> alphaTextGen 5 <*> alphaTextGen 5)
+      keyValMap = Map.fromList <$> keyValGen
+  name <- Gen.maybe $ alphaTextGen 20
+  version <- Gen.maybe $ alphaTextGen 4
+  workspaces <- pkgJsonWorkSpaceGen
+  pkgDeps <- keyValMap
+  devDeps <- keyValMap
+  license <- Gen.maybe licenseGen
+  licenses <- Gen.maybe $ Gen.list (Range.linear 0 5) licenseObjGen
+  pure
+    PackageJson
+      { packageName = name
+      , packageVersion = version
+      , packageWorkspaces = workspaces
+      , packageDeps = pkgDeps
+      , packageDevDeps = devDeps
+      , packageLicense = license
+      , packageLicenses = licenses
+      }
+
+pkgJsonParseSpec :: Spec
+pkgJsonParseSpec =
+  describe "Test parsing package.json files" $
+    modifyMaxSuccess (const 20) $
+      it "round-trips package.json structures" $
+        hedgehog $
+          do
+            pkgJson <- forAll packageJsonGen
+            tripping pkgJson encode decode
+
 spec :: Spec
 spec = do
   graphSpec
   licenseSpec
+  pkgJsonParseSpec
