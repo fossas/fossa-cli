@@ -16,6 +16,10 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import DepTypes
+import Diag.Common (
+  MissingDeepDeps (MissingDeepDeps),
+  MissingEdges (MissingEdges),
+ )
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
@@ -67,7 +71,7 @@ analyze' file = graphingGolang $ do
   gopkg <- readContentsToml gopkgCodec file
   context "Building dependency graph" $ buildGraph gopkg
 
-  _ <- recover (fillInTransitive (parent file))
+  _ <- recover $ warnOnErr MissingDeepDeps . warnOnErr MissingEdges $ (fillInTransitive (parent file))
   pure ()
 
 buildGraph :: Has GolangGrapher sig m => Gopkg -> m ()
