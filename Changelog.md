@@ -1,6 +1,6 @@
 # Fossa CLI Changelog
 
-## Unreleased 
+## v3.1.0 
 
 - Fossa API: Uses `SSL_CERT_FILE`, and `SSL_CERT_DIR` environment variable for certificates when provided. ([#760](https://github.com/fossas/fossa-cli/pull/760)) 
 - UX: Uses error messages received from FOSSA api, when reporting API related errors. ([#792](https://github.com/fossas/fossa-cli/pull/792))
