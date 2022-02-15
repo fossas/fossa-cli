@@ -8,9 +8,10 @@ module Strategy.Maven (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift)
 import Data.Aeson (ToJSON)
+import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
@@ -21,7 +22,7 @@ import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure)
 import Strategy.Maven.Pom.Closure qualified as PomClosure
-import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), GraphBreadth (..), Dependency)
+import Types (Dependency, DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), GraphBreadth (..))
 
 discover ::
   ( Has (Lift IO) sig m
@@ -67,17 +68,27 @@ getDeps ::
   MavenProject ->
   m DependencyResults
 getDeps (MavenProject closure) = do
-  (graph, graphBreadth) <-
-    context "Maven" $
-      getDepsPlugin closure
-        <||> getDepsTreeCmd closure
-        <||> getStaticAnalysisCmd closure
+  (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis closure <||> getStaticAnalysis closure
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = graphBreadth
       , dependencyManifestFiles = [PomClosure.closurePath closure]
       }
+
+getDepsDynamicAnalysis ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  ) =>
+  MavenProjectClosure ->
+  m (Graphing Dependency, GraphBreadth)
+getDepsDynamicAnalysis closure =
+  context "Dynamic Analysis" $
+    warnOnErr MissingEdges
+      . warnOnErr MissingDeepDeps
+      $ getDepsPlugin closure <||> getDepsTreeCmd closure
 
 getDepsPlugin ::
   ( Has (Lift IO) sig m
@@ -98,13 +109,13 @@ getDepsTreeCmd ::
   MavenProjectClosure ->
   m (Graphing Dependency, GraphBreadth)
 getDepsTreeCmd closure =
-  context "Dynamic analysis" $ 
+  context "Dynamic analysis" $
     DepTreeCmd.analyze . parent $ PomClosure.closurePath closure
 
-getStaticAnalysisCmd ::
+getStaticAnalysis ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing Dependency, GraphBreadth)
-getStaticAnalysisCmd closure = context "Static analysis" $ pure (Pom.analyze' closure, Partial)
+getStaticAnalysis closure = context "Static analysis" $ pure (Pom.analyze' closure, Partial)
