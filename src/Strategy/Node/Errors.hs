@@ -1,8 +1,10 @@
 module Strategy.Node.Errors (
   MissingNodeLockFile (..),
+  CyclicPackageJson (..),
   fossaNodeDocUrl,
   npmLockFileDocUrl,
   yarnLockfileDocUrl,
+  yarnV2LockfileDocUrl,
 ) where
 
 import App.Docs (strategyLangDocUrl)
@@ -13,11 +15,18 @@ import Prettyprinter (Pretty (pretty), indent, vsep)
 yarnLockfileDocUrl :: Text
 yarnLockfileDocUrl = "https://classic.yarnpkg.com/lang/en/docs/yarn-lock/"
 
+yarnV2LockfileDocUrl :: Text
+yarnV2LockfileDocUrl = "https://yarnpkg.com/getting-started/qa#should-lockfiles-be-committed-to-the-repository"
+
 npmLockFileDocUrl :: Text
 npmLockFileDocUrl = "https://docs.npmjs.com/cli/v8/configuring-npm/package-lock-json"
 
 fossaNodeDocUrl :: Text
 fossaNodeDocUrl = strategyLangDocUrl "nodejs/nodejs.md"
+
+data CyclicPackageJson = CyclicPackageJson
+instance ToDiagnostic CyclicPackageJson where
+  renderDiagnostic (CyclicPackageJson) = "We detected cyclic references in package.json"
 
 data MissingNodeLockFile = MissingNodeLockFile
 instance ToDiagnostic MissingNodeLockFile where
@@ -38,5 +47,6 @@ instance ToDiagnostic MissingNodeLockFile where
             [ pretty $ "- " <> fossaNodeDocUrl
             , pretty $ "- " <> npmLockFileDocUrl
             , pretty $ "- " <> yarnLockfileDocUrl
+            , pretty $ "- " <> yarnV2LockfileDocUrl
             ]
       ]

@@ -22,6 +22,7 @@ import Strategy.Node.Errors (
   fossaNodeDocUrl,
   npmLockFileDocUrl,
   yarnLockfileDocUrl,
+  yarnV2LockfileDocUrl,
  )
 import Strategy.Python.Errors (commitPoetryLockToVCS)
 import Strategy.Ruby.Errors (bundlerLockFileRationaleUrl, rubyFossaDocUrl)
@@ -46,6 +47,7 @@ urlsToCheck =
   , npmLockFileDocUrl
   , yarnLockfileDocUrl
   , fossaNodeDocUrl
+  , yarnV2LockfileDocUrl
   ]
 
 spec :: Spec

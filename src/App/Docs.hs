@@ -5,7 +5,7 @@ module App.Docs (
   strategyLangDocUrl,
 ) where
 
-import App.Version (currentBranch, versionNumber)
+import App.Version (versionOrBranch)
 import Data.Text (Text)
 
 sourceCodeUrl :: Text
@@ -15,13 +15,13 @@ guidePathOf :: Text -> Text -> Text
 guidePathOf revision repoRelUrl = sourceCodeUrl <> "/blob/" <> revision <> repoRelUrl
 
 userGuideUrl :: Text
-userGuideUrl = guidePathOf (maybe currentBranch ("v" <>) versionNumber) "/docs/README.md"
+userGuideUrl = guidePathOf versionOrBranch "/docs/README.md"
 
 fossaYmlDocUrl :: Text
-fossaYmlDocUrl = guidePathOf (maybe currentBranch ("v" <>) versionNumber) "/docs/references/files/fossa-yml.md"
+fossaYmlDocUrl = guidePathOf versionOrBranch "/docs/references/files/fossa-yml.md"
 
 newIssueUrl :: Text
 newIssueUrl = sourceCodeUrl <> "/issues/new"
 
 strategyLangDocUrl :: Text -> Text
-strategyLangDocUrl path = guidePathOf (maybe currentBranch ("v" <>) versionNumber) ("/docs/references/strategies/languages/" <> path)
+strategyLangDocUrl path = guidePathOf versionOrBranch ("/docs/references/strategies/languages/" <> path)

@@ -17,11 +17,11 @@ import Control.Effect.Diagnostics (
   fatalText,
   fromEither,
   fromEitherShow,
-  fromMaybeText,
+  fromMaybe,
   recover,
   warnOnErr,
  )
-import Control.Monad ((<=<))
+import Control.Monad (void, (<=<))
 import Data.Glob (Glob)
 import Data.Glob qualified as Glob
 import Data.Map (Map)
@@ -54,7 +54,7 @@ import Effect.ReadFS (
  )
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, Rel, mkRelFile, parent, (</>))
-import Strategy.Node.Errors (MissingNodeLockFile (MissingNodeLockFile))
+import Strategy.Node.Errors (CyclicPackageJson (CyclicPackageJson), MissingNodeLockFile (MissingNodeLockFile))
 import Strategy.Node.Npm.PackageLock qualified as PackageLock
 import Strategy.Node.PackageJson (
   Development,
@@ -96,7 +96,7 @@ discover dir = context "NodeJS" $ do
       pure []
     else do
       globalGraph <- context "Building global workspace graph" $ pure $ buildManifestGraph manifestMap
-      graphs <- context "Splitting global graph into chunks" $ fromMaybeText "Detected cyclic package.json graph" $ splitGraph globalGraph
+      graphs <- context "Splitting global graph into chunks" $ fromMaybe CyclicPackageJson $ splitGraph globalGraph
       context "Converting graphs to analysis targets" $ traverse (mkProject <=< identifyProjectType) graphs
 
 collectManifests :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Manifest]
@@ -146,11 +146,12 @@ analyzeNpmLock (Manifest file) graph = do
 
 analyzeNpm :: (Has Diagnostics sig m) => PkgJsonGraph -> m DependencyResults
 analyzeNpm wsGraph = do
-  _ <-
-    recover $
-      warnOnErr MissingEdges
-        . warnOnErr MissingDeepDeps
-        $ errCtx (MissingNodeLockFile) $ fatalText "Lock files - yarn.lock or package-lock.json were not discovered."
+  void
+    . recover
+    . warnOnErr MissingEdges
+    . warnOnErr MissingDeepDeps
+    . errCtx (MissingNodeLockFile)
+    $ fatalText "Lock files - yarn.lock or package-lock.json were not discovered."
 
   graph <- PackageJson.analyze $ Map.elems $ jsonLookup wsGraph
   pure $ DependencyResults graph Partial $ pkgFileList wsGraph
