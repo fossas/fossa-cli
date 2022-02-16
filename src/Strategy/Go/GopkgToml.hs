@@ -70,9 +70,11 @@ analyze' ::
 analyze' file = graphingGolang $ do
   gopkg <- readContentsToml gopkgCodec file
   context "Building dependency graph" $ buildGraph gopkg
-
-  _ <- recover $ warnOnErr MissingDeepDeps . warnOnErr MissingEdges $ (fillInTransitive (parent file))
-  pure ()
+  void
+    . recover
+    . warnOnErr MissingDeepDeps
+    . warnOnErr MissingEdges
+    $ fillInTransitive (parent file)
 
 buildGraph :: Has GolangGrapher sig m => Gopkg -> m ()
 buildGraph = void . Map.traverseWithKey go . resolve

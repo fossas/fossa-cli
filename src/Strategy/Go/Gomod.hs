@@ -346,8 +346,11 @@ analyze' file = do
     gomod <- readContentsParser gomodParser file
 
     context "Building dependency graph" $ buildGraph gomod
-
-    _ <- recover $ warnOnErr MissingDeepDeps . warnOnErr MissingEdges $ (fillInTransitive (parent file))
+    void
+      . recover
+      . warnOnErr MissingDeepDeps
+      . warnOnErr MissingEdges
+      $ fillInTransitive (parent file)
     pure ()
   pure (graph, Partial)
 

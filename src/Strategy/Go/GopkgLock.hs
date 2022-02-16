@@ -61,8 +61,11 @@ analyze' ::
 analyze' file = graphingGolang $ do
   golock <- readContentsToml golockCodec file
   context "Building dependency graph" $ buildGraph (lockProjects golock)
-  _ <- recover $ warnOnErr MissingDeepDeps . warnOnErr MissingEdges $ (fillInTransitive (parent file))
-  pure ()
+  void
+    . recover
+    . warnOnErr MissingDeepDeps
+    . warnOnErr MissingEdges
+    $ fillInTransitive (parent file)
 
 buildGraph :: Has GolangGrapher sig m => [Project] -> m ()
 buildGraph = void . traverse_ go
