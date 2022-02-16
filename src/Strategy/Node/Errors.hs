@@ -26,7 +26,7 @@ fossaNodeDocUrl = strategyLangDocUrl "nodejs/nodejs.md"
 
 data CyclicPackageJson = CyclicPackageJson
 instance ToDiagnostic CyclicPackageJson where
-  renderDiagnostic (CyclicPackageJson) = "We detected cyclic references in package.json"
+  renderDiagnostic (CyclicPackageJson) = "We detected cyclic references between package.json files in the workspace."
 
 data MissingNodeLockFile = MissingNodeLockFile
 instance ToDiagnostic MissingNodeLockFile where

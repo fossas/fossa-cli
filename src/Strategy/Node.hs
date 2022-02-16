@@ -96,6 +96,7 @@ discover dir = context "NodeJS" $ do
       pure []
     else do
       globalGraph <- context "Building global workspace graph" $ pure $ buildManifestGraph manifestMap
+      -- TODO: refactor splitGraph to report which cycle we hit, not just report some unknown cycle
       graphs <- context "Splitting global graph into chunks" $ fromMaybe CyclicPackageJson $ splitGraph globalGraph
       context "Converting graphs to analysis targets" $ traverse (mkProject <=< identifyProjectType) graphs
 
