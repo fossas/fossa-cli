@@ -6,7 +6,6 @@ module Strategy.Python.Errors (
   commitPoetryLockToVCS,
 ) where
 
-import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
 import Effect.Exec (Command, renderCommand)
