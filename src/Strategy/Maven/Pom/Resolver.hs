@@ -88,7 +88,7 @@ recursiveLoadPom path = do
 
     recurseRelative :: Text {- relative filepath -} -> m ()
     recurseRelative rel = do
-      (resolvedPath :: Maybe (Path Abs File)) <- recover (resolvePath (parent path) rel)
+      resolvedPath :: Maybe (Path Abs File) <- recover $ resolvePath (parent path) rel
       traverse_ recursiveLoadPom resolvedPath
 
 -- resolve a Filepath (in Text) that may either point to a directory or an exact

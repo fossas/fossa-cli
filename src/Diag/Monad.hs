@@ -130,7 +130,7 @@ ResultT ma <||> ResultT ma' = ResultT $ do
       resA' <- ma'
       case resA' of
         Success ws' a' -> pure (Success (ws' <> (errGroupToWarning eg : ws)) a')
-        Failure ws' eg' -> pure (Failure (ws' <> ws) (eg' <> eg))
+        Failure ws' eg' -> pure (Failure (ws' <> ws) (eg <> eg')) -- match the order of alternatives for error group aggregation
 {-# INLINE (<||>) #-}
 
 ---------- Base Result operations

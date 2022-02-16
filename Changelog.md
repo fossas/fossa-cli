@@ -8,6 +8,7 @@
 - Dart: Improves error and warning messages. ([#800](https://github.com/fossas/fossa-cli/pull/806))
 - Pipenv: Improves error and warning messages. ([#803](https://github.com/fossas/fossa-cli/pull/803))
 - Poetry: Improves error and warning messages. ([#803](https://github.com/fossas/fossa-cli/pull/803))
+- Maven: Improves error and warning messages. ([#808](https://github.com/fossas/fossa-cli/pull/808))
 
 ## v3.1.0 
 
