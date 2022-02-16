@@ -15,23 +15,64 @@ module Strategy.Python.Pipenv (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics
-import Data.Aeson
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  errCtx,
+  recover,
+  run,
+  warnOnErr,
+ )
+import Data.Aeson (
+  FromJSON (parseJSON),
+  ToJSON,
+  withObject,
+  (.:),
+  (.:?),
+ )
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import DepTypes
-import Discovery.Walk
-import Effect.Exec
-import Effect.Grapher
-import Effect.ReadFS
+import DepTypes (
+  DepEnvironment (EnvDevelopment, EnvProduction),
+  DepType (PipType),
+  Dependency (..),
+  VerConstraint (CEq),
+  insertEnvironment,
+  insertLocation,
+ )
+import Diag.Common (
+  MissingDeepDeps (MissingDeepDeps),
+  MissingEdges (MissingEdges),
+ )
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  findFileNamed,
+  walk',
+ )
+import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson)
+import Effect.Grapher (
+  LabeledGrapher,
+  direct,
+  edge,
+  label,
+  withLabeling,
+ )
+import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
-import Path
-import Types
+import Path (Abs, Dir, File, Path, parent)
+import Strategy.Python.Errors (PipenvCmdFailed (PipenvCmdFailed))
+import Types (
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (PipenvProjectType),
+  GraphBreadth (Complete),
+ )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PipenvProject]
 discover dir = context "Pipenv" $ do
@@ -53,7 +94,14 @@ getDeps ::
   m DependencyResults
 getDeps project = context "Pipenv" $ do
   lock <- context "Getting direct dependencies" $ readContentsJson (pipenvLockfile project)
-  maybeDeps <- context "Getting deep dependencies" $ recover $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
+
+  maybeDeps <-
+    context "Getting deep dependencies" $
+      recover
+        . warnOnErr MissingDeepDeps
+        . warnOnErr MissingEdges
+        . errCtx (PipenvCmdFailed pipenvGraphCmd)
+        $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
 
   graph <- context "Building dependency graph" $ pure (buildGraph lock maybeDeps)
   pure $

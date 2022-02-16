@@ -16,6 +16,7 @@ module Effect.Exec (
   execJson,
   ExecIOC,
   runExecIO,
+  renderCommand,
   module System.Exit,
   module X,
 ) where
@@ -36,6 +37,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.String (fromString)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
 import GHC.Generics (Generic)
 import Path
@@ -60,6 +62,9 @@ instance ToJSON Command
 instance RecordableValue Command
 instance FromJSON Command
 instance ReplayableValue Command
+
+renderCommand :: Command -> Text
+renderCommand (Command name args _) = Text.intercalate " " $ [name] <> args
 
 data CmdFailure = CmdFailure
   { cmdFailureCmd :: Command
