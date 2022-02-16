@@ -26,6 +26,11 @@ import Strategy.Node.Errors (
  )
 import Strategy.Python.Errors (commitPoetryLockToVCS)
 import Strategy.Ruby.Errors (bundlerLockFileRationaleUrl, rubyFossaDocUrl)
+import Strategy.Swift.Errors (
+  swiftFossaDocUrl,
+  swiftPackageResolvedRef,
+  xcodeCoordinatePkgVersion,
+ )
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 import Text.URI (mkURI)
 
@@ -48,6 +53,9 @@ urlsToCheck =
   , yarnLockfileDocUrl
   , fossaNodeDocUrl
   , yarnV2LockfileDocUrl
+  , swiftFossaDocUrl
+  , swiftPackageResolvedRef
+  , xcodeCoordinatePkgVersion
   ]
 
 spec :: Spec
