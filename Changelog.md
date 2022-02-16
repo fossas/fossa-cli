@@ -6,6 +6,8 @@
 - UX: Parser error messages include call to action. ([#801](https://github.com/fossas/fossa-cli/pull/801))
 - Python: `setup.py` error messages are _less_ noisy. ([#801](https://github.com/fossas/fossa-cli/pull/801))
 - Dart: Improves error and warning messages. ([#800](https://github.com/fossas/fossa-cli/pull/806))
+- Pipenv: Improves error and warning messages. ([#800](https://github.com/fossas/fossa-cli/pull/803))
+- Poetry: Improves error and warning messages. ([#800](https://github.com/fossas/fossa-cli/pull/803))
 
 ## v3.1.0 
 

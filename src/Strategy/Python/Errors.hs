@@ -9,7 +9,7 @@ module Strategy.Python.Errors (
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
-import Effect.Exec (Command)
+import Effect.Exec (Command, renderCommand)
 import Path (Abs, File, Path)
 import Prettyprinter (Pretty (pretty), indent, viaShow, vsep)
 
@@ -20,7 +20,7 @@ newtype PipenvCmdFailed = PipenvCmdFailed Command
 instance ToDiagnostic PipenvCmdFailed where
   renderDiagnostic (PipenvCmdFailed cmd) =
     vsep
-      [ pretty $ "We could not perform pipenv graph analysis using, command:" <> toText cmd
+      [ pretty $ "We could not perform pipenv graph analysis using, command:" <> renderCommand cmd
       , ""
       , indent 2 $
           vsep
