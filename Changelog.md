@@ -9,6 +9,7 @@
 - Pipenv: Improves error and warning messages. ([#803](https://github.com/fossas/fossa-cli/pull/803))
 - Poetry: Improves error and warning messages. ([#803](https://github.com/fossas/fossa-cli/pull/803))
 - Maven: Improves error and warning messages. ([#808](https://github.com/fossas/fossa-cli/pull/808))
+- Nodejs: Improves error and warning messages. ([#805](https://github.com/fossas/fossa-cli/pull/805))
 
 ## v3.1.0 
 

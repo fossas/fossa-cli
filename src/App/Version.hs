@@ -5,6 +5,7 @@ module App.Version (
   fullVersionDescription,
   isDirty,
   currentBranch,
+  versionOrBranch,
 ) where
 
 import App.Version.TH (getCurrentTag)
@@ -60,3 +61,6 @@ fullVersionDescription = Text.concat items
       , compilerId
       , ")"
       ]
+
+versionOrBranch :: Text
+versionOrBranch = maybe currentBranch ("v" <>) versionNumber
