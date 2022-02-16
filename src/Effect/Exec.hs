@@ -42,7 +42,8 @@ import Data.Void (Void)
 import GHC.Generics (Generic)
 import Path
 import Path.IO
-import Prettyprinter (indent, line, pretty, viaShow, vsep)
+import Prettyprinter (Doc, indent, line, pretty, viaShow, vsep)
+import Prettyprinter.Render.Terminal (AnsiStyle)
 import System.Exit (ExitCode (..))
 import System.Process.Typed
 import Text.Megaparsec (Parsec, runParser)
@@ -136,9 +137,18 @@ data ExecErr
     CommandParseError Command Text
   deriving (Eq, Ord, Show, Generic)
 
-instance ToDiagnostic ExecErr where
-  renderDiagnostic = \case
-    CommandFailed err ->
+renderCmdFailure :: CmdFailure -> Doc AnsiStyle
+renderCmdFailure err =
+  if isCmdNotAvailable
+    then
+      pretty ("Could not find executable: `" <> cmdName (cmdFailureCmd err) <> "`.")
+        <> line
+        <> line
+        <> pretty ("Please ensure `" <> cmdName (cmdFailureCmd err) <> "` exist in PATH prior to running fossa.")
+        <> line
+        <> line
+        <> reportDefectMsg
+    else
       "Command execution failed: "
         <> line
         <> indent
@@ -148,9 +158,27 @@ instance ToDiagnostic ExecErr where
               , "dir: " <> pretty (cmdFailureDir err)
               , "exit: " <> viaShow (cmdFailureExit err)
               , "stdout: " <> line <> indent 2 (pretty @Text (decodeUtf8 (cmdFailureStdout err)))
-              , "stderr: " <> line <> indent 2 (pretty @Text (decodeUtf8 (cmdFailureStderr err)))
+              , "stderr: " <> line <> indent 2 (pretty stdErr)
               ]
           )
+        <> line
+        <> reportDefectMsg
+  where
+    -- Infer if the stderr is caused by not having executable in path.
+    -- There is no easy way to check for @EBADF@ within process exception,
+    -- given use of library used, and effort needed.
+    isCmdNotAvailable :: Bool
+    isCmdNotAvailable = expectedCmdNotFoundErrStr == stdErr
+
+    expectedCmdNotFoundErrStr :: Text
+    expectedCmdNotFoundErrStr = cmdName (cmdFailureCmd err) <> ": startProcess: exec: invalid argument (Bad file descriptor)"
+
+    stdErr :: Text
+    stdErr = decodeUtf8 (cmdFailureStderr err)
+
+instance ToDiagnostic ExecErr where
+  renderDiagnostic = \case
+    CommandFailed err -> renderCmdFailure err
     CommandParseError cmd err ->
       vsep
         [ "Failed to parse command output. command: " <> viaShow cmd <> "."

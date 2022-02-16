@@ -109,7 +109,7 @@ analyze file = do
   -- This ensures, subsequent analyzes commands' outputs are not contaminated with lein's configuration task's output.
   _ <- exec (parent file) leinVersionCmd
 
-  stdoutBL <- execThrow (parent file) leinDepsCmd
+  stdoutBL <- errCtx FailedToRetrieveLienDependencies $ execThrow (parent file) leinDepsCmd
   let stdoutTL = decodeUtf8 stdoutBL
       stdout = TL.toStrict stdoutTL
 
@@ -123,6 +123,10 @@ analyze file = do
           , dependencyGraphBreadth = Complete
           , dependencyManifestFiles = [file]
           }
+
+data FailedToRetrieveLienDependencies = FailedToRetrieveLienDependencies
+instance ToDiagnostic FailedToRetrieveLienDependencies where
+  renderDiagnostic _ = "We could not successfully retrieve dependencies information using lein deps subcommand."
 
 -- node type for our LabeledGrapher
 data ClojureNode = ClojureNode

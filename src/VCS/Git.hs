@@ -14,6 +14,7 @@ import Data.Text qualified as Text
 import Data.Text.Extra (splitOnceOn)
 import Data.Time
 import Data.Time.Format.ISO8601 (iso8601Show)
+import Diag.Diagnostic (ToDiagnostic)
 import Effect.Exec
 import Path
 
@@ -38,7 +39,7 @@ fetchGitContributors ::
   m Contributors
 fetchGitContributors basedir = do
   now <- sendIO getCurrentTime
-  rawContrib <- execThrow basedir $ gitLogCmd now
+  rawContrib <- errCtx FailedToPerformGitLog $ execThrow basedir $ gitLogCmd now
   pure . Contributors
     . Map.map (toText . iso8601Show)
     . Map.fromListWith max
@@ -51,3 +52,7 @@ fetchGitContributors basedir = do
       let (email, textDate) = splitOnceOn "|" entry
       date <- parseTimeM True defaultTimeLocale "%Y-%-m-%-d" $ toString textDate
       Just (email, date)
+
+data FailedToPerformGitLog = FailedToPerformGitLog
+instance ToDiagnostic FailedToPerformGitLog where
+  renderDiagnostic _ = "Could not retrieve git logs for contributor counting."

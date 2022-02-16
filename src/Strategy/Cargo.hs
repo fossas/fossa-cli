@@ -18,7 +18,9 @@ import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
+  ToDiagnostic,
   context,
+  errCtx,
   run,
   warn,
  )
@@ -36,6 +38,7 @@ import Data.Maybe (catMaybes, isJust)
 import Data.Set (Set)
 import Data.String.Conversion (toText)
 import Data.Text qualified as Text
+import Diag.Diagnostic (renderDiagnostic)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
   findFileNamed,
@@ -59,6 +62,7 @@ import Effect.ReadFS (ReadFS, readContentsToml)
 import GHC.Generics (Generic)
 import Graphing (Graphing, stripRoot)
 import Path (Abs, Dir, File, Path, parent, parseRelFile, toFilePath, (</>))
+import Prettyprinter (Pretty (pretty), viaShow)
 import Toml (TomlCodec, dioptional, diwrap, (.=))
 import Toml qualified
 import Types (
@@ -280,7 +284,7 @@ mkProject project =
 
 getDeps :: (Has Exec sig m, Has Diagnostics sig m) => CargoProject -> m DependencyResults
 getDeps project = do
-  (graph, graphBreadth) <- context "Cargo" . context "Dynamic analysis" . analyze . cargoDir $ project
+  (graph, graphBreadth) <- context "Cargo" . context "Dynamic analysis" . analyze $ project
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -306,14 +310,22 @@ cargoMetadataCmd =
 
 analyze ::
   (Has Exec sig m, Has Diagnostics sig m) =>
-  Path Abs Dir ->
+  CargoProject ->
   m (Graphing Dependency, GraphBreadth)
-analyze manifestDir = do
-  _ <- context "Generating lockfile" $ execThrow manifestDir cargoGenLockfileCmd
-  meta <- execJson @CargoMetadata manifestDir cargoMetadataCmd
+analyze (CargoProject manifestDir manifestFile) = do
+  _ <- context "Generating lockfile" $ errCtx (FailedToGenLockFile manifestFile) $ execThrow manifestDir cargoGenLockfileCmd
+  meta <- errCtx (FailedToRetrieveCargoMetadata manifestFile) $ execJson @CargoMetadata manifestDir cargoMetadataCmd
   --
   graph <- context "Building dependency graph" $ pure (buildGraph meta)
   pure (graph, Complete)
+
+newtype FailedToGenLockFile = FailedToGenLockFile (Path Abs File)
+instance ToDiagnostic FailedToGenLockFile where
+  renderDiagnostic (FailedToGenLockFile path) = pretty $ "Could not generate lock file for cargo manifest: " <> (show path)
+
+newtype FailedToRetrieveCargoMetadata = FailedToRetrieveCargoMetadata (Path Abs File)
+instance ToDiagnostic FailedToRetrieveCargoMetadata where
+  renderDiagnostic (FailedToRetrieveCargoMetadata path) = pretty $ "Could not retrieve machine readable cargo metadata for: " <> (show path)
 
 toDependency :: PackageId -> Set CargoLabel -> Dependency
 toDependency pkg =
