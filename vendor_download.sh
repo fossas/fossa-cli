@@ -82,13 +82,25 @@ FILTER=".name == \"themis-cli-$BASIS_ASSET_POSTFIX\""
 jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $THEMIS_RELEASE_JSON | while read ASSET; do
   URL="$(echo $ASSET | jq -c -r '.url')"
   NAME="$(echo $ASSET | jq -c -r '.name')"
-  OUTPUT="$(echo vendor-bins/$NAME | sed 's/scotland_yard-//' | sed 's/-'$BASIS_ASSET_POSTFIX'$//')"
+  OUTPUT="$(echo vendor-bins/$NAME | sed 's/-'$BASIS_ASSET_POSTFIX'$//')"
 
   echo "Downloading '$NAME' to '$OUTPUT'"
   curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s $URL > $OUTPUT
 done
-rm $THEMIS_RELEASE_JSON
 echo "Themis download successful"
+
+FILTER=".name == \"index.gob\""
+jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $THEMIS_RELEASE_JSON | while read ASSET; do
+  URL="$(echo $ASSET | jq -c -r '.url')"
+  NAME="$(echo $ASSET | jq -c -r '.name')"
+  OUTPUT="$(echo vendor-bins/$NAME)"
+
+  echo "Downloading '$NAME' to '$OUTPUT'"
+  curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s $URL > $OUTPUT
+done
+echo "themis index downloaded"
+
+rm $THEMIS_RELEASE_JSON
 echo
 
 if $OS_WINDOWS; then
