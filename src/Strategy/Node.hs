@@ -57,24 +57,17 @@ import Effect.ReadFS (
   readContentsJson,
  )
 import GHC.Generics (Generic)
-import Path
-    ( Abs,
-      Dir,
-      File,
-      Path,
-      Rel,
-      mkRelFile,
-      parent,
-      (</>),
-      Abs,
-      Dir,
-      File,
-      Path,
-      Rel,
-      mkRelFile,
-      parent,
-      toFilePath,
-      (</>) )
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  mkRelFile,
+  parent,
+  toFilePath,
+  (</>),
+ )
 import Strategy.Node.Errors (CyclicPackageJson (CyclicPackageJson), MissingNodeLockFile (MissingNodeLockFile))
 import Strategy.Node.Npm.PackageLock qualified as PackageLock
 import Strategy.Node.PackageJson (
