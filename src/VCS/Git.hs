@@ -4,6 +4,7 @@ module VCS.Git (
 ) where
 
 import App.Fossa.FossaAPIV1 (Contributors (..))
+import Control.Carrier.Diagnostics (errCtx)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Map qualified as Map

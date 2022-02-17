@@ -24,7 +24,7 @@ import Effect.Exec
 import Effect.ReadFS
 import GHC.Generics (Generic)
 import Path
-import Prettyprinter (viaShow, vsep)
+import Prettyprinter (viaShow)
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures)
 import Strategy.Maven.Pom.Closure qualified as PomClosure

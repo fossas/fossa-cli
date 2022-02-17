@@ -166,7 +166,7 @@ renderCmdFailure err =
   where
     -- Infer if the stderr is caused by not having executable in path.
     -- There is no easy way to check for @EBADF@ within process exception,
-    -- given use of library used, and effort needed.
+    -- with the library we use and effort required.
     isCmdNotAvailable :: Bool
     isCmdNotAvailable = expectedCmdNotFoundErrStr == stdErr
 

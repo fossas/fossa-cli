@@ -62,7 +62,7 @@ import Effect.ReadFS (ReadFS, readContentsToml)
 import GHC.Generics (Generic)
 import Graphing (Graphing, stripRoot)
 import Path (Abs, Dir, File, Path, parent, parseRelFile, toFilePath, (</>))
-import Prettyprinter (Pretty (pretty), viaShow)
+import Prettyprinter (Pretty (pretty))
 import Toml (TomlCodec, dioptional, diwrap, (.=))
 import Toml qualified
 import Types (
