@@ -48,6 +48,8 @@ data FoundDepsFile
   = ManualYaml (Path Abs File)
   | ManualJSON (Path Abs File)
 
+data ArchiveUploadType = ArchiveUpload | CLILicenseScan
+
 analyzeFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => Path Abs Dir -> Maybe ApiOpts -> m (Maybe SourceUnit)
 analyzeFossaDepsFile root maybeApiOpts = do
   maybeDepsFile <- findFossaDepsFile root
@@ -84,16 +86,14 @@ toSourceUnit :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has StickyLogger si
 toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts = do
   -- If the file exists and we have no dependencies to report, that's a failure.
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
-  let archiveOrCli = "archive"
+  let archiveOrCli = CLILicenseScan
   archiveLocators <- case maybeApiOpts of
     Nothing -> case archiveOrCli of
-      "archive" -> pure $ archiveNoUploadSourceUnit vendoredDependencies
-      "cli" -> pure $ licenseNoScanSourceUnit vendoredDependencies
-      _ -> pure $ archiveNoUploadSourceUnit vendoredDependencies
+      ArchiveUpload -> pure $ archiveNoUploadSourceUnit vendoredDependencies
+      CLILicenseScan -> pure $ licenseNoScanSourceUnit vendoredDependencies
     Just apiOpts -> case archiveOrCli of
-      "archive" -> archiveUploadSourceUnit root apiOpts vendoredDependencies
-      "cli" -> licenseScanSourceUnit root apiOpts vendoredDependencies
-      _ -> archiveUploadSourceUnit root apiOpts vendoredDependencies
+      ArchiveUpload -> archiveUploadSourceUnit root apiOpts vendoredDependencies
+      CLILicenseScan -> licenseScanSourceUnit root apiOpts vendoredDependencies
 
   let renderedPath = toText root
       referenceLocators = refToLocator <$> referencedDependencies
