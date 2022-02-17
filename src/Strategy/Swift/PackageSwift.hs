@@ -21,10 +21,11 @@ import Data.Set (Set, fromList, member)
 import Data.Text (Text)
 import Data.Void (Void)
 import DepTypes (DepType (GitType, SwiftType), Dependency (..), VerConstraint (CEq))
+import Diag.Common (MissingDeepDeps (MissingDeepDeps))
 import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsParser)
 import Graphing (Graphing, deeps, directs, induceJust, promoteToDirect)
 import Path
-import Strategy.Swift.Errors (MissingPackageResolvedFile (..), SwiftAnalysisDeepDeps (SwiftAnalysisDeepDeps))
+import Strategy.Swift.Errors (MissingPackageResolvedFile (..))
 import Strategy.Swift.PackageResolved (SwiftPackageResolvedFile, resolvedDependenciesOf)
 import Text.Megaparsec (
   MonadParsec (takeWhile1P, try),
@@ -214,7 +215,7 @@ analyzePackageSwift manifestFile resolvedFile = do
     Nothing ->
       do
         recover
-          . warnOnErr SwiftAnalysisDeepDeps
+          . warnOnErr MissingDeepDeps
           . errCtx (MissingPackageResolvedFile manifestFile)
           $ fatalText "Package.resolved file was not discovered"
     Just packageResolved -> context "Identifying dependencies in Package.resolved" $ readContentsJson packageResolved
