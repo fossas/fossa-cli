@@ -21,23 +21,23 @@ rm -f vendor-bins/*
 mkdir -p vendor-bins
 
 ASSET_POSTFIX=""
-WIGGINS_ASSET_POSTFIX=""
+BASIS_ASSET_POSTFIX=""
 OS_WINDOWS=false
 case "$(uname -s)" in
   Darwin)
     ASSET_POSTFIX="darwin"
-    WIGGINS_ASSET_POSTFIX="darwin-amd64"
+    BASIS_ASSET_POSTFIX="darwin-amd64"
     ;;
 
   Linux)
     ASSET_POSTFIX="linux"
-    WIGGINS_ASSET_POSTFIX="linux-amd64"
+    BASIS_ASSET_POSTFIX="linux-amd64"
     ;;
 
   *)
     echo "Warn: Assuming $(uname -s) is Windows"
     ASSET_POSTFIX="windows.exe"
-    WIGGINS_ASSET_POSTFIX="windows-amd64"
+    BASIS_ASSET_POSTFIX="windows-amd64"
     OS_WINDOWS=true
     ;;
 esac
@@ -55,17 +55,40 @@ curl -sSL \
     api.github.com/repos/fossas/basis/releases/tags/$WIGGINS_TAG > $WIGGINS_RELEASE_JSON
 
 WIGGINS_TAG=$(jq -cr ".name" $WIGGINS_RELEASE_JSON)
-FILTER=".name == \"scotland_yard-wiggins-$WIGGINS_ASSET_POSTFIX\""
+FILTER=".name == \"scotland_yard-wiggins-$BASIS_ASSET_POSTFIX\""
 jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $WIGGINS_RELEASE_JSON | while read ASSET; do
   URL="$(echo $ASSET | jq -c -r '.url')"
   NAME="$(echo $ASSET | jq -c -r '.name')"
-  OUTPUT="$(echo vendor-bins/$NAME | sed 's/scotland_yard-//' | sed 's/-'$WIGGINS_ASSET_POSTFIX'$//')"
+  OUTPUT="$(echo vendor-bins/$NAME | sed 's/scotland_yard-//' | sed 's/-'$BASIS_ASSET_POSTFIX'$//')"
 
   echo "Downloading '$NAME' to '$OUTPUT'"
   curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s $URL > $OUTPUT
 done
 rm $WIGGINS_RELEASE_JSON
 echo "Wiggins download successful"
+echo
+
+THEMIS_TAG="2022-02-02-db4cf6c"
+echo "Downloading themis binary"
+echo "Using themis release: $THEMIS_TAG"
+THEMIS_RELEASE_JSON=vendor-bins/themis-release.json
+curl -sSL \
+    -H "Authorization: token $GITHUB_TOKEN" \
+    -H "Accept: application/vnd.github.v3.raw" \
+    api.github.com/repos/fossas/basis/releases/tags/$THEMIS_TAG > $THEMIS_RELEASE_JSON
+
+THEMIS_TAG=$(jq -cr ".name" $THEMIS_RELEASE_JSON)
+FILTER=".name == \"themis-cli-$BASIS_ASSET_POSTFIX\""
+jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $THEMIS_RELEASE_JSON | while read ASSET; do
+  URL="$(echo $ASSET | jq -c -r '.url')"
+  NAME="$(echo $ASSET | jq -c -r '.name')"
+  OUTPUT="$(echo vendor-bins/$NAME | sed 's/scotland_yard-//' | sed 's/-'$BASIS_ASSET_POSTFIX'$//')"
+
+  echo "Downloading '$NAME' to '$OUTPUT'"
+  curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s $URL > $OUTPUT
+done
+rm $THEMIS_RELEASE_JSON
+echo "Themis download successful"
 echo
 
 if $OS_WINDOWS; then
