@@ -26,6 +26,7 @@ import Data.Vector qualified as V
 import Effect.Exec
 import Effect.Grapher
 import Path
+import Prettyprinter (pretty)
 import Strategy.Go.Types
 
 goListCmd :: Command
@@ -110,10 +111,14 @@ fillInTransitive ::
   Path Abs Dir ->
   m ()
 fillInTransitive dir = context "Getting deep dependencies" $ do
-  goListOutput <- execThrow dir goListCmd
+  goListOutput <- errCtx GoListCmdFailed $ execThrow dir goListCmd
   case decodeMany goListOutput of
     Left (path, err) -> fatal (CommandParseError goListCmd (toText (formatError path err)))
     Right (packages :: [Package]) -> context "Adding transitive dependencies" $ graphTransitive (normalizeImportsToModules packages)
+
+data GoListCmdFailed = GoListCmdFailed
+instance ToDiagnostic GoListCmdFailed where
+  renderDiagnostic _ = pretty $ "We could not perform `" <> renderCommand goListCmd <> "` successfully to infer deep dependencies."
 
 -- HACK(fossas/team-analysis#514) `go list -json all` emits golang dependencies
 -- at the _package_ level; e.g., `github.com/example/foo/some/package`. The

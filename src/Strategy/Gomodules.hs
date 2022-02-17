@@ -7,12 +7,8 @@ module Strategy.Gomodules (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Data.Aeson (ToJSON)
-import Diag.Common (
-  MissingDeepDeps (MissingDeepDeps),
-  MissingEdges (MissingEdges),
- )
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
@@ -66,7 +62,7 @@ getDeps project = do
       }
   where
     staticAnalysis :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => m (Graphing Dependency, GraphBreadth)
-    staticAnalysis = context "Static analysis" $ (Gomod.analyze' (gomodulesGomod project))
+    staticAnalysis = context "Static analysis" (Gomod.analyze' (gomodulesGomod project))
 
     dynamicAnalysis :: (Has Exec sig m, Has Diagnostics sig m) => m (Graphing Dependency, GraphBreadth)
     dynamicAnalysis =
