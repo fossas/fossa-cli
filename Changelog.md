@@ -2,8 +2,9 @@
 
 ## Yet to be released
 
-- Ruby: Improves error and warning messages. ([#800](https://github.com/fossas/fossa-cli/pull/800))
 - UX: Parser error messages include call to action. ([#801](https://github.com/fossas/fossa-cli/pull/801))
+- UX: Improves error message when executable is not found. ([#802](https://github.com/fossas/fossa-cli/pull/813))
+- Ruby: Improves error and warning messages. ([#800](https://github.com/fossas/fossa-cli/pull/800))
 - Python: `setup.py` error messages are _less_ noisy. ([#801](https://github.com/fossas/fossa-cli/pull/801))
 - Dart: Improves error and warning messages. ([#800](https://github.com/fossas/fossa-cli/pull/806))
 - Pipenv: Improves error and warning messages. ([#803](https://github.com/fossas/fossa-cli/pull/803))
@@ -14,11 +15,10 @@
 - Cocoapods: Improves error and warning messages. ([#807](https://github.com/fossas/fossa-cli/pull/807))
 - Golang: Improves error and warning messages. ([#809](https://github.com/fossas/fossa-cli/pull/809))
 - Gradle: Improves error and warning messages. ([#804](https://github.com/fossas/fossa-cli/pull/804))
-- Scala: Improves error and warning messages.
-- Clojure: Improves error and warning messages.
-- Nim: Improves error and warning messages.
-- Rust: Improves error and warning messages.
-- UX: Improves error message when executable is not found. 
+- Scala: Improves error and warning messages. ([#802](https://github.com/fossas/fossa-cli/pull/813))
+- Clojure: Improves error and warning messages. ([#802](https://github.com/fossas/fossa-cli/pull/813))
+- Nim: Improves error and warning messages. ([#802](https://github.com/fossas/fossa-cli/pull/813))
+- Rust: Improves error and warning messages. ([#802](https://github.com/fossas/fossa-cli/pull/813))
 
 ## v3.1.0 
 
