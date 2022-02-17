@@ -6,7 +6,7 @@ module App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
 ) where
 
-import App.Fossa.Analyze.Project (ProjectResult (projectResultType))
+import App.Fossa.Analyze.Project (ProjectResult)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics, Has)
