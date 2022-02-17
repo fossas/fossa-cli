@@ -10,7 +10,7 @@ module App.Fossa.EmbeddedBinary (
   BinaryPaths,
   withWigginsBinary,
   withSyftBinary,
-  withThemisBinary,
+  withThemisBinaryAndIndex,
   allBins,
   PackagedBinary (..),
   dumpSubCommand,
@@ -53,6 +53,7 @@ data PackagedBinary
   = Syft
   | Wiggins
   | Themis
+  | ThemisIndex
   deriving (Show, Eq, Enum, Bounded)
 
 dumpSubCommand :: SubCommand DumpBinsOpts DumpBinsConfig
@@ -86,12 +87,12 @@ withWigginsBinary ::
   m c
 withWigginsBinary = withEmbeddedBinary Wiggins
 
-withThemisBinary ::
+withThemisBinaryAndIndex ::
   ( Has (Lift IO) sig m
   ) =>
-  (BinaryPaths -> m c) ->
+  ([BinaryPaths] -> m c) ->
   m c
-withThemisBinary = withEmbeddedBinary Themis
+withThemisBinaryAndIndex = bracket (traverse extractEmbeddedBinary [Themis, ThemisIndex]) (traverse cleanupExtractedBinaries)
 
 withEmbeddedBinary ::
   ( Has (Lift IO) sig m
@@ -139,6 +140,7 @@ extractedPath bin = case bin of
   -- Users don't know what "wiggins" is, but they explicitly enable the VSI plugin, so this is more intuitive.
   Wiggins -> $(mkRelFile "vsi-plugin")
   Themis -> $(mkRelFile "themis-cli")
+  ThemisIndex -> $(mkRelFile "index.gob")
 
 extractDir :: Has (Lift IO) sig m => m (Path Abs Dir)
 extractDir = do
