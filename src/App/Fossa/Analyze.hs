@@ -179,7 +179,7 @@ runDependencyAnalysis basedir filters project = do
       graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context "Project Analysis" $ do
         debugMetadata "DiscoveredProject" project
         analyzeProject targets (projectData project)
-      Diag.flushLogs SevWarn SevWarn graphResult
+      Diag.flushLogs SevWarn SevDebug graphResult
       output $ Scanned dpi (mkResult basedir project <$> graphResult)
 
 applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
