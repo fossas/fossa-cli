@@ -3,6 +3,8 @@
 module App.Fossa.ArchiveUploader (
   archiveUploadSourceUnit,
   archiveNoUploadSourceUnit,
+  arcToLocator,
+  forceVendoredToArchive,
   VendoredDependency (..),
 ) where
 

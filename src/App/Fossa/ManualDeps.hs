@@ -25,6 +25,7 @@ import Data.Aeson (
  )
 
 import App.Fossa.ArchiveUploader
+import App.Fossa.LicenseScanner
 import Control.Effect.Lift
 import Control.Effect.StickyLogger (StickyLogger)
 import Data.Aeson.Extra
@@ -83,9 +84,16 @@ toSourceUnit :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has StickyLogger si
 toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts = do
   -- If the file exists and we have no dependencies to report, that's a failure.
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
+  let archiveOrCli = "archive"
   archiveLocators <- case maybeApiOpts of
-    Nothing -> pure $ archiveNoUploadSourceUnit vendoredDependencies
-    Just apiOpts -> archiveUploadSourceUnit root apiOpts vendoredDependencies
+    Nothing -> case archiveOrCli of
+      "archive" -> pure $ archiveNoUploadSourceUnit vendoredDependencies
+      "cli" -> pure $ licenseNoScanSourceUnit vendoredDependencies
+      _ -> pure $ archiveNoUploadSourceUnit vendoredDependencies
+    Just apiOpts -> case archiveOrCli of
+      "archive" -> archiveUploadSourceUnit root apiOpts vendoredDependencies
+      "cli" -> licenseScanSourceUnit root apiOpts vendoredDependencies
+      _ -> archiveUploadSourceUnit root apiOpts vendoredDependencies
 
   let renderedPath = toText root
       referenceLocators = refToLocator <$> referencedDependencies

@@ -178,6 +178,7 @@ library
     App.Fossa.Container.Test
     App.Fossa.EmbeddedBinary
     App.Fossa.FossaAPIV1
+    App.Fossa.LicenseScanner
     App.Fossa.ListTargets
     App.Fossa.Main
     App.Fossa.ManualDeps
