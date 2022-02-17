@@ -8,13 +8,15 @@ module Strategy.Cocoapods (
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, context, errCtx, warnOnErr, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
 import Data.Aeson (ToJSON)
+import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Walk
 import Effect.ReadFS
 import GHC.Generics (Generic)
 import Path
+import Strategy.Cocoapods.Errors (MissingPodLockFile (MissingPodLockFile))
 import Strategy.Cocoapods.Podfile qualified as Podfile
 import Strategy.Cocoapods.PodfileLock qualified as PodfileLock
 import Types
@@ -64,7 +66,14 @@ mkProject project =
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m DependencyResults
 getDeps project =
   context "Cocoapods" $
-    context "Podfile.lock analysis" (analyzePodfileLock project) <||> context "Podfile analysis" (analyzePodfile project)
+    context
+      "Podfile.lock analysis"
+      ( warnOnErr MissingEdges
+          . warnOnErr MissingDeepDeps
+          . errCtx MissingPodLockFile
+          $ (analyzePodfileLock project)
+      )
+      <||> context "Podfile analysis" (analyzePodfile project)
 
 analyzePodfile :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m DependencyResults
 analyzePodfile project = do
