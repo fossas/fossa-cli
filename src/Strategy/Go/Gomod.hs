@@ -17,7 +17,7 @@ module Strategy.Go.Gomod (
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, context, recover)
+import Control.Effect.Diagnostics (Diagnostics, context, recover, warnOnErr)
 import Data.Char (isSpace)
 import Data.Foldable (traverse_)
 import Data.Functor (void)
@@ -30,6 +30,10 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
 import DepTypes (Dependency)
+import Diag.Common (
+  MissingDeepDeps (MissingDeepDeps),
+  MissingEdges (MissingEdges),
+ )
 import Effect.Exec (Exec)
 import Effect.Grapher (direct, label)
 import Effect.ReadFS (ReadFS, readContentsParser)
@@ -342,8 +346,11 @@ analyze' file = do
     gomod <- readContentsParser gomodParser file
 
     context "Building dependency graph" $ buildGraph gomod
-
-    _ <- recover (fillInTransitive (parent file))
+    void
+      . recover
+      . warnOnErr MissingDeepDeps
+      . warnOnErr MissingEdges
+      $ fillInTransitive (parent file)
     pure ()
   pure (graph, Partial)
 

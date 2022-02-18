@@ -12,6 +12,7 @@
 - Nodejs: Improves error and warning messages. ([#805](https://github.com/fossas/fossa-cli/pull/805))
 - Swift: Improves error and warning messages. ([#802](https://github.com/fossas/fossa-cli/pull/802))
 - Cocoapods: Improves error and warning messages. ([#807](https://github.com/fossas/fossa-cli/pull/807))
+- Golang: Improves error and warning messages. ([#809](https://github.com/fossas/fossa-cli/pull/809))
 
 ## v3.1.0 
 

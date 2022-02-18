@@ -7,6 +7,7 @@ module Strategy.Go.GoList (
 ) where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
+import Control.Monad (void)
 import Data.Aeson (FromJSON, withObject, (.!=), (.:), (.:?))
 import Data.Aeson.Internal (formatError)
 import Data.Aeson.Types (parseJSON)
@@ -15,6 +16,10 @@ import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes (Dependency)
+import Diag.Common (
+  MissingDeepDeps (MissingDeepDeps),
+  MissingEdges (MissingEdges),
+ )
 import Effect.Exec (
   AllowErr (Never),
   Command (..),
@@ -80,7 +85,11 @@ analyze' dir = do
       Left (path, err) -> fatal (CommandParseError goListJsonCmd (toText (formatError path err)))
       Right (mods :: [GoListModule]) -> do
         context "Adding direct dependencies" $ buildGraph (toRequires mods)
-        _ <- recover (fillInTransitive dir)
+        void
+          . recover
+          . warnOnErr MissingDeepDeps
+          . warnOnErr MissingEdges
+          $ fillInTransitive dir
         pure ()
   pure (graph, Complete)
   where

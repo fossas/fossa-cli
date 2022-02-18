@@ -13,6 +13,10 @@ import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Text (Text)
 import DepTypes
+import Diag.Common (
+  MissingDeepDeps (MissingDeepDeps),
+  MissingEdges (MissingEdges),
+ )
 import Effect.Exec
 import Effect.Grapher
 import Effect.ReadFS
@@ -57,8 +61,11 @@ analyze' ::
 analyze' file = graphingGolang $ do
   golock <- readContentsToml golockCodec file
   context "Building dependency graph" $ buildGraph (lockProjects golock)
-  _ <- recover (fillInTransitive (parent file))
-  pure ()
+  void
+    . recover
+    . warnOnErr MissingDeepDeps
+    . warnOnErr MissingEdges
+    $ fillInTransitive (parent file)
 
 buildGraph :: Has GolangGrapher sig m => [Project] -> m ()
 buildGraph = void . traverse_ go

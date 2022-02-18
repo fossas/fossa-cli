@@ -13,6 +13,7 @@ import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
 import GHC.Generics (Generic)
+import Graphing (Graphing)
 import Path (Abs, Dir, File, Path)
 import Strategy.Go.GoList qualified as GoList
 import Strategy.Go.GoModGraph qualified as GoModGraph
@@ -52,16 +53,21 @@ mkProject project =
 
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> m DependencyResults
 getDeps project = do
-  (graph, graphBreadth) <-
-    context "Gomodules" $
-      context "Dynamic analysis using go mod graph" (GoModGraph.analyze (gomodulesDir project))
-        -- Go List tactic is only kept in consideration, in event go mod graph fails.
-        -- In reality, this is highly unlikely scenario, and should almost never happen.
-        <||> context "Dynamic analysis using go list" (GoList.analyze' (gomodulesDir project))
-        <||> context "Static analysis" (Gomod.analyze' (gomodulesGomod project))
+  (graph, graphBreadth) <- context "Gomodules" $ dynamicAnalysis <||> staticAnalysis
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = graphBreadth
       , dependencyManifestFiles = [gomodulesGomod project]
       }
+  where
+    staticAnalysis :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => m (Graphing Dependency, GraphBreadth)
+    staticAnalysis = context "Static analysis" (Gomod.analyze' (gomodulesGomod project))
+
+    dynamicAnalysis :: (Has Exec sig m, Has Diagnostics sig m) => m (Graphing Dependency, GraphBreadth)
+    dynamicAnalysis =
+      context "Dynamic analysis" $
+        context "analysis using go mod graph" (GoModGraph.analyze (gomodulesDir project))
+          -- Go List tactic is only kept in consideration, in event go mod graph fails.
+          -- In reality, this is highly unlikely scenario, and should almost never happen.
+          <||> context "analysis using go list" (GoList.analyze' (gomodulesDir project))
