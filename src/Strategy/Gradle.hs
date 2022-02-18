@@ -21,8 +21,9 @@ module Strategy.Gradle (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (allowedGradleConfigs))
 import Control.Algebra (Has)
+import Control.Carrier.Diagnostics (warnOnErr)
 import Control.Carrier.Reader (Reader)
-import Control.Effect.Diagnostics (Diagnostics, context, errCtx, fatal, recover, warnOnErr, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, context, errCtx, fatal, recover, (<||>))
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.Reader (asks)
@@ -54,7 +55,7 @@ import Strategy.Gradle.Common (
   ConfigName (..),
   getDebugMessages,
  )
-import Strategy.Gradle.Errors (FailedToListProjects (FailedToListProjects), GradleCmdErrCtx (GradleCmdErrCtx))
+import Strategy.Gradle.Errors (FailedToListProjects (FailedToListProjects), FailedToRunGradleAnalysis (FailedToRunGradleAnalysis), GradleWrapperFailed (GradleWrapperFailed))
 import Strategy.Gradle.ResolutionApi qualified as ResolutionApi
 import System.FilePath qualified as FilePath
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (GradleProjectType), FoundTargets (..), GraphBreadth (..))
@@ -94,12 +95,13 @@ discover dir = context "Gradle" $ do
 -- |Run a Gradle command in a specific working directory, while correctly trying
 --Gradle wrappers.
 runGradle :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> (Text -> Command) -> m BL.ByteString
-runGradle dir cmd =
-  do
-    errCtx (GradleCmdErrCtx dir) $
-      (walkUpDir dir "gradlew" >>= execThrow dir . cmd . toText)
-        <||> (walkUpDir dir "gradlew.bat" >>= execThrow dir . cmd . toText)
-        <||> execThrow dir (cmd "gradle")
+runGradle dir cmd = gradleWrapper <||> gradleBinary
+  where
+    gradleBinary :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => m BL.ByteString
+    gradleBinary = execThrow dir (cmd "gradle")
+
+    gradleWrapper :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => m BL.ByteString
+    gradleWrapper = warnOnErr GradleWrapperFailed $ (walkUpDir dir "gradlew" >>= execThrow dir . cmd . toText) <||> (walkUpDir dir "gradlew.bat" >>= execThrow dir . cmd . toText)
 
 -- |Search upwards in a directory for the existence of the supplied file.
 walkUpDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)
@@ -276,7 +278,7 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
         FoundTargets targets -> gradleJsonDepsCmdTargets initScriptFilepath (toSet targets)
         ProjectWithoutTargets -> gradleJsonDepsCmd initScriptFilepath
 
-  stdout <- context "running gradle script" $ runGradle dir cmd
+  stdout <- context "running gradle script" $ errCtx FailedToRunGradleAnalysis $ runGradle dir cmd
 
   onlyConfigurations <- do
     configs <- asks allowedGradleConfigs

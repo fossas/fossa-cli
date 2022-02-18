@@ -1,15 +1,17 @@
 module Strategy.Gradle.Errors (
-  GradleCmdErrCtx (..),
   FailedToListProjects (..),
+  GradleWrapperFailed (..),
+  FailedToRunGradleAnalysis (..),
   refGradleDocUrl,
 ) where
 
 import App.Docs (strategyLangDocUrl)
+import App.Support (reportDefectWithDebugBundle)
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Logger (viaShow)
-import Path
-import Prettyprinter (Pretty (pretty), indent, vsep)
+import Path (Abs, Dir, Path)
+import Prettyprinter (indent, vsep)
 
 refGradleDocUrl :: Text
 refGradleDocUrl = strategyLangDocUrl "gradle/gradle.md"
@@ -19,18 +21,30 @@ instance ToDiagnostic FailedToListProjects where
   renderDiagnostic (FailedToListProjects dir) =
     vsep
       [ "Found a gradle build manifest in " <> viaShow dir <> " but, could not list projects."
+      , ""
+      , "Ensure you can run one of:"
+      , ""
+      , indent 2 "gradlew projects"
+      , indent 2 "gradlew.bat projects"
+      , indent 2 "gradle projects"
       ]
 
-newtype GradleCmdErrCtx = GradleCmdErrCtx (Path Abs Dir) deriving (Eq, Ord, Show)
-instance ToDiagnostic GradleCmdErrCtx where
-  renderDiagnostic (GradleCmdErrCtx path) =
+data FailedToRunGradleAnalysis = FailedToRunGradleAnalysis deriving (Eq, Ord, Show)
+instance ToDiagnostic FailedToRunGradleAnalysis where
+  renderDiagnostic (FailedToRunGradleAnalysis) =
     vsep
-      [ "Failed to run gradle, gradlew, or gradlew.bat for gradle analysis in the directory:"
-      , indent 2 $ pretty . show $ path
+      [ "Failed to perform gradle analysis."
       , ""
-      , indent 2 $ pretty $ "Ensure gradlew or gradlew.bat exists in or in the parent directory of: " <> show path <> "."
-      , indent 2 "If you are not using the gradle wrapper, ensure gradle executable is in your PATH."
+      , "Ensure your gradle project can be built successfully:"
       , ""
-      , "Documentation:"
-      , indent 2 $ pretty $ "- " <> refGradleDocUrl
+      , indent 2 "gradlew build"
+      , indent 2 "gradlew.bat build"
+      , indent 2 "gradle build"
+      , ""
+      , reportDefectWithDebugBundle
       ]
+
+data GradleWrapperFailed = GradleWrapperFailed deriving (Eq, Ord, Show)
+instance ToDiagnostic GradleWrapperFailed where
+  renderDiagnostic (GradleWrapperFailed) =
+    "Failed to use gradle wrapper, analysis may be inaccurate if gradle executable version differs from expected gradle version."
