@@ -4,11 +4,14 @@
 
 module Strategy.Node (
   discover,
+  pkgGraph,
+  NodeProject (..),
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
+import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -24,7 +27,8 @@ import Control.Effect.Diagnostics (
 import Control.Monad (void, (<=<))
 import Data.Glob (Glob)
 import Data.Glob qualified as Glob
-import Data.Map (Map)
+import Data.List.Extra (singleton) -- singleton is in Data.List in base 4.16
+import Data.Map (Map, toList)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set (Set)
@@ -53,7 +57,17 @@ import Effect.ReadFS (
   readContentsJson,
  )
 import GHC.Generics (Generic)
-import Path (Abs, Dir, File, Path, Rel, mkRelFile, parent, (</>))
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  mkRelFile,
+  parent,
+  toFilePath,
+  (</>),
+ )
 import Strategy.Node.Errors (CyclicPackageJson (CyclicPackageJson), MissingNodeLockFile (MissingNodeLockFile))
 import Strategy.Node.Npm.PackageLock qualified as PackageLock
 import Strategy.Node.PackageJson (
@@ -63,6 +77,8 @@ import Strategy.Node.PackageJson (
   NodePackage (NodePackage),
   PackageJson (..),
   PkgJsonGraph (..),
+  PkgJsonLicense (LicenseObj, LicenseText),
+  PkgJsonLicenseObj (licenseUrl),
   PkgJsonWorkspaces (unWorkspaces),
   Production,
   pkgFileList,
@@ -76,6 +92,10 @@ import Types (
   DiscoveredProjectType (NpmProjectType, YarnProjectType),
   FoundTargets (ProjectWithoutTargets),
   GraphBreadth (Complete, Partial),
+  License (License),
+  LicenseResult (LicenseResult, licensesFound),
+  LicenseType (LicenseURL, UnknownType),
+  licenseFile,
  )
 
 skipJsFolders :: WalkStep
@@ -291,7 +311,35 @@ data NodeProject
   | NPM PkgJsonGraph
   deriving (Eq, Ord, Show, Generic)
 
+instance LicenseAnalyzeProject NodeProject where
+  licenseAnalyzeProject = pure . analyzeLicenses . pkgGraph
+
+analyzeLicenses :: PkgJsonGraph -> [LicenseResult]
+analyzeLicenses (PkgJsonGraph _ graph) = mapMaybe (uncurry mkLicenseResult) . toList $ graph
+
+mkLicenseResult :: Manifest -> PackageJson -> Maybe LicenseResult
+mkLicenseResult manifest PackageJson{..} = constrLicenseResult <$> allLicenses
+  where
+    manifestPath = toFilePath . unManifest $ manifest
+    allLicenses =
+      (singleton <$> packageLicense)
+        <> (map LicenseObj <$> packageLicenses)
+
+    mkLicense (LicenseText txt) = License UnknownType txt
+    mkLicense (LicenseObj pjlo) = License LicenseURL (licenseUrl pjlo)
+
+    constrLicenseResult licenses =
+      LicenseResult
+        { licenseFile = manifestPath
+        , licensesFound = map mkLicense licenses
+        }
+
 instance ToJSON NodeProject
+
+pkgGraph :: NodeProject -> PkgJsonGraph
+pkgGraph (Yarn _ pjg) = pjg
+pkgGraph (NPMLock _ pjg) = pjg
+pkgGraph (NPM pjg) = pjg
 
 findWorkspaceRootManifest :: PkgJsonGraph -> Either String Manifest
 findWorkspaceRootManifest PkgJsonGraph{jsonGraph} =

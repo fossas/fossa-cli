@@ -9,6 +9,8 @@ module Strategy.Node.PackageJson (
   Manifest (..),
   NodePackage (..),
   PackageJson (..),
+  PkgJsonLicense (..),
+  PkgJsonLicenseObj (..),
   PkgJsonGraph (..),
   PkgJsonWorkspaces (..),
   Production,
@@ -16,6 +18,7 @@ module Strategy.Node.PackageJson (
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -31,6 +34,7 @@ import Data.Aeson (
   object,
   withObject,
   (.!=),
+  (.:),
   (.:?),
  )
 import Data.Glob (Glob)
@@ -104,8 +108,45 @@ data PackageJson = PackageJson
   , packageWorkspaces :: PkgJsonWorkspaces
   , packageDeps :: Map Text Text
   , packageDevDeps :: Map Text Text
+  , packageLicense :: Maybe PkgJsonLicense
+  , packageLicenses :: Maybe [PkgJsonLicenseObj]
   }
   deriving (Eq, Ord, Show)
+
+data PkgJsonLicenseObj = PkgJsonLicenseObj
+  { licenseType :: Text
+  , licenseUrl :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON PkgJsonLicenseObj where
+  parseJSON = withObject "PkgJsonLicenseObj" $ \obj ->
+    PkgJsonLicenseObj
+      <$> obj .: "type"
+      <*> obj .: "url"
+
+instance ToJSON PkgJsonLicenseObj where
+  toJSON PkgJsonLicenseObj{..} =
+    object
+      [ "type" .= toJSON licenseType
+      , "url" .= toJSON licenseUrl
+      ]
+
+data PkgJsonLicense
+  = -- LicenseText is likely SPDX, but it isn't a requirement per
+    -- https://docs.npmjs.com/cli/v8/configuring-npm/package-json#license
+    LicenseText Text
+  | LicenseObj PkgJsonLicenseObj
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON PkgJsonLicense where
+  toJSON (LicenseText t) = toJSON t
+  toJSON (LicenseObj o) = toJSON o
+
+instance FromJSON PkgJsonLicense where
+  parseJSON v =
+    LicenseText <$> parseJSON v
+      <|> LicenseObj <$> parseJSON v
 
 instance FromJSON PkgJsonWorkspaces where
   parseJSON (Array x) = PkgJsonWorkspaces <$> parseJSON (Array x)
@@ -124,6 +165,8 @@ instance FromJSON PackageJson where
       <*> obj .:? "workspaces" .!= PkgJsonWorkspaces []
       <*> obj .:? "dependencies" .!= Map.empty
       <*> obj .:? "devDependencies" .!= Map.empty
+      <*> obj .:? "license"
+      <*> obj .:? "licenses"
 
 instance ToJSON PackageJson where
   toJSON PackageJson{..} =
@@ -133,6 +176,8 @@ instance ToJSON PackageJson where
       , "workspaces" .= packageWorkspaces
       , "dependencies" .= packageDeps
       , "devDependencies" .= packageDevDeps
+      , "license" .= packageLicense
+      , "licenses" .= packageLicenses
       ]
 
 newtype Manifest = Manifest {unManifest :: Path Abs File} deriving (Eq, Show, Ord, Generic, ToJSONKey, ToJSON)
