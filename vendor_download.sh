@@ -140,7 +140,7 @@ echo "Marking binaries executable"
 chmod +x vendor-bins/*
 
 echo "Compressing binaries"
-upx vendor-bins/* || echo "WARN: 'upx' command not found, binaries will not be compressed"
+find vendor-bins -type f -not -name '*.gob' | xargs upx || echo "WARN: 'upx' command not found, binaries will not be compressed"
 
 echo "Vendored binaries are ready for use"
 ls -lh vendor-bins/
