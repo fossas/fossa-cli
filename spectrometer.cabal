@@ -363,6 +363,7 @@ library
     Strategy.Ruby.BundleShow
     Strategy.Ruby.Errors
     Strategy.Ruby.GemfileLock
+    Strategy.Ruby.Gemspec
     Strategy.Scala
     Strategy.Swift.Errors
     Strategy.Swift.PackageResolved
@@ -482,6 +483,7 @@ test-suite unit-tests
     RPM.SpecFileSpec
     Ruby.BundleShowSpec
     Ruby.GemfileLockSpec
+    Ruby.GemspecSpec
     Swift.PackageResolvedSpec
     Swift.PackageSwiftSpec
     Swift.Xcode.PbxprojParserSpec

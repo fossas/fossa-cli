@@ -5,7 +5,7 @@ module BundlerSpec (spec) where
 import Path (mkRelDir, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Bundler (genGemspecFilename)
-import Test.Hspec (Spec, it, runIO, shouldBe, describe)
+import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 
 spec :: Spec
 spec = do
@@ -15,4 +15,3 @@ spec = do
     -- when run in CI environments.
     it "Appends .gemspec to the end of a dir" $
       genGemspecFilename (currDir </> $(mkRelDir "foo")) `shouldBe` "foo.gemspec"
-
