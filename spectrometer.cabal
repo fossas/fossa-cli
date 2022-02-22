@@ -416,6 +416,7 @@ test-suite unit-tests
     App.Fossa.VSI.DynLinked.Internal.ResolveSpec
     App.Fossa.VSI.DynLinked.UtilSpec
     App.Fossa.VSI.FingerprintSpec
+    BundlerSpec
     Cargo.CargoTomlSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
