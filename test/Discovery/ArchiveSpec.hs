@@ -16,96 +16,22 @@ import Data.Map qualified as Map
 import Data.String.Conversion (ToText (..))
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
-import Discovery.Archive (extractRpm, extractTar, extractTarBz2, extractTarGz, extractTarXz, extractZip, withArchive)
+import Discovery.Archive (extractRpm, extractZip, withArchive)
 import Discovery.Walk (WalkStep (WalkContinue), walk')
 import Effect.ReadFS (ReadFS, runReadFSIO)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (Abs, Rel), mkRelDir, mkRelFile, toFilePath, (</>))
 import Path.Extra (tryMakeRelative)
 import Path.IO qualified as PIO
 import ResultUtil
-import Test.Hspec (Spec, describe, it, runIO, shouldBe)
+import Test.Hspec (Spec, SpecWith, describe, it, runIO, shouldBe)
 
 spec :: Spec
 spec = do
-  describe "extract zip archive to a temporary location" $ do
-    target <- runIO simpleZipPath
-    (extractedDir, extractedContentA, extractedContentB) <- runIO $
-      runFinally . withArchive extractZip target $ \dir -> do
-        contentA <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "a.txt")
-        contentB <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "b.txt")
-        pure (dir, contentA, contentB)
-    tempDirExists <- runIO $ PIO.doesDirExist extractedDir
-
-    it "should have extracted the correct contents" $ do
-      extractedContentB `shouldBe` expectedSimpleContentB
-      extractedContentA `shouldBe` expectedSimpleContentA
-
-    it "should have cleaned up the temporary directory" $ do
-      tempDirExists `shouldBe` False
-
-  describe "extract tar archive to a temporary location" $ do
-    target <- runIO simpleTarPath
-    (extractedDir, extractedContentA, extractedContentB) <- runIO $
-      runFinally . withArchive extractTar target $ \dir -> do
-        contentA <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "a.txt")
-        contentB <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "b.txt")
-        pure (dir, contentA, contentB)
-    tempDirExists <- runIO $ PIO.doesDirExist extractedDir
-
-    it "should have extracted the correct contents" $ do
-      extractedContentB `shouldBe` expectedSimpleContentB
-      extractedContentA `shouldBe` expectedSimpleContentA
-
-    it "should have cleaned up the temporary directory" $ do
-      tempDirExists `shouldBe` False
-
-  describe "extract tar.gz archive to a temporary location" $ do
-    target <- runIO simpleTarGzPath
-    (extractedDir, extractedContentA, extractedContentB) <- runIO $
-      runFinally . withArchive extractTarGz target $ \dir -> do
-        contentA <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "a.txt")
-        contentB <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "b.txt")
-        pure (dir, contentA, contentB)
-    tempDirExists <- runIO $ PIO.doesDirExist extractedDir
-
-    it "should have extracted the correct contents" $ do
-      extractedContentB `shouldBe` expectedSimpleContentB
-      extractedContentA `shouldBe` expectedSimpleContentA
-
-    it "should have cleaned up the temporary directory" $ do
-      tempDirExists `shouldBe` False
-
-  describe "extract tar.xz archive to a temporary location" $ do
-    target <- runIO simpleTarXzPath
-    (extractedDir, extractedContentA, extractedContentB) <- runIO $
-      runFinally . withArchive extractTarXz target $ \dir -> do
-        contentA <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "a.txt")
-        contentB <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "b.txt")
-        pure (dir, contentA, contentB)
-    tempDirExists <- runIO $ PIO.doesDirExist extractedDir
-
-    it "should have extracted the correct contents" $ do
-      extractedContentB `shouldBe` expectedSimpleContentB
-      extractedContentA `shouldBe` expectedSimpleContentA
-
-    it "should have cleaned up the temporary directory" $ do
-      tempDirExists `shouldBe` False
-
-  describe "extract tar.bz2 archive to a temporary location" $ do
-    target <- runIO simpleTarBz2Path
-    (extractedDir, extractedContentA, extractedContentB) <- runIO $
-      runFinally . withArchive extractTarBz2 target $ \dir -> do
-        contentA <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "a.txt")
-        contentB <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "b.txt")
-        pure (dir, contentA, contentB)
-    tempDirExists <- runIO $ PIO.doesDirExist extractedDir
-
-    it "should have extracted the correct contents" $ do
-      extractedContentB `shouldBe` expectedSimpleContentB
-      extractedContentA `shouldBe` expectedSimpleContentA
-
-    it "should have cleaned up the temporary directory" $ do
-      tempDirExists `shouldBe` False
+  specArchiveExtractsAndCleans "extract zip archive to a temporary location" simpleZipPath
+  specArchiveExtractsAndCleans "extract tar archive to a temporary location" simpleTarPath
+  specArchiveExtractsAndCleans "extract tar.gz archive to a temporary location" simpleTarGzPath
+  specArchiveExtractsAndCleans "extract tar.xz archive to a temporary location" simpleTarXzPath
+  specArchiveExtractsAndCleans "extract tar.bz2 archive to a temporary location" simpleTarBz2Path
 
   describe "extract el7 (xz) rpm to a temporary location" $ do
     target <- runIO rpmCurlEl7Path
@@ -120,6 +46,26 @@ spec = do
 
     it "should have extracted the correct contents" $
       assertOnSuccess result $ \_ contents -> contents `shouldBe` rpmCurlFc35ExpectedFiles
+
+specArchiveExtractsAndCleans :: String -> IO (Path Abs File) -> SpecWith ()
+specArchiveExtractsAndCleans msg archivePath = do
+  describe msg $ do
+    target <- runIO archivePath
+
+    result <- runIO $
+      runStack . runDiagnostics . runFinally . withArchive extractZip target $ \dir -> do
+        contentA <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "a.txt")
+        contentB <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "b.txt")
+        pure (dir, contentA, contentB)
+
+    it "should have extracted the correct contents" $ do
+      assertOnSuccess result $ \_ (_, _, extractedContentB) -> extractedContentB `shouldBe` expectedSimpleContentB
+      assertOnSuccess result $ \_ (_, extractedContentA, _) -> extractedContentA `shouldBe` expectedSimpleContentA
+
+    it "should have cleaned up the temporary directory" $ do
+      assertOnSuccess result $ \_ (extractedDir, _, _) -> do
+        tempDirExists <- sendIO $ PIO.doesDirExist extractedDir
+        tempDirExists `shouldBe` False
 
 simpleZipPath :: IO (Path Abs File)
 simpleZipPath = PIO.resolveFile' "test/Discovery/testdata/simple.zip"

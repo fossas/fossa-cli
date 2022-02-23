@@ -4,7 +4,16 @@
 module App.Fossa.BinaryDeps.Jar (resolveJar) where
 
 import Control.Algebra (Has)
-import Control.Carrier.Diagnostics (Diagnostics, context, fromMaybeText, recover, (<||>))
+import Control.Carrier.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (renderDiagnostic),
+  context,
+  errCtx,
+  fromMaybeText,
+  recover,
+  warnOnErr,
+  (<||>),
+ )
 import Control.Carrier.Finally (runFinally)
 import Control.Effect.Lift (Lift)
 import Data.List (isSuffixOf, sortOn)
@@ -21,8 +30,15 @@ import Effect.ReadFS (ReadFS, readContentsText, readContentsXML)
 import GHC.Base ((<|>))
 import Path (Abs, Dir, File, Path, filename, mkRelDir, mkRelFile, (</>))
 import Path.Extra (renderRelative, tryMakeRelative)
+import Prettyprinter (viaShow)
 import Srclib.Types (SourceUserDefDep (..))
-import Strategy.Maven.Pom.PomFile (MavenCoordinate (..), Pom (..), RawPom, pomLicenseName, validatePom)
+import Strategy.Maven.Pom.PomFile (
+  MavenCoordinate (..),
+  Pom (..),
+  RawPom,
+  pomLicenseName,
+  validatePom,
+ )
 
 data JarMetadata = JarMetadata
   { jarName :: Text
@@ -41,8 +57,21 @@ resolveJar _ file | not $ fileHasSuffix file [".jar", ".aar"] = pure Nothing
 resolveJar root file = do
   let fileDescription = toText file
   logDebug $ "Inferring metadata from " <> pretty fileDescription
-  result <- recover . context ("Infer metadata from " <> fileDescription) . runFinally $ withArchive extractZip file $ \dir -> tacticPom dir <||> tacticMetaInf dir
+  result <- recover
+    . warnOnErr (FailedToResolveJar file)
+    . errCtx (FailedToResolveJarCtx file)
+    . context ("Infer metadata from " <> fileDescription)
+    . runFinally
+    $ withArchive extractZip file $ \dir -> tacticPom dir <||> tacticMetaInf dir
   pure $ fmap (toUserDefDep root file) result
+
+newtype FailedToResolveJar = FailedToResolveJar (Path Abs File)
+instance ToDiagnostic FailedToResolveJar where
+  renderDiagnostic (FailedToResolveJar path) = "Could not infer jar metadata (license, jar name, and version) from " <> viaShow path
+
+newtype FailedToResolveJarCtx = FailedToResolveJarCtx (Path Abs File)
+instance ToDiagnostic FailedToResolveJarCtx where
+  renderDiagnostic (FailedToResolveJarCtx path) = "Ensure " <> viaShow path <> " is a valid jar or aar file."
 
 tacticMetaInf :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> m JarMetadata
 tacticMetaInf archive = context ("Parse " <> toText metaInfPath) $ do
