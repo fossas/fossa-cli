@@ -7,6 +7,7 @@ module App.Fossa.Config.Analyze (
   BinaryDiscovery (..),
   ExperimentalAnalyzeConfig (..),
   IATAssertion (..),
+  DynamicLinkInspect (..),
   IncludeAll (..),
   JsonOutput (..),
   MonorepoAnalyzeConfig (..),
@@ -33,6 +34,7 @@ import App.Fossa.Config.Common (
   targetOpt,
   validateApiKey,
   validateDir,
+  validateFile,
  )
 import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
@@ -94,7 +96,7 @@ import Options.Applicative (
   switch,
   (<|>),
  )
-import Path (Abs, Dir, Path, Rel)
+import Path (Abs, Dir, File, Path, Rel)
 import Path.IO (getCurrentDir)
 import System.Info qualified as SysInfo
 import Types (TargetFilter)
@@ -112,10 +114,13 @@ data VSIAnalysis = VSIAnalysis
 
 newtype IATAssertion = IATAssertion {unIATAssertion :: Maybe (Path Abs Dir)} deriving (Eq, Ord, Show)
 
+newtype DynamicLinkInspect = DynamicLinkInspect {unDynamicLinkInspect :: Maybe (Path Abs File)} deriving (Eq, Ord, Show)
+
 data VSIModeOptions = VSIModeOptions
   { vsiAnalysisEnabled :: Flag VSIAnalysis
   , vsiSkipSet :: VSI.SkipResolution
   , iatAssertion :: IATAssertion
+  , dynamicLinkingTarget :: DynamicLinkInspect
   , binaryDiscoveryEnabled :: Flag BinaryDiscovery
   }
   deriving (Eq, Ord, Show)
@@ -135,6 +140,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeVSIMode :: Flag VSIAnalysis
   , analyzeBinaryDiscoveryMode :: Flag BinaryDiscovery
   , analyzeAssertMode :: Maybe (FilePath)
+  , analyzeDynamicLinkTarget :: Maybe (FilePath)
   , analyzeSkipVSIGraphResolution :: [VSI.Locator]
   , monorepoAnalysisOpts :: MonorepoAnalysisOpts
   , analyzeBaseDir :: FilePath
@@ -202,6 +208,7 @@ cliParser =
     <*> vsiEnableOpt
     <*> flagOpt BinaryDiscovery (long "experimental-enable-binary-discovery" <> help "Reports binary files as unlicensed dependencies")
     <*> optional (strOption (long "experimental-link-project-binary" <> metavar "DIR" <> help "Links output binary files to this project in FOSSA"))
+    <*> optional (strOption (long "experimental-analyze-dynamic-deps" <> metavar "BINARY" <> help "Analyzes dynamically linked libraries in the target binary and reports them as dependencies"))
     <*> many skipVSIGraphResolutionOpt
     <*> monorepoOpts
     <*> baseDirArg
@@ -404,10 +411,12 @@ collectModeOptions ::
   m VSIModeOptions
 collectModeOptions AnalyzeCliOpts{..} = do
   assertionDir <- traverse validateDir analyzeAssertMode
+  dynamicLinkTarget <- traverse validateFile analyzeDynamicLinkTarget
   pure
     VSIModeOptions
       { vsiAnalysisEnabled = analyzeVSIMode
       , vsiSkipSet = VSI.SkipResolution $ Set.fromList analyzeSkipVSIGraphResolution
       , iatAssertion = IATAssertion assertionDir
+      , dynamicLinkingTarget = DynamicLinkInspect dynamicLinkTarget
       , binaryDiscoveryEnabled = analyzeBinaryDiscoveryMode
       }

@@ -192,6 +192,7 @@ library
     App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
+    App.Fossa.VSI.DynLinked
     App.Fossa.VSI.DynLinked.Internal.Binary
     App.Fossa.VSI.DynLinked.Internal.Lookup
     App.Fossa.VSI.DynLinked.Internal.Lookup.APK

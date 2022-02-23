@@ -12,6 +12,7 @@ module App.Fossa.Config.Common (
 
   -- * CLI Validators
   validateDir,
+  validateFile,
   validateApiKey,
 
   -- * CLI Collectors
@@ -67,7 +68,7 @@ import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
 import Discovery.Filters (targetFilterParser)
 import Effect.Exec (Exec)
-import Effect.ReadFS (ReadFS, doesDirExist)
+import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts))
 import Options.Applicative (
   Parser,
@@ -83,8 +84,8 @@ import Options.Applicative (
   value,
   (<|>),
  )
-import Path (Abs, Dir, Path, Rel, parseRelDir)
-import Path.IO (resolveDir')
+import Path (Abs, Dir, File, Path, Rel, parseRelDir)
+import Path.IO (resolveDir', resolveFile')
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI)
 import Types (TargetFilter)
@@ -151,6 +152,20 @@ validateDir fp = do
   if exists
     then pure dir
     else fatalText $ "Directory does not exist: " <> toText dir
+
+validateFile ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has ReadFS sig m
+  ) =>
+  FilePath ->
+  m (Path Abs File)
+validateFile fp = do
+  file <- sendIO $ resolveFile' fp
+  exists <- doesFileExist file
+  if exists
+    then pure file
+    else fatalText $ "File does not exist: " <> toText file
 
 validateApiKey ::
   ( Has Diagnostics sig m
