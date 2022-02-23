@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Strategy.Bundler (
   discover,
   findProjects,

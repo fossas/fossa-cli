@@ -1,8 +1,9 @@
 module Ruby.GemspecSpec (spec) where
 
-import Strategy.Ruby.Gemspec (rubyString)
-import Test.Hspec (Spec, describe, it, shouldBe)
-import Text.Megaparsec (ParseErrorBundle, Parsec, runParser)
+import Data.Char (isSeparator)
+import Strategy.Ruby.Gemspec (Assignment (Assignment), parseRubyAssignment, rubyString)
+import Test.Hspec (Spec, context, describe, it, shouldBe)
+import Text.Megaparsec (ParseErrorBundle, Parsec, runParser, takeWhile1P)
 
 -- I'm not sure about these helpers. Get guidance on whether they help readability.
 shouldParse :: Parsec e s a -> s -> Either (ParseErrorBundle s e) a
@@ -19,5 +20,22 @@ stringParseTest =
     it "Parses string enclosed in \'" $
       rubyString `shouldParse` "\'Hello\'" `to` "Hello"
 
+assignmentParseTest :: Spec
+assignmentParseTest =
+  describe "Ruby assignment parsing test" $ do
+    let parseAssignmentAnyRHS = parseRubyAssignment $ takeWhile1P Nothing (not . isSeparator)
+    it "Parses an assignment" $
+      parseAssignmentAnyRHS `shouldParse` "foo= bar" `to` Assignment "foo" "bar"
+    it "Parses an assignment, no spaces" $
+      parseAssignmentAnyRHS `shouldParse` "foo=bar" `to` Assignment "foo" "bar"
+    it "Parses an assignment, leading spaces" $
+      parseAssignmentAnyRHS `shouldParse` " foo =bar" `to` Assignment "foo" "bar"
+    it "Parses a basic string assignment" $
+      parseRubyAssignment rubyString `shouldParse` "s.license =   \"MIT\"" `to` Assignment "s.license" "MIT"
+    it "Consumes spaces at the beginning of an assignment" $
+      parseRubyAssignment rubyString `shouldParse` " \t s.license =   \"MIT\"" `to` Assignment "s.license" "MIT"
+
 spec :: Spec
-spec = stringParseTest
+spec = context "" $ do
+  stringParseTest
+  assignmentParseTest
