@@ -232,8 +232,13 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
-  resp <- req POST (uploadUrl baseUrl) (ReqBodyJson $ NE.toList sourceUnits) jsonResponse (baseOpts <> opts)
+  --resp <- req POST (uploadUrl baseUrl) (ReqBodyJson $ NE.toList sourceUnits) jsonResponse (baseOpts <> opts)
+  resp <- req POST (uploadUrl baseUrl) (ReqBodyJson $ object ["locators" .= mangleForHubble sourceUnits]) jsonResponse (baseOpts <> opts)
   pure (responseBody resp)
+
+-- FIXME(hubble): mangle into the full hubble format instead
+mangleForHubble :: NE.NonEmpty SourceUnit -> [Locator]
+mangleForHubble = concatMap (maybe [] (\bld -> buildImports bld <> map sourceDepLocator (buildDependencies bld)) . sourceUnitBuild) . NE.toList
 
 mkMetadataOpts :: ProjectMetadata -> Text -> Option scheme
 mkMetadataOpts ProjectMetadata{..} projectName = mconcat $ catMaybes maybes
