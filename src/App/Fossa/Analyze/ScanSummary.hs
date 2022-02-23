@@ -189,7 +189,7 @@ getManualVendorDepsIdentifier srcUnit = refDeps ++ foundRemoteDeps ++ customDeps
     refDeps =
       withPostfix "reference" $
         map (locatorProject) $
-          filter (\l -> locatorFetcher l == depTypeToFetcher ArchiveType) allBuildDeps
+          filter (\l -> locatorFetcher l /= depTypeToFetcher ArchiveType) allBuildDeps
 
     allBuildDeps :: [Locator]
     allBuildDeps = maybe [] (map sourceDepLocator . buildDependencies) (sourceUnitBuild srcUnit)
