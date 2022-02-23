@@ -7,6 +7,7 @@
 #   jq              Parse and manipulate json structures.
 #   curl            Download data over HTTP(s)
 #   sed             Modify syft tag
+#   xz              compress the license index
 #   upx             Compress binaries (optional)
 #
 
@@ -140,7 +141,8 @@ echo "Marking binaries executable"
 chmod +x vendor-bins/*
 
 echo "Compressing binaries"
-find vendor-bins -type f -not -name '*.gob' | xargs upx || echo "WARN: 'upx' command not found, binaries will not be compressed"
+xz vendor-bins/index.gob
+find vendor-bins -type f -not -name '*.xz' | xargs upx || echo "WARN: 'upx' command not found, binaries will not be compressed"
 
 echo "Vendored binaries are ready for use"
 ls -lh vendor-bins/
