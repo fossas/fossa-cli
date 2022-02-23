@@ -27,6 +27,7 @@ import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.ScanSummary (renderScanSummary)
 import App.Fossa.Analyze.Types (
+  AnalysisScanResult (AnalysisScanResult),
   AnalyzeProject (..),
   AnalyzeTaskEffs,
   DiscoveredProjectIdentifier (..),
@@ -42,7 +43,7 @@ import App.Fossa.Config.Analyze (
   IATAssertion (IATAssertion),
   IncludeAll (IncludeAll),
   ScanDestination (..),
-  StandardAnalyzeConfig (),
+  StandardAnalyzeConfig (severity),
   UnpackArchives (UnpackArchives),
  )
 import App.Fossa.Config.Analyze qualified as Config
@@ -279,7 +280,9 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let projectResults = mapMaybe toProjectResult projectScans
   let filteredProjects = mapMaybe toProjectResult projectScansWithSkippedProdPath
 
-  renderScanSummary projectScansWithSkippedProdPath vsiResults binarySearchResults manualSrcUnits
+  let analysisResult = AnalysisScanResult projectScansWithSkippedProdPath vsiResults binarySearchResults manualSrcUnits
+
+  renderScanSummary (severity cfg) analysisResult
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits of

@@ -1,5 +1,6 @@
 module App.Fossa.Analyze.Types (
   AnalyzeProject (..),
+  AnalysisScanResult (..),
   AnalyzeTaskEffs,
   AnalyzeExperimentalPreferences (..),
   DiscoveredProjectScan (..),
@@ -19,6 +20,7 @@ import Effect.Exec (Exec)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import Path
+import Srclib.Types (SourceUnit)
 import Types (DependencyResults, DiscoveredProjectType, FoundTargets)
 
 newtype AnalyzeExperimentalPreferences = AnalyzeExperimentalPreferences
@@ -34,6 +36,13 @@ type AnalyzeTaskEffs sig m =
   , Has Debug sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   )
+
+data AnalysisScanResult = AnalysisScanResult
+  { analyzersScanResult :: [DiscoveredProjectScan]
+  , vsiScanResult :: Result (Maybe SourceUnit)
+  , binaryDepsScanResult :: Result (Maybe SourceUnit)
+  , fossaDepsScanResult :: Result (Maybe SourceUnit)
+  }
 
 data DiscoveredProjectScan
   = SkippedDueToProvidedFilter DiscoveredProjectIdentifier
