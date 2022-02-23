@@ -28,6 +28,7 @@ module App.Fossa.FossaAPIV1 (
   archiveBuildUpload,
   assertUserDefinedBinaries,
   assertRevisionBinaries,
+  licenseScanResultUpload,
   resolveUserDefinedBinary,
   resolveProjectDependencies,
   vsiCreateScan,
@@ -45,6 +46,7 @@ import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types
 import App.Version (versionNumber)
+import Codec.Compression.GZip qualified as GZIP
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fromMaybeText)
 import Control.Effect.Empty (empty)
@@ -56,7 +58,7 @@ import Data.ByteString.Char8 qualified as C
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (toText, toLText, encodeUtf8, toStrict)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Word (Word8)
@@ -413,6 +415,24 @@ archiveUpload signedArcURI arcFile = fossaReq $ do
     Right (url, options) -> uploadArchiveRequest url options
   where
     uploadArchiveRequest url options = reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
+
+licenseScanResultUpload ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  SignedURL ->
+  Text ->
+  m LbsResponse
+licenseScanResultUpload signedArcURI licenseScanResult = fossaReq $ do
+  let arcURL = URI.mkURI $ signedURL signedArcURI
+
+  uri <- fromMaybeText ("Invalid URL: " <> signedURL signedArcURI) arcURL
+  validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
+
+  context ("Uploading license scan result to " <> signedURL signedArcURI) $ case validatedURI of
+    Left (url, options) -> uploadArchiveRequest url options
+    Right (url, options) -> uploadArchiveRequest url options
+  where
+    zippedLicenseResult = toStrict $ GZIP.compress $ encodeUtf8 $ toLText licenseScanResult
+    uploadArchiveRequest url options = reqCb PUT url (ReqBodyBs zippedLicenseResult) lbsResponse options (pure . requestEncoder)
 
 -- requestEncoder properly encodes the Request path.
 -- The default encoding logic does not encode "+" ot "$" characters which makes AWS very angry.

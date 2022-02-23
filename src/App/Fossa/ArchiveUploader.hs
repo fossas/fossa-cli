@@ -5,6 +5,9 @@ module App.Fossa.ArchiveUploader (
   archiveNoUploadSourceUnit,
   arcToLocator,
   forceVendoredToArchive,
+  duplicateFailureBundle,
+  duplicateNames,
+  hashFile,
   VendoredDependency (..),
 ) where
 
