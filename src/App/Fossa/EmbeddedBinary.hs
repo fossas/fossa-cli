@@ -140,7 +140,7 @@ extractedPath bin = case bin of
   -- Users don't know what "wiggins" is, but they explicitly enable the VSI plugin, so this is more intuitive.
   Wiggins -> $(mkRelFile "vsi-plugin")
   Themis -> $(mkRelFile "themis-cli")
-  ThemisIndex -> $(mkRelFile "index.gob")
+  ThemisIndex -> $(mkRelFile "index.gob.xz")
 
 extractDir :: Has (Lift IO) sig m => m (Path Abs Dir)
 extractDir = do
@@ -166,4 +166,4 @@ embeddedBinaryThemis :: ByteString
 embeddedBinaryThemis = $(embedFileIfExists "vendor-bins/themis-cli")
 
 embeddedBinaryThemisIndex :: ByteString
-embeddedBinaryThemisIndex = $(embedFileIfExists "vendor-bins/index.gob")
+embeddedBinaryThemisIndex = $(embedFileIfExists "vendor-bins/index.gob.xz")
