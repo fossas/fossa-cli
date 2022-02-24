@@ -1,7 +1,5 @@
 module Strategy.Ruby.Errors (
   BundlerMissingLockFile (..),
-  RubyMissingEdges (..),
-  RubyMissingDepClassification (..),
 
   -- * Reference docs
   bundlerLockFileRationaleUrl,
@@ -36,13 +34,3 @@ instance ToDiagnostic BundlerMissingLockFile where
       , indent 2 $ pretty $ "- " <> bundlerLockFileRationaleUrl
       , indent 2 $ pretty $ "- " <> rubyFossaDocUrl
       ]
-
-data RubyMissingEdges = RubyMissingEdges
-instance ToDiagnostic RubyMissingEdges where
-  renderDiagnostic (RubyMissingEdges) =
-    "Could not infer edges between dependencies."
-
-data RubyMissingDepClassification = RubyMissingDepClassification
-instance ToDiagnostic RubyMissingDepClassification where
-  renderDiagnostic (RubyMissingDepClassification) =
-    "Could not differentiate between direct and deep dependencies. All dependencies will be classified as direct."

@@ -14,7 +14,8 @@ module Strategy.Nim.NimbleLock (
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
-import Control.Effect.Diagnostics (Diagnostics, context, recover)
+import Control.Carrier.Diagnostics (ToDiagnostic, errCtx, warnOnErr)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, recover)
 import Data.Aeson (
   FromJSON (parseJSON),
   FromJSONKey,
@@ -182,5 +183,18 @@ analyze ::
   m (Graphing Dependency, GraphBreadth)
 analyze dir lockFile = do
   lockContents <- context "Reading nimble.lock" $ readContentsJson lockFile
-  nimbleDumpContent :: Maybe NimbleDump <- recover $ context "Performing nimble dump --json to identify direct dependencies" $ execJson dir nimbleDumpJsonCmd
+  nimbleDumpContent :: Maybe NimbleDump <-
+    recover
+      . context "Performing nimble dump --json to identify direct dependencies"
+      . warnOnErr MissingEdgesBetweenDirectDeps
+      . errCtx CmdNimbleDumpFailed
+      $ execJson dir nimbleDumpJsonCmd
   context "building graphing from nimble.lock" $ pure (buildGraph lockContents nimbleDumpContent, Complete)
+
+data MissingEdgesBetweenDirectDeps = MissingEdgesBetweenDirectDeps
+instance ToDiagnostic MissingEdgesBetweenDirectDeps where
+  renderDiagnostic _ = "Could not infer edges between direct dependencies."
+
+data CmdNimbleDumpFailed = CmdNimbleDumpFailed
+instance ToDiagnostic CmdNimbleDumpFailed where
+  renderDiagnostic _ = "We could not retrieve nimble packages metadata using nimble's dump subcommand."

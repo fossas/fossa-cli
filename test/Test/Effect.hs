@@ -62,7 +62,7 @@ runTestEffects = runStack . ignoreLogger . handleDiag . runReadFSIO . runExecIO
     handleDiag diag =
       runDiagnostics diag >>= \case
         Failure ws eg -> do
-          expectationFailure' $ toString $ renderIt $ renderFailure ws eg
+          expectationFailure' $ toString $ renderIt $ renderFailure ws eg "An issue occurred"
         Success _ _ -> pure ()
 
 expectationFailure' :: (Has (Lift IO) sig m) => String -> m ()

@@ -29,6 +29,7 @@ import Effect.ReadFS
 import GHC.Generics (Generic)
 import Graphing qualified as G
 import Path
+import Prettyprinter (pretty, viaShow, vsep)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
@@ -129,8 +130,25 @@ analyze topPath = evalGrapher $ do
           let checkoutPath :: Path Abs Dir
               checkoutPath = checkoutsDir </> path
 
-          deeper <- recover $ analyzeSingle (checkoutPath </> $(mkRelFile "Cartfile.resolved"))
+          deeper <-
+            recover
+              . warnOnErr (MissingCarthageDeepDep entry)
+              . errCtx (MissingResolvedFile $ checkoutPath </> $(mkRelFile "Cartfile.resolved"))
+              $ analyzeSingle (checkoutPath </> $(mkRelFile "Cartfile.resolved"))
           traverse_ (traverse_ (edge entry)) deeper
+
+newtype MissingCarthageDeepDep = MissingCarthageDeepDep ResolvedEntry
+instance ToDiagnostic MissingCarthageDeepDep where
+  renderDiagnostic (MissingCarthageDeepDep entry) = pretty $ "Failed to find transitive dependencies for: " <> (resolvedName entry)
+
+newtype MissingResolvedFile = MissingResolvedFile (Path Abs File)
+instance ToDiagnostic MissingResolvedFile where
+  renderDiagnostic (MissingResolvedFile path) =
+    vsep
+      [ "We could not find or parse resolved file in: " <> (viaShow path)
+      , ""
+      , "Ensure your carthage project is built prior to running fossa."
+      ]
 
 entryToCheckoutName :: ResolvedEntry -> Text
 entryToCheckoutName entry =

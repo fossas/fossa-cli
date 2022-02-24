@@ -159,8 +159,8 @@ resultToMaybe (Failure _ _) = Nothing
 -- from a Failure into a message suitable for logging
 --
 -- renderFailure displays all types of emitted warnings.
-renderFailure :: [EmittedWarn] -> ErrGroup -> Doc AnsiStyle
-renderFailure ws (ErrGroup _ ectx es) = header "An issue occurred" <> renderedCtx <> renderedErrs <> renderedPossibleErrs
+renderFailure :: [EmittedWarn] -> ErrGroup -> Doc AnsiStyle -> Doc AnsiStyle
+renderFailure ws (ErrGroup _ ectx es) headerDoc = header headerDoc <> renderedCtx <> renderedErrs <> renderedPossibleErrs
   where
     renderedCtx :: Doc AnsiStyle
     renderedCtx =
@@ -191,14 +191,11 @@ renderFailure ws (ErrGroup _ ectx es) = header "An issue occurred" <> renderedCt
 --
 -- when all errors in the list are IgnoredErrGroup, or the provided list is
 -- empty, this returns Nothing
-renderSuccess :: [EmittedWarn] -> Maybe (Doc AnsiStyle)
-renderSuccess ws =
+renderSuccess :: [EmittedWarn] -> Doc AnsiStyle -> Maybe (Doc AnsiStyle)
+renderSuccess ws headerDoc =
   case notIgnoredErrs of
     [] -> Nothing
-    ws' ->
-      Just $
-        header "A task succeeded with warnings"
-          <> subsection "Warning" (map renderEmittedWarn ws')
+    ws' -> Just $ header headerDoc <> subsection "Warning" (map renderEmittedWarn ws')
   where
     notIgnoredErrs :: [EmittedWarn]
     notIgnoredErrs = filter (not . isIgnoredErrGroup) ws
