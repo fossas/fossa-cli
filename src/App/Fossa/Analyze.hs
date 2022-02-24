@@ -180,7 +180,7 @@ runDependencyAnalysis basedir filters project = do
       graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context "Project Analysis" $ do
         debugMetadata "DiscoveredProject" project
         analyzeProject targets (projectData project)
-      Diag.flushLogs SevWarn SevWarn graphResult
+      Diag.flushLogs SevError SevDebug graphResult
       output $ Scanned dpi (mkResult basedir project <$> graphResult)
 
 applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
@@ -259,7 +259,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir apiOpts
   let additionalSourceUnits :: [SourceUnit]
       additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults]
-  traverse_ (Diag.flushLogs SevError SevWarn) [vsiResults, binarySearchResults, manualSrcUnits]
+  traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults, binarySearchResults, manualSrcUnits]
 
   (projectScans, ()) <-
     Diag.context "discovery/analysis tasks"
