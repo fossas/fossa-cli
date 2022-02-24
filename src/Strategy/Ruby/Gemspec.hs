@@ -2,15 +2,16 @@ module Strategy.Ruby.Gemspec (
   rubyString,
   parseRubyAssignment,
   Assignment (..),
+  readAssignments,
 ) where
 
 import Control.Applicative ((<|>))
 import Data.Char (isSpace)
+import Data.Functor (($>))
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as Text
 import Data.Void (Void)
-import Text.Megaparsec (Parsec, anySingleBut, between, many, takeWhile1P)
+import Text.Megaparsec (MonadParsec (eof), Parsec, anySingle, anySingleBut, between, many, skipManyTill, takeWhile1P, try)
 import Text.Megaparsec.Char (char, space)
 
 type Parser = Parsec Void Text
@@ -28,15 +29,31 @@ data Assignment a = Assignment
   }
   deriving (Eq, Show)
 
-spaceAround :: Parser a -> Parser a
-spaceAround p = space *> p <* space
-
--- | Parse a ruby assignment statement where `rhs` is a parser for the
--- right-hand side of the equation, spaces on either side will be stripped out
--- before running rhs.
-parseRubyAssignment :: Parser Text -> Parser (Assignment Text)
-parseRubyAssignment rhs = Assignment <$> (space *> labelP) <* space <* char '=' <*> valueP
+parseRubyAssignment ::
+  -- | Parser for the right-hand side of an assignment
+  Parser a ->
+  Parser (Assignment a)
+parseRubyAssignment rhs = Assignment <$> (labelP <* space <* char '=' <* space) <*> valueP
   where
     -- edge-case: assumes that the initial label is on one line
     labelP = takeWhile1P Nothing (\c -> c /= '=' && not (isSpace c))
-    valueP = spaceAround rhs
+    valueP = rhs
+
+-- | Parser to extract all assignments out of a section of text, ignoring everything else.
+readAssignments ::
+  -- | A parser for text appearing on the right side of an assignment
+  Parser a ->
+  Parser [Assignment a]
+readAssignments rhs = findAssignments
+  where
+    tryAssignment = try $ parseRubyAssignment rhs <* space
+    findAssignments = do
+      res <-
+        skipManyTill
+          anySingle
+          ( Just <$> tryAssignment
+              <|> (eof $> Nothing)
+          )
+      case res of
+        Nothing -> pure []
+        Just assignment -> (assignment :) <$> findAssignments
