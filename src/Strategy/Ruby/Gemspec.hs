@@ -34,8 +34,9 @@ spaceAround p = space *> p <* space
 -- | Parse a ruby assignment statement where `rhs` is a parser for the
 -- right-hand side of the equation, spaces on either side will be stripped out
 -- before running rhs.
-parseRubyAssignment :: Parser a -> Parser (Assignment a)
-parseRubyAssignment rhs = Assignment <$> (space *> labelP) <* char '=' <*> valueP
+parseRubyAssignment :: Parser Text -> Parser (Assignment Text)
+parseRubyAssignment rhs = Assignment <$> (space *> labelP) <* space <* char '=' <*> valueP
   where
-    labelP = Text.filter (not . isSpace) . toText <$> takeWhile1P Nothing (/= '=')
+    -- edge-case: assumes that the initial label is on one line
+    labelP = takeWhile1P Nothing (\c -> c /= '=' && not (isSpace c))
     valueP = spaceAround rhs

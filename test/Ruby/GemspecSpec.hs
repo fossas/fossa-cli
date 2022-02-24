@@ -2,7 +2,7 @@ module Ruby.GemspecSpec (spec) where
 
 import Data.Char (isSeparator)
 import Strategy.Ruby.Gemspec (Assignment (Assignment), parseRubyAssignment, rubyString)
-import Test.Hspec (Spec, context, describe, it, shouldBe)
+import Test.Hspec (fcontext, Spec, context, describe, it, shouldBe, fit)
 import Text.Megaparsec (ParseErrorBundle, Parsec, runParser, takeWhile1P)
 
 -- I'm not sure about these helpers. Get guidance on whether they help readability.
@@ -36,6 +36,6 @@ assignmentParseTest =
       parseRubyAssignment rubyString `shouldParse` " \t s.license =   \"MIT\"" `to` Assignment "s.license" "MIT"
 
 spec :: Spec
-spec = context "" $ do
+spec = fcontext "" $ do
   stringParseTest
   assignmentParseTest
