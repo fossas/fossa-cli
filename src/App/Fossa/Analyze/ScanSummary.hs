@@ -133,8 +133,8 @@ renderScanSummary severity analysisResults =
       when (severity /= SevDebug) $ do
         logInfo "You can pass `--debug` option to eagerly show all warning and failure messages."
 
-      summaryWithWarnErrors <- dumpResultLogsToTempFile analysisResults
-      logInfo . pretty $ "You can also view analysis summary at: " <> show summaryWithWarnErrors
+      summaryWithWarnErrorsTmpFile <- dumpResultLogsToTempFile analysisResults
+      logInfo . pretty $ "You can also view analysis summary with warning and error messages at: " <> show summaryWithWarnErrorsTmpFile
       logInfo "------------"
 
 summarize :: AnalysisScanResult -> Maybe ([Doc AnsiStyle])
@@ -297,7 +297,7 @@ dumpResultLogsToTempFile (AnalysisScanResult projects vsi binary manualDeps) = d
           . unAnnotate
           . mconcat
           $ scanSummary
-            ++ (mapMaybe renderDiscoveredProjectScanResult projects)
+            ++ (mapMaybe renderDiscoveredProjectScanResult (sort projects))
             ++ catMaybes
               [ renderSourceUnit "vsi analysis" vsi
               , renderSourceUnit "binary-deps analysis" binary
