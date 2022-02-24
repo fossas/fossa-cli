@@ -7,8 +7,7 @@ import App.Fossa.VSI.DynLinked.Internal.Lookup.DEB (debTactic)
 import App.Fossa.VSI.DynLinked.Internal.Lookup.RPM (rpmTactic)
 import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..))
 import Control.Algebra (Has)
-import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics (Diagnostics, (<||>))
+import Control.Effect.Diagnostics (Diagnostics)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Effect.Exec (Exec)
@@ -32,10 +31,17 @@ dynamicDependencies root files = do
 
 resolveFile :: (Has Diagnostics sig m, Has Exec sig m) => Maybe APKLookupTable -> Path Abs Dir -> Path Abs File -> m DynamicDependency
 resolveFile table root file = do
-  resolved <- rpmTactic root file <||> debTactic root file
-  case resolved <|> apkTactic table file of
-    Nothing -> pure $ fallbackTactic file
-    Just result -> pure result
+  rpmResolved <- rpmTactic root file
+  case rpmResolved of
+    Nothing -> do
+      debResolved <- debTactic root file
+      case debResolved of
+        Nothing -> do
+          case apkTactic table file of
+            Nothing -> pure $ fallbackTactic file
+            Just r -> pure r
+        Just r -> pure r
+    Just r -> pure r
 
 fallbackTactic :: Path Abs File -> DynamicDependency
 fallbackTactic file = DynamicDependency file Nothing

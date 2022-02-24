@@ -10,7 +10,7 @@ import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Lift (Lift)
 import Data.String.Conversion (toText)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, logDebug)
+import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, File, Path)
 import Srclib.Types (SourceUnit (..))
@@ -39,5 +39,6 @@ analyzeDynamicLinkedDeps root target = context "analyze dynamic deps" $ do
           logDebug "Dynamic linking analysis: no dependencies found in target"
           pure Nothing
         else do
-          linkedDeps <- context ("resolve linked dependencies: " <> (toText . show $ linkedFiles)) $ dynamicDependencies root linkedFiles
+          logDebug . pretty $ "Dynamic linking analysis: resolving linked dependencies: " <> toText (show linkedFiles)
+          linkedDeps <- context ("resolve linked dependencies: " <> toText (show linkedFiles)) $ dynamicDependencies root linkedFiles
           Just <$> toSourceUnit root distro linkedDeps

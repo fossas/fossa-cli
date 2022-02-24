@@ -10,8 +10,10 @@ import Control.Effect.Diagnostics (Diagnostics, recover)
 import Control.Monad (join, void)
 import Data.Char (isSpace)
 import Data.Foldable (traverse_)
+import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
 import Path (Abs, Dir, File, Path)
@@ -29,8 +31,8 @@ debTactic root file | runningLinux = do
 debTactic _ _ = pure Nothing
 
 packageForFile :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe Text)
-packageForFile _ _ | not runningLinux = pure Nothing
-packageForFile root file = recover . execParser parsePackageForFileOutput root $ dpkgQueryFileCommand file
+packageForFile root file | runningLinux = recover . execParser parsePackageForFileOutput root $ dpkgQueryFileCommand file
+packageForFile _ _ = pure Nothing
 
 dpkgQueryFileCommand :: Path Abs File -> Command
 dpkgQueryFileCommand file =
@@ -47,7 +49,9 @@ dpkgQueryFileCommand file =
 -- > libc6:amd64: /lib/x86_64-linux-gnu/libc.so.6
 -- > ^^^^^^^^^^^ we want this part
 parsePackageForFileOutput :: Parser Text
-parsePackageForFileOutput = ident <* symbol ": "
+parsePackageForFileOutput = do
+  output <- sc *> ident
+  pure . fromMaybe output $ Text.stripSuffix ":" output
 
 packageMeta :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Text -> m (Maybe LinuxPackageMetadata)
 packageMeta _ _ | not runningLinux = pure Nothing
