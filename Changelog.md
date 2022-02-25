@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## v3.1.2
+
+- Fixes a bug which ignored the `server` field in the config file. ([#821](https://github.com/fossas/fossa-cli/pull/821))
+
 ## v3.1.1
 
 - UX: Parser error messages include call to action. ([#801](https://github.com/fossas/fossa-cli/pull/801))
