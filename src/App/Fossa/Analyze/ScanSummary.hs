@@ -10,6 +10,7 @@ import App.Fossa.Analyze.Project (
   projectResultType,
  )
 import App.Fossa.Analyze.Types (
+  AnalysisScanResult (AnalysisScanResult),
   DiscoveredProjectIdentifier (dpiProjectPath, dpiProjectType),
   DiscoveredProjectScan (..),
  )
@@ -19,7 +20,7 @@ import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
 import Control.Monad (when)
 import Data.Foldable (traverse_)
 import Data.List (sort)
-import Data.Maybe (catMaybes, mapMaybe)
+import Data.Maybe (catMaybes, mapMaybe, maybeToList)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Diag.Result (EmittedWarn (IgnoredErrGroup), Result (Failure, Success), renderFailure, renderSuccess)
@@ -27,10 +28,20 @@ import Effect.Logger (
   AnsiStyle,
   Logger,
   Pretty (pretty),
+  Severity (SevDebug),
   hsep,
   logInfo,
  )
-import Path
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  fromAbsFile,
+  mkRelFile,
+  (</>),
+ )
 import Path.IO
 import Prettyprinter (
   Doc,
@@ -42,13 +53,23 @@ import Prettyprinter (
   viaShow,
   vsep,
  )
-import Prettyprinter.Render.Terminal (Color (Green, Red, Yellow), bold, color, renderStrict)
+import Prettyprinter.Render.Terminal (
+  Color (Green, Red, Yellow),
+  bold,
+  color,
+  renderStrict,
+ )
+import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (
-  AdditionalDepData (userDefinedDeps),
-  SourceUnit (additionalData),
+  AdditionalDepData (remoteDeps, userDefinedDeps),
+  Locator (locatorFetcher, locatorProject),
+  SourceRemoteDep (srcRemoteDepName),
+  SourceUnit (additionalData, sourceUnitBuild),
+  SourceUnitBuild (buildDependencies),
+  SourceUnitDependency (sourceDepLocator),
   SourceUserDefDep (srcUserDepName),
  )
-import Types (DiscoveredProjectType, projectTypeToText)
+import Types (DepType (ArchiveType), DiscoveredProjectType, projectTypeToText)
 
 data ScanCount = ScanCount
   { numProjects :: Int
@@ -102,45 +123,49 @@ instance Pretty ScanCount where
 -- * __poetry__ project in path: succeeded
 -- * __fpm__ project in path: skipped
 -- * __setuptools__ project in path: skipped
-renderScanSummary ::
-  (Has Diag.Diagnostics sig m, Has Logger sig m, Has (Lift IO) sig m) =>
-  [DiscoveredProjectScan] ->
-  -- | Resulted source unit from @analyzeVSI@
-  Result (Maybe SourceUnit) ->
-  -- | Resulted source unit from @analyzeDiscoverBinaries@
-  Result (Maybe SourceUnit) ->
-  -- | Resulted source unit from @manualSrcUnits@
-  Result (Maybe SourceUnit) ->
-  m ()
-renderScanSummary dps vsi binary manualDeps = do
-  let projects = sort dps -- consistent ordering for repeated analysis
-  let totalScanCount =
-        mconcat
-          [ getScanCount projects
-          , srcUnitToScanCount vsi
-          , srcUnitToScanCount binary
-          , srcUnitToScanCount manualDeps
-          ]
+renderScanSummary :: (Has Diag.Diagnostics sig m, Has Logger sig m, Has (Lift IO) sig m) => Severity -> AnalysisScanResult -> m ()
+renderScanSummary severity analysisResults =
+  case summarize analysisResults of
+    Nothing -> pure ()
+    Just summary -> do
+      logInfoVsep summary
+      logInfo ""
+      when (severity /= SevDebug) $ do
+        logInfo "You can pass `--debug` option to eagerly show all warning and failure messages."
 
-  when (numProjects totalScanCount > 0) $ do
-    logInfoVsep
-      [ ""
-      , "Scan Summary"
-      , "------------"
-      , pretty fullVersionDescription
-      , ""
-      , pretty totalScanCount
-      ]
-    logInfo ""
-    logInfoVsep $ itemize listSymbol summarizeProjectScan projects
-    logInfoVsep $ summarizeSrcUnit "vsi analysis" Nothing vsi
-    logInfoVsep $ summarizeSrcUnit "binary-deps analysis" (Just getBinaryIdentifier) binary
-    logInfoVsep $ summarizeSrcUnit "fossa-deps analysis" Nothing manualDeps
-    logInfo ""
-    logInfo "You can pass `--debug` option to show all warning and failure messages."
-    scanSummaryLogs <- dumpResultLogsToTempFile projects vsi binary manualDeps
-    logInfo . pretty $ "You can also view them at: " <> show scanSummaryLogs
-    logInfo "------------"
+      summaryWithWarnErrorsTmpFile <- dumpResultLogsToTempFile analysisResults
+      logInfo . pretty $ "You can also view analysis summary with warning and error messages at: " <> show summaryWithWarnErrorsTmpFile
+      logInfo "------------"
+
+summarize :: AnalysisScanResult -> Maybe ([Doc AnsiStyle])
+summarize (AnalysisScanResult dps vsi binary manualDeps) =
+  if (numProjects totalScanCount <= 0)
+    then Nothing
+    else
+      Just $
+        [ ""
+        , "Scan Summary"
+        , "------------"
+        , pretty fullVersionDescription
+        , ""
+        , pretty totalScanCount
+        , ""
+        ]
+          <> itemize listSymbol summarizeProjectScan projects
+          <> ["-"]
+          <> summarizeSrcUnit "vsi analysis" Nothing vsi
+          <> summarizeSrcUnit "binary-deps analysis" (Just getBinaryIdentifier) binary
+          <> summarizeSrcUnit "fossa-deps file analysis" (Just getManualVendorDepsIdentifier) manualDeps
+          <> [""]
+  where
+    projects = sort dps
+    totalScanCount =
+      mconcat
+        [ getScanCount projects
+        , srcUnitToScanCount vsi
+        , srcUnitToScanCount binary
+        , srcUnitToScanCount manualDeps
+        ]
 
 listSymbol :: Doc AnsiStyle
 listSymbol = "* "
@@ -150,6 +175,37 @@ itemize symbol f = map ((symbol <>) . f)
 
 getBinaryIdentifier :: SourceUnit -> [Text]
 getBinaryIdentifier srcUnit = maybe [] (srcUserDepName <$>) (userDefinedDeps =<< additionalData srcUnit)
+
+getManualVendorDepsIdentifier :: SourceUnit -> [Text]
+getManualVendorDepsIdentifier srcUnit = refDeps ++ foundRemoteDeps ++ customDeps ++ vendorDeps
+  where
+    vendorDeps :: [Text]
+    vendorDeps =
+      withPostfix "vendor" $
+        map (locatorProject) $
+          filter (\l -> locatorFetcher l == depTypeToFetcher ArchiveType) allBuildDeps
+
+    refDeps :: [Text]
+    refDeps =
+      withPostfix "reference" $
+        map (locatorProject) $
+          filter (\l -> locatorFetcher l /= depTypeToFetcher ArchiveType) allBuildDeps
+
+    allBuildDeps :: [Locator]
+    allBuildDeps = maybe [] (map sourceDepLocator . buildDependencies) (sourceUnitBuild srcUnit)
+
+    customDeps :: [Text]
+    customDeps =
+      withPostfix "custom" $
+        maybe [] (srcUserDepName <$>) (userDefinedDeps =<< additionalData srcUnit)
+
+    foundRemoteDeps :: [Text]
+    foundRemoteDeps =
+      withPostfix "remote" $
+        maybe [] (srcRemoteDepName <$>) (remoteDeps =<< additionalData srcUnit)
+
+    withPostfix :: Text -> [Text] -> [Text]
+    withPostfix bracketText = map (<> " (" <> bracketText <> ")")
 
 srcUnitToScanCount :: Result (Maybe SourceUnit) -> ScanCount
 srcUnitToScanCount (Failure _ _) = ScanCount 1 0 0 1 0
@@ -163,9 +219,11 @@ summarizeSrcUnit ::
   [Doc AnsiStyle]
 summarizeSrcUnit analysisHeader maybeGetter (Success wg (Just unit)) =
   case maybeGetter <*> Just unit of
+    Just txts ->
+      [successColorCoded wg $ (listSymbol <> analysisHeader) <> renderSucceeded wg]
+        <> itemize ("  *" <> listSymbol) pretty txts
     Nothing -> [successColorCoded wg (listSymbol <> analysisHeader <> renderSucceeded wg)]
-    Just txts -> map (\i -> successColorCoded wg (listSymbol <> analysisHeader <> pretty (" for " <> i) <> renderSucceeded wg)) txts
-summarizeSrcUnit analysisHeader _ (Failure _ _) = [failColorCoded $ annotate bold analysisHeader <> renderFailed]
+summarizeSrcUnit analysisHeader _ (Failure _ _) = [failColorCoded $ annotate bold $ listSymbol <> analysisHeader <> renderFailed]
 summarizeSrcUnit _ _ _ = []
 
 summarizeProjectScan :: DiscoveredProjectScan -> Doc AnsiStyle
@@ -207,7 +265,10 @@ renderSucceeded :: [EmittedWarn] -> Doc AnsiStyle
 renderSucceeded ew =
   if countWarnings ew == 0
     then ": succeeded"
-    else ": succeeded with " <> viaShow (countWarnings ew) <> ": warning"
+    else ": succeeded with " <> viaShow (countWarnings ew) <> plural " warning" " warnings" numWarns
+  where
+    numWarns :: Int
+    numWarns = countWarnings ew
 
 renderFailed :: Doc AnsiStyle
 renderFailed = ": failed"
@@ -228,23 +289,15 @@ countWarnings ws =
     isIgnoredErrGroup IgnoredErrGroup{} = True
     isIgnoredErrGroup _ = False
 
-dumpResultLogsToTempFile ::
-  (Has (Lift IO) sig m) =>
-  [DiscoveredProjectScan] ->
-  -- | Resulted source unit from @analyzeVSI@
-  Result (Maybe SourceUnit) ->
-  -- | Resulted source unit from @analyzeDiscoverBinaries@
-  Result (Maybe SourceUnit) ->
-  -- | Resulted source unit from @manualSrcUnits@
-  Result (Maybe SourceUnit) ->
-  m (Path Abs File)
-dumpResultLogsToTempFile projects vsi binary manualDeps = do
+dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => AnalysisScanResult -> m (Path Abs File)
+dumpResultLogsToTempFile (AnalysisScanResult projects vsi binary manualDeps) = do
   let doc =
         renderStrict
           . layoutPretty defaultLayoutOptions
           . unAnnotate
           . mconcat
-          $ (mapMaybe renderDiscoveredProjectScanResult projects)
+          $ scanSummary
+            ++ (mapMaybe renderDiscoveredProjectScanResult (sort projects))
             ++ catMaybes
               [ renderSourceUnit "vsi analysis" vsi
               , renderSourceUnit "binary-deps analysis" binary
@@ -255,6 +308,9 @@ dumpResultLogsToTempFile projects vsi binary manualDeps = do
   sendIO $ TIO.writeFile (fromAbsFile $ tmpDir </> scanSummaryFileName) doc
   pure (tmpDir </> scanSummaryFileName)
   where
+    scanSummary :: [Doc AnsiStyle]
+    scanSummary = maybeToList (vsep <$> summarize (AnalysisScanResult projects vsi binary manualDeps))
+
     renderSourceUnit :: Doc AnsiStyle -> Result (Maybe SourceUnit) -> Maybe (Doc AnsiStyle)
     renderSourceUnit header (Failure ws eg) = Just $ renderFailure ws eg $ vsep $ summarizeSrcUnit header Nothing (Failure ws eg)
     renderSourceUnit header (Success ws (Just res)) = renderSuccess ws $ vsep $ summarizeSrcUnit header Nothing (Success ws (Just res))
