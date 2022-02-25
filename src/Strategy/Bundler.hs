@@ -1,6 +1,7 @@
 module Strategy.Bundler (
   discover,
   findProjects,
+  findLicenses,
   mkProject,
   getDeps,
   genGemspecFilename,
@@ -8,6 +9,7 @@ module Strategy.Bundler (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
@@ -18,25 +20,30 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Diagnostics qualified as Diag
 import Data.Aeson (ToJSON)
 import Diag.Common (AllDirectDeps (AllDirectDeps), MissingEdges (MissingEdges))
+import Data.Text (isSuffixOf)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
   walk',
  )
 import Effect.Exec (Exec, Has)
-import Effect.ReadFS (ReadFS)
+import Effect.ReadFS (ReadFS, readContentsParser)
 import GHC.Generics (Generic)
-import Path (Abs, Dir, File, Path, dirname, fromRelDir)
+import Path (Abs, Dir, File, Path, dirname, fromRelDir, toFilePath)
 import Strategy.Ruby.BundleShow qualified as BundleShow
 import Strategy.Ruby.Errors (
   BundlerMissingLockFile (..),
  )
 import Strategy.Ruby.GemfileLock qualified as GemfileLock
+import Strategy.Ruby.Gemspec (Assignment (Assignment, label, value), readAssignments, rubyString)
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
   DiscoveredProjectType (BundlerProjectType),
   GraphBreadth (Complete),
+  License (License),
+  LicenseResult (LicenseResult),
+  LicenseType (UnknownType),
  )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject BundlerProject]
@@ -82,6 +89,20 @@ instance ToJSON BundlerProject
 
 instance AnalyzeProject BundlerProject where
   analyzeProject _ = getDeps
+
+instance LicenseAnalyzeProject BundlerProject where
+  licenseAnalyzeProject = maybe (pure []) findLicenses . bundlerGemSpec
+
+findLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m [LicenseResult]
+findLicenses gemspecPath = do
+  assignments <- readContentsParser (readAssignments rubyString) gemspecPath
+  let license = filter isLicenseKey assignments
+  -- license keys are recommended to be SPDX, but there isn't any requirement:
+  -- https://guides.rubygems.org/specification-reference/#license=
+  pure [LicenseResult gemSpecFp (License UnknownType . value <$> license)]
+  where
+    isLicenseKey Assignment{label = label} = "license" `isSuffixOf` label
+    gemSpecFp = toFilePath gemspecPath
 
 mkProject :: BundlerProject -> DiscoveredProject BundlerProject
 mkProject project =
