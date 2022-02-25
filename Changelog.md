@@ -1,6 +1,6 @@
 # Fossa CLI Changelog
 
-## Yet to be released
+## v3.1.1
 
 - UX: Parser error messages include call to action. ([#801](https://github.com/fossas/fossa-cli/pull/801))
 - UX: Improves error message when executable is not found. ([#813](https://github.com/fossas/fossa-cli/pull/813))
