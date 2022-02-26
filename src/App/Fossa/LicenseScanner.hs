@@ -17,7 +17,8 @@ import Control.Effect.Lift
 import Control.Monad.Catch
 
 import Crypto.Hash (hash)
-import Effect.Logger (Logger, logDebug)
+import Effect.Exec (runExecIO)
+import Effect.Logger (Logger, logDebug, logInfo)
 import Data.ByteString.Lazy qualified as BL
 
 import App.Fossa.FossaAPIV1 qualified as Fossa
@@ -34,6 +35,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.String.Conversion (encodeUtf8, toText, toString)
 
+import App.Fossa.EmbeddedBinary (withThemisBinaryAndIndex)
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -44,11 +46,12 @@ runLicenseScanOnDir ::
 runLicenseScanOnDir opts = withThemisBinaryAndIndex $ \binaryPaths -> do
   let [themisBinary, themisIndex] = binaryPaths
   logInfo "Running license scan"
-  stdout <- context "license scan" $ runExecIO $ runThemis themisBinary opts
-  logInfo $ pretty stdout
-  stdout
+  context "license scan" $ runExecIO $ execThemis themisBinary opts
+  -- stdout <- context "license scan" $ runExecIO $ execThemis themisBinary opts
+  -- logInfo $ pretty stdout
+  -- stdout
 
-scanAndUploadVendoredDeps :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> Path Abs Dir -> [VendoredDependency] -> m [Archive]
+scanAndUploadVendoredDeps :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m, MonadThrow m) => ApiOpts -> Path Abs Dir -> [VendoredDependency] -> m [Archive]
 scanAndUploadVendoredDeps apiOpts baseDir = traverse (scanAndUpload apiOpts baseDir)
 
 scanAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m, MonadThrow m) => ApiOpts -> Path Abs Dir -> VendoredDependency -> m Archive
@@ -75,10 +78,6 @@ scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and 
   logDebug $ pretty $ show res
 
   pure $ Archive vendoredName depVersion
-
-scanResult :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => Text -> m Text
-scanResult vendoredPath = do
-  pure ""
 
 -- archiveUploadSourceUnit receives a list of vendored dependencies, a root path, and API settings.
 -- Using this information, it license scans each vendored dependency, uploads the license scan results and then queues a build for the dependency.

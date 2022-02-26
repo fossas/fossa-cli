@@ -37,8 +37,8 @@ generateThemisOpts baseDir vendoredDepDir =
     where
       fullDir = baseDir </> vendoredDepDir
 
-execThemis :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> ThemisCLIOpts -> m Text
-execThemis binaryPaths opts = decodeUtf8 . BL.toStrict <$> execThrow (themisCLIScanDir opts) (themisCommand binaryPaths opts)
+execThemis :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> ThemisCLIOpts -> m BL.ByteString
+execThemis binaryPaths opts = execThrow (themisCLIScanDir opts) (themisCommand binaryPaths opts)
 
 themisCommand :: BinaryPaths -> ThemisCLIOpts -> Command
 themisCommand bin ThemisCLIOpts{..} = do
