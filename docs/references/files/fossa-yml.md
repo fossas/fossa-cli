@@ -167,7 +167,7 @@ The list of paths to exclude from scanning in your directory.
 This section is intended to be used as the inverse to `paths.only`. If you have a certain directory such as `development` you wish to exclude, `paths.exclude` enables you to do this.
 
 ### Analysis target configuration
-Analysis target configuration allows you to select a very specific subset of your directory for scanning. The `target` and `path` sections allow users to configure which targets and directories should be scanned. This is useful if you have a custom test directory or development projects within the root project.
+Analysis target configuration allows you to select a very specific subset of your directory for scanning. The `targets` and `paths` sections allow users to configure which targets and directories should be scanned. This is useful if you have a custom test directory or development projects within the root project.
 
 Analysis target configuration determines which targets should be scanned with the following logic:
 1. Targets that match the `targets.only` and `paths.only` sections are unioned to create a list of targets to be scanned.
