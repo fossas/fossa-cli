@@ -44,9 +44,9 @@ runLicenseScanOnDir ::
   ThemisCLIOpts ->
   m BL.ByteString
 runLicenseScanOnDir opts = withThemisBinaryAndIndex $ \binaryPaths -> do
-  let [themisBinary, themisIndex] = binaryPaths
+  let [themisBinary, themisIndex, _] = binaryPaths
   logInfo "Running license scan"
-  context "license scan" $ runExecIO $ execThemis themisBinary opts
+  context "license scan" $ runExecIO $ execThemis themisBinary themisIndex opts
   -- stdout <- context "license scan" $ runExecIO $ execThemis themisBinary opts
   -- logInfo $ pretty stdout
   -- stdout
@@ -62,6 +62,7 @@ scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and 
     Right val -> pure val
   let cliOpts = generateThemisOpts baseDir vendoredDepDir
   scanResult <- runLicenseScanOnDir cliOpts
+  logDebug $ pretty $ show scanResult
   -- let scanResultBS = encodeUtf8 scanResult
   --     scanHash = hash scanResultBS
 

@@ -15,7 +15,10 @@ import Data.Text qualified as Text
 import Data.Text.Encoding (decodeUtf8)
 import Path (Abs, Dir, Path, Rel, fromAbsFile, parseRelDir, (</>))
 
-import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath)
+import App.Fossa.EmbeddedBinary (
+  toExecutablePath,
+  BinaryPaths (..),
+  )
 import Options.Applicative (CommandFields)
 
 import Effect.Exec (
@@ -37,14 +40,22 @@ generateThemisOpts baseDir vendoredDepDir =
     where
       fullDir = baseDir </> vendoredDepDir
 
-execThemis :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> ThemisCLIOpts -> m BL.ByteString
-execThemis binaryPaths opts = execThrow (themisCLIScanDir opts) (themisCommand binaryPaths opts)
+execThemis :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> BinaryPaths -> ThemisCLIOpts -> m BL.ByteString
+execThemis themisBinaryPath indexGobPath opts = execThrow (themisCLIScanDir opts) (themisCommand themisBinaryPath indexGobPath)
 
-themisCommand :: BinaryPaths -> ThemisCLIOpts -> Command
-themisCommand bin ThemisCLIOpts{..} = do
+themisCommand :: BinaryPaths -> BinaryPaths -> Command
+themisCommand themisBin indexGobBin = do
   Command
-    { cmdName = toText $ fromAbsFile $ toExecutablePath bin
-    , cmdArgs = themisCLIArgs
+    { cmdName = toText $ fromAbsFile $ toExecutablePath themisBin
+    , cmdArgs = generateThemisArgs indexGobBin
     , cmdAllowErr = Never
     }
+
+generateThemisArgs :: BinaryPaths -> [Text]
+generateThemisArgs BinaryPaths{..} =
+  [ "--license-data-dir"
+  , toText binaryPathContainer
+  , "--srclib-with-match-string"
+  , "."
+  ]
 

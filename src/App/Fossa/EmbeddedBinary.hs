@@ -7,7 +7,7 @@ module App.Fossa.EmbeddedBinary (
   withEmbeddedBinary,
   dumpEmbeddedBinary,
   toExecutablePath,
-  BinaryPaths,
+  BinaryPaths (..),
   withWigginsBinary,
   withSyftBinary,
   withThemisBinaryAndIndex,
