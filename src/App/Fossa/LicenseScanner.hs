@@ -16,10 +16,11 @@ import Control.Carrier.StickyLogger (StickyLogger, logSticky)
 import Control.Effect.Lift
 import Control.Monad.Catch
 
-import Crypto.Hash (hash)
+import Crypto.Hash (hash, MD5, Digest)
 import Effect.Exec (Exec, runExecIO)
 import Effect.Logger (Logger, logDebug, logInfo)
 import Data.ByteString.Lazy qualified as BL
+import Data.ByteString qualified as B
 
 import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.ArchiveUploader
@@ -49,7 +50,7 @@ runLicenseScanOnDir opts = withThemisBinaryAndIndex $ \binaryPaths -> do
   logInfo $ pretty $ "Running license scan on " ++ show opts
   logInfo $ pretty $ "themis binary" ++ show themisBinary
   logInfo $ pretty $ "themis index" ++ show themisIndex
-  res <- context "license scan" $ runExecIO $ runThemis themisBinary themisIndex opts
+  res <- runExecIO $ runThemis themisBinary themisIndex opts
   logInfo "scan done!!"
   logInfo $ pretty $ show res
   pure res
@@ -61,6 +62,9 @@ runThemis themisBinary themisIndex opts = do
 scanAndUploadVendoredDeps :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> Path Abs Dir -> [VendoredDependency] -> m [Archive]
 scanAndUploadVendoredDeps apiOpts baseDir = traverse (scanAndUpload apiOpts baseDir)
 
+md5 :: B.ByteString -> Digest MD5
+md5 = hash
+
 scanAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> Path Abs Dir -> VendoredDependency -> m Archive
 scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
   logSticky $ "Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
@@ -70,19 +74,16 @@ scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and 
   let cliOpts = generateThemisOpts baseDir vendoredDepDir
   logDebug "about to start themis scan"
   themisScanResult <- runLicenseScanOnDir cliOpts
-  logDebug "back from themis scan"
+  logDebug "back from themis scan" -- <--- I never see this
   -- logDebug $ pretty $ show themisScanResult
   -- let themisScanResultBS = encodeUtf8 themisScanResult
   --     scanHash = hash themisScanResultBS
 
   depVersion <- case vendoredVersion of
-    -- Nothing -> pure (toText (show (hash (encodeUtf8 themisScanResult))))
-    -- Nothing -> pure "aaa"
-    -- TODO: this is not correct
-    -- Nothing -> pure (toText (show scanHash))
-    Nothing -> pure (toText (show "aaa"))
+    Nothing -> pure (toText (show (md5 $ BL.toStrict themisScanResult)))
     Just version -> pure version
 
+  logDebug "about to get signed URL"
   signedURL <- Fossa.getSignedURL apiOpts depVersion vendoredName
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
