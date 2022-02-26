@@ -17,7 +17,7 @@ import Control.Effect.Lift
 import Control.Monad.Catch
 
 import Crypto.Hash (hash)
-import Effect.Exec (runExecIO)
+import Effect.Exec (Exec, runExecIO)
 import Effect.Logger (Logger, logDebug, logInfo)
 import Data.ByteString.Lazy qualified as BL
 
@@ -35,7 +35,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.String.Conversion (encodeUtf8, toText, toString)
 
-import App.Fossa.EmbeddedBinary (withThemisBinaryAndIndex)
+import App.Fossa.EmbeddedBinary (BinaryPaths, withThemisBinaryAndIndex)
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -49,10 +49,14 @@ runLicenseScanOnDir opts = withThemisBinaryAndIndex $ \binaryPaths -> do
   logInfo $ pretty $ "Running license scan on " ++ show opts
   logInfo $ pretty $ "themis binary" ++ show themisBinary
   logInfo $ pretty $ "themis index" ++ show themisIndex
-  context "license scan" $ runExecIO $ execThemis themisBinary themisIndex opts
+  context "license scan" $ runExecIO $ runThemis themisBinary themisIndex opts
   -- stdout <- context "license scan" $ runExecIO $ execThemis themisBinary opts
   -- logInfo $ pretty stdout
   -- stdout
+
+runThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => BinaryPaths -> BinaryPaths -> ThemisCLIOpts -> m BL.ByteString
+runThemis themisBinary themisIndex opts = do
+  context "Running license scan binary" $ execThemis themisBinary themisIndex opts
 
 scanAndUploadVendoredDeps :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> Path Abs Dir -> [VendoredDependency] -> m [Archive]
 scanAndUploadVendoredDeps apiOpts baseDir = traverse (scanAndUpload apiOpts baseDir)
