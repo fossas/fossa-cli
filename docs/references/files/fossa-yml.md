@@ -61,7 +61,7 @@ Sets the [FOSSA API key](https://docs.fossa.com/docs/api-reference#api-tokens) t
 ### `project:`
 The project fields allow you to configure settings for the project you are interacting with through the FOSSA API.
 
-> Note: `name`, `team`, `policy`, `link`, `url`, and `jiraProjectKey` can only be set when creating a project (running `fossa analyze` for the first time).
+> Note: `name`, `team`, `policy`, `link`, and `jiraProjectKey` can only be set when creating a project (running `fossa analyze` for the first time).
 
 ### `project.id:`
 The project ID defines a unique ID that the FOSSA API will use to reference this project. The project ID can be found in the UI on the project settings page listed as the "Project Locator" underneath the "Project Title" setting.
