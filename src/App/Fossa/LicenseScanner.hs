@@ -26,7 +26,7 @@ import App.Fossa.ArchiveUploader
 import Srclib.Types (Locator (..))
 import Fossa.API.Types
 import Path hiding ((</>))
-import Control.Effect.Diagnostics (Diagnostics, context)
+import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
 import Control.Monad (unless)
 import Data.List (nub)
 import Prettyprinter (Pretty (pretty))
@@ -51,13 +51,15 @@ runLicenseScanOnDir opts = withThemisBinaryAndIndex $ \binaryPaths -> do
   -- logInfo $ pretty stdout
   -- stdout
 
-scanAndUploadVendoredDeps :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m, MonadThrow m) => ApiOpts -> Path Abs Dir -> [VendoredDependency] -> m [Archive]
+scanAndUploadVendoredDeps :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> Path Abs Dir -> [VendoredDependency] -> m [Archive]
 scanAndUploadVendoredDeps apiOpts baseDir = traverse (scanAndUpload apiOpts baseDir)
 
-scanAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m, MonadThrow m) => ApiOpts -> Path Abs Dir -> VendoredDependency -> m Archive
+scanAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> Path Abs Dir -> VendoredDependency -> m Archive
 scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
   logSticky $ "Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
-  vendoredDepDir <- parseRelDir $ toString vendoredPath
+  vendoredDepDir <- case parseRelDir (toString vendoredPath) of
+    Left err -> fatalText "Error constructing scan dir for vendored scan"
+    Right val -> pure val
   let cliOpts = generateThemisOpts baseDir vendoredDepDir
   scanResult <- runLicenseScanOnDir cliOpts
   -- let scanResultBS = encodeUtf8 scanResult
