@@ -5,36 +5,58 @@ module App.Fossa.LicenseScanner (
   licenseNoScanSourceUnit,
 ) where
 
+import App.Fossa.RunThemis (
+  ThemisCLIOpts (..),
+  execThemis,
+  generateThemisOpts,
+ )
+
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.StickyLogger (StickyLogger, logSticky)
 import Control.Effect.Lift
+import Control.Monad.Catch
+
 import Crypto.Hash (hash)
 import Effect.Logger (Logger, logDebug)
+import Data.ByteString.Lazy qualified as BL
 
 import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.ArchiveUploader
 import Srclib.Types (Locator (..))
 import Fossa.API.Types
 import Path hiding ((</>))
-import Control.Effect.Diagnostics (context)
+import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Monad (unless)
 import Data.List (nub)
 import Prettyprinter (Pretty (pretty))
 
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.String.Conversion (encodeUtf8, toText)
+import Data.String.Conversion (encodeUtf8, toText, toString)
 
-runLicenseScanOnDir :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => Text -> m Text
-runLicenseScanOnDir dir = pure dir
+runLicenseScanOnDir ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  ) =>
+  ThemisCLIOpts ->
+  m BL.ByteString
+runLicenseScanOnDir opts = withThemisBinaryAndIndex $ \binaryPaths -> do
+  let [themisBinary, themisIndex] = binaryPaths
+  logInfo "Running license scan"
+  stdout <- context "license scan" $ runExecIO $ runThemis themisBinary opts
+  logInfo $ pretty stdout
+  stdout
 
-scanAndUploadVendoredDeps :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> [VendoredDependency] -> m [Archive]
-scanAndUploadVendoredDeps apiOpts = traverse (scanAndUpload apiOpts)
+scanAndUploadVendoredDeps :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> Path Abs Dir -> [VendoredDependency] -> m [Archive]
+scanAndUploadVendoredDeps apiOpts baseDir = traverse (scanAndUpload apiOpts baseDir)
 
-scanAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> VendoredDependency -> m Archive
-scanAndUpload apiOpts VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
+scanAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m, MonadThrow m) => ApiOpts -> Path Abs Dir -> VendoredDependency -> m Archive
+scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
   logSticky $ "Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
-  scanResult <- runLicenseScanOnDir vendoredPath
+  vendoredDepDir <- parseRelDir $ toString vendoredPath
+  let cliOpts = generateThemisOpts baseDir vendoredDepDir
+  scanResult <- runLicenseScanOnDir cliOpts
   -- let scanResultBS = encodeUtf8 scanResult
   --     scanHash = hash scanResultBS
 
@@ -71,7 +93,7 @@ licenseScanSourceUnit baseDir apiOpts vendoredDeps = do
   unless (null duplicates) $ Diag.fatalText $ duplicateFailureBundle duplicates
 
   -- At this point, we have a good list of deps, so go for it.
-  archives <- scanAndUploadVendoredDeps apiOpts uniqDeps
+  archives <- scanAndUploadVendoredDeps apiOpts baseDir uniqDeps
 
   -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.

@@ -9,11 +9,11 @@ module App.Fossa.RunThemis (
 import Control.Carrier.Error.Either (Has)
 import Control.Effect.Diagnostics (Diagnostics)
 import Data.ByteString.Lazy qualified as BL
-import Data.String.Conversion (toText)
+import Data.String.Conversion (toText, toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding (decodeUtf8)
-import Path (Abs, Dir, Path, Rel, fromAbsFile)
+import Path (Abs, Dir, Path, Rel, fromAbsFile, parseRelDir, (</>))
 
 import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath)
 import Options.Applicative (CommandFields)
@@ -24,14 +24,18 @@ import Effect.Exec (
   Exec,
   execThrow,
  )
+import Control.Monad (when)
 
 data ThemisCLIOpts = ThemisCLIOpts
   { themisCLIScanDir :: Path Abs Dir
   , themisCLIArgs :: [Text]
   }
 
-generateThemisOpts :: Path Abs Dir -> ThemisCLIOpts
-generateThemisOpts dir = ThemisCLIOpts{ themisCLIScanDir = dir, themisCLIArgs = ["--help"]}
+generateThemisOpts :: Path Abs Dir -> Path Rel Dir -> ThemisCLIOpts
+generateThemisOpts baseDir vendoredDepDir =
+  ThemisCLIOpts{ themisCLIScanDir = fullDir, themisCLIArgs = ["--help"]}
+    where
+      fullDir = baseDir </> vendoredDepDir
 
 execThemis :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> ThemisCLIOpts -> m Text
 execThemis binaryPaths opts = decodeUtf8 . BL.toStrict <$> execThrow (themisCLIScanDir opts) (themisCommand binaryPaths opts)
