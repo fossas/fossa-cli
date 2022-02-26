@@ -49,10 +49,10 @@ runLicenseScanOnDir opts = withThemisBinaryAndIndex $ \binaryPaths -> do
   logInfo $ pretty $ "Running license scan on " ++ show opts
   logInfo $ pretty $ "themis binary" ++ show themisBinary
   logInfo $ pretty $ "themis index" ++ show themisIndex
-  context "license scan" $ runExecIO $ runThemis themisBinary themisIndex opts
-  -- stdout <- context "license scan" $ runExecIO $ execThemis themisBinary opts
-  -- logInfo $ pretty stdout
-  -- stdout
+  res <- context "license scan" $ runExecIO $ runThemis themisBinary themisIndex opts
+  logInfo "scan done!!"
+  logInfo $ pretty $ show res
+  pure res
 
 runThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => BinaryPaths -> BinaryPaths -> ThemisCLIOpts -> m BL.ByteString
 runThemis themisBinary themisIndex opts = do
@@ -68,13 +68,15 @@ scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and 
     Left err -> fatalText "Error constructing scan dir for vendored scan"
     Right val -> pure val
   let cliOpts = generateThemisOpts baseDir vendoredDepDir
-  scanResult <- runLicenseScanOnDir cliOpts
-  logDebug $ pretty $ show scanResult
-  -- let scanResultBS = encodeUtf8 scanResult
-  --     scanHash = hash scanResultBS
+  logDebug "about to start themis scan"
+  themisScanResult <- runLicenseScanOnDir cliOpts
+  logDebug "back from themis scan"
+  -- logDebug $ pretty $ show themisScanResult
+  -- let themisScanResultBS = encodeUtf8 themisScanResult
+  --     scanHash = hash themisScanResultBS
 
   depVersion <- case vendoredVersion of
-    -- Nothing -> pure (toText (show (hash (encodeUtf8 scanResult))))
+    -- Nothing -> pure (toText (show (hash (encodeUtf8 themisScanResult))))
     -- Nothing -> pure "aaa"
     -- TODO: this is not correct
     -- Nothing -> pure (toText (show scanHash))
@@ -84,8 +86,7 @@ scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and 
   signedURL <- Fossa.getSignedURL apiOpts depVersion vendoredName
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
-  res <- Fossa.licenseScanResultUpload signedURL scanResult
-  logDebug $ pretty $ show res
+  res <- Fossa.licenseScanResultUpload signedURL themisScanResult
 
   pure $ Archive vendoredName depVersion
 

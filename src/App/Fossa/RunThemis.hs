@@ -7,7 +7,7 @@ module App.Fossa.RunThemis (
 ) where
 
 import Control.Carrier.Error.Either (Has)
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, fatal)
 import Data.ByteString.Lazy qualified as BL
 import Data.String.Conversion (toText, toString)
 import Data.Text (Text)
@@ -27,10 +27,12 @@ import Effect.Exec (
   AllowErr (Never),
   Command (..),
   Exec,
+  exec,
   execThrow,
  )
 import Control.Monad (when)
 import Options.Applicative.Help (cmdDesc)
+import Text.Megaparsec.Error.Builder (err)
 
 data ThemisCLIOpts = ThemisCLIOpts
   { themisCLIScanDir :: Path Abs Dir
@@ -50,7 +52,13 @@ execThemis themisBinaryPath indexGobPath opts = do
       scanDir = themisCLIScanDir opts
   logDebug $ pretty $ "themis command: " ++ show cmd
   logDebug $ pretty $ "scanDir: " ++ show scanDir
-  execThrow scanDir cmd
+  res <- execThrow scanDir cmd
+  logDebug "back from command"
+  pure res
+  -- case exec scanDir cmd of
+  --   Left err -> fatal err
+  --   Right stdout -> pure stdout
+
   -- execThrow (themisCLIScanDir opts) (themisCommand themisBinaryPath indexGobPath)
 
 themisCommand :: BinaryPaths -> BinaryPaths -> Command
@@ -64,7 +72,8 @@ themisCommand themisBin indexGobBin = do
 generateThemisArgs :: BinaryPaths -> [Text]
 generateThemisArgs indexPath =
   [ "--license-data-dir"
-  , toText $ binaryPathContainer indexPath
+  -- , toText $ binaryPathContainer indexPath
+  , "/Users/scott/fossa/fossa-cli/vendor-bins"
   , "--srclib-with-matches"
   , "/Users/scott/fossa/license-scan-dirs/archive-upload-with-target/yarn-package/"
   ]
