@@ -14,6 +14,8 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding (decodeUtf8)
 import Path (Abs, Dir, Path, Rel, fromAbsFile, parseRelDir, (</>))
+import Effect.Logger (Logger, logDebug, logInfo)
+import Prettyprinter (Pretty (pretty))
 
 import App.Fossa.EmbeddedBinary (
   toExecutablePath,
@@ -28,11 +30,13 @@ import Effect.Exec (
   execThrow,
  )
 import Control.Monad (when)
+import Options.Applicative.Help (cmdDesc)
 
 data ThemisCLIOpts = ThemisCLIOpts
   { themisCLIScanDir :: Path Abs Dir
   , themisCLIArgs :: [Text]
   }
+  deriving (Show, Eq, Ord)
 
 generateThemisOpts :: Path Abs Dir -> Path Rel Dir -> ThemisCLIOpts
 generateThemisOpts baseDir vendoredDepDir =
@@ -40,8 +44,14 @@ generateThemisOpts baseDir vendoredDepDir =
     where
       fullDir = baseDir </> vendoredDepDir
 
-execThemis :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> BinaryPaths -> ThemisCLIOpts -> m BL.ByteString
-execThemis themisBinaryPath indexGobPath opts = execThrow (themisCLIScanDir opts) (themisCommand themisBinaryPath indexGobPath)
+execThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => BinaryPaths -> BinaryPaths -> ThemisCLIOpts -> m BL.ByteString
+execThemis themisBinaryPath indexGobPath opts = do
+  let cmd = themisCommand themisBinaryPath indexGobPath
+      scanDir = themisCLIScanDir opts
+  logDebug $ pretty $ "themis command: " ++ show cmd
+  logDebug $ pretty $ "scanDir: " ++ show scanDir
+  execThrow scanDir cmd
+  -- execThrow (themisCLIScanDir opts) (themisCommand themisBinaryPath indexGobPath)
 
 themisCommand :: BinaryPaths -> BinaryPaths -> Command
 themisCommand themisBin indexGobBin = do
@@ -52,10 +62,10 @@ themisCommand themisBin indexGobBin = do
     }
 
 generateThemisArgs :: BinaryPaths -> [Text]
-generateThemisArgs BinaryPaths{..} =
+generateThemisArgs indexPath =
   [ "--license-data-dir"
-  , toText binaryPathContainer
-  , "--srclib-with-match-string"
-  , "."
+  , toText $ binaryPathContainer indexPath
+  , "--srclib-with-matches"
+  , "/Users/scott/fossa/license-scan-dirs/archive-upload-with-target/yarn-package/"
   ]
 

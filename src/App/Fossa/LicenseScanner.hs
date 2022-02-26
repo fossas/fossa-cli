@@ -44,8 +44,11 @@ runLicenseScanOnDir ::
   ThemisCLIOpts ->
   m BL.ByteString
 runLicenseScanOnDir opts = withThemisBinaryAndIndex $ \binaryPaths -> do
-  let [themisBinary, themisIndex, _] = binaryPaths
-  logInfo "Running license scan"
+  let themisBinary = head binaryPaths
+      themisIndex = binaryPaths !! 1
+  logInfo $ pretty $ "Running license scan on " ++ show opts
+  logInfo $ pretty $ "themis binary" ++ show themisBinary
+  logInfo $ pretty $ "themis index" ++ show themisIndex
   context "license scan" $ runExecIO $ execThemis themisBinary themisIndex opts
   -- stdout <- context "license scan" $ runExecIO $ execThemis themisBinary opts
   -- logInfo $ pretty stdout

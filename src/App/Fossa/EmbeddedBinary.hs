@@ -69,6 +69,7 @@ data BinaryPaths = BinaryPaths
   { binaryPathContainer :: Path Abs Dir
   , binaryFilePath :: Path Rel File
   }
+  deriving (Eq, Show, Ord)
 
 toExecutablePath :: BinaryPaths -> Path Abs File
 toExecutablePath BinaryPaths{..} = binaryPathContainer </> binaryFilePath
