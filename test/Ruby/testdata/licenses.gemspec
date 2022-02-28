@@ -7,7 +7,8 @@ Gem::Specification.new do |s|
   s.summary     = s.description
   s.licenses     = ["AGPL",
                     "BSD".freeze,
-                    "MIT"]
+                    %&MIT&,
+                    %q*Apache*]
 
   s.authors = ["foo"]
   s.email = "foo@bar.com"

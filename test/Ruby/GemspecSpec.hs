@@ -39,16 +39,39 @@ mkLicensesResult specPath =
       [ License UnknownType "AGPL"
       , License UnknownType "BSD"
       , License UnknownType "MIT"
+      , License UnknownType "Apache"
       ]
+  ]
+
+wordLicensesResult :: Path Abs File -> [LicenseResult]
+wordLicensesResult specPath =
+  [ LicenseResult
+      (toFilePath specPath)
+      [ License UnknownType "AGPL"
+      , License UnknownType "BSD"
+      , License UnknownType "MIT"
+      ]
+  ]
+
+delimiterPairs :: [(Text, Text)]
+delimiterPairs =
+  [ ("'", "'")
+  , ("\'", "\'")
+  , ("%~", "~")
+  , ("%^", "^")
+  , ("%q*", "*")
+  , ("%Q#", "#")
   ]
 
 stringParseSpec :: Spec
 stringParseSpec =
-  for_ ["'", "\'"] $ \delim ->
-    describe "Ruby string parsing test" $ do
-      let baseStr = delim <> "Hello" <> delim
-      it ("Parses string enclosed in " <> toString delim) $
+  for_ delimiterPairs $ \(d1, d2) ->
+    describe "Ruby String parsing test" $ do
+      let baseStr = d1 <> "Hello" <> d2
+      it ("Parses string enclosed in " <> toString d1 <> toString d2) $
         strParse `shouldParse` baseStr `to` "Hello"
+      it "Consumes a '.freeze' on the end of a string" $ do
+        strParse `shouldParse` (baseStr <> ".freeze") `to` "Hello"
       it "Consumes a '.freeze' on the end of a string" $ do
         strParse `shouldParse` (baseStr <> ".freeze") `to` "Hello"
   where
@@ -90,6 +113,9 @@ assignmentParseSpec =
         it "Parses a string with '.freeze' on the end" $
           parseRubyAssignment rubyString `shouldParse` (licenseStr <> ".freeze") `to` mitLicense
 
+-- Tests with this file and possibly can likely be deleted, I don't think
+-- they add much over the liceneses and word array tests. TODO: add a test
+-- for the edge case where both license and licenses are set
 simpleSpecPath :: Path Rel File
 simpleSpecPath = $(mkRelFile "test/Ruby/testdata/simple_spec.gemspec")
 
@@ -129,7 +155,7 @@ gemspecLicenseAnalyzeSpec =
     it' "Can extract licenses from the 'licenses' key with a word array" $ do
       let specPath = currDir </> wordArraySpecPath
       licenses <- findLicenses specPath
-      licenses `shouldBe'` mkLicensesResult specPath
+      licenses `shouldBe'` wordLicensesResult specPath
 
 spec :: Spec
 spec = context "Ruby GemSpec tests" $ do

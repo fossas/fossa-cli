@@ -15,7 +15,7 @@ import Data.List.Extra (singleton)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
-import Text.Megaparsec (MonadParsec (eof), Parsec, anySingle, anySingleBut, between, choice, many, optional, sepBy, skipManyTill, takeWhile1P, takeWhileP, try)
+import Text.Megaparsec (MonadParsec (eof), Parsec, anySingle, anySingleBut, between, choice, lookAhead, many, optional, sepBy, skipManyTill, takeWhile1P, takeWhileP, try)
 import Text.Megaparsec.Char (char, space, space1, string)
 
 type Parser = Parsec Void Text
@@ -29,7 +29,12 @@ rubyString =
   where
     betweenDelim :: Char -> Parsec Void Text String
     betweenDelim c = between (char c) (char c) (many (anySingleBut c))
-    stringText = betweenDelim '"' <|> betweenDelim '\''
+    pctQ = optional (choice [char 'q', char 'Q'])
+    arbitraryDelim = try $ (char '%' *> pctQ *> lookAhead anySingle) >>= betweenDelim
+    stringText =
+      betweenDelim '"'
+        <|> betweenDelim '\''
+        <|> arbitraryDelim
 
 data Assignment a = Assignment
   { label :: Text
