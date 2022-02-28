@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module App.Fossa.RunThemis (
   execThemis,
   generateThemisOpts,
