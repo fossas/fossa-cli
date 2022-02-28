@@ -72,8 +72,7 @@ themisCommand themisBin indexGobBin = do
 generateThemisArgs :: BinaryPaths -> [Text]
 generateThemisArgs indexPath =
   [ "--license-data-dir"
-  -- , toText $ binaryPathContainer indexPath
-  , "/Users/scott/fossa/fossa-cli/vendor-bins"
+  , toText $ binaryPathContainer indexPath
   , "--srclib-with-matches"
   , "."
   ]

@@ -27,6 +27,13 @@ import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.ByteString (ByteString, writeFile)
 import Data.FileEmbed.Extra (embedFileIfExists)
 import Data.Foldable (for_)
+import Effect.Logger (Logger, logDebug, logInfo)
+import Prettyprinter (Pretty (pretty))
+
+import Data.ByteString.Lazy qualified as BL
+import Data.Conduit.Binary (sinkLbs)
+import Data.Conduit.Lzma qualified as Lzma
+import Conduit (runConduit, runResourceT, sourceFileBS, (.|))
 import Path (
   Abs,
   Dir,
@@ -90,10 +97,28 @@ withWigginsBinary = withEmbeddedBinary Wiggins
 
 withThemisBinaryAndIndex ::
   ( Has (Lift IO) sig m
+  , Has Logger sig m
   ) =>
   ([BinaryPaths] -> m c) ->
   m c
-withThemisBinaryAndIndex = bracket (traverse extractEmbeddedBinary [Themis, ThemisIndex]) cleanupMultipleBinaries
+withThemisBinaryAndIndex = bracket (extractThemisBinaryAndIndex [Themis, ThemisIndex]) cleanupMultipleBinaries
+
+extractThemisBinaryAndIndex :: (Has (Lift IO) sig m, Has Logger sig m) => [PackagedBinary] -> m [BinaryPaths]
+extractThemisBinaryAndIndex (themisPackagedBinary : themisIndexPackagedBinary : _) = do
+  themisBinaryPath <- extractEmbeddedBinary themisPackagedBinary
+  indexBinaryPath <- extractEmbeddedBinary themisIndexPackagedBinary
+  decompressedIndexFileContents <- sendIO (runResourceT . runConduit $ sourceFileBS (fromAbsFile $ toExecutablePath indexBinaryPath) .| Lzma.decompress Nothing .| sinkLbs)
+  let decompressedIndexBinaryPaths = BinaryPaths {
+    binaryPathContainer = binaryPathContainer indexBinaryPath
+  , binaryFilePath = $(mkRelFile "index.gob")
+  }
+  let decompressedIndexPath = fromAbsFile $ toExecutablePath decompressedIndexBinaryPaths
+  sendIO $ BL.writeFile decompressedIndexPath decompressedIndexFileContents
+  logDebug $ pretty $ "decompressedIndexFilePath = " ++ show decompressedIndexBinaryPaths
+  pure [themisBinaryPath, decompressedIndexBinaryPaths]
+
+extractThemisBinaryAndIndex [_] = pure []
+extractThemisBinaryAndIndex [] = pure []
 
 withEmbeddedBinary ::
   ( Has (Lift IO) sig m
