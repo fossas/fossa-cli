@@ -35,7 +35,7 @@ import Strategy.Ruby.Errors (
   BundlerMissingLockFile (..),
  )
 import Strategy.Ruby.GemfileLock qualified as GemfileLock
-import Strategy.Ruby.Gemspec (Assignment (Assignment, label, value), readAssignments, rubyString)
+import Strategy.Ruby.Gemspec (Assignment (Assignment, label, value), readAssignments, rubyLicenseValuesP)
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
@@ -95,13 +95,16 @@ instance LicenseAnalyzeProject BundlerProject where
 
 findLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m [LicenseResult]
 findLicenses gemspecPath = do
-  assignments <- readContentsParser (readAssignments rubyString) gemspecPath
-  let license = filter isLicenseKey assignments
+  assignments <- readContentsParser (readAssignments rubyLicenseValuesP) gemspecPath
+  let licenses = foldMap value . filter isLicenseKey $ assignments
+
   -- license keys are recommended to be SPDX, but there isn't any requirement:
   -- https://guides.rubygems.org/specification-reference/#license=
-  pure [LicenseResult gemSpecFp (License UnknownType . value <$> license)]
+  pure [LicenseResult gemSpecFp (License UnknownType <$> licenses)]
   where
-    isLicenseKey Assignment{label = label} = "license" `isSuffixOf` label
+    isLicenseKey Assignment{label = label} =
+      "license" `isSuffixOf` label
+        || "licenses" `isSuffixOf` label
     gemSpecFp = toFilePath gemspecPath
 
 mkProject :: BundlerProject -> DiscoveredProject BundlerProject

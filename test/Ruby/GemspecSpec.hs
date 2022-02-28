@@ -7,10 +7,10 @@ import Data.Foldable (for_)
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text.IO qualified as Text
-import Path (File, Path, Rel, mkRelFile, toFilePath, (</>))
+import Path (Abs, File, Path, Rel, mkRelFile, toFilePath, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Bundler (findLicenses)
-import Strategy.Ruby.Gemspec (Assignment (Assignment), parseRubyAssignment, readAssignments, rubyString)
+import Strategy.Ruby.Gemspec (Assignment (Assignment), parseRubyArray, parseRubyAssignment, parseRubyWordsArray, readAssignments, rubyString)
 import Test.Effect (it', shouldBe')
 import Test.Hspec (Spec, context, describe, it, runIO, shouldBe)
 import Text.Megaparsec (ParseErrorBundle, Parsec, runParser, takeWhile1P)
@@ -32,6 +32,16 @@ stringAssignmentResult =
   , mitLicense
   ]
 
+mkLicensesResult :: Path Abs File -> [LicenseResult]
+mkLicensesResult specPath =
+  [ LicenseResult
+      (toFilePath specPath)
+      [ License UnknownType "AGPL"
+      , License UnknownType "BSD"
+      , License UnknownType "MIT"
+      ]
+  ]
+
 stringParseSpec :: Spec
 stringParseSpec =
   describe "Ruby string parsing test" $ do
@@ -39,6 +49,24 @@ stringParseSpec =
       rubyString `shouldParse` "\"Hello\"" `to` "Hello"
     it "Parses string enclosed in \'" $
       rubyString `shouldParse` "\'Hello\'" `to` "Hello"
+
+rubyStringArray :: Text
+rubyStringArray = "[ \"hello\",\"world\" ,\t\"foo\",\"bar\"]"
+
+rubyWordArray :: Text
+rubyWordArray = "%w( hello world \t foo \nbar)"
+
+expectedArray :: [Text]
+expectedArray = ["hello", "world", "foo", "bar"]
+
+arrayParseSpec :: Spec
+arrayParseSpec =
+  describe "Parsing arrays of items in ruby" $ do
+    it "Can parse an array of strings" $
+      parseRubyArray rubyString `shouldParse` rubyStringArray `to` expectedArray
+
+    it "Can parse an array of words" $
+      parseRubyWordsArray `shouldParse` rubyWordArray `to` expectedArray
 
 assignmentParseSpec :: Spec
 assignmentParseSpec =
@@ -61,6 +89,12 @@ simpleSpecPath = $(mkRelFile "test/Ruby/testdata/simple_spec.gemspec")
 complexSpecPath :: Path Rel File
 complexSpecPath = $(mkRelFile "test/Ruby/testdata/complex.gemspec")
 
+licensesSpecPath :: Path Rel File
+licensesSpecPath = $(mkRelFile "test/Ruby/testdata/licenses.gemspec")
+
+wordArraySpecPath :: Path Rel File
+wordArraySpecPath = $(mkRelFile "test/Ruby/testdata/licenses_word_array.gemspec")
+
 gemspecFileParseSpec :: Spec
 gemspecFileParseSpec = do
   currDir <- runIO getCurrentDir
@@ -81,10 +115,19 @@ gemspecLicenseAnalyzeSpec =
       let specPath = currDir </> complexSpecPath
       licenses <- findLicenses specPath
       licenses `shouldBe'` [LicenseResult (toFilePath specPath) [License UnknownType "AGPL"]]
+    it' "Can extract licenses from the 'licenses' key" $ do
+      let specPath = currDir </> licensesSpecPath
+      licenses <- findLicenses specPath
+      licenses `shouldBe'` mkLicensesResult specPath
+    it' "Can extract licenses from the 'licenses' key with a word array" $ do
+      let specPath = currDir </> wordArraySpecPath
+      licenses <- findLicenses specPath
+      licenses `shouldBe'` mkLicensesResult specPath
 
 spec :: Spec
 spec = context "Ruby GemSpec tests" $ do
   stringParseSpec
   assignmentParseSpec
+  arrayParseSpec
   gemspecFileParseSpec
   gemspecLicenseAnalyzeSpec
