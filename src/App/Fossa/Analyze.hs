@@ -258,6 +258,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir apiOpts
   let additionalSourceUnits :: [SourceUnit]
       additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults]
+  -- do not swallow errors
+  traverse_ (Diag.flushLogs SevError SevWarn) [manualSrcUnits, vsiResults, binarySearchResults]
 
   (projectScans, ()) <-
     Diag.context "discovery/analysis tasks"
