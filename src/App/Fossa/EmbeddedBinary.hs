@@ -101,12 +101,12 @@ withThemisBinaryAndIndex ::
   ) =>
   ([BinaryPaths] -> m c) ->
   m c
-withThemisBinaryAndIndex = bracket (extractThemisBinaryAndIndex [Themis, ThemisIndex]) cleanupMultipleBinaries
+withThemisBinaryAndIndex = bracket extractThemisBinaryAndIndex cleanupMultipleBinaries
 
-extractThemisBinaryAndIndex :: (Has (Lift IO) sig m, Has Logger sig m) => [PackagedBinary] -> m [BinaryPaths]
-extractThemisBinaryAndIndex (themisPackagedBinary : themisIndexPackagedBinary : _) = do
-  themisBinaryPath <- extractEmbeddedBinary themisPackagedBinary
-  indexBinaryPath <- extractEmbeddedBinary themisIndexPackagedBinary
+extractThemisBinaryAndIndex :: (Has (Lift IO) sig m, Has Logger sig m) => m [BinaryPaths]
+extractThemisBinaryAndIndex = do
+  themisBinaryPath <- extractEmbeddedBinary Themis
+  indexBinaryPath <- extractEmbeddedBinary ThemisIndex
   decompressedIndexFileContents <- sendIO (runResourceT . runConduit $ sourceFileBS (fromAbsFile $ toExecutablePath indexBinaryPath) .| Lzma.decompress Nothing .| sinkLbs)
   let decompressedIndexBinaryPaths = BinaryPaths {
     binaryPathContainer = binaryPathContainer indexBinaryPath
@@ -116,9 +116,6 @@ extractThemisBinaryAndIndex (themisPackagedBinary : themisIndexPackagedBinary : 
   sendIO $ BL.writeFile decompressedIndexPath decompressedIndexFileContents
   logDebug $ pretty $ "decompressedIndexFilePath = " ++ show decompressedIndexBinaryPaths
   pure [themisBinaryPath, decompressedIndexBinaryPaths]
-
-extractThemisBinaryAndIndex [_] = pure []
-extractThemisBinaryAndIndex [] = pure []
 
 withEmbeddedBinary ::
   ( Has (Lift IO) sig m
