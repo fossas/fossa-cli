@@ -93,7 +93,7 @@ withThemisBinaryAndIndex ::
   ) =>
   ([BinaryPaths] -> m c) ->
   m c
-withThemisBinaryAndIndex = bracket (traverse extractEmbeddedBinary [Themis, ThemisIndex]) (traverse cleanupExtractedBinaries)
+withThemisBinaryAndIndex = bracket (traverse extractEmbeddedBinary [Themis, ThemisIndex]) cleanupMultipleBinaries
 
 withEmbeddedBinary ::
   ( Has (Lift IO) sig m
@@ -105,6 +105,12 @@ withEmbeddedBinary bin = bracket (extractEmbeddedBinary bin) cleanupExtractedBin
 
 cleanupExtractedBinaries :: (Has (Lift IO) sig m) => BinaryPaths -> m ()
 cleanupExtractedBinaries (BinaryPaths binPath _) = sendIO $ removeDirRecur binPath
+
+-- Horrible hack to get withThemisBinaryAndIndex working while Wes figures out a better way
+-- to run multiple binaries
+cleanupMultipleBinaries :: (Has (Lift IO) sig m) => [BinaryPaths] -> m ()
+cleanupMultipleBinaries ((BinaryPaths binPath _) : _) = sendIO $ removeDirRecur binPath
+cleanupMultipleBinaries [] = pure ()
 
 extractEmbeddedBinary :: (Has (Lift IO) sig m) => PackagedBinary -> m BinaryPaths
 extractEmbeddedBinary bin = do
