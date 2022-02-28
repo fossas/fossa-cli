@@ -27,13 +27,7 @@ import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.ByteString (ByteString, writeFile)
 import Data.FileEmbed.Extra (embedFileIfExists)
 import Data.Foldable (for_)
-import Effect.Logger (Logger, logDebug, logInfo)
-import Prettyprinter (Pretty (pretty))
-
-import Data.ByteString.Lazy qualified as BL
-import Data.Conduit.Binary (sinkLbs)
-import Data.Conduit.Lzma qualified as Lzma
-import Conduit (runConduit, runResourceT, sourceFileBS, (.|))
+import Discovery.Archive (extractLzma)
 import Path (
   Abs,
   Dir,
@@ -97,25 +91,21 @@ withWigginsBinary = withEmbeddedBinary Wiggins
 
 withThemisBinaryAndIndex ::
   ( Has (Lift IO) sig m
-  , Has Logger sig m
   ) =>
   ([BinaryPaths] -> m c) ->
   m c
 withThemisBinaryAndIndex = bracket extractThemisBinaryAndIndex cleanupMultipleBinaries
 
-extractThemisBinaryAndIndex :: (Has (Lift IO) sig m, Has Logger sig m) => m [BinaryPaths]
+extractThemisBinaryAndIndex :: (Has (Lift IO) sig m) => m [BinaryPaths]
 extractThemisBinaryAndIndex = do
-  themisBinaryPath <- extractEmbeddedBinary Themis
-  indexBinaryPath <- extractEmbeddedBinary ThemisIndex
-  decompressedIndexFileContents <- sendIO (runResourceT . runConduit $ sourceFileBS (fromAbsFile $ toExecutablePath indexBinaryPath) .| Lzma.decompress Nothing .| sinkLbs)
+  themisBinaryPaths <- extractEmbeddedBinary Themis
+  compressedIndexBinaryPaths <- extractEmbeddedBinary ThemisIndex
   let decompressedIndexBinaryPaths = BinaryPaths {
-    binaryPathContainer = binaryPathContainer indexBinaryPath
+    binaryPathContainer = binaryPathContainer compressedIndexBinaryPaths
   , binaryFilePath = $(mkRelFile "index.gob")
   }
-  let decompressedIndexPath = fromAbsFile $ toExecutablePath decompressedIndexBinaryPaths
-  sendIO $ BL.writeFile decompressedIndexPath decompressedIndexFileContents
-  logDebug $ pretty $ "decompressedIndexFilePath = " ++ show decompressedIndexBinaryPaths
-  pure [themisBinaryPath, decompressedIndexBinaryPaths]
+  sendIO $ extractLzma (toExecutablePath compressedIndexBinaryPaths) (toExecutablePath decompressedIndexBinaryPaths)
+  pure [themisBinaryPaths, decompressedIndexBinaryPaths]
 
 withEmbeddedBinary ::
   ( Has (Lift IO) sig m

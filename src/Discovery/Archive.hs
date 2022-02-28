@@ -3,6 +3,7 @@ module Discovery.Archive (
   withArchive,
   withArchive',
   extractRpm,
+  extractLzma,
   extractTar,
   extractTarGz,
   extractTarXz,
@@ -22,7 +23,8 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.TaskPool (TaskPool, forkTask)
 import Data.ByteString.Lazy qualified as BL
 import Data.Conduit.Binary (sinkLbs)
-import Data.Conduit.Lzma qualified as Lzma
+import Data.Conduit.Lzma qualified as CLzma
+import Codec.Compression.Lzma as Lzma
 import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
 import Data.String.Conversion (toText)
@@ -120,7 +122,7 @@ extractTarGz dir tarGzFile =
 
 extractTarXz :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
 extractTarXz dir tarXzFile = do
-  decompressed <- sendIO (runResourceT . runConduit $ sourceFileBS (toFilePath tarXzFile) .| Lzma.decompress Nothing .| sinkLbs)
+  decompressed <- sendIO (runResourceT . runConduit $ sourceFileBS (toFilePath tarXzFile) .| CLzma.decompress Nothing .| sinkLbs)
   sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read $ decompressed
 
 extractTarBz2 :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
@@ -142,3 +144,11 @@ removeTarLinks (Tar.Fail e) = Tar.Fail e
 extractZip :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
 extractZip dir zipFile =
   sendIO $ Zip.withArchive (fromAbsFile zipFile) (Zip.unpackInto (fromAbsDir dir))
+
+----------- LZMA and XZ files
+-- .lzma and .xz files can only contain a single file, not a directory
+extractLzma :: Has (Lift IO) sig m => Path Abs File -> Path Abs File -> m ()
+extractLzma lzmaFile decompressedFile = do
+  lzmaContents <- sendIO $ BL.readFile (fromAbsFile lzmaFile)
+  let decompressedContents = Lzma.decompress lzmaContents
+  sendIO $ BL.writeFile (fromAbsFile decompressedFile) decompressedContents
