@@ -75,6 +75,6 @@ generateThemisArgs indexPath =
   -- , toText $ binaryPathContainer indexPath
   , "/Users/scott/fossa/fossa-cli/vendor-bins"
   , "--srclib-with-matches"
-  , "/Users/scott/fossa/license-scan-dirs/archive-upload-with-target/yarn-package/"
+  , "."
   ]
 
