@@ -17,7 +17,7 @@ import Control.Effect.Lift
 
 import Crypto.Hash (hash, MD5, Digest)
 import Effect.Exec (Exec, runExecIO)
-import Effect.Logger (Logger, logDebug, logInfo)
+import Effect.Logger (Logger, logDebug)
 import Data.ByteString.Lazy qualified as BL
 import Data.ByteString qualified as B
 
@@ -50,12 +50,8 @@ themisRunner ::
   , Has Logger sig m
   ) => ThemisCLIOpts -> [BinaryPaths] -> m BL.ByteString
 themisRunner opts [themisBinary, themisIndex] = do
-  logInfo $ pretty $ "Running license scan on " ++ show opts
-  logInfo $ pretty $ "themis binary" ++ show themisBinary
-  logInfo $ pretty $ "themis index" ++ show themisIndex
   res <- runExecIO $ runThemis themisBinary themisIndex opts
-  logInfo "scan done!!"
-  logInfo $ pretty $ show res
+  logDebug $ pretty $ "themis JSON:\n" ++ show res
   pure res
 themisRunner _ [_] = do
   Diag.fatalText("only one arg to lambda in themisRunner")
@@ -83,10 +79,7 @@ scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and 
   let cliOpts = generateThemisOpts baseDir vendoredDepDir
   logDebug "about to start themis scan"
   themisScanResult <- runLicenseScanOnDir cliOpts
-  logDebug "back from themis scan" -- <--- I never see this
-  -- logDebug $ pretty $ show themisScanResult
-  -- let themisScanResultBS = encodeUtf8 themisScanResult
-  --     scanHash = hash themisScanResultBS
+  logDebug "back from themis scan"
 
   depVersion <- case vendoredVersion of
     Nothing -> pure (toText (show (md5 $ BL.toStrict themisScanResult)))
