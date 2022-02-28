@@ -5,32 +5,25 @@ module App.Fossa.RunThemis (
 ) where
 
 import Control.Carrier.Error.Either (Has)
-import Control.Effect.Diagnostics (Diagnostics, fatal)
+import Control.Effect.Diagnostics (Diagnostics)
 import Data.ByteString.Lazy qualified as BL
-import Data.String.Conversion (toText, toString)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as Text
-import Data.Text.Encoding (decodeUtf8)
-import Path (Abs, Dir, Path, Rel, fromAbsFile, parseRelDir, (</>))
-import Effect.Logger (Logger, logDebug, logInfo)
+import Path (Abs, Dir, Path, Rel, fromAbsFile, (</>))
+import Effect.Logger (Logger, logDebug)
 import Prettyprinter (Pretty (pretty))
 
 import App.Fossa.EmbeddedBinary (
   toExecutablePath,
   BinaryPaths (..),
   )
-import Options.Applicative (CommandFields)
 
 import Effect.Exec (
   AllowErr (Never),
   Command (..),
   Exec,
-  exec,
   execThrow,
  )
-import Control.Monad (when)
-import Options.Applicative.Help (cmdDesc)
-import Text.Megaparsec.Error.Builder (err)
 
 data ThemisCLIOpts = ThemisCLIOpts
   { themisCLIScanDir :: Path Abs Dir
@@ -53,11 +46,6 @@ execThemis themisBinaryPath indexGobPath opts = do
   res <- execThrow scanDir cmd
   logDebug "back from command"
   pure res
-  -- case exec scanDir cmd of
-  --   Left err -> fatal err
-  --   Right stdout -> pure stdout
-
-  -- execThrow (themisCLIScanDir opts) (themisCommand themisBinaryPath indexGobPath)
 
 themisCommand :: BinaryPaths -> BinaryPaths -> Command
 themisCommand themisBin indexGobBin = do

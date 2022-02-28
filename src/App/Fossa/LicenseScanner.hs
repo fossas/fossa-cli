@@ -14,7 +14,6 @@ import App.Fossa.RunThemis (
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.StickyLogger (StickyLogger, logSticky)
 import Control.Effect.Lift
-import Control.Monad.Catch
 
 import Crypto.Hash (hash, MD5, Digest)
 import Effect.Exec (Exec, runExecIO)
@@ -33,8 +32,7 @@ import Data.List (nub)
 import Prettyprinter (Pretty (pretty))
 
 import Data.Text (Text)
-import Data.Text qualified as Text
-import Data.String.Conversion (encodeUtf8, toText, toString)
+import Data.String.Conversion (toText, toString)
 
 import App.Fossa.EmbeddedBinary (BinaryPaths, withThemisBinaryAndIndex)
 runLicenseScanOnDir ::
@@ -44,9 +42,14 @@ runLicenseScanOnDir ::
   ) =>
   ThemisCLIOpts ->
   m BL.ByteString
-runLicenseScanOnDir opts = withThemisBinaryAndIndex $ \binaryPaths -> do
-  let themisBinary = head binaryPaths
-      themisIndex = binaryPaths !! 1
+runLicenseScanOnDir opts = withThemisBinaryAndIndex (themisRunner opts)
+
+themisRunner ::
+  (Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  ) => ThemisCLIOpts -> [BinaryPaths] -> m BL.ByteString
+themisRunner opts [themisBinary, themisIndex] = do
   logInfo $ pretty $ "Running license scan on " ++ show opts
   logInfo $ pretty $ "themis binary" ++ show themisBinary
   logInfo $ pretty $ "themis index" ++ show themisIndex
@@ -54,6 +57,12 @@ runLicenseScanOnDir opts = withThemisBinaryAndIndex $ \binaryPaths -> do
   logInfo "scan done!!"
   logInfo $ pretty $ show res
   pure res
+themisRunner _ [_] = do
+  Diag.fatalText("only one arg to lambda in themisRunner")
+themisRunner _ [] = do
+  Diag.fatalText("no args passed to lambda in themisRunner")
+themisRunner _ _ = do
+  Diag.fatalText("too many args passed to lambda in themisRunner")
 
 runThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => BinaryPaths -> BinaryPaths -> ThemisCLIOpts -> m BL.ByteString
 runThemis themisBinary themisIndex opts = do
@@ -69,7 +78,7 @@ scanAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLog
 scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
   logSticky $ "Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
   vendoredDepDir <- case parseRelDir (toString vendoredPath) of
-    Left err -> fatalText "Error constructing scan dir for vendored scan"
+    Left _ -> fatalText "Error constructing scan dir for vendored scan"
     Right val -> pure val
   let cliOpts = generateThemisOpts baseDir vendoredDepDir
   logDebug "about to start themis scan"
@@ -87,7 +96,7 @@ scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and 
   signedURL <- Fossa.getSignedURL apiOpts depVersion vendoredName
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
-  res <- Fossa.licenseScanResultUpload signedURL themisScanResult
+  _ <- Fossa.licenseScanResultUpload signedURL themisScanResult
 
   pure $ Archive vendoredName depVersion
 
