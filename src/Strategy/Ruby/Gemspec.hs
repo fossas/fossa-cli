@@ -15,17 +15,21 @@ import Data.List.Extra (singleton)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
-import Text.Megaparsec (MonadParsec (eof), Parsec, anySingle, anySingleBut, between, choice, many, sepBy, skipManyTill, takeWhile1P, takeWhileP, try)
-import Text.Megaparsec.Char (char, space, space1)
+import Text.Megaparsec (MonadParsec (eof), Parsec, anySingle, anySingleBut, between, choice, many, optional, sepBy, skipManyTill, takeWhile1P, takeWhileP, try)
+import Text.Megaparsec.Char (char, space, space1, string)
 
 type Parser = Parsec Void Text
 
 rubyString :: Parser Text
 rubyString =
-  toText <$> (betweenDelim '"' <|> betweenDelim '\'')
+  -- '.freeze' is a ruby idiom that turns a string into an immutable version of
+  -- itself. In this case it's safe to just ignore it and take the string it's
+  -- attached to.
+  toText <$> (stringText <* optional (string ".freeze"))
   where
     betweenDelim :: Char -> Parsec Void Text String
     betweenDelim c = between (char c) (char c) (many (anySingleBut c))
+    stringText = betweenDelim '"' <|> betweenDelim '\''
 
 data Assignment a = Assignment
   { label :: Text

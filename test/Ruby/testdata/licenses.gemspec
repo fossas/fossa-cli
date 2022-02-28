@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
   s.description = "test gemspec"
   s.summary     = s.description
   s.licenses     = ["AGPL",
-                    "BSD",
+                    "BSD".freeze,
                     "MIT"]
 
   s.authors = ["foo"]

@@ -13,7 +13,7 @@ import Strategy.Bundler (findLicenses)
 import Strategy.Ruby.Gemspec (Assignment (Assignment), parseRubyArray, parseRubyAssignment, parseRubyWordsArray, readAssignments, rubyString)
 import Test.Effect (it', shouldBe')
 import Test.Hspec (Spec, context, describe, it, runIO, shouldBe)
-import Text.Megaparsec (ParseErrorBundle, Parsec, runParser, takeWhile1P)
+import Text.Megaparsec (MonadParsec (eof), ParseErrorBundle, Parsec, runParser, takeWhile1P)
 import Types (License (License), LicenseResult (LicenseResult), LicenseType (UnknownType))
 
 -- I'm not sure about these helpers. Get guidance on whether they help readability.
@@ -44,11 +44,15 @@ mkLicensesResult specPath =
 
 stringParseSpec :: Spec
 stringParseSpec =
-  describe "Ruby string parsing test" $ do
-    it "Parses string enclosed in \"" $
-      rubyString `shouldParse` "\"Hello\"" `to` "Hello"
-    it "Parses string enclosed in \'" $
-      rubyString `shouldParse` "\'Hello\'" `to` "Hello"
+  for_ ["'", "\'"] $ \delim ->
+    describe "Ruby string parsing test" $ do
+      let baseStr = delim <> "Hello" <> delim
+      it ("Parses string enclosed in " <> toString delim) $
+        strParse `shouldParse` baseStr `to` "Hello"
+      it "Consumes a '.freeze' on the end of a string" $ do
+        strParse `shouldParse` (baseStr <> ".freeze") `to` "Hello"
+  where
+    strParse = rubyString <* eof -- make sure it consumes all input
 
 rubyStringArray :: Text
 rubyStringArray = "[ \"hello\",\"world\" ,\t\"foo\",\"bar\"]"
@@ -80,8 +84,11 @@ assignmentParseSpec =
     for_ ["'", "\""] $ \delim ->
       context ("It parses strings with delimiter: " <> toString delim) $ do
         let mitStr = delim <> "MIT" <> delim
+        let licenseStr = ("s.license \t =   " <> mitStr)
         it "Parses a basic string assignment" $
-          parseRubyAssignment rubyString `shouldParse` ("s.license \t =   " <> mitStr) `to` mitLicense
+          parseRubyAssignment rubyString `shouldParse` licenseStr `to` mitLicense
+        it "Parses a string with '.freeze' on the end" $
+          parseRubyAssignment rubyString `shouldParse` (licenseStr <> ".freeze") `to` mitLicense
 
 simpleSpecPath :: Path Rel File
 simpleSpecPath = $(mkRelFile "test/Ruby/testdata/simple_spec.gemspec")
