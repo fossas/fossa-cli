@@ -23,14 +23,31 @@ import Data.Map qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson)
+import Effect.Logger (Logger, logDebug, pretty)
 import Path (Abs, Dir, File, Path)
 
-apkTactic :: Maybe APKLookupTable -> Path Abs File -> Maybe DynamicDependency
+apkTactic ::
+  ( Has Logger sig m
+  ) =>
+  Maybe APKLookupTable ->
+  Path Abs File ->
+  m (Maybe DynamicDependency)
 apkTactic (Just APKLookupTable{..}) file = do
-  index <- Map.lookup file pathToIndex
-  meta <- Map.lookup index indexToMeta
-  Just . DynamicDependency file . Just $ ResolvedLinuxPackage LinuxPackageManagerRPM meta
-apkTactic _ _ = Nothing
+  logDebug . pretty $ "[apk] resolving file: " <> show file
+  case Map.lookup file pathToIndex of
+    Nothing -> do
+      logDebug "[apk] file not found in index"
+      pure Nothing
+    Just index -> do
+      case Map.lookup index indexToMeta of
+        Nothing -> do
+          logDebug . pretty $ "[apk] package not found for index: " <> show index
+          pure Nothing
+        Just meta -> pure . Just <$> DynamicDependency file . Just $ ResolvedLinuxPackage LinuxPackageManagerRPM meta
+apkTactic Nothing file = do
+  logDebug . pretty $ "[apk] resolving file: " <> show file
+  logDebug "[apk] no apk lookup table provided"
+  pure Nothing
 
 -- | The output of the syft binary
 newtype SyftData = SyftData

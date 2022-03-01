@@ -52,7 +52,7 @@ resolveFile ::
 resolveFile table root file = do
   -- When adding new tactics in the future, ensure that they fail (through diagnostics) if they're not the last link in the chain.
   -- <||> selects the first item to succeed without a diagnostic error.
-  resolved <- rpmTactic root file <||> debTactic root file <||> pure (apkTactic table file)
+  resolved <- rpmTactic root file <||> debTactic root file <||> apkTactic table file
   case resolved of
     Just result -> pure result
     Nothing -> do
