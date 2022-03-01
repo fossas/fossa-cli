@@ -8,6 +8,10 @@ module Srclib.Types (
   SourceUserDefDep (..),
   SourceRemoteDep (..),
   Locator (..),
+  LicenseSourceUnit (..),
+  LicenseUnit (..),
+  LicenseUnitData (..),
+  LicenseUnitMatchData (..),
   renderLocator,
   parseLocator,
 ) where
@@ -20,6 +24,33 @@ import Data.Text qualified as Text
 import Path (File, SomeBase)
 import Types (GraphBreadth (..))
 
+data LicenseSourceUnit = LicenseSourceUnit
+  { licenseSourceUnitName :: Text
+  , licenseSourceUnitType :: Text
+  , licenseSourceUnitLicenseUnits :: [LicenseUnit]
+  }
+  deriving (Eq, Ord, Show)
+
+data LicenseUnit = LicenseUnit
+  { licenseUnitName :: Text
+  , licenseUnitType :: Text
+  , licenseUnitData :: [LicenseUnitData]
+  }
+  deriving (Eq, Ord, Show)
+
+data LicenseUnitData = LicenseUnitData
+  { licenseUnitDataPath :: Text
+  , licenseUnitDataThemisVersion :: Text
+  , licenseUnitDataMatchData :: [LicenseUnitMatchData]
+  }
+  deriving (Eq, Ord, Show)
+
+data LicenseUnitMatchData = LicenseUnitMatchData
+  { licenseUnitMatchDataMatchString :: Text
+  , licenseUnitMatchDataLocation :: Integer
+  , licenseUnitMatchDataLength :: Integer
+  }
+  deriving (Eq, Ord, Show)
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
   , sourceUnitType :: Text
