@@ -59,7 +59,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
-import Data.String.Conversion (toText, toLText, encodeUtf8, toStrict)
+import Data.String.Conversion (encodeUtf8, toLText, toStrict, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Word (Word8)

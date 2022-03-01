@@ -16,6 +16,7 @@ import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Zip qualified as Zip
 import Codec.Compression.BZip qualified as BZip
 import Codec.Compression.GZip qualified as GZip
+import Codec.Compression.Lzma as Lzma
 import Conduit (runConduit, runResourceT, sourceFileBS, (.|))
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Effect.Finally (Finally, onExit)
@@ -24,7 +25,6 @@ import Control.Effect.TaskPool (TaskPool, forkTask)
 import Data.ByteString.Lazy qualified as BL
 import Data.Conduit.Binary (sinkLbs)
 import Data.Conduit.Lzma qualified as CLzma
-import Codec.Compression.Lzma as Lzma
 import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
 import Data.String.Conversion (toText)

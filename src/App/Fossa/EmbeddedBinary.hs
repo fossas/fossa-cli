@@ -100,10 +100,11 @@ extractThemisBinaryAndIndex :: (Has (Lift IO) sig m) => m [BinaryPaths]
 extractThemisBinaryAndIndex = do
   themisBinaryPaths <- extractEmbeddedBinary Themis
   compressedIndexBinaryPaths <- extractEmbeddedBinary ThemisIndex
-  let decompressedIndexBinaryPaths = BinaryPaths {
-    binaryPathContainer = binaryPathContainer compressedIndexBinaryPaths
-  , binaryFilePath = $(mkRelFile "index.gob")
-  }
+  let decompressedIndexBinaryPaths =
+        BinaryPaths
+          { binaryPathContainer = binaryPathContainer compressedIndexBinaryPaths
+          , binaryFilePath = $(mkRelFile "index.gob")
+          }
   sendIO $ extractLzma (toExecutablePath compressedIndexBinaryPaths) (toExecutablePath decompressedIndexBinaryPaths)
   pure [themisBinaryPaths, decompressedIndexBinaryPaths]
 

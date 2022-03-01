@@ -9,14 +9,14 @@ import Control.Effect.Diagnostics (Diagnostics)
 import Data.ByteString.Lazy qualified as BL
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Path (Abs, Dir, Path, Rel, fromAbsFile, (</>))
 import Effect.Logger (Logger, logDebug)
+import Path (Abs, Dir, Path, Rel, fromAbsFile, (</>))
 import Prettyprinter (Pretty (pretty))
 
 import App.Fossa.EmbeddedBinary (
-  toExecutablePath,
   BinaryPaths (..),
-  )
+  toExecutablePath,
+ )
 
 import Effect.Exec (
   AllowErr (Never),
@@ -33,9 +33,9 @@ data ThemisCLIOpts = ThemisCLIOpts
 
 generateThemisOpts :: Path Abs Dir -> Path Rel Dir -> ThemisCLIOpts
 generateThemisOpts baseDir vendoredDepDir =
-  ThemisCLIOpts{ themisCLIScanDir = fullDir, themisCLIArgs = ["--help"]}
-    where
-      fullDir = baseDir </> vendoredDepDir
+  ThemisCLIOpts{themisCLIScanDir = fullDir, themisCLIArgs = ["--help"]}
+  where
+    fullDir = baseDir </> vendoredDepDir
 
 execThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => BinaryPaths -> BinaryPaths -> ThemisCLIOpts -> m BL.ByteString
 execThemis themisBinaryPath indexGobPath opts = do
@@ -62,4 +62,3 @@ generateThemisArgs indexPath =
   , "--srclib-with-matches"
   , "."
   ]
-

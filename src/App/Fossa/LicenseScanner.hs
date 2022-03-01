@@ -15,26 +15,27 @@ import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.StickyLogger (StickyLogger, logSticky)
 import Control.Effect.Lift
 
-import Crypto.Hash (hash, MD5, Digest)
+import Crypto.Hash (Digest, MD5, hash)
+import Data.ByteString qualified as B
+import Data.ByteString.Lazy qualified as BL
 import Effect.Exec (Exec, runExecIO)
 import Effect.Logger (Logger, logDebug)
-import Data.ByteString.Lazy qualified as BL
-import Data.ByteString qualified as B
 
-import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.ArchiveUploader
-import Srclib.Types (Locator (..))
-import Fossa.API.Types
-import Path hiding ((</>))
+import App.Fossa.FossaAPIV1 qualified as Fossa
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
 import Control.Monad (unless)
 import Data.List (nub)
+import Fossa.API.Types
+import Path hiding ((</>))
 import Prettyprinter (Pretty (pretty))
+import Srclib.Types (Locator (..))
 
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
-import Data.String.Conversion (toText, toString)
 
 import App.Fossa.EmbeddedBinary (BinaryPaths, withThemisBinaryAndIndex)
+
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -45,20 +46,23 @@ runLicenseScanOnDir ::
 runLicenseScanOnDir opts = withThemisBinaryAndIndex (themisRunner opts)
 
 themisRunner ::
-  (Has (Lift IO) sig m
+  ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has Logger sig m
-  ) => ThemisCLIOpts -> [BinaryPaths] -> m BL.ByteString
+  ) =>
+  ThemisCLIOpts ->
+  [BinaryPaths] ->
+  m BL.ByteString
 themisRunner opts [themisBinary, themisIndex] = do
   res <- runExecIO $ runThemis themisBinary themisIndex opts
   logDebug $ pretty $ "themis JSON:\n" ++ show res
   pure res
 themisRunner _ [_] = do
-  Diag.fatalText("only one arg to lambda in themisRunner")
+  Diag.fatalText ("only one arg to lambda in themisRunner")
 themisRunner _ [] = do
-  Diag.fatalText("no args passed to lambda in themisRunner")
+  Diag.fatalText ("no args passed to lambda in themisRunner")
 themisRunner _ _ = do
-  Diag.fatalText("too many args passed to lambda in themisRunner")
+  Diag.fatalText ("too many args passed to lambda in themisRunner")
 
 runThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => BinaryPaths -> BinaryPaths -> ThemisCLIOpts -> m BL.ByteString
 runThemis themisBinary themisIndex opts = do
