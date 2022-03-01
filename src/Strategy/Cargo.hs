@@ -59,6 +59,7 @@ import Effect.Grapher (
   withLabeling,
  )
 import Effect.ReadFS (ReadFS, readContentsToml)
+import Effect.Telemetry (Telemetry, recordFeatureUsage)
 import GHC.Generics (Generic)
 import Graphing (Graphing, stripRoot)
 import Path (Abs, Dir, File, Path, parent, parseRelFile, toFilePath, (</>))
@@ -282,7 +283,7 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has Exec sig m, Has Diagnostics sig m) => CargoProject -> m DependencyResults
+getDeps :: (Has Exec sig m, Has Diagnostics sig m, Has Telemetry sig m) => CargoProject -> m DependencyResults
 getDeps project = do
   (graph, graphBreadth) <- context "Cargo" . context "Dynamic analysis" . analyze $ project
   pure $
@@ -309,12 +310,14 @@ cargoMetadataCmd =
     }
 
 analyze ::
-  (Has Exec sig m, Has Diagnostics sig m) =>
+  (Has Exec sig m, Has Diagnostics sig m, Has Telemetry sig m) =>
   CargoProject ->
   m (Graphing Dependency, GraphBreadth)
 analyze (CargoProject manifestDir manifestFile) = do
+  recordFeatureUsage "cargo"
   _ <- context "Generating lockfile" $ errCtx (FailedToGenLockFile manifestFile) $ execThrow manifestDir cargoGenLockfileCmd
   meta <- errCtx (FailedToRetrieveCargoMetadata manifestFile) $ execJson @CargoMetadata manifestDir cargoMetadataCmd
+
   --
   graph <- context "Building dependency graph" $ pure (buildGraph meta)
   pure (graph, Complete)

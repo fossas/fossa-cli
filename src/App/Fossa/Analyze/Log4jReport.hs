@@ -66,6 +66,7 @@ import Effect.Logger (
   viaShow,
  )
 import Effect.ReadFS (ReadFS)
+import Effect.Telemetry (Telemetry)
 import Graphing (directList, getRootsOf, hasPredecessors, vertexList)
 import Options.Applicative (InfoMod, progDesc)
 import Path (Abs, Dir, File, Path, SomeBase, toFilePath)
@@ -108,6 +109,7 @@ analyzeForLog4j ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   BaseDir ->
   m ()
@@ -163,6 +165,7 @@ runDependencyAnalysisForLog4j ::
   , Has (Output ProjectResult) sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   , Has Stack sig m
+  , Has Telemetry sig m
   ) =>
   -- | Analysis base directory
   Path Abs Dir ->

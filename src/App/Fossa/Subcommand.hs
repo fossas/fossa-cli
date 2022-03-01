@@ -22,6 +22,7 @@ import Effect.Logger (
   withDefaultLogger,
  )
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
+import Effect.Telemetry
 import Options.Applicative (InfoMod, Parser)
 import Text.Pretty.Simple (pShowNoColor)
 
@@ -34,14 +35,14 @@ data SubCommand cli cfg = SubCommand
   , perform :: cfg -> EffStack ()
   }
 
-type EffStack = GitC (ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC (StackC IO)))))
+type EffStack = TelemetryC (GitC (ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC (StackC IO))))))
 
 class GetSeverity a where
   getSeverity :: a -> Severity
   getSeverity = const SevInfo
 
 runSubCommand :: forall cli cfg. (GetSeverity cli, Show cfg) => SubCommand cli cfg -> Parser (IO ())
-runSubCommand SubCommand{..} = uncurry runEffs . mergeAndRun <$> parser
+runSubCommand SubCommand{..} = uncurry (runEffs) . mergeAndRun <$> parser
   where
     -- We have to extract the severity from the options, which is not straightforward
     -- since the CLI parser is Applicative, but not Monad.
@@ -57,4 +58,6 @@ runSubCommand SubCommand{..} = uncurry runEffs . mergeAndRun <$> parser
         else perform cfg
 
 runEffs :: Severity -> EffStack () -> IO ()
-runEffs sev = runStack . withDefaultLogger sev . logWithExit_ . runReadFSIO . runExecIO . runGit
+runEffs sev eff = do
+  withTelemetry $ \tel -> do
+    runStack . withDefaultLogger sev . logWithExit_ . runReadFSIO . runExecIO . runTelemetry tel . runGit $ eff 

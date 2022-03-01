@@ -40,6 +40,7 @@ import Effect.Exec (
  )
 import Effect.Logger (LoggerC, Severity (SevDebug), withDefaultLogger)
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
+import Effect.Telemetry
 import Network.HTTP.Req (
   GET (GET),
   NoReqBody (NoReqBody),
@@ -133,8 +134,9 @@ performDiscoveryAndAnalyses targetDir AnalysisTestFixture{..} = do
   discoveryResult <- sendIO $ testRunnerWithLogger (discover targetDir) environment
   withResult discoveryResult $ \_ dps ->
     forM dps $ \dp -> do
-      analysisResult <- sendIO $ testRunnerWithLogger (ignoreDebug $ analyzeProject (projectBuildTargets dp) (projectData dp)) environment
-      withResult analysisResult $ \_ dr -> pure (dp, dr)
+      withTelemetry $ \tel -> do
+        analysisResult <- sendIO $ testRunnerWithLogger (ignoreDebug . runTelemetry tel $ analyzeProject (projectBuildTargets dp) (projectData dp)) environment
+        withResult analysisResult $ \_ dr -> pure (dp, dr)
   where
     runCmd :: FixtureEnvironment -> Maybe (Command) -> IO ()
     runCmd env cmd =

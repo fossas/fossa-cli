@@ -9,6 +9,7 @@ module App.Fossa.Config.ConfigFile (
   ConfigRevision (..),
   ConfigTargets (..),
   ConfigPaths (..),
+  ConfigTelemetryScope (..),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
   mergeFileCmdMetadata,
@@ -30,6 +31,7 @@ import Control.Effect.Lift (Lift)
 import Data.Aeson (
   FromJSON (parseJSON),
   withObject,
+  withText,
   (.!=),
   (.:),
   (.:?),
@@ -38,7 +40,7 @@ import Data.Foldable (asum)
 import Data.Functor (($>))
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.String.Conversion (ToText (toText))
+import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text)
 import Effect.Logger (
   AnsiStyle,
@@ -150,7 +152,7 @@ mergeFileCmdMetadata meta file =
     }
 
 empty :: ConfigFile
-empty = ConfigFile 3 Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+empty = ConfigFile 3 Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
 data ConfigFile = ConfigFile
   { configVersion :: Int
@@ -161,6 +163,7 @@ data ConfigFile = ConfigFile
   , configTargets :: Maybe ConfigTargets
   , configPaths :: Maybe ConfigPaths
   , configExperimental :: Maybe ExperimentalConfigs
+  , configTelemetryScope :: Maybe ConfigTelemetryScope
   }
   deriving (Eq, Ord, Show)
 
@@ -194,6 +197,11 @@ data ConfigPaths = ConfigPaths
   }
   deriving (Eq, Ord, Show)
 
+data ConfigTelemetryScope
+  = NoTelemetry
+  | FullTelemetry
+  deriving (Eq, Ord, Show)
+
 newtype ExperimentalConfigs = ExperimentalConfigs
   {gradle :: Maybe ExperimentalGradleConfigs}
   deriving (Eq, Ord, Show)
@@ -212,6 +220,7 @@ instance FromJSON ConfigFile where
       <*> obj .:? "targets"
       <*> obj .:? "paths"
       <*> obj .:? "experimental"
+      <*> obj .:? "telemetry-scope"
 
 instance FromJSON ConfigProject where
   parseJSON = withObject "ConfigProject" $ \obj ->
@@ -246,3 +255,9 @@ instance FromJSON ExperimentalConfigs where
 instance FromJSON ExperimentalGradleConfigs where
   parseJSON = withObject "ExperimentalGradleConfigs" $ \obj ->
     ExperimentalGradleConfigs <$> (obj .: "configurations-only" .!= Set.fromList [])
+
+instance FromJSON ConfigTelemetryScope where
+  parseJSON = withText "ConfigTelemetryScope" $ \case
+    "full" -> pure FullTelemetry
+    "off" -> pure NoTelemetry
+    notSupported -> fail . toString $ "expected either: full or off for telemetry scope. You provided: " <> notSupported

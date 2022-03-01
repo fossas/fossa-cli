@@ -50,6 +50,7 @@ import Effect.Logger (
   logInfo,
  )
 import Effect.ReadFS (ReadFS)
+import Effect.Telemetry (Telemetry)
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
@@ -63,6 +64,7 @@ listTargetsMain ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   , Has Stack sig m
+  , Has Telemetry sig m
   ) =>
   ListTargetsConfig ->
   m ()
@@ -87,6 +89,7 @@ runAll ::
   , Has Debug sig m
   , Has Stack sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has Telemetry sig m
   ) =>
   Path Abs Dir ->
   m ()

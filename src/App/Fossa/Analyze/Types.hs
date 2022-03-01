@@ -19,6 +19,7 @@ import Diag.Result (Result (Failure, Success))
 import Effect.Exec (Exec)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
+import Effect.Telemetry (Telemetry)
 import Path
 import Srclib.Types (SourceUnit)
 import Types (DependencyResults, DiscoveredProjectType, FoundTargets)
@@ -35,6 +36,7 @@ type AnalyzeTaskEffs sig m =
   , Has Diagnostics sig m
   , Has Debug sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has Telemetry sig m
   )
 
 data AnalysisScanResult = AnalysisScanResult

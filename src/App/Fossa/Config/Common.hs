@@ -1,4 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use lambda-case" #-}
 
 module App.Fossa.Config.Common (
   -- * CLI Parsers
@@ -22,6 +25,7 @@ module App.Fossa.Config.Common (
   collectRevisionOverride,
   collectAPIMetadata,
   collectApiOpts,
+  collectTelemetryScope,
 
   -- * Configuration Types
   ScanDestination (..),
@@ -32,9 +36,10 @@ module App.Fossa.Config.Common (
 ) where
 
 import App.Fossa.Config.ConfigFile (
-  ConfigFile (configApiKey, configProject, configRevision, configServer),
+  ConfigFile (configApiKey, configProject, configRevision, configServer, configTelemetryScope),
   ConfigProject (configProjID),
   ConfigRevision (configBranch, configCommit),
+  ConfigTelemetryScope (..),
   mergeFileCmdMetadata,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
@@ -72,10 +77,13 @@ import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts))
 import Options.Applicative (
   Parser,
+  ReadM,
   argument,
+  eitherReader,
   help,
   long,
   metavar,
+  option,
   optional,
   short,
   str,
@@ -251,6 +259,20 @@ collectRevisionData' basedir cfg cache override = do
 collectAPIMetadata :: Maybe ConfigFile -> ProjectMetadata -> ProjectMetadata
 collectAPIMetadata cfgfile cliMeta = maybe cliMeta (mergeFileCmdMetadata cliMeta) cfgfile
 
+collectTelemetryScope :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> CommonOpts -> m ConfigTelemetryScope
+collectTelemetryScope maybeConfigFile envvars opts = do
+  let defaultScope = FullTelemetry
+
+  -- Precedence is
+  --  (1) command line
+  --  (2) environment variable
+  --  (3) configuration file
+  case (optTelemetry opts)
+    <|> (envTelemetryScope envvars)
+    <|> (maybeConfigFile >>= configTelemetryScope) of
+    Nothing -> pure defaultScope
+    Just telScope -> pure telScope
+
 data CommonOpts = CommonOpts
   { optDebug :: Bool
   , optBaseUrl :: Maybe URI
@@ -258,8 +280,16 @@ data CommonOpts = CommonOpts
   , optProjectRevision :: Maybe Text
   , optAPIKey :: Maybe Text
   , optConfig :: Maybe FilePath
+  , optTelemetry :: Maybe ConfigTelemetryScope
   }
   deriving (Eq, Ord, Show)
+
+parseTelemetryScope :: ReadM ConfigTelemetryScope
+parseTelemetryScope = eitherReader $ \s ->
+  case s of
+    "off" -> Right NoTelemetry
+    "full" -> Right FullTelemetry
+    _ -> Left "Failed to parse telemetry scope, expected either: full or off"
 
 commonOpts :: Parser CommonOpts
 commonOpts =
@@ -270,3 +300,4 @@ commonOpts =
     <*> optional (strOption (long "revision" <> short 'r' <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
     <*> optional (strOption (long "config" <> short 'c' <> help "Path to configuration file including filename (default: .fossa.yml)"))
+    <*> optional (option parseTelemetryScope (long "with-telemetry-scope" <> help "Scope of telemetry to use (default: full)"))

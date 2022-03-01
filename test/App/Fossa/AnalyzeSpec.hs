@@ -9,9 +9,10 @@ import Control.Carrier.Stack (StackC)
 import Effect.Exec (ExecIOC)
 import Effect.Logger (LoggerC)
 import Effect.ReadFS (ReadFSIOC)
+import Effect.Telemetry (TelemetryC)
 import Test.Hspec (Spec, describe, it, shouldBe)
 
-type SomeMonad = ReaderC ExperimentalAnalyzeConfig (DebugC (DiagnosticsC (LoggerC (ExecIOC (ReadFSIOC (StackC IO))))))
+type SomeMonad = TelemetryC (ReaderC ExperimentalAnalyzeConfig (DebugC (DiagnosticsC (LoggerC (ExecIOC (ReadFSIOC (StackC IO)))))))
 
 spec :: Spec
 spec =
