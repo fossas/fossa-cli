@@ -10,13 +10,13 @@ module App.Fossa.Config.Container.Analyze (
 ) where
 
 import App.Fossa.Config.Common (
-  CommonOpts (optBaseUrl, optProjectName, optProjectRevision),
+  CommonOpts (optProjectName, optProjectRevision),
   ScanDestination (..),
   collectAPIMetadata,
+  collectApiOpts,
   collectRevisionOverride,
   commonOpts,
   metadataOpts,
-  validateApiKey,
  )
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.Container.Common (
@@ -31,7 +31,6 @@ import App.Types (
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Text (Text)
-import Fossa.API.Types (ApiOpts (ApiOpts))
 import Options.Applicative (
   CommandFields,
   Mod,
@@ -121,8 +120,6 @@ collectScanDestination maybeCfgFile envvars ContainerAnalyzeOptions{..} =
   if fromFlag NoUpload containerNoUpload
     then pure OutputStdout
     else do
-      apiKey <- validateApiKey maybeCfgFile envvars analyzeCommons
-      let baseuri = optBaseUrl analyzeCommons
-          apiOpts = ApiOpts baseuri apiKey
-          metaMerged = collectAPIMetadata maybeCfgFile containerMetadata
+      apiOpts <- collectApiOpts maybeCfgFile envvars analyzeCommons
+      let metaMerged = collectAPIMetadata maybeCfgFile containerMetadata
       pure $ UploadScan apiOpts metaMerged

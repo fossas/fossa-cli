@@ -1,9 +1,16 @@
 # Fossa CLI Changelog
 
-## Yet to be released
+## v3.1.2
 
-- Ruby: Improves error and warning messages. ([#800](https://github.com/fossas/fossa-cli/pull/800))
+- Fixes a bug which ignored the `server` field in the config file. ([#821](https://github.com/fossas/fossa-cli/pull/821))
+
+## v3.1.1
+
 - UX: Parser error messages include call to action. ([#801](https://github.com/fossas/fossa-cli/pull/801))
+- UX: Improves error message when executable is not found. ([#813](https://github.com/fossas/fossa-cli/pull/813))
+- UX: Fixes minor scan summary ordering bug. ([#813](https://github.com/fossas/fossa-cli/pull/813))
+- UX: Writes errors and warnings encountered in analyze to temp file. ([#813](https://github.com/fossas/fossa-cli/pull/813))
+- Ruby: Improves error and warning messages. ([#800](https://github.com/fossas/fossa-cli/pull/800))
 - Python: `setup.py` error messages are _less_ noisy. ([#801](https://github.com/fossas/fossa-cli/pull/801))
 - Dart: Improves error and warning messages. ([#800](https://github.com/fossas/fossa-cli/pull/806))
 - Pipenv: Improves error and warning messages. ([#803](https://github.com/fossas/fossa-cli/pull/803))
@@ -14,6 +21,13 @@
 - Cocoapods: Improves error and warning messages. ([#807](https://github.com/fossas/fossa-cli/pull/807))
 - Golang: Improves error and warning messages. ([#809](https://github.com/fossas/fossa-cli/pull/809))
 - Gradle: Improves error and warning messages. ([#804](https://github.com/fossas/fossa-cli/pull/804))
+- Scala: Improves error and warning messages. ([#813](https://github.com/fossas/fossa-cli/pull/813))
+- Clojure: Improves error and warning messages. ([#813](https://github.com/fossas/fossa-cli/pull/813))
+- Nim: Improves error and warning messages. ([#813](https://github.com/fossas/fossa-cli/pull/813))
+- Rust: Improves error and warning messages. ([#813](https://github.com/fossas/fossa-cli/pull/813))
+- UX: Improves errors for dynamic deps, and binary deps analysis. ([#819](https://github.com/fossas/fossa-cli/pull/819))
+- UX: Improves analysis scan summary rendering. ([#819](https://github.com/fossas/fossa-cli/pull/819))
+
 
 ## v3.1.0 
 

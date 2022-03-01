@@ -1,12 +1,13 @@
 module App.Fossa.Analyze.Types (
   AnalyzeProject (..),
+  AnalysisScanResult (..),
   AnalyzeTaskEffs,
   AnalyzeExperimentalPreferences (..),
   DiscoveredProjectScan (..),
   DiscoveredProjectIdentifier (..),
 ) where
 
-import App.Fossa.Analyze.Project (ProjectResult (projectResultType))
+import App.Fossa.Analyze.Project (ProjectResult)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics, Has)
@@ -19,6 +20,7 @@ import Effect.Exec (Exec)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import Path
+import Srclib.Types (SourceUnit)
 import Types (DependencyResults, DiscoveredProjectType, FoundTargets)
 
 newtype AnalyzeExperimentalPreferences = AnalyzeExperimentalPreferences
@@ -34,6 +36,13 @@ type AnalyzeTaskEffs sig m =
   , Has Debug sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   )
+
+data AnalysisScanResult = AnalysisScanResult
+  { analyzersScanResult :: [DiscoveredProjectScan]
+  , vsiScanResult :: Result (Maybe SourceUnit)
+  , binaryDepsScanResult :: Result (Maybe SourceUnit)
+  , fossaDepsScanResult :: Result (Maybe SourceUnit)
+  }
 
 data DiscoveredProjectScan
   = SkippedDueToProvidedFilter DiscoveredProjectIdentifier
@@ -53,10 +62,10 @@ orderByScanStatusAndType (SkippedDueToDefaultProductionFilter lhs) (SkippedDueTo
 orderByScanStatusAndType (SkippedDueToDefaultProductionFilter lhs) (SkippedDueToDefaultProductionFilter rhs) = compare lhs rhs
 orderByScanStatusAndType (SkippedDueToDefaultProductionFilter _) (Scanned _ _) = GT
 orderByScanStatusAndType (SkippedDueToProvidedFilter _) (Scanned _ _) = GT
-orderByScanStatusAndType (Scanned _ (Success lhsEw lhs)) (Scanned _ (Success rhsEw rhs)) =
-  if (projectResultType lhs) /= (projectResultType rhs)
-    then compare (length rhsEw) (length lhsEw)
-    else EQ
+orderByScanStatusAndType (Scanned lhs (Success lhsEw _)) (Scanned rhs (Success rhsEw _)) =
+  case compare (length rhsEw) (length lhsEw) of
+    EQ -> compare lhs rhs
+    comp -> comp
 orderByScanStatusAndType (Scanned lhs (Failure _ _)) (Scanned rhs (Failure _ _)) = compare lhs rhs
 orderByScanStatusAndType (Scanned _ (Success _ _)) (Scanned _ (Failure _ _)) = GT
 orderByScanStatusAndType (Scanned _ _) _ = LT

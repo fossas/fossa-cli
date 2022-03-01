@@ -18,7 +18,7 @@ import Codec.Compression.BZip qualified as BZip
 import Codec.Compression.GZip qualified as GZip
 import Codec.Compression.Lzma as Lzma
 import Conduit (runConduit, runResourceT, sourceFileBS, (.|))
-import Control.Effect.Diagnostics (Diagnostics, Has, context)
+import Control.Effect.Diagnostics (Diagnostics, Has, context, fatalOnSomeException)
 import Control.Effect.Finally (Finally, onExit)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.TaskPool (TaskPool, forkTask)
@@ -77,7 +77,7 @@ selectUnarchiver file
 --
 -- If the file is not supported for extraction, results in 'Nothing'.
 withArchive' ::
-  (Has (Lift IO) sig m, Has Finally sig m) =>
+  (Has (Lift IO) sig m, Has Finally sig m, Has Diagnostics sig m) =>
   -- | Path to archive
   Path Abs File ->
   -- | Callback
@@ -89,7 +89,7 @@ withArchive' file go = traverse (\e -> withArchive e file go) (selectUnarchiver 
 -- on the temporary directory. Archive contents are removed when the callback
 -- finishes.
 withArchive ::
-  (Has (Lift IO) sig m, Has Finally sig m) =>
+  (Has (Lift IO) sig m, Has Diagnostics sig m, Has Finally sig m) =>
   -- | Archive extraction function
   (Path Abs Dir -> Path Abs File -> m ()) ->
   -- | Path to archive
@@ -97,7 +97,7 @@ withArchive ::
   -- | Callback
   (Path Abs Dir -> m c) ->
   m c
-withArchive extract file go = do
+withArchive extract file go = fatalOnSomeException "withArchive" $ do
   tmpDir <- mkTempDir (fileName file)
   extract tmpDir file
   go tmpDir

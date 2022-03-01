@@ -89,10 +89,8 @@ findProjects = walk' $ \dir _ files -> do
 newtype FailedToListProjects = FailedToListProjects (Path Abs Dir)
   deriving (Eq, Ord, Show)
 
--- TODO(warnings): this warning is not helpful
 instance ToDiagnostic FailedToListProjects where
-  renderDiagnostic (FailedToListProjects dir) =
-    "Found an sbt build manifest, but failed to list sbt projects in " <> viaShow dir
+  renderDiagnostic (FailedToListProjects dir) = "Failed to discover and analyze sbt projects, for sbt build manifest at:" <> viaShow dir
 
 makePomCmd :: Command
 makePomCmd =
