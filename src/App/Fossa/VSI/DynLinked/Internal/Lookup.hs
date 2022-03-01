@@ -10,12 +10,14 @@ import Control.Algebra (Has)
 import Control.Effect.Diagnostics (
   Diagnostics,
   ToDiagnostic (renderDiagnostic),
+  context,
   warn,
   (<||>),
  )
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Effect.Exec (Exec)
+import Effect.Logger (Logger, logDebug)
 import Path (Abs, Dir, File, Path)
 import Prettyprinter (pretty, vsep)
 
@@ -23,6 +25,7 @@ import Prettyprinter (pretty, vsep)
 dynamicDependencies ::
   ( Has Diagnostics sig m
   , Has Exec sig m
+  , Has Logger sig m
   ) =>
   -- The scan root.
   Path Abs Dir ->
@@ -31,11 +34,21 @@ dynamicDependencies ::
   -- Resulting dependencies.
   m (Set DynamicDependency)
 dynamicDependencies root files = do
-  apkLookupTable <- buildLookupTable root
-  resolved <- traverse (resolveFile apkLookupTable root) $ Set.toList files
+  apkLookupTable <- context "build APK lookup table" $ buildLookupTable root
+  let targets = Set.toList files
+  logDebug . pretty $ "Resolving files: " <> show targets
+  resolved <- traverse (resolveFile apkLookupTable root) targets
   pure $ Set.fromList resolved
 
-resolveFile :: (Has Diagnostics sig m, Has Exec sig m) => Maybe APKLookupTable -> Path Abs Dir -> Path Abs File -> m DynamicDependency
+resolveFile ::
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has Logger sig m
+  ) =>
+  Maybe APKLookupTable ->
+  Path Abs Dir ->
+  Path Abs File ->
+  m DynamicDependency
 resolveFile table root file = do
   -- When adding new tactics in the future, ensure that they fail (through diagnostics) if they're not the last link in the chain.
   -- <||> selects the first item to succeed without a diagnostic error.

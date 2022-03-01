@@ -13,6 +13,7 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
+import Effect.Logger (Logger, logDebug, pretty)
 import Path (Abs, Dir, File, Path)
 import Text.Megaparsec (MonadParsec (eof), Parsec, empty, option, takeWhile1P, try)
 import Text.Megaparsec.Char (space1)
@@ -20,10 +21,22 @@ import Text.Megaparsec.Char.Lexer qualified as L
 
 type Parser = Parsec Void Text
 
-rpmTactic :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe DynamicDependency)
+rpmTactic ::
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has Logger sig m
+  ) =>
+  Path Abs Dir ->
+  Path Abs File ->
+  m (Maybe DynamicDependency)
 rpmTactic root file | runningLinux = do
+  logDebug . pretty $ "[rpm] resolving file: " <> show file
+
   name <- packageForFile root file
+  logDebug . pretty $ "[rpm] package: " <> show name
+
   meta <- join <$> traverse (packageMeta root) name
+  logDebug . pretty $ "[rpm] package metadata: " <> show meta
   pure (DynamicDependency file . Just . ResolvedLinuxPackage LinuxPackageManagerRPM <$> meta)
 rpmTactic _ _ = pure Nothing
 
@@ -43,8 +56,8 @@ rpmQueryFileCommand file =
 -- Example:
 --
 -- > rpm -qf /lib64/libc.so.6
--- > glibc-2.28-151.el8.x86_64
--- > ^^^^^^^^^^^^^^^^^^^^^^^^^ we want this whole output.
+-- > glibc-2.28-151.el8.x86_64\n
+-- > ^^^^^^^^^^^^^^^^^^^^^^^^^ we want this whole output (but we don't want the trailing newline)
 rpmParseQueryFile :: Parser Text
 rpmParseQueryFile = takeWhile1P Nothing (const True) <* eof
 
