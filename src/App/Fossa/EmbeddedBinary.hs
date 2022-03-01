@@ -156,6 +156,13 @@ extractedPath bin = case bin of
   ThemisIndex -> $(mkRelFile "index.gob.xz")
 
 -- | Extract to @$TMP/fossa-vendor/<timestamp>
+-- We used to extract everything to @$TMP/fossa-vendor@, but there's a subtle issue with that.
+-- Cleanup is just removing the directory where the file resides, which is fine unless there's 
+-- more than one active extracted file.  Cleanup could potentially kill both while one is in use.
+-- Extracting to a another subdir meane that the cleanup only cleans the timestamp subdir.
+-- The only downside is that we never cleanup the fossa-vendor directory, which is not an issue,
+-- since it should be empty by the time we finish cleanup.  The tempfile cleaner on the system
+-- should pick it up anyway.
 extractDir :: Has (Lift IO) sig m => m (Path Abs Dir)
 extractDir = do
   wd <- sendIO getTempDir
