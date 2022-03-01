@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
 
   s.description = "test gemspec"
   s.summary     = s.description
-  s.license     = "AGPL"
+  s.license     = "Ruby"
 
   s.authors = ["foo"]
   s.email = "foo@bar.com"

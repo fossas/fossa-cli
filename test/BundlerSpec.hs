@@ -11,8 +11,7 @@ import Types (DiscoveredProject (projectData))
 
 specFilenames :: [Path Rel File]
 specFilenames =
-  [ $(mkRelFile "simple_spec.gemspec")
-  , $(mkRelFile "complex.gemspec")
+  [ $(mkRelFile "single_license.gemspec")
   , $(mkRelFile "licenses.gemspec")
   , $(mkRelFile "licenses_word_array.gemspec")
   ]
@@ -20,7 +19,7 @@ specFilenames =
 spec :: Spec
 spec = do
   currDir <- runIO getCurrentDir
-  describe "Detects multiple gemspecs in a directory" $ do
+  describe "GemSpec discovery" $ do
     let specDir = currDir </> $(mkRelDir "test/Ruby/testdata/gemspecs")
         expectedSpecFiles = map (specDir </>) specFilenames
     it' "Finds all *.gemspec files in a dir" $ do
