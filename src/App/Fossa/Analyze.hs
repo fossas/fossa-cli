@@ -27,6 +27,7 @@ import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.ScanSummary (renderScanSummary)
 import App.Fossa.Analyze.Types (
+  AnalysisScanResult (AnalysisScanResult),
   AnalyzeProject (..),
   AnalyzeTaskEffs,
   DiscoveredProjectIdentifier (..),
@@ -43,7 +44,7 @@ import App.Fossa.Config.Analyze (
   IATAssertion (IATAssertion),
   IncludeAll (IncludeAll),
   ScanDestination (..),
-  StandardAnalyzeConfig (),
+  StandardAnalyzeConfig (severity),
   UnpackArchives (UnpackArchives),
  )
 import App.Fossa.Config.Analyze qualified as Config
@@ -181,7 +182,7 @@ runDependencyAnalysis basedir filters project = do
       graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context "Project Analysis" $ do
         debugMetadata "DiscoveredProject" project
         analyzeProject targets (projectData project)
-      Diag.flushLogs SevWarn SevWarn graphResult
+      Diag.flushLogs SevError SevDebug graphResult
       output $ Scanned dpi (mkResult basedir project <$> graphResult)
 
 applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
@@ -262,7 +263,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir apiOpts
   let additionalSourceUnits :: [SourceUnit]
-      additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, dynamicLinkedResults, binarySearchResults]
+      additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults, dynamicLinkedResults]
+  traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults, binarySearchResults, manualSrcUnits, dynamicLinkedResults]
 
   (projectScans, ()) <-
     Diag.context "discovery/analysis tasks"
@@ -283,7 +285,9 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let projectResults = mapMaybe toProjectResult projectScans
   let filteredProjects = mapMaybe toProjectResult projectScansWithSkippedProdPath
 
-  renderScanSummary projectScansWithSkippedProdPath vsiResults binarySearchResults manualSrcUnits
+  let analysisResult = AnalysisScanResult projectScansWithSkippedProdPath vsiResults binarySearchResults manualSrcUnits
+
+  renderScanSummary (severity cfg) analysisResult
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits of

@@ -32,7 +32,7 @@ module App.Fossa.Config.Common (
 ) where
 
 import App.Fossa.Config.ConfigFile (
-  ConfigFile (configApiKey, configProject, configRevision),
+  ConfigFile (configApiKey, configProject, configRevision, configServer),
   ConfigProject (configProjID),
   ConfigRevision (configBranch, configCommit),
   mergeFileCmdMetadata,
@@ -87,7 +87,7 @@ import Options.Applicative (
 import Path (Abs, Dir, File, Path, Rel, parseRelDir)
 import Path.IO (resolveDir', resolveFile')
 import Text.Megaparsec (errorBundlePretty, runParser)
-import Text.URI (URI)
+import Text.URI (URI, mkURI)
 import Types (TargetFilter)
 
 data ScanDestination
@@ -189,7 +189,8 @@ validateApiKey maybeConfigFile EnvVars{envApiKey} CommonOpts{optAPIKey} = do
 collectApiOpts :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> CommonOpts -> m ApiOpts
 collectApiOpts maybeconfig envvars globals = do
   apikey <- validateApiKey maybeconfig envvars globals
-  let baseuri = optBaseUrl globals
+  let configUri = maybeconfig >>= configServer >>= mkURI
+      baseuri = optBaseUrl globals <|> configUri
   pure $ ApiOpts baseuri apikey
 
 collectRevisionOverride :: Maybe ConfigFile -> OverrideProject -> OverrideProject

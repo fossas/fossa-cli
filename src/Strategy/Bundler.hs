@@ -11,6 +11,7 @@ import Control.Carrier.Diagnostics (errCtx, warnOnErr)
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
 import Data.Aeson (ToJSON)
+import Diag.Common (AllDirectDeps (AllDirectDeps), MissingEdges (MissingEdges))
 import Discovery.Walk
 import Effect.Exec
 import Effect.ReadFS
@@ -19,8 +20,6 @@ import Path
 import Strategy.Ruby.BundleShow qualified as BundleShow
 import Strategy.Ruby.Errors (
   BundlerMissingLockFile (..),
-  RubyMissingDepClassification (..),
-  RubyMissingEdges (..),
  )
 import Strategy.Ruby.GemfileLock qualified as GemfileLock
 import Types
@@ -83,8 +82,8 @@ analyzeBundleShow project = do
 
 analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
 analyzeGemfileLock project =
-  warnOnErr RubyMissingDepClassification
-    . warnOnErr RubyMissingEdges
+  warnOnErr AllDirectDeps
+    . warnOnErr MissingEdges
     . errCtx (BundlerMissingLockFile $ bundlerGemfile project)
     $ do
       lockFile <- context "Retrieve Gemfile.lock" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project))

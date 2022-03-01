@@ -44,9 +44,9 @@ logDiagnostic :: (Has (Lift IO) sig m, Has Logger sig m, Has Stack sig m) => Dia
 logDiagnostic diag = do
   result <- runDiagnosticsIO diag
   case result of
-    Failure ws eg -> logError (renderFailure ws eg) >> pure Nothing
+    Failure ws eg -> logError (renderFailure ws eg "An issue occurred") >> pure Nothing
     Success ws a -> do
-      case renderSuccess ws of
+      case renderSuccess ws "A task succeeded with warnings" of
         Nothing -> pure ()
         Just rendered -> logWarn rendered
 
@@ -124,9 +124,9 @@ errorBoundaryIO act = errorBoundary $ act `safeCatch` (\(e :: SomeException) -> 
 -- - On success, the associated warnings are logged with the provided
 --   @sevOnSuccess@ severity
 withResult :: Has Logger sig m => Severity -> Severity -> Result a -> (a -> m ()) -> m ()
-withResult sevOnErr _ (Failure ws eg) _ = Effect.Logger.log sevOnErr (renderFailure ws eg)
+withResult sevOnErr _ (Failure ws eg) _ = Effect.Logger.log sevOnErr (renderFailure ws eg "An issue occurred")
 withResult _ sevOnSuccess (Success ws res) f = do
-  case renderSuccess ws of
+  case renderSuccess ws "A task succeeded with warnings" of
     Nothing -> pure ()
     Just rendered -> Effect.Logger.log sevOnSuccess rendered
   f res

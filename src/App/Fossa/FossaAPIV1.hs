@@ -37,18 +37,21 @@ module App.Fossa.FossaAPIV1 (
   vsiDownloadInferences,
 ) where
 
+import App.Docs (fossaSslCertDocsUrl)
 import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Fossa.Report.Attribution qualified as Attr
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
 import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
+import App.Support (reportDefectMsg)
 import App.Types
 import App.Version (versionNumber)
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fromMaybeText)
 import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Exception (Exception (displayException), SomeException)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson
 import Data.ByteString qualified as BS
@@ -169,12 +172,24 @@ instance FromJSON UploadResponse where
 
 data FossaError
   = JsonDeserializeError String
+  | InternalException SomeException
   | OtherError HttpException
   | BackendPublicFacingError FossaPublicFacingError
   deriving (Show)
 
 instance ToDiagnostic FossaError where
   renderDiagnostic = \case
+    InternalException exception ->
+      vsep
+        [ "An error occurred when accessing the FOSSA API."
+        , ""
+        , indent 4 $ pretty . displayException $ exception
+        , ""
+        , "If the exception is related to certificate, please refer to:"
+        , indent 4 $ pretty ("- " <> fossaSslCertDocsUrl)
+        , ""
+        , reportDefectMsg
+        ]
     JsonDeserializeError err -> "An error occurred when deserializing a response from the FOSSA API: " <> pretty err
     OtherError err -> "An unknown error occurred when accessing the FOSSA API: " <> viaShow err
     BackendPublicFacingError pfe ->
@@ -183,14 +198,14 @@ instance ToDiagnostic FossaError where
         , ""
         , "Error message from API:"
         , ""
-        , pretty $ "   " <> fpeMessage pfe
+        , indent 4 $ pretty . fpeMessage $ pfe
         , ""
         , "Error UUID from API:"
         , ""
-        , pretty $ "   " <> fpeUuid pfe
+        , indent 4 $ pretty . fpeUuid $ pfe
         , ""
-        , "If you believe this to be a defect,"
-        , "please contact FOSSA support with provided Error UUID."
+        , reportDefectMsg
+        , "Please include Error UUID in your request."
         ]
 
 containerUploadUrl :: Url scheme -> Url scheme
@@ -252,6 +267,7 @@ mkMetadataOpts ProjectMetadata{..} projectName = mconcat $ catMaybes maybes
 
 mangleError :: HttpException -> FossaError
 mangleError err = case err of
+  VanillaHttpException (HTTP.HttpExceptionRequest _ (HTTP.InternalException e)) -> InternalException e
   VanillaHttpException (HTTP.HttpExceptionRequest _ (HTTP.StatusCodeException _ respBody)) ->
     case decodeStrict respBody of
       Just pfe -> BackendPublicFacingError pfe

@@ -32,7 +32,6 @@ import App.Fossa.Config.Common (
   metadataOpts,
   pathOpt,
   targetOpt,
-  validateApiKey,
   validateDir,
   validateFile,
  )
@@ -78,7 +77,7 @@ import Effect.Exec (
  )
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn)
 import Effect.ReadFS (ReadFS)
-import Fossa.API.Types (ApiOpts (ApiOpts))
+import Fossa.API.Types (ApiOpts)
 import Options.Applicative (
   Alternative (many),
   InfoMod,
@@ -396,10 +395,8 @@ collectScanDestination maybeCfgFile envvars AnalyzeCliOpts{..} =
   if analyzeOutput
     then pure OutputStdout
     else do
-      apiKey <- validateApiKey maybeCfgFile envvars commons
-      let baseuri = optBaseUrl commons
-          apiOpts = ApiOpts baseuri apiKey
-          metaMerged = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
+      apiOpts <- collectApiOpts maybeCfgFile envvars commons
+      let metaMerged = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
       pure $ UploadScan apiOpts metaMerged
 
 collectModeOptions ::

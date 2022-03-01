@@ -7,11 +7,17 @@ import App.Fossa.VSI.DynLinked.Internal.Lookup.DEB (debTactic)
 import App.Fossa.VSI.DynLinked.Internal.Lookup.RPM (rpmTactic)
 import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..))
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (renderDiagnostic),
+  warn,
+  (<||>),
+ )
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Effect.Exec (Exec)
 import Path (Abs, Dir, File, Path)
+import Prettyprinter (pretty, vsep)
 
 -- | Resolve the provided file paths, which represent dynamic dependencies of a binary, into a set of @DynamicDependency@.
 dynamicDependencies ::
@@ -31,17 +37,21 @@ dynamicDependencies root files = do
 
 resolveFile :: (Has Diagnostics sig m, Has Exec sig m) => Maybe APKLookupTable -> Path Abs Dir -> Path Abs File -> m DynamicDependency
 resolveFile table root file = do
-  rpmResolved <- rpmTactic root file
-  case rpmResolved of
+  resolved <- rpmTactic root file <||> debTactic root file <||> pure (apkTactic table file)
+  case resolved of
+    Just result -> pure result
     Nothing -> do
-      debResolved <- debTactic root file
-      case debResolved of
-        Nothing -> do
-          case apkTactic table file of
-            Nothing -> pure $ fallbackTactic file
-            Just r -> pure r
-        Just r -> pure r
-    Just r -> pure r
+      warn $ MissingLinuxMetadata file
+      pure $ fallbackTactic file
 
 fallbackTactic :: Path Abs File -> DynamicDependency
 fallbackTactic file = DynamicDependency file Nothing
+
+newtype MissingLinuxMetadata = MissingLinuxMetadata (Path Abs File)
+
+instance ToDiagnostic MissingLinuxMetadata where
+  renderDiagnostic (MissingLinuxMetadata path) =
+    vsep
+      [ "Could not infer linux package manager, and its metadata for:"
+      , pretty . show $ path
+      ]

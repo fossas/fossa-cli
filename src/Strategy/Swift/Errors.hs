@@ -1,6 +1,5 @@
 module Strategy.Swift.Errors (
   MissingPackageResolvedFile (..),
-  SwiftAnalysisDeepDeps (..),
 
   -- * docs
   swiftFossaDocUrl,
@@ -22,11 +21,6 @@ swiftPackageResolvedRef = "https://github.com/apple/swift-package-manager/blob/m
 
 xcodeCoordinatePkgVersion :: Text
 xcodeCoordinatePkgVersion = "https://developer.apple.com/documentation/swift_packages/adding_package_dependencies_to_your_app"
-
-data SwiftAnalysisDeepDeps = SwiftAnalysisDeepDeps
-instance ToDiagnostic SwiftAnalysisDeepDeps where
-  renderDiagnostic (SwiftAnalysisDeepDeps) =
-    "Could not analyze deep dependencies."
 
 newtype MissingPackageResolvedFile = MissingPackageResolvedFile (Path Abs File)
 

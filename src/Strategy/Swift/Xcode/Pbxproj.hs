@@ -15,12 +15,12 @@ import Data.Maybe (mapMaybe)
 import Data.Set (fromList, member)
 import Data.Text (Text)
 import DepTypes (DepType (GitType, SwiftType), Dependency (..))
+import Diag.Common (MissingDeepDeps (MissingDeepDeps))
 import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsParser)
 import Graphing (Graphing, deeps, directs, promoteToDirect)
 import Path
 import Strategy.Swift.Errors (
   MissingPackageResolvedFile (MissingPackageResolvedFile),
-  SwiftAnalysisDeepDeps (SwiftAnalysisDeepDeps),
  )
 import Strategy.Swift.PackageResolved (SwiftPackageResolvedFile, resolvedDependenciesOf)
 import Strategy.Swift.PackageSwift (
@@ -114,7 +114,7 @@ analyzeXcodeProjForSwiftPkg xcodeProjFile resolvedFile = do
     Nothing ->
       do
         recover
-          . warnOnErr SwiftAnalysisDeepDeps
+          . warnOnErr MissingDeepDeps
           . errCtx (MissingPackageResolvedFile xcodeProjFile)
           $ fatalText "Package.resolved file was not discovered"
     Just packageResolved ->
