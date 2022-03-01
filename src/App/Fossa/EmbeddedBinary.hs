@@ -21,8 +21,7 @@ import Control.Effect.Exception (bracket)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.ByteString (ByteString, writeFile)
 import Data.FileEmbed.Extra (embedFileIfExists)
-import Data.Foldable (for_)
-import Data.Maybe (fromMaybe)
+import Data.Foldable (for_, traverse_)
 import Data.Tagged (Tagged, applyTag, unTag)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Path (
@@ -35,8 +34,7 @@ import Path (
   mkRelDir,
   mkRelFile,
   parent,
-  parseRelDir,
-  (</>),
+  (</>), parseRelDir
  )
 import Path.IO (
   Permissions (executable),
@@ -81,10 +79,8 @@ data ThemisBins = ThemisBins
 toPath :: BinaryPaths -> Path Abs File
 toPath BinaryPaths{..} = binaryPathContainer </> binaryFilePath
 
--- We unpack both bins to the same directory, so we only have to do cleanup
--- once to cover both.
 cleanupThemisBins :: Has (Lift IO) sig m => ThemisBins -> m ()
-cleanupThemisBins (ThemisBins binpath _) = cleanupExtractedBinaries $ unTag binpath
+cleanupThemisBins (ThemisBins a b) = traverse_ cleanupExtractedBinaries [unTag a, unTag b] 
 
 withThemisAndIndex :: Has (Lift IO) sig m => (ThemisBins -> m c) -> m c
 withThemisAndIndex = bracket extractThemisFiles cleanupThemisBins
@@ -159,11 +155,13 @@ extractedPath bin = case bin of
   Themis -> $(mkRelFile "themis-cli")
   ThemisIndex -> $(mkRelFile "index.gob.xz")
 
+-- | Extract to @$TMP/fossa-vendor/<timestamp>
 extractDir :: Has (Lift IO) sig m => m (Path Abs Dir)
 extractDir = do
   wd <- sendIO getTempDir
-  ts <- show @Int . floor <$> sendIO getPOSIXTime
-  let subDir = fromMaybe $(mkRelDir "fallback") $ parseRelDir ts
+  -- Get some positive "random" number, in this case a timestamp
+  ts <- show @Int . abs . floor <$> sendIO getPOSIXTime
+  subDir <- sendIO $ parseRelDir ts
   pure (wd </> $(mkRelDir "fossa-vendor") </> subDir)
 
 makeExecutable :: Path Abs File -> IO ()
