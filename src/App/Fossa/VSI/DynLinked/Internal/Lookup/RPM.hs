@@ -11,6 +11,7 @@ import Control.Monad (join)
 import Data.Char (isSpace)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
 import Effect.Logger (Logger, logDebug, pretty)
@@ -59,7 +60,9 @@ rpmQueryFileCommand file =
 -- > glibc-2.28-151.el8.x86_64\n
 -- > ^^^^^^^^^^^^^^^^^^^^^^^^^ we want this whole output (but we don't want the trailing newline)
 rpmParseQueryFile :: Parser Text
-rpmParseQueryFile = takeWhile1P Nothing (const True) <* eof
+rpmParseQueryFile = do
+  pkg <- takeWhile1P Nothing (const True) <* eof
+  pure $ Text.strip pkg
 
 packageMeta :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Text -> m (Maybe LinuxPackageMetadata)
 packageMeta _ _ | not runningLinux = pure Nothing
