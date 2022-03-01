@@ -98,6 +98,7 @@ import Effect.Logger (
   logStdout,
  )
 import Effect.ReadFS (ReadFS)
+import Effect.Telemetry (Telemetry)
 import Fossa.API.Types (ApiOpts (..))
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
@@ -128,6 +129,7 @@ dispatch ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   AnalyzeConfig ->
   m ()
@@ -143,6 +145,7 @@ analyzeMain ::
   , Has Diag.Diagnostics sig m
   , Has Exec sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   StandardAnalyzeConfig ->
   m ()
@@ -165,6 +168,7 @@ runDependencyAnalysis ::
   , Has (Output DiscoveredProjectScan) sig m
   , Has Stack sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has Telemetry sig m
   ) =>
   -- | Analysis base directory
   Path Abs Dir ->
@@ -220,6 +224,7 @@ analyze ::
   , Has Debug sig m
   , Has Exec sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   StandardAnalyzeConfig ->
   m ()

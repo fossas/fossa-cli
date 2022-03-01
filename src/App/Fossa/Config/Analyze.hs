@@ -28,6 +28,7 @@ import App.Fossa.Config.Common (
   collectApiOpts,
   collectBaseDir,
   collectRevisionData',
+  collectTelemetryScope,
   commonOpts,
   metadataOpts,
   pathOpt,
@@ -39,6 +40,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
   ConfigPaths (..),
   ConfigTargets (..),
+  ConfigTelemetryScope,
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
   mergeFileCmdMetadata,
@@ -176,6 +178,7 @@ data StandardAnalyzeConfig = StandardAnalyzeConfig
   , unpackArchives :: Flag UnpackArchives
   , jsonOutput :: Flag JsonOutput
   , includeAllDeps :: Flag IncludeAll
+  , telemetryScope :: ConfigTelemetryScope
   }
   deriving (Eq, Ord, Show)
 
@@ -329,6 +332,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       modeOpts = collectModeOptions cliOpts
       filters = collectFilters maybeConfig cliOpts
       experimentalCfgs = collectExperimental maybeConfig
+      telemetryScope = collectTelemetryScope maybeConfig envvars commons
 
   StandardAnalyzeConfig
     <$> basedir
@@ -341,6 +345,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure analyzeUnpackArchives
     <*> pure analyzeJsonOutput
     <*> pure analyzeIncludeAllDeps
+    <*> telemetryScope
 
 collectFilters ::
   ( Has Diagnostics sig m

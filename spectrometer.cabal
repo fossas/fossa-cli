@@ -230,6 +230,7 @@ library
     Control.Carrier.StickyLogger
     Control.Carrier.TaskPool
     Control.Carrier.Threaded
+    Control.Concurrent.AsyncQueue
     Control.Effect.AtomicCounter
     Control.Effect.AtomicState
     Control.Effect.ConsoleRegion
@@ -260,6 +261,7 @@ library
     Data.String.Conversion
     Data.Tagged
     Data.Text.Extra
+    Data.Tracing.Instrument
     DepTypes
     Diag.Common
     Diag.Diagnostic
@@ -274,6 +276,7 @@ library
     Effect.Grapher
     Effect.Logger
     Effect.ReadFS
+    Effect.Telemetry
     Fossa.API.Types
     Graphing
     Graphing.Hydrate
@@ -504,38 +507,38 @@ test-suite unit-tests
     , hspec-megaparsec                ^>=2.2
     , spectrometer
 
-test-suite integration-tests
-  import:             lang
-  import:             deps
-  type:               exitcode-stdio-1.0
-  hs-source-dirs:     integration-test
-  main-is:            test.hs
-  ghc-options:        -threaded
-  other-modules:
-    Analysis.CarthageSpec
-    Analysis.ClojureSpec
-    Analysis.CocoapodsSpec
-    Analysis.ElixirSpec
-    Analysis.ErlangSpec
-    Analysis.FixtureExpectationUtils
-    Analysis.FixtureUtils
-    Analysis.GoSpec
-    Analysis.GradleSpec
-    Analysis.MavenSpec
-    Analysis.NugetSpec
-    Analysis.Python.PipenvSpec
-    Analysis.Python.PoetrySpec
-    Analysis.Python.SetuptoolsSpec
-    Analysis.RubySpec
-    Analysis.RustSpec
+-- test-suite integration-tests
+--   import:             lang
+--   import:             deps
+--   type:               exitcode-stdio-1.0
+--   hs-source-dirs:     integration-test
+--   main-is:            test.hs
+--   ghc-options:        -threaded
+--   other-modules:
+--     Analysis.CarthageSpec
+--     Analysis.ClojureSpec
+--     Analysis.CocoapodsSpec
+--     Analysis.ElixirSpec
+--     Analysis.ErlangSpec
+--     Analysis.FixtureExpectationUtils
+--     Analysis.FixtureUtils
+--     Analysis.GoSpec
+--     Analysis.GradleSpec
+--     Analysis.MavenSpec
+--     Analysis.NugetSpec
+--     Analysis.Python.PipenvSpec
+--     Analysis.Python.PoetrySpec
+--     Analysis.Python.SetuptoolsSpec
+--     Analysis.RubySpec
+--     Analysis.RustSpec
 
-  build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
-  build-depends:
-    , hedgehog                        ^>=1.0.2
-    , hspec                           ^>=2.8.2
-    , hspec-core                      ^>=2.8.2
-    , hspec-expectations-pretty-diff  ^>=0.7.2.5
-    , hspec-hedgehog                  ^>=0.0.1.2
-    , hspec-megaparsec                ^>=2.2
-    , req-conduit                     ^>=1.0.1
-    , spectrometer
+--   build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
+--   build-depends:
+--     , hedgehog                        ^>=1.0.2
+--     , hspec                           ^>=2.8.2
+--     , hspec-core                      ^>=2.8.2
+--     , hspec-expectations-pretty-diff  ^>=0.7.2.5
+--     , hspec-hedgehog                  ^>=0.0.1.2
+--     , hspec-megaparsec                ^>=2.2
+--     , req-conduit                     ^>=1.0.1
+--     , spectrometer
