@@ -51,6 +51,8 @@ import Prelude hiding (writeFile)
 data PackagedBinary
   = Syft
   | Wiggins
+  | Themis
+  | ThemisIndex
   deriving (Show, Eq, Enum, Bounded)
 
 dumpSubCommand :: SubCommand DumpBinsOpts DumpBinsConfig
@@ -114,6 +116,8 @@ writeBinary :: (Has (Lift IO) sig m) => Path Abs File -> PackagedBinary -> m ()
 writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
   Syft -> embeddedBinarySyft
   Wiggins -> embeddedBinaryWiggins
+  Themis -> embeddedBinaryThemis
+  ThemisIndex -> embeddedBinaryThemisIndex
 
 writeExecutable :: Path Abs File -> ByteString -> IO ()
 writeExecutable path content = do
@@ -127,6 +131,8 @@ extractedPath bin = case bin of
   -- Rename wiggins upon local extraction so that we can provide a better status line to users during the VSI strategy.
   -- Users don't know what "wiggins" is, but they explicitly enable the VSI plugin, so this is more intuitive.
   Wiggins -> $(mkRelFile "vsi-plugin")
+  Themis -> $(mkRelFile "themis-cli")
+  ThemisIndex -> $(mkRelFile "index.gob.xz")
 
 extractDir :: Has (Lift IO) sig m => m (Path Abs Dir)
 extractDir = do
@@ -147,3 +153,9 @@ embeddedBinaryWiggins = $(embedFileIfExists "vendor-bins/wiggins")
 
 embeddedBinarySyft :: ByteString
 embeddedBinarySyft = $(embedFileIfExists "vendor-bins/syft")
+
+embeddedBinaryThemis :: ByteString
+embeddedBinaryThemis = $(embedFileIfExists "vendor-bins/themis-cli")
+
+embeddedBinaryThemisIndex :: ByteString
+embeddedBinaryThemisIndex = $(embedFileIfExists "vendor-bins/index.gob.xz")
