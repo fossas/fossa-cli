@@ -37,6 +37,8 @@ dynamicDependencies root files = do
 
 resolveFile :: (Has Diagnostics sig m, Has Exec sig m) => Maybe APKLookupTable -> Path Abs Dir -> Path Abs File -> m DynamicDependency
 resolveFile table root file = do
+  -- When adding new tactics in the future, ensure that they fail (through diagnostics) if they're not the last link in the chain.
+  -- <||> selects the first item to succeed without a diagnostic error.
   resolved <- rpmTactic root file <||> debTactic root file <||> pure (apkTactic table file)
   case resolved of
     Just result -> pure result

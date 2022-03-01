@@ -6,7 +6,7 @@ module App.Fossa.VSI.DynLinked.Internal.Lookup.RPM (
 import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
 import App.Fossa.VSI.DynLinked.Util (runningLinux)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, recover)
+import Control.Effect.Diagnostics (Diagnostics)
 import Control.Monad (join)
 import Data.Char (isSpace)
 import Data.String.Conversion (toText)
@@ -29,7 +29,7 @@ rpmTactic _ _ = pure Nothing
 
 packageForFile :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe Text)
 packageForFile _ _ | not runningLinux = pure Nothing
-packageForFile root file = recover . execParser rpmParseQueryFile root $ rpmQueryFileCommand file
+packageForFile root file = Just <$> execParser rpmParseQueryFile root (rpmQueryFileCommand file)
 
 rpmQueryFileCommand :: Path Abs File -> Command
 rpmQueryFileCommand file =
@@ -50,7 +50,7 @@ rpmParseQueryFile = takeWhile1P Nothing (const True) <* eof
 
 packageMeta :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Text -> m (Maybe LinuxPackageMetadata)
 packageMeta _ _ | not runningLinux = pure Nothing
-packageMeta root name = recover . execParser rpmParseQueryPackageInfo root $ rpmQueryPackageInfoCommand name
+packageMeta root name = Just <$> execParser rpmParseQueryPackageInfo root (rpmQueryPackageInfoCommand name)
 
 rpmQueryPackageInfoCommand :: Text -> Command
 rpmQueryPackageInfoCommand packageName =

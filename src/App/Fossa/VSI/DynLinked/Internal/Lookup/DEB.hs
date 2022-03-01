@@ -6,7 +6,7 @@ module App.Fossa.VSI.DynLinked.Internal.Lookup.DEB (
 import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
 import App.Fossa.VSI.DynLinked.Util (runningLinux)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, recover)
+import Control.Effect.Diagnostics (Diagnostics)
 import Control.Monad (join, void)
 import Data.Char (isSpace)
 import Data.Foldable (traverse_)
@@ -31,7 +31,7 @@ debTactic root file | runningLinux = do
 debTactic _ _ = pure Nothing
 
 packageForFile :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe Text)
-packageForFile root file | runningLinux = recover . execParser parsePackageForFileOutput root $ dpkgQueryFileCommand file
+packageForFile root file | runningLinux = Just <$> execParser parsePackageForFileOutput root (dpkgQueryFileCommand file)
 packageForFile _ _ = pure Nothing
 
 dpkgQueryFileCommand :: Path Abs File -> Command
@@ -55,7 +55,7 @@ parsePackageForFileOutput = do
 
 packageMeta :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Text -> m (Maybe LinuxPackageMetadata)
 packageMeta _ _ | not runningLinux = pure Nothing
-packageMeta root name = recover . execParser dpkgParseQueryPackageInfo root $ dpkgQueryPackageInfoCommand name
+packageMeta root name = Just <$> execParser dpkgParseQueryPackageInfo root (dpkgQueryPackageInfoCommand name)
 
 dpkgQueryPackageInfoCommand :: Text -> Command
 dpkgQueryPackageInfoCommand packageName =
