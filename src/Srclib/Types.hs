@@ -31,26 +31,92 @@ data LicenseSourceUnit = LicenseSourceUnit
   }
   deriving (Eq, Ord, Show)
 
+instance ToJSON LicenseSourceUnit where
+  toJSON LicenseSourceUnit{..} =
+    object
+      [ "Name" .= licenseSourceUnitName
+      , "Type" .= licenseSourceUnitType
+      , "LicenseUnits" .= licenseSourceUnitLicenseUnits
+      ]
+
+-- There will be one of these for each license type found by Themis
+-- The data returned from themis-cli is an array of these.
 data LicenseUnit = LicenseUnit
   { licenseUnitName :: Text
   , licenseUnitType :: Text
+  , licenseUnitDir :: Text
+  , licenseUnitFiles :: [Text]
   , licenseUnitData :: [LicenseUnitData]
   }
   deriving (Eq, Ord, Show)
 
+instance ToJSON LicenseUnit where
+  toJSON LicenseUnit{..} =
+    object
+      [ "Name" .= licenseUnitName
+      , "Type" .= licenseUnitType
+      , "Dir" .= licenseUnitDir
+      , "Files" .= licenseUnitFiles
+      , "Data" .= licenseUnitData
+      ]
+
+instance FromJSON LicenseUnit where
+  parseJSON = withObject "LicenseUnit" $ \obj ->
+    LicenseUnit <$> obj .: "Name"
+      <*> obj .: "Type"
+      <*> obj .: "Dir"
+      <*> obj .: "Files"
+      <*> obj .: "Data"
 data LicenseUnitData = LicenseUnitData
   { licenseUnitDataPath :: Text
+  , licenseUnitDataCopyright :: Text
   , licenseUnitDataThemisVersion :: Text
   , licenseUnitDataMatchData :: [LicenseUnitMatchData]
+  , licenseUnitDataCopyrights :: [Text]
   }
   deriving (Eq, Ord, Show)
 
+instance ToJSON LicenseUnitData where
+  toJSON LicenseUnitData{..} =
+    object
+      [ "path" .= licenseUnitDataPath
+      , "Copyright" .= licenseUnitDataCopyright
+      , "ThemisVersion" .= licenseUnitDataThemisVersion
+      , "match_data" .= licenseUnitDataMatchData
+      , "Copyrights" .= licenseUnitDataCopyrights
+      ]
+
+instance FromJSON LicenseUnitData where
+  parseJSON = withObject "LicenseUnitData" $ \obj ->
+    LicenseUnitData <$> obj .: "path"
+      <*> obj .: "Copyright"
+      <*> obj .: "ThemisVersion"
+      <*> obj .: "match_data"
+      <*> obj .: "Copyrights"
 data LicenseUnitMatchData = LicenseUnitMatchData
   { licenseUnitMatchDataMatchString :: Text
   , licenseUnitMatchDataLocation :: Integer
   , licenseUnitMatchDataLength :: Integer
+  , licenseUnitMatchDataIndex :: Integer
   }
   deriving (Eq, Ord, Show)
+
+instance ToJSON LicenseUnitMatchData where
+  toJSON LicenseUnitMatchData{..} =
+    object
+      [ "match_string" .= licenseUnitMatchDataMatchString
+      , "location" .= licenseUnitMatchDataLocation
+      , "length" .= licenseUnitMatchDataLength
+      , "index" .= licenseUnitMatchDataIndex
+      ]
+
+instance FromJSON LicenseUnitMatchData where
+  parseJSON = withObject "LicenseUnitMatchData" $ \obj ->
+    LicenseUnitMatchData <$> obj .: "match_string"
+      <*> obj .: "location"
+      <*> obj .: "length"
+      <*> obj .: "index"
+
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
   , sourceUnitType :: Text
