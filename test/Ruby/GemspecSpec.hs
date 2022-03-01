@@ -1,20 +1,12 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Ruby.GemspecSpec (spec) where
 
-import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Data.Char (isSeparator)
 import Data.Foldable (for_)
 import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Path (Abs, Dir, File, Path, Rel, mkRelDir, mkRelFile, toFilePath, (</>))
-import Path.IO (getCurrentDir)
-import Strategy.Bundler (BundlerProject (..), findLicenses)
 import Strategy.Ruby.Gemspec (Assignment (Assignment), parseRubyArray, parseRubyAssignment, parseRubyWordsArray, rubyString)
-import Test.Effect (it', shouldBe')
-import Test.Hspec (Spec, context, describe, it, runIO, shouldBe)
+import Test.Hspec (Spec, context, describe, it, shouldBe)
 import Text.Megaparsec (MonadParsec (eof), ParseErrorBundle, Parsec, runParser, takeWhile1P)
-import Types (License (License), LicenseResult (LicenseResult), LicenseType (UnknownType))
 
 -- I'm not sure about these helpers. Get guidance on whether they help readability.
 shouldParse :: Parsec e s a -> s -> Either (ParseErrorBundle s e) a
@@ -25,41 +17,6 @@ to parsed expected = either (fail . show) (`shouldBe` expected) parsed
 
 mitLicense :: Assignment Text
 mitLicense = Assignment "s.license" "MIT"
-
-mkLicensesResult :: Path Abs File -> [LicenseResult]
-mkLicensesResult specPath =
-  [ LicenseResult
-      (toFilePath specPath)
-      [ License UnknownType "AGPL"
-      , License UnknownType "BSD"
-      , License UnknownType "MIT"
-      , License UnknownType "Apache"
-      ]
-  ]
-
-wordLicensesResult :: Path Abs File -> [LicenseResult]
-wordLicensesResult specPath =
-  [ LicenseResult
-      (toFilePath specPath)
-      [ License UnknownType "AGPL"
-      , License UnknownType "BSD"
-      , License UnknownType "MIT"
-      ]
-  ]
-
-multiLicenseResult :: Path Abs File -> Path Abs File -> [LicenseResult]
-multiLicenseResult specPath1 specPath2 =
-  [ LicenseResult
-      (toFilePath specPath1)
-      [License UnknownType "Ruby"]
-  , LicenseResult
-      (toFilePath specPath2)
-      [ License UnknownType "AGPL"
-      , License UnknownType "BSD"
-      , License UnknownType "MIT"
-      , License UnknownType "Apache"
-      ]
-  ]
 
 delimiterPairs :: [(Text, Text)]
 delimiterPairs =
@@ -122,60 +79,8 @@ assignmentParseSpec =
           parseRubyAssignment rubyString `shouldParse` licenseStr `to` mitLicense
         it "Parses a string with '.freeze' on the end" $
           parseRubyAssignment rubyString `shouldParse` (licenseStr <> ".freeze") `to` mitLicense
-
-specDir :: Path Rel Dir
-specDir = $(mkRelDir "test/Ruby/testdata/gemspecs")
-
-singleLicenseSpecPath :: Path Rel File
-singleLicenseSpecPath = specDir </> $(mkRelFile "single_license.gemspec")
-
-licensesSpecPath :: Path Rel File
-licensesSpecPath = specDir </> $(mkRelFile "licenses.gemspec")
-
-wordArraySpecPath :: Path Rel File
-wordArraySpecPath = specDir </> $(mkRelFile "licenses_word_array.gemspec")
-
-gemspecLicenseAnalyzeSpec :: Spec
-gemspecLicenseAnalyzeSpec =
-  describe "License analysis from gemspec files" $ do
-    currDir <- runIO getCurrentDir
-    it' "Can extract licenses from the 'license' key out of a more complicated gemspec" $ do
-      let specPath = currDir </> singleLicenseSpecPath
-      licenses <- findLicenses specPath
-      licenses `shouldBe'` [LicenseResult (toFilePath specPath) [License UnknownType "Ruby"]]
-    it' "Can extract licenses from the 'licenses' key" $ do
-      let specPath = currDir </> licensesSpecPath
-      licenses <- findLicenses specPath
-      licenses `shouldBe'` mkLicensesResult specPath
-    it' "Can extract licenses from the 'licenses' key with a word array" $ do
-      let specPath = currDir </> wordArraySpecPath
-      licenses <- findLicenses specPath
-      licenses `shouldBe'` wordLicensesResult specPath
-
-gemspecProjectLicenseScanningSpec :: Spec
-gemspecProjectLicenseScanningSpec = do
-  currDir <- runIO getCurrentDir
-  let specPath1 = currDir </> singleLicenseSpecPath
-      specPath2 = currDir </> licensesSpecPath
-  describe "Project license discovery from a project" $
-    it' "Discovers licenses from a project with multiple gemspec files" $ do
-      let proj =
-            BundlerProject
-              { bundlerGemfile = currDir </> $(mkRelFile "not-tested")
-              , bundlerGemfileLock = Nothing
-              , bundlerDir = currDir </> specDir
-              , bundlerGemSpec =
-                  [ specPath1
-                  , specPath2
-                  ]
-              }
-      licenses <- licenseAnalyzeProject proj
-      licenses `shouldBe'` multiLicenseResult specPath1 specPath2
-
 spec :: Spec
 spec = context "Ruby GemSpec tests" $ do
   stringParseSpec
   assignmentParseSpec
   arrayParseSpec
-  gemspecLicenseAnalyzeSpec
-  gemspecProjectLicenseScanningSpec
