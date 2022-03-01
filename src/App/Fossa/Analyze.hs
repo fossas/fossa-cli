@@ -247,7 +247,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         (True, Just apiOpts') -> analyzeVSI apiOpts' basedir revision filters skipResolutionSet
         _ -> pure Nothing
   dynamicLinkedResults <-
-    Diag.errorBoundaryIO . diagToDebug $
+    -- Diag.errorBoundaryIO . diagToDebug $
+    diagToDebug $
       Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget $ Config.vsiOptions cfg
   binarySearchResults <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -263,8 +264,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir apiOpts
   let additionalSourceUnits :: [SourceUnit]
-      additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults, dynamicLinkedResults]
-  traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults, binarySearchResults, manualSrcUnits, dynamicLinkedResults]
+      additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults, pure dynamicLinkedResults]
+  traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults, binarySearchResults, manualSrcUnits, pure dynamicLinkedResults]
 
   (projectScans, ()) <-
     Diag.context "discovery/analysis tasks"
