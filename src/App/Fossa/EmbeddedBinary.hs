@@ -10,7 +10,6 @@ module App.Fossa.EmbeddedBinary (
   BinaryPaths,
   withWigginsBinary,
   withSyftBinary,
-  withThemisBinaryAndIndex,
   allBins,
   PackagedBinary (..),
   dumpSubCommand,
@@ -86,13 +85,6 @@ withWigginsBinary ::
   (BinaryPaths -> m c) ->
   m c
 withWigginsBinary = withEmbeddedBinary Wiggins
-
-withThemisBinaryAndIndex ::
-  ( Has (Lift IO) sig m
-  ) =>
-  ([BinaryPaths] -> m c) ->
-  m c
-withThemisBinaryAndIndex = bracket (traverse extractEmbeddedBinary [Themis, ThemisIndex]) (traverse cleanupExtractedBinaries)
 
 withEmbeddedBinary ::
   ( Has (Lift IO) sig m
