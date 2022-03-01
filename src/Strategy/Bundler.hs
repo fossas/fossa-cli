@@ -4,7 +4,6 @@ module Strategy.Bundler (
   findLicenses,
   mkProject,
   getDeps,
-  genGemspecFilename,
   BundlerProject (..),
 ) where
 
@@ -19,8 +18,9 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Diagnostics qualified as Diag
 import Data.Aeson (ToJSON)
-import Diag.Common (AllDirectDeps (AllDirectDeps), MissingEdges (MissingEdges))
+import Data.Glob as Glob (matches, toGlob, (</>))
 import Data.Text (isSuffixOf)
+import Diag.Common (AllDirectDeps (AllDirectDeps), MissingEdges (MissingEdges))
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
@@ -29,7 +29,7 @@ import Discovery.Walk (
 import Effect.Exec (Exec, Has)
 import Effect.ReadFS (ReadFS, readContentsParser)
 import GHC.Generics (Generic)
-import Path (Abs, Dir, File, Path, dirname, fromRelDir, toFilePath)
+import Path (Abs, Dir, File, Path, toFilePath)
 import Strategy.Ruby.BundleShow qualified as BundleShow
 import Strategy.Ruby.Errors (
   BundlerMissingLockFile (..),
@@ -51,18 +51,12 @@ discover dir = context "Bundler" $ do
   projects <- context "Finding projects" $ findProjects dir
   pure (map mkProject projects)
 
-genGemspecFilename :: Path Abs Dir -> FilePath
-genGemspecFilename dir =
-  takeWhile (\c -> c /= '/' && c /= '\\') (fromRelDir (dirname dir)) <> ".gemspec"
-
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [BundlerProject]
 findProjects = walk' $ \dir _ files -> do
   let maybeGemfile = findFileNamed "Gemfile" files
       gemfileLock = findFileNamed "Gemfile.lock" files
-      -- TO REVIEW: appending .gemspec to the directory is a bit of a heuristic,
-      -- but it's what bundler does by default when making a new
-      -- gem. The alternative would be to read the 'name' field.
-      gemSpecFile = findFileNamed (genGemspecFilename dir) files
+      -- Bundler globs for *.gemspec files, so collect all of them for analysis.
+      gemSpecFiles = filter (`Glob.matches` (Glob.toGlob dir </> "*.gemspec")) files
 
   case maybeGemfile of
     Nothing -> pure ([], WalkContinue)
@@ -72,7 +66,7 @@ findProjects = walk' $ \dir _ files -> do
               { bundlerGemfile = gemfile
               , bundlerGemfileLock = gemfileLock
               , bundlerDir = dir
-              , bundlerGemSpec = gemSpecFile
+              , bundlerGemSpec = gemSpecFiles
               }
 
       pure ([project], WalkContinue)
@@ -81,7 +75,7 @@ data BundlerProject = BundlerProject
   { bundlerGemfile :: Path Abs File
   , bundlerGemfileLock :: Maybe (Path Abs File)
   , bundlerDir :: Path Abs Dir
-  , bundlerGemSpec :: Maybe (Path Abs File)
+  , bundlerGemSpec :: [Path Abs File]
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -91,7 +85,7 @@ instance AnalyzeProject BundlerProject where
   analyzeProject _ = getDeps
 
 instance LicenseAnalyzeProject BundlerProject where
-  licenseAnalyzeProject = maybe (pure []) findLicenses . bundlerGemSpec
+  licenseAnalyzeProject = fmap mconcat . traverse findLicenses . bundlerGemSpec
 
 findLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m [LicenseResult]
 findLicenses gemspecPath = do

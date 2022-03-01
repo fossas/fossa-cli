@@ -7,7 +7,7 @@ import Data.Foldable (for_)
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text.IO qualified as Text
-import Path (Abs, File, Path, Rel, mkRelFile, toFilePath, (</>))
+import Path (Abs, Dir, File, Path, Rel, mkRelDir, mkRelFile, toFilePath, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Bundler (findLicenses)
 import Strategy.Ruby.Gemspec (Assignment (Assignment), parseRubyArray, parseRubyAssignment, parseRubyWordsArray, readAssignments, rubyString)
@@ -115,20 +115,23 @@ assignmentParseSpec =
         it "Parses a string with '.freeze' on the end" $
           parseRubyAssignment rubyString `shouldParse` (licenseStr <> ".freeze") `to` mitLicense
 
+specDir :: Path Rel Dir
+specDir = $(mkRelDir "test/Ruby/testdata/gemspecs")
+
 -- Tests with this file and possibly can likely be deleted, I don't think
 -- they add much over the liceneses and word array tests. TODO: add a test
 -- for the edge case where both license and licenses are set
 simpleSpecPath :: Path Rel File
-simpleSpecPath = $(mkRelFile "test/Ruby/testdata/simple_spec.gemspec")
+simpleSpecPath = specDir </> $(mkRelFile "simple_spec.gemspec")
 
 complexSpecPath :: Path Rel File
-complexSpecPath = $(mkRelFile "test/Ruby/testdata/complex.gemspec")
+complexSpecPath = specDir </> $(mkRelFile "complex.gemspec")
 
 licensesSpecPath :: Path Rel File
-licensesSpecPath = $(mkRelFile "test/Ruby/testdata/licenses.gemspec")
+licensesSpecPath = specDir </> $(mkRelFile "licenses.gemspec")
 
 wordArraySpecPath :: Path Rel File
-wordArraySpecPath = $(mkRelFile "test/Ruby/testdata/licenses_word_array.gemspec")
+wordArraySpecPath = specDir </> $(mkRelFile "licenses_word_array.gemspec")
 
 gemspecFileParseSpec :: Spec
 gemspecFileParseSpec = do

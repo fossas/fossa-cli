@@ -46,7 +46,7 @@ rubyString =
     stringText =
       (betweenDelim '"')
         <|> (betweenDelim '\'')
-        <|> arbitraryDelim
+        <|> try arbitraryDelim
 
 data Assignment a = Assignment
   { label :: Text
@@ -85,7 +85,7 @@ rubyLicenseValuesP :: Parser [Text]
 rubyLicenseValuesP = rubyArrayP <|> (singleton <$> rubyString)
   where
     rubyArrayP =
-      parseRubyWordsArray
+      try parseRubyWordsArray
         <|> parseRubyArray rubyString
 
 -- | Parser to extract all assignments out of a section of text, ignoring everything else.
