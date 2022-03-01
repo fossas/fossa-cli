@@ -8,7 +8,7 @@ module App.Fossa.VPS.Scan.RunWiggins (
   PathFilters (..),
 ) where
 
-import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath)
+import App.Fossa.EmbeddedBinary (BinaryPaths, toPath)
 import App.Types (
   MonorepoAnalysisOpts (..),
   ProjectMetadata (..),
@@ -96,7 +96,7 @@ execWiggins binaryPaths opts = decodeUtf8 . BL.toStrict <$> execThrow (scanDir o
 wigginsCommand :: BinaryPaths -> WigginsOpts -> Command
 wigginsCommand bin WigginsOpts{..} = do
   Command
-    { cmdName = toText $ fromAbsFile $ toExecutablePath bin
+    { cmdName = toText $ fromAbsFile $ toPath bin
     , cmdArgs = spectrometerArgs
     , cmdAllowErr = Never
     }

@@ -2,16 +2,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.EmbeddedBinary (
-  extractEmbeddedBinary,
-  cleanupExtractedBinaries,
-  withEmbeddedBinary,
-  dumpEmbeddedBinary,
-  toExecutablePath,
   BinaryPaths,
+  ThemisBins (..),
+  toPath,
   withWigginsBinary,
   withSyftBinary,
-  allBins,
-  PackagedBinary (..),
+  withThemisAndIndex,
   dumpSubCommand,
 ) where
 
@@ -26,6 +22,9 @@ import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.ByteString (ByteString, writeFile)
 import Data.FileEmbed.Extra (embedFileIfExists)
 import Data.Foldable (for_)
+import Data.Maybe (fromMaybe)
+import Data.Tagged (Tagged, applyTag, unTag)
+import Data.Time.Clock.POSIX (getPOSIXTime)
 import Path (
   Abs,
   Dir,
@@ -36,6 +35,7 @@ import Path (
   mkRelDir,
   mkRelFile,
   parent,
+  parseRelDir,
   (</>),
  )
 import Path.IO (
@@ -68,9 +68,34 @@ data BinaryPaths = BinaryPaths
   { binaryPathContainer :: Path Abs Dir
   , binaryFilePath :: Path Rel File
   }
+  deriving (Eq, Ord, Show)
 
-toExecutablePath :: BinaryPaths -> Path Abs File
-toExecutablePath BinaryPaths{..} = binaryPathContainer </> binaryFilePath
+data ThemisBinary
+data ThemisIndex
+
+data ThemisBins = ThemisBins
+  { themisBinaryPaths :: Tagged ThemisBinary BinaryPaths
+  , indexBinaryPaths :: Tagged ThemisIndex BinaryPaths
+  }
+
+toPath :: BinaryPaths -> Path Abs File
+toPath BinaryPaths{..} = binaryPathContainer </> binaryFilePath
+
+-- We unpack both bins to the same directory, so we only have to do cleanup
+-- once to cover both.
+cleanupThemisBins :: Has (Lift IO) sig m => ThemisBins -> m ()
+cleanupThemisBins (ThemisBins binpath _) = cleanupExtractedBinaries $ unTag binpath
+
+withThemisAndIndex :: Has (Lift IO) sig m => (ThemisBins -> m c) -> m c
+withThemisAndIndex = bracket extractThemisFiles cleanupThemisBins
+
+extractThemisFiles :: Has (Lift IO) sig m => m ThemisBins
+extractThemisFiles = do
+  themisActual <- applyTag @ThemisBinary <$> extractEmbeddedBinary Themis
+  -- TODO: The gob is still xzipped, unzip it here
+  themisIndex <- applyTag @ThemisIndex <$> extractEmbeddedBinary ThemisIndex
+
+  pure $ ThemisBins themisActual themisIndex
 
 withSyftBinary ::
   ( Has (Lift IO) sig m
@@ -137,7 +162,9 @@ extractedPath bin = case bin of
 extractDir :: Has (Lift IO) sig m => m (Path Abs Dir)
 extractDir = do
   wd <- sendIO getTempDir
-  pure (wd </> $(mkRelDir "fossa-vendor"))
+  ts <- show @Int . floor <$> sendIO getPOSIXTime
+  let subDir = fromMaybe $(mkRelDir "fallback") $ parseRelDir ts
+  pure (wd </> $(mkRelDir "fossa-vendor") </> subDir)
 
 makeExecutable :: Path Abs File -> IO ()
 makeExecutable path = do
