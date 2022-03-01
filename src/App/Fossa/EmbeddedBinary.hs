@@ -34,7 +34,8 @@ import Path (
   mkRelDir,
   mkRelFile,
   parent,
-  (</>), parseRelDir
+  parseRelDir,
+  (</>),
  )
 import Path.IO (
   Permissions (executable),
@@ -80,7 +81,7 @@ toPath :: BinaryPaths -> Path Abs File
 toPath BinaryPaths{..} = binaryPathContainer </> binaryFilePath
 
 cleanupThemisBins :: Has (Lift IO) sig m => ThemisBins -> m ()
-cleanupThemisBins (ThemisBins a b) = traverse_ cleanupExtractedBinaries [unTag a, unTag b] 
+cleanupThemisBins (ThemisBins a b) = traverse_ cleanupExtractedBinaries [unTag a, unTag b]
 
 withThemisAndIndex :: Has (Lift IO) sig m => (ThemisBins -> m c) -> m c
 withThemisAndIndex = bracket extractThemisFiles cleanupThemisBins
@@ -157,7 +158,7 @@ extractedPath bin = case bin of
 
 -- | Extract to @$TMP/fossa-vendor/<timestamp>
 -- We used to extract everything to @$TMP/fossa-vendor@, but there's a subtle issue with that.
--- Cleanup is just removing the directory where the file resides, which is fine unless there's 
+-- Cleanup is just removing the directory where the file resides, which is fine unless there's
 -- more than one active extracted file.  Cleanup could potentially kill both while one is in use.
 -- Extracting to a another subdir meane that the cleanup only cleans the timestamp subdir.
 -- The only downside is that we never cleanup the fossa-vendor directory, which is not an issue,
