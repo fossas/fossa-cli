@@ -61,6 +61,8 @@ delimiterPairs =
   , ("%^", "^")
   , ("%q*", "*")
   , ("%Q#", "#")
+  , ("%q{", "}")
+  , ("%Q<", ">")
   ]
 
 stringParseSpec :: Spec

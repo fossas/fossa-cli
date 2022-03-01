@@ -20,6 +20,15 @@ import Text.Megaparsec.Char (char, space, space1, string)
 
 type Parser = Parsec Void Text
 
+-- |Given a single start delimiter, return start/end delimiters
+selectDelim :: Char -> (Char, Char)
+selectDelim = \case
+  '{' -> ('{', '}')
+  '<' -> ('<', '>')
+  '(' -> ('(', ')')
+  '[' -> ('[', ']')
+  c -> (c, c)
+
 rubyString :: Parser Text
 rubyString =
   -- '.freeze' is a ruby idiom that turns a string into an immutable version of
@@ -28,12 +37,15 @@ rubyString =
   toText <$> (stringText <* optional (string ".freeze"))
   where
     betweenDelim :: Char -> Parsec Void Text String
-    betweenDelim c = between (char c) (char c) (many (anySingleBut c))
+    betweenDelim c =
+      let (d1, d2) = selectDelim c
+       in between (char d1) (char d2) (many (anySingleBut d2))
     pctQ = optional (choice [char 'q', char 'Q'])
-    arbitraryDelim = try $ (char '%' *> pctQ *> lookAhead anySingle) >>= betweenDelim
+    arbitraryDelim = try $
+      do (char '%' *> pctQ *> lookAhead anySingle) >>= betweenDelim
     stringText =
-      betweenDelim '"'
-        <|> betweenDelim '\''
+      (betweenDelim '"')
+        <|> (betweenDelim '\'')
         <|> arbitraryDelim
 
 data Assignment a = Assignment
@@ -52,20 +64,18 @@ parseRubyAssignment rhs = Assignment <$> (labelP <* space <* char '=' <* space) 
     labelP = takeWhile1P Nothing (\c -> c /= '=' && not (isSpace c))
     valueP = rhs
 
-spaceAround :: Parser a -> Parser a
-spaceAround p = space *> p <* space
+lexeme :: Parser a -> Parser a
+lexeme p = space *> p <* space
 
 parseRubyArray :: Parser a -> Parser [a]
-parseRubyArray p = char '[' *> sepBy (spaceAround p) (char ',') <* char ']'
+parseRubyArray p = char '[' *> sepBy (lexeme p) (char ',') <* char ']'
 
 parseRubyWordsArray :: Parser [Text]
 parseRubyWordsArray =
   char '%'
     *> (choice [char 'W', char 'w'])
     *> char '('
-    *> space
-    *> (sepBy (takeWhileP (Just "word array element") wordChar) space1)
-    <* space
+    *> lexeme (sepBy (takeWhileP (Just "word array element") wordChar) space1)
     <* char ')'
   where
     wordChar c = not $ isSpace c || c == ')'
@@ -85,7 +95,7 @@ readAssignments ::
   Parser [Assignment a]
 readAssignments rhs = findAssignments
   where
-    tryAssignment = try $ parseRubyAssignment rhs <* space
+    tryAssignment = try . lexeme $ parseRubyAssignment rhs
     findAssignments = do
       res <-
         skipManyTill
