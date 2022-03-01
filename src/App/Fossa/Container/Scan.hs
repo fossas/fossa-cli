@@ -13,7 +13,7 @@ module App.Fossa.Container.Scan (
 import App.Fossa.Config.Container (ImageText (ImageText))
 import App.Fossa.EmbeddedBinary (
   BinaryPaths,
-  toExecutablePath,
+  toPath,
   withSyftBinary,
  )
 import App.Types (
@@ -247,7 +247,7 @@ runSyft image = runExecIO . withSyftBinary $ \syftBin -> do
 syftCommand :: BinaryPaths -> ImageText -> Command
 syftCommand bin (ImageText image) =
   Command
-    { cmdName = toText $ toExecutablePath bin
+    { cmdName = toText $ toPath bin
     , cmdArgs = ["--scope", "all-layers", "-o", "json", image]
     , cmdAllowErr = Never
     }
