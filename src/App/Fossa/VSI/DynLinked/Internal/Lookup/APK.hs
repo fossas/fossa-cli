@@ -12,10 +12,12 @@ module App.Fossa.VSI.DynLinked.Internal.Lookup.APK (
   APKLookupTable (..),
 ) where
 
+import App.Fossa.EmbeddedBinary (BinaryPaths, toExecutablePath, withSyftBinary)
 import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
 import App.Fossa.VSI.DynLinked.Util (runningLinux)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.Lift (Lift)
 import Control.Monad (join)
 import Data.Aeson (FromJSON, Result (Error, Success), ToJSON, Value, fromJSON, object, parseJSON, toJSON, withObject, (.:), (.=))
 import Data.Map (Map)
@@ -111,13 +113,13 @@ instance ToJSON SyftArtifactMetadataFile where
 isAPKArtifact :: SyftArtifact -> Bool
 isAPKArtifact SyftArtifact{..} = artifactType == "apk" && artifactMetadataType == "ApkMetadata"
 
-runSyft :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> m SyftData
-runSyft root = execJson root syftCommand
+runSyft :: (Has Diagnostics sig m, Has Exec sig m) => BinaryPaths -> Path Abs Dir -> m SyftData
+runSyft bin root = execJson root $ syftCommand bin
 
-syftCommand :: Command
-syftCommand =
+syftCommand :: BinaryPaths -> Command
+syftCommand bin =
   Command
-    { cmdName = "syft"
+    { cmdName = toText $ toExecutablePath bin
     , cmdArgs = ["/", "-o", "json"]
     , cmdAllowErr = Never
     }
@@ -129,9 +131,9 @@ data APKLookupTable = APKLookupTable
   }
   deriving (Eq, Show)
 
-buildLookupTable :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> m (Maybe APKLookupTable)
-buildLookupTable root | runningLinux = do
-  syft <- runSyft root
+buildLookupTable :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> m (Maybe APKLookupTable)
+buildLookupTable root | runningLinux = withSyftBinary $ \bin -> do
+  syft <- runSyft bin root
   Just <$> compileSyftOutput syft
 buildLookupTable _ = pure Nothing
 
