@@ -34,12 +34,22 @@ rubyString =
   -- '.freeze' is a ruby idiom that turns a string into an immutable version of
   -- itself. In this case it's safe to just ignore it and take the string it's
   -- attached to.
-  toText <$> (stringText <* optional (string ".freeze"))
+  mconcat <$> (stringText <* optional (string ".freeze"))
   where
-    betweenDelim :: Char -> Parsec Void Text String
+    betweenDelim :: Char -> Parser [Text]
     betweenDelim c =
       let (d1, d2) = selectDelim c
-       in between (char d1) (char d2) (many (anySingleBut d2))
+          -- only the close delimiter can stop parsing, so only check
+          -- for escaped versions of that.
+          delimEscape = string $ "\\" <> toText d2
+       in between
+            (char d1)
+            (char d2)
+            ( many
+                ( try delimEscape
+                    <|> (toText <$> anySingleBut d2)
+                )
+            )
     pctQ = optional (choice [char 'q', char 'Q'])
     arbitraryDelim = try $
       do (char '%' *> pctQ *> lookAhead anySingle) >>= betweenDelim

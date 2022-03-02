@@ -18,29 +18,31 @@ to parsed expected = either (fail . show) (`shouldBe` expected) parsed
 mitLicense :: Assignment Text
 mitLicense = Assignment "s.license" "MIT"
 
-delimiterPairs :: [(Text, Text)]
+delimiterPairs :: [(Text, Text, Text)]
 delimiterPairs =
-  [ ("'", "'")
-  , ("\'", "\'")
-  , ("%~", "~")
-  , ("%^", "^")
-  , ("%q*", "*")
-  , ("%Q#", "#")
-  , ("%q{", "}")
-  , ("%Q<", ">")
+  [ ("", "'", "'")
+  , ("", "\"", "\"")
+  , ("%", "~", "~")
+  , ("%", "^", "^")
+  , ("%q", "*", "*")
+  , ("%Q", "#", "#")
+  , ("%q", "{", "}")
+  , ("%Q", "<", ">")
   ]
 
 stringParseSpec :: Spec
 stringParseSpec =
-  for_ delimiterPairs $ \(d1, d2) ->
-    describe "Ruby String parsing test" $ do
-      let baseStr = d1 <> "Hello" <> d2
+  describe "Ruby String parsing test" $ do
+    for_ delimiterPairs $ \(prefix, d1, d2) -> do
+      let baseStr = prefix <> d1 <> "Hello" <> d2
       it ("Parses string enclosed in " <> toString d1 <> toString d2) $
         strParse `shouldParse` baseStr `to` "Hello"
       it "Consumes a '.freeze' on the end of a string" $ do
         strParse `shouldParse` (baseStr <> ".freeze") `to` "Hello"
-      it "Consumes a '.freeze' on the end of a string" $ do
-        strParse `shouldParse` (baseStr <> ".freeze") `to` "Hello"
+      it "Respects escaped delimiters" $ do
+        let expected = "\\" <> d1 <> "Hello" <> "\\" <> d2 <> " world"
+            escapedText = ("\"\\" <> d1 <> "Hello\\" <> d2 <> " world\"")
+        strParse `shouldParse` escapedText `to` expected
   where
     strParse = rubyString <* eof -- make sure it consumes all input
 
