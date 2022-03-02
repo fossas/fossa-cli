@@ -104,7 +104,7 @@ scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and 
     Just version -> pure version
 
   logDebug "about to get signed URL"
-  signedURL <- Fossa.getSignedURL apiOpts depVersion vendoredName
+  signedURL <- Fossa.getSignedLicenseScanURL apiOpts depVersion vendoredName
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
   _ <- Fossa.licenseScanResultUpload signedURL licenseSourceUnit
