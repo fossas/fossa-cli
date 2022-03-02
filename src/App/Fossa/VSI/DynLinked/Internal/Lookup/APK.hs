@@ -131,8 +131,8 @@ data APKLookupTable = APKLookupTable
 
 buildLookupTable :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> m (Maybe APKLookupTable)
 buildLookupTable root | runningLinux = do
-  syft <- recover $ runSyft root
-  traverse compileSyftOutput syft
+  syft <- runSyft root
+  Just <$> compileSyftOutput syft
 buildLookupTable _ = pure Nothing
 
 compileSyftOutput :: (Has Diagnostics sig m) => SyftData -> m APKLookupTable
