@@ -29,9 +29,15 @@ import Data.List (nub)
 import Fossa.API.Types
 import Path hiding ((</>))
 import Prettyprinter (Pretty (pretty))
-import Srclib.Types (Locator (..))
+import Srclib.Types (
+  LicenseSourceUnit (..),
+  LicenseUnit (..),
+  LicenseUnitData (..),
+  LicenseUnitMatchData (..),
+  Locator (..),
+ )
 
-import Data.String.Conversion (toString, toText)
+import Data.String.Conversion (encodeUtf8, toString, toText)
 import Data.Text (Text)
 
 import App.Fossa.EmbeddedBinary (BinaryPaths, withThemisBinaryAndIndex)
@@ -42,7 +48,7 @@ runLicenseScanOnDir ::
   , Has Logger sig m
   ) =>
   ThemisCLIOpts ->
-  m BL.ByteString
+  m [LicenseUnit]
 runLicenseScanOnDir opts = withThemisBinaryAndIndex (themisRunner opts)
 
 themisRunner ::
@@ -52,7 +58,7 @@ themisRunner ::
   ) =>
   ThemisCLIOpts ->
   [BinaryPaths] ->
-  m BL.ByteString
+  m [LicenseUnit]
 themisRunner opts [themisBinary, themisIndex] = do
   res <- runExecIO $ runThemis themisBinary themisIndex opts
   logDebug $ pretty $ "themis JSON:\n" ++ show res
@@ -64,7 +70,7 @@ themisRunner _ [] = do
 themisRunner _ _ = do
   Diag.fatalText ("too many args passed to lambda in themisRunner")
 
-runThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => BinaryPaths -> BinaryPaths -> ThemisCLIOpts -> m BL.ByteString
+runThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => BinaryPaths -> BinaryPaths -> ThemisCLIOpts -> m [LicenseUnit]
 runThemis themisBinary themisIndex opts = do
   context "Running license scan binary" $ execThemis themisBinary themisIndex opts
 
@@ -84,16 +90,18 @@ scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and 
   logDebug "about to start themis scan"
   themisScanResult <- runLicenseScanOnDir cliOpts
   logDebug "back from themis scan"
+  logDebug "themis scan results: "
+  logDebug $ pretty $ show themisScanResult
 
   depVersion <- case vendoredVersion of
-    Nothing -> pure (toText (show (md5 $ BL.toStrict themisScanResult)))
+    Nothing -> pure (toText (show (md5 $ encodeUtf8 (show themisScanResult))))
     Just version -> pure version
 
   logDebug "about to get signed URL"
   signedURL <- Fossa.getSignedURL apiOpts depVersion vendoredName
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
-  _ <- Fossa.licenseScanResultUpload signedURL themisScanResult
+  _ <- Fossa.licenseScanResultUpload signedURL $ encodeUtf8 (show themisScanResult)
 
   pure $ Archive vendoredName depVersion
 

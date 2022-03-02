@@ -12,6 +12,7 @@ import Data.Text (Text)
 import Effect.Logger (Logger, logDebug)
 import Path (Abs, Dir, Path, Rel, fromAbsFile, (</>))
 import Prettyprinter (Pretty (pretty))
+import Srclib.Types (LicenseUnit)
 
 import App.Fossa.EmbeddedBinary (
   BinaryPaths (..),
@@ -22,7 +23,7 @@ import Effect.Exec (
   AllowErr (Never),
   Command (..),
   Exec,
-  execThrow,
+  execJson,
  )
 
 data ThemisCLIOpts = ThemisCLIOpts
@@ -37,13 +38,13 @@ generateThemisOpts baseDir vendoredDepDir =
   where
     fullDir = baseDir </> vendoredDepDir
 
-execThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => BinaryPaths -> BinaryPaths -> ThemisCLIOpts -> m BL.ByteString
+execThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => BinaryPaths -> BinaryPaths -> ThemisCLIOpts -> m [LicenseUnit]
 execThemis themisBinaryPath indexGobPath opts = do
   let cmd = themisCommand themisBinaryPath indexGobPath
       scanDir = themisCLIScanDir opts
   logDebug $ pretty $ "themis command: " ++ show cmd
   logDebug $ pretty $ "scanDir: " ++ show scanDir
-  res <- execThrow scanDir cmd
+  res <- execJson @[LicenseUnit] scanDir cmd
   logDebug "back from command"
   pure res
 
