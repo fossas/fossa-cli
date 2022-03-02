@@ -14,6 +14,7 @@ import Control.Effect.Diagnostics (
   warn,
   (<||>),
  )
+import Control.Effect.Lift (Lift)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Effect.Exec (Exec)
@@ -26,6 +27,7 @@ dynamicDependencies ::
   ( Has Diagnostics sig m
   , Has Exec sig m
   , Has Logger sig m
+  , Has (Lift IO) sig m
   ) =>
   -- The scan root.
   Path Abs Dir ->
