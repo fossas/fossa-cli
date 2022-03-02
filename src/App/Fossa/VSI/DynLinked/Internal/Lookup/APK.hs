@@ -15,7 +15,7 @@ module App.Fossa.VSI.DynLinked.Internal.Lookup.APK (
 import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
 import App.Fossa.VSI.DynLinked.Util (runningLinux)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, fatalText, recover)
+import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Monad (join)
 import Data.Aeson (FromJSON, Result (Error, Success), ToJSON, Value, fromJSON, object, parseJSON, toJSON, withObject, (.:), (.=))
 import Data.Map (Map)
