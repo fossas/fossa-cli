@@ -29,6 +29,7 @@ module App.Fossa.FossaAPIV1 (
   archiveBuildUpload,
   assertUserDefinedBinaries,
   assertRevisionBinaries,
+  licenseScanFinalize,
   licenseScanResultUpload,
   resolveUserDefinedBinary,
   resolveProjectDependencies,
@@ -394,6 +395,29 @@ archiveBuildUpload apiOpts archiveProjects = runEmpty $
         req POST (archiveBuildURL baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
     pure (responseBody resp)
 
+---------- license-scan build queueing. This Endpoint ensures that after a license-scan is uploaded, it is scanned.
+
+licenseScanFinalizeUrl :: Url 'Https -> Url 'Https
+licenseScanFinalizeUrl baseUrl = baseUrl /: "api" /: "license_scan" /: "finalize"
+
+licenseScanFinalize ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ArchiveComponents ->
+  m (Maybe C.ByteString)
+licenseScanFinalize apiOpts archiveProjects = runEmpty $
+  fossaReqAllow401 $ do
+    (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+    let opts = "dependency" =: True <> "rawLicenseScan" =: True
+
+    -- The response appears to either be "Created" for new builds, or an error message for existing builds.
+    -- Making the actual return value of "Created" essentially worthless.
+    resp <-
+      context "Queuing a build for all archive uploads" $
+        req POST (licenseScanFinalizeUrl baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
+    pure (responseBody resp)
+
 ---------- The signed URL endpoint returns a URL endpoint that can be used to directly upload to an S3 bucket.
 
 signedURLEndpoint :: Url 'Https -> Url 'Https
@@ -454,6 +478,8 @@ archiveUpload signedArcURI arcFile = fossaReq $ do
     Right (url, options) -> uploadArchiveRequest url options
   where
     uploadArchiveRequest url options = reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
+
+---------- The license scan result upload function uploads the JSON license result directly to the signed URL it is provided.
 
 licenseScanResultUpload ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
