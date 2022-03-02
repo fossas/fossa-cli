@@ -92,6 +92,12 @@ scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and 
   logDebug "back from themis scan"
   logDebug "themis scan results: "
   logDebug $ pretty $ show themisScanResult
+  let licenseSourceUnit =
+        LicenseSourceUnit
+          { licenseSourceUnitName = vendoredPath
+          , licenseSourceUnitType = "cli-license-scanned"
+          , licenseSourceUnitLicenseUnits = themisScanResult
+          }
 
   depVersion <- case vendoredVersion of
     Nothing -> pure (toText (show (md5 $ encodeUtf8 (show themisScanResult))))
@@ -101,7 +107,7 @@ scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and 
   signedURL <- Fossa.getSignedURL apiOpts depVersion vendoredName
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
-  _ <- Fossa.licenseScanResultUpload signedURL $ encodeUtf8 (show themisScanResult)
+  _ <- Fossa.licenseScanResultUpload signedURL licenseSourceUnit
 
   pure $ Archive vendoredName depVersion
 

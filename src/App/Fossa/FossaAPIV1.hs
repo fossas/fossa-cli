@@ -62,7 +62,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
-import Data.String.Conversion (toStrict, toText)
+import Data.String.Conversion (encodeUtf8, toStrict, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Word (Word8)
@@ -436,7 +436,7 @@ archiveUpload signedArcURI arcFile = fossaReq $ do
 licenseScanResultUpload ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   SignedURL ->
-  BL.ByteString ->
+  LicenseSourceUnit ->
   m LbsResponse
 licenseScanResultUpload signedArcURI licenseScanResult = fossaReq $ do
   let arcURL = URI.mkURI $ signedURL signedArcURI
@@ -448,7 +448,7 @@ licenseScanResultUpload signedArcURI licenseScanResult = fossaReq $ do
     Left (url, options) -> uploadArchiveRequest url options
     Right (url, options) -> uploadArchiveRequest url options
   where
-    zippedLicenseResult = toStrict $ GZIP.compress licenseScanResult
+    zippedLicenseResult = toStrict $ GZIP.compress $ encode licenseScanResult
     uploadArchiveRequest url options = reqCb PUT url (ReqBodyBs zippedLicenseResult) lbsResponse options (pure . requestEncoder)
 
 -- requestEncoder properly encodes the Request path.
