@@ -69,10 +69,10 @@ instance FromJSON LicenseUnit where
       <*> obj .: "Data"
 data LicenseUnitData = LicenseUnitData
   { licenseUnitDataPath :: Text
-  , licenseUnitDataCopyright :: Text
+  , licenseUnitDataCopyright :: Maybe Text
   , licenseUnitDataThemisVersion :: Text
-  , licenseUnitDataMatchData :: [LicenseUnitMatchData]
-  , licenseUnitDataCopyrights :: [Text]
+  , licenseUnitDataMatchData :: Maybe [LicenseUnitMatchData]
+  , licenseUnitDataCopyrights :: Maybe [Text]
   }
   deriving (Eq, Ord, Show)
 
@@ -89,10 +89,10 @@ instance ToJSON LicenseUnitData where
 instance FromJSON LicenseUnitData where
   parseJSON = withObject "LicenseUnitData" $ \obj ->
     LicenseUnitData <$> obj .: "path"
-      <*> obj .: "Copyright"
+      <*> obj .:? "Copyright"
       <*> obj .: "ThemisVersion"
-      <*> obj .: "match_data"
-      <*> obj .: "Copyrights"
+      <*> obj .:? "match_data"
+      <*> obj .:? "Copyrights"
 data LicenseUnitMatchData = LicenseUnitMatchData
   { licenseUnitMatchDataMatchString :: Text
   , licenseUnitMatchDataLocation :: Integer
