@@ -6,7 +6,6 @@ module App.Fossa.RunThemis (
 
 import Control.Carrier.Error.Either (Has)
 import Control.Effect.Diagnostics (Diagnostics)
-import Data.ByteString.Lazy qualified as BL
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Effect.Logger (Logger, logDebug)

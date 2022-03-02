@@ -17,7 +17,6 @@ import Control.Effect.Lift
 
 import Crypto.Hash (Digest, MD5, hash)
 import Data.ByteString qualified as B
-import Data.ByteString.Lazy qualified as BL
 import Effect.Exec (Exec, runExecIO)
 import Effect.Logger (Logger, logDebug)
 
@@ -32,8 +31,6 @@ import Prettyprinter (Pretty (pretty))
 import Srclib.Types (
   LicenseSourceUnit (..),
   LicenseUnit (..),
-  LicenseUnitData (..),
-  LicenseUnitMatchData (..),
   Locator (..),
  )
 

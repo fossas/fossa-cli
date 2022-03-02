@@ -60,11 +60,10 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as C
-import Data.ByteString.Lazy qualified as BL
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
-import Data.String.Conversion (encodeUtf8, toStrict, toText)
+import Data.String.Conversion (toStrict, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Word (Word8)
