@@ -39,6 +39,8 @@ stringParseSpec =
         strParse `shouldParse` baseStr `to` "Hello"
       it "Consumes a '.freeze' on the end of a string" $ do
         strParse `shouldParse` (baseStr <> ".freeze") `to` "Hello"
+      it "Consumes a '.freeze()' on the end of a string" $ do
+        strParse `shouldParse` (baseStr <> ".freeze()") `to` "Hello"
       it "Respects escaped delimiters" $ do
         let expected = "\\" <> d1 <> "Hello" <> "\\" <> d2 <> " world"
             escapedText = ("\"\\" <> d1 <> "Hello\\" <> d2 <> " world\"")

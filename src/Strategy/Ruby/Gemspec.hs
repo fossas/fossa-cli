@@ -31,11 +31,12 @@ selectDelim = \case
 
 rubyString :: Parser Text
 rubyString =
-  -- '.freeze' is a ruby idiom that turns a string into an immutable version of
-  -- itself. In this case it's safe to just ignore it and take the string it's
-  -- attached to.
-  mconcat <$> (stringText <* optional (string ".freeze"))
+  mconcat <$> (stringText <* optional freezeParse)
   where
+    -- '.freeze' is a ruby idiom that turns a string into an immutable version of
+    -- itself. In this case it's safe to just ignore it and take the string it's
+    -- attached to.
+    freezeParse = string ".freeze" >> optional (string "()")
     betweenDelim :: Char -> Parser [Text]
     betweenDelim c =
       let (d1, d2) = selectDelim c
