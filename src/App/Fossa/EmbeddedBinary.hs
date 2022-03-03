@@ -2,17 +2,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.EmbeddedBinary (
-  extractEmbeddedBinary,
-  cleanupExtractedBinaries,
-  withEmbeddedBinary,
-  dumpEmbeddedBinary,
-  toExecutablePath,
-  BinaryPaths (..),
+  BinaryPaths,
+  ThemisBins (..),
+  toPath,
   withWigginsBinary,
   withSyftBinary,
-  withThemisBinaryAndIndex,
-  allBins,
-  PackagedBinary (..),
+  withThemisAndIndex,
   dumpSubCommand,
 ) where
 
@@ -26,8 +21,9 @@ import Control.Effect.Exception (bracket)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.ByteString (ByteString, writeFile)
 import Data.FileEmbed.Extra (embedFileIfExists)
-import Data.Foldable (for_)
-import Discovery.Archive (extractLzma)
+import Data.Foldable (for_, traverse_)
+import Data.Tagged (Tagged, applyTag, unTag)
+import Data.Time.Clock.POSIX (getPOSIXTime)
 import Path (
   Abs,
   Dir,
@@ -38,6 +34,7 @@ import Path (
   mkRelDir,
   mkRelFile,
   parent,
+  parseRelDir,
   (</>),
  )
 import Path.IO (
@@ -70,10 +67,32 @@ data BinaryPaths = BinaryPaths
   { binaryPathContainer :: Path Abs Dir
   , binaryFilePath :: Path Rel File
   }
-  deriving (Eq, Show, Ord)
+  deriving (Eq, Ord, Show)
 
-toExecutablePath :: BinaryPaths -> Path Abs File
-toExecutablePath BinaryPaths{..} = binaryPathContainer </> binaryFilePath
+data ThemisBinary
+data ThemisIndex
+
+data ThemisBins = ThemisBins
+  { themisBinaryPaths :: Tagged ThemisBinary BinaryPaths
+  , indexBinaryPaths :: Tagged ThemisIndex BinaryPaths
+  }
+
+toPath :: BinaryPaths -> Path Abs File
+toPath BinaryPaths{..} = binaryPathContainer </> binaryFilePath
+
+cleanupThemisBins :: Has (Lift IO) sig m => ThemisBins -> m ()
+cleanupThemisBins (ThemisBins a b) = traverse_ cleanupExtractedBinaries [unTag a, unTag b]
+
+withThemisAndIndex :: Has (Lift IO) sig m => (ThemisBins -> m c) -> m c
+withThemisAndIndex = bracket extractThemisFiles cleanupThemisBins
+
+extractThemisFiles :: Has (Lift IO) sig m => m ThemisBins
+extractThemisFiles = do
+  themisActual <- applyTag @ThemisBinary <$> extractEmbeddedBinary Themis
+  -- TODO: The gob is still xzipped, unzip it here
+  themisIndex <- applyTag @ThemisIndex <$> extractEmbeddedBinary ThemisIndex
+
+  pure $ ThemisBins themisActual themisIndex
 
 withSyftBinary ::
   ( Has (Lift IO) sig m
@@ -162,10 +181,23 @@ extractedPath bin = case bin of
   Themis -> $(mkRelFile "themis-cli")
   ThemisIndex -> $(mkRelFile "index.gob.xz")
 
+-- | Extract to @$TMP/fossa-vendor/<timestamp>
+-- We used to extract everything to @$TMP/fossa-vendor@, but there's a subtle issue with that.
+-- Cleanup is just removing the directory where the file resides, which is fine unless there's
+-- more than one active extracted file.  Cleanup could potentially kill both while one is in use.
+-- Extracting to another subdir means that the cleanup only cleans the timestamp subdir.
+-- The only downside is that we never cleanup the fossa-vendor directory, which is not an issue,
+-- since it should be empty by the time we finish cleanup.  The tempfile cleaner on the system
+-- should pick it up anyway.
 extractDir :: Has (Lift IO) sig m => m (Path Abs Dir)
 extractDir = do
   wd <- sendIO getTempDir
-  pure (wd </> $(mkRelDir "fossa-vendor"))
+  -- Get some positive "random" number, in this case a timestamp
+  -- at microsecond resolution.  Does not need to be exact, just
+  -- unique enough.
+  ts <- show @Int . abs . floor . (* 1_000_000) <$> sendIO getPOSIXTime
+  subDir <- sendIO $ parseRelDir ts
+  pure (wd </> $(mkRelDir "fossa-vendor") </> subDir)
 
 makeExecutable :: Path Abs File -> IO ()
 makeExecutable path = do
