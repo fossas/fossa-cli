@@ -10,7 +10,7 @@ import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Lift (Lift)
 import Data.String.Conversion (toText)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, logDebug, pretty)
+import Effect.Logger (Logger, logDebug, logWarn, pretty)
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, File, Path)
 import Srclib.Types (SourceUnit (..))
@@ -30,13 +30,13 @@ analyzeDynamicLinkedDeps root target = context "analyze dynamic deps" $ do
   environment <- context "inspect distro" environmentDistro
   case environment of
     Nothing -> do
-      logDebug "Skipping dynamic linking analysis: not a supported linux distro"
+      logWarn "Skipping dynamic linking analysis: not a supported linux distro"
       pure Nothing
     Just distro -> do
       linkedFiles <- context ("analyze target: " <> toText target) $ dynamicLinkedDependencies target
       if null linkedFiles
         then do
-          logDebug "Dynamic linking analysis: no dependencies found in target"
+          logWarn "Dynamic linking analysis: no dependencies found in target"
           pure Nothing
         else do
           logDebug . pretty $ "Dynamic linking analysis: resolving linked dependencies: " <> toText (show linkedFiles)

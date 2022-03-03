@@ -85,7 +85,8 @@ lddParseDependency = Just <$> (LocalDependency <$> (linePrefix *> ident) <* symb
 -- > linux-vdso.so.1 => (0x00007ffc28d59000)
 --
 -- In other words, such libraries are in the format @{name}{literal =>}{memory address}@.
--- Sometimes, the => is optional.
+-- Sometimes, the => is optional. Why this happens isn't well documented and I haven't found anything different
+-- between the cases where => is included and when it's excluded.
 --
 -- We want to ignore these, so just consume them:
 -- this parser always returns @Nothing@ after having consumed the line.
