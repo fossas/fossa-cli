@@ -433,6 +433,7 @@ test-suite unit-tests
     Dart.PubSpecSpec
     Discovery.ArchiveSpec
     Discovery.FiltersSpec
+    Discovery.WalkSpec
     Effect.ExecSpec
     Elixir.MixTreeSpec
     Erlang.ConfigParserSpec
