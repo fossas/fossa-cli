@@ -10,9 +10,11 @@ import Path.IO
 import Test.Hspec
 import Control.Carrier.Writer.Strict (runWriter, tell)
 import Control.Carrier.Diagnostics (runDiagnostics)
+import Control.Carrier.State.Strict (runState)
 import Effect.ReadFS (runReadFSIO)
 import Diag.Result
 import Control.Carrier.Stack
+import Control.Effect.State (get, put)
 import Data.Foldable (traverse_)
 
 spec :: Spec
@@ -44,8 +46,9 @@ spec =
       withSystemTempDir "testXXX" $ \tmpDir -> do
         let dirs = map (tmpDir </>) [
               $(mkRelDir "lib"),
-              $(mkRelDir "lib/pg"),
-              $(mkRelDir "lib/sqlite")]
+              $(mkRelDir "lib/sqlite"),
+              $(mkRelDir "lib/pg")
+              ]
         traverse_ createDir dirs
         createDirLink (tmpDir </> $(mkRelDir "lib")) (tmpDir </> $(mkRelDir "lib/pg/lib"))
         createDirLink (tmpDir </> $(mkRelDir "lib")) (tmpDir </> $(mkRelDir "lib/sqlite/lib"))
@@ -56,10 +59,23 @@ spec =
           . runReadFSIO
           . fmap fst
           . runWriter
-          $ walk (\dir _ _ -> tell [toFilePath dir] >> pure WalkContinue) tmpDir)
+          . fmap snd
+          . runState (0 :: Int)
+          $ walk
+            (\dir _ _ -> do
+              iterations :: Int <- get
+              if iterations < 10
+                then do
+                  put (iterations + 1)
+                  tell [toFilePath dir]
+                  pure WalkContinue
+                else do
+                  -- Message?
+                  pure WalkStop)
+            tmpDir)
         case output of
           f@(Failure _ _) ->
             fail $ "Walk failed: " ++ show f
           Success _ paths ->
-            paths `shouldBe` traverse (toFilePath . (tmpDir </>)) [ $(mkRelDir "lib")]
+            paths `shouldBe` map toFilePath (tmpDir : dirs)
   
