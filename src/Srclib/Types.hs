@@ -47,6 +47,7 @@ data LicenseUnit = LicenseUnit
   , licenseUnitDir :: Text
   , licenseUnitFiles :: [Text]
   , licenseUnitData :: [LicenseUnitData]
+  , licenseUnitInfo :: LicenseUnitInfo
   }
   deriving (Eq, Ord, Show)
 
@@ -58,6 +59,7 @@ instance ToJSON LicenseUnit where
       , "Dir" .= licenseUnitDir
       , "Files" .= licenseUnitFiles
       , "Data" .= licenseUnitData
+      , "Info" .= licenseUnitInfo
       ]
 
 instance FromJSON LicenseUnit where
@@ -67,6 +69,20 @@ instance FromJSON LicenseUnit where
       <*> obj .: "Dir"
       <*> obj .: "Files"
       <*> obj .: "Data"
+      <*> obj .: "Info"
+
+data LicenseUnitInfo = LicenseUnitInfo
+  {licenseUnitInfoDescription :: Maybe Text}
+  deriving (Eq, Ord, Show)
+
+instance ToJSON LicenseUnitInfo where
+  toJSON LicenseUnitInfo{..} =
+    object ["Description" .= licenseUnitInfoDescription]
+
+instance FromJSON LicenseUnitInfo where
+  parseJSON = withObject "LicenseUnitInfo" $ \obj ->
+    LicenseUnitInfo <$> obj .: "Description"
+
 data LicenseUnitData = LicenseUnitData
   { licenseUnitDataPath :: Text
   , licenseUnitDataCopyright :: Maybe Text
