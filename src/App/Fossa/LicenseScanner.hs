@@ -6,9 +6,7 @@ module App.Fossa.LicenseScanner (
 ) where
 
 import App.Fossa.RunThemis (
-  ThemisCLIOpts (..),
   execThemis,
-  generateThemisOpts,
  )
 
 import Control.Carrier.Diagnostics qualified as Diag
@@ -26,7 +24,7 @@ import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
 import Control.Monad (unless)
 import Data.List (nub)
 import Fossa.API.Types
-import Path hiding ((</>))
+import Path
 import Prettyprinter (Pretty (pretty))
 import Srclib.Types (
   LicenseSourceUnit (..),
@@ -44,26 +42,26 @@ runLicenseScanOnDir ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   ) =>
-  ThemisCLIOpts ->
+  Path Abs Dir ->
   m [LicenseUnit]
-runLicenseScanOnDir opts = withThemisAndIndex (themisRunner opts)
+runLicenseScanOnDir scanDir = withThemisAndIndex (themisRunner scanDir)
 
 themisRunner ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has Logger sig m
   ) =>
-  ThemisCLIOpts ->
+  Path Abs Dir ->
   ThemisBins ->
   m [LicenseUnit]
-themisRunner opts themisBins = do
-  res <- runExecIO $ runThemis themisBins opts
+themisRunner scanDir themisBins = do
+  res <- runExecIO $ runThemis themisBins scanDir
   logDebug $ pretty $ "themis JSON:\n" ++ show res
   pure res
 
-runThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => ThemisBins -> ThemisCLIOpts -> m [LicenseUnit]
-runThemis themisBins opts = do
-  context "Running license scan binary" $ execThemis themisBins opts
+runThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => ThemisBins -> Path Abs Dir -> m [LicenseUnit]
+runThemis themisBins scanDir = do
+  context "Running license scan binary" $ execThemis themisBins scanDir
 
 scanAndUploadVendoredDeps :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> Path Abs Dir -> [VendoredDependency] -> m [Archive]
 scanAndUploadVendoredDeps apiOpts baseDir = traverse (scanAndUpload apiOpts baseDir)
@@ -77,9 +75,9 @@ scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and 
   vendoredDepDir <- case parseRelDir (toString vendoredPath) of
     Left _ -> fatalText "Error constructing scan dir for vendored scan"
     Right val -> pure val
-  let cliOpts = generateThemisOpts baseDir vendoredDepDir
+  let cliScanDir = baseDir </> vendoredDepDir
   logDebug "about to start themis scan"
-  themisScanResult <- runLicenseScanOnDir cliOpts
+  themisScanResult <- runLicenseScanOnDir cliScanDir
   logDebug "back from themis scan"
   logDebug "themis scan results: "
   logDebug $ pretty $ show themisScanResult

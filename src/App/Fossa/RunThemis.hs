@@ -2,8 +2,6 @@
 
 module App.Fossa.RunThemis (
   execThemis,
-  generateThemisOpts,
-  ThemisCLIOpts (..),
 ) where
 
 import Control.Carrier.Error.Either (Has)
@@ -12,7 +10,7 @@ import Data.String.Conversion (toText)
 import Data.Tagged (unTag)
 import Data.Text (Text)
 import Effect.Logger (Logger, logDebug)
-import Path (Abs, Dir, Path, Rel, fromAbsFile, (</>))
+import Path (Abs, Dir, Path, fromAbsFile)
 import Prettyprinter (Pretty (pretty))
 import Srclib.Types (LicenseUnit)
 
@@ -29,22 +27,9 @@ import Effect.Exec (
   execJson,
  )
 
-data ThemisCLIOpts = ThemisCLIOpts
-  { themisCLIScanDir :: Path Abs Dir
-  , themisCLIArgs :: [Text]
-  }
-  deriving (Show, Eq, Ord)
-
-generateThemisOpts :: Path Abs Dir -> Path Rel Dir -> ThemisCLIOpts
-generateThemisOpts baseDir vendoredDepDir =
-  ThemisCLIOpts{themisCLIScanDir = fullDir, themisCLIArgs = []}
-  where
-    fullDir = baseDir </> vendoredDepDir
-
-execThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => ThemisBins -> ThemisCLIOpts -> m [LicenseUnit]
-execThemis themisBins opts = do
+execThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => ThemisBins -> Path Abs Dir -> m [LicenseUnit]
+execThemis themisBins scanDir = do
   let cmd = themisCommand themisBins
-      scanDir = themisCLIScanDir opts
   logDebug $ pretty $ "themis command: " ++ show cmd
   logDebug $ pretty $ "scanDir: " ++ show scanDir
   res <- execJson @[LicenseUnit] scanDir cmd
