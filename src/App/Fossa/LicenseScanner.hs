@@ -37,7 +37,7 @@ import Srclib.Types (
 import Data.String.Conversion (encodeUtf8, toString, toText)
 import Data.Text (Text)
 
-import App.Fossa.EmbeddedBinary (BinaryPaths, withThemisBinaryAndIndex)
+import App.Fossa.EmbeddedBinary (BinaryPaths, ThemisBins, withThemisAndIndex)
 
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
@@ -46,7 +46,7 @@ runLicenseScanOnDir ::
   ) =>
   ThemisCLIOpts ->
   m [LicenseUnit]
-runLicenseScanOnDir opts = withThemisBinaryAndIndex (themisRunner opts)
+runLicenseScanOnDir opts = withThemisAndIndex (themisRunner opts)
 
 themisRunner ::
   ( Has (Lift IO) sig m
@@ -54,22 +54,16 @@ themisRunner ::
   , Has Logger sig m
   ) =>
   ThemisCLIOpts ->
-  [BinaryPaths] ->
+  ThemisBins ->
   m [LicenseUnit]
-themisRunner opts [themisBinary, themisIndex] = do
-  res <- runExecIO $ runThemis themisBinary themisIndex opts
+themisRunner opts themisBins = do
+  res <- runExecIO $ runThemis themisBins opts
   logDebug $ pretty $ "themis JSON:\n" ++ show res
   pure res
-themisRunner _ [_] = do
-  Diag.fatalText ("only one arg to lambda in themisRunner")
-themisRunner _ [] = do
-  Diag.fatalText ("no args passed to lambda in themisRunner")
-themisRunner _ _ = do
-  Diag.fatalText ("too many args passed to lambda in themisRunner")
 
-runThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => BinaryPaths -> BinaryPaths -> ThemisCLIOpts -> m [LicenseUnit]
-runThemis themisBinary themisIndex opts = do
-  context "Running license scan binary" $ execThemis themisBinary themisIndex opts
+runThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => ThemisBins -> ThemisCLIOpts -> m [LicenseUnit]
+runThemis themisBins opts = do
+  context "Running license scan binary" $ execThemis themisBins opts
 
 scanAndUploadVendoredDeps :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> Path Abs Dir -> [VendoredDependency] -> m [Archive]
 scanAndUploadVendoredDeps apiOpts baseDir = traverse (scanAndUpload apiOpts baseDir)

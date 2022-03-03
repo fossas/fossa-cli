@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.EmbeddedBinary (
-  BinaryPaths,
+  BinaryPaths (..),
   ThemisBins (..),
   toPath,
   withWigginsBinary,
@@ -24,6 +24,7 @@ import Data.FileEmbed.Extra (embedFileIfExists)
 import Data.Foldable (for_, traverse_)
 import Data.Tagged (Tagged, applyTag, unTag)
 import Data.Time.Clock.POSIX (getPOSIXTime)
+import Discovery.Archive (extractLzma)
 import Path (
   Abs,
   Dir,
@@ -89,10 +90,15 @@ withThemisAndIndex = bracket extractThemisFiles cleanupThemisBins
 extractThemisFiles :: Has (Lift IO) sig m => m ThemisBins
 extractThemisFiles = do
   themisActual <- applyTag @ThemisBinary <$> extractEmbeddedBinary Themis
-  -- TODO: The gob is still xzipped, unzip it here
-  themisIndex <- applyTag @ThemisIndex <$> extractEmbeddedBinary ThemisIndex
+  compressedThemisIndex <- applyTag @ThemisIndex <$> extractEmbeddedBinary ThemisIndex
+  let decompressedThemisIndex =
+        BinaryPaths
+          { binaryPathContainer = binaryPathContainer $ unTag compressedThemisIndex
+          , binaryFilePath = $(mkRelFile "index.gob")
+          }
+  sendIO $ extractLzma (toPath $ unTag compressedThemisIndex) (toPath decompressedThemisIndex)
 
-  pure $ ThemisBins themisActual themisIndex
+  pure $ ThemisBins themisActual (applyTag @ThemisIndex decompressedThemisIndex)
 
 withSyftBinary ::
   ( Has (Lift IO) sig m
@@ -108,25 +114,6 @@ withWigginsBinary ::
   m c
 withWigginsBinary = withEmbeddedBinary Wiggins
 
-withThemisBinaryAndIndex ::
-  ( Has (Lift IO) sig m
-  ) =>
-  ([BinaryPaths] -> m c) ->
-  m c
-withThemisBinaryAndIndex = bracket extractThemisBinaryAndIndex cleanupMultipleBinaries
-
-extractThemisBinaryAndIndex :: (Has (Lift IO) sig m) => m [BinaryPaths]
-extractThemisBinaryAndIndex = do
-  themisBinaryPaths <- extractEmbeddedBinary Themis
-  compressedIndexBinaryPaths <- extractEmbeddedBinary ThemisIndex
-  let decompressedIndexBinaryPaths =
-        BinaryPaths
-          { binaryPathContainer = binaryPathContainer compressedIndexBinaryPaths
-          , binaryFilePath = $(mkRelFile "index.gob")
-          }
-  sendIO $ extractLzma (toExecutablePath compressedIndexBinaryPaths) (toExecutablePath decompressedIndexBinaryPaths)
-  pure [themisBinaryPaths, decompressedIndexBinaryPaths]
-
 withEmbeddedBinary ::
   ( Has (Lift IO) sig m
   ) =>
@@ -137,12 +124,6 @@ withEmbeddedBinary bin = bracket (extractEmbeddedBinary bin) cleanupExtractedBin
 
 cleanupExtractedBinaries :: (Has (Lift IO) sig m) => BinaryPaths -> m ()
 cleanupExtractedBinaries (BinaryPaths binPath _) = sendIO $ removeDirRecur binPath
-
--- Horrible hack to get withThemisBinaryAndIndex working while Wes figures out a better way
--- to run multiple binaries
-cleanupMultipleBinaries :: (Has (Lift IO) sig m) => [BinaryPaths] -> m ()
-cleanupMultipleBinaries ((BinaryPaths binPath _) : _) = sendIO $ removeDirRecur binPath
-cleanupMultipleBinaries [] = pure ()
 
 extractEmbeddedBinary :: (Has (Lift IO) sig m) => PackagedBinary -> m BinaryPaths
 extractEmbeddedBinary bin = do

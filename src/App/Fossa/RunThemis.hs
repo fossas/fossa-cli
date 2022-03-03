@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.RunThemis (
   execThemis,
   generateThemisOpts,
@@ -7,6 +9,7 @@ module App.Fossa.RunThemis (
 import Control.Carrier.Error.Either (Has)
 import Control.Effect.Diagnostics (Diagnostics)
 import Data.String.Conversion (toText)
+import Data.Tagged (unTag)
 import Data.Text (Text)
 import Effect.Logger (Logger, logDebug)
 import Path (Abs, Dir, Path, Rel, fromAbsFile, (</>))
@@ -15,7 +18,8 @@ import Srclib.Types (LicenseUnit)
 
 import App.Fossa.EmbeddedBinary (
   BinaryPaths (..),
-  toExecutablePath,
+  ThemisBins (..),
+  toPath,
  )
 
 import Effect.Exec (
@@ -33,13 +37,13 @@ data ThemisCLIOpts = ThemisCLIOpts
 
 generateThemisOpts :: Path Abs Dir -> Path Rel Dir -> ThemisCLIOpts
 generateThemisOpts baseDir vendoredDepDir =
-  ThemisCLIOpts{themisCLIScanDir = fullDir, themisCLIArgs = ["--help"]}
+  ThemisCLIOpts{themisCLIScanDir = fullDir, themisCLIArgs = []}
   where
     fullDir = baseDir </> vendoredDepDir
 
-execThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => BinaryPaths -> BinaryPaths -> ThemisCLIOpts -> m [LicenseUnit]
-execThemis themisBinaryPath indexGobPath opts = do
-  let cmd = themisCommand themisBinaryPath indexGobPath
+execThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => ThemisBins -> ThemisCLIOpts -> m [LicenseUnit]
+execThemis themisBins opts = do
+  let cmd = themisCommand themisBins
       scanDir = themisCLIScanDir opts
   logDebug $ pretty $ "themis command: " ++ show cmd
   logDebug $ pretty $ "scanDir: " ++ show scanDir
@@ -47,18 +51,18 @@ execThemis themisBinaryPath indexGobPath opts = do
   logDebug "back from command"
   pure res
 
-themisCommand :: BinaryPaths -> BinaryPaths -> Command
-themisCommand themisBin indexGobBin = do
+themisCommand :: ThemisBins -> Command
+themisCommand ThemisBins{..} = do
   Command
-    { cmdName = toText $ fromAbsFile $ toExecutablePath themisBin
-    , cmdArgs = generateThemisArgs indexGobBin
+    { cmdName = toText $ fromAbsFile $ toPath $ unTag themisBinaryPaths
+    , cmdArgs = generateThemisArgs $ unTag indexBinaryPaths
     , cmdAllowErr = Never
     }
 
 generateThemisArgs :: BinaryPaths -> [Text]
-generateThemisArgs indexPath =
+generateThemisArgs BinaryPaths{..} =
   [ "--license-data-dir"
-  , toText $ binaryPathContainer indexPath
+  , toText binaryPathContainer
   , "--srclib-with-matches"
   , "."
   ]
