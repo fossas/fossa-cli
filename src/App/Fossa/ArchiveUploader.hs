@@ -24,6 +24,7 @@ import Data.Aeson (
  )
 import Data.Aeson.Extra
 import Data.ByteString.Lazy qualified as BS
+import Data.Foldable (traverse_)
 import Data.Functor.Extra ((<$$>))
 import Data.List (intercalate, nub)
 import Data.Map.Strict qualified as Map
@@ -89,7 +90,11 @@ archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
 
   -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
-  _ <- Fossa.archiveBuildUpload apiOpts (ArchiveComponents archives)
+
+
+  traverse_ (Fossa.archiveBuildUpload apiOpts) archives 
+  -- res <- Fossa.archiveBuildUpload apiOpts (ArchiveComponents archives)
+  -- logDebug $ pretty $ show res
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
   -- but not when reading from a source unit.

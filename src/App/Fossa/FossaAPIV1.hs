@@ -64,7 +64,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Word (Word8)
 import Effect.Logger
-import Fossa.API.Types (ApiOpts, ArchiveComponents, Issues, SignedURL, signedURL, useApiOpts)
+import Fossa.API.Types (ApiOpts, Archive, ArchiveComponents (ArchiveComponents), Issues, SignedURL, signedURL, useApiOpts)
 import Network.HTTP.Client qualified as C
 import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Req
@@ -375,14 +375,14 @@ archiveBuildURL baseUrl = baseUrl /: "api" /: "components" /: "build"
 archiveBuildUpload ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   ApiOpts ->
-  ArchiveComponents ->
+  Archive ->
   m (Maybe C.ByteString)
-archiveBuildUpload apiOpts archiveProjects = runEmpty $
+archiveBuildUpload apiOpts archive= runEmpty $
   fossaReqAllow401 $ do
     (baseUrl, baseOpts) <- useApiOpts apiOpts
 
     let opts = "dependency" =: True <> "rawLicenseScan" =: True
-
+    let archiveProjects = ArchiveComponents [archive]
     -- The response appears to either be "Created" for new builds, or an error message for existing builds.
     -- Making the actual return value of "Created" essentially worthless.
     resp <-
