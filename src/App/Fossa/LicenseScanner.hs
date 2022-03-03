@@ -37,7 +37,7 @@ import Srclib.Types (
 import Data.String.Conversion (encodeUtf8, toString, toText)
 import Data.Text (Text)
 
-import App.Fossa.EmbeddedBinary (BinaryPaths, ThemisBins, withThemisAndIndex)
+import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)
 
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
