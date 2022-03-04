@@ -71,7 +71,7 @@ instance FromJSON LicenseUnit where
       <*> obj .: "Data"
       <*> obj .: "Info"
 
-data LicenseUnitInfo = LicenseUnitInfo
+newtype LicenseUnitInfo = LicenseUnitInfo
   {licenseUnitInfoDescription :: Maybe Text}
   deriving (Eq, Ord, Show)
 
