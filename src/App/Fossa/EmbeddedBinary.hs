@@ -90,14 +90,13 @@ withThemisAndIndex = bracket extractThemisFiles cleanupThemisBins
 extractThemisFiles :: Has (Lift IO) sig m => m ThemisBins
 extractThemisFiles = do
   themisActual <- applyTag @ThemisBinary <$> extractEmbeddedBinary Themis
-  compressedThemisIndex <- applyTag @ThemisIndex <$> extractEmbeddedBinary ThemisIndex
+  compressedThemisIndex <- extractEmbeddedBinary ThemisIndex
   let decompressedThemisIndex =
         BinaryPaths
-          { binaryPathContainer = binaryPathContainer $ unTag compressedThemisIndex
+          { binaryPathContainer = binaryPathContainer compressedThemisIndex
           , binaryFilePath = $(mkRelFile "index.gob")
           }
-  sendIO $ extractLzma (toPath $ unTag compressedThemisIndex) (toPath decompressedThemisIndex)
-
+  sendIO $ extractLzma (toPath compressedThemisIndex) (toPath decompressedThemisIndex)
   pure $ ThemisBins themisActual (applyTag @ThemisIndex decompressedThemisIndex)
 
 withSyftBinary ::
