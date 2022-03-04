@@ -4,23 +4,22 @@ module Discovery.WalkSpec (
   spec,
 ) where
 
-import Control.Carrier.Diagnostics (runDiagnostics)
-import Control.Carrier.Stack
 import Control.Carrier.State.Strict (runState)
 import Control.Carrier.Writer.Strict (runWriter, tell)
+import Control.Effect.Lift
 import Control.Effect.State (get, put)
 import Data.Foldable (traverse_)
-import Diag.Result
 import Discovery.Walk
-import Effect.ReadFS (runReadFSIO)
+import Effect.ReadFS
 import Path
-import Path.IO
+import Path.IO (createDir, createDirLink)
+import Test.Effect
 import Test.Hspec
 
 spec :: Spec
 spec =
   describe "walk" $ do
-    it "does a pre-order depth-first traversal" . withSystemTempDir "test-Discovery-Walk-XXX" $ \tmpDir -> do
+    it' "does a pre-order depth-first traversal" . withTempDir "test-Discovery-Walk" $ \tmpDir -> do
       let dirs =
             map
               (tmpDir </>)
@@ -29,12 +28,12 @@ spec =
               , $(mkRelDir "c")
               , $(mkRelDir "c/d")
               ]
-      traverse_ createDir dirs
+      sendIO $ traverse_ createDir dirs
 
       paths <- runWalk tmpDir
-      paths `shouldBe` map toFilePath (tmpDir : dirs)
+      paths `shouldBe'` map toFilePath (tmpDir : dirs)
 
-    it "handles symlink loops" . withSystemTempDir "test-Discovery-Walk-XXX" $ \tmpDir -> do
+    it' "handles symlink loops" . withTempDir "test-Discovery-Walk" $ \tmpDir -> do
       let dirs =
             map
               (tmpDir </>)
@@ -42,42 +41,36 @@ spec =
               , $(mkRelDir "lib/sqlite")
               , $(mkRelDir "lib/pg")
               ]
-      traverse_ createDir dirs
-
-      -- Each of these symlinks forms a loop.
-      createDirLink (tmpDir </> $(mkRelDir "lib")) (tmpDir </> $(mkRelDir "lib/pg/lib"))
-      createDirLink (tmpDir </> $(mkRelDir "lib")) (tmpDir </> $(mkRelDir "lib/sqlite/lib"))
+      sendIO $ do
+        traverse_ createDir dirs
+        -- Each of these symlinks forms a loop.
+        createDirLink (tmpDir </> $(mkRelDir "lib")) (tmpDir </> $(mkRelDir "lib/pg/lib"))
+        createDirLink (tmpDir </> $(mkRelDir "lib")) (tmpDir </> $(mkRelDir "lib/sqlite/lib"))
 
       paths <- runWalkWithCircuitBreaker 10 tmpDir
-      paths `shouldBe` map toFilePath (tmpDir : dirs)
+      paths `shouldBe'` map toFilePath (tmpDir : dirs)
 
-runWalk :: Path Abs Dir -> IO [FilePath]
+runWalk ::
+  (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [FilePath]
 runWalk = runWalkWithCircuitBreaker 100
 
-runWalkWithCircuitBreaker :: Int -> Path Abs Dir -> IO [FilePath]
-runWalkWithCircuitBreaker maxIters startDir = do
-  output <-
-    runStack
-      . runDiagnostics
-      . runReadFSIO
-      . fmap fst
-      . runWriter
-      . fmap snd
-      . runState (0 :: Int)
-      $ walk
-        ( \dir _ _ -> do
-            iterations :: Int <- get
-            if iterations < maxIters
-              then do
-                put (iterations + 1)
-                tell [toFilePath dir]
-                pure WalkContinue
-              else do
-                pure WalkStop
-        )
-        startDir
-  case output of
-    f@(Failure _ _) ->
-      fail $ "Walk failed: " ++ show f
-    Success _ paths ->
-      return paths
+runWalkWithCircuitBreaker ::
+  (Has ReadFS sig m, Has Diagnostics sig m) => Int -> Path Abs Dir -> m [FilePath]
+runWalkWithCircuitBreaker maxIters startDir =
+  do
+    fmap fst
+    . runWriter
+    . fmap snd
+    . runState (0 :: Int)
+    $ walk
+      ( \dir _ _ -> do
+          iterations :: Int <- get
+          if iterations < maxIters
+            then do
+              put (iterations + 1)
+              tell [toFilePath dir]
+              pure WalkContinue
+            else do
+              pure WalkStop
+      )
+      startDir
