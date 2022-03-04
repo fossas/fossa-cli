@@ -57,14 +57,21 @@ rubyWordArray = "%w( hello world \t foo \nbar)"
 expectedArray :: [Text]
 expectedArray = ["hello", "world", "foo", "bar"]
 
+escapedRubyWordArray :: Text
+escapedRubyWordArray = "%w[ [hello\\] world \t foo \nbar]"
+
+escapedExpectedArray :: [Text]
+escapedExpectedArray = ["[hello\\]", "world", "foo", "bar"]
+
 arrayParseSpec :: Spec
 arrayParseSpec =
   describe "Parsing arrays of items in ruby" $ do
     it "Can parse an array of strings" $
       parseRubyArray rubyString `shouldParse` rubyStringArray `to` expectedArray
-
     it "Can parse an array of words" $
       parseRubyWordsArray `shouldParse` rubyWordArray `to` expectedArray
+    it "Can parse an array of words with escaped ending delimiter" $
+      parseRubyWordsArray `shouldParse` escapedRubyWordArray `to` escapedExpectedArray
 
 assignmentParseSpec :: Spec
 assignmentParseSpec =

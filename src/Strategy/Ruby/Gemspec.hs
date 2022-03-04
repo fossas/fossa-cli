@@ -15,7 +15,7 @@ import Data.List.Extra (singleton)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
-import Text.Megaparsec (MonadParsec (eof), Parsec, anySingle, anySingleBut, between, choice, lookAhead, many, optional, sepBy, skipManyTill, takeWhile1P, takeWhileP, try)
+import Text.Megaparsec (MonadParsec (eof), Parsec, anySingle, anySingleBut, between, choice, lookAhead, many, optional, sepBy, skipManyTill, takeWhile1P, try)
 import Text.Megaparsec.Char (char, space, space1, string)
 
 type Parser = Parsec Void Text
@@ -123,19 +123,32 @@ parseRubyArray p = char '[' *> sepBy (lexeme p) (char ',') <* char ']'
 -- these examples:
 --
 -- > %w(foo bar)
--- > %W(foo bar baz)
+-- > %W[foo bar baz]
 --
--- This is interpreted as an array of strings. The 'W' variant also allows
--- interpolation, but as with 'rubyString' these are treated as ordinary text.
+-- This is interpreted as an array of strings. The delimiter after the 'w' can
+-- be arbitrary as with '$q'. The 'W' variant also allows interpolation, but as
+-- with 'rubyString' these are treated as ordinary text.
 parseRubyWordsArray :: Parser [Text]
-parseRubyWordsArray =
-  char '%'
-    *> (choice [char 'W', char 'w'])
-    *> char '('
-    *> lexeme (sepBy (takeWhileP (Just "word array element") wordChar) space1)
-    <* char ')'
+parseRubyWordsArray = do
+  (d1, d2) <- parsePrefix
+  let escapedEndDelim = toText '\\' <> toText d2
+      arrayWord =
+        mconcat
+          <$> many
+            ( takeWhile1P (Just "word element") (\c -> not $ isSpace c || c == d2 || c == '\\')
+                <|> string escapedEndDelim
+            )
+  char d1 *> lexeme (sepBy arrayWord space1) <* char d2
   where
-    wordChar c = not $ isSpace c || c == ')'
+    parsePrefix =
+      selectDelim
+        <$> ( char '%'
+                *> (choice [char 'W', char 'w'])
+                *> lookAhead anySingle
+            )
+
+-- >>> parse (lexeme (sepBy (string "h") space1)) "" "h h"
+-- Right ["h","h"]
 
 -- |Try to parse any value that could potentially be a license.
 -- This parser only works for licenses that are a string literal or an
