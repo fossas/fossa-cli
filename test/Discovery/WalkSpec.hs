@@ -6,6 +6,7 @@ module Discovery.WalkSpec (
 
 import Control.Carrier.State.Strict (runState)
 import Control.Carrier.Writer.Strict (runWriter, tell)
+import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift
 import Control.Effect.State (get, put)
 import Data.Foldable (traverse_)
