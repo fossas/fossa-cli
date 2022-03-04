@@ -56,14 +56,11 @@ runThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs D
 runThemis themisBins scanDir = do
   context "Running license scan binary" $ execThemis themisBins scanDir
 
-scanAndUploadVendoredDeps :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m) => ApiOpts -> Path Abs Dir -> [VendoredDependency] -> m [Archive]
-scanAndUploadVendoredDeps apiOpts baseDir = traverse (scanAndUpload apiOpts baseDir)
-
 md5 :: B.ByteString -> Digest MD5
 md5 = hash
 
-scanAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m) => ApiOpts -> Path Abs Dir -> VendoredDependency -> m Archive
-scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
+scanAndUploadVendoredDep :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m) => ApiOpts -> Path Abs Dir -> VendoredDependency -> m Archive
+scanAndUploadVendoredDep apiOpts baseDir VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
   logSticky $ "License Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
   vendoredDepDir <- case parseRelDir (toString vendoredPath) of
     Left _ -> fatalText "Error constructing scan dir for vendored scan"
@@ -101,7 +98,7 @@ licenseScanSourceUnit baseDir apiOpts vendoredDeps = do
   unless (null duplicates) $ Diag.fatalText $ duplicateFailureBundle duplicates
 
   -- At this point, we have a good list of deps, so go for it.
-  archives <- scanAndUploadVendoredDeps apiOpts baseDir uniqDeps
+  archives <- traverse (scanAndUploadVendoredDep apiOpts baseDir) uniqDeps
 
   -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
