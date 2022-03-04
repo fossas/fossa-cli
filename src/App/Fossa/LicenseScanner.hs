@@ -16,7 +16,7 @@ import Control.Effect.Lift
 import Crypto.Hash (Digest, MD5, hash)
 import Data.ByteString qualified as B
 import Effect.Exec (Exec, runExecIO)
-import Effect.Logger (Logger, logDebug)
+import Effect.Logger (Logger)
 
 import App.Fossa.ArchiveUploader
 import App.Fossa.FossaAPIV1 qualified as Fossa
@@ -25,7 +25,6 @@ import Control.Monad (unless)
 import Data.List (nub)
 import Fossa.API.Types
 import Path
-import Prettyprinter (Pretty (pretty))
 import Srclib.Types (
   LicenseSourceUnit (..),
   LicenseUnit (..),
@@ -55,9 +54,7 @@ themisRunner ::
   ThemisBins ->
   m [LicenseUnit]
 themisRunner scanDir themisBins = do
-  res <- runExecIO $ runThemis themisBins scanDir
-  logDebug $ pretty $ "themis JSON:\n" ++ show res
-  pure res
+  runExecIO $ runThemis themisBins scanDir
 
 runThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => ThemisBins -> Path Abs Dir -> m [LicenseUnit]
 runThemis themisBins scanDir = do
@@ -71,16 +68,12 @@ md5 = hash
 
 scanAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> Path Abs Dir -> VendoredDependency -> m Archive
 scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
-  logSticky $ "Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
+  logSticky $ "License Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
   vendoredDepDir <- case parseRelDir (toString vendoredPath) of
     Left _ -> fatalText "Error constructing scan dir for vendored scan"
     Right val -> pure val
   let cliScanDir = baseDir </> vendoredDepDir
-  logDebug "about to start themis scan"
   themisScanResult <- runLicenseScanOnDir cliScanDir
-  logDebug "back from themis scan"
-  logDebug "themis scan results: "
-  logDebug $ pretty $ show themisScanResult
   let licenseSourceUnit =
         LicenseSourceUnit
           { licenseSourceUnitName = vendoredPath
@@ -92,7 +85,6 @@ scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and 
     Nothing -> pure (toText (show (md5 $ encodeUtf8 (show themisScanResult))))
     Just version -> pure version
 
-  logDebug "about to get signed URL"
   signedURL <- Fossa.getSignedLicenseScanURL apiOpts depVersion vendoredName
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
