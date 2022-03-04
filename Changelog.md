@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## Unreleased
+
+- Handles symlink loops in directory structure.
+
 ## v3.1.2
 
 - Fixes a bug which ignored the `server` field in the config file. ([#821](https://github.com/fossas/fossa-cli/pull/821))
