@@ -13,16 +13,14 @@ import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.StickyLogger (StickyLogger, logSticky)
 import Control.Effect.Lift
 
-import Crypto.Hash (Digest, MD5, hash)
-import Data.ByteString qualified as B
-import Effect.Exec (Exec, runExecIO)
-import Effect.Logger (Logger)
-
 import App.Fossa.ArchiveUploader
 import App.Fossa.FossaAPIV1 qualified as Fossa
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
 import Control.Monad (unless)
+import Crypto.Hash (Digest, MD5, hash)
+import Data.ByteString qualified as B
 import Data.List (nub)
+import Effect.Exec (Exec, runExecIO)
 import Fossa.API.Types
 import Path
 import Srclib.Types (
@@ -39,7 +37,6 @@ import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
-  , Has Logger sig m
   ) =>
   Path Abs Dir ->
   m [LicenseUnit]
@@ -48,7 +45,6 @@ runLicenseScanOnDir scanDir = withThemisAndIndex (themisRunner scanDir)
 themisRunner ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
-  , Has Logger sig m
   ) =>
   Path Abs Dir ->
   ThemisBins ->
@@ -56,17 +52,17 @@ themisRunner ::
 themisRunner scanDir themisBins = do
   runExecIO $ runThemis themisBins scanDir
 
-runThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => ThemisBins -> Path Abs Dir -> m [LicenseUnit]
+runThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> m [LicenseUnit]
 runThemis themisBins scanDir = do
   context "Running license scan binary" $ execThemis themisBins scanDir
 
-scanAndUploadVendoredDeps :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> Path Abs Dir -> [VendoredDependency] -> m [Archive]
+scanAndUploadVendoredDeps :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m) => ApiOpts -> Path Abs Dir -> [VendoredDependency] -> m [Archive]
 scanAndUploadVendoredDeps apiOpts baseDir = traverse (scanAndUpload apiOpts baseDir)
 
 md5 :: B.ByteString -> Digest MD5
 md5 = hash
 
-scanAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> Path Abs Dir -> VendoredDependency -> m Archive
+scanAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m) => ApiOpts -> Path Abs Dir -> VendoredDependency -> m Archive
 scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
   logSticky $ "License Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
   vendoredDepDir <- case parseRelDir (toString vendoredPath) of
@@ -94,7 +90,7 @@ scanAndUpload apiOpts baseDir VendoredDependency{..} = context "compressing and 
 
 -- archiveUploadSourceUnit receives a list of vendored dependencies, a root path, and API settings.
 -- Using this information, it license scans each vendored dependency, uploads the license scan results and then queues a build for the dependency.
-licenseScanSourceUnit :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> [VendoredDependency] -> m [Locator]
+licenseScanSourceUnit :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m) => Path Abs Dir -> ApiOpts -> [VendoredDependency] -> m [Locator]
 licenseScanSourceUnit baseDir apiOpts vendoredDeps = do
   -- Users with many instances of vendored dependencies may accidentally have complete duplicates. Remove them.
   let uniqDeps = nub vendoredDeps

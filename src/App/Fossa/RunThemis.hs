@@ -9,9 +9,7 @@ import Control.Effect.Diagnostics (Diagnostics)
 import Data.String.Conversion (toText)
 import Data.Tagged (unTag)
 import Data.Text (Text)
-import Effect.Logger (Logger, logDebug)
 import Path (Abs, Dir, Path, fromAbsFile)
-import Prettyprinter (Pretty (pretty))
 import Srclib.Types (LicenseUnit)
 
 import App.Fossa.EmbeddedBinary (
@@ -27,14 +25,9 @@ import Effect.Exec (
   execJson,
  )
 
-execThemis :: (Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) => ThemisBins -> Path Abs Dir -> m [LicenseUnit]
+execThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> m [LicenseUnit]
 execThemis themisBins scanDir = do
-  let cmd = themisCommand themisBins
-  logDebug $ pretty $ "themis command: " ++ show cmd
-  logDebug $ pretty $ "scanDir: " ++ show scanDir
-  res <- execJson @[LicenseUnit] scanDir cmd
-  logDebug "back from command"
-  pure res
+  execJson @[LicenseUnit] scanDir $ themisCommand themisBins
 
 themisCommand :: ThemisBins -> Command
 themisCommand ThemisBins{..} = do
