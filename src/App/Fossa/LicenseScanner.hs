@@ -40,7 +40,7 @@ runLicenseScanOnDir ::
   ) =>
   Path Abs Dir ->
   m [LicenseUnit]
-runLicenseScanOnDir scanDir = withThemisAndIndex (themisRunner scanDir)
+runLicenseScanOnDir scanDir = withThemisAndIndex $ themisRunner scanDir
 
 themisRunner ::
   ( Has (Lift IO) sig m
@@ -62,7 +62,7 @@ md5 = hash
 scanAndUploadVendoredDep :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m) => ApiOpts -> Path Abs Dir -> VendoredDependency -> m Archive
 scanAndUploadVendoredDep apiOpts baseDir VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
   logSticky $ "License Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
-  vendoredDepDir <- case parseRelDir (toString vendoredPath) of
+  vendoredDepDir <- case parseRelDir $ toString vendoredPath of
     Left _ -> fatalText "Error constructing scan dir for vendored scan"
     Right val -> pure val
   let cliScanDir = baseDir </> vendoredDepDir
@@ -75,7 +75,7 @@ scanAndUploadVendoredDep apiOpts baseDir VendoredDependency{..} = context "compr
           }
 
   depVersion <- case vendoredVersion of
-    Nothing -> pure (toText (show (md5 $ encodeUtf8 (show themisScanResult))))
+    Nothing -> pure $ toText $ show $ md5 $ encodeUtf8 $ show themisScanResult
     Just version -> pure version
 
   signedURL <- Fossa.getSignedLicenseScanURL apiOpts depVersion vendoredName
@@ -102,7 +102,7 @@ licenseScanSourceUnit baseDir apiOpts vendoredDeps = do
 
   -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
-  _ <- Fossa.licenseScanFinalize apiOpts (ArchiveComponents archives)
+  _ <- Fossa.licenseScanFinalize apiOpts $ ArchiveComponents archives
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
   -- but not when reading from a source unit.
