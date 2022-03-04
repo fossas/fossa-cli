@@ -410,10 +410,8 @@ licenseScanFinalize apiOpts archiveProjects = runEmpty $
 
     let opts = "dependency" =: True <> "rawLicenseScan" =: True
 
-    -- The response appears to either be "Created" for new builds, or an error message for existing builds.
-    -- Making the actual return value of "Created" essentially worthless.
     resp <-
-      context "Queuing a build for all archive uploads" $
+      context "Queuing a build for all license scan uploads" $
         req POST (licenseScanFinalizeUrl baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
     pure (responseBody resp)
 
@@ -455,7 +453,7 @@ getSignedLicenseScanURL apiOpts revision packageName = fossaReq $ do
   let opts = "packageSpec" =: packageName <> "revision" =: revision
 
   response <-
-    context ("Retrieving a signed S3 URL for " <> packageName) $
+    context ("Retrieving a signed S3 URL for license scan results of " <> packageName) $
       req GET (signedLicenseScanURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
   pure (responseBody response)
 

@@ -97,7 +97,7 @@ extractThemisFiles = do
           , binaryFilePath = $(mkRelFile "index.gob")
           }
   sendIO $ extractLzma (toPath compressedThemisIndex) (toPath decompressedThemisIndex)
-  pure $ ThemisBins themisActual (applyTag @ThemisIndex decompressedThemisIndex)
+  pure $ ThemisBins themisActual $ applyTag @ThemisIndex decompressedThemisIndex
 
 withSyftBinary ::
   ( Has (Lift IO) sig m
