@@ -178,7 +178,7 @@ instance RecordableValue BL.ByteString where
 instance RecordableValue (Path a b)
 
 instance RecordableValue (SomeBase a)
- 
+
 instance RecordableValue ExitCode where
   toRecordedValue ExitSuccess = toJSON (0 :: Int)
   toRecordedValue (ExitFailure i) = toJSON (i :: Int)
