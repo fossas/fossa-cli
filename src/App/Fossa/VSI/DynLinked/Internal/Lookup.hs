@@ -9,9 +9,11 @@ import Control.Algebra (Has)
 import Control.Effect.Diagnostics (
   Diagnostics,
   ToDiagnostic (renderDiagnostic),
+  recover,
   warn,
   (<||>),
  )
+import Control.Monad (join)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Effect.Exec (Exec)
@@ -48,8 +50,8 @@ resolveFile ::
 resolveFile root file = do
   -- When adding new tactics in the future, ensure that they fail (through diagnostics) if they cannot identify a dependency.
   -- <||> selects the first item to succeed without a diagnostic error.
-  resolved <- rpmTactic root file <||> debTactic root file
-  case resolved of
+  resolved <- recover $ rpmTactic root file <||> debTactic root file
+  case join resolved of
     Just result -> pure result
     Nothing -> do
       warn $ MissingLinuxMetadata file
