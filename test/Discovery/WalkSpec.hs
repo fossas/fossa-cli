@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 module Discovery.WalkSpec (
   spec,
@@ -10,10 +11,8 @@ import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift
 import Control.Effect.State (get, put)
 import Data.Foldable (traverse_)
-import Data.List (isPrefixOf, stripPrefix)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (mapMaybe)
 import Discovery.Walk
 import Effect.ReadFS
 import Path
@@ -25,7 +24,7 @@ spec :: Spec
 spec =
   describe "walk" $ do
     it' "does a pre-order depth-first traversal" . withTempDir "test-Discovery-Walk" $ \tmpDir -> do
-      let dirs =
+      let dirs@[a, ab, c, cd] =
             map
               (tmpDir </>)
               [ $(mkRelDir "a")
@@ -39,18 +38,18 @@ spec =
       pathsToTree paths
         `shouldBe'` dirTree
           [
-            ( toFilePath tmpDir
+            ( tmpDir
             , dirTree
                 [
-                  ( "a/"
+                  ( a
                   , dirTree
-                      [ ("b/", dirTree [])
+                      [ (ab, dirTree [])
                       ]
                   )
                 ,
-                  ( "c/"
+                  ( c
                   , dirTree
-                      [ ("d/", dirTree [])
+                      [ (cd, dirTree [])
                       ]
                   )
                 ]
@@ -59,7 +58,7 @@ spec =
 
     it' "handles symlink loops" . withTempDir "test-Discovery-Walk" $ \tmpDir -> do
       -- This example comes from the `shards` dependency manager.
-      let dirs =
+      let dirs@[lib, pg, sqlite] =
             map
               (tmpDir </>)
               [ $(mkRelDir "lib")
@@ -76,41 +75,41 @@ spec =
       pathsToTree paths
         `shouldBe'` dirTree
           [
-            ( toFilePath tmpDir
+            ( tmpDir
             , dirTree
                 [
-                  ( "lib/"
+                  ( lib
                   , dirTree
-                      [ ("pg/", dirTree [])
-                      , ("sqlite/", dirTree [])
+                      [ (pg, dirTree [])
+                      , (sqlite, dirTree [])
                       ]
                   )
                 ]
             )
           ]
 
-newtype DirTree = DirTree (Map FilePath DirTree) deriving (Show, Eq)
+newtype DirTree = DirTree (Map (Path Abs Dir) DirTree) deriving (Show, Eq)
 
-dirTree :: [(FilePath, DirTree)] -> DirTree
+dirTree :: [(Path Abs Dir, DirTree)] -> DirTree
 dirTree = DirTree . Map.fromList
 
 -- | Creates a tree from a list of paths.
 -- Files are walked in an arbitrary order within the same level, e.g. by inode
 -- number.  We can make the test deterministic and by recreating the tree.
-pathsToTree :: [FilePath] -> DirTree
+pathsToTree :: [Path Abs Dir] -> DirTree
 pathsToTree [] = DirTree (Map.empty)
 pathsToTree (path : paths) =
-  let (subdirs, rest) = span (path `isPrefixOf`) paths
-      subtree = pathsToTree $ mapMaybe (stripPrefix path) subdirs
+  let (subdirs, rest) = span (path `isProperPrefixOf`) paths
+      subtree = pathsToTree subdirs
       DirTree siblingTrees = pathsToTree rest
    in DirTree $ Map.insert path subtree siblingTrees
 
 runWalk ::
-  (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [FilePath]
+  (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Path Abs Dir]
 runWalk = runWalkWithCircuitBreaker 100
 
 runWalkWithCircuitBreaker ::
-  (Has ReadFS sig m, Has Diagnostics sig m) => Int -> Path Abs Dir -> m [FilePath]
+  (Has ReadFS sig m, Has Diagnostics sig m) => Int -> Path Abs Dir -> m [Path Abs Dir]
 runWalkWithCircuitBreaker maxIters startDir =
   do
     fmap fst
@@ -123,7 +122,7 @@ runWalkWithCircuitBreaker maxIters startDir =
           if iterations < maxIters
             then do
               put (iterations + 1)
-              tell [toFilePath dir]
+              tell [dir]
               pure WalkContinue
             else do
               pure WalkStop
