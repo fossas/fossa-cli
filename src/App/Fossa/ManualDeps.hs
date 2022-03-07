@@ -86,10 +86,10 @@ toSourceUnit :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has StickyLogger si
 toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts = do
   -- If the file exists and we have no dependencies to report, that's a failure.
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
-  -- TODO: This will be set by querying core to see if we should archive upload or cli-side license scan
+  -- TODO: archiveOrCLI will eventually be set by querying core to see if we should archive upload or cli-side license scan
   -- See https://fossa.atlassian.net/browse/ANE-23
-  -- TODO IMPORTANT: Until this is done, this should always be `ArchiveUpload` on master
-  let archiveOrCLI = CLILicenseScan
+  -- IMPORTANT: Until ANE-23 is implemented, this should always be `ArchiveUpload` on master
+  let archiveOrCLI = ArchiveUpload
   archiveLocators <- case maybeApiOpts of
     Nothing -> case archiveOrCLI of
       ArchiveUpload -> pure $ archiveNoUploadSourceUnit vendoredDependencies
