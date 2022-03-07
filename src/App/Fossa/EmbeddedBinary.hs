@@ -87,6 +87,7 @@ cleanupThemisBins (ThemisBins a b) = traverse_ cleanupExtractedBinaries [unTag a
 withThemisAndIndex :: Has (Lift IO) sig m => (ThemisBins -> m c) -> m c
 withThemisAndIndex = bracket extractThemisFiles cleanupThemisBins
 
+-- When running Themis we always need both the themis-cli and the decompressed index.gob
 extractThemisFiles :: Has (Lift IO) sig m => m ThemisBins
 extractThemisFiles = do
   themisActual <- applyTag @ThemisBinary <$> extractEmbeddedBinary Themis
