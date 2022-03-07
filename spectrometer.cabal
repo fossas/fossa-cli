@@ -192,9 +192,9 @@ library
     App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
+    App.Fossa.VSI.DynLinked
     App.Fossa.VSI.DynLinked.Internal.Binary
     App.Fossa.VSI.DynLinked.Internal.Lookup
-    App.Fossa.VSI.DynLinked.Internal.Lookup.APK
     App.Fossa.VSI.DynLinked.Internal.Lookup.DEB
     App.Fossa.VSI.DynLinked.Internal.Lookup.RPM
     App.Fossa.VSI.DynLinked.Internal.Resolve
@@ -411,7 +411,6 @@ test-suite unit-tests
     App.Fossa.Report.AttributionSpec
     App.Fossa.Report.Log4jReportSpec
     App.Fossa.VSI.DynLinked.Internal.BinarySpec
-    App.Fossa.VSI.DynLinked.Internal.Lookup.APKSpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.DEBSpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.RPMSpec
     App.Fossa.VSI.DynLinked.Internal.ResolveSpec

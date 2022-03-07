@@ -17,6 +17,7 @@ import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import Control.Effect.Lift (Lift)
 import Data.Either (partitionEithers)
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Set (Set, toList)
 import Data.String.Conversion (toText)
 import Data.Text (Text, intercalate)
@@ -29,7 +30,7 @@ import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
+import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep, srcUserDepDescription)
 import Text.Megaparsec (Parsec, empty, eof, many, takeWhile1P)
 import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
@@ -56,7 +57,9 @@ toSourceUnit root distro dependencies = do
   pure $ unit{additionalData = fmap toDepData (Just binaries)}
   where
     toDepData :: [SourceUserDefDep] -> AdditionalDepData
-    toDepData d = AdditionalDepData (Just d) Nothing
+    toDepData d = AdditionalDepData (Just $ fmap updatedDesc d) Nothing
+    updatedDesc :: SourceUserDefDep -> SourceUserDefDep
+    updatedDesc d = d{srcUserDepDescription = Just "Unmanaged dynamically linked dependency"}
     toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
     toProject dir graph = ProjectResult VsiProjectType dir graph Complete []
 
@@ -135,13 +138,18 @@ environmentDistro
     readOsReleaseAt :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs File -> m LinuxDistro
     readOsReleaseAt = readContentsParser parseLinuxDistro
 
+stripSurrounding :: Text -> Text -> Text
+stripSurrounding strip text = do
+  let withoutPrefix = fromMaybe text $ Text.stripPrefix strip text
+  fromMaybe withoutPrefix $ Text.stripSuffix strip withoutPrefix
+
 type Parser = Parsec Void Text
 
 parseLinuxDistro :: Parser LinuxDistro
 parseLinuxDistro = do
   keys <- Map.fromList <$> many parseField <* eof
   case (Map.lookup "ID" keys, Map.lookup "VERSION_ID" keys) of
-    (Just distro, Just version) -> pure $ LinuxDistro distro version
+    (Just distro, Just version) -> pure $ LinuxDistro (stripSurrounding "\"" distro) (stripSurrounding "\"" version)
     (Just _, Nothing) -> fail "missing required key: VERSION_ID"
     (Nothing, Just _) -> fail "missing required key: ID"
     (Nothing, Nothing) -> fail "missing required keys: ID, VERSION_ID"
