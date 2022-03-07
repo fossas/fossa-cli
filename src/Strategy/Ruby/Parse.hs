@@ -1,11 +1,13 @@
-module Strategy.Ruby.Gemspec (
+module Strategy.Ruby.Parse (
   rubyString,
   parseRubyAssignment,
   Assignment (..),
   readAssignments,
   parseRubyArray,
   parseRubyWordsArray,
-  rubyLicenseValuesP,
+  gemspecLicenseValuesP,
+  Symbol (..),
+  parseRubySymbol,
 ) where
 
 import Control.Applicative ((<|>))
@@ -28,6 +30,22 @@ selectDelim = \case
   '(' -> ('(', ')')
   '[' -> ('[', ']')
   c -> (c, c)
+
+betweenDelim :: (Char, Char) -> Parser Text
+betweenDelim (d1, d2) =
+  mconcat
+    <$> between
+      (char d1)
+      (char d2)
+      ( many
+          ( try delimEscape
+              <|> (toText <$> anySingleBut d2)
+          )
+      )
+  where
+    -- only the close delimiter can stop parsing, so only check
+    -- for escaped versions of that.
+    delimEscape = string $ "\\" <> toText d2
 
 -- |This is a parser for a ruby string literal. The strings it parses could look
 -- these:
@@ -57,30 +75,16 @@ selectDelim = \case
 -- into the string in place of the interpolation text. This parser ignores
 -- these and treats them like regular text.
 rubyString :: Parser Text
-rubyString =
-  mconcat <$> (stringText <* optional freezeMethod)
+rubyString = stringText <* optional freezeMethod
   where
     freezeMethod = string ".freeze" >> optional (string "()")
-    betweenDelim :: Char -> Parser [Text]
-    betweenDelim c =
-      let (d1, d2) = selectDelim c
-          -- only the close delimiter can stop parsing, so only check
-          -- for escaped versions of that.
-          delimEscape = string $ "\\" <> toText d2
-       in between
-            (char d1)
-            (char d2)
-            ( many
-                ( try delimEscape
-                    <|> (toText <$> anySingleBut d2)
-                )
-            )
     pctQ = optional (choice [char 'q', char 'Q'])
+    betweenSelectedDelim = betweenDelim . selectDelim
     arbitraryDelim = try $
-      do (char '%' *> pctQ *> lookAhead anySingle) >>= betweenDelim
+      do (char '%' *> pctQ *> lookAhead anySingle) >>= betweenSelectedDelim
     stringText =
-      (betweenDelim '"')
-        <|> (betweenDelim '\'')
+      (betweenSelectedDelim '"')
+        <|> (betweenSelectedDelim '\'')
         <|> try arbitraryDelim
 
 data Assignment a = Assignment
@@ -119,6 +123,27 @@ lexeme p = space *> p <* space
 parseRubyArray :: Parser a -> Parser [a]
 parseRubyArray p = char '[' *> sepBy (lexeme p) (char ',') <* char ']'
 
+newtype Symbol = Symbol {unSymbol :: Text}
+  deriving (Show, Eq)
+
+-- |Parses a ruby symbol. Ex:
+-- :this_is_a_symbole
+-- :"this is also a symbol"
+-- :'single quote symbol'
+parseRubySymbol :: Parser Symbol
+parseRubySymbol =
+  Symbol
+    <$> ( char ':'
+            *> ( doubleQuoteSymbol
+                  <|> singleQuoteSymbol
+                  <|> simpleSymbol
+               )
+        )
+  where
+    simpleSymbol = takeWhile1P (Just "symbol") (not . isSpace)
+    doubleQuoteSymbol = betweenDelim ('"', '"')
+    singleQuoteSymbol = betweenDelim ('\'', '\'')
+
 -- |Ruby has a special syntax for making an array of strings that looks like
 -- these examples:
 --
@@ -153,8 +178,8 @@ parseRubyWordsArray = do
 -- |Try to parse any value that could potentially be a license.
 -- This parser only works for licenses that are a string literal or an
 -- array of string literals.
-rubyLicenseValuesP :: Parser [Text]
-rubyLicenseValuesP = rubyArrayP <|> (singleton <$> rubyString)
+gemspecLicenseValuesP :: Parser [Text]
+gemspecLicenseValuesP = rubyArrayP <|> (singleton <$> rubyString)
   where
     rubyArrayP =
       try parseRubyWordsArray

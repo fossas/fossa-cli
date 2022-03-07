@@ -11,11 +11,13 @@ import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, warnOnErr, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
 import Data.Aeson (ToJSON)
+import Data.Glob qualified as Glob
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
-  walk', findFilesMatchingGlob
+  findFilesMatchingGlob,
+  walk',
  )
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
@@ -29,7 +31,6 @@ import Types (
   DiscoveredProjectType (CocoapodsProjectType),
   GraphBreadth (Complete, Partial),
  )
-import qualified Data.Glob as Glob
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CocoapodsProject]
 discover dir = context "Cocoapods" $ do

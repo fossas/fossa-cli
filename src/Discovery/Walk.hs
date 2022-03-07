@@ -7,7 +7,8 @@ module Discovery.Walk (
   -- * Helpers
   fileName,
   findFileNamed,
-findFilesMatchingGlob) where
+  findFilesMatchingGlob,
+) where
 
 import Control.Carrier.Writer.Church
 import Control.Effect.Diagnostics
@@ -15,6 +16,7 @@ import Control.Monad.Trans
 import Control.Monad.Trans.Maybe
 import Data.Foldable (find)
 import Data.Functor (void)
+import Data.Glob qualified as Glob
 import Data.List ((\\))
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
@@ -22,7 +24,6 @@ import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Effect.ReadFS
 import Path
-import qualified Data.Glob as Glob
 
 data WalkStep
   = -- | Continue walking subdirectories

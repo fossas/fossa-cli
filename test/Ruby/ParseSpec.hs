@@ -1,10 +1,10 @@
-module Ruby.GemspecSpec (spec) where
+module Ruby.ParseSpec (spec) where
 
 import Data.Char (isSeparator)
 import Data.Foldable (for_)
 import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Strategy.Ruby.Gemspec (Assignment (Assignment), parseRubyArray, parseRubyAssignment, parseRubyWordsArray, rubyString)
+import Strategy.Ruby.Parse (Assignment (Assignment), Symbol (Symbol), parseRubyArray, parseRubyAssignment, parseRubySymbol, parseRubyWordsArray, rubyString)
 import Test.Hspec (Spec, context, describe, it, shouldBe)
 import Text.Megaparsec (MonadParsec (eof), ParseErrorBundle, Parsec, runParser, takeWhile1P)
 
@@ -73,6 +73,16 @@ arrayParseSpec =
     it "Can parse an array of words with escaped ending delimiter" $
       parseRubyWordsArray `shouldParse` escapedRubyWordArray `to` escapedExpectedArray
 
+symbolParseSpec :: Spec
+symbolParseSpec =
+  describe "Parsing ruby symbols" $ do
+    it "Can parse a symbol " $
+      parseRubySymbol `shouldParse` ":he1l_o" `to` Symbol "he1l_o"
+    it "Can parse a symbol made from a string literal with '\"'" $
+      parseRubySymbol `shouldParse` ":\"f\\\"o o\"" `to` Symbol "f\\\"o o"
+    it "Can parse a symbol made from a string literal with \"'\"" $
+      parseRubySymbol `shouldParse` ":\'f\\'o o\'" `to` Symbol "f\\'o o"
+
 assignmentParseSpec :: Spec
 assignmentParseSpec =
   describe "Ruby assignment parsing test" $ do
@@ -95,3 +105,4 @@ spec = context "Ruby GemSpec tests" $ do
   stringParseSpec
   assignmentParseSpec
   arrayParseSpec
+  symbolParseSpec
