@@ -7,7 +7,7 @@ module Discovery.Walk (
   -- * Helpers
   fileName,
   findFileNamed,
-) where
+findFilesMatchingGlob) where
 
 import Control.Carrier.Writer.Church
 import Control.Effect.Diagnostics
@@ -22,6 +22,7 @@ import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Effect.ReadFS
 import Path
+import qualified Data.Glob as Glob
 
 data WalkStep
   = -- | Continue walking subdirectories
@@ -80,6 +81,9 @@ fileName = toFilePath . filename
 
 findFileNamed :: String -> [Path a File] -> Maybe (Path a File)
 findFileNamed name = find (\f -> fileName f == name)
+
+findFilesMatchingGlob :: Glob.Glob a -> [Path a File] -> [Path a File]
+findFilesMatchingGlob g = filter (`Glob.matches` g)
 
 -------------- Stolen from path-io; adapted to our own ReadFS effect
 

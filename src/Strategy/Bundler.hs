@@ -24,7 +24,7 @@ import Diag.Common (AllDirectDeps (AllDirectDeps), MissingEdges (MissingEdges))
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
-  walk',
+  walk', findFilesMatchingGlob
  )
 import Effect.Exec (Exec, Has)
 import Effect.ReadFS (ReadFS, readContentsParser)
@@ -56,7 +56,7 @@ findProjects = walk' $ \dir _ files -> do
   let maybeGemfile = findFileNamed "Gemfile" files
       gemfileLock = findFileNamed "Gemfile.lock" files
       -- Bundler globs for *.gemspec files, so collect all of them for analysis.
-      gemSpecFiles = filter (`Glob.matches` (Glob.toGlob dir </> "*.gemspec")) files
+      gemSpecFiles = findFilesMatchingGlob (Glob.toGlob dir </> "*.gemspec") files
 
   case maybeGemfile of
     Nothing -> pure ([], WalkContinue)

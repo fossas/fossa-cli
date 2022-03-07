@@ -12,14 +12,24 @@ import Control.Effect.Diagnostics (Diagnostics, context, errCtx, warnOnErr, (<||
 import Control.Effect.Diagnostics qualified as Diag
 import Data.Aeson (ToJSON)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
-import Discovery.Walk
-import Effect.ReadFS
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  findFileNamed,
+  walk', findFilesMatchingGlob
+ )
+import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (Abs, Dir, File, Path)
 import Strategy.Cocoapods.Errors (MissingPodLockFile (MissingPodLockFile))
 import Strategy.Cocoapods.Podfile qualified as Podfile
 import Strategy.Cocoapods.PodfileLock qualified as PodfileLock
-import Types
+import Types (
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (CocoapodsProjectType),
+  GraphBreadth (Complete, Partial),
+ )
+import qualified Data.Glob as Glob
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CocoapodsProject]
 discover dir = context "Cocoapods" $ do
@@ -29,13 +39,15 @@ discover dir = context "Cocoapods" $ do
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CocoapodsProject]
 findProjects = walk' $ \dir _ files -> do
   let podfile = findFileNamed "Podfile" files
-  let podfileLock = findFileNamed "Podfile.lock" files
+      podfileLock = findFileNamed "Podfile.lock" files
+      podSpecs = findFilesMatchingGlob (Glob.toGlob dir Glob.</> "*.podspec") files
 
   let project =
         CocoapodsProject
           { cocoapodsPodfile = podfile
           , cocoapodsPodfileLock = podfileLock
           , cocoapodsDir = dir
+          , cocoaPodsSpecFiles = podSpecs
           }
 
   case podfile <|> podfileLock of
@@ -46,6 +58,7 @@ data CocoapodsProject = CocoapodsProject
   { cocoapodsPodfile :: Maybe (Path Abs File)
   , cocoapodsPodfileLock :: Maybe (Path Abs File)
   , cocoapodsDir :: Path Abs Dir
+  , cocoaPodsSpecFiles :: [Path Abs File]
   }
   deriving (Eq, Ord, Show, Generic)
 
