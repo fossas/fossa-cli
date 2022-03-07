@@ -166,6 +166,7 @@ summarize (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps) =
         , srcUnitToScanCount vsi
         , srcUnitToScanCount binary
         , srcUnitToScanCount manualDeps
+        , srcUnitToScanCount dynamicLinkingDeps
         ]
 
 listSymbol :: Doc AnsiStyle
