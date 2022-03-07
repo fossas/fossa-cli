@@ -5,6 +5,8 @@ module Control.Timeout.Internal (
 ) where
 
 import Control.Concurrent (MVar)
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
+import GHC.Generics (Generic)
 
 -- Opaque wrapper around MVar (sort of like an atomic variable)
 -- Only created by using `timeout'`

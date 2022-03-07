@@ -17,13 +17,14 @@ module App.Fossa.VSI.Types (
 ) where
 
 import Control.Effect.Diagnostics (ToDiagnostic, renderDiagnostic)
-import Data.Aeson (FromJSON (parseJSON), ToJSON, withObject, (.:))
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, withObject, (.:))
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
 import Effect.Logger (Pretty (pretty), viaShow)
+import GHC.Generics (Generic)
 import Srclib.Converter (depTypeToFetcher, fetcherToDepType)
 import Srclib.Types qualified as Srclib
 
@@ -52,7 +53,10 @@ data Locator = Locator
   , locatorProject :: Text
   , locatorRevision :: Text
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON Locator where
+  toEncoding = genericToEncoding defaultOptions
 
 instance FromJSON Locator where
   parseJSON = withObject "Locator" $ \obj -> do
@@ -84,7 +88,10 @@ instance ToDiagnostic LocatorParseError where
 -- To handle this case we provide users with an escape hatch, which is an argument allowing them to skip resolving some of their dependencies.
 -- This type canonicalizes that request.
 newtype SkipResolution = SkipResolution {unVSISkipResolution :: Set Locator}
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON SkipResolution where
+  toEncoding = genericToEncoding defaultOptions
 
 shouldSkipResolving :: SkipResolution -> Locator -> Bool
 shouldSkipResolving skip loc = loc `Set.member` (unVSISkipResolution skip)

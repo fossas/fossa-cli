@@ -16,7 +16,7 @@ import Control.Concurrent.STM (
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 
--- Thread-safe counter registry for atomic counters.
+-- Thread-safe atomic counter registry.
 type CounterRegistry a b = TVar (Map.Map a b)
 
 -- | Make empty counter registry.

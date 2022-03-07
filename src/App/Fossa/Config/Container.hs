@@ -27,11 +27,13 @@ import App.Fossa.Config.Container.Parse qualified as Parse
 import App.Fossa.Config.Container.Test (ContainerTestConfig, ContainerTestOptions (..), OutputFormat (..))
 import App.Fossa.Config.Container.Test qualified as Test
 import App.Fossa.Config.EnvironmentVars (EnvVars)
-import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
+import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift, sendIO)
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS)
+import GHC.Generics (Generic)
 import Options.Applicative (
   InfoMod,
   Parser,
@@ -97,7 +99,10 @@ data ContainerScanConfig
   | TestCfg ContainerTestConfig
   | DumpCfg ContainerDumpScanConfig
   | ParseCfg ContainerParseFileConfig
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance ToJSON ContainerScanConfig where
+  toEncoding = genericToEncoding defaultOptions
 
 instance GetSeverity ContainerCommand where
   getSeverity = \case
@@ -107,6 +112,13 @@ instance GetSeverity ContainerCommand where
     ContainerDumpScan _ -> SevInfo
     where
       fromBool b = if b then SevDebug else SevInfo
+
+instance GetCommonOpts ContainerCommand where
+  getCommonOpts = \case
+    ContainerAnalyze (ContainerAnalyzeOptions{analyzeCommons}) -> Just analyzeCommons
+    ContainerTest (ContainerTestOptions{testCommons}) -> Just testCommons
+    ContainerParseFile _ -> Nothing
+    ContainerDumpScan _ -> Nothing
 
 parser :: Parser ContainerCommand
 parser = public <|> private

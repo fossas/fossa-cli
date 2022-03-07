@@ -7,6 +7,7 @@ module Diag.Diagnostic (
 
 import Control.Exception (SomeException (SomeException))
 import Data.Aeson (ToJSON, object, toJSON, (.=))
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Effect.Logger
 
@@ -24,8 +25,7 @@ instance ToDiagnostic String where
   renderDiagnostic = pretty
 
 instance ToDiagnostic SomeException where
-  renderDiagnostic (SomeException exc) =
-    "An exception occurred: " <> pretty (show exc)
+  renderDiagnostic (SomeException exc) = "An exception occurred: " <> pretty (show exc)
 
 -- | An error with a ToDiagnostic instance and an associated stack trace
 data SomeDiagnostic where

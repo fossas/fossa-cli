@@ -21,6 +21,7 @@ import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.Simple (interpret, sendSimple)
 import Control.Carrier.Stack (StackC, runStack)
+import Control.Carrier.Telemetry (IgnoreTelemetryC, withoutTelemetry)
 import Control.Monad (forM)
 import Data.Conduit (runConduitRes, (.|))
 import Data.Conduit.Binary qualified as CB
@@ -96,7 +97,7 @@ data FixtureArtifact = FixtureArtifact
   }
   deriving (Show, Eq, Ord)
 
-type TestC m a = ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC ((ReaderC ExperimentalAnalyzeConfig) (FinallyC (StackC m)))))) a
+type TestC m a = ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC ((ReaderC ExperimentalAnalyzeConfig) (FinallyC (StackC (IgnoreTelemetryC m))))))) a
 
 testRunnerWithLogger :: TestC IO a -> FixtureEnvironment -> IO (Result a)
 testRunnerWithLogger f env =
@@ -108,6 +109,7 @@ testRunnerWithLogger f env =
     & runReader (ExperimentalAnalyzeConfig Nothing)
     & runFinally
     & runStack
+    & withoutTelemetry
 
 runExecIOWithinEnv :: (Has (Lift IO) sig m) => FixtureEnvironment -> ExecIOC m a -> m a
 runExecIOWithinEnv conf = interpret $ \case
@@ -134,9 +136,8 @@ performDiscoveryAndAnalyses targetDir AnalysisTestFixture{..} = do
   discoveryResult <- sendIO $ testRunnerWithLogger (discover targetDir) environment
   withResult discoveryResult $ \_ dps ->
     forM dps $ \dp -> do
-      withTelemetry $ \tel -> do
-        analysisResult <- sendIO $ testRunnerWithLogger (ignoreDebug . runTelemetry tel $ analyzeProject (projectBuildTargets dp) (projectData dp)) environment
-        withResult analysisResult $ \_ dr -> pure (dp, dr)
+      analysisResult <- sendIO $ testRunnerWithLogger (ignoreDebug $ analyzeProject (projectBuildTargets dp) (projectData dp)) environment
+      withResult analysisResult $ \_ dr -> pure (dp, dr)
   where
     runCmd :: FixtureEnvironment -> Maybe (Command) -> IO ()
     runCmd env cmd =

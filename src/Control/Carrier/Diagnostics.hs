@@ -56,7 +56,11 @@ logDiagnostic diag = do
 -- Exits with zero if the result is a success, or non-zero if the result is a failure.
 -- Useful for setting up diagnostics from CLI entry points.
 logWithExit_ :: (Has (Lift IO) sig m, Has Logger sig m, Has Stack sig m) => DiagnosticsC m () -> m ()
-logWithExit_ diag = logDiagnostic diag >>= maybe (sendIO exitFailure) (const (sendIO exitSuccess))
+logWithExit_ diag = do
+  a <- logDiagnostic diag
+  case a of
+    Nothing -> sendIO exitFailure
+    Just _ -> sendIO exitSuccess
 
 instance Has Stack sig m => Algebra (Diag :+: sig) (DiagnosticsC m) where
   alg hdl sig ctx = DiagnosticsC $ case sig of

@@ -8,12 +8,13 @@ import App.Fossa.Container qualified as Container
 import App.Fossa.DumpBinaries qualified as Dump
 import App.Fossa.ListTargets qualified as ListTargets
 import App.Fossa.Report qualified as Report
-import App.Fossa.Subcommand (GetSeverity, SubCommand (..), runSubCommand)
+import App.Fossa.Subcommand (GetCommonOpts, GetSeverity, SubCommand (..), runSubCommand)
 import App.Fossa.Test qualified as Test
 import App.Fossa.VSI.IAT.AssertUserDefinedBinaries qualified as LinkBins
 import App.Version (fullVersionDescription)
 import Control.Concurrent.CGroup (initRTSThreads)
 import Control.Monad (join)
+import Data.Aeson (ToJSON)
 import Data.String.Conversion (toString)
 import Options.Applicative (
   CommandFields,
@@ -86,7 +87,7 @@ initCommand = command "init" (info runInit $ progDesc "Deprecated, no longer has
     runInit :: Parser (IO ())
     runInit = pure $ putStrLn "The 'init' command has been deprecated and no longer has any effect.  You may safely remove this command."
 
-decodeSubCommand :: (GetSeverity a, Show b) => SubCommand a b -> Mod CommandFields (IO ())
+decodeSubCommand :: (GetSeverity a, GetCommonOpts a, Show b, ToJSON b) => SubCommand a b -> Mod CommandFields (IO ())
 decodeSubCommand cmd@SubCommand{..} = command commandName $ info (runSubCommand cmd) commandInfo
 
 mainPrefs :: ParserPrefs

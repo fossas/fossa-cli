@@ -25,7 +25,9 @@ import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Types (OverrideProject (OverrideProject))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Timeout (Duration (Seconds))
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Fossa.API.Types (ApiOpts)
+import GHC.Generics (Generic)
 import Options.Applicative (
   CommandFields,
   Mod,
@@ -52,7 +54,10 @@ subcommand f =
 data OutputFormat
   = TestOutputPretty
   | TestOutputJson
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON OutputFormat where
+  toEncoding = genericToEncoding defaultOptions
 
 data ContainerTestConfig = ContainerTestConfig
   { apiOpts :: ApiOpts
@@ -61,7 +66,10 @@ data ContainerTestConfig = ContainerTestConfig
   , testImageLocator :: ImageText
   , testRevisionOverride :: OverrideProject
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ContainerTestConfig where
+  toEncoding = genericToEncoding defaultOptions
 
 data ContainerTestOptions = ContainerTestOptions
   { testCommons :: CommonOpts

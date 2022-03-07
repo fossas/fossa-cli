@@ -16,6 +16,7 @@ import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (
   EffStack,
+  GetCommonOpts (getCommonOpts),
   GetSeverity (..),
   SubCommand (SubCommand),
  )
@@ -28,9 +29,11 @@ import Control.Effect.Diagnostics (
   Has,
  )
 import Control.Effect.Lift (Lift, sendIO)
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
+import GHC.Generics (Generic)
 import Options.Applicative (
   InfoMod,
   Parser,
@@ -78,7 +81,10 @@ data LinkUserBinsConfig = LinkUserBinsConfig
   , baseDir :: BaseDir
   , binMetadata :: UserDefinedAssertionMeta
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON LinkUserBinsConfig where
+  toEncoding = genericToEncoding defaultOptions
 
 loadConfig ::
   ( Has Diagnostics sig m
@@ -101,6 +107,9 @@ data LinkUserBinsOpts = LinkUserBinsOpts
 
 instance GetSeverity LinkUserBinsOpts where
   getSeverity LinkUserBinsOpts{commons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo
+
+instance GetCommonOpts LinkUserBinsOpts where
+  getCommonOpts LinkUserBinsOpts{commons} = Just commons
 
 cliParser :: Parser LinkUserBinsOpts
 cliParser =

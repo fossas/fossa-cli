@@ -14,6 +14,7 @@ import System.Environment (lookupEnv)
 data EnvVars = EnvVars
   { envApiKey :: Maybe Text
   , envConfigDebug :: Bool
+  , envTelemetryDebug :: Bool
   , envTelemetryScope :: Maybe ConfigTelemetryScope
   }
   deriving (Eq, Ord, Show)
@@ -23,6 +24,9 @@ apiKeyName = "FOSSA_API_KEY"
 
 configDebugName :: [Char]
 configDebugName = "FOSSA_CONFIG_DEBUG"
+
+telemetryDebugName :: [Char]
+telemetryDebugName = "FOSSA_TELEMETRY_DEBUG"
 
 telemetryScopeKeyName :: [Char]
 telemetryScopeKeyName = "FOSSA_TELEMETRY_SCOPE"
@@ -34,6 +38,7 @@ getEnvVars =
   EnvVars
     <$> lookupName apiKeyName
     <*> lookupBool configDebugName
+    <*> lookupBool telemetryDebugName
     <*> lookUpTelemetryScope telemetryScopeKeyName
 
 lookupName :: Has (Lift IO) sig m => String -> m (Maybe Text)
