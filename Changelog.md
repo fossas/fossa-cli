@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Handles symlink loops in directory structure.
+- Handles symlink loops in directory structure. ([#827](https://github.com/fossas/fossa-cli/pull/827))
 
 ## v3.1.2
 
