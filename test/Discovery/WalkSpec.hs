@@ -10,6 +10,10 @@ import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift
 import Control.Effect.State (get, put)
 import Data.Foldable (traverse_)
+import Data.List (isPrefixOf, stripPrefix)
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.Maybe (mapMaybe)
 import Discovery.Walk
 import Effect.ReadFS
 import Path
@@ -32,15 +36,35 @@ spec =
       sendIO $ traverse_ createDir dirs
 
       paths <- runWalk tmpDir
-      paths `shouldBe'` map toFilePath (tmpDir : dirs)
+      pathsToTree paths
+        `shouldBe'` dirTree
+          [
+            ( toFilePath tmpDir
+            , dirTree
+                [
+                  ( "a/"
+                  , dirTree
+                      [ ("b/", dirTree [])
+                      ]
+                  )
+                ,
+                  ( "c/"
+                  , dirTree
+                      [ ("d/", dirTree [])
+                      ]
+                  )
+                ]
+            )
+          ]
 
     it' "handles symlink loops" . withTempDir "test-Discovery-Walk" $ \tmpDir -> do
+      -- This example comes from the `shards` dependency manager.
       let dirs =
             map
               (tmpDir </>)
               [ $(mkRelDir "lib")
-              , $(mkRelDir "lib/sqlite")
               , $(mkRelDir "lib/pg")
+              , $(mkRelDir "lib/sqlite")
               ]
       sendIO $ do
         traverse_ createDir dirs
@@ -49,7 +73,37 @@ spec =
         createDirLink (tmpDir </> $(mkRelDir "lib")) (tmpDir </> $(mkRelDir "lib/sqlite/lib"))
 
       paths <- runWalkWithCircuitBreaker 10 tmpDir
-      paths `shouldBe'` map toFilePath (tmpDir : dirs)
+      pathsToTree paths
+        `shouldBe'` dirTree
+          [
+            ( toFilePath tmpDir
+            , dirTree
+                [
+                  ( "lib/"
+                  , dirTree
+                      [ ("pg/", dirTree [])
+                      , ("sqlite/", dirTree [])
+                      ]
+                  )
+                ]
+            )
+          ]
+
+newtype DirTree = DirTree (Map FilePath DirTree) deriving (Show, Eq)
+
+dirTree :: [(FilePath, DirTree)] -> DirTree
+dirTree = DirTree . Map.fromList
+
+-- | Creates a tree from a list of paths.
+-- Files are walked in an arbitrary order within the same level, e.g. by inode
+-- number.  We can make the test deterministic and by recreating the tree.
+pathsToTree :: [FilePath] -> DirTree
+pathsToTree [] = DirTree (Map.empty)
+pathsToTree (path : paths) =
+  let (subdirs, rest) = span (path `isPrefixOf`) paths
+      subtree = pathsToTree $ mapMaybe (stripPrefix path) subdirs
+      DirTree siblingTrees = pathsToTree rest
+   in DirTree $ Map.insert path subtree siblingTrees
 
 runWalk ::
   (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [FilePath]
