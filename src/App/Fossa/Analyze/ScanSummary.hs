@@ -138,7 +138,7 @@ renderScanSummary severity analysisResults =
       logInfo "------------"
 
 summarize :: AnalysisScanResult -> Maybe ([Doc AnsiStyle])
-summarize (AnalysisScanResult dps vsi binary manualDeps) =
+summarize (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps) =
   if (numProjects totalScanCount <= 0)
     then Nothing
     else
@@ -155,6 +155,7 @@ summarize (AnalysisScanResult dps vsi binary manualDeps) =
           <> ["-"]
           <> summarizeSrcUnit "vsi analysis" Nothing vsi
           <> summarizeSrcUnit "binary-deps analysis" (Just getBinaryIdentifier) binary
+          <> summarizeSrcUnit "dynamic linked dependency analysis" (Just getBinaryIdentifier) dynamicLinkingDeps
           <> summarizeSrcUnit "fossa-deps file analysis" (Just getManualVendorDepsIdentifier) manualDeps
           <> [""]
   where
@@ -290,7 +291,7 @@ countWarnings ws =
     isIgnoredErrGroup _ = False
 
 dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => AnalysisScanResult -> m (Path Abs File)
-dumpResultLogsToTempFile (AnalysisScanResult projects vsi binary manualDeps) = do
+dumpResultLogsToTempFile (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps) = do
   let doc =
         renderStrict
           . layoutPretty defaultLayoutOptions
@@ -301,6 +302,7 @@ dumpResultLogsToTempFile (AnalysisScanResult projects vsi binary manualDeps) = d
             ++ catMaybes
               [ renderSourceUnit "vsi analysis" vsi
               , renderSourceUnit "binary-deps analysis" binary
+              , renderSourceUnit "dynamic linked dependency analysis" dynamicLinkingDeps
               , renderSourceUnit "fossa-deps analysis" manualDeps
               ]
 
@@ -309,7 +311,7 @@ dumpResultLogsToTempFile (AnalysisScanResult projects vsi binary manualDeps) = d
   pure (tmpDir </> scanSummaryFileName)
   where
     scanSummary :: [Doc AnsiStyle]
-    scanSummary = maybeToList (vsep <$> summarize (AnalysisScanResult projects vsi binary manualDeps))
+    scanSummary = maybeToList (vsep <$> summarize (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps))
 
     renderSourceUnit :: Doc AnsiStyle -> Result (Maybe SourceUnit) -> Maybe (Doc AnsiStyle)
     renderSourceUnit header (Failure ws eg) = Just $ renderFailure ws eg $ vsep $ summarizeSrcUnit header Nothing (Failure ws eg)

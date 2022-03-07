@@ -285,7 +285,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let projectResults = mapMaybe toProjectResult projectScans
   let filteredProjects = mapMaybe toProjectResult projectScansWithSkippedProdPath
 
-  let analysisResult = AnalysisScanResult projectScansWithSkippedProdPath vsiResults binarySearchResults manualSrcUnits
+  let analysisResult = AnalysisScanResult projectScansWithSkippedProdPath vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults
 
   renderScanSummary (severity cfg) analysisResult
 
